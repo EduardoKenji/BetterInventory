@@ -83,9 +83,9 @@ local COMPACT_CURIO_LABELS = {
 	},
 	gadget_mission_reward_gear_instead_of_weapon_increase = {
 		localization_id = "curio_reward_chance",
+		strip_leading_plus = true,
 		required_terms = {
-			"Mission Reward",
-			"Weapon",
+			"Curio as Mission Reward",
 		},
 	},
 	gadget_toughness_regen_delay = {
@@ -177,6 +177,10 @@ local function compact_curio_description(mod, data)
 		return description
 	end
 
+	if definition.strip_leading_plus then
+		amount = string.gsub(amount, "^%+", "")
+	end
+
 	return string.format("%s %s", amount, mod:localize(definition.localization_id))
 end
 
@@ -237,7 +241,10 @@ local function resolved_trait_data(entry, include_textures)
 	local description_ok, description = pcall(Items.trait_description, trait_item, entry.rarity, entry.value)
 	local data = {
 		description = description_ok and type(description) == "string" and description or "",
-		id = entry.id,
+		-- Inventory entries use master-item paths. The stable gameplay identifier
+		-- used by gadget trait templates lives on the resolved item's `trait`
+		-- field (for example, gadget_innate_health_increase).
+		id = type(trait_item.trait) == "string" and trait_item.trait or entry.id,
 	}
 
 	if include_textures then

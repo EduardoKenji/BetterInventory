@@ -237,7 +237,7 @@ return {
 		en = "Grimoire Resistance",
 	},
 	curio_reward_chance = {
-		en = "Curio Reward Chance",
+		en = "Curio as Reward",
 	},
 	curio_toughness_regeneration = {
 		en = "Toughness Regen",

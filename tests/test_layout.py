@@ -63,6 +63,17 @@ def main() -> None:
 			gadget_mission_reward_gear_instead_of_weapon_increase = "+15% chance of Curio as Mission Reward (instead of Weapon)",
 			gadget_toughness_regen_delay = "+30% Toughness Regeneration Speed",
 		}
+		TestTraitByMasterId = {
+			["content/items/traits/test_health"] = "gadget_innate_health_increase",
+			["content/items/traits/test_toughness"] = "gadget_innate_toughness_increase",
+			["content/items/traits/test_wounds"] = "gadget_innate_max_wounds_increase",
+			["content/items/perks/test_stamina_regeneration"] = "gadget_stamina_regeneration",
+			["content/items/perks/test_sprint_efficiency"] = "gadget_sprint_efficiency",
+			["content/items/perks/test_gunners"] = "gadget_damage_reduction_vs_gunners",
+			["content/items/perks/test_grimoires"] = "gadget_permanent_damage_resistance",
+			["content/items/perks/test_curio_reward"] = "gadget_mission_reward_gear_instead_of_weapon_increase",
+			["content/items/perks/test_toughness_regen"] = "gadget_toughness_regen_delay",
+		}
 
 		function TestText.text_width(ui_renderer, text, style, optional_size, use_max_extents)
 			return #text * style.font_size * 0.6
@@ -89,7 +100,9 @@ def main() -> None:
 		end
 
 		function TestItems.trait_description(item, rarity, value)
-			return TestTraitDescriptions[item.name] or string.format("%s rank %s", item.name, tostring(rarity))
+			local trait_id = item.trait or item.name
+
+			return TestTraitDescriptions[trait_id] or string.format("%s rank %s", trait_id, tostring(rarity))
 		end
 
 		function TestItems.trait_textures(item, rarity)
@@ -99,6 +112,7 @@ def main() -> None:
 		function TestMasterItems.get_item(item_id)
 			return {
 				name = item_id,
+				trait = TestTraitByMasterId[item_id] or item_id,
 				icon = "icon/" .. item_id,
 			}
 		end
@@ -174,7 +188,7 @@ def main() -> None:
 			local values = {
 				curio_resistance_gunners = "Gunners Resistance",
 				curio_resistance_grimoires = "Grimoire Resistance",
-				curio_reward_chance = "Curio Reward Chance",
+				curio_reward_chance = "Curio as Reward",
 				curio_toughness_regeneration = "Toughness Regen",
 			}
 
@@ -481,7 +495,7 @@ def main() -> None:
                         [
                             lua.table_from(
                                 {
-                                    "id": "gadget_innate_health_increase",
+									"id": "content/items/traits/test_health",
                                     "rarity": 4,
                                     "value": 0.7,
                                 }
@@ -492,21 +506,21 @@ def main() -> None:
                         [
                             lua.table_from(
                                 {
-                                    "id": "gadget_stamina_regeneration",
+									"id": "content/items/perks/test_stamina_regeneration",
                                     "rarity": 4,
                                     "value": 0.5,
                                 }
                             ),
                             lua.table_from(
                                 {
-                                    "id": "gadget_sprint_efficiency",
+									"id": "content/items/perks/test_sprint_efficiency",
                                     "rarity": 4,
                                     "value": 0.5,
                                 }
                             ),
                             lua.table_from(
                                 {
-									"id": "gadget_damage_reduction_vs_gunners",
+									"id": "content/items/perks/test_gunners",
                                     "rarity": 4,
                                     "value": 0.5,
                                 }
@@ -557,8 +571,8 @@ def main() -> None:
     mod.settings.curio_health_color_b = 85
 
     primary_color_expectations = {
-        "gadget_innate_toughness_increase": (255, 105, 200, 235),
-        "gadget_innate_max_wounds_increase": (255, 190, 105, 230),
+        "content/items/traits/test_toughness": (255, 105, 200, 235),
+        "content/items/traits/test_wounds": (255, 190, 105, 230),
     }
 
     for trait_id, expected_color in primary_color_expectations.items():
@@ -620,17 +634,18 @@ def main() -> None:
     )
 
     compact_perk_expectations = {
-        "gadget_permanent_damage_resistance": "+15% Grimoire Resistance",
-        "gadget_mission_reward_gear_instead_of_weapon_increase": "+15% Curio Reward Chance",
-        "gadget_toughness_regen_delay": "+30% Toughness Regen",
+        "content/items/perks/test_grimoires": "+15% Grimoire Resistance",
+        "content/items/perks/test_curio_reward": "15% Curio as Reward",
+        "content/items/perks/test_toughness_regen": "+30% Toughness Regen",
     }
 
     for trait_id, expected_text in compact_perk_expectations.items():
         curio_element.item.perks[3].id = trait_id
         detailed_blueprint.update_data(test_grid, detailed_widget, curio_element)
-        assert detailed_widget.content.better_inventory_full_curio_stat_4 == expected_text
+        actual_text = detailed_widget.content.better_inventory_full_curio_stat_4
+        assert actual_text == expected_text, f"{trait_id}: expected {expected_text!r}, got {actual_text!r}"
 
-    curio_element.item.perks[3].id = "gadget_damage_reduction_vs_gunners"
+    curio_element.item.perks[3].id = "content/items/perks/test_gunners"
     detailed_blueprint.update_data(test_grid, detailed_widget, curio_element)
 
     mod.settings.columns = 5
