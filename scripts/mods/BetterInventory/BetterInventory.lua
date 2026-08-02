@@ -183,10 +183,16 @@ local function refresh_option_dependencies()
 	local curio_expansion_enabled = window_expansion_enabled and mod:get("expand_curio_inventory_window") ~= false
 	local expansion_reason = grid_enabled and mod:localize("option_requires_window_expansion") or native_reason
 	local curio_target_reason = not window_expansion_enabled and expansion_reason or not curio_expansion_enabled and mod:localize("option_requires_curio_expansion") or nil
+	local armoury_grid_enabled = grid_enabled and mod:get("enable_armoury_requisition_grid") ~= false
+	local armoury_expansion_enabled = armoury_grid_enabled and mod:get("expand_armoury_requisition_window") ~= false
+	local armoury_reason = grid_enabled and mod:localize("option_requires_armoury_grid") or native_reason
+	local armoury_target_reason = armoury_grid_enabled and mod:localize("option_requires_armoury_expansion") or armoury_reason
 	local weapon_perks_enabled = mod:get("show_weapon_perks") == true
 
 	set_option_enabled(option_dependency_entries.expand_curio_inventory_window, window_expansion_enabled, expansion_reason)
 	set_option_enabled(option_dependency_entries.curio_target_card_width, curio_expansion_enabled, curio_target_reason)
+	set_option_enabled(option_dependency_entries.expand_armoury_requisition_window, armoury_grid_enabled, armoury_reason)
+	set_option_enabled(option_dependency_entries.armoury_requisition_target_card_width, armoury_expansion_enabled, armoury_target_reason)
 	set_option_enabled(option_dependency_entries.weapon_perk_compression, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
 end
 
@@ -210,6 +216,8 @@ local function bind_option_dependencies(options_templates)
 		"curio_target_card_width",
 		"enable_hadron_entreat_grid",
 		"enable_armoury_requisition_grid",
+		"expand_armoury_requisition_window",
+		"armoury_requisition_target_card_width",
 		"weapon_perk_compression",
 	}) do
 		setting_by_title[mod:localize(setting_id)] = setting_id
@@ -282,7 +290,7 @@ function mod.on_setting_changed(setting_id)
 		end
 	end
 
-	if setting_id == "enable_grid_layout" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "expand_curio_inventory_window" or setting_id == "show_weapon_perks" then
+	if setting_id == "enable_grid_layout" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_armoury_requisition_grid" or setting_id == "expand_armoury_requisition_window" or setting_id == "show_weapon_perks" then
 		refresh_option_dependencies()
 	end
 end
@@ -296,15 +304,23 @@ if dmf_mod and type(dmf_mod.create_mod_options_settings) == "function" then
 end
 
 mod:hook(ItemGridViewBase, "init", function(func, view, definitions, settings, context)
-	if view.__class_name ~= "InventoryWeaponsView" or not Layout.is_enabled_for_view(mod, view) then
-		return func(view, definitions, settings, context)
+	if view.__class_name == "InventoryWeaponsView" and Layout.is_enabled_for_view(mod, view) then
+		local adjusted_definitions, expansion = Layout.expanded_view_definitions(mod, definitions, view)
+
+		view._better_inventory_grid_expansion = expansion
+
+		return func(view, adjusted_definitions, settings, context)
 	end
 
-	local adjusted_definitions, expansion = Layout.expanded_view_definitions(mod, definitions, view)
+	if view.__class_name == "CreditsVendorView" and mod:get("enable_grid_layout") ~= false and mod:get("enable_armoury_requisition_grid") ~= false then
+		local adjusted_definitions, expansion = Layout.expanded_armoury_view_definitions(mod, definitions)
 
-	view._better_inventory_grid_expansion = expansion
+		view._better_inventory_armoury_grid_expansion = expansion
 
-	return func(view, adjusted_definitions, settings, context)
+		return func(view, adjusted_definitions, settings, context)
+	end
+
+	return func(view, definitions, settings, context)
 end)
 
 mod:hook(InventoryWeaponsView, "_setup_item_grid_materials", function(func, view, ...)
@@ -387,6 +403,32 @@ if ensure_class_method(CreditsVendorView, "present_grid_layout") then
 		return present_additional_grid(func, view, layout, on_present_callback, "enable_armoury_requisition_grid", ARMOURY_GRID_CONFIGURATION)
 	end)
 end
+
+mod:hook(CreditsVendorView, "on_enter", function(func, view, ...)
+	local result = func(view, ...)
+	local expansion = view._better_inventory_armoury_grid_expansion or 0
+	local item_grid = view._item_grid
+
+	if expansion > 0 and item_grid and type(item_grid.update_dividers) == "function" then
+		item_grid:update_dividers("content/ui/materials/frames/item_list_top_hollow", {
+			652 + expansion,
+			118,
+		}, {
+			0,
+			-18,
+			20,
+		}, "content/ui/materials/frames/details_lower_armoury", {
+			674 + expansion,
+			80,
+		}, {
+			0,
+			0,
+			20,
+		})
+	end
+
+	return result
+end)
 
 mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layout, content_blueprints, ...)
 	local view = active_grid_view

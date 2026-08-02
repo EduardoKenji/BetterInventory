@@ -68,14 +68,42 @@ def main() -> None:
 			gadget_toughness_regen_delay = "+30% Toughness Regeneration Speed",
 			gadget_mission_credits_increase = "+8% Ordo Dockets (Mission Rewards)",
 			gadget_revive_speed_increase = "+10% Revive Speed (Ally)",
+			weapon_trait_melee_common_wield_increased_unarmored_damage = "+25% Damage (Unarmoured Enemies)",
 			weapon_trait_melee_common_wield_increased_armored_damage = "+25% Damage (Flak Armoured Enemies)",
+			weapon_trait_melee_common_wield_increased_resistant_damage = "+25% Damage (Unyielding Enemies)",
 			weapon_trait_melee_common_wield_increased_berserker_damage = "+25% Damage (Maniacs)",
+			weapon_trait_melee_common_wield_increased_super_armor_damage = "+25% Damage (Carapace Armoured Enemies)",
+			weapon_trait_melee_common_wield_increased_disgustingly_resilient_damage = "+25% Damage (Infested Enemies)",
 			weapon_trait_increase_crit_chance = "+5% Melee Critical Hit Chance",
 			weapon_trait_increase_crit_damage = "+10% Melee Critical Hit Damage",
+			weapon_trait_increase_stamina = "+2 Stamina (Weapon is Active)",
 			weapon_trait_increase_damage_hordes = "+10% Melee Damage (Groaners, Poxwalkers)",
 			weapon_trait_increase_damage_elites = "+10% Melee Damage (Elites)",
 			weapon_trait_increase_damage_specials = "+10% Increased Melee Damage (Specialists)",
 			weapon_trait_increase_weakspot_damage = "+10% Melee Weak Spot Damage",
+			weapon_trait_increase_damage = "+4% Melee Damage (Weapon is Active)",
+			weapon_trait_increase_finesse = "+4% Melee Finesse (Weapon is Active)",
+			weapon_trait_increase_power = "+4% Melee Power (Weapon is Active)",
+			weapon_trait_increase_impact = "+8% Melee Impact",
+			weapon_trait_reduced_block_cost = "+20% Block Efficiency",
+			weapon_trait_reduce_sprint_cost = "+15% Sprint Efficiency",
+			weapon_trait_ranged_common_wield_increased_unarmored_damage = "+25% Damage (Unarmoured Enemies)",
+			weapon_trait_ranged_common_wield_increased_armored_damage = "+25% Damage (Flak Armoured Enemies)",
+			weapon_trait_ranged_common_wield_increased_resistant_damage = "+25% Damage (Unyielding Enemies)",
+			weapon_trait_ranged_common_wield_increased_berserker_damage = "+25% Damage (Maniacs)",
+			weapon_trait_ranged_common_wield_increased_super_armor_damage = "+25% Damage (Carapace Armoured Enemies)",
+			weapon_trait_ranged_common_wield_increased_disgustingly_resilient_damage = "+25% Damage (Infested Enemies)",
+			weapon_trait_ranged_increase_crit_chance = "+5% Ranged Critical Hit Chance",
+			weapon_trait_ranged_increase_crit_damage = "+10% Ranged Critical Hit Damage",
+			weapon_trait_ranged_increase_stamina = "+2 Stamina (Weapon is Active)",
+			weapon_trait_ranged_increase_weakspot_damage = "+10% Ranged Weak Spot Damage",
+			weapon_trait_ranged_increase_damage = "+4% Ranged Damage (Weapon is Active)",
+			weapon_trait_ranged_increase_finesse = "+4% Ranged Finesse (Weapon is Active)",
+			weapon_trait_ranged_increase_power = "+4% Ranged Power (Weapon is Active)",
+			weapon_trait_ranged_increase_damage_elites = "+10% Ranged Damage (Elites)",
+			weapon_trait_ranged_increase_damage_hordes = "+10% Ranged Damage (Groaners, Poxwalkers)",
+			weapon_trait_ranged_increase_damage_specials = "+10% Increased Ranged Damage (Specialists)",
+			weapon_trait_ranged_increased_reload_speed = "+10% Reload Speed",
 		}
 		TestTraitByMasterId = {
 			["content/items/traits/test_health"] = "gadget_innate_health_increase",
@@ -172,6 +200,9 @@ def main() -> None:
 				expand_inventory_window = true,
 				expand_curio_inventory_window = true,
 				curio_target_card_width = 190,
+				enable_armoury_requisition_grid = true,
+				expand_armoury_requisition_window = true,
+				armoury_requisition_target_card_width = 230,
                 grid_spacing = 10,
                 card_height = 110,
 				automatic_card_height = true,
@@ -250,6 +281,45 @@ def main() -> None:
 				weapon_perk_specialist_melee_damage_heavy = "Spec Dmg",
 				weapon_perk_melee_weakspot_damage = "Melee Weakspot Dmg",
 				weapon_perk_melee_weakspot_damage_heavy = "Weakspot Dmg",
+				weapon_perk_unarmoured_damage = "Unarmoured Damage",
+				weapon_perk_unarmoured_damage_heavy = "Unarmoured Dmg",
+				weapon_perk_unyielding_damage = "Unyielding Damage",
+				weapon_perk_unyielding_damage_heavy = "Unyielding Dmg",
+				weapon_perk_carapace_damage = "Carapace Damage",
+				weapon_perk_carapace_damage_heavy = "Carapace Dmg",
+				weapon_perk_infested_damage = "Infested Damage",
+				weapon_perk_infested_damage_heavy = "Infested Dmg",
+				weapon_perk_stamina = "Stamina",
+				weapon_perk_melee_damage = "Melee Damage",
+				weapon_perk_melee_damage_heavy = "Melee Dmg",
+				weapon_perk_ranged_damage = "Ranged Damage",
+				weapon_perk_ranged_damage_heavy = "Ranged Dmg",
+				weapon_perk_melee_finesse = "Melee Finesse",
+				weapon_perk_ranged_finesse = "Ranged Finesse",
+				weapon_perk_finesse_heavy = "Finesse",
+				weapon_perk_melee_power = "Melee Power",
+				weapon_perk_ranged_power = "Ranged Power",
+				weapon_perk_power_heavy = "Power",
+				weapon_perk_melee_impact = "Melee Impact",
+				weapon_perk_impact_heavy = "Impact",
+				weapon_perk_block_efficiency = "Block Efficiency",
+				weapon_perk_block_heavy = "Block",
+				weapon_perk_sprint_efficiency = "Sprint Efficiency",
+				weapon_perk_sprint_heavy = "Sprint",
+				weapon_perk_reload_speed = "Reload Speed",
+				weapon_perk_reload_heavy = "Reload",
+				weapon_perk_ranged_crit_chance = "Ranged Crit Chance",
+				weapon_perk_ranged_crit_chance_heavy = "Ranged Crit",
+				weapon_perk_ranged_crit_damage = "Ranged Crit Dmg",
+				weapon_perk_ranged_crit_damage_heavy = "Crit Dmg",
+				weapon_perk_horde_ranged_damage = "Horde Ranged Dmg",
+				weapon_perk_horde_ranged_damage_heavy = "Horde Dmg",
+				weapon_perk_elites_ranged_damage = "Elites Ranged Dmg",
+				weapon_perk_elites_ranged_damage_heavy = "Elite Dmg",
+				weapon_perk_specialist_ranged_damage = "Specialist Ranged Dmg",
+				weapon_perk_specialist_ranged_damage_heavy = "Spec Dmg",
+				weapon_perk_ranged_weakspot_damage = "Ranged Weakspot Dmg",
+				weapon_perk_ranged_weakspot_damage_heavy = "Weakspot Dmg",
 			}
 
 			return values[localization_id] or localization_id
@@ -354,6 +424,59 @@ def main() -> None:
     mod.settings.show_weapon_perks = False
 
     assert layout.grid_expansion(mod, 596) == 0
+    assert layout.armoury_grid_expansion(mod, 596) == 114
+
+    armoury_definitions = lua.table_from(
+        {
+            "grid_settings": lua.table_from(
+                {
+                    "grid_size": lua.table_from([596, 860]),
+                    "mask_size": lua.table_from([680, 860]),
+                }
+            ),
+            "scenegraph_definition": lua.table_from(
+                {
+                    "item_grid_pivot": lua.table_from(
+                        {"size": lua.table_from([640, 860])}
+                    ),
+                    "weapon_stats_pivot": lua.table_from(
+                        {"position": lua.table_from([-1140, 80, 3])}
+                    ),
+                    "weapon_compare_stats_pivot": lua.table_from(
+                        {"position": lua.table_from([-594, 80, 3])}
+                    ),
+                    "purchase_button": lua.table_from(
+                        {"position": lua.table_from([857, -90, 1])}
+                    ),
+                }
+            ),
+        }
+    )
+    expanded_armoury, armoury_expansion = layout.expanded_armoury_view_definitions(
+        mod, armoury_definitions
+    )
+    assert armoury_expansion == 114
+    assert armoury_definitions.grid_settings.grid_size[1] == 596
+    assert expanded_armoury.grid_settings.grid_size[1] == 710
+    assert expanded_armoury.grid_settings.mask_size[1] == 794
+    assert expanded_armoury.scenegraph_definition.item_grid_pivot.size[1] == 754
+    assert expanded_armoury.scenegraph_definition.weapon_stats_pivot.position[1] == -1076
+    assert (
+        expanded_armoury.scenegraph_definition.weapon_compare_stats_pivot.position[1]
+        == -530
+    )
+    assert expanded_armoury.scenegraph_definition.purchase_button.position[1] == 921
+    assert tuple(
+        layout.item_size(mod, 710, 3, store_configuration)[index]
+        for index in (1, 2)
+    ) == (230, 114)
+
+    mod.settings.expand_armoury_requisition_window = False
+    assert layout.armoury_grid_expansion(mod, 596) == 0
+    mod.settings.expand_armoury_requisition_window = True
+    mod.settings.columns = 2
+    assert layout.armoury_grid_expansion(mod, 596) == 0
+    mod.settings.columns = 3
 
     mod.settings.columns = 5
     assert layout.columns(mod) == 5
@@ -716,14 +839,42 @@ def main() -> None:
     assert "\n" not in perk_widget.content.better_inventory_weapon_perk_1
 
     standard_weapon_perk_expectations = {
-        "content/items/perks/test_weapon_flak": "+25% Flak Damage",
-        "content/items/perks/test_weapon_maniacs": "+25% Maniacs Damage",
-        "content/items/perks/test_weapon_crit_chance": "+5% Melee Crit Chance",
-        "content/items/perks/test_weapon_crit_damage": "+10% Melee Crit Dmg",
-        "content/items/perks/test_weapon_horde": "+10% Horde Melee Dmg",
-        "content/items/perks/test_weapon_elites": "+10% Elites Melee Dmg",
-        "content/items/perks/test_weapon_specialists": "+10% Specialist Melee Dmg",
-        "content/items/perks/test_weapon_weakspot": "+10% Melee Weakspot Dmg",
+        "weapon_trait_melee_common_wield_increased_unarmored_damage": "+25% Unarmoured Damage",
+        "weapon_trait_melee_common_wield_increased_armored_damage": "+25% Flak Damage",
+        "weapon_trait_melee_common_wield_increased_resistant_damage": "+25% Unyielding Damage",
+        "weapon_trait_melee_common_wield_increased_berserker_damage": "+25% Maniacs Damage",
+        "weapon_trait_melee_common_wield_increased_super_armor_damage": "+25% Carapace Damage",
+        "weapon_trait_melee_common_wield_increased_disgustingly_resilient_damage": "+25% Infested Damage",
+        "weapon_trait_increase_crit_chance": "+5% Melee Crit Chance",
+        "weapon_trait_increase_crit_damage": "+10% Melee Crit Dmg",
+        "weapon_trait_increase_stamina": "+2 Stamina",
+        "weapon_trait_increase_weakspot_damage": "+10% Melee Weakspot Dmg",
+        "weapon_trait_increase_damage": "+4% Melee Damage",
+        "weapon_trait_increase_finesse": "+4% Melee Finesse",
+        "weapon_trait_increase_power": "+4% Melee Power",
+        "weapon_trait_increase_impact": "+8% Melee Impact",
+        "weapon_trait_reduced_block_cost": "+20% Block Efficiency",
+        "weapon_trait_increase_damage_elites": "+10% Elites Melee Dmg",
+        "weapon_trait_increase_damage_hordes": "+10% Horde Melee Dmg",
+        "weapon_trait_increase_damage_specials": "+10% Specialist Melee Dmg",
+        "weapon_trait_reduce_sprint_cost": "+15% Sprint Efficiency",
+        "weapon_trait_ranged_common_wield_increased_unarmored_damage": "+25% Unarmoured Damage",
+        "weapon_trait_ranged_common_wield_increased_armored_damage": "+25% Flak Damage",
+        "weapon_trait_ranged_common_wield_increased_resistant_damage": "+25% Unyielding Damage",
+        "weapon_trait_ranged_common_wield_increased_berserker_damage": "+25% Maniacs Damage",
+        "weapon_trait_ranged_common_wield_increased_super_armor_damage": "+25% Carapace Damage",
+        "weapon_trait_ranged_common_wield_increased_disgustingly_resilient_damage": "+25% Infested Damage",
+        "weapon_trait_ranged_increase_crit_chance": "+5% Ranged Crit Chance",
+        "weapon_trait_ranged_increase_crit_damage": "+10% Ranged Crit Dmg",
+        "weapon_trait_ranged_increase_stamina": "+2 Stamina",
+        "weapon_trait_ranged_increase_weakspot_damage": "+10% Ranged Weakspot Dmg",
+        "weapon_trait_ranged_increase_damage": "+4% Ranged Damage",
+        "weapon_trait_ranged_increase_finesse": "+4% Ranged Finesse",
+        "weapon_trait_ranged_increase_power": "+4% Ranged Power",
+        "weapon_trait_ranged_increase_damage_elites": "+10% Elites Ranged Dmg",
+        "weapon_trait_ranged_increase_damage_hordes": "+10% Horde Ranged Dmg",
+        "weapon_trait_ranged_increase_damage_specials": "+10% Specialist Ranged Dmg",
+        "weapon_trait_ranged_increased_reload_speed": "+10% Reload Speed",
     }
 
     for perk_id, expected_text in standard_weapon_perk_expectations.items():
@@ -748,7 +899,7 @@ def main() -> None:
     heavy_perk_widget = lua.table_from(
         {"content": lua.table_from({}), "style": lua.table_from(heavy_perk_styles)}
     )
-    narrow_weapon_element.item.perks[1].id = "content/items/perks/test_weapon_specialists"
+    narrow_weapon_element.item.perks[1].id = "weapon_trait_increase_damage_specials"
     heavy_perk_blueprint.init(
         None,
         heavy_perk_widget,
@@ -759,7 +910,59 @@ def main() -> None:
         None,
         heavy_perk_blueprint,
     )
-    assert heavy_perk_widget.content.better_inventory_full_weapon_perk_1 == "+10% Spec Dmg"
+    heavy_weapon_perk_expectations = {
+        "weapon_trait_melee_common_wield_increased_unarmored_damage": "+25% Unarmoured Dmg",
+        "weapon_trait_melee_common_wield_increased_armored_damage": "+25% Flak Dmg",
+        "weapon_trait_melee_common_wield_increased_resistant_damage": "+25% Unyielding Dmg",
+        "weapon_trait_melee_common_wield_increased_berserker_damage": "+25% Maniac Dmg",
+        "weapon_trait_melee_common_wield_increased_super_armor_damage": "+25% Carapace Dmg",
+        "weapon_trait_melee_common_wield_increased_disgustingly_resilient_damage": "+25% Infested Dmg",
+        "weapon_trait_increase_crit_chance": "+5% Melee Crit",
+        "weapon_trait_increase_crit_damage": "+10% Crit Dmg",
+        "weapon_trait_increase_stamina": "+2 Stamina",
+        "weapon_trait_increase_weakspot_damage": "+10% Weakspot Dmg",
+        "weapon_trait_increase_damage": "+4% Melee Dmg",
+        "weapon_trait_increase_finesse": "+4% Finesse",
+        "weapon_trait_increase_power": "+4% Power",
+        "weapon_trait_increase_impact": "+8% Impact",
+        "weapon_trait_reduced_block_cost": "+20% Block",
+        "weapon_trait_increase_damage_elites": "+10% Elite Dmg",
+        "weapon_trait_increase_damage_hordes": "+10% Horde Dmg",
+        "weapon_trait_increase_damage_specials": "+10% Spec Dmg",
+        "weapon_trait_reduce_sprint_cost": "+15% Sprint",
+        "weapon_trait_ranged_common_wield_increased_unarmored_damage": "+25% Unarmoured Dmg",
+        "weapon_trait_ranged_common_wield_increased_armored_damage": "+25% Flak Dmg",
+        "weapon_trait_ranged_common_wield_increased_resistant_damage": "+25% Unyielding Dmg",
+        "weapon_trait_ranged_common_wield_increased_berserker_damage": "+25% Maniac Dmg",
+        "weapon_trait_ranged_common_wield_increased_super_armor_damage": "+25% Carapace Dmg",
+        "weapon_trait_ranged_common_wield_increased_disgustingly_resilient_damage": "+25% Infested Dmg",
+        "weapon_trait_ranged_increase_crit_chance": "+5% Ranged Crit",
+        "weapon_trait_ranged_increase_crit_damage": "+10% Crit Dmg",
+        "weapon_trait_ranged_increase_stamina": "+2 Stamina",
+        "weapon_trait_ranged_increase_weakspot_damage": "+10% Weakspot Dmg",
+        "weapon_trait_ranged_increase_damage": "+4% Ranged Dmg",
+        "weapon_trait_ranged_increase_finesse": "+4% Finesse",
+        "weapon_trait_ranged_increase_power": "+4% Power",
+        "weapon_trait_ranged_increase_damage_elites": "+10% Elite Dmg",
+        "weapon_trait_ranged_increase_damage_hordes": "+10% Horde Dmg",
+        "weapon_trait_ranged_increase_damage_specials": "+10% Spec Dmg",
+        "weapon_trait_ranged_increased_reload_speed": "+10% Reload",
+    }
+
+    for perk_id, expected_text in heavy_weapon_perk_expectations.items():
+        narrow_weapon_element.item.perks[1].id = perk_id
+        heavy_perk_blueprint.update_data(
+            test_grid, heavy_perk_widget, narrow_weapon_element
+        )
+        assert (
+            heavy_perk_widget.content.better_inventory_full_weapon_perk_1
+            == expected_text
+        ), perk_id
+
+    assert set(standard_weapon_perk_expectations) == set(
+        heavy_weapon_perk_expectations
+    )
+    assert len(standard_weapon_perk_expectations) == 36
 
     mod.settings.weapon_perk_compression = "none"
     uncompressed_perk_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)

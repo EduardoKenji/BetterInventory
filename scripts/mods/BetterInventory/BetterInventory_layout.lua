@@ -4,6 +4,9 @@ local MasterItems = require("scripts/backend/master_items")
 
 local Layout = {}
 local MINIMUM_CARD_WIDTH = 120
+local ARMOURY_MINIMUM_CARD_WIDTH = 190
+local ARMOURY_MAXIMUM_CARD_WIDTH = 230
+local ARMOURY_MAXIMUM_DETAILS_SHIFT = 64
 local BLESSING_MATERIAL = "content/ui/materials/icons/traits/traits_container"
 local STORE_FOOTER_HEIGHT = 34
 local WEAPON_PERK_COUNT = 2
@@ -167,19 +170,39 @@ local function register_weapon_perk_labels(ids, localization_id, heavy_localizat
 end
 
 register_weapon_perk_labels({
+	"weapon_trait_melee_common_wield_increased_unarmored_damage",
+	"weapon_trait_ranged_common_wield_increased_unarmored_damage",
+}, "weapon_perk_unarmoured_damage", "weapon_perk_unarmoured_damage_heavy")
+register_weapon_perk_labels({
 	"weapon_trait_melee_common_wield_increased_armored_damage",
 	"weapon_trait_ranged_common_wield_increased_armored_damage",
 }, "weapon_perk_flak_damage", "weapon_perk_flak_damage_heavy")
 register_weapon_perk_labels({
+	"weapon_trait_melee_common_wield_increased_resistant_damage",
+	"weapon_trait_ranged_common_wield_increased_resistant_damage",
+}, "weapon_perk_unyielding_damage", "weapon_perk_unyielding_damage_heavy")
+register_weapon_perk_labels({
 	"weapon_trait_melee_common_wield_increased_berserker_damage",
 	"weapon_trait_ranged_common_wield_increased_berserker_damage",
 }, "weapon_perk_maniacs_damage", "weapon_perk_maniacs_damage_heavy")
+register_weapon_perk_labels({
+	"weapon_trait_melee_common_wield_increased_super_armor_damage",
+	"weapon_trait_ranged_common_wield_increased_super_armor_damage",
+}, "weapon_perk_carapace_damage", "weapon_perk_carapace_damage_heavy")
+register_weapon_perk_labels({
+	"weapon_trait_melee_common_wield_increased_disgustingly_resilient_damage",
+	"weapon_trait_ranged_common_wield_increased_disgustingly_resilient_damage",
+}, "weapon_perk_infested_damage", "weapon_perk_infested_damage_heavy")
 register_weapon_perk_labels({
 	"weapon_trait_increase_crit_chance",
 }, "weapon_perk_melee_crit_chance", "weapon_perk_melee_crit_chance_heavy")
 register_weapon_perk_labels({
 	"weapon_trait_increase_crit_damage",
 }, "weapon_perk_melee_crit_damage", "weapon_perk_melee_crit_damage_heavy")
+register_weapon_perk_labels({
+	"weapon_trait_increase_stamina",
+	"weapon_trait_ranged_increase_stamina",
+}, "weapon_perk_stamina", "weapon_perk_stamina")
 register_weapon_perk_labels({
 	"weapon_trait_increase_damage_hordes",
 }, "weapon_perk_horde_melee_damage", "weapon_perk_horde_melee_damage_heavy")
@@ -210,6 +233,36 @@ register_weapon_perk_labels({
 register_weapon_perk_labels({
 	"weapon_trait_ranged_increase_weakspot_damage",
 }, "weapon_perk_ranged_weakspot_damage", "weapon_perk_ranged_weakspot_damage_heavy")
+register_weapon_perk_labels({
+	"weapon_trait_increase_damage",
+}, "weapon_perk_melee_damage", "weapon_perk_melee_damage_heavy")
+register_weapon_perk_labels({
+	"weapon_trait_ranged_increase_damage",
+}, "weapon_perk_ranged_damage", "weapon_perk_ranged_damage_heavy")
+register_weapon_perk_labels({
+	"weapon_trait_increase_finesse",
+}, "weapon_perk_melee_finesse", "weapon_perk_finesse_heavy")
+register_weapon_perk_labels({
+	"weapon_trait_ranged_increase_finesse",
+}, "weapon_perk_ranged_finesse", "weapon_perk_finesse_heavy")
+register_weapon_perk_labels({
+	"weapon_trait_increase_power",
+}, "weapon_perk_melee_power", "weapon_perk_power_heavy")
+register_weapon_perk_labels({
+	"weapon_trait_ranged_increase_power",
+}, "weapon_perk_ranged_power", "weapon_perk_power_heavy")
+register_weapon_perk_labels({
+	"weapon_trait_increase_impact",
+}, "weapon_perk_melee_impact", "weapon_perk_impact_heavy")
+register_weapon_perk_labels({
+	"weapon_trait_reduced_block_cost",
+}, "weapon_perk_block_efficiency", "weapon_perk_block_heavy")
+register_weapon_perk_labels({
+	"weapon_trait_reduce_sprint_cost",
+}, "weapon_perk_sprint_efficiency", "weapon_perk_sprint_heavy")
+register_weapon_perk_labels({
+	"weapon_trait_ranged_increased_reload_speed",
+}, "weapon_perk_reload_speed", "weapon_perk_reload_heavy")
 local CURIO_PRIMARY_SIMPLIFICATIONS = {
 	gadget_innate_health_increase = {
 		find = "Max Health",
@@ -1105,6 +1158,71 @@ Layout.grid_expansion = function(mod, current_grid_width, slot_kind)
 	local required_grid_width = target_card_width * columns + spacing * (columns - 1)
 
 	return math.max(0, required_grid_width - current_grid_width)
+end
+
+Layout.armoury_grid_expansion = function(mod, current_grid_width)
+	if not setting(mod, "enable_grid_layout", true) or not setting(mod, "enable_armoury_requisition_grid", true) or not setting(mod, "expand_armoury_requisition_window", true) then
+		return 0
+	end
+
+	local columns = Layout.columns(mod, 3)
+	local spacing = math.max(0, math.min(40, setting(mod, "grid_spacing", 10)))
+	local target_card_width = math.max(ARMOURY_MINIMUM_CARD_WIDTH, math.min(ARMOURY_MAXIMUM_CARD_WIDTH, setting(mod, "armoury_requisition_target_card_width", 230)))
+	local required_grid_width = target_card_width * columns + spacing * (columns - 1)
+
+	return math.max(0, required_grid_width - current_grid_width)
+end
+
+Layout.expanded_armoury_view_definitions = function(mod, definitions)
+	local grid_settings = definitions and definitions.grid_settings
+	local grid_size = grid_settings and grid_settings.grid_size
+	local current_grid_width = grid_size and grid_size[1]
+
+	if not current_grid_width then
+		return definitions, 0
+	end
+
+	local expansion = Layout.armoury_grid_expansion(mod, current_grid_width)
+
+	if expansion <= 0 then
+		return definitions, 0
+	end
+
+	local adjusted_definitions = table.clone(definitions)
+	local adjusted_grid_settings = adjusted_definitions.grid_settings
+
+	adjusted_grid_settings.grid_size[1] = adjusted_grid_settings.grid_size[1] + expansion
+
+	if adjusted_grid_settings.mask_size and adjusted_grid_settings.mask_size[1] then
+		adjusted_grid_settings.mask_size[1] = adjusted_grid_settings.mask_size[1] + expansion
+	end
+
+	local scenegraph = adjusted_definitions.scenegraph_definition
+
+	if scenegraph then
+		local details_shift = math.min(expansion, ARMOURY_MAXIMUM_DETAILS_SHIFT)
+		local item_grid_pivot = scenegraph.item_grid_pivot
+		local pivot_size = item_grid_pivot and item_grid_pivot.size
+
+		if pivot_size and pivot_size[1] then
+			pivot_size[1] = pivot_size[1] + expansion
+		end
+
+		for _, scenegraph_id in ipairs({
+			"weapon_stats_pivot",
+			"weapon_compare_stats_pivot",
+			"purchase_button",
+		}) do
+			local node = scenegraph[scenegraph_id]
+			local position = node and node.position
+
+			if position and position[1] then
+				position[1] = position[1] + details_shift
+			end
+		end
+	end
+
+	return adjusted_definitions, expansion
 end
 
 Layout.expanded_view_definitions = function(mod, definitions, view)

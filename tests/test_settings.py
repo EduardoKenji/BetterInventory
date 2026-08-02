@@ -23,6 +23,8 @@ def main() -> None:
             enable_grid_layout = true,
 			enable_hadron_entreat_grid = true,
 			enable_armoury_requisition_grid = true,
+			expand_armoury_requisition_window = true,
+			armoury_requisition_target_card_width = 230,
             automatic_card_height = true,
 			show_weapon_perks = false,
 			expand_inventory_window = true,
@@ -48,6 +50,10 @@ def main() -> None:
         test_layout = {
             is_enabled_for_view = function() return false end,
             expanded_view_definitions = function(_, definitions) return definitions, 0 end,
+			expanded_armoury_view_definitions = function(_, definitions)
+				definitions.armoury_expanded = true
+				return definitions, 114
+			end,
             configure_item_blueprint = function() end,
             configure_grid = function() end,
         }
@@ -57,6 +63,8 @@ def main() -> None:
             create_mod_options_settings = function() end,
         }
         captured_options_hook = nil
+		captured_item_grid_init_hook = nil
+		captured_armoury_on_enter_hook = nil
 
         function test_mod:get(setting_id)
             return settings[setting_id]
@@ -79,6 +87,11 @@ def main() -> None:
         end
 
         function test_mod:hook(target, method, callback)
+			if method == "init" then
+				captured_item_grid_init_hook = callback
+			elseif method == "on_enter" then
+				captured_armoury_on_enter_hook = callback
+			end
         end
 
         function test_mod:hook_safe(target, method, callback)
@@ -106,6 +119,36 @@ def main() -> None:
     globals_ = lua.globals()
     mod = globals_.test_mod
     settings = globals_.settings
+
+    credits_view = lua.table_from({"__class_name": "CreditsVendorView"})
+    credits_definitions = lua.table_from({})
+    original_init = lua.eval(
+        "function(view, definitions) view.received_definitions = definitions return 'initialized' end"
+    )
+    init_result = globals_.captured_item_grid_init_hook(
+        original_init, credits_view, credits_definitions, lua.table_from({}), lua.table_from({})
+    )
+    assert init_result == "initialized"
+    assert credits_view._better_inventory_armoury_grid_expansion == 114
+    assert credits_view.received_definitions.armoury_expanded is True
+
+    armoury_grid = lua.execute(
+        """
+        return {
+            update_dividers = function(self, top_material, top_size, top_offset, bottom_material, bottom_size, bottom_offset)
+                self.top_width = top_size[1]
+                self.bottom_width = bottom_size[1]
+            end,
+        }
+        """
+    )
+    credits_view._item_grid = armoury_grid
+    entered = globals_.captured_armoury_on_enter_hook(
+        lua.eval("function() return 'entered' end"), credits_view
+    )
+    assert entered == "entered"
+    assert armoury_grid.top_width == 766
+    assert armoury_grid.bottom_width == 788
 
     mod.on_enabled()
     assert settings.curio_stat_compression == "heavy"
@@ -150,6 +193,8 @@ def main() -> None:
         "card_height",
         "enable_hadron_entreat_grid",
         "enable_armoury_requisition_grid",
+		"expand_armoury_requisition_window",
+		"armoury_requisition_target_card_width",
 		"weapon_perk_compression",
     )
     entries = [
@@ -173,6 +218,8 @@ def main() -> None:
     assert entries_by_id["card_height"].disabled is True
     assert entries_by_id["enable_hadron_entreat_grid"].disabled is False
     assert entries_by_id["enable_armoury_requisition_grid"].disabled is False
+    assert entries_by_id["expand_armoury_requisition_window"].disabled is False
+    assert entries_by_id["armoury_requisition_target_card_width"].disabled is False
     assert entries_by_id["expand_curio_inventory_window"].disabled is False
     assert entries_by_id["curio_target_card_width"].disabled is False
     assert entries_by_id["weapon_perk_compression"].disabled is True
@@ -183,6 +230,22 @@ def main() -> None:
     settings.show_weapon_perks = False
     mod.on_setting_changed("show_weapon_perks")
     assert entries_by_id["weapon_perk_compression"].disabled is True
+
+    settings.expand_armoury_requisition_window = False
+    mod.on_setting_changed("expand_armoury_requisition_window")
+    assert entries_by_id["armoury_requisition_target_card_width"].disabled is True
+    settings.expand_armoury_requisition_window = True
+    mod.on_setting_changed("expand_armoury_requisition_window")
+    assert entries_by_id["armoury_requisition_target_card_width"].disabled is False
+
+    settings.enable_armoury_requisition_grid = False
+    mod.on_setting_changed("enable_armoury_requisition_grid")
+    assert entries_by_id["expand_armoury_requisition_window"].disabled is True
+    assert entries_by_id["armoury_requisition_target_card_width"].disabled is True
+    settings.enable_armoury_requisition_grid = True
+    mod.on_setting_changed("enable_armoury_requisition_grid")
+    assert entries_by_id["expand_armoury_requisition_window"].disabled is False
+    assert entries_by_id["armoury_requisition_target_card_width"].disabled is False
 
     settings.expand_curio_inventory_window = False
     mod.on_setting_changed("expand_curio_inventory_window")
@@ -231,6 +294,8 @@ def main() -> None:
     assert defaults["enable_grid_layout"] is True
     assert defaults["enable_hadron_entreat_grid"] is True
     assert defaults["enable_armoury_requisition_grid"] is True
+    assert defaults["expand_armoury_requisition_window"] is True
+    assert defaults["armoury_requisition_target_card_width"] == 230
     assert defaults["automatic_card_height"] is True
     assert defaults["expand_curio_inventory_window"] is True
     assert defaults["curio_target_card_width"] == 190

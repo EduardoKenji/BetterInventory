@@ -33,6 +33,10 @@ if ($main -notmatch 'mod:hook\(CreditsVendorView,\s*"present_grid_layout"') {
 	throw "The Requisition Weapons & Curios grid hook was not found."
 }
 
+if ($main -notmatch 'Layout\.expanded_armoury_view_definitions' -or $main -notmatch 'mod:hook\(CreditsVendorView,\s*"on_enter"') {
+	throw "The expanded Requisition view or divider hook was not found."
+}
+
 if ($main -match 'CreditsGoodsVendorView\s*=\s*require' -or $main -match 'CraftingMechanicusBarterItemsView\s*=\s*require') {
 	throw "The focused vendor settings must not hook Brunt's Armoury or Hadron's sacrifice flow."
 }
@@ -48,6 +52,10 @@ if ($main -notmatch '_compact_card_defaults_v1_migrated' -or $main -notmatch 'mo
 $data = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_data.lua") -Raw
 $localization = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_localization.lua") -Raw
 $layout = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_layout.lua") -Raw
+
+if ($layout -notmatch 'Layout\.armoury_grid_expansion' -or $layout -notmatch 'armoury_requisition_target_card_width') {
+	throw "The Armoury target-width expansion contract was not found."
+}
 
 if ($layout -match 'Managers\.ui:(load|unload)_item_icon' -or $layout -match 'Renderer\.(create|destroy)_resource') {
 	throw "BetterInventory must not directly allocate or manage item-icon render resources."
@@ -194,26 +202,16 @@ if ($DarktideSourcePath) {
 		(Get-Content -LiteralPath $weaponPerksRanged -Raw)
 	) -join "`n"
 
-	foreach ($traitId in @(
-		"weapon_trait_melee_common_wield_increased_armored_damage",
-		"weapon_trait_ranged_common_wield_increased_armored_damage",
-		"weapon_trait_melee_common_wield_increased_berserker_damage",
-		"weapon_trait_ranged_common_wield_increased_berserker_damage",
-		"weapon_trait_increase_crit_chance",
-		"weapon_trait_increase_crit_damage",
-		"weapon_trait_increase_damage_hordes",
-		"weapon_trait_increase_damage_elites",
-		"weapon_trait_increase_damage_specials",
-		"weapon_trait_increase_weakspot_damage",
-		"weapon_trait_ranged_increase_crit_chance",
-		"weapon_trait_ranged_increase_crit_damage",
-		"weapon_trait_ranged_increase_damage_hordes",
-		"weapon_trait_ranged_increase_damage_elites",
-		"weapon_trait_ranged_increase_damage_specials",
-		"weapon_trait_ranged_increase_weakspot_damage"
-	)) {
-		if ($weaponPerkSources -notmatch [regex]::Escape($traitId)) {
-			throw "The expected weapon perk ID was not found: $traitId"
+	$weaponPerkMatches = [regex]::Matches($weaponPerkSources, 'weapon_traits_[a-z_]+\.(weapon_trait_[a-z0-9_]+)\s*=\s*{')
+	$weaponPerkIds = @($weaponPerkMatches | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
+
+	if ($weaponPerkIds.Count -eq 0) {
+		throw "No current melee or ranged weapon perk IDs were discovered."
+	}
+
+	foreach ($traitId in $weaponPerkIds) {
+		if ($layout -notmatch ('"' + [regex]::Escape($traitId) + '"')) {
+			throw "BetterInventory has no compact-label mapping for current weapon perk: $traitId"
 		}
 	}
 }

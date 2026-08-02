@@ -32,6 +32,18 @@ return {
 	enable_armoury_requisition_grid_tooltip = {
 		en = "Uses Better Inventory cards in Requisition Weapons & Curios. The effective layout is capped at three columns; Brunt's Armoury and Multi-Operative Supply are not changed.",
 	},
+	expand_armoury_requisition_window = {
+		en = "Expand Armoury Requisition window",
+	},
+	expand_armoury_requisition_window_tooltip = {
+		en = "Widens the Requisition Weapons & Curios grid toward the right and safely repositions the item-details panel and Acquire button. Two-column layouts expand only when their cards are narrower than the selected target.",
+	},
+	armoury_requisition_target_card_width = {
+		en = "Armoury target card width",
+	},
+	armoury_requisition_target_card_width_tooltip = {
+		en = "Desired card width in pixels for the expanded Armoury grid. At three columns, the 230 px default adds 114 px to Darktide's native grid width.",
+	},
 	layout_group = {
 		en = "Grid layout",
 	},
@@ -91,6 +103,12 @@ return {
 	},
 	option_requires_curio_expansion = {
 		en = "Enable column-aware Curio expansion to set a target card width.",
+	},
+	option_requires_armoury_grid = {
+		en = "Enable the Armoury Requisition grid to use this option.",
+	},
+	option_requires_armoury_expansion = {
+		en = "Enable Armoury Requisition window expansion to set a target card width.",
 	},
 	option_requires_weapon_perks = {
 		en = "Enable weapon perk text to use this option.",
@@ -398,17 +416,41 @@ return {
 	curio_heavy_stamina_regen = {
 		en = "Stamina Regen",
 	},
+	weapon_perk_unarmoured_damage = {
+		en = "Unarmoured Damage",
+	},
+	weapon_perk_unarmoured_damage_heavy = {
+		en = "Unarmoured Dmg",
+	},
 	weapon_perk_flak_damage = {
 		en = "Flak Damage",
 	},
 	weapon_perk_flak_damage_heavy = {
 		en = "Flak Dmg",
 	},
+	weapon_perk_unyielding_damage = {
+		en = "Unyielding Damage",
+	},
+	weapon_perk_unyielding_damage_heavy = {
+		en = "Unyielding Dmg",
+	},
 	weapon_perk_maniacs_damage = {
 		en = "Maniacs Damage",
 	},
 	weapon_perk_maniacs_damage_heavy = {
 		en = "Maniac Dmg",
+	},
+	weapon_perk_carapace_damage = {
+		en = "Carapace Damage",
+	},
+	weapon_perk_carapace_damage_heavy = {
+		en = "Carapace Dmg",
+	},
+	weapon_perk_infested_damage = {
+		en = "Infested Damage",
+	},
+	weapon_perk_infested_damage_heavy = {
+		en = "Infested Dmg",
 	},
 	weapon_perk_melee_crit_chance = {
 		en = "Melee Crit Chance",
@@ -481,5 +523,62 @@ return {
 	},
 	weapon_perk_ranged_weakspot_damage_heavy = {
 		en = "Weakspot Dmg",
+	},
+	weapon_perk_stamina = {
+		en = "Stamina",
+	},
+	weapon_perk_melee_damage = {
+		en = "Melee Damage",
+	},
+	weapon_perk_melee_damage_heavy = {
+		en = "Melee Dmg",
+	},
+	weapon_perk_ranged_damage = {
+		en = "Ranged Damage",
+	},
+	weapon_perk_ranged_damage_heavy = {
+		en = "Ranged Dmg",
+	},
+	weapon_perk_melee_finesse = {
+		en = "Melee Finesse",
+	},
+	weapon_perk_ranged_finesse = {
+		en = "Ranged Finesse",
+	},
+	weapon_perk_finesse_heavy = {
+		en = "Finesse",
+	},
+	weapon_perk_melee_power = {
+		en = "Melee Power",
+	},
+	weapon_perk_ranged_power = {
+		en = "Ranged Power",
+	},
+	weapon_perk_power_heavy = {
+		en = "Power",
+	},
+	weapon_perk_melee_impact = {
+		en = "Melee Impact",
+	},
+	weapon_perk_impact_heavy = {
+		en = "Impact",
+	},
+	weapon_perk_block_efficiency = {
+		en = "Block Efficiency",
+	},
+	weapon_perk_block_heavy = {
+		en = "Block",
+	},
+	weapon_perk_sprint_efficiency = {
+		en = "Sprint Efficiency",
+	},
+	weapon_perk_sprint_heavy = {
+		en = "Sprint",
+	},
+	weapon_perk_reload_speed = {
+		en = "Reload Speed",
+	},
+	weapon_perk_reload_heavy = {
+		en = "Reload",
 	},
 }

@@ -123,6 +123,22 @@ return {
 						type = "checkbox",
 						default_value = true,
 					},
+					{
+						setting_id = "expand_armoury_requisition_window",
+						tooltip = "expand_armoury_requisition_window_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
+						setting_id = "armoury_requisition_target_card_width",
+						tooltip = "armoury_requisition_target_card_width_tooltip",
+						type = "numeric",
+						default_value = 230,
+						range = {
+							190,
+							230,
+						},
+					},
 				},
 			},
 			{
