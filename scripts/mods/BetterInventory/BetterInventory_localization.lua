@@ -17,6 +17,21 @@ return {
 	enable_curio_inventory = {
 		en = "Curios",
 	},
+	additional_views_group = {
+		en = "Additional inventory views",
+	},
+	enable_hadron_entreat_grid = {
+		en = "Hadron: Entreat Hadron",
+	},
+	enable_hadron_entreat_grid_tooltip = {
+		en = "Uses Better Inventory cards when selecting an item through Entreat Hadron. The effective layout is capped at three columns; Hadron's separate Sacrifice Weapons flow is not changed.",
+	},
+	enable_armoury_requisition_grid = {
+		en = "Armoury: Requisition Weapons & Curios",
+	},
+	enable_armoury_requisition_grid_tooltip = {
+		en = "Uses Better Inventory cards in Requisition Weapons & Curios. The effective layout is capped at three columns; Brunt's Armoury and Multi-Operative Supply are not changed.",
+	},
 	layout_group = {
 		en = "Grid layout",
 	},

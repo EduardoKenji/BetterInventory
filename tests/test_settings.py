@@ -21,6 +21,8 @@ def main() -> None:
         r"""
         settings = {
             enable_grid_layout = true,
+			enable_hadron_entreat_grid = true,
+			enable_armoury_requisition_grid = true,
             automatic_card_height = true,
 			expand_inventory_window = true,
 			expand_curio_inventory_window = true,
@@ -145,6 +147,8 @@ def main() -> None:
         "grid_spacing",
         "automatic_card_height",
         "card_height",
+        "enable_hadron_entreat_grid",
+        "enable_armoury_requisition_grid",
     )
     entries = [
         lua.table_from(
@@ -165,6 +169,8 @@ def main() -> None:
     assert entries_by_id["columns"].disabled is False
     assert entries_by_id["automatic_card_height"].disabled is False
     assert entries_by_id["card_height"].disabled is True
+    assert entries_by_id["enable_hadron_entreat_grid"].disabled is False
+    assert entries_by_id["enable_armoury_requisition_grid"].disabled is False
     assert entries_by_id["expand_curio_inventory_window"].disabled is False
     assert entries_by_id["curio_target_card_width"].disabled is False
 
@@ -213,6 +219,8 @@ def main() -> None:
     inspect_widgets(data.options.widgets)
 
     assert defaults["enable_grid_layout"] is True
+    assert defaults["enable_hadron_entreat_grid"] is True
+    assert defaults["enable_armoury_requisition_grid"] is True
     assert defaults["automatic_card_height"] is True
     assert defaults["expand_curio_inventory_window"] is True
     assert defaults["curio_target_card_width"] == 190

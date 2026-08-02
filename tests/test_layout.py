@@ -247,6 +247,9 @@ def main() -> None:
                 { style_id = "sub_display_name", style = {} },
                 { style_id = "rarity_name", style = {} },
                 { style_id = "item_level", style = {} },
+				{ style_id = "wallet_icon", style = {} },
+				{ style_id = "price_text", style = {} },
+				{ style_id = "owned_text", style = {} },
                 { style_id = "rarity_tag", style = {} },
                 { style_id = "equipped_icon", style = {} },
                 { style_id = "favorite_icon", value = "Favorite", style = {} },
@@ -300,6 +303,12 @@ def main() -> None:
     assert layout.grid_expansion(mod, 596) == 0
 
     mod.settings.columns = 5
+    assert layout.columns(mod) == 5
+    assert layout.columns(mod, 3) == 3
+    assert tuple(layout.item_size(mod, 596, 3)[index] for index in (1, 2)) == (
+        192,
+        110,
+    )
     assert layout.grid_expansion(mod, 596) == 44
     assert layout.grid_expansion(mod, 596, "curio") == 394
 
@@ -359,6 +368,29 @@ def main() -> None:
 
     mod.settings.columns = 3
     mod.settings.expand_inventory_window = True
+
+    mod.settings.columns = 5
+    vendor_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    vendor_configuration = lua.table_from(
+        {"maximum_columns": 3, "store_item": True}
+    )
+    vendor_size = layout.configure_item_blueprint(
+        mod, vendor_blueprint, 596, vendor_configuration
+    )
+    assert (vendor_size[1], vendor_size[2]) == (192, 110)
+    assert blueprint_pass(vendor_blueprint, "wallet_icon").style.horizontal_alignment == "left"
+    assert blueprint_pass(vendor_blueprint, "price_text").style.font_size == 16
+    assert blueprint_pass(vendor_blueprint, "price_text").style.offset[1] == 39
+    assert blueprint_pass(vendor_blueprint, "owned_text").style.offset[1] == 12
+    same_lua_value = lua.eval("function(left, right) return left == right end")
+    assert same_lua_value(vendor_blueprint.load_icon, globals_.sentinel_load)
+    assert same_lua_value(vendor_blueprint.unload_icon, globals_.sentinel_unload)
+    assert same_lua_value(vendor_blueprint.destroy, globals_.sentinel_destroy)
+    assert same_lua_value(
+        vendor_blueprint.update_item_icon_priority, globals_.sentinel_priority
+    )
+    assert same_lua_value(vendor_blueprint.update, globals_.sentinel_update)
+    mod.settings.columns = 3
 
     mod.settings.enable_grid_layout = False
     assert layout.grid_expansion(mod, 596) == 0

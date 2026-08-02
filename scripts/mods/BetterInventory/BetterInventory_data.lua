@@ -108,6 +108,24 @@ return {
 				},
 			},
 			{
+				setting_id = "additional_views_group",
+				type = "group",
+				sub_widgets = {
+					{
+						setting_id = "enable_hadron_entreat_grid",
+						tooltip = "enable_hadron_entreat_grid_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
+						setting_id = "enable_armoury_requisition_grid",
+						tooltip = "enable_armoury_requisition_grid_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+				},
+			},
+			{
 				setting_id = "layout_group",
 				type = "group",
 				sub_widgets = {

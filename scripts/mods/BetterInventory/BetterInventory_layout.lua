@@ -856,12 +856,19 @@ Layout.is_enabled_for_view = function(mod, view)
 	return setting_id and setting(mod, setting_id, true) or false
 end
 
+Layout.columns = function(mod, maximum_columns)
+	local column_limit = math.floor(math.max(2, math.min(5, maximum_columns or 5)))
+	local requested_columns = math.floor(setting(mod, "columns", 3))
+
+	return math.max(2, math.min(column_limit, requested_columns))
+end
+
 Layout.grid_expansion = function(mod, current_grid_width, slot_kind)
 	if not setting(mod, "enable_grid_layout", true) or not setting(mod, "expand_inventory_window", true) then
 		return 0
 	end
 
-	local columns = math.floor(math.max(2, math.min(5, setting(mod, "columns", 3))))
+	local columns = Layout.columns(mod)
 	local spacing = math.max(0, math.min(40, setting(mod, "grid_spacing", 10)))
 	local target_card_width = MINIMUM_CARD_WIDTH
 
@@ -962,8 +969,8 @@ Layout.card_height = function(mod)
 	return math.max(110, math.min(240, math.ceil(required_height)))
 end
 
-Layout.item_size = function(mod, grid_width)
-	local columns = math.floor(math.max(2, math.min(5, setting(mod, "columns", 3))))
+Layout.item_size = function(mod, grid_width, maximum_columns)
+	local columns = Layout.columns(mod, maximum_columns)
 	local spacing = math.max(0, math.min(40, setting(mod, "grid_spacing", 10)))
 	local height = Layout.card_height(mod)
 	local width = math.floor((grid_width - spacing * (columns - 1)) / columns)
@@ -1046,12 +1053,14 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 end
 
 
-Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width)
+Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, configuration)
 	if not setting(mod, "enable_grid_layout", true) then
 		return Layout.configure_native_item_blueprint(mod, item_blueprint, grid_width)
 	end
 
-	local item_size = Layout.item_size(mod, grid_width)
+	configuration = configuration or {}
+
+	local item_size = Layout.item_size(mod, grid_width, configuration.maximum_columns)
 	local card_width = item_size[1]
 	local card_height = item_size[2]
 	local pass_template = table.clone(item_blueprint.pass_template)
@@ -1208,6 +1217,57 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width)
 	preserve_visibility(item_level, function(content)
 		return not detailed_curio_profile or not is_curio(item_from_content(content))
 	end)
+
+	if configuration.store_item then
+		local wallet_icon = pass_by_style_id(pass_template, "wallet_icon")
+
+		if wallet_icon and wallet_icon.style then
+			wallet_icon.style.horizontal_alignment = "left"
+			wallet_icon.style.vertical_alignment = "bottom"
+			wallet_icon.style.size = {
+				22,
+				18,
+			}
+			wallet_icon.style.offset = {
+				text_left,
+				-7,
+				12,
+			}
+		end
+
+		configure_text_pass(pass_by_style_id(pass_template, "price_text"), {
+			font_size = 16,
+			horizontal_alignment = "left",
+			vertical_alignment = "bottom",
+			text_horizontal_alignment = "left",
+			text_vertical_alignment = "bottom",
+			offset = {
+				text_left + 27,
+				-5,
+				12,
+			},
+			size = {
+				math.max(45, card_width - text_left - 105),
+				24,
+			},
+		})
+		configure_text_pass(pass_by_style_id(pass_template, "owned_text"), {
+			font_size = 14,
+			horizontal_alignment = "left",
+			vertical_alignment = "bottom",
+			text_horizontal_alignment = "left",
+			text_vertical_alignment = "bottom",
+			offset = {
+				text_left,
+				-5,
+				12,
+			},
+			size = {
+				math.max(55, card_width - text_left - 80),
+				24,
+			},
+		})
+	end
 
 	local rarity_tag = pass_by_style_id(pass_template, "rarity_tag")
 

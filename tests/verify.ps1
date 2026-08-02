@@ -25,6 +25,18 @@ if ($main -notmatch 'mod:hook\(InventoryWeaponsView,\s*"present_grid_layout"') {
 	throw "The InventoryWeaponsView hook was not found."
 }
 
+if ($main -notmatch 'mod:hook\(CraftingMechanicusModifyView,\s*"present_grid_layout"') {
+	throw "The Entreat Hadron grid hook was not found."
+}
+
+if ($main -notmatch 'mod:hook\(CreditsVendorView,\s*"present_grid_layout"') {
+	throw "The Requisition Weapons & Curios grid hook was not found."
+}
+
+if ($main -match 'CreditsGoodsVendorView\s*=\s*require' -or $main -match 'CraftingMechanicusBarterItemsView\s*=\s*require') {
+	throw "The focused vendor settings must not hook Brunt's Armoury or Hadron's sacrifice flow."
+}
+
 if ($main -match 'InventoryWeaponsView\.present_grid_layout\s*=') {
 	throw "Direct class assignment found; BetterInventory must remain in the DMF hook chain."
 }
@@ -81,6 +93,10 @@ if ((Get-Content -LiteralPath $dmfModOptions -Raw) -notmatch 'create_mod_options
 
 if ($DarktideSourcePath) {
 	$inventoryView = Join-Path $DarktideSourcePath "scripts\ui\views\inventory_weapons_view\inventory_weapons_view.lua"
+	$hadronModifyView = Join-Path $DarktideSourcePath "scripts\ui\views\crafting_mechanicus_modify_view\crafting_mechanicus_modify_view.lua"
+	$craftingViewDefinitions = Join-Path $DarktideSourcePath "scripts\ui\views\crafting_view\crafting_view_definitions.lua"
+	$creditsVendorView = Join-Path $DarktideSourcePath "scripts\ui\views\credits_vendor_view\credits_vendor_view.lua"
+	$creditsVendorBackgroundDefinitions = Join-Path $DarktideSourcePath "scripts\ui\views\credits_vendor_background_view\credits_vendor_background_view_definitions.lua"
 	$itemGridBase = Join-Path $DarktideSourcePath "scripts\ui\views\item_grid_view_base\item_grid_view_base.lua"
 	$itemBlueprints = Join-Path $DarktideSourcePath "scripts\ui\view_content_blueprints\item_blueprints.lua"
 	$iconGenerator = Join-Path $DarktideSourcePath "scripts\ui\render_target_icon_generator_base.lua"
@@ -88,7 +104,7 @@ if ($DarktideSourcePath) {
 	$masterItems = Join-Path $DarktideSourcePath "scripts\backend\master_items.lua"
 	$gadgetTraits = Join-Path $DarktideSourcePath "scripts\settings\equipment\gadget_traits\gadget_traits_common.lua"
 
-	foreach ($sourceFile in @($inventoryView, $itemGridBase, $itemBlueprints, $iconGenerator, $items, $masterItems, $gadgetTraits)) {
+	foreach ($sourceFile in @($inventoryView, $hadronModifyView, $craftingViewDefinitions, $creditsVendorView, $creditsVendorBackgroundDefinitions, $itemGridBase, $itemBlueprints, $iconGenerator, $items, $masterItems, $gadgetTraits)) {
 		if (-not (Test-Path -LiteralPath $sourceFile -PathType Leaf)) {
 			throw "Missing expected Darktide source file: $sourceFile"
 		}
@@ -98,7 +114,29 @@ if ($DarktideSourcePath) {
 		throw "The current ItemGridViewBase presentation seam was not found."
 	}
 
-	if ((Get-Content -LiteralPath $itemBlueprints -Raw) -notmatch 'Managers\.ui:load_item_icon') {
+	if ((Get-Content -LiteralPath $hadronModifyView -Raw) -notmatch 'class\("CraftingMechanicusModifyView",\s*"ItemGridViewBase"\)') {
+		throw "Entreat Hadron no longer appears to use CraftingMechanicusModifyView's item grid."
+	}
+
+	if ((Get-Content -LiteralPath $craftingViewDefinitions -Raw) -notmatch 'view\s*=\s*"crafting_mechanicus_modify_view"') {
+		throw "The Entreat Hadron route no longer maps to crafting_mechanicus_modify_view."
+	}
+
+	if ((Get-Content -LiteralPath $creditsVendorView -Raw) -notmatch 'class\("CreditsVendorView",\s*"VendorViewBase"\)') {
+		throw "Requisition Weapons & Curios no longer appears to use CreditsVendorView."
+	}
+
+	if ((Get-Content -LiteralPath $creditsVendorBackgroundDefinitions -Raw) -notmatch 'display_name\s*=\s*"loc_credits_vendor_view_option_buy"[\s\S]*?view\s*=\s*"credits_vendor_view"') {
+		throw "The Armoury requisition route no longer maps to credits_vendor_view."
+	}
+
+	$itemBlueprintSource = Get-Content -LiteralPath $itemBlueprints -Raw
+
+	if ($itemBlueprintSource -notmatch '(?m)^\s*item\s*=\s*{' -or $itemBlueprintSource -notmatch '(?m)^\s*store_item\s*=\s*{') {
+		throw "The current inventory or Armoury item blueprint was not found."
+	}
+
+	if ($itemBlueprintSource -notmatch 'Managers\.ui:load_item_icon') {
 		throw "The current managed item-icon API was not found."
 	}
 

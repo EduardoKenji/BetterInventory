@@ -1,10 +1,59 @@
 local mod = get_mod("BetterInventory")
 
+local CraftingMechanicusModifyView = require("scripts/ui/views/crafting_mechanicus_modify_view/crafting_mechanicus_modify_view")
+local CreditsVendorView = require("scripts/ui/views/credits_vendor_view/credits_vendor_view")
 local ItemGridViewBase = require("scripts/ui/views/item_grid_view_base/item_grid_view_base")
 local InventoryWeaponsView = require("scripts/ui/views/inventory_weapons_view/inventory_weapons_view")
 local ViewElementGrid = require("scripts/ui/view_elements/view_element_grid/view_element_grid")
 local Layout = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout")
-local active_inventory_view
+local active_grid_view
+local active_grid_configuration
+local INVENTORY_GRID_CONFIGURATION = {
+	blueprint_key = "item",
+}
+local HADRON_GRID_CONFIGURATION = {
+	blueprint_key = "item",
+	maximum_columns = 3,
+}
+local ARMOURY_GRID_CONFIGURATION = {
+	blueprint_key = "store_item",
+	maximum_columns = 3,
+	store_item = true,
+}
+
+-- Darktide class tables can contain the exact same inherited function object.
+-- Give each target class its own forwarder before DMF hooks it, preventing
+-- duplicate-hook detection and keeping every view in the normal hook chain.
+local function ensure_class_method(class, method)
+	if type(class) ~= "table" then
+		return false
+	end
+
+	local super = rawget(class, "super") or class.super
+	local inherited_method = super and super[method]
+	local own_method = rawget(class, method)
+
+	if type(own_method) == "function" and own_method ~= inherited_method then
+		return true
+	end
+
+	if type(inherited_method) ~= "function" then
+		return false
+	end
+
+	local owner = class
+	local fallback = inherited_method
+
+	rawset(owner, method, function(self, ...)
+		local parent = rawget(owner, "super") or owner.super
+		local parent_method = parent and parent[method] or fallback
+
+		return parent_method(self, ...)
+	end)
+
+	return true
+end
+
 local COLOR_PRESETS = {
 	red = {
 		235,
@@ -119,6 +168,8 @@ local function refresh_option_dependencies()
 		"expand_inventory_window",
 		"grid_spacing",
 		"automatic_card_height",
+		"enable_hadron_entreat_grid",
+		"enable_armoury_requisition_grid",
 	}) do
 		set_option_enabled(option_dependency_entries[setting_id], grid_enabled, native_reason)
 	end
@@ -155,6 +206,8 @@ local function bind_option_dependencies(options_templates)
 		"card_height",
 		"expand_curio_inventory_window",
 		"curio_target_card_width",
+		"enable_hadron_entreat_grid",
+		"enable_armoury_requisition_grid",
 	}) do
 		setting_by_title[mod:localize(setting_id)] = setting_id
 	end
@@ -274,42 +327,83 @@ mod:hook(InventoryWeaponsView, "_setup_item_grid_materials", function(func, view
 	end
 end)
 
-mod:hook(InventoryWeaponsView, "present_grid_layout", function(func, view, layout, on_present_callback)
-	if not Layout.is_enabled_for_view(mod, view) then
+local function present_grid_with_configuration(func, view, layout, on_present_callback, configuration)
+	local previous_active_view = active_grid_view
+	local previous_configuration = active_grid_configuration
+
+	active_grid_view = view
+	active_grid_configuration = configuration
+
+	local success, result = pcall(func, view, layout, on_present_callback)
+
+	active_grid_view = previous_active_view
+	active_grid_configuration = previous_configuration
+
+	if not success then
+		error(result)
+	end
+
+	return result
+end
+
+if ensure_class_method(InventoryWeaponsView, "present_grid_layout") then
+	mod:hook(InventoryWeaponsView, "present_grid_layout", function(func, view, layout, on_present_callback)
+		if not Layout.is_enabled_for_view(mod, view) then
+			return func(view, layout, on_present_callback)
+		end
+
+		-- Mark only this call, then continue through the complete DMF hook chain.
+		-- The grid hook below transforms whichever blueprints reach the base view,
+		-- including changes made by compatible sorting or information mods.
+		return present_grid_with_configuration(func, view, layout, on_present_callback, INVENTORY_GRID_CONFIGURATION)
+	end)
+end
+
+local function present_additional_grid(func, view, layout, on_present_callback, setting_id, configuration)
+	if mod:get("enable_grid_layout") == false or mod:get(setting_id) == false then
 		return func(view, layout, on_present_callback)
 	end
 
-	-- Mark only this call, then continue through the complete DMF hook chain.
-	-- The grid hook below transforms whichever blueprints reach the base view,
-	-- including changes made by compatible sorting or information mods.
-	local previous_active_view = active_inventory_view
+	return present_grid_with_configuration(func, view, layout, on_present_callback, configuration)
+end
 
-	active_inventory_view = view
+-- "Entreat Hadron" opens this modern ItemGridViewBase subclass. The separate
+-- sacrifice flow uses CraftingMechanicusBarterItemsView and is intentionally
+-- outside this hook.
+if ensure_class_method(CraftingMechanicusModifyView, "present_grid_layout") then
+	mod:hook(CraftingMechanicusModifyView, "present_grid_layout", function(func, view, layout, on_present_callback)
+		return present_additional_grid(func, view, layout, on_present_callback, "enable_hadron_entreat_grid", HADRON_GRID_CONFIGURATION)
+	end)
+end
 
-	local result = func(view, layout, on_present_callback)
-
-	active_inventory_view = previous_active_view
-
-	return result
-end)
+-- The Armoury landing page maps "Requisition Weapons & Curios" to
+-- CreditsVendorView. CreditsGoodsVendorView (Brunt's Armoury) is deliberately
+-- not hooked by this setting.
+if ensure_class_method(CreditsVendorView, "present_grid_layout") then
+	mod:hook(CreditsVendorView, "present_grid_layout", function(func, view, layout, on_present_callback)
+		return present_additional_grid(func, view, layout, on_present_callback, "enable_armoury_requisition_grid", ARMOURY_GRID_CONFIGURATION)
+	end)
+end
 
 mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layout, content_blueprints, ...)
-	local view = active_inventory_view
+	local view = active_grid_view
+	local configuration = active_grid_configuration
 	local definitions = view and view._definitions
 	local grid_settings = definitions and definitions.grid_settings
 	local grid_size = grid_settings and grid_settings.grid_size
-	local item_blueprint = content_blueprints and content_blueprints.item
+	local blueprint_key = configuration and configuration.blueprint_key
+	local item_blueprint = blueprint_key and content_blueprints and content_blueprints[blueprint_key]
 
-	-- Restrict the global grid seam to the active InventoryWeaponsView item
-	-- grid. Missing fields mean the game contract changed, so pass through.
+	-- Restrict the global grid seam to the exact active view and blueprint.
+	-- Missing fields mean the game contract changed, so pass through.
 	if not view or item_grid ~= view._item_grid or not grid_size or not grid_size[1] or not item_blueprint or not item_blueprint.pass_template then
 		return func(item_grid, layout, content_blueprints, ...)
 	end
 
 	local local_blueprints = table.clone(content_blueprints)
-	local local_item_blueprint = local_blueprints.item
+	local local_item_blueprint = local_blueprints[blueprint_key]
 
-	Layout.configure_item_blueprint(mod, local_item_blueprint, grid_size[1])
+	Layout.configure_item_blueprint(mod, local_item_blueprint, grid_size[1], configuration)
 	Layout.configure_grid(mod, item_grid)
 
 	return func(item_grid, layout, local_blueprints, ...)

@@ -1,6 +1,6 @@
 # BetterInventory
 
-> Project status: Phase 0 technical spike implemented; card-content profiles under active in-game testing.
+> Project status: Phase 1 inventory implementation under active in-game testing; first Hadron and Armoury integrations implemented.
 >
 > Audit date: 2026-08-02
 
@@ -49,9 +49,12 @@ It currently covers the character melee, ranged and Curio inventory and provides
 - Optional Curio quality text, disabled by default because rarity is already communicated by the card background and colour strip.
 - Three Curio text modes: No compression, Compression, and Heavy Compression (default). Heavy Compression uses compact labels such as `+20% Gunners DR`, `+4% Ability Regen`, `+30% Tough Regen`, `+20% Grim Corruption DR`, `+15% Corruption DR`, `+12% Block`, `+15% Sprint` and `+12% Stamina Regen`. The actual numeric value is always preserved. Other safe mappings cover mission rewards, Ordo Dockets and Revive Speed without its redundant Ally suffix; unknown or nonmatching localized descriptions remain unchanged.
 - Darktide's complete native managed item-icon lifecycle. BetterInventory resizes only the card's icon pass and does not allocate, load, unload or destroy render-target resources.
+- Independent default-on grid switches for Hadron's Entreat Hadron item selector and the Armoury's Requisition Weapons & Curios store. Each follows the global column setting but clamps its effective layout to a maximum of three columns.
+- Exact view gating: Entreat targets only `CraftingMechanicusModifyView`; Hadron's Sacrifice Weapons path and its custom barter grid are unchanged. Requisition targets only `CreditsVendorView`; Brunt's Armoury, Multi-Operative Supply and `CreditsGoodsVendorView` are unchanged.
+- Compact Armoury store cards preserve both item power and purchase state. Wallet/price or owned text is moved to the lower-left region so the lower-right item-power value remains readable.
 - Graceful fallback to the original presentation path when the view contract or item blueprint is unavailable.
 
-This spike deliberately does not touch Hadron, vendors, sorting, filters or backend transactions yet. It has been statically checked against Darktide 1.12.3 source, but mouse/controller navigation, unusual resolutions, mod interaction and hot enable/disable still need an in-game pass.
+The current implementation does not alter sorting, filters or backend transactions. It has been statically checked against Darktide 1.12.3 source, but the new Hadron and Armoury paths still require mouse/controller, two/three/global-four-or-five-column, purchase-state and hot-enable/disable passes in game.
 
 For a manual development install, copy this entire `BetterInventory` directory into `Content/mods/BetterInventory`, add `BetterInventory` to `Content/mods/mod_load_order.txt`, and restart Darktide. Do not install it alongside the original Inventory2D or its compatibility patch during the first test pass because both target the same presentation method.
 
@@ -289,6 +292,17 @@ References:
 - [Current `CraftingMechanicusModifyView`](https://github.com/Aussiemon/Darktide-Source-Code/blob/47379fd3cbb6d59c3e9001bab1693c307bf46e2b/scripts/ui/views/crafting_mechanicus_modify_view/crafting_mechanicus_modify_view.lua)
 - [Current `CraftingMechanicusBarterItemsView`](https://github.com/Aussiemon/Darktide-Source-Code/blob/47379fd3cbb6d59c3e9001bab1693c307bf46e2b/scripts/ui/views/crafting_mechanicus_barter_items_view/crafting_mechanicus_barter_items_view.lua)
 
+BetterInventory now resolves the landing-page routes rather than applying a class-name guess:
+
+- `loc_crafting_view_option_modify` (the displayed Entreat Hadron action) routes through `select_item_mechanicus` to `crafting_mechanicus_modify_view`. That class derives from `ItemGridViewBase`, so its inherited `present_grid_layout` method is the narrow, chain-safe integration seam.
+- The adjacent Sacrifice Weapons action routes to `crafting_mechanicus_barter_items_view`. It derives from `BaseView`, builds custom pattern and item grids and is intentionally excluded from the Entreat setting.
+- The Entreat panel has a 596 px content grid in the current definitions. With the normal 10 px spacing, three columns produce 192 px cards; a requested four or five columns is therefore clamped to three instead of shrinking or overflowing the panel.
+
+References:
+
+- [Current Hadron landing-page routes](https://github.com/Aussiemon/Darktide-Source-Code/blob/47379fd3cbb6d59c3e9001bab1693c307bf46e2b/scripts/ui/views/crafting_view/crafting_view_definitions.lua#L210-L247)
+- [Hadron modify view and ItemGridViewBase inheritance](https://github.com/Aussiemon/Darktide-Source-Code/blob/47379fd3cbb6d59c3e9001bab1693c307bf46e2b/scripts/ui/views/crafting_mechanicus_modify_view/crafting_mechanicus_modify_view.lua#L11-L20)
+
 ### Modern card fields are not adapted
 
 The current item-card pass template contains fields or states that did not exist, or did not have their current form, when Inventory2D was written:
@@ -336,6 +350,19 @@ Inventory2D hooks only its inventory class and a crafting class. It does not hoo
 - `MarksVendorView` and `MarksGoodsVendorView` for Melk paths.
 
 The original `vendors.lua` is an unused stub with an empty replacement function. It is not loaded by `main.lua` and provides no vendor implementation.
+
+BetterInventory's first vendor integration deliberately distinguishes the Armoury landing-page choices:
+
+- Requisition Weapons & Curios maps to `credits_vendor_view` / `CreditsVendorView` and uses the `store_item` blueprint generated by the shared item-blueprint factory.
+- Brunt's Armoury maps to `credits_goods_vendor_view` / `CreditsGoodsVendorView`, whose compact level-unlock cards use the separate `credits_goods_item` blueprint. It is not affected by the Requisition setting.
+- Multi-Operative Supply is also outside this setting.
+- The Requisition grid is 596 px wide in the current definitions. BetterInventory therefore applies the same three-column maximum as Hadron and adapts `wallet_icon`, `price_text` and `owned_text` without replacing the native store callbacks or managed icon lifecycle.
+
+References:
+
+- [Current Armoury landing-page routes](https://github.com/Aussiemon/Darktide-Source-Code/blob/47379fd3cbb6d59c3e9001bab1693c307bf46e2b/scripts/ui/views/credits_vendor_background_view/credits_vendor_background_view_definitions.lua#L99-L188)
+- [Requisition `CreditsVendorView`](https://github.com/Aussiemon/Darktide-Source-Code/blob/47379fd3cbb6d59c3e9001bab1693c307bf46e2b/scripts/ui/views/credits_vendor_view/credits_vendor_view.lua)
+- [Shared `item` and `store_item` blueprints](https://github.com/Aussiemon/Darktide-Source-Code/blob/47379fd3cbb6d59c3e9001bab1693c307bf46e2b/scripts/ui/view_content_blueprints/item_blueprints.lua#L858-L1199)
 
 ### Localization is incomplete
 
@@ -397,9 +424,10 @@ Known historical conflicts listed on Inventory2D's bug tracker include ItemSorti
 | Character melee inventory | Supported | MVP |
 | Character ranged inventory | Supported | MVP |
 | Character Curio inventory | Partially supported | MVP |
-| Hadron modify/item selection | Wrong modern hook | MVP |
+| Hadron modify/item selection | Wrong modern hook | Implemented; optional, maximum three columns |
 | Hadron sacrifice/barter | Unsupported custom grid | Phase 2 unless straightforward during MVP |
-| Armoury/Brunt credits store | Unsupported | MVP or Phase 2 |
+| Armoury Requisition Weapons & Curios | Unsupported | Implemented; optional, maximum three columns |
+| Brunt's Armoury / Multi-Operative Supply | Unsupported | Phase 2; deliberately excluded from Requisition setting |
 | Melk marks store | Unsupported | MVP or Phase 2 |
 | Weapon mark chooser | Not a target | Preserve; optional specialized layout later |
 | Weapon cosmetics | Not a target | Preserve; optional profile later |
@@ -672,6 +700,8 @@ References:
 - [Crafting top-level view](https://github.com/Aussiemon/Darktide-Source-Code/blob/47379fd3cbb6d59c3e9001bab1693c307bf46e2b/scripts/ui/views/crafting_view/crafting_view.lua)
 - [Hadron modify view](https://github.com/Aussiemon/Darktide-Source-Code/blob/47379fd3cbb6d59c3e9001bab1693c307bf46e2b/scripts/ui/views/crafting_mechanicus_modify_view/crafting_mechanicus_modify_view.lua)
 - [Hadron barter/sacrifice view](https://github.com/Aussiemon/Darktide-Source-Code/blob/47379fd3cbb6d59c3e9001bab1693c307bf46e2b/scripts/ui/views/crafting_mechanicus_barter_items_view/crafting_mechanicus_barter_items_view.lua)
+- [Armoury landing-page route definitions](https://github.com/Aussiemon/Darktide-Source-Code/blob/47379fd3cbb6d59c3e9001bab1693c307bf46e2b/scripts/ui/views/credits_vendor_background_view/credits_vendor_background_view_definitions.lua)
+- [Armoury Requisition view](https://github.com/Aussiemon/Darktide-Source-Code/blob/47379fd3cbb6d59c3e9001bab1693c307bf46e2b/scripts/ui/views/credits_vendor_view/credits_vendor_view.lua)
 - [UI manager icon lifecycle](https://github.com/Aussiemon/Darktide-Source-Code/blob/47379fd3cbb6d59c3e9001bab1693c307bf46e2b/scripts/managers/ui/ui_manager.lua)
 - [Weapon icon renderer](https://github.com/Aussiemon/Darktide-Source-Code/blob/47379fd3cbb6d59c3e9001bab1693c307bf46e2b/scripts/ui/weapon_icon_ui.lua)
 
@@ -682,4 +712,4 @@ References:
 
 ## Immediate next validation
 
-The narrow `InventoryWeaponsView` spike is implemented. The next step is an in-game smoke-test matrix covering melee, ranged and all three Curio slots at two, three and five columns; mouse and controller navigation; favorite/equip/discard interactions; unusual aspect ratios; hot enable/disable; and coexistence with the active sorting/information mods. Once that vertical slice is stable, the same card-layout engine can be adapted to Hadron and the vendor views.
+The next step is an in-game smoke-test matrix covering the existing character inventories plus Entreat Hadron and Requisition Weapons & Curios. For both new views, test two and three global columns, verify that global four/five still renders exactly three, exercise mouse/controller selection and scrolling, and check active/owned/unaffordable Armoury cards. Confirm that Sacrifice Weapons, Brunt's Armoury and Multi-Operative Supply remain native. Hot enable/disable and coexistence with GlobalStore and active sorting/information mods also need validation.
