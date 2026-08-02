@@ -42,48 +42,56 @@ local CURIO_PRIMARY_COLOR_DEFINITIONS = {
 local COMPACT_CURIO_LABELS = {
 	gadget_damage_reduction_vs_flamers = {
 		localization_id = "curio_resistance_flamers",
+		heavy_localization_id = "curio_dr_flamers",
 		required_terms = {
 			"Damage Resistance",
 		},
 	},
 	gadget_damage_reduction_vs_snipers = {
 		localization_id = "curio_resistance_snipers",
+		heavy_localization_id = "curio_dr_snipers",
 		required_terms = {
 			"Damage Resistance",
 		},
 	},
 	gadget_damage_reduction_vs_grenadiers = {
 		localization_id = "curio_resistance_grenadiers",
+		heavy_localization_id = "curio_dr_grenadiers",
 		required_terms = {
 			"Damage Resistance",
 		},
 	},
 	gadget_damage_reduction_vs_hounds = {
 		localization_id = "curio_resistance_hounds",
+		heavy_localization_id = "curio_dr_hounds",
 		required_terms = {
 			"Damage Resistance",
 		},
 	},
 	gadget_damage_reduction_vs_mutants = {
 		localization_id = "curio_resistance_mutants",
+		heavy_localization_id = "curio_dr_mutants",
 		required_terms = {
 			"Damage Resistance",
 		},
 	},
 	gadget_damage_reduction_vs_gunners = {
 		localization_id = "curio_resistance_gunners",
+		heavy_localization_id = "curio_dr_gunners",
 		required_terms = {
 			"Damage Resistance",
 		},
 	},
 	gadget_damage_reduction_vs_bombers = {
 		localization_id = "curio_resistance_bombers",
+		heavy_localization_id = "curio_dr_bombers",
 		required_terms = {
 			"Damage Resistance",
 		},
 	},
 	gadget_permanent_damage_resistance = {
 		localization_id = "curio_resistance_grimoires",
+		heavy_localization_id = "curio_dr_grimoires",
 		required_terms = {
 			"Corruption Resistance",
 			"Grimoire",
@@ -113,6 +121,20 @@ local COMPACT_CURIO_LABELS = {
 		required_terms = {
 			"Revive Speed",
 		},
+	},
+}
+local CURIO_PRIMARY_SIMPLIFICATIONS = {
+	gadget_innate_health_increase = {
+		find = "Max Health",
+		replace = "Health",
+	},
+	gadget_stamina_increase = {
+		find = "Max Stamina",
+		replace = "Stamina",
+	},
+	gadget_innate_max_wounds_increase = {
+		find = "Wound(s)",
+		replace = "Wound",
 	},
 }
 local DEFAULT_CURIO_PRIMARY_COLOR = {
@@ -177,11 +199,11 @@ local function curio_primary_color(mod, trait_id)
 	}
 end
 
-local function compact_curio_description(mod, data)
+local function compact_curio_description(mod, data, compression_mode)
 	local definition = data and COMPACT_CURIO_LABELS[data.id]
 	local description = data and data.description
 
-	if not definition or type(description) ~= "string" or description == "" then
+	if compression_mode == "none" or not definition or type(description) ~= "string" or description == "" then
 		return description or ""
 	end
 
@@ -201,7 +223,31 @@ local function compact_curio_description(mod, data)
 		amount = string.gsub(amount, "^%+", "")
 	end
 
-	return string.format("%s %s", amount, mod:localize(definition.localization_id))
+	local localization_id = compression_mode == "heavy" and definition.heavy_localization_id or definition.localization_id
+
+	return string.format("%s %s", amount, mod:localize(localization_id or definition.localization_id))
+end
+
+local function simplified_curio_primary_description(data, enabled)
+	local description = data and data.description
+
+	if not enabled or type(description) ~= "string" or description == "" then
+		return description or ""
+	end
+
+	local simplification = CURIO_PRIMARY_SIMPLIFICATIONS[data.id]
+
+	if not simplification then
+		return description
+	end
+
+	local first, last = string.find(description, simplification.find, 1, true)
+
+	if not first then
+		return description
+	end
+
+	return string.sub(description, 1, first - 1) .. simplification.replace .. string.sub(description, last + 1)
 end
 
 local function pass_by_style_id(pass_template, style_id)
@@ -279,7 +325,7 @@ local function resolved_trait_data(entry, include_textures)
 	return data
 end
 
-local function populate_card_content(mod, widget, element, show_weapon_blessings, compact_curio_stats)
+local function populate_card_content(mod, widget, element, show_weapon_blessings, compression_mode, simplify_curio_primary)
 	local content = widget and widget.content
 
 	if not content then
@@ -321,7 +367,7 @@ local function populate_card_content(mod, widget, element, show_weapon_blessings
 	local primary_data = resolved_trait_data(primary_entry, false)
 
 	if primary_data then
-		content.better_inventory_curio_stat_1 = primary_data.description
+		content.better_inventory_curio_stat_1 = simplified_curio_primary_description(primary_data, simplify_curio_primary)
 		content.better_inventory_curio_primary_color = curio_primary_color(mod, primary_data.id)
 	end
 
@@ -331,7 +377,7 @@ local function populate_card_content(mod, widget, element, show_weapon_blessings
 		local perk_data = resolved_trait_data(perks[i], false)
 
 		if perk_data then
-			content["better_inventory_curio_stat_" .. (i + 1)] = compact_curio_stats and compact_curio_description(mod, perk_data) or perk_data.description
+			content["better_inventory_curio_stat_" .. (i + 1)] = compact_curio_description(mod, perk_data, compression_mode)
 		end
 	end
 end
@@ -738,13 +784,22 @@ local function configure_card_content(mod, item_blueprint)
 	local minimum_font_size = math.max(8, math.min(20, setting(mod, "minimum_item_name_font_size", 12)))
 	local append_mark_to_name = setting(mod, "append_mark_to_name", true)
 	local show_weapon_blessings = setting(mod, "show_weapon_blessings", false)
-	local compact_curio_stats = setting(mod, "compact_curio_stat_text", true)
+	local compression_mode = setting(mod, "curio_stat_compression", "compression")
+	local simplify_curio_primary = setting(mod, "simplify_curio_primary_stat_text", true)
+
+	-- Accept the retired checkbox values during the one-time settings migration
+	-- and when hot-reloading from an older options schema.
+	if compression_mode == true then
+		compression_mode = "compression"
+	elseif compression_mode == false then
+		compression_mode = "none"
+	end
 
 	if original_init then
 		item_blueprint.init = function(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
 			original_init(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
 			format_weapon_name(widget, element, append_mark_to_name)
-			populate_card_content(mod, widget, element, show_weapon_blessings, compact_curio_stats)
+			populate_card_content(mod, widget, element, show_weapon_blessings, compression_mode, simplify_curio_primary)
 			fit_display_name(parent, widget, ui_renderer, preferred_font_size, math.min(preferred_font_size, minimum_font_size))
 			fit_curio_stats(parent, widget, ui_renderer)
 		end
@@ -754,7 +809,7 @@ local function configure_card_content(mod, item_blueprint)
 		item_blueprint.update_data = function(parent, widget, element)
 			original_update_data(parent, widget, element)
 			format_weapon_name(widget, element, append_mark_to_name)
-			populate_card_content(mod, widget, element, show_weapon_blessings, compact_curio_stats)
+			populate_card_content(mod, widget, element, show_weapon_blessings, compression_mode, simplify_curio_primary)
 			fit_display_name(parent, widget, nil, preferred_font_size, math.min(preferred_font_size, minimum_font_size))
 			fit_curio_stats(parent, widget, nil)
 		end
@@ -786,19 +841,25 @@ Layout.is_enabled_for_view = function(mod, view)
 	return setting_id and setting(mod, setting_id, true) or false
 end
 
-Layout.grid_expansion = function(mod, current_grid_width)
+Layout.grid_expansion = function(mod, current_grid_width, slot_kind)
 	if not setting(mod, "enable_grid_layout", true) or not setting(mod, "expand_inventory_window", true) then
 		return 0
 	end
 
 	local columns = math.floor(math.max(2, math.min(5, setting(mod, "columns", 3))))
 	local spacing = math.max(0, math.min(40, setting(mod, "grid_spacing", 10)))
-	local required_grid_width = MINIMUM_CARD_WIDTH * columns + spacing * (columns - 1)
+	local target_card_width = MINIMUM_CARD_WIDTH
+
+	if slot_kind == "curio" and setting(mod, "expand_curio_inventory_window", true) then
+		target_card_width = math.max(MINIMUM_CARD_WIDTH, math.min(220, setting(mod, "curio_target_card_width", 190)))
+	end
+
+	local required_grid_width = target_card_width * columns + spacing * (columns - 1)
 
 	return math.max(0, required_grid_width - current_grid_width)
 end
 
-Layout.expanded_view_definitions = function(mod, definitions)
+Layout.expanded_view_definitions = function(mod, definitions, view)
 	local grid_settings = definitions and definitions.grid_settings
 	local grid_size = grid_settings and grid_settings.grid_size
 	local current_grid_width = grid_size and grid_size[1]
@@ -807,7 +868,7 @@ Layout.expanded_view_definitions = function(mod, definitions)
 		return definitions, 0
 	end
 
-	local expansion = Layout.grid_expansion(mod, current_grid_width)
+	local expansion = Layout.grid_expansion(mod, current_grid_width, Layout.slot_kind(view))
 
 	if expansion <= 0 then
 		return definitions, 0

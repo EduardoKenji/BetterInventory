@@ -22,6 +22,8 @@ def main() -> None:
         settings = {
             enable_grid_layout = true,
             automatic_card_height = true,
+			expand_inventory_window = true,
+			expand_curio_inventory_window = true,
             curio_health_color_preset = "red",
             curio_health_color_r = 235,
             curio_health_color_g = 85,
@@ -130,6 +132,8 @@ def main() -> None:
     option_ids = (
         "columns",
         "expand_inventory_window",
+        "expand_curio_inventory_window",
+        "curio_target_card_width",
         "grid_spacing",
         "automatic_card_height",
         "card_height",
@@ -153,6 +157,15 @@ def main() -> None:
     assert entries_by_id["columns"].disabled is False
     assert entries_by_id["automatic_card_height"].disabled is False
     assert entries_by_id["card_height"].disabled is True
+    assert entries_by_id["expand_curio_inventory_window"].disabled is False
+    assert entries_by_id["curio_target_card_width"].disabled is False
+
+    settings.expand_curio_inventory_window = False
+    mod.on_setting_changed("expand_curio_inventory_window")
+    assert entries_by_id["curio_target_card_width"].disabled is True
+    settings.expand_curio_inventory_window = True
+    mod.on_setting_changed("expand_curio_inventory_window")
+    assert entries_by_id["curio_target_card_width"].disabled is False
 
     settings.automatic_card_height = False
     mod.on_setting_changed("automatic_card_height")
@@ -193,7 +206,10 @@ def main() -> None:
 
     assert defaults["enable_grid_layout"] is True
     assert defaults["automatic_card_height"] is True
-    assert defaults["compact_curio_stat_text"] is True
+    assert defaults["expand_curio_inventory_window"] is True
+    assert defaults["curio_target_card_width"] == 190
+    assert defaults["curio_stat_compression"] == "compression"
+    assert defaults["simplify_curio_primary_stat_text"] is True
     assert defaults["blessing_icon_spacing"] == 3
     assert defaults["curio_health_color_preset"] == "red"
     assert defaults["curio_toughness_color_preset"] == "light_blue"

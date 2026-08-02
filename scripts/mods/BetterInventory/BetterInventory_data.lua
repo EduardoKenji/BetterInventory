@@ -134,6 +134,22 @@ return {
 						default_value = true,
 					},
 					{
+						setting_id = "expand_curio_inventory_window",
+						tooltip = "expand_curio_inventory_window_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
+						setting_id = "curio_target_card_width",
+						tooltip = "curio_target_card_width_tooltip",
+						type = "numeric",
+						default_value = 190,
+						range = {
+							120,
+							220,
+						},
+					},
+					{
 						setting_id = "grid_spacing",
 						type = "numeric",
 						default_value = 10,
@@ -298,8 +314,28 @@ return {
 						default_value = false,
 					},
 					{
-						setting_id = "compact_curio_stat_text",
-						tooltip = "compact_curio_stat_text_tooltip",
+						setting_id = "curio_stat_compression",
+						tooltip = "curio_stat_compression_tooltip",
+						type = "dropdown",
+						default_value = "compression",
+						options = {
+							{
+								text = "curio_stat_compression_none",
+								value = "none",
+							},
+							{
+								text = "curio_stat_compression_standard",
+								value = "compression",
+							},
+							{
+								text = "curio_stat_compression_heavy",
+								value = "heavy",
+							},
+						},
+					},
+					{
+						setting_id = "simplify_curio_primary_stat_text",
+						tooltip = "simplify_curio_primary_stat_text_tooltip",
 						type = "checkbox",
 						default_value = true,
 					},

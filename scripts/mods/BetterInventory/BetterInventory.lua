@@ -127,6 +127,14 @@ local function refresh_option_dependencies()
 	local card_height_reason = grid_enabled and mod:localize("option_disabled_by_automatic_height") or native_reason
 
 	set_option_enabled(option_dependency_entries.card_height, card_height_enabled, card_height_reason)
+
+	local window_expansion_enabled = grid_enabled and mod:get("expand_inventory_window") ~= false
+	local curio_expansion_enabled = window_expansion_enabled and mod:get("expand_curio_inventory_window") ~= false
+	local expansion_reason = grid_enabled and mod:localize("option_requires_window_expansion") or native_reason
+	local curio_target_reason = not window_expansion_enabled and expansion_reason or not curio_expansion_enabled and mod:localize("option_requires_curio_expansion") or nil
+
+	set_option_enabled(option_dependency_entries.expand_curio_inventory_window, window_expansion_enabled, expansion_reason)
+	set_option_enabled(option_dependency_entries.curio_target_card_width, curio_expansion_enabled, curio_target_reason)
 end
 
 local function bind_option_dependencies(options_templates)
@@ -145,6 +153,8 @@ local function bind_option_dependencies(options_templates)
 		"grid_spacing",
 		"automatic_card_height",
 		"card_height",
+		"expand_curio_inventory_window",
+		"curio_target_card_width",
 	}) do
 		setting_by_title[mod:localize(setting_id)] = setting_id
 	end
@@ -174,6 +184,18 @@ function mod.on_enabled()
 		mod:set("_compact_card_defaults_v1_migrated", true)
 	end
 
+	if not mod:get("_curio_compression_mode_v1_migrated") then
+		local previous_compact_setting = mod:get("compact_curio_stat_text")
+
+		if previous_compact_setting == false then
+			mod:set("curio_stat_compression", "none")
+		elseif previous_compact_setting == true then
+			mod:set("curio_stat_compression", "compression")
+		end
+
+		mod:set("_curio_compression_mode_v1_migrated", true)
+	end
+
 	for i = 1, #CURIO_COLOR_TARGETS do
 		apply_color_preset(CURIO_COLOR_TARGETS[i])
 	end
@@ -192,7 +214,7 @@ function mod.on_setting_changed(setting_id)
 		end
 	end
 
-	if setting_id == "enable_grid_layout" or setting_id == "automatic_card_height" then
+	if setting_id == "enable_grid_layout" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "expand_curio_inventory_window" then
 		refresh_option_dependencies()
 	end
 end
@@ -210,7 +232,7 @@ mod:hook(ItemGridViewBase, "init", function(func, view, definitions, settings, c
 		return func(view, definitions, settings, context)
 	end
 
-	local adjusted_definitions, expansion = Layout.expanded_view_definitions(mod, definitions)
+	local adjusted_definitions, expansion = Layout.expanded_view_definitions(mod, definitions, view)
 
 	view._better_inventory_grid_expansion = expansion
 

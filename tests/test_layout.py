@@ -54,7 +54,7 @@ def main() -> None:
 		TestTraitDescriptions = {
 			gadget_innate_health_increase = "+19% Max Health",
 			gadget_innate_toughness_increase = "+16% Toughness",
-			gadget_innate_max_wounds_increase = "+1 Wound",
+			gadget_innate_max_wounds_increase = "+1 Wound(s)",
 			gadget_stamina_increase = "+2 Max Stamina",
 			gadget_stamina_regeneration = "+12% Stamina Regeneration",
 			gadget_sprint_efficiency = "+15% Sprint Efficiency",
@@ -150,9 +150,11 @@ def main() -> None:
 
         test_mod = {
             settings = {
-                columns = 3,
+				columns = 3,
 				enable_grid_layout = true,
 				expand_inventory_window = true,
+				expand_curio_inventory_window = true,
+				curio_target_card_width = 190,
                 grid_spacing = 10,
                 card_height = 110,
 				automatic_card_height = true,
@@ -167,7 +169,8 @@ def main() -> None:
 				favorite_marker_position = "above_rating",
 				curio_display_profile = "primary",
 				show_curio_quality = false,
-				compact_curio_stat_text = true,
+				curio_stat_compression = "compression",
+				simplify_curio_primary_stat_text = true,
 				curio_health_color_r = 235,
 				curio_health_color_g = 85,
 				curio_health_color_b = 85,
@@ -202,6 +205,7 @@ def main() -> None:
 				curio_toughness_regeneration = "Toughness Regen",
 				curio_ordo_dockets = "Ordo Dockets",
 				curio_revive_speed = "Revive Speed",
+				curio_dr_gunners = "Gunners DR",
 			}
 
 			return values[localization_id] or localization_id
@@ -286,6 +290,7 @@ def main() -> None:
 
     mod.settings.columns = 5
     assert layout.grid_expansion(mod, 596) == 44
+    assert layout.grid_expansion(mod, 596, "curio") == 394
 
     view_definitions = lua.table_from(
         {
@@ -322,6 +327,20 @@ def main() -> None:
     assert expanded_definitions.scenegraph_definition.weapon_actions_pivot.position[1] == -516
     assert expanded_definitions.scenegraph_definition.equip_button.position[1] == 901
     assert tuple(layout.item_size(mod, 640)[index] for index in (1, 2)) == (120, 110)
+
+    curio_view = lua.table_from(
+        {"_selected_slot": lua.table_from({"name": "slot_attachment_1"})}
+    )
+    curio_definitions, curio_expansion = layout.expanded_view_definitions(
+        mod, view_definitions, curio_view
+    )
+    assert curio_expansion == 394
+    assert curio_definitions.grid_settings.grid_size[1] == 990
+    assert tuple(layout.item_size(mod, 990)[index] for index in (1, 2)) == (190, 110)
+
+    mod.settings.expand_curio_inventory_window = False
+    assert layout.grid_expansion(mod, 596, "curio") == 44
+    mod.settings.expand_curio_inventory_window = True
 
     mod.settings.expand_inventory_window = False
     assert layout.grid_expansion(mod, 596) == 0
@@ -559,7 +578,7 @@ def main() -> None:
         blueprint,
     )
 
-    assert curio_widget.content.better_inventory_curio_stat_1 == "+19% Max Health"
+    assert curio_widget.content.better_inventory_curio_stat_1 == "+19% Health"
     assert curio_widget.content.better_inventory_curio_stat_2 == "+12% Stamina Regeneration"
     assert curio_stat_pass.visibility_function(curio_widget.content)
 
@@ -586,6 +605,38 @@ def main() -> None:
     mod.settings.curio_health_color_g = 85
     mod.settings.curio_health_color_b = 85
 
+    mod.settings.simplify_curio_primary_stat_text = False
+    full_primary_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, full_primary_blueprint, 640)
+    full_primary_style = blueprint_pass(
+        full_primary_blueprint, "better_inventory_curio_stat_1"
+    ).style
+    full_primary_widget = lua.table_from(
+        {
+            "content": lua.table_from({}),
+            "style": lua.table_from(
+                {
+                    "display_name": blueprint_pass(
+                        full_primary_blueprint, "display_name"
+                    ).style,
+                    "better_inventory_curio_stat_1": full_primary_style,
+                }
+            ),
+        }
+    )
+    full_primary_blueprint.init(
+        None,
+        full_primary_widget,
+        curio_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        full_primary_blueprint,
+    )
+    assert full_primary_widget.content.better_inventory_curio_stat_1 == "+19% Max Health"
+    mod.settings.simplify_curio_primary_stat_text = True
+
     primary_color_expectations = {
         "content/items/traits/test_toughness": (255, 105, 200, 235),
         "content/items/traits/test_wounds": (255, 190, 105, 230),
@@ -599,6 +650,13 @@ def main() -> None:
         assert tuple(
             curio_stat_pass.style.text_color[index] for index in range(1, 5)
         ) == expected_color
+
+    curio_element.item.traits[1].id = "content/items/traits/test_wounds"
+    blueprint.update_data(test_grid, curio_widget, curio_element)
+    assert curio_widget.content.better_inventory_curio_stat_1 == "+1 Wound"
+    curio_element.item.traits[1].id = "content/items/traits/test_stamina"
+    blueprint.update_data(test_grid, curio_widget, curio_element)
+    assert curio_widget.content.better_inventory_curio_stat_1 == "+2 Stamina"
 
     mod.settings.curio_display_profile = "detailed"
     detailed_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
@@ -672,8 +730,32 @@ def main() -> None:
     curio_element.item.perks[3].id = "content/items/perks/test_gunners"
     detailed_blueprint.update_data(test_grid, detailed_widget, curio_element)
 
+    mod.settings.curio_stat_compression = "heavy"
+    heavy_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, heavy_blueprint, 640)
+    heavy_styles = {
+        "display_name": blueprint_pass(heavy_blueprint, "display_name").style,
+    }
+    for index in range(1, 5):
+        style_id = f"better_inventory_curio_stat_{index}"
+        heavy_styles[style_id] = blueprint_pass(heavy_blueprint, style_id).style
+    heavy_widget = lua.table_from(
+        {"content": lua.table_from({}), "style": lua.table_from(heavy_styles)}
+    )
+    heavy_blueprint.init(
+        None,
+        heavy_widget,
+        curio_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        heavy_blueprint,
+    )
+    assert heavy_widget.content.better_inventory_full_curio_stat_4 == "+20% Gunners DR"
+
     mod.settings.columns = 5
-    mod.settings.compact_curio_stat_text = False
+    mod.settings.curio_stat_compression = "none"
     narrow_detailed_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     layout.configure_item_blueprint(mod, narrow_detailed_blueprint, 640)
     narrow_detailed_styles = {
@@ -713,7 +795,7 @@ def main() -> None:
     )
     assert "\n" not in narrow_detailed_widget.content.better_inventory_curio_stat_4
     mod.settings.columns = 3
-    mod.settings.compact_curio_stat_text = True
+    mod.settings.curio_stat_compression = "compression"
 
     mod.settings.curio_display_profile = "primary"
     mod.settings.show_curio_quality = True

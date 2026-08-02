@@ -38,6 +38,18 @@ return {
 	expand_inventory_window_tooltip = {
 		en = "Widens the inventory panel enough to keep narrow cards inside it. This normally affects five-column layouts, or four columns with very large spacing. Disable this to shrink the cards instead.",
 	},
+	expand_curio_inventory_window = {
+		en = "Expand Curio window by columns",
+	},
+	expand_curio_inventory_window_tooltip = {
+		en = "Uses the target Curio card width to widen the inventory panel as columns are added. Three columns normally retain the native panel width; four and five columns can use the available horizontal space.",
+	},
+	curio_target_card_width = {
+		en = "Target Curio card width",
+	},
+	curio_target_card_width_tooltip = {
+		en = "Desired Curio card width in pixels when column-aware Curio expansion is enabled. The final panel width is derived from this value, the column count and grid spacing.",
+	},
 	grid_spacing = {
 		en = "Card spacing",
 	},
@@ -58,6 +70,12 @@ return {
 	},
 	option_disabled_by_automatic_height = {
 		en = "Disable automatic card height to set a manual height.",
+	},
+	option_requires_window_expansion = {
+		en = "Enable inventory-window expansion to use this option.",
+	},
+	option_requires_curio_expansion = {
+		en = "Enable column-aware Curio expansion to set a target card width.",
 	},
 	icon_darkness = {
 		en = "Icon darkness (%%)",
@@ -146,11 +164,26 @@ return {
 	show_curio_quality_tooltip = {
 		en = "Shows the Curio quality line in the Primary stat profile. Disabled by default because the card colour already communicates quality.",
 	},
-	compact_curio_stat_text = {
-		en = "Compact Curio stat text",
+	curio_stat_compression = {
+		en = "Curio stat text compression",
 	},
-	compact_curio_stat_text_tooltip = {
-		en = "Shortens known long resistance perks, such as '+20%% Damage Resistance (Gunners)' to '+20%% Gunners Resistance'. Unknown descriptions retain Darktide's original localized text.",
+	curio_stat_compression_tooltip = {
+		en = "Compression shortens known long descriptions. Heavy Compression also abbreviates Resistance as DR. Unknown descriptions retain Darktide's original localized text.",
+	},
+	curio_stat_compression_none = {
+		en = "No compression",
+	},
+	curio_stat_compression_standard = {
+		en = "Compression",
+	},
+	curio_stat_compression_heavy = {
+		en = "Heavy Compression",
+	},
+	simplify_curio_primary_stat_text = {
+		en = "Simplify primary Curio stat text",
+	},
+	simplify_curio_primary_stat_text_tooltip = {
+		en = "Removes redundant wording from supported primary lines: Max Health becomes Health, Max Stamina becomes Stamina, and Wound(s) becomes Wound.",
 	},
 	curio_health_color_group = {
 		en = "Max Health line colour",
@@ -271,5 +304,29 @@ return {
 	},
 	curio_revive_speed = {
 		en = "Revive Speed",
+	},
+	curio_dr_flamers = {
+		en = "Flamers DR",
+	},
+	curio_dr_snipers = {
+		en = "Snipers DR",
+	},
+	curio_dr_grenadiers = {
+		en = "Grenadiers DR",
+	},
+	curio_dr_hounds = {
+		en = "Pox Hounds DR",
+	},
+	curio_dr_mutants = {
+		en = "Mutants DR",
+	},
+	curio_dr_gunners = {
+		en = "Gunners DR",
+	},
+	curio_dr_bombers = {
+		en = "Bombers DR",
+	},
+	curio_dr_grimoires = {
+		en = "Grimoire DR",
 	},
 }
