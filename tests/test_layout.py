@@ -169,6 +169,10 @@ def main() -> None:
 			return item.icon, "frame/rank_" .. tostring(rarity)
 		end
 
+		function TestItems.perk_textures(item, rarity)
+			return "perk/rank_" .. tostring(rarity)
+		end
+
 		function TestMasterItems.get_item(item_id)
 			return {
 				name = item_id,
@@ -214,6 +218,8 @@ def main() -> None:
 				show_weapon_blessings = true,
 				show_weapon_perks = false,
 				weapon_perk_compression = "compression",
+				show_weapon_perk_rank_symbols = false,
+				remove_weapon_perk_plus_signs = false,
 				blessing_icon_spacing = 3,
                 compact_favorite_marker = true,
 				favorite_marker_position = "above_rating",
@@ -1007,7 +1013,62 @@ def main() -> None:
         uncompressed_perk_widget.content.better_inventory_full_weapon_perk_1
         == "+25% Damage (Flak Armoured Enemies)"
     )
+
     mod.settings.weapon_perk_compression = "compression"
+    mod.settings.show_weapon_perk_rank_symbols = True
+    mod.settings.remove_weapon_perk_plus_signs = True
+    narrow_weapon_element.item.perks[1].rarity = 4
+    narrow_weapon_element.item.perks[2].rarity = 3
+    ranked_perk_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    ranked_perk_size = layout.configure_item_blueprint(mod, ranked_perk_blueprint, 640)
+    assert (ranked_perk_size[1], ranked_perk_size[2]) == (206, 118)
+    ranked_perk_text_1 = blueprint_pass(
+        ranked_perk_blueprint, "better_inventory_weapon_perk_1"
+    )
+    ranked_perk_rank_1 = blueprint_pass(
+        ranked_perk_blueprint, "better_inventory_weapon_perk_rank_1"
+    )
+    assert ranked_perk_rank_1.pass_type == "texture"
+    assert (ranked_perk_rank_1.style.size[1], ranked_perk_rank_1.style.size[2]) == (
+        18,
+        18,
+    )
+    assert ranked_perk_text_1.style.offset[1] - ranked_perk_rank_1.style.offset[1] == 21
+    assert ranked_perk_text_1.style.offset[2] == ranked_perk_rank_1.style.offset[2]
+    ranked_perk_styles = {
+        "display_name": blueprint_pass(
+            ranked_perk_blueprint, "display_name"
+        ).style,
+        "better_inventory_weapon_perk_1": ranked_perk_text_1.style,
+        "better_inventory_weapon_perk_2": blueprint_pass(
+            ranked_perk_blueprint, "better_inventory_weapon_perk_2"
+        ).style,
+    }
+    ranked_perk_widget = lua.table_from(
+        {
+            "content": lua.table_from({}),
+            "style": lua.table_from(ranked_perk_styles),
+        }
+    )
+    ranked_perk_blueprint.init(
+        None,
+        ranked_perk_widget,
+        narrow_weapon_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        ranked_perk_blueprint,
+    )
+    assert ranked_perk_widget.content.better_inventory_full_weapon_perk_1 == "25% Flak Damage"
+    assert ranked_perk_widget.content.better_inventory_full_weapon_perk_2 == "25% Maniacs Damage"
+    assert ranked_perk_widget.content.better_inventory_weapon_perk_rank_1 == "perk/rank_4"
+    assert ranked_perk_widget.content.better_inventory_weapon_perk_rank_2 == "perk/rank_3"
+    assert ranked_perk_rank_1.visibility_function(ranked_perk_widget.content) is True
+
+    mod.settings.weapon_perk_compression = "compression"
+    mod.settings.show_weapon_perk_rank_symbols = False
+    mod.settings.remove_weapon_perk_plus_signs = False
     mod.settings.show_weapon_perks = False
 
     curio_stat_pass = blueprint_pass(blueprint, "better_inventory_curio_stat_1")

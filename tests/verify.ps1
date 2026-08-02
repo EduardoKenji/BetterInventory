@@ -171,6 +171,7 @@ if ($DarktideSourcePath) {
 		$itemsSource -notmatch 'Items\.weapon_lore_mark_name' -or
 		$itemsSource -notmatch 'Items\.weapon_lore_pattern_name' -or
 		$itemsSource -notmatch 'Items\.trait_textures' -or
+		$itemsSource -notmatch 'Items\.perk_textures' -or
 		$itemsSource -notmatch 'Items\.trait_description' -or
 		$itemsSource -notmatch 'Items\.expertise_level\s*=\s*function\s*\(item,\s*no_symbol' -or
 		$itemsSource -notmatch 'if\s+no_symbol\s+then'

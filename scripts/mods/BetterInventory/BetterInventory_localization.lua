@@ -164,6 +164,18 @@ return {
 	weapon_perk_compression_heavy = {
 		en = "Heavy Compression",
 	},
+	show_weapon_perk_rank_symbols = {
+		en = "Show perk level symbols",
+	},
+	show_weapon_perk_rank_symbols_tooltip = {
+		en = "Shows Darktide's native ranked perk symbol to the left of each visible weapon perk line.",
+	},
+	remove_weapon_perk_plus_signs = {
+		en = "Remove + from weapon perk text",
+	},
+	remove_weapon_perk_plus_signs_tooltip = {
+		en = "Removes only the leading plus sign from each visible weapon perk line. Numeric values and signs elsewhere are preserved.",
+	},
 	blessing_icon_spacing = {
 		en = "Blessing icon horizontal spacing",
 	},

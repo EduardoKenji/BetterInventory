@@ -7,6 +7,9 @@ local MINIMUM_CARD_WIDTH = 120
 local ARMOURY_MINIMUM_CARD_WIDTH = 190
 local ARMOURY_MAXIMUM_CARD_WIDTH = 230
 local BLESSING_MATERIAL = "content/ui/materials/icons/traits/traits_container"
+local DEFAULT_PERK_RANK_MATERIAL = "content/ui/materials/icons/perks/perk_level_01"
+local PERK_RANK_SIZE = 18
+local PERK_RANK_GAP = 3
 local STORE_FOOTER_HEIGHT = 34
 local WEAPON_PERK_COUNT = 2
 local CURIO_PRIMARY_COLOR_DEFINITIONS = {
@@ -392,7 +395,7 @@ local function compact_weapon_perk_description(mod, data, compression_mode)
 	return string.format("%s %s", amount, mod:localize(localization_id))
 end
 
-local function curio_plus_sign_description(description, remove_plus_sign)
+local function leading_plus_sign_description(description, remove_plus_sign)
 	if not remove_plus_sign or type(description) ~= "string" then
 		return description or ""
 	end
@@ -467,7 +470,7 @@ local function set_height(pass, height)
 	end
 end
 
-local function resolved_trait_data(entry, include_textures)
+local function resolved_trait_data(entry, include_textures, include_perk_rank)
 	if type(entry) ~= "table" or type(entry.id) ~= "string" then
 		return
 	end
@@ -496,6 +499,14 @@ local function resolved_trait_data(entry, include_textures)
 		end
 	end
 
+	if include_perk_rank then
+		local texture_ok, rank = pcall(Items.perk_textures, trait_item, entry.rarity)
+
+		if texture_ok and type(rank) == "string" and rank ~= "" then
+			data.rank = rank
+		end
+	end
+
 	return data
 end
 
@@ -510,6 +521,7 @@ local function populate_card_content(mod, widget, element, show_weapon_blessings
 		content["better_inventory_blessing_" .. i] = nil
 		content["better_inventory_weapon_perk_" .. i] = ""
 		content["better_inventory_full_weapon_perk_" .. i] = nil
+		content["better_inventory_weapon_perk_rank_" .. i] = nil
 	end
 
 	for i = 1, 4 do
@@ -536,12 +548,17 @@ local function populate_card_content(mod, widget, element, show_weapon_blessings
 
 		if show_weapon_perks then
 			local perks = item.perks
+			local show_perk_rank = setting(mod, "show_weapon_perk_rank_symbols", false)
+			local remove_perk_plus_sign = setting(mod, "remove_weapon_perk_plus_signs", false)
 
 			for i = 1, math.min(WEAPON_PERK_COUNT, perks and #perks or 0) do
-				local data = resolved_trait_data(perks[i], false)
+				local data = resolved_trait_data(perks[i], false, show_perk_rank)
 
 				if data then
-					content["better_inventory_weapon_perk_" .. i] = compact_weapon_perk_description(mod, data, weapon_perk_compression)
+					local description = compact_weapon_perk_description(mod, data, weapon_perk_compression)
+
+					content["better_inventory_weapon_perk_" .. i] = leading_plus_sign_description(description, remove_perk_plus_sign)
+					content["better_inventory_weapon_perk_rank_" .. i] = data.rank
 				end
 			end
 		end
@@ -561,7 +578,7 @@ local function populate_card_content(mod, widget, element, show_weapon_blessings
 	if primary_data then
 		local primary_description = simplified_curio_primary_description(primary_data, simplify_curio_primary)
 
-		content.better_inventory_curio_stat_1 = curio_plus_sign_description(primary_description, remove_plus_sign)
+		content.better_inventory_curio_stat_1 = leading_plus_sign_description(primary_description, remove_plus_sign)
 		content.better_inventory_curio_primary_color = curio_primary_color(mod, primary_data.id)
 	end
 
@@ -573,7 +590,7 @@ local function populate_card_content(mod, widget, element, show_weapon_blessings
 		if perk_data then
 			local perk_description = compact_curio_description(mod, perk_data, compression_mode)
 
-			content["better_inventory_curio_stat_" .. (i + 1)] = curio_plus_sign_description(perk_description, remove_plus_sign)
+			content["better_inventory_curio_stat_" .. (i + 1)] = leading_plus_sign_description(perk_description, remove_plus_sign)
 		end
 	end
 end
@@ -657,6 +674,35 @@ local function add_weapon_perk_pass(pass_template, index, options)
 		value = "",
 		value_id = content_id,
 		style = style,
+		visibility_function = function(content)
+			return content and content[content_id] ~= nil and content[content_id] ~= ""
+		end,
+	}
+end
+
+local function add_weapon_perk_rank_pass(pass_template, index, options)
+	local content_id = "better_inventory_weapon_perk_rank_" .. index
+
+	pass_template[#pass_template + 1] = {
+		pass_type = "texture",
+		style_id = content_id,
+		value = DEFAULT_PERK_RANK_MATERIAL,
+		value_id = content_id,
+		style = {
+			horizontal_alignment = "left",
+			vertical_alignment = "bottom",
+			offset = options.offset,
+			size = {
+				PERK_RANK_SIZE,
+				PERK_RANK_SIZE,
+			},
+			color = {
+				255,
+				255,
+				255,
+				255,
+			},
+		},
 		visibility_function = function(content)
 			return content and content[content_id] ~= nil and content[content_id] ~= ""
 		end,
@@ -755,6 +801,7 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 
 	local show_weapon_blessings = setting(mod, "show_weapon_blessings", false)
 	local show_weapon_perks = setting(mod, "show_weapon_perks", false)
+	local show_weapon_perk_ranks = show_weapon_perks and setting(mod, "show_weapon_perk_rank_symbols", false)
 	local detailed_curio_profile = setting(mod, "curio_display_profile", "primary") == "detailed"
 	local favorite_marker_position = setting(mod, "favorite_marker_position", "above_rating")
 	local store_footer_height = configuration.store_item and STORE_FOOTER_HEIGHT or 0
@@ -782,16 +829,29 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 
 	if show_weapon_perks then
 		local perk_font_size = math.max(9, math.min(16, setting(mod, "secondary_text_font_size", 13)))
-		local perk_line_height = perk_font_size + 4
-		local perk_width = math.max(40, card_width - text_left - 8)
+		local perk_line_height = show_weapon_perk_ranks and math.max(perk_font_size + 4, PERK_RANK_SIZE + 1) or perk_font_size + 4
+		local perk_text_left = text_left + (show_weapon_perk_ranks and PERK_RANK_SIZE + PERK_RANK_GAP or 0)
+		local perk_width = math.max(40, card_width - perk_text_left - 8)
 
 		for i = 1, WEAPON_PERK_COUNT do
+			local y_offset = -(bottom_content_height + 2 + (WEAPON_PERK_COUNT - i) * perk_line_height)
+
+			if show_weapon_perk_ranks then
+				add_weapon_perk_rank_pass(pass_template, i, {
+					offset = {
+						text_left,
+						y_offset,
+						11,
+					},
+				})
+			end
+
 			add_weapon_perk_pass(pass_template, i, {
 				base_style = base_text_style,
 				font_size = perk_font_size,
 				offset = {
-					text_left,
-					-(bottom_content_height + 2 + (WEAPON_PERK_COUNT - i) * perk_line_height),
+					perk_text_left,
+					y_offset,
 					11,
 				},
 				size = {
@@ -1306,8 +1366,9 @@ Layout.card_height = function(mod, configuration)
 
 	if setting(mod, "show_weapon_perks", false) then
 		local perk_font_size = math.max(9, math.min(16, secondary_font_size))
+		local perk_line_height = setting(mod, "show_weapon_perk_rank_symbols", false) and math.max(perk_font_size + 4, PERK_RANK_SIZE + 1) or perk_font_size + 4
 
-		bottom_region_height = bottom_region_height + WEAPON_PERK_COUNT * (perk_font_size + 4)
+		bottom_region_height = bottom_region_height + WEAPON_PERK_COUNT * perk_line_height
 	end
 
 	local optional_rows = 0

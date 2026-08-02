@@ -195,6 +195,8 @@ local function refresh_option_dependencies()
 	set_option_enabled(option_dependency_entries.expand_armoury_requisition_window, armoury_grid_enabled, armoury_reason)
 	set_option_enabled(option_dependency_entries.armoury_requisition_target_card_width, armoury_expansion_enabled, armoury_target_reason)
 	set_option_enabled(option_dependency_entries.weapon_perk_compression, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
+	set_option_enabled(option_dependency_entries.show_weapon_perk_rank_symbols, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
+	set_option_enabled(option_dependency_entries.remove_weapon_perk_plus_signs, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
 end
 
 local function bind_option_dependencies(options_templates)
@@ -220,6 +222,8 @@ local function bind_option_dependencies(options_templates)
 		"expand_armoury_requisition_window",
 		"armoury_requisition_target_card_width",
 		"weapon_perk_compression",
+		"show_weapon_perk_rank_symbols",
+		"remove_weapon_perk_plus_signs",
 	}) do
 		setting_by_title[mod:localize(setting_id)] = setting_id
 	end

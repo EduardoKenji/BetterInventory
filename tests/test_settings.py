@@ -27,6 +27,8 @@ def main() -> None:
 			armoury_requisition_target_card_width = 230,
             automatic_card_height = true,
 			show_weapon_perks = false,
+			show_weapon_perk_rank_symbols = false,
+			remove_weapon_perk_plus_signs = false,
 			expand_inventory_window = true,
 			expand_curio_inventory_window = true,
             curio_health_color_preset = "red",
@@ -196,6 +198,8 @@ def main() -> None:
 		"expand_armoury_requisition_window",
 		"armoury_requisition_target_card_width",
 		"weapon_perk_compression",
+		"show_weapon_perk_rank_symbols",
+		"remove_weapon_perk_plus_signs",
     )
     entries = [
         lua.table_from(
@@ -223,13 +227,19 @@ def main() -> None:
     assert entries_by_id["expand_curio_inventory_window"].disabled is False
     assert entries_by_id["curio_target_card_width"].disabled is False
     assert entries_by_id["weapon_perk_compression"].disabled is True
+    assert entries_by_id["show_weapon_perk_rank_symbols"].disabled is True
+    assert entries_by_id["remove_weapon_perk_plus_signs"].disabled is True
 
     settings.show_weapon_perks = True
     mod.on_setting_changed("show_weapon_perks")
     assert entries_by_id["weapon_perk_compression"].disabled is False
+    assert entries_by_id["show_weapon_perk_rank_symbols"].disabled is False
+    assert entries_by_id["remove_weapon_perk_plus_signs"].disabled is False
     settings.show_weapon_perks = False
     mod.on_setting_changed("show_weapon_perks")
     assert entries_by_id["weapon_perk_compression"].disabled is True
+    assert entries_by_id["show_weapon_perk_rank_symbols"].disabled is True
+    assert entries_by_id["remove_weapon_perk_plus_signs"].disabled is True
 
     settings.expand_armoury_requisition_window = False
     mod.on_setting_changed("expand_armoury_requisition_window")
@@ -305,6 +315,8 @@ def main() -> None:
     assert defaults["blessing_icon_spacing"] == 3
     assert defaults["show_weapon_perks"] is False
     assert defaults["weapon_perk_compression"] == "compression"
+    assert defaults["show_weapon_perk_rank_symbols"] is False
+    assert defaults["remove_weapon_perk_plus_signs"] is False
     assert defaults["show_item_level_icon"] is True
     assert defaults["curio_health_color_preset"] == "red"
     assert defaults["curio_toughness_color_preset"] == "light_blue"

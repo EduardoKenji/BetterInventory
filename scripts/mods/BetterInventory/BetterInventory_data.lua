@@ -278,6 +278,18 @@ return {
 						},
 					},
 					{
+						setting_id = "show_weapon_perk_rank_symbols",
+						tooltip = "show_weapon_perk_rank_symbols_tooltip",
+						type = "checkbox",
+						default_value = false,
+					},
+					{
+						setting_id = "remove_weapon_perk_plus_signs",
+						tooltip = "remove_weapon_perk_plus_signs_tooltip",
+						type = "checkbox",
+						default_value = false,
+					},
+					{
 						setting_id = "blessing_icon_spacing",
 						tooltip = "blessing_icon_spacing_tooltip",
 						type = "numeric",
