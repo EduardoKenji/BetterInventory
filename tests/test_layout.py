@@ -49,6 +49,7 @@ def main() -> None:
         end
 
 		TestText = {}
+		TestItems = {}
 
 		function TestText.text_width(ui_renderer, text, style, optional_size, use_max_extents)
 			return #text * style.font_size * 0.6
@@ -62,9 +63,21 @@ def main() -> None:
 			return string.sub(text, 1, maximum_characters) .. suffix
 		end
 
+		function TestItems.weapon_lore_mark_name(item)
+			return item and item.test_mark or "n/a"
+		end
+
+		function TestItems.weapon_lore_pattern_name(item)
+			return item and item.test_pattern or "n/a"
+		end
+
 		function require(path)
 			if path == "scripts/utilities/ui/text" then
 				return TestText
+			end
+
+			if path == "scripts/utilities/items" then
+				return TestItems
 			end
 
 			error("Unexpected test require: " .. tostring(path))
@@ -86,8 +99,9 @@ def main() -> None:
                 grid_spacing = 10,
                 card_height = 110,
                 icon_darkness = 25,
+				append_mark_to_name = true,
                 show_pattern_mark = true,
-                show_rarity_name = true,
+                show_rarity_name = false,
                 show_rarity_tag = true,
                 compact_favorite_marker = true,
                 item_name_font_size = 16,
@@ -107,10 +121,14 @@ def main() -> None:
         sentinel_unload = function() end
         sentinel_update = function() end
 		sentinel_init = function(parent, widget, element, callback_name, secondary_callback_name, ui_renderer)
+			widget.content.element = element
 			widget.content.display_name = element.test_display_name
+			widget.content.sub_display_name = element.test_sub_display_name
 		end
 		sentinel_update_data = function(parent, widget, element)
+			widget.content.element = element
 			widget.content.display_name = element.test_display_name
+			widget.content.sub_display_name = element.test_sub_display_name
 		end
         test_blueprint = {
             size = { 586, 110 },
@@ -216,6 +234,9 @@ def main() -> None:
     assert (icon_pass.style.size[1], icon_pass.style.size[2]) == (206, 110)
     assert tuple(icon_pass.style.color[index] for index in range(1, 5)) == (255, 191, 191, 191)
 
+    rarity_name_pass = blueprint.pass_template[5]
+    assert rarity_name_pass.visibility_function() is False
+
     name_style = blueprint.pass_template[3].style
     name_widget = lua.table_from(
         {
@@ -240,6 +261,50 @@ def main() -> None:
 
     assert name_widget.style.display_name.font_size == 16
     assert name_widget.content.display_name == "Short Name"
+
+    narrow_weapon_widget = lua.table_from(
+        {
+            "content": lua.table_from({}),
+            "style": lua.table_from(
+                {
+                    "display_name": lua.table_from(
+                        {
+                            "font_size": 16,
+                            "size": lua.table_from([72, 25]),
+                        }
+                    )
+                }
+            ),
+        }
+    )
+    narrow_weapon_element = lua.table_from(
+        {
+            "test_display_name": "Combat Blade",
+            "test_sub_display_name": "Catachan • Mk VI",
+            "item": lua.table_from(
+                {
+                    "item_type": "WEAPON_MELEE",
+                    "test_mark": "Mk VI",
+                    "test_pattern": "Catachan",
+                }
+            ),
+        }
+    )
+
+    blueprint.init(
+        None,
+        narrow_weapon_widget,
+        narrow_weapon_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        blueprint,
+    )
+
+    assert narrow_weapon_widget.content.better_inventory_full_display_name == "Combat Blade Mk VI"
+    assert narrow_weapon_widget.content.display_name.endswith(" Mk VI")
+    assert narrow_weapon_widget.content.sub_display_name == "Catachan"
 
     widget = lua.table_from(
         {

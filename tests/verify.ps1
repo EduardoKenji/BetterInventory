@@ -47,8 +47,9 @@ if ($DarktideSourcePath) {
 	$itemGridBase = Join-Path $DarktideSourcePath "scripts\ui\views\item_grid_view_base\item_grid_view_base.lua"
 	$itemBlueprints = Join-Path $DarktideSourcePath "scripts\ui\view_content_blueprints\item_blueprints.lua"
 	$iconGenerator = Join-Path $DarktideSourcePath "scripts\ui\render_target_icon_generator_base.lua"
+	$items = Join-Path $DarktideSourcePath "scripts\utilities\items.lua"
 
-	foreach ($sourceFile in @($inventoryView, $itemGridBase, $itemBlueprints, $iconGenerator)) {
+	foreach ($sourceFile in @($inventoryView, $itemGridBase, $itemBlueprints, $iconGenerator, $items)) {
 		if (-not (Test-Path -LiteralPath $sourceFile -PathType Leaf)) {
 			throw "Missing expected Darktide source file: $sourceFile"
 		}
@@ -64,6 +65,12 @@ if ($DarktideSourcePath) {
 
 	if ((Get-Content -LiteralPath $iconGenerator -Raw) -notmatch 'optional_render_context\s+and\s+optional_render_context\.size') {
 		throw "The current icon renderer no longer appears to accept a requested size."
+	}
+
+	$itemsSource = Get-Content -LiteralPath $items -Raw
+
+	if ($itemsSource -notmatch 'Items\.weapon_lore_mark_name' -or $itemsSource -notmatch 'Items\.weapon_lore_pattern_name') {
+		throw "The current weapon Mark/pattern naming APIs were not found."
 	}
 }
 

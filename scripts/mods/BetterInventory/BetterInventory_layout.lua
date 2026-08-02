@@ -1,4 +1,5 @@
 local Text = require("scripts/utilities/ui/text")
+local Items = require("scripts/utilities/items")
 
 local Layout = {}
 local MINIMUM_CARD_WIDTH = 120
@@ -114,6 +115,45 @@ local function grid_ui_renderer(parent)
 	end
 end
 
+local function valid_weapon_name_part(value)
+	return type(value) == "string" and value ~= "" and value ~= "n/a"
+end
+
+local function format_weapon_name(widget, element, append_mark_to_name)
+	local content = widget and widget.content
+
+	if not content then
+		return
+	end
+
+	content.better_inventory_display_name_base = nil
+	content.better_inventory_display_name_suffix = nil
+
+	if not append_mark_to_name then
+		return
+	end
+
+	element = element or content.element
+
+	local item = element and (element.real_item or element.item)
+	local display_name = content.display_name
+	local mark_name = item and Items.weapon_lore_mark_name(item)
+
+	if not valid_weapon_name_part(display_name) or not valid_weapon_name_part(mark_name) then
+		return
+	end
+
+	local suffix = " " .. mark_name
+
+	content.better_inventory_display_name_base = display_name
+	content.better_inventory_display_name_suffix = suffix
+	content.display_name = display_name .. suffix
+
+	local pattern_name = Items.weapon_lore_pattern_name(item)
+
+	content.sub_display_name = valid_weapon_name_part(pattern_name) and pattern_name or ""
+end
+
 local function fit_display_name(parent, widget, ui_renderer, preferred_font_size, minimum_font_size)
 	local content = widget and widget.content
 	local style = widget and widget.style and widget.style.display_name
@@ -154,6 +194,23 @@ local function fit_display_name(parent, widget, ui_renderer, preferred_font_size
 	content.better_inventory_full_display_name = display_name
 
 	if measured_width > maximum_width then
+		local base_name = content.better_inventory_display_name_base
+		local suffix = content.better_inventory_display_name_suffix
+
+		if base_name and suffix then
+			local suffix_width = Text.text_width(ui_renderer, suffix, style, measurement_size, true)
+			local maximum_base_width = maximum_width - suffix_width
+
+			if maximum_base_width > 0 then
+				local base_width = Text.text_width(ui_renderer, base_name, style, measurement_size, true)
+				local fitted_base_name = base_width > maximum_base_width and Text.crop_text_width(ui_renderer, base_name, style, maximum_base_width) or base_name
+
+				content.display_name = fitted_base_name .. suffix
+
+				return
+			end
+		end
+
 		content.display_name = Text.crop_text_width(ui_renderer, display_name, style, maximum_width)
 	end
 end
@@ -163,10 +220,12 @@ local function configure_display_name_fitting(mod, item_blueprint)
 	local original_update_data = item_blueprint.update_data
 	local preferred_font_size = setting(mod, "item_name_font_size", 16)
 	local minimum_font_size = math.max(8, math.min(20, setting(mod, "minimum_item_name_font_size", 12)))
+	local append_mark_to_name = setting(mod, "append_mark_to_name", false)
 
 	if original_init then
 		item_blueprint.init = function(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
 			original_init(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
+			format_weapon_name(widget, element, append_mark_to_name)
 			fit_display_name(parent, widget, ui_renderer, preferred_font_size, math.min(preferred_font_size, minimum_font_size))
 		end
 	end
@@ -174,6 +233,7 @@ local function configure_display_name_fitting(mod, item_blueprint)
 	if original_update_data then
 		item_blueprint.update_data = function(parent, widget, element)
 			original_update_data(parent, widget, element)
+			format_weapon_name(widget, element, append_mark_to_name)
 			fit_display_name(parent, widget, nil, preferred_font_size, math.min(preferred_font_size, minimum_font_size))
 		end
 	end
@@ -409,7 +469,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width)
 			22,
 		},
 	})
-	set_visibility(rarity_name, setting(mod, "show_rarity_name", true))
+	set_visibility(rarity_name, setting(mod, "show_rarity_name", false))
 
 	configure_text_pass(pass_by_style_id(pass_template, "item_level"), {
 		font_size = setting(mod, "expertise_font_size", 20),

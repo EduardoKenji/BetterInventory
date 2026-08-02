@@ -44,14 +44,20 @@ return {
 	card_content_group = {
 		en = "Card content",
 	},
+	append_mark_to_name = {
+		en = "Append Mark to weapon name",
+	},
+	append_mark_to_name_tooltip = {
+		en = "Formats weapon titles like 'Combat Blade Mk VI' and leaves only the weapon pattern on the secondary line. Narrow titles preserve the Mark when shortened.",
+	},
 	show_pattern_mark = {
-		en = "Show weapon pattern / mark",
+		en = "Show weapon pattern line",
 	},
 	show_pattern_mark_tooltip = {
-		en = "Keeps Darktide's current secondary weapon-card name visible, including modern pattern and mark information.",
+		en = "Shows Darktide's secondary weapon-card name. With 'Append Mark to weapon name' enabled, this line contains only the weapon pattern; otherwise it contains the pattern and Mark.",
 	},
 	show_rarity_name = {
-		en = "Show rarity name",
+		en = "Show weapon quality text",
 	},
 	show_rarity_tag = {
 		en = "Show rarity colour strip",
