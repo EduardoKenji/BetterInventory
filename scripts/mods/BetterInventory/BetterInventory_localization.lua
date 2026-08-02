@@ -248,6 +248,12 @@ return {
 	curio_secondary_stat_font_size_tooltip = {
 		en = "Font size for the three secondary Curio perk lines in the All four stats profile.",
 	},
+	curio_primary_secondary_spacing = {
+		en = "Primary-to-secondary Curio spacing",
+	},
+	curio_primary_secondary_spacing_tooltip = {
+		en = "Vertical gap in pixels between the primary Curio stat and the first of its three secondary lines in the All four stats profile.",
+	},
 	show_curio_quality = {
 		en = "Show Curio quality text",
 	},

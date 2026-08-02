@@ -226,6 +226,7 @@ def main() -> None:
 				curio_display_profile = "primary",
 				curio_primary_stat_font_size = 14,
 				curio_secondary_stat_font_size = 13,
+				curio_primary_secondary_spacing = 3,
 				show_curio_quality = false,
 				curio_stat_compression = "heavy",
 				simplify_curio_primary_stat_text = true,
@@ -411,7 +412,7 @@ def main() -> None:
     mod.settings.curio_display_profile = "detailed"
     mod.settings.curio_primary_stat_font_size = 20
     mod.settings.curio_secondary_stat_font_size = 20
-    assert layout.card_height(mod) == 119
+    assert layout.card_height(mod) == 122
     mod.settings.automatic_card_height = False
     mod.settings.card_height = 175
     assert layout.card_height(mod) == 175
@@ -426,7 +427,7 @@ def main() -> None:
     )
     assert layout.card_height(mod, store_configuration) == 114
     mod.settings.curio_display_profile = "detailed"
-    assert layout.card_height(mod, store_configuration) == 126
+    assert layout.card_height(mod, store_configuration) == 129
     mod.settings.curio_display_profile = "primary"
 
     mod.settings.show_weapon_perks = True
@@ -608,7 +609,7 @@ def main() -> None:
     vendor_curio_size = layout.configure_item_blueprint(
         mod, vendor_curio_blueprint, 596, store_configuration
     )
-    assert (vendor_curio_size[1], vendor_curio_size[2]) == (192, 126)
+    assert (vendor_curio_size[1], vendor_curio_size[2]) == (192, 129)
     first_vendor_curio_line = blueprint_pass(
         vendor_curio_blueprint, "better_inventory_curio_stat_1"
     ).style
@@ -620,19 +621,20 @@ def main() -> None:
     ).style
     assert first_vendor_curio_line.font_size == 14
     assert second_vendor_curio_line.font_size == 13
-    assert second_vendor_curio_line.offset[2] == 26
-    assert fourth_vendor_curio_line.offset[2] + fourth_vendor_curio_line.size[2] == 80
+    assert second_vendor_curio_line.offset[2] == 29
+    assert fourth_vendor_curio_line.offset[2] + fourth_vendor_curio_line.size[2] == 83
     assert fourth_vendor_curio_line.offset[2] + fourth_vendor_curio_line.size[2] < (
         vendor_curio_size[2] - 34
     )
 
     mod.settings.curio_primary_stat_font_size = 18
     mod.settings.curio_secondary_stat_font_size = 10
+    mod.settings.curio_primary_secondary_spacing = 9
     custom_curio_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     custom_curio_size = layout.configure_item_blueprint(
         mod, custom_curio_blueprint, 596, store_configuration
     )
-    assert (custom_curio_size[1], custom_curio_size[2]) == (192, 121)
+    assert (custom_curio_size[1], custom_curio_size[2]) == (192, 130)
     assert (
         blueprint_pass(
             custom_curio_blueprint, "better_inventory_curio_stat_1"
@@ -645,8 +647,15 @@ def main() -> None:
         ).style.font_size
         == 10
     )
+    assert (
+        blueprint_pass(
+            custom_curio_blueprint, "better_inventory_curio_stat_2"
+        ).style.offset[2]
+        == 39
+    )
     mod.settings.curio_primary_stat_font_size = 14
     mod.settings.curio_secondary_stat_font_size = 13
+    mod.settings.curio_primary_secondary_spacing = 3
     mod.settings.curio_display_profile = "primary"
     mod.settings.columns = 3
 

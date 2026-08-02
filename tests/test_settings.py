@@ -202,6 +202,7 @@ def main() -> None:
 		"show_weapon_perk_rank_symbols",
 		"remove_weapon_perk_plus_signs",
 		"curio_secondary_stat_font_size",
+		"curio_primary_secondary_spacing",
     )
     entries = [
         lua.table_from(
@@ -232,13 +233,16 @@ def main() -> None:
     assert entries_by_id["show_weapon_perk_rank_symbols"].disabled is True
     assert entries_by_id["remove_weapon_perk_plus_signs"].disabled is True
     assert entries_by_id["curio_secondary_stat_font_size"].disabled is True
+    assert entries_by_id["curio_primary_secondary_spacing"].disabled is True
 
     settings.curio_display_profile = "detailed"
     mod.on_setting_changed("curio_display_profile")
     assert entries_by_id["curio_secondary_stat_font_size"].disabled is False
+    assert entries_by_id["curio_primary_secondary_spacing"].disabled is False
     settings.curio_display_profile = "primary"
     mod.on_setting_changed("curio_display_profile")
     assert entries_by_id["curio_secondary_stat_font_size"].disabled is True
+    assert entries_by_id["curio_primary_secondary_spacing"].disabled is True
 
     settings.show_weapon_perks = True
     mod.on_setting_changed("show_weapon_perks")
@@ -329,6 +333,7 @@ def main() -> None:
     assert defaults["remove_weapon_perk_plus_signs"] is False
     assert defaults["curio_primary_stat_font_size"] == 14
     assert defaults["curio_secondary_stat_font_size"] == 13
+    assert defaults["curio_primary_secondary_spacing"] == 3
     assert defaults["show_item_level_icon"] is True
     assert defaults["curio_health_color_preset"] == "red"
     assert defaults["curio_toughness_color_preset"] == "light_blue"

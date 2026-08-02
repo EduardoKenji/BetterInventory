@@ -309,6 +309,10 @@ local function curio_secondary_font_size(mod)
 	return math.max(9, math.min(20, setting(mod, "curio_secondary_stat_font_size", 13)))
 end
 
+local function curio_primary_secondary_spacing(mod)
+	return math.max(0, math.min(20, setting(mod, "curio_primary_secondary_spacing", 3)))
+end
+
 local function item_from_element(element)
 	return element and (element.real_item or element.item)
 end
@@ -873,9 +877,14 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 	if detailed_curio_profile then
 		local primary_font_size = curio_primary_font_size(mod)
 		local secondary_font_size = curio_secondary_font_size(mod)
+		local primary_secondary_spacing = curio_primary_secondary_spacing(mod)
 		local y_offset = 7
 
 		for i = 1, 4 do
+			if i == 2 then
+				y_offset = y_offset + primary_secondary_spacing
+			end
+
 			local font_size = i == 1 and primary_font_size or secondary_font_size
 			local line_height = font_size + 5
 			local reserved_right = i <= 2 and 40 or 8
@@ -1400,8 +1409,9 @@ Layout.card_height = function(mod, configuration)
 	if setting(mod, "curio_display_profile", "primary") == "detailed" then
 		local primary_line_height = curio_primary_font_size(mod) + 5
 		local secondary_line_height = curio_secondary_font_size(mod) + 5
+		local primary_secondary_spacing = curio_primary_secondary_spacing(mod)
 
-		required_height = math.max(required_height, 7 + primary_line_height + 3 * secondary_line_height + 12 + store_footer_height)
+		required_height = math.max(required_height, 7 + primary_line_height + primary_secondary_spacing + 3 * secondary_line_height + 12 + store_footer_height)
 	else
 		local primary_line_height = math.max(20, curio_primary_font_size(mod) + 5)
 		local quality_row_height = setting(mod, "show_curio_quality", false) and secondary_row_height or 0

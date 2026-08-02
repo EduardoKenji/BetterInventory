@@ -406,6 +406,16 @@ return {
 						},
 					},
 					{
+						setting_id = "curio_primary_secondary_spacing",
+						tooltip = "curio_primary_secondary_spacing_tooltip",
+						type = "numeric",
+						default_value = 3,
+						range = {
+							0,
+							20,
+						},
+					},
+					{
 						setting_id = "show_curio_quality",
 						tooltip = "show_curio_quality_tooltip",
 						type = "checkbox",
