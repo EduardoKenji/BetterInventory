@@ -29,6 +29,7 @@ It currently covers the character melee, ranged and Curio inventory and provides
 
 - A chain-safe `InventoryWeaponsView.present_grid_layout` hook that continues through the full DMF chain, plus a narrowly gated grid hook that transforms the final item blueprint.
 - Two to five responsive columns calculated from the current grid width.
+- Automatic inventory-window expansion when the requested columns would otherwise force cards outside the visible content area; this can be disabled to shrink cards instead.
 - Configurable card height, spacing and icon darkness.
 - Independent melee, ranged and Curio enable switches.
 - Current weapon pattern/mark, rarity, expertise, favorite and equipped state preservation.

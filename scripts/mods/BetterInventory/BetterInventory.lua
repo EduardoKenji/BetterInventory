@@ -1,9 +1,45 @@
 local mod = get_mod("BetterInventory")
 
+local ItemGridViewBase = require("scripts/ui/views/item_grid_view_base/item_grid_view_base")
 local InventoryWeaponsView = require("scripts/ui/views/inventory_weapons_view/inventory_weapons_view")
 local ViewElementGrid = require("scripts/ui/view_elements/view_element_grid/view_element_grid")
 local Layout = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout")
 local active_inventory_view
+
+mod:hook(ItemGridViewBase, "init", function(func, view, definitions, settings, context)
+	if view.__class_name ~= "InventoryWeaponsView" or not Layout.is_enabled_for_view(mod, view) then
+		return func(view, definitions, settings, context)
+	end
+
+	local adjusted_definitions, expansion = Layout.expanded_view_definitions(mod, definitions)
+
+	view._better_inventory_grid_expansion = expansion
+
+	return func(view, adjusted_definitions, settings, context)
+end)
+
+mod:hook(InventoryWeaponsView, "_setup_item_grid_materials", function(func, view, ...)
+	func(view, ...)
+
+	local expansion = view._better_inventory_grid_expansion or 0
+
+	if expansion <= 0 then
+		return
+	end
+
+	for _, widget_name in ipairs({
+		"grid_divider_top",
+		"grid_divider_bottom",
+	}) do
+		local widget = view:_grid_widget_by_name(widget_name)
+		local texture_style = widget and widget.style and widget.style.texture
+		local texture_size = texture_style and texture_style.size
+
+		if texture_size and texture_size[1] then
+			texture_size[1] = texture_size[1] + expansion
+		end
+	end
+end)
 
 mod:hook(InventoryWeaponsView, "present_grid_layout", function(func, view, layout, on_present_callback)
 	if not Layout.is_enabled_for_view(mod, view) then

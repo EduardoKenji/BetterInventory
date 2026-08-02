@@ -82,6 +82,7 @@ def main() -> None:
         test_mod = {
             settings = {
                 columns = 3,
+				expand_inventory_window = true,
                 grid_spacing = 10,
                 card_height = 110,
                 icon_darkness = 25,
@@ -151,6 +152,54 @@ def main() -> None:
 
     item_size = layout.item_size(mod, 640)
     assert (item_size[1], item_size[2]) == (206, 110)
+
+    assert layout.grid_expansion(mod, 596) == 0
+
+    mod.settings.columns = 5
+    assert layout.grid_expansion(mod, 596) == 44
+
+    view_definitions = lua.table_from(
+        {
+            "grid_settings": lua.table_from(
+                {
+                    "grid_size": lua.table_from([596, 860]),
+                    "mask_size": lua.table_from([680, 860]),
+                }
+            ),
+            "scenegraph_definition": lua.table_from(
+                {
+                    "weapon_stats_pivot": lua.table_from(
+                        {"position": lua.table_from([-1140, 60, 3])}
+                    ),
+                    "weapon_actions_pivot": lua.table_from(
+                        {"position": lua.table_from([-560, 40, 3])}
+                    ),
+                    "equip_button": lua.table_from(
+                        {"position": lua.table_from([857, -90, 1])}
+                    ),
+                }
+            ),
+        }
+    )
+    expanded_definitions, expansion = layout.expanded_view_definitions(
+        mod, view_definitions
+    )
+
+    assert expansion == 44
+    assert view_definitions.grid_settings.grid_size[1] == 596
+    assert expanded_definitions.grid_settings.grid_size[1] == 640
+    assert expanded_definitions.grid_settings.mask_size[1] == 724
+    assert expanded_definitions.scenegraph_definition.weapon_stats_pivot.position[1] == -1096
+    assert expanded_definitions.scenegraph_definition.weapon_actions_pivot.position[1] == -516
+    assert expanded_definitions.scenegraph_definition.equip_button.position[1] == 901
+    assert tuple(layout.item_size(mod, 640)[index] for index in (1, 2)) == (120, 110)
+
+    mod.settings.expand_inventory_window = False
+    assert layout.grid_expansion(mod, 596) == 0
+    assert tuple(layout.item_size(mod, 596)[index] for index in (1, 2)) == (111, 110)
+
+    mod.settings.columns = 3
+    mod.settings.expand_inventory_window = True
 
     assert layout.is_enabled_for_view(mod, lua.table_from({"_selected_slot": lua.table_from({"name": "slot_primary"})}))
     assert not layout.is_enabled_for_view(mod, lua.table_from({"_selected_slot": lua.table_from({"name": "slot_secondary"})}))

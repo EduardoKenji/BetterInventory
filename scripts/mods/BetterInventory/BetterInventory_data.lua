@@ -43,6 +43,12 @@ return {
 						},
 					},
 					{
+						setting_id = "expand_inventory_window",
+						tooltip = "expand_inventory_window_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
 						setting_id = "grid_spacing",
 						type = "numeric",
 						default_value = 10,

@@ -26,6 +26,12 @@ return {
 	columns_tooltip = {
 		en = "Number of item cards per inventory row. Three is the recommended starting point.",
 	},
+	expand_inventory_window = {
+		en = "Expand inventory window when needed",
+	},
+	expand_inventory_window_tooltip = {
+		en = "Widens the inventory panel enough to keep narrow cards inside it. This normally affects five-column layouts, or four columns with very large spacing. Disable this to shrink the cards instead.",
+	},
 	grid_spacing = {
 		en = "Card spacing",
 	},

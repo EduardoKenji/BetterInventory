@@ -1,6 +1,7 @@
 local Text = require("scripts/utilities/ui/text")
 
 local Layout = {}
+local MINIMUM_CARD_WIDTH = 120
 
 local SLOT_SETTING_BY_NAME = {
 	slot_primary = "enable_melee_inventory",
@@ -203,6 +204,64 @@ Layout.is_enabled_for_view = function(mod, view)
 	return setting_id and setting(mod, setting_id, true) or false
 end
 
+Layout.grid_expansion = function(mod, current_grid_width)
+	if not setting(mod, "expand_inventory_window", true) then
+		return 0
+	end
+
+	local columns = math.floor(math.max(2, math.min(5, setting(mod, "columns", 3))))
+	local spacing = math.max(0, math.min(40, setting(mod, "grid_spacing", 10)))
+	local required_grid_width = MINIMUM_CARD_WIDTH * columns + spacing * (columns - 1)
+
+	return math.max(0, required_grid_width - current_grid_width)
+end
+
+Layout.expanded_view_definitions = function(mod, definitions)
+	local grid_settings = definitions and definitions.grid_settings
+	local grid_size = grid_settings and grid_settings.grid_size
+	local current_grid_width = grid_size and grid_size[1]
+
+	if not current_grid_width then
+		return definitions, 0
+	end
+
+	local expansion = Layout.grid_expansion(mod, current_grid_width)
+
+	if expansion <= 0 then
+		return definitions, 0
+	end
+
+	local adjusted_definitions = table.clone(definitions)
+	local adjusted_grid_settings = adjusted_definitions.grid_settings
+
+	adjusted_grid_settings.grid_size[1] = adjusted_grid_settings.grid_size[1] + expansion
+
+	if adjusted_grid_settings.mask_size and adjusted_grid_settings.mask_size[1] then
+		adjusted_grid_settings.mask_size[1] = adjusted_grid_settings.mask_size[1] + expansion
+	end
+
+	local scenegraph = adjusted_definitions.scenegraph_definition
+
+	if scenegraph then
+		for _, scenegraph_id in ipairs({
+			"weapon_stats_pivot",
+			"weapon_compare_stats_pivot",
+			"weapon_actions_pivot",
+			"equip_button",
+			"weapon_discard_pivot",
+		}) do
+			local node = scenegraph[scenegraph_id]
+			local position = node and node.position
+
+			if position and position[1] then
+				position[1] = position[1] + expansion
+			end
+		end
+	end
+
+	return adjusted_definitions, expansion
+end
+
 Layout.item_size = function(mod, grid_width)
 	local columns = math.floor(math.max(2, math.min(5, setting(mod, "columns", 3))))
 	local spacing = math.max(0, math.min(40, setting(mod, "grid_spacing", 10)))
@@ -210,7 +269,7 @@ Layout.item_size = function(mod, grid_width)
 	local width = math.floor((grid_width - spacing * (columns - 1)) / columns)
 
 	return {
-		math.max(120, width),
+		math.max(60, width),
 		height,
 	}
 end
