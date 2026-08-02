@@ -129,7 +129,6 @@ local COMPACT_CURIO_LABELS = {
 	},
 	gadget_mission_reward_gear_instead_of_weapon_increase = {
 		localization_id = "curio_reward_chance",
-		strip_leading_plus = true,
 		required_terms = {
 			"Curio as Mission Reward",
 		},
@@ -250,10 +249,6 @@ local function compact_curio_description(mod, data, compression_mode)
 		return description
 	end
 
-	if definition.strip_leading_plus then
-		amount = string.gsub(amount, "^%+", "")
-	end
-
 	local localization_id
 
 	if compression_mode == "heavy" then
@@ -267,6 +262,16 @@ local function compact_curio_description(mod, data, compression_mode)
 	end
 
 	return string.format("%s %s", amount, mod:localize(localization_id))
+end
+
+local function curio_plus_sign_description(description, remove_plus_sign)
+	if not remove_plus_sign or type(description) ~= "string" then
+		return description or ""
+	end
+
+	local stripped_description = string.gsub(description, "^(%s*)%+", "%1", 1)
+
+	return stripped_description
 end
 
 local function simplified_curio_primary_description(data, enabled)
@@ -404,11 +409,15 @@ local function populate_card_content(mod, widget, element, show_weapon_blessings
 		return
 	end
 
+	local remove_plus_sign = setting(mod, "remove_curio_stat_plus_signs", false)
+
 	local primary_entry = item.traits and item.traits[1]
 	local primary_data = resolved_trait_data(primary_entry, false)
 
 	if primary_data then
-		content.better_inventory_curio_stat_1 = simplified_curio_primary_description(primary_data, simplify_curio_primary)
+		local primary_description = simplified_curio_primary_description(primary_data, simplify_curio_primary)
+
+		content.better_inventory_curio_stat_1 = curio_plus_sign_description(primary_description, remove_plus_sign)
 		content.better_inventory_curio_primary_color = curio_primary_color(mod, primary_data.id)
 	end
 
@@ -418,7 +427,9 @@ local function populate_card_content(mod, widget, element, show_weapon_blessings
 		local perk_data = resolved_trait_data(perks[i], false)
 
 		if perk_data then
-			content["better_inventory_curio_stat_" .. (i + 1)] = compact_curio_description(mod, perk_data, compression_mode)
+			local perk_description = compact_curio_description(mod, perk_data, compression_mode)
+
+			content["better_inventory_curio_stat_" .. (i + 1)] = curio_plus_sign_description(perk_description, remove_plus_sign)
 		end
 	end
 end

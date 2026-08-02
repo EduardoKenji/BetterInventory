@@ -185,6 +185,12 @@ return {
 	simplify_curio_primary_stat_text_tooltip = {
 		en = "Removes redundant wording from supported primary lines: Max Health becomes Health, Max Stamina becomes Stamina, and Wound(s) becomes Wound.",
 	},
+	remove_curio_stat_plus_signs = {
+		en = "Remove + from Curio stat lines",
+	},
+	remove_curio_stat_plus_signs_tooltip = {
+		en = "Removes the leading + sign from every stat line on BetterInventory Curio cards. Disabled by default.",
+	},
 	curio_health_color_group = {
 		en = "Max Health line colour",
 	},

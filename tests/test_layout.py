@@ -177,6 +177,7 @@ def main() -> None:
 				show_curio_quality = false,
 				curio_stat_compression = "heavy",
 				simplify_curio_primary_stat_text = true,
+				remove_curio_stat_plus_signs = false,
 				curio_health_color_r = 235,
 				curio_health_color_g = 85,
 				curio_health_color_b = 85,
@@ -595,6 +596,15 @@ def main() -> None:
     assert curio_widget.content.better_inventory_curio_stat_2 == "+12% Stamina Regen"
     assert curio_stat_pass.visibility_function(curio_widget.content)
 
+    mod.settings.remove_curio_stat_plus_signs = True
+    blueprint.update_data(test_grid, curio_widget, curio_element)
+    assert curio_widget.content.better_inventory_curio_stat_1 == "19% Health"
+    assert curio_widget.content.better_inventory_curio_stat_2 == "12% Stamina Regen"
+    mod.settings.remove_curio_stat_plus_signs = False
+    blueprint.update_data(test_grid, curio_widget, curio_element)
+    assert curio_widget.content.better_inventory_curio_stat_1 == "+19% Health"
+    assert curio_widget.content.better_inventory_curio_stat_2 == "+12% Stamina Regen"
+
     curio_stat_pass.change_function(curio_widget.content, curio_stat_pass.style)
     assert tuple(curio_stat_pass.style.text_color[index] for index in range(1, 5)) == (
         255,
@@ -734,7 +744,7 @@ def main() -> None:
         "content/items/perks/test_block_efficiency": "+12% Block",
         "content/items/perks/test_sprint_efficiency": "+15% Sprint",
         "content/items/perks/test_stamina_regeneration": "+12% Stamina Regen",
-        "content/items/perks/test_curio_reward": "15% Curio as Reward",
+        "content/items/perks/test_curio_reward": "+15% Curio as Reward",
         "content/items/perks/test_ordo_dockets": "+8% Ordo Dockets",
         "content/items/perks/test_revive_speed": "+10% Revive Speed",
     }

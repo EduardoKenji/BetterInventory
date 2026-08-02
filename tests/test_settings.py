@@ -218,6 +218,7 @@ def main() -> None:
     assert defaults["curio_target_card_width"] == 190
     assert defaults["curio_stat_compression"] == "heavy"
     assert defaults["simplify_curio_primary_stat_text"] is True
+    assert defaults["remove_curio_stat_plus_signs"] is False
     assert defaults["blessing_icon_spacing"] == 3
     assert defaults["curio_health_color_preset"] == "red"
     assert defaults["curio_toughness_color_preset"] == "light_blue"

@@ -339,6 +339,12 @@ return {
 						type = "checkbox",
 						default_value = true,
 					},
+					{
+						setting_id = "remove_curio_stat_plus_signs",
+						tooltip = "remove_curio_stat_plus_signs_tooltip",
+						type = "checkbox",
+						default_value = false,
+					},
 					curio_color_group("curio_health_color_group", "curio_health_color", "red", 235, 85, 85),
 					curio_color_group("curio_toughness_color_group", "curio_toughness_color", "light_blue", 105, 200, 235),
 					curio_color_group("curio_wound_color_group", "curio_wound_color", "purple", 190, 105, 230),
