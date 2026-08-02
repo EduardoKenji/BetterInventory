@@ -224,6 +224,8 @@ def main() -> None:
                 compact_favorite_marker = true,
 				favorite_marker_position = "above_rating",
 				curio_display_profile = "primary",
+				curio_primary_stat_font_size = 14,
+				curio_secondary_stat_font_size = 13,
 				show_curio_quality = false,
 				curio_stat_compression = "heavy",
 				simplify_curio_primary_stat_text = true,
@@ -407,7 +409,8 @@ def main() -> None:
     assert layout.card_height(mod) == 110
 
     mod.settings.curio_display_profile = "detailed"
-    mod.settings.secondary_text_font_size = 20
+    mod.settings.curio_primary_stat_font_size = 20
+    mod.settings.curio_secondary_stat_font_size = 20
     assert layout.card_height(mod) == 119
     mod.settings.automatic_card_height = False
     mod.settings.card_height = 175
@@ -415,14 +418,15 @@ def main() -> None:
     mod.settings.automatic_card_height = True
     mod.settings.card_height = 110
     mod.settings.curio_display_profile = "primary"
-    mod.settings.secondary_text_font_size = 13
+    mod.settings.curio_primary_stat_font_size = 14
+    mod.settings.curio_secondary_stat_font_size = 13
 
     store_configuration = lua.table_from(
         {"maximum_columns": 3, "store_item": True}
     )
     assert layout.card_height(mod, store_configuration) == 114
     mod.settings.curio_display_profile = "detailed"
-    assert layout.card_height(mod, store_configuration) == 125
+    assert layout.card_height(mod, store_configuration) == 126
     mod.settings.curio_display_profile = "primary"
 
     mod.settings.show_weapon_perks = True
@@ -604,14 +608,45 @@ def main() -> None:
     vendor_curio_size = layout.configure_item_blueprint(
         mod, vendor_curio_blueprint, 596, store_configuration
     )
-    assert (vendor_curio_size[1], vendor_curio_size[2]) == (192, 125)
+    assert (vendor_curio_size[1], vendor_curio_size[2]) == (192, 126)
+    first_vendor_curio_line = blueprint_pass(
+        vendor_curio_blueprint, "better_inventory_curio_stat_1"
+    ).style
+    second_vendor_curio_line = blueprint_pass(
+        vendor_curio_blueprint, "better_inventory_curio_stat_2"
+    ).style
     fourth_vendor_curio_line = blueprint_pass(
         vendor_curio_blueprint, "better_inventory_curio_stat_4"
     ).style
-    assert fourth_vendor_curio_line.offset[2] + fourth_vendor_curio_line.size[2] == 79
+    assert first_vendor_curio_line.font_size == 14
+    assert second_vendor_curio_line.font_size == 13
+    assert second_vendor_curio_line.offset[2] == 26
+    assert fourth_vendor_curio_line.offset[2] + fourth_vendor_curio_line.size[2] == 80
     assert fourth_vendor_curio_line.offset[2] + fourth_vendor_curio_line.size[2] < (
         vendor_curio_size[2] - 34
     )
+
+    mod.settings.curio_primary_stat_font_size = 18
+    mod.settings.curio_secondary_stat_font_size = 10
+    custom_curio_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    custom_curio_size = layout.configure_item_blueprint(
+        mod, custom_curio_blueprint, 596, store_configuration
+    )
+    assert (custom_curio_size[1], custom_curio_size[2]) == (192, 121)
+    assert (
+        blueprint_pass(
+            custom_curio_blueprint, "better_inventory_curio_stat_1"
+        ).style.font_size
+        == 18
+    )
+    assert (
+        blueprint_pass(
+            custom_curio_blueprint, "better_inventory_curio_stat_2"
+        ).style.font_size
+        == 10
+    )
+    mod.settings.curio_primary_stat_font_size = 14
+    mod.settings.curio_secondary_stat_font_size = 13
     mod.settings.curio_display_profile = "primary"
     mod.settings.columns = 3
 
@@ -621,7 +656,10 @@ def main() -> None:
     native_size = layout.configure_item_blueprint(mod, native_blueprint, 596)
     assert (native_size[1], native_size[2]) == (586, 110)
     assert blueprint_pass(native_blueprint, "icon").style.size is None
-    assert blueprint_pass(native_blueprint, "better_inventory_curio_stat_1")
+    assert (
+        blueprint_pass(native_blueprint, "better_inventory_curio_stat_1").style.font_size
+        == 14
+    )
     native_grid = lua.table_from(
         {"_menu_settings": lua.table_from({"grid_spacing": lua.table_from([4, 4])})}
     )

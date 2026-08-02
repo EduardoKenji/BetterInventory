@@ -386,6 +386,26 @@ return {
 						},
 					},
 					{
+						setting_id = "curio_primary_stat_font_size",
+						tooltip = "curio_primary_stat_font_size_tooltip",
+						type = "numeric",
+						default_value = 14,
+						range = {
+							9,
+							20,
+						},
+					},
+					{
+						setting_id = "curio_secondary_stat_font_size",
+						tooltip = "curio_secondary_stat_font_size_tooltip",
+						type = "numeric",
+						default_value = 13,
+						range = {
+							9,
+							20,
+						},
+					},
+					{
 						setting_id = "show_curio_quality",
 						tooltip = "show_curio_quality_tooltip",
 						type = "checkbox",

@@ -113,6 +113,9 @@ return {
 	option_requires_weapon_perks = {
 		en = "Enable weapon perk text to use this option.",
 	},
+	option_requires_detailed_curio_profile = {
+		en = "Select the All four stats Curio profile to use this option.",
+	},
 	icon_darkness = {
 		en = "Icon darkness (%%)",
 	},
@@ -232,6 +235,18 @@ return {
 	},
 	curio_display_profile_detailed = {
 		en = "All four stats",
+	},
+	curio_primary_stat_font_size = {
+		en = "Primary Curio stat font size",
+	},
+	curio_primary_stat_font_size_tooltip = {
+		en = "Font size for the Curio's innate Health, Toughness, Wound or Stamina line in both display profiles.",
+	},
+	curio_secondary_stat_font_size = {
+		en = "Secondary Curio stat font size",
+	},
+	curio_secondary_stat_font_size_tooltip = {
+		en = "Font size for the three secondary Curio perk lines in the All four stats profile.",
 	},
 	show_curio_quality = {
 		en = "Show Curio quality text",

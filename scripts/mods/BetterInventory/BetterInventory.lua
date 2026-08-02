@@ -189,6 +189,7 @@ local function refresh_option_dependencies()
 	local armoury_reason = grid_enabled and mod:localize("option_requires_armoury_grid") or native_reason
 	local armoury_target_reason = armoury_grid_enabled and mod:localize("option_requires_armoury_expansion") or armoury_reason
 	local weapon_perks_enabled = mod:get("show_weapon_perks") == true
+	local detailed_curio_profile = mod:get("curio_display_profile") == "detailed"
 
 	set_option_enabled(option_dependency_entries.expand_curio_inventory_window, window_expansion_enabled, expansion_reason)
 	set_option_enabled(option_dependency_entries.curio_target_card_width, curio_expansion_enabled, curio_target_reason)
@@ -197,6 +198,7 @@ local function refresh_option_dependencies()
 	set_option_enabled(option_dependency_entries.weapon_perk_compression, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
 	set_option_enabled(option_dependency_entries.show_weapon_perk_rank_symbols, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
 	set_option_enabled(option_dependency_entries.remove_weapon_perk_plus_signs, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
+	set_option_enabled(option_dependency_entries.curio_secondary_stat_font_size, detailed_curio_profile, mod:localize("option_requires_detailed_curio_profile"))
 end
 
 local function bind_option_dependencies(options_templates)
@@ -224,6 +226,7 @@ local function bind_option_dependencies(options_templates)
 		"weapon_perk_compression",
 		"show_weapon_perk_rank_symbols",
 		"remove_weapon_perk_plus_signs",
+		"curio_secondary_stat_font_size",
 	}) do
 		setting_by_title[mod:localize(setting_id)] = setting_id
 	end
@@ -295,7 +298,7 @@ function mod.on_setting_changed(setting_id)
 		end
 	end
 
-	if setting_id == "enable_grid_layout" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_armoury_requisition_grid" or setting_id == "expand_armoury_requisition_window" or setting_id == "show_weapon_perks" then
+	if setting_id == "enable_grid_layout" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_armoury_requisition_grid" or setting_id == "expand_armoury_requisition_window" or setting_id == "show_weapon_perks" or setting_id == "curio_display_profile" then
 		refresh_option_dependencies()
 	end
 end
