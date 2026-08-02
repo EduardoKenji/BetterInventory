@@ -104,6 +104,14 @@ def main() -> None:
     mod = globals_.test_mod
     settings = globals_.settings
 
+    mod.on_enabled()
+    assert settings.curio_stat_compression == "heavy"
+
+    settings._curio_heavy_default_v1_migrated = False
+    settings.curio_stat_compression = "none"
+    mod.on_enabled()
+    assert settings.curio_stat_compression == "none"
+
     settings.curio_health_color_preset = "light_blue"
     mod.on_setting_changed("curio_health_color_preset")
     assert (
@@ -208,7 +216,7 @@ def main() -> None:
     assert defaults["automatic_card_height"] is True
     assert defaults["expand_curio_inventory_window"] is True
     assert defaults["curio_target_card_width"] == 190
-    assert defaults["curio_stat_compression"] == "compression"
+    assert defaults["curio_stat_compression"] == "heavy"
     assert defaults["simplify_curio_primary_stat_text"] is True
     assert defaults["blessing_icon_spacing"] == 3
     assert defaults["curio_health_color_preset"] == "red"

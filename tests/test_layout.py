@@ -56,11 +56,14 @@ def main() -> None:
 			gadget_innate_toughness_increase = "+16% Toughness",
 			gadget_innate_max_wounds_increase = "+1 Wound(s)",
 			gadget_stamina_increase = "+2 Max Stamina",
+			gadget_cooldown_reduction = "+4% Combat Ability Regeneration",
 			gadget_stamina_regeneration = "+12% Stamina Regeneration",
-			gadget_sprint_efficiency = "+15% Sprint Efficiency",
+			gadget_sprint_cost_reduction = "+15% Sprint Efficiency",
+			gadget_block_cost_reduction = "+12% Block Efficiency",
+			gadget_corruption_resistance = "+15% Corruption Resistance",
 			gadget_flame_resistance = "+20% Bomber Resistance",
 			gadget_damage_reduction_vs_gunners = "+20% Damage Resistance (Gunners)",
-			gadget_permanent_damage_resistance = "+15% Corruption Resistance (Grimoires)",
+			gadget_permanent_damage_resistance = "+20% Corruption Resistance (Grimoires)",
 			gadget_mission_reward_gear_instead_of_weapon_increase = "+15% chance of Curio as Mission Reward (instead of Weapon)",
 			gadget_toughness_regen_delay = "+30% Toughness Regeneration Speed",
 			gadget_mission_credits_increase = "+8% Ordo Dockets (Mission Rewards)",
@@ -71,8 +74,11 @@ def main() -> None:
 			["content/items/traits/test_toughness"] = "gadget_innate_toughness_increase",
 			["content/items/traits/test_wounds"] = "gadget_innate_max_wounds_increase",
 			["content/items/traits/test_stamina"] = "gadget_stamina_increase",
+			["content/items/perks/test_ability_regen"] = "gadget_cooldown_reduction",
 			["content/items/perks/test_stamina_regeneration"] = "gadget_stamina_regeneration",
-			["content/items/perks/test_sprint_efficiency"] = "gadget_sprint_efficiency",
+			["content/items/perks/test_sprint_efficiency"] = "gadget_sprint_cost_reduction",
+			["content/items/perks/test_block_efficiency"] = "gadget_block_cost_reduction",
+			["content/items/perks/test_corruption_resistance"] = "gadget_corruption_resistance",
 			["content/items/perks/test_gunners"] = "gadget_damage_reduction_vs_gunners",
 			["content/items/perks/test_grimoires"] = "gadget_permanent_damage_resistance",
 			["content/items/perks/test_curio_reward"] = "gadget_mission_reward_gear_instead_of_weapon_increase",
@@ -169,7 +175,7 @@ def main() -> None:
 				favorite_marker_position = "above_rating",
 				curio_display_profile = "primary",
 				show_curio_quality = false,
-				curio_stat_compression = "compression",
+				curio_stat_compression = "heavy",
 				simplify_curio_primary_stat_text = true,
 				curio_health_color_r = 235,
 				curio_health_color_g = 85,
@@ -206,6 +212,13 @@ def main() -> None:
 				curio_ordo_dockets = "Ordo Dockets",
 				curio_revive_speed = "Revive Speed",
 				curio_dr_gunners = "Gunners DR",
+				curio_dr_grimoires = "Grim Corruption DR",
+				curio_heavy_ability_regen = "Ability Regen",
+				curio_heavy_toughness_regen = "Tough Regen",
+				curio_heavy_corruption_dr = "Corruption DR",
+				curio_heavy_block = "Block",
+				curio_heavy_sprint = "Sprint",
+				curio_heavy_stamina_regen = "Stamina Regen",
 			}
 
 			return values[localization_id] or localization_id
@@ -579,7 +592,7 @@ def main() -> None:
     )
 
     assert curio_widget.content.better_inventory_curio_stat_1 == "+19% Health"
-    assert curio_widget.content.better_inventory_curio_stat_2 == "+12% Stamina Regeneration"
+    assert curio_widget.content.better_inventory_curio_stat_2 == "+12% Stamina Regen"
     assert curio_stat_pass.visibility_function(curio_widget.content)
 
     curio_stat_pass.change_function(curio_widget.content, curio_stat_pass.style)
@@ -710,18 +723,23 @@ def main() -> None:
 
     assert (
         detailed_widget.content.better_inventory_full_curio_stat_4
-        == "+20% Gunners Resistance"
+        == "+20% Gunners DR"
     )
 
-    compact_perk_expectations = {
-        "content/items/perks/test_grimoires": "+15% Grimoire Resistance",
+    heavy_perk_expectations = {
+        "content/items/perks/test_ability_regen": "+4% Ability Regen",
+        "content/items/perks/test_toughness_regen": "+30% Tough Regen",
+        "content/items/perks/test_corruption_resistance": "+15% Corruption DR",
+        "content/items/perks/test_grimoires": "+20% Grim Corruption DR",
+        "content/items/perks/test_block_efficiency": "+12% Block",
+        "content/items/perks/test_sprint_efficiency": "+15% Sprint",
+        "content/items/perks/test_stamina_regeneration": "+12% Stamina Regen",
         "content/items/perks/test_curio_reward": "15% Curio as Reward",
-        "content/items/perks/test_toughness_regen": "+30% Toughness Regen",
         "content/items/perks/test_ordo_dockets": "+8% Ordo Dockets",
         "content/items/perks/test_revive_speed": "+10% Revive Speed",
     }
 
-    for trait_id, expected_text in compact_perk_expectations.items():
+    for trait_id, expected_text in heavy_perk_expectations.items():
         curio_element.item.perks[3].id = trait_id
         detailed_blueprint.update_data(test_grid, detailed_widget, curio_element)
         actual_text = detailed_widget.content.better_inventory_full_curio_stat_4
@@ -730,29 +748,32 @@ def main() -> None:
     curio_element.item.perks[3].id = "content/items/perks/test_gunners"
     detailed_blueprint.update_data(test_grid, detailed_widget, curio_element)
 
-    mod.settings.curio_stat_compression = "heavy"
-    heavy_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
-    layout.configure_item_blueprint(mod, heavy_blueprint, 640)
-    heavy_styles = {
-        "display_name": blueprint_pass(heavy_blueprint, "display_name").style,
+    mod.settings.curio_stat_compression = "compression"
+    compression_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, compression_blueprint, 640)
+    compression_styles = {
+        "display_name": blueprint_pass(compression_blueprint, "display_name").style,
     }
     for index in range(1, 5):
         style_id = f"better_inventory_curio_stat_{index}"
-        heavy_styles[style_id] = blueprint_pass(heavy_blueprint, style_id).style
-    heavy_widget = lua.table_from(
-        {"content": lua.table_from({}), "style": lua.table_from(heavy_styles)}
+        compression_styles[style_id] = blueprint_pass(compression_blueprint, style_id).style
+    compression_widget = lua.table_from(
+        {"content": lua.table_from({}), "style": lua.table_from(compression_styles)}
     )
-    heavy_blueprint.init(
+    compression_blueprint.init(
         None,
-        heavy_widget,
+        compression_widget,
         curio_element,
         None,
         None,
         lua.table_from({}),
         None,
-        heavy_blueprint,
+        compression_blueprint,
     )
-    assert heavy_widget.content.better_inventory_full_curio_stat_4 == "+20% Gunners DR"
+    assert (
+        compression_widget.content.better_inventory_full_curio_stat_4
+        == "+20% Gunners Resistance"
+    )
 
     mod.settings.columns = 5
     mod.settings.curio_stat_compression = "none"
@@ -795,7 +816,7 @@ def main() -> None:
     )
     assert "\n" not in narrow_detailed_widget.content.better_inventory_curio_stat_4
     mod.settings.columns = 3
-    mod.settings.curio_stat_compression = "compression"
+    mod.settings.curio_stat_compression = "heavy"
 
     mod.settings.curio_display_profile = "primary"
     mod.settings.show_curio_quality = True

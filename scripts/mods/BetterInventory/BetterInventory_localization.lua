@@ -168,7 +168,7 @@ return {
 		en = "Curio stat text compression",
 	},
 	curio_stat_compression_tooltip = {
-		en = "Compression shortens known long descriptions. Heavy Compression also abbreviates Resistance as DR. Unknown descriptions retain Darktide's original localized text.",
+		en = "Heavy Compression is the default and uses compact labels such as DR, Regen, Block and Sprint. Compression applies milder shortening. Unknown descriptions retain Darktide's original localized text.",
 	},
 	curio_stat_compression_none = {
 		en = "No compression",
@@ -327,6 +327,24 @@ return {
 		en = "Bombers DR",
 	},
 	curio_dr_grimoires = {
-		en = "Grimoire DR",
+		en = "Grim Corruption DR",
+	},
+	curio_heavy_ability_regen = {
+		en = "Ability Regen",
+	},
+	curio_heavy_toughness_regen = {
+		en = "Tough Regen",
+	},
+	curio_heavy_corruption_dr = {
+		en = "Corruption DR",
+	},
+	curio_heavy_block = {
+		en = "Block",
+	},
+	curio_heavy_sprint = {
+		en = "Sprint",
+	},
+	curio_heavy_stamina_regen = {
+		en = "Stamina Regen",
 	},
 }

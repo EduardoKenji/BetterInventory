@@ -196,6 +196,18 @@ function mod.on_enabled()
 		mod:set("_curio_compression_mode_v1_migrated", true)
 	end
 
+	-- Heavy Compression supersedes Compression as the default. Preserve an
+	-- explicit No compression choice while upgrading the former default once.
+	if not mod:get("_curio_heavy_default_v1_migrated") then
+		local compression_mode = mod:get("curio_stat_compression")
+
+		if compression_mode == nil or compression_mode == "compression" then
+			mod:set("curio_stat_compression", "heavy")
+		end
+
+		mod:set("_curio_heavy_default_v1_migrated", true)
+	end
+
 	for i = 1, #CURIO_COLOR_TARGETS do
 		apply_color_preset(CURIO_COLOR_TARGETS[i])
 	end

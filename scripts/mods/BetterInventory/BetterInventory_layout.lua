@@ -40,6 +40,12 @@ local CURIO_PRIMARY_COLOR_DEFINITIONS = {
 	},
 }
 local COMPACT_CURIO_LABELS = {
+	gadget_cooldown_reduction = {
+		heavy_localization_id = "curio_heavy_ability_regen",
+		required_terms = {
+			"Combat Ability Regeneration",
+		},
+	},
 	gadget_damage_reduction_vs_flamers = {
 		localization_id = "curio_resistance_flamers",
 		heavy_localization_id = "curio_dr_flamers",
@@ -97,6 +103,30 @@ local COMPACT_CURIO_LABELS = {
 			"Grimoire",
 		},
 	},
+	gadget_corruption_resistance = {
+		heavy_localization_id = "curio_heavy_corruption_dr",
+		required_terms = {
+			"Corruption Resistance",
+		},
+	},
+	gadget_block_cost_reduction = {
+		heavy_localization_id = "curio_heavy_block",
+		required_terms = {
+			"Block Efficiency",
+		},
+	},
+	gadget_sprint_cost_reduction = {
+		heavy_localization_id = "curio_heavy_sprint",
+		required_terms = {
+			"Sprint Efficiency",
+		},
+	},
+	gadget_stamina_regeneration = {
+		heavy_localization_id = "curio_heavy_stamina_regen",
+		required_terms = {
+			"Stamina Regeneration",
+		},
+	},
 	gadget_mission_reward_gear_instead_of_weapon_increase = {
 		localization_id = "curio_reward_chance",
 		strip_leading_plus = true,
@@ -106,6 +136,7 @@ local COMPACT_CURIO_LABELS = {
 	},
 	gadget_toughness_regen_delay = {
 		localization_id = "curio_toughness_regeneration",
+		heavy_localization_id = "curio_heavy_toughness_regen",
 		required_terms = {
 			"Toughness Regeneration",
 		},
@@ -223,9 +254,19 @@ local function compact_curio_description(mod, data, compression_mode)
 		amount = string.gsub(amount, "^%+", "")
 	end
 
-	local localization_id = compression_mode == "heavy" and definition.heavy_localization_id or definition.localization_id
+	local localization_id
 
-	return string.format("%s %s", amount, mod:localize(localization_id or definition.localization_id))
+	if compression_mode == "heavy" then
+		localization_id = definition.heavy_localization_id or definition.localization_id
+	else
+		localization_id = definition.localization_id
+	end
+
+	if not localization_id then
+		return description
+	end
+
+	return string.format("%s %s", amount, mod:localize(localization_id))
 end
 
 local function simplified_curio_primary_description(data, enabled)
@@ -784,7 +825,7 @@ local function configure_card_content(mod, item_blueprint)
 	local minimum_font_size = math.max(8, math.min(20, setting(mod, "minimum_item_name_font_size", 12)))
 	local append_mark_to_name = setting(mod, "append_mark_to_name", true)
 	local show_weapon_blessings = setting(mod, "show_weapon_blessings", false)
-	local compression_mode = setting(mod, "curio_stat_compression", "compression")
+	local compression_mode = setting(mod, "curio_stat_compression", "heavy")
 	local simplify_curio_primary = setting(mod, "simplify_curio_primary_stat_text", true)
 
 	-- Accept the retired checkbox values during the one-time settings migration

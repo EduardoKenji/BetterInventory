@@ -46,7 +46,7 @@ It currently covers the character melee, ranged and Curio inventory and provides
 - Per-primary-stat color presets and synchronized RGB sliders. Selecting a preset updates its sliders; editing any channel changes that stat's preset to Custom colour.
 - Default-on primary-stat simplification removes redundant `Max` and `(s)` wording, producing labels such as `+19% Health`, `+2 Stamina` and `+1 Wound`.
 - Optional Curio quality text, disabled by default because rarity is already communicated by the card background and colour strip.
-- Three Curio text modes: No compression, Compression (default), and Heavy Compression. Compression maps known long labels such as `+20% Damage Resistance (Gunners)` to `+20% Gunners Resistance`; Heavy Compression further reduces that to `+20% Gunners DR`. Other safe mappings cover mission rewards, Grimoire resistance, Toughness regeneration and Revive Speed without its redundant Ally suffix; unknown or nonmatching localized descriptions remain unchanged.
+- Three Curio text modes: No compression, Compression, and Heavy Compression (default). Heavy Compression uses compact labels such as `+20% Gunners DR`, `+4% Ability Regen`, `+30% Tough Regen`, `+20% Grim Corruption DR`, `+15% Corruption DR`, `+12% Block`, `+15% Sprint` and `+12% Stamina Regen`. The actual numeric value is always preserved. Other safe mappings cover mission rewards, Ordo Dockets and Revive Speed without its redundant Ally suffix; unknown or nonmatching localized descriptions remain unchanged.
 - Darktide's managed item-icon loader with a card-sized render context and the original unload/update lifecycle.
 - Graceful fallback to the original presentation path when the view contract or item blueprint is unavailable.
 

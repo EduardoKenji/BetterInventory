@@ -317,7 +317,7 @@ return {
 						setting_id = "curio_stat_compression",
 						tooltip = "curio_stat_compression_tooltip",
 						type = "dropdown",
-						default_value = "compression",
+						default_value = "heavy",
 						options = {
 							{
 								text = "curio_stat_compression_none",
