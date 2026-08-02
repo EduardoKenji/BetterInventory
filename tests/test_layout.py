@@ -50,6 +50,15 @@ def main() -> None:
 
 		TestText = {}
 		TestItems = {}
+		TestMasterItems = {}
+		TestTraitDescriptions = {
+			gadget_innate_health_increase = "+19% Max Health",
+			gadget_innate_toughness_increase = "+16% Toughness",
+			gadget_innate_max_wounds_increase = "+1 Wound",
+			gadget_stamina_regeneration = "+12% Stamina Regeneration",
+			gadget_sprint_efficiency = "+15% Sprint Efficiency",
+			gadget_flame_resistance = "+20% Bomber Resistance",
+		}
 
 		function TestText.text_width(ui_renderer, text, style, optional_size, use_max_extents)
 			return #text * style.font_size * 0.6
@@ -71,6 +80,25 @@ def main() -> None:
 			return item and item.test_pattern or "n/a"
 		end
 
+		function TestItems.is_weapon(item_type)
+			return item_type == "WEAPON_MELEE" or item_type == "WEAPON_RANGED"
+		end
+
+		function TestItems.trait_description(item, rarity, value)
+			return TestTraitDescriptions[item.name] or string.format("%s rank %s", item.name, tostring(rarity))
+		end
+
+		function TestItems.trait_textures(item, rarity)
+			return item.icon, "frame/rank_" .. tostring(rarity)
+		end
+
+		function TestMasterItems.get_item(item_id)
+			return {
+				name = item_id,
+				icon = "icon/" .. item_id,
+			}
+		end
+
 		function require(path)
 			if path == "scripts/utilities/ui/text" then
 				return TestText
@@ -78,6 +106,10 @@ def main() -> None:
 
 			if path == "scripts/utilities/items" then
 				return TestItems
+			end
+
+			if path == "scripts/backend/master_items" then
+				return TestMasterItems
 			end
 
 			error("Unexpected test require: " .. tostring(path))
@@ -103,7 +135,11 @@ def main() -> None:
                 show_pattern_mark = false,
                 show_rarity_name = false,
                 show_rarity_tag = true,
+				show_weapon_blessings = true,
                 compact_favorite_marker = true,
+				favorite_marker_position = "above_rating",
+				curio_display_profile = "primary",
+				show_curio_quality = false,
                 item_name_font_size = 16,
                 secondary_text_font_size = 13,
                 expertise_font_size = 20,
@@ -160,6 +196,7 @@ def main() -> None:
                 },
             },
         }
+		raw_test_blueprint = table.clone(test_blueprint)
         """
     )
 
@@ -167,6 +204,15 @@ def main() -> None:
     globals_ = lua.globals()
     mod = globals_.test_mod
     blueprint = globals_.test_blueprint
+
+    def blueprint_pass(target_blueprint, style_id):
+        for index in range(1, len(target_blueprint.pass_template) + 1):
+            candidate = target_blueprint.pass_template[index]
+
+            if candidate.style_id == style_id:
+                return candidate
+
+        raise AssertionError(f"Missing pass: {style_id}")
 
     item_size = layout.item_size(mod, 640)
     assert (item_size[1], item_size[2]) == (206, 110)
@@ -253,7 +299,15 @@ def main() -> None:
         }
     )
     assert pattern_name_pass.visibility_function(weapon_content) is False
-    assert pattern_name_pass.visibility_function(curio_content) is True
+    assert pattern_name_pass.visibility_function(curio_content) is False
+
+    favorite_pass = blueprint_pass(blueprint, "favorite_icon")
+    assert favorite_pass.style.horizontal_alignment == "right"
+    assert favorite_pass.style.vertical_alignment == "top"
+    assert (favorite_pass.style.offset[1], favorite_pass.style.offset[2]) == (-8, 7)
+
+    favorite_pass.change_function(lua.table_from({"equipped": True}), favorite_pass.style, None, 0)
+    assert favorite_pass.style.offset[2] == 33
 
     name_style = blueprint.pass_template[3].style
     name_widget = lua.table_from(
@@ -304,6 +358,12 @@ def main() -> None:
                     "item_type": "WEAPON_MELEE",
                     "test_mark": "Mk VI",
                     "test_pattern": "Catachan",
+					"traits": lua.table_from(
+						[
+							lua.table_from({"id": "blessing_one", "rarity": 3, "value": 0.5}),
+							lua.table_from({"id": "blessing_two", "rarity": 4, "value": 0.8}),
+						]
+					),
                 }
             ),
         }
@@ -323,6 +383,193 @@ def main() -> None:
     assert narrow_weapon_widget.content.better_inventory_full_display_name == "Combat Blade Mk VI"
     assert narrow_weapon_widget.content.display_name.endswith(" Mk VI")
     assert narrow_weapon_widget.content.sub_display_name == "Catachan"
+
+    first_blessing_pass = blueprint_pass(blueprint, "better_inventory_blessing_1")
+    second_blessing_pass = blueprint_pass(blueprint, "better_inventory_blessing_2")
+
+    assert first_blessing_pass.visibility_function(narrow_weapon_widget.content)
+    assert second_blessing_pass.visibility_function(narrow_weapon_widget.content)
+
+    first_blessing_pass.change_function(
+        narrow_weapon_widget.content, first_blessing_pass.style
+    )
+    second_blessing_pass.change_function(
+        narrow_weapon_widget.content, second_blessing_pass.style
+    )
+
+    assert first_blessing_pass.style.material_values.icon == "icon/blessing_one"
+    assert first_blessing_pass.style.material_values.frame == "frame/rank_3"
+    assert second_blessing_pass.style.material_values.icon == "icon/blessing_two"
+    assert second_blessing_pass.style.material_values.frame == "frame/rank_4"
+
+    curio_stat_pass = blueprint_pass(blueprint, "better_inventory_curio_stat_1")
+    curio_widget = lua.table_from(
+        {
+            "content": lua.table_from({}),
+            "style": lua.table_from(
+                {
+                    "display_name": blueprint_pass(blueprint, "display_name").style,
+                    "better_inventory_curio_stat_1": curio_stat_pass.style,
+                }
+            ),
+        }
+    )
+    curio_element = lua.table_from(
+        {
+            "test_display_name": "Mechanicus Icon",
+            "test_sub_display_name": "Transcendent",
+            "item": lua.table_from(
+                {
+                    "item_type": "GADGET",
+                    "traits": lua.table_from(
+                        [
+                            lua.table_from(
+                                {
+                                    "id": "gadget_innate_health_increase",
+                                    "rarity": 4,
+                                    "value": 0.7,
+                                }
+                            )
+                        ]
+                    ),
+                    "perks": lua.table_from(
+                        [
+                            lua.table_from(
+                                {
+                                    "id": "gadget_stamina_regeneration",
+                                    "rarity": 4,
+                                    "value": 0.5,
+                                }
+                            ),
+                            lua.table_from(
+                                {
+                                    "id": "gadget_sprint_efficiency",
+                                    "rarity": 4,
+                                    "value": 0.5,
+                                }
+                            ),
+                            lua.table_from(
+                                {
+                                    "id": "gadget_flame_resistance",
+                                    "rarity": 4,
+                                    "value": 0.5,
+                                }
+                            ),
+                        ]
+                    ),
+                }
+            ),
+        }
+    )
+
+    blueprint.init(
+        None,
+        curio_widget,
+        curio_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        blueprint,
+    )
+
+    assert curio_widget.content.better_inventory_curio_stat_1 == "+19% Max Health"
+    assert curio_widget.content.better_inventory_curio_stat_2 == "+12% Stamina Regeneration"
+    assert curio_stat_pass.visibility_function(curio_widget.content)
+
+    curio_stat_pass.change_function(curio_widget.content, curio_stat_pass.style)
+    assert tuple(curio_stat_pass.style.text_color[index] for index in range(1, 5)) == (
+        255,
+        235,
+        85,
+        85,
+    )
+
+    primary_color_expectations = {
+        "gadget_innate_toughness_increase": (255, 105, 200, 235),
+        "gadget_innate_max_wounds_increase": (255, 190, 105, 230),
+    }
+
+    for trait_id, expected_color in primary_color_expectations.items():
+        curio_element.item.traits[1].id = trait_id
+        blueprint.update_data(test_grid, curio_widget, curio_element)
+        curio_stat_pass.change_function(curio_widget.content, curio_stat_pass.style)
+        assert tuple(
+            curio_stat_pass.style.text_color[index] for index in range(1, 5)
+        ) == expected_color
+
+    mod.settings.curio_display_profile = "detailed"
+    detailed_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, detailed_blueprint, 640)
+
+    detailed_styles = {
+        "display_name": blueprint_pass(detailed_blueprint, "display_name").style,
+    }
+
+    for index in range(1, 5):
+        style_id = f"better_inventory_curio_stat_{index}"
+        detailed_styles[style_id] = blueprint_pass(detailed_blueprint, style_id).style
+
+    detailed_widget = lua.table_from(
+        {
+            "content": lua.table_from({}),
+            "style": lua.table_from(detailed_styles),
+        }
+    )
+    detailed_blueprint.init(
+        None,
+        detailed_widget,
+        curio_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        detailed_blueprint,
+    )
+
+    assert not blueprint_pass(detailed_blueprint, "display_name").visibility_function(
+        detailed_widget.content
+    )
+    assert not blueprint_pass(detailed_blueprint, "item_level").visibility_function(
+        detailed_widget.content
+    )
+    assert not blueprint_pass(
+        detailed_blueprint, "sub_display_name"
+    ).visibility_function(detailed_widget.content)
+
+    for index in range(1, 5):
+        stat_pass = blueprint_pass(
+            detailed_blueprint, f"better_inventory_curio_stat_{index}"
+        )
+        assert stat_pass.visibility_function(detailed_widget.content)
+
+    assert (
+        detailed_widget.content.better_inventory_full_curio_stat_4
+        == "+20% Bomber Resistance"
+    )
+
+    mod.settings.curio_display_profile = "primary"
+    mod.settings.show_curio_quality = True
+    quality_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, quality_blueprint, 640)
+    assert blueprint_pass(
+        quality_blueprint, "sub_display_name"
+    ).visibility_function(curio_content)
+    mod.settings.show_curio_quality = False
+
+    mod.settings.favorite_marker_position = "bottom_left"
+    bottom_favorite_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, bottom_favorite_blueprint, 640)
+    bottom_favorite_pass = blueprint_pass(
+        bottom_favorite_blueprint, "favorite_icon"
+    )
+    assert bottom_favorite_pass.style.horizontal_alignment == "left"
+    assert bottom_favorite_pass.style.vertical_alignment == "bottom"
+    assert (bottom_favorite_pass.style.offset[1], bottom_favorite_pass.style.offset[2]) == (
+        12,
+        -5,
+    )
+    mod.settings.favorite_marker_position = "above_rating"
 
     widget = lua.table_from(
         {

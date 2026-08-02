@@ -62,8 +62,26 @@ return {
 	show_rarity_tag = {
 		en = "Show rarity colour strip",
 	},
+	show_weapon_blessings = {
+		en = "Show weapon blessing symbols",
+	},
+	show_weapon_blessings_tooltip = {
+		en = "Shows up to two blessing symbols on weapon cards. Darktide's ranked frames include the blessing level.",
+	},
 	compact_favorite_marker = {
 		en = "Use compact favorite marker",
+	},
+	favorite_marker_position = {
+		en = "Favorite marker position",
+	},
+	favorite_marker_position_tooltip = {
+		en = "Places the favorite marker either in the upper-right area above item power or in the lower-left corner. Equipped items move the upper-right marker down to avoid the equipped badge.",
+	},
+	favorite_marker_position_above_rating = {
+		en = "Upper right, above power",
+	},
+	favorite_marker_position_bottom_left = {
+		en = "Bottom left",
 	},
 	item_name_font_size = {
 		en = "Item name font size",
@@ -79,5 +97,26 @@ return {
 	},
 	expertise_font_size = {
 		en = "Expertise font size",
+	},
+	curio_content_group = {
+		en = "Curio content",
+	},
+	curio_display_profile = {
+		en = "Curio display profile",
+	},
+	curio_display_profile_tooltip = {
+		en = "Primary stat keeps the Curio name and power while adding its innate stat. The All four stats profile replaces those labels with the innate stat and three perks.",
+	},
+	curio_display_profile_primary = {
+		en = "Primary stat",
+	},
+	curio_display_profile_detailed = {
+		en = "All four stats",
+	},
+	show_curio_quality = {
+		en = "Show Curio quality text",
+	},
+	show_curio_quality_tooltip = {
+		en = "Shows the Curio quality line in the Primary stat profile. Disabled by default because the card colour already communicates quality.",
 	},
 }

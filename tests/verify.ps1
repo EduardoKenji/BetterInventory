@@ -36,7 +36,11 @@ if ($main -notmatch '_compact_card_defaults_v1_migrated' -or $main -notmatch 'mo
 $data = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_data.lua") -Raw
 $localization = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_localization.lua") -Raw
 $settingMatches = [regex]::Matches($data, 'setting_id\s*=\s*"([^"]+)"')
-$settingIds = $settingMatches | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique
+$dropdownTextMatches = [regex]::Matches($data, 'text\s*=\s*"([^"]+)"')
+$settingIds = @(
+	$settingMatches | ForEach-Object { $_.Groups[1].Value }
+	$dropdownTextMatches | ForEach-Object { $_.Groups[1].Value }
+) | Sort-Object -Unique
 
 foreach ($settingId in $settingIds) {
 	$escapedId = [regex]::Escape($settingId)
@@ -52,8 +56,10 @@ if ($DarktideSourcePath) {
 	$itemBlueprints = Join-Path $DarktideSourcePath "scripts\ui\view_content_blueprints\item_blueprints.lua"
 	$iconGenerator = Join-Path $DarktideSourcePath "scripts\ui\render_target_icon_generator_base.lua"
 	$items = Join-Path $DarktideSourcePath "scripts\utilities\items.lua"
+	$masterItems = Join-Path $DarktideSourcePath "scripts\backend\master_items.lua"
+	$gadgetTraits = Join-Path $DarktideSourcePath "scripts\settings\equipment\gadget_traits\gadget_traits_common.lua"
 
-	foreach ($sourceFile in @($inventoryView, $itemGridBase, $itemBlueprints, $iconGenerator, $items)) {
+	foreach ($sourceFile in @($inventoryView, $itemGridBase, $itemBlueprints, $iconGenerator, $items, $masterItems, $gadgetTraits)) {
 		if (-not (Test-Path -LiteralPath $sourceFile -PathType Leaf)) {
 			throw "Missing expected Darktide source file: $sourceFile"
 		}
@@ -73,8 +79,25 @@ if ($DarktideSourcePath) {
 
 	$itemsSource = Get-Content -LiteralPath $items -Raw
 
-	if ($itemsSource -notmatch 'Items\.weapon_lore_mark_name' -or $itemsSource -notmatch 'Items\.weapon_lore_pattern_name') {
-		throw "The current weapon Mark/pattern naming APIs were not found."
+	if (
+		$itemsSource -notmatch 'Items\.weapon_lore_mark_name' -or
+		$itemsSource -notmatch 'Items\.weapon_lore_pattern_name' -or
+		$itemsSource -notmatch 'Items\.trait_textures' -or
+		$itemsSource -notmatch 'Items\.trait_description'
+	) {
+		throw "One or more current card-content APIs were not found."
+	}
+
+	$gadgetTraitSource = Get-Content -LiteralPath $gadgetTraits -Raw
+
+	foreach ($traitId in @(
+		"gadget_innate_health_increase",
+		"gadget_innate_toughness_increase",
+		"gadget_innate_max_wounds_increase"
+	)) {
+		if ($gadgetTraitSource -notmatch [regex]::Escape($traitId)) {
+			throw "The expected Curio primary trait ID was not found: $traitId"
+		}
 	}
 }
 

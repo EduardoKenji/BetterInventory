@@ -1,8 +1,36 @@
 local Text = require("scripts/utilities/ui/text")
 local Items = require("scripts/utilities/items")
+local MasterItems = require("scripts/backend/master_items")
 
 local Layout = {}
 local MINIMUM_CARD_WIDTH = 120
+local BLESSING_MATERIAL = "content/ui/materials/icons/traits/traits_container"
+local CURIO_PRIMARY_COLORS = {
+	gadget_innate_health_increase = {
+		255,
+		235,
+		85,
+		85,
+	},
+	gadget_innate_toughness_increase = {
+		255,
+		105,
+		200,
+		235,
+	},
+	gadget_innate_max_wounds_increase = {
+		255,
+		190,
+		105,
+		230,
+	},
+}
+local DEFAULT_CURIO_PRIMARY_COLOR = {
+	255,
+	220,
+	230,
+	210,
+}
 
 local SLOT_SETTING_BY_NAME = {
 	slot_primary = "enable_melee_inventory",
@@ -19,6 +47,22 @@ local function setting(mod, setting_id, fallback)
 	return value
 end
 
+local function item_from_element(element)
+	return element and (element.real_item or element.item)
+end
+
+local function item_from_content(content)
+	return content and item_from_element(content.element)
+end
+
+local function is_curio(item)
+	return item and item.item_type == "GADGET"
+end
+
+local function is_weapon(item)
+	return item and Items.is_weapon(item.item_type)
+end
+
 local function pass_by_style_id(pass_template, style_id)
 	for i = 1, #pass_template do
 		local pass = pass_template[i]
@@ -26,6 +70,22 @@ local function pass_by_style_id(pass_template, style_id)
 		if pass.style_id == style_id then
 			return pass
 		end
+	end
+end
+
+local function preserve_visibility(pass, predicate)
+	if not pass then
+		return
+	end
+
+	local original_visibility_function = pass.visibility_function
+
+	pass.visibility_function = function(content, style)
+		if not predicate(content, style) then
+			return false
+		end
+
+		return not original_visibility_function or original_visibility_function(content, style)
 	end
 end
 
@@ -43,6 +103,92 @@ local function set_height(pass, height)
 	if style then
 		style.size = style.size or {}
 		style.size[2] = height
+	end
+end
+
+local function resolved_trait_data(entry, include_textures)
+	if type(entry) ~= "table" or type(entry.id) ~= "string" then
+		return
+	end
+
+	local resolved, trait_item = pcall(MasterItems.get_item, entry.id)
+
+	if not resolved or not trait_item then
+		return
+	end
+
+	local description_ok, description = pcall(Items.trait_description, trait_item, entry.rarity, entry.value)
+	local data = {
+		description = description_ok and type(description) == "string" and description or "",
+		id = entry.id,
+	}
+
+	if include_textures then
+		local textures_ok, icon, frame = pcall(Items.trait_textures, trait_item, entry.rarity)
+
+		if textures_ok then
+			data.icon = icon
+			data.frame = frame
+		end
+	end
+
+	return data
+end
+
+local function populate_card_content(widget, element, show_weapon_blessings)
+	local content = widget and widget.content
+
+	if not content then
+		return
+	end
+
+	for i = 1, 2 do
+		content["better_inventory_blessing_" .. i] = nil
+	end
+
+	for i = 1, 4 do
+		content["better_inventory_curio_stat_" .. i] = ""
+		content["better_inventory_full_curio_stat_" .. i] = nil
+	end
+
+	content.better_inventory_curio_primary_color = nil
+
+	local item = item_from_element(element or content.element)
+
+	if is_weapon(item) and show_weapon_blessings then
+		local traits = item.traits
+
+		for i = 1, math.min(2, traits and #traits or 0) do
+			local data = resolved_trait_data(traits[i], true)
+
+			if data and data.icon and data.frame then
+				content["better_inventory_blessing_" .. i] = data
+			end
+		end
+
+		return
+	end
+
+	if not is_curio(item) then
+		return
+	end
+
+	local primary_entry = item.traits and item.traits[1]
+	local primary_data = resolved_trait_data(primary_entry, false)
+
+	if primary_data then
+		content.better_inventory_curio_stat_1 = primary_data.description
+		content.better_inventory_curio_primary_color = CURIO_PRIMARY_COLORS[primary_data.id] or DEFAULT_CURIO_PRIMARY_COLOR
+	end
+
+	local perks = item.perks
+
+	for i = 1, math.min(3, perks and #perks or 0) do
+		local perk_data = resolved_trait_data(perks[i], false)
+
+		if perk_data then
+			content["better_inventory_curio_stat_" .. (i + 1)] = perk_data.description
+		end
 	end
 end
 
@@ -97,6 +243,82 @@ local function configure_text_pass(pass, options)
 	style.font_size = options.font_size
 	style.offset = options.offset
 	style.size = options.size
+end
+
+local function add_blessing_pass(pass_template, index, size, x_offset)
+	local content_id = "better_inventory_blessing_" .. index
+
+	pass_template[#pass_template + 1] = {
+		pass_type = "texture",
+		style_id = content_id,
+		value = BLESSING_MATERIAL,
+		style = {
+			horizontal_alignment = "left",
+			vertical_alignment = "bottom",
+			material_values = {},
+			size = {
+				size,
+				size,
+			},
+			offset = {
+				x_offset,
+				-3,
+				12,
+			},
+			color = {
+				255,
+				255,
+				255,
+				255,
+			},
+		},
+		visibility_function = function(content)
+			return content and content[content_id] ~= nil
+		end,
+		change_function = function(content, style)
+			local data = content and content[content_id]
+			local material_values = style and style.material_values
+
+			if data and material_values then
+				material_values.icon = data.icon
+				material_values.frame = data.frame
+			end
+		end,
+	}
+end
+
+local function add_curio_stat_pass(pass_template, index, options)
+	local content_id = "better_inventory_curio_stat_" .. index
+	local style = table.clone(options.base_style or {})
+
+	style.font_size = options.font_size
+	style.horizontal_alignment = "left"
+	style.vertical_alignment = options.vertical_alignment
+	style.text_horizontal_alignment = "left"
+	style.text_vertical_alignment = options.text_vertical_alignment
+	style.word_wrap = false
+	style.offset = options.offset
+	style.size = options.size
+	style.text_color = table.clone(DEFAULT_CURIO_PRIMARY_COLOR)
+
+	pass_template[#pass_template + 1] = {
+		pass_type = "text",
+		style_id = content_id,
+		value = "",
+		value_id = content_id,
+		style = style,
+		visibility_function = function(content)
+			return content and content[content_id] ~= nil and content[content_id] ~= ""
+		end,
+		change_function = index == 1 and function(content, style)
+			local color = content and content.better_inventory_curio_primary_color or DEFAULT_CURIO_PRIMARY_COLOR
+			local text_color = style.text_color
+
+			for channel = 1, 4 do
+				text_color[channel] = color[channel]
+			end
+		end or nil,
+	}
 end
 
 local function grid_ui_renderer(parent)
@@ -215,18 +437,51 @@ local function fit_display_name(parent, widget, ui_renderer, preferred_font_size
 	end
 end
 
-local function configure_display_name_fitting(mod, item_blueprint)
+local function fit_curio_stats(parent, widget, ui_renderer)
+	local content = widget and widget.content
+	local styles = widget and widget.style
+
+	if not content or not styles then
+		return
+	end
+
+	ui_renderer = ui_renderer or grid_ui_renderer(parent)
+
+	if not ui_renderer then
+		return
+	end
+
+	for i = 1, 4 do
+		local content_id = "better_inventory_curio_stat_" .. i
+		local style = styles[content_id]
+		local value = content[content_id]
+		local maximum_width = style and style.size and style.size[1]
+
+		if type(value) == "string" and value ~= "" and maximum_width then
+			content["better_inventory_full_curio_stat_" .. i] = value
+
+			if Text.text_width(ui_renderer, value, style, style.size, true) > maximum_width then
+				content[content_id] = Text.crop_text_width(ui_renderer, value, style, maximum_width)
+			end
+		end
+	end
+end
+
+local function configure_card_content(mod, item_blueprint)
 	local original_init = item_blueprint.init
 	local original_update_data = item_blueprint.update_data
 	local preferred_font_size = setting(mod, "item_name_font_size", 16)
 	local minimum_font_size = math.max(8, math.min(20, setting(mod, "minimum_item_name_font_size", 12)))
 	local append_mark_to_name = setting(mod, "append_mark_to_name", true)
+	local show_weapon_blessings = setting(mod, "show_weapon_blessings", false)
 
 	if original_init then
 		item_blueprint.init = function(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
 			original_init(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
 			format_weapon_name(widget, element, append_mark_to_name)
+			populate_card_content(widget, element, show_weapon_blessings)
 			fit_display_name(parent, widget, ui_renderer, preferred_font_size, math.min(preferred_font_size, minimum_font_size))
+			fit_curio_stats(parent, widget, ui_renderer)
 		end
 	end
 
@@ -234,7 +489,9 @@ local function configure_display_name_fitting(mod, item_blueprint)
 		item_blueprint.update_data = function(parent, widget, element)
 			original_update_data(parent, widget, element)
 			format_weapon_name(widget, element, append_mark_to_name)
+			populate_card_content(widget, element, show_weapon_blessings)
 			fit_display_name(parent, widget, nil, preferred_font_size, math.min(preferred_font_size, minimum_font_size))
+			fit_curio_stats(parent, widget, nil)
 		end
 	end
 end
@@ -357,6 +614,11 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width)
 	local text_width = math.max(50, card_width - text_left - 36)
 	local darkness = math.max(0, math.min(85, setting(mod, "icon_darkness", 25)))
 	local icon_brightness = math.floor(255 * (1 - darkness / 100))
+	local curio_display_profile = setting(mod, "curio_display_profile", "primary")
+	local detailed_curio_profile = curio_display_profile == "detailed"
+	local show_curio_quality = setting(mod, "show_curio_quality", false)
+	local show_weapon_blessings = setting(mod, "show_weapon_blessings", false)
+	local favorite_marker_position = setting(mod, "favorite_marker_position", "above_rating")
 
 	item_blueprint.size = item_size
 	item_blueprint.pass_template = pass_template
@@ -427,6 +689,9 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width)
 	if display_name and display_name.style then
 		display_name.style.word_wrap = false
 	end
+	preserve_visibility(display_name, function(content)
+		return not detailed_curio_profile or not is_curio(item_from_content(content))
+	end)
 
 	local sub_display_name = pass_by_style_id(pass_template, "sub_display_name")
 
@@ -444,14 +709,15 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width)
 	})
 	local show_pattern_mark = setting(mod, "show_pattern_mark", false)
 
-	if not show_pattern_mark and sub_display_name then
+	if sub_display_name then
 		sub_display_name.visibility_function = function(content)
-			local element = content and content.element
-			local item = element and (element.real_item or element.item)
+			local item = item_from_content(content)
 
-			-- This option controls the weapon pattern/mark line. Curios use the
-			-- same pass for their subtype, which remains visible.
-			return item and item.item_type == "GADGET"
+			if is_curio(item) then
+				return show_curio_quality and not detailed_curio_profile
+			end
+
+			return is_weapon(item) and show_pattern_mark
 		end
 	end
 
@@ -469,9 +735,17 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width)
 			22,
 		},
 	})
-	set_visibility(rarity_name, setting(mod, "show_rarity_name", false))
+	if rarity_name then
+		local show_weapon_quality = setting(mod, "show_rarity_name", false)
 
-	configure_text_pass(pass_by_style_id(pass_template, "item_level"), {
+		rarity_name.visibility_function = function(content)
+			return show_weapon_quality and is_weapon(item_from_content(content))
+		end
+	end
+
+	local item_level = pass_by_style_id(pass_template, "item_level")
+
+	configure_text_pass(item_level, {
 		font_size = setting(mod, "expertise_font_size", 20),
 		horizontal_alignment = "right",
 		vertical_alignment = "bottom",
@@ -487,6 +761,9 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width)
 			28,
 		},
 	})
+	preserve_visibility(item_level, function(content)
+		return not detailed_curio_profile or not is_curio(item_from_content(content))
+	end)
 
 	local rarity_tag = pass_by_style_id(pass_template, "rarity_tag")
 
@@ -534,15 +811,46 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width)
 	if favorite_icon and favorite_icon.style and setting(mod, "compact_favorite_marker", true) then
 		favorite_icon.value = ""
 		favorite_icon.style.font_size = 20
-		favorite_icon.style.offset = {
-			text_left,
-			-5,
-			16,
-		}
 		favorite_icon.style.size = {
 			30,
 			28,
 		}
+	end
+
+	if favorite_icon and favorite_icon.style then
+		local favorite_style = favorite_icon.style
+
+		if favorite_marker_position == "above_rating" then
+			favorite_style.horizontal_alignment = "right"
+			favorite_style.vertical_alignment = "top"
+			favorite_style.text_horizontal_alignment = "right"
+			favorite_style.text_vertical_alignment = "top"
+			favorite_style.offset = {
+				-8,
+				7,
+				16,
+			}
+
+			local original_change_function = favorite_icon.change_function
+
+			favorite_icon.change_function = function(content, style, animations, dt)
+				if original_change_function then
+					original_change_function(content, style, animations, dt)
+				end
+
+				style.offset[2] = content and content.equipped and 33 or 7
+			end
+		else
+			favorite_style.horizontal_alignment = "left"
+			favorite_style.vertical_alignment = "bottom"
+			favorite_style.text_horizontal_alignment = "left"
+			favorite_style.text_vertical_alignment = "bottom"
+			favorite_style.offset = {
+				text_left,
+				-5,
+				16,
+			}
+		end
 	end
 
 	local salvage_icon = pass_by_style_id(pass_template, "salvage_icon")
@@ -580,10 +888,60 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width)
 		end
 	end
 
+	if show_weapon_blessings then
+		local blessing_size = card_width <= 140 and 28 or 34
+		local blessing_spacing = blessing_size - 2
+		local blessing_left = text_left + (favorite_marker_position == "bottom_left" and 24 or 0)
+
+		for i = 1, 2 do
+			add_blessing_pass(pass_template, i, blessing_size, blessing_left + (i - 1) * blessing_spacing)
+		end
+	end
+
+	if detailed_curio_profile then
+		local curio_font_size = math.max(9, math.min(16, setting(mod, "secondary_text_font_size", 13)))
+
+		for i = 1, 4 do
+			local reserved_right = i <= 2 and 40 or 8
+
+			add_curio_stat_pass(pass_template, i, {
+				base_style = sub_display_name and sub_display_name.style,
+				font_size = curio_font_size,
+				vertical_alignment = "top",
+				text_vertical_alignment = "top",
+				offset = {
+					text_left,
+					7 + (i - 1) * 19,
+					11,
+				},
+				size = {
+					math.max(40, card_width - text_left - reserved_right),
+					18,
+				},
+			})
+		end
+	else
+		add_curio_stat_pass(pass_template, 1, {
+			base_style = sub_display_name and sub_display_name.style,
+			font_size = math.max(9, math.min(18, setting(mod, "secondary_text_font_size", 13))),
+			vertical_alignment = "bottom",
+			text_vertical_alignment = "bottom",
+			offset = {
+				text_left,
+				-31,
+				11,
+			},
+			size = {
+				math.max(40, card_width - text_left - 40),
+				20,
+			},
+		})
+	end
+
 	set_height(pass_by_style_id(pass_template, "inner_shadow"), card_height)
 	set_height(pass_by_style_id(pass_template, "inner_highlight"), card_height)
 
-	configure_display_name_fitting(mod, item_blueprint)
+	configure_card_content(mod, item_blueprint)
 	configure_icon_loader(item_blueprint, item_size)
 
 	return item_size

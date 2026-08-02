@@ -1,6 +1,6 @@
 # BetterInventory
 
-> Project status: Phase 0 technical spike implemented; static verification passed, in-game testing pending.
+> Project status: Phase 0 technical spike implemented; card-content profiles under active in-game testing.
 >
 > Audit date: 2026-08-02
 
@@ -36,7 +36,11 @@ It currently covers the character melee, ranged and Curio inventory and provides
 - Default `Weapon Name Mk` formatting that moves the Mark into the title; the separate weapon-pattern line and quality text are opt-in.
 - One-time migration of previously saved card settings to the new compact defaults; later user changes are preserved.
 - Adaptive single-line item names that shrink to a configurable minimum and use an ellipsis only when still too wide, preventing overlap with the pattern/Mark line.
-- Compact favorite-marker and font-size options.
+- Compact favorite-marker and font-size options, including upper-right-above-power and lower-left marker positions.
+- Optional weapon blessing symbols using Darktide's current composited blessing material; the native ranked frame visibly carries each blessing level.
+- A default compact Curio profile that adds the innate stat while retaining name and power, plus an alternate four-stat profile showing the innate stat and all three perks.
+- Identifier-based Curio primary-stat colors: red for Max Health, light blue for Max Toughness and purple for Wounds; Stamina and unknown primary traits retain the neutral text color.
+- Optional Curio quality text, disabled by default because rarity is already communicated by the card background and colour strip.
 - Darktide's managed item-icon loader with a card-sized render context and the original unload/update lifecycle.
 - Graceful fallback to the original presentation path when the view contract or item blueprint is unavailable.
 
@@ -47,8 +51,28 @@ For a manual development install, copy this entire `BetterInventory` directory i
 Run the local verification from this directory with:
 
 ```powershell
-.\tests\verify.ps1 -DarktideSourcePath "$env:TEMP\codex-darktide-current-source-audit"
+.\tests\verify.ps1 -DarktideSourcePath "..\..\Darktide-Source-Code"
 ```
+
+## Card-content research and decisions
+
+The 2026 card implementation uses current Darktide data and materials rather than copying Inventory2D's legacy trait passes or image assets:
+
+- Weapon blessings are the entries in `item.traits`. `MasterItems.get_item(entry.id)` resolves each master item, and `Items.trait_textures(trait_item, entry.rarity)` supplies both its icon and the appropriate ranked frame.
+- The native composite material is `content/ui/materials/icons/traits/traits_container`. Its frame contains the visible rank treatment, so BetterInventory does not need copied Roman-numeral art or a separately maintained rank table.
+- Curio innate stats are stored in `item.traits[1]`; their three secondary properties are `item.perks[1..3]`. Both are rendered through `Items.trait_description(master_item, rarity, value)`, preserving the game's localized values and terminology.
+- Curio color classification uses stable internal IDs, not English text: `gadget_innate_health_increase`, `gadget_innate_toughness_increase` and `gadget_innate_max_wounds_increase`.
+- The base non-weapon `sub_display_name` is the localized rarity/quality string. BetterInventory therefore treats “Show Curio quality text” as an independent, default-off control instead of trying to parse the displayed Curio name.
+- The four-stat Curio profile deliberately replaces the name, quality and power labels with the innate stat plus three perks. This avoids presenting seven competing text fields in a compact card. The primary-stat profile keeps the normal name and power and adds only the innate line.
+- Custom stat strings are width-cropped after retaining their complete value in widget content. This prevents narrow four- and five-column cards from spilling into adjacent cards while leaving room for future hover details.
+
+Current-source references:
+
+- [Trait texture and ranked-frame API](https://github.com/Aussiemon/Darktide-Source-Code/blob/47379fd3cbb6d59c3e9001bab1693c307bf46e2b/scripts/utilities/items.lua#L429-L435)
+- [Localized trait/perk description API](https://github.com/Aussiemon/Darktide-Source-Code/blob/47379fd3cbb6d59c3e9001bab1693c307bf46e2b/scripts/utilities/items.lua#L1588-L1592)
+- [Current compact-card item population](https://github.com/Aussiemon/Darktide-Source-Code/blob/47379fd3cbb6d59c3e9001bab1693c307bf46e2b/scripts/ui/view_content_blueprints/item_blueprints.lua#L893-L932)
+- [Current favorite and card pass definitions](https://github.com/Aussiemon/Darktide-Source-Code/blob/47379fd3cbb6d59c3e9001bab1693c307bf46e2b/scripts/ui/pass_templates/item_pass_templates.lua#L3300-L3532)
+- [Stable common Curio trait IDs](https://github.com/Aussiemon/Darktide-Source-Code/blob/47379fd3cbb6d59c3e9001bab1693c307bf46e2b/scripts/settings/equipment/gadget_traits/gadget_traits_common.lua#L100-L129)
 
 ## Vision
 

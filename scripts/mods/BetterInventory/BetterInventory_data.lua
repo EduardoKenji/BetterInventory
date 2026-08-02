@@ -104,9 +104,31 @@ return {
 						default_value = true,
 					},
 					{
+						setting_id = "show_weapon_blessings",
+						tooltip = "show_weapon_blessings_tooltip",
+						type = "checkbox",
+						default_value = false,
+					},
+					{
 						setting_id = "compact_favorite_marker",
 						type = "checkbox",
 						default_value = true,
+					},
+					{
+						setting_id = "favorite_marker_position",
+						tooltip = "favorite_marker_position_tooltip",
+						type = "dropdown",
+						default_value = "above_rating",
+						options = {
+							{
+								text = "favorite_marker_position_above_rating",
+								value = "above_rating",
+							},
+							{
+								text = "favorite_marker_position_bottom_left",
+								value = "bottom_left",
+							},
+						},
 					},
 					{
 						setting_id = "item_name_font_size",
@@ -144,6 +166,34 @@ return {
 							10,
 							28,
 						},
+					},
+				},
+			},
+			{
+				setting_id = "curio_content_group",
+				type = "group",
+				sub_widgets = {
+					{
+						setting_id = "curio_display_profile",
+						tooltip = "curio_display_profile_tooltip",
+						type = "dropdown",
+						default_value = "primary",
+						options = {
+							{
+								text = "curio_display_profile_primary",
+								value = "primary",
+							},
+							{
+								text = "curio_display_profile_detailed",
+								value = "detailed",
+							},
+						},
+					},
+					{
+						setting_id = "show_curio_quality",
+						tooltip = "show_curio_quality_tooltip",
+						type = "checkbox",
+						default_value = false,
 					},
 				},
 			},
