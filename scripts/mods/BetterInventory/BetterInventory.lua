@@ -26,6 +26,11 @@ local COLOR_PRESETS = {
 		155,
 		60,
 	},
+	yellow = {
+		235,
+		205,
+		80,
+	},
 	green = {
 		105,
 		210,
@@ -49,6 +54,10 @@ local CURIO_COLOR_TARGETS = {
 	{
 		prefix = "curio_wound_color",
 		default_preset = "purple",
+	},
+	{
+		prefix = "curio_stamina_color",
+		default_preset = "yellow",
 	},
 }
 local color_target_by_setting_id = {}

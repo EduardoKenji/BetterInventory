@@ -34,6 +34,10 @@ def main() -> None:
             curio_wound_color_r = 190,
             curio_wound_color_g = 105,
             curio_wound_color_b = 230,
+			curio_stamina_color_preset = "yellow",
+			curio_stamina_color_r = 235,
+			curio_stamina_color_g = 205,
+			curio_stamina_color_b = 80,
         }
 
         test_layout = {
@@ -115,6 +119,14 @@ def main() -> None:
     mod.on_setting_changed("curio_health_color_preset")
     assert (settings.curio_health_color_r, settings.curio_health_color_g) == (17, 44)
 
+    settings.curio_stamina_color_preset = "green"
+    mod.on_setting_changed("curio_stamina_color_preset")
+    assert (
+        settings.curio_stamina_color_r,
+        settings.curio_stamina_color_g,
+        settings.curio_stamina_color_b,
+    ) == (105, 210, 120)
+
     option_ids = (
         "columns",
         "expand_inventory_window",
@@ -182,9 +194,11 @@ def main() -> None:
     assert defaults["enable_grid_layout"] is True
     assert defaults["automatic_card_height"] is True
     assert defaults["compact_curio_stat_text"] is True
+    assert defaults["blessing_icon_spacing"] == 3
     assert defaults["curio_health_color_preset"] == "red"
     assert defaults["curio_toughness_color_preset"] == "light_blue"
     assert defaults["curio_wound_color_preset"] == "purple"
+    assert defaults["curio_stamina_color_preset"] == "yellow"
 
     print("BetterInventory live setting synchronization tests passed.")
 

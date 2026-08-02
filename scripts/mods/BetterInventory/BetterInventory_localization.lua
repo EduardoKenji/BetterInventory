@@ -89,6 +89,12 @@ return {
 	show_weapon_blessings_tooltip = {
 		en = "Shows up to two blessing symbols on weapon cards. Darktide's ranked frames include the blessing level.",
 	},
+	blessing_icon_spacing = {
+		en = "Blessing icon horizontal spacing",
+	},
+	blessing_icon_spacing_tooltip = {
+		en = "Clear horizontal gap in pixels between weapon blessing icons.",
+	},
 	compact_favorite_marker = {
 		en = "Use compact favorite marker",
 	},
@@ -191,6 +197,21 @@ return {
 	curio_wound_color_b = {
 		en = "Blue",
 	},
+	curio_stamina_color_group = {
+		en = "Max Stamina line colour",
+	},
+	curio_stamina_color_preset = {
+		en = "Preset",
+	},
+	curio_stamina_color_r = {
+		en = "Red",
+	},
+	curio_stamina_color_g = {
+		en = "Green",
+	},
+	curio_stamina_color_b = {
+		en = "Blue",
+	},
 	color_preset_red = {
 		en = "Red",
 	},
@@ -202,6 +223,9 @@ return {
 	},
 	color_preset_orange = {
 		en = "Orange",
+	},
+	color_preset_yellow = {
+		en = "Yellow",
 	},
 	color_preset_green = {
 		en = "Green",
@@ -241,5 +265,11 @@ return {
 	},
 	curio_toughness_regeneration = {
 		en = "Toughness Regen",
+	},
+	curio_ordo_dockets = {
+		en = "Ordo Dockets",
+	},
+	curio_revive_speed = {
+		en = "Revive Speed",
 	},
 }

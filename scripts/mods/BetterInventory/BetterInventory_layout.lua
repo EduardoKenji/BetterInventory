@@ -30,6 +30,14 @@ local CURIO_PRIMARY_COLOR_DEFINITIONS = {
 			230,
 		},
 	},
+	gadget_stamina_increase = {
+		prefix = "curio_stamina_color",
+		default = {
+			235,
+			205,
+			80,
+		},
+	},
 }
 local COMPACT_CURIO_LABELS = {
 	gadget_damage_reduction_vs_flamers = {
@@ -92,6 +100,18 @@ local COMPACT_CURIO_LABELS = {
 		localization_id = "curio_toughness_regeneration",
 		required_terms = {
 			"Toughness Regeneration",
+		},
+	},
+	gadget_mission_credits_increase = {
+		localization_id = "curio_ordo_dockets",
+		required_terms = {
+			"Ordo Dockets",
+		},
+	},
+	gadget_revive_speed_increase = {
+		localization_id = "curio_revive_speed",
+		required_terms = {
+			"Revive Speed",
 		},
 	},
 }
@@ -423,6 +443,7 @@ local function add_curio_stat_pass(pass_template, index, options)
 	style.word_wrap = false
 	style.offset = options.offset
 	style.size = options.size
+	style.better_inventory_max_text_width = options.max_text_width or options.size[1]
 	style.text_color = table.clone(DEFAULT_CURIO_PRIMARY_COLOR)
 
 	pass_template[#pass_template + 1] = {
@@ -504,7 +525,8 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 
 	if show_weapon_blessings then
 		local blessing_size = card_width <= 140 and 28 or 34
-		local blessing_spacing = blessing_size - 2
+		local blessing_gap = math.max(0, math.min(20, setting(mod, "blessing_icon_spacing", 3)))
+		local blessing_spacing = blessing_size + blessing_gap
 		local blessing_left = text_left + (favorite_marker_position == "bottom_left" and 24 or 0)
 
 		for i = 1, 2 do
@@ -518,6 +540,8 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 
 		for i = 1, 4 do
 			local reserved_right = i <= 2 and 40 or 8
+			local render_width = math.max(40, card_width - text_left - 4)
+			local max_text_width = math.max(36, card_width - text_left - reserved_right - 4)
 
 			add_curio_stat_pass(pass_template, i, {
 				base_style = base_text_style,
@@ -530,9 +554,10 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 					11,
 				},
 				size = {
-					math.max(40, card_width - text_left - reserved_right),
+					render_width,
 					curio_line_height,
 				},
+				max_text_width = max_text_width,
 			})
 		end
 	else
@@ -690,7 +715,7 @@ local function fit_curio_stats(parent, widget, ui_renderer)
 		local content_id = "better_inventory_curio_stat_" .. i
 		local style = styles[content_id]
 		local value = content[content_id]
-		local maximum_width = style and style.size and style.size[1]
+		local maximum_width = style and (style.better_inventory_max_text_width or style.size and style.size[1])
 
 		if type(value) == "string" and value ~= "" and maximum_width then
 			content["better_inventory_full_curio_stat_" .. i] = value

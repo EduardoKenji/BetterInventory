@@ -55,6 +55,7 @@ def main() -> None:
 			gadget_innate_health_increase = "+19% Max Health",
 			gadget_innate_toughness_increase = "+16% Toughness",
 			gadget_innate_max_wounds_increase = "+1 Wound",
+			gadget_stamina_increase = "+2 Max Stamina",
 			gadget_stamina_regeneration = "+12% Stamina Regeneration",
 			gadget_sprint_efficiency = "+15% Sprint Efficiency",
 			gadget_flame_resistance = "+20% Bomber Resistance",
@@ -62,17 +63,22 @@ def main() -> None:
 			gadget_permanent_damage_resistance = "+15% Corruption Resistance (Grimoires)",
 			gadget_mission_reward_gear_instead_of_weapon_increase = "+15% chance of Curio as Mission Reward (instead of Weapon)",
 			gadget_toughness_regen_delay = "+30% Toughness Regeneration Speed",
+			gadget_mission_credits_increase = "+8% Ordo Dockets (Mission Rewards)",
+			gadget_revive_speed_increase = "+10% Revive Speed (Ally)",
 		}
 		TestTraitByMasterId = {
 			["content/items/traits/test_health"] = "gadget_innate_health_increase",
 			["content/items/traits/test_toughness"] = "gadget_innate_toughness_increase",
 			["content/items/traits/test_wounds"] = "gadget_innate_max_wounds_increase",
+			["content/items/traits/test_stamina"] = "gadget_stamina_increase",
 			["content/items/perks/test_stamina_regeneration"] = "gadget_stamina_regeneration",
 			["content/items/perks/test_sprint_efficiency"] = "gadget_sprint_efficiency",
 			["content/items/perks/test_gunners"] = "gadget_damage_reduction_vs_gunners",
 			["content/items/perks/test_grimoires"] = "gadget_permanent_damage_resistance",
 			["content/items/perks/test_curio_reward"] = "gadget_mission_reward_gear_instead_of_weapon_increase",
 			["content/items/perks/test_toughness_regen"] = "gadget_toughness_regen_delay",
+			["content/items/perks/test_ordo_dockets"] = "gadget_mission_credits_increase",
+			["content/items/perks/test_revive_speed"] = "gadget_revive_speed_increase",
 		}
 
 		function TestText.text_width(ui_renderer, text, style, optional_size, use_max_extents)
@@ -156,6 +162,7 @@ def main() -> None:
                 show_rarity_name = false,
                 show_rarity_tag = true,
 				show_weapon_blessings = true,
+				blessing_icon_spacing = 3,
                 compact_favorite_marker = true,
 				favorite_marker_position = "above_rating",
 				curio_display_profile = "primary",
@@ -170,6 +177,9 @@ def main() -> None:
 				curio_wound_color_r = 190,
 				curio_wound_color_g = 105,
 				curio_wound_color_b = 230,
+				curio_stamina_color_r = 235,
+				curio_stamina_color_g = 205,
+				curio_stamina_color_b = 80,
                 item_name_font_size = 16,
                 secondary_text_font_size = 13,
                 expertise_font_size = 20,
@@ -190,6 +200,8 @@ def main() -> None:
 				curio_resistance_grimoires = "Grimoire Resistance",
 				curio_reward_chance = "Curio as Reward",
 				curio_toughness_regeneration = "Toughness Regen",
+				curio_ordo_dockets = "Ordo Dockets",
+				curio_revive_speed = "Revive Speed",
 			}
 
 			return values[localization_id] or localization_id
@@ -471,6 +483,10 @@ def main() -> None:
     assert first_blessing_pass.style.material_values.frame == "frame/rank_3"
     assert second_blessing_pass.style.material_values.icon == "icon/blessing_two"
     assert second_blessing_pass.style.material_values.frame == "frame/rank_4"
+    assert (
+        second_blessing_pass.style.offset[1] - first_blessing_pass.style.offset[1]
+        == first_blessing_pass.style.size[1] + 3
+    )
 
     curio_stat_pass = blueprint_pass(blueprint, "better_inventory_curio_stat_1")
     curio_widget = lua.table_from(
@@ -573,6 +589,7 @@ def main() -> None:
     primary_color_expectations = {
         "content/items/traits/test_toughness": (255, 105, 200, 235),
         "content/items/traits/test_wounds": (255, 190, 105, 230),
+        "content/items/traits/test_stamina": (255, 235, 205, 80),
     }
 
     for trait_id, expected_color in primary_color_expectations.items():
@@ -594,6 +611,11 @@ def main() -> None:
     for index in range(1, 5):
         style_id = f"better_inventory_curio_stat_{index}"
         detailed_styles[style_id] = blueprint_pass(detailed_blueprint, style_id).style
+        assert detailed_styles[style_id].word_wrap is False
+        assert (
+            detailed_styles[style_id].size[1]
+            > detailed_styles[style_id].better_inventory_max_text_width
+        )
 
     detailed_widget = lua.table_from(
         {
@@ -637,6 +659,8 @@ def main() -> None:
         "content/items/perks/test_grimoires": "+15% Grimoire Resistance",
         "content/items/perks/test_curio_reward": "15% Curio as Reward",
         "content/items/perks/test_toughness_regen": "+30% Toughness Regen",
+        "content/items/perks/test_ordo_dockets": "+8% Ordo Dockets",
+        "content/items/perks/test_revive_speed": "+10% Revive Speed",
     }
 
     for trait_id, expected_text in compact_perk_expectations.items():

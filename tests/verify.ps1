@@ -117,6 +117,7 @@ if ($DarktideSourcePath) {
 		"gadget_innate_health_increase",
 		"gadget_innate_toughness_increase",
 		"gadget_innate_max_wounds_increase",
+		"gadget_stamina_increase",
 		"gadget_damage_reduction_vs_flamers",
 		"gadget_damage_reduction_vs_snipers",
 		"gadget_damage_reduction_vs_grenadiers",
@@ -126,7 +127,9 @@ if ($DarktideSourcePath) {
 		"gadget_damage_reduction_vs_bombers",
 		"gadget_permanent_damage_resistance",
 		"gadget_mission_reward_gear_instead_of_weapon_increase",
-		"gadget_toughness_regen_delay"
+		"gadget_toughness_regen_delay",
+		"gadget_mission_credits_increase",
+		"gadget_revive_speed_increase"
 	)) {
 		if ($gadgetTraitSource -notmatch [regex]::Escape($traitId)) {
 			throw "The expected Curio primary trait ID was not found: $traitId"

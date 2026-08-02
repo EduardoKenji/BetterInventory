@@ -19,6 +19,10 @@ local function color_preset_options()
 			value = "orange",
 		},
 		{
+			text = "color_preset_yellow",
+			value = "yellow",
+		},
+		{
 			text = "color_preset_green",
 			value = "green",
 		},
@@ -198,6 +202,16 @@ return {
 						default_value = false,
 					},
 					{
+						setting_id = "blessing_icon_spacing",
+						tooltip = "blessing_icon_spacing_tooltip",
+						type = "numeric",
+						default_value = 3,
+						range = {
+							0,
+							20,
+						},
+					},
+					{
 						setting_id = "compact_favorite_marker",
 						type = "checkbox",
 						default_value = true,
@@ -292,6 +306,7 @@ return {
 					curio_color_group("curio_health_color_group", "curio_health_color", "red", 235, 85, 85),
 					curio_color_group("curio_toughness_color_group", "curio_toughness_color", "light_blue", 105, 200, 235),
 					curio_color_group("curio_wound_color_group", "curio_wound_color", "purple", 190, 105, 230),
+					curio_color_group("curio_stamina_color_group", "curio_stamina_color", "yellow", 235, 205, 80),
 				},
 			},
 		},
