@@ -48,7 +48,7 @@ It currently covers the character melee, ranged and Curio inventory and provides
 - Optional removal of the leading `+` from every Curio stat line, disabled by default; the default presentation keeps signs consistent across primary stats and perks.
 - Optional Curio quality text, disabled by default because rarity is already communicated by the card background and colour strip.
 - Three Curio text modes: No compression, Compression, and Heavy Compression (default). Heavy Compression uses compact labels such as `+20% Gunners DR`, `+4% Ability Regen`, `+30% Tough Regen`, `+20% Grim Corruption DR`, `+15% Corruption DR`, `+12% Block`, `+15% Sprint` and `+12% Stamina Regen`. The actual numeric value is always preserved. Other safe mappings cover mission rewards, Ordo Dockets and Revive Speed without its redundant Ally suffix; unknown or nonmatching localized descriptions remain unchanged.
-- Darktide's managed item-icon loader with a card-sized render context and the original unload/update lifecycle.
+- Darktide's complete native managed item-icon lifecycle. BetterInventory resizes only the card's icon pass and does not allocate, load, unload or destroy render-target resources.
 - Graceful fallback to the original presentation path when the view contract or item blueprint is unavailable.
 
 This spike deliberately does not touch Hadron, vendors, sorting, filters or backend transactions yet. It has been statically checked against Darktide 1.12.3 source, but mouse/controller navigation, unusual resolutions, mod interaction and hot enable/disable still need an in-game pass.
@@ -77,11 +77,23 @@ The 2026 card implementation uses current Darktide data and materials rather tha
 - DMF's options widgets poll their setting getters continuously. BetterInventory uses `on_setting_changed` to synchronize Curio presets and RGB values without recursive notifications, so the visible controls update while the menu remains open.
 - Current DMF discards schema-level disabled state for ordinary numeric settings. BetterInventory binds the final option templates after `create_mod_options_settings`, allowing Columns/Grid spacing controls to grey out in native mode, the Curio target-width control to follow its expansion toggles, and the manual Card height slider to grey out in automatic mode.
 
+### Resource-lifecycle crash audit
+
+Crash GUID `954bae27-abe1-421e-9e50-f2e7fbe132ea` asserted while the engine tried to unload a resource that still had 16 references. This is a native/graphics-resource ownership failure, not the signature of a Lua heap out-of-memory condition. The captured system state showed elevated RAM use, but both system RAM and dedicated GPU memory still had substantial capacity; resource pressure could affect timing without explaining the invalid unload by itself.
+
+Attribution to BetterInventory or another mod cannot be proven from the crash dialog alone, and the matching console log was not retained. Older local Darktide logs also contain D3D12 render-target reference warnings from before BetterInventory existed, so the engine has demonstrated related lifecycle warnings independently. However, BetterInventory did have one avoidable risk: it replaced the native item-card loader to request render targets matching each custom card size. Darktide groups each exact requested size into separate 5-by-5 atlases and destroys an empty atlas after a delay, increasing allocation and destruction churn while scrolling.
+
+The optimization branch removes that loader replacement. BetterInventory now preserves the native `load_icon`, `unload_icon`, `destroy` and priority-update functions as one ownership unit. The card's material pass can scale the native 256-by-128 weapon icon normally, eliminating BetterInventory-specific render-target sizes and making it impossible for this mod to directly request or unload an icon resource. Runtime scrolling still needs an in-game stress test because the crash may originate in Darktide itself, another UI mod, the renderer/driver, or an interaction between them.
+
+The installed mod list also contains a concrete high-memory suspect independent of BetterInventory: `IconBrowser` enumerates 91 broad UI and level packages, requests them during `on_all_mods_loaded`, and provides no matching release path. Keeping this developer utility enabled throughout ordinary play can retain far more content than Darktide normally needs. It should be disabled during the BetterInventory stress test; if the crash recurs, test BetterInventory with the remaining UI/resource mods removed in small groups rather than treating total RAM usage as proof of causation.
+
 Current-source references:
 
 - [Trait texture and ranked-frame API](https://github.com/Aussiemon/Darktide-Source-Code/blob/47379fd3cbb6d59c3e9001bab1693c307bf46e2b/scripts/utilities/items.lua#L429-L435)
 - [Localized trait/perk description API](https://github.com/Aussiemon/Darktide-Source-Code/blob/47379fd3cbb6d59c3e9001bab1693c307bf46e2b/scripts/utilities/items.lua#L1588-L1592)
 - [Current compact-card item population](https://github.com/Aussiemon/Darktide-Source-Code/blob/47379fd3cbb6d59c3e9001bab1693c307bf46e2b/scripts/ui/view_content_blueprints/item_blueprints.lua#L893-L932)
+- [Native item-card icon ownership lifecycle](https://github.com/Aussiemon/Darktide-Source-Code/blob/47379fd3cbb6d59c3e9001bab1693c307bf46e2b/scripts/ui/view_content_blueprints/item_blueprints.lua#L979-L1015)
+- [Render-target atlas allocation and delayed destruction](https://github.com/Aussiemon/Darktide-Source-Code/blob/47379fd3cbb6d59c3e9001bab1693c307bf46e2b/scripts/ui/render_target_atlas_generator.lua#L28-L81)
 - [Current favorite and card pass definitions](https://github.com/Aussiemon/Darktide-Source-Code/blob/47379fd3cbb6d59c3e9001bab1693c307bf46e2b/scripts/ui/pass_templates/item_pass_templates.lua#L3300-L3532)
 - [Stable common Curio trait IDs](https://github.com/Aussiemon/Darktide-Source-Code/blob/47379fd3cbb6d59c3e9001bab1693c307bf46e2b/scripts/settings/equipment/gadget_traits/gadget_traits_common.lua#L100-L129)
 

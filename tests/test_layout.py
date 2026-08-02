@@ -145,16 +145,7 @@ def main() -> None:
 			error("Unexpected test require: " .. tostring(path))
 		end
 
-        captured_render_context = nil
-        Managers = { ui = {} }
-
-        function Managers.ui:load_item_icon(item, on_loaded, render_context, dummy_profile, prioritize)
-            captured_render_context = render_context
-            on_loaded(2, 3, 4, "test_render_target")
-            return 77
-        end
-
-        test_mod = {
+		test_mod = {
             settings = {
 				columns = 3,
 				enable_grid_layout = true,
@@ -225,8 +216,11 @@ def main() -> None:
 			return values[localization_id] or localization_id
 		end
 
-        sentinel_unload = function() end
-        sentinel_update = function() end
+		sentinel_load = function() end
+		sentinel_unload = function() end
+		sentinel_destroy = function() end
+		sentinel_priority = function() end
+		sentinel_update = function() end
 		sentinel_init = function(parent, widget, element, callback_name, secondary_callback_name, ui_renderer)
 			widget.content.element = element
 			widget.content.display_name = element.test_display_name
@@ -238,11 +232,14 @@ def main() -> None:
 			widget.content.sub_display_name = element.test_sub_display_name
 		end
         test_blueprint = {
-            size = { 586, 110 },
+			size = { 586, 110 },
 			init = sentinel_init,
 			update_data = sentinel_update_data,
-            unload_icon = sentinel_unload,
-            update = sentinel_update,
+			load_icon = sentinel_load,
+			unload_icon = sentinel_unload,
+			destroy = sentinel_destroy,
+			update_item_icon_priority = sentinel_priority,
+			update = sentinel_update,
             pass_template = {
                 { style_id = "icon", style = { material_values = {} } },
                 { style_id = "loading", style = {} },
@@ -388,7 +385,10 @@ def main() -> None:
     layout.configure_item_blueprint(mod, blueprint, 640)
 
     assert (blueprint.size[1], blueprint.size[2]) == (206, 110)
+    assert lua.eval("test_blueprint.load_icon == sentinel_load")
     assert lua.eval("test_blueprint.unload_icon == sentinel_unload")
+    assert lua.eval("test_blueprint.destroy == sentinel_destroy")
+    assert lua.eval("test_blueprint.update_item_icon_priority == sentinel_priority")
     assert lua.eval("test_blueprint.update == sentinel_update")
 
     icon_pass = blueprint.pass_template[1]
@@ -850,23 +850,6 @@ def main() -> None:
         -5,
     )
     mod.settings.favorite_marker_position = "above_rating"
-
-    widget = lua.table_from(
-        {
-            "content": lua.table_from({}),
-            "style": lua.table_from(
-                {"icon": lua.table_from({"material_values": lua.table_from({})})}
-            ),
-        }
-    )
-    element = lua.table_from({"item": lua.table_from({"gear_id": "test-gear"})})
-
-    blueprint.load_icon(None, widget, element, None, None, True)
-
-    assert widget.content.icon_load_id == 77
-    assert (globals_.captured_render_context.size[1], globals_.captured_render_context.size[2]) == (206, 110)
-    assert widget.style.icon.material_values.render_target == "test_render_target"
-    assert widget.style.icon.material_values.grid_index == 1
 
     grid = lua.table_from({"_menu_settings": lua.table_from({})})
     layout.configure_grid(mod, grid)

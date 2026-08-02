@@ -35,6 +35,12 @@ if ($main -notmatch '_compact_card_defaults_v1_migrated' -or $main -notmatch 'mo
 
 $data = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_data.lua") -Raw
 $localization = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_localization.lua") -Raw
+$layout = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_layout.lua") -Raw
+
+if ($layout -match 'Managers\.ui:(load|unload)_item_icon' -or $layout -match 'Renderer\.(create|destroy)_resource') {
+	throw "BetterInventory must not directly allocate or manage item-icon render resources."
+}
+
 $settingMatches = [regex]::Matches($data, 'setting_id\s*=\s*"([^"]+)"')
 $dropdownTextMatches = [regex]::Matches($data, 'text\s*=\s*"([^"]+)"')
 $settingIds = @(

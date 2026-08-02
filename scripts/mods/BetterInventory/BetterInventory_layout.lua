@@ -434,43 +434,6 @@ local function populate_card_content(mod, widget, element, show_weapon_blessings
 	end
 end
 
-local function apply_live_item_icon(widget, grid_index, rows, columns, render_target)
-	local style = widget and widget.style
-	local icon_style = style and style.icon
-	local material_values = icon_style and icon_style.material_values
-
-	if not material_values then
-		return
-	end
-
-	material_values.use_placeholder_texture = 0
-	material_values.use_render_target = 1
-	material_values.rows = rows
-	material_values.columns = columns
-	material_values.grid_index = grid_index - 1
-	material_values.render_target = render_target
-	widget.content.use_placeholder_texture = 0
-end
-
-local function configure_icon_loader(item_blueprint, item_size)
-	item_blueprint.load_icon = function(parent, widget, element, ui_renderer, dummy_profile, prioritize)
-		local content = widget.content
-		local item = element and (element.real_item or element.item)
-
-		if not content.icon_load_id and item then
-			local render_context = {
-				size = {
-					item_size[1],
-					item_size[2],
-				},
-			}
-			local on_loaded = callback(apply_live_item_icon, widget)
-
-			content.icon_load_id = Managers.ui:load_item_icon(item, on_loaded, render_context, dummy_profile, prioritize)
-		end
-	end
-end
-
 local function configure_text_pass(pass, options)
 	if not pass or not pass.style then
 		return
@@ -1330,7 +1293,6 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width)
 	set_height(pass_by_style_id(pass_template, "inner_highlight"), card_height)
 
 	configure_card_content(mod, item_blueprint)
-	configure_icon_loader(item_blueprint, item_size)
 
 	return item_size
 end
