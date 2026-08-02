@@ -547,22 +547,39 @@ This document is a technical project note, not legal advice. Policy should be ch
 
 ## Permissions and clean implementation strategy
 
-The original Inventory2D Nexus permissions allow modification, bug fixes, improvements, redistribution and asset use when Redbeardt is credited as the original creator. Commercial sale is not permitted, while Nexus Donation Points are allowed.
+An inactive or unmaintained mod does not lose copyright merely because it has gone without updates. Copyright protects an author's particular source code, writing and original assets, while ideas, functionality, program logic, methods and systems are generally not protected as copyrightable expression. A multi-column inventory concept can therefore be implemented independently, but copying another mod's code or assets still requires permission or an applicable licence.
+
+The original Inventory2D Nexus permissions provide that permission unusually clearly. They allow modification, bug fixes, feature improvements, redistribution and asset use as long as Redbeardt is credited as the original creator. Commercial sale is not permitted, while Nexus Donation Points are expressly allowed.
 
 The Bound by Duty compatibility patch uses more restrictive permissions: its author requires permission for modification or asset reuse and prohibits re-uploading.
+
+The current BetterInventory technical spike is a standalone implementation rather than a repackaged copy. It uses a different module structure, current Darktide APIs, chain-safe DMF hooks, the game's managed icon lifecycle and new layout/name-fitting logic. It does not ship Inventory2D files, compatibility-patch files or third-party assets. That independent implementation substantially reduces copyright risk, but transparent attribution remains both ethically appropriate and required if any original Inventory2D material is ever incorporated.
+
+Nexus Mods also requires uploaders to possess the necessary rights and to acknowledge the authors of mods used in further modifications or enhancements. BetterInventory may accurately identify its maintainer as the author of its new implementation, but should not imply that the original Inventory2D concept or implementation was created by the BetterInventory maintainer.
 
 Recommended strategy:
 
 1. Build BetterInventory as a standalone implementation against current game APIs.
-2. Credit Redbeardt and Inventory2D as the inspiration and, if any original source is reused, comply with the original permission terms.
+2. Credit Redbeardt and Inventory2D prominently as the inspiration and original implementation.
 3. Do not copy the compatibility patch file.
 4. Independently implement the factual API adaptations required by the current game.
-5. Keep a `CREDITS.md` or equivalent attribution before public release.
+5. Audit every additional mod separately before integrating anything: feature ideas may be independently reimplemented, while code, icons, translations and other assets require compatible permission or a licence.
+6. Preserve dated evidence of relevant Nexus permissions and comply with any open-source licence terms.
+7. Keep a `CREDITS.md` or equivalent attribution before public release.
+
+Suggested public attribution:
+
+> BetterInventory is a standalone modern implementation inspired by Inventory2D, originally created by Redbeardt. Thanks to Redbeardt for the original multi-column inventory concept and for permitting modifications and improvements with attribution. BetterInventory's current implementation, architecture and additional features were developed independently. No files from the Bound by Duty compatibility patch are included.
 
 References:
 
 - [Inventory2D description and permissions](https://www.nexusmods.com/warhammer40kdarktide/mods/188)
 - [Bound by Duty patch description and permissions](https://www.nexusmods.com/warhammer40kdarktide/mods/594)
+- [Nexus Mods Terms of Service](https://help.nexusmods.com/article/18-terms-of-service)
+- [U.S. Copyright Office: Computer Programs](https://www.copyright.gov/register/tx-programs.html)
+- [U.S. Copyright Office: What Is Copyright?](https://www.copyright.gov/what-is-copyright/)
+
+This is a practical provenance and distribution assessment, not legal advice. Obtain advice from a qualified lawyer if a future release incorporates disputed material, is sold commercially or receives a rights complaint.
 
 ## Community-request evidence
 
