@@ -33,7 +33,7 @@ return {
 		en = "Card height",
 	},
 	icon_darkness = {
-		en = "Icon darkness (%)",
+		en = "Icon darkness (%%)",
 	},
 	card_content_group = {
 		en = "Card content",

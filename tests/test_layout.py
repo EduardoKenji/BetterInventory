@@ -5,6 +5,7 @@ from lupa import LuaRuntime
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 LAYOUT_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_layout.lua"
+LOCALIZATION_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_localization.lua"
 
 
 def main() -> None:
@@ -155,6 +156,14 @@ def main() -> None:
     grid = lua.table_from({"_menu_settings": lua.table_from({})})
     layout.configure_grid(mod, grid)
     assert (grid._menu_settings.grid_spacing[1], grid._menu_settings.grid_spacing[2]) == (10, 10)
+
+    # DMF formats every localized value through string.format. Literal percent
+    # signs therefore need to be escaped as %% in the source string.
+    localization = lua.execute(LOCALIZATION_PATH.read_text(encoding="utf-8"))
+    format_string = lua.eval("string.format")
+
+    for _, localized_values in localization.items():
+        format_string(localized_values["en"])
 
     print("BetterInventory layout behavior tests passed.")
 
