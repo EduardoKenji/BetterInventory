@@ -68,6 +68,14 @@ def main() -> None:
 			gadget_toughness_regen_delay = "+30% Toughness Regeneration Speed",
 			gadget_mission_credits_increase = "+8% Ordo Dockets (Mission Rewards)",
 			gadget_revive_speed_increase = "+10% Revive Speed (Ally)",
+			weapon_trait_melee_common_wield_increased_armored_damage = "+25% Damage (Flak Armoured Enemies)",
+			weapon_trait_melee_common_wield_increased_berserker_damage = "+25% Damage (Maniacs)",
+			weapon_trait_increase_crit_chance = "+5% Melee Critical Hit Chance",
+			weapon_trait_increase_crit_damage = "+10% Melee Critical Hit Damage",
+			weapon_trait_increase_damage_hordes = "+10% Melee Damage (Groaners, Poxwalkers)",
+			weapon_trait_increase_damage_elites = "+10% Melee Damage (Elites)",
+			weapon_trait_increase_damage_specials = "+10% Increased Melee Damage (Specialists)",
+			weapon_trait_increase_weakspot_damage = "+10% Melee Weak Spot Damage",
 		}
 		TestTraitByMasterId = {
 			["content/items/traits/test_health"] = "gadget_innate_health_increase",
@@ -85,6 +93,14 @@ def main() -> None:
 			["content/items/perks/test_toughness_regen"] = "gadget_toughness_regen_delay",
 			["content/items/perks/test_ordo_dockets"] = "gadget_mission_credits_increase",
 			["content/items/perks/test_revive_speed"] = "gadget_revive_speed_increase",
+			["content/items/perks/test_weapon_flak"] = "weapon_trait_melee_common_wield_increased_armored_damage",
+			["content/items/perks/test_weapon_maniacs"] = "weapon_trait_melee_common_wield_increased_berserker_damage",
+			["content/items/perks/test_weapon_crit_chance"] = "weapon_trait_increase_crit_chance",
+			["content/items/perks/test_weapon_crit_damage"] = "weapon_trait_increase_crit_damage",
+			["content/items/perks/test_weapon_horde"] = "weapon_trait_increase_damage_hordes",
+			["content/items/perks/test_weapon_elites"] = "weapon_trait_increase_damage_elites",
+			["content/items/perks/test_weapon_specialists"] = "weapon_trait_increase_damage_specials",
+			["content/items/perks/test_weapon_weakspot"] = "weapon_trait_increase_weakspot_damage",
 		}
 
 		function TestText.text_width(ui_renderer, text, style, optional_size, use_max_extents)
@@ -109,6 +125,10 @@ def main() -> None:
 
 		function TestItems.is_weapon(item_type)
 			return item_type == "WEAPON_MELEE" or item_type == "WEAPON_RANGED"
+		end
+
+		function TestItems.expertise_level(item, no_symbol)
+			return no_symbol and "460" or "POWER 460", true
 		end
 
 		function TestItems.trait_description(item, rarity, value)
@@ -159,8 +179,10 @@ def main() -> None:
 				append_mark_to_name = true,
                 show_pattern_mark = false,
                 show_rarity_name = false,
-                show_rarity_tag = true,
+				show_rarity_tag = true,
 				show_weapon_blessings = true,
+				show_weapon_perks = false,
+				weapon_perk_compression = "compression",
 				blessing_icon_spacing = 3,
                 compact_favorite_marker = true,
 				favorite_marker_position = "above_rating",
@@ -183,7 +205,8 @@ def main() -> None:
 				curio_stamina_color_b = 80,
                 item_name_font_size = 16,
                 secondary_text_font_size = 13,
-                expertise_font_size = 20,
+				expertise_font_size = 20,
+				show_item_level_icon = true,
 				minimum_item_name_font_size = 12,
                 enable_melee_inventory = true,
                 enable_ranged_inventory = false,
@@ -211,6 +234,22 @@ def main() -> None:
 				curio_heavy_block = "Block",
 				curio_heavy_sprint = "Sprint",
 				curio_heavy_stamina_regen = "Stamina Regen",
+				weapon_perk_flak_damage = "Flak Damage",
+				weapon_perk_flak_damage_heavy = "Flak Dmg",
+				weapon_perk_maniacs_damage = "Maniacs Damage",
+				weapon_perk_maniacs_damage_heavy = "Maniac Dmg",
+				weapon_perk_melee_crit_chance = "Melee Crit Chance",
+				weapon_perk_melee_crit_chance_heavy = "Melee Crit",
+				weapon_perk_melee_crit_damage = "Melee Crit Dmg",
+				weapon_perk_melee_crit_damage_heavy = "Crit Dmg",
+				weapon_perk_horde_melee_damage = "Horde Melee Dmg",
+				weapon_perk_horde_melee_damage_heavy = "Horde Dmg",
+				weapon_perk_elites_melee_damage = "Elites Melee Dmg",
+				weapon_perk_elites_melee_damage_heavy = "Elite Dmg",
+				weapon_perk_specialist_melee_damage = "Specialist Melee Dmg",
+				weapon_perk_specialist_melee_damage_heavy = "Spec Dmg",
+				weapon_perk_melee_weakspot_damage = "Melee Weakspot Dmg",
+				weapon_perk_melee_weakspot_damage_heavy = "Weakspot Dmg",
 			}
 
 			return values[localization_id] or localization_id
@@ -225,11 +264,13 @@ def main() -> None:
 			widget.content.element = element
 			widget.content.display_name = element.test_display_name
 			widget.content.sub_display_name = element.test_sub_display_name
+			widget.content.item_level = "POWER 460"
 		end
 		sentinel_update_data = function(parent, widget, element)
 			widget.content.element = element
 			widget.content.display_name = element.test_display_name
 			widget.content.sub_display_name = element.test_sub_display_name
+			widget.content.item_level = "POWER 460"
 		end
         test_blueprint = {
 			size = { 586, 110 },
@@ -299,6 +340,18 @@ def main() -> None:
     mod.settings.card_height = 110
     mod.settings.curio_display_profile = "primary"
     mod.settings.secondary_text_font_size = 13
+
+    store_configuration = lua.table_from(
+        {"maximum_columns": 3, "store_item": True}
+    )
+    assert layout.card_height(mod, store_configuration) == 114
+    mod.settings.curio_display_profile = "detailed"
+    assert layout.card_height(mod, store_configuration) == 125
+    mod.settings.curio_display_profile = "primary"
+
+    mod.settings.show_weapon_perks = True
+    assert layout.card_height(mod, store_configuration) == 148
+    mod.settings.show_weapon_perks = False
 
     assert layout.grid_expansion(mod, 596) == 0
 
@@ -371,17 +424,15 @@ def main() -> None:
 
     mod.settings.columns = 5
     vendor_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
-    vendor_configuration = lua.table_from(
-        {"maximum_columns": 3, "store_item": True}
-    )
     vendor_size = layout.configure_item_blueprint(
-        mod, vendor_blueprint, 596, vendor_configuration
+        mod, vendor_blueprint, 596, store_configuration
     )
-    assert (vendor_size[1], vendor_size[2]) == (192, 110)
+    assert (vendor_size[1], vendor_size[2]) == (192, 114)
     assert blueprint_pass(vendor_blueprint, "wallet_icon").style.horizontal_alignment == "left"
     assert blueprint_pass(vendor_blueprint, "price_text").style.font_size == 16
     assert blueprint_pass(vendor_blueprint, "price_text").style.offset[1] == 39
     assert blueprint_pass(vendor_blueprint, "owned_text").style.offset[1] == 12
+    assert blueprint_pass(vendor_blueprint, "better_inventory_blessing_1").style.offset[2] == -37
     same_lua_value = lua.eval("function(left, right) return left == right end")
     assert same_lua_value(vendor_blueprint.load_icon, globals_.sentinel_load)
     assert same_lua_value(vendor_blueprint.unload_icon, globals_.sentinel_unload)
@@ -390,6 +441,41 @@ def main() -> None:
         vendor_blueprint.update_item_icon_priority, globals_.sentinel_priority
     )
     assert same_lua_value(vendor_blueprint.update, globals_.sentinel_update)
+
+    mod.settings.show_weapon_perks = True
+    vendor_perk_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    vendor_perk_size = layout.configure_item_blueprint(
+        mod, vendor_perk_blueprint, 596, store_configuration
+    )
+    assert (vendor_perk_size[1], vendor_perk_size[2]) == (192, 148)
+    assert (
+        blueprint_pass(
+            vendor_perk_blueprint, "better_inventory_weapon_perk_1"
+        ).style.offset[2]
+        == -93
+    )
+    assert (
+        blueprint_pass(
+            vendor_perk_blueprint, "better_inventory_weapon_perk_2"
+        ).style.offset[2]
+        == -76
+    )
+    mod.settings.show_weapon_perks = False
+
+    mod.settings.curio_display_profile = "detailed"
+    vendor_curio_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    vendor_curio_size = layout.configure_item_blueprint(
+        mod, vendor_curio_blueprint, 596, store_configuration
+    )
+    assert (vendor_curio_size[1], vendor_curio_size[2]) == (192, 125)
+    fourth_vendor_curio_line = blueprint_pass(
+        vendor_curio_blueprint, "better_inventory_curio_stat_4"
+    ).style
+    assert fourth_vendor_curio_line.offset[2] + fourth_vendor_curio_line.size[2] == 79
+    assert fourth_vendor_curio_line.offset[2] + fourth_vendor_curio_line.size[2] < (
+        vendor_curio_size[2] - 34
+    )
+    mod.settings.curio_display_profile = "primary"
     mod.settings.columns = 3
 
     mod.settings.enable_grid_layout = False
@@ -552,6 +638,166 @@ def main() -> None:
         second_blessing_pass.style.offset[1] - first_blessing_pass.style.offset[1]
         == first_blessing_pass.style.size[1] + 3
     )
+
+    mod.settings.show_item_level_icon = False
+    no_power_icon_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, no_power_icon_blueprint, 640)
+    no_power_icon_widget = lua.table_from(
+        {
+            "content": lua.table_from({}),
+            "style": lua.table_from(
+                {
+                    "display_name": blueprint_pass(
+                        no_power_icon_blueprint, "display_name"
+                    ).style,
+                }
+            ),
+        }
+    )
+    no_power_icon_blueprint.init(
+        None,
+        no_power_icon_widget,
+        narrow_weapon_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        no_power_icon_blueprint,
+    )
+    assert no_power_icon_widget.content.item_level == "460"
+    mod.settings.show_item_level_icon = True
+
+    narrow_weapon_element.item.perks = lua.table_from(
+        [
+            lua.table_from(
+                {
+                    "id": "content/items/perks/test_weapon_flak",
+                    "rarity": 4,
+                    "value": 0.8,
+                }
+            ),
+            lua.table_from(
+                {
+                    "id": "content/items/perks/test_weapon_maniacs",
+                    "rarity": 4,
+                    "value": 0.8,
+                }
+            ),
+        ]
+    )
+    mod.settings.show_weapon_perks = True
+    perk_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    perk_size = layout.configure_item_blueprint(mod, perk_blueprint, 640)
+    assert (perk_size[1], perk_size[2]) == (206, 114)
+    perk_styles = {
+        "display_name": blueprint_pass(perk_blueprint, "display_name").style,
+        "better_inventory_weapon_perk_1": blueprint_pass(
+            perk_blueprint, "better_inventory_weapon_perk_1"
+        ).style,
+        "better_inventory_weapon_perk_2": blueprint_pass(
+            perk_blueprint, "better_inventory_weapon_perk_2"
+        ).style,
+    }
+    perk_widget = lua.table_from(
+        {"content": lua.table_from({}), "style": lua.table_from(perk_styles)}
+    )
+    perk_blueprint.init(
+        None,
+        perk_widget,
+        narrow_weapon_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        perk_blueprint,
+    )
+    assert perk_widget.content.better_inventory_full_weapon_perk_1 == "+25% Flak Damage"
+    assert perk_widget.content.better_inventory_full_weapon_perk_2 == "+25% Maniacs Damage"
+    assert "\n" not in perk_widget.content.better_inventory_weapon_perk_1
+
+    standard_weapon_perk_expectations = {
+        "content/items/perks/test_weapon_flak": "+25% Flak Damage",
+        "content/items/perks/test_weapon_maniacs": "+25% Maniacs Damage",
+        "content/items/perks/test_weapon_crit_chance": "+5% Melee Crit Chance",
+        "content/items/perks/test_weapon_crit_damage": "+10% Melee Crit Dmg",
+        "content/items/perks/test_weapon_horde": "+10% Horde Melee Dmg",
+        "content/items/perks/test_weapon_elites": "+10% Elites Melee Dmg",
+        "content/items/perks/test_weapon_specialists": "+10% Specialist Melee Dmg",
+        "content/items/perks/test_weapon_weakspot": "+10% Melee Weakspot Dmg",
+    }
+
+    for perk_id, expected_text in standard_weapon_perk_expectations.items():
+        narrow_weapon_element.item.perks[1].id = perk_id
+        perk_blueprint.update_data(test_grid, perk_widget, narrow_weapon_element)
+        assert (
+            perk_widget.content.better_inventory_full_weapon_perk_1 == expected_text
+        ), perk_id
+
+    mod.settings.weapon_perk_compression = "heavy"
+    heavy_perk_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, heavy_perk_blueprint, 640)
+    heavy_perk_styles = {
+        "display_name": blueprint_pass(heavy_perk_blueprint, "display_name").style,
+        "better_inventory_weapon_perk_1": blueprint_pass(
+            heavy_perk_blueprint, "better_inventory_weapon_perk_1"
+        ).style,
+        "better_inventory_weapon_perk_2": blueprint_pass(
+            heavy_perk_blueprint, "better_inventory_weapon_perk_2"
+        ).style,
+    }
+    heavy_perk_widget = lua.table_from(
+        {"content": lua.table_from({}), "style": lua.table_from(heavy_perk_styles)}
+    )
+    narrow_weapon_element.item.perks[1].id = "content/items/perks/test_weapon_specialists"
+    heavy_perk_blueprint.init(
+        None,
+        heavy_perk_widget,
+        narrow_weapon_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        heavy_perk_blueprint,
+    )
+    assert heavy_perk_widget.content.better_inventory_full_weapon_perk_1 == "+10% Spec Dmg"
+
+    mod.settings.weapon_perk_compression = "none"
+    uncompressed_perk_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, uncompressed_perk_blueprint, 640)
+    uncompressed_perk_styles = {
+        "display_name": blueprint_pass(
+            uncompressed_perk_blueprint, "display_name"
+        ).style,
+        "better_inventory_weapon_perk_1": blueprint_pass(
+            uncompressed_perk_blueprint, "better_inventory_weapon_perk_1"
+        ).style,
+        "better_inventory_weapon_perk_2": blueprint_pass(
+            uncompressed_perk_blueprint, "better_inventory_weapon_perk_2"
+        ).style,
+    }
+    uncompressed_perk_widget = lua.table_from(
+        {
+            "content": lua.table_from({}),
+            "style": lua.table_from(uncompressed_perk_styles),
+        }
+    )
+    narrow_weapon_element.item.perks[1].id = "content/items/perks/test_weapon_flak"
+    uncompressed_perk_blueprint.init(
+        None,
+        uncompressed_perk_widget,
+        narrow_weapon_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        uncompressed_perk_blueprint,
+    )
+    assert (
+        uncompressed_perk_widget.content.better_inventory_full_weapon_perk_1
+        == "+25% Damage (Flak Armoured Enemies)"
+    )
+    mod.settings.weapon_perk_compression = "compression"
+    mod.settings.show_weapon_perks = False
 
     curio_stat_pass = blueprint_pass(blueprint, "better_inventory_curio_stat_1")
     curio_widget = lua.table_from(

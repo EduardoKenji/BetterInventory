@@ -236,6 +236,32 @@ return {
 						default_value = false,
 					},
 					{
+						setting_id = "show_weapon_perks",
+						tooltip = "show_weapon_perks_tooltip",
+						type = "checkbox",
+						default_value = false,
+					},
+					{
+						setting_id = "weapon_perk_compression",
+						tooltip = "weapon_perk_compression_tooltip",
+						type = "dropdown",
+						default_value = "compression",
+						options = {
+							{
+								text = "weapon_perk_compression_none",
+								value = "none",
+							},
+							{
+								text = "weapon_perk_compression_standard",
+								value = "compression",
+							},
+							{
+								text = "weapon_perk_compression_heavy",
+								value = "heavy",
+							},
+						},
+					},
+					{
 						setting_id = "blessing_icon_spacing",
 						tooltip = "blessing_icon_spacing_tooltip",
 						type = "numeric",
@@ -302,6 +328,12 @@ return {
 							10,
 							28,
 						},
+					},
+					{
+						setting_id = "show_item_level_icon",
+						tooltip = "show_item_level_icon_tooltip",
+						type = "checkbox",
+						default_value = true,
 					},
 				},
 			},

@@ -103,8 +103,10 @@ if ($DarktideSourcePath) {
 	$items = Join-Path $DarktideSourcePath "scripts\utilities\items.lua"
 	$masterItems = Join-Path $DarktideSourcePath "scripts\backend\master_items.lua"
 	$gadgetTraits = Join-Path $DarktideSourcePath "scripts\settings\equipment\gadget_traits\gadget_traits_common.lua"
+	$weaponPerksMelee = Join-Path $DarktideSourcePath "scripts\settings\equipment\weapon_traits\weapon_perks_melee.lua"
+	$weaponPerksRanged = Join-Path $DarktideSourcePath "scripts\settings\equipment\weapon_traits\weapon_perks_ranged.lua"
 
-	foreach ($sourceFile in @($inventoryView, $hadronModifyView, $craftingViewDefinitions, $creditsVendorView, $creditsVendorBackgroundDefinitions, $itemGridBase, $itemBlueprints, $iconGenerator, $items, $masterItems, $gadgetTraits)) {
+	foreach ($sourceFile in @($inventoryView, $hadronModifyView, $craftingViewDefinitions, $creditsVendorView, $creditsVendorBackgroundDefinitions, $itemGridBase, $itemBlueprints, $iconGenerator, $items, $masterItems, $gadgetTraits, $weaponPerksMelee, $weaponPerksRanged)) {
 		if (-not (Test-Path -LiteralPath $sourceFile -PathType Leaf)) {
 			throw "Missing expected Darktide source file: $sourceFile"
 		}
@@ -150,7 +152,9 @@ if ($DarktideSourcePath) {
 		$itemsSource -notmatch 'Items\.weapon_lore_mark_name' -or
 		$itemsSource -notmatch 'Items\.weapon_lore_pattern_name' -or
 		$itemsSource -notmatch 'Items\.trait_textures' -or
-		$itemsSource -notmatch 'Items\.trait_description'
+		$itemsSource -notmatch 'Items\.trait_description' -or
+		$itemsSource -notmatch 'Items\.expertise_level\s*=\s*function\s*\(item,\s*no_symbol' -or
+		$itemsSource -notmatch 'if\s+no_symbol\s+then'
 	) {
 		throw "One or more current card-content APIs were not found."
 	}
@@ -182,6 +186,34 @@ if ($DarktideSourcePath) {
 	)) {
 		if ($gadgetTraitSource -notmatch [regex]::Escape($traitId)) {
 			throw "The expected Curio primary trait ID was not found: $traitId"
+		}
+	}
+
+	$weaponPerkSources = @(
+		(Get-Content -LiteralPath $weaponPerksMelee -Raw),
+		(Get-Content -LiteralPath $weaponPerksRanged -Raw)
+	) -join "`n"
+
+	foreach ($traitId in @(
+		"weapon_trait_melee_common_wield_increased_armored_damage",
+		"weapon_trait_ranged_common_wield_increased_armored_damage",
+		"weapon_trait_melee_common_wield_increased_berserker_damage",
+		"weapon_trait_ranged_common_wield_increased_berserker_damage",
+		"weapon_trait_increase_crit_chance",
+		"weapon_trait_increase_crit_damage",
+		"weapon_trait_increase_damage_hordes",
+		"weapon_trait_increase_damage_elites",
+		"weapon_trait_increase_damage_specials",
+		"weapon_trait_increase_weakspot_damage",
+		"weapon_trait_ranged_increase_crit_chance",
+		"weapon_trait_ranged_increase_crit_damage",
+		"weapon_trait_ranged_increase_damage_hordes",
+		"weapon_trait_ranged_increase_damage_elites",
+		"weapon_trait_ranged_increase_damage_specials",
+		"weapon_trait_ranged_increase_weakspot_damage"
+	)) {
+		if ($weaponPerkSources -notmatch [regex]::Escape($traitId)) {
+			throw "The expected weapon perk ID was not found: $traitId"
 		}
 	}
 }

@@ -24,6 +24,7 @@ def main() -> None:
 			enable_hadron_entreat_grid = true,
 			enable_armoury_requisition_grid = true,
             automatic_card_height = true,
+			show_weapon_perks = false,
 			expand_inventory_window = true,
 			expand_curio_inventory_window = true,
             curio_health_color_preset = "red",
@@ -149,6 +150,7 @@ def main() -> None:
         "card_height",
         "enable_hadron_entreat_grid",
         "enable_armoury_requisition_grid",
+		"weapon_perk_compression",
     )
     entries = [
         lua.table_from(
@@ -173,6 +175,14 @@ def main() -> None:
     assert entries_by_id["enable_armoury_requisition_grid"].disabled is False
     assert entries_by_id["expand_curio_inventory_window"].disabled is False
     assert entries_by_id["curio_target_card_width"].disabled is False
+    assert entries_by_id["weapon_perk_compression"].disabled is True
+
+    settings.show_weapon_perks = True
+    mod.on_setting_changed("show_weapon_perks")
+    assert entries_by_id["weapon_perk_compression"].disabled is False
+    settings.show_weapon_perks = False
+    mod.on_setting_changed("show_weapon_perks")
+    assert entries_by_id["weapon_perk_compression"].disabled is True
 
     settings.expand_curio_inventory_window = False
     mod.on_setting_changed("expand_curio_inventory_window")
@@ -228,6 +238,9 @@ def main() -> None:
     assert defaults["simplify_curio_primary_stat_text"] is True
     assert defaults["remove_curio_stat_plus_signs"] is False
     assert defaults["blessing_icon_spacing"] == 3
+    assert defaults["show_weapon_perks"] is False
+    assert defaults["weapon_perk_compression"] == "compression"
+    assert defaults["show_item_level_icon"] is True
     assert defaults["curio_health_color_preset"] == "red"
     assert defaults["curio_toughness_color_preset"] == "light_blue"
     assert defaults["curio_wound_color_preset"] == "purple"

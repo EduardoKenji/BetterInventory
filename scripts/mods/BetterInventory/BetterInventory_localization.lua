@@ -92,6 +92,9 @@ return {
 	option_requires_curio_expansion = {
 		en = "Enable column-aware Curio expansion to set a target card width.",
 	},
+	option_requires_weapon_perks = {
+		en = "Enable weapon perk text to use this option.",
+	},
 	icon_darkness = {
 		en = "Icon darkness (%%)",
 	},
@@ -121,6 +124,27 @@ return {
 	},
 	show_weapon_blessings_tooltip = {
 		en = "Shows up to two blessing symbols on weapon cards. Darktide's ranked frames include the blessing level.",
+	},
+	show_weapon_perks = {
+		en = "Show weapon perk text",
+	},
+	show_weapon_perks_tooltip = {
+		en = "Shows both weapon perks as dedicated single-line rows. Automatic card height reserves the required space; narrow text shrinks and then uses an ellipsis instead of wrapping.",
+	},
+	weapon_perk_compression = {
+		en = "Weapon perk text compression",
+	},
+	weapon_perk_compression_tooltip = {
+		en = "Compression uses readable shorter labels. Heavy Compression is intended for four- and five-column cards. Unknown perk identifiers retain Darktide's original localized text.",
+	},
+	weapon_perk_compression_none = {
+		en = "No compression",
+	},
+	weapon_perk_compression_standard = {
+		en = "Compression",
+	},
+	weapon_perk_compression_heavy = {
+		en = "Heavy Compression",
 	},
 	blessing_icon_spacing = {
 		en = "Blessing icon horizontal spacing",
@@ -157,6 +181,12 @@ return {
 	},
 	expertise_font_size = {
 		en = "Expertise font size",
+	},
+	show_item_level_icon = {
+		en = "Show item power icon",
+	},
+	show_item_level_icon_tooltip = {
+		en = "Shows Darktide's power glyph to the left of the item power number. Disable this to keep the number and remove only the glyph.",
 	},
 	curio_content_group = {
 		en = "Curio content",
@@ -367,5 +397,89 @@ return {
 	},
 	curio_heavy_stamina_regen = {
 		en = "Stamina Regen",
+	},
+	weapon_perk_flak_damage = {
+		en = "Flak Damage",
+	},
+	weapon_perk_flak_damage_heavy = {
+		en = "Flak Dmg",
+	},
+	weapon_perk_maniacs_damage = {
+		en = "Maniacs Damage",
+	},
+	weapon_perk_maniacs_damage_heavy = {
+		en = "Maniac Dmg",
+	},
+	weapon_perk_melee_crit_chance = {
+		en = "Melee Crit Chance",
+	},
+	weapon_perk_melee_crit_chance_heavy = {
+		en = "Melee Crit",
+	},
+	weapon_perk_melee_crit_damage = {
+		en = "Melee Crit Dmg",
+	},
+	weapon_perk_melee_crit_damage_heavy = {
+		en = "Crit Dmg",
+	},
+	weapon_perk_horde_melee_damage = {
+		en = "Horde Melee Dmg",
+	},
+	weapon_perk_horde_melee_damage_heavy = {
+		en = "Horde Dmg",
+	},
+	weapon_perk_elites_melee_damage = {
+		en = "Elites Melee Dmg",
+	},
+	weapon_perk_elites_melee_damage_heavy = {
+		en = "Elite Dmg",
+	},
+	weapon_perk_specialist_melee_damage = {
+		en = "Specialist Melee Dmg",
+	},
+	weapon_perk_specialist_melee_damage_heavy = {
+		en = "Spec Dmg",
+	},
+	weapon_perk_melee_weakspot_damage = {
+		en = "Melee Weakspot Dmg",
+	},
+	weapon_perk_melee_weakspot_damage_heavy = {
+		en = "Weakspot Dmg",
+	},
+	weapon_perk_ranged_crit_chance = {
+		en = "Ranged Crit Chance",
+	},
+	weapon_perk_ranged_crit_chance_heavy = {
+		en = "Ranged Crit",
+	},
+	weapon_perk_ranged_crit_damage = {
+		en = "Ranged Crit Dmg",
+	},
+	weapon_perk_ranged_crit_damage_heavy = {
+		en = "Crit Dmg",
+	},
+	weapon_perk_horde_ranged_damage = {
+		en = "Horde Ranged Dmg",
+	},
+	weapon_perk_horde_ranged_damage_heavy = {
+		en = "Horde Dmg",
+	},
+	weapon_perk_elites_ranged_damage = {
+		en = "Elites Ranged Dmg",
+	},
+	weapon_perk_elites_ranged_damage_heavy = {
+		en = "Elite Dmg",
+	},
+	weapon_perk_specialist_ranged_damage = {
+		en = "Specialist Ranged Dmg",
+	},
+	weapon_perk_specialist_ranged_damage_heavy = {
+		en = "Spec Dmg",
+	},
+	weapon_perk_ranged_weakspot_damage = {
+		en = "Ranged Weakspot Dmg",
+	},
+	weapon_perk_ranged_weakspot_damage_heavy = {
+		en = "Weakspot Dmg",
 	},
 }

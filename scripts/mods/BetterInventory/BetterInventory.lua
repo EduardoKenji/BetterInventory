@@ -183,9 +183,11 @@ local function refresh_option_dependencies()
 	local curio_expansion_enabled = window_expansion_enabled and mod:get("expand_curio_inventory_window") ~= false
 	local expansion_reason = grid_enabled and mod:localize("option_requires_window_expansion") or native_reason
 	local curio_target_reason = not window_expansion_enabled and expansion_reason or not curio_expansion_enabled and mod:localize("option_requires_curio_expansion") or nil
+	local weapon_perks_enabled = mod:get("show_weapon_perks") == true
 
 	set_option_enabled(option_dependency_entries.expand_curio_inventory_window, window_expansion_enabled, expansion_reason)
 	set_option_enabled(option_dependency_entries.curio_target_card_width, curio_expansion_enabled, curio_target_reason)
+	set_option_enabled(option_dependency_entries.weapon_perk_compression, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
 end
 
 local function bind_option_dependencies(options_templates)
@@ -208,6 +210,7 @@ local function bind_option_dependencies(options_templates)
 		"curio_target_card_width",
 		"enable_hadron_entreat_grid",
 		"enable_armoury_requisition_grid",
+		"weapon_perk_compression",
 	}) do
 		setting_by_title[mod:localize(setting_id)] = setting_id
 	end
@@ -279,7 +282,7 @@ function mod.on_setting_changed(setting_id)
 		end
 	end
 
-	if setting_id == "enable_grid_layout" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "expand_curio_inventory_window" then
+	if setting_id == "enable_grid_layout" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "expand_curio_inventory_window" or setting_id == "show_weapon_perks" then
 		refresh_option_dependencies()
 	end
 end

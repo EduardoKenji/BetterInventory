@@ -5,6 +5,8 @@ local MasterItems = require("scripts/backend/master_items")
 local Layout = {}
 local MINIMUM_CARD_WIDTH = 120
 local BLESSING_MATERIAL = "content/ui/materials/icons/traits/traits_container"
+local STORE_FOOTER_HEIGHT = 34
+local WEAPON_PERK_COUNT = 2
 local CURIO_PRIMARY_COLOR_DEFINITIONS = {
 	gadget_innate_health_increase = {
 		prefix = "curio_health_color",
@@ -153,6 +155,61 @@ local COMPACT_CURIO_LABELS = {
 		},
 	},
 }
+local COMPACT_WEAPON_PERK_LABELS = {}
+
+local function register_weapon_perk_labels(ids, localization_id, heavy_localization_id)
+	for i = 1, #ids do
+		COMPACT_WEAPON_PERK_LABELS[ids[i]] = {
+			localization_id = localization_id,
+			heavy_localization_id = heavy_localization_id,
+		}
+	end
+end
+
+register_weapon_perk_labels({
+	"weapon_trait_melee_common_wield_increased_armored_damage",
+	"weapon_trait_ranged_common_wield_increased_armored_damage",
+}, "weapon_perk_flak_damage", "weapon_perk_flak_damage_heavy")
+register_weapon_perk_labels({
+	"weapon_trait_melee_common_wield_increased_berserker_damage",
+	"weapon_trait_ranged_common_wield_increased_berserker_damage",
+}, "weapon_perk_maniacs_damage", "weapon_perk_maniacs_damage_heavy")
+register_weapon_perk_labels({
+	"weapon_trait_increase_crit_chance",
+}, "weapon_perk_melee_crit_chance", "weapon_perk_melee_crit_chance_heavy")
+register_weapon_perk_labels({
+	"weapon_trait_increase_crit_damage",
+}, "weapon_perk_melee_crit_damage", "weapon_perk_melee_crit_damage_heavy")
+register_weapon_perk_labels({
+	"weapon_trait_increase_damage_hordes",
+}, "weapon_perk_horde_melee_damage", "weapon_perk_horde_melee_damage_heavy")
+register_weapon_perk_labels({
+	"weapon_trait_increase_damage_elites",
+}, "weapon_perk_elites_melee_damage", "weapon_perk_elites_melee_damage_heavy")
+register_weapon_perk_labels({
+	"weapon_trait_increase_damage_specials",
+}, "weapon_perk_specialist_melee_damage", "weapon_perk_specialist_melee_damage_heavy")
+register_weapon_perk_labels({
+	"weapon_trait_increase_weakspot_damage",
+}, "weapon_perk_melee_weakspot_damage", "weapon_perk_melee_weakspot_damage_heavy")
+register_weapon_perk_labels({
+	"weapon_trait_ranged_increase_crit_chance",
+}, "weapon_perk_ranged_crit_chance", "weapon_perk_ranged_crit_chance_heavy")
+register_weapon_perk_labels({
+	"weapon_trait_ranged_increase_crit_damage",
+}, "weapon_perk_ranged_crit_damage", "weapon_perk_ranged_crit_damage_heavy")
+register_weapon_perk_labels({
+	"weapon_trait_ranged_increase_damage_hordes",
+}, "weapon_perk_horde_ranged_damage", "weapon_perk_horde_ranged_damage_heavy")
+register_weapon_perk_labels({
+	"weapon_trait_ranged_increase_damage_elites",
+}, "weapon_perk_elites_ranged_damage", "weapon_perk_elites_ranged_damage_heavy")
+register_weapon_perk_labels({
+	"weapon_trait_ranged_increase_damage_specials",
+}, "weapon_perk_specialist_ranged_damage", "weapon_perk_specialist_ranged_damage_heavy")
+register_weapon_perk_labels({
+	"weapon_trait_ranged_increase_weakspot_damage",
+}, "weapon_perk_ranged_weakspot_damage", "weapon_perk_ranged_weakspot_damage_heavy")
 local CURIO_PRIMARY_SIMPLIFICATIONS = {
 	gadget_innate_health_increase = {
 		find = "Max Health",
@@ -264,6 +321,25 @@ local function compact_curio_description(mod, data, compression_mode)
 	return string.format("%s %s", amount, mod:localize(localization_id))
 end
 
+local function compact_weapon_perk_description(mod, data, compression_mode)
+	local definition = data and COMPACT_WEAPON_PERK_LABELS[data.id]
+	local description = data and data.description
+
+	if compression_mode == "none" or not definition or type(description) ~= "string" or description == "" then
+		return description or ""
+	end
+
+	local amount = string.match(description, "^%s*([^%s]+)")
+
+	if not amount then
+		return description
+	end
+
+	local localization_id = compression_mode == "heavy" and definition.heavy_localization_id or definition.localization_id
+
+	return string.format("%s %s", amount, mod:localize(localization_id))
+end
+
 local function curio_plus_sign_description(description, remove_plus_sign)
 	if not remove_plus_sign or type(description) ~= "string" then
 		return description or ""
@@ -371,7 +447,7 @@ local function resolved_trait_data(entry, include_textures)
 	return data
 end
 
-local function populate_card_content(mod, widget, element, show_weapon_blessings, compression_mode, simplify_curio_primary)
+local function populate_card_content(mod, widget, element, show_weapon_blessings, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_primary)
 	local content = widget and widget.content
 
 	if not content then
@@ -380,6 +456,8 @@ local function populate_card_content(mod, widget, element, show_weapon_blessings
 
 	for i = 1, 2 do
 		content["better_inventory_blessing_" .. i] = nil
+		content["better_inventory_weapon_perk_" .. i] = ""
+		content["better_inventory_full_weapon_perk_" .. i] = nil
 	end
 
 	for i = 1, 4 do
@@ -391,14 +469,28 @@ local function populate_card_content(mod, widget, element, show_weapon_blessings
 
 	local item = item_from_element(element or content.element)
 
-	if is_weapon(item) and show_weapon_blessings then
-		local traits = item.traits
+	if is_weapon(item) then
+		if show_weapon_blessings then
+			local traits = item.traits
 
-		for i = 1, math.min(2, traits and #traits or 0) do
-			local data = resolved_trait_data(traits[i], true)
+			for i = 1, math.min(2, traits and #traits or 0) do
+				local data = resolved_trait_data(traits[i], true)
 
-			if data and data.icon and data.frame then
-				content["better_inventory_blessing_" .. i] = data
+				if data and data.icon and data.frame then
+					content["better_inventory_blessing_" .. i] = data
+				end
+			end
+		end
+
+		if show_weapon_perks then
+			local perks = item.perks
+
+			for i = 1, math.min(WEAPON_PERK_COUNT, perks and #perks or 0) do
+				local data = resolved_trait_data(perks[i], false)
+
+				if data then
+					content["better_inventory_weapon_perk_" .. i] = compact_weapon_perk_description(mod, data, weapon_perk_compression)
+				end
 			end
 		end
 
@@ -450,7 +542,7 @@ local function configure_text_pass(pass, options)
 	style.size = options.size
 end
 
-local function add_blessing_pass(pass_template, index, size, x_offset)
+local function add_blessing_pass(pass_template, index, size, x_offset, y_offset)
 	local content_id = "better_inventory_blessing_" .. index
 
 	pass_template[#pass_template + 1] = {
@@ -467,7 +559,7 @@ local function add_blessing_pass(pass_template, index, size, x_offset)
 			},
 			offset = {
 				x_offset,
-				-3,
+				y_offset or -3,
 				12,
 			},
 			color = {
@@ -488,6 +580,33 @@ local function add_blessing_pass(pass_template, index, size, x_offset)
 				material_values.icon = data.icon
 				material_values.frame = data.frame
 			end
+		end,
+	}
+end
+
+local function add_weapon_perk_pass(pass_template, index, options)
+	local content_id = "better_inventory_weapon_perk_" .. index
+	local style = table.clone(options.base_style or {})
+
+	style.font_size = options.font_size
+	style.horizontal_alignment = "left"
+	style.vertical_alignment = "bottom"
+	style.text_horizontal_alignment = "left"
+	style.text_vertical_alignment = "bottom"
+	style.word_wrap = false
+	style.offset = options.offset
+	style.size = options.size
+	style.better_inventory_max_text_width = options.size[1]
+	style.better_inventory_preferred_font_size = options.font_size
+
+	pass_template[#pass_template + 1] = {
+		pass_type = "text",
+		style_id = content_id,
+		value = "",
+		value_id = content_id,
+		style = style,
+		visibility_function = function(content)
+			return content and content[content_id] ~= nil and content[content_id] ~= ""
 		end,
 	}
 end
@@ -579,19 +698,55 @@ local function configure_favorite_marker(mod, pass_template, text_left)
 	end
 end
 
-local function add_custom_content_passes(mod, pass_template, card_width, text_left, base_text_style)
+local function add_custom_content_passes(mod, pass_template, card_width, text_left, base_text_style, configuration)
+	configuration = configuration or {}
+
 	local show_weapon_blessings = setting(mod, "show_weapon_blessings", false)
+	local show_weapon_perks = setting(mod, "show_weapon_perks", false)
 	local detailed_curio_profile = setting(mod, "curio_display_profile", "primary") == "detailed"
 	local favorite_marker_position = setting(mod, "favorite_marker_position", "above_rating")
+	local store_footer_height = configuration.store_item and STORE_FOOTER_HEIGHT or 0
+	local expertise_font_size = math.max(10, math.min(28, setting(mod, "expertise_font_size", 20)))
+	local bottom_content_height = math.max(30, expertise_font_size + 10)
+	local blessing_size
 
 	if show_weapon_blessings then
-		local blessing_size = card_width <= 140 and 28 or 34
+		blessing_size = card_width <= 140 and 28 or 34
 		local blessing_gap = math.max(0, math.min(20, setting(mod, "blessing_icon_spacing", 3)))
 		local blessing_spacing = blessing_size + blessing_gap
 		local blessing_left = text_left + (favorite_marker_position == "bottom_left" and 24 or 0)
+		local blessing_y_offset = -(store_footer_height + 3)
 
 		for i = 1, 2 do
-			add_blessing_pass(pass_template, i, blessing_size, blessing_left + (i - 1) * blessing_spacing)
+			add_blessing_pass(pass_template, i, blessing_size, blessing_left + (i - 1) * blessing_spacing, blessing_y_offset)
+		end
+	end
+
+	if configuration.store_item then
+		bottom_content_height = store_footer_height + (show_weapon_blessings and blessing_size + 6 or 0)
+	elseif show_weapon_blessings then
+		bottom_content_height = math.max(bottom_content_height, blessing_size + 6)
+	end
+
+	if show_weapon_perks then
+		local perk_font_size = math.max(9, math.min(16, setting(mod, "secondary_text_font_size", 13)))
+		local perk_line_height = perk_font_size + 4
+		local perk_width = math.max(40, card_width - text_left - 8)
+
+		for i = 1, WEAPON_PERK_COUNT do
+			add_weapon_perk_pass(pass_template, i, {
+				base_style = base_text_style,
+				font_size = perk_font_size,
+				offset = {
+					text_left,
+					-(bottom_content_height + 2 + (WEAPON_PERK_COUNT - i) * perk_line_height),
+					11,
+				},
+				size = {
+					perk_width,
+					perk_line_height,
+				},
+			})
 		end
 	end
 
@@ -631,7 +786,7 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 			text_vertical_alignment = "bottom",
 			offset = {
 				text_left,
-				-math.max(31, primary_line_height + 11),
+				-(store_footer_height + math.max(31, primary_line_height + 11)),
 				11,
 			},
 			size = {
@@ -695,6 +850,25 @@ local function format_weapon_name(widget, element, append_mark_to_name)
 	local pattern_name = Items.weapon_lore_pattern_name(item)
 
 	content.sub_display_name = valid_weapon_name_part(pattern_name) and pattern_name or ""
+end
+
+local function format_item_level(widget, element, show_item_level_icon)
+	if show_item_level_icon then
+		return
+	end
+
+	local content = widget and widget.content
+	local item = item_from_element(element or content and content.element)
+
+	if not content or not item then
+		return
+	end
+
+	local success, item_level, has_item_level = pcall(Items.expertise_level, item, true)
+
+	if success then
+		content.item_level = has_item_level and item_level or ""
+	end
 end
 
 local function fit_display_name(parent, widget, ui_renderer, preferred_font_size, minimum_font_size)
@@ -792,6 +966,51 @@ local function fit_curio_stats(parent, widget, ui_renderer)
 	end
 end
 
+local function fit_weapon_perks(parent, widget, ui_renderer)
+	local content = widget and widget.content
+	local styles = widget and widget.style
+
+	if not content or not styles then
+		return
+	end
+
+	ui_renderer = ui_renderer or grid_ui_renderer(parent)
+
+	if not ui_renderer then
+		return
+	end
+
+	for i = 1, WEAPON_PERK_COUNT do
+		local content_id = "better_inventory_weapon_perk_" .. i
+		local style = styles[content_id]
+		local value = content[content_id]
+		local maximum_width = style and (style.better_inventory_max_text_width or style.size and style.size[1])
+
+		if type(value) == "string" and value ~= "" and maximum_width then
+			local preferred_font_size = style.better_inventory_preferred_font_size or style.font_size
+			local minimum_font_size = math.min(preferred_font_size, 8)
+			local measurement_size = {
+				1000000,
+				style.size[2] or 30,
+			}
+
+			style.font_size = preferred_font_size
+			content["better_inventory_full_weapon_perk_" .. i] = value
+
+			local measured_width = Text.text_width(ui_renderer, value, style, measurement_size, true)
+
+			while measured_width > maximum_width and style.font_size > minimum_font_size do
+				style.font_size = style.font_size - 1
+				measured_width = Text.text_width(ui_renderer, value, style, measurement_size, true)
+			end
+
+			if measured_width > maximum_width then
+				content[content_id] = Text.crop_text_width(ui_renderer, value, style, maximum_width)
+			end
+		end
+	end
+end
+
 local function configure_card_content(mod, item_blueprint)
 	local original_init = item_blueprint.init
 	local original_update_data = item_blueprint.update_data
@@ -799,6 +1018,9 @@ local function configure_card_content(mod, item_blueprint)
 	local minimum_font_size = math.max(8, math.min(20, setting(mod, "minimum_item_name_font_size", 12)))
 	local append_mark_to_name = setting(mod, "append_mark_to_name", true)
 	local show_weapon_blessings = setting(mod, "show_weapon_blessings", false)
+	local show_weapon_perks = setting(mod, "show_weapon_perks", false)
+	local weapon_perk_compression = setting(mod, "weapon_perk_compression", "compression")
+	local show_item_level_icon = setting(mod, "show_item_level_icon", true)
 	local compression_mode = setting(mod, "curio_stat_compression", "heavy")
 	local simplify_curio_primary = setting(mod, "simplify_curio_primary_stat_text", true)
 
@@ -814,8 +1036,10 @@ local function configure_card_content(mod, item_blueprint)
 		item_blueprint.init = function(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
 			original_init(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
 			format_weapon_name(widget, element, append_mark_to_name)
-			populate_card_content(mod, widget, element, show_weapon_blessings, compression_mode, simplify_curio_primary)
+			format_item_level(widget, element, show_item_level_icon)
+			populate_card_content(mod, widget, element, show_weapon_blessings, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_primary)
 			fit_display_name(parent, widget, ui_renderer, preferred_font_size, math.min(preferred_font_size, minimum_font_size))
+			fit_weapon_perks(parent, widget, ui_renderer)
 			fit_curio_stats(parent, widget, ui_renderer)
 		end
 	end
@@ -824,8 +1048,10 @@ local function configure_card_content(mod, item_blueprint)
 		item_blueprint.update_data = function(parent, widget, element)
 			original_update_data(parent, widget, element)
 			format_weapon_name(widget, element, append_mark_to_name)
-			populate_card_content(mod, widget, element, show_weapon_blessings, compression_mode, simplify_curio_primary)
+			format_item_level(widget, element, show_item_level_icon)
+			populate_card_content(mod, widget, element, show_weapon_blessings, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_primary)
 			fit_display_name(parent, widget, nil, preferred_font_size, math.min(preferred_font_size, minimum_font_size))
+			fit_weapon_perks(parent, widget, nil)
 			fit_curio_stats(parent, widget, nil)
 		end
 	end
@@ -927,7 +1153,9 @@ Layout.expanded_view_definitions = function(mod, definitions, view)
 	return adjusted_definitions, expansion
 end
 
-Layout.card_height = function(mod)
+Layout.card_height = function(mod, configuration)
+	configuration = configuration or {}
+
 	local manual_height = math.max(110, math.min(240, setting(mod, "card_height", 110)))
 
 	if not setting(mod, "automatic_card_height", true) then
@@ -941,9 +1169,22 @@ Layout.card_height = function(mod)
 	local secondary_row_height = math.max(22, secondary_font_size + 5)
 	local bottom_region_height = math.max(expertise_font_size + 10, secondary_font_size + 15)
 	local required_height = 110
+	local store_footer_height = configuration.store_item and STORE_FOOTER_HEIGHT or 0
 
 	if setting(mod, "show_weapon_blessings", false) then
-		bottom_region_height = math.max(bottom_region_height, 40)
+		if configuration.store_item then
+			bottom_region_height = store_footer_height + 40
+		else
+			bottom_region_height = math.max(bottom_region_height, 40)
+		end
+	elseif configuration.store_item then
+		bottom_region_height = math.max(bottom_region_height, store_footer_height)
+	end
+
+	if setting(mod, "show_weapon_perks", false) then
+		local perk_font_size = math.max(9, math.min(16, secondary_font_size))
+
+		bottom_region_height = bottom_region_height + WEAPON_PERK_COUNT * (perk_font_size + 4)
 	end
 
 	local optional_rows = 0
@@ -961,7 +1202,7 @@ Layout.card_height = function(mod)
 	if setting(mod, "curio_display_profile", "primary") == "detailed" then
 		local detailed_line_height = secondary_font_size + 5
 
-		required_height = math.max(required_height, 7 + 4 * detailed_line_height + 12)
+		required_height = math.max(required_height, 7 + 4 * detailed_line_height + 12 + store_footer_height)
 	elseif setting(mod, "show_curio_quality", false) then
 		required_height = math.max(required_height, 7 + name_row_height + secondary_row_height + bottom_region_height + 8)
 	end
@@ -969,10 +1210,10 @@ Layout.card_height = function(mod)
 	return math.max(110, math.min(240, math.ceil(required_height)))
 end
 
-Layout.item_size = function(mod, grid_width, maximum_columns)
+Layout.item_size = function(mod, grid_width, maximum_columns, configuration)
 	local columns = Layout.columns(mod, maximum_columns)
 	local spacing = math.max(0, math.min(40, setting(mod, "grid_spacing", 10)))
-	local height = Layout.card_height(mod)
+	local height = Layout.card_height(mod, configuration)
 	local width = math.floor((grid_width - spacing * (columns - 1)) / columns)
 
 	return {
@@ -1060,7 +1301,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 
 	configuration = configuration or {}
 
-	local item_size = Layout.item_size(mod, grid_width, configuration.maximum_columns)
+	local item_size = Layout.item_size(mod, grid_width, configuration.maximum_columns, configuration)
 	local card_width = item_size[1]
 	local card_height = item_size[2]
 	local pass_template = table.clone(item_blueprint.pass_template)
@@ -1347,7 +1588,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 		end
 	end
 
-	add_custom_content_passes(mod, pass_template, card_width, text_left, sub_display_name and sub_display_name.style)
+	add_custom_content_passes(mod, pass_template, card_width, text_left, sub_display_name and sub_display_name.style, configuration)
 
 	set_height(pass_by_style_id(pass_template, "inner_shadow"), card_height)
 	set_height(pass_by_style_id(pass_template, "inner_highlight"), card_height)
