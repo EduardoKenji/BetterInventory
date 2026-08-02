@@ -32,6 +32,7 @@ It currently covers the character melee, ranged and Curio inventory and provides
 - Configurable card height, spacing and icon darkness.
 - Independent melee, ranged and Curio enable switches.
 - Current weapon pattern/mark, rarity, expertise, favorite and equipped state preservation.
+- Adaptive single-line item names that shrink to a configurable minimum and use an ellipsis only when still too wide, preventing overlap with the pattern/Mark line.
 - Compact favorite-marker and font-size options.
 - Darktide's managed item-icon loader with a card-sized render context and the original unload/update lifecycle.
 - Graceful fallback to the original presentation path when the view contract or item blueprint is unavailable.

@@ -48,6 +48,28 @@ def main() -> None:
             end
         end
 
+		TestText = {}
+
+		function TestText.text_width(ui_renderer, text, style, optional_size, use_max_extents)
+			return #text * style.font_size * 0.6
+		end
+
+		function TestText.crop_text_width(ui_renderer, text, style, maximum_width)
+			local suffix = "..."
+			local character_width = style.font_size * 0.6
+			local maximum_characters = math.max(0, math.floor(maximum_width / character_width) - #suffix)
+
+			return string.sub(text, 1, maximum_characters) .. suffix
+		end
+
+		function require(path)
+			if path == "scripts/utilities/ui/text" then
+				return TestText
+			end
+
+			error("Unexpected test require: " .. tostring(path))
+		end
+
         captured_render_context = nil
         Managers = { ui = {} }
 
@@ -70,6 +92,7 @@ def main() -> None:
                 item_name_font_size = 16,
                 secondary_text_font_size = 13,
                 expertise_font_size = 20,
+				minimum_item_name_font_size = 12,
                 enable_melee_inventory = true,
                 enable_ranged_inventory = false,
                 enable_curio_inventory = true,
@@ -82,8 +105,16 @@ def main() -> None:
 
         sentinel_unload = function() end
         sentinel_update = function() end
+		sentinel_init = function(parent, widget, element, callback_name, secondary_callback_name, ui_renderer)
+			widget.content.display_name = element.test_display_name
+		end
+		sentinel_update_data = function(parent, widget, element)
+			widget.content.display_name = element.test_display_name
+		end
         test_blueprint = {
             size = { 586, 110 },
+			init = sentinel_init,
+			update_data = sentinel_update_data,
             unload_icon = sentinel_unload,
             update = sentinel_update,
             pass_template = {
@@ -135,6 +166,31 @@ def main() -> None:
     icon_pass = blueprint.pass_template[1]
     assert (icon_pass.style.size[1], icon_pass.style.size[2]) == (206, 110)
     assert tuple(icon_pass.style.color[index] for index in range(1, 5)) == (255, 191, 191, 191)
+
+    name_style = blueprint.pass_template[3].style
+    name_widget = lua.table_from(
+        {
+            "content": lua.table_from({}),
+            "style": lua.table_from({"display_name": name_style}),
+        }
+    )
+    name_element = lua.table_from(
+        {"test_display_name": "A Very Long Weapon Name That Cannot Fit"}
+    )
+
+    blueprint.init(None, name_widget, name_element, None, None, lua.table_from({}), None, blueprint)
+
+    assert name_widget.style.display_name.word_wrap is False
+    assert name_widget.style.display_name.font_size == 12
+    assert name_widget.content.display_name.endswith("...")
+    assert name_widget.content.better_inventory_full_display_name == name_element.test_display_name
+
+    short_name_element = lua.table_from({"test_display_name": "Short Name"})
+    test_grid = lua.table_from({"_ui_resource_renderer": lua.table_from({})})
+    blueprint.update_data(test_grid, name_widget, short_name_element)
+
+    assert name_widget.style.display_name.font_size == 16
+    assert name_widget.content.display_name == "Short Name"
 
     widget = lua.table_from(
         {

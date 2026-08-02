@@ -56,6 +56,12 @@ return {
 	item_name_font_size = {
 		en = "Item name font size",
 	},
+	minimum_item_name_font_size = {
+		en = "Minimum item name font size",
+	},
+	minimum_item_name_font_size_tooltip = {
+		en = "Long names shrink to this size before being shortened with an ellipsis. Names never wrap into the pattern or Mark line.",
+	},
 	secondary_text_font_size = {
 		en = "Pattern and rarity font size",
 	},

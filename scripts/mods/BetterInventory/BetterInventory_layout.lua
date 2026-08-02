@@ -1,3 +1,5 @@
+local Text = require("scripts/utilities/ui/text")
+
 local Layout = {}
 
 local SLOT_SETTING_BY_NAME = {
@@ -93,6 +95,87 @@ local function configure_text_pass(pass, options)
 	style.font_size = options.font_size
 	style.offset = options.offset
 	style.size = options.size
+end
+
+local function grid_ui_renderer(parent)
+	if not parent then
+		return
+	end
+
+	if parent._ui_resource_renderer then
+		return parent._ui_resource_renderer
+	end
+
+	local view = parent._parent
+
+	if view and view.ui_renderer then
+		return view:ui_renderer()
+	end
+end
+
+local function fit_display_name(parent, widget, ui_renderer, preferred_font_size, minimum_font_size)
+	local content = widget and widget.content
+	local style = widget and widget.style and widget.style.display_name
+	local display_name = content and content.display_name
+
+	if not style or type(display_name) ~= "string" or display_name == "" then
+		return
+	end
+
+	ui_renderer = ui_renderer or grid_ui_renderer(parent)
+
+	if not ui_renderer then
+		return
+	end
+
+	local maximum_width = style.size and style.size[1]
+	preferred_font_size = preferred_font_size or style.font_size
+
+	if not maximum_width or not preferred_font_size then
+		return
+	end
+
+	minimum_font_size = math.min(preferred_font_size, minimum_font_size)
+	style.word_wrap = false
+	style.font_size = preferred_font_size
+
+	local measurement_size = {
+		1000000,
+		style.size[2] or 30,
+	}
+	local measured_width = Text.text_width(ui_renderer, display_name, style, measurement_size, true)
+
+	while measured_width > maximum_width and style.font_size > minimum_font_size do
+		style.font_size = style.font_size - 1
+		measured_width = Text.text_width(ui_renderer, display_name, style, measurement_size, true)
+	end
+
+	content.better_inventory_full_display_name = display_name
+
+	if measured_width > maximum_width then
+		content.display_name = Text.crop_text_width(ui_renderer, display_name, style, maximum_width)
+	end
+end
+
+local function configure_display_name_fitting(mod, item_blueprint)
+	local original_init = item_blueprint.init
+	local original_update_data = item_blueprint.update_data
+	local preferred_font_size = setting(mod, "item_name_font_size", 16)
+	local minimum_font_size = math.max(8, math.min(20, setting(mod, "minimum_item_name_font_size", 12)))
+
+	if original_init then
+		item_blueprint.init = function(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
+			original_init(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
+			fit_display_name(parent, widget, ui_renderer, preferred_font_size, math.min(preferred_font_size, minimum_font_size))
+		end
+	end
+
+	if original_update_data then
+		item_blueprint.update_data = function(parent, widget, element)
+			original_update_data(parent, widget, element)
+			fit_display_name(parent, widget, nil, preferred_font_size, math.min(preferred_font_size, minimum_font_size))
+		end
+	end
 end
 
 Layout.slot_kind = function(view)
@@ -207,7 +290,9 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width)
 		}
 	end
 
-	configure_text_pass(pass_by_style_id(pass_template, "display_name"), {
+	local display_name = pass_by_style_id(pass_template, "display_name")
+
+	configure_text_pass(display_name, {
 		font_size = setting(mod, "item_name_font_size", 16),
 		offset = {
 			text_left,
@@ -219,6 +304,10 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width)
 			25,
 		},
 	})
+
+	if display_name and display_name.style then
+		display_name.style.word_wrap = false
+	end
 
 	local sub_display_name = pass_by_style_id(pass_template, "sub_display_name")
 
@@ -375,6 +464,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width)
 	set_height(pass_by_style_id(pass_template, "inner_shadow"), card_height)
 	set_height(pass_by_style_id(pass_template, "inner_highlight"), card_height)
 
+	configure_display_name_fitting(mod, item_blueprint)
 	configure_icon_loader(item_blueprint, item_size)
 
 	return item_size

@@ -106,6 +106,16 @@ return {
 						},
 					},
 					{
+						setting_id = "minimum_item_name_font_size",
+						tooltip = "minimum_item_name_font_size_tooltip",
+						type = "numeric",
+						default_value = 12,
+						range = {
+							8,
+							20,
+						},
+					},
+					{
 						setting_id = "secondary_text_font_size",
 						type = "numeric",
 						default_value = 13,
