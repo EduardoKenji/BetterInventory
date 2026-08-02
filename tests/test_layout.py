@@ -58,6 +58,10 @@ def main() -> None:
 			gadget_stamina_regeneration = "+12% Stamina Regeneration",
 			gadget_sprint_efficiency = "+15% Sprint Efficiency",
 			gadget_flame_resistance = "+20% Bomber Resistance",
+			gadget_damage_reduction_vs_gunners = "+20% Damage Resistance (Gunners)",
+			gadget_permanent_damage_resistance = "+15% Corruption Resistance (Grimoires)",
+			gadget_mission_reward_gear_instead_of_weapon_increase = "+15% chance of Curio as Mission Reward (instead of Weapon)",
+			gadget_toughness_regen_delay = "+30% Toughness Regeneration Speed",
 		}
 
 		function TestText.text_width(ui_renderer, text, style, optional_size, use_max_extents)
@@ -127,9 +131,11 @@ def main() -> None:
         test_mod = {
             settings = {
                 columns = 3,
+				enable_grid_layout = true,
 				expand_inventory_window = true,
                 grid_spacing = 10,
                 card_height = 110,
+				automatic_card_height = true,
                 icon_darkness = 25,
 				append_mark_to_name = true,
                 show_pattern_mark = false,
@@ -140,6 +146,16 @@ def main() -> None:
 				favorite_marker_position = "above_rating",
 				curio_display_profile = "primary",
 				show_curio_quality = false,
+				compact_curio_stat_text = true,
+				curio_health_color_r = 235,
+				curio_health_color_g = 85,
+				curio_health_color_b = 85,
+				curio_toughness_color_r = 105,
+				curio_toughness_color_g = 200,
+				curio_toughness_color_b = 235,
+				curio_wound_color_r = 190,
+				curio_wound_color_g = 105,
+				curio_wound_color_b = 230,
                 item_name_font_size = 16,
                 secondary_text_font_size = 13,
                 expertise_font_size = 20,
@@ -153,6 +169,17 @@ def main() -> None:
         function test_mod:get(setting_id)
             return self.settings[setting_id]
         end
+
+		function test_mod:localize(localization_id)
+			local values = {
+				curio_resistance_gunners = "Gunners Resistance",
+				curio_resistance_grimoires = "Grimoire Resistance",
+				curio_reward_chance = "Curio Reward Chance",
+				curio_toughness_regeneration = "Toughness Regen",
+			}
+
+			return values[localization_id] or localization_id
+		end
 
         sentinel_unload = function() end
         sentinel_update = function() end
@@ -216,6 +243,18 @@ def main() -> None:
 
     item_size = layout.item_size(mod, 640)
     assert (item_size[1], item_size[2]) == (206, 110)
+    assert layout.card_height(mod) == 110
+
+    mod.settings.curio_display_profile = "detailed"
+    mod.settings.secondary_text_font_size = 20
+    assert layout.card_height(mod) == 119
+    mod.settings.automatic_card_height = False
+    mod.settings.card_height = 175
+    assert layout.card_height(mod) == 175
+    mod.settings.automatic_card_height = True
+    mod.settings.card_height = 110
+    mod.settings.curio_display_profile = "primary"
+    mod.settings.secondary_text_font_size = 13
 
     assert layout.grid_expansion(mod, 596) == 0
 
@@ -264,6 +303,23 @@ def main() -> None:
 
     mod.settings.columns = 3
     mod.settings.expand_inventory_window = True
+
+    mod.settings.enable_grid_layout = False
+    assert layout.grid_expansion(mod, 596) == 0
+    native_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    native_size = layout.configure_item_blueprint(mod, native_blueprint, 596)
+    assert (native_size[1], native_size[2]) == (586, 110)
+    assert blueprint_pass(native_blueprint, "icon").style.size is None
+    assert blueprint_pass(native_blueprint, "better_inventory_curio_stat_1")
+    native_grid = lua.table_from(
+        {"_menu_settings": lua.table_from({"grid_spacing": lua.table_from([4, 4])})}
+    )
+    layout.configure_grid(mod, native_grid)
+    assert (
+        native_grid._menu_settings.grid_spacing[1],
+        native_grid._menu_settings.grid_spacing[2],
+    ) == (4, 4)
+    mod.settings.enable_grid_layout = True
 
     assert layout.is_enabled_for_view(mod, lua.table_from({"_selected_slot": lua.table_from({"name": "slot_primary"})}))
     assert not layout.is_enabled_for_view(mod, lua.table_from({"_selected_slot": lua.table_from({"name": "slot_secondary"})}))
@@ -450,7 +506,7 @@ def main() -> None:
                             ),
                             lua.table_from(
                                 {
-                                    "id": "gadget_flame_resistance",
+									"id": "gadget_damage_reduction_vs_gunners",
                                     "rarity": 4,
                                     "value": 0.5,
                                 }
@@ -484,6 +540,21 @@ def main() -> None:
         85,
         85,
     )
+
+    mod.settings.curio_health_color_r = 12
+    mod.settings.curio_health_color_g = 34
+    mod.settings.curio_health_color_b = 56
+    blueprint.update_data(test_grid, curio_widget, curio_element)
+    curio_stat_pass.change_function(curio_widget.content, curio_stat_pass.style)
+    assert tuple(curio_stat_pass.style.text_color[index] for index in range(1, 5)) == (
+        255,
+        12,
+        34,
+        56,
+    )
+    mod.settings.curio_health_color_r = 235
+    mod.settings.curio_health_color_g = 85
+    mod.settings.curio_health_color_b = 85
 
     primary_color_expectations = {
         "gadget_innate_toughness_increase": (255, 105, 200, 235),
@@ -545,8 +616,65 @@ def main() -> None:
 
     assert (
         detailed_widget.content.better_inventory_full_curio_stat_4
-        == "+20% Bomber Resistance"
+        == "+20% Gunners Resistance"
     )
+
+    compact_perk_expectations = {
+        "gadget_permanent_damage_resistance": "+15% Grimoire Resistance",
+        "gadget_mission_reward_gear_instead_of_weapon_increase": "+15% Curio Reward Chance",
+        "gadget_toughness_regen_delay": "+30% Toughness Regen",
+    }
+
+    for trait_id, expected_text in compact_perk_expectations.items():
+        curio_element.item.perks[3].id = trait_id
+        detailed_blueprint.update_data(test_grid, detailed_widget, curio_element)
+        assert detailed_widget.content.better_inventory_full_curio_stat_4 == expected_text
+
+    curio_element.item.perks[3].id = "gadget_damage_reduction_vs_gunners"
+    detailed_blueprint.update_data(test_grid, detailed_widget, curio_element)
+
+    mod.settings.columns = 5
+    mod.settings.compact_curio_stat_text = False
+    narrow_detailed_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, narrow_detailed_blueprint, 640)
+    narrow_detailed_styles = {
+        "display_name": blueprint_pass(
+            narrow_detailed_blueprint, "display_name"
+        ).style,
+    }
+
+    for index in range(1, 5):
+        style_id = f"better_inventory_curio_stat_{index}"
+        narrow_detailed_styles[style_id] = blueprint_pass(
+            narrow_detailed_blueprint, style_id
+        ).style
+
+    narrow_detailed_widget = lua.table_from(
+        {
+            "content": lua.table_from({}),
+            "style": lua.table_from(narrow_detailed_styles),
+        }
+    )
+    narrow_detailed_blueprint.init(
+        None,
+        narrow_detailed_widget,
+        curio_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        narrow_detailed_blueprint,
+    )
+    assert (
+        narrow_detailed_widget.content.better_inventory_full_curio_stat_4
+        == "+20% Damage Resistance (Gunners)"
+    )
+    assert narrow_detailed_widget.content.better_inventory_curio_stat_4.endswith(
+        "..."
+    )
+    assert "\n" not in narrow_detailed_widget.content.better_inventory_curio_stat_4
+    mod.settings.columns = 3
+    mod.settings.compact_curio_stat_text = True
 
     mod.settings.curio_display_profile = "primary"
     mod.settings.show_curio_quality = True

@@ -20,6 +20,12 @@ return {
 	layout_group = {
 		en = "Grid layout",
 	},
+	enable_grid_layout = {
+		en = "Enable grid layout",
+	},
+	enable_grid_layout_tooltip = {
+		en = "Uses Better Inventory's multi-column cards. Disable this to retain Darktide's native single-column geometry while keeping enabled card-content enhancements.",
+	},
 	columns = {
 		en = "Columns",
 	},
@@ -37,6 +43,21 @@ return {
 	},
 	card_height = {
 		en = "Card height",
+	},
+	card_height_tooltip = {
+		en = "Manual grid-card height. This control is disabled while automatic card height is enabled.",
+	},
+	automatic_card_height = {
+		en = "Automatic card height",
+	},
+	automatic_card_height_tooltip = {
+		en = "Expands grid cards when the selected text rows and font sizes need more vertical space. Darktide's native single-column mode retains its native height.",
+	},
+	option_requires_grid_layout = {
+		en = "Enable grid layout to use this option.",
+	},
+	option_disabled_by_automatic_height = {
+		en = "Disable automatic card height to set a manual height.",
 	},
 	icon_darkness = {
 		en = "Icon darkness (%%)",
@@ -118,5 +139,107 @@ return {
 	},
 	show_curio_quality_tooltip = {
 		en = "Shows the Curio quality line in the Primary stat profile. Disabled by default because the card colour already communicates quality.",
+	},
+	compact_curio_stat_text = {
+		en = "Compact Curio stat text",
+	},
+	compact_curio_stat_text_tooltip = {
+		en = "Shortens known long resistance perks, such as '+20%% Damage Resistance (Gunners)' to '+20%% Gunners Resistance'. Unknown descriptions retain Darktide's original localized text.",
+	},
+	curio_health_color_group = {
+		en = "Max Health line colour",
+	},
+	curio_health_color_preset = {
+		en = "Preset",
+	},
+	curio_health_color_r = {
+		en = "Red",
+	},
+	curio_health_color_g = {
+		en = "Green",
+	},
+	curio_health_color_b = {
+		en = "Blue",
+	},
+	curio_toughness_color_group = {
+		en = "Max Toughness line colour",
+	},
+	curio_toughness_color_preset = {
+		en = "Preset",
+	},
+	curio_toughness_color_r = {
+		en = "Red",
+	},
+	curio_toughness_color_g = {
+		en = "Green",
+	},
+	curio_toughness_color_b = {
+		en = "Blue",
+	},
+	curio_wound_color_group = {
+		en = "Wound line colour",
+	},
+	curio_wound_color_preset = {
+		en = "Preset",
+	},
+	curio_wound_color_r = {
+		en = "Red",
+	},
+	curio_wound_color_g = {
+		en = "Green",
+	},
+	curio_wound_color_b = {
+		en = "Blue",
+	},
+	color_preset_red = {
+		en = "Red",
+	},
+	color_preset_light_blue = {
+		en = "Light blue",
+	},
+	color_preset_purple = {
+		en = "Purple",
+	},
+	color_preset_orange = {
+		en = "Orange",
+	},
+	color_preset_green = {
+		en = "Green",
+	},
+	color_preset_neutral = {
+		en = "Neutral",
+	},
+	color_preset_custom = {
+		en = "Custom colour",
+	},
+	curio_resistance_flamers = {
+		en = "Flamers Resistance",
+	},
+	curio_resistance_snipers = {
+		en = "Snipers Resistance",
+	},
+	curio_resistance_grenadiers = {
+		en = "Grenadiers Resistance",
+	},
+	curio_resistance_hounds = {
+		en = "Pox Hounds Resistance",
+	},
+	curio_resistance_mutants = {
+		en = "Mutants Resistance",
+	},
+	curio_resistance_gunners = {
+		en = "Gunners Resistance",
+	},
+	curio_resistance_bombers = {
+		en = "Bombers Resistance",
+	},
+	curio_resistance_grimoires = {
+		en = "Grimoire Resistance",
+	},
+	curio_reward_chance = {
+		en = "Curio Reward Chance",
+	},
+	curio_toughness_regeneration = {
+		en = "Toughness Regen",
 	},
 }

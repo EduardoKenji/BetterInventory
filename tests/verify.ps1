@@ -50,6 +50,29 @@ foreach ($settingId in $settingIds) {
 	}
 }
 
+$dmfRoot = Join-Path $projectRoot "..\..\mods\dmf"
+$dmfSettings = Join-Path $dmfRoot "scripts\mods\dmf\modules\core\settings.lua"
+$dmfOptionBlueprints = Join-Path $dmfRoot "scripts\mods\dmf\modules\ui\options\dmf_options_view_content_blueprints.lua"
+$dmfModOptions = Join-Path $dmfRoot "scripts\mods\dmf\modules\ui\options\mod_options.lua"
+
+foreach ($dmfFile in @($dmfSettings, $dmfOptionBlueprints, $dmfModOptions)) {
+	if (-not (Test-Path -LiteralPath $dmfFile -PathType Leaf)) {
+		throw "Missing expected DMF source file: $dmfFile"
+	}
+}
+
+if ((Get-Content -LiteralPath $dmfSettings -Raw) -notmatch 'mod_setting_changed_event\(self, setting_id\)') {
+	throw "DMF no longer appears to dispatch live mod setting changes."
+}
+
+if ((Get-Content -LiteralPath $dmfOptionBlueprints -Raw) -notmatch 'local is_disabled = entry\.disabled or false') {
+	throw "DMF option widgets no longer appear to consume final-template disabled state."
+}
+
+if ((Get-Content -LiteralPath $dmfModOptions -Raw) -notmatch 'create_mod_options_settings') {
+	throw "DMF's final mod-options template seam was not found."
+}
+
 if ($DarktideSourcePath) {
 	$inventoryView = Join-Path $DarktideSourcePath "scripts\ui\views\inventory_weapons_view\inventory_weapons_view.lua"
 	$itemGridBase = Join-Path $DarktideSourcePath "scripts\ui\views\item_grid_view_base\item_grid_view_base.lua"
@@ -93,7 +116,17 @@ if ($DarktideSourcePath) {
 	foreach ($traitId in @(
 		"gadget_innate_health_increase",
 		"gadget_innate_toughness_increase",
-		"gadget_innate_max_wounds_increase"
+		"gadget_innate_max_wounds_increase",
+		"gadget_damage_reduction_vs_flamers",
+		"gadget_damage_reduction_vs_snipers",
+		"gadget_damage_reduction_vs_grenadiers",
+		"gadget_damage_reduction_vs_hounds",
+		"gadget_damage_reduction_vs_mutants",
+		"gadget_damage_reduction_vs_gunners",
+		"gadget_damage_reduction_vs_bombers",
+		"gadget_permanent_damage_resistance",
+		"gadget_mission_reward_gear_instead_of_weapon_increase",
+		"gadget_toughness_regen_delay"
 	)) {
 		if ($gadgetTraitSource -notmatch [regex]::Escape($traitId)) {
 			throw "The expected Curio primary trait ID was not found: $traitId"
@@ -125,10 +158,12 @@ if ($hasLuaParser) {
 }
 
 if ($hasLupa) {
-	py -3 (Join-Path $PSScriptRoot "test_layout.py")
+	foreach ($behaviorTest in @("test_layout.py", "test_settings.py")) {
+		py -3 (Join-Path $PSScriptRoot $behaviorTest)
 
-	if ($LASTEXITCODE -ne 0) {
-		throw "Layout behavior tests failed."
+		if ($LASTEXITCODE -ne 0) {
+			throw "Behavior test failed: $behaviorTest"
+		}
 	}
 }
 

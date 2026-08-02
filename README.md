@@ -29,8 +29,10 @@ It currently covers the character melee, ranged and Curio inventory and provides
 
 - A chain-safe `InventoryWeaponsView.present_grid_layout` hook that continues through the full DMF chain, plus a narrowly gated grid hook that transforms the final item blueprint.
 - Two to five responsive columns calculated from the current grid width.
+- A grid-layout switch: disabling it preserves Darktide's native single-column card geometry and icon lifecycle while retaining enabled BetterInventory content enhancements.
 - Automatic inventory-window expansion when the requested columns would otherwise force cards outside the visible content area; this can be disabled to shrink cards instead.
-- Configurable card height, spacing and icon darkness.
+- Automatic card height based on enabled rows and font sizes, with a manual 110–240 height mode; the manual slider is visibly disabled while automatic sizing is active.
+- Configurable card spacing and icon darkness.
 - Independent melee, ranged and Curio enable switches.
 - Current weapon pattern/mark, optional quality text, expertise, favorite and equipped state preservation.
 - Default `Weapon Name Mk` formatting that moves the Mark into the title; the separate weapon-pattern line and quality text are opt-in.
@@ -40,7 +42,9 @@ It currently covers the character melee, ranged and Curio inventory and provides
 - Optional weapon blessing symbols using Darktide's current composited blessing material; the native ranked frame visibly carries each blessing level.
 - A default compact Curio profile that adds the innate stat while retaining name and power, plus an alternate four-stat profile showing the innate stat and all three perks.
 - Identifier-based Curio primary-stat colors: red for Max Health, light blue for Max Toughness and purple for Wounds; Stamina and unknown primary traits retain the neutral text color.
+- Per-primary-stat color presets and synchronized RGB sliders. Selecting a preset updates its sliders; editing any channel changes that stat's preset to Custom colour.
 - Optional Curio quality text, disabled by default because rarity is already communicated by the card background and colour strip.
+- Default-on compact Curio labels, such as `+20% Damage Resistance (Gunners)` becoming `+20% Gunners Resistance`. Other safe mappings cover the enemy-resistance variants, Grimoire resistance, Curio reward chance and Toughness regeneration; unknown or nonmatching localized descriptions remain unchanged.
 - Darktide's managed item-icon loader with a card-sized render context and the original unload/update lifecycle.
 - Graceful fallback to the original presentation path when the view contract or item blueprint is unavailable.
 
@@ -65,6 +69,9 @@ The 2026 card implementation uses current Darktide data and materials rather tha
 - The base non-weapon `sub_display_name` is the localized rarity/quality string. BetterInventory therefore treats “Show Curio quality text” as an independent, default-off control instead of trying to parse the displayed Curio name.
 - The four-stat Curio profile deliberately replaces the name, quality and power labels with the innate stat plus three perks. This avoids presenting seven competing text fields in a compact card. The primary-stat profile keeps the normal name and power and adds only the innate line.
 - Custom stat strings are width-cropped after retaining their complete value in widget content. This prevents narrow four- and five-column cards from spilling into adjacent cards while leaving room for future hover details.
+- The first detailed-profile implementation measured each Curio row inside its already bounded pass width. Darktide could therefore wrap a long value to that width while reporting no overflow, causing logical rows to overlap. BetterInventory now measures against an unbounded width first and crops the final single-line value before rendering.
+- DMF's options widgets poll their setting getters continuously. BetterInventory uses `on_setting_changed` to synchronize Curio presets and RGB values without recursive notifications, so the visible controls update while the menu remains open.
+- Current DMF discards schema-level disabled state for ordinary numeric settings. BetterInventory binds the final option templates after `create_mod_options_settings`, allowing Columns/Grid spacing controls to grey out in native mode and the manual Card height slider to grey out in automatic mode.
 
 Current-source references:
 

@@ -1,5 +1,80 @@
 local mod = get_mod("BetterInventory")
 
+local function color_preset_options()
+	return {
+		{
+			text = "color_preset_red",
+			value = "red",
+		},
+		{
+			text = "color_preset_light_blue",
+			value = "light_blue",
+		},
+		{
+			text = "color_preset_purple",
+			value = "purple",
+		},
+		{
+			text = "color_preset_orange",
+			value = "orange",
+		},
+		{
+			text = "color_preset_green",
+			value = "green",
+		},
+		{
+			text = "color_preset_neutral",
+			value = "neutral",
+		},
+		{
+			text = "color_preset_custom",
+			value = "custom",
+		},
+	}
+end
+
+local function curio_color_group(group_id, prefix, default_preset, red, green, blue)
+	return {
+		setting_id = group_id,
+		type = "group",
+		sub_widgets = {
+			{
+				setting_id = prefix .. "_preset",
+				type = "dropdown",
+				default_value = default_preset,
+				options = color_preset_options(),
+			},
+			{
+				setting_id = prefix .. "_r",
+				type = "numeric",
+				default_value = red,
+				range = {
+					0,
+					255,
+				},
+			},
+			{
+				setting_id = prefix .. "_g",
+				type = "numeric",
+				default_value = green,
+				range = {
+					0,
+					255,
+				},
+			},
+			{
+				setting_id = prefix .. "_b",
+				type = "numeric",
+				default_value = blue,
+				range = {
+					0,
+					255,
+				},
+			},
+		},
+	}
+end
+
 return {
 	name = mod:localize("mod_name"),
 	description = mod:localize("mod_description"),
@@ -33,6 +108,12 @@ return {
 				type = "group",
 				sub_widgets = {
 					{
+						setting_id = "enable_grid_layout",
+						tooltip = "enable_grid_layout_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
 						setting_id = "columns",
 						tooltip = "columns_tooltip",
 						type = "numeric",
@@ -58,12 +139,19 @@ return {
 						},
 					},
 					{
+						setting_id = "automatic_card_height",
+						tooltip = "automatic_card_height_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
 						setting_id = "card_height",
+						tooltip = "card_height_tooltip",
 						type = "numeric",
 						default_value = 110,
 						range = {
 							110,
-							180,
+							240,
 						},
 					},
 					{
@@ -195,6 +283,15 @@ return {
 						type = "checkbox",
 						default_value = false,
 					},
+					{
+						setting_id = "compact_curio_stat_text",
+						tooltip = "compact_curio_stat_text_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+					curio_color_group("curio_health_color_group", "curio_health_color", "red", 235, 85, 85),
+					curio_color_group("curio_toughness_color_group", "curio_toughness_color", "light_blue", 105, 200, 235),
+					curio_color_group("curio_wound_color_group", "curio_wound_color", "purple", 190, 105, 230),
 				},
 			},
 		},

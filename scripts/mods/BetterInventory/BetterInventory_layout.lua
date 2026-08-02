@@ -5,24 +5,94 @@ local MasterItems = require("scripts/backend/master_items")
 local Layout = {}
 local MINIMUM_CARD_WIDTH = 120
 local BLESSING_MATERIAL = "content/ui/materials/icons/traits/traits_container"
-local CURIO_PRIMARY_COLORS = {
+local CURIO_PRIMARY_COLOR_DEFINITIONS = {
 	gadget_innate_health_increase = {
-		255,
-		235,
-		85,
-		85,
+		prefix = "curio_health_color",
+		default = {
+			235,
+			85,
+			85,
+		},
 	},
 	gadget_innate_toughness_increase = {
-		255,
-		105,
-		200,
-		235,
+		prefix = "curio_toughness_color",
+		default = {
+			105,
+			200,
+			235,
+		},
 	},
 	gadget_innate_max_wounds_increase = {
-		255,
-		190,
-		105,
-		230,
+		prefix = "curio_wound_color",
+		default = {
+			190,
+			105,
+			230,
+		},
+	},
+}
+local COMPACT_CURIO_LABELS = {
+	gadget_damage_reduction_vs_flamers = {
+		localization_id = "curio_resistance_flamers",
+		required_terms = {
+			"Damage Resistance",
+		},
+	},
+	gadget_damage_reduction_vs_snipers = {
+		localization_id = "curio_resistance_snipers",
+		required_terms = {
+			"Damage Resistance",
+		},
+	},
+	gadget_damage_reduction_vs_grenadiers = {
+		localization_id = "curio_resistance_grenadiers",
+		required_terms = {
+			"Damage Resistance",
+		},
+	},
+	gadget_damage_reduction_vs_hounds = {
+		localization_id = "curio_resistance_hounds",
+		required_terms = {
+			"Damage Resistance",
+		},
+	},
+	gadget_damage_reduction_vs_mutants = {
+		localization_id = "curio_resistance_mutants",
+		required_terms = {
+			"Damage Resistance",
+		},
+	},
+	gadget_damage_reduction_vs_gunners = {
+		localization_id = "curio_resistance_gunners",
+		required_terms = {
+			"Damage Resistance",
+		},
+	},
+	gadget_damage_reduction_vs_bombers = {
+		localization_id = "curio_resistance_bombers",
+		required_terms = {
+			"Damage Resistance",
+		},
+	},
+	gadget_permanent_damage_resistance = {
+		localization_id = "curio_resistance_grimoires",
+		required_terms = {
+			"Corruption Resistance",
+			"Grimoire",
+		},
+	},
+	gadget_mission_reward_gear_instead_of_weapon_increase = {
+		localization_id = "curio_reward_chance",
+		required_terms = {
+			"Mission Reward",
+			"Weapon",
+		},
+	},
+	gadget_toughness_regen_delay = {
+		localization_id = "curio_toughness_regeneration",
+		required_terms = {
+			"Toughness Regeneration",
+		},
 	},
 }
 local DEFAULT_CURIO_PRIMARY_COLOR = {
@@ -61,6 +131,53 @@ end
 
 local function is_weapon(item)
 	return item and Items.is_weapon(item.item_type)
+end
+
+local function clamped_color_channel(mod, setting_id, fallback)
+	local value = tonumber(setting(mod, setting_id, fallback)) or fallback
+
+	return math.floor(math.max(0, math.min(255, value)) + 0.5)
+end
+
+local function curio_primary_color(mod, trait_id)
+	local definition = CURIO_PRIMARY_COLOR_DEFINITIONS[trait_id]
+
+	if not definition then
+		return DEFAULT_CURIO_PRIMARY_COLOR
+	end
+
+	local prefix = definition.prefix
+	local defaults = definition.default
+
+	return {
+		255,
+		clamped_color_channel(mod, prefix .. "_r", defaults[1]),
+		clamped_color_channel(mod, prefix .. "_g", defaults[2]),
+		clamped_color_channel(mod, prefix .. "_b", defaults[3]),
+	}
+end
+
+local function compact_curio_description(mod, data)
+	local definition = data and COMPACT_CURIO_LABELS[data.id]
+	local description = data and data.description
+
+	if not definition or type(description) ~= "string" or description == "" then
+		return description or ""
+	end
+
+	for i = 1, #definition.required_terms do
+		if not string.find(description, definition.required_terms[i], 1, true) then
+			return description
+		end
+	end
+
+	local amount = string.match(description, "^%s*([^%s]+)")
+
+	if not amount then
+		return description
+	end
+
+	return string.format("%s %s", amount, mod:localize(definition.localization_id))
 end
 
 local function pass_by_style_id(pass_template, style_id)
@@ -135,7 +252,7 @@ local function resolved_trait_data(entry, include_textures)
 	return data
 end
 
-local function populate_card_content(widget, element, show_weapon_blessings)
+local function populate_card_content(mod, widget, element, show_weapon_blessings, compact_curio_stats)
 	local content = widget and widget.content
 
 	if not content then
@@ -178,7 +295,7 @@ local function populate_card_content(widget, element, show_weapon_blessings)
 
 	if primary_data then
 		content.better_inventory_curio_stat_1 = primary_data.description
-		content.better_inventory_curio_primary_color = CURIO_PRIMARY_COLORS[primary_data.id] or DEFAULT_CURIO_PRIMARY_COLOR
+		content.better_inventory_curio_primary_color = curio_primary_color(mod, primary_data.id)
 	end
 
 	local perks = item.perks
@@ -187,7 +304,7 @@ local function populate_card_content(widget, element, show_weapon_blessings)
 		local perk_data = resolved_trait_data(perks[i], false)
 
 		if perk_data then
-			content["better_inventory_curio_stat_" .. (i + 1)] = perk_data.description
+			content["better_inventory_curio_stat_" .. (i + 1)] = compact_curio_stats and compact_curio_description(mod, perk_data) or perk_data.description
 		end
 	end
 end
@@ -319,6 +436,117 @@ local function add_curio_stat_pass(pass_template, index, options)
 			end
 		end or nil,
 	}
+end
+
+local function configure_favorite_marker(mod, pass_template, text_left)
+	local favorite_icon = pass_by_style_id(pass_template, "favorite_icon")
+
+	if not favorite_icon or not favorite_icon.style then
+		return
+	end
+
+	local favorite_style = favorite_icon.style
+	local favorite_marker_position = setting(mod, "favorite_marker_position", "above_rating")
+
+	if setting(mod, "compact_favorite_marker", true) then
+		favorite_icon.value = ""
+		favorite_style.font_size = 20
+		favorite_style.size = {
+			30,
+			28,
+		}
+	end
+
+	if favorite_marker_position == "above_rating" then
+		favorite_style.horizontal_alignment = "right"
+		favorite_style.vertical_alignment = "top"
+		favorite_style.text_horizontal_alignment = "right"
+		favorite_style.text_vertical_alignment = "top"
+		favorite_style.offset = {
+			-8,
+			7,
+			16,
+		}
+
+		local original_change_function = favorite_icon.change_function
+
+		favorite_icon.change_function = function(content, style, animations, dt)
+			if original_change_function then
+				original_change_function(content, style, animations, dt)
+			end
+
+			style.offset[2] = content and content.equipped and 33 or 7
+		end
+	else
+		favorite_style.horizontal_alignment = "left"
+		favorite_style.vertical_alignment = "bottom"
+		favorite_style.text_horizontal_alignment = "left"
+		favorite_style.text_vertical_alignment = "bottom"
+		favorite_style.offset = {
+			text_left,
+			-5,
+			16,
+		}
+	end
+end
+
+local function add_custom_content_passes(mod, pass_template, card_width, text_left, base_text_style)
+	local show_weapon_blessings = setting(mod, "show_weapon_blessings", false)
+	local detailed_curio_profile = setting(mod, "curio_display_profile", "primary") == "detailed"
+	local favorite_marker_position = setting(mod, "favorite_marker_position", "above_rating")
+
+	if show_weapon_blessings then
+		local blessing_size = card_width <= 140 and 28 or 34
+		local blessing_spacing = blessing_size - 2
+		local blessing_left = text_left + (favorite_marker_position == "bottom_left" and 24 or 0)
+
+		for i = 1, 2 do
+			add_blessing_pass(pass_template, i, blessing_size, blessing_left + (i - 1) * blessing_spacing)
+		end
+	end
+
+	if detailed_curio_profile then
+		local curio_font_size = math.max(9, math.min(16, setting(mod, "secondary_text_font_size", 13)))
+		local curio_line_height = curio_font_size + 5
+
+		for i = 1, 4 do
+			local reserved_right = i <= 2 and 40 or 8
+
+			add_curio_stat_pass(pass_template, i, {
+				base_style = base_text_style,
+				font_size = curio_font_size,
+				vertical_alignment = "top",
+				text_vertical_alignment = "top",
+				offset = {
+					text_left,
+					7 + (i - 1) * curio_line_height,
+					11,
+				},
+				size = {
+					math.max(40, card_width - text_left - reserved_right),
+					curio_line_height,
+				},
+			})
+		end
+	else
+		local primary_line_height = math.max(20, setting(mod, "secondary_text_font_size", 13) + 5)
+
+		add_curio_stat_pass(pass_template, 1, {
+			base_style = base_text_style,
+			font_size = math.max(9, math.min(18, setting(mod, "secondary_text_font_size", 13))),
+			vertical_alignment = "bottom",
+			text_vertical_alignment = "bottom",
+			offset = {
+				text_left,
+				-math.max(31, primary_line_height + 11),
+				11,
+			},
+			size = {
+				math.max(40, card_width - text_left - 40),
+				primary_line_height,
+			},
+		})
+	end
 end
 
 local function grid_ui_renderer(parent)
@@ -459,8 +687,12 @@ local function fit_curio_stats(parent, widget, ui_renderer)
 
 		if type(value) == "string" and value ~= "" and maximum_width then
 			content["better_inventory_full_curio_stat_" .. i] = value
+			local measurement_size = {
+				1000000,
+				style.size[2] or 30,
+			}
 
-			if Text.text_width(ui_renderer, value, style, style.size, true) > maximum_width then
+			if Text.text_width(ui_renderer, value, style, measurement_size, true) > maximum_width then
 				content[content_id] = Text.crop_text_width(ui_renderer, value, style, maximum_width)
 			end
 		end
@@ -474,12 +706,13 @@ local function configure_card_content(mod, item_blueprint)
 	local minimum_font_size = math.max(8, math.min(20, setting(mod, "minimum_item_name_font_size", 12)))
 	local append_mark_to_name = setting(mod, "append_mark_to_name", true)
 	local show_weapon_blessings = setting(mod, "show_weapon_blessings", false)
+	local compact_curio_stats = setting(mod, "compact_curio_stat_text", true)
 
 	if original_init then
 		item_blueprint.init = function(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
 			original_init(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
 			format_weapon_name(widget, element, append_mark_to_name)
-			populate_card_content(widget, element, show_weapon_blessings)
+			populate_card_content(mod, widget, element, show_weapon_blessings, compact_curio_stats)
 			fit_display_name(parent, widget, ui_renderer, preferred_font_size, math.min(preferred_font_size, minimum_font_size))
 			fit_curio_stats(parent, widget, ui_renderer)
 		end
@@ -489,7 +722,7 @@ local function configure_card_content(mod, item_blueprint)
 		item_blueprint.update_data = function(parent, widget, element)
 			original_update_data(parent, widget, element)
 			format_weapon_name(widget, element, append_mark_to_name)
-			populate_card_content(widget, element, show_weapon_blessings)
+			populate_card_content(mod, widget, element, show_weapon_blessings, compact_curio_stats)
 			fit_display_name(parent, widget, nil, preferred_font_size, math.min(preferred_font_size, minimum_font_size))
 			fit_curio_stats(parent, widget, nil)
 		end
@@ -522,7 +755,7 @@ Layout.is_enabled_for_view = function(mod, view)
 end
 
 Layout.grid_expansion = function(mod, current_grid_width)
-	if not setting(mod, "expand_inventory_window", true) then
+	if not setting(mod, "enable_grid_layout", true) or not setting(mod, "expand_inventory_window", true) then
 		return 0
 	end
 
@@ -579,10 +812,52 @@ Layout.expanded_view_definitions = function(mod, definitions)
 	return adjusted_definitions, expansion
 end
 
+Layout.card_height = function(mod)
+	local manual_height = math.max(110, math.min(240, setting(mod, "card_height", 110)))
+
+	if not setting(mod, "automatic_card_height", true) then
+		return manual_height
+	end
+
+	local item_name_font_size = math.max(10, math.min(24, setting(mod, "item_name_font_size", 16)))
+	local secondary_font_size = math.max(8, math.min(20, setting(mod, "secondary_text_font_size", 13)))
+	local expertise_font_size = math.max(10, math.min(28, setting(mod, "expertise_font_size", 20)))
+	local name_row_height = math.max(25, item_name_font_size + 5)
+	local secondary_row_height = math.max(22, secondary_font_size + 5)
+	local bottom_region_height = math.max(expertise_font_size + 10, secondary_font_size + 15)
+	local required_height = 110
+
+	if setting(mod, "show_weapon_blessings", false) then
+		bottom_region_height = math.max(bottom_region_height, 40)
+	end
+
+	local optional_rows = 0
+
+	if setting(mod, "show_pattern_mark", false) then
+		optional_rows = optional_rows + 1
+	end
+
+	if setting(mod, "show_rarity_name", false) then
+		optional_rows = optional_rows + 1
+	end
+
+	required_height = math.max(required_height, 7 + name_row_height + optional_rows * secondary_row_height + bottom_region_height + 8)
+
+	if setting(mod, "curio_display_profile", "primary") == "detailed" then
+		local detailed_line_height = secondary_font_size + 5
+
+		required_height = math.max(required_height, 7 + 4 * detailed_line_height + 12)
+	elseif setting(mod, "show_curio_quality", false) then
+		required_height = math.max(required_height, 7 + name_row_height + secondary_row_height + bottom_region_height + 8)
+	end
+
+	return math.max(110, math.min(240, math.ceil(required_height)))
+end
+
 Layout.item_size = function(mod, grid_width)
 	local columns = math.floor(math.max(2, math.min(5, setting(mod, "columns", 3))))
 	local spacing = math.max(0, math.min(40, setting(mod, "grid_spacing", 10)))
-	local height = math.max(110, math.min(180, setting(mod, "card_height", 110)))
+	local height = Layout.card_height(mod)
 	local width = math.floor((grid_width - spacing * (columns - 1)) / columns)
 
 	return {
@@ -592,6 +867,10 @@ Layout.item_size = function(mod, grid_width)
 end
 
 Layout.configure_grid = function(mod, item_grid)
+	if not setting(mod, "enable_grid_layout", true) then
+		return
+	end
+
 	local spacing = math.max(0, math.min(40, setting(mod, "grid_spacing", 10)))
 	local menu_settings = item_grid and item_grid._menu_settings
 
@@ -603,8 +882,67 @@ Layout.configure_grid = function(mod, item_grid)
 	end
 end
 
+Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_width)
+	local item_size = table.clone(item_blueprint.size or {
+		grid_width,
+		110,
+	})
+	local card_width = item_size[1] or grid_width
+	local pass_template = table.clone(item_blueprint.pass_template)
+	local detailed_curio_profile = setting(mod, "curio_display_profile", "primary") == "detailed"
+	local show_pattern_mark = setting(mod, "show_pattern_mark", false)
+	local show_curio_quality = setting(mod, "show_curio_quality", false)
+
+	item_blueprint.size = item_size
+	item_blueprint.pass_template = pass_template
+
+	local display_name = pass_by_style_id(pass_template, "display_name")
+	local sub_display_name = pass_by_style_id(pass_template, "sub_display_name")
+	local rarity_name = pass_by_style_id(pass_template, "rarity_name")
+	local item_level = pass_by_style_id(pass_template, "item_level")
+
+	preserve_visibility(display_name, function(content)
+		return not detailed_curio_profile or not is_curio(item_from_content(content))
+	end)
+
+	if sub_display_name then
+		sub_display_name.visibility_function = function(content)
+			local item = item_from_content(content)
+
+			if is_curio(item) then
+				return show_curio_quality and not detailed_curio_profile
+			end
+
+			return is_weapon(item) and show_pattern_mark
+		end
+	end
+
+	if rarity_name then
+		local show_weapon_quality = setting(mod, "show_rarity_name", false)
+
+		rarity_name.visibility_function = function(content)
+			return show_weapon_quality and is_weapon(item_from_content(content))
+		end
+	end
+
+	preserve_visibility(item_level, function(content)
+		return not detailed_curio_profile or not is_curio(item_from_content(content))
+	end)
+
+	set_visibility(pass_by_style_id(pass_template, "rarity_tag"), setting(mod, "show_rarity_tag", true))
+	configure_favorite_marker(mod, pass_template, 15)
+	add_custom_content_passes(mod, pass_template, card_width, 15, sub_display_name and sub_display_name.style)
+	configure_card_content(mod, item_blueprint)
+
+	return item_size
+end
+
 
 Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width)
+	if not setting(mod, "enable_grid_layout", true) then
+		return Layout.configure_native_item_blueprint(mod, item_blueprint, grid_width)
+	end
+
 	local item_size = Layout.item_size(mod, grid_width)
 	local card_width = item_size[1]
 	local card_height = item_size[2]
@@ -617,8 +955,6 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width)
 	local curio_display_profile = setting(mod, "curio_display_profile", "primary")
 	local detailed_curio_profile = curio_display_profile == "detailed"
 	local show_curio_quality = setting(mod, "show_curio_quality", false)
-	local show_weapon_blessings = setting(mod, "show_weapon_blessings", false)
-	local favorite_marker_position = setting(mod, "favorite_marker_position", "above_rating")
 
 	item_blueprint.size = item_size
 	item_blueprint.pass_template = pass_template
@@ -806,52 +1142,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width)
 		end
 	end
 
-	local favorite_icon = pass_by_style_id(pass_template, "favorite_icon")
-
-	if favorite_icon and favorite_icon.style and setting(mod, "compact_favorite_marker", true) then
-		favorite_icon.value = ""
-		favorite_icon.style.font_size = 20
-		favorite_icon.style.size = {
-			30,
-			28,
-		}
-	end
-
-	if favorite_icon and favorite_icon.style then
-		local favorite_style = favorite_icon.style
-
-		if favorite_marker_position == "above_rating" then
-			favorite_style.horizontal_alignment = "right"
-			favorite_style.vertical_alignment = "top"
-			favorite_style.text_horizontal_alignment = "right"
-			favorite_style.text_vertical_alignment = "top"
-			favorite_style.offset = {
-				-8,
-				7,
-				16,
-			}
-
-			local original_change_function = favorite_icon.change_function
-
-			favorite_icon.change_function = function(content, style, animations, dt)
-				if original_change_function then
-					original_change_function(content, style, animations, dt)
-				end
-
-				style.offset[2] = content and content.equipped and 33 or 7
-			end
-		else
-			favorite_style.horizontal_alignment = "left"
-			favorite_style.vertical_alignment = "bottom"
-			favorite_style.text_horizontal_alignment = "left"
-			favorite_style.text_vertical_alignment = "bottom"
-			favorite_style.offset = {
-				text_left,
-				-5,
-				16,
-			}
-		end
-	end
+	configure_favorite_marker(mod, pass_template, text_left)
 
 	local salvage_icon = pass_by_style_id(pass_template, "salvage_icon")
 	local salvage_circle = pass_by_style_id(pass_template, "salvage_circle")
@@ -888,55 +1179,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width)
 		end
 	end
 
-	if show_weapon_blessings then
-		local blessing_size = card_width <= 140 and 28 or 34
-		local blessing_spacing = blessing_size - 2
-		local blessing_left = text_left + (favorite_marker_position == "bottom_left" and 24 or 0)
-
-		for i = 1, 2 do
-			add_blessing_pass(pass_template, i, blessing_size, blessing_left + (i - 1) * blessing_spacing)
-		end
-	end
-
-	if detailed_curio_profile then
-		local curio_font_size = math.max(9, math.min(16, setting(mod, "secondary_text_font_size", 13)))
-
-		for i = 1, 4 do
-			local reserved_right = i <= 2 and 40 or 8
-
-			add_curio_stat_pass(pass_template, i, {
-				base_style = sub_display_name and sub_display_name.style,
-				font_size = curio_font_size,
-				vertical_alignment = "top",
-				text_vertical_alignment = "top",
-				offset = {
-					text_left,
-					7 + (i - 1) * 19,
-					11,
-				},
-				size = {
-					math.max(40, card_width - text_left - reserved_right),
-					18,
-				},
-			})
-		end
-	else
-		add_curio_stat_pass(pass_template, 1, {
-			base_style = sub_display_name and sub_display_name.style,
-			font_size = math.max(9, math.min(18, setting(mod, "secondary_text_font_size", 13))),
-			vertical_alignment = "bottom",
-			text_vertical_alignment = "bottom",
-			offset = {
-				text_left,
-				-31,
-				11,
-			},
-			size = {
-				math.max(40, card_width - text_left - 40),
-				20,
-			},
-		})
-	end
+	add_custom_content_passes(mod, pass_template, card_width, text_left, sub_display_name and sub_display_name.style)
 
 	set_height(pass_by_style_id(pass_template, "inner_shadow"), card_height)
 	set_height(pass_by_style_id(pass_template, "inner_highlight"), card_height)

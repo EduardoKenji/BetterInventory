@@ -5,6 +5,154 @@ local InventoryWeaponsView = require("scripts/ui/views/inventory_weapons_view/in
 local ViewElementGrid = require("scripts/ui/view_elements/view_element_grid/view_element_grid")
 local Layout = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout")
 local active_inventory_view
+local COLOR_PRESETS = {
+	red = {
+		235,
+		85,
+		85,
+	},
+	light_blue = {
+		105,
+		200,
+		235,
+	},
+	purple = {
+		190,
+		105,
+		230,
+	},
+	orange = {
+		235,
+		155,
+		60,
+	},
+	green = {
+		105,
+		210,
+		120,
+	},
+	neutral = {
+		220,
+		230,
+		210,
+	},
+}
+local CURIO_COLOR_TARGETS = {
+	{
+		prefix = "curio_health_color",
+		default_preset = "red",
+	},
+	{
+		prefix = "curio_toughness_color",
+		default_preset = "light_blue",
+	},
+	{
+		prefix = "curio_wound_color",
+		default_preset = "purple",
+	},
+}
+local color_target_by_setting_id = {}
+local option_dependency_entries = {}
+
+for i = 1, #CURIO_COLOR_TARGETS do
+	local target = CURIO_COLOR_TARGETS[i]
+
+	target.preset_id = target.prefix .. "_preset"
+	target.channel_ids = {
+		target.prefix .. "_r",
+		target.prefix .. "_g",
+		target.prefix .. "_b",
+	}
+	color_target_by_setting_id[target.preset_id] = {
+		target = target,
+		is_preset = true,
+	}
+
+	for channel = 1, 3 do
+		color_target_by_setting_id[target.channel_ids[channel]] = {
+			target = target,
+			is_preset = false,
+		}
+	end
+end
+
+local function apply_color_preset(target)
+	local preset_id = mod:get(target.preset_id) or target.default_preset
+	local color = COLOR_PRESETS[preset_id]
+
+	if not color then
+		return
+	end
+
+	for channel = 1, 3 do
+		mod:set(target.channel_ids[channel], color[channel], false)
+	end
+end
+
+local function set_option_enabled(entry, enabled, reason)
+	if not entry then
+		return
+	end
+
+	entry.disabled = not enabled
+	entry.disabled_by = enabled and nil or {
+		reason,
+	}
+end
+
+local function refresh_option_dependencies()
+	local grid_enabled = mod:get("enable_grid_layout") ~= false
+	local automatic_height = mod:get("automatic_card_height") ~= false
+	local native_reason = mod:localize("option_requires_grid_layout")
+
+	for _, setting_id in ipairs({
+		"columns",
+		"expand_inventory_window",
+		"grid_spacing",
+		"automatic_card_height",
+	}) do
+		set_option_enabled(option_dependency_entries[setting_id], grid_enabled, native_reason)
+	end
+
+	local card_height_enabled = grid_enabled and not automatic_height
+	local card_height_reason = grid_enabled and mod:localize("option_disabled_by_automatic_height") or native_reason
+
+	set_option_enabled(option_dependency_entries.card_height, card_height_enabled, card_height_reason)
+end
+
+local function bind_option_dependencies(options_templates)
+	local settings = options_templates and options_templates.settings
+
+	if type(settings) ~= "table" then
+		return
+	end
+
+	local category_name = mod:get_readable_name()
+	local setting_by_title = {}
+
+	for _, setting_id in ipairs({
+		"columns",
+		"expand_inventory_window",
+		"grid_spacing",
+		"automatic_card_height",
+		"card_height",
+	}) do
+		setting_by_title[mod:localize(setting_id)] = setting_id
+	end
+
+	option_dependency_entries = {}
+
+	for i = 1, #settings do
+		local entry = settings[i]
+		local setting_id = type(entry) == "table" and entry.category == category_name and setting_by_title[entry.display_name]
+
+		if setting_id then
+			option_dependency_entries[setting_id] = entry
+		end
+	end
+
+	refresh_option_dependencies()
+end
 
 function mod.on_enabled()
 	-- DMF preserves saved values when a default changes. Apply the new compact
@@ -16,6 +164,36 @@ function mod.on_enabled()
 		mod:set("show_rarity_name", false)
 		mod:set("_compact_card_defaults_v1_migrated", true)
 	end
+
+	for i = 1, #CURIO_COLOR_TARGETS do
+		apply_color_preset(CURIO_COLOR_TARGETS[i])
+	end
+
+	refresh_option_dependencies()
+end
+
+function mod.on_setting_changed(setting_id)
+	local color_change = color_target_by_setting_id[setting_id]
+
+	if color_change then
+		if color_change.is_preset then
+			apply_color_preset(color_change.target)
+		else
+			mod:set(color_change.target.preset_id, "custom", false)
+		end
+	end
+
+	if setting_id == "enable_grid_layout" or setting_id == "automatic_card_height" then
+		refresh_option_dependencies()
+	end
+end
+
+local dmf_mod = get_mod("DMF")
+
+if dmf_mod and type(dmf_mod.create_mod_options_settings) == "function" then
+	mod:hook_safe(dmf_mod, "create_mod_options_settings", function(_, options_templates)
+		bind_option_dependencies(options_templates)
+	end)
 end
 
 mod:hook(ItemGridViewBase, "init", function(func, view, definitions, settings, context)
