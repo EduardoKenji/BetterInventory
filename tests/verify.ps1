@@ -29,6 +29,10 @@ if ($main -match 'InventoryWeaponsView\.present_grid_layout\s*=') {
 	throw "Direct class assignment found; BetterInventory must remain in the DMF hook chain."
 }
 
+if ($main -notmatch '_compact_card_defaults_v1_migrated' -or $main -notmatch 'mod:set\("show_pattern_mark",\s*false\)') {
+	throw "The one-time compact-card settings migration was not found."
+}
+
 $data = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_data.lua") -Raw
 $localization = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_localization.lua") -Raw
 $settingMatches = [regex]::Matches($data, 'setting_id\s*=\s*"([^"]+)"')

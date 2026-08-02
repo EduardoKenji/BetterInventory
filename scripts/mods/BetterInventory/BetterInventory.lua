@@ -6,6 +6,18 @@ local ViewElementGrid = require("scripts/ui/view_elements/view_element_grid/view
 local Layout = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout")
 local active_inventory_view
 
+function mod.on_enabled()
+	-- DMF preserves saved values when a default changes. Apply the new compact
+	-- card defaults once for installs that already initialized the old values;
+	-- all three settings remain freely configurable afterward.
+	if not mod:get("_compact_card_defaults_v1_migrated") then
+		mod:set("append_mark_to_name", true)
+		mod:set("show_pattern_mark", false)
+		mod:set("show_rarity_name", false)
+		mod:set("_compact_card_defaults_v1_migrated", true)
+	end
+end
+
 mod:hook(ItemGridViewBase, "init", function(func, view, definitions, settings, context)
 	if view.__class_name ~= "InventoryWeaponsView" or not Layout.is_enabled_for_view(mod, view) then
 		return func(view, definitions, settings, context)
