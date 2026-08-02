@@ -439,12 +439,6 @@ def main() -> None:
                     "item_grid_pivot": lua.table_from(
                         {"size": lua.table_from([640, 860])}
                     ),
-                    "weapon_stats_pivot": lua.table_from(
-                        {"position": lua.table_from([-1140, 80, 3])}
-                    ),
-                    "weapon_compare_stats_pivot": lua.table_from(
-                        {"position": lua.table_from([-594, 80, 3])}
-                    ),
                     "purchase_button": lua.table_from(
                         {"position": lua.table_from([857, -90, 1])}
                     ),
@@ -452,20 +446,34 @@ def main() -> None:
             ),
         }
     )
+    armoury_base_definitions = lua.table_from(
+        {
+            "scenegraph_definition": lua.table_from(
+                {
+                    "weapon_stats_pivot": lua.table_from(
+                        {"position": lua.table_from([-1140, 80, 3])}
+                    ),
+                    "weapon_compare_stats_pivot": lua.table_from(
+                        {"position": lua.table_from([-594, 80, 3])}
+                    ),
+                }
+            )
+        }
+    )
     expanded_armoury, armoury_expansion = layout.expanded_armoury_view_definitions(
-        mod, armoury_definitions
+        mod, armoury_definitions, armoury_base_definitions
     )
     assert armoury_expansion == 114
     assert armoury_definitions.grid_settings.grid_size[1] == 596
     assert expanded_armoury.grid_settings.grid_size[1] == 710
     assert expanded_armoury.grid_settings.mask_size[1] == 794
     assert expanded_armoury.scenegraph_definition.item_grid_pivot.size[1] == 754
-    assert expanded_armoury.scenegraph_definition.weapon_stats_pivot.position[1] == -1076
+    assert expanded_armoury.scenegraph_definition.weapon_stats_pivot.position[1] == -1026
     assert (
         expanded_armoury.scenegraph_definition.weapon_compare_stats_pivot.position[1]
-        == -530
+        == -480
     )
-    assert expanded_armoury.scenegraph_definition.purchase_button.position[1] == 921
+    assert expanded_armoury.scenegraph_definition.purchase_button.position[1] == 971
     assert tuple(
         layout.item_size(mod, 710, 3, store_configuration)[index]
         for index in (1, 2)

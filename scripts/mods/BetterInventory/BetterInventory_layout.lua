@@ -6,7 +6,6 @@ local Layout = {}
 local MINIMUM_CARD_WIDTH = 120
 local ARMOURY_MINIMUM_CARD_WIDTH = 190
 local ARMOURY_MAXIMUM_CARD_WIDTH = 230
-local ARMOURY_MAXIMUM_DETAILS_SHIFT = 64
 local BLESSING_MATERIAL = "content/ui/materials/icons/traits/traits_container"
 local STORE_FOOTER_HEIGHT = 34
 local WEAPON_PERK_COUNT = 2
@@ -1173,7 +1172,7 @@ Layout.armoury_grid_expansion = function(mod, current_grid_width)
 	return math.max(0, required_grid_width - current_grid_width)
 end
 
-Layout.expanded_armoury_view_definitions = function(mod, definitions)
+Layout.expanded_armoury_view_definitions = function(mod, definitions, base_definitions)
 	local grid_settings = definitions and definitions.grid_settings
 	local grid_size = grid_settings and grid_settings.grid_size
 	local current_grid_width = grid_size and grid_size[1]
@@ -1198,9 +1197,9 @@ Layout.expanded_armoury_view_definitions = function(mod, definitions)
 	end
 
 	local scenegraph = adjusted_definitions.scenegraph_definition
+	local base_scenegraph = base_definitions and base_definitions.scenegraph_definition
 
 	if scenegraph then
-		local details_shift = math.min(expansion, ARMOURY_MAXIMUM_DETAILS_SHIFT)
 		local item_grid_pivot = scenegraph.item_grid_pivot
 		local pivot_size = item_grid_pivot and item_grid_pivot.size
 
@@ -1214,10 +1213,16 @@ Layout.expanded_armoury_view_definitions = function(mod, definitions)
 			"purchase_button",
 		}) do
 			local node = scenegraph[scenegraph_id]
+
+			if not node and base_scenegraph and base_scenegraph[scenegraph_id] then
+				node = table.clone(base_scenegraph[scenegraph_id])
+				scenegraph[scenegraph_id] = node
+			end
+
 			local position = node and node.position
 
 			if position and position[1] then
-				position[1] = position[1] + details_shift
+				position[1] = position[1] + expansion
 			end
 		end
 	end

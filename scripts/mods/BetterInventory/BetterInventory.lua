@@ -3,6 +3,7 @@ local mod = get_mod("BetterInventory")
 local CraftingMechanicusModifyView = require("scripts/ui/views/crafting_mechanicus_modify_view/crafting_mechanicus_modify_view")
 local CreditsVendorView = require("scripts/ui/views/credits_vendor_view/credits_vendor_view")
 local ItemGridViewBase = require("scripts/ui/views/item_grid_view_base/item_grid_view_base")
+local ItemGridViewBaseDefinitions = require("scripts/ui/views/item_grid_view_base/item_grid_view_base_definitions")
 local InventoryWeaponsView = require("scripts/ui/views/inventory_weapons_view/inventory_weapons_view")
 local ViewElementGrid = require("scripts/ui/view_elements/view_element_grid/view_element_grid")
 local Layout = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout")
@@ -313,7 +314,7 @@ mod:hook(ItemGridViewBase, "init", function(func, view, definitions, settings, c
 	end
 
 	if view.__class_name == "CreditsVendorView" and mod:get("enable_grid_layout") ~= false and mod:get("enable_armoury_requisition_grid") ~= false then
-		local adjusted_definitions, expansion = Layout.expanded_armoury_view_definitions(mod, definitions)
+		local adjusted_definitions, expansion = Layout.expanded_armoury_view_definitions(mod, definitions, ItemGridViewBaseDefinitions)
 
 		view._better_inventory_armoury_grid_expansion = expansion
 
