@@ -85,13 +85,13 @@ return {
 						setting_id = "append_mark_to_name",
 						tooltip = "append_mark_to_name_tooltip",
 						type = "checkbox",
-						default_value = false,
+						default_value = true,
 					},
 					{
 						setting_id = "show_pattern_mark",
 						tooltip = "show_pattern_mark_tooltip",
 						type = "checkbox",
-						default_value = true,
+						default_value = false,
 					},
 					{
 						setting_id = "show_rarity_name",

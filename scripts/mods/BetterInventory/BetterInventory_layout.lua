@@ -220,7 +220,7 @@ local function configure_display_name_fitting(mod, item_blueprint)
 	local original_update_data = item_blueprint.update_data
 	local preferred_font_size = setting(mod, "item_name_font_size", 16)
 	local minimum_font_size = math.max(8, math.min(20, setting(mod, "minimum_item_name_font_size", 12)))
-	local append_mark_to_name = setting(mod, "append_mark_to_name", false)
+	local append_mark_to_name = setting(mod, "append_mark_to_name", true)
 
 	if original_init then
 		item_blueprint.init = function(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
@@ -442,7 +442,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width)
 			22,
 		},
 	})
-	local show_pattern_mark = setting(mod, "show_pattern_mark", true)
+	local show_pattern_mark = setting(mod, "show_pattern_mark", false)
 
 	if not show_pattern_mark and sub_display_name then
 		sub_display_name.visibility_function = function(content)

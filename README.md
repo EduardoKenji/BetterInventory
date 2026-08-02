@@ -33,7 +33,7 @@ It currently covers the character melee, ranged and Curio inventory and provides
 - Configurable card height, spacing and icon darkness.
 - Independent melee, ranged and Curio enable switches.
 - Current weapon pattern/mark, optional quality text, expertise, favorite and equipped state preservation.
-- Optional `Weapon Name Mk` formatting that moves the Mark into the title without duplicating it on the pattern line.
+- Default `Weapon Name Mk` formatting that moves the Mark into the title; the separate weapon-pattern line and quality text are opt-in.
 - Adaptive single-line item names that shrink to a configurable minimum and use an ellipsis only when still too wide, preventing overlap with the pattern/Mark line.
 - Compact favorite-marker and font-size options.
 - Darktide's managed item-icon loader with a card-sized render context and the original unload/update lifecycle.

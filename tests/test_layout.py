@@ -100,7 +100,7 @@ def main() -> None:
                 card_height = 110,
                 icon_darkness = 25,
 				append_mark_to_name = true,
-                show_pattern_mark = true,
+                show_pattern_mark = false,
                 show_rarity_name = false,
                 show_rarity_tag = true,
                 compact_favorite_marker = true,
@@ -236,6 +236,24 @@ def main() -> None:
 
     rarity_name_pass = blueprint.pass_template[5]
     assert rarity_name_pass.visibility_function() is False
+
+    pattern_name_pass = blueprint.pass_template[4]
+    weapon_content = lua.table_from(
+        {
+            "element": lua.table_from(
+                {"item": lua.table_from({"item_type": "WEAPON_MELEE"})}
+            )
+        }
+    )
+    curio_content = lua.table_from(
+        {
+            "element": lua.table_from(
+                {"item": lua.table_from({"item_type": "GADGET"})}
+            )
+        }
+    )
+    assert pattern_name_pass.visibility_function(weapon_content) is False
+    assert pattern_name_pass.visibility_function(curio_content) is True
 
     name_style = blueprint.pass_template[3].style
     name_widget = lua.table_from(
