@@ -330,11 +330,21 @@ Features.update_inventory_sort_toggle = function(mod, layout, view)
 	end
 
 	if slot_kind == "curio" then
-		local menu_settings = view._weapon_stats and view._weapon_stats._menu_settings
+		local weapon_stats = view._weapon_stats
+		local menu_settings = weapon_stats and weapon_stats._menu_settings
 		local grid_size = menu_settings and menu_settings.grid_size
+		local content_height
+
+		if weapon_stats and type(weapon_stats.grid_length) == "function" then
+			local grid_length = weapon_stats:grid_length()
+
+			if type(grid_length) == "number" and grid_length > 0 then
+				content_height = grid_length + 35
+			end
+		end
 
 		position[1] = 0
-		position[2] = (grid_size and grid_size[2] or 580) + 15
+		position[2] = (content_height or grid_size and grid_size[2] or 580) + 15
 	else
 		local menu_settings = view._weapon_options_element and view._weapon_options_element._menu_settings
 		local grid_size = menu_settings and menu_settings.grid_size

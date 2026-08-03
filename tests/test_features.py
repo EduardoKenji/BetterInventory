@@ -187,8 +187,9 @@ def main() -> None:
     view._weapon_stats = lua.table_from(
         {
             "_menu_settings": lua.table_from(
-                {"grid_size": lua.table_from([530, 510])}
-            )
+                {"grid_size": lua.table_from([530, 920])}
+            ),
+            "grid_length": lua.eval("function() return 475 end"),
         }
     )
     features.update_inventory_sort_toggle(mod, layout, view)
