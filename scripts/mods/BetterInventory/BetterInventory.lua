@@ -653,6 +653,8 @@ mod:hook(CreditsVendorView, "on_enter", function(func, view, ...)
 end)
 
 mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layout, content_blueprints, ...)
+	content_blueprints = Features.compact_inventory_curio_stats_blueprints(mod, item_grid, content_blueprints)
+
 	local view = active_grid_view
 	local configuration = active_grid_configuration
 	local definitions = view and view._definitions

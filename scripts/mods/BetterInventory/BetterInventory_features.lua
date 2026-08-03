@@ -22,6 +22,7 @@ local INVENTORY_OPTIONS_PANEL_CONTENT_WIDTH = 425
 local INVENTORY_OPTIONS_PANEL_GRID_WIDTH = 430
 local INVENTORY_OPTIONS_PANEL_MAX_HEIGHT = 360
 local INVENTORY_OPTIONS_PANEL_MIN_HEIGHT = 120
+local INVENTORY_CURIO_HEADER_HEIGHT = 190
 local INVENTORY_DISCARD_WIDGET_IDS = {
 	INVENTORY_DISCARD_LABEL_ID,
 	INVENTORY_DISCARD_MODE_ID,
@@ -867,11 +868,7 @@ local function append_panel_checkbox_passes(target, prefix, x, width, checked_id
 end
 
 local function panel_mode_passes()
-	local passes = compact_selector_passes(190)
-
-	append_panel_checkbox_passes(passes, "skip", 200, INVENTORY_OPTIONS_PANEL_CONTENT_WIDTH - 200, "skip_checked", "skip_label", "skip_visible")
-
-	return passes
+	return compact_selector_passes(INVENTORY_OPTIONS_PANEL_CONTENT_WIDTH)
 end
 
 local function panel_type_checkbox_passes()
@@ -1176,29 +1173,36 @@ end
 local function panel_mode_entry(mod, layout, view)
 	return panel_entry(view, INVENTORY_DISCARD_MODE_ID, 34, panel_mode_passes(), {
 		label = mod:localize("quick_discard_inventory_mode"),
-		skip_checked = mod:get("quick_discard_skip_automatic_confirmation") == true,
-		skip_label = mod:localize("quick_discard_skip_automatic_confirmation"),
-		skip_visible = mod:get("quick_discard_mode") == "automatic",
 		value = "",
 	}, function(widget)
 		widget.content.hotspot.pressed_callback = function()
 			local mode = mod:get("quick_discard_mode") == "automatic" and "manual" or "automatic"
 
 			mod:set("quick_discard_mode", mode, false)
-			Features.sync_quick_discard_settings(mod, layout)
-		end
-		widget.content.skip_hotspot.pressed_callback = function()
-			if mod:get("quick_discard_mode") == "automatic" then
-				mod:set("quick_discard_skip_automatic_confirmation", not widget.content.skip_checked, false)
-				Features.sync_quick_discard_settings(mod, layout)
-			end
+			-- Automatic mode adds another row. As with section collapsing, let the
+			-- next InventoryWeaponsView update rebuild the grid after this draw ends.
 		end
 	end, function(widget)
 		local mode = mod:get("quick_discard_mode") == "automatic" and "automatic" or "manual"
 
 		widget.content.value = mod:localize("quick_discard_mode_" .. mode) .. "  >"
-		widget.content.skip_checked = mod:get("quick_discard_skip_automatic_confirmation") == true
-		widget.content.skip_visible = mode == "automatic"
+	end)
+end
+
+local function panel_skip_confirmation_entry(mod, layout, view)
+	return panel_entry(view, INVENTORY_DISCARD_SKIP_CONFIRMATION_ID, 34, compact_checkbox_passes(), {
+		checked = mod:get("quick_discard_skip_automatic_confirmation") == true,
+		label = mod:localize("quick_discard_skip_automatic_confirmation"),
+	}, function(widget)
+		widget.content.hotspot.pressed_callback = function()
+			local enabled = mod:get("quick_discard_skip_automatic_confirmation") ~= true
+
+			widget.content.checked = enabled
+			mod:set("quick_discard_skip_automatic_confirmation", enabled, false)
+			Features.sync_quick_discard_settings(mod, layout)
+		end
+	end, function(widget)
+		widget.content.checked = mod:get("quick_discard_skip_automatic_confirmation") == true
 	end)
 end
 
@@ -1323,6 +1327,7 @@ local function panel_structure_key(mod, view)
 	return table.concat({
 		view._discard_items_element and "native_discard" or "inventory",
 		mod:get("enable_experimental_quick_discard") == true and "discard_on" or "discard_off",
+		mod:get("quick_discard_mode") == "automatic" and "automatic" or "manual",
 		collapsed.sorting and "sort_closed" or "sort_open",
 		collapsed.discard and "discard_closed" or "discard_open",
 	}, ":")
@@ -1357,6 +1362,11 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 
 		if not collapsed.discard then
 			entries[#entries + 1] = panel_mode_entry(mod, layout, view)
+
+			if mod:get("quick_discard_mode") == "automatic" then
+				entries[#entries + 1] = panel_skip_confirmation_entry(mod, layout, view)
+			end
+
 			entries[#entries + 1] = panel_quick_discard_entry(mod, layout, view)
 			entries[#entries + 1] = panel_stepper_entry(mod, layout, view, INVENTORY_DISCARD_MAX_LEVEL_ID, "quick_discard_max_item_level", "quick_discard_inventory_max_level", 500)
 			entries[#entries + 1] = panel_type_entry(mod, layout, view)
@@ -1382,6 +1392,47 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 	view._better_inventory_options_panel_height = panel_height
 	panel:update_grid_height(panel_height, panel_height)
 	panel:present_grid_layout(entries, INVENTORY_OPTIONS_PANEL_BLUEPRINTS)
+end
+
+-- The stock Curio header reserves 250 virtual pixels for one small item image.
+-- While the scalable inventory panel is active, reclaim 60 of those pixels so
+-- the panel can sit below the details card without covering the Equip button.
+-- This transforms only the current InventoryWeaponsView's Curio stats blueprint;
+-- crafting, vendors and weapon detail cards keep their native geometry.
+Features.compact_inventory_curio_stats_blueprints = function(mod, item_grid, content_blueprints)
+	if mod:get("enable_inventory_options_panel_prototype") ~= true or type(content_blueprints) ~= "table" then
+		return content_blueprints
+	end
+
+	local parent = item_grid and item_grid._parent
+	local item = item_grid and item_grid._item
+	local gadget_header = content_blueprints.gadget_header
+
+	if not parent or parent.__class_name ~= "InventoryWeaponsView" or parent._weapon_stats ~= item_grid or not item or item.item_type ~= "GADGET" or type(gadget_header) ~= "table" then
+		return content_blueprints
+	end
+
+	local adjusted_blueprints = table.clone(content_blueprints)
+	local adjusted_header = adjusted_blueprints.gadget_header
+
+	adjusted_header.size[2] = INVENTORY_CURIO_HEADER_HEIGHT
+
+	for index = 1, #(adjusted_header.pass_template or {}) do
+		local pass = adjusted_header.pass_template[index]
+		local style = pass and pass.style
+
+		if style and pass.style_id == "icon" then
+			style.size[2] = 125
+			style.offset[2] = 20
+		elseif style and pass.style_id == "loading" then
+			style.size[1] = 60
+			style.size[2] = 60
+		elseif style and pass.style_id == "gradient_background" then
+			style.size[2] = 95
+		end
+	end
+
+	return adjusted_blueprints
 end
 
 Features.setup_inventory_options_panel = function(mod, layout, view, ViewElementGrid)

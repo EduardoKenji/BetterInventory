@@ -762,6 +762,40 @@ def main() -> None:
     # sections by rebuilding rows, and reduce to Sorting in native discard mode.
     mod.settings.enable_inventory_options_panel_prototype = True
     mod.settings.quick_discard_mode = "manual"
+
+    # Reclaim only the oversized Curio preview header in this inventory view.
+    curio_stats_grid, curio_stats_blueprints = lua.execute(
+        r"""
+        local parent = {__class_name = "InventoryWeaponsView"}
+        local weapon_stats = {
+            _parent = parent,
+            _item = {item_type = "GADGET"},
+        }
+
+        parent._weapon_stats = weapon_stats
+
+        return weapon_stats, {
+            gadget_header = {
+                size = {518, 250},
+                pass_template = {
+                    {style_id = "icon", style = {size = {466, 180}, offset = {0, 30, 3}}},
+                    {style_id = "loading", style = {size = {80, 80}, offset = {0, 10, 3}}},
+                    {style_id = "gradient_background", style = {size = {518, 125}, offset = {0, 0, 1}}},
+                },
+            },
+        }
+        """
+    )
+    compact_curio_blueprints = features.compact_inventory_curio_stats_blueprints(
+        mod, curio_stats_grid, curio_stats_blueprints
+    )
+    assert compact_curio_blueprints.gadget_header.size[2] == 190
+    assert compact_curio_blueprints.gadget_header.pass_template[1].style.size[2] == 125
+    assert compact_curio_blueprints.gadget_header.pass_template[1].style.offset[2] == 20
+    assert compact_curio_blueprints.gadget_header.pass_template[2].style.size[1] == 60
+    assert compact_curio_blueprints.gadget_header.pass_template[3].style.size[2] == 95
+    assert curio_stats_blueprints.gadget_header.size[2] == 250
+
     prototype_view = lua.execute(
         r"""
         local scenegraph, widgets, weapon_stats = ...
@@ -871,6 +905,29 @@ def main() -> None:
     assert prototype_panel.pivot_y == 375
     assert prototype_view._widgets_by_name[sort_label_id].content.visible is False
     assert prototype_view._widgets_by_name[toggle_id].content.visible is False
+
+    # Mode changes that add/remove the standalone confirmation row are deferred
+    # until the next safe view update. The separate checkbox must remain clickable.
+    prototype_panel.widgets[
+        "better_inventory_discard_mode"
+    ].content.hotspot.pressed_callback()
+    assert mod.settings.quick_discard_mode == "automatic"
+    assert len(prototype_panel.layout) == 10
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert len(prototype_panel.layout) == 11
+    skip_widget = prototype_panel.widgets[
+        "better_inventory_discard_skip_confirmation"
+    ]
+    assert skip_widget.content.checked is True
+    skip_widget.content.hotspot.pressed_callback()
+    assert mod.settings.quick_discard_skip_automatic_confirmation is False
+    assert skip_widget.content.checked is False
+    prototype_panel.widgets[
+        "better_inventory_discard_mode"
+    ].content.hotspot.pressed_callback()
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert mod.settings.quick_discard_mode == "manual"
+    assert len(prototype_panel.layout) == 10
 
     prototype_panel.widgets[
         "better_inventory_discard_header"
