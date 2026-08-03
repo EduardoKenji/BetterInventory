@@ -123,12 +123,10 @@ if ($DarktideSourcePath) {
 	$gadgetTraits = Join-Path $DarktideSourcePath "scripts\settings\equipment\gadget_traits\gadget_traits_common.lua"
 	$weaponPerksMelee = Join-Path $DarktideSourcePath "scripts\settings\equipment\weapon_traits\weapon_perks_melee.lua"
 	$weaponPerksRanged = Join-Path $DarktideSourcePath "scripts\settings\equipment\weapon_traits\weapon_perks_ranged.lua"
-	$weaponStats = Join-Path $DarktideSourcePath "scripts\utilities\weapon_stats.lua"
-	$itemStatsBlueprints = Join-Path $DarktideSourcePath "scripts\ui\view_content_blueprints\item_stats_blueprints.lua"
 	$traitValueParser = Join-Path $DarktideSourcePath "scripts\utilities\trait_value_parser.lua"
 	$gadgetBuffTemplates = Join-Path $DarktideSourcePath "scripts\settings\buff\gadget_buff_templates.lua"
 
-	foreach ($sourceFile in @($inventoryView, $hadronModifyView, $craftingViewDefinitions, $creditsVendorView, $creditsVendorBackgroundDefinitions, $itemGridBase, $itemGridBaseDefinitions, $itemBlueprints, $iconGenerator, $items, $masterItems, $gadgetTraits, $weaponPerksMelee, $weaponPerksRanged, $weaponStats, $itemStatsBlueprints, $traitValueParser, $gadgetBuffTemplates)) {
+	foreach ($sourceFile in @($inventoryView, $hadronModifyView, $craftingViewDefinitions, $creditsVendorView, $creditsVendorBackgroundDefinitions, $itemGridBase, $itemGridBaseDefinitions, $itemBlueprints, $iconGenerator, $items, $masterItems, $gadgetTraits, $weaponPerksMelee, $weaponPerksRanged, $traitValueParser, $gadgetBuffTemplates)) {
 		if (-not (Test-Path -LiteralPath $sourceFile -PathType Leaf)) {
 			throw "Missing expected Darktide source file: $sourceFile"
 		}
@@ -155,14 +153,6 @@ if ($DarktideSourcePath) {
 
 	if ($inventoryViewSource -notmatch 'InventoryWeaponsView\.is_item_equipped_in_any_slot' -or $inventoryViewSource -notmatch 'InventoryWeaponsView\.cb_on_favorite_pressed') {
 		throw "The Curio equipped/favorite sorting APIs were not found."
-	}
-
-	if ((Get-Content -LiteralPath $weaponStats -Raw) -notmatch 'WeaponStats\.get_comparing_stats[\s\S]*?fraction\s*=\s*stat_value') {
-		throw "The raw weapon-attribute fraction API was not found."
-	}
-
-	if ((Get-Content -LiteralPath $itemStatsBlueprints -Raw) -notmatch '(?m)^\s*weapon_stats\s*=\s*{' -or (Get-Content -LiteralPath $itemStatsBlueprints -Raw) -notmatch 'percentage_') {
-		throw "The weapon attribute text blueprint was not found."
 	}
 
 	$traitParserSource = Get-Content -LiteralPath $traitValueParser -Raw

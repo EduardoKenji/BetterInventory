@@ -1,14 +1,12 @@
 local Items = require("scripts/utilities/items")
 local UIWidget = require("scripts/managers/ui/ui_widget")
 local UISoundEvents = require("scripts/settings/ui/ui_sound_events")
-local WeaponStats = require("scripts/utilities/weapon_stats")
 
 local Features = {}
 local INVENTORY_SORT_TOGGLE_ID = "better_inventory_sort_priority"
 local registered_inventory_views = setmetatable({}, {
 	__mode = "k",
 })
-local unpack_values = table.unpack or unpack
 
 local function inventory_slot_kind(layout, view)
 	if not view or view.__class_name ~= "InventoryWeaponsView" then
@@ -24,81 +22,6 @@ end
 
 local function is_inventory_view(layout, view)
 	return inventory_slot_kind(layout, view) ~= nil
-end
-
-local function precise_attribute_values(widget)
-	local content = widget and widget.content
-	local element = content and content.element
-	local item = element and element.item
-
-	if not item then
-		return
-	end
-
-	local start_expertise = content.start_expertise_value or 0
-	local preview_expertise = content.preview_expertise_value
-
-	-- Expertise previews deliberately show Darktide's calculated future values,
-	-- including its colour markup. Never replace those with the item's base data.
-	if preview_expertise and preview_expertise > start_expertise and not content.disable_preview then
-		return
-	end
-
-	local comparing_stats = WeaponStats:new(item):get_comparing_stats()
-
-	for index = 1, #comparing_stats do
-		local fraction = comparing_stats[index].fraction
-		local percentage_id = "percentage_" .. index
-		local current_text = content[percentage_id]
-
-		if type(fraction) == "number" and type(current_text) == "string" then
-			local precise_value = string.format("%.1f", fraction * 100)
-
-			content[percentage_id] = string.gsub(current_text, "^%[[^/]+/", "[" .. precise_value .. "/", 1)
-		end
-	end
-end
-
-Features.configure_weapon_stats_blueprint = function(mod, blueprint)
-	if not blueprint or blueprint._better_inventory_precise_values then
-		return
-	end
-
-	local original_init = blueprint.init
-	local original_update = blueprint.update
-
-	if type(original_init) ~= "function" then
-		return
-	end
-
-	blueprint._better_inventory_precise_values = true
-	blueprint.init = function(...)
-		local results = {
-			original_init(...),
-		}
-		local widget = select(2, ...)
-
-		if mod:get("show_weapon_attribute_decimals") == true then
-			precise_attribute_values(widget)
-		end
-
-		return unpack_values(results)
-	end
-
-	if type(original_update) == "function" then
-		blueprint.update = function(...)
-			local results = {
-				original_update(...),
-			}
-			local widget = select(2, ...)
-
-			if mod:get("show_weapon_attribute_decimals") == true then
-				precise_attribute_values(widget)
-			end
-
-			return unpack_values(results)
-		end
-	end
 end
 
 local function inventory_sort_toggle_passes()

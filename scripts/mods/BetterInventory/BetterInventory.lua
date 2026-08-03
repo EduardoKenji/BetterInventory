@@ -533,18 +533,6 @@ mod:hook(CreditsVendorView, "on_enter", function(func, view, ...)
 end)
 
 mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layout, content_blueprints, ...)
-	if item_grid.__class_name == "ViewElementWeaponStats" and mod:get("show_weapon_attribute_decimals") == true then
-		local weapon_stats_blueprint = content_blueprints and content_blueprints.weapon_stats
-
-		if weapon_stats_blueprint then
-			local local_blueprints = table.clone(content_blueprints)
-
-			Features.configure_weapon_stats_blueprint(mod, local_blueprints.weapon_stats)
-
-			return func(item_grid, layout, local_blueprints, ...)
-		end
-	end
-
 	local view = active_grid_view
 	local configuration = active_grid_configuration
 	local definitions = view and view._definitions

@@ -60,16 +60,6 @@ def main() -> None:
             default_mouse_hover = "hover",
             default_click = "click",
         }
-        TestWeaponStats = {
-            new = function(_, item)
-                return {
-                    get_comparing_stats = function()
-                        return item.comparing_stats
-                    end,
-                }
-            end,
-        }
-
         function require(path)
             if path == "scripts/utilities/items" then
                 return TestItems
@@ -77,8 +67,6 @@ def main() -> None:
                 return TestUIWidget
             elseif path == "scripts/settings/ui/ui_sound_events" then
                 return TestSoundEvents
-            elseif path == "scripts/utilities/weapon_stats" then
-                return TestWeaponStats
             end
 
             error("Unexpected test require: " .. tostring(path))
@@ -86,7 +74,6 @@ def main() -> None:
 
         test_mod = {
             settings = {
-                show_weapon_attribute_decimals = true,
                 prioritize_equipped_favorites = true,
             },
             get = function(self, setting_id)
@@ -110,52 +97,6 @@ def main() -> None:
     globals_ = lua.globals()
     mod = globals_.test_mod
     layout = globals_.test_layout
-
-    blueprint = lua.execute(
-        r"""
-        return {
-            init = function(parent, widget, element)
-                widget.content.element = element
-                widget.content.start_expertise_value = 500
-                widget.content.percentage_1 = "[80/80]%"
-                widget.content.percentage_2 = "[60/60]%"
-            end,
-            update = function(parent, widget)
-                if widget.content.force_preview then
-                    widget.content.preview_expertise_value = 501
-                    widget.content.percentage_1 = "[81/80]%"
-                else
-                    widget.content.preview_expertise_value = nil
-                    widget.content.percentage_1 = "[80/80]%"
-                end
-            end,
-        }
-        """
-    )
-    features.configure_weapon_stats_blueprint(mod, blueprint)
-    widget = lua.table_from({"content": lua.table_from({})})
-    item = lua.table_from(
-        {
-            "comparing_stats": lua.table_from(
-                [
-                    lua.table_from({"fraction": 0.796}),
-                    lua.table_from({"fraction": 0.6}),
-                ]
-            )
-        }
-    )
-    element = lua.table_from({"item": item})
-    blueprint.init(lua.table_from({}), widget, element)
-    assert widget.content.percentage_1 == "[79.6/80]%"
-    assert widget.content.percentage_2 == "[60.0/60]%"
-
-    widget.content.force_preview = True
-    blueprint.update(lua.table_from({}), widget)
-    assert widget.content.percentage_1 == "[81/80]%"
-
-    widget.content.force_preview = False
-    blueprint.update(lua.table_from({}), widget)
-    assert widget.content.percentage_1 == "[79.6/80]%"
 
     definitions = lua.table_from(
         {

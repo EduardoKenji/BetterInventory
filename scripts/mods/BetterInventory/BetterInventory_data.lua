@@ -112,18 +112,6 @@ return {
 				},
 			},
 			{
-				setting_id = "precise_values_group",
-				type = "group",
-				sub_widgets = {
-					{
-						setting_id = "show_weapon_attribute_decimals",
-						tooltip = "show_weapon_attribute_decimals_tooltip",
-						type = "checkbox",
-						default_value = false,
-					},
-				},
-			},
-			{
 				setting_id = "inventory_sorting_group",
 				type = "group",
 				sub_widgets = {

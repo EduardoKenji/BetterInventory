@@ -84,7 +84,6 @@ def main() -> None:
 			update_inventory_sort_toggle = function() end,
 			sync_inventory_sort_setting = function() inventory_sort_syncs = inventory_sort_syncs + 1 end,
 			unregister_inventory_view = function() end,
-			configure_weapon_stats_blueprint = function() end,
 		}
 
         test_mod = {}
@@ -480,7 +479,6 @@ def main() -> None:
     assert defaults["remove_weapon_perk_plus_signs"] is False
     assert defaults["curio_display_profile"] == "detailed"
     assert defaults["show_curio_item_level"] is True
-    assert defaults["show_weapon_attribute_decimals"] is False
     assert defaults["prioritize_equipped_favorites"] is True
     assert defaults["curio_primary_stat_font_size"] == 16
     assert defaults["curio_secondary_stat_font_size"] == 13
