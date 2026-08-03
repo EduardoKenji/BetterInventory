@@ -177,13 +177,25 @@ def main() -> None:
     adjusted = features.add_inventory_sort_toggle_definition(mod, layout, definitions, view)
     toggle_id = "better_inventory_sort_priority"
     assert adjusted.scenegraph_definition[toggle_id].parent == "weapon_stats_pivot"
-    assert adjusted.scenegraph_definition[toggle_id].position[2] == 600
+    assert adjusted.scenegraph_definition[toggle_id].position[2] == 500
     assert (
         adjusted.widget_definitions[toggle_id].content.label
         == "prioritize_equipped_favorites_inventory_label"
     )
 
     view._ui_scenegraph = adjusted.scenegraph_definition
+    view._set_scenegraph_position = lua.eval(
+        """
+        function(self, scenegraph_id, x, y)
+            local position = self._ui_scenegraph[scenegraph_id].position
+
+            position[1] = x
+            position[2] = y
+            self.position_set_with_view_api = true
+            self._update_scenegraph = true
+        end
+        """
+    )
     view._weapon_stats = lua.table_from(
         {
             "_menu_settings": lua.table_from(
@@ -191,28 +203,37 @@ def main() -> None:
             ),
             "_ui_scenegraph": lua.table_from(
                 {
+                    "grid_background_pivot": lua.table_from(
+                        {"position": lua.table_from([0, 13, 0])}
+                    ),
+                    "grid_background": lua.table_from(
+                        {
+                            "position": lua.table_from([0, 0, 0]),
+                            "size": lua.table_from([530, 430]),
+                        }
+                    ),
+                    "grid_divider_bottom": lua.table_from(
+                        {
+                            "position": lua.table_from([0, 16, 0]),
+                            "size": lua.table_from([530, 36]),
+                        }
+                    ),
                     "grid_divider_bottom_weapon": lua.table_from(
-                        {"size": lua.table_from([530, 36])}
+                        {
+                            "position": lua.table_from([0, 0, 0]),
+                            "size": lua.table_from([530, 36]),
+                        }
                     )
                 }
             ),
             "grid_length": lua.eval("function() return 475 end"),
-            "scenegraph_world_position": lua.eval(
-                """
-                function(self, scenegraph_id)
-                    if scenegraph_id == "pivot" then
-                        return { 760, 135, 0 }
-                    end
-
-                    return { 760, 582, 0 }
-                end
-                """
-            ),
         }
     )
     features.update_inventory_sort_toggle(mod, layout, view)
     assert adjusted.scenegraph_definition[toggle_id].position[1] == 0
-    assert adjusted.scenegraph_definition[toggle_id].position[2] == 498
+    assert adjusted.scenegraph_definition[toggle_id].position[2] == 474
+    assert view.position_set_with_view_api is True
+    assert view._update_scenegraph is True
 
     melee_view = lua.execute(
         r"""

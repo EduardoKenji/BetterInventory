@@ -227,7 +227,7 @@ Features.add_inventory_sort_toggle_definition = function(mod, layout, definition
 		},
 		position = {
 			is_curio and 0 or 20,
-			is_curio and 600 or 320,
+			is_curio and 500 or 320,
 			20,
 		},
 	}
@@ -309,26 +309,56 @@ end
 
 local function rendered_weapon_stats_height(weapon_stats)
 	local scenegraph = weapon_stats and weapon_stats._ui_scenegraph
-	local divider = scenegraph and scenegraph.grid_divider_bottom_weapon
-	local world_position = weapon_stats and weapon_stats.scenegraph_world_position
+	local background_pivot = scenegraph and scenegraph.grid_background_pivot
+	local background = scenegraph and scenegraph.grid_background
+	local divider = scenegraph and scenegraph.grid_divider_bottom
+	local weapon_divider = scenegraph and scenegraph.grid_divider_bottom_weapon
 
-	if not divider or type(world_position) ~= "function" then
+	if not background_pivot or not background or not divider then
 		return
 	end
 
-	local pivot_position = world_position(weapon_stats, "pivot")
-	local divider_position = world_position(weapon_stats, "grid_divider_bottom_weapon")
-	local divider_size = divider.size
-	local divider_height = divider_size and divider_size[2]
+	local background_pivot_y = background_pivot.position and background_pivot.position[2]
+	local background_y = background.position and background.position[2]
+	local background_height = background.size and background.size[2]
+	local divider_y = divider.position and divider.position[2]
+	local divider_height = divider.size and divider.size[2]
 
-	if not pivot_position or not divider_position or type(divider_height) ~= "number" then
+	if type(background_pivot_y) ~= "number" or type(background_y) ~= "number" or type(background_height) ~= "number" or type(divider_y) ~= "number" or type(divider_height) ~= "number" then
 		return
 	end
 
-	local rendered_height = divider_position[2] - pivot_position[2] + divider_height
+	local rendered_height = background_pivot_y + background_y + background_height - divider_height + divider_y
+
+	if weapon_divider then
+		local weapon_divider_y = weapon_divider.position and weapon_divider.position[2] or 0
+		local weapon_divider_height = weapon_divider.size and weapon_divider.size[2]
+
+		if type(weapon_divider_height) == "number" then
+			rendered_height = rendered_height + (divider_height - weapon_divider_height) * 0.5 + weapon_divider_y + weapon_divider_height
+		else
+			rendered_height = rendered_height + divider_height
+		end
+	else
+		rendered_height = rendered_height + divider_height
+	end
 
 	if rendered_height > 0 then
 		return rendered_height
+	end
+end
+
+local function set_inventory_sort_toggle_position(view, position, x, y)
+	if position[1] == x and position[2] == y then
+		return
+	end
+
+	if type(view._set_scenegraph_position) == "function" then
+		view:_set_scenegraph_position(INVENTORY_SORT_TOGGLE_ID, x, y)
+	else
+		position[1] = x
+		position[2] = y
+		view._update_scenegraph = true
 	end
 end
 
@@ -368,14 +398,12 @@ Features.update_inventory_sort_toggle = function(mod, layout, view)
 			end
 		end
 
-		position[1] = 0
-		position[2] = (content_height or grid_size and grid_size[2] or 580) + 15
+		set_inventory_sort_toggle_position(view, position, 0, (content_height or grid_size and grid_size[2] or 480) + 15)
 	else
 		local menu_settings = view._weapon_options_element and view._weapon_options_element._menu_settings
 		local grid_size = menu_settings and menu_settings.grid_size
 
-		position[1] = 20
-		position[2] = (grid_size and grid_size[2] or 300) + 15
+		set_inventory_sort_toggle_position(view, position, 20, (grid_size and grid_size[2] or 300) + 15)
 	end
 end
 
