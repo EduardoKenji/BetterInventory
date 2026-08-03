@@ -174,12 +174,68 @@ def main() -> None:
         }
         """
     )
-    adjusted = features.add_curio_sort_toggle_definition(mod, layout, definitions, view)
-    toggle_id = "better_inventory_curio_sort_priority"
-    assert adjusted.scenegraph_definition[toggle_id].position[2] == 910
+    adjusted = features.add_inventory_sort_toggle_definition(mod, layout, definitions, view)
+    toggle_id = "better_inventory_sort_priority"
+    assert adjusted.scenegraph_definition[toggle_id].parent == "weapon_stats_pivot"
+    assert adjusted.scenegraph_definition[toggle_id].position[2] == 600
     assert (
         adjusted.widget_definitions[toggle_id].content.label
         == "prioritize_equipped_favorites_inventory_label"
+    )
+
+    view._ui_scenegraph = adjusted.scenegraph_definition
+    view._weapon_stats = lua.table_from(
+        {
+            "_menu_settings": lua.table_from(
+                {"grid_size": lua.table_from([530, 510])}
+            )
+        }
+    )
+    features.update_inventory_sort_toggle(mod, layout, view)
+    assert adjusted.scenegraph_definition[toggle_id].position[1] == 0
+    assert adjusted.scenegraph_definition[toggle_id].position[2] == 525
+
+    melee_view = lua.execute(
+        r"""
+        return {
+            __class_name = "InventoryWeaponsView",
+            slot_kind = "slot_primary",
+        }
+        """
+    )
+    melee_definitions = features.add_inventory_sort_toggle_definition(
+        mod, layout, definitions, melee_view
+    )
+    assert (
+        melee_definitions.scenegraph_definition[toggle_id].parent
+        == "weapon_compare_stats_pivot"
+    )
+    melee_view._ui_scenegraph = melee_definitions.scenegraph_definition
+    melee_view._weapon_options_element = lua.table_from(
+        {
+            "_menu_settings": lua.table_from(
+                {"grid_size": lua.table_from([420, 270])}
+            )
+        }
+    )
+    features.update_inventory_sort_toggle(mod, layout, melee_view)
+    assert melee_definitions.scenegraph_definition[toggle_id].position[1] == 20
+    assert melee_definitions.scenegraph_definition[toggle_id].position[2] == 285
+
+    ranged_view = lua.execute(
+        r"""
+        return {
+            __class_name = "InventoryWeaponsView",
+            slot_kind = "slot_secondary",
+        }
+        """
+    )
+    ranged_definitions = features.add_inventory_sort_toggle_definition(
+        mod, layout, definitions, ranged_view
+    )
+    assert (
+        ranged_definitions.scenegraph_definition[toggle_id].parent
+        == "weapon_compare_stats_pivot"
     )
 
     sortable_view = lua.execute(
@@ -201,7 +257,7 @@ def main() -> None:
         """
     )
     globals_.TestItems.favorites.favorite = True
-    features.configure_curio_sort_options(mod, layout, sortable_view)
+    features.configure_inventory_sort_options(mod, layout, sortable_view)
     sorted_ids = lua.execute(
         r"""
         local view, ordinary, favorite, equipped = ...
@@ -248,24 +304,39 @@ def main() -> None:
 
     mod.settings.prioritize_equipped_favorites = True
     sortable_view._widgets_by_name = lua.table_from(
-        {
-            toggle_id: lua.table_from(
-                {
-                    "content": lua.table_from(
-                        {"checked": True, "hotspot": lua.table_from({})}
-                    )
-                }
-            )
-        }
+        {toggle_id: adjusted.widget_definitions[toggle_id]}
+    )
+    melee_view._widgets_by_name = lua.table_from(
+        {toggle_id: melee_definitions.widget_definitions[toggle_id]}
     )
     sortable_view._selected_sort_option_index = 1
     sortable_view._sort_grid_layout = lua.eval(
         "function(self, sort_function) self.resorted = sort_function ~= nil end"
     )
-    features.bind_curio_sort_toggle(mod, layout, sortable_view)
+    melee_view._sort_options = sortable_view._sort_options
+    melee_view._selected_sort_option_index = 1
+    melee_view._sort_grid_layout = lua.eval(
+        "function(self, sort_function) self.resorted = sort_function ~= nil end"
+    )
+    features.bind_inventory_sort_toggle(mod, layout, sortable_view)
+    features.bind_inventory_sort_toggle(mod, layout, melee_view)
     sortable_view._widgets_by_name[toggle_id].content.hotspot.pressed_callback()
     assert mod.settings.prioritize_equipped_favorites is False
     assert sortable_view.resorted is True
+    assert melee_view.resorted is True
+    assert sortable_view._widgets_by_name[toggle_id].content.checked is False
+    assert melee_view._widgets_by_name[toggle_id].content.checked is False
+
+    mod.settings.prioritize_equipped_favorites = True
+    features.sync_inventory_sort_setting(mod, layout)
+    assert sortable_view._widgets_by_name[toggle_id].content.checked is True
+    assert melee_view._widgets_by_name[toggle_id].content.checked is True
+
+    features.unregister_inventory_view(melee_view)
+    mod.settings.prioritize_equipped_favorites = False
+    features.sync_inventory_sort_setting(mod, layout)
+    assert sortable_view._widgets_by_name[toggle_id].content.checked is False
+    assert melee_view._widgets_by_name[toggle_id].content.checked is True
 
 
 if __name__ == "__main__":

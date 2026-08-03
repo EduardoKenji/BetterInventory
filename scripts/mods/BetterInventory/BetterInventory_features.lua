@@ -4,11 +4,26 @@ local UISoundEvents = require("scripts/settings/ui/ui_sound_events")
 local WeaponStats = require("scripts/utilities/weapon_stats")
 
 local Features = {}
-local CURIO_SORT_TOGGLE_ID = "better_inventory_curio_sort_priority"
+local INVENTORY_SORT_TOGGLE_ID = "better_inventory_sort_priority"
+local registered_inventory_views = setmetatable({}, {
+	__mode = "k",
+})
 local unpack_values = table.unpack or unpack
 
-local function is_curio_view(layout, view)
-	return view and view.__class_name == "InventoryWeaponsView" and layout.slot_kind(view) == "curio"
+local function inventory_slot_kind(layout, view)
+	if not view or view.__class_name ~= "InventoryWeaponsView" then
+		return
+	end
+
+	local slot_kind = layout.slot_kind(view)
+
+	if slot_kind == "slot_primary" or slot_kind == "slot_secondary" or slot_kind == "curio" then
+		return slot_kind
+	end
+end
+
+local function is_inventory_view(layout, view)
+	return inventory_slot_kind(layout, view) ~= nil
 end
 
 local function precise_attribute_values(widget)
@@ -86,7 +101,7 @@ Features.configure_weapon_stats_blueprint = function(mod, blueprint)
 	end
 end
 
-local function curio_sort_toggle_passes()
+local function inventory_sort_toggle_passes()
 	return {
 		{
 			content_id = "hotspot",
@@ -185,36 +200,38 @@ local function curio_sort_toggle_passes()
 	}
 end
 
-Features.add_curio_sort_toggle_definition = function(mod, layout, definitions, view)
-	if not is_curio_view(layout, view) or not definitions then
+Features.add_inventory_sort_toggle_definition = function(mod, layout, definitions, view)
+	local slot_kind = inventory_slot_kind(layout, view)
+
+	if not slot_kind or not definitions then
 		return definitions
 	end
 
 	local adjusted_definitions = table.clone(definitions)
 	local scenegraph = adjusted_definitions.scenegraph_definition
 	local widget_definitions = adjusted_definitions.widget_definitions
-	local grid_settings = adjusted_definitions.grid_settings
-	local grid_size = grid_settings and grid_settings.grid_size
 
-	if not scenegraph or not widget_definitions or not grid_size then
+	if not scenegraph or not widget_definitions then
 		return adjusted_definitions
 	end
 
-	scenegraph[CURIO_SORT_TOGGLE_ID] = {
+	local is_curio = slot_kind == "curio"
+
+	scenegraph[INVENTORY_SORT_TOGGLE_ID] = {
 		horizontal_alignment = "left",
-		parent = "item_grid_pivot",
+		parent = is_curio and "weapon_stats_pivot" or "weapon_compare_stats_pivot",
 		vertical_alignment = "top",
 		size = {
-			math.min(grid_size[1] or 600, 600),
+			is_curio and 530 or 420,
 			32,
 		},
 		position = {
-			10,
-			(grid_size[2] or 860) + 50,
+			is_curio and 0 or 20,
+			is_curio and 600 or 320,
 			20,
 		},
 	}
-	widget_definitions[CURIO_SORT_TOGGLE_ID] = UIWidget.create_definition(curio_sort_toggle_passes(), CURIO_SORT_TOGGLE_ID, {
+	widget_definitions[INVENTORY_SORT_TOGGLE_ID] = UIWidget.create_definition(inventory_sort_toggle_passes(), INVENTORY_SORT_TOGGLE_ID, {
 		checked = mod:get("prioritize_equipped_favorites") ~= false,
 		label = mod:localize("prioritize_equipped_favorites_inventory_label"),
 	})
@@ -243,8 +260,8 @@ local function item_priority(view, layout_entry)
 	return 0
 end
 
-Features.configure_curio_sort_options = function(mod, layout, view)
-	if not is_curio_view(layout, view) then
+Features.configure_inventory_sort_options = function(mod, layout, view)
+	if not is_inventory_view(layout, view) then
 		return
 	end
 
@@ -276,8 +293,8 @@ Features.configure_curio_sort_options = function(mod, layout, view)
 	end
 end
 
-Features.resort_curio_inventory = function(mod, layout, view)
-	if not is_curio_view(layout, view) or type(view._sort_grid_layout) ~= "function" then
+Features.resort_inventory = function(mod, layout, view)
+	if not is_inventory_view(layout, view) or view._destroyed or type(view._sort_grid_layout) ~= "function" then
 		return
 	end
 
@@ -290,12 +307,64 @@ Features.resort_curio_inventory = function(mod, layout, view)
 	end
 end
 
-Features.bind_curio_sort_toggle = function(mod, layout, view)
-	if not is_curio_view(layout, view) then
+Features.update_inventory_sort_toggle = function(mod, layout, view)
+	local slot_kind = inventory_slot_kind(layout, view)
+
+	if not slot_kind then
 		return
 	end
 
-	local widget = view._widgets_by_name and view._widgets_by_name[CURIO_SORT_TOGGLE_ID]
+	local widget = view._widgets_by_name and view._widgets_by_name[INVENTORY_SORT_TOGGLE_ID]
+	local content = widget and widget.content
+
+	if content then
+		content.checked = mod:get("prioritize_equipped_favorites") ~= false
+	end
+
+	local scenegraph = view._ui_scenegraph
+	local node = scenegraph and scenegraph[INVENTORY_SORT_TOGGLE_ID]
+	local position = node and node.position
+
+	if not position then
+		return
+	end
+
+	if slot_kind == "curio" then
+		local menu_settings = view._weapon_stats and view._weapon_stats._menu_settings
+		local grid_size = menu_settings and menu_settings.grid_size
+
+		position[1] = 0
+		position[2] = (grid_size and grid_size[2] or 580) + 15
+	else
+		local menu_settings = view._weapon_options_element and view._weapon_options_element._menu_settings
+		local grid_size = menu_settings and menu_settings.grid_size
+
+		position[1] = 20
+		position[2] = (grid_size and grid_size[2] or 300) + 15
+	end
+end
+
+Features.sync_inventory_sort_setting = function(mod, layout)
+	local enabled = mod:get("prioritize_equipped_favorites") ~= false
+
+	for view in pairs(registered_inventory_views) do
+		local widget = view._widgets_by_name and view._widgets_by_name[INVENTORY_SORT_TOGGLE_ID]
+		local content = widget and widget.content
+
+		if content then
+			content.checked = enabled
+		end
+
+		Features.resort_inventory(mod, layout, view)
+	end
+end
+
+Features.bind_inventory_sort_toggle = function(mod, layout, view)
+	if not is_inventory_view(layout, view) then
+		return
+	end
+
+	local widget = view._widgets_by_name and view._widgets_by_name[INVENTORY_SORT_TOGGLE_ID]
 	local content = widget and widget.content
 	local hotspot = content and content.hotspot
 
@@ -303,14 +372,18 @@ Features.bind_curio_sort_toggle = function(mod, layout, view)
 		return
 	end
 
-	content.checked = mod:get("prioritize_equipped_favorites") ~= false
+	registered_inventory_views[view] = true
+	Features.update_inventory_sort_toggle(mod, layout, view)
 	hotspot.pressed_callback = function()
 		local enabled = not content.checked
 
-		content.checked = enabled
-		mod:set("prioritize_equipped_favorites", enabled)
-		Features.resort_curio_inventory(mod, layout, view)
+		mod:set("prioritize_equipped_favorites", enabled, false)
+		Features.sync_inventory_sort_setting(mod, layout)
 	end
+end
+
+Features.unregister_inventory_view = function(view)
+	registered_inventory_views[view] = nil
 end
 
 return Features

@@ -24,7 +24,7 @@ return {
 		en = "Keep equipped and favorites at top",
 	},
 	prioritize_equipped_favorites_tooltip = {
-		en = "In Curio inventories, keeps equipped Curios first and favorited Curios second while the selected native sort still orders each group. The same toggle is available below the Curio grid.",
+		en = "In melee, ranged and Curio inventories, keeps equipped items first and favorited items second while the selected native sort still orders each group. The synchronized toggle appears below Curio details or below the weapon action buttons, and its value persists between game sessions.",
 	},
 	prioritize_equipped_favorites_inventory_label = {
 		en = "Equipped and favorited items at the top",

@@ -350,6 +350,10 @@ function mod.on_setting_changed(setting_id)
 	if setting_id == "enable_grid_layout" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_armoury_requisition_grid" or setting_id == "expand_armoury_requisition_window" or setting_id == "show_weapon_blessings" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "curio_display_profile" then
 		refresh_option_dependencies()
 	end
+
+	if setting_id == "prioritize_equipped_favorites" then
+		Features.sync_inventory_sort_setting(mod, Layout)
+	end
 end
 
 local dmf_mod = get_mod("DMF")
@@ -362,7 +366,7 @@ end
 
 mod:hook(ItemGridViewBase, "init", function(func, view, definitions, settings, context)
 	if view.__class_name == "InventoryWeaponsView" then
-		local adjusted_definitions = Features.add_curio_sort_toggle_definition(mod, Layout, definitions, view)
+		local adjusted_definitions = Features.add_inventory_sort_toggle_definition(mod, Layout, definitions, view)
 		local expansion = 0
 
 		if Layout.is_enabled_for_view(mod, view) then
@@ -389,8 +393,8 @@ if ensure_class_method(InventoryWeaponsView, "_setup_sort_options") then
 	mod:hook(InventoryWeaponsView, "_setup_sort_options", function(func, view, ...)
 		local result = func(view, ...)
 
-		Features.configure_curio_sort_options(mod, Layout, view)
-		Features.bind_curio_sort_toggle(mod, Layout, view)
+		Features.configure_inventory_sort_options(mod, Layout, view)
+		Features.bind_inventory_sort_toggle(mod, Layout, view)
 
 		return result
 	end)
@@ -398,8 +402,22 @@ end
 
 mod:hook_safe(InventoryWeaponsView, "cb_on_favorite_pressed", function(view)
 	if mod:get("prioritize_equipped_favorites") ~= false then
-		Features.resort_curio_inventory(mod, Layout, view)
+		Features.resort_inventory(mod, Layout, view)
 	end
+end)
+
+mod:hook_safe(InventoryWeaponsView, "_equip_item", function(view)
+	if mod:get("prioritize_equipped_favorites") ~= false then
+		Features.resort_inventory(mod, Layout, view)
+	end
+end)
+
+mod:hook_safe(InventoryWeaponsView, "update", function(view)
+	Features.update_inventory_sort_toggle(mod, Layout, view)
+end)
+
+mod:hook_safe(InventoryWeaponsView, "on_exit", function(view)
+	Features.unregister_inventory_view(view)
 end)
 
 mod:hook(InventoryWeaponsView, "_setup_item_grid_materials", function(func, view, ...)

@@ -73,11 +73,15 @@ def main() -> None:
             configure_item_blueprint = function() end,
 			configure_grid = function() end,
 		}
+		inventory_sort_syncs = 0
 		test_features = {
-			add_curio_sort_toggle_definition = function(_, _, definitions) return definitions end,
-			configure_curio_sort_options = function() end,
-			bind_curio_sort_toggle = function() end,
-			resort_curio_inventory = function() end,
+			add_inventory_sort_toggle_definition = function(_, _, definitions) return definitions end,
+			configure_inventory_sort_options = function() end,
+			bind_inventory_sort_toggle = function() end,
+			resort_inventory = function() end,
+			update_inventory_sort_toggle = function() end,
+			sync_inventory_sort_setting = function() inventory_sort_syncs = inventory_sort_syncs + 1 end,
+			unregister_inventory_view = function() end,
 			configure_weapon_stats_blueprint = function() end,
 		}
 
@@ -366,6 +370,10 @@ def main() -> None:
     settings.expand_curio_inventory_window = True
     mod.on_setting_changed("expand_curio_inventory_window")
     assert entries_by_id["curio_target_card_width"].disabled is False
+
+    settings.prioritize_equipped_favorites = False
+    mod.on_setting_changed("prioritize_equipped_favorites")
+    assert globals_.inventory_sort_syncs == 1
 
     settings.automatic_card_height = False
     mod.on_setting_changed("automatic_card_height")
