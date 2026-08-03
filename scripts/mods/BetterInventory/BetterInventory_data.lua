@@ -293,7 +293,39 @@ return {
 						type = "checkbox",
 						default_value = false,
 					},
-					color_group("weapon_perk_text_color_group", "weapon_perk_text_color", "terminal_green", 113, 126, 103),
+					{
+						setting_id = "weapon_perk_text_color_preset",
+						type = "dropdown",
+						default_value = "terminal_green",
+						options = color_preset_options(),
+					},
+					{
+						setting_id = "weapon_perk_text_color_r",
+						type = "numeric",
+						default_value = 113,
+						range = {
+							0,
+							255,
+						},
+					},
+					{
+						setting_id = "weapon_perk_text_color_g",
+						type = "numeric",
+						default_value = 126,
+						range = {
+							0,
+							255,
+						},
+					},
+					{
+						setting_id = "weapon_perk_text_color_b",
+						type = "numeric",
+						default_value = 103,
+						range = {
+							0,
+							255,
+						},
+					},
 					{
 						setting_id = "blessing_icon_spacing",
 						tooltip = "blessing_icon_spacing_tooltip",

@@ -233,6 +233,10 @@ def main() -> None:
 		"weapon_perk_compression",
 		"show_weapon_perk_rank_symbols",
 		"remove_weapon_perk_plus_signs",
+		"weapon_perk_text_color_preset",
+		"weapon_perk_text_color_r",
+		"weapon_perk_text_color_g",
+		"weapon_perk_text_color_b",
 		"curio_secondary_stat_font_size",
 		"curio_primary_secondary_spacing",
     )
@@ -264,6 +268,10 @@ def main() -> None:
     assert entries_by_id["weapon_perk_compression"].disabled is True
     assert entries_by_id["show_weapon_perk_rank_symbols"].disabled is True
     assert entries_by_id["remove_weapon_perk_plus_signs"].disabled is True
+    assert entries_by_id["weapon_perk_text_color_preset"].disabled is True
+    assert entries_by_id["weapon_perk_text_color_r"].disabled is True
+    assert entries_by_id["weapon_perk_text_color_g"].disabled is True
+    assert entries_by_id["weapon_perk_text_color_b"].disabled is True
     assert entries_by_id["curio_secondary_stat_font_size"].disabled is True
     assert entries_by_id["curio_primary_secondary_spacing"].disabled is True
 
@@ -281,11 +289,19 @@ def main() -> None:
     assert entries_by_id["weapon_perk_compression"].disabled is False
     assert entries_by_id["show_weapon_perk_rank_symbols"].disabled is False
     assert entries_by_id["remove_weapon_perk_plus_signs"].disabled is False
+    assert entries_by_id["weapon_perk_text_color_preset"].disabled is False
+    assert entries_by_id["weapon_perk_text_color_r"].disabled is False
+    assert entries_by_id["weapon_perk_text_color_g"].disabled is False
+    assert entries_by_id["weapon_perk_text_color_b"].disabled is False
     settings.show_weapon_perks = False
     mod.on_setting_changed("show_weapon_perks")
     assert entries_by_id["weapon_perk_compression"].disabled is True
     assert entries_by_id["show_weapon_perk_rank_symbols"].disabled is True
     assert entries_by_id["remove_weapon_perk_plus_signs"].disabled is True
+    assert entries_by_id["weapon_perk_text_color_preset"].disabled is True
+    assert entries_by_id["weapon_perk_text_color_r"].disabled is True
+    assert entries_by_id["weapon_perk_text_color_g"].disabled is True
+    assert entries_by_id["weapon_perk_text_color_b"].disabled is True
 
     settings.expand_armoury_requisition_window = False
     mod.on_setting_changed("expand_armoury_requisition_window")
@@ -346,6 +362,23 @@ def main() -> None:
                 inspect_widgets(sub_widgets)
 
     inspect_widgets(data.options.widgets)
+
+    card_content_group = next(
+        data.options.widgets[index]
+        for index in range(1, len(data.options.widgets) + 1)
+        if data.options.widgets[index].setting_id == "card_content_group"
+    )
+    card_content_ids = {
+        card_content_group.sub_widgets[index].setting_id
+        for index in range(1, len(card_content_group.sub_widgets) + 1)
+    }
+    assert "weapon_perk_text_color_group" not in card_content_ids
+    assert {
+        "weapon_perk_text_color_preset",
+        "weapon_perk_text_color_r",
+        "weapon_perk_text_color_g",
+        "weapon_perk_text_color_b",
+    }.issubset(card_content_ids)
 
     assert defaults["enable_grid_layout"] is True
     assert defaults["enable_hadron_entreat_grid"] is True

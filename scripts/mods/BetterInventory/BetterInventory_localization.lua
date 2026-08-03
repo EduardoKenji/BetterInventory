@@ -179,20 +179,17 @@ return {
 	remove_weapon_perk_plus_signs_tooltip = {
 		en = "Removes only the leading plus sign from each visible weapon perk line. Numeric values and signs elsewhere are preserved.",
 	},
-	weapon_perk_text_color_group = {
-		en = "Weapon perk text colour",
-	},
 	weapon_perk_text_color_preset = {
-		en = "Preset",
+		en = "Weapon perk text colour preset",
 	},
 	weapon_perk_text_color_r = {
-		en = "Red",
+		en = "Weapon perk text colour preset red",
 	},
 	weapon_perk_text_color_g = {
-		en = "Green",
+		en = "Weapon perk text colour preset green",
 	},
 	weapon_perk_text_color_b = {
-		en = "Blue",
+		en = "Weapon perk text colour preset blue",
 	},
 	blessing_icon_spacing = {
 		en = "Blessing icon horizontal spacing",
