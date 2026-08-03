@@ -20,6 +20,7 @@ def main() -> None:
     lua.execute(
         r"""
         settings = {
+			columns = 3,
             enable_grid_layout = true,
 			enable_hadron_entreat_grid = true,
 			enable_armoury_requisition_grid = true,
@@ -40,6 +41,7 @@ def main() -> None:
 			curio_display_profile = "primary",
 			show_curio_item_level = true,
 			expand_inventory_window = true,
+			five_column_weapon_extra_width = 80,
 			expand_curio_inventory_window = true,
             curio_health_color_preset = "red",
             curio_health_color_r = 235,
@@ -63,7 +65,7 @@ def main() -> None:
 			curio_secondary_text_color_b = 210,
         }
 
-        test_layout = {
+		test_layout = {
             is_enabled_for_view = function() return false end,
             expanded_view_definitions = function(_, definitions) return definitions, 0 end,
 			expanded_armoury_view_definitions = function(_, definitions)
@@ -71,8 +73,18 @@ def main() -> None:
 				return definitions, 114
 			end,
             configure_item_blueprint = function() end,
-            configure_grid = function() end,
-        }
+			configure_grid = function() end,
+		}
+		inventory_sort_syncs = 0
+		test_features = {
+			add_inventory_sort_toggle_definition = function(_, _, definitions) return definitions end,
+			configure_inventory_sort_options = function() end,
+			bind_inventory_sort_toggle = function() end,
+			resort_inventory = function() end,
+			update_inventory_sort_toggle = function() end,
+			sync_inventory_sort_setting = function() inventory_sort_syncs = inventory_sort_syncs + 1 end,
+			unregister_inventory_view = function() end,
+		}
 
         test_mod = {}
         test_dmf = {
@@ -98,9 +110,13 @@ def main() -> None:
             return "Better Inventory"
         end
 
-        function test_mod:io_dofile(path)
-            return test_layout
-        end
+		function test_mod:io_dofile(path)
+			if string.find(path, "BetterInventory_features", 1, true) then
+				return test_features
+			end
+
+			return test_layout
+		end
 
         function test_mod:hook(target, method, callback)
 			if method == "init" then
@@ -168,6 +184,8 @@ def main() -> None:
 
     mod.on_enabled()
     assert settings.curio_stat_compression == "heavy"
+    assert settings.blessing_icon_size == 36
+    assert settings.weapon_perk_rank_icon_size == 17
 
     settings._curio_heavy_default_v1_migrated = False
     settings.curio_stat_compression = "none"
@@ -226,6 +244,7 @@ def main() -> None:
     option_ids = (
         "columns",
         "expand_inventory_window",
+		"five_column_weapon_extra_width",
         "expand_curio_inventory_window",
         "curio_target_card_width",
         "grid_spacing",
@@ -272,6 +291,7 @@ def main() -> None:
     assert entries_by_id["expand_armoury_requisition_window"].disabled is False
     assert entries_by_id["armoury_requisition_target_card_width"].disabled is False
     assert entries_by_id["expand_curio_inventory_window"].disabled is False
+    assert entries_by_id["five_column_weapon_extra_width"].disabled is True
     assert entries_by_id["curio_target_card_width"].disabled is False
     assert entries_by_id["weapon_perk_compression"].disabled is True
     assert entries_by_id["show_weapon_perk_rank_symbols"].disabled is True
@@ -285,6 +305,13 @@ def main() -> None:
     assert entries_by_id["blessing_icon_spacing"].disabled is False
     assert entries_by_id["curio_secondary_stat_font_size"].disabled is True
     assert entries_by_id["curio_primary_secondary_spacing"].disabled is True
+
+    settings.columns = 5
+    mod.on_setting_changed("columns")
+    assert entries_by_id["five_column_weapon_extra_width"].disabled is False
+    settings.columns = 3
+    mod.on_setting_changed("columns")
+    assert entries_by_id["five_column_weapon_extra_width"].disabled is True
 
     settings.curio_display_profile = "detailed"
     mod.on_setting_changed("curio_display_profile")
@@ -353,6 +380,10 @@ def main() -> None:
     settings.expand_curio_inventory_window = True
     mod.on_setting_changed("expand_curio_inventory_window")
     assert entries_by_id["curio_target_card_width"].disabled is False
+
+    settings.prioritize_equipped_favorites = False
+    mod.on_setting_changed("prioritize_equipped_favorites")
+    assert globals_.inventory_sort_syncs == 1
 
     settings.automatic_card_height = False
     mod.on_setting_changed("automatic_card_height")
@@ -432,21 +463,23 @@ def main() -> None:
     assert defaults["armoury_requisition_target_card_width"] == 230
     assert defaults["automatic_card_height"] is True
     assert defaults["expand_curio_inventory_window"] is True
+    assert defaults["five_column_weapon_extra_width"] == 80
     assert defaults["curio_target_card_width"] == 190
     assert defaults["curio_stat_compression"] == "heavy"
     assert defaults["simplify_curio_primary_stat_text"] is True
     assert defaults["remove_curio_stat_plus_signs"] is False
     assert defaults["blessing_icon_spacing"] == 3
-    assert defaults["blessing_icon_size"] == 34
+    assert defaults["blessing_icon_size"] == 36
     assert defaults["highlight_equipped_items"] is True
     assert defaults["show_weapon_blessings"] is True
     assert defaults["show_weapon_perks"] is True
     assert defaults["weapon_perk_compression"] == "heavy"
     assert defaults["show_weapon_perk_rank_symbols"] is True
-    assert defaults["weapon_perk_rank_icon_size"] == 18
+    assert defaults["weapon_perk_rank_icon_size"] == 17
     assert defaults["remove_weapon_perk_plus_signs"] is False
     assert defaults["curio_display_profile"] == "detailed"
     assert defaults["show_curio_item_level"] is True
+    assert defaults["prioritize_equipped_favorites"] is True
     assert defaults["curio_primary_stat_font_size"] == 16
     assert defaults["curio_secondary_stat_font_size"] == 13
     assert defaults["curio_primary_secondary_spacing"] == 5

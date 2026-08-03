@@ -197,11 +197,12 @@ def main() -> None:
 			error("Unexpected test require: " .. tostring(path))
 		end
 
-		test_mod = {
+			test_mod = {
             settings = {
 				columns = 3,
 				enable_grid_layout = true,
 				expand_inventory_window = true,
+				five_column_weapon_extra_width = 80,
 				expand_curio_inventory_window = true,
 				curio_target_card_width = 190,
 				enable_armoury_requisition_grid = true,
@@ -522,7 +523,7 @@ def main() -> None:
         192,
         110,
     )
-    assert layout.grid_expansion(mod, 596) == 44
+    assert layout.grid_expansion(mod, 596) == 124
     assert layout.grid_expansion(mod, 596, "curio") == 394
 
     view_definitions = lua.table_from(
@@ -561,14 +562,18 @@ def main() -> None:
         mod, view_definitions
     )
 
-    assert expansion == 44
+    assert expansion == 124
     assert view_definitions.grid_settings.grid_size[1] == 596
-    assert expanded_definitions.grid_settings.grid_size[1] == 640
-    assert expanded_definitions.grid_settings.mask_size[1] == 724
-    assert expanded_definitions.scenegraph_definition.weapon_stats_pivot.position[1] == -1096
-    assert expanded_definitions.scenegraph_definition.weapon_actions_pivot.position[1] == -516
-    assert expanded_definitions.scenegraph_definition.equip_button.position[1] == 901
-    assert tuple(layout.item_size(mod, 640)[index] for index in (1, 2)) == (120, 110)
+    assert expanded_definitions.grid_settings.grid_size[1] == 720
+    assert expanded_definitions.grid_settings.mask_size[1] == 804
+    assert expanded_definitions.scenegraph_definition.weapon_stats_pivot.position[1] == -1016
+    assert expanded_definitions.scenegraph_definition.weapon_actions_pivot.position[1] == -436
+    assert expanded_definitions.scenegraph_definition.equip_button.position[1] == 981
+    assert tuple(layout.item_size(mod, 720)[index] for index in (1, 2)) == (136, 110)
+
+    mod.settings.five_column_weapon_extra_width = 0
+    assert layout.grid_expansion(mod, 596) == 44
+    mod.settings.five_column_weapon_extra_width = 80
 
     curio_view = lua.table_from(
         {"_selected_slot": lua.table_from({"name": "slot_attachment_1"})}

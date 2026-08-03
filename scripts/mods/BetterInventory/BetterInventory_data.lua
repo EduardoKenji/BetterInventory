@@ -112,6 +112,18 @@ return {
 				},
 			},
 			{
+				setting_id = "inventory_sorting_group",
+				type = "group",
+				sub_widgets = {
+					{
+						setting_id = "prioritize_equipped_favorites",
+						tooltip = "prioritize_equipped_favorites_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+				},
+			},
+			{
 				setting_id = "additional_views_group",
 				type = "group",
 				sub_widgets = {
@@ -170,6 +182,16 @@ return {
 						tooltip = "expand_inventory_window_tooltip",
 						type = "checkbox",
 						default_value = true,
+					},
+					{
+						setting_id = "five_column_weapon_extra_width",
+						tooltip = "five_column_weapon_extra_width_tooltip",
+						type = "numeric",
+						default_value = 80,
+						range = {
+							0,
+							120,
+						},
 					},
 					{
 						setting_id = "expand_curio_inventory_window",
@@ -259,7 +281,7 @@ return {
 						setting_id = "blessing_icon_size",
 						tooltip = "blessing_icon_size_tooltip",
 						type = "numeric",
-						default_value = 34,
+						default_value = 36,
 						range = {
 							20,
 							48,
@@ -301,7 +323,7 @@ return {
 						setting_id = "weapon_perk_rank_icon_size",
 						tooltip = "weapon_perk_rank_icon_size_tooltip",
 						type = "numeric",
-						default_value = 18,
+						default_value = 17,
 						range = {
 							12,
 							32,

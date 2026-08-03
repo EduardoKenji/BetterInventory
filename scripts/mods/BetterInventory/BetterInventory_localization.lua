@@ -8,6 +8,18 @@ return {
 	inventory_slots_group = {
 		en = "Inventory coverage",
 	},
+	inventory_sorting_group = {
+		en = "Inventory sorting",
+	},
+	prioritize_equipped_favorites = {
+		en = "Equipped and favorited items at the top",
+	},
+	prioritize_equipped_favorites_tooltip = {
+		en = "In melee, ranged and Curio inventories, keeps equipped items first and favorited items second while the selected native sort still orders each group. The synchronized toggle appears below Curio details or below the weapon action buttons, and its value persists between game sessions.",
+	},
+	prioritize_equipped_favorites_inventory_label = {
+		en = "Equipped and favorited items at the top",
+	},
 	enable_melee_inventory = {
 		en = "Melee weapons",
 	},
@@ -65,6 +77,12 @@ return {
 	expand_inventory_window_tooltip = {
 		en = "Widens the inventory panel enough to keep narrow cards inside it. This normally affects five-column layouts, or four columns with very large spacing. Disable this to shrink the cards instead.",
 	},
+	five_column_weapon_extra_width = {
+		en = "Extra five-column weapon width",
+	},
+	five_column_weapon_extra_width_tooltip = {
+		en = "Adds this many pixels to the normal melee and ranged inventory after its minimum five-column width is calculated. The 80 px default gives each of five cards 16 additional pixels. Expansion is safely clamped before the actions panel reaches the screen edge.",
+	},
 	expand_curio_inventory_window = {
 		en = "Expand Curio window by columns",
 	},
@@ -94,6 +112,9 @@ return {
 	},
 	option_requires_grid_layout = {
 		en = "Enable grid layout to use this option.",
+	},
+	option_requires_five_weapon_columns = {
+		en = "Set Columns to 5 to use this option.",
 	},
 	option_disabled_by_automatic_height = {
 		en = "Disable automatic card height to set a manual height.",

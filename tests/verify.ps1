@@ -8,6 +8,7 @@ $scriptRoot = Join-Path $projectRoot "scripts\mods\BetterInventory"
 $requiredFiles = @(
 	(Join-Path $projectRoot "BetterInventory.mod"),
 	(Join-Path $scriptRoot "BetterInventory.lua"),
+	(Join-Path $scriptRoot "BetterInventory_features.lua"),
 	(Join-Path $scriptRoot "BetterInventory_layout.lua"),
 	(Join-Path $scriptRoot "BetterInventory_data.lua"),
 	(Join-Path $scriptRoot "BetterInventory_localization.lua")
@@ -59,6 +60,10 @@ $layout = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_layou
 
 if ($layout -notmatch 'Layout\.armoury_grid_expansion' -or $layout -notmatch 'armoury_requisition_target_card_width') {
 	throw "The Armoury target-width expansion contract was not found."
+}
+
+if ($layout -notmatch 'five_column_weapon_extra_width' -or $data -notmatch 'five_column_weapon_extra_width') {
+	throw "The five-column weapon width configuration was not found."
 }
 
 if ($layout -match 'Managers\.ui:(load|unload)_item_icon' -or $layout -match 'Renderer\.(create|destroy)_resource') {
@@ -118,8 +123,10 @@ if ($DarktideSourcePath) {
 	$gadgetTraits = Join-Path $DarktideSourcePath "scripts\settings\equipment\gadget_traits\gadget_traits_common.lua"
 	$weaponPerksMelee = Join-Path $DarktideSourcePath "scripts\settings\equipment\weapon_traits\weapon_perks_melee.lua"
 	$weaponPerksRanged = Join-Path $DarktideSourcePath "scripts\settings\equipment\weapon_traits\weapon_perks_ranged.lua"
+	$traitValueParser = Join-Path $DarktideSourcePath "scripts\utilities\trait_value_parser.lua"
+	$gadgetBuffTemplates = Join-Path $DarktideSourcePath "scripts\settings\buff\gadget_buff_templates.lua"
 
-	foreach ($sourceFile in @($inventoryView, $hadronModifyView, $craftingViewDefinitions, $creditsVendorView, $creditsVendorBackgroundDefinitions, $itemGridBase, $itemGridBaseDefinitions, $itemBlueprints, $iconGenerator, $items, $masterItems, $gadgetTraits, $weaponPerksMelee, $weaponPerksRanged)) {
+	foreach ($sourceFile in @($inventoryView, $hadronModifyView, $craftingViewDefinitions, $creditsVendorView, $creditsVendorBackgroundDefinitions, $itemGridBase, $itemGridBaseDefinitions, $itemBlueprints, $iconGenerator, $items, $masterItems, $gadgetTraits, $weaponPerksMelee, $weaponPerksRanged, $traitValueParser, $gadgetBuffTemplates)) {
 		if (-not (Test-Path -LiteralPath $sourceFile -PathType Leaf)) {
 			throw "Missing expected Darktide source file: $sourceFile"
 		}
@@ -142,6 +149,17 @@ if ($DarktideSourcePath) {
 
 	if ($inventoryViewSource -notmatch 'InventoryWeaponsView\._setup_weapon_actions[\s\S]*?local grid_width = 420') {
 		throw "The weapon-actions width used by the inventory safety clamp has changed."
+	}
+
+	if ($inventoryViewSource -notmatch 'InventoryWeaponsView\.is_item_equipped_in_any_slot' -or $inventoryViewSource -notmatch 'InventoryWeaponsView\.cb_on_favorite_pressed') {
+		throw "The Curio equipped/favorite sorting APIs were not found."
+	}
+
+	$traitParserSource = Get-Content -LiteralPath $traitValueParser -Raw
+	$gadgetBuffSource = Get-Content -LiteralPath $gadgetBuffTemplates -Raw
+
+	if ($traitParserSource -notmatch 'math\.round\(value \* 100\)' -or $gadgetBuffSource -notmatch 'math\.round_with_precision\(value, 2\)') {
+		throw "Curio innate percentages no longer appear to be quantized to whole percentage points. Re-audit precise Curio values."
 	}
 
 	if ((Get-Content -LiteralPath $hadronModifyView -Raw) -notmatch 'class\("CraftingMechanicusModifyView",\s*"ItemGridViewBase"\)') {
@@ -261,7 +279,7 @@ if ($hasLuaParser) {
 }
 
 if ($hasLupa) {
-	foreach ($behaviorTest in @("test_layout.py", "test_settings.py")) {
+	foreach ($behaviorTest in @("test_layout.py", "test_settings.py", "test_features.py")) {
 		py -3 (Join-Path $PSScriptRoot $behaviorTest)
 
 		if ($LASTEXITCODE -ne 0) {
