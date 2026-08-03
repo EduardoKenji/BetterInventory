@@ -30,6 +30,7 @@ def main() -> None:
 			show_weapon_perks = false,
 			show_weapon_blessings = true,
 			weapon_blessing_display_mode = "icons",
+			blessing_text_item_level_separation = "four_plus",
 			show_weapon_perk_rank_symbols = false,
 			weapon_perk_rank_icon_size = 18,
 			blessing_icon_size = 34,
@@ -271,6 +272,7 @@ def main() -> None:
 		"weapon_perk_text_color_r",
 		"weapon_perk_text_color_g",
 		"weapon_perk_text_color_b",
+		"blessing_text_item_level_separation",
 		"blessing_icon_size",
 		"blessing_icon_spacing",
 		"curio_secondary_stat_font_size",
@@ -310,6 +312,7 @@ def main() -> None:
     assert entries_by_id["weapon_perk_text_color_r"].disabled is True
     assert entries_by_id["weapon_perk_text_color_g"].disabled is True
     assert entries_by_id["weapon_perk_text_color_b"].disabled is True
+    assert entries_by_id["blessing_text_item_level_separation"].disabled is True
     assert entries_by_id["blessing_icon_size"].disabled is False
     assert entries_by_id["blessing_icon_spacing"].disabled is False
     assert entries_by_id["curio_secondary_stat_font_size"].disabled is True
@@ -360,14 +363,17 @@ def main() -> None:
 
     settings.weapon_blessing_display_mode = "text"
     mod.on_setting_changed("weapon_blessing_display_mode")
+    assert entries_by_id["blessing_text_item_level_separation"].disabled is False
     assert entries_by_id["blessing_icon_size"].disabled is True
     assert entries_by_id["blessing_icon_spacing"].disabled is True
     settings.weapon_blessing_display_mode = "off"
     mod.on_setting_changed("weapon_blessing_display_mode")
+    assert entries_by_id["blessing_text_item_level_separation"].disabled is True
     assert entries_by_id["blessing_icon_size"].disabled is True
     assert entries_by_id["blessing_icon_spacing"].disabled is True
     settings.weapon_blessing_display_mode = "icons"
     mod.on_setting_changed("weapon_blessing_display_mode")
+    assert entries_by_id["blessing_text_item_level_separation"].disabled is True
     assert entries_by_id["blessing_icon_size"].disabled is False
     assert entries_by_id["blessing_icon_spacing"].disabled is False
 
@@ -485,6 +491,7 @@ def main() -> None:
     assert defaults["blessing_icon_size"] == 36
     assert defaults["highlight_equipped_items"] is True
     assert defaults["weapon_blessing_display_mode"] == "icons"
+    assert defaults["blessing_text_item_level_separation"] == "four_plus"
     assert "show_weapon_blessings" not in defaults
     assert defaults["show_weapon_perks"] is True
     assert defaults["weapon_perk_compression"] == "heavy"

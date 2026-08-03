@@ -233,6 +233,7 @@ def main() -> None:
                 show_rarity_name = false,
 				show_rarity_tag = true,
 				weapon_blessing_display_mode = "icons",
+				blessing_text_item_level_separation = "four_plus",
 				blessing_icon_size = 34,
 				show_weapon_perks = false,
 				weapon_perk_compression = "compression",
@@ -946,6 +947,7 @@ def main() -> None:
     mod.settings.blessing_icon_size = 34
 
     mod.settings.weapon_blessing_display_mode = "text"
+    mod.settings.columns = 5
     text_blessing_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     layout.configure_item_blueprint(mod, text_blessing_blueprint, 640)
     text_blessing_styles = {
@@ -973,6 +975,33 @@ def main() -> None:
     assert text_blessing_widget.content.better_inventory_blessing_text_2 == "IV Weight of Fire"
     assert text_blessing_widget.content.better_inventory_full_blessing_text_1 == "III Surgical"
     assert text_blessing_widget.content.better_inventory_full_blessing_text_2 == "IV Weight of Fire"
+    first_text_style = text_blessing_styles["better_inventory_blessing_text_1"]
+    second_text_style = text_blessing_styles["better_inventory_blessing_text_2"]
+    assert first_text_style.size[1] == 100
+    assert second_text_style.offset[2] == -33
+    assert first_text_style.offset[2] == -50
+    mod.settings.show_weapon_perks = True
+    assert layout.card_height(mod) == 144
+    mod.settings.show_weapon_perks = False
+    mod.settings.columns = 3
+    compact_text_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, compact_text_blueprint, 640)
+    compact_text_style = blueprint_pass(
+        compact_text_blueprint, "better_inventory_blessing_text_2"
+    ).style
+    assert compact_text_style.size[1] == 144
+    assert compact_text_style.offset[2] == -3
+
+    mod.settings.columns = 4
+    four_column_text_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, four_column_text_blueprint, 640)
+    four_column_text_style = blueprint_pass(
+        four_column_text_blueprint, "better_inventory_blessing_text_2"
+    ).style
+    assert four_column_text_style.size[1] == 132
+    assert four_column_text_style.offset[2] == -33
+
+    mod.settings.columns = 3
     assert layout.card_height(mod, store_configuration) == 114
     mod.settings.weapon_blessing_display_mode = "off"
     assert layout.card_height(mod, store_configuration) == 110

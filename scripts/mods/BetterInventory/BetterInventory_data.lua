@@ -292,6 +292,30 @@ return {
 						},
 					},
 					{
+						setting_id = "blessing_text_item_level_separation",
+						tooltip = "blessing_text_item_level_separation_tooltip",
+						type = "dropdown",
+						default_value = "four_plus",
+						options = {
+							{
+								text = "blessing_text_item_level_separation_always",
+								value = "always",
+							},
+							{
+								text = "blessing_text_item_level_separation_four_plus",
+								value = "four_plus",
+							},
+							{
+								text = "blessing_text_item_level_separation_five_only",
+								value = "five_only",
+							},
+							{
+								text = "blessing_text_item_level_separation_never",
+								value = "never",
+							},
+						},
+					},
+					{
 						setting_id = "blessing_icon_size",
 						tooltip = "blessing_icon_size_tooltip",
 						type = "numeric",

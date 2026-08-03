@@ -182,8 +182,29 @@ return {
 	weapon_blessing_display_mode_off = {
 		en = "Off",
 	},
+	blessing_text_item_level_separation = {
+		en = "Separate blessing text and item level",
+	},
+	blessing_text_item_level_separation_tooltip = {
+		en = "Chooses when Text lines mode places both blessing names above a dedicated item-level row. The default applies this safer, wider layout to narrow four- and five-column inventory grids.",
+	},
+	blessing_text_item_level_separation_always = {
+		en = "Always",
+	},
+	blessing_text_item_level_separation_four_plus = {
+		en = "At 4 or more columns",
+	},
+	blessing_text_item_level_separation_five_only = {
+		en = "At 5 columns",
+	},
+	blessing_text_item_level_separation_never = {
+		en = "Never",
+	},
 	blessing_icon_size = {
 		en = "Blessing icon size",
+	},
+	option_requires_weapon_blessing_text = {
+		en = "Select blessing Text lines to use this option.",
 	},
 	blessing_icon_size_tooltip = {
 		en = "Sets the width and height of each weapon blessing symbol in pixels. Automatic card height grows when larger symbols need more room.",

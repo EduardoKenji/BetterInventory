@@ -353,6 +353,33 @@ local function weapon_blessing_display_mode(mod)
 	return "icons"
 end
 
+local function separate_blessing_text_and_item_level(mod, configuration)
+	local mode = setting(mod, "blessing_text_item_level_separation", "four_plus")
+
+	if mode == "always" then
+		return true
+	elseif mode == "never" then
+		return false
+	end
+
+	-- Threshold modes describe the actual grid being rendered. Native inventory
+	-- is a single-column list, while Hadron and Armoury configurations cap the
+	-- effective count through maximum_columns.
+	if not setting(mod, "enable_grid_layout", true) then
+		return false
+	end
+
+	configuration = configuration or {}
+
+	local columns = Layout.columns(mod, configuration.maximum_columns)
+
+	if mode == "five_only" then
+		return columns >= 5
+	end
+
+	return columns >= 4
+end
+
 local function blessing_rank_name(rarity)
 	local numeric_rarity = math.floor(tonumber(rarity) or 0)
 	local rank = RankSettings[numeric_rarity]
@@ -973,7 +1000,8 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 	local favorite_marker_position = setting(mod, "favorite_marker_position", "above_rating")
 	local store_footer_height = configuration.store_item and STORE_FOOTER_HEIGHT or 0
 	local expertise_font_size = math.max(10, math.min(28, setting(mod, "expertise_font_size", 20)))
-	local bottom_content_height = math.max(30, expertise_font_size + 10)
+	local item_level_row_height = math.max(30, expertise_font_size + 10)
+	local bottom_content_height = item_level_row_height
 	local blessing_size
 	local blessing_text_height
 	local perk_rank_size = weapon_perk_rank_icon_size(mod)
@@ -991,14 +1019,18 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 	elseif blessing_display_mode == "text" then
 		local blessing_font_size = math.max(9, math.min(16, setting(mod, "secondary_text_font_size", 13)))
 		local blessing_line_height = blessing_font_size + 4
-		local blessing_text_left = text_left + (favorite_marker_position == "bottom_left" and 24 or 0)
-		local blessing_text_width = math.max(40, card_width - blessing_text_left - 50)
+		local separate_item_level = separate_blessing_text_and_item_level(mod, configuration)
+		local favorite_offset = favorite_marker_position == "bottom_left" and not separate_item_level and 24 or 0
+		local blessing_text_left = text_left + favorite_offset
+		local reserved_right = separate_item_level and 8 or 50
+		local blessing_text_width = math.max(40, card_width - blessing_text_left - reserved_right)
 		local blessing_text_color = DEFAULT_WEAPON_PERK_COLOR
+		local reserved_bottom_row = separate_item_level and (configuration.store_item and store_footer_height or item_level_row_height) or store_footer_height
 
 		blessing_text_height = WEAPON_BLESSING_COUNT * blessing_line_height
 
 		for i = 1, WEAPON_BLESSING_COUNT do
-			local y_offset = -(store_footer_height + 3 + (WEAPON_BLESSING_COUNT - i) * blessing_line_height)
+			local y_offset = -(reserved_bottom_row + 3 + (WEAPON_BLESSING_COUNT - i) * blessing_line_height)
 
 			add_blessing_text_pass(pass_template, i, {
 				base_style = base_text_style,
@@ -1028,7 +1060,11 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 	elseif blessing_display_mode == "icons" then
 		bottom_content_height = math.max(bottom_content_height, blessing_size + 6)
 	elseif blessing_display_mode == "text" then
-		bottom_content_height = math.max(bottom_content_height, blessing_text_height + 6)
+		if separate_blessing_text_and_item_level(mod, configuration) then
+			bottom_content_height = bottom_content_height + blessing_text_height + 6
+		else
+			bottom_content_height = math.max(bottom_content_height, blessing_text_height + 6)
+		end
 	end
 
 	if show_weapon_perks then
@@ -1675,6 +1711,8 @@ Layout.card_height = function(mod, configuration)
 
 		if configuration.store_item then
 			bottom_region_height = store_footer_height + blessing_text_height
+		elseif separate_blessing_text_and_item_level(mod, configuration) then
+			bottom_region_height = bottom_region_height + blessing_text_height
 		else
 			bottom_region_height = math.max(bottom_region_height, blessing_text_height)
 		end
