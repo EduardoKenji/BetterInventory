@@ -392,6 +392,7 @@ def main() -> None:
     assert defaults["simplify_curio_primary_stat_text"] is True
     assert defaults["remove_curio_stat_plus_signs"] is False
     assert defaults["blessing_icon_spacing"] == 3
+    assert defaults["highlight_equipped_items"] is True
     assert defaults["show_weapon_blessings"] is True
     assert defaults["show_weapon_perks"] is True
     assert defaults["weapon_perk_compression"] == "heavy"

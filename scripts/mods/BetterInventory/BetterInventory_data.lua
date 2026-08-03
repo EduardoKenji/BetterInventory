@@ -337,6 +337,12 @@ return {
 						},
 					},
 					{
+						setting_id = "highlight_equipped_items",
+						tooltip = "highlight_equipped_items_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
 						setting_id = "compact_favorite_marker",
 						type = "checkbox",
 						default_value = true,

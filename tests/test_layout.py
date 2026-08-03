@@ -224,6 +224,7 @@ def main() -> None:
 				weapon_perk_text_color_g = 126,
 				weapon_perk_text_color_b = 103,
 				blessing_icon_spacing = 3,
+				highlight_equipped_items = true,
                 compact_favorite_marker = true,
 				favorite_marker_position = "above_rating",
 				curio_display_profile = "primary",
@@ -675,6 +676,12 @@ def main() -> None:
         blueprint_pass(native_blueprint, "better_inventory_curio_stat_1").style.font_size
         == 16
     )
+    native_equipped_highlight = blueprint_pass(
+        native_blueprint, "better_inventory_equipped_highlight"
+    )
+    assert native_equipped_highlight.visibility_function(
+        lua.table_from({"equipped": True})
+    ) is True
     native_grid = lua.table_from(
         {"_menu_settings": lua.table_from({"grid_spacing": lua.table_from([4, 4])})}
     )
@@ -731,6 +738,30 @@ def main() -> None:
 
     favorite_pass.change_function(lua.table_from({"equipped": True}), favorite_pass.style, None, 0)
     assert favorite_pass.style.offset[2] == 33
+
+    equipped_highlight = blueprint_pass(
+        blueprint, "better_inventory_equipped_highlight"
+    )
+    assert equipped_highlight.value == "content/ui/materials/frames/dropshadow_medium"
+    assert (
+        equipped_highlight.style.size[1],
+        equipped_highlight.style.size[2],
+    ) == (206, 110)
+    assert (
+        equipped_highlight.style.size_addition[1],
+        equipped_highlight.style.size_addition[2],
+    ) == (16, 16)
+    assert equipped_highlight.visibility_function(
+        lua.table_from({"equipped": True})
+    ) is True
+    assert equipped_highlight.visibility_function(
+        lua.table_from({"equipped": False})
+    ) is False
+    mod.settings.highlight_equipped_items = False
+    assert equipped_highlight.visibility_function(
+        lua.table_from({"equipped": True})
+    ) is False
+    mod.settings.highlight_equipped_items = True
 
     name_style = blueprint.pass_template[3].style
     name_widget = lua.table_from(

@@ -40,6 +40,7 @@ It currently covers the character melee, ranged and Curio inventory and provides
 - One-time migration of previously saved title, pattern and quality settings to the established defaults; later user changes are preserved.
 - Adaptive single-line item names that shrink to a configurable minimum and use an ellipsis only when still too wide, preventing overlap with the pattern/Mark line.
 - Compact favorite-marker and font-size options, including upper-right-above-power and lower-left marker positions.
+- A default-on soft white glow around equipped cards, driven by Darktide's native equipped state and independently toggleable without hiding the native equipped symbol.
 - Default-on weapon blessing symbols using Darktide's current composited blessing material; the native ranked frame visibly carries each blessing level, with a configurable 0–20 px horizontal gap defaulting to 3 px.
 - Default-on two-line weapon perk text. No Compression keeps Darktide's full localized descriptions; Compression uses readable shorter labels; Heavy Compression is the default and uses narrow labels such as `+25% Carapace Dmg`, `+25% Unarmoured Dmg`, `+25% Unyielding Dmg`, `+5% Ranged Crit`, `+5% Melee Crit`, `+15% Sprint` and `+10% Reload`. Both leading-value descriptions and alternate sentences such as `Increase Ranged Critical Strike Chance by +5%` are normalized correctly. All 19 melee and 17 ranged perk templates present in Darktide 1.12.3 have identifier-based mappings; an unknown future identifier retains the native description. Native ranked perk symbols are shown by default, while removal of the leading `+` remains opt-in.
 - Weapon perk text has synchronized color presets and RGB sliders. Its default Terminal green preset is Darktide's existing `terminal_text_body_sub_header` color (`RGB 113, 126, 103`), so enabling the controls does not alter the established card appearance.
@@ -244,8 +245,8 @@ The so-called anti-crash check is not a general data-safety layer. It checks whe
 | Curio Detail Mode | First trait plus every perk | Partially restored by patch | Localized, colored, wrapped, configurable and vendor-capable |
 | Primary/secondary/Curio toggles | Three category checkboxes | Functional | Retain, then expand by view and actual slot |
 | Per-item-slot toggles | No separate Curio 1/2/3 settings exist | Not implemented as advertised | Add genuine Curio slot 1/2/3 and view-level controls |
-| Equipped glow | Added texture overlay | Likely functional | Off/tick/glow/border modes with color and thickness |
-| Base/modifiers rating | Displays raw `baseItemLevel` for non-Curios | Mechanically present but poorly explained | Expose meaningful, named metrics with tooltips |
+| Equipped glow | Added texture overlay | Likely functional | Default-on toggle using the current native equipped state |
+| Base/modifiers rating | Displays raw `baseItemLevel` for non-Curios | Mechanically present but poorly explained | Intentionally omitted as a redundant legacy-scale metric |
 | Total rating | Old code forces raw `item.itemLevel` | Cannot be disabled; may be obsolete/misleading | Independent toggle and current semantics |
 | Font sizes | Six legacy element sizes | Partial | Per-element typography plus sensible presets |
 | Trait icons | Toggles `trait_1`, `trait_2`, `trait_3` if found | Dead: those passes do not exist in the current compact card template | Add current blessing/perk representation deliberately |
@@ -471,7 +472,6 @@ Each supported element should have an Off/On mode and appropriate size, color an
 - Rarity name and rarity strip.
 - Current expertise level.
 - Total stats value.
-- Advanced base/legacy rating fields.
 - Perks and blessings as icons, text or both.
 - Curio blessing and perk details.
 - Favorite marker.

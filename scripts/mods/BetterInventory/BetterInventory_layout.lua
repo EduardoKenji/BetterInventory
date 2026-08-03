@@ -834,6 +834,47 @@ local function configure_favorite_marker(mod, pass_template, text_left)
 	end
 end
 
+local function configure_equipped_highlight(mod, pass_template, card_width, card_height)
+	local highlight = pass_by_style_id(pass_template, "better_inventory_equipped_highlight")
+
+	if not highlight then
+		highlight = {
+			pass_type = "texture",
+			style_id = "better_inventory_equipped_highlight",
+			value = "content/ui/materials/frames/dropshadow_medium",
+			style = {},
+		}
+		pass_template[#pass_template + 1] = highlight
+	end
+
+	highlight.style = highlight.style or {}
+	highlight.style.horizontal_alignment = "center"
+	highlight.style.vertical_alignment = "center"
+	highlight.style.scale_to_material = true
+	highlight.style.size = {
+		card_width,
+		card_height,
+	}
+	highlight.style.size_addition = {
+		16,
+		16,
+	}
+	highlight.style.color = {
+		255,
+		255,
+		255,
+		255,
+	}
+	highlight.style.offset = {
+		0,
+		0,
+		3,
+	}
+	highlight.visibility_function = function(content)
+		return setting(mod, "highlight_equipped_items", true) and content and content.equipped == true
+	end
+end
+
 local function add_custom_content_passes(mod, pass_template, card_width, text_left, base_text_style, configuration)
 	configuration = configuration or {}
 
@@ -1528,6 +1569,7 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 	end)
 
 	set_visibility(pass_by_style_id(pass_template, "rarity_tag"), setting(mod, "show_rarity_tag", true))
+	configure_equipped_highlight(mod, pass_template, card_width, item_size[2] or 110)
 	configure_favorite_marker(mod, pass_template, 15)
 	add_custom_content_passes(mod, pass_template, card_width, 15, sub_display_name and sub_display_name.style)
 	configure_card_content(mod, item_blueprint)
@@ -1775,6 +1817,8 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 			16,
 		}
 	end
+
+	configure_equipped_highlight(mod, pass_template, card_width, card_height)
 
 	for i = 1, #pass_template do
 		local pass = pass_template[i]

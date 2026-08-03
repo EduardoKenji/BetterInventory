@@ -197,6 +197,12 @@ return {
 	blessing_icon_spacing_tooltip = {
 		en = "Clear horizontal gap in pixels between weapon blessing icons.",
 	},
+	highlight_equipped_items = {
+		en = "Highlight equipped items",
+	},
+	highlight_equipped_items_tooltip = {
+		en = "Adds a soft white glow around equipped item cards while preserving Darktide's native equipped symbol.",
+	},
 	compact_favorite_marker = {
 		en = "Use compact favorite marker",
 	},
