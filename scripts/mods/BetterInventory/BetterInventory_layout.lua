@@ -18,6 +18,7 @@ local DEFAULT_PERK_RANK_SIZE = 17
 local DEFAULT_BLESSING_ICON_SIZE = 36
 local PERK_RANK_GAP = 3
 local STORE_FOOTER_HEIGHT = 34
+local NATIVE_SINGLE_COLUMN_CONTENT_GAP = 12
 local WEAPON_PERK_COUNT = 2
 local WEAPON_BLESSING_COUNT = 2
 local CURIO_PRIMARY_COLOR_DEFINITIONS = {
@@ -503,6 +504,10 @@ local function single_line_text(value)
 		return ""
 	end
 
+	-- Enhanced Descriptions decorates localized trait strings with Darktide's
+	-- rich-text tags. Those tags are not visible glyphs, but they must not take
+	-- part in numeric parsing or compact-card width measurements.
+	value = string.gsub(value, "{#[^}]*}", "")
 	value = string.gsub(value, "%s+", " ")
 	value = string.gsub(value, "^%s+", "")
 	value = string.gsub(value, "%s+$", "")
@@ -575,6 +580,32 @@ local function pass_by_style_id(pass_template, style_id)
 	end
 end
 
+local function is_quick_look_card_pass(pass)
+	return type(pass and pass.style_id) == "string" and string.sub(pass.style_id, 1, 4) == "qlc_"
+end
+
+local function has_quick_look_card_passes(pass_template)
+	for index = 1, #(pass_template or {}) do
+		if is_quick_look_card_pass(pass_template[index]) then
+			return true
+		end
+	end
+
+	return false
+end
+
+local function disable_quick_look_card_passes(pass_template)
+	for index = 1, #(pass_template or {}) do
+		local pass = pass_template[index]
+
+		if is_quick_look_card_pass(pass) then
+			pass.visibility_function = function()
+				return false
+			end
+		end
+	end
+end
+
 local function preserve_visibility(pass, predicate)
 	if not pass then
 		return
@@ -621,7 +652,7 @@ local function resolved_trait_data(entry, include_textures, include_perk_rank, i
 
 	local description_ok, description = pcall(Items.trait_description, trait_item, entry.rarity, entry.value)
 	local data = {
-		description = description_ok and type(description) == "string" and description or "",
+		description = description_ok and type(description) == "string" and single_line_text(description) or "",
 		-- Inventory entries use master-item paths. The stable gameplay identifier
 		-- used by gadget trait templates lives on the resolved item's `trait`
 		-- field (for example, gadget_innate_health_increase).
@@ -632,7 +663,7 @@ local function resolved_trait_data(entry, include_textures, include_perk_rank, i
 	if include_display_name then
 		local display_name_ok, display_name = pcall(Items.display_name, trait_item)
 
-		data.display_name = display_name_ok and type(display_name) == "string" and display_name or ""
+		data.display_name = display_name_ok and type(display_name) == "string" and single_line_text(display_name) or ""
 	end
 
 	if include_textures then
@@ -1870,7 +1901,9 @@ Layout.card_height = function(mod, configuration)
 		optional_rows = optional_rows + 1
 	end
 
-	required_height = math.max(required_height, 7 + name_row_height + optional_rows * secondary_row_height + bottom_region_height + 8)
+	local native_content_gap = configuration.native_single_column and NATIVE_SINGLE_COLUMN_CONTENT_GAP or 0
+
+	required_height = math.max(required_height, 7 + name_row_height + optional_rows * secondary_row_height + bottom_region_height + 8 + native_content_gap)
 
 	if setting(mod, "curio_display_profile", "detailed") == "detailed" then
 		local primary_line_height = curio_primary_font_size(mod) + 5
@@ -1933,6 +1966,13 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 	local show_pattern_mark = setting(mod, "show_pattern_mark", false)
 	local show_curio_quality = setting(mod, "show_curio_quality", false)
 	local show_curio_item_level = setting(mod, "show_curio_item_level", true)
+	local quick_look_card = has_quick_look_card_passes(pass_template)
+
+	if not quick_look_card then
+		item_size[2] = math.max(item_size[2] or 110, Layout.card_height(mod, {
+			native_single_column = true,
+		}))
+	end
 
 	item_blueprint.size = item_size
 	item_blueprint.pass_template = pass_template
@@ -1973,7 +2013,11 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 	set_visibility(pass_by_style_id(pass_template, "rarity_tag"), setting(mod, "show_rarity_tag", true))
 	configure_equipped_highlight(mod, pass_template, card_width, item_size[2] or 110)
 	configure_favorite_marker(mod, pass_template, 15)
-	add_custom_content_passes(mod, pass_template, card_width, 15, sub_display_name and sub_display_name.style)
+	if not quick_look_card then
+		add_custom_content_passes(mod, pass_template, card_width, 15, sub_display_name and sub_display_name.style, {
+			native_single_column = true,
+		})
+	end
 	configure_card_content(mod, item_blueprint)
 
 	return item_size
@@ -2003,6 +2047,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 
 	item_blueprint.size = item_size
 	item_blueprint.pass_template = pass_template
+	disable_quick_look_card_passes(pass_template)
 
 	local icon = pass_by_style_id(pass_template, "icon")
 

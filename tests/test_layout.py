@@ -806,7 +806,59 @@ def main() -> None:
         native_grid._menu_settings.grid_spacing[1],
         native_grid._menu_settings.grid_spacing[2],
     ) == (4, 4)
+
+    # Native single-column cards must reserve a real vertical region for all
+    # four default perk/blessing rows instead of laying them over the name.
+    mod.settings.weapon_blessing_display_mode = "ranked_text"
+    mod.settings.show_weapon_perks = True
+    mod.settings.show_weapon_perk_rank_symbols = True
+    native_detailed_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    native_detailed_size = layout.configure_item_blueprint(
+        mod, native_detailed_blueprint, 596
+    )
+    assert (native_detailed_size[1], native_detailed_size[2]) == (586, 142)
+    native_first_perk = blueprint_pass(
+        native_detailed_blueprint, "better_inventory_weapon_perk_1"
+    ).style
+    assert native_detailed_size[2] + native_first_perk.offset[2] >= 60
+
+    # Quick Look Card owns the native detail region when its injected passes
+    # are present. BetterInventory keeps those passes active only in this mode.
+    qlc_native_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    qlc_native_pass = lua.table_from(
+        {
+            "style_id": "qlc_stats_title_1",
+            "style": lua.table_from({}),
+            "visibility_function": lua.eval("function() return true end"),
+        }
+    )
+    qlc_native_blueprint.pass_template[len(qlc_native_blueprint.pass_template) + 1] = (
+        qlc_native_pass
+    )
+    qlc_native_size = layout.configure_item_blueprint(mod, qlc_native_blueprint, 596)
+    assert (qlc_native_size[1], qlc_native_size[2]) == (586, 110)
+    assert blueprint_pass(
+        qlc_native_blueprint, "qlc_stats_title_1"
+    ).visibility_function() is True
+    assert not any(
+        qlc_native_blueprint.pass_template[index].style_id
+        == "better_inventory_weapon_perk_1"
+        for index in range(1, len(qlc_native_blueprint.pass_template) + 1)
+    )
+
+    mod.settings.weapon_blessing_display_mode = "icons"
+    mod.settings.show_weapon_perks = False
+    mod.settings.show_weapon_perk_rank_symbols = False
     mod.settings.enable_grid_layout = True
+
+    qlc_grid_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    qlc_grid_blueprint.pass_template[len(qlc_grid_blueprint.pass_template) + 1] = (
+        lua.eval("table.clone")(qlc_native_pass)
+    )
+    layout.configure_item_blueprint(mod, qlc_grid_blueprint, 596)
+    assert blueprint_pass(
+        qlc_grid_blueprint, "qlc_stats_title_1"
+    ).visibility_function() is False
 
     assert layout.is_enabled_for_view(mod, lua.table_from({"_selected_slot": lua.table_from({"name": "slot_primary"})}))
     assert not layout.is_enabled_for_view(mod, lua.table_from({"_selected_slot": lua.table_from({"name": "slot_secondary"})}))
@@ -1436,7 +1488,7 @@ def main() -> None:
         == "+25% Damage (Flak Armoured Enemies)"
     )
 
-    globals_.TestTraitDescriptions.weapon_trait_melee_common_wield_increased_armored_damage = "+25% Damage\n(Flak Armoured Enemies)"
+    globals_.TestTraitDescriptions.weapon_trait_melee_common_wield_increased_armored_damage = "{#color(218, 64, 64)}+25%{#reset()} Damage\n    (Flak Armoured Enemies)"
     uncompressed_perk_blueprint.update_data(
         test_grid, uncompressed_perk_widget, narrow_weapon_element
     )
@@ -1445,6 +1497,16 @@ def main() -> None:
         == "+25% Damage (Flak Armoured Enemies)"
     )
     assert "\n" not in uncompressed_perk_widget.content.better_inventory_weapon_perk_1
+
+    mod.settings.weapon_perk_compression = "heavy"
+    heavy_perk_blueprint.update_data(
+        test_grid, heavy_perk_widget, narrow_weapon_element
+    )
+    assert (
+        heavy_perk_widget.content.better_inventory_full_weapon_perk_1
+        == "+25% Flak Dmg"
+    )
+    assert "218" not in heavy_perk_widget.content.better_inventory_weapon_perk_1
     globals_.TestTraitDescriptions.weapon_trait_melee_common_wield_increased_armored_damage = "+25% Damage (Flak Armoured Enemies)"
 
     mod.settings.weapon_perk_compression = "compression"
