@@ -3,6 +3,10 @@ local Items = require("scripts/utilities/items")
 local MasterItems = require("scripts/backend/master_items")
 
 local Layout = {}
+local INVENTORY_CANVAS_WIDTH = 1920
+local INVENTORY_EDGE_MARGIN = 16
+local WEAPON_ACTIONS_PANEL_WIDTH = 420
+local WEAPON_STATS_PANEL_WIDTH = 530
 local MINIMUM_CARD_WIDTH = 120
 local ARMOURY_MINIMUM_CARD_WIDTH = 190
 local ARMOURY_MAXIMUM_CARD_WIDTH = 230
@@ -1326,6 +1330,34 @@ Layout.armoury_grid_expansion = function(mod, current_grid_width)
 	return math.max(0, required_grid_width - current_grid_width)
 end
 
+local function maximum_safe_inventory_expansion(definitions, slot_kind)
+	local scenegraph = definitions and definitions.scenegraph_definition
+	local canvas = scenegraph and scenegraph.canvas
+	local canvas_size = canvas and canvas.size
+	local canvas_width = canvas_size and canvas_size[1] or INVENTORY_CANVAS_WIDTH
+	local panel_id = slot_kind == "curio" and "weapon_stats_pivot" or "weapon_actions_pivot"
+	local panel_width = slot_kind == "curio" and WEAPON_STATS_PANEL_WIDTH or WEAPON_ACTIONS_PANEL_WIDTH
+	local panel = scenegraph and scenegraph[panel_id]
+	local panel_position = panel and panel.position
+	local panel_x = panel_position and panel_position[1]
+
+	if type(canvas_width) ~= "number" or type(panel_x) ~= "number" then
+		return math.huge
+	end
+
+	local panel_anchor_x
+
+	if panel.horizontal_alignment == "right" then
+		panel_anchor_x = canvas_width + panel_x
+	else
+		panel_anchor_x = panel_x
+	end
+
+	local available_expansion = canvas_width - INVENTORY_EDGE_MARGIN - (panel_anchor_x + panel_width)
+
+	return math.max(0, available_expansion)
+end
+
 Layout.expanded_armoury_view_definitions = function(mod, definitions, base_definitions)
 	local grid_settings = definitions and definitions.grid_settings
 	local grid_size = grid_settings and grid_settings.grid_size
@@ -1393,7 +1425,10 @@ Layout.expanded_view_definitions = function(mod, definitions, view)
 		return definitions, 0
 	end
 
-	local expansion = Layout.grid_expansion(mod, current_grid_width, Layout.slot_kind(view))
+	local slot_kind = Layout.slot_kind(view)
+	local requested_expansion = Layout.grid_expansion(mod, current_grid_width, slot_kind)
+	local safe_expansion = maximum_safe_inventory_expansion(definitions, slot_kind)
+	local expansion = math.min(requested_expansion, safe_expansion)
 
 	if expansion <= 0 then
 		return definitions, 0

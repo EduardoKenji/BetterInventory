@@ -30,7 +30,7 @@ It currently covers the character melee, ranged and Curio inventory and provides
 - A chain-safe `InventoryWeaponsView.present_grid_layout` hook that continues through the full DMF chain, plus a narrowly gated grid hook that transforms the final item blueprint.
 - Two to five responsive columns calculated from the current grid width.
 - A grid-layout switch: disabling it preserves Darktide's native single-column card geometry and icon lifecycle while retaining enabled BetterInventory content enhancements.
-- Automatic inventory-window expansion when the requested columns would otherwise force cards outside the visible content area; this can be disabled to shrink cards instead.
+- Automatic inventory-window expansion when the requested columns would otherwise force cards outside the visible content area; this can be disabled to shrink cards instead. Requested expansion is canvas-clamped with a 16 px safety margin so extreme five-column spacing/width combinations narrow their cards instead of pushing details or actions off-screen.
 - Default-on column-aware Curio expansion with a 120–220 px target card-width control. At the 190 px default, three columns fit the native panel while four and five columns progressively claim otherwise unused horizontal space.
 - Automatic card height based on enabled rows and font sizes, with a manual 110–240 height mode; the manual slider is visibly disabled while automatic sizing is active.
 - Configurable card spacing and icon darkness.

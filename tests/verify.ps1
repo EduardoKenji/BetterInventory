@@ -130,9 +130,18 @@ if ($DarktideSourcePath) {
 	}
 
 	$itemGridBaseDefinitionsSource = Get-Content -LiteralPath $itemGridBaseDefinitions -Raw
+	$inventoryViewSource = Get-Content -LiteralPath $inventoryView -Raw
 
 	if ($itemGridBaseDefinitionsSource -notmatch 'weapon_stats_pivot\s*=\s*{' -or $itemGridBaseDefinitionsSource -notmatch 'weapon_compare_stats_pivot\s*=\s*{') {
 		throw "The base weapon-details scenegraph pivots were not found."
+	}
+
+	if ($itemGridBaseDefinitionsSource -notmatch 'local width, height = 530, 920') {
+		throw "The weapon-details width used by the inventory safety clamp has changed."
+	}
+
+	if ($inventoryViewSource -notmatch 'InventoryWeaponsView\._setup_weapon_actions[\s\S]*?local grid_width = 420') {
+		throw "The weapon-actions width used by the inventory safety clamp has changed."
 	}
 
 	if ((Get-Content -LiteralPath $hadronModifyView -Raw) -notmatch 'class\("CraftingMechanicusModifyView",\s*"ItemGridViewBase"\)') {

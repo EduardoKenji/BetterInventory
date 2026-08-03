@@ -524,11 +524,20 @@ def main() -> None:
             ),
             "scenegraph_definition": lua.table_from(
                 {
+                    "canvas": lua.table_from(
+                        {"size": lua.table_from([1920, 1080])}
+                    ),
                     "weapon_stats_pivot": lua.table_from(
-                        {"position": lua.table_from([-1140, 60, 3])}
+                        {
+                            "horizontal_alignment": "right",
+                            "position": lua.table_from([-1140, 60, 3]),
+                        }
                     ),
                     "weapon_actions_pivot": lua.table_from(
-                        {"position": lua.table_from([-560, 40, 3])}
+                        {
+                            "horizontal_alignment": "right",
+                            "position": lua.table_from([-560, 40, 3]),
+                        }
                     ),
                     "equip_button": lua.table_from(
                         {"position": lua.table_from([857, -90, 1])}
@@ -559,6 +568,42 @@ def main() -> None:
     assert curio_expansion == 394
     assert curio_definitions.grid_settings.grid_size[1] == 990
     assert tuple(layout.item_size(mod, 990)[index] for index in (1, 2)) == (190, 110)
+
+    mod.settings.grid_spacing = 40
+    mod.settings.curio_target_card_width = 220
+
+    extreme_weapon_definitions, extreme_weapon_expansion = (
+        layout.expanded_view_definitions(mod, view_definitions)
+    )
+    assert extreme_weapon_expansion == 124
+    assert extreme_weapon_definitions.grid_settings.grid_size[1] == 720
+    assert tuple(
+        layout.item_size(mod, 720)[index] for index in (1, 2)
+    ) == (112, 110)
+    assert (
+        1920
+        + extreme_weapon_definitions.scenegraph_definition.weapon_actions_pivot.position[1]
+        + 420
+    ) == 1904
+
+    extreme_curio_definitions, extreme_curio_expansion = (
+        layout.expanded_view_definitions(mod, view_definitions, curio_view)
+    )
+    assert extreme_curio_expansion == 594
+    assert extreme_curio_definitions.grid_settings.grid_size[1] == 1190
+    assert tuple(
+        layout.item_size(mod, 1190)[index] for index in (1, 2)
+    ) == (206, 110)
+    assert (
+        1920
+        + extreme_curio_definitions.scenegraph_definition.weapon_stats_pivot.position[1]
+        + 530
+    ) == 1904
+    assert mod.settings.grid_spacing == 40
+    assert mod.settings.curio_target_card_width == 220
+
+    mod.settings.grid_spacing = 10
+    mod.settings.curio_target_card_width = 190
 
     mod.settings.expand_curio_inventory_window = False
     assert layout.grid_expansion(mod, 596, "curio") == 44
