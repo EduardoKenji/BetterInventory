@@ -1,3 +1,4 @@
+local MOD_VERSION = "1.0.0"
 local mod = get_mod("BetterInventory")
 
 local function color_preset_options()
@@ -94,6 +95,7 @@ end
 return {
 	name = mod:localize("mod_name"),
 	description = mod:localize("mod_description"),
+	version = MOD_VERSION,
 	is_togglable = true,
 	allow_rehooking = true,
 	options = {
