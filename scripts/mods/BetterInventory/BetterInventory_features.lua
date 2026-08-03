@@ -18,11 +18,38 @@ local INVENTORY_DISCARD_PROTECTION_ID = "better_inventory_discard_protection"
 local INVENTORY_DISCARD_CURIO_PROTECTION_ID = "better_inventory_discard_curio_protection"
 local INVENTORY_DISCARD_CURIO_LEVEL_ID = "better_inventory_discard_curio_level"
 local INVENTORY_OPTIONS_PANEL_REFERENCE = "better_inventory_options_panel"
-local INVENTORY_OPTIONS_PANEL_CONTENT_WIDTH = 425
-local INVENTORY_OPTIONS_PANEL_GRID_WIDTH = 430
-local INVENTORY_OPTIONS_PANEL_MAX_HEIGHT = 360
 local INVENTORY_OPTIONS_PANEL_MIN_HEIGHT = 120
-local INVENTORY_CURIO_HEADER_HEIGHT = 190
+local INVENTORY_OPTIONS_PANEL_DEFAULT_WIDTH = 445
+local INVENTORY_OPTIONS_PANEL_DEFAULT_MAX_HEIGHT = 360
+local INVENTORY_OPTIONS_PANEL_DEFAULT_ROW_SPACING = 8
+local INVENTORY_OPTIONS_PANEL_DEFAULT_PADDING = 10
+local INVENTORY_CURIO_NATIVE_WIDTH = 530
+local INVENTORY_CURIO_NATIVE_GRID_WIDTH = 518
+local INVENTORY_CURIO_NATIVE_HEADER_HEIGHT = 250
+local INVENTORY_CURIO_NATIVE_ICON_HEIGHT = 180
+
+local function numeric_setting(mod, setting_id, default_value, minimum, maximum)
+	local value = tonumber(mod:get(setting_id)) or default_value
+
+	return math.clamp(math.floor(value + 0.5), minimum, maximum)
+end
+
+local function inventory_options_panel_geometry(mod)
+	local width = numeric_setting(mod, "inventory_options_panel_width", INVENTORY_OPTIONS_PANEL_DEFAULT_WIDTH, 360, 560)
+	local left = numeric_setting(mod, "inventory_options_panel_padding_left", INVENTORY_OPTIONS_PANEL_DEFAULT_PADDING, 0, 24)
+	local right = numeric_setting(mod, "inventory_options_panel_padding_right", INVENTORY_OPTIONS_PANEL_DEFAULT_PADDING, 0, 24)
+
+	return {
+		bottom = numeric_setting(mod, "inventory_options_panel_padding_bottom", 4, 0, 24),
+		content_width = math.max(width - left - right, 280),
+		left = left,
+		max_height = numeric_setting(mod, "inventory_options_panel_max_height", INVENTORY_OPTIONS_PANEL_DEFAULT_MAX_HEIGHT, 220, 500),
+		right = right,
+		row_spacing = numeric_setting(mod, "inventory_options_panel_row_spacing", INVENTORY_OPTIONS_PANEL_DEFAULT_ROW_SPACING, 0, 16),
+		top = numeric_setting(mod, "inventory_options_panel_padding_top", 4, 0, 24),
+		width = width,
+	}
+end
 local INVENTORY_DISCARD_WIDGET_IDS = {
 	INVENTORY_DISCARD_LABEL_ID,
 	INVENTORY_DISCARD_MODE_ID,
@@ -836,6 +863,10 @@ local function append_panel_checkbox_passes(target, prefix, x, width, checked_id
 		}
 
 		offset[1] = (offset[1] or 0) + x
+		-- Embedded controls share a widget with the selector to their left. Keep
+		-- their input and draw passes above that selector instead of relying on
+		-- equal-z pass ordering, which made this checkbox intermittently inert.
+		offset[3] = (offset[3] or 0) + 10
 		style.offset = offset
 
 		if pass.content_id == prefix .. "_hotspot" then
@@ -867,14 +898,20 @@ local function append_panel_checkbox_passes(target, prefix, x, width, checked_id
 	end
 end
 
-local function panel_mode_passes()
-	return compact_selector_passes(INVENTORY_OPTIONS_PANEL_CONTENT_WIDTH)
+local function panel_mode_passes(width)
+	local selector_width = math.min(190, math.max(math.floor(width * 0.48), 140))
+	local gap = 10
+	local passes = compact_selector_passes(selector_width)
+
+	append_panel_checkbox_passes(passes, "skip", selector_width + gap, width - selector_width - gap, "skip_checked", "skip_label", "skip_visible")
+
+	return passes
 end
 
-local function panel_type_checkbox_passes()
+local function panel_type_checkbox_passes(content_width)
 	local passes = {}
 	local gap = 8
-	local width = math.floor((INVENTORY_OPTIONS_PANEL_CONTENT_WIDTH - gap * 2) / 3)
+	local width = math.floor((content_width - gap * 2) / 3)
 
 	append_panel_checkbox_passes(passes, "melee", 0, width, "melee_checked", "melee_label")
 	append_panel_checkbox_passes(passes, "ranged", width + gap, width, "ranged_checked", "ranged_label")
@@ -899,6 +936,24 @@ Features.add_inventory_sort_toggle_definition = function(mod, layout, definition
 	end
 
 	local is_curio = slot_kind == "curio"
+
+	if is_curio and mod:get("enable_inventory_options_panel_prototype") == true then
+		local width_percent = numeric_setting(mod, "curio_information_width_percent", 90, 75, 100)
+		local target_width = math.floor(INVENTORY_CURIO_NATIVE_WIDTH * width_percent / 100 + 0.5)
+		local source_settings = adjusted_definitions.weapon_stats_grid_settings
+
+		if type(source_settings) == "table" then
+			local stats_settings = table.clone(source_settings)
+			local edge_padding = tonumber(stats_settings.edge_padding) or 12
+
+			stats_settings.grid_size = table.clone(stats_settings.grid_size or {})
+			stats_settings.mask_size = table.clone(stats_settings.mask_size or {})
+			stats_settings.grid_size[1] = math.max(target_width - edge_padding, 1)
+			stats_settings.mask_size[1] = target_width + 40
+			adjusted_definitions.weapon_stats_grid_settings = stats_settings
+		end
+	end
+
 	local parent = is_curio and "weapon_stats_pivot" or "weapon_compare_stats_pivot"
 	local width = is_curio and 530 or 420
 	local initial_x = is_curio and 0 or 20
@@ -1119,6 +1174,8 @@ local INVENTORY_OPTIONS_PANEL_BLUEPRINTS = {
 }
 
 local function panel_entry(view, control_id, height, pass_template, initial_content, bind, refresh)
+	local geometry = view._better_inventory_options_panel_geometry
+
 	return {
 		control_id = control_id,
 		initial_content = initial_content,
@@ -1126,7 +1183,7 @@ local function panel_entry(view, control_id, height, pass_template, initial_cont
 		bind = bind,
 		refresh = refresh,
 		size = {
-			INVENTORY_OPTIONS_PANEL_CONTENT_WIDTH,
+			geometry.content_width,
 			height,
 		},
 		view = view,
@@ -1135,7 +1192,9 @@ local function panel_entry(view, control_id, height, pass_template, initial_cont
 end
 
 local function panel_header_entry(mod, layout, view, control_id, section_id, label_function)
-	return panel_entry(view, control_id, 40, panel_section_header_passes(INVENTORY_OPTIONS_PANEL_CONTENT_WIDTH), {
+	local geometry = view._better_inventory_options_panel_geometry
+
+	return panel_entry(view, control_id, 40, panel_section_header_passes(geometry.content_width), {
 		chevron = "v",
 		label = label_function(),
 	}, function(widget)
@@ -1171,38 +1230,38 @@ local function panel_sort_entry(mod, layout, view)
 end
 
 local function panel_mode_entry(mod, layout, view)
-	return panel_entry(view, INVENTORY_DISCARD_MODE_ID, 34, panel_mode_passes(), {
+	local geometry = view._better_inventory_options_panel_geometry
+
+	return panel_entry(view, INVENTORY_DISCARD_MODE_ID, 34, panel_mode_passes(geometry.content_width), {
 		label = mod:localize("quick_discard_inventory_mode"),
+		skip_checked = mod:get("quick_discard_skip_automatic_confirmation") == true,
+		skip_label = mod:localize("quick_discard_skip_automatic_confirmation"),
+		skip_visible = mod:get("quick_discard_mode") == "automatic",
 		value = "",
 	}, function(widget)
 		widget.content.hotspot.pressed_callback = function()
 			local mode = mod:get("quick_discard_mode") == "automatic" and "manual" or "automatic"
 
 			mod:set("quick_discard_mode", mode, false)
-			-- Automatic mode adds another row. As with section collapsing, let the
-			-- next InventoryWeaponsView update rebuild the grid after this draw ends.
+			widget.content.value = mod:localize("quick_discard_mode_" .. mode) .. "  >"
+			widget.content.skip_visible = mode == "automatic"
+			Features.sync_quick_discard_settings(mod, layout)
 		end
+		widget.content.skip_hotspot.pressed_callback = function()
+			local enabled = mod:get("quick_discard_skip_automatic_confirmation") ~= true
+
+			widget.content.skip_checked = enabled
+			mod:set("quick_discard_skip_automatic_confirmation", enabled, false)
+			Features.sync_quick_discard_settings(mod, layout)
+		end
+		view._better_inventory_options_panel_widgets[INVENTORY_DISCARD_SKIP_CONFIRMATION_ID] = widget
 	end, function(widget)
 		local mode = mod:get("quick_discard_mode") == "automatic" and "automatic" or "manual"
 
 		widget.content.value = mod:localize("quick_discard_mode_" .. mode) .. "  >"
-	end)
-end
-
-local function panel_skip_confirmation_entry(mod, layout, view)
-	return panel_entry(view, INVENTORY_DISCARD_SKIP_CONFIRMATION_ID, 34, compact_checkbox_passes(), {
-		checked = mod:get("quick_discard_skip_automatic_confirmation") == true,
-		label = mod:localize("quick_discard_skip_automatic_confirmation"),
-	}, function(widget)
-		widget.content.hotspot.pressed_callback = function()
-			local enabled = mod:get("quick_discard_skip_automatic_confirmation") ~= true
-
-			widget.content.checked = enabled
-			mod:set("quick_discard_skip_automatic_confirmation", enabled, false)
-			Features.sync_quick_discard_settings(mod, layout)
-		end
-	end, function(widget)
-		widget.content.checked = mod:get("quick_discard_skip_automatic_confirmation") == true
+		widget.content.skip_checked = mod:get("quick_discard_skip_automatic_confirmation") == true
+		widget.content.skip_label = mod:localize("quick_discard_skip_automatic_confirmation")
+		widget.content.skip_visible = mode == "automatic"
 	end)
 end
 
@@ -1237,7 +1296,9 @@ local function panel_quick_discard_entry(mod, layout, view)
 end
 
 local function panel_stepper_entry(mod, layout, view, control_id, setting_id, label_id, default_value)
-	return panel_entry(view, control_id, 34, compact_stepper_passes(INVENTORY_OPTIONS_PANEL_CONTENT_WIDTH), {
+	local geometry = view._better_inventory_options_panel_geometry
+
+	return panel_entry(view, control_id, 34, compact_stepper_passes(geometry.content_width), {
 		label = mod:localize(label_id),
 		value = tostring(math.floor(tonumber(mod:get(setting_id)) or default_value)),
 	}, function(widget)
@@ -1274,6 +1335,7 @@ local function panel_checkbox_entry(mod, layout, view, control_id, setting_id, l
 end
 
 local function panel_type_entry(mod, layout, view)
+	local geometry = view._better_inventory_options_panel_geometry
 	local settings = {
 		{
 			content_id = "melee",
@@ -1300,7 +1362,7 @@ local function panel_type_entry(mod, layout, view)
 		content[config.content_id .. "_label"] = mod:localize(config.label_id)
 	end
 
-	return panel_entry(view, "better_inventory_discard_types", 34, panel_type_checkbox_passes(), content, function(widget)
+	return panel_entry(view, "better_inventory_discard_types", 34, panel_type_checkbox_passes(geometry.content_width), content, function(widget)
 		for index = 1, #settings do
 			local config = settings[index]
 			local hotspot = widget.content[config.content_id .. "_hotspot"]
@@ -1327,7 +1389,6 @@ local function panel_structure_key(mod, view)
 	return table.concat({
 		view._discard_items_element and "native_discard" or "inventory",
 		mod:get("enable_experimental_quick_discard") == true and "discard_on" or "discard_off",
-		mod:get("quick_discard_mode") == "automatic" and "automatic" or "manual",
 		collapsed.sorting and "sort_closed" or "sort_open",
 		collapsed.discard and "discard_closed" or "discard_open",
 	}, ":")
@@ -1362,11 +1423,6 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 
 		if not collapsed.discard then
 			entries[#entries + 1] = panel_mode_entry(mod, layout, view)
-
-			if mod:get("quick_discard_mode") == "automatic" then
-				entries[#entries + 1] = panel_skip_confirmation_entry(mod, layout, view)
-			end
-
 			entries[#entries + 1] = panel_quick_discard_entry(mod, layout, view)
 			entries[#entries + 1] = panel_stepper_entry(mod, layout, view, INVENTORY_DISCARD_MAX_LEVEL_ID, "quick_discard_max_item_level", "quick_discard_inventory_max_level", 500)
 			entries[#entries + 1] = panel_type_entry(mod, layout, view)
@@ -1376,7 +1432,8 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 		end
 	end
 
-	local spacing = 8
+	local geometry = view._better_inventory_options_panel_geometry
+	local spacing = geometry.row_spacing
 	local content_height = 0
 
 	for index = 1, #entries do
@@ -1385,7 +1442,9 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 
 	content_height = content_height + math.max(#entries - 1, 0) * spacing
 
-	local panel_height = math.clamp(content_height + 48, INVENTORY_OPTIONS_PANEL_MIN_HEIGHT, INVENTORY_OPTIONS_PANEL_MAX_HEIGHT)
+	-- ViewElementGrid adds a 31 px terminal-divider/frame overhead around the
+	-- content. Account for it explicitly so user padding maps predictably.
+	local panel_height = math.clamp(content_height + 31 + geometry.top + geometry.bottom, INVENTORY_OPTIONS_PANEL_MIN_HEIGHT, geometry.max_height)
 
 	view._better_inventory_options_panel_widgets = {}
 	view._better_inventory_options_panel_structure_key = panel_structure_key(mod, view)
@@ -1395,8 +1454,8 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 end
 
 -- The stock Curio header reserves 250 virtual pixels for one small item image.
--- While the scalable inventory panel is active, reclaim 60 of those pixels so
--- the panel can sit below the details card without covering the Equip button.
+-- Scale the whole preview box rather than shortening only its height; changing
+-- one axis was the reason Curio art appeared stretched in the prototype.
 -- This transforms only the current InventoryWeaponsView's Curio stats blueprint;
 -- crafting, vendors and weapon detail cards keep their native geometry.
 Features.compact_inventory_curio_stats_blueprints = function(mod, item_grid, content_blueprints)
@@ -1414,21 +1473,28 @@ Features.compact_inventory_curio_stats_blueprints = function(mod, item_grid, con
 
 	local adjusted_blueprints = table.clone(content_blueprints)
 	local adjusted_header = adjusted_blueprints.gadget_header
+	local height_percent = numeric_setting(mod, "curio_preview_height_percent", 76, 60, 100)
+	local scale = height_percent / 100
 
-	adjusted_header.size[2] = INVENTORY_CURIO_HEADER_HEIGHT
+	adjusted_header.size[2] = math.floor(INVENTORY_CURIO_NATIVE_HEADER_HEIGHT * scale + 0.5)
 
 	for index = 1, #(adjusted_header.pass_template or {}) do
 		local pass = adjusted_header.pass_template[index]
 		local style = pass and pass.style
 
 		if style and pass.style_id == "icon" then
-			style.size[2] = 125
-			style.offset[2] = 20
+			local native_icon_width = INVENTORY_CURIO_NATIVE_GRID_WIDTH * 0.9
+			local available_icon_width = (adjusted_header.size[1] or INVENTORY_CURIO_NATIVE_GRID_WIDTH) * 0.9
+			local icon_scale = math.min(scale, available_icon_width / native_icon_width)
+
+			style.size[1] = math.floor(native_icon_width * icon_scale + 0.5)
+			style.size[2] = math.floor(INVENTORY_CURIO_NATIVE_ICON_HEIGHT * icon_scale + 0.5)
+			style.offset[2] = math.floor((style.offset[2] or 0) * scale + 0.5)
 		elseif style and pass.style_id == "loading" then
-			style.size[1] = 60
-			style.size[2] = 60
+			style.size[1] = math.floor((style.size[1] or 0) * scale + 0.5)
+			style.size[2] = math.floor((style.size[2] or 0) * scale + 0.5)
 		elseif style and pass.style_id == "gradient_background" then
-			style.size[2] = 95
+			style.size[2] = math.floor((style.size[2] or 0) * scale + 0.5)
 		end
 	end
 
@@ -1444,25 +1510,28 @@ Features.setup_inventory_options_panel = function(mod, layout, view, ViewElement
 		return false
 	end
 
+	local geometry = inventory_options_panel_geometry(mod)
 	local menu_settings = {
-		edge_padding = 16,
+		bottom_chin = geometry.bottom,
+		edge_padding = geometry.left + geometry.right,
 		enable_gamepad_scrolling = true,
 		grid_size = {
-			INVENTORY_OPTIONS_PANEL_GRID_WIDTH,
-			INVENTORY_OPTIONS_PANEL_MAX_HEIGHT,
+			geometry.content_width,
+			geometry.max_height,
 		},
 		grid_spacing = {
 			0,
-			8,
+			geometry.row_spacing,
 		},
 		ignore_blur = true,
 		mask_size = {
-			INVENTORY_OPTIONS_PANEL_GRID_WIDTH + 12,
-			INVENTORY_OPTIONS_PANEL_MAX_HEIGHT,
+			geometry.width,
+			geometry.max_height,
 		},
 		reset_selection_on_navigation_change = false,
 		scrollbar_width = 7,
 		title_height = 0,
+		top_padding = geometry.top,
 		use_is_focused_for_navigation = false,
 		use_select_on_focused = false,
 		use_terminal_background = true,
@@ -1482,12 +1551,20 @@ Features.setup_inventory_options_panel = function(mod, layout, view, ViewElement
 	end
 
 	view._better_inventory_options_panel = panel
+	view._better_inventory_options_panel_geometry = geometry
+	view._better_inventory_options_panel_mod = mod
 	view._better_inventory_options_panel_collapsed = {
 		discard = false,
 		sorting = false,
 	}
 
 	local configured, configure_error = pcall(function()
+		local content_pivot = panel._ui_scenegraph and panel._ui_scenegraph.grid_content_pivot
+
+		if content_pivot and content_pivot.position then
+			content_pivot.position[1] = geometry.left
+		end
+
 		panel:disable_input(false)
 		panel:set_visibility(true)
 		rebuild_inventory_options_panel(mod, layout, view)
@@ -1495,6 +1572,8 @@ Features.setup_inventory_options_panel = function(mod, layout, view, ViewElement
 
 	if not configured then
 		view._better_inventory_options_panel = nil
+		view._better_inventory_options_panel_geometry = nil
+		view._better_inventory_options_panel_mod = nil
 		view._better_inventory_options_panel_widgets = nil
 		view._better_inventory_options_panel_collapsed = nil
 

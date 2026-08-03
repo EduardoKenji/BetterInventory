@@ -168,6 +168,13 @@ def main() -> None:
             "grid_settings": lua.table_from(
                 {"grid_size": lua.table_from([620, 860])}
             ),
+            "weapon_stats_grid_settings": lua.table_from(
+                {
+                    "edge_padding": 12,
+                    "grid_size": lua.table_from([518, 920]),
+                    "mask_size": lua.table_from([570, 920]),
+                }
+            ),
         }
     )
     view = lua.execute(
@@ -762,6 +769,23 @@ def main() -> None:
     # sections by rebuilding rows, and reduce to Sorting in native discard mode.
     mod.settings.enable_inventory_options_panel_prototype = True
     mod.settings.quick_discard_mode = "manual"
+    mod.settings.quick_discard_skip_automatic_confirmation = True
+    mod.settings.curio_information_width_percent = 90
+    mod.settings.curio_preview_height_percent = 76
+    mod.settings.inventory_options_panel_width = 445
+    mod.settings.inventory_options_panel_max_height = 360
+    mod.settings.inventory_options_panel_row_spacing = 8
+    mod.settings.inventory_options_panel_padding_top = 4
+    mod.settings.inventory_options_panel_padding_bottom = 4
+    mod.settings.inventory_options_panel_padding_left = 10
+    mod.settings.inventory_options_panel_padding_right = 10
+
+    narrowed_curio_definitions = features.add_inventory_sort_toggle_definition(
+        mod, layout, definitions, view
+    )
+    assert narrowed_curio_definitions.weapon_stats_grid_settings.grid_size[1] == 465
+    assert narrowed_curio_definitions.weapon_stats_grid_settings.mask_size[1] == 517
+    assert definitions.weapon_stats_grid_settings.grid_size[1] == 518
 
     # Reclaim only the oversized Curio preview header in this inventory view.
     curio_stats_grid, curio_stats_blueprints = lua.execute(
@@ -790,9 +814,11 @@ def main() -> None:
         mod, curio_stats_grid, curio_stats_blueprints
     )
     assert compact_curio_blueprints.gadget_header.size[2] == 190
-    assert compact_curio_blueprints.gadget_header.pass_template[1].style.size[2] == 125
-    assert compact_curio_blueprints.gadget_header.pass_template[1].style.offset[2] == 20
-    assert compact_curio_blueprints.gadget_header.pass_template[2].style.size[1] == 60
+    assert compact_curio_blueprints.gadget_header.pass_template[1].style.size[1] == 354
+    assert compact_curio_blueprints.gadget_header.pass_template[1].style.size[2] == 137
+    assert compact_curio_blueprints.gadget_header.pass_template[1].style.offset[2] == 23
+    assert compact_curio_blueprints.gadget_header.pass_template[2].style.size[1] == 61
+    assert compact_curio_blueprints.gadget_header.pass_template[2].style.size[2] == 61
     assert compact_curio_blueprints.gadget_header.pass_template[3].style.size[2] == 95
     assert curio_stats_blueprints.gadget_header.size[2] == 250
 
@@ -818,6 +844,11 @@ def main() -> None:
             _add_element = function(self, class, reference_name, layer, settings)
                 local panel = {
                     _parent = self,
+                    _ui_scenegraph = {
+                        grid_content_pivot = {
+                            position = {0, 0, 0},
+                        },
+                    },
                     menu_settings = settings,
                     visible = false,
                 }
@@ -899,6 +930,13 @@ def main() -> None:
     # Sharing the parent renderer makes the terminal frame visible while leaving
     # that target blank when the inventory view already owns another masked grid.
     assert prototype_panel.menu_settings.use_parent_ui_renderer is None
+    assert prototype_panel.menu_settings.grid_size[1] == 425
+    assert prototype_panel.menu_settings.mask_size[1] == 445
+    assert prototype_panel.menu_settings.edge_padding == 20
+    assert prototype_panel.menu_settings.grid_spacing[2] == 8
+    assert prototype_panel.menu_settings.top_padding == 4
+    assert prototype_panel.menu_settings.bottom_chin == 4
+    assert prototype_panel._ui_scenegraph.grid_content_pivot.position[1] == 10
     assert len(prototype_panel.layout) == 10
     assert prototype_panel.grid_height == 360
     assert prototype_panel.pivot_x == 120
@@ -906,28 +944,24 @@ def main() -> None:
     assert prototype_view._widgets_by_name[sort_label_id].content.visible is False
     assert prototype_view._widgets_by_name[toggle_id].content.visible is False
 
-    # Mode changes that add/remove the standalone confirmation row are deferred
-    # until the next safe view update. The separate checkbox must remain clickable.
-    prototype_panel.widgets[
-        "better_inventory_discard_mode"
-    ].content.hotspot.pressed_callback()
+    # Mode and its confirmation checkbox share a compact row but retain distinct,
+    # synchronized hotspots. Mode changes no longer change the grid structure.
+    mode_widget = prototype_panel.widgets["better_inventory_discard_mode"]
+    mode_widget.content.hotspot.pressed_callback()
     assert mod.settings.quick_discard_mode == "automatic"
     assert len(prototype_panel.layout) == 10
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
-    assert len(prototype_panel.layout) == 11
-    skip_widget = prototype_panel.widgets[
-        "better_inventory_discard_skip_confirmation"
-    ]
-    assert skip_widget.content.checked is True
-    skip_widget.content.hotspot.pressed_callback()
+    assert len(prototype_panel.layout) == 10
+    assert mode_widget.content.skip_visible is True
+    assert mode_widget.content.skip_checked is True
+    mode_widget.content.skip_hotspot.pressed_callback()
     assert mod.settings.quick_discard_skip_automatic_confirmation is False
-    assert skip_widget.content.checked is False
-    prototype_panel.widgets[
-        "better_inventory_discard_mode"
-    ].content.hotspot.pressed_callback()
+    assert mode_widget.content.skip_checked is False
+    mode_widget.content.hotspot.pressed_callback()
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert mod.settings.quick_discard_mode == "manual"
     assert len(prototype_panel.layout) == 10
+    assert mode_widget.content.skip_visible is False
 
     prototype_panel.widgets[
         "better_inventory_discard_header"
@@ -937,14 +971,14 @@ def main() -> None:
     assert len(prototype_panel.layout) == 10
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert len(prototype_panel.layout) == 3
-    assert prototype_panel.grid_height == 182
+    assert prototype_panel.grid_height == 173
     prototype_panel.widgets[
         "better_inventory_sort_header"
     ].content.hotspot.pressed_callback()
     assert len(prototype_panel.layout) == 3
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert len(prototype_panel.layout) == 2
-    assert prototype_panel.grid_height == 136
+    assert prototype_panel.grid_height == 127
     prototype_panel.widgets[
         "better_inventory_sort_header"
     ].content.hotspot.pressed_callback()

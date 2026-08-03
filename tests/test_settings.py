@@ -323,6 +323,15 @@ def main() -> None:
 		"weapon_perk_blessing_spacing",
 		"curio_secondary_stat_font_size",
 		"curio_primary_secondary_spacing",
+		"curio_information_width_percent",
+		"curio_preview_height_percent",
+		"inventory_options_panel_width",
+		"inventory_options_panel_max_height",
+		"inventory_options_panel_row_spacing",
+		"inventory_options_panel_padding_top",
+		"inventory_options_panel_padding_bottom",
+		"inventory_options_panel_padding_left",
+		"inventory_options_panel_padding_right",
 		"quick_discard_rarity",
 		"quick_discard_max_item_level",
 		"quick_discard_include_melee",
@@ -388,6 +397,29 @@ def main() -> None:
     assert entries_by_id["quick_discard_curio_protection_level"].disabled is True
     assert entries_by_id["quick_discard_show_type_breakdown"].disabled is True
     assert entries_by_id["quick_discard_show_summary_notification"].disabled is True
+    assert entries_by_id["curio_information_width_percent"].disabled is True
+    assert entries_by_id["curio_preview_height_percent"].disabled is True
+    assert entries_by_id["inventory_options_panel_width"].disabled is True
+    assert entries_by_id["inventory_options_panel_max_height"].disabled is True
+    assert entries_by_id["inventory_options_panel_row_spacing"].disabled is True
+    assert entries_by_id["inventory_options_panel_padding_top"].disabled is True
+    assert entries_by_id["inventory_options_panel_padding_bottom"].disabled is True
+    assert entries_by_id["inventory_options_panel_padding_left"].disabled is True
+    assert entries_by_id["inventory_options_panel_padding_right"].disabled is True
+
+    settings.enable_inventory_options_panel_prototype = True
+    mod.on_setting_changed("enable_inventory_options_panel_prototype")
+    assert entries_by_id["curio_information_width_percent"].disabled is False
+    assert entries_by_id["curio_preview_height_percent"].disabled is False
+    assert entries_by_id["inventory_options_panel_width"].disabled is False
+    assert entries_by_id["inventory_options_panel_max_height"].disabled is False
+    assert entries_by_id["inventory_options_panel_row_spacing"].disabled is False
+    assert entries_by_id["inventory_options_panel_padding_top"].disabled is False
+    assert entries_by_id["inventory_options_panel_padding_bottom"].disabled is False
+    assert entries_by_id["inventory_options_panel_padding_left"].disabled is False
+    assert entries_by_id["inventory_options_panel_padding_right"].disabled is False
+    settings.enable_inventory_options_panel_prototype = False
+    mod.on_setting_changed("enable_inventory_options_panel_prototype")
 
     settings.enable_experimental_quick_discard = True
     mod.on_setting_changed("enable_experimental_quick_discard")
@@ -641,6 +673,15 @@ def main() -> None:
     assert defaults["show_curio_item_level"] is True
     assert defaults["prioritize_equipped_favorites"] is True
     assert defaults["enable_inventory_options_panel_prototype"] is False
+    assert defaults["curio_information_width_percent"] == 90
+    assert defaults["curio_preview_height_percent"] == 76
+    assert defaults["inventory_options_panel_width"] == 445
+    assert defaults["inventory_options_panel_max_height"] == 360
+    assert defaults["inventory_options_panel_row_spacing"] == 8
+    assert defaults["inventory_options_panel_padding_top"] == 4
+    assert defaults["inventory_options_panel_padding_bottom"] == 4
+    assert defaults["inventory_options_panel_padding_left"] == 10
+    assert defaults["inventory_options_panel_padding_right"] == 10
     assert defaults["quick_discard_show_summary_notification"] is True
     assert defaults["curio_primary_stat_font_size"] == 16
     assert defaults["curio_secondary_stat_font_size"] == 13

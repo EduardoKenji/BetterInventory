@@ -23,6 +23,45 @@ return {
 	enable_inventory_options_panel_prototype_tooltip = {
 		en = "Research prototype. After reopening the inventory, places BetterInventory's synchronized controls inside one bounded, scrollable Darktide panel with clickable collapsible section headers. Disable it to restore the established loose controls.",
 	},
+	inventory_options_panel_geometry_group = {
+		en = "Scalable inventory panel (experimental)",
+	},
+	curio_information_width_percent = {
+		en = "Curio information window width (%%)",
+	},
+	curio_preview_height_percent = {
+		en = "Curio preview-area height (%%)",
+	},
+	curio_preview_height_percent_tooltip = {
+		en = "Scales the upper Curio preview area and its item art together to preserve the original aspect ratio. Reopen the inventory after changing it.",
+	},
+	inventory_options_panel_width = {
+		en = "Options panel width (px)",
+	},
+	inventory_options_panel_max_height = {
+		en = "Options panel maximum height (px)",
+	},
+	inventory_options_panel_row_spacing = {
+		en = "Options panel row spacing (px)",
+	},
+	inventory_options_panel_padding_top = {
+		en = "Options panel top padding (px)",
+	},
+	inventory_options_panel_padding_bottom = {
+		en = "Options panel bottom padding (px)",
+	},
+	inventory_options_panel_padding_left = {
+		en = "Options panel left padding (px)",
+	},
+	inventory_options_panel_padding_right = {
+		en = "Options panel right padding (px)",
+	},
+	inventory_options_geometry_reopen_tooltip = {
+		en = "Experimental scalable-panel geometry. Reopen the inventory after changing this value.",
+	},
+	option_requires_inventory_options_panel_prototype = {
+		en = "Requires the scalable inventory-options panel prototype.",
+	},
 	prioritize_equipped_favorites_inventory_label = {
 		en = "Equipped and favorited items at the top",
 	},
