@@ -364,7 +364,12 @@ def main() -> None:
     mod.settings.quick_discard_rarity = 1
     mod.settings.quick_discard_max_item_level = 500
     mod.settings.quick_discard_include_melee = True
+    mod.settings.quick_discard_include_ranged = True
+    mod.settings.quick_discard_include_curios = True
     mod.settings.quick_discard_protect_perfect_weapons = True
+    mod.settings.quick_discard_protect_high_level_curios = True
+    mod.settings.quick_discard_curio_protection_level = 410
+    mod.settings.quick_discard_show_type_breakdown = True
     quick_discard_view = lua.execute(
         r"""
         return {
@@ -403,7 +408,15 @@ def main() -> None:
                             "level": 500,
                             "rarity": 1,
                             "total_stats": 380,
-                            "base_stats": lua.table_from([1, 2, 3, 4, 5]),
+                            "base_stats": lua.table_from(
+                                [
+                                    lua.table_from({"value": 0.8}),
+                                    lua.table_from({"value": 0.8}),
+                                    lua.table_from({"value": 0.8}),
+                                    lua.table_from({"value": 0.8}),
+                                    lua.table_from({"value": 0.6}),
+                                ]
+                            ),
                             "slots": lua.table_from(["slot_primary"]),
                         }
                     )
@@ -430,6 +443,54 @@ def main() -> None:
     assert len(candidates) == 1
     assert candidates[1].gear_id == "eligible"
     assert features.is_perfect_roll_weapon(quick_discard_view._offer_items_layout[2].item) is True
+    anomalous_perfect_roll = lua.table_from(
+        {
+            "item_type": "WEAPON_MELEE",
+            "total_stats": 380,
+            "base_stats": lua.table_from(
+                [
+                    lua.table_from({"value": 0.7975}),
+                    lua.table_from({"value": 0.7975}),
+                    lua.table_from({"value": 0.7975}),
+                    lua.table_from({"value": 0.7975}),
+                    lua.table_from({"value": 0.61}),
+                ]
+            ),
+        }
+    )
+    assert features.is_perfect_roll_weapon(anomalous_perfect_roll) is True
+    anomalous_62_perfect_roll = lua.table_from(
+        {
+            "item_type": "WEAPON_RANGED",
+            "total_stats": 380,
+            "base_stats": lua.table_from(
+                [
+                    lua.table_from({"value": 0.795}),
+                    lua.table_from({"value": 0.795}),
+                    lua.table_from({"value": 0.795}),
+                    lua.table_from({"value": 0.795}),
+                    lua.table_from({"value": 0.62}),
+                ]
+            ),
+        }
+    )
+    assert features.is_perfect_roll_weapon(anomalous_62_perfect_roll) is True
+    nonperfect_380_roll = lua.table_from(
+        {
+            "item_type": "WEAPON_MELEE",
+            "total_stats": 380,
+            "base_stats": lua.table_from(
+                [
+                    lua.table_from({"value": 0.79}),
+                    lua.table_from({"value": 0.79}),
+                    lua.table_from({"value": 0.79}),
+                    lua.table_from({"value": 0.79}),
+                    lua.table_from({"value": 0.64}),
+                ]
+            ),
+        }
+    )
+    assert features.is_perfect_roll_weapon(nonperfect_380_roll) is False
 
     features.request_quick_discard(mod, layout, quick_discard_view)
     assert quick_discard_view._better_inventory_discard_pending is True
@@ -444,13 +505,77 @@ def main() -> None:
     globals_.captured_popup.options[1].callback()
     assert globals_.captured_discard_ids[1] == "eligible"
 
+    quick_discard_view._parent = lua.table_from(
+        {
+            "_inventory_items": lua.table_from(
+                {
+                    "global_melee": lua.table_from(
+                        {
+                            "gear_id": "global_melee",
+                            "item_type": "WEAPON_MELEE",
+                            "level": 300,
+                            "rarity": 1,
+                            "total_stats": 300,
+                            "slots": lua.table_from(["slot_primary"]),
+                        }
+                    ),
+                    "global_ranged": lua.table_from(
+                        {
+                            "gear_id": "global_ranged",
+                            "item_type": "WEAPON_RANGED",
+                            "level": 300,
+                            "rarity": 1,
+                            "total_stats": 300,
+                            "slots": lua.table_from(["slot_secondary"]),
+                        }
+                    ),
+                    "global_curio": lua.table_from(
+                        {
+                            "gear_id": "global_curio",
+                            "item_type": "GADGET",
+                            "level": 300,
+                            "rarity": 1,
+                            "slots": lua.table_from(["slot_trinket_1"]),
+                        }
+                    ),
+                }
+            )
+        }
+    )
+    global_candidates = features.quick_discard_candidates(mod, layout, quick_discard_view)
+    assert len(global_candidates) == 3
+    features.request_quick_discard(mod, layout, quick_discard_view)
+    confirmation_description = globals_.captured_popup.description_text_unlocalized
+    assert "quick_discard_summary_melee_singular" in confirmation_description
+    assert "quick_discard_summary_ranged_singular" in confirmation_description
+    assert "quick_discard_summary_curio_singular" in confirmation_description
+    globals_.captured_popup.options[2].callback()
+    mod.settings.quick_discard_show_type_breakdown = False
+    features.request_quick_discard(mod, layout, quick_discard_view)
+    assert (
+        "quick_discard_summary_melee_singular"
+        not in globals_.captured_popup.description_text_unlocalized
+    )
+    globals_.captured_popup.options[2].callback()
+    mod.settings.quick_discard_show_type_breakdown = True
+
     mod.settings.enable_experimental_quick_discard = True
     experimental_definitions = features.add_inventory_sort_toggle_definition(
         mod, layout, definitions, quick_discard_view
     )
     assert experimental_definitions.scenegraph_definition["better_inventory_quick_discard"] is not None
     assert experimental_definitions.scenegraph_definition["better_inventory_discard_protection"] is not None
+    assert experimental_definitions.scenegraph_definition["better_inventory_discard_curio_protection"] is not None
+    assert experimental_definitions.scenegraph_definition["better_inventory_discard_curio_level"] is not None
     assert experimental_definitions.scenegraph_definition["better_inventory_discard_label"] is not None
+    assert experimental_definitions.scenegraph_definition["better_inventory_discard_max_level"] is not None
+    assert experimental_definitions.scenegraph_definition["better_inventory_discard_melee"] is not None
+    assert experimental_definitions.scenegraph_definition["better_inventory_discard_ranged"] is not None
+    assert experimental_definitions.scenegraph_definition["better_inventory_discard_curio"] is not None
+    assert (
+        experimental_definitions.scenegraph_definition["better_inventory_quick_discard"].position[1]
+        == experimental_definitions.scenegraph_definition[toggle_id].position[1]
+    )
     assert (
         experimental_definitions.widget_definitions["better_inventory_discard_label"].content.label
         == "inventory_discard_management_inventory_label"
@@ -465,6 +590,33 @@ def main() -> None:
     )
     nested_visible_content = lua.eval("{parent = {visible = true}}")
     assert rarity_hotspot_pass.visibility_function(nested_visible_content) is True
+
+    quick_discard_view._ui_scenegraph = experimental_definitions.scenegraph_definition
+    quick_discard_view._widgets_by_name = experimental_definitions.widget_definitions
+    quick_discard_view._weapon_options_element = lua.table_from(
+        {"_menu_settings": lua.table_from({"grid_size": lua.table_from([420, 300])})}
+    )
+    features.bind_inventory_sort_toggle(mod, layout, quick_discard_view)
+    quick_discard_view._widgets_by_name[
+        "better_inventory_discard_max_level"
+    ].content.decrease_hotspot.pressed_callback()
+    assert mod.settings.quick_discard_max_item_level == 490
+    assert (
+        quick_discard_view._widgets_by_name[
+            "better_inventory_discard_max_level"
+        ].content.value
+        == "490"
+    )
+    quick_discard_view._widgets_by_name[
+        "better_inventory_discard_ranged"
+    ].content.hotspot.pressed_callback()
+    assert mod.settings.quick_discard_include_ranged is False
+    assert (
+        quick_discard_view._widgets_by_name[
+            "better_inventory_discard_ranged"
+        ].content.checked
+        is False
+    )
 
     features.unregister_inventory_view(melee_view)
     mod.settings.prioritize_equipped_favorites = False

@@ -216,6 +216,12 @@ return {
 							500,
 						},
 					},
+					{
+						setting_id = "quick_discard_show_type_breakdown",
+						tooltip = "quick_discard_show_type_breakdown_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
 				},
 			},
 			{

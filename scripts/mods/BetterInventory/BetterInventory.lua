@@ -271,6 +271,7 @@ local function refresh_option_dependencies()
 		"quick_discard_include_curios",
 		"quick_discard_protect_perfect_weapons",
 		"quick_discard_protect_high_level_curios",
+		"quick_discard_show_type_breakdown",
 	}) do
 		set_option_enabled(option_dependency_entries[setting_id], quick_discard_enabled, quick_discard_reason)
 	end
@@ -335,6 +336,7 @@ local function bind_option_dependencies(options_templates)
 		"quick_discard_protect_perfect_weapons",
 		"quick_discard_protect_high_level_curios",
 		"quick_discard_curio_protection_level",
+		"quick_discard_show_type_breakdown",
 	}) do
 		setting_by_title[mod:localize(setting_id)] = setting_id
 	end
@@ -441,6 +443,10 @@ function mod.on_setting_changed(setting_id)
 
 	if setting_id == "prioritize_equipped_favorites" then
 		Features.sync_inventory_sort_setting(mod, Layout)
+	end
+
+	if type(setting_id) == "string" and string.sub(setting_id, 1, 14) == "quick_discard_" then
+		Features.sync_quick_discard_settings(mod, Layout)
 	end
 end
 

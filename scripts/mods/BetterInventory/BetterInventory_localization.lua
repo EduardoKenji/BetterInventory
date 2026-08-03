@@ -75,7 +75,7 @@ return {
 		en = "Do not discard perfect-roll weapons",
 	},
 	quick_discard_protect_perfect_weapons_tooltip = {
-		en = "Protects weapons whose five base attributes total the maximum 380 roll. This deliberately errs on the side of keeping an item.",
+		en = "Protects true perfect rolls: total base power 380, exactly four displayed attributes at 80, and the remaining displayed attribute at 60 or above. The last value may show 61 or 62 because Darktide totals unrounded backend values.",
 	},
 	quick_discard_protect_high_level_curios = {
 		en = "Protect high-level Curios",
@@ -89,6 +89,12 @@ return {
 	quick_discard_curio_protection_level_tooltip = {
 		en = "Curios at or above this displayed item level are never selected by quick discard. The default is 410.",
 	},
+	quick_discard_show_type_breakdown = {
+		en = "Show equipment-type counts in confirmation",
+	},
+	quick_discard_show_type_breakdown_tooltip = {
+		en = "Adds melee weapon, ranged weapon and Curio counts to each rarity line in the quick-discard confirmation. This presentation option is available only in mod options and is enabled by default.",
+	},
 	quick_discard_inventory_prefix = {
 		en = "Discard all",
 	},
@@ -98,17 +104,53 @@ return {
 	quick_discard_inventory_action = {
 		en = "DISCARD",
 	},
+	quick_discard_inventory_max_level = {
+		en = "Maximum item level",
+	},
+	quick_discard_inventory_melee = {
+		en = "Melee",
+	},
+	quick_discard_inventory_ranged = {
+		en = "Ranged",
+	},
+	quick_discard_inventory_curios = {
+		en = "Curios",
+	},
+	quick_discard_inventory_curio_level = {
+		en = "Curio protection level",
+	},
 	quick_discard_inventory_protect_weapons = {
 		en = "Do not discard perfect-roll weapons",
 	},
 	quick_discard_inventory_protect_curios = {
-		en = "Protect Curios at or above",
+		en = "Protect high-level Curios",
 	},
 	quick_discard_confirmation_title = {
 		en = "Confirm quick discard",
 	},
 	quick_discard_confirmation_description = {
-		en = "non-favorited, non-equipped item(s) from the current inventory will be permanently discarded. Protected items are excluded.",
+		en = "non-favorited, non-equipped item(s) from the enabled equipment types will be permanently discarded. Protected items are excluded.",
+	},
+	quick_discard_summary_melee_singular = {
+		en = "melee weapon",
+	},
+	quick_discard_summary_melee_plural = {
+		en = "melee weapons",
+	},
+	quick_discard_summary_ranged_singular = {
+		en = "ranged weapon",
+	},
+	quick_discard_summary_ranged_plural = {
+		en = "ranged weapons",
+	},
+	quick_discard_summary_curio_singular = {
+		en = "Curio",
+	},
+	quick_discard_summary_curio_plural = {
+		en = "Curios",
+	},
+	quick_discard_summary_and = {
+		en = "and",
 	},
 	quick_discard_confirmation_warning = {
 		en = "This action cannot be undone.",

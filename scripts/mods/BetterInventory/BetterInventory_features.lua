@@ -8,7 +8,13 @@ local INVENTORY_SORT_TOGGLE_ID = "better_inventory_sort_priority"
 local INVENTORY_SORT_LABEL_ID = "better_inventory_sort_label"
 local INVENTORY_DISCARD_LABEL_ID = "better_inventory_discard_label"
 local INVENTORY_QUICK_DISCARD_ID = "better_inventory_quick_discard"
+local INVENTORY_DISCARD_MAX_LEVEL_ID = "better_inventory_discard_max_level"
+local INVENTORY_DISCARD_MELEE_ID = "better_inventory_discard_melee"
+local INVENTORY_DISCARD_RANGED_ID = "better_inventory_discard_ranged"
+local INVENTORY_DISCARD_CURIO_ID = "better_inventory_discard_curio"
 local INVENTORY_DISCARD_PROTECTION_ID = "better_inventory_discard_protection"
+local INVENTORY_DISCARD_CURIO_PROTECTION_ID = "better_inventory_discard_curio_protection"
+local INVENTORY_DISCARD_CURIO_LEVEL_ID = "better_inventory_discard_curio_level"
 local registered_inventory_views = setmetatable({}, {
 	__mode = "k",
 })
@@ -150,7 +156,7 @@ local function quick_discard_passes()
 					3,
 				},
 				size = {
-					75,
+					70,
 					32,
 				},
 			},
@@ -165,12 +171,12 @@ local function quick_discard_passes()
 			},
 			style = {
 				offset = {
-					75,
+					70,
 					0,
 					5,
 				},
 				size = {
-					115,
+					110,
 					32,
 				},
 			},
@@ -182,12 +188,12 @@ local function quick_discard_passes()
 			style = {
 				color = Color.terminal_background(220, true),
 				offset = {
-					75,
+					70,
 					0,
 					1,
 				},
 				size = {
-					115,
+					110,
 					32,
 				},
 			},
@@ -200,12 +206,12 @@ local function quick_discard_passes()
 			style = {
 				color = Color.terminal_frame(255, true),
 				offset = {
-					75,
+					70,
 					0,
 					2,
 				},
 				size = {
-					115,
+					110,
 					32,
 				},
 			},
@@ -222,12 +228,12 @@ local function quick_discard_passes()
 				text_vertical_alignment = "center",
 				text_color = Color.terminal_text_body(255, true),
 				offset = {
-					75,
+					70,
 					0,
 					3,
 				},
 				size = {
-					115,
+					110,
 					32,
 				},
 			},
@@ -244,12 +250,12 @@ local function quick_discard_passes()
 				text_vertical_alignment = "center",
 				text_color = Color.terminal_text_body(255, true),
 				offset = {
-					194,
+					184,
 					0,
 					3,
 				},
 				size = {
-					76,
+					70,
 					32,
 				},
 			},
@@ -363,6 +369,237 @@ local function section_label_passes()
 	}
 end
 
+local function compact_checkbox_passes()
+	return {
+		{
+			content_id = "hotspot",
+			pass_type = "hotspot",
+			content = {
+				on_hover_sound = UISoundEvents.default_mouse_hover,
+				on_pressed_sound = UISoundEvents.default_click,
+			},
+		},
+		{
+			pass_type = "rect",
+			style_id = "checkbox_background",
+			style = {
+				color = Color.terminal_background(220, true),
+				offset = {
+					0,
+					2,
+					1,
+				},
+				size = {
+					22,
+					22,
+				},
+			},
+		},
+		{
+			pass_type = "texture",
+			style_id = "checkbox_frame",
+			value = "content/ui/materials/frames/frame_tile_2px",
+			style = {
+				color = Color.terminal_frame(255, true),
+				offset = {
+					0,
+					2,
+					2,
+				},
+				size = {
+					22,
+					22,
+				},
+			},
+		},
+		{
+			pass_type = "text",
+			style_id = "checkmark",
+			value = "",
+			style = {
+				font_size = 17,
+				font_type = "proxima_nova_bold",
+				text_horizontal_alignment = "center",
+				text_vertical_alignment = "center",
+				text_color = Color.terminal_corner_selected(255, true),
+				offset = {
+					0,
+					2,
+					3,
+				},
+				size = {
+					22,
+					22,
+				},
+			},
+			visibility_function = function(content)
+				return content.checked
+			end,
+		},
+		{
+			pass_type = "text",
+			style_id = "label",
+			value_id = "label",
+			style = {
+				font_size = 15,
+				font_type = "proxima_nova_bold",
+				text_horizontal_alignment = "left",
+				text_vertical_alignment = "center",
+				text_color = Color.terminal_text_body(255, true),
+				offset = {
+					28,
+					0,
+					3,
+				},
+				size_addition = {
+					-28,
+					0,
+				},
+			},
+		},
+	}
+end
+
+local function compact_stepper_passes(width)
+	local controls_x = width - 138
+
+	return {
+		{
+			pass_type = "text",
+			style_id = "label",
+			value_id = "label",
+			style = {
+				font_size = 15,
+				font_type = "proxima_nova_bold",
+				text_horizontal_alignment = "left",
+				text_vertical_alignment = "center",
+				text_color = Color.terminal_text_body(255, true),
+				size = {
+					controls_x - 8,
+					26,
+				},
+			},
+		},
+		{
+			content_id = "decrease_hotspot",
+			pass_type = "hotspot",
+			content = {
+				on_hover_sound = UISoundEvents.default_mouse_hover,
+				on_pressed_sound = UISoundEvents.default_click,
+			},
+			style = {
+				offset = {
+					controls_x,
+					0,
+					5,
+				},
+				size = {
+					32,
+					26,
+				},
+			},
+		},
+		{
+			pass_type = "text",
+			style_id = "decrease_label",
+			value = "<",
+			style = {
+				font_size = 16,
+				font_type = "proxima_nova_bold",
+				text_horizontal_alignment = "center",
+				text_vertical_alignment = "center",
+				text_color = Color.terminal_text_header(255, true),
+				offset = {
+					controls_x,
+					0,
+					3,
+				},
+				size = {
+					32,
+					26,
+				},
+			},
+		},
+		{
+			pass_type = "rect",
+			style_id = "value_background",
+			style = {
+				color = Color.terminal_background(220, true),
+				offset = {
+					controls_x + 34,
+					0,
+					1,
+				},
+				size = {
+					70,
+					26,
+				},
+			},
+		},
+		{
+			pass_type = "text",
+			style_id = "value",
+			value_id = "value",
+			style = {
+				font_size = 15,
+				font_type = "proxima_nova_bold",
+				text_horizontal_alignment = "center",
+				text_vertical_alignment = "center",
+				text_color = Color.terminal_text_body(255, true),
+				offset = {
+					controls_x + 34,
+					0,
+					3,
+				},
+				size = {
+					70,
+					26,
+				},
+			},
+		},
+		{
+			content_id = "increase_hotspot",
+			pass_type = "hotspot",
+			content = {
+				on_hover_sound = UISoundEvents.default_mouse_hover,
+				on_pressed_sound = UISoundEvents.default_click,
+			},
+			style = {
+				offset = {
+					controls_x + 106,
+					0,
+					5,
+				},
+				size = {
+					32,
+					26,
+				},
+			},
+		},
+		{
+			pass_type = "text",
+			style_id = "increase_label",
+			value = ">",
+			style = {
+				font_size = 16,
+				font_type = "proxima_nova_bold",
+				text_horizontal_alignment = "center",
+				text_vertical_alignment = "center",
+				text_color = Color.terminal_text_header(255, true),
+				offset = {
+					controls_x + 106,
+					0,
+					3,
+				},
+				size = {
+					32,
+					26,
+				},
+			},
+		},
+	}
+end
+
 Features.add_inventory_sort_toggle_definition = function(mod, layout, definitions, view)
 	local slot_kind = inventory_slot_kind(layout, view)
 
@@ -422,6 +659,54 @@ Features.add_inventory_sort_toggle_definition = function(mod, layout, definition
 	})
 
 	if mod:get("enable_experimental_quick_discard") == true then
+		local compact_x = initial_x + 15
+		local compact_width = width - 15
+		local type_gap = 8
+		local type_width = math.floor((compact_width - type_gap * 2) / 3)
+		local function add_compact_checkbox(scenegraph_id, x, y, checkbox_width, label, checked)
+			scenegraph[scenegraph_id] = {
+				horizontal_alignment = "left",
+				parent = parent,
+				vertical_alignment = "top",
+				size = {
+					checkbox_width,
+					26,
+				},
+				position = {
+					x,
+					y,
+					20,
+				},
+			}
+			widget_definitions[scenegraph_id] = UIWidget.create_definition(compact_checkbox_passes(), scenegraph_id, {
+				checked = checked,
+				hotspot = {},
+				label = label,
+			})
+		end
+		local function add_compact_stepper(scenegraph_id, y, label, value)
+			scenegraph[scenegraph_id] = {
+				horizontal_alignment = "left",
+				parent = parent,
+				vertical_alignment = "top",
+				size = {
+					compact_width,
+					26,
+				},
+				position = {
+					compact_x,
+					y,
+					20,
+				},
+			}
+			widget_definitions[scenegraph_id] = UIWidget.create_definition(compact_stepper_passes(compact_width), scenegraph_id, {
+				decrease_hotspot = {},
+				increase_hotspot = {},
+				label = label,
+				value = tostring(value),
+			})
+		end
+
 		scenegraph[INVENTORY_DISCARD_LABEL_ID] = {
 			horizontal_alignment = "left",
 			parent = parent,
@@ -445,11 +730,11 @@ Features.add_inventory_sort_toggle_definition = function(mod, layout, definition
 			parent = parent,
 			vertical_alignment = "top",
 			size = {
-				width,
+				compact_width,
 				32,
 			},
 			position = {
-				initial_x,
+				compact_x,
 				initial_y + 100,
 				20,
 			},
@@ -464,26 +749,14 @@ Features.add_inventory_sort_toggle_definition = function(mod, layout, definition
 			visible = true,
 		})
 
-		scenegraph[INVENTORY_DISCARD_PROTECTION_ID] = {
-			horizontal_alignment = "left",
-			parent = parent,
-			vertical_alignment = "top",
-			size = {
-				width - 15,
-				32,
-			},
-			position = {
-				initial_x + 15,
-				initial_y + 140,
-				20,
-			},
-		}
-		local protection_enabled = is_curio and mod:get("quick_discard_protect_high_level_curios") ~= false or not is_curio and mod:get("quick_discard_protect_perfect_weapons") ~= false
+		add_compact_stepper(INVENTORY_DISCARD_MAX_LEVEL_ID, initial_y + 136, mod:localize("quick_discard_inventory_max_level"), math.floor(tonumber(mod:get("quick_discard_max_item_level")) or 500))
+		add_compact_checkbox(INVENTORY_DISCARD_MELEE_ID, compact_x, initial_y + 170, type_width, mod:localize("quick_discard_inventory_melee"), mod:get("quick_discard_include_melee") ~= false)
+		add_compact_checkbox(INVENTORY_DISCARD_RANGED_ID, compact_x + type_width + type_gap, initial_y + 170, type_width, mod:localize("quick_discard_inventory_ranged"), mod:get("quick_discard_include_ranged") ~= false)
+		add_compact_checkbox(INVENTORY_DISCARD_CURIO_ID, compact_x + (type_width + type_gap) * 2, initial_y + 170, type_width, mod:localize("quick_discard_inventory_curios"), mod:get("quick_discard_include_curios") ~= false)
 
-		widget_definitions[INVENTORY_DISCARD_PROTECTION_ID] = UIWidget.create_definition(inventory_sort_toggle_passes(), INVENTORY_DISCARD_PROTECTION_ID, {
-			checked = protection_enabled,
-			label = is_curio and mod:localize("quick_discard_inventory_protect_curios") .. " " .. math.floor(tonumber(mod:get("quick_discard_curio_protection_level")) or 410) or mod:localize("quick_discard_inventory_protect_weapons"),
-		})
+		add_compact_checkbox(INVENTORY_DISCARD_PROTECTION_ID, compact_x, initial_y + 204, compact_width, mod:localize("quick_discard_inventory_protect_weapons"), mod:get("quick_discard_protect_perfect_weapons") ~= false)
+		add_compact_checkbox(INVENTORY_DISCARD_CURIO_PROTECTION_ID, compact_x, initial_y + 238, compact_width, mod:localize("quick_discard_inventory_protect_curios"), mod:get("quick_discard_protect_high_level_curios") ~= false)
+		add_compact_stepper(INVENTORY_DISCARD_CURIO_LEVEL_ID, initial_y + 272, mod:localize("quick_discard_inventory_curio_level"), math.floor(tonumber(mod:get("quick_discard_curio_protection_level")) or 410))
 	end
 
 	return adjusted_definitions
@@ -588,10 +861,35 @@ Features.is_perfect_roll_weapon = function(item)
 
 	local total = Items.total_stats_value(item)
 
-	-- A current five-attribute weapon cannot exceed a 380 base-stat roll. Err on
-	-- the side of preserving every maximum-total distribution rather than risk
-	-- deleting one because its backend values were rounded differently.
-	return type(total) == "number" and total >= 380
+	if total ~= 380 then
+		return false
+	end
+
+	local maximum_stats = 0
+	local remaining_stats = 0
+
+	for index = 1, #base_stats do
+		local raw_value = tonumber(base_stats[index] and base_stats[index].value)
+
+		if not raw_value then
+			return false
+		end
+
+		local displayed_value = math.floor(raw_value * 100 + 0.5)
+
+		if displayed_value == 80 then
+			maximum_stats = maximum_stats + 1
+		elseif displayed_value >= 60 then
+			remaining_stats = remaining_stats + 1
+		else
+			return false
+		end
+	end
+
+	-- Total power is calculated from unrounded backend values, while each visible
+	-- attribute is rounded independently. Consequently the fifth visible stat can
+	-- legitimately show 61 or 62 on an otherwise perfect 380 roll.
+	return maximum_stats == 4 and remaining_stats == 1
 end
 
 local function eligible_for_quick_discard(mod, view, item)
@@ -645,11 +943,11 @@ Features.quick_discard_candidates = function(mod, layout, view, allowed_gear_ids
 
 	local candidates = {}
 	local seen = {}
-	local offer_layout = view._offer_items_layout or {}
+	local parent_inventory = view._parent and view._parent._inventory_items
+	local source_items = type(parent_inventory) == "table" and next(parent_inventory) and parent_inventory or view._offer_items_layout or {}
 
-	for index = 1, #offer_layout do
-		local entry = offer_layout[index]
-		local item = entry and (entry.real_item or entry.item)
+	for _, entry in pairs(source_items) do
+		local item = entry and (entry.real_item or entry.item or entry)
 		local gear_id = item and item.gear_id
 
 		if gear_id and not seen[gear_id] and (not allowed_gear_ids or allowed_gear_ids[gear_id]) and eligible_for_quick_discard(mod, view, item) then
@@ -661,27 +959,54 @@ Features.quick_discard_candidates = function(mod, layout, view, allowed_gear_ids
 	return candidates
 end
 
-local function rarity_summary(candidates)
+local function summary_type_name(mod, count, singular_id, plural_id)
+	return mod:localize(count == 1 and singular_id or plural_id)
+end
+
+local function rarity_summary(mod, candidates)
 	local counts = {}
 	local lines = {}
 
 	for index = 1, #candidates do
-		local rarity = tonumber(candidates[index].rarity)
+		local item = candidates[index]
+		local rarity = tonumber(item.rarity)
 
 		if rarity then
-			counts[rarity] = (counts[rarity] or 0) + 1
+			local rarity_counts = counts[rarity] or {
+				curios = 0,
+				melee = 0,
+				ranged = 0,
+				total = 0,
+			}
+
+			rarity_counts.total = rarity_counts.total + 1
+
+			if item.item_type == "WEAPON_MELEE" then
+				rarity_counts.melee = rarity_counts.melee + 1
+			elseif item.item_type == "WEAPON_RANGED" then
+				rarity_counts.ranged = rarity_counts.ranged + 1
+			elseif item.item_type == "GADGET" then
+				rarity_counts.curios = rarity_counts.curios + 1
+			end
+
+			counts[rarity] = rarity_counts
 		end
 	end
 
 	for rarity = 1, 5 do
-		local count = counts[rarity]
+		local rarity_counts = counts[rarity]
 
-		if count then
+		if rarity_counts then
 			local settings = RaritySettings[rarity]
 			local color = settings and settings.color or Color.white(255, true)
 			local name = settings and Localize(settings.display_name) or tostring(rarity)
+			local breakdown = ""
 
-			lines[#lines + 1] = string.format("{#color(%d,%d,%d)}%d %s{#reset()}", color[2], color[3], color[4], count, name)
+			if mod:get("quick_discard_show_type_breakdown") ~= false then
+				breakdown = string.format(" (%d %s, %d %s %s %d %s)", rarity_counts.melee, summary_type_name(mod, rarity_counts.melee, "quick_discard_summary_melee_singular", "quick_discard_summary_melee_plural"), rarity_counts.ranged, summary_type_name(mod, rarity_counts.ranged, "quick_discard_summary_ranged_singular", "quick_discard_summary_ranged_plural"), mod:localize("quick_discard_summary_and"), rarity_counts.curios, summary_type_name(mod, rarity_counts.curios, "quick_discard_summary_curio_singular", "quick_discard_summary_curio_plural"))
+			end
+
+			lines[#lines + 1] = string.format("{#color(%d,%d,%d)}%d %s%s{#reset()}", color[2], color[3], color[4], rarity_counts.total, name, breakdown)
 		end
 	end
 
@@ -745,7 +1070,7 @@ Features.request_quick_discard = function(mod, layout, view)
 	end
 
 	show_popup({
-		description_text_unlocalized = tostring(#candidates) .. " " .. mod:localize("quick_discard_confirmation_description") .. "\n\n" .. rarity_summary(candidates) .. "\n\n" .. mod:localize("quick_discard_confirmation_warning"),
+		description_text_unlocalized = tostring(#candidates) .. " " .. mod:localize("quick_discard_confirmation_description") .. "\n\n" .. rarity_summary(mod, candidates) .. "\n\n" .. mod:localize("quick_discard_confirmation_warning"),
 		options = {
 			{
 				callback = confirm_discard,
@@ -842,9 +1167,15 @@ end
 local function update_quick_discard_content(mod, slot_kind, view, base_y)
 	local widgets = view._widgets_by_name
 	local discard_widget = widgets and widgets[INVENTORY_QUICK_DISCARD_ID]
+	local max_level_widget = widgets and widgets[INVENTORY_DISCARD_MAX_LEVEL_ID]
+	local melee_widget = widgets and widgets[INVENTORY_DISCARD_MELEE_ID]
+	local ranged_widget = widgets and widgets[INVENTORY_DISCARD_RANGED_ID]
+	local curio_widget = widgets and widgets[INVENTORY_DISCARD_CURIO_ID]
 	local protection_widget = widgets and widgets[INVENTORY_DISCARD_PROTECTION_ID]
+	local curio_protection_widget = widgets and widgets[INVENTORY_DISCARD_CURIO_PROTECTION_ID]
+	local curio_level_widget = widgets and widgets[INVENTORY_DISCARD_CURIO_LEVEL_ID]
 
-	if not discard_widget or not protection_widget then
+	if not discard_widget then
 		return
 	end
 
@@ -854,19 +1185,58 @@ local function update_quick_discard_content(mod, slot_kind, view, base_y)
 	local discard_content = discard_widget.content
 
 	discard_content.rarity_label = mod:localize("quick_discard_rarity_" .. rarity) .. "  ›"
-	discard_widget.style.rarity_label.text_color = table.clone(rarity_color)
+	if discard_widget.style and discard_widget.style.rarity_label then
+		discard_widget.style.rarity_label.text_color = table.clone(rarity_color)
+	end
 
-	local is_curio = slot_kind == "curio"
-	local protection_content = protection_widget.content
+	if max_level_widget then
+		max_level_widget.content.value = tostring(math.clamp(math.floor(tonumber(mod:get("quick_discard_max_item_level")) or 500), 0, 500))
+	end
 
-	protection_content.checked = is_curio and mod:get("quick_discard_protect_high_level_curios") ~= false or not is_curio and mod:get("quick_discard_protect_perfect_weapons") ~= false
-	protection_content.label = is_curio and mod:localize("quick_discard_inventory_protect_curios") .. " " .. math.floor(tonumber(mod:get("quick_discard_curio_protection_level")) or 410) or mod:localize("quick_discard_inventory_protect_weapons")
+	if melee_widget then
+		melee_widget.content.checked = mod:get("quick_discard_include_melee") ~= false
+	end
 
-	local x = is_curio and 0 or 20
+	if ranged_widget then
+		ranged_widget.content.checked = mod:get("quick_discard_include_ranged") ~= false
+	end
+
+	if curio_widget then
+		curio_widget.content.checked = mod:get("quick_discard_include_curios") ~= false
+	end
+
+	local protection_content = protection_widget and protection_widget.content
+	local curio_protection_content = curio_protection_widget and curio_protection_widget.content
+
+	if protection_content then
+		protection_content.checked = mod:get("quick_discard_protect_perfect_weapons") ~= false
+	end
+
+	if curio_protection_content then
+		curio_protection_content.checked = mod:get("quick_discard_protect_high_level_curios") ~= false
+	end
+
+	if curio_level_widget then
+		curio_level_widget.content.value = tostring(math.clamp(math.floor(tonumber(mod:get("quick_discard_curio_protection_level")) or 410), 0, 500))
+	end
+
+	local is_curio_view = slot_kind == "curio"
+	local x = is_curio_view and 0 or 20
+	local width = is_curio_view and 530 or 420
+	local compact_x = x + 15
+	local compact_width = width - 15
+	local type_gap = 8
+	local type_width = math.floor((compact_width - type_gap * 2) / 3)
 
 	set_inventory_control_position(view, INVENTORY_DISCARD_LABEL_ID, x, base_y + 70)
-	set_inventory_control_position(view, INVENTORY_QUICK_DISCARD_ID, x, base_y + 100)
-	set_inventory_control_position(view, INVENTORY_DISCARD_PROTECTION_ID, x + 15, base_y + 140)
+	set_inventory_control_position(view, INVENTORY_QUICK_DISCARD_ID, compact_x, base_y + 100)
+	set_inventory_control_position(view, INVENTORY_DISCARD_MAX_LEVEL_ID, compact_x, base_y + 136)
+	set_inventory_control_position(view, INVENTORY_DISCARD_MELEE_ID, compact_x, base_y + 170)
+	set_inventory_control_position(view, INVENTORY_DISCARD_RANGED_ID, compact_x + type_width + type_gap, base_y + 170)
+	set_inventory_control_position(view, INVENTORY_DISCARD_CURIO_ID, compact_x + (type_width + type_gap) * 2, base_y + 170)
+	set_inventory_control_position(view, INVENTORY_DISCARD_PROTECTION_ID, compact_x, base_y + 204)
+	set_inventory_control_position(view, INVENTORY_DISCARD_CURIO_PROTECTION_ID, compact_x, base_y + 238)
+	set_inventory_control_position(view, INVENTORY_DISCARD_CURIO_LEVEL_ID, compact_x, base_y + 272)
 end
 
 Features.update_inventory_sort_toggle = function(mod, layout, view)
@@ -937,6 +1307,14 @@ Features.sync_inventory_sort_setting = function(mod, layout)
 	end
 end
 
+Features.sync_quick_discard_settings = function(mod, layout)
+	for view in pairs(registered_inventory_views) do
+		if not view._destroyed then
+			Features.update_inventory_sort_toggle(mod, layout, view)
+		end
+	end
+end
+
 Features.bind_inventory_sort_toggle = function(mod, layout, view)
 	if not is_inventory_view(layout, view) then
 		return
@@ -963,16 +1341,13 @@ Features.bind_inventory_sort_toggle = function(mod, layout, view)
 	local discard_content = discard_widget and discard_widget.content
 	local rarity_hotspot = discard_content and discard_content.rarity_hotspot
 	local discard_hotspot = discard_content and discard_content.discard_hotspot
-	local protection_widget = view._widgets_by_name and view._widgets_by_name[INVENTORY_DISCARD_PROTECTION_ID]
-	local protection_content = protection_widget and protection_widget.content
-	local protection_hotspot = protection_content and protection_content.hotspot
 
 	if rarity_hotspot then
 		rarity_hotspot.pressed_callback = function()
 			local rarity = math.clamp(math.floor(tonumber(mod:get("quick_discard_rarity")) or 1), 1, 5)
 
 			mod:set("quick_discard_rarity", rarity % 5 + 1, false)
-			Features.update_inventory_sort_toggle(mod, layout, view)
+			Features.sync_quick_discard_settings(mod, layout)
 		end
 	end
 
@@ -982,14 +1357,51 @@ Features.bind_inventory_sort_toggle = function(mod, layout, view)
 		end
 	end
 
-	if protection_hotspot then
-		protection_hotspot.pressed_callback = function()
-			local setting_id = inventory_slot_kind(layout, view) == "curio" and "quick_discard_protect_high_level_curios" or "quick_discard_protect_perfect_weapons"
+	local function bind_checkbox(scenegraph_id, setting_id)
+		local setting_widget = view._widgets_by_name and view._widgets_by_name[scenegraph_id]
+		local setting_content = setting_widget and setting_widget.content
+		local setting_hotspot = setting_content and setting_content.hotspot
 
-			mod:set(setting_id, not protection_content.checked, false)
-			Features.update_inventory_sort_toggle(mod, layout, view)
+		if setting_hotspot then
+			setting_hotspot.pressed_callback = function()
+				mod:set(setting_id, not setting_content.checked, false)
+				Features.sync_quick_discard_settings(mod, layout)
+			end
 		end
 	end
+
+	local function bind_stepper(scenegraph_id, setting_id)
+		local setting_widget = view._widgets_by_name and view._widgets_by_name[scenegraph_id]
+		local setting_content = setting_widget and setting_widget.content
+		local decrease_hotspot = setting_content and setting_content.decrease_hotspot
+		local increase_hotspot = setting_content and setting_content.increase_hotspot
+		local function change_value(delta)
+			local value = math.clamp(math.floor(tonumber(mod:get(setting_id)) or 0) + delta, 0, 500)
+
+			mod:set(setting_id, value, false)
+			Features.sync_quick_discard_settings(mod, layout)
+		end
+
+		if decrease_hotspot then
+			decrease_hotspot.pressed_callback = function()
+				change_value(-10)
+			end
+		end
+
+		if increase_hotspot then
+			increase_hotspot.pressed_callback = function()
+				change_value(10)
+			end
+		end
+	end
+
+	bind_stepper(INVENTORY_DISCARD_MAX_LEVEL_ID, "quick_discard_max_item_level")
+	bind_checkbox(INVENTORY_DISCARD_MELEE_ID, "quick_discard_include_melee")
+	bind_checkbox(INVENTORY_DISCARD_RANGED_ID, "quick_discard_include_ranged")
+	bind_checkbox(INVENTORY_DISCARD_CURIO_ID, "quick_discard_include_curios")
+	bind_checkbox(INVENTORY_DISCARD_PROTECTION_ID, "quick_discard_protect_perfect_weapons")
+	bind_checkbox(INVENTORY_DISCARD_CURIO_PROTECTION_ID, "quick_discard_protect_high_level_curios")
+	bind_stepper(INVENTORY_DISCARD_CURIO_LEVEL_ID, "quick_discard_curio_protection_level")
 end
 
 Features.unregister_inventory_view = function(view)

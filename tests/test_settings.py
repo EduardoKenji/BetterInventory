@@ -91,6 +91,7 @@ def main() -> None:
 			configure_grid = function() end,
 		}
 		inventory_sort_syncs = 0
+		quick_discard_syncs = 0
 		test_features = {
 			add_inventory_sort_toggle_definition = function(_, _, definitions) return definitions end,
 			configure_inventory_sort_options = function() end,
@@ -98,6 +99,7 @@ def main() -> None:
 			resort_inventory = function() end,
 			update_inventory_sort_toggle = function() end,
 			sync_inventory_sort_setting = function() inventory_sort_syncs = inventory_sort_syncs + 1 end,
+			sync_quick_discard_settings = function() quick_discard_syncs = quick_discard_syncs + 1 end,
 			unregister_inventory_view = function() end,
 		}
 
@@ -328,6 +330,7 @@ def main() -> None:
 		"quick_discard_protect_perfect_weapons",
 		"quick_discard_protect_high_level_curios",
 		"quick_discard_curio_protection_level",
+		"quick_discard_show_type_breakdown",
     )
     entries = [
         lua.table_from(
@@ -381,15 +384,18 @@ def main() -> None:
     assert entries_by_id["curio_primary_secondary_spacing"].disabled is True
     assert entries_by_id["quick_discard_rarity"].disabled is True
     assert entries_by_id["quick_discard_curio_protection_level"].disabled is True
+    assert entries_by_id["quick_discard_show_type_breakdown"].disabled is True
 
     settings.enable_experimental_quick_discard = True
     mod.on_setting_changed("enable_experimental_quick_discard")
     assert entries_by_id["quick_discard_rarity"].disabled is False
     assert entries_by_id["quick_discard_max_item_level"].disabled is False
     assert entries_by_id["quick_discard_curio_protection_level"].disabled is False
+    assert entries_by_id["quick_discard_show_type_breakdown"].disabled is False
     settings.quick_discard_protect_high_level_curios = False
     mod.on_setting_changed("quick_discard_protect_high_level_curios")
     assert entries_by_id["quick_discard_curio_protection_level"].disabled is True
+    assert globals_.quick_discard_syncs > 0
     settings.quick_discard_protect_high_level_curios = True
     settings.enable_experimental_quick_discard = False
     mod.on_setting_changed("enable_experimental_quick_discard")
