@@ -378,6 +378,20 @@ def main() -> None:
     assert sortable_view._widgets_by_name[toggle_id].content.checked is True
     assert melee_view._widgets_by_name[toggle_id].content.checked is True
 
+    sortable_view.resorted = False
+    sortable_view._discard_items_element = lua.table_from({})
+    mod.settings.prioritize_equipped_favorites = False
+    features.sync_inventory_sort_setting(mod, layout)
+    assert sortable_view._widgets_by_name[toggle_id].content.checked is False
+    assert sortable_view.resorted is False
+
+    sortable_view._discard_items_element = None
+    features.resort_inventory(mod, layout, sortable_view)
+    assert sortable_view.resorted is True
+
+    mod.settings.prioritize_equipped_favorites = True
+    features.sync_inventory_sort_setting(mod, layout)
+
     mod.settings.quick_discard_rarity = 1
     mod.settings.quick_discard_max_item_level = 500
     mod.settings.quick_discard_include_melee = True

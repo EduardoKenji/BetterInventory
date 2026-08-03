@@ -836,6 +836,14 @@ Features.resort_inventory = function(mod, layout, view)
 		return
 	end
 
+	-- The native discard view temporarily presents a filtered copy of the inventory.
+	-- Re-presenting that copy here can leave stale layout/spacing entries when ESC
+	-- restores the full inventory. Darktide sorts the full offer layout itself while
+	-- closing discard mode, using the current wrapped comparator.
+	if view._discard_items_element then
+		return
+	end
+
 	local sort_options = view._sort_options
 	local option = sort_options and (view._selected_sort_option or sort_options[view._selected_sort_option_index or 1])
 	local sort_function = option and option.sort_function
