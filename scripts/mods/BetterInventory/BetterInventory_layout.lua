@@ -1077,7 +1077,8 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 	elseif blessing_text_mode then
 		local blessing_font_size = math.max(9, math.min(16, setting(mod, "secondary_text_font_size", 13)))
 		local blessing_line_height = blessing_ranked_text and math.max(blessing_font_size + 4, perk_rank_size + 1) or blessing_font_size + 4
-		local blessing_vertical_spacing = math.max(0, math.min(20, setting(mod, "weapon_blessing_text_vertical_spacing", 0)))
+		local blessing_vertical_spacing = math.max(0, math.min(20, setting(mod, "weapon_blessing_text_vertical_spacing", 1)))
+		local blessing_bottom_padding = math.max(0, math.min(20, setting(mod, "weapon_blessing_text_bottom_padding", 1)))
 		local blessing_line_step = blessing_line_height + blessing_vertical_spacing
 		local separate_item_level = separate_blessing_text_and_item_level(mod, configuration)
 		local favorite_offset = favorite_marker_position == "bottom_left" and not separate_item_level and 24 or 0
@@ -1091,7 +1092,7 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 		blessing_text_height = WEAPON_BLESSING_COUNT * blessing_line_height + (WEAPON_BLESSING_COUNT - 1) * blessing_vertical_spacing
 
 		for i = 1, WEAPON_BLESSING_COUNT do
-			local y_offset = -(reserved_bottom_row + 3 + (WEAPON_BLESSING_COUNT - i) * blessing_line_step)
+			local y_offset = -(reserved_bottom_row + blessing_bottom_padding + (WEAPON_BLESSING_COUNT - i) * blessing_line_step)
 
 			if blessing_ranked_text then
 				add_blessing_rank_pass(pass_template, i, {
@@ -1125,26 +1126,30 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 		if blessing_display_mode == "icons" then
 			bottom_content_height = store_footer_height + blessing_size + 6
 		elseif blessing_text_mode then
-			bottom_content_height = store_footer_height + blessing_text_height + 6
+			local blessing_bottom_padding = math.max(0, math.min(20, setting(mod, "weapon_blessing_text_bottom_padding", 1)))
+
+			bottom_content_height = store_footer_height + blessing_text_height + blessing_bottom_padding + 3
 		else
 			bottom_content_height = store_footer_height
 		end
 	elseif blessing_display_mode == "icons" then
 		bottom_content_height = math.max(bottom_content_height, blessing_size + 6)
 	elseif blessing_text_mode then
+		local blessing_bottom_padding = math.max(0, math.min(20, setting(mod, "weapon_blessing_text_bottom_padding", 1)))
+
 		if separate_blessing_text_and_item_level(mod, configuration) then
-			bottom_content_height = bottom_content_height + blessing_text_height + 6
+			bottom_content_height = bottom_content_height + blessing_text_height + blessing_bottom_padding + 3
 		else
-			bottom_content_height = math.max(bottom_content_height, blessing_text_height + 6)
+			bottom_content_height = math.max(bottom_content_height, blessing_text_height + blessing_bottom_padding + 3)
 		end
 	end
 
 	if show_weapon_perks then
 		local perk_font_size = math.max(9, math.min(16, setting(mod, "secondary_text_font_size", 13)))
 		local perk_line_height = show_weapon_perk_ranks and math.max(perk_font_size + 4, perk_rank_size + 1) or perk_font_size + 4
-		local perk_vertical_spacing = math.max(0, math.min(20, setting(mod, "weapon_perk_vertical_spacing", 0)))
+		local perk_vertical_spacing = math.max(0, math.min(20, setting(mod, "weapon_perk_vertical_spacing", 1)))
 		local perk_line_step = perk_line_height + perk_vertical_spacing
-		local section_spacing = blessing_display_mode ~= "off" and math.max(0, math.min(20, setting(mod, "weapon_perk_blessing_spacing", 2))) or 2
+		local section_spacing = blessing_display_mode ~= "off" and math.max(0, math.min(20, setting(mod, "weapon_perk_blessing_spacing", 3))) or 2
 		local perk_text_left = text_left + (show_weapon_perk_ranks and perk_rank_size + PERK_RANK_GAP or 0)
 		local perk_width = math.max(40, card_width - perk_text_left - 8)
 		local perk_text_color = configured_text_color(mod, "weapon_perk_text_color", DEFAULT_WEAPON_PERK_COLOR)
@@ -1790,8 +1795,9 @@ Layout.card_height = function(mod, configuration)
 	elseif blessing_text_mode then
 		local blessing_font_size = math.max(9, math.min(16, secondary_font_size))
 		local blessing_line_height = blessing_display_mode == "ranked_text" and math.max(blessing_font_size + 4, weapon_perk_rank_icon_size(mod) + 1) or blessing_font_size + 4
-		local blessing_vertical_spacing = math.max(0, math.min(20, setting(mod, "weapon_blessing_text_vertical_spacing", 0)))
-		local blessing_text_height = WEAPON_BLESSING_COUNT * blessing_line_height + (WEAPON_BLESSING_COUNT - 1) * blessing_vertical_spacing + 6
+		local blessing_vertical_spacing = math.max(0, math.min(20, setting(mod, "weapon_blessing_text_vertical_spacing", 1)))
+		local blessing_bottom_padding = math.max(0, math.min(20, setting(mod, "weapon_blessing_text_bottom_padding", 1)))
+		local blessing_text_height = WEAPON_BLESSING_COUNT * blessing_line_height + (WEAPON_BLESSING_COUNT - 1) * blessing_vertical_spacing + blessing_bottom_padding + 3
 
 		if configuration.store_item then
 			bottom_region_height = store_footer_height + blessing_text_height
@@ -1807,8 +1813,8 @@ Layout.card_height = function(mod, configuration)
 	if setting(mod, "show_weapon_perks", true) then
 		local perk_font_size = math.max(9, math.min(16, secondary_font_size))
 		local perk_line_height = setting(mod, "show_weapon_perk_rank_symbols", true) and math.max(perk_font_size + 4, weapon_perk_rank_icon_size(mod) + 1) or perk_font_size + 4
-		local perk_vertical_spacing = math.max(0, math.min(20, setting(mod, "weapon_perk_vertical_spacing", 0)))
-		local section_spacing = blessing_display_mode ~= "off" and math.max(0, math.min(20, setting(mod, "weapon_perk_blessing_spacing", 2))) or 2
+		local perk_vertical_spacing = math.max(0, math.min(20, setting(mod, "weapon_perk_vertical_spacing", 1)))
+		local section_spacing = blessing_display_mode ~= "off" and math.max(0, math.min(20, setting(mod, "weapon_perk_blessing_spacing", 3))) or 2
 
 		bottom_region_height = bottom_region_height + WEAPON_PERK_COUNT * perk_line_height + (WEAPON_PERK_COUNT - 1) * perk_vertical_spacing + math.max(0, section_spacing - 2)
 	end

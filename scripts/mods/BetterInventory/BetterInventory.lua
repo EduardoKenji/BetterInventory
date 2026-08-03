@@ -247,6 +247,7 @@ local function refresh_option_dependencies()
 	set_option_enabled(option_dependency_entries.weapon_blessing_text_color_g, weapon_blessing_text_enabled, mod:localize("option_requires_weapon_blessing_text"))
 	set_option_enabled(option_dependency_entries.weapon_blessing_text_color_b, weapon_blessing_text_enabled, mod:localize("option_requires_weapon_blessing_text"))
 	set_option_enabled(option_dependency_entries.weapon_blessing_text_vertical_spacing, weapon_blessing_text_enabled, mod:localize("option_requires_weapon_blessing_text"))
+	set_option_enabled(option_dependency_entries.weapon_blessing_text_bottom_padding, weapon_blessing_text_enabled, mod:localize("option_requires_weapon_blessing_text"))
 	set_option_enabled(option_dependency_entries.blessing_icon_size, weapon_blessing_icons_enabled, mod:localize("option_requires_weapon_blessings"))
 	set_option_enabled(option_dependency_entries.blessing_icon_spacing, weapon_blessing_icons_enabled, mod:localize("option_requires_weapon_blessings"))
 	set_option_enabled(option_dependency_entries.weapon_perk_blessing_spacing, weapon_perk_blessing_sections_enabled, mod:localize("option_requires_perk_and_blessing_sections"))
@@ -293,6 +294,7 @@ local function bind_option_dependencies(options_templates)
 		"weapon_blessing_text_color_g",
 		"weapon_blessing_text_color_b",
 		"weapon_blessing_text_vertical_spacing",
+		"weapon_blessing_text_bottom_padding",
 		"blessing_icon_size",
 		"blessing_icon_spacing",
 		"weapon_perk_blessing_spacing",

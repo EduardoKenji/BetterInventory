@@ -227,6 +227,12 @@ return {
 	weapon_blessing_text_vertical_spacing_tooltip = {
 		en = "Adds a clear vertical gap in pixels between the two weapon blessing text rows. Automatic card height reserves the added space.",
 	},
+	weapon_blessing_text_bottom_padding = {
+		en = "Blessing text bottom padding",
+	},
+	weapon_blessing_text_bottom_padding_tooltip = {
+		en = "Sets the clear space in pixels below the second blessing text row. When an item-level row or Armoury footer is reserved, the padding is applied above that area. Automatic card height reserves the space.",
+	},
 	weapon_blessing_text_color_preset = {
 		en = "Weapon blessing text colour preset",
 	},

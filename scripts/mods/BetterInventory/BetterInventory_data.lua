@@ -343,7 +343,17 @@ return {
 						setting_id = "weapon_blessing_text_vertical_spacing",
 						tooltip = "weapon_blessing_text_vertical_spacing_tooltip",
 						type = "numeric",
-						default_value = 0,
+						default_value = 1,
+						range = {
+							0,
+							20,
+						},
+					},
+					{
+						setting_id = "weapon_blessing_text_bottom_padding",
+						tooltip = "weapon_blessing_text_bottom_padding_tooltip",
+						type = "numeric",
+						default_value = 1,
 						range = {
 							0,
 							20,
@@ -487,7 +497,7 @@ return {
 						setting_id = "weapon_perk_vertical_spacing",
 						tooltip = "weapon_perk_vertical_spacing_tooltip",
 						type = "numeric",
-						default_value = 0,
+						default_value = 1,
 						range = {
 							0,
 							20,
@@ -497,7 +507,7 @@ return {
 						setting_id = "weapon_perk_blessing_spacing",
 						tooltip = "weapon_perk_blessing_spacing_tooltip",
 						type = "numeric",
-						default_value = 2,
+						default_value = 3,
 						range = {
 							0,
 							20,
