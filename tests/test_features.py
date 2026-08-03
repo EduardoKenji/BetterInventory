@@ -861,6 +861,10 @@ def main() -> None:
     prototype_panel = prototype_view.prototype_panel
     assert prototype_panel.visible is True
     assert prototype_panel.input_disabled is False
+    # Managed ViewElementGrid rows render through an off-screen resource target.
+    # Sharing the parent renderer makes the terminal frame visible while leaving
+    # that target blank when the inventory view already owns another masked grid.
+    assert prototype_panel.menu_settings.use_parent_ui_renderer is None
     assert len(prototype_panel.layout) == 10
     assert prototype_panel.grid_height == 320
     assert prototype_panel.pivot_x == 120

@@ -1408,7 +1408,6 @@ Features.setup_inventory_options_panel = function(mod, layout, view, ViewElement
 		scrollbar_width = 7,
 		title_height = 0,
 		use_is_focused_for_navigation = false,
-		use_parent_ui_renderer = true,
 		use_select_on_focused = false,
 		use_terminal_background = true,
 	}
