@@ -62,6 +62,10 @@ if ($layout -notmatch 'Layout\.armoury_grid_expansion' -or $layout -notmatch 'ar
 	throw "The Armoury target-width expansion contract was not found."
 }
 
+if ($layout -notmatch 'five_column_weapon_extra_width' -or $data -notmatch 'five_column_weapon_extra_width') {
+	throw "The five-column weapon width configuration was not found."
+}
+
 if ($layout -match 'Managers\.ui:(load|unload)_item_icon' -or $layout -match 'Renderer\.(create|destroy)_resource') {
 	throw "BetterInventory must not directly allocate or manage item-icon render resources."
 }

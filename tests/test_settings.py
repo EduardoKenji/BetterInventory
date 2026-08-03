@@ -20,6 +20,7 @@ def main() -> None:
     lua.execute(
         r"""
         settings = {
+			columns = 3,
             enable_grid_layout = true,
 			enable_hadron_entreat_grid = true,
 			enable_armoury_requisition_grid = true,
@@ -40,6 +41,7 @@ def main() -> None:
 			curio_display_profile = "primary",
 			show_curio_item_level = true,
 			expand_inventory_window = true,
+			five_column_weapon_extra_width = 80,
 			expand_curio_inventory_window = true,
             curio_health_color_preset = "red",
             curio_health_color_r = 235,
@@ -243,6 +245,7 @@ def main() -> None:
     option_ids = (
         "columns",
         "expand_inventory_window",
+		"five_column_weapon_extra_width",
         "expand_curio_inventory_window",
         "curio_target_card_width",
         "grid_spacing",
@@ -289,6 +292,7 @@ def main() -> None:
     assert entries_by_id["expand_armoury_requisition_window"].disabled is False
     assert entries_by_id["armoury_requisition_target_card_width"].disabled is False
     assert entries_by_id["expand_curio_inventory_window"].disabled is False
+    assert entries_by_id["five_column_weapon_extra_width"].disabled is True
     assert entries_by_id["curio_target_card_width"].disabled is False
     assert entries_by_id["weapon_perk_compression"].disabled is True
     assert entries_by_id["show_weapon_perk_rank_symbols"].disabled is True
@@ -302,6 +306,13 @@ def main() -> None:
     assert entries_by_id["blessing_icon_spacing"].disabled is False
     assert entries_by_id["curio_secondary_stat_font_size"].disabled is True
     assert entries_by_id["curio_primary_secondary_spacing"].disabled is True
+
+    settings.columns = 5
+    mod.on_setting_changed("columns")
+    assert entries_by_id["five_column_weapon_extra_width"].disabled is False
+    settings.columns = 3
+    mod.on_setting_changed("columns")
+    assert entries_by_id["five_column_weapon_extra_width"].disabled is True
 
     settings.curio_display_profile = "detailed"
     mod.on_setting_changed("curio_display_profile")
@@ -453,6 +464,7 @@ def main() -> None:
     assert defaults["armoury_requisition_target_card_width"] == 230
     assert defaults["automatic_card_height"] is True
     assert defaults["expand_curio_inventory_window"] is True
+    assert defaults["five_column_weapon_extra_width"] == 80
     assert defaults["curio_target_card_width"] == 190
     assert defaults["curio_stat_compression"] == "heavy"
     assert defaults["simplify_curio_primary_stat_text"] is True

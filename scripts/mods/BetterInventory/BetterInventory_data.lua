@@ -196,6 +196,16 @@ return {
 						default_value = true,
 					},
 					{
+						setting_id = "five_column_weapon_extra_width",
+						tooltip = "five_column_weapon_extra_width_tooltip",
+						type = "numeric",
+						default_value = 80,
+						range = {
+							0,
+							120,
+						},
+					},
+					{
 						setting_id = "expand_curio_inventory_window",
 						tooltip = "expand_curio_inventory_window_tooltip",
 						type = "checkbox",

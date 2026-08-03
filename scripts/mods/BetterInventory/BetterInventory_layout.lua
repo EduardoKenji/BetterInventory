@@ -8,6 +8,7 @@ local INVENTORY_EDGE_MARGIN = 16
 local WEAPON_ACTIONS_PANEL_WIDTH = 420
 local WEAPON_STATS_PANEL_WIDTH = 530
 local MINIMUM_CARD_WIDTH = 120
+local MAXIMUM_FIVE_COLUMN_WEAPON_EXTRA_WIDTH = 120
 local ARMOURY_MINIMUM_CARD_WIDTH = 190
 local ARMOURY_MAXIMUM_CARD_WIDTH = 230
 local BLESSING_MATERIAL = "content/ui/materials/icons/traits/traits_container"
@@ -1324,8 +1325,15 @@ Layout.grid_expansion = function(mod, current_grid_width, slot_kind)
 	end
 
 	local required_grid_width = target_card_width * columns + spacing * (columns - 1)
+	local required_expansion = math.max(0, required_grid_width - current_grid_width)
 
-	return math.max(0, required_grid_width - current_grid_width)
+	if slot_kind ~= "curio" and columns == 5 then
+		local extra_width = math.max(0, math.min(MAXIMUM_FIVE_COLUMN_WEAPON_EXTRA_WIDTH, setting(mod, "five_column_weapon_extra_width", 80)))
+
+		required_expansion = required_expansion + extra_width
+	end
+
+	return required_expansion
 end
 
 Layout.armoury_grid_expansion = function(mod, current_grid_width)
