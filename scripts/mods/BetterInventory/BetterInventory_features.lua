@@ -15,6 +15,17 @@ local INVENTORY_DISCARD_CURIO_ID = "better_inventory_discard_curio"
 local INVENTORY_DISCARD_PROTECTION_ID = "better_inventory_discard_protection"
 local INVENTORY_DISCARD_CURIO_PROTECTION_ID = "better_inventory_discard_curio_protection"
 local INVENTORY_DISCARD_CURIO_LEVEL_ID = "better_inventory_discard_curio_level"
+local INVENTORY_DISCARD_WIDGET_IDS = {
+	INVENTORY_DISCARD_LABEL_ID,
+	INVENTORY_QUICK_DISCARD_ID,
+	INVENTORY_DISCARD_MAX_LEVEL_ID,
+	INVENTORY_DISCARD_MELEE_ID,
+	INVENTORY_DISCARD_RANGED_ID,
+	INVENTORY_DISCARD_CURIO_ID,
+	INVENTORY_DISCARD_PROTECTION_ID,
+	INVENTORY_DISCARD_CURIO_PROTECTION_ID,
+	INVENTORY_DISCARD_CURIO_LEVEL_ID,
+}
 local registered_inventory_views = setmetatable({}, {
 	__mode = "k",
 })
@@ -848,34 +859,96 @@ local function item_type_is_enabled(mod, item_type)
 	return false
 end
 
-Features.is_perfect_roll_weapon = function(item)
-	if not item or not Items.is_weapon(item.item_type) then
-		return false
-	end
-
-	local base_stats = item.base_stats
+local function displayed_base_stat_values(item)
+	local base_stats = item and item.base_stats
 
 	if type(base_stats) ~= "table" or #base_stats ~= 5 then
-		return false
+		return
 	end
 
-	local total = Items.total_stats_value(item)
+	local values = {}
 
-	if total ~= 380 then
+	for index = 1, #base_stats do
+		local stat = base_stats[index]
+		local raw_value = type(stat) == "table" and tonumber(stat.value)
+
+		if not raw_value then
+			return
+		end
+
+		values[index] = math.floor(raw_value * 100 + 0.5)
+	end
+
+	return values
+end
+
+local function projected_max_base_stat_values(item)
+	local base_stats = item and item.base_stats
+
+	if type(base_stats) ~= "table" or #base_stats ~= 5 or type(Items.preview_stats_change) ~= "function" or type(Items.max_expertise_level) ~= "function" then
+		return
+	end
+
+	local current_expertise = tonumber(Items.expertise_level(item, true))
+	local maximum_expertise = tonumber(Items.max_expertise_level())
+
+	if not current_expertise or not maximum_expertise or current_expertise >= maximum_expertise then
+		return
+	end
+
+	local preview_stats = {}
+	local preview_keys = {}
+
+	for index = 1, #base_stats do
+		local stat = base_stats[index]
+		local raw_value = type(stat) == "table" and tonumber(stat.value)
+
+		if not raw_value then
+			return
+		end
+
+		local preview_key = "better_inventory_stat_" .. index
+
+		preview_keys[index] = preview_key
+		preview_stats[index] = {
+			display_name = preview_key,
+			fraction = raw_value,
+			name = stat.name or preview_key,
+		}
+	end
+
+	local projected_stats = Items.preview_stats_change(item, maximum_expertise - current_expertise, preview_stats)
+
+	if type(projected_stats) ~= "table" then
+		return
+	end
+
+	local values = {}
+
+	for index = 1, #preview_keys do
+		local projected_stat = projected_stats[preview_keys[index]]
+		local projected_value = tonumber(projected_stat and projected_stat.value)
+
+		if not projected_value then
+			return
+		end
+
+		values[index] = math.floor(projected_value + 0.5)
+	end
+
+	return values
+end
+
+local function values_are_perfect_roll(values)
+	if type(values) ~= "table" or #values ~= 5 then
 		return false
 	end
 
 	local maximum_stats = 0
 	local remaining_stats = 0
 
-	for index = 1, #base_stats do
-		local raw_value = tonumber(base_stats[index] and base_stats[index].value)
-
-		if not raw_value then
-			return false
-		end
-
-		local displayed_value = math.floor(raw_value * 100 + 0.5)
+	for index = 1, #values do
+		local displayed_value = values[index]
 
 		if displayed_value == 80 then
 			maximum_stats = maximum_stats + 1
@@ -886,10 +959,31 @@ Features.is_perfect_roll_weapon = function(item)
 		end
 	end
 
+	return maximum_stats == 4 and remaining_stats == 1
+end
+
+Features.is_perfect_roll_weapon = function(item)
+	if not item or not Items.is_weapon(item.item_type) then
+		return false
+	end
+
+	local total = Items.total_stats_value(item)
+
+	if not total or total > 380 then
+		return false
+	end
+
 	-- Total power is calculated from unrounded backend values, while each visible
 	-- attribute is rounded independently. Consequently the fifth visible stat can
 	-- legitimately show 61 or 62 on an otherwise perfect 380 roll.
-	return maximum_stats == 4 and remaining_stats == 1
+	if total == 380 and values_are_perfect_roll(displayed_base_stat_values(item)) then
+		return true
+	end
+
+	-- Rarity upgrades do not change base attributes, but expertise upgrades do.
+	-- Protect an underpowered weapon when Darktide's own maximum-expertise preview
+	-- resolves to the same four-at-80, fifth-at-least-60 distribution.
+	return values_are_perfect_roll(projected_max_base_stat_values(item))
 end
 
 local function eligible_for_quick_discard(mod, view, item)
@@ -1164,6 +1258,21 @@ local function set_inventory_control_position(view, scenegraph_id, x, y)
 	end
 end
 
+local function set_inventory_widget_visible(view, scenegraph_id, visible)
+	local widget = view._widgets_by_name and view._widgets_by_name[scenegraph_id]
+	local content = widget and widget.content
+
+	if content then
+		content.visible = visible
+	end
+end
+
+local function set_quick_discard_widgets_visible(view, visible)
+	for index = 1, #INVENTORY_DISCARD_WIDGET_IDS do
+		set_inventory_widget_visible(view, INVENTORY_DISCARD_WIDGET_IDS[index], visible)
+	end
+end
+
 local function update_quick_discard_content(mod, slot_kind, view, base_y)
 	local widgets = view._widgets_by_name
 	local discard_widget = widgets and widgets[INVENTORY_QUICK_DISCARD_ID]
@@ -1253,11 +1362,27 @@ Features.update_inventory_sort_toggle = function(mod, layout, view)
 		content.checked = mod:get("prioritize_equipped_favorites") ~= false
 	end
 
+	local native_discard_active = view._discard_items_element ~= nil
+
+	set_inventory_widget_visible(view, INVENTORY_SORT_LABEL_ID, true)
+	set_inventory_widget_visible(view, INVENTORY_SORT_TOGGLE_ID, true)
+	set_quick_discard_widgets_visible(view, not native_discard_active)
+
 	local scenegraph = view._ui_scenegraph
 	local node = scenegraph and scenegraph[INVENTORY_SORT_TOGGLE_ID]
 	local position = node and node.position
 
 	if not position then
+		return
+	end
+
+	if native_discard_active then
+		local expansion = tonumber(view._better_inventory_grid_expansion) or 0
+		local sort_x = slot_kind == "curio" and 0 or -566 - expansion
+
+		set_inventory_control_position(view, INVENTORY_SORT_LABEL_ID, sort_x, 320)
+		set_inventory_sort_toggle_position(view, position, sort_x + 15, 348)
+
 		return
 	end
 

@@ -75,7 +75,7 @@ return {
 		en = "Do not discard perfect-roll weapons",
 	},
 	quick_discard_protect_perfect_weapons_tooltip = {
-		en = "Protects true perfect rolls: total base power 380, exactly four displayed attributes at 80, and the remaining displayed attribute at 60 or above. The last value may show 61 or 62 because Darktide totals unrounded backend values.",
+		en = "Protects weapons that already have, or Darktide's maximum-expertise preview predicts will have, four displayed attributes at 80 plus one at 60 or higher. A completed raw 380 allocation can display 381 or 382 because each attribute is rounded independently.",
 	},
 	quick_discard_protect_high_level_curios = {
 		en = "Protect high-level Curios",

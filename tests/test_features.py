@@ -45,10 +45,27 @@ def main() -> None:
 			return value
 		end
 
-        TestItems = {
-            favorites = {},
+		TestItems = {
+			favorites = {},
 			expertise_level = function(item)
-				return tostring(item.level or 0)
+				return tostring(item.expertise or item.level or 0)
+			end,
+			max_expertise_level = function()
+				return 500
+			end,
+			preview_stats_change = function(item, expertise_increase, stats)
+				local result = {}
+
+				for index = 1, #stats do
+					local stat = stats[index]
+					local projected_value = item.projected_values and item.projected_values[index] or math.floor((stat.fraction or 0) * 100 + 0.5)
+
+					result[stat.display_name] = {
+						value = projected_value,
+					}
+				end
+
+				return result
 			end,
 			is_weapon = function(item_type)
 				return item_type == "WEAPON_MELEE" or item_type == "WEAPON_RANGED"
@@ -492,6 +509,36 @@ def main() -> None:
     )
     assert features.is_perfect_roll_weapon(nonperfect_380_roll) is False
 
+    underpowered_perfect_roll = lua.table_from(
+        {
+            "item_type": "WEAPON_MELEE",
+            "expertise": 330,
+            "total_stats": 280,
+            "projected_values": lua.table_from([80, 80, 80, 80, 60]),
+            "base_stats": lua.table_from(
+                [
+                    lua.table_from({"name": "damage", "value": 0.6}),
+                    lua.table_from({"name": "mobility", "value": 0.6}),
+                    lua.table_from({"name": "finesse", "value": 0.6}),
+                    lua.table_from({"name": "penetration", "value": 0.6}),
+                    lua.table_from({"name": "defence", "value": 0.4}),
+                ]
+            ),
+        }
+    )
+    assert features.is_perfect_roll_weapon(underpowered_perfect_roll) is True
+
+    underpowered_nonperfect_roll = lua.table_from(
+        {
+            "item_type": "WEAPON_RANGED",
+            "expertise": 330,
+            "total_stats": 280,
+            "projected_values": lua.table_from([80, 80, 79, 79, 62]),
+            "base_stats": underpowered_perfect_roll.base_stats,
+        }
+    )
+    assert features.is_perfect_roll_weapon(underpowered_nonperfect_roll) is False
+
     features.request_quick_discard(mod, layout, quick_discard_view)
     assert quick_discard_view._better_inventory_discard_pending is True
     assert globals_.captured_popup.title_text_unlocalized == "quick_discard_confirmation_title"
@@ -617,6 +664,25 @@ def main() -> None:
         ].content.checked
         is False
     )
+
+    quick_discard_view._better_inventory_grid_expansion = 80
+    quick_discard_view._discard_items_element = lua.table_from({})
+    features.update_inventory_sort_toggle(mod, layout, quick_discard_view)
+    assert quick_discard_view._widgets_by_name[sort_label_id].content.visible is True
+    assert quick_discard_view._widgets_by_name[toggle_id].content.visible is True
+    assert quick_discard_view._widgets_by_name["better_inventory_discard_label"].content.visible is False
+    assert quick_discard_view._widgets_by_name["better_inventory_quick_discard"].content.visible is False
+    assert quick_discard_view._widgets_by_name["better_inventory_discard_max_level"].content.visible is False
+    assert quick_discard_view._ui_scenegraph[sort_label_id].position[1] == -646
+    assert quick_discard_view._ui_scenegraph[sort_label_id].position[2] == 320
+    assert quick_discard_view._ui_scenegraph[toggle_id].position[1] == -631
+    assert quick_discard_view._ui_scenegraph[toggle_id].position[2] == 348
+
+    quick_discard_view._discard_items_element = None
+    features.update_inventory_sort_toggle(mod, layout, quick_discard_view)
+    assert quick_discard_view._widgets_by_name["better_inventory_discard_label"].content.visible is True
+    assert quick_discard_view._widgets_by_name["better_inventory_quick_discard"].content.visible is True
+    assert quick_discard_view._ui_scenegraph[sort_label_id].position[1] == 20
 
     features.unregister_inventory_view(melee_view)
     mod.settings.prioritize_equipped_favorites = False
