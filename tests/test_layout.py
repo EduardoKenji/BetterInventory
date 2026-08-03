@@ -216,9 +216,11 @@ def main() -> None:
                 show_rarity_name = false,
 				show_rarity_tag = true,
 				show_weapon_blessings = true,
+				blessing_icon_size = 34,
 				show_weapon_perks = false,
 				weapon_perk_compression = "compression",
 				show_weapon_perk_rank_symbols = false,
+				weapon_perk_rank_icon_size = 18,
 				remove_weapon_perk_plus_signs = false,
 				weapon_perk_text_color_r = 113,
 				weapon_perk_text_color_g = 126,
@@ -433,12 +435,20 @@ def main() -> None:
         {"maximum_columns": 3, "store_item": True}
     )
     assert layout.card_height(mod, store_configuration) == 114
+    mod.settings.blessing_icon_size = 48
+    assert layout.card_height(mod, store_configuration) == 128
+    mod.settings.blessing_icon_size = 34
     mod.settings.curio_display_profile = "detailed"
     assert layout.card_height(mod, store_configuration) == 133
     mod.settings.curio_display_profile = "primary"
 
     mod.settings.show_weapon_perks = True
     assert layout.card_height(mod, store_configuration) == 148
+    mod.settings.show_weapon_perk_rank_symbols = True
+    mod.settings.weapon_perk_rank_icon_size = 32
+    assert layout.card_height(mod, store_configuration) == 180
+    mod.settings.weapon_perk_rank_icon_size = 18
+    mod.settings.show_weapon_perk_rank_symbols = False
     mod.settings.show_weapon_perks = False
 
     assert layout.grid_expansion(mod, 596) == 0
@@ -904,6 +914,14 @@ def main() -> None:
         second_blessing_pass.style.offset[1] - first_blessing_pass.style.offset[1]
         == first_blessing_pass.style.size[1] + 3
     )
+    assert (first_blessing_pass.style.size[1], first_blessing_pass.style.size[2]) == (34, 34)
+
+    mod.settings.blessing_icon_size = 42
+    large_blessing_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, large_blessing_blueprint, 640)
+    large_blessing_pass = blueprint_pass(large_blessing_blueprint, "better_inventory_blessing_1")
+    assert (large_blessing_pass.style.size[1], large_blessing_pass.style.size[2]) == (42, 42)
+    mod.settings.blessing_icon_size = 34
 
     mod.settings.show_item_level_icon = False
     no_power_icon_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
@@ -1213,6 +1231,14 @@ def main() -> None:
     assert ranked_perk_widget.content.better_inventory_weapon_perk_rank_1 == "perk/rank_4"
     assert ranked_perk_widget.content.better_inventory_weapon_perk_rank_2 == "perk/rank_3"
     assert ranked_perk_rank_1.visibility_function(ranked_perk_widget.content) is True
+
+    mod.settings.weapon_perk_rank_icon_size = 30
+    large_rank_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    large_rank_size = layout.configure_item_blueprint(mod, large_rank_blueprint, 640)
+    large_rank_pass = blueprint_pass(large_rank_blueprint, "better_inventory_weapon_perk_rank_1")
+    assert (large_rank_size[1], large_rank_size[2]) == (206, 142)
+    assert (large_rank_pass.style.size[1], large_rank_pass.style.size[2]) == (30, 30)
+    mod.settings.weapon_perk_rank_icon_size = 18
 
     mod.settings.weapon_perk_compression = "compression"
     mod.settings.show_weapon_perk_rank_symbols = False

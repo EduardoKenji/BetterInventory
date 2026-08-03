@@ -256,6 +256,16 @@ return {
 						default_value = true,
 					},
 					{
+						setting_id = "blessing_icon_size",
+						tooltip = "blessing_icon_size_tooltip",
+						type = "numeric",
+						default_value = 34,
+						range = {
+							20,
+							48,
+						},
+					},
+					{
 						setting_id = "show_weapon_perks",
 						tooltip = "show_weapon_perks_tooltip",
 						type = "checkbox",
@@ -286,6 +296,16 @@ return {
 						tooltip = "show_weapon_perk_rank_symbols_tooltip",
 						type = "checkbox",
 						default_value = true,
+					},
+					{
+						setting_id = "weapon_perk_rank_icon_size",
+						tooltip = "weapon_perk_rank_icon_size_tooltip",
+						type = "numeric",
+						default_value = 18,
+						range = {
+							12,
+							32,
+						},
 					},
 					{
 						setting_id = "remove_weapon_perk_plus_signs",
@@ -496,11 +516,11 @@ return {
 						type = "checkbox",
 						default_value = false,
 					},
-					color_group("curio_secondary_text_color_group", "curio_secondary_text_color", "neutral", 220, 230, 210),
 					color_group("curio_health_color_group", "curio_health_color", "red", 235, 85, 85),
 					color_group("curio_toughness_color_group", "curio_toughness_color", "light_blue", 105, 200, 235),
 					color_group("curio_wound_color_group", "curio_wound_color", "purple", 190, 105, 230),
 					color_group("curio_stamina_color_group", "curio_stamina_color", "yellow", 235, 205, 80),
+					color_group("curio_secondary_text_color_group", "curio_secondary_text_color", "neutral", 220, 230, 210),
 				},
 			},
 		},

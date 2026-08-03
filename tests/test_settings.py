@@ -27,7 +27,11 @@ def main() -> None:
 			armoury_requisition_target_card_width = 230,
             automatic_card_height = true,
 			show_weapon_perks = false,
+			show_weapon_blessings = true,
 			show_weapon_perk_rank_symbols = false,
+			weapon_perk_rank_icon_size = 18,
+			blessing_icon_size = 34,
+			blessing_icon_spacing = 3,
 			remove_weapon_perk_plus_signs = false,
 			weapon_perk_text_color_preset = "terminal_green",
 			weapon_perk_text_color_r = 113,
@@ -232,11 +236,14 @@ def main() -> None:
 		"armoury_requisition_target_card_width",
 		"weapon_perk_compression",
 		"show_weapon_perk_rank_symbols",
+		"weapon_perk_rank_icon_size",
 		"remove_weapon_perk_plus_signs",
 		"weapon_perk_text_color_preset",
 		"weapon_perk_text_color_r",
 		"weapon_perk_text_color_g",
 		"weapon_perk_text_color_b",
+		"blessing_icon_size",
+		"blessing_icon_spacing",
 		"curio_secondary_stat_font_size",
 		"curio_primary_secondary_spacing",
     )
@@ -267,11 +274,14 @@ def main() -> None:
     assert entries_by_id["curio_target_card_width"].disabled is False
     assert entries_by_id["weapon_perk_compression"].disabled is True
     assert entries_by_id["show_weapon_perk_rank_symbols"].disabled is True
+    assert entries_by_id["weapon_perk_rank_icon_size"].disabled is True
     assert entries_by_id["remove_weapon_perk_plus_signs"].disabled is True
     assert entries_by_id["weapon_perk_text_color_preset"].disabled is True
     assert entries_by_id["weapon_perk_text_color_r"].disabled is True
     assert entries_by_id["weapon_perk_text_color_g"].disabled is True
     assert entries_by_id["weapon_perk_text_color_b"].disabled is True
+    assert entries_by_id["blessing_icon_size"].disabled is False
+    assert entries_by_id["blessing_icon_spacing"].disabled is False
     assert entries_by_id["curio_secondary_stat_font_size"].disabled is True
     assert entries_by_id["curio_primary_secondary_spacing"].disabled is True
 
@@ -288,20 +298,37 @@ def main() -> None:
     mod.on_setting_changed("show_weapon_perks")
     assert entries_by_id["weapon_perk_compression"].disabled is False
     assert entries_by_id["show_weapon_perk_rank_symbols"].disabled is False
+    assert entries_by_id["weapon_perk_rank_icon_size"].disabled is True
     assert entries_by_id["remove_weapon_perk_plus_signs"].disabled is False
     assert entries_by_id["weapon_perk_text_color_preset"].disabled is False
     assert entries_by_id["weapon_perk_text_color_r"].disabled is False
     assert entries_by_id["weapon_perk_text_color_g"].disabled is False
     assert entries_by_id["weapon_perk_text_color_b"].disabled is False
+    settings.show_weapon_perk_rank_symbols = True
+    mod.on_setting_changed("show_weapon_perk_rank_symbols")
+    assert entries_by_id["weapon_perk_rank_icon_size"].disabled is False
+    settings.show_weapon_perk_rank_symbols = False
+    mod.on_setting_changed("show_weapon_perk_rank_symbols")
+    assert entries_by_id["weapon_perk_rank_icon_size"].disabled is True
     settings.show_weapon_perks = False
     mod.on_setting_changed("show_weapon_perks")
     assert entries_by_id["weapon_perk_compression"].disabled is True
     assert entries_by_id["show_weapon_perk_rank_symbols"].disabled is True
+    assert entries_by_id["weapon_perk_rank_icon_size"].disabled is True
     assert entries_by_id["remove_weapon_perk_plus_signs"].disabled is True
     assert entries_by_id["weapon_perk_text_color_preset"].disabled is True
     assert entries_by_id["weapon_perk_text_color_r"].disabled is True
     assert entries_by_id["weapon_perk_text_color_g"].disabled is True
     assert entries_by_id["weapon_perk_text_color_b"].disabled is True
+
+    settings.show_weapon_blessings = False
+    mod.on_setting_changed("show_weapon_blessings")
+    assert entries_by_id["blessing_icon_size"].disabled is True
+    assert entries_by_id["blessing_icon_spacing"].disabled is True
+    settings.show_weapon_blessings = True
+    mod.on_setting_changed("show_weapon_blessings")
+    assert entries_by_id["blessing_icon_size"].disabled is False
+    assert entries_by_id["blessing_icon_spacing"].disabled is False
 
     settings.expand_armoury_requisition_window = False
     mod.on_setting_changed("expand_armoury_requisition_window")
@@ -334,7 +361,13 @@ def main() -> None:
     mod.on_setting_changed("enable_grid_layout")
 
     for option_id in option_ids:
+        if option_id in {"blessing_icon_size", "blessing_icon_spacing"}:
+            continue
+
         assert entries_by_id[option_id].disabled is True
+
+    assert entries_by_id["blessing_icon_size"].disabled is False
+    assert entries_by_id["blessing_icon_spacing"].disabled is False
 
     data = lua.execute(DATA_PATH.read_text(encoding="utf-8"))
     localization = lua.execute(LOCALIZATION_PATH.read_text(encoding="utf-8"))
@@ -380,6 +413,17 @@ def main() -> None:
         "weapon_perk_text_color_b",
     }.issubset(card_content_ids)
 
+    curio_content_group = next(
+        data.options.widgets[index]
+        for index in range(1, len(data.options.widgets) + 1)
+        if data.options.widgets[index].setting_id == "curio_content_group"
+    )
+    curio_content_ids = [
+        curio_content_group.sub_widgets[index].setting_id
+        for index in range(1, len(curio_content_group.sub_widgets) + 1)
+    ]
+    assert curio_content_ids.index("curio_secondary_text_color_group") > curio_content_ids.index("curio_stamina_color_group")
+
     assert defaults["enable_grid_layout"] is True
     assert defaults["enable_hadron_entreat_grid"] is True
     assert defaults["enable_armoury_requisition_grid"] is True
@@ -392,11 +436,13 @@ def main() -> None:
     assert defaults["simplify_curio_primary_stat_text"] is True
     assert defaults["remove_curio_stat_plus_signs"] is False
     assert defaults["blessing_icon_spacing"] == 3
+    assert defaults["blessing_icon_size"] == 34
     assert defaults["highlight_equipped_items"] is True
     assert defaults["show_weapon_blessings"] is True
     assert defaults["show_weapon_perks"] is True
     assert defaults["weapon_perk_compression"] == "heavy"
     assert defaults["show_weapon_perk_rank_symbols"] is True
+    assert defaults["weapon_perk_rank_icon_size"] == 18
     assert defaults["remove_weapon_perk_plus_signs"] is False
     assert defaults["curio_display_profile"] == "detailed"
     assert defaults["curio_primary_stat_font_size"] == 16

@@ -113,6 +113,12 @@ return {
 	option_requires_weapon_perks = {
 		en = "Enable weapon perk text to use this option.",
 	},
+	option_requires_perk_rank_symbols = {
+		en = "Enable perk level symbols to set their size.",
+	},
+	option_requires_weapon_blessings = {
+		en = "Enable weapon blessing symbols to use this option.",
+	},
 	option_requires_detailed_curio_profile = {
 		en = "Select the All four stats Curio profile to use this option.",
 	},
@@ -146,6 +152,12 @@ return {
 	show_weapon_blessings_tooltip = {
 		en = "Shows up to two blessing symbols on weapon cards. Enabled by default; Darktide's ranked frames include the blessing level.",
 	},
+	blessing_icon_size = {
+		en = "Blessing icon size",
+	},
+	blessing_icon_size_tooltip = {
+		en = "Sets the width and height of each weapon blessing symbol in pixels. Automatic card height grows when larger symbols need more room.",
+	},
 	show_weapon_perks = {
 		en = "Show weapon perk text",
 	},
@@ -172,6 +184,12 @@ return {
 	},
 	show_weapon_perk_rank_symbols_tooltip = {
 		en = "Shows Darktide's native ranked perk symbol to the left of each visible weapon perk line. Enabled by default.",
+	},
+	weapon_perk_rank_icon_size = {
+		en = "Perk level symbol size",
+	},
+	weapon_perk_rank_icon_size_tooltip = {
+		en = "Sets the width and height of each perk level symbol in pixels. Automatic card height grows when larger symbols need more room.",
 	},
 	remove_weapon_perk_plus_signs = {
 		en = "Remove + from weapon perk text",

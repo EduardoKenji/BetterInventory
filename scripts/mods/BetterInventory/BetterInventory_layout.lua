@@ -12,7 +12,8 @@ local ARMOURY_MINIMUM_CARD_WIDTH = 190
 local ARMOURY_MAXIMUM_CARD_WIDTH = 230
 local BLESSING_MATERIAL = "content/ui/materials/icons/traits/traits_container"
 local DEFAULT_PERK_RANK_MATERIAL = "content/ui/materials/icons/perks/perk_level_01"
-local PERK_RANK_SIZE = 18
+local DEFAULT_PERK_RANK_SIZE = 18
+local DEFAULT_BLESSING_ICON_SIZE = 34
 local PERK_RANK_GAP = 3
 local STORE_FOOTER_HEIGHT = 34
 local WEAPON_PERK_COUNT = 2
@@ -327,6 +328,14 @@ end
 
 local function curio_primary_secondary_spacing(mod)
 	return math.max(0, math.min(20, setting(mod, "curio_primary_secondary_spacing", 5)))
+end
+
+local function blessing_icon_size(mod)
+	return math.max(20, math.min(48, setting(mod, "blessing_icon_size", DEFAULT_BLESSING_ICON_SIZE)))
+end
+
+local function weapon_perk_rank_icon_size(mod)
+	return math.max(12, math.min(32, setting(mod, "weapon_perk_rank_icon_size", DEFAULT_PERK_RANK_SIZE)))
 end
 
 local function item_from_element(element)
@@ -735,8 +744,8 @@ local function add_weapon_perk_rank_pass(pass_template, index, options)
 			vertical_alignment = "bottom",
 			offset = options.offset,
 			size = {
-				PERK_RANK_SIZE,
-				PERK_RANK_SIZE,
+				options.size,
+				options.size,
 			},
 			color = {
 				255,
@@ -891,9 +900,10 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 	local expertise_font_size = math.max(10, math.min(28, setting(mod, "expertise_font_size", 20)))
 	local bottom_content_height = math.max(30, expertise_font_size + 10)
 	local blessing_size
+	local perk_rank_size = weapon_perk_rank_icon_size(mod)
 
 	if show_weapon_blessings then
-		blessing_size = card_width <= 140 and 28 or 34
+		blessing_size = blessing_icon_size(mod)
 		local blessing_gap = math.max(0, math.min(20, setting(mod, "blessing_icon_spacing", 3)))
 		local blessing_spacing = blessing_size + blessing_gap
 		local blessing_left = text_left + (favorite_marker_position == "bottom_left" and 24 or 0)
@@ -912,8 +922,8 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 
 	if show_weapon_perks then
 		local perk_font_size = math.max(9, math.min(16, setting(mod, "secondary_text_font_size", 13)))
-		local perk_line_height = show_weapon_perk_ranks and math.max(perk_font_size + 4, PERK_RANK_SIZE + 1) or perk_font_size + 4
-		local perk_text_left = text_left + (show_weapon_perk_ranks and PERK_RANK_SIZE + PERK_RANK_GAP or 0)
+		local perk_line_height = show_weapon_perk_ranks and math.max(perk_font_size + 4, perk_rank_size + 1) or perk_font_size + 4
+		local perk_text_left = text_left + (show_weapon_perk_ranks and perk_rank_size + PERK_RANK_GAP or 0)
 		local perk_width = math.max(40, card_width - perk_text_left - 8)
 		local perk_text_color = configured_text_color(mod, "weapon_perk_text_color", DEFAULT_WEAPON_PERK_COLOR)
 
@@ -922,6 +932,7 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 
 			if show_weapon_perk_ranks then
 				add_weapon_perk_rank_pass(pass_template, i, {
+					size = perk_rank_size,
 					offset = {
 						text_left,
 						y_offset,
@@ -1484,10 +1495,12 @@ Layout.card_height = function(mod, configuration)
 	local store_footer_height = configuration.store_item and STORE_FOOTER_HEIGHT or 0
 
 	if setting(mod, "show_weapon_blessings", true) then
+		local configured_blessing_size = blessing_icon_size(mod)
+
 		if configuration.store_item then
-			bottom_region_height = store_footer_height + 40
+			bottom_region_height = store_footer_height + configured_blessing_size + 6
 		else
-			bottom_region_height = math.max(bottom_region_height, 40)
+			bottom_region_height = math.max(bottom_region_height, configured_blessing_size + 6)
 		end
 	elseif configuration.store_item then
 		bottom_region_height = math.max(bottom_region_height, store_footer_height)
@@ -1495,7 +1508,7 @@ Layout.card_height = function(mod, configuration)
 
 	if setting(mod, "show_weapon_perks", true) then
 		local perk_font_size = math.max(9, math.min(16, secondary_font_size))
-		local perk_line_height = setting(mod, "show_weapon_perk_rank_symbols", true) and math.max(perk_font_size + 4, PERK_RANK_SIZE + 1) or perk_font_size + 4
+		local perk_line_height = setting(mod, "show_weapon_perk_rank_symbols", true) and math.max(perk_font_size + 4, weapon_perk_rank_icon_size(mod) + 1) or perk_font_size + 4
 
 		bottom_region_height = bottom_region_height + WEAPON_PERK_COUNT * perk_line_height
 	end
