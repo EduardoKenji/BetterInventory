@@ -249,19 +249,19 @@ return {
 						setting_id = "show_weapon_blessings",
 						tooltip = "show_weapon_blessings_tooltip",
 						type = "checkbox",
-						default_value = false,
+						default_value = true,
 					},
 					{
 						setting_id = "show_weapon_perks",
 						tooltip = "show_weapon_perks_tooltip",
 						type = "checkbox",
-						default_value = false,
+						default_value = true,
 					},
 					{
 						setting_id = "weapon_perk_compression",
 						tooltip = "weapon_perk_compression_tooltip",
 						type = "dropdown",
-						default_value = "compression",
+						default_value = "heavy",
 						options = {
 							{
 								text = "weapon_perk_compression_none",
@@ -281,7 +281,7 @@ return {
 						setting_id = "show_weapon_perk_rank_symbols",
 						tooltip = "show_weapon_perk_rank_symbols_tooltip",
 						type = "checkbox",
-						default_value = false,
+						default_value = true,
 					},
 					{
 						setting_id = "remove_weapon_perk_plus_signs",
@@ -361,7 +361,7 @@ return {
 						setting_id = "show_item_level_icon",
 						tooltip = "show_item_level_icon_tooltip",
 						type = "checkbox",
-						default_value = true,
+						default_value = false,
 					},
 				},
 			},
@@ -373,7 +373,7 @@ return {
 						setting_id = "curio_display_profile",
 						tooltip = "curio_display_profile_tooltip",
 						type = "dropdown",
-						default_value = "primary",
+						default_value = "detailed",
 						options = {
 							{
 								text = "curio_display_profile_primary",
@@ -389,7 +389,7 @@ return {
 						setting_id = "curio_primary_stat_font_size",
 						tooltip = "curio_primary_stat_font_size_tooltip",
 						type = "numeric",
-						default_value = 14,
+						default_value = 16,
 						range = {
 							9,
 							20,

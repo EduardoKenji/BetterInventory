@@ -302,7 +302,7 @@ local function setting(mod, setting_id, fallback)
 end
 
 local function curio_primary_font_size(mod)
-	return math.max(9, math.min(20, setting(mod, "curio_primary_stat_font_size", 14)))
+	return math.max(9, math.min(20, setting(mod, "curio_primary_stat_font_size", 16)))
 end
 
 local function curio_secondary_font_size(mod)
@@ -560,7 +560,7 @@ local function populate_card_content(mod, widget, element, show_weapon_blessings
 
 		if show_weapon_perks then
 			local perks = item.perks
-			local show_perk_rank = setting(mod, "show_weapon_perk_rank_symbols", false)
+			local show_perk_rank = setting(mod, "show_weapon_perk_rank_symbols", true)
 			local remove_perk_plus_sign = setting(mod, "remove_weapon_perk_plus_signs", false)
 
 			for i = 1, math.min(WEAPON_PERK_COUNT, perks and #perks or 0) do
@@ -811,10 +811,10 @@ end
 local function add_custom_content_passes(mod, pass_template, card_width, text_left, base_text_style, configuration)
 	configuration = configuration or {}
 
-	local show_weapon_blessings = setting(mod, "show_weapon_blessings", false)
-	local show_weapon_perks = setting(mod, "show_weapon_perks", false)
-	local show_weapon_perk_ranks = show_weapon_perks and setting(mod, "show_weapon_perk_rank_symbols", false)
-	local detailed_curio_profile = setting(mod, "curio_display_profile", "primary") == "detailed"
+	local show_weapon_blessings = setting(mod, "show_weapon_blessings", true)
+	local show_weapon_perks = setting(mod, "show_weapon_perks", true)
+	local show_weapon_perk_ranks = show_weapon_perks and setting(mod, "show_weapon_perk_rank_symbols", true)
+	local detailed_curio_profile = setting(mod, "curio_display_profile", "detailed") == "detailed"
 	local favorite_marker_position = setting(mod, "favorite_marker_position", "above_rating")
 	local store_footer_height = configuration.store_item and STORE_FOOTER_HEIGHT or 0
 	local expertise_font_size = math.max(10, math.min(28, setting(mod, "expertise_font_size", 20)))
@@ -1152,10 +1152,10 @@ local function configure_card_content(mod, item_blueprint)
 	local preferred_font_size = setting(mod, "item_name_font_size", 16)
 	local minimum_font_size = math.max(8, math.min(20, setting(mod, "minimum_item_name_font_size", 12)))
 	local append_mark_to_name = setting(mod, "append_mark_to_name", true)
-	local show_weapon_blessings = setting(mod, "show_weapon_blessings", false)
-	local show_weapon_perks = setting(mod, "show_weapon_perks", false)
-	local weapon_perk_compression = setting(mod, "weapon_perk_compression", "compression")
-	local show_item_level_icon = setting(mod, "show_item_level_icon", true)
+	local show_weapon_blessings = setting(mod, "show_weapon_blessings", true)
+	local show_weapon_perks = setting(mod, "show_weapon_perks", true)
+	local weapon_perk_compression = setting(mod, "weapon_perk_compression", "heavy")
+	local show_item_level_icon = setting(mod, "show_item_level_icon", false)
 	local compression_mode = setting(mod, "curio_stat_compression", "heavy")
 	local simplify_curio_primary = setting(mod, "simplify_curio_primary_stat_text", true)
 
@@ -1377,7 +1377,7 @@ Layout.card_height = function(mod, configuration)
 	local required_height = 110
 	local store_footer_height = configuration.store_item and STORE_FOOTER_HEIGHT or 0
 
-	if setting(mod, "show_weapon_blessings", false) then
+	if setting(mod, "show_weapon_blessings", true) then
 		if configuration.store_item then
 			bottom_region_height = store_footer_height + 40
 		else
@@ -1387,9 +1387,9 @@ Layout.card_height = function(mod, configuration)
 		bottom_region_height = math.max(bottom_region_height, store_footer_height)
 	end
 
-	if setting(mod, "show_weapon_perks", false) then
+	if setting(mod, "show_weapon_perks", true) then
 		local perk_font_size = math.max(9, math.min(16, secondary_font_size))
-		local perk_line_height = setting(mod, "show_weapon_perk_rank_symbols", false) and math.max(perk_font_size + 4, PERK_RANK_SIZE + 1) or perk_font_size + 4
+		local perk_line_height = setting(mod, "show_weapon_perk_rank_symbols", true) and math.max(perk_font_size + 4, PERK_RANK_SIZE + 1) or perk_font_size + 4
 
 		bottom_region_height = bottom_region_height + WEAPON_PERK_COUNT * perk_line_height
 	end
@@ -1406,7 +1406,7 @@ Layout.card_height = function(mod, configuration)
 
 	required_height = math.max(required_height, 7 + name_row_height + optional_rows * secondary_row_height + bottom_region_height + 8)
 
-	if setting(mod, "curio_display_profile", "primary") == "detailed" then
+	if setting(mod, "curio_display_profile", "detailed") == "detailed" then
 		local primary_line_height = curio_primary_font_size(mod) + 5
 		local secondary_line_height = curio_secondary_font_size(mod) + 5
 		local primary_secondary_spacing = curio_primary_secondary_spacing(mod)
@@ -1457,7 +1457,7 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 	})
 	local card_width = item_size[1] or grid_width
 	local pass_template = table.clone(item_blueprint.pass_template)
-	local detailed_curio_profile = setting(mod, "curio_display_profile", "primary") == "detailed"
+	local detailed_curio_profile = setting(mod, "curio_display_profile", "detailed") == "detailed"
 	local show_pattern_mark = setting(mod, "show_pattern_mark", false)
 	local show_curio_quality = setting(mod, "show_curio_quality", false)
 
@@ -1522,7 +1522,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 	local text_width = math.max(50, card_width - text_left - 36)
 	local darkness = math.max(0, math.min(85, setting(mod, "icon_darkness", 25)))
 	local icon_brightness = math.floor(255 * (1 - darkness / 100))
-	local curio_display_profile = setting(mod, "curio_display_profile", "primary")
+	local curio_display_profile = setting(mod, "curio_display_profile", "detailed")
 	local detailed_curio_profile = curio_display_profile == "detailed"
 	local show_curio_quality = setting(mod, "show_curio_quality", false)
 

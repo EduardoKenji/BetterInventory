@@ -327,14 +327,16 @@ def main() -> None:
     assert defaults["simplify_curio_primary_stat_text"] is True
     assert defaults["remove_curio_stat_plus_signs"] is False
     assert defaults["blessing_icon_spacing"] == 3
-    assert defaults["show_weapon_perks"] is False
-    assert defaults["weapon_perk_compression"] == "compression"
-    assert defaults["show_weapon_perk_rank_symbols"] is False
+    assert defaults["show_weapon_blessings"] is True
+    assert defaults["show_weapon_perks"] is True
+    assert defaults["weapon_perk_compression"] == "heavy"
+    assert defaults["show_weapon_perk_rank_symbols"] is True
     assert defaults["remove_weapon_perk_plus_signs"] is False
-    assert defaults["curio_primary_stat_font_size"] == 14
+    assert defaults["curio_display_profile"] == "detailed"
+    assert defaults["curio_primary_stat_font_size"] == 16
     assert defaults["curio_secondary_stat_font_size"] == 13
     assert defaults["curio_primary_secondary_spacing"] == 3
-    assert defaults["show_item_level_icon"] is True
+    assert defaults["show_item_level_icon"] is False
     assert defaults["curio_health_color_preset"] == "red"
     assert defaults["curio_toughness_color_preset"] == "light_blue"
     assert defaults["curio_wound_color_preset"] == "purple"

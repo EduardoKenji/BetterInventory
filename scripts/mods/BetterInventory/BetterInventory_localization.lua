@@ -144,19 +144,19 @@ return {
 		en = "Show weapon blessing symbols",
 	},
 	show_weapon_blessings_tooltip = {
-		en = "Shows up to two blessing symbols on weapon cards. Darktide's ranked frames include the blessing level.",
+		en = "Shows up to two blessing symbols on weapon cards. Enabled by default; Darktide's ranked frames include the blessing level.",
 	},
 	show_weapon_perks = {
 		en = "Show weapon perk text",
 	},
 	show_weapon_perks_tooltip = {
-		en = "Shows both weapon perks as dedicated single-line rows. Automatic card height reserves the required space; narrow text shrinks and then uses an ellipsis instead of wrapping.",
+		en = "Shows both weapon perks as dedicated single-line rows. Enabled by default; automatic card height reserves the required space, and narrow text shrinks before using an ellipsis.",
 	},
 	weapon_perk_compression = {
 		en = "Weapon perk text compression",
 	},
 	weapon_perk_compression_tooltip = {
-		en = "Compression uses readable shorter labels. Heavy Compression is intended for four- and five-column cards. Unknown perk identifiers retain Darktide's original localized text.",
+		en = "Heavy Compression is the default and is intended for narrow cards. Compression uses milder labels; unknown perk identifiers retain Darktide's original localized text.",
 	},
 	weapon_perk_compression_none = {
 		en = "No compression",
@@ -171,7 +171,7 @@ return {
 		en = "Show perk level symbols",
 	},
 	show_weapon_perk_rank_symbols_tooltip = {
-		en = "Shows Darktide's native ranked perk symbol to the left of each visible weapon perk line.",
+		en = "Shows Darktide's native ranked perk symbol to the left of each visible weapon perk line. Enabled by default.",
 	},
 	remove_weapon_perk_plus_signs = {
 		en = "Remove + from weapon perk text",
@@ -219,7 +219,7 @@ return {
 		en = "Show item power icon",
 	},
 	show_item_level_icon_tooltip = {
-		en = "Shows Darktide's power glyph to the left of the item power number. Disable this to keep the number and remove only the glyph.",
+		en = "Shows Darktide's power glyph to the left of the item power number. Disabled by default; the numeric power value is always retained.",
 	},
 	curio_content_group = {
 		en = "Curio content",
@@ -228,7 +228,7 @@ return {
 		en = "Curio display profile",
 	},
 	curio_display_profile_tooltip = {
-		en = "Primary stat keeps the Curio name and power while adding its innate stat. The All four stats profile replaces those labels with the innate stat and three perks.",
+		en = "All four stats is the default and shows the innate stat plus three perks. Primary stat keeps the Curio name and power while adding only its innate stat.",
 	},
 	curio_display_profile_primary = {
 		en = "Primary stat",
