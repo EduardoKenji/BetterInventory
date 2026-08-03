@@ -1,22 +1,60 @@
 local Items = require("scripts/utilities/items")
+local MasterItems = require("scripts/backend/master_items")
+local ProfileUtils = require("scripts/utilities/profile_utils")
 local RaritySettings = require("scripts/settings/item/rarity_settings")
 local UIWidget = require("scripts/managers/ui/ui_widget")
 local UISoundEvents = require("scripts/settings/ui/ui_sound_events")
 
 local Features = {}
 local INVENTORY_SORT_TOGGLE_ID = "better_inventory_sort_priority"
+local INVENTORY_PERFECT_SORT_TOGGLE_ID = "better_inventory_perfect_sort_priority"
 local INVENTORY_SORT_LABEL_ID = "better_inventory_sort_label"
 local INVENTORY_DISCARD_LABEL_ID = "better_inventory_discard_label"
 local INVENTORY_DISCARD_MODE_ID = "better_inventory_discard_mode"
 local INVENTORY_DISCARD_SKIP_CONFIRMATION_ID = "better_inventory_discard_skip_confirmation"
 local INVENTORY_QUICK_DISCARD_ID = "better_inventory_quick_discard"
 local INVENTORY_DISCARD_MAX_LEVEL_ID = "better_inventory_discard_max_level"
+local INVENTORY_DISCARD_EQUIPPED_LEVEL_PROTECTION_ID = "better_inventory_discard_equipped_level_protection"
 local INVENTORY_DISCARD_MELEE_ID = "better_inventory_discard_melee"
 local INVENTORY_DISCARD_RANGED_ID = "better_inventory_discard_ranged"
 local INVENTORY_DISCARD_CURIO_ID = "better_inventory_discard_curio"
 local INVENTORY_DISCARD_PROTECTION_ID = "better_inventory_discard_protection"
 local INVENTORY_DISCARD_CURIO_PROTECTION_ID = "better_inventory_discard_curio_protection"
 local INVENTORY_DISCARD_CURIO_LEVEL_ID = "better_inventory_discard_curio_level"
+local INVENTORY_OPTIONS_PANEL_REFERENCE = "better_inventory_options_panel"
+local INVENTORY_OPTIONS_PANEL_MIN_HEIGHT = 120
+local INVENTORY_OPTIONS_PANEL_DEFAULT_WIDTH = 445
+local INVENTORY_OPTIONS_PANEL_DEFAULT_MAX_HEIGHT = 360
+local INVENTORY_OPTIONS_PANEL_DEFAULT_ROW_SPACING = 8
+local INVENTORY_OPTIONS_PANEL_DEFAULT_VERTICAL_PADDING = 10
+local INVENTORY_OPTIONS_PANEL_DEFAULT_HORIZONTAL_PADDING = 12
+local INVENTORY_CURIO_NATIVE_WIDTH = 530
+local INVENTORY_CURIO_NATIVE_GRID_WIDTH = 518
+local INVENTORY_CURIO_NATIVE_HEADER_HEIGHT = 250
+local INVENTORY_CURIO_NATIVE_ICON_HEIGHT = 180
+
+local function numeric_setting(mod, setting_id, default_value, minimum, maximum)
+	local value = tonumber(mod:get(setting_id)) or default_value
+
+	return math.clamp(math.floor(value + 0.5), minimum, maximum)
+end
+
+local function inventory_options_panel_geometry(mod)
+	local width = numeric_setting(mod, "inventory_options_panel_width", INVENTORY_OPTIONS_PANEL_DEFAULT_WIDTH, 360, 560)
+	local left = numeric_setting(mod, "inventory_options_panel_padding_left", INVENTORY_OPTIONS_PANEL_DEFAULT_HORIZONTAL_PADDING, 0, 24)
+	local right = numeric_setting(mod, "inventory_options_panel_padding_right", INVENTORY_OPTIONS_PANEL_DEFAULT_HORIZONTAL_PADDING, 0, 24)
+
+	return {
+		bottom = numeric_setting(mod, "inventory_options_panel_padding_bottom", INVENTORY_OPTIONS_PANEL_DEFAULT_VERTICAL_PADDING, 0, 24),
+		content_width = math.max(width - left - right, 280),
+		left = left,
+		max_height = numeric_setting(mod, "inventory_options_panel_max_height", INVENTORY_OPTIONS_PANEL_DEFAULT_MAX_HEIGHT, 220, 500),
+		right = right,
+		row_spacing = numeric_setting(mod, "inventory_options_panel_row_spacing", INVENTORY_OPTIONS_PANEL_DEFAULT_ROW_SPACING, 0, 16),
+		top = numeric_setting(mod, "inventory_options_panel_padding_top", INVENTORY_OPTIONS_PANEL_DEFAULT_VERTICAL_PADDING, 0, 24),
+		width = width,
+	}
+end
 local INVENTORY_DISCARD_WIDGET_IDS = {
 	INVENTORY_DISCARD_LABEL_ID,
 	INVENTORY_DISCARD_MODE_ID,
@@ -384,9 +422,9 @@ local function section_label_passes()
 	}
 end
 
-local function compact_selector_passes(width)
+local function compact_selector_passes(width, fixed_selector_width)
 	local selector_x = 64
-	local selector_width = width - selector_x
+	local selector_width = math.min(fixed_selector_width or width - selector_x, width - selector_x)
 
 	return {
 		{
@@ -712,6 +750,192 @@ local function compact_stepper_passes(width)
 	}
 end
 
+local function panel_sub_label_passes(width)
+	return {
+		{
+			pass_type = "text",
+			style_id = "label",
+			value_id = "label",
+			style = {
+				font_size = 15,
+				font_type = "proxima_nova_bold",
+				text_horizontal_alignment = "left",
+				text_vertical_alignment = "center",
+				text_color = Color.terminal_text_body(255, true),
+				size = {
+					width,
+					26,
+				},
+			},
+		},
+	}
+end
+
+local function panel_section_header_passes(width)
+	local height = 40
+
+	return {
+		{
+			content_id = "hotspot",
+			pass_type = "hotspot",
+			content = {
+				on_hover_sound = UISoundEvents.default_mouse_hover,
+				on_pressed_sound = UISoundEvents.default_click,
+			},
+		},
+		{
+			pass_type = "rect",
+			style_id = "background",
+			style = {
+				color = Color.terminal_background(210, true),
+				offset = {
+					0,
+					0,
+					1,
+				},
+				size = {
+					width,
+					height,
+				},
+			},
+		},
+		{
+			pass_type = "texture",
+			style_id = "frame",
+			value = "content/ui/materials/frames/frame_tile_2px",
+			style = {
+				color = Color.terminal_frame(255, true),
+				offset = {
+					0,
+					0,
+					2,
+				},
+				size = {
+					width,
+					height,
+				},
+			},
+		},
+		{
+			pass_type = "text",
+			style_id = "label",
+			value_id = "label",
+			style = {
+				font_size = 18,
+				font_type = "proxima_nova_bold",
+				text_horizontal_alignment = "left",
+				text_vertical_alignment = "center",
+				text_color = Color.terminal_text_header(255, true),
+				offset = {
+					10,
+					0,
+					3,
+				},
+				size = {
+					width - 50,
+					height,
+				},
+			},
+		},
+		{
+			pass_type = "text",
+			style_id = "chevron",
+			value_id = "chevron",
+			style = {
+				font_size = 18,
+				font_type = "proxima_nova_bold",
+				horizontal_alignment = "right",
+				text_horizontal_alignment = "center",
+				text_vertical_alignment = "center",
+				text_color = Color.terminal_text_header(255, true),
+				offset = {
+					0,
+					0,
+					3,
+				},
+				size = {
+					40,
+					height,
+				},
+			},
+		},
+	}
+end
+
+local function append_panel_checkbox_passes(target, prefix, x, width, checked_id, label_id, optional_visibility_id)
+	local source = compact_checkbox_passes()
+
+	for index = 1, #source do
+		local pass = table.clone(source[index])
+		local original_style_id = pass.style_id
+
+		if pass.content_id == "hotspot" then
+			pass.content_id = prefix .. "_hotspot"
+		end
+
+		if original_style_id then
+			pass.style_id = prefix .. "_" .. original_style_id
+		end
+
+		if pass.value_id == "label" then
+			pass.value_id = label_id
+		end
+
+		local style = pass.style or {}
+		local offset = style.offset or {
+			0,
+			0,
+			0,
+		}
+
+		offset[1] = (offset[1] or 0) + x
+		-- Embedded controls share a widget with the selector to their left. Keep
+		-- their input and draw passes above that selector instead of relying on
+		-- equal-z pass ordering, which made this checkbox intermittently inert.
+		offset[3] = (offset[3] or 0) + 10
+		style.offset = offset
+
+		if pass.content_id == prefix .. "_hotspot" then
+			style.size = {
+				width,
+				26,
+			}
+		elseif original_style_id == "label" then
+			style.size_addition = nil
+			style.size = {
+				math.max(width - 28, 0),
+				26,
+			}
+		end
+
+		pass.style = style
+
+		if original_style_id == "checkmark" then
+			pass.visibility_function = function(content)
+				return (not optional_visibility_id or content[optional_visibility_id]) and content[checked_id]
+			end
+		elseif optional_visibility_id then
+			pass.visibility_function = function(content)
+				return content[optional_visibility_id]
+			end
+		end
+
+		target[#target + 1] = pass
+	end
+end
+
+local function panel_type_checkbox_passes(content_width)
+	local passes = {}
+	local gap = 8
+	local width = math.floor((content_width - gap * 2) / 3)
+
+	append_panel_checkbox_passes(passes, "melee", 0, width, "melee_checked", "melee_label")
+	append_panel_checkbox_passes(passes, "ranged", width + gap, width, "ranged_checked", "ranged_label")
+	append_panel_checkbox_passes(passes, "curio", (width + gap) * 2, width, "curio_checked", "curio_label")
+
+	return passes
+end
+
 Features.add_inventory_sort_toggle_definition = function(mod, layout, definitions, view)
 	local slot_kind = inventory_slot_kind(layout, view)
 
@@ -728,6 +952,24 @@ Features.add_inventory_sort_toggle_definition = function(mod, layout, definition
 	end
 
 	local is_curio = slot_kind == "curio"
+
+	if is_curio and mod:get("enable_inventory_options_panel_prototype") == true then
+		local width_percent = numeric_setting(mod, "curio_information_width_percent", 90, 75, 100)
+		local target_width = math.floor(INVENTORY_CURIO_NATIVE_WIDTH * width_percent / 100 + 0.5)
+		local source_settings = adjusted_definitions.weapon_stats_grid_settings
+
+		if type(source_settings) == "table" then
+			local stats_settings = table.clone(source_settings)
+			local edge_padding = tonumber(stats_settings.edge_padding) or 12
+
+			stats_settings.grid_size = table.clone(stats_settings.grid_size or {})
+			stats_settings.mask_size = table.clone(stats_settings.mask_size or {})
+			stats_settings.grid_size[1] = math.max(target_width - edge_padding, 1)
+			stats_settings.mask_size[1] = target_width + 40
+			adjusted_definitions.weapon_stats_grid_settings = stats_settings
+		end
+	end
+
 	local parent = is_curio and "weapon_stats_pivot" or "weapon_compare_stats_pivot"
 	local width = is_curio and 530 or 420
 	local initial_x = is_curio and 0 or 20
@@ -890,7 +1132,7 @@ Features.add_inventory_sort_toggle_definition = function(mod, layout, definition
 			visible = true,
 		})
 
-		add_compact_stepper(INVENTORY_DISCARD_MAX_LEVEL_ID, initial_y + 172, mod:localize("quick_discard_inventory_max_level"), math.floor(tonumber(mod:get("quick_discard_max_item_level")) or 500))
+		add_compact_stepper(INVENTORY_DISCARD_MAX_LEVEL_ID, initial_y + 172, mod:localize("quick_discard_inventory_max_level"), math.floor(tonumber(mod:get("quick_discard_max_item_level")) or 490))
 		add_compact_checkbox(INVENTORY_DISCARD_MELEE_ID, compact_x, initial_y + 206, type_width, mod:localize("quick_discard_inventory_melee"), mod:get("quick_discard_include_melee") ~= false)
 		add_compact_checkbox(INVENTORY_DISCARD_RANGED_ID, compact_x + type_width + type_gap, initial_y + 206, type_width, mod:localize("quick_discard_inventory_ranged"), mod:get("quick_discard_include_ranged") ~= false)
 		add_compact_checkbox(INVENTORY_DISCARD_CURIO_ID, compact_x + (type_width + type_gap) * 2, initial_y + 206, type_width, mod:localize("quick_discard_inventory_curios"), mod:get("quick_discard_include_curios") ~= false)
@@ -901,6 +1143,571 @@ Features.add_inventory_sort_toggle_definition = function(mod, layout, definition
 	end
 
 	return adjusted_definitions
+end
+
+local rebuild_inventory_options_panel
+
+local INVENTORY_OPTIONS_PANEL_BLUEPRINTS = {
+	better_inventory_control = {
+		size_function = function(_, entry)
+			return entry.size
+		end,
+		pass_template_function = function(_, entry)
+			return entry.pass_template
+		end,
+		init = function(_, widget, entry)
+			local content = widget.content
+
+			for key, value in pairs(entry.initial_content or {}) do
+				content[key] = value
+			end
+
+			content.entry = entry
+
+			local view = entry.view
+
+			if view then
+				view._better_inventory_options_panel_widgets = view._better_inventory_options_panel_widgets or {}
+				view._better_inventory_options_panel_widgets[entry.control_id] = widget
+			end
+
+			if entry.bind then
+				entry.bind(widget)
+			end
+
+			if entry.refresh then
+				entry.refresh(widget)
+			end
+		end,
+		update = function(_, widget)
+			local entry = widget.content.entry
+
+			if entry and entry.refresh then
+				entry.refresh(widget)
+			end
+		end,
+	},
+}
+
+local function panel_entry(view, control_id, height, pass_template, initial_content, bind, refresh)
+	local geometry = view._better_inventory_options_panel_geometry
+
+	return {
+		control_id = control_id,
+		initial_content = initial_content,
+		pass_template = pass_template,
+		bind = bind,
+		refresh = refresh,
+		size = {
+			geometry.content_width,
+			height,
+		},
+		view = view,
+		widget_type = "better_inventory_control",
+	}
+end
+
+local function panel_header_entry(mod, layout, view, control_id, section_id, label_function)
+	local geometry = view._better_inventory_options_panel_geometry
+
+	return panel_entry(view, control_id, 40, panel_section_header_passes(geometry.content_width), {
+		chevron = "v",
+		label = label_function(),
+	}, function(widget)
+		widget.content.hotspot.pressed_callback = function()
+			local collapsed = view._better_inventory_options_panel_collapsed
+
+			collapsed[section_id] = not collapsed[section_id]
+			-- Hotspot callbacks execute while ViewElementGrid is drawing. Rebuilding
+			-- here clears the widget array underneath Darktide's active draw loop.
+			-- The changed structure key is detected and rebuilt safely on the next
+			-- InventoryWeaponsView update, before the following draw begins.
+		end
+	end, function(widget)
+		local is_collapsed = view._better_inventory_options_panel_collapsed[section_id] == true
+
+		widget.content.chevron = is_collapsed and ">" or "v"
+		widget.content.label = label_function()
+	end)
+end
+
+local function panel_sort_entry(mod, layout, view)
+	return panel_entry(view, INVENTORY_SORT_TOGGLE_ID, 38, inventory_sort_toggle_passes(), {
+		checked = mod:get("prioritize_equipped_favorites") ~= false,
+		label = mod:localize("prioritize_equipped_favorites_inventory_label"),
+	}, function(widget)
+		widget.content.hotspot.pressed_callback = function()
+			mod:set("prioritize_equipped_favorites", not widget.content.checked, false)
+			Features.sync_inventory_sort_setting(mod, layout)
+		end
+	end, function(widget)
+		widget.content.checked = mod:get("prioritize_equipped_favorites") ~= false
+	end)
+end
+
+local function panel_perfect_sort_entry(mod, layout, view)
+	return panel_entry(view, INVENTORY_PERFECT_SORT_TOGGLE_ID, 38, inventory_sort_toggle_passes(), {
+		checked = mod:get("prioritize_perfect_roll_weapons") == true,
+		label = mod:localize("prioritize_perfect_roll_weapons_inventory_label"),
+	}, function(widget)
+		widget.content.hotspot.pressed_callback = function()
+			mod:set("prioritize_perfect_roll_weapons", not widget.content.checked, false)
+			Features.sync_inventory_sort_setting(mod, layout)
+		end
+	end, function(widget)
+		widget.content.checked = mod:get("prioritize_perfect_roll_weapons") == true
+	end)
+end
+
+local function panel_mode_entry(mod, layout, view)
+	local geometry = view._better_inventory_options_panel_geometry
+
+	return panel_entry(view, INVENTORY_DISCARD_MODE_ID, 34, compact_selector_passes(geometry.content_width, 110), {
+		label = mod:localize("quick_discard_inventory_mode"),
+		value = "",
+	}, function(widget)
+		widget.content.hotspot.pressed_callback = function()
+			local mode = mod:get("quick_discard_mode") == "automatic" and "manual" or "automatic"
+
+			mod:set("quick_discard_mode", mode, false)
+			widget.content.value = mod:localize("quick_discard_mode_" .. mode) .. "  >"
+			-- Automatic mode adds its confirmation row. Rebuilding this ViewElementGrid
+			-- inside its own pressed callback can invalidate Darktide's active draw
+			-- iteration, so this view rebuilds on the next normal update.
+			Features.sync_quick_discard_settings(mod, layout, view)
+		end
+	end, function(widget)
+		local mode = mod:get("quick_discard_mode") == "automatic" and "automatic" or "manual"
+
+		widget.content.value = mod:localize("quick_discard_mode_" .. mode) .. "  >"
+	end)
+end
+
+local function panel_sub_label_entry(mod, view, control_id, label_id)
+	local geometry = view._better_inventory_options_panel_geometry
+
+	return panel_entry(view, control_id, 26, panel_sub_label_passes(geometry.content_width), {
+		label = mod:localize(label_id),
+	})
+end
+
+local function panel_quick_discard_entry(mod, layout, view)
+	return panel_entry(view, INVENTORY_QUICK_DISCARD_ID, 40, quick_discard_passes(), {
+		discard_label = mod:localize("quick_discard_inventory_action"),
+		prefix = mod:localize("quick_discard_inventory_prefix"),
+		rarity_label = "",
+		suffix = mod:localize("quick_discard_inventory_suffix"),
+		visible = true,
+	}, function(widget)
+		widget.content.rarity_hotspot.pressed_callback = function()
+			local rarity = math.clamp(math.floor(tonumber(mod:get("quick_discard_rarity")) or 1), 1, 5)
+
+			mod:set("quick_discard_rarity", rarity % 5 + 1, false)
+			Features.sync_quick_discard_settings(mod, layout)
+		end
+		widget.content.discard_hotspot.pressed_callback = function()
+			Features.request_quick_discard(mod, layout, view)
+		end
+	end, function(widget)
+		local rarity = math.clamp(math.floor(tonumber(mod:get("quick_discard_rarity")) or 1), 1, 5)
+		local rarity_settings = RaritySettings[rarity]
+		local rarity_color = rarity_settings and rarity_settings.color or Color.terminal_text_body(255, true)
+
+		widget.content.rarity_label = mod:localize("quick_discard_rarity_" .. rarity) .. "  >"
+
+		if widget.style and widget.style.rarity_label then
+			widget.style.rarity_label.text_color = table.clone(rarity_color)
+		end
+	end)
+end
+
+local function panel_stepper_entry(mod, layout, view, control_id, setting_id, label_id, default_value)
+	local geometry = view._better_inventory_options_panel_geometry
+
+	return panel_entry(view, control_id, 34, compact_stepper_passes(geometry.content_width), {
+		label = mod:localize(label_id),
+		value = tostring(math.floor(tonumber(mod:get(setting_id)) or default_value)),
+	}, function(widget)
+		local function change_value(delta)
+			local value = math.clamp(math.floor(tonumber(mod:get(setting_id)) or default_value) + delta, 0, 500)
+
+			mod:set(setting_id, value, false)
+			Features.sync_quick_discard_settings(mod, layout)
+		end
+
+		widget.content.decrease_hotspot.pressed_callback = function()
+			change_value(-10)
+		end
+		widget.content.increase_hotspot.pressed_callback = function()
+			change_value(10)
+		end
+	end, function(widget)
+		widget.content.value = tostring(math.clamp(math.floor(tonumber(mod:get(setting_id)) or default_value), 0, 500))
+	end)
+end
+
+local function panel_checkbox_entry(mod, layout, view, control_id, setting_id, label_id, default_enabled, defer_panel_rebuild)
+	local function is_enabled()
+		local value = mod:get(setting_id)
+
+		if value == nil then
+			return default_enabled ~= false
+		end
+
+		return value == true
+	end
+
+	return panel_entry(view, control_id, 34, compact_checkbox_passes(), {
+		checked = is_enabled(),
+		label = mod:localize(label_id),
+	}, function(widget)
+		widget.content.hotspot.pressed_callback = function()
+			local enabled = not is_enabled()
+
+			widget.content.checked = enabled
+			mod:set(setting_id, enabled, false)
+			Features.sync_quick_discard_settings(mod, layout, defer_panel_rebuild and view or nil)
+		end
+	end, function(widget)
+		widget.content.checked = is_enabled()
+	end)
+end
+
+local function panel_type_entry(mod, layout, view)
+	local geometry = view._better_inventory_options_panel_geometry
+	local settings = {
+		{
+			content_id = "melee",
+			label_id = "quick_discard_inventory_melee",
+			setting_id = "quick_discard_include_melee",
+		},
+		{
+			content_id = "ranged",
+			label_id = "quick_discard_inventory_ranged",
+			setting_id = "quick_discard_include_ranged",
+		},
+		{
+			content_id = "curio",
+			label_id = "quick_discard_inventory_curios",
+			setting_id = "quick_discard_include_curios",
+		},
+	}
+	local content = {}
+
+	for index = 1, #settings do
+		local config = settings[index]
+
+		content[config.content_id .. "_checked"] = mod:get(config.setting_id) ~= false
+		content[config.content_id .. "_label"] = mod:localize(config.label_id)
+	end
+
+	return panel_entry(view, "better_inventory_discard_types", 34, panel_type_checkbox_passes(geometry.content_width), content, function(widget)
+		for index = 1, #settings do
+			local config = settings[index]
+			local hotspot = widget.content[config.content_id .. "_hotspot"]
+			local checked_id = config.content_id .. "_checked"
+			local setting_id = config.setting_id
+
+			hotspot.pressed_callback = function()
+				local enabled = not widget.content[checked_id]
+
+				widget.content[checked_id] = enabled
+				mod:set(setting_id, enabled, false)
+				Features.sync_quick_discard_settings(mod, layout)
+			end
+		end
+	end, function(widget)
+		for index = 1, #settings do
+			local config = settings[index]
+
+			widget.content[config.content_id .. "_checked"] = mod:get(config.setting_id) ~= false
+		end
+	end)
+end
+
+local function panel_curio_protection_type_entry(mod, layout, view)
+	local geometry = view._better_inventory_options_panel_geometry
+	local settings = {
+		{
+			content_id = "health",
+			label_id = "quick_discard_inventory_keep_health_curios",
+			setting_id = "quick_discard_keep_health_curios",
+		},
+		{
+			content_id = "toughness",
+			label_id = "quick_discard_inventory_keep_toughness_curios",
+			setting_id = "quick_discard_keep_toughness_curios",
+		},
+		{
+			content_id = "wounds",
+			label_id = "quick_discard_inventory_keep_wound_curios",
+			setting_id = "quick_discard_keep_wound_curios",
+		},
+		{
+			content_id = "stamina",
+			label_id = "quick_discard_inventory_keep_stamina_curios",
+			setting_id = "quick_discard_keep_stamina_curios",
+		},
+	}
+	local content = {}
+	local passes = {}
+	local gap = 6
+	local width = math.floor((geometry.content_width - gap * 3) / 4)
+
+	for index = 1, #settings do
+		local config = settings[index]
+		local x = (width + gap) * (index - 1)
+
+		content[config.content_id .. "_checked"] = mod:get(config.setting_id) ~= false
+		content[config.content_id .. "_label"] = mod:localize(config.label_id)
+		append_panel_checkbox_passes(passes, config.content_id, x, width, config.content_id .. "_checked", config.content_id .. "_label")
+	end
+
+	return panel_entry(view, "better_inventory_discard_curio_types", 34, passes, content, function(widget)
+		for index = 1, #settings do
+			local config = settings[index]
+			local hotspot = widget.content[config.content_id .. "_hotspot"]
+			local checked_id = config.content_id .. "_checked"
+
+			hotspot.pressed_callback = function()
+				local enabled = not widget.content[checked_id]
+
+				widget.content[checked_id] = enabled
+				mod:set(config.setting_id, enabled, false)
+				Features.sync_quick_discard_settings(mod, layout)
+			end
+		end
+	end, function(widget)
+		for index = 1, #settings do
+			local config = settings[index]
+
+			widget.content[config.content_id .. "_checked"] = mod:get(config.setting_id) ~= false
+		end
+	end)
+end
+
+local function panel_structure_key(mod, view)
+	local collapsed = view._better_inventory_options_panel_collapsed or {}
+
+	return table.concat({
+		view._discard_items_element and "native_discard" or "inventory",
+		mod:get("enable_experimental_quick_discard") == true and "discard_on" or "discard_off",
+		mod:get("quick_discard_mode") == "automatic" and "automatic" or "manual",
+		mod:get("quick_discard_protect_high_level_curios") ~= false and "curio_level_on" or "curio_level_off",
+		collapsed.sorting and "sort_closed" or "sort_open",
+		collapsed.discard and "discard_closed" or "discard_open",
+	}, ":")
+end
+
+rebuild_inventory_options_panel = function(mod, layout, view)
+	local panel = view._better_inventory_options_panel
+
+	if not panel or view._destroyed then
+		return
+	end
+
+	local collapsed = view._better_inventory_options_panel_collapsed
+	local native_discard_active = view._discard_items_element ~= nil
+	local quick_discard_enabled = mod:get("enable_experimental_quick_discard") == true
+	local entries = {
+		panel_header_entry(mod, layout, view, "better_inventory_sort_header", "sorting", function()
+			return mod:localize("inventory_sorting_inventory_label")
+		end),
+	}
+
+	if not collapsed.sorting then
+		entries[#entries + 1] = panel_sort_entry(mod, layout, view)
+		entries[#entries + 1] = panel_perfect_sort_entry(mod, layout, view)
+	end
+
+	if quick_discard_enabled and not native_discard_active then
+		entries[#entries + 1] = panel_header_entry(mod, layout, view, "better_inventory_discard_header", "discard", function()
+			local mode = mod:get("quick_discard_mode") == "automatic" and "automated" or "manual"
+
+			return mod:localize("inventory_" .. mode .. "_discard_management_inventory_label")
+		end)
+
+		if not collapsed.discard then
+			entries[#entries + 1] = panel_mode_entry(mod, layout, view)
+
+			if mod:get("quick_discard_mode") == "automatic" then
+				entries[#entries + 1] = panel_checkbox_entry(mod, layout, view, INVENTORY_DISCARD_SKIP_CONFIRMATION_ID, "quick_discard_skip_automatic_confirmation", "quick_discard_skip_automatic_confirmation", false)
+			end
+
+			entries[#entries + 1] = panel_quick_discard_entry(mod, layout, view)
+			entries[#entries + 1] = panel_sub_label_entry(mod, view, "better_inventory_discard_item_types_label", "quick_discard_inventory_item_types_label")
+			entries[#entries + 1] = panel_type_entry(mod, layout, view)
+			entries[#entries + 1] = panel_stepper_entry(mod, layout, view, INVENTORY_DISCARD_MAX_LEVEL_ID, "quick_discard_max_item_level", "quick_discard_inventory_max_level", 490)
+			entries[#entries + 1] = panel_checkbox_entry(mod, layout, view, INVENTORY_DISCARD_EQUIPPED_LEVEL_PROTECTION_ID, "quick_discard_protect_above_equipped_level", "quick_discard_inventory_protect_above_equipped_level")
+			entries[#entries + 1] = panel_checkbox_entry(mod, layout, view, INVENTORY_DISCARD_PROTECTION_ID, "quick_discard_protect_perfect_weapons", "quick_discard_inventory_protect_weapons")
+			entries[#entries + 1] = panel_checkbox_entry(mod, layout, view, INVENTORY_DISCARD_CURIO_PROTECTION_ID, "quick_discard_protect_high_level_curios", "quick_discard_inventory_protect_curios", nil, true)
+
+			if mod:get("quick_discard_protect_high_level_curios") ~= false then
+				entries[#entries + 1] = panel_stepper_entry(mod, layout, view, INVENTORY_DISCARD_CURIO_LEVEL_ID, "quick_discard_curio_protection_level", "quick_discard_inventory_curio_level", 410)
+			end
+
+			entries[#entries + 1] = panel_sub_label_entry(mod, view, "better_inventory_discard_curio_types_label", "quick_discard_inventory_keep_curio_types_label")
+			entries[#entries + 1] = panel_curio_protection_type_entry(mod, layout, view)
+		end
+	end
+
+	local geometry = view._better_inventory_options_panel_geometry
+	local spacing = geometry.row_spacing
+	local content_height = 0
+
+	for index = 1, #entries do
+		content_height = content_height + entries[index].size[2]
+	end
+
+	content_height = content_height + math.max(#entries - 1, 0) * spacing
+
+	-- ViewElementGrid adds a 31 px terminal-divider/frame overhead around the
+	-- content. Account for it explicitly so user padding maps predictably.
+	local panel_height = math.clamp(content_height + 31 + geometry.top + geometry.bottom, INVENTORY_OPTIONS_PANEL_MIN_HEIGHT, geometry.max_height)
+
+	view._better_inventory_options_panel_widgets = {}
+	view._better_inventory_options_panel_structure_key = panel_structure_key(mod, view)
+	view._better_inventory_options_panel_height = panel_height
+	panel:update_grid_height(panel_height, panel_height)
+	panel:present_grid_layout(entries, INVENTORY_OPTIONS_PANEL_BLUEPRINTS)
+end
+
+-- The stock Curio header reserves 250 virtual pixels for one small item image.
+-- Scale the whole preview box rather than shortening only its height; changing
+-- one axis was the reason Curio art appeared stretched in the prototype.
+-- This transforms only the current InventoryWeaponsView's Curio stats blueprint;
+-- crafting, vendors and weapon detail cards keep their native geometry.
+Features.compact_inventory_curio_stats_blueprints = function(mod, item_grid, content_blueprints)
+	if mod:get("enable_inventory_options_panel_prototype") ~= true or type(content_blueprints) ~= "table" then
+		return content_blueprints
+	end
+
+	local parent = item_grid and item_grid._parent
+	local item = item_grid and item_grid._item
+	local gadget_header = content_blueprints.gadget_header
+
+	if not parent or parent.__class_name ~= "InventoryWeaponsView" or parent._weapon_stats ~= item_grid or not item or item.item_type ~= "GADGET" or type(gadget_header) ~= "table" then
+		return content_blueprints
+	end
+
+	local adjusted_blueprints = table.clone(content_blueprints)
+	local adjusted_header = adjusted_blueprints.gadget_header
+	local height_percent = numeric_setting(mod, "curio_preview_height_percent", 76, 60, 100)
+	local scale = height_percent / 100
+
+	adjusted_header.size[2] = math.floor(INVENTORY_CURIO_NATIVE_HEADER_HEIGHT * scale + 0.5)
+
+	for index = 1, #(adjusted_header.pass_template or {}) do
+		local pass = adjusted_header.pass_template[index]
+		local style = pass and pass.style
+
+		if style and pass.style_id == "icon" then
+			local native_icon_width = INVENTORY_CURIO_NATIVE_GRID_WIDTH * 0.9
+			local available_icon_width = (adjusted_header.size[1] or INVENTORY_CURIO_NATIVE_GRID_WIDTH) * 0.9
+			local icon_scale = math.min(scale, available_icon_width / native_icon_width)
+
+			style.size[1] = math.floor(native_icon_width * icon_scale + 0.5)
+			style.size[2] = math.floor(INVENTORY_CURIO_NATIVE_ICON_HEIGHT * icon_scale + 0.5)
+			style.offset[2] = math.floor((style.offset[2] or 0) * scale + 0.5)
+		elseif style and pass.style_id == "loading" then
+			style.size[1] = math.floor((style.size[1] or 0) * scale + 0.5)
+			style.size[2] = math.floor((style.size[2] or 0) * scale + 0.5)
+		elseif style and pass.style_id == "gradient_background" then
+			style.size[2] = math.floor((style.size[2] or 0) * scale + 0.5)
+		end
+	end
+
+	return adjusted_blueprints
+end
+
+Features.setup_inventory_options_panel = function(mod, layout, view, ViewElementGrid)
+	if mod:get("enable_inventory_options_panel_prototype") ~= true or not is_inventory_view(layout, view) or view._better_inventory_options_panel then
+		return false
+	end
+
+	if type(ViewElementGrid) ~= "table" or type(view._add_element) ~= "function" then
+		return false
+	end
+
+	local geometry = inventory_options_panel_geometry(mod)
+	local menu_settings = {
+		bottom_chin = geometry.bottom,
+		edge_padding = geometry.left + geometry.right,
+		enable_gamepad_scrolling = true,
+		grid_size = {
+			geometry.content_width,
+			geometry.max_height,
+		},
+		grid_spacing = {
+			0,
+			geometry.row_spacing,
+		},
+		ignore_blur = true,
+		mask_size = {
+			geometry.width,
+			geometry.max_height,
+		},
+		reset_selection_on_navigation_change = false,
+		scrollbar_width = 7,
+		title_height = 0,
+		top_padding = geometry.top,
+		use_is_focused_for_navigation = false,
+		use_select_on_focused = false,
+		use_terminal_background = true,
+	}
+	local success, panel = pcall(view._add_element, view, ViewElementGrid, INVENTORY_OPTIONS_PANEL_REFERENCE, 25, menu_settings)
+
+	if not success or not panel then
+		if type(mod.error) == "function" then
+			mod:error("BetterInventory options-panel prototype could not initialize: " .. tostring(panel))
+		end
+
+		if type(view._remove_element) == "function" then
+			pcall(view._remove_element, view, INVENTORY_OPTIONS_PANEL_REFERENCE)
+		end
+
+		return false
+	end
+
+	view._better_inventory_options_panel = panel
+	view._better_inventory_options_panel_geometry = geometry
+	view._better_inventory_options_panel_mod = mod
+	view._better_inventory_options_panel_collapsed = {
+		discard = false,
+		sorting = false,
+	}
+
+	local configured, configure_error = pcall(function()
+		local content_pivot = panel._ui_scenegraph and panel._ui_scenegraph.grid_content_pivot
+
+		if content_pivot and content_pivot.position then
+			content_pivot.position[1] = geometry.left
+		end
+
+		panel:disable_input(false)
+		panel:set_visibility(true)
+		rebuild_inventory_options_panel(mod, layout, view)
+	end)
+
+	if not configured then
+		view._better_inventory_options_panel = nil
+		view._better_inventory_options_panel_geometry = nil
+		view._better_inventory_options_panel_mod = nil
+		view._better_inventory_options_panel_widgets = nil
+		view._better_inventory_options_panel_collapsed = nil
+
+		if type(view._remove_element) == "function" then
+			pcall(view._remove_element, view, INVENTORY_OPTIONS_PANEL_REFERENCE)
+		end
+
+		if type(mod.error) == "function" then
+			mod:error("BetterInventory options-panel prototype could not be configured: " .. tostring(configure_error))
+		end
+
+		return false
+	end
+
+	return true
 end
 
 local function item_priority(view, layout_entry)
@@ -918,6 +1725,28 @@ local function item_priority(view, layout_entry)
 	end
 
 	if item.gear_id and Items.is_item_id_favorited(item.gear_id) then
+		return 1
+	end
+
+	return 0
+end
+
+local function inventory_sort_priority(mod, view, layout_entry)
+	local item = layout_entry and (layout_entry.real_item or layout_entry.item)
+
+	if not item then
+		return 0
+	end
+
+	if mod:get("prioritize_equipped_favorites") ~= false then
+		local equipped_favorite_priority = item_priority(view, layout_entry)
+
+		if equipped_favorite_priority > 0 then
+			return equipped_favorite_priority + 2
+		end
+	end
+
+	if mod:get("prioritize_perfect_roll_weapons") == true and Features.is_perfect_roll_weapon(item) then
 		return 1
 	end
 
@@ -942,13 +1771,11 @@ Features.configure_inventory_sort_options = function(mod, layout, view)
 		if type(original_sort) == "function" and not option._better_inventory_original_sort then
 			option._better_inventory_original_sort = original_sort
 			option.sort_function = function(left, right)
-				if mod:get("prioritize_equipped_favorites") ~= false then
-					local left_priority = item_priority(view, left)
-					local right_priority = item_priority(view, right)
+				local left_priority = inventory_sort_priority(mod, view, left)
+				local right_priority = inventory_sort_priority(mod, view, right)
 
-					if left_priority ~= right_priority then
-						return left_priority > right_priority
-					end
+				if left_priority ~= right_priority then
+					return left_priority > right_priority
 				end
 
 				return original_sort(left, right)
@@ -1129,7 +1956,49 @@ Features.is_perfect_roll_weapon = function(item)
 	return values_are_perfect_roll(projected_max_base_stat_values(item))
 end
 
-local function eligible_for_quick_discard(mod, item, is_equipped)
+local CURIO_PRIMARY_TRAIT_SETTINGS = {
+	gadget_innate_health_increase = "quick_discard_keep_health_curios",
+	gadget_innate_toughness_increase = "quick_discard_keep_toughness_curios",
+	gadget_innate_max_wounds_increase = "quick_discard_keep_wound_curios",
+	gadget_stamina_increase = "quick_discard_keep_stamina_curios",
+}
+
+local function curio_primary_trait_name(item)
+	local primary_trait = item and item.traits and item.traits[1]
+	local trait_id = primary_trait and primary_trait.id
+
+	if type(trait_id) ~= "string" then
+		return
+	end
+
+	local resolved, trait_item = pcall(MasterItems.get_item, trait_id)
+	local trait_name = resolved and trait_item and trait_item.trait or trait_id
+
+	if type(trait_name) ~= "string" then
+		return
+	end
+
+	for known_trait_name in pairs(CURIO_PRIMARY_TRAIT_SETTINGS) do
+		if trait_name == known_trait_name or string.find(trait_name, known_trait_name, 1, true) then
+			return known_trait_name
+		end
+	end
+end
+
+local function high_level_curio_is_protected(mod, item, level, protected_level)
+	if level < protected_level then
+		return false
+	end
+
+	local primary_trait_name = curio_primary_trait_name(item)
+	local setting_id = primary_trait_name and CURIO_PRIMARY_TRAIT_SETTINGS[primary_trait_name]
+
+	-- Unknown or future primary blessings fail closed. A game update must not turn
+	-- an unrecognized high-level Curio into an automatic-discard candidate.
+	return not setting_id or mod:get(setting_id) ~= false
+end
+
+local function eligible_for_quick_discard(mod, item, is_equipped, maximum_equipped_levels)
 	if not item or not item.gear_id or not item_type_is_enabled(mod, item.item_type) then
 		return false
 	end
@@ -1150,10 +2019,18 @@ local function eligible_for_quick_discard(mod, item, is_equipped)
 	end
 
 	local level = item_level(item)
-	local maximum_level = math.clamp(math.floor(tonumber(mod:get("quick_discard_max_item_level")) or 500), 0, 500)
+	local maximum_level = math.clamp(math.floor(tonumber(mod:get("quick_discard_max_item_level")) or 490), 0, 500)
 
 	if not level or level > maximum_level then
 		return false
+	end
+
+	if mod:get("quick_discard_protect_above_equipped_level") ~= false then
+		local maximum_equipped_level = maximum_equipped_levels and maximum_equipped_levels[item.item_type]
+
+		if maximum_equipped_level and level > maximum_equipped_level then
+			return false
+		end
 	end
 
 	if Items.is_weapon(item.item_type) and mod:get("quick_discard_protect_perfect_weapons") ~= false and Features.is_perfect_roll_weapon(item) then
@@ -1163,7 +2040,7 @@ local function eligible_for_quick_discard(mod, item, is_equipped)
 	if item.item_type == "GADGET" and mod:get("quick_discard_protect_high_level_curios") ~= false then
 		local protected_level = math.clamp(math.floor(tonumber(mod:get("quick_discard_curio_protection_level")) or 410), 0, 500)
 
-		if level >= protected_level then
+		if high_level_curio_is_protected(mod, item, level, protected_level) then
 			return false
 		end
 	end
@@ -1171,7 +2048,7 @@ local function eligible_for_quick_discard(mod, item, is_equipped)
 	return true
 end
 
-local function collect_quick_discard_candidates(mod, source_items, is_equipped, allowed_gear_ids)
+local function collect_quick_discard_candidates(mod, source_items, is_equipped, allowed_gear_ids, maximum_equipped_levels)
 	local candidates = {}
 	local excluded_errors = 0
 	local first_error
@@ -1182,7 +2059,7 @@ local function collect_quick_discard_candidates(mod, source_items, is_equipped, 
 		local gear_id = item and item.gear_id
 
 		if gear_id and not seen[gear_id] and (not allowed_gear_ids or allowed_gear_ids[gear_id]) then
-			local success, eligible = pcall(eligible_for_quick_discard, mod, item, is_equipped)
+			local success, eligible = pcall(eligible_for_quick_discard, mod, item, is_equipped, maximum_equipped_levels)
 
 			if success and eligible then
 				seen[gear_id] = true
@@ -1200,6 +2077,73 @@ local function collect_quick_discard_candidates(mod, source_items, is_equipped, 
 	return candidates, excluded_errors, first_error
 end
 
+local function add_loadout_gear_ids(target, loadout)
+	for _, item in pairs(loadout or {}) do
+		local gear_id = type(item) == "table" and item.gear_id or type(item) == "string" and item or nil
+
+		if gear_id then
+			target[gear_id] = true
+		end
+	end
+end
+
+local function equipped_gear_ids(profile)
+	local equipped = {}
+
+	add_loadout_gear_ids(equipped, profile and profile.loadout)
+	add_loadout_gear_ids(equipped, profile and profile.loadout_item_ids)
+
+	-- Profile presets are saved independently from the currently active profile.
+	-- Treat every item referenced by every preset as equipped: an unfavorited item
+	-- used only by an inactive loadout must never enter any discard candidate set.
+	local success, presets = pcall(ProfileUtils.get_profile_presets)
+
+	if success and type(presets) == "table" then
+		for _, preset in pairs(presets) do
+			if type(preset) == "table" then
+				add_loadout_gear_ids(equipped, preset.loadout)
+				add_loadout_gear_ids(equipped, preset.loadout_item_ids)
+			end
+		end
+	end
+
+	return equipped
+end
+
+local function maximum_equipped_levels(source_items, protected_gear_ids)
+	local maximums = {}
+
+	for _, entry in pairs(source_items or {}) do
+		local item = entry and (entry.real_item or entry.item or entry)
+		local gear_id = item and item.gear_id
+		local item_type = item and item.item_type
+
+		-- Item level 500 is the absolute ceiling. Once a category reaches it,
+		-- subsequent equipped items of that category cannot improve its maximum.
+		if gear_id and protected_gear_ids[gear_id] and item_type and maximums[item_type] ~= 500 then
+			local level = item_level(item)
+
+			if level then
+				maximums[item_type] = math.min(math.max(maximums[item_type] or 0, level), 500)
+			end
+		end
+	end
+
+	return maximums
+end
+
+local function preview_profile(view)
+	local player = view and view._preview_player
+
+	if player and type(player.profile) == "function" then
+		local success, profile = pcall(player.profile, player)
+
+		if success then
+			return profile
+		end
+	end
+end
+
 Features.quick_discard_candidates = function(mod, layout, view, allowed_gear_ids)
 	if not is_inventory_view(layout, view) or view._destroyed then
 		return {}
@@ -1207,23 +2151,30 @@ Features.quick_discard_candidates = function(mod, layout, view, allowed_gear_ids
 
 	local parent_inventory = view._parent and view._parent._inventory_items
 	local source_items = type(parent_inventory) == "table" and next(parent_inventory) and parent_inventory or view._offer_items_layout or {}
+	local protected_gear_ids = equipped_gear_ids(preview_profile(view))
+	local equipped_levels = maximum_equipped_levels(source_items, protected_gear_ids)
 	local function is_equipped(item)
+		if item.gear_id and protected_gear_ids[item.gear_id] then
+			return true
+		end
+
 		local slots = item.slots
 
 		return slots and type(view.is_item_equipped_in_any_slot) == "function" and view:is_item_equipped_in_any_slot(item, slots) or false
 	end
 
-	local candidates = collect_quick_discard_candidates(mod, source_items, is_equipped, allowed_gear_ids)
+	local candidates = collect_quick_discard_candidates(mod, source_items, is_equipped, allowed_gear_ids, equipped_levels)
 
 	return candidates
 end
 
 local function quick_discard_candidates_from_items_detailed(mod, source_items, equipped_gear_ids, allowed_gear_ids)
+	local equipped_levels = maximum_equipped_levels(source_items, equipped_gear_ids or {})
 	local function is_equipped(item)
 		return equipped_gear_ids and equipped_gear_ids[item.gear_id] == true
 	end
 
-	return collect_quick_discard_candidates(mod, source_items, is_equipped, allowed_gear_ids)
+	return collect_quick_discard_candidates(mod, source_items, is_equipped, allowed_gear_ids, equipped_levels)
 end
 
 Features.quick_discard_candidates_from_items = function(mod, source_items, equipped_gear_ids, allowed_gear_ids)
@@ -1328,6 +2279,21 @@ local function show_discard_summary_notification(mod, candidates)
 		line_1 = mod:localize("quick_discard_notification_title"),
 		line_1_color = Color.terminal_text_header(255, true),
 		line_2 = discarded_rarity_summary(mod, candidates),
+		line_2_color = Color.white(255, true),
+	})
+end
+
+local function show_automatic_no_candidates_notification(mod)
+	local event_manager = Managers and Managers.event
+
+	if not event_manager or type(event_manager.trigger) ~= "function" then
+		return
+	end
+
+	pcall(event_manager.trigger, event_manager, "event_add_notification_message", "custom", {
+		line_1 = mod:localize("quick_discard_automatic_nothing_notification_title"),
+		line_1_color = Color.terminal_text_header(255, true),
+		line_2 = mod:localize("quick_discard_automatic_nothing_notification_description"),
 		line_2_color = Color.white(255, true),
 	})
 end
@@ -1457,25 +2423,6 @@ local function automatic_discard_error(error_value)
 	end
 
 	return tostring(error_value)
-end
-
-local function equipped_gear_ids(profile)
-	local equipped = {}
-
-	for _, loadout in ipairs({
-		profile and profile.loadout,
-		profile and profile.loadout_item_ids,
-	}) do
-		for _, item in pairs(loadout or {}) do
-			local gear_id = type(item) == "table" and item.gear_id or type(item) == "string" and item or nil
-
-			if gear_id then
-				equipped[gear_id] = true
-			end
-		end
-	end
-
-	return equipped
 end
 
 local function current_player_and_character()
@@ -1698,6 +2645,18 @@ Features.update_morningstar_auto_discard = function(mod, dt)
 		return
 	end
 
+	local progression_manager = Managers and Managers.progression
+
+	if progression_manager and type(progression_manager.is_fetching_session_report) == "function" and progression_manager:is_fetching_session_report() then
+		-- Mission rewards are added while Darktide parses the end-of-round report.
+		-- Do not take the one-shot inventory snapshot until that transaction has
+		-- completed and the game's reward path has invalidated its gear cache.
+		automatic_discard_state.elapsed = 0
+		automatic_discard_info(mod, "Waiting for the mission reward report before scanning inventory.")
+
+		return
+	end
+
 	local gear_service = Managers and Managers.data_service and Managers.data_service.gear
 
 	if not gear_service or type(gear_service.fetch_inventory) ~= "function" then
@@ -1708,6 +2667,14 @@ Features.update_morningstar_auto_discard = function(mod, dt)
 
 	automatic_discard_state.started = true
 	automatic_discard_state.fetch_attempts = automatic_discard_state.fetch_attempts + 1
+
+	-- Force the first automatic scan to use the current backend gear list. This
+	-- includes an item awarded by the mission that just returned the player to
+	-- the Morningstar, even if another system populated the cache beforehand.
+	if type(gear_service.invalidate_gear_cache) == "function" then
+		gear_service:invalidate_gear_cache()
+	end
+
 	automatic_discard_info(mod, string.format("Starting inventory scan attempt %d.", automatic_discard_state.fetch_attempts))
 	gear_service:fetch_inventory(character_id):next(function(items)
 		if not automatic_context_is_current(mod, token, character_id) then
@@ -1735,19 +2702,9 @@ Features.update_morningstar_auto_discard = function(mod, dt)
 
 		if #candidates > 0 then
 			present_automatic_discard(mod, token, character_id, candidates)
-		elseif mod:get("quick_discard_skip_automatic_confirmation") ~= true then
-			show_popup({
-				description_text_unlocalized = mod:localize("quick_discard_automatic_nothing_description"),
-				options = {
-					{
-						close_on_pressed = true,
-						no_localization = true,
-						text = mod:localize("quick_discard_close"),
-					},
-				},
-				title_text_unlocalized = mod:localize("quick_discard_nothing_title"),
-			})
-			automatic_discard_info(mod, "Displayed the no-eligible-items result.")
+		else
+			show_automatic_no_candidates_notification(mod)
+			automatic_discard_info(mod, "Displayed the no-eligible-items notification.")
 		end
 	end):catch(function(error_value)
 		automatic_discard_info(mod, "Inventory scan failed; scheduling a bounded retry. Reason: " .. automatic_discard_error(error_value))
@@ -1864,6 +2821,67 @@ local function set_quick_discard_widgets_visible(view, visible)
 	end
 end
 
+local function set_legacy_inventory_options_visible(view, visible)
+	set_inventory_widget_visible(view, INVENTORY_SORT_LABEL_ID, visible)
+	set_inventory_widget_visible(view, INVENTORY_SORT_TOGGLE_ID, visible)
+	set_quick_discard_widgets_visible(view, visible)
+end
+
+local function update_inventory_options_panel(mod, layout, view, slot_kind)
+	local panel = view._better_inventory_options_panel
+
+	if not panel or mod:get("enable_inventory_options_panel_prototype") ~= true then
+		if panel then
+			panel:set_visibility(false)
+		end
+
+		return false
+	end
+
+	set_legacy_inventory_options_visible(view, false)
+	panel:set_visibility(true)
+
+	if view._better_inventory_options_panel_structure_key ~= panel_structure_key(mod, view) then
+		rebuild_inventory_options_panel(mod, layout, view)
+	end
+
+	local native_discard_active = view._discard_items_element ~= nil
+	local relative_x
+	local relative_y
+	local parent_id = slot_kind == "curio" and "weapon_stats_pivot" or "weapon_compare_stats_pivot"
+
+	if native_discard_active then
+		local expansion = tonumber(view._better_inventory_grid_expansion) or 0
+
+		relative_x = slot_kind == "curio" and 0 or -566 - expansion
+		relative_y = weapon_stats_content_height(view, 660) + 15
+	elseif slot_kind == "curio" then
+		relative_x = 0
+		relative_y = weapon_stats_content_height(view, 480) + 15
+	else
+		local menu_settings = view._weapon_options_element and view._weapon_options_element._menu_settings
+		local grid_size = menu_settings and menu_settings.grid_size
+
+		relative_x = 20
+		relative_y = (grid_size and grid_size[2] or 300) + 15
+	end
+
+	local success, parent_position = pcall(view._scenegraph_world_position, view, parent_id)
+
+	if success and parent_position then
+		panel:set_pivot_offset(parent_position[1] + relative_x, parent_position[2] + relative_y)
+	else
+		-- A future game update can invalidate the pivot contract. Hide the prototype
+		-- and restore the proven loose-widget implementation for this view.
+		panel:set_visibility(false)
+		set_legacy_inventory_options_visible(view, true)
+
+		return false
+	end
+
+	return true
+end
+
 local function update_quick_discard_content(mod, slot_kind, view, base_y)
 	local widgets = view._widgets_by_name
 	local label_widget = widgets and widgets[INVENTORY_DISCARD_LABEL_ID]
@@ -1909,7 +2927,7 @@ local function update_quick_discard_content(mod, slot_kind, view, base_y)
 	end
 
 	if max_level_widget then
-		max_level_widget.content.value = tostring(math.clamp(math.floor(tonumber(mod:get("quick_discard_max_item_level")) or 500), 0, 500))
+		max_level_widget.content.value = tostring(math.clamp(math.floor(tonumber(mod:get("quick_discard_max_item_level")) or 490), 0, 500))
 	end
 
 	if melee_widget then
@@ -1937,6 +2955,7 @@ local function update_quick_discard_content(mod, slot_kind, view, base_y)
 
 	if curio_level_widget then
 		curio_level_widget.content.value = tostring(math.clamp(math.floor(tonumber(mod:get("quick_discard_curio_protection_level")) or 410), 0, 500))
+		curio_level_widget.content.visible = mod:get("quick_discard_protect_high_level_curios") ~= false
 	end
 
 	local is_curio_view = slot_kind == "curio"
@@ -1966,6 +2985,10 @@ Features.update_inventory_sort_toggle = function(mod, layout, view)
 	local slot_kind = inventory_slot_kind(layout, view)
 
 	if not slot_kind then
+		return
+	end
+
+	if update_inventory_options_panel(mod, layout, view, slot_kind) then
 		return
 	end
 
@@ -2021,22 +3044,35 @@ end
 
 Features.sync_inventory_sort_setting = function(mod, layout)
 	local enabled = mod:get("prioritize_equipped_favorites") ~= false
+	local perfect_rolls_enabled = mod:get("prioritize_perfect_roll_weapons") == true
 
 	for view in pairs(registered_inventory_views) do
 		local widget = view._widgets_by_name and view._widgets_by_name[INVENTORY_SORT_TOGGLE_ID]
+		local panel_widget = view._better_inventory_options_panel_widgets and view._better_inventory_options_panel_widgets[INVENTORY_SORT_TOGGLE_ID]
+		local perfect_panel_widget = view._better_inventory_options_panel_widgets and view._better_inventory_options_panel_widgets[INVENTORY_PERFECT_SORT_TOGGLE_ID]
 		local content = widget and widget.content
+		local panel_content = panel_widget and panel_widget.content
+		local perfect_panel_content = perfect_panel_widget and perfect_panel_widget.content
 
 		if content then
 			content.checked = enabled
+		end
+
+		if panel_content then
+			panel_content.checked = enabled
+		end
+
+		if perfect_panel_content then
+			perfect_panel_content.checked = perfect_rolls_enabled
 		end
 
 		Features.resort_inventory(mod, layout, view)
 	end
 end
 
-Features.sync_quick_discard_settings = function(mod, layout)
+Features.sync_quick_discard_settings = function(mod, layout, deferred_view)
 	for view in pairs(registered_inventory_views) do
-		if not view._destroyed then
+		if not view._destroyed and view ~= deferred_view then
 			Features.update_inventory_sort_toggle(mod, layout, view)
 		end
 	end

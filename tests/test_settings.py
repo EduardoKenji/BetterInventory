@@ -95,6 +95,7 @@ def main() -> None:
 		test_features = {
 			add_inventory_sort_toggle_definition = function(_, _, definitions) return definitions end,
 			configure_inventory_sort_options = function() end,
+			setup_inventory_options_panel = function() end,
 			bind_inventory_sort_toggle = function() end,
 			resort_inventory = function() end,
 			update_inventory_sort_toggle = function() end,
@@ -322,14 +323,28 @@ def main() -> None:
 		"weapon_perk_blessing_spacing",
 		"curio_secondary_stat_font_size",
 		"curio_primary_secondary_spacing",
+		"curio_information_width_percent",
+		"curio_preview_height_percent",
+		"inventory_options_panel_width",
+		"inventory_options_panel_max_height",
+		"inventory_options_panel_row_spacing",
+		"inventory_options_panel_padding_top",
+		"inventory_options_panel_padding_bottom",
+		"inventory_options_panel_padding_left",
+		"inventory_options_panel_padding_right",
 		"quick_discard_rarity",
 		"quick_discard_max_item_level",
+		"quick_discard_protect_above_equipped_level",
 		"quick_discard_include_melee",
 		"quick_discard_include_ranged",
 		"quick_discard_include_curios",
 		"quick_discard_protect_perfect_weapons",
 		"quick_discard_protect_high_level_curios",
 		"quick_discard_curio_protection_level",
+		"quick_discard_keep_health_curios",
+		"quick_discard_keep_toughness_curios",
+		"quick_discard_keep_wound_curios",
+		"quick_discard_keep_stamina_curios",
 		"quick_discard_show_type_breakdown",
 		"quick_discard_show_summary_notification",
     )
@@ -384,20 +399,57 @@ def main() -> None:
     assert entries_by_id["curio_secondary_stat_font_size"].disabled is True
     assert entries_by_id["curio_primary_secondary_spacing"].disabled is True
     assert entries_by_id["quick_discard_rarity"].disabled is True
+    assert entries_by_id["quick_discard_protect_above_equipped_level"].disabled is True
     assert entries_by_id["quick_discard_curio_protection_level"].disabled is True
+    assert entries_by_id["quick_discard_keep_health_curios"].disabled is True
+    assert entries_by_id["quick_discard_keep_toughness_curios"].disabled is True
     assert entries_by_id["quick_discard_show_type_breakdown"].disabled is True
     assert entries_by_id["quick_discard_show_summary_notification"].disabled is True
+    assert entries_by_id["curio_information_width_percent"].disabled is True
+    assert entries_by_id["curio_preview_height_percent"].disabled is True
+    assert entries_by_id["inventory_options_panel_width"].disabled is True
+    assert entries_by_id["inventory_options_panel_max_height"].disabled is True
+    assert entries_by_id["inventory_options_panel_row_spacing"].disabled is True
+    assert entries_by_id["inventory_options_panel_padding_top"].disabled is True
+    assert entries_by_id["inventory_options_panel_padding_bottom"].disabled is True
+    assert entries_by_id["inventory_options_panel_padding_left"].disabled is True
+    assert entries_by_id["inventory_options_panel_padding_right"].disabled is True
+
+    settings.enable_inventory_options_panel_prototype = True
+    mod.on_setting_changed("enable_inventory_options_panel_prototype")
+    assert entries_by_id["curio_information_width_percent"].disabled is False
+    assert entries_by_id["curio_preview_height_percent"].disabled is False
+    assert entries_by_id["inventory_options_panel_width"].disabled is False
+    assert entries_by_id["inventory_options_panel_max_height"].disabled is False
+    assert entries_by_id["inventory_options_panel_row_spacing"].disabled is False
+    assert entries_by_id["inventory_options_panel_padding_top"].disabled is False
+    assert entries_by_id["inventory_options_panel_padding_bottom"].disabled is False
+    assert entries_by_id["inventory_options_panel_padding_left"].disabled is False
+    assert entries_by_id["inventory_options_panel_padding_right"].disabled is False
+    settings.enable_inventory_options_panel_prototype = False
+    mod.on_setting_changed("enable_inventory_options_panel_prototype")
 
     settings.enable_experimental_quick_discard = True
     mod.on_setting_changed("enable_experimental_quick_discard")
     assert entries_by_id["quick_discard_rarity"].disabled is False
     assert entries_by_id["quick_discard_max_item_level"].disabled is False
+    assert entries_by_id["quick_discard_protect_above_equipped_level"].disabled is False
     assert entries_by_id["quick_discard_curio_protection_level"].disabled is False
+    assert entries_by_id["quick_discard_curio_protection_level"].validation_function() is True
+    assert entries_by_id["quick_discard_keep_health_curios"].disabled is False
+    assert entries_by_id["quick_discard_keep_toughness_curios"].disabled is False
+    assert entries_by_id["quick_discard_keep_wound_curios"].disabled is False
+    assert entries_by_id["quick_discard_keep_stamina_curios"].disabled is False
     assert entries_by_id["quick_discard_show_type_breakdown"].disabled is False
     assert entries_by_id["quick_discard_show_summary_notification"].disabled is False
     settings.quick_discard_protect_high_level_curios = False
     mod.on_setting_changed("quick_discard_protect_high_level_curios")
     assert entries_by_id["quick_discard_curio_protection_level"].disabled is True
+    assert entries_by_id["quick_discard_curio_protection_level"].validation_function() is False
+    assert entries_by_id["quick_discard_keep_health_curios"].disabled is False
+    assert entries_by_id["quick_discard_keep_toughness_curios"].disabled is False
+    assert entries_by_id["quick_discard_keep_wound_curios"].disabled is False
+    assert entries_by_id["quick_discard_keep_stamina_curios"].disabled is False
     assert globals_.quick_discard_syncs > 0
     settings.quick_discard_protect_high_level_curios = True
     settings.enable_experimental_quick_discard = False
@@ -639,6 +691,23 @@ def main() -> None:
     assert defaults["curio_display_profile"] == "detailed"
     assert defaults["show_curio_item_level"] is True
     assert defaults["prioritize_equipped_favorites"] is True
+    assert defaults["prioritize_perfect_roll_weapons"] is True
+    assert defaults["enable_inventory_options_panel_prototype"] is True
+    assert defaults["curio_information_width_percent"] == 90
+    assert defaults["curio_preview_height_percent"] == 76
+    assert defaults["inventory_options_panel_width"] == 445
+    assert defaults["inventory_options_panel_max_height"] == 360
+    assert defaults["inventory_options_panel_row_spacing"] == 8
+    assert defaults["inventory_options_panel_padding_top"] == 10
+    assert defaults["inventory_options_panel_padding_bottom"] == 10
+    assert defaults["inventory_options_panel_padding_left"] == 12
+    assert defaults["inventory_options_panel_padding_right"] == 12
+    assert defaults["quick_discard_keep_health_curios"] is True
+    assert defaults["quick_discard_keep_toughness_curios"] is True
+    assert defaults["quick_discard_keep_wound_curios"] is True
+    assert defaults["quick_discard_keep_stamina_curios"] is True
+    assert defaults["quick_discard_max_item_level"] == 490
+    assert defaults["quick_discard_protect_above_equipped_level"] is True
     assert defaults["quick_discard_show_summary_notification"] is True
     assert defaults["curio_primary_stat_font_size"] == 16
     assert defaults["curio_secondary_stat_font_size"] == 13

@@ -17,6 +17,60 @@ return {
 	prioritize_equipped_favorites_tooltip = {
 		en = "In melee, ranged and Curio inventories, keeps equipped items first and favorited items second while the selected native sort still orders each group. The synchronized toggle appears below Curio details or below the weapon action buttons, and its value persists between game sessions.",
 	},
+	prioritize_perfect_roll_weapons = {
+		en = "Perfect-roll weapons at the top",
+	},
+	prioritize_perfect_roll_weapons_tooltip = {
+		en = "Places weapons with four attributes at 80 and the fifth at 60 or higher ahead of ordinary items. Equipped and favorited items retain higher priority. The in-inventory checkbox is available in the scalable panel.",
+	},
+	prioritize_perfect_roll_weapons_inventory_label = {
+		en = "Perfect-roll weapons at the top",
+	},
+	enable_inventory_options_panel_prototype = {
+		en = "Use scalable inventory-options panel prototype",
+	},
+	enable_inventory_options_panel_prototype_tooltip = {
+		en = "Research prototype. After reopening the inventory, places BetterInventory's synchronized controls inside one bounded, scrollable Darktide panel with clickable collapsible section headers. Disable it to restore the established loose controls.",
+	},
+	inventory_options_panel_geometry_group = {
+		en = "Scalable inventory panel (experimental)",
+	},
+	curio_information_width_percent = {
+		en = "Curio information window width (%%)",
+	},
+	curio_preview_height_percent = {
+		en = "Curio preview-area height (%%)",
+	},
+	curio_preview_height_percent_tooltip = {
+		en = "Scales the upper Curio preview area and its item art together to preserve the original aspect ratio. Reopen the inventory after changing it.",
+	},
+	inventory_options_panel_width = {
+		en = "Options panel width (px)",
+	},
+	inventory_options_panel_max_height = {
+		en = "Options panel maximum height (px)",
+	},
+	inventory_options_panel_row_spacing = {
+		en = "Options panel row spacing (px)",
+	},
+	inventory_options_panel_padding_top = {
+		en = "Options panel top padding (px)",
+	},
+	inventory_options_panel_padding_bottom = {
+		en = "Options panel bottom padding (px)",
+	},
+	inventory_options_panel_padding_left = {
+		en = "Options panel left padding (px)",
+	},
+	inventory_options_panel_padding_right = {
+		en = "Options panel right padding (px)",
+	},
+	inventory_options_geometry_reopen_tooltip = {
+		en = "Experimental scalable-panel geometry. Reopen the inventory after changing this value.",
+	},
+	option_requires_inventory_options_panel_prototype = {
+		en = "Requires the scalable inventory-options panel prototype.",
+	},
 	prioritize_equipped_favorites_inventory_label = {
 		en = "Equipped and favorited items at the top",
 	},
@@ -86,6 +140,12 @@ return {
 	quick_discard_max_item_level_tooltip = {
 		en = "Items above this displayed item level are protected even when their rarity matches. Set this conservatively while testing the feature.",
 	},
+	quick_discard_protect_above_equipped_level = {
+		en = "Do not discard higher item level than equipped",
+	},
+	quick_discard_protect_above_equipped_level_tooltip = {
+		en = "Protects an item when its displayed item level exceeds the highest equipped item of the same category across the active and every saved loadout. Melee weapons, ranged weapons and Curios are compared separately.",
+	},
 	quick_discard_include_melee = {
 		en = "Allow melee weapons",
 	},
@@ -102,16 +162,31 @@ return {
 		en = "Protects weapons that already have, or Darktide's maximum-expertise preview predicts will have, four displayed attributes at 80 plus one at 60 or higher. A completed raw 380 allocation can display 381 or 382 because each attribute is rounded independently.",
 	},
 	quick_discard_protect_high_level_curios = {
-		en = "Protect high-level Curios",
+		en = "Keep curios of a minimum item level",
 	},
 	quick_discard_protect_high_level_curios_tooltip = {
-		en = "Protects Curios at or above the configured item-level threshold, regardless of rarity.",
+		en = "Protects Curios at or above the configured minimum item level, regardless of rarity. Curio-type filters remain configurable while this option is off.",
 	},
 	quick_discard_curio_protection_level = {
-		en = "Curio protection level",
+		en = "Minimum item level to keep curios",
 	},
 	quick_discard_curio_protection_level_tooltip = {
-		en = "Curios at or above this displayed item level are never selected by quick discard. The default is 410.",
+		en = "Curios at or above this displayed item level are protected when their primary blessing type is enabled below. This setting is shown only while minimum-item-level Curio protection is enabled. The default is 410.",
+	},
+	quick_discard_keep_health_curios = {
+		en = "Keep Health Curios",
+	},
+	quick_discard_keep_toughness_curios = {
+		en = "Keep Toughness Curios",
+	},
+	quick_discard_keep_wound_curios = {
+		en = "Keep Wound Curios",
+	},
+	quick_discard_keep_stamina_curios = {
+		en = "Keep Stamina Curios",
+	},
+	quick_discard_keep_curio_type_tooltip = {
+		en = "Selects the Curio primary blessing types protected by the minimum-item-level rule. These filters can be configured independently while that rule is off. All types default to enabled. Unknown future Curio types fail safe and remain protected.",
 	},
 	quick_discard_show_type_breakdown = {
 		en = "Show equipment-type counts in confirmation",
@@ -138,7 +213,10 @@ return {
 		en = "CLICK TO DISCARD",
 	},
 	quick_discard_inventory_max_level = {
-		en = "Maximum item level",
+		en = "Maximum item level to discard",
+	},
+	quick_discard_inventory_item_types_label = {
+		en = "Types of items to discard:",
 	},
 	quick_discard_inventory_melee = {
 		en = "Melee",
@@ -150,13 +228,31 @@ return {
 		en = "Curios",
 	},
 	quick_discard_inventory_curio_level = {
-		en = "Curio protection level",
+		en = "Minimum item level to keep curios",
+	},
+	quick_discard_inventory_protect_above_equipped_level = {
+		en = "Do not discard higher item level than equipped",
+	},
+	quick_discard_inventory_keep_curio_types_label = {
+		en = "Keep curios of this type:",
 	},
 	quick_discard_inventory_protect_weapons = {
 		en = "Do not discard perfect-roll weapons",
 	},
 	quick_discard_inventory_protect_curios = {
-		en = "Protect high-level Curios",
+		en = "Keep curios of a minimum item level",
+	},
+	quick_discard_inventory_keep_health_curios = {
+		en = "Health",
+	},
+	quick_discard_inventory_keep_toughness_curios = {
+		en = "Toughness",
+	},
+	quick_discard_inventory_keep_wound_curios = {
+		en = "Wounds",
+	},
+	quick_discard_inventory_keep_stamina_curios = {
+		en = "Stamina",
 	},
 	quick_discard_automatic_confirmation_title = {
 		en = "Confirm automated discard",
@@ -205,6 +301,12 @@ return {
 	},
 	quick_discard_automatic_nothing_description = {
 		en = "The automated Morningstar scan completed, but no items match the current discard filters. Favorited, equipped and protected items are always excluded.",
+	},
+	quick_discard_automatic_nothing_notification_title = {
+		en = "No items found to discard",
+	},
+	quick_discard_automatic_nothing_notification_description = {
+		en = "The automated Morningstar scan found no eligible items.",
 	},
 	quick_discard_notification_title = {
 		en = "Discarded items:",
@@ -357,7 +459,7 @@ return {
 		en = "Select Automatic discard mode to use this option.",
 	},
 	option_requires_curio_discard_protection = {
-		en = "Enable high-level Curio protection to set its threshold.",
+		en = "Enable minimum-item-level Curio protection to set its threshold.",
 	},
 	icon_darkness = {
 		en = "Icon darkness (%%)",

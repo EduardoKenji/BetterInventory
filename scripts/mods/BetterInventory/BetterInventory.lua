@@ -232,6 +232,8 @@ local function refresh_option_dependencies()
 	local detailed_curio_profile = mod:get("curio_display_profile") == "detailed"
 	local quick_discard_enabled = mod:get("enable_experimental_quick_discard") == true
 	local quick_discard_reason = mod:localize("option_requires_experimental_quick_discard")
+	local inventory_options_panel_enabled = mod:get("enable_inventory_options_panel_prototype") == true
+	local inventory_options_panel_reason = mod:localize("option_requires_inventory_options_panel_prototype")
 
 	set_option_enabled(option_dependency_entries.expand_curio_inventory_window, window_expansion_enabled, expansion_reason)
 	set_option_enabled(option_dependency_entries.weapon_extra_width_column_threshold, window_expansion_enabled, expansion_reason)
@@ -264,14 +266,33 @@ local function refresh_option_dependencies()
 	set_option_enabled(option_dependency_entries.curio_primary_secondary_spacing, detailed_curio_profile, mod:localize("option_requires_detailed_curio_profile"))
 
 	for _, setting_id in ipairs({
+		"curio_information_width_percent",
+		"curio_preview_height_percent",
+		"inventory_options_panel_width",
+		"inventory_options_panel_max_height",
+		"inventory_options_panel_row_spacing",
+		"inventory_options_panel_padding_top",
+		"inventory_options_panel_padding_bottom",
+		"inventory_options_panel_padding_left",
+		"inventory_options_panel_padding_right",
+	}) do
+		set_option_enabled(option_dependency_entries[setting_id], inventory_options_panel_enabled, inventory_options_panel_reason)
+	end
+
+	for _, setting_id in ipairs({
 		"quick_discard_mode",
 		"quick_discard_rarity",
 		"quick_discard_max_item_level",
+		"quick_discard_protect_above_equipped_level",
 		"quick_discard_include_melee",
 		"quick_discard_include_ranged",
 		"quick_discard_include_curios",
 		"quick_discard_protect_perfect_weapons",
 		"quick_discard_protect_high_level_curios",
+		"quick_discard_keep_health_curios",
+		"quick_discard_keep_toughness_curios",
+		"quick_discard_keep_wound_curios",
+		"quick_discard_keep_stamina_curios",
 		"quick_discard_show_type_breakdown",
 		"quick_discard_show_summary_notification",
 	}) do
@@ -335,16 +356,30 @@ local function bind_option_dependencies(options_templates)
 		"weapon_perk_blessing_spacing",
 		"curio_secondary_stat_font_size",
 		"curio_primary_secondary_spacing",
+		"curio_information_width_percent",
+		"curio_preview_height_percent",
+		"inventory_options_panel_width",
+		"inventory_options_panel_max_height",
+		"inventory_options_panel_row_spacing",
+		"inventory_options_panel_padding_top",
+		"inventory_options_panel_padding_bottom",
+		"inventory_options_panel_padding_left",
+		"inventory_options_panel_padding_right",
 		"quick_discard_mode",
 		"quick_discard_skip_automatic_confirmation",
 		"quick_discard_rarity",
 		"quick_discard_max_item_level",
+		"quick_discard_protect_above_equipped_level",
 		"quick_discard_include_melee",
 		"quick_discard_include_ranged",
 		"quick_discard_include_curios",
 		"quick_discard_protect_perfect_weapons",
 		"quick_discard_protect_high_level_curios",
 		"quick_discard_curio_protection_level",
+		"quick_discard_keep_health_curios",
+		"quick_discard_keep_toughness_curios",
+		"quick_discard_keep_wound_curios",
+		"quick_discard_keep_stamina_curios",
 		"quick_discard_show_type_breakdown",
 		"quick_discard_show_summary_notification",
 	}) do
@@ -359,6 +394,18 @@ local function bind_option_dependencies(options_templates)
 
 		if setting_id then
 			option_dependency_entries[setting_id] = entry
+		end
+	end
+
+	-- DMF reevaluates validation functions while its options view is open and
+	-- rebuilds the list when their result changes. Use that mechanism to remove
+	-- the threshold entirely when its rule is off; the Curio-type filters remain
+	-- visible and independently configurable.
+	local curio_level_entry = option_dependency_entries.quick_discard_curio_protection_level
+
+	if curio_level_entry then
+		curio_level_entry.validation_function = function()
+			return mod:get("quick_discard_protect_high_level_curios") ~= false
 		end
 	end
 
@@ -447,11 +494,11 @@ function mod.on_setting_changed(setting_id)
 		end
 	end
 
-	if setting_id == "enable_grid_layout" or setting_id == "columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "weapon_extra_width_column_threshold" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_armoury_requisition_grid" or setting_id == "expand_armoury_requisition_window" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "curio_display_profile" or setting_id == "enable_experimental_quick_discard" or setting_id == "quick_discard_mode" or setting_id == "quick_discard_protect_high_level_curios" then
+	if setting_id == "enable_grid_layout" or setting_id == "columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "weapon_extra_width_column_threshold" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_armoury_requisition_grid" or setting_id == "expand_armoury_requisition_window" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "curio_display_profile" or setting_id == "enable_inventory_options_panel_prototype" or setting_id == "enable_experimental_quick_discard" or setting_id == "quick_discard_mode" or setting_id == "quick_discard_protect_high_level_curios" then
 		refresh_option_dependencies()
 	end
 
-	if setting_id == "prioritize_equipped_favorites" then
+	if setting_id == "prioritize_equipped_favorites" or setting_id == "prioritize_perfect_roll_weapons" then
 		Features.sync_inventory_sort_setting(mod, Layout)
 	end
 
@@ -518,6 +565,7 @@ if ensure_class_method(InventoryWeaponsView, "_setup_sort_options") then
 		local result = func(view, ...)
 
 		Features.configure_inventory_sort_options(mod, Layout, view)
+		Features.setup_inventory_options_panel(mod, Layout, view, ViewElementGrid)
 		Features.bind_inventory_sort_toggle(mod, Layout, view)
 
 		return result
@@ -652,6 +700,8 @@ mod:hook(CreditsVendorView, "on_enter", function(func, view, ...)
 end)
 
 mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layout, content_blueprints, ...)
+	content_blueprints = Features.compact_inventory_curio_stats_blueprints(mod, item_grid, content_blueprints)
+
 	local view = active_grid_view
 	local configuration = active_grid_configuration
 	local definitions = view and view._definitions
