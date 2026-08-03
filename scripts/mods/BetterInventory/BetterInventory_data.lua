@@ -11,6 +11,10 @@ local function color_preset_options()
 			value = "light_blue",
 		},
 		{
+			text = "color_preset_sky_blue",
+			value = "sky_blue",
+		},
+		{
 			text = "color_preset_purple",
 			value = "purple",
 		},
@@ -25,6 +29,10 @@ local function color_preset_options()
 		{
 			text = "color_preset_green",
 			value = "green",
+		},
+		{
+			text = "color_preset_light_green",
+			value = "light_green",
 		},
 		{
 			text = "color_preset_terminal_green",
@@ -184,6 +192,22 @@ return {
 						default_value = true,
 					},
 					{
+						setting_id = "weapon_extra_width_column_threshold",
+						tooltip = "weapon_extra_width_column_threshold_tooltip",
+						type = "dropdown",
+						default_value = "four_plus",
+						options = {
+							{
+								text = "weapon_extra_width_column_threshold_four_plus",
+								value = "four_plus",
+							},
+							{
+								text = "weapon_extra_width_column_threshold_five_only",
+								value = "five_only",
+							},
+						},
+					},
+					{
 						setting_id = "five_column_weapon_extra_width",
 						tooltip = "five_column_weapon_extra_width_tooltip",
 						type = "numeric",
@@ -272,10 +296,115 @@ return {
 						default_value = true,
 					},
 					{
-						setting_id = "show_weapon_blessings",
-						tooltip = "show_weapon_blessings_tooltip",
-						type = "checkbox",
-						default_value = true,
+						setting_id = "weapon_blessing_display_mode",
+						tooltip = "weapon_blessing_display_mode_tooltip",
+						type = "dropdown",
+						default_value = "ranked_text",
+						options = {
+							{
+								text = "weapon_blessing_display_mode_icons",
+								value = "icons",
+							},
+							{
+								text = "weapon_blessing_display_mode_text",
+								value = "text",
+							},
+							{
+								text = "weapon_blessing_display_mode_ranked_text",
+								value = "ranked_text",
+							},
+							{
+								text = "weapon_blessing_display_mode_off",
+								value = "off",
+							},
+						},
+					},
+					{
+						setting_id = "blessing_text_item_level_separation",
+						tooltip = "blessing_text_item_level_separation_tooltip",
+						type = "dropdown",
+						default_value = "four_plus",
+						options = {
+							{
+								text = "blessing_text_item_level_separation_always",
+								value = "always",
+							},
+							{
+								text = "blessing_text_item_level_separation_four_plus",
+								value = "four_plus",
+							},
+							{
+								text = "blessing_text_item_level_separation_five_only",
+								value = "five_only",
+							},
+							{
+								text = "blessing_text_item_level_separation_never",
+								value = "never",
+							},
+						},
+					},
+					{
+						setting_id = "weapon_blessing_text_vertical_spacing",
+						tooltip = "weapon_blessing_text_vertical_spacing_tooltip",
+						type = "numeric",
+						default_value = 2,
+						range = {
+							0,
+							20,
+						},
+					},
+					{
+						setting_id = "weapon_blessing_text_bottom_padding",
+						tooltip = "weapon_blessing_text_bottom_padding_tooltip",
+						type = "numeric",
+						default_value = 4,
+						range = {
+							0,
+							20,
+						},
+					},
+					{
+						setting_id = "weapon_blessing_text_color_preset",
+						type = "dropdown",
+						default_value = "light_blue",
+						options = color_preset_options(),
+					},
+					{
+						setting_id = "weapon_blessing_text_color_r",
+						type = "numeric",
+						default_value = 105,
+						range = {
+							0,
+							255,
+						},
+					},
+					{
+						setting_id = "weapon_blessing_text_color_g",
+						type = "numeric",
+						default_value = 200,
+						range = {
+							0,
+							255,
+						},
+					},
+					{
+						setting_id = "weapon_blessing_text_color_b",
+						type = "numeric",
+						default_value = 235,
+						range = {
+							0,
+							255,
+						},
+					},
+					{
+						setting_id = "weapon_blessing_text_opacity",
+						tooltip = "weapon_blessing_text_opacity_tooltip",
+						type = "numeric",
+						default_value = 80,
+						range = {
+							0,
+							100,
+						},
 					},
 					{
 						setting_id = "blessing_icon_size",
@@ -285,6 +414,16 @@ return {
 						range = {
 							20,
 							48,
+						},
+					},
+					{
+						setting_id = "blessing_icon_spacing",
+						tooltip = "blessing_icon_spacing_tooltip",
+						type = "numeric",
+						default_value = 3,
+						range = {
+							0,
+							20,
 						},
 					},
 					{
@@ -338,13 +477,13 @@ return {
 					{
 						setting_id = "weapon_perk_text_color_preset",
 						type = "dropdown",
-						default_value = "terminal_green",
+						default_value = "light_green",
 						options = color_preset_options(),
 					},
 					{
 						setting_id = "weapon_perk_text_color_r",
 						type = "numeric",
-						default_value = 113,
+						default_value = 190,
 						range = {
 							0,
 							255,
@@ -353,7 +492,7 @@ return {
 					{
 						setting_id = "weapon_perk_text_color_g",
 						type = "numeric",
-						default_value = 126,
+						default_value = 210,
 						range = {
 							0,
 							255,
@@ -362,17 +501,37 @@ return {
 					{
 						setting_id = "weapon_perk_text_color_b",
 						type = "numeric",
-						default_value = 103,
+						default_value = 180,
 						range = {
 							0,
 							255,
 						},
 					},
 					{
-						setting_id = "blessing_icon_spacing",
-						tooltip = "blessing_icon_spacing_tooltip",
+						setting_id = "weapon_perk_text_opacity",
+						tooltip = "weapon_perk_text_opacity_tooltip",
 						type = "numeric",
-						default_value = 3,
+						default_value = 80,
+						range = {
+							0,
+							100,
+						},
+					},
+					{
+						setting_id = "weapon_perk_vertical_spacing",
+						tooltip = "weapon_perk_vertical_spacing_tooltip",
+						type = "numeric",
+						default_value = 2,
+						range = {
+							0,
+							20,
+						},
+					},
+					{
+						setting_id = "weapon_perk_blessing_spacing",
+						tooltip = "weapon_perk_blessing_spacing_tooltip",
+						type = "numeric",
+						default_value = 5,
 						range = {
 							0,
 							20,

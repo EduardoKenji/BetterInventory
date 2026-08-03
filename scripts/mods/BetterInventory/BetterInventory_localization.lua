@@ -75,13 +75,25 @@ return {
 		en = "Expand inventory window when needed",
 	},
 	expand_inventory_window_tooltip = {
-		en = "Widens the inventory panel enough to keep narrow cards inside it. This normally affects five-column layouts, or four columns with very large spacing. Disable this to shrink the cards instead.",
+		en = "Widens the inventory panel enough to keep narrow cards inside it. The weapon-width threshold and Curio target-width settings control additional expansion. Disable this to shrink the cards instead.",
+	},
+	weapon_extra_width_column_threshold = {
+		en = "Apply extra weapon width at",
+	},
+	weapon_extra_width_column_threshold_tooltip = {
+		en = "Chooses whether the extra melee and ranged inventory width applies to both four- and five-column grids or only to five-column grids.",
+	},
+	weapon_extra_width_column_threshold_four_plus = {
+		en = "At 4 or more columns",
+	},
+	weapon_extra_width_column_threshold_five_only = {
+		en = "At 5 columns",
 	},
 	five_column_weapon_extra_width = {
-		en = "Extra five-column weapon width",
+		en = "Extra weapon inventory width",
 	},
 	five_column_weapon_extra_width_tooltip = {
-		en = "Adds this many pixels to the normal melee and ranged inventory after its minimum five-column width is calculated. The 80 px default gives each of five cards 16 additional pixels. Expansion is safely clamped before the actions panel reaches the screen edge.",
+		en = "Adds this many pixels to the normal melee and ranged inventory when the configured column threshold is met. The 80 px default gives each card 20 additional pixels across four columns or 16 across five. Expansion is safely clamped before the actions panel reaches the screen edge.",
 	},
 	expand_curio_inventory_window = {
 		en = "Expand Curio window by columns",
@@ -113,8 +125,8 @@ return {
 	option_requires_grid_layout = {
 		en = "Enable grid layout to use this option.",
 	},
-	option_requires_five_weapon_columns = {
-		en = "Set Columns to 5 to use this option.",
+	option_requires_weapon_extra_width_threshold = {
+		en = "Increase Columns to the configured extra-width threshold to use this option.",
 	},
 	option_disabled_by_automatic_height = {
 		en = "Disable automatic card height to set a manual height.",
@@ -138,7 +150,7 @@ return {
 		en = "Enable perk level symbols to set their size.",
 	},
 	option_requires_weapon_blessings = {
-		en = "Enable weapon blessing symbols to use this option.",
+		en = "Select blessing Icons to use this option.",
 	},
 	option_requires_detailed_curio_profile = {
 		en = "Select the All four stats Curio profile to use this option.",
@@ -167,14 +179,77 @@ return {
 	show_rarity_tag = {
 		en = "Show rarity colour strip",
 	},
-	show_weapon_blessings = {
-		en = "Show weapon blessing symbols",
+	weapon_blessing_display_mode = {
+		en = "Weapon blessing display",
 	},
-	show_weapon_blessings_tooltip = {
-		en = "Shows up to two blessing symbols on weapon cards. Enabled by default; Darktide's ranked frames include the blessing level.",
+	weapon_blessing_display_mode_tooltip = {
+		en = "Choose full blessing icons, compact names with Roman text ranks, names with native tier symbols, or no blessing content. Automatic card height reserves the required space.",
+	},
+	weapon_blessing_display_mode_icons = {
+		en = "Icons",
+	},
+	weapon_blessing_display_mode_text = {
+		en = "Text lines",
+	},
+	weapon_blessing_display_mode_ranked_text = {
+		en = "Tier symbols + text",
+	},
+	weapon_blessing_display_mode_off = {
+		en = "Off",
+	},
+	blessing_text_item_level_separation = {
+		en = "Separate blessing text and item level",
+	},
+	blessing_text_item_level_separation_tooltip = {
+		en = "Chooses when either blessing text mode places both blessing names above a dedicated item-level row. The default applies this safer, wider layout to narrow four- and five-column inventory grids.",
+	},
+	blessing_text_item_level_separation_always = {
+		en = "Always",
+	},
+	blessing_text_item_level_separation_four_plus = {
+		en = "At 4 or more columns",
+	},
+	blessing_text_item_level_separation_five_only = {
+		en = "At 5 columns",
+	},
+	blessing_text_item_level_separation_never = {
+		en = "Never",
 	},
 	blessing_icon_size = {
 		en = "Blessing icon size",
+	},
+	option_requires_weapon_blessing_text = {
+		en = "Select a blessing text mode to use this option.",
+	},
+	weapon_blessing_text_vertical_spacing = {
+		en = "Blessing text vertical spacing",
+	},
+	weapon_blessing_text_vertical_spacing_tooltip = {
+		en = "Adds a clear vertical gap in pixels between the two weapon blessing text rows. Automatic card height reserves the added space.",
+	},
+	weapon_blessing_text_bottom_padding = {
+		en = "Blessing text bottom padding",
+	},
+	weapon_blessing_text_bottom_padding_tooltip = {
+		en = "Sets the clear space in pixels below the second blessing text row. When an item-level row or Armoury footer is reserved, the padding is applied above that area. Automatic card height reserves the space.",
+	},
+	weapon_blessing_text_color_preset = {
+		en = "Weapon blessing text colour preset",
+	},
+	weapon_blessing_text_color_r = {
+		en = "Weapon blessing text colour red",
+	},
+	weapon_blessing_text_color_g = {
+		en = "Weapon blessing text colour green",
+	},
+	weapon_blessing_text_color_b = {
+		en = "Weapon blessing text colour blue",
+	},
+	weapon_blessing_text_opacity = {
+		en = "Weapon blessing text opacity",
+	},
+	weapon_blessing_text_opacity_tooltip = {
+		en = "Sets blessing-text opacity from fully transparent at 0%% to fully opaque at 100%%. Tier symbols retain their native appearance.",
 	},
 	blessing_icon_size_tooltip = {
 		en = "Sets the width and height of each weapon blessing symbol in pixels. Automatic card height grows when larger symbols need more room.",
@@ -207,10 +282,13 @@ return {
 		en = "Shows Darktide's native ranked perk symbol to the left of each visible weapon perk line. Enabled by default.",
 	},
 	weapon_perk_rank_icon_size = {
-		en = "Perk level symbol size",
+		en = "Tier symbol size",
 	},
 	weapon_perk_rank_icon_size_tooltip = {
-		en = "Sets the width and height of each perk level symbol in pixels. Automatic card height grows when larger symbols need more room.",
+		en = "Sets the width and height of native tier symbols used by weapon perks and Tier symbols + text blessings. Automatic card height grows when larger symbols need more room.",
+	},
+	option_requires_rank_symbols = {
+		en = "Enable perk level symbols or select Tier symbols + text blessings to use this option.",
 	},
 	remove_weapon_perk_plus_signs = {
 		en = "Remove + from weapon perk text",
@@ -229,6 +307,27 @@ return {
 	},
 	weapon_perk_text_color_b = {
 		en = "Weapon perk text colour preset blue",
+	},
+	weapon_perk_text_opacity = {
+		en = "Weapon perk text opacity",
+	},
+	weapon_perk_text_opacity_tooltip = {
+		en = "Sets weapon-perk text opacity from fully transparent at 0%% to fully opaque at 100%%. Perk tier symbols retain their native appearance.",
+	},
+	weapon_perk_vertical_spacing = {
+		en = "Weapon perk vertical spacing",
+	},
+	weapon_perk_vertical_spacing_tooltip = {
+		en = "Adds a clear vertical gap in pixels between the two weapon perk rows. Automatic card height reserves the added space.",
+	},
+	weapon_perk_blessing_spacing = {
+		en = "Perk-to-blessing section spacing",
+	},
+	weapon_perk_blessing_spacing_tooltip = {
+		en = "Sets the vertical padding in pixels between the weapon perk and blessing sections when both are visible. Automatic card height grows when padding exceeds the default.",
+	},
+	option_requires_perk_and_blessing_sections = {
+		en = "Show both weapon perks and weapon blessings to use this option.",
 	},
 	blessing_icon_spacing = {
 		en = "Blessing icon horizontal spacing",
@@ -431,6 +530,9 @@ return {
 	color_preset_light_blue = {
 		en = "Light blue",
 	},
+	color_preset_sky_blue = {
+		en = "Sky blue",
+	},
 	color_preset_purple = {
 		en = "Purple",
 	},
@@ -442,6 +544,9 @@ return {
 	},
 	color_preset_green = {
 		en = "Green",
+	},
+	color_preset_light_green = {
+		en = "Light green",
 	},
 	color_preset_terminal_green = {
 		en = "Terminal green",

@@ -51,6 +51,13 @@ def main() -> None:
 		TestText = {}
 		TestItems = {}
 		TestMasterItems = {}
+		TestRankSettings = {
+			[0] = { display_name = "n/a" },
+			[1] = { display_name = "I" },
+			[2] = { display_name = "II" },
+			[3] = { display_name = "III" },
+			[4] = { display_name = "IV" },
+		}
 		TestTraitDescriptions = {
 			gadget_innate_health_increase = "+19% Max Health",
 			gadget_innate_toughness_increase = "+16% Toughness",
@@ -159,6 +166,10 @@ def main() -> None:
 			return no_symbol and "460" or "POWER 460", true
 		end
 
+		function TestItems.display_name(item)
+			return item and (item.display_name or item.name) or "n/a"
+		end
+
 		function TestItems.trait_description(item, rarity, value)
 			local trait_id = item.trait or item.name
 
@@ -175,6 +186,7 @@ def main() -> None:
 
 		function TestMasterItems.get_item(item_id)
 			return {
+				display_name = item_id == "blessing_one" and "Surgical" or item_id == "blessing_two" and "Weight of Fire" or item_id,
 				name = item_id,
 				trait = TestTraitByMasterId[item_id] or item_id,
 				icon = "icon/" .. item_id,
@@ -194,6 +206,10 @@ def main() -> None:
 				return TestMasterItems
 			end
 
+			if path == "scripts/settings/item/rank_settings" then
+				return TestRankSettings
+			end
+
 			error("Unexpected test require: " .. tostring(path))
 		end
 
@@ -202,6 +218,7 @@ def main() -> None:
 				columns = 3,
 				enable_grid_layout = true,
 				expand_inventory_window = true,
+				weapon_extra_width_column_threshold = "four_plus",
 				five_column_weapon_extra_width = 80,
 				expand_curio_inventory_window = true,
 				curio_target_card_width = 190,
@@ -216,16 +233,26 @@ def main() -> None:
                 show_pattern_mark = false,
                 show_rarity_name = false,
 				show_rarity_tag = true,
-				show_weapon_blessings = true,
+				weapon_blessing_display_mode = "icons",
+				blessing_text_item_level_separation = "four_plus",
 				blessing_icon_size = 34,
+				weapon_blessing_text_vertical_spacing = 2,
+				weapon_blessing_text_bottom_padding = 4,
+				weapon_blessing_text_color_r = 144,
+				weapon_blessing_text_color_g = 213,
+				weapon_blessing_text_color_b = 255,
+				weapon_blessing_text_opacity = 100,
 				show_weapon_perks = false,
 				weapon_perk_compression = "compression",
 				show_weapon_perk_rank_symbols = false,
 				weapon_perk_rank_icon_size = 18,
+				weapon_perk_vertical_spacing = 2,
+				weapon_perk_blessing_spacing = 5,
 				remove_weapon_perk_plus_signs = false,
-				weapon_perk_text_color_r = 113,
-				weapon_perk_text_color_g = 126,
-				weapon_perk_text_color_b = 103,
+				weapon_perk_text_color_r = 190,
+				weapon_perk_text_color_g = 210,
+				weapon_perk_text_color_b = 180,
+				weapon_perk_text_opacity = 100,
 				blessing_icon_spacing = 3,
 				highlight_equipped_items = true,
                 compact_favorite_marker = true,
@@ -445,10 +472,10 @@ def main() -> None:
     mod.settings.curio_display_profile = "primary"
 
     mod.settings.show_weapon_perks = True
-    assert layout.card_height(mod, store_configuration) == 148
+    assert layout.card_height(mod, store_configuration) == 153
     mod.settings.show_weapon_perk_rank_symbols = True
     mod.settings.weapon_perk_rank_icon_size = 32
-    assert layout.card_height(mod, store_configuration) == 180
+    assert layout.card_height(mod, store_configuration) == 185
     mod.settings.weapon_perk_rank_icon_size = 18
     mod.settings.show_weapon_perk_rank_symbols = False
     mod.settings.show_weapon_perks = False
@@ -575,6 +602,21 @@ def main() -> None:
     assert layout.grid_expansion(mod, 596) == 44
     mod.settings.five_column_weapon_extra_width = 80
 
+    mod.settings.columns = 4
+    assert layout.grid_expansion(mod, 596) == 80
+    four_column_definitions, four_column_expansion = layout.expanded_view_definitions(
+        mod, view_definitions
+    )
+    assert four_column_expansion == 80
+    assert four_column_definitions.grid_settings.grid_size[1] == 676
+    assert tuple(
+        layout.item_size(mod, 676)[index] for index in (1, 2)
+    ) == (161, 110)
+    mod.settings.weapon_extra_width_column_threshold = "five_only"
+    assert layout.grid_expansion(mod, 596) == 0
+    mod.settings.weapon_extra_width_column_threshold = "four_plus"
+    mod.settings.columns = 5
+
     curio_view = lua.table_from(
         {"_selected_slot": lua.table_from({"name": "slot_attachment_1"})}
     )
@@ -657,18 +699,18 @@ def main() -> None:
     vendor_perk_size = layout.configure_item_blueprint(
         mod, vendor_perk_blueprint, 596, store_configuration
     )
-    assert (vendor_perk_size[1], vendor_perk_size[2]) == (192, 148)
+    assert (vendor_perk_size[1], vendor_perk_size[2]) == (192, 153)
     assert (
         blueprint_pass(
             vendor_perk_blueprint, "better_inventory_weapon_perk_1"
         ).style.offset[2]
-        == -93
+        == -98
     )
     assert (
         blueprint_pass(
             vendor_perk_blueprint, "better_inventory_weapon_perk_2"
         ).style.offset[2]
-        == -76
+        == -79
     )
     mod.settings.show_weapon_perks = False
 
@@ -929,6 +971,165 @@ def main() -> None:
     assert (large_blessing_pass.style.size[1], large_blessing_pass.style.size[2]) == (42, 42)
     mod.settings.blessing_icon_size = 34
 
+    mod.settings.weapon_blessing_display_mode = "text"
+    mod.settings.columns = 5
+    text_blessing_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, text_blessing_blueprint, 640)
+    text_blessing_styles = {
+        "display_name": blueprint_pass(text_blessing_blueprint, "display_name").style,
+    }
+    for index in range(1, 3):
+        style_id = f"better_inventory_blessing_text_{index}"
+        text_blessing_styles[style_id] = blueprint_pass(
+            text_blessing_blueprint, style_id
+        ).style
+    text_blessing_widget = lua.table_from(
+        {"content": lua.table_from({}), "style": lua.table_from(text_blessing_styles)}
+    )
+    text_blessing_blueprint.init(
+        None,
+        text_blessing_widget,
+        narrow_weapon_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        text_blessing_blueprint,
+    )
+    assert text_blessing_widget.content.better_inventory_blessing_text_1 == "III Surgical"
+    assert text_blessing_widget.content.better_inventory_blessing_text_2 == "IV Weight of Fire"
+    assert text_blessing_widget.content.better_inventory_full_blessing_text_1 == "III Surgical"
+    assert text_blessing_widget.content.better_inventory_full_blessing_text_2 == "IV Weight of Fire"
+    first_text_style = text_blessing_styles["better_inventory_blessing_text_1"]
+    second_text_style = text_blessing_styles["better_inventory_blessing_text_2"]
+    assert tuple(first_text_style.text_color[index] for index in range(1, 5)) == (
+        255,
+        144,
+        213,
+        255,
+    )
+    assert first_text_style.size[1] == 100
+    assert second_text_style.offset[2] == -34
+    assert first_text_style.offset[2] == -53
+    mod.settings.show_weapon_perks = True
+    assert layout.card_height(mod) == 152
+    mod.settings.show_weapon_perks = False
+    mod.settings.columns = 3
+    compact_text_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, compact_text_blueprint, 640)
+    compact_text_style = blueprint_pass(
+        compact_text_blueprint, "better_inventory_blessing_text_2"
+    ).style
+    assert compact_text_style.size[1] == 144
+    assert compact_text_style.offset[2] == -4
+
+    mod.settings.columns = 4
+    four_column_text_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, four_column_text_blueprint, 640)
+    four_column_text_style = blueprint_pass(
+        four_column_text_blueprint, "better_inventory_blessing_text_2"
+    ).style
+    assert four_column_text_style.size[1] == 132
+    assert four_column_text_style.offset[2] == -34
+
+    mod.settings.weapon_blessing_text_vertical_spacing = 6
+    mod.settings.weapon_blessing_text_color_r = 12
+    mod.settings.weapon_blessing_text_color_g = 34
+    mod.settings.weapon_blessing_text_color_b = 56
+    spaced_blessing_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    spaced_blessing_size = layout.configure_item_blueprint(
+        mod, spaced_blessing_blueprint, 640
+    )
+    spaced_blessing_1 = blueprint_pass(
+        spaced_blessing_blueprint, "better_inventory_blessing_text_1"
+    ).style
+    spaced_blessing_2 = blueprint_pass(
+        spaced_blessing_blueprint, "better_inventory_blessing_text_2"
+    ).style
+    assert spaced_blessing_2.offset[2] - spaced_blessing_1.offset[2] == 23
+    assert tuple(spaced_blessing_1.text_color[index] for index in range(1, 5)) == (
+        255,
+        12,
+        34,
+        56,
+    )
+    assert spaced_blessing_size[2] == 117
+    mod.settings.weapon_blessing_text_vertical_spacing = 2
+    mod.settings.weapon_blessing_text_color_r = 144
+    mod.settings.weapon_blessing_text_color_g = 213
+    mod.settings.weapon_blessing_text_color_b = 255
+
+    mod.settings.weapon_blessing_text_opacity = 50
+    translucent_blessing_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, translucent_blessing_blueprint, 640)
+    translucent_blessing_style = blueprint_pass(
+        translucent_blessing_blueprint, "better_inventory_blessing_text_1"
+    ).style
+    assert tuple(
+        translucent_blessing_style.text_color[index] for index in range(1, 5)
+    ) == (128, 144, 213, 255)
+    mod.settings.weapon_blessing_text_opacity = 100
+
+    mod.settings.weapon_blessing_text_bottom_padding = 6
+    padded_blessing_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    padded_blessing_size = layout.configure_item_blueprint(
+        mod, padded_blessing_blueprint, 640
+    )
+    padded_blessing_1 = blueprint_pass(
+        padded_blessing_blueprint, "better_inventory_blessing_text_1"
+    ).style
+    padded_blessing_2 = blueprint_pass(
+        padded_blessing_blueprint, "better_inventory_blessing_text_2"
+    ).style
+    assert padded_blessing_1.offset[2] == first_text_style.offset[2] - 2
+    assert padded_blessing_2.offset[2] == second_text_style.offset[2] - 2
+    assert padded_blessing_size[2] == 115
+    mod.settings.weapon_blessing_text_bottom_padding = 4
+
+    mod.settings.weapon_blessing_display_mode = "ranked_text"
+    mod.settings.weapon_perk_rank_icon_size = 18
+    ranked_text_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, ranked_text_blueprint, 640)
+    ranked_text_styles = {
+        "display_name": blueprint_pass(ranked_text_blueprint, "display_name").style,
+    }
+    for index in range(1, 3):
+        style_id = f"better_inventory_blessing_text_{index}"
+        ranked_text_styles[style_id] = blueprint_pass(
+            ranked_text_blueprint, style_id
+        ).style
+    ranked_text_widget = lua.table_from(
+        {"content": lua.table_from({}), "style": lua.table_from(ranked_text_styles)}
+    )
+    ranked_text_blueprint.init(
+        None,
+        ranked_text_widget,
+        narrow_weapon_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        ranked_text_blueprint,
+    )
+    assert ranked_text_widget.content.better_inventory_blessing_text_1 == "Surgical"
+    assert ranked_text_widget.content.better_inventory_blessing_text_2 == "Weight of Fire"
+    assert ranked_text_widget.content.better_inventory_blessing_rank_1 == "perk/rank_3"
+    assert ranked_text_widget.content.better_inventory_blessing_rank_2 == "perk/rank_4"
+    first_rank_pass = blueprint_pass(ranked_text_blueprint, "better_inventory_blessing_rank_1")
+    first_rank_text = blueprint_pass(ranked_text_blueprint, "better_inventory_blessing_text_1")
+    assert first_rank_pass.visibility_function(ranked_text_widget.content)
+    assert (first_rank_pass.style.size[1], first_rank_pass.style.size[2]) == (18, 18)
+    assert first_rank_text.style.offset[1] == first_rank_pass.style.offset[1] + 21
+    assert first_rank_text.style.size[1] == four_column_text_style.size[1] - 21
+    assert layout.card_height(mod) == 117
+
+    mod.settings.weapon_blessing_display_mode = "text"
+    mod.settings.columns = 3
+    assert layout.card_height(mod, store_configuration) == 117
+    mod.settings.weapon_blessing_display_mode = "off"
+    assert layout.card_height(mod, store_configuration) == 110
+    mod.settings.weapon_blessing_display_mode = "icons"
+
     mod.settings.show_item_level_icon = False
     no_power_icon_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     layout.configure_item_blueprint(mod, no_power_icon_blueprint, 640)
@@ -978,7 +1179,7 @@ def main() -> None:
     mod.settings.show_weapon_perks = True
     perk_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     perk_size = layout.configure_item_blueprint(mod, perk_blueprint, 640)
-    assert (perk_size[1], perk_size[2]) == (206, 114)
+    assert (perk_size[1], perk_size[2]) == (206, 119)
     perk_styles = {
         "display_name": blueprint_pass(perk_blueprint, "display_name").style,
         "better_inventory_weapon_perk_1": blueprint_pass(
@@ -991,7 +1192,7 @@ def main() -> None:
     assert tuple(
         perk_styles["better_inventory_weapon_perk_1"].text_color[index]
         for index in range(1, 5)
-    ) == (255, 113, 126, 103)
+    ) == (255, 190, 210, 180)
     perk_widget = lua.table_from(
         {"content": lua.table_from({}), "style": lua.table_from(perk_styles)}
     )
@@ -1008,6 +1209,31 @@ def main() -> None:
     assert perk_widget.content.better_inventory_full_weapon_perk_1 == "+25% Flak Damage"
     assert perk_widget.content.better_inventory_full_weapon_perk_2 == "+25% Maniacs Damage"
     assert "\n" not in perk_widget.content.better_inventory_weapon_perk_1
+    assert perk_styles["better_inventory_weapon_perk_1"].drop_shadow is True
+
+    baseline_perk_1_y = perk_styles["better_inventory_weapon_perk_1"].offset[2]
+    baseline_perk_2_y = perk_styles["better_inventory_weapon_perk_2"].offset[2]
+    mod.settings.weapon_perk_vertical_spacing = 7
+    mod.settings.weapon_perk_blessing_spacing = 12
+    spaced_perk_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    spaced_perk_size = layout.configure_item_blueprint(mod, spaced_perk_blueprint, 640)
+    spaced_perk_1 = blueprint_pass(
+        spaced_perk_blueprint, "better_inventory_weapon_perk_1"
+    ).style
+    spaced_perk_2 = blueprint_pass(
+        spaced_perk_blueprint, "better_inventory_weapon_perk_2"
+    ).style
+    assert spaced_perk_2.offset[2] - spaced_perk_1.offset[2] == 24
+    assert spaced_perk_2.offset[2] == baseline_perk_2_y - 7
+    assert spaced_perk_1.offset[2] == baseline_perk_1_y - 12
+    assert spaced_perk_size[2] == 131
+    mod.settings.weapon_perk_vertical_spacing = 2
+    mod.settings.weapon_perk_blessing_spacing = 5
+
+    globals_.TestTraitDescriptions.weapon_trait_melee_common_wield_increased_berserker_damage = "+25% Damage\n(Maniacs)"
+    perk_blueprint.update_data(test_grid, perk_widget, narrow_weapon_element)
+    assert "\n" not in perk_widget.content.better_inventory_weapon_perk_2
+    globals_.TestTraitDescriptions.weapon_trait_melee_common_wield_increased_berserker_damage = "+25% Damage (Maniacs)"
 
     mod.settings.weapon_perk_text_color_r = 12
     mod.settings.weapon_perk_text_color_g = 34
@@ -1020,9 +1246,20 @@ def main() -> None:
     assert tuple(
         custom_perk_color_style.text_color[index] for index in range(1, 5)
     ) == (255, 12, 34, 56)
-    mod.settings.weapon_perk_text_color_r = 113
-    mod.settings.weapon_perk_text_color_g = 126
-    mod.settings.weapon_perk_text_color_b = 103
+    mod.settings.weapon_perk_text_color_r = 190
+    mod.settings.weapon_perk_text_color_g = 210
+    mod.settings.weapon_perk_text_color_b = 180
+
+    mod.settings.weapon_perk_text_opacity = 25
+    translucent_perk_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, translucent_perk_blueprint, 640)
+    translucent_perk_style = blueprint_pass(
+        translucent_perk_blueprint, "better_inventory_weapon_perk_1"
+    ).style
+    assert tuple(
+        translucent_perk_style.text_color[index] for index in range(1, 5)
+    ) == (64, 190, 210, 180)
+    mod.settings.weapon_perk_text_opacity = 100
 
     standard_weapon_perk_expectations = {
         "weapon_trait_melee_common_wield_increased_unarmored_damage": "+25% Unarmoured Damage",
@@ -1186,6 +1423,17 @@ def main() -> None:
         == "+25% Damage (Flak Armoured Enemies)"
     )
 
+    globals_.TestTraitDescriptions.weapon_trait_melee_common_wield_increased_armored_damage = "+25% Damage\n(Flak Armoured Enemies)"
+    uncompressed_perk_blueprint.update_data(
+        test_grid, uncompressed_perk_widget, narrow_weapon_element
+    )
+    assert (
+        uncompressed_perk_widget.content.better_inventory_full_weapon_perk_1
+        == "+25% Damage (Flak Armoured Enemies)"
+    )
+    assert "\n" not in uncompressed_perk_widget.content.better_inventory_weapon_perk_1
+    globals_.TestTraitDescriptions.weapon_trait_melee_common_wield_increased_armored_damage = "+25% Damage (Flak Armoured Enemies)"
+
     mod.settings.weapon_perk_compression = "compression"
     mod.settings.show_weapon_perk_rank_symbols = True
     mod.settings.remove_weapon_perk_plus_signs = True
@@ -1193,7 +1441,7 @@ def main() -> None:
     narrow_weapon_element.item.perks[2].rarity = 3
     ranked_perk_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     ranked_perk_size = layout.configure_item_blueprint(mod, ranked_perk_blueprint, 640)
-    assert (ranked_perk_size[1], ranked_perk_size[2]) == (206, 118)
+    assert (ranked_perk_size[1], ranked_perk_size[2]) == (206, 123)
     ranked_perk_text_1 = blueprint_pass(
         ranked_perk_blueprint, "better_inventory_weapon_perk_1"
     )
@@ -1242,7 +1490,7 @@ def main() -> None:
     large_rank_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     large_rank_size = layout.configure_item_blueprint(mod, large_rank_blueprint, 640)
     large_rank_pass = blueprint_pass(large_rank_blueprint, "better_inventory_weapon_perk_rank_1")
-    assert (large_rank_size[1], large_rank_size[2]) == (206, 142)
+    assert (large_rank_size[1], large_rank_size[2]) == (206, 147)
     assert (large_rank_pass.style.size[1], large_rank_pass.style.size[2]) == (30, 30)
     mod.settings.weapon_perk_rank_icon_size = 18
 
