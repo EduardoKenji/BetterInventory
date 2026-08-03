@@ -449,6 +449,12 @@ return {
 						},
 					},
 					{
+						setting_id = "show_curio_item_level",
+						tooltip = "show_curio_item_level_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
 						setting_id = "curio_primary_stat_font_size",
 						tooltip = "curio_primary_stat_font_size_tooltip",
 						type = "numeric",

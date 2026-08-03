@@ -38,6 +38,7 @@ def main() -> None:
 			weapon_perk_text_color_g = 126,
 			weapon_perk_text_color_b = 103,
 			curio_display_profile = "primary",
+			show_curio_item_level = true,
 			expand_inventory_window = true,
 			expand_curio_inventory_window = true,
             curio_health_color_preset = "red",
@@ -445,6 +446,7 @@ def main() -> None:
     assert defaults["weapon_perk_rank_icon_size"] == 18
     assert defaults["remove_weapon_perk_plus_signs"] is False
     assert defaults["curio_display_profile"] == "detailed"
+    assert defaults["show_curio_item_level"] is True
     assert defaults["curio_primary_stat_font_size"] == 16
     assert defaults["curio_secondary_stat_font_size"] == 13
     assert defaults["curio_primary_secondary_spacing"] == 5

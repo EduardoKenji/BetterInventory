@@ -1579,6 +1579,7 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 	local detailed_curio_profile = setting(mod, "curio_display_profile", "detailed") == "detailed"
 	local show_pattern_mark = setting(mod, "show_pattern_mark", false)
 	local show_curio_quality = setting(mod, "show_curio_quality", false)
+	local show_curio_item_level = setting(mod, "show_curio_item_level", true)
 
 	item_blueprint.size = item_size
 	item_blueprint.pass_template = pass_template
@@ -1613,7 +1614,7 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 	end
 
 	preserve_visibility(item_level, function(content)
-		return not detailed_curio_profile or not is_curio(item_from_content(content))
+		return not is_curio(item_from_content(content)) or show_curio_item_level
 	end)
 
 	set_visibility(pass_by_style_id(pass_template, "rarity_tag"), setting(mod, "show_rarity_tag", true))
@@ -1645,6 +1646,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 	local curio_display_profile = setting(mod, "curio_display_profile", "detailed")
 	local detailed_curio_profile = curio_display_profile == "detailed"
 	local show_curio_quality = setting(mod, "show_curio_quality", false)
+	local show_curio_item_level = setting(mod, "show_curio_item_level", true)
 
 	item_blueprint.size = item_size
 	item_blueprint.pass_template = pass_template
@@ -1788,7 +1790,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 		},
 	})
 	preserve_visibility(item_level, function(content)
-		return not detailed_curio_profile or not is_curio(item_from_content(content))
+		return not is_curio(item_from_content(content)) or show_curio_item_level
 	end)
 
 	if configuration.store_item then

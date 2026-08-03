@@ -272,6 +272,12 @@ return {
 	curio_display_profile_detailed = {
 		en = "All four stats",
 	},
+	show_curio_item_level = {
+		en = "Show Curio base level",
+	},
+	show_curio_item_level_tooltip = {
+		en = "Shows the Curio's normalized base-level number in the lower-right corner in either display profile. Enabled by default to make 400–430 Curios easy to identify.",
+	},
 	curio_primary_stat_font_size = {
 		en = "Primary Curio stat font size",
 	},

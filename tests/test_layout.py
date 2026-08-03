@@ -230,6 +230,7 @@ def main() -> None:
                 compact_favorite_marker = true,
 				favorite_marker_position = "above_rating",
 				curio_display_profile = "primary",
+				show_curio_item_level = true,
 				curio_primary_stat_font_size = 16,
 				curio_secondary_stat_font_size = 13,
 				curio_primary_secondary_spacing = 5,
@@ -1462,7 +1463,7 @@ def main() -> None:
     assert not blueprint_pass(detailed_blueprint, "display_name").visibility_function(
         detailed_widget.content
     )
-    assert not blueprint_pass(detailed_blueprint, "item_level").visibility_function(
+    assert blueprint_pass(detailed_blueprint, "item_level").visibility_function(
         detailed_widget.content
     )
     assert not blueprint_pass(
@@ -1474,6 +1475,57 @@ def main() -> None:
             detailed_blueprint, f"better_inventory_curio_stat_{index}"
         )
         assert stat_pass.visibility_function(detailed_widget.content)
+
+    mod.settings.show_curio_item_level = False
+    hidden_curio_level_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, hidden_curio_level_blueprint, 640)
+    hidden_curio_level_widget = lua.table_from(
+        {
+            "content": lua.table_from({}),
+            "style": lua.table_from(
+                {
+                    "display_name": blueprint_pass(
+                        hidden_curio_level_blueprint, "display_name"
+                    ).style,
+                }
+            ),
+        }
+    )
+    hidden_curio_level_blueprint.init(
+        None,
+        hidden_curio_level_widget,
+        curio_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        hidden_curio_level_blueprint,
+    )
+    assert not blueprint_pass(
+        hidden_curio_level_blueprint, "item_level"
+    ).visibility_function(hidden_curio_level_widget.content)
+    assert blueprint_pass(
+        hidden_curio_level_blueprint, "item_level"
+    ).visibility_function(narrow_weapon_widget.content)
+
+    mod.settings.enable_grid_layout = False
+    native_hidden_curio_level_blueprint = lua.eval("table.clone")(
+        globals_.raw_test_blueprint
+    )
+    layout.configure_item_blueprint(mod, native_hidden_curio_level_blueprint, 640)
+    assert not blueprint_pass(
+        native_hidden_curio_level_blueprint, "item_level"
+    ).visibility_function(hidden_curio_level_widget.content)
+
+    mod.settings.show_curio_item_level = True
+    native_visible_curio_level_blueprint = lua.eval("table.clone")(
+        globals_.raw_test_blueprint
+    )
+    layout.configure_item_blueprint(mod, native_visible_curio_level_blueprint, 640)
+    assert blueprint_pass(
+        native_visible_curio_level_blueprint, "item_level"
+    ).visibility_function(detailed_widget.content)
+    mod.settings.enable_grid_layout = True
 
     assert (
         detailed_widget.content.better_inventory_full_curio_stat_4
