@@ -245,6 +245,12 @@ return {
 	weapon_blessing_text_color_b = {
 		en = "Weapon blessing text colour blue",
 	},
+	weapon_blessing_text_opacity = {
+		en = "Weapon blessing text opacity",
+	},
+	weapon_blessing_text_opacity_tooltip = {
+		en = "Sets blessing-text opacity from fully transparent at 0%% to fully opaque at 100%%. Tier symbols retain their native appearance.",
+	},
 	blessing_icon_size_tooltip = {
 		en = "Sets the width and height of each weapon blessing symbol in pixels. Automatic card height grows when larger symbols need more room.",
 	},
@@ -301,6 +307,12 @@ return {
 	},
 	weapon_perk_text_color_b = {
 		en = "Weapon perk text colour preset blue",
+	},
+	weapon_perk_text_opacity = {
+		en = "Weapon perk text opacity",
+	},
+	weapon_perk_text_opacity_tooltip = {
+		en = "Sets weapon-perk text opacity from fully transparent at 0%% to fully opaque at 100%%. Perk tier symbols retain their native appearance.",
 	},
 	weapon_perk_vertical_spacing = {
 		en = "Weapon perk vertical spacing",
@@ -517,6 +529,9 @@ return {
 	},
 	color_preset_light_blue = {
 		en = "Light blue",
+	},
+	color_preset_sky_blue = {
+		en = "Sky blue",
 	},
 	color_preset_purple = {
 		en = "Purple",
