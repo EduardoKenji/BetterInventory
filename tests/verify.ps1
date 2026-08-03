@@ -8,6 +8,7 @@ $scriptRoot = Join-Path $projectRoot "scripts\mods\BetterInventory"
 $requiredFiles = @(
 	(Join-Path $projectRoot "BetterInventory.mod"),
 	(Join-Path $scriptRoot "BetterInventory.lua"),
+	(Join-Path $scriptRoot "BetterInventory_features.lua"),
 	(Join-Path $scriptRoot "BetterInventory_layout.lua"),
 	(Join-Path $scriptRoot "BetterInventory_data.lua"),
 	(Join-Path $scriptRoot "BetterInventory_localization.lua")
@@ -118,8 +119,12 @@ if ($DarktideSourcePath) {
 	$gadgetTraits = Join-Path $DarktideSourcePath "scripts\settings\equipment\gadget_traits\gadget_traits_common.lua"
 	$weaponPerksMelee = Join-Path $DarktideSourcePath "scripts\settings\equipment\weapon_traits\weapon_perks_melee.lua"
 	$weaponPerksRanged = Join-Path $DarktideSourcePath "scripts\settings\equipment\weapon_traits\weapon_perks_ranged.lua"
+	$weaponStats = Join-Path $DarktideSourcePath "scripts\utilities\weapon_stats.lua"
+	$itemStatsBlueprints = Join-Path $DarktideSourcePath "scripts\ui\view_content_blueprints\item_stats_blueprints.lua"
+	$traitValueParser = Join-Path $DarktideSourcePath "scripts\utilities\trait_value_parser.lua"
+	$gadgetBuffTemplates = Join-Path $DarktideSourcePath "scripts\settings\buff\gadget_buff_templates.lua"
 
-	foreach ($sourceFile in @($inventoryView, $hadronModifyView, $craftingViewDefinitions, $creditsVendorView, $creditsVendorBackgroundDefinitions, $itemGridBase, $itemGridBaseDefinitions, $itemBlueprints, $iconGenerator, $items, $masterItems, $gadgetTraits, $weaponPerksMelee, $weaponPerksRanged)) {
+	foreach ($sourceFile in @($inventoryView, $hadronModifyView, $craftingViewDefinitions, $creditsVendorView, $creditsVendorBackgroundDefinitions, $itemGridBase, $itemGridBaseDefinitions, $itemBlueprints, $iconGenerator, $items, $masterItems, $gadgetTraits, $weaponPerksMelee, $weaponPerksRanged, $weaponStats, $itemStatsBlueprints, $traitValueParser, $gadgetBuffTemplates)) {
 		if (-not (Test-Path -LiteralPath $sourceFile -PathType Leaf)) {
 			throw "Missing expected Darktide source file: $sourceFile"
 		}
@@ -142,6 +147,25 @@ if ($DarktideSourcePath) {
 
 	if ($inventoryViewSource -notmatch 'InventoryWeaponsView\._setup_weapon_actions[\s\S]*?local grid_width = 420') {
 		throw "The weapon-actions width used by the inventory safety clamp has changed."
+	}
+
+	if ($inventoryViewSource -notmatch 'InventoryWeaponsView\.is_item_equipped_in_any_slot' -or $inventoryViewSource -notmatch 'InventoryWeaponsView\.cb_on_favorite_pressed') {
+		throw "The Curio equipped/favorite sorting APIs were not found."
+	}
+
+	if ((Get-Content -LiteralPath $weaponStats -Raw) -notmatch 'WeaponStats\.get_comparing_stats[\s\S]*?fraction\s*=\s*stat_value') {
+		throw "The raw weapon-attribute fraction API was not found."
+	}
+
+	if ((Get-Content -LiteralPath $itemStatsBlueprints -Raw) -notmatch '(?m)^\s*weapon_stats\s*=\s*{' -or (Get-Content -LiteralPath $itemStatsBlueprints -Raw) -notmatch 'percentage_') {
+		throw "The weapon attribute text blueprint was not found."
+	}
+
+	$traitParserSource = Get-Content -LiteralPath $traitValueParser -Raw
+	$gadgetBuffSource = Get-Content -LiteralPath $gadgetBuffTemplates -Raw
+
+	if ($traitParserSource -notmatch 'math\.round\(value \* 100\)' -or $gadgetBuffSource -notmatch 'math\.round_with_precision\(value, 2\)') {
+		throw "Curio innate percentages no longer appear to be quantized to whole percentage points. Re-audit precise Curio values."
 	}
 
 	if ((Get-Content -LiteralPath $hadronModifyView -Raw) -notmatch 'class\("CraftingMechanicusModifyView",\s*"ItemGridViewBase"\)') {
@@ -261,7 +285,7 @@ if ($hasLuaParser) {
 }
 
 if ($hasLupa) {
-	foreach ($behaviorTest in @("test_layout.py", "test_settings.py")) {
+	foreach ($behaviorTest in @("test_layout.py", "test_settings.py", "test_features.py")) {
 		py -3 (Join-Path $PSScriptRoot $behaviorTest)
 
 		if ($LASTEXITCODE -ne 0) {

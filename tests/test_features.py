@@ -1,0 +1,272 @@
+from pathlib import Path
+
+from lupa import LuaRuntime
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+FEATURES_PATH = (
+    PROJECT_ROOT
+    / "scripts"
+    / "mods"
+    / "BetterInventory"
+    / "BetterInventory_features.lua"
+)
+
+
+def main() -> None:
+    lua = LuaRuntime(unpack_returned_tuples=True)
+    lua.execute(
+        r"""
+        function table.clone(value)
+            if type(value) ~= "table" then
+                return value
+            end
+
+            local copy = {}
+
+            for key, child in pairs(value) do
+                copy[table.clone(key)] = table.clone(child)
+            end
+
+            return setmetatable(copy, getmetatable(value))
+        end
+
+        Color = setmetatable({}, {
+            __index = function()
+                return function(alpha)
+                    return {alpha or 255, 200, 210, 190}
+                end
+            end,
+        })
+
+        TestItems = {
+            favorites = {},
+            is_item_id_favorited = function(gear_id)
+                return TestItems.favorites[gear_id] == true
+            end,
+        }
+        TestUIWidget = {
+            create_definition = function(pass_template, scenegraph_id, content)
+                content.hotspot = content.hotspot or {}
+
+                return {
+                    pass_template = pass_template,
+                    scenegraph_id = scenegraph_id,
+                    content = content,
+                }
+            end,
+        }
+        TestSoundEvents = {
+            default_mouse_hover = "hover",
+            default_click = "click",
+        }
+        TestWeaponStats = {
+            new = function(_, item)
+                return {
+                    get_comparing_stats = function()
+                        return item.comparing_stats
+                    end,
+                }
+            end,
+        }
+
+        function require(path)
+            if path == "scripts/utilities/items" then
+                return TestItems
+            elseif path == "scripts/managers/ui/ui_widget" then
+                return TestUIWidget
+            elseif path == "scripts/settings/ui/ui_sound_events" then
+                return TestSoundEvents
+            elseif path == "scripts/utilities/weapon_stats" then
+                return TestWeaponStats
+            end
+
+            error("Unexpected test require: " .. tostring(path))
+        end
+
+        test_mod = {
+            settings = {
+                show_weapon_attribute_decimals = true,
+                prioritize_equipped_favorites = true,
+            },
+            get = function(self, setting_id)
+                return self.settings[setting_id]
+            end,
+            set = function(self, setting_id, value)
+                self.settings[setting_id] = value
+            end,
+            localize = function(self, localization_id)
+                return localization_id
+            end,
+        }
+        test_layout = {
+            slot_kind = function(view)
+                return view.slot_kind
+            end,
+        }
+        """
+    )
+    features = lua.execute(FEATURES_PATH.read_text(encoding="utf-8"))
+    globals_ = lua.globals()
+    mod = globals_.test_mod
+    layout = globals_.test_layout
+
+    blueprint = lua.execute(
+        r"""
+        return {
+            init = function(parent, widget, element)
+                widget.content.element = element
+                widget.content.start_expertise_value = 500
+                widget.content.percentage_1 = "[80/80]%"
+                widget.content.percentage_2 = "[60/60]%"
+            end,
+            update = function(parent, widget)
+                if widget.content.force_preview then
+                    widget.content.preview_expertise_value = 501
+                    widget.content.percentage_1 = "[81/80]%"
+                else
+                    widget.content.preview_expertise_value = nil
+                    widget.content.percentage_1 = "[80/80]%"
+                end
+            end,
+        }
+        """
+    )
+    features.configure_weapon_stats_blueprint(mod, blueprint)
+    widget = lua.table_from({"content": lua.table_from({})})
+    item = lua.table_from(
+        {
+            "comparing_stats": lua.table_from(
+                [
+                    lua.table_from({"fraction": 0.796}),
+                    lua.table_from({"fraction": 0.6}),
+                ]
+            )
+        }
+    )
+    element = lua.table_from({"item": item})
+    blueprint.init(lua.table_from({}), widget, element)
+    assert widget.content.percentage_1 == "[79.6/80]%"
+    assert widget.content.percentage_2 == "[60.0/60]%"
+
+    widget.content.force_preview = True
+    blueprint.update(lua.table_from({}), widget)
+    assert widget.content.percentage_1 == "[81/80]%"
+
+    widget.content.force_preview = False
+    blueprint.update(lua.table_from({}), widget)
+    assert widget.content.percentage_1 == "[79.6/80]%"
+
+    definitions = lua.table_from(
+        {
+            "scenegraph_definition": lua.table_from({}),
+            "widget_definitions": lua.table_from({}),
+            "grid_settings": lua.table_from(
+                {"grid_size": lua.table_from([620, 860])}
+            ),
+        }
+    )
+    view = lua.execute(
+        r"""
+        return {
+            __class_name = "InventoryWeaponsView",
+            slot_kind = "curio",
+        }
+        """
+    )
+    adjusted = features.add_curio_sort_toggle_definition(mod, layout, definitions, view)
+    toggle_id = "better_inventory_curio_sort_priority"
+    assert adjusted.scenegraph_definition[toggle_id].position[2] == 910
+    assert (
+        adjusted.widget_definitions[toggle_id].content.label
+        == "prioritize_equipped_favorites_inventory_label"
+    )
+
+    sortable_view = lua.execute(
+        r"""
+        return {
+            __class_name = "InventoryWeaponsView",
+            slot_kind = "curio",
+            is_item_equipped_in_any_slot = function(self, item)
+                return item.equipped == true
+            end,
+            _sort_options = {
+                {
+                    sort_function = function(left, right)
+                        return left.item.rating > right.item.rating
+                    end,
+                },
+            },
+        }
+        """
+    )
+    globals_.TestItems.favorites.favorite = True
+    features.configure_curio_sort_options(mod, layout, sortable_view)
+    sorted_ids = lua.execute(
+        r"""
+        local view, ordinary, favorite, equipped = ...
+        local entries = {ordinary, favorite, equipped}
+
+        table.sort(entries, view._sort_options[1].sort_function)
+
+        return entries[1].item.gear_id, entries[2].item.gear_id, entries[3].item.gear_id
+        """,
+        sortable_view,
+        lua.table_from(
+            {"item": lua.table_from({"gear_id": "ordinary", "rating": 100, "slots": lua.table_from(["slot_attachment_1"])})}
+        ),
+        lua.table_from(
+            {"item": lua.table_from({"gear_id": "favorite", "rating": 10, "slots": lua.table_from(["slot_attachment_1"])})}
+        ),
+        lua.table_from(
+            {
+                "item": lua.table_from(
+                    {"gear_id": "equipped", "rating": 1, "equipped": True, "slots": lua.table_from(["slot_attachment_1"])}
+                )
+            }
+        ),
+    )
+    assert sorted_ids == ("equipped", "favorite", "ordinary")
+
+    mod.settings.prioritize_equipped_favorites = False
+    rating_first = lua.execute(
+        r"""
+        local view, high, low = ...
+        return view._sort_options[1].sort_function(high, low)
+        """,
+        sortable_view,
+        lua.table_from({"item": lua.table_from({"gear_id": "high", "rating": 100})}),
+        lua.table_from(
+            {
+                "item": lua.table_from(
+                    {"gear_id": "low", "rating": 1, "equipped": True, "slots": lua.table_from(["slot_attachment_1"])}
+                )
+            }
+        ),
+    )
+    assert rating_first is True
+
+    mod.settings.prioritize_equipped_favorites = True
+    sortable_view._widgets_by_name = lua.table_from(
+        {
+            toggle_id: lua.table_from(
+                {
+                    "content": lua.table_from(
+                        {"checked": True, "hotspot": lua.table_from({})}
+                    )
+                }
+            )
+        }
+    )
+    sortable_view._selected_sort_option_index = 1
+    sortable_view._sort_grid_layout = lua.eval(
+        "function(self, sort_function) self.resorted = sort_function ~= nil end"
+    )
+    features.bind_curio_sort_toggle(mod, layout, sortable_view)
+    sortable_view._widgets_by_name[toggle_id].content.hotspot.pressed_callback()
+    assert mod.settings.prioritize_equipped_favorites is False
+    assert sortable_view.resorted is True
+
+
+if __name__ == "__main__":
+    main()

@@ -7,6 +7,7 @@ local ItemGridViewBaseDefinitions = require("scripts/ui/views/item_grid_view_bas
 local InventoryWeaponsView = require("scripts/ui/views/inventory_weapons_view/inventory_weapons_view")
 local ViewElementGrid = require("scripts/ui/view_elements/view_element_grid/view_element_grid")
 local Layout = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout")
+local Features = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_features")
 local active_grid_view
 local active_grid_configuration
 local INVENTORY_GRID_CONFIGURATION = {
@@ -311,6 +312,23 @@ function mod.on_enabled()
 		mod:set("_curio_heavy_default_v1_migrated", true)
 	end
 
+	-- Move only the former defaults so deliberately customized icon sizes stay
+	-- untouched on existing installations.
+	if not mod:get("_inventory_icon_size_defaults_v2_migrated") then
+		local blessing_size = mod:get("blessing_icon_size")
+		local perk_rank_size = mod:get("weapon_perk_rank_icon_size")
+
+		if blessing_size == nil or blessing_size == 34 then
+			mod:set("blessing_icon_size", 36)
+		end
+
+		if perk_rank_size == nil or perk_rank_size == 18 then
+			mod:set("weapon_perk_rank_icon_size", 17)
+		end
+
+		mod:set("_inventory_icon_size_defaults_v2_migrated", true)
+	end
+
 	for i = 1, #COLOR_TARGETS do
 		apply_color_preset(COLOR_TARGETS[i])
 	end
@@ -343,8 +361,13 @@ if dmf_mod and type(dmf_mod.create_mod_options_settings) == "function" then
 end
 
 mod:hook(ItemGridViewBase, "init", function(func, view, definitions, settings, context)
-	if view.__class_name == "InventoryWeaponsView" and Layout.is_enabled_for_view(mod, view) then
-		local adjusted_definitions, expansion = Layout.expanded_view_definitions(mod, definitions, view)
+	if view.__class_name == "InventoryWeaponsView" then
+		local adjusted_definitions = Features.add_curio_sort_toggle_definition(mod, Layout, definitions, view)
+		local expansion = 0
+
+		if Layout.is_enabled_for_view(mod, view) then
+			adjusted_definitions, expansion = Layout.expanded_view_definitions(mod, adjusted_definitions, view)
+		end
 
 		view._better_inventory_grid_expansion = expansion
 
@@ -360,6 +383,23 @@ mod:hook(ItemGridViewBase, "init", function(func, view, definitions, settings, c
 	end
 
 	return func(view, definitions, settings, context)
+end)
+
+if ensure_class_method(InventoryWeaponsView, "_setup_sort_options") then
+	mod:hook(InventoryWeaponsView, "_setup_sort_options", function(func, view, ...)
+		local result = func(view, ...)
+
+		Features.configure_curio_sort_options(mod, Layout, view)
+		Features.bind_curio_sort_toggle(mod, Layout, view)
+
+		return result
+	end)
+end
+
+mod:hook_safe(InventoryWeaponsView, "cb_on_favorite_pressed", function(view)
+	if mod:get("prioritize_equipped_favorites") ~= false then
+		Features.resort_curio_inventory(mod, Layout, view)
+	end
 end)
 
 mod:hook(InventoryWeaponsView, "_setup_item_grid_materials", function(func, view, ...)
@@ -470,6 +510,18 @@ mod:hook(CreditsVendorView, "on_enter", function(func, view, ...)
 end)
 
 mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layout, content_blueprints, ...)
+	if item_grid.__class_name == "ViewElementWeaponStats" and mod:get("show_weapon_attribute_decimals") == true then
+		local weapon_stats_blueprint = content_blueprints and content_blueprints.weapon_stats
+
+		if weapon_stats_blueprint then
+			local local_blueprints = table.clone(content_blueprints)
+
+			Features.configure_weapon_stats_blueprint(mod, local_blueprints.weapon_stats)
+
+			return func(item_grid, layout, local_blueprints, ...)
+		end
+	end
+
 	local view = active_grid_view
 	local configuration = active_grid_configuration
 	local definitions = view and view._definitions

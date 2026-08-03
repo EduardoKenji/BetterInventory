@@ -63,7 +63,7 @@ def main() -> None:
 			curio_secondary_text_color_b = 210,
         }
 
-        test_layout = {
+		test_layout = {
             is_enabled_for_view = function() return false end,
             expanded_view_definitions = function(_, definitions) return definitions, 0 end,
 			expanded_armoury_view_definitions = function(_, definitions)
@@ -71,8 +71,15 @@ def main() -> None:
 				return definitions, 114
 			end,
             configure_item_blueprint = function() end,
-            configure_grid = function() end,
-        }
+			configure_grid = function() end,
+		}
+		test_features = {
+			add_curio_sort_toggle_definition = function(_, _, definitions) return definitions end,
+			configure_curio_sort_options = function() end,
+			bind_curio_sort_toggle = function() end,
+			resort_curio_inventory = function() end,
+			configure_weapon_stats_blueprint = function() end,
+		}
 
         test_mod = {}
         test_dmf = {
@@ -98,9 +105,13 @@ def main() -> None:
             return "Better Inventory"
         end
 
-        function test_mod:io_dofile(path)
-            return test_layout
-        end
+		function test_mod:io_dofile(path)
+			if string.find(path, "BetterInventory_features", 1, true) then
+				return test_features
+			end
+
+			return test_layout
+		end
 
         function test_mod:hook(target, method, callback)
 			if method == "init" then
@@ -168,6 +179,8 @@ def main() -> None:
 
     mod.on_enabled()
     assert settings.curio_stat_compression == "heavy"
+    assert settings.blessing_icon_size == 36
+    assert settings.weapon_perk_rank_icon_size == 17
 
     settings._curio_heavy_default_v1_migrated = False
     settings.curio_stat_compression = "none"
@@ -437,16 +450,18 @@ def main() -> None:
     assert defaults["simplify_curio_primary_stat_text"] is True
     assert defaults["remove_curio_stat_plus_signs"] is False
     assert defaults["blessing_icon_spacing"] == 3
-    assert defaults["blessing_icon_size"] == 34
+    assert defaults["blessing_icon_size"] == 36
     assert defaults["highlight_equipped_items"] is True
     assert defaults["show_weapon_blessings"] is True
     assert defaults["show_weapon_perks"] is True
     assert defaults["weapon_perk_compression"] == "heavy"
     assert defaults["show_weapon_perk_rank_symbols"] is True
-    assert defaults["weapon_perk_rank_icon_size"] == 18
+    assert defaults["weapon_perk_rank_icon_size"] == 17
     assert defaults["remove_weapon_perk_plus_signs"] is False
     assert defaults["curio_display_profile"] == "detailed"
     assert defaults["show_curio_item_level"] is True
+    assert defaults["show_weapon_attribute_decimals"] is False
+    assert defaults["prioritize_equipped_favorites"] is True
     assert defaults["curio_primary_stat_font_size"] == 16
     assert defaults["curio_secondary_stat_font_size"] == 13
     assert defaults["curio_primary_secondary_spacing"] == 5

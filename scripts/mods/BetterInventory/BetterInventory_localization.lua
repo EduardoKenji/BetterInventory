@@ -8,6 +8,27 @@ return {
 	inventory_slots_group = {
 		en = "Inventory coverage",
 	},
+	precise_values_group = {
+		en = "Precise values",
+	},
+	show_weapon_attribute_decimals = {
+		en = "Show weapon attribute decimals",
+	},
+	show_weapon_attribute_decimals_tooltip = {
+		en = "Shows each weapon attribute's exact stored percentage to one decimal place, such as 79.6 instead of Darktide's rounded 80. Expertise previews retain Darktide's calculated display.",
+	},
+	inventory_sorting_group = {
+		en = "Inventory sorting",
+	},
+	prioritize_equipped_favorites = {
+		en = "Keep equipped and favorites at top",
+	},
+	prioritize_equipped_favorites_tooltip = {
+		en = "In Curio inventories, keeps equipped Curios first and favorited Curios second while the selected native sort still orders each group. The same toggle is available below the Curio grid.",
+	},
+	prioritize_equipped_favorites_inventory_label = {
+		en = "Equipped and favorited items at the top",
+	},
 	enable_melee_inventory = {
 		en = "Melee weapons",
 	},
