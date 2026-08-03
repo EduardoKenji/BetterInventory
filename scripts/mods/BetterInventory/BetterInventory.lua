@@ -8,6 +8,7 @@ local InventoryWeaponsView = require("scripts/ui/views/inventory_weapons_view/in
 local ViewElementGrid = require("scripts/ui/view_elements/view_element_grid/view_element_grid")
 local Layout = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout")
 local Features = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_features")
+local unpack_values = table.unpack or unpack
 local active_grid_view
 local active_grid_configuration
 local INVENTORY_GRID_CONFIGURATION = {
@@ -22,6 +23,20 @@ local ARMOURY_GRID_CONFIGURATION = {
 	maximum_columns = 3,
 	store_item = true,
 }
+
+local function pack_values(...)
+	return {
+		n = select("#", ...),
+		...,
+	}
+end
+
+local function is_armoury_requisition_view(view)
+	-- GlobalStore and similar mods reuse CreditsVendorView with a custom store
+	-- service and add their own card footer content. Restrict BetterInventory's
+	-- Armoury geometry to Darktide's native Requisition route.
+	return view and view.__class_name == "CreditsVendorView" and view._optional_store_service == nil
+end
 
 -- Darktide class tables can contain the exact same inherited function object.
 -- Give each target class its own forwarder before DMF hooks it, preventing
@@ -525,6 +540,7 @@ end
 
 function mod.on_disabled()
 	Features.cancel_morningstar_auto_discard()
+	Features.disable_inventory_views()
 end
 
 local dmf_mod = get_mod("DMF")
@@ -549,7 +565,7 @@ mod:hook(ItemGridViewBase, "init", function(func, view, definitions, settings, c
 		return func(view, adjusted_definitions, settings, context)
 	end
 
-	if view.__class_name == "CreditsVendorView" and mod:get("enable_grid_layout") ~= false and mod:get("enable_armoury_requisition_grid") ~= false then
+	if is_armoury_requisition_view(view) and mod:get("enable_grid_layout") ~= false and mod:get("enable_armoury_requisition_grid") ~= false then
 		local adjusted_definitions, expansion = Layout.expanded_armoury_view_definitions(mod, definitions, ItemGridViewBaseDefinitions)
 
 		view._better_inventory_armoury_grid_expansion = expansion
@@ -622,16 +638,18 @@ local function present_grid_with_configuration(func, view, layout, on_present_ca
 	active_grid_view = view
 	active_grid_configuration = configuration
 
-	local success, result = pcall(func, view, layout, on_present_callback)
+	local results = pack_values(pcall(func, view, layout, on_present_callback))
+	local success = results[1]
+	local result_count = results.n
 
 	active_grid_view = previous_active_view
 	active_grid_configuration = previous_configuration
 
 	if not success then
-		error(result)
+		error(results[2])
 	end
 
-	return result
+	return unpack_values(results, 2, result_count)
 end
 
 if ensure_class_method(InventoryWeaponsView, "present_grid_layout") then
@@ -669,12 +687,21 @@ end
 -- not hooked by this setting.
 if ensure_class_method(CreditsVendorView, "present_grid_layout") then
 	mod:hook(CreditsVendorView, "present_grid_layout", function(func, view, layout, on_present_callback)
+		if not is_armoury_requisition_view(view) then
+			return func(view, layout, on_present_callback)
+		end
+
 		return present_additional_grid(func, view, layout, on_present_callback, "enable_armoury_requisition_grid", ARMOURY_GRID_CONFIGURATION)
 	end)
 end
 
 mod:hook(CreditsVendorView, "on_enter", function(func, view, ...)
 	local result = func(view, ...)
+
+	if not is_armoury_requisition_view(view) then
+		return result
+	end
+
 	local expansion = view._better_inventory_armoury_grid_expansion or 0
 	local item_grid = view._item_grid
 

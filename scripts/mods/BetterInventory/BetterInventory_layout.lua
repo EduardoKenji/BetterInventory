@@ -327,20 +327,34 @@ local function setting(mod, setting_id, fallback)
 	return value
 end
 
+local function numeric_setting(mod, setting_id, fallback, minimum, maximum)
+	local value = tonumber(setting(mod, setting_id, fallback)) or fallback
+
+	if minimum then
+		value = math.max(minimum, value)
+	end
+
+	if maximum then
+		value = math.min(maximum, value)
+	end
+
+	return value
+end
+
 local function curio_primary_font_size(mod)
-	return math.max(9, math.min(20, setting(mod, "curio_primary_stat_font_size", 16)))
+	return numeric_setting(mod, "curio_primary_stat_font_size", 16, 9, 20)
 end
 
 local function curio_secondary_font_size(mod)
-	return math.max(9, math.min(20, setting(mod, "curio_secondary_stat_font_size", 13)))
+	return numeric_setting(mod, "curio_secondary_stat_font_size", 13, 9, 20)
 end
 
 local function curio_primary_secondary_spacing(mod)
-	return math.max(0, math.min(20, setting(mod, "curio_primary_secondary_spacing", 5)))
+	return numeric_setting(mod, "curio_primary_secondary_spacing", 5, 0, 20)
 end
 
 local function blessing_icon_size(mod)
-	return math.max(20, math.min(48, setting(mod, "blessing_icon_size", DEFAULT_BLESSING_ICON_SIZE)))
+	return numeric_setting(mod, "blessing_icon_size", DEFAULT_BLESSING_ICON_SIZE, 20, 48)
 end
 
 local function weapon_blessing_display_mode(mod)
@@ -394,7 +408,7 @@ local function blessing_rank_name(rarity)
 end
 
 local function weapon_perk_rank_icon_size(mod)
-	return math.max(12, math.min(32, setting(mod, "weapon_perk_rank_icon_size", DEFAULT_PERK_RANK_SIZE)))
+	return numeric_setting(mod, "weapon_perk_rank_icon_size", DEFAULT_PERK_RANK_SIZE, 12, 32)
 end
 
 local function item_from_element(element)
@@ -1060,7 +1074,7 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 	local detailed_curio_profile = setting(mod, "curio_display_profile", "detailed") == "detailed"
 	local favorite_marker_position = setting(mod, "favorite_marker_position", "above_rating")
 	local store_footer_height = configuration.store_item and STORE_FOOTER_HEIGHT or 0
-	local expertise_font_size = math.max(10, math.min(28, setting(mod, "expertise_font_size", 20)))
+	local expertise_font_size = numeric_setting(mod, "expertise_font_size", 20, 10, 28)
 	local item_level_row_height = math.max(30, expertise_font_size + 10)
 	local bottom_content_height = item_level_row_height
 	local blessing_size
@@ -1069,7 +1083,7 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 
 	if blessing_display_mode == "icons" then
 		blessing_size = blessing_icon_size(mod)
-		local blessing_gap = math.max(0, math.min(20, setting(mod, "blessing_icon_spacing", 3)))
+		local blessing_gap = numeric_setting(mod, "blessing_icon_spacing", 3, 0, 20)
 		local blessing_spacing = blessing_size + blessing_gap
 		local blessing_left = text_left + (favorite_marker_position == "bottom_left" and 24 or 0)
 		local blessing_y_offset = -(store_footer_height + 3)
@@ -1078,10 +1092,10 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 			add_blessing_pass(pass_template, i, blessing_size, blessing_left + (i - 1) * blessing_spacing, blessing_y_offset)
 		end
 	elseif blessing_text_mode then
-		local blessing_font_size = math.max(9, math.min(16, setting(mod, "secondary_text_font_size", 13)))
+		local blessing_font_size = numeric_setting(mod, "secondary_text_font_size", 13, 9, 16)
 		local blessing_line_height = blessing_ranked_text and math.max(blessing_font_size + 4, perk_rank_size + 1) or blessing_font_size + 4
-		local blessing_vertical_spacing = math.max(0, math.min(20, setting(mod, "weapon_blessing_text_vertical_spacing", 2)))
-		local blessing_bottom_padding = math.max(0, math.min(20, setting(mod, "weapon_blessing_text_bottom_padding", 4)))
+		local blessing_vertical_spacing = numeric_setting(mod, "weapon_blessing_text_vertical_spacing", 2, 0, 20)
+		local blessing_bottom_padding = numeric_setting(mod, "weapon_blessing_text_bottom_padding", 4, 0, 20)
 		local blessing_line_step = blessing_line_height + blessing_vertical_spacing
 		local separate_item_level = separate_blessing_text_and_item_level(mod, configuration)
 		local favorite_offset = favorite_marker_position == "bottom_left" and not separate_item_level and 24 or 0
@@ -1129,7 +1143,7 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 		if blessing_display_mode == "icons" then
 			bottom_content_height = store_footer_height + blessing_size + 6
 		elseif blessing_text_mode then
-			local blessing_bottom_padding = math.max(0, math.min(20, setting(mod, "weapon_blessing_text_bottom_padding", 4)))
+			local blessing_bottom_padding = numeric_setting(mod, "weapon_blessing_text_bottom_padding", 4, 0, 20)
 
 			bottom_content_height = store_footer_height + blessing_text_height + blessing_bottom_padding + 3
 		else
@@ -1138,7 +1152,7 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 	elseif blessing_display_mode == "icons" then
 		bottom_content_height = math.max(bottom_content_height, blessing_size + 6)
 	elseif blessing_text_mode then
-		local blessing_bottom_padding = math.max(0, math.min(20, setting(mod, "weapon_blessing_text_bottom_padding", 4)))
+		local blessing_bottom_padding = numeric_setting(mod, "weapon_blessing_text_bottom_padding", 4, 0, 20)
 
 		if separate_blessing_text_and_item_level(mod, configuration) then
 			bottom_content_height = bottom_content_height + blessing_text_height + blessing_bottom_padding + 3
@@ -1148,11 +1162,11 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 	end
 
 	if show_weapon_perks then
-		local perk_font_size = math.max(9, math.min(16, setting(mod, "secondary_text_font_size", 13)))
+		local perk_font_size = numeric_setting(mod, "secondary_text_font_size", 13, 9, 16)
 		local perk_line_height = show_weapon_perk_ranks and math.max(perk_font_size + 4, perk_rank_size + 1) or perk_font_size + 4
-		local perk_vertical_spacing = math.max(0, math.min(20, setting(mod, "weapon_perk_vertical_spacing", 2)))
+		local perk_vertical_spacing = numeric_setting(mod, "weapon_perk_vertical_spacing", 2, 0, 20)
 		local perk_line_step = perk_line_height + perk_vertical_spacing
-		local section_spacing = blessing_display_mode ~= "off" and math.max(0, math.min(20, setting(mod, "weapon_perk_blessing_spacing", 5))) or 2
+		local section_spacing = blessing_display_mode ~= "off" and numeric_setting(mod, "weapon_perk_blessing_spacing", 5, 0, 20) or 2
 		local perk_text_left = text_left + (show_weapon_perk_ranks and perk_rank_size + PERK_RANK_GAP or 0)
 		local perk_width = math.max(40, card_width - perk_text_left - 8)
 		local perk_text_color = configured_text_color(mod, "weapon_perk_text_color", DEFAULT_WEAPON_PERK_COLOR, "weapon_perk_text_opacity")
@@ -1286,7 +1300,9 @@ local function format_weapon_name(widget, element, append_mark_to_name)
 
 	local item = element and (element.real_item or element.item)
 	local display_name = content.display_name
-	local mark_name = item and Items.weapon_lore_mark_name(item)
+	local mark_ok, mark_name = pcall(Items.weapon_lore_mark_name, item)
+
+	mark_name = mark_ok and mark_name or nil
 
 	if not valid_weapon_name_part(display_name) or not valid_weapon_name_part(mark_name) then
 		return
@@ -1298,7 +1314,9 @@ local function format_weapon_name(widget, element, append_mark_to_name)
 	content.better_inventory_display_name_suffix = suffix
 	content.display_name = display_name .. suffix
 
-	local pattern_name = Items.weapon_lore_pattern_name(item)
+	local pattern_ok, pattern_name = pcall(Items.weapon_lore_pattern_name, item)
+
+	pattern_name = pattern_ok and pattern_name or nil
 
 	content.sub_display_name = valid_weapon_name_part(pattern_name) and pattern_name or ""
 end
@@ -1397,6 +1415,11 @@ local function fit_curio_stats(parent, widget, ui_renderer)
 		return
 	end
 
+	local measurement_size = {
+		1000000,
+		30,
+	}
+
 	for i = 1, 4 do
 		local content_id = "better_inventory_curio_stat_" .. i
 		local style = styles[content_id]
@@ -1405,10 +1428,7 @@ local function fit_curio_stats(parent, widget, ui_renderer)
 
 		if type(value) == "string" and value ~= "" and maximum_width then
 			content["better_inventory_full_curio_stat_" .. i] = value
-			local measurement_size = {
-				1000000,
-				style.size[2] or 30,
-			}
+			measurement_size[2] = style.size[2] or 30
 
 			if Text.text_width(ui_renderer, value, style, measurement_size, true) > maximum_width then
 				content[content_id] = Text.crop_text_width(ui_renderer, value, style, maximum_width)
@@ -1431,6 +1451,11 @@ local function fit_blessing_text(parent, widget, ui_renderer)
 		return
 	end
 
+	local measurement_size = {
+		1000000,
+		30,
+	}
+
 	for i = 1, WEAPON_BLESSING_COUNT do
 		local content_id = "better_inventory_blessing_text_" .. i
 		local style = styles[content_id]
@@ -1440,10 +1465,7 @@ local function fit_blessing_text(parent, widget, ui_renderer)
 		if type(value) == "string" and value ~= "" and maximum_width then
 			local preferred_font_size = style.better_inventory_preferred_font_size or style.font_size
 			local minimum_font_size = math.min(preferred_font_size, 8)
-			local measurement_size = {
-				1000000,
-				style.size[2] or 30,
-			}
+			measurement_size[2] = style.size[2] or 30
 
 			style.font_size = preferred_font_size
 			content["better_inventory_full_blessing_text_" .. i] = value
@@ -1476,6 +1498,11 @@ local function fit_weapon_perks(parent, widget, ui_renderer)
 		return
 	end
 
+	local measurement_size = {
+		1000000,
+		30,
+	}
+
 	for i = 1, WEAPON_PERK_COUNT do
 		local content_id = "better_inventory_weapon_perk_" .. i
 		local style = styles[content_id]
@@ -1485,10 +1512,7 @@ local function fit_weapon_perks(parent, widget, ui_renderer)
 		if type(value) == "string" and value ~= "" and maximum_width then
 			local preferred_font_size = style.better_inventory_preferred_font_size or style.font_size
 			local minimum_font_size = math.min(preferred_font_size, 9)
-			local measurement_size = {
-				1000000,
-				style.size[2] or 30,
-			}
+			measurement_size[2] = style.size[2] or 30
 
 			style.font_size = preferred_font_size
 			content["better_inventory_full_weapon_perk_" .. i] = value
@@ -1510,8 +1534,8 @@ end
 local function configure_card_content(mod, item_blueprint)
 	local original_init = item_blueprint.init
 	local original_update_data = item_blueprint.update_data
-	local preferred_font_size = setting(mod, "item_name_font_size", 16)
-	local minimum_font_size = math.max(8, math.min(20, setting(mod, "minimum_item_name_font_size", 12)))
+	local preferred_font_size = numeric_setting(mod, "item_name_font_size", 16, 10, 24)
+	local minimum_font_size = numeric_setting(mod, "minimum_item_name_font_size", 12, 8, 20)
 	local append_mark_to_name = setting(mod, "append_mark_to_name", true)
 	local blessing_display_mode = weapon_blessing_display_mode(mod)
 	local show_weapon_perks = setting(mod, "show_weapon_perks", true)
@@ -1581,8 +1605,8 @@ Layout.is_enabled_for_view = function(mod, view)
 end
 
 Layout.columns = function(mod, maximum_columns)
-	local column_limit = math.floor(math.max(2, math.min(5, maximum_columns or 5)))
-	local requested_columns = math.floor(setting(mod, "columns", 3))
+	local column_limit = math.floor(math.max(2, math.min(5, tonumber(maximum_columns) or 5)))
+	local requested_columns = math.floor(numeric_setting(mod, "columns", 3, 2, 5))
 
 	return math.max(2, math.min(column_limit, requested_columns))
 end
@@ -1594,23 +1618,29 @@ local function weapon_extra_width_applies(mod, columns)
 end
 
 Layout.grid_expansion = function(mod, current_grid_width, slot_kind)
+	current_grid_width = tonumber(current_grid_width)
+
+	if not current_grid_width or current_grid_width <= 0 then
+		return 0
+	end
+
 	if not setting(mod, "enable_grid_layout", true) or not setting(mod, "expand_inventory_window", true) then
 		return 0
 	end
 
 	local columns = Layout.columns(mod)
-	local spacing = math.max(0, math.min(40, setting(mod, "grid_spacing", 10)))
+	local spacing = numeric_setting(mod, "grid_spacing", 10, 0, 40)
 	local target_card_width = MINIMUM_CARD_WIDTH
 
 	if slot_kind == "curio" and setting(mod, "expand_curio_inventory_window", true) then
-		target_card_width = math.max(MINIMUM_CARD_WIDTH, math.min(220, setting(mod, "curio_target_card_width", 190)))
+		target_card_width = numeric_setting(mod, "curio_target_card_width", 190, MINIMUM_CARD_WIDTH, 220)
 	end
 
 	local required_grid_width = target_card_width * columns + spacing * (columns - 1)
 	local required_expansion = math.max(0, required_grid_width - current_grid_width)
 
 	if slot_kind ~= "curio" and weapon_extra_width_applies(mod, columns) then
-		local extra_width = math.max(0, math.min(MAXIMUM_WEAPON_EXTRA_WIDTH, setting(mod, "five_column_weapon_extra_width", 80)))
+		local extra_width = numeric_setting(mod, "five_column_weapon_extra_width", 80, 0, MAXIMUM_WEAPON_EXTRA_WIDTH)
 
 		required_expansion = required_expansion + extra_width
 	end
@@ -1619,13 +1649,19 @@ Layout.grid_expansion = function(mod, current_grid_width, slot_kind)
 end
 
 Layout.armoury_grid_expansion = function(mod, current_grid_width)
+	current_grid_width = tonumber(current_grid_width)
+
+	if not current_grid_width or current_grid_width <= 0 then
+		return 0
+	end
+
 	if not setting(mod, "enable_grid_layout", true) or not setting(mod, "enable_armoury_requisition_grid", true) or not setting(mod, "expand_armoury_requisition_window", true) then
 		return 0
 	end
 
 	local columns = Layout.columns(mod, 3)
-	local spacing = math.max(0, math.min(40, setting(mod, "grid_spacing", 10)))
-	local target_card_width = math.max(ARMOURY_MINIMUM_CARD_WIDTH, math.min(ARMOURY_MAXIMUM_CARD_WIDTH, setting(mod, "armoury_requisition_target_card_width", 230)))
+	local spacing = numeric_setting(mod, "grid_spacing", 10, 0, 40)
+	local target_card_width = numeric_setting(mod, "armoury_requisition_target_card_width", 230, ARMOURY_MINIMUM_CARD_WIDTH, ARMOURY_MAXIMUM_CARD_WIDTH)
 	local required_grid_width = target_card_width * columns + spacing * (columns - 1)
 
 	return math.max(0, required_grid_width - current_grid_width)
@@ -1643,7 +1679,9 @@ local function maximum_safe_inventory_expansion(definitions, slot_kind)
 	local panel_x = panel_position and panel_position[1]
 
 	if type(canvas_width) ~= "number" or type(panel_x) ~= "number" then
-		return math.huge
+		-- A changed scenegraph contract means there is no trustworthy screen-edge
+		-- clamp. Preserve native width instead of risking an off-screen panel.
+		return 0
 	end
 
 	local panel_anchor_x
@@ -1664,7 +1702,7 @@ Layout.expanded_armoury_view_definitions = function(mod, definitions, base_defin
 	local grid_size = grid_settings and grid_settings.grid_size
 	local current_grid_width = grid_size and grid_size[1]
 
-	if not current_grid_width then
+	if type(current_grid_width) ~= "number" or current_grid_width <= 0 then
 		return definitions, 0
 	end
 
@@ -1722,7 +1760,7 @@ Layout.expanded_view_definitions = function(mod, definitions, view)
 	local grid_size = grid_settings and grid_settings.grid_size
 	local current_grid_width = grid_size and grid_size[1]
 
-	if not current_grid_width then
+	if type(current_grid_width) ~= "number" or current_grid_width <= 0 then
 		return definitions, 0
 	end
 
@@ -1769,15 +1807,15 @@ end
 Layout.card_height = function(mod, configuration)
 	configuration = configuration or {}
 
-	local manual_height = math.max(110, math.min(240, setting(mod, "card_height", 110)))
+	local manual_height = numeric_setting(mod, "card_height", 110, 110, 240)
 
 	if not setting(mod, "automatic_card_height", true) then
 		return manual_height
 	end
 
-	local item_name_font_size = math.max(10, math.min(24, setting(mod, "item_name_font_size", 16)))
-	local secondary_font_size = math.max(8, math.min(20, setting(mod, "secondary_text_font_size", 13)))
-	local expertise_font_size = math.max(10, math.min(28, setting(mod, "expertise_font_size", 20)))
+	local item_name_font_size = numeric_setting(mod, "item_name_font_size", 16, 10, 24)
+	local secondary_font_size = numeric_setting(mod, "secondary_text_font_size", 13, 8, 20)
+	local expertise_font_size = numeric_setting(mod, "expertise_font_size", 20, 10, 28)
 	local name_row_height = math.max(25, item_name_font_size + 5)
 	local secondary_row_height = math.max(22, secondary_font_size + 5)
 	local bottom_region_height = math.max(expertise_font_size + 10, secondary_font_size + 15)
@@ -1798,8 +1836,8 @@ Layout.card_height = function(mod, configuration)
 	elseif blessing_text_mode then
 		local blessing_font_size = math.max(9, math.min(16, secondary_font_size))
 		local blessing_line_height = blessing_display_mode == "ranked_text" and math.max(blessing_font_size + 4, weapon_perk_rank_icon_size(mod) + 1) or blessing_font_size + 4
-		local blessing_vertical_spacing = math.max(0, math.min(20, setting(mod, "weapon_blessing_text_vertical_spacing", 2)))
-		local blessing_bottom_padding = math.max(0, math.min(20, setting(mod, "weapon_blessing_text_bottom_padding", 4)))
+		local blessing_vertical_spacing = numeric_setting(mod, "weapon_blessing_text_vertical_spacing", 2, 0, 20)
+		local blessing_bottom_padding = numeric_setting(mod, "weapon_blessing_text_bottom_padding", 4, 0, 20)
 		local blessing_text_height = WEAPON_BLESSING_COUNT * blessing_line_height + (WEAPON_BLESSING_COUNT - 1) * blessing_vertical_spacing + blessing_bottom_padding + 3
 
 		if configuration.store_item then
@@ -1816,8 +1854,8 @@ Layout.card_height = function(mod, configuration)
 	if setting(mod, "show_weapon_perks", true) then
 		local perk_font_size = math.max(9, math.min(16, secondary_font_size))
 		local perk_line_height = setting(mod, "show_weapon_perk_rank_symbols", true) and math.max(perk_font_size + 4, weapon_perk_rank_icon_size(mod) + 1) or perk_font_size + 4
-		local perk_vertical_spacing = math.max(0, math.min(20, setting(mod, "weapon_perk_vertical_spacing", 2)))
-		local section_spacing = blessing_display_mode ~= "off" and math.max(0, math.min(20, setting(mod, "weapon_perk_blessing_spacing", 5))) or 2
+		local perk_vertical_spacing = numeric_setting(mod, "weapon_perk_vertical_spacing", 2, 0, 20)
+		local section_spacing = blessing_display_mode ~= "off" and numeric_setting(mod, "weapon_perk_blessing_spacing", 5, 0, 20) or 2
 
 		bottom_region_height = bottom_region_height + WEAPON_PERK_COUNT * perk_line_height + (WEAPON_PERK_COUNT - 1) * perk_vertical_spacing + math.max(0, section_spacing - 2)
 	end
@@ -1851,8 +1889,14 @@ Layout.card_height = function(mod, configuration)
 end
 
 Layout.item_size = function(mod, grid_width, maximum_columns, configuration)
+	grid_width = tonumber(grid_width)
+
+	if not grid_width or grid_width <= 0 then
+		grid_width = MINIMUM_CARD_WIDTH * Layout.columns(mod, maximum_columns)
+	end
+
 	local columns = Layout.columns(mod, maximum_columns)
-	local spacing = math.max(0, math.min(40, setting(mod, "grid_spacing", 10)))
+	local spacing = numeric_setting(mod, "grid_spacing", 10, 0, 40)
 	local height = Layout.card_height(mod, configuration)
 	local width = math.floor((grid_width - spacing * (columns - 1)) / columns)
 
@@ -1867,7 +1911,7 @@ Layout.configure_grid = function(mod, item_grid)
 		return
 	end
 
-	local spacing = math.max(0, math.min(40, setting(mod, "grid_spacing", 10)))
+	local spacing = numeric_setting(mod, "grid_spacing", 10, 0, 40)
 	local menu_settings = item_grid and item_grid._menu_settings
 
 	if menu_settings then
@@ -1950,7 +1994,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 	local show_rarity_tag = setting(mod, "show_rarity_tag", true)
 	local text_left = show_rarity_tag and 12 or 8
 	local text_width = math.max(50, card_width - text_left - 36)
-	local darkness = math.max(0, math.min(85, setting(mod, "icon_darkness", 25)))
+	local darkness = numeric_setting(mod, "icon_darkness", 25, 0, 85)
 	local icon_brightness = math.floor(255 * (1 - darkness / 100))
 	local curio_display_profile = setting(mod, "curio_display_profile", "detailed")
 	local detailed_curio_profile = curio_display_profile == "detailed"
@@ -2011,7 +2055,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 	local display_name = pass_by_style_id(pass_template, "display_name")
 
 	configure_text_pass(display_name, {
-		font_size = setting(mod, "item_name_font_size", 16),
+		font_size = numeric_setting(mod, "item_name_font_size", 16, 10, 24),
 		offset = {
 			text_left,
 			7,
@@ -2033,7 +2077,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 	local sub_display_name = pass_by_style_id(pass_template, "sub_display_name")
 
 	configure_text_pass(sub_display_name, {
-		font_size = setting(mod, "secondary_text_font_size", 13),
+		font_size = numeric_setting(mod, "secondary_text_font_size", 13, 8, 20),
 		offset = {
 			text_left,
 			31,
@@ -2061,7 +2105,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 	local rarity_name = pass_by_style_id(pass_template, "rarity_name")
 
 	configure_text_pass(rarity_name, {
-		font_size = setting(mod, "secondary_text_font_size", 13),
+		font_size = numeric_setting(mod, "secondary_text_font_size", 13, 8, 20),
 		offset = {
 			text_left,
 			51,
@@ -2083,7 +2127,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 	local item_level = pass_by_style_id(pass_template, "item_level")
 
 	configure_text_pass(item_level, {
-		font_size = setting(mod, "expertise_font_size", 20),
+		font_size = numeric_setting(mod, "expertise_font_size", 20, 10, 28),
 		horizontal_alignment = "right",
 		vertical_alignment = "bottom",
 		text_horizontal_alignment = "right",

@@ -45,6 +45,7 @@ def main() -> None:
 			return value
 		end
 
+		preview_stats_change_count = 0
 		TestItems = {
 			favorites = {},
 			expertise_level = function(item)
@@ -60,6 +61,7 @@ def main() -> None:
 				return 500
 			end,
 			preview_stats_change = function(item, expertise_increase, stats)
+				preview_stats_change_count = preview_stats_change_count + 1
 				local result = {}
 
 				for index = 1, #stats do
@@ -694,6 +696,9 @@ def main() -> None:
         }
     )
     assert features.is_perfect_roll_weapon(underpowered_perfect_roll) is True
+    projected_calls = globals_.preview_stats_change_count
+    assert features.is_perfect_roll_weapon(underpowered_perfect_roll) is True
+    assert globals_.preview_stats_change_count == projected_calls
 
     underpowered_nonperfect_roll = lua.table_from(
         {
@@ -770,6 +775,13 @@ def main() -> None:
     assert globals_.captured_notification.line_1 == "quick_discard_notification_title"
     assert "- 1 rarity_1 quick_discard_notification_items" in globals_.captured_notification.line_2
     assert "{#color(101,111,121)}" in globals_.captured_notification.line_2
+
+    # A missing popup dispatcher must fail closed and release the per-view lock.
+    popup_trigger = globals_.Managers.event.trigger
+    globals_.Managers.event.trigger = None
+    features.request_quick_discard(mod, layout, quick_discard_view)
+    assert quick_discard_view._better_inventory_discard_pending is False
+    globals_.Managers.event.trigger = popup_trigger
 
     globals_.captured_notification = None
     mod.settings.quick_discard_show_summary_notification = False
@@ -1017,6 +1029,14 @@ def main() -> None:
     assert compact_curio_blueprints.gadget_header.pass_template[3].style.size[2] == 95
     assert curio_stats_blueprints.gadget_header.size[2] == 250
 
+    malformed_curio_blueprints = lua.execute(
+        "return {gadget_header = {pass_template = {{style_id = 'icon', style = {}}}}}"
+    )
+    unchanged_malformed = features.compact_inventory_curio_stats_blueprints(
+        mod, curio_stats_grid, malformed_curio_blueprints
+    )
+    assert unchanged_malformed.gadget_header.size is None
+
     prototype_view = lua.execute(
         r"""
         local scenegraph, widgets, weapon_stats = ...
@@ -1034,7 +1054,7 @@ def main() -> None:
                 },
             },
             _scenegraph_world_position = function(self, scenegraph_id)
-                return {100, 60, 3}
+				return {self.test_parent_x or 100, 60, 3}
             end,
             _add_element = function(self, class, reference_name, layer, settings)
                 local panel = {
@@ -1136,6 +1156,12 @@ def main() -> None:
     assert prototype_panel.grid_height == 360
     assert prototype_panel.pivot_x == 120
     assert prototype_panel.pivot_y == 375
+    prototype_view.test_parent_x = 1800
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert prototype_panel.pivot_x == 1459
+    prototype_view.test_parent_x = 100
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert prototype_panel.pivot_x == 120
     assert prototype_view._widgets_by_name[sort_label_id].content.visible is False
     assert prototype_view._widgets_by_name[toggle_id].content.visible is False
     assert prototype_panel.widgets["better_inventory_perfect_sort_priority"] is not None

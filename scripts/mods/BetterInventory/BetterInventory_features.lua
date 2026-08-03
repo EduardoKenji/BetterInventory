@@ -32,6 +32,8 @@ local INVENTORY_CURIO_NATIVE_WIDTH = 530
 local INVENTORY_CURIO_NATIVE_GRID_WIDTH = 518
 local INVENTORY_CURIO_NATIVE_HEADER_HEIGHT = 250
 local INVENTORY_CURIO_NATIVE_ICON_HEIGHT = 180
+local INVENTORY_VIRTUAL_CANVAS_WIDTH = 1920
+local INVENTORY_VIRTUAL_EDGE_MARGIN = 16
 
 local function numeric_setting(mod, setting_id, default_value, minimum, maximum)
 	local value = tonumber(mod:get(setting_id)) or default_value
@@ -69,6 +71,9 @@ local INVENTORY_DISCARD_WIDGET_IDS = {
 	INVENTORY_DISCARD_CURIO_LEVEL_ID,
 }
 local registered_inventory_views = setmetatable({}, {
+	__mode = "k",
+})
+local perfect_roll_cache = setmetatable({}, {
 	__mode = "k",
 })
 
@@ -1227,7 +1232,6 @@ local function panel_header_entry(mod, layout, view, control_id, section_id, lab
 		local is_collapsed = view._better_inventory_options_panel_collapsed[section_id] == true
 
 		widget.content.chevron = is_collapsed and ">" or "v"
-		widget.content.label = label_function()
 	end)
 end
 
@@ -1279,7 +1283,10 @@ local function panel_mode_entry(mod, layout, view)
 	end, function(widget)
 		local mode = mod:get("quick_discard_mode") == "automatic" and "automatic" or "manual"
 
-		widget.content.value = mod:localize("quick_discard_mode_" .. mode) .. "  >"
+		if widget.content.better_inventory_mode ~= mode then
+			widget.content.better_inventory_mode = mode
+			widget.content.value = mod:localize("quick_discard_mode_" .. mode) .. "  >"
+		end
 	end)
 end
 
@@ -1310,13 +1317,17 @@ local function panel_quick_discard_entry(mod, layout, view)
 		end
 	end, function(widget)
 		local rarity = math.clamp(math.floor(tonumber(mod:get("quick_discard_rarity")) or 1), 1, 5)
-		local rarity_settings = RaritySettings[rarity]
-		local rarity_color = rarity_settings and rarity_settings.color or Color.terminal_text_body(255, true)
 
-		widget.content.rarity_label = mod:localize("quick_discard_rarity_" .. rarity) .. "  >"
+		if widget.content.better_inventory_rarity ~= rarity then
+			local rarity_settings = RaritySettings[rarity]
+			local rarity_color = rarity_settings and rarity_settings.color or Color.terminal_text_body(255, true)
 
-		if widget.style and widget.style.rarity_label then
-			widget.style.rarity_label.text_color = table.clone(rarity_color)
+			widget.content.better_inventory_rarity = rarity
+			widget.content.rarity_label = mod:localize("quick_discard_rarity_" .. rarity) .. "  >"
+
+			if widget.style and widget.style.rarity_label then
+				widget.style.rarity_label.text_color = table.clone(rarity_color)
+			end
 		end
 	end)
 end
@@ -1342,7 +1353,12 @@ local function panel_stepper_entry(mod, layout, view, control_id, setting_id, la
 			change_value(10)
 		end
 	end, function(widget)
-		widget.content.value = tostring(math.clamp(math.floor(tonumber(mod:get(setting_id)) or default_value), 0, 500))
+		local value = math.clamp(math.floor(tonumber(mod:get(setting_id)) or default_value), 0, 500)
+
+		if widget.content.better_inventory_value ~= value then
+			widget.content.better_inventory_value = value
+			widget.content.value = tostring(value)
+		end
 	end)
 end
 
@@ -1488,15 +1504,16 @@ end
 
 local function panel_structure_key(mod, view)
 	local collapsed = view._better_inventory_options_panel_collapsed or {}
+	local key = 0
 
-	return table.concat({
-		view._discard_items_element and "native_discard" or "inventory",
-		mod:get("enable_experimental_quick_discard") == true and "discard_on" or "discard_off",
-		mod:get("quick_discard_mode") == "automatic" and "automatic" or "manual",
-		mod:get("quick_discard_protect_high_level_curios") ~= false and "curio_level_on" or "curio_level_off",
-		collapsed.sorting and "sort_closed" or "sort_open",
-		collapsed.discard and "discard_closed" or "discard_open",
-	}, ":")
+	key = key + (view._discard_items_element and 1 or 0)
+	key = key + (mod:get("enable_experimental_quick_discard") == true and 2 or 0)
+	key = key + (mod:get("quick_discard_mode") == "automatic" and 4 or 0)
+	key = key + (mod:get("quick_discard_protect_high_level_curios") ~= false and 8 or 0)
+	key = key + (collapsed.sorting and 16 or 0)
+	key = key + (collapsed.discard and 32 or 0)
+
+	return key
 end
 
 rebuild_inventory_options_panel = function(mod, layout, view)
@@ -1586,7 +1603,7 @@ Features.compact_inventory_curio_stats_blueprints = function(mod, item_grid, con
 	local item = item_grid and item_grid._item
 	local gadget_header = content_blueprints.gadget_header
 
-	if not parent or parent.__class_name ~= "InventoryWeaponsView" or parent._weapon_stats ~= item_grid or not item or item.item_type ~= "GADGET" or type(gadget_header) ~= "table" then
+	if not parent or parent.__class_name ~= "InventoryWeaponsView" or parent._weapon_stats ~= item_grid or not item or item.item_type ~= "GADGET" or type(gadget_header) ~= "table" or type(gadget_header.size) ~= "table" or type(gadget_header.size[1]) ~= "number" or type(gadget_header.size[2]) ~= "number" then
 		return content_blueprints
 	end
 
@@ -1601,7 +1618,7 @@ Features.compact_inventory_curio_stats_blueprints = function(mod, item_grid, con
 		local pass = adjusted_header.pass_template[index]
 		local style = pass and pass.style
 
-		if style and pass.style_id == "icon" then
+		if style and pass.style_id == "icon" and type(style.size) == "table" and type(style.offset) == "table" then
 			local native_icon_width = INVENTORY_CURIO_NATIVE_GRID_WIDTH * 0.9
 			local available_icon_width = (adjusted_header.size[1] or INVENTORY_CURIO_NATIVE_GRID_WIDTH) * 0.9
 			local icon_scale = math.min(scale, available_icon_width / native_icon_width)
@@ -1609,10 +1626,10 @@ Features.compact_inventory_curio_stats_blueprints = function(mod, item_grid, con
 			style.size[1] = math.floor(native_icon_width * icon_scale + 0.5)
 			style.size[2] = math.floor(INVENTORY_CURIO_NATIVE_ICON_HEIGHT * icon_scale + 0.5)
 			style.offset[2] = math.floor((style.offset[2] or 0) * scale + 0.5)
-		elseif style and pass.style_id == "loading" then
+		elseif style and pass.style_id == "loading" and type(style.size) == "table" then
 			style.size[1] = math.floor((style.size[1] or 0) * scale + 0.5)
 			style.size[2] = math.floor((style.size[2] or 0) * scale + 0.5)
-		elseif style and pass.style_id == "gradient_background" then
+		elseif style and pass.style_id == "gradient_background" and type(style.size) == "table" then
 			style.size[2] = math.floor((style.size[2] or 0) * scale + 0.5)
 		end
 	end
@@ -1686,6 +1703,7 @@ Features.setup_inventory_options_panel = function(mod, layout, view, ViewElement
 
 		panel:disable_input(false)
 		panel:set_visibility(true)
+		view._better_inventory_options_panel_visible = true
 		rebuild_inventory_options_panel(mod, layout, view)
 	end)
 
@@ -1695,6 +1713,7 @@ Features.setup_inventory_options_panel = function(mod, layout, view, ViewElement
 		view._better_inventory_options_panel_mod = nil
 		view._better_inventory_options_panel_widgets = nil
 		view._better_inventory_options_panel_collapsed = nil
+		view._better_inventory_options_panel_visible = nil
 
 		if type(view._remove_element) == "function" then
 			pcall(view._remove_element, view, INVENTORY_OPTIONS_PANEL_REFERENCE)
@@ -1932,7 +1951,7 @@ local function values_are_perfect_roll(values)
 	return maximum_stats == 4 and remaining_stats == 1
 end
 
-Features.is_perfect_roll_weapon = function(item)
+local function calculate_is_perfect_roll_weapon(item)
 	if not item or not Items.is_weapon(item.item_type) then
 		return false
 	end
@@ -1943,17 +1962,64 @@ Features.is_perfect_roll_weapon = function(item)
 		return false
 	end
 
+	local base_stats = item.base_stats
+	local current_expertise
+
+	if total ~= 380 then
+		local expertise = Items.expertise_level(item, true)
+
+		current_expertise = tonumber(expertise)
+	end
+	local cached = perfect_roll_cache[item]
+	local cache_matches = cached and cached.total == total and cached.current_expertise == current_expertise and type(base_stats) == "table" and #base_stats == 5
+
+	if cache_matches then
+		for index = 1, 5 do
+			local raw_value = type(base_stats[index]) == "table" and tonumber(base_stats[index].value)
+
+			if raw_value ~= cached.raw_values[index] then
+				cache_matches = false
+				break
+			end
+		end
+	end
+
+	if cache_matches then
+		return cached.result
+	end
+
 	-- Total power is calculated from unrounded backend values, while each visible
 	-- attribute is rounded independently. Consequently the fifth visible stat can
 	-- legitimately show 61 or 62 on an otherwise perfect 380 roll.
-	if total == 380 and values_are_perfect_roll(displayed_base_stat_values(item)) then
-		return true
+	local result = total == 380 and values_are_perfect_roll(displayed_base_stat_values(item)) or values_are_perfect_roll(projected_max_base_stat_values(item))
+
+	if type(base_stats) == "table" and #base_stats == 5 then
+		local raw_values = {}
+
+		for index = 1, 5 do
+			raw_values[index] = type(base_stats[index]) == "table" and tonumber(base_stats[index].value) or false
+		end
+
+		perfect_roll_cache[item] = {
+			current_expertise = current_expertise,
+			raw_values = raw_values,
+			result = result,
+			total = total,
+		}
 	end
 
 	-- Rarity upgrades do not change base attributes, but expertise upgrades do.
 	-- Protect an underpowered weapon when Darktide's own maximum-expertise preview
 	-- resolves to the same four-at-80, fifth-at-least-60 distribution.
-	return values_are_perfect_roll(projected_max_base_stat_values(item))
+	return result
+end
+
+Features.is_perfect_roll_weapon = function(item)
+	-- Sorting invokes this from a native comparator. A legacy or partially
+	-- materialized item must sort as ordinary instead of taking down the view.
+	local success, result = pcall(calculate_is_perfect_roll_weapon, item)
+
+	return success and result == true
 end
 
 local CURIO_PRIMARY_TRAIT_SETTINGS = {
@@ -2135,7 +2201,7 @@ end
 local function preview_profile(view)
 	local player = view and view._preview_player
 
-	if player and type(player.profile) == "function" then
+	if player and not player.__deleted and type(player.profile) == "function" then
 		local success, profile = pcall(player.profile, player)
 
 		if success then
@@ -2299,9 +2365,13 @@ local function show_automatic_no_candidates_notification(mod)
 end
 
 local function show_popup(context)
-	if Managers and Managers.event then
-		Managers.event:trigger("event_show_ui_popup", context)
+	local event_manager = Managers and Managers.event
+
+	if not event_manager or type(event_manager.trigger) ~= "function" then
+		return false
 	end
+
+	return pcall(event_manager.trigger, event_manager, "event_show_ui_popup", context)
 end
 
 Features.request_quick_discard = function(mod, layout, view)
@@ -2349,13 +2419,18 @@ Features.request_quick_discard = function(mod, layout, view)
 			gear_ids[#gear_ids + 1] = revalidated[index].gear_id
 		end
 
-		if #gear_ids > 0 and Managers and Managers.event then
-			Managers.event:trigger("event_discard_items", gear_ids)
-			show_discard_summary_notification(mod, revalidated)
+		local event_manager = Managers and Managers.event
+
+		if #gear_ids > 0 and event_manager and type(event_manager.trigger) == "function" then
+			local dispatched = pcall(event_manager.trigger, event_manager, "event_discard_items", gear_ids)
+
+			if dispatched then
+				show_discard_summary_notification(mod, revalidated)
+			end
 		end
 	end
 
-	show_popup({
+	local popup_shown = show_popup({
 		description_text_unlocalized = tostring(#candidates) .. " " .. mod:localize("quick_discard_confirmation_description") .. "\n\n" .. rarity_summary(mod, candidates) .. "\n\n" .. mod:localize("quick_discard_confirmation_warning"),
 		options = {
 			{
@@ -2375,6 +2450,10 @@ Features.request_quick_discard = function(mod, layout, view)
 		},
 		title_text_unlocalized = mod:localize("quick_discard_confirmation_title"),
 	})
+
+	if not popup_shown then
+		clear_pending()
+	end
 end
 
 local AUTOMATIC_DISCARD_DELAY = 5
@@ -2396,7 +2475,13 @@ local function current_game_mode_name()
 	local state = Managers and Managers.state
 	local game_mode = state and state.game_mode
 
-	return game_mode and type(game_mode.game_mode_name) == "function" and game_mode:game_mode_name() or nil
+	if not game_mode or type(game_mode.game_mode_name) ~= "function" then
+		return
+	end
+
+	local success, name = pcall(game_mode.game_mode_name, game_mode)
+
+	return success and name or nil
 end
 
 local function is_morningstar()
@@ -2427,10 +2512,50 @@ end
 
 local function current_player_and_character()
 	local player_manager = Managers and Managers.player
-	local player = player_manager and type(player_manager.local_player) == "function" and player_manager:local_player(1)
-	local character_id = player and not player.__deleted and type(player.character_id) == "function" and player:character_id()
+	local player
+	local character_id
+
+	if player_manager and type(player_manager.local_player) == "function" then
+		local success, value = pcall(player_manager.local_player, player_manager, 1)
+
+		player = success and value or nil
+	end
+
+	if player and not player.__deleted and type(player.character_id) == "function" then
+		local success, value = pcall(player.character_id, player)
+
+		character_id = success and value or nil
+	end
 
 	return player, character_id
+end
+
+local function player_profile(player)
+	if not player or player.__deleted or type(player.profile) ~= "function" then
+		return
+	end
+
+	local success, profile = pcall(player.profile, player)
+
+	return success and profile or nil
+end
+
+local function fetch_inventory_promise(gear_service, character_id)
+	if not gear_service or type(gear_service.fetch_inventory) ~= "function" then
+		return nil, "GearService.fetch_inventory is unavailable"
+	end
+
+	local success, promise = pcall(gear_service.fetch_inventory, gear_service, character_id)
+
+	if not success then
+		return nil, promise
+	end
+
+	if not promise or type(promise.next) ~= "function" or type(promise.catch) ~= "function" then
+		return nil, "GearService.fetch_inventory returned no compatible promise"
+	end
+
+	return promise
 end
 
 local function automatic_context_is_current(mod, token, character_id)
@@ -2468,12 +2593,12 @@ local function notify_discard_result(mod, candidates, result)
 
 	local event_manager = Managers and Managers.event
 
-	if event_manager then
-		event_manager:trigger("event_force_wallet_update")
-		event_manager:trigger("event_force_refresh_inventory")
+	if event_manager and type(event_manager.trigger) == "function" then
+		pcall(event_manager.trigger, event_manager, "event_force_wallet_update")
+		pcall(event_manager.trigger, event_manager, "event_force_refresh_inventory")
 
 		for reward_type, reward_amount in pairs(total_rewards) do
-			event_manager:trigger("event_add_notification_message", "currency", {
+			pcall(event_manager.trigger, event_manager, "event_add_notification_message", "currency", {
 				amount = reward_amount,
 				currency = reward_type,
 			})
@@ -2505,13 +2630,20 @@ local function delete_automatic_candidates(mod, token, character_id, captured_id
 		return
 	end
 
-	gear_service:fetch_inventory(character_id):next(function(items)
+	local fetch_promise, fetch_error = fetch_inventory_promise(gear_service, character_id)
+
+	if not fetch_promise then
+		automatic_discard_info(mod, "Final revalidation could not start: " .. automatic_discard_error(fetch_error))
+		return
+	end
+
+	fetch_promise:next(function(items)
 		if not automatic_context_is_current(mod, token, character_id) or type(items) ~= "table" then
 			return
 		end
 
 		local current_player = current_player_and_character()
-		local profile = current_player and type(current_player.profile) == "function" and current_player:profile()
+		local profile = player_profile(current_player)
 		local candidates = Features.quick_discard_candidates_from_items(mod, items, equipped_gear_ids(profile), captured_ids)
 		local gear_ids = {}
 
@@ -2551,7 +2683,7 @@ local function present_automatic_discard(mod, token, character_id, candidates)
 		return
 	end
 
-	show_popup({
+	local popup_shown = show_popup({
 		description_text_unlocalized = tostring(#candidates) .. " " .. mod:localize("quick_discard_confirmation_description") .. "\n\n" .. rarity_summary(mod, candidates) .. "\n\n" .. mod:localize("quick_discard_confirmation_warning"),
 		options = {
 			{
@@ -2572,7 +2704,7 @@ local function present_automatic_discard(mod, token, character_id, candidates)
 		},
 		title_text_unlocalized = mod:localize("quick_discard_automatic_confirmation_title"),
 	})
-	automatic_discard_info(mod, "Displayed the automatic discard confirmation preview.")
+	automatic_discard_info(mod, popup_shown and "Displayed the automatic discard confirmation preview." or "Could not display the automatic discard confirmation preview; no items were deleted.")
 end
 
 Features.begin_morningstar_auto_discard = function(mod)
@@ -2676,7 +2808,17 @@ Features.update_morningstar_auto_discard = function(mod, dt)
 	end
 
 	automatic_discard_info(mod, string.format("Starting inventory scan attempt %d.", automatic_discard_state.fetch_attempts))
-	gear_service:fetch_inventory(character_id):next(function(items)
+	local fetch_promise, fetch_error = fetch_inventory_promise(gear_service, character_id)
+
+	if not fetch_promise then
+		automatic_discard_state.started = false
+		automatic_discard_state.elapsed = 0
+		automatic_discard_state.scheduled = automatic_discard_state.fetch_attempts < AUTOMATIC_DISCARD_MAX_FETCH_ATTEMPTS
+		automatic_discard_info(mod, "Inventory scan could not start; scheduling a bounded retry. Reason: " .. automatic_discard_error(fetch_error))
+		return
+	end
+
+	fetch_promise:next(function(items)
 		if not automatic_context_is_current(mod, token, character_id) then
 			return
 		end
@@ -2691,7 +2833,8 @@ Features.update_morningstar_auto_discard = function(mod, dt)
 		end
 
 		automatic_discard_state.scheduled = false
-		local profile = type(player.profile) == "function" and player:profile()
+		local current_player = current_player_and_character()
+		local profile = player_profile(current_player)
 		local candidates, excluded_errors, first_error = quick_discard_candidates_from_items_detailed(mod, items, equipped_gear_ids(profile))
 
 		if excluded_errors > 0 then
@@ -2827,19 +2970,31 @@ local function set_legacy_inventory_options_visible(view, visible)
 	set_quick_discard_widgets_visible(view, visible)
 end
 
+local function set_options_panel_visible(view, panel, visible)
+	if view._better_inventory_options_panel_visible ~= visible then
+		view._better_inventory_options_panel_visible = visible
+
+		if type(panel.disable_input) == "function" then
+			panel:disable_input(not visible)
+		end
+
+		panel:set_visibility(visible)
+	end
+end
+
 local function update_inventory_options_panel(mod, layout, view, slot_kind)
 	local panel = view._better_inventory_options_panel
 
 	if not panel or mod:get("enable_inventory_options_panel_prototype") ~= true then
 		if panel then
-			panel:set_visibility(false)
+			set_options_panel_visible(view, panel, false)
 		end
 
 		return false
 	end
 
 	set_legacy_inventory_options_visible(view, false)
-	panel:set_visibility(true)
+	set_options_panel_visible(view, panel, true)
 
 	if view._better_inventory_options_panel_structure_key ~= panel_structure_key(mod, view) then
 		rebuild_inventory_options_panel(mod, layout, view)
@@ -2869,11 +3024,20 @@ local function update_inventory_options_panel(mod, layout, view, slot_kind)
 	local success, parent_position = pcall(view._scenegraph_world_position, view, parent_id)
 
 	if success and parent_position then
-		panel:set_pivot_offset(parent_position[1] + relative_x, parent_position[2] + relative_y)
+		local unclamped_pivot_x = parent_position[1] + relative_x
+		local panel_width = view._better_inventory_options_panel_geometry and view._better_inventory_options_panel_geometry.width or INVENTORY_OPTIONS_PANEL_DEFAULT_WIDTH
+		local pivot_x = math.min(unclamped_pivot_x, INVENTORY_VIRTUAL_CANVAS_WIDTH - INVENTORY_VIRTUAL_EDGE_MARGIN - panel_width)
+		local pivot_y = parent_position[2] + relative_y
+
+		if view._better_inventory_options_panel_pivot_x ~= pivot_x or view._better_inventory_options_panel_pivot_y ~= pivot_y then
+			view._better_inventory_options_panel_pivot_x = pivot_x
+			view._better_inventory_options_panel_pivot_y = pivot_y
+			panel:set_pivot_offset(pivot_x, pivot_y)
+		end
 	else
 		-- A future game update can invalidate the pivot contract. Hide the prototype
 		-- and restore the proven loose-widget implementation for this view.
-		panel:set_visibility(false)
+		set_options_panel_visible(view, panel, false)
 		set_legacy_inventory_options_visible(view, true)
 
 		return false
@@ -2902,14 +3066,17 @@ local function update_quick_discard_content(mod, slot_kind, view, base_y)
 
 	local discard_mode = mod:get("quick_discard_mode") == "automatic" and "automatic" or "manual"
 	local discard_heading_mode = discard_mode == "automatic" and "automated" or "manual"
+	local mode_changed = view._better_inventory_legacy_discard_mode ~= discard_mode
 
-	if label_widget then
+	if mode_changed and label_widget then
 		label_widget.content.label = mod:localize("inventory_" .. discard_heading_mode .. "_discard_management_inventory_label")
 	end
 
-	if mode_widget then
+	if mode_changed and mode_widget then
 		mode_widget.content.value = mod:localize("quick_discard_mode_" .. discard_mode) .. "  ›"
 	end
+
+	view._better_inventory_legacy_discard_mode = discard_mode
 
 	if skip_confirmation_widget then
 		skip_confirmation_widget.content.checked = mod:get("quick_discard_skip_automatic_confirmation") == true
@@ -2917,17 +3084,27 @@ local function update_quick_discard_content(mod, slot_kind, view, base_y)
 	end
 
 	local rarity = math.clamp(math.floor(tonumber(mod:get("quick_discard_rarity")) or 1), 1, 5)
-	local rarity_settings = RaritySettings[rarity]
-	local rarity_color = rarity_settings and rarity_settings.color or Color.terminal_text_body(255, true)
 	local discard_content = discard_widget.content
 
-	discard_content.rarity_label = mod:localize("quick_discard_rarity_" .. rarity) .. "  ›"
-	if discard_widget.style and discard_widget.style.rarity_label then
-		discard_widget.style.rarity_label.text_color = table.clone(rarity_color)
+	if discard_content.better_inventory_rarity ~= rarity then
+		local rarity_settings = RaritySettings[rarity]
+		local rarity_color = rarity_settings and rarity_settings.color or Color.terminal_text_body(255, true)
+
+		discard_content.better_inventory_rarity = rarity
+		discard_content.rarity_label = mod:localize("quick_discard_rarity_" .. rarity) .. "  ›"
+
+		if discard_widget.style and discard_widget.style.rarity_label then
+			discard_widget.style.rarity_label.text_color = table.clone(rarity_color)
+		end
 	end
 
 	if max_level_widget then
-		max_level_widget.content.value = tostring(math.clamp(math.floor(tonumber(mod:get("quick_discard_max_item_level")) or 490), 0, 500))
+		local value = math.clamp(math.floor(tonumber(mod:get("quick_discard_max_item_level")) or 490), 0, 500)
+
+		if max_level_widget.content.better_inventory_value ~= value then
+			max_level_widget.content.better_inventory_value = value
+			max_level_widget.content.value = tostring(value)
+		end
 	end
 
 	if melee_widget then
@@ -2954,7 +3131,13 @@ local function update_quick_discard_content(mod, slot_kind, view, base_y)
 	end
 
 	if curio_level_widget then
-		curio_level_widget.content.value = tostring(math.clamp(math.floor(tonumber(mod:get("quick_discard_curio_protection_level")) or 410), 0, 500))
+		local value = math.clamp(math.floor(tonumber(mod:get("quick_discard_curio_protection_level")) or 410), 0, 500)
+
+		if curio_level_widget.content.better_inventory_value ~= value then
+			curio_level_widget.content.better_inventory_value = value
+			curio_level_widget.content.value = tostring(value)
+		end
+
 		curio_level_widget.content.visible = mod:get("quick_discard_protect_high_level_curios") ~= false
 	end
 
@@ -3192,6 +3375,18 @@ end
 
 Features.unregister_inventory_view = function(view)
 	registered_inventory_views[view] = nil
+end
+
+Features.disable_inventory_views = function()
+	for view in pairs(registered_inventory_views) do
+		local panel = view._better_inventory_options_panel
+
+		if panel then
+			set_options_panel_visible(view, panel, false)
+		end
+
+		set_legacy_inventory_options_visible(view, false)
+	end
 end
 
 return Features

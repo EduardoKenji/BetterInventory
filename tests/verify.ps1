@@ -50,6 +50,14 @@ if ($main -match 'InventoryWeaponsView\.present_grid_layout\s*=') {
 	throw "Direct class assignment found; BetterInventory must remain in the DMF hook chain."
 }
 
+if ($main -notmatch 'is_armoury_requisition_view' -or $main -notmatch '_optional_store_service\s*==\s*nil') {
+	throw "The Armoury hook must exclude custom CreditsVendorView services such as GlobalStore."
+}
+
+if ($main -notmatch 'pack_values\(pcall\(func,[\s\S]*?unpack_values\(results,\s*2,\s*result_count\)') {
+	throw "The active-grid hook must restore context while preserving every wrapped return value."
+}
+
 if ($main -notmatch '_compact_card_defaults_v1_migrated' -or $main -notmatch 'mod:set\("show_pattern_mark",\s*false\)') {
 	throw "The one-time compact-card settings migration was not found."
 }
@@ -95,7 +103,7 @@ if ($main -notmatch 'mod\.on_game_state_changed' -or $main -notmatch 'Features\.
 	throw "The guarded once-per-Morningstar automatic-discard lifecycle was not found."
 }
 
-if ($features -notmatch 'progression_manager\.is_fetching_session_report' -or $features -notmatch 'gear_service:invalidate_gear_cache\(\)[\s\S]*?gear_service:fetch_inventory\(character_id\)') {
+if ($features -notmatch 'progression_manager\.is_fetching_session_report' -or $features -notmatch 'gear_service:invalidate_gear_cache\(\)[\s\S]*?fetch_inventory_promise\(gear_service,\s*character_id\)') {
 	throw "Automatic discard must wait for mission rewards and refresh the gear cache before its first inventory scan."
 }
 

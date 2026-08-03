@@ -447,6 +447,19 @@ def main() -> None:
     assert (item_size[1], item_size[2]) == (206, 110)
     assert layout.card_height(mod) == 110
 
+    # Corrupted/stale DMF values and a changed grid-width contract fail back to
+    # bounded defaults instead of reaching math.floor/min with strings.
+    mod.settings.columns = "invalid"
+    mod.settings.grid_spacing = "invalid"
+    mod.settings.card_height = "invalid"
+    mod.settings.automatic_card_height = False
+    guarded_item_size = layout.item_size(mod, "invalid")
+    assert (guarded_item_size[1], guarded_item_size[2]) == (113, 110)
+    mod.settings.columns = 3
+    mod.settings.grid_spacing = 10
+    mod.settings.card_height = 110
+    mod.settings.automatic_card_height = True
+
     mod.settings.curio_display_profile = "detailed"
     mod.settings.curio_primary_stat_font_size = 20
     mod.settings.curio_secondary_stat_font_size = 20

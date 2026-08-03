@@ -200,6 +200,32 @@ def main() -> None:
     assert armoury_grid.top_width == 766
     assert armoury_grid.bottom_width == 788
 
+    # CreditsVendorView is also reused by GlobalStore. Its custom cards add a
+    # portrait footer, so BetterInventory must leave that route completely native.
+    custom_credits_view = lua.table_from(
+        {
+            "__class_name": "CreditsVendorView",
+            "_optional_store_service": "get_all_characters_store_custom",
+            "_item_grid": lua.execute(
+                "return {update_dividers = function(self) self.updated = true end}"
+            ),
+        }
+    )
+    custom_definitions = lua.table_from({})
+    globals_.captured_item_grid_init_hook(
+        original_init,
+        custom_credits_view,
+        custom_definitions,
+        lua.table_from({}),
+        lua.table_from({}),
+    )
+    assert custom_credits_view._better_inventory_armoury_grid_expansion is None
+    assert custom_credits_view.received_definitions.armoury_expanded is None
+    globals_.captured_armoury_on_enter_hook(
+        lua.eval("function() return 'custom_entered' end"), custom_credits_view
+    )
+    assert custom_credits_view._item_grid.updated is None
+
     mod.on_enabled()
     assert settings.curio_stat_compression == "heavy"
     assert settings.blessing_icon_size == 36
