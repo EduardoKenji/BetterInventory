@@ -218,6 +218,7 @@ def main() -> None:
 				columns = 3,
 				enable_grid_layout = true,
 				expand_inventory_window = true,
+				weapon_extra_width_column_threshold = "four_plus",
 				five_column_weapon_extra_width = 80,
 				expand_curio_inventory_window = true,
 				curio_target_card_width = 190,
@@ -591,6 +592,21 @@ def main() -> None:
     mod.settings.five_column_weapon_extra_width = 0
     assert layout.grid_expansion(mod, 596) == 44
     mod.settings.five_column_weapon_extra_width = 80
+
+    mod.settings.columns = 4
+    assert layout.grid_expansion(mod, 596) == 80
+    four_column_definitions, four_column_expansion = layout.expanded_view_definitions(
+        mod, view_definitions
+    )
+    assert four_column_expansion == 80
+    assert four_column_definitions.grid_settings.grid_size[1] == 676
+    assert tuple(
+        layout.item_size(mod, 676)[index] for index in (1, 2)
+    ) == (161, 110)
+    mod.settings.weapon_extra_width_column_threshold = "five_only"
+    assert layout.grid_expansion(mod, 596) == 0
+    mod.settings.weapon_extra_width_column_threshold = "four_plus"
+    mod.settings.columns = 5
 
     curio_view = lua.table_from(
         {"_selected_slot": lua.table_from({"name": "slot_attachment_1"})}
@@ -1086,6 +1102,12 @@ def main() -> None:
     assert perk_widget.content.better_inventory_full_weapon_perk_1 == "+25% Flak Damage"
     assert perk_widget.content.better_inventory_full_weapon_perk_2 == "+25% Maniacs Damage"
     assert "\n" not in perk_widget.content.better_inventory_weapon_perk_1
+    assert perk_styles["better_inventory_weapon_perk_1"].drop_shadow is True
+
+    globals_.TestTraitDescriptions.weapon_trait_melee_common_wield_increased_berserker_damage = "+25% Damage\n(Maniacs)"
+    perk_blueprint.update_data(test_grid, perk_widget, narrow_weapon_element)
+    assert "\n" not in perk_widget.content.better_inventory_weapon_perk_2
+    globals_.TestTraitDescriptions.weapon_trait_melee_common_wield_increased_berserker_damage = "+25% Damage (Maniacs)"
 
     mod.settings.weapon_perk_text_color_r = 12
     mod.settings.weapon_perk_text_color_g = 34
@@ -1263,6 +1285,17 @@ def main() -> None:
         uncompressed_perk_widget.content.better_inventory_full_weapon_perk_1
         == "+25% Damage (Flak Armoured Enemies)"
     )
+
+    globals_.TestTraitDescriptions.weapon_trait_melee_common_wield_increased_armored_damage = "+25% Damage\n(Flak Armoured Enemies)"
+    uncompressed_perk_blueprint.update_data(
+        test_grid, uncompressed_perk_widget, narrow_weapon_element
+    )
+    assert (
+        uncompressed_perk_widget.content.better_inventory_full_weapon_perk_1
+        == "+25% Damage (Flak Armoured Enemies)"
+    )
+    assert "\n" not in uncompressed_perk_widget.content.better_inventory_weapon_perk_1
+    globals_.TestTraitDescriptions.weapon_trait_melee_common_wield_increased_armored_damage = "+25% Damage (Flak Armoured Enemies)"
 
     mod.settings.weapon_perk_compression = "compression"
     mod.settings.show_weapon_perk_rank_symbols = True

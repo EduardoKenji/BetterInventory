@@ -9,7 +9,7 @@ local INVENTORY_EDGE_MARGIN = 16
 local WEAPON_ACTIONS_PANEL_WIDTH = 420
 local WEAPON_STATS_PANEL_WIDTH = 530
 local MINIMUM_CARD_WIDTH = 120
-local MAXIMUM_FIVE_COLUMN_WEAPON_EXTRA_WIDTH = 120
+local MAXIMUM_WEAPON_EXTRA_WIDTH = 120
 local ARMOURY_MINIMUM_CARD_WIDTH = 190
 local ARMOURY_MAXIMUM_CARD_WIDTH = 230
 local BLESSING_MATERIAL = "content/ui/materials/icons/traits/traits_container"
@@ -475,6 +475,18 @@ local function configured_text_color(mod, prefix, fallback)
 	}
 end
 
+local function single_line_text(value)
+	if type(value) ~= "string" then
+		return ""
+	end
+
+	value = string.gsub(value, "%s+", " ")
+	value = string.gsub(value, "^%s+", "")
+	value = string.gsub(value, "%s+$", "")
+
+	return value
+end
+
 local function compact_weapon_perk_description(mod, data, compression_mode)
 	local definition = data and COMPACT_WEAPON_PERK_LABELS[data.id]
 	local description = data and data.description
@@ -664,7 +676,7 @@ local function populate_card_content(mod, widget, element, blessing_display_mode
 					if name and name ~= "" then
 						local rank_name = blessing_rank_name(data.rarity)
 
-						content["better_inventory_blessing_text_" .. i] = rank_name ~= "" and rank_name .. " " .. name or name
+						content["better_inventory_blessing_text_" .. i] = single_line_text(rank_name ~= "" and rank_name .. " " .. name or name)
 					end
 				end
 			end
@@ -681,7 +693,7 @@ local function populate_card_content(mod, widget, element, blessing_display_mode
 				if data then
 					local description = compact_weapon_perk_description(mod, data, weapon_perk_compression)
 
-					content["better_inventory_weapon_perk_" .. i] = leading_plus_sign_description(description, remove_perk_plus_sign)
+					content["better_inventory_weapon_perk_" .. i] = single_line_text(leading_plus_sign_description(description, remove_perk_plus_sign))
 					content["better_inventory_weapon_perk_rank_" .. i] = data.rank
 				end
 			end
@@ -820,6 +832,7 @@ local function add_weapon_perk_pass(pass_template, index, options)
 	style.better_inventory_max_text_width = options.size[1]
 	style.better_inventory_preferred_font_size = options.font_size
 	style.text_color = table.clone(options.text_color or DEFAULT_WEAPON_PERK_COLOR)
+	style.drop_shadow = true
 
 	pass_template[#pass_template + 1] = {
 		pass_type = "text",
@@ -1401,7 +1414,7 @@ local function fit_weapon_perks(parent, widget, ui_renderer)
 
 		if type(value) == "string" and value ~= "" and maximum_width then
 			local preferred_font_size = style.better_inventory_preferred_font_size or style.font_size
-			local minimum_font_size = math.min(preferred_font_size, 8)
+			local minimum_font_size = math.min(preferred_font_size, 9)
 			local measurement_size = {
 				1000000,
 				style.size[2] or 30,
@@ -1504,6 +1517,12 @@ Layout.columns = function(mod, maximum_columns)
 	return math.max(2, math.min(column_limit, requested_columns))
 end
 
+local function weapon_extra_width_applies(mod, columns)
+	local threshold = setting(mod, "weapon_extra_width_column_threshold", "four_plus")
+
+	return columns >= (threshold == "five_only" and 5 or 4)
+end
+
 Layout.grid_expansion = function(mod, current_grid_width, slot_kind)
 	if not setting(mod, "enable_grid_layout", true) or not setting(mod, "expand_inventory_window", true) then
 		return 0
@@ -1520,8 +1539,8 @@ Layout.grid_expansion = function(mod, current_grid_width, slot_kind)
 	local required_grid_width = target_card_width * columns + spacing * (columns - 1)
 	local required_expansion = math.max(0, required_grid_width - current_grid_width)
 
-	if slot_kind ~= "curio" and columns == 5 then
-		local extra_width = math.max(0, math.min(MAXIMUM_FIVE_COLUMN_WEAPON_EXTRA_WIDTH, setting(mod, "five_column_weapon_extra_width", 80)))
+	if slot_kind ~= "curio" and weapon_extra_width_applies(mod, columns) then
+		local extra_width = math.max(0, math.min(MAXIMUM_WEAPON_EXTRA_WIDTH, setting(mod, "five_column_weapon_extra_width", 80)))
 
 		required_expansion = required_expansion + extra_width
 	end

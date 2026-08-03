@@ -197,9 +197,10 @@ local function refresh_option_dependencies()
 	local window_expansion_enabled = grid_enabled and mod:get("expand_inventory_window") ~= false
 	local curio_expansion_enabled = window_expansion_enabled and mod:get("expand_curio_inventory_window") ~= false
 	local expansion_reason = grid_enabled and mod:localize("option_requires_window_expansion") or native_reason
-	local five_weapon_columns = math.floor(tonumber(mod:get("columns")) or 3) == 5
-	local five_column_weapon_width_enabled = window_expansion_enabled and five_weapon_columns
-	local five_column_weapon_width_reason = not window_expansion_enabled and expansion_reason or mod:localize("option_requires_five_weapon_columns")
+	local weapon_columns = math.floor(tonumber(mod:get("columns")) or 3)
+	local weapon_width_threshold = mod:get("weapon_extra_width_column_threshold") == "five_only" and 5 or 4
+	local weapon_extra_width_enabled = window_expansion_enabled and weapon_columns >= weapon_width_threshold
+	local weapon_extra_width_reason = not window_expansion_enabled and expansion_reason or mod:localize("option_requires_weapon_extra_width_threshold")
 	local curio_target_reason = not window_expansion_enabled and expansion_reason or not curio_expansion_enabled and mod:localize("option_requires_curio_expansion") or nil
 	local armoury_grid_enabled = grid_enabled and mod:get("enable_armoury_requisition_grid") ~= false
 	local armoury_expansion_enabled = armoury_grid_enabled and mod:get("expand_armoury_requisition_window") ~= false
@@ -212,7 +213,8 @@ local function refresh_option_dependencies()
 	local detailed_curio_profile = mod:get("curio_display_profile") == "detailed"
 
 	set_option_enabled(option_dependency_entries.expand_curio_inventory_window, window_expansion_enabled, expansion_reason)
-	set_option_enabled(option_dependency_entries.five_column_weapon_extra_width, five_column_weapon_width_enabled, five_column_weapon_width_reason)
+	set_option_enabled(option_dependency_entries.weapon_extra_width_column_threshold, window_expansion_enabled, expansion_reason)
+	set_option_enabled(option_dependency_entries.five_column_weapon_extra_width, weapon_extra_width_enabled, weapon_extra_width_reason)
 	set_option_enabled(option_dependency_entries.curio_target_card_width, curio_expansion_enabled, curio_target_reason)
 	set_option_enabled(option_dependency_entries.expand_armoury_requisition_window, armoury_grid_enabled, armoury_reason)
 	set_option_enabled(option_dependency_entries.armoury_requisition_target_card_width, armoury_expansion_enabled, armoury_target_reason)
@@ -244,6 +246,7 @@ local function bind_option_dependencies(options_templates)
 	for _, setting_id in ipairs({
 		"columns",
 		"expand_inventory_window",
+		"weapon_extra_width_column_threshold",
 		"five_column_weapon_extra_width",
 		"grid_spacing",
 		"automatic_card_height",
@@ -364,7 +367,7 @@ function mod.on_setting_changed(setting_id)
 		end
 	end
 
-	if setting_id == "enable_grid_layout" or setting_id == "columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_armoury_requisition_grid" or setting_id == "expand_armoury_requisition_window" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "curio_display_profile" then
+	if setting_id == "enable_grid_layout" or setting_id == "columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "weapon_extra_width_column_threshold" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_armoury_requisition_grid" or setting_id == "expand_armoury_requisition_window" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "curio_display_profile" then
 		refresh_option_dependencies()
 	end
 

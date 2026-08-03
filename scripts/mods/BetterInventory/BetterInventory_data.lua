@@ -184,6 +184,22 @@ return {
 						default_value = true,
 					},
 					{
+						setting_id = "weapon_extra_width_column_threshold",
+						tooltip = "weapon_extra_width_column_threshold_tooltip",
+						type = "dropdown",
+						default_value = "four_plus",
+						options = {
+							{
+								text = "weapon_extra_width_column_threshold_four_plus",
+								value = "four_plus",
+							},
+							{
+								text = "weapon_extra_width_column_threshold_five_only",
+								value = "five_only",
+							},
+						},
+					},
+					{
 						setting_id = "five_column_weapon_extra_width",
 						tooltip = "five_column_weapon_extra_width_tooltip",
 						type = "numeric",

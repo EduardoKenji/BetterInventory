@@ -43,6 +43,7 @@ def main() -> None:
 			curio_display_profile = "primary",
 			show_curio_item_level = true,
 			expand_inventory_window = true,
+			weapon_extra_width_column_threshold = "four_plus",
 			five_column_weapon_extra_width = 80,
 			expand_curio_inventory_window = true,
             curio_health_color_preset = "red",
@@ -254,6 +255,7 @@ def main() -> None:
     option_ids = (
         "columns",
         "expand_inventory_window",
+		"weapon_extra_width_column_threshold",
 		"five_column_weapon_extra_width",
         "expand_curio_inventory_window",
         "curio_target_card_width",
@@ -302,6 +304,7 @@ def main() -> None:
     assert entries_by_id["expand_armoury_requisition_window"].disabled is False
     assert entries_by_id["armoury_requisition_target_card_width"].disabled is False
     assert entries_by_id["expand_curio_inventory_window"].disabled is False
+    assert entries_by_id["weapon_extra_width_column_threshold"].disabled is False
     assert entries_by_id["five_column_weapon_extra_width"].disabled is True
     assert entries_by_id["curio_target_card_width"].disabled is False
     assert entries_by_id["weapon_perk_compression"].disabled is True
@@ -318,9 +321,17 @@ def main() -> None:
     assert entries_by_id["curio_secondary_stat_font_size"].disabled is True
     assert entries_by_id["curio_primary_secondary_spacing"].disabled is True
 
+    settings.columns = 4
+    mod.on_setting_changed("columns")
+    assert entries_by_id["five_column_weapon_extra_width"].disabled is False
+    settings.weapon_extra_width_column_threshold = "five_only"
+    mod.on_setting_changed("weapon_extra_width_column_threshold")
+    assert entries_by_id["five_column_weapon_extra_width"].disabled is True
     settings.columns = 5
     mod.on_setting_changed("columns")
     assert entries_by_id["five_column_weapon_extra_width"].disabled is False
+    settings.weapon_extra_width_column_threshold = "four_plus"
+    mod.on_setting_changed("weapon_extra_width_column_threshold")
     settings.columns = 3
     mod.on_setting_changed("columns")
     assert entries_by_id["five_column_weapon_extra_width"].disabled is True
@@ -482,6 +493,7 @@ def main() -> None:
     assert defaults["armoury_requisition_target_card_width"] == 230
     assert defaults["automatic_card_height"] is True
     assert defaults["expand_curio_inventory_window"] is True
+    assert defaults["weapon_extra_width_column_threshold"] == "four_plus"
     assert defaults["five_column_weapon_extra_width"] == 80
     assert defaults["curio_target_card_width"] == 190
     assert defaults["curio_stat_compression"] == "heavy"

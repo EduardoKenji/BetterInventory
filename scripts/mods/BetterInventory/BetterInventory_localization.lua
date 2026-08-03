@@ -75,13 +75,25 @@ return {
 		en = "Expand inventory window when needed",
 	},
 	expand_inventory_window_tooltip = {
-		en = "Widens the inventory panel enough to keep narrow cards inside it. This normally affects five-column layouts, or four columns with very large spacing. Disable this to shrink the cards instead.",
+		en = "Widens the inventory panel enough to keep narrow cards inside it. The weapon-width threshold and Curio target-width settings control additional expansion. Disable this to shrink the cards instead.",
+	},
+	weapon_extra_width_column_threshold = {
+		en = "Apply extra weapon width at",
+	},
+	weapon_extra_width_column_threshold_tooltip = {
+		en = "Chooses whether the extra melee and ranged inventory width applies to both four- and five-column grids or only to five-column grids.",
+	},
+	weapon_extra_width_column_threshold_four_plus = {
+		en = "At 4 or more columns",
+	},
+	weapon_extra_width_column_threshold_five_only = {
+		en = "At 5 columns",
 	},
 	five_column_weapon_extra_width = {
-		en = "Extra five-column weapon width",
+		en = "Extra weapon inventory width",
 	},
 	five_column_weapon_extra_width_tooltip = {
-		en = "Adds this many pixels to the normal melee and ranged inventory after its minimum five-column width is calculated. The 80 px default gives each of five cards 16 additional pixels. Expansion is safely clamped before the actions panel reaches the screen edge.",
+		en = "Adds this many pixels to the normal melee and ranged inventory when the configured column threshold is met. The 80 px default gives each card 20 additional pixels across four columns or 16 across five. Expansion is safely clamped before the actions panel reaches the screen edge.",
 	},
 	expand_curio_inventory_window = {
 		en = "Expand Curio window by columns",
@@ -113,8 +125,8 @@ return {
 	option_requires_grid_layout = {
 		en = "Enable grid layout to use this option.",
 	},
-	option_requires_five_weapon_columns = {
-		en = "Set Columns to 5 to use this option.",
+	option_requires_weapon_extra_width_threshold = {
+		en = "Increase Columns to the configured extra-width threshold to use this option.",
 	},
 	option_disabled_by_automatic_height = {
 		en = "Disable automatic card height to set a manual height.",
