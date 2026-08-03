@@ -97,6 +97,12 @@ def main() -> None:
 				}
 			end,
 		}
+		TestProfileUtils = {
+			presets = {},
+			get_profile_presets = function()
+				return TestProfileUtils.presets
+			end,
+		}
         TestUIWidget = {
             create_definition = function(pass_template, scenegraph_id, content)
                 content.hotspot = content.hotspot or {}
@@ -133,6 +139,8 @@ def main() -> None:
                 return TestItems
 			elseif path == "scripts/backend/master_items" then
 				return TestMasterItems
+			elseif path == "scripts/utilities/profile_utils" then
+				return TestProfileUtils
 			elseif path == "scripts/settings/item/rarity_settings" then
 				return TestRaritySettings
             elseif path == "scripts/managers/ui/ui_widget" then
@@ -483,6 +491,7 @@ def main() -> None:
     mod.settings.quick_discard_include_ranged = True
     mod.settings.quick_discard_include_curios = True
     mod.settings.quick_discard_protect_perfect_weapons = True
+    mod.settings.quick_discard_protect_above_equipped_level = True
     mod.settings.quick_discard_protect_high_level_curios = True
     mod.settings.quick_discard_curio_protection_level = 410
     mod.settings.quick_discard_show_type_breakdown = True
@@ -497,6 +506,14 @@ def main() -> None:
             is_item_equipped_in_any_slot = function(self, item)
                 return item.equipped == true
             end,
+			_preview_player = {
+				profile = function()
+					return {
+						loadout = {},
+						loadout_item_ids = {},
+					}
+				end,
+			},
             _offer_items_layout = {},
         }
         """
@@ -556,11 +573,59 @@ def main() -> None:
                     )
                 }
             ),
+            lua.table_from(
+                {
+                    "item": lua.table_from(
+                        {
+                            "gear_id": "inactive_preset_candidate",
+                            "item_type": "WEAPON_MELEE",
+                            "level": 300,
+                            "rarity": 1,
+                            "total_stats": 300,
+                            "slots": lua.table_from(["slot_primary"]),
+                        }
+                    )
+                }
+            ),
+            lua.table_from(
+                {
+                    "item": lua.table_from(
+                        {
+                            "gear_id": "higher_than_equipped",
+                            "item_type": "WEAPON_MELEE",
+                            "level": 350,
+                            "rarity": 1,
+                            "total_stats": 350,
+                            "slots": lua.table_from(["slot_primary"]),
+                        }
+                    )
+                }
+            ),
+        ]
+    )
+    globals_.TestProfileUtils.presets = lua.table_from(
+        [
+            lua.table_from(
+                {
+                    "loadout": lua.table_from(
+                        {"slot_primary": "inactive_preset_candidate"}
+                    )
+                }
+            )
         ]
     )
     candidates = features.quick_discard_candidates(mod, layout, quick_discard_view)
     assert len(candidates) == 1
     assert candidates[1].gear_id == "eligible"
+    mod.settings.quick_discard_protect_above_equipped_level = False
+    unprotected_level_candidates = features.quick_discard_candidates(
+        mod, layout, quick_discard_view
+    )
+    assert {unprotected_level_candidates[index].gear_id for index in range(1, len(unprotected_level_candidates) + 1)} == {
+        "eligible",
+        "higher_than_equipped",
+    }
+    mod.settings.quick_discard_protect_above_equipped_level = True
     assert features.is_perfect_roll_weapon(quick_discard_view._offer_items_layout[2].item) is True
     anomalous_perfect_roll = lua.table_from(
         {
@@ -860,6 +925,19 @@ def main() -> None:
         ].content.checked
         is False
     )
+    curio_protection_widget = quick_discard_view._widgets_by_name[
+        "better_inventory_discard_curio_protection"
+    ]
+    curio_level_widget = quick_discard_view._widgets_by_name[
+        "better_inventory_discard_curio_level"
+    ]
+    assert curio_level_widget.content.visible is True
+    curio_protection_widget.content.hotspot.pressed_callback()
+    assert mod.settings.quick_discard_protect_high_level_curios is False
+    assert curio_level_widget.content.visible is False
+    curio_protection_widget.content.hotspot.pressed_callback()
+    assert mod.settings.quick_discard_protect_high_level_curios is True
+    assert curio_level_widget.content.visible is True
 
     quick_discard_view._better_inventory_grid_expansion = 80
     quick_discard_view._weapon_stats = view._weapon_stats
@@ -1054,13 +1132,27 @@ def main() -> None:
     assert prototype_panel.menu_settings.top_padding == 4
     assert prototype_panel.menu_settings.bottom_chin == 4
     assert prototype_panel._ui_scenegraph.grid_content_pivot.position[1] == 10
-    assert len(prototype_panel.layout) == 13
+    assert len(prototype_panel.layout) == 15
     assert prototype_panel.grid_height == 360
     assert prototype_panel.pivot_x == 120
     assert prototype_panel.pivot_y == 375
     assert prototype_view._widgets_by_name[sort_label_id].content.visible is False
     assert prototype_view._widgets_by_name[toggle_id].content.visible is False
     assert prototype_panel.widgets["better_inventory_perfect_sort_priority"] is not None
+    assert (
+        prototype_panel.widgets[
+            "better_inventory_discard_item_types_label"
+        ].content.label
+        == "quick_discard_inventory_item_types_label"
+    )
+    equipped_level_widget = prototype_panel.widgets[
+        "better_inventory_discard_equipped_level_protection"
+    ]
+    assert equipped_level_widget.content.checked is True
+    equipped_level_widget.content.hotspot.pressed_callback()
+    assert mod.settings.quick_discard_protect_above_equipped_level is False
+    assert equipped_level_widget.content.checked is False
+    mod.settings.quick_discard_protect_above_equipped_level = True
     assert prototype_panel.widgets["better_inventory_discard_curio_types"] is not None
     assert (
         prototype_panel.widgets[
@@ -1079,13 +1171,34 @@ def main() -> None:
     assert curio_type_widget.content.health_checked is False
     mod.settings.quick_discard_keep_health_curios = True
 
+    # Minimum-level protection owns only its numeric threshold row. Turning the
+    # rule off removes that row, while the Curio-type filters remain available
+    # for preconfiguration and the panel safely reflows on the next update.
+    curio_protection_widget = prototype_panel.widgets[
+        "better_inventory_discard_curio_protection"
+    ]
+    curio_protection_widget.content.hotspot.pressed_callback()
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert mod.settings.quick_discard_protect_high_level_curios is False
+    assert len(prototype_panel.layout) == 14
+    assert prototype_panel.widgets["better_inventory_discard_curio_level"] is None
+    assert prototype_panel.widgets["better_inventory_discard_curio_types"] is not None
+    curio_protection_widget = prototype_panel.widgets[
+        "better_inventory_discard_curio_protection"
+    ]
+    curio_protection_widget.content.hotspot.pressed_callback()
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert mod.settings.quick_discard_protect_high_level_curios is True
+    assert len(prototype_panel.layout) == 15
+    assert prototype_panel.widgets["better_inventory_discard_curio_level"] is not None
+
     # The Automatic-only confirmation checkbox owns a dedicated panel row. Mode
     # changes defer structural rebuilding until the next safe view update.
     mode_widget.content.hotspot.pressed_callback()
     assert mod.settings.quick_discard_mode == "automatic"
-    assert len(prototype_panel.layout) == 13
+    assert len(prototype_panel.layout) == 15
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
-    assert len(prototype_panel.layout) == 14
+    assert len(prototype_panel.layout) == 16
     skip_widget = prototype_panel.widgets["better_inventory_discard_skip_confirmation"]
     assert skip_widget.content.checked is True
     skip_widget.content.hotspot.pressed_callback()
@@ -1095,7 +1208,7 @@ def main() -> None:
     mode_widget.content.hotspot.pressed_callback()
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert mod.settings.quick_discard_mode == "manual"
-    assert len(prototype_panel.layout) == 13
+    assert len(prototype_panel.layout) == 15
     assert prototype_panel.widgets["better_inventory_discard_skip_confirmation"] is None
 
     prototype_panel.widgets[
@@ -1103,7 +1216,7 @@ def main() -> None:
     ].content.hotspot.pressed_callback()
     # Collapse/expand only changes state during the grid's draw callback. The
     # structural rebuild is deferred to the following safe view update.
-    assert len(prototype_panel.layout) == 13
+    assert len(prototype_panel.layout) == 15
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert len(prototype_panel.layout) == 4
     assert prototype_panel.grid_height == 219
@@ -1157,6 +1270,16 @@ def main() -> None:
                     "slots": lua.table_from(["slot_secondary"]),
                 }
             ),
+            "auto_inactive_preset": lua.table_from(
+                {
+					"gear_id": "auto_inactive_preset",
+					"item_type": "WEAPON_MELEE",
+					"level": 300,
+					"rarity": 1,
+					"total_stats": 300,
+					"slots": lua.table_from(["slot_primary"]),
+				}
+			),
             # A legacy/partially-materialized account item must fail closed
             # without preventing the rest of an automatic scan from running.
             "auto_unreadable": lua.table_from(
@@ -1168,7 +1291,28 @@ def main() -> None:
                     "slots": lua.table_from(["slot_primary"]),
                 }
             ),
+            "auto_higher_than_equipped": lua.table_from(
+                {
+                    "gear_id": "auto_higher_than_equipped",
+                    "item_type": "WEAPON_MELEE",
+                    "level": 350,
+                    "rarity": 1,
+                    "total_stats": 350,
+                    "slots": lua.table_from(["slot_primary"]),
+                }
+            ),
         }
+    )
+    globals_.TestProfileUtils.presets = lua.table_from(
+        [
+            lua.table_from(
+                {
+                    "loadout": lua.table_from(
+                        {"slot_primary": "auto_inactive_preset"}
+                    )
+                }
+            )
+        ]
     )
     lua.execute(
         r"""
@@ -1194,8 +1338,11 @@ def main() -> None:
         end
 
         automatic_fetch_count = 0
+        automatic_cache_invalidation_count = 0
+        automatic_add_mission_reward_on_invalidation = true
         automatic_deleted_ids = nil
         automatic_game_mode_name = "hub"
+        automatic_progression_fetching = true
         local profile = {
             loadout = {
                 slot_secondary = {gear_id = "auto_equipped"},
@@ -1225,8 +1372,27 @@ def main() -> None:
                 return player
             end,
         }
+        Managers.progression = {
+            is_fetching_session_report = function()
+                return automatic_progression_fetching
+            end,
+        }
         Managers.data_service = {
             gear = {
+                invalidate_gear_cache = function()
+                    automatic_cache_invalidation_count = automatic_cache_invalidation_count + 1
+
+                    if automatic_add_mission_reward_on_invalidation then
+                        inventory.auto_mission_reward = {
+                            gear_id = "auto_mission_reward",
+                            item_type = "WEAPON_MELEE",
+                            level = 300,
+                            rarity = 1,
+                            total_stats = 300,
+                            slots = {"slot_primary"},
+                        }
+                    end
+                end,
                 fetch_inventory = function()
                     automatic_fetch_count = automatic_fetch_count + 1
 
@@ -1256,6 +1422,10 @@ def main() -> None:
     mod.settings.quick_discard_mode = "automatic"
     mod.settings.quick_discard_skip_automatic_confirmation = False
     features.begin_morningstar_auto_discard(mod)
+    features.update_morningstar_auto_discard(mod, 5)
+    assert globals_.automatic_fetch_count == 0
+    assert globals_.automatic_cache_invalidation_count == 0
+    globals_.automatic_progression_fetching = False
     features.update_morningstar_auto_discard(mod, 4.9)
     assert globals_.captured_popup is None
     features.update_morningstar_auto_discard(mod, 0.1)
@@ -1264,13 +1434,17 @@ def main() -> None:
         == "quick_discard_automatic_confirmation_title"
     )
     assert globals_.automatic_fetch_count == 1
+    assert globals_.automatic_cache_invalidation_count == 1
     globals_.captured_notification = None
     globals_.captured_popup.options[1].callback()
     assert globals_.automatic_fetch_count == 2
-    assert len(globals_.automatic_deleted_ids) == 1
-    assert globals_.automatic_deleted_ids[1] == "auto_eligible"
+    assert len(globals_.automatic_deleted_ids) == 2
+    assert {
+        globals_.automatic_deleted_ids[1],
+        globals_.automatic_deleted_ids[2],
+    } == {"auto_eligible", "auto_mission_reward"}
     assert globals_.captured_notification.line_1 == "quick_discard_notification_title"
-    assert "- 1 rarity_1 quick_discard_notification_items" in globals_.captured_notification.line_2
+    assert "- 2 rarity_1 quick_discard_notification_items" in globals_.captured_notification.line_2
     features.update_morningstar_auto_discard(mod, 30)
     assert globals_.automatic_fetch_count == 2
 
@@ -1281,7 +1455,7 @@ def main() -> None:
     features.update_morningstar_auto_discard(mod, 5)
     assert globals_.captured_popup is None
     assert globals_.automatic_fetch_count == 4
-    assert globals_.automatic_deleted_ids[1] == "auto_eligible"
+    assert len(globals_.automatic_deleted_ids) == 2
     features.cancel_morningstar_auto_discard()
 
     # The live-manager fallback must arm Automatic mode even when a hot reload
@@ -1299,16 +1473,23 @@ def main() -> None:
     assert globals_.automatic_fetch_count == 5
     features.cancel_morningstar_auto_discard()
 
-    # Confirmation-enabled Automatic mode gives visible feedback even when the
-    # completed scan has no eligible candidates, rather than failing silently.
+    # Automatic mode uses a non-blocking notification when the completed scan
+    # has no eligible candidates, regardless of confirmation behavior.
+    globals_.automatic_add_mission_reward_on_invalidation = False
     automatic_inventory["auto_eligible"] = None
+    automatic_inventory["auto_mission_reward"] = None
     globals_.captured_popup = None
+    globals_.captured_notification = None
     features.update_morningstar_auto_discard(mod, 5)
     assert globals_.automatic_fetch_count == 6
-    assert globals_.captured_popup.title_text_unlocalized == "quick_discard_nothing_title"
+    assert globals_.captured_popup is None
     assert (
-        globals_.captured_popup.description_text_unlocalized
-        == "quick_discard_automatic_nothing_description"
+        globals_.captured_notification.line_1
+        == "quick_discard_automatic_nothing_notification_title"
+    )
+    assert (
+        globals_.captured_notification.line_2
+        == "quick_discard_automatic_nothing_notification_description"
     )
     features.cancel_morningstar_auto_discard()
 

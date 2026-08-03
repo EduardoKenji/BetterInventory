@@ -79,7 +79,11 @@ if ($data -notmatch 'setting_id\s*=\s*"quick_discard_mode"[\s\S]*?default_value\
 	throw "Automatic discard and confirmation skipping must remain opt-in."
 }
 
-if ($features -notmatch 'Items\.is_item_id_favorited' -or $features -notmatch 'is_item_equipped_in_any_slot' -or $features -notmatch 'quick_discard_protect_perfect_weapons') {
+if ($data -notmatch 'setting_id\s*=\s*"quick_discard_protect_above_equipped_level"[\s\S]*?default_value\s*=\s*true') {
+	throw "Higher-than-equipped item protection must remain enabled by default."
+}
+
+if ($features -notmatch 'Items\.is_item_id_favorited' -or $features -notmatch 'is_item_equipped_in_any_slot' -or $features -notmatch 'ProfileUtils\.get_profile_presets' -or $features -notmatch 'quick_discard_protect_perfect_weapons') {
 	throw "Quick discard is missing a required protected-item gate."
 }
 
@@ -89,6 +93,10 @@ if ($features -notmatch 'quick_discard_candidates\(mod,\s*layout,\s*view,\s*capt
 
 if ($main -notmatch 'mod\.on_game_state_changed' -or $main -notmatch 'Features\.update_morningstar_auto_discard' -or $features -notmatch 'game_mode_name\s*==\s*"hub"' -or $features -notmatch 'game_mode_name\s*==\s*"hub_singleplay"' -or $features -notmatch 'AUTOMATIC_DISCARD_DELAY\s*=\s*5' -or $features -notmatch 'hub_character_id\s*~=\s*character_id') {
 	throw "The guarded once-per-Morningstar automatic-discard lifecycle was not found."
+}
+
+if ($features -notmatch 'progression_manager\.is_fetching_session_report' -or $features -notmatch 'gear_service:invalidate_gear_cache\(\)[\s\S]*?gear_service:fetch_inventory\(character_id\)') {
+	throw "Automatic discard must wait for mission rewards and refresh the gear cache before its first inventory scan."
 }
 
 if ($features -notmatch 'quick_discard_candidates_from_items\(mod,\s*items,\s*equipped_gear_ids\(profile\),\s*captured_ids\)' -or $features -notmatch 'quick_discard_skip_automatic_confirmation' -or $features -notmatch 'gear_service:delete_gear_batch') {
@@ -151,8 +159,9 @@ if ($DarktideSourcePath) {
 	$traitValueParser = Join-Path $DarktideSourcePath "scripts\utilities\trait_value_parser.lua"
 	$gadgetBuffTemplates = Join-Path $DarktideSourcePath "scripts\settings\buff\gadget_buff_templates.lua"
 	$gearService = Join-Path $DarktideSourcePath "scripts\managers\data_service\services\gear_service.lua"
+	$progressionManager = Join-Path $DarktideSourcePath "scripts\managers\progression\progression_manager.lua"
 
-	foreach ($sourceFile in @($inventoryView, $hadronModifyView, $craftingViewDefinitions, $creditsVendorView, $creditsVendorBackgroundDefinitions, $itemGridBase, $itemGridBaseDefinitions, $itemBlueprints, $iconGenerator, $items, $masterItems, $gadgetTraits, $weaponPerksMelee, $weaponPerksRanged, $traitValueParser, $gadgetBuffTemplates, $gearService)) {
+	foreach ($sourceFile in @($inventoryView, $hadronModifyView, $craftingViewDefinitions, $creditsVendorView, $creditsVendorBackgroundDefinitions, $itemGridBase, $itemGridBaseDefinitions, $itemBlueprints, $iconGenerator, $items, $masterItems, $gadgetTraits, $weaponPerksMelee, $weaponPerksRanged, $traitValueParser, $gadgetBuffTemplates, $gearService, $progressionManager)) {
 		if (-not (Test-Path -LiteralPath $sourceFile -PathType Leaf)) {
 			throw "Missing expected Darktide source file: $sourceFile"
 		}
@@ -220,9 +229,14 @@ if ($DarktideSourcePath) {
 
 	$itemsSource = Get-Content -LiteralPath $items -Raw
 	$gearServiceSource = Get-Content -LiteralPath $gearService -Raw
+	$progressionManagerSource = Get-Content -LiteralPath $progressionManager -Raw
 
 	if ($gearServiceSource -notmatch 'GearService\.fetch_inventory' -or $gearServiceSource -notmatch 'GearService\.delete_gear_batch' -or $gearServiceSource -notmatch 'local max_operations = 40') {
 		throw "The audited inventory-fetch or bounded batch-delete gear service contract has changed."
+	}
+
+	if ($progressionManagerSource -notmatch 'if #item_rewards > 0 then[\s\S]*?invalidate_gear_cache\(\)[\s\S]*?Items\.mark_item_id_as_new\(reward\)') {
+		throw "Darktide's mission-reward gear-cache invalidation contract has changed."
 	}
 
 	if (

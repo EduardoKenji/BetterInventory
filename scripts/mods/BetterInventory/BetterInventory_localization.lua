@@ -140,6 +140,12 @@ return {
 	quick_discard_max_item_level_tooltip = {
 		en = "Items above this displayed item level are protected even when their rarity matches. Set this conservatively while testing the feature.",
 	},
+	quick_discard_protect_above_equipped_level = {
+		en = "Do not discard higher item level than equipped",
+	},
+	quick_discard_protect_above_equipped_level_tooltip = {
+		en = "Protects an item when its displayed item level exceeds the highest equipped item of the same category across the active and every saved loadout. Melee weapons, ranged weapons and Curios are compared separately.",
+	},
 	quick_discard_include_melee = {
 		en = "Allow melee weapons",
 	},
@@ -156,16 +162,16 @@ return {
 		en = "Protects weapons that already have, or Darktide's maximum-expertise preview predicts will have, four displayed attributes at 80 plus one at 60 or higher. A completed raw 380 allocation can display 381 or 382 because each attribute is rounded independently.",
 	},
 	quick_discard_protect_high_level_curios = {
-		en = "Protect high-level Curios",
+		en = "Keep curios of a minimum item level",
 	},
 	quick_discard_protect_high_level_curios_tooltip = {
-		en = "Protects Curios at or above the configured item-level threshold, regardless of rarity.",
+		en = "Protects Curios at or above the configured minimum item level, regardless of rarity. Curio-type filters remain configurable while this option is off.",
 	},
 	quick_discard_curio_protection_level = {
-		en = "Curio protection level",
+		en = "Minimum item level to keep curios",
 	},
 	quick_discard_curio_protection_level_tooltip = {
-		en = "Curios at or above this displayed item level are protected when their primary blessing type is enabled below. The default is 410.",
+		en = "Curios at or above this displayed item level are protected when their primary blessing type is enabled below. This setting is shown only while minimum-item-level Curio protection is enabled. The default is 410.",
 	},
 	quick_discard_keep_health_curios = {
 		en = "Keep Health Curios",
@@ -180,7 +186,7 @@ return {
 		en = "Keep Stamina Curios",
 	},
 	quick_discard_keep_curio_type_tooltip = {
-		en = "Works together with Curio protection level: only Curios at or above the threshold whose primary blessing type is enabled are protected. All types default to enabled. Unknown future Curio types fail safe and remain protected.",
+		en = "Selects the Curio primary blessing types protected by the minimum-item-level rule. These filters can be configured independently while that rule is off. All types default to enabled. Unknown future Curio types fail safe and remain protected.",
 	},
 	quick_discard_show_type_breakdown = {
 		en = "Show equipment-type counts in confirmation",
@@ -207,7 +213,10 @@ return {
 		en = "CLICK TO DISCARD",
 	},
 	quick_discard_inventory_max_level = {
-		en = "Maximum item level",
+		en = "Maximum item level to discard",
+	},
+	quick_discard_inventory_item_types_label = {
+		en = "Types of items to discard:",
 	},
 	quick_discard_inventory_melee = {
 		en = "Melee",
@@ -219,7 +228,10 @@ return {
 		en = "Curios",
 	},
 	quick_discard_inventory_curio_level = {
-		en = "Curio protection level",
+		en = "Minimum item level to keep curios",
+	},
+	quick_discard_inventory_protect_above_equipped_level = {
+		en = "Do not discard higher item level than equipped",
 	},
 	quick_discard_inventory_keep_curio_types_label = {
 		en = "Keep curios of this type:",
@@ -228,7 +240,7 @@ return {
 		en = "Do not discard perfect-roll weapons",
 	},
 	quick_discard_inventory_protect_curios = {
-		en = "Protect high-level Curios",
+		en = "Keep curios of a minimum item level",
 	},
 	quick_discard_inventory_keep_health_curios = {
 		en = "Health",
@@ -289,6 +301,12 @@ return {
 	},
 	quick_discard_automatic_nothing_description = {
 		en = "The automated Morningstar scan completed, but no items match the current discard filters. Favorited, equipped and protected items are always excluded.",
+	},
+	quick_discard_automatic_nothing_notification_title = {
+		en = "No items found to discard",
+	},
+	quick_discard_automatic_nothing_notification_description = {
+		en = "The automated Morningstar scan found no eligible items.",
 	},
 	quick_discard_notification_title = {
 		en = "Discarded items:",
@@ -441,7 +459,7 @@ return {
 		en = "Select Automatic discard mode to use this option.",
 	},
 	option_requires_curio_discard_protection = {
-		en = "Enable high-level Curio protection to set its threshold.",
+		en = "Enable minimum-item-level Curio protection to set its threshold.",
 	},
 	icon_darkness = {
 		en = "Icon darkness (%%)",

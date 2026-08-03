@@ -283,6 +283,7 @@ local function refresh_option_dependencies()
 		"quick_discard_mode",
 		"quick_discard_rarity",
 		"quick_discard_max_item_level",
+		"quick_discard_protect_above_equipped_level",
 		"quick_discard_include_melee",
 		"quick_discard_include_ranged",
 		"quick_discard_include_curios",
@@ -306,15 +307,6 @@ local function refresh_option_dependencies()
 	local curio_protection_enabled = quick_discard_enabled and mod:get("quick_discard_protect_high_level_curios") ~= false
 
 	set_option_enabled(option_dependency_entries.quick_discard_curio_protection_level, curio_protection_enabled, quick_discard_enabled and mod:localize("option_requires_curio_discard_protection") or quick_discard_reason)
-
-	for _, setting_id in ipairs({
-		"quick_discard_keep_health_curios",
-		"quick_discard_keep_toughness_curios",
-		"quick_discard_keep_wound_curios",
-		"quick_discard_keep_stamina_curios",
-	}) do
-		set_option_enabled(option_dependency_entries[setting_id], curio_protection_enabled, quick_discard_enabled and mod:localize("option_requires_curio_discard_protection") or quick_discard_reason)
-	end
 end
 
 local function bind_option_dependencies(options_templates)
@@ -377,6 +369,7 @@ local function bind_option_dependencies(options_templates)
 		"quick_discard_skip_automatic_confirmation",
 		"quick_discard_rarity",
 		"quick_discard_max_item_level",
+		"quick_discard_protect_above_equipped_level",
 		"quick_discard_include_melee",
 		"quick_discard_include_ranged",
 		"quick_discard_include_curios",
@@ -401,6 +394,18 @@ local function bind_option_dependencies(options_templates)
 
 		if setting_id then
 			option_dependency_entries[setting_id] = entry
+		end
+	end
+
+	-- DMF reevaluates validation functions while its options view is open and
+	-- rebuilds the list when their result changes. Use that mechanism to remove
+	-- the threshold entirely when its rule is off; the Curio-type filters remain
+	-- visible and independently configurable.
+	local curio_level_entry = option_dependency_entries.quick_discard_curio_protection_level
+
+	if curio_level_entry then
+		curio_level_entry.validation_function = function()
+			return mod:get("quick_discard_protect_high_level_curios") ~= false
 		end
 	end
 

@@ -334,6 +334,7 @@ def main() -> None:
 		"inventory_options_panel_padding_right",
 		"quick_discard_rarity",
 		"quick_discard_max_item_level",
+		"quick_discard_protect_above_equipped_level",
 		"quick_discard_include_melee",
 		"quick_discard_include_ranged",
 		"quick_discard_include_curios",
@@ -398,6 +399,7 @@ def main() -> None:
     assert entries_by_id["curio_secondary_stat_font_size"].disabled is True
     assert entries_by_id["curio_primary_secondary_spacing"].disabled is True
     assert entries_by_id["quick_discard_rarity"].disabled is True
+    assert entries_by_id["quick_discard_protect_above_equipped_level"].disabled is True
     assert entries_by_id["quick_discard_curio_protection_level"].disabled is True
     assert entries_by_id["quick_discard_keep_health_curios"].disabled is True
     assert entries_by_id["quick_discard_keep_toughness_curios"].disabled is True
@@ -431,7 +433,9 @@ def main() -> None:
     mod.on_setting_changed("enable_experimental_quick_discard")
     assert entries_by_id["quick_discard_rarity"].disabled is False
     assert entries_by_id["quick_discard_max_item_level"].disabled is False
+    assert entries_by_id["quick_discard_protect_above_equipped_level"].disabled is False
     assert entries_by_id["quick_discard_curio_protection_level"].disabled is False
+    assert entries_by_id["quick_discard_curio_protection_level"].validation_function() is True
     assert entries_by_id["quick_discard_keep_health_curios"].disabled is False
     assert entries_by_id["quick_discard_keep_toughness_curios"].disabled is False
     assert entries_by_id["quick_discard_keep_wound_curios"].disabled is False
@@ -441,8 +445,11 @@ def main() -> None:
     settings.quick_discard_protect_high_level_curios = False
     mod.on_setting_changed("quick_discard_protect_high_level_curios")
     assert entries_by_id["quick_discard_curio_protection_level"].disabled is True
-    assert entries_by_id["quick_discard_keep_health_curios"].disabled is True
-    assert entries_by_id["quick_discard_keep_toughness_curios"].disabled is True
+    assert entries_by_id["quick_discard_curio_protection_level"].validation_function() is False
+    assert entries_by_id["quick_discard_keep_health_curios"].disabled is False
+    assert entries_by_id["quick_discard_keep_toughness_curios"].disabled is False
+    assert entries_by_id["quick_discard_keep_wound_curios"].disabled is False
+    assert entries_by_id["quick_discard_keep_stamina_curios"].disabled is False
     assert globals_.quick_discard_syncs > 0
     settings.quick_discard_protect_high_level_curios = True
     settings.enable_experimental_quick_discard = False
@@ -684,8 +691,8 @@ def main() -> None:
     assert defaults["curio_display_profile"] == "detailed"
     assert defaults["show_curio_item_level"] is True
     assert defaults["prioritize_equipped_favorites"] is True
-    assert defaults["prioritize_perfect_roll_weapons"] is False
-    assert defaults["enable_inventory_options_panel_prototype"] is False
+    assert defaults["prioritize_perfect_roll_weapons"] is True
+    assert defaults["enable_inventory_options_panel_prototype"] is True
     assert defaults["curio_information_width_percent"] == 90
     assert defaults["curio_preview_height_percent"] == 76
     assert defaults["inventory_options_panel_width"] == 445
@@ -700,6 +707,7 @@ def main() -> None:
     assert defaults["quick_discard_keep_wound_curios"] is True
     assert defaults["quick_discard_keep_stamina_curios"] is True
     assert defaults["quick_discard_max_item_level"] == 490
+    assert defaults["quick_discard_protect_above_equipped_level"] is True
     assert defaults["quick_discard_show_summary_notification"] is True
     assert defaults["curio_primary_stat_font_size"] == 16
     assert defaults["curio_secondary_stat_font_size"] == 13

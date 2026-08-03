@@ -133,7 +133,7 @@ return {
 						setting_id = "prioritize_perfect_roll_weapons",
 						tooltip = "prioritize_perfect_roll_weapons_tooltip",
 						type = "checkbox",
-						default_value = false,
+						default_value = true,
 					},
 					{
 						setting_id = "inventory_options_panel_geometry_group",
@@ -143,7 +143,7 @@ return {
 								setting_id = "enable_inventory_options_panel_prototype",
 								tooltip = "enable_inventory_options_panel_prototype_tooltip",
 								type = "checkbox",
-								default_value = false,
+								default_value = true,
 							},
 							{
 								setting_id = "curio_information_width_percent",
@@ -273,16 +273,6 @@ return {
 						},
 					},
 					{
-						setting_id = "quick_discard_max_item_level",
-						tooltip = "quick_discard_max_item_level_tooltip",
-						type = "numeric",
-						default_value = 490,
-						range = {
-							0,
-							500,
-						},
-					},
-					{
 						setting_id = "quick_discard_include_melee",
 						type = "checkbox",
 						default_value = true,
@@ -294,6 +284,22 @@ return {
 					},
 					{
 						setting_id = "quick_discard_include_curios",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
+						setting_id = "quick_discard_max_item_level",
+						tooltip = "quick_discard_max_item_level_tooltip",
+						type = "numeric",
+						default_value = 490,
+						range = {
+							0,
+							500,
+						},
+					},
+					{
+						setting_id = "quick_discard_protect_above_equipped_level",
+						tooltip = "quick_discard_protect_above_equipped_level_tooltip",
 						type = "checkbox",
 						default_value = true,
 					},

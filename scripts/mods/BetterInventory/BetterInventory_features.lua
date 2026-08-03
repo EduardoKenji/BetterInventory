@@ -1,5 +1,6 @@
 local Items = require("scripts/utilities/items")
 local MasterItems = require("scripts/backend/master_items")
+local ProfileUtils = require("scripts/utilities/profile_utils")
 local RaritySettings = require("scripts/settings/item/rarity_settings")
 local UIWidget = require("scripts/managers/ui/ui_widget")
 local UISoundEvents = require("scripts/settings/ui/ui_sound_events")
@@ -13,6 +14,7 @@ local INVENTORY_DISCARD_MODE_ID = "better_inventory_discard_mode"
 local INVENTORY_DISCARD_SKIP_CONFIRMATION_ID = "better_inventory_discard_skip_confirmation"
 local INVENTORY_QUICK_DISCARD_ID = "better_inventory_quick_discard"
 local INVENTORY_DISCARD_MAX_LEVEL_ID = "better_inventory_discard_max_level"
+local INVENTORY_DISCARD_EQUIPPED_LEVEL_PROTECTION_ID = "better_inventory_discard_equipped_level_protection"
 local INVENTORY_DISCARD_MELEE_ID = "better_inventory_discard_melee"
 local INVENTORY_DISCARD_RANGED_ID = "better_inventory_discard_ranged"
 local INVENTORY_DISCARD_CURIO_ID = "better_inventory_discard_curio"
@@ -1344,7 +1346,7 @@ local function panel_stepper_entry(mod, layout, view, control_id, setting_id, la
 	end)
 end
 
-local function panel_checkbox_entry(mod, layout, view, control_id, setting_id, label_id, default_enabled)
+local function panel_checkbox_entry(mod, layout, view, control_id, setting_id, label_id, default_enabled, defer_panel_rebuild)
 	local function is_enabled()
 		local value = mod:get(setting_id)
 
@@ -1364,7 +1366,7 @@ local function panel_checkbox_entry(mod, layout, view, control_id, setting_id, l
 
 			widget.content.checked = enabled
 			mod:set(setting_id, enabled, false)
-			Features.sync_quick_discard_settings(mod, layout)
+			Features.sync_quick_discard_settings(mod, layout, defer_panel_rebuild and view or nil)
 		end
 	end, function(widget)
 		widget.content.checked = is_enabled()
@@ -1491,6 +1493,7 @@ local function panel_structure_key(mod, view)
 		view._discard_items_element and "native_discard" or "inventory",
 		mod:get("enable_experimental_quick_discard") == true and "discard_on" or "discard_off",
 		mod:get("quick_discard_mode") == "automatic" and "automatic" or "manual",
+		mod:get("quick_discard_protect_high_level_curios") ~= false and "curio_level_on" or "curio_level_off",
 		collapsed.sorting and "sort_closed" or "sort_open",
 		collapsed.discard and "discard_closed" or "discard_open",
 	}, ":")
@@ -1532,11 +1535,17 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 			end
 
 			entries[#entries + 1] = panel_quick_discard_entry(mod, layout, view)
-			entries[#entries + 1] = panel_stepper_entry(mod, layout, view, INVENTORY_DISCARD_MAX_LEVEL_ID, "quick_discard_max_item_level", "quick_discard_inventory_max_level", 490)
+			entries[#entries + 1] = panel_sub_label_entry(mod, view, "better_inventory_discard_item_types_label", "quick_discard_inventory_item_types_label")
 			entries[#entries + 1] = panel_type_entry(mod, layout, view)
+			entries[#entries + 1] = panel_stepper_entry(mod, layout, view, INVENTORY_DISCARD_MAX_LEVEL_ID, "quick_discard_max_item_level", "quick_discard_inventory_max_level", 490)
+			entries[#entries + 1] = panel_checkbox_entry(mod, layout, view, INVENTORY_DISCARD_EQUIPPED_LEVEL_PROTECTION_ID, "quick_discard_protect_above_equipped_level", "quick_discard_inventory_protect_above_equipped_level")
 			entries[#entries + 1] = panel_checkbox_entry(mod, layout, view, INVENTORY_DISCARD_PROTECTION_ID, "quick_discard_protect_perfect_weapons", "quick_discard_inventory_protect_weapons")
-			entries[#entries + 1] = panel_checkbox_entry(mod, layout, view, INVENTORY_DISCARD_CURIO_PROTECTION_ID, "quick_discard_protect_high_level_curios", "quick_discard_inventory_protect_curios")
-			entries[#entries + 1] = panel_stepper_entry(mod, layout, view, INVENTORY_DISCARD_CURIO_LEVEL_ID, "quick_discard_curio_protection_level", "quick_discard_inventory_curio_level", 410)
+			entries[#entries + 1] = panel_checkbox_entry(mod, layout, view, INVENTORY_DISCARD_CURIO_PROTECTION_ID, "quick_discard_protect_high_level_curios", "quick_discard_inventory_protect_curios", nil, true)
+
+			if mod:get("quick_discard_protect_high_level_curios") ~= false then
+				entries[#entries + 1] = panel_stepper_entry(mod, layout, view, INVENTORY_DISCARD_CURIO_LEVEL_ID, "quick_discard_curio_protection_level", "quick_discard_inventory_curio_level", 410)
+			end
+
 			entries[#entries + 1] = panel_sub_label_entry(mod, view, "better_inventory_discard_curio_types_label", "quick_discard_inventory_keep_curio_types_label")
 			entries[#entries + 1] = panel_curio_protection_type_entry(mod, layout, view)
 		end
@@ -1989,7 +1998,7 @@ local function high_level_curio_is_protected(mod, item, level, protected_level)
 	return not setting_id or mod:get(setting_id) ~= false
 end
 
-local function eligible_for_quick_discard(mod, item, is_equipped)
+local function eligible_for_quick_discard(mod, item, is_equipped, maximum_equipped_levels)
 	if not item or not item.gear_id or not item_type_is_enabled(mod, item.item_type) then
 		return false
 	end
@@ -2016,6 +2025,14 @@ local function eligible_for_quick_discard(mod, item, is_equipped)
 		return false
 	end
 
+	if mod:get("quick_discard_protect_above_equipped_level") ~= false then
+		local maximum_equipped_level = maximum_equipped_levels and maximum_equipped_levels[item.item_type]
+
+		if maximum_equipped_level and level > maximum_equipped_level then
+			return false
+		end
+	end
+
 	if Items.is_weapon(item.item_type) and mod:get("quick_discard_protect_perfect_weapons") ~= false and Features.is_perfect_roll_weapon(item) then
 		return false
 	end
@@ -2031,7 +2048,7 @@ local function eligible_for_quick_discard(mod, item, is_equipped)
 	return true
 end
 
-local function collect_quick_discard_candidates(mod, source_items, is_equipped, allowed_gear_ids)
+local function collect_quick_discard_candidates(mod, source_items, is_equipped, allowed_gear_ids, maximum_equipped_levels)
 	local candidates = {}
 	local excluded_errors = 0
 	local first_error
@@ -2042,7 +2059,7 @@ local function collect_quick_discard_candidates(mod, source_items, is_equipped, 
 		local gear_id = item and item.gear_id
 
 		if gear_id and not seen[gear_id] and (not allowed_gear_ids or allowed_gear_ids[gear_id]) then
-			local success, eligible = pcall(eligible_for_quick_discard, mod, item, is_equipped)
+			local success, eligible = pcall(eligible_for_quick_discard, mod, item, is_equipped, maximum_equipped_levels)
 
 			if success and eligible then
 				seen[gear_id] = true
@@ -2060,6 +2077,73 @@ local function collect_quick_discard_candidates(mod, source_items, is_equipped, 
 	return candidates, excluded_errors, first_error
 end
 
+local function add_loadout_gear_ids(target, loadout)
+	for _, item in pairs(loadout or {}) do
+		local gear_id = type(item) == "table" and item.gear_id or type(item) == "string" and item or nil
+
+		if gear_id then
+			target[gear_id] = true
+		end
+	end
+end
+
+local function equipped_gear_ids(profile)
+	local equipped = {}
+
+	add_loadout_gear_ids(equipped, profile and profile.loadout)
+	add_loadout_gear_ids(equipped, profile and profile.loadout_item_ids)
+
+	-- Profile presets are saved independently from the currently active profile.
+	-- Treat every item referenced by every preset as equipped: an unfavorited item
+	-- used only by an inactive loadout must never enter any discard candidate set.
+	local success, presets = pcall(ProfileUtils.get_profile_presets)
+
+	if success and type(presets) == "table" then
+		for _, preset in pairs(presets) do
+			if type(preset) == "table" then
+				add_loadout_gear_ids(equipped, preset.loadout)
+				add_loadout_gear_ids(equipped, preset.loadout_item_ids)
+			end
+		end
+	end
+
+	return equipped
+end
+
+local function maximum_equipped_levels(source_items, protected_gear_ids)
+	local maximums = {}
+
+	for _, entry in pairs(source_items or {}) do
+		local item = entry and (entry.real_item or entry.item or entry)
+		local gear_id = item and item.gear_id
+		local item_type = item and item.item_type
+
+		-- Item level 500 is the absolute ceiling. Once a category reaches it,
+		-- subsequent equipped items of that category cannot improve its maximum.
+		if gear_id and protected_gear_ids[gear_id] and item_type and maximums[item_type] ~= 500 then
+			local level = item_level(item)
+
+			if level then
+				maximums[item_type] = math.min(math.max(maximums[item_type] or 0, level), 500)
+			end
+		end
+	end
+
+	return maximums
+end
+
+local function preview_profile(view)
+	local player = view and view._preview_player
+
+	if player and type(player.profile) == "function" then
+		local success, profile = pcall(player.profile, player)
+
+		if success then
+			return profile
+		end
+	end
+end
+
 Features.quick_discard_candidates = function(mod, layout, view, allowed_gear_ids)
 	if not is_inventory_view(layout, view) or view._destroyed then
 		return {}
@@ -2067,23 +2151,30 @@ Features.quick_discard_candidates = function(mod, layout, view, allowed_gear_ids
 
 	local parent_inventory = view._parent and view._parent._inventory_items
 	local source_items = type(parent_inventory) == "table" and next(parent_inventory) and parent_inventory or view._offer_items_layout or {}
+	local protected_gear_ids = equipped_gear_ids(preview_profile(view))
+	local equipped_levels = maximum_equipped_levels(source_items, protected_gear_ids)
 	local function is_equipped(item)
+		if item.gear_id and protected_gear_ids[item.gear_id] then
+			return true
+		end
+
 		local slots = item.slots
 
 		return slots and type(view.is_item_equipped_in_any_slot) == "function" and view:is_item_equipped_in_any_slot(item, slots) or false
 	end
 
-	local candidates = collect_quick_discard_candidates(mod, source_items, is_equipped, allowed_gear_ids)
+	local candidates = collect_quick_discard_candidates(mod, source_items, is_equipped, allowed_gear_ids, equipped_levels)
 
 	return candidates
 end
 
 local function quick_discard_candidates_from_items_detailed(mod, source_items, equipped_gear_ids, allowed_gear_ids)
+	local equipped_levels = maximum_equipped_levels(source_items, equipped_gear_ids or {})
 	local function is_equipped(item)
 		return equipped_gear_ids and equipped_gear_ids[item.gear_id] == true
 	end
 
-	return collect_quick_discard_candidates(mod, source_items, is_equipped, allowed_gear_ids)
+	return collect_quick_discard_candidates(mod, source_items, is_equipped, allowed_gear_ids, equipped_levels)
 end
 
 Features.quick_discard_candidates_from_items = function(mod, source_items, equipped_gear_ids, allowed_gear_ids)
@@ -2188,6 +2279,21 @@ local function show_discard_summary_notification(mod, candidates)
 		line_1 = mod:localize("quick_discard_notification_title"),
 		line_1_color = Color.terminal_text_header(255, true),
 		line_2 = discarded_rarity_summary(mod, candidates),
+		line_2_color = Color.white(255, true),
+	})
+end
+
+local function show_automatic_no_candidates_notification(mod)
+	local event_manager = Managers and Managers.event
+
+	if not event_manager or type(event_manager.trigger) ~= "function" then
+		return
+	end
+
+	pcall(event_manager.trigger, event_manager, "event_add_notification_message", "custom", {
+		line_1 = mod:localize("quick_discard_automatic_nothing_notification_title"),
+		line_1_color = Color.terminal_text_header(255, true),
+		line_2 = mod:localize("quick_discard_automatic_nothing_notification_description"),
 		line_2_color = Color.white(255, true),
 	})
 end
@@ -2317,25 +2423,6 @@ local function automatic_discard_error(error_value)
 	end
 
 	return tostring(error_value)
-end
-
-local function equipped_gear_ids(profile)
-	local equipped = {}
-
-	for _, loadout in ipairs({
-		profile and profile.loadout,
-		profile and profile.loadout_item_ids,
-	}) do
-		for _, item in pairs(loadout or {}) do
-			local gear_id = type(item) == "table" and item.gear_id or type(item) == "string" and item or nil
-
-			if gear_id then
-				equipped[gear_id] = true
-			end
-		end
-	end
-
-	return equipped
 end
 
 local function current_player_and_character()
@@ -2558,6 +2645,18 @@ Features.update_morningstar_auto_discard = function(mod, dt)
 		return
 	end
 
+	local progression_manager = Managers and Managers.progression
+
+	if progression_manager and type(progression_manager.is_fetching_session_report) == "function" and progression_manager:is_fetching_session_report() then
+		-- Mission rewards are added while Darktide parses the end-of-round report.
+		-- Do not take the one-shot inventory snapshot until that transaction has
+		-- completed and the game's reward path has invalidated its gear cache.
+		automatic_discard_state.elapsed = 0
+		automatic_discard_info(mod, "Waiting for the mission reward report before scanning inventory.")
+
+		return
+	end
+
 	local gear_service = Managers and Managers.data_service and Managers.data_service.gear
 
 	if not gear_service or type(gear_service.fetch_inventory) ~= "function" then
@@ -2568,6 +2667,14 @@ Features.update_morningstar_auto_discard = function(mod, dt)
 
 	automatic_discard_state.started = true
 	automatic_discard_state.fetch_attempts = automatic_discard_state.fetch_attempts + 1
+
+	-- Force the first automatic scan to use the current backend gear list. This
+	-- includes an item awarded by the mission that just returned the player to
+	-- the Morningstar, even if another system populated the cache beforehand.
+	if type(gear_service.invalidate_gear_cache) == "function" then
+		gear_service:invalidate_gear_cache()
+	end
+
 	automatic_discard_info(mod, string.format("Starting inventory scan attempt %d.", automatic_discard_state.fetch_attempts))
 	gear_service:fetch_inventory(character_id):next(function(items)
 		if not automatic_context_is_current(mod, token, character_id) then
@@ -2595,19 +2702,9 @@ Features.update_morningstar_auto_discard = function(mod, dt)
 
 		if #candidates > 0 then
 			present_automatic_discard(mod, token, character_id, candidates)
-		elseif mod:get("quick_discard_skip_automatic_confirmation") ~= true then
-			show_popup({
-				description_text_unlocalized = mod:localize("quick_discard_automatic_nothing_description"),
-				options = {
-					{
-						close_on_pressed = true,
-						no_localization = true,
-						text = mod:localize("quick_discard_close"),
-					},
-				},
-				title_text_unlocalized = mod:localize("quick_discard_nothing_title"),
-			})
-			automatic_discard_info(mod, "Displayed the no-eligible-items result.")
+		else
+			show_automatic_no_candidates_notification(mod)
+			automatic_discard_info(mod, "Displayed the no-eligible-items notification.")
 		end
 	end):catch(function(error_value)
 		automatic_discard_info(mod, "Inventory scan failed; scheduling a bounded retry. Reason: " .. automatic_discard_error(error_value))
@@ -2858,6 +2955,7 @@ local function update_quick_discard_content(mod, slot_kind, view, base_y)
 
 	if curio_level_widget then
 		curio_level_widget.content.value = tostring(math.clamp(math.floor(tonumber(mod:get("quick_discard_curio_protection_level")) or 410), 0, 500))
+		curio_level_widget.content.visible = mod:get("quick_discard_protect_high_level_curios") ~= false
 	end
 
 	local is_curio_view = slot_kind == "curio"
