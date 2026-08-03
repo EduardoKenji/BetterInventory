@@ -107,13 +107,16 @@ def main() -> None:
         }
 		captured_popup = nil
 		captured_discard_ids = nil
+		captured_notification = nil
 		Managers = {
 			event = {
-				trigger = function(self, event_name, payload)
+				trigger = function(self, event_name, payload, secondary_payload)
 					if event_name == "event_show_ui_popup" then
 						captured_popup = payload
 					elseif event_name == "event_discard_items" then
 						captured_discard_ids = payload
+					elseif event_name == "event_add_notification_message" and payload == "custom" then
+						captured_notification = secondary_payload
 					end
 				end,
 			},
@@ -407,6 +410,7 @@ def main() -> None:
     mod.settings.quick_discard_protect_high_level_curios = True
     mod.settings.quick_discard_curio_protection_level = 410
     mod.settings.quick_discard_show_type_breakdown = True
+    mod.settings.quick_discard_show_summary_notification = True
     mod.settings.quick_discard_mode = "manual"
     mod.settings.quick_discard_skip_automatic_confirmation = False
     quick_discard_view = lua.execute(
@@ -570,9 +574,20 @@ def main() -> None:
     assert globals_.captured_discard_ids is None
 
     globals_.TestItems.favorites.eligible = False
+    globals_.captured_notification = None
     features.request_quick_discard(mod, layout, quick_discard_view)
     globals_.captured_popup.options[1].callback()
     assert globals_.captured_discard_ids[1] == "eligible"
+    assert globals_.captured_notification.line_1 == "quick_discard_notification_title"
+    assert "- 1 rarity_1" in globals_.captured_notification.line_2
+    assert "{#color(101,111,121)}" in globals_.captured_notification.line_2
+
+    globals_.captured_notification = None
+    mod.settings.quick_discard_show_summary_notification = False
+    features.request_quick_discard(mod, layout, quick_discard_view)
+    globals_.captured_popup.options[1].callback()
+    assert globals_.captured_notification is None
+    mod.settings.quick_discard_show_summary_notification = True
 
     quick_discard_view._parent = lua.table_from(
         {
@@ -656,7 +671,7 @@ def main() -> None:
     )
     assert (
         experimental_definitions.widget_definitions["better_inventory_discard_label"].content.label
-        == "inventory_discard_management_inventory_label"
+        == "inventory_manual_discard_management_inventory_label"
     )
     quick_discard_passes = experimental_definitions.widget_definitions[
         "better_inventory_quick_discard"
@@ -685,6 +700,12 @@ def main() -> None:
         "better_inventory_discard_mode"
     ].content.hotspot.pressed_callback()
     assert mod.settings.quick_discard_mode == "automatic"
+    assert (
+        quick_discard_view._widgets_by_name[
+            "better_inventory_discard_label"
+        ].content.label
+        == "inventory_automated_discard_management_inventory_label"
+    )
     assert (
         quick_discard_view._widgets_by_name[
             "better_inventory_discard_skip_confirmation"
@@ -836,7 +857,16 @@ def main() -> None:
                 delete_gear_batch = function(self, gear_ids)
                     automatic_deleted_ids = gear_ids
 
-                    return resolved({})
+                    local result = {}
+
+					for index = 1, #gear_ids do
+						result[index] = {
+							gearId = gear_ids[index],
+							rewards = {},
+						}
+					end
+
+					return resolved(result)
                 end,
             },
         }
@@ -856,10 +886,13 @@ def main() -> None:
         == "quick_discard_automatic_confirmation_title"
     )
     assert globals_.automatic_fetch_count == 1
+    globals_.captured_notification = None
     globals_.captured_popup.options[1].callback()
     assert globals_.automatic_fetch_count == 2
     assert len(globals_.automatic_deleted_ids) == 1
     assert globals_.automatic_deleted_ids[1] == "auto_eligible"
+    assert globals_.captured_notification.line_1 == "quick_discard_notification_title"
+    assert "- 1 rarity_1" in globals_.captured_notification.line_2
     features.update_morningstar_auto_discard(mod, 30)
     assert globals_.automatic_fetch_count == 2
 

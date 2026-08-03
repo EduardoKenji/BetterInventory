@@ -838,8 +838,10 @@ Features.add_inventory_sort_toggle_definition = function(mod, layout, definition
 				20,
 			},
 		}
+		local discard_mode = mod:get("quick_discard_mode") == "automatic" and "automated" or "manual"
+
 		widget_definitions[INVENTORY_DISCARD_LABEL_ID] = UIWidget.create_definition(section_label_passes(), INVENTORY_DISCARD_LABEL_ID, {
-			label = mod:localize("inventory_discard_management_inventory_label"),
+			label = mod:localize("inventory_" .. discard_mode .. "_discard_management_inventory_label"),
 		})
 
 		scenegraph[INVENTORY_DISCARD_MODE_ID] = {
@@ -1284,6 +1286,52 @@ local function rarity_summary(mod, candidates)
 	return table.concat(lines, "\n")
 end
 
+local function discarded_rarity_summary(candidates)
+	local counts = {}
+	local lines = {}
+
+	for index = 1, #(candidates or {}) do
+		local rarity = tonumber(candidates[index] and candidates[index].rarity)
+
+		if rarity then
+			counts[rarity] = (counts[rarity] or 0) + 1
+		end
+	end
+
+	for rarity = 1, 5 do
+		local count = counts[rarity]
+
+		if count and count > 0 then
+			local settings = RaritySettings[rarity]
+			local color = settings and settings.color or Color.white(255, true)
+			local name = settings and Localize(settings.display_name) or tostring(rarity)
+
+			lines[#lines + 1] = string.format("{#color(%d,%d,%d)}- %d %s{#reset()}", color[2], color[3], color[4], count, name)
+		end
+	end
+
+	return table.concat(lines, "\n")
+end
+
+local function show_discard_summary_notification(mod, candidates)
+	if mod:get("quick_discard_show_summary_notification") == false or #(candidates or {}) == 0 then
+		return
+	end
+
+	local event_manager = Managers and Managers.event
+
+	if not event_manager or type(event_manager.trigger) ~= "function" then
+		return
+	end
+
+	pcall(event_manager.trigger, event_manager, "event_add_notification_message", "custom", {
+		line_1 = mod:localize("quick_discard_notification_title"),
+		line_1_color = Color.terminal_text_header(255, true),
+		line_2 = discarded_rarity_summary(candidates),
+		line_2_color = Color.white(255, true),
+	})
+end
+
 local function show_popup(context)
 	if Managers and Managers.event then
 		Managers.event:trigger("event_show_ui_popup", context)
@@ -1337,6 +1385,7 @@ Features.request_quick_discard = function(mod, layout, view)
 
 		if #gear_ids > 0 and Managers and Managers.event then
 			Managers.event:trigger("event_discard_items", gear_ids)
+			show_discard_summary_notification(mod, revalidated)
 		end
 	end
 
@@ -1447,11 +1496,17 @@ local function automatic_context_is_current(mod, token, character_id)
 	return current_character_id == character_id
 end
 
-local function notify_discard_result(result)
+local function notify_discard_result(mod, candidates, result)
 	local total_rewards = {}
+	local deleted_ids = {}
 
 	for index = 1, #(result or {}) do
 		local operation = result[index]
+		local gear_id = operation and operation.gearId
+
+		if gear_id then
+			deleted_ids[gear_id] = true
+		end
 
 		for reward_index = 1, #(operation and operation.rewards or {}) do
 			local reward = operation.rewards[reward_index]
@@ -1477,6 +1532,18 @@ local function notify_discard_result(result)
 			})
 		end
 	end
+
+	local discarded_candidates = {}
+
+	for index = 1, #(candidates or {}) do
+		local candidate = candidates[index]
+
+		if candidate and deleted_ids[candidate.gear_id] then
+			discarded_candidates[#discarded_candidates + 1] = candidate
+		end
+	end
+
+	show_discard_summary_notification(mod, discarded_candidates)
 end
 
 local function delete_automatic_candidates(mod, token, character_id, captured_ids)
@@ -1511,7 +1578,11 @@ local function delete_automatic_candidates(mod, token, character_id, captured_id
 			return
 		end
 
-		return gear_service:delete_gear_batch(gear_ids):next(notify_discard_result)
+		return gear_service:delete_gear_batch(gear_ids):next(function(result)
+			notify_discard_result(mod, candidates, result)
+
+			return result
+		end)
 	end):catch(function(error_value)
 		-- GearService already reports backend failures. Keep the one-shot
 		-- Morningstar pass from surfacing an unhandled promise rejection.
@@ -1795,6 +1866,7 @@ end
 
 local function update_quick_discard_content(mod, slot_kind, view, base_y)
 	local widgets = view._widgets_by_name
+	local label_widget = widgets and widgets[INVENTORY_DISCARD_LABEL_ID]
 	local mode_widget = widgets and widgets[INVENTORY_DISCARD_MODE_ID]
 	local skip_confirmation_widget = widgets and widgets[INVENTORY_DISCARD_SKIP_CONFIRMATION_ID]
 	local discard_widget = widgets and widgets[INVENTORY_QUICK_DISCARD_ID]
@@ -1811,6 +1883,11 @@ local function update_quick_discard_content(mod, slot_kind, view, base_y)
 	end
 
 	local discard_mode = mod:get("quick_discard_mode") == "automatic" and "automatic" or "manual"
+	local discard_heading_mode = discard_mode == "automatic" and "automated" or "manual"
+
+	if label_widget then
+		label_widget.content.label = mod:localize("inventory_" .. discard_heading_mode .. "_discard_management_inventory_label")
+	end
 
 	if mode_widget then
 		mode_widget.content.value = mod:localize("quick_discard_mode_" .. discard_mode) .. "  ›"

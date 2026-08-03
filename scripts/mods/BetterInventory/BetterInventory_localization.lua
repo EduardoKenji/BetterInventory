@@ -24,10 +24,16 @@ return {
 		en = "Sorting",
 	},
 	inventory_discard_management_inventory_label = {
-		en = "Item Discard Management",
+		en = "Manual/Automated Item Discard Management",
+	},
+	inventory_manual_discard_management_inventory_label = {
+		en = "Manual Item Discard Management",
+	},
+	inventory_automated_discard_management_inventory_label = {
+		en = "Automated Item Discard Management",
 	},
 	experimental_quick_discard_group = {
-		en = "Experimental quick discard",
+		en = "Manual/Automated Item Discard Management",
 	},
 	enable_experimental_quick_discard = {
 		en = "Show quick-discard controls in inventory",
@@ -39,19 +45,19 @@ return {
 		en = "Discard mode",
 	},
 	quick_discard_mode_tooltip = {
-		en = "Manual only discards when you press the inventory button and confirm. Automatic performs one protected cleanup pass after each Morningstar entry, following a five-second readiness delay. The manual button remains available in either mode.",
+		en = "Manual only discards when you press the inventory button and confirm. Automated performs one protected cleanup pass after each Morningstar entry, following a five-second readiness delay. The manual button remains available in either mode.",
 	},
 	quick_discard_mode_manual = {
 		en = "Manual",
 	},
 	quick_discard_mode_automatic = {
-		en = "Automatic",
+		en = "Automated",
 	},
 	quick_discard_skip_automatic_confirmation = {
 		en = "Skip confirmation prompts",
 	},
 	quick_discard_skip_automatic_confirmation_tooltip = {
-		en = "Automatic mode only. When enabled, the once-per-Morningstar cleanup permanently discards all currently eligible items without asking first. The manual inventory button always retains its confirmation.",
+		en = "Automated mode only. When enabled, the once-per-Morningstar cleanup permanently discards all currently eligible items without asking first. The manual inventory button always retains its confirmation.",
 	},
 	quick_discard_rarity = {
 		en = "Discard rarity threshold",
@@ -113,6 +119,12 @@ return {
 	quick_discard_show_type_breakdown_tooltip = {
 		en = "Adds melee weapon, ranged weapon and Curio counts to each rarity line in the quick-discard confirmation. This presentation option is available only in mod options and is enabled by default.",
 	},
+	quick_discard_show_summary_notification = {
+		en = "Show discarded-items notification",
+	},
+	quick_discard_show_summary_notification_tooltip = {
+		en = "Shows a native notification after a Better Inventory manual or automated discard, with discarded item counts colored by rarity.",
+	},
 	quick_discard_inventory_prefix = {
 		en = "Discard all",
 	},
@@ -123,7 +135,7 @@ return {
 		en = "and below",
 	},
 	quick_discard_inventory_action = {
-		en = "DISCARD",
+		en = "CLICK TO DISCARD",
 	},
 	quick_discard_inventory_max_level = {
 		en = "Maximum item level",
@@ -147,7 +159,7 @@ return {
 		en = "Protect high-level Curios",
 	},
 	quick_discard_automatic_confirmation_title = {
-		en = "Confirm automatic discard",
+		en = "Confirm automated discard",
 	},
 	quick_discard_confirmation_title = {
 		en = "Confirm quick discard",
@@ -192,7 +204,10 @@ return {
 		en = "No items in this inventory match the current quick-discard filters. Favorited, equipped and protected items are always excluded.",
 	},
 	quick_discard_automatic_nothing_description = {
-		en = "The automatic Morningstar scan completed, but no items match the current discard filters. Favorited, equipped and protected items are always excluded.",
+		en = "The automated Morningstar scan completed, but no items match the current discard filters. Favorited, equipped and protected items are always excluded.",
+	},
+	quick_discard_notification_title = {
+		en = "Discarded items:",
 	},
 	quick_discard_close = {
 		en = "Close",

@@ -331,6 +331,7 @@ def main() -> None:
 		"quick_discard_protect_high_level_curios",
 		"quick_discard_curio_protection_level",
 		"quick_discard_show_type_breakdown",
+		"quick_discard_show_summary_notification",
     )
     entries = [
         lua.table_from(
@@ -385,6 +386,7 @@ def main() -> None:
     assert entries_by_id["quick_discard_rarity"].disabled is True
     assert entries_by_id["quick_discard_curio_protection_level"].disabled is True
     assert entries_by_id["quick_discard_show_type_breakdown"].disabled is True
+    assert entries_by_id["quick_discard_show_summary_notification"].disabled is True
 
     settings.enable_experimental_quick_discard = True
     mod.on_setting_changed("enable_experimental_quick_discard")
@@ -392,6 +394,7 @@ def main() -> None:
     assert entries_by_id["quick_discard_max_item_level"].disabled is False
     assert entries_by_id["quick_discard_curio_protection_level"].disabled is False
     assert entries_by_id["quick_discard_show_type_breakdown"].disabled is False
+    assert entries_by_id["quick_discard_show_summary_notification"].disabled is False
     settings.quick_discard_protect_high_level_curios = False
     mod.on_setting_changed("quick_discard_protect_high_level_curios")
     assert entries_by_id["quick_discard_curio_protection_level"].disabled is True
@@ -636,6 +639,7 @@ def main() -> None:
     assert defaults["curio_display_profile"] == "detailed"
     assert defaults["show_curio_item_level"] is True
     assert defaults["prioritize_equipped_favorites"] is True
+    assert defaults["quick_discard_show_summary_notification"] is True
     assert defaults["curio_primary_stat_font_size"] == 16
     assert defaults["curio_secondary_stat_font_size"] == 13
     assert defaults["curio_primary_secondary_spacing"] == 5

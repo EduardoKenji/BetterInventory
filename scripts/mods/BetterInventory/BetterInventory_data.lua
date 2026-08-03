@@ -244,6 +244,12 @@ return {
 						type = "checkbox",
 						default_value = true,
 					},
+					{
+						setting_id = "quick_discard_show_summary_notification",
+						tooltip = "quick_discard_show_summary_notification_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
 				},
 			},
 			{

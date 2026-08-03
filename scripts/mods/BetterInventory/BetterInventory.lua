@@ -273,6 +273,7 @@ local function refresh_option_dependencies()
 		"quick_discard_protect_perfect_weapons",
 		"quick_discard_protect_high_level_curios",
 		"quick_discard_show_type_breakdown",
+		"quick_discard_show_summary_notification",
 	}) do
 		set_option_enabled(option_dependency_entries[setting_id], quick_discard_enabled, quick_discard_reason)
 	end
@@ -345,6 +346,7 @@ local function bind_option_dependencies(options_templates)
 		"quick_discard_protect_high_level_curios",
 		"quick_discard_curio_protection_level",
 		"quick_discard_show_type_breakdown",
+		"quick_discard_show_summary_notification",
 	}) do
 		setting_by_title[mod:localize(setting_id)] = setting_id
 	end
