@@ -27,6 +27,10 @@ local function color_preset_options()
 			value = "green",
 		},
 		{
+			text = "color_preset_light_green",
+			value = "light_green",
+		},
+		{
 			text = "color_preset_terminal_green",
 			value = "terminal_green",
 		},
@@ -336,6 +340,49 @@ return {
 						},
 					},
 					{
+						setting_id = "weapon_blessing_text_vertical_spacing",
+						tooltip = "weapon_blessing_text_vertical_spacing_tooltip",
+						type = "numeric",
+						default_value = 0,
+						range = {
+							0,
+							20,
+						},
+					},
+					{
+						setting_id = "weapon_blessing_text_color_preset",
+						type = "dropdown",
+						default_value = "light_green",
+						options = color_preset_options(),
+					},
+					{
+						setting_id = "weapon_blessing_text_color_r",
+						type = "numeric",
+						default_value = 190,
+						range = {
+							0,
+							255,
+						},
+					},
+					{
+						setting_id = "weapon_blessing_text_color_g",
+						type = "numeric",
+						default_value = 210,
+						range = {
+							0,
+							255,
+						},
+					},
+					{
+						setting_id = "weapon_blessing_text_color_b",
+						type = "numeric",
+						default_value = 180,
+						range = {
+							0,
+							255,
+						},
+					},
+					{
 						setting_id = "blessing_icon_size",
 						tooltip = "blessing_icon_size_tooltip",
 						type = "numeric",
@@ -343,6 +390,16 @@ return {
 						range = {
 							20,
 							48,
+						},
+					},
+					{
+						setting_id = "blessing_icon_spacing",
+						tooltip = "blessing_icon_spacing_tooltip",
+						type = "numeric",
+						default_value = 3,
+						range = {
+							0,
+							20,
 						},
 					},
 					{
@@ -427,10 +484,20 @@ return {
 						},
 					},
 					{
-						setting_id = "blessing_icon_spacing",
-						tooltip = "blessing_icon_spacing_tooltip",
+						setting_id = "weapon_perk_vertical_spacing",
+						tooltip = "weapon_perk_vertical_spacing_tooltip",
 						type = "numeric",
-						default_value = 3,
+						default_value = 0,
+						range = {
+							0,
+							20,
+						},
+					},
+					{
+						setting_id = "weapon_perk_blessing_spacing",
+						tooltip = "weapon_perk_blessing_spacing_tooltip",
+						type = "numeric",
+						default_value = 2,
 						range = {
 							0,
 							20,

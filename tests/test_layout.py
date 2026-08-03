@@ -236,10 +236,16 @@ def main() -> None:
 				weapon_blessing_display_mode = "icons",
 				blessing_text_item_level_separation = "four_plus",
 				blessing_icon_size = 34,
+				weapon_blessing_text_vertical_spacing = 0,
+				weapon_blessing_text_color_r = 190,
+				weapon_blessing_text_color_g = 210,
+				weapon_blessing_text_color_b = 180,
 				show_weapon_perks = false,
 				weapon_perk_compression = "compression",
 				show_weapon_perk_rank_symbols = false,
 				weapon_perk_rank_icon_size = 18,
+				weapon_perk_vertical_spacing = 0,
+				weapon_perk_blessing_spacing = 2,
 				remove_weapon_perk_plus_signs = false,
 				weapon_perk_text_color_r = 113,
 				weapon_perk_text_color_g = 126,
@@ -993,6 +999,12 @@ def main() -> None:
     assert text_blessing_widget.content.better_inventory_full_blessing_text_2 == "IV Weight of Fire"
     first_text_style = text_blessing_styles["better_inventory_blessing_text_1"]
     second_text_style = text_blessing_styles["better_inventory_blessing_text_2"]
+    assert tuple(first_text_style.text_color[index] for index in range(1, 5)) == (
+        255,
+        190,
+        210,
+        180,
+    )
     assert first_text_style.size[1] == 100
     assert second_text_style.offset[2] == -33
     assert first_text_style.offset[2] == -50
@@ -1016,6 +1028,33 @@ def main() -> None:
     ).style
     assert four_column_text_style.size[1] == 132
     assert four_column_text_style.offset[2] == -33
+
+    mod.settings.weapon_blessing_text_vertical_spacing = 6
+    mod.settings.weapon_blessing_text_color_r = 12
+    mod.settings.weapon_blessing_text_color_g = 34
+    mod.settings.weapon_blessing_text_color_b = 56
+    spaced_blessing_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    spaced_blessing_size = layout.configure_item_blueprint(
+        mod, spaced_blessing_blueprint, 640
+    )
+    spaced_blessing_1 = blueprint_pass(
+        spaced_blessing_blueprint, "better_inventory_blessing_text_1"
+    ).style
+    spaced_blessing_2 = blueprint_pass(
+        spaced_blessing_blueprint, "better_inventory_blessing_text_2"
+    ).style
+    assert spaced_blessing_2.offset[2] - spaced_blessing_1.offset[2] == 23
+    assert tuple(spaced_blessing_1.text_color[index] for index in range(1, 5)) == (
+        255,
+        12,
+        34,
+        56,
+    )
+    assert spaced_blessing_size[2] == 116
+    mod.settings.weapon_blessing_text_vertical_spacing = 0
+    mod.settings.weapon_blessing_text_color_r = 190
+    mod.settings.weapon_blessing_text_color_g = 210
+    mod.settings.weapon_blessing_text_color_b = 180
 
     mod.settings.weapon_blessing_display_mode = "ranked_text"
     mod.settings.weapon_perk_rank_icon_size = 18
@@ -1141,6 +1180,25 @@ def main() -> None:
     assert perk_widget.content.better_inventory_full_weapon_perk_2 == "+25% Maniacs Damage"
     assert "\n" not in perk_widget.content.better_inventory_weapon_perk_1
     assert perk_styles["better_inventory_weapon_perk_1"].drop_shadow is True
+
+    baseline_perk_1_y = perk_styles["better_inventory_weapon_perk_1"].offset[2]
+    baseline_perk_2_y = perk_styles["better_inventory_weapon_perk_2"].offset[2]
+    mod.settings.weapon_perk_vertical_spacing = 7
+    mod.settings.weapon_perk_blessing_spacing = 12
+    spaced_perk_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    spaced_perk_size = layout.configure_item_blueprint(mod, spaced_perk_blueprint, 640)
+    spaced_perk_1 = blueprint_pass(
+        spaced_perk_blueprint, "better_inventory_weapon_perk_1"
+    ).style
+    spaced_perk_2 = blueprint_pass(
+        spaced_perk_blueprint, "better_inventory_weapon_perk_2"
+    ).style
+    assert spaced_perk_2.offset[2] - spaced_perk_1.offset[2] == 24
+    assert spaced_perk_2.offset[2] == baseline_perk_2_y - 10
+    assert spaced_perk_1.offset[2] == baseline_perk_1_y - 17
+    assert spaced_perk_size[2] == 131
+    mod.settings.weapon_perk_vertical_spacing = 0
+    mod.settings.weapon_perk_blessing_spacing = 2
 
     globals_.TestTraitDescriptions.weapon_trait_melee_common_wield_increased_berserker_damage = "+25% Damage\n(Maniacs)"
     perk_blueprint.update_data(test_grid, perk_widget, narrow_weapon_element)

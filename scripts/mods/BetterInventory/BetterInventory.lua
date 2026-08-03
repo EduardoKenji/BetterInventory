@@ -87,6 +87,11 @@ local COLOR_PRESETS = {
 		210,
 		120,
 	},
+	light_green = {
+		190,
+		210,
+		180,
+	},
 	terminal_green = {
 		113,
 		126,
@@ -102,6 +107,10 @@ local COLOR_TARGETS = {
 	{
 		prefix = "weapon_perk_text_color",
 		default_preset = "terminal_green",
+	},
+	{
+		prefix = "weapon_blessing_text_color",
+		default_preset = "light_green",
 	},
 	{
 		prefix = "curio_secondary_text_color",
@@ -212,7 +221,9 @@ local function refresh_option_dependencies()
 	local weapon_blessing_icons_enabled = weapon_blessing_mode == "icons"
 	local weapon_blessing_ranked_text_enabled = weapon_blessing_mode == "ranked_text"
 	local weapon_blessing_text_enabled = weapon_blessing_mode == "text" or weapon_blessing_ranked_text_enabled
+	local weapon_blessings_enabled = weapon_blessing_mode ~= "off"
 	local weapon_rank_symbols_enabled = weapon_perk_ranks_enabled or weapon_blessing_ranked_text_enabled
+	local weapon_perk_blessing_sections_enabled = weapon_perks_enabled and weapon_blessings_enabled
 	local detailed_curio_profile = mod:get("curio_display_profile") == "detailed"
 
 	set_option_enabled(option_dependency_entries.expand_curio_inventory_window, window_expansion_enabled, expansion_reason)
@@ -229,9 +240,16 @@ local function refresh_option_dependencies()
 	set_option_enabled(option_dependency_entries.weapon_perk_text_color_r, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
 	set_option_enabled(option_dependency_entries.weapon_perk_text_color_g, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
 	set_option_enabled(option_dependency_entries.weapon_perk_text_color_b, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
+	set_option_enabled(option_dependency_entries.weapon_perk_vertical_spacing, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
 	set_option_enabled(option_dependency_entries.blessing_text_item_level_separation, weapon_blessing_text_enabled, mod:localize("option_requires_weapon_blessing_text"))
+	set_option_enabled(option_dependency_entries.weapon_blessing_text_color_preset, weapon_blessing_text_enabled, mod:localize("option_requires_weapon_blessing_text"))
+	set_option_enabled(option_dependency_entries.weapon_blessing_text_color_r, weapon_blessing_text_enabled, mod:localize("option_requires_weapon_blessing_text"))
+	set_option_enabled(option_dependency_entries.weapon_blessing_text_color_g, weapon_blessing_text_enabled, mod:localize("option_requires_weapon_blessing_text"))
+	set_option_enabled(option_dependency_entries.weapon_blessing_text_color_b, weapon_blessing_text_enabled, mod:localize("option_requires_weapon_blessing_text"))
+	set_option_enabled(option_dependency_entries.weapon_blessing_text_vertical_spacing, weapon_blessing_text_enabled, mod:localize("option_requires_weapon_blessing_text"))
 	set_option_enabled(option_dependency_entries.blessing_icon_size, weapon_blessing_icons_enabled, mod:localize("option_requires_weapon_blessings"))
 	set_option_enabled(option_dependency_entries.blessing_icon_spacing, weapon_blessing_icons_enabled, mod:localize("option_requires_weapon_blessings"))
+	set_option_enabled(option_dependency_entries.weapon_perk_blessing_spacing, weapon_perk_blessing_sections_enabled, mod:localize("option_requires_perk_and_blessing_sections"))
 	set_option_enabled(option_dependency_entries.curio_secondary_stat_font_size, detailed_curio_profile, mod:localize("option_requires_detailed_curio_profile"))
 	set_option_enabled(option_dependency_entries.curio_primary_secondary_spacing, detailed_curio_profile, mod:localize("option_requires_detailed_curio_profile"))
 end
@@ -268,9 +286,16 @@ local function bind_option_dependencies(options_templates)
 		"weapon_perk_text_color_r",
 		"weapon_perk_text_color_g",
 		"weapon_perk_text_color_b",
+		"weapon_perk_vertical_spacing",
 		"blessing_text_item_level_separation",
+		"weapon_blessing_text_color_preset",
+		"weapon_blessing_text_color_r",
+		"weapon_blessing_text_color_g",
+		"weapon_blessing_text_color_b",
+		"weapon_blessing_text_vertical_spacing",
 		"blessing_icon_size",
 		"blessing_icon_spacing",
+		"weapon_perk_blessing_spacing",
 		"curio_secondary_stat_font_size",
 		"curio_primary_secondary_spacing",
 	}) do
@@ -343,7 +368,7 @@ function mod.on_enabled()
 		mod:set("_inventory_icon_size_defaults_v2_migrated", true)
 	end
 
-	-- Replace the former blessing checkbox with a three-state display mode while
+	-- Replace the former blessing checkbox with a configurable display mode while
 	-- preserving an explicit disabled choice from existing installations.
 	if not mod:get("_weapon_blessing_display_mode_v1_migrated") then
 		local previous_show_blessings = mod:get("show_weapon_blessings")

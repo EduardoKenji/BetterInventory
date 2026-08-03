@@ -221,6 +221,24 @@ return {
 	option_requires_weapon_blessing_text = {
 		en = "Select a blessing text mode to use this option.",
 	},
+	weapon_blessing_text_vertical_spacing = {
+		en = "Blessing text vertical spacing",
+	},
+	weapon_blessing_text_vertical_spacing_tooltip = {
+		en = "Adds a clear vertical gap in pixels between the two weapon blessing text rows. Automatic card height reserves the added space.",
+	},
+	weapon_blessing_text_color_preset = {
+		en = "Weapon blessing text colour preset",
+	},
+	weapon_blessing_text_color_r = {
+		en = "Weapon blessing text colour red",
+	},
+	weapon_blessing_text_color_g = {
+		en = "Weapon blessing text colour green",
+	},
+	weapon_blessing_text_color_b = {
+		en = "Weapon blessing text colour blue",
+	},
 	blessing_icon_size_tooltip = {
 		en = "Sets the width and height of each weapon blessing symbol in pixels. Automatic card height grows when larger symbols need more room.",
 	},
@@ -277,6 +295,21 @@ return {
 	},
 	weapon_perk_text_color_b = {
 		en = "Weapon perk text colour preset blue",
+	},
+	weapon_perk_vertical_spacing = {
+		en = "Weapon perk vertical spacing",
+	},
+	weapon_perk_vertical_spacing_tooltip = {
+		en = "Adds a clear vertical gap in pixels between the two weapon perk rows. Automatic card height reserves the added space.",
+	},
+	weapon_perk_blessing_spacing = {
+		en = "Perk-to-blessing section spacing",
+	},
+	weapon_perk_blessing_spacing_tooltip = {
+		en = "Sets the vertical padding in pixels between the weapon perk and blessing sections when both are visible. Automatic card height grows when padding exceeds the default.",
+	},
+	option_requires_perk_and_blessing_sections = {
+		en = "Show both weapon perks and weapon blessings to use this option.",
 	},
 	blessing_icon_spacing = {
 		en = "Blessing icon horizontal spacing",
@@ -490,6 +523,9 @@ return {
 	},
 	color_preset_green = {
 		en = "Green",
+	},
+	color_preset_light_green = {
+		en = "Light green",
 	},
 	color_preset_terminal_green = {
 		en = "Terminal green",

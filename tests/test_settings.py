@@ -35,7 +35,14 @@ def main() -> None:
 			weapon_perk_rank_icon_size = 18,
 			blessing_icon_size = 34,
 			blessing_icon_spacing = 3,
+			weapon_blessing_text_vertical_spacing = 0,
+			weapon_blessing_text_color_preset = "light_green",
+			weapon_blessing_text_color_r = 190,
+			weapon_blessing_text_color_g = 210,
+			weapon_blessing_text_color_b = 180,
 			remove_weapon_perk_plus_signs = false,
+			weapon_perk_vertical_spacing = 0,
+			weapon_perk_blessing_spacing = 2,
 			weapon_perk_text_color_preset = "terminal_green",
 			weapon_perk_text_color_r = 113,
 			weapon_perk_text_color_g = 126,
@@ -240,6 +247,18 @@ def main() -> None:
     mod.on_setting_changed("weapon_perk_text_color_b")
     assert settings.weapon_perk_text_color_preset == "custom"
 
+    settings.weapon_blessing_text_color_preset = "light_green"
+    mod.on_setting_changed("weapon_blessing_text_color_preset")
+    assert (
+        settings.weapon_blessing_text_color_r,
+        settings.weapon_blessing_text_color_g,
+        settings.weapon_blessing_text_color_b,
+    ) == (190, 210, 180)
+
+    settings.weapon_blessing_text_color_r = 42
+    mod.on_setting_changed("weapon_blessing_text_color_r")
+    assert settings.weapon_blessing_text_color_preset == "custom"
+
     settings.curio_secondary_text_color_preset = "terminal_green"
     mod.on_setting_changed("curio_secondary_text_color_preset")
     assert (
@@ -274,9 +293,16 @@ def main() -> None:
 		"weapon_perk_text_color_r",
 		"weapon_perk_text_color_g",
 		"weapon_perk_text_color_b",
+		"weapon_perk_vertical_spacing",
 		"blessing_text_item_level_separation",
+		"weapon_blessing_text_color_preset",
+		"weapon_blessing_text_color_r",
+		"weapon_blessing_text_color_g",
+		"weapon_blessing_text_color_b",
+		"weapon_blessing_text_vertical_spacing",
 		"blessing_icon_size",
 		"blessing_icon_spacing",
+		"weapon_perk_blessing_spacing",
 		"curio_secondary_stat_font_size",
 		"curio_primary_secondary_spacing",
     )
@@ -315,9 +341,16 @@ def main() -> None:
     assert entries_by_id["weapon_perk_text_color_r"].disabled is True
     assert entries_by_id["weapon_perk_text_color_g"].disabled is True
     assert entries_by_id["weapon_perk_text_color_b"].disabled is True
+    assert entries_by_id["weapon_perk_vertical_spacing"].disabled is True
     assert entries_by_id["blessing_text_item_level_separation"].disabled is True
+    assert entries_by_id["weapon_blessing_text_color_preset"].disabled is True
+    assert entries_by_id["weapon_blessing_text_color_r"].disabled is True
+    assert entries_by_id["weapon_blessing_text_color_g"].disabled is True
+    assert entries_by_id["weapon_blessing_text_color_b"].disabled is True
+    assert entries_by_id["weapon_blessing_text_vertical_spacing"].disabled is True
     assert entries_by_id["blessing_icon_size"].disabled is False
     assert entries_by_id["blessing_icon_spacing"].disabled is False
+    assert entries_by_id["weapon_perk_blessing_spacing"].disabled is True
     assert entries_by_id["curio_secondary_stat_font_size"].disabled is True
     assert entries_by_id["curio_primary_secondary_spacing"].disabled is True
 
@@ -355,6 +388,8 @@ def main() -> None:
     assert entries_by_id["weapon_perk_text_color_r"].disabled is False
     assert entries_by_id["weapon_perk_text_color_g"].disabled is False
     assert entries_by_id["weapon_perk_text_color_b"].disabled is False
+    assert entries_by_id["weapon_perk_vertical_spacing"].disabled is False
+    assert entries_by_id["weapon_perk_blessing_spacing"].disabled is False
     settings.show_weapon_perk_rank_symbols = True
     mod.on_setting_changed("show_weapon_perk_rank_symbols")
     assert entries_by_id["weapon_perk_rank_icon_size"].disabled is False
@@ -371,11 +406,18 @@ def main() -> None:
     assert entries_by_id["weapon_perk_text_color_r"].disabled is True
     assert entries_by_id["weapon_perk_text_color_g"].disabled is True
     assert entries_by_id["weapon_perk_text_color_b"].disabled is True
+    assert entries_by_id["weapon_perk_vertical_spacing"].disabled is True
+    assert entries_by_id["weapon_perk_blessing_spacing"].disabled is True
 
     settings.weapon_blessing_display_mode = "text"
     mod.on_setting_changed("weapon_blessing_display_mode")
     assert entries_by_id["blessing_text_item_level_separation"].disabled is False
     assert entries_by_id["weapon_perk_rank_icon_size"].disabled is True
+    assert entries_by_id["weapon_blessing_text_color_preset"].disabled is False
+    assert entries_by_id["weapon_blessing_text_color_r"].disabled is False
+    assert entries_by_id["weapon_blessing_text_color_g"].disabled is False
+    assert entries_by_id["weapon_blessing_text_color_b"].disabled is False
+    assert entries_by_id["weapon_blessing_text_vertical_spacing"].disabled is False
     assert entries_by_id["blessing_icon_size"].disabled is True
     assert entries_by_id["blessing_icon_spacing"].disabled is True
     settings.weapon_blessing_display_mode = "ranked_text"
@@ -388,6 +430,11 @@ def main() -> None:
     mod.on_setting_changed("weapon_blessing_display_mode")
     assert entries_by_id["blessing_text_item_level_separation"].disabled is True
     assert entries_by_id["weapon_perk_rank_icon_size"].disabled is True
+    assert entries_by_id["weapon_blessing_text_color_preset"].disabled is True
+    assert entries_by_id["weapon_blessing_text_color_r"].disabled is True
+    assert entries_by_id["weapon_blessing_text_color_g"].disabled is True
+    assert entries_by_id["weapon_blessing_text_color_b"].disabled is True
+    assert entries_by_id["weapon_blessing_text_vertical_spacing"].disabled is True
     assert entries_by_id["blessing_icon_size"].disabled is True
     assert entries_by_id["blessing_icon_spacing"].disabled is True
     settings.weapon_blessing_display_mode = "icons"
@@ -482,6 +529,12 @@ def main() -> None:
         "weapon_perk_text_color_g",
         "weapon_perk_text_color_b",
     }.issubset(card_content_ids)
+    assert {
+        "weapon_blessing_text_color_preset",
+        "weapon_blessing_text_color_r",
+        "weapon_blessing_text_color_g",
+        "weapon_blessing_text_color_b",
+    }.issubset(card_content_ids)
 
     curio_content_group = next(
         data.options.widgets[index]
@@ -509,6 +562,11 @@ def main() -> None:
     assert defaults["remove_curio_stat_plus_signs"] is False
     assert defaults["blessing_icon_spacing"] == 3
     assert defaults["blessing_icon_size"] == 36
+    assert defaults["weapon_blessing_text_vertical_spacing"] == 0
+    assert defaults["weapon_blessing_text_color_preset"] == "light_green"
+    assert defaults["weapon_blessing_text_color_r"] == 190
+    assert defaults["weapon_blessing_text_color_g"] == 210
+    assert defaults["weapon_blessing_text_color_b"] == 180
     assert defaults["highlight_equipped_items"] is True
     assert defaults["weapon_blessing_display_mode"] == "icons"
     assert defaults["blessing_text_item_level_separation"] == "four_plus"
@@ -533,6 +591,8 @@ def main() -> None:
     assert defaults["weapon_perk_text_color_r"] == 113
     assert defaults["weapon_perk_text_color_g"] == 126
     assert defaults["weapon_perk_text_color_b"] == 103
+    assert defaults["weapon_perk_vertical_spacing"] == 0
+    assert defaults["weapon_perk_blessing_spacing"] == 2
     assert defaults["curio_secondary_text_color_preset"] == "neutral"
     assert defaults["curio_secondary_text_color_r"] == 220
     assert defaults["curio_secondary_text_color_g"] == 230
