@@ -132,6 +132,93 @@ return {
 				},
 			},
 			{
+				setting_id = "experimental_quick_discard_group",
+				type = "group",
+				sub_widgets = {
+					{
+						setting_id = "enable_experimental_quick_discard",
+						tooltip = "enable_experimental_quick_discard_tooltip",
+						type = "checkbox",
+						default_value = false,
+					},
+					{
+						setting_id = "quick_discard_rarity",
+						tooltip = "quick_discard_rarity_tooltip",
+						type = "dropdown",
+						default_value = 1,
+						options = {
+							{
+								text = "quick_discard_rarity_1",
+								value = 1,
+							},
+							{
+								text = "quick_discard_rarity_2",
+								value = 2,
+							},
+							{
+								text = "quick_discard_rarity_3",
+								value = 3,
+							},
+							{
+								text = "quick_discard_rarity_4",
+								value = 4,
+							},
+							{
+								text = "quick_discard_rarity_5",
+								value = 5,
+							},
+						},
+					},
+					{
+						setting_id = "quick_discard_max_item_level",
+						tooltip = "quick_discard_max_item_level_tooltip",
+						type = "numeric",
+						default_value = 500,
+						range = {
+							0,
+							500,
+						},
+					},
+					{
+						setting_id = "quick_discard_include_melee",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
+						setting_id = "quick_discard_include_ranged",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
+						setting_id = "quick_discard_include_curios",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
+						setting_id = "quick_discard_protect_perfect_weapons",
+						tooltip = "quick_discard_protect_perfect_weapons_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
+						setting_id = "quick_discard_protect_high_level_curios",
+						tooltip = "quick_discard_protect_high_level_curios_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
+						setting_id = "quick_discard_curio_protection_level",
+						tooltip = "quick_discard_curio_protection_level_tooltip",
+						type = "numeric",
+						default_value = 410,
+						range = {
+							0,
+							500,
+						},
+					},
+				},
+			},
+			{
 				setting_id = "additional_views_group",
 				type = "group",
 				sub_widgets = {

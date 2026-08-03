@@ -57,6 +57,7 @@ if ($main -notmatch '_compact_card_defaults_v1_migrated' -or $main -notmatch 'mo
 $data = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_data.lua") -Raw
 $localization = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_localization.lua") -Raw
 $layout = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_layout.lua") -Raw
+$features = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_features.lua") -Raw
 
 if ($layout -notmatch 'Layout\.armoury_grid_expansion' -or $layout -notmatch 'armoury_requisition_target_card_width') {
 	throw "The Armoury target-width expansion contract was not found."
@@ -68,6 +69,18 @@ if ($layout -notmatch 'five_column_weapon_extra_width' -or $data -notmatch 'five
 
 if ($layout -match 'Managers\.ui:(load|unload)_item_icon' -or $layout -match 'Renderer\.(create|destroy)_resource') {
 	throw "BetterInventory must not directly allocate or manage item-icon render resources."
+}
+
+if ($data -notmatch 'setting_id\s*=\s*"enable_experimental_quick_discard"[\s\S]*?default_value\s*=\s*false') {
+	throw "Experimental quick discard must remain disabled by default."
+}
+
+if ($features -notmatch 'Items\.is_item_id_favorited' -or $features -notmatch 'is_item_equipped_in_any_slot' -or $features -notmatch 'quick_discard_protect_perfect_weapons') {
+	throw "Quick discard is missing a required protected-item gate."
+}
+
+if ($features -notmatch 'quick_discard_candidates\(mod,\s*layout,\s*view,\s*captured_ids\)' -or $features -notmatch 'event_discard_items') {
+	throw "Quick discard must revalidate the captured preview before using Darktide's native discard event."
 }
 
 $settingMatches = [regex]::Matches($data, 'setting_id\s*=\s*"([^"]+)"')

@@ -38,13 +38,35 @@ def main() -> None:
                 end
             end,
         })
+		function math.clamp(value, minimum, maximum)
+			return math.max(minimum, math.min(maximum, value))
+		end
+		function Localize(value)
+			return value
+		end
 
         TestItems = {
             favorites = {},
+			expertise_level = function(item)
+				return tostring(item.level or 0)
+			end,
+			is_weapon = function(item_type)
+				return item_type == "WEAPON_MELEE" or item_type == "WEAPON_RANGED"
+			end,
             is_item_id_favorited = function(gear_id)
                 return TestItems.favorites[gear_id] == true
             end,
+			total_stats_value = function(item)
+				return item.total_stats
+			end,
         }
+		TestRaritySettings = {}
+		for index = 1, 5 do
+			TestRaritySettings[index] = {
+				color = {255, 100 + index, 110 + index, 120 + index},
+				display_name = "rarity_" .. index,
+			}
+		end
         TestUIWidget = {
             create_definition = function(pass_template, scenegraph_id, content)
                 content.hotspot = content.hotspot or {}
@@ -60,9 +82,24 @@ def main() -> None:
             default_mouse_hover = "hover",
             default_click = "click",
         }
+		captured_popup = nil
+		captured_discard_ids = nil
+		Managers = {
+			event = {
+				trigger = function(self, event_name, payload)
+					if event_name == "event_show_ui_popup" then
+						captured_popup = payload
+					elseif event_name == "event_discard_items" then
+						captured_discard_ids = payload
+					end
+				end,
+			},
+		}
         function require(path)
             if path == "scripts/utilities/items" then
                 return TestItems
+			elseif path == "scripts/settings/item/rarity_settings" then
+				return TestRaritySettings
             elseif path == "scripts/managers/ui/ui_widget" then
                 return TestUIWidget
             elseif path == "scripts/settings/ui/ui_sound_events" then
@@ -312,6 +349,96 @@ def main() -> None:
     features.sync_inventory_sort_setting(mod, layout)
     assert sortable_view._widgets_by_name[toggle_id].content.checked is True
     assert melee_view._widgets_by_name[toggle_id].content.checked is True
+
+    mod.settings.quick_discard_rarity = 1
+    mod.settings.quick_discard_max_item_level = 500
+    mod.settings.quick_discard_include_melee = True
+    mod.settings.quick_discard_protect_perfect_weapons = True
+    quick_discard_view = lua.execute(
+        r"""
+        return {
+            __class_name = "InventoryWeaponsView",
+            slot_kind = "slot_primary",
+            is_item_equipped_in_any_slot = function(self, item)
+                return item.equipped == true
+            end,
+            _offer_items_layout = {},
+        }
+        """
+    )
+    quick_discard_view._offer_items_layout = lua.table_from(
+        [
+            lua.table_from(
+                {
+                    "item": lua.table_from(
+                        {
+                            "gear_id": "eligible",
+                            "item_type": "WEAPON_MELEE",
+                            "level": 300,
+                            "rarity": 1,
+                            "total_stats": 300,
+                            "base_stats": lua.table_from([1, 2, 3, 4, 5]),
+                            "slots": lua.table_from(["slot_primary"]),
+                        }
+                    )
+                }
+            ),
+            lua.table_from(
+                {
+                    "item": lua.table_from(
+                        {
+                            "gear_id": "perfect",
+                            "item_type": "WEAPON_MELEE",
+                            "level": 500,
+                            "rarity": 1,
+                            "total_stats": 380,
+                            "base_stats": lua.table_from([1, 2, 3, 4, 5]),
+                            "slots": lua.table_from(["slot_primary"]),
+                        }
+                    )
+                }
+            ),
+            lua.table_from(
+                {
+                    "item": lua.table_from(
+                        {
+                            "gear_id": "equipped_candidate",
+                            "item_type": "WEAPON_MELEE",
+                            "level": 250,
+                            "rarity": 1,
+                            "total_stats": 250,
+                            "equipped": True,
+                            "slots": lua.table_from(["slot_primary"]),
+                        }
+                    )
+                }
+            ),
+        ]
+    )
+    candidates = features.quick_discard_candidates(mod, layout, quick_discard_view)
+    assert len(candidates) == 1
+    assert candidates[1].gear_id == "eligible"
+    assert features.is_perfect_roll_weapon(quick_discard_view._offer_items_layout[2].item) is True
+
+    features.request_quick_discard(mod, layout, quick_discard_view)
+    assert quick_discard_view._better_inventory_discard_pending is True
+    assert globals_.captured_popup.title_text_unlocalized == "quick_discard_confirmation_title"
+    globals_.TestItems.favorites.eligible = True
+    globals_.captured_popup.options[1].callback()
+    assert quick_discard_view._better_inventory_discard_pending is False
+    assert globals_.captured_discard_ids is None
+
+    globals_.TestItems.favorites.eligible = False
+    features.request_quick_discard(mod, layout, quick_discard_view)
+    globals_.captured_popup.options[1].callback()
+    assert globals_.captured_discard_ids[1] == "eligible"
+
+    mod.settings.enable_experimental_quick_discard = True
+    experimental_definitions = features.add_inventory_sort_toggle_definition(
+        mod, layout, definitions, quick_discard_view
+    )
+    assert experimental_definitions.scenegraph_definition["better_inventory_quick_discard"] is not None
+    assert experimental_definitions.scenegraph_definition["better_inventory_discard_protection"] is not None
 
     features.unregister_inventory_view(melee_view)
     mod.settings.prioritize_equipped_favorites = False

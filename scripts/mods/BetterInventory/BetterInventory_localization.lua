@@ -20,6 +20,108 @@ return {
 	prioritize_equipped_favorites_inventory_label = {
 		en = "Equipped and favorited items at the top",
 	},
+	experimental_quick_discard_group = {
+		en = "Experimental quick discard",
+	},
+	enable_experimental_quick_discard = {
+		en = "Show quick-discard controls in inventory",
+	},
+	enable_experimental_quick_discard_tooltip = {
+		en = "Adds an opt-in quick-discard row below the inventory sorting toggle after the inventory is reopened. Nothing is discarded until you press Discard and accept a second confirmation popup.",
+	},
+	quick_discard_rarity = {
+		en = "Discard rarity threshold",
+	},
+	quick_discard_rarity_tooltip = {
+		en = "Only items at this rarity or below are considered. The compact selector in the inventory cycles through the same saved value.",
+	},
+	quick_discard_rarity_1 = {
+		en = "Profane",
+	},
+	quick_discard_rarity_2 = {
+		en = "Redeemed",
+	},
+	quick_discard_rarity_3 = {
+		en = "Anointed",
+	},
+	quick_discard_rarity_4 = {
+		en = "Exalted",
+	},
+	quick_discard_rarity_5 = {
+		en = "Transcendent",
+	},
+	quick_discard_max_item_level = {
+		en = "Maximum item level to discard",
+	},
+	quick_discard_max_item_level_tooltip = {
+		en = "Items above this displayed item level are protected even when their rarity matches. Set this conservatively while testing the feature.",
+	},
+	quick_discard_include_melee = {
+		en = "Allow melee weapons",
+	},
+	quick_discard_include_ranged = {
+		en = "Allow ranged weapons",
+	},
+	quick_discard_include_curios = {
+		en = "Allow Curios",
+	},
+	quick_discard_protect_perfect_weapons = {
+		en = "Do not discard perfect-roll weapons",
+	},
+	quick_discard_protect_perfect_weapons_tooltip = {
+		en = "Protects weapons whose five base attributes total the maximum 380 roll. This deliberately errs on the side of keeping an item.",
+	},
+	quick_discard_protect_high_level_curios = {
+		en = "Protect high-level Curios",
+	},
+	quick_discard_protect_high_level_curios_tooltip = {
+		en = "Protects Curios at or above the configured item-level threshold, regardless of rarity.",
+	},
+	quick_discard_curio_protection_level = {
+		en = "Curio protection level",
+	},
+	quick_discard_curio_protection_level_tooltip = {
+		en = "Curios at or above this displayed item level are never selected by quick discard. The default is 410.",
+	},
+	quick_discard_inventory_prefix = {
+		en = "Discard all",
+	},
+	quick_discard_inventory_suffix = {
+		en = "and below",
+	},
+	quick_discard_inventory_action = {
+		en = "DISCARD",
+	},
+	quick_discard_inventory_protect_weapons = {
+		en = "Do not discard perfect-roll weapons",
+	},
+	quick_discard_inventory_protect_curios = {
+		en = "Protect Curios at or above",
+	},
+	quick_discard_confirmation_title = {
+		en = "Confirm quick discard",
+	},
+	quick_discard_confirmation_description = {
+		en = "non-favorited, non-equipped item(s) from the current inventory will be permanently discarded. Protected items are excluded.",
+	},
+	quick_discard_confirmation_warning = {
+		en = "This action cannot be undone.",
+	},
+	quick_discard_confirmation_yes = {
+		en = "Yes, discard items",
+	},
+	quick_discard_confirmation_no = {
+		en = "No, keep items",
+	},
+	quick_discard_nothing_title = {
+		en = "No eligible items",
+	},
+	quick_discard_nothing_description = {
+		en = "No items in this inventory match the current quick-discard filters. Favorited, equipped and protected items are always excluded.",
+	},
+	quick_discard_close = {
+		en = "Close",
+	},
 	enable_melee_inventory = {
 		en = "Melee weapons",
 	},
@@ -154,6 +256,12 @@ return {
 	},
 	option_requires_detailed_curio_profile = {
 		en = "Select the All four stats Curio profile to use this option.",
+	},
+	option_requires_experimental_quick_discard = {
+		en = "Enable the experimental inventory quick-discard controls to use this option.",
+	},
+	option_requires_curio_discard_protection = {
+		en = "Enable high-level Curio protection to set its threshold.",
 	},
 	icon_darkness = {
 		en = "Icon darkness (%%)",

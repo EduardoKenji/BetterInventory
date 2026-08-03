@@ -76,6 +76,8 @@ def main() -> None:
 			curio_secondary_text_color_r = 220,
 			curio_secondary_text_color_g = 230,
 			curio_secondary_text_color_b = 210,
+			enable_experimental_quick_discard = false,
+			quick_discard_protect_high_level_curios = true,
         }
 
 		test_layout = {
@@ -318,6 +320,14 @@ def main() -> None:
 		"weapon_perk_blessing_spacing",
 		"curio_secondary_stat_font_size",
 		"curio_primary_secondary_spacing",
+		"quick_discard_rarity",
+		"quick_discard_max_item_level",
+		"quick_discard_include_melee",
+		"quick_discard_include_ranged",
+		"quick_discard_include_curios",
+		"quick_discard_protect_perfect_weapons",
+		"quick_discard_protect_high_level_curios",
+		"quick_discard_curio_protection_level",
     )
     entries = [
         lua.table_from(
@@ -369,6 +379,20 @@ def main() -> None:
     assert entries_by_id["weapon_perk_blessing_spacing"].disabled is True
     assert entries_by_id["curio_secondary_stat_font_size"].disabled is True
     assert entries_by_id["curio_primary_secondary_spacing"].disabled is True
+    assert entries_by_id["quick_discard_rarity"].disabled is True
+    assert entries_by_id["quick_discard_curio_protection_level"].disabled is True
+
+    settings.enable_experimental_quick_discard = True
+    mod.on_setting_changed("enable_experimental_quick_discard")
+    assert entries_by_id["quick_discard_rarity"].disabled is False
+    assert entries_by_id["quick_discard_max_item_level"].disabled is False
+    assert entries_by_id["quick_discard_curio_protection_level"].disabled is False
+    settings.quick_discard_protect_high_level_curios = False
+    mod.on_setting_changed("quick_discard_protect_high_level_curios")
+    assert entries_by_id["quick_discard_curio_protection_level"].disabled is True
+    settings.quick_discard_protect_high_level_curios = True
+    settings.enable_experimental_quick_discard = False
+    mod.on_setting_changed("enable_experimental_quick_discard")
 
     settings.columns = 4
     mod.on_setting_changed("columns")
