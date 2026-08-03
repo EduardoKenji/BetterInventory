@@ -579,7 +579,7 @@ def main() -> None:
     globals_.captured_popup.options[1].callback()
     assert globals_.captured_discard_ids[1] == "eligible"
     assert globals_.captured_notification.line_1 == "quick_discard_notification_title"
-    assert "- 1 rarity_1" in globals_.captured_notification.line_2
+    assert "- 1 rarity_1 quick_discard_notification_items" in globals_.captured_notification.line_2
     assert "{#color(101,111,121)}" in globals_.captured_notification.line_2
 
     globals_.captured_notification = None
@@ -892,7 +892,7 @@ def main() -> None:
     assert len(globals_.automatic_deleted_ids) == 1
     assert globals_.automatic_deleted_ids[1] == "auto_eligible"
     assert globals_.captured_notification.line_1 == "quick_discard_notification_title"
-    assert "- 1 rarity_1" in globals_.captured_notification.line_2
+    assert "- 1 rarity_1 quick_discard_notification_items" in globals_.captured_notification.line_2
     features.update_morningstar_auto_discard(mod, 30)
     assert globals_.automatic_fetch_count == 2
 

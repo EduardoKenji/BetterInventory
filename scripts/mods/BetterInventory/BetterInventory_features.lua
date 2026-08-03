@@ -1286,7 +1286,7 @@ local function rarity_summary(mod, candidates)
 	return table.concat(lines, "\n")
 end
 
-local function discarded_rarity_summary(candidates)
+local function discarded_rarity_summary(mod, candidates)
 	local counts = {}
 	local lines = {}
 
@@ -1306,7 +1306,7 @@ local function discarded_rarity_summary(candidates)
 			local color = settings and settings.color or Color.white(255, true)
 			local name = settings and Localize(settings.display_name) or tostring(rarity)
 
-			lines[#lines + 1] = string.format("{#color(%d,%d,%d)}- %d %s{#reset()}", color[2], color[3], color[4], count, name)
+			lines[#lines + 1] = string.format("{#color(%d,%d,%d)}- %d %s %s{#reset()}", color[2], color[3], color[4], count, name, mod:localize("quick_discard_notification_items"))
 		end
 	end
 
@@ -1327,7 +1327,7 @@ local function show_discard_summary_notification(mod, candidates)
 	pcall(event_manager.trigger, event_manager, "event_add_notification_message", "custom", {
 		line_1 = mod:localize("quick_discard_notification_title"),
 		line_1_color = Color.terminal_text_header(255, true),
-		line_2 = discarded_rarity_summary(candidates),
+		line_2 = discarded_rarity_summary(mod, candidates),
 		line_2_color = Color.white(255, true),
 	})
 end

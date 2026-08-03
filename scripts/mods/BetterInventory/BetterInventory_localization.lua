@@ -209,6 +209,9 @@ return {
 	quick_discard_notification_title = {
 		en = "Discarded items:",
 	},
+	quick_discard_notification_items = {
+		en = "items",
+	},
 	quick_discard_close = {
 		en = "Close",
 	},
