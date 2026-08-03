@@ -1025,7 +1025,12 @@ local function projected_max_base_stat_values(item)
 		return
 	end
 
-	local current_expertise = tonumber(Items.expertise_level(item, true))
+	-- expertise_level also returns a boolean indicating whether baseItemLevel was
+	-- present. Passing the call directly to tonumber forwards that boolean as
+	-- tonumber's optional numeric base and raises for virtually every weapon.
+	local current_expertise = Items.expertise_level(item, true)
+
+	current_expertise = tonumber(current_expertise)
 	local maximum_expertise = tonumber(Items.max_expertise_level())
 
 	if not current_expertise or not maximum_expertise or current_expertise >= maximum_expertise then

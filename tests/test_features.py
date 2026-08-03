@@ -52,7 +52,9 @@ def main() -> None:
 					error("legacy item has no readable expertise data")
 				end
 
-				return tostring(item.expertise or item.level or 0)
+				-- Match Darktide's real two-value API: the second result reports
+				-- whether the item carried a baseItemLevel value.
+				return tostring(item.expertise or item.level or 0), true
 			end,
 			max_expertise_level = function()
 				return 500
