@@ -866,7 +866,7 @@ def main() -> None:
     # that target blank when the inventory view already owns another masked grid.
     assert prototype_panel.menu_settings.use_parent_ui_renderer is None
     assert len(prototype_panel.layout) == 10
-    assert prototype_panel.grid_height == 320
+    assert prototype_panel.grid_height == 360
     assert prototype_panel.pivot_x == 120
     assert prototype_panel.pivot_y == 375
     assert prototype_view._widgets_by_name[sort_label_id].content.visible is False
@@ -875,16 +875,23 @@ def main() -> None:
     prototype_panel.widgets[
         "better_inventory_discard_header"
     ].content.hotspot.pressed_callback()
+    # Collapse/expand only changes state during the grid's draw callback. The
+    # structural rebuild is deferred to the following safe view update.
+    assert len(prototype_panel.layout) == 10
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert len(prototype_panel.layout) == 3
-    assert prototype_panel.grid_height == 148
+    assert prototype_panel.grid_height == 182
     prototype_panel.widgets[
         "better_inventory_sort_header"
     ].content.hotspot.pressed_callback()
+    assert len(prototype_panel.layout) == 3
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert len(prototype_panel.layout) == 2
-    assert prototype_panel.grid_height == 112
+    assert prototype_panel.grid_height == 136
     prototype_panel.widgets[
         "better_inventory_sort_header"
     ].content.hotspot.pressed_callback()
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert len(prototype_panel.layout) == 3
 
     prototype_view._discard_items_element = lua.table_from({})

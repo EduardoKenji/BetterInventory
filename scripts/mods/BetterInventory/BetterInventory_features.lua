@@ -18,10 +18,10 @@ local INVENTORY_DISCARD_PROTECTION_ID = "better_inventory_discard_protection"
 local INVENTORY_DISCARD_CURIO_PROTECTION_ID = "better_inventory_discard_curio_protection"
 local INVENTORY_DISCARD_CURIO_LEVEL_ID = "better_inventory_discard_curio_level"
 local INVENTORY_OPTIONS_PANEL_REFERENCE = "better_inventory_options_panel"
-local INVENTORY_OPTIONS_PANEL_CONTENT_WIDTH = 405
-local INVENTORY_OPTIONS_PANEL_GRID_WIDTH = 410
-local INVENTORY_OPTIONS_PANEL_MAX_HEIGHT = 320
-local INVENTORY_OPTIONS_PANEL_MIN_HEIGHT = 112
+local INVENTORY_OPTIONS_PANEL_CONTENT_WIDTH = 425
+local INVENTORY_OPTIONS_PANEL_GRID_WIDTH = 430
+local INVENTORY_OPTIONS_PANEL_MAX_HEIGHT = 360
+local INVENTORY_OPTIONS_PANEL_MIN_HEIGHT = 120
 local INVENTORY_DISCARD_WIDGET_IDS = {
 	INVENTORY_DISCARD_LABEL_ID,
 	INVENTORY_DISCARD_MODE_ID,
@@ -718,6 +718,8 @@ local function compact_stepper_passes(width)
 end
 
 local function panel_section_header_passes(width)
+	local height = 40
+
 	return {
 		{
 			content_id = "hotspot",
@@ -739,7 +741,7 @@ local function panel_section_header_passes(width)
 				},
 				size = {
 					width,
-					34,
+					height,
 				},
 			},
 		},
@@ -756,7 +758,7 @@ local function panel_section_header_passes(width)
 				},
 				size = {
 					width,
-					34,
+					height,
 				},
 			},
 		},
@@ -777,7 +779,7 @@ local function panel_section_header_passes(width)
 				},
 				size = {
 					width - 50,
-					34,
+					height,
 				},
 			},
 		},
@@ -799,7 +801,7 @@ local function panel_section_header_passes(width)
 				},
 				size = {
 					40,
-					34,
+					height,
 				},
 			},
 		},
@@ -1136,7 +1138,7 @@ local function panel_entry(view, control_id, height, pass_template, initial_cont
 end
 
 local function panel_header_entry(mod, layout, view, control_id, section_id, label_function)
-	return panel_entry(view, control_id, 34, panel_section_header_passes(INVENTORY_OPTIONS_PANEL_CONTENT_WIDTH), {
+	return panel_entry(view, control_id, 40, panel_section_header_passes(INVENTORY_OPTIONS_PANEL_CONTENT_WIDTH), {
 		chevron = "v",
 		label = label_function(),
 	}, function(widget)
@@ -1144,7 +1146,10 @@ local function panel_header_entry(mod, layout, view, control_id, section_id, lab
 			local collapsed = view._better_inventory_options_panel_collapsed
 
 			collapsed[section_id] = not collapsed[section_id]
-			rebuild_inventory_options_panel(mod, layout, view)
+			-- Hotspot callbacks execute while ViewElementGrid is drawing. Rebuilding
+			-- here clears the widget array underneath Darktide's active draw loop.
+			-- The changed structure key is detected and rebuilt safely on the next
+			-- InventoryWeaponsView update, before the following draw begins.
 		end
 	end, function(widget)
 		local is_collapsed = view._better_inventory_options_panel_collapsed[section_id] == true
@@ -1155,7 +1160,7 @@ local function panel_header_entry(mod, layout, view, control_id, section_id, lab
 end
 
 local function panel_sort_entry(mod, layout, view)
-	return panel_entry(view, INVENTORY_SORT_TOGGLE_ID, 32, inventory_sort_toggle_passes(), {
+	return panel_entry(view, INVENTORY_SORT_TOGGLE_ID, 38, inventory_sort_toggle_passes(), {
 		checked = mod:get("prioritize_equipped_favorites") ~= false,
 		label = mod:localize("prioritize_equipped_favorites_inventory_label"),
 	}, function(widget)
@@ -1169,7 +1174,7 @@ local function panel_sort_entry(mod, layout, view)
 end
 
 local function panel_mode_entry(mod, layout, view)
-	return panel_entry(view, INVENTORY_DISCARD_MODE_ID, 26, panel_mode_passes(), {
+	return panel_entry(view, INVENTORY_DISCARD_MODE_ID, 34, panel_mode_passes(), {
 		label = mod:localize("quick_discard_inventory_mode"),
 		skip_checked = mod:get("quick_discard_skip_automatic_confirmation") == true,
 		skip_label = mod:localize("quick_discard_skip_automatic_confirmation"),
@@ -1198,7 +1203,7 @@ local function panel_mode_entry(mod, layout, view)
 end
 
 local function panel_quick_discard_entry(mod, layout, view)
-	return panel_entry(view, INVENTORY_QUICK_DISCARD_ID, 32, quick_discard_passes(), {
+	return panel_entry(view, INVENTORY_QUICK_DISCARD_ID, 40, quick_discard_passes(), {
 		discard_label = mod:localize("quick_discard_inventory_action"),
 		prefix = mod:localize("quick_discard_inventory_prefix"),
 		rarity_label = "",
@@ -1228,7 +1233,7 @@ local function panel_quick_discard_entry(mod, layout, view)
 end
 
 local function panel_stepper_entry(mod, layout, view, control_id, setting_id, label_id, default_value)
-	return panel_entry(view, control_id, 26, compact_stepper_passes(INVENTORY_OPTIONS_PANEL_CONTENT_WIDTH), {
+	return panel_entry(view, control_id, 34, compact_stepper_passes(INVENTORY_OPTIONS_PANEL_CONTENT_WIDTH), {
 		label = mod:localize(label_id),
 		value = tostring(math.floor(tonumber(mod:get(setting_id)) or default_value)),
 	}, function(widget)
@@ -1251,7 +1256,7 @@ local function panel_stepper_entry(mod, layout, view, control_id, setting_id, la
 end
 
 local function panel_checkbox_entry(mod, layout, view, control_id, setting_id, label_id)
-	return panel_entry(view, control_id, 26, compact_checkbox_passes(), {
+	return panel_entry(view, control_id, 34, compact_checkbox_passes(), {
 		checked = mod:get(setting_id) ~= false,
 		label = mod:localize(label_id),
 	}, function(widget)
@@ -1291,7 +1296,7 @@ local function panel_type_entry(mod, layout, view)
 		content[config.content_id .. "_label"] = mod:localize(config.label_id)
 	end
 
-	return panel_entry(view, "better_inventory_discard_types", 26, panel_type_checkbox_passes(), content, function(widget)
+	return panel_entry(view, "better_inventory_discard_types", 34, panel_type_checkbox_passes(), content, function(widget)
 		for index = 1, #settings do
 			local config = settings[index]
 			local hotspot = widget.content[config.content_id .. "_hotspot"]
@@ -1361,7 +1366,7 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 		end
 	end
 
-	local spacing = 4
+	local spacing = 8
 	local content_height = 0
 
 	for index = 1, #entries do
@@ -1370,7 +1375,7 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 
 	content_height = content_height + math.max(#entries - 1, 0) * spacing
 
-	local panel_height = math.clamp(content_height + 40, INVENTORY_OPTIONS_PANEL_MIN_HEIGHT, INVENTORY_OPTIONS_PANEL_MAX_HEIGHT)
+	local panel_height = math.clamp(content_height + 48, INVENTORY_OPTIONS_PANEL_MIN_HEIGHT, INVENTORY_OPTIONS_PANEL_MAX_HEIGHT)
 
 	view._better_inventory_options_panel_widgets = {}
 	view._better_inventory_options_panel_structure_key = panel_structure_key(mod, view)
@@ -1389,7 +1394,7 @@ Features.setup_inventory_options_panel = function(mod, layout, view, ViewElement
 	end
 
 	local menu_settings = {
-		edge_padding = 10,
+		edge_padding = 16,
 		enable_gamepad_scrolling = true,
 		grid_size = {
 			INVENTORY_OPTIONS_PANEL_GRID_WIDTH,
@@ -1397,11 +1402,11 @@ Features.setup_inventory_options_panel = function(mod, layout, view, ViewElement
 		},
 		grid_spacing = {
 			0,
-			4,
+			8,
 		},
 		ignore_blur = true,
 		mask_size = {
-			INVENTORY_OPTIONS_PANEL_GRID_WIDTH + 10,
+			INVENTORY_OPTIONS_PANEL_GRID_WIDTH + 12,
 			INVENTORY_OPTIONS_PANEL_MAX_HEIGHT,
 		},
 		reset_selection_on_navigation_change = false,
