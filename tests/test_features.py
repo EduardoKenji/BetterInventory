@@ -610,6 +610,9 @@ def main() -> None:
     experimental_definitions = features.add_inventory_sort_toggle_definition(
         mod, layout, definitions, quick_discard_view
     )
+    curio_experimental_definitions = features.add_inventory_sort_toggle_definition(
+        mod, layout, definitions, view
+    )
     assert experimental_definitions.scenegraph_definition["better_inventory_quick_discard"] is not None
     assert experimental_definitions.scenegraph_definition["better_inventory_discard_protection"] is not None
     assert experimental_definitions.scenegraph_definition["better_inventory_discard_curio_protection"] is not None
@@ -619,6 +622,10 @@ def main() -> None:
     assert experimental_definitions.scenegraph_definition["better_inventory_discard_melee"] is not None
     assert experimental_definitions.scenegraph_definition["better_inventory_discard_ranged"] is not None
     assert experimental_definitions.scenegraph_definition["better_inventory_discard_curio"] is not None
+    assert experimental_definitions.scenegraph_definition["better_inventory_quick_discard"].size[1] == 405
+    assert curio_experimental_definitions.scenegraph_definition["better_inventory_quick_discard"].size[1] == 405
+    assert curio_experimental_definitions.scenegraph_definition["better_inventory_discard_max_level"].size[1] == 405
+    assert curio_experimental_definitions.scenegraph_definition["better_inventory_discard_label"].size[1] == 530
     assert (
         experimental_definitions.scenegraph_definition["better_inventory_quick_discard"].position[1]
         == experimental_definitions.scenegraph_definition[toggle_id].position[1]
@@ -666,6 +673,7 @@ def main() -> None:
     )
 
     quick_discard_view._better_inventory_grid_expansion = 80
+    quick_discard_view._weapon_stats = view._weapon_stats
     quick_discard_view._discard_items_element = lua.table_from({})
     features.update_inventory_sort_toggle(mod, layout, quick_discard_view)
     assert quick_discard_view._widgets_by_name[sort_label_id].content.visible is True
@@ -674,9 +682,9 @@ def main() -> None:
     assert quick_discard_view._widgets_by_name["better_inventory_quick_discard"].content.visible is False
     assert quick_discard_view._widgets_by_name["better_inventory_discard_max_level"].content.visible is False
     assert quick_discard_view._ui_scenegraph[sort_label_id].position[1] == -646
-    assert quick_discard_view._ui_scenegraph[sort_label_id].position[2] == 320
+    assert quick_discard_view._ui_scenegraph[sort_label_id].position[2] == 474
     assert quick_discard_view._ui_scenegraph[toggle_id].position[1] == -631
-    assert quick_discard_view._ui_scenegraph[toggle_id].position[2] == 348
+    assert quick_discard_view._ui_scenegraph[toggle_id].position[2] == 502
 
     quick_discard_view._discard_items_element = None
     features.update_inventory_sort_toggle(mod, layout, quick_discard_view)

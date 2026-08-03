@@ -671,7 +671,11 @@ Features.add_inventory_sort_toggle_definition = function(mod, layout, definition
 
 	if mod:get("enable_experimental_quick_discard") == true then
 		local compact_x = initial_x + 15
-		local compact_width = width - 15
+		-- Curio details use a wider panel than weapons, but stretching the controls
+		-- across all 530 pixels leaves the action and steppers visually detached.
+		-- Keep the already-good weapon geometry and give Curios the same footprint.
+		local control_width = is_curio and 420 or width
+		local compact_width = control_width - 15
 		local type_gap = 8
 		local type_width = math.floor((compact_width - type_gap * 2) / 3)
 		local function add_compact_checkbox(scenegraph_id, x, y, checkbox_width, label, checked)
@@ -1240,6 +1244,23 @@ local function set_inventory_sort_toggle_position(view, position, x, y)
 	end
 end
 
+local function weapon_stats_content_height(view, fallback_height)
+	local weapon_stats = view and view._weapon_stats
+	local menu_settings = weapon_stats and weapon_stats._menu_settings
+	local grid_size = menu_settings and menu_settings.grid_size
+	local content_height = rendered_weapon_stats_height(weapon_stats)
+
+	if not content_height and weapon_stats and type(weapon_stats.grid_length) == "function" then
+		local grid_length = weapon_stats:grid_length()
+
+		if type(grid_length) == "number" and grid_length > 0 then
+			content_height = grid_length + 35
+		end
+	end
+
+	return content_height or grid_size and grid_size[2] or fallback_height
+end
+
 local function set_inventory_control_position(view, scenegraph_id, x, y)
 	local scenegraph = view._ui_scenegraph
 	local node = scenegraph and scenegraph[scenegraph_id]
@@ -1333,7 +1354,8 @@ local function update_quick_discard_content(mod, slot_kind, view, base_y)
 	local x = is_curio_view and 0 or 20
 	local width = is_curio_view and 530 or 420
 	local compact_x = x + 15
-	local compact_width = width - 15
+	local control_width = is_curio_view and 420 or width
+	local compact_width = control_width - 15
 	local type_gap = 8
 	local type_width = math.floor((compact_width - type_gap * 2) / 3)
 
@@ -1379,28 +1401,16 @@ Features.update_inventory_sort_toggle = function(mod, layout, view)
 	if native_discard_active then
 		local expansion = tonumber(view._better_inventory_grid_expansion) or 0
 		local sort_x = slot_kind == "curio" and 0 or -566 - expansion
+		local sort_y = weapon_stats_content_height(view, 660) + 15
 
-		set_inventory_control_position(view, INVENTORY_SORT_LABEL_ID, sort_x, 320)
-		set_inventory_sort_toggle_position(view, position, sort_x + 15, 348)
+		set_inventory_control_position(view, INVENTORY_SORT_LABEL_ID, sort_x, sort_y)
+		set_inventory_sort_toggle_position(view, position, sort_x + 15, sort_y + 28)
 
 		return
 	end
 
 	if slot_kind == "curio" then
-		local weapon_stats = view._weapon_stats
-		local menu_settings = weapon_stats and weapon_stats._menu_settings
-		local grid_size = menu_settings and menu_settings.grid_size
-		local content_height = rendered_weapon_stats_height(weapon_stats)
-
-		if not content_height and weapon_stats and type(weapon_stats.grid_length) == "function" then
-			local grid_length = weapon_stats:grid_length()
-
-			if type(grid_length) == "number" and grid_length > 0 then
-				content_height = grid_length + 35
-			end
-		end
-
-		local y = (content_height or grid_size and grid_size[2] or 480) + 15
+		local y = weapon_stats_content_height(view, 480) + 15
 
 		set_inventory_control_position(view, INVENTORY_SORT_LABEL_ID, 0, y)
 		set_inventory_sort_toggle_position(view, position, 15, y + 28)
