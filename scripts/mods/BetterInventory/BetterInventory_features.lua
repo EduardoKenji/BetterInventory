@@ -1342,6 +1342,7 @@ local AUTOMATIC_DISCARD_MAX_FETCH_ATTEMPTS = 3
 local automatic_discard_state = {
 	elapsed = 0,
 	fetch_attempts = 0,
+	hub_character_id = nil,
 	scheduled = false,
 	started = false,
 	token = 0,
@@ -1351,11 +1352,23 @@ local function automatic_discard_enabled(mod)
 	return mod:get("enable_experimental_quick_discard") == true and mod:get("quick_discard_mode") == "automatic"
 end
 
-local function is_morningstar()
+local function current_game_mode_name()
 	local state = Managers and Managers.state
 	local game_mode = state and state.game_mode
 
-	return game_mode and type(game_mode.game_mode_name) == "function" and game_mode:game_mode_name() == "hub"
+	return game_mode and type(game_mode.game_mode_name) == "function" and game_mode:game_mode_name() or nil
+end
+
+local function is_morningstar()
+	local game_mode_name = current_game_mode_name()
+
+	return game_mode_name == "hub" or game_mode_name == "hub_singleplay"
+end
+
+local function automatic_discard_info(mod, message)
+	if mod and type(mod.info) == "function" then
+		mod:info("[Automatic discard] " .. message)
+	end
 end
 
 local function equipped_gear_ids(profile)
@@ -1453,6 +1466,8 @@ local function delete_automatic_candidates(mod, token, character_id, captured_id
 			gear_ids[index] = candidates[index].gear_id
 		end
 
+		automatic_discard_info(mod, string.format("Revalidated %d candidate(s) immediately before deletion.", #gear_ids))
+
 		if #gear_ids == 0 then
 			return
 		end
@@ -1472,6 +1487,7 @@ local function present_automatic_discard(mod, token, character_id, candidates)
 	end
 
 	if mod:get("quick_discard_skip_automatic_confirmation") == true then
+		automatic_discard_info(mod, "Confirmation skipping is enabled; starting final safety revalidation.")
 		delete_automatic_candidates(mod, token, character_id, captured_ids)
 
 		return
@@ -1498,12 +1514,14 @@ local function present_automatic_discard(mod, token, character_id, candidates)
 		},
 		title_text_unlocalized = mod:localize("quick_discard_automatic_confirmation_title"),
 	})
+	automatic_discard_info(mod, "Displayed the automatic discard confirmation preview.")
 end
 
 Features.begin_morningstar_auto_discard = function(mod)
 	automatic_discard_state.token = automatic_discard_state.token + 1
 	automatic_discard_state.elapsed = 0
 	automatic_discard_state.fetch_attempts = 0
+	automatic_discard_state.hub_character_id = nil
 	automatic_discard_state.scheduled = automatic_discard_enabled(mod)
 	automatic_discard_state.started = false
 end
@@ -1512,18 +1530,54 @@ Features.cancel_morningstar_auto_discard = function()
 	automatic_discard_state.token = automatic_discard_state.token + 1
 	automatic_discard_state.elapsed = 0
 	automatic_discard_state.fetch_attempts = 0
+	automatic_discard_state.hub_character_id = nil
 	automatic_discard_state.scheduled = false
 	automatic_discard_state.started = false
 end
 
 Features.update_morningstar_auto_discard = function(mod, dt)
-	if not automatic_discard_state.scheduled or automatic_discard_state.started then
+	if not automatic_discard_enabled(mod) then
+		if automatic_discard_state.scheduled or automatic_discard_state.started or automatic_discard_state.hub_character_id then
+			Features.cancel_morningstar_auto_discard()
+		end
+
 		return
 	end
 
-	if not automatic_discard_enabled(mod) then
-		automatic_discard_state.scheduled = false
+	local game_mode_name = current_game_mode_name()
 
+	if not game_mode_name then
+		return
+	end
+
+	if not is_morningstar() then
+		if automatic_discard_state.scheduled or automatic_discard_state.started or automatic_discard_state.hub_character_id then
+			Features.cancel_morningstar_auto_discard()
+		end
+
+		return
+	end
+
+	local player, character_id = current_player_and_character()
+
+	if not player or not character_id then
+		return
+	end
+
+	-- DMF normally arms the pass through GameplayStateRun. Also observe the live
+	-- hub and character identity so hot reloads and unusual state transition
+	-- orders cannot silently leave Automatic mode dormant.
+	if automatic_discard_state.hub_character_id ~= character_id then
+		automatic_discard_state.token = automatic_discard_state.token + 1
+		automatic_discard_state.elapsed = 0
+		automatic_discard_state.fetch_attempts = 0
+		automatic_discard_state.hub_character_id = character_id
+		automatic_discard_state.scheduled = true
+		automatic_discard_state.started = false
+		automatic_discard_info(mod, "Scheduled one pass after detecting a ready Morningstar character.")
+	end
+
+	if not automatic_discard_state.scheduled or automatic_discard_state.started then
 		return
 	end
 
@@ -1533,23 +1587,9 @@ Features.update_morningstar_auto_discard = function(mod, dt)
 		return
 	end
 
-	local state = Managers and Managers.state
-	local game_mode = state and state.game_mode
-
-	if not game_mode or type(game_mode.game_mode_name) ~= "function" then
-		return
-	end
-
-	if not is_morningstar() then
-		automatic_discard_state.scheduled = false
-
-		return
-	end
-
-	local player, character_id = current_player_and_character()
 	local gear_service = Managers and Managers.data_service and Managers.data_service.gear
 
-	if not player or not character_id or not gear_service or type(gear_service.fetch_inventory) ~= "function" then
+	if not gear_service or type(gear_service.fetch_inventory) ~= "function" then
 		return
 	end
 
@@ -1557,12 +1597,14 @@ Features.update_morningstar_auto_discard = function(mod, dt)
 
 	automatic_discard_state.started = true
 	automatic_discard_state.fetch_attempts = automatic_discard_state.fetch_attempts + 1
+	automatic_discard_info(mod, string.format("Starting inventory scan attempt %d.", automatic_discard_state.fetch_attempts))
 	gear_service:fetch_inventory(character_id):next(function(items)
 		if not automatic_context_is_current(mod, token, character_id) then
 			return
 		end
 
 		if type(items) ~= "table" then
+			automatic_discard_info(mod, "Inventory scan returned no item table; scheduling a bounded retry.")
 			automatic_discard_state.started = false
 			automatic_discard_state.elapsed = 0
 			automatic_discard_state.scheduled = automatic_discard_state.fetch_attempts < AUTOMATIC_DISCARD_MAX_FETCH_ATTEMPTS
@@ -1574,10 +1616,26 @@ Features.update_morningstar_auto_discard = function(mod, dt)
 		local profile = type(player.profile) == "function" and player:profile()
 		local candidates = Features.quick_discard_candidates_from_items(mod, items, equipped_gear_ids(profile))
 
+		automatic_discard_info(mod, string.format("Inventory scan found %d eligible candidate(s).", #candidates))
+
 		if #candidates > 0 then
 			present_automatic_discard(mod, token, character_id, candidates)
+		elseif mod:get("quick_discard_skip_automatic_confirmation") ~= true then
+			show_popup({
+				description_text_unlocalized = mod:localize("quick_discard_automatic_nothing_description"),
+				options = {
+					{
+						close_on_pressed = true,
+						no_localization = true,
+						text = mod:localize("quick_discard_close"),
+					},
+				},
+				title_text_unlocalized = mod:localize("quick_discard_nothing_title"),
+			})
+			automatic_discard_info(mod, "Displayed the no-eligible-items result.")
 		end
 	end):catch(function()
+		automatic_discard_info(mod, "Inventory scan failed; scheduling a bounded retry.")
 		if automatic_discard_state.token == token then
 			automatic_discard_state.started = false
 			automatic_discard_state.elapsed = 0

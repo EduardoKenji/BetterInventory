@@ -779,6 +779,7 @@ def main() -> None:
 
         automatic_fetch_count = 0
         automatic_deleted_ids = nil
+        automatic_game_mode_name = "hub"
         local profile = {
             loadout = {
                 slot_secondary = {gear_id = "auto_equipped"},
@@ -799,7 +800,7 @@ def main() -> None:
         Managers.state = {
             game_mode = {
                 game_mode_name = function()
-                    return "hub"
+                    return automatic_game_mode_name
                 end,
             },
         }
@@ -853,6 +854,34 @@ def main() -> None:
     assert globals_.captured_popup is None
     assert globals_.automatic_fetch_count == 4
     assert globals_.automatic_deleted_ids[1] == "auto_eligible"
+    features.cancel_morningstar_auto_discard()
+
+    # The live-manager fallback must arm Automatic mode even when a hot reload
+    # or unusual transition ordering misses the GameplayStateRun enter event.
+    globals_.captured_popup = None
+    globals_.automatic_game_mode_name = "hub_singleplay"
+    mod.settings.quick_discard_skip_automatic_confirmation = False
+    features.update_morningstar_auto_discard(mod, 4.9)
+    assert globals_.captured_popup is None
+    features.update_morningstar_auto_discard(mod, 0.1)
+    assert (
+        globals_.captured_popup.title_text_unlocalized
+        == "quick_discard_automatic_confirmation_title"
+    )
+    assert globals_.automatic_fetch_count == 5
+    features.cancel_morningstar_auto_discard()
+
+    # Confirmation-enabled Automatic mode gives visible feedback even when the
+    # completed scan has no eligible candidates, rather than failing silently.
+    automatic_inventory["auto_eligible"] = None
+    globals_.captured_popup = None
+    features.update_morningstar_auto_discard(mod, 5)
+    assert globals_.automatic_fetch_count == 6
+    assert globals_.captured_popup.title_text_unlocalized == "quick_discard_nothing_title"
+    assert (
+        globals_.captured_popup.description_text_unlocalized
+        == "quick_discard_automatic_nothing_description"
+    )
     features.cancel_morningstar_auto_discard()
 
     features.unregister_inventory_view(melee_view)

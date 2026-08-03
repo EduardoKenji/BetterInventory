@@ -191,6 +191,9 @@ return {
 	quick_discard_nothing_description = {
 		en = "No items in this inventory match the current quick-discard filters. Favorited, equipped and protected items are always excluded.",
 	},
+	quick_discard_automatic_nothing_description = {
+		en = "The automatic Morningstar scan completed, but no items match the current discard filters. Favorited, equipped and protected items are always excluded.",
+	},
 	quick_discard_close = {
 		en = "Close",
 	},

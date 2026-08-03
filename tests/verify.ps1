@@ -87,7 +87,7 @@ if ($features -notmatch 'quick_discard_candidates\(mod,\s*layout,\s*view,\s*capt
 	throw "Quick discard must revalidate the captured preview before using Darktide's native discard event."
 }
 
-if ($main -notmatch 'mod\.on_game_state_changed' -or $main -notmatch 'Features\.update_morningstar_auto_discard' -or $features -notmatch 'game_mode:game_mode_name\(\)\s*==\s*"hub"' -or $features -notmatch 'AUTOMATIC_DISCARD_DELAY\s*=\s*5') {
+if ($main -notmatch 'mod\.on_game_state_changed' -or $main -notmatch 'Features\.update_morningstar_auto_discard' -or $features -notmatch 'game_mode_name\s*==\s*"hub"' -or $features -notmatch 'game_mode_name\s*==\s*"hub_singleplay"' -or $features -notmatch 'AUTOMATIC_DISCARD_DELAY\s*=\s*5' -or $features -notmatch 'hub_character_id\s*~=\s*character_id') {
 	throw "The guarded once-per-Morningstar automatic-discard lifecycle was not found."
 }
 
