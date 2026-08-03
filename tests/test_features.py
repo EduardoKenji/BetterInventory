@@ -121,6 +121,7 @@ def main() -> None:
             default_click = "click",
         }
 		captured_popup = nil
+		captured_popup_count = 0
 		captured_discard_ids = nil
 		captured_notification = nil
 		Managers = {
@@ -128,6 +129,7 @@ def main() -> None:
 				trigger = function(self, event_name, payload, secondary_payload)
 					if event_name == "event_show_ui_popup" then
 						captured_popup = payload
+						captured_popup_count = captured_popup_count + 1
 					elseif event_name == "event_discard_items" then
 						captured_discard_ids = payload
 					elseif event_name == "event_add_notification_message" and payload == "custom" then
@@ -1444,6 +1446,7 @@ def main() -> None:
         automatic_inventory,
     )
     globals_.captured_popup = None
+    globals_.captured_popup_count = 0
     globals_.automatic_deleted_ids = None
     mod.settings.quick_discard_mode = "automatic"
     mod.settings.quick_discard_skip_automatic_confirmation = False
@@ -1461,6 +1464,18 @@ def main() -> None:
     )
     assert globals_.automatic_fetch_count == 1
     assert globals_.automatic_cache_invalidation_count == 1
+
+    # A repeated GameplayStateRun enter signal or a transient game-mode gap
+    # must not queue another confirmation while the first one is unanswered.
+    features.begin_morningstar_auto_discard(mod)
+    features.update_morningstar_auto_discard(mod, 30)
+    globals_.automatic_game_mode_name = "mission"
+    features.update_morningstar_auto_discard(mod, 0.1)
+    globals_.automatic_game_mode_name = "hub"
+    features.update_morningstar_auto_discard(mod, 30)
+    assert globals_.captured_popup_count == 1
+    assert globals_.automatic_fetch_count == 1
+
     globals_.captured_notification = None
     globals_.captured_popup.options[1].callback()
     assert globals_.automatic_fetch_count == 2

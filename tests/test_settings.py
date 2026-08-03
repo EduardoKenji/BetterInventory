@@ -623,7 +623,7 @@ def main() -> None:
     localization = lua.execute(LOCALIZATION_PATH.read_text(encoding="utf-8"))
     defaults = {}
 
-    assert data.version == "1.0.0"
+    assert data.version == "1.0.1"
 
     def inspect_widgets(widgets) -> None:
         for index in range(1, len(widgets) + 1):

@@ -2459,6 +2459,7 @@ end
 local AUTOMATIC_DISCARD_DELAY = 5
 local AUTOMATIC_DISCARD_MAX_FETCH_ATTEMPTS = 3
 local automatic_discard_state = {
+	confirmation_pending = false,
 	elapsed = 0,
 	fetch_attempts = 0,
 	hub_character_id = nil,
@@ -2670,6 +2671,12 @@ local function delete_automatic_candidates(mod, token, character_id, captured_id
 end
 
 local function present_automatic_discard(mod, token, character_id, candidates)
+	if automatic_discard_state.confirmation_pending then
+		automatic_discard_info(mod, "Suppressed a duplicate automatic discard confirmation preview.")
+
+		return
+	end
+
 	local captured_ids = {}
 
 	for index = 1, #candidates do
@@ -2683,11 +2690,18 @@ local function present_automatic_discard(mod, token, character_id, candidates)
 		return
 	end
 
+	automatic_discard_state.confirmation_pending = true
+
+	local function clear_confirmation()
+		automatic_discard_state.confirmation_pending = false
+	end
+
 	local popup_shown = show_popup({
 		description_text_unlocalized = tostring(#candidates) .. " " .. mod:localize("quick_discard_confirmation_description") .. "\n\n" .. rarity_summary(mod, candidates) .. "\n\n" .. mod:localize("quick_discard_confirmation_warning"),
 		options = {
 			{
 				callback = function()
+					clear_confirmation()
 					delete_automatic_candidates(mod, token, character_id, captured_ids)
 				end,
 				close_on_pressed = true,
@@ -2695,6 +2709,7 @@ local function present_automatic_discard(mod, token, character_id, candidates)
 				text = mod:localize("quick_discard_confirmation_yes"),
 			},
 			{
+				callback = clear_confirmation,
 				close_on_pressed = true,
 				hotkey = "back",
 				no_localization = true,
@@ -2704,10 +2719,24 @@ local function present_automatic_discard(mod, token, character_id, candidates)
 		},
 		title_text_unlocalized = mod:localize("quick_discard_automatic_confirmation_title"),
 	})
+
+	if not popup_shown then
+		clear_confirmation()
+	end
+
 	automatic_discard_info(mod, popup_shown and "Displayed the automatic discard confirmation preview." or "Could not display the automatic discard confirmation preview; no items were deleted.")
 end
 
 Features.begin_morningstar_auto_discard = function(mod)
+	-- Some startup/state-transition orders can report GameplayStateRun enter
+	-- again after the one-shot scan has already presented its confirmation.
+	-- Keep that live popup authoritative instead of scheduling a second scan.
+	if automatic_discard_state.confirmation_pending then
+		automatic_discard_info(mod, "Ignored a duplicate automatic discard re-arm while confirmation is pending.")
+
+		return
+	end
+
 	automatic_discard_state.token = automatic_discard_state.token + 1
 	automatic_discard_state.elapsed = 0
 	automatic_discard_state.fetch_attempts = 0
@@ -2716,8 +2745,19 @@ Features.begin_morningstar_auto_discard = function(mod)
 	automatic_discard_state.started = false
 end
 
-Features.cancel_morningstar_auto_discard = function()
+Features.cancel_morningstar_auto_discard = function(preserve_confirmation)
+	-- A momentary unavailable/non-hub game-mode observation must not unlock an
+	-- already queued popup. A real GameplayStateRun exit or mod disable calls
+	-- this without preservation because the UI owning that popup is going away.
+	if preserve_confirmation and automatic_discard_state.confirmation_pending then
+		automatic_discard_state.scheduled = false
+		automatic_discard_state.started = true
+
+		return
+	end
+
 	automatic_discard_state.token = automatic_discard_state.token + 1
+	automatic_discard_state.confirmation_pending = false
 	automatic_discard_state.elapsed = 0
 	automatic_discard_state.fetch_attempts = 0
 	automatic_discard_state.hub_character_id = nil
@@ -2728,7 +2768,7 @@ end
 Features.update_morningstar_auto_discard = function(mod, dt)
 	if not automatic_discard_enabled(mod) then
 		if automatic_discard_state.scheduled or automatic_discard_state.started or automatic_discard_state.hub_character_id then
-			Features.cancel_morningstar_auto_discard()
+			Features.cancel_morningstar_auto_discard(true)
 		end
 
 		return
@@ -2742,7 +2782,7 @@ Features.update_morningstar_auto_discard = function(mod, dt)
 
 	if not is_morningstar() then
 		if automatic_discard_state.scheduled or automatic_discard_state.started or automatic_discard_state.hub_character_id then
-			Features.cancel_morningstar_auto_discard()
+			Features.cancel_morningstar_auto_discard(true)
 		end
 
 		return
