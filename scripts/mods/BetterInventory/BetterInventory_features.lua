@@ -307,6 +307,31 @@ Features.resort_inventory = function(mod, layout, view)
 	end
 end
 
+local function rendered_weapon_stats_height(weapon_stats)
+	local scenegraph = weapon_stats and weapon_stats._ui_scenegraph
+	local divider = scenegraph and scenegraph.grid_divider_bottom_weapon
+	local world_position = weapon_stats and weapon_stats.scenegraph_world_position
+
+	if not divider or type(world_position) ~= "function" then
+		return
+	end
+
+	local pivot_position = world_position(weapon_stats, "pivot")
+	local divider_position = world_position(weapon_stats, "grid_divider_bottom_weapon")
+	local divider_size = divider.size
+	local divider_height = divider_size and divider_size[2]
+
+	if not pivot_position or not divider_position or type(divider_height) ~= "number" then
+		return
+	end
+
+	local rendered_height = divider_position[2] - pivot_position[2] + divider_height
+
+	if rendered_height > 0 then
+		return rendered_height
+	end
+end
+
 Features.update_inventory_sort_toggle = function(mod, layout, view)
 	local slot_kind = inventory_slot_kind(layout, view)
 
@@ -333,9 +358,9 @@ Features.update_inventory_sort_toggle = function(mod, layout, view)
 		local weapon_stats = view._weapon_stats
 		local menu_settings = weapon_stats and weapon_stats._menu_settings
 		local grid_size = menu_settings and menu_settings.grid_size
-		local content_height
+		local content_height = rendered_weapon_stats_height(weapon_stats)
 
-		if weapon_stats and type(weapon_stats.grid_length) == "function" then
+		if not content_height and weapon_stats and type(weapon_stats.grid_length) == "function" then
 			local grid_length = weapon_stats:grid_length()
 
 			if type(grid_length) == "number" and grid_length > 0 then

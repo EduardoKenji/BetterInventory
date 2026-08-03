@@ -189,12 +189,30 @@ def main() -> None:
             "_menu_settings": lua.table_from(
                 {"grid_size": lua.table_from([530, 920])}
             ),
+            "_ui_scenegraph": lua.table_from(
+                {
+                    "grid_divider_bottom_weapon": lua.table_from(
+                        {"size": lua.table_from([530, 36])}
+                    )
+                }
+            ),
             "grid_length": lua.eval("function() return 475 end"),
+            "scenegraph_world_position": lua.eval(
+                """
+                function(self, scenegraph_id)
+                    if scenegraph_id == "pivot" then
+                        return { 760, 135, 0 }
+                    end
+
+                    return { 760, 582, 0 }
+                end
+                """
+            ),
         }
     )
     features.update_inventory_sort_toggle(mod, layout, view)
     assert adjusted.scenegraph_definition[toggle_id].position[1] == 0
-    assert adjusted.scenegraph_definition[toggle_id].position[2] == 525
+    assert adjusted.scenegraph_definition[toggle_id].position[2] == 498
 
     melee_view = lua.execute(
         r"""
