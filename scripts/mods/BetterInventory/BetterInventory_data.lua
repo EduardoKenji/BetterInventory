@@ -27,6 +27,10 @@ local function color_preset_options()
 			value = "green",
 		},
 		{
+			text = "color_preset_terminal_green",
+			value = "terminal_green",
+		},
+		{
 			text = "color_preset_neutral",
 			value = "neutral",
 		},
@@ -37,7 +41,7 @@ local function color_preset_options()
 	}
 end
 
-local function curio_color_group(group_id, prefix, default_preset, red, green, blue)
+local function color_group(group_id, prefix, default_preset, red, green, blue)
 	return {
 		setting_id = group_id,
 		type = "group",
@@ -289,6 +293,7 @@ return {
 						type = "checkbox",
 						default_value = false,
 					},
+					color_group("weapon_perk_text_color_group", "weapon_perk_text_color", "terminal_green", 113, 126, 103),
 					{
 						setting_id = "blessing_icon_spacing",
 						tooltip = "blessing_icon_spacing_tooltip",
@@ -409,7 +414,7 @@ return {
 						setting_id = "curio_primary_secondary_spacing",
 						tooltip = "curio_primary_secondary_spacing_tooltip",
 						type = "numeric",
-						default_value = 3,
+						default_value = 5,
 						range = {
 							0,
 							20,
@@ -453,10 +458,11 @@ return {
 						type = "checkbox",
 						default_value = false,
 					},
-					curio_color_group("curio_health_color_group", "curio_health_color", "red", 235, 85, 85),
-					curio_color_group("curio_toughness_color_group", "curio_toughness_color", "light_blue", 105, 200, 235),
-					curio_color_group("curio_wound_color_group", "curio_wound_color", "purple", 190, 105, 230),
-					curio_color_group("curio_stamina_color_group", "curio_stamina_color", "yellow", 235, 205, 80),
+					color_group("curio_secondary_text_color_group", "curio_secondary_text_color", "neutral", 220, 230, 210),
+					color_group("curio_health_color_group", "curio_health_color", "red", 235, 85, 85),
+					color_group("curio_toughness_color_group", "curio_toughness_color", "light_blue", 105, 200, 235),
+					color_group("curio_wound_color_group", "curio_wound_color", "purple", 190, 105, 230),
+					color_group("curio_stamina_color_group", "curio_stamina_color", "yellow", 235, 205, 80),
 				},
 			},
 		},

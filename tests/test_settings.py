@@ -29,6 +29,10 @@ def main() -> None:
 			show_weapon_perks = false,
 			show_weapon_perk_rank_symbols = false,
 			remove_weapon_perk_plus_signs = false,
+			weapon_perk_text_color_preset = "terminal_green",
+			weapon_perk_text_color_r = 113,
+			weapon_perk_text_color_g = 126,
+			weapon_perk_text_color_b = 103,
 			curio_display_profile = "primary",
 			expand_inventory_window = true,
 			expand_curio_inventory_window = true,
@@ -48,6 +52,10 @@ def main() -> None:
 			curio_stamina_color_r = 235,
 			curio_stamina_color_g = 205,
 			curio_stamina_color_b = 80,
+			curio_secondary_text_color_preset = "neutral",
+			curio_secondary_text_color_r = 220,
+			curio_secondary_text_color_g = 230,
+			curio_secondary_text_color_b = 210,
         }
 
         test_layout = {
@@ -185,6 +193,30 @@ def main() -> None:
         settings.curio_stamina_color_g,
         settings.curio_stamina_color_b,
     ) == (105, 210, 120)
+
+    settings.weapon_perk_text_color_preset = "neutral"
+    mod.on_setting_changed("weapon_perk_text_color_preset")
+    assert (
+        settings.weapon_perk_text_color_r,
+        settings.weapon_perk_text_color_g,
+        settings.weapon_perk_text_color_b,
+    ) == (220, 230, 210)
+
+    settings.weapon_perk_text_color_b = 77
+    mod.on_setting_changed("weapon_perk_text_color_b")
+    assert settings.weapon_perk_text_color_preset == "custom"
+
+    settings.curio_secondary_text_color_preset = "terminal_green"
+    mod.on_setting_changed("curio_secondary_text_color_preset")
+    assert (
+        settings.curio_secondary_text_color_r,
+        settings.curio_secondary_text_color_g,
+        settings.curio_secondary_text_color_b,
+    ) == (113, 126, 103)
+
+    settings.curio_secondary_text_color_g = 88
+    mod.on_setting_changed("curio_secondary_text_color_g")
+    assert settings.curio_secondary_text_color_preset == "custom"
 
     option_ids = (
         "columns",
@@ -335,12 +367,20 @@ def main() -> None:
     assert defaults["curio_display_profile"] == "detailed"
     assert defaults["curio_primary_stat_font_size"] == 16
     assert defaults["curio_secondary_stat_font_size"] == 13
-    assert defaults["curio_primary_secondary_spacing"] == 3
+    assert defaults["curio_primary_secondary_spacing"] == 5
     assert defaults["show_item_level_icon"] is False
     assert defaults["curio_health_color_preset"] == "red"
     assert defaults["curio_toughness_color_preset"] == "light_blue"
     assert defaults["curio_wound_color_preset"] == "purple"
     assert defaults["curio_stamina_color_preset"] == "yellow"
+    assert defaults["weapon_perk_text_color_preset"] == "terminal_green"
+    assert defaults["weapon_perk_text_color_r"] == 113
+    assert defaults["weapon_perk_text_color_g"] == 126
+    assert defaults["weapon_perk_text_color_b"] == 103
+    assert defaults["curio_secondary_text_color_preset"] == "neutral"
+    assert defaults["curio_secondary_text_color_r"] == 220
+    assert defaults["curio_secondary_text_color_g"] == 230
+    assert defaults["curio_secondary_text_color_b"] == 210
 
     print("BetterInventory live setting synchronization tests passed.")
 

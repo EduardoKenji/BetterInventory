@@ -86,13 +86,26 @@ local COLOR_PRESETS = {
 		210,
 		120,
 	},
+	terminal_green = {
+		113,
+		126,
+		103,
+	},
 	neutral = {
 		220,
 		230,
 		210,
 	},
 }
-local CURIO_COLOR_TARGETS = {
+local COLOR_TARGETS = {
+	{
+		prefix = "weapon_perk_text_color",
+		default_preset = "terminal_green",
+	},
+	{
+		prefix = "curio_secondary_text_color",
+		default_preset = "neutral",
+	},
 	{
 		prefix = "curio_health_color",
 		default_preset = "red",
@@ -113,8 +126,8 @@ local CURIO_COLOR_TARGETS = {
 local color_target_by_setting_id = {}
 local option_dependency_entries = {}
 
-for i = 1, #CURIO_COLOR_TARGETS do
-	local target = CURIO_COLOR_TARGETS[i]
+for i = 1, #COLOR_TARGETS do
+	local target = COLOR_TARGETS[i]
 
 	target.preset_id = target.prefix .. "_preset"
 	target.channel_ids = {
@@ -282,8 +295,8 @@ function mod.on_enabled()
 		mod:set("_curio_heavy_default_v1_migrated", true)
 	end
 
-	for i = 1, #CURIO_COLOR_TARGETS do
-		apply_color_preset(CURIO_COLOR_TARGETS[i])
+	for i = 1, #COLOR_TARGETS do
+		apply_color_preset(COLOR_TARGETS[i])
 	end
 
 	refresh_option_dependencies()

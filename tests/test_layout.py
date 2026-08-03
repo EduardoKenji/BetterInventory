@@ -93,7 +93,7 @@ def main() -> None:
 			weapon_trait_ranged_common_wield_increased_berserker_damage = "+25% Damage (Maniacs)",
 			weapon_trait_ranged_common_wield_increased_super_armor_damage = "+25% Damage (Carapace Armoured Enemies)",
 			weapon_trait_ranged_common_wield_increased_disgustingly_resilient_damage = "+25% Damage (Infested Enemies)",
-			weapon_trait_ranged_increase_crit_chance = "+5% Ranged Critical Hit Chance",
+			weapon_trait_ranged_increase_crit_chance = "Increase Ranged Critical Strike Chance by +5%",
 			weapon_trait_ranged_increase_crit_damage = "+10% Ranged Critical Hit Damage",
 			weapon_trait_ranged_increase_stamina = "+2 Stamina (Weapon is Active)",
 			weapon_trait_ranged_increase_weakspot_damage = "+10% Ranged Weak Spot Damage",
@@ -220,13 +220,19 @@ def main() -> None:
 				weapon_perk_compression = "compression",
 				show_weapon_perk_rank_symbols = false,
 				remove_weapon_perk_plus_signs = false,
+				weapon_perk_text_color_r = 113,
+				weapon_perk_text_color_g = 126,
+				weapon_perk_text_color_b = 103,
 				blessing_icon_spacing = 3,
                 compact_favorite_marker = true,
 				favorite_marker_position = "above_rating",
 				curio_display_profile = "primary",
-				curio_primary_stat_font_size = 14,
+				curio_primary_stat_font_size = 16,
 				curio_secondary_stat_font_size = 13,
-				curio_primary_secondary_spacing = 3,
+				curio_primary_secondary_spacing = 5,
+				curio_secondary_text_color_r = 220,
+				curio_secondary_text_color_g = 230,
+				curio_secondary_text_color_b = 210,
 				show_curio_quality = false,
 				curio_stat_compression = "heavy",
 				simplify_curio_primary_stat_text = true,
@@ -412,14 +418,14 @@ def main() -> None:
     mod.settings.curio_display_profile = "detailed"
     mod.settings.curio_primary_stat_font_size = 20
     mod.settings.curio_secondary_stat_font_size = 20
-    assert layout.card_height(mod) == 122
+    assert layout.card_height(mod) == 124
     mod.settings.automatic_card_height = False
     mod.settings.card_height = 175
     assert layout.card_height(mod) == 175
     mod.settings.automatic_card_height = True
     mod.settings.card_height = 110
     mod.settings.curio_display_profile = "primary"
-    mod.settings.curio_primary_stat_font_size = 14
+    mod.settings.curio_primary_stat_font_size = 16
     mod.settings.curio_secondary_stat_font_size = 13
 
     store_configuration = lua.table_from(
@@ -427,7 +433,7 @@ def main() -> None:
     )
     assert layout.card_height(mod, store_configuration) == 114
     mod.settings.curio_display_profile = "detailed"
-    assert layout.card_height(mod, store_configuration) == 129
+    assert layout.card_height(mod, store_configuration) == 133
     mod.settings.curio_display_profile = "primary"
 
     mod.settings.show_weapon_perks = True
@@ -609,7 +615,7 @@ def main() -> None:
     vendor_curio_size = layout.configure_item_blueprint(
         mod, vendor_curio_blueprint, 596, store_configuration
     )
-    assert (vendor_curio_size[1], vendor_curio_size[2]) == (192, 129)
+    assert (vendor_curio_size[1], vendor_curio_size[2]) == (192, 133)
     first_vendor_curio_line = blueprint_pass(
         vendor_curio_blueprint, "better_inventory_curio_stat_1"
     ).style
@@ -619,10 +625,10 @@ def main() -> None:
     fourth_vendor_curio_line = blueprint_pass(
         vendor_curio_blueprint, "better_inventory_curio_stat_4"
     ).style
-    assert first_vendor_curio_line.font_size == 14
+    assert first_vendor_curio_line.font_size == 16
     assert second_vendor_curio_line.font_size == 13
-    assert second_vendor_curio_line.offset[2] == 29
-    assert fourth_vendor_curio_line.offset[2] + fourth_vendor_curio_line.size[2] == 83
+    assert second_vendor_curio_line.offset[2] == 33
+    assert fourth_vendor_curio_line.offset[2] + fourth_vendor_curio_line.size[2] == 87
     assert fourth_vendor_curio_line.offset[2] + fourth_vendor_curio_line.size[2] < (
         vendor_curio_size[2] - 34
     )
@@ -653,9 +659,9 @@ def main() -> None:
         ).style.offset[2]
         == 39
     )
-    mod.settings.curio_primary_stat_font_size = 14
+    mod.settings.curio_primary_stat_font_size = 16
     mod.settings.curio_secondary_stat_font_size = 13
-    mod.settings.curio_primary_secondary_spacing = 3
+    mod.settings.curio_primary_secondary_spacing = 5
     mod.settings.curio_display_profile = "primary"
     mod.settings.columns = 3
 
@@ -667,7 +673,7 @@ def main() -> None:
     assert blueprint_pass(native_blueprint, "icon").style.size is None
     assert (
         blueprint_pass(native_blueprint, "better_inventory_curio_stat_1").style.font_size
-        == 14
+        == 16
     )
     native_grid = lua.table_from(
         {"_menu_settings": lua.table_from({"grid_spacing": lua.table_from([4, 4])})}
@@ -882,6 +888,10 @@ def main() -> None:
             perk_blueprint, "better_inventory_weapon_perk_2"
         ).style,
     }
+    assert tuple(
+        perk_styles["better_inventory_weapon_perk_1"].text_color[index]
+        for index in range(1, 5)
+    ) == (255, 113, 126, 103)
     perk_widget = lua.table_from(
         {"content": lua.table_from({}), "style": lua.table_from(perk_styles)}
     )
@@ -898,6 +908,21 @@ def main() -> None:
     assert perk_widget.content.better_inventory_full_weapon_perk_1 == "+25% Flak Damage"
     assert perk_widget.content.better_inventory_full_weapon_perk_2 == "+25% Maniacs Damage"
     assert "\n" not in perk_widget.content.better_inventory_weapon_perk_1
+
+    mod.settings.weapon_perk_text_color_r = 12
+    mod.settings.weapon_perk_text_color_g = 34
+    mod.settings.weapon_perk_text_color_b = 56
+    custom_perk_color_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, custom_perk_color_blueprint, 640)
+    custom_perk_color_style = blueprint_pass(
+        custom_perk_color_blueprint, "better_inventory_weapon_perk_1"
+    ).style
+    assert tuple(
+        custom_perk_color_style.text_color[index] for index in range(1, 5)
+    ) == (255, 12, 34, 56)
+    mod.settings.weapon_perk_text_color_r = 113
+    mod.settings.weapon_perk_text_color_g = 126
+    mod.settings.weapon_perk_text_color_b = 103
 
     standard_weapon_perk_expectations = {
         "weapon_trait_melee_common_wield_increased_unarmored_damage": "+25% Unarmoured Damage",
@@ -1294,6 +1319,26 @@ def main() -> None:
             detailed_styles[style_id].size[1]
             > detailed_styles[style_id].better_inventory_max_text_width
         )
+
+    assert tuple(
+        detailed_styles["better_inventory_curio_stat_2"].text_color[index]
+        for index in range(1, 5)
+    ) == (255, 220, 230, 210)
+
+    mod.settings.curio_secondary_text_color_r = 21
+    mod.settings.curio_secondary_text_color_g = 43
+    mod.settings.curio_secondary_text_color_b = 65
+    custom_curio_color_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, custom_curio_color_blueprint, 640)
+    custom_curio_secondary_style = blueprint_pass(
+        custom_curio_color_blueprint, "better_inventory_curio_stat_2"
+    ).style
+    assert tuple(
+        custom_curio_secondary_style.text_color[index] for index in range(1, 5)
+    ) == (255, 21, 43, 65)
+    mod.settings.curio_secondary_text_color_r = 220
+    mod.settings.curio_secondary_text_color_g = 230
+    mod.settings.curio_secondary_text_color_b = 210
 
     detailed_widget = lua.table_from(
         {

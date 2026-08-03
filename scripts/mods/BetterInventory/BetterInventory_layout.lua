@@ -285,6 +285,18 @@ local DEFAULT_CURIO_PRIMARY_COLOR = {
 	230,
 	210,
 }
+local DEFAULT_CURIO_SECONDARY_COLOR = {
+	255,
+	220,
+	230,
+	210,
+}
+local DEFAULT_WEAPON_PERK_COLOR = {
+	255,
+	113,
+	126,
+	103,
+}
 
 local SLOT_SETTING_BY_NAME = {
 	slot_primary = "enable_melee_inventory",
@@ -310,7 +322,7 @@ local function curio_secondary_font_size(mod)
 end
 
 local function curio_primary_secondary_spacing(mod)
-	return math.max(0, math.min(20, setting(mod, "curio_primary_secondary_spacing", 3)))
+	return math.max(0, math.min(20, setting(mod, "curio_primary_secondary_spacing", 5)))
 end
 
 local function item_from_element(element)
@@ -388,6 +400,15 @@ local function compact_curio_description(mod, data, compression_mode)
 	return string.format("%s %s", amount, mod:localize(localization_id))
 end
 
+local function configured_text_color(mod, prefix, fallback)
+	return {
+		255,
+		clamped_color_channel(mod, prefix .. "_r", fallback[2]),
+		clamped_color_channel(mod, prefix .. "_g", fallback[3]),
+		clamped_color_channel(mod, prefix .. "_b", fallback[4]),
+	}
+end
+
 local function compact_weapon_perk_description(mod, data, compression_mode)
 	local definition = data and COMPACT_WEAPON_PERK_LABELS[data.id]
 	local description = data and data.description
@@ -396,10 +417,14 @@ local function compact_weapon_perk_description(mod, data, compression_mode)
 		return description or ""
 	end
 
-	local amount = string.match(description, "^%s*([^%s]+)")
+	local amount = string.match(description, "([%+%-]?%d+%.?%d*%%?)")
 
 	if not amount then
 		return description
+	end
+
+	if not string.match(amount, "^[%+%-]") then
+		amount = "+" .. amount
 	end
 
 	local localization_id = compression_mode == "heavy" and definition.heavy_localization_id or definition.localization_id
@@ -679,6 +704,7 @@ local function add_weapon_perk_pass(pass_template, index, options)
 	style.size = options.size
 	style.better_inventory_max_text_width = options.size[1]
 	style.better_inventory_preferred_font_size = options.font_size
+	style.text_color = table.clone(options.text_color or DEFAULT_WEAPON_PERK_COLOR)
 
 	pass_template[#pass_template + 1] = {
 		pass_type = "text",
@@ -734,7 +760,7 @@ local function add_curio_stat_pass(pass_template, index, options)
 	style.offset = options.offset
 	style.size = options.size
 	style.better_inventory_max_text_width = options.max_text_width or options.size[1]
-	style.text_color = table.clone(DEFAULT_CURIO_PRIMARY_COLOR)
+	style.text_color = table.clone(options.text_color or DEFAULT_CURIO_PRIMARY_COLOR)
 
 	pass_template[#pass_template + 1] = {
 		pass_type = "text",
@@ -844,6 +870,7 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 		local perk_line_height = show_weapon_perk_ranks and math.max(perk_font_size + 4, PERK_RANK_SIZE + 1) or perk_font_size + 4
 		local perk_text_left = text_left + (show_weapon_perk_ranks and PERK_RANK_SIZE + PERK_RANK_GAP or 0)
 		local perk_width = math.max(40, card_width - perk_text_left - 8)
+		local perk_text_color = configured_text_color(mod, "weapon_perk_text_color", DEFAULT_WEAPON_PERK_COLOR)
 
 		for i = 1, WEAPON_PERK_COUNT do
 			local y_offset = -(bottom_content_height + 2 + (WEAPON_PERK_COUNT - i) * perk_line_height)
@@ -861,6 +888,7 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 			add_weapon_perk_pass(pass_template, i, {
 				base_style = base_text_style,
 				font_size = perk_font_size,
+				text_color = perk_text_color,
 				offset = {
 					perk_text_left,
 					y_offset,
@@ -878,6 +906,7 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 		local primary_font_size = curio_primary_font_size(mod)
 		local secondary_font_size = curio_secondary_font_size(mod)
 		local primary_secondary_spacing = curio_primary_secondary_spacing(mod)
+		local secondary_text_color = configured_text_color(mod, "curio_secondary_text_color", DEFAULT_CURIO_SECONDARY_COLOR)
 		local y_offset = 7
 
 		for i = 1, 4 do
@@ -894,6 +923,7 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 			add_curio_stat_pass(pass_template, i, {
 				base_style = base_text_style,
 				font_size = font_size,
+				text_color = i == 1 and DEFAULT_CURIO_PRIMARY_COLOR or secondary_text_color,
 				vertical_alignment = "top",
 				text_vertical_alignment = "top",
 				offset = {

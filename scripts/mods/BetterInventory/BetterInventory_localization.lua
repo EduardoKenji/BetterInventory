@@ -179,6 +179,21 @@ return {
 	remove_weapon_perk_plus_signs_tooltip = {
 		en = "Removes only the leading plus sign from each visible weapon perk line. Numeric values and signs elsewhere are preserved.",
 	},
+	weapon_perk_text_color_group = {
+		en = "Weapon perk text colour",
+	},
+	weapon_perk_text_color_preset = {
+		en = "Preset",
+	},
+	weapon_perk_text_color_r = {
+		en = "Red",
+	},
+	weapon_perk_text_color_g = {
+		en = "Green",
+	},
+	weapon_perk_text_color_b = {
+		en = "Blue",
+	},
 	blessing_icon_spacing = {
 		en = "Blessing icon horizontal spacing",
 	},
@@ -287,6 +302,21 @@ return {
 	remove_curio_stat_plus_signs_tooltip = {
 		en = "Removes the leading + sign from every stat line on BetterInventory Curio cards. Disabled by default.",
 	},
+	curio_secondary_text_color_group = {
+		en = "Secondary Curio line colour",
+	},
+	curio_secondary_text_color_preset = {
+		en = "Preset",
+	},
+	curio_secondary_text_color_r = {
+		en = "Red",
+	},
+	curio_secondary_text_color_g = {
+		en = "Green",
+	},
+	curio_secondary_text_color_b = {
+		en = "Blue",
+	},
 	curio_health_color_group = {
 		en = "Max Health line colour",
 	},
@@ -364,6 +394,9 @@ return {
 	},
 	color_preset_green = {
 		en = "Green",
+	},
+	color_preset_terminal_green = {
+		en = "Terminal green",
 	},
 	color_preset_neutral = {
 		en = "Neutral",
