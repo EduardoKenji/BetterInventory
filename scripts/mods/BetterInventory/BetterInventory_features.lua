@@ -6,6 +6,16 @@ local UIWidget = require("scripts/managers/ui/ui_widget")
 local UISoundEvents = require("scripts/settings/ui/ui_sound_events")
 
 local Features = {}
+
+local function shallow_copy(source)
+	local copy = {}
+
+	for key, value in pairs(source or {}) do
+		copy[key] = value
+	end
+
+	return copy
+end
 local INVENTORY_SORT_TOGGLE_ID = "better_inventory_sort_priority"
 local INVENTORY_PERFECT_SORT_TOGGLE_ID = "better_inventory_perfect_sort_priority"
 local INVENTORY_SORT_LABEL_ID = "better_inventory_sort_label"
@@ -1607,8 +1617,10 @@ Features.compact_inventory_curio_stats_blueprints = function(mod, item_grid, con
 		return content_blueprints
 	end
 
-	local adjusted_blueprints = table.clone(content_blueprints)
-	local adjusted_header = adjusted_blueprints.gadget_header
+	local adjusted_blueprints = shallow_copy(content_blueprints)
+	local adjusted_header = table.clone(gadget_header)
+
+	adjusted_blueprints.gadget_header = adjusted_header
 	local height_percent = numeric_setting(mod, "curio_preview_height_percent", 76, 60, 100)
 	local scale = height_percent / 100
 
@@ -2064,7 +2076,7 @@ local function high_level_curio_is_protected(mod, item, level, protected_level)
 	return not setting_id or mod:get(setting_id) ~= false
 end
 
-local function eligible_for_quick_discard(mod, item, is_equipped, maximum_equipped_levels)
+local function eligible_for_quick_discard(mod, item, is_equipped, maximum_equipped_levels, favorite_gear_ids)
 	if not item or not item.gear_id or not item_type_is_enabled(mod, item.item_type) then
 		return false
 	end
@@ -2076,7 +2088,9 @@ local function eligible_for_quick_discard(mod, item, is_equipped, maximum_equipp
 		return false
 	end
 
-	if Items.is_item_id_favorited(item.gear_id) then
+	local favorited = favorite_gear_ids and favorite_gear_ids[item.gear_id] or not favorite_gear_ids and Items.is_item_id_favorited(item.gear_id)
+
+	if favorited then
 		return false
 	end
 
@@ -2114,7 +2128,7 @@ local function eligible_for_quick_discard(mod, item, is_equipped, maximum_equipp
 	return true
 end
 
-local function collect_quick_discard_candidates(mod, source_items, is_equipped, allowed_gear_ids, maximum_equipped_levels)
+local function collect_quick_discard_candidates(mod, source_items, is_equipped, allowed_gear_ids, maximum_equipped_levels, favorite_gear_ids)
 	local candidates = {}
 	local excluded_errors = 0
 	local first_error
@@ -2125,7 +2139,7 @@ local function collect_quick_discard_candidates(mod, source_items, is_equipped, 
 		local gear_id = item and item.gear_id
 
 		if gear_id and not seen[gear_id] and (not allowed_gear_ids or allowed_gear_ids[gear_id]) then
-			local success, eligible = pcall(eligible_for_quick_discard, mod, item, is_equipped, maximum_equipped_levels)
+			local success, eligible = pcall(eligible_for_quick_discard, mod, item, is_equipped, maximum_equipped_levels, favorite_gear_ids)
 
 			if success and eligible then
 				seen[gear_id] = true
@@ -2153,7 +2167,7 @@ local function add_loadout_gear_ids(target, loadout)
 	end
 end
 
-local function equipped_gear_ids(profile)
+local function equipped_gear_ids(profile, profile_presets)
 	local equipped = {}
 
 	add_loadout_gear_ids(equipped, profile and profile.loadout)
@@ -2162,10 +2176,8 @@ local function equipped_gear_ids(profile)
 	-- Profile presets are saved independently from the currently active profile.
 	-- Treat every item referenced by every preset as equipped: an unfavorited item
 	-- used only by an inactive loadout must never enter any discard candidate set.
-	local success, presets = pcall(ProfileUtils.get_profile_presets)
-
-	if success and type(presets) == "table" then
-		for _, preset in pairs(presets) do
+	if type(profile_presets) == "table" then
+		for _, preset in pairs(profile_presets) do
 			if type(preset) == "table" then
 				add_loadout_gear_ids(equipped, preset.loadout)
 				add_loadout_gear_ids(equipped, preset.loadout_item_ids)
@@ -2217,7 +2229,8 @@ Features.quick_discard_candidates = function(mod, layout, view, allowed_gear_ids
 
 	local parent_inventory = view._parent and view._parent._inventory_items
 	local source_items = type(parent_inventory) == "table" and next(parent_inventory) and parent_inventory or view._offer_items_layout or {}
-	local protected_gear_ids = equipped_gear_ids(preview_profile(view))
+	local presets_ok, profile_presets = pcall(ProfileUtils.get_profile_presets)
+	local protected_gear_ids = equipped_gear_ids(preview_profile(view), presets_ok and profile_presets or nil)
 	local equipped_levels = maximum_equipped_levels(source_items, protected_gear_ids)
 	local function is_equipped(item)
 		if item.gear_id and protected_gear_ids[item.gear_id] then
@@ -2234,17 +2247,17 @@ Features.quick_discard_candidates = function(mod, layout, view, allowed_gear_ids
 	return candidates
 end
 
-local function quick_discard_candidates_from_items_detailed(mod, source_items, equipped_gear_ids, allowed_gear_ids)
+local function quick_discard_candidates_from_items_detailed(mod, source_items, equipped_gear_ids, allowed_gear_ids, favorite_gear_ids)
 	local equipped_levels = maximum_equipped_levels(source_items, equipped_gear_ids or {})
 	local function is_equipped(item)
 		return equipped_gear_ids and equipped_gear_ids[item.gear_id] == true
 	end
 
-	return collect_quick_discard_candidates(mod, source_items, is_equipped, allowed_gear_ids, equipped_levels)
+	return collect_quick_discard_candidates(mod, source_items, is_equipped, allowed_gear_ids, equipped_levels, favorite_gear_ids)
 end
 
-Features.quick_discard_candidates_from_items = function(mod, source_items, equipped_gear_ids, allowed_gear_ids)
-	local candidates = quick_discard_candidates_from_items_detailed(mod, source_items, equipped_gear_ids, allowed_gear_ids)
+Features.quick_discard_candidates_from_items = function(mod, source_items, equipped_gear_ids, allowed_gear_ids, favorite_gear_ids)
+	local candidates = quick_discard_candidates_from_items_detailed(mod, source_items, equipped_gear_ids, allowed_gear_ids, favorite_gear_ids)
 
 	return candidates
 end
@@ -2374,8 +2387,45 @@ local function show_popup(context)
 	return pcall(event_manager.trigger, event_manager, "event_show_ui_popup", context)
 end
 
+local discard_transaction = {
+	owner = nil,
+	view = nil,
+}
+
+local function acquire_discard_transaction(owner, view)
+	if discard_transaction.owner then
+		return false
+	end
+
+	discard_transaction.owner = owner
+	discard_transaction.view = view
+
+	if view then
+		view._better_inventory_discard_pending = true
+	end
+
+	return true
+end
+
+local function release_discard_transaction(owner)
+	if discard_transaction.owner ~= owner then
+		return false
+	end
+
+	local view = discard_transaction.view
+
+	discard_transaction.owner = nil
+	discard_transaction.view = nil
+
+	if view then
+		view._better_inventory_discard_pending = false
+	end
+
+	return true
+end
+
 Features.request_quick_discard = function(mod, layout, view)
-	if view._better_inventory_discard_pending then
+	if view._better_inventory_discard_pending or discard_transaction.owner then
 		return
 	end
 
@@ -2403,14 +2453,25 @@ Features.request_quick_discard = function(mod, layout, view)
 		captured_ids[candidates[index].gear_id] = true
 	end
 
-	view._better_inventory_discard_pending = true
+	if not acquire_discard_transaction("manual", view) then
+		return
+	end
+
+	local resolved = false
 
 	local function clear_pending()
-		view._better_inventory_discard_pending = false
+		if resolved then
+			return
+		end
+
+		resolved = true
+		release_discard_transaction("manual")
 	end
 
 	local function confirm_discard()
-		clear_pending()
+		if resolved then
+			return
+		end
 
 		local revalidated = Features.quick_discard_candidates(mod, layout, view, captured_ids)
 		local gear_ids = {}
@@ -2422,12 +2483,12 @@ Features.request_quick_discard = function(mod, layout, view)
 		local event_manager = Managers and Managers.event
 
 		if #gear_ids > 0 and event_manager and type(event_manager.trigger) == "function" then
-			local dispatched = pcall(event_manager.trigger, event_manager, "event_discard_items", gear_ids)
-
-			if dispatched then
-				show_discard_summary_notification(mod, revalidated)
-			end
+			pcall(event_manager.trigger, event_manager, "event_discard_items", gear_ids)
 		end
+
+		-- The native event owns its asynchronous backend request and does not
+		-- expose a completion result. Do not claim success before it completes.
+		clear_pending()
 	end
 
 	local popup_shown = show_popup({
@@ -2459,7 +2520,6 @@ end
 local AUTOMATIC_DISCARD_DELAY = 5
 local AUTOMATIC_DISCARD_MAX_FETCH_ATTEMPTS = 3
 local automatic_discard_state = {
-	confirmation_pending = false,
 	elapsed = 0,
 	fetch_attempts = 0,
 	hub_character_id = nil,
@@ -2539,6 +2599,43 @@ local function player_profile(player)
 	local success, profile = pcall(player.profile, player)
 
 	return success and profile or nil
+end
+
+local function automatic_protection_snapshot(character_id)
+	local player, current_character_id = current_player_and_character()
+
+	if not player or current_character_id ~= character_id then
+		return nil, "the current player or character changed"
+	end
+
+	local profile = player_profile(player)
+
+	if type(profile) ~= "table" then
+		return nil, "the current profile is unavailable"
+	end
+
+	local save_manager = Managers and Managers.save
+
+	if not save_manager or type(save_manager.character_data) ~= "function" then
+		return nil, "character save data is unavailable"
+	end
+
+	local save_ok, character_data = pcall(save_manager.character_data, save_manager, character_id)
+
+	if not save_ok or type(character_data) ~= "table" or type(character_data.favorite_items) ~= "table" then
+		return nil, "favorite-item save data is unavailable"
+	end
+
+	local presets_ok, profile_presets = pcall(ProfileUtils.get_profile_presets)
+
+	if not presets_ok or type(profile_presets) ~= "table" then
+		return nil, "saved loadout presets are unavailable"
+	end
+
+	return {
+		equipped_gear_ids = equipped_gear_ids(profile, profile_presets),
+		favorite_gear_ids = character_data.favorite_items,
+	}
 end
 
 local function fetch_inventory_promise(gear_service, character_id)
@@ -2621,13 +2718,14 @@ end
 
 local function delete_automatic_candidates(mod, token, character_id, captured_ids)
 	if not automatic_context_is_current(mod, token, character_id) then
+		release_discard_transaction("automatic")
 		return
 	end
 
 	local gear_service = Managers and Managers.data_service and Managers.data_service.gear
-	local player = current_player_and_character()
 
-	if not gear_service or type(gear_service.fetch_inventory) ~= "function" or type(gear_service.delete_gear_batch) ~= "function" or not player then
+	if not gear_service or type(gear_service.fetch_inventory) ~= "function" or type(gear_service.delete_gear_batch) ~= "function" then
+		release_discard_transaction("automatic")
 		return
 	end
 
@@ -2635,17 +2733,26 @@ local function delete_automatic_candidates(mod, token, character_id, captured_id
 
 	if not fetch_promise then
 		automatic_discard_info(mod, "Final revalidation could not start: " .. automatic_discard_error(fetch_error))
+		release_discard_transaction("automatic")
 		return
 	end
 
 	fetch_promise:next(function(items)
 		if not automatic_context_is_current(mod, token, character_id) or type(items) ~= "table" then
+			release_discard_transaction("automatic")
 			return
 		end
 
-		local current_player = current_player_and_character()
-		local profile = player_profile(current_player)
-		local candidates = Features.quick_discard_candidates_from_items(mod, items, equipped_gear_ids(profile), captured_ids)
+		local protection, protection_error = automatic_protection_snapshot(character_id)
+
+		if not protection then
+			automatic_discard_info(mod, "Final revalidation stopped safely because " .. automatic_discard_error(protection_error) .. ".")
+			release_discard_transaction("automatic")
+
+			return
+		end
+
+		local candidates = Features.quick_discard_candidates_from_items(mod, items, protection.equipped_gear_ids, captured_ids, protection.favorite_gear_ids)
 		local gear_ids = {}
 
 		for index = 1, #candidates do
@@ -2655,11 +2762,20 @@ local function delete_automatic_candidates(mod, token, character_id, captured_id
 		automatic_discard_info(mod, string.format("Revalidated %d candidate(s) immediately before deletion.", #gear_ids))
 
 		if #gear_ids == 0 then
+			release_discard_transaction("automatic")
 			return
 		end
 
-		return gear_service:delete_gear_batch(gear_ids):next(function(result)
+		local delete_ok, delete_promise = pcall(gear_service.delete_gear_batch, gear_service, gear_ids)
+
+		if not delete_ok or not delete_promise or type(delete_promise.next) ~= "function" or type(delete_promise.catch) ~= "function" then
+			release_discard_transaction("automatic")
+			error(delete_ok and "GearService.delete_gear_batch returned no compatible promise" or delete_promise)
+		end
+
+		return delete_promise:next(function(result)
 			notify_discard_result(mod, candidates, result)
+			release_discard_transaction("automatic")
 
 			return result
 		end)
@@ -2667,11 +2783,12 @@ local function delete_automatic_candidates(mod, token, character_id, captured_id
 		-- GearService already reports backend failures. Keep the one-shot
 		-- Morningstar pass from surfacing an unhandled promise rejection.
 		automatic_discard_info(mod, "Final revalidation failed: " .. automatic_discard_error(error_value))
+		release_discard_transaction("automatic")
 	end)
 end
 
 local function present_automatic_discard(mod, token, character_id, candidates)
-	if automatic_discard_state.confirmation_pending then
+	if not acquire_discard_transaction("automatic") then
 		automatic_discard_info(mod, "Suppressed a duplicate automatic discard confirmation preview.")
 
 		return
@@ -2690,10 +2807,15 @@ local function present_automatic_discard(mod, token, character_id, candidates)
 		return
 	end
 
-	automatic_discard_state.confirmation_pending = true
+	local confirmation_resolved = false
 
 	local function clear_confirmation()
-		automatic_discard_state.confirmation_pending = false
+		if confirmation_resolved then
+			return
+		end
+
+		confirmation_resolved = true
+		release_discard_transaction("automatic")
 	end
 
 	local popup_shown = show_popup({
@@ -2701,8 +2823,10 @@ local function present_automatic_discard(mod, token, character_id, candidates)
 		options = {
 			{
 				callback = function()
-					clear_confirmation()
-					delete_automatic_candidates(mod, token, character_id, captured_ids)
+					if not confirmation_resolved and discard_transaction.owner == "automatic" then
+						confirmation_resolved = true
+						delete_automatic_candidates(mod, token, character_id, captured_ids)
+					end
 				end,
 				close_on_pressed = true,
 				no_localization = true,
@@ -2729,10 +2853,10 @@ end
 
 Features.begin_morningstar_auto_discard = function(mod)
 	-- Some startup/state-transition orders can report GameplayStateRun enter
-	-- again after the one-shot scan has already presented its confirmation.
-	-- Keep that live popup authoritative instead of scheduling a second scan.
-	if automatic_discard_state.confirmation_pending then
-		automatic_discard_info(mod, "Ignored a duplicate automatic discard re-arm while confirmation is pending.")
+	-- again after the one-shot transaction has presented its confirmation or
+	-- started deletion. Keep that transaction authoritative until it finishes.
+	if discard_transaction.owner == "automatic" then
+		automatic_discard_info(mod, "Ignored a duplicate automatic discard re-arm while a transaction is active.")
 
 		return
 	end
@@ -2745,11 +2869,11 @@ Features.begin_morningstar_auto_discard = function(mod)
 	automatic_discard_state.started = false
 end
 
-Features.cancel_morningstar_auto_discard = function(preserve_confirmation)
+Features.cancel_morningstar_auto_discard = function(preserve_transaction)
 	-- A momentary unavailable/non-hub game-mode observation must not unlock an
-	-- already queued popup. A real GameplayStateRun exit or mod disable calls
-	-- this without preservation because the UI owning that popup is going away.
-	if preserve_confirmation and automatic_discard_state.confirmation_pending then
+	-- active transaction. A real GameplayStateRun exit or mod disable calls this
+	-- without preservation because its UI and backend context are going away.
+	if preserve_transaction and discard_transaction.owner == "automatic" then
 		automatic_discard_state.scheduled = false
 		automatic_discard_state.started = true
 
@@ -2757,7 +2881,7 @@ Features.cancel_morningstar_auto_discard = function(preserve_confirmation)
 	end
 
 	automatic_discard_state.token = automatic_discard_state.token + 1
-	automatic_discard_state.confirmation_pending = false
+	release_discard_transaction("automatic")
 	automatic_discard_state.elapsed = 0
 	automatic_discard_state.fetch_attempts = 0
 	automatic_discard_state.hub_character_id = nil
@@ -2767,8 +2891,8 @@ end
 
 Features.update_morningstar_auto_discard = function(mod, dt)
 	if not automatic_discard_enabled(mod) then
-		if automatic_discard_state.scheduled or automatic_discard_state.started or automatic_discard_state.hub_character_id then
-			Features.cancel_morningstar_auto_discard(true)
+		if automatic_discard_state.scheduled or automatic_discard_state.started or automatic_discard_state.hub_character_id or discard_transaction.owner == "automatic" then
+			Features.cancel_morningstar_auto_discard()
 		end
 
 		return
@@ -2873,9 +2997,18 @@ Features.update_morningstar_auto_discard = function(mod, dt)
 		end
 
 		automatic_discard_state.scheduled = false
-		local current_player = current_player_and_character()
-		local profile = player_profile(current_player)
-		local candidates, excluded_errors, first_error = quick_discard_candidates_from_items_detailed(mod, items, equipped_gear_ids(profile))
+		local protection, protection_error = automatic_protection_snapshot(character_id)
+
+		if not protection then
+			automatic_discard_info(mod, "Inventory scan stopped safely because " .. automatic_discard_error(protection_error) .. "; scheduling a bounded retry.")
+			automatic_discard_state.started = false
+			automatic_discard_state.elapsed = 0
+			automatic_discard_state.scheduled = automatic_discard_state.fetch_attempts < AUTOMATIC_DISCARD_MAX_FETCH_ATTEMPTS
+
+			return
+		end
+
+		local candidates, excluded_errors, first_error = quick_discard_candidates_from_items_detailed(mod, items, protection.equipped_gear_ids, nil, protection.favorite_gear_ids)
 
 		if excluded_errors > 0 then
 			automatic_discard_info(mod, string.format("Safety-excluded %d unreadable item(s). First error: %s", excluded_errors, automatic_discard_error(first_error)))

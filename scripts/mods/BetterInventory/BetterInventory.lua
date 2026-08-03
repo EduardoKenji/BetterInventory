@@ -31,6 +31,16 @@ local function pack_values(...)
 	}
 end
 
+local function shallow_copy(source)
+	local copy = {}
+
+	for key, value in pairs(source or {}) do
+		copy[key] = value
+	end
+
+	return copy
+end
+
 local function is_armoury_requisition_view(view)
 	-- GlobalStore and similar mods reuse CreditsVendorView with a custom store
 	-- service and add their own card footer content. Restrict BetterInventory's
@@ -743,8 +753,10 @@ mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layou
 		return func(item_grid, layout, content_blueprints, ...)
 	end
 
-	local local_blueprints = table.clone(content_blueprints)
-	local local_item_blueprint = local_blueprints[blueprint_key]
+	local local_blueprints = shallow_copy(content_blueprints)
+	local local_item_blueprint = table.clone(item_blueprint)
+
+	local_blueprints[blueprint_key] = local_item_blueprint
 
 	Layout.configure_item_blueprint(mod, local_item_blueprint, grid_size[1], configuration)
 	Layout.configure_grid(mod, item_grid)

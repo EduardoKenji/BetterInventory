@@ -195,10 +195,10 @@ return {
 		en = "Adds melee weapon, ranged weapon and Curio counts to each rarity line in the quick-discard confirmation. This presentation option is available only in mod options and is enabled by default.",
 	},
 	quick_discard_show_summary_notification = {
-		en = "Show discarded-items notification",
+		en = "Show automated discard notification",
 	},
 	quick_discard_show_summary_notification_tooltip = {
-		en = "Shows a native notification after a Better Inventory manual or automated discard, with discarded item counts colored by rarity.",
+		en = "Shows a native notification after the backend confirms an automated discard, with discarded item counts colored by rarity. Manual discard completion remains owned by Darktide's native inventory flow.",
 	},
 	quick_discard_inventory_prefix = {
 		en = "Discard all",

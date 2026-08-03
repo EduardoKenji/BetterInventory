@@ -107,8 +107,12 @@ if ($features -notmatch 'progression_manager\.is_fetching_session_report' -or $f
 	throw "Automatic discard must wait for mission rewards and refresh the gear cache before its first inventory scan."
 }
 
-if ($features -notmatch 'quick_discard_candidates_from_items\(mod,\s*items,\s*equipped_gear_ids\(profile\),\s*captured_ids\)' -or $features -notmatch 'quick_discard_skip_automatic_confirmation' -or $features -notmatch 'gear_service:delete_gear_batch') {
+if ($features -notmatch 'automatic_protection_snapshot\(character_id\)' -or $features -notmatch 'quick_discard_candidates_from_items\(mod,\s*items,\s*protection\.equipped_gear_ids,\s*captured_ids,\s*protection\.favorite_gear_ids\)' -or $features -notmatch 'quick_discard_skip_automatic_confirmation' -or $features -notmatch 'gear_service\.delete_gear_batch') {
 	throw "Automatic discard must re-fetch and revalidate captured IDs before the native gear service deletes them."
+}
+
+if ($main -notmatch 'local_blueprints\s*=\s*shallow_copy\(content_blueprints\)[\s\S]*?local_item_blueprint\s*=\s*table\.clone\(item_blueprint\)' -or $features -notmatch 'adjusted_blueprints\s*=\s*shallow_copy\(content_blueprints\)[\s\S]*?adjusted_header\s*=\s*table\.clone\(gadget_header\)') {
+	throw "Blueprint transforms must clone only the target blueprint instead of every shared blueprint."
 }
 
 $settingMatches = [regex]::Matches($data, 'setting_id\s*=\s*"([^"]+)"')

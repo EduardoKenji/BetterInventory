@@ -774,9 +774,9 @@ def main() -> None:
     features.request_quick_discard(mod, layout, quick_discard_view)
     globals_.captured_popup.options[1].callback()
     assert globals_.captured_discard_ids[1] == "eligible"
-    assert globals_.captured_notification.line_1 == "quick_discard_notification_title"
-    assert "- 1 rarity_1 quick_discard_notification_items" in globals_.captured_notification.line_2
-    assert "{#color(101,111,121)}" in globals_.captured_notification.line_2
+    # The native event does not expose its asynchronous backend result, so a
+    # manual dispatch must not claim that deletion already succeeded.
+    assert globals_.captured_notification is None
 
     # A missing popup dispatcher must fail closed and release the per-view lock.
     popup_trigger = globals_.Managers.event.trigger
@@ -1016,6 +1016,7 @@ def main() -> None:
                     {style_id = "gradient_background", style = {size = {518, 125}, offset = {0, 0, 1}}},
                 },
             },
+            untouched = {marker = {}},
         }
         """
     )
@@ -1030,6 +1031,15 @@ def main() -> None:
     assert compact_curio_blueprints.gadget_header.pass_template[2].style.size[2] == 61
     assert compact_curio_blueprints.gadget_header.pass_template[3].style.size[2] == 95
     assert curio_stats_blueprints.gadget_header.size[2] == 250
+    same_lua_value = lua.eval("function(left, right) return left == right end")
+    assert not same_lua_value(
+        compact_curio_blueprints.gadget_header,
+        curio_stats_blueprints.gadget_header,
+    )
+    assert same_lua_value(
+        compact_curio_blueprints.untouched,
+        curio_stats_blueprints.untouched,
+    )
 
     malformed_curio_blueprints = lua.execute(
         "return {gadget_header = {pass_template = {{style_id = 'icon', style = {}}}}}"
@@ -1368,7 +1378,9 @@ def main() -> None:
         automatic_fetch_count = 0
         automatic_cache_invalidation_count = 0
         automatic_add_mission_reward_on_invalidation = true
+        automatic_defer_delete = false
         automatic_deleted_ids = nil
+        automatic_pending_delete = nil
         automatic_game_mode_name = "hub"
         automatic_progression_fetching = true
         local profile = {
@@ -1405,6 +1417,13 @@ def main() -> None:
                 return automatic_progression_fetching
             end,
         }
+        Managers.save = {
+            character_data = function(self, character_id)
+                return {
+                    favorite_items = TestItems.favorites,
+                }
+            end,
+        }
         Managers.data_service = {
             gear = {
                 invalidate_gear_cache = function()
@@ -1438,10 +1457,38 @@ def main() -> None:
 						}
 					end
 
+					if automatic_defer_delete then
+						local promise = {}
+
+						promise.next = function(self, callback)
+							self.success_callback = callback
+
+							return self
+						end
+						promise.catch = function(self, callback)
+							self.error_callback = callback
+
+							return self
+						end
+						promise.result = result
+						automatic_pending_delete = promise
+
+						return promise
+					end
+
 					return resolved(result)
                 end,
             },
         }
+
+		complete_automatic_delete = function()
+			local pending = automatic_pending_delete
+			automatic_pending_delete = nil
+
+			if pending and pending.success_callback then
+				pending.success_callback(pending.result)
+			end
+		end
         """,
         automatic_inventory,
     )
@@ -1464,6 +1511,11 @@ def main() -> None:
     )
     assert globals_.automatic_fetch_count == 1
     assert globals_.automatic_cache_invalidation_count == 1
+
+    # Manual and automatic confirmations share one transaction lock.
+    features.request_quick_discard(mod, layout, quick_discard_view)
+    assert globals_.captured_popup_count == 1
+    assert quick_discard_view._better_inventory_discard_pending is False
 
     # A repeated GameplayStateRun enter signal or a transient game-mode gap
     # must not queue another confirmation while the first one is unanswered.
@@ -1499,11 +1551,62 @@ def main() -> None:
     assert len(globals_.automatic_deleted_ids) == 2
     features.cancel_morningstar_auto_discard()
 
+    # Re-arming or requesting a manual discard cannot overlap an in-flight
+    # automatic backend deletion. The transaction releases only on completion.
+    globals_.automatic_defer_delete = True
+    globals_.captured_popup = None
+    globals_.automatic_deleted_ids = None
+    fetch_count_before_deferred_delete = globals_.automatic_fetch_count
+    popup_count_before_deferred_delete = globals_.captured_popup_count
+    features.begin_morningstar_auto_discard(mod)
+    features.update_morningstar_auto_discard(mod, 5)
+    assert globals_.automatic_pending_delete is not None
+    assert globals_.automatic_fetch_count == fetch_count_before_deferred_delete + 2
+    features.begin_morningstar_auto_discard(mod)
+    features.update_morningstar_auto_discard(mod, 30)
+    features.request_quick_discard(mod, layout, quick_discard_view)
+    assert globals_.automatic_fetch_count == fetch_count_before_deferred_delete + 2
+    assert globals_.captured_popup_count == popup_count_before_deferred_delete
+    globals_.complete_automatic_delete()
+    globals_.automatic_defer_delete = False
+    features.cancel_morningstar_auto_discard()
+
+    # Missing save/favorite protection data fails closed and retries without
+    # ever presenting or deleting the unprotected candidate set.
+    saved_character_data = globals_.Managers.save.character_data
+    globals_.Managers.save.character_data = lua.eval("function() return nil end")
+    globals_.captured_popup = None
+    globals_.automatic_deleted_ids = None
+    features.begin_morningstar_auto_discard(mod)
+    features.update_morningstar_auto_discard(mod, 5)
+    assert globals_.captured_popup is None
+    assert globals_.automatic_deleted_ids is None
+    globals_.Managers.save.character_data = saved_character_data
+    features.cancel_morningstar_auto_discard()
+
+    # Protection data is checked again after confirmation, immediately before
+    # deletion. Losing it at that boundary aborts and releases the transaction.
+    mod.settings.quick_discard_skip_automatic_confirmation = False
+    globals_.captured_popup = None
+    globals_.automatic_deleted_ids = None
+    features.begin_morningstar_auto_discard(mod)
+    features.update_morningstar_auto_discard(mod, 5)
+    automatic_revalidation_popup = globals_.captured_popup
+    globals_.Managers.save.character_data = lua.eval("function() return nil end")
+    automatic_revalidation_popup.options[1].callback()
+    assert globals_.automatic_deleted_ids is None
+    globals_.Managers.save.character_data = saved_character_data
+    features.request_quick_discard(mod, layout, quick_discard_view)
+    assert globals_.captured_popup.title_text_unlocalized == "quick_discard_confirmation_title"
+    globals_.captured_popup.options[2].callback()
+    features.cancel_morningstar_auto_discard()
+
     # The live-manager fallback must arm Automatic mode even when a hot reload
     # or unusual transition ordering misses the GameplayStateRun enter event.
     globals_.captured_popup = None
     globals_.automatic_game_mode_name = "hub_singleplay"
     mod.settings.quick_discard_skip_automatic_confirmation = False
+    fallback_fetch_count = globals_.automatic_fetch_count
     features.update_morningstar_auto_discard(mod, 4.9)
     assert globals_.captured_popup is None
     features.update_morningstar_auto_discard(mod, 0.1)
@@ -1511,7 +1614,7 @@ def main() -> None:
         globals_.captured_popup.title_text_unlocalized
         == "quick_discard_automatic_confirmation_title"
     )
-    assert globals_.automatic_fetch_count == 5
+    assert globals_.automatic_fetch_count == fallback_fetch_count + 1
     features.cancel_morningstar_auto_discard()
 
     # Automatic mode uses a non-blocking notification when the completed scan
@@ -1521,8 +1624,9 @@ def main() -> None:
     automatic_inventory["auto_mission_reward"] = None
     globals_.captured_popup = None
     globals_.captured_notification = None
+    no_candidates_fetch_count = globals_.automatic_fetch_count
     features.update_morningstar_auto_discard(mod, 5)
-    assert globals_.automatic_fetch_count == 6
+    assert globals_.automatic_fetch_count == no_candidates_fetch_count + 1
     assert globals_.captured_popup is None
     assert (
         globals_.captured_notification.line_1
