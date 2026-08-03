@@ -299,7 +299,7 @@ return {
 						setting_id = "weapon_blessing_display_mode",
 						tooltip = "weapon_blessing_display_mode_tooltip",
 						type = "dropdown",
-						default_value = "icons",
+						default_value = "ranked_text",
 						options = {
 							{
 								text = "weapon_blessing_display_mode_icons",
@@ -366,13 +366,13 @@ return {
 					{
 						setting_id = "weapon_blessing_text_color_preset",
 						type = "dropdown",
-						default_value = "sky_blue",
+						default_value = "light_blue",
 						options = color_preset_options(),
 					},
 					{
 						setting_id = "weapon_blessing_text_color_r",
 						type = "numeric",
-						default_value = 144,
+						default_value = 105,
 						range = {
 							0,
 							255,
@@ -381,7 +381,7 @@ return {
 					{
 						setting_id = "weapon_blessing_text_color_g",
 						type = "numeric",
-						default_value = 213,
+						default_value = 200,
 						range = {
 							0,
 							255,
@@ -390,7 +390,7 @@ return {
 					{
 						setting_id = "weapon_blessing_text_color_b",
 						type = "numeric",
-						default_value = 255,
+						default_value = 235,
 						range = {
 							0,
 							255,
@@ -400,7 +400,7 @@ return {
 						setting_id = "weapon_blessing_text_opacity",
 						tooltip = "weapon_blessing_text_opacity_tooltip",
 						type = "numeric",
-						default_value = 100,
+						default_value = 80,
 						range = {
 							0,
 							100,
@@ -511,7 +511,7 @@ return {
 						setting_id = "weapon_perk_text_opacity",
 						tooltip = "weapon_perk_text_opacity_tooltip",
 						type = "numeric",
-						default_value = 100,
+						default_value = 80,
 						range = {
 							0,
 							100,

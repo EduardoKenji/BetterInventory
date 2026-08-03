@@ -307,9 +307,9 @@ local DEFAULT_WEAPON_PERK_COLOR = {
 }
 local DEFAULT_WEAPON_BLESSING_TEXT_COLOR = {
 	255,
-	144,
-	213,
-	255,
+	105,
+	200,
+	235,
 }
 
 local SLOT_SETTING_BY_NAME = {
@@ -344,7 +344,7 @@ local function blessing_icon_size(mod)
 end
 
 local function weapon_blessing_display_mode(mod)
-	local mode = setting(mod, "weapon_blessing_display_mode", "icons")
+	local mode = setting(mod, "weapon_blessing_display_mode", "ranked_text")
 
 	-- Retain hot-reload compatibility with the retired checkbox until the
 	-- one-time settings migration has run.
@@ -352,11 +352,11 @@ local function weapon_blessing_display_mode(mod)
 		return "icons"
 	elseif mode == false then
 		return "off"
-	elseif mode == "text" or mode == "ranked_text" or mode == "off" then
+	elseif mode == "icons" or mode == "text" or mode == "ranked_text" or mode == "off" then
 		return mode
 	end
 
-	return "icons"
+	return "ranked_text"
 end
 
 local function separate_blessing_text_and_item_level(mod, configuration)

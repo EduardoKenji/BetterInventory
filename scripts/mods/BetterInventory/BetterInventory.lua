@@ -115,7 +115,7 @@ local COLOR_TARGETS = {
 	},
 	{
 		prefix = "weapon_blessing_text_color",
-		default_preset = "sky_blue",
+		default_preset = "light_blue",
 	},
 	{
 		prefix = "curio_secondary_text_color",
@@ -384,7 +384,10 @@ function mod.on_enabled()
 	if not mod:get("_weapon_blessing_display_mode_v1_migrated") then
 		local previous_show_blessings = mod:get("show_weapon_blessings")
 
-		mod:set("weapon_blessing_display_mode", previous_show_blessings == false and "off" or "icons")
+		if previous_show_blessings ~= nil then
+			mod:set("weapon_blessing_display_mode", previous_show_blessings == false and "off" or "icons")
+		end
+
 		mod:set("_weapon_blessing_display_mode_v1_migrated", true)
 	end
 

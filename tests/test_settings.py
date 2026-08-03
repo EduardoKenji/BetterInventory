@@ -205,6 +205,13 @@ def main() -> None:
     settings.show_weapon_blessings = False
     mod.on_enabled()
     assert settings.weapon_blessing_display_mode == "off"
+
+    settings._weapon_blessing_display_mode_v1_migrated = False
+    settings.show_weapon_blessings = None
+    settings.weapon_blessing_display_mode = "ranked_text"
+    mod.on_enabled()
+    assert settings.weapon_blessing_display_mode == "ranked_text"
+
     settings.show_weapon_blessings = True
     settings.weapon_blessing_display_mode = "icons"
 
@@ -581,13 +588,14 @@ def main() -> None:
     assert defaults["blessing_icon_size"] == 36
     assert defaults["weapon_blessing_text_vertical_spacing"] == 2
     assert defaults["weapon_blessing_text_bottom_padding"] == 4
-    assert defaults["weapon_blessing_text_color_preset"] == "sky_blue"
-    assert defaults["weapon_blessing_text_color_r"] == 144
-    assert defaults["weapon_blessing_text_color_g"] == 213
-    assert defaults["weapon_blessing_text_color_b"] == 255
-    assert defaults["weapon_blessing_text_opacity"] == 100
+    assert defaults["show_rarity_tag"] is True
+    assert defaults["weapon_blessing_text_color_preset"] == "light_blue"
+    assert defaults["weapon_blessing_text_color_r"] == 105
+    assert defaults["weapon_blessing_text_color_g"] == 200
+    assert defaults["weapon_blessing_text_color_b"] == 235
+    assert defaults["weapon_blessing_text_opacity"] == 80
     assert defaults["highlight_equipped_items"] is True
-    assert defaults["weapon_blessing_display_mode"] == "icons"
+    assert defaults["weapon_blessing_display_mode"] == "ranked_text"
     assert defaults["blessing_text_item_level_separation"] == "four_plus"
     assert "show_weapon_blessings" not in defaults
     assert defaults["show_weapon_perks"] is True
@@ -610,7 +618,7 @@ def main() -> None:
     assert defaults["weapon_perk_text_color_r"] == 190
     assert defaults["weapon_perk_text_color_g"] == 210
     assert defaults["weapon_perk_text_color_b"] == 180
-    assert defaults["weapon_perk_text_opacity"] == 100
+    assert defaults["weapon_perk_text_opacity"] == 80
     assert defaults["weapon_perk_vertical_spacing"] == 2
     assert defaults["weapon_perk_blessing_spacing"] == 5
     assert defaults["curio_secondary_text_color_preset"] == "neutral"
