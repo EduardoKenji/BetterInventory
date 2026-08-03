@@ -1017,6 +1017,44 @@ def main() -> None:
     assert four_column_text_style.size[1] == 132
     assert four_column_text_style.offset[2] == -33
 
+    mod.settings.weapon_blessing_display_mode = "ranked_text"
+    mod.settings.weapon_perk_rank_icon_size = 18
+    ranked_text_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, ranked_text_blueprint, 640)
+    ranked_text_styles = {
+        "display_name": blueprint_pass(ranked_text_blueprint, "display_name").style,
+    }
+    for index in range(1, 3):
+        style_id = f"better_inventory_blessing_text_{index}"
+        ranked_text_styles[style_id] = blueprint_pass(
+            ranked_text_blueprint, style_id
+        ).style
+    ranked_text_widget = lua.table_from(
+        {"content": lua.table_from({}), "style": lua.table_from(ranked_text_styles)}
+    )
+    ranked_text_blueprint.init(
+        None,
+        ranked_text_widget,
+        narrow_weapon_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        ranked_text_blueprint,
+    )
+    assert ranked_text_widget.content.better_inventory_blessing_text_1 == "Surgical"
+    assert ranked_text_widget.content.better_inventory_blessing_text_2 == "Weight of Fire"
+    assert ranked_text_widget.content.better_inventory_blessing_rank_1 == "perk/rank_3"
+    assert ranked_text_widget.content.better_inventory_blessing_rank_2 == "perk/rank_4"
+    first_rank_pass = blueprint_pass(ranked_text_blueprint, "better_inventory_blessing_rank_1")
+    first_rank_text = blueprint_pass(ranked_text_blueprint, "better_inventory_blessing_text_1")
+    assert first_rank_pass.visibility_function(ranked_text_widget.content)
+    assert (first_rank_pass.style.size[1], first_rank_pass.style.size[2]) == (18, 18)
+    assert first_rank_text.style.offset[1] == first_rank_pass.style.offset[1] + 21
+    assert first_rank_text.style.size[1] == four_column_text_style.size[1] - 21
+    assert layout.card_height(mod) == 114
+
+    mod.settings.weapon_blessing_display_mode = "text"
     mod.settings.columns = 3
     assert layout.card_height(mod, store_configuration) == 114
     mod.settings.weapon_blessing_display_mode = "off"

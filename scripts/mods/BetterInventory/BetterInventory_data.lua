@@ -302,6 +302,10 @@ return {
 								value = "text",
 							},
 							{
+								text = "weapon_blessing_display_mode_ranked_text",
+								value = "ranked_text",
+							},
+							{
 								text = "weapon_blessing_display_mode_off",
 								value = "off",
 							},

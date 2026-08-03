@@ -183,13 +183,16 @@ return {
 		en = "Weapon blessing display",
 	},
 	weapon_blessing_display_mode_tooltip = {
-		en = "Choose ranked blessing icons, compact one-line blessing names with Roman ranks, or no blessing content. Automatic card height reserves the required space.",
+		en = "Choose full blessing icons, compact names with Roman text ranks, names with native tier symbols, or no blessing content. Automatic card height reserves the required space.",
 	},
 	weapon_blessing_display_mode_icons = {
 		en = "Icons",
 	},
 	weapon_blessing_display_mode_text = {
 		en = "Text lines",
+	},
+	weapon_blessing_display_mode_ranked_text = {
+		en = "Tier symbols + text",
 	},
 	weapon_blessing_display_mode_off = {
 		en = "Off",
@@ -198,7 +201,7 @@ return {
 		en = "Separate blessing text and item level",
 	},
 	blessing_text_item_level_separation_tooltip = {
-		en = "Chooses when Text lines mode places both blessing names above a dedicated item-level row. The default applies this safer, wider layout to narrow four- and five-column inventory grids.",
+		en = "Chooses when either blessing text mode places both blessing names above a dedicated item-level row. The default applies this safer, wider layout to narrow four- and five-column inventory grids.",
 	},
 	blessing_text_item_level_separation_always = {
 		en = "Always",
@@ -216,7 +219,7 @@ return {
 		en = "Blessing icon size",
 	},
 	option_requires_weapon_blessing_text = {
-		en = "Select blessing Text lines to use this option.",
+		en = "Select a blessing text mode to use this option.",
 	},
 	blessing_icon_size_tooltip = {
 		en = "Sets the width and height of each weapon blessing symbol in pixels. Automatic card height grows when larger symbols need more room.",
@@ -249,10 +252,13 @@ return {
 		en = "Shows Darktide's native ranked perk symbol to the left of each visible weapon perk line. Enabled by default.",
 	},
 	weapon_perk_rank_icon_size = {
-		en = "Perk level symbol size",
+		en = "Tier symbol size",
 	},
 	weapon_perk_rank_icon_size_tooltip = {
-		en = "Sets the width and height of each perk level symbol in pixels. Automatic card height grows when larger symbols need more room.",
+		en = "Sets the width and height of native tier symbols used by weapon perks and Tier symbols + text blessings. Automatic card height grows when larger symbols need more room.",
+	},
+	option_requires_rank_symbols = {
+		en = "Enable perk level symbols or select Tier symbols + text blessings to use this option.",
 	},
 	remove_weapon_perk_plus_signs = {
 		en = "Remove + from weapon perk text",

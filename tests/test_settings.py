@@ -375,11 +375,19 @@ def main() -> None:
     settings.weapon_blessing_display_mode = "text"
     mod.on_setting_changed("weapon_blessing_display_mode")
     assert entries_by_id["blessing_text_item_level_separation"].disabled is False
+    assert entries_by_id["weapon_perk_rank_icon_size"].disabled is True
+    assert entries_by_id["blessing_icon_size"].disabled is True
+    assert entries_by_id["blessing_icon_spacing"].disabled is True
+    settings.weapon_blessing_display_mode = "ranked_text"
+    mod.on_setting_changed("weapon_blessing_display_mode")
+    assert entries_by_id["blessing_text_item_level_separation"].disabled is False
+    assert entries_by_id["weapon_perk_rank_icon_size"].disabled is False
     assert entries_by_id["blessing_icon_size"].disabled is True
     assert entries_by_id["blessing_icon_spacing"].disabled is True
     settings.weapon_blessing_display_mode = "off"
     mod.on_setting_changed("weapon_blessing_display_mode")
     assert entries_by_id["blessing_text_item_level_separation"].disabled is True
+    assert entries_by_id["weapon_perk_rank_icon_size"].disabled is True
     assert entries_by_id["blessing_icon_size"].disabled is True
     assert entries_by_id["blessing_icon_spacing"].disabled is True
     settings.weapon_blessing_display_mode = "icons"
