@@ -340,6 +340,10 @@ def main() -> None:
 		"quick_discard_protect_perfect_weapons",
 		"quick_discard_protect_high_level_curios",
 		"quick_discard_curio_protection_level",
+		"quick_discard_keep_health_curios",
+		"quick_discard_keep_toughness_curios",
+		"quick_discard_keep_wound_curios",
+		"quick_discard_keep_stamina_curios",
 		"quick_discard_show_type_breakdown",
 		"quick_discard_show_summary_notification",
     )
@@ -395,6 +399,8 @@ def main() -> None:
     assert entries_by_id["curio_primary_secondary_spacing"].disabled is True
     assert entries_by_id["quick_discard_rarity"].disabled is True
     assert entries_by_id["quick_discard_curio_protection_level"].disabled is True
+    assert entries_by_id["quick_discard_keep_health_curios"].disabled is True
+    assert entries_by_id["quick_discard_keep_toughness_curios"].disabled is True
     assert entries_by_id["quick_discard_show_type_breakdown"].disabled is True
     assert entries_by_id["quick_discard_show_summary_notification"].disabled is True
     assert entries_by_id["curio_information_width_percent"].disabled is True
@@ -426,11 +432,17 @@ def main() -> None:
     assert entries_by_id["quick_discard_rarity"].disabled is False
     assert entries_by_id["quick_discard_max_item_level"].disabled is False
     assert entries_by_id["quick_discard_curio_protection_level"].disabled is False
+    assert entries_by_id["quick_discard_keep_health_curios"].disabled is False
+    assert entries_by_id["quick_discard_keep_toughness_curios"].disabled is False
+    assert entries_by_id["quick_discard_keep_wound_curios"].disabled is False
+    assert entries_by_id["quick_discard_keep_stamina_curios"].disabled is False
     assert entries_by_id["quick_discard_show_type_breakdown"].disabled is False
     assert entries_by_id["quick_discard_show_summary_notification"].disabled is False
     settings.quick_discard_protect_high_level_curios = False
     mod.on_setting_changed("quick_discard_protect_high_level_curios")
     assert entries_by_id["quick_discard_curio_protection_level"].disabled is True
+    assert entries_by_id["quick_discard_keep_health_curios"].disabled is True
+    assert entries_by_id["quick_discard_keep_toughness_curios"].disabled is True
     assert globals_.quick_discard_syncs > 0
     settings.quick_discard_protect_high_level_curios = True
     settings.enable_experimental_quick_discard = False
@@ -672,16 +684,22 @@ def main() -> None:
     assert defaults["curio_display_profile"] == "detailed"
     assert defaults["show_curio_item_level"] is True
     assert defaults["prioritize_equipped_favorites"] is True
+    assert defaults["prioritize_perfect_roll_weapons"] is False
     assert defaults["enable_inventory_options_panel_prototype"] is False
     assert defaults["curio_information_width_percent"] == 90
     assert defaults["curio_preview_height_percent"] == 76
     assert defaults["inventory_options_panel_width"] == 445
     assert defaults["inventory_options_panel_max_height"] == 360
     assert defaults["inventory_options_panel_row_spacing"] == 8
-    assert defaults["inventory_options_panel_padding_top"] == 4
-    assert defaults["inventory_options_panel_padding_bottom"] == 4
-    assert defaults["inventory_options_panel_padding_left"] == 10
-    assert defaults["inventory_options_panel_padding_right"] == 10
+    assert defaults["inventory_options_panel_padding_top"] == 10
+    assert defaults["inventory_options_panel_padding_bottom"] == 10
+    assert defaults["inventory_options_panel_padding_left"] == 12
+    assert defaults["inventory_options_panel_padding_right"] == 12
+    assert defaults["quick_discard_keep_health_curios"] is True
+    assert defaults["quick_discard_keep_toughness_curios"] is True
+    assert defaults["quick_discard_keep_wound_curios"] is True
+    assert defaults["quick_discard_keep_stamina_curios"] is True
+    assert defaults["quick_discard_max_item_level"] == 490
     assert defaults["quick_discard_show_summary_notification"] is True
     assert defaults["curio_primary_stat_font_size"] == 16
     assert defaults["curio_secondary_stat_font_size"] == 13

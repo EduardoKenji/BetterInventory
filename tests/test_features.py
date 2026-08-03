@@ -90,6 +90,13 @@ def main() -> None:
 				display_name = "rarity_" .. index,
 			}
 		end
+		TestMasterItems = {
+			get_item = function(trait_id)
+				return {
+					trait = trait_id,
+				}
+			end,
+		}
         TestUIWidget = {
             create_definition = function(pass_template, scenegraph_id, content)
                 content.hotspot = content.hotspot or {}
@@ -124,6 +131,8 @@ def main() -> None:
         function require(path)
             if path == "scripts/utilities/items" then
                 return TestItems
+			elseif path == "scripts/backend/master_items" then
+				return TestMasterItems
 			elseif path == "scripts/settings/item/rarity_settings" then
 				return TestRaritySettings
             elseif path == "scripts/managers/ui/ui_widget" then
@@ -345,6 +354,66 @@ def main() -> None:
         ),
     )
     assert sorted_ids == ("equipped", "favorite", "ordinary")
+
+    mod.settings.prioritize_perfect_roll_weapons = True
+    perfect_sort_ids = lua.execute(
+        r"""
+        local view, ordinary, perfect, favorite, equipped = ...
+        local entries = {ordinary, perfect, favorite, equipped}
+
+        table.sort(entries, view._sort_options[1].sort_function)
+
+        return entries[1].item.gear_id, entries[2].item.gear_id, entries[3].item.gear_id, entries[4].item.gear_id
+        """,
+        sortable_view,
+        lua.table_from(
+            {"item": lua.table_from({"gear_id": "ordinary_weapon", "item_type": "WEAPON_MELEE", "rating": 100})}
+        ),
+        lua.table_from(
+            {
+                "item": lua.table_from(
+                    {
+                        "gear_id": "perfect_weapon",
+                        "item_type": "WEAPON_MELEE",
+                        "rating": 1,
+                        "total_stats": 380,
+                        "base_stats": lua.table_from(
+                            [
+                                lua.table_from({"value": 0.8}),
+                                lua.table_from({"value": 0.8}),
+                                lua.table_from({"value": 0.8}),
+                                lua.table_from({"value": 0.8}),
+                                lua.table_from({"value": 0.6}),
+                            ]
+                        ),
+                    }
+                )
+            }
+        ),
+        lua.table_from(
+            {"item": lua.table_from({"gear_id": "favorite", "item_type": "WEAPON_MELEE", "rating": 0})}
+        ),
+        lua.table_from(
+            {
+                "item": lua.table_from(
+                    {
+                        "gear_id": "equipped_weapon",
+                        "item_type": "WEAPON_MELEE",
+                        "rating": 0,
+                        "equipped": True,
+                        "slots": lua.table_from(["slot_primary"]),
+                    }
+                )
+            }
+        ),
+    )
+    assert perfect_sort_ids == (
+        "equipped_weapon",
+        "favorite",
+        "perfect_weapon",
+        "ordinary_weapon",
+    )
+    mod.settings.prioritize_perfect_roll_weapons = False
 
     mod.settings.prioritize_equipped_favorites = False
     rating_first = lua.execute(
@@ -571,6 +640,54 @@ def main() -> None:
         }
     )
     assert features.is_perfect_roll_weapon(underpowered_nonperfect_roll) is False
+
+    mod.settings.quick_discard_keep_health_curios = False
+    mod.settings.quick_discard_keep_toughness_curios = True
+    mod.settings.quick_discard_keep_wound_curios = True
+    mod.settings.quick_discard_keep_stamina_curios = True
+    typed_curios = lua.table_from(
+        [
+            lua.table_from(
+                {
+                    "gear_id": "health_curio",
+                    "item_type": "GADGET",
+                    "level": 420,
+                    "rarity": 1,
+                    "traits": lua.table_from(
+                        [lua.table_from({"id": "gadget_innate_health_increase"})]
+                    ),
+                }
+            ),
+            lua.table_from(
+                {
+                    "gear_id": "toughness_curio",
+                    "item_type": "GADGET",
+                    "level": 420,
+                    "rarity": 1,
+                    "traits": lua.table_from(
+                        [lua.table_from({"id": "gadget_innate_toughness_increase"})]
+                    ),
+                }
+            ),
+            lua.table_from(
+                {
+                    "gear_id": "unknown_curio",
+                    "item_type": "GADGET",
+                    "level": 420,
+                    "rarity": 1,
+                    "traits": lua.table_from(
+                        [lua.table_from({"id": "gadget_future_primary_blessing"})]
+                    ),
+                }
+            ),
+        ]
+    )
+    typed_curio_candidates = features.quick_discard_candidates_from_items(
+        mod, typed_curios, lua.table_from({})
+    )
+    assert len(typed_curio_candidates) == 1
+    assert typed_curio_candidates[1].gear_id == "health_curio"
+    mod.settings.quick_discard_keep_health_curios = True
 
     features.request_quick_discard(mod, layout, quick_discard_view)
     assert quick_discard_view._better_inventory_discard_pending is True
@@ -937,45 +1054,63 @@ def main() -> None:
     assert prototype_panel.menu_settings.top_padding == 4
     assert prototype_panel.menu_settings.bottom_chin == 4
     assert prototype_panel._ui_scenegraph.grid_content_pivot.position[1] == 10
-    assert len(prototype_panel.layout) == 10
+    assert len(prototype_panel.layout) == 13
     assert prototype_panel.grid_height == 360
     assert prototype_panel.pivot_x == 120
     assert prototype_panel.pivot_y == 375
     assert prototype_view._widgets_by_name[sort_label_id].content.visible is False
     assert prototype_view._widgets_by_name[toggle_id].content.visible is False
-
-    # Mode and its confirmation checkbox share a compact row but retain distinct,
-    # synchronized hotspots. Mode changes no longer change the grid structure.
+    assert prototype_panel.widgets["better_inventory_perfect_sort_priority"] is not None
+    assert prototype_panel.widgets["better_inventory_discard_curio_types"] is not None
+    assert (
+        prototype_panel.widgets[
+            "better_inventory_discard_curio_types_label"
+        ].content.label
+        == "quick_discard_inventory_keep_curio_types_label"
+    )
     mode_widget = prototype_panel.widgets["better_inventory_discard_mode"]
+    assert "compact_selector_passes(geometry.content_width, 110)" in FEATURES_PATH.read_text(
+        encoding="utf-8"
+    )
+    curio_type_widget = prototype_panel.widgets["better_inventory_discard_curio_types"]
+    assert curio_type_widget.content.health_checked is True
+    curio_type_widget.content.health_hotspot.pressed_callback()
+    assert mod.settings.quick_discard_keep_health_curios is False
+    assert curio_type_widget.content.health_checked is False
+    mod.settings.quick_discard_keep_health_curios = True
+
+    # The Automatic-only confirmation checkbox owns a dedicated panel row. Mode
+    # changes defer structural rebuilding until the next safe view update.
     mode_widget.content.hotspot.pressed_callback()
     assert mod.settings.quick_discard_mode == "automatic"
-    assert len(prototype_panel.layout) == 10
+    assert len(prototype_panel.layout) == 13
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
-    assert len(prototype_panel.layout) == 10
-    assert mode_widget.content.skip_visible is True
-    assert mode_widget.content.skip_checked is True
-    mode_widget.content.skip_hotspot.pressed_callback()
+    assert len(prototype_panel.layout) == 14
+    skip_widget = prototype_panel.widgets["better_inventory_discard_skip_confirmation"]
+    assert skip_widget.content.checked is True
+    skip_widget.content.hotspot.pressed_callback()
     assert mod.settings.quick_discard_skip_automatic_confirmation is False
-    assert mode_widget.content.skip_checked is False
+    assert skip_widget.content.checked is False
+    mode_widget = prototype_panel.widgets["better_inventory_discard_mode"]
     mode_widget.content.hotspot.pressed_callback()
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert mod.settings.quick_discard_mode == "manual"
-    assert len(prototype_panel.layout) == 10
-    assert mode_widget.content.skip_visible is False
+    assert len(prototype_panel.layout) == 13
+    assert prototype_panel.widgets["better_inventory_discard_skip_confirmation"] is None
 
     prototype_panel.widgets[
         "better_inventory_discard_header"
     ].content.hotspot.pressed_callback()
     # Collapse/expand only changes state during the grid's draw callback. The
     # structural rebuild is deferred to the following safe view update.
-    assert len(prototype_panel.layout) == 10
+    assert len(prototype_panel.layout) == 13
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
-    assert len(prototype_panel.layout) == 3
-    assert prototype_panel.grid_height == 173
+    assert len(prototype_panel.layout) == 4
+    assert prototype_panel.grid_height == 219
     prototype_panel.widgets[
         "better_inventory_sort_header"
     ].content.hotspot.pressed_callback()
-    assert len(prototype_panel.layout) == 3
+    assert len(prototype_panel.layout) == 4
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert len(prototype_panel.layout) == 2
     assert prototype_panel.grid_height == 127
@@ -983,11 +1118,11 @@ def main() -> None:
         "better_inventory_sort_header"
     ].content.hotspot.pressed_callback()
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
-    assert len(prototype_panel.layout) == 3
+    assert len(prototype_panel.layout) == 4
 
     prototype_view._discard_items_element = lua.table_from({})
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
-    assert len(prototype_panel.layout) == 2
+    assert len(prototype_panel.layout) == 3
     assert prototype_panel.widgets["better_inventory_discard_header"] is None
     assert prototype_panel.pivot_x == -546
     assert prototype_panel.pivot_y == 534

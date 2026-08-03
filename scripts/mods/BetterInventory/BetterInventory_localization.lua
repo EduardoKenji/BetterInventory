@@ -17,6 +17,15 @@ return {
 	prioritize_equipped_favorites_tooltip = {
 		en = "In melee, ranged and Curio inventories, keeps equipped items first and favorited items second while the selected native sort still orders each group. The synchronized toggle appears below Curio details or below the weapon action buttons, and its value persists between game sessions.",
 	},
+	prioritize_perfect_roll_weapons = {
+		en = "Perfect-roll weapons at the top",
+	},
+	prioritize_perfect_roll_weapons_tooltip = {
+		en = "Places weapons with four attributes at 80 and the fifth at 60 or higher ahead of ordinary items. Equipped and favorited items retain higher priority. The in-inventory checkbox is available in the scalable panel.",
+	},
+	prioritize_perfect_roll_weapons_inventory_label = {
+		en = "Perfect-roll weapons at the top",
+	},
 	enable_inventory_options_panel_prototype = {
 		en = "Use scalable inventory-options panel prototype",
 	},
@@ -156,7 +165,22 @@ return {
 		en = "Curio protection level",
 	},
 	quick_discard_curio_protection_level_tooltip = {
-		en = "Curios at or above this displayed item level are never selected by quick discard. The default is 410.",
+		en = "Curios at or above this displayed item level are protected when their primary blessing type is enabled below. The default is 410.",
+	},
+	quick_discard_keep_health_curios = {
+		en = "Keep Health Curios",
+	},
+	quick_discard_keep_toughness_curios = {
+		en = "Keep Toughness Curios",
+	},
+	quick_discard_keep_wound_curios = {
+		en = "Keep Wound Curios",
+	},
+	quick_discard_keep_stamina_curios = {
+		en = "Keep Stamina Curios",
+	},
+	quick_discard_keep_curio_type_tooltip = {
+		en = "Works together with Curio protection level: only Curios at or above the threshold whose primary blessing type is enabled are protected. All types default to enabled. Unknown future Curio types fail safe and remain protected.",
 	},
 	quick_discard_show_type_breakdown = {
 		en = "Show equipment-type counts in confirmation",
@@ -197,11 +221,26 @@ return {
 	quick_discard_inventory_curio_level = {
 		en = "Curio protection level",
 	},
+	quick_discard_inventory_keep_curio_types_label = {
+		en = "Keep curios of this type:",
+	},
 	quick_discard_inventory_protect_weapons = {
 		en = "Do not discard perfect-roll weapons",
 	},
 	quick_discard_inventory_protect_curios = {
 		en = "Protect high-level Curios",
+	},
+	quick_discard_inventory_keep_health_curios = {
+		en = "Health",
+	},
+	quick_discard_inventory_keep_toughness_curios = {
+		en = "Toughness",
+	},
+	quick_discard_inventory_keep_wound_curios = {
+		en = "Wounds",
+	},
+	quick_discard_inventory_keep_stamina_curios = {
+		en = "Stamina",
 	},
 	quick_discard_automatic_confirmation_title = {
 		en = "Confirm automated discard",
