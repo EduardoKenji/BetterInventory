@@ -48,6 +48,10 @@ def main() -> None:
 		TestItems = {
 			favorites = {},
 			expertise_level = function(item)
+				if item.unreadable then
+					error("legacy item has no readable expertise data")
+				end
+
 				return tostring(item.expertise or item.level or 0)
 			end,
 			max_expertise_level = function()
@@ -750,6 +754,17 @@ def main() -> None:
                     "rarity": 1,
                     "total_stats": 300,
                     "slots": lua.table_from(["slot_secondary"]),
+                }
+            ),
+            # A legacy/partially-materialized account item must fail closed
+            # without preventing the rest of an automatic scan from running.
+            "auto_unreadable": lua.table_from(
+                {
+                    "gear_id": "auto_unreadable",
+                    "item_type": "WEAPON_MELEE",
+                    "unreadable": True,
+                    "rarity": 1,
+                    "slots": lua.table_from(["slot_primary"]),
                 }
             ),
         }

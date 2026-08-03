@@ -1166,19 +1166,31 @@ end
 
 local function collect_quick_discard_candidates(mod, source_items, is_equipped, allowed_gear_ids)
 	local candidates = {}
+	local excluded_errors = 0
+	local first_error
 	local seen = {}
 
 	for _, entry in pairs(source_items or {}) do
 		local item = entry and (entry.real_item or entry.item or entry)
 		local gear_id = item and item.gear_id
 
-		if gear_id and not seen[gear_id] and (not allowed_gear_ids or allowed_gear_ids[gear_id]) and eligible_for_quick_discard(mod, item, is_equipped) then
-			seen[gear_id] = true
-			candidates[#candidates + 1] = item
+		if gear_id and not seen[gear_id] and (not allowed_gear_ids or allowed_gear_ids[gear_id]) then
+			local success, eligible = pcall(eligible_for_quick_discard, mod, item, is_equipped)
+
+			if success and eligible then
+				seen[gear_id] = true
+				candidates[#candidates + 1] = item
+			elseif not success then
+				-- Account inventories can contain legacy or partially materialized gear
+				-- that current item utilities cannot evaluate. Automatic discard must
+				-- fail closed for those entries instead of aborting the entire scan.
+				excluded_errors = excluded_errors + 1
+				first_error = first_error or eligible
+			end
 		end
 	end
 
-	return candidates
+	return candidates, excluded_errors, first_error
 end
 
 Features.quick_discard_candidates = function(mod, layout, view, allowed_gear_ids)
@@ -1194,15 +1206,23 @@ Features.quick_discard_candidates = function(mod, layout, view, allowed_gear_ids
 		return slots and type(view.is_item_equipped_in_any_slot) == "function" and view:is_item_equipped_in_any_slot(item, slots) or false
 	end
 
-	return collect_quick_discard_candidates(mod, source_items, is_equipped, allowed_gear_ids)
+	local candidates = collect_quick_discard_candidates(mod, source_items, is_equipped, allowed_gear_ids)
+
+	return candidates
 end
 
-Features.quick_discard_candidates_from_items = function(mod, source_items, equipped_gear_ids, allowed_gear_ids)
+local function quick_discard_candidates_from_items_detailed(mod, source_items, equipped_gear_ids, allowed_gear_ids)
 	local function is_equipped(item)
 		return equipped_gear_ids and equipped_gear_ids[item.gear_id] == true
 	end
 
 	return collect_quick_discard_candidates(mod, source_items, is_equipped, allowed_gear_ids)
+end
+
+Features.quick_discard_candidates_from_items = function(mod, source_items, equipped_gear_ids, allowed_gear_ids)
+	local candidates = quick_discard_candidates_from_items_detailed(mod, source_items, equipped_gear_ids, allowed_gear_ids)
+
+	return candidates
 end
 
 local function summary_type_name(mod, count, singular_id, plural_id)
@@ -1371,6 +1391,20 @@ local function automatic_discard_info(mod, message)
 	end
 end
 
+local function automatic_discard_error(error_value)
+	if type(error_value) == "table" then
+		local message = error_value.message or error_value.error or error_value[1]
+
+		if message then
+			return tostring(message)
+		elseif type(table.tostring) == "function" then
+			return table.tostring(error_value, 2)
+		end
+	end
+
+	return tostring(error_value)
+end
+
 local function equipped_gear_ids(profile)
 	local equipped = {}
 
@@ -1473,9 +1507,10 @@ local function delete_automatic_candidates(mod, token, character_id, captured_id
 		end
 
 		return gear_service:delete_gear_batch(gear_ids):next(notify_discard_result)
-	end):catch(function()
+	end):catch(function(error_value)
 		-- GearService already reports backend failures. Keep the one-shot
 		-- Morningstar pass from surfacing an unhandled promise rejection.
+		automatic_discard_info(mod, "Final revalidation failed: " .. automatic_discard_error(error_value))
 	end)
 end
 
@@ -1614,7 +1649,11 @@ Features.update_morningstar_auto_discard = function(mod, dt)
 
 		automatic_discard_state.scheduled = false
 		local profile = type(player.profile) == "function" and player:profile()
-		local candidates = Features.quick_discard_candidates_from_items(mod, items, equipped_gear_ids(profile))
+		local candidates, excluded_errors, first_error = quick_discard_candidates_from_items_detailed(mod, items, equipped_gear_ids(profile))
+
+		if excluded_errors > 0 then
+			automatic_discard_info(mod, string.format("Safety-excluded %d unreadable item(s). First error: %s", excluded_errors, automatic_discard_error(first_error)))
+		end
 
 		automatic_discard_info(mod, string.format("Inventory scan found %d eligible candidate(s).", #candidates))
 
@@ -1634,8 +1673,8 @@ Features.update_morningstar_auto_discard = function(mod, dt)
 			})
 			automatic_discard_info(mod, "Displayed the no-eligible-items result.")
 		end
-	end):catch(function()
-		automatic_discard_info(mod, "Inventory scan failed; scheduling a bounded retry.")
+	end):catch(function(error_value)
+		automatic_discard_info(mod, "Inventory scan failed; scheduling a bounded retry. Reason: " .. automatic_discard_error(error_value))
 		if automatic_discard_state.token == token then
 			automatic_discard_state.started = false
 			automatic_discard_state.elapsed = 0
