@@ -518,6 +518,7 @@ if ensure_class_method(InventoryWeaponsView, "_setup_sort_options") then
 		local result = func(view, ...)
 
 		Features.configure_inventory_sort_options(mod, Layout, view)
+		Features.setup_inventory_options_panel(mod, Layout, view, ViewElementGrid)
 		Features.bind_inventory_sort_toggle(mod, Layout, view)
 
 		return result

@@ -15,6 +15,21 @@ All three proposed capabilities are technically feasible:
 
 The important constraint is that scrolling cannot be added safely by drawing a scrollbar beside the current root-level widgets. Those widgets are rendered by `InventoryWeaponsView` directly and have no clipping boundary. Moving them without a managed masked renderer would let rows draw outside the rectangle.
 
+## Prototype status
+
+The first guarded implementation now exists on this branch behind the default-off `enable_inventory_options_panel_prototype` setting. It:
+
+- creates one `ViewElementGrid` through the inventory view's managed element lifecycle;
+- uses a terminal background, native mask and scrollbar;
+- migrates all current synchronized Sorting and discard controls into custom grid rows;
+- caps the panel at 320 reference pixels so the full expanded discard section scrolls;
+- shrinks the bounded panel when sections collapse;
+- stores collapse state locally per live inventory view;
+- presents only Sorting while Darktide's native discard UI is active;
+- preserves the existing loose widgets and restores them if initialization or positioning fails.
+
+The remaining work is in-game validation of the render target, mouse-wheel ownership, controller navigation, every inventory slot, native discard transitions, hot reload and the supported resolution matrix.
+
 ## Existing BetterInventory UI
 
 The current controls are injected as individual scenegraph nodes by `Features.add_inventory_sort_toggle_definition` in `BetterInventory_features.lua`. They are parented to either `weapon_compare_stats_pivot` for weapons or `weapon_stats_pivot` for Curios and are positioned by fixed offsets.

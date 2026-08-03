@@ -757,6 +757,147 @@ def main() -> None:
     assert quick_discard_view._widgets_by_name["better_inventory_quick_discard"].content.visible is True
     assert quick_discard_view._ui_scenegraph[sort_label_id].position[1] == 20
 
+    # The scalable-panel prototype must retain the legacy widgets as a fallback,
+    # present the same synchronized controls inside one managed grid, collapse
+    # sections by rebuilding rows, and reduce to Sorting in native discard mode.
+    mod.settings.enable_inventory_options_panel_prototype = True
+    mod.settings.quick_discard_mode = "manual"
+    prototype_view = lua.execute(
+        r"""
+        local scenegraph, widgets, weapon_stats = ...
+
+        return {
+            __class_name = "InventoryWeaponsView",
+            slot_kind = "slot_primary",
+            _better_inventory_grid_expansion = 80,
+            _ui_scenegraph = scenegraph,
+            _widgets_by_name = widgets,
+            _weapon_stats = weapon_stats,
+            _weapon_options_element = {
+                _menu_settings = {
+                    grid_size = {420, 300},
+                },
+            },
+            _scenegraph_world_position = function(self, scenegraph_id)
+                return {100, 60, 3}
+            end,
+            _add_element = function(self, class, reference_name, layer, settings)
+                local panel = {
+                    _parent = self,
+                    menu_settings = settings,
+                    visible = false,
+                }
+
+                function panel:disable_input(disabled)
+                    self.input_disabled = disabled
+                end
+
+                function panel:set_visibility(visible)
+                    self.visible = visible
+                end
+
+                function panel:set_pivot_offset(x, y)
+                    self.pivot_x = x
+                    self.pivot_y = y
+                end
+
+                function panel:update_grid_height(grid_height, mask_height)
+                    self.grid_height = grid_height
+                    self.mask_height = mask_height
+                end
+
+                function panel:present_grid_layout(layout, blueprints)
+                    self.layout = layout
+                    self.widgets = {}
+
+                    for index = 1, #layout do
+                        local entry = layout[index]
+                        local content = {}
+                        local style = {}
+
+                        for pass_index = 1, #entry.pass_template do
+                            local pass = entry.pass_template[pass_index]
+
+                            if pass.content_id then
+                                content[pass.content_id] = table.clone(pass.content or {})
+                            end
+
+                            if pass.style_id then
+                                style[pass.style_id] = table.clone(pass.style or {})
+                            end
+                        end
+
+                        local widget = {
+                            content = content,
+                            style = style,
+                        }
+
+                        blueprints[entry.widget_type].init(self, widget, entry)
+                        self.widgets[entry.control_id] = widget
+                    end
+                end
+
+                self.prototype_panel = panel
+
+                return panel
+            end,
+            _remove_element = function(self)
+                self.prototype_panel_removed = true
+            end,
+        }
+        """,
+        experimental_definitions.scenegraph_definition,
+        experimental_definitions.widget_definitions,
+        view._weapon_stats,
+    )
+    fake_view_element_grid = lua.table_from({})
+    assert (
+        features.setup_inventory_options_panel(
+            mod, layout, prototype_view, fake_view_element_grid
+        )
+        is True
+    )
+    features.bind_inventory_sort_toggle(mod, layout, prototype_view)
+    prototype_panel = prototype_view.prototype_panel
+    assert prototype_panel.visible is True
+    assert prototype_panel.input_disabled is False
+    assert len(prototype_panel.layout) == 10
+    assert prototype_panel.grid_height == 320
+    assert prototype_panel.pivot_x == 120
+    assert prototype_panel.pivot_y == 375
+    assert prototype_view._widgets_by_name[sort_label_id].content.visible is False
+    assert prototype_view._widgets_by_name[toggle_id].content.visible is False
+
+    prototype_panel.widgets[
+        "better_inventory_discard_header"
+    ].content.hotspot.pressed_callback()
+    assert len(prototype_panel.layout) == 3
+    assert prototype_panel.grid_height == 148
+    prototype_panel.widgets[
+        "better_inventory_sort_header"
+    ].content.hotspot.pressed_callback()
+    assert len(prototype_panel.layout) == 2
+    assert prototype_panel.grid_height == 112
+    prototype_panel.widgets[
+        "better_inventory_sort_header"
+    ].content.hotspot.pressed_callback()
+    assert len(prototype_panel.layout) == 3
+
+    prototype_view._discard_items_element = lua.table_from({})
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert len(prototype_panel.layout) == 2
+    assert prototype_panel.widgets["better_inventory_discard_header"] is None
+    assert prototype_panel.pivot_x == -546
+    assert prototype_panel.pivot_y == 534
+
+    prototype_view._discard_items_element = None
+    mod.settings.enable_inventory_options_panel_prototype = False
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert prototype_panel.visible is False
+    assert prototype_view._widgets_by_name[sort_label_id].content.visible is True
+    assert prototype_view._widgets_by_name[toggle_id].content.visible is True
+    mod.settings.enable_inventory_options_panel_prototype = True
+
     automatic_inventory = lua.table_from(
         {
             "auto_eligible": lua.table_from(

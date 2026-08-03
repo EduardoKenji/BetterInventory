@@ -95,6 +95,7 @@ def main() -> None:
 		test_features = {
 			add_inventory_sort_toggle_definition = function(_, _, definitions) return definitions end,
 			configure_inventory_sort_options = function() end,
+			setup_inventory_options_panel = function() end,
 			bind_inventory_sort_toggle = function() end,
 			resort_inventory = function() end,
 			update_inventory_sort_toggle = function() end,
@@ -639,6 +640,7 @@ def main() -> None:
     assert defaults["curio_display_profile"] == "detailed"
     assert defaults["show_curio_item_level"] is True
     assert defaults["prioritize_equipped_favorites"] is True
+    assert defaults["enable_inventory_options_panel_prototype"] is False
     assert defaults["quick_discard_show_summary_notification"] is True
     assert defaults["curio_primary_stat_font_size"] == 16
     assert defaults["curio_secondary_stat_font_size"] == 13

@@ -17,6 +17,12 @@ return {
 	prioritize_equipped_favorites_tooltip = {
 		en = "In melee, ranged and Curio inventories, keeps equipped items first and favorited items second while the selected native sort still orders each group. The synchronized toggle appears below Curio details or below the weapon action buttons, and its value persists between game sessions.",
 	},
+	enable_inventory_options_panel_prototype = {
+		en = "Use scalable inventory-options panel prototype",
+	},
+	enable_inventory_options_panel_prototype_tooltip = {
+		en = "Research prototype. After reopening the inventory, places BetterInventory's synchronized controls inside one bounded, scrollable Darktide panel with clickable collapsible section headers. Disable it to restore the established loose controls.",
+	},
 	prioritize_equipped_favorites_inventory_label = {
 		en = "Equipped and favorited items at the top",
 	},

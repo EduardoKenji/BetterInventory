@@ -129,6 +129,12 @@ return {
 						type = "checkbox",
 						default_value = true,
 					},
+					{
+						setting_id = "enable_inventory_options_panel_prototype",
+						tooltip = "enable_inventory_options_panel_prototype_tooltip",
+						type = "checkbox",
+						default_value = false,
+					},
 				},
 			},
 			{
