@@ -57,6 +57,7 @@ if ($main -notmatch '_compact_card_defaults_v1_migrated' -or $main -notmatch 'mo
 $data = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_data.lua") -Raw
 $localization = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_localization.lua") -Raw
 $layout = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_layout.lua") -Raw
+$features = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_features.lua") -Raw
 
 if ($layout -notmatch 'Layout\.armoury_grid_expansion' -or $layout -notmatch 'armoury_requisition_target_card_width') {
 	throw "The Armoury target-width expansion contract was not found."
@@ -68,6 +69,30 @@ if ($layout -notmatch 'five_column_weapon_extra_width' -or $data -notmatch 'five
 
 if ($layout -match 'Managers\.ui:(load|unload)_item_icon' -or $layout -match 'Renderer\.(create|destroy)_resource') {
 	throw "BetterInventory must not directly allocate or manage item-icon render resources."
+}
+
+if ($data -notmatch 'setting_id\s*=\s*"enable_experimental_quick_discard"[\s\S]*?default_value\s*=\s*false') {
+	throw "Experimental quick discard must remain disabled by default."
+}
+
+if ($data -notmatch 'setting_id\s*=\s*"quick_discard_mode"[\s\S]*?default_value\s*=\s*"manual"' -or $data -notmatch 'setting_id\s*=\s*"quick_discard_skip_automatic_confirmation"[\s\S]*?default_value\s*=\s*false') {
+	throw "Automatic discard and confirmation skipping must remain opt-in."
+}
+
+if ($features -notmatch 'Items\.is_item_id_favorited' -or $features -notmatch 'is_item_equipped_in_any_slot' -or $features -notmatch 'quick_discard_protect_perfect_weapons') {
+	throw "Quick discard is missing a required protected-item gate."
+}
+
+if ($features -notmatch 'quick_discard_candidates\(mod,\s*layout,\s*view,\s*captured_ids\)' -or $features -notmatch 'event_discard_items') {
+	throw "Quick discard must revalidate the captured preview before using Darktide's native discard event."
+}
+
+if ($main -notmatch 'mod\.on_game_state_changed' -or $main -notmatch 'Features\.update_morningstar_auto_discard' -or $features -notmatch 'game_mode_name\s*==\s*"hub"' -or $features -notmatch 'game_mode_name\s*==\s*"hub_singleplay"' -or $features -notmatch 'AUTOMATIC_DISCARD_DELAY\s*=\s*5' -or $features -notmatch 'hub_character_id\s*~=\s*character_id') {
+	throw "The guarded once-per-Morningstar automatic-discard lifecycle was not found."
+}
+
+if ($features -notmatch 'quick_discard_candidates_from_items\(mod,\s*items,\s*equipped_gear_ids\(profile\),\s*captured_ids\)' -or $features -notmatch 'quick_discard_skip_automatic_confirmation' -or $features -notmatch 'gear_service:delete_gear_batch') {
+	throw "Automatic discard must re-fetch and revalidate captured IDs before the native gear service deletes them."
 }
 
 $settingMatches = [regex]::Matches($data, 'setting_id\s*=\s*"([^"]+)"')
@@ -125,8 +150,9 @@ if ($DarktideSourcePath) {
 	$weaponPerksRanged = Join-Path $DarktideSourcePath "scripts\settings\equipment\weapon_traits\weapon_perks_ranged.lua"
 	$traitValueParser = Join-Path $DarktideSourcePath "scripts\utilities\trait_value_parser.lua"
 	$gadgetBuffTemplates = Join-Path $DarktideSourcePath "scripts\settings\buff\gadget_buff_templates.lua"
+	$gearService = Join-Path $DarktideSourcePath "scripts\managers\data_service\services\gear_service.lua"
 
-	foreach ($sourceFile in @($inventoryView, $hadronModifyView, $craftingViewDefinitions, $creditsVendorView, $creditsVendorBackgroundDefinitions, $itemGridBase, $itemGridBaseDefinitions, $itemBlueprints, $iconGenerator, $items, $masterItems, $gadgetTraits, $weaponPerksMelee, $weaponPerksRanged, $traitValueParser, $gadgetBuffTemplates)) {
+	foreach ($sourceFile in @($inventoryView, $hadronModifyView, $craftingViewDefinitions, $creditsVendorView, $creditsVendorBackgroundDefinitions, $itemGridBase, $itemGridBaseDefinitions, $itemBlueprints, $iconGenerator, $items, $masterItems, $gadgetTraits, $weaponPerksMelee, $weaponPerksRanged, $traitValueParser, $gadgetBuffTemplates, $gearService)) {
 		if (-not (Test-Path -LiteralPath $sourceFile -PathType Leaf)) {
 			throw "Missing expected Darktide source file: $sourceFile"
 		}
@@ -193,6 +219,11 @@ if ($DarktideSourcePath) {
 	}
 
 	$itemsSource = Get-Content -LiteralPath $items -Raw
+	$gearServiceSource = Get-Content -LiteralPath $gearService -Raw
+
+	if ($gearServiceSource -notmatch 'GearService\.fetch_inventory' -or $gearServiceSource -notmatch 'GearService\.delete_gear_batch' -or $gearServiceSource -notmatch 'local max_operations = 40') {
+		throw "The audited inventory-fetch or bounded batch-delete gear service contract has changed."
+	}
 
 	if (
 		$itemsSource -notmatch 'Items\.weapon_lore_mark_name' -or

@@ -20,6 +20,201 @@ return {
 	prioritize_equipped_favorites_inventory_label = {
 		en = "Equipped and favorited items at the top",
 	},
+	inventory_sorting_inventory_label = {
+		en = "Sorting",
+	},
+	inventory_discard_management_inventory_label = {
+		en = "Manual/Automated Item Discard Management",
+	},
+	inventory_manual_discard_management_inventory_label = {
+		en = "Manual Item Discard Management",
+	},
+	inventory_automated_discard_management_inventory_label = {
+		en = "Automated Item Discard Management",
+	},
+	experimental_quick_discard_group = {
+		en = "Manual/Automated Item Discard Management",
+	},
+	enable_experimental_quick_discard = {
+		en = "Show quick-discard controls in inventory",
+	},
+	enable_experimental_quick_discard_tooltip = {
+		en = "Adds opt-in discard-management controls below the inventory sorting toggle after the inventory is reopened. Manual mode remains the default.",
+	},
+	quick_discard_mode = {
+		en = "Discard mode",
+	},
+	quick_discard_mode_tooltip = {
+		en = "Manual only discards when you press the inventory button and confirm. Automated performs one protected cleanup pass after each Morningstar entry, following a five-second readiness delay. The manual button remains available in either mode.",
+	},
+	quick_discard_mode_manual = {
+		en = "Manual",
+	},
+	quick_discard_mode_automatic = {
+		en = "Automated",
+	},
+	quick_discard_skip_automatic_confirmation = {
+		en = "Skip confirmation prompts",
+	},
+	quick_discard_skip_automatic_confirmation_tooltip = {
+		en = "Automated mode only. When enabled, the once-per-Morningstar cleanup permanently discards all currently eligible items without asking first. The manual inventory button always retains its confirmation.",
+	},
+	quick_discard_rarity = {
+		en = "Discard rarity threshold",
+	},
+	quick_discard_rarity_tooltip = {
+		en = "Only items at this rarity or below are considered. The compact selector in the inventory cycles through the same saved value.",
+	},
+	quick_discard_rarity_1 = {
+		en = "Profane",
+	},
+	quick_discard_rarity_2 = {
+		en = "Redeemed",
+	},
+	quick_discard_rarity_3 = {
+		en = "Anointed",
+	},
+	quick_discard_rarity_4 = {
+		en = "Exalted",
+	},
+	quick_discard_rarity_5 = {
+		en = "Transcendent",
+	},
+	quick_discard_max_item_level = {
+		en = "Maximum item level to discard",
+	},
+	quick_discard_max_item_level_tooltip = {
+		en = "Items above this displayed item level are protected even when their rarity matches. Set this conservatively while testing the feature.",
+	},
+	quick_discard_include_melee = {
+		en = "Allow melee weapons",
+	},
+	quick_discard_include_ranged = {
+		en = "Allow ranged weapons",
+	},
+	quick_discard_include_curios = {
+		en = "Allow Curios",
+	},
+	quick_discard_protect_perfect_weapons = {
+		en = "Do not discard perfect-roll weapons",
+	},
+	quick_discard_protect_perfect_weapons_tooltip = {
+		en = "Protects weapons that already have, or Darktide's maximum-expertise preview predicts will have, four displayed attributes at 80 plus one at 60 or higher. A completed raw 380 allocation can display 381 or 382 because each attribute is rounded independently.",
+	},
+	quick_discard_protect_high_level_curios = {
+		en = "Protect high-level Curios",
+	},
+	quick_discard_protect_high_level_curios_tooltip = {
+		en = "Protects Curios at or above the configured item-level threshold, regardless of rarity.",
+	},
+	quick_discard_curio_protection_level = {
+		en = "Curio protection level",
+	},
+	quick_discard_curio_protection_level_tooltip = {
+		en = "Curios at or above this displayed item level are never selected by quick discard. The default is 410.",
+	},
+	quick_discard_show_type_breakdown = {
+		en = "Show equipment-type counts in confirmation",
+	},
+	quick_discard_show_type_breakdown_tooltip = {
+		en = "Adds melee weapon, ranged weapon and Curio counts to each rarity line in the quick-discard confirmation. This presentation option is available only in mod options and is enabled by default.",
+	},
+	quick_discard_show_summary_notification = {
+		en = "Show discarded-items notification",
+	},
+	quick_discard_show_summary_notification_tooltip = {
+		en = "Shows a native notification after a Better Inventory manual or automated discard, with discarded item counts colored by rarity.",
+	},
+	quick_discard_inventory_prefix = {
+		en = "Discard all",
+	},
+	quick_discard_inventory_mode = {
+		en = "Mode",
+	},
+	quick_discard_inventory_suffix = {
+		en = "and below",
+	},
+	quick_discard_inventory_action = {
+		en = "CLICK TO DISCARD",
+	},
+	quick_discard_inventory_max_level = {
+		en = "Maximum item level",
+	},
+	quick_discard_inventory_melee = {
+		en = "Melee",
+	},
+	quick_discard_inventory_ranged = {
+		en = "Ranged",
+	},
+	quick_discard_inventory_curios = {
+		en = "Curios",
+	},
+	quick_discard_inventory_curio_level = {
+		en = "Curio protection level",
+	},
+	quick_discard_inventory_protect_weapons = {
+		en = "Do not discard perfect-roll weapons",
+	},
+	quick_discard_inventory_protect_curios = {
+		en = "Protect high-level Curios",
+	},
+	quick_discard_automatic_confirmation_title = {
+		en = "Confirm automated discard",
+	},
+	quick_discard_confirmation_title = {
+		en = "Confirm quick discard",
+	},
+	quick_discard_confirmation_description = {
+		en = "non-favorited, non-equipped item(s) from the enabled equipment types will be permanently discarded. Protected items are excluded.",
+	},
+	quick_discard_summary_melee_singular = {
+		en = "melee weapon",
+	},
+	quick_discard_summary_melee_plural = {
+		en = "melee weapons",
+	},
+	quick_discard_summary_ranged_singular = {
+		en = "ranged weapon",
+	},
+	quick_discard_summary_ranged_plural = {
+		en = "ranged weapons",
+	},
+	quick_discard_summary_curio_singular = {
+		en = "Curio",
+	},
+	quick_discard_summary_curio_plural = {
+		en = "Curios",
+	},
+	quick_discard_summary_and = {
+		en = "and",
+	},
+	quick_discard_confirmation_warning = {
+		en = "This action cannot be undone.",
+	},
+	quick_discard_confirmation_yes = {
+		en = "Yes, discard items",
+	},
+	quick_discard_confirmation_no = {
+		en = "No, keep items",
+	},
+	quick_discard_nothing_title = {
+		en = "No eligible items",
+	},
+	quick_discard_nothing_description = {
+		en = "No items in this inventory match the current quick-discard filters. Favorited, equipped and protected items are always excluded.",
+	},
+	quick_discard_automatic_nothing_description = {
+		en = "The automated Morningstar scan completed, but no items match the current discard filters. Favorited, equipped and protected items are always excluded.",
+	},
+	quick_discard_notification_title = {
+		en = "Discarded items:",
+	},
+	quick_discard_notification_items = {
+		en = "items",
+	},
+	quick_discard_close = {
+		en = "Close",
+	},
 	enable_melee_inventory = {
 		en = "Melee weapons",
 	},
@@ -154,6 +349,15 @@ return {
 	},
 	option_requires_detailed_curio_profile = {
 		en = "Select the All four stats Curio profile to use this option.",
+	},
+	option_requires_experimental_quick_discard = {
+		en = "Enable the experimental inventory quick-discard controls to use this option.",
+	},
+	option_requires_automatic_discard_mode = {
+		en = "Select Automatic discard mode to use this option.",
+	},
+	option_requires_curio_discard_protection = {
+		en = "Enable high-level Curio protection to set its threshold.",
 	},
 	icon_darkness = {
 		en = "Icon darkness (%%)",

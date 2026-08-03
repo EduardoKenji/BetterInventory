@@ -230,6 +230,8 @@ local function refresh_option_dependencies()
 	local weapon_rank_symbols_enabled = weapon_perk_ranks_enabled or weapon_blessing_ranked_text_enabled
 	local weapon_perk_blessing_sections_enabled = weapon_perks_enabled and weapon_blessings_enabled
 	local detailed_curio_profile = mod:get("curio_display_profile") == "detailed"
+	local quick_discard_enabled = mod:get("enable_experimental_quick_discard") == true
+	local quick_discard_reason = mod:localize("option_requires_experimental_quick_discard")
 
 	set_option_enabled(option_dependency_entries.expand_curio_inventory_window, window_expansion_enabled, expansion_reason)
 	set_option_enabled(option_dependency_entries.weapon_extra_width_column_threshold, window_expansion_enabled, expansion_reason)
@@ -260,6 +262,30 @@ local function refresh_option_dependencies()
 	set_option_enabled(option_dependency_entries.weapon_perk_blessing_spacing, weapon_perk_blessing_sections_enabled, mod:localize("option_requires_perk_and_blessing_sections"))
 	set_option_enabled(option_dependency_entries.curio_secondary_stat_font_size, detailed_curio_profile, mod:localize("option_requires_detailed_curio_profile"))
 	set_option_enabled(option_dependency_entries.curio_primary_secondary_spacing, detailed_curio_profile, mod:localize("option_requires_detailed_curio_profile"))
+
+	for _, setting_id in ipairs({
+		"quick_discard_mode",
+		"quick_discard_rarity",
+		"quick_discard_max_item_level",
+		"quick_discard_include_melee",
+		"quick_discard_include_ranged",
+		"quick_discard_include_curios",
+		"quick_discard_protect_perfect_weapons",
+		"quick_discard_protect_high_level_curios",
+		"quick_discard_show_type_breakdown",
+		"quick_discard_show_summary_notification",
+	}) do
+		set_option_enabled(option_dependency_entries[setting_id], quick_discard_enabled, quick_discard_reason)
+	end
+
+	local automatic_discard_enabled = quick_discard_enabled and mod:get("quick_discard_mode") == "automatic"
+	local automatic_discard_reason = quick_discard_enabled and mod:localize("option_requires_automatic_discard_mode") or quick_discard_reason
+
+	set_option_enabled(option_dependency_entries.quick_discard_skip_automatic_confirmation, automatic_discard_enabled, automatic_discard_reason)
+
+	local curio_protection_enabled = quick_discard_enabled and mod:get("quick_discard_protect_high_level_curios") ~= false
+
+	set_option_enabled(option_dependency_entries.quick_discard_curio_protection_level, curio_protection_enabled, quick_discard_enabled and mod:localize("option_requires_curio_discard_protection") or quick_discard_reason)
 end
 
 local function bind_option_dependencies(options_templates)
@@ -309,6 +335,18 @@ local function bind_option_dependencies(options_templates)
 		"weapon_perk_blessing_spacing",
 		"curio_secondary_stat_font_size",
 		"curio_primary_secondary_spacing",
+		"quick_discard_mode",
+		"quick_discard_skip_automatic_confirmation",
+		"quick_discard_rarity",
+		"quick_discard_max_item_level",
+		"quick_discard_include_melee",
+		"quick_discard_include_ranged",
+		"quick_discard_include_curios",
+		"quick_discard_protect_perfect_weapons",
+		"quick_discard_protect_high_level_curios",
+		"quick_discard_curio_protection_level",
+		"quick_discard_show_type_breakdown",
+		"quick_discard_show_summary_notification",
 	}) do
 		setting_by_title[mod:localize(setting_id)] = setting_id
 	end
@@ -409,13 +447,37 @@ function mod.on_setting_changed(setting_id)
 		end
 	end
 
-	if setting_id == "enable_grid_layout" or setting_id == "columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "weapon_extra_width_column_threshold" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_armoury_requisition_grid" or setting_id == "expand_armoury_requisition_window" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "curio_display_profile" then
+	if setting_id == "enable_grid_layout" or setting_id == "columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "weapon_extra_width_column_threshold" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_armoury_requisition_grid" or setting_id == "expand_armoury_requisition_window" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "curio_display_profile" or setting_id == "enable_experimental_quick_discard" or setting_id == "quick_discard_mode" or setting_id == "quick_discard_protect_high_level_curios" then
 		refresh_option_dependencies()
 	end
 
 	if setting_id == "prioritize_equipped_favorites" then
 		Features.sync_inventory_sort_setting(mod, Layout)
 	end
+
+	if type(setting_id) == "string" and string.sub(setting_id, 1, 14) == "quick_discard_" then
+		Features.sync_quick_discard_settings(mod, Layout)
+	end
+end
+
+function mod.on_game_state_changed(status, state_name)
+	if state_name ~= "GameplayStateRun" then
+		return
+	end
+
+	if status == "enter" then
+		Features.begin_morningstar_auto_discard(mod)
+	elseif status == "exit" then
+		Features.cancel_morningstar_auto_discard()
+	end
+end
+
+function mod.update(dt)
+	Features.update_morningstar_auto_discard(mod, dt)
+end
+
+function mod.on_disabled()
+	Features.cancel_morningstar_auto_discard()
 end
 
 local dmf_mod = get_mod("DMF")
