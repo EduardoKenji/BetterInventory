@@ -154,8 +154,15 @@ def main() -> None:
     )
     adjusted = features.add_inventory_sort_toggle_definition(mod, layout, definitions, view)
     toggle_id = "better_inventory_sort_priority"
+    sort_label_id = "better_inventory_sort_label"
     assert adjusted.scenegraph_definition[toggle_id].parent == "weapon_stats_pivot"
-    assert adjusted.scenegraph_definition[toggle_id].position[2] == 500
+    assert adjusted.scenegraph_definition[sort_label_id].position[2] == 500
+    assert adjusted.scenegraph_definition[toggle_id].position[1] == 15
+    assert adjusted.scenegraph_definition[toggle_id].position[2] == 528
+    assert (
+        adjusted.widget_definitions[sort_label_id].content.label
+        == "inventory_sorting_inventory_label"
+    )
     assert (
         adjusted.widget_definitions[toggle_id].content.label
         == "prioritize_equipped_favorites_inventory_label"
@@ -208,8 +215,10 @@ def main() -> None:
         }
     )
     features.update_inventory_sort_toggle(mod, layout, view)
-    assert adjusted.scenegraph_definition[toggle_id].position[1] == 0
-    assert adjusted.scenegraph_definition[toggle_id].position[2] == 474
+    assert adjusted.scenegraph_definition[sort_label_id].position[1] == 0
+    assert adjusted.scenegraph_definition[sort_label_id].position[2] == 474
+    assert adjusted.scenegraph_definition[toggle_id].position[1] == 15
+    assert adjusted.scenegraph_definition[toggle_id].position[2] == 502
     assert view.position_set_with_view_api is True
     assert view._update_scenegraph is True
 
@@ -237,8 +246,10 @@ def main() -> None:
         }
     )
     features.update_inventory_sort_toggle(mod, layout, melee_view)
-    assert melee_definitions.scenegraph_definition[toggle_id].position[1] == 20
-    assert melee_definitions.scenegraph_definition[toggle_id].position[2] == 285
+    assert melee_definitions.scenegraph_definition[sort_label_id].position[1] == 20
+    assert melee_definitions.scenegraph_definition[sort_label_id].position[2] == 285
+    assert melee_definitions.scenegraph_definition[toggle_id].position[1] == 35
+    assert melee_definitions.scenegraph_definition[toggle_id].position[2] == 313
 
     ranged_view = lua.execute(
         r"""
@@ -439,6 +450,21 @@ def main() -> None:
     )
     assert experimental_definitions.scenegraph_definition["better_inventory_quick_discard"] is not None
     assert experimental_definitions.scenegraph_definition["better_inventory_discard_protection"] is not None
+    assert experimental_definitions.scenegraph_definition["better_inventory_discard_label"] is not None
+    assert (
+        experimental_definitions.widget_definitions["better_inventory_discard_label"].content.label
+        == "inventory_discard_management_inventory_label"
+    )
+    quick_discard_passes = experimental_definitions.widget_definitions[
+        "better_inventory_quick_discard"
+    ].pass_template
+    rarity_hotspot_pass = next(
+        quick_discard_passes[index]
+        for index in range(1, len(quick_discard_passes) + 1)
+        if quick_discard_passes[index].content_id == "rarity_hotspot"
+    )
+    nested_visible_content = lua.eval("{parent = {visible = true}}")
+    assert rarity_hotspot_pass.visibility_function(nested_visible_content) is True
 
     features.unregister_inventory_view(melee_view)
     mod.settings.prioritize_equipped_favorites = False

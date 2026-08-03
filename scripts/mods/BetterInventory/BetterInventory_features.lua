@@ -5,6 +5,8 @@ local UISoundEvents = require("scripts/settings/ui/ui_sound_events")
 
 local Features = {}
 local INVENTORY_SORT_TOGGLE_ID = "better_inventory_sort_priority"
+local INVENTORY_SORT_LABEL_ID = "better_inventory_sort_label"
+local INVENTORY_DISCARD_LABEL_ID = "better_inventory_discard_label"
 local INVENTORY_QUICK_DISCARD_ID = "better_inventory_quick_discard"
 local INVENTORY_DISCARD_PROTECTION_ID = "better_inventory_discard_protection"
 local registered_inventory_views = setmetatable({}, {
@@ -128,7 +130,7 @@ end
 
 local function quick_discard_passes()
 	local function visible(content)
-		return content.visible
+		return content.visible or content.parent and content.parent.visible
 	end
 
 	return {
@@ -337,6 +339,30 @@ local function quick_discard_passes()
 	}
 end
 
+local function section_label_passes()
+	return {
+		{
+			pass_type = "text",
+			style_id = "label",
+			value_id = "label",
+			style = {
+				font_size = 19,
+				font_type = "proxima_nova_bold",
+				horizontal_alignment = "left",
+				text_horizontal_alignment = "left",
+				text_vertical_alignment = "center",
+				vertical_alignment = "center",
+				text_color = Color.terminal_text_header(255, true),
+				offset = {
+					0,
+					0,
+					3,
+				},
+			},
+		},
+	}
+end
+
 Features.add_inventory_sort_toggle_definition = function(mod, layout, definitions, view)
 	local slot_kind = inventory_slot_kind(layout, view)
 
@@ -353,18 +379,40 @@ Features.add_inventory_sort_toggle_definition = function(mod, layout, definition
 	end
 
 	local is_curio = slot_kind == "curio"
+	local parent = is_curio and "weapon_stats_pivot" or "weapon_compare_stats_pivot"
+	local width = is_curio and 530 or 420
+	local initial_x = is_curio and 0 or 20
+	local initial_y = is_curio and 500 or 320
+
+	scenegraph[INVENTORY_SORT_LABEL_ID] = {
+		horizontal_alignment = "left",
+		parent = parent,
+		vertical_alignment = "top",
+		size = {
+			width,
+			26,
+		},
+		position = {
+			initial_x,
+			initial_y,
+			20,
+		},
+	}
+	widget_definitions[INVENTORY_SORT_LABEL_ID] = UIWidget.create_definition(section_label_passes(), INVENTORY_SORT_LABEL_ID, {
+		label = mod:localize("inventory_sorting_inventory_label"),
+	})
 
 	scenegraph[INVENTORY_SORT_TOGGLE_ID] = {
 		horizontal_alignment = "left",
-		parent = is_curio and "weapon_stats_pivot" or "weapon_compare_stats_pivot",
+		parent = parent,
 		vertical_alignment = "top",
 		size = {
-			is_curio and 530 or 420,
+			width - 15,
 			32,
 		},
 		position = {
-			is_curio and 0 or 20,
-			is_curio and 500 or 320,
+			initial_x + 15,
+			initial_y + 28,
 			20,
 		},
 	}
@@ -374,17 +422,35 @@ Features.add_inventory_sort_toggle_definition = function(mod, layout, definition
 	})
 
 	if mod:get("enable_experimental_quick_discard") == true then
-		scenegraph[INVENTORY_QUICK_DISCARD_ID] = {
+		scenegraph[INVENTORY_DISCARD_LABEL_ID] = {
 			horizontal_alignment = "left",
-			parent = is_curio and "weapon_stats_pivot" or "weapon_compare_stats_pivot",
+			parent = parent,
 			vertical_alignment = "top",
 			size = {
-				is_curio and 530 or 420,
+				width,
+				26,
+			},
+			position = {
+				initial_x,
+				initial_y + 70,
+				20,
+			},
+		}
+		widget_definitions[INVENTORY_DISCARD_LABEL_ID] = UIWidget.create_definition(section_label_passes(), INVENTORY_DISCARD_LABEL_ID, {
+			label = mod:localize("inventory_discard_management_inventory_label"),
+		})
+
+		scenegraph[INVENTORY_QUICK_DISCARD_ID] = {
+			horizontal_alignment = "left",
+			parent = parent,
+			vertical_alignment = "top",
+			size = {
+				width,
 				32,
 			},
 			position = {
-				is_curio and 0 or 20,
-				is_curio and 542 or 362,
+				initial_x,
+				initial_y + 100,
 				20,
 			},
 		}
@@ -400,15 +466,15 @@ Features.add_inventory_sort_toggle_definition = function(mod, layout, definition
 
 		scenegraph[INVENTORY_DISCARD_PROTECTION_ID] = {
 			horizontal_alignment = "left",
-			parent = is_curio and "weapon_stats_pivot" or "weapon_compare_stats_pivot",
+			parent = parent,
 			vertical_alignment = "top",
 			size = {
-				is_curio and 530 or 420,
+				width - 15,
 				32,
 			},
 			position = {
-				is_curio and 0 or 20,
-				is_curio and 584 or 404,
+				initial_x + 15,
+				initial_y + 140,
 				20,
 			},
 		}
@@ -798,8 +864,9 @@ local function update_quick_discard_content(mod, slot_kind, view, base_y)
 
 	local x = is_curio and 0 or 20
 
-	set_inventory_control_position(view, INVENTORY_QUICK_DISCARD_ID, x, base_y + 42)
-	set_inventory_control_position(view, INVENTORY_DISCARD_PROTECTION_ID, x, base_y + 84)
+	set_inventory_control_position(view, INVENTORY_DISCARD_LABEL_ID, x, base_y + 70)
+	set_inventory_control_position(view, INVENTORY_QUICK_DISCARD_ID, x, base_y + 100)
+	set_inventory_control_position(view, INVENTORY_DISCARD_PROTECTION_ID, x + 15, base_y + 140)
 end
 
 Features.update_inventory_sort_toggle = function(mod, layout, view)
@@ -840,7 +907,8 @@ Features.update_inventory_sort_toggle = function(mod, layout, view)
 
 		local y = (content_height or grid_size and grid_size[2] or 480) + 15
 
-		set_inventory_sort_toggle_position(view, position, 0, y)
+		set_inventory_control_position(view, INVENTORY_SORT_LABEL_ID, 0, y)
+		set_inventory_sort_toggle_position(view, position, 15, y + 28)
 		update_quick_discard_content(mod, slot_kind, view, y)
 	else
 		local menu_settings = view._weapon_options_element and view._weapon_options_element._menu_settings
@@ -848,7 +916,8 @@ Features.update_inventory_sort_toggle = function(mod, layout, view)
 
 		local y = (grid_size and grid_size[2] or 300) + 15
 
-		set_inventory_sort_toggle_position(view, position, 20, y)
+		set_inventory_control_position(view, INVENTORY_SORT_LABEL_ID, 20, y)
+		set_inventory_sort_toggle_position(view, position, 35, y + 28)
 		update_quick_discard_content(mod, slot_kind, view, y)
 	end
 end

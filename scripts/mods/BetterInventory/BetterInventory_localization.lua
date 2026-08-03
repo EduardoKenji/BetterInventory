@@ -20,6 +20,12 @@ return {
 	prioritize_equipped_favorites_inventory_label = {
 		en = "Equipped and favorited items at the top",
 	},
+	inventory_sorting_inventory_label = {
+		en = "Sorting",
+	},
+	inventory_discard_management_inventory_label = {
+		en = "Item Discard Management",
+	},
 	experimental_quick_discard_group = {
 		en = "Experimental quick discard",
 	},
