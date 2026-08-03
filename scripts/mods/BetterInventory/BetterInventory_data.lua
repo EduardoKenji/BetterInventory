@@ -272,10 +272,24 @@ return {
 						default_value = true,
 					},
 					{
-						setting_id = "show_weapon_blessings",
-						tooltip = "show_weapon_blessings_tooltip",
-						type = "checkbox",
-						default_value = true,
+						setting_id = "weapon_blessing_display_mode",
+						tooltip = "weapon_blessing_display_mode_tooltip",
+						type = "dropdown",
+						default_value = "icons",
+						options = {
+							{
+								text = "weapon_blessing_display_mode_icons",
+								value = "icons",
+							},
+							{
+								text = "weapon_blessing_display_mode_text",
+								value = "text",
+							},
+							{
+								text = "weapon_blessing_display_mode_off",
+								value = "off",
+							},
+						},
 					},
 					{
 						setting_id = "blessing_icon_size",

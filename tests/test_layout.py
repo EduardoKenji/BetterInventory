@@ -51,6 +51,13 @@ def main() -> None:
 		TestText = {}
 		TestItems = {}
 		TestMasterItems = {}
+		TestRankSettings = {
+			[0] = { display_name = "n/a" },
+			[1] = { display_name = "I" },
+			[2] = { display_name = "II" },
+			[3] = { display_name = "III" },
+			[4] = { display_name = "IV" },
+		}
 		TestTraitDescriptions = {
 			gadget_innate_health_increase = "+19% Max Health",
 			gadget_innate_toughness_increase = "+16% Toughness",
@@ -159,6 +166,10 @@ def main() -> None:
 			return no_symbol and "460" or "POWER 460", true
 		end
 
+		function TestItems.display_name(item)
+			return item and (item.display_name or item.name) or "n/a"
+		end
+
 		function TestItems.trait_description(item, rarity, value)
 			local trait_id = item.trait or item.name
 
@@ -175,6 +186,7 @@ def main() -> None:
 
 		function TestMasterItems.get_item(item_id)
 			return {
+				display_name = item_id == "blessing_one" and "Surgical" or item_id == "blessing_two" and "Weight of Fire" or item_id,
 				name = item_id,
 				trait = TestTraitByMasterId[item_id] or item_id,
 				icon = "icon/" .. item_id,
@@ -192,6 +204,10 @@ def main() -> None:
 
 			if path == "scripts/backend/master_items" then
 				return TestMasterItems
+			end
+
+			if path == "scripts/settings/item/rank_settings" then
+				return TestRankSettings
 			end
 
 			error("Unexpected test require: " .. tostring(path))
@@ -216,7 +232,7 @@ def main() -> None:
                 show_pattern_mark = false,
                 show_rarity_name = false,
 				show_rarity_tag = true,
-				show_weapon_blessings = true,
+				weapon_blessing_display_mode = "icons",
 				blessing_icon_size = 34,
 				show_weapon_perks = false,
 				weapon_perk_compression = "compression",
@@ -928,6 +944,39 @@ def main() -> None:
     large_blessing_pass = blueprint_pass(large_blessing_blueprint, "better_inventory_blessing_1")
     assert (large_blessing_pass.style.size[1], large_blessing_pass.style.size[2]) == (42, 42)
     mod.settings.blessing_icon_size = 34
+
+    mod.settings.weapon_blessing_display_mode = "text"
+    text_blessing_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, text_blessing_blueprint, 640)
+    text_blessing_styles = {
+        "display_name": blueprint_pass(text_blessing_blueprint, "display_name").style,
+    }
+    for index in range(1, 3):
+        style_id = f"better_inventory_blessing_text_{index}"
+        text_blessing_styles[style_id] = blueprint_pass(
+            text_blessing_blueprint, style_id
+        ).style
+    text_blessing_widget = lua.table_from(
+        {"content": lua.table_from({}), "style": lua.table_from(text_blessing_styles)}
+    )
+    text_blessing_blueprint.init(
+        None,
+        text_blessing_widget,
+        narrow_weapon_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        text_blessing_blueprint,
+    )
+    assert text_blessing_widget.content.better_inventory_blessing_text_1 == "III Surgical"
+    assert text_blessing_widget.content.better_inventory_blessing_text_2 == "IV Weight of Fire"
+    assert text_blessing_widget.content.better_inventory_full_blessing_text_1 == "III Surgical"
+    assert text_blessing_widget.content.better_inventory_full_blessing_text_2 == "IV Weight of Fire"
+    assert layout.card_height(mod, store_configuration) == 114
+    mod.settings.weapon_blessing_display_mode = "off"
+    assert layout.card_height(mod, store_configuration) == 110
+    mod.settings.weapon_blessing_display_mode = "icons"
 
     mod.settings.show_item_level_icon = False
     no_power_icon_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)

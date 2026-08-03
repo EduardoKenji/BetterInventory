@@ -138,7 +138,7 @@ return {
 		en = "Enable perk level symbols to set their size.",
 	},
 	option_requires_weapon_blessings = {
-		en = "Enable weapon blessing symbols to use this option.",
+		en = "Select blessing Icons to use this option.",
 	},
 	option_requires_detailed_curio_profile = {
 		en = "Select the All four stats Curio profile to use this option.",
@@ -167,11 +167,20 @@ return {
 	show_rarity_tag = {
 		en = "Show rarity colour strip",
 	},
-	show_weapon_blessings = {
-		en = "Show weapon blessing symbols",
+	weapon_blessing_display_mode = {
+		en = "Weapon blessing display",
 	},
-	show_weapon_blessings_tooltip = {
-		en = "Shows up to two blessing symbols on weapon cards. Enabled by default; Darktide's ranked frames include the blessing level.",
+	weapon_blessing_display_mode_tooltip = {
+		en = "Choose ranked blessing icons, compact one-line blessing names with Roman ranks, or no blessing content. Automatic card height reserves the required space.",
+	},
+	weapon_blessing_display_mode_icons = {
+		en = "Icons",
+	},
+	weapon_blessing_display_mode_text = {
+		en = "Text lines",
+	},
+	weapon_blessing_display_mode_off = {
+		en = "Off",
 	},
 	blessing_icon_size = {
 		en = "Blessing icon size",

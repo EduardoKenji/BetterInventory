@@ -207,7 +207,7 @@ local function refresh_option_dependencies()
 	local armoury_target_reason = armoury_grid_enabled and mod:localize("option_requires_armoury_expansion") or armoury_reason
 	local weapon_perks_enabled = mod:get("show_weapon_perks") == true
 	local weapon_perk_ranks_enabled = weapon_perks_enabled and mod:get("show_weapon_perk_rank_symbols") == true
-	local weapon_blessings_enabled = mod:get("show_weapon_blessings") == true
+	local weapon_blessing_icons_enabled = mod:get("weapon_blessing_display_mode") == "icons"
 	local detailed_curio_profile = mod:get("curio_display_profile") == "detailed"
 
 	set_option_enabled(option_dependency_entries.expand_curio_inventory_window, window_expansion_enabled, expansion_reason)
@@ -223,8 +223,8 @@ local function refresh_option_dependencies()
 	set_option_enabled(option_dependency_entries.weapon_perk_text_color_r, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
 	set_option_enabled(option_dependency_entries.weapon_perk_text_color_g, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
 	set_option_enabled(option_dependency_entries.weapon_perk_text_color_b, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
-	set_option_enabled(option_dependency_entries.blessing_icon_size, weapon_blessings_enabled, mod:localize("option_requires_weapon_blessings"))
-	set_option_enabled(option_dependency_entries.blessing_icon_spacing, weapon_blessings_enabled, mod:localize("option_requires_weapon_blessings"))
+	set_option_enabled(option_dependency_entries.blessing_icon_size, weapon_blessing_icons_enabled, mod:localize("option_requires_weapon_blessings"))
+	set_option_enabled(option_dependency_entries.blessing_icon_spacing, weapon_blessing_icons_enabled, mod:localize("option_requires_weapon_blessings"))
 	set_option_enabled(option_dependency_entries.curio_secondary_stat_font_size, detailed_curio_profile, mod:localize("option_requires_detailed_curio_profile"))
 	set_option_enabled(option_dependency_entries.curio_primary_secondary_spacing, detailed_curio_profile, mod:localize("option_requires_detailed_curio_profile"))
 end
@@ -334,6 +334,15 @@ function mod.on_enabled()
 		mod:set("_inventory_icon_size_defaults_v2_migrated", true)
 	end
 
+	-- Replace the former blessing checkbox with a three-state display mode while
+	-- preserving an explicit disabled choice from existing installations.
+	if not mod:get("_weapon_blessing_display_mode_v1_migrated") then
+		local previous_show_blessings = mod:get("show_weapon_blessings")
+
+		mod:set("weapon_blessing_display_mode", previous_show_blessings == false and "off" or "icons")
+		mod:set("_weapon_blessing_display_mode_v1_migrated", true)
+	end
+
 	for i = 1, #COLOR_TARGETS do
 		apply_color_preset(COLOR_TARGETS[i])
 	end
@@ -352,7 +361,7 @@ function mod.on_setting_changed(setting_id)
 		end
 	end
 
-	if setting_id == "enable_grid_layout" or setting_id == "columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_armoury_requisition_grid" or setting_id == "expand_armoury_requisition_window" or setting_id == "show_weapon_blessings" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "curio_display_profile" then
+	if setting_id == "enable_grid_layout" or setting_id == "columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_armoury_requisition_grid" or setting_id == "expand_armoury_requisition_window" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "curio_display_profile" then
 		refresh_option_dependencies()
 	end
 

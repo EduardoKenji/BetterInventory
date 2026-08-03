@@ -1,6 +1,7 @@
 local Text = require("scripts/utilities/ui/text")
 local Items = require("scripts/utilities/items")
 local MasterItems = require("scripts/backend/master_items")
+local RankSettings = require("scripts/settings/item/rank_settings")
 
 local Layout = {}
 local INVENTORY_CANVAS_WIDTH = 1920
@@ -18,6 +19,7 @@ local DEFAULT_BLESSING_ICON_SIZE = 36
 local PERK_RANK_GAP = 3
 local STORE_FOOTER_HEIGHT = 34
 local WEAPON_PERK_COUNT = 2
+local WEAPON_BLESSING_COUNT = 2
 local CURIO_PRIMARY_COLOR_DEFINITIONS = {
 	gadget_innate_health_increase = {
 		prefix = "curio_health_color",
@@ -335,6 +337,29 @@ local function blessing_icon_size(mod)
 	return math.max(20, math.min(48, setting(mod, "blessing_icon_size", DEFAULT_BLESSING_ICON_SIZE)))
 end
 
+local function weapon_blessing_display_mode(mod)
+	local mode = setting(mod, "weapon_blessing_display_mode", "icons")
+
+	-- Retain hot-reload compatibility with the retired checkbox until the
+	-- one-time settings migration has run.
+	if mode == true then
+		return "icons"
+	elseif mode == false then
+		return "off"
+	elseif mode == "text" or mode == "off" then
+		return mode
+	end
+
+	return "icons"
+end
+
+local function blessing_rank_name(rarity)
+	local numeric_rarity = math.floor(tonumber(rarity) or 0)
+	local rank = RankSettings[numeric_rarity]
+
+	return rank and rank.display_name ~= "n/a" and rank.display_name or ""
+end
+
 local function weapon_perk_rank_icon_size(mod)
 	return math.max(12, math.min(32, setting(mod, "weapon_perk_rank_icon_size", DEFAULT_PERK_RANK_SIZE)))
 end
@@ -521,7 +546,7 @@ local function set_height(pass, height)
 	end
 end
 
-local function resolved_trait_data(entry, include_textures, include_perk_rank)
+local function resolved_trait_data(entry, include_textures, include_perk_rank, include_display_name)
 	if type(entry) ~= "table" or type(entry.id) ~= "string" then
 		return
 	end
@@ -539,7 +564,14 @@ local function resolved_trait_data(entry, include_textures, include_perk_rank)
 		-- used by gadget trait templates lives on the resolved item's `trait`
 		-- field (for example, gadget_innate_health_increase).
 		id = type(trait_item.trait) == "string" and trait_item.trait or entry.id,
+		rarity = entry.rarity,
 	}
+
+	if include_display_name then
+		local display_name_ok, display_name = pcall(Items.display_name, trait_item)
+
+		data.display_name = display_name_ok and type(display_name) == "string" and display_name or ""
+	end
 
 	if include_textures then
 		local textures_ok, icon, frame = pcall(Items.trait_textures, trait_item, entry.rarity)
@@ -561,15 +593,17 @@ local function resolved_trait_data(entry, include_textures, include_perk_rank)
 	return data
 end
 
-local function populate_card_content(mod, widget, element, show_weapon_blessings, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_primary)
+local function populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_primary)
 	local content = widget and widget.content
 
 	if not content then
 		return
 	end
 
-	for i = 1, 2 do
+	for i = 1, WEAPON_BLESSING_COUNT do
 		content["better_inventory_blessing_" .. i] = nil
+		content["better_inventory_blessing_text_" .. i] = ""
+		content["better_inventory_full_blessing_text_" .. i] = nil
 		content["better_inventory_weapon_perk_" .. i] = ""
 		content["better_inventory_full_weapon_perk_" .. i] = nil
 		content["better_inventory_weapon_perk_rank_" .. i] = nil
@@ -585,14 +619,26 @@ local function populate_card_content(mod, widget, element, show_weapon_blessings
 	local item = item_from_element(element or content.element)
 
 	if is_weapon(item) then
-		if show_weapon_blessings then
+		if blessing_display_mode ~= "off" then
 			local traits = item.traits
 
-			for i = 1, math.min(2, traits and #traits or 0) do
-				local data = resolved_trait_data(traits[i], true)
+			for i = 1, math.min(WEAPON_BLESSING_COUNT, traits and #traits or 0) do
+				local data = resolved_trait_data(traits[i], blessing_display_mode == "icons", false, blessing_display_mode == "text")
 
-				if data and data.icon and data.frame then
+				if blessing_display_mode == "icons" and data and data.icon and data.frame then
 					content["better_inventory_blessing_" .. i] = data
+				elseif blessing_display_mode == "text" and data then
+					local name = data.display_name
+
+					if name == "" or name == "-" or name == "n/a" then
+						name = data.description
+					end
+
+					if name and name ~= "" then
+						local rank_name = blessing_rank_name(data.rarity)
+
+						content["better_inventory_blessing_text_" .. i] = rank_name ~= "" and rank_name .. " " .. name or name
+					end
 				end
 			end
 		end
@@ -700,6 +746,34 @@ local function add_blessing_pass(pass_template, index, size, x_offset, y_offset)
 				material_values.icon = data.icon
 				material_values.frame = data.frame
 			end
+		end,
+	}
+end
+
+local function add_blessing_text_pass(pass_template, index, options)
+	local content_id = "better_inventory_blessing_text_" .. index
+	local style = table.clone(options.base_style or {})
+
+	style.font_size = options.font_size
+	style.horizontal_alignment = "left"
+	style.vertical_alignment = "bottom"
+	style.text_horizontal_alignment = "left"
+	style.text_vertical_alignment = "bottom"
+	style.word_wrap = false
+	style.offset = options.offset
+	style.size = options.size
+	style.better_inventory_max_text_width = options.size[1]
+	style.better_inventory_preferred_font_size = options.font_size
+	style.text_color = table.clone(options.text_color or DEFAULT_WEAPON_PERK_COLOR)
+
+	pass_template[#pass_template + 1] = {
+		pass_type = "text",
+		style_id = content_id,
+		value = "",
+		value_id = content_id,
+		style = style,
+		visibility_function = function(content)
+			return content and content[content_id] ~= nil and content[content_id] ~= ""
 		end,
 	}
 end
@@ -892,7 +966,7 @@ end
 local function add_custom_content_passes(mod, pass_template, card_width, text_left, base_text_style, configuration)
 	configuration = configuration or {}
 
-	local show_weapon_blessings = setting(mod, "show_weapon_blessings", true)
+	local blessing_display_mode = weapon_blessing_display_mode(mod)
 	local show_weapon_perks = setting(mod, "show_weapon_perks", true)
 	local show_weapon_perk_ranks = show_weapon_perks and setting(mod, "show_weapon_perk_rank_symbols", true)
 	local detailed_curio_profile = setting(mod, "curio_display_profile", "detailed") == "detailed"
@@ -901,24 +975,60 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 	local expertise_font_size = math.max(10, math.min(28, setting(mod, "expertise_font_size", 20)))
 	local bottom_content_height = math.max(30, expertise_font_size + 10)
 	local blessing_size
+	local blessing_text_height
 	local perk_rank_size = weapon_perk_rank_icon_size(mod)
 
-	if show_weapon_blessings then
+	if blessing_display_mode == "icons" then
 		blessing_size = blessing_icon_size(mod)
 		local blessing_gap = math.max(0, math.min(20, setting(mod, "blessing_icon_spacing", 3)))
 		local blessing_spacing = blessing_size + blessing_gap
 		local blessing_left = text_left + (favorite_marker_position == "bottom_left" and 24 or 0)
 		local blessing_y_offset = -(store_footer_height + 3)
 
-		for i = 1, 2 do
+		for i = 1, WEAPON_BLESSING_COUNT do
 			add_blessing_pass(pass_template, i, blessing_size, blessing_left + (i - 1) * blessing_spacing, blessing_y_offset)
+		end
+	elseif blessing_display_mode == "text" then
+		local blessing_font_size = math.max(9, math.min(16, setting(mod, "secondary_text_font_size", 13)))
+		local blessing_line_height = blessing_font_size + 4
+		local blessing_text_left = text_left + (favorite_marker_position == "bottom_left" and 24 or 0)
+		local blessing_text_width = math.max(40, card_width - blessing_text_left - 50)
+		local blessing_text_color = DEFAULT_WEAPON_PERK_COLOR
+
+		blessing_text_height = WEAPON_BLESSING_COUNT * blessing_line_height
+
+		for i = 1, WEAPON_BLESSING_COUNT do
+			local y_offset = -(store_footer_height + 3 + (WEAPON_BLESSING_COUNT - i) * blessing_line_height)
+
+			add_blessing_text_pass(pass_template, i, {
+				base_style = base_text_style,
+				font_size = blessing_font_size,
+				text_color = blessing_text_color,
+				offset = {
+					blessing_text_left,
+					y_offset,
+					11,
+				},
+				size = {
+					blessing_text_width,
+					blessing_line_height,
+				},
+			})
 		end
 	end
 
 	if configuration.store_item then
-		bottom_content_height = store_footer_height + (show_weapon_blessings and blessing_size + 6 or 0)
-	elseif show_weapon_blessings then
+		if blessing_display_mode == "icons" then
+			bottom_content_height = store_footer_height + blessing_size + 6
+		elseif blessing_display_mode == "text" then
+			bottom_content_height = store_footer_height + blessing_text_height + 6
+		else
+			bottom_content_height = store_footer_height
+		end
+	elseif blessing_display_mode == "icons" then
 		bottom_content_height = math.max(bottom_content_height, blessing_size + 6)
+	elseif blessing_display_mode == "text" then
+		bottom_content_height = math.max(bottom_content_height, blessing_text_height + 6)
 	end
 
 	if show_weapon_perks then
@@ -1188,6 +1298,51 @@ local function fit_curio_stats(parent, widget, ui_renderer)
 	end
 end
 
+local function fit_blessing_text(parent, widget, ui_renderer)
+	local content = widget and widget.content
+	local styles = widget and widget.style
+
+	if not content or not styles then
+		return
+	end
+
+	ui_renderer = ui_renderer or grid_ui_renderer(parent)
+
+	if not ui_renderer then
+		return
+	end
+
+	for i = 1, WEAPON_BLESSING_COUNT do
+		local content_id = "better_inventory_blessing_text_" .. i
+		local style = styles[content_id]
+		local value = content[content_id]
+		local maximum_width = style and (style.better_inventory_max_text_width or style.size and style.size[1])
+
+		if type(value) == "string" and value ~= "" and maximum_width then
+			local preferred_font_size = style.better_inventory_preferred_font_size or style.font_size
+			local minimum_font_size = math.min(preferred_font_size, 8)
+			local measurement_size = {
+				1000000,
+				style.size[2] or 30,
+			}
+
+			style.font_size = preferred_font_size
+			content["better_inventory_full_blessing_text_" .. i] = value
+
+			local measured_width = Text.text_width(ui_renderer, value, style, measurement_size, true)
+
+			while measured_width > maximum_width and style.font_size > minimum_font_size do
+				style.font_size = style.font_size - 1
+				measured_width = Text.text_width(ui_renderer, value, style, measurement_size, true)
+			end
+
+			if measured_width > maximum_width then
+				content[content_id] = Text.crop_text_width(ui_renderer, value, style, maximum_width)
+			end
+		end
+	end
+end
+
 local function fit_weapon_perks(parent, widget, ui_renderer)
 	local content = widget and widget.content
 	local styles = widget and widget.style
@@ -1239,7 +1394,7 @@ local function configure_card_content(mod, item_blueprint)
 	local preferred_font_size = setting(mod, "item_name_font_size", 16)
 	local minimum_font_size = math.max(8, math.min(20, setting(mod, "minimum_item_name_font_size", 12)))
 	local append_mark_to_name = setting(mod, "append_mark_to_name", true)
-	local show_weapon_blessings = setting(mod, "show_weapon_blessings", true)
+	local blessing_display_mode = weapon_blessing_display_mode(mod)
 	local show_weapon_perks = setting(mod, "show_weapon_perks", true)
 	local weapon_perk_compression = setting(mod, "weapon_perk_compression", "heavy")
 	local show_item_level_icon = setting(mod, "show_item_level_icon", false)
@@ -1259,8 +1414,9 @@ local function configure_card_content(mod, item_blueprint)
 			original_init(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
 			format_weapon_name(widget, element, append_mark_to_name)
 			format_item_level(widget, element, show_item_level_icon)
-			populate_card_content(mod, widget, element, show_weapon_blessings, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_primary)
+			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_primary)
 			fit_display_name(parent, widget, ui_renderer, preferred_font_size, math.min(preferred_font_size, minimum_font_size))
+			fit_blessing_text(parent, widget, ui_renderer)
 			fit_weapon_perks(parent, widget, ui_renderer)
 			fit_curio_stats(parent, widget, ui_renderer)
 		end
@@ -1271,8 +1427,9 @@ local function configure_card_content(mod, item_blueprint)
 			original_update_data(parent, widget, element)
 			format_weapon_name(widget, element, append_mark_to_name)
 			format_item_level(widget, element, show_item_level_icon)
-			populate_card_content(mod, widget, element, show_weapon_blessings, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_primary)
+			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_primary)
 			fit_display_name(parent, widget, nil, preferred_font_size, math.min(preferred_font_size, minimum_font_size))
+			fit_blessing_text(parent, widget, nil)
 			fit_weapon_perks(parent, widget, nil)
 			fit_curio_stats(parent, widget, nil)
 		end
@@ -1502,13 +1659,24 @@ Layout.card_height = function(mod, configuration)
 	local required_height = 110
 	local store_footer_height = configuration.store_item and STORE_FOOTER_HEIGHT or 0
 
-	if setting(mod, "show_weapon_blessings", true) then
+	local blessing_display_mode = weapon_blessing_display_mode(mod)
+
+	if blessing_display_mode == "icons" then
 		local configured_blessing_size = blessing_icon_size(mod)
 
 		if configuration.store_item then
 			bottom_region_height = store_footer_height + configured_blessing_size + 6
 		else
 			bottom_region_height = math.max(bottom_region_height, configured_blessing_size + 6)
+		end
+	elseif blessing_display_mode == "text" then
+		local blessing_font_size = math.max(9, math.min(16, secondary_font_size))
+		local blessing_text_height = WEAPON_BLESSING_COUNT * (blessing_font_size + 4) + 6
+
+		if configuration.store_item then
+			bottom_region_height = store_footer_height + blessing_text_height
+		else
+			bottom_region_height = math.max(bottom_region_height, blessing_text_height)
 		end
 	elseif configuration.store_item then
 		bottom_region_height = math.max(bottom_region_height, store_footer_height)
