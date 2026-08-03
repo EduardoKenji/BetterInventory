@@ -7,6 +7,8 @@ local Features = {}
 local INVENTORY_SORT_TOGGLE_ID = "better_inventory_sort_priority"
 local INVENTORY_SORT_LABEL_ID = "better_inventory_sort_label"
 local INVENTORY_DISCARD_LABEL_ID = "better_inventory_discard_label"
+local INVENTORY_DISCARD_MODE_ID = "better_inventory_discard_mode"
+local INVENTORY_DISCARD_SKIP_CONFIRMATION_ID = "better_inventory_discard_skip_confirmation"
 local INVENTORY_QUICK_DISCARD_ID = "better_inventory_quick_discard"
 local INVENTORY_DISCARD_MAX_LEVEL_ID = "better_inventory_discard_max_level"
 local INVENTORY_DISCARD_MELEE_ID = "better_inventory_discard_melee"
@@ -17,6 +19,8 @@ local INVENTORY_DISCARD_CURIO_PROTECTION_ID = "better_inventory_discard_curio_pr
 local INVENTORY_DISCARD_CURIO_LEVEL_ID = "better_inventory_discard_curio_level"
 local INVENTORY_DISCARD_WIDGET_IDS = {
 	INVENTORY_DISCARD_LABEL_ID,
+	INVENTORY_DISCARD_MODE_ID,
+	INVENTORY_DISCARD_SKIP_CONFIRMATION_ID,
 	INVENTORY_QUICK_DISCARD_ID,
 	INVENTORY_DISCARD_MAX_LEVEL_ID,
 	INVENTORY_DISCARD_MELEE_ID,
@@ -380,6 +384,103 @@ local function section_label_passes()
 	}
 end
 
+local function compact_selector_passes(width)
+	local selector_x = 64
+	local selector_width = width - selector_x
+
+	return {
+		{
+			pass_type = "text",
+			style_id = "label",
+			value_id = "label",
+			style = {
+				font_size = 15,
+				font_type = "proxima_nova_bold",
+				text_horizontal_alignment = "left",
+				text_vertical_alignment = "center",
+				text_color = Color.terminal_text_body(255, true),
+				size = {
+					selector_x - 6,
+					26,
+				},
+			},
+		},
+		{
+			content_id = "hotspot",
+			pass_type = "hotspot",
+			content = {
+				on_hover_sound = UISoundEvents.default_mouse_hover,
+				on_pressed_sound = UISoundEvents.default_click,
+			},
+			style = {
+				offset = {
+					selector_x,
+					0,
+					5,
+				},
+				size = {
+					selector_width,
+					26,
+				},
+			},
+		},
+		{
+			pass_type = "rect",
+			style_id = "background",
+			style = {
+				color = Color.terminal_background(220, true),
+				offset = {
+					selector_x,
+					0,
+					1,
+				},
+				size = {
+					selector_width,
+					26,
+				},
+			},
+		},
+		{
+			pass_type = "texture",
+			style_id = "frame",
+			value = "content/ui/materials/frames/frame_tile_2px",
+			style = {
+				color = Color.terminal_frame(255, true),
+				offset = {
+					selector_x,
+					0,
+					2,
+				},
+				size = {
+					selector_width,
+					26,
+				},
+			},
+		},
+		{
+			pass_type = "text",
+			style_id = "value",
+			value_id = "value",
+			style = {
+				font_size = 15,
+				font_type = "proxima_nova_bold",
+				text_horizontal_alignment = "center",
+				text_vertical_alignment = "center",
+				text_color = Color.terminal_text_body(255, true),
+				offset = {
+					selector_x,
+					0,
+					3,
+				},
+				size = {
+					selector_width,
+					26,
+				},
+			},
+		},
+	}
+end
+
 local function compact_checkbox_passes()
 	return {
 		{
@@ -678,6 +779,7 @@ Features.add_inventory_sort_toggle_definition = function(mod, layout, definition
 		local compact_width = control_width - 15
 		local type_gap = 8
 		local type_width = math.floor((compact_width - type_gap * 2) / 3)
+		local mode_width = 190
 		local function add_compact_checkbox(scenegraph_id, x, y, checkbox_width, label, checked)
 			scenegraph[scenegraph_id] = {
 				horizontal_alignment = "left",
@@ -740,6 +842,28 @@ Features.add_inventory_sort_toggle_definition = function(mod, layout, definition
 			label = mod:localize("inventory_discard_management_inventory_label"),
 		})
 
+		scenegraph[INVENTORY_DISCARD_MODE_ID] = {
+			horizontal_alignment = "left",
+			parent = parent,
+			vertical_alignment = "top",
+			size = {
+				mode_width,
+				26,
+			},
+			position = {
+				compact_x,
+				initial_y + 100,
+				20,
+			},
+		}
+		widget_definitions[INVENTORY_DISCARD_MODE_ID] = UIWidget.create_definition(compact_selector_passes(mode_width), INVENTORY_DISCARD_MODE_ID, {
+			hotspot = {},
+			label = mod:localize("quick_discard_inventory_mode"),
+			value = mod:localize("quick_discard_mode_" .. (mod:get("quick_discard_mode") or "manual")) .. "  ›",
+		})
+
+		add_compact_checkbox(INVENTORY_DISCARD_SKIP_CONFIRMATION_ID, compact_x + mode_width + 10, initial_y + 100, compact_width - mode_width - 10, mod:localize("quick_discard_skip_automatic_confirmation"), mod:get("quick_discard_skip_automatic_confirmation") == true)
+
 		scenegraph[INVENTORY_QUICK_DISCARD_ID] = {
 			horizontal_alignment = "left",
 			parent = parent,
@@ -750,7 +874,7 @@ Features.add_inventory_sort_toggle_definition = function(mod, layout, definition
 			},
 			position = {
 				compact_x,
-				initial_y + 100,
+				initial_y + 136,
 				20,
 			},
 		}
@@ -764,14 +888,14 @@ Features.add_inventory_sort_toggle_definition = function(mod, layout, definition
 			visible = true,
 		})
 
-		add_compact_stepper(INVENTORY_DISCARD_MAX_LEVEL_ID, initial_y + 136, mod:localize("quick_discard_inventory_max_level"), math.floor(tonumber(mod:get("quick_discard_max_item_level")) or 500))
-		add_compact_checkbox(INVENTORY_DISCARD_MELEE_ID, compact_x, initial_y + 170, type_width, mod:localize("quick_discard_inventory_melee"), mod:get("quick_discard_include_melee") ~= false)
-		add_compact_checkbox(INVENTORY_DISCARD_RANGED_ID, compact_x + type_width + type_gap, initial_y + 170, type_width, mod:localize("quick_discard_inventory_ranged"), mod:get("quick_discard_include_ranged") ~= false)
-		add_compact_checkbox(INVENTORY_DISCARD_CURIO_ID, compact_x + (type_width + type_gap) * 2, initial_y + 170, type_width, mod:localize("quick_discard_inventory_curios"), mod:get("quick_discard_include_curios") ~= false)
+		add_compact_stepper(INVENTORY_DISCARD_MAX_LEVEL_ID, initial_y + 172, mod:localize("quick_discard_inventory_max_level"), math.floor(tonumber(mod:get("quick_discard_max_item_level")) or 500))
+		add_compact_checkbox(INVENTORY_DISCARD_MELEE_ID, compact_x, initial_y + 206, type_width, mod:localize("quick_discard_inventory_melee"), mod:get("quick_discard_include_melee") ~= false)
+		add_compact_checkbox(INVENTORY_DISCARD_RANGED_ID, compact_x + type_width + type_gap, initial_y + 206, type_width, mod:localize("quick_discard_inventory_ranged"), mod:get("quick_discard_include_ranged") ~= false)
+		add_compact_checkbox(INVENTORY_DISCARD_CURIO_ID, compact_x + (type_width + type_gap) * 2, initial_y + 206, type_width, mod:localize("quick_discard_inventory_curios"), mod:get("quick_discard_include_curios") ~= false)
 
-		add_compact_checkbox(INVENTORY_DISCARD_PROTECTION_ID, compact_x, initial_y + 204, compact_width, mod:localize("quick_discard_inventory_protect_weapons"), mod:get("quick_discard_protect_perfect_weapons") ~= false)
-		add_compact_checkbox(INVENTORY_DISCARD_CURIO_PROTECTION_ID, compact_x, initial_y + 238, compact_width, mod:localize("quick_discard_inventory_protect_curios"), mod:get("quick_discard_protect_high_level_curios") ~= false)
-		add_compact_stepper(INVENTORY_DISCARD_CURIO_LEVEL_ID, initial_y + 272, mod:localize("quick_discard_inventory_curio_level"), math.floor(tonumber(mod:get("quick_discard_curio_protection_level")) or 410))
+		add_compact_checkbox(INVENTORY_DISCARD_PROTECTION_ID, compact_x, initial_y + 240, compact_width, mod:localize("quick_discard_inventory_protect_weapons"), mod:get("quick_discard_protect_perfect_weapons") ~= false)
+		add_compact_checkbox(INVENTORY_DISCARD_CURIO_PROTECTION_ID, compact_x, initial_y + 274, compact_width, mod:localize("quick_discard_inventory_protect_curios"), mod:get("quick_discard_protect_high_level_curios") ~= false)
+		add_compact_stepper(INVENTORY_DISCARD_CURIO_LEVEL_ID, initial_y + 308, mod:localize("quick_discard_inventory_curio_level"), math.floor(tonumber(mod:get("quick_discard_curio_protection_level")) or 410))
 	end
 
 	return adjusted_definitions
@@ -998,7 +1122,7 @@ Features.is_perfect_roll_weapon = function(item)
 	return values_are_perfect_roll(projected_max_base_stat_values(item))
 end
 
-local function eligible_for_quick_discard(mod, view, item)
+local function eligible_for_quick_discard(mod, item, is_equipped)
 	if not item or not item.gear_id or not item_type_is_enabled(mod, item.item_type) then
 		return false
 	end
@@ -1014,9 +1138,7 @@ local function eligible_for_quick_discard(mod, view, item)
 		return false
 	end
 
-	local slots = item.slots
-
-	if slots and type(view.is_item_equipped_in_any_slot) == "function" and view:is_item_equipped_in_any_slot(item, slots) then
+	if is_equipped and is_equipped(item) then
 		return false
 	end
 
@@ -1042,27 +1164,45 @@ local function eligible_for_quick_discard(mod, view, item)
 	return true
 end
 
-Features.quick_discard_candidates = function(mod, layout, view, allowed_gear_ids)
-	if not is_inventory_view(layout, view) or view._destroyed then
-		return {}
-	end
-
+local function collect_quick_discard_candidates(mod, source_items, is_equipped, allowed_gear_ids)
 	local candidates = {}
 	local seen = {}
-	local parent_inventory = view._parent and view._parent._inventory_items
-	local source_items = type(parent_inventory) == "table" and next(parent_inventory) and parent_inventory or view._offer_items_layout or {}
 
-	for _, entry in pairs(source_items) do
+	for _, entry in pairs(source_items or {}) do
 		local item = entry and (entry.real_item or entry.item or entry)
 		local gear_id = item and item.gear_id
 
-		if gear_id and not seen[gear_id] and (not allowed_gear_ids or allowed_gear_ids[gear_id]) and eligible_for_quick_discard(mod, view, item) then
+		if gear_id and not seen[gear_id] and (not allowed_gear_ids or allowed_gear_ids[gear_id]) and eligible_for_quick_discard(mod, item, is_equipped) then
 			seen[gear_id] = true
 			candidates[#candidates + 1] = item
 		end
 	end
 
 	return candidates
+end
+
+Features.quick_discard_candidates = function(mod, layout, view, allowed_gear_ids)
+	if not is_inventory_view(layout, view) or view._destroyed then
+		return {}
+	end
+
+	local parent_inventory = view._parent and view._parent._inventory_items
+	local source_items = type(parent_inventory) == "table" and next(parent_inventory) and parent_inventory or view._offer_items_layout or {}
+	local function is_equipped(item)
+		local slots = item.slots
+
+		return slots and type(view.is_item_equipped_in_any_slot) == "function" and view:is_item_equipped_in_any_slot(item, slots) or false
+	end
+
+	return collect_quick_discard_candidates(mod, source_items, is_equipped, allowed_gear_ids)
+end
+
+Features.quick_discard_candidates_from_items = function(mod, source_items, equipped_gear_ids, allowed_gear_ids)
+	local function is_equipped(item)
+		return equipped_gear_ids and equipped_gear_ids[item.gear_id] == true
+	end
+
+	return collect_quick_discard_candidates(mod, source_items, is_equipped, allowed_gear_ids)
 end
 
 local function summary_type_name(mod, count, singular_id, plural_id)
@@ -1197,6 +1337,255 @@ Features.request_quick_discard = function(mod, layout, view)
 	})
 end
 
+local AUTOMATIC_DISCARD_DELAY = 5
+local AUTOMATIC_DISCARD_MAX_FETCH_ATTEMPTS = 3
+local automatic_discard_state = {
+	elapsed = 0,
+	fetch_attempts = 0,
+	scheduled = false,
+	started = false,
+	token = 0,
+}
+
+local function automatic_discard_enabled(mod)
+	return mod:get("enable_experimental_quick_discard") == true and mod:get("quick_discard_mode") == "automatic"
+end
+
+local function is_morningstar()
+	local state = Managers and Managers.state
+	local game_mode = state and state.game_mode
+
+	return game_mode and type(game_mode.game_mode_name) == "function" and game_mode:game_mode_name() == "hub"
+end
+
+local function equipped_gear_ids(profile)
+	local equipped = {}
+
+	for _, loadout in ipairs({
+		profile and profile.loadout,
+		profile and profile.loadout_item_ids,
+	}) do
+		for _, item in pairs(loadout or {}) do
+			local gear_id = type(item) == "table" and item.gear_id or type(item) == "string" and item or nil
+
+			if gear_id then
+				equipped[gear_id] = true
+			end
+		end
+	end
+
+	return equipped
+end
+
+local function current_player_and_character()
+	local player_manager = Managers and Managers.player
+	local player = player_manager and type(player_manager.local_player) == "function" and player_manager:local_player(1)
+	local character_id = player and not player.__deleted and type(player.character_id) == "function" and player:character_id()
+
+	return player, character_id
+end
+
+local function automatic_context_is_current(mod, token, character_id)
+	if automatic_discard_state.token ~= token or not automatic_discard_enabled(mod) or not is_morningstar() then
+		return false
+	end
+
+	local _, current_character_id = current_player_and_character()
+
+	return current_character_id == character_id
+end
+
+local function notify_discard_result(result)
+	local total_rewards = {}
+
+	for index = 1, #(result or {}) do
+		local operation = result[index]
+
+		for reward_index = 1, #(operation and operation.rewards or {}) do
+			local reward = operation.rewards[reward_index]
+			local reward_type = reward and reward.type
+			local amount = tonumber(reward and reward.amount)
+
+			if reward_type and amount then
+				total_rewards[reward_type] = (total_rewards[reward_type] or 0) + amount
+			end
+		end
+	end
+
+	local event_manager = Managers and Managers.event
+
+	if event_manager then
+		event_manager:trigger("event_force_wallet_update")
+		event_manager:trigger("event_force_refresh_inventory")
+
+		for reward_type, reward_amount in pairs(total_rewards) do
+			event_manager:trigger("event_add_notification_message", "currency", {
+				amount = reward_amount,
+				currency = reward_type,
+			})
+		end
+	end
+end
+
+local function delete_automatic_candidates(mod, token, character_id, captured_ids)
+	if not automatic_context_is_current(mod, token, character_id) then
+		return
+	end
+
+	local gear_service = Managers and Managers.data_service and Managers.data_service.gear
+	local player = current_player_and_character()
+
+	if not gear_service or type(gear_service.fetch_inventory) ~= "function" or type(gear_service.delete_gear_batch) ~= "function" or not player then
+		return
+	end
+
+	gear_service:fetch_inventory(character_id):next(function(items)
+		if not automatic_context_is_current(mod, token, character_id) or type(items) ~= "table" then
+			return
+		end
+
+		local current_player = current_player_and_character()
+		local profile = current_player and type(current_player.profile) == "function" and current_player:profile()
+		local candidates = Features.quick_discard_candidates_from_items(mod, items, equipped_gear_ids(profile), captured_ids)
+		local gear_ids = {}
+
+		for index = 1, #candidates do
+			gear_ids[index] = candidates[index].gear_id
+		end
+
+		if #gear_ids == 0 then
+			return
+		end
+
+		return gear_service:delete_gear_batch(gear_ids):next(notify_discard_result)
+	end):catch(function()
+		-- GearService already reports backend failures. Keep the one-shot
+		-- Morningstar pass from surfacing an unhandled promise rejection.
+	end)
+end
+
+local function present_automatic_discard(mod, token, character_id, candidates)
+	local captured_ids = {}
+
+	for index = 1, #candidates do
+		captured_ids[candidates[index].gear_id] = true
+	end
+
+	if mod:get("quick_discard_skip_automatic_confirmation") == true then
+		delete_automatic_candidates(mod, token, character_id, captured_ids)
+
+		return
+	end
+
+	show_popup({
+		description_text_unlocalized = tostring(#candidates) .. " " .. mod:localize("quick_discard_confirmation_description") .. "\n\n" .. rarity_summary(mod, candidates) .. "\n\n" .. mod:localize("quick_discard_confirmation_warning"),
+		options = {
+			{
+				callback = function()
+					delete_automatic_candidates(mod, token, character_id, captured_ids)
+				end,
+				close_on_pressed = true,
+				no_localization = true,
+				text = mod:localize("quick_discard_confirmation_yes"),
+			},
+			{
+				close_on_pressed = true,
+				hotkey = "back",
+				no_localization = true,
+				template_type = "terminal_button_small",
+				text = mod:localize("quick_discard_confirmation_no"),
+			},
+		},
+		title_text_unlocalized = mod:localize("quick_discard_automatic_confirmation_title"),
+	})
+end
+
+Features.begin_morningstar_auto_discard = function(mod)
+	automatic_discard_state.token = automatic_discard_state.token + 1
+	automatic_discard_state.elapsed = 0
+	automatic_discard_state.fetch_attempts = 0
+	automatic_discard_state.scheduled = automatic_discard_enabled(mod)
+	automatic_discard_state.started = false
+end
+
+Features.cancel_morningstar_auto_discard = function()
+	automatic_discard_state.token = automatic_discard_state.token + 1
+	automatic_discard_state.elapsed = 0
+	automatic_discard_state.fetch_attempts = 0
+	automatic_discard_state.scheduled = false
+	automatic_discard_state.started = false
+end
+
+Features.update_morningstar_auto_discard = function(mod, dt)
+	if not automatic_discard_state.scheduled or automatic_discard_state.started then
+		return
+	end
+
+	if not automatic_discard_enabled(mod) then
+		automatic_discard_state.scheduled = false
+
+		return
+	end
+
+	automatic_discard_state.elapsed = automatic_discard_state.elapsed + (tonumber(dt) or 0)
+
+	if automatic_discard_state.elapsed < AUTOMATIC_DISCARD_DELAY then
+		return
+	end
+
+	local state = Managers and Managers.state
+	local game_mode = state and state.game_mode
+
+	if not game_mode or type(game_mode.game_mode_name) ~= "function" then
+		return
+	end
+
+	if not is_morningstar() then
+		automatic_discard_state.scheduled = false
+
+		return
+	end
+
+	local player, character_id = current_player_and_character()
+	local gear_service = Managers and Managers.data_service and Managers.data_service.gear
+
+	if not player or not character_id or not gear_service or type(gear_service.fetch_inventory) ~= "function" then
+		return
+	end
+
+	local token = automatic_discard_state.token
+
+	automatic_discard_state.started = true
+	automatic_discard_state.fetch_attempts = automatic_discard_state.fetch_attempts + 1
+	gear_service:fetch_inventory(character_id):next(function(items)
+		if not automatic_context_is_current(mod, token, character_id) then
+			return
+		end
+
+		if type(items) ~= "table" then
+			automatic_discard_state.started = false
+			automatic_discard_state.elapsed = 0
+			automatic_discard_state.scheduled = automatic_discard_state.fetch_attempts < AUTOMATIC_DISCARD_MAX_FETCH_ATTEMPTS
+
+			return
+		end
+
+		automatic_discard_state.scheduled = false
+		local profile = type(player.profile) == "function" and player:profile()
+		local candidates = Features.quick_discard_candidates_from_items(mod, items, equipped_gear_ids(profile))
+
+		if #candidates > 0 then
+			present_automatic_discard(mod, token, character_id, candidates)
+		end
+	end):catch(function()
+		if automatic_discard_state.token == token then
+			automatic_discard_state.started = false
+			automatic_discard_state.elapsed = 0
+			automatic_discard_state.scheduled = automatic_discard_state.fetch_attempts < AUTOMATIC_DISCARD_MAX_FETCH_ATTEMPTS
+		end
+	end)
+end
+
 local function rendered_weapon_stats_height(weapon_stats)
 	local scenegraph = weapon_stats and weapon_stats._ui_scenegraph
 	local background_pivot = scenegraph and scenegraph.grid_background_pivot
@@ -1304,6 +1693,8 @@ end
 
 local function update_quick_discard_content(mod, slot_kind, view, base_y)
 	local widgets = view._widgets_by_name
+	local mode_widget = widgets and widgets[INVENTORY_DISCARD_MODE_ID]
+	local skip_confirmation_widget = widgets and widgets[INVENTORY_DISCARD_SKIP_CONFIRMATION_ID]
 	local discard_widget = widgets and widgets[INVENTORY_QUICK_DISCARD_ID]
 	local max_level_widget = widgets and widgets[INVENTORY_DISCARD_MAX_LEVEL_ID]
 	local melee_widget = widgets and widgets[INVENTORY_DISCARD_MELEE_ID]
@@ -1315,6 +1706,17 @@ local function update_quick_discard_content(mod, slot_kind, view, base_y)
 
 	if not discard_widget then
 		return
+	end
+
+	local discard_mode = mod:get("quick_discard_mode") == "automatic" and "automatic" or "manual"
+
+	if mode_widget then
+		mode_widget.content.value = mod:localize("quick_discard_mode_" .. discard_mode) .. "  ›"
+	end
+
+	if skip_confirmation_widget then
+		skip_confirmation_widget.content.checked = mod:get("quick_discard_skip_automatic_confirmation") == true
+		skip_confirmation_widget.content.visible = discard_mode == "automatic"
 	end
 
 	local rarity = math.clamp(math.floor(tonumber(mod:get("quick_discard_rarity")) or 1), 1, 5)
@@ -1366,16 +1768,19 @@ local function update_quick_discard_content(mod, slot_kind, view, base_y)
 	local compact_width = control_width - 15
 	local type_gap = 8
 	local type_width = math.floor((compact_width - type_gap * 2) / 3)
+	local mode_width = 190
 
 	set_inventory_control_position(view, INVENTORY_DISCARD_LABEL_ID, x, base_y + 70)
-	set_inventory_control_position(view, INVENTORY_QUICK_DISCARD_ID, compact_x, base_y + 100)
-	set_inventory_control_position(view, INVENTORY_DISCARD_MAX_LEVEL_ID, compact_x, base_y + 136)
-	set_inventory_control_position(view, INVENTORY_DISCARD_MELEE_ID, compact_x, base_y + 170)
-	set_inventory_control_position(view, INVENTORY_DISCARD_RANGED_ID, compact_x + type_width + type_gap, base_y + 170)
-	set_inventory_control_position(view, INVENTORY_DISCARD_CURIO_ID, compact_x + (type_width + type_gap) * 2, base_y + 170)
-	set_inventory_control_position(view, INVENTORY_DISCARD_PROTECTION_ID, compact_x, base_y + 204)
-	set_inventory_control_position(view, INVENTORY_DISCARD_CURIO_PROTECTION_ID, compact_x, base_y + 238)
-	set_inventory_control_position(view, INVENTORY_DISCARD_CURIO_LEVEL_ID, compact_x, base_y + 272)
+	set_inventory_control_position(view, INVENTORY_DISCARD_MODE_ID, compact_x, base_y + 100)
+	set_inventory_control_position(view, INVENTORY_DISCARD_SKIP_CONFIRMATION_ID, compact_x + mode_width + 10, base_y + 100)
+	set_inventory_control_position(view, INVENTORY_QUICK_DISCARD_ID, compact_x, base_y + 136)
+	set_inventory_control_position(view, INVENTORY_DISCARD_MAX_LEVEL_ID, compact_x, base_y + 172)
+	set_inventory_control_position(view, INVENTORY_DISCARD_MELEE_ID, compact_x, base_y + 206)
+	set_inventory_control_position(view, INVENTORY_DISCARD_RANGED_ID, compact_x + type_width + type_gap, base_y + 206)
+	set_inventory_control_position(view, INVENTORY_DISCARD_CURIO_ID, compact_x + (type_width + type_gap) * 2, base_y + 206)
+	set_inventory_control_position(view, INVENTORY_DISCARD_PROTECTION_ID, compact_x, base_y + 240)
+	set_inventory_control_position(view, INVENTORY_DISCARD_CURIO_PROTECTION_ID, compact_x, base_y + 274)
+	set_inventory_control_position(view, INVENTORY_DISCARD_CURIO_LEVEL_ID, compact_x, base_y + 308)
 end
 
 Features.update_inventory_sort_toggle = function(mod, layout, view)
@@ -1481,6 +1886,11 @@ Features.bind_inventory_sort_toggle = function(mod, layout, view)
 	end
 
 	local discard_widget = view._widgets_by_name and view._widgets_by_name[INVENTORY_QUICK_DISCARD_ID]
+	local mode_widget = view._widgets_by_name and view._widgets_by_name[INVENTORY_DISCARD_MODE_ID]
+	local mode_hotspot = mode_widget and mode_widget.content and mode_widget.content.hotspot
+	local skip_confirmation_widget = view._widgets_by_name and view._widgets_by_name[INVENTORY_DISCARD_SKIP_CONFIRMATION_ID]
+	local skip_confirmation_content = skip_confirmation_widget and skip_confirmation_widget.content
+	local skip_confirmation_hotspot = skip_confirmation_content and skip_confirmation_content.hotspot
 	local discard_content = discard_widget and discard_widget.content
 	local rarity_hotspot = discard_content and discard_content.rarity_hotspot
 	local discard_hotspot = discard_content and discard_content.discard_hotspot
@@ -1491,6 +1901,24 @@ Features.bind_inventory_sort_toggle = function(mod, layout, view)
 
 			mod:set("quick_discard_rarity", rarity % 5 + 1, false)
 			Features.sync_quick_discard_settings(mod, layout)
+		end
+	end
+
+	if mode_hotspot then
+		mode_hotspot.pressed_callback = function()
+			local mode = mod:get("quick_discard_mode") == "automatic" and "manual" or "automatic"
+
+			mod:set("quick_discard_mode", mode, false)
+			Features.sync_quick_discard_settings(mod, layout)
+		end
+	end
+
+	if skip_confirmation_hotspot then
+		skip_confirmation_hotspot.pressed_callback = function()
+			if mod:get("quick_discard_mode") == "automatic" then
+				mod:set("quick_discard_skip_automatic_confirmation", not skip_confirmation_content.checked, false)
+				Features.sync_quick_discard_settings(mod, layout)
+			end
 		end
 	end
 

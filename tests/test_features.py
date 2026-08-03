@@ -401,6 +401,8 @@ def main() -> None:
     mod.settings.quick_discard_protect_high_level_curios = True
     mod.settings.quick_discard_curio_protection_level = 410
     mod.settings.quick_discard_show_type_breakdown = True
+    mod.settings.quick_discard_mode = "manual"
+    mod.settings.quick_discard_skip_automatic_confirmation = False
     quick_discard_view = lua.execute(
         r"""
         return {
@@ -636,6 +638,8 @@ def main() -> None:
     assert experimental_definitions.scenegraph_definition["better_inventory_discard_melee"] is not None
     assert experimental_definitions.scenegraph_definition["better_inventory_discard_ranged"] is not None
     assert experimental_definitions.scenegraph_definition["better_inventory_discard_curio"] is not None
+    assert experimental_definitions.scenegraph_definition["better_inventory_discard_mode"] is not None
+    assert experimental_definitions.scenegraph_definition["better_inventory_discard_skip_confirmation"] is not None
     assert experimental_definitions.scenegraph_definition["better_inventory_quick_discard"].size[1] == 405
     assert curio_experimental_definitions.scenegraph_definition["better_inventory_quick_discard"].size[1] == 405
     assert curio_experimental_definitions.scenegraph_definition["better_inventory_discard_max_level"].size[1] == 405
@@ -665,6 +669,26 @@ def main() -> None:
         {"_menu_settings": lua.table_from({"grid_size": lua.table_from([420, 300])})}
     )
     features.bind_inventory_sort_toggle(mod, layout, quick_discard_view)
+    assert (
+        quick_discard_view._widgets_by_name[
+            "better_inventory_discard_skip_confirmation"
+        ].content.visible
+        is False
+    )
+    quick_discard_view._widgets_by_name[
+        "better_inventory_discard_mode"
+    ].content.hotspot.pressed_callback()
+    assert mod.settings.quick_discard_mode == "automatic"
+    assert (
+        quick_discard_view._widgets_by_name[
+            "better_inventory_discard_skip_confirmation"
+        ].content.visible
+        is True
+    )
+    quick_discard_view._widgets_by_name[
+        "better_inventory_discard_skip_confirmation"
+    ].content.hotspot.pressed_callback()
+    assert mod.settings.quick_discard_skip_automatic_confirmation is True
     quick_discard_view._widgets_by_name[
         "better_inventory_discard_max_level"
     ].content.decrease_hotspot.pressed_callback()
@@ -705,6 +729,131 @@ def main() -> None:
     assert quick_discard_view._widgets_by_name["better_inventory_discard_label"].content.visible is True
     assert quick_discard_view._widgets_by_name["better_inventory_quick_discard"].content.visible is True
     assert quick_discard_view._ui_scenegraph[sort_label_id].position[1] == 20
+
+    automatic_inventory = lua.table_from(
+        {
+            "auto_eligible": lua.table_from(
+                {
+                    "gear_id": "auto_eligible",
+                    "item_type": "WEAPON_MELEE",
+                    "level": 300,
+                    "rarity": 1,
+                    "total_stats": 300,
+                    "slots": lua.table_from(["slot_primary"]),
+                }
+            ),
+            "auto_equipped": lua.table_from(
+                {
+                    "gear_id": "auto_equipped",
+                    "item_type": "WEAPON_RANGED",
+                    "level": 300,
+                    "rarity": 1,
+                    "total_stats": 300,
+                    "slots": lua.table_from(["slot_secondary"]),
+                }
+            ),
+        }
+    )
+    lua.execute(
+        r"""
+        local inventory = ...
+
+        local function resolved(value)
+            local promise = {}
+
+            promise.next = function(self, callback)
+                local result = callback(value)
+
+                if type(result) == "table" and type(result.next) == "function" then
+                    return result
+                end
+
+                return resolved(result)
+            end
+            promise.catch = function(self)
+                return self
+            end
+
+            return promise
+        end
+
+        automatic_fetch_count = 0
+        automatic_deleted_ids = nil
+        local profile = {
+            loadout = {
+                slot_secondary = {gear_id = "auto_equipped"},
+            },
+            loadout_item_ids = {
+                slot_secondary = "auto_equipped",
+            },
+        }
+        local player = {
+            character_id = function()
+                return "character-1"
+            end,
+            profile = function()
+                return profile
+            end,
+        }
+
+        Managers.state = {
+            game_mode = {
+                game_mode_name = function()
+                    return "hub"
+                end,
+            },
+        }
+        Managers.player = {
+            local_player = function()
+                return player
+            end,
+        }
+        Managers.data_service = {
+            gear = {
+                fetch_inventory = function()
+                    automatic_fetch_count = automatic_fetch_count + 1
+
+                    return resolved(inventory)
+                end,
+                delete_gear_batch = function(self, gear_ids)
+                    automatic_deleted_ids = gear_ids
+
+                    return resolved({})
+                end,
+            },
+        }
+        """,
+        automatic_inventory,
+    )
+    globals_.captured_popup = None
+    globals_.automatic_deleted_ids = None
+    mod.settings.quick_discard_mode = "automatic"
+    mod.settings.quick_discard_skip_automatic_confirmation = False
+    features.begin_morningstar_auto_discard(mod)
+    features.update_morningstar_auto_discard(mod, 4.9)
+    assert globals_.captured_popup is None
+    features.update_morningstar_auto_discard(mod, 0.1)
+    assert (
+        globals_.captured_popup.title_text_unlocalized
+        == "quick_discard_automatic_confirmation_title"
+    )
+    assert globals_.automatic_fetch_count == 1
+    globals_.captured_popup.options[1].callback()
+    assert globals_.automatic_fetch_count == 2
+    assert len(globals_.automatic_deleted_ids) == 1
+    assert globals_.automatic_deleted_ids[1] == "auto_eligible"
+    features.update_morningstar_auto_discard(mod, 30)
+    assert globals_.automatic_fetch_count == 2
+
+    globals_.captured_popup = None
+    globals_.automatic_deleted_ids = None
+    mod.settings.quick_discard_skip_automatic_confirmation = True
+    features.begin_morningstar_auto_discard(mod)
+    features.update_morningstar_auto_discard(mod, 5)
+    assert globals_.captured_popup is None
+    assert globals_.automatic_fetch_count == 4
+    assert globals_.automatic_deleted_ids[1] == "auto_eligible"
+    features.cancel_morningstar_auto_discard()
 
     features.unregister_inventory_view(melee_view)
     mod.settings.prioritize_equipped_favorites = False

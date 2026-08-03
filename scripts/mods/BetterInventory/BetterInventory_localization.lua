@@ -33,7 +33,25 @@ return {
 		en = "Show quick-discard controls in inventory",
 	},
 	enable_experimental_quick_discard_tooltip = {
-		en = "Adds an opt-in quick-discard row below the inventory sorting toggle after the inventory is reopened. Nothing is discarded until you press Discard and accept a second confirmation popup.",
+		en = "Adds opt-in discard-management controls below the inventory sorting toggle after the inventory is reopened. Manual mode remains the default.",
+	},
+	quick_discard_mode = {
+		en = "Discard mode",
+	},
+	quick_discard_mode_tooltip = {
+		en = "Manual only discards when you press the inventory button and confirm. Automatic performs one protected cleanup pass after each Morningstar entry, following a five-second readiness delay. The manual button remains available in either mode.",
+	},
+	quick_discard_mode_manual = {
+		en = "Manual",
+	},
+	quick_discard_mode_automatic = {
+		en = "Automatic",
+	},
+	quick_discard_skip_automatic_confirmation = {
+		en = "Skip confirmation prompts",
+	},
+	quick_discard_skip_automatic_confirmation_tooltip = {
+		en = "Automatic mode only. When enabled, the once-per-Morningstar cleanup permanently discards all currently eligible items without asking first. The manual inventory button always retains its confirmation.",
 	},
 	quick_discard_rarity = {
 		en = "Discard rarity threshold",
@@ -98,6 +116,9 @@ return {
 	quick_discard_inventory_prefix = {
 		en = "Discard all",
 	},
+	quick_discard_inventory_mode = {
+		en = "Mode",
+	},
 	quick_discard_inventory_suffix = {
 		en = "and below",
 	},
@@ -124,6 +145,9 @@ return {
 	},
 	quick_discard_inventory_protect_curios = {
 		en = "Protect high-level Curios",
+	},
+	quick_discard_automatic_confirmation_title = {
+		en = "Confirm automatic discard",
 	},
 	quick_discard_confirmation_title = {
 		en = "Confirm quick discard",
@@ -307,6 +331,9 @@ return {
 	},
 	option_requires_experimental_quick_discard = {
 		en = "Enable the experimental inventory quick-discard controls to use this option.",
+	},
+	option_requires_automatic_discard_mode = {
+		en = "Select Automatic discard mode to use this option.",
 	},
 	option_requires_curio_discard_protection = {
 		en = "Enable high-level Curio protection to set its threshold.",

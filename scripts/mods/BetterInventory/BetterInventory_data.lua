@@ -134,15 +134,37 @@ return {
 			{
 				setting_id = "experimental_quick_discard_group",
 				type = "group",
-				sub_widgets = {
-					{
-						setting_id = "enable_experimental_quick_discard",
-						tooltip = "enable_experimental_quick_discard_tooltip",
-						type = "checkbox",
-						default_value = false,
-					},
-					{
-						setting_id = "quick_discard_rarity",
+					sub_widgets = {
+						{
+							setting_id = "enable_experimental_quick_discard",
+							tooltip = "enable_experimental_quick_discard_tooltip",
+							type = "checkbox",
+							default_value = false,
+						},
+						{
+							setting_id = "quick_discard_mode",
+							tooltip = "quick_discard_mode_tooltip",
+							type = "dropdown",
+							default_value = "manual",
+							options = {
+								{
+									text = "quick_discard_mode_manual",
+									value = "manual",
+								},
+								{
+									text = "quick_discard_mode_automatic",
+									value = "automatic",
+								},
+							},
+						},
+						{
+							setting_id = "quick_discard_skip_automatic_confirmation",
+							tooltip = "quick_discard_skip_automatic_confirmation_tooltip",
+							type = "checkbox",
+							default_value = false,
+						},
+						{
+							setting_id = "quick_discard_rarity",
 						tooltip = "quick_discard_rarity_tooltip",
 						type = "dropdown",
 						default_value = 1,
