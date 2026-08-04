@@ -206,6 +206,7 @@ def main() -> None:
             end,
             info = function(self, message)
                 last_log = message
+				table.insert(captured_logs, message)
             end,
         }
 
@@ -250,12 +251,37 @@ def main() -> None:
                 personal = {test_offer},
             },
         }
+		revalidated_offer = {
+			offerId = "offer-health-410",
+			state = "active",
+			sku = {
+				category = "item_instance",
+			},
+			description = {
+				-- Storefront decoration can assign a different per-fetch gear ID
+				-- even though offerId remains the backend transaction identity.
+				gear_id = "refetched-gear-health",
+				item = health_item,
+			},
+			price = {
+				amount = {
+					amount = 25000,
+					type = "credits",
+				},
+			},
+		}
+		revalidated_storefront = {
+			data = {
+				personal = {revalidated_offer},
+			},
+		}
 
         purchase_count = 0
         fetched_store_count = 0
         requested_wallet_character = nil
         purchased_wallet_owner = nil
         captured_notification = nil
+		captured_logs = {}
         Managers = {
             state = {
                 game_mode = {
@@ -290,6 +316,11 @@ def main() -> None:
                         psyker_store = function(self, time, character_id)
                             fetched_store_count = fetched_store_count + 1
                             assert(character_id == "target-psyker")
+
+							if fetched_store_count == 2 then
+								return TestPromise.resolved(revalidated_storefront)
+							end
+
                             return TestPromise.resolved(test_storefront)
                         end,
                     },
@@ -371,6 +402,13 @@ def main() -> None:
     assert rich_candidate is not None
     assert rich_candidate.primary_value == 17
 
+    # Revalidation must compare backend-stable transaction/filter fields. Storefront
+    # decoration fields may legitimately change between two immediate fetches.
+    rich_candidate.gear_id = "different-decoration-id"
+    assert module._test.same_candidate(candidate, rich_candidate)
+    rich_candidate.price = candidate.price + 1
+    assert not module._test.same_candidate(candidate, rich_candidate)
+
     globals_.health_item.traits[1].id = "toughness_trait"
     rich_toughness_candidate = module._test.normalized_offer(
         globals_.test_mod, globals_.target_profile, globals_.test_offer
@@ -419,6 +457,9 @@ def main() -> None:
         "410, 17% automatic_curio_health, Psyker"
         in globals_.captured_notification.line_2
     )
+    assert lua.eval(
+        "function(logs) for i = 1, #logs do if string.find(logs[i], 'non%-transactional field%(s%) changed') then return true end end return false end"
+    )(globals_.captured_logs)
 
     module.update(globals_.test_mod, 60, False)
     assert globals_.purchase_count == 1

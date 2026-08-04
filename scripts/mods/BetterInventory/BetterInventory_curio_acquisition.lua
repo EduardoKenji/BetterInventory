@@ -59,6 +59,51 @@ local function log_info(mod, message)
 	end
 end
 
+local function new_scan_diagnostics()
+	return {
+		curios = 0,
+		enabled_profiles = 0,
+		eligible = 0,
+		exclusions = {},
+		offers = 0,
+		profiles = 0,
+		storefronts = 0,
+	}
+end
+
+local function count_exclusion(diagnostics, reason)
+	if diagnostics and reason then
+		local exclusions = diagnostics.exclusions
+
+		exclusions[reason] = (exclusions[reason] or 0) + 1
+	end
+end
+
+local function exclusion_summary(exclusions)
+	local entries = {}
+
+	for reason, count in pairs(exclusions or {}) do
+		entries[#entries + 1] = string.format("%s=%d", reason, count)
+	end
+
+	table.sort(entries)
+
+	return #entries > 0 and table.concat(entries, ", ") or "none"
+end
+
+local function log_scan_summary(mod, diagnostics)
+	log_info(mod, string.format(
+		"Scan diagnostics: profiles=%d, enabled_profiles=%d, storefronts=%d, offers=%d, Curios=%d, eligible=%d; Curio exclusions: %s.",
+		diagnostics.profiles,
+		diagnostics.enabled_profiles,
+		diagnostics.storefronts,
+		diagnostics.offers,
+		diagnostics.curios,
+		diagnostics.eligible,
+		exclusion_summary(diagnostics.exclusions)
+	))
+end
+
 local function error_text(error_value)
 	if type(error_value) == "table" then
 		local message = error_value.message or error_value.error or error_value[1]
@@ -334,11 +379,27 @@ local function offer_is_active(offer)
 	return true
 end
 
-local function normalized_offer(mod, profile, offer)
+local function log_curio_evaluation(mod, profile, offer_id, level, trait_name, trait_value, result)
+	log_info(mod, string.format(
+		"%s Curio offer %s: item_level=%s, primary_trait=%s, primary_value=%s; %s.",
+		localized_class_name(profile),
+		tostring(offer_id or "?"),
+		tostring(level or "?"),
+		tostring(trait_name or "?"),
+		tostring(trait_value or "?"),
+		result
+	))
+end
+
+local function normalized_offer(mod, profile, offer, diagnostics)
 	local sku = offer and offer.sku
 	local description = offer and offer.description
 	local offer_id = offer and offer.offerId
 	local price = offer and offer.price and offer.price.amount
+
+	if diagnostics then
+		diagnostics.offers = diagnostics.offers + 1
+	end
 
 	if not offer_is_active(offer) or not sku or sku.category ~= "item_instance" or type(description) ~= "table" or not offer_id or type(price) ~= "table" then
 		return
@@ -350,16 +411,48 @@ local function normalized_offer(mod, profile, offer)
 		return
 	end
 
+	if diagnostics then
+		diagnostics.curios = diagnostics.curios + 1
+	end
+
 	local level = item_level(item)
 	local minimum_level = math.clamp(math.floor(tonumber(mod:get("automatic_curio_min_item_level")) or 410), 0, 500)
 
-	if not level or level < minimum_level then
+	if not level then
+		count_exclusion(diagnostics, "unreadable_item_level")
+
+		if diagnostics then
+			log_curio_evaluation(mod, profile, offer_id, level, nil, nil, "excluded: unreadable item level")
+		end
+
+		return
+	elseif level < minimum_level then
+		count_exclusion(diagnostics, "below_minimum_level")
+
+		if diagnostics then
+			log_curio_evaluation(mod, profile, offer_id, level, nil, nil, "excluded: below configured minimum " .. tostring(minimum_level))
+		end
+
 		return
 	end
 
 	local trait_name, trait_value, trait_config = primary_trait(item)
 
-	if not trait_name or not trait_config or mod:get(trait_config.setting_id) == false then
+	if not trait_name or not trait_config then
+		count_exclusion(diagnostics, "unsupported_primary_trait")
+
+		if diagnostics then
+			log_curio_evaluation(mod, profile, offer_id, level, trait_name, trait_value, "excluded: unsupported or unreadable primary trait")
+		end
+
+		return
+	elseif mod:get(trait_config.setting_id) == false then
+		count_exclusion(diagnostics, "primary_type_disabled")
+
+		if diagnostics then
+			log_curio_evaluation(mod, profile, offer_id, level, trait_name, trait_value, "excluded: primary type disabled")
+		end
+
 		return
 	end
 
@@ -367,7 +460,18 @@ local function normalized_offer(mod, profile, offer)
 	local currency = price.type
 
 	if not amount or amount < 0 or type(currency) ~= "string" then
+		count_exclusion(diagnostics, "invalid_price")
+
+		if diagnostics then
+			log_curio_evaluation(mod, profile, offer_id, level, trait_name, trait_value, "excluded: invalid price")
+		end
+
 		return
+	end
+
+	if diagnostics then
+		diagnostics.eligible = diagnostics.eligible + 1
+		log_curio_evaluation(mod, profile, offer_id, level, trait_name, trait_value, string.format("eligible at %s %s", tostring(amount), currency))
 	end
 
 	return {
@@ -433,11 +537,15 @@ local function scan_candidates(mod, token)
 
 		local candidates = {}
 		local chain = Promise.resolved()
+		local diagnostics = new_scan_diagnostics()
+
+		diagnostics.profiles = #profiles
 
 		for index = 1, #profiles do
 			local profile = profiles[index]
 
 			if profile and profile.character_id and class_is_enabled(mod, profile) then
+				diagnostics.enabled_profiles = diagnostics.enabled_profiles + 1
 				chain = chain:next(function()
 					if not context_is_current(mod, token) then
 						return
@@ -454,8 +562,14 @@ local function scan_candidates(mod, token)
 							return rejected("Armoury storefront returned no personal offers")
 						end
 
+						diagnostics.storefronts = diagnostics.storefronts + 1
+
+						local offers_before = diagnostics.offers
+						local curios_before = diagnostics.curios
+						local eligible_before = diagnostics.eligible
+
 						for offer_index = 1, #offers do
-							local success, candidate = pcall(normalized_offer, mod, profile, offers[offer_index])
+							local success, candidate = pcall(normalized_offer, mod, profile, offers[offer_index], diagnostics)
 
 							if success and candidate and not processed_offer_keys[candidate_key(candidate)] then
 								candidates[#candidates + 1] = candidate
@@ -463,12 +577,22 @@ local function scan_candidates(mod, token)
 								log_info(mod, "Safety-excluded an unreadable offer: " .. error_text(candidate))
 							end
 						end
+
+						log_info(mod, string.format(
+							"%s storefront summary: offers=%d, Curios=%d, eligible=%d.",
+							localized_class_name(profile),
+							diagnostics.offers - offers_before,
+							diagnostics.curios - curios_before,
+							diagnostics.eligible - eligible_before
+						))
 					end)
 				end)
 			end
 		end
 
 		return chain:next(function()
+			log_scan_summary(mod, diagnostics)
+
 			table.sort(candidates, function(left, right)
 				if left.class_name ~= right.class_name then
 					return left.class_name < right.class_name
@@ -498,8 +622,40 @@ local function find_offer(storefront, offer_id)
 	end
 end
 
+local STABLE_REVALIDATION_FIELDS = {
+	"character_id",
+	"offer_id",
+	"currency",
+	"price",
+	"item_level",
+	"primary_trait",
+}
+
+local VOLATILE_REVALIDATION_FIELDS = {
+	"gear_id",
+	"primary_value",
+}
+
+local function candidate_differences(left, right, fields)
+	local differences = {}
+
+	if not left or not right then
+		return {"candidate_missing"}
+	end
+
+	for index = 1, #fields do
+		local field = fields[index]
+
+		if left[field] ~= right[field] then
+			differences[#differences + 1] = string.format("%s:%s->%s", field, tostring(left[field]), tostring(right[field]))
+		end
+	end
+
+	return differences
+end
+
 local function same_candidate(left, right)
-	return left and right and left.character_id == right.character_id and left.offer_id == right.offer_id and left.gear_id == right.gear_id and left.currency == right.currency and left.price == right.price and left.item_level == right.item_level and left.primary_trait == right.primary_trait and left.primary_value == right.primary_value
+	return #candidate_differences(left, right, STABLE_REVALIDATION_FIELDS) == 0
 end
 
 local function find_wallet(wallets, currency)
@@ -558,15 +714,42 @@ local function revalidate_and_purchase(mod, token, captured)
 		end
 
 		local offer = find_offer(storefront, captured.offer_id)
+
+		if not offer then
+			log_info(mod, "Revalidation rejected offer " .. tostring(captured.offer_id) .. ": offer ID was no longer present in the target storefront.")
+			return
+		end
+
 		local success, current = pcall(normalized_offer, mod, captured.profile, offer)
 
 		if not success then
 			return rejected(current)
 		end
 
-		if not same_candidate(captured, current) then
-			log_info(mod, "Skipped an offer that changed or expired before purchase: " .. tostring(captured.offer_id))
+		if not current then
+			log_info(mod, "Revalidation rejected offer " .. tostring(captured.offer_id) .. ": it no longer passed the current Curio filters or safety checks.")
 			return
+		end
+
+		if not same_candidate(captured, current) then
+			local differences = candidate_differences(captured, current, STABLE_REVALIDATION_FIELDS)
+
+			log_info(mod, string.format(
+				"Revalidation rejected offer %s because stable field(s) changed: %s.",
+				tostring(captured.offer_id),
+				table.concat(differences, ", ")
+			))
+			return
+		end
+
+		local volatile_differences = candidate_differences(captured, current, VOLATILE_REVALIDATION_FIELDS)
+
+		if #volatile_differences > 0 then
+			log_info(mod, string.format(
+				"Revalidation accepted offer %s; non-transactional field(s) changed after refetch: %s.",
+				tostring(captured.offer_id),
+				table.concat(volatile_differences, ", ")
+			))
 		end
 
 		local key = candidate_key(current)
@@ -898,6 +1081,7 @@ end
 CurioAcquisition._test = {
 	ARCHETYPE_SETTINGS = ARCHETYPE_SETTINGS,
 	PRIMARY_TRAITS = PRIMARY_TRAITS,
+	candidate_differences = candidate_differences,
 	candidate_key = candidate_key,
 	normalized_offer = normalized_offer,
 	primary_trait = primary_trait,
