@@ -200,6 +200,15 @@ def main() -> None:
             error("Unexpected require: " .. tostring(path))
         end
 
+        TestModLoader = {
+            io_dofile = function(self, path)
+                return TestCurioValues
+            end,
+        }
+        function get_mod()
+            return TestModLoader
+        end
+
         Color = setmetatable({}, {
             __index = function()
                 return function(alpha)

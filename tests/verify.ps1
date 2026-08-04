@@ -133,8 +133,12 @@ if ($curioAcquisition -notmatch 'fetch_all_profiles' -or $curioAcquisition -notm
 	throw "Automatic Curio acquisition is missing an all-character scan or explicit target-wallet purchase contract."
 }
 
-if ($curioValues -notmatch 'scripts/settings/buff/buff_templates' -or $curioValues -notmatch 'lerped_stat_buffs' -or $curioAcquisition -notmatch 'CurioValues\.resolve' -or $features -notmatch 'CurioValues\.resolve') {
+if ($curioValues -notmatch 'scripts/settings/buff/buff_templates' -or $curioValues -notmatch 'lerped_stat_buffs' -or $curioAcquisition -notmatch 'io_dofile\("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_values"\)' -or $features -notmatch 'io_dofile\("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_values"\)' -or $curioAcquisition -notmatch 'CurioValues\.resolve' -or $features -notmatch 'CurioValues\.resolve') {
 	throw "Curio buyer filtering and discard protection must share vanilla BuffTemplate roll conversion."
+}
+
+if ($main -notmatch 'no_op_module' -or $main -notmatch 'Failed to load %s; its features are disabled') {
+	throw "Runtime feature-module failures must degrade safely instead of spamming the per-frame update hook."
 }
 
 if ($curioAcquisition -notmatch 'MAX_OFFER_ERROR_LOGS_PER_SCAN\s*=\s*5' -or $curioAcquisition -notmatch 'MAX_ERROR_TEXT_LENGTH\s*=\s*1000' -or $curioAcquisition -notmatch 'automatic_curio_diagnostic_logging') {

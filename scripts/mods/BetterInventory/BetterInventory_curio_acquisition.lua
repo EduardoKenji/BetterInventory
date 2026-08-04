@@ -2,7 +2,15 @@ local Items = require("scripts/utilities/items")
 local MasterItems = require("scripts/backend/master_items")
 local Promise = require("scripts/foundation/utilities/promise")
 local StoreNames = require("scripts/settings/backend/store_names")
-local CurioValues = require("scripts/mods/BetterInventory/BetterInventory_curio_values")
+local CurioValues = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_values")
+
+if type(CurioValues) ~= "table" then
+	CurioValues = {
+		resolve = function()
+			return
+		end,
+	}
+end
 
 local CurioAcquisition = {}
 

@@ -3,7 +3,15 @@ local ProfileUtils = require("scripts/utilities/profile_utils")
 local RaritySettings = require("scripts/settings/item/rarity_settings")
 local UIWidget = require("scripts/managers/ui/ui_widget")
 local UISoundEvents = require("scripts/settings/ui/ui_sound_events")
-local CurioValues = require("scripts/mods/BetterInventory/BetterInventory_curio_values")
+local CurioValues = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_values")
+
+if type(CurioValues) ~= "table" then
+	CurioValues = {
+		resolve = function()
+			return
+		end,
+	}
+end
 
 local Features = {}
 

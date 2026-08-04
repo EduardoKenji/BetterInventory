@@ -181,6 +181,15 @@ def main() -> None:
             error("Unexpected test require: " .. tostring(path))
         end
 
+        TestModLoader = {
+            io_dofile = function(self, path)
+                return TestCurioValues
+            end,
+        }
+        function get_mod()
+            return TestModLoader
+        end
+
         test_mod = {
             settings = {
                 prioritize_equipped_favorites = true,
