@@ -390,6 +390,9 @@ def main() -> None:
 		"quick_discard_show_type_breakdown",
 		"quick_discard_show_summary_notification",
 		"automatic_curio_min_item_level",
+		"automatic_curio_min_health",
+		"automatic_curio_min_toughness",
+		"automatic_curio_diagnostic_logging",
 		"automatic_curio_buy_health",
 		"automatic_curio_buy_toughness",
 		"automatic_curio_buy_stamina",
@@ -467,6 +470,9 @@ def main() -> None:
     assert entries_by_id["quick_discard_show_type_breakdown"].disabled is True
     assert entries_by_id["quick_discard_show_summary_notification"].disabled is True
     assert entries_by_id["automatic_curio_min_item_level"].disabled is True
+    assert entries_by_id["automatic_curio_min_health"].disabled is True
+    assert entries_by_id["automatic_curio_min_toughness"].disabled is True
+    assert entries_by_id["automatic_curio_diagnostic_logging"].disabled is True
     assert entries_by_id["automatic_curio_buy_health"].disabled is True
     assert entries_by_id["automatic_curio_class_cryptic"].disabled is True
     assert entries_by_id["automatic_curio_types_group"].indentation_level == 2
@@ -524,12 +530,22 @@ def main() -> None:
     settings.enable_automatic_curio_acquisition = True
     mod.on_setting_changed("enable_automatic_curio_acquisition")
     assert entries_by_id["automatic_curio_min_item_level"].disabled is False
+    assert entries_by_id["automatic_curio_min_health"].disabled is False
+    assert entries_by_id["automatic_curio_min_toughness"].disabled is False
+    assert entries_by_id["automatic_curio_diagnostic_logging"].disabled is False
     assert entries_by_id["automatic_curio_buy_health"].disabled is False
     assert entries_by_id["automatic_curio_buy_toughness"].disabled is False
     assert entries_by_id["automatic_curio_buy_stamina"].disabled is False
     assert entries_by_id["automatic_curio_buy_wounds"].disabled is False
     assert entries_by_id["automatic_curio_class_veteran"].disabled is False
     assert entries_by_id["automatic_curio_class_cryptic"].disabled is False
+    settings.automatic_curio_buy_health = False
+    mod.on_setting_changed("automatic_curio_buy_health")
+    assert entries_by_id["automatic_curio_min_health"].disabled is True
+    assert entries_by_id["automatic_curio_min_toughness"].disabled is False
+    settings.automatic_curio_buy_health = True
+    mod.on_setting_changed("automatic_curio_buy_health")
+    assert entries_by_id["automatic_curio_min_health"].disabled is False
     assert globals_.curio_acquisition_syncs > 0
     settings.enable_automatic_curio_acquisition = False
     mod.on_setting_changed("enable_automatic_curio_acquisition")
@@ -840,6 +856,9 @@ def main() -> None:
     assert defaults["quick_discard_show_summary_notification"] is True
     assert defaults["enable_automatic_curio_acquisition"] is False
     assert defaults["automatic_curio_min_item_level"] == 410
+    assert defaults["automatic_curio_min_health"] == 21
+    assert defaults["automatic_curio_min_toughness"] == 17
+    assert defaults["automatic_curio_diagnostic_logging"] is False
     assert defaults["automatic_curio_buy_health"] is True
     assert defaults["automatic_curio_buy_toughness"] is True
     assert defaults["automatic_curio_buy_stamina"] is False

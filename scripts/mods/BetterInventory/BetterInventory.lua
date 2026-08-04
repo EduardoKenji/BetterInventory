@@ -345,6 +345,9 @@ local function refresh_option_dependencies()
 
 	for _, setting_id in ipairs({
 		"automatic_curio_min_item_level",
+		"automatic_curio_min_health",
+		"automatic_curio_min_toughness",
+		"automatic_curio_diagnostic_logging",
 		"automatic_curio_buy_health",
 		"automatic_curio_buy_toughness",
 		"automatic_curio_buy_stamina",
@@ -359,6 +362,12 @@ local function refresh_option_dependencies()
 	}) do
 		set_option_enabled(option_dependency_entries[setting_id], automatic_curio_enabled, automatic_curio_reason)
 	end
+
+	local automatic_health_enabled = automatic_curio_enabled and mod:get("automatic_curio_buy_health") ~= false
+	local automatic_toughness_enabled = automatic_curio_enabled and mod:get("automatic_curio_buy_toughness") ~= false
+
+	set_option_enabled(option_dependency_entries.automatic_curio_min_health, automatic_health_enabled, automatic_curio_enabled and mod:localize("option_requires_automatic_curio_health") or automatic_curio_reason)
+	set_option_enabled(option_dependency_entries.automatic_curio_min_toughness, automatic_toughness_enabled, automatic_curio_enabled and mod:localize("option_requires_automatic_curio_toughness") or automatic_curio_reason)
 end
 
 local function bind_option_dependencies(options_templates)
@@ -442,6 +451,9 @@ local function bind_option_dependencies(options_templates)
 		"quick_discard_show_type_breakdown",
 		"quick_discard_show_summary_notification",
 		"automatic_curio_min_item_level",
+		"automatic_curio_min_health",
+		"automatic_curio_min_toughness",
+		"automatic_curio_diagnostic_logging",
 		"automatic_curio_buy_health",
 		"automatic_curio_buy_toughness",
 		"automatic_curio_buy_stamina",
@@ -564,6 +576,7 @@ end
 
 function mod.on_setting_changed(setting_id)
 	local color_change = color_target_by_setting_id[setting_id]
+	local automatic_curio_setting = type(setting_id) == "string" and string.sub(setting_id, 1, 16) == "automatic_curio_"
 
 	if color_change then
 		if color_change.is_preset then
@@ -573,7 +586,7 @@ function mod.on_setting_changed(setting_id)
 		end
 	end
 
-	if setting_id == "enable_grid_layout" or setting_id == "columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "weapon_extra_width_column_threshold" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_armoury_requisition_grid" or setting_id == "expand_armoury_requisition_window" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "curio_display_profile" or setting_id == "enable_inventory_options_panel_prototype" or setting_id == "enable_experimental_quick_discard" or setting_id == "quick_discard_mode" or setting_id == "quick_discard_protect_high_level_curios" or setting_id == "enable_automatic_curio_acquisition" or setting_id == "enable_quick_look_card_grid_integration" or setting_id == "quick_look_card_grid_stat_position" then
+	if setting_id == "enable_grid_layout" or setting_id == "columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "weapon_extra_width_column_threshold" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_armoury_requisition_grid" or setting_id == "expand_armoury_requisition_window" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "curio_display_profile" or setting_id == "enable_inventory_options_panel_prototype" or setting_id == "enable_experimental_quick_discard" or setting_id == "quick_discard_mode" or setting_id == "quick_discard_protect_high_level_curios" or setting_id == "enable_automatic_curio_acquisition" or automatic_curio_setting or setting_id == "enable_quick_look_card_grid_integration" or setting_id == "quick_look_card_grid_stat_position" then
 		refresh_option_dependencies()
 	end
 
@@ -585,7 +598,7 @@ function mod.on_setting_changed(setting_id)
 		Features.sync_quick_discard_settings(mod, Layout)
 	end
 
-	if setting_id == "enable_automatic_curio_acquisition" or type(setting_id) == "string" and string.sub(setting_id, 1, 16) == "automatic_curio_" then
+	if setting_id == "enable_automatic_curio_acquisition" or automatic_curio_setting then
 		CurioAcquisition.on_setting_changed(mod, setting_id)
 		Features.sync_curio_acquisition_settings(mod, Layout)
 	end

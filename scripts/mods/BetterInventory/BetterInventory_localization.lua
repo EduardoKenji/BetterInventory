@@ -207,13 +207,19 @@ local localization = {
 		en = "Enable automatic Curio acquisition",
 	},
 	enable_automatic_curio_acquisition_tooltip = {
-		en = "Performs one all-character Armoury Exchange scan after each Morningstar entry and automatically purchases every Curio matching the enabled item-level, primary-type and class filters. This spends Ordo Dockets without a confirmation prompt. Automatic discard finishes first, and Curios matching the acquisition rule remain protected from later automatic-discard passes.",
+		en = "Performs one all-character Armoury Exchange scan after each Morningstar entry and automatically purchases every Curio matching the enabled item-level, primary-roll, type and class filters. This spends Ordo Dockets without a confirmation prompt. Automatic discard finishes first, and Curios matching the acquisition rule remain protected from later automatic-discard passes.",
 	},
 	automatic_curio_min_item_level = {
 		en = "Minimum item level Curio to acquire",
 	},
 	automatic_curio_min_item_level_tooltip = {
-		en = "Only Armoury Curios at or above this displayed item level are eligible. Every matching offer for every enabled class is purchased when sufficient currency is available. The default is 410.",
+		en = "Only Armoury Curios at or above this displayed item level are eligible. Health and Toughness Curios must also meet their enabled minimum-roll setting. Every matching offer for every enabled class is purchased when sufficient currency is available. The default is 410.",
+	},
+	automatic_curio_diagnostic_logging = {
+		en = "Enable detailed diagnostic logging",
+	},
+	automatic_curio_diagnostic_logging_tooltip = {
+		en = "Writes per-character, per-Curio and revalidation details to Darktide's shared session log during the single Morningstar scan. Disabled by default to minimize disk-log growth; failures are still logged.",
 	},
 	automatic_curio_types_group = {
 		en = "Curio types we are looking for:",
@@ -221,8 +227,20 @@ local localization = {
 	automatic_curio_buy_health = {
 		en = "Health",
 	},
+	automatic_curio_min_health = {
+		en = "Minimum Health (%%)",
+	},
+	automatic_curio_min_health_tooltip = {
+		en = "A Health Curio must meet both this primary-roll threshold and the minimum item level. The comparison is inclusive. The default is 21%%.",
+	},
 	automatic_curio_buy_toughness = {
 		en = "Toughness",
+	},
+	automatic_curio_min_toughness = {
+		en = "Minimum Toughness (%%)",
+	},
+	automatic_curio_min_toughness_tooltip = {
+		en = "A Toughness Curio must meet both this primary-roll threshold and the minimum item level. The comparison is inclusive. The default is 17%%.",
 	},
 	automatic_curio_buy_stamina = {
 		en = "Stamina",
@@ -256,6 +274,12 @@ local localization = {
 	},
 	option_requires_automatic_curio_acquisition = {
 		en = "Requires automatic Curio acquisition.",
+	},
+	option_requires_automatic_curio_health = {
+		en = "Requires Health Curios to be enabled.",
+	},
+	option_requires_automatic_curio_toughness = {
+		en = "Requires Toughness Curios to be enabled.",
 	},
 	automatic_curio_buyer_inventory_label = {
 		en = "Automatic Curio Buyer",
@@ -1266,12 +1290,18 @@ local zh_cn = {
 	mod_description = "为《暗潮》提供响应式且完整保留信息的库存布局。",
 	automatic_curio_buyer_group = "自动珍品购买器",
 	enable_automatic_curio_acquisition = "启用自动获取珍品",
-	enable_automatic_curio_acquisition_tooltip = "每次进入晨星号后，对所有角色的军械库交易所执行一次扫描，并自动购买符合物品等级、主要属性类型和职业筛选条件的所有珍品。此功能会在没有确认提示的情况下花费审判庭双子币。自动丢弃会先完成，且符合获取规则的珍品会在以后的自动丢弃流程中保持受保护状态。",
+	enable_automatic_curio_acquisition_tooltip = "每次进入晨星号后，对所有角色的军械库交易所执行一次扫描，并自动购买符合物品等级、主要属性数值、类型和职业筛选条件的所有珍品。此功能会在没有确认提示的情况下花费审判庭双子币。自动丢弃会先完成，且符合获取规则的珍品会在以后的自动丢弃流程中保持受保护状态。",
 	automatic_curio_min_item_level = "获取珍品的最低物品等级",
-	automatic_curio_min_item_level_tooltip = "只有显示物品等级达到或超过此值的军械库珍品才符合条件。货币充足时，会购买所有已启用职业的每个匹配商品。默认值为 410。",
+	automatic_curio_min_item_level_tooltip = "只有显示物品等级达到或超过此值的军械库珍品才符合条件。生命和韧性珍品还必须达到对应的最低主要属性数值。货币充足时，会购买所有已启用职业的每个匹配商品。默认值为 410。",
+	automatic_curio_diagnostic_logging = "启用详细诊断日志",
+	automatic_curio_diagnostic_logging_tooltip = "在每次晨星号单次扫描期间，将每个角色、每件珍品和重新验证的详细信息写入《暗潮》的共享会话日志。默认关闭以尽量减少磁盘日志增长；错误仍会记录。",
 	automatic_curio_types_group = "我们正在寻找的珍品类型：",
 	automatic_curio_buy_health = "生命",
+	automatic_curio_min_health = "最低生命值 (%%)",
+	automatic_curio_min_health_tooltip = "生命珍品必须同时达到此主要属性阈值和最低物品等级。比较包含等于阈值的情况。默认值为 21%%。",
 	automatic_curio_buy_toughness = "韧性",
+	automatic_curio_min_toughness = "最低韧性值 (%%)",
+	automatic_curio_min_toughness_tooltip = "韧性珍品必须同时达到此主要属性阈值和最低物品等级。比较包含等于阈值的情况。默认值为 17%%。",
 	automatic_curio_buy_stamina = "体力",
 	automatic_curio_buy_wounds = "伤口",
 	automatic_curio_classes_group = "要获取珍品的职业：",
@@ -1283,6 +1313,8 @@ local zh_cn = {
 	automatic_curio_class_broker = "巢都渣滓",
 	automatic_curio_class_cryptic = "护教军",
 	option_requires_automatic_curio_acquisition = "需要启用自动获取珍品。",
+	option_requires_automatic_curio_health = "需要启用生命珍品。",
+	option_requires_automatic_curio_toughness = "需要启用韧性珍品。",
 	automatic_curio_buyer_inventory_label = "自动珍品购买器",
 	automatic_curio_types_inventory_label = "我们正在寻找的珍品类型：",
 	automatic_curio_classes_inventory_label = "要获取珍品的职业：",

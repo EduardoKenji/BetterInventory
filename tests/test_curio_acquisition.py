@@ -111,7 +111,7 @@ def main() -> None:
             wound_trait = "gadget_innate_max_wounds_increase",
         }
         trait_values = {
-            health_trait = 17,
+            health_trait = 21,
             toughness_trait = 17,
             stamina_trait = 3,
             wound_trait = 1,
@@ -193,6 +193,9 @@ def main() -> None:
         settings = {
             enable_automatic_curio_acquisition = true,
             automatic_curio_min_item_level = 410,
+            automatic_curio_min_health = 21,
+            automatic_curio_min_toughness = 17,
+            automatic_curio_diagnostic_logging = false,
             automatic_curio_buy_health = true,
             automatic_curio_buy_toughness = true,
             automatic_curio_buy_stamina = false,
@@ -237,7 +240,7 @@ def main() -> None:
                 {
                     id = "health_trait",
                     rarity = 4,
-                    value = 0.17,
+                    value = 0.21,
                 },
             },
         }
@@ -403,7 +406,7 @@ def main() -> None:
     assert candidate.character_id == "target-psyker"
     assert candidate.item_level == 410
     assert candidate.primary_trait == "gadget_innate_health_increase"
-    assert candidate.primary_value == 17
+    assert candidate.primary_value == 21
     assert candidate.class_name == "Psyker"
 
     # Rich-text colour parameters from Enhanced Descriptions must not replace
@@ -413,7 +416,20 @@ def main() -> None:
         globals_.test_mod, globals_.target_profile, globals_.test_offer
     )
     assert rich_candidate is not None
-    assert rich_candidate.primary_value == 17
+    assert rich_candidate.primary_value == 21
+
+    # Item level and primary roll are independent inclusive minimums. Meeting
+    # the level threshold must not allow an under-threshold Health roll.
+    globals_.trait_values.health_trait = 20
+    globals_.health_item.traits[1].value = 0.20
+    assert (
+        module._test.normalized_offer(
+            globals_.test_mod, globals_.target_profile, globals_.test_offer
+        )
+        is None
+    )
+    globals_.trait_values.health_trait = 21
+    globals_.health_item.traits[1].value = 0.21
 
     # Revalidation must compare backend-stable transaction/filter fields. Storefront
     # decoration fields may legitimately change between two immediate fetches.
@@ -423,12 +439,23 @@ def main() -> None:
     assert not module._test.same_candidate(candidate, rich_candidate)
 
     globals_.health_item.traits[1].id = "toughness_trait"
+    globals_.health_item.traits[1].value = 0.17
     rich_toughness_candidate = module._test.normalized_offer(
         globals_.test_mod, globals_.target_profile, globals_.test_offer
     )
     assert rich_toughness_candidate is not None
     assert rich_toughness_candidate.primary_trait == "gadget_innate_toughness_increase"
     assert rich_toughness_candidate.primary_value == 17
+    globals_.trait_values.toughness_trait = 16
+    globals_.health_item.traits[1].value = 0.16
+    assert (
+        module._test.normalized_offer(
+            globals_.test_mod, globals_.target_profile, globals_.test_offer
+        )
+        is None
+    )
+    globals_.trait_values.toughness_trait = 17
+    globals_.health_item.traits[1].value = 0.21
     globals_.health_item.traits[1].id = "health_trait"
 
     # Localized text is notification-only. Even if it cannot be parsed, the
@@ -438,7 +465,7 @@ def main() -> None:
         globals_.test_mod, globals_.target_profile, globals_.test_offer
     )
     assert fallback_candidate is not None
-    assert fallback_candidate.primary_value == 17
+    assert fallback_candidate.primary_value == 21
     globals_.description_mode = None
 
     globals_.health_item.level = 409
@@ -457,6 +484,7 @@ def main() -> None:
     # Automatic discard owns the first Morningstar phase. The Curio Buyer must
     # remain dormant until that system is settled, then target the scanned
     # profile's wallet rather than the currently selected character's wallet.
+    globals_.settings.automatic_curio_diagnostic_logging = True
     module.begin_morningstar_pass(globals_.test_mod)
     module.update(globals_.test_mod, 10, True)
     assert globals_.purchase_count == 0
@@ -467,7 +495,7 @@ def main() -> None:
     assert globals_.purchased_wallet_owner == "target-psyker"
     assert globals_.captured_notification.line_1 == "automatic_curio_purchased_title"
     assert (
-        "{#color(101,202,77)}Psyker: 17% automatic_curio_health (410){#reset()}"
+        "{#color(101,202,77)}Psyker: 21% automatic_curio_health (410){#reset()}"
         in globals_.captured_notification.line_2
     )
     assert globals_.captured_notification.line_3 == "\nSpent: 25 000 Ordo Dockets"
@@ -482,10 +510,13 @@ def main() -> None:
     # transaction and reports the requested no-match summary.
     globals_.settings.automatic_curio_buy_health = False
     globals_.settings.automatic_curio_buy_toughness = False
+    globals_.settings.automatic_curio_diagnostic_logging = False
+    logs_before_quiet_scan = len(globals_.captured_logs)
     module.begin_morningstar_pass(globals_.test_mod)
     module.update(globals_.test_mod, 6, False)
     assert globals_.purchase_count == 1
     assert globals_.captured_notification.line_1 == "automatic_curio_none_title"
+    assert len(globals_.captured_logs) == logs_before_quiet_scan
 
     # A purchase already sent to the backend can still finish after the user
     # disables the buyer. It must be reported, while cancellation prevents any
@@ -506,7 +537,7 @@ def main() -> None:
     module.update(globals_.test_mod, 6, False)
     assert globals_.purchase_count == 2
     assert globals_.captured_notification.line_1 == "automatic_curio_purchased_title"
-    assert "Psyker: 17% automatic_curio_health (410)" in globals_.captured_notification.line_2
+    assert "Psyker: 21% automatic_curio_health (410)" in globals_.captured_notification.line_2
 
     # A matching Curio remains worth reporting when its target wallet cannot
     # cover the price. This is an eligible-but-unaffordable result, not a no-match.
@@ -514,6 +545,7 @@ def main() -> None:
     globals_.settings.automatic_curio_buy_toughness = True
     globals_.wallet_balance = 0
     globals_.health_item.traits[1].id = "toughness_trait"
+    globals_.health_item.traits[1].value = 0.17
     module.begin_morningstar_pass(globals_.test_mod)
     module.update(globals_.test_mod, 6, False)
     assert globals_.purchase_count == 2

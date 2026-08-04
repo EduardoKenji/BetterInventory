@@ -8,11 +8,15 @@ local CurioAcquisition = {}
 local MORNINGSTAR_DELAY = 6
 local MAX_SCAN_ATTEMPTS = 3
 local RETRY_DELAY = 5
+local MAX_OFFER_ERROR_LOGS_PER_SCAN = 5
+local MAX_ERROR_TEXT_LENGTH = 1000
 
 local PRIMARY_TRAITS = {
 	gadget_innate_health_increase = {
 		color_default = {235, 85, 85},
 		color_prefix = "curio_health_color",
+		minimum_roll_default = 21,
+		minimum_roll_setting_id = "automatic_curio_min_health",
 		setting_id = "automatic_curio_buy_health",
 		label_id = "automatic_curio_health",
 		unit = "%",
@@ -20,6 +24,8 @@ local PRIMARY_TRAITS = {
 	gadget_innate_toughness_increase = {
 		color_default = {105, 200, 235},
 		color_prefix = "curio_toughness_color",
+		minimum_roll_default = 17,
+		minimum_roll_setting_id = "automatic_curio_min_toughness",
 		setting_id = "automatic_curio_buy_toughness",
 		label_id = "automatic_curio_toughness",
 		unit = "%",
@@ -67,12 +73,20 @@ local function log_info(mod, message)
 	end
 end
 
+local function log_diagnostic(mod, message)
+	if mod and mod:get("automatic_curio_diagnostic_logging") == true then
+		log_info(mod, message)
+	end
+end
+
 local function new_scan_diagnostics()
 	return {
 		curios = 0,
 		enabled_profiles = 0,
 		eligible = 0,
 		exclusions = {},
+		offer_errors = 0,
+		offer_errors_logged = 0,
 		offers = 0,
 		profiles = 0,
 		storefronts = 0,
@@ -100,12 +114,13 @@ local function exclusion_summary(exclusions)
 end
 
 local function log_scan_summary(mod, diagnostics)
-	log_info(mod, string.format(
-		"Scan diagnostics: profiles=%d, enabled_profiles=%d, storefronts=%d, offers=%d, Curios=%d, eligible=%d; Curio exclusions: %s.",
+	log_diagnostic(mod, string.format(
+		"Scan diagnostics: profiles=%d, enabled_profiles=%d, storefronts=%d, offers=%d, offer_errors=%d, Curios=%d, eligible=%d; Curio exclusions: %s.",
 		diagnostics.profiles,
 		diagnostics.enabled_profiles,
 		diagnostics.storefronts,
 		diagnostics.offers,
+		diagnostics.offer_errors,
 		diagnostics.curios,
 		diagnostics.eligible,
 		exclusion_summary(diagnostics.exclusions)
@@ -113,17 +128,25 @@ local function log_scan_summary(mod, diagnostics)
 end
 
 local function error_text(error_value)
+	local result
+
 	if type(error_value) == "table" then
 		local message = error_value.message or error_value.error or error_value[1]
 
 		if message then
-			return tostring(message)
+			result = tostring(message)
 		elseif type(table.tostring) == "function" then
-			return table.tostring(error_value, 2)
+			result = table.tostring(error_value, 2)
 		end
 	end
 
-	return tostring(error_value)
+	result = result or tostring(error_value)
+
+	if #result > MAX_ERROR_TEXT_LENGTH then
+		return string.sub(result, 1, MAX_ERROR_TEXT_LENGTH) .. "... [truncated]"
+	end
+
+	return result
 end
 
 local function enabled(mod)
@@ -340,14 +363,14 @@ local function primary_trait(item)
 		if config then
 			local value = backend_trait_value(trait_name, entry)
 
-			if type(Items.trait_description) == "function" then
+			if not value and type(Items.trait_description) == "function" then
 				local described, description = pcall(Items.trait_description, definition, entry.rarity or 0, entry.value or 0)
 
-				value = described and first_number(description) or value
+				value = described and first_number(description) or nil
 			end
 
-			-- Eligibility is based on the stable trait identifier, never localized
-			-- presentation text. A missing value only affects notification detail.
+			-- Backend values are the eligibility source of truth. Localized text is
+			-- only a compatibility fallback for legacy or partial item payloads.
 			return trait_name, value, config
 		end
 	end
@@ -388,7 +411,7 @@ local function offer_is_active(offer)
 end
 
 local function log_curio_evaluation(mod, profile, offer_id, level, trait_name, trait_value, result)
-	log_info(mod, string.format(
+	log_diagnostic(mod, string.format(
 		"%s Curio offer %s: item_level=%s, primary_trait=%s, primary_value=%s; %s.",
 		localized_class_name(profile),
 		tostring(offer_id or "?"),
@@ -462,6 +485,28 @@ local function normalized_offer(mod, profile, offer, diagnostics)
 		end
 
 		return
+	end
+
+	if trait_config.minimum_roll_setting_id then
+		local minimum_roll = math.clamp(tonumber(mod:get(trait_config.minimum_roll_setting_id)) or trait_config.minimum_roll_default, 0, 100)
+
+		if not trait_value then
+			count_exclusion(diagnostics, "unreadable_primary_value")
+
+			if diagnostics then
+				log_curio_evaluation(mod, profile, offer_id, level, trait_name, trait_value, "excluded: unreadable primary value for configured roll threshold")
+			end
+
+			return
+		elseif trait_value + 0.0001 < minimum_roll then
+			count_exclusion(diagnostics, "below_minimum_primary_roll")
+
+			if diagnostics then
+				log_curio_evaluation(mod, profile, offer_id, level, trait_name, trait_value, "excluded: below configured primary-roll minimum " .. tostring(minimum_roll))
+			end
+
+			return
+		end
 	end
 
 	local amount = tonumber(price.amount)
@@ -582,11 +627,16 @@ local function scan_candidates(mod, token)
 							if success and candidate and not processed_offer_keys[candidate_key(candidate)] then
 								candidates[#candidates + 1] = candidate
 							elseif not success then
-								log_info(mod, "Safety-excluded an unreadable offer: " .. error_text(candidate))
+								diagnostics.offer_errors = diagnostics.offer_errors + 1
+
+								if diagnostics.offer_errors_logged < MAX_OFFER_ERROR_LOGS_PER_SCAN then
+									diagnostics.offer_errors_logged = diagnostics.offer_errors_logged + 1
+									log_info(mod, "Safety-excluded an unreadable offer: " .. error_text(candidate))
+								end
 							end
 						end
 
-						log_info(mod, string.format(
+						log_diagnostic(mod, string.format(
 							"%s storefront summary: offers=%d, Curios=%d, eligible=%d.",
 							localized_class_name(profile),
 							diagnostics.offers - offers_before,
@@ -599,6 +649,13 @@ local function scan_candidates(mod, token)
 		end
 
 		return chain:next(function()
+			if diagnostics.offer_errors > diagnostics.offer_errors_logged then
+				log_info(mod, string.format(
+					"Suppressed %d additional unreadable-offer error log(s) during this scan.",
+					diagnostics.offer_errors - diagnostics.offer_errors_logged
+				))
+			end
+
 			log_scan_summary(mod, diagnostics)
 
 			table.sort(candidates, function(left, right)
@@ -753,7 +810,7 @@ local function revalidate_and_purchase(mod, token, captured)
 		local volatile_differences = candidate_differences(captured, current, VOLATILE_REVALIDATION_FIELDS)
 
 		if #volatile_differences > 0 then
-			log_info(mod, string.format(
+			log_diagnostic(mod, string.format(
 				"Revalidation accepted offer %s; non-transactional field(s) changed after refetch: %s.",
 				tostring(captured.offer_id),
 				table.concat(volatile_differences, ", ")
@@ -779,7 +836,7 @@ local function revalidate_and_purchase(mod, token, captured)
 		end
 
 			if available < current.price then
-				log_info(mod, string.format("Skipped %s: %s balance was insufficient.", tostring(current.offer_id), current.currency))
+				log_diagnostic(mod, string.format("Skipped %s: %s balance was insufficient.", tostring(current.offer_id), current.currency))
 
 				return {
 					available = available,
@@ -1011,7 +1068,7 @@ local function purchase_candidates(mod, token, candidates)
 			report_purchase_outcomes(mod, purchased, insufficient, false)
 
 			if #purchased > 0 or #insufficient > 0 then
-				log_info(mod, string.format("Reported %d purchase(s) and %d insufficient-funds match(es) after the pass was cancelled.", #purchased, #insufficient))
+				log_diagnostic(mod, string.format("Reported %d purchase(s) and %d insufficient-funds match(es) after the pass was cancelled.", #purchased, #insufficient))
 			end
 
 			return
@@ -1026,10 +1083,10 @@ local function purchase_candidates(mod, token, candidates)
 		local reported = report_purchase_outcomes(mod, purchased, insufficient, false)
 
 		if reported then
-			log_info(mod, string.format("Purchase pass completed with %d purchase(s) and %d insufficient-funds match(es).", #purchased, #insufficient))
+			log_diagnostic(mod, string.format("Purchase pass completed with %d purchase(s) and %d insufficient-funds match(es).", #purchased, #insufficient))
 		else
 			notify(mod, "automatic_curio_none_title", mod:localize("automatic_curio_none_description"))
-			log_info(mod, "No eligible Curios were available after final revalidation.")
+			log_diagnostic(mod, "No eligible Curios were available after final revalidation.")
 		end
 	end):catch(function(error_value)
 		if not context_is_current(mod, token) then
@@ -1081,7 +1138,7 @@ local function start_scan(mod)
 
 	state.started = true
 	state.scan_attempts = state.scan_attempts + 1
-	log_info(mod, string.format("Starting all-character Armoury scan attempt %d.", state.scan_attempts))
+	log_diagnostic(mod, string.format("Starting all-character Armoury scan attempt %d.", state.scan_attempts))
 
 	scan_candidates(mod, token):next(function(candidates)
 		if not context_is_current(mod, token) then
@@ -1094,7 +1151,7 @@ local function start_scan(mod)
 			return schedule_scan_retry(mod, token, "scan returned no candidate list")
 		end
 
-		log_info(mod, string.format("Scan found %d eligible Curio offer(s).", #candidates))
+		log_diagnostic(mod, string.format("Scan found %d eligible Curio offer(s).", #candidates))
 
 		if #candidates == 0 then
 			finish_pass()
@@ -1143,7 +1200,7 @@ CurioAcquisition.on_setting_changed = function(mod, setting_id)
 		else
 			CurioAcquisition.cancel()
 		end
-	elseif type(setting_id) == "string" and string.sub(setting_id, 1, 16) == "automatic_curio_" and state.started then
+	elseif setting_id ~= "automatic_curio_diagnostic_logging" and type(setting_id) == "string" and string.sub(setting_id, 1, 16) == "automatic_curio_" and state.started then
 		-- Changing a destructive filter invalidates every captured offer. Do not
 		-- re-run automatically in the same hub session after a partial transaction.
 		state.token = state.token + 1
@@ -1191,7 +1248,7 @@ CurioAcquisition.update = function(mod, dt, automatic_discard_busy)
 		state.scheduled = true
 		state.started = false
 		processed_offer_keys = {}
-		log_info(mod, "Scheduled one all-character pass after detecting a ready Morningstar session.")
+		log_diagnostic(mod, "Scheduled one all-character pass after detecting a ready Morningstar session.")
 	end
 
 	if state.completed or not state.scheduled or state.started or automatic_discard_busy then

@@ -33,6 +33,8 @@ local INVENTORY_DISCARD_CURIO_PROTECTION_ID = "better_inventory_discard_curio_pr
 local INVENTORY_DISCARD_CURIO_LEVEL_ID = "better_inventory_discard_curio_level"
 local INVENTORY_CURIO_BUYER_ENABLE_ID = "better_inventory_curio_buyer_enable"
 local INVENTORY_CURIO_BUYER_MIN_LEVEL_ID = "better_inventory_curio_buyer_min_level"
+local INVENTORY_CURIO_BUYER_MIN_HEALTH_ID = "better_inventory_curio_buyer_min_health"
+local INVENTORY_CURIO_BUYER_MIN_TOUGHNESS_ID = "better_inventory_curio_buyer_min_toughness"
 local INVENTORY_OPTIONS_PANEL_REFERENCE = "better_inventory_options_panel"
 local INVENTORY_OPTIONS_PANEL_MIN_HEIGHT = 120
 local INVENTORY_OPTIONS_PANEL_DEFAULT_WIDTH = 445
@@ -1344,15 +1346,23 @@ local function panel_quick_discard_entry(mod, layout, view)
 	end)
 end
 
-local function panel_stepper_entry(mod, layout, view, control_id, setting_id, label_id, default_value, sync_function)
+local function panel_stepper_entry(mod, layout, view, control_id, setting_id, label_id, default_value, sync_function, minimum, maximum, step, suffix)
 	local geometry = view._better_inventory_options_panel_geometry
+	minimum = tonumber(minimum) or 0
+	maximum = tonumber(maximum) or 500
+	step = tonumber(step) or 10
+	suffix = suffix or ""
+
+	local function current_value()
+		return math.clamp(math.floor((tonumber(mod:get(setting_id)) or default_value) + 0.5), minimum, maximum)
+	end
 
 	return panel_entry(view, control_id, 34, compact_stepper_passes(geometry.content_width), {
 		label = mod:localize(label_id),
-		value = tostring(math.floor(tonumber(mod:get(setting_id)) or default_value)),
+		value = tostring(current_value()) .. suffix,
 	}, function(widget)
 		local function change_value(delta)
-			local value = math.clamp(math.floor(tonumber(mod:get(setting_id)) or default_value) + delta, 0, 500)
+			local value = math.clamp(current_value() + delta, minimum, maximum)
 			local sync = sync_function or Features.sync_quick_discard_settings
 
 			mod:set(setting_id, value, false)
@@ -1360,17 +1370,17 @@ local function panel_stepper_entry(mod, layout, view, control_id, setting_id, la
 		end
 
 		widget.content.decrease_hotspot.pressed_callback = function()
-			change_value(-10)
+			change_value(-step)
 		end
 		widget.content.increase_hotspot.pressed_callback = function()
-			change_value(10)
+			change_value(step)
 		end
 	end, function(widget)
-		local value = math.clamp(math.floor(tonumber(mod:get(setting_id)) or default_value), 0, 500)
+		local value = current_value()
 
 		if widget.content.better_inventory_value ~= value then
 			widget.content.better_inventory_value = value
-			widget.content.value = tostring(value)
+			widget.content.value = tostring(value) .. suffix
 		end
 	end)
 end
@@ -1553,7 +1563,7 @@ local function panel_checkbox_group_entry(mod, layout, view, control_id, setting
 
 				widget.content[checked_id] = value
 				mod:set(config.setting_id, value, false)
-				Features.sync_curio_acquisition_settings(mod, layout)
+				Features.sync_curio_acquisition_settings(mod, layout, view)
 			end
 		end
 	end, function(widget)
@@ -1649,6 +1659,8 @@ local function panel_structure_key(mod, view)
 	key = key + (collapsed.discard and 32 or 0)
 	key = key + (mod:get("enable_automatic_curio_acquisition") == true and 64 or 0)
 	key = key + (collapsed.curio_buyer and 128 or 0)
+	key = key + (mod:get("automatic_curio_buy_health") ~= false and 256 or 0)
+	key = key + (mod:get("automatic_curio_buy_toughness") ~= false and 512 or 0)
 
 	return key
 end
@@ -1717,6 +1729,15 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 				entries[#entries + 1] = panel_stepper_entry(mod, layout, view, INVENTORY_CURIO_BUYER_MIN_LEVEL_ID, "automatic_curio_min_item_level", "automatic_curio_min_item_level", 410, Features.sync_curio_acquisition_settings)
 				entries[#entries + 1] = panel_sub_label_entry(mod, view, "better_inventory_curio_buyer_types_label", "automatic_curio_types_inventory_label")
 				entries[#entries + 1] = panel_curio_buyer_type_entry(mod, layout, view)
+
+				if mod:get("automatic_curio_buy_health") ~= false then
+					entries[#entries + 1] = panel_stepper_entry(mod, layout, view, INVENTORY_CURIO_BUYER_MIN_HEALTH_ID, "automatic_curio_min_health", "automatic_curio_min_health", 21, Features.sync_curio_acquisition_settings, 0, 21, 1, "%")
+				end
+
+				if mod:get("automatic_curio_buy_toughness") ~= false then
+					entries[#entries + 1] = panel_stepper_entry(mod, layout, view, INVENTORY_CURIO_BUYER_MIN_TOUGHNESS_ID, "automatic_curio_min_toughness", "automatic_curio_min_toughness", 17, Features.sync_curio_acquisition_settings, 0, 17, 1, "%")
+				end
+
 				entries[#entries + 1] = panel_sub_label_entry(mod, view, "better_inventory_curio_buyer_classes_label", "automatic_curio_classes_inventory_label")
 				entries[#entries + 1] = panel_curio_buyer_class_entry(mod, layout, view, 1)
 				entries[#entries + 1] = panel_curio_buyer_class_entry(mod, layout, view, 2)
@@ -2193,6 +2214,16 @@ local CURIO_BUYER_PRIMARY_TRAIT_SETTINGS = {
 	gadget_innate_max_wounds_increase = "automatic_curio_buy_wounds",
 	gadget_stamina_increase = "automatic_curio_buy_stamina",
 }
+local CURIO_BUYER_PRIMARY_ROLL_SETTINGS = {
+	gadget_innate_health_increase = {
+		default = 21,
+		setting_id = "automatic_curio_min_health",
+	},
+	gadget_innate_toughness_increase = {
+		default = 17,
+		setting_id = "automatic_curio_min_toughness",
+	},
+}
 
 local function curio_primary_trait_name(item)
 	local primary_trait = item and item.traits and item.traits[1]
@@ -2211,7 +2242,7 @@ local function curio_primary_trait_name(item)
 
 	for known_trait_name in pairs(CURIO_PRIMARY_TRAIT_SETTINGS) do
 		if trait_name == known_trait_name or string.find(trait_name, known_trait_name, 1, true) then
-			return known_trait_name
+			return known_trait_name, primary_trait
 		end
 	end
 end
@@ -2240,10 +2271,34 @@ local function automatic_curio_acquisition_protects(mod, item, level)
 		return false
 	end
 
-	local primary_trait_name = curio_primary_trait_name(item)
+	local primary_trait_name, primary_trait = curio_primary_trait_name(item)
 	local setting_id = primary_trait_name and CURIO_BUYER_PRIMARY_TRAIT_SETTINGS[primary_trait_name]
 
-	return setting_id and mod:get(setting_id) ~= false or false
+	if not setting_id or mod:get(setting_id) == false then
+		return false
+	end
+
+	local roll_config = CURIO_BUYER_PRIMARY_ROLL_SETTINGS[primary_trait_name]
+
+	if roll_config then
+		local value = tonumber(primary_trait and primary_trait.value)
+
+		if value and math.abs(value) <= 1 then
+			value = value * 100
+		end
+
+		-- Missing inventory roll data fails safe. It must never make an acquired or
+		-- partially materialized Curio eligible for destructive automatic discard.
+		if value then
+			local minimum_roll = math.clamp(tonumber(mod:get(roll_config.setting_id)) or roll_config.default, 0, 100)
+
+			if value + 0.0001 < minimum_roll then
+				return false
+			end
+		end
+	end
+
+	return true
 end
 
 local function eligible_for_quick_discard(mod, item, is_equipped, maximum_equipped_levels, favorite_gear_ids)

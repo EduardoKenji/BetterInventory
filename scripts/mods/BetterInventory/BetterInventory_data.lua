@@ -386,6 +386,12 @@ return {
 								},
 							},
 							{
+								setting_id = "automatic_curio_diagnostic_logging",
+								tooltip = "automatic_curio_diagnostic_logging_tooltip",
+								type = "checkbox",
+								default_value = false,
+							},
+							{
 								setting_id = "automatic_curio_types_group",
 								type = "group",
 								sub_widgets = {
@@ -393,11 +399,35 @@ return {
 										setting_id = "automatic_curio_buy_health",
 										type = "checkbox",
 										default_value = true,
+										sub_widgets = {
+											{
+												setting_id = "automatic_curio_min_health",
+												tooltip = "automatic_curio_min_health_tooltip",
+												type = "numeric",
+												default_value = 21,
+												range = {
+													0,
+													21,
+												},
+											},
+										},
 									},
 									{
 										setting_id = "automatic_curio_buy_toughness",
 										type = "checkbox",
 										default_value = true,
+										sub_widgets = {
+											{
+												setting_id = "automatic_curio_min_toughness",
+												tooltip = "automatic_curio_min_toughness_tooltip",
+												type = "numeric",
+												default_value = 17,
+												range = {
+													0,
+													17,
+												},
+											},
+										},
 									},
 									{
 										setting_id = "automatic_curio_buy_stamina",

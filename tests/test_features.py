@@ -773,7 +773,14 @@ def main() -> None:
                     "level": 420,
                     "rarity": 1,
                     "traits": lua.table_from(
-                        [lua.table_from({"id": "gadget_innate_health_increase"})]
+                        [
+                            lua.table_from(
+                                {
+                                    "id": "gadget_innate_health_increase",
+                                    "value": 0.21,
+                                }
+                            )
+                        ]
                     ),
                 }
             ),
@@ -784,7 +791,14 @@ def main() -> None:
                     "level": 420,
                     "rarity": 1,
                     "traits": lua.table_from(
-                        [lua.table_from({"id": "gadget_innate_toughness_increase"})]
+                        [
+                            lua.table_from(
+                                {
+                                    "id": "gadget_innate_toughness_increase",
+                                    "value": 0.17,
+                                }
+                            )
+                        ]
                     ),
                 }
             ),
@@ -814,6 +828,8 @@ def main() -> None:
     mod.settings.quick_discard_protect_high_level_curios = False
     mod.settings.enable_automatic_curio_acquisition = True
     mod.settings.automatic_curio_min_item_level = 410
+    mod.settings.automatic_curio_min_health = 21
+    mod.settings.automatic_curio_min_toughness = 17
     mod.settings.automatic_curio_buy_health = True
     mod.settings.automatic_curio_buy_toughness = False
     buyer_protected_candidates = features.quick_discard_candidates_from_items(
@@ -825,6 +841,16 @@ def main() -> None:
     }
     assert "health_curio" not in buyer_candidate_ids
     assert "toughness_curio" in buyer_candidate_ids
+    typed_curios[1].traits[1].value = 0.20
+    buyer_protected_candidates = features.quick_discard_candidates_from_items(
+        mod, typed_curios, lua.table_from({})
+    )
+    buyer_candidate_ids = {
+        buyer_protected_candidates[index].gear_id
+        for index in range(1, len(buyer_protected_candidates) + 1)
+    }
+    assert "health_curio" in buyer_candidate_ids
+    typed_curios[1].traits[1].value = 0.21
     mod.settings.enable_automatic_curio_acquisition = False
     mod.settings.automatic_curio_buy_toughness = True
     mod.settings.quick_discard_protect_high_level_curios = True
@@ -1327,13 +1353,38 @@ def main() -> None:
     curio_buyer_enable.content.hotspot.pressed_callback()
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert mod.settings.enable_automatic_curio_acquisition is True
-    assert len(prototype_panel.layout) == 23
+    assert len(prototype_panel.layout) == 25
     assert prototype_panel.widgets["better_inventory_curio_buyer_min_level"] is not None
+    buyer_min_health = prototype_panel.widgets[
+        "better_inventory_curio_buyer_min_health"
+    ]
+    buyer_min_toughness = prototype_panel.widgets[
+        "better_inventory_curio_buyer_min_toughness"
+    ]
+    assert buyer_min_health.content.value == "21%"
+    assert buyer_min_toughness.content.value == "17%"
+    buyer_min_health.content.decrease_hotspot.pressed_callback()
+    assert mod.settings.automatic_curio_min_health == 20
+    buyer_min_health.content.entry.refresh(buyer_min_health)
+    assert buyer_min_health.content.value == "20%"
+    buyer_min_health.content.increase_hotspot.pressed_callback()
+    assert mod.settings.automatic_curio_min_health == 21
     buyer_types = prototype_panel.widgets["better_inventory_curio_buyer_types"]
     assert buyer_types.content.health_checked is True
     assert buyer_types.content.toughness_checked is True
     assert buyer_types.content.stamina_checked is False
     assert buyer_types.content.wounds_checked is False
+    buyer_types.content.health_hotspot.pressed_callback()
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert mod.settings.automatic_curio_buy_health is False
+    assert len(prototype_panel.layout) == 24
+    assert prototype_panel.widgets["better_inventory_curio_buyer_min_health"] is None
+    assert prototype_panel.widgets["better_inventory_curio_buyer_min_toughness"] is not None
+    buyer_types = prototype_panel.widgets["better_inventory_curio_buyer_types"]
+    buyer_types.content.health_hotspot.pressed_callback()
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert mod.settings.automatic_curio_buy_health is True
+    assert len(prototype_panel.layout) == 25
     assert prototype_panel.widgets["better_inventory_curio_buyer_classes_1"] is not None
     assert prototype_panel.widgets["better_inventory_curio_buyer_classes_2"] is not None
     curio_buyer_enable = prototype_panel.widgets[

@@ -109,6 +109,10 @@ if ($data -notmatch 'setting_id\s*=\s*"enable_automatic_curio_acquisition"[\s\S]
 	throw "Automatic Curio acquisition must remain explicitly opt-in with a 410 default minimum item level."
 }
 
+if ($data -notmatch 'setting_id\s*=\s*"automatic_curio_min_health"[\s\S]*?default_value\s*=\s*21' -or $data -notmatch 'setting_id\s*=\s*"automatic_curio_min_toughness"[\s\S]*?default_value\s*=\s*17' -or $data -notmatch 'setting_id\s*=\s*"automatic_curio_diagnostic_logging"[\s\S]*?default_value\s*=\s*false') {
+	throw "Automatic Curio acquisition must keep its 21% Health, 17% Toughness and quiet diagnostic defaults."
+}
+
 foreach ($settingId in @(
 	"automatic_curio_class_veteran",
 	"automatic_curio_class_zealot",
@@ -125,6 +129,10 @@ foreach ($settingId in @(
 
 if ($curioAcquisition -notmatch 'fetch_all_profiles' -or $curioAcquisition -notmatch 'StoreNames\.by_archetype\.credit' -or $curioAcquisition -notmatch 'character_wallets,\s*candidate\.character_id' -or $curioAcquisition -notmatch 'purchase_item_with_wallet') {
 	throw "Automatic Curio acquisition is missing an all-character scan or explicit target-wallet purchase contract."
+}
+
+if ($curioAcquisition -notmatch 'MAX_OFFER_ERROR_LOGS_PER_SCAN\s*=\s*5' -or $curioAcquisition -notmatch 'MAX_ERROR_TEXT_LENGTH\s*=\s*1000' -or $curioAcquisition -notmatch 'automatic_curio_diagnostic_logging') {
+	throw "Automatic Curio acquisition logging must remain opt-in for detail and bounded for always-on errors."
 }
 
 if ($curioAcquisition -match 'purchase_item\(current\.offer' -or $curioAcquisition -match 'purchase_item\(offer') {
