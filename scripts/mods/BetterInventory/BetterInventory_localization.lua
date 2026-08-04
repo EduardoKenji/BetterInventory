@@ -509,6 +509,27 @@ local localization = {
 	armoury_exchange_views_group = {
 		en = "Armoury Exchange",
 	},
+	global_store_integration_group = {
+		en = "Mod Integration: GlobalStore",
+	},
+	enable_global_store_integration = {
+		en = "Enable GlobalStore integration",
+	},
+	enable_global_store_integration_tooltip = {
+		en = "Enables BetterInventory's GlobalStore integration for Multi-Operative Supply. Disable this to leave GlobalStore's native cards and sorting untouched.",
+	},
+	enable_global_store_grid = {
+		en = "Use BetterInventory grid cards",
+	},
+	enable_global_store_grid_tooltip = {
+		en = "Uses BetterInventory's responsive grid cards in GlobalStore's Multi-Operative Supply. The layout follows the global two-to-five column setting; three or more columns reserve an extra character-information row without stretching weapon art.",
+	},
+	enable_global_store_sorting_panel = {
+		en = "Show GlobalStore sorting widget",
+	},
+	enable_global_store_sorting_panel_tooltip = {
+		en = "Adds collapsible BetterInventory Sorting and Darktide Native Sorting sections to GlobalStore's Multi-Operative Supply. Requires the GlobalStore grid option and is enabled by default.",
+	},
 	enable_hadron_entreat_grid = {
 		en = "Hadron: Entreat Hadron",
 	},
@@ -788,6 +809,12 @@ local localization = {
 	},
 	option_requires_armoury_expansion = {
 		en = "Enable Armoury Requisition window expansion to set a target card width.",
+	},
+	option_requires_global_store_grid = {
+		en = "Enable the GlobalStore grid to use this option.",
+	},
+	option_requires_global_store_integration = {
+		en = "Enable GlobalStore integration to use this option.",
 	},
 	option_requires_weapon_perks = {
 		en = "Enable weapon perk text to use this option.",
@@ -1993,6 +2020,15 @@ zh_cn.three_column_weapon_name_font_size = "军械库武器名称字号"
 zh_cn.three_column_weapon_name_font_size_tooltip = "控制军械库卡片中的武器名称字号。调低数值可帮助较长名称保持在一行，同时不影响库存卡片。"
 zh_cn.hadron_additional_views_group = "哈德隆"
 zh_cn.armoury_exchange_views_group = "军械库交易所"
+zh_cn.global_store_integration_group = "Mod 集成：GlobalStore"
+zh_cn.enable_global_store_integration = "启用 GlobalStore 集成"
+zh_cn.enable_global_store_integration_tooltip = "为多干员补给启用 BetterInventory 的 GlobalStore 集成。关闭后将保持 GlobalStore 的原生卡片和排序。"
+zh_cn.enable_global_store_grid = "使用 BetterInventory 网格卡片"
+zh_cn.enable_global_store_grid_tooltip = "在 GlobalStore 的多干员补给中使用 BetterInventory 响应式网格卡片。布局遵循全局两至五列设置；三列及以上会增加角色信息行，但不会拉伸武器图像。"
+zh_cn.enable_global_store_sorting_panel = "显示 GlobalStore 排序组件"
+zh_cn.enable_global_store_sorting_panel_tooltip = "在 GlobalStore 的多干员补给中添加可折叠的 BetterInventory 排序和暗潮原生排序组件。需要开启 GlobalStore 网格，默认开启。"
+zh_cn.option_requires_global_store_grid = "启用 GlobalStore 网格后才能使用此选项。"
+zh_cn.option_requires_global_store_integration = "启用 GlobalStore 集成后才能使用此选项。"
 
 for localization_id, text in pairs(zh_cn) do
 	local entry = localization[localization_id]

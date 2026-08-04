@@ -60,8 +60,8 @@ if ($main -match 'InventoryWeaponsView\.present_grid_layout\s*=') {
 	throw "Direct class assignment found; BetterInventory must remain in the DMF hook chain."
 }
 
-if ($main -notmatch 'is_armoury_requisition_view' -or $main -notmatch '_optional_store_service\s*==\s*nil') {
-	throw "The Armoury hook must exclude custom CreditsVendorView services such as GlobalStore."
+if ($main -notmatch 'is_armoury_requisition_view' -or $main -notmatch '_optional_store_service\s*==\s*nil' -or $main -notmatch 'is_global_store_view' -or $main -notmatch 'get_all_characters_store_custom') {
+	throw "The vendor hooks must distinguish native Requisition from the optional GlobalStore service."
 }
 
 if ($main -notmatch 'pack_values\(pcall\(func,[\s\S]*?unpack_values\(results,\s*2,\s*result_count\)') {
@@ -93,6 +93,10 @@ if ($layout -match 'Managers\.ui:(load|unload)_item_icon' -or $layout -match 'Re
 
 if ($data -notmatch 'setting_id\s*=\s*"enable_experimental_quick_discard"[\s\S]*?default_value\s*=\s*false') {
 	throw "Experimental quick discard must remain disabled by default."
+}
+
+if ($data -notmatch 'setting_id\s*=\s*"global_store_integration_group"' -or $data -notmatch 'setting_id\s*=\s*"enable_global_store_integration"[\s\S]*?default_value\s*=\s*true' -or $main -notmatch 'enable_global_store_integration') {
+	throw "GlobalStore integration must have a dedicated default-on subsection and runtime switch."
 }
 
 if ($data -notmatch 'setting_id\s*=\s*"quick_discard_mode"[\s\S]*?default_value\s*=\s*"manual"' -or $data -notmatch 'setting_id\s*=\s*"quick_discard_skip_automatic_confirmation"[\s\S]*?default_value\s*=\s*false') {

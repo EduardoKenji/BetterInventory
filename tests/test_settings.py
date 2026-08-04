@@ -39,6 +39,9 @@ def main() -> None:
 			enable_armoury_requisition_grid = true,
 			enable_armoury_requisition_sorting_panel = true,
 			brighten_armoury_item_levels = true,
+			enable_global_store_integration = true,
+			enable_global_store_grid = true,
+			enable_global_store_sorting_panel = true,
 			expand_armoury_requisition_window = true,
 			armoury_requisition_target_card_width = 230,
 			automatic_card_height = true,
@@ -102,6 +105,10 @@ def main() -> None:
             expanded_view_definitions = function(_, definitions) return definitions, 0 end,
 			expanded_armoury_view_definitions = function(_, definitions)
 				definitions.armoury_expanded = true
+				return definitions, 114
+			end,
+			expanded_global_store_view_definitions = function(_, definitions)
+				definitions.global_store_expanded = true
 				return definitions, 114
 			end,
             configure_item_blueprint = function() end,
@@ -247,8 +254,9 @@ def main() -> None:
     assert armoury_grid.top_width == 766
     assert armoury_grid.bottom_width == 788
 
-    # CreditsVendorView is also reused by GlobalStore. Its custom cards add a
-    # portrait footer, so BetterInventory must leave that route completely native.
+    # CreditsVendorView is also reused by GlobalStore. Its custom cards use the
+    # same expanded grid geometry, while their portrait footer is handled by
+    # the GlobalStore blueprint hook.
     custom_credits_view = lua.table_from(
         {
             "__class_name": "CreditsVendorView",
@@ -266,12 +274,12 @@ def main() -> None:
         lua.table_from({}),
         lua.table_from({}),
     )
-    assert custom_credits_view._better_inventory_armoury_grid_expansion is None
-    assert custom_credits_view.received_definitions.armoury_expanded is None
+    assert custom_credits_view._better_inventory_armoury_grid_expansion == 114
+    assert custom_credits_view.received_definitions.global_store_expanded is True
     globals_.captured_armoury_on_enter_hook(
         lua.eval("function() return 'custom_entered' end"), custom_credits_view
     )
-    assert custom_credits_view._item_grid.updated is None
+    assert custom_credits_view._item_grid.updated is True
 
     mod.on_enabled()
     assert globals_.profile_discovery_requests == 1
@@ -392,6 +400,9 @@ def main() -> None:
 		"brighten_armoury_item_levels",
 		"expand_armoury_requisition_window",
 		"armoury_requisition_target_card_width",
+		"enable_global_store_integration",
+		"enable_global_store_grid",
+		"enable_global_store_sorting_panel",
 		"weapon_perk_compression",
 		"show_weapon_perk_rank_symbols",
 		"weapon_perk_rank_icon_size",
@@ -527,6 +538,9 @@ def main() -> None:
     assert entries_by_id["brighten_armoury_item_levels"].disabled is False
     assert entries_by_id["expand_armoury_requisition_window"].disabled is False
     assert entries_by_id["armoury_requisition_target_card_width"].disabled is False
+    assert entries_by_id["enable_global_store_integration"].disabled is False
+    assert entries_by_id["enable_global_store_grid"].disabled is False
+    assert entries_by_id["enable_global_store_sorting_panel"].disabled is False
     assert entries_by_id["expand_curio_inventory_window"].disabled is False
     assert entries_by_id["weapon_extra_width_column_threshold"].disabled is False
     assert entries_by_id["five_column_weapon_extra_width"].disabled is True
@@ -810,6 +824,22 @@ def main() -> None:
     assert entries_by_id["expand_armoury_requisition_window"].disabled is False
     assert entries_by_id["armoury_requisition_target_card_width"].disabled is False
 
+    settings.enable_global_store_integration = False
+    mod.on_setting_changed("enable_global_store_integration")
+    assert entries_by_id["enable_global_store_grid"].disabled is True
+    assert entries_by_id["enable_global_store_sorting_panel"].disabled is True
+    settings.enable_global_store_integration = True
+    mod.on_setting_changed("enable_global_store_integration")
+    assert entries_by_id["enable_global_store_grid"].disabled is False
+    assert entries_by_id["enable_global_store_sorting_panel"].disabled is False
+
+    settings.enable_global_store_grid = False
+    mod.on_setting_changed("enable_global_store_grid")
+    assert entries_by_id["enable_global_store_sorting_panel"].disabled is True
+    settings.enable_global_store_grid = True
+    mod.on_setting_changed("enable_global_store_grid")
+    assert entries_by_id["enable_global_store_sorting_panel"].disabled is False
+
     settings.expand_curio_inventory_window = False
     mod.on_setting_changed("expand_curio_inventory_window")
     assert entries_by_id["curio_target_card_width"].disabled is True
@@ -874,6 +904,7 @@ def main() -> None:
             "automatic_curio_types_group",
             "automatic_curio_classes_group",
 			"automatic_curio_characters_group",
+			"enable_global_store_integration",
         }:
             continue
 
@@ -930,7 +961,7 @@ def main() -> None:
     localization = lua.execute(LOCALIZATION_PATH.read_text(encoding="utf-8"))
     defaults = {}
 
-    assert data.version == "1.4.1"
+    assert data.version == "1.5.0"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
@@ -1002,7 +1033,11 @@ def main() -> None:
         additional_views_group.sub_widgets[index].setting_id
         for index in range(1, len(additional_views_group.sub_widgets) + 1)
     ]
-    assert additional_view_ids == ["hadron_additional_views_group", "armoury_exchange_views_group"]
+    assert additional_view_ids == [
+        "hadron_additional_views_group",
+        "armoury_exchange_views_group",
+        "global_store_integration_group",
+    ]
     armoury_view_group = additional_views_group.sub_widgets[2]
     armoury_view_ids = [
         armoury_view_group.sub_widgets[index].setting_id
@@ -1015,6 +1050,15 @@ def main() -> None:
         "three_column_weapon_name_font_size",
         "expand_armoury_requisition_window",
         "armoury_requisition_target_card_width",
+    ]
+    global_store_view_group = additional_views_group.sub_widgets[3]
+    assert [
+        global_store_view_group.sub_widgets[index].setting_id
+        for index in range(1, len(global_store_view_group.sub_widgets) + 1)
+    ] == [
+        "enable_global_store_integration",
+        "enable_global_store_grid",
+        "enable_global_store_sorting_panel",
     ]
     grid_layout_index = top_level_ids.index("layout_group")
     assert top_level_ids[grid_layout_index + 1] == "single_column_layout_group"
@@ -1069,6 +1113,9 @@ def main() -> None:
 
     assert defaults["enable_grid_layout"] is True
     assert defaults["three_column_weapon_name_font_size"] == 14
+    assert defaults["enable_global_store_integration"] is True
+    assert defaults["enable_global_store_grid"] is True
+    assert defaults["enable_global_store_sorting_panel"] is True
     assert defaults["enable_quick_look_card_single_column_integration"] is True
     assert defaults["quick_look_card_single_column_font_size"] == 14
     assert defaults["quick_look_card_single_column_label_value_gap"] == 1

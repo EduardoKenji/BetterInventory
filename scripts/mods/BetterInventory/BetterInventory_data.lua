@@ -1,4 +1,4 @@
-local MOD_VERSION = "1.4.1"
+local MOD_VERSION = "1.5.0"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
@@ -605,6 +605,30 @@ return {
 									190,
 									230,
 								},
+							},
+						},
+					},
+					{
+						setting_id = "global_store_integration_group",
+						type = "group",
+						sub_widgets = {
+							{
+								setting_id = "enable_global_store_integration",
+								tooltip = "enable_global_store_integration_tooltip",
+								type = "checkbox",
+								default_value = true,
+							},
+							{
+								setting_id = "enable_global_store_grid",
+								tooltip = "enable_global_store_grid_tooltip",
+								type = "checkbox",
+								default_value = true,
+							},
+							{
+								setting_id = "enable_global_store_sorting_panel",
+								tooltip = "enable_global_store_sorting_panel_tooltip",
+								type = "checkbox",
+								default_value = true,
 							},
 						},
 					},

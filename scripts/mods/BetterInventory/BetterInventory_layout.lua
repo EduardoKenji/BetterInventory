@@ -19,6 +19,7 @@ local DEFAULT_PERK_RANK_SIZE = 17
 local DEFAULT_BLESSING_ICON_SIZE = 36
 local PERK_RANK_GAP = 3
 local STORE_FOOTER_HEIGHT = 34
+local GLOBAL_STORE_MULTICOLUMN_EXTRA_HEIGHT = 24
 local NATIVE_SINGLE_COLUMN_CONTENT_GAP = 12
 local WEAPON_PERK_COUNT = 2
 local WEAPON_BLESSING_COUNT = 2
@@ -27,6 +28,14 @@ local MINIMUM_AUTO_FIT_BLESSING_FONT_SIZE = 8
 local QUICK_LOOK_CARD_DUMP_STAT_ID = "better_inventory_quick_look_card_dump_stat"
 local WEAPON_MODIFIER_TITLE_PREFIX = "better_inventory_weapon_modifier_title_"
 local WEAPON_MODIFIER_VALUE_PREFIX = "better_inventory_weapon_modifier_value_"
+
+local function global_store_extra_height(mod, configuration)
+	if not configuration or configuration.global_store ~= true or type(Layout.columns) ~= "function" then
+		return 0
+	end
+
+	return Layout.columns(mod, configuration.maximum_columns) >= 3 and GLOBAL_STORE_MULTICOLUMN_EXTRA_HEIGHT or 0
+end
 local QUICK_LOOK_CARD_HIGHLIGHT_COLOR = {
 	255,
 	255,
@@ -1761,7 +1770,7 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 	local show_weapon_perk_ranks = show_weapon_perks and setting(mod, "show_weapon_perk_rank_symbols", true)
 	local detailed_curio_profile = setting(mod, "curio_display_profile", "detailed") == "detailed"
 	local favorite_marker_position = setting(mod, "favorite_marker_position", "above_rating")
-	local store_footer_height = configuration.store_item and STORE_FOOTER_HEIGHT or 0
+	local store_footer_height = configuration.store_item and STORE_FOOTER_HEIGHT + global_store_extra_height(mod, configuration) or 0
 	local expertise_font_size = numeric_setting(mod, "expertise_font_size", 20, 10, 28)
 	local item_level_row_height = math.max(30, expertise_font_size + 10)
 	local bottom_content_height = item_level_row_height
@@ -2385,14 +2394,15 @@ Layout.grid_expansion = function(mod, current_grid_width, slot_kind)
 	return required_expansion
 end
 
-Layout.armoury_grid_expansion = function(mod, current_grid_width)
+Layout.armoury_grid_expansion = function(mod, current_grid_width, grid_setting_id)
 	current_grid_width = tonumber(current_grid_width)
+	grid_setting_id = grid_setting_id or "enable_armoury_requisition_grid"
 
 	if not current_grid_width or current_grid_width <= 0 then
 		return 0
 	end
 
-	if not setting(mod, "enable_grid_layout", true) or not setting(mod, "enable_armoury_requisition_grid", true) or not setting(mod, "expand_armoury_requisition_window", true) then
+	if not setting(mod, "enable_grid_layout", true) or not setting(mod, grid_setting_id, true) or not setting(mod, "expand_armoury_requisition_window", true) then
 		return 0
 	end
 
@@ -2434,7 +2444,7 @@ local function maximum_safe_inventory_expansion(definitions, slot_kind)
 	return math.max(0, available_expansion)
 end
 
-Layout.expanded_armoury_view_definitions = function(mod, definitions, base_definitions)
+Layout.expanded_armoury_view_definitions = function(mod, definitions, base_definitions, grid_setting_id)
 	local grid_settings = definitions and definitions.grid_settings
 	local grid_size = grid_settings and grid_settings.grid_size
 	local current_grid_width = grid_size and grid_size[1]
@@ -2443,7 +2453,7 @@ Layout.expanded_armoury_view_definitions = function(mod, definitions, base_defin
 		return definitions, 0
 	end
 
-	local expansion = Layout.armoury_grid_expansion(mod, current_grid_width)
+	local expansion = Layout.armoury_grid_expansion(mod, current_grid_width, grid_setting_id)
 
 	if expansion <= 0 then
 		return definitions, 0
@@ -2490,6 +2500,10 @@ Layout.expanded_armoury_view_definitions = function(mod, definitions, base_defin
 	end
 
 	return adjusted_definitions, expansion
+end
+
+Layout.expanded_global_store_view_definitions = function(mod, definitions, base_definitions)
+	return Layout.expanded_armoury_view_definitions(mod, definitions, base_definitions, "enable_global_store_grid")
 end
 
 Layout.expanded_view_definitions = function(mod, definitions, view)
@@ -2545,8 +2559,9 @@ Layout.card_height = function(mod, configuration)
 	configuration = configuration or {}
 
 	local manual_height = numeric_setting(mod, "card_height", 110, 110, 240)
+	local global_store_extra = global_store_extra_height(mod, configuration)
 
-	if not setting(mod, "automatic_card_height", true) and not configuration.native_single_column then
+	if not setting(mod, "automatic_card_height", true) and not configuration.native_single_column and global_store_extra <= 0 then
 		return manual_height
 	end
 
@@ -2556,8 +2571,8 @@ Layout.card_height = function(mod, configuration)
 	local name_row_height = configuration.native_single_column and 25 + math.max(0, item_name_font_size - 16) or math.max(25, item_name_font_size + 5)
 	local secondary_row_height = math.max(22, secondary_font_size + 5)
 	local bottom_region_height = math.max(expertise_font_size + 10, secondary_font_size + 15)
-	local required_height = 110
-	local store_footer_height = configuration.store_item and STORE_FOOTER_HEIGHT or 0
+	local required_height = global_store_extra > 0 and manual_height or 110
+	local store_footer_height = configuration.store_item and STORE_FOOTER_HEIGHT + global_store_extra_height(mod, configuration) or 0
 
 	local blessing_display_mode = weapon_blessing_display_mode(mod)
 	local blessing_text_mode = blessing_display_mode == "text" or blessing_display_mode == "ranked_text"
@@ -2763,6 +2778,8 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 	end
 
 	configuration = configuration or {}
+	local global_store = configuration.global_store == true
+	local global_store_extra = global_store_extra_height(mod, configuration)
 
 	local item_size = Layout.item_size(mod, grid_width, configuration.maximum_columns, configuration)
 	local card_width = item_size[1]
@@ -2804,7 +2821,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 		icon.style.vertical_alignment = "top"
 		icon.style.size = {
 			card_width,
-			card_height,
+			card_height - global_store_extra,
 		}
 		icon.style.offset = {
 			0,
@@ -2943,6 +2960,19 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 		-- Raise the rating above that footer when the readability option is on.
 		item_level.style.offset[3] = 11
 	end
+	if global_store and item_level and item_level.style then
+		-- GlobalStore's native card places the rating in the upper-right. Keep
+		-- that identity while moving the card into BetterInventory's compact grid.
+		item_level.style.horizontal_alignment = "right"
+		item_level.style.vertical_alignment = "top"
+		item_level.style.text_horizontal_alignment = "right"
+		item_level.style.text_vertical_alignment = "top"
+		item_level.style.offset = {
+			-8,
+			7,
+			setting(mod, "brighten_armoury_item_levels", true) and 11 or 9,
+		}
+	end
 	preserve_visibility(item_level, function(content)
 		return not is_curio(item_from_content(content)) or show_curio_item_level
 	end)
@@ -2951,51 +2981,110 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 		local wallet_icon = pass_by_style_id(pass_template, "wallet_icon")
 
 		if wallet_icon and wallet_icon.style then
-			wallet_icon.style.horizontal_alignment = "left"
+			wallet_icon.style.horizontal_alignment = global_store and "right" or "left"
 			wallet_icon.style.vertical_alignment = "bottom"
 			wallet_icon.style.size = {
 				22,
 				18,
 			}
-			wallet_icon.style.offset = {
+			wallet_icon.style.offset = global_store and {
+				-8,
+				-7,
+				12,
+			} or {
 				text_left,
 				-7,
 				12,
 			}
 		end
 
-		configure_text_pass(pass_by_style_id(pass_template, "price_text"), {
+		local price_text = pass_by_style_id(pass_template, "price_text")
+
+		configure_text_pass(price_text, {
 			font_size = 16,
-			horizontal_alignment = "left",
+			horizontal_alignment = global_store and "right" or "left",
 			vertical_alignment = "bottom",
-			text_horizontal_alignment = "left",
+			text_horizontal_alignment = global_store and "right" or "left",
 			text_vertical_alignment = "bottom",
-			offset = {
+			offset = global_store and {
+				-30,
+				-5,
+				12,
+			} or {
 				text_left + 27,
 				-5,
 				12,
 			},
-			size = {
+			size = global_store and {
+				math.max(45, card_width - text_left - 30),
+				24,
+			} or {
 				math.max(45, card_width - text_left - 105),
 				24,
 			},
 		})
 		configure_text_pass(pass_by_style_id(pass_template, "owned_text"), {
 			font_size = 14,
-			horizontal_alignment = "left",
+			horizontal_alignment = global_store and "right" or "left",
 			vertical_alignment = "bottom",
-			text_horizontal_alignment = "left",
+			text_horizontal_alignment = global_store and "right" or "left",
 			text_vertical_alignment = "bottom",
-			offset = {
+			offset = global_store and {
+				-30,
+				-5,
+				12,
+			} or {
 				text_left,
 				-5,
 				12,
 			},
-			size = {
+			size = global_store and {
+				math.max(55, card_width - text_left - 30),
+				24,
+			} or {
 				math.max(55, card_width - text_left - 80),
 				24,
 			},
 		})
+	end
+
+	if global_store then
+		local portrait = pass_by_style_id(pass_template, "portrait")
+		local global_store_multicolumn = global_store_extra > 0
+
+		if portrait and portrait.style then
+			portrait.style.horizontal_alignment = "left"
+			portrait.style.vertical_alignment = "bottom"
+			portrait.style.size = {
+				global_store_multicolumn and 30 or 34,
+				global_store_multicolumn and 30 or 34,
+			}
+			portrait.style.offset = {
+				text_left,
+				global_store_multicolumn and 27 or -2,
+				14,
+			}
+		end
+
+		local character_info = pass_by_style_id(pass_template, "character_info_text")
+
+		if character_info and character_info.style then
+			character_info.style.horizontal_alignment = "left"
+			character_info.style.vertical_alignment = "bottom"
+			character_info.style.text_horizontal_alignment = "left"
+			character_info.style.text_vertical_alignment = "bottom"
+			character_info.style.font_size = 14
+			character_info.style.word_wrap = false
+			character_info.style.offset = {
+				text_left + (global_store_multicolumn and 34 or 38),
+				global_store_multicolumn and 31 or -7,
+				14,
+			}
+			character_info.style.size = {
+				math.max(40, card_width - text_left - (global_store_multicolumn and 40 or 108)),
+				24,
+			}
+		end
 	end
 
 	local rarity_tag = pass_by_style_id(pass_template, "rarity_tag")

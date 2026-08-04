@@ -490,6 +490,8 @@ def main() -> None:
 				{ style_id = "wallet_icon", style = {} },
 				{ style_id = "price_text", style = {} },
 				{ style_id = "owned_text", style = {} },
+				{ style_id = "portrait", style = {} },
+				{ style_id = "character_info_text", style = {} },
                 { style_id = "rarity_tag", style = {} },
                 { style_id = "equipped_icon", style = {} },
                 { style_id = "favorite_icon", value = "Favorite", style = {} },
@@ -561,7 +563,11 @@ def main() -> None:
     store_configuration = lua.table_from(
         {"maximum_columns": 3, "store_item": True}
     )
+    global_store_configuration = lua.table_from(
+        {"maximum_columns": 5, "store_item": True, "global_store": True}
+    )
     assert layout.card_height(mod, store_configuration) == 114
+    assert layout.card_height(mod, global_store_configuration) == 138
     mod.settings.blessing_icon_size = 48
     assert layout.card_height(mod, store_configuration) == 128
     mod.settings.blessing_icon_size = 34
@@ -791,6 +797,33 @@ def main() -> None:
         vendor_blueprint.update_item_icon_priority, globals_.sentinel_priority
     )
     assert same_lua_value(vendor_blueprint.update, globals_.sentinel_update)
+
+    global_store_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    global_store_size = layout.configure_item_blueprint(
+        mod, global_store_blueprint, 596, global_store_configuration
+    )
+    assert (global_store_size[1], global_store_size[2]) == (111, 138)
+    assert blueprint_pass(global_store_blueprint, "wallet_icon").style.horizontal_alignment == "right"
+    assert blueprint_pass(global_store_blueprint, "price_text").style.horizontal_alignment == "right"
+    assert blueprint_pass(global_store_blueprint, "price_text").style.offset[1] == -30
+    global_store_level = blueprint_pass(global_store_blueprint, "item_level").style
+    assert global_store_level.vertical_alignment == "top"
+    assert global_store_level.offset[2] == 7
+    assert blueprint_pass(global_store_blueprint, "icon").style.size[2] == 114
+    assert blueprint_pass(global_store_blueprint, "portrait").style.size[1] == 30
+    assert blueprint_pass(global_store_blueprint, "portrait").style.offset[2] == 27
+    assert blueprint_pass(global_store_blueprint, "character_info_text").style.font_size == 14
+
+    mod.settings.columns = 2
+    two_column_global_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    two_column_global_size = layout.configure_item_blueprint(
+        mod, two_column_global_blueprint, 596, global_store_configuration
+    )
+    assert (two_column_global_size[1], two_column_global_size[2]) == (293, 114)
+    assert blueprint_pass(two_column_global_blueprint, "icon").style.size[2] == 114
+    assert blueprint_pass(two_column_global_blueprint, "portrait").style.size[1] == 34
+    assert blueprint_pass(two_column_global_blueprint, "portrait").style.offset[2] == -2
+    mod.settings.columns = 5
 
     mod.settings.show_weapon_perks = True
     vendor_perk_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)

@@ -48,6 +48,13 @@ local ARMOURY_GRID_CONFIGURATION = {
 	maximum_columns = 3,
 	store_item = true,
 }
+local GLOBAL_STORE_SERVICE = "get_all_characters_store_custom"
+local GLOBAL_STORE_GRID_CONFIGURATION = {
+	blueprint_key = "store_item",
+	global_store = true,
+	maximum_columns = 5,
+	store_item = true,
+}
 
 local function pack_values(...)
 	return {
@@ -71,6 +78,14 @@ local function is_armoury_requisition_view(view)
 	-- service and add their own card footer content. Restrict BetterInventory's
 	-- Armoury geometry to Darktide's native Requisition route.
 	return view and view.__class_name == "CreditsVendorView" and view._optional_store_service == nil
+end
+
+local function is_global_store_view(view)
+	return view and view.__class_name == "CreditsVendorView" and view._optional_store_service == GLOBAL_STORE_SERVICE
+end
+
+local function is_armoury_sort_view(view)
+	return is_armoury_requisition_view(view) or is_global_store_view(view)
 end
 
 -- Darktide class tables can contain the exact same inherited function object.
@@ -260,6 +275,7 @@ local function refresh_option_dependencies()
 		"automatic_card_height",
 		"enable_hadron_entreat_grid",
 		"enable_armoury_requisition_grid",
+		"enable_global_store_grid",
 	}) do
 		set_option_enabled(option_dependency_entries[setting_id], grid_enabled, native_reason)
 	end
@@ -278,6 +294,8 @@ local function refresh_option_dependencies()
 	local weapon_extra_width_reason = not window_expansion_enabled and expansion_reason or mod:localize("option_requires_weapon_extra_width_threshold")
 	local curio_target_reason = not window_expansion_enabled and expansion_reason or not curio_expansion_enabled and mod:localize("option_requires_curio_expansion") or nil
 	local armoury_grid_enabled = grid_enabled and mod:get("enable_armoury_requisition_grid") ~= false
+	local global_store_grid_enabled = grid_enabled and mod:get("enable_global_store_grid") ~= false
+	local global_store_integration_enabled = grid_enabled and mod:get("enable_global_store_integration") ~= false
 	local armoury_expansion_enabled = armoury_grid_enabled and mod:get("expand_armoury_requisition_window") ~= false
 	local armoury_reason = grid_enabled and mod:localize("option_requires_armoury_grid") or native_reason
 	local armoury_target_reason = armoury_grid_enabled and mod:localize("option_requires_armoury_expansion") or armoury_reason
@@ -323,6 +341,11 @@ local function refresh_option_dependencies()
 	set_option_enabled(option_dependency_entries.brighten_armoury_item_levels, armoury_grid_enabled, armoury_reason)
 	set_option_enabled(option_dependency_entries.three_column_weapon_name_font_size, armoury_grid_enabled, armoury_reason)
 	set_option_enabled(option_dependency_entries.armoury_requisition_target_card_width, armoury_expansion_enabled, armoury_target_reason)
+	local global_store_integration_reason = grid_enabled and mod:localize("option_requires_global_store_integration") or native_reason
+	local global_store_reason = global_store_integration_enabled and grid_enabled and mod:localize("option_requires_global_store_grid") or global_store_integration_reason
+	set_option_enabled(option_dependency_entries.enable_global_store_integration, true)
+	set_option_enabled(option_dependency_entries.enable_global_store_grid, global_store_integration_enabled, global_store_integration_reason)
+	set_option_enabled(option_dependency_entries.enable_global_store_sorting_panel, global_store_integration_enabled and global_store_grid_enabled, global_store_reason)
 	set_option_enabled(option_dependency_entries.weapon_perk_compression, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
 	set_option_enabled(option_dependency_entries.show_weapon_perk_rank_symbols, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
 	set_option_enabled(option_dependency_entries.weapon_perk_rank_icon_size, weapon_rank_symbols_enabled, mod:localize("option_requires_rank_symbols"))
@@ -486,6 +509,9 @@ local function bind_option_dependencies(options_templates)
 		"brighten_armoury_item_levels",
 		"expand_armoury_requisition_window",
 		"armoury_requisition_target_card_width",
+		"enable_global_store_integration",
+		"enable_global_store_grid",
+		"enable_global_store_sorting_panel",
 		"weapon_perk_compression",
 		"show_weapon_perk_rank_symbols",
 		"weapon_perk_rank_icon_size",
@@ -710,7 +736,7 @@ function mod.on_setting_changed(setting_id)
 		end
 	end
 
-	if setting_id == "enable_grid_layout" or setting_id == "columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "weapon_extra_width_column_threshold" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_armoury_requisition_grid" or setting_id == "enable_armoury_requisition_sorting_panel" or setting_id == "brighten_armoury_item_levels" or setting_id == "three_column_weapon_name_font_size" or setting_id == "expand_armoury_requisition_window" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "single_column_blessing_icons_on_right" or setting_id == "curio_display_profile" or setting_id == "enable_inventory_options_panel_prototype" or setting_id == "enable_experimental_quick_discard" or setting_id == "quick_discard_mode" or setting_id == "quick_discard_protect_high_level_curios" or setting_id == "enable_automatic_curio_acquisition" or automatic_curio_setting or setting_id == "enable_quick_look_card_single_column_integration" or setting_id == "enable_quick_look_card_grid_integration" or setting_id == "quick_look_card_grid_stat_position" then
+	if setting_id == "enable_grid_layout" or setting_id == "columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "weapon_extra_width_column_threshold" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_armoury_requisition_grid" or setting_id == "enable_armoury_requisition_sorting_panel" or setting_id == "brighten_armoury_item_levels" or setting_id == "three_column_weapon_name_font_size" or setting_id == "expand_armoury_requisition_window" or setting_id == "enable_global_store_integration" or setting_id == "enable_global_store_grid" or setting_id == "enable_global_store_sorting_panel" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "single_column_blessing_icons_on_right" or setting_id == "curio_display_profile" or setting_id == "enable_inventory_options_panel_prototype" or setting_id == "enable_experimental_quick_discard" or setting_id == "quick_discard_mode" or setting_id == "quick_discard_protect_high_level_curios" or setting_id == "enable_automatic_curio_acquisition" or automatic_curio_setting or setting_id == "enable_quick_look_card_single_column_integration" or setting_id == "enable_quick_look_card_grid_integration" or setting_id == "quick_look_card_grid_stat_position" then
 		refresh_option_dependencies()
 	end
 
@@ -787,6 +813,15 @@ mod:hook(ItemGridViewBase, "init", function(func, view, definitions, settings, c
 		return func(view, adjusted_definitions, settings, context)
 	end
 
+	if is_global_store_view(view) and mod:get("enable_grid_layout") ~= false and mod:get("enable_global_store_integration") ~= false and mod:get("enable_global_store_grid") ~= false then
+		local expand_definitions = Layout.expanded_global_store_view_definitions or Layout.expanded_armoury_view_definitions
+		local adjusted_definitions, expansion = expand_definitions(mod, definitions, ItemGridViewBaseDefinitions)
+
+		view._better_inventory_armoury_grid_expansion = expansion
+
+		return func(view, adjusted_definitions, settings, context)
+	end
+
 	return func(view, definitions, settings, context)
 end)
 
@@ -810,6 +845,12 @@ if ensure_class_method(CreditsVendorView, "_setup_sort_options") then
 			Features.configure_armoury_sort_options(mod, view)
 
 			if mod:get("enable_armoury_requisition_grid") ~= false and mod:get("enable_armoury_requisition_sorting_panel") ~= false then
+				Features.setup_armoury_native_sort_panel(mod, Layout, view, ViewElementGrid)
+			end
+		elseif is_global_store_view(view) and mod:get("enable_global_store_integration") ~= false then
+			Features.configure_global_store_sort_options(mod, view)
+
+			if mod:get("enable_global_store_grid") ~= false and mod:get("enable_global_store_sorting_panel") ~= false then
 				Features.setup_armoury_native_sort_panel(mod, Layout, view, ViewElementGrid)
 			end
 		end
@@ -840,7 +881,7 @@ end)
 
 if ensure_class_method(CreditsVendorView, "update") then
 	mod:hook_safe(CreditsVendorView, "update", function(view)
-		if is_armoury_requisition_view(view) then
+		if is_armoury_sort_view(view) then
 			Features.update_armoury_native_sort_panel(view)
 		end
 	end)
@@ -926,11 +967,15 @@ if ensure_class_method(CraftingMechanicusModifyView, "present_grid_layout") then
 	end)
 end
 
--- The Armoury landing page maps "Requisition Weapons & Curios" to
--- CreditsVendorView. CreditsGoodsVendorView (Brunt's Armoury) is deliberately
--- not hooked by this setting.
+-- The Armoury landing page maps "Requisition Weapons & Curios" and GlobalStore's
+-- Multi-Operative Supply to CreditsVendorView service routes. CreditsGoodsVendorView
+-- (Brunt's Armoury) is deliberately not hooked by these settings.
 if ensure_class_method(CreditsVendorView, "present_grid_layout") then
 	mod:hook(CreditsVendorView, "present_grid_layout", function(func, view, layout, on_present_callback)
+		if is_global_store_view(view) and mod:get("enable_global_store_integration") ~= false then
+			return present_additional_grid(func, view, layout, on_present_callback, "enable_global_store_grid", GLOBAL_STORE_GRID_CONFIGURATION)
+		end
+
 		if not is_armoury_requisition_view(view) then
 			return func(view, layout, on_present_callback)
 		end
@@ -942,7 +987,7 @@ end
 mod:hook(CreditsVendorView, "on_enter", function(func, view, ...)
 	local result = func(view, ...)
 
-	if not is_armoury_requisition_view(view) then
+	if not is_armoury_sort_view(view) then
 		return result
 	end
 
@@ -970,11 +1015,33 @@ mod:hook(CreditsVendorView, "on_enter", function(func, view, ...)
 	return result
 end)
 
+local function normalize_global_store_widgets(item_grid)
+	for _, entry_data in pairs(item_grid and item_grid._widgets_by_entry_id or {}) do
+		local widget = entry_data and entry_data.widget
+		local portrait = widget and widget.style and widget.style.portrait
+
+		if portrait then
+			-- GlobalStore's callback expands the portrait for its native full-width
+			-- cards. Keep it compact after BetterInventory remaps the card into a
+			-- three-column grid.
+			portrait.size = {
+				34,
+				34,
+			}
+		end
+	end
+end
+
 mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layout, content_blueprints, ...)
 	content_blueprints = Features.compact_inventory_curio_stats_blueprints(mod, item_grid, content_blueprints)
 
-	local view = active_grid_view
+	local view = active_grid_view or item_grid and item_grid._parent
 	local configuration = active_grid_configuration
+
+	if not configuration and is_global_store_view(view) and mod:get("enable_global_store_integration") ~= false and mod:get("enable_global_store_grid") ~= false then
+		configuration = GLOBAL_STORE_GRID_CONFIGURATION
+	end
+
 	local definitions = view and view._definitions
 	local grid_settings = definitions and definitions.grid_settings
 	local grid_size = grid_settings and grid_settings.grid_size
@@ -995,5 +1062,11 @@ mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layou
 	Layout.configure_item_blueprint(mod, local_item_blueprint, grid_size[1], configuration)
 	Layout.configure_grid(mod, item_grid)
 
-	return func(item_grid, layout, local_blueprints, ...)
+	local results = pack_values(func(item_grid, layout, local_blueprints, ...))
+
+	if configuration.global_store then
+		normalize_global_store_widgets(item_grid)
+	end
+
+	return unpack_values(results, 1, results.n)
 end)
