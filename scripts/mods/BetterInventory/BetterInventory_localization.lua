@@ -527,6 +527,12 @@ local localization = {
 	enable_armoury_requisition_sorting_panel_tooltip = {
 		en = "Adds BetterInventory's collapsible Sorting and Darktide Native Sorting widget to Requisition Weapons & Curios. Requires the Armoury grid option and is enabled by default.",
 	},
+	brighten_armoury_item_levels = {
+		en = "Brighten Armoury item levels",
+	},
+	brighten_armoury_item_levels_tooltip = {
+		en = "Uses brighter text for item levels on Armoury Exchange cards so the value remains readable above the price footer. Enabled by default.",
+	},
 	expand_armoury_requisition_window = {
 		en = "Expand Armoury Requisition window",
 	},
@@ -1981,6 +1987,8 @@ zh_cn.automatic_curio_min_item_level_tooltip = "只有显示物品等级达到�
 
 zh_cn.enable_armoury_requisition_sorting_panel = "显示军械库排序组件"
 zh_cn.enable_armoury_requisition_sorting_panel_tooltip = "在申领武器与珍品中添加可折叠的 BetterInventory 排序组件。需要开启军械库网格，默认开启。"
+zh_cn.brighten_armoury_item_levels = "提亮军械库物品等级"
+zh_cn.brighten_armoury_item_levels_tooltip = "使用更明亮的文字显示军械库交易所卡片中的物品等级，避免被底部价格区域遮暗。默认开启。"
 zh_cn.three_column_weapon_name_font_size = "军械库武器名称字号"
 zh_cn.three_column_weapon_name_font_size_tooltip = "控制军械库卡片中的武器名称字号。调低数值可帮助较长名称保持在一行，同时不影响库存卡片。"
 zh_cn.hadron_additional_views_group = "哈德隆"

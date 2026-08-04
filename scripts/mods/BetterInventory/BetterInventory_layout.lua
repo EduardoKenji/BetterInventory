@@ -410,6 +410,12 @@ local DEFAULT_WEAPON_BLESSING_TEXT_COLOR = {
 	200,
 	235,
 }
+local DEFAULT_ARMOURY_ITEM_LEVEL_COLOR = {
+	255,
+	220,
+	230,
+	210,
+}
 
 local SLOT_SETTING_BY_NAME = {
 	slot_primary = "enable_melee_inventory",
@@ -2929,6 +2935,9 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 			28,
 		},
 	})
+	if configuration.store_item and setting(mod, "brighten_armoury_item_levels", true) and item_level and item_level.style then
+		item_level.style.text_color = table.clone(DEFAULT_ARMOURY_ITEM_LEVEL_COLOR)
+	end
 	preserve_visibility(item_level, function(content)
 		return not is_curio(item_from_content(content)) or show_curio_item_level
 	end)

@@ -38,6 +38,7 @@ def main() -> None:
 			enable_hadron_entreat_grid = true,
 			enable_armoury_requisition_grid = true,
 			enable_armoury_requisition_sorting_panel = true,
+			brighten_armoury_item_levels = true,
 			expand_armoury_requisition_window = true,
 			armoury_requisition_target_card_width = 230,
 			automatic_card_height = true,
@@ -386,8 +387,9 @@ def main() -> None:
         "automatic_card_height",
         "card_height",
         "enable_hadron_entreat_grid",
-        "enable_armoury_requisition_grid",
+		"enable_armoury_requisition_grid",
 		"enable_armoury_requisition_sorting_panel",
+		"brighten_armoury_item_levels",
 		"expand_armoury_requisition_window",
 		"armoury_requisition_target_card_width",
 		"weapon_perk_compression",
@@ -522,6 +524,7 @@ def main() -> None:
     assert entries_by_id["enable_hadron_entreat_grid"].disabled is False
     assert entries_by_id["enable_armoury_requisition_grid"].disabled is False
     assert entries_by_id["enable_armoury_requisition_sorting_panel"].disabled is False
+    assert entries_by_id["brighten_armoury_item_levels"].disabled is False
     assert entries_by_id["expand_armoury_requisition_window"].disabled is False
     assert entries_by_id["armoury_requisition_target_card_width"].disabled is False
     assert entries_by_id["expand_curio_inventory_window"].disabled is False
@@ -797,11 +800,13 @@ def main() -> None:
     settings.enable_armoury_requisition_grid = False
     mod.on_setting_changed("enable_armoury_requisition_grid")
     assert entries_by_id["enable_armoury_requisition_sorting_panel"].disabled is True
+    assert entries_by_id["brighten_armoury_item_levels"].disabled is True
     assert entries_by_id["expand_armoury_requisition_window"].disabled is True
     assert entries_by_id["armoury_requisition_target_card_width"].disabled is True
     settings.enable_armoury_requisition_grid = True
     mod.on_setting_changed("enable_armoury_requisition_grid")
     assert entries_by_id["enable_armoury_requisition_sorting_panel"].disabled is False
+    assert entries_by_id["brighten_armoury_item_levels"].disabled is False
     assert entries_by_id["expand_armoury_requisition_window"].disabled is False
     assert entries_by_id["armoury_requisition_target_card_width"].disabled is False
 
@@ -1006,6 +1011,7 @@ def main() -> None:
     assert armoury_view_ids == [
         "enable_armoury_requisition_grid",
         "enable_armoury_requisition_sorting_panel",
+        "brighten_armoury_item_levels",
         "three_column_weapon_name_font_size",
         "expand_armoury_requisition_window",
         "armoury_requisition_target_card_width",
@@ -1082,6 +1088,7 @@ def main() -> None:
     assert defaults["enable_hadron_entreat_grid"] is True
     assert defaults["enable_armoury_requisition_grid"] is True
     assert defaults["enable_armoury_requisition_sorting_panel"] is True
+    assert defaults["brighten_armoury_item_levels"] is True
     assert defaults["expand_armoury_requisition_window"] is True
     assert defaults["armoury_requisition_target_card_width"] == 230
     assert defaults["automatic_card_height"] is True

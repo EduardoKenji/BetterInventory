@@ -553,7 +553,7 @@ return {
 							{
 								setting_id = "enable_hadron_entreat_grid",
 								tooltip = "enable_hadron_entreat_grid_tooltip",
-								type = "checkbox",
+								 type = "checkbox",
 								default_value = true,
 							},
 						},
@@ -571,6 +571,12 @@ return {
 							{
 								setting_id = "enable_armoury_requisition_sorting_panel",
 								tooltip = "enable_armoury_requisition_sorting_panel_tooltip",
+								type = "checkbox",
+								default_value = true,
+							},
+							{
+								setting_id = "brighten_armoury_item_levels",
+								tooltip = "brighten_armoury_item_levels_tooltip",
 								type = "checkbox",
 								default_value = true,
 							},
