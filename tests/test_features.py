@@ -588,8 +588,20 @@ def main() -> None:
     )
     assert features.setup_armoury_native_sort_panel(mod, layout, armoury_view, lua.table_from({})) is True
     assert armoury_view._better_inventory_armoury_native_sort_panel.visible is True
-    assert globals_.TestArmouryPanel.pivot_x == 1490
+    assert globals_.TestArmouryPanel.pivot_x == 1450
     assert globals_.TestArmouryPanel.pivot_y == 100
+
+    lua.execute(
+        r"""
+        armoury_view._ui_scenegraph = {canvas = {size = {2560, 1440}}}
+        armoury_view._scenegraph_world_position = function()
+            return {100, 50, 0}
+        end
+        """
+    )
+    features.update_armoury_native_sort_panel(armoury_view)
+    assert globals_.TestArmouryPanel.pivot_x == 2190
+    assert globals_.TestArmouryPanel.pivot_y == 150
     assert globals_.TestArmouryPanel.entries[1].initial_content.label == "inventory_sorting_inventory_label"
     assert globals_.TestArmouryPanel.entries[4].initial_content.label == "armoury_native_sorting_header"
     assert len(globals_.TestArmouryPanel.entries) == 5
