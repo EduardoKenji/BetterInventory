@@ -113,6 +113,7 @@ def main() -> None:
 			bind_inventory_sort_toggle = function() end,
 			resort_inventory = function() end,
 			update_inventory_sort_toggle = function() end,
+			update_morningstar_auto_discard = function() end,
 			sync_inventory_sort_setting = function() inventory_sort_syncs = inventory_sort_syncs + 1 end,
 			sync_quick_discard_settings = function() quick_discard_syncs = quick_discard_syncs + 1 end,
 			sync_curio_acquisition_settings = function() curio_acquisition_syncs = curio_acquisition_syncs + 1 end,
@@ -131,6 +132,7 @@ def main() -> None:
             create_mod_options_settings = function() end,
         }
 		test_alfs_tabs_enabled = true
+		test_alfs_available = false
 		test_alfs = {
 			default_tab = "Other",
 			inject_generalised_tabs = function() end,
@@ -211,7 +213,7 @@ def main() -> None:
                 return test_dmf
             end
 
-			if name == "Alfs_DMF_Extensions" then
+			if name == "Alfs_DMF_Extensions" and test_alfs_available then
 				return test_alfs
 			end
         end
@@ -230,6 +232,15 @@ def main() -> None:
     # DMF entries. Conditional settings are absent from the visible array, so
     # positional pairing would put Additional views and Grid layout under the
     # preceding Automatic Curio Buyer tab.
+    # Reproduce the real load order: BetterInventory loads before Alf's
+    # extension. The bounded update retry must register the hook after Alf
+    # becomes available, including after Ctrl+Shift+R hot reloads where
+    # on_all_mods_loaded is not invoked again.
+    assert globals_.alfs_tabs_hook_count == 0
+    globals_.test_alfs_available = True
+    mod.update(0)
+    assert globals_.alfs_tabs_hook_count == 1
+
     mod.on_all_mods_loaded()
     mod.on_all_mods_loaded()
     assert globals_.alfs_tabs_hook_count == 1

@@ -625,6 +625,10 @@ end
 
 local alfs_dmf_tabs_hooked = false
 local ALFS_TAB_CACHE_FIELD = "_better_inventory_alfs_tab_cache_v2"
+local ALFS_REGISTRATION_RETRY_INTERVAL = 0.5
+local ALFS_REGISTRATION_RETRY_LIMIT = 10
+local alfs_registration_retry_elapsed = 0
+local alfs_registration_retry_attempts = 0
 
 local function repair_alfs_dmf_extension_tabs(alfs_mod, options_view, category)
 	if category ~= mod:get_readable_name() then
@@ -712,13 +716,13 @@ end
 
 local function register_alfs_dmf_extensions_compatibility()
 	if alfs_dmf_tabs_hooked then
-		return
+		return true
 	end
 
 	local alfs_mod = get_mod("Alfs_DMF_Extensions")
 
 	if type(alfs_mod) ~= "table" or type(alfs_mod.inject_generalised_tabs) ~= "function" then
-		return
+		return false
 	end
 
 	mod:hook_safe(alfs_mod, "inject_generalised_tabs", function(options_view, category)
@@ -726,11 +730,38 @@ local function register_alfs_dmf_extensions_compatibility()
 	end)
 
 	alfs_dmf_tabs_hooked = true
+
+	if type(mod.info) == "function" then
+		mod:info("Alf's DMF Extensions tab compatibility enabled.")
+	end
+
+	return true
+end
+
+local function retry_alfs_dmf_extensions_registration(dt)
+	if alfs_dmf_tabs_hooked or alfs_registration_retry_attempts >= ALFS_REGISTRATION_RETRY_LIMIT then
+		return
+	end
+
+	alfs_registration_retry_elapsed = alfs_registration_retry_elapsed + (tonumber(dt) or 0)
+
+	if alfs_registration_retry_attempts > 0 and alfs_registration_retry_elapsed < ALFS_REGISTRATION_RETRY_INTERVAL then
+		return
+	end
+
+	alfs_registration_retry_attempts = alfs_registration_retry_attempts + 1
+	alfs_registration_retry_elapsed = 0
+	register_alfs_dmf_extensions_compatibility()
 end
 
 function mod.on_all_mods_loaded()
 	register_alfs_dmf_extensions_compatibility()
 end
+
+-- BetterInventory can load before Alf's extension. Try immediately for the
+-- common order, then let the bounded update retry cover either load order and
+-- Ctrl+Shift+R, which does not reliably invoke on_all_mods_loaded again.
+register_alfs_dmf_extensions_compatibility()
 
 function mod.on_enabled()
 	-- DMF preserves saved values when a default changes. Apply the new compact
@@ -848,6 +879,7 @@ function mod.on_game_state_changed(status, state_name)
 end
 
 function mod.update(dt)
+	retry_alfs_dmf_extensions_registration(dt)
 	Features.update_morningstar_auto_discard(mod, dt)
 	CurioAcquisition.update(mod, dt, Features.morningstar_auto_discard_is_busy(mod))
 end
