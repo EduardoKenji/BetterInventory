@@ -436,6 +436,15 @@ local function cache_profiles(mod, profiles)
 		mod:set(KNOWN_CHARACTERS_SETTING_ID, summaries, false)
 	end
 
+	-- Character targeting is the default, but a successful backend response with
+	-- no usable character IDs cannot populate its controls or produce a safe
+	-- purchase target. Fall back only after that result is confirmed; an initial,
+	-- pending, or failed discovery must not overwrite the user's chosen mode.
+	if #summaries == 0 and mod:get("automatic_curio_target_mode") == "characters" then
+		mod:set("automatic_curio_target_mode", "classes", false)
+		log_info(mod, "No usable characters were returned; safely falling back to class targeting.")
+	end
+
 	return summaries
 end
 
@@ -1605,6 +1614,7 @@ end
 CurioAcquisition._test = {
 	ARCHETYPE_SETTINGS = ARCHETYPE_SETTINGS,
 	PRIMARY_TRAITS = PRIMARY_TRAITS,
+	cache_profiles = cache_profiles,
 	candidate_differences = candidate_differences,
 	candidate_key = candidate_key,
 	class_is_enabled = class_is_enabled,

@@ -882,6 +882,7 @@ def main() -> None:
     assert defaults["prioritize_equipped_favorites"] is True
     assert defaults["prioritize_perfect_roll_weapons"] is True
     assert defaults["enable_inventory_options_panel_prototype"] is True
+    assert defaults["automatic_curio_target_mode"] == "characters"
     assert defaults["curio_information_width_percent"] == 90
     assert defaults["curio_preview_height_percent"] == 76
     assert defaults["inventory_options_panel_width"] == 445

@@ -395,7 +395,7 @@ return {
 								setting_id = "automatic_curio_target_mode",
 								tooltip = "automatic_curio_target_mode_tooltip",
 								type = "dropdown",
-								default_value = "classes",
+								default_value = "characters",
 								options = {
 									{
 										text = "automatic_curio_target_mode_classes",

@@ -225,7 +225,7 @@ local localization = {
 		en = "Curio acquisition targets",
 	},
 	automatic_curio_target_mode_tooltip = {
-		en = "Classes applies each class checkbox to every operative of that class. Characters discovers this account's operatives and lets each one be enabled independently. Newly created characters are enabled by default.",
+		en = "Characters is the default and lets each discovered operative be enabled independently. Classes applies each class checkbox to every operative of that class. New characters are enabled automatically; a confirmed empty character scan safely falls back to Classes.",
 	},
 	automatic_curio_target_mode_classes = {
 		en = "Classes",
@@ -1763,7 +1763,7 @@ local zh_cn = {
 }
 
 zh_cn.automatic_curio_target_mode = "珍品获取目标"
-zh_cn.automatic_curio_target_mode_tooltip = "职业模式会将每个职业复选框应用于该职业的所有角色。角色模式会自动发现此账户的角色，并允许分别启用每个角色。新建角色默认启用。"
+zh_cn.automatic_curio_target_mode_tooltip = "角色模式为默认选项，可分别启用每个已发现的角色。职业模式会将每个职业复选框应用于该职业的所有角色。新角色会自动启用；若确认扫描不到可用角色，则会安全回退到职业模式。"
 zh_cn.automatic_curio_target_mode_classes = "职业"
 zh_cn.automatic_curio_target_mode_characters = "角色"
 zh_cn.automatic_curio_target_mode_inventory_suffix = "获取珍品："

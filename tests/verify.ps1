@@ -115,8 +115,8 @@ if ($data -notmatch 'setting_id\s*=\s*"automatic_curio_min_health"[\s\S]*?defaul
 	throw "Automatic Curio acquisition must keep its 21% Health, 17% Toughness and quiet diagnostic defaults."
 }
 
-if ($data -notmatch 'setting_id\s*=\s*"automatic_curio_target_mode"[\s\S]*?default_value\s*=\s*"classes"' -or $data -notmatch 'setting_id\s*=\s*"automatic_curio_characters_group"') {
-	throw "Automatic Curio acquisition must default to class targeting and expose discovered-character targeting."
+if ($data -notmatch 'setting_id\s*=\s*"automatic_curio_target_mode"[\s\S]*?default_value\s*=\s*"characters"' -or $data -notmatch 'setting_id\s*=\s*"automatic_curio_characters_group"' -or $curioAcquisition -notmatch 'No usable characters were returned; safely falling back to class targeting') {
+	throw "Automatic Curio acquisition must default to character targeting and safely fall back to classes when no usable characters are returned."
 }
 
 foreach ($settingId in @(

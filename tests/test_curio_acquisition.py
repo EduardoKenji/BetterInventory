@@ -235,7 +235,7 @@ def main() -> None:
 
         settings = {
             enable_automatic_curio_acquisition = true,
-			automatic_curio_target_mode = "classes",
+			automatic_curio_target_mode = "characters",
             automatic_curio_min_item_level = 410,
             automatic_curio_min_health = 21,
             automatic_curio_min_toughness = 17,
@@ -473,9 +473,9 @@ def main() -> None:
     assert candidate.character_name == "Research Psyker"
     assert candidate.class_name == "Psyker"
 
-    # Class mode remains the default. Unknown future archetypes are included
-    # until BetterInventory gains a dedicated checkbox instead of being silently
-    # excluded by a hard-coded class list.
+    # Unknown future archetypes are included in class mode until BetterInventory
+    # gains a dedicated checkbox instead of being silently excluded by a
+    # hard-coded class list.
     future_profile = lua.table_from(
         {
             "character_id": "future-character",
@@ -486,6 +486,13 @@ def main() -> None:
         }
     )
     assert module._test.class_is_enabled(globals_.test_mod, future_profile) is True
+
+    # A confirmed empty backend result cannot populate character targeting.
+    # It falls back to Classes, while the unconfirmed empty cache used during
+    # initial discovery does not mutate the new Characters default.
+    assert globals_.settings.automatic_curio_target_mode == "characters"
+    module._test.cache_profiles(globals_.test_mod, lua.table_from([]))
+    assert globals_.settings.automatic_curio_target_mode == "classes"
 
     # Character mode uses the stable backend ID, not display name or class.
     globals_.settings.automatic_curio_target_mode = "characters"
