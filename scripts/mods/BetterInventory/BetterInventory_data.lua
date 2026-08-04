@@ -634,7 +634,7 @@ return {
 								setting_id = "global_store_character_photo_size_percent",
 								tooltip = "global_store_character_photo_size_percent_tooltip",
 								type = "numeric",
-								default_value = 100,
+								default_value = 110,
 								range = {
 									50,
 									125,
@@ -654,7 +654,7 @@ return {
 														setting_id = "global_store_character_info_gap",
 														tooltip = "global_store_character_info_gap_tooltip",
 														type = "numeric",
-														default_value = 14,
+								default_value = 5,
 														range = {
 															0,
 															40,
@@ -664,7 +664,7 @@ return {
 														setting_id = "global_store_character_class_icon_size",
 														tooltip = "global_store_character_class_icon_size_tooltip",
 														type = "numeric",
-														default_value = 14,
+														default_value = 16,
 														range = {
 															8,
 															24,
@@ -674,7 +674,7 @@ return {
 														setting_id = "global_store_character_name_font_size",
 														tooltip = "global_store_character_name_font_size_tooltip",
 														type = "numeric",
-														default_value = 14,
+														default_value = 16,
 														range = {
 															8,
 															20,

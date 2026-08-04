@@ -42,11 +42,11 @@ def main() -> None:
 			enable_global_store_integration = true,
 			enable_global_store_grid = true,
 			enable_global_store_sorting_panel = true,
-			global_store_character_photo_size_percent = 100,
+			global_store_character_photo_size_percent = 110,
 			global_store_price_row_padding = 10,
-			global_store_character_info_gap = 14,
-			global_store_character_class_icon_size = 14,
-			global_store_character_name_font_size = 14,
+			global_store_character_info_gap = 5,
+			global_store_character_class_icon_size = 16,
+			global_store_character_name_font_size = 16,
 			expand_armoury_requisition_window = true,
 			armoury_requisition_target_card_width = 230,
 			automatic_card_height = true,
@@ -1156,11 +1156,11 @@ def main() -> None:
     assert defaults["enable_global_store_integration"] is True
     assert defaults["enable_global_store_grid"] is True
     assert defaults["enable_global_store_sorting_panel"] is True
-    assert defaults["global_store_character_photo_size_percent"] == 100
+    assert defaults["global_store_character_photo_size_percent"] == 110
     assert defaults["global_store_price_row_padding"] == 10
-    assert defaults["global_store_character_info_gap"] == 14
-    assert defaults["global_store_character_class_icon_size"] == 14
-    assert defaults["global_store_character_name_font_size"] == 14
+    assert defaults["global_store_character_info_gap"] == 5
+    assert defaults["global_store_character_class_icon_size"] == 16
+    assert defaults["global_store_character_name_font_size"] == 16
     assert defaults["enable_quick_look_card_single_column_integration"] is True
     assert defaults["quick_look_card_single_column_font_size"] == 14
     assert defaults["quick_look_card_single_column_label_value_gap"] == 1
