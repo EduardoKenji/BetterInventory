@@ -621,6 +621,53 @@ def main() -> None:
     candidates = features.quick_discard_candidates(mod, layout, quick_discard_view)
     assert len(candidates) == 1
     assert candidates[1].gear_id == "eligible"
+
+    # A legacy equipped item whose level cannot be read must protect its entire
+    # item category instead of crashing manual discard or weakening the ceiling.
+    unreadable_equipped_view = lua.execute(
+        r"""
+        return {
+            __class_name = "InventoryWeaponsView",
+            slot_kind = "slot_secondary",
+            is_item_equipped_in_any_slot = function()
+                return false
+            end,
+            _preview_player = {
+                profile = function()
+                    return {
+                        loadout = {
+                            slot_secondary = "unreadable_equipped",
+                        },
+                        loadout_item_ids = {},
+                    }
+                end,
+            },
+            _offer_items_layout = {
+                {
+                    item = {
+                        gear_id = "unreadable_equipped",
+                        item_type = "WEAPON_RANGED",
+                        rarity = 1,
+                        unreadable = true,
+                        slots = {"slot_secondary"},
+                    },
+                },
+                {
+                    item = {
+                        gear_id = "would_be_candidate",
+                        item_type = "WEAPON_RANGED",
+                        level = 300,
+                        rarity = 1,
+                        total_stats = 300,
+                        slots = {"slot_secondary"},
+                    },
+                },
+            },
+        }
+        """
+    )
+    assert len(features.quick_discard_candidates(mod, layout, unreadable_equipped_view)) == 0
+
     mod.settings.quick_discard_protect_above_equipped_level = False
     unprotected_level_candidates = features.quick_discard_candidates(
         mod, layout, quick_discard_view
@@ -1279,6 +1326,22 @@ def main() -> None:
     assert prototype_panel.pivot_y == 534
 
     prototype_view._discard_items_element = None
+
+    # Weapon Filter uses a separate right-side grid and hides only the native
+    # weapon-options element. BetterInventory must hide both scalable and legacy
+    # controls while that third-party panel is live, then restore its panel.
+    prototype_view._filter_panel_element = lua.table_from({})
+    prototype_view._show_filter_panel = True
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert prototype_panel.visible is False
+    assert prototype_panel.input_disabled is True
+    assert prototype_view._widgets_by_name[sort_label_id].content.visible is False
+    assert prototype_view._widgets_by_name[toggle_id].content.visible is False
+    prototype_view._show_filter_panel = False
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert prototype_panel.visible is True
+    assert prototype_panel.input_disabled is False
+
     mod.settings.enable_inventory_options_panel_prototype = False
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert prototype_panel.visible is False

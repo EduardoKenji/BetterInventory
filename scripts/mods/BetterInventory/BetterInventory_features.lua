@@ -2190,6 +2190,7 @@ end
 
 local function maximum_equipped_levels(source_items, protected_gear_ids)
 	local maximums = {}
+	local unreadable_level = -1
 
 	for _, entry in pairs(source_items or {}) do
 		local item = entry and (entry.real_item or entry.item or entry)
@@ -2198,11 +2199,17 @@ local function maximum_equipped_levels(source_items, protected_gear_ids)
 
 		-- Item level 500 is the absolute ceiling. Once a category reaches it,
 		-- subsequent equipped items of that category cannot improve its maximum.
-		if gear_id and protected_gear_ids[gear_id] and item_type and maximums[item_type] ~= 500 then
-			local level = item_level(item)
+		-- An unreadable equipped/loadout item is more important than any readable
+		-- maximum: use a sentinel below every valid level so the later
+		-- `level > maximum` check protects the entire category. This keeps both
+		-- manual and automatic discard fail-closed for legacy account gear.
+		if gear_id and protected_gear_ids[gear_id] and item_type and maximums[item_type] ~= 500 and maximums[item_type] ~= unreadable_level then
+			local level_ok, level = pcall(item_level, item)
 
-			if level then
+			if level_ok and level then
 				maximums[item_type] = math.min(math.max(maximums[item_type] or 0, level), 500)
+			else
+				maximums[item_type] = unreadable_level
 			end
 		end
 	end
@@ -3164,6 +3171,18 @@ local function update_inventory_options_panel(mod, layout, view, slot_kind)
 		end
 
 		return false
+	end
+
+	-- Weapon Filter owns the same right-side interaction region while its panel
+	-- is open. Its public implementation hides Darktide's weapon-options element,
+	-- but BetterInventory's separately owned grid is not part of that element.
+	-- Follow the live view state so both panels never draw or accept input at once;
+	-- returning true also keeps the legacy BetterInventory widgets hidden.
+	if view._filter_panel_element and view._show_filter_panel == true then
+		set_legacy_inventory_options_visible(view, false)
+		set_options_panel_visible(view, panel, false)
+
+		return true
 	end
 
 	set_legacy_inventory_options_visible(view, false)

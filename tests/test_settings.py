@@ -708,6 +708,18 @@ def main() -> None:
         curio_content_group.sub_widgets[index].setting_id
         for index in range(1, len(curio_content_group.sub_widgets) + 1)
     ]
+    enhanced_descriptions_group = next(
+        data.options.widgets[index]
+        for index in range(1, len(data.options.widgets) + 1)
+        if data.options.widgets[index].setting_id
+        == "enhanced_descriptions_integration_group"
+    )
+    enhanced_descriptions_ids = [
+        enhanced_descriptions_group.sub_widgets[index].setting_id
+        for index in range(1, len(enhanced_descriptions_group.sub_widgets) + 1)
+    ]
+    assert enhanced_descriptions_ids == ["simplify_curio_primary_stat_text"]
+    assert "simplify_curio_primary_stat_text" not in curio_content_ids
     assert curio_content_ids.index("curio_secondary_text_color_group") > curio_content_ids.index("curio_stamina_color_group")
 
     assert defaults["enable_grid_layout"] is True

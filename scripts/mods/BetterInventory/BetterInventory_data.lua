@@ -562,6 +562,20 @@ return {
 				},
 			},
 			{
+				setting_id = "enhanced_descriptions_integration_group",
+				type = "group",
+				sub_widgets = {
+					{
+						-- Retain the established ID so existing configurations keep
+						-- their value after this option moves into its own section.
+						setting_id = "simplify_curio_primary_stat_text",
+						tooltip = "simplify_curio_primary_stat_text_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+				},
+			},
+			{
 				setting_id = "card_content_group",
 				type = "group",
 				sub_widgets = {
@@ -982,12 +996,6 @@ return {
 								value = "heavy",
 							},
 						},
-					},
-					{
-						setting_id = "simplify_curio_primary_stat_text",
-						tooltip = "simplify_curio_primary_stat_text_tooltip",
-						type = "checkbox",
-						default_value = true,
 					},
 					{
 						setting_id = "remove_curio_stat_plus_signs",

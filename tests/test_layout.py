@@ -63,6 +63,7 @@ def main() -> None:
 			gadget_innate_toughness_increase = "+16% Toughness",
 			gadget_innate_max_wounds_increase = "+1 Wound(s)",
 			gadget_stamina_increase = "+2 Max Stamina",
+			gadget_health_increase = "+5% Maximum Health",
 			gadget_cooldown_reduction = "+4% Combat Ability Regeneration",
 			gadget_stamina_regeneration = "+12% Stamina Regeneration",
 			gadget_sprint_cost_reduction = "+15% Sprint Efficiency",
@@ -117,6 +118,7 @@ def main() -> None:
 			["content/items/traits/test_toughness"] = "gadget_innate_toughness_increase",
 			["content/items/traits/test_wounds"] = "gadget_innate_max_wounds_increase",
 			["content/items/traits/test_stamina"] = "gadget_stamina_increase",
+			["content/items/perks/test_health"] = "gadget_health_increase",
 			["content/items/perks/test_ability_regen"] = "gadget_cooldown_reduction",
 			["content/items/perks/test_stamina_regeneration"] = "gadget_stamina_regeneration",
 			["content/items/perks/test_sprint_efficiency"] = "gadget_sprint_cost_reduction",
@@ -1937,6 +1939,24 @@ def main() -> None:
     assert curio_widget.content.better_inventory_curio_stat_2 == "+12% Stamina Regen"
     assert curio_stat_pass.visibility_function(curio_widget.content)
 
+    # Enhanced Descriptions spells these modifiers as "Maximum". The setting
+    # applies to both the innate line and supported secondary Curio perks.
+    globals_.TestTraitDescriptions.gadget_innate_toughness_increase = (
+        "+17% Maximum Toughness"
+    )
+    curio_element.item.traits[1].id = "content/items/traits/test_toughness"
+    curio_element.item.perks[1].id = "content/items/perks/test_health"
+    blueprint.update_data(test_grid, curio_widget, curio_element)
+    assert curio_widget.content.better_inventory_curio_stat_1 == "+17% Toughness"
+    assert curio_widget.content.better_inventory_curio_stat_2 == "+5% Health"
+
+    globals_.TestTraitDescriptions.gadget_innate_toughness_increase = "+16% Toughness"
+    curio_element.item.traits[1].id = "content/items/traits/test_health"
+    curio_element.item.perks[1].id = (
+        "content/items/perks/test_stamina_regeneration"
+    )
+    blueprint.update_data(test_grid, curio_widget, curio_element)
+
     mod.settings.remove_curio_stat_plus_signs = True
     blueprint.update_data(test_grid, curio_widget, curio_element)
     assert curio_widget.content.better_inventory_curio_stat_1 == "19% Health"
@@ -1970,6 +1990,7 @@ def main() -> None:
     mod.settings.curio_health_color_b = 85
 
     mod.settings.simplify_curio_primary_stat_text = False
+    curio_element.item.perks[1].id = "content/items/perks/test_health"
     full_primary_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     layout.configure_item_blueprint(mod, full_primary_blueprint, 640)
     full_primary_style = blueprint_pass(
@@ -1999,6 +2020,13 @@ def main() -> None:
         full_primary_blueprint,
     )
     assert full_primary_widget.content.better_inventory_curio_stat_1 == "+19% Max Health"
+    assert (
+        full_primary_widget.content.better_inventory_curio_stat_2
+        == "+5% Maximum Health"
+    )
+    curio_element.item.perks[1].id = (
+        "content/items/perks/test_stamina_regeneration"
+    )
     mod.settings.simplify_curio_primary_stat_text = True
 
     primary_color_expectations = {

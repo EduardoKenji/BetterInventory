@@ -292,18 +292,49 @@ register_weapon_perk_labels({
 register_weapon_perk_labels({
 	"weapon_trait_ranged_increased_reload_speed",
 }, "weapon_perk_reload_speed", "weapon_perk_reload_heavy")
-local CURIO_PRIMARY_SIMPLIFICATIONS = {
-	gadget_innate_health_increase = {
+local CURIO_HEALTH_SIMPLIFICATIONS = {
+	{
+		find = "Maximum Health",
+		replace = "Health",
+	},
+	{
 		find = "Max Health",
 		replace = "Health",
 	},
+}
+local CURIO_TOUGHNESS_SIMPLIFICATIONS = {
+	{
+		find = "Maximum Toughness",
+		replace = "Toughness",
+	},
+	{
+		find = "Max Toughness",
+		replace = "Toughness",
+	},
+}
+local CURIO_STAT_SIMPLIFICATIONS = {
+	-- Enhanced Descriptions uses "Maximum" for innate Health/Toughness and
+	-- secondary Health while vanilla commonly uses "Max". Match by stable
+	-- trait ID so unrelated prose is never rewritten.
+	gadget_innate_health_increase = CURIO_HEALTH_SIMPLIFICATIONS,
+	gadget_health_increase = CURIO_HEALTH_SIMPLIFICATIONS,
+	gadget_innate_toughness_increase = CURIO_TOUGHNESS_SIMPLIFICATIONS,
+	gadget_toughness_increase = CURIO_TOUGHNESS_SIMPLIFICATIONS,
 	gadget_stamina_increase = {
-		find = "Max Stamina",
-		replace = "Stamina",
+		{
+			find = "Maximum Stamina",
+			replace = "Stamina",
+		},
+		{
+			find = "Max Stamina",
+			replace = "Stamina",
+		},
 	},
 	gadget_innate_max_wounds_increase = {
-		find = "Wound(s)",
-		replace = "Wound",
+		{
+			find = "Wound(s)",
+			replace = "Wound",
+		},
 	},
 }
 local DEFAULT_CURIO_PRIMARY_COLOR = {
@@ -566,26 +597,29 @@ local function leading_plus_sign_description(description, remove_plus_sign)
 	return stripped_description
 end
 
-local function simplified_curio_primary_description(data, enabled)
-	local description = data and data.description
+local function simplified_curio_description(data, enabled, description)
+	description = description or data and data.description
 
 	if not enabled or type(description) ~= "string" or description == "" then
 		return description or ""
 	end
 
-	local simplification = CURIO_PRIMARY_SIMPLIFICATIONS[data.id]
+	local simplifications = CURIO_STAT_SIMPLIFICATIONS[data.id]
 
-	if not simplification then
+	if not simplifications then
 		return description
 	end
 
-	local first, last = string.find(description, simplification.find, 1, true)
+	for i = 1, #simplifications do
+		local simplification = simplifications[i]
+		local first, last = string.find(description, simplification.find, 1, true)
 
-	if not first then
-		return description
+		if first then
+			return string.sub(description, 1, first - 1) .. simplification.replace .. string.sub(description, last + 1)
+		end
 	end
 
-	return string.sub(description, 1, first - 1) .. simplification.replace .. string.sub(description, last + 1)
+	return description
 end
 
 local function pass_by_style_id(pass_template, style_id)
@@ -1027,7 +1061,7 @@ local function resolved_trait_data(entry, include_textures, include_perk_rank, i
 	return data
 end
 
-local function populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_primary)
+local function populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats)
 	local content = widget and widget.content
 
 	if not content then
@@ -1115,7 +1149,7 @@ local function populate_card_content(mod, widget, element, blessing_display_mode
 	local primary_data = resolved_trait_data(primary_entry, false)
 
 	if primary_data then
-		local primary_description = simplified_curio_primary_description(primary_data, simplify_curio_primary)
+		local primary_description = simplified_curio_description(primary_data, simplify_curio_stats)
 
 		content.better_inventory_curio_stat_1 = leading_plus_sign_description(primary_description, remove_plus_sign)
 		content.better_inventory_curio_primary_color = curio_primary_color(mod, primary_data.id)
@@ -1128,6 +1162,7 @@ local function populate_card_content(mod, widget, element, blessing_display_mode
 
 		if perk_data then
 			local perk_description = compact_curio_description(mod, perk_data, compression_mode)
+			perk_description = simplified_curio_description(perk_data, simplify_curio_stats, perk_description)
 
 			content["better_inventory_curio_stat_" .. (i + 1)] = leading_plus_sign_description(perk_description, remove_plus_sign)
 		end
@@ -1916,7 +1951,9 @@ local function configure_card_content(mod, item_blueprint)
 	local weapon_perk_compression = setting(mod, "weapon_perk_compression", "heavy")
 	local show_item_level_icon = setting(mod, "show_item_level_icon", false)
 	local compression_mode = setting(mod, "curio_stat_compression", "heavy")
-	local simplify_curio_primary = setting(mod, "simplify_curio_primary_stat_text", true)
+	-- Keep the original setting ID so existing user configurations migrate
+	-- without any reset; its scope now includes supported secondary Curio perks.
+	local simplify_curio_stats = setting(mod, "simplify_curio_primary_stat_text", true)
 
 	-- Accept the retired checkbox values during the one-time settings migration
 	-- and when hot-reloading from an older options schema.
@@ -1931,7 +1968,7 @@ local function configure_card_content(mod, item_blueprint)
 			original_init(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
 			format_weapon_name(widget, element, append_mark_to_name)
 			format_item_level(widget, element, show_item_level_icon)
-			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_primary)
+			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats)
 			fit_display_name(parent, widget, ui_renderer, preferred_font_size, math.min(preferred_font_size, minimum_font_size))
 			fit_blessing_text(parent, widget, ui_renderer)
 			fit_weapon_perks(parent, widget, ui_renderer)
@@ -1944,7 +1981,7 @@ local function configure_card_content(mod, item_blueprint)
 			original_update_data(parent, widget, element)
 			format_weapon_name(widget, element, append_mark_to_name)
 			format_item_level(widget, element, show_item_level_icon)
-			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_primary)
+			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats)
 			fit_display_name(parent, widget, nil, preferred_font_size, math.min(preferred_font_size, minimum_font_size))
 			fit_blessing_text(parent, widget, nil)
 			fit_weapon_perks(parent, widget, nil)

@@ -398,6 +398,9 @@ return {
 	quick_look_card_grid_bottom_padding_tooltip = {
 		en = "Controls the distance in pixels between the pink modifier label and the card's bottom edge when it is above weapon power. Lower values move it closer to the power value. Reopen the inventory after changing this value.",
 	},
+	enhanced_descriptions_integration_group = {
+		en = "Mod integration: Enhanced Descriptions",
+	},
 	enable_grid_layout = {
 		en = "Enable grid layout",
 	},
@@ -792,10 +795,10 @@ return {
 		en = "Heavy Compression",
 	},
 	simplify_curio_primary_stat_text = {
-		en = "Simplify primary Curio stat text",
+		en = "Simplify Curio stat lines",
 	},
 	simplify_curio_primary_stat_text_tooltip = {
-		en = "Removes redundant wording from supported primary lines: Max Health becomes Health, Max Stamina becomes Stamina, and Wound(s) becomes Wound.",
+		en = "On: BetterInventory removes redundant wording from supported primary and secondary Curio lines. Off: preserves the original wording supplied by Darktide or Enhanced Descriptions.",
 	},
 	remove_curio_stat_plus_signs = {
 		en = "Remove + from Curio stat lines",
