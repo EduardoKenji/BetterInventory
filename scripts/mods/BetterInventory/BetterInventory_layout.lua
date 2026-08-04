@@ -2780,6 +2780,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 	configuration = configuration or {}
 	local global_store = configuration.global_store == true
 	local global_store_extra = global_store_extra_height(mod, configuration)
+	local global_store_multicolumn = global_store_extra > 0
 
 	local item_size = Layout.item_size(mod, grid_width, configuration.maximum_columns, configuration)
 	local card_width = item_size[1]
@@ -2960,19 +2961,6 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 		-- Raise the rating above that footer when the readability option is on.
 		item_level.style.offset[3] = 11
 	end
-	if global_store and item_level and item_level.style then
-		-- GlobalStore's native card places the rating in the upper-right. Keep
-		-- that identity while moving the card into BetterInventory's compact grid.
-		item_level.style.horizontal_alignment = "right"
-		item_level.style.vertical_alignment = "top"
-		item_level.style.text_horizontal_alignment = "right"
-		item_level.style.text_vertical_alignment = "top"
-		item_level.style.offset = {
-			-8,
-			7,
-			setting(mod, "brighten_armoury_item_levels", true) and 11 or 9,
-		}
-	end
 	preserve_visibility(item_level, function(content)
 		return not is_curio(item_from_content(content)) or show_curio_item_level
 	end)
@@ -2981,13 +2969,17 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 		local wallet_icon = pass_by_style_id(pass_template, "wallet_icon")
 
 		if wallet_icon and wallet_icon.style then
-			wallet_icon.style.horizontal_alignment = global_store and "right" or "left"
+			wallet_icon.style.horizontal_alignment = global_store_multicolumn and "left" or (global_store and "right" or "left")
 			wallet_icon.style.vertical_alignment = "bottom"
 			wallet_icon.style.size = {
 				22,
 				18,
 			}
-			wallet_icon.style.offset = global_store and {
+			wallet_icon.style.offset = global_store_multicolumn and {
+				text_left,
+				-7,
+				12,
+			} or global_store and {
 				-8,
 				-7,
 				12,
@@ -3002,11 +2994,15 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 
 		configure_text_pass(price_text, {
 			font_size = 16,
-			horizontal_alignment = global_store and "right" or "left",
+			horizontal_alignment = global_store_multicolumn and "left" or (global_store and "right" or "left"),
 			vertical_alignment = "bottom",
-			text_horizontal_alignment = global_store and "right" or "left",
+			text_horizontal_alignment = global_store_multicolumn and "left" or (global_store and "right" or "left"),
 			text_vertical_alignment = "bottom",
-			offset = global_store and {
+			offset = global_store_multicolumn and {
+				text_left + 27,
+				-5,
+				12,
+			} or global_store and {
 				-30,
 				-5,
 				12,
@@ -3015,7 +3011,10 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 				-5,
 				12,
 			},
-			size = global_store and {
+			size = global_store_multicolumn and {
+				math.max(45, card_width - text_left - 105),
+				24,
+			} or global_store and {
 				math.max(45, card_width - text_left - 30),
 				24,
 			} or {
@@ -3025,11 +3024,15 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 		})
 		configure_text_pass(pass_by_style_id(pass_template, "owned_text"), {
 			font_size = 14,
-			horizontal_alignment = global_store and "right" or "left",
+			horizontal_alignment = global_store_multicolumn and "left" or (global_store and "right" or "left"),
 			vertical_alignment = "bottom",
-			text_horizontal_alignment = global_store and "right" or "left",
+			text_horizontal_alignment = global_store_multicolumn and "left" or (global_store and "right" or "left"),
 			text_vertical_alignment = "bottom",
-			offset = global_store and {
+			offset = global_store_multicolumn and {
+				text_left,
+				-5,
+				12,
+			} or global_store and {
 				-30,
 				-5,
 				12,
@@ -3038,7 +3041,10 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 				-5,
 				12,
 			},
-			size = global_store and {
+			size = global_store_multicolumn and {
+				math.max(55, card_width - text_left - 80),
+				24,
+			} or global_store and {
 				math.max(55, card_width - text_left - 30),
 				24,
 			} or {
@@ -3050,7 +3056,6 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 
 	if global_store then
 		local portrait = pass_by_style_id(pass_template, "portrait")
-		local global_store_multicolumn = global_store_extra > 0
 
 		if portrait and portrait.style then
 			portrait.style.horizontal_alignment = "left"
@@ -3061,7 +3066,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 			}
 			portrait.style.offset = {
 				text_left,
-				global_store_multicolumn and 27 or -2,
+				global_store_multicolumn and -(global_store_extra + 3) or -2,
 				14,
 			}
 		end
@@ -3077,7 +3082,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 			character_info.style.word_wrap = false
 			character_info.style.offset = {
 				text_left + (global_store_multicolumn and 34 or 38),
-				global_store_multicolumn and 31 or -7,
+				global_store_multicolumn and -(global_store_extra + 7) or -7,
 				14,
 			}
 			character_info.style.size = {

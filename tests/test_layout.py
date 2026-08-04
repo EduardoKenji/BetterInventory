@@ -803,16 +803,17 @@ def main() -> None:
         mod, global_store_blueprint, 596, global_store_configuration
     )
     assert (global_store_size[1], global_store_size[2]) == (111, 138)
-    assert blueprint_pass(global_store_blueprint, "wallet_icon").style.horizontal_alignment == "right"
-    assert blueprint_pass(global_store_blueprint, "price_text").style.horizontal_alignment == "right"
-    assert blueprint_pass(global_store_blueprint, "price_text").style.offset[1] == -30
+    assert blueprint_pass(global_store_blueprint, "wallet_icon").style.horizontal_alignment == "left"
+    assert blueprint_pass(global_store_blueprint, "price_text").style.horizontal_alignment == "left"
+    assert blueprint_pass(global_store_blueprint, "price_text").style.offset[1] == 39
     global_store_level = blueprint_pass(global_store_blueprint, "item_level").style
-    assert global_store_level.vertical_alignment == "top"
-    assert global_store_level.offset[2] == 7
+    assert global_store_level.vertical_alignment == "bottom"
+    assert global_store_level.offset[2] == -5
     assert blueprint_pass(global_store_blueprint, "icon").style.size[2] == 114
     assert blueprint_pass(global_store_blueprint, "portrait").style.size[1] == 30
-    assert blueprint_pass(global_store_blueprint, "portrait").style.offset[2] == 27
+    assert blueprint_pass(global_store_blueprint, "portrait").style.offset[2] == -27
     assert blueprint_pass(global_store_blueprint, "character_info_text").style.font_size == 14
+    assert blueprint_pass(global_store_blueprint, "character_info_text").style.offset[2] == -31
 
     mod.settings.columns = 2
     two_column_global_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
