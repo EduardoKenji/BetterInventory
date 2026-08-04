@@ -112,7 +112,7 @@ def main() -> None:
         }
         trait_values = {
             health_trait = 17,
-            toughness_trait = 16,
+            toughness_trait = 17,
             stamina_trait = 3,
             wound_trait = 1,
         }
@@ -127,6 +127,12 @@ def main() -> None:
                 }
             end,
             trait_description = function(definition)
+				if description_mode == "rich" then
+					return "{#color(192, 255, 26)}" .. tostring(trait_values[definition.source_id]) .. "%{#reset()} primary"
+				elseif description_mode == "unparseable" then
+					return "Maximum Toughness"
+				end
+
                 return tostring(trait_values[definition.source_id]) .. "% primary"
             end,
         }
@@ -355,6 +361,34 @@ def main() -> None:
     assert candidate.primary_trait == "gadget_innate_health_increase"
     assert candidate.primary_value == 17
     assert candidate.class_name == "Psyker"
+
+    # Rich-text colour parameters from Enhanced Descriptions must not replace
+    # the visible Curio roll during parsing or exclude an otherwise valid offer.
+    globals_.description_mode = "rich"
+    rich_candidate = module._test.normalized_offer(
+        globals_.test_mod, globals_.target_profile, globals_.test_offer
+    )
+    assert rich_candidate is not None
+    assert rich_candidate.primary_value == 17
+
+    globals_.health_item.traits[1].id = "toughness_trait"
+    rich_toughness_candidate = module._test.normalized_offer(
+        globals_.test_mod, globals_.target_profile, globals_.test_offer
+    )
+    assert rich_toughness_candidate is not None
+    assert rich_toughness_candidate.primary_trait == "gadget_innate_toughness_increase"
+    assert rich_toughness_candidate.primary_value == 17
+    globals_.health_item.traits[1].id = "health_trait"
+
+    # Localized text is notification-only. Even if it cannot be parsed, the
+    # stable trait ID remains eligible and the backend roll supplies the value.
+    globals_.description_mode = "unparseable"
+    fallback_candidate = module._test.normalized_offer(
+        globals_.test_mod, globals_.target_profile, globals_.test_offer
+    )
+    assert fallback_candidate is not None
+    assert fallback_candidate.primary_value == 17
+    globals_.description_mode = None
 
     globals_.health_item.level = 409
     assert (

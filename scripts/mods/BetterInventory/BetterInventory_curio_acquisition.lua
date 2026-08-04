@@ -32,13 +32,6 @@ local PRIMARY_TRAITS = {
 	},
 }
 
-local PRIMARY_CEILINGS = {
-	gadget_innate_health_increase = 25,
-	gadget_innate_toughness_increase = 20,
-	gadget_innate_max_wounds_increase = 1,
-	gadget_stamina_increase = 3,
-}
-
 local ARCHETYPE_SETTINGS = {
 	adamant = "automatic_curio_class_adamant",
 	broker = "automatic_curio_class_broker",
@@ -233,9 +226,29 @@ local function first_number(value)
 		return
 	end
 
+	-- Enhanced Descriptions and similar localization mods can wrap the visible
+	-- value in numeric rich-text tags such as `{#color(192,255,26)}`. Those tag
+	-- parameters must never be mistaken for the Curio's actual primary value.
+	value = string.gsub(value, "{#[^}]*}", "")
+	value = string.gsub(value, "<[^>]*>", "")
+
 	local number = string.match(value, "([%d]+%.?[%d]*)")
 
 	return number and tonumber(number) or nil
+end
+
+local function backend_trait_value(trait_name, entry)
+	local value = entry and tonumber(entry.value)
+
+	if not value then
+		return
+	end
+
+	if (trait_name == "gadget_innate_health_increase" or trait_name == "gadget_innate_toughness_increase") and math.abs(value) <= 1 then
+		value = value * 100
+	end
+
+	return math.floor(value * 100 + 0.5) / 100
 end
 
 local function trait_definition(entry)
@@ -271,14 +284,18 @@ local function primary_trait(item)
 		local trait_name = definition and definition.trait
 		local config = trait_name and PRIMARY_TRAITS[trait_name]
 
-		if config and type(Items.trait_description) == "function" then
-			local described, description = pcall(Items.trait_description, definition, entry.rarity or 0, entry.value or 0)
-			local value = described and first_number(description) or nil
-			local ceiling = PRIMARY_CEILINGS[trait_name]
+		if config then
+			local value = backend_trait_value(trait_name, entry)
 
-			if value and value >= 0 and (not ceiling or value <= ceiling) then
-				return trait_name, value, config
+			if type(Items.trait_description) == "function" then
+				local described, description = pcall(Items.trait_description, definition, entry.rarity or 0, entry.value or 0)
+
+				value = described and first_number(description) or value
 			end
+
+			-- Eligibility is based on the stable trait identifier, never localized
+			-- presentation text. A missing value only affects notification detail.
+			return trait_name, value, config
 		end
 	end
 end
@@ -619,8 +636,8 @@ local function purchased_lines(mod, purchased, partial_failure)
 	for index = 1, #purchased do
 		local candidate = purchased[index]
 		local config = candidate.primary_config
-		local value = tonumber(candidate.primary_value) or 0
-		local shown_value = value == math.floor(value) and tostring(math.floor(value)) or tostring(value)
+		local value = tonumber(candidate.primary_value)
+		local shown_value = value and (value == math.floor(value) and tostring(math.floor(value)) or tostring(value)) or "?"
 
 		lines[#lines + 1] = string.format("- %d, %s%s %s, %s", candidate.item_level, shown_value, config.unit, mod:localize(config.label_id), candidate.class_name)
 	end
