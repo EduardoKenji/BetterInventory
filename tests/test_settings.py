@@ -401,6 +401,8 @@ def main() -> None:
 		"automatic_curio_class_adamant",
 		"automatic_curio_class_broker",
 		"automatic_curio_class_cryptic",
+		"automatic_curio_types_group",
+		"automatic_curio_classes_group",
     )
     entries = [
         lua.table_from(
@@ -411,6 +413,8 @@ def main() -> None:
         )
         for option_id in option_ids
     ]
+    entries[-2].widget_type = "group_header"
+    entries[-1].widget_type = "group_header"
     options_templates = lua.table_from(
         {"settings": lua.table_from(entries)}
     )
@@ -465,6 +469,8 @@ def main() -> None:
     assert entries_by_id["automatic_curio_min_item_level"].disabled is True
     assert entries_by_id["automatic_curio_buy_health"].disabled is True
     assert entries_by_id["automatic_curio_class_cryptic"].disabled is True
+    assert entries_by_id["automatic_curio_types_group"].indentation_level == 2
+    assert entries_by_id["automatic_curio_classes_group"].indentation_level == 2
     assert entries_by_id["curio_information_width_percent"].disabled is True
     assert entries_by_id["curio_preview_height_percent"].disabled is True
     assert entries_by_id["inventory_options_panel_width"].disabled is True
@@ -677,7 +683,12 @@ def main() -> None:
     mod.on_setting_changed("enable_grid_layout")
 
     for option_id in option_ids:
-        if option_id in {"blessing_icon_size", "blessing_icon_spacing"}:
+        if option_id in {
+            "blessing_icon_size",
+            "blessing_icon_spacing",
+            "automatic_curio_types_group",
+            "automatic_curio_classes_group",
+        }:
             continue
 
         assert entries_by_id[option_id].disabled is True

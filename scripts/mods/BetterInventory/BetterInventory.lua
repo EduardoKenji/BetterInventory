@@ -370,6 +370,10 @@ local function bind_option_dependencies(options_templates)
 
 	local category_name = mod:get_readable_name()
 	local setting_by_title = {}
+	local curio_buyer_subsection_titles = {
+		[mod:localize("automatic_curio_types_group")] = true,
+		[mod:localize("automatic_curio_classes_group")] = true,
+	}
 
 	for _, setting_id in ipairs({
 		"columns",
@@ -457,6 +461,14 @@ local function bind_option_dependencies(options_templates)
 
 	for i = 1, #settings do
 		local entry = settings[i]
+
+		-- DMF preserves indentation for ordinary nested controls but drops it from
+		-- nested group-header templates. Restore the two buyer subheadings to the
+		-- same depth as their schema nodes so they do not look like peer sections.
+		if type(entry) == "table" and entry.category == category_name and entry.widget_type == "group_header" and curio_buyer_subsection_titles[entry.display_name] then
+			entry.indentation_level = 2
+		end
+
 		local setting_id = type(entry) == "table" and entry.category == category_name and setting_by_title[entry.display_name]
 
 		if setting_id then
