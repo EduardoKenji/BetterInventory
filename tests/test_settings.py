@@ -755,7 +755,7 @@ def main() -> None:
     localization = lua.execute(LOCALIZATION_PATH.read_text(encoding="utf-8"))
     defaults = {}
 
-    assert data.version == "1.2.0"
+    assert data.version == "1.3.0"
 
     for localization_id, localized_values in localization.items():
         simplified_chinese = localized_values["zh-cn"]
