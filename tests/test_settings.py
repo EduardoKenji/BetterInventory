@@ -28,6 +28,11 @@ def main() -> None:
 			quick_look_card_single_column_horizontal_position = 79,
 			quick_look_card_single_column_vertical_position = 93,
 			quick_look_card_grid_stat_position = "above_power",
+			weapon_modifier_lowest_color_preset = "pink",
+			weapon_modifier_lowest_color_r = 255,
+			weapon_modifier_lowest_color_g = 94,
+			weapon_modifier_lowest_color_b = 132,
+			weapon_modifier_lowest_color_opacity = 100,
 			enable_hadron_entreat_grid = true,
 			enable_armoury_requisition_grid = true,
 			expand_armoury_requisition_window = true,
@@ -329,6 +334,20 @@ def main() -> None:
     mod.on_setting_changed("weapon_blessing_text_color_r")
     assert settings.weapon_blessing_text_color_preset == "custom"
 
+    settings.weapon_modifier_lowest_color_preset = "pink"
+    mod.on_setting_changed("weapon_modifier_lowest_color_preset")
+    assert (
+        settings.weapon_modifier_lowest_color_r,
+        settings.weapon_modifier_lowest_color_g,
+        settings.weapon_modifier_lowest_color_b,
+    ) == (255, 94, 132)
+
+    settings.weapon_modifier_lowest_color_g = 33
+    mod.on_setting_changed("weapon_modifier_lowest_color_g")
+    assert settings.weapon_modifier_lowest_color_preset == "custom"
+    settings.weapon_modifier_lowest_color_preset = "pink"
+    mod.on_setting_changed("weapon_modifier_lowest_color_preset")
+
     settings.curio_secondary_text_color_preset = "terminal_green"
     mod.on_setting_changed("curio_secondary_text_color_preset")
     assert (
@@ -389,6 +408,11 @@ def main() -> None:
 		"quick_look_card_grid_stat_position",
 		"quick_look_card_grid_font_size",
 		"quick_look_card_grid_bottom_padding",
+		"weapon_modifier_lowest_color_preset",
+		"weapon_modifier_lowest_color_r",
+		"weapon_modifier_lowest_color_g",
+		"weapon_modifier_lowest_color_b",
+		"weapon_modifier_lowest_color_opacity",
 		"curio_information_width_percent",
 		"curio_preview_height_percent",
 		"inventory_options_panel_width",
@@ -502,6 +526,11 @@ def main() -> None:
     assert entries_by_id["quick_look_card_grid_stat_position"].disabled is False
     assert entries_by_id["quick_look_card_grid_font_size"].disabled is False
     assert entries_by_id["quick_look_card_grid_bottom_padding"].disabled is False
+    assert entries_by_id["weapon_modifier_lowest_color_preset"].disabled is False
+    assert entries_by_id["weapon_modifier_lowest_color_r"].disabled is False
+    assert entries_by_id["weapon_modifier_lowest_color_g"].disabled is False
+    assert entries_by_id["weapon_modifier_lowest_color_b"].disabled is False
+    assert entries_by_id["weapon_modifier_lowest_color_opacity"].disabled is False
     assert entries_by_id["quick_discard_rarity"].disabled is True
     assert entries_by_id["quick_discard_protect_above_equipped_level"].disabled is True
     assert entries_by_id["quick_discard_curio_protection_level"].disabled is True
@@ -737,11 +766,21 @@ def main() -> None:
     assert entries_by_id["quick_look_card_grid_stat_position"].disabled is True
     assert entries_by_id["quick_look_card_grid_font_size"].disabled is True
     assert entries_by_id["quick_look_card_grid_bottom_padding"].disabled is True
+    assert entries_by_id["weapon_modifier_lowest_color_preset"].disabled is True
+    assert entries_by_id["weapon_modifier_lowest_color_r"].disabled is True
+    assert entries_by_id["weapon_modifier_lowest_color_g"].disabled is True
+    assert entries_by_id["weapon_modifier_lowest_color_b"].disabled is True
+    assert entries_by_id["weapon_modifier_lowest_color_opacity"].disabled is True
     settings.enable_quick_look_card_grid_integration = True
     mod.on_setting_changed("enable_quick_look_card_grid_integration")
     assert entries_by_id["quick_look_card_grid_stat_position"].disabled is False
     assert entries_by_id["quick_look_card_grid_font_size"].disabled is False
     assert entries_by_id["quick_look_card_grid_bottom_padding"].disabled is False
+    assert entries_by_id["weapon_modifier_lowest_color_preset"].disabled is False
+    assert entries_by_id["weapon_modifier_lowest_color_r"].disabled is False
+    assert entries_by_id["weapon_modifier_lowest_color_g"].disabled is False
+    assert entries_by_id["weapon_modifier_lowest_color_b"].disabled is False
+    assert entries_by_id["weapon_modifier_lowest_color_opacity"].disabled is False
 
     settings.quick_look_card_grid_stat_position = "name_right"
     mod.on_setting_changed("quick_look_card_grid_stat_position")
@@ -760,6 +799,11 @@ def main() -> None:
 			"quick_look_card_single_column_font_size",
 			"quick_look_card_single_column_horizontal_position",
 			"quick_look_card_single_column_vertical_position",
+			"weapon_modifier_lowest_color_preset",
+			"weapon_modifier_lowest_color_r",
+			"weapon_modifier_lowest_color_g",
+			"weapon_modifier_lowest_color_b",
+			"weapon_modifier_lowest_color_opacity",
             "blessing_icon_size",
             "blessing_icon_spacing",
             "automatic_curio_types_group",
@@ -778,6 +822,11 @@ def main() -> None:
     assert entries_by_id["quick_look_card_single_column_font_size"].disabled is False
     assert entries_by_id["quick_look_card_single_column_horizontal_position"].disabled is False
     assert entries_by_id["quick_look_card_single_column_vertical_position"].disabled is False
+    assert entries_by_id["weapon_modifier_lowest_color_preset"].disabled is False
+    assert entries_by_id["weapon_modifier_lowest_color_r"].disabled is False
+    assert entries_by_id["weapon_modifier_lowest_color_g"].disabled is False
+    assert entries_by_id["weapon_modifier_lowest_color_b"].disabled is False
+    assert entries_by_id["weapon_modifier_lowest_color_opacity"].disabled is False
 
     settings.weapon_blessing_display_mode = "ranked_text"
     mod.on_setting_changed("weapon_blessing_display_mode")
@@ -787,6 +836,11 @@ def main() -> None:
     assert entries_by_id["quick_look_card_single_column_font_size"].disabled is True
     assert entries_by_id["quick_look_card_single_column_horizontal_position"].disabled is True
     assert entries_by_id["quick_look_card_single_column_vertical_position"].disabled is True
+    assert entries_by_id["weapon_modifier_lowest_color_preset"].disabled is True
+    assert entries_by_id["weapon_modifier_lowest_color_r"].disabled is True
+    assert entries_by_id["weapon_modifier_lowest_color_g"].disabled is True
+    assert entries_by_id["weapon_modifier_lowest_color_b"].disabled is True
+    assert entries_by_id["weapon_modifier_lowest_color_opacity"].disabled is True
 
     data = lua.execute(DATA_PATH.read_text(encoding="utf-8"))
     localization = lua.execute(LOCALIZATION_PATH.read_text(encoding="utf-8"))
@@ -884,6 +938,11 @@ def main() -> None:
     assert defaults["quick_look_card_grid_stat_position"] == "above_power"
     assert defaults["quick_look_card_grid_font_size"] == 13
     assert defaults["quick_look_card_grid_bottom_padding"] == 26
+    assert defaults["weapon_modifier_lowest_color_preset"] == "pink"
+    assert defaults["weapon_modifier_lowest_color_r"] == 255
+    assert defaults["weapon_modifier_lowest_color_g"] == 94
+    assert defaults["weapon_modifier_lowest_color_b"] == 132
+    assert defaults["weapon_modifier_lowest_color_opacity"] == 100
     assert defaults["single_column_weapon_name_font_size"] == 18
     assert defaults["single_column_blessing_symbols_on_right"] is False
     assert defaults["enable_hadron_entreat_grid"] is True

@@ -1006,12 +1006,13 @@ end
 local function add_quick_look_card_grid_pass(mod, pass_template, card_width, text_left, position)
 	local font_size = numeric_setting(mod, "quick_look_card_grid_font_size", 13, 8, 20)
 	local bottom_padding = numeric_setting(mod, "quick_look_card_grid_bottom_padding", 26, 20, 60)
+	local lowest_modifier_color = configured_text_color(mod, "weapon_modifier_lowest_color", QUICK_LOOK_CARD_HIGHLIGHT_COLOR, "weapon_modifier_lowest_color_opacity")
 	local parenthesized = position ~= "above_power"
 	local label_width = math.max(64, math.floor(font_size * 6 + 0.5))
 	local style = {
 		font_type = "machine_medium",
 		font_size = font_size,
-		text_color = table.clone(QUICK_LOOK_CARD_HIGHLIGHT_COLOR),
+		text_color = lowest_modifier_color,
 		drop_shadow = true,
 		word_wrap = false,
 		offset = {},
@@ -1084,6 +1085,7 @@ end
 
 local function configure_native_quick_look_card_passes(mod, pass_template, card_width, card_height)
 	local font_size = numeric_setting(mod, "quick_look_card_single_column_font_size", 14, 8, 20)
+	local lowest_modifier_color = configured_text_color(mod, "weapon_modifier_lowest_color", QUICK_LOOK_CARD_HIGHLIGHT_COLOR, "weapon_modifier_lowest_color_opacity")
 	local horizontal_percent = numeric_setting(mod, "quick_look_card_single_column_horizontal_position", 79, 0, 100)
 	local vertical_percent = numeric_setting(mod, "quick_look_card_single_column_vertical_position", 93, 0, 100)
 	local line_height = font_size + 3
@@ -1177,7 +1179,7 @@ local function configure_native_quick_look_card_passes(mod, pass_template, card_
 
 			if kind == "title" then
 				pass.change_function = function(content, current_style)
-					local target_color = content and content.better_inventory_weapon_modifier_lowest_index == stat_index and QUICK_LOOK_CARD_HIGHLIGHT_COLOR or WEAPON_MODIFIER_TITLE_COLOR
+					local target_color = content and content.better_inventory_weapon_modifier_lowest_index == stat_index and lowest_modifier_color or WEAPON_MODIFIER_TITLE_COLOR
 					local text_color = current_style.text_color
 
 					for channel = 1, 4 do

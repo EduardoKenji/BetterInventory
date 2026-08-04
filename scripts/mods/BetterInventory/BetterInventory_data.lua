@@ -20,6 +20,10 @@ local function color_preset_options()
 			value = "purple",
 		},
 		{
+			text = "color_preset_pink",
+			value = "pink",
+		},
+		{
 			text = "color_preset_orange",
 			value = "orange",
 		},
@@ -737,6 +741,50 @@ return {
 						range = {
 							20,
 							60,
+						},
+					},
+					{
+						setting_id = "weapon_modifier_lowest_color_preset",
+						tooltip = "weapon_modifier_lowest_color_preset_tooltip",
+						type = "dropdown",
+						default_value = "pink",
+						options = color_preset_options(),
+					},
+					{
+						setting_id = "weapon_modifier_lowest_color_r",
+						type = "numeric",
+						default_value = 255,
+						range = {
+							0,
+							255,
+						},
+					},
+					{
+						setting_id = "weapon_modifier_lowest_color_g",
+						type = "numeric",
+						default_value = 94,
+						range = {
+							0,
+							255,
+						},
+					},
+					{
+						setting_id = "weapon_modifier_lowest_color_b",
+						type = "numeric",
+						default_value = 132,
+						range = {
+							0,
+							255,
+						},
+					},
+					{
+						setting_id = "weapon_modifier_lowest_color_opacity",
+						tooltip = "weapon_modifier_lowest_color_opacity_tooltip",
+						type = "numeric",
+						default_value = 100,
+						range = {
+							0,
+							100,
 						},
 					},
 				},

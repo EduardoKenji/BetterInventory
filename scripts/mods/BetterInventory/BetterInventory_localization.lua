@@ -570,7 +570,28 @@ local localization = {
 		en = "Lowest modifier bottom padding",
 	},
 	quick_look_card_grid_bottom_padding_tooltip = {
-		en = "Controls the distance in pixels between the pink modifier label and the card's bottom edge when it is above weapon power. Lower values move it closer to the power value. Reopen the inventory after changing this value.",
+		en = "Controls the distance in pixels between the lowest-modifier label and the card's bottom edge when it is above weapon power. Lower values move it closer to the power value. Reopen the inventory after changing this value.",
+	},
+	weapon_modifier_lowest_color_preset = {
+		en = "Lowest modifier colour preset",
+	},
+	weapon_modifier_lowest_color_preset_tooltip = {
+		en = "Sets the colour used by the lowest modifier in grid mode and its highlighted abbreviation in the five-stat single-column block.",
+	},
+	weapon_modifier_lowest_color_r = {
+		en = "Lowest modifier colour red",
+	},
+	weapon_modifier_lowest_color_g = {
+		en = "Lowest modifier colour green",
+	},
+	weapon_modifier_lowest_color_b = {
+		en = "Lowest modifier colour blue",
+	},
+	weapon_modifier_lowest_color_opacity = {
+		en = "Lowest modifier opacity",
+	},
+	weapon_modifier_lowest_color_opacity_tooltip = {
+		en = "Sets the lowest-modifier text opacity from fully transparent at 0%% to fully opaque at 100%%.",
 	},
 	weapon_modifier_melee_damage = { en = "MELE" },
 	weapon_modifier_ammo = { en = "AMMO" },
@@ -1134,6 +1155,9 @@ local localization = {
 	color_preset_purple = {
 		en = "Purple",
 	},
+	color_preset_pink = {
+		en = "Pink",
+	},
 	color_preset_orange = {
 		en = "Orange",
 	},
@@ -1581,7 +1605,14 @@ local zh_cn = {
 	quick_look_card_grid_font_size = "网格最低属性字号",
 	quick_look_card_grid_font_size_tooltip = "控制网格中短板属性标签的字号。更改后请重新打开库存。",
 	quick_look_card_grid_bottom_padding = "最低属性底部边距",
-	quick_look_card_grid_bottom_padding_tooltip = "控制粉色属性标签在武器威力上方显示时，与卡片底边之间的像素距离。数值越低，标签越靠近威力值。更改后请重新打开库存。",
+	quick_look_card_grid_bottom_padding_tooltip = "控制最低属性标签在武器威力上方显示时，与卡片底边之间的像素距离。数值越低，标签越靠近威力值。更改后请重新打开库存。",
+	weapon_modifier_lowest_color_preset = "最低属性颜色预设",
+	weapon_modifier_lowest_color_preset_tooltip = "设置网格模式中最低属性及单列五项属性区块中高亮缩写所使用的颜色。",
+	weapon_modifier_lowest_color_r = "最低属性颜色红色",
+	weapon_modifier_lowest_color_g = "最低属性颜色绿色",
+	weapon_modifier_lowest_color_b = "最低属性颜色蓝色",
+	weapon_modifier_lowest_color_opacity = "最低属性不透明度",
+	weapon_modifier_lowest_color_opacity_tooltip = "设置最低属性文字的不透明度：0%% 为完全透明，100%% 为完全不透明。",
 	weapon_modifier_melee_damage = "近战",
 	weapon_modifier_ammo = "弹药",
 	weapon_modifier_penetration = "穿透",
@@ -1790,6 +1821,7 @@ local zh_cn = {
 	color_preset_light_blue = "浅蓝色",
 	color_preset_sky_blue = "天蓝色",
 	color_preset_purple = "紫色",
+	color_preset_pink = "粉色",
 	color_preset_orange = "橙色",
 	color_preset_yellow = "黄色",
 	color_preset_green = "绿色",

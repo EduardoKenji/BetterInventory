@@ -285,6 +285,10 @@ def main() -> None:
 				quick_look_card_grid_stat_position = "above_power",
 				quick_look_card_grid_font_size = 13,
 				quick_look_card_grid_bottom_padding = 26,
+				weapon_modifier_lowest_color_r = 255,
+				weapon_modifier_lowest_color_g = 94,
+				weapon_modifier_lowest_color_b = 132,
+				weapon_modifier_lowest_color_opacity = 100,
 				expand_inventory_window = true,
 				weapon_extra_width_column_threshold = "four_plus",
 				five_column_weapon_extra_width = 80,
@@ -936,6 +940,29 @@ def main() -> None:
         standalone_low_title_pass.style.text_color[index] for index in range(1, 5)
     ) == (255, 255, 94, 132)
 
+    mod.settings.weapon_modifier_lowest_color_r = 12
+    mod.settings.weapon_modifier_lowest_color_g = 34
+    mod.settings.weapon_modifier_lowest_color_b = 56
+    mod.settings.weapon_modifier_lowest_color_opacity = 50
+    custom_color_native_blueprint = lua.eval("table.clone")(
+        globals_.raw_test_blueprint
+    )
+    layout.configure_item_blueprint(mod, custom_color_native_blueprint, 596)
+    custom_color_title_pass = blueprint_pass(
+        custom_color_native_blueprint, "better_inventory_weapon_modifier_title_1"
+    )
+    custom_color_title_pass.change_function(
+        lua.table_from({"better_inventory_weapon_modifier_lowest_index": 1}),
+        custom_color_title_pass.style,
+    )
+    assert tuple(
+        custom_color_title_pass.style.text_color[index] for index in range(1, 5)
+    ) == (128, 12, 34, 56)
+    mod.settings.weapon_modifier_lowest_color_r = 255
+    mod.settings.weapon_modifier_lowest_color_g = 94
+    mod.settings.weapon_modifier_lowest_color_b = 132
+    mod.settings.weapon_modifier_lowest_color_opacity = 100
+
     # Unknown future modifier IDs receive bounded deterministic fallbacks, and
     # colliding four-character labels are disambiguated within the same weapon.
     future_modifier_element = lua.eval(
@@ -1220,6 +1247,23 @@ def main() -> None:
         94,
         132,
     )
+
+    mod.settings.weapon_modifier_lowest_color_r = 12
+    mod.settings.weapon_modifier_lowest_color_g = 34
+    mod.settings.weapon_modifier_lowest_color_b = 56
+    mod.settings.weapon_modifier_lowest_color_opacity = 50
+    custom_color_grid_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, custom_color_grid_blueprint, 596)
+    custom_color_dump_pass = blueprint_pass(
+        custom_color_grid_blueprint, "better_inventory_quick_look_card_dump_stat"
+    )
+    assert tuple(
+        custom_color_dump_pass.style.text_color[index] for index in range(1, 5)
+    ) == (128, 12, 34, 56)
+    mod.settings.weapon_modifier_lowest_color_r = 255
+    mod.settings.weapon_modifier_lowest_color_g = 94
+    mod.settings.weapon_modifier_lowest_color_b = 132
+    mod.settings.weapon_modifier_lowest_color_opacity = 100
 
     mod.settings.quick_look_card_grid_bottom_padding = 32
     qlc_lower_padding_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)

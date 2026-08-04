@@ -127,6 +127,11 @@ local COLOR_PRESETS = {
 		105,
 		230,
 	},
+	pink = {
+		255,
+		94,
+		132,
+	},
 	orange = {
 		235,
 		155,
@@ -166,6 +171,10 @@ local COLOR_TARGETS = {
 	{
 		prefix = "weapon_blessing_text_color",
 		default_preset = "light_blue",
+	},
+	{
+		prefix = "weapon_modifier_lowest_color",
+		default_preset = "pink",
 	},
 	{
 		prefix = "curio_secondary_text_color",
@@ -292,6 +301,8 @@ local function refresh_option_dependencies()
 	local quick_look_card_grid_reason = grid_enabled and mod:localize("option_requires_quick_look_card_grid_integration") or native_reason
 	local quick_look_card_single_column_enabled = single_column_enabled and mod:get("enable_quick_look_card_single_column_integration") ~= false
 	local quick_look_card_single_column_reason = single_column_enabled and mod:localize("option_requires_quick_look_card_single_column_integration") or single_column_reason
+	local weapon_modifier_lowest_color_enabled = quick_look_card_grid_enabled or quick_look_card_single_column_enabled
+	local weapon_modifier_lowest_color_reason = grid_enabled and quick_look_card_grid_reason or quick_look_card_single_column_reason
 	local quick_look_card_above_power = quick_look_card_grid_enabled and mod:get("quick_look_card_grid_stat_position") ~= "name_left" and mod:get("quick_look_card_grid_stat_position") ~= "name_right"
 	local quick_look_card_bottom_padding_reason = quick_look_card_grid_enabled and mod:localize("option_requires_quick_look_card_above_power") or quick_look_card_grid_reason
 
@@ -335,6 +346,11 @@ local function refresh_option_dependencies()
 	set_option_enabled(option_dependency_entries.quick_look_card_grid_stat_position, quick_look_card_grid_enabled, quick_look_card_grid_reason)
 	set_option_enabled(option_dependency_entries.quick_look_card_grid_font_size, quick_look_card_grid_enabled, quick_look_card_grid_reason)
 	set_option_enabled(option_dependency_entries.quick_look_card_grid_bottom_padding, quick_look_card_above_power, quick_look_card_bottom_padding_reason)
+	set_option_enabled(option_dependency_entries.weapon_modifier_lowest_color_preset, weapon_modifier_lowest_color_enabled, weapon_modifier_lowest_color_reason)
+	set_option_enabled(option_dependency_entries.weapon_modifier_lowest_color_r, weapon_modifier_lowest_color_enabled, weapon_modifier_lowest_color_reason)
+	set_option_enabled(option_dependency_entries.weapon_modifier_lowest_color_g, weapon_modifier_lowest_color_enabled, weapon_modifier_lowest_color_reason)
+	set_option_enabled(option_dependency_entries.weapon_modifier_lowest_color_b, weapon_modifier_lowest_color_enabled, weapon_modifier_lowest_color_reason)
+	set_option_enabled(option_dependency_entries.weapon_modifier_lowest_color_opacity, weapon_modifier_lowest_color_enabled, weapon_modifier_lowest_color_reason)
 
 	for _, setting_id in ipairs({
 		"curio_information_width_percent",
@@ -487,6 +503,11 @@ local function bind_option_dependencies(options_templates)
 		"quick_look_card_grid_stat_position",
 		"quick_look_card_grid_font_size",
 		"quick_look_card_grid_bottom_padding",
+		"weapon_modifier_lowest_color_preset",
+		"weapon_modifier_lowest_color_r",
+		"weapon_modifier_lowest_color_g",
+		"weapon_modifier_lowest_color_b",
+		"weapon_modifier_lowest_color_opacity",
 		"curio_information_width_percent",
 		"curio_preview_height_percent",
 		"inventory_options_panel_width",
