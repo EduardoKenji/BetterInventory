@@ -1428,12 +1428,19 @@ def main() -> None:
     curio_buyer_enable.content.hotspot.pressed_callback()
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert mod.settings.enable_automatic_curio_acquisition is True
-    assert len(prototype_panel.layout) == 26
+    assert len(prototype_panel.layout) == 25
     assert prototype_panel.widgets["better_inventory_curio_buyer_min_level"] is not None
     buyer_target_mode = prototype_panel.widgets[
         "better_inventory_curio_buyer_target_mode"
     ]
     assert buyer_target_mode.content.value == "automatic_curio_target_mode_classes  >"
+    assert (
+        buyer_target_mode.content.label
+        == "automatic_curio_target_mode_inventory_suffix"
+    )
+    assert buyer_target_mode.style.value.offset[1] == 0
+    assert buyer_target_mode.style.value.size[1] == 120
+    assert buyer_target_mode.style.label.offset[1] == 128
     buyer_min_health = prototype_panel.widgets[
         "better_inventory_curio_buyer_min_health"
     ]
@@ -1456,16 +1463,24 @@ def main() -> None:
     buyer_types.content.health_hotspot.pressed_callback()
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert mod.settings.automatic_curio_buy_health is False
-    assert len(prototype_panel.layout) == 25
+    assert len(prototype_panel.layout) == 24
     assert prototype_panel.widgets["better_inventory_curio_buyer_min_health"] is None
     assert prototype_panel.widgets["better_inventory_curio_buyer_min_toughness"] is not None
     buyer_types = prototype_panel.widgets["better_inventory_curio_buyer_types"]
     buyer_types.content.health_hotspot.pressed_callback()
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert mod.settings.automatic_curio_buy_health is True
-    assert len(prototype_panel.layout) == 26
+    assert len(prototype_panel.layout) == 25
     assert prototype_panel.widgets["better_inventory_curio_buyer_classes_1"] is not None
     assert prototype_panel.widgets["better_inventory_curio_buyer_classes_2"] is not None
+    assert prototype_panel.widgets["better_inventory_curio_buyer_classes_label"] is None
+    class_control_ids = [
+        prototype_panel.layout[index].control_id
+        for index in range(1, len(prototype_panel.layout) + 1)
+    ]
+    assert class_control_ids.index("better_inventory_curio_buyer_target_mode") + 1 == class_control_ids.index(
+        "better_inventory_curio_buyer_classes_1"
+    )
     buyer_target_mode = prototype_panel.widgets[
         "better_inventory_curio_buyer_target_mode"
     ]
@@ -1473,12 +1488,20 @@ def main() -> None:
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert mod.settings.automatic_curio_target_mode == "characters"
     assert globals_.TestCurioSettingChanged == "automatic_curio_target_mode"
-    assert len(prototype_panel.layout) == 25
+    assert len(prototype_panel.layout) == 24
     assert prototype_panel.widgets["better_inventory_curio_buyer_classes_1"] is None
     buyer_characters = prototype_panel.widgets[
         "better_inventory_curio_buyer_characters_1"
     ]
     assert buyer_characters is not None
+    assert prototype_panel.widgets["better_inventory_curio_buyer_characters_label"] is None
+    character_control_ids = [
+        prototype_panel.layout[index].control_id
+        for index in range(1, len(prototype_panel.layout) + 1)
+    ]
+    assert character_control_ids.index("better_inventory_curio_buyer_target_mode") + 1 == character_control_ids.index(
+        "better_inventory_curio_buyer_characters_1"
+    )
     assert buyer_characters.content.character_1_label == "Dudualdo(Ogryn)"
     assert buyer_characters.content.character_2_label == "Psyops(Psyker)"
     assert buyer_characters.content.character_1_checked is True
@@ -1491,7 +1514,7 @@ def main() -> None:
     buyer_target_mode.content.hotspot.pressed_callback()
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert mod.settings.automatic_curio_target_mode == "classes"
-    assert len(prototype_panel.layout) == 26
+    assert len(prototype_panel.layout) == 25
     assert prototype_panel.widgets["better_inventory_curio_buyer_classes_1"] is not None
     curio_buyer_enable = prototype_panel.widgets[
         "better_inventory_curio_buyer_enable"

@@ -481,9 +481,12 @@ local function section_label_passes()
 	}
 end
 
-local function compact_selector_passes(width, fixed_selector_width)
-	local selector_x = 64
-	local selector_width = math.min(fixed_selector_width or width - selector_x, width - selector_x)
+local function compact_selector_passes(width, fixed_selector_width, inline_label)
+	local selector_x = inline_label and 0 or 64
+	local maximum_selector_width = inline_label and math.max(1, width - 100) or width - selector_x
+	local selector_width = math.min(fixed_selector_width or maximum_selector_width, maximum_selector_width)
+	local label_x = inline_label and selector_width + 8 or 0
+	local label_width = inline_label and math.max(1, width - label_x) or selector_x - 6
 
 	return {
 		{
@@ -496,8 +499,13 @@ local function compact_selector_passes(width, fixed_selector_width)
 				text_horizontal_alignment = "left",
 				text_vertical_alignment = "center",
 				text_color = Color.terminal_text_body(255, true),
+				offset = inline_label and {
+					label_x,
+					0,
+					3,
+				} or nil,
 				size = {
-					selector_x - 6,
+					label_width,
 					26,
 				},
 			},
@@ -1347,8 +1355,8 @@ end
 local function panel_curio_buyer_target_mode_entry(mod, layout, view)
 	local geometry = view._better_inventory_options_panel_geometry
 
-	return panel_entry(view, INVENTORY_CURIO_BUYER_TARGET_MODE_ID, 34, compact_selector_passes(geometry.content_width, 140), {
-		label = mod:localize("automatic_curio_target_mode"),
+	return panel_entry(view, INVENTORY_CURIO_BUYER_TARGET_MODE_ID, 34, compact_selector_passes(geometry.content_width, 120, true), {
+		label = mod:localize("automatic_curio_target_mode_inventory_suffix"),
 		value = "",
 	}, function(widget)
 		widget.content.hotspot.pressed_callback = function()
@@ -1862,7 +1870,6 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 
 			if mod:get("enable_automatic_curio_acquisition") == true then
 				entries[#entries + 1] = panel_stepper_entry(mod, layout, view, INVENTORY_CURIO_BUYER_MIN_LEVEL_ID, "automatic_curio_min_item_level", "automatic_curio_min_item_level", 410, Features.sync_curio_acquisition_settings)
-				entries[#entries + 1] = panel_curio_buyer_target_mode_entry(mod, layout, view)
 				entries[#entries + 1] = panel_sub_label_entry(mod, view, "better_inventory_curio_buyer_types_label", "automatic_curio_types_inventory_label")
 				entries[#entries + 1] = panel_curio_buyer_type_entry(mod, layout, view)
 
@@ -1874,10 +1881,10 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 					entries[#entries + 1] = panel_stepper_entry(mod, layout, view, INVENTORY_CURIO_BUYER_MIN_TOUGHNESS_ID, "automatic_curio_min_toughness", "automatic_curio_min_toughness", 17, Features.sync_curio_acquisition_settings, 0, 17, 1, "%")
 				end
 
+				entries[#entries + 1] = panel_curio_buyer_target_mode_entry(mod, layout, view)
+
 				if mod:get("automatic_curio_target_mode") == "characters" then
 					local profiles = known_curio_buyer_profiles(mod)
-
-					entries[#entries + 1] = panel_sub_label_entry(mod, view, "better_inventory_curio_buyer_characters_label", "automatic_curio_characters_inventory_label")
 
 					if #profiles == 0 then
 						entries[#entries + 1] = panel_sub_label_entry(mod, view, "better_inventory_curio_buyer_characters_discovering", "automatic_curio_characters_discovering_inventory")
@@ -1887,7 +1894,6 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 						end
 					end
 				else
-					entries[#entries + 1] = panel_sub_label_entry(mod, view, "better_inventory_curio_buyer_classes_label", "automatic_curio_classes_inventory_label")
 					entries[#entries + 1] = panel_curio_buyer_class_entry(mod, layout, view, 1)
 					entries[#entries + 1] = panel_curio_buyer_class_entry(mod, layout, view, 2)
 				end

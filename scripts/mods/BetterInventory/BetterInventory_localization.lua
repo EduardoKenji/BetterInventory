@@ -233,6 +233,9 @@ local localization = {
 	automatic_curio_target_mode_characters = {
 		en = "Characters",
 	},
+	automatic_curio_target_mode_inventory_suffix = {
+		en = "to acquire curios:",
+	},
 	automatic_curio_types_group = {
 		en = "Curio types we are looking for:",
 	},
@@ -1763,6 +1766,7 @@ zh_cn.automatic_curio_target_mode = "珍品获取目标"
 zh_cn.automatic_curio_target_mode_tooltip = "职业模式会将每个职业复选框应用于该职业的所有角色。角色模式会自动发现此账户的角色，并允许分别启用每个角色。新建角色默认启用。"
 zh_cn.automatic_curio_target_mode_classes = "职业"
 zh_cn.automatic_curio_target_mode_characters = "角色"
+zh_cn.automatic_curio_target_mode_inventory_suffix = "获取珍品："
 zh_cn.automatic_curio_characters_group = "要获取珍品的角色："
 zh_cn.automatic_curio_characters_inventory_label = "要获取珍品的角色："
 zh_cn.automatic_curio_characters_discovering = "正在发现角色……请稍后重新打开模组选项，或使用库存选项面板。"
