@@ -276,6 +276,7 @@ def main() -> None:
 			test_mod = {
             settings = {
 				columns = 3,
+				three_column_weapon_name_font_size = 14,
 				enable_grid_layout = true,
 				enable_quick_look_card_single_column_integration = true,
 				enable_quick_look_card_grid_integration = true,
@@ -296,6 +297,7 @@ def main() -> None:
 				expand_curio_inventory_window = true,
 				curio_target_card_width = 190,
 				enable_armoury_requisition_grid = true,
+				brighten_armoury_item_levels = true,
 				expand_armoury_requisition_window = true,
 				armoury_requisition_target_card_width = 230,
                 grid_spacing = 10,
@@ -1527,6 +1529,24 @@ def main() -> None:
 
     assert name_widget.style.display_name.font_size == 16
     assert name_widget.content.display_name == "Short Name"
+
+    mod.settings.columns = 4
+    four_column_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, four_column_blueprint, 640)
+    assert blueprint_pass(four_column_blueprint, "display_name").style.font_size == 16
+    armoury_three_column_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, armoury_three_column_blueprint, 640, store_configuration)
+    assert blueprint_pass(armoury_three_column_blueprint, "display_name").style.font_size == 14
+    armoury_item_level_style = blueprint_pass(armoury_three_column_blueprint, "item_level").style
+    assert tuple(armoury_item_level_style.text_color[index] for index in range(1, 5)) == (255, 220, 230, 210)
+    assert armoury_item_level_style.offset[3] == 11
+    mod.settings.brighten_armoury_item_levels = False
+    dim_armoury_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, dim_armoury_blueprint, 640, store_configuration)
+    assert blueprint_pass(dim_armoury_blueprint, "item_level").style.text_color is None
+    assert blueprint_pass(dim_armoury_blueprint, "item_level").style.offset[3] == 9
+    mod.settings.brighten_armoury_item_levels = True
+    mod.settings.columns = 3
 
     narrow_weapon_widget = lua.table_from(
         {

@@ -2422,14 +2422,18 @@ local function armoury_native_sort_entries(mod, layout, view)
 	if not collapsed.sorting then
 		entries[#entries + 1] = armoury_native_sort_priority_entry(mod, layout, view, "prioritize_equipped_favorites", mod:localize("prioritize_equipped_favorites_inventory_label"))
 		entries[#entries + 1] = armoury_native_sort_priority_entry(mod, layout, view, "prioritize_perfect_roll_weapons", mod:localize("prioritize_perfect_roll_weapons_inventory_label"))
-		entries[#entries + 1] = armoury_native_sort_header_entry(mod, layout, view, "native_sorting", mod:localize("armoury_native_sorting_header"))
+	end
 
-		if not collapsed.native_sorting then
-			local sort_options = view._sort_options or {}
+	-- Native sorting is a sibling section, not part of the custom-priority
+	-- section. Keep its header (and its own collapsed state) visible when the
+	-- Sorting section is collapsed.
+	entries[#entries + 1] = armoury_native_sort_header_entry(mod, layout, view, "native_sorting", mod:localize("armoury_native_sorting_header"))
 
-			for option_index = 1, #sort_options do
-				entries[#entries + 1] = armoury_native_sort_entry(view, sort_options[option_index], option_index)
-			end
+	if not collapsed.native_sorting then
+		local sort_options = view._sort_options or {}
+
+		for option_index = 1, #sort_options do
+			entries[#entries + 1] = armoury_native_sort_entry(view, sort_options[option_index], option_index)
 		end
 	end
 
