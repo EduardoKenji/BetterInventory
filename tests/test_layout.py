@@ -831,6 +831,21 @@ def main() -> None:
     assert blueprint_pass(reduced_photo_blueprint, "price_text").style.offset[2] == -40
     mod.settings.global_store_character_photo_size_percent = 100
 
+    mod.settings.global_store_character_photo_size_percent = 125
+    enlarged_photo_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    enlarged_photo_size = layout.configure_item_blueprint(
+        mod, enlarged_photo_blueprint, 596, global_store_configuration
+    )
+    assert (enlarged_photo_size[1], enlarged_photo_size[2]) == (111, 144)
+    assert blueprint_pass(enlarged_photo_blueprint, "icon").style.size[2] == 114
+    enlarged_portrait = blueprint_pass(enlarged_photo_blueprint, "portrait").style
+    assert enlarged_portrait.size[1] == 38
+    assert enlarged_portrait.offset[1] == 12
+    assert enlarged_portrait.offset[2] == -2
+    assert blueprint_pass(enlarged_photo_blueprint, "character_info_text").style.offset[1] == 64
+    assert blueprint_pass(enlarged_photo_blueprint, "price_text").style.offset[2] == -40
+    mod.settings.global_store_character_photo_size_percent = 100
+
     mod.settings.global_store_price_row_padding = 20
     assert layout.card_height(mod, global_store_configuration) == 154
     padded_price_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)

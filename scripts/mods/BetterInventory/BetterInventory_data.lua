@@ -637,7 +637,7 @@ return {
 								default_value = 100,
 								range = {
 									50,
-									100,
+									125,
 								},
 							},
 							{

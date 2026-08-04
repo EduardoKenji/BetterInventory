@@ -21,7 +21,10 @@ local PERK_RANK_GAP = 3
 local STORE_FOOTER_HEIGHT = 34
 local GLOBAL_STORE_CHARACTER_PHOTO_BASE_SIZE = 30
 local GLOBAL_STORE_CHARACTER_PHOTO_MIN_PERCENT = 50
-local GLOBAL_STORE_CHARACTER_PHOTO_MAX_PERCENT = 100
+local GLOBAL_STORE_CHARACTER_PHOTO_DEFAULT_PERCENT = 100
+-- Keep 100% as the established layout while allowing a small amount of
+-- additional growth. At 125%, the old maximum sits at 80% of the slider.
+local GLOBAL_STORE_CHARACTER_PHOTO_MAX_PERCENT = 125
 local GLOBAL_STORE_CHARACTER_ROW_HEIGHT = 30
 local GLOBAL_STORE_CHARACTER_INFO_GAP_DEFAULT = 14
 local GLOBAL_STORE_CHARACTER_INFO_GAP_MIN = 0
@@ -39,7 +42,7 @@ local WEAPON_MODIFIER_TITLE_PREFIX = "better_inventory_weapon_modifier_title_"
 local WEAPON_MODIFIER_VALUE_PREFIX = "better_inventory_weapon_modifier_value_"
 
 local function global_store_character_photo_percent(mod)
-	local value = tonumber(mod:get("global_store_character_photo_size_percent")) or GLOBAL_STORE_CHARACTER_PHOTO_MAX_PERCENT
+	local value = tonumber(mod:get("global_store_character_photo_size_percent")) or GLOBAL_STORE_CHARACTER_PHOTO_DEFAULT_PERCENT
 
 	return math.max(GLOBAL_STORE_CHARACTER_PHOTO_MIN_PERCENT, math.min(GLOBAL_STORE_CHARACTER_PHOTO_MAX_PERCENT, value))
 end
