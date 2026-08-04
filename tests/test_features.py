@@ -500,6 +500,105 @@ def main() -> None:
         "perfect_weapon",
         "ordinary_weapon",
     )
+
+    armoury_view = lua.execute(
+        r"""
+        return {
+            __class_name = "CreditsVendorView",
+            _optional_store_service = nil,
+            _sort_options = {
+                {
+                    sort_function = function(left, right)
+                        return left.item.rating > right.item.rating
+                    end,
+                },
+            },
+        }
+        """
+    )
+    features.configure_armoury_sort_options(mod, armoury_view)
+    armoury_sort_ids = lua.execute(
+        r"""
+        local view, ordinary, perfect, favorite = ...
+        local entries = {ordinary, perfect, favorite}
+
+        table.sort(entries, view._sort_options[1].sort_function)
+
+        return entries[1].item.gear_id, entries[2].item.gear_id, entries[3].item.gear_id
+        """,
+        armoury_view,
+        lua.table_from({"item": lua.table_from({"gear_id": "armoury_ordinary", "item_type": "WEAPON_MELEE", "rating": 100})}),
+        lua.table_from(
+            {
+                "item": lua.table_from(
+                    {
+                        "gear_id": "armoury_perfect",
+                        "item_type": "WEAPON_MELEE",
+                        "rating": 1,
+                        "total_stats": 380,
+                        "base_stats": lua.table_from(
+                            [
+                                lua.table_from({"value": 0.8}),
+                                lua.table_from({"value": 0.8}),
+                                lua.table_from({"value": 0.8}),
+                                lua.table_from({"value": 0.8}),
+                                lua.table_from({"value": 0.6}),
+                            ]
+                        ),
+                    }
+                )
+            }
+        ),
+        lua.table_from({"item": lua.table_from({"gear_id": "favorite", "item_type": "WEAPON_MELEE", "rating": 0})}),
+    )
+    assert armoury_sort_ids == ("favorite", "armoury_perfect", "armoury_ordinary")
+
+    globals_.armoury_view = armoury_view
+    lua.execute(
+        r"""
+        TestArmouryPanel = {
+            disable_input = function(self, disabled)
+                self.input_disabled = disabled
+            end,
+            present_grid_layout = function(self, entries, blueprints)
+                self.entries = entries
+                self.blueprints = blueprints
+            end,
+            set_pivot_offset = function(self, x, y)
+                self.pivot_x = x
+                self.pivot_y = y
+            end,
+            set_visibility = function(self, visible)
+                self.visible = visible
+            end,
+            update_grid_height = function(self, grid_height, mask_height)
+                self.grid_height = grid_height
+                self.mask_height = mask_height
+            end,
+        }
+        armoury_view._item_grid = {
+            trigger_sort_index = function(self, index)
+                self.triggered_sort_index = index
+            end,
+        }
+        armoury_view._add_element = function()
+            return TestArmouryPanel
+        end
+        """
+    )
+    assert features.setup_armoury_native_sort_panel(mod, armoury_view, lua.table_from({})) is True
+    assert armoury_view._better_inventory_armoury_native_sort_panel.visible is True
+    assert globals_.TestArmouryPanel.pivot_x == 1360
+    assert globals_.TestArmouryPanel.pivot_y == 100
+    assert globals_.TestArmouryPanel.entries[1].initial_content.label == "armoury_native_sorting_header"
+    assert len(globals_.TestArmouryPanel.entries) == 2
+
+    option_widget = lua.table_from({"content": lua.table_from({})})
+    option_blueprint = globals_.TestArmouryPanel.blueprints.better_inventory_armoury_native_sort
+    option_blueprint.init(None, option_widget, globals_.TestArmouryPanel.entries[2])
+    option_widget.content.hotspot.pressed_callback()
+    assert armoury_view._item_grid.triggered_sort_index == 1
+    features.unregister_armoury_view(armoury_view)
     mod.settings.prioritize_perfect_roll_weapons = False
 
     mod.settings.prioritize_equipped_favorites = False

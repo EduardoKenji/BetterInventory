@@ -77,6 +77,9 @@ local localization = {
 	inventory_sorting_inventory_label = {
 		en = "Sorting",
 	},
+	armoury_native_sorting_header = {
+		en = "Darktide Native Sorting",
+	},
 	inventory_discard_management_inventory_label = {
 		en = "Manual/Automated Item Discard Management",
 	},
@@ -1519,6 +1522,7 @@ local zh_cn = {
 	option_requires_inventory_options_panel_prototype = "需要可扩展的库存选项面板原型。",
 	prioritize_equipped_favorites_inventory_label = "装备和收藏的物品位于顶部",
 	inventory_sorting_inventory_label = "排序",
+	armoury_native_sorting_header = "Darktide 原生排序",
 	inventory_discard_management_inventory_label = "手动/自动物品丢弃管理",
 	inventory_manual_discard_management_inventory_label = "手动物品丢弃管理",
 	inventory_automated_discard_management_inventory_label = "自动物品丢弃管理",

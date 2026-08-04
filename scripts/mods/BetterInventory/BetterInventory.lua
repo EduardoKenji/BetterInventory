@@ -796,6 +796,19 @@ if ensure_class_method(InventoryWeaponsView, "_setup_sort_options") then
 	end)
 end
 
+if ensure_class_method(CreditsVendorView, "_setup_sort_options") then
+	mod:hook(CreditsVendorView, "_setup_sort_options", function(func, view, ...)
+		local result = func(view, ...)
+
+		if is_armoury_requisition_view(view) then
+			Features.configure_armoury_sort_options(mod, view)
+			Features.setup_armoury_native_sort_panel(mod, view, ViewElementGrid)
+		end
+
+		return result
+	end)
+end
+
 mod:hook_safe(InventoryWeaponsView, "cb_on_favorite_pressed", function(view)
 	if mod:get("prioritize_equipped_favorites") ~= false then
 		Features.resort_inventory(mod, Layout, view)
@@ -815,6 +828,20 @@ end)
 mod:hook_safe(InventoryWeaponsView, "on_exit", function(view)
 	Features.unregister_inventory_view(view)
 end)
+
+if ensure_class_method(CreditsVendorView, "update") then
+	mod:hook_safe(CreditsVendorView, "update", function(view)
+		if is_armoury_requisition_view(view) then
+			Features.update_armoury_native_sort_panel(view)
+		end
+	end)
+end
+
+if ensure_class_method(CreditsVendorView, "on_exit") then
+	mod:hook_safe(CreditsVendorView, "on_exit", function(view)
+		Features.unregister_armoury_view(view)
+	end)
+end
 
 mod:hook(InventoryWeaponsView, "_setup_item_grid_materials", function(func, view, ...)
 	func(view, ...)

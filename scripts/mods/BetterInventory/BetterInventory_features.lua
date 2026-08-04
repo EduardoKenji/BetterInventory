@@ -51,6 +51,14 @@ local INVENTORY_OPTIONS_PANEL_DEFAULT_MAX_HEIGHT = 360
 local INVENTORY_OPTIONS_PANEL_DEFAULT_ROW_SPACING = 8
 local INVENTORY_OPTIONS_PANEL_DEFAULT_VERTICAL_PADDING = 10
 local INVENTORY_OPTIONS_PANEL_DEFAULT_HORIZONTAL_PADDING = 12
+local ARMOURY_NATIVE_SORT_PANEL_REFERENCE = "better_inventory_armoury_native_sort_panel"
+local ARMOURY_NATIVE_SORT_PANEL_WIDTH = 350
+local ARMOURY_NATIVE_SORT_PANEL_HEIGHT = 390
+local ARMOURY_NATIVE_SORT_PANEL_TOP = 100
+local ARMOURY_NATIVE_SORT_PANEL_RIGHT_MARGIN = 210
+local ARMOURY_NATIVE_SORT_PANEL_ROW_HEIGHT = 32
+local ARMOURY_NATIVE_SORT_PANEL_ROW_SPACING = 4
+local ARMOURY_NATIVE_SORT_PANEL_PADDING = 10
 local INVENTORY_CURIO_NATIVE_WIDTH = 530
 local INVENTORY_CURIO_NATIVE_GRID_WIDTH = 518
 local INVENTORY_CURIO_NATIVE_HEADER_HEIGHT = 250
@@ -94,6 +102,9 @@ local INVENTORY_DISCARD_WIDGET_IDS = {
 	INVENTORY_DISCARD_CURIO_LEVEL_ID,
 }
 local registered_inventory_views = setmetatable({}, {
+	__mode = "k",
+})
+local registered_armoury_views = setmetatable({}, {
 	__mode = "k",
 })
 local perfect_roll_cache = setmetatable({}, {
@@ -149,6 +160,14 @@ end
 
 local function is_inventory_view(layout, view)
 	return inventory_slot_kind(layout, view) ~= nil
+end
+
+local function is_armoury_requisition_view(view)
+	return view and view.__class_name == "CreditsVendorView" and view._optional_store_service == nil
+end
+
+local function is_sortable_view(layout, view)
+	return is_inventory_view(layout, view) or is_armoury_requisition_view(view)
 end
 
 local function inventory_sort_toggle_passes()
@@ -933,6 +952,144 @@ local function panel_section_header_passes(width)
 	}
 end
 
+local function armoury_native_sort_option_passes(width)
+	local function selected(content)
+		return content.selected == true
+	end
+
+	local function not_selected(content)
+		return not selected(content)
+	end
+
+	return {
+		{
+			content_id = "hotspot",
+			pass_type = "hotspot",
+			content = {
+				on_hover_sound = UISoundEvents.default_mouse_hover,
+				on_pressed_sound = UISoundEvents.default_click,
+			},
+		},
+		{
+			pass_type = "rect",
+			style_id = "background",
+			style = {
+				color = Color.terminal_background(220, true),
+				offset = {
+					0,
+					0,
+					1,
+				},
+				size = {
+					width,
+					ARMOURY_NATIVE_SORT_PANEL_ROW_HEIGHT,
+				},
+			},
+		},
+		{
+			pass_type = "rect",
+			style_id = "selected_background",
+			style = {
+				color = Color.terminal_corner_selected(90, true),
+				offset = {
+					0,
+					0,
+					2,
+				},
+				size = {
+					width,
+					ARMOURY_NATIVE_SORT_PANEL_ROW_HEIGHT,
+				},
+			},
+			visibility_function = selected,
+		},
+		{
+			pass_type = "texture",
+			style_id = "frame",
+			value = "content/ui/materials/frames/frame_tile_2px",
+			style = {
+				color = Color.terminal_frame(255, true),
+				offset = {
+					0,
+					0,
+					3,
+				},
+				size = {
+					width,
+					ARMOURY_NATIVE_SORT_PANEL_ROW_HEIGHT,
+				},
+			},
+		},
+		{
+			pass_type = "text",
+			style_id = "label",
+			value_id = "label",
+			style = {
+				font_size = 15,
+				font_type = "proxima_nova_bold",
+				text_horizontal_alignment = "left",
+				text_vertical_alignment = "center",
+				text_color = Color.terminal_text_body(255, true),
+				offset = {
+					12,
+					0,
+					4,
+				},
+				size = {
+					width - 24,
+					ARMOURY_NATIVE_SORT_PANEL_ROW_HEIGHT,
+				},
+			},
+			visibility_function = not_selected,
+		},
+		{
+			pass_type = "text",
+			style_id = "selected_label",
+			value_id = "label",
+			style = {
+				font_size = 15,
+				font_type = "proxima_nova_bold",
+				text_horizontal_alignment = "left",
+				text_vertical_alignment = "center",
+				text_color = Color.terminal_corner_selected(255, true),
+				offset = {
+					12,
+					0,
+					4,
+				},
+				size = {
+					width - 24,
+					ARMOURY_NATIVE_SORT_PANEL_ROW_HEIGHT,
+				},
+			},
+			visibility_function = selected,
+		},
+		{
+			pass_type = "text",
+			style_id = "selected_mark",
+			value = "✓",
+			style = {
+				font_size = 16,
+				font_type = "proxima_nova_bold",
+				horizontal_alignment = "right",
+				text_horizontal_alignment = "center",
+				text_vertical_alignment = "center",
+				text_color = Color.terminal_corner_selected(255, true),
+				offset = {
+					-4,
+					0,
+					5,
+				},
+				size = {
+					28,
+					ARMOURY_NATIVE_SORT_PANEL_ROW_HEIGHT,
+				},
+			},
+			visibility_function = selected,
+		},
+	}
+end
+
 local function append_panel_checkbox_passes(target, prefix, x, width, checked_id, label_id, optional_visibility_id)
 	local source = compact_checkbox_passes()
 
@@ -1259,6 +1416,83 @@ local INVENTORY_OPTIONS_PANEL_BLUEPRINTS = {
 		end,
 	},
 }
+
+local ARMOURY_NATIVE_SORT_BLUEPRINTS = {
+	better_inventory_armoury_native_sort = {
+		size_function = function(_, entry)
+			return entry.size
+		end,
+		pass_template_function = function(_, entry)
+			return entry.pass_template
+		end,
+		init = function(_, widget, entry)
+			local content = widget.content
+
+			for key, value in pairs(entry.initial_content or {}) do
+				content[key] = value
+			end
+
+			content.entry = entry
+
+			local view = entry.view
+
+			if view then
+				view._better_inventory_armoury_native_sort_widgets = view._better_inventory_armoury_native_sort_widgets or {}
+				view._better_inventory_armoury_native_sort_widgets[entry.option_index] = widget
+			end
+
+			if entry.bind then
+				entry.bind(widget)
+			end
+
+			if entry.refresh then
+				entry.refresh(widget)
+			end
+		end,
+		update = function(_, widget)
+			local entry = widget.content.entry
+
+			if entry and entry.refresh then
+				entry.refresh(widget)
+			end
+		end,
+	},
+}
+
+local function armoury_native_sort_entry(view, option, option_index)
+	local selected_sort_index = view._selected_sort_option_index or 1
+
+	return {
+		initial_content = {
+			hotspot = {},
+			label = option.display_name or tostring(option_index),
+			selected = selected_sort_index == option_index,
+		},
+		option_index = option_index,
+		option = option,
+		pass_template = armoury_native_sort_option_passes(ARMOURY_NATIVE_SORT_PANEL_WIDTH),
+		size = {
+			ARMOURY_NATIVE_SORT_PANEL_WIDTH,
+			ARMOURY_NATIVE_SORT_PANEL_ROW_HEIGHT,
+		},
+		view = view,
+		widget_type = "better_inventory_armoury_native_sort",
+		bind = function(widget)
+			widget.content.hotspot.pressed_callback = function()
+				local item_grid = view._item_grid
+
+				if item_grid and type(item_grid.trigger_sort_index) == "function" then
+					item_grid:trigger_sort_index(option_index)
+				elseif type(view.cb_on_sort_button_pressed) == "function" then
+					view:cb_on_sort_button_pressed(option)
+				end
+			end
+		end,
+		refresh = function(widget)
+			widget.content.selected = (view._selected_sort_option_index or 1) == option_index
+		end,
+	}
+end
 
 local function panel_entry(view, control_id, height, pass_template, initial_content, bind, refresh)
 	local geometry = view._better_inventory_options_panel_geometry
@@ -2069,6 +2303,139 @@ Features.setup_inventory_options_panel = function(mod, layout, view, ViewElement
 	return true
 end
 
+local function armoury_native_sort_panel_position(view)
+	local canvas_width = INVENTORY_VIRTUAL_CANVAS_WIDTH
+	local canvas_position = {
+		0,
+		0,
+	}
+	local scenegraph = view and view._ui_scenegraph
+	local canvas = scenegraph and scenegraph.canvas
+
+	if canvas and type(canvas.size) == "table" and type(canvas.size[1]) == "number" then
+		canvas_width = canvas.size[1]
+	end
+
+	if view and type(view._scenegraph_world_position) == "function" then
+		local success, position = pcall(view._scenegraph_world_position, view, "canvas")
+
+		if success and type(position) == "table" then
+			canvas_position = position
+		end
+	end
+
+	return canvas_position[1] + canvas_width - ARMOURY_NATIVE_SORT_PANEL_RIGHT_MARGIN - ARMOURY_NATIVE_SORT_PANEL_WIDTH, canvas_position[2] + ARMOURY_NATIVE_SORT_PANEL_TOP
+end
+
+Features.update_armoury_native_sort_panel = function(view)
+	local panel = view and view._better_inventory_armoury_native_sort_panel
+
+	if not panel or view._destroyed then
+		return false
+	end
+
+	local x, y = armoury_native_sort_panel_position(view)
+
+	if type(panel.set_pivot_offset) == "function" then
+		panel:set_pivot_offset(x, y)
+	end
+
+	return true
+end
+
+Features.setup_armoury_native_sort_panel = function(mod, view, ViewElementGrid)
+	if not is_armoury_requisition_view(view) or view._better_inventory_armoury_native_sort_panel then
+		return false
+	end
+
+	local sort_options = view._sort_options
+
+	if type(sort_options) ~= "table" or #sort_options == 0 or type(ViewElementGrid) ~= "table" or type(view._add_element) ~= "function" then
+		return false
+	end
+
+	local menu_settings = {
+		bottom_chin = ARMOURY_NATIVE_SORT_PANEL_PADDING,
+		edge_padding = 0,
+		enable_gamepad_scrolling = false,
+		grid_size = {
+			ARMOURY_NATIVE_SORT_PANEL_WIDTH,
+			ARMOURY_NATIVE_SORT_PANEL_HEIGHT,
+		},
+		grid_spacing = {
+			0,
+			ARMOURY_NATIVE_SORT_PANEL_ROW_SPACING,
+		},
+		ignore_blur = true,
+		mask_size = {
+			ARMOURY_NATIVE_SORT_PANEL_WIDTH,
+			ARMOURY_NATIVE_SORT_PANEL_HEIGHT,
+		},
+		reset_selection_on_navigation_change = false,
+		scrollbar_width = 7,
+		title_height = 0,
+		top_padding = ARMOURY_NATIVE_SORT_PANEL_PADDING,
+		use_is_focused_for_navigation = false,
+		use_select_on_focused = false,
+		use_terminal_background = true,
+	}
+	local success, panel = pcall(view._add_element, view, ViewElementGrid, ARMOURY_NATIVE_SORT_PANEL_REFERENCE, 25, menu_settings)
+
+	if not success or not panel then
+		if type(mod.error) == "function" then
+			mod:error("BetterInventory Armoury native-sort panel could not initialize: " .. tostring(panel))
+		end
+
+		if type(view._remove_element) == "function" then
+			pcall(view._remove_element, view, ARMOURY_NATIVE_SORT_PANEL_REFERENCE)
+		end
+
+		return false
+	end
+
+	local entries = {
+		{
+			initial_content = {
+				chevron = "",
+				hotspot = {},
+				label = mod:localize("armoury_native_sorting_header"),
+			},
+			option_index = 0,
+			pass_template = panel_section_header_passes(ARMOURY_NATIVE_SORT_PANEL_WIDTH),
+			size = {
+				ARMOURY_NATIVE_SORT_PANEL_WIDTH,
+				40,
+			},
+			view = view,
+			widget_type = "better_inventory_armoury_native_sort",
+		},
+	}
+
+	for option_index = 1, #sort_options do
+		entries[#entries + 1] = armoury_native_sort_entry(view, sort_options[option_index], option_index)
+	end
+
+	view._better_inventory_armoury_native_sort_panel = panel
+	view._better_inventory_armoury_native_sort_widgets = {}
+	registered_armoury_views[view] = true
+	if type(panel.disable_input) == "function" then
+		panel:disable_input(false)
+	end
+
+	if type(panel.set_visibility) == "function" then
+		panel:set_visibility(true)
+	end
+
+	local content_height = 40 + #sort_options * ARMOURY_NATIVE_SORT_PANEL_ROW_HEIGHT + #sort_options * ARMOURY_NATIVE_SORT_PANEL_ROW_SPACING
+	local panel_height = math.max(ARMOURY_NATIVE_SORT_PANEL_HEIGHT, content_height + ARMOURY_NATIVE_SORT_PANEL_PADDING * 2 + 31)
+
+	panel:update_grid_height(panel_height, panel_height)
+	panel:present_grid_layout(entries, ARMOURY_NATIVE_SORT_BLUEPRINTS)
+	Features.update_armoury_native_sort_panel(view)
+
+	return true
+end
+
 local function item_priority(view, layout_entry)
 	local item = layout_entry and (layout_entry.real_item or layout_entry.item)
 
@@ -2112,11 +2479,7 @@ local function inventory_sort_priority(mod, view, layout_entry)
 	return 0
 end
 
-Features.configure_inventory_sort_options = function(mod, layout, view)
-	if not is_inventory_view(layout, view) then
-		return
-	end
-
+local function configure_sort_options(mod, view)
 	local sort_options = view._sort_options
 
 	if type(sort_options) ~= "table" then
@@ -2143,8 +2506,24 @@ Features.configure_inventory_sort_options = function(mod, layout, view)
 	end
 end
 
+Features.configure_inventory_sort_options = function(mod, layout, view)
+	if not is_inventory_view(layout, view) then
+		return
+	end
+
+	configure_sort_options(mod, view)
+end
+
+Features.configure_armoury_sort_options = function(mod, view)
+	if not is_armoury_requisition_view(view) then
+		return
+	end
+
+	configure_sort_options(mod, view)
+end
+
 Features.resort_inventory = function(mod, layout, view)
-	if not is_inventory_view(layout, view) or view._destroyed or type(view._sort_grid_layout) ~= "function" then
+	if not is_sortable_view(layout, view) or view._destroyed or type(view._sort_grid_layout) ~= "function" then
 		return
 	end
 
@@ -3829,6 +4208,10 @@ Features.sync_inventory_sort_setting = function(mod, layout)
 
 		Features.resort_inventory(mod, layout, view)
 	end
+
+	for view in pairs(registered_armoury_views) do
+		Features.resort_inventory(mod, layout, view)
+	end
 end
 
 Features.sync_quick_discard_settings = function(mod, layout, deferred_view)
@@ -3963,6 +4346,10 @@ Features.unregister_inventory_view = function(view)
 	registered_inventory_views[view] = nil
 end
 
+Features.unregister_armoury_view = function(view)
+	registered_armoury_views[view] = nil
+end
+
 Features.disable_inventory_views = function()
 	for view in pairs(registered_inventory_views) do
 		local panel = view._better_inventory_options_panel
@@ -3972,6 +4359,14 @@ Features.disable_inventory_views = function()
 		end
 
 		set_legacy_inventory_options_visible(view, false)
+	end
+
+	for view in pairs(registered_armoury_views) do
+		local panel = view._better_inventory_armoury_native_sort_panel
+
+		if panel then
+			panel:set_visibility(false)
+		end
 	end
 end
 
