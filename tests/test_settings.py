@@ -131,24 +131,7 @@ def main() -> None:
         test_dmf = {
             create_mod_options_settings = function() end,
         }
-		test_alfs_tabs_enabled = true
-		test_alfs_available = false
-		test_alfs = {
-			default_tab = "Other",
-			filter_settings = function() end,
-			is_gen_tabs_enabled_for_mod = function()
-				return test_alfs_tabs_enabled
-			end,
-		}
-		function test_alfs:get(setting_id)
-			if setting_id == "enable_generalised_mod_tabs" then
-				return test_alfs_tabs_enabled
-			end
-		end
 		captured_options_hook = nil
-		captured_alfs_filter_hook = nil
-		alfs_tabs_hook_count = 0
-		alfs_filter_calls = 0
 		captured_item_grid_init_hook = nil
 		captured_armoury_on_enter_hook = nil
 		captured_module_errors = 0
@@ -189,10 +172,7 @@ def main() -> None:
 		end
 
         function test_mod:hook(target, method, callback)
-			if target == test_alfs and method == "filter_settings" then
-				captured_alfs_filter_hook = callback
-				alfs_tabs_hook_count = alfs_tabs_hook_count + 1
-			elseif method == "init" then
+			if method == "init" then
 				captured_item_grid_init_hook = callback
 			elseif method == "on_enter" then
 				captured_armoury_on_enter_hook = callback
@@ -214,9 +194,6 @@ def main() -> None:
                 return test_dmf
             end
 
-			if name == "Alfs_DMF_Extensions" and test_alfs_available then
-				return test_alfs
-			end
         end
 
         function require(path)
@@ -228,215 +205,6 @@ def main() -> None:
     globals_ = lua.globals()
     mod = globals_.test_mod
     settings = globals_.settings
-
-    # Alf's generalized tabs must resolve visible widgets through their actual
-    # DMF entries. Conditional settings are absent from the visible array, so
-    # positional pairing would put Additional views and Grid layout under the
-    # preceding Automatic Curio Buyer tab.
-    # Reproduce the real load order: BetterInventory loads before Alf's
-    # extension. The bounded update retry must register the hook after Alf
-    # becomes available, including after Ctrl+Shift+R hot reloads where
-    # on_all_mods_loaded is not invoked again.
-    assert globals_.alfs_tabs_hook_count == 0
-    globals_.test_alfs_available = True
-    mod.update(0)
-    assert globals_.alfs_tabs_hook_count == 1
-
-    mod.on_all_mods_loaded()
-    mod.on_all_mods_loaded()
-    assert globals_.alfs_tabs_hook_count == 1
-    assert globals_.captured_alfs_filter_hook is not None
-
-    alfs_scenario = lua.execute(
-        """
-        local category = "Better Inventory"
-        local automatic_header = {
-            category = category,
-			display_name = "automatic_curio_buyer_group",
-			-- Alf does not reliably preserve depth metadata on rendered group
-			-- headers, so the compatibility layer must not depend on it.
-			indentation_level = nil,
-			tab = "automatic_curio_buyer_group",
-            widget_type = "group_header",
-        }
-        local hidden_character_mode = {
-            category = category,
-            display_name = "Curio acquisition targets",
-            indentation_level = 1,
-            widget_type = "dropdown",
-        }
-        local dynamic_character = {
-            category = category,
-            display_name = "Dudualdo(Ogryn)",
-            indentation_level = 3,
-            widget_type = "checkbox",
-        }
-        local additional_header = {
-            category = category,
-			display_name = "additional_views_group",
-			indentation_level = nil,
-			tab = "additional_views_group",
-            widget_type = "group_header",
-        }
-        local hadron = {
-            category = category,
-            display_name = "Hadron Entreat grid",
-            indentation_level = 1,
-            widget_type = "checkbox",
-        }
-        local grid_header = {
-            category = category,
-			display_name = "layout_group",
-			indentation_level = nil,
-			tab = "layout_group",
-            widget_type = "group_header",
-        }
-        local hidden_grid_toggle = {
-            category = category,
-            display_name = "Enable grid layout",
-            indentation_level = 1,
-            widget_type = "checkbox",
-        }
-        local columns = {
-            category = category,
-            display_name = "Columns",
-            indentation_level = 1,
-            widget_type = "value_slider",
-        }
-        local entries = {
-            automatic_header,
-            hidden_character_mode,
-            dynamic_character,
-            additional_header,
-            hadron,
-            grid_header,
-            hidden_grid_toggle,
-            columns,
-        }
-        local visible_entries = {
-            automatic_header,
-            dynamic_character,
-            additional_header,
-            hadron,
-            grid_header,
-            columns,
-        }
-        local visible = {}
-
-        for index = 1, #visible_entries do
-            visible[index] = {
-                widget = {
-                    content = {
-                        entry = visible_entries[index],
-						tab = "automatic_curio_buyer_group",
-                    },
-                },
-            }
-        end
-
-        return {
-            category = category,
-            view = {
-                _options_templates = { settings = entries },
-                _settings_category_widgets = { [category] = visible },
-            },
-            visible = visible,
-        }
-        """
-    )
-    original_alfs_filter = lua.eval(
-        "function(view, category) alfs_filter_calls = alfs_filter_calls + 1 return 'filtered' end"
-    )
-    filter_result = globals_.captured_alfs_filter_hook(
-        original_alfs_filter, alfs_scenario.view, alfs_scenario.category
-    )
-    assert filter_result == "filtered"
-    assert globals_.alfs_filter_calls == 1
-    repaired_tabs = [
-        alfs_scenario.visible[index].widget.content.tab
-        for index in range(1, len(alfs_scenario.visible) + 1)
-    ]
-    assert repaired_tabs == [
-		"automatic_curio_buyer_group",
-		"automatic_curio_buyer_group",
-		"additional_views_group",
-		"additional_views_group",
-		"layout_group",
-		"layout_group",
-    ]
-
-    globals_.test_alfs_tabs_enabled = False
-    alfs_scenario.visible[6].widget.content.tab = None
-    globals_.captured_alfs_filter_hook(
-        original_alfs_filter, alfs_scenario.view, alfs_scenario.category
-    )
-    assert alfs_scenario.visible[6].widget.content.tab is None
-    globals_.test_alfs_tabs_enabled = True
-    globals_.captured_alfs_filter_hook(
-        original_alfs_filter, alfs_scenario.view, alfs_scenario.category
-    )
-    assert alfs_scenario.visible[6].widget.content.tab == "layout_group"
-
-    alfs_scenario.visible[6].widget.content.tab = "Unchanged"
-    globals_.captured_alfs_filter_hook(
-        original_alfs_filter, alfs_scenario.view, "Another Mod"
-    )
-    assert alfs_scenario.visible[6].widget.content.tab == "Unchanged"
-
-    # Every top-level BetterInventory section is an explicit compatibility
-    # anchor. This catches newly misplaced headings even when Alf supplies no
-    # indentation metadata for the rendered group headers.
-    all_alfs_sections = lua.execute(
-        """
-        local category = "Better Inventory"
-        local section_ids = {
-            "inventory_slots_group",
-            "inventory_sorting_group",
-            "experimental_quick_discard_group",
-            "automatic_curio_buyer_group",
-            "additional_views_group",
-            "layout_group",
-            "single_column_layout_group",
-            "quick_look_card_integration_group",
-            "enhanced_descriptions_integration_group",
-            "card_content_group",
-            "curio_content_group",
-        }
-        local visible = {}
-
-        for index = 1, #section_ids do
-            local section_id = section_ids[index]
-            local header = {
-                category = category,
-                display_name = section_id,
-                widget_type = "group_header",
-            }
-            local child = {
-                category = category,
-                display_name = section_id .. "_child",
-                widget_type = "checkbox",
-            }
-            visible[#visible + 1] = { widget = { content = { entry = header, tab = "Wrong" } } }
-            visible[#visible + 1] = { widget = { content = { entry = child, tab = "Wrong" } } }
-        end
-
-        return {
-            category = category,
-            section_ids = section_ids,
-            visible = visible,
-            view = { _settings_category_widgets = { [category] = visible } },
-        }
-        """
-    )
-    globals_.captured_alfs_filter_hook(
-        original_alfs_filter, all_alfs_sections.view, all_alfs_sections.category
-    )
-    for section_index in range(1, len(all_alfs_sections.section_ids) + 1):
-        section_id = all_alfs_sections.section_ids[section_index]
-        header_index = section_index * 2 - 1
-        child_index = section_index * 2
-        assert all_alfs_sections.visible[header_index].widget.content.tab == section_id
-        assert all_alfs_sections.visible[child_index].widget.content.tab == section_id
 
     credits_view = lua.table_from({"__class_name": "CreditsVendorView"})
     credits_definitions = lua.table_from({})
@@ -782,8 +550,13 @@ def main() -> None:
     assert entries_by_id["automatic_curio_types_group"].indentation_level == 2
     assert entries_by_id["automatic_curio_classes_group"].indentation_level == 2
     assert entries_by_id["automatic_curio_characters_group"].indentation_level == 2
-    assert entries_by_id["automatic_curio_classes_group"].validation_function() is True
-    assert entries_by_id["automatic_curio_characters_group"].validation_function() is False
+    # Alf's DMF Extensions pairs definitions and rendered widgets by numeric
+    # index. Keep every row in the schema and grey inactive controls instead
+    # of filtering them through validation functions.
+    assert entries_by_id["automatic_curio_classes_group"].validation_function is None
+    assert entries_by_id["automatic_curio_characters_group"].validation_function is None
+    assert entries_by_id["automatic_curio_classes_group"].disabled is True
+    assert entries_by_id["automatic_curio_characters_group"].disabled is True
     assert entries_by_id["curio_information_width_percent"].disabled is True
     assert entries_by_id["curio_preview_height_percent"].disabled is True
     assert entries_by_id["inventory_options_panel_width"].disabled is True
@@ -814,7 +587,7 @@ def main() -> None:
     assert entries_by_id["quick_discard_max_item_level"].disabled is False
     assert entries_by_id["quick_discard_protect_above_equipped_level"].disabled is False
     assert entries_by_id["quick_discard_curio_protection_level"].disabled is False
-    assert entries_by_id["quick_discard_curio_protection_level"].validation_function() is True
+    assert entries_by_id["quick_discard_curio_protection_level"].validation_function is None
     assert entries_by_id["quick_discard_keep_health_curios"].disabled is False
     assert entries_by_id["quick_discard_keep_toughness_curios"].disabled is False
     assert entries_by_id["quick_discard_keep_wound_curios"].disabled is False
@@ -824,7 +597,7 @@ def main() -> None:
     settings.quick_discard_protect_high_level_curios = False
     mod.on_setting_changed("quick_discard_protect_high_level_curios")
     assert entries_by_id["quick_discard_curio_protection_level"].disabled is True
-    assert entries_by_id["quick_discard_curio_protection_level"].validation_function() is False
+    assert entries_by_id["quick_discard_curio_protection_level"].validation_function is None
     assert entries_by_id["quick_discard_keep_health_curios"].disabled is False
     assert entries_by_id["quick_discard_keep_toughness_curios"].disabled is False
     assert entries_by_id["quick_discard_keep_wound_curios"].disabled is False
@@ -847,12 +620,19 @@ def main() -> None:
     assert entries_by_id["automatic_curio_buy_wounds"].disabled is False
     assert entries_by_id["automatic_curio_class_veteran"].disabled is False
     assert entries_by_id["automatic_curio_class_cryptic"].disabled is False
+    assert entries_by_id["automatic_curio_classes_group"].disabled is False
+    assert entries_by_id["automatic_curio_characters_group"].disabled is True
     settings.automatic_curio_target_mode = "characters"
     mod.on_setting_changed("automatic_curio_target_mode")
-    assert entries_by_id["automatic_curio_classes_group"].validation_function() is False
-    assert entries_by_id["automatic_curio_characters_group"].validation_function() is True
+    assert entries_by_id["automatic_curio_classes_group"].disabled is True
+    assert entries_by_id["automatic_curio_characters_group"].disabled is False
+    assert entries_by_id["automatic_curio_class_veteran"].disabled is True
+    assert entries_by_id["automatic_curio_class_cryptic"].disabled is True
     settings.automatic_curio_target_mode = "classes"
     mod.on_setting_changed("automatic_curio_target_mode")
+    assert entries_by_id["automatic_curio_classes_group"].disabled is False
+    assert entries_by_id["automatic_curio_characters_group"].disabled is True
+    assert entries_by_id["automatic_curio_class_veteran"].disabled is False
     settings.automatic_curio_buy_health = False
     mod.on_setting_changed("automatic_curio_buy_health")
     assert entries_by_id["automatic_curio_min_health"].disabled is True

@@ -298,6 +298,11 @@ local function refresh_option_dependencies()
 	local quick_discard_reason = mod:localize("option_requires_experimental_quick_discard")
 	local automatic_curio_enabled = mod:get("enable_automatic_curio_acquisition") == true
 	local automatic_curio_reason = mod:localize("option_requires_automatic_curio_acquisition")
+	local automatic_curio_character_mode = mod:get("automatic_curio_target_mode") == "characters"
+	local automatic_curio_classes_enabled = automatic_curio_enabled and not automatic_curio_character_mode
+	local automatic_curio_characters_enabled = automatic_curio_enabled and automatic_curio_character_mode
+	local automatic_curio_classes_reason = automatic_curio_enabled and mod:localize("option_requires_automatic_curio_classes_mode") or automatic_curio_reason
+	local automatic_curio_characters_reason = automatic_curio_enabled and mod:localize("option_requires_automatic_curio_characters_mode") or automatic_curio_reason
 	local inventory_options_panel_enabled = mod:get("enable_inventory_options_panel_prototype") == true
 	local inventory_options_panel_reason = mod:localize("option_requires_inventory_options_panel_prototype")
 	local quick_look_card_grid_enabled = grid_enabled and mod:get("enable_quick_look_card_grid_integration") ~= false
@@ -408,6 +413,14 @@ local function refresh_option_dependencies()
 		"automatic_curio_buy_toughness",
 		"automatic_curio_buy_stamina",
 		"automatic_curio_buy_wounds",
+	}) do
+		set_option_enabled(option_dependency_entries[setting_id], automatic_curio_enabled, automatic_curio_reason)
+	end
+
+	set_option_enabled(option_dependency_entries.automatic_curio_classes_group, automatic_curio_classes_enabled, automatic_curio_classes_reason)
+	set_option_enabled(option_dependency_entries.automatic_curio_characters_group, automatic_curio_characters_enabled, automatic_curio_characters_reason)
+
+	for _, setting_id in ipairs({
 		"automatic_curio_class_veteran",
 		"automatic_curio_class_zealot",
 		"automatic_curio_class_psyker",
@@ -416,11 +429,11 @@ local function refresh_option_dependencies()
 		"automatic_curio_class_broker",
 		"automatic_curio_class_cryptic",
 	}) do
-		set_option_enabled(option_dependency_entries[setting_id], automatic_curio_enabled, automatic_curio_reason)
+		set_option_enabled(option_dependency_entries[setting_id], automatic_curio_classes_enabled, automatic_curio_classes_reason)
 	end
 
 	for _, entry in ipairs(option_dependency_entries.automatic_curio_character_entries or {}) do
-		set_option_enabled(entry, automatic_curio_enabled, automatic_curio_reason)
+		set_option_enabled(entry, automatic_curio_characters_enabled, automatic_curio_characters_reason)
 	end
 
 	local automatic_health_enabled = automatic_curio_enabled and mod:get("automatic_curio_buy_health") ~= false
@@ -443,15 +456,6 @@ local function bind_option_dependencies(options_templates)
 		[mod:localize("automatic_curio_types_group")] = true,
 		[mod:localize("automatic_curio_classes_group")] = true,
 		[mod:localize("automatic_curio_characters_group")] = true,
-	}
-	local class_setting_ids = {
-		automatic_curio_class_adamant = true,
-		automatic_curio_class_broker = true,
-		automatic_curio_class_cryptic = true,
-		automatic_curio_class_ogryn = true,
-		automatic_curio_class_psyker = true,
-		automatic_curio_class_veteran = true,
-		automatic_curio_class_zealot = true,
 	}
 	local class_group_title = mod:localize("automatic_curio_classes_group")
 	local character_group_title = mod:localize("automatic_curio_characters_group")
@@ -586,183 +590,16 @@ local function bind_option_dependencies(options_templates)
 		end
 	end
 
-	local function class_mode()
-		return mod:get("automatic_curio_target_mode") ~= "characters"
-	end
-
-	if class_group_entry then
-		class_group_entry.validation_function = class_mode
-	end
-
-	if character_group_entry then
-		character_group_entry.validation_function = function()
-			return not class_mode()
-		end
-	end
-
-	for setting_id in pairs(class_setting_ids) do
-		local entry = option_dependency_entries[setting_id]
-
-		if entry then
-			entry.validation_function = class_mode
-		end
-	end
-
-	-- DMF reevaluates validation functions while its options view is open and
-	-- rebuilds the list when their result changes. Use that mechanism to remove
-	-- the threshold entirely when its rule is off; the Curio-type filters remain
-	-- visible and independently configurable.
-	local curio_level_entry = option_dependency_entries.quick_discard_curio_protection_level
-
-	if curio_level_entry then
-		curio_level_entry.validation_function = function()
-			return mod:get("quick_discard_protect_high_level_curios") ~= false
-		end
-	end
+	-- Keep the final DMF template and rendered-widget arrays structurally
+	-- identical. Alf's generalized tabs pair them by numeric index, so hiding
+	-- mode-dependent entries through validation functions shifts every later
+	-- section. PlayerAssist uses the stable pattern too: keep entries present and
+	-- express dependencies exclusively through disabled state.
+	option_dependency_entries.automatic_curio_classes_group = class_group_entry
+	option_dependency_entries.automatic_curio_characters_group = character_group_entry
 
 	refresh_option_dependencies()
 end
-
-local alfs_dmf_tabs_hooked = false
-local ALFS_REGISTRATION_RETRY_INTERVAL = 0.5
-local ALFS_REGISTRATION_RETRY_LIMIT = 10
-local alfs_registration_retry_elapsed = 0
-local alfs_registration_retry_attempts = 0
-local alfs_tab_repair_logged = false
-local alfs_top_level_tab_titles = {}
-
-for _, setting_id in ipairs({
-	"inventory_slots_group",
-	"inventory_sorting_group",
-	"experimental_quick_discard_group",
-	"automatic_curio_buyer_group",
-	"additional_views_group",
-	"layout_group",
-	"single_column_layout_group",
-	"quick_look_card_integration_group",
-	"enhanced_descriptions_integration_group",
-	"card_content_group",
-	"curio_content_group",
-}) do
-	alfs_top_level_tab_titles[mod:localize(setting_id)] = true
-end
-
-local function repair_alfs_dmf_extension_tabs(alfs_mod, options_view, category)
-	if category ~= mod:get_readable_name() then
-		return false
-	end
-
-	if type(alfs_mod.is_gen_tabs_enabled_for_mod) == "function" and not alfs_mod.is_gen_tabs_enabled_for_mod(category) then
-		return false
-	end
-
-	if type(alfs_mod.get) == "function" and alfs_mod:get("enable_generalised_mod_tabs") == false then
-		return false
-	end
-
-	local category_widgets = options_view and options_view._settings_category_widgets
-	local visible_widgets = category_widgets and category_widgets[category]
-
-	if type(visible_widgets) ~= "table" then
-		return false
-	end
-
-	-- Alf has already resolved the correct automatic tab onto each top-level
-	-- group template. Its later positional pass pairs the filtered widget array
-	-- with the unfiltered template array, however, so conditional and dynamic
-	-- BetterInventory controls can shift a group header into the preceding tab.
-	-- Walk the actual rendered entries in display order and inherit the tab from
-	-- their real top-level header. This must run immediately before Alf filters.
-	local current_tab
-	local repaired = false
-	local repaired_count = 0
-	local section_count = 0
-
-	for index = 1, #visible_widgets do
-		local data = visible_widgets[index]
-		local widget = data and data.widget
-		local content = widget and widget.content
-		local entry = content and content.entry
-
-		if type(entry) == "table" then
-			if entry.widget_type == "group_header" and alfs_top_level_tab_titles[entry.display_name] then
-				current_tab = entry.display_name
-				section_count = section_count + 1
-			end
-
-			local tab = current_tab or alfs_mod.default_tab
-
-			if tab and content.tab ~= tab then
-				content.tab = tab
-				repaired = true
-				repaired_count = repaired_count + 1
-			end
-		end
-	end
-
-	if not alfs_tab_repair_logged and type(mod.info) == "function" then
-		alfs_tab_repair_logged = true
-		mod:info(
-			"Alf's tab layout verified immediately before filtering (%d widget(s), %d section(s), %d corrected).",
-			#visible_widgets,
-			section_count,
-			repaired_count
-		)
-	end
-
-	return repaired
-end
-
-local function register_alfs_dmf_extensions_compatibility()
-	if alfs_dmf_tabs_hooked then
-		return true
-	end
-
-	local alfs_mod = get_mod("Alfs_DMF_Extensions")
-
-	if type(alfs_mod) ~= "table" or type(alfs_mod.filter_settings) ~= "function" then
-		return false
-	end
-
-	mod:hook(alfs_mod, "filter_settings", function(func, options_view, category)
-		repair_alfs_dmf_extension_tabs(alfs_mod, options_view, category)
-
-		return func(options_view, category)
-	end)
-
-	alfs_dmf_tabs_hooked = true
-
-	if type(mod.info) == "function" then
-		mod:info("Alf's DMF Extensions tab compatibility enabled.")
-	end
-
-	return true
-end
-
-local function retry_alfs_dmf_extensions_registration(dt)
-	if alfs_dmf_tabs_hooked or alfs_registration_retry_attempts >= ALFS_REGISTRATION_RETRY_LIMIT then
-		return
-	end
-
-	alfs_registration_retry_elapsed = alfs_registration_retry_elapsed + (tonumber(dt) or 0)
-
-	if alfs_registration_retry_attempts > 0 and alfs_registration_retry_elapsed < ALFS_REGISTRATION_RETRY_INTERVAL then
-		return
-	end
-
-	alfs_registration_retry_attempts = alfs_registration_retry_attempts + 1
-	alfs_registration_retry_elapsed = 0
-	register_alfs_dmf_extensions_compatibility()
-end
-
-function mod.on_all_mods_loaded()
-	register_alfs_dmf_extensions_compatibility()
-end
-
--- BetterInventory can load before Alf's extension. Try immediately for the
--- common order, then let the bounded update retry cover either load order and
--- Ctrl+Shift+R, which does not reliably invoke on_all_mods_loaded again.
-register_alfs_dmf_extensions_compatibility()
 
 function mod.on_enabled()
 	-- DMF preserves saved values when a default changes. Apply the new compact
@@ -880,7 +717,6 @@ function mod.on_game_state_changed(status, state_name)
 end
 
 function mod.update(dt)
-	retry_alfs_dmf_extensions_registration(dt)
 	Features.update_morningstar_auto_discard(mod, dt)
 	CurioAcquisition.update(mod, dt, Features.morningstar_auto_discard_is_busy(mod))
 end
