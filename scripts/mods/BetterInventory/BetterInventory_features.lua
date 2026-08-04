@@ -1,9 +1,9 @@
 local Items = require("scripts/utilities/items")
-local MasterItems = require("scripts/backend/master_items")
 local ProfileUtils = require("scripts/utilities/profile_utils")
 local RaritySettings = require("scripts/settings/item/rarity_settings")
 local UIWidget = require("scripts/managers/ui/ui_widget")
 local UISoundEvents = require("scripts/settings/ui/ui_sound_events")
+local CurioValues = require("scripts/mods/BetterInventory/BetterInventory_curio_values")
 
 local Features = {}
 
@@ -2227,14 +2227,7 @@ local CURIO_BUYER_PRIMARY_ROLL_SETTINGS = {
 
 local function curio_primary_trait_name(item)
 	local primary_trait = item and item.traits and item.traits[1]
-	local trait_id = primary_trait and primary_trait.id
-
-	if type(trait_id) ~= "string" then
-		return
-	end
-
-	local resolved, trait_item = pcall(MasterItems.get_item, trait_id)
-	local trait_name = resolved and trait_item and trait_item.trait or trait_id
+	local trait_name, value = CurioValues.resolve(primary_trait)
 
 	if type(trait_name) ~= "string" then
 		return
@@ -2242,7 +2235,7 @@ local function curio_primary_trait_name(item)
 
 	for known_trait_name in pairs(CURIO_PRIMARY_TRAIT_SETTINGS) do
 		if trait_name == known_trait_name or string.find(trait_name, known_trait_name, 1, true) then
-			return known_trait_name, primary_trait
+			return known_trait_name, value
 		end
 	end
 end
@@ -2271,7 +2264,7 @@ local function automatic_curio_acquisition_protects(mod, item, level)
 		return false
 	end
 
-	local primary_trait_name, primary_trait = curio_primary_trait_name(item)
+	local primary_trait_name, primary_value = curio_primary_trait_name(item)
 	local setting_id = primary_trait_name and CURIO_BUYER_PRIMARY_TRAIT_SETTINGS[primary_trait_name]
 
 	if not setting_id or mod:get(setting_id) == false then
@@ -2281,18 +2274,12 @@ local function automatic_curio_acquisition_protects(mod, item, level)
 	local roll_config = CURIO_BUYER_PRIMARY_ROLL_SETTINGS[primary_trait_name]
 
 	if roll_config then
-		local value = tonumber(primary_trait and primary_trait.value)
-
-		if value and math.abs(value) <= 1 then
-			value = value * 100
-		end
-
 		-- Missing inventory roll data fails safe. It must never make an acquired or
 		-- partially materialized Curio eligible for destructive automatic discard.
-		if value then
+		if primary_value then
 			local minimum_roll = math.clamp(tonumber(mod:get(roll_config.setting_id)) or roll_config.default, 0, 100)
 
-			if value + 0.0001 < minimum_roll then
+			if primary_value + 0.0001 < minimum_roll then
 				return false
 			end
 		end

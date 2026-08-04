@@ -2,6 +2,7 @@ local Items = require("scripts/utilities/items")
 local MasterItems = require("scripts/backend/master_items")
 local Promise = require("scripts/foundation/utilities/promise")
 local StoreNames = require("scripts/settings/backend/store_names")
+local CurioValues = require("scripts/mods/BetterInventory/BetterInventory_curio_values")
 
 local CurioAcquisition = {}
 
@@ -297,56 +298,6 @@ local function localized_class_name(profile)
 	return "?"
 end
 
-local function first_number(value)
-	if type(value) ~= "string" then
-		return
-	end
-
-	-- Enhanced Descriptions and similar localization mods can wrap the visible
-	-- value in numeric rich-text tags such as `{#color(192,255,26)}`. Those tag
-	-- parameters must never be mistaken for the Curio's actual primary value.
-	value = string.gsub(value, "{#[^}]*}", "")
-	value = string.gsub(value, "<[^>]*>", "")
-
-	local number = string.match(value, "([%d]+%.?[%d]*)")
-
-	return number and tonumber(number) or nil
-end
-
-local function backend_trait_value(trait_name, entry)
-	local value = entry and tonumber(entry.value)
-
-	if not value then
-		return
-	end
-
-	if (trait_name == "gadget_innate_health_increase" or trait_name == "gadget_innate_toughness_increase") and math.abs(value) <= 1 then
-		value = value * 100
-	end
-
-	return math.floor(value * 100 + 0.5) / 100
-end
-
-local function trait_definition(entry)
-	if type(entry) ~= "table" or not entry.id then
-		return
-	end
-
-	if type(Items.perk_item_by_id) == "function" then
-		local success, item = pcall(Items.perk_item_by_id, entry.id)
-
-		if success and item then
-			return item
-		end
-	end
-
-	if type(MasterItems.get_item) == "function" then
-		local success, item = pcall(MasterItems.get_item, entry.id)
-
-		return success and item or nil
-	end
-end
-
 local function primary_trait(item)
 	local traits = item and item.traits
 
@@ -356,21 +307,10 @@ local function primary_trait(item)
 
 	for index = 1, #traits do
 		local entry = traits[index]
-		local definition = trait_definition(entry)
-		local trait_name = definition and definition.trait
+		local trait_name, value = CurioValues.resolve(entry)
 		local config = trait_name and PRIMARY_TRAITS[trait_name]
 
 		if config then
-			local value = backend_trait_value(trait_name, entry)
-
-			if not value and type(Items.trait_description) == "function" then
-				local described, description = pcall(Items.trait_description, definition, entry.rarity or 0, entry.value or 0)
-
-				value = described and first_number(description) or nil
-			end
-
-			-- Backend values are the eligibility source of truth. Localized text is
-			-- only a compatibility fallback for legacy or partial item payloads.
 			return trait_name, value, config
 		end
 	end

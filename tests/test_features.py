@@ -11,6 +11,13 @@ FEATURES_PATH = (
     / "BetterInventory"
     / "BetterInventory_features.lua"
 )
+CURIO_VALUES_PATH = (
+    PROJECT_ROOT
+    / "scripts"
+    / "mods"
+    / "BetterInventory"
+    / "BetterInventory_curio_values.lua"
+)
 
 
 def main() -> None:
@@ -99,6 +106,20 @@ def main() -> None:
 				}
 			end,
 		}
+		TestBuffTemplates = {
+			gadget_innate_health_increase = {
+				lerped_stat_buffs = {
+					max_health_modifier = {min = 0.15, max = 0.21},
+				},
+				localization_info = {max_health_modifier = "percentage"},
+			},
+			gadget_innate_toughness_increase = {
+				lerped_stat_buffs = {
+					toughness_bonus = {min = 0.10, max = 0.17},
+				},
+				localization_info = {toughness_bonus = "percentage"},
+			},
+		}
 		TestProfileUtils = {
 			presets = {},
 			get_profile_presets = function()
@@ -147,6 +168,10 @@ def main() -> None:
 				return TestProfileUtils
 			elseif path == "scripts/settings/item/rarity_settings" then
 				return TestRaritySettings
+			elseif path == "scripts/settings/buff/buff_templates" then
+				return TestBuffTemplates
+			elseif path == "scripts/mods/BetterInventory/BetterInventory_curio_values" then
+				return TestCurioValues
             elseif path == "scripts/managers/ui/ui_widget" then
                 return TestUIWidget
             elseif path == "scripts/settings/ui/ui_sound_events" then
@@ -177,6 +202,8 @@ def main() -> None:
         }
         """
     )
+    curio_values = lua.execute(CURIO_VALUES_PATH.read_text(encoding="utf-8"))
+    lua.globals().TestCurioValues = curio_values
     features = lua.execute(FEATURES_PATH.read_text(encoding="utf-8"))
     globals_ = lua.globals()
     mod = globals_.test_mod
@@ -777,7 +804,7 @@ def main() -> None:
                             lua.table_from(
                                 {
                                     "id": "gadget_innate_health_increase",
-                                    "value": 0.21,
+                                    "value": 1,
                                 }
                             )
                         ]
@@ -795,7 +822,7 @@ def main() -> None:
                             lua.table_from(
                                 {
                                     "id": "gadget_innate_toughness_increase",
-                                    "value": 0.17,
+                                    "value": 1,
                                 }
                             )
                         ]
@@ -841,7 +868,7 @@ def main() -> None:
     }
     assert "health_curio" not in buyer_candidate_ids
     assert "toughness_curio" in buyer_candidate_ids
-    typed_curios[1].traits[1].value = 0.20
+    typed_curios[1].traits[1].value = 0.75
     buyer_protected_candidates = features.quick_discard_candidates_from_items(
         mod, typed_curios, lua.table_from({})
     )
@@ -850,7 +877,7 @@ def main() -> None:
         for index in range(1, len(buyer_protected_candidates) + 1)
     }
     assert "health_curio" in buyer_candidate_ids
-    typed_curios[1].traits[1].value = 0.21
+    typed_curios[1].traits[1].value = 1
     mod.settings.enable_automatic_curio_acquisition = False
     mod.settings.automatic_curio_buy_toughness = True
     mod.settings.quick_discard_protect_high_level_curios = True

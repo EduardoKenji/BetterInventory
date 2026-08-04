@@ -11,6 +11,13 @@ MODULE_PATH = (
     / "BetterInventory"
     / "BetterInventory_curio_acquisition.lua"
 )
+CURIO_VALUES_PATH = (
+    PROJECT_ROOT
+    / "scripts"
+    / "mods"
+    / "BetterInventory"
+    / "BetterInventory_curio_values.lua"
+)
 
 
 def main() -> None:
@@ -116,6 +123,29 @@ def main() -> None:
             stamina_trait = 3,
             wound_trait = 1,
         }
+        TestBuffTemplates = {
+            gadget_innate_health_increase = {
+                lerped_stat_buffs = {
+                    max_health_modifier = {min = 0.15, max = 0.21},
+                },
+                localization_info = {max_health_modifier = "percentage"},
+            },
+            gadget_innate_toughness_increase = {
+                lerped_stat_buffs = {
+                    toughness_bonus = {min = 0.10, max = 0.17},
+                },
+                localization_info = {toughness_bonus = "percentage"},
+            },
+            gadget_stamina_increase = {
+                class_name = "stepped_range_buff",
+                stat_buffs = {stamina_modifier = {1, 2, 3}},
+                localization_info = {},
+            },
+            gadget_innate_max_wounds_increase = {
+                stat_buffs = {extra_max_amount_of_wounds = 1},
+                localization_info = {},
+            },
+        }
         TestItems = {
             expertise_level = function(item)
                 return item.level, true
@@ -161,6 +191,10 @@ def main() -> None:
                 return TestPromise
             elseif path == "scripts/settings/backend/store_names" then
                 return TestStoreNames
+            elseif path == "scripts/settings/buff/buff_templates" then
+                return TestBuffTemplates
+            elseif path == "scripts/mods/BetterInventory/BetterInventory_curio_values" then
+                return TestCurioValues
             end
 
             error("Unexpected require: " .. tostring(path))
@@ -240,7 +274,7 @@ def main() -> None:
                 {
                     id = "health_trait",
                     rarity = 4,
-                    value = 0.21,
+                    value = 1,
                 },
             },
         }
@@ -396,8 +430,21 @@ def main() -> None:
         """
     )
 
+    curio_values = lua.execute(CURIO_VALUES_PATH.read_text(encoding="utf-8"))
+    lua.globals().TestCurioValues = curio_values
     module = lua.execute(MODULE_PATH.read_text(encoding="utf-8"))
     globals_ = lua.globals()
+
+    assert (
+        curio_values._test.buff_value("gadget_innate_health_increase", 0.69) == 19
+    )
+    assert (
+        curio_values._test.buff_value("gadget_innate_health_increase", 0.75) == 20
+    )
+    assert (
+        curio_values._test.buff_value("gadget_innate_toughness_increase", 0.72)
+        == 15
+    )
 
     candidate = module._test.normalized_offer(
         globals_.test_mod, globals_.target_profile, globals_.test_offer
@@ -418,10 +465,22 @@ def main() -> None:
     assert rich_candidate is not None
     assert rich_candidate.primary_value == 21
 
+    # Store payloads carry a 0..1 interpolation scalar, not a display percent.
+    # A 0.75 Health roll maps through the vanilla 15..21% buff range to 20%.
+    globals_.settings.automatic_curio_min_health = 18
+    globals_.health_item.traits[1].value = 0.75
+    interpolated_candidate = module._test.normalized_offer(
+        globals_.test_mod, globals_.target_profile, globals_.test_offer
+    )
+    assert interpolated_candidate is not None
+    assert interpolated_candidate.primary_value == 20
+    globals_.settings.automatic_curio_min_health = 21
+    globals_.health_item.traits[1].value = 1
+
     # Item level and primary roll are independent inclusive minimums. Meeting
     # the level threshold must not allow an under-threshold Health roll.
     globals_.trait_values.health_trait = 20
-    globals_.health_item.traits[1].value = 0.20
+    globals_.health_item.traits[1].value = 0.75
     assert (
         module._test.normalized_offer(
             globals_.test_mod, globals_.target_profile, globals_.test_offer
@@ -429,7 +488,7 @@ def main() -> None:
         is None
     )
     globals_.trait_values.health_trait = 21
-    globals_.health_item.traits[1].value = 0.21
+    globals_.health_item.traits[1].value = 1
 
     # Revalidation must compare backend-stable transaction/filter fields. Storefront
     # decoration fields may legitimately change between two immediate fetches.
@@ -439,7 +498,7 @@ def main() -> None:
     assert not module._test.same_candidate(candidate, rich_candidate)
 
     globals_.health_item.traits[1].id = "toughness_trait"
-    globals_.health_item.traits[1].value = 0.17
+    globals_.health_item.traits[1].value = 1
     rich_toughness_candidate = module._test.normalized_offer(
         globals_.test_mod, globals_.target_profile, globals_.test_offer
     )
@@ -447,7 +506,7 @@ def main() -> None:
     assert rich_toughness_candidate.primary_trait == "gadget_innate_toughness_increase"
     assert rich_toughness_candidate.primary_value == 17
     globals_.trait_values.toughness_trait = 16
-    globals_.health_item.traits[1].value = 0.16
+    globals_.health_item.traits[1].value = 0.8
     assert (
         module._test.normalized_offer(
             globals_.test_mod, globals_.target_profile, globals_.test_offer
@@ -455,7 +514,7 @@ def main() -> None:
         is None
     )
     globals_.trait_values.toughness_trait = 17
-    globals_.health_item.traits[1].value = 0.21
+    globals_.health_item.traits[1].value = 1
     globals_.health_item.traits[1].id = "health_trait"
 
     # Localized text is notification-only. Even if it cannot be parsed, the
@@ -545,7 +604,7 @@ def main() -> None:
     globals_.settings.automatic_curio_buy_toughness = True
     globals_.wallet_balance = 0
     globals_.health_item.traits[1].id = "toughness_trait"
-    globals_.health_item.traits[1].value = 0.17
+    globals_.health_item.traits[1].value = 1
     module.begin_morningstar_pass(globals_.test_mod)
     module.update(globals_.test_mod, 6, False)
     assert globals_.purchase_count == 2

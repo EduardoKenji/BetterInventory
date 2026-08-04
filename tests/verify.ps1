@@ -9,6 +9,7 @@ $requiredFiles = @(
 	(Join-Path $projectRoot "BetterInventory.mod"),
 	(Join-Path $scriptRoot "BetterInventory.lua"),
 	(Join-Path $scriptRoot "BetterInventory_curio_acquisition.lua"),
+	(Join-Path $scriptRoot "BetterInventory_curio_values.lua"),
 	(Join-Path $scriptRoot "BetterInventory_features.lua"),
 	(Join-Path $scriptRoot "BetterInventory_layout.lua"),
 	(Join-Path $scriptRoot "BetterInventory_data.lua"),
@@ -68,6 +69,7 @@ $localization = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory
 $layout = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_layout.lua") -Raw
 $features = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_features.lua") -Raw
 $curioAcquisition = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_acquisition.lua") -Raw
+$curioValues = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_values.lua") -Raw
 
 if ($layout -notmatch 'Layout\.armoury_grid_expansion' -or $layout -notmatch 'armoury_requisition_target_card_width') {
 	throw "The Armoury target-width expansion contract was not found."
@@ -129,6 +131,10 @@ foreach ($settingId in @(
 
 if ($curioAcquisition -notmatch 'fetch_all_profiles' -or $curioAcquisition -notmatch 'StoreNames\.by_archetype\.credit' -or $curioAcquisition -notmatch 'character_wallets,\s*candidate\.character_id' -or $curioAcquisition -notmatch 'purchase_item_with_wallet') {
 	throw "Automatic Curio acquisition is missing an all-character scan or explicit target-wallet purchase contract."
+}
+
+if ($curioValues -notmatch 'scripts/settings/buff/buff_templates' -or $curioValues -notmatch 'lerped_stat_buffs' -or $curioAcquisition -notmatch 'CurioValues\.resolve' -or $features -notmatch 'CurioValues\.resolve') {
+	throw "Curio buyer filtering and discard protection must share vanilla BuffTemplate roll conversion."
 }
 
 if ($curioAcquisition -notmatch 'MAX_OFFER_ERROR_LOGS_PER_SCAN\s*=\s*5' -or $curioAcquisition -notmatch 'MAX_ERROR_TEXT_LENGTH\s*=\s*1000' -or $curioAcquisition -notmatch 'automatic_curio_diagnostic_logging') {
