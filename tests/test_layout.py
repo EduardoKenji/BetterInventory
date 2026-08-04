@@ -272,6 +272,9 @@ def main() -> None:
 				enable_grid_layout = true,
 				enable_quick_look_card_single_column_integration = true,
 				enable_quick_look_card_grid_integration = true,
+				quick_look_card_single_column_font_size = 14,
+				quick_look_card_single_column_horizontal_position = 79,
+				quick_look_card_single_column_vertical_position = 93,
 				quick_look_card_grid_stat_position = "above_power",
 				quick_look_card_grid_font_size = 13,
 				quick_look_card_grid_bottom_padding = 26,
@@ -306,6 +309,8 @@ def main() -> None:
 				weapon_perk_compression = "compression",
 				show_weapon_perk_rank_symbols = false,
 				weapon_perk_rank_icon_size = 18,
+				single_column_weapon_name_font_size = 18,
+				single_column_blessing_symbols_on_right = false,
 				weapon_perk_vertical_spacing = 2,
 				weapon_perk_blessing_spacing = 5,
 				remove_weapon_perk_plus_signs = false,
@@ -853,6 +858,7 @@ def main() -> None:
     native_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     native_size = layout.configure_item_blueprint(mod, native_blueprint, 596)
     assert (native_size[1], native_size[2]) == (586, 110)
+    assert blueprint_pass(native_blueprint, "display_name").style.font_size == 18
     native_icon_size = blueprint_pass(native_blueprint, "icon").style.size
     assert (native_icon_size[1], native_icon_size[2]) == (586, 110)
     assert (
@@ -883,7 +889,7 @@ def main() -> None:
     native_detailed_size = layout.configure_item_blueprint(
         mod, native_detailed_blueprint, 596
     )
-    assert (native_detailed_size[1], native_detailed_size[2]) == (586, 142)
+    assert (native_detailed_size[1], native_detailed_size[2]) == (586, 144)
     native_detailed_icon_size = blueprint_pass(
         native_detailed_blueprint, "icon"
     ).style.size
@@ -897,11 +903,20 @@ def main() -> None:
         "item_level",
         "rarity_tag",
     ):
-        assert blueprint_pass(native_detailed_blueprint, style_id).style.size[2] == 142
+        assert blueprint_pass(native_detailed_blueprint, style_id).style.size[2] == 144
     native_first_perk = blueprint_pass(
         native_detailed_blueprint, "better_inventory_weapon_perk_1"
     ).style
     assert native_detailed_size[2] + native_first_perk.offset[2] >= 60
+
+    # The native weapon-name control grows card geometry by the same delta, so
+    # larger names never consume the perk/blessing rows below them.
+    mod.settings.single_column_weapon_name_font_size = 22
+    large_name_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    large_name_size = layout.configure_item_blueprint(mod, large_name_blueprint, 596)
+    assert (large_name_size[1], large_name_size[2]) == (586, 148)
+    assert blueprint_pass(large_name_blueprint, "display_name").style.font_size == 22
+    mod.settings.single_column_weapon_name_font_size = 18
 
     # In native mode BetterInventory keeps only Quick Look Card's five modifier
     # stats, then renders its own perks, blessings and primary item power.
@@ -931,17 +946,17 @@ def main() -> None:
             }
         )
     qlc_native_size = layout.configure_item_blueprint(mod, qlc_native_blueprint, 596)
-    assert (qlc_native_size[1], qlc_native_size[2]) == (586, 142)
+    assert (qlc_native_size[1], qlc_native_size[2]) == (586, 144)
     qlc_stat_style = blueprint_pass(
         qlc_native_blueprint, "qlc_stats_title_1"
     ).style
     assert blueprint_pass(
         qlc_native_blueprint, "qlc_stats_title_1"
     ).visibility_function() is True
-    assert (qlc_stat_style.offset[1], qlc_stat_style.offset[2]) == (280, -43)
+    assert (qlc_stat_style.offset[1], qlc_stat_style.offset[2]) == (281, 100)
     assert (qlc_stat_style.size[1], qlc_stat_style.size[2]) == (42, 17)
     assert qlc_stat_style.font_size == 14
-    assert qlc_stat_style.vertical_alignment == "bottom"
+    assert qlc_stat_style.vertical_alignment == "top"
     assert qlc_stat_style.drop_shadow is True
     for hidden_style_id in (
         "qlc_baseLevel",
@@ -965,6 +980,24 @@ def main() -> None:
     ).style
     assert qlc_perk_style.offset[1] + qlc_perk_style.size[1] == 260
     assert qlc_blessing_style.offset[1] + qlc_blessing_style.size[1] == 260
+
+    # Position percentages operate over the stat block's available travel area;
+    # 0/100 therefore anchor it to the left/bottom edges at any card height.
+    mod.settings.quick_look_card_single_column_font_size = 16
+    mod.settings.quick_look_card_single_column_horizontal_position = 0
+    mod.settings.quick_look_card_single_column_vertical_position = 100
+    qlc_moved_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    qlc_moved_blueprint.pass_template[len(qlc_moved_blueprint.pass_template) + 1] = (
+        lua.eval("table.clone")(qlc_native_pass)
+    )
+    layout.configure_item_blueprint(mod, qlc_moved_blueprint, 596)
+    qlc_moved_style = blueprint_pass(qlc_moved_blueprint, "qlc_stats_title_1").style
+    assert (qlc_moved_style.offset[1], qlc_moved_style.offset[2]) == (0, 104)
+    assert (qlc_moved_style.size[1], qlc_moved_style.size[2]) == (48, 19)
+    assert qlc_moved_style.font_size == 16
+    mod.settings.quick_look_card_single_column_font_size = 14
+    mod.settings.quick_look_card_single_column_horizontal_position = 79
+    mod.settings.quick_look_card_single_column_vertical_position = 93
 
     # Disabling native integration restores Quick Look Card's own compact card
     # instead of applying BetterInventory's detail rows over it.
@@ -1479,6 +1512,47 @@ def main() -> None:
     assert first_rank_text.style.offset[1] == first_rank_pass.style.offset[1] + 21
     assert first_rank_text.style.size[1] == four_column_text_style.size[1] - 21
     assert layout.card_height(mod) == 117
+
+    # Native ranked-text cards can place each tier symbol immediately after the
+    # measured blessing name while still reserving its right-edge safety area.
+    mod.settings.enable_grid_layout = False
+    mod.settings.single_column_blessing_symbols_on_right = True
+    right_rank_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, right_rank_blueprint, 596)
+    right_rank_styles = {
+        "display_name": blueprint_pass(right_rank_blueprint, "display_name").style,
+    }
+    for index in range(1, 3):
+        for prefix in (
+            "better_inventory_blessing_text_",
+            "better_inventory_blessing_rank_",
+        ):
+            style_id = f"{prefix}{index}"
+            right_rank_styles[style_id] = blueprint_pass(
+                right_rank_blueprint, style_id
+            ).style
+    right_rank_widget = lua.table_from(
+        {"content": lua.table_from({}), "style": lua.table_from(right_rank_styles)}
+    )
+    right_rank_blueprint.init(
+        None,
+        right_rank_widget,
+        narrow_weapon_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        right_rank_blueprint,
+    )
+    for index in range(1, 3):
+        text_style = right_rank_styles[f"better_inventory_blessing_text_{index}"]
+        rank_style = right_rank_styles[f"better_inventory_blessing_rank_{index}"]
+        assert rank_style.better_inventory_follow_blessing_text is True
+        assert rank_style.offset[1] > text_style.offset[1]
+        assert rank_style.offset[1] <= rank_style.better_inventory_max_left
+        assert text_style.offset[1] + text_style.size[1] < rank_style.better_inventory_max_left
+    mod.settings.single_column_blessing_symbols_on_right = False
+    mod.settings.enable_grid_layout = True
 
     long_blessing_element = lua.eval("table.clone")(narrow_weapon_element)
     long_blessing_element.item.traits[2].id = "blessing_long"

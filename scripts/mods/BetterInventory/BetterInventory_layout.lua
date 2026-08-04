@@ -898,13 +898,26 @@ local function add_quick_look_card_grid_pass(mod, pass_template, card_width, tex
 	return label_width
 end
 
-local function configure_native_quick_look_card_passes(pass_template)
+local function configure_native_quick_look_card_passes(mod, pass_template, card_width, card_height)
+	local font_size = numeric_setting(mod, "quick_look_card_single_column_font_size", 14, 8, 20)
+	local horizontal_percent = numeric_setting(mod, "quick_look_card_single_column_horizontal_position", 79, 0, 100)
+	local vertical_percent = numeric_setting(mod, "quick_look_card_single_column_vertical_position", 93, 0, 100)
+	local line_height = font_size + 3
+	local row_step = line_height + 2
+	local column_step = math.max(80, math.floor(font_size * 5.72 + 0.5))
+	local value_offset = math.max(38, math.floor(font_size * 2.72 + 0.5))
+	local title_width = math.max(42, math.floor(font_size * 3 + 0.5))
+	local value_width = math.max(32, math.floor(font_size * 2.3 + 0.5))
+	local block_width = column_step * 2 + value_offset + value_width
+	local block_height = row_step + line_height
+	local block_left = math.floor(math.max(0, card_width - block_width) * horizontal_percent * 0.01 + 0.5)
+	local block_top = math.floor(math.max(0, card_height - block_height) * vertical_percent * 0.01 + 0.5)
 	local positions = {
-		{ 280, -43 },
-		{ 360, -43 },
-		{ 440, -43 },
-		{ 280, -24 },
-		{ 360, -24 },
+		{ block_left, block_top },
+		{ block_left + column_step, block_top },
+		{ block_left + column_step * 2, block_top },
+		{ block_left, block_top + row_step },
+		{ block_left + column_step, block_top + row_step },
 	}
 
 	for index = 1, #(pass_template or {}) do
@@ -919,19 +932,19 @@ local function configure_native_quick_look_card_passes(pass_template)
 
 				pass.style = style
 				style.horizontal_alignment = "left"
-				style.vertical_alignment = "bottom"
+				style.vertical_alignment = "top"
 				style.text_horizontal_alignment = "left"
 				style.text_vertical_alignment = "center"
-				style.font_size = 14
+				style.font_size = font_size
 				style.drop_shadow = true
 				style.offset = {
-					position[1] + (kind == "value" and 38 or 0),
+					position[1] + (kind == "value" and value_offset or 0),
 					position[2],
 					5,
 				}
 				style.size = {
-					kind == "value" and 32 or 42,
-					17,
+					kind == "value" and value_width or title_width,
+					line_height,
 				}
 			else
 				pass.visibility_function = function()
@@ -1339,6 +1352,9 @@ local function add_blessing_rank_pass(pass_template, index, options)
 				255,
 				255,
 			},
+			better_inventory_follow_blessing_text = options.follow_blessing_text == true,
+			better_inventory_max_left = options.max_left,
+			better_inventory_gap = options.gap,
 		},
 		visibility_function = function(content)
 			return content and content[content_id] ~= nil and content[content_id] ~= ""
@@ -1511,10 +1527,11 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 		local separate_item_level = separate_blessing_text_and_item_level(mod, configuration)
 		local favorite_offset = favorite_marker_position == "bottom_left" and not separate_item_level and 24 or 0
 		local blessing_rank_left = text_left + favorite_offset
-		local blessing_text_left = blessing_rank_left + (blessing_ranked_text and perk_rank_size + PERK_RANK_GAP or 0)
+		local blessing_rank_on_right = configuration.native_single_column and blessing_ranked_text and setting(mod, "single_column_blessing_symbols_on_right", false)
+		local blessing_text_left = blessing_rank_left + (blessing_ranked_text and not blessing_rank_on_right and perk_rank_size + PERK_RANK_GAP or 0)
 		local reserved_right = separate_item_level and 8 or 50
 		local blessing_text_right = configuration.content_right or card_width - reserved_right
-		local blessing_text_width = math.max(40, blessing_text_right - blessing_text_left)
+		local blessing_text_width = math.max(40, blessing_text_right - blessing_text_left - (blessing_rank_on_right and perk_rank_size + PERK_RANK_GAP or 0))
 		local blessing_text_color = configured_text_color(mod, "weapon_blessing_text_color", DEFAULT_WEAPON_BLESSING_TEXT_COLOR, "weapon_blessing_text_opacity")
 		local auto_fit_long_name = setting(mod, "auto_fit_long_blessing_names", true)
 		local truncate_long_name = setting(mod, "truncate_long_blessing_names", false)
@@ -1528,8 +1545,11 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 			if blessing_ranked_text then
 				add_blessing_rank_pass(pass_template, i, {
 					size = perk_rank_size,
+					follow_blessing_text = blessing_rank_on_right,
+					max_left = blessing_text_right - perk_rank_size,
+					gap = PERK_RANK_GAP,
 					offset = {
-						blessing_rank_left,
+						blessing_rank_on_right and blessing_text_right - perk_rank_size or blessing_rank_left,
 						y_offset,
 						11,
 					},
@@ -1908,6 +1928,17 @@ local function fit_blessing_text(parent, widget, ui_renderer)
 				-- no-wrap state keep the item-level area clear.
 				style.word_wrap = false
 			end
+
+			local rank_style = styles["better_inventory_blessing_rank_" .. i]
+
+			if rank_style and rank_style.better_inventory_follow_blessing_text then
+				local rendered_value = content[content_id] or value
+				local rendered_width = Text.text_width(ui_renderer, rendered_value, style, measurement_size, true)
+				local text_left = style.offset and style.offset[1] or 0
+				local maximum_left = rank_style.better_inventory_max_left or text_left + maximum_width
+
+				rank_style.offset[1] = math.min(maximum_left, text_left + math.min(rendered_width, safe_width) + (rank_style.better_inventory_gap or 0))
+			end
 		end
 	end
 end
@@ -1959,10 +1990,11 @@ local function fit_weapon_perks(parent, widget, ui_renderer)
 	end
 end
 
-local function configure_card_content(mod, item_blueprint)
+local function configure_card_content(mod, item_blueprint, configuration)
+	configuration = configuration or {}
 	local original_init = item_blueprint.init
 	local original_update_data = item_blueprint.update_data
-	local preferred_font_size = numeric_setting(mod, "item_name_font_size", 16, 10, 24)
+	local preferred_font_size = configuration.native_single_column and numeric_setting(mod, "single_column_weapon_name_font_size", 18, 10, 24) or numeric_setting(mod, "item_name_font_size", 16, 10, 24)
 	local minimum_font_size = numeric_setting(mod, "minimum_item_name_font_size", 12, 8, 20)
 	local append_mark_to_name = setting(mod, "append_mark_to_name", true)
 	local blessing_display_mode = weapon_blessing_display_mode(mod)
@@ -2239,14 +2271,14 @@ Layout.card_height = function(mod, configuration)
 
 	local manual_height = numeric_setting(mod, "card_height", 110, 110, 240)
 
-	if not setting(mod, "automatic_card_height", true) then
+	if not setting(mod, "automatic_card_height", true) and not configuration.native_single_column then
 		return manual_height
 	end
 
-	local item_name_font_size = numeric_setting(mod, "item_name_font_size", 16, 10, 24)
+	local item_name_font_size = configuration.native_single_column and numeric_setting(mod, "single_column_weapon_name_font_size", 18, 10, 24) or numeric_setting(mod, "item_name_font_size", 16, 10, 24)
 	local secondary_font_size = numeric_setting(mod, "secondary_text_font_size", 13, 8, 20)
 	local expertise_font_size = numeric_setting(mod, "expertise_font_size", 20, 10, 28)
-	local name_row_height = math.max(25, item_name_font_size + 5)
+	local name_row_height = configuration.native_single_column and 25 + math.max(0, item_name_font_size - 16) or math.max(25, item_name_font_size + 5)
 	local secondary_row_height = math.max(22, secondary_font_size + 5)
 	local bottom_region_height = math.max(expertise_font_size + 10, secondary_font_size + 15)
 	local required_height = 110
@@ -2382,13 +2414,21 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 	end
 
 	if quick_look_card_integration then
-		configure_native_quick_look_card_passes(pass_template)
+		configure_native_quick_look_card_passes(mod, pass_template, card_width, item_size[2] or 110)
 	end
 
 	local display_name = pass_by_style_id(pass_template, "display_name")
 	local sub_display_name = pass_by_style_id(pass_template, "sub_display_name")
 	local rarity_name = pass_by_style_id(pass_template, "rarity_name")
 	local item_level = pass_by_style_id(pass_template, "item_level")
+	local native_name_font_size = numeric_setting(mod, "single_column_weapon_name_font_size", 18, 10, 24)
+
+	if display_name and display_name.style then
+		display_name.style.font_size = native_name_font_size
+		display_name.style.word_wrap = false
+		display_name.style.size = display_name.style.size or {}
+		display_name.style.size[2] = math.max(display_name.style.size[2] or 0, native_name_font_size + 6)
+	end
 
 	preserve_visibility(display_name, function(content)
 		return not detailed_curio_profile or not is_curio(item_from_content(content))
@@ -2428,7 +2468,9 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 			native_single_column = true,
 		})
 	end
-	configure_card_content(mod, item_blueprint)
+	configure_card_content(mod, item_blueprint, {
+		native_single_column = true,
+	})
 
 	return item_size
 end

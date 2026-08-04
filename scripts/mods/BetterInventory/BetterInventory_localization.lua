@@ -521,6 +521,24 @@ local localization = {
 	enable_quick_look_card_single_column_integration_tooltip = {
 		en = "When Quick Look Card is installed, keeps its five weapon modifier stats while Better Inventory renders the perk and blessing rows. Disable this to leave Quick Look Card's native single-column card content untouched. Reopen the inventory after changing this option.",
 	},
+	quick_look_card_single_column_font_size = {
+		en = "Single-column modifier font size",
+	},
+	quick_look_card_single_column_font_size_tooltip = {
+		en = "Controls the font size of Quick Look Card's five-stat block in single-column mode. Reopen the inventory after changing this value.",
+	},
+	quick_look_card_single_column_horizontal_position = {
+		en = "Single-column modifier horizontal position (%%)",
+	},
+	quick_look_card_single_column_horizontal_position_tooltip = {
+		en = "Moves Quick Look Card's five-stat block horizontally across the available card width. Zero is the left edge and 100 is the right edge. Reopen the inventory after changing this value.",
+	},
+	quick_look_card_single_column_vertical_position = {
+		en = "Single-column modifier vertical position (%%)",
+	},
+	quick_look_card_single_column_vertical_position_tooltip = {
+		en = "Moves Quick Look Card's five-stat block vertically across the available card height. Zero is the top edge and 100 is the bottom edge. Reopen the inventory after changing this value.",
+	},
 	enable_quick_look_card_grid_integration = {
 		en = "Support Quick Look Card in grid mode",
 	},
@@ -543,7 +561,7 @@ local localization = {
 		en = "Left of weapon name",
 	},
 	quick_look_card_grid_font_size = {
-		en = "Lowest modifier font size",
+		en = "Grid lowest modifier font size",
 	},
 	quick_look_card_grid_font_size_tooltip = {
 		en = "Controls the grid dump-stat label size. Reopen the inventory after changing this value.",
@@ -553,6 +571,21 @@ local localization = {
 	},
 	quick_look_card_grid_bottom_padding_tooltip = {
 		en = "Controls the distance in pixels between the pink modifier label and the card's bottom edge when it is above weapon power. Lower values move it closer to the power value. Reopen the inventory after changing this value.",
+	},
+	single_column_layout_group = {
+		en = "Single-column layout",
+	},
+	single_column_weapon_name_font_size = {
+		en = "Weapon name font size",
+	},
+	single_column_weapon_name_font_size_tooltip = {
+		en = "Controls weapon-name size in single-column mode. Automatic card sizing adds height as this value increases so the name does not consume the detail rows below it. Reopen the inventory after changing this value.",
+	},
+	single_column_blessing_symbols_on_right = {
+		en = "Place blessing tier symbols after names",
+	},
+	single_column_blessing_symbols_on_right_tooltip = {
+		en = "In single-column ranked-text mode, places each blessing tier symbol immediately after its blessing name instead of before it. Reopen the inventory after changing this option.",
 	},
 	enhanced_descriptions_integration_group = {
 		en = "Mod integration: Enhanced Descriptions",
@@ -622,6 +655,15 @@ local localization = {
 	},
 	option_requires_grid_layout = {
 		en = "Enable grid layout to use this option.",
+	},
+	option_requires_single_column_mode = {
+		en = "Disable grid layout to use this single-column option.",
+	},
+	option_requires_ranked_blessing_text = {
+		en = "Select ranked blessing text to use this option.",
+	},
+	option_requires_quick_look_card_single_column_integration = {
+		en = "Enable Quick Look Card single-column integration to use this option.",
 	},
 	option_requires_quick_look_card_grid_integration = {
 		en = "Enable Quick Look Card grid integration to use this option.",
@@ -1492,6 +1534,12 @@ local zh_cn = {
 	quick_look_card_integration_group = "模组集成：Quick Look Card",
 	enable_quick_look_card_single_column_integration = "在单列模式中支持 Quick Look Card",
 	enable_quick_look_card_single_column_integration_tooltip = "安装 Quick Look Card 后，保留其五项武器属性，同时由 BetterInventory 绘制专长和祝福行。关闭后将完整保留 Quick Look Card 原生的单列卡片内容。更改后请重新打开库存。",
+	quick_look_card_single_column_font_size = "单列属性字号",
+	quick_look_card_single_column_font_size_tooltip = "控制单列模式中 Quick Look Card 五项属性区块的字号。更改后请重新打开库存。",
+	quick_look_card_single_column_horizontal_position = "单列属性水平位置（%%）",
+	quick_look_card_single_column_horizontal_position_tooltip = "在卡片可用宽度内水平移动 Quick Look Card 的五项属性区块。0 为左边缘，100 为右边缘。更改后请重新打开库存。",
+	quick_look_card_single_column_vertical_position = "单列属性垂直位置（%%）",
+	quick_look_card_single_column_vertical_position_tooltip = "在卡片可用高度内垂直移动 Quick Look Card 的五项属性区块。0 为上边缘，100 为下边缘。更改后请重新打开库存。",
 	enable_quick_look_card_grid_integration = "在网格模式中支持 Quick Look Card",
 	enable_quick_look_card_grid_integration_tooltip = "安装 Quick Look Card 后，在 BetterInventory 网格卡片上显示武器的最低属性。Quick Look Card 的其他网格绘制内容会保持隐藏，以避免重复或重叠。更改后请重新打开库存。",
 	quick_look_card_grid_stat_position = "最低属性位置",
@@ -1499,10 +1547,15 @@ local zh_cn = {
 	quick_look_card_grid_stat_position_above_power = "武器威力上方",
 	quick_look_card_grid_stat_position_name_right = "武器名称右侧",
 	quick_look_card_grid_stat_position_name_left = "武器名称左侧",
-	quick_look_card_grid_font_size = "最低属性字号",
+	quick_look_card_grid_font_size = "网格最低属性字号",
 	quick_look_card_grid_font_size_tooltip = "控制网格中短板属性标签的字号。更改后请重新打开库存。",
 	quick_look_card_grid_bottom_padding = "最低属性底部边距",
 	quick_look_card_grid_bottom_padding_tooltip = "控制粉色属性标签在武器威力上方显示时，与卡片底边之间的像素距离。数值越低，标签越靠近威力值。更改后请重新打开库存。",
+	single_column_layout_group = "单列布局",
+	single_column_weapon_name_font_size = "武器名称字号",
+	single_column_weapon_name_font_size_tooltip = "控制单列模式中的武器名称字号。字号增大时，自动卡片尺寸会相应增加高度，避免名称占用下方详情行。更改后请重新打开库存。",
+	single_column_blessing_symbols_on_right = "将祝福等级符号放在名称后",
+	single_column_blessing_symbols_on_right_tooltip = "在单列等级文本模式中，将每个祝福等级符号紧跟在祝福名称后，而不是放在名称前。更改后请重新打开库存。",
 	enhanced_descriptions_integration_group = "模组集成：Enhanced Descriptions",
 	enable_grid_layout = "启用网格布局",
 	enable_grid_layout_tooltip = "使用 BetterInventory 的多列卡片。关闭后保留《暗潮》原生单列尺寸，同时继续使用已启用的卡片内容增强功能。",
@@ -1526,6 +1579,9 @@ local zh_cn = {
 	automatic_card_height = "自动卡片高度",
 	automatic_card_height_tooltip = "当所选文字行和字号需要更多垂直空间时自动增高卡片。单列卡片也会为已启用的 BetterInventory 专长和祝福行预留足够高度。",
 	option_requires_grid_layout = "启用网格布局以使用此选项。",
+	option_requires_single_column_mode = "关闭网格布局以使用此单列选项。",
+	option_requires_ranked_blessing_text = "选择带等级的祝福文本以使用此选项。",
+	option_requires_quick_look_card_single_column_integration = "启用 Quick Look Card 单列集成以使用此选项。",
 	option_requires_quick_look_card_grid_integration = "启用 Quick Look Card 网格集成以使用此选项。",
 	option_requires_quick_look_card_above_power = "选择“武器威力上方”后才能使用此选项。",
 	option_requires_weapon_extra_width_threshold = "将列增加到配置的额外宽度阈值以使用此选项。",

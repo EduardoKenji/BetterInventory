@@ -239,8 +239,10 @@ end
 
 local function refresh_option_dependencies()
 	local grid_enabled = mod:get("enable_grid_layout") ~= false
+	local single_column_enabled = not grid_enabled
 	local automatic_height = mod:get("automatic_card_height") ~= false
 	local native_reason = mod:localize("option_requires_grid_layout")
+	local single_column_reason = mod:localize("option_requires_single_column_mode")
 
 	for _, setting_id in ipairs({
 		"columns",
@@ -288,6 +290,8 @@ local function refresh_option_dependencies()
 	local inventory_options_panel_reason = mod:localize("option_requires_inventory_options_panel_prototype")
 	local quick_look_card_grid_enabled = grid_enabled and mod:get("enable_quick_look_card_grid_integration") ~= false
 	local quick_look_card_grid_reason = grid_enabled and mod:localize("option_requires_quick_look_card_grid_integration") or native_reason
+	local quick_look_card_single_column_enabled = single_column_enabled and mod:get("enable_quick_look_card_single_column_integration") ~= false
+	local quick_look_card_single_column_reason = single_column_enabled and mod:localize("option_requires_quick_look_card_single_column_integration") or single_column_reason
 	local quick_look_card_above_power = quick_look_card_grid_enabled and mod:get("quick_look_card_grid_stat_position") ~= "name_left" and mod:get("quick_look_card_grid_stat_position") ~= "name_right"
 	local quick_look_card_bottom_padding_reason = quick_look_card_grid_enabled and mod:localize("option_requires_quick_look_card_above_power") or quick_look_card_grid_reason
 
@@ -322,6 +326,12 @@ local function refresh_option_dependencies()
 	set_option_enabled(option_dependency_entries.weapon_perk_blessing_spacing, weapon_perk_blessing_sections_enabled, mod:localize("option_requires_perk_and_blessing_sections"))
 	set_option_enabled(option_dependency_entries.curio_secondary_stat_font_size, detailed_curio_profile, mod:localize("option_requires_detailed_curio_profile"))
 	set_option_enabled(option_dependency_entries.curio_primary_secondary_spacing, detailed_curio_profile, mod:localize("option_requires_detailed_curio_profile"))
+	set_option_enabled(option_dependency_entries.single_column_layout_group, single_column_enabled, single_column_reason)
+	set_option_enabled(option_dependency_entries.single_column_weapon_name_font_size, single_column_enabled, single_column_reason)
+	set_option_enabled(option_dependency_entries.single_column_blessing_symbols_on_right, single_column_enabled and weapon_blessing_ranked_text_enabled, not single_column_enabled and single_column_reason or mod:localize("option_requires_ranked_blessing_text"))
+	set_option_enabled(option_dependency_entries.quick_look_card_single_column_font_size, quick_look_card_single_column_enabled, quick_look_card_single_column_reason)
+	set_option_enabled(option_dependency_entries.quick_look_card_single_column_horizontal_position, quick_look_card_single_column_enabled, quick_look_card_single_column_reason)
+	set_option_enabled(option_dependency_entries.quick_look_card_single_column_vertical_position, quick_look_card_single_column_enabled, quick_look_card_single_column_reason)
 	set_option_enabled(option_dependency_entries.quick_look_card_grid_stat_position, quick_look_card_grid_enabled, quick_look_card_grid_reason)
 	set_option_enabled(option_dependency_entries.quick_look_card_grid_font_size, quick_look_card_grid_enabled, quick_look_card_grid_reason)
 	set_option_enabled(option_dependency_entries.quick_look_card_grid_bottom_padding, quick_look_card_above_power, quick_look_card_bottom_padding_reason)
@@ -468,6 +478,12 @@ local function bind_option_dependencies(options_templates)
 		"weapon_perk_blessing_spacing",
 		"curio_secondary_stat_font_size",
 		"curio_primary_secondary_spacing",
+		"single_column_layout_group",
+		"single_column_weapon_name_font_size",
+		"single_column_blessing_symbols_on_right",
+		"quick_look_card_single_column_font_size",
+		"quick_look_card_single_column_horizontal_position",
+		"quick_look_card_single_column_vertical_position",
 		"quick_look_card_grid_stat_position",
 		"quick_look_card_grid_font_size",
 		"quick_look_card_grid_bottom_padding",
@@ -666,7 +682,7 @@ function mod.on_setting_changed(setting_id)
 		end
 	end
 
-	if setting_id == "enable_grid_layout" or setting_id == "columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "weapon_extra_width_column_threshold" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_armoury_requisition_grid" or setting_id == "expand_armoury_requisition_window" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "curio_display_profile" or setting_id == "enable_inventory_options_panel_prototype" or setting_id == "enable_experimental_quick_discard" or setting_id == "quick_discard_mode" or setting_id == "quick_discard_protect_high_level_curios" or setting_id == "enable_automatic_curio_acquisition" or automatic_curio_setting or setting_id == "enable_quick_look_card_grid_integration" or setting_id == "quick_look_card_grid_stat_position" then
+	if setting_id == "enable_grid_layout" or setting_id == "columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "weapon_extra_width_column_threshold" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_armoury_requisition_grid" or setting_id == "expand_armoury_requisition_window" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "curio_display_profile" or setting_id == "enable_inventory_options_panel_prototype" or setting_id == "enable_experimental_quick_discard" or setting_id == "quick_discard_mode" or setting_id == "quick_discard_protect_high_level_curios" or setting_id == "enable_automatic_curio_acquisition" or automatic_curio_setting or setting_id == "enable_quick_look_card_single_column_integration" or setting_id == "enable_quick_look_card_grid_integration" or setting_id == "quick_look_card_grid_stat_position" then
 		refresh_option_dependencies()
 	end
 

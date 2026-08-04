@@ -662,6 +662,36 @@ return {
 						default_value = true,
 					},
 					{
+						setting_id = "quick_look_card_single_column_font_size",
+						tooltip = "quick_look_card_single_column_font_size_tooltip",
+						type = "numeric",
+						default_value = 14,
+						range = {
+							8,
+							20,
+						},
+					},
+					{
+						setting_id = "quick_look_card_single_column_horizontal_position",
+						tooltip = "quick_look_card_single_column_horizontal_position_tooltip",
+						type = "numeric",
+						default_value = 79,
+						range = {
+							0,
+							100,
+						},
+					},
+					{
+						setting_id = "quick_look_card_single_column_vertical_position",
+						tooltip = "quick_look_card_single_column_vertical_position_tooltip",
+						type = "numeric",
+						default_value = 93,
+						range = {
+							0,
+							100,
+						},
+					},
+					{
 						setting_id = "enable_quick_look_card_grid_integration",
 						tooltip = "enable_quick_look_card_grid_integration_tooltip",
 						type = "checkbox",
@@ -706,6 +736,28 @@ return {
 							20,
 							60,
 						},
+					},
+				},
+			},
+			{
+				setting_id = "single_column_layout_group",
+				type = "group",
+				sub_widgets = {
+					{
+						setting_id = "single_column_weapon_name_font_size",
+						tooltip = "single_column_weapon_name_font_size_tooltip",
+						type = "numeric",
+						default_value = 18,
+						range = {
+							10,
+							24,
+						},
+					},
+					{
+						setting_id = "single_column_blessing_symbols_on_right",
+						tooltip = "single_column_blessing_symbols_on_right_tooltip",
+						type = "checkbox",
+						default_value = false,
 					},
 				},
 			},

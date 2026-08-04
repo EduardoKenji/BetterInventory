@@ -22,7 +22,11 @@ def main() -> None:
         settings = {
 			columns = 3,
             enable_grid_layout = true,
+			enable_quick_look_card_single_column_integration = true,
 			enable_quick_look_card_grid_integration = true,
+			quick_look_card_single_column_font_size = 14,
+			quick_look_card_single_column_horizontal_position = 79,
+			quick_look_card_single_column_vertical_position = 93,
 			quick_look_card_grid_stat_position = "above_power",
 			enable_hadron_entreat_grid = true,
 			enable_armoury_requisition_grid = true,
@@ -376,6 +380,12 @@ def main() -> None:
 		"weapon_perk_blessing_spacing",
 		"curio_secondary_stat_font_size",
 		"curio_primary_secondary_spacing",
+		"single_column_layout_group",
+		"single_column_weapon_name_font_size",
+		"single_column_blessing_symbols_on_right",
+		"quick_look_card_single_column_font_size",
+		"quick_look_card_single_column_horizontal_position",
+		"quick_look_card_single_column_vertical_position",
 		"quick_look_card_grid_stat_position",
 		"quick_look_card_grid_font_size",
 		"quick_look_card_grid_bottom_padding",
@@ -434,6 +444,7 @@ def main() -> None:
     ]
     for option_id, entry in zip(option_ids, entries):
         if option_id in {
+			"single_column_layout_group",
             "automatic_curio_types_group",
             "automatic_curio_classes_group",
             "automatic_curio_characters_group",
@@ -482,6 +493,12 @@ def main() -> None:
     assert entries_by_id["weapon_perk_blessing_spacing"].disabled is True
     assert entries_by_id["curio_secondary_stat_font_size"].disabled is True
     assert entries_by_id["curio_primary_secondary_spacing"].disabled is True
+    assert entries_by_id["single_column_layout_group"].disabled is True
+    assert entries_by_id["single_column_weapon_name_font_size"].disabled is True
+    assert entries_by_id["single_column_blessing_symbols_on_right"].disabled is True
+    assert entries_by_id["quick_look_card_single_column_font_size"].disabled is True
+    assert entries_by_id["quick_look_card_single_column_horizontal_position"].disabled is True
+    assert entries_by_id["quick_look_card_single_column_vertical_position"].disabled is True
     assert entries_by_id["quick_look_card_grid_stat_position"].disabled is False
     assert entries_by_id["quick_look_card_grid_font_size"].disabled is False
     assert entries_by_id["quick_look_card_grid_bottom_padding"].disabled is False
@@ -738,6 +755,11 @@ def main() -> None:
 
     for option_id in option_ids:
         if option_id in {
+			"single_column_layout_group",
+			"single_column_weapon_name_font_size",
+			"quick_look_card_single_column_font_size",
+			"quick_look_card_single_column_horizontal_position",
+			"quick_look_card_single_column_vertical_position",
             "blessing_icon_size",
             "blessing_icon_spacing",
             "automatic_curio_types_group",
@@ -750,6 +772,21 @@ def main() -> None:
 
     assert entries_by_id["blessing_icon_size"].disabled is False
     assert entries_by_id["blessing_icon_spacing"].disabled is False
+    assert entries_by_id["single_column_layout_group"].disabled is False
+    assert entries_by_id["single_column_weapon_name_font_size"].disabled is False
+    assert entries_by_id["single_column_blessing_symbols_on_right"].disabled is True
+    assert entries_by_id["quick_look_card_single_column_font_size"].disabled is False
+    assert entries_by_id["quick_look_card_single_column_horizontal_position"].disabled is False
+    assert entries_by_id["quick_look_card_single_column_vertical_position"].disabled is False
+
+    settings.weapon_blessing_display_mode = "ranked_text"
+    mod.on_setting_changed("weapon_blessing_display_mode")
+    assert entries_by_id["single_column_blessing_symbols_on_right"].disabled is False
+    settings.enable_quick_look_card_single_column_integration = False
+    mod.on_setting_changed("enable_quick_look_card_single_column_integration")
+    assert entries_by_id["quick_look_card_single_column_font_size"].disabled is True
+    assert entries_by_id["quick_look_card_single_column_horizontal_position"].disabled is True
+    assert entries_by_id["quick_look_card_single_column_vertical_position"].disabled is True
 
     data = lua.execute(DATA_PATH.read_text(encoding="utf-8"))
     localization = lua.execute(LOCALIZATION_PATH.read_text(encoding="utf-8"))
@@ -840,10 +877,15 @@ def main() -> None:
 
     assert defaults["enable_grid_layout"] is True
     assert defaults["enable_quick_look_card_single_column_integration"] is True
+    assert defaults["quick_look_card_single_column_font_size"] == 14
+    assert defaults["quick_look_card_single_column_horizontal_position"] == 79
+    assert defaults["quick_look_card_single_column_vertical_position"] == 93
     assert defaults["enable_quick_look_card_grid_integration"] is True
     assert defaults["quick_look_card_grid_stat_position"] == "above_power"
     assert defaults["quick_look_card_grid_font_size"] == 13
     assert defaults["quick_look_card_grid_bottom_padding"] == 26
+    assert defaults["single_column_weapon_name_font_size"] == 18
+    assert defaults["single_column_blessing_symbols_on_right"] is False
     assert defaults["enable_hadron_entreat_grid"] is True
     assert defaults["enable_armoury_requisition_grid"] is True
     assert defaults["expand_armoury_requisition_window"] is True
