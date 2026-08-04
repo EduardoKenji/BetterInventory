@@ -1539,10 +1539,12 @@ def main() -> None:
     assert blueprint_pass(armoury_three_column_blueprint, "display_name").style.font_size == 14
     armoury_item_level_style = blueprint_pass(armoury_three_column_blueprint, "item_level").style
     assert tuple(armoury_item_level_style.text_color[index] for index in range(1, 5)) == (255, 220, 230, 210)
+    assert armoury_item_level_style.offset[3] == 11
     mod.settings.brighten_armoury_item_levels = False
     dim_armoury_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     layout.configure_item_blueprint(mod, dim_armoury_blueprint, 640, store_configuration)
     assert blueprint_pass(dim_armoury_blueprint, "item_level").style.text_color is None
+    assert blueprint_pass(dim_armoury_blueprint, "item_level").style.offset[3] == 9
     mod.settings.brighten_armoury_item_levels = True
     mod.settings.columns = 3
 

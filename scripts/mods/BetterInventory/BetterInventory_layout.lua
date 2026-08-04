@@ -2937,6 +2937,11 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 	})
 	if configuration.store_item and setting(mod, "brighten_armoury_item_levels", true) and item_level and item_level.style then
 		item_level.style.text_color = table.clone(DEFAULT_ARMOURY_ITEM_LEVEL_COLOR)
+		item_level.style.default_color = table.clone(DEFAULT_ARMOURY_ITEM_LEVEL_COLOR)
+		item_level.style.hover_color = table.clone(DEFAULT_ARMOURY_ITEM_LEVEL_COLOR)
+		-- Darktide's store blueprint draws a translucent price footer at z=10.
+		-- Raise the rating above that footer when the readability option is on.
+		item_level.style.offset[3] = 11
 	end
 	preserve_visibility(item_level, function(content)
 		return not is_curio(item_from_content(content)) or show_curio_item_level
