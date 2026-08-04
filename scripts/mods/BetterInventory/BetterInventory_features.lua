@@ -53,9 +53,10 @@ local INVENTORY_OPTIONS_PANEL_DEFAULT_VERTICAL_PADDING = 10
 local INVENTORY_OPTIONS_PANEL_DEFAULT_HORIZONTAL_PADDING = 12
 local ARMOURY_NATIVE_SORT_PANEL_REFERENCE = "better_inventory_armoury_native_sort_panel"
 local ARMOURY_NATIVE_SORT_PANEL_WIDTH = 350
-local ARMOURY_NATIVE_SORT_PANEL_HEIGHT = 390
+local ARMOURY_NATIVE_SORT_PANEL_HEIGHT = 520
+local ARMOURY_NATIVE_SORT_PANEL_MIN_HEIGHT = 140
 local ARMOURY_NATIVE_SORT_PANEL_TOP = 100
-local ARMOURY_NATIVE_SORT_PANEL_RIGHT_MARGIN = 210
+local ARMOURY_NATIVE_SORT_PANEL_RIGHT_MARGIN = 80
 local ARMOURY_NATIVE_SORT_PANEL_ROW_HEIGHT = 32
 local ARMOURY_NATIVE_SORT_PANEL_ROW_SPACING = 4
 local ARMOURY_NATIVE_SORT_PANEL_PADDING = 10
@@ -1494,6 +1495,62 @@ local function armoury_native_sort_entry(view, option, option_index)
 	}
 end
 
+local function armoury_native_sort_header_entry(mod, layout, view, section_id, label)
+	return {
+		initial_content = {
+			chevron = view._better_inventory_armoury_native_sort_collapsed[section_id] and ">" or "v",
+			hotspot = {},
+			label = label,
+		},
+		option_index = "header_" .. section_id,
+		pass_template = panel_section_header_passes(ARMOURY_NATIVE_SORT_PANEL_WIDTH),
+		size = {
+			ARMOURY_NATIVE_SORT_PANEL_WIDTH,
+			40,
+		},
+		view = view,
+		widget_type = "better_inventory_armoury_native_sort",
+		bind = function(widget)
+			widget.content.hotspot.pressed_callback = function()
+				local collapsed = view._better_inventory_armoury_native_sort_collapsed
+
+				collapsed[section_id] = not collapsed[section_id]
+				view._better_inventory_armoury_native_sort_rebuild_pending = true
+			end
+		end,
+		refresh = function(widget)
+			widget.content.chevron = view._better_inventory_armoury_native_sort_collapsed[section_id] and ">" or "v"
+		end,
+	}
+end
+
+local function armoury_native_sort_priority_entry(mod, layout, view, setting_id, label)
+	return {
+		initial_content = {
+			checked = setting_id == "prioritize_equipped_favorites" and mod:get(setting_id) ~= false or mod:get(setting_id) == true,
+			hotspot = {},
+			label = label,
+		},
+		option_index = "priority_" .. setting_id,
+		pass_template = inventory_sort_toggle_passes(),
+		size = {
+			ARMOURY_NATIVE_SORT_PANEL_WIDTH,
+			38,
+		},
+		view = view,
+		widget_type = "better_inventory_armoury_native_sort",
+		bind = function(widget)
+			widget.content.hotspot.pressed_callback = function()
+				mod:set(setting_id, not widget.content.checked, false)
+				Features.sync_inventory_sort_setting(mod, layout)
+			end
+		end,
+		refresh = function(widget)
+			widget.content.checked = setting_id == "prioritize_equipped_favorites" and mod:get(setting_id) ~= false or mod:get(setting_id) == true
+		end,
+	}
+end
+
 local function panel_entry(view, control_id, height, pass_template, initial_content, bind, refresh)
 	local geometry = view._better_inventory_options_panel_geometry
 
@@ -2327,11 +2384,67 @@ local function armoury_native_sort_panel_position(view)
 	return canvas_position[1] + canvas_width - ARMOURY_NATIVE_SORT_PANEL_RIGHT_MARGIN - ARMOURY_NATIVE_SORT_PANEL_WIDTH, canvas_position[2] + ARMOURY_NATIVE_SORT_PANEL_TOP
 end
 
+local function armoury_native_sort_entries(mod, layout, view)
+	local collapsed = view._better_inventory_armoury_native_sort_collapsed
+	local entries = {
+		armoury_native_sort_header_entry(mod, layout, view, "sorting", mod:localize("inventory_sorting_inventory_label")),
+	}
+
+	if not collapsed.sorting then
+		entries[#entries + 1] = armoury_native_sort_priority_entry(mod, layout, view, "prioritize_equipped_favorites", mod:localize("prioritize_equipped_favorites_inventory_label"))
+		entries[#entries + 1] = armoury_native_sort_priority_entry(mod, layout, view, "prioritize_perfect_roll_weapons", mod:localize("prioritize_perfect_roll_weapons_inventory_label"))
+		entries[#entries + 1] = armoury_native_sort_header_entry(mod, layout, view, "native_sorting", mod:localize("armoury_native_sorting_header"))
+
+		if not collapsed.native_sorting then
+			local sort_options = view._sort_options or {}
+
+			for option_index = 1, #sort_options do
+				entries[#entries + 1] = armoury_native_sort_entry(view, sort_options[option_index], option_index)
+			end
+		end
+	end
+
+	return entries
+end
+
+local function armoury_native_sort_panel_height(entries)
+	local content_height = 0
+
+	for index = 1, #entries do
+		content_height = content_height + entries[index].size[2]
+	end
+
+	content_height = content_height + math.max(#entries - 1, 0) * ARMOURY_NATIVE_SORT_PANEL_ROW_SPACING
+
+	return math.max(ARMOURY_NATIVE_SORT_PANEL_MIN_HEIGHT, content_height + ARMOURY_NATIVE_SORT_PANEL_PADDING * 2 + 31)
+end
+
+local function rebuild_armoury_native_sort_panel(view)
+	local panel = view and view._better_inventory_armoury_native_sort_panel
+
+	if not panel or view._destroyed then
+		return false
+	end
+
+	local entries = armoury_native_sort_entries(view._better_inventory_armoury_sort_mod, view._better_inventory_armoury_sort_layout, view)
+	local panel_height = armoury_native_sort_panel_height(entries)
+
+	panel:update_grid_height(panel_height, panel_height)
+	panel:present_grid_layout(entries, ARMOURY_NATIVE_SORT_BLUEPRINTS)
+
+	return true
+end
+
 Features.update_armoury_native_sort_panel = function(view)
 	local panel = view and view._better_inventory_armoury_native_sort_panel
 
 	if not panel or view._destroyed then
 		return false
+	end
+
+	if view._better_inventory_armoury_native_sort_rebuild_pending then
+		view._better_inventory_armoury_native_sort_rebuild_pending = false
+		rebuild_armoury_native_sort_panel(view)
 	end
 
 	local x, y = armoury_native_sort_panel_position(view)
@@ -2343,7 +2456,7 @@ Features.update_armoury_native_sort_panel = function(view)
 	return true
 end
 
-Features.setup_armoury_native_sort_panel = function(mod, view, ViewElementGrid)
+Features.setup_armoury_native_sort_panel = function(mod, layout, view, ViewElementGrid)
 	if not is_armoury_requisition_view(view) or view._better_inventory_armoury_native_sort_panel then
 		return false
 	end
@@ -2393,30 +2506,15 @@ Features.setup_armoury_native_sort_panel = function(mod, view, ViewElementGrid)
 		return false
 	end
 
-	local entries = {
-		{
-			initial_content = {
-				chevron = "",
-				hotspot = {},
-				label = mod:localize("armoury_native_sorting_header"),
-			},
-			option_index = 0,
-			pass_template = panel_section_header_passes(ARMOURY_NATIVE_SORT_PANEL_WIDTH),
-			size = {
-				ARMOURY_NATIVE_SORT_PANEL_WIDTH,
-				40,
-			},
-			view = view,
-			widget_type = "better_inventory_armoury_native_sort",
-		},
-	}
-
-	for option_index = 1, #sort_options do
-		entries[#entries + 1] = armoury_native_sort_entry(view, sort_options[option_index], option_index)
-	end
-
 	view._better_inventory_armoury_native_sort_panel = panel
 	view._better_inventory_armoury_native_sort_widgets = {}
+	view._better_inventory_armoury_native_sort_collapsed = {
+		native_sorting = false,
+		sorting = false,
+	}
+	view._better_inventory_armoury_native_sort_rebuild_pending = false
+	view._better_inventory_armoury_sort_layout = layout
+	view._better_inventory_armoury_sort_mod = mod
 	registered_armoury_views[view] = true
 	if type(panel.disable_input) == "function" then
 		panel:disable_input(false)
@@ -2426,8 +2524,8 @@ Features.setup_armoury_native_sort_panel = function(mod, view, ViewElementGrid)
 		panel:set_visibility(true)
 	end
 
-	local content_height = 40 + #sort_options * ARMOURY_NATIVE_SORT_PANEL_ROW_HEIGHT + #sort_options * ARMOURY_NATIVE_SORT_PANEL_ROW_SPACING
-	local panel_height = math.max(ARMOURY_NATIVE_SORT_PANEL_HEIGHT, content_height + ARMOURY_NATIVE_SORT_PANEL_PADDING * 2 + 31)
+	local entries = armoury_native_sort_entries(mod, layout, view)
+	local panel_height = math.max(ARMOURY_NATIVE_SORT_PANEL_HEIGHT, armoury_native_sort_panel_height(entries))
 
 	panel:update_grid_height(panel_height, panel_height)
 	panel:present_grid_layout(entries, ARMOURY_NATIVE_SORT_BLUEPRINTS)

@@ -802,7 +802,7 @@ if ensure_class_method(CreditsVendorView, "_setup_sort_options") then
 
 		if is_armoury_requisition_view(view) then
 			Features.configure_armoury_sort_options(mod, view)
-			Features.setup_armoury_native_sort_panel(mod, view, ViewElementGrid)
+			Features.setup_armoury_native_sort_panel(mod, Layout, view, ViewElementGrid)
 		end
 
 		return result

@@ -586,18 +586,27 @@ def main() -> None:
         end
         """
     )
-    assert features.setup_armoury_native_sort_panel(mod, armoury_view, lua.table_from({})) is True
+    assert features.setup_armoury_native_sort_panel(mod, layout, armoury_view, lua.table_from({})) is True
     assert armoury_view._better_inventory_armoury_native_sort_panel.visible is True
-    assert globals_.TestArmouryPanel.pivot_x == 1360
+    assert globals_.TestArmouryPanel.pivot_x == 1490
     assert globals_.TestArmouryPanel.pivot_y == 100
-    assert globals_.TestArmouryPanel.entries[1].initial_content.label == "armoury_native_sorting_header"
-    assert len(globals_.TestArmouryPanel.entries) == 2
+    assert globals_.TestArmouryPanel.entries[1].initial_content.label == "inventory_sorting_inventory_label"
+    assert globals_.TestArmouryPanel.entries[4].initial_content.label == "armoury_native_sorting_header"
+    assert len(globals_.TestArmouryPanel.entries) == 5
 
     option_widget = lua.table_from({"content": lua.table_from({})})
     option_blueprint = globals_.TestArmouryPanel.blueprints.better_inventory_armoury_native_sort
-    option_blueprint.init(None, option_widget, globals_.TestArmouryPanel.entries[2])
+    option_blueprint.init(None, option_widget, globals_.TestArmouryPanel.entries[5])
     option_widget.content.hotspot.pressed_callback()
     assert armoury_view._item_grid.triggered_sort_index == 1
+
+    header_widget = lua.table_from({"content": lua.table_from({})})
+    header_blueprint = globals_.TestArmouryPanel.blueprints.better_inventory_armoury_native_sort
+    header_blueprint.init(None, header_widget, globals_.TestArmouryPanel.entries[1])
+    header_widget.content.hotspot.pressed_callback()
+    assert armoury_view._better_inventory_armoury_native_sort_rebuild_pending is True
+    features.update_armoury_native_sort_panel(armoury_view)
+    assert len(globals_.TestArmouryPanel.entries) == 1
     features.unregister_armoury_view(armoury_view)
     mod.settings.prioritize_perfect_roll_weapons = False
 
