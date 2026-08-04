@@ -177,6 +177,8 @@ def main() -> None:
         function Localize(localization_id)
             if localization_id == "loc_class_psyker_name" then
                 return "Psyker"
+			elseif localization_id == "loc_currency_name_credits" then
+				return "Ordo Dockets"
             end
 
             return localization_id
@@ -196,12 +198,22 @@ def main() -> None:
             automatic_curio_buy_stamina = false,
             automatic_curio_buy_wounds = false,
             automatic_curio_class_psyker = true,
+			curio_health_color_r = 101,
+			curio_health_color_g = 202,
+			curio_health_color_b = 77,
+			curio_toughness_color_r = 50,
+			curio_toughness_color_g = 210,
+			curio_toughness_color_b = 100,
         }
         test_mod = {
             get = function(self, setting_id)
                 return settings[setting_id]
             end,
             localize = function(self, localization_id)
+				if localization_id == "automatic_curio_currency_spent_label" then
+					return "Spent:"
+				end
+
                 return localization_id
             end,
             info = function(self, message)
@@ -277,6 +289,7 @@ def main() -> None:
 		}
 
         purchase_count = 0
+		wallet_balance = 100000
         fetched_store_count = 0
         requested_wallet_character = nil
         purchased_wallet_owner = nil
@@ -335,7 +348,7 @@ def main() -> None:
                                     owner = character_id,
                                     lastTransactionId = 7,
                                     balance = {
-                                        amount = 100000,
+										amount = wallet_balance,
                                         type = "credits",
                                     },
                                 },
@@ -454,9 +467,10 @@ def main() -> None:
     assert globals_.purchased_wallet_owner == "target-psyker"
     assert globals_.captured_notification.line_1 == "automatic_curio_purchased_title"
     assert (
-        "410, 17% automatic_curio_health, Psyker"
+        "{#color(101,202,77)}Psyker: 17% automatic_curio_health (410){#reset()}"
         in globals_.captured_notification.line_2
     )
+    assert globals_.captured_notification.line_3 == "\nSpent: 25 000 Ordo Dockets"
     assert lua.eval(
         "function(logs) for i = 1, #logs do if string.find(logs[i], 'non%-transactional field%(s%) changed') then return true end end return false end"
     )(globals_.captured_logs)
@@ -492,7 +506,23 @@ def main() -> None:
     module.update(globals_.test_mod, 6, False)
     assert globals_.purchase_count == 2
     assert globals_.captured_notification.line_1 == "automatic_curio_purchased_title"
-    assert "410, 17% automatic_curio_health, Psyker" in globals_.captured_notification.line_2
+    assert "Psyker: 17% automatic_curio_health (410)" in globals_.captured_notification.line_2
+
+    # A matching Curio remains worth reporting when its target wallet cannot
+    # cover the price. This is an eligible-but-unaffordable result, not a no-match.
+    globals_.settings.enable_automatic_curio_acquisition = True
+    globals_.settings.automatic_curio_buy_toughness = True
+    globals_.wallet_balance = 0
+    globals_.health_item.traits[1].id = "toughness_trait"
+    module.begin_morningstar_pass(globals_.test_mod)
+    module.update(globals_.test_mod, 6, False)
+    assert globals_.purchase_count == 2
+    assert globals_.captured_notification.line_1 == "automatic_curio_insufficient_title"
+    assert (
+        "{#color(50,210,100)}Psyker: 17% automatic_curio_toughness (410){#reset()}"
+        in globals_.captured_notification.line_2
+    )
+    assert globals_.captured_notification.line_3 is None
 
     print("BetterInventory automatic Curio acquisition tests passed.")
 

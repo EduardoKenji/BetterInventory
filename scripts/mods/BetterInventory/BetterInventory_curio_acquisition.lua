@@ -11,21 +11,29 @@ local RETRY_DELAY = 5
 
 local PRIMARY_TRAITS = {
 	gadget_innate_health_increase = {
+		color_default = {235, 85, 85},
+		color_prefix = "curio_health_color",
 		setting_id = "automatic_curio_buy_health",
 		label_id = "automatic_curio_health",
 		unit = "%",
 	},
 	gadget_innate_toughness_increase = {
+		color_default = {105, 200, 235},
+		color_prefix = "curio_toughness_color",
 		setting_id = "automatic_curio_buy_toughness",
 		label_id = "automatic_curio_toughness",
 		unit = "%",
 	},
 	gadget_innate_max_wounds_increase = {
+		color_default = {190, 105, 230},
+		color_prefix = "curio_wound_color",
 		setting_id = "automatic_curio_buy_wounds",
 		label_id = "automatic_curio_wounds",
 		unit = "",
 	},
 	gadget_stamina_increase = {
+		color_default = {235, 205, 80},
+		color_prefix = "curio_stamina_color",
 		setting_id = "automatic_curio_buy_stamina",
 		label_id = "automatic_curio_stamina",
 		unit = "",
@@ -772,7 +780,12 @@ local function revalidate_and_purchase(mod, token, captured)
 
 			if available < current.price then
 				log_info(mod, string.format("Skipped %s: %s balance was insufficient.", tostring(current.offer_id), current.currency))
-				return
+
+				return {
+					available = available,
+					candidate = current,
+					status = "insufficient_funds",
+				}
 			end
 
 			local store_service = Managers and Managers.data_service and Managers.data_service.store
@@ -783,10 +796,13 @@ local function revalidate_and_purchase(mod, token, captured)
 
 			processed_offer_keys[key] = "in_flight"
 
-			return call_promise(store_service, store_service.purchase_item_with_wallet, current.offer, wallet):next(function(result)
+			return call_promise(store_service, store_service.purchase_item_with_wallet, current.offer, wallet):next(function()
 				processed_offer_keys[key] = "complete"
 
-				return current, result
+				return {
+					candidate = current,
+					status = "purchased",
+				}
 			end):catch(function(error_value)
 				-- A timeout can be ambiguous after the POST reaches the backend. Keep the
 				-- session key blocked and never retry this offer automatically.
@@ -798,7 +814,7 @@ local function revalidate_and_purchase(mod, token, captured)
 	end)
 end
 
-local function notify(mod, title_id, description)
+local function notify(mod, title_id, description, final_line, final_line_color)
 	local event_manager = Managers and Managers.event
 
 	if not event_manager or type(event_manager.trigger) ~= "function" then
@@ -810,19 +826,36 @@ local function notify(mod, title_id, description)
 		line_1_color = Color.terminal_text_header(255, true),
 		line_2 = description,
 		line_2_color = Color.white(255, true),
+		line_3 = final_line,
+		line_3_color = final_line_color,
 	})
 end
 
-local function purchased_lines(mod, purchased, partial_failure)
+local function color_channel(mod, setting_id, fallback)
+	local value = tonumber(mod:get(setting_id)) or fallback
+
+	return math.floor(math.max(0, math.min(255, value)) + 0.5)
+end
+
+local function candidate_line(mod, candidate)
+	local config = candidate.primary_config
+	local defaults = config.color_default
+	local prefix = config.color_prefix
+	local red = color_channel(mod, prefix .. "_r", defaults[1])
+	local green = color_channel(mod, prefix .. "_g", defaults[2])
+	local blue = color_channel(mod, prefix .. "_b", defaults[3])
+	local value = tonumber(candidate.primary_value)
+	local shown_value = value and (value == math.floor(value) and tostring(math.floor(value)) or tostring(value)) or "?"
+	local text = string.format("%s: %s%s %s (%d)", candidate.class_name, shown_value, config.unit, mod:localize(config.label_id), candidate.item_level)
+
+	return string.format("{#color(%d,%d,%d)}%s{#reset()}", red, green, blue, text)
+end
+
+local function candidate_lines(mod, candidates, partial_failure)
 	local lines = {}
 
-	for index = 1, #purchased do
-		local candidate = purchased[index]
-		local config = candidate.primary_config
-		local value = tonumber(candidate.primary_value)
-		local shown_value = value and (value == math.floor(value) and tostring(math.floor(value)) or tostring(value)) or "?"
-
-		lines[#lines + 1] = string.format("- %d, %s%s %s, %s", candidate.item_level, shown_value, config.unit, mod:localize(config.label_id), candidate.class_name)
+	for index = 1, #candidates do
+		lines[#lines + 1] = candidate_line(mod, candidates[index])
 	end
 
 	if partial_failure then
@@ -830,6 +863,73 @@ local function purchased_lines(mod, purchased, partial_failure)
 	end
 
 	return table.concat(lines, "\n")
+end
+
+local function format_currency(value)
+	local value_string = tostring(math.floor((tonumber(value) or 0) + 0.5))
+	local formatted = ""
+	local count = 0
+
+	for index = #value_string, 1, -1 do
+		if count == 3 then
+			formatted = " " .. formatted
+			count = 0
+		end
+
+		formatted = string.sub(value_string, index, index) .. formatted
+		count = count + 1
+	end
+
+	return formatted
+end
+
+
+local function localized_currency_name(currency)
+	local localization_ids = {
+		credits = "loc_currency_name_credits",
+		marks = "loc_currency_name_marks",
+	}
+	local localization_id = localization_ids[currency]
+
+	if localization_id and type(Localize) == "function" then
+		local success, name = pcall(Localize, localization_id)
+
+		if success and type(name) == "string" and name ~= "" then
+			return name
+		end
+	end
+
+	return tostring(currency)
+end
+
+local function spending_line(mod, purchased)
+	local totals = {}
+	local currencies = {}
+
+	for index = 1, #purchased do
+		local candidate = purchased[index]
+		local currency = candidate.currency
+
+		if totals[currency] == nil then
+			currencies[#currencies + 1] = currency
+			totals[currency] = 0
+		end
+
+		totals[currency] = totals[currency] + candidate.price
+	end
+
+	table.sort(currencies)
+
+	local lines = {}
+
+	for index = 1, #currencies do
+		local currency = currencies[index]
+		local amount_and_currency = string.format("%s %s", format_currency(totals[currency]), localized_currency_name(currency))
+
+		lines[#lines + 1] = mod:localize("automatic_curio_currency_spent_label") .. " " .. amount_and_currency
+	end
+
+	return #lines > 0 and "\n" .. table.concat(lines, "\n") or nil
 end
 
 local function refresh_after_purchase()
@@ -847,6 +947,28 @@ local function refresh_after_purchase()
 	end
 end
 
+local function report_purchase_outcomes(mod, purchased, insufficient, partial_failure)
+	local reported = false
+
+	if #purchased > 0 then
+		notify(
+			mod,
+			"automatic_curio_purchased_title",
+			candidate_lines(mod, purchased, partial_failure),
+			spending_line(mod, purchased),
+			Color.terminal_corner_selected(255, true)
+		)
+		reported = true
+	end
+
+	if #insufficient > 0 then
+		notify(mod, "automatic_curio_insufficient_title", candidate_lines(mod, insufficient, false))
+		reported = true
+	end
+
+	return reported
+end
+
 local function finish_pass()
 	state.completed = true
 	state.scheduled = false
@@ -855,6 +977,7 @@ end
 
 local function purchase_candidates(mod, token, candidates)
 	local purchased = {}
+	local insufficient = {}
 	local chain = Promise.resolved()
 
 	for index = 1, #candidates do
@@ -866,8 +989,10 @@ local function purchase_candidates(mod, token, candidates)
 			end
 
 			return revalidate_and_purchase(mod, token, candidate):next(function(result)
-				if result then
-					purchased[#purchased + 1] = result
+				if result and result.status == "purchased" and result.candidate then
+					purchased[#purchased + 1] = result.candidate
+				elseif result and result.status == "insufficient_funds" and result.candidate then
+					insufficient[#insufficient + 1] = result.candidate
 				end
 			end)
 		end)
@@ -881,8 +1006,12 @@ local function purchase_candidates(mod, token, candidates)
 			-- the remaining queue inert and must not mutate the newer session state.
 			if #purchased > 0 then
 				refresh_after_purchase()
-				notify(mod, "automatic_curio_purchased_title", purchased_lines(mod, purchased, false))
-				log_info(mod, string.format("Reported %d Curio purchase(s) after the pass was cancelled.", #purchased))
+			end
+
+			report_purchase_outcomes(mod, purchased, insufficient, false)
+
+			if #purchased > 0 or #insufficient > 0 then
+				log_info(mod, string.format("Reported %d purchase(s) and %d insufficient-funds match(es) after the pass was cancelled.", #purchased, #insufficient))
 			end
 
 			return
@@ -892,8 +1021,12 @@ local function purchase_candidates(mod, token, candidates)
 
 		if #purchased > 0 then
 			refresh_after_purchase()
-			notify(mod, "automatic_curio_purchased_title", purchased_lines(mod, purchased, false))
-			log_info(mod, string.format("Purchased %d Curio(s).", #purchased))
+		end
+
+		local reported = report_purchase_outcomes(mod, purchased, insufficient, false)
+
+		if reported then
+			log_info(mod, string.format("Purchase pass completed with %d purchase(s) and %d insufficient-funds match(es).", #purchased, #insufficient))
 		else
 			notify(mod, "automatic_curio_none_title", mod:localize("automatic_curio_none_description"))
 			log_info(mod, "No eligible Curios were available after final revalidation.")
@@ -902,19 +1035,22 @@ local function purchase_candidates(mod, token, candidates)
 		if not context_is_current(mod, token) then
 			if #purchased > 0 then
 				refresh_after_purchase()
-				notify(mod, "automatic_curio_purchased_title", purchased_lines(mod, purchased, true))
-				log_info(mod, string.format("Reported %d Curio purchase(s) after a cancelled pass encountered an error: %s", #purchased, error_text(error_value)))
 			end
+
+			report_purchase_outcomes(mod, purchased, insufficient, true)
+			log_info(mod, string.format("Reported %d purchase(s) and %d insufficient-funds match(es) after a cancelled pass encountered an error: %s", #purchased, #insufficient, error_text(error_value)))
 
 			return
 		end
 
 		finish_pass()
-		refresh_after_purchase()
-
 		if #purchased > 0 then
-			notify(mod, "automatic_curio_purchased_title", purchased_lines(mod, purchased, true))
-		else
+			refresh_after_purchase()
+		end
+
+		report_purchase_outcomes(mod, purchased, insufficient, true)
+
+		if #purchased == 0 then
 			notify(mod, "automatic_curio_failed_title", mod:localize("automatic_curio_failed_description"))
 		end
 

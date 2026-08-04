@@ -279,7 +279,13 @@ local localization = {
 		en = "Wound",
 	},
 	automatic_curio_purchased_title = {
-		en = "Purchased Curios:",
+		en = "Automatic Curio Buyer - Purchased Curios:",
+	},
+	automatic_curio_insufficient_title = {
+		en = "Automatic Curio Buyer - Insufficient Ordo Dockets for:",
+	},
+	automatic_curio_currency_spent_label = {
+		en = "Spent:",
 	},
 	automatic_curio_none_title = {
 		en = "No eligible Curios found",
@@ -1284,7 +1290,9 @@ local zh_cn = {
 	automatic_curio_toughness = "韧性",
 	automatic_curio_stamina = "体力",
 	automatic_curio_wounds = "伤口",
-	automatic_curio_purchased_title = "已购买珍品：",
+	automatic_curio_purchased_title = "自动珍品购买器 - 已购买珍品：",
+	automatic_curio_insufficient_title = "自动珍品购买器 - 以下珍品的审判庭双子币不足：",
+	automatic_curio_currency_spent_label = "已花费：",
 	automatic_curio_none_title = "未找到符合条件的珍品",
 	automatic_curio_none_description = "晨星号军械库扫描未找到符合当前自动购买筛选条件的珍品。",
 	automatic_curio_failed_title = "自动珍品购买器未能完成",
