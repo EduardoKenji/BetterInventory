@@ -300,6 +300,8 @@ def main() -> None:
 				global_store_character_photo_size_percent = 100,
 				global_store_price_row_padding = 10,
 				global_store_character_info_gap = 14,
+				global_store_character_class_icon_size = 14,
+				global_store_character_name_font_size = 14,
 				brighten_armoury_item_levels = true,
 				expand_armoury_requisition_window = true,
 				armoury_requisition_target_card_width = 230,
@@ -816,8 +818,30 @@ def main() -> None:
     assert blueprint_pass(global_store_blueprint, "portrait").style.size[1] == 30
     assert blueprint_pass(global_store_blueprint, "portrait").style.offset[2] == -2
     assert blueprint_pass(global_store_blueprint, "character_info_text").style.font_size == 14
-    assert blueprint_pass(global_store_blueprint, "character_info_text").style.offset[1] == 56
+    assert blueprint_pass(global_store_blueprint, "character_info_text").style.offset[1] == 74
     assert blueprint_pass(global_store_blueprint, "character_info_text").style.offset[2] == -7
+    global_store_class_icon = blueprint_pass(global_store_blueprint, "character_class_icon_text").style
+    assert global_store_class_icon.font_size == 14
+    assert global_store_class_icon.size[1] == 18
+    assert global_store_class_icon.offset[1] == 56
+    assert global_store_class_icon.offset[2] == -7
+
+    mod.settings.global_store_character_class_icon_size = 20
+    mod.settings.global_store_character_name_font_size = 11
+    resized_character_info_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    resized_character_info_size = layout.configure_item_blueprint(
+        mod, resized_character_info_blueprint, 596, global_store_configuration
+    )
+    assert (resized_character_info_size[1], resized_character_info_size[2]) == (111, 144)
+    resized_class_icon = blueprint_pass(resized_character_info_blueprint, "character_class_icon_text").style
+    resized_character_name = blueprint_pass(resized_character_info_blueprint, "character_info_text").style
+    assert resized_class_icon.font_size == 20
+    assert resized_class_icon.size[1] == 24
+    assert resized_class_icon.offset[1] == 56
+    assert resized_character_name.font_size == 11
+    assert resized_character_name.offset[1] == 80
+    mod.settings.global_store_character_class_icon_size = 14
+    mod.settings.global_store_character_name_font_size = 14
 
     mod.settings.global_store_character_photo_size_percent = 50
     assert layout.card_height(mod, global_store_configuration) == 144
@@ -842,7 +866,7 @@ def main() -> None:
     assert enlarged_portrait.size[1] == 38
     assert enlarged_portrait.offset[1] == 12
     assert enlarged_portrait.offset[2] == -2
-    assert blueprint_pass(enlarged_photo_blueprint, "character_info_text").style.offset[1] == 64
+    assert blueprint_pass(enlarged_photo_blueprint, "character_info_text").style.offset[1] == 82
     assert blueprint_pass(enlarged_photo_blueprint, "price_text").style.offset[2] == -40
     mod.settings.global_store_character_photo_size_percent = 100
 
@@ -860,7 +884,7 @@ def main() -> None:
     mod.settings.global_store_character_info_gap = 24
     wider_info_gap_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     layout.configure_item_blueprint(mod, wider_info_gap_blueprint, 596, global_store_configuration)
-    assert blueprint_pass(wider_info_gap_blueprint, "character_info_text").style.offset[1] == 66
+    assert blueprint_pass(wider_info_gap_blueprint, "character_info_text").style.offset[1] == 84
     mod.settings.global_store_character_info_gap = 14
 
     mod.settings.columns = 2

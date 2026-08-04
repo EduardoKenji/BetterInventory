@@ -650,17 +650,37 @@ return {
 									20,
 								},
 							},
-							{
-								setting_id = "global_store_character_info_gap",
-								tooltip = "global_store_character_info_gap_tooltip",
-								type = "numeric",
-								default_value = 14,
-								range = {
-									0,
-									40,
-								},
-							},
-						},
+													{
+														setting_id = "global_store_character_info_gap",
+														tooltip = "global_store_character_info_gap_tooltip",
+														type = "numeric",
+														default_value = 14,
+														range = {
+															0,
+															40,
+														},
+													},
+													{
+														setting_id = "global_store_character_class_icon_size",
+														tooltip = "global_store_character_class_icon_size_tooltip",
+														type = "numeric",
+														default_value = 14,
+														range = {
+															8,
+															24,
+														},
+													},
+													{
+														setting_id = "global_store_character_name_font_size",
+														tooltip = "global_store_character_name_font_size_tooltip",
+														type = "numeric",
+														default_value = 14,
+														range = {
+															8,
+															20,
+														},
+													},
+										},
 					},
 				},
 			},

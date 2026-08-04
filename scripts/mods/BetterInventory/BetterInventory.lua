@@ -349,6 +349,8 @@ local function refresh_option_dependencies()
 	set_option_enabled(option_dependency_entries.global_store_character_photo_size_percent, global_store_integration_enabled and global_store_grid_enabled, global_store_reason)
 	set_option_enabled(option_dependency_entries.global_store_price_row_padding, global_store_integration_enabled and global_store_grid_enabled, global_store_reason)
 	set_option_enabled(option_dependency_entries.global_store_character_info_gap, global_store_integration_enabled and global_store_grid_enabled, global_store_reason)
+	set_option_enabled(option_dependency_entries.global_store_character_class_icon_size, global_store_integration_enabled and global_store_grid_enabled, global_store_reason)
+	set_option_enabled(option_dependency_entries.global_store_character_name_font_size, global_store_integration_enabled and global_store_grid_enabled, global_store_reason)
 	set_option_enabled(option_dependency_entries.weapon_perk_compression, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
 	set_option_enabled(option_dependency_entries.show_weapon_perk_rank_symbols, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
 	set_option_enabled(option_dependency_entries.weapon_perk_rank_icon_size, weapon_rank_symbols_enabled, mod:localize("option_requires_rank_symbols"))
@@ -518,6 +520,8 @@ local function bind_option_dependencies(options_templates)
 		"global_store_character_photo_size_percent",
 		"global_store_price_row_padding",
 		"global_store_character_info_gap",
+		"global_store_character_class_icon_size",
+		"global_store_character_name_font_size",
 		"weapon_perk_compression",
 		"show_weapon_perk_rank_symbols",
 		"weapon_perk_rank_icon_size",
@@ -742,7 +746,7 @@ function mod.on_setting_changed(setting_id)
 		end
 	end
 
-	if setting_id == "enable_grid_layout" or setting_id == "columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "weapon_extra_width_column_threshold" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_armoury_requisition_grid" or setting_id == "enable_armoury_requisition_sorting_panel" or setting_id == "brighten_armoury_item_levels" or setting_id == "three_column_weapon_name_font_size" or setting_id == "expand_armoury_requisition_window" or setting_id == "enable_global_store_integration" or setting_id == "enable_global_store_grid" or setting_id == "enable_global_store_sorting_panel" or setting_id == "global_store_character_photo_size_percent" or setting_id == "global_store_price_row_padding" or setting_id == "global_store_character_info_gap" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "single_column_blessing_icons_on_right" or setting_id == "curio_display_profile" or setting_id == "enable_inventory_options_panel_prototype" or setting_id == "enable_experimental_quick_discard" or setting_id == "quick_discard_mode" or setting_id == "quick_discard_protect_high_level_curios" or setting_id == "enable_automatic_curio_acquisition" or automatic_curio_setting or setting_id == "enable_quick_look_card_single_column_integration" or setting_id == "enable_quick_look_card_grid_integration" or setting_id == "quick_look_card_grid_stat_position" then
+	if setting_id == "enable_grid_layout" or setting_id == "columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "weapon_extra_width_column_threshold" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_armoury_requisition_grid" or setting_id == "enable_armoury_requisition_sorting_panel" or setting_id == "brighten_armoury_item_levels" or setting_id == "three_column_weapon_name_font_size" or setting_id == "expand_armoury_requisition_window" or setting_id == "enable_global_store_integration" or setting_id == "enable_global_store_grid" or setting_id == "enable_global_store_sorting_panel" or setting_id == "global_store_character_photo_size_percent" or setting_id == "global_store_price_row_padding" or setting_id == "global_store_character_info_gap" or setting_id == "global_store_character_class_icon_size" or setting_id == "global_store_character_name_font_size" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "single_column_blessing_icons_on_right" or setting_id == "curio_display_profile" or setting_id == "enable_inventory_options_panel_prototype" or setting_id == "enable_experimental_quick_discard" or setting_id == "quick_discard_mode" or setting_id == "quick_discard_protect_high_level_curios" or setting_id == "enable_automatic_curio_acquisition" or automatic_curio_setting or setting_id == "enable_quick_look_card_single_column_integration" or setting_id == "enable_quick_look_card_grid_integration" or setting_id == "quick_look_card_grid_stat_position" then
 		refresh_option_dependencies()
 	end
 
@@ -1040,6 +1044,29 @@ local function normalize_global_store_widgets(item_grid)
 				portrait_size,
 				portrait_size,
 			}
+		end
+
+		local content = widget and widget.content
+		local character_info = widget and widget.style and widget.style.character_info_text
+		local class_icon = widget and widget.style and widget.style.character_class_icon_text
+
+		if content and character_info and class_icon then
+			-- GlobalStore supplies one combined string (class glyph + name). Split
+			-- it once so BetterInventory can size the glyph and name independently.
+			-- Keep the parsed name as a marker so repeated normalization does not
+			-- strip the first word from an already-split character name.
+			local raw_info = content.character_info_text
+			local parsed_name = content.better_inventory_global_store_character_name
+
+			if type(raw_info) == "string" and raw_info ~= "" and raw_info ~= parsed_name then
+				local icon_text, name_text = string.match(raw_info, "^(%S+)%s+(.+)$")
+
+				if icon_text and name_text then
+					content.character_class_icon_text = icon_text
+					content.character_info_text = name_text
+					content.better_inventory_global_store_character_name = name_text
+				end
+			end
 		end
 	end
 end

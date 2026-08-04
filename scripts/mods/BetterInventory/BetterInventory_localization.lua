@@ -548,6 +548,18 @@ local localization = {
 	global_store_character_info_gap_tooltip = {
 		en = "Controls the horizontal space between the GlobalStore character photo and the class icon/name. The value is in pixels and applies to three-to-five-column cards.",
 	},
+	global_store_character_class_icon_size = {
+		en = "GlobalStore class icon size",
+	},
+	global_store_character_class_icon_size_tooltip = {
+		en = "Controls the GlobalStore class icon font size in three-to-five-column cards (8-24 px, default 14). The character row and card dimensions stay fixed.",
+	},
+	global_store_character_name_font_size = {
+		en = "GlobalStore character name font size",
+	},
+	global_store_character_name_font_size_tooltip = {
+		en = "Controls the GlobalStore character name font size in three-to-five-column cards (8-20 px, default 14). The character row and card dimensions stay fixed.",
+	},
 	enable_hadron_entreat_grid = {
 		en = "Hadron: Entreat Hadron",
 	},
@@ -2051,6 +2063,10 @@ zh_cn.global_store_price_row_padding = "GlobalStore 价格/物品等级行内边
 zh_cn.global_store_price_row_padding_tooltip = "控制 GlobalStore 角色信息行上方的垂直内边距。增加此值会让奥多点券和物品等级行远离角色头像，而不会改变头像大小。"
 zh_cn.global_store_character_info_gap = "GlobalStore 角色信息水平间距"
 zh_cn.global_store_character_info_gap_tooltip = "控制 GlobalStore 角色头像与职业图标/名称之间的水平间距。单位为像素，适用于三至五列卡片。"
+zh_cn.global_store_character_class_icon_size = "GlobalStore 职业图标大小"
+zh_cn.global_store_character_class_icon_size_tooltip = "控制三至五列卡片中的 GlobalStore 职业图标字号（8-24像素，默认14）。角色信息行和卡片尺寸保持不变。"
+zh_cn.global_store_character_name_font_size = "GlobalStore 角色名称字号"
+zh_cn.global_store_character_name_font_size_tooltip = "控制三至五列卡片中的 GlobalStore 角色名称字号（8-20像素，默认14）。角色信息行和卡片尺寸保持不变。"
 zh_cn.option_requires_global_store_grid = "启用 GlobalStore 网格后才能使用此选项。"
 zh_cn.option_requires_global_store_integration = "启用 GlobalStore 集成后才能使用此选项。"
 

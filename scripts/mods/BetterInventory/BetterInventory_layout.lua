@@ -29,6 +29,12 @@ local GLOBAL_STORE_CHARACTER_ROW_HEIGHT = 30
 local GLOBAL_STORE_CHARACTER_INFO_GAP_DEFAULT = 14
 local GLOBAL_STORE_CHARACTER_INFO_GAP_MIN = 0
 local GLOBAL_STORE_CHARACTER_INFO_GAP_MAX = 40
+local GLOBAL_STORE_CHARACTER_CLASS_ICON_SIZE_DEFAULT = 14
+local GLOBAL_STORE_CHARACTER_CLASS_ICON_SIZE_MIN = 8
+local GLOBAL_STORE_CHARACTER_CLASS_ICON_SIZE_MAX = 24
+local GLOBAL_STORE_CHARACTER_NAME_FONT_SIZE_DEFAULT = 14
+local GLOBAL_STORE_CHARACTER_NAME_FONT_SIZE_MIN = 8
+local GLOBAL_STORE_CHARACTER_NAME_FONT_SIZE_MAX = 20
 local GLOBAL_STORE_PRICE_ROW_PADDING_DEFAULT = 10
 local GLOBAL_STORE_PRICE_ROW_PADDING_MIN = 5
 local GLOBAL_STORE_PRICE_ROW_PADDING_MAX = 20
@@ -61,6 +67,18 @@ local function global_store_character_info_gap(mod)
 	local value = tonumber(mod:get("global_store_character_info_gap")) or GLOBAL_STORE_CHARACTER_INFO_GAP_DEFAULT
 
 	return math.max(GLOBAL_STORE_CHARACTER_INFO_GAP_MIN, math.min(GLOBAL_STORE_CHARACTER_INFO_GAP_MAX, value))
+end
+
+local function global_store_character_class_icon_size(mod)
+	local value = tonumber(mod:get("global_store_character_class_icon_size")) or GLOBAL_STORE_CHARACTER_CLASS_ICON_SIZE_DEFAULT
+
+	return math.max(GLOBAL_STORE_CHARACTER_CLASS_ICON_SIZE_MIN, math.min(GLOBAL_STORE_CHARACTER_CLASS_ICON_SIZE_MAX, value))
+end
+
+local function global_store_character_name_font_size(mod)
+	local value = tonumber(mod:get("global_store_character_name_font_size")) or GLOBAL_STORE_CHARACTER_NAME_FONT_SIZE_DEFAULT
+
+	return math.max(GLOBAL_STORE_CHARACTER_NAME_FONT_SIZE_MIN, math.min(GLOBAL_STORE_CHARACTER_NAME_FONT_SIZE_MAX, value))
 end
 
 local function global_store_extra_height(mod, configuration)
@@ -2823,6 +2841,8 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 	local global_store_multicolumn = global_store_extra > 0
 	local global_store_photo_size = global_store_multicolumn and global_store_character_photo_size(mod) or 34
 	local global_store_info_gap = global_store_multicolumn and global_store_character_info_gap(mod) or 0
+	local global_store_class_icon_size = global_store_multicolumn and global_store_character_class_icon_size(mod) or GLOBAL_STORE_CHARACTER_CLASS_ICON_SIZE_DEFAULT
+	local global_store_name_font_size = global_store_multicolumn and global_store_character_name_font_size(mod) or GLOBAL_STORE_CHARACTER_NAME_FONT_SIZE_DEFAULT
 	local global_store_price_padding = global_store_multicolumn and global_store_price_row_padding(mod) or 0
 	local global_store_price_row_offset = global_store_multicolumn and GLOBAL_STORE_CHARACTER_ROW_HEIGHT + global_store_price_padding or 0
 
@@ -2830,6 +2850,18 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 	local card_width = item_size[1]
 	local card_height = item_size[2]
 	local pass_template = table.clone(item_blueprint.pass_template)
+
+	if global_store_multicolumn and pass_by_style_id(pass_template, "character_info_text") and not pass_by_style_id(pass_template, "character_class_icon_text") then
+		local character_info_pass = pass_by_style_id(pass_template, "character_info_text")
+		local class_icon_pass = table.clone(character_info_pass)
+
+		class_icon_pass.style_id = "character_class_icon_text"
+		class_icon_pass.value_id = "character_class_icon_text"
+		class_icon_pass.value = ""
+		class_icon_pass.style = table.clone(character_info_pass.style)
+		pass_template[#pass_template + 1] = class_icon_pass
+	end
+
 	local show_rarity_tag = setting(mod, "show_rarity_tag", true)
 	local text_left = show_rarity_tag and 12 or 8
 	local quick_look_card_present = has_quick_look_card_passes(pass_template)
@@ -3127,15 +3159,35 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 			character_info.style.vertical_alignment = "bottom"
 			character_info.style.text_horizontal_alignment = "left"
 			character_info.style.text_vertical_alignment = "bottom"
-			character_info.style.font_size = 14
+			character_info.style.font_size = global_store_name_font_size
 			character_info.style.word_wrap = false
 			character_info.style.offset = {
-				text_left + (global_store_multicolumn and global_store_photo_size + global_store_info_gap or 38),
+				text_left + (global_store_multicolumn and global_store_photo_size + global_store_info_gap + global_store_class_icon_size + 4 or 38),
 				-7,
 				14,
 			}
 			character_info.style.size = {
-				math.max(40, card_width - text_left - (global_store_multicolumn and global_store_photo_size + global_store_info_gap + 6 or 108)),
+				math.max(40, card_width - text_left - (global_store_multicolumn and global_store_photo_size + global_store_info_gap + global_store_class_icon_size + 10 or 108)),
+				24,
+			}
+		end
+
+		local class_icon = pass_by_style_id(pass_template, "character_class_icon_text")
+
+		if class_icon and class_icon.style then
+			class_icon.style.horizontal_alignment = "left"
+			class_icon.style.vertical_alignment = "bottom"
+			class_icon.style.text_horizontal_alignment = "left"
+			class_icon.style.text_vertical_alignment = "bottom"
+			class_icon.style.font_size = global_store_class_icon_size
+			class_icon.style.word_wrap = false
+			class_icon.style.offset = {
+				text_left + (global_store_multicolumn and global_store_photo_size + global_store_info_gap or 38),
+				-7,
+				14,
+			}
+			class_icon.style.size = {
+				math.max(12, global_store_class_icon_size + 4),
 				24,
 			}
 		end
