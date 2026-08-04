@@ -624,11 +624,11 @@ local function bind_option_dependencies(options_templates)
 end
 
 local alfs_dmf_tabs_hooked = false
-local ALFS_TAB_CACHE_FIELD = "_better_inventory_alfs_tab_cache_v2"
 local ALFS_REGISTRATION_RETRY_INTERVAL = 0.5
 local ALFS_REGISTRATION_RETRY_LIMIT = 10
 local alfs_registration_retry_elapsed = 0
 local alfs_registration_retry_attempts = 0
+local alfs_tab_repair_logged = false
 
 local function repair_alfs_dmf_extension_tabs(alfs_mod, options_view, category)
 	if category ~= mod:get_readable_name() then
@@ -636,80 +636,59 @@ local function repair_alfs_dmf_extension_tabs(alfs_mod, options_view, category)
 	end
 
 	if type(alfs_mod.is_gen_tabs_enabled_for_mod) == "function" and not alfs_mod.is_gen_tabs_enabled_for_mod(category) then
-		if type(options_view) == "table" then
-			options_view[ALFS_TAB_CACHE_FIELD] = nil
-		end
-
 		return false
 	end
 
 	if type(alfs_mod.get) == "function" and alfs_mod:get("enable_generalised_mod_tabs") == false then
-		if type(options_view) == "table" then
-			options_view[ALFS_TAB_CACHE_FIELD] = nil
-		end
-
 		return false
 	end
 
-	local options_templates = options_view and options_view._options_templates
-	local settings = options_templates and options_templates.settings
 	local category_widgets = options_view and options_view._settings_category_widgets
 	local visible_widgets = category_widgets and category_widgets[category]
 
-	if type(settings) ~= "table" or type(visible_widgets) ~= "table" then
+	if type(visible_widgets) ~= "table" then
 		return false
 	end
 
-	local inject_state = alfs_mod._tab_inject_state
-	local state = type(inject_state) == "table" and inject_state["gen_" .. category]
-	local cache = options_view[ALFS_TAB_CACHE_FIELD]
-
-	if cache and cache.settings == settings and cache.visible_widgets == visible_widgets and cache.state == state then
-		return false
-	end
-
-	-- Alf's generalized-tab pass pairs the filtered visible-widget array with the
-	-- unfiltered template array by numeric index. BetterInventory has conditional
-	-- settings and dynamically inserted character controls, so the arrays can
-	-- diverge. Resolve each visible widget through its actual DMF entry instead.
-	local tab_by_entry = {}
+	-- Alf has already resolved the correct automatic tab onto each top-level
+	-- group template. Its later positional pass pairs the filtered widget array
+	-- with the unfiltered template array, however, so conditional and dynamic
+	-- BetterInventory controls can shift a group header into the preceding tab.
+	-- Walk the actual rendered entries in display order and inherit the tab from
+	-- their real top-level header. This must run immediately before Alf filters.
 	local current_tab
-
-	for index = 1, #settings do
-		local entry = settings[index]
-
-		if type(entry) == "table" and entry.category == category then
-			if entry.widget_type == "group_header" and entry.indentation_level == 0 then
-				-- Generalized tabs use each top-level BetterInventory section as its
-				-- own tab. Do not trust entry.tab here: Alf may already have copied
-				-- the preceding section's tab onto this filtered header.
-				current_tab = entry.display_name or entry.tab or current_tab
-			end
-
-			tab_by_entry[entry] = current_tab or entry.tab or alfs_mod.default_tab
-		end
-	end
-
 	local repaired = false
+	local repaired_count = 0
 
 	for index = 1, #visible_widgets do
 		local data = visible_widgets[index]
 		local widget = data and data.widget
 		local content = widget and widget.content
 		local entry = content and content.entry
-		local tab = entry and tab_by_entry[entry]
 
-		if tab and content.tab ~= tab then
-			content.tab = tab
-			repaired = true
+		if type(entry) == "table" then
+			if entry.widget_type == "group_header" and entry.indentation_level == 0 then
+				current_tab = entry.tab or entry.display_name or current_tab
+			end
+
+			local tab = current_tab or entry.tab or alfs_mod.default_tab
+
+			if tab and content.tab ~= tab then
+				content.tab = tab
+				repaired = true
+				repaired_count = repaired_count + 1
+			end
 		end
 	end
 
-	options_view[ALFS_TAB_CACHE_FIELD] = {
-		settings = settings,
-		state = state,
-		visible_widgets = visible_widgets,
-	}
+	if not alfs_tab_repair_logged and type(mod.info) == "function" then
+		alfs_tab_repair_logged = true
+		mod:info(
+			"Alf's tab layout verified immediately before filtering (%d widget(s), %d corrected).",
+			#visible_widgets,
+			repaired_count
+		)
+	end
 
 	return repaired
 end
@@ -721,12 +700,14 @@ local function register_alfs_dmf_extensions_compatibility()
 
 	local alfs_mod = get_mod("Alfs_DMF_Extensions")
 
-	if type(alfs_mod) ~= "table" or type(alfs_mod.inject_generalised_tabs) ~= "function" then
+	if type(alfs_mod) ~= "table" or type(alfs_mod.filter_settings) ~= "function" then
 		return false
 	end
 
-	mod:hook_safe(alfs_mod, "inject_generalised_tabs", function(options_view, category)
+	mod:hook(alfs_mod, "filter_settings", function(func, options_view, category)
 		repair_alfs_dmf_extension_tabs(alfs_mod, options_view, category)
+
+		return func(options_view, category)
 	end)
 
 	alfs_dmf_tabs_hooked = true

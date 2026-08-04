@@ -135,7 +135,7 @@ def main() -> None:
 		test_alfs_available = false
 		test_alfs = {
 			default_tab = "Other",
-			inject_generalised_tabs = function() end,
+			filter_settings = function() end,
 			is_gen_tabs_enabled_for_mod = function()
 				return test_alfs_tabs_enabled
 			end,
@@ -146,8 +146,9 @@ def main() -> None:
 			end
 		end
 		captured_options_hook = nil
-		captured_alfs_tabs_hook = nil
+		captured_alfs_filter_hook = nil
 		alfs_tabs_hook_count = 0
+		alfs_filter_calls = 0
 		captured_item_grid_init_hook = nil
 		captured_armoury_on_enter_hook = nil
 		captured_module_errors = 0
@@ -188,7 +189,10 @@ def main() -> None:
 		end
 
         function test_mod:hook(target, method, callback)
-			if method == "init" then
+			if target == test_alfs and method == "filter_settings" then
+				captured_alfs_filter_hook = callback
+				alfs_tabs_hook_count = alfs_tabs_hook_count + 1
+			elseif method == "init" then
 				captured_item_grid_init_hook = callback
 			elseif method == "on_enter" then
 				captured_armoury_on_enter_hook = callback
@@ -198,9 +202,6 @@ def main() -> None:
         function test_mod:hook_safe(target, method, callback)
             if target == test_dmf and method == "create_mod_options_settings" then
                 captured_options_hook = callback
-			elseif target == test_alfs and method == "inject_generalised_tabs" then
-				captured_alfs_tabs_hook = callback
-				alfs_tabs_hook_count = alfs_tabs_hook_count + 1
             end
         end
 
@@ -244,7 +245,7 @@ def main() -> None:
     mod.on_all_mods_loaded()
     mod.on_all_mods_loaded()
     assert globals_.alfs_tabs_hook_count == 1
-    assert globals_.captured_alfs_tabs_hook is not None
+    assert globals_.captured_alfs_filter_hook is not None
 
     alfs_scenario = lua.execute(
         """
@@ -253,6 +254,7 @@ def main() -> None:
             category = category,
             display_name = "Automatic Curio Buyer",
             indentation_level = 0,
+			tab = "Automatic Curio Buyer",
             widget_type = "group_header",
         }
         local hidden_character_mode = {
@@ -271,7 +273,7 @@ def main() -> None:
             category = category,
             display_name = "Additional inventory views",
             indentation_level = 0,
-			tab = "Automatic Curio Buyer",
+			tab = "Additional inventory views",
             widget_type = "group_header",
         }
         local hadron = {
@@ -284,7 +286,7 @@ def main() -> None:
             category = category,
             display_name = "Grid layout",
             indentation_level = 0,
-			tab = "Automatic Curio Buyer",
+			tab = "Grid layout",
             widget_type = "group_header",
         }
         local hidden_grid_toggle = {
@@ -340,7 +342,14 @@ def main() -> None:
         }
         """
     )
-    globals_.captured_alfs_tabs_hook(alfs_scenario.view, alfs_scenario.category)
+    original_alfs_filter = lua.eval(
+        "function(view, category) alfs_filter_calls = alfs_filter_calls + 1 return 'filtered' end"
+    )
+    filter_result = globals_.captured_alfs_filter_hook(
+        original_alfs_filter, alfs_scenario.view, alfs_scenario.category
+    )
+    assert filter_result == "filtered"
+    assert globals_.alfs_filter_calls == 1
     repaired_tabs = [
         alfs_scenario.visible[index].widget.content.tab
         for index in range(1, len(alfs_scenario.visible) + 1)
@@ -356,14 +365,20 @@ def main() -> None:
 
     globals_.test_alfs_tabs_enabled = False
     alfs_scenario.visible[6].widget.content.tab = None
-    globals_.captured_alfs_tabs_hook(alfs_scenario.view, alfs_scenario.category)
+    globals_.captured_alfs_filter_hook(
+        original_alfs_filter, alfs_scenario.view, alfs_scenario.category
+    )
     assert alfs_scenario.visible[6].widget.content.tab is None
     globals_.test_alfs_tabs_enabled = True
-    globals_.captured_alfs_tabs_hook(alfs_scenario.view, alfs_scenario.category)
+    globals_.captured_alfs_filter_hook(
+        original_alfs_filter, alfs_scenario.view, alfs_scenario.category
+    )
     assert alfs_scenario.visible[6].widget.content.tab == "Grid layout"
 
     alfs_scenario.visible[6].widget.content.tab = "Unchanged"
-    globals_.captured_alfs_tabs_hook(alfs_scenario.view, "Another Mod")
+    globals_.captured_alfs_filter_hook(
+        original_alfs_filter, alfs_scenario.view, "Another Mod"
+    )
     assert alfs_scenario.visible[6].widget.content.tab == "Unchanged"
 
     credits_view = lua.table_from({"__class_name": "CreditsVendorView"})
