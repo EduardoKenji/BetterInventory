@@ -6,15 +6,16 @@ param(
 $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $scriptRoot = Join-Path $projectRoot "scripts\mods\BetterInventory"
+$archiveRoot = "BetterInventory"
 $runtimeFiles = [ordered]@{
-	"BetterInventory.mod" = Join-Path $projectRoot "BetterInventory.mod"
-	"scripts/mods/BetterInventory/BetterInventory.lua" = Join-Path $scriptRoot "BetterInventory.lua"
-	"scripts/mods/BetterInventory/BetterInventory_curio_acquisition.lua" = Join-Path $scriptRoot "BetterInventory_curio_acquisition.lua"
-	"scripts/mods/BetterInventory/BetterInventory_curio_values.lua" = Join-Path $scriptRoot "BetterInventory_curio_values.lua"
-	"scripts/mods/BetterInventory/BetterInventory_data.lua" = Join-Path $scriptRoot "BetterInventory_data.lua"
-	"scripts/mods/BetterInventory/BetterInventory_features.lua" = Join-Path $scriptRoot "BetterInventory_features.lua"
-	"scripts/mods/BetterInventory/BetterInventory_layout.lua" = Join-Path $scriptRoot "BetterInventory_layout.lua"
-	"scripts/mods/BetterInventory/BetterInventory_localization.lua" = Join-Path $scriptRoot "BetterInventory_localization.lua"
+	"$archiveRoot/BetterInventory.mod" = Join-Path $projectRoot "BetterInventory.mod"
+	"$archiveRoot/scripts/mods/BetterInventory/BetterInventory.lua" = Join-Path $scriptRoot "BetterInventory.lua"
+	"$archiveRoot/scripts/mods/BetterInventory/BetterInventory_curio_acquisition.lua" = Join-Path $scriptRoot "BetterInventory_curio_acquisition.lua"
+	"$archiveRoot/scripts/mods/BetterInventory/BetterInventory_curio_values.lua" = Join-Path $scriptRoot "BetterInventory_curio_values.lua"
+	"$archiveRoot/scripts/mods/BetterInventory/BetterInventory_data.lua" = Join-Path $scriptRoot "BetterInventory_data.lua"
+	"$archiveRoot/scripts/mods/BetterInventory/BetterInventory_features.lua" = Join-Path $scriptRoot "BetterInventory_features.lua"
+	"$archiveRoot/scripts/mods/BetterInventory/BetterInventory_layout.lua" = Join-Path $scriptRoot "BetterInventory_layout.lua"
+	"$archiveRoot/scripts/mods/BetterInventory/BetterInventory_localization.lua" = Join-Path $scriptRoot "BetterInventory_localization.lua"
 }
 
 foreach ($sourcePath in $runtimeFiles.Values) {
@@ -62,8 +63,11 @@ try {
 
 	foreach ($entry in $archive.Entries) {
 		if (-not [string]::IsNullOrEmpty($entry.Name)) {
-			$normalizedPath = $entry.FullName.Replace("\", "/")
-			$entryMap[$normalizedPath] = $entry
+			if ($entry.FullName.Contains("\")) {
+				throw "Release archive entry uses a Windows path separator: $($entry.FullName)"
+			}
+
+			$entryMap[$entry.FullName] = $entry
 		}
 	}
 
@@ -75,8 +79,12 @@ try {
 		throw "Release archive has an incorrect runtime file set."
 	}
 
-	if (@($actualPaths | Where-Object { $_ -like "BetterInventory/*" }).Count -gt 0) {
-		throw "Release archive contains the forbidden outer BetterInventory directory."
+	if (@($actualPaths | Where-Object { $_ -notlike "$archiveRoot/*" }).Count -gt 0) {
+		throw "Release archive contains a file outside the required $archiveRoot/ install directory."
+	}
+
+	if (@($actualPaths | Where-Object { $_ -like "$archiveRoot/$archiveRoot/*" }).Count -gt 0) {
+		throw "Release archive contains a duplicated $archiveRoot/$archiveRoot/ directory."
 	}
 
 	foreach ($archivePath in $expectedPaths) {

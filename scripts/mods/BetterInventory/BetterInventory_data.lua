@@ -1,5 +1,36 @@
-local MOD_VERSION = "1.3.2"
+local MOD_VERSION = "1.3.4"
 local mod = get_mod("BetterInventory")
+local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
+local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
+
+local function native_operative_slot_capacity()
+	local success, settings = pcall(require, "scripts/ui/views/main_menu_view/main_menu_view_settings")
+	local capacity = success and type(settings) == "table" and tonumber(settings.max_num_characters) or nil
+
+	if not capacity or capacity < 1 then
+		return DEFAULT_OPERATIVE_SLOT_CAPACITY
+	end
+
+	return math.min(math.floor(capacity), MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY)
+end
+
+local function character_slot_setting_id(index)
+	return "automatic_curio_character_slot_" .. tostring(index)
+end
+
+local function automatic_curio_character_slot_widgets()
+	local widgets = {}
+
+	for index = 1, native_operative_slot_capacity() do
+		widgets[index] = {
+			setting_id = character_slot_setting_id(index),
+			type = "checkbox",
+			default_value = false,
+		}
+	end
+
+	return widgets
+end
 
 local function color_preset_options()
 	return {
@@ -505,13 +536,7 @@ return {
 							{
 								setting_id = "automatic_curio_characters_group",
 								type = "group",
-								sub_widgets = {
-									{
-										setting_id = "automatic_curio_character_options_placeholder",
-										type = "checkbox",
-										default_value = false,
-									},
-								},
+								sub_widgets = automatic_curio_character_slot_widgets(),
 							},
 						},
 					},

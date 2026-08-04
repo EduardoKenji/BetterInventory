@@ -433,7 +433,10 @@ local function refresh_option_dependencies()
 	end
 
 	for _, entry in ipairs(option_dependency_entries.automatic_curio_character_entries or {}) do
-		set_option_enabled(entry, automatic_curio_characters_enabled, automatic_curio_characters_reason)
+		local slot_available = entry._better_inventory_curio_character_available == true
+		local slot_reason = slot_available and automatic_curio_characters_reason or mod:localize("automatic_curio_character_slot_empty_reason")
+
+		set_option_enabled(entry, automatic_curio_characters_enabled and slot_available, slot_reason)
 	end
 
 	local automatic_health_enabled = automatic_curio_enabled and mod:get("automatic_curio_buy_health") ~= false
@@ -585,7 +588,7 @@ local function bind_option_dependencies(options_templates)
 
 		if setting_id then
 			option_dependency_entries[setting_id] = entry
-		elseif type(entry) == "table" and entry._better_inventory_curio_character_id then
+		elseif type(entry) == "table" and entry._better_inventory_curio_character_slot_index then
 			option_dependency_entries.automatic_curio_character_entries[#option_dependency_entries.automatic_curio_character_entries + 1] = entry
 		end
 	end
@@ -667,6 +670,21 @@ function mod.on_enabled()
 
 	for i = 1, #COLOR_TARGETS do
 		apply_color_preset(COLOR_TARGETS[i])
+	end
+
+	-- The character rows themselves are part of the static DMF schema. Refresh
+	-- their saved operative labels and backend-ID selection bindings before the
+	-- user can open Mod Options; live discovery will refresh them again.
+	if type(CurioAcquisition.refresh_character_options) == "function" then
+		CurioAcquisition.refresh_character_options(mod)
+	end
+
+	-- Arm discovery independently of GameplayStateRun event ordering. On a true
+	-- first install there is no persisted roster, so the pending request waits
+	-- harmlessly until the player reaches the Morningstar and then replaces the
+	-- static Character N labels without requiring a reload.
+	if type(CurioAcquisition.request_profile_discovery) == "function" then
+		CurioAcquisition.request_profile_discovery(true)
 	end
 
 	refresh_option_dependencies()
