@@ -2302,6 +2302,7 @@ def main() -> None:
 
     for _, localized_values in localization.items():
         format_string(localized_values["en"])
+        format_string(localized_values["zh-cn"])
 
     print("BetterInventory layout behavior tests passed.")
 

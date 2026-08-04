@@ -649,7 +649,14 @@ def main() -> None:
     localization = lua.execute(LOCALIZATION_PATH.read_text(encoding="utf-8"))
     defaults = {}
 
-    assert data.version == "1.1.0"
+    assert data.version == "1.2.0"
+
+    for localization_id, localized_values in localization.items():
+        simplified_chinese = localized_values["zh-cn"]
+        assert isinstance(simplified_chinese, str), localization_id
+        assert simplified_chinese.strip(), localization_id
+        assert "{" not in simplified_chinese, localization_id
+        assert "}" not in simplified_chinese, localization_id
 
     def inspect_widgets(widgets) -> None:
         for index in range(1, len(widgets) + 1):
