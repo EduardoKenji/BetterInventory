@@ -33,6 +33,8 @@ def main() -> None:
 			show_weapon_blessings = true,
 			weapon_blessing_display_mode = "icons",
 			blessing_text_item_level_separation = "four_plus",
+			auto_fit_long_blessing_names = true,
+			truncate_long_blessing_names = false,
 			show_weapon_perk_rank_symbols = false,
 			weapon_perk_rank_icon_size = 18,
 			blessing_icon_size = 34,
@@ -360,6 +362,8 @@ def main() -> None:
 		"weapon_perk_text_opacity",
 		"weapon_perk_vertical_spacing",
 		"blessing_text_item_level_separation",
+		"auto_fit_long_blessing_names",
+		"truncate_long_blessing_names",
 		"weapon_blessing_text_color_preset",
 		"weapon_blessing_text_color_r",
 		"weapon_blessing_text_color_g",
@@ -464,6 +468,8 @@ def main() -> None:
     assert entries_by_id["weapon_perk_text_opacity"].disabled is True
     assert entries_by_id["weapon_perk_vertical_spacing"].disabled is True
     assert entries_by_id["blessing_text_item_level_separation"].disabled is True
+    assert entries_by_id["auto_fit_long_blessing_names"].disabled is True
+    assert entries_by_id["truncate_long_blessing_names"].disabled is True
     assert entries_by_id["weapon_blessing_text_color_preset"].disabled is True
     assert entries_by_id["weapon_blessing_text_color_r"].disabled is True
     assert entries_by_id["weapon_blessing_text_color_g"].disabled is True
@@ -639,6 +645,8 @@ def main() -> None:
     settings.weapon_blessing_display_mode = "text"
     mod.on_setting_changed("weapon_blessing_display_mode")
     assert entries_by_id["blessing_text_item_level_separation"].disabled is False
+    assert entries_by_id["auto_fit_long_blessing_names"].disabled is False
+    assert entries_by_id["truncate_long_blessing_names"].disabled is False
     assert entries_by_id["weapon_perk_rank_icon_size"].disabled is True
     assert entries_by_id["weapon_blessing_text_color_preset"].disabled is False
     assert entries_by_id["weapon_blessing_text_color_r"].disabled is False
@@ -658,6 +666,8 @@ def main() -> None:
     settings.weapon_blessing_display_mode = "off"
     mod.on_setting_changed("weapon_blessing_display_mode")
     assert entries_by_id["blessing_text_item_level_separation"].disabled is True
+    assert entries_by_id["auto_fit_long_blessing_names"].disabled is True
+    assert entries_by_id["truncate_long_blessing_names"].disabled is True
     assert entries_by_id["weapon_perk_rank_icon_size"].disabled is True
     assert entries_by_id["weapon_blessing_text_color_preset"].disabled is True
     assert entries_by_id["weapon_blessing_text_color_r"].disabled is True
@@ -856,6 +866,8 @@ def main() -> None:
     assert defaults["highlight_equipped_items"] is True
     assert defaults["weapon_blessing_display_mode"] == "ranked_text"
     assert defaults["blessing_text_item_level_separation"] == "four_plus"
+    assert defaults["auto_fit_long_blessing_names"] is True
+    assert defaults["truncate_long_blessing_names"] is False
     assert "show_weapon_blessings" not in defaults
     assert defaults["show_weapon_perks"] is True
     assert defaults["weapon_perk_compression"] == "heavy"

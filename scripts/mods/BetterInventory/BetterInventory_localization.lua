@@ -722,6 +722,18 @@ local localization = {
 	blessing_text_item_level_separation_never = {
 		en = "Never",
 	},
+	auto_fit_long_blessing_names = {
+		en = "Auto-fit long blessing names",
+	},
+	auto_fit_long_blessing_names_tooltip = {
+		en = "Reduces only an overflowing blessing line's font size until it fits beside the item level. Enabled by default.",
+	},
+	truncate_long_blessing_names = {
+		en = "Truncate long blessing names",
+	},
+	truncate_long_blessing_names_tooltip = {
+		en = "Forces blessing names onto one line. If a name is still too wide after optional auto-fitting, its end is replaced with ... before the item-level area.",
+	},
 	blessing_icon_size = {
 		en = "Blessing icon size",
 	},
@@ -1543,6 +1555,10 @@ local zh_cn = {
 	blessing_text_item_level_separation_four_plus = "4 列或更多",
 	blessing_text_item_level_separation_five_only = "仅 5 列",
 	blessing_text_item_level_separation_never = "从不",
+	auto_fit_long_blessing_names = "自动适配过长的祝福名称",
+	auto_fit_long_blessing_names_tooltip = "仅缩小超出可用宽度的祝福文字，直到其能在物品等级旁完整显示。默认启用。",
+	truncate_long_blessing_names = "截断过长的祝福名称",
+	truncate_long_blessing_names_tooltip = "强制祝福名称单行显示。如果在可选的自动缩小后仍然过长，会在物品等级区域前用 ... 替换名称末尾。",
 	blessing_icon_size = "祝福图标大小",
 	option_requires_weapon_blessing_text = "选择祝福文字模式后才能使用此选项。",
 	weapon_blessing_text_vertical_spacing = "祝福文字垂直间距",

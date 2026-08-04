@@ -791,6 +791,18 @@ return {
 						},
 					},
 					{
+						setting_id = "auto_fit_long_blessing_names",
+						tooltip = "auto_fit_long_blessing_names_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
+						setting_id = "truncate_long_blessing_names",
+						tooltip = "truncate_long_blessing_names_tooltip",
+						type = "checkbox",
+						default_value = false,
+					},
+					{
 						setting_id = "weapon_blessing_text_vertical_spacing",
 						tooltip = "weapon_blessing_text_vertical_spacing_tooltip",
 						type = "numeric",

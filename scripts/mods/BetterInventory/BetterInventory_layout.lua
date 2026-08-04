@@ -22,6 +22,8 @@ local STORE_FOOTER_HEIGHT = 34
 local NATIVE_SINGLE_COLUMN_CONTENT_GAP = 12
 local WEAPON_PERK_COUNT = 2
 local WEAPON_BLESSING_COUNT = 2
+local BLESSING_TEXT_WIDTH_SAFETY_MARGIN = 4
+local MINIMUM_AUTO_FIT_BLESSING_FONT_SIZE = 8
 local QUICK_LOOK_CARD_DUMP_STAT_ID = "better_inventory_quick_look_card_dump_stat"
 local QUICK_LOOK_CARD_HIGHLIGHT_COLOR = {
 	255,
@@ -1241,6 +1243,8 @@ local function add_blessing_text_pass(pass_template, index, options)
 	style.size = options.size
 	style.better_inventory_max_text_width = options.size[1]
 	style.better_inventory_preferred_font_size = options.font_size
+	style.better_inventory_auto_fit_long_name = options.auto_fit_long_name == true
+	style.better_inventory_truncate_long_name = options.truncate_long_name == true
 	style.text_color = table.clone(options.text_color or DEFAULT_WEAPON_PERK_COLOR)
 
 	pass_template[#pass_template + 1] = {
@@ -1512,6 +1516,8 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 		local blessing_text_right = configuration.content_right or card_width - reserved_right
 		local blessing_text_width = math.max(40, blessing_text_right - blessing_text_left)
 		local blessing_text_color = configured_text_color(mod, "weapon_blessing_text_color", DEFAULT_WEAPON_BLESSING_TEXT_COLOR, "weapon_blessing_text_opacity")
+		local auto_fit_long_name = setting(mod, "auto_fit_long_blessing_names", true)
+		local truncate_long_name = setting(mod, "truncate_long_blessing_names", false)
 		local reserved_bottom_row = separate_item_level and (configuration.store_item and store_footer_height or item_level_row_height) or store_footer_height
 
 		blessing_text_height = WEAPON_BLESSING_COUNT * blessing_line_height + (WEAPON_BLESSING_COUNT - 1) * blessing_vertical_spacing
@@ -1534,6 +1540,8 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 				base_style = base_text_style,
 				font_size = blessing_font_size,
 				text_color = blessing_text_color,
+				auto_fit_long_name = auto_fit_long_name,
+				truncate_long_name = truncate_long_name,
 				offset = {
 					blessing_text_left,
 					y_offset,
@@ -1873,21 +1881,32 @@ local function fit_blessing_text(parent, widget, ui_renderer)
 
 		if type(value) == "string" and value ~= "" and maximum_width then
 			local preferred_font_size = style.better_inventory_preferred_font_size or style.font_size
-			local minimum_font_size = math.min(preferred_font_size, 8)
+			local minimum_font_size = math.min(preferred_font_size, MINIMUM_AUTO_FIT_BLESSING_FONT_SIZE)
+			local auto_fit_long_name = style.better_inventory_auto_fit_long_name == true
+			local truncate_long_name = style.better_inventory_truncate_long_name == true
+			local safe_width = math.max(1, maximum_width - BLESSING_TEXT_WIDTH_SAFETY_MARGIN)
 			measurement_size[2] = style.size[2] or 30
 
 			style.font_size = preferred_font_size
+			style.word_wrap = true
 			content["better_inventory_full_blessing_text_" .. i] = value
 
 			local measured_width = Text.text_width(ui_renderer, value, style, measurement_size, true)
 
-			while measured_width > maximum_width and style.font_size > minimum_font_size do
+			while auto_fit_long_name and measured_width > safe_width and style.font_size > minimum_font_size do
 				style.font_size = style.font_size - 1
 				measured_width = Text.text_width(ui_renderer, value, style, measurement_size, true)
 			end
 
-			if measured_width > maximum_width then
-				content[content_id] = Text.crop_text_width(ui_renderer, value, style, maximum_width)
+			if truncate_long_name and measured_width > safe_width then
+				content[content_id] = Text.crop_text_width(ui_renderer, value, style, safe_width)
+			end
+
+			if measured_width <= safe_width or truncate_long_name then
+				-- Darktide can wrap on glyph-boundary rounding even when the measured
+				-- width equals the style width. The small safety margin and explicit
+				-- no-wrap state keep the item-level area clear.
+				style.word_wrap = false
 			end
 		end
 	end

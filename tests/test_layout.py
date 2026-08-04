@@ -235,7 +235,7 @@ def main() -> None:
 
 		function TestMasterItems.get_item(item_id)
 			return {
-				display_name = item_id == "blessing_one" and "Surgical" or item_id == "blessing_two" and "Weight of Fire" or item_id,
+				display_name = item_id == "blessing_one" and "Surgical" or item_id == "blessing_two" and "Weight of Fire" or item_id == "blessing_long" and "Rending Shockwave" or item_id,
 				name = item_id,
 				trait = TestTraitByMasterId[item_id] or item_id,
 				icon = "icon/" .. item_id,
@@ -293,6 +293,8 @@ def main() -> None:
 				show_rarity_tag = true,
 				weapon_blessing_display_mode = "icons",
 				blessing_text_item_level_separation = "four_plus",
+				auto_fit_long_blessing_names = true,
+				truncate_long_blessing_names = false,
 				blessing_icon_size = 34,
 				weapon_blessing_text_vertical_spacing = 2,
 				weapon_blessing_text_bottom_padding = 4,
@@ -1478,8 +1480,107 @@ def main() -> None:
     assert first_rank_text.style.size[1] == four_column_text_style.size[1] - 21
     assert layout.card_height(mod) == 117
 
-    mod.settings.weapon_blessing_display_mode = "text"
+    long_blessing_element = lua.eval("table.clone")(narrow_weapon_element)
+    long_blessing_element.item.traits[2].id = "blessing_long"
     mod.settings.columns = 3
+    mod.settings.auto_fit_long_blessing_names = True
+    mod.settings.truncate_long_blessing_names = False
+    auto_fit_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, auto_fit_blueprint, 640)
+    auto_fit_styles = {
+        "display_name": blueprint_pass(auto_fit_blueprint, "display_name").style,
+        "better_inventory_blessing_text_1": blueprint_pass(
+            auto_fit_blueprint, "better_inventory_blessing_text_1"
+        ).style,
+        "better_inventory_blessing_text_2": blueprint_pass(
+            auto_fit_blueprint, "better_inventory_blessing_text_2"
+        ).style,
+    }
+    auto_fit_widget = lua.table_from(
+        {"content": lua.table_from({}), "style": lua.table_from(auto_fit_styles)}
+    )
+    auto_fit_blueprint.init(
+        None,
+        auto_fit_widget,
+        long_blessing_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        auto_fit_blueprint,
+    )
+    auto_fit_style = auto_fit_styles["better_inventory_blessing_text_2"]
+    assert auto_fit_widget.content.better_inventory_blessing_text_2 == "Rending Shockwave"
+    assert auto_fit_widget.content.better_inventory_full_blessing_text_2 == "Rending Shockwave"
+    assert auto_fit_style.font_size < 13
+    assert auto_fit_style.word_wrap is False
+
+    mod.settings.auto_fit_long_blessing_names = False
+    mod.settings.truncate_long_blessing_names = True
+    truncated_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, truncated_blueprint, 640)
+    truncated_styles = {
+        "display_name": blueprint_pass(truncated_blueprint, "display_name").style,
+        "better_inventory_blessing_text_1": blueprint_pass(
+            truncated_blueprint, "better_inventory_blessing_text_1"
+        ).style,
+        "better_inventory_blessing_text_2": blueprint_pass(
+            truncated_blueprint, "better_inventory_blessing_text_2"
+        ).style,
+    }
+    truncated_widget = lua.table_from(
+        {"content": lua.table_from({}), "style": lua.table_from(truncated_styles)}
+    )
+    truncated_blueprint.init(
+        None,
+        truncated_widget,
+        long_blessing_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        truncated_blueprint,
+    )
+    truncated_style = truncated_styles["better_inventory_blessing_text_2"]
+    assert truncated_widget.content.better_inventory_blessing_text_2.endswith("...")
+    assert truncated_widget.content.better_inventory_full_blessing_text_2 == "Rending Shockwave"
+    assert truncated_style.font_size == 13
+    assert truncated_style.word_wrap is False
+
+    mod.settings.truncate_long_blessing_names = False
+    wrapping_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, wrapping_blueprint, 640)
+    wrapping_styles = {
+        "display_name": blueprint_pass(wrapping_blueprint, "display_name").style,
+        "better_inventory_blessing_text_1": blueprint_pass(
+            wrapping_blueprint, "better_inventory_blessing_text_1"
+        ).style,
+        "better_inventory_blessing_text_2": blueprint_pass(
+            wrapping_blueprint, "better_inventory_blessing_text_2"
+        ).style,
+    }
+    wrapping_widget = lua.table_from(
+        {"content": lua.table_from({}), "style": lua.table_from(wrapping_styles)}
+    )
+    wrapping_blueprint.init(
+        None,
+        wrapping_widget,
+        long_blessing_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        wrapping_blueprint,
+    )
+    wrapping_style = wrapping_styles["better_inventory_blessing_text_2"]
+    assert wrapping_widget.content.better_inventory_blessing_text_2 == "Rending Shockwave"
+    assert wrapping_style.font_size == 13
+    assert wrapping_style.word_wrap is True
+
+    mod.settings.auto_fit_long_blessing_names = True
+    mod.settings.columns = 3
+
+    mod.settings.weapon_blessing_display_mode = "text"
     assert layout.card_height(mod, store_configuration) == 117
     mod.settings.weapon_blessing_display_mode = "off"
     assert layout.card_height(mod, store_configuration) == 110
