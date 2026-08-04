@@ -60,6 +60,7 @@ local ARMOURY_NATIVE_SORT_PANEL_RIGHT_MARGIN = 120
 local ARMOURY_NATIVE_SORT_PANEL_ROW_HEIGHT = 32
 local ARMOURY_NATIVE_SORT_PANEL_ROW_SPACING = 4
 local ARMOURY_NATIVE_SORT_PANEL_PADDING = 10
+local ARMOURY_NATIVE_SORT_CHECKBOX_LEFT_PADDING = 8
 local INVENTORY_CURIO_NATIVE_WIDTH = 530
 local INVENTORY_CURIO_NATIVE_GRID_WIDTH = 518
 local INVENTORY_CURIO_NATIVE_HEADER_HEIGHT = 250
@@ -1495,6 +1496,34 @@ local function armoury_native_sort_entry(view, option, option_index)
 	}
 end
 
+local function armoury_native_sort_toggle_passes()
+	local passes = inventory_sort_toggle_passes()
+	local checkbox_style_ids = {
+		checkbox_background = true,
+		checkbox_frame = true,
+		checkmark = true,
+	}
+
+	for index = 1, #passes do
+		local pass = passes[index]
+
+		if checkbox_style_ids[pass.style_id] then
+			local style = pass.style or {}
+			local offset = style.offset or {
+				0,
+				0,
+				0,
+			}
+
+			offset[1] = (offset[1] or 0) + ARMOURY_NATIVE_SORT_CHECKBOX_LEFT_PADDING
+			style.offset = offset
+			pass.style = style
+		end
+	end
+
+	return passes
+end
+
 local function armoury_native_sort_header_entry(mod, layout, view, section_id, label)
 	return {
 		initial_content = {
@@ -1532,7 +1561,7 @@ local function armoury_native_sort_priority_entry(mod, layout, view, setting_id,
 			label = label,
 		},
 		option_index = "priority_" .. setting_id,
-		pass_template = inventory_sort_toggle_passes(),
+		pass_template = armoury_native_sort_toggle_passes(),
 		size = {
 			ARMOURY_NATIVE_SORT_PANEL_WIDTH,
 			38,

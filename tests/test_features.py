@@ -605,6 +605,11 @@ def main() -> None:
     assert globals_.TestArmouryPanel.entries[1].initial_content.label == "inventory_sorting_inventory_label"
     assert globals_.TestArmouryPanel.entries[4].initial_content.label == "armoury_native_sorting_header"
     assert len(globals_.TestArmouryPanel.entries) == 5
+    priority_passes = globals_.TestArmouryPanel.entries[2].pass_template
+    assert priority_passes[2].style.offset[1] == 8
+    assert priority_passes[3].style.offset[1] == 8
+    assert priority_passes[4].style.offset[1] == 8
+    assert priority_passes[5].style.offset[1] == 36
 
     option_widget = lua.table_from({"content": lua.table_from({})})
     option_blueprint = globals_.TestArmouryPanel.blueprints.better_inventory_armoury_native_sort
