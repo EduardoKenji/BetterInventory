@@ -503,6 +503,12 @@ local localization = {
 	additional_views_group = {
 		en = "Additional inventory views",
 	},
+	hadron_additional_views_group = {
+		en = "Hadron",
+	},
+	armoury_exchange_views_group = {
+		en = "Armoury Exchange",
+	},
 	enable_hadron_entreat_grid = {
 		en = "Hadron: Entreat Hadron",
 	},
@@ -685,10 +691,10 @@ local localization = {
 		en = "Number of item cards per inventory row. Three is the recommended starting point.",
 	},
 	three_column_weapon_name_font_size = {
-		en = "Three-column weapon name font size",
+		en = "Armoury weapon name font size",
 	},
 	three_column_weapon_name_font_size_tooltip = {
-		en = "Controls weapon-name size when the effective grid has three columns, including the Armoury and Hadron grids. Lower values help long names stay on one line. Reopen the view after changing this value.",
+		en = "Controls weapon-name size in Armoury Exchange cards. Lower values help long names stay on one line without changing inventory cards. Reopen the Armoury view after changing this value.",
 	},
 	expand_inventory_window = {
 		en = "Expand inventory window when needed",
@@ -1975,8 +1981,10 @@ zh_cn.automatic_curio_min_item_level_tooltip = "只有显示物品等级达到�
 
 zh_cn.enable_armoury_requisition_sorting_panel = "显示军械库排序组件"
 zh_cn.enable_armoury_requisition_sorting_panel_tooltip = "在申领武器与珍品中添加可折叠的 BetterInventory 排序组件。需要开启军械库网格，默认开启。"
-zh_cn.three_column_weapon_name_font_size = "三列武器名称字号"
-zh_cn.three_column_weapon_name_font_size_tooltip = "控制有效为三列的网格中的武器名称字号，包括军械库和哈德隆。"
+zh_cn.three_column_weapon_name_font_size = "军械库武器名称字号"
+zh_cn.three_column_weapon_name_font_size_tooltip = "控制军械库卡片中的武器名称字号。调低数值可帮助较长名称保持在一行，同时不影响库存卡片。"
+zh_cn.hadron_additional_views_group = "哈德隆"
+zh_cn.armoury_exchange_views_group = "军械库交易所"
 
 for localization_id, text in pairs(zh_cn) do
 	local entry = localization[localization_id]

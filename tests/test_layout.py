@@ -1526,7 +1526,7 @@ def main() -> None:
     test_grid = lua.table_from({"_ui_resource_renderer": lua.table_from({})})
     blueprint.update_data(test_grid, name_widget, short_name_element)
 
-    assert name_widget.style.display_name.font_size == 14
+    assert name_widget.style.display_name.font_size == 16
     assert name_widget.content.display_name == "Short Name"
 
     mod.settings.columns = 4

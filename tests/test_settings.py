@@ -988,6 +988,28 @@ def main() -> None:
         data.options.widgets[index].setting_id
         for index in range(1, len(data.options.widgets) + 1)
     ]
+    additional_views_group = next(
+        data.options.widgets[index]
+        for index in range(1, len(data.options.widgets) + 1)
+        if data.options.widgets[index].setting_id == "additional_views_group"
+    )
+    additional_view_ids = [
+        additional_views_group.sub_widgets[index].setting_id
+        for index in range(1, len(additional_views_group.sub_widgets) + 1)
+    ]
+    assert additional_view_ids == ["hadron_additional_views_group", "armoury_exchange_views_group"]
+    armoury_view_group = additional_views_group.sub_widgets[2]
+    armoury_view_ids = [
+        armoury_view_group.sub_widgets[index].setting_id
+        for index in range(1, len(armoury_view_group.sub_widgets) + 1)
+    ]
+    assert armoury_view_ids == [
+        "enable_armoury_requisition_grid",
+        "enable_armoury_requisition_sorting_panel",
+        "three_column_weapon_name_font_size",
+        "expand_armoury_requisition_window",
+        "armoury_requisition_target_card_width",
+    ]
     grid_layout_index = top_level_ids.index("layout_group")
     assert top_level_ids[grid_layout_index + 1] == "single_column_layout_group"
 

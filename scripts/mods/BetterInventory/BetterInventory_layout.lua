@@ -2248,7 +2248,9 @@ local function grid_weapon_name_font_size(mod, configuration)
 	local default_font_size = numeric_setting(mod, "item_name_font_size", 16, 10, 24)
 	local maximum_columns = configuration and configuration.maximum_columns
 
-	if Layout.columns(mod, maximum_columns) == 3 then
+	-- The temporary compact-name override is intentionally scoped to Armoury
+	-- store cards. Inventory and Hadron cards retain the general grid setting.
+	if configuration and configuration.store_item == true and Layout.columns(mod, maximum_columns) == 3 then
 		return numeric_setting(mod, "three_column_weapon_name_font_size", 14, 10, 20)
 	end
 
