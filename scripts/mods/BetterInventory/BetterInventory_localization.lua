@@ -530,6 +530,12 @@ local localization = {
 	enable_global_store_sorting_panel_tooltip = {
 		en = "Adds collapsible BetterInventory Sorting and Darktide Native Sorting sections to GlobalStore's Multi-Operative Supply. Requires the GlobalStore grid option and is enabled by default.",
 	},
+	global_store_character_photo_size_percent = {
+		en = "GlobalStore character photo size (%%)",
+	},
+	global_store_character_photo_size_percent_tooltip = {
+		en = "Controls the GlobalStore character photo size in three-to-five-column cards. The character row remains below the price and item-level row; reducing this value also reduces the added card height.",
+	},
 	enable_hadron_entreat_grid = {
 		en = "Hadron: Entreat Hadron",
 	},
@@ -2027,6 +2033,8 @@ zh_cn.enable_global_store_grid = "使用 BetterInventory 网格卡片"
 zh_cn.enable_global_store_grid_tooltip = "在 GlobalStore 的多干员补给中使用 BetterInventory 响应式网格卡片。布局遵循全局两至五列设置；三列及以上会增加角色信息行，但不会拉伸武器图像。"
 zh_cn.enable_global_store_sorting_panel = "显示 GlobalStore 排序组件"
 zh_cn.enable_global_store_sorting_panel_tooltip = "在 GlobalStore 的多干员补给中添加可折叠的 BetterInventory 排序和暗潮原生排序组件。需要开启 GlobalStore 网格，默认开启。"
+zh_cn.global_store_character_photo_size_percent = "GlobalStore 角色头像大小（%%）"
+zh_cn.global_store_character_photo_size_percent_tooltip = "控制三至五列卡片中的 GlobalStore 角色头像大小。角色信息行位于价格和物品等级行下方；降低此值也会减少卡片额外高度。"
 zh_cn.option_requires_global_store_grid = "启用 GlobalStore 网格后才能使用此选项。"
 zh_cn.option_requires_global_store_integration = "启用 GlobalStore 集成后才能使用此选项。"
 

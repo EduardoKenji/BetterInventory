@@ -346,6 +346,7 @@ local function refresh_option_dependencies()
 	set_option_enabled(option_dependency_entries.enable_global_store_integration, true)
 	set_option_enabled(option_dependency_entries.enable_global_store_grid, global_store_integration_enabled, global_store_integration_reason)
 	set_option_enabled(option_dependency_entries.enable_global_store_sorting_panel, global_store_integration_enabled and global_store_grid_enabled, global_store_reason)
+	set_option_enabled(option_dependency_entries.global_store_character_photo_size_percent, global_store_integration_enabled and global_store_grid_enabled, global_store_reason)
 	set_option_enabled(option_dependency_entries.weapon_perk_compression, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
 	set_option_enabled(option_dependency_entries.show_weapon_perk_rank_symbols, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
 	set_option_enabled(option_dependency_entries.weapon_perk_rank_icon_size, weapon_rank_symbols_enabled, mod:localize("option_requires_rank_symbols"))
@@ -512,6 +513,7 @@ local function bind_option_dependencies(options_templates)
 		"enable_global_store_integration",
 		"enable_global_store_grid",
 		"enable_global_store_sorting_panel",
+		"global_store_character_photo_size_percent",
 		"weapon_perk_compression",
 		"show_weapon_perk_rank_symbols",
 		"weapon_perk_rank_icon_size",
@@ -736,7 +738,7 @@ function mod.on_setting_changed(setting_id)
 		end
 	end
 
-	if setting_id == "enable_grid_layout" or setting_id == "columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "weapon_extra_width_column_threshold" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_armoury_requisition_grid" or setting_id == "enable_armoury_requisition_sorting_panel" or setting_id == "brighten_armoury_item_levels" or setting_id == "three_column_weapon_name_font_size" or setting_id == "expand_armoury_requisition_window" or setting_id == "enable_global_store_integration" or setting_id == "enable_global_store_grid" or setting_id == "enable_global_store_sorting_panel" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "single_column_blessing_icons_on_right" or setting_id == "curio_display_profile" or setting_id == "enable_inventory_options_panel_prototype" or setting_id == "enable_experimental_quick_discard" or setting_id == "quick_discard_mode" or setting_id == "quick_discard_protect_high_level_curios" or setting_id == "enable_automatic_curio_acquisition" or automatic_curio_setting or setting_id == "enable_quick_look_card_single_column_integration" or setting_id == "enable_quick_look_card_grid_integration" or setting_id == "quick_look_card_grid_stat_position" then
+	if setting_id == "enable_grid_layout" or setting_id == "columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "weapon_extra_width_column_threshold" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_armoury_requisition_grid" or setting_id == "enable_armoury_requisition_sorting_panel" or setting_id == "brighten_armoury_item_levels" or setting_id == "three_column_weapon_name_font_size" or setting_id == "expand_armoury_requisition_window" or setting_id == "enable_global_store_integration" or setting_id == "enable_global_store_grid" or setting_id == "enable_global_store_sorting_panel" or setting_id == "global_store_character_photo_size_percent" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "single_column_blessing_icons_on_right" or setting_id == "curio_display_profile" or setting_id == "enable_inventory_options_panel_prototype" or setting_id == "enable_experimental_quick_discard" or setting_id == "quick_discard_mode" or setting_id == "quick_discard_protect_high_level_curios" or setting_id == "enable_automatic_curio_acquisition" or automatic_curio_setting or setting_id == "enable_quick_look_card_single_column_integration" or setting_id == "enable_quick_look_card_grid_integration" or setting_id == "quick_look_card_grid_stat_position" then
 		refresh_option_dependencies()
 	end
 
@@ -1022,11 +1024,17 @@ local function normalize_global_store_widgets(item_grid)
 
 		if portrait then
 			-- GlobalStore's callback expands the portrait for its native full-width
-			-- cards. Keep it compact after BetterInventory remaps the card into a
-			-- three-column grid.
+			-- cards. Keep it at the configured size after BetterInventory remaps
+			-- the card into a compact grid.
+			local portrait_size = 34
+
+			if Layout.columns and Layout.columns(mod, 5) >= 3 and Layout.global_store_character_photo_size then
+				portrait_size = Layout.global_store_character_photo_size(mod)
+			end
+
 			portrait.size = {
-				34,
-				34,
+				portrait_size,
+				portrait_size,
 			}
 		end
 	end

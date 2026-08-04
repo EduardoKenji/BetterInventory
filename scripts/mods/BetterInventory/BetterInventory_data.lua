@@ -630,6 +630,16 @@ return {
 								type = "checkbox",
 								default_value = true,
 							},
+							{
+								setting_id = "global_store_character_photo_size_percent",
+								tooltip = "global_store_character_photo_size_percent_tooltip",
+								type = "numeric",
+								default_value = 100,
+								range = {
+									50,
+									100,
+								},
+							},
 						},
 					},
 				},

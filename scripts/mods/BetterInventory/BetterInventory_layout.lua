@@ -19,7 +19,10 @@ local DEFAULT_PERK_RANK_SIZE = 17
 local DEFAULT_BLESSING_ICON_SIZE = 36
 local PERK_RANK_GAP = 3
 local STORE_FOOTER_HEIGHT = 34
-local GLOBAL_STORE_MULTICOLUMN_EXTRA_HEIGHT = 24
+local GLOBAL_STORE_CHARACTER_PHOTO_BASE_SIZE = 30
+local GLOBAL_STORE_CHARACTER_PHOTO_MIN_PERCENT = 50
+local GLOBAL_STORE_CHARACTER_PHOTO_MAX_PERCENT = 100
+local GLOBAL_STORE_CHARACTER_ROW_GAP = 4
 local NATIVE_SINGLE_COLUMN_CONTENT_GAP = 12
 local WEAPON_PERK_COUNT = 2
 local WEAPON_BLESSING_COUNT = 2
@@ -29,13 +32,25 @@ local QUICK_LOOK_CARD_DUMP_STAT_ID = "better_inventory_quick_look_card_dump_stat
 local WEAPON_MODIFIER_TITLE_PREFIX = "better_inventory_weapon_modifier_title_"
 local WEAPON_MODIFIER_VALUE_PREFIX = "better_inventory_weapon_modifier_value_"
 
+local function global_store_character_photo_percent(mod)
+	local value = tonumber(mod:get("global_store_character_photo_size_percent")) or GLOBAL_STORE_CHARACTER_PHOTO_MAX_PERCENT
+
+	return math.max(GLOBAL_STORE_CHARACTER_PHOTO_MIN_PERCENT, math.min(GLOBAL_STORE_CHARACTER_PHOTO_MAX_PERCENT, value))
+end
+
+local function global_store_character_photo_size(mod)
+	return math.max(12, math.floor(GLOBAL_STORE_CHARACTER_PHOTO_BASE_SIZE * global_store_character_photo_percent(mod) / 100 + 0.5))
+end
+
 local function global_store_extra_height(mod, configuration)
 	if not configuration or configuration.global_store ~= true or type(Layout.columns) ~= "function" then
 		return 0
 	end
 
-	return Layout.columns(mod, configuration.maximum_columns) >= 3 and GLOBAL_STORE_MULTICOLUMN_EXTRA_HEIGHT or 0
+	return Layout.columns(mod, configuration.maximum_columns) >= 3 and global_store_character_photo_size(mod) + GLOBAL_STORE_CHARACTER_ROW_GAP or 0
 end
+
+Layout.global_store_character_photo_size = global_store_character_photo_size
 local QUICK_LOOK_CARD_HIGHLIGHT_COLOR = {
 	255,
 	255,
@@ -1018,7 +1033,7 @@ local function quick_look_card_grid_position(mod)
 	return "above_power"
 end
 
-local function add_quick_look_card_grid_pass(mod, pass_template, card_width, text_left, position)
+local function add_quick_look_card_grid_pass(mod, pass_template, card_width, text_left, position, bottom_offset)
 	local font_size = numeric_setting(mod, "quick_look_card_grid_font_size", 13, 8, 20)
 	local bottom_padding = numeric_setting(mod, "quick_look_card_grid_bottom_padding", 26, 20, 60)
 	local lowest_modifier_color = configured_text_color(mod, "weapon_modifier_lowest_color", QUICK_LOOK_CARD_HIGHLIGHT_COLOR, "weapon_modifier_lowest_color_opacity", 80)
@@ -1069,7 +1084,7 @@ local function add_quick_look_card_grid_pass(mod, pass_template, card_width, tex
 		style.text_vertical_alignment = "bottom"
 		style.offset = {
 			-8,
-			-bottom_padding,
+			-(bottom_padding + (bottom_offset or 0)),
 			12,
 		}
 		style.size = {
@@ -2781,6 +2796,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 	local global_store = configuration.global_store == true
 	local global_store_extra = global_store_extra_height(mod, configuration)
 	local global_store_multicolumn = global_store_extra > 0
+	local global_store_photo_size = global_store_multicolumn and global_store_character_photo_size(mod) or 34
 
 	local item_size = Layout.item_size(mod, grid_width, configuration.maximum_columns, configuration)
 	local card_width = item_size[1]
@@ -2812,7 +2828,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 	disable_quick_look_card_passes(pass_template)
 
 	if quick_look_card_integration then
-		add_quick_look_card_grid_pass(mod, pass_template, card_width, text_left, quick_look_card_position)
+		add_quick_look_card_grid_pass(mod, pass_template, card_width, text_left, quick_look_card_position, global_store_multicolumn and global_store_extra or 0)
 	end
 
 	local icon = pass_by_style_id(pass_template, "icon")
@@ -2961,6 +2977,11 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 		-- Raise the rating above that footer when the readability option is on.
 		item_level.style.offset[3] = 11
 	end
+	if global_store_multicolumn and item_level and item_level.style then
+		-- Keep the rating in the price row; the character row occupies the new
+		-- space below it.
+		item_level.style.offset[2] = -(global_store_extra + 5)
+	end
 	preserve_visibility(item_level, function(content)
 		return not is_curio(item_from_content(content)) or show_curio_item_level
 	end)
@@ -2977,7 +2998,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 			}
 			wallet_icon.style.offset = global_store_multicolumn and {
 				text_left,
-				-7,
+				-(global_store_extra + 7),
 				12,
 			} or global_store and {
 				-8,
@@ -3000,7 +3021,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 			text_vertical_alignment = "bottom",
 			offset = global_store_multicolumn and {
 				text_left + 27,
-				-5,
+				-(global_store_extra + 5),
 				12,
 			} or global_store and {
 				-30,
@@ -3030,7 +3051,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 			text_vertical_alignment = "bottom",
 			offset = global_store_multicolumn and {
 				text_left,
-				-5,
+				-(global_store_extra + 5),
 				12,
 			} or global_store and {
 				-30,
@@ -3061,12 +3082,12 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 			portrait.style.horizontal_alignment = "left"
 			portrait.style.vertical_alignment = "bottom"
 			portrait.style.size = {
-				global_store_multicolumn and 30 or 34,
-				global_store_multicolumn and 30 or 34,
+				global_store_photo_size,
+				global_store_photo_size,
 			}
 			portrait.style.offset = {
 				text_left,
-				global_store_multicolumn and -(global_store_extra + 3) or -2,
+				-2,
 				14,
 			}
 		end
@@ -3081,12 +3102,12 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 			character_info.style.font_size = 14
 			character_info.style.word_wrap = false
 			character_info.style.offset = {
-				text_left + (global_store_multicolumn and 34 or 38),
-				global_store_multicolumn and -(global_store_extra + 7) or -7,
+				text_left + (global_store_multicolumn and global_store_photo_size + 4 or 38),
+				-7,
 				14,
 			}
 			character_info.style.size = {
-				math.max(40, card_width - text_left - (global_store_multicolumn and 40 or 108)),
+				math.max(40, card_width - text_left - (global_store_multicolumn and global_store_photo_size + 10 or 108)),
 				24,
 			}
 		end
