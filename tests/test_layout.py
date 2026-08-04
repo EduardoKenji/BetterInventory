@@ -280,7 +280,7 @@ def main() -> None:
 				enable_quick_look_card_single_column_integration = true,
 				enable_quick_look_card_grid_integration = true,
 				quick_look_card_single_column_font_size = 14,
-				quick_look_card_single_column_label_value_gap = 6,
+				quick_look_card_single_column_label_value_gap = 1,
 				quick_look_card_single_column_horizontal_position = 79,
 				quick_look_card_single_column_vertical_position = 93,
 				quick_look_card_grid_stat_position = "above_power",
@@ -1115,9 +1115,9 @@ def main() -> None:
         == "better_inventory_weapon_modifier_title_1"
         for index in range(1, len(qlc_native_blueprint.pass_template) + 1)
     )
-    assert (qlc_stat_style.offset[1], qlc_stat_style.offset[2]) == (273, 102)
+    assert (qlc_stat_style.offset[1], qlc_stat_style.offset[2]) == (277, 102)
     assert (qlc_stat_style.size[1], qlc_stat_style.size[2]) == (42, 17)
-    assert qlc_value_style.offset[1] - qlc_stat_style.offset[1] >= qlc_stat_style.size[1] + 6
+    assert qlc_value_style.offset[1] - qlc_stat_style.offset[1] >= qlc_stat_style.size[1] + 1
     for index in range(1, 6):
         title_style = (
             qlc_stat_style
@@ -1131,7 +1131,7 @@ def main() -> None:
             qlc_native_blueprint,
             f"better_inventory_weapon_modifier_value_{index}",
         ).style
-        assert value_style.offset[1] - title_style.offset[1] >= title_style.size[1] + 6
+        assert value_style.offset[1] - title_style.offset[1] >= title_style.size[1] + 1
 
     mod.settings.quick_look_card_single_column_label_value_gap = 0
     tight_gap_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
@@ -1143,7 +1143,7 @@ def main() -> None:
         tight_gap_blueprint, "better_inventory_weapon_modifier_value_2"
     ).style
     assert tight_value_style.offset[1] - tight_title_style.offset[1] == tight_title_style.size[1]
-    mod.settings.quick_look_card_single_column_label_value_gap = 6
+    mod.settings.quick_look_card_single_column_label_value_gap = 1
     assert qlc_stat_style.font_size == 14
     assert qlc_stat_style.vertical_alignment == "top"
     assert qlc_stat_style.drop_shadow is True

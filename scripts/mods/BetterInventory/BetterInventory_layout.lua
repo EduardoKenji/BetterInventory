@@ -1097,7 +1097,7 @@ local function configure_native_quick_look_card_passes(mod, pass_template, card_
 	-- previous fixed offset provided. Anchor the value after the complete title
 	-- box so the label and value cannot overlap at any supported font size. The
 	-- user-facing gap remains adjustable for tighter cards.
-	local title_value_gap = numeric_setting(mod, "quick_look_card_single_column_label_value_gap", 6, 0, 16)
+	local title_value_gap = numeric_setting(mod, "quick_look_card_single_column_label_value_gap", 1, 0, 16)
 	local value_offset = title_width + title_value_gap
 	local block_width = column_step * 2 + value_offset + value_width
 	local block_height = row_step + line_height

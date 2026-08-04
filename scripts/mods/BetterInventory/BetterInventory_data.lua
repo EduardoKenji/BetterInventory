@@ -728,7 +728,7 @@ return {
 						setting_id = "quick_look_card_single_column_label_value_gap",
 						tooltip = "quick_look_card_single_column_label_value_gap_tooltip",
 						type = "numeric",
-						default_value = 6,
+						default_value = 1,
 						range = {
 							0,
 							16,

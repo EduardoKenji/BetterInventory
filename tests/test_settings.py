@@ -25,7 +25,7 @@ def main() -> None:
 			enable_quick_look_card_single_column_integration = true,
 			enable_quick_look_card_grid_integration = true,
 			quick_look_card_single_column_font_size = 14,
-			quick_look_card_single_column_label_value_gap = 6,
+			quick_look_card_single_column_label_value_gap = 1,
 			quick_look_card_single_column_horizontal_position = 79,
 			quick_look_card_single_column_vertical_position = 93,
 			quick_look_card_grid_stat_position = "above_power",
@@ -1034,7 +1034,7 @@ def main() -> None:
     assert defaults["enable_grid_layout"] is True
     assert defaults["enable_quick_look_card_single_column_integration"] is True
     assert defaults["quick_look_card_single_column_font_size"] == 14
-    assert defaults["quick_look_card_single_column_label_value_gap"] == 6
+    assert defaults["quick_look_card_single_column_label_value_gap"] == 1
     assert defaults["quick_look_card_single_column_horizontal_position"] == 79
     assert defaults["quick_look_card_single_column_vertical_position"] == 93
     assert defaults["enable_quick_look_card_grid_integration"] is True
