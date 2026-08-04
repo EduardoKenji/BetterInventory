@@ -515,6 +515,12 @@ local localization = {
 	enable_armoury_requisition_grid_tooltip = {
 		en = "Uses Better Inventory cards in Requisition Weapons & Curios. The effective layout is capped at three columns; Brunt's Armoury and Multi-Operative Supply are not changed.",
 	},
+	enable_armoury_requisition_sorting_panel = {
+		en = "Show Armoury sorting widget",
+	},
+	enable_armoury_requisition_sorting_panel_tooltip = {
+		en = "Adds BetterInventory's collapsible Sorting and Darktide Native Sorting widget to Requisition Weapons & Curios. Requires the Armoury grid option and is enabled by default.",
+	},
 	expand_armoury_requisition_window = {
 		en = "Expand Armoury Requisition window",
 	},
@@ -677,6 +683,12 @@ local localization = {
 	},
 	columns_tooltip = {
 		en = "Number of item cards per inventory row. Three is the recommended starting point.",
+	},
+	three_column_weapon_name_font_size = {
+		en = "Three-column weapon name font size",
+	},
+	three_column_weapon_name_font_size_tooltip = {
+		en = "Controls weapon-name size when the effective grid has three columns, including the Armoury and Hadron grids. Lower values help long names stay on one line. Reopen the view after changing this value.",
 	},
 	expand_inventory_window = {
 		en = "Expand inventory window when needed",
@@ -1960,6 +1972,11 @@ zh_cn.automatic_curio_character_slot_unavailable = "（当前未找到）"
 zh_cn.automatic_curio_character_slot_empty_reason = "当前没有角色分配到此栏位。BetterInventory 会在进入晨星号后刷新角色列表，并在枢纽中定期刷新。"
 zh_cn.enable_automatic_curio_acquisition_tooltip = "每次进入晨星号后，对所有角色的军械库交易所执行一次扫描，并自动购买符合物品等级、主要属性数值、类型和目标筛选条件的所有珍品。目标可按职业或单个角色选择。此功能会在没有确认提示的情况下花费审判庭双子币。自动丢弃会先完成，且符合获取规则的珍品会在以后的自动丢弃流程中保持受保护状态。"
 zh_cn.automatic_curio_min_item_level_tooltip = "只有显示物品等级达到或超过此值的军械库珍品才符合条件。生命和韧性珍品还必须达到对应的最低主要属性数值。货币充足时，会购买每个已启用目标的所有匹配商品。默认值为 410。"
+
+zh_cn.enable_armoury_requisition_sorting_panel = "显示军械库排序组件"
+zh_cn.enable_armoury_requisition_sorting_panel_tooltip = "在申领武器与珍品中添加可折叠的 BetterInventory 排序组件。需要开启军械库网格，默认开启。"
+zh_cn.three_column_weapon_name_font_size = "三列武器名称字号"
+zh_cn.three_column_weapon_name_font_size_tooltip = "控制有效为三列的网格中的武器名称字号，包括军械库和哈德隆。"
 
 for localization_id, text in pairs(zh_cn) do
 	local entry = localization[localization_id]

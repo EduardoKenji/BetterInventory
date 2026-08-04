@@ -1,4 +1,4 @@
-local MOD_VERSION = "1.4.0"
+local MOD_VERSION = "1.4.1"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
@@ -559,6 +559,12 @@ return {
 						default_value = true,
 					},
 					{
+						setting_id = "enable_armoury_requisition_sorting_panel",
+						tooltip = "enable_armoury_requisition_sorting_panel_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
 						setting_id = "expand_armoury_requisition_window",
 						tooltip = "expand_armoury_requisition_window_tooltip",
 						type = "checkbox",
@@ -594,6 +600,16 @@ return {
 						range = {
 							2,
 							5,
+						},
+					},
+					{
+						setting_id = "three_column_weapon_name_font_size",
+						tooltip = "three_column_weapon_name_font_size_tooltip",
+						type = "numeric",
+						default_value = 14,
+						range = {
+							10,
+							20,
 						},
 					},
 					{

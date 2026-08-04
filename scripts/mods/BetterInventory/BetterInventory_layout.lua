@@ -2244,11 +2244,22 @@ local function fit_weapon_perks(parent, widget, ui_renderer)
 	end
 end
 
+local function grid_weapon_name_font_size(mod, configuration)
+	local default_font_size = numeric_setting(mod, "item_name_font_size", 16, 10, 24)
+	local maximum_columns = configuration and configuration.maximum_columns
+
+	if Layout.columns(mod, maximum_columns) == 3 then
+		return numeric_setting(mod, "three_column_weapon_name_font_size", 14, 10, 20)
+	end
+
+	return default_font_size
+end
+
 local function configure_card_content(mod, item_blueprint, configuration)
 	configuration = configuration or {}
 	local original_init = item_blueprint.init
 	local original_update_data = item_blueprint.update_data
-	local preferred_font_size = configuration.native_single_column and numeric_setting(mod, "single_column_weapon_name_font_size", 20, 10, 24) or numeric_setting(mod, "item_name_font_size", 16, 10, 24)
+	local preferred_font_size = configuration.native_single_column and numeric_setting(mod, "single_column_weapon_name_font_size", 20, 10, 24) or grid_weapon_name_font_size(mod, configuration)
 	local minimum_font_size = numeric_setting(mod, "minimum_item_name_font_size", 12, 8, 20)
 	local append_mark_to_name = setting(mod, "append_mark_to_name", true)
 	local blessing_display_mode = weapon_blessing_display_mode(mod)
@@ -2531,7 +2542,7 @@ Layout.card_height = function(mod, configuration)
 		return manual_height
 	end
 
-	local item_name_font_size = configuration.native_single_column and numeric_setting(mod, "single_column_weapon_name_font_size", 20, 10, 24) or numeric_setting(mod, "item_name_font_size", 16, 10, 24)
+	local item_name_font_size = configuration.native_single_column and numeric_setting(mod, "single_column_weapon_name_font_size", 20, 10, 24) or grid_weapon_name_font_size(mod, configuration)
 	local secondary_font_size = numeric_setting(mod, "secondary_text_font_size", 13, 8, 20)
 	local expertise_font_size = numeric_setting(mod, "expertise_font_size", 20, 10, 28)
 	local name_row_height = configuration.native_single_column and 25 + math.max(0, item_name_font_size - 16) or math.max(25, item_name_font_size + 5)
@@ -2829,7 +2840,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 	local display_name = pass_by_style_id(pass_template, "display_name")
 
 	configure_text_pass(display_name, {
-		font_size = numeric_setting(mod, "item_name_font_size", 16, 10, 24),
+		font_size = grid_weapon_name_font_size(mod, configuration),
 		offset = {
 			display_name_left,
 			7,
@@ -3056,7 +3067,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 	set_height(pass_by_style_id(pass_template, "inner_shadow"), card_height)
 	set_height(pass_by_style_id(pass_template, "inner_highlight"), card_height)
 
-	configure_card_content(mod, item_blueprint)
+	configure_card_content(mod, item_blueprint, configuration)
 
 	return item_size
 end

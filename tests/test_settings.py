@@ -21,6 +21,7 @@ def main() -> None:
         r"""
         settings = {
 			columns = 3,
+			three_column_weapon_name_font_size = 14,
             enable_grid_layout = true,
 			enable_quick_look_card_single_column_integration = true,
 			enable_quick_look_card_grid_integration = true,
@@ -36,6 +37,7 @@ def main() -> None:
 			weapon_modifier_lowest_color_opacity = 80,
 			enable_hadron_entreat_grid = true,
 			enable_armoury_requisition_grid = true,
+			enable_armoury_requisition_sorting_panel = true,
 			expand_armoury_requisition_window = true,
 			armoury_requisition_target_card_width = 230,
 			automatic_card_height = true,
@@ -374,6 +376,7 @@ def main() -> None:
 
     option_ids = (
         "columns",
+		"three_column_weapon_name_font_size",
         "expand_inventory_window",
 		"weapon_extra_width_column_threshold",
 		"five_column_weapon_extra_width",
@@ -384,6 +387,7 @@ def main() -> None:
         "card_height",
         "enable_hadron_entreat_grid",
         "enable_armoury_requisition_grid",
+		"enable_armoury_requisition_sorting_panel",
 		"expand_armoury_requisition_window",
 		"armoury_requisition_target_card_width",
 		"weapon_perk_compression",
@@ -512,10 +516,12 @@ def main() -> None:
     entries_by_id = dict(zip(option_ids, entries))
 
     assert entries_by_id["columns"].disabled is False
+    assert entries_by_id["three_column_weapon_name_font_size"].disabled is False
     assert entries_by_id["automatic_card_height"].disabled is False
     assert entries_by_id["card_height"].disabled is True
     assert entries_by_id["enable_hadron_entreat_grid"].disabled is False
     assert entries_by_id["enable_armoury_requisition_grid"].disabled is False
+    assert entries_by_id["enable_armoury_requisition_sorting_panel"].disabled is False
     assert entries_by_id["expand_armoury_requisition_window"].disabled is False
     assert entries_by_id["armoury_requisition_target_card_width"].disabled is False
     assert entries_by_id["expand_curio_inventory_window"].disabled is False
@@ -790,10 +796,12 @@ def main() -> None:
 
     settings.enable_armoury_requisition_grid = False
     mod.on_setting_changed("enable_armoury_requisition_grid")
+    assert entries_by_id["enable_armoury_requisition_sorting_panel"].disabled is True
     assert entries_by_id["expand_armoury_requisition_window"].disabled is True
     assert entries_by_id["armoury_requisition_target_card_width"].disabled is True
     settings.enable_armoury_requisition_grid = True
     mod.on_setting_changed("enable_armoury_requisition_grid")
+    assert entries_by_id["enable_armoury_requisition_sorting_panel"].disabled is False
     assert entries_by_id["expand_armoury_requisition_window"].disabled is False
     assert entries_by_id["armoury_requisition_target_card_width"].disabled is False
 
@@ -917,7 +925,7 @@ def main() -> None:
     localization = lua.execute(LOCALIZATION_PATH.read_text(encoding="utf-8"))
     defaults = {}
 
-    assert data.version == "1.4.0"
+    assert data.version == "1.4.1"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
@@ -1032,6 +1040,7 @@ def main() -> None:
     assert curio_content_ids.index("curio_secondary_text_color_group") > curio_content_ids.index("curio_stamina_color_group")
 
     assert defaults["enable_grid_layout"] is True
+    assert defaults["three_column_weapon_name_font_size"] == 14
     assert defaults["enable_quick_look_card_single_column_integration"] is True
     assert defaults["quick_look_card_single_column_font_size"] == 14
     assert defaults["quick_look_card_single_column_label_value_gap"] == 1
@@ -1050,6 +1059,7 @@ def main() -> None:
     assert defaults["single_column_blessing_icons_on_right"] is True
     assert defaults["enable_hadron_entreat_grid"] is True
     assert defaults["enable_armoury_requisition_grid"] is True
+    assert defaults["enable_armoury_requisition_sorting_panel"] is True
     assert defaults["expand_armoury_requisition_window"] is True
     assert defaults["armoury_requisition_target_card_width"] == 230
     assert defaults["automatic_card_height"] is True

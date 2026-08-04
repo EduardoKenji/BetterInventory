@@ -276,6 +276,7 @@ def main() -> None:
 			test_mod = {
             settings = {
 				columns = 3,
+				three_column_weapon_name_font_size = 14,
 				enable_grid_layout = true,
 				enable_quick_look_card_single_column_integration = true,
 				enable_quick_look_card_grid_integration = true,
@@ -1525,8 +1526,17 @@ def main() -> None:
     test_grid = lua.table_from({"_ui_resource_renderer": lua.table_from({})})
     blueprint.update_data(test_grid, name_widget, short_name_element)
 
-    assert name_widget.style.display_name.font_size == 16
+    assert name_widget.style.display_name.font_size == 14
     assert name_widget.content.display_name == "Short Name"
+
+    mod.settings.columns = 4
+    four_column_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, four_column_blueprint, 640)
+    assert blueprint_pass(four_column_blueprint, "display_name").style.font_size == 16
+    armoury_three_column_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, armoury_three_column_blueprint, 640, store_configuration)
+    assert blueprint_pass(armoury_three_column_blueprint, "display_name").style.font_size == 14
+    mod.settings.columns = 3
 
     narrow_weapon_widget = lua.table_from(
         {
