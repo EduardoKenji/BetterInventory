@@ -1,4 +1,4 @@
-local MOD_VERSION = "1.3.0"
+local MOD_VERSION = "1.3.1"
 local mod = get_mod("BetterInventory")
 
 local function color_preset_options()
@@ -656,6 +656,28 @@ return {
 				},
 			},
 			{
+				setting_id = "single_column_layout_group",
+				type = "group",
+				sub_widgets = {
+					{
+						setting_id = "single_column_weapon_name_font_size",
+						tooltip = "single_column_weapon_name_font_size_tooltip",
+						type = "numeric",
+						default_value = 20,
+						range = {
+							10,
+							24,
+						},
+					},
+					{
+						setting_id = "single_column_blessing_icons_on_right",
+						tooltip = "single_column_blessing_icons_on_right_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+				},
+			},
+			{
 				-- Historical setting IDs are retained so existing Quick Look Card
 				-- integration preferences migrate into the standalone implementation.
 				setting_id = "quick_look_card_integration_group",
@@ -786,28 +808,6 @@ return {
 							0,
 							100,
 						},
-					},
-				},
-			},
-			{
-				setting_id = "single_column_layout_group",
-				type = "group",
-				sub_widgets = {
-					{
-						setting_id = "single_column_weapon_name_font_size",
-						tooltip = "single_column_weapon_name_font_size_tooltip",
-						type = "numeric",
-						default_value = 20,
-						range = {
-							10,
-							24,
-						},
-					},
-					{
-						setting_id = "single_column_blessing_icons_on_right",
-						tooltip = "single_column_blessing_icons_on_right_tooltip",
-						type = "checkbox",
-						default_value = true,
 					},
 				},
 			},

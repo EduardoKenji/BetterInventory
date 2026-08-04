@@ -863,7 +863,7 @@ def main() -> None:
     localization = lua.execute(LOCALIZATION_PATH.read_text(encoding="utf-8"))
     defaults = {}
 
-    assert data.version == "1.3.0"
+    assert data.version == "1.3.1"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
@@ -901,6 +901,13 @@ def main() -> None:
                 inspect_widgets(sub_widgets)
 
     inspect_widgets(data.options.widgets)
+
+    top_level_ids = [
+        data.options.widgets[index].setting_id
+        for index in range(1, len(data.options.widgets) + 1)
+    ]
+    grid_layout_index = top_level_ids.index("layout_group")
+    assert top_level_ids[grid_layout_index + 1] == "single_column_layout_group"
 
     card_content_group = next(
         data.options.widgets[index]
