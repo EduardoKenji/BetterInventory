@@ -94,6 +94,7 @@ def main() -> None:
 		}
 		inventory_sort_syncs = 0
 		quick_discard_syncs = 0
+		curio_acquisition_syncs = 0
 		test_features = {
 			add_inventory_sort_toggle_definition = function(_, _, definitions) return definitions end,
 			configure_inventory_sort_options = function() end,
@@ -103,7 +104,15 @@ def main() -> None:
 			update_inventory_sort_toggle = function() end,
 			sync_inventory_sort_setting = function() inventory_sort_syncs = inventory_sort_syncs + 1 end,
 			sync_quick_discard_settings = function() quick_discard_syncs = quick_discard_syncs + 1 end,
+			sync_curio_acquisition_settings = function() curio_acquisition_syncs = curio_acquisition_syncs + 1 end,
+			morningstar_auto_discard_is_busy = function() return false end,
 			unregister_inventory_view = function() end,
+		}
+		test_curio_acquisition = {
+			begin_morningstar_pass = function() end,
+			cancel = function() end,
+			on_setting_changed = function() end,
+			update = function() end,
 		}
 
         test_mod = {}
@@ -133,6 +142,8 @@ def main() -> None:
 		function test_mod:io_dofile(path)
 			if string.find(path, "BetterInventory_features", 1, true) then
 				return test_features
+			elseif string.find(path, "BetterInventory_curio_acquisition", 1, true) then
+				return test_curio_acquisition
 			end
 
 			return test_layout
@@ -378,6 +389,23 @@ def main() -> None:
 		"quick_discard_keep_stamina_curios",
 		"quick_discard_show_type_breakdown",
 		"quick_discard_show_summary_notification",
+		"automatic_curio_min_item_level",
+		"automatic_curio_min_health",
+		"automatic_curio_min_toughness",
+		"automatic_curio_diagnostic_logging",
+		"automatic_curio_buy_health",
+		"automatic_curio_buy_toughness",
+		"automatic_curio_buy_stamina",
+		"automatic_curio_buy_wounds",
+		"automatic_curio_class_veteran",
+		"automatic_curio_class_zealot",
+		"automatic_curio_class_psyker",
+		"automatic_curio_class_ogryn",
+		"automatic_curio_class_adamant",
+		"automatic_curio_class_broker",
+		"automatic_curio_class_cryptic",
+		"automatic_curio_types_group",
+		"automatic_curio_classes_group",
     )
     entries = [
         lua.table_from(
@@ -388,6 +416,8 @@ def main() -> None:
         )
         for option_id in option_ids
     ]
+    entries[-2].widget_type = "group_header"
+    entries[-1].widget_type = "group_header"
     options_templates = lua.table_from(
         {"settings": lua.table_from(entries)}
     )
@@ -439,6 +469,14 @@ def main() -> None:
     assert entries_by_id["quick_discard_keep_toughness_curios"].disabled is True
     assert entries_by_id["quick_discard_show_type_breakdown"].disabled is True
     assert entries_by_id["quick_discard_show_summary_notification"].disabled is True
+    assert entries_by_id["automatic_curio_min_item_level"].disabled is True
+    assert entries_by_id["automatic_curio_min_health"].disabled is True
+    assert entries_by_id["automatic_curio_min_toughness"].disabled is True
+    assert entries_by_id["automatic_curio_diagnostic_logging"].disabled is True
+    assert entries_by_id["automatic_curio_buy_health"].disabled is True
+    assert entries_by_id["automatic_curio_class_cryptic"].disabled is True
+    assert entries_by_id["automatic_curio_types_group"].indentation_level == 2
+    assert entries_by_id["automatic_curio_classes_group"].indentation_level == 2
     assert entries_by_id["curio_information_width_percent"].disabled is True
     assert entries_by_id["curio_preview_height_percent"].disabled is True
     assert entries_by_id["inventory_options_panel_width"].disabled is True
@@ -488,6 +526,30 @@ def main() -> None:
     settings.quick_discard_protect_high_level_curios = True
     settings.enable_experimental_quick_discard = False
     mod.on_setting_changed("enable_experimental_quick_discard")
+
+    settings.enable_automatic_curio_acquisition = True
+    mod.on_setting_changed("enable_automatic_curio_acquisition")
+    assert entries_by_id["automatic_curio_min_item_level"].disabled is False
+    assert entries_by_id["automatic_curio_min_health"].disabled is False
+    assert entries_by_id["automatic_curio_min_toughness"].disabled is False
+    assert entries_by_id["automatic_curio_diagnostic_logging"].disabled is False
+    assert entries_by_id["automatic_curio_buy_health"].disabled is False
+    assert entries_by_id["automatic_curio_buy_toughness"].disabled is False
+    assert entries_by_id["automatic_curio_buy_stamina"].disabled is False
+    assert entries_by_id["automatic_curio_buy_wounds"].disabled is False
+    assert entries_by_id["automatic_curio_class_veteran"].disabled is False
+    assert entries_by_id["automatic_curio_class_cryptic"].disabled is False
+    settings.automatic_curio_buy_health = False
+    mod.on_setting_changed("automatic_curio_buy_health")
+    assert entries_by_id["automatic_curio_min_health"].disabled is True
+    assert entries_by_id["automatic_curio_min_toughness"].disabled is False
+    settings.automatic_curio_buy_health = True
+    mod.on_setting_changed("automatic_curio_buy_health")
+    assert entries_by_id["automatic_curio_min_health"].disabled is False
+    assert globals_.curio_acquisition_syncs > 0
+    settings.enable_automatic_curio_acquisition = False
+    mod.on_setting_changed("enable_automatic_curio_acquisition")
+    assert entries_by_id["automatic_curio_min_item_level"].disabled is True
 
     settings.columns = 4
     mod.on_setting_changed("columns")
@@ -637,7 +699,12 @@ def main() -> None:
     mod.on_setting_changed("enable_grid_layout")
 
     for option_id in option_ids:
-        if option_id in {"blessing_icon_size", "blessing_icon_spacing"}:
+        if option_id in {
+            "blessing_icon_size",
+            "blessing_icon_spacing",
+            "automatic_curio_types_group",
+            "automatic_curio_classes_group",
+        }:
             continue
 
         assert entries_by_id[option_id].disabled is True
@@ -787,6 +854,25 @@ def main() -> None:
     assert defaults["quick_discard_max_item_level"] == 490
     assert defaults["quick_discard_protect_above_equipped_level"] is True
     assert defaults["quick_discard_show_summary_notification"] is True
+    assert defaults["enable_automatic_curio_acquisition"] is False
+    assert defaults["automatic_curio_min_item_level"] == 410
+    assert defaults["automatic_curio_min_health"] == 21
+    assert defaults["automatic_curio_min_toughness"] == 17
+    assert defaults["automatic_curio_diagnostic_logging"] is False
+    assert defaults["automatic_curio_buy_health"] is True
+    assert defaults["automatic_curio_buy_toughness"] is True
+    assert defaults["automatic_curio_buy_stamina"] is False
+    assert defaults["automatic_curio_buy_wounds"] is False
+    for class_setting in (
+        "automatic_curio_class_veteran",
+        "automatic_curio_class_zealot",
+        "automatic_curio_class_psyker",
+        "automatic_curio_class_ogryn",
+        "automatic_curio_class_adamant",
+        "automatic_curio_class_broker",
+        "automatic_curio_class_cryptic",
+    ):
+        assert defaults[class_setting] is True
     assert defaults["curio_primary_stat_font_size"] == 16
     assert defaults["curio_secondary_stat_font_size"] == 13
     assert defaults["curio_primary_secondary_spacing"] == 5

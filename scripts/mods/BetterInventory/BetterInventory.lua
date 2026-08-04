@@ -8,6 +8,7 @@ local InventoryWeaponsView = require("scripts/ui/views/inventory_weapons_view/in
 local ViewElementGrid = require("scripts/ui/view_elements/view_element_grid/view_element_grid")
 local Layout = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout")
 local Features = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_features")
+local CurioAcquisition = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_acquisition")
 local unpack_values = table.unpack or unpack
 local active_grid_view
 local active_grid_configuration
@@ -257,6 +258,8 @@ local function refresh_option_dependencies()
 	local detailed_curio_profile = mod:get("curio_display_profile") == "detailed"
 	local quick_discard_enabled = mod:get("enable_experimental_quick_discard") == true
 	local quick_discard_reason = mod:localize("option_requires_experimental_quick_discard")
+	local automatic_curio_enabled = mod:get("enable_automatic_curio_acquisition") == true
+	local automatic_curio_reason = mod:localize("option_requires_automatic_curio_acquisition")
 	local inventory_options_panel_enabled = mod:get("enable_inventory_options_panel_prototype") == true
 	local inventory_options_panel_reason = mod:localize("option_requires_inventory_options_panel_prototype")
 	local quick_look_card_grid_enabled = grid_enabled and mod:get("enable_quick_look_card_grid_integration") ~= false
@@ -339,6 +342,32 @@ local function refresh_option_dependencies()
 	local curio_protection_enabled = quick_discard_enabled and mod:get("quick_discard_protect_high_level_curios") ~= false
 
 	set_option_enabled(option_dependency_entries.quick_discard_curio_protection_level, curio_protection_enabled, quick_discard_enabled and mod:localize("option_requires_curio_discard_protection") or quick_discard_reason)
+
+	for _, setting_id in ipairs({
+		"automatic_curio_min_item_level",
+		"automatic_curio_min_health",
+		"automatic_curio_min_toughness",
+		"automatic_curio_diagnostic_logging",
+		"automatic_curio_buy_health",
+		"automatic_curio_buy_toughness",
+		"automatic_curio_buy_stamina",
+		"automatic_curio_buy_wounds",
+		"automatic_curio_class_veteran",
+		"automatic_curio_class_zealot",
+		"automatic_curio_class_psyker",
+		"automatic_curio_class_ogryn",
+		"automatic_curio_class_adamant",
+		"automatic_curio_class_broker",
+		"automatic_curio_class_cryptic",
+	}) do
+		set_option_enabled(option_dependency_entries[setting_id], automatic_curio_enabled, automatic_curio_reason)
+	end
+
+	local automatic_health_enabled = automatic_curio_enabled and mod:get("automatic_curio_buy_health") ~= false
+	local automatic_toughness_enabled = automatic_curio_enabled and mod:get("automatic_curio_buy_toughness") ~= false
+
+	set_option_enabled(option_dependency_entries.automatic_curio_min_health, automatic_health_enabled, automatic_curio_enabled and mod:localize("option_requires_automatic_curio_health") or automatic_curio_reason)
+	set_option_enabled(option_dependency_entries.automatic_curio_min_toughness, automatic_toughness_enabled, automatic_curio_enabled and mod:localize("option_requires_automatic_curio_toughness") or automatic_curio_reason)
 end
 
 local function bind_option_dependencies(options_templates)
@@ -350,6 +379,10 @@ local function bind_option_dependencies(options_templates)
 
 	local category_name = mod:get_readable_name()
 	local setting_by_title = {}
+	local curio_buyer_subsection_titles = {
+		[mod:localize("automatic_curio_types_group")] = true,
+		[mod:localize("automatic_curio_classes_group")] = true,
+	}
 
 	for _, setting_id in ipairs({
 		"columns",
@@ -417,6 +450,21 @@ local function bind_option_dependencies(options_templates)
 		"quick_discard_keep_stamina_curios",
 		"quick_discard_show_type_breakdown",
 		"quick_discard_show_summary_notification",
+		"automatic_curio_min_item_level",
+		"automatic_curio_min_health",
+		"automatic_curio_min_toughness",
+		"automatic_curio_diagnostic_logging",
+		"automatic_curio_buy_health",
+		"automatic_curio_buy_toughness",
+		"automatic_curio_buy_stamina",
+		"automatic_curio_buy_wounds",
+		"automatic_curio_class_veteran",
+		"automatic_curio_class_zealot",
+		"automatic_curio_class_psyker",
+		"automatic_curio_class_ogryn",
+		"automatic_curio_class_adamant",
+		"automatic_curio_class_broker",
+		"automatic_curio_class_cryptic",
 	}) do
 		setting_by_title[mod:localize(setting_id)] = setting_id
 	end
@@ -425,6 +473,14 @@ local function bind_option_dependencies(options_templates)
 
 	for i = 1, #settings do
 		local entry = settings[i]
+
+		-- DMF preserves indentation for ordinary nested controls but drops it from
+		-- nested group-header templates. Restore the two buyer subheadings to the
+		-- same depth as their schema nodes so they do not look like peer sections.
+		if type(entry) == "table" and entry.category == category_name and entry.widget_type == "group_header" and curio_buyer_subsection_titles[entry.display_name] then
+			entry.indentation_level = 2
+		end
+
 		local setting_id = type(entry) == "table" and entry.category == category_name and setting_by_title[entry.display_name]
 
 		if setting_id then
@@ -520,6 +576,7 @@ end
 
 function mod.on_setting_changed(setting_id)
 	local color_change = color_target_by_setting_id[setting_id]
+	local automatic_curio_setting = type(setting_id) == "string" and string.sub(setting_id, 1, 16) == "automatic_curio_"
 
 	if color_change then
 		if color_change.is_preset then
@@ -529,7 +586,7 @@ function mod.on_setting_changed(setting_id)
 		end
 	end
 
-	if setting_id == "enable_grid_layout" or setting_id == "columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "weapon_extra_width_column_threshold" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_armoury_requisition_grid" or setting_id == "expand_armoury_requisition_window" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "curio_display_profile" or setting_id == "enable_inventory_options_panel_prototype" or setting_id == "enable_experimental_quick_discard" or setting_id == "quick_discard_mode" or setting_id == "quick_discard_protect_high_level_curios" or setting_id == "enable_quick_look_card_grid_integration" or setting_id == "quick_look_card_grid_stat_position" then
+	if setting_id == "enable_grid_layout" or setting_id == "columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "weapon_extra_width_column_threshold" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_armoury_requisition_grid" or setting_id == "expand_armoury_requisition_window" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "curio_display_profile" or setting_id == "enable_inventory_options_panel_prototype" or setting_id == "enable_experimental_quick_discard" or setting_id == "quick_discard_mode" or setting_id == "quick_discard_protect_high_level_curios" or setting_id == "enable_automatic_curio_acquisition" or automatic_curio_setting or setting_id == "enable_quick_look_card_grid_integration" or setting_id == "quick_look_card_grid_stat_position" then
 		refresh_option_dependencies()
 	end
 
@@ -540,6 +597,11 @@ function mod.on_setting_changed(setting_id)
 	if type(setting_id) == "string" and string.sub(setting_id, 1, 14) == "quick_discard_" then
 		Features.sync_quick_discard_settings(mod, Layout)
 	end
+
+	if setting_id == "enable_automatic_curio_acquisition" or automatic_curio_setting then
+		CurioAcquisition.on_setting_changed(mod, setting_id)
+		Features.sync_curio_acquisition_settings(mod, Layout)
+	end
 end
 
 function mod.on_game_state_changed(status, state_name)
@@ -549,17 +611,21 @@ function mod.on_game_state_changed(status, state_name)
 
 	if status == "enter" then
 		Features.begin_morningstar_auto_discard(mod)
+		CurioAcquisition.begin_morningstar_pass(mod)
 	elseif status == "exit" then
 		Features.cancel_morningstar_auto_discard()
+		CurioAcquisition.cancel()
 	end
 end
 
 function mod.update(dt)
 	Features.update_morningstar_auto_discard(mod, dt)
+	CurioAcquisition.update(mod, dt, Features.morningstar_auto_discard_is_busy(mod))
 end
 
 function mod.on_disabled()
 	Features.cancel_morningstar_auto_discard()
+	CurioAcquisition.cancel()
 	Features.disable_inventory_views()
 end
 
