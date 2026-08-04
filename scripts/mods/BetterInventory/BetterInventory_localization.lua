@@ -536,6 +536,12 @@ local localization = {
 	global_store_character_photo_size_percent_tooltip = {
 		en = "Controls the GlobalStore character photo size in three-to-five-column cards. The character row remains below the price and item-level row while its reserved height stays fixed, so reducing this value does not move the price closer to the photo.",
 	},
+	global_store_price_row_padding = {
+		en = "GlobalStore price/item-level row padding",
+	},
+	global_store_price_row_padding_tooltip = {
+		en = "Controls the vertical padding above the GlobalStore character row. Increasing it moves the Ordo Dockets and item-level row farther from the character photo without changing the photo size.",
+	},
 	enable_hadron_entreat_grid = {
 		en = "Hadron: Entreat Hadron",
 	},
@@ -2035,6 +2041,8 @@ zh_cn.enable_global_store_sorting_panel = "显示 GlobalStore 排序组件"
 zh_cn.enable_global_store_sorting_panel_tooltip = "在 GlobalStore 的多干员补给中添加可折叠的 BetterInventory 排序和暗潮原生排序组件。需要开启 GlobalStore 网格，默认开启。"
 zh_cn.global_store_character_photo_size_percent = "GlobalStore 角色头像大小（%%）"
 zh_cn.global_store_character_photo_size_percent_tooltip = "控制三至五列卡片中的 GlobalStore 角色头像大小。角色信息行位于价格和物品等级行下方，预留高度保持不变，因此降低此值不会使价格更靠近头像。"
+zh_cn.global_store_price_row_padding = "GlobalStore 价格/物品等级行内边距"
+zh_cn.global_store_price_row_padding_tooltip = "控制 GlobalStore 角色信息行上方的垂直内边距。增加此值会让奥多点券和物品等级行远离角色头像，而不会改变头像大小。"
 zh_cn.option_requires_global_store_grid = "启用 GlobalStore 网格后才能使用此选项。"
 zh_cn.option_requires_global_store_integration = "启用 GlobalStore 集成后才能使用此选项。"
 

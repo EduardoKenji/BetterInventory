@@ -298,6 +298,7 @@ def main() -> None:
 				curio_target_card_width = 190,
 				enable_armoury_requisition_grid = true,
 				global_store_character_photo_size_percent = 100,
+				global_store_price_row_padding = 10,
 				brighten_armoury_item_levels = true,
 				expand_armoury_requisition_window = true,
 				armoury_requisition_target_card_width = 230,
@@ -809,12 +810,12 @@ def main() -> None:
     assert blueprint_pass(global_store_blueprint, "price_text").style.offset[1] == 39
     global_store_level = blueprint_pass(global_store_blueprint, "item_level").style
     assert global_store_level.vertical_alignment == "bottom"
-    assert global_store_level.offset[2] == -35
+    assert global_store_level.offset[2] == -40
     assert blueprint_pass(global_store_blueprint, "icon").style.size[2] == 114
     assert blueprint_pass(global_store_blueprint, "portrait").style.size[1] == 30
     assert blueprint_pass(global_store_blueprint, "portrait").style.offset[2] == -2
     assert blueprint_pass(global_store_blueprint, "character_info_text").style.font_size == 14
-    assert blueprint_pass(global_store_blueprint, "character_info_text").style.offset[1] == 52
+    assert blueprint_pass(global_store_blueprint, "character_info_text").style.offset[1] == 56
     assert blueprint_pass(global_store_blueprint, "character_info_text").style.offset[2] == -7
 
     mod.settings.global_store_character_photo_size_percent = 50
@@ -826,8 +827,19 @@ def main() -> None:
     assert (reduced_photo_size[1], reduced_photo_size[2]) == (111, 144)
     assert blueprint_pass(reduced_photo_blueprint, "icon").style.size[2] == 114
     assert blueprint_pass(reduced_photo_blueprint, "portrait").style.size[1] == 15
-    assert blueprint_pass(reduced_photo_blueprint, "price_text").style.offset[2] == -35
+    assert blueprint_pass(reduced_photo_blueprint, "price_text").style.offset[2] == -40
     mod.settings.global_store_character_photo_size_percent = 100
+
+    mod.settings.global_store_price_row_padding = 20
+    assert layout.card_height(mod, global_store_configuration) == 154
+    padded_price_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    padded_price_size = layout.configure_item_blueprint(
+        mod, padded_price_blueprint, 596, global_store_configuration
+    )
+    assert (padded_price_size[1], padded_price_size[2]) == (111, 154)
+    assert blueprint_pass(padded_price_blueprint, "icon").style.size[2] == 114
+    assert blueprint_pass(padded_price_blueprint, "price_text").style.offset[2] == -50
+    mod.settings.global_store_price_row_padding = 10
 
     mod.settings.columns = 2
     two_column_global_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)

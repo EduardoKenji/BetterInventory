@@ -640,6 +640,16 @@ return {
 									100,
 								},
 							},
+							{
+								setting_id = "global_store_price_row_padding",
+								tooltip = "global_store_price_row_padding_tooltip",
+								type = "numeric",
+								default_value = 10,
+								range = {
+									5,
+									20,
+								},
+							},
 						},
 					},
 				},

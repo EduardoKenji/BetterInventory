@@ -23,7 +23,10 @@ local GLOBAL_STORE_CHARACTER_PHOTO_BASE_SIZE = 30
 local GLOBAL_STORE_CHARACTER_PHOTO_MIN_PERCENT = 50
 local GLOBAL_STORE_CHARACTER_PHOTO_MAX_PERCENT = 100
 local GLOBAL_STORE_CHARACTER_ROW_HEIGHT = 30
-local GLOBAL_STORE_CHARACTER_INFO_GAP = 10
+local GLOBAL_STORE_CHARACTER_INFO_GAP = 14
+local GLOBAL_STORE_PRICE_ROW_PADDING_DEFAULT = 10
+local GLOBAL_STORE_PRICE_ROW_PADDING_MIN = 5
+local GLOBAL_STORE_PRICE_ROW_PADDING_MAX = 20
 local NATIVE_SINGLE_COLUMN_CONTENT_GAP = 12
 local WEAPON_PERK_COUNT = 2
 local WEAPON_BLESSING_COUNT = 2
@@ -43,12 +46,22 @@ local function global_store_character_photo_size(mod)
 	return math.max(12, math.floor(GLOBAL_STORE_CHARACTER_PHOTO_BASE_SIZE * global_store_character_photo_percent(mod) / 100 + 0.5))
 end
 
+local function global_store_price_row_padding(mod)
+	local value = tonumber(mod:get("global_store_price_row_padding")) or GLOBAL_STORE_PRICE_ROW_PADDING_DEFAULT
+
+	return math.max(GLOBAL_STORE_PRICE_ROW_PADDING_MIN, math.min(GLOBAL_STORE_PRICE_ROW_PADDING_MAX, value))
+end
+
 local function global_store_extra_height(mod, configuration)
 	if not configuration or configuration.global_store ~= true or type(Layout.columns) ~= "function" then
 		return 0
 	end
 
-	return Layout.columns(mod, configuration.maximum_columns) >= 3 and GLOBAL_STORE_CHARACTER_ROW_HEIGHT or 0
+	if Layout.columns(mod, configuration.maximum_columns) < 3 then
+		return 0
+	end
+
+	return GLOBAL_STORE_CHARACTER_ROW_HEIGHT + math.max(0, global_store_price_row_padding(mod) - GLOBAL_STORE_PRICE_ROW_PADDING_DEFAULT)
 end
 
 Layout.global_store_character_photo_size = global_store_character_photo_size
@@ -2798,6 +2811,8 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 	local global_store_extra = global_store_extra_height(mod, configuration)
 	local global_store_multicolumn = global_store_extra > 0
 	local global_store_photo_size = global_store_multicolumn and global_store_character_photo_size(mod) or 34
+	local global_store_price_padding = global_store_multicolumn and global_store_price_row_padding(mod) or 0
+	local global_store_price_row_offset = global_store_multicolumn and GLOBAL_STORE_CHARACTER_ROW_HEIGHT + global_store_price_padding or 0
 
 	local item_size = Layout.item_size(mod, grid_width, configuration.maximum_columns, configuration)
 	local card_width = item_size[1]
@@ -2829,7 +2844,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 	disable_quick_look_card_passes(pass_template)
 
 	if quick_look_card_integration then
-		add_quick_look_card_grid_pass(mod, pass_template, card_width, text_left, quick_look_card_position, global_store_multicolumn and global_store_extra or 0)
+		add_quick_look_card_grid_pass(mod, pass_template, card_width, text_left, quick_look_card_position, global_store_price_row_offset)
 	end
 
 	local icon = pass_by_style_id(pass_template, "icon")
@@ -2981,7 +2996,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 	if global_store_multicolumn and item_level and item_level.style then
 		-- Keep the rating in the price row; the character row occupies the new
 		-- space below it.
-		item_level.style.offset[2] = -(global_store_extra + 5)
+		item_level.style.offset[2] = -global_store_price_row_offset
 	end
 	preserve_visibility(item_level, function(content)
 		return not is_curio(item_from_content(content)) or show_curio_item_level
@@ -2999,7 +3014,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 			}
 			wallet_icon.style.offset = global_store_multicolumn and {
 				text_left,
-				-(global_store_extra + 7),
+				-(global_store_price_row_offset + 2),
 				12,
 			} or global_store and {
 				-8,
@@ -3022,7 +3037,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 			text_vertical_alignment = "bottom",
 			offset = global_store_multicolumn and {
 				text_left + 27,
-				-(global_store_extra + 5),
+				-global_store_price_row_offset,
 				12,
 			} or global_store and {
 				-30,
@@ -3052,7 +3067,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 			text_vertical_alignment = "bottom",
 			offset = global_store_multicolumn and {
 				text_left,
-				-(global_store_extra + 5),
+				-global_store_price_row_offset,
 				12,
 			} or global_store and {
 				-30,
