@@ -652,6 +652,8 @@ return {
 				},
 			},
 			{
+				-- Historical setting IDs are retained so existing Quick Look Card
+				-- integration preferences migrate into the standalone implementation.
 				setting_id = "quick_look_card_integration_group",
 				type = "group",
 				sub_widgets = {

@@ -201,10 +201,17 @@ def main() -> None:
 
 			function instance:get_comparing_stats()
 				local stats = {}
+				local display_names = item.modifier_display_names or {
+					"loc_stats_display_damage_stat",
+					"loc_stats_display_warp_resist_stat",
+					"loc_stats_display_cleave_damage_stat",
+					"loc_stats_display_defense_stat",
+					"loc_stats_display_finesse_stat",
+				}
 
 				for index = 1, 5 do
 					stats[index] = {
-						display_name = "stat_" .. index,
+						display_name = display_names[index],
 						fraction = 0.2,
 					}
 				end
@@ -865,6 +872,114 @@ def main() -> None:
         blueprint_pass(native_blueprint, "better_inventory_curio_stat_1").style.font_size
         == 16
     )
+
+    # Built-in modifier passes must exist and populate maximum-potential values
+    # even when Quick Look Card contributes no blueprint passes at all.
+    native_modifier_styles = {
+        "display_name": blueprint_pass(native_blueprint, "display_name").style,
+    }
+    for index in range(1, 6):
+        for prefix in (
+            "better_inventory_weapon_modifier_title_",
+            "better_inventory_weapon_modifier_value_",
+        ):
+            style_id = f"{prefix}{index}"
+            native_modifier_styles[style_id] = blueprint_pass(
+                native_blueprint, style_id
+            ).style
+    native_modifier_widget = lua.table_from(
+        {"content": lua.table_from({}), "style": lua.table_from(native_modifier_styles)}
+    )
+    native_modifier_element = lua.table_from(
+        {
+            "test_display_name": "Force Sword",
+            "test_sub_display_name": "Mk VI",
+            "item": lua.table_from(
+                {
+                    "item_type": "WEAPON_MELEE",
+                    "expertise": 260,
+                    "projected_values": lua.table_from([80, 60, 80, 80, 80]),
+                }
+            ),
+        }
+    )
+    native_blueprint.init(
+        None,
+        native_modifier_widget,
+        native_modifier_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        native_blueprint,
+    )
+    assert tuple(
+        native_modifier_widget.content[
+            f"better_inventory_weapon_modifier_title_{index}"
+        ]
+        for index in range(1, 6)
+    ) == ("DMG", "FIN", "CLVD", "DEF", "WRES")
+    assert tuple(
+        native_modifier_widget.content[
+            f"better_inventory_weapon_modifier_value_{index}"
+        ]
+        for index in range(1, 6)
+    ) == ("80", "80", "80", "80", "60")
+    standalone_low_title_pass = blueprint_pass(
+        native_blueprint, "better_inventory_weapon_modifier_title_5"
+    )
+    standalone_low_title_pass.change_function(
+        native_modifier_widget.content,
+        standalone_low_title_pass.style,
+    )
+    assert tuple(
+        standalone_low_title_pass.style.text_color[index] for index in range(1, 5)
+    ) == (255, 255, 94, 132)
+
+    # Unknown future modifier IDs receive bounded deterministic fallbacks, and
+    # colliding four-character labels are disambiguated within the same weapon.
+    future_modifier_element = lua.eval(
+        """
+        {
+            test_display_name = "Future Weapon",
+            test_sub_display_name = "Mk I",
+            item = {
+                item_type = "WEAPON_MELEE",
+                expertise = 260,
+                projected_values = { 60, 60, 80, 80, 80 },
+                modifier_display_names = {
+                    "loc_stats_display_alpha_stat",
+                    "loc_stats_display_alpha2_stat",
+                    "loc_stats_display_gamma_stat",
+                    "loc_stats_display_delta_stat",
+                    "loc_stats_display_epsilon_stat"
+                }
+            }
+        }
+        """
+    )
+    future_modifier_widget = lua.table_from(
+        {"content": lua.table_from({}), "style": lua.table_from(native_modifier_styles)}
+    )
+    native_blueprint.init(
+        None,
+        future_modifier_widget,
+        future_modifier_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        native_blueprint,
+    )
+    first_future_label = (
+        future_modifier_widget.content.better_inventory_weapon_modifier_title_1
+    )
+    tied_future_label = (
+        future_modifier_widget.content.better_inventory_weapon_modifier_title_5
+    )
+    assert first_future_label == "ALPH"
+    assert tied_future_label == "ALP2"
+    assert len(first_future_label) <= 4 and len(tied_future_label) <= 4
     native_equipped_highlight = blueprint_pass(
         native_blueprint, "better_inventory_equipped_highlight"
     )
@@ -925,7 +1040,9 @@ def main() -> None:
         {
             "style_id": "qlc_stats_title_1",
             "style": lua.table_from({}),
-            "visibility_function": lua.eval("function() return true end"),
+            # Models Quick Look Card being installed while its own modifier
+            # toggle (or the whole mod) is disabled.
+            "visibility_function": lua.eval("function() return false end"),
         }
     )
     qlc_native_blueprint.pass_template[len(qlc_native_blueprint.pass_template) + 1] = (
@@ -952,7 +1069,21 @@ def main() -> None:
     ).style
     assert blueprint_pass(
         qlc_native_blueprint, "qlc_stats_title_1"
-    ).visibility_function() is True
+    ).visibility_function() is False
+    assert blueprint_pass(
+        qlc_native_blueprint, "qlc_stats_title_1"
+    ).visibility_function(
+        lua.table_from({"better_inventory_weapon_modifier_title_1": "DMG"})
+    ) is True
+    assert (
+        blueprint_pass(qlc_native_blueprint, "qlc_stats_title_1").value_id
+        == "better_inventory_weapon_modifier_title_1"
+    )
+    assert not any(
+        qlc_native_blueprint.pass_template[index].style_id
+        == "better_inventory_weapon_modifier_title_1"
+        for index in range(1, len(qlc_native_blueprint.pass_template) + 1)
+    )
     assert (qlc_stat_style.offset[1], qlc_stat_style.offset[2]) == (281, 100)
     assert (qlc_stat_style.size[1], qlc_stat_style.size[2]) == (42, 17)
     assert qlc_stat_style.font_size == 14
@@ -1014,12 +1145,23 @@ def main() -> None:
     assert (qlc_unmanaged_native_size[1], qlc_unmanaged_native_size[2]) == (586, 110)
     assert blueprint_pass(
         qlc_unmanaged_native_blueprint, "qlc_stats_title_1"
-    ).visibility_function() is True
+    ).visibility_function() is False
     assert not any(
         qlc_unmanaged_native_blueprint.pass_template[index].style_id
         == "better_inventory_weapon_perk_1"
         for index in range(
             1, len(qlc_unmanaged_native_blueprint.pass_template) + 1
+        )
+    )
+    standalone_disabled_native_blueprint = lua.eval("table.clone")(
+        globals_.raw_test_blueprint
+    )
+    layout.configure_item_blueprint(mod, standalone_disabled_native_blueprint, 596)
+    assert not any(
+        standalone_disabled_native_blueprint.pass_template[index].style_id
+        == "better_inventory_weapon_modifier_title_1"
+        for index in range(
+            1, len(standalone_disabled_native_blueprint.pass_template) + 1
         )
     )
     mod.settings.enable_quick_look_card_single_column_integration = True
@@ -1028,6 +1170,30 @@ def main() -> None:
     mod.settings.show_weapon_perks = False
     mod.settings.show_weapon_perk_rank_symbols = False
     mod.settings.enable_grid_layout = True
+
+    standalone_grid_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, standalone_grid_blueprint, 596)
+    standalone_dump_pass = blueprint_pass(
+        standalone_grid_blueprint, "better_inventory_quick_look_card_dump_stat"
+    )
+    standalone_dump_content = lua.eval(
+        """
+        {
+            element = {
+                item = {
+                    item_type = "WEAPON_MELEE",
+                    expertise = 260,
+                    projected_values = { 80, 60, 80, 80, 80 }
+                }
+            }
+        }
+        """
+    )
+    assert standalone_dump_pass.visibility_function(standalone_dump_content) is True
+    assert (
+        standalone_dump_content.better_inventory_quick_look_card_dump_stat
+        == "WRES 60"
+    )
 
     qlc_grid_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     qlc_grid_blueprint.pass_template[len(qlc_grid_blueprint.pass_template) + 1] = (
