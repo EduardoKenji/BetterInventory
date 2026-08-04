@@ -252,9 +252,11 @@ def main() -> None:
         local category = "Better Inventory"
         local automatic_header = {
             category = category,
-            display_name = "Automatic Curio Buyer",
-            indentation_level = 0,
-			tab = "Automatic Curio Buyer",
+			display_name = "automatic_curio_buyer_group",
+			-- Alf does not reliably preserve depth metadata on rendered group
+			-- headers, so the compatibility layer must not depend on it.
+			indentation_level = nil,
+			tab = "automatic_curio_buyer_group",
             widget_type = "group_header",
         }
         local hidden_character_mode = {
@@ -271,9 +273,9 @@ def main() -> None:
         }
         local additional_header = {
             category = category,
-            display_name = "Additional inventory views",
-            indentation_level = 0,
-			tab = "Additional inventory views",
+			display_name = "additional_views_group",
+			indentation_level = nil,
+			tab = "additional_views_group",
             widget_type = "group_header",
         }
         local hadron = {
@@ -284,9 +286,9 @@ def main() -> None:
         }
         local grid_header = {
             category = category,
-            display_name = "Grid layout",
-            indentation_level = 0,
-			tab = "Grid layout",
+			display_name = "layout_group",
+			indentation_level = nil,
+			tab = "layout_group",
             widget_type = "group_header",
         }
         local hidden_grid_toggle = {
@@ -326,7 +328,7 @@ def main() -> None:
                 widget = {
                     content = {
                         entry = visible_entries[index],
-                        tab = "Automatic Curio Buyer",
+						tab = "automatic_curio_buyer_group",
                     },
                 },
             }
@@ -355,12 +357,12 @@ def main() -> None:
         for index in range(1, len(alfs_scenario.visible) + 1)
     ]
     assert repaired_tabs == [
-        "Automatic Curio Buyer",
-        "Automatic Curio Buyer",
-        "Additional inventory views",
-        "Additional inventory views",
-        "Grid layout",
-        "Grid layout",
+		"automatic_curio_buyer_group",
+		"automatic_curio_buyer_group",
+		"additional_views_group",
+		"additional_views_group",
+		"layout_group",
+		"layout_group",
     ]
 
     globals_.test_alfs_tabs_enabled = False
@@ -373,13 +375,68 @@ def main() -> None:
     globals_.captured_alfs_filter_hook(
         original_alfs_filter, alfs_scenario.view, alfs_scenario.category
     )
-    assert alfs_scenario.visible[6].widget.content.tab == "Grid layout"
+    assert alfs_scenario.visible[6].widget.content.tab == "layout_group"
 
     alfs_scenario.visible[6].widget.content.tab = "Unchanged"
     globals_.captured_alfs_filter_hook(
         original_alfs_filter, alfs_scenario.view, "Another Mod"
     )
     assert alfs_scenario.visible[6].widget.content.tab == "Unchanged"
+
+    # Every top-level BetterInventory section is an explicit compatibility
+    # anchor. This catches newly misplaced headings even when Alf supplies no
+    # indentation metadata for the rendered group headers.
+    all_alfs_sections = lua.execute(
+        """
+        local category = "Better Inventory"
+        local section_ids = {
+            "inventory_slots_group",
+            "inventory_sorting_group",
+            "experimental_quick_discard_group",
+            "automatic_curio_buyer_group",
+            "additional_views_group",
+            "layout_group",
+            "single_column_layout_group",
+            "quick_look_card_integration_group",
+            "enhanced_descriptions_integration_group",
+            "card_content_group",
+            "curio_content_group",
+        }
+        local visible = {}
+
+        for index = 1, #section_ids do
+            local section_id = section_ids[index]
+            local header = {
+                category = category,
+                display_name = section_id,
+                widget_type = "group_header",
+            }
+            local child = {
+                category = category,
+                display_name = section_id .. "_child",
+                widget_type = "checkbox",
+            }
+            visible[#visible + 1] = { widget = { content = { entry = header, tab = "Wrong" } } }
+            visible[#visible + 1] = { widget = { content = { entry = child, tab = "Wrong" } } }
+        end
+
+        return {
+            category = category,
+            section_ids = section_ids,
+            visible = visible,
+            view = { _settings_category_widgets = { [category] = visible } },
+        }
+        """
+    )
+    globals_.captured_alfs_filter_hook(
+        original_alfs_filter, all_alfs_sections.view, all_alfs_sections.category
+    )
+    for section_index in range(1, len(all_alfs_sections.section_ids) + 1):
+        section_id = all_alfs_sections.section_ids[section_index]
+        header_index = section_index * 2 - 1
+        child_index = section_index * 2
+        assert all_alfs_sections.visible[header_index].widget.content.tab == section_id
+        assert all_alfs_sections.visible[child_index].widget.content.tab == section_id
 
     credits_view = lua.table_from({"__class_name": "CreditsVendorView"})
     credits_definitions = lua.table_from({})

@@ -629,6 +629,23 @@ local ALFS_REGISTRATION_RETRY_LIMIT = 10
 local alfs_registration_retry_elapsed = 0
 local alfs_registration_retry_attempts = 0
 local alfs_tab_repair_logged = false
+local alfs_top_level_tab_titles = {}
+
+for _, setting_id in ipairs({
+	"inventory_slots_group",
+	"inventory_sorting_group",
+	"experimental_quick_discard_group",
+	"automatic_curio_buyer_group",
+	"additional_views_group",
+	"layout_group",
+	"single_column_layout_group",
+	"quick_look_card_integration_group",
+	"enhanced_descriptions_integration_group",
+	"card_content_group",
+	"curio_content_group",
+}) do
+	alfs_top_level_tab_titles[mod:localize(setting_id)] = true
+end
 
 local function repair_alfs_dmf_extension_tabs(alfs_mod, options_view, category)
 	if category ~= mod:get_readable_name() then
@@ -659,6 +676,7 @@ local function repair_alfs_dmf_extension_tabs(alfs_mod, options_view, category)
 	local current_tab
 	local repaired = false
 	local repaired_count = 0
+	local section_count = 0
 
 	for index = 1, #visible_widgets do
 		local data = visible_widgets[index]
@@ -667,11 +685,12 @@ local function repair_alfs_dmf_extension_tabs(alfs_mod, options_view, category)
 		local entry = content and content.entry
 
 		if type(entry) == "table" then
-			if entry.widget_type == "group_header" and entry.indentation_level == 0 then
-				current_tab = entry.tab or entry.display_name or current_tab
+			if entry.widget_type == "group_header" and alfs_top_level_tab_titles[entry.display_name] then
+				current_tab = entry.display_name
+				section_count = section_count + 1
 			end
 
-			local tab = current_tab or entry.tab or alfs_mod.default_tab
+			local tab = current_tab or alfs_mod.default_tab
 
 			if tab and content.tab ~= tab then
 				content.tab = tab
@@ -684,8 +703,9 @@ local function repair_alfs_dmf_extension_tabs(alfs_mod, options_view, category)
 	if not alfs_tab_repair_logged and type(mod.info) == "function" then
 		alfs_tab_repair_logged = true
 		mod:info(
-			"Alf's tab layout verified immediately before filtering (%d widget(s), %d corrected).",
+			"Alf's tab layout verified immediately before filtering (%d widget(s), %d section(s), %d corrected).",
 			#visible_widgets,
+			section_count,
 			repaired_count
 		)
 	end
