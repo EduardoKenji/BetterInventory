@@ -260,6 +260,7 @@ def main() -> None:
             category = category,
             display_name = "Additional inventory views",
             indentation_level = 0,
+			tab = "Automatic Curio Buyer",
             widget_type = "group_header",
         }
         local hadron = {
@@ -272,6 +273,7 @@ def main() -> None:
             category = category,
             display_name = "Grid layout",
             indentation_level = 0,
+			tab = "Automatic Curio Buyer",
             widget_type = "group_header",
         }
         local hidden_grid_toggle = {

@@ -624,7 +624,7 @@ local function bind_option_dependencies(options_templates)
 end
 
 local alfs_dmf_tabs_hooked = false
-local ALFS_TAB_CACHE_FIELD = "_better_inventory_alfs_tab_cache"
+local ALFS_TAB_CACHE_FIELD = "_better_inventory_alfs_tab_cache_v2"
 
 local function repair_alfs_dmf_extension_tabs(alfs_mod, options_view, category)
 	if category ~= mod:get_readable_name() then
@@ -676,10 +676,13 @@ local function repair_alfs_dmf_extension_tabs(alfs_mod, options_view, category)
 
 		if type(entry) == "table" and entry.category == category then
 			if entry.widget_type == "group_header" and entry.indentation_level == 0 then
-				current_tab = entry.tab or entry.display_name or current_tab
+				-- Generalized tabs use each top-level BetterInventory section as its
+				-- own tab. Do not trust entry.tab here: Alf may already have copied
+				-- the preceding section's tab onto this filtered header.
+				current_tab = entry.display_name or entry.tab or current_tab
 			end
 
-			tab_by_entry[entry] = entry.tab or current_tab or alfs_mod.default_tab
+			tab_by_entry[entry] = current_tab or entry.tab or alfs_mod.default_tab
 		end
 	end
 
