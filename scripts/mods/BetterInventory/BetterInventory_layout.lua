@@ -585,8 +585,8 @@ local function compact_curio_description(mod, data, compression_mode)
 	return string.format("%s %s", amount, mod:localize(localization_id))
 end
 
-local function configured_text_color(mod, prefix, fallback, opacity_setting_id)
-	local opacity = opacity_setting_id and tonumber(setting(mod, opacity_setting_id, 100)) or 100
+local function configured_text_color(mod, prefix, fallback, opacity_setting_id, default_opacity)
+	local opacity = opacity_setting_id and tonumber(setting(mod, opacity_setting_id, default_opacity or 100)) or 100
 	local alpha = math.floor(math.max(0, math.min(100, opacity)) * 255 / 100 + 0.5)
 
 	return {
@@ -1006,7 +1006,7 @@ end
 local function add_quick_look_card_grid_pass(mod, pass_template, card_width, text_left, position)
 	local font_size = numeric_setting(mod, "quick_look_card_grid_font_size", 13, 8, 20)
 	local bottom_padding = numeric_setting(mod, "quick_look_card_grid_bottom_padding", 26, 20, 60)
-	local lowest_modifier_color = configured_text_color(mod, "weapon_modifier_lowest_color", QUICK_LOOK_CARD_HIGHLIGHT_COLOR, "weapon_modifier_lowest_color_opacity")
+	local lowest_modifier_color = configured_text_color(mod, "weapon_modifier_lowest_color", QUICK_LOOK_CARD_HIGHLIGHT_COLOR, "weapon_modifier_lowest_color_opacity", 80)
 	local parenthesized = position ~= "above_power"
 	local label_width = math.max(64, math.floor(font_size * 6 + 0.5))
 	local style = {
@@ -1085,7 +1085,7 @@ end
 
 local function configure_native_quick_look_card_passes(mod, pass_template, card_width, card_height)
 	local font_size = numeric_setting(mod, "quick_look_card_single_column_font_size", 14, 8, 20)
-	local lowest_modifier_color = configured_text_color(mod, "weapon_modifier_lowest_color", QUICK_LOOK_CARD_HIGHLIGHT_COLOR, "weapon_modifier_lowest_color_opacity")
+	local lowest_modifier_color = configured_text_color(mod, "weapon_modifier_lowest_color", QUICK_LOOK_CARD_HIGHLIGHT_COLOR, "weapon_modifier_lowest_color_opacity", 80)
 	local horizontal_percent = numeric_setting(mod, "quick_look_card_single_column_horizontal_position", 79, 0, 100)
 	local vertical_percent = numeric_setting(mod, "quick_look_card_single_column_vertical_position", 93, 0, 100)
 	local line_height = font_size + 3
@@ -2243,7 +2243,7 @@ local function configure_card_content(mod, item_blueprint, configuration)
 	configuration = configuration or {}
 	local original_init = item_blueprint.init
 	local original_update_data = item_blueprint.update_data
-	local preferred_font_size = configuration.native_single_column and numeric_setting(mod, "single_column_weapon_name_font_size", 18, 10, 24) or numeric_setting(mod, "item_name_font_size", 16, 10, 24)
+	local preferred_font_size = configuration.native_single_column and numeric_setting(mod, "single_column_weapon_name_font_size", 20, 10, 24) or numeric_setting(mod, "item_name_font_size", 16, 10, 24)
 	local minimum_font_size = numeric_setting(mod, "minimum_item_name_font_size", 12, 8, 20)
 	local append_mark_to_name = setting(mod, "append_mark_to_name", true)
 	local blessing_display_mode = weapon_blessing_display_mode(mod)
@@ -2526,7 +2526,7 @@ Layout.card_height = function(mod, configuration)
 		return manual_height
 	end
 
-	local item_name_font_size = configuration.native_single_column and numeric_setting(mod, "single_column_weapon_name_font_size", 18, 10, 24) or numeric_setting(mod, "item_name_font_size", 16, 10, 24)
+	local item_name_font_size = configuration.native_single_column and numeric_setting(mod, "single_column_weapon_name_font_size", 20, 10, 24) or numeric_setting(mod, "item_name_font_size", 16, 10, 24)
 	local secondary_font_size = numeric_setting(mod, "secondary_text_font_size", 13, 8, 20)
 	local expertise_font_size = numeric_setting(mod, "expertise_font_size", 20, 10, 28)
 	local name_row_height = configuration.native_single_column and 25 + math.max(0, item_name_font_size - 16) or math.max(25, item_name_font_size + 5)
@@ -2677,7 +2677,7 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 	local sub_display_name = pass_by_style_id(pass_template, "sub_display_name")
 	local rarity_name = pass_by_style_id(pass_template, "rarity_name")
 	local item_level = pass_by_style_id(pass_template, "item_level")
-	local native_name_font_size = numeric_setting(mod, "single_column_weapon_name_font_size", 18, 10, 24)
+	local native_name_font_size = numeric_setting(mod, "single_column_weapon_name_font_size", 20, 10, 24)
 
 	if display_name and display_name.style then
 		display_name.style.font_size = native_name_font_size

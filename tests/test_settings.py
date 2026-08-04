@@ -32,7 +32,7 @@ def main() -> None:
 			weapon_modifier_lowest_color_r = 255,
 			weapon_modifier_lowest_color_g = 94,
 			weapon_modifier_lowest_color_b = 132,
-			weapon_modifier_lowest_color_opacity = 100,
+			weapon_modifier_lowest_color_opacity = 80,
 			enable_hadron_entreat_grid = true,
 			enable_armoury_requisition_grid = true,
 			expand_armoury_requisition_window = true,
@@ -963,8 +963,8 @@ def main() -> None:
     assert defaults["weapon_modifier_lowest_color_r"] == 255
     assert defaults["weapon_modifier_lowest_color_g"] == 94
     assert defaults["weapon_modifier_lowest_color_b"] == 132
-    assert defaults["weapon_modifier_lowest_color_opacity"] == 100
-    assert defaults["single_column_weapon_name_font_size"] == 18
+    assert defaults["weapon_modifier_lowest_color_opacity"] == 80
+    assert defaults["single_column_weapon_name_font_size"] == 20
     assert defaults["single_column_blessing_icons_on_right"] is True
     assert defaults["enable_hadron_entreat_grid"] is True
     assert defaults["enable_armoury_requisition_grid"] is True

@@ -781,7 +781,7 @@ return {
 						setting_id = "weapon_modifier_lowest_color_opacity",
 						tooltip = "weapon_modifier_lowest_color_opacity_tooltip",
 						type = "numeric",
-						default_value = 100,
+						default_value = 80,
 						range = {
 							0,
 							100,
@@ -797,7 +797,7 @@ return {
 						setting_id = "single_column_weapon_name_font_size",
 						tooltip = "single_column_weapon_name_font_size_tooltip",
 						type = "numeric",
-						default_value = 18,
+						default_value = 20,
 						range = {
 							10,
 							24,

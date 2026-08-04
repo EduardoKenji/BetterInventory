@@ -288,7 +288,7 @@ def main() -> None:
 				weapon_modifier_lowest_color_r = 255,
 				weapon_modifier_lowest_color_g = 94,
 				weapon_modifier_lowest_color_b = 132,
-				weapon_modifier_lowest_color_opacity = 100,
+				weapon_modifier_lowest_color_opacity = 80,
 				expand_inventory_window = true,
 				weapon_extra_width_column_threshold = "four_plus",
 				five_column_weapon_extra_width = 80,
@@ -320,7 +320,7 @@ def main() -> None:
 				weapon_perk_compression = "compression",
 				show_weapon_perk_rank_symbols = false,
 				weapon_perk_rank_icon_size = 18,
-				single_column_weapon_name_font_size = 18,
+				single_column_weapon_name_font_size = 20,
 				single_column_blessing_icons_on_right = true,
 				weapon_perk_vertical_spacing = 2,
 				weapon_perk_blessing_spacing = 5,
@@ -869,7 +869,7 @@ def main() -> None:
     native_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     native_size = layout.configure_item_blueprint(mod, native_blueprint, 596)
     assert (native_size[1], native_size[2]) == (586, 110)
-    assert blueprint_pass(native_blueprint, "display_name").style.font_size == 18
+    assert blueprint_pass(native_blueprint, "display_name").style.font_size == 20
     native_icon_size = blueprint_pass(native_blueprint, "icon").style.size
     assert (native_icon_size[1], native_icon_size[2]) == (586, 110)
     assert (
@@ -938,7 +938,7 @@ def main() -> None:
     )
     assert tuple(
         standalone_low_title_pass.style.text_color[index] for index in range(1, 5)
-    ) == (255, 255, 94, 132)
+    ) == (204, 255, 94, 132)
 
     mod.settings.weapon_modifier_lowest_color_r = 12
     mod.settings.weapon_modifier_lowest_color_g = 34
@@ -961,7 +961,7 @@ def main() -> None:
     mod.settings.weapon_modifier_lowest_color_r = 255
     mod.settings.weapon_modifier_lowest_color_g = 94
     mod.settings.weapon_modifier_lowest_color_b = 132
-    mod.settings.weapon_modifier_lowest_color_opacity = 100
+    mod.settings.weapon_modifier_lowest_color_opacity = 80
 
     # Unknown future modifier IDs receive bounded deterministic fallbacks, and
     # colliding four-character labels are disambiguated within the same weapon.
@@ -1031,7 +1031,7 @@ def main() -> None:
     native_detailed_size = layout.configure_item_blueprint(
         mod, native_detailed_blueprint, 596
     )
-    assert (native_detailed_size[1], native_detailed_size[2]) == (586, 144)
+    assert (native_detailed_size[1], native_detailed_size[2]) == (586, 146)
     native_detailed_icon_size = blueprint_pass(
         native_detailed_blueprint, "icon"
     ).style.size
@@ -1045,7 +1045,7 @@ def main() -> None:
         "item_level",
         "rarity_tag",
     ):
-        assert blueprint_pass(native_detailed_blueprint, style_id).style.size[2] == 144
+        assert blueprint_pass(native_detailed_blueprint, style_id).style.size[2] == 146
     native_first_perk = blueprint_pass(
         native_detailed_blueprint, "better_inventory_weapon_perk_1"
     ).style
@@ -1058,7 +1058,7 @@ def main() -> None:
     large_name_size = layout.configure_item_blueprint(mod, large_name_blueprint, 596)
     assert (large_name_size[1], large_name_size[2]) == (586, 148)
     assert blueprint_pass(large_name_blueprint, "display_name").style.font_size == 22
-    mod.settings.single_column_weapon_name_font_size = 18
+    mod.settings.single_column_weapon_name_font_size = 20
 
     # In native mode BetterInventory keeps only Quick Look Card's five modifier
     # stats, then renders its own perks, blessings and primary item power.
@@ -1090,7 +1090,7 @@ def main() -> None:
             }
         )
     qlc_native_size = layout.configure_item_blueprint(mod, qlc_native_blueprint, 596)
-    assert (qlc_native_size[1], qlc_native_size[2]) == (586, 144)
+    assert (qlc_native_size[1], qlc_native_size[2]) == (586, 146)
     qlc_stat_style = blueprint_pass(
         qlc_native_blueprint, "qlc_stats_title_1"
     ).style
@@ -1111,7 +1111,7 @@ def main() -> None:
         == "better_inventory_weapon_modifier_title_1"
         for index in range(1, len(qlc_native_blueprint.pass_template) + 1)
     )
-    assert (qlc_stat_style.offset[1], qlc_stat_style.offset[2]) == (281, 100)
+    assert (qlc_stat_style.offset[1], qlc_stat_style.offset[2]) == (281, 102)
     assert (qlc_stat_style.size[1], qlc_stat_style.size[2]) == (42, 17)
     assert qlc_stat_style.font_size == 14
     assert qlc_stat_style.vertical_alignment == "top"
@@ -1156,7 +1156,7 @@ def main() -> None:
     )
     layout.configure_item_blueprint(mod, qlc_moved_blueprint, 596)
     qlc_moved_style = blueprint_pass(qlc_moved_blueprint, "qlc_stats_title_1").style
-    assert (qlc_moved_style.offset[1], qlc_moved_style.offset[2]) == (0, 104)
+    assert (qlc_moved_style.offset[1], qlc_moved_style.offset[2]) == (0, 106)
     assert (qlc_moved_style.size[1], qlc_moved_style.size[2]) == (48, 19)
     assert qlc_moved_style.font_size == 16
     mod.settings.quick_look_card_single_column_font_size = 14
@@ -1248,7 +1248,7 @@ def main() -> None:
         -26,
     )
     assert tuple(qlc_dump_pass.style.text_color[index] for index in range(1, 5)) == (
-        255,
+        204,
         255,
         94,
         132,
@@ -1269,7 +1269,7 @@ def main() -> None:
     mod.settings.weapon_modifier_lowest_color_r = 255
     mod.settings.weapon_modifier_lowest_color_g = 94
     mod.settings.weapon_modifier_lowest_color_b = 132
-    mod.settings.weapon_modifier_lowest_color_opacity = 100
+    mod.settings.weapon_modifier_lowest_color_opacity = 80
 
     mod.settings.quick_look_card_grid_bottom_padding = 32
     qlc_lower_padding_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
