@@ -86,10 +86,6 @@ local function global_store_extra_height(mod, configuration)
 		return 0
 	end
 
-	if Layout.columns(mod, configuration.maximum_columns) < 3 then
-		return 0
-	end
-
 	return GLOBAL_STORE_CHARACTER_ROW_HEIGHT + math.max(0, global_store_price_row_padding(mod) - GLOBAL_STORE_PRICE_ROW_PADDING_DEFAULT)
 end
 

@@ -892,10 +892,15 @@ def main() -> None:
     two_column_global_size = layout.configure_item_blueprint(
         mod, two_column_global_blueprint, 596, global_store_configuration
     )
-    assert (two_column_global_size[1], two_column_global_size[2]) == (293, 114)
+    assert (two_column_global_size[1], two_column_global_size[2]) == (293, 144)
     assert blueprint_pass(two_column_global_blueprint, "icon").style.size[2] == 114
-    assert blueprint_pass(two_column_global_blueprint, "portrait").style.size[1] == 34
+    assert blueprint_pass(two_column_global_blueprint, "item_level").style.offset[2] == -40
+    assert blueprint_pass(two_column_global_blueprint, "price_text").style.offset[2] == -40
+    assert blueprint_pass(two_column_global_blueprint, "better_inventory_quick_look_card_dump_stat").style.offset[2] == -66
+    assert blueprint_pass(two_column_global_blueprint, "portrait").style.size[1] == 33
     assert blueprint_pass(two_column_global_blueprint, "portrait").style.offset[2] == -2
+    assert blueprint_pass(two_column_global_blueprint, "character_class_icon_text").style.offset[1] == 50
+    assert blueprint_pass(two_column_global_blueprint, "character_info_text").style.offset[1] == 70
     mod.settings.columns = 5
 
     mod.settings.show_weapon_perks = True
