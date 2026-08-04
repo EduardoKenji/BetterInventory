@@ -272,6 +272,9 @@ local localization = {
 	automatic_curio_characters_discovering_inventory = {
 		en = "Discovering characters...",
 	},
+	automatic_curio_character_options_placeholder = {
+		en = "Discovering characters...",
+	},
 	automatic_curio_class_veteran = {
 		en = "Veteran",
 	},
@@ -1764,6 +1767,7 @@ zh_cn.automatic_curio_characters_group = "要获取珍品的角色："
 zh_cn.automatic_curio_characters_inventory_label = "要获取珍品的角色："
 zh_cn.automatic_curio_characters_discovering = "正在发现角色……请稍后重新打开模组选项，或使用库存选项面板。"
 zh_cn.automatic_curio_characters_discovering_inventory = "正在发现角色..."
+zh_cn.automatic_curio_character_options_placeholder = "正在发现角色……"
 zh_cn.enable_automatic_curio_acquisition_tooltip = "每次进入晨星号后，对所有角色的军械库交易所执行一次扫描，并自动购买符合物品等级、主要属性数值、类型和目标筛选条件的所有珍品。目标可按职业或单个角色选择。此功能会在没有确认提示的情况下花费审判庭双子币。自动丢弃会先完成，且符合获取规则的珍品会在以后的自动丢弃流程中保持受保护状态。"
 zh_cn.automatic_curio_min_item_level_tooltip = "只有显示物品等级达到或超过此值的军械库珍品才符合条件。生命和韧性珍品还必须达到对应的最低主要属性数值。货币充足时，会购买每个已启用目标的所有匹配商品。默认值为 410。"
 

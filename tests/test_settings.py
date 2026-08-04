@@ -782,6 +782,9 @@ def main() -> None:
 
             sub_widgets = widget.sub_widgets
 
+            if widget.type == "group":
+                assert sub_widgets is not None and len(sub_widgets) > 0, setting_id
+
             if sub_widgets is not None:
                 inspect_widgets(sub_widgets)
 

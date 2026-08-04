@@ -1412,13 +1412,17 @@ CurioAcquisition.inject_character_options = function(mod, options_templates)
 
 	local category_name = mod:get_readable_name()
 	local group_title = mod:localize("automatic_curio_characters_group")
+	local placeholder_title = mod:localize("automatic_curio_character_options_placeholder")
 	local group_index
+	local placeholder_index
 
 	for index = 1, #settings do
 		local entry = settings[index]
 
-		if type(entry) == "table" and (entry._better_inventory_curio_character_id or entry._better_inventory_curio_character_placeholder) then
+		if type(entry) == "table" and entry._better_inventory_curio_character_id then
 			return true
+		elseif type(entry) == "table" and (entry._better_inventory_curio_character_placeholder or entry.category == category_name and entry.display_name == placeholder_title) then
+			placeholder_index = index
 		elseif type(entry) == "table" and entry.category == category_name and entry.widget_type == "group_header" and entry.display_name == group_title then
 			group_index = index
 		end
@@ -1432,19 +1436,33 @@ CurioAcquisition.inject_character_options = function(mod, options_templates)
 
 	if #profiles == 0 then
 		CurioAcquisition.request_profile_discovery()
-		table.insert(settings, group_index + 1, {
-			_better_inventory_curio_character_placeholder = true,
-			category = category_name,
-			custom = true,
-			display_name = mod:localize("automatic_curio_characters_discovering"),
-			indentation_level = 3,
-			validation_function = function()
-				return mod:get("automatic_curio_target_mode") == "characters"
-			end,
-			widget_type = "description",
-		})
+		local placeholder = placeholder_index and settings[placeholder_index]
+
+		if not placeholder then
+			placeholder = {}
+			table.insert(settings, group_index + 1, placeholder)
+		end
+
+		placeholder._better_inventory_curio_character_placeholder = true
+		placeholder.category = category_name
+		placeholder.custom = true
+		placeholder.disabled = true
+		placeholder.display_name = mod:localize("automatic_curio_characters_discovering")
+		placeholder.indentation_level = 3
+		placeholder.validation_function = function()
+			return mod:get("automatic_curio_target_mode") == "characters"
+		end
+		placeholder.widget_type = "description"
 
 		return false
+	end
+
+	if placeholder_index then
+		table.remove(settings, placeholder_index)
+
+		if placeholder_index < group_index then
+			group_index = group_index - 1
+		end
 	end
 
 	local labels = {}

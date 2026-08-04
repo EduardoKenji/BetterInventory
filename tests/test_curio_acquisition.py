@@ -588,6 +588,39 @@ def main() -> None:
     archetype_count = lua.eval("function(values) local count = 0 for _ in pairs(values) do count = count + 1 end return count end")
     assert archetype_count(module._test.ARCHETYPE_SETTINGS) == 7
 
+    # DMF validates static groups before BetterInventory's final-template hook
+    # runs. With no profiles cached yet, the schema placeholder must become a
+    # non-interactive discovery description instead of leaving an empty group.
+    undiscovered_character_options = lua.execute(
+        r"""
+        return {
+            settings = {
+                {
+                    category = "Better Inventory",
+                    display_name = "automatic_curio_characters_group",
+                    widget_type = "group_header",
+                },
+                {
+                    category = "Better Inventory",
+                    display_name = "automatic_curio_character_options_placeholder",
+                    widget_type = "checkbox",
+                },
+            },
+        }
+        """
+    )
+    assert module.inject_character_options(
+        globals_.test_mod, undiscovered_character_options
+    ) is False
+    assert len(undiscovered_character_options.settings) == 2
+    discovery_placeholder = undiscovered_character_options.settings[2]
+    assert discovery_placeholder.widget_type == "description"
+    assert discovery_placeholder.disabled is True
+    assert (
+        discovery_placeholder.display_name
+        == "automatic_curio_characters_discovering"
+    )
+
     # Automatic discard owns the first Morningstar phase. The Curio Buyer must
     # remain dormant until that system is settled, then target the scanned
     # profile's wallet rather than the currently selected character's wallet.
@@ -624,6 +657,11 @@ def main() -> None:
                     display_name = "automatic_curio_characters_group",
                     widget_type = "group_header",
                 },
+                {
+                    category = "Better Inventory",
+                    display_name = "automatic_curio_character_options_placeholder",
+                    widget_type = "checkbox",
+                },
             },
         }
         """
@@ -633,6 +671,7 @@ def main() -> None:
     ) is True
     assert len(character_options.settings) == 2
     character_option = character_options.settings[2]
+    assert character_option.display_name != "automatic_curio_character_options_placeholder"
     assert character_option.display_name == "Research Psyker(Psyker)"
     assert character_option.get_function() is True
     character_option.on_activated(False)

@@ -501,6 +501,13 @@ return {
 							{
 								setting_id = "automatic_curio_characters_group",
 								type = "group",
+								sub_widgets = {
+									{
+										setting_id = "automatic_curio_character_options_placeholder",
+										type = "checkbox",
+										default_value = false,
+									},
+								},
 							},
 						},
 					},
