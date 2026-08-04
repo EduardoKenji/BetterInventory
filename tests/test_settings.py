@@ -130,7 +130,22 @@ def main() -> None:
         test_dmf = {
             create_mod_options_settings = function() end,
         }
-        captured_options_hook = nil
+		test_alfs_tabs_enabled = true
+		test_alfs = {
+			default_tab = "Other",
+			inject_generalised_tabs = function() end,
+			is_gen_tabs_enabled_for_mod = function()
+				return test_alfs_tabs_enabled
+			end,
+		}
+		function test_alfs:get(setting_id)
+			if setting_id == "enable_generalised_mod_tabs" then
+				return test_alfs_tabs_enabled
+			end
+		end
+		captured_options_hook = nil
+		captured_alfs_tabs_hook = nil
+		alfs_tabs_hook_count = 0
 		captured_item_grid_init_hook = nil
 		captured_armoury_on_enter_hook = nil
 		captured_module_errors = 0
@@ -181,6 +196,9 @@ def main() -> None:
         function test_mod:hook_safe(target, method, callback)
             if target == test_dmf and method == "create_mod_options_settings" then
                 captured_options_hook = callback
+			elseif target == test_alfs and method == "inject_generalised_tabs" then
+				captured_alfs_tabs_hook = callback
+				alfs_tabs_hook_count = alfs_tabs_hook_count + 1
             end
         end
 
@@ -192,6 +210,10 @@ def main() -> None:
             if name == "DMF" then
                 return test_dmf
             end
+
+			if name == "Alfs_DMF_Extensions" then
+				return test_alfs
+			end
         end
 
         function require(path)
@@ -203,6 +225,133 @@ def main() -> None:
     globals_ = lua.globals()
     mod = globals_.test_mod
     settings = globals_.settings
+
+    # Alf's generalized tabs must resolve visible widgets through their actual
+    # DMF entries. Conditional settings are absent from the visible array, so
+    # positional pairing would put Additional views and Grid layout under the
+    # preceding Automatic Curio Buyer tab.
+    mod.on_all_mods_loaded()
+    mod.on_all_mods_loaded()
+    assert globals_.alfs_tabs_hook_count == 1
+    assert globals_.captured_alfs_tabs_hook is not None
+
+    alfs_scenario = lua.execute(
+        """
+        local category = "Better Inventory"
+        local automatic_header = {
+            category = category,
+            display_name = "Automatic Curio Buyer",
+            indentation_level = 0,
+            widget_type = "group_header",
+        }
+        local hidden_character_mode = {
+            category = category,
+            display_name = "Curio acquisition targets",
+            indentation_level = 1,
+            widget_type = "dropdown",
+        }
+        local dynamic_character = {
+            category = category,
+            display_name = "Dudualdo(Ogryn)",
+            indentation_level = 3,
+            widget_type = "checkbox",
+        }
+        local additional_header = {
+            category = category,
+            display_name = "Additional inventory views",
+            indentation_level = 0,
+            widget_type = "group_header",
+        }
+        local hadron = {
+            category = category,
+            display_name = "Hadron Entreat grid",
+            indentation_level = 1,
+            widget_type = "checkbox",
+        }
+        local grid_header = {
+            category = category,
+            display_name = "Grid layout",
+            indentation_level = 0,
+            widget_type = "group_header",
+        }
+        local hidden_grid_toggle = {
+            category = category,
+            display_name = "Enable grid layout",
+            indentation_level = 1,
+            widget_type = "checkbox",
+        }
+        local columns = {
+            category = category,
+            display_name = "Columns",
+            indentation_level = 1,
+            widget_type = "value_slider",
+        }
+        local entries = {
+            automatic_header,
+            hidden_character_mode,
+            dynamic_character,
+            additional_header,
+            hadron,
+            grid_header,
+            hidden_grid_toggle,
+            columns,
+        }
+        local visible_entries = {
+            automatic_header,
+            dynamic_character,
+            additional_header,
+            hadron,
+            grid_header,
+            columns,
+        }
+        local visible = {}
+
+        for index = 1, #visible_entries do
+            visible[index] = {
+                widget = {
+                    content = {
+                        entry = visible_entries[index],
+                        tab = "Automatic Curio Buyer",
+                    },
+                },
+            }
+        end
+
+        return {
+            category = category,
+            view = {
+                _options_templates = { settings = entries },
+                _settings_category_widgets = { [category] = visible },
+            },
+            visible = visible,
+        }
+        """
+    )
+    globals_.captured_alfs_tabs_hook(alfs_scenario.view, alfs_scenario.category)
+    repaired_tabs = [
+        alfs_scenario.visible[index].widget.content.tab
+        for index in range(1, len(alfs_scenario.visible) + 1)
+    ]
+    assert repaired_tabs == [
+        "Automatic Curio Buyer",
+        "Automatic Curio Buyer",
+        "Additional inventory views",
+        "Additional inventory views",
+        "Grid layout",
+        "Grid layout",
+    ]
+
+    globals_.test_alfs_tabs_enabled = False
+    alfs_scenario.visible[6].widget.content.tab = None
+    globals_.captured_alfs_tabs_hook(alfs_scenario.view, alfs_scenario.category)
+    assert alfs_scenario.visible[6].widget.content.tab is None
+    globals_.test_alfs_tabs_enabled = True
+    globals_.captured_alfs_tabs_hook(alfs_scenario.view, alfs_scenario.category)
+    assert alfs_scenario.visible[6].widget.content.tab == "Grid layout"
+
+    alfs_scenario.visible[6].widget.content.tab = "Unchanged"
+    globals_.captured_alfs_tabs_hook(alfs_scenario.view, "Another Mod")
+    assert alfs_scenario.visible[6].widget.content.tab == "Unchanged"
 
     credits_view = lua.table_from({"__class_name": "CreditsVendorView"})
     credits_definitions = lua.table_from({})

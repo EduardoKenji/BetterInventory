@@ -623,6 +623,112 @@ local function bind_option_dependencies(options_templates)
 	refresh_option_dependencies()
 end
 
+local alfs_dmf_tabs_hooked = false
+local ALFS_TAB_CACHE_FIELD = "_better_inventory_alfs_tab_cache"
+
+local function repair_alfs_dmf_extension_tabs(alfs_mod, options_view, category)
+	if category ~= mod:get_readable_name() then
+		return false
+	end
+
+	if type(alfs_mod.is_gen_tabs_enabled_for_mod) == "function" and not alfs_mod.is_gen_tabs_enabled_for_mod(category) then
+		if type(options_view) == "table" then
+			options_view[ALFS_TAB_CACHE_FIELD] = nil
+		end
+
+		return false
+	end
+
+	if type(alfs_mod.get) == "function" and alfs_mod:get("enable_generalised_mod_tabs") == false then
+		if type(options_view) == "table" then
+			options_view[ALFS_TAB_CACHE_FIELD] = nil
+		end
+
+		return false
+	end
+
+	local options_templates = options_view and options_view._options_templates
+	local settings = options_templates and options_templates.settings
+	local category_widgets = options_view and options_view._settings_category_widgets
+	local visible_widgets = category_widgets and category_widgets[category]
+
+	if type(settings) ~= "table" or type(visible_widgets) ~= "table" then
+		return false
+	end
+
+	local inject_state = alfs_mod._tab_inject_state
+	local state = type(inject_state) == "table" and inject_state["gen_" .. category]
+	local cache = options_view[ALFS_TAB_CACHE_FIELD]
+
+	if cache and cache.settings == settings and cache.visible_widgets == visible_widgets and cache.state == state then
+		return false
+	end
+
+	-- Alf's generalized-tab pass pairs the filtered visible-widget array with the
+	-- unfiltered template array by numeric index. BetterInventory has conditional
+	-- settings and dynamically inserted character controls, so the arrays can
+	-- diverge. Resolve each visible widget through its actual DMF entry instead.
+	local tab_by_entry = {}
+	local current_tab
+
+	for index = 1, #settings do
+		local entry = settings[index]
+
+		if type(entry) == "table" and entry.category == category then
+			if entry.widget_type == "group_header" and entry.indentation_level == 0 then
+				current_tab = entry.tab or entry.display_name or current_tab
+			end
+
+			tab_by_entry[entry] = entry.tab or current_tab or alfs_mod.default_tab
+		end
+	end
+
+	local repaired = false
+
+	for index = 1, #visible_widgets do
+		local data = visible_widgets[index]
+		local widget = data and data.widget
+		local content = widget and widget.content
+		local entry = content and content.entry
+		local tab = entry and tab_by_entry[entry]
+
+		if tab and content.tab ~= tab then
+			content.tab = tab
+			repaired = true
+		end
+	end
+
+	options_view[ALFS_TAB_CACHE_FIELD] = {
+		settings = settings,
+		state = state,
+		visible_widgets = visible_widgets,
+	}
+
+	return repaired
+end
+
+local function register_alfs_dmf_extensions_compatibility()
+	if alfs_dmf_tabs_hooked then
+		return
+	end
+
+	local alfs_mod = get_mod("Alfs_DMF_Extensions")
+
+	if type(alfs_mod) ~= "table" or type(alfs_mod.inject_generalised_tabs) ~= "function" then
+		return
+	end
+
+	mod:hook_safe(alfs_mod, "inject_generalised_tabs", function(options_view, category)
+		repair_alfs_dmf_extension_tabs(alfs_mod, options_view, category)
+	end)
+
+	alfs_dmf_tabs_hooked = true
+end
+
+function mod.on_all_mods_loaded()
+	register_alfs_dmf_extensions_compatibility()
+end
+
 function mod.on_enabled()
 	-- DMF preserves saved values when a default changes. Apply the new compact
 	-- card defaults once for installs that already initialized the old values;
