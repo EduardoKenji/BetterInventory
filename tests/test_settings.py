@@ -25,6 +25,7 @@ def main() -> None:
 			enable_quick_look_card_single_column_integration = true,
 			enable_quick_look_card_grid_integration = true,
 			quick_look_card_single_column_font_size = 14,
+			quick_look_card_single_column_label_value_gap = 6,
 			quick_look_card_single_column_horizontal_position = 79,
 			quick_look_card_single_column_vertical_position = 93,
 			quick_look_card_grid_stat_position = "above_power",
@@ -414,6 +415,7 @@ def main() -> None:
 		"single_column_weapon_name_font_size",
 		"single_column_blessing_icons_on_right",
 		"quick_look_card_single_column_font_size",
+		"quick_look_card_single_column_label_value_gap",
 		"quick_look_card_single_column_horizontal_position",
 		"quick_look_card_single_column_vertical_position",
 		"quick_look_card_grid_stat_position",
@@ -549,6 +551,7 @@ def main() -> None:
     assert entries_by_id["single_column_weapon_name_font_size"].disabled is True
     assert entries_by_id["single_column_blessing_icons_on_right"].disabled is True
     assert entries_by_id["quick_look_card_single_column_font_size"].disabled is True
+    assert entries_by_id["quick_look_card_single_column_label_value_gap"].disabled is True
     assert entries_by_id["quick_look_card_single_column_horizontal_position"].disabled is True
     assert entries_by_id["quick_look_card_single_column_vertical_position"].disabled is True
     assert entries_by_id["quick_look_card_grid_stat_position"].disabled is False
@@ -845,6 +848,7 @@ def main() -> None:
 			"single_column_layout_group",
 			"single_column_weapon_name_font_size",
 			"quick_look_card_single_column_font_size",
+			"quick_look_card_single_column_label_value_gap",
 			"quick_look_card_single_column_horizontal_position",
 			"quick_look_card_single_column_vertical_position",
 			"weapon_modifier_lowest_color_preset",
@@ -868,6 +872,7 @@ def main() -> None:
     assert entries_by_id["single_column_weapon_name_font_size"].disabled is False
     assert entries_by_id["single_column_blessing_icons_on_right"].disabled is True
     assert entries_by_id["quick_look_card_single_column_font_size"].disabled is False
+    assert entries_by_id["quick_look_card_single_column_label_value_gap"].disabled is False
     assert entries_by_id["quick_look_card_single_column_horizontal_position"].disabled is False
     assert entries_by_id["quick_look_card_single_column_vertical_position"].disabled is False
     assert entries_by_id["weapon_modifier_lowest_color_preset"].disabled is False
@@ -899,6 +904,7 @@ def main() -> None:
     settings.enable_quick_look_card_single_column_integration = False
     mod.on_setting_changed("enable_quick_look_card_single_column_integration")
     assert entries_by_id["quick_look_card_single_column_font_size"].disabled is True
+    assert entries_by_id["quick_look_card_single_column_label_value_gap"].disabled is True
     assert entries_by_id["quick_look_card_single_column_horizontal_position"].disabled is True
     assert entries_by_id["quick_look_card_single_column_vertical_position"].disabled is True
     assert entries_by_id["weapon_modifier_lowest_color_preset"].disabled is True
@@ -1028,6 +1034,7 @@ def main() -> None:
     assert defaults["enable_grid_layout"] is True
     assert defaults["enable_quick_look_card_single_column_integration"] is True
     assert defaults["quick_look_card_single_column_font_size"] == 14
+    assert defaults["quick_look_card_single_column_label_value_gap"] == 6
     assert defaults["quick_look_card_single_column_horizontal_position"] == 79
     assert defaults["quick_look_card_single_column_vertical_position"] == 93
     assert defaults["enable_quick_look_card_grid_integration"] is True

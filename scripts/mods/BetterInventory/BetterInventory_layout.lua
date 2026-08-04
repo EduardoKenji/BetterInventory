@@ -1095,8 +1095,9 @@ local function configure_native_quick_look_card_passes(mod, pass_template, card_
 	local value_width = math.max(32, math.floor(font_size * 2.3 + 0.5))
 	-- Four-character labels such as SHRD and WRES need more room than the
 	-- previous fixed offset provided. Anchor the value after the complete title
-	-- box so the label and value cannot overlap at any supported font size.
-	local title_value_gap = math.max(6, math.floor(font_size * 0.4 + 0.5))
+	-- box so the label and value cannot overlap at any supported font size. The
+	-- user-facing gap remains adjustable for tighter cards.
+	local title_value_gap = numeric_setting(mod, "quick_look_card_single_column_label_value_gap", 6, 0, 16)
 	local value_offset = title_width + title_value_gap
 	local block_width = column_step * 2 + value_offset + value_width
 	local block_height = row_step + line_height

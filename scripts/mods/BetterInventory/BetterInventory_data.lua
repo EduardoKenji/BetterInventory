@@ -725,6 +725,16 @@ return {
 						},
 					},
 					{
+						setting_id = "quick_look_card_single_column_label_value_gap",
+						tooltip = "quick_look_card_single_column_label_value_gap_tooltip",
+						type = "numeric",
+						default_value = 6,
+						range = {
+							0,
+							16,
+						},
+					},
+					{
 						setting_id = "quick_look_card_single_column_horizontal_position",
 						tooltip = "quick_look_card_single_column_horizontal_position_tooltip",
 						type = "numeric",

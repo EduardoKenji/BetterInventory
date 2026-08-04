@@ -542,6 +542,12 @@ local localization = {
 	quick_look_card_single_column_font_size_tooltip = {
 		en = "Controls the font size of the five-modifier block in single-column mode. Reopen the inventory after changing this value.",
 	},
+	quick_look_card_single_column_label_value_gap = {
+		en = "Single-column modifier label/value gap",
+	},
+	quick_look_card_single_column_label_value_gap_tooltip = {
+		en = "Controls the horizontal gap in pixels between each modifier label and its number in single-column mode. Set it lower for a tighter block or higher for more separation. Reopen the inventory after changing this value.",
+	},
 	quick_look_card_single_column_horizontal_position = {
 		en = "Single-column modifier horizontal position (%%)",
 	},
@@ -1611,6 +1617,8 @@ local zh_cn = {
 	enable_quick_look_card_single_column_integration_tooltip = "无需安装其他模组即可显示武器五项最大潜力属性。安装 Quick Look Card 时，BetterInventory 会复用并规范其绘制项以避免重复。关闭后将保留 Quick Look Card 原生的单列内容。更改后请重新打开库存。",
 	quick_look_card_single_column_font_size = "单列属性字号",
 	quick_look_card_single_column_font_size_tooltip = "控制单列模式中五项武器属性区块的字号。更改后请重新打开库存。",
+	quick_look_card_single_column_label_value_gap = "单列属性标签与数值间距",
+	quick_look_card_single_column_label_value_gap_tooltip = "控制单列模式中每项属性标签与数值之间的水平像素间距。调低可使区块更紧凑，调高可增加分隔。更改后请重新打开库存。",
 	quick_look_card_single_column_horizontal_position = "单列属性水平位置（%%）",
 	quick_look_card_single_column_horizontal_position_tooltip = "在卡片可用宽度内水平移动五项武器属性区块。0 为左边缘，100 为右边缘。更改后请重新打开库存。",
 	quick_look_card_single_column_vertical_position = "单列属性垂直位置（%%）",
