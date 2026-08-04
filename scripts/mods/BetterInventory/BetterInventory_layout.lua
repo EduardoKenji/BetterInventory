@@ -23,7 +23,9 @@ local GLOBAL_STORE_CHARACTER_PHOTO_BASE_SIZE = 30
 local GLOBAL_STORE_CHARACTER_PHOTO_MIN_PERCENT = 50
 local GLOBAL_STORE_CHARACTER_PHOTO_MAX_PERCENT = 100
 local GLOBAL_STORE_CHARACTER_ROW_HEIGHT = 30
-local GLOBAL_STORE_CHARACTER_INFO_GAP = 14
+local GLOBAL_STORE_CHARACTER_INFO_GAP_DEFAULT = 14
+local GLOBAL_STORE_CHARACTER_INFO_GAP_MIN = 0
+local GLOBAL_STORE_CHARACTER_INFO_GAP_MAX = 40
 local GLOBAL_STORE_PRICE_ROW_PADDING_DEFAULT = 10
 local GLOBAL_STORE_PRICE_ROW_PADDING_MIN = 5
 local GLOBAL_STORE_PRICE_ROW_PADDING_MAX = 20
@@ -50,6 +52,12 @@ local function global_store_price_row_padding(mod)
 	local value = tonumber(mod:get("global_store_price_row_padding")) or GLOBAL_STORE_PRICE_ROW_PADDING_DEFAULT
 
 	return math.max(GLOBAL_STORE_PRICE_ROW_PADDING_MIN, math.min(GLOBAL_STORE_PRICE_ROW_PADDING_MAX, value))
+end
+
+local function global_store_character_info_gap(mod)
+	local value = tonumber(mod:get("global_store_character_info_gap")) or GLOBAL_STORE_CHARACTER_INFO_GAP_DEFAULT
+
+	return math.max(GLOBAL_STORE_CHARACTER_INFO_GAP_MIN, math.min(GLOBAL_STORE_CHARACTER_INFO_GAP_MAX, value))
 end
 
 local function global_store_extra_height(mod, configuration)
@@ -2811,6 +2819,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 	local global_store_extra = global_store_extra_height(mod, configuration)
 	local global_store_multicolumn = global_store_extra > 0
 	local global_store_photo_size = global_store_multicolumn and global_store_character_photo_size(mod) or 34
+	local global_store_info_gap = global_store_multicolumn and global_store_character_info_gap(mod) or 0
 	local global_store_price_padding = global_store_multicolumn and global_store_price_row_padding(mod) or 0
 	local global_store_price_row_offset = global_store_multicolumn and GLOBAL_STORE_CHARACTER_ROW_HEIGHT + global_store_price_padding or 0
 
@@ -3118,12 +3127,12 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 			character_info.style.font_size = 14
 			character_info.style.word_wrap = false
 			character_info.style.offset = {
-				text_left + (global_store_multicolumn and global_store_photo_size + GLOBAL_STORE_CHARACTER_INFO_GAP or 38),
+				text_left + (global_store_multicolumn and global_store_photo_size + global_store_info_gap or 38),
 				-7,
 				14,
 			}
 			character_info.style.size = {
-				math.max(40, card_width - text_left - (global_store_multicolumn and global_store_photo_size + GLOBAL_STORE_CHARACTER_INFO_GAP + 6 or 108)),
+				math.max(40, card_width - text_left - (global_store_multicolumn and global_store_photo_size + global_store_info_gap + 6 or 108)),
 				24,
 			}
 		end

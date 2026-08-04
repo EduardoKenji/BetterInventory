@@ -650,6 +650,16 @@ return {
 									20,
 								},
 							},
+							{
+								setting_id = "global_store_character_info_gap",
+								tooltip = "global_store_character_info_gap_tooltip",
+								type = "numeric",
+								default_value = 14,
+								range = {
+									0,
+									40,
+								},
+							},
 						},
 					},
 				},

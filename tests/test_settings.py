@@ -44,6 +44,7 @@ def main() -> None:
 			enable_global_store_sorting_panel = true,
 			global_store_character_photo_size_percent = 100,
 			global_store_price_row_padding = 10,
+			global_store_character_info_gap = 14,
 			expand_armoury_requisition_window = true,
 			armoury_requisition_target_card_width = 230,
 			automatic_card_height = true,
@@ -407,6 +408,7 @@ def main() -> None:
 		"enable_global_store_sorting_panel",
 		"global_store_character_photo_size_percent",
 		"global_store_price_row_padding",
+		"global_store_character_info_gap",
 		"weapon_perk_compression",
 		"show_weapon_perk_rank_symbols",
 		"weapon_perk_rank_icon_size",
@@ -547,6 +549,7 @@ def main() -> None:
     assert entries_by_id["enable_global_store_sorting_panel"].disabled is False
     assert entries_by_id["global_store_character_photo_size_percent"].disabled is False
     assert entries_by_id["global_store_price_row_padding"].disabled is False
+    assert entries_by_id["global_store_character_info_gap"].disabled is False
     assert entries_by_id["expand_curio_inventory_window"].disabled is False
     assert entries_by_id["weapon_extra_width_column_threshold"].disabled is False
     assert entries_by_id["five_column_weapon_extra_width"].disabled is True
@@ -836,23 +839,27 @@ def main() -> None:
     assert entries_by_id["enable_global_store_sorting_panel"].disabled is True
     assert entries_by_id["global_store_character_photo_size_percent"].disabled is True
     assert entries_by_id["global_store_price_row_padding"].disabled is True
+    assert entries_by_id["global_store_character_info_gap"].disabled is True
     settings.enable_global_store_integration = True
     mod.on_setting_changed("enable_global_store_integration")
     assert entries_by_id["enable_global_store_grid"].disabled is False
     assert entries_by_id["enable_global_store_sorting_panel"].disabled is False
     assert entries_by_id["global_store_character_photo_size_percent"].disabled is False
     assert entries_by_id["global_store_price_row_padding"].disabled is False
+    assert entries_by_id["global_store_character_info_gap"].disabled is False
 
     settings.enable_global_store_grid = False
     mod.on_setting_changed("enable_global_store_grid")
     assert entries_by_id["enable_global_store_sorting_panel"].disabled is True
     assert entries_by_id["global_store_character_photo_size_percent"].disabled is True
     assert entries_by_id["global_store_price_row_padding"].disabled is True
+    assert entries_by_id["global_store_character_info_gap"].disabled is True
     settings.enable_global_store_grid = True
     mod.on_setting_changed("enable_global_store_grid")
     assert entries_by_id["enable_global_store_sorting_panel"].disabled is False
     assert entries_by_id["global_store_character_photo_size_percent"].disabled is False
     assert entries_by_id["global_store_price_row_padding"].disabled is False
+    assert entries_by_id["global_store_character_info_gap"].disabled is False
 
     settings.expand_curio_inventory_window = False
     mod.on_setting_changed("expand_curio_inventory_window")
@@ -1075,6 +1082,7 @@ def main() -> None:
         "enable_global_store_sorting_panel",
         "global_store_character_photo_size_percent",
         "global_store_price_row_padding",
+        "global_store_character_info_gap",
     ]
     grid_layout_index = top_level_ids.index("layout_group")
     assert top_level_ids[grid_layout_index + 1] == "single_column_layout_group"
@@ -1134,6 +1142,7 @@ def main() -> None:
     assert defaults["enable_global_store_sorting_panel"] is True
     assert defaults["global_store_character_photo_size_percent"] == 100
     assert defaults["global_store_price_row_padding"] == 10
+    assert defaults["global_store_character_info_gap"] == 14
     assert defaults["enable_quick_look_card_single_column_integration"] is True
     assert defaults["quick_look_card_single_column_font_size"] == 14
     assert defaults["quick_look_card_single_column_label_value_gap"] == 1

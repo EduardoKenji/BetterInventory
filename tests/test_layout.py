@@ -299,6 +299,7 @@ def main() -> None:
 				enable_armoury_requisition_grid = true,
 				global_store_character_photo_size_percent = 100,
 				global_store_price_row_padding = 10,
+				global_store_character_info_gap = 14,
 				brighten_armoury_item_levels = true,
 				expand_armoury_requisition_window = true,
 				armoury_requisition_target_card_width = 230,
@@ -840,6 +841,12 @@ def main() -> None:
     assert blueprint_pass(padded_price_blueprint, "icon").style.size[2] == 114
     assert blueprint_pass(padded_price_blueprint, "price_text").style.offset[2] == -50
     mod.settings.global_store_price_row_padding = 10
+
+    mod.settings.global_store_character_info_gap = 24
+    wider_info_gap_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, wider_info_gap_blueprint, 596, global_store_configuration)
+    assert blueprint_pass(wider_info_gap_blueprint, "character_info_text").style.offset[1] == 66
+    mod.settings.global_store_character_info_gap = 14
 
     mod.settings.columns = 2
     two_column_global_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
