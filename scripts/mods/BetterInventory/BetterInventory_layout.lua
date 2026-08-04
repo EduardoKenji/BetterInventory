@@ -22,7 +22,8 @@ local STORE_FOOTER_HEIGHT = 34
 local GLOBAL_STORE_CHARACTER_PHOTO_BASE_SIZE = 30
 local GLOBAL_STORE_CHARACTER_PHOTO_MIN_PERCENT = 50
 local GLOBAL_STORE_CHARACTER_PHOTO_MAX_PERCENT = 100
-local GLOBAL_STORE_CHARACTER_ROW_GAP = 4
+local GLOBAL_STORE_CHARACTER_ROW_HEIGHT = 30
+local GLOBAL_STORE_CHARACTER_INFO_GAP = 10
 local NATIVE_SINGLE_COLUMN_CONTENT_GAP = 12
 local WEAPON_PERK_COUNT = 2
 local WEAPON_BLESSING_COUNT = 2
@@ -47,7 +48,7 @@ local function global_store_extra_height(mod, configuration)
 		return 0
 	end
 
-	return Layout.columns(mod, configuration.maximum_columns) >= 3 and global_store_character_photo_size(mod) + GLOBAL_STORE_CHARACTER_ROW_GAP or 0
+	return Layout.columns(mod, configuration.maximum_columns) >= 3 and GLOBAL_STORE_CHARACTER_ROW_HEIGHT or 0
 end
 
 Layout.global_store_character_photo_size = global_store_character_photo_size
@@ -3102,12 +3103,12 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 			character_info.style.font_size = 14
 			character_info.style.word_wrap = false
 			character_info.style.offset = {
-				text_left + (global_store_multicolumn and global_store_photo_size + 4 or 38),
+				text_left + (global_store_multicolumn and global_store_photo_size + GLOBAL_STORE_CHARACTER_INFO_GAP or 38),
 				-7,
 				14,
 			}
 			character_info.style.size = {
-				math.max(40, card_width - text_left - (global_store_multicolumn and global_store_photo_size + 10 or 108)),
+				math.max(40, card_width - text_left - (global_store_multicolumn and global_store_photo_size + GLOBAL_STORE_CHARACTER_INFO_GAP + 6 or 108)),
 				24,
 			}
 		end

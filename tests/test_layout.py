@@ -568,7 +568,7 @@ def main() -> None:
         {"maximum_columns": 5, "store_item": True, "global_store": True}
     )
     assert layout.card_height(mod, store_configuration) == 114
-    assert layout.card_height(mod, global_store_configuration) == 148
+    assert layout.card_height(mod, global_store_configuration) == 144
     mod.settings.blessing_icon_size = 48
     assert layout.card_height(mod, store_configuration) == 128
     mod.settings.blessing_icon_size = 34
@@ -803,29 +803,30 @@ def main() -> None:
     global_store_size = layout.configure_item_blueprint(
         mod, global_store_blueprint, 596, global_store_configuration
     )
-    assert (global_store_size[1], global_store_size[2]) == (111, 148)
+    assert (global_store_size[1], global_store_size[2]) == (111, 144)
     assert blueprint_pass(global_store_blueprint, "wallet_icon").style.horizontal_alignment == "left"
     assert blueprint_pass(global_store_blueprint, "price_text").style.horizontal_alignment == "left"
     assert blueprint_pass(global_store_blueprint, "price_text").style.offset[1] == 39
     global_store_level = blueprint_pass(global_store_blueprint, "item_level").style
     assert global_store_level.vertical_alignment == "bottom"
-    assert global_store_level.offset[2] == -39
+    assert global_store_level.offset[2] == -35
     assert blueprint_pass(global_store_blueprint, "icon").style.size[2] == 114
     assert blueprint_pass(global_store_blueprint, "portrait").style.size[1] == 30
     assert blueprint_pass(global_store_blueprint, "portrait").style.offset[2] == -2
     assert blueprint_pass(global_store_blueprint, "character_info_text").style.font_size == 14
+    assert blueprint_pass(global_store_blueprint, "character_info_text").style.offset[1] == 52
     assert blueprint_pass(global_store_blueprint, "character_info_text").style.offset[2] == -7
 
     mod.settings.global_store_character_photo_size_percent = 50
-    assert layout.card_height(mod, global_store_configuration) == 133
+    assert layout.card_height(mod, global_store_configuration) == 144
     reduced_photo_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     reduced_photo_size = layout.configure_item_blueprint(
         mod, reduced_photo_blueprint, 596, global_store_configuration
     )
-    assert (reduced_photo_size[1], reduced_photo_size[2]) == (111, 133)
+    assert (reduced_photo_size[1], reduced_photo_size[2]) == (111, 144)
     assert blueprint_pass(reduced_photo_blueprint, "icon").style.size[2] == 114
     assert blueprint_pass(reduced_photo_blueprint, "portrait").style.size[1] == 15
-    assert blueprint_pass(reduced_photo_blueprint, "price_text").style.offset[2] == -24
+    assert blueprint_pass(reduced_photo_blueprint, "price_text").style.offset[2] == -35
     mod.settings.global_store_character_photo_size_percent = 100
 
     mod.settings.columns = 2
