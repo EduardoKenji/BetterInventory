@@ -917,7 +917,7 @@ def main() -> None:
     localization = lua.execute(LOCALIZATION_PATH.read_text(encoding="utf-8"))
     defaults = {}
 
-    assert data.version == "1.3.5"
+    assert data.version == "1.4.0"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
