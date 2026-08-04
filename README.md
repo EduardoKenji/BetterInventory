@@ -443,6 +443,7 @@ Initial compatibility targets:
 - Item Sorting.
 - Stuff Searcher or its maintained successor.
 - Quick Look Card.
+- Alf's DMF Extensions generalized tabs, including conditional and dynamically inserted settings.
 - GlobalStore.
 - Favorite and item-lock behavior.
 - Other mods that add style passes to the item blueprint.

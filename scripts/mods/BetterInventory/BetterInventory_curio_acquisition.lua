@@ -1458,9 +1458,6 @@ CurioAcquisition.inject_character_options = function(mod, options_templates)
 		placeholder.disabled = true
 		placeholder.display_name = mod:localize("automatic_curio_characters_discovering")
 		placeholder.indentation_level = 3
-		placeholder.validation_function = function()
-			return mod:get("automatic_curio_target_mode") == "characters"
-		end
 		placeholder.widget_type = "description"
 
 		return false
@@ -1508,9 +1505,6 @@ CurioAcquisition.inject_character_options = function(mod, options_templates)
 			end,
 			get_function = function()
 				return character_is_enabled(mod, character_id)
-			end,
-			validation_function = function()
-				return mod:get("automatic_curio_target_mode") == "characters"
 			end,
 			value_type = "boolean",
 		})

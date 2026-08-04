@@ -113,6 +113,7 @@ def main() -> None:
 			bind_inventory_sort_toggle = function() end,
 			resort_inventory = function() end,
 			update_inventory_sort_toggle = function() end,
+			update_morningstar_auto_discard = function() end,
 			sync_inventory_sort_setting = function() inventory_sort_syncs = inventory_sort_syncs + 1 end,
 			sync_quick_discard_settings = function() quick_discard_syncs = quick_discard_syncs + 1 end,
 			sync_curio_acquisition_settings = function() curio_acquisition_syncs = curio_acquisition_syncs + 1 end,
@@ -130,7 +131,7 @@ def main() -> None:
         test_dmf = {
             create_mod_options_settings = function() end,
         }
-        captured_options_hook = nil
+		captured_options_hook = nil
 		captured_item_grid_init_hook = nil
 		captured_armoury_on_enter_hook = nil
 		captured_module_errors = 0
@@ -192,6 +193,7 @@ def main() -> None:
             if name == "DMF" then
                 return test_dmf
             end
+
         end
 
         function require(path)
@@ -548,8 +550,13 @@ def main() -> None:
     assert entries_by_id["automatic_curio_types_group"].indentation_level == 2
     assert entries_by_id["automatic_curio_classes_group"].indentation_level == 2
     assert entries_by_id["automatic_curio_characters_group"].indentation_level == 2
-    assert entries_by_id["automatic_curio_classes_group"].validation_function() is True
-    assert entries_by_id["automatic_curio_characters_group"].validation_function() is False
+    # Alf's DMF Extensions pairs definitions and rendered widgets by numeric
+    # index. Keep every row in the schema and grey inactive controls instead
+    # of filtering them through validation functions.
+    assert entries_by_id["automatic_curio_classes_group"].validation_function is None
+    assert entries_by_id["automatic_curio_characters_group"].validation_function is None
+    assert entries_by_id["automatic_curio_classes_group"].disabled is True
+    assert entries_by_id["automatic_curio_characters_group"].disabled is True
     assert entries_by_id["curio_information_width_percent"].disabled is True
     assert entries_by_id["curio_preview_height_percent"].disabled is True
     assert entries_by_id["inventory_options_panel_width"].disabled is True
@@ -580,7 +587,7 @@ def main() -> None:
     assert entries_by_id["quick_discard_max_item_level"].disabled is False
     assert entries_by_id["quick_discard_protect_above_equipped_level"].disabled is False
     assert entries_by_id["quick_discard_curio_protection_level"].disabled is False
-    assert entries_by_id["quick_discard_curio_protection_level"].validation_function() is True
+    assert entries_by_id["quick_discard_curio_protection_level"].validation_function is None
     assert entries_by_id["quick_discard_keep_health_curios"].disabled is False
     assert entries_by_id["quick_discard_keep_toughness_curios"].disabled is False
     assert entries_by_id["quick_discard_keep_wound_curios"].disabled is False
@@ -590,7 +597,7 @@ def main() -> None:
     settings.quick_discard_protect_high_level_curios = False
     mod.on_setting_changed("quick_discard_protect_high_level_curios")
     assert entries_by_id["quick_discard_curio_protection_level"].disabled is True
-    assert entries_by_id["quick_discard_curio_protection_level"].validation_function() is False
+    assert entries_by_id["quick_discard_curio_protection_level"].validation_function is None
     assert entries_by_id["quick_discard_keep_health_curios"].disabled is False
     assert entries_by_id["quick_discard_keep_toughness_curios"].disabled is False
     assert entries_by_id["quick_discard_keep_wound_curios"].disabled is False
@@ -613,12 +620,19 @@ def main() -> None:
     assert entries_by_id["automatic_curio_buy_wounds"].disabled is False
     assert entries_by_id["automatic_curio_class_veteran"].disabled is False
     assert entries_by_id["automatic_curio_class_cryptic"].disabled is False
+    assert entries_by_id["automatic_curio_classes_group"].disabled is False
+    assert entries_by_id["automatic_curio_characters_group"].disabled is True
     settings.automatic_curio_target_mode = "characters"
     mod.on_setting_changed("automatic_curio_target_mode")
-    assert entries_by_id["automatic_curio_classes_group"].validation_function() is False
-    assert entries_by_id["automatic_curio_characters_group"].validation_function() is True
+    assert entries_by_id["automatic_curio_classes_group"].disabled is True
+    assert entries_by_id["automatic_curio_characters_group"].disabled is False
+    assert entries_by_id["automatic_curio_class_veteran"].disabled is True
+    assert entries_by_id["automatic_curio_class_cryptic"].disabled is True
     settings.automatic_curio_target_mode = "classes"
     mod.on_setting_changed("automatic_curio_target_mode")
+    assert entries_by_id["automatic_curio_classes_group"].disabled is False
+    assert entries_by_id["automatic_curio_characters_group"].disabled is True
+    assert entries_by_id["automatic_curio_class_veteran"].disabled is False
     settings.automatic_curio_buy_health = False
     mod.on_setting_changed("automatic_curio_buy_health")
     assert entries_by_id["automatic_curio_min_health"].disabled is True
@@ -863,7 +877,7 @@ def main() -> None:
     localization = lua.execute(LOCALIZATION_PATH.read_text(encoding="utf-8"))
     defaults = {}
 
-    assert data.version == "1.3.1"
+    assert data.version == "1.3.2"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"

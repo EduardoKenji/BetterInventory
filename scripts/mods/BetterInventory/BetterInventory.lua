@@ -298,6 +298,11 @@ local function refresh_option_dependencies()
 	local quick_discard_reason = mod:localize("option_requires_experimental_quick_discard")
 	local automatic_curio_enabled = mod:get("enable_automatic_curio_acquisition") == true
 	local automatic_curio_reason = mod:localize("option_requires_automatic_curio_acquisition")
+	local automatic_curio_character_mode = mod:get("automatic_curio_target_mode") == "characters"
+	local automatic_curio_classes_enabled = automatic_curio_enabled and not automatic_curio_character_mode
+	local automatic_curio_characters_enabled = automatic_curio_enabled and automatic_curio_character_mode
+	local automatic_curio_classes_reason = automatic_curio_enabled and mod:localize("option_requires_automatic_curio_classes_mode") or automatic_curio_reason
+	local automatic_curio_characters_reason = automatic_curio_enabled and mod:localize("option_requires_automatic_curio_characters_mode") or automatic_curio_reason
 	local inventory_options_panel_enabled = mod:get("enable_inventory_options_panel_prototype") == true
 	local inventory_options_panel_reason = mod:localize("option_requires_inventory_options_panel_prototype")
 	local quick_look_card_grid_enabled = grid_enabled and mod:get("enable_quick_look_card_grid_integration") ~= false
@@ -408,6 +413,14 @@ local function refresh_option_dependencies()
 		"automatic_curio_buy_toughness",
 		"automatic_curio_buy_stamina",
 		"automatic_curio_buy_wounds",
+	}) do
+		set_option_enabled(option_dependency_entries[setting_id], automatic_curio_enabled, automatic_curio_reason)
+	end
+
+	set_option_enabled(option_dependency_entries.automatic_curio_classes_group, automatic_curio_classes_enabled, automatic_curio_classes_reason)
+	set_option_enabled(option_dependency_entries.automatic_curio_characters_group, automatic_curio_characters_enabled, automatic_curio_characters_reason)
+
+	for _, setting_id in ipairs({
 		"automatic_curio_class_veteran",
 		"automatic_curio_class_zealot",
 		"automatic_curio_class_psyker",
@@ -416,11 +429,11 @@ local function refresh_option_dependencies()
 		"automatic_curio_class_broker",
 		"automatic_curio_class_cryptic",
 	}) do
-		set_option_enabled(option_dependency_entries[setting_id], automatic_curio_enabled, automatic_curio_reason)
+		set_option_enabled(option_dependency_entries[setting_id], automatic_curio_classes_enabled, automatic_curio_classes_reason)
 	end
 
 	for _, entry in ipairs(option_dependency_entries.automatic_curio_character_entries or {}) do
-		set_option_enabled(entry, automatic_curio_enabled, automatic_curio_reason)
+		set_option_enabled(entry, automatic_curio_characters_enabled, automatic_curio_characters_reason)
 	end
 
 	local automatic_health_enabled = automatic_curio_enabled and mod:get("automatic_curio_buy_health") ~= false
@@ -443,15 +456,6 @@ local function bind_option_dependencies(options_templates)
 		[mod:localize("automatic_curio_types_group")] = true,
 		[mod:localize("automatic_curio_classes_group")] = true,
 		[mod:localize("automatic_curio_characters_group")] = true,
-	}
-	local class_setting_ids = {
-		automatic_curio_class_adamant = true,
-		automatic_curio_class_broker = true,
-		automatic_curio_class_cryptic = true,
-		automatic_curio_class_ogryn = true,
-		automatic_curio_class_psyker = true,
-		automatic_curio_class_veteran = true,
-		automatic_curio_class_zealot = true,
 	}
 	local class_group_title = mod:localize("automatic_curio_classes_group")
 	local character_group_title = mod:localize("automatic_curio_characters_group")
@@ -586,39 +590,13 @@ local function bind_option_dependencies(options_templates)
 		end
 	end
 
-	local function class_mode()
-		return mod:get("automatic_curio_target_mode") ~= "characters"
-	end
-
-	if class_group_entry then
-		class_group_entry.validation_function = class_mode
-	end
-
-	if character_group_entry then
-		character_group_entry.validation_function = function()
-			return not class_mode()
-		end
-	end
-
-	for setting_id in pairs(class_setting_ids) do
-		local entry = option_dependency_entries[setting_id]
-
-		if entry then
-			entry.validation_function = class_mode
-		end
-	end
-
-	-- DMF reevaluates validation functions while its options view is open and
-	-- rebuilds the list when their result changes. Use that mechanism to remove
-	-- the threshold entirely when its rule is off; the Curio-type filters remain
-	-- visible and independently configurable.
-	local curio_level_entry = option_dependency_entries.quick_discard_curio_protection_level
-
-	if curio_level_entry then
-		curio_level_entry.validation_function = function()
-			return mod:get("quick_discard_protect_high_level_curios") ~= false
-		end
-	end
+	-- Keep the final DMF template and rendered-widget arrays structurally
+	-- identical. Alf's generalized tabs pair them by numeric index, so hiding
+	-- mode-dependent entries through validation functions shifts every later
+	-- section. PlayerAssist uses the stable pattern too: keep entries present and
+	-- express dependencies exclusively through disabled state.
+	option_dependency_entries.automatic_curio_classes_group = class_group_entry
+	option_dependency_entries.automatic_curio_characters_group = character_group_entry
 
 	refresh_option_dependencies()
 end

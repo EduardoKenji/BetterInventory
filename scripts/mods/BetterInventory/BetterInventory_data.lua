@@ -1,4 +1,4 @@
-local MOD_VERSION = "1.3.1"
+local MOD_VERSION = "1.3.2"
 local mod = get_mod("BetterInventory")
 
 local function color_preset_options()

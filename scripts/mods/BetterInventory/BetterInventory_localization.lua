@@ -302,6 +302,12 @@ local localization = {
 	option_requires_automatic_curio_acquisition = {
 		en = "Requires automatic Curio acquisition.",
 	},
+	option_requires_automatic_curio_classes_mode = {
+		en = "Select Classes as the Curio acquisition target mode.",
+	},
+	option_requires_automatic_curio_characters_mode = {
+		en = "Select Characters as the Curio acquisition target mode.",
+	},
 	option_requires_automatic_curio_health = {
 		en = "Requires Health Curios to be enabled.",
 	},
@@ -1455,6 +1461,8 @@ local zh_cn = {
 	automatic_curio_class_broker = "巢都渣滓",
 	automatic_curio_class_cryptic = "护教军",
 	option_requires_automatic_curio_acquisition = "需要启用自动获取珍品。",
+	option_requires_automatic_curio_classes_mode = "请选择职业作为珍品获取目标模式。",
+	option_requires_automatic_curio_characters_mode = "请选择角色作为珍品获取目标模式。",
 	option_requires_automatic_curio_health = "需要启用生命珍品。",
 	option_requires_automatic_curio_toughness = "需要启用韧性珍品。",
 	automatic_curio_buyer_inventory_label = "自动珍品购买器",

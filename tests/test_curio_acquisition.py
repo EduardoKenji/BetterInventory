@@ -623,6 +623,7 @@ def main() -> None:
     discovery_placeholder = undiscovered_character_options.settings[2]
     assert discovery_placeholder.widget_type == "description"
     assert discovery_placeholder.disabled is True
+    assert discovery_placeholder.validation_function is None
     assert (
         discovery_placeholder.display_name
         == "automatic_curio_characters_discovering"
@@ -680,6 +681,7 @@ def main() -> None:
     character_option = character_options.settings[2]
     assert character_option.display_name != "automatic_curio_character_options_placeholder"
     assert character_option.display_name == "Research Psyker(Psyker)"
+    assert character_option.validation_function is None
     assert character_option.get_function() is True
     character_option.on_activated(False)
     assert character_option.get_function() is False
