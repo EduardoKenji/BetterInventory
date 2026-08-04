@@ -249,7 +249,7 @@ local localization = {
 		en = "Wound",
 	},
 	automatic_curio_classes_group = {
-		en = "Classes to acquire Curios:",
+		en = "Classes to acquire curios:",
 	},
 	automatic_curio_class_veteran = {
 		en = "Veteran",
@@ -288,7 +288,7 @@ local localization = {
 		en = "Curio types we are looking for:",
 	},
 	automatic_curio_classes_inventory_label = {
-		en = "Classes to acquire Curios:",
+		en = "Classes to acquire curios:",
 	},
 	automatic_curio_health = {
 		en = "Health",
