@@ -1,5 +1,25 @@
 local mod = get_mod("BetterInventory")
 
+local function no_op_module(module, module_name)
+	if type(module) == "table" then
+		return module
+	end
+
+	mod:error("Failed to load %s; its features are disabled until the next successful reload.", module_name)
+
+	local no_op = function()
+		return false
+	end
+
+	return setmetatable({}, {
+		__index = function(fallback, key)
+			rawset(fallback, key, no_op)
+
+			return no_op
+		end,
+	})
+end
+
 local CraftingMechanicusModifyView = require("scripts/ui/views/crafting_mechanicus_modify_view/crafting_mechanicus_modify_view")
 local CreditsVendorView = require("scripts/ui/views/credits_vendor_view/credits_vendor_view")
 local ItemGridViewBase = require("scripts/ui/views/item_grid_view_base/item_grid_view_base")
@@ -7,8 +27,8 @@ local ItemGridViewBaseDefinitions = require("scripts/ui/views/item_grid_view_bas
 local InventoryWeaponsView = require("scripts/ui/views/inventory_weapons_view/inventory_weapons_view")
 local ViewElementGrid = require("scripts/ui/view_elements/view_element_grid/view_element_grid")
 local Layout = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout")
-local Features = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_features")
-local CurioAcquisition = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_acquisition")
+local Features = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_features"), "BetterInventory_features.lua")
+local CurioAcquisition = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_acquisition"), "BetterInventory_curio_acquisition.lua")
 local unpack_values = table.unpack or unpack
 local active_grid_view
 local active_grid_configuration

@@ -122,6 +122,8 @@ def main() -> None:
         captured_options_hook = nil
 		captured_item_grid_init_hook = nil
 		captured_armoury_on_enter_hook = nil
+		captured_module_errors = 0
+		fail_feature_load = false
 
         function test_mod:get(setting_id)
             return settings[setting_id]
@@ -141,12 +143,20 @@ def main() -> None:
 
 		function test_mod:io_dofile(path)
 			if string.find(path, "BetterInventory_features", 1, true) then
+				if fail_feature_load then
+					return false
+				end
+
 				return test_features
 			elseif string.find(path, "BetterInventory_curio_acquisition", 1, true) then
 				return test_curio_acquisition
 			end
 
 			return test_layout
+		end
+
+		function test_mod:error()
+			captured_module_errors = captured_module_errors + 1
 		end
 
         function test_mod:hook(target, method, callback)
@@ -892,6 +902,15 @@ def main() -> None:
     assert defaults["curio_secondary_text_color_r"] == 220
     assert defaults["curio_secondary_text_color_g"] == 230
     assert defaults["curio_secondary_text_color_b"] == 210
+
+    # A failed hot-reload dependency must disable that feature module once. It
+    # must never leave a boolean upvalue that raises again on every frame.
+    globals_.fail_feature_load = True
+    lua.execute(MAIN_PATH.read_text(encoding="utf-8"))
+    assert globals_.captured_module_errors == 1
+    globals_.test_mod.update(0.016)
+    globals_.test_mod.update(0.016)
+    assert globals_.captured_module_errors == 1
 
     print("BetterInventory live setting synchronization tests passed.")
 

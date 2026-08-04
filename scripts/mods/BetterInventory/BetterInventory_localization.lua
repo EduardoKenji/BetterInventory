@@ -204,13 +204,13 @@ local localization = {
 		en = "Automatic Curio Buyer",
 	},
 	enable_automatic_curio_acquisition = {
-		en = "Enable automatic Curio acquisition",
+		en = "Enable automatic curio acquisition",
 	},
 	enable_automatic_curio_acquisition_tooltip = {
 		en = "Performs one all-character Armoury Exchange scan after each Morningstar entry and automatically purchases every Curio matching the enabled item-level, primary-roll, type and class filters. This spends Ordo Dockets without a confirmation prompt. Automatic discard finishes first, and Curios matching the acquisition rule remain protected from later automatic-discard passes.",
 	},
 	automatic_curio_min_item_level = {
-		en = "Minimum item level Curio to acquire",
+		en = "Minimum curio item level to acquire",
 	},
 	automatic_curio_min_item_level_tooltip = {
 		en = "Only Armoury Curios at or above this displayed item level are eligible. Health and Toughness Curios must also meet their enabled minimum-roll setting. Every matching offer for every enabled class is purchased when sufficient currency is available. The default is 410.",
@@ -249,7 +249,7 @@ local localization = {
 		en = "Wound",
 	},
 	automatic_curio_classes_group = {
-		en = "Classes to acquire Curios:",
+		en = "Classes to acquire curios:",
 	},
 	automatic_curio_class_veteran = {
 		en = "Veteran",
@@ -288,7 +288,7 @@ local localization = {
 		en = "Curio types we are looking for:",
 	},
 	automatic_curio_classes_inventory_label = {
-		en = "Classes to acquire Curios:",
+		en = "Classes to acquire curios:",
 	},
 	automatic_curio_health = {
 		en = "Health",
