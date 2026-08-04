@@ -106,6 +106,8 @@ def main() -> None:
 		inventory_sort_syncs = 0
 		quick_discard_syncs = 0
 		curio_acquisition_syncs = 0
+		profile_discovery_requests = 0
+		last_profile_discovery_force = nil
 		test_features = {
 			add_inventory_sort_toggle_definition = function(_, _, definitions) return definitions end,
 			configure_inventory_sort_options = function() end,
@@ -124,6 +126,11 @@ def main() -> None:
 			begin_morningstar_pass = function() end,
 			cancel = function() end,
 			on_setting_changed = function() end,
+			refresh_character_options = function() end,
+			request_profile_discovery = function(force)
+				profile_discovery_requests = profile_discovery_requests + 1
+				last_profile_discovery_force = force
+			end,
 			update = function() end,
 		}
 
@@ -263,6 +270,8 @@ def main() -> None:
     assert custom_credits_view._item_grid.updated is None
 
     mod.on_enabled()
+    assert globals_.profile_discovery_requests == 1
+    assert globals_.last_profile_discovery_force is True
     assert settings.curio_stat_compression == "heavy"
     assert settings.blessing_icon_size == 36
     assert settings.weapon_perk_rank_icon_size == 17
@@ -468,6 +477,23 @@ def main() -> None:
         )
         for option_id in option_ids
     ]
+    active_character_entry = lua.table_from(
+        {
+            "category": "Better Inventory",
+            "display_name": "Dudualdo(Ogryn)",
+            "_better_inventory_curio_character_slot_index": 1,
+            "_better_inventory_curio_character_available": True,
+        }
+    )
+    empty_character_entry = lua.table_from(
+        {
+            "category": "Better Inventory",
+            "display_name": "Character 2",
+            "_better_inventory_curio_character_slot_index": 2,
+            "_better_inventory_curio_character_available": False,
+        }
+    )
+    entries.extend([active_character_entry, empty_character_entry])
     for option_id, entry in zip(option_ids, entries):
         if option_id in {
 			"single_column_layout_group",
@@ -557,6 +583,8 @@ def main() -> None:
     assert entries_by_id["automatic_curio_characters_group"].validation_function is None
     assert entries_by_id["automatic_curio_classes_group"].disabled is True
     assert entries_by_id["automatic_curio_characters_group"].disabled is True
+    assert active_character_entry.disabled is True
+    assert empty_character_entry.disabled is True
     assert entries_by_id["curio_information_width_percent"].disabled is True
     assert entries_by_id["curio_preview_height_percent"].disabled is True
     assert entries_by_id["inventory_options_panel_width"].disabled is True
@@ -628,6 +656,12 @@ def main() -> None:
     assert entries_by_id["automatic_curio_characters_group"].disabled is False
     assert entries_by_id["automatic_curio_class_veteran"].disabled is True
     assert entries_by_id["automatic_curio_class_cryptic"].disabled is True
+    assert active_character_entry.disabled is False
+    assert empty_character_entry.disabled is True
+    assert (
+        empty_character_entry.disabled_by[1]
+        == "automatic_curio_character_slot_empty_reason"
+    )
     settings.automatic_curio_target_mode = "classes"
     mod.on_setting_changed("automatic_curio_target_mode")
     assert entries_by_id["automatic_curio_classes_group"].disabled is False
@@ -877,7 +911,7 @@ def main() -> None:
     localization = lua.execute(LOCALIZATION_PATH.read_text(encoding="utf-8"))
     defaults = {}
 
-    assert data.version == "1.3.2"
+    assert data.version == "1.3.4"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
@@ -915,6 +949,26 @@ def main() -> None:
                 inspect_widgets(sub_widgets)
 
     inspect_widgets(data.options.widgets)
+
+    automatic_curio_group = next(
+        data.options.widgets[index]
+        for index in range(1, len(data.options.widgets) + 1)
+        if data.options.widgets[index].setting_id == "automatic_curio_buyer_group"
+    )
+    automatic_curio_enabled = automatic_curio_group.sub_widgets[1]
+    assert automatic_curio_enabled.setting_id == "enable_automatic_curio_acquisition"
+    character_group = next(
+        automatic_curio_enabled.sub_widgets[index]
+        for index in range(1, len(automatic_curio_enabled.sub_widgets) + 1)
+        if automatic_curio_enabled.sub_widgets[index].setting_id
+        == "automatic_curio_characters_group"
+    )
+    assert len(character_group.sub_widgets) == 10
+    for slot_index in range(1, 11):
+        slot = character_group.sub_widgets[slot_index]
+        assert slot.setting_id == f"automatic_curio_character_slot_{slot_index}"
+        assert slot.type == "checkbox"
+        assert slot.default_value is False
 
     top_level_ids = [
         data.options.widgets[index].setting_id

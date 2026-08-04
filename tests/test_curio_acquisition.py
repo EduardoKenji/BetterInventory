@@ -193,6 +193,11 @@ def main() -> None:
                 return TestStoreNames
             elseif path == "scripts/settings/buff/buff_templates" then
                 return TestBuffTemplates
+            elseif path == "scripts/ui/views/main_menu_view/main_menu_view_settings" then
+                -- Simulate a future Darktide release increasing the operative
+                -- capacity. BetterInventory must grow its stable DMF row pool
+                -- from the authoritative game setting without a code change.
+                return {max_num_characters = 12}
             elseif path == "scripts/mods/BetterInventory/BetterInventory_curio_values" then
                 return TestCurioValues
             end
@@ -265,6 +270,10 @@ def main() -> None:
             localize = function(self, localization_id)
 				if localization_id == "automatic_curio_currency_spent_label" then
 					return "Spent:"
+				elseif localization_id == "automatic_curio_character_slot_placeholder" then
+					return "Character"
+				elseif localization_id == "automatic_curio_character_slot_unavailable" then
+					return "(not currently found)"
 				end
 
                 return localization_id
@@ -595,39 +604,50 @@ def main() -> None:
     archetype_count = lua.eval("function(values) local count = 0 for _ in pairs(values) do count = count + 1 end return count end")
     assert archetype_count(module._test.ARCHETYPE_SETTINGS) == 7
 
-    # DMF validates static groups before BetterInventory's final-template hook
-    # runs. With no profiles cached yet, the schema placeholder must become a
-    # non-interactive discovery description instead of leaving an empty group.
+    # DMF validates the character rows as part of BetterInventory's static data
+    # schema. The runtime hook only binds names and backend IDs; it must never add
+    # or remove rows. Simulate the twelve rows generated from Darktide's reported
+    # operative capacity before the first profile response.
     undiscovered_character_options = lua.execute(
         r"""
-        return {
-            settings = {
-                {
-                    category = "Better Inventory",
-                    display_name = "automatic_curio_characters_group",
-                    widget_type = "group_header",
-                },
-                {
-                    category = "Better Inventory",
-                    display_name = "automatic_curio_character_options_placeholder",
-                    widget_type = "checkbox",
-                },
-            },
+        local result = {
+            settings = {{
+                category = "Better Inventory",
+                display_name = "automatic_curio_characters_group",
+                widget_type = "group_header",
+            }},
         }
+
+        for index = 1, 12 do
+            local setting_id = "automatic_curio_character_slot_" .. tostring(index)
+            table.insert(result.settings, {
+                category = "Better Inventory",
+                display_name = setting_id,
+                widget_type = "checkbox",
+                get_function = function()
+                    return settings[setting_id]
+                end,
+                on_activated = function(value)
+                    settings[setting_id] = value
+                    return true
+                end,
+            })
+        end
+
+        return result
         """
     )
     assert module.inject_character_options(
         globals_.test_mod, undiscovered_character_options
     ) is False
-    assert len(undiscovered_character_options.settings) == 2
-    discovery_placeholder = undiscovered_character_options.settings[2]
-    assert discovery_placeholder.widget_type == "description"
-    assert discovery_placeholder.disabled is True
-    assert discovery_placeholder.validation_function is None
-    assert (
-        discovery_placeholder.display_name
-        == "automatic_curio_characters_discovering"
-    )
+    assert module.maximum_operative_slots(globals_.test_mod) == 12
+    assert len(undiscovered_character_options.settings) == 13
+    for slot_index in range(1, 13):
+        discovery_slot = undiscovered_character_options.settings[slot_index + 1]
+        assert discovery_slot.display_name == f"Character {slot_index}"
+        assert discovery_slot._better_inventory_curio_character_available is False
+        assert discovery_slot._better_inventory_curio_character_slot_index == slot_index
+        assert discovery_slot.get_function() is False
 
     # Automatic discard owns the first Morningstar phase. The Curio Buyer must
     # remain dormant until that system is settled, then target the scanned
@@ -651,42 +671,60 @@ def main() -> None:
         "function(logs) for i = 1, #logs do if string.find(logs[i], 'non%-transactional field%(s%) changed') then return true end end return false end"
     )(globals_.captured_logs)
 
-    # A successful discovery is reused by both dynamic UIs. DMF's final options
-    # template receives a stable-ID checkbox labelled with character and class.
+    # A successful discovery is reused by both UIs. DMF keeps all twelve rows;
+    # the matching slot binds to the stable backend ID and unused rows stay
+    # disabled placeholders.
     known_profiles = module.known_profiles(globals_.test_mod)
     assert len(known_profiles) == 1
     assert known_profiles[1].character_id == "target-psyker"
     character_options = lua.execute(
         r"""
-        return {
-            settings = {
-                {
-                    category = "Better Inventory",
-                    display_name = "automatic_curio_characters_group",
-                    widget_type = "group_header",
-                },
-                {
-                    category = "Better Inventory",
-                    display_name = "automatic_curio_character_options_placeholder",
-                    widget_type = "checkbox",
-                },
-            },
+        local result = {
+            settings = {{
+                category = "Better Inventory",
+                display_name = "automatic_curio_characters_group",
+                widget_type = "group_header",
+            }},
         }
+
+        for index = 1, 12 do
+            local setting_id = "automatic_curio_character_slot_" .. tostring(index)
+            table.insert(result.settings, {
+                category = "Better Inventory",
+                display_name = setting_id,
+                widget_type = "checkbox",
+                get_function = function()
+                    return settings[setting_id]
+                end,
+                on_activated = function(value)
+                    settings[setting_id] = value
+                    return true
+                end,
+            })
+        end
+
+        return result
         """
     )
     assert module.inject_character_options(
         globals_.test_mod, character_options
     ) is True
-    assert len(character_options.settings) == 2
+    assert len(character_options.settings) == 13
     character_option = character_options.settings[2]
     assert character_option.display_name != "automatic_curio_character_options_placeholder"
     assert character_option.display_name == "Research Psyker(Psyker)"
-    assert character_option.validation_function is None
+    assert character_option._better_inventory_curio_character_available is True
     assert character_option.get_function() is True
-    character_option.on_activated(False)
+    globals_.settings.automatic_curio_character_slot_1 = False
+    module.on_setting_changed(globals_.test_mod, "automatic_curio_character_slot_1")
     assert character_option.get_function() is False
-    character_option.on_activated(True)
+    assert module.character_is_enabled(globals_.test_mod, "target-psyker") is False
+    globals_.settings.automatic_curio_character_slot_1 = True
+    module.on_setting_changed(globals_.test_mod, "automatic_curio_character_slot_1")
     assert character_option.get_function() is True
+    assert module.character_is_enabled(globals_.test_mod, "target-psyker") is True
+    assert character_options.settings[3].display_name == "Character 2"
+    assert character_options.settings[3]._better_inventory_curio_character_available is False
 
     module.update(globals_.test_mod, 60, False)
     assert globals_.purchase_count == 1
@@ -740,6 +778,65 @@ def main() -> None:
         in globals_.captured_notification.line_2
     )
     assert globals_.captured_notification.line_3 is None
+
+    # Slot identity follows character_id rather than display order or name.
+    # Renaming preserves the explicit exclusion; deleting requires two complete
+    # successful discoveries before reclaiming the slot; a recreated same-name
+    # operative receives a new ID and therefore defaults enabled.
+    module.set_character_enabled(globals_.test_mod, "target-psyker", False)
+    renamed_profile = lua.table_from(
+        {
+            "character_id": "target-psyker",
+            "name": "Renamed Psyker",
+            "archetype": lua.table_from(
+                {"name": "psyker", "archetype_name": "loc_class_psyker_name"}
+            ),
+        }
+    )
+    second_profile = lua.table_from(
+        {
+            "character_id": "second-psyker",
+            "name": "Second Psyker",
+            "archetype": lua.table_from(
+                {"name": "psyker", "archetype_name": "loc_class_psyker_name"}
+            ),
+        }
+    )
+    module._test.cache_profiles(
+        globals_.test_mod, lua.table_from([renamed_profile, second_profile])
+    )
+    slots = module.character_slots(globals_.test_mod)
+    assert slots[1].character_id == "target-psyker"
+    assert slots[1].character_name == "Renamed Psyker"
+    assert module.character_is_enabled(globals_.test_mod, "target-psyker") is False
+    assert slots[2].character_id == "second-psyker"
+
+    module._test.cache_profiles(globals_.test_mod, lua.table_from([second_profile]))
+    slots = module.character_slots(globals_.test_mod)
+    assert slots[1].character_id == "target-psyker"
+    assert slots[1].missing_confirmations == 1
+    assert module.character_is_enabled(globals_.test_mod, "target-psyker") is False
+
+    module._test.cache_profiles(globals_.test_mod, lua.table_from([second_profile]))
+    slots = module.character_slots(globals_.test_mod)
+    assert slots[1].character_id is None
+    assert globals_.settings.automatic_curio_character_selection is None
+
+    recreated_profile = lua.table_from(
+        {
+            "character_id": "recreated-psyker",
+            "name": "Renamed Psyker",
+            "archetype": lua.table_from(
+                {"name": "psyker", "archetype_name": "loc_class_psyker_name"}
+            ),
+        }
+    )
+    module._test.cache_profiles(
+        globals_.test_mod, lua.table_from([second_profile, recreated_profile])
+    )
+    slots = module.character_slots(globals_.test_mod)
+    assert slots[1].character_id == "recreated-psyker"
+    assert module.character_is_enabled(globals_.test_mod, "recreated-psyker") is True
 
     print("BetterInventory automatic Curio acquisition tests passed.")
 

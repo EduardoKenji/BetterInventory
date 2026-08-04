@@ -419,6 +419,33 @@ $packagingTestArchive = Join-Path ([IO.Path]::GetTempPath()) "BetterInventory-pa
 
 try {
 	& $releasePackager -OutputPath $packagingTestArchive
+
+	Add-Type -AssemblyName System.IO.Compression.FileSystem
+	$packagingTest = [IO.Compression.ZipFile]::OpenRead($packagingTestArchive)
+
+	try {
+		$actualReleasePaths = @($packagingTest.Entries | Where-Object { -not [string]::IsNullOrEmpty($_.Name) } | ForEach-Object { $_.FullName } | Sort-Object)
+		$expectedReleasePaths = @(
+			"BetterInventory/BetterInventory.mod",
+			"BetterInventory/scripts/mods/BetterInventory/BetterInventory.lua",
+			"BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_acquisition.lua",
+			"BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_values.lua",
+			"BetterInventory/scripts/mods/BetterInventory/BetterInventory_data.lua",
+			"BetterInventory/scripts/mods/BetterInventory/BetterInventory_features.lua",
+			"BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout.lua",
+			"BetterInventory/scripts/mods/BetterInventory/BetterInventory_localization.lua"
+		) | Sort-Object
+
+		if (@(Compare-Object $expectedReleasePaths $actualReleasePaths).Count -gt 0) {
+			throw "Independent release test found a Nexus-incompatible archive layout."
+		}
+
+		if (@($actualReleasePaths | Where-Object { $_.Contains("\") }).Count -gt 0) {
+			throw "Independent release test found a backslash-bearing ZIP entry."
+		}
+	} finally {
+		$packagingTest.Dispose()
+	}
 } finally {
 	if (Test-Path -LiteralPath $packagingTestArchive -PathType Leaf) {
 		[IO.File]::Delete($packagingTestArchive)

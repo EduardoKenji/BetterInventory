@@ -116,7 +116,11 @@ local function known_curio_buyer_profiles(mod)
 		return {}
 	end
 
-	if #profiles == 0 and type(curio_acquisition_provider.request_profile_discovery) == "function" then
+	if type(curio_acquisition_provider.request_profile_discovery) == "function" then
+		-- The provider coalesces these requests and refreshes only when its cache is
+		-- empty or stale. Keeping this call here lets opening the inventory panel
+		-- pick up renamed, created or deleted operatives without frame-by-frame
+		-- backend traffic.
 		curio_acquisition_provider.request_profile_discovery()
 	end
 

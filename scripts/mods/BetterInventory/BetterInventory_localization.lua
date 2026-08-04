@@ -278,6 +278,15 @@ local localization = {
 	automatic_curio_character_options_placeholder = {
 		en = "Discovering characters...",
 	},
+	automatic_curio_character_slot_placeholder = {
+		en = "Character",
+	},
+	automatic_curio_character_slot_unavailable = {
+		en = "(not currently found)",
+	},
+	automatic_curio_character_slot_empty_reason = {
+		en = "No operative is currently assigned to this slot. BetterInventory refreshes the roster after entering the Morningstar and periodically while in the hub.",
+	},
 	automatic_curio_class_veteran = {
 		en = "Veteran",
 	},
@@ -1934,6 +1943,9 @@ zh_cn.automatic_curio_characters_inventory_label = "要获取珍品的角色："
 zh_cn.automatic_curio_characters_discovering = "正在发现角色……请稍后重新打开模组选项，或使用库存选项面板。"
 zh_cn.automatic_curio_characters_discovering_inventory = "正在发现角色..."
 zh_cn.automatic_curio_character_options_placeholder = "正在发现角色……"
+zh_cn.automatic_curio_character_slot_placeholder = "角色"
+zh_cn.automatic_curio_character_slot_unavailable = "（当前未找到）"
+zh_cn.automatic_curio_character_slot_empty_reason = "当前没有角色分配到此栏位。BetterInventory 会在进入晨星号后刷新角色列表，并在枢纽中定期刷新。"
 zh_cn.enable_automatic_curio_acquisition_tooltip = "每次进入晨星号后，对所有角色的军械库交易所执行一次扫描，并自动购买符合物品等级、主要属性数值、类型和目标筛选条件的所有珍品。目标可按职业或单个角色选择。此功能会在没有确认提示的情况下花费审判庭双子币。自动丢弃会先完成，且符合获取规则的珍品会在以后的自动丢弃流程中保持受保护状态。"
 zh_cn.automatic_curio_min_item_level_tooltip = "只有显示物品等级达到或超过此值的军械库珍品才符合条件。生命和韧性珍品还必须达到对应的最低主要属性数值。货币充足时，会购买每个已启用目标的所有匹配商品。默认值为 410。"
 
@@ -1943,6 +1955,16 @@ for localization_id, text in pairs(zh_cn) do
 	if entry then
 		entry["zh-cn"] = text
 	end
+end
+
+-- Character-slot controls must exist in the static DMF schema so their
+-- cardinality is stable for Alf's DMF Extensions and across cold starts. Their
+-- initialized titles are replaced with discovered operative names at runtime.
+for index = 1, 64 do
+	localization["automatic_curio_character_slot_" .. tostring(index)] = {
+		en = "Character " .. tostring(index),
+		["zh-cn"] = "角色 " .. tostring(index),
+	}
 end
 
 return localization

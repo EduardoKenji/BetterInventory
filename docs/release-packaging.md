@@ -1,23 +1,43 @@
 # Release packaging
 
-## Critical archive-root invariant
+## Critical Nexus archive invariant
 
-`BetterInventory.zip` must contain the mod payload directly at the archive root:
+`BetterInventory.zip` must contain exactly one install directory named `BetterInventory`. Every ZIP entry name must use a forward slash (`/`), never a Windows backslash (`\`). The eight runtime files must therefore be stored as:
 
 ```text
-BetterInventory.mod
-scripts/mods/BetterInventory/BetterInventory.lua
-scripts/mods/BetterInventory/BetterInventory_curio_acquisition.lua
-scripts/mods/BetterInventory/BetterInventory_curio_values.lua
-scripts/mods/BetterInventory/BetterInventory_data.lua
-scripts/mods/BetterInventory/BetterInventory_features.lua
-scripts/mods/BetterInventory/BetterInventory_layout.lua
-scripts/mods/BetterInventory/BetterInventory_localization.lua
+BetterInventory/BetterInventory.mod
+BetterInventory/scripts/mods/BetterInventory/BetterInventory.lua
+BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_acquisition.lua
+BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_values.lua
+BetterInventory/scripts/mods/BetterInventory/BetterInventory_data.lua
+BetterInventory/scripts/mods/BetterInventory/BetterInventory_features.lua
+BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout.lua
+BetterInventory/scripts/mods/BetterInventory/BetterInventory_localization.lua
 ```
 
-It must **not** contain an outer `BetterInventory/` directory. Nexus Mod Manager/Vortex installs the archive into `mods/BetterInventory`; an outer directory produces `mods/BetterInventory/BetterInventory/...`, prevents Darktide Mod Framework from finding the mod, and breaks the release for every affected user.
+This is the archive layout used by known-good Nexus releases in `Inventory2D_mod_research`, including Inventory2D, Quick Look Card and Alf's DMF Extensions. It lets a mod manager install the outer directory directly as `Darktide/mods/BetterInventory`.
 
-This happened to the NexusMods v1.2.0 package and is a critical production packaging failure. Do not build a release with `Compress-Archive BetterInventory` or by zipping the `BetterInventory` directory itself.
+The following layouts are both release-blocking failures:
+
+```text
+# Missing install directory; a manager installs `scripts` as the mod folder.
+BetterInventory.mod
+scripts/mods/BetterInventory/...
+
+# Duplicate install directory; the loader cannot find the descriptor where expected.
+BetterInventory/BetterInventory/BetterInventory.mod
+BetterInventory/BetterInventory/scripts/...
+```
+
+Backslash-bearing entry names such as `BetterInventory\scripts\...` are also invalid even when an archive viewer makes the hierarchy look plausible. ZIP paths are portable forward-slash paths; Nexus tooling can interpret backslashes as literal filename characters or construct an incorrect nested install.
+
+## Incident history and root cause
+
+- The NexusMods v1.2.0 archive included the required outer directory but encoded paths with Windows backslashes. That was the original production failure.
+- The attempted safeguard incorrectly diagnosed the outer directory as the problem. It normalized backslashes during verification, removed the required install directory, and produced a rootless archive that worked only when manually extracted into an already-created `mods/BetterInventory` folder.
+- The verifier therefore validated an internally consistent but Nexus-incompatible archive. A successful hash comparison did not validate installation semantics.
+
+The invariant is now based on direct comparison with known-good Nexus mod archives: **one outer mod directory, no duplicate directory, forward slashes only**.
 
 ## Mandatory release procedure
 
@@ -27,8 +47,17 @@ Only create the release archive with the repository-owned packager:
 .\tools\package_release.ps1 -OutputPath "C:\XboxGames\Warhammer 40,000- Darktide\Content\mods\BetterInventory.zip"
 ```
 
-The packager writes only the eight runtime files, rejects an incorrect archive root or file set, and compares the SHA-256 of every compressed entry with its source file before replacing the destination archive.
+The packager:
 
-Before upload, the command output must end with `BetterInventory release archive verified`, and `tar -tf` must begin with `BetterInventory.mod`, not `BetterInventory/BetterInventory.mod`.
+1. writes only the eight runtime files beneath one `BetterInventory/` directory;
+2. constructs entry names explicitly with forward slashes;
+3. rejects rootless files, a duplicated outer directory, backslash-bearing names or any unexpected file;
+4. compares every compressed entry's SHA-256 with its source file before replacing the destination archive.
 
-Never upload a hand-built archive, and never treat a successful compression command as sufficient validation.
+Before upload, the command output must end with `BetterInventory release archive verified`. Independently inspect the archive and confirm its first file is:
+
+```text
+BetterInventory/BetterInventory.mod
+```
+
+Never upload a hand-built archive, never use `Compress-Archive` for the release, and never treat successful compression or source-hash equality alone as sufficient validation.
