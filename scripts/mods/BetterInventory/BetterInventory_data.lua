@@ -1,4 +1,4 @@
-local MOD_VERSION = "1.3.0"
+local MOD_VERSION = "1.3.1"
 local mod = get_mod("BetterInventory")
 
 local function color_preset_options()
@@ -18,6 +18,10 @@ local function color_preset_options()
 		{
 			text = "color_preset_purple",
 			value = "purple",
+		},
+		{
+			text = "color_preset_pink",
+			value = "pink",
 		},
 		{
 			text = "color_preset_orange",
@@ -652,6 +656,30 @@ return {
 				},
 			},
 			{
+				setting_id = "single_column_layout_group",
+				type = "group",
+				sub_widgets = {
+					{
+						setting_id = "single_column_weapon_name_font_size",
+						tooltip = "single_column_weapon_name_font_size_tooltip",
+						type = "numeric",
+						default_value = 20,
+						range = {
+							10,
+							24,
+						},
+					},
+					{
+						setting_id = "single_column_blessing_icons_on_right",
+						tooltip = "single_column_blessing_icons_on_right_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+				},
+			},
+			{
+				-- Historical setting IDs are retained so existing Quick Look Card
+				-- integration preferences migrate into the standalone implementation.
 				setting_id = "quick_look_card_integration_group",
 				type = "group",
 				sub_widgets = {
@@ -660,6 +688,36 @@ return {
 						tooltip = "enable_quick_look_card_single_column_integration_tooltip",
 						type = "checkbox",
 						default_value = true,
+					},
+					{
+						setting_id = "quick_look_card_single_column_font_size",
+						tooltip = "quick_look_card_single_column_font_size_tooltip",
+						type = "numeric",
+						default_value = 14,
+						range = {
+							8,
+							20,
+						},
+					},
+					{
+						setting_id = "quick_look_card_single_column_horizontal_position",
+						tooltip = "quick_look_card_single_column_horizontal_position_tooltip",
+						type = "numeric",
+						default_value = 79,
+						range = {
+							0,
+							100,
+						},
+					},
+					{
+						setting_id = "quick_look_card_single_column_vertical_position",
+						tooltip = "quick_look_card_single_column_vertical_position_tooltip",
+						type = "numeric",
+						default_value = 93,
+						range = {
+							0,
+							100,
+						},
 					},
 					{
 						setting_id = "enable_quick_look_card_grid_integration",
@@ -705,6 +763,50 @@ return {
 						range = {
 							20,
 							60,
+						},
+					},
+					{
+						setting_id = "weapon_modifier_lowest_color_preset",
+						tooltip = "weapon_modifier_lowest_color_preset_tooltip",
+						type = "dropdown",
+						default_value = "pink",
+						options = color_preset_options(),
+					},
+					{
+						setting_id = "weapon_modifier_lowest_color_r",
+						type = "numeric",
+						default_value = 255,
+						range = {
+							0,
+							255,
+						},
+					},
+					{
+						setting_id = "weapon_modifier_lowest_color_g",
+						type = "numeric",
+						default_value = 94,
+						range = {
+							0,
+							255,
+						},
+					},
+					{
+						setting_id = "weapon_modifier_lowest_color_b",
+						type = "numeric",
+						default_value = 132,
+						range = {
+							0,
+							255,
+						},
+					},
+					{
+						setting_id = "weapon_modifier_lowest_color_opacity",
+						tooltip = "weapon_modifier_lowest_color_opacity_tooltip",
+						type = "numeric",
+						default_value = 80,
+						range = {
+							0,
+							100,
 						},
 					},
 				},

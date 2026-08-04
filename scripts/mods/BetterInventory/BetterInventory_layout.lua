@@ -25,6 +25,8 @@ local WEAPON_BLESSING_COUNT = 2
 local BLESSING_TEXT_WIDTH_SAFETY_MARGIN = 4
 local MINIMUM_AUTO_FIT_BLESSING_FONT_SIZE = 8
 local QUICK_LOOK_CARD_DUMP_STAT_ID = "better_inventory_quick_look_card_dump_stat"
+local WEAPON_MODIFIER_TITLE_PREFIX = "better_inventory_weapon_modifier_title_"
+local WEAPON_MODIFIER_VALUE_PREFIX = "better_inventory_weapon_modifier_value_"
 local QUICK_LOOK_CARD_HIGHLIGHT_COLOR = {
 	255,
 	255,
@@ -37,6 +39,51 @@ local QUICK_LOOK_CARD_BASE_STATS_POSITION_MAP = {
 	3,
 	4,
 	2,
+}
+local WEAPON_MODIFIER_TITLE_COLOR = {
+	255,
+	250,
+	250,
+	250,
+}
+local WEAPON_MODIFIER_VALUE_COLOR = {
+	255,
+	250,
+	189,
+	73,
+}
+local WEAPON_MODIFIER_LABELS = {
+	loc_glossary_term_melee_damage = { "weapon_modifier_melee_damage", "MELE" },
+	loc_stats_display_ammo_stat = { "weapon_modifier_ammo", "AMMO" },
+	loc_stats_display_ap_stat = { "weapon_modifier_penetration", "PEN" },
+	loc_stats_display_burn_stat = { "weapon_modifier_burn", "BURN" },
+	loc_stats_display_charge_speed = { "weapon_modifier_charge_rate", "CHRG" },
+	loc_stats_display_cleave_damage_stat = { "weapon_modifier_cleave_damage", "CLVD" },
+	loc_stats_display_cleave_targets_stat = { "weapon_modifier_cleave_targets", "CLVT" },
+	loc_stats_display_control_stat_melee = { "weapon_modifier_crowd_control", "CC" },
+	loc_stats_display_control_stat_ranged = { "weapon_modifier_collateral", "CLTR" },
+	loc_stats_display_crit_stat = { "weapon_modifier_critical_bonus", "CRIT" },
+	loc_stats_display_damage_stat = { "weapon_modifier_damage", "DMG" },
+	loc_stats_display_defense_stat = { "weapon_modifier_defences", "DEF" },
+	loc_stats_display_explosion_ap_stat = { "weapon_modifier_blast_penetration", "PENB" },
+	loc_stats_display_explosion_damage_stat = { "weapon_modifier_blast_damage", "BLSD" },
+	loc_stats_display_explosion_stat = { "weapon_modifier_blast_radius", "BLSR" },
+	loc_stats_display_finesse_stat = { "weapon_modifier_finesse", "FIN" },
+	loc_stats_display_first_saw_damage = { "weapon_modifier_shredder", "SHRD" },
+	loc_stats_display_first_target_stat = { "weapon_modifier_first_target", "FRST" },
+	loc_stats_display_flame_size_stat = { "weapon_modifier_cloud_radius", "CLDR" },
+	loc_stats_display_heat_management = { "weapon_modifier_thermal_resistance", "TRES" },
+	loc_stats_display_mobility_stat = { "weapon_modifier_mobility", "MOB" },
+	loc_stats_display_power_output = { "weapon_modifier_power_output", "PWR" },
+	loc_stats_display_power_stat = { "weapon_modifier_stopping_power", "STPW" },
+	loc_stats_display_range_stat = { "weapon_modifier_range", "RNGE" },
+	loc_stats_display_reload_speed_stat = { "weapon_modifier_reload_speed", "RLD" },
+	loc_stats_display_stability_stat = { "weapon_modifier_stability", "STB" },
+	loc_stats_display_vent_speed = { "weapon_modifier_quell_speed", "QUEL" },
+	loc_stats_display_warp_resist_stat = { "weapon_modifier_warp_resistance", "WRES" },
+	loc_stats_display_heat_management_powersword_2h = { "weapon_modifier_heat_management", "HTMG" },
+	loc_stats_display_arc_stat = { "weapon_modifier_arc_efficiency", "ARC" },
+	loc_stats_display_cleave_damage_and_targets_stat = { "weapon_modifier_cleave_efficiency", "CLVE" },
 }
 local QUICK_LOOK_CARD_PROJECTED_VALUES_CACHE = setmetatable({}, {
 	__mode = "k",
@@ -538,8 +585,8 @@ local function compact_curio_description(mod, data, compression_mode)
 	return string.format("%s %s", amount, mod:localize(localization_id))
 end
 
-local function configured_text_color(mod, prefix, fallback, opacity_setting_id)
-	local opacity = opacity_setting_id and tonumber(setting(mod, opacity_setting_id, 100)) or 100
+local function configured_text_color(mod, prefix, fallback, opacity_setting_id, default_opacity)
+	local opacity = opacity_setting_id and tonumber(setting(mod, opacity_setting_id, default_opacity or 100)) or 100
 	local alpha = math.floor(math.max(0, math.min(100, opacity)) * 255 / 100 + 0.5)
 
 	return {
@@ -666,7 +713,90 @@ local function quick_look_card_stat_kind_and_index(pass)
 	end
 end
 
-local function quick_look_card_projected_max_values(item)
+local function weapon_modifier_pass_kind_and_index(pass)
+	local kind, index = quick_look_card_stat_kind_and_index(pass)
+
+	if kind then
+		return kind, index
+	end
+
+	if type(pass and pass.style_id) ~= "string" then
+		return
+	end
+
+	local title_index = string.match(pass.style_id, "^" .. WEAPON_MODIFIER_TITLE_PREFIX .. "(%d)$")
+
+	if title_index then
+		return "title", tonumber(title_index)
+	end
+
+	local value_index = string.match(pass.style_id, "^" .. WEAPON_MODIFIER_VALUE_PREFIX .. "(%d)$")
+
+	if value_index then
+		return "value", tonumber(value_index)
+	end
+end
+
+local function fallback_weapon_modifier_label(display_name)
+	local body = type(display_name) == "string" and (string.match(display_name, "display_(.+)_stat$") or string.match(display_name, "display_(.+)$") or string.match(display_name, "([^_]+)$")) or "stat"
+	local words = {}
+
+	for word in string.gmatch(body, "[%w]+") do
+		words[#words + 1] = string.upper(word)
+	end
+
+	if #words == 1 then
+		return string.sub(words[1], 1, 4)
+	elseif #words > 1 then
+		local initials = ""
+
+		for index = 1, math.min(4, #words) do
+			initials = initials .. string.sub(words[index], 1, 1)
+		end
+
+		return initials
+	end
+
+	return "STAT"
+end
+
+local function localized_weapon_modifier_label(mod, display_name)
+	local definition = WEAPON_MODIFIER_LABELS[display_name]
+
+	if not definition then
+		return fallback_weapon_modifier_label(display_name)
+	end
+
+	local localization_id = definition[1]
+	local fallback = definition[2]
+	local localized_ok, localized = pcall(mod.localize, mod, localization_id)
+
+	if not localized_ok or type(localized) ~= "string" or localized == "" or localized == localization_id or localized == "<" .. localization_id .. ">" then
+		return fallback
+	end
+
+	return single_line_text(localized)
+end
+
+local function unique_weapon_modifier_label(label, used_labels)
+	if not used_labels[label] then
+		used_labels[label] = true
+		return label
+	end
+
+	for suffix = 2, 9 do
+		local candidate = string.sub(label, 1, math.max(1, 4 - #tostring(suffix))) .. tostring(suffix)
+
+		if not used_labels[candidate] then
+			used_labels[candidate] = true
+			return candidate
+		end
+	end
+
+	return label
+end
+
+local function projected_weapon_modifier_records(mod, item)
 	if type(Items.preview_stats_change) ~= "function" or type(Items.max_expertise_level) ~= "function" or type(Items.expertise_level) ~= "function" then
 		return
 	end
@@ -683,7 +813,7 @@ local function quick_look_card_projected_max_values(item)
 	local cached = QUICK_LOOK_CARD_PROJECTED_VALUES_CACHE[item]
 
 	if cached and cached.current_expertise == current_expertise and cached.maximum_expertise == maximum_expertise then
-		return cached.values
+		return cached.records
 	end
 
 	local stats_ok, weapon_stats = pcall(WeaponStats.new, WeaponStats, item)
@@ -706,7 +836,8 @@ local function quick_look_card_projected_max_values(item)
 		return
 	end
 
-	local projected_values = {}
+	local projected_records = {}
+	local used_labels = {}
 
 	for index = 1, math.min(5, #comparing_stats) do
 		local comparing_stat = comparing_stats[index]
@@ -723,19 +854,70 @@ local function quick_look_card_projected_max_values(item)
 			return
 		end
 
-		projected_values[target_index] = math.floor(value + 0.5)
+		local display_name = type(comparing_stat.display_name) == "string" and comparing_stat.display_name or type(comparing_stat.name) == "string" and comparing_stat.name or "stat_" .. index
+		local label = unique_weapon_modifier_label(localized_weapon_modifier_label(mod, display_name), used_labels)
+
+		projected_records[target_index] = {
+			display_name = display_name,
+			title = label,
+			value = math.floor(value + 0.5),
+		}
 	end
 
 	QUICK_LOOK_CARD_PROJECTED_VALUES_CACHE[item] = {
 		current_expertise = current_expertise,
 		maximum_expertise = maximum_expertise,
-		values = projected_values,
+		records = projected_records,
 	}
 
-	return projected_values
+	return projected_records
 end
 
-local function quick_look_card_lowest_stat_text(content, parenthesized)
+local function populate_weapon_modifier_content(mod, content, item)
+	content.better_inventory_weapon_modifier_lowest_index = nil
+
+	for index = 1, 5 do
+		content[WEAPON_MODIFIER_TITLE_PREFIX .. index] = ""
+		content[WEAPON_MODIFIER_VALUE_PREFIX .. index] = ""
+	end
+
+	local records = projected_weapon_modifier_records(mod, item)
+
+	if not records then
+		return
+	end
+
+	local first_value
+	local lowest_value
+	local lowest_index
+	local all_same = true
+
+	for index = 1, 5 do
+		local record = records[index]
+
+		if record then
+			content[WEAPON_MODIFIER_TITLE_PREFIX .. index] = record.title
+			content[WEAPON_MODIFIER_VALUE_PREFIX .. index] = tostring(record.value)
+
+			if first_value == nil then
+				first_value = record.value
+			elseif record.value ~= first_value then
+				all_same = false
+			end
+
+			if lowest_value == nil or record.value < lowest_value then
+				lowest_value = record.value
+				lowest_index = index
+			end
+		end
+	end
+
+	if not all_same then
+		content.better_inventory_weapon_modifier_lowest_index = lowest_index
+	end
+end
+
+local function quick_look_card_lowest_stat_text(mod, content, parenthesized)
 	if not content or not is_weapon(item_from_content(content)) then
 		return
 	end
@@ -755,9 +937,9 @@ local function quick_look_card_lowest_stat_text(content, parenthesized)
 		return parenthesized and "(" .. cached_label .. ")" or cached_label
 	end
 
-	local projected_values = quick_look_card_projected_max_values(item)
+	local projected_records = projected_weapon_modifier_records(mod, item)
 
-	if not projected_values then
+	if not projected_records then
 		return
 	end
 
@@ -768,8 +950,10 @@ local function quick_look_card_lowest_stat_text(content, parenthesized)
 	local valid_count = 0
 
 	for index = 1, 5 do
-		local title = content["qlc_stats_title_" .. index]
-		local numeric_value = projected_values[index]
+		local record = projected_records[index]
+		local quick_look_card_title = content["qlc_stats_title_" .. index]
+		local title = type(quick_look_card_title) == "string" and quick_look_card_title ~= "" and quick_look_card_title or record and record.title
+		local numeric_value = record and record.value
 
 		if type(title) == "string" and title ~= "" and numeric_value then
 			valid_count = valid_count + 1
@@ -822,12 +1006,13 @@ end
 local function add_quick_look_card_grid_pass(mod, pass_template, card_width, text_left, position)
 	local font_size = numeric_setting(mod, "quick_look_card_grid_font_size", 13, 8, 20)
 	local bottom_padding = numeric_setting(mod, "quick_look_card_grid_bottom_padding", 26, 20, 60)
+	local lowest_modifier_color = configured_text_color(mod, "weapon_modifier_lowest_color", QUICK_LOOK_CARD_HIGHLIGHT_COLOR, "weapon_modifier_lowest_color_opacity", 80)
 	local parenthesized = position ~= "above_power"
 	local label_width = math.max(64, math.floor(font_size * 6 + 0.5))
 	local style = {
 		font_type = "machine_medium",
 		font_size = font_size,
-		text_color = table.clone(QUICK_LOOK_CARD_HIGHLIGHT_COLOR),
+		text_color = lowest_modifier_color,
 		drop_shadow = true,
 		word_wrap = false,
 		offset = {},
@@ -885,7 +1070,7 @@ local function add_quick_look_card_grid_pass(mod, pass_template, card_width, tex
 		value_id = QUICK_LOOK_CARD_DUMP_STAT_ID,
 		style = style,
 		visibility_function = function(content)
-			local label = quick_look_card_lowest_stat_text(content, parenthesized)
+			local label = quick_look_card_lowest_stat_text(mod, content, parenthesized)
 
 			if content then
 				content[QUICK_LOOK_CARD_DUMP_STAT_ID] = label or ""
@@ -898,45 +1083,113 @@ local function add_quick_look_card_grid_pass(mod, pass_template, card_width, tex
 	return label_width
 end
 
-local function configure_native_quick_look_card_passes(pass_template)
+local function configure_native_quick_look_card_passes(mod, pass_template, card_width, card_height)
+	local font_size = numeric_setting(mod, "quick_look_card_single_column_font_size", 14, 8, 20)
+	local lowest_modifier_color = configured_text_color(mod, "weapon_modifier_lowest_color", QUICK_LOOK_CARD_HIGHLIGHT_COLOR, "weapon_modifier_lowest_color_opacity", 80)
+	local horizontal_percent = numeric_setting(mod, "quick_look_card_single_column_horizontal_position", 79, 0, 100)
+	local vertical_percent = numeric_setting(mod, "quick_look_card_single_column_vertical_position", 93, 0, 100)
+	local line_height = font_size + 3
+	local row_step = line_height + 2
+	local column_step = math.max(80, math.floor(font_size * 5.72 + 0.5))
+	local value_offset = math.max(38, math.floor(font_size * 2.72 + 0.5))
+	local title_width = math.max(42, math.floor(font_size * 3 + 0.5))
+	local value_width = math.max(32, math.floor(font_size * 2.3 + 0.5))
+	local block_width = column_step * 2 + value_offset + value_width
+	local block_height = row_step + line_height
+	local block_left = math.floor(math.max(0, card_width - block_width) * horizontal_percent * 0.01 + 0.5)
+	local block_top = math.floor(math.max(0, card_height - block_height) * vertical_percent * 0.01 + 0.5)
 	local positions = {
-		{ 280, -43 },
-		{ 360, -43 },
-		{ 440, -43 },
-		{ 280, -24 },
-		{ 360, -24 },
+		{ block_left, block_top },
+		{ block_left + column_step, block_top },
+		{ block_left + column_step * 2, block_top },
+		{ block_left, block_top + row_step },
+		{ block_left + column_step, block_top + row_step },
+	}
+	local existing = {
+		title = {},
+		value = {},
 	}
 
 	for index = 1, #(pass_template or {}) do
 		local pass = pass_template[index]
+		local kind, stat_index = weapon_modifier_pass_kind_and_index(pass)
 
-		if is_quick_look_card_pass(pass) then
-			local kind, stat_index = quick_look_card_stat_kind_and_index(pass)
+		if kind and stat_index then
+			existing[kind][stat_index] = pass
+		end
+	end
 
-			if kind then
-				local style = pass.style or {}
-				local position = positions[stat_index]
-
-				pass.style = style
-				style.horizontal_alignment = "left"
-				style.vertical_alignment = "bottom"
-				style.text_horizontal_alignment = "left"
-				style.text_vertical_alignment = "center"
-				style.font_size = 14
-				style.drop_shadow = true
-				style.offset = {
-					position[1] + (kind == "value" and 38 or 0),
-					position[2],
-					5,
+	for stat_index = 1, 5 do
+		for _, kind in ipairs({ "title", "value" }) do
+			if not existing[kind][stat_index] then
+				local content_id = (kind == "title" and WEAPON_MODIFIER_TITLE_PREFIX or WEAPON_MODIFIER_VALUE_PREFIX) .. stat_index
+				local pass = {
+					pass_type = "text",
+					style_id = content_id,
+					value_id = content_id,
+					value = "",
+					style = {},
+					visibility_function = function(content)
+						return content and content[content_id] ~= nil and content[content_id] ~= ""
+					end,
 				}
-				style.size = {
-					kind == "value" and 32 or 42,
-					17,
-				}
-			else
-				pass.visibility_function = function()
-					return false
+
+				pass_template[#pass_template + 1] = pass
+				existing[kind][stat_index] = pass
+			end
+		end
+	end
+
+	for index = 1, #(pass_template or {}) do
+		local pass = pass_template[index]
+		local quick_look_card_pass = is_quick_look_card_pass(pass)
+		local kind, stat_index = weapon_modifier_pass_kind_and_index(pass)
+
+		if kind and stat_index then
+			local style = pass.style or {}
+			local position = positions[stat_index]
+			local content_id = (kind == "title" and WEAPON_MODIFIER_TITLE_PREFIX or WEAPON_MODIFIER_VALUE_PREFIX) .. stat_index
+			local original_visibility_function = pass.visibility_function
+
+			pass.style = style
+			pass.value_id = content_id
+			pass.visibility_function = function(content, current_style)
+				if content and content[content_id] ~= nil then
+					return content[content_id] ~= ""
 				end
+
+				return not original_visibility_function or original_visibility_function(content, current_style)
+			end
+			style.horizontal_alignment = "left"
+			style.vertical_alignment = "top"
+			style.text_horizontal_alignment = "left"
+			style.text_vertical_alignment = "center"
+			style.font_size = font_size
+			style.drop_shadow = true
+			style.offset = {
+				position[1] + (kind == "value" and value_offset or 0),
+				position[2],
+				5,
+			}
+			style.size = {
+				kind == "value" and value_width or title_width,
+				line_height,
+			}
+			style.text_color = table.clone(kind == "value" and WEAPON_MODIFIER_VALUE_COLOR or WEAPON_MODIFIER_TITLE_COLOR)
+
+			if kind == "title" then
+				pass.change_function = function(content, current_style)
+					local target_color = content and content.better_inventory_weapon_modifier_lowest_index == stat_index and lowest_modifier_color or WEAPON_MODIFIER_TITLE_COLOR
+					local text_color = current_style.text_color
+
+					for channel = 1, 4 do
+						text_color[channel] = target_color[channel]
+					end
+				end
+			end
+		elseif quick_look_card_pass then
+			pass.visibility_function = function()
+				return false
 			end
 		end
 	end
@@ -1063,7 +1316,7 @@ local function resolved_trait_data(entry, include_textures, include_perk_rank, i
 	return data
 end
 
-local function populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats)
+local function populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers, show_blessing_text_icons)
 	local content = widget and widget.content
 
 	if not content then
@@ -1085,22 +1338,34 @@ local function populate_card_content(mod, widget, element, blessing_display_mode
 		content["better_inventory_full_curio_stat_" .. i] = nil
 	end
 
+	for i = 1, 5 do
+		content[WEAPON_MODIFIER_TITLE_PREFIX .. i] = ""
+		content[WEAPON_MODIFIER_VALUE_PREFIX .. i] = ""
+	end
+
 	content.better_inventory_curio_primary_color = nil
 
 	local item = item_from_element(element or content.element)
 
 	if is_weapon(item) then
+		if show_weapon_modifiers then
+			populate_weapon_modifier_content(mod, content, item)
+		end
+
 		if blessing_display_mode ~= "off" then
 			local traits = item.traits
 			local blessing_text_mode = blessing_display_mode == "text" or blessing_display_mode == "ranked_text"
 			local blessing_ranked_text = blessing_display_mode == "ranked_text"
+			local include_blessing_textures = blessing_display_mode == "icons" or blessing_text_mode and show_blessing_text_icons
 
 			for i = 1, math.min(WEAPON_BLESSING_COUNT, traits and #traits or 0) do
-				local data = resolved_trait_data(traits[i], blessing_display_mode == "icons", blessing_ranked_text, blessing_text_mode)
+				local data = resolved_trait_data(traits[i], include_blessing_textures, blessing_ranked_text, blessing_text_mode)
 
-				if blessing_display_mode == "icons" and data and data.icon and data.frame then
+				if include_blessing_textures and data and data.icon and data.frame then
 					content["better_inventory_blessing_" .. i] = data
-				elseif blessing_text_mode and data then
+				end
+
+				if blessing_text_mode and data then
 					local name = data.display_name
 
 					if name == "" or name == "-" or name == "n/a" then
@@ -1480,6 +1745,7 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 	local blessing_display_mode = weapon_blessing_display_mode(mod)
 	local blessing_text_mode = blessing_display_mode == "text" or blessing_display_mode == "ranked_text"
 	local blessing_ranked_text = blessing_display_mode == "ranked_text"
+	local show_blessing_text_icons = configuration.native_single_column and blessing_text_mode and setting(mod, "single_column_blessing_icons_on_right", true)
 	local show_weapon_perks = setting(mod, "show_weapon_perks", true)
 	local show_weapon_perk_ranks = show_weapon_perks and setting(mod, "show_weapon_perk_rank_symbols", true)
 	local detailed_curio_profile = setting(mod, "curio_display_profile", "detailed") == "detailed"
@@ -1513,7 +1779,12 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 		local blessing_rank_left = text_left + favorite_offset
 		local blessing_text_left = blessing_rank_left + (blessing_ranked_text and perk_rank_size + PERK_RANK_GAP or 0)
 		local reserved_right = separate_item_level and 8 or 50
-		local blessing_text_right = configuration.content_right or card_width - reserved_right
+		local content_right = configuration.content_right or card_width - reserved_right
+		local side_icon_size = show_blessing_text_icons and blessing_icon_size(mod) or 0
+		local side_icon_gap = show_blessing_text_icons and numeric_setting(mod, "blessing_icon_spacing", 3, 0, 20) or 0
+		local side_icon_pair_width = show_blessing_text_icons and WEAPON_BLESSING_COUNT * side_icon_size + (WEAPON_BLESSING_COUNT - 1) * side_icon_gap or 0
+		local side_icon_left = show_blessing_text_icons and math.min(content_right - side_icon_pair_width, blessing_text_left + 110) or content_right
+		local blessing_text_right = show_blessing_text_icons and side_icon_left - 8 or content_right
 		local blessing_text_width = math.max(40, blessing_text_right - blessing_text_left)
 		local blessing_text_color = configured_text_color(mod, "weapon_blessing_text_color", DEFAULT_WEAPON_BLESSING_TEXT_COLOR, "weapon_blessing_text_opacity")
 		local auto_fit_long_name = setting(mod, "auto_fit_long_blessing_names", true)
@@ -1521,6 +1792,14 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 		local reserved_bottom_row = separate_item_level and (configuration.store_item and store_footer_height or item_level_row_height) or store_footer_height
 
 		blessing_text_height = WEAPON_BLESSING_COUNT * blessing_line_height + (WEAPON_BLESSING_COUNT - 1) * blessing_vertical_spacing
+
+		if show_blessing_text_icons then
+			blessing_text_height = math.max(blessing_text_height, side_icon_size)
+
+			for i = 1, WEAPON_BLESSING_COUNT do
+				add_blessing_pass(pass_template, i, side_icon_size, side_icon_left + (i - 1) * (side_icon_size + side_icon_gap), -(reserved_bottom_row + blessing_bottom_padding))
+			end
+		end
 
 		for i = 1, WEAPON_BLESSING_COUNT do
 			local y_offset = -(reserved_bottom_row + blessing_bottom_padding + (WEAPON_BLESSING_COUNT - i) * blessing_line_step)
@@ -1908,6 +2187,7 @@ local function fit_blessing_text(parent, widget, ui_renderer)
 				-- no-wrap state keep the item-level area clear.
 				style.word_wrap = false
 			end
+
 		end
 	end
 end
@@ -1959,10 +2239,11 @@ local function fit_weapon_perks(parent, widget, ui_renderer)
 	end
 end
 
-local function configure_card_content(mod, item_blueprint)
+local function configure_card_content(mod, item_blueprint, configuration)
+	configuration = configuration or {}
 	local original_init = item_blueprint.init
 	local original_update_data = item_blueprint.update_data
-	local preferred_font_size = numeric_setting(mod, "item_name_font_size", 16, 10, 24)
+	local preferred_font_size = configuration.native_single_column and numeric_setting(mod, "single_column_weapon_name_font_size", 20, 10, 24) or numeric_setting(mod, "item_name_font_size", 16, 10, 24)
 	local minimum_font_size = numeric_setting(mod, "minimum_item_name_font_size", 12, 8, 20)
 	local append_mark_to_name = setting(mod, "append_mark_to_name", true)
 	local blessing_display_mode = weapon_blessing_display_mode(mod)
@@ -1970,6 +2251,8 @@ local function configure_card_content(mod, item_blueprint)
 	local weapon_perk_compression = setting(mod, "weapon_perk_compression", "heavy")
 	local show_item_level_icon = setting(mod, "show_item_level_icon", false)
 	local compression_mode = setting(mod, "curio_stat_compression", "heavy")
+	local show_weapon_modifiers = configuration.weapon_modifier_stats_enabled == true
+	local show_blessing_text_icons = configuration.native_single_column and setting(mod, "single_column_blessing_icons_on_right", true)
 	-- Keep the original setting ID so existing user configurations migrate
 	-- without any reset; its scope now includes supported secondary Curio perks.
 	local simplify_curio_stats = setting(mod, "simplify_curio_primary_stat_text", true)
@@ -1987,7 +2270,7 @@ local function configure_card_content(mod, item_blueprint)
 			original_init(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
 			format_weapon_name(widget, element, append_mark_to_name)
 			format_item_level(widget, element, show_item_level_icon)
-			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats)
+			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers, show_blessing_text_icons)
 			fit_display_name(parent, widget, ui_renderer, preferred_font_size, math.min(preferred_font_size, minimum_font_size))
 			fit_blessing_text(parent, widget, ui_renderer)
 			fit_weapon_perks(parent, widget, ui_renderer)
@@ -2000,7 +2283,7 @@ local function configure_card_content(mod, item_blueprint)
 			original_update_data(parent, widget, element)
 			format_weapon_name(widget, element, append_mark_to_name)
 			format_item_level(widget, element, show_item_level_icon)
-			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats)
+			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers, show_blessing_text_icons)
 			fit_display_name(parent, widget, nil, preferred_font_size, math.min(preferred_font_size, minimum_font_size))
 			fit_blessing_text(parent, widget, nil)
 			fit_weapon_perks(parent, widget, nil)
@@ -2239,14 +2522,14 @@ Layout.card_height = function(mod, configuration)
 
 	local manual_height = numeric_setting(mod, "card_height", 110, 110, 240)
 
-	if not setting(mod, "automatic_card_height", true) then
+	if not setting(mod, "automatic_card_height", true) and not configuration.native_single_column then
 		return manual_height
 	end
 
-	local item_name_font_size = numeric_setting(mod, "item_name_font_size", 16, 10, 24)
+	local item_name_font_size = configuration.native_single_column and numeric_setting(mod, "single_column_weapon_name_font_size", 20, 10, 24) or numeric_setting(mod, "item_name_font_size", 16, 10, 24)
 	local secondary_font_size = numeric_setting(mod, "secondary_text_font_size", 13, 8, 20)
 	local expertise_font_size = numeric_setting(mod, "expertise_font_size", 20, 10, 28)
-	local name_row_height = math.max(25, item_name_font_size + 5)
+	local name_row_height = configuration.native_single_column and 25 + math.max(0, item_name_font_size - 16) or math.max(25, item_name_font_size + 5)
 	local secondary_row_height = math.max(22, secondary_font_size + 5)
 	local bottom_region_height = math.max(expertise_font_size + 10, secondary_font_size + 15)
 	local required_height = 110
@@ -2269,6 +2552,10 @@ Layout.card_height = function(mod, configuration)
 		local blessing_vertical_spacing = numeric_setting(mod, "weapon_blessing_text_vertical_spacing", 2, 0, 20)
 		local blessing_bottom_padding = numeric_setting(mod, "weapon_blessing_text_bottom_padding", 4, 0, 20)
 		local blessing_text_height = WEAPON_BLESSING_COUNT * blessing_line_height + (WEAPON_BLESSING_COUNT - 1) * blessing_vertical_spacing + blessing_bottom_padding + 3
+
+		if configuration.native_single_column and setting(mod, "single_column_blessing_icons_on_right", true) then
+			blessing_text_height = math.max(blessing_text_height, blessing_icon_size(mod) + blessing_bottom_padding + 3)
+		end
 
 		if configuration.store_item then
 			bottom_region_height = store_footer_height + blessing_text_height
@@ -2366,9 +2653,10 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 	local show_curio_quality = setting(mod, "show_curio_quality", false)
 	local show_curio_item_level = setting(mod, "show_curio_item_level", true)
 	local quick_look_card_present = has_quick_look_card_passes(pass_template)
-	local quick_look_card_integration = quick_look_card_present and setting(mod, "enable_quick_look_card_single_column_integration", true)
+	local weapon_modifier_stats_enabled = setting(mod, "enable_quick_look_card_single_column_integration", true)
+	local managed_native_card = not quick_look_card_present or weapon_modifier_stats_enabled
 
-	if not quick_look_card_present or quick_look_card_integration then
+	if managed_native_card then
 		item_size[2] = math.max(item_size[2] or 110, Layout.card_height(mod, {
 			native_single_column = true,
 		}))
@@ -2377,18 +2665,26 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 	item_blueprint.size = item_size
 	item_blueprint.pass_template = pass_template
 
-	if not quick_look_card_present or quick_look_card_integration then
+	if managed_native_card then
 		configure_native_card_geometry(pass_template, item_size[2] or 110)
 	end
 
-	if quick_look_card_integration then
-		configure_native_quick_look_card_passes(pass_template)
+	if weapon_modifier_stats_enabled then
+		configure_native_quick_look_card_passes(mod, pass_template, card_width, item_size[2] or 110)
 	end
 
 	local display_name = pass_by_style_id(pass_template, "display_name")
 	local sub_display_name = pass_by_style_id(pass_template, "sub_display_name")
 	local rarity_name = pass_by_style_id(pass_template, "rarity_name")
 	local item_level = pass_by_style_id(pass_template, "item_level")
+	local native_name_font_size = numeric_setting(mod, "single_column_weapon_name_font_size", 20, 10, 24)
+
+	if display_name and display_name.style then
+		display_name.style.font_size = native_name_font_size
+		display_name.style.word_wrap = false
+		display_name.style.size = display_name.style.size or {}
+		display_name.style.size[2] = math.max(display_name.style.size[2] or 0, native_name_font_size + 6)
+	end
 
 	preserve_visibility(display_name, function(content)
 		return not detailed_curio_profile or not is_curio(item_from_content(content))
@@ -2422,13 +2718,16 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 	configure_equipped_highlight(mod, pass_template, card_width, item_size[2] or 110)
 	configure_favorite_marker(mod, pass_template, 15)
 
-	if not quick_look_card_present or quick_look_card_integration then
+	if managed_native_card then
 		add_custom_content_passes(mod, pass_template, card_width, 15, sub_display_name and sub_display_name.style, {
-			content_right = quick_look_card_integration and 260 or nil,
+			content_right = weapon_modifier_stats_enabled and 260 or nil,
 			native_single_column = true,
 		})
 	end
-	configure_card_content(mod, item_blueprint)
+	configure_card_content(mod, item_blueprint, {
+		native_single_column = true,
+		weapon_modifier_stats_enabled = weapon_modifier_stats_enabled,
+	})
 
 	return item_size
 end
@@ -2448,7 +2747,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 	local show_rarity_tag = setting(mod, "show_rarity_tag", true)
 	local text_left = show_rarity_tag and 12 or 8
 	local quick_look_card_present = has_quick_look_card_passes(pass_template)
-	local quick_look_card_integration = quick_look_card_present and setting(mod, "enable_quick_look_card_grid_integration", true)
+	local quick_look_card_integration = setting(mod, "enable_quick_look_card_grid_integration", true)
 	local quick_look_card_position = quick_look_card_grid_position(mod)
 	local quick_look_card_label_width = quick_look_card_integration and quick_look_card_position ~= "above_power" and math.max(64, math.floor(numeric_setting(mod, "quick_look_card_grid_font_size", 13, 8, 20) * 6 + 0.5)) or 0
 

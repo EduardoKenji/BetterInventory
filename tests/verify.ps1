@@ -15,10 +15,18 @@ $requiredFiles = @(
 	(Join-Path $scriptRoot "BetterInventory_data.lua"),
 	(Join-Path $scriptRoot "BetterInventory_localization.lua")
 )
+$releasePackager = Join-Path $projectRoot "tools\package_release.ps1"
+$packagingDocumentation = Join-Path $projectRoot "docs\release-packaging.md"
 
 foreach ($file in $requiredFiles) {
 	if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
 		throw "Missing required file: $file"
+	}
+}
+
+foreach ($releaseFile in @($releasePackager, $packagingDocumentation)) {
+	if (-not (Test-Path -LiteralPath $releaseFile -PathType Leaf)) {
+		throw "Missing mandatory release-packaging safeguard: $releaseFile"
 	}
 }
 
@@ -404,6 +412,16 @@ if ($hasLupa) {
 		if ($LASTEXITCODE -ne 0) {
 			throw "Behavior test failed: $behaviorTest"
 		}
+	}
+}
+
+$packagingTestArchive = Join-Path ([IO.Path]::GetTempPath()) "BetterInventory-package-test-$([Guid]::NewGuid().ToString('N')).zip"
+
+try {
+	& $releasePackager -OutputPath $packagingTestArchive
+} finally {
+	if (Test-Path -LiteralPath $packagingTestArchive -PathType Leaf) {
+		[IO.File]::Delete($packagingTestArchive)
 	}
 }
 

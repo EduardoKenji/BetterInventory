@@ -201,10 +201,17 @@ def main() -> None:
 
 			function instance:get_comparing_stats()
 				local stats = {}
+				local display_names = item.modifier_display_names or {
+					"loc_stats_display_damage_stat",
+					"loc_stats_display_warp_resist_stat",
+					"loc_stats_display_cleave_damage_stat",
+					"loc_stats_display_defense_stat",
+					"loc_stats_display_finesse_stat",
+				}
 
 				for index = 1, 5 do
 					stats[index] = {
-						display_name = "stat_" .. index,
+						display_name = display_names[index],
 						fraction = 0.2,
 					}
 				end
@@ -272,9 +279,16 @@ def main() -> None:
 				enable_grid_layout = true,
 				enable_quick_look_card_single_column_integration = true,
 				enable_quick_look_card_grid_integration = true,
+				quick_look_card_single_column_font_size = 14,
+				quick_look_card_single_column_horizontal_position = 79,
+				quick_look_card_single_column_vertical_position = 93,
 				quick_look_card_grid_stat_position = "above_power",
 				quick_look_card_grid_font_size = 13,
 				quick_look_card_grid_bottom_padding = 26,
+				weapon_modifier_lowest_color_r = 255,
+				weapon_modifier_lowest_color_g = 94,
+				weapon_modifier_lowest_color_b = 132,
+				weapon_modifier_lowest_color_opacity = 80,
 				expand_inventory_window = true,
 				weapon_extra_width_column_threshold = "four_plus",
 				five_column_weapon_extra_width = 80,
@@ -306,6 +320,8 @@ def main() -> None:
 				weapon_perk_compression = "compression",
 				show_weapon_perk_rank_symbols = false,
 				weapon_perk_rank_icon_size = 18,
+				single_column_weapon_name_font_size = 20,
+				single_column_blessing_icons_on_right = true,
 				weapon_perk_vertical_spacing = 2,
 				weapon_perk_blessing_spacing = 5,
 				remove_weapon_perk_plus_signs = false,
@@ -853,12 +869,144 @@ def main() -> None:
     native_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     native_size = layout.configure_item_blueprint(mod, native_blueprint, 596)
     assert (native_size[1], native_size[2]) == (586, 110)
+    assert blueprint_pass(native_blueprint, "display_name").style.font_size == 20
     native_icon_size = blueprint_pass(native_blueprint, "icon").style.size
     assert (native_icon_size[1], native_icon_size[2]) == (586, 110)
     assert (
         blueprint_pass(native_blueprint, "better_inventory_curio_stat_1").style.font_size
         == 16
     )
+
+    # Built-in modifier passes must exist and populate maximum-potential values
+    # even when Quick Look Card contributes no blueprint passes at all.
+    native_modifier_styles = {
+        "display_name": blueprint_pass(native_blueprint, "display_name").style,
+    }
+    for index in range(1, 6):
+        for prefix in (
+            "better_inventory_weapon_modifier_title_",
+            "better_inventory_weapon_modifier_value_",
+        ):
+            style_id = f"{prefix}{index}"
+            native_modifier_styles[style_id] = blueprint_pass(
+                native_blueprint, style_id
+            ).style
+    native_modifier_widget = lua.table_from(
+        {"content": lua.table_from({}), "style": lua.table_from(native_modifier_styles)}
+    )
+    native_modifier_element = lua.table_from(
+        {
+            "test_display_name": "Force Sword",
+            "test_sub_display_name": "Mk VI",
+            "item": lua.table_from(
+                {
+                    "item_type": "WEAPON_MELEE",
+                    "expertise": 260,
+                    "projected_values": lua.table_from([80, 60, 80, 80, 80]),
+                }
+            ),
+        }
+    )
+    native_blueprint.init(
+        None,
+        native_modifier_widget,
+        native_modifier_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        native_blueprint,
+    )
+    assert tuple(
+        native_modifier_widget.content[
+            f"better_inventory_weapon_modifier_title_{index}"
+        ]
+        for index in range(1, 6)
+    ) == ("DMG", "FIN", "CLVD", "DEF", "WRES")
+    assert tuple(
+        native_modifier_widget.content[
+            f"better_inventory_weapon_modifier_value_{index}"
+        ]
+        for index in range(1, 6)
+    ) == ("80", "80", "80", "80", "60")
+    standalone_low_title_pass = blueprint_pass(
+        native_blueprint, "better_inventory_weapon_modifier_title_5"
+    )
+    standalone_low_title_pass.change_function(
+        native_modifier_widget.content,
+        standalone_low_title_pass.style,
+    )
+    assert tuple(
+        standalone_low_title_pass.style.text_color[index] for index in range(1, 5)
+    ) == (204, 255, 94, 132)
+
+    mod.settings.weapon_modifier_lowest_color_r = 12
+    mod.settings.weapon_modifier_lowest_color_g = 34
+    mod.settings.weapon_modifier_lowest_color_b = 56
+    mod.settings.weapon_modifier_lowest_color_opacity = 50
+    custom_color_native_blueprint = lua.eval("table.clone")(
+        globals_.raw_test_blueprint
+    )
+    layout.configure_item_blueprint(mod, custom_color_native_blueprint, 596)
+    custom_color_title_pass = blueprint_pass(
+        custom_color_native_blueprint, "better_inventory_weapon_modifier_title_1"
+    )
+    custom_color_title_pass.change_function(
+        lua.table_from({"better_inventory_weapon_modifier_lowest_index": 1}),
+        custom_color_title_pass.style,
+    )
+    assert tuple(
+        custom_color_title_pass.style.text_color[index] for index in range(1, 5)
+    ) == (128, 12, 34, 56)
+    mod.settings.weapon_modifier_lowest_color_r = 255
+    mod.settings.weapon_modifier_lowest_color_g = 94
+    mod.settings.weapon_modifier_lowest_color_b = 132
+    mod.settings.weapon_modifier_lowest_color_opacity = 80
+
+    # Unknown future modifier IDs receive bounded deterministic fallbacks, and
+    # colliding four-character labels are disambiguated within the same weapon.
+    future_modifier_element = lua.eval(
+        """
+        {
+            test_display_name = "Future Weapon",
+            test_sub_display_name = "Mk I",
+            item = {
+                item_type = "WEAPON_MELEE",
+                expertise = 260,
+                projected_values = { 60, 60, 80, 80, 80 },
+                modifier_display_names = {
+                    "loc_stats_display_alpha_stat",
+                    "loc_stats_display_alpha2_stat",
+                    "loc_stats_display_gamma_stat",
+                    "loc_stats_display_delta_stat",
+                    "loc_stats_display_epsilon_stat"
+                }
+            }
+        }
+        """
+    )
+    future_modifier_widget = lua.table_from(
+        {"content": lua.table_from({}), "style": lua.table_from(native_modifier_styles)}
+    )
+    native_blueprint.init(
+        None,
+        future_modifier_widget,
+        future_modifier_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        native_blueprint,
+    )
+    first_future_label = (
+        future_modifier_widget.content.better_inventory_weapon_modifier_title_1
+    )
+    tied_future_label = (
+        future_modifier_widget.content.better_inventory_weapon_modifier_title_5
+    )
+    assert first_future_label == "ALPH"
+    assert tied_future_label == "ALP2"
+    assert len(first_future_label) <= 4 and len(tied_future_label) <= 4
     native_equipped_highlight = blueprint_pass(
         native_blueprint, "better_inventory_equipped_highlight"
     )
@@ -883,7 +1031,7 @@ def main() -> None:
     native_detailed_size = layout.configure_item_blueprint(
         mod, native_detailed_blueprint, 596
     )
-    assert (native_detailed_size[1], native_detailed_size[2]) == (586, 142)
+    assert (native_detailed_size[1], native_detailed_size[2]) == (586, 146)
     native_detailed_icon_size = blueprint_pass(
         native_detailed_blueprint, "icon"
     ).style.size
@@ -897,11 +1045,20 @@ def main() -> None:
         "item_level",
         "rarity_tag",
     ):
-        assert blueprint_pass(native_detailed_blueprint, style_id).style.size[2] == 142
+        assert blueprint_pass(native_detailed_blueprint, style_id).style.size[2] == 146
     native_first_perk = blueprint_pass(
         native_detailed_blueprint, "better_inventory_weapon_perk_1"
     ).style
     assert native_detailed_size[2] + native_first_perk.offset[2] >= 60
+
+    # The native weapon-name control grows card geometry by the same delta, so
+    # larger names never consume the perk/blessing rows below them.
+    mod.settings.single_column_weapon_name_font_size = 22
+    large_name_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    large_name_size = layout.configure_item_blueprint(mod, large_name_blueprint, 596)
+    assert (large_name_size[1], large_name_size[2]) == (586, 148)
+    assert blueprint_pass(large_name_blueprint, "display_name").style.font_size == 22
+    mod.settings.single_column_weapon_name_font_size = 20
 
     # In native mode BetterInventory keeps only Quick Look Card's five modifier
     # stats, then renders its own perks, blessings and primary item power.
@@ -910,7 +1067,9 @@ def main() -> None:
         {
             "style_id": "qlc_stats_title_1",
             "style": lua.table_from({}),
-            "visibility_function": lua.eval("function() return true end"),
+            # Models Quick Look Card being installed while its own modifier
+            # toggle (or the whole mod) is disabled.
+            "visibility_function": lua.eval("function() return false end"),
         }
     )
     qlc_native_blueprint.pass_template[len(qlc_native_blueprint.pass_template) + 1] = (
@@ -931,17 +1090,31 @@ def main() -> None:
             }
         )
     qlc_native_size = layout.configure_item_blueprint(mod, qlc_native_blueprint, 596)
-    assert (qlc_native_size[1], qlc_native_size[2]) == (586, 142)
+    assert (qlc_native_size[1], qlc_native_size[2]) == (586, 146)
     qlc_stat_style = blueprint_pass(
         qlc_native_blueprint, "qlc_stats_title_1"
     ).style
     assert blueprint_pass(
         qlc_native_blueprint, "qlc_stats_title_1"
-    ).visibility_function() is True
-    assert (qlc_stat_style.offset[1], qlc_stat_style.offset[2]) == (280, -43)
+    ).visibility_function() is False
+    assert blueprint_pass(
+        qlc_native_blueprint, "qlc_stats_title_1"
+    ).visibility_function(
+        lua.table_from({"better_inventory_weapon_modifier_title_1": "DMG"})
+    ) is True
+    assert (
+        blueprint_pass(qlc_native_blueprint, "qlc_stats_title_1").value_id
+        == "better_inventory_weapon_modifier_title_1"
+    )
+    assert not any(
+        qlc_native_blueprint.pass_template[index].style_id
+        == "better_inventory_weapon_modifier_title_1"
+        for index in range(1, len(qlc_native_blueprint.pass_template) + 1)
+    )
+    assert (qlc_stat_style.offset[1], qlc_stat_style.offset[2]) == (281, 102)
     assert (qlc_stat_style.size[1], qlc_stat_style.size[2]) == (42, 17)
     assert qlc_stat_style.font_size == 14
-    assert qlc_stat_style.vertical_alignment == "bottom"
+    assert qlc_stat_style.vertical_alignment == "top"
     assert qlc_stat_style.drop_shadow is True
     for hidden_style_id in (
         "qlc_baseLevel",
@@ -964,7 +1137,31 @@ def main() -> None:
         qlc_native_blueprint, "better_inventory_blessing_text_1"
     ).style
     assert qlc_perk_style.offset[1] + qlc_perk_style.size[1] == 260
-    assert qlc_blessing_style.offset[1] + qlc_blessing_style.size[1] == 260
+    assert qlc_blessing_style.offset[1] + qlc_blessing_style.size[1] == 138
+    assert blueprint_pass(
+        qlc_native_blueprint, "better_inventory_blessing_1"
+    ).style.offset[1] == 146
+    assert blueprint_pass(
+        qlc_native_blueprint, "better_inventory_blessing_2"
+    ).style.offset[1] == 183
+
+    # Position percentages operate over the stat block's available travel area;
+    # 0/100 therefore anchor it to the left/bottom edges at any card height.
+    mod.settings.quick_look_card_single_column_font_size = 16
+    mod.settings.quick_look_card_single_column_horizontal_position = 0
+    mod.settings.quick_look_card_single_column_vertical_position = 100
+    qlc_moved_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    qlc_moved_blueprint.pass_template[len(qlc_moved_blueprint.pass_template) + 1] = (
+        lua.eval("table.clone")(qlc_native_pass)
+    )
+    layout.configure_item_blueprint(mod, qlc_moved_blueprint, 596)
+    qlc_moved_style = blueprint_pass(qlc_moved_blueprint, "qlc_stats_title_1").style
+    assert (qlc_moved_style.offset[1], qlc_moved_style.offset[2]) == (0, 106)
+    assert (qlc_moved_style.size[1], qlc_moved_style.size[2]) == (48, 19)
+    assert qlc_moved_style.font_size == 16
+    mod.settings.quick_look_card_single_column_font_size = 14
+    mod.settings.quick_look_card_single_column_horizontal_position = 79
+    mod.settings.quick_look_card_single_column_vertical_position = 93
 
     # Disabling native integration restores Quick Look Card's own compact card
     # instead of applying BetterInventory's detail rows over it.
@@ -981,12 +1178,23 @@ def main() -> None:
     assert (qlc_unmanaged_native_size[1], qlc_unmanaged_native_size[2]) == (586, 110)
     assert blueprint_pass(
         qlc_unmanaged_native_blueprint, "qlc_stats_title_1"
-    ).visibility_function() is True
+    ).visibility_function() is False
     assert not any(
         qlc_unmanaged_native_blueprint.pass_template[index].style_id
         == "better_inventory_weapon_perk_1"
         for index in range(
             1, len(qlc_unmanaged_native_blueprint.pass_template) + 1
+        )
+    )
+    standalone_disabled_native_blueprint = lua.eval("table.clone")(
+        globals_.raw_test_blueprint
+    )
+    layout.configure_item_blueprint(mod, standalone_disabled_native_blueprint, 596)
+    assert not any(
+        standalone_disabled_native_blueprint.pass_template[index].style_id
+        == "better_inventory_weapon_modifier_title_1"
+        for index in range(
+            1, len(standalone_disabled_native_blueprint.pass_template) + 1
         )
     )
     mod.settings.enable_quick_look_card_single_column_integration = True
@@ -995,6 +1203,30 @@ def main() -> None:
     mod.settings.show_weapon_perks = False
     mod.settings.show_weapon_perk_rank_symbols = False
     mod.settings.enable_grid_layout = True
+
+    standalone_grid_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, standalone_grid_blueprint, 596)
+    standalone_dump_pass = blueprint_pass(
+        standalone_grid_blueprint, "better_inventory_quick_look_card_dump_stat"
+    )
+    standalone_dump_content = lua.eval(
+        """
+        {
+            element = {
+                item = {
+                    item_type = "WEAPON_MELEE",
+                    expertise = 260,
+                    projected_values = { 80, 60, 80, 80, 80 }
+                }
+            }
+        }
+        """
+    )
+    assert standalone_dump_pass.visibility_function(standalone_dump_content) is True
+    assert (
+        standalone_dump_content.better_inventory_quick_look_card_dump_stat
+        == "WRES 60"
+    )
 
     qlc_grid_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     qlc_grid_blueprint.pass_template[len(qlc_grid_blueprint.pass_template) + 1] = (
@@ -1016,11 +1248,28 @@ def main() -> None:
         -26,
     )
     assert tuple(qlc_dump_pass.style.text_color[index] for index in range(1, 5)) == (
-        255,
+        204,
         255,
         94,
         132,
     )
+
+    mod.settings.weapon_modifier_lowest_color_r = 12
+    mod.settings.weapon_modifier_lowest_color_g = 34
+    mod.settings.weapon_modifier_lowest_color_b = 56
+    mod.settings.weapon_modifier_lowest_color_opacity = 50
+    custom_color_grid_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, custom_color_grid_blueprint, 596)
+    custom_color_dump_pass = blueprint_pass(
+        custom_color_grid_blueprint, "better_inventory_quick_look_card_dump_stat"
+    )
+    assert tuple(
+        custom_color_dump_pass.style.text_color[index] for index in range(1, 5)
+    ) == (128, 12, 34, 56)
+    mod.settings.weapon_modifier_lowest_color_r = 255
+    mod.settings.weapon_modifier_lowest_color_g = 94
+    mod.settings.weapon_modifier_lowest_color_b = 132
+    mod.settings.weapon_modifier_lowest_color_opacity = 80
 
     mod.settings.quick_look_card_grid_bottom_padding = 32
     qlc_lower_padding_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
@@ -1447,6 +1696,11 @@ def main() -> None:
     mod.settings.weapon_perk_rank_icon_size = 18
     ranked_text_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     layout.configure_item_blueprint(mod, ranked_text_blueprint, 640)
+    assert not any(
+        ranked_text_blueprint.pass_template[index].style_id
+        == "better_inventory_blessing_1"
+        for index in range(1, len(ranked_text_blueprint.pass_template) + 1)
+    )
     ranked_text_styles = {
         "display_name": blueprint_pass(ranked_text_blueprint, "display_name").style,
     }
@@ -1479,6 +1733,80 @@ def main() -> None:
     assert first_rank_text.style.offset[1] == first_rank_pass.style.offset[1] + 21
     assert first_rank_text.style.size[1] == four_column_text_style.size[1] - 21
     assert layout.card_height(mod) == 117
+
+    # Native ranked-text cards keep tier symbols before each name and render the
+    # two full framed blessing icons side by side in the reserved right area.
+    mod.settings.enable_grid_layout = False
+    mod.settings.single_column_blessing_icons_on_right = True
+    right_icon_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, right_icon_blueprint, 596)
+    right_icon_styles = {
+        "display_name": blueprint_pass(right_icon_blueprint, "display_name").style,
+    }
+    for index in range(1, 3):
+        for prefix in (
+            "better_inventory_blessing_text_",
+            "better_inventory_blessing_rank_",
+        ):
+            style_id = f"{prefix}{index}"
+            right_icon_styles[style_id] = blueprint_pass(
+                right_icon_blueprint, style_id
+            ).style
+    right_icon_widget = lua.table_from(
+        {"content": lua.table_from({}), "style": lua.table_from(right_icon_styles)}
+    )
+    right_icon_blueprint.init(
+        None,
+        right_icon_widget,
+        narrow_weapon_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        right_icon_blueprint,
+    )
+    for index in range(1, 3):
+        text_style = right_icon_styles[f"better_inventory_blessing_text_{index}"]
+        rank_style = right_icon_styles[f"better_inventory_blessing_rank_{index}"]
+        assert text_style.offset[1] == rank_style.offset[1] + rank_style.size[1] + 3
+
+        icon_pass = blueprint_pass(
+            right_icon_blueprint, f"better_inventory_blessing_{index}"
+        )
+        assert icon_pass.visibility_function(right_icon_widget.content)
+        icon_pass.change_function(right_icon_widget.content, icon_pass.style)
+        expected_name = "one" if index == 1 else "two"
+        assert icon_pass.style.material_values.icon == f"icon/blessing_{expected_name}"
+        assert icon_pass.style.material_values.frame == f"frame/rank_{index + 2}"
+        assert tuple(icon_pass.style.size[position] for position in range(1, 3)) == (
+            34,
+            34,
+        )
+
+    first_side_icon = blueprint_pass(
+        right_icon_blueprint, "better_inventory_blessing_1"
+    ).style
+    second_side_icon = blueprint_pass(
+        right_icon_blueprint, "better_inventory_blessing_2"
+    ).style
+    assert first_side_icon.offset[1] == 146
+    assert second_side_icon.offset[1] == 183
+    assert first_side_icon.offset[2] == second_side_icon.offset[2] == -4
+    assert second_side_icon.offset[1] + second_side_icon.size[1] <= 260
+
+    mod.settings.single_column_blessing_icons_on_right = False
+    no_side_icon_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, no_side_icon_blueprint, 596)
+    assert not any(
+        no_side_icon_blueprint.pass_template[index].style_id
+        == "better_inventory_blessing_1"
+        for index in range(1, len(no_side_icon_blueprint.pass_template) + 1)
+    )
+    assert blueprint_pass(
+        no_side_icon_blueprint, "better_inventory_blessing_rank_1"
+    ) is not None
+    mod.settings.single_column_blessing_icons_on_right = True
+    mod.settings.enable_grid_layout = True
 
     long_blessing_element = lua.eval("table.clone")(narrow_weapon_element)
     long_blessing_element.item.traits[2].id = "blessing_long"
