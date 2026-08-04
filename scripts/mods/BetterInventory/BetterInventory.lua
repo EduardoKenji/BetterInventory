@@ -29,6 +29,10 @@ local ViewElementGrid = require("scripts/ui/view_elements/view_element_grid/view
 local Layout = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout")
 local Features = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_features"), "BetterInventory_features.lua")
 local CurioAcquisition = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_acquisition"), "BetterInventory_curio_acquisition.lua")
+
+if type(Features.set_curio_acquisition_provider) == "function" then
+	Features.set_curio_acquisition_provider(CurioAcquisition)
+end
 local unpack_values = table.unpack or unpack
 local active_grid_view
 local active_grid_configuration
@@ -368,6 +372,7 @@ local function refresh_option_dependencies()
 		"automatic_curio_min_health",
 		"automatic_curio_min_toughness",
 		"automatic_curio_diagnostic_logging",
+		"automatic_curio_target_mode",
 		"automatic_curio_buy_health",
 		"automatic_curio_buy_toughness",
 		"automatic_curio_buy_stamina",
@@ -381,6 +386,10 @@ local function refresh_option_dependencies()
 		"automatic_curio_class_cryptic",
 	}) do
 		set_option_enabled(option_dependency_entries[setting_id], automatic_curio_enabled, automatic_curio_reason)
+	end
+
+	for _, entry in ipairs(option_dependency_entries.automatic_curio_character_entries or {}) do
+		set_option_enabled(entry, automatic_curio_enabled, automatic_curio_reason)
 	end
 
 	local automatic_health_enabled = automatic_curio_enabled and mod:get("automatic_curio_buy_health") ~= false
@@ -402,7 +411,21 @@ local function bind_option_dependencies(options_templates)
 	local curio_buyer_subsection_titles = {
 		[mod:localize("automatic_curio_types_group")] = true,
 		[mod:localize("automatic_curio_classes_group")] = true,
+		[mod:localize("automatic_curio_characters_group")] = true,
 	}
+	local class_setting_ids = {
+		automatic_curio_class_adamant = true,
+		automatic_curio_class_broker = true,
+		automatic_curio_class_cryptic = true,
+		automatic_curio_class_ogryn = true,
+		automatic_curio_class_psyker = true,
+		automatic_curio_class_veteran = true,
+		automatic_curio_class_zealot = true,
+	}
+	local class_group_title = mod:localize("automatic_curio_classes_group")
+	local character_group_title = mod:localize("automatic_curio_characters_group")
+	local class_group_entry
+	local character_group_entry
 
 	for _, setting_id in ipairs({
 		"columns",
@@ -474,6 +497,7 @@ local function bind_option_dependencies(options_templates)
 		"automatic_curio_min_health",
 		"automatic_curio_min_toughness",
 		"automatic_curio_diagnostic_logging",
+		"automatic_curio_target_mode",
 		"automatic_curio_buy_health",
 		"automatic_curio_buy_toughness",
 		"automatic_curio_buy_stamina",
@@ -489,7 +513,9 @@ local function bind_option_dependencies(options_templates)
 		setting_by_title[mod:localize(setting_id)] = setting_id
 	end
 
-	option_dependency_entries = {}
+	option_dependency_entries = {
+		automatic_curio_character_entries = {},
+	}
 
 	for i = 1, #settings do
 		local entry = settings[i]
@@ -499,12 +525,42 @@ local function bind_option_dependencies(options_templates)
 		-- same depth as their schema nodes so they do not look like peer sections.
 		if type(entry) == "table" and entry.category == category_name and entry.widget_type == "group_header" and curio_buyer_subsection_titles[entry.display_name] then
 			entry.indentation_level = 2
+
+			if entry.display_name == class_group_title then
+				class_group_entry = entry
+			elseif entry.display_name == character_group_title then
+				character_group_entry = entry
+			end
 		end
 
 		local setting_id = type(entry) == "table" and entry.category == category_name and setting_by_title[entry.display_name]
 
 		if setting_id then
 			option_dependency_entries[setting_id] = entry
+		elseif type(entry) == "table" and entry._better_inventory_curio_character_id then
+			option_dependency_entries.automatic_curio_character_entries[#option_dependency_entries.automatic_curio_character_entries + 1] = entry
+		end
+	end
+
+	local function class_mode()
+		return mod:get("automatic_curio_target_mode") ~= "characters"
+	end
+
+	if class_group_entry then
+		class_group_entry.validation_function = class_mode
+	end
+
+	if character_group_entry then
+		character_group_entry.validation_function = function()
+			return not class_mode()
+		end
+	end
+
+	for setting_id in pairs(class_setting_ids) do
+		local entry = option_dependency_entries[setting_id]
+
+		if entry then
+			entry.validation_function = class_mode
 		end
 	end
 
@@ -653,6 +709,10 @@ local dmf_mod = get_mod("DMF")
 
 if dmf_mod and type(dmf_mod.create_mod_options_settings) == "function" then
 	mod:hook_safe(dmf_mod, "create_mod_options_settings", function(_, options_templates)
+		if type(CurioAcquisition.inject_character_options) == "function" then
+			CurioAcquisition.inject_character_options(mod, options_templates)
+		end
+
 		bind_option_dependencies(options_templates)
 	end)
 end

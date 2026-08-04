@@ -207,19 +207,31 @@ local localization = {
 		en = "Enable automatic curio acquisition",
 	},
 	enable_automatic_curio_acquisition_tooltip = {
-		en = "Performs one all-character Armoury Exchange scan after each Morningstar entry and automatically purchases every Curio matching the enabled item-level, primary-roll, type and class filters. This spends Ordo Dockets without a confirmation prompt. Automatic discard finishes first, and Curios matching the acquisition rule remain protected from later automatic-discard passes.",
+		en = "Performs one cross-character Armoury Exchange scan after each Morningstar entry and automatically purchases every Curio matching the enabled item-level, primary-roll, type and target filters. Targets can be selected by class or by individual character. This spends Ordo Dockets without a confirmation prompt. Automatic discard finishes first, and Curios matching the acquisition rule remain protected from later automatic-discard passes.",
 	},
 	automatic_curio_min_item_level = {
 		en = "Minimum curio item level to acquire",
 	},
 	automatic_curio_min_item_level_tooltip = {
-		en = "Only Armoury Curios at or above this displayed item level are eligible. Health and Toughness Curios must also meet their enabled minimum-roll setting. Every matching offer for every enabled class is purchased when sufficient currency is available. The default is 410.",
+		en = "Only Armoury Curios at or above this displayed item level are eligible. Health and Toughness Curios must also meet their enabled minimum-roll setting. Every matching offer for every enabled target is purchased when sufficient currency is available. The default is 410.",
 	},
 	automatic_curio_diagnostic_logging = {
 		en = "Enable detailed diagnostic logging",
 	},
 	automatic_curio_diagnostic_logging_tooltip = {
 		en = "Writes per-character, per-Curio and revalidation details to Darktide's shared session log during the single Morningstar scan. Disabled by default to minimize disk-log growth; failures are still logged.",
+	},
+	automatic_curio_target_mode = {
+		en = "Curio acquisition targets",
+	},
+	automatic_curio_target_mode_tooltip = {
+		en = "Classes applies each class checkbox to every operative of that class. Characters discovers this account's operatives and lets each one be enabled independently. Newly created characters are enabled by default.",
+	},
+	automatic_curio_target_mode_classes = {
+		en = "Classes",
+	},
+	automatic_curio_target_mode_characters = {
+		en = "Characters",
 	},
 	automatic_curio_types_group = {
 		en = "Curio types we are looking for:",
@@ -250,6 +262,15 @@ local localization = {
 	},
 	automatic_curio_classes_group = {
 		en = "Classes to acquire curios:",
+	},
+	automatic_curio_characters_group = {
+		en = "Characters to acquire curios:",
+	},
+	automatic_curio_characters_discovering = {
+		en = "Discovering characters... Reopen mod options shortly, or use the inventory options panel.",
+	},
+	automatic_curio_characters_discovering_inventory = {
+		en = "Discovering characters...",
 	},
 	automatic_curio_class_veteran = {
 		en = "Veteran",
@@ -289,6 +310,9 @@ local localization = {
 	},
 	automatic_curio_classes_inventory_label = {
 		en = "Classes to acquire curios:",
+	},
+	automatic_curio_characters_inventory_label = {
+		en = "Characters to acquire curios:",
 	},
 	automatic_curio_health = {
 		en = "Health",
@@ -1715,6 +1739,17 @@ local zh_cn = {
 	weapon_perk_reload_speed = "装填速度",
 	weapon_perk_reload_heavy = "装填",
 }
+
+zh_cn.automatic_curio_target_mode = "珍品获取目标"
+zh_cn.automatic_curio_target_mode_tooltip = "职业模式会将每个职业复选框应用于该职业的所有角色。角色模式会自动发现此账户的角色，并允许分别启用每个角色。新建角色默认启用。"
+zh_cn.automatic_curio_target_mode_classes = "职业"
+zh_cn.automatic_curio_target_mode_characters = "角色"
+zh_cn.automatic_curio_characters_group = "要获取珍品的角色："
+zh_cn.automatic_curio_characters_inventory_label = "要获取珍品的角色："
+zh_cn.automatic_curio_characters_discovering = "正在发现角色……请稍后重新打开模组选项，或使用库存选项面板。"
+zh_cn.automatic_curio_characters_discovering_inventory = "正在发现角色..."
+zh_cn.enable_automatic_curio_acquisition_tooltip = "每次进入晨星号后，对所有角色的军械库交易所执行一次扫描，并自动购买符合物品等级、主要属性数值、类型和目标筛选条件的所有珍品。目标可按职业或单个角色选择。此功能会在没有确认提示的情况下花费审判庭双子币。自动丢弃会先完成，且符合获取规则的珍品会在以后的自动丢弃流程中保持受保护状态。"
+zh_cn.automatic_curio_min_item_level_tooltip = "只有显示物品等级达到或超过此值的军械库珍品才符合条件。生命和韧性珍品还必须达到对应的最低主要属性数值。货币充足时，会购买每个已启用目标的所有匹配商品。默认值为 410。"
 
 for localization_id, text in pairs(zh_cn) do
 	local entry = localization[localization_id]

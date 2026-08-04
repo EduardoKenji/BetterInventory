@@ -40,6 +40,7 @@ local INVENTORY_DISCARD_PROTECTION_ID = "better_inventory_discard_protection"
 local INVENTORY_DISCARD_CURIO_PROTECTION_ID = "better_inventory_discard_curio_protection"
 local INVENTORY_DISCARD_CURIO_LEVEL_ID = "better_inventory_discard_curio_level"
 local INVENTORY_CURIO_BUYER_ENABLE_ID = "better_inventory_curio_buyer_enable"
+local INVENTORY_CURIO_BUYER_TARGET_MODE_ID = "better_inventory_curio_buyer_target_mode"
 local INVENTORY_CURIO_BUYER_MIN_LEVEL_ID = "better_inventory_curio_buyer_min_level"
 local INVENTORY_CURIO_BUYER_MIN_HEALTH_ID = "better_inventory_curio_buyer_min_health"
 local INVENTORY_CURIO_BUYER_MIN_TOUGHNESS_ID = "better_inventory_curio_buyer_min_toughness"
@@ -98,6 +99,37 @@ local registered_inventory_views = setmetatable({}, {
 local perfect_roll_cache = setmetatable({}, {
 	__mode = "k",
 })
+local curio_acquisition_provider
+
+Features.set_curio_acquisition_provider = function(provider)
+	curio_acquisition_provider = type(provider) == "table" and provider or nil
+end
+
+local function known_curio_buyer_profiles(mod)
+	if not curio_acquisition_provider or type(curio_acquisition_provider.known_profiles) ~= "function" then
+		return {}
+	end
+
+	local profiles = curio_acquisition_provider.known_profiles(mod)
+
+	if type(profiles) ~= "table" then
+		return {}
+	end
+
+	if #profiles == 0 and type(curio_acquisition_provider.request_profile_discovery) == "function" then
+		curio_acquisition_provider.request_profile_discovery()
+	end
+
+	return profiles
+end
+
+local function curio_buyer_profile_revision()
+	if curio_acquisition_provider and type(curio_acquisition_provider.profile_revision) == "function" then
+		return tonumber(curio_acquisition_provider.profile_revision()) or 0
+	end
+
+	return 0
+end
 
 local function inventory_slot_kind(layout, view)
 	if not view or view.__class_name ~= "InventoryWeaponsView" then
@@ -1312,6 +1344,38 @@ local function panel_mode_entry(mod, layout, view)
 	end)
 end
 
+local function panel_curio_buyer_target_mode_entry(mod, layout, view)
+	local geometry = view._better_inventory_options_panel_geometry
+
+	return panel_entry(view, INVENTORY_CURIO_BUYER_TARGET_MODE_ID, 34, compact_selector_passes(geometry.content_width, 140), {
+		label = mod:localize("automatic_curio_target_mode"),
+		value = "",
+	}, function(widget)
+		widget.content.hotspot.pressed_callback = function()
+			local mode = mod:get("automatic_curio_target_mode") == "characters" and "classes" or "characters"
+
+			mod:set("automatic_curio_target_mode", mode, false)
+
+			if curio_acquisition_provider and type(curio_acquisition_provider.on_setting_changed) == "function" then
+				curio_acquisition_provider.on_setting_changed(mod, "automatic_curio_target_mode")
+			end
+
+			if mode == "characters" and curio_acquisition_provider and type(curio_acquisition_provider.request_profile_discovery) == "function" then
+				curio_acquisition_provider.request_profile_discovery()
+			end
+
+			Features.sync_curio_acquisition_settings(mod, layout, view)
+		end
+	end, function(widget)
+		local mode = mod:get("automatic_curio_target_mode") == "characters" and "characters" or "classes"
+
+		if widget.content.better_inventory_mode ~= mode then
+			widget.content.better_inventory_mode = mode
+			widget.content.value = mod:localize("automatic_curio_target_mode_" .. mode) .. "  >"
+		end
+	end)
+end
+
 local function panel_sub_label_entry(mod, view, control_id, label_id)
 	local geometry = view._better_inventory_options_panel_geometry
 
@@ -1655,6 +1719,67 @@ local function panel_curio_buyer_class_entry(mod, layout, view, row)
 	return panel_checkbox_group_entry(mod, layout, view, "better_inventory_curio_buyer_classes_" .. row, settings)
 end
 
+local function character_profile_label(profile, profiles)
+	local label = profile.character_name and string.format("%s(%s)", profile.character_name, profile.class_name) or profile.class_name
+	local duplicate_count = 0
+
+	for index = 1, #profiles do
+		local other = profiles[index]
+		local other_label = other.character_name and string.format("%s(%s)", other.character_name, other.class_name) or other.class_name
+
+		if other_label == label then
+			duplicate_count = duplicate_count + 1
+		end
+	end
+
+	return duplicate_count > 1 and string.format("%s [%s]", label, string.sub(tostring(profile.character_id), -6)) or label
+end
+
+local function panel_curio_buyer_character_entry(mod, layout, view, profiles, first_index)
+	local geometry = view._better_inventory_options_panel_geometry
+	local content = {}
+	local passes = {}
+	local settings = {}
+	local last_index = math.min(first_index + 1, #profiles)
+	local gap = 6
+	local width = math.floor((geometry.content_width - gap * (last_index - first_index)) / (last_index - first_index + 1))
+
+	for profile_index = first_index, last_index do
+		local profile = profiles[profile_index]
+		local content_id = "character_" .. tostring(profile_index - first_index + 1)
+		local x = (width + gap) * (profile_index - first_index)
+
+		settings[#settings + 1] = {
+			character_id = profile.character_id,
+			content_id = content_id,
+		}
+		content[content_id .. "_checked"] = curio_acquisition_provider.character_is_enabled(mod, profile.character_id)
+		content[content_id .. "_label"] = character_profile_label(profile, profiles)
+		append_panel_checkbox_passes(passes, content_id, x, width, content_id .. "_checked", content_id .. "_label")
+	end
+
+	return panel_entry(view, "better_inventory_curio_buyer_characters_" .. tostring(first_index), 34, passes, content, function(widget)
+		for index = 1, #settings do
+			local config = settings[index]
+			local checked_id = config.content_id .. "_checked"
+
+			widget.content[config.content_id .. "_hotspot"].pressed_callback = function()
+				local enabled = not curio_acquisition_provider.character_is_enabled(mod, config.character_id)
+
+				widget.content[checked_id] = enabled
+				curio_acquisition_provider.set_character_enabled(mod, config.character_id, enabled)
+				Features.sync_curio_acquisition_settings(mod, layout, view)
+			end
+		end
+	end, function(widget)
+		for index = 1, #settings do
+			local config = settings[index]
+
+			widget.content[config.content_id .. "_checked"] = curio_acquisition_provider.character_is_enabled(mod, config.character_id)
+		end
+	end)
+end
+
 local function panel_structure_key(mod, view)
 	local collapsed = view._better_inventory_options_panel_collapsed or {}
 	local key = 0
@@ -1669,6 +1794,8 @@ local function panel_structure_key(mod, view)
 	key = key + (collapsed.curio_buyer and 128 or 0)
 	key = key + (mod:get("automatic_curio_buy_health") ~= false and 256 or 0)
 	key = key + (mod:get("automatic_curio_buy_toughness") ~= false and 512 or 0)
+	key = key + (mod:get("automatic_curio_target_mode") == "characters" and 1024 or 0)
+	key = key + curio_buyer_profile_revision() * 2048
 
 	return key
 end
@@ -1735,6 +1862,7 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 
 			if mod:get("enable_automatic_curio_acquisition") == true then
 				entries[#entries + 1] = panel_stepper_entry(mod, layout, view, INVENTORY_CURIO_BUYER_MIN_LEVEL_ID, "automatic_curio_min_item_level", "automatic_curio_min_item_level", 410, Features.sync_curio_acquisition_settings)
+				entries[#entries + 1] = panel_curio_buyer_target_mode_entry(mod, layout, view)
 				entries[#entries + 1] = panel_sub_label_entry(mod, view, "better_inventory_curio_buyer_types_label", "automatic_curio_types_inventory_label")
 				entries[#entries + 1] = panel_curio_buyer_type_entry(mod, layout, view)
 
@@ -1746,9 +1874,23 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 					entries[#entries + 1] = panel_stepper_entry(mod, layout, view, INVENTORY_CURIO_BUYER_MIN_TOUGHNESS_ID, "automatic_curio_min_toughness", "automatic_curio_min_toughness", 17, Features.sync_curio_acquisition_settings, 0, 17, 1, "%")
 				end
 
-				entries[#entries + 1] = panel_sub_label_entry(mod, view, "better_inventory_curio_buyer_classes_label", "automatic_curio_classes_inventory_label")
-				entries[#entries + 1] = panel_curio_buyer_class_entry(mod, layout, view, 1)
-				entries[#entries + 1] = panel_curio_buyer_class_entry(mod, layout, view, 2)
+				if mod:get("automatic_curio_target_mode") == "characters" then
+					local profiles = known_curio_buyer_profiles(mod)
+
+					entries[#entries + 1] = panel_sub_label_entry(mod, view, "better_inventory_curio_buyer_characters_label", "automatic_curio_characters_inventory_label")
+
+					if #profiles == 0 then
+						entries[#entries + 1] = panel_sub_label_entry(mod, view, "better_inventory_curio_buyer_characters_discovering", "automatic_curio_characters_discovering_inventory")
+					else
+						for first_index = 1, #profiles, 2 do
+							entries[#entries + 1] = panel_curio_buyer_character_entry(mod, layout, view, profiles, first_index)
+						end
+					end
+				else
+					entries[#entries + 1] = panel_sub_label_entry(mod, view, "better_inventory_curio_buyer_classes_label", "automatic_curio_classes_inventory_label")
+					entries[#entries + 1] = panel_curio_buyer_class_entry(mod, layout, view, 1)
+					entries[#entries + 1] = panel_curio_buyer_class_entry(mod, layout, view, 2)
+				end
 			end
 		end
 	end

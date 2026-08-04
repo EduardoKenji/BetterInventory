@@ -403,6 +403,7 @@ def main() -> None:
 		"automatic_curio_min_health",
 		"automatic_curio_min_toughness",
 		"automatic_curio_diagnostic_logging",
+		"automatic_curio_target_mode",
 		"automatic_curio_buy_health",
 		"automatic_curio_buy_toughness",
 		"automatic_curio_buy_stamina",
@@ -416,6 +417,7 @@ def main() -> None:
 		"automatic_curio_class_cryptic",
 		"automatic_curio_types_group",
 		"automatic_curio_classes_group",
+		"automatic_curio_characters_group",
     )
     entries = [
         lua.table_from(
@@ -426,8 +428,13 @@ def main() -> None:
         )
         for option_id in option_ids
     ]
-    entries[-2].widget_type = "group_header"
-    entries[-1].widget_type = "group_header"
+    for option_id, entry in zip(option_ids, entries):
+        if option_id in {
+            "automatic_curio_types_group",
+            "automatic_curio_classes_group",
+            "automatic_curio_characters_group",
+        }:
+            entry.widget_type = "group_header"
     options_templates = lua.table_from(
         {"settings": lua.table_from(entries)}
     )
@@ -483,10 +490,14 @@ def main() -> None:
     assert entries_by_id["automatic_curio_min_health"].disabled is True
     assert entries_by_id["automatic_curio_min_toughness"].disabled is True
     assert entries_by_id["automatic_curio_diagnostic_logging"].disabled is True
+    assert entries_by_id["automatic_curio_target_mode"].disabled is True
     assert entries_by_id["automatic_curio_buy_health"].disabled is True
     assert entries_by_id["automatic_curio_class_cryptic"].disabled is True
     assert entries_by_id["automatic_curio_types_group"].indentation_level == 2
     assert entries_by_id["automatic_curio_classes_group"].indentation_level == 2
+    assert entries_by_id["automatic_curio_characters_group"].indentation_level == 2
+    assert entries_by_id["automatic_curio_classes_group"].validation_function() is True
+    assert entries_by_id["automatic_curio_characters_group"].validation_function() is False
     assert entries_by_id["curio_information_width_percent"].disabled is True
     assert entries_by_id["curio_preview_height_percent"].disabled is True
     assert entries_by_id["inventory_options_panel_width"].disabled is True
@@ -543,12 +554,19 @@ def main() -> None:
     assert entries_by_id["automatic_curio_min_health"].disabled is False
     assert entries_by_id["automatic_curio_min_toughness"].disabled is False
     assert entries_by_id["automatic_curio_diagnostic_logging"].disabled is False
+    assert entries_by_id["automatic_curio_target_mode"].disabled is False
     assert entries_by_id["automatic_curio_buy_health"].disabled is False
     assert entries_by_id["automatic_curio_buy_toughness"].disabled is False
     assert entries_by_id["automatic_curio_buy_stamina"].disabled is False
     assert entries_by_id["automatic_curio_buy_wounds"].disabled is False
     assert entries_by_id["automatic_curio_class_veteran"].disabled is False
     assert entries_by_id["automatic_curio_class_cryptic"].disabled is False
+    settings.automatic_curio_target_mode = "characters"
+    mod.on_setting_changed("automatic_curio_target_mode")
+    assert entries_by_id["automatic_curio_classes_group"].validation_function() is False
+    assert entries_by_id["automatic_curio_characters_group"].validation_function() is True
+    settings.automatic_curio_target_mode = "classes"
+    mod.on_setting_changed("automatic_curio_target_mode")
     settings.automatic_curio_buy_health = False
     mod.on_setting_changed("automatic_curio_buy_health")
     assert entries_by_id["automatic_curio_min_health"].disabled is True
@@ -714,10 +732,11 @@ def main() -> None:
             "blessing_icon_spacing",
             "automatic_curio_types_group",
             "automatic_curio_classes_group",
+			"automatic_curio_characters_group",
         }:
             continue
 
-        assert entries_by_id[option_id].disabled is True
+        assert entries_by_id[option_id].disabled is True, option_id
 
     assert entries_by_id["blessing_icon_size"].disabled is False
     assert entries_by_id["blessing_icon_spacing"].disabled is False

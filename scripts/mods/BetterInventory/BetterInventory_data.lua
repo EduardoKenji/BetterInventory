@@ -392,6 +392,22 @@ return {
 								default_value = false,
 							},
 							{
+								setting_id = "automatic_curio_target_mode",
+								tooltip = "automatic_curio_target_mode_tooltip",
+								type = "dropdown",
+								default_value = "classes",
+								options = {
+									{
+										text = "automatic_curio_target_mode_classes",
+										value = "classes",
+									},
+									{
+										text = "automatic_curio_target_mode_characters",
+										value = "characters",
+									},
+								},
+							},
+							{
 								setting_id = "automatic_curio_types_group",
 								type = "group",
 								sub_widgets = {
@@ -481,6 +497,10 @@ return {
 										default_value = true,
 									},
 								},
+							},
+							{
+								setting_id = "automatic_curio_characters_group",
+								type = "group",
 							},
 						},
 					},

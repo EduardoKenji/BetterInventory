@@ -214,6 +214,45 @@ def main() -> None:
     curio_values = lua.execute(CURIO_VALUES_PATH.read_text(encoding="utf-8"))
     lua.globals().TestCurioValues = curio_values
     features = lua.execute(FEATURES_PATH.read_text(encoding="utf-8"))
+    lua.globals().TestFeatures = features
+    lua.execute(
+        r"""
+        TestCurioProfileSelection = {}
+        TestCurioProfiles = {
+            {
+                character_id = "character-ogryn",
+                character_name = "Dudualdo",
+                class_name = "Ogryn",
+            },
+            {
+                character_id = "character-psyker",
+                character_name = "Psyops",
+                class_name = "Psyker",
+            },
+        }
+        TestCurioProvider = {
+            known_profiles = function()
+                return TestCurioProfiles
+            end,
+            request_profile_discovery = function()
+                TestCurioDiscoveryRequested = true
+            end,
+            profile_revision = function()
+                return 1
+            end,
+            character_is_enabled = function(_, character_id)
+                return TestCurioProfileSelection[character_id] ~= false
+            end,
+            set_character_enabled = function(_, character_id, enabled)
+                TestCurioProfileSelection[character_id] = enabled
+            end,
+            on_setting_changed = function(_, setting_id)
+                TestCurioSettingChanged = setting_id
+            end,
+        }
+        TestFeatures.set_curio_acquisition_provider(TestCurioProvider)
+        """
+    )
     globals_ = lua.globals()
     mod = globals_.test_mod
     layout = globals_.test_layout
@@ -1389,8 +1428,12 @@ def main() -> None:
     curio_buyer_enable.content.hotspot.pressed_callback()
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert mod.settings.enable_automatic_curio_acquisition is True
-    assert len(prototype_panel.layout) == 25
+    assert len(prototype_panel.layout) == 26
     assert prototype_panel.widgets["better_inventory_curio_buyer_min_level"] is not None
+    buyer_target_mode = prototype_panel.widgets[
+        "better_inventory_curio_buyer_target_mode"
+    ]
+    assert buyer_target_mode.content.value == "automatic_curio_target_mode_classes  >"
     buyer_min_health = prototype_panel.widgets[
         "better_inventory_curio_buyer_min_health"
     ]
@@ -1413,16 +1456,43 @@ def main() -> None:
     buyer_types.content.health_hotspot.pressed_callback()
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert mod.settings.automatic_curio_buy_health is False
-    assert len(prototype_panel.layout) == 24
+    assert len(prototype_panel.layout) == 25
     assert prototype_panel.widgets["better_inventory_curio_buyer_min_health"] is None
     assert prototype_panel.widgets["better_inventory_curio_buyer_min_toughness"] is not None
     buyer_types = prototype_panel.widgets["better_inventory_curio_buyer_types"]
     buyer_types.content.health_hotspot.pressed_callback()
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert mod.settings.automatic_curio_buy_health is True
-    assert len(prototype_panel.layout) == 25
+    assert len(prototype_panel.layout) == 26
     assert prototype_panel.widgets["better_inventory_curio_buyer_classes_1"] is not None
     assert prototype_panel.widgets["better_inventory_curio_buyer_classes_2"] is not None
+    buyer_target_mode = prototype_panel.widgets[
+        "better_inventory_curio_buyer_target_mode"
+    ]
+    buyer_target_mode.content.hotspot.pressed_callback()
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert mod.settings.automatic_curio_target_mode == "characters"
+    assert globals_.TestCurioSettingChanged == "automatic_curio_target_mode"
+    assert len(prototype_panel.layout) == 25
+    assert prototype_panel.widgets["better_inventory_curio_buyer_classes_1"] is None
+    buyer_characters = prototype_panel.widgets[
+        "better_inventory_curio_buyer_characters_1"
+    ]
+    assert buyer_characters is not None
+    assert buyer_characters.content.character_1_label == "Dudualdo(Ogryn)"
+    assert buyer_characters.content.character_2_label == "Psyops(Psyker)"
+    assert buyer_characters.content.character_1_checked is True
+    buyer_characters.content.character_1_hotspot.pressed_callback()
+    assert globals_.TestCurioProfileSelection["character-ogryn"] is False
+    assert buyer_characters.content.character_1_checked is False
+    buyer_target_mode = prototype_panel.widgets[
+        "better_inventory_curio_buyer_target_mode"
+    ]
+    buyer_target_mode.content.hotspot.pressed_callback()
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert mod.settings.automatic_curio_target_mode == "classes"
+    assert len(prototype_panel.layout) == 26
+    assert prototype_panel.widgets["better_inventory_curio_buyer_classes_1"] is not None
     curio_buyer_enable = prototype_panel.widgets[
         "better_inventory_curio_buyer_enable"
     ]

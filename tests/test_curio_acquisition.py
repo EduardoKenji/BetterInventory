@@ -235,6 +235,7 @@ def main() -> None:
 
         settings = {
             enable_automatic_curio_acquisition = true,
+			automatic_curio_target_mode = "classes",
             automatic_curio_min_item_level = 410,
             automatic_curio_min_health = 21,
             automatic_curio_min_toughness = 17,
@@ -255,6 +256,12 @@ def main() -> None:
             get = function(self, setting_id)
                 return settings[setting_id]
             end,
+			set = function(self, setting_id, value)
+				settings[setting_id] = value
+			end,
+			get_readable_name = function()
+				return "Better Inventory"
+			end,
             localize = function(self, localization_id)
 				if localization_id == "automatic_curio_currency_spent_label" then
 					return "Spent:"
@@ -466,6 +473,37 @@ def main() -> None:
     assert candidate.character_name == "Research Psyker"
     assert candidate.class_name == "Psyker"
 
+    # Class mode remains the default. Unknown future archetypes are included
+    # until BetterInventory gains a dedicated checkbox instead of being silently
+    # excluded by a hard-coded class list.
+    future_profile = lua.table_from(
+        {
+            "character_id": "future-character",
+            "name": "Future Operative",
+            "archetype": lua.table_from(
+                {"name": "future_class", "archetype_name": "loc_future_class"}
+            ),
+        }
+    )
+    assert module._test.class_is_enabled(globals_.test_mod, future_profile) is True
+
+    # Character mode uses the stable backend ID, not display name or class.
+    globals_.settings.automatic_curio_target_mode = "characters"
+    assert module._test.profile_is_enabled(
+        globals_.test_mod, globals_.target_profile
+    ) is True
+    module.set_character_enabled(
+        globals_.test_mod, "target-psyker", False
+    )
+    assert module._test.profile_is_enabled(
+        globals_.test_mod, globals_.target_profile
+    ) is False
+    module.set_character_enabled(
+        globals_.test_mod, "target-psyker", True
+    )
+    assert globals_.settings.automatic_curio_character_selection is None
+    globals_.settings.automatic_curio_target_mode = "classes"
+
     # Rich-text colour parameters from Enhanced Descriptions must not replace
     # the visible Curio roll during parsing or exclude an otherwise valid offer.
     globals_.description_mode = "rich"
@@ -571,6 +609,36 @@ def main() -> None:
     assert lua.eval(
         "function(logs) for i = 1, #logs do if string.find(logs[i], 'non%-transactional field%(s%) changed') then return true end end return false end"
     )(globals_.captured_logs)
+
+    # A successful discovery is reused by both dynamic UIs. DMF's final options
+    # template receives a stable-ID checkbox labelled with character and class.
+    known_profiles = module.known_profiles(globals_.test_mod)
+    assert len(known_profiles) == 1
+    assert known_profiles[1].character_id == "target-psyker"
+    character_options = lua.execute(
+        r"""
+        return {
+            settings = {
+                {
+                    category = "Better Inventory",
+                    display_name = "automatic_curio_characters_group",
+                    widget_type = "group_header",
+                },
+            },
+        }
+        """
+    )
+    assert module.inject_character_options(
+        globals_.test_mod, character_options
+    ) is True
+    assert len(character_options.settings) == 2
+    character_option = character_options.settings[2]
+    assert character_option.display_name == "Research Psyker(Psyker)"
+    assert character_option.get_function() is True
+    character_option.on_activated(False)
+    assert character_option.get_function() is False
+    character_option.on_activated(True)
+    assert character_option.get_function() is True
 
     module.update(globals_.test_mod, 60, False)
     assert globals_.purchase_count == 1
