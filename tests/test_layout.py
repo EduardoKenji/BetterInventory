@@ -1094,6 +1094,9 @@ def main() -> None:
     qlc_stat_style = blueprint_pass(
         qlc_native_blueprint, "qlc_stats_title_1"
     ).style
+    qlc_value_style = blueprint_pass(
+        qlc_native_blueprint, "better_inventory_weapon_modifier_value_1"
+    ).style
     assert blueprint_pass(
         qlc_native_blueprint, "qlc_stats_title_1"
     ).visibility_function() is False
@@ -1111,8 +1114,23 @@ def main() -> None:
         == "better_inventory_weapon_modifier_title_1"
         for index in range(1, len(qlc_native_blueprint.pass_template) + 1)
     )
-    assert (qlc_stat_style.offset[1], qlc_stat_style.offset[2]) == (281, 102)
+    assert (qlc_stat_style.offset[1], qlc_stat_style.offset[2]) == (273, 102)
     assert (qlc_stat_style.size[1], qlc_stat_style.size[2]) == (42, 17)
+    assert qlc_value_style.offset[1] - qlc_stat_style.offset[1] >= qlc_stat_style.size[1] + 6
+    for index in range(1, 6):
+        title_style = (
+            qlc_stat_style
+            if index == 1
+            else blueprint_pass(
+                qlc_native_blueprint,
+                f"better_inventory_weapon_modifier_title_{index}",
+            ).style
+        )
+        value_style = blueprint_pass(
+            qlc_native_blueprint,
+            f"better_inventory_weapon_modifier_value_{index}",
+        ).style
+        assert value_style.offset[1] - title_style.offset[1] >= title_style.size[1] + 6
     assert qlc_stat_style.font_size == 14
     assert qlc_stat_style.vertical_alignment == "top"
     assert qlc_stat_style.drop_shadow is True
