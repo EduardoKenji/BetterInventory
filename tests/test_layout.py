@@ -163,7 +163,54 @@ def main() -> None:
 		end
 
 		function TestItems.expertise_level(item, no_symbol)
-			return no_symbol and "460" or "POWER 460", true
+			local value = tostring(item and item.expertise or 460)
+
+			return no_symbol and value or "POWER " .. value, true
+		end
+
+		function TestItems.max_expertise_level()
+			return 500
+		end
+
+		preview_stats_change_count = 0
+
+		function TestItems.preview_stats_change(item, expertise_increase, stats)
+			preview_stats_change_count = preview_stats_change_count + 1
+			local projected = {}
+
+			for index = 1, #stats do
+				local stat = stats[index]
+				local value = item.projected_values and item.projected_values[index] or math.floor((stat.fraction or 0) * 100 + 0.5)
+
+				projected[stat.display_name] = {
+					fraction = value / 100,
+				}
+			end
+
+			return projected
+		end
+
+		TestWeaponStats = {}
+
+		function TestWeaponStats:new(item)
+			local instance = {
+				item = item,
+			}
+
+			function instance:get_comparing_stats()
+				local stats = {}
+
+				for index = 1, 5 do
+					stats[index] = {
+						display_name = "stat_" .. index,
+						fraction = 0.2,
+					}
+				end
+
+				return stats
+			end
+
+			return instance
 		end
 
 		function TestItems.display_name(item)
@@ -210,6 +257,10 @@ def main() -> None:
 				return TestRankSettings
 			end
 
+			if path == "scripts/utilities/weapon_stats" then
+				return TestWeaponStats
+			end
+
 			error("Unexpected test require: " .. tostring(path))
 		end
 
@@ -217,6 +268,11 @@ def main() -> None:
             settings = {
 				columns = 3,
 				enable_grid_layout = true,
+				enable_quick_look_card_single_column_integration = true,
+				enable_quick_look_card_grid_integration = true,
+				quick_look_card_grid_stat_position = "above_power",
+				quick_look_card_grid_font_size = 13,
+				quick_look_card_grid_bottom_padding = 26,
 				expand_inventory_window = true,
 				weapon_extra_width_column_threshold = "four_plus",
 				five_column_weapon_extra_width = 80,
@@ -906,6 +962,31 @@ def main() -> None:
     assert qlc_perk_style.offset[1] + qlc_perk_style.size[1] == 260
     assert qlc_blessing_style.offset[1] + qlc_blessing_style.size[1] == 260
 
+    # Disabling native integration restores Quick Look Card's own compact card
+    # instead of applying BetterInventory's detail rows over it.
+    mod.settings.enable_quick_look_card_single_column_integration = False
+    qlc_unmanaged_native_blueprint = lua.eval("table.clone")(
+        globals_.raw_test_blueprint
+    )
+    qlc_unmanaged_native_blueprint.pass_template[
+        len(qlc_unmanaged_native_blueprint.pass_template) + 1
+    ] = lua.eval("table.clone")(qlc_native_pass)
+    qlc_unmanaged_native_size = layout.configure_item_blueprint(
+        mod, qlc_unmanaged_native_blueprint, 596
+    )
+    assert (qlc_unmanaged_native_size[1], qlc_unmanaged_native_size[2]) == (586, 110)
+    assert blueprint_pass(
+        qlc_unmanaged_native_blueprint, "qlc_stats_title_1"
+    ).visibility_function() is True
+    assert not any(
+        qlc_unmanaged_native_blueprint.pass_template[index].style_id
+        == "better_inventory_weapon_perk_1"
+        for index in range(
+            1, len(qlc_unmanaged_native_blueprint.pass_template) + 1
+        )
+    )
+    mod.settings.enable_quick_look_card_single_column_integration = True
+
     mod.settings.weapon_blessing_display_mode = "icons"
     mod.settings.show_weapon_perks = False
     mod.settings.show_weapon_perk_rank_symbols = False
@@ -919,6 +1000,153 @@ def main() -> None:
     assert blueprint_pass(
         qlc_grid_blueprint, "qlc_stats_title_1"
     ).visibility_function() is False
+    qlc_dump_pass = blueprint_pass(
+        qlc_grid_blueprint, "better_inventory_quick_look_card_dump_stat"
+    )
+    assert qlc_dump_pass is not None
+    assert qlc_dump_pass.style.font_size == 13
+    assert qlc_dump_pass.style.horizontal_alignment == "right"
+    assert qlc_dump_pass.style.vertical_alignment == "bottom"
+    assert (qlc_dump_pass.style.offset[1], qlc_dump_pass.style.offset[2]) == (
+        -8,
+        -26,
+    )
+    assert tuple(qlc_dump_pass.style.text_color[index] for index in range(1, 5)) == (
+        255,
+        255,
+        94,
+        132,
+    )
+
+    mod.settings.quick_look_card_grid_bottom_padding = 32
+    qlc_lower_padding_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    qlc_lower_padding_blueprint.pass_template[
+        len(qlc_lower_padding_blueprint.pass_template) + 1
+    ] = lua.eval("table.clone")(qlc_native_pass)
+    layout.configure_item_blueprint(mod, qlc_lower_padding_blueprint, 596)
+    assert blueprint_pass(
+        qlc_lower_padding_blueprint, "better_inventory_quick_look_card_dump_stat"
+    ).style.offset[2] == -32
+    mod.settings.quick_look_card_grid_bottom_padding = 26
+
+    qlc_dump_content = lua.eval(
+        """
+        {
+            element = {
+                item = {
+                    item_type = "WEAPON_MELEE",
+                    expertise = 260,
+                    projected_values = { 80, 60, 80, 80, 80 }
+                }
+            },
+            qlc_stats_title_1 = "DMG",
+            qlc_stats_value_1 = "21+",
+            qlc_stats_title_2 = "FIN",
+            qlc_stats_value_2 = "0+",
+            qlc_stats_title_3 = "CLVD",
+            qlc_stats_value_3 = "32+",
+            qlc_stats_title_4 = "DEF",
+            qlc_stats_value_4 = "19+",
+            qlc_stats_title_5 = "WRES",
+            qlc_stats_value_5 = "11+"
+        }
+        """
+    )
+    projected_calls = globals_.preview_stats_change_count
+    assert qlc_dump_pass.visibility_function(qlc_dump_content) is True
+    assert qlc_dump_content.better_inventory_quick_look_card_dump_stat == "WRES 60"
+    assert globals_.preview_stats_change_count == projected_calls + 1
+    assert qlc_dump_pass.visibility_function(qlc_dump_content) is True
+    assert globals_.preview_stats_change_count == projected_calls + 1
+
+    qlc_equal_content = lua.eval(
+        """
+        {
+            element = {
+                item = {
+                    item_type = "WEAPON_RANGED",
+                    expertise = 320,
+                    projected_values = { 80, 80, 80, 80, 80 }
+                }
+            },
+            qlc_stats_title_1 = "DMG", qlc_stats_value_1 = "80",
+            qlc_stats_title_2 = "FIN", qlc_stats_value_2 = "80",
+            qlc_stats_title_3 = "CLVD", qlc_stats_value_3 = "80",
+            qlc_stats_title_4 = "DEF", qlc_stats_value_4 = "80",
+            qlc_stats_title_5 = "WRES", qlc_stats_value_5 = "80"
+        }
+        """
+    )
+    assert qlc_dump_pass.visibility_function(qlc_equal_content) is False
+    assert qlc_equal_content.better_inventory_quick_look_card_dump_stat == ""
+
+    mod.settings.quick_look_card_grid_stat_position = "name_right"
+    mod.settings.quick_look_card_grid_font_size = 14
+    qlc_name_right_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    qlc_name_right_blueprint.pass_template[
+        len(qlc_name_right_blueprint.pass_template) + 1
+    ] = lua.eval("table.clone")(qlc_native_pass)
+    layout.configure_item_blueprint(mod, qlc_name_right_blueprint, 596)
+    qlc_name_right_pass = blueprint_pass(
+        qlc_name_right_blueprint, "better_inventory_quick_look_card_dump_stat"
+    )
+    assert qlc_name_right_pass.style.horizontal_alignment == "right"
+    assert qlc_name_right_pass.style.vertical_alignment == "top"
+    assert qlc_name_right_pass.style.offset[1] == -36
+    assert qlc_name_right_pass.style.font_size == 14
+    assert qlc_name_right_pass.visibility_function(qlc_dump_content) is True
+    assert qlc_dump_content.better_inventory_quick_look_card_dump_stat == "(WRES 60)"
+
+    mod.settings.quick_look_card_grid_stat_position = "name_left"
+    qlc_name_left_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    qlc_name_left_blueprint.pass_template[
+        len(qlc_name_left_blueprint.pass_template) + 1
+    ] = lua.eval("table.clone")(qlc_native_pass)
+    layout.configure_item_blueprint(mod, qlc_name_left_blueprint, 596)
+    qlc_name_left_pass = blueprint_pass(
+        qlc_name_left_blueprint, "better_inventory_quick_look_card_dump_stat"
+    )
+    assert qlc_name_left_pass.style.horizontal_alignment == "left"
+    assert qlc_name_left_pass.style.offset[1] == 12
+    assert blueprint_pass(qlc_name_left_blueprint, "display_name").style.offset[1] > 12
+
+    # Name-side modes fall back above the power when four/five-column cards
+    # cannot retain the minimum readable weapon-name width.
+    mod.settings.columns = 5
+    qlc_narrow_name_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    qlc_narrow_name_blueprint.pass_template[
+        len(qlc_narrow_name_blueprint.pass_template) + 1
+    ] = lua.eval("table.clone")(qlc_native_pass)
+    layout.configure_item_blueprint(mod, qlc_narrow_name_blueprint, 596)
+    qlc_narrow_name_pass = blueprint_pass(
+        qlc_narrow_name_blueprint, "better_inventory_quick_look_card_dump_stat"
+    )
+    assert qlc_narrow_name_pass.style.horizontal_alignment == "right"
+    assert qlc_narrow_name_pass.style.vertical_alignment == "bottom"
+    assert (qlc_narrow_name_pass.style.offset[1], qlc_narrow_name_pass.style.offset[2]) == (
+        -8,
+        -26,
+    )
+    assert blueprint_pass(qlc_narrow_name_blueprint, "display_name").style.offset[1] == 12
+    mod.settings.columns = 3
+
+    mod.settings.enable_quick_look_card_grid_integration = False
+    qlc_disabled_grid_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    qlc_disabled_grid_blueprint.pass_template[
+        len(qlc_disabled_grid_blueprint.pass_template) + 1
+    ] = lua.eval("table.clone")(qlc_native_pass)
+    layout.configure_item_blueprint(mod, qlc_disabled_grid_blueprint, 596)
+    assert not any(
+        qlc_disabled_grid_blueprint.pass_template[index].style_id
+        == "better_inventory_quick_look_card_dump_stat"
+        for index in range(1, len(qlc_disabled_grid_blueprint.pass_template) + 1)
+    )
+    assert blueprint_pass(
+        qlc_disabled_grid_blueprint, "qlc_stats_title_1"
+    ).visibility_function() is False
+    mod.settings.enable_quick_look_card_grid_integration = True
+    mod.settings.quick_look_card_grid_stat_position = "above_power"
+    mod.settings.quick_look_card_grid_font_size = 13
 
     assert layout.is_enabled_for_view(mod, lua.table_from({"_selected_slot": lua.table_from({"name": "slot_primary"})}))
     assert not layout.is_enabled_for_view(mod, lua.table_from({"_selected_slot": lua.table_from({"name": "slot_secondary"})}))

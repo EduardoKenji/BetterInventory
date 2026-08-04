@@ -22,6 +22,8 @@ def main() -> None:
         settings = {
 			columns = 3,
             enable_grid_layout = true,
+			enable_quick_look_card_grid_integration = true,
+			quick_look_card_grid_stat_position = "above_power",
 			enable_hadron_entreat_grid = true,
 			enable_armoury_requisition_grid = true,
 			expand_armoury_requisition_window = true,
@@ -349,6 +351,9 @@ def main() -> None:
 		"weapon_perk_blessing_spacing",
 		"curio_secondary_stat_font_size",
 		"curio_primary_secondary_spacing",
+		"quick_look_card_grid_stat_position",
+		"quick_look_card_grid_font_size",
+		"quick_look_card_grid_bottom_padding",
 		"curio_information_width_percent",
 		"curio_preview_height_percent",
 		"inventory_options_panel_width",
@@ -424,6 +429,9 @@ def main() -> None:
     assert entries_by_id["weapon_perk_blessing_spacing"].disabled is True
     assert entries_by_id["curio_secondary_stat_font_size"].disabled is True
     assert entries_by_id["curio_primary_secondary_spacing"].disabled is True
+    assert entries_by_id["quick_look_card_grid_stat_position"].disabled is False
+    assert entries_by_id["quick_look_card_grid_font_size"].disabled is False
+    assert entries_by_id["quick_look_card_grid_bottom_padding"].disabled is False
     assert entries_by_id["quick_discard_rarity"].disabled is True
     assert entries_by_id["quick_discard_protect_above_equipped_level"].disabled is True
     assert entries_by_id["quick_discard_curio_protection_level"].disabled is True
@@ -607,6 +615,24 @@ def main() -> None:
     mod.on_setting_changed("automatic_card_height")
     assert entries_by_id["card_height"].disabled is False
 
+    settings.enable_quick_look_card_grid_integration = False
+    mod.on_setting_changed("enable_quick_look_card_grid_integration")
+    assert entries_by_id["quick_look_card_grid_stat_position"].disabled is True
+    assert entries_by_id["quick_look_card_grid_font_size"].disabled is True
+    assert entries_by_id["quick_look_card_grid_bottom_padding"].disabled is True
+    settings.enable_quick_look_card_grid_integration = True
+    mod.on_setting_changed("enable_quick_look_card_grid_integration")
+    assert entries_by_id["quick_look_card_grid_stat_position"].disabled is False
+    assert entries_by_id["quick_look_card_grid_font_size"].disabled is False
+    assert entries_by_id["quick_look_card_grid_bottom_padding"].disabled is False
+
+    settings.quick_look_card_grid_stat_position = "name_right"
+    mod.on_setting_changed("quick_look_card_grid_stat_position")
+    assert entries_by_id["quick_look_card_grid_bottom_padding"].disabled is True
+    settings.quick_look_card_grid_stat_position = "above_power"
+    mod.on_setting_changed("quick_look_card_grid_stat_position")
+    assert entries_by_id["quick_look_card_grid_bottom_padding"].disabled is False
+
     settings.enable_grid_layout = False
     mod.on_setting_changed("enable_grid_layout")
 
@@ -685,6 +711,11 @@ def main() -> None:
     assert curio_content_ids.index("curio_secondary_text_color_group") > curio_content_ids.index("curio_stamina_color_group")
 
     assert defaults["enable_grid_layout"] is True
+    assert defaults["enable_quick_look_card_single_column_integration"] is True
+    assert defaults["enable_quick_look_card_grid_integration"] is True
+    assert defaults["quick_look_card_grid_stat_position"] == "above_power"
+    assert defaults["quick_look_card_grid_font_size"] == 13
+    assert defaults["quick_look_card_grid_bottom_padding"] == 26
     assert defaults["enable_hadron_entreat_grid"] is True
     assert defaults["enable_armoury_requisition_grid"] is True
     assert defaults["expand_armoury_requisition_window"] is True

@@ -356,6 +356,48 @@ return {
 	layout_group = {
 		en = "Grid layout",
 	},
+	quick_look_card_integration_group = {
+		en = "Mod integration: Quick Look Card",
+	},
+	enable_quick_look_card_single_column_integration = {
+		en = "Support Quick Look Card in single-column mode",
+	},
+	enable_quick_look_card_single_column_integration_tooltip = {
+		en = "When Quick Look Card is installed, keeps its five weapon modifier stats while Better Inventory renders the perk and blessing rows. Disable this to leave Quick Look Card's native single-column card content untouched. Reopen the inventory after changing this option.",
+	},
+	enable_quick_look_card_grid_integration = {
+		en = "Support Quick Look Card in grid mode",
+	},
+	enable_quick_look_card_grid_integration_tooltip = {
+		en = "When Quick Look Card is installed, shows its lowest weapon modifier on Better Inventory grid cards. Quick Look Card's other grid passes remain hidden to prevent duplicate or overlapping details. Reopen the inventory after changing this option.",
+	},
+	quick_look_card_grid_stat_position = {
+		en = "Lowest modifier position",
+	},
+	quick_look_card_grid_stat_position_tooltip = {
+		en = "Places Quick Look Card's lowest weapon modifier above the weapon power or beside the weapon name. Name-side positions reserve card width and automatically fall back above the power on cards too narrow to keep the name readable.",
+	},
+	quick_look_card_grid_stat_position_above_power = {
+		en = "Above weapon power",
+	},
+	quick_look_card_grid_stat_position_name_right = {
+		en = "Right of weapon name",
+	},
+	quick_look_card_grid_stat_position_name_left = {
+		en = "Left of weapon name",
+	},
+	quick_look_card_grid_font_size = {
+		en = "Lowest modifier font size",
+	},
+	quick_look_card_grid_font_size_tooltip = {
+		en = "Controls the grid dump-stat label size. Reopen the inventory after changing this value.",
+	},
+	quick_look_card_grid_bottom_padding = {
+		en = "Lowest modifier bottom padding",
+	},
+	quick_look_card_grid_bottom_padding_tooltip = {
+		en = "Controls the distance in pixels between the pink modifier label and the card's bottom edge when it is above weapon power. Lower values move it closer to the power value. Reopen the inventory after changing this value.",
+	},
 	enable_grid_layout = {
 		en = "Enable grid layout",
 	},
@@ -417,10 +459,16 @@ return {
 		en = "Automatic card height",
 	},
 	automatic_card_height_tooltip = {
-		en = "Expands grid cards when the selected text rows and font sizes need more vertical space. Darktide's native single-column mode retains its native height.",
+		en = "Expands cards when the selected text rows and font sizes need more vertical space. Single-column cards also reserve enough height for enabled Better Inventory perk and blessing rows.",
 	},
 	option_requires_grid_layout = {
 		en = "Enable grid layout to use this option.",
+	},
+	option_requires_quick_look_card_grid_integration = {
+		en = "Enable Quick Look Card grid integration to use this option.",
+	},
+	option_requires_quick_look_card_above_power = {
+		en = "Select Above weapon power to use this option.",
 	},
 	option_requires_weapon_extra_width_threshold = {
 		en = "Increase Columns to the configured extra-width threshold to use this option.",

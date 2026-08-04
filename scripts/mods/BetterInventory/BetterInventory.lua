@@ -259,6 +259,10 @@ local function refresh_option_dependencies()
 	local quick_discard_reason = mod:localize("option_requires_experimental_quick_discard")
 	local inventory_options_panel_enabled = mod:get("enable_inventory_options_panel_prototype") == true
 	local inventory_options_panel_reason = mod:localize("option_requires_inventory_options_panel_prototype")
+	local quick_look_card_grid_enabled = grid_enabled and mod:get("enable_quick_look_card_grid_integration") ~= false
+	local quick_look_card_grid_reason = grid_enabled and mod:localize("option_requires_quick_look_card_grid_integration") or native_reason
+	local quick_look_card_above_power = quick_look_card_grid_enabled and mod:get("quick_look_card_grid_stat_position") ~= "name_left" and mod:get("quick_look_card_grid_stat_position") ~= "name_right"
+	local quick_look_card_bottom_padding_reason = quick_look_card_grid_enabled and mod:localize("option_requires_quick_look_card_above_power") or quick_look_card_grid_reason
 
 	set_option_enabled(option_dependency_entries.expand_curio_inventory_window, window_expansion_enabled, expansion_reason)
 	set_option_enabled(option_dependency_entries.weapon_extra_width_column_threshold, window_expansion_enabled, expansion_reason)
@@ -289,6 +293,9 @@ local function refresh_option_dependencies()
 	set_option_enabled(option_dependency_entries.weapon_perk_blessing_spacing, weapon_perk_blessing_sections_enabled, mod:localize("option_requires_perk_and_blessing_sections"))
 	set_option_enabled(option_dependency_entries.curio_secondary_stat_font_size, detailed_curio_profile, mod:localize("option_requires_detailed_curio_profile"))
 	set_option_enabled(option_dependency_entries.curio_primary_secondary_spacing, detailed_curio_profile, mod:localize("option_requires_detailed_curio_profile"))
+	set_option_enabled(option_dependency_entries.quick_look_card_grid_stat_position, quick_look_card_grid_enabled, quick_look_card_grid_reason)
+	set_option_enabled(option_dependency_entries.quick_look_card_grid_font_size, quick_look_card_grid_enabled, quick_look_card_grid_reason)
+	set_option_enabled(option_dependency_entries.quick_look_card_grid_bottom_padding, quick_look_card_above_power, quick_look_card_bottom_padding_reason)
 
 	for _, setting_id in ipairs({
 		"curio_information_width_percent",
@@ -381,6 +388,9 @@ local function bind_option_dependencies(options_templates)
 		"weapon_perk_blessing_spacing",
 		"curio_secondary_stat_font_size",
 		"curio_primary_secondary_spacing",
+		"quick_look_card_grid_stat_position",
+		"quick_look_card_grid_font_size",
+		"quick_look_card_grid_bottom_padding",
 		"curio_information_width_percent",
 		"curio_preview_height_percent",
 		"inventory_options_panel_width",
@@ -519,7 +529,7 @@ function mod.on_setting_changed(setting_id)
 		end
 	end
 
-	if setting_id == "enable_grid_layout" or setting_id == "columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "weapon_extra_width_column_threshold" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_armoury_requisition_grid" or setting_id == "expand_armoury_requisition_window" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "curio_display_profile" or setting_id == "enable_inventory_options_panel_prototype" or setting_id == "enable_experimental_quick_discard" or setting_id == "quick_discard_mode" or setting_id == "quick_discard_protect_high_level_curios" then
+	if setting_id == "enable_grid_layout" or setting_id == "columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "weapon_extra_width_column_threshold" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_armoury_requisition_grid" or setting_id == "expand_armoury_requisition_window" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "curio_display_profile" or setting_id == "enable_inventory_options_panel_prototype" or setting_id == "enable_experimental_quick_discard" or setting_id == "quick_discard_mode" or setting_id == "quick_discard_protect_high_level_curios" or setting_id == "enable_quick_look_card_grid_integration" or setting_id == "quick_look_card_grid_stat_position" then
 		refresh_option_dependencies()
 	end
 

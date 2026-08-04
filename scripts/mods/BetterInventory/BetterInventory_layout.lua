@@ -2,6 +2,7 @@ local Text = require("scripts/utilities/ui/text")
 local Items = require("scripts/utilities/items")
 local MasterItems = require("scripts/backend/master_items")
 local RankSettings = require("scripts/settings/item/rank_settings")
+local WeaponStats = require("scripts/utilities/weapon_stats")
 
 local Layout = {}
 local INVENTORY_CANVAS_WIDTH = 1920
@@ -21,6 +22,23 @@ local STORE_FOOTER_HEIGHT = 34
 local NATIVE_SINGLE_COLUMN_CONTENT_GAP = 12
 local WEAPON_PERK_COUNT = 2
 local WEAPON_BLESSING_COUNT = 2
+local QUICK_LOOK_CARD_DUMP_STAT_ID = "better_inventory_quick_look_card_dump_stat"
+local QUICK_LOOK_CARD_HIGHLIGHT_COLOR = {
+	255,
+	255,
+	94,
+	132,
+}
+local QUICK_LOOK_CARD_BASE_STATS_POSITION_MAP = {
+	1,
+	5,
+	3,
+	4,
+	2,
+}
+local QUICK_LOOK_CARD_PROJECTED_VALUES_CACHE = setmetatable({}, {
+	__mode = "k",
+})
 local CURIO_PRIMARY_COLOR_DEFINITIONS = {
 	gadget_innate_health_increase = {
 		prefix = "curio_health_color",
@@ -610,6 +628,238 @@ local function quick_look_card_stat_kind_and_index(pass)
 	if index and index >= 1 and index <= 5 then
 		return kind, index
 	end
+end
+
+local function quick_look_card_projected_max_values(item)
+	if type(Items.preview_stats_change) ~= "function" or type(Items.max_expertise_level) ~= "function" or type(Items.expertise_level) ~= "function" then
+		return
+	end
+
+	local current_expertise = Items.expertise_level(item, true)
+	local maximum_expertise = tonumber(Items.max_expertise_level())
+
+	current_expertise = tonumber(current_expertise)
+
+	if not current_expertise or not maximum_expertise then
+		return
+	end
+
+	local cached = QUICK_LOOK_CARD_PROJECTED_VALUES_CACHE[item]
+
+	if cached and cached.current_expertise == current_expertise and cached.maximum_expertise == maximum_expertise then
+		return cached.values
+	end
+
+	local stats_ok, weapon_stats = pcall(WeaponStats.new, WeaponStats, item)
+
+	if not stats_ok or type(weapon_stats) ~= "table" or type(weapon_stats.get_comparing_stats) ~= "function" then
+		return
+	end
+
+	local comparing_ok, comparing_stats = pcall(weapon_stats.get_comparing_stats, weapon_stats)
+
+	if not comparing_ok or type(comparing_stats) ~= "table" or #comparing_stats < 1 then
+		return
+	end
+
+	comparing_stats = table.clone(comparing_stats)
+
+	local preview_ok, projected_stats = pcall(Items.preview_stats_change, item, math.max(0, maximum_expertise - current_expertise), comparing_stats)
+
+	if not preview_ok or type(projected_stats) ~= "table" then
+		return
+	end
+
+	local projected_values = {}
+
+	for index = 1, math.min(5, #comparing_stats) do
+		local comparing_stat = comparing_stats[index]
+		local projected_stat = type(comparing_stat) == "table" and projected_stats[comparing_stat.display_name]
+		local fraction = type(projected_stat) == "table" and tonumber(projected_stat.fraction)
+		local value = fraction and math.floor(fraction * 100 + 0.5) or type(projected_stat) == "table" and tonumber(projected_stat.value)
+		local target_index = QUICK_LOOK_CARD_BASE_STATS_POSITION_MAP[index]
+
+		if not fraction and value and value <= 1 then
+			value = value * 100
+		end
+
+		if not value or not target_index then
+			return
+		end
+
+		projected_values[target_index] = math.floor(value + 0.5)
+	end
+
+	QUICK_LOOK_CARD_PROJECTED_VALUES_CACHE[item] = {
+		current_expertise = current_expertise,
+		maximum_expertise = maximum_expertise,
+		values = projected_values,
+	}
+
+	return projected_values
+end
+
+local function quick_look_card_lowest_stat_text(content, parenthesized)
+	if not content or not is_weapon(item_from_content(content)) then
+		return
+	end
+
+	local item = item_from_content(content)
+
+	if content.better_inventory_quick_look_card_dump_stat_item == item and content.better_inventory_quick_look_card_dump_stat_resolved then
+		local cached_title = content.better_inventory_quick_look_card_dump_stat_title
+		local cached_value = content.better_inventory_quick_look_card_dump_stat_value
+
+		if not cached_title or cached_value == nil then
+			return
+		end
+
+		local cached_label = cached_title .. " " .. tostring(cached_value)
+
+		return parenthesized and "(" .. cached_label .. ")" or cached_label
+	end
+
+	local projected_values = quick_look_card_projected_max_values(item)
+
+	if not projected_values then
+		return
+	end
+
+	local lowest_title
+	local lowest_value
+	local first_value
+	local all_same = true
+	local valid_count = 0
+
+	for index = 1, 5 do
+		local title = content["qlc_stats_title_" .. index]
+		local numeric_value = projected_values[index]
+
+		if type(title) == "string" and title ~= "" and numeric_value then
+			valid_count = valid_count + 1
+
+			if first_value == nil then
+				first_value = numeric_value
+			elseif numeric_value ~= first_value then
+				all_same = false
+			end
+
+			if lowest_value == nil or numeric_value < lowest_value then
+				lowest_title = single_line_text(title)
+				lowest_value = numeric_value
+			end
+		end
+	end
+
+	if valid_count < 2 then
+		return
+	end
+
+	content.better_inventory_quick_look_card_dump_stat_item = item
+	content.better_inventory_quick_look_card_dump_stat_resolved = true
+
+	if all_same or not lowest_title then
+		content.better_inventory_quick_look_card_dump_stat_title = nil
+		content.better_inventory_quick_look_card_dump_stat_value = nil
+
+		return
+	end
+
+	content.better_inventory_quick_look_card_dump_stat_title = lowest_title
+	content.better_inventory_quick_look_card_dump_stat_value = lowest_value
+
+	local label = lowest_title .. " " .. tostring(lowest_value)
+
+	return parenthesized and "(" .. label .. ")" or label
+end
+
+local function quick_look_card_grid_position(mod)
+	local position = setting(mod, "quick_look_card_grid_stat_position", "above_power")
+
+	if position == "name_left" or position == "name_right" then
+		return position
+	end
+
+	return "above_power"
+end
+
+local function add_quick_look_card_grid_pass(mod, pass_template, card_width, text_left, position)
+	local font_size = numeric_setting(mod, "quick_look_card_grid_font_size", 13, 8, 20)
+	local bottom_padding = numeric_setting(mod, "quick_look_card_grid_bottom_padding", 26, 20, 60)
+	local parenthesized = position ~= "above_power"
+	local label_width = math.max(64, math.floor(font_size * 6 + 0.5))
+	local style = {
+		font_type = "machine_medium",
+		font_size = font_size,
+		text_color = table.clone(QUICK_LOOK_CARD_HIGHLIGHT_COLOR),
+		drop_shadow = true,
+		word_wrap = false,
+		offset = {},
+		size = {},
+	}
+
+	if position == "name_left" then
+		style.horizontal_alignment = "left"
+		style.vertical_alignment = "top"
+		style.text_horizontal_alignment = "left"
+		style.text_vertical_alignment = "top"
+		style.offset = {
+			text_left,
+			7,
+			12,
+		}
+		style.size = {
+			label_width,
+			25,
+		}
+	elseif position == "name_right" then
+		style.horizontal_alignment = "right"
+		style.vertical_alignment = "top"
+		style.text_horizontal_alignment = "right"
+		style.text_vertical_alignment = "top"
+		style.offset = {
+			-36,
+			7,
+			12,
+		}
+		style.size = {
+			label_width,
+			25,
+		}
+	else
+		style.horizontal_alignment = "right"
+		style.vertical_alignment = "bottom"
+		style.text_horizontal_alignment = "right"
+		style.text_vertical_alignment = "bottom"
+		style.offset = {
+			-8,
+			-bottom_padding,
+			12,
+		}
+		style.size = {
+			card_width - 16,
+			font_size + 4,
+		}
+	end
+
+	pass_template[#pass_template + 1] = {
+		pass_type = "text",
+		style_id = QUICK_LOOK_CARD_DUMP_STAT_ID,
+		value = "",
+		value_id = QUICK_LOOK_CARD_DUMP_STAT_ID,
+		style = style,
+		visibility_function = function(content)
+			local label = quick_look_card_lowest_stat_text(content, parenthesized)
+
+			if content then
+				content[QUICK_LOOK_CARD_DUMP_STAT_ID] = label or ""
+			end
+
+			return label ~= nil
+		end,
+	}
+
+	return label_width
 end
 
 local function configure_native_quick_look_card_passes(pass_template)
@@ -2059,17 +2309,23 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 	local show_pattern_mark = setting(mod, "show_pattern_mark", false)
 	local show_curio_quality = setting(mod, "show_curio_quality", false)
 	local show_curio_item_level = setting(mod, "show_curio_item_level", true)
-	local quick_look_card = has_quick_look_card_passes(pass_template)
+	local quick_look_card_present = has_quick_look_card_passes(pass_template)
+	local quick_look_card_integration = quick_look_card_present and setting(mod, "enable_quick_look_card_single_column_integration", true)
 
-	item_size[2] = math.max(item_size[2] or 110, Layout.card_height(mod, {
-		native_single_column = true,
-	}))
+	if not quick_look_card_present or quick_look_card_integration then
+		item_size[2] = math.max(item_size[2] or 110, Layout.card_height(mod, {
+			native_single_column = true,
+		}))
+	end
 
 	item_blueprint.size = item_size
 	item_blueprint.pass_template = pass_template
-	configure_native_card_geometry(pass_template, item_size[2] or 110)
 
-	if quick_look_card then
+	if not quick_look_card_present or quick_look_card_integration then
+		configure_native_card_geometry(pass_template, item_size[2] or 110)
+	end
+
+	if quick_look_card_integration then
 		configure_native_quick_look_card_passes(pass_template)
 	end
 
@@ -2109,10 +2365,13 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 	set_visibility(pass_by_style_id(pass_template, "rarity_tag"), setting(mod, "show_rarity_tag", true))
 	configure_equipped_highlight(mod, pass_template, card_width, item_size[2] or 110)
 	configure_favorite_marker(mod, pass_template, 15)
-	add_custom_content_passes(mod, pass_template, card_width, 15, sub_display_name and sub_display_name.style, {
-		content_right = quick_look_card and 260 or nil,
-		native_single_column = true,
-	})
+
+	if not quick_look_card_present or quick_look_card_integration then
+		add_custom_content_passes(mod, pass_template, card_width, 15, sub_display_name and sub_display_name.style, {
+			content_right = quick_look_card_integration and 260 or nil,
+			native_single_column = true,
+		})
+	end
 	configure_card_content(mod, item_blueprint)
 
 	return item_size
@@ -2132,7 +2391,18 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 	local pass_template = table.clone(item_blueprint.pass_template)
 	local show_rarity_tag = setting(mod, "show_rarity_tag", true)
 	local text_left = show_rarity_tag and 12 or 8
-	local text_width = math.max(50, card_width - text_left - 36)
+	local quick_look_card_present = has_quick_look_card_passes(pass_template)
+	local quick_look_card_integration = quick_look_card_present and setting(mod, "enable_quick_look_card_grid_integration", true)
+	local quick_look_card_position = quick_look_card_grid_position(mod)
+	local quick_look_card_label_width = quick_look_card_integration and quick_look_card_position ~= "above_power" and math.max(64, math.floor(numeric_setting(mod, "quick_look_card_grid_font_size", 13, 8, 20) * 6 + 0.5)) or 0
+
+	if quick_look_card_position ~= "above_power" and card_width < text_left + quick_look_card_label_width + 4 + 36 + 50 then
+		quick_look_card_position = "above_power"
+	end
+
+	local display_name_left = text_left + (quick_look_card_integration and quick_look_card_position == "name_left" and quick_look_card_label_width + 4 or 0)
+	local display_name_right_reserve = 36 + (quick_look_card_integration and quick_look_card_position == "name_right" and quick_look_card_label_width + 4 or 0)
+	local text_width = math.max(50, card_width - display_name_left - display_name_right_reserve)
 	local darkness = numeric_setting(mod, "icon_darkness", 25, 0, 85)
 	local icon_brightness = math.floor(255 * (1 - darkness / 100))
 	local curio_display_profile = setting(mod, "curio_display_profile", "detailed")
@@ -2143,6 +2413,10 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 	item_blueprint.size = item_size
 	item_blueprint.pass_template = pass_template
 	disable_quick_look_card_passes(pass_template)
+
+	if quick_look_card_integration then
+		add_quick_look_card_grid_pass(mod, pass_template, card_width, text_left, quick_look_card_position)
+	end
 
 	local icon = pass_by_style_id(pass_template, "icon")
 
@@ -2197,7 +2471,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 	configure_text_pass(display_name, {
 		font_size = numeric_setting(mod, "item_name_font_size", 16, 10, 24),
 		offset = {
-			text_left,
+			display_name_left,
 			7,
 			8,
 		},

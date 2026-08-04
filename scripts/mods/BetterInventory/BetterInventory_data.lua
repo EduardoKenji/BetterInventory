@@ -504,6 +504,64 @@ return {
 				},
 			},
 			{
+				setting_id = "quick_look_card_integration_group",
+				type = "group",
+				sub_widgets = {
+					{
+						setting_id = "enable_quick_look_card_single_column_integration",
+						tooltip = "enable_quick_look_card_single_column_integration_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
+						setting_id = "enable_quick_look_card_grid_integration",
+						tooltip = "enable_quick_look_card_grid_integration_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
+						setting_id = "quick_look_card_grid_stat_position",
+						tooltip = "quick_look_card_grid_stat_position_tooltip",
+						type = "dropdown",
+						default_value = "above_power",
+						options = {
+							{
+								text = "quick_look_card_grid_stat_position_above_power",
+								value = "above_power",
+							},
+							{
+								text = "quick_look_card_grid_stat_position_name_right",
+								value = "name_right",
+							},
+							{
+								text = "quick_look_card_grid_stat_position_name_left",
+								value = "name_left",
+							},
+						},
+					},
+					{
+						setting_id = "quick_look_card_grid_font_size",
+						tooltip = "quick_look_card_grid_font_size_tooltip",
+						type = "numeric",
+						default_value = 13,
+						range = {
+							8,
+							20,
+						},
+					},
+					{
+						setting_id = "quick_look_card_grid_bottom_padding",
+						tooltip = "quick_look_card_grid_bottom_padding_tooltip",
+						type = "numeric",
+						default_value = 26,
+						range = {
+							20,
+							60,
+						},
+					},
+				},
+			},
+			{
 				setting_id = "card_content_group",
 				type = "group",
 				sub_widgets = {
