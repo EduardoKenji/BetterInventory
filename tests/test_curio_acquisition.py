@@ -463,6 +463,7 @@ def main() -> None:
     assert candidate.item_level == 410
     assert candidate.primary_trait == "gadget_innate_health_increase"
     assert candidate.primary_value == 21
+    assert candidate.character_name == "Research Psyker"
     assert candidate.class_name == "Psyker"
 
     # Rich-text colour parameters from Enhanced Descriptions must not replace
@@ -563,7 +564,7 @@ def main() -> None:
     assert globals_.purchased_wallet_owner == "target-psyker"
     assert globals_.captured_notification.line_1 == "automatic_curio_purchased_title"
     assert (
-        "{#color(101,202,77)}Psyker: 21% automatic_curio_health (410){#reset()}"
+        "{#color(101,202,77)}Research Psyker(Psyker): 21% automatic_curio_health (410){#reset()}"
         in globals_.captured_notification.line_2
     )
     assert globals_.captured_notification.line_3 == "\nSpent: 25 000 Ordo Dockets"
@@ -605,7 +606,7 @@ def main() -> None:
     module.update(globals_.test_mod, 6, False)
     assert globals_.purchase_count == 2
     assert globals_.captured_notification.line_1 == "automatic_curio_purchased_title"
-    assert "Psyker: 21% automatic_curio_health (410)" in globals_.captured_notification.line_2
+    assert "Research Psyker(Psyker): 21% automatic_curio_health (410)" in globals_.captured_notification.line_2
 
     # A matching Curio remains worth reporting when its target wallet cannot
     # cover the price. This is an eligible-but-unaffordable result, not a no-match.
@@ -619,7 +620,7 @@ def main() -> None:
     assert globals_.purchase_count == 2
     assert globals_.captured_notification.line_1 == "automatic_curio_insufficient_title"
     assert (
-        "{#color(50,210,100)}Psyker: 17% automatic_curio_toughness (410){#reset()}"
+        "{#color(50,210,100)}Research Psyker(Psyker): 17% automatic_curio_toughness (410){#reset()}"
         in globals_.captured_notification.line_2
     )
     assert globals_.captured_notification.line_3 is None

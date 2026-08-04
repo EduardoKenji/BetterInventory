@@ -306,6 +306,25 @@ local function localized_class_name(profile)
 	return "?"
 end
 
+local function character_name(profile)
+	local name = profile and profile.name
+
+	if type(name) ~= "string" then
+		return
+	end
+
+	name = string.match(name, "^%s*(.-)%s*$")
+
+	return name ~= "" and name or nil
+end
+
+local function profile_label(profile)
+	local class_name = localized_class_name(profile)
+	local name = character_name(profile)
+
+	return name and string.format("%s(%s)", name, class_name) or class_name
+end
+
 local function primary_trait(item)
 	local traits = item and item.traits
 
@@ -361,7 +380,7 @@ end
 local function log_curio_evaluation(mod, profile, offer_id, level, trait_name, trait_value, result)
 	log_diagnostic(mod, string.format(
 		"%s Curio offer %s: item_level=%s, primary_trait=%s, primary_value=%s; %s.",
-		localized_class_name(profile),
+		profile_label(profile),
 		tostring(offer_id or "?"),
 		tostring(level or "?"),
 		tostring(trait_name or "?"),
@@ -478,6 +497,7 @@ local function normalized_offer(mod, profile, offer, diagnostics)
 	return {
 		archetype = archetype_name(profile),
 		character_id = profile.character_id,
+		character_name = character_name(profile),
 		class_name = localized_class_name(profile),
 		currency = currency,
 		gear_id = description.gear_id or description.gearId,
@@ -586,7 +606,7 @@ local function scan_candidates(mod, token)
 
 						log_diagnostic(mod, string.format(
 							"%s storefront summary: offers=%d, Curios=%d, eligible=%d.",
-							localized_class_name(profile),
+							profile_label(profile),
 							diagnostics.offers - offers_before,
 							diagnostics.curios - curios_before,
 							diagnostics.eligible - eligible_before
@@ -851,7 +871,8 @@ local function candidate_line(mod, candidate)
 	local blue = color_channel(mod, prefix .. "_b", defaults[3])
 	local value = tonumber(candidate.primary_value)
 	local shown_value = value and (value == math.floor(value) and tostring(math.floor(value)) or tostring(value)) or "?"
-	local text = string.format("%s: %s%s %s (%d)", candidate.class_name, shown_value, config.unit, mod:localize(config.label_id), candidate.item_level)
+	local owner = candidate.character_name and string.format("%s(%s)", candidate.character_name, candidate.class_name) or candidate.class_name
+	local text = string.format("%s: %s%s %s (%d)", owner, shown_value, config.unit, mod:localize(config.label_id), candidate.item_level)
 
 	return string.format("{#color(%d,%d,%d)}%s{#reset()}", red, green, blue, text)
 end
