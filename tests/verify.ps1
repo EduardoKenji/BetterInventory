@@ -8,6 +8,7 @@ $scriptRoot = Join-Path $projectRoot "scripts\mods\BetterInventory"
 $requiredFiles = @(
 	(Join-Path $projectRoot "BetterInventory.mod"),
 	(Join-Path $scriptRoot "BetterInventory.lua"),
+	(Join-Path $scriptRoot "BetterInventory_curio_acquisition.lua"),
 	(Join-Path $scriptRoot "BetterInventory_features.lua"),
 	(Join-Path $scriptRoot "BetterInventory_layout.lua"),
 	(Join-Path $scriptRoot "BetterInventory_data.lua"),
@@ -66,6 +67,7 @@ $data = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_data.lu
 $localization = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_localization.lua") -Raw
 $layout = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_layout.lua") -Raw
 $features = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_features.lua") -Raw
+$curioAcquisition = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_acquisition.lua") -Raw
 
 if ($layout -notmatch 'Layout\.armoury_grid_expansion' -or $layout -notmatch 'armoury_requisition_target_card_width') {
 	throw "The Armoury target-width expansion contract was not found."
@@ -101,6 +103,40 @@ if ($features -notmatch 'quick_discard_candidates\(mod,\s*layout,\s*view,\s*capt
 
 if ($main -notmatch 'mod\.on_game_state_changed' -or $main -notmatch 'Features\.update_morningstar_auto_discard' -or $features -notmatch 'game_mode_name\s*==\s*"hub"' -or $features -notmatch 'game_mode_name\s*==\s*"hub_singleplay"' -or $features -notmatch 'AUTOMATIC_DISCARD_DELAY\s*=\s*5' -or $features -notmatch 'hub_character_id\s*~=\s*character_id') {
 	throw "The guarded once-per-Morningstar automatic-discard lifecycle was not found."
+}
+
+if ($data -notmatch 'setting_id\s*=\s*"enable_automatic_curio_acquisition"[\s\S]*?default_value\s*=\s*false' -or $data -notmatch 'setting_id\s*=\s*"automatic_curio_min_item_level"[\s\S]*?default_value\s*=\s*410') {
+	throw "Automatic Curio acquisition must remain explicitly opt-in with a 410 default minimum item level."
+}
+
+foreach ($settingId in @(
+	"automatic_curio_class_veteran",
+	"automatic_curio_class_zealot",
+	"automatic_curio_class_psyker",
+	"automatic_curio_class_ogryn",
+	"automatic_curio_class_adamant",
+	"automatic_curio_class_broker",
+	"automatic_curio_class_cryptic"
+)) {
+	if ($data -notmatch ('setting_id\s*=\s*"' + [regex]::Escape($settingId) + '"[\s\S]*?default_value\s*=\s*true')) {
+		throw "Automatic Curio acquisition class must default to enabled: $settingId"
+	}
+}
+
+if ($curioAcquisition -notmatch 'fetch_all_profiles' -or $curioAcquisition -notmatch 'StoreNames\.by_archetype\.credit' -or $curioAcquisition -notmatch 'character_wallets,\s*candidate\.character_id' -or $curioAcquisition -notmatch 'purchase_item_with_wallet') {
+	throw "Automatic Curio acquisition is missing an all-character scan or explicit target-wallet purchase contract."
+}
+
+if ($curioAcquisition -match 'purchase_item\(current\.offer' -or $curioAcquisition -match 'purchase_item\(offer') {
+	throw "Cross-character Curio purchases must never use StoreService.purchase_item with the selected character's wallet."
+}
+
+if ($curioAcquisition -notmatch 'fetch_storefront\(captured\.profile\)[\s\S]*?same_candidate\(captured,\s*current\)' -or $curioAcquisition -notmatch 'processed_offer_keys\[key\]\s*=\s*"in_flight"') {
+	throw "Automatic Curio acquisition must re-fetch every offer and establish idempotency before purchase."
+}
+
+if ($main -notmatch 'CurioAcquisition\.update\(mod,\s*dt,\s*Features\.morningstar_auto_discard_is_busy\(mod\)\)' -or $features -notmatch 'automatic_curio_acquisition_protects') {
+	throw "Automatic discard and Curio acquisition are missing their sequencing or cross-feature protection contract."
 }
 
 if ($features -notmatch 'progression_manager\.is_fetching_session_report' -or $features -notmatch 'gear_service:invalidate_gear_cache\(\)[\s\S]*?fetch_inventory_promise\(gear_service,\s*character_id\)') {
@@ -336,7 +372,7 @@ if ($hasLuaParser) {
 }
 
 if ($hasLupa) {
-	foreach ($behaviorTest in @("test_layout.py", "test_settings.py", "test_features.py")) {
+	foreach ($behaviorTest in @("test_layout.py", "test_settings.py", "test_features.py", "test_curio_acquisition.py")) {
 		py -3 (Join-Path $PSScriptRoot $behaviorTest)
 
 		if ($LASTEXITCODE -ne 0) {

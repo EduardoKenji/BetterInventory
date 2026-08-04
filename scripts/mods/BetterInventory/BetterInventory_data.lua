@@ -366,6 +366,97 @@ return {
 				},
 			},
 			{
+				setting_id = "automatic_curio_buyer_group",
+				type = "group",
+				sub_widgets = {
+					{
+						setting_id = "enable_automatic_curio_acquisition",
+						tooltip = "enable_automatic_curio_acquisition_tooltip",
+						type = "checkbox",
+						default_value = false,
+						sub_widgets = {
+							{
+								setting_id = "automatic_curio_min_item_level",
+								tooltip = "automatic_curio_min_item_level_tooltip",
+								type = "numeric",
+								default_value = 410,
+								range = {
+									0,
+									500,
+								},
+							},
+							{
+								setting_id = "automatic_curio_types_group",
+								type = "group",
+								sub_widgets = {
+									{
+										setting_id = "automatic_curio_buy_health",
+										type = "checkbox",
+										default_value = true,
+									},
+									{
+										setting_id = "automatic_curio_buy_toughness",
+										type = "checkbox",
+										default_value = true,
+									},
+									{
+										setting_id = "automatic_curio_buy_stamina",
+										type = "checkbox",
+										default_value = false,
+									},
+									{
+										setting_id = "automatic_curio_buy_wounds",
+										type = "checkbox",
+										default_value = false,
+									},
+								},
+							},
+							{
+								setting_id = "automatic_curio_classes_group",
+								type = "group",
+								sub_widgets = {
+									{
+										setting_id = "automatic_curio_class_veteran",
+										type = "checkbox",
+										default_value = true,
+									},
+									{
+										setting_id = "automatic_curio_class_zealot",
+										type = "checkbox",
+										default_value = true,
+									},
+									{
+										setting_id = "automatic_curio_class_psyker",
+										type = "checkbox",
+										default_value = true,
+									},
+									{
+										setting_id = "automatic_curio_class_ogryn",
+										type = "checkbox",
+										default_value = true,
+									},
+									{
+										setting_id = "automatic_curio_class_adamant",
+										type = "checkbox",
+										default_value = true,
+									},
+									{
+										setting_id = "automatic_curio_class_broker",
+										type = "checkbox",
+										default_value = true,
+									},
+									{
+										setting_id = "automatic_curio_class_cryptic",
+										type = "checkbox",
+										default_value = true,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			{
 				setting_id = "additional_views_group",
 				type = "group",
 				sub_widgets = {

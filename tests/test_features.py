@@ -808,6 +808,27 @@ def main() -> None:
     assert typed_curio_candidates[1].gear_id == "health_curio"
     mod.settings.quick_discard_keep_health_curios = True
 
+    # Curios matching the enabled buyer's acquisition rule remain protected even
+    # if the broader high-level Curio discard protection is turned off. Otherwise
+    # successive Morningstar passes could buy and then discard the same item type.
+    mod.settings.quick_discard_protect_high_level_curios = False
+    mod.settings.enable_automatic_curio_acquisition = True
+    mod.settings.automatic_curio_min_item_level = 410
+    mod.settings.automatic_curio_buy_health = True
+    mod.settings.automatic_curio_buy_toughness = False
+    buyer_protected_candidates = features.quick_discard_candidates_from_items(
+        mod, typed_curios, lua.table_from({})
+    )
+    buyer_candidate_ids = {
+        buyer_protected_candidates[index].gear_id
+        for index in range(1, len(buyer_protected_candidates) + 1)
+    }
+    assert "health_curio" not in buyer_candidate_ids
+    assert "toughness_curio" in buyer_candidate_ids
+    mod.settings.enable_automatic_curio_acquisition = False
+    mod.settings.automatic_curio_buy_toughness = True
+    mod.settings.quick_discard_protect_high_level_curios = True
+
     features.request_quick_discard(mod, layout, quick_discard_view)
     assert quick_discard_view._better_inventory_discard_pending is True
     assert globals_.captured_popup.title_text_unlocalized == "quick_discard_confirmation_title"
@@ -1211,7 +1232,7 @@ def main() -> None:
     assert prototype_panel.menu_settings.top_padding == 4
     assert prototype_panel.menu_settings.bottom_chin == 4
     assert prototype_panel._ui_scenegraph.grid_content_pivot.position[1] == 10
-    assert len(prototype_panel.layout) == 15
+    assert len(prototype_panel.layout) == 17
     assert prototype_panel.grid_height == 360
     assert prototype_panel.pivot_x == 120
     assert prototype_panel.pivot_y == 375
@@ -1265,7 +1286,7 @@ def main() -> None:
     curio_protection_widget.content.hotspot.pressed_callback()
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert mod.settings.quick_discard_protect_high_level_curios is False
-    assert len(prototype_panel.layout) == 14
+    assert len(prototype_panel.layout) == 16
     assert prototype_panel.widgets["better_inventory_discard_curio_level"] is None
     assert prototype_panel.widgets["better_inventory_discard_curio_types"] is not None
     curio_protection_widget = prototype_panel.widgets[
@@ -1274,16 +1295,16 @@ def main() -> None:
     curio_protection_widget.content.hotspot.pressed_callback()
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert mod.settings.quick_discard_protect_high_level_curios is True
-    assert len(prototype_panel.layout) == 15
+    assert len(prototype_panel.layout) == 17
     assert prototype_panel.widgets["better_inventory_discard_curio_level"] is not None
 
     # The Automatic-only confirmation checkbox owns a dedicated panel row. Mode
     # changes defer structural rebuilding until the next safe view update.
     mode_widget.content.hotspot.pressed_callback()
     assert mod.settings.quick_discard_mode == "automatic"
-    assert len(prototype_panel.layout) == 15
+    assert len(prototype_panel.layout) == 17
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
-    assert len(prototype_panel.layout) == 16
+    assert len(prototype_panel.layout) == 18
     skip_widget = prototype_panel.widgets["better_inventory_discard_skip_confirmation"]
     assert skip_widget.content.checked is True
     skip_widget.content.hotspot.pressed_callback()
@@ -1293,30 +1314,57 @@ def main() -> None:
     mode_widget.content.hotspot.pressed_callback()
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert mod.settings.quick_discard_mode == "manual"
-    assert len(prototype_panel.layout) == 15
+    assert len(prototype_panel.layout) == 17
     assert prototype_panel.widgets["better_inventory_discard_skip_confirmation"] is None
+
+    # Automatic Curio Buyer is always discoverable as a separate section. Its
+    # destructive enable switch expands the synchronized filter rows only after
+    # the user explicitly opts in.
+    curio_buyer_enable = prototype_panel.widgets[
+        "better_inventory_curio_buyer_enable"
+    ]
+    assert curio_buyer_enable.content.checked is False
+    curio_buyer_enable.content.hotspot.pressed_callback()
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert mod.settings.enable_automatic_curio_acquisition is True
+    assert len(prototype_panel.layout) == 23
+    assert prototype_panel.widgets["better_inventory_curio_buyer_min_level"] is not None
+    buyer_types = prototype_panel.widgets["better_inventory_curio_buyer_types"]
+    assert buyer_types.content.health_checked is True
+    assert buyer_types.content.toughness_checked is True
+    assert buyer_types.content.stamina_checked is False
+    assert buyer_types.content.wounds_checked is False
+    assert prototype_panel.widgets["better_inventory_curio_buyer_classes_1"] is not None
+    assert prototype_panel.widgets["better_inventory_curio_buyer_classes_2"] is not None
+    curio_buyer_enable = prototype_panel.widgets[
+        "better_inventory_curio_buyer_enable"
+    ]
+    curio_buyer_enable.content.hotspot.pressed_callback()
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert mod.settings.enable_automatic_curio_acquisition is False
+    assert len(prototype_panel.layout) == 17
 
     prototype_panel.widgets[
         "better_inventory_discard_header"
     ].content.hotspot.pressed_callback()
     # Collapse/expand only changes state during the grid's draw callback. The
     # structural rebuild is deferred to the following safe view update.
-    assert len(prototype_panel.layout) == 15
+    assert len(prototype_panel.layout) == 17
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
-    assert len(prototype_panel.layout) == 4
-    assert prototype_panel.grid_height == 219
+    assert len(prototype_panel.layout) == 6
+    assert prototype_panel.grid_height == 309
     prototype_panel.widgets[
         "better_inventory_sort_header"
     ].content.hotspot.pressed_callback()
-    assert len(prototype_panel.layout) == 4
+    assert len(prototype_panel.layout) == 6
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
-    assert len(prototype_panel.layout) == 2
-    assert prototype_panel.grid_height == 127
+    assert len(prototype_panel.layout) == 4
+    assert prototype_panel.grid_height == 217
     prototype_panel.widgets[
         "better_inventory_sort_header"
     ].content.hotspot.pressed_callback()
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
-    assert len(prototype_panel.layout) == 4
+    assert len(prototype_panel.layout) == 6
 
     prototype_view._discard_items_element = lua.table_from({})
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
