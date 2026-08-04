@@ -399,7 +399,10 @@ def main() -> None:
 			update_item_icon_priority = sentinel_priority,
 			update = sentinel_update,
             pass_template = {
-                { style_id = "icon", style = { material_values = {} } },
+                {
+                    style_id = "icon",
+                    style = { material_values = {}, size = { 586, 110 } },
+                },
                 { style_id = "loading", style = {} },
                 { style_id = "display_name", style = {} },
                 { style_id = "sub_display_name", style = {} },
@@ -423,6 +426,9 @@ def main() -> None:
                     value = "content/ui/materials/symbols/new_item_indicator",
                     style = {},
                 },
+				{ style_id = "background", style = {} },
+				{ style_id = "background_gradient", style = { size = {} } },
+				{ style_id = "button_gradient", style = {} },
             },
         }
 		raw_test_blueprint = table.clone(test_blueprint)
@@ -787,7 +793,8 @@ def main() -> None:
     native_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     native_size = layout.configure_item_blueprint(mod, native_blueprint, 596)
     assert (native_size[1], native_size[2]) == (586, 110)
-    assert blueprint_pass(native_blueprint, "icon").style.size is None
+    native_icon_size = blueprint_pass(native_blueprint, "icon").style.size
+    assert (native_icon_size[1], native_icon_size[2]) == (586, 110)
     assert (
         blueprint_pass(native_blueprint, "better_inventory_curio_stat_1").style.font_size
         == 16
@@ -817,13 +824,27 @@ def main() -> None:
         mod, native_detailed_blueprint, 596
     )
     assert (native_detailed_size[1], native_detailed_size[2]) == (586, 142)
+    native_detailed_icon_size = blueprint_pass(
+        native_detailed_blueprint, "icon"
+    ).style.size
+    assert (native_detailed_icon_size[1], native_detailed_icon_size[2]) == (586, 110)
+    for style_id in (
+        "background",
+        "background_gradient",
+        "button_gradient",
+        "inner_shadow",
+        "inner_highlight",
+        "item_level",
+        "rarity_tag",
+    ):
+        assert blueprint_pass(native_detailed_blueprint, style_id).style.size[2] == 142
     native_first_perk = blueprint_pass(
         native_detailed_blueprint, "better_inventory_weapon_perk_1"
     ).style
     assert native_detailed_size[2] + native_first_perk.offset[2] >= 60
 
-    # Quick Look Card owns the native detail region when its injected passes
-    # are present. BetterInventory keeps those passes active only in this mode.
+    # In native mode BetterInventory keeps only Quick Look Card's five modifier
+    # stats, then renders its own perks, blessings and primary item power.
     qlc_native_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     qlc_native_pass = lua.table_from(
         {
@@ -835,16 +856,55 @@ def main() -> None:
     qlc_native_blueprint.pass_template[len(qlc_native_blueprint.pass_template) + 1] = (
         qlc_native_pass
     )
+    for hidden_style_id in (
+        "qlc_baseLevel",
+        "qlc_trait_level_1",
+        "qlc_weapon_perk_title_1",
+    ):
+        qlc_native_blueprint.pass_template[
+            len(qlc_native_blueprint.pass_template) + 1
+        ] = lua.table_from(
+            {
+                "style_id": hidden_style_id,
+                "style": lua.table_from({}),
+                "visibility_function": lua.eval("function() return true end"),
+            }
+        )
     qlc_native_size = layout.configure_item_blueprint(mod, qlc_native_blueprint, 596)
-    assert (qlc_native_size[1], qlc_native_size[2]) == (586, 110)
+    assert (qlc_native_size[1], qlc_native_size[2]) == (586, 142)
+    qlc_stat_style = blueprint_pass(
+        qlc_native_blueprint, "qlc_stats_title_1"
+    ).style
     assert blueprint_pass(
         qlc_native_blueprint, "qlc_stats_title_1"
     ).visibility_function() is True
-    assert not any(
-        qlc_native_blueprint.pass_template[index].style_id
-        == "better_inventory_weapon_perk_1"
-        for index in range(1, len(qlc_native_blueprint.pass_template) + 1)
-    )
+    assert (qlc_stat_style.offset[1], qlc_stat_style.offset[2]) == (280, -43)
+    assert (qlc_stat_style.size[1], qlc_stat_style.size[2]) == (42, 17)
+    assert qlc_stat_style.font_size == 14
+    assert qlc_stat_style.vertical_alignment == "bottom"
+    assert qlc_stat_style.drop_shadow is True
+    for hidden_style_id in (
+        "qlc_baseLevel",
+        "qlc_trait_level_1",
+        "qlc_weapon_perk_title_1",
+    ):
+        assert blueprint_pass(
+            qlc_native_blueprint, hidden_style_id
+        ).visibility_function() is False
+    assert blueprint_pass(
+        qlc_native_blueprint, "better_inventory_weapon_perk_1"
+    ) is not None
+    assert blueprint_pass(
+        qlc_native_blueprint, "better_inventory_blessing_text_1"
+    ) is not None
+    qlc_perk_style = blueprint_pass(
+        qlc_native_blueprint, "better_inventory_weapon_perk_1"
+    ).style
+    qlc_blessing_style = blueprint_pass(
+        qlc_native_blueprint, "better_inventory_blessing_text_1"
+    ).style
+    assert qlc_perk_style.offset[1] + qlc_perk_style.size[1] == 260
+    assert qlc_blessing_style.offset[1] + qlc_blessing_style.size[1] == 260
 
     mod.settings.weapon_blessing_display_mode = "icons"
     mod.settings.show_weapon_perks = False

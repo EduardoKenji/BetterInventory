@@ -594,6 +594,68 @@ local function has_quick_look_card_passes(pass_template)
 	return false
 end
 
+local function quick_look_card_stat_kind_and_index(pass)
+	if type(pass and pass.style_id) ~= "string" then
+		return
+	end
+
+	local kind, index = string.match(pass.style_id, "^qlc_stats_(title)_(%d)$")
+
+	if not kind then
+		kind, index = string.match(pass.style_id, "^qlc_stats_(value)_(%d)$")
+	end
+
+	index = tonumber(index)
+
+	if index and index >= 1 and index <= 5 then
+		return kind, index
+	end
+end
+
+local function configure_native_quick_look_card_passes(pass_template)
+	local positions = {
+		{ 280, -43 },
+		{ 360, -43 },
+		{ 440, -43 },
+		{ 280, -24 },
+		{ 360, -24 },
+	}
+
+	for index = 1, #(pass_template or {}) do
+		local pass = pass_template[index]
+
+		if is_quick_look_card_pass(pass) then
+			local kind, stat_index = quick_look_card_stat_kind_and_index(pass)
+
+			if kind then
+				local style = pass.style or {}
+				local position = positions[stat_index]
+
+				pass.style = style
+				style.horizontal_alignment = "left"
+				style.vertical_alignment = "bottom"
+				style.text_horizontal_alignment = "left"
+				style.text_vertical_alignment = "center"
+				style.font_size = 14
+				style.drop_shadow = true
+				style.offset = {
+					position[1] + (kind == "value" and 38 or 0),
+					position[2],
+					5,
+				}
+				style.size = {
+					kind == "value" and 32 or 42,
+					17,
+				}
+			else
+				pass.visibility_function = function()
+					return false
+				end
+			end
+		end
+	end
+end
+
 local function disable_quick_look_card_passes(pass_template)
 	for index = 1, #(pass_template or {}) do
 		local pass = pass_template[index]
@@ -636,6 +698,35 @@ local function set_height(pass, height)
 	if style then
 		style.size = style.size or {}
 		style.size[2] = height
+	end
+end
+
+local function configure_native_card_geometry(pass_template, card_height)
+	for _, style_id in ipairs({
+		"background",
+		"background_gradient",
+		"button_gradient",
+		"inner_shadow",
+		"inner_highlight",
+		"item_level",
+		"rarity_tag",
+	}) do
+		set_height(pass_by_style_id(pass_template, style_id), card_height)
+	end
+
+	local centered_y = card_height * 0.5 - 19
+
+	for _, style_id in ipairs({
+		"required_level_background",
+		"required_level",
+		"warning_message_background",
+		"warning_message",
+	}) do
+		local pass = pass_by_style_id(pass_template, style_id)
+
+		if pass and pass.style and pass.style.offset then
+			pass.style.offset[2] = centered_y
+		end
 	end
 end
 
@@ -1133,7 +1224,8 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 		local blessing_rank_left = text_left + favorite_offset
 		local blessing_text_left = blessing_rank_left + (blessing_ranked_text and perk_rank_size + PERK_RANK_GAP or 0)
 		local reserved_right = separate_item_level and 8 or 50
-		local blessing_text_width = math.max(40, card_width - blessing_text_left - reserved_right)
+		local blessing_text_right = configuration.content_right or card_width - reserved_right
+		local blessing_text_width = math.max(40, blessing_text_right - blessing_text_left)
 		local blessing_text_color = configured_text_color(mod, "weapon_blessing_text_color", DEFAULT_WEAPON_BLESSING_TEXT_COLOR, "weapon_blessing_text_opacity")
 		local reserved_bottom_row = separate_item_level and (configuration.store_item and store_footer_height or item_level_row_height) or store_footer_height
 
@@ -1199,7 +1291,8 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 		local perk_line_step = perk_line_height + perk_vertical_spacing
 		local section_spacing = blessing_display_mode ~= "off" and numeric_setting(mod, "weapon_perk_blessing_spacing", 5, 0, 20) or 2
 		local perk_text_left = text_left + (show_weapon_perk_ranks and perk_rank_size + PERK_RANK_GAP or 0)
-		local perk_width = math.max(40, card_width - perk_text_left - 8)
+		local perk_text_right = configuration.content_right or card_width - 8
+		local perk_width = math.max(40, perk_text_right - perk_text_left)
 		local perk_text_color = configured_text_color(mod, "weapon_perk_text_color", DEFAULT_WEAPON_PERK_COLOR, "weapon_perk_text_opacity")
 
 		for i = 1, WEAPON_PERK_COUNT do
@@ -1968,14 +2061,17 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 	local show_curio_item_level = setting(mod, "show_curio_item_level", true)
 	local quick_look_card = has_quick_look_card_passes(pass_template)
 
-	if not quick_look_card then
-		item_size[2] = math.max(item_size[2] or 110, Layout.card_height(mod, {
-			native_single_column = true,
-		}))
-	end
+	item_size[2] = math.max(item_size[2] or 110, Layout.card_height(mod, {
+		native_single_column = true,
+	}))
 
 	item_blueprint.size = item_size
 	item_blueprint.pass_template = pass_template
+	configure_native_card_geometry(pass_template, item_size[2] or 110)
+
+	if quick_look_card then
+		configure_native_quick_look_card_passes(pass_template)
+	end
 
 	local display_name = pass_by_style_id(pass_template, "display_name")
 	local sub_display_name = pass_by_style_id(pass_template, "sub_display_name")
@@ -2013,11 +2109,10 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 	set_visibility(pass_by_style_id(pass_template, "rarity_tag"), setting(mod, "show_rarity_tag", true))
 	configure_equipped_highlight(mod, pass_template, card_width, item_size[2] or 110)
 	configure_favorite_marker(mod, pass_template, 15)
-	if not quick_look_card then
-		add_custom_content_passes(mod, pass_template, card_width, 15, sub_display_name and sub_display_name.style, {
-			native_single_column = true,
-		})
-	end
+	add_custom_content_passes(mod, pass_template, card_width, 15, sub_display_name and sub_display_name.style, {
+		content_right = quick_look_card and 260 or nil,
+		native_single_column = true,
+	})
 	configure_card_content(mod, item_blueprint)
 
 	return item_size
