@@ -19,6 +19,9 @@ local MAX_SCAN_ATTEMPTS = 3
 local RETRY_DELAY = 5
 local MAX_OFFER_ERROR_LOGS_PER_SCAN = 5
 local MAX_ERROR_TEXT_LENGTH = 1000
+local PROFILE_DISCOVERY_DELAY = 1
+local CHARACTER_SELECTION_SETTING_ID = "automatic_curio_character_selection"
+local KNOWN_CHARACTERS_SETTING_ID = "_automatic_curio_known_characters"
 
 local PRIMARY_TRAITS = {
 	gadget_innate_health_increase = {
@@ -66,9 +69,15 @@ local ARCHETYPE_SETTINGS = {
 }
 
 local state = {
+	character_selection = nil,
 	completed = false,
 	elapsed = 0,
 	hub_character_id = nil,
+	known_profiles = nil,
+	profile_discovery_elapsed = 0,
+	profile_discovery_inflight = false,
+	profile_discovery_pending = false,
+	profile_revision = 0,
 	scan_attempts = 0,
 	scheduled = false,
 	started = false,
@@ -282,7 +291,10 @@ local function class_is_enabled(mod, profile)
 	local name = archetype_name(profile)
 	local setting_id = name and ARCHETYPE_SETTINGS[name]
 
-	return setting_id and mod:get(setting_id) ~= false or false
+	-- A future archetype will not have a dedicated checkbox until BetterInventory
+	-- is updated. Include it by default instead of silently making its Curios
+	-- unreachable; the backend storefront map remains the final capability check.
+	return name ~= nil and (setting_id == nil or mod:get(setting_id) ~= false) or false
 end
 
 local function localized_class_name(profile)
@@ -304,6 +316,168 @@ local function localized_class_name(profile)
 	end
 
 	return "?"
+end
+
+local function character_name(profile)
+	local name = profile and profile.name
+
+	if type(name) ~= "string" then
+		return
+	end
+
+	name = string.match(name, "^%s*(.-)%s*$")
+
+	return name ~= "" and name or nil
+end
+
+local function profile_label(profile)
+	local class_name = localized_class_name(profile)
+	local name = character_name(profile)
+
+	return name and string.format("%s(%s)", name, class_name) or class_name
+end
+
+local function profile_summary(profile)
+	local character_id = profile and profile.character_id
+
+	if not character_id then
+		return
+	end
+
+	return {
+		archetype = archetype_name(profile),
+		character_id = tostring(character_id),
+		character_name = character_name(profile),
+		class_name = localized_class_name(profile),
+	}
+end
+
+local function sort_profile_summaries(profiles)
+	table.sort(profiles, function(left, right)
+		local left_name = tostring(left.character_name or left.class_name or "")
+		local right_name = tostring(right.character_name or right.class_name or "")
+
+		if left_name ~= right_name then
+			return left_name < right_name
+		elseif left.class_name ~= right.class_name then
+			return tostring(left.class_name) < tostring(right.class_name)
+		end
+
+		return tostring(left.character_id) < tostring(right.character_id)
+	end)
+end
+
+local function same_profile_summaries(left, right)
+	if #left ~= #right then
+		return false
+	end
+
+	for index = 1, #left do
+		local left_profile = left[index]
+		local right_profile = right[index]
+
+		if left_profile.character_id ~= right_profile.character_id or left_profile.character_name ~= right_profile.character_name or left_profile.class_name ~= right_profile.class_name or left_profile.archetype ~= right_profile.archetype then
+			return false
+		end
+	end
+
+	return true
+end
+
+local function sanitize_profile_summaries(profiles)
+	local summaries = {}
+
+	if type(profiles) ~= "table" then
+		return summaries
+	end
+
+	for index = 1, #profiles do
+		local source = profiles[index]
+
+		if type(source) == "table" and source.character_id then
+			summaries[#summaries + 1] = {
+				archetype = type(source.archetype) == "string" and source.archetype or nil,
+				character_id = tostring(source.character_id),
+				character_name = type(source.character_name) == "string" and source.character_name ~= "" and source.character_name or nil,
+				class_name = type(source.class_name) == "string" and source.class_name ~= "" and source.class_name or "?",
+			}
+		end
+	end
+
+	sort_profile_summaries(summaries)
+
+	return summaries
+end
+
+local function known_profiles(mod)
+	if state.known_profiles == nil then
+		state.known_profiles = sanitize_profile_summaries(mod:get(KNOWN_CHARACTERS_SETTING_ID))
+	end
+
+	return state.known_profiles
+end
+
+local function cache_profiles(mod, profiles)
+	local summaries = {}
+
+	for index = 1, #(profiles or {}) do
+		local summary = profile_summary(profiles[index])
+
+		if summary then
+			summaries[#summaries + 1] = summary
+		end
+	end
+
+	sort_profile_summaries(summaries)
+
+	if not same_profile_summaries(known_profiles(mod), summaries) then
+		state.known_profiles = summaries
+		state.profile_revision = state.profile_revision + 1
+		mod:set(KNOWN_CHARACTERS_SETTING_ID, summaries, false)
+	end
+
+	-- Character targeting is the default, but a successful backend response with
+	-- no usable character IDs cannot populate its controls or produce a safe
+	-- purchase target. Fall back only after that result is confirmed; an initial,
+	-- pending, or failed discovery must not overwrite the user's chosen mode.
+	if #summaries == 0 and mod:get("automatic_curio_target_mode") == "characters" then
+		mod:set("automatic_curio_target_mode", "classes", false)
+		log_info(mod, "No usable characters were returned; safely falling back to class targeting.")
+	end
+
+	return summaries
+end
+
+local function character_selection(mod)
+	if state.character_selection == nil then
+		local saved = mod:get(CHARACTER_SELECTION_SETTING_ID)
+
+		state.character_selection = {}
+
+		if type(saved) == "table" then
+			for character_id, enabled_value in pairs(saved) do
+				if enabled_value == false then
+					state.character_selection[tostring(character_id)] = false
+				end
+			end
+		end
+	end
+
+	return state.character_selection
+end
+
+local function character_is_enabled(mod, character_id)
+	local selection = character_selection(mod)
+
+	return selection[tostring(character_id)] ~= false
+end
+
+local function profile_is_enabled(mod, profile)
+	if mod:get("automatic_curio_target_mode") == "characters" then
+		return profile and profile.character_id and character_is_enabled(mod, profile.character_id) or false
+	end
+
+	return class_is_enabled(mod, profile)
 end
 
 local function primary_trait(item)
@@ -361,7 +535,7 @@ end
 local function log_curio_evaluation(mod, profile, offer_id, level, trait_name, trait_value, result)
 	log_diagnostic(mod, string.format(
 		"%s Curio offer %s: item_level=%s, primary_trait=%s, primary_value=%s; %s.",
-		localized_class_name(profile),
+		profile_label(profile),
 		tostring(offer_id or "?"),
 		tostring(level or "?"),
 		tostring(trait_name or "?"),
@@ -478,6 +652,7 @@ local function normalized_offer(mod, profile, offer, diagnostics)
 	return {
 		archetype = archetype_name(profile),
 		character_id = profile.character_id,
+		character_name = character_name(profile),
 		class_name = localized_class_name(profile),
 		currency = currency,
 		gear_id = description.gear_id or description.gearId,
@@ -536,6 +711,8 @@ local function scan_candidates(mod, token)
 			return rejected("profile scan returned no profile list")
 		end
 
+		cache_profiles(mod, profiles)
+
 		local candidates = {}
 		local chain = Promise.resolved()
 		local diagnostics = new_scan_diagnostics()
@@ -545,9 +722,12 @@ local function scan_candidates(mod, token)
 		for index = 1, #profiles do
 			local profile = profiles[index]
 
-			if profile and profile.character_id and class_is_enabled(mod, profile) then
+			if profile and profile.character_id and profile_is_enabled(mod, profile) then
 				diagnostics.enabled_profiles = diagnostics.enabled_profiles + 1
-				chain = chain:next(function()
+				local _, storefront_method = store_method_for_profile(profile)
+
+				if storefront_method then
+					chain = chain:next(function()
 					if not context_is_current(mod, token) then
 						return
 					end
@@ -586,13 +766,16 @@ local function scan_candidates(mod, token)
 
 						log_diagnostic(mod, string.format(
 							"%s storefront summary: offers=%d, Curios=%d, eligible=%d.",
-							localized_class_name(profile),
+							profile_label(profile),
 							diagnostics.offers - offers_before,
 							diagnostics.curios - curios_before,
 							diagnostics.eligible - eligible_before
 						))
 					end)
-				end)
+					end)
+				else
+					log_diagnostic(mod, profile_label(profile) .. " was skipped because Darktide exposes no Armoury storefront for its archetype.")
+				end
 			end
 		end
 
@@ -717,7 +900,7 @@ local function fetch_target_wallet(candidate)
 end
 
 local function revalidate_and_purchase(mod, token, captured)
-	if not context_is_current(mod, token) or not class_is_enabled(mod, captured.profile) then
+	if not context_is_current(mod, token) or not profile_is_enabled(mod, captured.profile) then
 		return Promise.resolved()
 	end
 
@@ -851,7 +1034,8 @@ local function candidate_line(mod, candidate)
 	local blue = color_channel(mod, prefix .. "_b", defaults[3])
 	local value = tonumber(candidate.primary_value)
 	local shown_value = value and (value == math.floor(value) and tostring(math.floor(value)) or tostring(value)) or "?"
-	local text = string.format("%s: %s%s %s (%d)", candidate.class_name, shown_value, config.unit, mod:localize(config.label_id), candidate.item_level)
+	local owner = candidate.character_name and string.format("%s(%s)", candidate.character_name, candidate.class_name) or candidate.class_name
+	local text = string.format("%s: %s%s %s (%d)", owner, shown_value, config.unit, mod:localize(config.label_id), candidate.item_level)
 
 	return string.format("{#color(%d,%d,%d)}%s{#reset()}", red, green, blue, text)
 end
@@ -1117,6 +1301,9 @@ CurioAcquisition.begin_morningstar_pass = function(mod)
 	state.completed = false
 	state.elapsed = 0
 	state.hub_character_id = nil
+	state.profile_discovery_elapsed = 0
+	state.profile_discovery_inflight = false
+	state.profile_discovery_pending = true
 	state.scan_attempts = 0
 	state.scheduled = enabled(mod)
 	state.started = false
@@ -1133,7 +1320,210 @@ CurioAcquisition.cancel = function()
 	state.started = false
 end
 
+local function profiles_service()
+	return Managers and Managers.data_service and Managers.data_service.profiles
+end
+
+local function update_profile_discovery(mod, dt)
+	if not state.profile_discovery_pending or state.profile_discovery_inflight or not is_morningstar() then
+		return
+	end
+
+	state.profile_discovery_elapsed = state.profile_discovery_elapsed + (tonumber(dt) or 0)
+
+	if state.profile_discovery_elapsed < PROFILE_DISCOVERY_DELAY then
+		return
+	end
+
+	local service = profiles_service()
+
+	if not service or type(service.fetch_all_profiles) ~= "function" then
+		return
+	end
+
+	state.profile_discovery_inflight = true
+
+	call_promise(service, service.fetch_all_profiles):next(function(result)
+		state.profile_discovery_inflight = false
+
+		local profiles = result and result.profiles
+
+		if type(profiles) == "table" then
+			cache_profiles(mod, profiles)
+			state.profile_discovery_pending = false
+		else
+			state.profile_discovery_elapsed = 0
+		end
+	end):catch(function(error_value)
+		state.profile_discovery_inflight = false
+		state.profile_discovery_elapsed = 0
+		log_diagnostic(mod, "Character discovery failed and will retry later: " .. error_text(error_value))
+	end)
+end
+
+CurioAcquisition.request_profile_discovery = function()
+	if state.known_profiles == nil or #state.known_profiles == 0 then
+		state.profile_discovery_pending = true
+		state.profile_discovery_elapsed = PROFILE_DISCOVERY_DELAY
+	end
+end
+
+CurioAcquisition.known_profiles = function(mod)
+	return known_profiles(mod)
+end
+
+CurioAcquisition.profile_revision = function()
+	return state.profile_revision
+end
+
+CurioAcquisition.character_is_enabled = function(mod, character_id)
+	return character_is_enabled(mod, character_id)
+end
+
+CurioAcquisition.set_character_enabled = function(mod, character_id, enabled_value)
+	if not character_id then
+		return false
+	end
+
+	local existing = character_selection(mod)
+	local selection = {}
+
+	for key, value in pairs(existing) do
+		selection[key] = value
+	end
+
+	local key = tostring(character_id)
+
+	-- Missing entries mean enabled, so new characters are automatically covered
+	-- and the persisted table contains only explicit exclusions.
+	if enabled_value == false then
+		selection[key] = false
+	else
+		selection[key] = nil
+	end
+	mod:set(CHARACTER_SELECTION_SETTING_ID, next(selection) and selection or nil, false)
+
+	if type(CurioAcquisition.on_setting_changed) == "function" then
+		CurioAcquisition.on_setting_changed(mod, CHARACTER_SELECTION_SETTING_ID)
+	end
+
+	state.character_selection = selection
+
+	return true
+end
+
+CurioAcquisition.inject_character_options = function(mod, options_templates)
+	local settings = options_templates and options_templates.settings
+
+	if type(settings) ~= "table" then
+		return false
+	end
+
+	local category_name = mod:get_readable_name()
+	local group_title = mod:localize("automatic_curio_characters_group")
+	local placeholder_title = mod:localize("automatic_curio_character_options_placeholder")
+	local group_index
+	local placeholder_index
+
+	for index = 1, #settings do
+		local entry = settings[index]
+
+		if type(entry) == "table" and entry._better_inventory_curio_character_id then
+			return true
+		elseif type(entry) == "table" and (entry._better_inventory_curio_character_placeholder or entry.category == category_name and entry.display_name == placeholder_title) then
+			placeholder_index = index
+		elseif type(entry) == "table" and entry.category == category_name and entry.widget_type == "group_header" and entry.display_name == group_title then
+			group_index = index
+		end
+	end
+
+	if not group_index then
+		return false
+	end
+
+	local profiles = known_profiles(mod)
+
+	if #profiles == 0 then
+		CurioAcquisition.request_profile_discovery()
+		local placeholder = placeholder_index and settings[placeholder_index]
+
+		if not placeholder then
+			placeholder = {}
+			table.insert(settings, group_index + 1, placeholder)
+		end
+
+		placeholder._better_inventory_curio_character_placeholder = true
+		placeholder.category = category_name
+		placeholder.custom = true
+		placeholder.disabled = true
+		placeholder.display_name = mod:localize("automatic_curio_characters_discovering")
+		placeholder.indentation_level = 3
+		placeholder.validation_function = function()
+			return mod:get("automatic_curio_target_mode") == "characters"
+		end
+		placeholder.widget_type = "description"
+
+		return false
+	end
+
+	if placeholder_index then
+		table.remove(settings, placeholder_index)
+
+		if placeholder_index < group_index then
+			group_index = group_index - 1
+		end
+	end
+
+	local labels = {}
+	local duplicate_counts = {}
+
+	for index = 1, #profiles do
+		local profile = profiles[index]
+		local label = profile.character_name and string.format("%s(%s)", profile.character_name, profile.class_name) or profile.class_name
+
+		labels[index] = label
+		duplicate_counts[label] = (duplicate_counts[label] or 0) + 1
+	end
+
+	for index = #profiles, 1, -1 do
+		local profile = profiles[index]
+		local character_id = profile.character_id
+		local display_name = labels[index]
+
+		if duplicate_counts[display_name] > 1 then
+			display_name = string.format("%s [%s]", display_name, string.sub(character_id, -6))
+		end
+
+		table.insert(settings, group_index + 1, {
+			_better_inventory_curio_character_id = character_id,
+			category = category_name,
+			custom = true,
+			default_value = true,
+			display_name = display_name,
+			indentation_level = 3,
+			on_activated = function(new_value)
+				CurioAcquisition.set_character_enabled(mod, character_id, new_value)
+
+				return true
+			end,
+			get_function = function()
+				return character_is_enabled(mod, character_id)
+			end,
+			validation_function = function()
+				return mod:get("automatic_curio_target_mode") == "characters"
+			end,
+			value_type = "boolean",
+		})
+	end
+
+	return true
+end
+
 CurioAcquisition.on_setting_changed = function(mod, setting_id)
+	if setting_id == CHARACTER_SELECTION_SETTING_ID then
+		state.character_selection = nil
+	end
+
 	if setting_id == "enable_automatic_curio_acquisition" then
 		if enabled(mod) then
 			-- Let the live Morningstar observer arm a fresh pass. This also handles
@@ -1159,6 +1549,8 @@ CurioAcquisition.on_setting_changed = function(mod, setting_id)
 end
 
 CurioAcquisition.update = function(mod, dt, automatic_discard_busy)
+	update_profile_discovery(mod, dt)
+
 	if not enabled(mod) then
 		if state.scheduled or state.started or state.hub_character_id then
 			CurioAcquisition.cancel()
@@ -1222,10 +1614,13 @@ end
 CurioAcquisition._test = {
 	ARCHETYPE_SETTINGS = ARCHETYPE_SETTINGS,
 	PRIMARY_TRAITS = PRIMARY_TRAITS,
+	cache_profiles = cache_profiles,
 	candidate_differences = candidate_differences,
 	candidate_key = candidate_key,
+	class_is_enabled = class_is_enabled,
 	normalized_offer = normalized_offer,
 	primary_trait = primary_trait,
+	profile_is_enabled = profile_is_enabled,
 	same_candidate = same_candidate,
 }
 

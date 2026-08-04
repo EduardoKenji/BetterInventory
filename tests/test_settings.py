@@ -33,6 +33,8 @@ def main() -> None:
 			show_weapon_blessings = true,
 			weapon_blessing_display_mode = "icons",
 			blessing_text_item_level_separation = "four_plus",
+			auto_fit_long_blessing_names = true,
+			truncate_long_blessing_names = false,
 			show_weapon_perk_rank_symbols = false,
 			weapon_perk_rank_icon_size = 18,
 			blessing_icon_size = 34,
@@ -360,6 +362,8 @@ def main() -> None:
 		"weapon_perk_text_opacity",
 		"weapon_perk_vertical_spacing",
 		"blessing_text_item_level_separation",
+		"auto_fit_long_blessing_names",
+		"truncate_long_blessing_names",
 		"weapon_blessing_text_color_preset",
 		"weapon_blessing_text_color_r",
 		"weapon_blessing_text_color_g",
@@ -403,6 +407,7 @@ def main() -> None:
 		"automatic_curio_min_health",
 		"automatic_curio_min_toughness",
 		"automatic_curio_diagnostic_logging",
+		"automatic_curio_target_mode",
 		"automatic_curio_buy_health",
 		"automatic_curio_buy_toughness",
 		"automatic_curio_buy_stamina",
@@ -416,6 +421,7 @@ def main() -> None:
 		"automatic_curio_class_cryptic",
 		"automatic_curio_types_group",
 		"automatic_curio_classes_group",
+		"automatic_curio_characters_group",
     )
     entries = [
         lua.table_from(
@@ -426,8 +432,13 @@ def main() -> None:
         )
         for option_id in option_ids
     ]
-    entries[-2].widget_type = "group_header"
-    entries[-1].widget_type = "group_header"
+    for option_id, entry in zip(option_ids, entries):
+        if option_id in {
+            "automatic_curio_types_group",
+            "automatic_curio_classes_group",
+            "automatic_curio_characters_group",
+        }:
+            entry.widget_type = "group_header"
     options_templates = lua.table_from(
         {"settings": lua.table_from(entries)}
     )
@@ -457,6 +468,8 @@ def main() -> None:
     assert entries_by_id["weapon_perk_text_opacity"].disabled is True
     assert entries_by_id["weapon_perk_vertical_spacing"].disabled is True
     assert entries_by_id["blessing_text_item_level_separation"].disabled is True
+    assert entries_by_id["auto_fit_long_blessing_names"].disabled is True
+    assert entries_by_id["truncate_long_blessing_names"].disabled is True
     assert entries_by_id["weapon_blessing_text_color_preset"].disabled is True
     assert entries_by_id["weapon_blessing_text_color_r"].disabled is True
     assert entries_by_id["weapon_blessing_text_color_g"].disabled is True
@@ -483,10 +496,14 @@ def main() -> None:
     assert entries_by_id["automatic_curio_min_health"].disabled is True
     assert entries_by_id["automatic_curio_min_toughness"].disabled is True
     assert entries_by_id["automatic_curio_diagnostic_logging"].disabled is True
+    assert entries_by_id["automatic_curio_target_mode"].disabled is True
     assert entries_by_id["automatic_curio_buy_health"].disabled is True
     assert entries_by_id["automatic_curio_class_cryptic"].disabled is True
     assert entries_by_id["automatic_curio_types_group"].indentation_level == 2
     assert entries_by_id["automatic_curio_classes_group"].indentation_level == 2
+    assert entries_by_id["automatic_curio_characters_group"].indentation_level == 2
+    assert entries_by_id["automatic_curio_classes_group"].validation_function() is True
+    assert entries_by_id["automatic_curio_characters_group"].validation_function() is False
     assert entries_by_id["curio_information_width_percent"].disabled is True
     assert entries_by_id["curio_preview_height_percent"].disabled is True
     assert entries_by_id["inventory_options_panel_width"].disabled is True
@@ -543,12 +560,19 @@ def main() -> None:
     assert entries_by_id["automatic_curio_min_health"].disabled is False
     assert entries_by_id["automatic_curio_min_toughness"].disabled is False
     assert entries_by_id["automatic_curio_diagnostic_logging"].disabled is False
+    assert entries_by_id["automatic_curio_target_mode"].disabled is False
     assert entries_by_id["automatic_curio_buy_health"].disabled is False
     assert entries_by_id["automatic_curio_buy_toughness"].disabled is False
     assert entries_by_id["automatic_curio_buy_stamina"].disabled is False
     assert entries_by_id["automatic_curio_buy_wounds"].disabled is False
     assert entries_by_id["automatic_curio_class_veteran"].disabled is False
     assert entries_by_id["automatic_curio_class_cryptic"].disabled is False
+    settings.automatic_curio_target_mode = "characters"
+    mod.on_setting_changed("automatic_curio_target_mode")
+    assert entries_by_id["automatic_curio_classes_group"].validation_function() is False
+    assert entries_by_id["automatic_curio_characters_group"].validation_function() is True
+    settings.automatic_curio_target_mode = "classes"
+    mod.on_setting_changed("automatic_curio_target_mode")
     settings.automatic_curio_buy_health = False
     mod.on_setting_changed("automatic_curio_buy_health")
     assert entries_by_id["automatic_curio_min_health"].disabled is True
@@ -621,6 +645,8 @@ def main() -> None:
     settings.weapon_blessing_display_mode = "text"
     mod.on_setting_changed("weapon_blessing_display_mode")
     assert entries_by_id["blessing_text_item_level_separation"].disabled is False
+    assert entries_by_id["auto_fit_long_blessing_names"].disabled is False
+    assert entries_by_id["truncate_long_blessing_names"].disabled is False
     assert entries_by_id["weapon_perk_rank_icon_size"].disabled is True
     assert entries_by_id["weapon_blessing_text_color_preset"].disabled is False
     assert entries_by_id["weapon_blessing_text_color_r"].disabled is False
@@ -640,6 +666,8 @@ def main() -> None:
     settings.weapon_blessing_display_mode = "off"
     mod.on_setting_changed("weapon_blessing_display_mode")
     assert entries_by_id["blessing_text_item_level_separation"].disabled is True
+    assert entries_by_id["auto_fit_long_blessing_names"].disabled is True
+    assert entries_by_id["truncate_long_blessing_names"].disabled is True
     assert entries_by_id["weapon_perk_rank_icon_size"].disabled is True
     assert entries_by_id["weapon_blessing_text_color_preset"].disabled is True
     assert entries_by_id["weapon_blessing_text_color_r"].disabled is True
@@ -714,10 +742,11 @@ def main() -> None:
             "blessing_icon_spacing",
             "automatic_curio_types_group",
             "automatic_curio_classes_group",
+			"automatic_curio_characters_group",
         }:
             continue
 
-        assert entries_by_id[option_id].disabled is True
+        assert entries_by_id[option_id].disabled is True, option_id
 
     assert entries_by_id["blessing_icon_size"].disabled is False
     assert entries_by_id["blessing_icon_spacing"].disabled is False
@@ -726,7 +755,7 @@ def main() -> None:
     localization = lua.execute(LOCALIZATION_PATH.read_text(encoding="utf-8"))
     defaults = {}
 
-    assert data.version == "1.2.0"
+    assert data.version == "1.3.0"
 
     for localization_id, localized_values in localization.items():
         simplified_chinese = localized_values["zh-cn"]
@@ -752,6 +781,9 @@ def main() -> None:
                     assert localization[options[option_index].text] is not None
 
             sub_widgets = widget.sub_widgets
+
+            if widget.type == "group":
+                assert sub_widgets is not None and len(sub_widgets) > 0, setting_id
 
             if sub_widgets is not None:
                 inspect_widgets(sub_widgets)
@@ -837,6 +869,8 @@ def main() -> None:
     assert defaults["highlight_equipped_items"] is True
     assert defaults["weapon_blessing_display_mode"] == "ranked_text"
     assert defaults["blessing_text_item_level_separation"] == "four_plus"
+    assert defaults["auto_fit_long_blessing_names"] is True
+    assert defaults["truncate_long_blessing_names"] is False
     assert "show_weapon_blessings" not in defaults
     assert defaults["show_weapon_perks"] is True
     assert defaults["weapon_perk_compression"] == "heavy"
@@ -848,6 +882,7 @@ def main() -> None:
     assert defaults["prioritize_equipped_favorites"] is True
     assert defaults["prioritize_perfect_roll_weapons"] is True
     assert defaults["enable_inventory_options_panel_prototype"] is True
+    assert defaults["automatic_curio_target_mode"] == "characters"
     assert defaults["curio_information_width_percent"] == 90
     assert defaults["curio_preview_height_percent"] == 76
     assert defaults["inventory_options_panel_width"] == 445

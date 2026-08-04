@@ -115,6 +115,10 @@ if ($data -notmatch 'setting_id\s*=\s*"automatic_curio_min_health"[\s\S]*?defaul
 	throw "Automatic Curio acquisition must keep its 21% Health, 17% Toughness and quiet diagnostic defaults."
 }
 
+if ($data -notmatch 'setting_id\s*=\s*"automatic_curio_target_mode"[\s\S]*?default_value\s*=\s*"characters"' -or $data -notmatch 'setting_id\s*=\s*"automatic_curio_characters_group"' -or $curioAcquisition -notmatch 'No usable characters were returned; safely falling back to class targeting') {
+	throw "Automatic Curio acquisition must default to character targeting and safely fall back to classes when no usable characters are returned."
+}
+
 foreach ($settingId in @(
 	"automatic_curio_class_veteran",
 	"automatic_curio_class_zealot",
@@ -131,6 +135,10 @@ foreach ($settingId in @(
 
 if ($curioAcquisition -notmatch 'fetch_all_profiles' -or $curioAcquisition -notmatch 'StoreNames\.by_archetype\.credit' -or $curioAcquisition -notmatch 'character_wallets,\s*candidate\.character_id' -or $curioAcquisition -notmatch 'purchase_item_with_wallet') {
 	throw "Automatic Curio acquisition is missing an all-character scan or explicit target-wallet purchase contract."
+}
+
+if ($curioAcquisition -notmatch 'CHARACTER_SELECTION_SETTING_ID' -or $curioAcquisition -notmatch 'character_is_enabled' -or $curioAcquisition -notmatch 'profile_is_enabled\(mod,\s*captured\.profile\)' -or $curioAcquisition -notmatch 'setting_id == nil or mod:get\(setting_id\) ~= false') {
+	throw "Character targeting or future-archetype inclusion is missing its stable-ID and final-revalidation gates."
 }
 
 if ($curioValues -notmatch 'scripts/settings/buff/buff_templates' -or $curioValues -notmatch 'lerped_stat_buffs' -or $curioAcquisition -notmatch 'io_dofile\("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_values"\)' -or $features -notmatch 'io_dofile\("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_values"\)' -or $curioAcquisition -notmatch 'CurioValues\.resolve' -or $features -notmatch 'CurioValues\.resolve') {

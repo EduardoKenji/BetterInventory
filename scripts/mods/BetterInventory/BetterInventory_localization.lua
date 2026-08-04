@@ -207,19 +207,34 @@ local localization = {
 		en = "Enable automatic curio acquisition",
 	},
 	enable_automatic_curio_acquisition_tooltip = {
-		en = "Performs one all-character Armoury Exchange scan after each Morningstar entry and automatically purchases every Curio matching the enabled item-level, primary-roll, type and class filters. This spends Ordo Dockets without a confirmation prompt. Automatic discard finishes first, and Curios matching the acquisition rule remain protected from later automatic-discard passes.",
+		en = "Performs one cross-character Armoury Exchange scan after each Morningstar entry and automatically purchases every Curio matching the enabled item-level, primary-roll, type and target filters. Targets can be selected by class or by individual character. This spends Ordo Dockets without a confirmation prompt. Automatic discard finishes first, and Curios matching the acquisition rule remain protected from later automatic-discard passes.",
 	},
 	automatic_curio_min_item_level = {
 		en = "Minimum curio item level to acquire",
 	},
 	automatic_curio_min_item_level_tooltip = {
-		en = "Only Armoury Curios at or above this displayed item level are eligible. Health and Toughness Curios must also meet their enabled minimum-roll setting. Every matching offer for every enabled class is purchased when sufficient currency is available. The default is 410.",
+		en = "Only Armoury Curios at or above this displayed item level are eligible. Health and Toughness Curios must also meet their enabled minimum-roll setting. Every matching offer for every enabled target is purchased when sufficient currency is available. The default is 410.",
 	},
 	automatic_curio_diagnostic_logging = {
 		en = "Enable detailed diagnostic logging",
 	},
 	automatic_curio_diagnostic_logging_tooltip = {
 		en = "Writes per-character, per-Curio and revalidation details to Darktide's shared session log during the single Morningstar scan. Disabled by default to minimize disk-log growth; failures are still logged.",
+	},
+	automatic_curio_target_mode = {
+		en = "Curio acquisition targets",
+	},
+	automatic_curio_target_mode_tooltip = {
+		en = "Characters is the default and lets each discovered operative be enabled independently. Classes applies each class checkbox to every operative of that class. New characters are enabled automatically; a confirmed empty character scan safely falls back to Classes.",
+	},
+	automatic_curio_target_mode_classes = {
+		en = "Classes",
+	},
+	automatic_curio_target_mode_characters = {
+		en = "Characters",
+	},
+	automatic_curio_target_mode_inventory_suffix = {
+		en = "to acquire curios:",
 	},
 	automatic_curio_types_group = {
 		en = "Curio types we are looking for:",
@@ -250,6 +265,18 @@ local localization = {
 	},
 	automatic_curio_classes_group = {
 		en = "Classes to acquire curios:",
+	},
+	automatic_curio_characters_group = {
+		en = "Characters to acquire curios:",
+	},
+	automatic_curio_characters_discovering = {
+		en = "Discovering characters... Reopen mod options shortly, or use the inventory options panel.",
+	},
+	automatic_curio_characters_discovering_inventory = {
+		en = "Discovering characters...",
+	},
+	automatic_curio_character_options_placeholder = {
+		en = "Discovering characters...",
 	},
 	automatic_curio_class_veteran = {
 		en = "Veteran",
@@ -289,6 +316,9 @@ local localization = {
 	},
 	automatic_curio_classes_inventory_label = {
 		en = "Classes to acquire curios:",
+	},
+	automatic_curio_characters_inventory_label = {
+		en = "Characters to acquire curios:",
 	},
 	automatic_curio_health = {
 		en = "Health",
@@ -697,6 +727,18 @@ local localization = {
 	},
 	blessing_text_item_level_separation_never = {
 		en = "Never",
+	},
+	auto_fit_long_blessing_names = {
+		en = "Auto-fit long blessing names",
+	},
+	auto_fit_long_blessing_names_tooltip = {
+		en = "Reduces only an overflowing blessing line's font size until it fits beside the item level. Enabled by default.",
+	},
+	truncate_long_blessing_names = {
+		en = "Truncate long blessing names",
+	},
+	truncate_long_blessing_names_tooltip = {
+		en = "Forces blessing names onto one line. If a name is still too wide after optional auto-fitting, its end is replaced with ... before the item-level area.",
 	},
 	blessing_icon_size = {
 		en = "Blessing icon size",
@@ -1519,6 +1561,10 @@ local zh_cn = {
 	blessing_text_item_level_separation_four_plus = "4 列或更多",
 	blessing_text_item_level_separation_five_only = "仅 5 列",
 	blessing_text_item_level_separation_never = "从不",
+	auto_fit_long_blessing_names = "自动适配过长的祝福名称",
+	auto_fit_long_blessing_names_tooltip = "仅缩小超出可用宽度的祝福文字，直到其能在物品等级旁完整显示。默认启用。",
+	truncate_long_blessing_names = "截断过长的祝福名称",
+	truncate_long_blessing_names_tooltip = "强制祝福名称单行显示。如果在可选的自动缩小后仍然过长，会在物品等级区域前用 ... 替换名称末尾。",
 	blessing_icon_size = "祝福图标大小",
 	option_requires_weapon_blessing_text = "选择祝福文字模式后才能使用此选项。",
 	weapon_blessing_text_vertical_spacing = "祝福文字垂直间距",
@@ -1715,6 +1761,19 @@ local zh_cn = {
 	weapon_perk_reload_speed = "装填速度",
 	weapon_perk_reload_heavy = "装填",
 }
+
+zh_cn.automatic_curio_target_mode = "珍品获取目标"
+zh_cn.automatic_curio_target_mode_tooltip = "角色模式为默认选项，可分别启用每个已发现的角色。职业模式会将每个职业复选框应用于该职业的所有角色。新角色会自动启用；若确认扫描不到可用角色，则会安全回退到职业模式。"
+zh_cn.automatic_curio_target_mode_classes = "职业"
+zh_cn.automatic_curio_target_mode_characters = "角色"
+zh_cn.automatic_curio_target_mode_inventory_suffix = "获取珍品："
+zh_cn.automatic_curio_characters_group = "要获取珍品的角色："
+zh_cn.automatic_curio_characters_inventory_label = "要获取珍品的角色："
+zh_cn.automatic_curio_characters_discovering = "正在发现角色……请稍后重新打开模组选项，或使用库存选项面板。"
+zh_cn.automatic_curio_characters_discovering_inventory = "正在发现角色..."
+zh_cn.automatic_curio_character_options_placeholder = "正在发现角色……"
+zh_cn.enable_automatic_curio_acquisition_tooltip = "每次进入晨星号后，对所有角色的军械库交易所执行一次扫描，并自动购买符合物品等级、主要属性数值、类型和目标筛选条件的所有珍品。目标可按职业或单个角色选择。此功能会在没有确认提示的情况下花费审判庭双子币。自动丢弃会先完成，且符合获取规则的珍品会在以后的自动丢弃流程中保持受保护状态。"
+zh_cn.automatic_curio_min_item_level_tooltip = "只有显示物品等级达到或超过此值的军械库珍品才符合条件。生命和韧性珍品还必须达到对应的最低主要属性数值。货币充足时，会购买每个已启用目标的所有匹配商品。默认值为 410。"
 
 for localization_id, text in pairs(zh_cn) do
 	local entry = localization[localization_id]

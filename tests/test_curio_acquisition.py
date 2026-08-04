@@ -235,6 +235,7 @@ def main() -> None:
 
         settings = {
             enable_automatic_curio_acquisition = true,
+			automatic_curio_target_mode = "characters",
             automatic_curio_min_item_level = 410,
             automatic_curio_min_health = 21,
             automatic_curio_min_toughness = 17,
@@ -255,6 +256,12 @@ def main() -> None:
             get = function(self, setting_id)
                 return settings[setting_id]
             end,
+			set = function(self, setting_id, value)
+				settings[setting_id] = value
+			end,
+			get_readable_name = function()
+				return "Better Inventory"
+			end,
             localize = function(self, localization_id)
 				if localization_id == "automatic_curio_currency_spent_label" then
 					return "Spent:"
@@ -463,7 +470,46 @@ def main() -> None:
     assert candidate.item_level == 410
     assert candidate.primary_trait == "gadget_innate_health_increase"
     assert candidate.primary_value == 21
+    assert candidate.character_name == "Research Psyker"
     assert candidate.class_name == "Psyker"
+
+    # Unknown future archetypes are included in class mode until BetterInventory
+    # gains a dedicated checkbox instead of being silently excluded by a
+    # hard-coded class list.
+    future_profile = lua.table_from(
+        {
+            "character_id": "future-character",
+            "name": "Future Operative",
+            "archetype": lua.table_from(
+                {"name": "future_class", "archetype_name": "loc_future_class"}
+            ),
+        }
+    )
+    assert module._test.class_is_enabled(globals_.test_mod, future_profile) is True
+
+    # A confirmed empty backend result cannot populate character targeting.
+    # It falls back to Classes, while the unconfirmed empty cache used during
+    # initial discovery does not mutate the new Characters default.
+    assert globals_.settings.automatic_curio_target_mode == "characters"
+    module._test.cache_profiles(globals_.test_mod, lua.table_from([]))
+    assert globals_.settings.automatic_curio_target_mode == "classes"
+
+    # Character mode uses the stable backend ID, not display name or class.
+    globals_.settings.automatic_curio_target_mode = "characters"
+    assert module._test.profile_is_enabled(
+        globals_.test_mod, globals_.target_profile
+    ) is True
+    module.set_character_enabled(
+        globals_.test_mod, "target-psyker", False
+    )
+    assert module._test.profile_is_enabled(
+        globals_.test_mod, globals_.target_profile
+    ) is False
+    module.set_character_enabled(
+        globals_.test_mod, "target-psyker", True
+    )
+    assert globals_.settings.automatic_curio_character_selection is None
+    globals_.settings.automatic_curio_target_mode = "classes"
 
     # Rich-text colour parameters from Enhanced Descriptions must not replace
     # the visible Curio roll during parsing or exclude an otherwise valid offer.
@@ -549,6 +595,39 @@ def main() -> None:
     archetype_count = lua.eval("function(values) local count = 0 for _ in pairs(values) do count = count + 1 end return count end")
     assert archetype_count(module._test.ARCHETYPE_SETTINGS) == 7
 
+    # DMF validates static groups before BetterInventory's final-template hook
+    # runs. With no profiles cached yet, the schema placeholder must become a
+    # non-interactive discovery description instead of leaving an empty group.
+    undiscovered_character_options = lua.execute(
+        r"""
+        return {
+            settings = {
+                {
+                    category = "Better Inventory",
+                    display_name = "automatic_curio_characters_group",
+                    widget_type = "group_header",
+                },
+                {
+                    category = "Better Inventory",
+                    display_name = "automatic_curio_character_options_placeholder",
+                    widget_type = "checkbox",
+                },
+            },
+        }
+        """
+    )
+    assert module.inject_character_options(
+        globals_.test_mod, undiscovered_character_options
+    ) is False
+    assert len(undiscovered_character_options.settings) == 2
+    discovery_placeholder = undiscovered_character_options.settings[2]
+    assert discovery_placeholder.widget_type == "description"
+    assert discovery_placeholder.disabled is True
+    assert (
+        discovery_placeholder.display_name
+        == "automatic_curio_characters_discovering"
+    )
+
     # Automatic discard owns the first Morningstar phase. The Curio Buyer must
     # remain dormant until that system is settled, then target the scanned
     # profile's wallet rather than the currently selected character's wallet.
@@ -563,13 +642,49 @@ def main() -> None:
     assert globals_.purchased_wallet_owner == "target-psyker"
     assert globals_.captured_notification.line_1 == "automatic_curio_purchased_title"
     assert (
-        "{#color(101,202,77)}Psyker: 21% automatic_curio_health (410){#reset()}"
+        "{#color(101,202,77)}Research Psyker(Psyker): 21% automatic_curio_health (410){#reset()}"
         in globals_.captured_notification.line_2
     )
     assert globals_.captured_notification.line_3 == "\nSpent: 25 000 Ordo Dockets"
     assert lua.eval(
         "function(logs) for i = 1, #logs do if string.find(logs[i], 'non%-transactional field%(s%) changed') then return true end end return false end"
     )(globals_.captured_logs)
+
+    # A successful discovery is reused by both dynamic UIs. DMF's final options
+    # template receives a stable-ID checkbox labelled with character and class.
+    known_profiles = module.known_profiles(globals_.test_mod)
+    assert len(known_profiles) == 1
+    assert known_profiles[1].character_id == "target-psyker"
+    character_options = lua.execute(
+        r"""
+        return {
+            settings = {
+                {
+                    category = "Better Inventory",
+                    display_name = "automatic_curio_characters_group",
+                    widget_type = "group_header",
+                },
+                {
+                    category = "Better Inventory",
+                    display_name = "automatic_curio_character_options_placeholder",
+                    widget_type = "checkbox",
+                },
+            },
+        }
+        """
+    )
+    assert module.inject_character_options(
+        globals_.test_mod, character_options
+    ) is True
+    assert len(character_options.settings) == 2
+    character_option = character_options.settings[2]
+    assert character_option.display_name != "automatic_curio_character_options_placeholder"
+    assert character_option.display_name == "Research Psyker(Psyker)"
+    assert character_option.get_function() is True
+    character_option.on_activated(False)
+    assert character_option.get_function() is False
+    character_option.on_activated(True)
+    assert character_option.get_function() is True
 
     module.update(globals_.test_mod, 60, False)
     assert globals_.purchase_count == 1
@@ -605,7 +720,7 @@ def main() -> None:
     module.update(globals_.test_mod, 6, False)
     assert globals_.purchase_count == 2
     assert globals_.captured_notification.line_1 == "automatic_curio_purchased_title"
-    assert "Psyker: 21% automatic_curio_health (410)" in globals_.captured_notification.line_2
+    assert "Research Psyker(Psyker): 21% automatic_curio_health (410)" in globals_.captured_notification.line_2
 
     # A matching Curio remains worth reporting when its target wallet cannot
     # cover the price. This is an eligible-but-unaffordable result, not a no-match.
@@ -619,7 +734,7 @@ def main() -> None:
     assert globals_.purchase_count == 2
     assert globals_.captured_notification.line_1 == "automatic_curio_insufficient_title"
     assert (
-        "{#color(50,210,100)}Psyker: 17% automatic_curio_toughness (410){#reset()}"
+        "{#color(50,210,100)}Research Psyker(Psyker): 17% automatic_curio_toughness (410){#reset()}"
         in globals_.captured_notification.line_2
     )
     assert globals_.captured_notification.line_3 is None

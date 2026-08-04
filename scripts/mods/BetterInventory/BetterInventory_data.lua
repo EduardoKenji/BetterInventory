@@ -1,4 +1,4 @@
-local MOD_VERSION = "1.2.0"
+local MOD_VERSION = "1.3.0"
 local mod = get_mod("BetterInventory")
 
 local function color_preset_options()
@@ -392,6 +392,22 @@ return {
 								default_value = false,
 							},
 							{
+								setting_id = "automatic_curio_target_mode",
+								tooltip = "automatic_curio_target_mode_tooltip",
+								type = "dropdown",
+								default_value = "characters",
+								options = {
+									{
+										text = "automatic_curio_target_mode_classes",
+										value = "classes",
+									},
+									{
+										text = "automatic_curio_target_mode_characters",
+										value = "characters",
+									},
+								},
+							},
+							{
 								setting_id = "automatic_curio_types_group",
 								type = "group",
 								sub_widgets = {
@@ -479,6 +495,17 @@ return {
 										setting_id = "automatic_curio_class_cryptic",
 										type = "checkbox",
 										default_value = true,
+									},
+								},
+							},
+							{
+								setting_id = "automatic_curio_characters_group",
+								type = "group",
+								sub_widgets = {
+									{
+										setting_id = "automatic_curio_character_options_placeholder",
+										type = "checkbox",
+										default_value = false,
 									},
 								},
 							},
@@ -769,6 +796,18 @@ return {
 								value = "never",
 							},
 						},
+					},
+					{
+						setting_id = "auto_fit_long_blessing_names",
+						tooltip = "auto_fit_long_blessing_names_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
+						setting_id = "truncate_long_blessing_names",
+						tooltip = "truncate_long_blessing_names_tooltip",
+						type = "checkbox",
+						default_value = false,
 					},
 					{
 						setting_id = "weapon_blessing_text_vertical_spacing",
