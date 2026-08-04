@@ -513,7 +513,7 @@ local localization = {
 		en = "Grid layout",
 	},
 	quick_look_card_integration_group = {
-		en = "Weapon modifier stats",
+		en = "Mod Integration: Quick Look Card",
 	},
 	enable_quick_look_card_single_column_integration = {
 		en = "Show weapon modifiers in single-column mode",
@@ -633,11 +633,11 @@ local localization = {
 	single_column_weapon_name_font_size_tooltip = {
 		en = "Controls weapon-name size in single-column mode. Automatic card sizing adds height as this value increases so the name does not consume the detail rows below it. Reopen the inventory after changing this value.",
 	},
-	single_column_blessing_symbols_on_right = {
-		en = "Place blessing tier symbols after names",
+	single_column_blessing_icons_on_right = {
+		en = "Show blessing icons beside names",
 	},
-	single_column_blessing_symbols_on_right_tooltip = {
-		en = "In single-column ranked-text mode, places each blessing tier symbol immediately after its blessing name instead of before it. Reopen the inventory after changing this option.",
+	single_column_blessing_icons_on_right_tooltip = {
+		en = "In single-column text modes, shows the two full framed blessing icons side by side in the space to the right of the blessing names. Tier symbols keep their normal position before names. Reopen the inventory after changing this option.",
 	},
 	enhanced_descriptions_integration_group = {
 		en = "Mod integration: Enhanced Descriptions",
@@ -748,7 +748,10 @@ local localization = {
 		en = "Enable perk level symbols to set their size.",
 	},
 	option_requires_weapon_blessings = {
-		en = "Select blessing Icons to use this option.",
+		en = "Select blessing icons to use this option.",
+	},
+	option_requires_single_column_blessing_icons = {
+		en = "Enable single-column blessing icons to use this option with blessing text.",
 	},
 	option_requires_detailed_curio_profile = {
 		en = "Select the All four stats Curio profile to use this option.",
@@ -1586,7 +1589,7 @@ local zh_cn = {
 	armoury_requisition_target_card_width = "军械库目标卡宽度",
 	armoury_requisition_target_card_width_tooltip = "扩展军械库网格所需的卡宽度（以像素为单位）。在三列中，默认值 230 像素为《暗潮》的原生网格宽度增加了 114 像素。",
 	layout_group = "网格布局",
-	quick_look_card_integration_group = "武器属性数据",
+	quick_look_card_integration_group = "模组集成：Quick Look Card",
 	enable_quick_look_card_single_column_integration = "在单列模式中显示武器属性",
 	enable_quick_look_card_single_column_integration_tooltip = "无需安装其他模组即可显示武器五项最大潜力属性。安装 Quick Look Card 时，BetterInventory 会复用并规范其绘制项以避免重复。关闭后将保留 Quick Look Card 原生的单列内容。更改后请重新打开库存。",
 	quick_look_card_single_column_font_size = "单列属性字号",
@@ -1647,8 +1650,8 @@ local zh_cn = {
 	single_column_layout_group = "单列布局",
 	single_column_weapon_name_font_size = "武器名称字号",
 	single_column_weapon_name_font_size_tooltip = "控制单列模式中的武器名称字号。字号增大时，自动卡片尺寸会相应增加高度，避免名称占用下方详情行。更改后请重新打开库存。",
-	single_column_blessing_symbols_on_right = "将祝福等级符号放在名称后",
-	single_column_blessing_symbols_on_right_tooltip = "在单列等级文本模式中，将每个祝福等级符号紧跟在祝福名称后，而不是放在名称前。更改后请重新打开库存。",
+	single_column_blessing_icons_on_right = "在名称旁显示祝福图标",
+	single_column_blessing_icons_on_right_tooltip = "在单列文字模式中，将两个完整的带边框祝福图标并排显示在祝福名称右侧的空间中。等级符号仍保持在名称前方。更改后请重新打开库存。",
 	enhanced_descriptions_integration_group = "模组集成：Enhanced Descriptions",
 	enable_grid_layout = "启用网格布局",
 	enable_grid_layout_tooltip = "使用 BetterInventory 的多列卡片。关闭后保留《暗潮》原生单列尺寸，同时继续使用已启用的卡片内容增强功能。",
@@ -1686,6 +1689,7 @@ local zh_cn = {
 	option_requires_weapon_perks = "启用武器专长文字后才能使用此选项。",
 	option_requires_perk_rank_symbols = "启用专长等级符号后才能设置其大小。",
 	option_requires_weapon_blessings = "选择祝福图标后才能使用此选项。",
+	option_requires_single_column_blessing_icons = "启用单列祝福图标后，才能在祝福文字模式中使用此选项。",
 	option_requires_detailed_curio_profile = "选择珍品“全部四项属性”模式后才能使用此选项。",
 	option_requires_experimental_quick_discard = "启用实验性库存快速丢弃控件以使用此选项。",
 	option_requires_automatic_discard_mode = "选择自动丢弃模式以使用此选项。",

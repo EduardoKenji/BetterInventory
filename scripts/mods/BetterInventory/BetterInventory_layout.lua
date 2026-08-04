@@ -1316,7 +1316,7 @@ local function resolved_trait_data(entry, include_textures, include_perk_rank, i
 	return data
 end
 
-local function populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers)
+local function populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers, show_blessing_text_icons)
 	local content = widget and widget.content
 
 	if not content then
@@ -1356,13 +1356,16 @@ local function populate_card_content(mod, widget, element, blessing_display_mode
 			local traits = item.traits
 			local blessing_text_mode = blessing_display_mode == "text" or blessing_display_mode == "ranked_text"
 			local blessing_ranked_text = blessing_display_mode == "ranked_text"
+			local include_blessing_textures = blessing_display_mode == "icons" or blessing_text_mode and show_blessing_text_icons
 
 			for i = 1, math.min(WEAPON_BLESSING_COUNT, traits and #traits or 0) do
-				local data = resolved_trait_data(traits[i], blessing_display_mode == "icons", blessing_ranked_text, blessing_text_mode)
+				local data = resolved_trait_data(traits[i], include_blessing_textures, blessing_ranked_text, blessing_text_mode)
 
-				if blessing_display_mode == "icons" and data and data.icon and data.frame then
+				if include_blessing_textures and data and data.icon and data.frame then
 					content["better_inventory_blessing_" .. i] = data
-				elseif blessing_text_mode and data then
+				end
+
+				if blessing_text_mode and data then
 					local name = data.display_name
 
 					if name == "" or name == "-" or name == "n/a" then
@@ -1601,9 +1604,6 @@ local function add_blessing_rank_pass(pass_template, index, options)
 				255,
 				255,
 			},
-			better_inventory_follow_blessing_text = options.follow_blessing_text == true,
-			better_inventory_max_left = options.max_left,
-			better_inventory_gap = options.gap,
 		},
 		visibility_function = function(content)
 			return content and content[content_id] ~= nil and content[content_id] ~= ""
@@ -1745,6 +1745,7 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 	local blessing_display_mode = weapon_blessing_display_mode(mod)
 	local blessing_text_mode = blessing_display_mode == "text" or blessing_display_mode == "ranked_text"
 	local blessing_ranked_text = blessing_display_mode == "ranked_text"
+	local show_blessing_text_icons = configuration.native_single_column and blessing_text_mode and setting(mod, "single_column_blessing_icons_on_right", true)
 	local show_weapon_perks = setting(mod, "show_weapon_perks", true)
 	local show_weapon_perk_ranks = show_weapon_perks and setting(mod, "show_weapon_perk_rank_symbols", true)
 	local detailed_curio_profile = setting(mod, "curio_display_profile", "detailed") == "detailed"
@@ -1776,11 +1777,15 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 		local separate_item_level = separate_blessing_text_and_item_level(mod, configuration)
 		local favorite_offset = favorite_marker_position == "bottom_left" and not separate_item_level and 24 or 0
 		local blessing_rank_left = text_left + favorite_offset
-		local blessing_rank_on_right = configuration.native_single_column and blessing_ranked_text and setting(mod, "single_column_blessing_symbols_on_right", false)
-		local blessing_text_left = blessing_rank_left + (blessing_ranked_text and not blessing_rank_on_right and perk_rank_size + PERK_RANK_GAP or 0)
+		local blessing_text_left = blessing_rank_left + (blessing_ranked_text and perk_rank_size + PERK_RANK_GAP or 0)
 		local reserved_right = separate_item_level and 8 or 50
-		local blessing_text_right = configuration.content_right or card_width - reserved_right
-		local blessing_text_width = math.max(40, blessing_text_right - blessing_text_left - (blessing_rank_on_right and perk_rank_size + PERK_RANK_GAP or 0))
+		local content_right = configuration.content_right or card_width - reserved_right
+		local side_icon_size = show_blessing_text_icons and blessing_icon_size(mod) or 0
+		local side_icon_gap = show_blessing_text_icons and numeric_setting(mod, "blessing_icon_spacing", 3, 0, 20) or 0
+		local side_icon_pair_width = show_blessing_text_icons and WEAPON_BLESSING_COUNT * side_icon_size + (WEAPON_BLESSING_COUNT - 1) * side_icon_gap or 0
+		local side_icon_left = show_blessing_text_icons and math.min(content_right - side_icon_pair_width, blessing_text_left + 110) or content_right
+		local blessing_text_right = show_blessing_text_icons and side_icon_left - 8 or content_right
+		local blessing_text_width = math.max(40, blessing_text_right - blessing_text_left)
 		local blessing_text_color = configured_text_color(mod, "weapon_blessing_text_color", DEFAULT_WEAPON_BLESSING_TEXT_COLOR, "weapon_blessing_text_opacity")
 		local auto_fit_long_name = setting(mod, "auto_fit_long_blessing_names", true)
 		local truncate_long_name = setting(mod, "truncate_long_blessing_names", false)
@@ -1788,17 +1793,22 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 
 		blessing_text_height = WEAPON_BLESSING_COUNT * blessing_line_height + (WEAPON_BLESSING_COUNT - 1) * blessing_vertical_spacing
 
+		if show_blessing_text_icons then
+			blessing_text_height = math.max(blessing_text_height, side_icon_size)
+
+			for i = 1, WEAPON_BLESSING_COUNT do
+				add_blessing_pass(pass_template, i, side_icon_size, side_icon_left + (i - 1) * (side_icon_size + side_icon_gap), -(reserved_bottom_row + blessing_bottom_padding))
+			end
+		end
+
 		for i = 1, WEAPON_BLESSING_COUNT do
 			local y_offset = -(reserved_bottom_row + blessing_bottom_padding + (WEAPON_BLESSING_COUNT - i) * blessing_line_step)
 
 			if blessing_ranked_text then
 				add_blessing_rank_pass(pass_template, i, {
 					size = perk_rank_size,
-					follow_blessing_text = blessing_rank_on_right,
-					max_left = blessing_text_right - perk_rank_size,
-					gap = PERK_RANK_GAP,
 					offset = {
-						blessing_rank_on_right and blessing_text_right - perk_rank_size or blessing_rank_left,
+						blessing_rank_left,
 						y_offset,
 						11,
 					},
@@ -2178,16 +2188,6 @@ local function fit_blessing_text(parent, widget, ui_renderer)
 				style.word_wrap = false
 			end
 
-			local rank_style = styles["better_inventory_blessing_rank_" .. i]
-
-			if rank_style and rank_style.better_inventory_follow_blessing_text then
-				local rendered_value = content[content_id] or value
-				local rendered_width = Text.text_width(ui_renderer, rendered_value, style, measurement_size, true)
-				local text_left = style.offset and style.offset[1] or 0
-				local maximum_left = rank_style.better_inventory_max_left or text_left + maximum_width
-
-				rank_style.offset[1] = math.min(maximum_left, text_left + math.min(rendered_width, safe_width) + (rank_style.better_inventory_gap or 0))
-			end
 		end
 	end
 end
@@ -2252,6 +2252,7 @@ local function configure_card_content(mod, item_blueprint, configuration)
 	local show_item_level_icon = setting(mod, "show_item_level_icon", false)
 	local compression_mode = setting(mod, "curio_stat_compression", "heavy")
 	local show_weapon_modifiers = configuration.weapon_modifier_stats_enabled == true
+	local show_blessing_text_icons = configuration.native_single_column and setting(mod, "single_column_blessing_icons_on_right", true)
 	-- Keep the original setting ID so existing user configurations migrate
 	-- without any reset; its scope now includes supported secondary Curio perks.
 	local simplify_curio_stats = setting(mod, "simplify_curio_primary_stat_text", true)
@@ -2269,7 +2270,7 @@ local function configure_card_content(mod, item_blueprint, configuration)
 			original_init(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
 			format_weapon_name(widget, element, append_mark_to_name)
 			format_item_level(widget, element, show_item_level_icon)
-			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers)
+			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers, show_blessing_text_icons)
 			fit_display_name(parent, widget, ui_renderer, preferred_font_size, math.min(preferred_font_size, minimum_font_size))
 			fit_blessing_text(parent, widget, ui_renderer)
 			fit_weapon_perks(parent, widget, ui_renderer)
@@ -2282,7 +2283,7 @@ local function configure_card_content(mod, item_blueprint, configuration)
 			original_update_data(parent, widget, element)
 			format_weapon_name(widget, element, append_mark_to_name)
 			format_item_level(widget, element, show_item_level_icon)
-			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers)
+			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers, show_blessing_text_icons)
 			fit_display_name(parent, widget, nil, preferred_font_size, math.min(preferred_font_size, minimum_font_size))
 			fit_blessing_text(parent, widget, nil)
 			fit_weapon_perks(parent, widget, nil)
@@ -2551,6 +2552,10 @@ Layout.card_height = function(mod, configuration)
 		local blessing_vertical_spacing = numeric_setting(mod, "weapon_blessing_text_vertical_spacing", 2, 0, 20)
 		local blessing_bottom_padding = numeric_setting(mod, "weapon_blessing_text_bottom_padding", 4, 0, 20)
 		local blessing_text_height = WEAPON_BLESSING_COUNT * blessing_line_height + (WEAPON_BLESSING_COUNT - 1) * blessing_vertical_spacing + blessing_bottom_padding + 3
+
+		if configuration.native_single_column and setting(mod, "single_column_blessing_icons_on_right", true) then
+			blessing_text_height = math.max(blessing_text_height, blessing_icon_size(mod) + blessing_bottom_padding + 3)
+		end
 
 		if configuration.store_item then
 			bottom_region_height = store_footer_height + blessing_text_height

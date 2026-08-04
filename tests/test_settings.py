@@ -401,7 +401,7 @@ def main() -> None:
 		"curio_primary_secondary_spacing",
 		"single_column_layout_group",
 		"single_column_weapon_name_font_size",
-		"single_column_blessing_symbols_on_right",
+		"single_column_blessing_icons_on_right",
 		"quick_look_card_single_column_font_size",
 		"quick_look_card_single_column_horizontal_position",
 		"quick_look_card_single_column_vertical_position",
@@ -519,7 +519,7 @@ def main() -> None:
     assert entries_by_id["curio_primary_secondary_spacing"].disabled is True
     assert entries_by_id["single_column_layout_group"].disabled is True
     assert entries_by_id["single_column_weapon_name_font_size"].disabled is True
-    assert entries_by_id["single_column_blessing_symbols_on_right"].disabled is True
+    assert entries_by_id["single_column_blessing_icons_on_right"].disabled is True
     assert entries_by_id["quick_look_card_single_column_font_size"].disabled is True
     assert entries_by_id["quick_look_card_single_column_horizontal_position"].disabled is True
     assert entries_by_id["quick_look_card_single_column_vertical_position"].disabled is True
@@ -818,7 +818,7 @@ def main() -> None:
     assert entries_by_id["blessing_icon_spacing"].disabled is False
     assert entries_by_id["single_column_layout_group"].disabled is False
     assert entries_by_id["single_column_weapon_name_font_size"].disabled is False
-    assert entries_by_id["single_column_blessing_symbols_on_right"].disabled is True
+    assert entries_by_id["single_column_blessing_icons_on_right"].disabled is True
     assert entries_by_id["quick_look_card_single_column_font_size"].disabled is False
     assert entries_by_id["quick_look_card_single_column_horizontal_position"].disabled is False
     assert entries_by_id["quick_look_card_single_column_vertical_position"].disabled is False
@@ -830,7 +830,24 @@ def main() -> None:
 
     settings.weapon_blessing_display_mode = "ranked_text"
     mod.on_setting_changed("weapon_blessing_display_mode")
-    assert entries_by_id["single_column_blessing_symbols_on_right"].disabled is False
+    assert entries_by_id["single_column_blessing_icons_on_right"].disabled is False
+    assert entries_by_id["blessing_icon_size"].disabled is False
+    assert entries_by_id["blessing_icon_spacing"].disabled is False
+    settings.weapon_blessing_display_mode = "text"
+    mod.on_setting_changed("weapon_blessing_display_mode")
+    assert entries_by_id["single_column_blessing_icons_on_right"].disabled is False
+    assert entries_by_id["blessing_icon_size"].disabled is False
+    assert entries_by_id["blessing_icon_spacing"].disabled is False
+    settings.single_column_blessing_icons_on_right = False
+    mod.on_setting_changed("single_column_blessing_icons_on_right")
+    assert entries_by_id["blessing_icon_size"].disabled is True
+    assert entries_by_id["blessing_icon_spacing"].disabled is True
+    settings.single_column_blessing_icons_on_right = True
+    mod.on_setting_changed("single_column_blessing_icons_on_right")
+    assert entries_by_id["blessing_icon_size"].disabled is False
+    assert entries_by_id["blessing_icon_spacing"].disabled is False
+    settings.weapon_blessing_display_mode = "ranked_text"
+    mod.on_setting_changed("weapon_blessing_display_mode")
     settings.enable_quick_look_card_single_column_integration = False
     mod.on_setting_changed("enable_quick_look_card_single_column_integration")
     assert entries_by_id["quick_look_card_single_column_font_size"].disabled is True
@@ -847,6 +864,10 @@ def main() -> None:
     defaults = {}
 
     assert data.version == "1.3.0"
+    assert (
+        localization["quick_look_card_integration_group"]["en"]
+        == "Mod Integration: Quick Look Card"
+    )
 
     for localization_id, localized_values in localization.items():
         simplified_chinese = localized_values["zh-cn"]
@@ -944,7 +965,7 @@ def main() -> None:
     assert defaults["weapon_modifier_lowest_color_b"] == 132
     assert defaults["weapon_modifier_lowest_color_opacity"] == 100
     assert defaults["single_column_weapon_name_font_size"] == 18
-    assert defaults["single_column_blessing_symbols_on_right"] is False
+    assert defaults["single_column_blessing_icons_on_right"] is True
     assert defaults["enable_hadron_entreat_grid"] is True
     assert defaults["enable_armoury_requisition_grid"] is True
     assert defaults["expand_armoury_requisition_window"] is True

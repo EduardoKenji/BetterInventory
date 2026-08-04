@@ -804,10 +804,10 @@ return {
 						},
 					},
 					{
-						setting_id = "single_column_blessing_symbols_on_right",
-						tooltip = "single_column_blessing_symbols_on_right_tooltip",
+						setting_id = "single_column_blessing_icons_on_right",
+						tooltip = "single_column_blessing_icons_on_right_tooltip",
 						type = "checkbox",
-						default_value = false,
+						default_value = true,
 					},
 				},
 			},

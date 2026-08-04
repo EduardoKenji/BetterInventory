@@ -321,7 +321,7 @@ def main() -> None:
 				show_weapon_perk_rank_symbols = false,
 				weapon_perk_rank_icon_size = 18,
 				single_column_weapon_name_font_size = 18,
-				single_column_blessing_symbols_on_right = false,
+				single_column_blessing_icons_on_right = true,
 				weapon_perk_vertical_spacing = 2,
 				weapon_perk_blessing_spacing = 5,
 				remove_weapon_perk_plus_signs = false,
@@ -1137,7 +1137,13 @@ def main() -> None:
         qlc_native_blueprint, "better_inventory_blessing_text_1"
     ).style
     assert qlc_perk_style.offset[1] + qlc_perk_style.size[1] == 260
-    assert qlc_blessing_style.offset[1] + qlc_blessing_style.size[1] == 260
+    assert qlc_blessing_style.offset[1] + qlc_blessing_style.size[1] == 138
+    assert blueprint_pass(
+        qlc_native_blueprint, "better_inventory_blessing_1"
+    ).style.offset[1] == 146
+    assert blueprint_pass(
+        qlc_native_blueprint, "better_inventory_blessing_2"
+    ).style.offset[1] == 183
 
     # Position percentages operate over the stat block's available travel area;
     # 0/100 therefore anchor it to the left/bottom edges at any card height.
@@ -1690,6 +1696,11 @@ def main() -> None:
     mod.settings.weapon_perk_rank_icon_size = 18
     ranked_text_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     layout.configure_item_blueprint(mod, ranked_text_blueprint, 640)
+    assert not any(
+        ranked_text_blueprint.pass_template[index].style_id
+        == "better_inventory_blessing_1"
+        for index in range(1, len(ranked_text_blueprint.pass_template) + 1)
+    )
     ranked_text_styles = {
         "display_name": blueprint_pass(ranked_text_blueprint, "display_name").style,
     }
@@ -1723,14 +1734,14 @@ def main() -> None:
     assert first_rank_text.style.size[1] == four_column_text_style.size[1] - 21
     assert layout.card_height(mod) == 117
 
-    # Native ranked-text cards can place each tier symbol immediately after the
-    # measured blessing name while still reserving its right-edge safety area.
+    # Native ranked-text cards keep tier symbols before each name and render the
+    # two full framed blessing icons side by side in the reserved right area.
     mod.settings.enable_grid_layout = False
-    mod.settings.single_column_blessing_symbols_on_right = True
-    right_rank_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
-    layout.configure_item_blueprint(mod, right_rank_blueprint, 596)
-    right_rank_styles = {
-        "display_name": blueprint_pass(right_rank_blueprint, "display_name").style,
+    mod.settings.single_column_blessing_icons_on_right = True
+    right_icon_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, right_icon_blueprint, 596)
+    right_icon_styles = {
+        "display_name": blueprint_pass(right_icon_blueprint, "display_name").style,
     }
     for index in range(1, 3):
         for prefix in (
@@ -1738,30 +1749,63 @@ def main() -> None:
             "better_inventory_blessing_rank_",
         ):
             style_id = f"{prefix}{index}"
-            right_rank_styles[style_id] = blueprint_pass(
-                right_rank_blueprint, style_id
+            right_icon_styles[style_id] = blueprint_pass(
+                right_icon_blueprint, style_id
             ).style
-    right_rank_widget = lua.table_from(
-        {"content": lua.table_from({}), "style": lua.table_from(right_rank_styles)}
+    right_icon_widget = lua.table_from(
+        {"content": lua.table_from({}), "style": lua.table_from(right_icon_styles)}
     )
-    right_rank_blueprint.init(
+    right_icon_blueprint.init(
         None,
-        right_rank_widget,
+        right_icon_widget,
         narrow_weapon_element,
         None,
         None,
         lua.table_from({}),
         None,
-        right_rank_blueprint,
+        right_icon_blueprint,
     )
     for index in range(1, 3):
-        text_style = right_rank_styles[f"better_inventory_blessing_text_{index}"]
-        rank_style = right_rank_styles[f"better_inventory_blessing_rank_{index}"]
-        assert rank_style.better_inventory_follow_blessing_text is True
-        assert rank_style.offset[1] > text_style.offset[1]
-        assert rank_style.offset[1] <= rank_style.better_inventory_max_left
-        assert text_style.offset[1] + text_style.size[1] < rank_style.better_inventory_max_left
-    mod.settings.single_column_blessing_symbols_on_right = False
+        text_style = right_icon_styles[f"better_inventory_blessing_text_{index}"]
+        rank_style = right_icon_styles[f"better_inventory_blessing_rank_{index}"]
+        assert text_style.offset[1] == rank_style.offset[1] + rank_style.size[1] + 3
+
+        icon_pass = blueprint_pass(
+            right_icon_blueprint, f"better_inventory_blessing_{index}"
+        )
+        assert icon_pass.visibility_function(right_icon_widget.content)
+        icon_pass.change_function(right_icon_widget.content, icon_pass.style)
+        expected_name = "one" if index == 1 else "two"
+        assert icon_pass.style.material_values.icon == f"icon/blessing_{expected_name}"
+        assert icon_pass.style.material_values.frame == f"frame/rank_{index + 2}"
+        assert tuple(icon_pass.style.size[position] for position in range(1, 3)) == (
+            34,
+            34,
+        )
+
+    first_side_icon = blueprint_pass(
+        right_icon_blueprint, "better_inventory_blessing_1"
+    ).style
+    second_side_icon = blueprint_pass(
+        right_icon_blueprint, "better_inventory_blessing_2"
+    ).style
+    assert first_side_icon.offset[1] == 146
+    assert second_side_icon.offset[1] == 183
+    assert first_side_icon.offset[2] == second_side_icon.offset[2] == -4
+    assert second_side_icon.offset[1] + second_side_icon.size[1] <= 260
+
+    mod.settings.single_column_blessing_icons_on_right = False
+    no_side_icon_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, no_side_icon_blueprint, 596)
+    assert not any(
+        no_side_icon_blueprint.pass_template[index].style_id
+        == "better_inventory_blessing_1"
+        for index in range(1, len(no_side_icon_blueprint.pass_template) + 1)
+    )
+    assert blueprint_pass(
+        no_side_icon_blueprint, "better_inventory_blessing_rank_1"
+    ) is not None
+    mod.settings.single_column_blessing_icons_on_right = True
     mod.settings.enable_grid_layout = True
 
     long_blessing_element = lua.eval("table.clone")(narrow_weapon_element)
