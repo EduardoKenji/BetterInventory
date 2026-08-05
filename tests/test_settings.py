@@ -451,6 +451,8 @@ def main() -> None:
 		"global_store_compact_character_names",
 		"global_store_single_column_modifier_horizontal_position",
 		"global_store_single_column_modifier_vertical_position",
+		"character_overview_curio_name_mode",
+		"character_overview_curio_font_size_percent",
 		"weapon_perk_compression",
 		"show_weapon_perk_rank_symbols",
 		"weapon_perk_rank_icon_size",
@@ -601,6 +603,16 @@ def main() -> None:
     assert entries_by_id["global_store_compact_character_names"].disabled is False
     assert entries_by_id["global_store_single_column_modifier_horizontal_position"].disabled is True
     assert entries_by_id["global_store_single_column_modifier_vertical_position"].disabled is True
+    assert entries_by_id["character_overview_curio_name_mode"].disabled is False
+    assert entries_by_id["character_overview_curio_font_size_percent"].disabled is False
+    settings.enable_character_overview_curio_details = False
+    mod.on_setting_changed("enable_character_overview_curio_details")
+    assert entries_by_id["character_overview_curio_name_mode"].disabled is True
+    assert entries_by_id["character_overview_curio_font_size_percent"].disabled is True
+    settings.enable_character_overview_curio_details = True
+    mod.on_setting_changed("enable_character_overview_curio_details")
+    assert entries_by_id["character_overview_curio_name_mode"].disabled is False
+    assert entries_by_id["character_overview_curio_font_size_percent"].disabled is False
     assert entries_by_id["expand_curio_inventory_window"].disabled is False
     assert entries_by_id["weapon_extra_width_column_threshold"].disabled is False
     assert entries_by_id["five_column_weapon_extra_width"].disabled is True
@@ -1005,6 +1017,8 @@ def main() -> None:
 			"global_store_compact_character_names",
 			"global_store_single_column_modifier_horizontal_position",
 			"global_store_single_column_modifier_vertical_position",
+			"character_overview_curio_name_mode",
+			"character_overview_curio_font_size_percent",
         }:
             continue
 
@@ -1071,7 +1085,7 @@ def main() -> None:
     localization = lua.execute(LOCALIZATION_PATH.read_text(encoding="utf-8"))
     defaults = {}
 
-    assert data.version == "1.5.3"
+    assert data.version == "1.6.0"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
@@ -1196,6 +1210,8 @@ def main() -> None:
         "enable_character_overview_melee_mirror",
         "enable_character_overview_ranged_mirror",
         "enable_character_overview_curio_details",
+        "character_overview_curio_name_mode",
+        "character_overview_curio_font_size_percent",
     ]
     grid_layout_index = top_level_ids.index("layout_group")
     assert top_level_ids[grid_layout_index + 1] == "single_column_layout_group"
@@ -1257,6 +1273,8 @@ def main() -> None:
     assert defaults["enable_character_overview_melee_mirror"] is True
     assert defaults["enable_character_overview_ranged_mirror"] is True
     assert defaults["enable_character_overview_curio_details"] is True
+    assert defaults["character_overview_curio_name_mode"] == "two_lines"
+    assert defaults["character_overview_curio_font_size_percent"] == 110
     assert defaults["three_column_weapon_name_font_size"] == 14
     assert defaults["enable_global_store_integration"] is True
     assert defaults["enable_global_store_grid"] is True

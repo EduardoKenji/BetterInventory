@@ -44,6 +44,10 @@ if ($main -notmatch 'mod:hook\(InventoryView,\s*"_create_entry_widget_from_confi
 	throw "Character overview weapon/Curio card integration was not found."
 }
 
+if ($main -notmatch 'move_up\s*=\s*9' -or $main -notmatch 'move_down\s*=\s*6' -or $main -notmatch 'move_down\s*=\s*4' -or $main -notmatch 'style\.offset\[2\]\s*=\s*\(style\.offset\[2\]\s*or\s*0\)\s*-\s*6' -or $main -notmatch 'style\.offset\[1\]\s*=\s*math\.max\(style\.offset\[1\]\s*or\s*0,\s*weapon_name_left\)' -or $main -notmatch 'character_overview_curio_name_mode' -or $main -notmatch 'character_overview_curio_font_size_percent' -or $main -notmatch 'curio_name_line_limit\s*=\s*curio_name_mode\s*==\s*"two_lines"\s*and\s*2' -or $main -notmatch 'curio_name_block_height\s*=\s*curio_name_font_size\s*\*\s*curio_name_line_limit\s*\+\s*11' -or $main -notmatch 'stat_style\.offset\[2\]\s*=\s*\(stat_style\.offset\[2\]\s*or\s*0\)\s*\+\s*curio_name_block_height' -or $main -notmatch 'Text\.word_wrap\(ui_renderer,\s*full_name,\s*style,\s*maximum_width\)' -or $main -notmatch 'table\.concat\(wrapped_rows,\s*"\\n"\)' -or $main -notmatch 'style\.font_size\s*=\s*math\.max\(1,\s*math\.floor\(style\.font_size\s*\*\s*curio_font_scale') {
+	throw "Character overview visual offsets or Curio font scaling were not found."
+}
+
 if ($main -notmatch 'mod:hook\(CreditsVendorView,\s*"present_grid_layout"') {
 	throw "The Requisition Weapons & Curios grid hook was not found."
 }

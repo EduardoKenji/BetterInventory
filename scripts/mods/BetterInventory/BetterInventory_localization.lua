@@ -530,6 +530,30 @@ local localization = {
 	enable_character_overview_curio_details_tooltip = {
 		en = "Shows the equipped Curio's primary and secondary stats in a compact BetterInventory card on the character overview screen. Enabled by default.",
 	},
+	character_overview_curio_name_mode = {
+		en = "Curio title mode",
+	},
+	character_overview_curio_name_mode_tooltip = {
+		en = "Hides Curio titles or fits them within one or two lines above the four stat rows on the character overview.",
+	},
+	character_overview_curio_name_mode_none = {
+		en = "No title",
+	},
+	character_overview_curio_name_mode_one_line = {
+		en = "One-line title",
+	},
+	character_overview_curio_name_mode_two_lines = {
+		en = "Two-line title",
+	},
+	character_overview_curio_font_size_percent = {
+		en = "Character overview Curio font size (%%)",
+	},
+	character_overview_curio_font_size_percent_tooltip = {
+		en = "Scales all text on detailed Curio cards in the character overview (50-150%%, default 110%%). Does not affect Curio cards in inventory or stores.",
+	},
+	option_requires_character_overview_curio_details = {
+		en = "Requires detailed Curio cards on the character overview.",
+	},
 	global_store_integration_group = {
 		en = "Mod Integration: GlobalStore",
 	},
@@ -2157,6 +2181,14 @@ zh_cn.enable_character_overview_ranged_mirror = "Mirror ranged weapon single-col
 zh_cn.enable_character_overview_ranged_mirror_tooltip = "Uses the detailed BetterInventory single-column card for the equipped ranged weapon on the character overview screen. Enabled by default."
 zh_cn.enable_character_overview_curio_details = "Show detailed Curio card on character overview"
 zh_cn.enable_character_overview_curio_details_tooltip = "Shows the equipped Curio's primary and secondary stats in a compact BetterInventory card on the character overview screen. Enabled by default."
+zh_cn.character_overview_curio_name_mode = "Curio title mode"
+zh_cn.character_overview_curio_name_mode_tooltip = "Hides Curio titles or fits them within one or two lines above the four stat rows on the character overview."
+zh_cn.character_overview_curio_name_mode_none = "No title"
+zh_cn.character_overview_curio_name_mode_one_line = "One-line title"
+zh_cn.character_overview_curio_name_mode_two_lines = "Two-line title"
+zh_cn.character_overview_curio_font_size_percent = "Character overview Curio font size (%%)"
+zh_cn.character_overview_curio_font_size_percent_tooltip = "Scales all text on detailed Curio cards in the character overview (50-150%%, default 110%%). Does not affect Curio cards in inventory or stores."
+zh_cn.option_requires_character_overview_curio_details = "Requires detailed Curio cards on the character overview."
 
 for localization_id, text in pairs(zh_cn) do
 	local entry = localization[localization_id]

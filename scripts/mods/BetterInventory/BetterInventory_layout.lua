@@ -847,11 +847,24 @@ local function fallback_weapon_modifier_label(display_name)
 	return "STAT"
 end
 
+local function compact_weapon_modifier_label(label)
+	if type(label) ~= "string" then
+		return label
+	end
+
+	label = single_line_text(label)
+
+	-- Quick Look Card can supply its own English title instead of using our
+	-- localization path. Normalize both sources so AMMO never wraps on any
+	-- BetterInventory-managed card or view.
+	return string.upper(label) == "AMMO" and "AMM" or label
+end
+
 local function localized_weapon_modifier_label(mod, display_name)
 	local definition = WEAPON_MODIFIER_LABELS[display_name]
 
 	if not definition then
-		return fallback_weapon_modifier_label(display_name)
+		return compact_weapon_modifier_label(fallback_weapon_modifier_label(display_name))
 	end
 
 	local localization_id = definition[1]
@@ -859,14 +872,10 @@ local function localized_weapon_modifier_label(mod, display_name)
 	local localized_ok, localized = pcall(mod.localize, mod, localization_id)
 
 	if not localized_ok or type(localized) ~= "string" or localized == "" or localized == localization_id or localized == "<" .. localization_id .. ">" then
-		return fallback
+		return compact_weapon_modifier_label(fallback)
 	end
 
-	localized = single_line_text(localized)
-
-	-- AMMO is the only native four-character label that routinely wraps in
-	-- the narrow two-column stat block. Keep the compact label single-line.
-	return localized == "AMMO" and "AMM" or localized
+	return compact_weapon_modifier_label(localized)
 end
 
 local function unique_weapon_modifier_label(label, used_labels)
@@ -1043,7 +1052,7 @@ local function quick_look_card_lowest_stat_text(mod, content, parenthesized)
 	for index = 1, 5 do
 		local record = projected_records[index]
 		local quick_look_card_title = content["qlc_stats_title_" .. index]
-		local title = type(quick_look_card_title) == "string" and quick_look_card_title ~= "" and quick_look_card_title or record and record.title
+		local title = type(quick_look_card_title) == "string" and quick_look_card_title ~= "" and compact_weapon_modifier_label(quick_look_card_title) or record and record.title
 		local numeric_value = record and record.value
 
 		if type(title) == "string" and title ~= "" and numeric_value then

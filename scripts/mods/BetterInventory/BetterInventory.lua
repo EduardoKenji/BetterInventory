@@ -29,6 +29,7 @@ local ItemGridViewBaseDefinitions = require("scripts/ui/views/item_grid_view_bas
 local InventoryWeaponsView = require("scripts/ui/views/inventory_weapons_view/inventory_weapons_view")
 local ViewElementGrid = require("scripts/ui/view_elements/view_element_grid/view_element_grid")
 local ItemBlueprintGenerator = require("scripts/ui/view_content_blueprints/item_blueprints")
+local Text = require("scripts/utilities/ui/text")
 local Layout = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout")
 local Features = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_features"), "BetterInventory_features.lua")
 local CurioAcquisition = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_acquisition"), "BetterInventory_curio_acquisition.lua")
@@ -136,6 +137,16 @@ local function mark_character_overview_requirement_met(widget)
 end
 
 local function configure_character_overview_weapon_passes(blueprint)
+	local weapon_name_left = 0
+
+	for _, pass in ipairs(blueprint and blueprint.pass_template or {}) do
+		if pass.style_id == "display_name" and pass.style and pass.style.offset then
+			weapon_name_left = pass.style.offset[1] or 0
+
+			break
+		end
+	end
+
 	for _, pass in ipairs(blueprint and blueprint.pass_template or {}) do
 		local style_id = pass.style_id
 		local style = pass.style
@@ -156,19 +167,19 @@ local function configure_character_overview_weapon_passes(blueprint)
 			if string.find(style_id, "better_inventory_weapon_perk_", 1, true) == 1 or string.find(style_id, "better_inventory_blessing_", 1, true) == 1 then
 				-- Overview-only compact pass: use the reserved quality/mark row and
 				-- keep both blessing rows clear of the native frame overlay.
-				move_up = 10
+				move_up = 9
 				foreground = true
+				style.offset[1] = math.max(style.offset[1] or 0, weapon_name_left)
 			elseif string.find(style_id, "better_inventory_weapon_modifier_", 1, true) == 1 or string.sub(style_id, 1, 4) == "qlc_" then
-				move_down = 3
 				foreground = true
 			elseif style_id == "better_inventory_quick_look_card_dump_stat" then
-				move_down = 9
+				move_down = 6
 				foreground = true
 			elseif style_id == "item_level" then
 				-- The weapon item-level pass is top-aligned (despite its
-				-- bottom-aligned text), so a smaller positive adjustment moves it
-				-- upward. Reduce the previous +9 adjustment by 2 px.
-				move_down = 7
+				-- bottom-aligned text), so reducing this positive adjustment moves
+				-- it upward.
+				move_down = 4
 				foreground = true
 			end
 
@@ -214,9 +225,9 @@ local function move_character_overview_weapon_icon(blueprint)
 			-- Y offset raises them; retain the opposite adjustment for a blueprint
 			-- that supplies a bottom-aligned icon style.
 			if style.vertical_alignment == "bottom" then
-				style.offset[2] = (style.offset[2] or 0) + 2
+				style.offset[2] = (style.offset[2] or 0) + 6
 			else
-				style.offset[2] = (style.offset[2] or 0) - 2
+				style.offset[2] = (style.offset[2] or 0) - 6
 			end
 
 			return
@@ -323,6 +334,24 @@ local function character_overview_curio_blueprint()
 		character_overview = true,
 	})
 
+	local curio_font_scale = math.max(50, math.min(150, tonumber(mod:get("character_overview_curio_font_size_percent")) or 110)) / 100
+	local curio_name_mode = mod:get("character_overview_curio_name_mode")
+
+	if curio_name_mode ~= "one_line" and curio_name_mode ~= "two_lines" then
+		curio_name_mode = mod:get("character_overview_show_curio_names") == true and "one_line" or "none"
+	end
+
+	local curio_name_line_limit = curio_name_mode == "two_lines" and 2 or curio_name_mode == "one_line" and 1 or 0
+	local show_curio_name = curio_name_line_limit > 0
+
+	for index = 1, #blueprint.pass_template do
+		local style = blueprint.pass_template[index].style
+
+		if style and type(style.font_size) == "number" then
+			style.font_size = math.max(1, math.floor(style.font_size * curio_font_scale + 0.5))
+		end
+	end
+
 	local configured_init = blueprint.init
 
 	blueprint.init = function(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
@@ -339,6 +368,7 @@ local function character_overview_curio_blueprint()
 	local sub_display_name = nil
 	local rarity_name = nil
 	local item_level = nil
+	local curio_stat_passes = {}
 
 	for index = 1, #blueprint.pass_template do
 		local pass = blueprint.pass_template[index]
@@ -353,6 +383,46 @@ local function character_overview_curio_blueprint()
 			rarity_name = pass
 		elseif pass.style_id == "item_level" then
 			item_level = pass
+		elseif type(pass.style_id) == "string" then
+			local curio_stat_index = tonumber(string.match(pass.style_id, "^better_inventory_curio_stat_(%d+)$"))
+
+			if curio_stat_index then
+				curio_stat_passes[curio_stat_index] = pass
+			end
+		end
+	end
+
+	local primary_curio_style = curio_stat_passes[1] and curio_stat_passes[1].style
+	local curio_name_font_size = primary_curio_style and primary_curio_style.font_size or math.max(1, math.floor(16 * curio_font_scale + 0.5))
+	-- Reserve selected title lines plus a fixed gap before all four stats.
+	local curio_name_block_height = curio_name_font_size * curio_name_line_limit + 11
+
+	if show_curio_name and display_name and display_name.style then
+		display_name.visibility_function = function(content)
+			return content and type(content.display_name) == "string" and content.display_name ~= ""
+		end
+		display_name.style.horizontal_alignment = "left"
+		display_name.style.vertical_alignment = "top"
+		display_name.style.text_horizontal_alignment = "left"
+		display_name.style.text_vertical_alignment = "top"
+		display_name.style.word_wrap = false
+		display_name.style.font_size = curio_name_font_size
+		display_name.style.offset = {
+			16,
+			7,
+			12,
+		}
+		display_name.style.size = {
+			math.max(40, card_width - 56),
+			curio_name_block_height,
+		}
+
+		for index = 1, 4 do
+			local stat_style = curio_stat_passes[index] and curio_stat_passes[index].style
+
+			if stat_style and stat_style.offset then
+				stat_style.offset[2] = (stat_style.offset[2] or 0) + curio_name_block_height
+			end
 		end
 	end
 
@@ -374,12 +444,80 @@ local function character_overview_curio_blueprint()
 		}
 	end
 
-	for _, pass in ipairs({ display_name, sub_display_name, rarity_name }) do
+	if not show_curio_name and display_name then
+		display_name.visibility_function = function()
+			return false
+		end
+	end
+
+	for _, pass in ipairs({ sub_display_name, rarity_name }) do
 		if pass then
 			pass.visibility_function = function()
 				return false
 			end
 		end
+	end
+
+	local function fit_curio_name(widget, ui_renderer)
+		local style = show_curio_name and widget and widget.style and widget.style.display_name
+		local content = widget and widget.content
+
+		if style and content then
+			style.font_size = curio_name_font_size
+
+			local displayed_name = content.display_name
+
+			if type(displayed_name) == "string" and displayed_name ~= "" and displayed_name ~= content.better_inventory_fitted_curio_name then
+				content.better_inventory_full_display_name = string.gsub(displayed_name, "[\r\n]+", " ")
+			end
+
+			local full_name = content.better_inventory_full_display_name or displayed_name
+			local maximum_width = style.size and style.size[1]
+
+			if ui_renderer and type(full_name) == "string" and full_name ~= "" and type(maximum_width) == "number" then
+				local minimum_font_size = 8
+				local wrapped_rows
+
+				while style.font_size > minimum_font_size do
+					wrapped_rows = Text.word_wrap(ui_renderer, full_name, style, maximum_width)
+
+					if not wrapped_rows or #wrapped_rows <= curio_name_line_limit then
+						break
+					end
+
+					style.font_size = style.font_size - 1
+				end
+
+				wrapped_rows = Text.word_wrap(ui_renderer, full_name, style, maximum_width)
+
+				local fitted_name
+
+				if wrapped_rows and #wrapped_rows <= curio_name_line_limit then
+					fitted_name = table.concat(wrapped_rows, "\n")
+				elseif curio_name_line_limit == 1 then
+					fitted_name = Text.crop_text_width(ui_renderer, full_name, style, maximum_width)
+				else
+					local fitted_rows = {}
+
+					for index = 1, curio_name_line_limit do
+						fitted_rows[index] = wrapped_rows and wrapped_rows[index] or ""
+					end
+
+					fitted_rows[curio_name_line_limit] = Text.crop_text_width(ui_renderer, fitted_rows[curio_name_line_limit] .. "…", style, maximum_width)
+					fitted_name = table.concat(fitted_rows, "\n")
+				end
+
+				content.display_name = fitted_name
+				content.better_inventory_fitted_curio_name = fitted_name
+			end
+		end
+	end
+
+	local overview_init = blueprint.init
+
+	blueprint.init = function(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
+		overview_init(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
+		fit_curio_name(widget, ui_renderer)
 	end
 
 	if item_level and item_level.style then
@@ -410,6 +548,7 @@ local function character_overview_curio_blueprint()
 		end
 
 		mark_character_overview_requirement_met(widget)
+		fit_curio_name(widget, ui_renderer)
 
 		local slot = element and element.slot
 		local current_item = slot and parent.equipped_item_in_slot and parent:equipped_item_in_slot(slot.name)
@@ -707,6 +846,9 @@ local function refresh_option_dependencies()
 	set_option_enabled(option_dependency_entries.global_store_compact_character_names, global_store_layout_enabled, global_store_reason)
 	set_option_enabled(option_dependency_entries.global_store_single_column_modifier_horizontal_position, global_store_native_enabled, global_store_integration_reason)
 	set_option_enabled(option_dependency_entries.global_store_single_column_modifier_vertical_position, global_store_native_enabled, global_store_integration_reason)
+	local character_overview_curio_enabled = mod:get("enable_character_overview_curio_details") ~= false
+	set_option_enabled(option_dependency_entries.character_overview_curio_name_mode, character_overview_curio_enabled, mod:localize("option_requires_character_overview_curio_details"))
+	set_option_enabled(option_dependency_entries.character_overview_curio_font_size_percent, character_overview_curio_enabled, mod:localize("option_requires_character_overview_curio_details"))
 	set_option_enabled(option_dependency_entries.weapon_perk_compression, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
 	set_option_enabled(option_dependency_entries.show_weapon_perk_rank_symbols, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
 	set_option_enabled(option_dependency_entries.weapon_perk_rank_icon_size, weapon_rank_symbols_enabled, mod:localize("option_requires_rank_symbols"))
@@ -885,6 +1027,8 @@ local function bind_option_dependencies(options_templates)
 		"global_store_compact_character_names",
 		"global_store_single_column_modifier_horizontal_position",
 		"global_store_single_column_modifier_vertical_position",
+		"character_overview_curio_name_mode",
+		"character_overview_curio_font_size_percent",
 		"weapon_perk_compression",
 		"show_weapon_perk_rank_symbols",
 		"weapon_perk_rank_icon_size",
@@ -1083,6 +1227,16 @@ function mod.on_enabled()
 
 	migrate_grid_column_settings()
 
+	-- Replace the unreleased Curio-name checkboxes with one mode selector while
+	-- preserving the currently enabled one-line presentation for test profiles.
+	if not mod:get("_character_overview_curio_name_mode_v1_migrated") then
+		if mod:get("character_overview_show_curio_names") == true then
+			mod:set("character_overview_curio_name_mode", "one_line")
+		end
+
+		mod:set("_character_overview_curio_name_mode_v1_migrated", true)
+	end
+
 	if not mod:get("_curio_compression_mode_v1_migrated") then
 		local previous_compact_setting = mod:get("compact_curio_stat_text")
 
@@ -1170,7 +1324,7 @@ function mod.on_setting_changed(setting_id)
 		end
 	end
 
-	if setting_id == "enable_grid_layout" or setting_id == "melee_columns" or setting_id == "ranged_columns" or setting_id == "curio_columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "weapon_extra_width_column_threshold" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_hadron_single_column_mirror" or setting_id == "enable_armoury_requisition_grid" or setting_id == "enable_armoury_single_column_mirror" or setting_id == "enable_armoury_requisition_sorting_panel" or setting_id == "brighten_armoury_item_levels" or setting_id == "three_column_weapon_name_font_size" or setting_id == "expand_armoury_requisition_window" or setting_id == "enable_global_store_integration" or setting_id == "enable_global_store_grid" or setting_id == "enable_global_store_sorting_panel" or setting_id == "global_store_character_photo_size_percent" or setting_id == "global_store_price_row_padding" or setting_id == "global_store_character_info_gap" or setting_id == "global_store_character_class_icon_size" or setting_id == "global_store_character_name_font_size" or setting_id == "global_store_compact_character_names" or setting_id == "global_store_single_column_modifier_horizontal_position" or setting_id == "global_store_single_column_modifier_vertical_position" or setting_id == "enable_character_overview_melee_mirror" or setting_id == "enable_character_overview_ranged_mirror" or setting_id == "enable_character_overview_curio_details" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "single_column_blessing_icons_on_right" or setting_id == "curio_display_profile" or setting_id == "enable_inventory_options_panel_prototype" or setting_id == "enable_experimental_quick_discard" or setting_id == "quick_discard_mode" or setting_id == "quick_discard_protect_high_level_curios" or setting_id == "enable_automatic_curio_acquisition" or automatic_curio_setting or setting_id == "enable_quick_look_card_single_column_integration" or setting_id == "enable_quick_look_card_grid_integration" or setting_id == "quick_look_card_grid_stat_position" then
+	if setting_id == "enable_grid_layout" or setting_id == "melee_columns" or setting_id == "ranged_columns" or setting_id == "curio_columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "weapon_extra_width_column_threshold" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_hadron_single_column_mirror" or setting_id == "enable_armoury_requisition_grid" or setting_id == "enable_armoury_single_column_mirror" or setting_id == "enable_armoury_requisition_sorting_panel" or setting_id == "brighten_armoury_item_levels" or setting_id == "three_column_weapon_name_font_size" or setting_id == "expand_armoury_requisition_window" or setting_id == "enable_global_store_integration" or setting_id == "enable_global_store_grid" or setting_id == "enable_global_store_sorting_panel" or setting_id == "global_store_character_photo_size_percent" or setting_id == "global_store_price_row_padding" or setting_id == "global_store_character_info_gap" or setting_id == "global_store_character_class_icon_size" or setting_id == "global_store_character_name_font_size" or setting_id == "global_store_compact_character_names" or setting_id == "global_store_single_column_modifier_horizontal_position" or setting_id == "global_store_single_column_modifier_vertical_position" or setting_id == "enable_character_overview_melee_mirror" or setting_id == "enable_character_overview_ranged_mirror" or setting_id == "enable_character_overview_curio_details" or setting_id == "character_overview_curio_name_mode" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "single_column_blessing_icons_on_right" or setting_id == "curio_display_profile" or setting_id == "enable_inventory_options_panel_prototype" or setting_id == "enable_experimental_quick_discard" or setting_id == "quick_discard_mode" or setting_id == "quick_discard_protect_high_level_curios" or setting_id == "enable_automatic_curio_acquisition" or automatic_curio_setting or setting_id == "enable_quick_look_card_single_column_integration" or setting_id == "enable_quick_look_card_grid_integration" or setting_id == "quick_look_card_grid_stat_position" then
 		refresh_option_dependencies()
 	end
 

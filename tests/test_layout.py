@@ -1131,6 +1131,45 @@ def main() -> None:
         ]
         for index in range(1, 6)
     ) == ("80", "80", "80", "80", "60")
+
+    # Ammo stays compact in every managed blueprint, including views that use
+    # the shared native single-column formatter (inventory, vendors, Hadron,
+    # GlobalStore, and character overview).
+    ammo_modifier_element = lua.eval(
+        """
+        {
+            test_display_name = "Ammo Weapon",
+            test_sub_display_name = "Mk I",
+            item = {
+                item_type = "WEAPON_RANGED",
+                expertise = 260,
+                projected_values = { 60, 80, 80, 80, 80 },
+                modifier_display_names = {
+                    "loc_stats_display_ammo_stat",
+                    "loc_stats_display_warp_resist_stat",
+                    "loc_stats_display_cleave_damage_stat",
+                    "loc_stats_display_defense_stat",
+                    "loc_stats_display_finesse_stat"
+                }
+            }
+        }
+        """
+    )
+    ammo_modifier_widget = lua.table_from(
+        {"content": lua.table_from({}), "style": lua.table_from(native_modifier_styles)}
+    )
+    native_blueprint.init(
+        None,
+        ammo_modifier_widget,
+        ammo_modifier_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        native_blueprint,
+    )
+    assert ammo_modifier_widget.content.better_inventory_weapon_modifier_title_1 == "AMM"
+
     standalone_low_title_pass = blueprint_pass(
         native_blueprint, "better_inventory_weapon_modifier_title_5"
     )
@@ -1543,6 +1582,41 @@ def main() -> None:
     assert globals_.preview_stats_change_count == projected_calls + 1
     assert qlc_dump_pass.visibility_function(qlc_dump_content) is True
     assert globals_.preview_stats_change_count == projected_calls + 1
+
+    # Quick Look Card may provide raw English titles. Its AMMO title must pass
+    # through the same shared compaction before BetterInventory renders it.
+    qlc_ammo_content = lua.eval(
+        """
+        {
+            element = {
+                item = {
+                    item_type = "WEAPON_RANGED",
+                    expertise = 260,
+                    projected_values = { 50, 80, 80, 80, 80 },
+                    modifier_display_names = {
+                        "loc_stats_display_ammo_stat",
+                        "loc_stats_display_warp_resist_stat",
+                        "loc_stats_display_cleave_damage_stat",
+                        "loc_stats_display_defense_stat",
+                        "loc_stats_display_finesse_stat"
+                    }
+                }
+            },
+            qlc_stats_title_1 = "AMMO",
+            qlc_stats_value_1 = "50",
+            qlc_stats_title_2 = "WRES",
+            qlc_stats_value_2 = "80",
+            qlc_stats_title_3 = "CLVD",
+            qlc_stats_value_3 = "80",
+            qlc_stats_title_4 = "DEF",
+            qlc_stats_value_4 = "80",
+            qlc_stats_title_5 = "FIN",
+            qlc_stats_value_5 = "80"
+        }
+        """
+    )
+    assert qlc_dump_pass.visibility_function(qlc_ammo_content) is True
+    assert qlc_ammo_content.better_inventory_quick_look_card_dump_stat == "AMM 50"
 
     qlc_equal_content = lua.eval(
         """
