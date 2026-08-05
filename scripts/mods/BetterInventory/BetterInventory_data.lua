@@ -1483,10 +1483,8 @@ return {
 						},
 					},
 					{
-						-- Same setting ID as the Name It integration copy. DMF reads both
-						-- rows from one stored value, keeping them synchronized live.
-						setting_id = "name_it_force_curio_name_in_detailed_mode",
-						tooltip = "name_it_force_curio_name_in_detailed_mode_tooltip",
+						setting_id = "curio_content_name_it_curio_name",
+						tooltip = "curio_content_name_it_curio_name_tooltip",
 						type = "checkbox",
 						default_value = true,
 					},

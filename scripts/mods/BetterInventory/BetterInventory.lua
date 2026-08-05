@@ -988,9 +988,8 @@ local function refresh_option_dependencies()
 	local name_it_curio_name_enabled = name_it_override_enabled and detailed_curio_profile
 	local name_it_curio_name_reason = not detailed_curio_profile and mod:localize("option_requires_detailed_curio_profile") or mod:localize("option_requires_name_it_override")
 
-	for _, entry in ipairs(option_dependency_entries.name_it_force_curio_name_in_detailed_mode_entries or {}) do
-		set_option_enabled(entry, name_it_curio_name_enabled, name_it_curio_name_reason)
-	end
+	set_option_enabled(option_dependency_entries.name_it_force_curio_name_in_detailed_mode, name_it_curio_name_enabled, name_it_curio_name_reason)
+	set_option_enabled(option_dependency_entries.curio_content_name_it_curio_name, name_it_curio_name_enabled, name_it_curio_name_reason)
 
 	for _, setting_id in ipairs({
 		"curio_information_width_percent",
@@ -1173,9 +1172,7 @@ local function bind_option_dependencies(options_templates)
 		"weapon_modifier_lowest_color_opacity",
 		"enable_name_it_override",
 		"name_it_force_curio_name_in_detailed_mode",
-		-- Intentional duplicate: Curio content and Name It integration expose
-		-- synchronized rows backed by one DMF setting ID.
-		"name_it_force_curio_name_in_detailed_mode",
+		"curio_content_name_it_curio_name",
 		"curio_information_width_percent",
 		"curio_preview_height_percent",
 		"inventory_options_panel_width",
@@ -1236,7 +1233,6 @@ local function bind_option_dependencies(options_templates)
 
 	option_dependency_entries = {
 		automatic_curio_character_entries = {},
-		name_it_force_curio_name_in_detailed_mode_entries = {},
 	}
 
 	for i = 1, #settings do
@@ -1264,9 +1260,7 @@ local function bind_option_dependencies(options_templates)
 			setting_id = table.remove(setting_id, 1)
 		end
 
-		if setting_id == "name_it_force_curio_name_in_detailed_mode" then
-			option_dependency_entries.name_it_force_curio_name_in_detailed_mode_entries[#option_dependency_entries.name_it_force_curio_name_in_detailed_mode_entries + 1] = entry
-		elseif setting_id then
+		if setting_id then
 			option_dependency_entries[setting_id] = entry
 		elseif type(entry) == "table" and entry._better_inventory_curio_character_slot_index then
 			option_dependency_entries.automatic_curio_character_entries[#option_dependency_entries.automatic_curio_character_entries + 1] = entry
@@ -1325,6 +1319,19 @@ local function migrate_grid_column_settings()
 end
 
 function mod.on_enabled()
+	-- DMF requires unique setting IDs. Keep Curio content's mirror row aligned
+	-- with the established Name It setting, which remains authoritative across
+	-- upgrades and preserves the user's existing choice.
+	local name_it_curio_name_value = mod:get("name_it_force_curio_name_in_detailed_mode")
+
+	if name_it_curio_name_value == nil then
+		name_it_curio_name_value = true
+	end
+
+	if mod:get("curio_content_name_it_curio_name") ~= name_it_curio_name_value then
+		mod:set("curio_content_name_it_curio_name", name_it_curio_name_value, false)
+	end
+
 	-- DMF preserves saved values when a default changes. Apply the new compact
 	-- card defaults once for installs that already initialized the old values;
 	-- all three settings remain freely configurable afterward.
@@ -1425,6 +1432,12 @@ end
 function mod.on_setting_changed(setting_id)
 	local color_change = color_target_by_setting_id[setting_id]
 	local automatic_curio_setting = type(setting_id) == "string" and string.sub(setting_id, 1, 16) == "automatic_curio_"
+
+	if setting_id == "name_it_force_curio_name_in_detailed_mode" then
+		mod:set("curio_content_name_it_curio_name", mod:get(setting_id), false)
+	elseif setting_id == "curio_content_name_it_curio_name" then
+		mod:set("name_it_force_curio_name_in_detailed_mode", mod:get(setting_id), false)
+	end
 
 	if color_change then
 		if color_change.is_preset then

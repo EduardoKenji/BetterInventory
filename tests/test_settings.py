@@ -39,6 +39,7 @@ def main() -> None:
 			weapon_modifier_lowest_color_opacity = 80,
 			enable_name_it_override = true,
 			name_it_force_curio_name_in_detailed_mode = true,
+			curio_content_name_it_curio_name = false,
 			enable_hadron_entreat_grid = true,
 			enable_hadron_single_column_mirror = true,
 			enable_armoury_requisition_grid = true,
@@ -552,6 +553,7 @@ def main() -> None:
     assert settings.blessing_icon_size == 36
     assert settings.weapon_perk_rank_icon_size == 17
     assert settings.weapon_blessing_display_mode == "icons"
+    assert settings.curio_content_name_it_curio_name is True
 
     settings._grid_columns_v1_migrated = False
     settings.columns = 2
@@ -743,7 +745,7 @@ def main() -> None:
 		"weapon_modifier_lowest_color_opacity",
 		"enable_name_it_override",
 		"name_it_force_curio_name_in_detailed_mode",
-		"name_it_force_curio_name_in_detailed_mode",
+		"curio_content_name_it_curio_name",
 		"curio_information_width_percent",
 		"curio_preview_height_percent",
 		"inventory_options_panel_width",
@@ -829,9 +831,8 @@ def main() -> None:
     globals_.captured_options_hook(globals_.test_dmf, options_templates)
     entries_by_id = dict(zip(option_ids, entries))
     name_it_curio_name_entries = [
-        entry
-        for option_id, entry in zip(option_ids, entries)
-        if option_id == "name_it_force_curio_name_in_detailed_mode"
+        entries_by_id["name_it_force_curio_name_in_detailed_mode"],
+        entries_by_id["curio_content_name_it_curio_name"],
     ]
 
     assert entries_by_id["melee_columns"].disabled is False
@@ -885,6 +886,12 @@ def main() -> None:
     settings.enable_name_it_override = True
     mod.on_setting_changed("enable_name_it_override")
     assert all(entry.disabled is False for entry in name_it_curio_name_entries)
+    settings.name_it_force_curio_name_in_detailed_mode = False
+    mod.on_setting_changed("name_it_force_curio_name_in_detailed_mode")
+    assert settings.curio_content_name_it_curio_name is False
+    settings.curio_content_name_it_curio_name = True
+    mod.on_setting_changed("curio_content_name_it_curio_name")
+    assert settings.name_it_force_curio_name_in_detailed_mode is True
     settings.curio_display_profile = "primary"
     mod.on_setting_changed("curio_display_profile")
     assert all(entry.disabled is True for entry in name_it_curio_name_entries)
@@ -1362,6 +1369,7 @@ def main() -> None:
     data = lua.execute(DATA_PATH.read_text(encoding="utf-8"))
     localization = lua.execute(LOCALIZATION_PATH.read_text(encoding="utf-8"))
     defaults = {}
+    setting_ids = set()
 
     assert data.version == "1.7.0"
     assert (
@@ -1381,6 +1389,8 @@ def main() -> None:
             widget = widgets[index]
             setting_id = widget.setting_id
 
+            assert setting_id not in setting_ids, f"Duplicate setting_id: {setting_id}"
+            setting_ids.add(setting_id)
             assert localization[setting_id] is not None, setting_id
 
             if widget.default_value is not None:
@@ -1550,8 +1560,8 @@ def main() -> None:
         curio_content_group.sub_widgets[index].setting_id
         for index in range(1, len(curio_content_group.sub_widgets) + 1)
     ]
-    assert curio_content_ids.count("name_it_force_curio_name_in_detailed_mode") == 1
-    assert curio_content_ids.index("name_it_force_curio_name_in_detailed_mode") == (
+    assert curio_content_ids.count("curio_content_name_it_curio_name") == 1
+    assert curio_content_ids.index("curio_content_name_it_curio_name") == (
         curio_content_ids.index("curio_display_profile") + 1
     )
     enhanced_descriptions_group = next(
