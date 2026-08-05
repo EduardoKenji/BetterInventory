@@ -295,6 +295,18 @@ def main() -> None:
 
     # The name popup exposes and focuses a real text field, then reserves room
     # for it between the title/description and the three action buttons.
+    detached_input_widget = lua.table_from(
+        {"content": lua.table_from({"visible": False, "is_writing": False})}
+    )
+    detached_handler = lua.table_from(
+        {
+            "_widgets_by_name": lua.table_from(
+                {"better_inventory_name_input": detached_input_widget}
+            )
+        }
+    )
+    globals_.captured_safe_hooks.update(detached_handler)
+
     input_widget = lua.table_from(
         {"content": lua.table_from({"visible": False, "is_writing": False})}
     )
@@ -327,6 +339,7 @@ def main() -> None:
     globals_.captured_safe_hooks.update(popup_handler)
     assert customization.show_name_editor(mod, context, lua.table_from({})) is True
     popup = globals_.captured_popup
+    assert detached_input_widget.content.visible is False
     assert input_widget.content.visible is True
     assert input_widget.content.is_writing is True
     assert [popup.options[index].text for index in range(1, 4)] == [

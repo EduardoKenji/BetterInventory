@@ -673,7 +673,10 @@ ItemCustomization.install = function(mod, InventoryWeaponsView, layout)
 	end)
 
 	mod:hook_safe("ConstantElementPopupHandler", "update", function(handler)
-		input_widget = input_widget or handler._widgets_by_name and handler._widgets_by_name[INPUT_WIDGET_ID]
+		-- Name It reinitializes the shared popup handler during on_all_mods_loaded,
+		-- replacing every widget instance. Never retain the detached pre-init
+		-- widget: always follow the instance the handler currently draws.
+		input_widget = handler._widgets_by_name and handler._widgets_by_name[INPUT_WIDGET_ID] or nil
 		if input_widget and input_widget.content then input_widget.content.visible = show_input_field end
 	end)
 
