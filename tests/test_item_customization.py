@@ -176,6 +176,7 @@ def main() -> None:
         "Cancel",
     ]
     assert all(popup.options[index].no_localization is True for index in range(1, 4))
+    assert popup.options[3].hotkey == "back"
 
     header_blueprint = popup.grid_blueprints.color_header
     header_widget = lua.table_from(
@@ -367,6 +368,7 @@ def main() -> None:
         "Reset to default",
         "Cancel",
     ]
+    assert popup.options[3].hotkey == "back"
     popup_height = globals_.captured_hooks._update_popup_text_height(
         lua.eval("function() return 100 end"), popup_handler
     )

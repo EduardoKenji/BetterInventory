@@ -200,13 +200,19 @@ local function popup(context)
 end
 
 local function literal_button(text, callback, small, close_on_pressed)
-	return {
+	local button = {
 		text = text,
 		no_localization = true,
 		template_type = small and "terminal_button_small" or nil,
 		close_on_pressed = close_on_pressed ~= false,
 		callback = callback,
 	}
+
+	if text == "Cancel" then
+		button.hotkey = "back"
+	end
+
+	return button
 end
 
 local function item_from_widget(widget)
