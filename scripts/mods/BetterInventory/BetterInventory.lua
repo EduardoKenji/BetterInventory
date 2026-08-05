@@ -52,7 +52,10 @@ local GLOBAL_STORE_SERVICE = "get_all_characters_store_custom"
 local GLOBAL_STORE_GRID_CONFIGURATION = {
 	blueprint_key = "store_item",
 	global_store = true,
-	maximum_columns = 5,
+	-- GlobalStore is a vendor view, not an inventory tab. Keep its compact
+	-- cards capped at three columns even when a legacy profile still contains
+	-- a four- or five-column `columns` value.
+	maximum_columns = 3,
 	store_item = true,
 }
 local GLOBAL_STORE_NATIVE_CONFIGURATION = {

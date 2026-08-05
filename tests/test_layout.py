@@ -817,6 +817,21 @@ def main() -> None:
     )
     assert same_lua_value(vendor_blueprint.update, globals_.sentinel_update)
 
+    # Vendor views must remain capped at three columns even if an older
+    # profile still carries the retired global five-column value. Dedicated
+    # Melee/Ranged/Curios settings are intentionally not consulted here.
+    mod.settings.melee_columns = 5
+    mod.settings.ranged_columns = 5
+    mod.settings.curio_columns = 5
+    global_store_capped_configuration = lua.table_from(
+        {"maximum_columns": 3, "store_item": True, "global_store": True}
+    )
+    capped_global_store_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    capped_global_store_size = layout.configure_item_blueprint(
+        mod, capped_global_store_blueprint, 596, global_store_capped_configuration
+    )
+    assert (capped_global_store_size[1], capped_global_store_size[2]) == (192, 144)
+
     global_store_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     global_store_size = layout.configure_item_blueprint(
         mod, global_store_blueprint, 596, global_store_configuration

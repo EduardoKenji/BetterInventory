@@ -522,7 +522,7 @@ local localization = {
 		en = "Use BetterInventory grid cards",
 	},
 	enable_global_store_grid_tooltip = {
-		en = "Uses BetterInventory's responsive grid cards in GlobalStore's Multi-Operative Supply. The layout follows the global two-to-five column setting; three or more columns reserve an extra character-information row without stretching weapon art.",
+		en = "Uses BetterInventory's responsive grid cards in GlobalStore's Multi-Operative Supply. The view is capped at three columns; the Melee, Ranged and Curios column settings only apply to inventory tabs. Three columns reserve an extra character-information row without stretching weapon art.",
 	},
 	enable_global_store_sorting_panel = {
 		en = "Show GlobalStore sorting widget",
@@ -534,7 +534,7 @@ local localization = {
 		en = "GlobalStore character photo size (%%)",
 	},
 	global_store_character_photo_size_percent_tooltip = {
-		en = "Controls the GlobalStore character photo size in two-to-five-column cards (50-125%%, with 110%% as the default). The character row remains below the price and item-level row while its reserved height stays fixed, so changing this value does not change card dimensions or move the price.",
+		en = "Controls the GlobalStore character photo size in two- and three-column cards (50-125%%, with 110%% as the default). The character row remains below the price and item-level row while its reserved height stays fixed, so changing this value does not change card dimensions or move the price.",
 	},
 	global_store_price_row_padding = {
 		en = "GlobalStore price/item-level row padding",
@@ -546,25 +546,25 @@ local localization = {
 		en = "GlobalStore character info horizontal gap",
 	},
 	global_store_character_info_gap_tooltip = {
-		en = "Controls the horizontal space between the GlobalStore character photo and the class icon/name. The value is in pixels and applies to three-to-five-column cards.",
+		en = "Controls the horizontal space between the GlobalStore character photo and the class icon/name. The value is in pixels and applies to two- and three-column cards.",
 	},
 	global_store_character_class_icon_size = {
 		en = "GlobalStore class icon size",
 	},
 	global_store_character_class_icon_size_tooltip = {
-		en = "Controls the GlobalStore class icon font size in two-to-five-column cards (8-24 px, default 16). The character row and card dimensions stay fixed.",
+		en = "Controls the GlobalStore class icon font size in two- and three-column cards (8-24 px, default 16). The character row and card dimensions stay fixed.",
 	},
 	global_store_character_name_font_size = {
 		en = "GlobalStore character name font size",
 	},
 	global_store_character_name_font_size_tooltip = {
-		en = "Controls the GlobalStore character name font size in two-to-five-column cards (8-20 px, default 16). The character row and card dimensions stay fixed.",
+		en = "Controls the GlobalStore character name font size in two- and three-column cards (8-20 px, default 16). The character row and card dimensions stay fixed.",
 	},
 	global_store_compact_character_names = {
 		en = "Compact GlobalStore character names in 4-5 columns",
 	},
 	global_store_compact_character_names_tooltip = {
-		en = "When enabled, automatically scales GlobalStore character names down as needed to keep them on one line in four- and five-column cards. Two- and three-column cards keep the configured name size. Enabled by default.",
+		en = "Retained for compatibility with older profiles. GlobalStore is capped at three columns, so this narrow-card four- and five-column behavior is not used. Enabled by default.",
 	},
 	global_store_single_column_modifier_horizontal_position = {
 		en = "GlobalStore single-column weapon modifier horizontal position (%%)",
@@ -2084,21 +2084,21 @@ zh_cn.global_store_integration_group = "Mod 集成：GlobalStore"
 zh_cn.enable_global_store_integration = "启用 GlobalStore 集成"
 zh_cn.enable_global_store_integration_tooltip = "为多干员补给启用 BetterInventory 的 GlobalStore 集成。关闭后将保持 GlobalStore 的原生卡片和排序。"
 zh_cn.enable_global_store_grid = "使用 BetterInventory 网格卡片"
-zh_cn.enable_global_store_grid_tooltip = "在 GlobalStore 的多干员补给中使用 BetterInventory 响应式网格卡片。布局遵循全局两至五列设置；三列及以上会增加角色信息行，但不会拉伸武器图像。"
+zh_cn.enable_global_store_grid_tooltip = "在 GlobalStore 的多干员补给中使用 BetterInventory 响应式网格卡片。该视图最多三列；近战、远程和珍品列数设置仅适用于库存标签页。三列会增加角色信息行，但不会拉伸武器图像。"
 zh_cn.enable_global_store_sorting_panel = "显示 GlobalStore 排序组件"
 zh_cn.enable_global_store_sorting_panel_tooltip = "在 GlobalStore 的多干员补给中添加可折叠的 BetterInventory 排序和暗潮原生排序组件。需要开启 GlobalStore 网格，默认开启。"
 zh_cn.global_store_character_photo_size_percent = "GlobalStore 角色头像大小（%%）"
-zh_cn.global_store_character_photo_size_percent_tooltip = "控制二至五列卡片中的 GlobalStore 角色头像大小（50-125%%，默认110%%）。角色信息行位于价格和物品等级行下方，预留高度保持不变，因此调整此值不会改变卡片尺寸或使价格移动。"
+zh_cn.global_store_character_photo_size_percent_tooltip = "控制二至三列卡片中的 GlobalStore 角色头像大小（50-125%%，默认110%%）。角色信息行位于价格和物品等级行下方，预留高度保持不变，因此调整此值不会改变卡片尺寸或使价格移动。"
 zh_cn.global_store_price_row_padding = "GlobalStore 价格/物品等级行内边距"
 zh_cn.global_store_price_row_padding_tooltip = "控制 GlobalStore 角色信息行上方的垂直内边距。增加此值会让奥多点券和物品等级行远离角色头像，而不会改变头像大小。"
 zh_cn.global_store_character_info_gap = "GlobalStore 角色信息水平间距"
-zh_cn.global_store_character_info_gap_tooltip = "控制 GlobalStore 角色头像与职业图标/名称之间的水平间距。单位为像素，适用于三至五列卡片。"
+zh_cn.global_store_character_info_gap_tooltip = "控制 GlobalStore 角色头像与职业图标/名称之间的水平间距。单位为像素，适用于二至三列卡片。"
 zh_cn.global_store_character_class_icon_size = "GlobalStore 职业图标大小"
-zh_cn.global_store_character_class_icon_size_tooltip = "控制二至五列卡片中的 GlobalStore 职业图标字号（8-24像素，默认16）。角色信息行和卡片尺寸保持不变。"
+zh_cn.global_store_character_class_icon_size_tooltip = "控制二至三列卡片中的 GlobalStore 职业图标字号（8-24像素，默认16）。角色信息行和卡片尺寸保持不变。"
 zh_cn.global_store_character_name_font_size = "GlobalStore 角色名称字号"
-zh_cn.global_store_character_name_font_size_tooltip = "控制二至五列卡片中的 GlobalStore 角色名称字号（8-20像素，默认16）。角色信息行和卡片尺寸保持不变。"
+zh_cn.global_store_character_name_font_size_tooltip = "控制二至三列卡片中的 GlobalStore 角色名称字号（8-20像素，默认16）。角色信息行和卡片尺寸保持不变。"
 zh_cn.global_store_compact_character_names = "在4-5列中压缩 GlobalStore 角色名称"
-zh_cn.global_store_compact_character_names_tooltip = "启用后，在四列和五列卡片中根据需要自动缩小 GlobalStore 角色名称，使其保持单行。二列和三列卡片保留设定的字号。默认开启。"
+zh_cn.global_store_compact_character_names_tooltip = "为兼容旧配置而保留。GlobalStore 最多三列，因此不会使用四列和五列窄卡片行为。默认开启。"
 zh_cn.option_requires_global_store_grid = "启用 GlobalStore 网格后才能使用此选项。"
 zh_cn.option_requires_global_store_integration = "启用 GlobalStore 集成后才能使用此选项。"
 
