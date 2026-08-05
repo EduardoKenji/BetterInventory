@@ -1069,7 +1069,14 @@ def main() -> None:
         mod, armoury_native_blueprint, 596, armoury_native_configuration
     )
     assert armoury_native_size[2] >= native_size[2]
-    assert blueprint_pass(armoury_native_blueprint, "item_level").style is not None
+    armoury_native_level = blueprint_pass(armoury_native_blueprint, "item_level").style
+    assert armoury_native_level.offset[3] == 12
+    assert armoury_native_level.offset[2] == -36
+    armoury_native_stat = blueprint_pass(
+        armoury_native_blueprint, "better_inventory_weapon_modifier_title_1"
+    ).style
+    assert armoury_native_stat.offset[3] == 12
+    assert armoury_native_stat.offset[2] < armoury_native_size[2] - 34
 
     # Built-in modifier passes must exist and populate maximum-potential values
     # even when Quick Look Card contributes no blueprint passes at all.

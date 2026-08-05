@@ -1164,6 +1164,7 @@ local function add_quick_look_card_grid_pass(mod, pass_template, card_width, tex
 end
 
 local function configure_native_quick_look_card_passes(mod, pass_template, card_width, card_height, configuration)
+	local armoury_native = configuration and configuration.store_item == true and configuration.global_store ~= true
 	local font_size = numeric_setting(mod, "quick_look_card_single_column_font_size", 14, 8, 20)
 	local lowest_modifier_color = configured_text_color(mod, "weapon_modifier_lowest_color", QUICK_LOOK_CARD_HIGHLIGHT_COLOR, "weapon_modifier_lowest_color_opacity", 80)
 	local horizontal_setting = configuration and configuration.global_store and "global_store_single_column_modifier_horizontal_position" or "quick_look_card_single_column_horizontal_position"
@@ -1172,7 +1173,7 @@ local function configure_native_quick_look_card_passes(mod, pass_template, card_
 	local vertical_default = configuration and configuration.global_store and 100 or 93
 	local horizontal_percent = numeric_setting(mod, horizontal_setting, horizontal_default, 0, 100)
 	local vertical_percent = numeric_setting(mod, vertical_setting, vertical_default, 0, 100)
-	local text_z = configuration and configuration.global_store and 12 or 5
+	local text_z = configuration and (configuration.global_store or armoury_native) and 12 or 5
 	local line_height = font_size + 3
 	local row_step = line_height + 2
 	local column_step = math.max(80, math.floor(font_size * 5.72 + 0.5))
@@ -1188,6 +1189,15 @@ local function configure_native_quick_look_card_passes(mod, pass_template, card_
 	local block_height = row_step + line_height
 	local block_left = math.floor(math.max(0, card_width - block_width) * horizontal_percent * 0.01 + 0.5)
 	local block_top = math.floor(math.max(0, card_height - block_height) * vertical_percent * 0.01 + 0.5)
+
+	if armoury_native then
+		-- Armoury's native store blueprint draws a translucent footer over the
+		-- bottom 34 logical pixels. Keep the detailed stat block just above that
+		-- footer and shift it left so it does not collide with the item-level
+		-- value on the right. GlobalStore keeps its existing configurable path.
+		block_left = math.floor(math.max(0, card_width - block_width) * 0.55 + 0.5)
+		block_top = math.max(0, card_height - STORE_FOOTER_HEIGHT - 2 - block_height)
+	end
 	local positions = {
 		{ block_left, block_top },
 		{ block_left + column_step, block_top },
@@ -2830,6 +2840,7 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 	configuration = configuration or {}
 	local global_store = configuration.global_store == true
 	local store_item = configuration.store_item == true or global_store
+	local armoury_native = store_item and not global_store
 	local global_store_extra = global_store_extra_height(mod, configuration)
 	local global_store_multicolumn = global_store and global_store_extra > 0
 	local global_store_photo_size = global_store_multicolumn and global_store_character_photo_size(mod) or 34
@@ -3098,6 +3109,27 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 			global_store = global_store,
 			store_item = store_item,
 		})
+	end
+
+	if armoury_native and item_level and item_level.style then
+		-- Keep Armoury's item level above its dark price footer, matching the
+		-- readable inventory treatment without touching GlobalStore geometry.
+		item_level.style.text_color = table.clone(DEFAULT_ARMOURY_ITEM_LEVEL_COLOR)
+		item_level.style.default_color = table.clone(DEFAULT_ARMOURY_ITEM_LEVEL_COLOR)
+		item_level.style.hover_color = table.clone(DEFAULT_ARMOURY_ITEM_LEVEL_COLOR)
+		item_level.style.horizontal_alignment = "right"
+		item_level.style.vertical_alignment = "bottom"
+		item_level.style.text_horizontal_alignment = "right"
+		item_level.style.text_vertical_alignment = "bottom"
+		item_level.style.offset = {
+			-8,
+			-(STORE_FOOTER_HEIGHT + 2),
+			12,
+		}
+		item_level.style.size = {
+			card_width - 16,
+			28,
+		}
 	end
 	configure_card_content(mod, item_blueprint, {
 		native_single_column = true,
