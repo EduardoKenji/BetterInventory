@@ -69,9 +69,10 @@ local GLOBAL_STORE_NATIVE_CONFIGURATION = {
 }
 local CHARACTER_OVERVIEW_WEAPON_WIDGET_TYPE = "better_inventory_character_overview_weapon"
 local CHARACTER_OVERVIEW_CURIO_WIDGET_TYPE = "better_inventory_character_overview_curio"
+local CHARACTER_OVERVIEW_WEAPON_HEIGHT = 130
 local CHARACTER_OVERVIEW_BLUEPRINTS = type(ItemBlueprintGenerator) == "function" and ItemBlueprintGenerator({
 	600,
-	112,
+	CHARACTER_OVERVIEW_WEAPON_HEIGHT,
 }) or nil
 
 local function pack_values(...)
@@ -134,6 +135,95 @@ local function mark_character_overview_requirement_met(widget)
 	end
 end
 
+local function configure_character_overview_weapon_passes(blueprint)
+	for _, pass in ipairs(blueprint and blueprint.pass_template or {}) do
+		local style_id = pass.style_id
+		local style = pass.style
+
+		if type(style_id) == "string" and style then
+			style.offset = style.offset or {
+				0,
+				0,
+				0,
+			}
+
+			local move_up = 0
+			local move_down = 0
+			local foreground = false
+
+			-- The native overview reserves a blank quality/mark row. Reuse that
+			-- row for the first perk and pull the remaining detail rows upward.
+			if string.find(style_id, "better_inventory_weapon_perk_", 1, true) == 1 or string.find(style_id, "better_inventory_blessing_", 1, true) == 1 then
+				-- Overview-only compact pass: use the reserved quality/mark row and
+				-- keep both blessing rows clear of the native frame overlay.
+				move_up = 10
+				foreground = true
+			elseif string.find(style_id, "better_inventory_weapon_modifier_", 1, true) == 1 or string.sub(style_id, 1, 4) == "qlc_" then
+				move_down = 3
+				foreground = true
+			elseif style_id == "better_inventory_quick_look_card_dump_stat" then
+				move_down = 9
+				foreground = true
+			elseif style_id == "item_level" then
+				-- The weapon item-level pass is top-aligned (despite its
+				-- bottom-aligned text), so a smaller positive adjustment moves it
+				-- upward. Reduce the previous +9 adjustment by 2 px.
+				move_down = 7
+				foreground = true
+			end
+
+			if move_up > 0 then
+				-- Bottom-aligned passes move upward with a more positive Y offset;
+				-- top-aligned modifier passes move upward with a smaller Y offset.
+				if style.vertical_alignment == "bottom" then
+					style.offset[2] = (style.offset[2] or 0) - move_up
+				else
+					style.offset[2] = (style.offset[2] or 0) - move_up
+				end
+			end
+
+			if move_down > 0 then
+				if style.vertical_alignment == "bottom" then
+					style.offset[2] = (style.offset[2] or 0) - move_down
+				else
+					style.offset[2] = (style.offset[2] or 0) + move_down
+				end
+			end
+
+			if foreground then
+				-- The native loadout frame is drawn at a higher Z layer than the
+				-- item widget. Keep only the information passes above that frame;
+				-- the card background and weapon art remain underneath it.
+				style.offset[3] = math.max(style.offset[3] or 0, 31)
+			end
+		end
+	end
+end
+
+local function move_character_overview_weapon_icon(blueprint)
+	for _, pass in ipairs(blueprint and blueprint.pass_template or {}) do
+		if pass.style_id == "icon" and pass.style then
+			local style = pass.style
+			style.offset = style.offset or {
+				0,
+				0,
+				0,
+			}
+
+			-- Weapon icons use the card's top-aligned coordinate space. A smaller
+			-- Y offset raises them; retain the opposite adjustment for a blueprint
+			-- that supplies a bottom-aligned icon style.
+			if style.vertical_alignment == "bottom" then
+				style.offset[2] = (style.offset[2] or 0) + 2
+			else
+				style.offset[2] = (style.offset[2] or 0) - 2
+			end
+
+			return
+		end
+	end
+end
+
 local function character_overview_weapon_blueprint()
 	local native_blueprint = InventoryViewContentBlueprints.item_slot
 	local detailed_blueprint = CHARACTER_OVERVIEW_BLUEPRINTS and CHARACTER_OVERVIEW_BLUEPRINTS.item
@@ -147,6 +237,7 @@ local function character_overview_weapon_blueprint()
 	-- and geometry as BetterInventory's detailed single-column inventory card.
 	local blueprint = table.clone(detailed_blueprint)
 	blueprint.size = table.clone(native_blueprint.size or detailed_blueprint.size)
+	blueprint.size[2] = CHARACTER_OVERVIEW_WEAPON_HEIGHT
 	blueprint.pass_template = table.clone(detailed_blueprint.pass_template)
 	blueprint.init = native_blueprint.init
 	blueprint.update = native_blueprint.update
@@ -160,7 +251,10 @@ local function character_overview_weapon_blueprint()
 
 	Layout.configure_native_item_blueprint(mod, blueprint, blueprint.size[1], {
 		native_single_column = true,
+		character_overview = true,
 	})
+	configure_character_overview_weapon_passes(blueprint)
+	move_character_overview_weapon_icon(blueprint)
 
 	local configured_init = blueprint.init
 
@@ -213,6 +307,9 @@ local function character_overview_curio_blueprint()
 		193,
 		250,
 	})
+	-- Keep the overview Curio compact; its native decorative frame leaves a
+	-- relatively short readable region, so avoid expanding into the lower frame.
+	blueprint.size[2] = 250
 	blueprint.pass_template = table.clone(detailed_blueprint.pass_template)
 	blueprint.init = native_blueprint.init
 	blueprint.update = native_blueprint.update
@@ -223,6 +320,7 @@ local function character_overview_curio_blueprint()
 
 	Layout.configure_native_item_blueprint(mod, blueprint, blueprint.size[1], {
 		native_single_column = true,
+		character_overview = true,
 	})
 
 	local configured_init = blueprint.init
@@ -261,15 +359,17 @@ local function character_overview_curio_blueprint()
 	-- Keep the overview's tall Curio frame, but use the same compact landscape
 	-- icon treatment and bottom-right item level as the detailed inventory card.
 	if icon and icon.style then
+		local icon_width = math.floor(math.min(card_width - 8, 188) * 1.5 + 0.5)
+
 		icon.style.horizontal_alignment = "center"
 		icon.style.vertical_alignment = "top"
 		icon.style.size = {
-			math.min(card_width - 16, 180),
-			112,
+			icon_width,
+			math.floor(icon_width * 0.5 + 0.5),
 		}
 		icon.style.offset = {
 			0,
-			36,
+			67,
 			4,
 		}
 	end

@@ -135,7 +135,7 @@ local WEAPON_MODIFIER_VALUE_COLOR = {
 }
 local WEAPON_MODIFIER_LABELS = {
 	loc_glossary_term_melee_damage = { "weapon_modifier_melee_damage", "MELE" },
-	loc_stats_display_ammo_stat = { "weapon_modifier_ammo", "AMMO" },
+	loc_stats_display_ammo_stat = { "weapon_modifier_ammo", "AMM" },
 	loc_stats_display_ap_stat = { "weapon_modifier_penetration", "PEN" },
 	loc_stats_display_burn_stat = { "weapon_modifier_burn", "BURN" },
 	loc_stats_display_charge_speed = { "weapon_modifier_charge_rate", "CHRG" },
@@ -862,7 +862,11 @@ local function localized_weapon_modifier_label(mod, display_name)
 		return fallback
 	end
 
-	return single_line_text(localized)
+	localized = single_line_text(localized)
+
+	-- AMMO is the only native four-character label that routinely wraps in
+	-- the narrow two-column stat block. Keep the compact label single-line.
+	return localized == "AMMO" and "AMM" or localized
 end
 
 local function unique_weapon_modifier_label(label, used_labels)
@@ -2912,7 +2916,10 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 	if managed_native_card then
 		local native_configuration = table.clone(configuration)
 		native_configuration.native_single_column = true
-		item_size[2] = math.max(item_size[2] or 110, Layout.card_height(mod, native_configuration))
+
+		if not configuration.character_overview then
+			item_size[2] = math.max(item_size[2] or 110, Layout.card_height(mod, native_configuration))
+		end
 	end
 
 	item_blueprint.size = item_size
