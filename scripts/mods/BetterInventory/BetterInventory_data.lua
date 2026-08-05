@@ -923,6 +923,69 @@ return {
 				},
 			},
 			{
+				setting_id = "custom_item_name_and_colors_group",
+				type = "group",
+				sub_widgets = {
+					{
+						setting_id = "enable_custom_item_name_and_colors",
+						tooltip = "enable_custom_item_name_and_colors_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
+						setting_id = "custom_item_name_keybind",
+						tooltip = "custom_item_name_keybind_tooltip",
+						type = "dropdown",
+						default_value = "hotkey_menu_special_2",
+						options = {
+							{ text = "custom_item_editor_keybind_e", value = "hotkey_menu_special_1" },
+							{ text = "custom_item_editor_keybind_q", value = "hotkey_menu_special_2" },
+							{ text = "custom_item_editor_keybind_v", value = "hotkey_item_inspect" },
+							{ text = "custom_item_editor_keybind_r", value = "group_finder_refresh_groups" },
+							{ text = "custom_item_editor_keybind_off", value = "off" },
+						},
+					},
+					{
+						setting_id = "custom_item_name_color_keybind",
+						tooltip = "custom_item_name_color_keybind_tooltip",
+						type = "dropdown",
+						default_value = "hotkey_menu_special_1",
+						options = {
+							{ text = "custom_item_editor_keybind_e", value = "hotkey_menu_special_1" },
+							{ text = "custom_item_editor_keybind_q", value = "hotkey_menu_special_2" },
+							{ text = "custom_item_editor_keybind_v", value = "hotkey_item_inspect" },
+							{ text = "custom_item_editor_keybind_r", value = "group_finder_refresh_groups" },
+							{ text = "custom_item_editor_keybind_off", value = "off" },
+						},
+					},
+					{
+						setting_id = "custom_item_background_color_keybind",
+						tooltip = "custom_item_background_color_keybind_tooltip",
+						type = "dropdown",
+						default_value = "group_finder_refresh_groups",
+						options = {
+							{ text = "custom_item_editor_keybind_e", value = "hotkey_menu_special_1" },
+							{ text = "custom_item_editor_keybind_q", value = "hotkey_menu_special_2" },
+							{ text = "custom_item_editor_keybind_v", value = "hotkey_item_inspect" },
+							{ text = "custom_item_editor_keybind_r", value = "group_finder_refresh_groups" },
+							{ text = "custom_item_editor_keybind_off", value = "off" },
+						},
+					},
+					{
+						setting_id = "custom_item_skip_confirmation_prompts",
+						tooltip = "custom_item_skip_confirmation_prompts_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
+						setting_id = "name_it_force_curio_name_in_detailed_mode",
+						tooltip = "name_it_force_curio_name_in_detailed_mode_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+				},
+			},
+			{
 				-- Historical setting IDs are retained so existing Quick Look Card
 				-- integration preferences migrate into the standalone implementation.
 				setting_id = "quick_look_card_integration_group",
@@ -1075,69 +1138,6 @@ return {
 						-- their value after this option moves into its own section.
 						setting_id = "simplify_curio_primary_stat_text",
 						tooltip = "simplify_curio_primary_stat_text_tooltip",
-						type = "checkbox",
-						default_value = true,
-					},
-				},
-			},
-			{
-				setting_id = "custom_item_name_and_colors_group",
-				type = "group",
-				sub_widgets = {
-					{
-						setting_id = "enable_custom_item_name_and_colors",
-						tooltip = "enable_custom_item_name_and_colors_tooltip",
-						type = "checkbox",
-						default_value = true,
-					},
-					{
-						setting_id = "custom_item_name_keybind",
-						tooltip = "custom_item_name_keybind_tooltip",
-						type = "dropdown",
-						default_value = "hotkey_menu_special_2",
-						options = {
-							{ text = "custom_item_editor_keybind_e", value = "hotkey_menu_special_1" },
-							{ text = "custom_item_editor_keybind_q", value = "hotkey_menu_special_2" },
-							{ text = "custom_item_editor_keybind_v", value = "hotkey_item_inspect" },
-							{ text = "custom_item_editor_keybind_r", value = "group_finder_refresh_groups" },
-							{ text = "custom_item_editor_keybind_off", value = "off" },
-						},
-					},
-					{
-						setting_id = "custom_item_name_color_keybind",
-						tooltip = "custom_item_name_color_keybind_tooltip",
-						type = "dropdown",
-						default_value = "hotkey_menu_special_1",
-						options = {
-							{ text = "custom_item_editor_keybind_e", value = "hotkey_menu_special_1" },
-							{ text = "custom_item_editor_keybind_q", value = "hotkey_menu_special_2" },
-							{ text = "custom_item_editor_keybind_v", value = "hotkey_item_inspect" },
-							{ text = "custom_item_editor_keybind_r", value = "group_finder_refresh_groups" },
-							{ text = "custom_item_editor_keybind_off", value = "off" },
-						},
-					},
-					{
-						setting_id = "custom_item_background_color_keybind",
-						tooltip = "custom_item_background_color_keybind_tooltip",
-						type = "dropdown",
-						default_value = "group_finder_refresh_groups",
-						options = {
-							{ text = "custom_item_editor_keybind_e", value = "hotkey_menu_special_1" },
-							{ text = "custom_item_editor_keybind_q", value = "hotkey_menu_special_2" },
-							{ text = "custom_item_editor_keybind_v", value = "hotkey_item_inspect" },
-							{ text = "custom_item_editor_keybind_r", value = "group_finder_refresh_groups" },
-							{ text = "custom_item_editor_keybind_off", value = "off" },
-						},
-					},
-					{
-						setting_id = "custom_item_skip_confirmation_prompts",
-						tooltip = "custom_item_skip_confirmation_prompts_tooltip",
-						type = "checkbox",
-						default_value = true,
-					},
-					{
-						setting_id = "name_it_force_curio_name_in_detailed_mode",
-						tooltip = "name_it_force_curio_name_in_detailed_mode_tooltip",
 						type = "checkbox",
 						default_value = true,
 					},

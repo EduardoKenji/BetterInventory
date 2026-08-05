@@ -36,6 +36,14 @@ def main() -> None:
             terminal_corner_hover = function(alpha) return { alpha, 90, 100, 80 } end,
         }
 
+        Keyboard = {
+            BACKSPACE = -1,
+            strokes = {},
+            keystrokes = function() return Keyboard.strokes end,
+            button_index = function() return 0 end,
+            pressed = function() return false end,
+        }
+
         function require(path)
             if string.find(path, "slider_pass_templates", 1, true) then
                 return {
@@ -160,12 +168,32 @@ def main() -> None:
     ]
     assert all(popup.options[index].no_localization is True for index in range(1, 4))
 
+    header_blueprint = popup.grid_blueprints.color_header
+    header_widget = lua.table_from(
+        {
+            "content": lua.table_from(
+                {"hex_hotspot": lua.table_from({"on_pressed": True})}
+            ),
+            "style": lua.table_from({}),
+        }
+    )
+    header_blueprint.init(None, header_widget, popup.grid_layout[1])
+    globals_.Keyboard.strokes = lua.table_from(["#112233"])
+    header_blueprint.update(None, header_widget)
+    assert header_widget.content.hex_text == "Hex: #112233 |"
+
     slider_blueprint = popup.grid_blueprints.color_slider
     red_element = popup.grid_layout[2]
     red_widget = lua.table_from({"content": lua.table_from({}), "style": lua.table_from({})})
     slider_blueprint.init(None, red_widget, red_element)
+    assert abs(red_widget.content.slider_value - (17 / 255)) < 0.0001
     red_widget.content.slider_value = 0.5
     slider_blueprint.update(None, red_widget)
+    header_widget.content.hex_hotspot.on_pressed = False
+    header_widget.content.hex_editing = False
+    globals_.Keyboard.strokes = lua.table_from([])
+    header_blueprint.update(None, header_widget)
+    assert header_widget.content.hex_text == "Hex: #802233"
     popup.options[1].callback()
     stored_color = customization.get(mod, "gear-1").name_color
     assert stored_color[2] == 128

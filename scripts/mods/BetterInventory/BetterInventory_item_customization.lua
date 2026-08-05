@@ -294,13 +294,55 @@ local function color_picker_blueprints(width, picker)
 	local SliderPassTemplates = require("scripts/ui/pass_templates/slider_pass_templates")
 	local UIFontSettings = require("scripts/managers/ui/ui_font_settings")
 	local slider_height = 52
+	local header_height = 110
+	local gutter = 12
+	local half_width = math.floor((width - gutter) / 2)
 	local preview_text_style = table.clone(UIFontSettings.body)
+	local hex_text_style = table.clone(UIFontSettings.body)
+
+	local function color_to_hex(color)
+		return string.format("#%02X%02X%02X", color[2], color[3], color[4])
+	end
+
+	local function parse_hex(value)
+		local digits = type(value) == "string" and string.match(value, "^%s*#?([%x][%x][%x][%x][%x][%x])%s*$")
+
+		if not digits then
+			return
+		end
+
+		return tonumber(string.sub(digits, 1, 2), 16), tonumber(string.sub(digits, 3, 4), 16), tonumber(string.sub(digits, 5, 6), 16)
+	end
+
+	local function apply_hex(value)
+		local red, green, blue = parse_hex(value)
+
+		if not red then
+			return false
+		end
+
+		if picker.draft[2] ~= red or picker.draft[3] ~= green or picker.draft[4] ~= blue then
+			picker.draft[2], picker.draft[3], picker.draft[4] = red, green, blue
+			picker.revision = picker.revision + 1
+		end
+
+		picker.hex = color_to_hex(picker.draft)
+
+		return true
+	end
 
 	preview_text_style.font_size = 18
 	preview_text_style.text_horizontal_alignment = "center"
 	preview_text_style.text_vertical_alignment = "center"
 	preview_text_style.text_color = Color.white(255, true)
-	preview_text_style.offset = { 0, 0, 4 }
+	preview_text_style.offset = { half_width + gutter, 0, 4 }
+	preview_text_style.size = { half_width, header_height }
+	hex_text_style.font_size = 22
+	hex_text_style.text_horizontal_alignment = "center"
+	hex_text_style.text_vertical_alignment = "center"
+	hex_text_style.text_color = Color.white(255, true)
+	hex_text_style.offset = { 4, 4, 4 }
+	hex_text_style.size = { half_width - 8, header_height - 8 }
 
 	return {
 		color_slider = {
@@ -330,25 +372,108 @@ local function color_picker_blueprints(width, picker)
 
 				local value = math.max(0, math.min(255, math.floor((content.slider_value or 0) * 255 + 0.5)))
 
-				picker.draft[element.channel] = value
+				if picker.draft[element.channel] ~= value then
+					picker.draft[element.channel] = value
+					picker.hex = color_to_hex(picker.draft)
+					picker.hex_editing = false
+				end
+
 				content.value_text = string.format("%s: %d", element.label, value)
 			end,
 		},
-		color_preview = {
-			size = { width, 110 },
+		color_header = {
+			size = { width, header_height },
 			pass_template = {
-				{ pass_type = "rect", style_id = "frame", style = { color = Color.terminal_corner_hover(255, true), offset = { 0, 0, 1 } } },
+				{ pass_type = "hotspot", content_id = "hex_hotspot", style_id = "hex_hotspot", style = { offset = { 0, 0, 10 }, size = { half_width, header_height } } },
+				{ pass_type = "rect", style_id = "hex_frame", style = { color = Color.terminal_corner_hover(255, true), offset = { 0, 0, 1 }, size = { half_width, header_height } } },
+				{ pass_type = "rect", style_id = "hex_background", style = { color = { 220, 15, 20, 15 }, offset = { 4, 4, 2 }, size = { half_width - 8, header_height - 8 } } },
+				{ pass_type = "text", style_id = "hex_text", value = "", value_id = "hex_text", style = hex_text_style },
+				{ pass_type = "rect", style_id = "preview_frame", style = { color = Color.terminal_corner_hover(255, true), offset = { half_width + gutter, 0, 1 }, size = { half_width, header_height } } },
 				{
 					pass_type = "rect",
 					style_id = "preview",
-					style = { color = clone_color(picker.draft, picker.default), offset = { 4, 4, 2 }, size_addition = { -8, -8 } },
+					style = { color = clone_color(picker.draft, picker.default), offset = { half_width + gutter + 4, 4, 2 }, size = { half_width - 8, header_height - 8 } },
 					change_function = function(_, style)
 						style.color[2], style.color[3], style.color[4] = picker.draft[2], picker.draft[3], picker.draft[4]
 					end,
 				},
 				{ pass_type = "text", style_id = "text", value = "", value_id = "text", style = preview_text_style },
 			},
-			init = function(_, widget) widget.content.text = "RGB preview" end,
+			init = function(_, widget)
+				picker.hex = picker.hex or color_to_hex(picker.draft)
+				widget.content.hex_hotspot = widget.content.hex_hotspot or {}
+				widget.content.hex_buffer = picker.hex
+				widget.content.hex_text = "Hex: " .. picker.hex
+				widget.content.text = "RGB preview"
+				widget.content.better_inventory_picker_revision = picker.revision
+			end,
+			update = function(_, widget)
+				local content = widget.content
+				local hotspot = content.hex_hotspot
+
+				if hotspot and hotspot.on_pressed then
+					content.hex_editing = true
+					picker.hex_editing = true
+					content.hex_buffer = picker.hex or color_to_hex(picker.draft)
+					content.hex_fresh = true
+				end
+
+				if picker.hex_editing == false then
+					content.hex_editing = false
+				end
+
+				if content.hex_editing then
+					local keyboard = rawget(_G, "Keyboard")
+					local keystrokes = keyboard and type(keyboard.keystrokes) == "function" and keyboard.keystrokes() or nil
+					local buffer = content.hex_buffer or ""
+
+					for index = 1, keystrokes and #keystrokes or 0 do
+						local stroke = keystrokes[index]
+
+						if keyboard and stroke == keyboard.BACKSPACE then
+							content.hex_fresh = false
+							buffer = string.sub(buffer, 1, math.max(0, #buffer - 1))
+						elseif type(stroke) == "string" then
+							local accepted = string.gsub(stroke, "[^#%x]", "")
+
+							if accepted ~= "" then
+								if content.hex_fresh then
+									buffer = ""
+									content.hex_fresh = false
+								end
+
+								buffer = string.sub(buffer .. string.upper(accepted), -7)
+							end
+						end
+					end
+
+					content.hex_buffer = buffer
+					apply_hex(buffer)
+					content.hex_text = "Hex: " .. buffer .. " |"
+
+					if keyboard and type(keyboard.pressed) == "function" and type(keyboard.button_index) == "function" then
+						if keyboard.pressed(keyboard.button_index("enter")) then
+							content.hex_editing = false
+							picker.hex_editing = false
+							content.hex_text = "Hex: " .. (picker.hex or color_to_hex(picker.draft))
+						elseif keyboard.pressed(keyboard.button_index("escape")) then
+							content.hex_editing = false
+							picker.hex_editing = false
+							content.hex_buffer = picker.hex or color_to_hex(picker.draft)
+							content.hex_text = "Hex: " .. content.hex_buffer
+						end
+					end
+				else
+					content.hex_buffer = picker.hex or color_to_hex(picker.draft)
+					content.hex_text = "Hex: " .. content.hex_buffer
+				end
+
+				if content.better_inventory_picker_revision ~= picker.revision then
+					content.better_inventory_picker_revision = picker.revision
+					content.hex_buffer = picker.hex or color_to_hex(picker.draft)
+					content.hex_text = "Hex: " .. content.hex_buffer .. (content.hex_editing and " |" or "")
+				end
+			end,
 		},
 	}
 end
@@ -378,7 +503,7 @@ local function show_color_picker(mod, target, context, layout)
 		title_text_unlocalized = title,
 		type = "grid",
 		grid_layout = {
-			{ widget_type = "color_preview" },
+			{ widget_type = "color_header" },
 			{ widget_type = "color_slider", channel = 2, label = "Red" },
 			{ widget_type = "color_slider", channel = 3, label = "Green" },
 			{ widget_type = "color_slider", channel = 4, label = "Blue" },

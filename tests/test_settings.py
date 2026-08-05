@@ -1545,6 +1545,9 @@ def main() -> None:
     grid_layout_index = top_level_ids.index("layout_group")
     assert top_level_ids[grid_layout_index - 1] == "additional_views_group"
     assert top_level_ids[grid_layout_index + 1] == "single_column_layout_group"
+    customization_index = top_level_ids.index("custom_item_name_and_colors_group")
+    assert top_level_ids[customization_index - 1] == "single_column_layout_group"
+    assert top_level_ids[customization_index + 1] == "quick_look_card_integration_group"
     enhanced_descriptions_index = top_level_ids.index(
         "enhanced_descriptions_integration_group"
     )
@@ -1552,12 +1555,8 @@ def main() -> None:
         top_level_ids[enhanced_descriptions_index - 1]
         == "quick_look_card_integration_group"
     )
-    assert (
-        top_level_ids[enhanced_descriptions_index + 1]
-        == "custom_item_name_and_colors_group"
-    )
-    assert top_level_ids[enhanced_descriptions_index + 2] == "myfavorites_integration_group"
-    assert top_level_ids[enhanced_descriptions_index + 3] == "card_content_group"
+    assert top_level_ids[enhanced_descriptions_index + 1] == "myfavorites_integration_group"
+    assert top_level_ids[enhanced_descriptions_index + 2] == "card_content_group"
 
     card_content_group = next(
         data.options.widgets[index]
