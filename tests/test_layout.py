@@ -1702,6 +1702,14 @@ def main() -> None:
     )
     assert favorite_pass.style.offset[2] == 7
 
+    # A compatibility callback must fail closed if a third-party pass throws
+    # (or if Darktide invokes the change callback without item content).
+    equipped_icon_pass.visibility_function = lua.eval(
+        "function(content) error('simulated Equipped Icon+ failure') end"
+    )
+    favorite_pass.change_function(None, favorite_pass.style, None, 0)
+    assert favorite_pass.style.offset[2] == 7
+
     equipped_highlight = blueprint_pass(
         blueprint, "better_inventory_equipped_highlight"
     )
