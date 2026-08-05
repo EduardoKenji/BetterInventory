@@ -91,6 +91,10 @@ $features = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_fea
 $curioAcquisition = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_acquisition.lua") -Raw
 $curioValues = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_values.lua") -Raw
 
+if ($data -notmatch 'setting_id\s*=\s*"visible_equipment_integration_group"' -or $data -notmatch 'setting_id\s*=\s*"enable_visible_equipment_character_overview_override"[\s\S]*?default_value\s*=\s*true' -or $main -notmatch 'config\.widget_type\s*==\s*"gear_placement_slot"' -or $main -notmatch 'visible_equipment_placement\s+and\s+get_mod\("visible_equipment"\)' -or $main -notmatch 'visible_equipment_mod:is_enabled\(\)' -or $main -notmatch 'visible_equipment_active\s+and\s+mod:get\("enable_visible_equipment_character_overview_override"\)' -or $main -notmatch 'not\s+preserve_visible_equipment_placement\s+and\s+setting_id') {
+	throw "Visible Equipment character-overview compatibility integration was not found."
+}
+
 if ($layout -notmatch 'Layout\.armoury_grid_expansion' -or $layout -notmatch 'armoury_requisition_target_card_width') {
 	throw "The Armoury target-width expansion contract was not found."
 }

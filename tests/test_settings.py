@@ -110,6 +110,7 @@ def main() -> None:
 			curio_secondary_text_color_b = 210,
 			enable_experimental_quick_discard = false,
 			quick_discard_protect_high_level_curios = true,
+			enable_visible_equipment_character_overview_override = true,
         }
 
 		test_layout = {
@@ -165,9 +166,19 @@ def main() -> None:
         test_dmf = {
             create_mod_options_settings = function() end,
         }
+		test_inventory_view = {
+			_create_entry_widget_from_config = function() end,
+		}
+		test_visible_equipment = {
+			is_enabled = function() return visible_equipment_enabled end,
+		}
+		visible_equipment_available = true
+		visible_equipment_enabled = true
+		overview_equipped_item_calls = 0
 		captured_options_hook = nil
 		captured_item_grid_init_hook = nil
 		captured_armoury_on_enter_hook = nil
+		captured_character_overview_widget_hook = nil
 		captured_module_errors = 0
 		fail_feature_load = false
 
@@ -210,6 +221,8 @@ def main() -> None:
 				captured_item_grid_init_hook = callback
 			elseif method == "on_enter" then
 				captured_armoury_on_enter_hook = callback
+			elseif method == "_create_entry_widget_from_config" then
+				captured_character_overview_widget_hook = callback
 			end
         end
 
@@ -228,9 +241,17 @@ def main() -> None:
                 return test_dmf
             end
 
+			if name == "visible_equipment" then
+				return visible_equipment_available and test_visible_equipment or nil
+			end
+
         end
 
         function require(path)
+			if path == "scripts/ui/views/inventory_view/inventory_view" then
+				return test_inventory_view
+			end
+
             return {}
         end
         """
@@ -239,6 +260,99 @@ def main() -> None:
     globals_ = lua.globals()
     mod = globals_.test_mod
     settings = globals_.settings
+
+    visible_equipment_config = lua.table_from(
+        {
+            "widget_type": "gear_placement_slot",
+            "item_type": "WEAPON_MELEE",
+            "slot": lua.table_from({"name": "slot_primary"}),
+        }
+    )
+    overview_view = lua.execute(
+        """
+        return {
+            __class_name = "InventoryView",
+            equipped_item_in_slot = function()
+                overview_equipped_item_calls = overview_equipped_item_calls + 1
+            end,
+        }
+        """
+    )
+    original_widget_factory = lua.eval(
+        "function(view, config) return config.widget_type end"
+    )
+    assert (
+        globals_.captured_character_overview_widget_hook(
+            original_widget_factory,
+            overview_view,
+            visible_equipment_config,
+            "test",
+            "pressed",
+            "right_pressed",
+            "slot_primary",
+        )
+        == "gear_placement_slot"
+    )
+    assert globals_.overview_equipped_item_calls == 0
+    native_weapon_config = lua.table_from(
+        {
+            "widget_type": "weapon_item_slot",
+            "item_type": "WEAPON_MELEE",
+            "slot": lua.table_from({"name": "slot_primary"}),
+        }
+    )
+    assert (
+        globals_.captured_character_overview_widget_hook(
+            original_widget_factory,
+            overview_view,
+            native_weapon_config,
+            "test",
+            "pressed",
+            "right_pressed",
+            "slot_primary",
+        )
+        == "weapon_item_slot"
+    )
+    assert globals_.overview_equipped_item_calls == 1
+
+    globals_.visible_equipment_enabled = False
+    globals_.captured_character_overview_widget_hook(
+        original_widget_factory,
+        overview_view,
+        visible_equipment_config,
+        "test",
+        "pressed",
+        "right_pressed",
+        "slot_primary",
+    )
+    assert globals_.overview_equipped_item_calls == 2
+    globals_.visible_equipment_enabled = True
+
+    globals_.visible_equipment_available = False
+    globals_.captured_character_overview_widget_hook(
+        original_widget_factory,
+        overview_view,
+        visible_equipment_config,
+        "test",
+        "pressed",
+        "right_pressed",
+        "slot_primary",
+    )
+    assert globals_.overview_equipped_item_calls == 3
+    globals_.visible_equipment_available = True
+
+    settings.enable_visible_equipment_character_overview_override = False
+    globals_.captured_character_overview_widget_hook(
+        original_widget_factory,
+        overview_view,
+        visible_equipment_config,
+        "test",
+        "pressed",
+        "right_pressed",
+        "slot_primary",
+    )
+    assert globals_.overview_equipped_item_calls == 4
+    settings.enable_visible_equipment_character_overview_override = True
 
     credits_view = lua.table_from({"__class_name": "CreditsVendorView"})
     credits_definitions = lua.table_from({})
@@ -1085,7 +1199,7 @@ def main() -> None:
     localization = lua.execute(LOCALIZATION_PATH.read_text(encoding="utf-8"))
     defaults = {}
 
-    assert data.version == "1.6.1"
+    assert data.version == "1.6.2"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
@@ -1163,6 +1277,16 @@ def main() -> None:
         "global_store_integration_group",
         "character_overview_group",
     ]
+    visible_equipment_group = next(
+        data.options.widgets[index]
+        for index in range(1, len(data.options.widgets) + 1)
+        if data.options.widgets[index].setting_id
+        == "visible_equipment_integration_group"
+    )
+    assert [
+        visible_equipment_group.sub_widgets[index].setting_id
+        for index in range(1, len(visible_equipment_group.sub_widgets) + 1)
+    ] == ["enable_visible_equipment_character_overview_override"]
     hadron_view_group = additional_views_group.sub_widgets[1]
     assert [
         hadron_view_group.sub_widgets[index].setting_id
@@ -1213,7 +1337,10 @@ def main() -> None:
         "character_overview_curio_name_mode",
         "character_overview_curio_font_size_percent",
     ]
+    additional_views_index = top_level_ids.index("additional_views_group")
+    assert top_level_ids[additional_views_index + 1] == "visible_equipment_integration_group"
     grid_layout_index = top_level_ids.index("layout_group")
+    assert top_level_ids[grid_layout_index - 1] == "visible_equipment_integration_group"
     assert top_level_ids[grid_layout_index + 1] == "single_column_layout_group"
 
     card_content_group = next(
@@ -1273,6 +1400,7 @@ def main() -> None:
     assert defaults["enable_character_overview_melee_mirror"] is True
     assert defaults["enable_character_overview_ranged_mirror"] is True
     assert defaults["enable_character_overview_curio_details"] is True
+    assert defaults["enable_visible_equipment_character_overview_override"] is True
     assert defaults["character_overview_curio_name_mode"] == "two_lines"
     assert defaults["character_overview_curio_font_size_percent"] == 110
     assert defaults["three_column_weapon_name_font_size"] == 14

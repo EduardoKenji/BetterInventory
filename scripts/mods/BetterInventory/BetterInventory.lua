@@ -1640,8 +1640,17 @@ if ensure_class_method(InventoryView, "_create_entry_widget_from_config") then
 		local weapon_kind = optional_scenegraph_id and character_overview_weapon_kind(config)
 		local curio_slot = optional_scenegraph_id and character_overview_curio_slot(config)
 		local setting_id = weapon_kind == "melee" and "enable_character_overview_melee_mirror" or weapon_kind == "ranged" and "enable_character_overview_ranged_mirror" or curio_slot and "enable_character_overview_curio_details"
+		-- Visible Equipment 1.32 injects primary/secondary placement entries that
+		-- deliberately reuse slot_primary/slot_secondary. Preserve its dedicated
+		-- widget type when compatibility is enabled so our ordinary weapon-slot
+		-- detection cannot replace it. Native Loadout entries remain eligible for
+		-- BetterInventory's detailed cards; this guard targets Cosmetics placements.
+		local visible_equipment_placement = config and config.widget_type == "gear_placement_slot"
+		local visible_equipment_mod = visible_equipment_placement and get_mod("visible_equipment")
+		local visible_equipment_active = visible_equipment_mod and (type(visible_equipment_mod.is_enabled) ~= "function" or visible_equipment_mod:is_enabled())
+		local preserve_visible_equipment_placement = visible_equipment_active and mod:get("enable_visible_equipment_character_overview_override") ~= false
 
-		if view and view.__class_name == "InventoryView" and setting_id and mod:get(setting_id) ~= false then
+		if view and view.__class_name == "InventoryView" and not preserve_visible_equipment_placement and setting_id and mod:get(setting_id) ~= false then
 			local equipped_item = view.equipped_item_in_slot and view:equipped_item_in_slot(config.slot.name)
 			local empty_curio_slot = curio_slot and equipped_item == nil
 			local blueprint = empty_curio_slot and character_overview_empty_curio_blueprint() or curio_slot and character_overview_curio_blueprint() or character_overview_weapon_blueprint()
