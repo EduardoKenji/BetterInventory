@@ -1195,6 +1195,7 @@ def main() -> None:
     ] == [
         "enable_character_overview_melee_mirror",
         "enable_character_overview_ranged_mirror",
+        "enable_character_overview_curio_details",
     ]
     grid_layout_index = top_level_ids.index("layout_group")
     assert top_level_ids[grid_layout_index + 1] == "single_column_layout_group"
@@ -1253,6 +1254,9 @@ def main() -> None:
     assert defaults["curio_columns"] == 3
     assert defaults["enable_hadron_single_column_mirror"] is True
     assert defaults["enable_armoury_single_column_mirror"] is True
+    assert defaults["enable_character_overview_melee_mirror"] is True
+    assert defaults["enable_character_overview_ranged_mirror"] is True
+    assert defaults["enable_character_overview_curio_details"] is True
     assert defaults["three_column_weapon_name_font_size"] == 14
     assert defaults["enable_global_store_integration"] is True
     assert defaults["enable_global_store_grid"] is True

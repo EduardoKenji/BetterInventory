@@ -68,6 +68,7 @@ local GLOBAL_STORE_NATIVE_CONFIGURATION = {
 	store_item = true,
 }
 local CHARACTER_OVERVIEW_WEAPON_WIDGET_TYPE = "better_inventory_character_overview_weapon"
+local CHARACTER_OVERVIEW_CURIO_WIDGET_TYPE = "better_inventory_character_overview_curio"
 local CHARACTER_OVERVIEW_BLUEPRINTS = type(ItemBlueprintGenerator) == "function" and ItemBlueprintGenerator({
 	600,
 	112,
@@ -115,6 +116,12 @@ local function character_overview_weapon_kind(config)
 	end
 end
 
+local function character_overview_curio_slot(config)
+	local slot_name = config and config.slot and config.slot.name
+
+	return config and config.widget_type == "gadget_item_slot" and type(slot_name) == "string" and string.match(slot_name, "^slot_attachment_") ~= nil
+end
+
 local function character_overview_weapon_blueprint()
 	local native_blueprint = InventoryViewContentBlueprints.item_slot
 	local detailed_blueprint = CHARACTER_OVERVIEW_BLUEPRINTS and CHARACTER_OVERVIEW_BLUEPRINTS.item
@@ -142,6 +149,120 @@ local function character_overview_weapon_blueprint()
 	Layout.configure_native_item_blueprint(mod, blueprint, blueprint.size[1], {
 		native_single_column = true,
 	})
+
+	local native_update = blueprint.update
+
+	blueprint.update = function(parent, widget, input_service, dt, t, ui_renderer)
+		local content = widget and widget.content
+		local element = content and content.element
+		local previous_item = element and element.item
+
+		if native_update then
+			native_update(parent, widget, input_service, dt, t, ui_renderer)
+		end
+
+		local slot = element and element.slot
+		local current_item = slot and parent.equipped_item_in_slot and parent:equipped_item_in_slot(slot.name)
+
+		if element and current_item ~= previous_item then
+			element.item = current_item
+
+			if blueprint.update_data then
+				blueprint.update_data(parent, widget, element)
+			end
+		end
+	end
+
+	return blueprint
+end
+
+local function character_overview_curio_blueprint()
+	local native_blueprint = InventoryViewContentBlueprints.gadget_item_slot
+	local detailed_blueprint = CHARACTER_OVERVIEW_BLUEPRINTS and CHARACTER_OVERVIEW_BLUEPRINTS.item
+
+	if type(native_blueprint) ~= "table" or type(detailed_blueprint) ~= "table" or not detailed_blueprint.pass_template then
+		return
+	end
+
+	local blueprint = table.clone(detailed_blueprint)
+	blueprint.size = table.clone(native_blueprint.size or {
+		193,
+		250,
+	})
+	blueprint.pass_template = table.clone(detailed_blueprint.pass_template)
+	blueprint.init = native_blueprint.init
+	blueprint.update = native_blueprint.update
+	blueprint.destroy = native_blueprint.destroy
+	blueprint.update_data = function()
+		return
+	end
+
+	Layout.configure_native_item_blueprint(mod, blueprint, blueprint.size[1], {
+		native_single_column = true,
+	})
+
+	local card_width = blueprint.size[1]
+	local icon = nil
+	local display_name = nil
+	local sub_display_name = nil
+	local rarity_name = nil
+	local item_level = nil
+
+	for index = 1, #blueprint.pass_template do
+		local pass = blueprint.pass_template[index]
+
+		if pass.style_id == "icon" then
+			icon = pass
+		elseif pass.style_id == "display_name" then
+			display_name = pass
+		elseif pass.style_id == "sub_display_name" then
+			sub_display_name = pass
+		elseif pass.style_id == "rarity_name" then
+			rarity_name = pass
+		elseif pass.style_id == "item_level" then
+			item_level = pass
+		end
+	end
+
+	-- Keep the overview's tall Curio frame, but use the same compact landscape
+	-- icon treatment and bottom-right item level as the detailed inventory card.
+	if icon and icon.style then
+		icon.style.horizontal_alignment = "center"
+		icon.style.vertical_alignment = "top"
+		icon.style.size = {
+			math.min(card_width - 16, 180),
+			112,
+		}
+		icon.style.offset = {
+			0,
+			36,
+			4,
+		}
+	end
+
+	for _, pass in ipairs({ display_name, sub_display_name, rarity_name }) do
+		if pass then
+			pass.visibility_function = function()
+				return false
+			end
+		end
+	end
+
+	if item_level and item_level.style then
+		item_level.style.horizontal_alignment = "right"
+		item_level.style.vertical_alignment = "bottom"
+		item_level.style.text_horizontal_alignment = "right"
+		item_level.style.text_vertical_alignment = "bottom"
+		item_level.style.offset = {
+			-8,
+			-8,
+			12,
+		}
+		item_level.style.size = {
+			card_width - 16,
+			30,
+		}
+	end
 
 	local native_update = blueprint.update
 
@@ -913,7 +1034,7 @@ function mod.on_setting_changed(setting_id)
 		end
 	end
 
-	if setting_id == "enable_grid_layout" or setting_id == "melee_columns" or setting_id == "ranged_columns" or setting_id == "curio_columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "weapon_extra_width_column_threshold" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_hadron_single_column_mirror" or setting_id == "enable_armoury_requisition_grid" or setting_id == "enable_armoury_single_column_mirror" or setting_id == "enable_armoury_requisition_sorting_panel" or setting_id == "brighten_armoury_item_levels" or setting_id == "three_column_weapon_name_font_size" or setting_id == "expand_armoury_requisition_window" or setting_id == "enable_global_store_integration" or setting_id == "enable_global_store_grid" or setting_id == "enable_global_store_sorting_panel" or setting_id == "global_store_character_photo_size_percent" or setting_id == "global_store_price_row_padding" or setting_id == "global_store_character_info_gap" or setting_id == "global_store_character_class_icon_size" or setting_id == "global_store_character_name_font_size" or setting_id == "global_store_compact_character_names" or setting_id == "global_store_single_column_modifier_horizontal_position" or setting_id == "global_store_single_column_modifier_vertical_position" or setting_id == "enable_character_overview_melee_mirror" or setting_id == "enable_character_overview_ranged_mirror" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "single_column_blessing_icons_on_right" or setting_id == "curio_display_profile" or setting_id == "enable_inventory_options_panel_prototype" or setting_id == "enable_experimental_quick_discard" or setting_id == "quick_discard_mode" or setting_id == "quick_discard_protect_high_level_curios" or setting_id == "enable_automatic_curio_acquisition" or automatic_curio_setting or setting_id == "enable_quick_look_card_single_column_integration" or setting_id == "enable_quick_look_card_grid_integration" or setting_id == "quick_look_card_grid_stat_position" then
+	if setting_id == "enable_grid_layout" or setting_id == "melee_columns" or setting_id == "ranged_columns" or setting_id == "curio_columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "weapon_extra_width_column_threshold" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_hadron_single_column_mirror" or setting_id == "enable_armoury_requisition_grid" or setting_id == "enable_armoury_single_column_mirror" or setting_id == "enable_armoury_requisition_sorting_panel" or setting_id == "brighten_armoury_item_levels" or setting_id == "three_column_weapon_name_font_size" or setting_id == "expand_armoury_requisition_window" or setting_id == "enable_global_store_integration" or setting_id == "enable_global_store_grid" or setting_id == "enable_global_store_sorting_panel" or setting_id == "global_store_character_photo_size_percent" or setting_id == "global_store_price_row_padding" or setting_id == "global_store_character_info_gap" or setting_id == "global_store_character_class_icon_size" or setting_id == "global_store_character_name_font_size" or setting_id == "global_store_compact_character_names" or setting_id == "global_store_single_column_modifier_horizontal_position" or setting_id == "global_store_single_column_modifier_vertical_position" or setting_id == "enable_character_overview_melee_mirror" or setting_id == "enable_character_overview_ranged_mirror" or setting_id == "enable_character_overview_curio_details" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "single_column_blessing_icons_on_right" or setting_id == "curio_display_profile" or setting_id == "enable_inventory_options_panel_prototype" or setting_id == "enable_experimental_quick_discard" or setting_id == "quick_discard_mode" or setting_id == "quick_discard_protect_high_level_curios" or setting_id == "enable_automatic_curio_acquisition" or automatic_curio_setting or setting_id == "enable_quick_look_card_single_column_integration" or setting_id == "enable_quick_look_card_grid_integration" or setting_id == "quick_look_card_grid_stat_position" then
 		refresh_option_dependencies()
 	end
 
@@ -1145,16 +1266,18 @@ end
 if ensure_class_method(InventoryView, "_create_entry_widget_from_config") then
 	mod:hook(InventoryView, "_create_entry_widget_from_config", function(func, view, config, suffix, callback_name, secondary_callback_name, optional_scenegraph_id)
 		local weapon_kind = optional_scenegraph_id and character_overview_weapon_kind(config)
-		local setting_id = weapon_kind == "melee" and "enable_character_overview_melee_mirror" or weapon_kind == "ranged" and "enable_character_overview_ranged_mirror"
+		local curio_slot = optional_scenegraph_id and character_overview_curio_slot(config)
+		local setting_id = weapon_kind == "melee" and "enable_character_overview_melee_mirror" or weapon_kind == "ranged" and "enable_character_overview_ranged_mirror" or curio_slot and "enable_character_overview_curio_details"
 
 		if view and view.__class_name == "InventoryView" and setting_id and mod:get(setting_id) ~= false then
-			local blueprint = character_overview_weapon_blueprint()
+			local blueprint = curio_slot and character_overview_curio_blueprint() or character_overview_weapon_blueprint()
+			local widget_type = curio_slot and CHARACTER_OVERVIEW_CURIO_WIDGET_TYPE or CHARACTER_OVERVIEW_WEAPON_WIDGET_TYPE
 
 			if blueprint then
-				InventoryViewContentBlueprints[CHARACTER_OVERVIEW_WEAPON_WIDGET_TYPE] = blueprint
+				InventoryViewContentBlueprints[widget_type] = blueprint
 
 				local adapted_config = table.clone(config)
-				adapted_config.widget_type = CHARACTER_OVERVIEW_WEAPON_WIDGET_TYPE
+				adapted_config.widget_type = widget_type
 				adapted_config.item = view.equipped_item_in_slot and view:equipped_item_in_slot(config.slot.name)
 
 				return func(view, adapted_config, suffix, callback_name, secondary_callback_name, optional_scenegraph_id)

@@ -524,6 +524,12 @@ local localization = {
 	enable_character_overview_ranged_mirror_tooltip = {
 		en = "Uses the detailed BetterInventory single-column card for the equipped ranged weapon on the character overview screen. Enabled by default.",
 	},
+	enable_character_overview_curio_details = {
+		en = "Show detailed Curio card on character overview",
+	},
+	enable_character_overview_curio_details_tooltip = {
+		en = "Shows the equipped Curio's primary and secondary stats in a compact BetterInventory card on the character overview screen. Enabled by default.",
+	},
 	global_store_integration_group = {
 		en = "Mod Integration: GlobalStore",
 	},
@@ -2149,6 +2155,8 @@ zh_cn.enable_character_overview_melee_mirror = "Mirror melee weapon single-colum
 zh_cn.enable_character_overview_melee_mirror_tooltip = "Uses the detailed BetterInventory single-column card for the equipped melee weapon on the character overview screen. Enabled by default."
 zh_cn.enable_character_overview_ranged_mirror = "Mirror ranged weapon single-column format from inventory"
 zh_cn.enable_character_overview_ranged_mirror_tooltip = "Uses the detailed BetterInventory single-column card for the equipped ranged weapon on the character overview screen. Enabled by default."
+zh_cn.enable_character_overview_curio_details = "Show detailed Curio card on character overview"
+zh_cn.enable_character_overview_curio_details_tooltip = "Shows the equipped Curio's primary and secondary stats in a compact BetterInventory card on the character overview screen. Enabled by default."
 
 for localization_id, text in pairs(zh_cn) do
 	local entry = localization[localization_id]

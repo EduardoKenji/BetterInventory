@@ -736,6 +736,12 @@ return {
 								type = "checkbox",
 								default_value = true,
 							},
+							{
+								setting_id = "enable_character_overview_curio_details",
+								tooltip = "enable_character_overview_curio_details_tooltip",
+								type = "checkbox",
+								default_value = true,
+							},
 						},
 					},
 				},
