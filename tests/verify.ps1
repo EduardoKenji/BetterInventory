@@ -91,7 +91,11 @@ $features = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_fea
 $curioAcquisition = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_acquisition.lua") -Raw
 $curioValues = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_values.lua") -Raw
 
-if ($data -notmatch 'setting_id\s*=\s*"visible_equipment_integration_group"' -or $data -notmatch 'setting_id\s*=\s*"enable_visible_equipment_character_overview_override"[\s\S]*?default_value\s*=\s*true' -or $main -notmatch 'config\.widget_type\s*==\s*"gear_placement_slot"' -or $main -notmatch 'visible_equipment_placement\s+and\s+get_mod\("visible_equipment"\)' -or $main -notmatch 'visible_equipment_mod:is_enabled\(\)' -or $main -notmatch 'visible_equipment_active\s+and\s+mod:get\("enable_visible_equipment_character_overview_override"\)' -or $main -notmatch 'not\s+preserve_visible_equipment_placement\s+and\s+setting_id') {
+if ($data -notmatch 'setting_id\s*=\s*"myfavorites_integration_group"' -or $data -match 'setting_id\s*=\s*"enable_myfavorites_integration"' -or $data -notmatch 'setting_id\s*=\s*"myfavorites_show_favorite_letter"[\s\S]*?default_value\s*=\s*false' -or $layout -notmatch 'myfavorites_compatibility\s*=\s*myfavorites_hotspot\s+and\s+myfavorites_hotspot\.style' -or $layout -notmatch 'content\.favorite_icon\s*=\s*compact_favorite_value' -or $layout -notmatch 'align_myfavorites_hotspot') {
+	throw "MyFavorites compact-marker compatibility integration was not found."
+}
+
+if ($data -match 'setting_id\s*=\s*"visible_equipment_integration_group"' -or $data -match 'setting_id\s*=\s*"enable_visible_equipment_character_overview_override"' -or $main -notmatch 'config\.widget_type\s*==\s*"gear_placement_slot"' -or $main -notmatch 'visible_equipment_placement\s+and\s+get_mod\("visible_equipment"\)' -or $main -notmatch 'visible_equipment_mod:is_enabled\(\)' -or $main -notmatch 'preserve_visible_equipment_placement\s*=\s*visible_equipment_active' -or $main -notmatch 'not\s+preserve_visible_equipment_placement\s+and\s+setting_id') {
 	throw "Visible Equipment character-overview compatibility integration was not found."
 }
 

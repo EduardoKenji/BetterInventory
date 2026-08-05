@@ -554,14 +554,14 @@ local localization = {
 	option_requires_character_overview_curio_details = {
 		en = "Requires detailed Curio cards on the character overview.",
 	},
-	visible_equipment_integration_group = {
-		en = "Mod Integration: Visible Equipment",
+	myfavorites_integration_group = {
+		en = "Mod Integration: MyFavorites",
 	},
-	enable_visible_equipment_character_overview_override = {
-		en = "Enable Visible Equipment compatibility",
+	myfavorites_show_favorite_letter = {
+		en = "Show F below favorite icon",
 	},
-	enable_visible_equipment_character_overview_override_tooltip = {
-		en = "Preserves Visible Equipment's Primary and Secondary Placement widgets in the Cosmetics tab while BetterInventory keeps its configured detailed cards in the Loadout tab. Enabled by default.",
+	myfavorites_show_favorite_letter_tooltip = {
+		en = "Adds a compact F beneath the coloured MyFavorites icon. Disabled by default.",
 	},
 	global_store_integration_group = {
 		en = "Mod Integration: GlobalStore",
@@ -2198,9 +2198,9 @@ zh_cn.character_overview_curio_name_mode_two_lines = "Two-line title"
 zh_cn.character_overview_curio_font_size_percent = "Character overview Curio font size (%%)"
 zh_cn.character_overview_curio_font_size_percent_tooltip = "Scales all text on detailed Curio cards in the character overview (50-150%%, default 110%%). Does not affect Curio cards in inventory or stores."
 zh_cn.option_requires_character_overview_curio_details = "Requires detailed Curio cards on the character overview."
-zh_cn.visible_equipment_integration_group = "Mod Integration: Visible Equipment"
-zh_cn.enable_visible_equipment_character_overview_override = "Enable Visible Equipment compatibility"
-zh_cn.enable_visible_equipment_character_overview_override_tooltip = "Preserves Visible Equipment's Primary and Secondary Placement widgets in the Cosmetics tab while BetterInventory keeps its configured detailed cards in the Loadout tab. Enabled by default."
+zh_cn.myfavorites_integration_group = "Mod Integration: MyFavorites"
+zh_cn.myfavorites_show_favorite_letter = "Show F below favorite icon"
+zh_cn.myfavorites_show_favorite_letter_tooltip = "Adds a compact F beneath the coloured MyFavorites icon. Disabled by default."
 
 for localization_id, text in pairs(zh_cn) do
 	local entry = localization[localization_id]

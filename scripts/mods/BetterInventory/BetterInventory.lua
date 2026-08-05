@@ -1648,7 +1648,7 @@ if ensure_class_method(InventoryView, "_create_entry_widget_from_config") then
 		local visible_equipment_placement = config and config.widget_type == "gear_placement_slot"
 		local visible_equipment_mod = visible_equipment_placement and get_mod("visible_equipment")
 		local visible_equipment_active = visible_equipment_mod and (type(visible_equipment_mod.is_enabled) ~= "function" or visible_equipment_mod:is_enabled())
-		local preserve_visible_equipment_placement = visible_equipment_active and mod:get("enable_visible_equipment_character_overview_override") ~= false
+		local preserve_visible_equipment_placement = visible_equipment_active
 
 		if view and view.__class_name == "InventoryView" and not preserve_visible_equipment_placement and setting_id and mod:get(setting_id) ~= false then
 			local equipped_item = view.equipped_item_in_slot and view:equipped_item_in_slot(config.slot.name)

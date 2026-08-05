@@ -343,6 +343,7 @@ def main() -> None:
 				blessing_icon_spacing = 3,
 				highlight_equipped_items = true,
                 compact_favorite_marker = true,
+				myfavorites_show_favorite_letter = false,
 				favorite_marker_position = "above_rating",
 				curio_display_profile = "primary",
 				show_curio_item_level = true,
@@ -502,7 +503,38 @@ def main() -> None:
 				{ style_id = "character_info_text", style = {} },
                 { style_id = "rarity_tag", style = {} },
                 { style_id = "equipped_icon", style = {} },
-                { style_id = "favorite_icon", value = "Favorite", style = {} },
+                {
+                    style_id = "favorite_icon",
+                    value = "Favorite",
+                    value_id = "favorite_icon",
+                    style = {},
+                    visibility_function = function(content, style)
+                        if not content or not content.favorite then
+                            return false
+                        end
+                        style.text_color = { 255, 50, 245, 50 }
+                        content.favorite_icon = "favorite glyph Favorite"
+                        return true
+                    end,
+                },
+                {
+                    style_id = "myfav_hotspot",
+                    style = {
+                        horizontal_alignment = "left",
+                        vertical_alignment = "bottom",
+                        offset = { 15, -5, 16 },
+                        size = { 120, 24 },
+                    },
+                },
+                {
+                    style_id = "myfav_extra_icon",
+                    style = {
+                        horizontal_alignment = "right",
+                        vertical_alignment = "center",
+                        offset = { 0, 0, 20 },
+                        size = { 32, 32 },
+                    },
+                },
                 { style_id = "salvage_icon", style = {} },
                 { style_id = "salvage_circle", style = {} },
                 { style_id = "inner_shadow", style = { size = {} } },
@@ -1750,9 +1782,39 @@ def main() -> None:
     assert favorite_pass.style.horizontal_alignment == "right"
     assert favorite_pass.style.vertical_alignment == "top"
     assert (favorite_pass.style.offset[1], favorite_pass.style.offset[2]) == (-8, 7)
+    assert favorite_pass.style.word_wrap is False
+
+    myfavorites_hotspot = blueprint_pass(blueprint, "myfav_hotspot")
+    assert myfavorites_hotspot.style.horizontal_alignment == "right"
+    assert myfavorites_hotspot.style.vertical_alignment == "top"
+    assert tuple(myfavorites_hotspot.style.offset[index] for index in range(1, 4)) == (-8, 7, 17)
+    assert tuple(myfavorites_hotspot.style.size[index] for index in range(1, 3)) == (30, 28)
+    myfavorites_extra_icon = blueprint_pass(blueprint, "myfav_extra_icon")
+    assert tuple(myfavorites_extra_icon.style.offset[index] for index in range(1, 4)) == (0, 0, 20)
+
+    myfavorites_content = lua.table_from({"favorite": True})
+    assert favorite_pass.visibility_function(myfavorites_content, favorite_pass.style) is True
+    assert myfavorites_content.favorite_icon == favorite_pass.value
+    assert tuple(favorite_pass.style.text_color[index] for index in range(1, 5)) == (255, 50, 245, 50)
+
+    mod.settings.myfavorites_show_favorite_letter = True
+    letter_favorite_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, letter_favorite_blueprint, 640)
+    letter_favorite_pass = blueprint_pass(letter_favorite_blueprint, "favorite_icon")
+    letter_favorite_content = lua.table_from({"favorite": True})
+    assert letter_favorite_pass.visibility_function(
+        letter_favorite_content, letter_favorite_pass.style
+    ) is True
+    assert letter_favorite_content.favorite_icon.endswith("\nF")
+    assert letter_favorite_pass.style.size[2] == 48
+    assert blueprint_pass(
+        letter_favorite_blueprint, "myfav_hotspot"
+    ).style.size[2] == 48
+    mod.settings.myfavorites_show_favorite_letter = False
 
     favorite_pass.change_function(lua.table_from({"equipped": True}), favorite_pass.style, None, 0)
     assert favorite_pass.style.offset[2] == 33
+    assert myfavorites_hotspot.style.offset[2] == 33
 
     # Equipped Icon+ extends the equipped-icon visibility pass for items in
     # inactive loadouts. BetterInventory must honor that result when placing
@@ -1775,6 +1837,7 @@ def main() -> None:
         0,
     )
     assert favorite_pass.style.offset[2] == 7
+    assert myfavorites_hotspot.style.offset[2] == 7
 
     # A compatibility callback must fail closed if a third-party pass throws
     # (or if Darktide invokes the change callback without item content).
@@ -3072,6 +3135,14 @@ def main() -> None:
         12,
         -5,
     )
+    bottom_myfavorites_hotspot = blueprint_pass(
+        bottom_favorite_blueprint, "myfav_hotspot"
+    )
+    assert bottom_myfavorites_hotspot.style.horizontal_alignment == "left"
+    assert bottom_myfavorites_hotspot.style.vertical_alignment == "bottom"
+    assert tuple(
+        bottom_myfavorites_hotspot.style.offset[index] for index in range(1, 4)
+    ) == (12, -5, 17)
     mod.settings.favorite_marker_position = "above_rating"
 
     grid = lua.table_from({"_menu_settings": lua.table_from({})})
