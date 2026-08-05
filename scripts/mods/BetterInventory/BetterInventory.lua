@@ -1793,6 +1793,77 @@ local function normalize_global_store_widgets(item_grid)
 	end
 end
 
+-- MyFavorites attaches its input hotspot to grid item widgets. Blueprint styles
+-- are cloned during widget construction, so retain the actual runtime hotspot
+-- style on shared content. configure_favorite_marker's working favorite-icon
+-- callback then moves both the visible icon and its click target together.
+if ensure_class_method(ViewElementGrid, "_create_entry_widget_from_config") then
+	mod:hook(ViewElementGrid, "_create_entry_widget_from_config", function(func, item_grid, config, suffix, callback_name, secondary_callback_name, double_click_callback_name)
+		local widget, alignment_widget = func(item_grid, config, suffix, callback_name, secondary_callback_name, double_click_callback_name)
+
+		if widget and widget.content and widget.style and widget.style.myfav_hotspot then
+			widget.content.better_inventory_myfavorites_hotspot_style = widget.style.myfav_hotspot
+
+			for index = 1, #(widget.passes or {}) do
+				local pass = widget.passes[index]
+
+				if pass.style_id == "equipped_icon" then
+					widget.content.better_inventory_equipped_icon_visibility_function = pass.visibility_function
+
+					break
+				end
+			end
+		end
+
+		return widget, alignment_widget
+	end)
+end
+
+local function synchronize_myfavorites_marker(widget)
+	local content = widget and widget.content
+	local styles = widget and widget.style
+	local hotspot_style = content and content.better_inventory_myfavorites_hotspot_style
+	local favorite_style = styles and styles.favorite_icon
+
+	if not hotspot_style or not hotspot_style.offset or hotspot_style.horizontal_alignment ~= "right" or hotspot_style.vertical_alignment ~= "top" then
+		return
+	end
+
+	local equipped_visible = content.equipped == true
+	local visibility_function = content.better_inventory_equipped_icon_visibility_function
+
+	if not equipped_visible and type(visibility_function) == "function" then
+		local ok, visible = pcall(visibility_function, content, styles and styles.equipped_icon)
+
+		equipped_visible = ok and visible == true
+	end
+
+	local offset_y = equipped_visible and 33 or 7
+
+	hotspot_style.offset[2] = offset_y
+
+	if favorite_style and favorite_style.offset then
+		favorite_style.offset[2] = offset_y
+	end
+end
+
+-- Synchronize independently of favorite_icon visibility. This is required for
+-- unfavorited items: equipping, unequipping, or adding/removing them from an
+-- inactive loadout can move Equipped Icon+'s marker while the favorite text
+-- pass is hidden. The input hotspot must still be ready at the correct place.
+if ensure_class_method(ViewElementGrid, "_update_grid_widgets") then
+	mod:hook(ViewElementGrid, "_update_grid_widgets", function(func, item_grid, ...)
+		local results = pack_values(func(item_grid, ...))
+		local widgets = item_grid and item_grid._grid_widgets
+
+		for index = 1, #(widgets or {}) do
+			synchronize_myfavorites_marker(widgets[index])
+		end
+
+		return unpack_values(results, 1, results.n)
+	end)
+end
+
 mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layout, content_blueprints, ...)
 	content_blueprints = Features.compact_inventory_curio_stats_blueprints(mod, item_grid, content_blueprints)
 

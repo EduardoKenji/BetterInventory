@@ -1881,10 +1881,18 @@ local function configure_favorite_marker(mod, pass_template, text_left)
 				original_change_function(content, style, animations, dt)
 			end
 
-			style.offset[2] = equipped_icon_is_visible(content) and 33 or 7
+			local offset_y = equipped_icon_is_visible(content) and 33 or 7
 
-			if myfavorites_compatibility then
-				myfavorites_hotspot.style.offset[2] = style.offset[2]
+			style.offset[2] = offset_y
+
+			-- ViewElementGrid clones pass styles when it creates a widget. The
+			-- creation hook in BetterInventory.lua stores that real runtime hotspot
+			-- style on shared widget content, allowing this callback (which Darktide
+			-- reliably executes) to keep the click target on the visible marker.
+			local runtime_hotspot_style = content and content.better_inventory_myfavorites_hotspot_style
+
+			if runtime_hotspot_style and runtime_hotspot_style.offset then
+				runtime_hotspot_style.offset[2] = offset_y
 			end
 		end
 	else
