@@ -152,6 +152,29 @@ def main() -> None:
 			return string.sub(text, 1, maximum_characters) .. suffix
 		end
 
+		function TestText.word_wrap(ui_renderer, text, style, maximum_width)
+			local maximum_characters = math.max(1, math.floor(maximum_width / (style.font_size * 0.6)))
+			local rows = {}
+			local row = ""
+
+			for word in string.gmatch(text, "%S+") do
+				local candidate = row == "" and word or row .. " " .. word
+
+				if #candidate > maximum_characters and row ~= "" then
+					rows[#rows + 1] = row
+					row = word
+				else
+					row = candidate
+				end
+			end
+
+			if row ~= "" then
+				rows[#rows + 1] = row
+			end
+
+			return rows
+		end
+
 		function TestItems.weapon_lore_mark_name(item)
 			return item and item.test_mark or "n/a"
 		end
@@ -3029,7 +3052,7 @@ def main() -> None:
             is_enabled = function() return true end,
             get_custom_name = function(item, is_sub)
                 if item and item.item_type == "GADGET" then
-                    return "First Curio"
+					return item.test_custom_name or "First Curio"
                 end
 
                 if item and item.item_type == "WEAPON_MELEE" and not is_sub then
@@ -3049,6 +3072,15 @@ def main() -> None:
     )
     assert name_it_curio_size[2] >= 139
     assert name_it_title_pass.style.word_wrap is True
+    assert name_it_title_pass.style.text_fit_with is False
+    assert tuple(
+        name_it_title_pass.style.text_color[index] for index in range(1, 5)
+    ) == (
+        255,
+        220,
+        230,
+        210,
+    )
     assert name_it_title_pass.style.size[2] >= 40
     assert name_it_primary_pass.style.offset[2] == 7 + name_it_title_pass.style.size[2]
 
@@ -3076,6 +3108,39 @@ def main() -> None:
     )
     assert name_it_curio_widget.content.display_name == "First Curio"
     assert name_it_title_pass.visibility_function(name_it_curio_widget.content) is True
+
+    long_name_it_curio_item = lua.eval("table.clone")(curio_element.item)
+    long_name_it_curio_item.test_custom_name = "Guardian of the Hateful Reliquary"
+    long_name_it_curio_element = lua.table_from(
+        {
+            "test_display_name": "Guardian of the Hateful Reliquary",
+            "item": long_name_it_curio_item,
+        }
+    )
+    name_it_curio_blueprint.init(
+        None,
+        name_it_curio_widget,
+        long_name_it_curio_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        name_it_curio_blueprint,
+    )
+    assert name_it_curio_widget.content.display_name.count("\n") == 1
+
+    character_overview_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_native_item_blueprint(
+        mod,
+        character_overview_blueprint,
+        193,
+        lua.table_from({"character_overview": True}),
+    )
+    assert all(
+        character_overview_blueprint.pass_template[index].style_id
+        != "better_inventory_name_it_curio_name"
+        for index in range(1, len(character_overview_blueprint.pass_template) + 1)
+    )
 
     name_it_weapon_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     layout.configure_item_blueprint(mod, name_it_weapon_blueprint, 640)

@@ -414,6 +414,14 @@ local function character_overview_curio_blueprint()
 		display_name.style.text_vertical_alignment = "top"
 		display_name.style.word_wrap = false
 		display_name.style.font_size = curio_name_font_size
+		display_name.style.text_color = {
+			255,
+			220,
+			230,
+			210,
+		}
+		display_name.style.default_color = table.clone(display_name.style.text_color)
+		display_name.style.hover_color = table.clone(display_name.style.text_color)
 		display_name.style.offset = {
 			16,
 			7,

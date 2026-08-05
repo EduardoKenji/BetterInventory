@@ -1835,10 +1835,13 @@ local function add_name_it_curio_title_pass(pass_template, options)
 	style.text_horizontal_alignment = "left"
 	style.text_vertical_alignment = "top"
 	style.word_wrap = true
-	style.text_fit_with = true
+	style.text_fit_with = false
 	style.offset = options.offset
 	style.size = options.size
 	style.drop_shadow = true
+	style.text_color = table.clone(DEFAULT_CURIO_SECONDARY_COLOR)
+	style.default_color = table.clone(DEFAULT_CURIO_SECONDARY_COLOR)
+	style.hover_color = table.clone(DEFAULT_CURIO_SECONDARY_COLOR)
 
 	pass_template[#pass_template + 1] = {
 		pass_type = "text",
@@ -2418,6 +2421,53 @@ local function fit_display_name(parent, widget, ui_renderer, preferred_font_size
 	end
 
 	if content.better_inventory_name_it_curio_title then
+		local title_style = widget.style and widget.style.better_inventory_name_it_curio_name
+
+		if not title_style then
+			return
+		end
+
+		ui_renderer = ui_renderer or grid_ui_renderer(parent)
+
+		if not ui_renderer then
+			return
+		end
+
+		if display_name ~= content.better_inventory_fitted_name_it_curio_name then
+			content.better_inventory_full_display_name = string.gsub(display_name, "[\r\n]+", " ")
+		end
+
+		local full_name = content.better_inventory_full_display_name or display_name
+		local maximum_width = title_style.size and title_style.size[1]
+		local maximum_lines = 2
+		local minimum_title_font_size = math.min(title_style.font_size or 16, 12)
+
+		if type(maximum_width) ~= "number" then
+			return
+		end
+
+		local wrapped_rows = Text.word_wrap(ui_renderer, full_name, title_style, maximum_width)
+
+		while wrapped_rows and #wrapped_rows > maximum_lines and title_style.font_size > minimum_title_font_size do
+			title_style.font_size = title_style.font_size - 1
+			wrapped_rows = Text.word_wrap(ui_renderer, full_name, title_style, maximum_width)
+		end
+
+		if wrapped_rows and #wrapped_rows > 0 then
+			local fitted_rows = {}
+
+			for index = 1, math.min(maximum_lines, #wrapped_rows) do
+				fitted_rows[index] = wrapped_rows[index]
+			end
+
+			if #wrapped_rows > maximum_lines then
+				fitted_rows[maximum_lines] = Text.crop_text_width(ui_renderer, fitted_rows[maximum_lines] .. "...", title_style, maximum_width)
+			end
+
+			content.display_name = table.concat(fitted_rows, "\n")
+			content.better_inventory_fitted_name_it_curio_name = content.display_name
+		end
+
 		return
 	end
 
@@ -3386,6 +3436,7 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 			native_single_column = true,
 			global_store = global_store,
 			store_item = store_item,
+			character_overview = configuration.character_overview,
 		})
 	end
 
