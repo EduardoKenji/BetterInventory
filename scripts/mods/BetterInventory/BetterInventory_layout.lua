@@ -19,6 +19,13 @@ local DEFAULT_PERK_RANK_SIZE = 17
 local DEFAULT_BLESSING_ICON_SIZE = 36
 local PERK_RANK_GAP = 3
 local STORE_FOOTER_HEIGHT = 34
+-- Armoury's native store cards use a fixed translucent price footer. Give the
+-- detailed single-column variant a little extra vertical room and keep its
+-- modifier rows clear of that footer. This is deliberately Armoury-only;
+-- inventory, Hadron and GlobalStore retain their established heights.
+local ARMOURY_NATIVE_CARD_HEIGHT_EXTRA = 16
+local ARMOURY_NATIVE_FOOTER_GAP = 8
+local ARMOURY_NATIVE_MODIFIER_HORIZONTAL_PERCENT = 62
 local GLOBAL_STORE_CHARACTER_PHOTO_BASE_SIZE = 30
 local GLOBAL_STORE_CHARACTER_PHOTO_MIN_PERCENT = 50
 local GLOBAL_STORE_CHARACTER_PHOTO_DEFAULT_PERCENT = 110
@@ -1192,11 +1199,12 @@ local function configure_native_quick_look_card_passes(mod, pass_template, card_
 
 	if armoury_native then
 		-- Armoury's native store blueprint draws a translucent footer over the
-		-- bottom 34 logical pixels. Keep the detailed stat block just above that
-		-- footer and shift it left so it does not collide with the item-level
-		-- value on the right. GlobalStore keeps its existing configurable path.
-		block_left = math.floor(math.max(0, card_width - block_width) * 0.55 + 0.5)
-		block_top = math.max(0, card_height - STORE_FOOTER_HEIGHT - 2 - block_height)
+		-- bottom 34 logical pixels. Keep the detailed stat block above that
+		-- footer with a small visual gap and shift it right so it sits naturally
+		-- beside the blessing area without colliding with item level or price.
+		-- GlobalStore keeps its existing configurable path.
+		block_left = math.floor(math.max(0, card_width - block_width) * ARMOURY_NATIVE_MODIFIER_HORIZONTAL_PERCENT * 0.01 + 0.5)
+		block_top = math.max(0, card_height - STORE_FOOTER_HEIGHT - ARMOURY_NATIVE_FOOTER_GAP - block_height)
 	end
 	local positions = {
 		{ block_left, block_top },
@@ -2784,6 +2792,10 @@ Layout.card_height = function(mod, configuration)
 	local native_content_gap = configuration.native_single_column and NATIVE_SINGLE_COLUMN_CONTENT_GAP or 0
 
 	required_height = math.max(required_height, 7 + name_row_height + optional_rows * secondary_row_height + bottom_region_height + 8 + native_content_gap)
+
+	if configuration.native_single_column and configuration.store_item and not configuration.global_store then
+		required_height = required_height + ARMOURY_NATIVE_CARD_HEIGHT_EXTRA
+	end
 
 	if setting(mod, "curio_display_profile", "detailed") == "detailed" then
 		local primary_line_height = curio_primary_font_size(mod) + 5

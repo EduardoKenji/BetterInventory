@@ -585,10 +585,10 @@ local localization = {
 		en = "Uses Better Inventory cards when selecting an item through Entreat Hadron. The effective layout is capped at three columns; Hadron's separate Sacrifice Weapons flow is not changed.",
 	},
 	enable_hadron_single_column_mirror = {
-		en = "Mirror single-column format from inventory",
+		en = "Enable custom detailed card for single column",
 	},
 	enable_hadron_single_column_mirror_tooltip = {
-		en = "Uses the detailed BetterInventory single-column card format for Entreat Hadron when grid layout is disabled. This adds the same perk, blessing and weapon-stat rows used by the inventory. Enabled by default.",
+		en = "Uses BetterInventory's custom detailed card for Entreat Hadron when grid layout is disabled. Enabled by default.",
 	},
 	enable_armoury_requisition_grid = {
 		en = "Armoury: Requisition Weapons & Curios",
@@ -597,10 +597,10 @@ local localization = {
 		en = "Uses Better Inventory cards in Requisition Weapons & Curios. The effective layout is capped at three columns; Brunt's Armoury and Multi-Operative Supply are not changed.",
 	},
 	enable_armoury_single_column_mirror = {
-		en = "Mirror single-column format from inventory",
+		en = "Enable custom detailed card for single column",
 	},
 	enable_armoury_single_column_mirror_tooltip = {
-		en = "Uses the detailed BetterInventory single-column card format for Requisition Weapons & Curios when grid layout is disabled. This adds the same perk, blessing and weapon-stat rows used by the inventory. Enabled by default.",
+		en = "Uses BetterInventory's custom detailed card for Requisition Weapons & Curios when grid layout is disabled. Enabled by default.",
 	},
 	enable_armoury_requisition_sorting_panel = {
 		en = "Show Armoury sorting widget",
@@ -2125,10 +2125,10 @@ zh_cn.ranged_columns_tooltip = "Number of ranged-weapon cards per inventory row.
 zh_cn.curio_columns = "Curios Columns"
 zh_cn.curio_columns_tooltip = "Number of Curio cards per inventory row. Defaults to three."
 
-zh_cn.enable_hadron_single_column_mirror = "Mirror single-column format from inventory"
-zh_cn.enable_hadron_single_column_mirror_tooltip = "Uses the detailed BetterInventory single-column card format for Entreat Hadron when grid layout is disabled. Enabled by default."
-zh_cn.enable_armoury_single_column_mirror = "Mirror single-column format from inventory"
-zh_cn.enable_armoury_single_column_mirror_tooltip = "Uses the detailed BetterInventory single-column card format for Requisition Weapons & Curios when grid layout is disabled. Enabled by default."
+zh_cn.enable_hadron_single_column_mirror = "Enable custom detailed card for single column"
+zh_cn.enable_hadron_single_column_mirror_tooltip = "Uses BetterInventory's custom detailed card for Entreat Hadron when grid layout is disabled. Enabled by default."
+zh_cn.enable_armoury_single_column_mirror = "Enable custom detailed card for single column"
+zh_cn.enable_armoury_single_column_mirror_tooltip = "Uses BetterInventory's custom detailed card for Requisition Weapons & Curios when grid layout is disabled. Enabled by default."
 
 for localization_id, text in pairs(zh_cn) do
 	local entry = localization[localization_id]
