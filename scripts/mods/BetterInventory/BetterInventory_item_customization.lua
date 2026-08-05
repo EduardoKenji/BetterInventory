@@ -328,11 +328,11 @@ local function color_picker_blueprints(width, picker)
 	local hex_text_style = table.clone(UIFontSettings.body)
 
 	local function color_to_hex(color)
-		return string.format("#%02X%02X%02X", color[2], color[3], color[4])
+		return string.format("%02X%02X%02X", color[2], color[3], color[4])
 	end
 
 	local function parse_hex(value)
-		local digits = type(value) == "string" and string.match(value, "^%s*#?([%x][%x][%x][%x][%x][%x])%s*$")
+		local digits = type(value) == "string" and string.match(value, "^([%x][%x][%x][%x][%x][%x])$")
 
 		if not digits then
 			return
@@ -430,7 +430,7 @@ local function color_picker_blueprints(width, picker)
 				picker.hex = picker.hex or color_to_hex(picker.draft)
 				widget.content.hex_hotspot = widget.content.hex_hotspot or {}
 				widget.content.hex_buffer = picker.hex
-				widget.content.hex_text = "Hex: " .. picker.hex
+				widget.content.hex_text = "Hex: #" .. picker.hex
 				widget.content.text = "RGB preview"
 				widget.content.better_inventory_picker_revision = picker.revision
 			end,
@@ -461,7 +461,10 @@ local function color_picker_blueprints(width, picker)
 							content.hex_fresh = false
 							buffer = string.sub(buffer, 1, math.max(0, #buffer - 1))
 						elseif type(stroke) == "string" then
-							local accepted = string.gsub(stroke, "[^#%x]", "")
+							-- The leading # is presentation, not editable data. This also
+							-- lets users paste either #RRGGBB or RRGGBB while limiting the
+							-- actual input buffer to exactly six hexadecimal characters.
+							local accepted = string.gsub(stroke, "[^%x]", "")
 
 							if accepted ~= "" then
 								if content.hex_fresh then
@@ -469,36 +472,36 @@ local function color_picker_blueprints(width, picker)
 									content.hex_fresh = false
 								end
 
-								buffer = string.sub(buffer .. string.upper(accepted), -7)
+								buffer = string.sub(buffer .. string.upper(accepted), 1, 6)
 							end
 						end
 					end
 
 					content.hex_buffer = buffer
 					apply_hex(buffer)
-					content.hex_text = "Hex: " .. buffer .. " |"
+					content.hex_text = "Hex: #" .. buffer .. " |"
 
 					if keyboard and type(keyboard.pressed) == "function" and type(keyboard.button_index) == "function" then
 						if keyboard.pressed(keyboard.button_index("enter")) then
 							content.hex_editing = false
 							picker.hex_editing = false
-							content.hex_text = "Hex: " .. (picker.hex or color_to_hex(picker.draft))
+							content.hex_text = "Hex: #" .. (picker.hex or color_to_hex(picker.draft))
 						elseif keyboard.pressed(keyboard.button_index("escape")) then
 							content.hex_editing = false
 							picker.hex_editing = false
 							content.hex_buffer = picker.hex or color_to_hex(picker.draft)
-							content.hex_text = "Hex: " .. content.hex_buffer
+							content.hex_text = "Hex: #" .. content.hex_buffer
 						end
 					end
 				else
 					content.hex_buffer = picker.hex or color_to_hex(picker.draft)
-					content.hex_text = "Hex: " .. content.hex_buffer
+					content.hex_text = "Hex: #" .. content.hex_buffer
 				end
 
 				if content.better_inventory_picker_revision ~= picker.revision then
 					content.better_inventory_picker_revision = picker.revision
 					content.hex_buffer = picker.hex or color_to_hex(picker.draft)
-					content.hex_text = "Hex: " .. content.hex_buffer .. (content.hex_editing and " |" or "")
+					content.hex_text = "Hex: #" .. content.hex_buffer .. (content.hex_editing and " |" or "")
 				end
 			end,
 		},

@@ -188,6 +188,11 @@ def main() -> None:
     globals_.Keyboard.strokes = lua.table_from(["#112233"])
     header_blueprint.update(None, header_widget)
     assert header_widget.content.hex_text == "Hex: #112233 |"
+    assert header_widget.content.hex_buffer == "112233"
+    header_widget.content.hex_hotspot.on_pressed = False
+    globals_.Keyboard.strokes = lua.table_from(["F"])
+    header_blueprint.update(None, header_widget)
+    assert header_widget.content.hex_buffer == "112233"
 
     slider_blueprint = popup.grid_blueprints.color_slider
     red_element = popup.grid_layout[2]
