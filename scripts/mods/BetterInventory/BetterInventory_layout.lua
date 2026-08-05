@@ -2958,8 +2958,8 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 				global_store_photo_size,
 			}
 			portrait.style.offset = {
-				14,
-				9,
+				15,
+				13,
 				14,
 			}
 		end
