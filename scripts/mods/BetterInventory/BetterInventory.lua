@@ -55,6 +55,12 @@ local GLOBAL_STORE_GRID_CONFIGURATION = {
 	maximum_columns = 5,
 	store_item = true,
 }
+local GLOBAL_STORE_NATIVE_CONFIGURATION = {
+	blueprint_key = "store_item",
+	global_store = true,
+	native_single_column = true,
+	store_item = true,
+}
 
 local function pack_values(...)
 	return {
@@ -1038,7 +1044,7 @@ local function normalize_global_store_widgets(item_grid)
 			-- the card into a compact grid.
 			local portrait_size = 34
 
-			if Layout.columns and Layout.columns(mod, 5) >= 3 and Layout.global_store_character_photo_size then
+			if Layout.global_store_character_photo_size then
 				portrait_size = Layout.global_store_character_photo_size(mod)
 			end
 
@@ -1080,8 +1086,8 @@ mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layou
 	local view = active_grid_view or item_grid and item_grid._parent
 	local configuration = active_grid_configuration
 
-	if not configuration and is_global_store_view(view) and mod:get("enable_global_store_integration") ~= false and mod:get("enable_global_store_grid") ~= false then
-		configuration = GLOBAL_STORE_GRID_CONFIGURATION
+	if not configuration and is_global_store_view(view) and mod:get("enable_global_store_integration") ~= false then
+		configuration = mod:get("enable_grid_layout") ~= false and mod:get("enable_global_store_grid") ~= false and GLOBAL_STORE_GRID_CONFIGURATION or GLOBAL_STORE_NATIVE_CONFIGURATION
 	end
 
 	local definitions = view and view._definitions

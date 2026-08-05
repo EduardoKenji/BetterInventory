@@ -1153,11 +1153,12 @@ local function add_quick_look_card_grid_pass(mod, pass_template, card_width, tex
 	return label_width
 end
 
-local function configure_native_quick_look_card_passes(mod, pass_template, card_width, card_height)
+local function configure_native_quick_look_card_passes(mod, pass_template, card_width, card_height, configuration)
 	local font_size = numeric_setting(mod, "quick_look_card_single_column_font_size", 14, 8, 20)
 	local lowest_modifier_color = configured_text_color(mod, "weapon_modifier_lowest_color", QUICK_LOOK_CARD_HIGHLIGHT_COLOR, "weapon_modifier_lowest_color_opacity", 80)
 	local horizontal_percent = numeric_setting(mod, "quick_look_card_single_column_horizontal_position", 79, 0, 100)
 	local vertical_percent = numeric_setting(mod, "quick_look_card_single_column_vertical_position", 93, 0, 100)
+	local text_z = configuration and configuration.global_store and 12 or 5
 	local line_height = font_size + 3
 	local row_step = line_height + 2
 	local column_step = math.max(80, math.floor(font_size * 5.72 + 0.5))
@@ -1244,7 +1245,7 @@ local function configure_native_quick_look_card_passes(mod, pass_template, card_
 			style.offset = {
 				position[1] + (kind == "value" and value_offset or 0),
 				position[2],
-				5,
+				text_z,
 			}
 			style.size = {
 				kind == "value" and value_width or title_width,
@@ -1929,6 +1930,13 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 		else
 			bottom_content_height = math.max(bottom_content_height, blessing_text_height + blessing_bottom_padding + 3)
 		end
+	end
+
+	-- GlobalStore's native card reserves a character row below the price row.
+	-- Lift the perk block slightly into the icon area so the weapon name and
+	-- first perk retain the tighter spacing used by the two-column cards.
+	if configuration.native_single_column and configuration.global_store then
+		bottom_content_height = bottom_content_height + 8
 	end
 
 	if show_weapon_perks then
@@ -2735,7 +2743,17 @@ Layout.configure_grid = function(mod, item_grid)
 	end
 end
 
-Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_width)
+Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_width, configuration)
+	configuration = configuration or {}
+	local global_store = configuration.global_store == true
+	local global_store_extra = global_store_extra_height(mod, configuration)
+	local global_store_multicolumn = global_store and global_store_extra > 0
+	local global_store_photo_size = global_store_multicolumn and global_store_character_photo_size(mod) or 34
+	local global_store_info_gap = global_store_multicolumn and global_store_character_info_gap(mod) or 0
+	local global_store_class_icon_size = global_store_multicolumn and global_store_character_class_icon_size(mod) or GLOBAL_STORE_CHARACTER_CLASS_ICON_SIZE_DEFAULT
+	local global_store_name_font_size = global_store_multicolumn and global_store_character_name_font_size(mod) or GLOBAL_STORE_CHARACTER_NAME_FONT_SIZE_DEFAULT
+	local global_store_price_padding = global_store_multicolumn and global_store_price_row_padding(mod) or 0
+	local global_store_price_row_offset = global_store_multicolumn and GLOBAL_STORE_CHARACTER_ROW_HEIGHT + global_store_price_padding or 0
 	local item_size = table.clone(item_blueprint.size or {
 		grid_width,
 		110,
@@ -2750,10 +2768,21 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 	local weapon_modifier_stats_enabled = setting(mod, "enable_quick_look_card_single_column_integration", true)
 	local managed_native_card = not quick_look_card_present or weapon_modifier_stats_enabled
 
+	if global_store and pass_by_style_id(pass_template, "character_info_text") and not pass_by_style_id(pass_template, "character_class_icon_text") then
+		local character_info_pass = pass_by_style_id(pass_template, "character_info_text")
+		local class_icon_pass = table.clone(character_info_pass)
+
+		class_icon_pass.style_id = "character_class_icon_text"
+		class_icon_pass.value_id = "character_class_icon_text"
+		class_icon_pass.value = ""
+		class_icon_pass.style = table.clone(character_info_pass.style)
+		pass_template[#pass_template + 1] = class_icon_pass
+	end
+
 	if managed_native_card then
-		item_size[2] = math.max(item_size[2] or 110, Layout.card_height(mod, {
-			native_single_column = true,
-		}))
+		local native_configuration = table.clone(configuration)
+		native_configuration.native_single_column = true
+		item_size[2] = math.max(item_size[2] or 110, Layout.card_height(mod, native_configuration))
 	end
 
 	item_blueprint.size = item_size
@@ -2764,7 +2793,7 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 	end
 
 	if weapon_modifier_stats_enabled then
-		configure_native_quick_look_card_passes(mod, pass_template, card_width, item_size[2] or 110)
+		configure_native_quick_look_card_passes(mod, pass_template, card_width, item_size[2] or 110, configuration)
 	end
 
 	local display_name = pass_by_style_id(pass_template, "display_name")
@@ -2778,6 +2807,18 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 		display_name.style.word_wrap = false
 		display_name.style.size = display_name.style.size or {}
 		display_name.style.size[2] = math.max(display_name.style.size[2] or 0, native_name_font_size + 6)
+		if global_store then
+			display_name.style.horizontal_alignment = "left"
+			display_name.style.vertical_alignment = "top"
+			display_name.style.text_horizontal_alignment = "left"
+			display_name.style.text_vertical_alignment = "top"
+			display_name.style.offset = {
+				12,
+				7,
+				11,
+			}
+			display_name.style.size[1] = math.max(80, card_width - 120)
+		end
 	end
 
 	preserve_visibility(display_name, function(content)
@@ -2804,9 +2845,155 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 		end
 	end
 
+	if global_store then
+		local icon = pass_by_style_id(pass_template, "icon")
+
+		if icon and icon.style then
+			icon.style.horizontal_alignment = "left"
+			icon.style.vertical_alignment = "top"
+			icon.style.size = {
+				card_width,
+				math.max(1, (item_size[2] or 110) - global_store_extra),
+			}
+			icon.style.offset = {
+				0,
+				0,
+				4,
+			}
+		end
+	end
+
 	preserve_visibility(item_level, function(content)
 		return not is_curio(item_from_content(content)) or show_curio_item_level
 	end)
+
+	if global_store_multicolumn and item_level and item_level.style then
+		item_level.style.text_color = table.clone(DEFAULT_ARMOURY_ITEM_LEVEL_COLOR)
+		item_level.style.default_color = table.clone(DEFAULT_ARMOURY_ITEM_LEVEL_COLOR)
+		item_level.style.hover_color = table.clone(DEFAULT_ARMOURY_ITEM_LEVEL_COLOR)
+		item_level.style.horizontal_alignment = "right"
+		item_level.style.vertical_alignment = "bottom"
+		item_level.style.text_horizontal_alignment = "right"
+		item_level.style.text_vertical_alignment = "bottom"
+		item_level.style.offset = {
+			-8,
+			-global_store_price_row_offset,
+			12,
+		}
+		item_level.style.size = {
+			card_width - 16,
+			28,
+		}
+	end
+
+	if global_store_multicolumn then
+		local wallet_icon = pass_by_style_id(pass_template, "wallet_icon")
+
+		if wallet_icon and wallet_icon.style then
+			wallet_icon.style.horizontal_alignment = "left"
+			wallet_icon.style.vertical_alignment = "bottom"
+			wallet_icon.style.size = {
+				22,
+				18,
+			}
+			wallet_icon.style.offset = {
+				12,
+				-(global_store_price_row_offset + 2),
+				12,
+			}
+		end
+
+		configure_text_pass(pass_by_style_id(pass_template, "price_text"), {
+			font_size = 16,
+			horizontal_alignment = "left",
+			vertical_alignment = "bottom",
+			text_horizontal_alignment = "left",
+			text_vertical_alignment = "bottom",
+			offset = {
+				39,
+				-global_store_price_row_offset,
+				12,
+			},
+			size = {
+				math.max(45, card_width - 120),
+				24,
+			},
+		})
+
+		configure_text_pass(pass_by_style_id(pass_template, "owned_text"), {
+			font_size = 14,
+			horizontal_alignment = "left",
+			vertical_alignment = "bottom",
+			text_horizontal_alignment = "left",
+			text_vertical_alignment = "bottom",
+			offset = {
+				12,
+				-global_store_price_row_offset,
+				12,
+			},
+			size = {
+				math.max(55, card_width - 80),
+				24,
+			},
+		})
+	end
+
+	if global_store then
+		local portrait = pass_by_style_id(pass_template, "portrait")
+
+		if portrait and portrait.style then
+			portrait.style.horizontal_alignment = "left"
+			portrait.style.vertical_alignment = "bottom"
+			portrait.style.size = {
+				global_store_photo_size,
+				global_store_photo_size,
+			}
+			portrait.style.offset = {
+				18,
+				4,
+				14,
+			}
+		end
+
+		local character_info = pass_by_style_id(pass_template, "character_info_text")
+		if character_info and character_info.style then
+			character_info.style.horizontal_alignment = "left"
+			character_info.style.vertical_alignment = "bottom"
+			character_info.style.text_horizontal_alignment = "left"
+			character_info.style.text_vertical_alignment = "bottom"
+			character_info.style.font_size = global_store_name_font_size
+			character_info.style.word_wrap = false
+			character_info.style.text_fit_with = false
+			character_info.style.offset = {
+				18 + global_store_photo_size + global_store_info_gap + global_store_class_icon_size + 4,
+				-7,
+				14,
+			}
+			character_info.style.size = {
+				math.max(40, card_width - 18 - global_store_photo_size - global_store_info_gap - global_store_class_icon_size - 14),
+				24,
+			}
+		end
+
+		local class_icon = pass_by_style_id(pass_template, "character_class_icon_text")
+		if class_icon and class_icon.style then
+			class_icon.style.horizontal_alignment = "left"
+			class_icon.style.vertical_alignment = "bottom"
+			class_icon.style.text_horizontal_alignment = "left"
+			class_icon.style.text_vertical_alignment = "bottom"
+			class_icon.style.font_size = global_store_class_icon_size
+			class_icon.style.word_wrap = false
+			class_icon.style.offset = {
+				18 + global_store_photo_size + global_store_info_gap,
+				-7,
+				14,
+			}
+			class_icon.style.size = {
+				math.max(12, global_store_class_icon_size + 4),
+				24,
+			}
+		end
+	end
 
 	set_visibility(pass_by_style_id(pass_template, "rarity_tag"), setting(mod, "show_rarity_tag", true))
 	configure_equipped_highlight(mod, pass_template, card_width, item_size[2] or 110)
@@ -2816,10 +3003,14 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 		add_custom_content_passes(mod, pass_template, card_width, 15, sub_display_name and sub_display_name.style, {
 			content_right = weapon_modifier_stats_enabled and 260 or nil,
 			native_single_column = true,
+			global_store = global_store,
+			store_item = global_store,
 		})
 	end
 	configure_card_content(mod, item_blueprint, {
 		native_single_column = true,
+		global_store = global_store,
+		store_item = global_store,
 		weapon_modifier_stats_enabled = weapon_modifier_stats_enabled,
 	})
 
@@ -2829,7 +3020,8 @@ end
 
 Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, configuration)
 	if not setting(mod, "enable_grid_layout", true) then
-		return Layout.configure_native_item_blueprint(mod, item_blueprint, grid_width)
+		configuration = configuration or {}
+		return Layout.configure_native_item_blueprint(mod, item_blueprint, grid_width, configuration)
 	end
 
 	configuration = configuration or {}

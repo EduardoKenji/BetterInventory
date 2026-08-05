@@ -630,13 +630,13 @@ local localization = {
 		en = "Single-column modifier horizontal position (%%)",
 	},
 	quick_look_card_single_column_horizontal_position_tooltip = {
-		en = "Moves the five-modifier block horizontally across the available card width. Zero is the left edge and 100 is the right edge. Reopen the inventory after changing this value.",
+		en = "Moves the five-modifier block horizontally across the available card width, including native single-column GlobalStore cards. Zero is the left edge and 100 is the right edge. Reopen the inventory after changing this value.",
 	},
 	quick_look_card_single_column_vertical_position = {
 		en = "Single-column modifier vertical position (%%)",
 	},
 	quick_look_card_single_column_vertical_position_tooltip = {
-		en = "Moves the five-modifier block vertically across the available card height. Zero is the top edge and 100 is the bottom edge. Reopen the inventory after changing this value.",
+		en = "Moves the five-modifier block vertically across the available card height, including native single-column GlobalStore cards. Zero is the top edge and 100 is the bottom edge. Reopen the inventory after changing this value.",
 	},
 	enable_quick_look_card_grid_integration = {
 		en = "Show lowest weapon modifier in grid mode",
