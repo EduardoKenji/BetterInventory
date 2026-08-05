@@ -2448,7 +2448,7 @@ Layout.slot_kind = function(view)
 	end
 end
 
--- CreditsVendorView does not expose `_selected_slot`; its category tabs carry
+-- Tabbed item views may not expose `_selected_slot`; their category tabs carry
 -- the native slot filter instead. Prefer the filtered layout (which is
 -- available during both initial presentation and tab switches), then fall
 -- back to the selected tab for empty categories.

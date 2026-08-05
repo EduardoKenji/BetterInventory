@@ -1040,10 +1040,11 @@ local function present_additional_grid(func, view, layout, on_present_callback, 
 
 	local active_configuration = table.clone(configuration)
 
-	if active_configuration.store_item and Layout.store_slot_kind then
-		-- Armoury and GlobalStore use the same three native category tabs. Their
-		-- cards honor the matching category slider, while each configuration's
-		-- maximum_columns keeps vendor views capped at three.
+	if Layout.store_slot_kind then
+		-- Hadron, Armoury and GlobalStore expose the same native category tabs.
+		-- Their cards honor the matching category slider, while each vendor
+		-- configuration's maximum_columns keeps non-inventory views capped at
+		-- three.
 		active_configuration.slot_kind = Layout.store_slot_kind(view, layout)
 	end
 
