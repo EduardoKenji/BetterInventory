@@ -1680,6 +1680,28 @@ def main() -> None:
     favorite_pass.change_function(lua.table_from({"equipped": True}), favorite_pass.style, None, 0)
     assert favorite_pass.style.offset[2] == 33
 
+    # Equipped Icon+ extends the equipped-icon visibility pass for items in
+    # inactive loadouts. BetterInventory must honor that result when placing
+    # the favorite marker, while leaving normal unequipped cards unchanged.
+    equipped_icon_pass = blueprint_pass(blueprint, "equipped_icon")
+    equipped_icon_pass.visibility_function = lua.eval(
+        "function(content) return content and content.inactive_loadout_equipped == true end"
+    )
+    favorite_pass.change_function(
+        lua.table_from({"equipped": False, "inactive_loadout_equipped": True}),
+        favorite_pass.style,
+        None,
+        0,
+    )
+    assert favorite_pass.style.offset[2] == 33
+    favorite_pass.change_function(
+        lua.table_from({"equipped": False, "inactive_loadout_equipped": False}),
+        favorite_pass.style,
+        None,
+        0,
+    )
+    assert favorite_pass.style.offset[2] == 7
+
     equipped_highlight = blueprint_pass(
         blueprint, "better_inventory_equipped_highlight"
     )
