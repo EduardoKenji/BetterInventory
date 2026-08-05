@@ -38,6 +38,14 @@ local ItemCustomization = no_op_module(mod:io_dofile("BetterInventory/scripts/mo
 if type(Features.set_curio_acquisition_provider) == "function" then
 	Features.set_curio_acquisition_provider(CurioAcquisition)
 end
+
+if type(Layout.set_item_customization_provider) == "function" then
+	Layout.set_item_customization_provider(ItemCustomization)
+end
+
+if type(ItemCustomization.install) == "function" then
+	ItemCustomization.install(mod, InventoryWeaponsView, Layout)
+end
 local unpack_values = table.unpack or unpack
 local active_grid_view
 local active_grid_configuration
@@ -339,7 +347,7 @@ local function character_overview_curio_blueprint()
 	local curio_font_scale = math.max(50, math.min(150, tonumber(mod:get("character_overview_curio_font_size_percent")) or 110)) / 100
 	local curio_name_mode = mod:get("character_overview_curio_name_mode")
 
-	if type(Layout.name_it_integration_enabled) == "function" and Layout.name_it_integration_enabled(mod) and mod:get("name_it_force_curio_name_in_detailed_mode") ~= false then
+	if mod:get("name_it_force_curio_name_in_detailed_mode") ~= false then
 		curio_name_mode = "two_lines"
 	end
 
@@ -917,7 +925,6 @@ local function refresh_option_dependencies()
 	local weapon_modifier_lowest_color_reason = grid_enabled and quick_look_card_grid_reason or quick_look_card_single_column_reason
 	local quick_look_card_above_power = quick_look_card_grid_enabled and mod:get("quick_look_card_grid_stat_position") ~= "name_left" and mod:get("quick_look_card_grid_stat_position") ~= "name_right"
 	local quick_look_card_bottom_padding_reason = quick_look_card_grid_enabled and mod:localize("option_requires_quick_look_card_above_power") or quick_look_card_grid_reason
-	local name_it_override_enabled = mod:get("enable_name_it_override") ~= false
 
 	set_option_enabled(option_dependency_entries.expand_curio_inventory_window, window_expansion_enabled, expansion_reason)
 	set_option_enabled(option_dependency_entries.weapon_extra_width_column_threshold, window_expansion_enabled, expansion_reason)
@@ -986,17 +993,14 @@ local function refresh_option_dependencies()
 	set_option_enabled(option_dependency_entries.weapon_modifier_lowest_color_b, weapon_modifier_lowest_color_enabled, weapon_modifier_lowest_color_reason)
 	set_option_enabled(option_dependency_entries.weapon_modifier_lowest_color_opacity, weapon_modifier_lowest_color_enabled, weapon_modifier_lowest_color_reason)
 	set_option_enabled(option_dependency_entries.enable_name_it_override, true)
-	local name_it_curio_name_enabled = name_it_override_enabled and detailed_curio_profile
-	local name_it_curio_name_reason = not detailed_curio_profile and mod:localize("option_requires_detailed_curio_profile") or mod:localize("option_requires_name_it_override")
-
-	set_option_enabled(option_dependency_entries.name_it_force_curio_name_in_detailed_mode, name_it_curio_name_enabled, name_it_curio_name_reason)
-	set_option_enabled(option_dependency_entries.curio_content_name_it_curio_name, name_it_curio_name_enabled, name_it_curio_name_reason)
+	set_option_enabled(option_dependency_entries.name_it_force_curio_name_in_detailed_mode, detailed_curio_profile, mod:localize("option_requires_detailed_curio_profile"))
+	set_option_enabled(option_dependency_entries.curio_content_name_it_curio_name, detailed_curio_profile, mod:localize("option_requires_detailed_curio_profile"))
 	local custom_item_colors_enabled = mod:get("enable_custom_item_name_and_colors") ~= false
 	local custom_item_colors_reason = mod:localize("option_requires_custom_item_name_and_colors")
 
 	set_option_enabled(option_dependency_entries.enable_custom_item_name_and_colors, true)
-	set_option_enabled(option_dependency_entries.custom_item_name_color_picker_spike, custom_item_colors_enabled, custom_item_colors_reason)
-	set_option_enabled(option_dependency_entries.custom_item_background_color_picker_spike, custom_item_colors_enabled, custom_item_colors_reason)
+	set_option_enabled(option_dependency_entries.custom_item_editor_keybind, custom_item_colors_enabled, custom_item_colors_reason)
+	set_option_enabled(option_dependency_entries.custom_item_skip_confirmation_prompts, custom_item_colors_enabled, custom_item_colors_reason)
 
 	for _, setting_id in ipairs({
 		"curio_information_width_percent",
@@ -1181,8 +1185,8 @@ local function bind_option_dependencies(options_templates)
 		"name_it_force_curio_name_in_detailed_mode",
 		"curio_content_name_it_curio_name",
 		"enable_custom_item_name_and_colors",
-		"custom_item_name_color_picker_spike",
-		"custom_item_background_color_picker_spike",
+		"custom_item_editor_keybind",
+		"custom_item_skip_confirmation_prompts",
 		"curio_information_width_percent",
 		"curio_preview_height_percent",
 		"inventory_options_panel_width",
@@ -1494,6 +1498,7 @@ function mod.on_game_state_changed(status, state_name)
 end
 
 function mod.update(dt)
+	ItemCustomization.update_runtime(mod, dt)
 	Features.update_morningstar_auto_discard(mod, dt)
 	CurioAcquisition.update(mod, dt, Features.morningstar_auto_discard_is_busy(mod))
 end

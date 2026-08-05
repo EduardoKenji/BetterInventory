@@ -41,8 +41,8 @@ def main() -> None:
 			name_it_force_curio_name_in_detailed_mode = true,
 			curio_content_name_it_curio_name = false,
 			enable_custom_item_name_and_colors = true,
-			custom_item_name_color_picker_spike = false,
-			custom_item_background_color_picker_spike = false,
+			custom_item_editor_keybind = "hotkey_menu_special_1",
+			custom_item_skip_confirmation_prompts = true,
 			enable_hadron_entreat_grid = true,
 			enable_hadron_single_column_mirror = true,
 			enable_armoury_requisition_grid = true,
@@ -170,6 +170,7 @@ def main() -> None:
 		test_item_customization = {
 			on_enabled = function() end,
 			on_setting_changed = function() end,
+			update_runtime = function() end,
 		}
 
         test_mod = {}
@@ -756,8 +757,8 @@ def main() -> None:
 		"name_it_force_curio_name_in_detailed_mode",
 		"curio_content_name_it_curio_name",
 		"enable_custom_item_name_and_colors",
-		"custom_item_name_color_picker_spike",
-		"custom_item_background_color_picker_spike",
+		"custom_item_editor_keybind",
+		"custom_item_skip_confirmation_prompts",
 		"curio_information_width_percent",
 		"curio_preview_height_percent",
 		"inventory_options_panel_width",
@@ -894,10 +895,9 @@ def main() -> None:
     assert all(entry.disabled is False for entry in name_it_curio_name_entries)
     settings.enable_name_it_override = False
     mod.on_setting_changed("enable_name_it_override")
-    assert all(entry.disabled is True for entry in name_it_curio_name_entries)
+    assert all(entry.disabled is False for entry in name_it_curio_name_entries)
     settings.enable_name_it_override = True
     mod.on_setting_changed("enable_name_it_override")
-    assert all(entry.disabled is False for entry in name_it_curio_name_entries)
     settings.name_it_force_curio_name_in_detailed_mode = False
     mod.on_setting_changed("name_it_force_curio_name_in_detailed_mode")
     assert settings.curio_content_name_it_curio_name is False
@@ -913,16 +913,16 @@ def main() -> None:
     settings.curio_display_profile = "primary"
     mod.on_setting_changed("curio_display_profile")
     assert entries_by_id["enable_custom_item_name_and_colors"].disabled is False
-    assert entries_by_id["custom_item_name_color_picker_spike"].disabled is False
-    assert entries_by_id["custom_item_background_color_picker_spike"].disabled is False
+    assert entries_by_id["custom_item_editor_keybind"].disabled is False
+    assert entries_by_id["custom_item_skip_confirmation_prompts"].disabled is False
     settings.enable_custom_item_name_and_colors = False
     mod.on_setting_changed("enable_custom_item_name_and_colors")
-    assert entries_by_id["custom_item_name_color_picker_spike"].disabled is True
-    assert entries_by_id["custom_item_background_color_picker_spike"].disabled is True
+    assert entries_by_id["custom_item_editor_keybind"].disabled is True
+    assert entries_by_id["custom_item_skip_confirmation_prompts"].disabled is True
     settings.enable_custom_item_name_and_colors = True
     mod.on_setting_changed("enable_custom_item_name_and_colors")
-    assert entries_by_id["custom_item_name_color_picker_spike"].disabled is False
-    assert entries_by_id["custom_item_background_color_picker_spike"].disabled is False
+    assert entries_by_id["custom_item_editor_keybind"].disabled is False
+    assert entries_by_id["custom_item_skip_confirmation_prompts"].disabled is False
     assert entries_by_id["weapon_perk_compression"].disabled is True
     assert entries_by_id["show_weapon_perk_rank_symbols"].disabled is True
     assert entries_by_id["weapon_perk_rank_icon_size"].disabled is True
@@ -1326,8 +1326,8 @@ def main() -> None:
 			"enable_name_it_override",
 			"name_it_force_curio_name_in_detailed_mode",
 			"enable_custom_item_name_and_colors",
-			"custom_item_name_color_picker_spike",
-			"custom_item_background_color_picker_spike",
+			"custom_item_editor_keybind",
+			"custom_item_skip_confirmation_prompts",
 			"character_overview_curio_name_mode",
 			"character_overview_curio_font_size_percent",
         }:
@@ -1552,9 +1552,8 @@ def main() -> None:
         top_level_ids[enhanced_descriptions_index + 1]
         == "custom_item_name_and_colors_group"
     )
-    assert top_level_ids[enhanced_descriptions_index + 2] == "name_it_integration_group"
-    assert top_level_ids[enhanced_descriptions_index + 3] == "myfavorites_integration_group"
-    assert top_level_ids[enhanced_descriptions_index + 4] == "card_content_group"
+    assert top_level_ids[enhanced_descriptions_index + 2] == "myfavorites_integration_group"
+    assert top_level_ids[enhanced_descriptions_index + 3] == "card_content_group"
 
     card_content_group = next(
         data.options.widgets[index]
@@ -1636,8 +1635,8 @@ def main() -> None:
     assert defaults["enable_name_it_override"] is True
     assert defaults["name_it_force_curio_name_in_detailed_mode"] is True
     assert defaults["enable_custom_item_name_and_colors"] is True
-    assert defaults["custom_item_name_color_picker_spike"] is False
-    assert defaults["custom_item_background_color_picker_spike"] is False
+    assert defaults["custom_item_editor_keybind"] == "hotkey_menu_special_1"
+    assert defaults["custom_item_skip_confirmation_prompts"] is True
     assert defaults["quick_look_card_single_column_font_size"] == 14
     assert defaults["quick_look_card_single_column_label_value_gap"] == 1
     assert defaults["quick_look_card_single_column_horizontal_position"] == 79

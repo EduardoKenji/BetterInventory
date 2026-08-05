@@ -1091,23 +1091,23 @@ return {
 						default_value = true,
 					},
 					{
-						setting_id = "custom_item_name_color_picker_spike",
-						tooltip = "custom_item_name_color_picker_spike_tooltip",
-						type = "checkbox",
-						default_value = false,
+						setting_id = "custom_item_editor_keybind",
+						tooltip = "custom_item_editor_keybind_tooltip",
+						type = "dropdown",
+						default_value = "hotkey_menu_special_1",
+						options = {
+							{ text = "custom_item_editor_keybind_e", value = "hotkey_menu_special_1" },
+							{ text = "custom_item_editor_keybind_q", value = "hotkey_menu_special_2" },
+							{ text = "custom_item_editor_keybind_v", value = "hotkey_item_inspect" },
+							{ text = "custom_item_editor_keybind_off", value = "off" },
+						},
 					},
 					{
-						setting_id = "custom_item_background_color_picker_spike",
-						tooltip = "custom_item_background_color_picker_spike_tooltip",
+						setting_id = "custom_item_skip_confirmation_prompts",
+						tooltip = "custom_item_skip_confirmation_prompts_tooltip",
 						type = "checkbox",
-						default_value = false,
+						default_value = true,
 					},
-				},
-			},
-			{
-				setting_id = "name_it_integration_group",
-				type = "group",
-				sub_widgets = {
 					{
 						setting_id = "enable_name_it_override",
 						tooltip = "enable_name_it_override_tooltip",

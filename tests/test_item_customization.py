@@ -105,17 +105,19 @@ def main() -> None:
     assert customization.remove(mod, "gear-1") is True
     assert customization.get(mod, "gear-1") is None
 
-    settings.custom_item_name_color_picker_spike = True
-    assert (
-        customization.on_setting_changed(mod, "custom_item_name_color_picker_spike")
-        is True
-    )
-    assert settings.custom_item_name_color_picker_spike is False
+    context = lua.table_from({"gear_id": "gear-1", "name": "Test Item"})
+    assert customization.show_color_picker(mod, "name", context, None) is True
     popup = globals_.captured_popup
     assert popup.type == "grid"
-    assert popup.title_text == "custom_item_name_color_picker_title"
+    assert popup.title_text_unlocalized == "Change item name color(Test Item)"
     assert len(popup.grid_layout) == 4
     assert len(popup.options) == 3
+    assert [popup.options[index].text for index in range(1, 4)] == [
+        "Confirm",
+        "Reset to default",
+        "Cancel",
+    ]
+    assert all(popup.options[index].no_localization is True for index in range(1, 4))
 
     slider_blueprint = popup.grid_blueprints.color_slider
     red_element = popup.grid_layout[2]
@@ -124,15 +126,13 @@ def main() -> None:
     red_widget.content.slider_value = 0.5
     slider_blueprint.update(None, red_widget)
     popup.options[1].callback()
-    stored_color = settings.custom_item_name_color_picker_value
+    stored_color = customization.get(mod, "gear-1").name_color
     assert stored_color[2] == 128
 
-    settings.custom_item_background_color_picker_spike = True
-    customization.on_setting_changed(mod, "custom_item_background_color_picker_spike")
+    customization.show_color_picker(mod, "background", context, None)
     popup = globals_.captured_popup
-    popup.options[2].callback()
     popup.options[1].callback()
-    stored_background = settings.custom_item_background_color_picker_value
+    stored_background = customization.get(mod, "gear-1").background_color
     assert tuple(stored_background[index] for index in range(1, 5)) == (
         255,
         45,
@@ -140,7 +140,25 @@ def main() -> None:
         45,
     )
 
-    print("BetterInventory item customization spike tests passed.")
+    popup.options[2].callback()
+    assert customization.get(mod, "gear-1").background_color is None
+
+    settings.custom_item_skip_confirmation_prompts = True
+    customization.show_editor(mod, context, None)
+    editor = globals_.captured_popup
+    assert editor.title_text_unlocalized == "Customize item (Test Item)"
+    assert [editor.options[index].text for index in range(1, 6)] == [
+        "Change name",
+        "Change item name color",
+        "Change item background color",
+        "Reset to default",
+        "Cancel",
+    ]
+    editor.options[4].callback()
+    customization.update_runtime(mod, 0)
+    assert customization.get(mod, "gear-1") is None
+
+    print("BetterInventory item customization tests passed.")
 
 
 if __name__ == "__main__":

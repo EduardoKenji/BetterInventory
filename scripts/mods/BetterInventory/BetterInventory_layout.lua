@@ -5,6 +5,7 @@ local RankSettings = require("scripts/settings/item/rank_settings")
 local WeaponStats = require("scripts/utilities/weapon_stats")
 
 local Layout = {}
+local item_customization_provider
 local INVENTORY_CANVAS_WIDTH = 1920
 local INVENTORY_EDGE_MARGIN = 16
 local WEAPON_ACTIONS_PANEL_WIDTH = 420
@@ -543,7 +544,7 @@ local function name_it_integration_enabled(mod)
 end
 
 local function name_it_curio_title_enabled(mod, configuration)
-	return not (configuration and configuration.character_overview) and name_it_integration_enabled(mod) and setting(mod, "name_it_force_curio_name_in_detailed_mode", true)
+	return not (configuration and configuration.character_overview) and setting(mod, "name_it_force_curio_name_in_detailed_mode", true)
 end
 
 local function name_it_custom_name(item, is_sub)
@@ -571,6 +572,20 @@ local function curio_name_title_height(mod, configuration)
 end
 
 Layout.name_it_integration_enabled = name_it_integration_enabled
+
+Layout.set_item_customization_provider = function(provider)
+	item_customization_provider = provider
+end
+
+local function item_customization(mod, item)
+	if setting(mod, "enable_custom_item_name_and_colors", true) == false or type(item_customization_provider) ~= "table" or type(item_customization_provider.get) ~= "function" then
+		return
+	end
+
+	local gear_id = item and item.gear_id
+
+	return gear_id and item_customization_provider.get(mod, gear_id) or nil
+end
 
 local function numeric_setting(mod, setting_id, fallback, minimum, maximum)
 	local value = tonumber(setting(mod, setting_id, fallback)) or fallback
@@ -2335,16 +2350,16 @@ local function format_item_name(mod, widget, element, append_mark_to_name)
 	element = element or content.element
 
 	local item = element and (element.real_item or element.item)
+	local customization = item_customization(mod, item)
+	local internal_name = customization and customization.name
 
 	if is_curio(item) then
-		if name_it_integration_enabled(mod) then
-			content.display_name = name_it_custom_name(item) or content.display_name
-			content.better_inventory_name_it_curio_title = setting(mod, "curio_display_profile", "detailed") == "detailed" and setting(mod, "name_it_force_curio_name_in_detailed_mode", true)
-			content.better_inventory_name_it_curio_name_text = content.display_name
-			content.better_inventory_name_it_curio_source_name = content.display_name
-		else
-			content.display_name = localized_item_name(item, content.display_name)
-		end
+		local external_name = name_it_integration_enabled(mod) and name_it_custom_name(item) or nil
+
+		content.display_name = external_name or internal_name or localized_item_name(item, content.display_name)
+		content.better_inventory_name_it_curio_title = setting(mod, "curio_display_profile", "detailed") == "detailed" and setting(mod, "name_it_force_curio_name_in_detailed_mode", true)
+		content.better_inventory_name_it_curio_name_text = content.display_name
+		content.better_inventory_name_it_curio_source_name = content.display_name
 
 		return
 	end
@@ -2362,6 +2377,14 @@ local function format_item_name(mod, widget, element, append_mark_to_name)
 		elseif custom_sub_name then
 			content.sub_display_name = custom_sub_name
 		end
+
+		if custom_name or custom_sub_name then
+			return
+		end
+	end
+
+	if type(internal_name) == "string" and internal_name ~= "" then
+		content.display_name = internal_name
 
 		return
 	end
@@ -2397,6 +2420,44 @@ local function format_item_name(mod, widget, element, append_mark_to_name)
 
 	content.sub_display_name = valid_weapon_name_part(pattern_name) and pattern_name or ""
 end
+
+local function apply_custom_color(style, color, field_name)
+	if type(style) ~= "table" or type(style[field_name]) ~= "table" then
+		return
+	end
+
+	local backup_id = "better_inventory_original_" .. field_name
+
+	style[backup_id] = style[backup_id] or table.clone(style[field_name])
+	style[field_name] = table.clone(type(color) == "table" and color or style[backup_id])
+end
+
+local function apply_item_customization_style(mod, widget, element)
+	local content = widget and widget.content
+	local style = widget and widget.style
+	local item = item_from_element(element or content and content.element)
+	local customization = item_customization(mod, item)
+	local name_color = customization and customization.name_color
+	local background_color = customization and customization.background_color
+
+	if not style then
+		return
+	end
+
+	for _, style_id in ipairs({ "display_name", "better_inventory_name_it_curio_name" }) do
+		local text_style = style[style_id]
+
+		apply_custom_color(text_style, name_color, "text_color")
+		apply_custom_color(text_style, name_color, "default_color")
+		apply_custom_color(text_style, name_color, "hover_color")
+	end
+
+	for _, style_id in ipairs({ "background", "background_gradient" }) do
+		apply_custom_color(style[style_id], background_color, "color")
+	end
+end
+
+Layout.apply_item_customization_style = apply_item_customization_style
 
 local function format_item_level(widget, element, show_item_level_icon)
 	if show_item_level_icon then
@@ -2717,6 +2778,7 @@ local function configure_card_content(mod, item_blueprint, configuration)
 		item_blueprint.init = function(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
 			original_init(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
 			format_item_name(mod, widget, element, append_mark_to_name)
+			apply_item_customization_style(mod, widget, element)
 			format_item_level(widget, element, show_item_level_icon)
 			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers, show_blessing_text_icons)
 			fit_display_name(parent, widget, ui_renderer, preferred_font_size, math.min(preferred_font_size, minimum_font_size))
@@ -2730,6 +2792,7 @@ local function configure_card_content(mod, item_blueprint, configuration)
 		item_blueprint.update_data = function(parent, widget, element)
 			original_update_data(parent, widget, element)
 			format_item_name(mod, widget, element, append_mark_to_name)
+			apply_item_customization_style(mod, widget, element)
 			format_item_level(widget, element, show_item_level_icon)
 			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers, show_blessing_text_icons)
 			fit_display_name(parent, widget, nil, preferred_font_size, math.min(preferred_font_size, minimum_font_size))
@@ -2739,7 +2802,7 @@ local function configure_card_content(mod, item_blueprint, configuration)
 		end
 	end
 
-	if original_update and name_it_curio_title_enabled(mod, configuration) then
+	if original_update and name_it_integration_enabled(mod) and name_it_curio_title_enabled(mod, configuration) then
 		item_blueprint.update = function(parent, widget, ...)
 			local result = original_update(parent, widget, ...)
 			local content = widget and widget.content

@@ -623,10 +623,10 @@ def main() -> None:
     mod.settings.curio_display_profile = "detailed"
     mod.settings.curio_primary_stat_font_size = 20
     mod.settings.curio_secondary_stat_font_size = 20
-    assert layout.card_height(mod) == 124
+    assert layout.card_height(mod) == 164
     mod.settings.automatic_card_height = False
     mod.settings.card_height = 175
-    assert layout.card_height(mod) == 175
+    assert layout.card_height(mod) == 164
     mod.settings.automatic_card_height = True
     mod.settings.card_height = 110
     mod.settings.curio_display_profile = "primary"
@@ -645,7 +645,7 @@ def main() -> None:
     assert layout.card_height(mod, store_configuration) == 128
     mod.settings.blessing_icon_size = 34
     mod.settings.curio_display_profile = "detailed"
-    assert layout.card_height(mod, store_configuration) == 133
+    assert layout.card_height(mod, store_configuration) == 173
     mod.settings.curio_display_profile = "primary"
 
     mod.settings.show_weapon_perks = True
@@ -1061,7 +1061,7 @@ def main() -> None:
     vendor_curio_size = layout.configure_item_blueprint(
         mod, vendor_curio_blueprint, 596, store_configuration
     )
-    assert (vendor_curio_size[1], vendor_curio_size[2]) == (192, 133)
+    assert (vendor_curio_size[1], vendor_curio_size[2]) == (192, 173)
     first_vendor_curio_line = blueprint_pass(
         vendor_curio_blueprint, "better_inventory_curio_stat_1"
     ).style
@@ -1073,8 +1073,8 @@ def main() -> None:
     ).style
     assert first_vendor_curio_line.font_size == 16
     assert second_vendor_curio_line.font_size == 13
-    assert second_vendor_curio_line.offset[2] == 33
-    assert fourth_vendor_curio_line.offset[2] + fourth_vendor_curio_line.size[2] == 87
+    assert second_vendor_curio_line.offset[2] == 73
+    assert fourth_vendor_curio_line.offset[2] + fourth_vendor_curio_line.size[2] == 127
     assert fourth_vendor_curio_line.offset[2] + fourth_vendor_curio_line.size[2] < (
         vendor_curio_size[2] - 34
     )
@@ -1086,7 +1086,7 @@ def main() -> None:
     custom_curio_size = layout.configure_item_blueprint(
         mod, custom_curio_blueprint, 596, store_configuration
     )
-    assert (custom_curio_size[1], custom_curio_size[2]) == (192, 130)
+    assert (custom_curio_size[1], custom_curio_size[2]) == (192, 170)
     assert (
         blueprint_pass(
             custom_curio_blueprint, "better_inventory_curio_stat_1"
@@ -1103,7 +1103,7 @@ def main() -> None:
         blueprint_pass(
             custom_curio_blueprint, "better_inventory_curio_stat_2"
         ).style.offset[2]
-        == 39
+        == 79
     )
     mod.settings.curio_primary_stat_font_size = 16
     mod.settings.curio_secondary_stat_font_size = 13
@@ -3210,6 +3210,53 @@ def main() -> None:
     assert better_inventory_name_widget.content.display_name.endswith(" Mk VI")
     mod.settings.enable_name_it_override = True
     globals_.test_name_it_mod = None
+
+    # BetterInventory's standalone record supplies the name and both colors
+    # when Name It is absent.
+    layout.set_item_customization_provider(
+        lua.execute(
+            """
+            return {
+                get = function(_, gear_id)
+                    if gear_id == "custom-weapon" then
+                        return {
+                            name = "Emerald Blade",
+                            name_color = { 255, 10, 20, 30 },
+                            background_color = { 255, 40, 50, 60 },
+                        }
+                    end
+                end,
+            }
+            """
+        )
+    )
+    custom_weapon_element = lua.eval("table.clone")(narrow_weapon_element)
+    custom_weapon_element.item.gear_id = "custom-weapon"
+    custom_weapon_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, custom_weapon_blueprint, 640)
+    blueprint_pass(custom_weapon_blueprint, "display_name").style.text_color = lua.table_from([255, 220, 230, 210])
+    blueprint_pass(custom_weapon_blueprint, "background").style.color = lua.table_from([255, 1, 2, 3])
+    custom_weapon_styles = {
+        "display_name": blueprint_pass(custom_weapon_blueprint, "display_name").style,
+        "background": blueprint_pass(custom_weapon_blueprint, "background").style,
+    }
+    custom_weapon_widget = lua.table_from(
+        {"content": lua.table_from({}), "style": lua.table_from(custom_weapon_styles)}
+    )
+    custom_weapon_blueprint.init(
+        None,
+        custom_weapon_widget,
+        custom_weapon_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        custom_weapon_blueprint,
+    )
+    assert custom_weapon_widget.content.display_name == "Emerald Blade"
+    assert tuple(custom_weapon_widget.style.display_name.text_color[index] for index in range(1, 5)) == (255, 10, 20, 30)
+    assert tuple(custom_weapon_widget.style.background.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
+    layout.set_item_customization_provider(None)
 
     mod.settings.show_curio_item_level = False
     hidden_curio_level_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
