@@ -37,11 +37,12 @@ def main() -> None:
 			weapon_modifier_lowest_color_g = 94,
 			weapon_modifier_lowest_color_b = 132,
 			weapon_modifier_lowest_color_opacity = 80,
-			enable_name_it_override = true,
 			name_it_force_curio_name_in_detailed_mode = true,
 			curio_content_name_it_curio_name = false,
 			enable_custom_item_name_and_colors = true,
-			custom_item_editor_keybind = "hotkey_menu_special_1",
+			custom_item_name_keybind = "hotkey_menu_special_2",
+			custom_item_name_color_keybind = "hotkey_menu_special_1",
+			custom_item_background_color_keybind = "group_finder_refresh_groups",
 			custom_item_skip_confirmation_prompts = true,
 			enable_hadron_entreat_grid = true,
 			enable_hadron_single_column_mirror = true,
@@ -171,6 +172,7 @@ def main() -> None:
 			on_enabled = function() end,
 			on_setting_changed = function() end,
 			update_runtime = function() end,
+			import_name_it_names = function() end,
 		}
 
         test_mod = {}
@@ -753,11 +755,12 @@ def main() -> None:
 		"weapon_modifier_lowest_color_g",
 		"weapon_modifier_lowest_color_b",
 		"weapon_modifier_lowest_color_opacity",
-		"enable_name_it_override",
 		"name_it_force_curio_name_in_detailed_mode",
 		"curio_content_name_it_curio_name",
 		"enable_custom_item_name_and_colors",
-		"custom_item_editor_keybind",
+		"custom_item_name_keybind",
+		"custom_item_name_color_keybind",
+		"custom_item_background_color_keybind",
 		"custom_item_skip_confirmation_prompts",
 		"curio_information_width_percent",
 		"curio_preview_height_percent",
@@ -887,17 +890,11 @@ def main() -> None:
     assert entries_by_id["weapon_extra_width_column_threshold"].disabled is False
     assert entries_by_id["five_column_weapon_extra_width"].disabled is True
     assert entries_by_id["curio_target_card_width"].disabled is False
-    assert entries_by_id["enable_name_it_override"].disabled is False
     assert len(name_it_curio_name_entries) == 2
     assert all(entry.disabled is True for entry in name_it_curio_name_entries)
     settings.curio_display_profile = "detailed"
     mod.on_setting_changed("curio_display_profile")
     assert all(entry.disabled is False for entry in name_it_curio_name_entries)
-    settings.enable_name_it_override = False
-    mod.on_setting_changed("enable_name_it_override")
-    assert all(entry.disabled is False for entry in name_it_curio_name_entries)
-    settings.enable_name_it_override = True
-    mod.on_setting_changed("enable_name_it_override")
     settings.name_it_force_curio_name_in_detailed_mode = False
     mod.on_setting_changed("name_it_force_curio_name_in_detailed_mode")
     assert settings.curio_content_name_it_curio_name is False
@@ -913,15 +910,21 @@ def main() -> None:
     settings.curio_display_profile = "primary"
     mod.on_setting_changed("curio_display_profile")
     assert entries_by_id["enable_custom_item_name_and_colors"].disabled is False
-    assert entries_by_id["custom_item_editor_keybind"].disabled is False
+    assert entries_by_id["custom_item_name_keybind"].disabled is False
+    assert entries_by_id["custom_item_name_color_keybind"].disabled is False
+    assert entries_by_id["custom_item_background_color_keybind"].disabled is False
     assert entries_by_id["custom_item_skip_confirmation_prompts"].disabled is False
     settings.enable_custom_item_name_and_colors = False
     mod.on_setting_changed("enable_custom_item_name_and_colors")
-    assert entries_by_id["custom_item_editor_keybind"].disabled is True
+    assert entries_by_id["custom_item_name_keybind"].disabled is True
+    assert entries_by_id["custom_item_name_color_keybind"].disabled is True
+    assert entries_by_id["custom_item_background_color_keybind"].disabled is True
     assert entries_by_id["custom_item_skip_confirmation_prompts"].disabled is True
     settings.enable_custom_item_name_and_colors = True
     mod.on_setting_changed("enable_custom_item_name_and_colors")
-    assert entries_by_id["custom_item_editor_keybind"].disabled is False
+    assert entries_by_id["custom_item_name_keybind"].disabled is False
+    assert entries_by_id["custom_item_name_color_keybind"].disabled is False
+    assert entries_by_id["custom_item_background_color_keybind"].disabled is False
     assert entries_by_id["custom_item_skip_confirmation_prompts"].disabled is False
     assert entries_by_id["weapon_perk_compression"].disabled is True
     assert entries_by_id["show_weapon_perk_rank_symbols"].disabled is True
@@ -1323,10 +1326,11 @@ def main() -> None:
 			"global_store_compact_character_names",
 			"global_store_single_column_modifier_horizontal_position",
 			"global_store_single_column_modifier_vertical_position",
-			"enable_name_it_override",
 			"name_it_force_curio_name_in_detailed_mode",
 			"enable_custom_item_name_and_colors",
-			"custom_item_editor_keybind",
+			"custom_item_name_keybind",
+			"custom_item_name_color_keybind",
+			"custom_item_background_color_keybind",
 			"custom_item_skip_confirmation_prompts",
 			"character_overview_curio_name_mode",
 			"character_overview_curio_font_size_percent",
@@ -1632,10 +1636,11 @@ def main() -> None:
     assert defaults["global_store_single_column_modifier_horizontal_position"] == 55
     assert defaults["global_store_single_column_modifier_vertical_position"] == 100
     assert defaults["enable_quick_look_card_single_column_integration"] is True
-    assert defaults["enable_name_it_override"] is True
     assert defaults["name_it_force_curio_name_in_detailed_mode"] is True
     assert defaults["enable_custom_item_name_and_colors"] is True
-    assert defaults["custom_item_editor_keybind"] == "hotkey_menu_special_1"
+    assert defaults["custom_item_name_keybind"] == "hotkey_menu_special_2"
+    assert defaults["custom_item_name_color_keybind"] == "hotkey_menu_special_1"
+    assert defaults["custom_item_background_color_keybind"] == "group_finder_refresh_groups"
     assert defaults["custom_item_skip_confirmation_prompts"] is True
     assert defaults["quick_look_card_single_column_font_size"] == 14
     assert defaults["quick_look_card_single_column_label_value_gap"] == 1

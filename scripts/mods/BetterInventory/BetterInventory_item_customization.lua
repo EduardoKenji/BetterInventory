@@ -7,7 +7,6 @@ local DEFAULT_NAME_COLOR = { 255, 220, 230, 210 }
 local DEFAULT_BACKGROUND_COLOR = { 255, 45, 55, 45 }
 local cached_records = {}
 local pending_action
-local active_view
 local input_widget
 local show_input_field = false
 local installed = false
@@ -34,6 +33,49 @@ local function save_records(mod, records)
 	mod:set(STORAGE_SETTING_ID, records, false)
 end
 
+local function name_it_mod()
+	local resolver = rawget(_G, "get_mod")
+
+	if type(resolver) ~= "function" then
+		return
+	end
+
+	local ok, other_mod = pcall(resolver, "name_it")
+
+	return ok and type(other_mod) == "table" and other_mod or nil
+end
+
+local function name_it_names()
+	local other_mod = name_it_mod()
+
+	if not other_mod then
+		return
+	end
+
+	local ok, names
+
+	if type(other_mod.get_custom_name_list) == "function" then
+		ok, names = pcall(other_mod.get_custom_name_list)
+	elseif type(other_mod.get) == "function" then
+		ok, names = pcall(other_mod.get, other_mod, "name_list")
+	end
+
+	return other_mod, ok and type(names) == "table" and names or {}
+end
+
+local function sync_name_to_name_it(gear_id, name)
+	local other_mod, names = name_it_names()
+
+	if not other_mod or type(other_mod.set) ~= "function" then
+		return false
+	end
+
+	names[gear_id] = type(name) == "string" and name ~= "" and name or nil
+	pcall(other_mod.set, other_mod, "name_list", names, false)
+
+	return true
+end
+
 ItemCustomization.get = function(mod, gear_id)
 	local record = gear_id and cached_records[gear_id]
 
@@ -50,6 +92,7 @@ ItemCustomization.update = function(mod, gear_id, changes)
 
 	if changes.name ~= nil then
 		record.name = type(changes.name) == "string" and changes.name ~= "" and changes.name or nil
+		sync_name_to_name_it(gear_id, record.name)
 	end
 
 	if changes.name_color ~= nil then
@@ -80,8 +123,65 @@ ItemCustomization.remove = function(mod, gear_id)
 
 	records[gear_id] = nil
 	save_records(mod, records)
+	sync_name_to_name_it(gear_id, nil)
 
 	return true
+end
+
+ItemCustomization.import_name_it_names = function(mod)
+	if mod:get("enable_custom_item_name_and_colors") == false then
+		return 0
+	end
+
+	local other_mod, names = name_it_names()
+
+	if not other_mod then
+		return 0
+	end
+
+	local records = customization_records(mod)
+	local imported = 0
+	local records_changed = false
+	local names_changed = false
+	local replace_pattern_name = type(other_mod.get) == "function" and other_mod:get("replace_pattern_name") == true
+
+	for gear_id, external_name in pairs(names) do
+		if type(gear_id) == "string" and type(external_name) == "string" and external_name ~= "" then
+			local record = type(records[gear_id]) == "table" and records[gear_id] or {}
+
+			if type(record.name) ~= "string" or record.name == "" then
+				record.name = external_name
+				record.name_target = replace_pattern_name and "sub" or "primary"
+				records[gear_id] = record
+				imported = imported + 1
+				records_changed = true
+			elseif record.name ~= external_name then
+				names[gear_id] = record.name
+				names_changed = true
+			end
+		end
+	end
+
+	for gear_id, record in pairs(records) do
+		local internal_name = type(record) == "table" and record.name
+
+		if type(internal_name) == "string" and internal_name ~= "" and names[gear_id] ~= internal_name then
+			names[gear_id] = internal_name
+			names_changed = true
+		end
+	end
+
+	if records_changed then
+		save_records(mod, records)
+	else
+		cached_records = records
+	end
+
+	if names_changed and type(other_mod.set) == "function" then
+		pcall(other_mod.set, other_mod, "name_list", names, false)
+	end
+
+	return imported
 end
 
 local function popup(context)
@@ -156,6 +256,29 @@ local function refresh_item(mod, layout, context)
 
 	if context.view and type(context.view._preview_item) == "function" then
 		pcall(context.view._preview_item, context.view, context.item)
+	end
+end
+
+local function reset_field(mod, context, layout, field, label)
+	local function reset()
+		ItemCustomization.update(mod, context.gear_id, { [field] = false })
+		refresh_item(mod, layout, context)
+	end
+
+	if mod:get("custom_item_skip_confirmation_prompts") ~= false then
+		reset()
+		return
+	end
+
+	pending_action = function()
+		popup({
+			title_text_unlocalized = string.format("Reset %s (%s)?", label, context.name),
+			description_text_unlocalized = "This restores the default value for this item.",
+			options = {
+				literal_button("Confirm", reset),
+				literal_button("Cancel", nil, true),
+			},
+		})
 	end
 end
 
@@ -257,10 +380,7 @@ local function show_color_picker(mod, target, context, layout)
 		options = {
 			literal_button("Confirm", confirm),
 			literal_button("Reset to default", function()
-				if context then
-					ItemCustomization.update(mod, context.gear_id, { [field] = false })
-					refresh_item(mod, layout, context)
-				end
+				if context then reset_field(mod, context, layout, field, is_background and "background color" or "name color") end
 			end),
 			literal_button("Cancel", nil, true),
 		},
@@ -296,45 +416,9 @@ local function show_name_editor(mod, context, layout)
 			end),
 			literal_button("Reset to default", function()
 				close_input()
-				ItemCustomization.update(mod, context.gear_id, { name = false })
-				refresh_item(mod, layout, context)
+				reset_field(mod, context, layout, "name", "name")
 			end),
 			literal_button("Cancel", close_input, true),
-		},
-	})
-end
-
-local function show_reset_confirmation(mod, context, layout)
-	local function reset()
-		ItemCustomization.remove(mod, context.gear_id)
-		refresh_item(mod, layout, context)
-	end
-
-	if mod:get("custom_item_skip_confirmation_prompts") ~= false then
-		reset()
-		return true
-	end
-
-	return popup({
-		title_text_unlocalized = string.format("Reset item customization (%s)?", context.name),
-		description_text_unlocalized = "This restores the default name and colors for this item.",
-		options = {
-			literal_button("Confirm", reset),
-			literal_button("Cancel", nil, true),
-		},
-	})
-end
-
-local function show_editor(mod, context, layout)
-	return popup({
-		title_text_unlocalized = string.format("Customize item (%s)", context.name),
-		description_text_unlocalized = "Choose what to change for this item.",
-		options = {
-			literal_button("Change name", function() pending_action = function() show_name_editor(mod, context, layout) end end),
-			literal_button("Change item name color", function() pending_action = function() show_color_picker(mod, "name", context, layout) end end),
-			literal_button("Change item background color", function() pending_action = function() show_color_picker(mod, "background", context, layout) end end),
-			literal_button("Reset to default", function() pending_action = function() show_reset_confirmation(mod, context, layout) end end),
-			literal_button("Cancel", nil, true),
 		},
 	})
 end
@@ -347,7 +431,11 @@ ItemCustomization.on_enabled = function(mod)
 	end
 end
 
-ItemCustomization.on_setting_changed = function()
+ItemCustomization.on_setting_changed = function(mod, setting_id)
+	if setting_id == "enable_custom_item_name_and_colors" and mod:get(setting_id) ~= false then
+		return ItemCustomization.import_name_it_names(mod)
+	end
+
 	return false
 end
 
@@ -359,12 +447,56 @@ ItemCustomization.update_runtime = function()
 	end
 end
 
+local function effective_name_keybind(mod)
+	local other_mod = name_it_mod()
+	local configured = other_mod and type(other_mod.get) == "function" and other_mod:get("keybind_change_name") or nil
+
+	if type(configured) == "string" then
+		return configured
+	end
+
+	return mod:get("custom_item_name_keybind")
+end
+
+local function remove_customization_legend_entries(inputs, remove_name_it)
+	for index = #inputs, 1, -1 do
+		local callback_name = inputs[index].on_pressed_callback
+
+		if (remove_name_it and callback_name == "cb_on_change_name_pressed") or (type(callback_name) == "string" and string.find(callback_name, "cb_on_better_inventory_", 1, true) == 1) then
+			table.remove(inputs, index)
+		end
+	end
+end
+
+local function add_legend_entry(inputs, keybind, localization_id, callback_name)
+	if type(keybind) ~= "string" or keybind == "off" then
+		return
+	end
+
+	inputs[#inputs + 1] = {
+		input_action = keybind,
+		display_name = localization_id,
+		alignment = "right_alignment",
+		on_pressed_callback = callback_name,
+		visibility_function = function(parent) return parent:selected_grid_widget() ~= nil end,
+	}
+end
+
 ItemCustomization.install = function(mod, InventoryWeaponsView, layout)
 	if installed or type(InventoryWeaponsView) ~= "table" then
 		return false
 	end
 
 	installed = true
+
+	if type(mod.add_global_localize_strings) == "function" then
+		mod:add_global_localize_strings({
+			better_inventory_change_name = { en = "Change Name" },
+			better_inventory_name_color = { en = "Name Color" },
+			better_inventory_background_color = { en = "Background Color" },
+		})
+	end
+
 	mod:hook_require("scripts/ui/constant_elements/elements/popup_handler/constant_element_popup_handler_definitions", function(definitions)
 		local TextInputPassTemplates = require("scripts/ui/pass_templates/text_input_pass_templates")
 		local UIWidget = require("scripts/managers/ui/ui_widget")
@@ -384,31 +516,39 @@ ItemCustomization.install = function(mod, InventoryWeaponsView, layout)
 
 	mod:hook(InventoryWeaponsView, "init", function(func, view, ...)
 		func(view, ...)
-		view.cb_on_better_inventory_customize_item_pressed = function(self)
+		view.cb_on_better_inventory_change_name_pressed = function(self)
 			local context = selected_context(self)
-			if context then show_editor(mod, context, layout) end
+			if context then show_name_editor(mod, context, layout) end
+		end
+		view.cb_on_better_inventory_name_color_pressed = function(self)
+			local context = selected_context(self)
+			if context then show_color_picker(mod, "name", context, layout) end
+		end
+		view.cb_on_better_inventory_background_color_pressed = function(self)
+			local context = selected_context(self)
+			if context then show_color_picker(mod, "background", context, layout) end
 		end
 	end)
 
 	mod:hook(InventoryWeaponsView, "_setup_input_legend", function(func, view, ...)
-		local keybind = mod:get("custom_item_editor_keybind")
 		local inputs = view._definitions and view._definitions.legend_inputs
+		local result = func(view, ...)
 
-		if keybind and keybind ~= "off" and type(inputs) == "table" then
-			inputs[#inputs + 1] = {
-				input_action = keybind,
-				display_name = "loc_change_item_name",
-				alignment = "right_alignment",
-				on_pressed_callback = "cb_on_better_inventory_customize_item_pressed",
-				visibility_function = function(parent) return parent:selected_grid_widget() ~= nil end,
-			}
+		if type(inputs) == "table" then
+			local enabled = mod:get("enable_custom_item_name_and_colors") ~= false
+
+			remove_customization_legend_entries(inputs, enabled)
+
+			if enabled then
+				add_legend_entry(inputs, effective_name_keybind(mod), "better_inventory_change_name", "cb_on_better_inventory_change_name_pressed")
+				add_legend_entry(inputs, mod:get("custom_item_name_color_keybind"), "better_inventory_name_color", "cb_on_better_inventory_name_color_pressed")
+				add_legend_entry(inputs, mod:get("custom_item_background_color_keybind"), "better_inventory_background_color", "cb_on_better_inventory_background_color_pressed")
+			end
 		end
 
-		return func(view, ...)
+		return result
 	end)
 
-	mod:hook_safe(InventoryWeaponsView, "update", function(view) active_view = view end)
-	mod:hook_safe(InventoryWeaponsView, "on_exit", function(view) if active_view == view then active_view = nil end end)
 	mod:hook_safe("GearService", "on_gear_deleted", function(_, gear_id)
 		ItemCustomization.remove(mod, gear_id)
 	end)
@@ -417,6 +557,6 @@ ItemCustomization.install = function(mod, InventoryWeaponsView, layout)
 end
 
 ItemCustomization.show_color_picker = show_color_picker
-ItemCustomization.show_editor = show_editor
+ItemCustomization.show_name_editor = show_name_editor
 
 return ItemCustomization

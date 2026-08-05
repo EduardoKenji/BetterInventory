@@ -55,6 +55,25 @@ def main() -> None:
         end
 
         settings = {}
+        name_it_settings = { name_list = {} }
+        test_name_it_mod = {}
+
+        function test_name_it_mod:get(setting_id)
+            return name_it_settings[setting_id]
+        end
+
+        function test_name_it_mod:set(setting_id, value)
+            name_it_settings[setting_id] = value
+        end
+
+        function test_name_it_mod.get_custom_name_list()
+            return name_it_settings.name_list
+        end
+
+        function get_mod(name)
+            return name == "name_it" and test_name_it_mod or nil
+        end
+
         test_mod = {}
 
         function test_mod:get(setting_id)
@@ -66,6 +85,20 @@ def main() -> None:
         function test_mod:set(setting_id, value)
             settings[setting_id] = type(value) == "table" and table.clone(value) or value
         end
+
+        captured_hooks = {}
+
+        function test_mod:add_global_localize_strings(strings)
+            global_strings = strings
+        end
+
+        function test_mod:hook_require() end
+
+        function test_mod:hook(target, method, callback)
+            captured_hooks[method] = callback
+        end
+
+        function test_mod:hook_safe() end
 
         captured_popup = nil
         Managers = {
@@ -143,20 +176,66 @@ def main() -> None:
     popup.options[2].callback()
     assert customization.get(mod, "gear-1").background_color is None
 
-    settings.custom_item_skip_confirmation_prompts = True
-    customization.show_editor(mod, context, None)
-    editor = globals_.captured_popup
-    assert editor.title_text_unlocalized == "Customize item (Test Item)"
-    assert [editor.options[index].text for index in range(1, 6)] == [
-        "Change name",
-        "Change item name color",
-        "Change item background color",
-        "Reset to default",
-        "Cancel",
+    globals_.name_it_settings.name_list["legacy-gear"] = "Legacy Name"
+    assert customization.import_name_it_names(mod) == 1
+    assert customization.get(mod, "legacy-gear").name == "Legacy Name"
+    assert customization.get(mod, "legacy-gear").name_target == "primary"
+
+    globals_.name_it_settings.replace_pattern_name = True
+    globals_.name_it_settings.name_list["legacy-pattern"] = "Legacy Pattern Name"
+    assert customization.import_name_it_names(mod) == 1
+    assert customization.get(mod, "legacy-pattern").name_target == "sub"
+
+    customization.update(
+        mod, "legacy-gear", lua.table_from({"name": "BetterInventory Name"})
+    )
+    assert globals_.name_it_settings.name_list["legacy-gear"] == "BetterInventory Name"
+
+    customization.remove(mod, "legacy-gear")
+    assert globals_.name_it_settings.name_list["legacy-gear"] is None
+
+    settings.custom_item_name_keybind = "hotkey_menu_special_1"
+    settings.custom_item_name_color_keybind = "hotkey_menu_special_1"
+    settings.custom_item_background_color_keybind = "group_finder_refresh_groups"
+    globals_.name_it_settings.keybind_change_name = "hotkey_menu_special_2"
+    inventory_view_class = lua.table_from({})
+    assert customization.install(mod, inventory_view_class, lua.table_from({})) is True
+    view = lua.table_from(
+        {
+            "_definitions": lua.table_from(
+                {
+                    "legend_inputs": lua.table_from(
+                        [
+                            lua.table_from(
+                                {
+                                    "input_action": "hotkey_menu_special_2",
+                                    "on_pressed_callback": "cb_on_change_name_pressed",
+                                }
+                            )
+                        ]
+                    )
+                }
+            )
+        }
+    )
+    globals_.captured_hooks.init(lua.eval("function() end"), view)
+    globals_.captured_hooks._setup_input_legend(lua.eval("function() end"), view)
+    legend = view._definitions.legend_inputs
+    assert len(legend) == 3
+    assert [legend[index].display_name for index in range(1, 4)] == [
+        "better_inventory_change_name",
+        "better_inventory_name_color",
+        "better_inventory_background_color",
     ]
-    editor.options[4].callback()
-    customization.update_runtime(mod, 0)
-    assert customization.get(mod, "gear-1") is None
+    assert [legend[index].input_action for index in range(1, 4)] == [
+        "hotkey_menu_special_2",
+        "hotkey_menu_special_1",
+        "group_finder_refresh_groups",
+    ]
+    assert all(
+        legend[index].on_pressed_callback != "cb_on_change_name_pressed"
+        for index in range(1, 4)
+    )
 
     print("BetterInventory item customization tests passed.")
 

@@ -695,11 +695,23 @@ local localization = {
 	enable_custom_item_name_and_colors_tooltip = {
 		en = "Enables BetterInventory's standalone per-item name, name-color and background-color editor. Does not require Name It.",
 	},
-	custom_item_editor_keybind = {
-		en = "Customize selected item keybind",
+	custom_item_name_keybind = {
+		en = "Change Name keybind",
 	},
-	custom_item_editor_keybind_tooltip = {
-		en = "Opens the name and color editor for the selected inventory item.",
+	custom_item_name_keybind_tooltip = {
+		en = "Opens the name editor directly. When Name It is installed, BetterInventory uses its configured Change Name key and replaces its duplicate inventory action.",
+	},
+	custom_item_name_color_keybind = {
+		en = "Name Color keybind",
+	},
+	custom_item_name_color_keybind_tooltip = {
+		en = "Opens the item-name RGB selector directly.",
+	},
+	custom_item_background_color_keybind = {
+		en = "Background Color keybind",
+	},
+	custom_item_background_color_keybind_tooltip = {
+		en = "Opens the item-background RGB selector directly.",
 	},
 	custom_item_editor_keybind_e = {
 		en = "[E]",
@@ -709,6 +721,9 @@ local localization = {
 	},
 	custom_item_editor_keybind_v = {
 		en = "[V]",
+	},
+	custom_item_editor_keybind_r = {
+		en = "[R]",
 	},
 	custom_item_editor_keybind_off = {
 		en = "Off",
@@ -721,12 +736,6 @@ local localization = {
 	},
 	option_requires_custom_item_name_and_colors = {
 		en = "Enable custom item names and colors to use this option.",
-	},
-	enable_name_it_override = {
-		en = "Enable 'Name It' override",
-	},
-	enable_name_it_override_tooltip = {
-		en = "Lets Name It custom weapon and Curio names take priority over BetterInventory's name formatting. Disable this to restore BetterInventory names such as Dueling Sword Mk IV. Reopen the current view after changing this option.",
 	},
 	name_it_force_curio_name_in_detailed_mode = {
 		en = "Show Curio name with all four attributes",
@@ -2240,17 +2249,20 @@ zh_cn.enable_armoury_single_column_mirror_tooltip = "Uses BetterInventory's cust
 zh_cn.custom_item_name_and_colors_group = "Custom Item Names and Colors"
 zh_cn.enable_custom_item_name_and_colors = "Enable custom item names and colors"
 zh_cn.enable_custom_item_name_and_colors_tooltip = "Enables BetterInventory's standalone per-item name, name-color and background-color editor. Does not require Name It."
-zh_cn.custom_item_editor_keybind = "Customize selected item keybind"
-zh_cn.custom_item_editor_keybind_tooltip = "Opens the name and color editor for the selected inventory item."
+zh_cn.custom_item_name_keybind = "Change Name keybind"
+zh_cn.custom_item_name_keybind_tooltip = "Opens the name editor directly. When Name It is installed, BetterInventory uses its configured Change Name key and replaces its duplicate inventory action."
+zh_cn.custom_item_name_color_keybind = "Name Color keybind"
+zh_cn.custom_item_name_color_keybind_tooltip = "Opens the item-name RGB selector directly."
+zh_cn.custom_item_background_color_keybind = "Background Color keybind"
+zh_cn.custom_item_background_color_keybind_tooltip = "Opens the item-background RGB selector directly."
 zh_cn.custom_item_editor_keybind_e = "[E]"
 zh_cn.custom_item_editor_keybind_q = "[Q]"
 zh_cn.custom_item_editor_keybind_v = "[V]"
+zh_cn.custom_item_editor_keybind_r = "[R]"
 zh_cn.custom_item_editor_keybind_off = "Off"
 zh_cn.custom_item_skip_confirmation_prompts = "Skip confirmation prompts"
 zh_cn.custom_item_skip_confirmation_prompts_tooltip = "Immediately applies reset actions instead of asking for confirmation. Enabled by default."
 zh_cn.option_requires_custom_item_name_and_colors = "Enable custom item names and colors to use this option."
-zh_cn.enable_name_it_override = "Enable 'Name It' override"
-zh_cn.enable_name_it_override_tooltip = "Lets Name It custom weapon and Curio names take priority over BetterInventory name formatting. Reopen the current view after changing."
 zh_cn.name_it_force_curio_name_in_detailed_mode = "Show Curio name with all four attributes"
 zh_cn.name_it_force_curio_name_in_detailed_mode_tooltip = "Shows a two-line Curio name above all four attribute lines in Character Overview and supported item views. Works with or without Name It."
 zh_cn.curio_content_name_it_curio_name = "Show Curio name with all four attributes"

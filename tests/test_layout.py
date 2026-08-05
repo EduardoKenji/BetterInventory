@@ -388,7 +388,6 @@ def main() -> None:
 				curio_stat_compression = "heavy",
 				simplify_curio_primary_stat_text = true,
 				remove_curio_stat_plus_signs = false,
-				enable_name_it_override = true,
 				name_it_force_curio_name_in_detailed_mode = true,
 				curio_health_color_r = 235,
 				curio_health_color_g = 85,
@@ -3044,8 +3043,9 @@ def main() -> None:
         )
         assert stat_pass.visibility_function(detailed_widget.content)
 
-    # Name It custom names win without BetterInventory appending a mark. Detailed
-    # Curios reserve a two-line name area above all four stat rows.
+    # Detailed Curios reserve a two-line name area above all four stat rows even
+    # when Name It is absent. Name It migration is owned by the customization
+    # module, so layout rendering only consumes BetterInventory records.
     globals_.test_name_it_mod = lua.execute(
         """
         return {
@@ -3106,8 +3106,8 @@ def main() -> None:
         None,
         name_it_curio_blueprint,
     )
-    assert name_it_curio_widget.content.display_name == "First Curio"
-    assert name_it_curio_widget.content.better_inventory_name_it_curio_name_text == "First Curio"
+    assert name_it_curio_widget.content.display_name == "Mechanicus Icon"
+    assert name_it_curio_widget.content.better_inventory_name_it_curio_name_text == "Mechanicus Icon"
     assert name_it_title_pass.visibility_function(name_it_curio_widget.content) is True
 
     long_name_it_curio_item = lua.eval("table.clone")(curio_element.item)
@@ -3133,14 +3133,6 @@ def main() -> None:
         name_it_curio_widget.content.better_inventory_name_it_curio_name_text.count("\n")
         == 1
     )
-
-    # Name It updates display_name directly after saving. The regular widget
-    # update must immediately refresh BetterInventory's render-only title.
-    name_it_curio_widget.content.display_name = "Test"
-    name_it_curio_blueprint.update(None, name_it_curio_widget)
-    assert name_it_curio_widget.content.display_name == "Test"
-    assert name_it_curio_widget.content.better_inventory_name_it_curio_name_text == "Test"
-    assert name_it_curio_widget.content.better_inventory_name_it_curio_source_name == "Test"
 
     character_overview_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     layout.configure_native_item_blueprint(
@@ -3179,10 +3171,8 @@ def main() -> None:
         None,
         name_it_weapon_blueprint,
     )
-    assert name_it_weapon_widget.content.display_name == "Custom Blade"
-    assert not name_it_weapon_widget.content.display_name.endswith(" Mk VI")
+    assert name_it_weapon_widget.content.display_name.endswith(" Mk VI")
 
-    mod.settings.enable_name_it_override = False
     better_inventory_name_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     layout.configure_item_blueprint(mod, better_inventory_name_blueprint, 640)
     better_inventory_name_widget = lua.table_from(
@@ -3208,7 +3198,6 @@ def main() -> None:
         better_inventory_name_blueprint,
     )
     assert better_inventory_name_widget.content.display_name.endswith(" Mk VI")
-    mod.settings.enable_name_it_override = True
     globals_.test_name_it_mod = None
 
     # BetterInventory's standalone record supplies the name and both colors

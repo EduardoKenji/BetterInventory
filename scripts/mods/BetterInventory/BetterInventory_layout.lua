@@ -515,48 +515,8 @@ local function setting(mod, setting_id, fallback)
 	return value
 end
 
-local function enabled_name_it_mod()
-	local resolver = rawget(_G, "get_mod")
-
-	if type(resolver) ~= "function" then
-		return
-	end
-
-	local ok, name_it = pcall(resolver, "name_it")
-
-	if not ok or type(name_it) ~= "table" then
-		return
-	end
-
-	if type(name_it.is_enabled) == "function" then
-		local enabled_ok, enabled = pcall(name_it.is_enabled, name_it)
-
-		if enabled_ok and enabled == false then
-			return
-		end
-	end
-
-	return name_it
-end
-
-local function name_it_integration_enabled(mod)
-	return setting(mod, "enable_name_it_override", true) and enabled_name_it_mod() ~= nil
-end
-
 local function name_it_curio_title_enabled(mod, configuration)
 	return not (configuration and configuration.character_overview) and setting(mod, "name_it_force_curio_name_in_detailed_mode", true)
-end
-
-local function name_it_custom_name(item, is_sub)
-	local name_it = enabled_name_it_mod()
-
-	if not name_it or type(name_it.get_custom_name) ~= "function" then
-		return
-	end
-
-	local ok, custom_name = pcall(name_it.get_custom_name, item, is_sub)
-
-	return ok and type(custom_name) == "string" and custom_name ~= "" and custom_name or nil
 end
 
 local function curio_name_font_size(mod, configuration)
@@ -570,8 +530,6 @@ end
 local function curio_name_title_height(mod, configuration)
 	return math.max(40, 2 * (curio_name_font_size(mod, configuration) + CURIO_NAME_LINE_GAP))
 end
-
-Layout.name_it_integration_enabled = name_it_integration_enabled
 
 Layout.set_item_customization_provider = function(provider)
 	item_customization_provider = provider
@@ -2352,11 +2310,10 @@ local function format_item_name(mod, widget, element, append_mark_to_name)
 	local item = element and (element.real_item or element.item)
 	local customization = item_customization(mod, item)
 	local internal_name = customization and customization.name
+	local internal_name_target = customization and customization.name_target
 
 	if is_curio(item) then
-		local external_name = name_it_integration_enabled(mod) and name_it_custom_name(item) or nil
-
-		content.display_name = external_name or internal_name or localized_item_name(item, content.display_name)
+		content.display_name = internal_name or localized_item_name(item, content.display_name)
 		content.better_inventory_name_it_curio_title = setting(mod, "curio_display_profile", "detailed") == "detailed" and setting(mod, "name_it_force_curio_name_in_detailed_mode", true)
 		content.better_inventory_name_it_curio_name_text = content.display_name
 		content.better_inventory_name_it_curio_source_name = content.display_name
@@ -2368,23 +2325,21 @@ local function format_item_name(mod, widget, element, append_mark_to_name)
 		return
 	end
 
-	if name_it_integration_enabled(mod) then
-		local custom_name = name_it_custom_name(item)
-		local custom_sub_name = name_it_custom_name(item, true)
+	if type(internal_name) == "string" and internal_name ~= "" then
+		if internal_name_target == "sub" then
+			local family_ok, family_name = pcall(Items.weapon_lore_family_name, item)
 
-		if custom_name then
-			content.display_name = custom_name
-		elseif custom_sub_name then
-			content.sub_display_name = custom_sub_name
-		end
+			if family_ok and valid_weapon_name_part(family_name) then
+				content.display_name = family_name
+			end
 
-		if custom_name or custom_sub_name then
+			content.sub_display_name = internal_name
+
 			return
 		end
-	end
 
-	if type(internal_name) == "string" and internal_name ~= "" then
 		content.display_name = internal_name
+		content.sub_display_name = ""
 
 		return
 	end
@@ -2802,26 +2757,6 @@ local function configure_card_content(mod, item_blueprint, configuration)
 		end
 	end
 
-	if original_update and name_it_integration_enabled(mod) and name_it_curio_title_enabled(mod, configuration) then
-		item_blueprint.update = function(parent, widget, ...)
-			local result = original_update(parent, widget, ...)
-			local content = widget and widget.content
-
-			-- Name It writes the selected widget's display_name directly after a
-			-- save instead of rebuilding its blueprint data. Mirror that live
-			-- value into our render-only field without feeding wrapped text back
-			-- into Name It's editor.
-			if content and content.better_inventory_name_it_curio_title and type(content.display_name) == "string" and content.display_name ~= content.better_inventory_name_it_curio_source_name then
-				content.better_inventory_name_it_curio_source_name = content.display_name
-				content.better_inventory_name_it_curio_name_text = content.display_name
-				content.better_inventory_name_it_curio_full_name = nil
-				content.better_inventory_fitted_name_it_curio_name = nil
-				fit_display_name(parent, widget, nil, preferred_font_size, math.min(preferred_font_size, minimum_font_size))
-			end
-
-			return result
-		end
-	end
 end
 
 local function slot_kind_from_slot_types(slot_types)
@@ -3349,7 +3284,7 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 				return show_curio_quality and not detailed_curio_profile
 			end
 
-			return is_weapon(item) and (show_pattern_mark or name_it_integration_enabled(mod) and name_it_custom_name(item, true) ~= nil)
+			return is_weapon(item) and show_pattern_mark
 		end
 	end
 
@@ -3721,7 +3656,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 				return show_curio_quality and not detailed_curio_profile
 			end
 
-			return is_weapon(item) and (show_pattern_mark or name_it_integration_enabled(mod) and name_it_custom_name(item, true) ~= nil)
+			return is_weapon(item) and show_pattern_mark
 		end
 	end
 
