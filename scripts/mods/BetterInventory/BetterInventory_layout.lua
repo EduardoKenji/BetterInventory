@@ -2962,7 +2962,7 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 			-- logical UI-canvas coordinates resolution-independent.
 			portrait.style.offset = {
 				15,
-				1,
+				-1,
 				14,
 			}
 		end
