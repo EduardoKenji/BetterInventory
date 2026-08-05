@@ -106,7 +106,11 @@ def main() -> None:
             captured_hooks[method] = callback
         end
 
-        function test_mod:hook_safe() end
+        captured_safe_hooks = {}
+
+        function test_mod:hook_safe(target, method, callback)
+            captured_safe_hooks[method] = callback
+        end
 
         captured_popup = nil
         Managers = {
@@ -115,6 +119,9 @@ def main() -> None:
                     assert(event_name == "event_show_ui_popup")
                     captured_popup = context
                 end,
+            },
+            ui = {
+                view_instance = function() return active_inventory_view end,
             },
         }
         """
@@ -285,6 +292,83 @@ def main() -> None:
         legend[index].on_pressed_callback != "cb_on_change_name_pressed"
         for index in range(1, 4)
     )
+
+    # The name popup exposes and focuses a real text field, then reserves room
+    # for it between the title/description and the three action buttons.
+    input_widget = lua.table_from(
+        {"content": lua.table_from({"visible": False, "is_writing": False})}
+    )
+    popup_handler = lua.table_from(
+        {
+            "_widgets_by_name": lua.table_from(
+                {
+                    "better_inventory_name_input": input_widget,
+                    "description_text": lua.table_from(
+                        {
+                            "content": lua.table_from(
+                                {
+                                    "text": "Enter a custom name. Leave it blank to restore the default name."
+                                }
+                            )
+                        }
+                    ),
+                    "title_text": lua.table_from({"scenegraph_id": "title"}),
+                }
+            ),
+            "scenegraph_position": lua.eval(
+                "function(self, id) return { 0, id == 'title' and 10 or 20 } end"
+            ),
+            "set_scenegraph_position": lua.eval(
+                "function(self, id, x, y) adjusted_positions[id] = y end"
+            ),
+        }
+    )
+    globals_.adjusted_positions = lua.table_from({})
+    globals_.captured_safe_hooks.update(popup_handler)
+    assert customization.show_name_editor(mod, context, lua.table_from({})) is True
+    popup = globals_.captured_popup
+    assert input_widget.content.visible is True
+    assert input_widget.content.is_writing is True
+    assert [popup.options[index].text for index in range(1, 4)] == [
+        "Confirm",
+        "Reset to default",
+        "Cancel",
+    ]
+    popup_height = globals_.captured_hooks._update_popup_text_height(
+        lua.eval("function() return 100 end"), popup_handler
+    )
+    assert popup_height == 160
+    assert globals_.adjusted_positions.title == -20
+    assert globals_.adjusted_positions.button_pivot == 50
+
+    # Saving refreshes both the selected inventory card and the matching card
+    # already alive in the character overview underneath it.
+    overview_item = lua.table_from({"gear_id": "gear-1"})
+    overview_widget = lua.table_from(
+        {
+            "marker": "overview",
+            "content": lua.table_from(
+                {"element": lua.table_from({"item": overview_item})}
+            )
+        }
+    )
+    globals_.active_inventory_view = lua.table_from(
+        {"_loadout_widgets": lua.table_from([overview_widget])}
+    )
+    globals_.refresh_calls = lua.table_from({})
+    refresh_layout = lua.table_from(
+        {
+            "refresh_item_customization": lua.eval(
+                "function(mod, widget) refresh_calls[#refresh_calls + 1] = widget end"
+            )
+        }
+    )
+    context.widget.marker = "selected"
+    customization.show_color_picker(mod, "background", context, refresh_layout)
+    globals_.captured_popup.options[1].callback()
+    assert len(globals_.refresh_calls) == 2
+    assert globals_.refresh_calls[1].marker == "selected"
+    assert globals_.refresh_calls[2].marker == "overview"
 
     print("BetterInventory item customization tests passed.")
 

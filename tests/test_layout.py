@@ -3225,9 +3225,11 @@ def main() -> None:
     layout.configure_item_blueprint(mod, custom_weapon_blueprint, 640)
     blueprint_pass(custom_weapon_blueprint, "display_name").style.text_color = lua.table_from([255, 220, 230, 210])
     blueprint_pass(custom_weapon_blueprint, "background").style.color = lua.table_from([255, 1, 2, 3])
+    blueprint_pass(custom_weapon_blueprint, "rarity_tag").style.color = lua.table_from([255, 200, 10, 10])
     custom_weapon_styles = {
         "display_name": blueprint_pass(custom_weapon_blueprint, "display_name").style,
         "background": blueprint_pass(custom_weapon_blueprint, "background").style,
+        "rarity_tag": blueprint_pass(custom_weapon_blueprint, "rarity_tag").style,
     }
     custom_weapon_widget = lua.table_from(
         {"content": lua.table_from({}), "style": lua.table_from(custom_weapon_styles)}
@@ -3245,6 +3247,7 @@ def main() -> None:
     assert custom_weapon_widget.content.display_name == "Emerald Blade"
     assert tuple(custom_weapon_widget.style.display_name.text_color[index] for index in range(1, 5)) == (255, 10, 20, 30)
     assert tuple(custom_weapon_widget.style.background.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
+    assert tuple(custom_weapon_widget.style.rarity_tag.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
     layout.set_item_customization_provider(None)
 
     mod.settings.show_curio_item_level = False

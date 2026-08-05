@@ -3,6 +3,7 @@ local Items = require("scripts/utilities/items")
 
 local STORAGE_SETTING_ID = "custom_item_name_and_colors"
 local INPUT_WIDGET_ID = "better_inventory_name_input"
+local NAME_EDITOR_DESCRIPTION = "Enter a custom name. Leave it blank to restore the default name."
 local DEFAULT_NAME_COLOR = { 255, 220, 230, 210 }
 local DEFAULT_BACKGROUND_COLOR = { 255, 45, 55, 45 }
 local cached_records = {}
@@ -258,8 +259,34 @@ local function refresh_item(mod, layout, context, refresh_name)
 		content.better_inventory_name_it_curio_name_text = display_name
 	end
 
-	if layout and type(layout.apply_item_customization_style) == "function" then
+	if layout and type(layout.refresh_item_customization) == "function" then
+		layout.refresh_item_customization(mod, context.widget, context.widget and context.widget.content and context.widget.content.element)
+	elseif layout and type(layout.apply_item_customization_style) == "function" then
 		layout.apply_item_customization_style(mod, context.widget, context.widget and context.widget.content and context.widget.content.element)
+	end
+
+	-- InventoryWeaponsView is layered over InventoryView. Its selected grid card
+	-- is refreshed above, but the already-created character overview loadout
+	-- widgets underneath otherwise retain their old name/colors until reopened.
+	local ui_manager = Managers and Managers.ui
+	local overview = ui_manager and type(ui_manager.view_instance) == "function" and ui_manager:view_instance("inventory_view")
+	local overview_widgets = overview and overview._loadout_widgets
+
+	if type(overview_widgets) == "table" and layout then
+		for index = 1, #overview_widgets do
+			local widget = overview_widgets[index]
+			local item = item_from_widget(widget)
+
+			if item and item.gear_id == context.gear_id then
+				local element = widget.content and widget.content.element
+
+				if type(layout.refresh_item_customization) == "function" then
+					layout.refresh_item_customization(mod, widget, element)
+				elseif type(layout.apply_item_customization_style) == "function" then
+					layout.apply_item_customization_style(mod, widget, element)
+				end
+			end
+		end
 	end
 
 	if refresh_name and context.view and type(context.view._preview_item) == "function" then
@@ -523,6 +550,7 @@ end
 local function close_input()
 	if input_widget and input_widget.content then
 		input_widget.content.is_writing = false
+		input_widget.content.visible = false
 	end
 
 	show_input_field = false
@@ -535,11 +563,13 @@ local function show_name_editor(mod, context, layout)
 
 	local record = ItemCustomization.get(mod, context.gear_id)
 	input_widget.content.input_text = record and record.name or context.name or ""
+	input_widget.content.visible = true
+	input_widget.content.is_writing = true
 	show_input_field = true
 
 	return popup({
 		title_text_unlocalized = string.format("Change item name (%s)", context.name),
-		description_text_unlocalized = "Enter a custom name. Leave it blank to restore the default name.",
+		description_text_unlocalized = NAME_EDITOR_DESCRIPTION,
 		options = {
 			literal_button("Confirm", function()
 				local value = input_widget and input_widget.content and input_widget.content.input_text or ""
@@ -645,6 +675,30 @@ ItemCustomization.install = function(mod, InventoryWeaponsView, layout)
 	mod:hook_safe("ConstantElementPopupHandler", "update", function(handler)
 		input_widget = input_widget or handler._widgets_by_name and handler._widgets_by_name[INPUT_WIDGET_ID]
 		if input_widget and input_widget.content then input_widget.content.visible = show_input_field end
+	end)
+
+	mod:hook("ConstantElementPopupHandler", "_update_popup_text_height", function(func, handler, ...)
+		local total_height = func(handler, ...)
+		local widgets = handler._widgets_by_name
+		local description = widgets and widgets.description_text
+		local title = widgets and widgets.title_text
+
+		if show_input_field and description and description.content and description.content.text == NAME_EDITOR_DESCRIPTION and title and not handler._better_inventory_name_input_layout_adjusted then
+			local title_offset = handler:scenegraph_position(title.scenegraph_id)
+			local button_offset = handler:scenegraph_position("button_pivot")
+
+			handler:set_scenegraph_position(title.scenegraph_id, nil, title_offset[2] - 30)
+			handler:set_scenegraph_position("button_pivot", nil, button_offset[2] + 30)
+			handler._better_inventory_name_input_layout_adjusted = true
+
+			return total_height + 60
+		end
+
+		if not show_input_field then
+			handler._better_inventory_name_input_layout_adjusted = false
+		end
+
+		return total_height
 	end)
 
 	mod:hook(InventoryWeaponsView, "init", function(func, view, ...)

@@ -2407,12 +2407,28 @@ local function apply_item_customization_style(mod, widget, element)
 		apply_custom_color(text_style, name_color, "hover_color")
 	end
 
-	for _, style_id in ipairs({ "background", "background_gradient" }) do
+	for _, style_id in ipairs({ "background", "background_gradient", "rarity_tag" }) do
 		apply_custom_color(style[style_id], background_color, "color")
 	end
 end
 
 Layout.apply_item_customization_style = apply_item_customization_style
+
+-- Re-run the same formatting path used when a card is initialized. This is
+-- also used by the customization editor to update already-created loadout
+-- widgets (notably the character overview hidden beneath InventoryWeaponsView)
+-- without forcing the player to close and reopen the view.
+Layout.refresh_item_customization = function(mod, widget, element)
+	if not widget then
+		return false
+	end
+
+	element = element or widget.content and widget.content.element
+	format_item_name(mod, widget, element, setting(mod, "append_mark_to_name", true))
+	apply_item_customization_style(mod, widget, element)
+
+	return true
+end
 
 local function format_item_level(widget, element, show_item_level_icon)
 	if show_item_level_icon then
