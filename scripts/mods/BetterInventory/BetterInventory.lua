@@ -985,7 +985,12 @@ local function refresh_option_dependencies()
 	set_option_enabled(option_dependency_entries.weapon_modifier_lowest_color_b, weapon_modifier_lowest_color_enabled, weapon_modifier_lowest_color_reason)
 	set_option_enabled(option_dependency_entries.weapon_modifier_lowest_color_opacity, weapon_modifier_lowest_color_enabled, weapon_modifier_lowest_color_reason)
 	set_option_enabled(option_dependency_entries.enable_name_it_override, true)
-	set_option_enabled(option_dependency_entries.name_it_force_curio_name_in_detailed_mode, name_it_override_enabled, mod:localize("option_requires_name_it_override"))
+	local name_it_curio_name_enabled = name_it_override_enabled and detailed_curio_profile
+	local name_it_curio_name_reason = not detailed_curio_profile and mod:localize("option_requires_detailed_curio_profile") or mod:localize("option_requires_name_it_override")
+
+	for _, entry in ipairs(option_dependency_entries.name_it_force_curio_name_in_detailed_mode_entries or {}) do
+		set_option_enabled(entry, name_it_curio_name_enabled, name_it_curio_name_reason)
+	end
 
 	for _, setting_id in ipairs({
 		"curio_information_width_percent",
@@ -1168,6 +1173,9 @@ local function bind_option_dependencies(options_templates)
 		"weapon_modifier_lowest_color_opacity",
 		"enable_name_it_override",
 		"name_it_force_curio_name_in_detailed_mode",
+		-- Intentional duplicate: Curio content and Name It integration expose
+		-- synchronized rows backed by one DMF setting ID.
+		"name_it_force_curio_name_in_detailed_mode",
 		"curio_information_width_percent",
 		"curio_preview_height_percent",
 		"inventory_options_panel_width",
@@ -1228,6 +1236,7 @@ local function bind_option_dependencies(options_templates)
 
 	option_dependency_entries = {
 		automatic_curio_character_entries = {},
+		name_it_force_curio_name_in_detailed_mode_entries = {},
 	}
 
 	for i = 1, #settings do
@@ -1255,7 +1264,9 @@ local function bind_option_dependencies(options_templates)
 			setting_id = table.remove(setting_id, 1)
 		end
 
-		if setting_id then
+		if setting_id == "name_it_force_curio_name_in_detailed_mode" then
+			option_dependency_entries.name_it_force_curio_name_in_detailed_mode_entries[#option_dependency_entries.name_it_force_curio_name_in_detailed_mode_entries + 1] = entry
+		elseif setting_id then
 			option_dependency_entries[setting_id] = entry
 		elseif type(entry) == "table" and entry._better_inventory_curio_character_slot_index then
 			option_dependency_entries.automatic_curio_character_entries[#option_dependency_entries.automatic_curio_character_entries + 1] = entry

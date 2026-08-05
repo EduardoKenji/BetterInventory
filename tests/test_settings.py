@@ -743,6 +743,7 @@ def main() -> None:
 		"weapon_modifier_lowest_color_opacity",
 		"enable_name_it_override",
 		"name_it_force_curio_name_in_detailed_mode",
+		"name_it_force_curio_name_in_detailed_mode",
 		"curio_information_width_percent",
 		"curio_preview_height_percent",
 		"inventory_options_panel_width",
@@ -827,6 +828,11 @@ def main() -> None:
 
     globals_.captured_options_hook(globals_.test_dmf, options_templates)
     entries_by_id = dict(zip(option_ids, entries))
+    name_it_curio_name_entries = [
+        entry
+        for option_id, entry in zip(option_ids, entries)
+        if option_id == "name_it_force_curio_name_in_detailed_mode"
+    ]
 
     assert entries_by_id["melee_columns"].disabled is False
     assert entries_by_id["ranged_columns"].disabled is False
@@ -868,13 +874,25 @@ def main() -> None:
     assert entries_by_id["five_column_weapon_extra_width"].disabled is True
     assert entries_by_id["curio_target_card_width"].disabled is False
     assert entries_by_id["enable_name_it_override"].disabled is False
-    assert entries_by_id["name_it_force_curio_name_in_detailed_mode"].disabled is False
+    assert len(name_it_curio_name_entries) == 2
+    assert all(entry.disabled is True for entry in name_it_curio_name_entries)
+    settings.curio_display_profile = "detailed"
+    mod.on_setting_changed("curio_display_profile")
+    assert all(entry.disabled is False for entry in name_it_curio_name_entries)
     settings.enable_name_it_override = False
     mod.on_setting_changed("enable_name_it_override")
-    assert entries_by_id["name_it_force_curio_name_in_detailed_mode"].disabled is True
+    assert all(entry.disabled is True for entry in name_it_curio_name_entries)
     settings.enable_name_it_override = True
     mod.on_setting_changed("enable_name_it_override")
-    assert entries_by_id["name_it_force_curio_name_in_detailed_mode"].disabled is False
+    assert all(entry.disabled is False for entry in name_it_curio_name_entries)
+    settings.curio_display_profile = "primary"
+    mod.on_setting_changed("curio_display_profile")
+    assert all(entry.disabled is True for entry in name_it_curio_name_entries)
+    settings.curio_display_profile = "detailed"
+    mod.on_setting_changed("curio_display_profile")
+    assert all(entry.disabled is False for entry in name_it_curio_name_entries)
+    settings.curio_display_profile = "primary"
+    mod.on_setting_changed("curio_display_profile")
     assert entries_by_id["weapon_perk_compression"].disabled is True
     assert entries_by_id["show_weapon_perk_rank_symbols"].disabled is True
     assert entries_by_id["weapon_perk_rank_icon_size"].disabled is True
@@ -1532,6 +1550,10 @@ def main() -> None:
         curio_content_group.sub_widgets[index].setting_id
         for index in range(1, len(curio_content_group.sub_widgets) + 1)
     ]
+    assert curio_content_ids.count("name_it_force_curio_name_in_detailed_mode") == 1
+    assert curio_content_ids.index("name_it_force_curio_name_in_detailed_mode") == (
+        curio_content_ids.index("curio_display_profile") + 1
+    )
     enhanced_descriptions_group = next(
         data.options.widgets[index]
         for index in range(1, len(data.options.widgets) + 1)
