@@ -273,6 +273,14 @@ def main() -> None:
 			error("Unexpected test require: " .. tostring(path))
 		end
 
+		test_name_it_mod = nil
+
+		function get_mod(name)
+			if name == "name_it" then
+				return test_name_it_mod
+			end
+		end
+
 			test_mod = {
 			settings = {
 				columns = 3,
@@ -357,6 +365,8 @@ def main() -> None:
 				curio_stat_compression = "heavy",
 				simplify_curio_primary_stat_text = true,
 				remove_curio_stat_plus_signs = false,
+				enable_name_it_override = true,
+				name_it_force_curio_name_in_detailed_mode = true,
 				curio_health_color_r = 235,
 				curio_health_color_g = 85,
 				curio_health_color_b = 85,
@@ -3010,6 +3020,118 @@ def main() -> None:
             detailed_blueprint, f"better_inventory_curio_stat_{index}"
         )
         assert stat_pass.visibility_function(detailed_widget.content)
+
+    # Name It custom names win without BetterInventory appending a mark. Detailed
+    # Curios reserve a two-line name area above all four stat rows.
+    globals_.test_name_it_mod = lua.execute(
+        """
+        return {
+            is_enabled = function() return true end,
+            get_custom_name = function(item, is_sub)
+                if item and item.item_type == "GADGET" then
+                    return "First Curio"
+                end
+
+                if item and item.item_type == "WEAPON_MELEE" and not is_sub then
+                    return "Custom Blade"
+                end
+            end,
+        }
+        """
+    )
+    name_it_curio_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    name_it_curio_size = layout.configure_item_blueprint(mod, name_it_curio_blueprint, 640)
+    name_it_title_pass = blueprint_pass(
+        name_it_curio_blueprint, "better_inventory_name_it_curio_name"
+    )
+    name_it_primary_pass = blueprint_pass(
+        name_it_curio_blueprint, "better_inventory_curio_stat_1"
+    )
+    assert name_it_curio_size[2] >= 139
+    assert name_it_title_pass.style.word_wrap is True
+    assert name_it_title_pass.style.size[2] >= 40
+    assert name_it_primary_pass.style.offset[2] == 7 + name_it_title_pass.style.size[2]
+
+    name_it_curio_styles = {
+        "display_name": blueprint_pass(name_it_curio_blueprint, "display_name").style,
+        "better_inventory_name_it_curio_name": name_it_title_pass.style,
+    }
+    for index in range(1, 5):
+        style_id = f"better_inventory_curio_stat_{index}"
+        name_it_curio_styles[style_id] = blueprint_pass(
+            name_it_curio_blueprint, style_id
+        ).style
+    name_it_curio_widget = lua.table_from(
+        {"content": lua.table_from({}), "style": lua.table_from(name_it_curio_styles)}
+    )
+    name_it_curio_blueprint.init(
+        None,
+        name_it_curio_widget,
+        curio_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        name_it_curio_blueprint,
+    )
+    assert name_it_curio_widget.content.display_name == "First Curio"
+    assert name_it_title_pass.visibility_function(name_it_curio_widget.content) is True
+
+    name_it_weapon_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, name_it_weapon_blueprint, 640)
+    name_it_weapon_widget = lua.table_from(
+        {
+            "content": lua.table_from({}),
+            "style": lua.table_from(
+                {
+                    "display_name": blueprint_pass(
+                        name_it_weapon_blueprint, "display_name"
+                    ).style,
+                }
+            ),
+        }
+    )
+    name_it_weapon_blueprint.init(
+        None,
+        name_it_weapon_widget,
+        narrow_weapon_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        name_it_weapon_blueprint,
+    )
+    assert name_it_weapon_widget.content.display_name == "Custom Blade"
+    assert not name_it_weapon_widget.content.display_name.endswith(" Mk VI")
+
+    mod.settings.enable_name_it_override = False
+    better_inventory_name_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, better_inventory_name_blueprint, 640)
+    better_inventory_name_widget = lua.table_from(
+        {
+            "content": lua.table_from({}),
+            "style": lua.table_from(
+                {
+                    "display_name": blueprint_pass(
+                        better_inventory_name_blueprint, "display_name"
+                    ).style,
+                }
+            ),
+        }
+    )
+    better_inventory_name_blueprint.init(
+        None,
+        better_inventory_name_widget,
+        narrow_weapon_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        better_inventory_name_blueprint,
+    )
+    assert better_inventory_name_widget.content.display_name.endswith(" Mk VI")
+    mod.settings.enable_name_it_override = True
+    globals_.test_name_it_mod = None
 
     mod.settings.show_curio_item_level = False
     hidden_curio_level_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)

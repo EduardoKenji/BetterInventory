@@ -686,6 +686,24 @@ local localization = {
 	quick_look_card_integration_group = {
 		en = "Mod Integration: Quick Look Card",
 	},
+	name_it_integration_group = {
+		en = "Mod Integration: Name It",
+	},
+	enable_name_it_override = {
+		en = "Enable 'Name It' override",
+	},
+	enable_name_it_override_tooltip = {
+		en = "Lets Name It custom weapon and Curio names take priority over BetterInventory's name formatting. Disable this to restore BetterInventory names such as Dueling Sword Mk IV. Reopen the current view after changing this option.",
+	},
+	name_it_force_curio_name_in_detailed_mode = {
+		en = "Show Curio name with all four attributes",
+	},
+	name_it_force_curio_name_in_detailed_mode_tooltip = {
+		en = "Shows every Curio name in a reserved two-line title area above the primary attribute and three secondary attributes. Applies to Character Overview, Inventory, Hadron, the Armoury Exchange and other integrated item grids. Requires the Name It override. Reopen the current view after changing this option.",
+	},
+	option_requires_name_it_override = {
+		en = "Enable the Name It override to use this option.",
+	},
 	enable_quick_look_card_single_column_integration = {
 		en = "Show weapon modifiers in single-column mode",
 	},
@@ -2183,6 +2201,12 @@ zh_cn.enable_hadron_single_column_mirror = "Mirror single-column format from inv
 zh_cn.enable_hadron_single_column_mirror_tooltip = "Uses the detailed BetterInventory single-column card format for Entreat Hadron when grid layout is disabled. Enabled by default."
 zh_cn.enable_armoury_single_column_mirror = "Enable custom detailed card for single column"
 zh_cn.enable_armoury_single_column_mirror_tooltip = "Uses BetterInventory's custom detailed card for Requisition Weapons & Curios when grid layout is disabled. Enabled by default."
+zh_cn.name_it_integration_group = "Mod Integration: Name It"
+zh_cn.enable_name_it_override = "Enable 'Name It' override"
+zh_cn.enable_name_it_override_tooltip = "Lets Name It custom weapon and Curio names take priority over BetterInventory name formatting. Reopen the current view after changing."
+zh_cn.name_it_force_curio_name_in_detailed_mode = "Show Curio name with all four attributes"
+zh_cn.name_it_force_curio_name_in_detailed_mode_tooltip = "Shows a two-line Curio name above all four attribute lines in Character Overview and supported item views. Requires the Name It override."
+zh_cn.option_requires_name_it_override = "Enable the Name It override to use this option."
 zh_cn.character_overview_group = "Character overview"
 zh_cn.enable_character_overview_melee_mirror = "Mirror melee weapon single-column format from inventory"
 zh_cn.enable_character_overview_melee_mirror_tooltip = "Uses the detailed BetterInventory single-column card for the equipped melee weapon on the character overview screen. Enabled by default."

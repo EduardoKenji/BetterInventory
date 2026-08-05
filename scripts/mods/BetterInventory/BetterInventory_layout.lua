@@ -47,6 +47,7 @@ local GLOBAL_STORE_PRICE_ROW_PADDING_DEFAULT = 10
 local GLOBAL_STORE_PRICE_ROW_PADDING_MIN = 5
 local GLOBAL_STORE_PRICE_ROW_PADDING_MAX = 20
 local NATIVE_SINGLE_COLUMN_CONTENT_GAP = 12
+local CURIO_NAME_LINE_GAP = 3
 local COLUMN_SETTING_BY_SLOT = {
 	melee = "melee_columns",
 	ranged = "ranged_columns",
@@ -512,6 +513,64 @@ local function setting(mod, setting_id, fallback)
 
 	return value
 end
+
+local function enabled_name_it_mod()
+	local resolver = rawget(_G, "get_mod")
+
+	if type(resolver) ~= "function" then
+		return
+	end
+
+	local ok, name_it = pcall(resolver, "name_it")
+
+	if not ok or type(name_it) ~= "table" then
+		return
+	end
+
+	if type(name_it.is_enabled) == "function" then
+		local enabled_ok, enabled = pcall(name_it.is_enabled, name_it)
+
+		if enabled_ok and enabled == false then
+			return
+		end
+	end
+
+	return name_it
+end
+
+local function name_it_integration_enabled(mod)
+	return setting(mod, "enable_name_it_override", true) and enabled_name_it_mod() ~= nil
+end
+
+local function name_it_curio_title_enabled(mod, configuration)
+	return not (configuration and configuration.character_overview) and name_it_integration_enabled(mod) and setting(mod, "name_it_force_curio_name_in_detailed_mode", true)
+end
+
+local function name_it_custom_name(item, is_sub)
+	local name_it = enabled_name_it_mod()
+
+	if not name_it or type(name_it.get_custom_name) ~= "function" then
+		return
+	end
+
+	local ok, custom_name = pcall(name_it.get_custom_name, item, is_sub)
+
+	return ok and type(custom_name) == "string" and custom_name ~= "" and custom_name or nil
+end
+
+local function curio_name_font_size(mod, configuration)
+	local fallback = configuration and configuration.native_single_column and 20 or 16
+	local setting_id = configuration and configuration.native_single_column and "single_column_weapon_name_font_size" or "item_name_font_size"
+	local value = tonumber(setting(mod, setting_id, fallback)) or fallback
+
+	return math.max(10, math.min(24, value))
+end
+
+local function curio_name_title_height(mod, configuration)
+	return math.max(40, 2 * (curio_name_font_size(mod, configuration) + CURIO_NAME_LINE_GAP))
+end
+
+Layout.name_it_integration_enabled = name_it_integration_enabled
 
 local function numeric_setting(mod, setting_id, fallback, minimum, maximum)
 	local value = tonumber(setting(mod, setting_id, fallback)) or fallback
@@ -1767,6 +1826,32 @@ local function add_curio_stat_pass(pass_template, index, options)
 	}
 end
 
+local function add_name_it_curio_title_pass(pass_template, options)
+	local style = table.clone(options.base_style or {})
+
+	style.font_size = options.font_size
+	style.horizontal_alignment = "left"
+	style.vertical_alignment = "top"
+	style.text_horizontal_alignment = "left"
+	style.text_vertical_alignment = "top"
+	style.word_wrap = true
+	style.text_fit_with = true
+	style.offset = options.offset
+	style.size = options.size
+	style.drop_shadow = true
+
+	pass_template[#pass_template + 1] = {
+		pass_type = "text",
+		style_id = "better_inventory_name_it_curio_name",
+		value = "",
+		value_id = "display_name",
+		style = style,
+		visibility_function = function(content)
+			return content and content.better_inventory_name_it_curio_title == true
+		end,
+	}
+end
+
 local function configure_favorite_marker(mod, pass_template, text_left)
 	local favorite_icon = pass_by_style_id(pass_template, "favorite_icon")
 
@@ -2121,7 +2206,25 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 		local secondary_font_size = curio_secondary_font_size(mod)
 		local primary_secondary_spacing = curio_primary_secondary_spacing(mod)
 		local secondary_text_color = configured_text_color(mod, "curio_secondary_text_color", DEFAULT_CURIO_SECONDARY_COLOR)
-		local y_offset = 7
+		local show_name_it_curio_title = name_it_curio_title_enabled(mod, configuration)
+		local title_height = show_name_it_curio_title and curio_name_title_height(mod, configuration) or 0
+		local y_offset = 7 + title_height
+
+		if show_name_it_curio_title then
+			add_name_it_curio_title_pass(pass_template, {
+				base_style = base_text_style,
+				font_size = curio_name_font_size(mod, configuration),
+				offset = {
+					text_left,
+					7,
+					11,
+				},
+				size = {
+					math.max(40, card_width - text_left - 40),
+					title_height,
+				},
+			})
+		end
 
 		for i = 1, 4 do
 			if i == 2 then
@@ -2196,7 +2299,22 @@ local function valid_weapon_name_part(value)
 	return type(value) == "string" and value ~= "" and value ~= "n/a"
 end
 
-local function format_weapon_name(widget, element, append_mark_to_name)
+local function localized_item_name(item, fallback)
+	local localization_id = item and item.display_name
+	local localize = rawget(_G, "Localize")
+
+	if type(localization_id) == "string" and type(localize) == "function" then
+		local ok, value = pcall(localize, localization_id)
+
+		if ok and type(value) == "string" and value ~= "" then
+			return value
+		end
+	end
+
+	return fallback
+end
+
+local function format_item_name(mod, widget, element, append_mark_to_name)
 	local content = widget and widget.content
 
 	if not content then
@@ -2205,14 +2323,50 @@ local function format_weapon_name(widget, element, append_mark_to_name)
 
 	content.better_inventory_display_name_base = nil
 	content.better_inventory_display_name_suffix = nil
+	content.better_inventory_name_it_curio_title = nil
+
+	element = element or content.element
+
+	local item = element and (element.real_item or element.item)
+
+	if is_curio(item) then
+		if name_it_integration_enabled(mod) then
+			content.display_name = name_it_custom_name(item) or content.display_name
+			content.better_inventory_name_it_curio_title = setting(mod, "curio_display_profile", "detailed") == "detailed" and setting(mod, "name_it_force_curio_name_in_detailed_mode", true)
+		else
+			content.display_name = localized_item_name(item, content.display_name)
+		end
+
+		return
+	end
+
+	if not is_weapon(item) then
+		return
+	end
+
+	if name_it_integration_enabled(mod) then
+		local custom_name = name_it_custom_name(item)
+		local custom_sub_name = name_it_custom_name(item, true)
+
+		if custom_name then
+			content.display_name = custom_name
+		elseif custom_sub_name then
+			content.sub_display_name = custom_sub_name
+		end
+
+		return
+	end
+
+	local family_ok, family_name = pcall(Items.weapon_lore_family_name, item)
+
+	if family_ok and valid_weapon_name_part(family_name) then
+		content.display_name = family_name
+	end
 
 	if not append_mark_to_name then
 		return
 	end
 
-	element = element or content.element
-
-	local item = element and (element.real_item or element.item)
 	local display_name = content.display_name
 	local mark_ok, mark_name = pcall(Items.weapon_lore_mark_name, item)
 
@@ -2260,6 +2414,10 @@ local function fit_display_name(parent, widget, ui_renderer, preferred_font_size
 	local display_name = content and content.display_name
 
 	if not style or type(display_name) ~= "string" or display_name == "" then
+		return
+	end
+
+	if content.better_inventory_name_it_curio_title then
 		return
 	end
 
@@ -2499,7 +2657,7 @@ local function configure_card_content(mod, item_blueprint, configuration)
 	if original_init then
 		item_blueprint.init = function(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
 			original_init(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
-			format_weapon_name(widget, element, append_mark_to_name)
+			format_item_name(mod, widget, element, append_mark_to_name)
 			format_item_level(widget, element, show_item_level_icon)
 			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers, show_blessing_text_icons)
 			fit_display_name(parent, widget, ui_renderer, preferred_font_size, math.min(preferred_font_size, minimum_font_size))
@@ -2512,7 +2670,7 @@ local function configure_card_content(mod, item_blueprint, configuration)
 	if original_update_data then
 		item_blueprint.update_data = function(parent, widget, element)
 			original_update_data(parent, widget, element)
-			format_weapon_name(widget, element, append_mark_to_name)
+			format_item_name(mod, widget, element, append_mark_to_name)
 			format_item_level(widget, element, show_item_level_icon)
 			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers, show_blessing_text_icons)
 			fit_display_name(parent, widget, nil, preferred_font_size, math.min(preferred_font_size, minimum_font_size))
@@ -2826,8 +2984,9 @@ Layout.card_height = function(mod, configuration)
 
 	local manual_height = numeric_setting(mod, "card_height", 110, 110, 240)
 	local global_store_extra = global_store_extra_height(mod, configuration)
+	local force_name_it_curio_title = setting(mod, "curio_display_profile", "detailed") == "detailed" and name_it_curio_title_enabled(mod, configuration)
 
-	if not setting(mod, "automatic_card_height", true) and not configuration.native_single_column and global_store_extra <= 0 then
+	if not setting(mod, "automatic_card_height", true) and not configuration.native_single_column and global_store_extra <= 0 and not force_name_it_curio_title then
 		return manual_height
 	end
 
@@ -2904,8 +3063,9 @@ Layout.card_height = function(mod, configuration)
 		local primary_line_height = curio_primary_font_size(mod) + 5
 		local secondary_line_height = curio_secondary_font_size(mod) + 5
 		local primary_secondary_spacing = curio_primary_secondary_spacing(mod)
+		local curio_title_height = force_name_it_curio_title and curio_name_title_height(mod, configuration) or 0
 
-		required_height = math.max(required_height, 7 + primary_line_height + primary_secondary_spacing + 3 * secondary_line_height + 12 + store_footer_height)
+		required_height = math.max(required_height, 7 + curio_title_height + primary_line_height + primary_secondary_spacing + 3 * secondary_line_height + 12 + store_footer_height)
 	else
 		local primary_line_height = math.max(20, curio_primary_font_size(mod) + 5)
 		local quality_row_height = setting(mod, "show_curio_quality", false) and secondary_row_height or 0
@@ -3046,7 +3206,7 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 				return show_curio_quality and not detailed_curio_profile
 			end
 
-			return is_weapon(item) and show_pattern_mark
+			return is_weapon(item) and (show_pattern_mark or name_it_integration_enabled(mod) and name_it_custom_name(item, true) ~= nil)
 		end
 	end
 
@@ -3417,7 +3577,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 				return show_curio_quality and not detailed_curio_profile
 			end
 
-			return is_weapon(item) and show_pattern_mark
+			return is_weapon(item) and (show_pattern_mark or name_it_integration_enabled(mod) and name_it_custom_name(item, true) ~= nil)
 		end
 	end
 

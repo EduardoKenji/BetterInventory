@@ -1081,6 +1081,24 @@ return {
 				},
 			},
 			{
+				setting_id = "name_it_integration_group",
+				type = "group",
+				sub_widgets = {
+					{
+						setting_id = "enable_name_it_override",
+						tooltip = "enable_name_it_override_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
+						setting_id = "name_it_force_curio_name_in_detailed_mode",
+						tooltip = "name_it_force_curio_name_in_detailed_mode_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+				},
+			},
+			{
 				setting_id = "myfavorites_integration_group",
 				type = "group",
 				sub_widgets = {

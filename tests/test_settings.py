@@ -37,6 +37,8 @@ def main() -> None:
 			weapon_modifier_lowest_color_g = 94,
 			weapon_modifier_lowest_color_b = 132,
 			weapon_modifier_lowest_color_opacity = 80,
+			enable_name_it_override = true,
+			name_it_force_curio_name_in_detailed_mode = true,
 			enable_hadron_entreat_grid = true,
 			enable_hadron_single_column_mirror = true,
 			enable_armoury_requisition_grid = true,
@@ -739,6 +741,8 @@ def main() -> None:
 		"weapon_modifier_lowest_color_g",
 		"weapon_modifier_lowest_color_b",
 		"weapon_modifier_lowest_color_opacity",
+		"enable_name_it_override",
+		"name_it_force_curio_name_in_detailed_mode",
 		"curio_information_width_percent",
 		"curio_preview_height_percent",
 		"inventory_options_panel_width",
@@ -863,6 +867,14 @@ def main() -> None:
     assert entries_by_id["weapon_extra_width_column_threshold"].disabled is False
     assert entries_by_id["five_column_weapon_extra_width"].disabled is True
     assert entries_by_id["curio_target_card_width"].disabled is False
+    assert entries_by_id["enable_name_it_override"].disabled is False
+    assert entries_by_id["name_it_force_curio_name_in_detailed_mode"].disabled is False
+    settings.enable_name_it_override = False
+    mod.on_setting_changed("enable_name_it_override")
+    assert entries_by_id["name_it_force_curio_name_in_detailed_mode"].disabled is True
+    settings.enable_name_it_override = True
+    mod.on_setting_changed("enable_name_it_override")
+    assert entries_by_id["name_it_force_curio_name_in_detailed_mode"].disabled is False
     assert entries_by_id["weapon_perk_compression"].disabled is True
     assert entries_by_id["show_weapon_perk_rank_symbols"].disabled is True
     assert entries_by_id["weapon_perk_rank_icon_size"].disabled is True
@@ -1263,6 +1275,8 @@ def main() -> None:
 			"global_store_compact_character_names",
 			"global_store_single_column_modifier_horizontal_position",
 			"global_store_single_column_modifier_vertical_position",
+			"enable_name_it_override",
+			"name_it_force_curio_name_in_detailed_mode",
 			"character_overview_curio_name_mode",
 			"character_overview_curio_font_size_percent",
         }:
@@ -1480,8 +1494,9 @@ def main() -> None:
         top_level_ids[enhanced_descriptions_index - 1]
         == "quick_look_card_integration_group"
     )
-    assert top_level_ids[enhanced_descriptions_index + 1] == "myfavorites_integration_group"
-    assert top_level_ids[enhanced_descriptions_index + 2] == "card_content_group"
+    assert top_level_ids[enhanced_descriptions_index + 1] == "name_it_integration_group"
+    assert top_level_ids[enhanced_descriptions_index + 2] == "myfavorites_integration_group"
+    assert top_level_ids[enhanced_descriptions_index + 3] == "card_content_group"
 
     card_content_group = next(
         data.options.widgets[index]
@@ -1556,6 +1571,8 @@ def main() -> None:
     assert defaults["global_store_single_column_modifier_horizontal_position"] == 55
     assert defaults["global_store_single_column_modifier_vertical_position"] == 100
     assert defaults["enable_quick_look_card_single_column_integration"] is True
+    assert defaults["enable_name_it_override"] is True
+    assert defaults["name_it_force_curio_name_in_detailed_mode"] is True
     assert defaults["quick_look_card_single_column_font_size"] == 14
     assert defaults["quick_look_card_single_column_label_value_gap"] == 1
     assert defaults["quick_look_card_single_column_horizontal_position"] == 79
