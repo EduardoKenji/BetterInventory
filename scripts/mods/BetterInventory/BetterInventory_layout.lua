@@ -40,6 +40,11 @@ local GLOBAL_STORE_PRICE_ROW_PADDING_DEFAULT = 10
 local GLOBAL_STORE_PRICE_ROW_PADDING_MIN = 5
 local GLOBAL_STORE_PRICE_ROW_PADDING_MAX = 20
 local NATIVE_SINGLE_COLUMN_CONTENT_GAP = 12
+local COLUMN_SETTING_BY_SLOT = {
+	melee = "melee_columns",
+	ranged = "ranged_columns",
+	curio = "curio_columns",
+}
 local WEAPON_PERK_COUNT = 2
 local WEAPON_BLESSING_COUNT = 2
 local BLESSING_TEXT_WIDTH_SAFETY_MARGIN = 4
@@ -560,7 +565,7 @@ local function separate_blessing_text_and_item_level(mod, configuration)
 
 	configuration = configuration or {}
 
-	local columns = Layout.columns(mod, configuration.maximum_columns)
+	local columns = Layout.columns(mod, configuration.maximum_columns, configuration.slot_kind)
 
 	if mode == "five_only" then
 		return columns >= 5
@@ -2417,9 +2422,21 @@ Layout.is_enabled_for_view = function(mod, view)
 	return setting_id and setting(mod, setting_id, true) or false
 end
 
-Layout.columns = function(mod, maximum_columns)
+Layout.columns = function(mod, maximum_columns, slot_kind)
 	local column_limit = math.floor(math.max(2, math.min(5, tonumber(maximum_columns) or 5)))
-	local requested_columns = math.floor(numeric_setting(mod, "columns", 3, 2, 5))
+	local setting_id = COLUMN_SETTING_BY_SLOT[slot_kind]
+
+	-- Keep old profiles usable when they predate the per-slot settings. New
+	-- installs use the dedicated setting; an old persisted `columns` value is a
+	-- safe fallback until the user chooses a per-slot value.
+	local legacy_columns = tonumber(mod:get("columns"))
+	local configured_columns = setting_id and tonumber(mod:get(setting_id))
+
+	if not setting_id or configured_columns == nil or (configured_columns == 3 and legacy_columns and legacy_columns ~= 3) then
+		setting_id = "columns"
+	end
+
+	local requested_columns = math.floor(numeric_setting(mod, setting_id, 3, 2, 5))
 
 	return math.max(2, math.min(column_limit, requested_columns))
 end
@@ -2441,7 +2458,7 @@ Layout.grid_expansion = function(mod, current_grid_width, slot_kind)
 		return 0
 	end
 
-	local columns = Layout.columns(mod)
+	local columns = Layout.columns(mod, nil, slot_kind)
 	local spacing = numeric_setting(mod, "grid_spacing", 10, 0, 40)
 	local target_card_width = MINIMUM_CARD_WIDTH
 
@@ -2715,12 +2732,13 @@ end
 
 Layout.item_size = function(mod, grid_width, maximum_columns, configuration)
 	grid_width = tonumber(grid_width)
+	local slot_kind = configuration and configuration.slot_kind
 
 	if not grid_width or grid_width <= 0 then
-		grid_width = MINIMUM_CARD_WIDTH * Layout.columns(mod, maximum_columns)
+		grid_width = MINIMUM_CARD_WIDTH * Layout.columns(mod, maximum_columns, slot_kind)
 	end
 
-	local columns = Layout.columns(mod, maximum_columns)
+	local columns = Layout.columns(mod, maximum_columns, slot_kind)
 	local spacing = numeric_setting(mod, "grid_spacing", 10, 0, 40)
 	local height = Layout.card_height(mod, configuration)
 	local width = math.floor((grid_width - spacing * (columns - 1)) / columns)

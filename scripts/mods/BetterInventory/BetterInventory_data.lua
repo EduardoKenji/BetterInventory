@@ -721,13 +721,33 @@ return {
 						default_value = true,
 					},
 					{
-						setting_id = "columns",
-						tooltip = "columns_tooltip",
+						setting_id = "melee_columns",
+						tooltip = "melee_columns_tooltip",
 						type = "numeric",
 						default_value = 3,
 						range = {
 							2,
 							5,
+						},
+					},
+					{
+						setting_id = "ranged_columns",
+						tooltip = "ranged_columns_tooltip",
+						type = "numeric",
+						default_value = 3,
+						range = {
+							2,
+							5,
+						},
+					},
+					{
+						setting_id = "curio_columns",
+						tooltip = "curio_columns_tooltip",
+						type = "numeric",
+						default_value = 3,
+						range = {
+							2,
+						5,
 						},
 					},
 					{

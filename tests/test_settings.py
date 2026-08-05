@@ -20,7 +20,9 @@ def main() -> None:
     lua.execute(
         r"""
         settings = {
-			columns = 3,
+			melee_columns = 3,
+			ranged_columns = 3,
+			curio_columns = 3,
 			three_column_weapon_name_font_size = 14,
             enable_grid_layout = true,
 			enable_quick_look_card_single_column_integration = true,
@@ -110,6 +112,10 @@ def main() -> None:
 
 		test_layout = {
             is_enabled_for_view = function() return false end,
+            columns = function(_, _, slot_kind)
+                local setting_id = slot_kind == "melee" and "melee_columns" or slot_kind == "ranged" and "ranged_columns" or slot_kind == "curio" and "curio_columns" or "melee_columns"
+                return settings[setting_id] or 3
+            end,
             expanded_view_definitions = function(_, definitions) return definitions, 0 end,
 			expanded_armoury_view_definitions = function(_, definitions)
 				definitions.armoury_expanded = true
@@ -392,7 +398,9 @@ def main() -> None:
     assert settings.curio_secondary_text_color_preset == "custom"
 
     option_ids = (
-        "columns",
+		"melee_columns",
+		"ranged_columns",
+		"curio_columns",
 		"three_column_weapon_name_font_size",
         "expand_inventory_window",
 		"weapon_extra_width_column_threshold",
@@ -544,7 +552,9 @@ def main() -> None:
     globals_.captured_options_hook(globals_.test_dmf, options_templates)
     entries_by_id = dict(zip(option_ids, entries))
 
-    assert entries_by_id["columns"].disabled is False
+    assert entries_by_id["melee_columns"].disabled is False
+    assert entries_by_id["ranged_columns"].disabled is False
+    assert entries_by_id["curio_columns"].disabled is False
     assert entries_by_id["three_column_weapon_name_font_size"].disabled is False
     assert entries_by_id["automatic_card_height"].disabled is False
     assert entries_by_id["card_height"].disabled is True
@@ -729,19 +739,19 @@ def main() -> None:
     mod.on_setting_changed("enable_automatic_curio_acquisition")
     assert entries_by_id["automatic_curio_min_item_level"].disabled is True
 
-    settings.columns = 4
-    mod.on_setting_changed("columns")
+    settings.melee_columns = 4
+    mod.on_setting_changed("melee_columns")
     assert entries_by_id["five_column_weapon_extra_width"].disabled is False
     settings.weapon_extra_width_column_threshold = "five_only"
     mod.on_setting_changed("weapon_extra_width_column_threshold")
     assert entries_by_id["five_column_weapon_extra_width"].disabled is True
-    settings.columns = 5
-    mod.on_setting_changed("columns")
+    settings.melee_columns = 5
+    mod.on_setting_changed("melee_columns")
     assert entries_by_id["five_column_weapon_extra_width"].disabled is False
     settings.weapon_extra_width_column_threshold = "four_plus"
     mod.on_setting_changed("weapon_extra_width_column_threshold")
-    settings.columns = 3
-    mod.on_setting_changed("columns")
+    settings.melee_columns = 3
+    mod.on_setting_changed("melee_columns")
     assert entries_by_id["five_column_weapon_extra_width"].disabled is True
 
     settings.curio_display_profile = "detailed"
@@ -1190,6 +1200,9 @@ def main() -> None:
     assert curio_content_ids.index("curio_secondary_text_color_group") > curio_content_ids.index("curio_stamina_color_group")
 
     assert defaults["enable_grid_layout"] is True
+    assert defaults["melee_columns"] == 3
+    assert defaults["ranged_columns"] == 3
+    assert defaults["curio_columns"] == 3
     assert defaults["three_column_weapon_name_font_size"] == 14
     assert defaults["enable_global_store_integration"] is True
     assert defaults["enable_global_store_grid"] is True

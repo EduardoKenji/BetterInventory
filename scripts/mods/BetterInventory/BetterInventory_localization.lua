@@ -759,11 +759,23 @@ local localization = {
 	enable_grid_layout_tooltip = {
 		en = "Uses Better Inventory's multi-column cards. Disable this to retain Darktide's native single-column geometry while keeping enabled card-content enhancements.",
 	},
-	columns = {
-		en = "Columns",
+	melee_columns = {
+		en = "Melee Weapons Columns",
 	},
-	columns_tooltip = {
-		en = "Number of item cards per inventory row. Three is the recommended starting point.",
+	melee_columns_tooltip = {
+		en = "Number of melee-weapon cards per inventory row. Defaults to three. This setting affects melee weapons only.",
+	},
+	ranged_columns = {
+		en = "Ranged Weapons Columns",
+	},
+	ranged_columns_tooltip = {
+		en = "Number of ranged-weapon cards per inventory row. Defaults to three. This setting affects ranged weapons only.",
+	},
+	curio_columns = {
+		en = "Curios Columns",
+	},
+	curio_columns_tooltip = {
+		en = "Number of Curio cards per inventory row. Defaults to three. This setting affects Curios only.",
 	},
 	three_column_weapon_name_font_size = {
 		en = "Armoury weapon name font size",
@@ -2094,6 +2106,12 @@ zh_cn.global_store_single_column_modifier_horizontal_position = "GlobalStore sin
 zh_cn.global_store_single_column_modifier_horizontal_position_tooltip = "Move native single-column GlobalStore weapon modifiers horizontally. 0 is left and 100 is right. Reopen GlobalStore after changing."
 zh_cn.global_store_single_column_modifier_vertical_position = "GlobalStore single-column modifier vertical position (%%)"
 zh_cn.global_store_single_column_modifier_vertical_position_tooltip = "Move native single-column GlobalStore weapon modifiers vertically. 0 is top and 100 is bottom. Reopen GlobalStore after changing."
+zh_cn.melee_columns = "Melee Weapons Columns"
+zh_cn.melee_columns_tooltip = "Number of melee-weapon cards per inventory row. Defaults to three."
+zh_cn.ranged_columns = "Ranged Weapons Columns"
+zh_cn.ranged_columns_tooltip = "Number of ranged-weapon cards per inventory row. Defaults to three."
+zh_cn.curio_columns = "Curios Columns"
+zh_cn.curio_columns_tooltip = "Number of Curio cards per inventory row. Defaults to three."
 
 for localization_id, text in pairs(zh_cn) do
 	local entry = localization[localization_id]

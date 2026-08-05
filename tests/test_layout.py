@@ -274,7 +274,7 @@ def main() -> None:
 		end
 
 			test_mod = {
-            settings = {
+			settings = {
 				columns = 3,
 				three_column_weapon_name_font_size = 14,
 				enable_grid_layout = true,
@@ -655,15 +655,26 @@ def main() -> None:
     assert layout.armoury_grid_expansion(mod, 596) == 0
     mod.settings.columns = 3
 
-    mod.settings.columns = 5
-    assert layout.columns(mod) == 5
-    assert layout.columns(mod, 3) == 3
+    mod.settings.melee_columns = 5
+    mod.settings.ranged_columns = 4
+    mod.settings.curio_columns = 5
+    assert layout.columns(mod, 5, "melee") == 5
+    assert layout.columns(mod, 5, "ranged") == 4
+    assert layout.columns(mod, 5, "curio") == 5
+    assert layout.columns(mod, 3, "melee") == 3
     assert tuple(layout.item_size(mod, 596, 3)[index] for index in (1, 2)) == (
         192,
         110,
     )
-    assert layout.grid_expansion(mod, 596) == 124
+    assert layout.grid_expansion(mod, 596, "melee") == 124
     assert layout.grid_expansion(mod, 596, "curio") == 394
+    mod.settings.melee_columns = 3
+    mod.settings.ranged_columns = 3
+    mod.settings.curio_columns = 3
+    mod.settings.melee_columns = None
+    mod.settings.ranged_columns = None
+    mod.settings.curio_columns = None
+    mod.settings.columns = 5
 
     view_definitions = lua.table_from(
         {
