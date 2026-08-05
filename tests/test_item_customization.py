@@ -219,15 +219,27 @@ def main() -> None:
         }
     )
     globals_.captured_hooks.init(lua.eval("function() end"), view)
-    globals_.captured_hooks._setup_input_legend(lua.eval("function() end"), view)
+    globals_.captured_hooks._setup_input_legend(
+        lua.eval(
+            "function(view) built_legend = table.clone(view._definitions.legend_inputs) end"
+        ),
+        view,
+    )
     legend = view._definitions.legend_inputs
+    built_legend = globals_.built_legend
     assert len(legend) == 3
+    assert len(built_legend) == 3
     assert [legend[index].display_name for index in range(1, 4)] == [
         "better_inventory_change_name",
         "better_inventory_name_color",
         "better_inventory_background_color",
     ]
     assert [legend[index].input_action for index in range(1, 4)] == [
+        "hotkey_menu_special_2",
+        "hotkey_menu_special_1",
+        "group_finder_refresh_groups",
+    ]
+    assert [built_legend[index].input_action for index in range(1, 4)] == [
         "hotkey_menu_special_2",
         "hotkey_menu_special_1",
         "group_finder_refresh_groups",

@@ -532,7 +532,6 @@ ItemCustomization.install = function(mod, InventoryWeaponsView, layout)
 
 	mod:hook(InventoryWeaponsView, "_setup_input_legend", function(func, view, ...)
 		local inputs = view._definitions and view._definitions.legend_inputs
-		local result = func(view, ...)
 
 		if type(inputs) == "table" then
 			local enabled = mod:get("enable_custom_item_name_and_colors") ~= false
@@ -546,7 +545,7 @@ ItemCustomization.install = function(mod, InventoryWeaponsView, layout)
 			end
 		end
 
-		return result
+		return func(view, ...)
 	end)
 
 	mod:hook_safe("GearService", "on_gear_deleted", function(_, gear_id)
