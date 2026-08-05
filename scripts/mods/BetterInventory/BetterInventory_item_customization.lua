@@ -2,6 +2,7 @@ local ItemCustomization = {}
 local Items = require("scripts/utilities/items")
 
 local STORAGE_SETTING_ID = "custom_item_name_and_colors"
+local NAME_IT_OWNS_NAMES_SETTING_ID = "_custom_item_name_it_owns_names"
 local INPUT_WIDGET_ID = "better_inventory_name_input"
 local NAME_EDITOR_DESCRIPTION = "Enter a custom name. Leave it blank to restore the default name."
 local DEFAULT_NAME_COLOR = { 255, 220, 230, 210 }
@@ -43,7 +44,19 @@ local function name_it_mod()
 
 	local ok, other_mod = pcall(resolver, "name_it")
 
-	return ok and type(other_mod) == "table" and other_mod or nil
+	if not ok or type(other_mod) ~= "table" then
+		return
+	end
+
+	if type(other_mod.is_enabled) == "function" then
+		local enabled_ok, enabled = pcall(other_mod.is_enabled, other_mod)
+
+		if enabled_ok and enabled == false then
+			return
+		end
+	end
+
+	return other_mod
 end
 
 local function name_it_names()
@@ -191,6 +204,51 @@ ItemCustomization.import_name_it_names = function(mod)
 	end
 
 	return imported
+end
+
+-- When BetterInventory's editor is disabled, Name It becomes the active name
+-- editor. On handoff back to BetterInventory, its complete name table is
+-- authoritative: changed/added names are imported and missing names are
+-- treated as resets. Color data remains owned solely by BetterInventory.
+ItemCustomization.reconcile_from_name_it = function(mod)
+	local other_mod, names = name_it_names()
+
+	if not other_mod then
+		return false
+	end
+
+	local records = customization_records(mod)
+	local replace_pattern_name = type(other_mod.get) == "function" and other_mod:get("replace_pattern_name") == true
+
+	for gear_id, record in pairs(records) do
+		if type(record) == "table" and type(record.name) == "string" then
+			local external_name = names[gear_id]
+
+			if type(external_name) ~= "string" or external_name == "" then
+				record.name = nil
+				record.name_target = nil
+
+				if record.name_color == nil and record.background_color == nil and record.background_preserve_shading == nil then
+					records[gear_id] = nil
+				end
+			end
+		end
+	end
+
+	for gear_id, external_name in pairs(names) do
+		if type(gear_id) == "string" and type(external_name) == "string" and external_name ~= "" then
+			local record = type(records[gear_id]) == "table" and records[gear_id] or {}
+
+			record.name = external_name
+			record.name_target = replace_pattern_name and "sub" or "primary"
+			records[gear_id] = record
+		end
+	end
+
+	save_records(mod, records)
+	mod:set(NAME_IT_OWNS_NAMES_SETTING_ID, false, false)
+
+	return true
 end
 
 local function popup(context)
@@ -658,8 +716,46 @@ ItemCustomization.on_enabled = function(mod)
 	end
 end
 
+ItemCustomization.on_all_mods_loaded = function(mod)
+	if mod:get("enable_custom_item_name_and_colors") == false then
+		if name_it_mod() then
+			mod:set(NAME_IT_OWNS_NAMES_SETTING_ID, true, false)
+		end
+
+		return false
+	end
+
+	if mod:get(NAME_IT_OWNS_NAMES_SETTING_ID) == true then
+		if ItemCustomization.reconcile_from_name_it(mod) then
+			return true
+		end
+
+		-- Name It was removed or disabled before the handoff completed. Resume
+		-- BetterInventory ownership without leaving a stale future migration armed.
+		mod:set(NAME_IT_OWNS_NAMES_SETTING_ID, false, false)
+	end
+
+	return ItemCustomization.import_name_it_names(mod)
+end
+
 ItemCustomization.on_setting_changed = function(mod, setting_id)
-	if setting_id == "enable_custom_item_name_and_colors" and mod:get(setting_id) ~= false then
+	if setting_id == "enable_custom_item_name_and_colors" then
+		if mod:get(setting_id) == false then
+			if name_it_mod() then
+				mod:set(NAME_IT_OWNS_NAMES_SETTING_ID, true, false)
+			end
+
+			return false
+		end
+
+		if mod:get(NAME_IT_OWNS_NAMES_SETTING_ID) == true then
+			if ItemCustomization.reconcile_from_name_it(mod) then
+				return true
+			end
+
+			mod:set(NAME_IT_OWNS_NAMES_SETTING_ID, false, false)
+		end
+
 		return ItemCustomization.import_name_it_names(mod)
 	end
 

@@ -1450,7 +1450,7 @@ function mod.on_enabled()
 end
 
 function mod.on_all_mods_loaded()
-	ItemCustomization.import_name_it_names(mod)
+	ItemCustomization.on_all_mods_loaded(mod)
 end
 
 function mod.on_setting_changed(setting_id)

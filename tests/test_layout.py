@@ -3173,6 +3173,33 @@ def main() -> None:
     )
     assert name_it_weapon_widget.content.display_name.endswith(" Mk VI")
 
+    # With BetterInventory customization disabled, Name It owns naming and its
+    # values remain visible in BetterInventory-rendered grid cards.
+    mod.settings.enable_custom_item_name_and_colors = False
+    name_it_weapon_blueprint.init(
+        None,
+        name_it_weapon_widget,
+        narrow_weapon_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        name_it_weapon_blueprint,
+    )
+    assert name_it_weapon_widget.content.display_name == "Custom Blade"
+    name_it_curio_blueprint.init(
+        None,
+        name_it_curio_widget,
+        curio_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        name_it_curio_blueprint,
+    )
+    assert name_it_curio_widget.content.display_name == "First Curio"
+    mod.settings.enable_custom_item_name_and_colors = True
+
     better_inventory_name_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     layout.configure_item_blueprint(mod, better_inventory_name_blueprint, 640)
     better_inventory_name_widget = lua.table_from(

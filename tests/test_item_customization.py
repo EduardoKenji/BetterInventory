@@ -259,6 +259,42 @@ def main() -> None:
     customization.remove(mod, "legacy-gear")
     assert globals_.name_it_settings.name_list["legacy-gear"] is None
 
+    # Disabling BetterInventory hands name ownership to Name It. Re-enabling
+    # imports Name It's complete state (including removals) while preserving
+    # BetterInventory-only color data.
+    customization.update(
+        mod,
+        "handoff-gear",
+        lua.table_from(
+            {
+                "name": "Old BetterInventory Name",
+                "name_color": lua.table_from([255, 1, 2, 3]),
+            }
+        ),
+    )
+    settings.enable_custom_item_name_and_colors = False
+    customization.on_setting_changed(mod, "enable_custom_item_name_and_colors")
+    assert settings._custom_item_name_it_owns_names is True
+    globals_.name_it_settings.name_list["handoff-gear"] = "New Name It Name"
+    globals_.name_it_settings.name_list["name-it-only"] = "Name It Addition"
+    settings.enable_custom_item_name_and_colors = True
+    assert (
+        customization.on_setting_changed(mod, "enable_custom_item_name_and_colors")
+        is True
+    )
+    assert customization.get(mod, "handoff-gear").name == "New Name It Name"
+    assert customization.get(mod, "handoff-gear").name_color[2] == 1
+    assert customization.get(mod, "name-it-only").name == "Name It Addition"
+    assert settings._custom_item_name_it_owns_names is False
+
+    globals_.name_it_settings.name_list["handoff-gear"] = None
+    settings.enable_custom_item_name_and_colors = False
+    customization.on_setting_changed(mod, "enable_custom_item_name_and_colors")
+    settings.enable_custom_item_name_and_colors = True
+    customization.on_setting_changed(mod, "enable_custom_item_name_and_colors")
+    assert customization.get(mod, "handoff-gear").name is None
+    assert customization.get(mod, "handoff-gear").name_color[2] == 1
+
     settings.custom_item_name_keybind = "hotkey_menu_special_1"
     settings.custom_item_name_color_keybind = "hotkey_menu_special_1"
     settings.custom_item_background_color_keybind = "group_finder_refresh_groups"

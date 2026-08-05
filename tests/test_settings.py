@@ -171,6 +171,7 @@ def main() -> None:
 		}
 		test_item_customization = {
 			on_enabled = function() end,
+			on_all_mods_loaded = function() end,
 			on_setting_changed = function() end,
 			update_runtime = function() end,
 			import_name_it_names = function() end,
