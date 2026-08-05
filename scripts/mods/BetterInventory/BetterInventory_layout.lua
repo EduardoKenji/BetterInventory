@@ -1777,6 +1777,29 @@ local function configure_favorite_marker(mod, pass_template, text_left)
 	local favorite_style = favorite_icon.style
 	local favorite_marker_position = setting(mod, "favorite_marker_position", "above_rating")
 	local equipped_icon = pass_by_style_id(pass_template, "equipped_icon")
+	local myfavorites_hotspot = pass_by_style_id(pass_template, "myfav_hotspot")
+	local myfavorites_compatibility = myfavorites_hotspot and myfavorites_hotspot.style
+	local myfavorites_show_favorite_letter = myfavorites_compatibility and setting(mod, "myfavorites_show_favorite_letter", false)
+
+	local function align_myfavorites_hotspot(horizontal_alignment, vertical_alignment, offset, size)
+		if not myfavorites_compatibility then
+			return
+		end
+
+		local hotspot_style = myfavorites_hotspot.style
+
+		hotspot_style.horizontal_alignment = horizontal_alignment
+		hotspot_style.vertical_alignment = vertical_alignment
+		hotspot_style.offset = {
+			offset[1],
+			offset[2],
+			math.max(offset[3] or 0, 17),
+		}
+		hotspot_style.size = {
+			size[1],
+			size[2],
+		}
+	end
 
 	-- Equipped Icon+ extends Darktide's equipped-icon visibility function to
 	-- include items equipped in inactive loadouts and changes the icon colour.
@@ -1802,11 +1825,37 @@ local function configure_favorite_marker(mod, pass_template, text_left)
 
 	if setting(mod, "compact_favorite_marker", true) then
 		favorite_icon.value = ""
+
+		if myfavorites_show_favorite_letter then
+			favorite_icon.value = favorite_icon.value .. "\nF"
+		end
+
 		favorite_style.font_size = 20
+		favorite_style.word_wrap = false
 		favorite_style.size = {
 			30,
-			28,
+			myfavorites_show_favorite_letter and 48 or 28,
 		}
+
+		-- MyFavorites replaces the native favorite value every frame with an
+		-- icon plus the localized "Favorite" label (or its hovered colour name).
+		-- Narrow BetterInventory cards wrap that label into a vertical column.
+		-- Run its original visibility callback first so colour-group state and
+		-- hover behavior remain intact, then restore the compact glyph only.
+		if myfavorites_compatibility then
+			local original_visibility_function = favorite_icon.visibility_function
+			local compact_favorite_value = favorite_icon.value
+
+			favorite_icon.visibility_function = function(content, style)
+				local visible = type(original_visibility_function) ~= "function" or original_visibility_function(content, style)
+
+				if visible and content then
+					content.favorite_icon = compact_favorite_value
+				end
+
+				return visible
+			end
+		end
 	end
 
 	if favorite_marker_position == "above_rating" then
@@ -1819,6 +1868,7 @@ local function configure_favorite_marker(mod, pass_template, text_left)
 			7,
 			16,
 		}
+		align_myfavorites_hotspot("right", "top", favorite_style.offset, favorite_style.size)
 
 		local original_change_function = favorite_icon.change_function
 
@@ -1828,6 +1878,10 @@ local function configure_favorite_marker(mod, pass_template, text_left)
 			end
 
 			style.offset[2] = equipped_icon_is_visible(content) and 33 or 7
+
+			if myfavorites_compatibility then
+				myfavorites_hotspot.style.offset[2] = style.offset[2]
+			end
 		end
 	else
 		favorite_style.horizontal_alignment = "left"
@@ -1839,6 +1893,7 @@ local function configure_favorite_marker(mod, pass_template, text_left)
 			-5,
 			16,
 		}
+		align_myfavorites_hotspot("left", "bottom", favorite_style.offset, favorite_style.size)
 	end
 end
 

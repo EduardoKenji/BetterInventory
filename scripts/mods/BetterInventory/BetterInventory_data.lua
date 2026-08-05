@@ -1,4 +1,4 @@
-local MOD_VERSION = "1.6.2"
+local MOD_VERSION = "1.6.3"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
@@ -777,18 +777,6 @@ return {
 				},
 			},
 			{
-				setting_id = "visible_equipment_integration_group",
-				type = "group",
-				sub_widgets = {
-					{
-						setting_id = "enable_visible_equipment_character_overview_override",
-						tooltip = "enable_visible_equipment_character_overview_override_tooltip",
-						type = "checkbox",
-						default_value = true,
-					},
-				},
-			},
-			{
 				setting_id = "layout_group",
 				type = "group",
 				sub_widgets = {
@@ -1089,6 +1077,18 @@ return {
 						tooltip = "simplify_curio_primary_stat_text_tooltip",
 						type = "checkbox",
 						default_value = true,
+					},
+				},
+			},
+			{
+				setting_id = "myfavorites_integration_group",
+				type = "group",
+				sub_widgets = {
+					{
+						setting_id = "myfavorites_show_favorite_letter",
+						tooltip = "myfavorites_show_favorite_letter_tooltip",
+						type = "checkbox",
+						default_value = false,
 					},
 				},
 			},

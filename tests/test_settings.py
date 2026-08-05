@@ -110,7 +110,7 @@ def main() -> None:
 			curio_secondary_text_color_b = 210,
 			enable_experimental_quick_discard = false,
 			quick_discard_protect_high_level_curios = true,
-			enable_visible_equipment_character_overview_override = true,
+			myfavorites_show_favorite_letter = false,
         }
 
 		test_layout = {
@@ -340,19 +340,6 @@ def main() -> None:
     )
     assert globals_.overview_equipped_item_calls == 3
     globals_.visible_equipment_available = True
-
-    settings.enable_visible_equipment_character_overview_override = False
-    globals_.captured_character_overview_widget_hook(
-        original_widget_factory,
-        overview_view,
-        visible_equipment_config,
-        "test",
-        "pressed",
-        "right_pressed",
-        "slot_primary",
-    )
-    assert globals_.overview_equipped_item_calls == 4
-    settings.enable_visible_equipment_character_overview_override = True
 
     credits_view = lua.table_from({"__class_name": "CreditsVendorView"})
     credits_definitions = lua.table_from({})
@@ -1199,7 +1186,7 @@ def main() -> None:
     localization = lua.execute(LOCALIZATION_PATH.read_text(encoding="utf-8"))
     defaults = {}
 
-    assert data.version == "1.6.2"
+    assert data.version == "1.6.3"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
@@ -1277,16 +1264,15 @@ def main() -> None:
         "global_store_integration_group",
         "character_overview_group",
     ]
-    visible_equipment_group = next(
+    myfavorites_group = next(
         data.options.widgets[index]
         for index in range(1, len(data.options.widgets) + 1)
-        if data.options.widgets[index].setting_id
-        == "visible_equipment_integration_group"
+        if data.options.widgets[index].setting_id == "myfavorites_integration_group"
     )
     assert [
-        visible_equipment_group.sub_widgets[index].setting_id
-        for index in range(1, len(visible_equipment_group.sub_widgets) + 1)
-    ] == ["enable_visible_equipment_character_overview_override"]
+        myfavorites_group.sub_widgets[index].setting_id
+        for index in range(1, len(myfavorites_group.sub_widgets) + 1)
+    ] == ["myfavorites_show_favorite_letter"]
     hadron_view_group = additional_views_group.sub_widgets[1]
     assert [
         hadron_view_group.sub_widgets[index].setting_id
@@ -1338,10 +1324,19 @@ def main() -> None:
         "character_overview_curio_font_size_percent",
     ]
     additional_views_index = top_level_ids.index("additional_views_group")
-    assert top_level_ids[additional_views_index + 1] == "visible_equipment_integration_group"
+    assert top_level_ids[additional_views_index + 1] == "layout_group"
     grid_layout_index = top_level_ids.index("layout_group")
-    assert top_level_ids[grid_layout_index - 1] == "visible_equipment_integration_group"
+    assert top_level_ids[grid_layout_index - 1] == "additional_views_group"
     assert top_level_ids[grid_layout_index + 1] == "single_column_layout_group"
+    enhanced_descriptions_index = top_level_ids.index(
+        "enhanced_descriptions_integration_group"
+    )
+    assert (
+        top_level_ids[enhanced_descriptions_index - 1]
+        == "quick_look_card_integration_group"
+    )
+    assert top_level_ids[enhanced_descriptions_index + 1] == "myfavorites_integration_group"
+    assert top_level_ids[enhanced_descriptions_index + 2] == "card_content_group"
 
     card_content_group = next(
         data.options.widgets[index]
@@ -1400,7 +1395,7 @@ def main() -> None:
     assert defaults["enable_character_overview_melee_mirror"] is True
     assert defaults["enable_character_overview_ranged_mirror"] is True
     assert defaults["enable_character_overview_curio_details"] is True
-    assert defaults["enable_visible_equipment_character_overview_override"] is True
+    assert defaults["myfavorites_show_favorite_letter"] is False
     assert defaults["character_overview_curio_name_mode"] == "two_lines"
     assert defaults["character_overview_curio_font_size_percent"] == 110
     assert defaults["three_column_weapon_name_font_size"] == 14
