@@ -1763,6 +1763,29 @@ local function configure_favorite_marker(mod, pass_template, text_left)
 
 	local favorite_style = favorite_icon.style
 	local favorite_marker_position = setting(mod, "favorite_marker_position", "above_rating")
+	local equipped_icon = pass_by_style_id(pass_template, "equipped_icon")
+
+	-- Equipped Icon+ extends Darktide's equipped-icon visibility function to
+	-- include items equipped in inactive loadouts and changes the icon colour.
+	-- Keep the favorite marker below that icon whenever the extension reports
+	-- it as visible. Calling the pass function (rather than checking only
+	-- content.equipped) keeps this compatible with the mod's configurable
+	-- active/inactive colours and avoids a hard dependency on its internals.
+	local function equipped_icon_is_visible(content)
+		if content and content.equipped then
+			return true
+		end
+
+		local visibility_function = equipped_icon and equipped_icon.visibility_function
+
+		if not content or type(visibility_function) ~= "function" then
+			return false
+		end
+
+		local ok, visible = pcall(visibility_function, content, equipped_icon.style)
+
+		return ok and visible == true
+	end
 
 	if setting(mod, "compact_favorite_marker", true) then
 		favorite_icon.value = ""
@@ -1791,7 +1814,7 @@ local function configure_favorite_marker(mod, pass_template, text_left)
 				original_change_function(content, style, animations, dt)
 			end
 
-			style.offset[2] = content and content.equipped and 33 or 7
+			style.offset[2] = equipped_icon_is_visible(content) and 33 or 7
 		end
 	else
 		favorite_style.horizontal_alignment = "left"
