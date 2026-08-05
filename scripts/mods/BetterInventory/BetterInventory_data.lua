@@ -984,6 +984,24 @@ return {
 						default_value = true,
 					},
 					{
+						setting_id = "custom_item_override_weapon_information_color",
+						tooltip = "custom_item_override_weapon_information_color_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
+						setting_id = "custom_item_override_weapon_rarity_keyword_color",
+						tooltip = "custom_item_override_weapon_rarity_keyword_color_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
+						setting_id = "custom_item_override_weapon_information_name_color",
+						tooltip = "custom_item_override_weapon_information_name_color_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
 						setting_id = "name_it_force_curio_name_in_detailed_mode",
 						tooltip = "name_it_force_curio_name_in_detailed_mode_tooltip",
 						type = "checkbox",

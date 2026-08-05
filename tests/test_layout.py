@@ -389,6 +389,9 @@ def main() -> None:
 				simplify_curio_primary_stat_text = true,
 				remove_curio_stat_plus_signs = false,
 				name_it_force_curio_name_in_detailed_mode = true,
+				custom_item_override_weapon_information_color = true,
+				custom_item_override_weapon_rarity_keyword_color = true,
+				custom_item_override_weapon_information_name_color = true,
 				curio_health_color_r = 235,
 				curio_health_color_g = 85,
 				curio_health_color_b = 85,
@@ -3283,6 +3286,62 @@ def main() -> None:
     globals_.preserve_test_shading = False
     layout.apply_item_customization_style(mod, custom_weapon_widget, custom_weapon_element)
     assert tuple(custom_weapon_widget.style.background.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
+
+    # Weapon information always keeps its native background/shader; only the
+    # gradient tint and optional rarity keyword receive the custom color.
+    weapon_information_widget = lua.table_from(
+        {
+            "style": lua.table_from(
+                {
+                    "background": lua.table_from(
+                        {"color": lua.table_from([255, 7, 8, 9])}
+                    ),
+                    "gradient_background": lua.table_from(
+                        {"color": lua.table_from([255, 11, 12, 13])}
+                    ),
+                    "rarity_name": lua.table_from(
+                        {"text_color": lua.table_from([255, 14, 15, 16])}
+                    ),
+                }
+            )
+        }
+    )
+    weapon_title_widget = lua.table_from(
+        {
+            "style": lua.table_from(
+                {
+                    "weapon_display_name": lua.table_from(
+                        {"text_color": lua.table_from([255, 17, 18, 19])}
+                    )
+                }
+            )
+        }
+    )
+    weapon_stats = lua.table_from(
+        {
+            "_grid_widgets": lua.table_from([weapon_information_widget]),
+            "_widgets_by_name": lua.table_from(
+                {"grid_divider_top_weapon": weapon_title_widget}
+            ),
+        }
+    )
+    assert layout.apply_weapon_information_customization(
+        mod, weapon_stats, custom_weapon_element.item
+    ) is True
+    assert tuple(weapon_information_widget.style.background.color[index] for index in range(1, 5)) == (255, 7, 8, 9)
+    assert tuple(weapon_information_widget.style.gradient_background.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
+    assert tuple(weapon_information_widget.style.rarity_name.text_color[index] for index in range(1, 5)) == (255, 40, 50, 60)
+    assert tuple(weapon_title_widget.style.weapon_display_name.text_color[index] for index in range(1, 5)) == (255, 10, 20, 30)
+    mod.settings.custom_item_override_weapon_information_color = False
+    layout.apply_weapon_information_customization(mod, weapon_stats, custom_weapon_element.item)
+    assert tuple(weapon_information_widget.style.gradient_background.color[index] for index in range(1, 5)) == (255, 11, 12, 13)
+    assert tuple(weapon_information_widget.style.rarity_name.text_color[index] for index in range(1, 5)) == (255, 40, 50, 60)
+    mod.settings.custom_item_override_weapon_rarity_keyword_color = False
+    layout.apply_weapon_information_customization(mod, weapon_stats, custom_weapon_element.item)
+    assert tuple(weapon_information_widget.style.rarity_name.text_color[index] for index in range(1, 5)) == (255, 14, 15, 16)
+    mod.settings.custom_item_override_weapon_information_name_color = False
+    layout.apply_weapon_information_customization(mod, weapon_stats, custom_weapon_element.item)
+    assert tuple(weapon_title_widget.style.weapon_display_name.text_color[index] for index in range(1, 5)) == (255, 17, 18, 19)
     layout.set_item_customization_provider(None)
 
     mod.settings.show_curio_item_level = False

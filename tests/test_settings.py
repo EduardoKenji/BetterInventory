@@ -45,6 +45,9 @@ def main() -> None:
 			custom_item_background_color_keybind = "group_finder_refresh_groups",
 			custom_item_skip_confirmation_prompts = true,
 			custom_item_preserve_card_shading = true,
+			custom_item_override_weapon_information_color = true,
+			custom_item_override_weapon_rarity_keyword_color = true,
+			custom_item_override_weapon_information_name_color = true,
 			enable_hadron_entreat_grid = true,
 			enable_hadron_single_column_mirror = true,
 			enable_armoury_requisition_grid = true,
@@ -765,6 +768,9 @@ def main() -> None:
 		"custom_item_background_color_keybind",
 		"custom_item_skip_confirmation_prompts",
 		"custom_item_preserve_card_shading",
+		"custom_item_override_weapon_information_color",
+		"custom_item_override_weapon_rarity_keyword_color",
+		"custom_item_override_weapon_information_name_color",
 		"curio_information_width_percent",
 		"curio_preview_height_percent",
 		"inventory_options_panel_width",
@@ -918,6 +924,9 @@ def main() -> None:
     assert entries_by_id["custom_item_background_color_keybind"].disabled is False
     assert entries_by_id["custom_item_skip_confirmation_prompts"].disabled is False
     assert entries_by_id["custom_item_preserve_card_shading"].disabled is False
+    assert entries_by_id["custom_item_override_weapon_information_color"].disabled is False
+    assert entries_by_id["custom_item_override_weapon_rarity_keyword_color"].disabled is False
+    assert entries_by_id["custom_item_override_weapon_information_name_color"].disabled is False
     settings.enable_custom_item_name_and_colors = False
     mod.on_setting_changed("enable_custom_item_name_and_colors")
     assert entries_by_id["custom_item_name_keybind"].disabled is True
@@ -925,6 +934,9 @@ def main() -> None:
     assert entries_by_id["custom_item_background_color_keybind"].disabled is True
     assert entries_by_id["custom_item_skip_confirmation_prompts"].disabled is True
     assert entries_by_id["custom_item_preserve_card_shading"].disabled is True
+    assert entries_by_id["custom_item_override_weapon_information_color"].disabled is True
+    assert entries_by_id["custom_item_override_weapon_rarity_keyword_color"].disabled is True
+    assert entries_by_id["custom_item_override_weapon_information_name_color"].disabled is True
     settings.enable_custom_item_name_and_colors = True
     mod.on_setting_changed("enable_custom_item_name_and_colors")
     assert entries_by_id["custom_item_name_keybind"].disabled is False
@@ -932,6 +944,9 @@ def main() -> None:
     assert entries_by_id["custom_item_background_color_keybind"].disabled is False
     assert entries_by_id["custom_item_skip_confirmation_prompts"].disabled is False
     assert entries_by_id["custom_item_preserve_card_shading"].disabled is False
+    assert entries_by_id["custom_item_override_weapon_information_color"].disabled is False
+    assert entries_by_id["custom_item_override_weapon_rarity_keyword_color"].disabled is False
+    assert entries_by_id["custom_item_override_weapon_information_name_color"].disabled is False
     assert entries_by_id["weapon_perk_compression"].disabled is True
     assert entries_by_id["show_weapon_perk_rank_symbols"].disabled is True
     assert entries_by_id["weapon_perk_rank_icon_size"].disabled is True
@@ -1339,6 +1354,9 @@ def main() -> None:
 			"custom_item_background_color_keybind",
 			"custom_item_skip_confirmation_prompts",
 			"custom_item_preserve_card_shading",
+			"custom_item_override_weapon_information_color",
+			"custom_item_override_weapon_rarity_keyword_color",
+			"custom_item_override_weapon_information_name_color",
 			"character_overview_curio_name_mode",
 			"character_overview_curio_font_size_percent",
         }:
@@ -1649,6 +1667,9 @@ def main() -> None:
     assert defaults["custom_item_background_color_keybind"] == "group_finder_refresh_groups"
     assert defaults["custom_item_skip_confirmation_prompts"] is True
     assert defaults["custom_item_preserve_card_shading"] is True
+    assert defaults["custom_item_override_weapon_information_color"] is True
+    assert defaults["custom_item_override_weapon_rarity_keyword_color"] is True
+    assert defaults["custom_item_override_weapon_information_name_color"] is True
     assert defaults["quick_look_card_single_column_font_size"] == 14
     assert defaults["quick_look_card_single_column_label_value_gap"] == 1
     assert defaults["quick_look_card_single_column_horizontal_position"] == 79

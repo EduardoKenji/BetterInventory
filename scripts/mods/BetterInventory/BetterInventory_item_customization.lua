@@ -361,6 +361,12 @@ local function refresh_item(mod, layout, context, refresh_name)
 		end
 	end
 
+	-- Color edits do not need to rebuild the selected item preview, but its
+	-- already-created weapon header must be recolored immediately.
+	if layout and type(layout.apply_weapon_information_customization) == "function" and context.view then
+		layout.apply_weapon_information_customization(mod, context.view._weapon_stats, context.item)
+	end
+
 	if refresh_name and context.view and type(context.view._preview_item) == "function" then
 		pcall(context.view._preview_item, context.view, context.item)
 	end
@@ -900,6 +906,14 @@ ItemCustomization.install = function(mod, InventoryWeaponsView, layout)
 
 	mod:hook_safe("GearService", "on_gear_deleted", function(_, gear_id)
 		ItemCustomization.remove(mod, gear_id)
+	end)
+
+	-- This fires after ViewElementGrid has created the weapon-header widget,
+	-- including when Darktide defers rebuilding the list until the next update.
+	mod:hook_safe("ViewElementWeaponStats", "_on_present_grid_layout_changed", function(weapon_stats)
+		if layout and type(layout.apply_weapon_information_customization) == "function" then
+			layout.apply_weapon_information_customization(mod, weapon_stats, weapon_stats._item)
+		end
 	end)
 
 	return true

@@ -2481,6 +2481,45 @@ end
 
 Layout.apply_item_customization_style = apply_item_customization_style
 
+-- The weapon-information panel already composites its rarity tint through a
+-- vertical gradient over Darktide's dark terminal background. Only replace
+-- that tint (and, independently, the rarity keyword) so the native shading is
+-- retained regardless of the card's per-item flat/shaded preference.
+Layout.apply_weapon_information_customization = function(mod, weapon_stats, item)
+	local customization = item_customization(mod, item)
+	local name_color = customization and customization.name_color
+	local background_color = customization and customization.background_color
+	local information_color = setting(mod, "custom_item_override_weapon_information_color", true) and background_color or nil
+	local rarity_keyword_color = setting(mod, "custom_item_override_weapon_rarity_keyword_color", true) and background_color or nil
+	local information_name_color = setting(mod, "custom_item_override_weapon_information_name_color", true) and name_color or nil
+	local widgets = weapon_stats and weapon_stats._grid_widgets
+	local widgets_by_name = weapon_stats and weapon_stats._widgets_by_name
+	local title_widget = widgets_by_name and widgets_by_name.grid_divider_top_weapon
+	local title_style = title_widget and title_widget.style and title_widget.style.weapon_display_name
+	local applied = false
+
+	if title_style then
+		apply_custom_color(title_style, information_name_color, "text_color")
+		applied = true
+	end
+
+	if type(widgets) ~= "table" then
+		return applied
+	end
+
+	for index = 1, #widgets do
+		local style = widgets[index] and widgets[index].style
+
+		if style and (style.gradient_background or style.rarity_name) then
+			apply_custom_color(style.gradient_background, information_color, "color")
+			apply_custom_color(style.rarity_name, rarity_keyword_color, "text_color")
+			applied = true
+		end
+	end
+
+	return applied
+end
+
 -- Re-run the same formatting path used when a card is initialized. This is
 -- also used by the customization editor to update already-created loadout
 -- widgets (notably the character overview hidden beneath InventoryWeaponsView)

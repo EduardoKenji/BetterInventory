@@ -740,6 +740,24 @@ local localization = {
 	custom_item_preserve_card_shading_tooltip = {
 		en = "Uses Darktide's dark base layer beneath custom background colors. Disable this to paint the entire card with the selected color. This is the default for newly painted backgrounds; each item retains the choice confirmed in its Background Color prompt.",
 	},
+	custom_item_override_weapon_information_color = {
+		en = "Apply custom color to weapon information",
+	},
+	custom_item_override_weapon_information_color_tooltip = {
+		en = "Uses an item's custom background color for the weapon-information header. Darktide's native dark base and gradient shading are always preserved in this panel.",
+	},
+	custom_item_override_weapon_rarity_keyword_color = {
+		en = "Apply custom color to rarity keyword",
+	},
+	custom_item_override_weapon_rarity_keyword_color_tooltip = {
+		en = "Uses an item's custom background color for its rarity keyword in the weapon-information panel.",
+	},
+	custom_item_override_weapon_information_name_color = {
+		en = "Apply custom name color to weapon information",
+	},
+	custom_item_override_weapon_information_name_color_tooltip = {
+		en = "Uses an item's custom name color for its name in the weapon-information panel.",
+	},
 	option_requires_custom_item_name_and_colors = {
 		en = "Enable custom item names and colors to use this option.",
 	},
@@ -2270,6 +2288,12 @@ zh_cn.custom_item_skip_confirmation_prompts = "Skip confirmation prompts"
 zh_cn.custom_item_skip_confirmation_prompts_tooltip = "Immediately applies reset actions instead of asking for confirmation. Enabled by default."
 zh_cn.custom_item_preserve_card_shading = "Preserve Darktide Equipment Card Shading"
 zh_cn.custom_item_preserve_card_shading_tooltip = "Uses Darktide's dark base layer beneath custom background colors. Disable this to paint the entire card with the selected color. Each painted item retains its confirmed choice."
+zh_cn.custom_item_override_weapon_information_color = "Apply custom color to weapon information"
+zh_cn.custom_item_override_weapon_information_color_tooltip = "Uses an item's custom background color for the weapon-information header. Darktide's native dark base and gradient shading are always preserved in this panel."
+zh_cn.custom_item_override_weapon_rarity_keyword_color = "Apply custom color to rarity keyword"
+zh_cn.custom_item_override_weapon_rarity_keyword_color_tooltip = "Uses an item's custom background color for its rarity keyword in the weapon-information panel."
+zh_cn.custom_item_override_weapon_information_name_color = "Apply custom name color to weapon information"
+zh_cn.custom_item_override_weapon_information_name_color_tooltip = "Uses an item's custom name color for its name in the weapon-information panel."
 zh_cn.option_requires_custom_item_name_and_colors = "Enable custom item names and colors to use this option."
 zh_cn.name_it_force_curio_name_in_detailed_mode = "Show Curio name with all four attributes"
 zh_cn.name_it_force_curio_name_in_detailed_mode_tooltip = "Shows a two-line Curio name above all four attribute lines in Character Overview and supported item views. Works with or without Name It."
