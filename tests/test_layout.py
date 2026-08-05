@@ -1812,6 +1812,24 @@ def main() -> None:
     ).style.size[2] == 48
     mod.settings.myfavorites_show_favorite_letter = False
 
+    # Enhanced Character Selection can expose item blueprints before their
+    # favorite pass receives an explicit size. With compact markers disabled,
+    # preserve MyFavorites' own hotspot dimensions instead of indexing nil.
+    mod.settings.compact_favorite_marker = False
+    sizeless_favorite_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    assert blueprint_pass(sizeless_favorite_blueprint, "favorite_icon").style.size is None
+    layout.configure_item_blueprint(mod, sizeless_favorite_blueprint, 640)
+    sizeless_myfavorites_hotspot = blueprint_pass(
+        sizeless_favorite_blueprint, "myfav_hotspot"
+    )
+    assert tuple(
+        sizeless_myfavorites_hotspot.style.size[index] for index in range(1, 3)
+    ) == (120, 24)
+    assert tuple(
+        sizeless_myfavorites_hotspot.style.offset[index] for index in range(1, 4)
+    ) == (-8, 7, 17)
+    mod.settings.compact_favorite_marker = True
+
     favorite_pass.change_function(lua.table_from({"equipped": True}), favorite_pass.style, None, 0)
     assert favorite_pass.style.offset[2] == 33
     assert myfavorites_hotspot.style.offset[2] == 33
