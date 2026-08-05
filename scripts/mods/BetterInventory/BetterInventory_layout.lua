@@ -1156,8 +1156,12 @@ end
 local function configure_native_quick_look_card_passes(mod, pass_template, card_width, card_height, configuration)
 	local font_size = numeric_setting(mod, "quick_look_card_single_column_font_size", 14, 8, 20)
 	local lowest_modifier_color = configured_text_color(mod, "weapon_modifier_lowest_color", QUICK_LOOK_CARD_HIGHLIGHT_COLOR, "weapon_modifier_lowest_color_opacity", 80)
-	local horizontal_percent = numeric_setting(mod, "quick_look_card_single_column_horizontal_position", 79, 0, 100)
-	local vertical_percent = numeric_setting(mod, "quick_look_card_single_column_vertical_position", 93, 0, 100)
+	local horizontal_setting = configuration and configuration.global_store and "global_store_single_column_modifier_horizontal_position" or "quick_look_card_single_column_horizontal_position"
+	local vertical_setting = configuration and configuration.global_store and "global_store_single_column_modifier_vertical_position" or "quick_look_card_single_column_vertical_position"
+	local horizontal_default = configuration and configuration.global_store and 55 or 79
+	local vertical_default = configuration and configuration.global_store and 100 or 93
+	local horizontal_percent = numeric_setting(mod, horizontal_setting, horizontal_default, 0, 100)
+	local vertical_percent = numeric_setting(mod, vertical_setting, vertical_default, 0, 100)
 	local text_z = configuration and configuration.global_store and 12 or 5
 	local line_height = font_size + 3
 	local row_step = line_height + 2
@@ -2849,10 +2853,15 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 		local icon = pass_by_style_id(pass_template, "icon")
 
 		if icon and icon.style then
-			icon.style.horizontal_alignment = "left"
+			local native_icon_size = icon.style.size or {}
+			local native_icon_width = tonumber(native_icon_size[1]) or math.min(card_width, math.floor(card_width * 0.55))
+
+			-- Keep Darktide's native landscape icon width/aspect instead of scaling
+			-- the weapon texture across the entire GlobalStore card.
+			icon.style.horizontal_alignment = "right"
 			icon.style.vertical_alignment = "top"
 			icon.style.size = {
-				card_width,
+				math.min(card_width, native_icon_width),
 				math.max(1, (item_size[2] or 110) - global_store_extra),
 			}
 			icon.style.offset = {
@@ -2949,8 +2958,8 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 				global_store_photo_size,
 			}
 			portrait.style.offset = {
-				18,
-				4,
+				14,
+				9,
 				14,
 			}
 		end

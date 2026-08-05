@@ -303,6 +303,8 @@ def main() -> None:
 				global_store_character_class_icon_size = 16,
 				global_store_character_name_font_size = 16,
 				global_store_compact_character_names = true,
+				global_store_single_column_modifier_horizontal_position = 55,
+				global_store_single_column_modifier_vertical_position = 100,
 				brighten_armoury_item_levels = true,
 				expand_armoury_requisition_window = true,
 				armoury_requisition_target_card_width = 230,

@@ -566,6 +566,18 @@ local localization = {
 	global_store_compact_character_names_tooltip = {
 		en = "When enabled, automatically scales GlobalStore character names down as needed to keep them on one line in four- and five-column cards. Two- and three-column cards keep the configured name size. Enabled by default.",
 	},
+	global_store_single_column_modifier_horizontal_position = {
+		en = "GlobalStore single-column weapon modifier horizontal position (%%)",
+	},
+	global_store_single_column_modifier_horizontal_position_tooltip = {
+		en = "Moves the DMG, CLVD, DEF and other weapon modifier values horizontally on native single-column GlobalStore cards. Zero is the left edge and 100 is the right edge. Reopen GlobalStore after changing this value.",
+	},
+	global_store_single_column_modifier_vertical_position = {
+		en = "GlobalStore single-column weapon modifier vertical position (%%)",
+	},
+	global_store_single_column_modifier_vertical_position_tooltip = {
+		en = "Moves the native single-column GlobalStore weapon modifier block vertically. Zero is the top edge and 100 is the bottom edge. Reopen GlobalStore after changing this value.",
+	},
 	enable_hadron_entreat_grid = {
 		en = "Hadron: Entreat Hadron",
 	},
@@ -2077,6 +2089,11 @@ zh_cn.global_store_compact_character_names = "在4-5列中压缩 GlobalStore 角
 zh_cn.global_store_compact_character_names_tooltip = "启用后，在四列和五列卡片中根据需要自动缩小 GlobalStore 角色名称，使其保持单行。二列和三列卡片保留设定的字号。默认开启。"
 zh_cn.option_requires_global_store_grid = "启用 GlobalStore 网格后才能使用此选项。"
 zh_cn.option_requires_global_store_integration = "启用 GlobalStore 集成后才能使用此选项。"
+
+zh_cn.global_store_single_column_modifier_horizontal_position = "GlobalStore single-column modifier horizontal position (%%)"
+zh_cn.global_store_single_column_modifier_horizontal_position_tooltip = "Move native single-column GlobalStore weapon modifiers horizontally. 0 is left and 100 is right. Reopen GlobalStore after changing."
+zh_cn.global_store_single_column_modifier_vertical_position = "GlobalStore single-column modifier vertical position (%%)"
+zh_cn.global_store_single_column_modifier_vertical_position_tooltip = "Move native single-column GlobalStore weapon modifiers vertically. 0 is top and 100 is bottom. Reopen GlobalStore after changing."
 
 for localization_id, text in pairs(zh_cn) do
 	local entry = localization[localization_id]

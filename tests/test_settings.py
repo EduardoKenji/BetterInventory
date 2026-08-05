@@ -48,6 +48,8 @@ def main() -> None:
 			global_store_character_class_icon_size = 16,
 			global_store_character_name_font_size = 16,
 			global_store_compact_character_names = true,
+			global_store_single_column_modifier_horizontal_position = 55,
+			global_store_single_column_modifier_vertical_position = 100,
 			expand_armoury_requisition_window = true,
 			armoury_requisition_target_card_width = 230,
 			automatic_card_height = true,
@@ -415,6 +417,8 @@ def main() -> None:
 		"global_store_character_class_icon_size",
 		"global_store_character_name_font_size",
 		"global_store_compact_character_names",
+		"global_store_single_column_modifier_horizontal_position",
+		"global_store_single_column_modifier_vertical_position",
 		"weapon_perk_compression",
 		"show_weapon_perk_rank_symbols",
 		"weapon_perk_rank_icon_size",
@@ -559,6 +563,8 @@ def main() -> None:
     assert entries_by_id["global_store_character_class_icon_size"].disabled is False
     assert entries_by_id["global_store_character_name_font_size"].disabled is False
     assert entries_by_id["global_store_compact_character_names"].disabled is False
+    assert entries_by_id["global_store_single_column_modifier_horizontal_position"].disabled is True
+    assert entries_by_id["global_store_single_column_modifier_vertical_position"].disabled is True
     assert entries_by_id["expand_curio_inventory_window"].disabled is False
     assert entries_by_id["weapon_extra_width_column_threshold"].disabled is False
     assert entries_by_id["five_column_weapon_extra_width"].disabled is True
@@ -852,6 +858,8 @@ def main() -> None:
     assert entries_by_id["global_store_character_class_icon_size"].disabled is True
     assert entries_by_id["global_store_character_name_font_size"].disabled is True
     assert entries_by_id["global_store_compact_character_names"].disabled is True
+    assert entries_by_id["global_store_single_column_modifier_horizontal_position"].disabled is True
+    assert entries_by_id["global_store_single_column_modifier_vertical_position"].disabled is True
     settings.enable_global_store_integration = True
     mod.on_setting_changed("enable_global_store_integration")
     assert entries_by_id["enable_global_store_grid"].disabled is False
@@ -862,6 +870,8 @@ def main() -> None:
     assert entries_by_id["global_store_character_class_icon_size"].disabled is False
     assert entries_by_id["global_store_character_name_font_size"].disabled is False
     assert entries_by_id["global_store_compact_character_names"].disabled is False
+    assert entries_by_id["global_store_single_column_modifier_horizontal_position"].disabled is True
+    assert entries_by_id["global_store_single_column_modifier_vertical_position"].disabled is True
 
     settings.enable_global_store_grid = False
     mod.on_setting_changed("enable_global_store_grid")
@@ -872,6 +882,8 @@ def main() -> None:
     assert entries_by_id["global_store_character_class_icon_size"].disabled is True
     assert entries_by_id["global_store_character_name_font_size"].disabled is True
     assert entries_by_id["global_store_compact_character_names"].disabled is True
+    assert entries_by_id["global_store_single_column_modifier_horizontal_position"].disabled is True
+    assert entries_by_id["global_store_single_column_modifier_vertical_position"].disabled is True
     settings.enable_global_store_grid = True
     mod.on_setting_changed("enable_global_store_grid")
     assert entries_by_id["enable_global_store_sorting_panel"].disabled is False
@@ -947,6 +959,14 @@ def main() -> None:
             "automatic_curio_classes_group",
 			"automatic_curio_characters_group",
 			"enable_global_store_integration",
+			"global_store_character_photo_size_percent",
+			"global_store_price_row_padding",
+			"global_store_character_info_gap",
+			"global_store_character_class_icon_size",
+			"global_store_character_name_font_size",
+			"global_store_compact_character_names",
+			"global_store_single_column_modifier_horizontal_position",
+			"global_store_single_column_modifier_vertical_position",
         }:
             continue
 
@@ -961,6 +981,14 @@ def main() -> None:
     assert entries_by_id["quick_look_card_single_column_label_value_gap"].disabled is False
     assert entries_by_id["quick_look_card_single_column_horizontal_position"].disabled is False
     assert entries_by_id["quick_look_card_single_column_vertical_position"].disabled is False
+    assert entries_by_id["global_store_character_photo_size_percent"].disabled is False
+    assert entries_by_id["global_store_price_row_padding"].disabled is False
+    assert entries_by_id["global_store_character_info_gap"].disabled is False
+    assert entries_by_id["global_store_character_class_icon_size"].disabled is False
+    assert entries_by_id["global_store_character_name_font_size"].disabled is False
+    assert entries_by_id["global_store_compact_character_names"].disabled is False
+    assert entries_by_id["global_store_single_column_modifier_horizontal_position"].disabled is False
+    assert entries_by_id["global_store_single_column_modifier_vertical_position"].disabled is False
     assert entries_by_id["weapon_modifier_lowest_color_preset"].disabled is False
     assert entries_by_id["weapon_modifier_lowest_color_r"].disabled is False
     assert entries_by_id["weapon_modifier_lowest_color_g"].disabled is False
@@ -1107,6 +1135,8 @@ def main() -> None:
         "global_store_character_class_icon_size",
         "global_store_character_name_font_size",
         "global_store_compact_character_names",
+        "global_store_single_column_modifier_horizontal_position",
+        "global_store_single_column_modifier_vertical_position",
     ]
     grid_layout_index = top_level_ids.index("layout_group")
     assert top_level_ids[grid_layout_index + 1] == "single_column_layout_group"
@@ -1170,6 +1200,8 @@ def main() -> None:
     assert defaults["global_store_character_class_icon_size"] == 16
     assert defaults["global_store_character_name_font_size"] == 16
     assert defaults["global_store_compact_character_names"] is True
+    assert defaults["global_store_single_column_modifier_horizontal_position"] == 55
+    assert defaults["global_store_single_column_modifier_vertical_position"] == 100
     assert defaults["enable_quick_look_card_single_column_integration"] is True
     assert defaults["quick_look_card_single_column_font_size"] == 14
     assert defaults["quick_look_card_single_column_label_value_gap"] == 1
