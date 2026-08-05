@@ -22,10 +22,13 @@ end
 
 local CraftingMechanicusModifyView = require("scripts/ui/views/crafting_mechanicus_modify_view/crafting_mechanicus_modify_view")
 local CreditsVendorView = require("scripts/ui/views/credits_vendor_view/credits_vendor_view")
+local InventoryView = require("scripts/ui/views/inventory_view/inventory_view")
+local InventoryViewContentBlueprints = require("scripts/ui/views/inventory_view/inventory_view_content_blueprints")
 local ItemGridViewBase = require("scripts/ui/views/item_grid_view_base/item_grid_view_base")
 local ItemGridViewBaseDefinitions = require("scripts/ui/views/item_grid_view_base/item_grid_view_base_definitions")
 local InventoryWeaponsView = require("scripts/ui/views/inventory_weapons_view/inventory_weapons_view")
 local ViewElementGrid = require("scripts/ui/view_elements/view_element_grid/view_element_grid")
+local ItemBlueprintGenerator = require("scripts/ui/view_content_blueprints/item_blueprints")
 local Layout = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout")
 local Features = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_features"), "BetterInventory_features.lua")
 local CurioAcquisition = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_acquisition"), "BetterInventory_curio_acquisition.lua")
@@ -64,6 +67,11 @@ local GLOBAL_STORE_NATIVE_CONFIGURATION = {
 	native_single_column = true,
 	store_item = true,
 }
+local CHARACTER_OVERVIEW_WEAPON_WIDGET_TYPE = "better_inventory_character_overview_weapon"
+local CHARACTER_OVERVIEW_BLUEPRINTS = type(ItemBlueprintGenerator) == "function" and ItemBlueprintGenerator({
+	600,
+	112,
+}) or nil
 
 local function pack_values(...)
 	return {
@@ -95,6 +103,70 @@ end
 
 local function is_hadron_view(view)
 	return view and view.__class_name == "CraftingMechanicusModifyView"
+end
+
+local function character_overview_weapon_kind(config)
+	local slot_name = config and config.slot and config.slot.name
+
+	if slot_name == "slot_primary" then
+		return "melee"
+	elseif slot_name == "slot_secondary" then
+		return "ranged"
+	end
+end
+
+local function character_overview_weapon_blueprint()
+	local native_blueprint = InventoryViewContentBlueprints.item_slot
+	local detailed_blueprint = CHARACTER_OVERVIEW_BLUEPRINTS and CHARACTER_OVERVIEW_BLUEPRINTS.item
+
+	if type(native_blueprint) ~= "table" or type(detailed_blueprint) ~= "table" or not detailed_blueprint.pass_template then
+		return
+	end
+
+	-- InventoryView's native item-slot blueprint owns the live icon lifecycle and
+	-- equipment refresh. Keep those callbacks, but give them the same pass set
+	-- and geometry as BetterInventory's detailed single-column inventory card.
+	local blueprint = table.clone(detailed_blueprint)
+	blueprint.size = table.clone(native_blueprint.size or detailed_blueprint.size)
+	blueprint.pass_template = table.clone(detailed_blueprint.pass_template)
+	blueprint.init = native_blueprint.init
+	blueprint.update = native_blueprint.update
+	blueprint.destroy = native_blueprint.destroy
+	-- configure_native_item_blueprint wraps update_data to refresh the detailed
+	-- text/stat passes after the equipped item changes. The native item-slot
+	-- blueprint has no update_data callback, so provide a harmless seam first.
+	blueprint.update_data = function()
+		return
+	end
+
+	Layout.configure_native_item_blueprint(mod, blueprint, blueprint.size[1], {
+		native_single_column = true,
+	})
+
+	local native_update = blueprint.update
+
+	blueprint.update = function(parent, widget, input_service, dt, t, ui_renderer)
+		local content = widget and widget.content
+		local element = content and content.element
+		local previous_item = element and element.item
+
+		if native_update then
+			native_update(parent, widget, input_service, dt, t, ui_renderer)
+		end
+
+		local slot = element and element.slot
+		local current_item = slot and parent.equipped_item_in_slot and parent:equipped_item_in_slot(slot.name)
+
+		if element and current_item ~= previous_item then
+			element.item = current_item
+
+			if blueprint.update_data then
+				blueprint.update_data(parent, widget, element)
+			end
+		end
+	end
+
+	return blueprint
 end
 
 local function is_armoury_sort_view(view)
@@ -841,7 +913,7 @@ function mod.on_setting_changed(setting_id)
 		end
 	end
 
-	if setting_id == "enable_grid_layout" or setting_id == "melee_columns" or setting_id == "ranged_columns" or setting_id == "curio_columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "weapon_extra_width_column_threshold" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_hadron_single_column_mirror" or setting_id == "enable_armoury_requisition_grid" or setting_id == "enable_armoury_single_column_mirror" or setting_id == "enable_armoury_requisition_sorting_panel" or setting_id == "brighten_armoury_item_levels" or setting_id == "three_column_weapon_name_font_size" or setting_id == "expand_armoury_requisition_window" or setting_id == "enable_global_store_integration" or setting_id == "enable_global_store_grid" or setting_id == "enable_global_store_sorting_panel" or setting_id == "global_store_character_photo_size_percent" or setting_id == "global_store_price_row_padding" or setting_id == "global_store_character_info_gap" or setting_id == "global_store_character_class_icon_size" or setting_id == "global_store_character_name_font_size" or setting_id == "global_store_compact_character_names" or setting_id == "global_store_single_column_modifier_horizontal_position" or setting_id == "global_store_single_column_modifier_vertical_position" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "single_column_blessing_icons_on_right" or setting_id == "curio_display_profile" or setting_id == "enable_inventory_options_panel_prototype" or setting_id == "enable_experimental_quick_discard" or setting_id == "quick_discard_mode" or setting_id == "quick_discard_protect_high_level_curios" or setting_id == "enable_automatic_curio_acquisition" or automatic_curio_setting or setting_id == "enable_quick_look_card_single_column_integration" or setting_id == "enable_quick_look_card_grid_integration" or setting_id == "quick_look_card_grid_stat_position" then
+	if setting_id == "enable_grid_layout" or setting_id == "melee_columns" or setting_id == "ranged_columns" or setting_id == "curio_columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "weapon_extra_width_column_threshold" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_hadron_single_column_mirror" or setting_id == "enable_armoury_requisition_grid" or setting_id == "enable_armoury_single_column_mirror" or setting_id == "enable_armoury_requisition_sorting_panel" or setting_id == "brighten_armoury_item_levels" or setting_id == "three_column_weapon_name_font_size" or setting_id == "expand_armoury_requisition_window" or setting_id == "enable_global_store_integration" or setting_id == "enable_global_store_grid" or setting_id == "enable_global_store_sorting_panel" or setting_id == "global_store_character_photo_size_percent" or setting_id == "global_store_price_row_padding" or setting_id == "global_store_character_info_gap" or setting_id == "global_store_character_class_icon_size" or setting_id == "global_store_character_name_font_size" or setting_id == "global_store_compact_character_names" or setting_id == "global_store_single_column_modifier_horizontal_position" or setting_id == "global_store_single_column_modifier_vertical_position" or setting_id == "enable_character_overview_melee_mirror" or setting_id == "enable_character_overview_ranged_mirror" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "single_column_blessing_icons_on_right" or setting_id == "curio_display_profile" or setting_id == "enable_inventory_options_panel_prototype" or setting_id == "enable_experimental_quick_discard" or setting_id == "quick_discard_mode" or setting_id == "quick_discard_protect_high_level_curios" or setting_id == "enable_automatic_curio_acquisition" or automatic_curio_setting or setting_id == "enable_quick_look_card_single_column_integration" or setting_id == "enable_quick_look_card_grid_integration" or setting_id == "quick_look_card_grid_stat_position" then
 		refresh_option_dependencies()
 	end
 
@@ -1062,6 +1134,34 @@ if ensure_class_method(InventoryWeaponsView, "present_grid_layout") then
 		configuration.slot_kind = Layout.slot_kind(view)
 
 		return present_grid_with_configuration(func, view, layout, on_present_callback, configuration)
+	end)
+end
+
+-- The character overview uses InventoryView's individual item-slot widgets
+-- instead of ViewElementGrid. Swap only its primary/secondary weapon slots to
+-- the detailed inventory card while retaining Darktide's native icon loading,
+-- equipment refresh and click callbacks. The optional scenegraph ID is present
+-- only for individual-layout widgets, so inventory grid tabs remain untouched.
+if ensure_class_method(InventoryView, "_create_entry_widget_from_config") then
+	mod:hook(InventoryView, "_create_entry_widget_from_config", function(func, view, config, suffix, callback_name, secondary_callback_name, optional_scenegraph_id)
+		local weapon_kind = optional_scenegraph_id and character_overview_weapon_kind(config)
+		local setting_id = weapon_kind == "melee" and "enable_character_overview_melee_mirror" or weapon_kind == "ranged" and "enable_character_overview_ranged_mirror"
+
+		if view and view.__class_name == "InventoryView" and setting_id and mod:get(setting_id) ~= false then
+			local blueprint = character_overview_weapon_blueprint()
+
+			if blueprint then
+				InventoryViewContentBlueprints[CHARACTER_OVERVIEW_WEAPON_WIDGET_TYPE] = blueprint
+
+				local adapted_config = table.clone(config)
+				adapted_config.widget_type = CHARACTER_OVERVIEW_WEAPON_WIDGET_TYPE
+				adapted_config.item = view.equipped_item_in_slot and view:equipped_item_in_slot(config.slot.name)
+
+				return func(view, adapted_config, suffix, callback_name, secondary_callback_name, optional_scenegraph_id)
+			end
+		end
+
+		return func(view, config, suffix, callback_name, secondary_callback_name, optional_scenegraph_id)
 	end)
 end
 

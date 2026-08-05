@@ -1071,7 +1071,7 @@ def main() -> None:
     localization = lua.execute(LOCALIZATION_PATH.read_text(encoding="utf-8"))
     defaults = {}
 
-    assert data.version == "1.5.2"
+    assert data.version == "1.5.3"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
@@ -1147,6 +1147,7 @@ def main() -> None:
         "hadron_additional_views_group",
         "armoury_exchange_views_group",
         "global_store_integration_group",
+        "character_overview_group",
     ]
     hadron_view_group = additional_views_group.sub_widgets[1]
     assert [
@@ -1186,6 +1187,14 @@ def main() -> None:
         "global_store_compact_character_names",
         "global_store_single_column_modifier_horizontal_position",
         "global_store_single_column_modifier_vertical_position",
+    ]
+    character_overview_view_group = additional_views_group.sub_widgets[4]
+    assert [
+        character_overview_view_group.sub_widgets[index].setting_id
+        for index in range(1, len(character_overview_view_group.sub_widgets) + 1)
+    ] == [
+        "enable_character_overview_melee_mirror",
+        "enable_character_overview_ranged_mirror",
     ]
     grid_layout_index = top_level_ids.index("layout_group")
     assert top_level_ids[grid_layout_index + 1] == "single_column_layout_group"
