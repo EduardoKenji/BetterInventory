@@ -2394,6 +2394,7 @@ local function apply_item_customization_style(mod, widget, element)
 	local customization = item_customization(mod, item)
 	local name_color = customization and customization.name_color
 	local background_color = customization and customization.background_color
+	local preserve_shading = customization and customization.background_preserve_shading
 
 	if not style then
 		return
@@ -2407,9 +2408,16 @@ local function apply_item_customization_style(mod, widget, element)
 		apply_custom_color(text_style, name_color, "hover_color")
 	end
 
-	for _, style_id in ipairs({ "background", "background_gradient", "rarity_tag" }) do
-		apply_custom_color(style[style_id], background_color, "color")
+	if preserve_shading == nil then
+		preserve_shading = setting(mod, "custom_item_preserve_card_shading", true)
 	end
+
+	-- Darktide composes equipment cards from a fixed dark base plus a colored
+	-- gradient. Preserve that base by default; the per-item flag can opt back
+	-- into the former full-card paint behavior.
+	apply_custom_color(style.background, background_color and not preserve_shading and background_color or nil, "color")
+	apply_custom_color(style.background_gradient, background_color, "color")
+	apply_custom_color(style.rarity_tag, background_color, "color")
 end
 
 Layout.apply_item_customization_style = apply_item_customization_style

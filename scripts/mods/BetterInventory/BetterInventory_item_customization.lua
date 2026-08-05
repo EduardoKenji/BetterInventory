@@ -102,9 +102,17 @@ ItemCustomization.update = function(mod, gear_id, changes)
 
 	if changes.background_color ~= nil then
 		record.background_color = changes.background_color ~= false and clone_color(changes.background_color, DEFAULT_BACKGROUND_COLOR) or nil
+
+		if changes.background_color == false then
+			record.background_preserve_shading = nil
+		end
 	end
 
-	if record.name == nil and record.name_color == nil and record.background_color == nil then
+	if changes.background_preserve_shading ~= nil and record.background_color ~= nil then
+		record.background_preserve_shading = changes.background_preserve_shading == true
+	end
+
+	if record.name == nil and record.name_color == nil and record.background_color == nil and record.background_preserve_shading == nil then
 		records[gear_id] = nil
 	else
 		records[gear_id] = record
@@ -321,6 +329,7 @@ local function color_picker_blueprints(width, picker)
 	local SliderPassTemplates = require("scripts/ui/pass_templates/slider_pass_templates")
 	local UIFontSettings = require("scripts/managers/ui/ui_font_settings")
 	local slider_height = 52
+	local checkbox_height = 42
 	local header_height = 110
 	local gutter = 12
 	local half_width = math.floor((width - gutter) / 2)
@@ -416,10 +425,13 @@ local function color_picker_blueprints(width, picker)
 				{ pass_type = "rect", style_id = "hex_background", style = { color = { 220, 15, 20, 15 }, offset = { 4, 4, 2 }, size = { half_width - 8, header_height - 8 } } },
 				{ pass_type = "text", style_id = "hex_text", value = "", value_id = "hex_text", style = hex_text_style },
 				{ pass_type = "rect", style_id = "preview_frame", style = { color = Color.terminal_corner_hover(255, true), offset = { half_width + gutter, 0, 1 }, size = { half_width, header_height } } },
+				{ pass_type = "rect", style_id = "preview_background", style = { color = { 255, 15, 20, 15 }, offset = { half_width + gutter + 4, 4, 2 }, size = { half_width - 8, header_height - 8 } } },
 				{
-					pass_type = "rect",
+					pass_type = "texture",
 					style_id = "preview",
-					style = { color = clone_color(picker.draft, picker.default), offset = { half_width + gutter + 4, 4, 2 }, size = { half_width - 8, header_height - 8 } },
+					value = "content/ui/materials/backgrounds/default_square",
+					value_id = "preview_material",
+					style = { color = clone_color(picker.draft, picker.default), offset = { half_width + gutter + 4, 4, 3 }, size = { half_width - 8, header_height - 8 } },
 					change_function = function(_, style)
 						style.color[2], style.color[3], style.color[4] = picker.draft[2], picker.draft[3], picker.draft[4]
 					end,
@@ -432,11 +444,13 @@ local function color_picker_blueprints(width, picker)
 				widget.content.hex_buffer = picker.hex
 				widget.content.hex_text = "Hex: #" .. picker.hex
 				widget.content.text = "RGB preview"
+				widget.content.preview_material = picker.preserve_shading and "content/ui/materials/gradients/gradient_vertical" or "content/ui/materials/backgrounds/default_square"
 				widget.content.better_inventory_picker_revision = picker.revision
 			end,
 			update = function(_, widget)
 				local content = widget.content
 				local hotspot = content.hex_hotspot
+				content.preview_material = picker.preserve_shading and "content/ui/materials/gradients/gradient_vertical" or "content/ui/materials/backgrounds/default_square"
 
 				if hotspot and hotspot.on_pressed then
 					content.hex_editing = true
@@ -505,6 +519,32 @@ local function color_picker_blueprints(width, picker)
 				end
 			end,
 		},
+		shading_checkbox = {
+			size = { width, checkbox_height },
+			pass_template = {
+				{ pass_type = "hotspot", content_id = "hotspot", style_id = "hotspot" },
+				{ pass_type = "rect", style_id = "checkbox_background", style = { color = { 220, 15, 20, 15 }, offset = { 0, 9, 1 }, size = { 24, 24 } } },
+				{ pass_type = "texture", style_id = "checkbox_frame", value = "content/ui/materials/frames/frame_tile_2px", style = { color = Color.terminal_corner_hover(255, true), offset = { 0, 9, 2 }, size = { 24, 24 } } },
+				{ pass_type = "rect", style_id = "checkmark", style = { color = Color.terminal_corner_hover(255, true), offset = { 5, 14, 3 }, size = { 14, 14 } }, visibility_function = function(content) return content.checked end },
+				{ pass_type = "text", style_id = "label", value = "", value_id = "label", style = { font_size = 18, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "center", text_color = Color.white(255, true), offset = { 34, 0, 3 }, size = { width - 34, checkbox_height } } },
+			},
+			init = function(_, widget)
+				widget.content.hotspot = widget.content.hotspot or {}
+				widget.content.checked = picker.preserve_shading
+				widget.content.label = "Preserve Darktide Equipment Card Shading"
+			end,
+			update = function(_, widget)
+				local content = widget.content
+				local pressed = content.hotspot and content.hotspot.on_pressed == true
+
+				if pressed and not content.better_inventory_was_pressed then
+					picker.preserve_shading = not picker.preserve_shading
+					content.checked = picker.preserve_shading
+				end
+
+				content.better_inventory_was_pressed = pressed
+			end,
+		},
 	}
 end
 
@@ -513,9 +553,16 @@ local function show_color_picker(mod, target, context, layout)
 	local field = is_background and "background_color" or "name_color"
 	local default_color = is_background and DEFAULT_BACKGROUND_COLOR or DEFAULT_NAME_COLOR
 	local record = context and ItemCustomization.get(mod, context.gear_id)
+	local preserve_shading = mod:get("custom_item_preserve_card_shading") ~= false
+
+	if is_background and record and type(record.background_preserve_shading) == "boolean" then
+		preserve_shading = record.background_preserve_shading
+	end
+
 	local picker = {
 		default = clone_color(default_color, default_color),
 		draft = clone_color(record and record[field], default_color),
+		preserve_shading = is_background and preserve_shading or false,
 		revision = 0,
 	}
 	local settings_ok, popup_settings = pcall(require, "scripts/ui/constant_elements/elements/popup_handler/constant_element_popup_handler_settings")
@@ -524,7 +571,14 @@ local function show_color_picker(mod, target, context, layout)
 	local title = string.format(is_background and "Change item background color(%s)" or "Change item name color(%s)", item_name)
 	local function confirm()
 		if context then
-			ItemCustomization.update(mod, context.gear_id, { [field] = clone_color(picker.draft, default_color) })
+			local changes = { [field] = clone_color(picker.draft, default_color) }
+
+			if is_background then
+				changes.background_preserve_shading = picker.preserve_shading
+				mod:set("custom_item_preserve_card_shading", picker.preserve_shading, false)
+			end
+
+			ItemCustomization.update(mod, context.gear_id, changes)
 			refresh_item(mod, layout, context, false)
 		end
 	end
@@ -537,6 +591,7 @@ local function show_color_picker(mod, target, context, layout)
 			{ widget_type = "color_slider", channel = 2, label = "Red" },
 			{ widget_type = "color_slider", channel = 3, label = "Green" },
 			{ widget_type = "color_slider", channel = 4, label = "Blue" },
+			is_background and { widget_type = "shading_checkbox" } or nil,
 		},
 		grid_blueprints = color_picker_blueprints(width, picker),
 		description_text_params = {},

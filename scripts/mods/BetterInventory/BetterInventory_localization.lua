@@ -734,6 +734,12 @@ local localization = {
 	custom_item_skip_confirmation_prompts_tooltip = {
 		en = "Immediately applies reset actions instead of asking for confirmation. Enabled by default.",
 	},
+	custom_item_preserve_card_shading = {
+		en = "Preserve Darktide Equipment Card Shading",
+	},
+	custom_item_preserve_card_shading_tooltip = {
+		en = "Uses Darktide's dark base layer beneath custom background colors. Disable this to paint the entire card with the selected color. This is the default for newly painted backgrounds; each item retains the choice confirmed in its Background Color prompt.",
+	},
 	option_requires_custom_item_name_and_colors = {
 		en = "Enable custom item names and colors to use this option.",
 	},
@@ -2262,6 +2268,8 @@ zh_cn.custom_item_editor_keybind_r = "[R]"
 zh_cn.custom_item_editor_keybind_off = "Off"
 zh_cn.custom_item_skip_confirmation_prompts = "Skip confirmation prompts"
 zh_cn.custom_item_skip_confirmation_prompts_tooltip = "Immediately applies reset actions instead of asking for confirmation. Enabled by default."
+zh_cn.custom_item_preserve_card_shading = "Preserve Darktide Equipment Card Shading"
+zh_cn.custom_item_preserve_card_shading_tooltip = "Uses Darktide's dark base layer beneath custom background colors. Disable this to paint the entire card with the selected color. Each painted item retains its confirmed choice."
 zh_cn.option_requires_custom_item_name_and_colors = "Enable custom item names and colors to use this option."
 zh_cn.name_it_force_curio_name_in_detailed_mode = "Show Curio name with all four attributes"
 zh_cn.name_it_force_curio_name_in_detailed_mode_tooltip = "Shows a two-line Curio name above all four attribute lines in Character Overview and supported item views. Works with or without Name It."

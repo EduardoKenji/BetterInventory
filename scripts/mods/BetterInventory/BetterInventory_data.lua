@@ -978,6 +978,12 @@ return {
 						default_value = true,
 					},
 					{
+						setting_id = "custom_item_preserve_card_shading",
+						tooltip = "custom_item_preserve_card_shading_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
 						setting_id = "name_it_force_curio_name_in_detailed_mode",
 						tooltip = "name_it_force_curio_name_in_detailed_mode_tooltip",
 						type = "checkbox",

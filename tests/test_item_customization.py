@@ -139,6 +139,7 @@ def main() -> None:
             "name": "Test",
             "name_color": lua.table_from([255, 10, 20, 30]),
             "background_color": lua.table_from([255, 40, 50, 60]),
+            "background_preserve_shading": True,
         }
     )
     assert customization.update(mod, "gear-1", changes) is True
@@ -150,6 +151,7 @@ def main() -> None:
         20,
         30,
     )
+    assert record.background_preserve_shading is True
     assert customization.remove(mod, "gear-1") is True
     assert customization.get(mod, "gear-1") is None
 
@@ -213,6 +215,16 @@ def main() -> None:
 
     customization.show_color_picker(mod, "background", context, None)
     popup = globals_.captured_popup
+    assert len(popup.grid_layout) == 5
+    shading_blueprint = popup.grid_blueprints.shading_checkbox
+    shading_widget = lua.table_from(
+        {"content": lua.table_from({"hotspot": lua.table_from({})})}
+    )
+    shading_blueprint.init(None, shading_widget, popup.grid_layout[5])
+    assert shading_widget.content.checked is True
+    shading_widget.content.hotspot.on_pressed = True
+    shading_blueprint.update(None, shading_widget)
+    assert shading_widget.content.checked is False
     popup.options[1].callback()
     stored_background = customization.get(mod, "gear-1").background_color
     assert tuple(stored_background[index] for index in range(1, 5)) == (
@@ -221,9 +233,12 @@ def main() -> None:
         55,
         45,
     )
+    assert customization.get(mod, "gear-1").background_preserve_shading is False
+    assert settings.custom_item_preserve_card_shading is False
 
     popup.options[2].callback()
     assert customization.get(mod, "gear-1").background_color is None
+    assert customization.get(mod, "gear-1").background_preserve_shading is None
 
     globals_.name_it_settings.name_list["legacy-gear"] = "Legacy Name"
     assert customization.import_name_it_names(mod) == 1

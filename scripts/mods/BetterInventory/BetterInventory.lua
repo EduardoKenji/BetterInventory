@@ -1002,6 +1002,7 @@ local function refresh_option_dependencies()
 	set_option_enabled(option_dependency_entries.custom_item_name_color_keybind, custom_item_colors_enabled, custom_item_colors_reason)
 	set_option_enabled(option_dependency_entries.custom_item_background_color_keybind, custom_item_colors_enabled, custom_item_colors_reason)
 	set_option_enabled(option_dependency_entries.custom_item_skip_confirmation_prompts, custom_item_colors_enabled, custom_item_colors_reason)
+	set_option_enabled(option_dependency_entries.custom_item_preserve_card_shading, custom_item_colors_enabled, custom_item_colors_reason)
 
 	for _, setting_id in ipairs({
 		"curio_information_width_percent",
@@ -1189,6 +1190,7 @@ local function bind_option_dependencies(options_templates)
 		"custom_item_name_color_keybind",
 		"custom_item_background_color_keybind",
 		"custom_item_skip_confirmation_prompts",
+		"custom_item_preserve_card_shading",
 		"curio_information_width_percent",
 		"curio_preview_height_percent",
 		"inventory_options_panel_width",

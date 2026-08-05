@@ -3205,6 +3205,7 @@ def main() -> None:
     layout.set_item_customization_provider(
         lua.execute(
             """
+            preserve_test_shading = true
             return {
                 get = function(_, gear_id)
                     if gear_id == "custom-weapon" then
@@ -3212,6 +3213,7 @@ def main() -> None:
                             name = "Emerald Blade",
                             name_color = { 255, 10, 20, 30 },
                             background_color = { 255, 40, 50, 60 },
+                            background_preserve_shading = preserve_test_shading,
                         }
                     end
                 end,
@@ -3225,10 +3227,12 @@ def main() -> None:
     layout.configure_item_blueprint(mod, custom_weapon_blueprint, 640)
     blueprint_pass(custom_weapon_blueprint, "display_name").style.text_color = lua.table_from([255, 220, 230, 210])
     blueprint_pass(custom_weapon_blueprint, "background").style.color = lua.table_from([255, 1, 2, 3])
+    blueprint_pass(custom_weapon_blueprint, "background_gradient").style.color = lua.table_from([255, 4, 5, 6])
     blueprint_pass(custom_weapon_blueprint, "rarity_tag").style.color = lua.table_from([255, 200, 10, 10])
     custom_weapon_styles = {
         "display_name": blueprint_pass(custom_weapon_blueprint, "display_name").style,
         "background": blueprint_pass(custom_weapon_blueprint, "background").style,
+        "background_gradient": blueprint_pass(custom_weapon_blueprint, "background_gradient").style,
         "rarity_tag": blueprint_pass(custom_weapon_blueprint, "rarity_tag").style,
     }
     custom_weapon_widget = lua.table_from(
@@ -3246,8 +3250,12 @@ def main() -> None:
     )
     assert custom_weapon_widget.content.display_name == "Emerald Blade"
     assert tuple(custom_weapon_widget.style.display_name.text_color[index] for index in range(1, 5)) == (255, 10, 20, 30)
-    assert tuple(custom_weapon_widget.style.background.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
+    assert tuple(custom_weapon_widget.style.background.color[index] for index in range(1, 5)) == (255, 1, 2, 3)
+    assert tuple(custom_weapon_widget.style.background_gradient.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
     assert tuple(custom_weapon_widget.style.rarity_tag.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
+    globals_.preserve_test_shading = False
+    layout.apply_item_customization_style(mod, custom_weapon_widget, custom_weapon_element)
+    assert tuple(custom_weapon_widget.style.background.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
     layout.set_item_customization_provider(None)
 
     mod.settings.show_curio_item_level = False
