@@ -720,6 +720,20 @@ ItemCustomization.on_enabled = function(mod)
 	if type(mod:get(STORAGE_SETTING_ID)) ~= "table" then
 		save_records(mod, {})
 	end
+
+	-- on_all_mods_loaded is not guaranteed to run when a user re-enables the
+	-- whole mod from Toggle Mods. Complete an ownership handoff here as well.
+	if mod:get("enable_custom_item_name_and_colors") ~= false and mod:get(NAME_IT_OWNS_NAMES_SETTING_ID) == true then
+		if not ItemCustomization.reconcile_from_name_it(mod) then
+			mod:set(NAME_IT_OWNS_NAMES_SETTING_ID, false, false)
+		end
+	end
+end
+
+ItemCustomization.on_disabled = function(mod)
+	if name_it_mod() then
+		mod:set(NAME_IT_OWNS_NAMES_SETTING_ID, true, false)
+	end
 end
 
 ItemCustomization.on_all_mods_loaded = function(mod)
@@ -906,6 +920,35 @@ ItemCustomization.install = function(mod, InventoryWeaponsView, layout)
 
 	mod:hook_safe("GearService", "on_gear_deleted", function(_, gear_id)
 		ItemCustomization.remove(mod, gear_id)
+	end)
+
+	-- Name It also exposes its editor through Hadron's parent CraftingView. When
+	-- BetterInventory owns names, route that existing action into our editor so
+	-- an external edit cannot silently diverge and later be overwritten.
+	mod:hook_safe("CraftingView", "init", function(crafting_view)
+		local name_it_callback = crafting_view.cb_on_change_name_pressed
+
+		if type(name_it_callback) ~= "function" then
+			return
+		end
+
+		crafting_view.cb_on_change_name_pressed = function(self)
+			local mod_enabled = type(mod.is_enabled) ~= "function" or mod:is_enabled()
+
+			if mod_enabled and mod:get("enable_custom_item_name_and_colors") ~= false then
+				local ui_manager = Managers and Managers.ui
+				local view = ui_manager and type(ui_manager.view_instance) == "function" and ui_manager:view_instance("crafting_mechanicus_modify_view")
+				local context = selected_context(mod, view)
+
+				if context then
+					show_name_editor(mod, context, layout)
+				end
+
+				return
+			end
+
+			return name_it_callback(self)
+		end
 	end)
 
 	-- This fires after ViewElementGrid has created the weapon-header widget,

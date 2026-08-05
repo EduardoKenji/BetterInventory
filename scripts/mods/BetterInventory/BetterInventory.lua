@@ -1518,6 +1518,7 @@ function mod.update(dt)
 end
 
 function mod.on_disabled()
+	ItemCustomization.on_disabled(mod)
 	Features.cancel_morningstar_auto_discard()
 	CurioAcquisition.cancel()
 	Features.disable_inventory_views()

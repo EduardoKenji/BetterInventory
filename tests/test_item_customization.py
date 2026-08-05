@@ -295,6 +295,18 @@ def main() -> None:
     assert customization.get(mod, "handoff-gear").name is None
     assert customization.get(mod, "handoff-gear").name_color[2] == 1
 
+    # Disabling the entire mod performs the same handoff, and on_enabled must
+    # reconcile because DMF does not rerun on_all_mods_loaded for every toggle.
+    customization.update(
+        mod, "whole-mod-handoff", lua.table_from({"name": "Before Toggle"})
+    )
+    customization.on_disabled(mod)
+    assert settings._custom_item_name_it_owns_names is True
+    globals_.name_it_settings.name_list["whole-mod-handoff"] = "After Toggle"
+    customization.on_enabled(mod)
+    assert customization.get(mod, "whole-mod-handoff").name == "After Toggle"
+    assert settings._custom_item_name_it_owns_names is False
+
     settings.custom_item_name_keybind = "hotkey_menu_special_1"
     settings.custom_item_name_color_keybind = "hotkey_menu_special_1"
     settings.custom_item_background_color_keybind = "group_finder_refresh_groups"
@@ -440,6 +452,54 @@ def main() -> None:
     assert len(globals_.refresh_calls) == 2
     assert globals_.refresh_calls[1].marker == "selected"
     assert globals_.refresh_calls[2].marker == "overview"
+
+    # Name It's Hadron action is retained, but routed to BetterInventory while
+    # this module owns names and restored as the fallback when it does not.
+    globals_.name_it_crafting_calls = 0
+    crafting_parent = lua.table_from(
+        {
+            "cb_on_change_name_pressed": lua.eval(
+                "function() name_it_crafting_calls = name_it_crafting_calls + 1 end"
+            )
+        }
+    )
+    crafting_child = lua.table_from(
+        {
+            "selected_grid_widget": lua.eval(
+                "function() return crafting_selected_widget end"
+            )
+        }
+    )
+    globals_.crafting_selected_widget = lua.table_from(
+        {
+            "content": lua.table_from(
+                {
+                    "display_name": "Hadron Sword",
+                    "element": lua.table_from(
+                        {
+                            "item": lua.table_from(
+                                {
+                                    "gear_id": "crafting-gear",
+                                    "item_type": "WEAPON_MELEE",
+                                }
+                            )
+                        }
+                    ),
+                }
+            )
+        }
+    )
+    globals_.active_inventory_view = crafting_child
+    globals_.captured_safe_hooks.init(crafting_parent)
+    settings.enable_custom_item_name_and_colors = True
+    crafting_parent.cb_on_change_name_pressed(crafting_parent)
+    assert globals_.captured_popup.title_text_unlocalized.startswith(
+        "Change item name ("
+    )
+    assert globals_.name_it_crafting_calls == 0
+    settings.enable_custom_item_name_and_colors = False
+    crafting_parent.cb_on_change_name_pressed(crafting_parent)
+    assert globals_.name_it_crafting_calls == 1
 
     print("BetterInventory item customization tests passed.")
 
