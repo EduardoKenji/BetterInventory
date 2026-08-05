@@ -1847,7 +1847,7 @@ local function add_name_it_curio_title_pass(pass_template, options)
 		pass_type = "text",
 		style_id = "better_inventory_name_it_curio_name",
 		value = "",
-		value_id = "display_name",
+		value_id = "better_inventory_name_it_curio_name_text",
 		style = style,
 		visibility_function = function(content)
 			return content and content.better_inventory_name_it_curio_title == true
@@ -2327,6 +2327,9 @@ local function format_item_name(mod, widget, element, append_mark_to_name)
 	content.better_inventory_display_name_base = nil
 	content.better_inventory_display_name_suffix = nil
 	content.better_inventory_name_it_curio_title = nil
+	content.better_inventory_name_it_curio_name_text = nil
+	content.better_inventory_name_it_curio_full_name = nil
+	content.better_inventory_fitted_name_it_curio_name = nil
 
 	element = element or content.element
 
@@ -2336,6 +2339,7 @@ local function format_item_name(mod, widget, element, append_mark_to_name)
 		if name_it_integration_enabled(mod) then
 			content.display_name = name_it_custom_name(item) or content.display_name
 			content.better_inventory_name_it_curio_title = setting(mod, "curio_display_profile", "detailed") == "detailed" and setting(mod, "name_it_force_curio_name_in_detailed_mode", true)
+			content.better_inventory_name_it_curio_name_text = content.display_name
 		else
 			content.display_name = localized_item_name(item, content.display_name)
 		end
@@ -2433,11 +2437,13 @@ local function fit_display_name(parent, widget, ui_renderer, preferred_font_size
 			return
 		end
 
-		if display_name ~= content.better_inventory_fitted_name_it_curio_name then
-			content.better_inventory_full_display_name = string.gsub(display_name, "[\r\n]+", " ")
+		local title_text = content.better_inventory_name_it_curio_name_text or display_name
+
+		if title_text ~= content.better_inventory_fitted_name_it_curio_name then
+			content.better_inventory_name_it_curio_full_name = string.gsub(title_text, "[\r\n]+", " ")
 		end
 
-		local full_name = content.better_inventory_full_display_name or display_name
+		local full_name = content.better_inventory_name_it_curio_full_name or title_text
 		local maximum_width = title_style.size and title_style.size[1]
 		local maximum_lines = 2
 		local minimum_title_font_size = math.min(title_style.font_size or 16, 12)
@@ -2464,8 +2470,8 @@ local function fit_display_name(parent, widget, ui_renderer, preferred_font_size
 				fitted_rows[maximum_lines] = Text.crop_text_width(ui_renderer, fitted_rows[maximum_lines] .. "...", title_style, maximum_width)
 			end
 
-			content.display_name = table.concat(fitted_rows, "\n")
-			content.better_inventory_fitted_name_it_curio_name = content.display_name
+			content.better_inventory_name_it_curio_name_text = table.concat(fitted_rows, "\n")
+			content.better_inventory_fitted_name_it_curio_name = content.better_inventory_name_it_curio_name_text
 		end
 
 		return

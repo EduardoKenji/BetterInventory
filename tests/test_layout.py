@@ -3107,6 +3107,7 @@ def main() -> None:
         name_it_curio_blueprint,
     )
     assert name_it_curio_widget.content.display_name == "First Curio"
+    assert name_it_curio_widget.content.better_inventory_name_it_curio_name_text == "First Curio"
     assert name_it_title_pass.visibility_function(name_it_curio_widget.content) is True
 
     long_name_it_curio_item = lua.eval("table.clone")(curio_element.item)
@@ -3127,7 +3128,11 @@ def main() -> None:
         None,
         name_it_curio_blueprint,
     )
-    assert name_it_curio_widget.content.display_name.count("\n") == 1
+    assert name_it_curio_widget.content.display_name == "Guardian of the Hateful Reliquary"
+    assert (
+        name_it_curio_widget.content.better_inventory_name_it_curio_name_text.count("\n")
+        == 1
+    )
 
     character_overview_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     layout.configure_native_item_blueprint(
