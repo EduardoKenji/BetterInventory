@@ -2957,9 +2957,12 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 				global_store_photo_size,
 				global_store_photo_size,
 			}
+			-- This branch is native single-column GlobalStore only. With bottom
+			-- alignment, a smaller Y offset moves the portrait upward; keep these
+			-- logical UI-canvas coordinates resolution-independent.
 			portrait.style.offset = {
 				15,
-				4,
+				1,
 				14,
 			}
 		end
