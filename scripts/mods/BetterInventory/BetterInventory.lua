@@ -93,6 +93,10 @@ local function is_global_store_view(view)
 	return view and view.__class_name == "CreditsVendorView" and view._optional_store_service == GLOBAL_STORE_SERVICE
 end
 
+local function is_hadron_view(view)
+	return view and view.__class_name == "CraftingMechanicusModifyView"
+end
+
 local function is_armoury_sort_view(view)
 	return is_armoury_requisition_view(view) or is_global_store_view(view)
 end
@@ -290,6 +294,13 @@ local function refresh_option_dependencies()
 	}) do
 		set_option_enabled(option_dependency_entries[setting_id], grid_enabled, native_reason)
 	end
+
+	-- These view-specific switches are the single-column counterparts to the
+	-- grid integrations above. They remain available only when the global grid
+	-- layout is disabled, so each vendor can mirror the detailed inventory card
+	-- independently without changing the grid-mode controls.
+	set_option_enabled(option_dependency_entries.enable_hadron_single_column_mirror, single_column_enabled, single_column_reason)
+	set_option_enabled(option_dependency_entries.enable_armoury_single_column_mirror, single_column_enabled, single_column_reason)
 
 	local card_height_enabled = grid_enabled and not automatic_height
 	local card_height_reason = grid_enabled and mod:localize("option_disabled_by_automatic_height") or native_reason
@@ -527,7 +538,9 @@ local function bind_option_dependencies(options_templates)
 		"expand_curio_inventory_window",
 		"curio_target_card_width",
 		"enable_hadron_entreat_grid",
+		"enable_hadron_single_column_mirror",
 		"enable_armoury_requisition_grid",
+		"enable_armoury_single_column_mirror",
 		"enable_armoury_requisition_sorting_panel",
 		"brighten_armoury_item_levels",
 		"expand_armoury_requisition_window",
@@ -626,7 +639,19 @@ local function bind_option_dependencies(options_templates)
 		"automatic_curio_class_broker",
 		"automatic_curio_class_cryptic",
 	}) do
-		setting_by_title[mod:localize(setting_id)] = setting_id
+		local title = mod:localize(setting_id)
+		local existing = setting_by_title[title]
+
+		if existing == nil then
+			setting_by_title[title] = setting_id
+		elseif type(existing) == "table" then
+			existing[#existing + 1] = setting_id
+		else
+			setting_by_title[title] = {
+				existing,
+				setting_id,
+			}
+		end
 	end
 
 	option_dependency_entries = {
@@ -650,6 +675,13 @@ local function bind_option_dependencies(options_templates)
 		end
 
 		local setting_id = type(entry) == "table" and entry.category == category_name and setting_by_title[entry.display_name]
+
+		if type(setting_id) == "table" then
+			-- Two view-local controls intentionally share the same label. Consume
+			-- duplicate titles in schema order so both dependency entries bind
+			-- correctly instead of the later one overwriting the earlier one.
+			setting_id = table.remove(setting_id, 1)
+		end
 
 		if setting_id then
 			option_dependency_entries[setting_id] = entry
@@ -809,7 +841,7 @@ function mod.on_setting_changed(setting_id)
 		end
 	end
 
-	if setting_id == "enable_grid_layout" or setting_id == "melee_columns" or setting_id == "ranged_columns" or setting_id == "curio_columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "weapon_extra_width_column_threshold" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_armoury_requisition_grid" or setting_id == "enable_armoury_requisition_sorting_panel" or setting_id == "brighten_armoury_item_levels" or setting_id == "three_column_weapon_name_font_size" or setting_id == "expand_armoury_requisition_window" or setting_id == "enable_global_store_integration" or setting_id == "enable_global_store_grid" or setting_id == "enable_global_store_sorting_panel" or setting_id == "global_store_character_photo_size_percent" or setting_id == "global_store_price_row_padding" or setting_id == "global_store_character_info_gap" or setting_id == "global_store_character_class_icon_size" or setting_id == "global_store_character_name_font_size" or setting_id == "global_store_compact_character_names" or setting_id == "global_store_single_column_modifier_horizontal_position" or setting_id == "global_store_single_column_modifier_vertical_position" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "single_column_blessing_icons_on_right" or setting_id == "curio_display_profile" or setting_id == "enable_inventory_options_panel_prototype" or setting_id == "enable_experimental_quick_discard" or setting_id == "quick_discard_mode" or setting_id == "quick_discard_protect_high_level_curios" or setting_id == "enable_automatic_curio_acquisition" or automatic_curio_setting or setting_id == "enable_quick_look_card_single_column_integration" or setting_id == "enable_quick_look_card_grid_integration" or setting_id == "quick_look_card_grid_stat_position" then
+	if setting_id == "enable_grid_layout" or setting_id == "melee_columns" or setting_id == "ranged_columns" or setting_id == "curio_columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "weapon_extra_width_column_threshold" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_hadron_single_column_mirror" or setting_id == "enable_armoury_requisition_grid" or setting_id == "enable_armoury_single_column_mirror" or setting_id == "enable_armoury_requisition_sorting_panel" or setting_id == "brighten_armoury_item_levels" or setting_id == "three_column_weapon_name_font_size" or setting_id == "expand_armoury_requisition_window" or setting_id == "enable_global_store_integration" or setting_id == "enable_global_store_grid" or setting_id == "enable_global_store_sorting_panel" or setting_id == "global_store_character_photo_size_percent" or setting_id == "global_store_price_row_padding" or setting_id == "global_store_character_info_gap" or setting_id == "global_store_character_class_icon_size" or setting_id == "global_store_character_name_font_size" or setting_id == "global_store_compact_character_names" or setting_id == "global_store_single_column_modifier_horizontal_position" or setting_id == "global_store_single_column_modifier_vertical_position" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "single_column_blessing_icons_on_right" or setting_id == "curio_display_profile" or setting_id == "enable_inventory_options_panel_prototype" or setting_id == "enable_experimental_quick_discard" or setting_id == "quick_discard_mode" or setting_id == "quick_discard_protect_high_level_curios" or setting_id == "enable_automatic_curio_acquisition" or automatic_curio_setting or setting_id == "enable_quick_look_card_single_column_integration" or setting_id == "enable_quick_look_card_grid_integration" or setting_id == "quick_look_card_grid_stat_position" then
 		refresh_option_dependencies()
 	end
 
@@ -1166,6 +1198,26 @@ mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layou
 
 		if configuration.store_item and Layout.store_slot_kind then
 			configuration.slot_kind = Layout.store_slot_kind(view, layout)
+		end
+	end
+
+	-- When the global grid is disabled, the Hadron and Requisition routes keep
+	-- their native one-column geometry. Opt-in mirror settings reuse the exact
+	-- detailed single-column blueprint used by inventory instead of the compact
+	-- native card. This fallback runs only for those two views and never changes
+	-- inventory, GlobalStore, or any multi-column configuration.
+	if not configuration and mod:get("enable_grid_layout") == false then
+		if is_hadron_view(view) and mod:get("enable_hadron_single_column_mirror") ~= false then
+			configuration = {
+				blueprint_key = "item",
+				native_single_column = true,
+			}
+		elseif is_armoury_requisition_view(view) and mod:get("enable_armoury_single_column_mirror") ~= false then
+			configuration = {
+				blueprint_key = "store_item",
+				native_single_column = true,
+				store_item = true,
+			}
 		end
 	end
 

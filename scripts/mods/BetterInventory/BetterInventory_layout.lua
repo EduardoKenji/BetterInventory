@@ -2829,6 +2829,7 @@ end
 Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_width, configuration)
 	configuration = configuration or {}
 	local global_store = configuration.global_store == true
+	local store_item = configuration.store_item == true or global_store
 	local global_store_extra = global_store_extra_height(mod, configuration)
 	local global_store_multicolumn = global_store and global_store_extra > 0
 	local global_store_photo_size = global_store_multicolumn and global_store_character_photo_size(mod) or 34
@@ -3095,13 +3096,13 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 			content_right = weapon_modifier_stats_enabled and 260 or nil,
 			native_single_column = true,
 			global_store = global_store,
-			store_item = global_store,
+			store_item = store_item,
 		})
 	end
 	configure_card_content(mod, item_blueprint, {
 		native_single_column = true,
 		global_store = global_store,
-		store_item = global_store,
+		store_item = store_item,
 		weapon_modifier_stats_enabled = weapon_modifier_stats_enabled,
 	})
 
