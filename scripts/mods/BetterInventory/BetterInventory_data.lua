@@ -1,4 +1,4 @@
-local MOD_VERSION = "1.5.0"
+local MOD_VERSION = "1.5.1"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
@@ -553,7 +553,13 @@ return {
 							{
 								setting_id = "enable_hadron_entreat_grid",
 								tooltip = "enable_hadron_entreat_grid_tooltip",
-								 type = "checkbox",
+								type = "checkbox",
+								default_value = true,
+							},
+							{
+								setting_id = "enable_hadron_single_column_mirror",
+								tooltip = "enable_hadron_single_column_mirror_tooltip",
+								type = "checkbox",
 								default_value = true,
 							},
 						},
@@ -565,6 +571,12 @@ return {
 							{
 								setting_id = "enable_armoury_requisition_grid",
 								tooltip = "enable_armoury_requisition_grid_tooltip",
+								type = "checkbox",
+								default_value = true,
+							},
+							{
+								setting_id = "enable_armoury_single_column_mirror",
+								tooltip = "enable_armoury_single_column_mirror_tooltip",
 								type = "checkbox",
 								default_value = true,
 							},

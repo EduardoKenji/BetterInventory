@@ -38,7 +38,9 @@ def main() -> None:
 			weapon_modifier_lowest_color_b = 132,
 			weapon_modifier_lowest_color_opacity = 80,
 			enable_hadron_entreat_grid = true,
+			enable_hadron_single_column_mirror = true,
 			enable_armoury_requisition_grid = true,
+			enable_armoury_single_column_mirror = true,
 			enable_armoury_requisition_sorting_panel = true,
 			brighten_armoury_item_levels = true,
 			enable_global_store_integration = true,
@@ -431,7 +433,9 @@ def main() -> None:
         "automatic_card_height",
         "card_height",
         "enable_hadron_entreat_grid",
+		"enable_hadron_single_column_mirror",
 		"enable_armoury_requisition_grid",
+		"enable_armoury_single_column_mirror",
 		"enable_armoury_requisition_sorting_panel",
 		"brighten_armoury_item_levels",
 		"expand_armoury_requisition_window",
@@ -579,7 +583,9 @@ def main() -> None:
     assert entries_by_id["automatic_card_height"].disabled is False
     assert entries_by_id["card_height"].disabled is True
     assert entries_by_id["enable_hadron_entreat_grid"].disabled is False
+    assert entries_by_id["enable_hadron_single_column_mirror"].disabled is True
     assert entries_by_id["enable_armoury_requisition_grid"].disabled is False
+    assert entries_by_id["enable_armoury_single_column_mirror"].disabled is True
     assert entries_by_id["enable_armoury_requisition_sorting_panel"].disabled is False
     assert entries_by_id["brighten_armoury_item_levels"].disabled is False
     assert entries_by_id["expand_armoury_requisition_window"].disabled is False
@@ -988,6 +994,8 @@ def main() -> None:
             "automatic_curio_types_group",
             "automatic_curio_classes_group",
 			"automatic_curio_characters_group",
+			"enable_hadron_single_column_mirror",
+			"enable_armoury_single_column_mirror",
 			"enable_global_store_integration",
 			"global_store_character_photo_size_percent",
 			"global_store_price_row_padding",
@@ -1005,6 +1013,8 @@ def main() -> None:
     assert entries_by_id["blessing_icon_size"].disabled is False
     assert entries_by_id["blessing_icon_spacing"].disabled is False
     assert entries_by_id["single_column_layout_group"].disabled is False
+    assert entries_by_id["enable_hadron_single_column_mirror"].disabled is False
+    assert entries_by_id["enable_armoury_single_column_mirror"].disabled is False
     assert entries_by_id["single_column_weapon_name_font_size"].disabled is False
     assert entries_by_id["single_column_blessing_icons_on_right"].disabled is True
     assert entries_by_id["quick_look_card_single_column_font_size"].disabled is False
@@ -1061,7 +1071,7 @@ def main() -> None:
     localization = lua.execute(LOCALIZATION_PATH.read_text(encoding="utf-8"))
     defaults = {}
 
-    assert data.version == "1.5.0"
+    assert data.version == "1.5.1"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
@@ -1138,6 +1148,14 @@ def main() -> None:
         "armoury_exchange_views_group",
         "global_store_integration_group",
     ]
+    hadron_view_group = additional_views_group.sub_widgets[1]
+    assert [
+        hadron_view_group.sub_widgets[index].setting_id
+        for index in range(1, len(hadron_view_group.sub_widgets) + 1)
+    ] == [
+        "enable_hadron_entreat_grid",
+        "enable_hadron_single_column_mirror",
+    ]
     armoury_view_group = additional_views_group.sub_widgets[2]
     armoury_view_ids = [
         armoury_view_group.sub_widgets[index].setting_id
@@ -1145,6 +1163,7 @@ def main() -> None:
     ]
     assert armoury_view_ids == [
         "enable_armoury_requisition_grid",
+        "enable_armoury_single_column_mirror",
         "enable_armoury_requisition_sorting_panel",
         "brighten_armoury_item_levels",
         "three_column_weapon_name_font_size",
@@ -1223,6 +1242,8 @@ def main() -> None:
     assert defaults["melee_columns"] == 3
     assert defaults["ranged_columns"] == 3
     assert defaults["curio_columns"] == 3
+    assert defaults["enable_hadron_single_column_mirror"] is True
+    assert defaults["enable_armoury_single_column_mirror"] is True
     assert defaults["three_column_weapon_name_font_size"] == 14
     assert defaults["enable_global_store_integration"] is True
     assert defaults["enable_global_store_grid"] is True

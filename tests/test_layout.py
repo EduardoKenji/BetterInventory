@@ -1059,6 +1059,26 @@ def main() -> None:
         == 16
     )
 
+    # Armoury mirror mode uses the same detailed native card content while
+    # retaining the store footer reservation for its wallet and price passes.
+    armoury_native_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    armoury_native_configuration = lua.table_from(
+        {"native_single_column": True, "store_item": True}
+    )
+    armoury_native_size = layout.configure_item_blueprint(
+        mod, armoury_native_blueprint, 596, armoury_native_configuration
+    )
+    assert armoury_native_size[2] >= native_size[2]
+    assert armoury_native_size[2] == 146
+    armoury_native_level = blueprint_pass(armoury_native_blueprint, "item_level").style
+    assert armoury_native_level.offset[3] == 12
+    assert armoury_native_level.offset[2] == -36
+    armoury_native_stat = blueprint_pass(
+        armoury_native_blueprint, "better_inventory_weapon_modifier_title_1"
+    ).style
+    assert armoury_native_stat.offset[3] == 12
+    assert armoury_native_stat.offset[2] < armoury_native_size[2] - 34 - 8
+
     # Built-in modifier passes must exist and populate maximum-potential values
     # even when Quick Look Card contributes no blueprint passes at all.
     native_modifier_styles = {
