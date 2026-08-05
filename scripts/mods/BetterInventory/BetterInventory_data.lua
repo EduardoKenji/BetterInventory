@@ -680,6 +680,12 @@ return {
 															20,
 														},
 													},
+													{
+														setting_id = "global_store_compact_character_names",
+														tooltip = "global_store_compact_character_names_tooltip",
+														type = "checkbox",
+														default_value = true,
+													},
 										},
 					},
 				},

@@ -2839,6 +2839,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 	local global_store_info_gap = global_store_multicolumn and global_store_character_info_gap(mod) or 0
 	local global_store_class_icon_size = global_store_multicolumn and global_store_character_class_icon_size(mod) or GLOBAL_STORE_CHARACTER_CLASS_ICON_SIZE_DEFAULT
 	local global_store_name_font_size = global_store_multicolumn and global_store_character_name_font_size(mod) or GLOBAL_STORE_CHARACTER_NAME_FONT_SIZE_DEFAULT
+	local global_store_compact_character_names = global_store_multicolumn and setting(mod, "global_store_compact_character_names", true) and Layout.columns(mod, configuration.maximum_columns) >= 4 or false
 	local global_store_price_padding = global_store_multicolumn and global_store_price_row_padding(mod) or 0
 	local global_store_price_row_offset = global_store_multicolumn and GLOBAL_STORE_CHARACTER_ROW_HEIGHT + global_store_price_padding or 0
 
@@ -3157,6 +3158,10 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 			character_info.style.text_vertical_alignment = "bottom"
 			character_info.style.font_size = global_store_name_font_size
 			character_info.style.word_wrap = false
+			-- The native text pass scales the name down to the available width.
+			-- Limit this behavior to narrow four/five-column cards so two/three
+			-- column layouts retain their configured typography.
+			character_info.style.text_fit_with = global_store_compact_character_names
 			character_info.style.offset = {
 				text_left + (global_store_multicolumn and global_store_photo_size + global_store_info_gap + global_store_class_icon_size + 4 or 38),
 				-7,

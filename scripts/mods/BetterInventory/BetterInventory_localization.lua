@@ -560,6 +560,12 @@ local localization = {
 	global_store_character_name_font_size_tooltip = {
 		en = "Controls the GlobalStore character name font size in two-to-five-column cards (8-20 px, default 16). The character row and card dimensions stay fixed.",
 	},
+	global_store_compact_character_names = {
+		en = "Compact GlobalStore character names in 4-5 columns",
+	},
+	global_store_compact_character_names_tooltip = {
+		en = "When enabled, automatically scales GlobalStore character names down as needed to keep them on one line in four- and five-column cards. Two- and three-column cards keep the configured name size. Enabled by default.",
+	},
 	enable_hadron_entreat_grid = {
 		en = "Hadron: Entreat Hadron",
 	},
@@ -2067,6 +2073,8 @@ zh_cn.global_store_character_class_icon_size = "GlobalStore 职业图标大小"
 zh_cn.global_store_character_class_icon_size_tooltip = "控制二至五列卡片中的 GlobalStore 职业图标字号（8-24像素，默认16）。角色信息行和卡片尺寸保持不变。"
 zh_cn.global_store_character_name_font_size = "GlobalStore 角色名称字号"
 zh_cn.global_store_character_name_font_size_tooltip = "控制二至五列卡片中的 GlobalStore 角色名称字号（8-20像素，默认16）。角色信息行和卡片尺寸保持不变。"
+zh_cn.global_store_compact_character_names = "在4-5列中压缩 GlobalStore 角色名称"
+zh_cn.global_store_compact_character_names_tooltip = "启用后，在四列和五列卡片中根据需要自动缩小 GlobalStore 角色名称，使其保持单行。二列和三列卡片保留设定的字号。默认开启。"
 zh_cn.option_requires_global_store_grid = "启用 GlobalStore 网格后才能使用此选项。"
 zh_cn.option_requires_global_store_integration = "启用 GlobalStore 集成后才能使用此选项。"
 
