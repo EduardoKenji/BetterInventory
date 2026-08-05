@@ -3291,6 +3291,7 @@ def main() -> None:
     # gradient tint and optional rarity keyword receive the custom color.
     weapon_information_widget = lua.table_from(
         {
+            "content": lua.table_from({"sub_display_name": "Maccabian Mk IV"}),
             "style": lua.table_from(
                 {
                     "background": lua.table_from(
@@ -3308,6 +3309,7 @@ def main() -> None:
     )
     weapon_title_widget = lua.table_from(
         {
+            "content": lua.table_from({"weapon_display_name": "Dueling Sword"}),
             "style": lua.table_from(
                 {
                     "weapon_display_name": lua.table_from(
@@ -3332,6 +3334,7 @@ def main() -> None:
     assert tuple(weapon_information_widget.style.gradient_background.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
     assert tuple(weapon_information_widget.style.rarity_name.text_color[index] for index in range(1, 5)) == (255, 40, 50, 60)
     assert tuple(weapon_title_widget.style.weapon_display_name.text_color[index] for index in range(1, 5)) == (255, 10, 20, 30)
+    assert weapon_title_widget.content.weapon_display_name == "Emerald Blade"
     mod.settings.custom_item_override_weapon_information_color = False
     layout.apply_weapon_information_customization(mod, weapon_stats, custom_weapon_element.item)
     assert tuple(weapon_information_widget.style.gradient_background.color[index] for index in range(1, 5)) == (255, 11, 12, 13)

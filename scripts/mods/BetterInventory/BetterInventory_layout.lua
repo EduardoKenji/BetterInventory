@@ -2500,6 +2500,11 @@ Layout.apply_weapon_information_customization = function(mod, weapon_stats, item
 
 	if title_style then
 		apply_custom_color(title_style, information_name_color, "text_color")
+
+		if customization and type(customization.name) == "string" and customization.name ~= "" and customization.name_target ~= "sub" and title_widget.content then
+			title_widget.content.weapon_display_name = customization.name
+		end
+
 		applied = true
 	end
 
@@ -2508,11 +2513,17 @@ Layout.apply_weapon_information_customization = function(mod, weapon_stats, item
 	end
 
 	for index = 1, #widgets do
-		local style = widgets[index] and widgets[index].style
+		local widget = widgets[index]
+		local style = widget and widget.style
 
 		if style and (style.gradient_background or style.rarity_name) then
 			apply_custom_color(style.gradient_background, information_color, "color")
 			apply_custom_color(style.rarity_name, rarity_keyword_color, "text_color")
+
+			if customization and customization.name_target == "sub" and type(customization.name) == "string" and customization.name ~= "" and widget.content and style.sub_display_name then
+				widget.content.sub_display_name = customization.name
+			end
+
 			applied = true
 		end
 	end
