@@ -1787,6 +1787,10 @@ local function configure_favorite_marker(mod, pass_template, text_left)
 		end
 
 		local hotspot_style = myfavorites_hotspot.style
+		local resolved_size = size or hotspot_style.size or {
+			30,
+			28,
+		}
 
 		hotspot_style.horizontal_alignment = horizontal_alignment
 		hotspot_style.vertical_alignment = vertical_alignment
@@ -1796,8 +1800,8 @@ local function configure_favorite_marker(mod, pass_template, text_left)
 			math.max(offset[3] or 0, 17),
 		}
 		hotspot_style.size = {
-			size[1],
-			size[2],
+			resolved_size[1] or 30,
+			resolved_size[2] or 28,
 		}
 	end
 
