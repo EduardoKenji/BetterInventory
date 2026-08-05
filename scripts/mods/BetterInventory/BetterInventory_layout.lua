@@ -44,6 +44,11 @@ local COLUMN_SETTING_BY_SLOT = {
 	melee = "melee_columns",
 	ranged = "ranged_columns",
 	curio = "curio_columns",
+	-- Inventory and vendor views expose the native slot names. Keep these
+	-- aliases alongside the semantic names used by the settings UI so both
+	-- paths resolve the same per-category column value.
+	slot_primary = "melee_columns",
+	slot_secondary = "ranged_columns",
 }
 local WEAPON_PERK_COUNT = 2
 local WEAPON_BLESSING_COUNT = 2
@@ -2397,6 +2402,39 @@ local function configure_card_content(mod, item_blueprint, configuration)
 	end
 end
 
+local function slot_kind_from_slot_types(slot_types)
+	if type(slot_types) ~= "table" then
+		return
+	end
+
+	for _, slot_name in ipairs(slot_types) do
+		if SLOT_SETTING_BY_NAME[slot_name] then
+			return slot_name
+		end
+
+		if type(slot_name) == "string" and string.match(slot_name, "^slot_attachment_") then
+			return "curio"
+		end
+	end
+end
+
+local function slot_kind_from_layout(layout)
+	if type(layout) ~= "table" then
+		return
+	end
+
+	for _, entry in ipairs(layout) do
+		if type(entry) == "table" and not entry.is_external then
+			local slots = entry.filter_slots or entry.item and entry.item.slots
+			local slot_kind = slot_kind_from_slot_types(slots)
+
+			if slot_kind then
+				return slot_kind
+			end
+		end
+	end
+end
+
 Layout.slot_kind = function(view)
 	local selected_slot = view and view._selected_slot
 	local slot_name = selected_slot and selected_slot.name
@@ -2408,6 +2446,33 @@ Layout.slot_kind = function(view)
 	if type(slot_name) == "string" and string.match(slot_name, "^slot_attachment_") then
 		return "curio"
 	end
+end
+
+-- CreditsVendorView does not expose `_selected_slot`; its category tabs carry
+-- the native slot filter instead. Prefer the filtered layout (which is
+-- available during both initial presentation and tab switches), then fall
+-- back to the selected tab for empty categories.
+Layout.store_slot_kind = function(view, layout)
+	local slot_kind = slot_kind_from_layout(layout)
+
+	if slot_kind then
+		return slot_kind
+	end
+
+	local tab_menu = view and view._tab_menu_element
+	local definitions = view and view._definitions
+	local tabs_content = view and view._tabs_content or definitions and definitions.item_category_tabs_content
+	local selected_index = view and view._next_tab_index
+
+	if not selected_index and tab_menu and type(tab_menu.selected_index) == "function" then
+		selected_index = tab_menu:selected_index()
+	end
+
+	selected_index = selected_index or 1
+
+	local tab_content = selected_index and tabs_content and tabs_content[selected_index]
+
+	return slot_kind_from_slot_types(tab_content and tab_content.slot_types) or Layout.slot_kind(view)
 end
 
 Layout.is_enabled_for_view = function(mod, view)
@@ -2426,13 +2491,9 @@ Layout.columns = function(mod, maximum_columns, slot_kind)
 	local column_limit = math.floor(math.max(2, math.min(5, tonumber(maximum_columns) or 5)))
 	local setting_id = COLUMN_SETTING_BY_SLOT[slot_kind]
 
-	-- Keep old profiles usable when they predate the per-slot settings. New
-	-- installs use the dedicated setting; an old persisted `columns` value is a
-	-- safe fallback until the user chooses a per-slot value.
-	local legacy_columns = tonumber(mod:get("columns"))
 	local configured_columns = setting_id and tonumber(mod:get(setting_id))
 
-	if not setting_id or configured_columns == nil or (configured_columns == 3 and legacy_columns and legacy_columns ~= 3) then
+	if not setting_id or configured_columns == nil then
 		setting_id = "columns"
 	end
 
@@ -2478,7 +2539,7 @@ Layout.grid_expansion = function(mod, current_grid_width, slot_kind)
 	return required_expansion
 end
 
-Layout.armoury_grid_expansion = function(mod, current_grid_width, grid_setting_id)
+Layout.armoury_grid_expansion = function(mod, current_grid_width, grid_setting_id, slot_kind)
 	current_grid_width = tonumber(current_grid_width)
 	grid_setting_id = grid_setting_id or "enable_armoury_requisition_grid"
 
@@ -2490,7 +2551,7 @@ Layout.armoury_grid_expansion = function(mod, current_grid_width, grid_setting_i
 		return 0
 	end
 
-	local columns = Layout.columns(mod, 3)
+	local columns = Layout.columns(mod, 3, slot_kind)
 	local spacing = numeric_setting(mod, "grid_spacing", 10, 0, 40)
 	local target_card_width = numeric_setting(mod, "armoury_requisition_target_card_width", 230, ARMOURY_MINIMUM_CARD_WIDTH, ARMOURY_MAXIMUM_CARD_WIDTH)
 	local required_grid_width = target_card_width * columns + spacing * (columns - 1)
@@ -2528,7 +2589,7 @@ local function maximum_safe_inventory_expansion(definitions, slot_kind)
 	return math.max(0, available_expansion)
 end
 
-Layout.expanded_armoury_view_definitions = function(mod, definitions, base_definitions, grid_setting_id)
+Layout.expanded_armoury_view_definitions = function(mod, definitions, base_definitions, grid_setting_id, slot_kind)
 	local grid_settings = definitions and definitions.grid_settings
 	local grid_size = grid_settings and grid_settings.grid_size
 	local current_grid_width = grid_size and grid_size[1]
@@ -2537,7 +2598,7 @@ Layout.expanded_armoury_view_definitions = function(mod, definitions, base_defin
 		return definitions, 0
 	end
 
-	local expansion = Layout.armoury_grid_expansion(mod, current_grid_width, grid_setting_id)
+	local expansion = Layout.armoury_grid_expansion(mod, current_grid_width, grid_setting_id, slot_kind)
 
 	if expansion <= 0 then
 		return definitions, 0
@@ -2586,8 +2647,8 @@ Layout.expanded_armoury_view_definitions = function(mod, definitions, base_defin
 	return adjusted_definitions, expansion
 end
 
-Layout.expanded_global_store_view_definitions = function(mod, definitions, base_definitions)
-	return Layout.expanded_armoury_view_definitions(mod, definitions, base_definitions, "enable_global_store_grid")
+Layout.expanded_global_store_view_definitions = function(mod, definitions, base_definitions, slot_kind)
+	return Layout.expanded_armoury_view_definitions(mod, definitions, base_definitions, "enable_global_store_grid", slot_kind)
 end
 
 Layout.expanded_view_definitions = function(mod, definitions, view)
@@ -3062,7 +3123,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 	local global_store_info_gap = global_store_multicolumn and global_store_character_info_gap(mod) or 0
 	local global_store_class_icon_size = global_store_multicolumn and global_store_character_class_icon_size(mod) or GLOBAL_STORE_CHARACTER_CLASS_ICON_SIZE_DEFAULT
 	local global_store_name_font_size = global_store_multicolumn and global_store_character_name_font_size(mod) or GLOBAL_STORE_CHARACTER_NAME_FONT_SIZE_DEFAULT
-	local global_store_compact_character_names = global_store_multicolumn and setting(mod, "global_store_compact_character_names", true) and Layout.columns(mod, configuration.maximum_columns) >= 4 or false
+	local global_store_compact_character_names = global_store_multicolumn and setting(mod, "global_store_compact_character_names", true) and Layout.columns(mod, configuration.maximum_columns, configuration.slot_kind) >= 4 or false
 	local global_store_price_padding = global_store_multicolumn and global_store_price_row_padding(mod) or 0
 	local global_store_price_row_offset = global_store_multicolumn and GLOBAL_STORE_CHARACTER_ROW_HEIGHT + global_store_price_padding or 0
 

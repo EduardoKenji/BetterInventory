@@ -303,6 +303,26 @@ def main() -> None:
     assert settings.weapon_perk_rank_icon_size == 17
     assert settings.weapon_blessing_display_mode == "icons"
 
+    settings._grid_columns_v1_migrated = False
+    settings.columns = 2
+    settings.melee_columns = 3
+    settings.ranged_columns = 3
+    settings.curio_columns = 3
+    mod.on_enabled()
+    assert (settings.melee_columns, settings.ranged_columns, settings.curio_columns) == (2, 2, 2)
+
+    settings._grid_columns_v1_migrated = False
+    settings.melee_columns = 3
+    settings.ranged_columns = 3
+    settings.curio_columns = 4
+    mod.on_enabled()
+    assert (settings.melee_columns, settings.ranged_columns, settings.curio_columns) == (3, 3, 4)
+    settings._grid_columns_v1_migrated = True
+    settings.columns = None
+    settings.melee_columns = 3
+    settings.ranged_columns = 3
+    settings.curio_columns = 3
+
     settings._weapon_blessing_display_mode_v1_migrated = False
     settings.show_weapon_blessings = False
     mod.on_enabled()

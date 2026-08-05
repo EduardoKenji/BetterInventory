@@ -669,6 +669,46 @@ local function bind_option_dependencies(options_templates)
 	refresh_option_dependencies()
 end
 
+local function migrate_grid_column_settings()
+	if mod:get("_grid_columns_v1_migrated") then
+		return
+	end
+
+	local legacy_columns = tonumber(mod:get("columns"))
+	local dedicated_setting_ids = {
+		"melee_columns",
+		"ranged_columns",
+		"curio_columns",
+	}
+
+	if legacy_columns then
+		legacy_columns = math.max(2, math.min(5, math.floor(legacy_columns)))
+		local has_dedicated_customization = false
+
+		for _, setting_id in ipairs(dedicated_setting_ids) do
+			local configured_columns = tonumber(mod:get(setting_id))
+
+			if configured_columns and configured_columns ~= 3 then
+				has_dedicated_customization = true
+
+				break
+			end
+		end
+
+		-- A legacy profile has no way to express per-category values. Preserve
+		-- its old global choice only when all three new controls still have their
+		-- defaults; once any slider is customized, leave every dedicated value
+		-- untouched.
+		if not has_dedicated_customization then
+			for _, setting_id in ipairs(dedicated_setting_ids) do
+				mod:set(setting_id, legacy_columns, false)
+			end
+		end
+	end
+
+	mod:set("_grid_columns_v1_migrated", true, false)
+end
+
 function mod.on_enabled()
 	-- DMF preserves saved values when a default changes. Apply the new compact
 	-- card defaults once for installs that already initialized the old values;
@@ -679,6 +719,8 @@ function mod.on_enabled()
 		mod:set("show_rarity_name", false)
 		mod:set("_compact_card_defaults_v1_migrated", true)
 	end
+
+	migrate_grid_column_settings()
 
 	if not mod:get("_curio_compression_mode_v1_migrated") then
 		local previous_compact_setting = mod:get("compact_curio_stat_text")
@@ -837,7 +879,8 @@ mod:hook(ItemGridViewBase, "init", function(func, view, definitions, settings, c
 	end
 
 	if is_armoury_requisition_view(view) and mod:get("enable_grid_layout") ~= false and mod:get("enable_armoury_requisition_grid") ~= false then
-		local adjusted_definitions, expansion = Layout.expanded_armoury_view_definitions(mod, definitions, ItemGridViewBaseDefinitions)
+		local slot_kind = Layout.store_slot_kind and Layout.store_slot_kind(view)
+		local adjusted_definitions, expansion = Layout.expanded_armoury_view_definitions(mod, definitions, ItemGridViewBaseDefinitions, nil, slot_kind)
 
 		view._better_inventory_armoury_grid_expansion = expansion
 
@@ -845,8 +888,14 @@ mod:hook(ItemGridViewBase, "init", function(func, view, definitions, settings, c
 	end
 
 	if is_global_store_view(view) and mod:get("enable_grid_layout") ~= false and mod:get("enable_global_store_integration") ~= false and mod:get("enable_global_store_grid") ~= false then
-		local expand_definitions = Layout.expanded_global_store_view_definitions or Layout.expanded_armoury_view_definitions
-		local adjusted_definitions, expansion = expand_definitions(mod, definitions, ItemGridViewBaseDefinitions)
+		local slot_kind = Layout.store_slot_kind and Layout.store_slot_kind(view)
+		local adjusted_definitions, expansion
+
+		if Layout.expanded_global_store_view_definitions then
+			adjusted_definitions, expansion = Layout.expanded_global_store_view_definitions(mod, definitions, ItemGridViewBaseDefinitions, slot_kind)
+		else
+			adjusted_definitions, expansion = Layout.expanded_armoury_view_definitions(mod, definitions, ItemGridViewBaseDefinitions, "enable_global_store_grid", slot_kind)
+		end
 
 		view._better_inventory_armoury_grid_expansion = expansion
 
@@ -989,7 +1038,16 @@ local function present_additional_grid(func, view, layout, on_present_callback, 
 		return func(view, layout, on_present_callback)
 	end
 
-	return present_grid_with_configuration(func, view, layout, on_present_callback, configuration)
+	local active_configuration = table.clone(configuration)
+
+	if active_configuration.store_item and Layout.store_slot_kind then
+		-- Armoury and GlobalStore use the same three native category tabs. Their
+		-- cards honor the matching category slider, while each configuration's
+		-- maximum_columns keeps vendor views capped at three.
+		active_configuration.slot_kind = Layout.store_slot_kind(view, layout)
+	end
+
+	return present_grid_with_configuration(func, view, layout, on_present_callback, active_configuration)
 end
 
 -- "Entreat Hadron" opens this modern ItemGridViewBase subclass. The separate
@@ -1103,7 +1161,11 @@ mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layou
 	local configuration = active_grid_configuration
 
 	if not configuration and is_global_store_view(view) and mod:get("enable_global_store_integration") ~= false then
-		configuration = mod:get("enable_grid_layout") ~= false and mod:get("enable_global_store_grid") ~= false and GLOBAL_STORE_GRID_CONFIGURATION or GLOBAL_STORE_NATIVE_CONFIGURATION
+		configuration = mod:get("enable_grid_layout") ~= false and mod:get("enable_global_store_grid") ~= false and table.clone(GLOBAL_STORE_GRID_CONFIGURATION) or GLOBAL_STORE_NATIVE_CONFIGURATION
+
+		if configuration.store_item and Layout.store_slot_kind then
+			configuration.slot_kind = Layout.store_slot_kind(view, layout)
+		end
 	end
 
 	local definitions = view and view._definitions

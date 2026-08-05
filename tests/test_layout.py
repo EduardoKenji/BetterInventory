@@ -661,7 +661,17 @@ def main() -> None:
     assert layout.columns(mod, 5, "melee") == 5
     assert layout.columns(mod, 5, "ranged") == 4
     assert layout.columns(mod, 5, "curio") == 5
+    assert layout.columns(mod, 5, "slot_primary") == 5
+    assert layout.columns(mod, 5, "slot_secondary") == 4
     assert layout.columns(mod, 3, "melee") == 3
+    store_ranged_layout = lua.table_from(
+        [lua.table_from({"item": lua.table_from({"slots": lua.table_from(["slot_secondary"])})})]
+    )
+    store_curio_layout = lua.table_from(
+        [lua.table_from({"item": lua.table_from({"slots": lua.table_from(["slot_attachment_1"])})})]
+    )
+    assert layout.store_slot_kind(lua.table_from({}), store_ranged_layout) == "slot_secondary"
+    assert layout.store_slot_kind(lua.table_from({}), store_curio_layout) == "curio"
     assert tuple(layout.item_size(mod, 596, 3)[index] for index in (1, 2)) == (
         192,
         110,
@@ -831,6 +841,25 @@ def main() -> None:
         mod, capped_global_store_blueprint, 596, global_store_capped_configuration
     )
     assert (capped_global_store_size[1], capped_global_store_size[2]) == (192, 144)
+
+    mod.settings.columns = 2
+    mod.settings.ranged_columns = 3
+    mod.settings.curio_columns = 4
+    ranged_store_configuration = lua.table_from(
+        {"maximum_columns": 3, "store_item": True, "slot_kind": "slot_secondary"}
+    )
+    curio_store_configuration = lua.table_from(
+        {"maximum_columns": 3, "store_item": True, "slot_kind": "curio"}
+    )
+    assert tuple(
+        layout.item_size(mod, 596, 3, ranged_store_configuration)[index]
+        for index in (1, 2)
+    ) == (192, 114)
+    assert tuple(
+        layout.item_size(mod, 596, 3, curio_store_configuration)[index]
+        for index in (1, 2)
+    ) == (192, 114)
+    mod.settings.columns = 5
 
     global_store_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     global_store_size = layout.configure_item_blueprint(
