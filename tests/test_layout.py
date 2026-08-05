@@ -3134,6 +3134,14 @@ def main() -> None:
         == 1
     )
 
+    # Name It updates display_name directly after saving. The regular widget
+    # update must immediately refresh BetterInventory's render-only title.
+    name_it_curio_widget.content.display_name = "Test"
+    name_it_curio_blueprint.update(None, name_it_curio_widget)
+    assert name_it_curio_widget.content.display_name == "Test"
+    assert name_it_curio_widget.content.better_inventory_name_it_curio_name_text == "Test"
+    assert name_it_curio_widget.content.better_inventory_name_it_curio_source_name == "Test"
+
     character_overview_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     layout.configure_native_item_blueprint(
         mod,

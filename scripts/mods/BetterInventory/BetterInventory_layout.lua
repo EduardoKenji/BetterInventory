@@ -2330,6 +2330,7 @@ local function format_item_name(mod, widget, element, append_mark_to_name)
 	content.better_inventory_name_it_curio_name_text = nil
 	content.better_inventory_name_it_curio_full_name = nil
 	content.better_inventory_fitted_name_it_curio_name = nil
+	content.better_inventory_name_it_curio_source_name = nil
 
 	element = element or content.element
 
@@ -2340,6 +2341,7 @@ local function format_item_name(mod, widget, element, append_mark_to_name)
 			content.display_name = name_it_custom_name(item) or content.display_name
 			content.better_inventory_name_it_curio_title = setting(mod, "curio_display_profile", "detailed") == "detailed" and setting(mod, "name_it_force_curio_name_in_detailed_mode", true)
 			content.better_inventory_name_it_curio_name_text = content.display_name
+			content.better_inventory_name_it_curio_source_name = content.display_name
 		else
 			content.display_name = localized_item_name(item, content.display_name)
 		end
@@ -2687,6 +2689,7 @@ end
 local function configure_card_content(mod, item_blueprint, configuration)
 	configuration = configuration or {}
 	local original_init = item_blueprint.init
+	local original_update = item_blueprint.update
 	local original_update_data = item_blueprint.update_data
 	local preferred_font_size = configuration.native_single_column and numeric_setting(mod, "single_column_weapon_name_font_size", 20, 10, 24) or grid_weapon_name_font_size(mod, configuration)
 	local minimum_font_size = numeric_setting(mod, "minimum_item_name_font_size", 12, 8, 20)
@@ -2733,6 +2736,27 @@ local function configure_card_content(mod, item_blueprint, configuration)
 			fit_blessing_text(parent, widget, nil)
 			fit_weapon_perks(parent, widget, nil)
 			fit_curio_stats(parent, widget, nil)
+		end
+	end
+
+	if original_update and name_it_curio_title_enabled(mod, configuration) then
+		item_blueprint.update = function(parent, widget, ...)
+			local result = original_update(parent, widget, ...)
+			local content = widget and widget.content
+
+			-- Name It writes the selected widget's display_name directly after a
+			-- save instead of rebuilding its blueprint data. Mirror that live
+			-- value into our render-only field without feeding wrapped text back
+			-- into Name It's editor.
+			if content and content.better_inventory_name_it_curio_title and type(content.display_name) == "string" and content.display_name ~= content.better_inventory_name_it_curio_source_name then
+				content.better_inventory_name_it_curio_source_name = content.display_name
+				content.better_inventory_name_it_curio_name_text = content.display_name
+				content.better_inventory_name_it_curio_full_name = nil
+				content.better_inventory_fitted_name_it_curio_name = nil
+				fit_display_name(parent, widget, nil, preferred_font_size, math.min(preferred_font_size, minimum_font_size))
+			end
+
+			return result
 		end
 	end
 end
