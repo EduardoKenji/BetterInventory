@@ -2959,7 +2959,7 @@ Layout.configure_native_item_blueprint = function(mod, item_blueprint, grid_widt
 			}
 			portrait.style.offset = {
 				15,
-				13,
+				4,
 				14,
 			}
 		end
