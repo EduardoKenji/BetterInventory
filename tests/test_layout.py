@@ -821,6 +821,7 @@ def main() -> None:
     assert blueprint_pass(global_store_blueprint, "character_info_text").style.font_size == 16
     assert blueprint_pass(global_store_blueprint, "character_info_text").style.offset[1] == 70
     assert blueprint_pass(global_store_blueprint, "character_info_text").style.offset[2] == -7
+    assert blueprint_pass(global_store_blueprint, "character_info_text").style.size[1] == 29
     assert blueprint_pass(global_store_blueprint, "character_info_text").style.text_fit_with is True
     global_store_class_icon = blueprint_pass(global_store_blueprint, "character_class_icon_text").style
     assert global_store_class_icon.font_size == 16
@@ -849,6 +850,7 @@ def main() -> None:
     no_compact_character_names_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     layout.configure_item_blueprint(mod, no_compact_character_names_blueprint, 596, global_store_configuration)
     assert blueprint_pass(no_compact_character_names_blueprint, "character_info_text").style.text_fit_with is False
+    assert blueprint_pass(no_compact_character_names_blueprint, "character_info_text").style.size[1] == 40
     mod.settings.global_store_compact_character_names = True
 
     mod.settings.global_store_character_photo_size_percent = 50

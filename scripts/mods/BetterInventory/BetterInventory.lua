@@ -1064,6 +1064,7 @@ local function normalize_global_store_widgets(item_grid)
 				local icon_text, name_text = string.match(raw_info, "^(%S+)%s+(.+)$")
 
 				if icon_text and name_text then
+					name_text = string.match(name_text, "^%s*(.-)%s*$") or name_text
 					content.character_class_icon_text = icon_text
 					content.character_info_text = name_text
 					content.better_inventory_global_store_character_name = name_text

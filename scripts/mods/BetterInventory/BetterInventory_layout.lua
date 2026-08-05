@@ -35,6 +35,7 @@ local GLOBAL_STORE_CHARACTER_CLASS_ICON_SIZE_MAX = 24
 local GLOBAL_STORE_CHARACTER_NAME_FONT_SIZE_DEFAULT = 16
 local GLOBAL_STORE_CHARACTER_NAME_FONT_SIZE_MIN = 8
 local GLOBAL_STORE_CHARACTER_NAME_FONT_SIZE_MAX = 20
+local GLOBAL_STORE_CHARACTER_NAME_FIT_SAFETY_MARGIN = 6
 local GLOBAL_STORE_PRICE_ROW_PADDING_DEFAULT = 10
 local GLOBAL_STORE_PRICE_ROW_PADDING_MIN = 5
 local GLOBAL_STORE_PRICE_ROW_PADDING_MAX = 20
@@ -3152,6 +3153,17 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 		local character_info = pass_by_style_id(pass_template, "character_info_text")
 
 		if character_info and character_info.style then
+			local character_name_width
+
+			if global_store_multicolumn then
+				local compact_name_margin = global_store_compact_character_names and GLOBAL_STORE_CHARACTER_NAME_FIT_SAFETY_MARGIN or 0
+				local reserved_name_width = text_left + global_store_photo_size + global_store_info_gap + global_store_class_icon_size + 10 + compact_name_margin
+
+				character_name_width = math.max(global_store_compact_character_names and 20 or 40, card_width - reserved_name_width)
+			else
+				character_name_width = math.max(40, card_width - text_left - 108)
+			end
+
 			character_info.style.horizontal_alignment = "left"
 			character_info.style.vertical_alignment = "bottom"
 			character_info.style.text_horizontal_alignment = "left"
@@ -3168,7 +3180,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 				14,
 			}
 			character_info.style.size = {
-				math.max(40, card_width - text_left - (global_store_multicolumn and global_store_photo_size + global_store_info_gap + global_store_class_icon_size + 10 or 108)),
+				character_name_width,
 				24,
 			}
 		end
