@@ -138,11 +138,19 @@ def main() -> None:
     assert customization.remove(mod, "gear-1") is True
     assert customization.get(mod, "gear-1") is None
 
-    context = lua.table_from({"gear_id": "gear-1", "name": "Test Item"})
+    context = lua.table_from(
+        {
+            "gear_id": "gear-1",
+            "name": "Dueling Sword Mk IV",
+            "widget": lua.table_from(
+                {"content": lua.table_from({"display_name": "Dueling Sword Mk IV"})}
+            ),
+        }
+    )
     assert customization.show_color_picker(mod, "name", context, None) is True
     popup = globals_.captured_popup
     assert popup.type == "grid"
-    assert popup.title_text_unlocalized == "Change item name color(Test Item)"
+    assert popup.title_text_unlocalized == "Change item name color(Dueling Sword Mk IV)"
     assert len(popup.grid_layout) == 4
     assert len(popup.options) == 3
     assert [popup.options[index].text for index in range(1, 4)] == [
@@ -161,6 +169,7 @@ def main() -> None:
     popup.options[1].callback()
     stored_color = customization.get(mod, "gear-1").name_color
     assert stored_color[2] == 128
+    assert context.widget.content.display_name == "Dueling Sword Mk IV"
 
     customization.show_color_picker(mod, "background", context, None)
     popup = globals_.captured_popup

@@ -206,7 +206,7 @@ local function item_from_widget(widget)
 	return element and (element.real_item or element.item)
 end
 
-local function selected_context(view)
+local function selected_context(mod, view)
 	local widget = view and type(view.selected_grid_widget) == "function" and view:selected_grid_widget() or nil
 	local item = item_from_widget(widget)
 
@@ -220,6 +220,14 @@ local function selected_context(view)
 	if type(Items.is_weapon) == "function" and Items.is_weapon(item.item_type) and type(Items.weapon_lore_family_name) == "function" then
 		local ok, value = pcall(Items.weapon_lore_family_name, item)
 		default_name = ok and value or nil
+
+		if default_name and mod:get("append_mark_to_name") ~= false and type(Items.weapon_lore_mark_name) == "function" then
+			local mark_ok, mark_name = pcall(Items.weapon_lore_mark_name, item)
+
+			if mark_ok and type(mark_name) == "string" and mark_name ~= "" and mark_name ~= "n/a" then
+				default_name = default_name .. " " .. mark_name
+			end
+		end
 	elseif type(item.display_name) == "string" and type(localize) == "function" then
 		local ok, value = pcall(localize, item.display_name)
 		default_name = ok and value or nil
@@ -235,7 +243,7 @@ local function selected_context(view)
 	}
 end
 
-local function refresh_item(mod, layout, context)
+local function refresh_item(mod, layout, context, refresh_name)
 	if not context then
 		return
 	end
@@ -243,7 +251,7 @@ local function refresh_item(mod, layout, context)
 	local record = ItemCustomization.get(mod, context.gear_id)
 	local content = context.widget and context.widget.content
 
-	if content then
+	if content and refresh_name then
 		local display_name = record and record.name or context.default_name
 
 		content.display_name = display_name
@@ -254,7 +262,7 @@ local function refresh_item(mod, layout, context)
 		layout.apply_item_customization_style(mod, context.widget, context.widget and context.widget.content and context.widget.content.element)
 	end
 
-	if context.view and type(context.view._preview_item) == "function" then
+	if refresh_name and context.view and type(context.view._preview_item) == "function" then
 		pcall(context.view._preview_item, context.view, context.item)
 	end
 end
@@ -262,7 +270,7 @@ end
 local function reset_field(mod, context, layout, field, label)
 	local function reset()
 		ItemCustomization.update(mod, context.gear_id, { [field] = false })
-		refresh_item(mod, layout, context)
+		refresh_item(mod, layout, context, field == "name")
 	end
 
 	if mod:get("custom_item_skip_confirmation_prompts") ~= false then
@@ -362,7 +370,7 @@ local function show_color_picker(mod, target, context, layout)
 	local function confirm()
 		if context then
 			ItemCustomization.update(mod, context.gear_id, { [field] = clone_color(picker.draft, default_color) })
-			refresh_item(mod, layout, context)
+			refresh_item(mod, layout, context, false)
 		end
 	end
 
@@ -412,7 +420,7 @@ local function show_name_editor(mod, context, layout)
 				local value = input_widget and input_widget.content and input_widget.content.input_text or ""
 				close_input()
 				ItemCustomization.update(mod, context.gear_id, { name = value })
-				refresh_item(mod, layout, context)
+				refresh_item(mod, layout, context, true)
 			end),
 			literal_button("Reset to default", function()
 				close_input()
@@ -517,15 +525,15 @@ ItemCustomization.install = function(mod, InventoryWeaponsView, layout)
 	mod:hook(InventoryWeaponsView, "init", function(func, view, ...)
 		func(view, ...)
 		view.cb_on_better_inventory_change_name_pressed = function(self)
-			local context = selected_context(self)
+			local context = selected_context(mod, self)
 			if context then show_name_editor(mod, context, layout) end
 		end
 		view.cb_on_better_inventory_name_color_pressed = function(self)
-			local context = selected_context(self)
+			local context = selected_context(mod, self)
 			if context then show_color_picker(mod, "name", context, layout) end
 		end
 		view.cb_on_better_inventory_background_color_pressed = function(self)
-			local context = selected_context(self)
+			local context = selected_context(mod, self)
 			if context then show_color_picker(mod, "background", context, layout) end
 		end
 	end)
