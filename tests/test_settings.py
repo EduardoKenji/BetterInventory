@@ -169,6 +169,10 @@ def main() -> None:
 		test_inventory_view = {
 			_create_entry_widget_from_config = function() end,
 		}
+		test_view_element_grid = {
+			_create_entry_widget_from_config = function() end,
+			_update_grid_widgets = function() end,
+		}
 		test_visible_equipment = {
 			is_enabled = function() return visible_equipment_enabled end,
 		}
@@ -179,6 +183,8 @@ def main() -> None:
 		captured_item_grid_init_hook = nil
 		captured_armoury_on_enter_hook = nil
 		captured_character_overview_widget_hook = nil
+		captured_grid_widget_hook = nil
+		captured_grid_update_hook = nil
 		captured_module_errors = 0
 		fail_feature_load = false
 
@@ -221,8 +227,12 @@ def main() -> None:
 				captured_item_grid_init_hook = callback
 			elseif method == "on_enter" then
 				captured_armoury_on_enter_hook = callback
-			elseif method == "_create_entry_widget_from_config" then
+			elseif target == test_inventory_view and method == "_create_entry_widget_from_config" then
 				captured_character_overview_widget_hook = callback
+			elseif target == test_view_element_grid and method == "_create_entry_widget_from_config" then
+				captured_grid_widget_hook = callback
+			elseif target == test_view_element_grid and method == "_update_grid_widgets" then
+				captured_grid_update_hook = callback
 			end
         end
 
@@ -250,6 +260,8 @@ def main() -> None:
         function require(path)
 			if path == "scripts/ui/views/inventory_view/inventory_view" then
 				return test_inventory_view
+			elseif path == "scripts/ui/view_elements/view_element_grid/view_element_grid" then
+				return test_view_element_grid
 			end
 
             return {}
@@ -340,6 +352,139 @@ def main() -> None:
     )
     assert globals_.overview_equipped_item_calls == 3
     globals_.visible_equipment_available = True
+
+    runtime_hotspot_style = lua.table_from(
+        {
+            "horizontal_alignment": "right",
+            "vertical_alignment": "top",
+            "offset": lua.table_from({1: -8, 2: 7, 3: 17}),
+        }
+    )
+    grid_widget = lua.table_from(
+        {
+            "name": "item_widget",
+            "content": lua.table_from({"favorite": False, "equipped": False}),
+            "style": lua.table_from(
+                {
+                    "myfav_hotspot": runtime_hotspot_style,
+                    "favorite_icon": lua.table_from(
+                        {"offset": lua.table_from({1: -8, 2: 7, 3: 16})}
+                    ),
+                    "equipped_icon": lua.table_from({}),
+                }
+            ),
+            "passes": lua.table_from(
+                {
+                    1: lua.table_from(
+                        {
+                            "style_id": "equipped_icon",
+                            "visibility_function": lua.eval(
+                                "function(content) return content.inactive_loadout_equipped == true end"
+                            ),
+                        }
+                    )
+                }
+            ),
+        }
+    )
+    grid_alignment_widget = lua.table_from({"name": "alignment"})
+    grid_widget_factory = lua.eval(
+        "function(item_grid, config) return config.widget, config.alignment_widget end"
+    )
+    returned_widget, returned_alignment = globals_.captured_grid_widget_hook(
+        grid_widget_factory,
+        lua.table_from({}),
+        lua.table_from(
+            {"widget": grid_widget, "alignment_widget": grid_alignment_widget}
+        ),
+        "test",
+        "pressed",
+        "right_pressed",
+        "double_pressed",
+    )
+    assert returned_widget.name == "item_widget"
+    assert returned_alignment.name == "alignment"
+    bound_hotspot_style = (
+        grid_widget.content.better_inventory_myfavorites_hotspot_style
+    )
+    assert tuple(bound_hotspot_style.offset[index] for index in range(1, 4)) == (
+        -8,
+        7,
+        17,
+    )
+
+    grid_update_calls = lua.table_from({"count": 0})
+    original_grid_update = lua.eval(
+        "function(item_grid, state) state.count = state.count + 1 return 'updated', nil, 'tail' end"
+    )
+    item_grid = lua.table_from(
+        {"_grid_widgets": lua.table_from({1: grid_widget})}
+    )
+
+    # MyFavorites only / native equipped state: favorite state never controls
+    # placement, including transitions while the favorite icon is hidden.
+    update_result, update_nil, update_tail = globals_.captured_grid_update_hook(
+        original_grid_update, item_grid, grid_update_calls
+    )
+    assert (update_result, update_nil, update_tail) == ("updated", None, "tail")
+    assert grid_update_calls.count == 1
+    assert runtime_hotspot_style.offset[2] == 7
+    assert grid_widget.style.favorite_icon.offset[2] == 7
+    grid_widget.content.favorite = True
+    globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
+    assert runtime_hotspot_style.offset[2] == 7
+    grid_widget.content.favorite = False
+    grid_widget.content.equipped = True
+    globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
+    assert runtime_hotspot_style.offset[2] == 33
+    assert grid_widget.style.favorite_icon.offset[2] == 33
+    grid_widget.content.equipped = False
+    globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
+    assert runtime_hotspot_style.offset[2] == 7
+
+    # Equipped Icon+ inactive-loadout state follows its live visibility pass.
+    grid_widget.content.inactive_loadout_equipped = True
+    globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
+    assert runtime_hotspot_style.offset[2] == 33
+    grid_widget.content.inactive_loadout_equipped = False
+    globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
+    assert runtime_hotspot_style.offset[2] == 7
+
+    # A third-party equipped pass failure is isolated and falls back to the
+    # ordinary unequipped position instead of breaking grid updates.
+    grid_widget.content.better_inventory_equipped_icon_visibility_function = lua.eval(
+        "function() error('simulated Equipped Icon+ failure') end"
+    )
+    globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
+    assert runtime_hotspot_style.offset[2] == 7
+
+    # Bottom-left marker mode is intentionally static and must not be pulled
+    # into the top-right Equipped Icon+ placement rules.
+    runtime_hotspot_style.horizontal_alignment = "left"
+    runtime_hotspot_style.vertical_alignment = "bottom"
+    runtime_hotspot_style.offset[2] = -5
+    grid_widget.content.equipped = True
+    globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
+    assert runtime_hotspot_style.offset[2] == -5
+
+    # Equipped Icon+ without MyFavorites has no MyFavorites hotspot and is a
+    # complete no-op.
+    no_myfavorites_widget = lua.table_from(
+        {
+            "content": lua.table_from({"equipped": True}),
+            "style": lua.table_from(
+                {
+                    "equipped_icon": lua.table_from({}),
+                    "favorite_icon": lua.table_from(
+                        {"offset": lua.table_from({1: -8, 2: 7, 3: 16})}
+                    ),
+                }
+            ),
+        }
+    )
+    item_grid._grid_widgets[1] = no_myfavorites_widget
+    globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
+    assert no_myfavorites_widget.style.favorite_icon.offset[2] == 7
 
     credits_view = lua.table_from({"__class_name": "CreditsVendorView"})
     credits_definitions = lua.table_from({})
@@ -1186,7 +1331,7 @@ def main() -> None:
     localization = lua.execute(LOCALIZATION_PATH.read_text(encoding="utf-8"))
     defaults = {}
 
-    assert data.version == "1.6.4"
+    assert data.version == "1.6.5"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"

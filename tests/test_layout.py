@@ -1830,9 +1830,20 @@ def main() -> None:
     ) == (-8, 7, 17)
     mod.settings.compact_favorite_marker = True
 
-    favorite_pass.change_function(lua.table_from({"equipped": True}), favorite_pass.style, None, 0)
+    runtime_myfavorites_hotspot_style = lua.eval("table.clone")(
+        myfavorites_hotspot.style
+    )
+    equipped_content = lua.table_from(
+        {
+            "equipped": True,
+            "better_inventory_myfavorites_hotspot_style": runtime_myfavorites_hotspot_style,
+        }
+    )
+    favorite_pass.change_function(equipped_content, favorite_pass.style, None, 0)
     assert favorite_pass.style.offset[2] == 33
-    assert myfavorites_hotspot.style.offset[2] == 33
+    assert myfavorites_hotspot.style.offset[2] == 7
+    assert runtime_myfavorites_hotspot_style.offset[2] == 33
+    assert myfavorites_hotspot.style.offset[2] == 7
 
     # Equipped Icon+ extends the equipped-icon visibility pass for items in
     # inactive loadouts. BetterInventory must honor that result when placing
@@ -1841,21 +1852,36 @@ def main() -> None:
     equipped_icon_pass.visibility_function = lua.eval(
         "function(content) return content and content.inactive_loadout_equipped == true end"
     )
+    inactive_equipped_content = lua.table_from(
+        {
+            "equipped": False,
+            "inactive_loadout_equipped": True,
+            "better_inventory_myfavorites_hotspot_style": runtime_myfavorites_hotspot_style,
+        }
+    )
     favorite_pass.change_function(
-        lua.table_from({"equipped": False, "inactive_loadout_equipped": True}),
+        inactive_equipped_content,
         favorite_pass.style,
         None,
         0,
     )
     assert favorite_pass.style.offset[2] == 33
+    assert runtime_myfavorites_hotspot_style.offset[2] == 33
+    inactive_unequipped_content = lua.table_from(
+        {
+            "equipped": False,
+            "inactive_loadout_equipped": False,
+            "better_inventory_myfavorites_hotspot_style": runtime_myfavorites_hotspot_style,
+        }
+    )
     favorite_pass.change_function(
-        lua.table_from({"equipped": False, "inactive_loadout_equipped": False}),
+        inactive_unequipped_content,
         favorite_pass.style,
         None,
         0,
     )
     assert favorite_pass.style.offset[2] == 7
-    assert myfavorites_hotspot.style.offset[2] == 7
+    assert runtime_myfavorites_hotspot_style.offset[2] == 7
 
     # A compatibility callback must fail closed if a third-party pass throws
     # (or if Darktide invokes the change callback without item content).
@@ -1864,6 +1890,7 @@ def main() -> None:
     )
     favorite_pass.change_function(None, favorite_pass.style, None, 0)
     assert favorite_pass.style.offset[2] == 7
+    assert runtime_myfavorites_hotspot_style.offset[2] == 7
 
     equipped_highlight = blueprint_pass(
         blueprint, "better_inventory_equipped_highlight"
