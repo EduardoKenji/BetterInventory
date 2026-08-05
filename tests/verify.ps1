@@ -40,7 +40,7 @@ if ($main -notmatch 'mod:hook\(CraftingMechanicusModifyView,\s*"present_grid_lay
 	throw "The Entreat Hadron grid hook was not found."
 }
 
-if ($main -notmatch 'mod:hook\(InventoryView,\s*"_create_entry_widget_from_config"' -or $main -notmatch 'enable_character_overview_melee_mirror' -or $main -notmatch 'enable_character_overview_ranged_mirror' -or $main -notmatch 'enable_character_overview_curio_details') {
+if ($main -notmatch 'mod:hook\(InventoryView,\s*"_create_entry_widget_from_config"' -or $main -notmatch 'enable_character_overview_melee_mirror' -or $main -notmatch 'enable_character_overview_ranged_mirror' -or $main -notmatch 'enable_character_overview_curio_details' -or $main -notmatch 'level_requirement_met\s*=\s*true') {
 	throw "Character overview weapon/Curio card integration was not found."
 }
 

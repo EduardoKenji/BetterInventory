@@ -122,6 +122,18 @@ local function character_overview_curio_slot(config)
 	return config and config.widget_type == "gadget_item_slot" and type(slot_name) == "string" and string.match(slot_name, "^slot_attachment_") ~= nil
 end
 
+local function mark_character_overview_requirement_met(widget)
+	local content = widget and widget.content
+
+	if content then
+		-- InventoryView's native item-slot blueprints do not populate the
+		-- requirement fields used by the detailed item pass. These are already
+		-- equipped overview items, so the warning/lock overlay must stay hidden.
+		content.level_requirement_met = true
+		content.required_level = nil
+	end
+end
+
 local function character_overview_weapon_blueprint()
 	local native_blueprint = InventoryViewContentBlueprints.item_slot
 	local detailed_blueprint = CHARACTER_OVERVIEW_BLUEPRINTS and CHARACTER_OVERVIEW_BLUEPRINTS.item
@@ -150,6 +162,16 @@ local function character_overview_weapon_blueprint()
 		native_single_column = true,
 	})
 
+	local configured_init = blueprint.init
+
+	blueprint.init = function(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
+		if configured_init then
+			configured_init(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
+		end
+
+		mark_character_overview_requirement_met(widget)
+	end
+
 	local native_update = blueprint.update
 
 	blueprint.update = function(parent, widget, input_service, dt, t, ui_renderer)
@@ -160,6 +182,8 @@ local function character_overview_weapon_blueprint()
 		if native_update then
 			native_update(parent, widget, input_service, dt, t, ui_renderer)
 		end
+
+		mark_character_overview_requirement_met(widget)
 
 		local slot = element and element.slot
 		local current_item = slot and parent.equipped_item_in_slot and parent:equipped_item_in_slot(slot.name)
@@ -200,6 +224,16 @@ local function character_overview_curio_blueprint()
 	Layout.configure_native_item_blueprint(mod, blueprint, blueprint.size[1], {
 		native_single_column = true,
 	})
+
+	local configured_init = blueprint.init
+
+	blueprint.init = function(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
+		if configured_init then
+			configured_init(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
+		end
+
+		mark_character_overview_requirement_met(widget)
+	end
 
 	local card_width = blueprint.size[1]
 	local icon = nil
@@ -274,6 +308,8 @@ local function character_overview_curio_blueprint()
 		if native_update then
 			native_update(parent, widget, input_service, dt, t, ui_renderer)
 		end
+
+		mark_character_overview_requirement_met(widget)
 
 		local slot = element and element.slot
 		local current_item = slot and parent.equipped_item_in_slot and parent:equipped_item_in_slot(slot.name)
