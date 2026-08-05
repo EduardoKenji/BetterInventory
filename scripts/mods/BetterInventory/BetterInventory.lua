@@ -70,6 +70,7 @@ local GLOBAL_STORE_NATIVE_CONFIGURATION = {
 }
 local CHARACTER_OVERVIEW_WEAPON_WIDGET_TYPE = "better_inventory_character_overview_weapon"
 local CHARACTER_OVERVIEW_CURIO_WIDGET_TYPE = "better_inventory_character_overview_curio"
+local CHARACTER_OVERVIEW_EMPTY_CURIO_WIDGET_TYPE = "better_inventory_character_overview_empty_curio"
 local CHARACTER_OVERVIEW_WEAPON_HEIGHT = 130
 local CHARACTER_OVERVIEW_BLUEPRINTS = type(ItemBlueprintGenerator) == "function" and ItemBlueprintGenerator({
 	600,
@@ -396,6 +397,8 @@ local function character_overview_curio_blueprint()
 	local curio_name_font_size = primary_curio_style and primary_curio_style.font_size or math.max(1, math.floor(16 * curio_font_scale + 0.5))
 	-- Reserve selected title lines plus a fixed gap before all four stats.
 	local curio_name_block_height = curio_name_font_size * curio_name_line_limit + 11
+	local curio_stat_base_offsets = {}
+	local curio_stat_line_heights = {}
 
 	if show_curio_name and display_name and display_name.style then
 		display_name.visibility_function = function(content)
@@ -423,6 +426,16 @@ local function character_overview_curio_blueprint()
 			if stat_style and stat_style.offset then
 				stat_style.offset[2] = (stat_style.offset[2] or 0) + curio_name_block_height
 			end
+		end
+	end
+
+	for index = 1, 4 do
+		local stat_style = curio_stat_passes[index] and curio_stat_passes[index].style
+
+		if stat_style and stat_style.offset then
+			curio_stat_base_offsets[index] = stat_style.offset[2] or 0
+			curio_stat_line_heights[index] = (stat_style.font_size or 13) + 5
+			stat_style.word_wrap = false
 		end
 	end
 
@@ -458,7 +471,7 @@ local function character_overview_curio_blueprint()
 		end
 	end
 
-	local function fit_curio_name(widget, ui_renderer)
+	local function fit_curio_text(widget, ui_renderer)
 		local style = show_curio_name and widget and widget.style and widget.style.display_name
 		local content = widget and widget.content
 
@@ -511,13 +524,51 @@ local function character_overview_curio_blueprint()
 				content.better_inventory_fitted_curio_name = fitted_name
 			end
 		end
+
+		if not content or not ui_renderer then
+			return
+		end
+
+		local cumulative_extra_height = 0
+
+		for index = 1, 4 do
+			local content_id = "better_inventory_curio_stat_" .. index
+			local full_content_id = "better_inventory_overview_full_curio_stat_" .. index
+			local fitted_content_id = "better_inventory_overview_fitted_curio_stat_" .. index
+			local stat_style = widget.style and widget.style[content_id]
+			local displayed_value = content[content_id]
+
+			if stat_style and type(displayed_value) == "string" and displayed_value ~= "" then
+				if displayed_value ~= content[fitted_content_id] then
+					local full_value = content["better_inventory_full_curio_stat_" .. index] or displayed_value
+
+					content[full_content_id] = string.gsub(full_value, "[\r\n]+", " ")
+				end
+
+				local full_value = content[full_content_id] or displayed_value
+				local maximum_width = stat_style.better_inventory_max_text_width or stat_style.size and stat_style.size[1]
+				local wrapped_rows = maximum_width and Text.word_wrap(ui_renderer, full_value, stat_style, maximum_width)
+				local line_count = math.max(1, wrapped_rows and #wrapped_rows or 1)
+				local fitted_value = wrapped_rows and table.concat(wrapped_rows, "\n") or full_value
+				local line_height = curio_stat_line_heights[index] or (stat_style.font_size or 13) + 5
+
+				stat_style.offset[2] = (curio_stat_base_offsets[index] or 0) + cumulative_extra_height
+				stat_style.size[2] = line_height * line_count
+				content[content_id] = fitted_value
+				content[fitted_content_id] = fitted_value
+				cumulative_extra_height = cumulative_extra_height + (line_count - 1) * line_height
+			elseif stat_style then
+				stat_style.offset[2] = (curio_stat_base_offsets[index] or 0) + cumulative_extra_height
+				stat_style.size[2] = curio_stat_line_heights[index] or stat_style.size[2]
+			end
+		end
 	end
 
 	local overview_init = blueprint.init
 
 	blueprint.init = function(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
 		overview_init(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
-		fit_curio_name(widget, ui_renderer)
+		fit_curio_text(widget, ui_renderer)
 	end
 
 	if item_level and item_level.style then
@@ -548,7 +599,7 @@ local function character_overview_curio_blueprint()
 		end
 
 		mark_character_overview_requirement_met(widget)
-		fit_curio_name(widget, ui_renderer)
+		fit_curio_text(widget, ui_renderer)
 
 		local slot = element and element.slot
 		local current_item = slot and parent.equipped_item_in_slot and parent:equipped_item_in_slot(slot.name)
@@ -558,6 +609,37 @@ local function character_overview_curio_blueprint()
 
 			if blueprint.update_data then
 				blueprint.update_data(parent, widget, element)
+			end
+		end
+	end
+
+	return blueprint
+end
+
+local function character_overview_empty_curio_blueprint()
+	local native_blueprint = InventoryViewContentBlueprints.gadget_item_slot
+
+	if type(native_blueprint) ~= "table" or type(native_blueprint.pass_template) ~= "table" then
+		return
+	end
+
+	local blueprint = table.clone(native_blueprint)
+
+	blueprint.pass_template = table.clone(native_blueprint.pass_template)
+
+	-- Keep Darktide's empty/locked slot artwork and behavior, but suppress the
+	-- native empty label (commonly localized as "n/a"). Locked-slot messages and
+	-- symbols remain visible until the slot unlocks.
+	for _, pass in ipairs(blueprint.pass_template) do
+		if pass.pass_type == "text" then
+			local native_visibility = pass.visibility_function
+
+			pass.visibility_function = function(content, style)
+				if content and content.unlocked and not content.item then
+					return false
+				end
+
+				return native_visibility == nil or native_visibility(content, style)
 			end
 		end
 	end
@@ -1560,15 +1642,17 @@ if ensure_class_method(InventoryView, "_create_entry_widget_from_config") then
 		local setting_id = weapon_kind == "melee" and "enable_character_overview_melee_mirror" or weapon_kind == "ranged" and "enable_character_overview_ranged_mirror" or curio_slot and "enable_character_overview_curio_details"
 
 		if view and view.__class_name == "InventoryView" and setting_id and mod:get(setting_id) ~= false then
-			local blueprint = curio_slot and character_overview_curio_blueprint() or character_overview_weapon_blueprint()
-			local widget_type = curio_slot and CHARACTER_OVERVIEW_CURIO_WIDGET_TYPE or CHARACTER_OVERVIEW_WEAPON_WIDGET_TYPE
+			local equipped_item = view.equipped_item_in_slot and view:equipped_item_in_slot(config.slot.name)
+			local empty_curio_slot = curio_slot and equipped_item == nil
+			local blueprint = empty_curio_slot and character_overview_empty_curio_blueprint() or curio_slot and character_overview_curio_blueprint() or character_overview_weapon_blueprint()
+			local widget_type = empty_curio_slot and CHARACTER_OVERVIEW_EMPTY_CURIO_WIDGET_TYPE or curio_slot and CHARACTER_OVERVIEW_CURIO_WIDGET_TYPE or CHARACTER_OVERVIEW_WEAPON_WIDGET_TYPE
 
 			if blueprint then
 				InventoryViewContentBlueprints[widget_type] = blueprint
 
 				local adapted_config = table.clone(config)
 				adapted_config.widget_type = widget_type
-				adapted_config.item = view.equipped_item_in_slot and view:equipped_item_in_slot(config.slot.name)
+				adapted_config.item = equipped_item
 
 				return func(view, adapted_config, suffix, callback_name, secondary_callback_name, optional_scenegraph_id)
 			end

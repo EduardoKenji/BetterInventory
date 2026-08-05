@@ -48,6 +48,10 @@ if ($main -notmatch 'move_up\s*=\s*9' -or $main -notmatch 'move_down\s*=\s*6' -o
 	throw "Character overview visual offsets or Curio font scaling were not found."
 }
 
+if ($main -notmatch 'better_inventory_overview_full_curio_stat_' -or $main -notmatch 'cumulative_extra_height\s*=\s*cumulative_extra_height\s*\+\s*\(line_count\s*-\s*1\)\s*\*\s*line_height' -or $main -notmatch 'CHARACTER_OVERVIEW_EMPTY_CURIO_WIDGET_TYPE' -or $main -notmatch 'content\s*and\s*content\.unlocked\s*and\s*not\s*content\.item') {
+	throw "Character overview multiline Curio stats or empty-slot handling were not found."
+}
+
 if ($main -notmatch 'mod:hook\(CreditsVendorView,\s*"present_grid_layout"') {
 	throw "The Requisition Weapons & Curios grid hook was not found."
 }
