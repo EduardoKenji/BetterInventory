@@ -1081,6 +1081,30 @@ return {
 				},
 			},
 			{
+				setting_id = "custom_item_name_and_colors_group",
+				type = "group",
+				sub_widgets = {
+					{
+						setting_id = "enable_custom_item_name_and_colors",
+						tooltip = "enable_custom_item_name_and_colors_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
+						setting_id = "custom_item_name_color_picker_spike",
+						tooltip = "custom_item_name_color_picker_spike_tooltip",
+						type = "checkbox",
+						default_value = false,
+					},
+					{
+						setting_id = "custom_item_background_color_picker_spike",
+						tooltip = "custom_item_background_color_picker_spike_tooltip",
+						type = "checkbox",
+						default_value = false,
+					},
+				},
+			},
+			{
 				setting_id = "name_it_integration_group",
 				type = "group",
 				sub_widgets = {

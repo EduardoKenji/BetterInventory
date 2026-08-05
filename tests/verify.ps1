@@ -430,7 +430,7 @@ if ($hasLuaParser) {
 }
 
 if ($hasLupa) {
-	foreach ($behaviorTest in @("test_layout.py", "test_settings.py", "test_features.py", "test_curio_acquisition.py")) {
+	foreach ($behaviorTest in @("test_layout.py", "test_settings.py", "test_features.py", "test_curio_acquisition.py", "test_item_customization.py")) {
 		py -3 (Join-Path $PSScriptRoot $behaviorTest)
 
 		if ($LASTEXITCODE -ne 0) {

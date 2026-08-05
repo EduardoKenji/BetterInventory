@@ -686,6 +686,45 @@ local localization = {
 	quick_look_card_integration_group = {
 		en = "Mod Integration: Quick Look Card",
 	},
+	custom_item_name_and_colors_group = {
+		en = "Custom Item Name And Colors",
+	},
+	enable_custom_item_name_and_colors = {
+		en = "Enable custom item names and colors",
+	},
+	enable_custom_item_name_and_colors_tooltip = {
+		en = "Enables BetterInventory's standalone per-item customization storage and editor experiments. Does not require Name It.",
+	},
+	custom_item_name_color_picker_spike = {
+		en = "Open item-name color selector spike",
+	},
+	custom_item_name_color_picker_spike_tooltip = {
+		en = "Opens the RGB selector prototype for item-name colors. The switch resets after opening.",
+	},
+	custom_item_background_color_picker_spike = {
+		en = "Open item-background color selector spike",
+	},
+	custom_item_background_color_picker_spike_tooltip = {
+		en = "Opens the RGB selector prototype for item-background colors. The switch resets after opening.",
+	},
+	custom_item_name_color_picker_title = {
+		en = "Item Name Color",
+	},
+	custom_item_background_color_picker_title = {
+		en = "Item Background Color",
+	},
+	custom_item_color_picker_confirm = {
+		en = "Confirm Color",
+	},
+	custom_item_color_picker_restore_default = {
+		en = "Restore Default",
+	},
+	custom_item_color_picker_cancel = {
+		en = "Cancel",
+	},
+	option_requires_custom_item_name_and_colors = {
+		en = "Enable custom item names and colors to use this option.",
+	},
 	name_it_integration_group = {
 		en = "Mod Integration: Name It",
 	},
@@ -2207,6 +2246,19 @@ zh_cn.enable_hadron_single_column_mirror = "Mirror single-column format from inv
 zh_cn.enable_hadron_single_column_mirror_tooltip = "Uses the detailed BetterInventory single-column card format for Entreat Hadron when grid layout is disabled. Enabled by default."
 zh_cn.enable_armoury_single_column_mirror = "Enable custom detailed card for single column"
 zh_cn.enable_armoury_single_column_mirror_tooltip = "Uses BetterInventory's custom detailed card for Requisition Weapons & Curios when grid layout is disabled. Enabled by default."
+zh_cn.custom_item_name_and_colors_group = "Custom Item Name And Colors"
+zh_cn.enable_custom_item_name_and_colors = "Enable custom item names and colors"
+zh_cn.enable_custom_item_name_and_colors_tooltip = "Enables BetterInventory's standalone per-item customization storage and editor experiments. Does not require Name It."
+zh_cn.custom_item_name_color_picker_spike = "Open item-name color selector spike"
+zh_cn.custom_item_name_color_picker_spike_tooltip = "Opens the RGB selector prototype for item-name colors. The switch resets after opening."
+zh_cn.custom_item_background_color_picker_spike = "Open item-background color selector spike"
+zh_cn.custom_item_background_color_picker_spike_tooltip = "Opens the RGB selector prototype for item-background colors. The switch resets after opening."
+zh_cn.custom_item_name_color_picker_title = "Item Name Color"
+zh_cn.custom_item_background_color_picker_title = "Item Background Color"
+zh_cn.custom_item_color_picker_confirm = "Confirm Color"
+zh_cn.custom_item_color_picker_restore_default = "Restore Default"
+zh_cn.custom_item_color_picker_cancel = "Cancel"
+zh_cn.option_requires_custom_item_name_and_colors = "Enable custom item names and colors to use this option."
 zh_cn.name_it_integration_group = "Mod Integration: Name It"
 zh_cn.enable_name_it_override = "Enable 'Name It' override"
 zh_cn.enable_name_it_override_tooltip = "Lets Name It custom weapon and Curio names take priority over BetterInventory name formatting. Reopen the current view after changing."
