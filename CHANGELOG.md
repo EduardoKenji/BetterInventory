@@ -4,8 +4,8 @@
 
 ### Fixed
 
-- Fixed Change Name silently doing nothing because its input-legend callback was registered after Darktide built the legend.
-- Resolve the active popup handler when opening or closing the name editor so recreated constant UI elements cannot leave a stale widget reference.
+- Fixed Change Name silently doing nothing when Darktide's global popup handler was created before BetterInventory added its text field.
+- Repair the live popup scenegraph when necessary and resolve its active text widget when opening or closing the name editor.
 
 ## 1.9.1 - 2026-08-06
 

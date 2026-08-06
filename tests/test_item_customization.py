@@ -57,6 +57,26 @@ def main() -> None:
                 return {
                     text_max_width = 800,
                 }
+            elseif string.find(path, "text_input_pass_templates", 1, true) then
+                return {
+                    simple_input_field = {},
+                }
+            elseif string.find(path, "ui_widget", 1, true) then
+                return {
+                    create_definition = function(_, scenegraph_id)
+                        return {
+                            scenegraph_id = scenegraph_id,
+                            content = {},
+                        }
+                    end,
+                }
+            elseif string.find(path, "ui_scenegraph", 1, true) then
+                return {
+                    init_scenegraph = function(definition)
+                        rebuilt_scenegraph_definition = definition
+                        return { rebuilt = true }
+                    end,
+                }
             end
 
             return {}
@@ -117,7 +137,20 @@ def main() -> None:
             global_strings = strings
         end
 
-        function test_mod:hook_require() end
+        popup_definitions = {
+            scenegraph_definition = {
+                center_pivot = {},
+            },
+            widget_definitions = {},
+        }
+
+        function test_mod:hook_require(path, callback)
+            callback(popup_definitions)
+        end
+
+        function test_mod:warning(message)
+            error(message)
+        end
 
         function test_mod:hook(target, method, callback)
             captured_hooks[method] = callback
@@ -427,6 +460,26 @@ def main() -> None:
         legend[index].on_pressed_callback != "cb_on_change_name_pressed"
         for index in range(1, 4)
     )
+
+    # The global popup handler may predate hook_require's definition changes.
+    # Its update hook must repair the live scenegraph and attach the field.
+    dynamic_popup_handler = lua.table_from(
+        {
+            "_definitions": globals_.popup_definitions,
+            "_widgets": lua.table_from([]),
+            "_widgets_by_name": lua.table_from({}),
+            "_create_widget": lua.eval(
+                "function(_, name, definition) local widget = table.clone(definition); widget.name = name; return widget end"
+            ),
+        }
+    )
+    globals_.captured_safe_hooks.update(dynamic_popup_handler)
+    repaired_input_widget = dynamic_popup_handler._widgets_by_name[
+        "better_inventory_name_input"
+    ]
+    assert repaired_input_widget is not None
+    assert dynamic_popup_handler._ui_scenegraph.rebuilt is True
+    assert len(dynamic_popup_handler._widgets) == 1
 
     # Q can be pressed before the popup handler's update hook has populated
     # the cache. Resolve its live text widget on demand instead of no-oping.

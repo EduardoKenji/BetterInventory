@@ -11,6 +11,7 @@ local DEFAULT_BACKGROUND_COLOR = { 255, 45, 55, 45 }
 local cached_records = {}
 local pending_action
 local input_widget
+local input_widget_definition
 local show_input_field = false
 local installed = false
 local persistence_pending = false
@@ -1056,12 +1057,38 @@ ItemCustomization.install = function(mod, InventoryWeaponsView, layout)
 			parent = "center_pivot", vertical_alignment = "center", horizontal_alignment = "center",
 			size = { 800, 40 }, position = { 0, -25, 3 },
 		}
-		definitions.widget_definitions[INPUT_WIDGET_ID] = UIWidget.create_definition(table.clone(TextInputPassTemplates.simple_input_field), INPUT_WIDGET_ID)
-		definitions.widget_definitions[INPUT_WIDGET_ID].content.visible = false
-		definitions.widget_definitions[INPUT_WIDGET_ID].content.max_length = MAX_NAME_LENGTH
+		input_widget_definition = UIWidget.create_definition(table.clone(TextInputPassTemplates.simple_input_field), INPUT_WIDGET_ID)
+		input_widget_definition.content.visible = false
+		input_widget_definition.content.max_length = MAX_NAME_LENGTH
+		definitions.widget_definitions[INPUT_WIDGET_ID] = input_widget_definition
 	end)
 
 	mod:hook_safe("ConstantElementPopupHandler", "update", function(handler)
+		local widgets_by_name = handler._widgets_by_name
+
+		if widgets_by_name and not widgets_by_name[INPUT_WIDGET_ID] and input_widget_definition and handler._definitions and type(handler._create_widget) == "function" then
+			local ok, error_message = pcall(function()
+				local UIScenegraph = require("scripts/managers/ui/ui_scenegraph")
+				local definitions = handler._definitions
+
+				-- The singleton popup handler can be instantiated before DMF applies
+				-- hook_require additions. Rebuild once from the now-patched complete
+				-- definition and attach the missing text field at runtime.
+				handler._ui_scenegraph = UIScenegraph.init_scenegraph(definitions.scenegraph_definition)
+
+				local widget = handler:_create_widget(INPUT_WIDGET_ID, input_widget_definition)
+
+				handler._widgets = handler._widgets or {}
+				handler._widgets[#handler._widgets + 1] = widget
+				widgets_by_name[INPUT_WIDGET_ID] = widget
+			end)
+
+			if not ok and not handler._better_inventory_name_input_creation_warning then
+				handler._better_inventory_name_input_creation_warning = true
+				mod:warning("Unable to create the Change Name text field: %s", tostring(error_message))
+			end
+		end
+
 		-- Name It reinitializes the shared popup handler during on_all_mods_loaded,
 		-- replacing every widget instance. Never retain the detached pre-init
 		-- widget: always follow the instance the handler currently draws.
