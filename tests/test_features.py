@@ -597,11 +597,29 @@ def main() -> None:
         armoury_view._scenegraph_world_position = function()
             return {100, 50, 0}
         end
+		armoury_view._weapon_stats = {
+			scenegraph_world_position = function()
+				return {900, 120, 0}
+			end,
+			_scenegraph_size = function()
+				return 500, 600
+			end,
+		}
+		armoury_view._context = {
+			parent = {
+				_scenegraph_world_position = function()
+					return {1380, -65, 0}
+				end,
+				_scenegraph_size = function()
+					return 540, 224
+				end,
+			},
+		}
         """
     )
     features.update_armoury_native_sort_panel(armoury_view)
-    assert globals_.TestArmouryPanel.pivot_x == 2190
-    assert globals_.TestArmouryPanel.pivot_y == 150
+    assert globals_.TestArmouryPanel.pivot_x == 1424
+    assert globals_.TestArmouryPanel.pivot_y == 175
     assert globals_.TestArmouryPanel.entries[1].initial_content.label == "inventory_sorting_inventory_label"
     assert globals_.TestArmouryPanel.entries[4].initial_content.label == "armoury_native_sorting_header"
     assert len(globals_.TestArmouryPanel.entries) == 5

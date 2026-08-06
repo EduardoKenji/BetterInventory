@@ -68,6 +68,7 @@ def main() -> None:
 			expand_armoury_requisition_window = true,
 			armoury_requisition_target_card_width = 230,
 			debug_expand_armoury_requisition_window_30_percent = false,
+			debug_armoury_requisition_window_increase_percent = 30,
 			automatic_card_height = true,
 			show_weapon_perks = false,
 			show_weapon_blessings = true,
@@ -545,7 +546,7 @@ def main() -> None:
     credits_view._weapon_stats = lua.table_from(
         {
             "_world_x": 894,
-            "_scenegraph_world_position": lua.eval(
+            "scenegraph_world_position": lua.eval(
                 "function(element, id) return {element._world_x, 0, 0} end"
             ),
             "_scenegraph_size": lua.eval(
@@ -1572,7 +1573,10 @@ def main() -> None:
     assert [
         debug_group.sub_widgets[index].setting_id
         for index in range(1, len(debug_group.sub_widgets) + 1)
-    ] == ["debug_expand_armoury_requisition_window_30_percent"]
+    ] == [
+        "debug_expand_armoury_requisition_window_30_percent",
+        "debug_armoury_requisition_window_increase_percent",
+    ]
     additional_views_group = next(
         data.options.widgets[index]
         for index in range(1, len(data.options.widgets) + 1)
@@ -1774,6 +1778,7 @@ def main() -> None:
     assert defaults["expand_armoury_requisition_window"] is True
     assert defaults["armoury_requisition_target_card_width"] == 230
     assert defaults["debug_expand_armoury_requisition_window_30_percent"] is False
+    assert defaults["debug_armoury_requisition_window_increase_percent"] == 30
     assert defaults["automatic_card_height"] is True
     assert defaults["expand_curio_inventory_window"] is True
     assert defaults["weapon_extra_width_column_threshold"] == "four_plus"

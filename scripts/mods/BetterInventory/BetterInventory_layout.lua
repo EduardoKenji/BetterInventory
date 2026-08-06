@@ -3093,7 +3093,8 @@ Layout.expanded_armoury_view_definitions = function(mod, definitions, base_defin
 
 	if native_armoury and setting(mod, "debug_expand_armoury_requisition_window_30_percent", false) then
 		local resolved_grid_width = current_grid_width + expansion
-		local debug_grid_width = math.floor(resolved_grid_width * 1.3 + 0.5)
+		local debug_percent = math.max(10, math.min(100, tonumber(setting(mod, "debug_armoury_requisition_window_increase_percent", 30)) or 30))
+		local debug_grid_width = math.floor(resolved_grid_width * (1 + debug_percent * 0.01) + 0.5)
 
 		expansion = math.max(expansion, debug_grid_width - current_grid_width)
 	end

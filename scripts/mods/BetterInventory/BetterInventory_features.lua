@@ -57,6 +57,8 @@ local ARMOURY_NATIVE_SORT_PANEL_HEIGHT = 520
 local ARMOURY_NATIVE_SORT_PANEL_MIN_HEIGHT = 140
 local ARMOURY_NATIVE_SORT_PANEL_TOP = 100
 local ARMOURY_NATIVE_SORT_PANEL_RIGHT_MARGIN = 120
+local ARMOURY_NATIVE_SORT_PANEL_WEAPON_GAP = 24
+local ARMOURY_NATIVE_SORT_PANEL_WALLET_GAP = 16
 local ARMOURY_NATIVE_SORT_PANEL_ROW_HEIGHT = 32
 local ARMOURY_NATIVE_SORT_PANEL_ROW_SPACING = 4
 local ARMOURY_NATIVE_SORT_PANEL_PADDING = 10
@@ -2398,6 +2400,36 @@ Features.setup_inventory_options_panel = function(mod, layout, view, ViewElement
 	return true
 end
 
+local function scenegraph_rect(owner, scenegraph_id)
+	if type(owner) ~= "table" or type(owner._scenegraph_size) ~= "function" then
+		return nil
+	end
+
+	local world_position = owner.scenegraph_world_position or owner._scenegraph_world_position
+
+	if type(world_position) ~= "function" then
+		return nil
+	end
+
+	if type(owner._force_update_scenegraph) == "function" then
+		pcall(owner._force_update_scenegraph, owner)
+	end
+
+	local position_success, position = pcall(world_position, owner, scenegraph_id)
+	local size_success, width, height = pcall(owner._scenegraph_size, owner, scenegraph_id)
+
+	if not position_success or not size_success or type(position) ~= "table" or type(position[1]) ~= "number" or type(position[2]) ~= "number" or type(width) ~= "number" or type(height) ~= "number" then
+		return nil
+	end
+
+	return {
+		x = position[1],
+		y = position[2],
+		width = width,
+		height = height,
+	}
+end
+
 local function armoury_native_sort_panel_position(view)
 	local canvas_width = INVENTORY_VIRTUAL_CANVAS_WIDTH
 	local canvas_position = {
@@ -2419,7 +2451,24 @@ local function armoury_native_sort_panel_position(view)
 		end
 	end
 
-	return canvas_position[1] + canvas_width - ARMOURY_NATIVE_SORT_PANEL_RIGHT_MARGIN - ARMOURY_NATIVE_SORT_PANEL_WIDTH, canvas_position[2] + ARMOURY_NATIVE_SORT_PANEL_TOP
+	local fallback_x = canvas_position[1] + canvas_width - ARMOURY_NATIVE_SORT_PANEL_RIGHT_MARGIN - ARMOURY_NATIVE_SORT_PANEL_WIDTH
+	local fallback_y = canvas_position[2] + ARMOURY_NATIVE_SORT_PANEL_TOP
+	local weapon_rect = scenegraph_rect(view and view._weapon_stats, "grid_background")
+
+	if not weapon_rect then
+		return fallback_x, fallback_y
+	end
+
+	local x = weapon_rect.x + weapon_rect.width + ARMOURY_NATIVE_SORT_PANEL_WEAPON_GAP
+	local y = weapon_rect.y
+	local parent = view and view._context and view._context.parent
+	local wallet_frame = scenegraph_rect(parent, "corner_top_right")
+
+	if wallet_frame then
+		y = math.max(y, wallet_frame.y + wallet_frame.height + ARMOURY_NATIVE_SORT_PANEL_WALLET_GAP)
+	end
+
+	return x, y
 end
 
 local function armoury_native_sort_entries(mod, layout, view)

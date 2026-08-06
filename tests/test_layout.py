@@ -340,6 +340,7 @@ def main() -> None:
 				expand_armoury_requisition_window = true,
 				armoury_requisition_target_card_width = 230,
 				debug_expand_armoury_requisition_window_30_percent = false,
+				debug_armoury_requisition_window_increase_percent = 30,
                 grid_spacing = 10,
                 card_height = 110,
 				automatic_card_height = true,
@@ -730,6 +731,30 @@ def main() -> None:
         layout.item_size(mod, 923, 3, store_configuration)[index]
         for index in (1, 2)
     ) == (301, 114)
+
+    mod.settings.debug_armoury_requisition_window_increase_percent = 10
+    narrow_debug_armoury, narrow_debug_expansion = layout.expanded_armoury_view_definitions(
+        mod, armoury_definitions, armoury_base_definitions
+    )
+    assert narrow_debug_expansion == 185
+    assert narrow_debug_armoury.grid_settings.grid_size[1] == 781
+    assert tuple(
+        layout.item_size(mod, 781, 3, store_configuration)[index]
+        for index in (1, 2)
+    ) == (253, 114)
+
+    mod.settings.debug_armoury_requisition_window_increase_percent = 100
+    maximum_debug_armoury, maximum_debug_expansion = layout.expanded_armoury_view_definitions(
+        mod, armoury_definitions, armoury_base_definitions
+    )
+    assert maximum_debug_expansion == 824
+    assert maximum_debug_armoury.grid_settings.grid_size[1] == 1420
+    assert tuple(
+        layout.item_size(mod, 1420, 3, store_configuration)[index]
+        for index in (1, 2)
+    ) == (466, 114)
+
+    mod.settings.debug_armoury_requisition_window_increase_percent = 30
 
     global_store_armoury, global_store_expansion = layout.expanded_armoury_view_definitions(
         mod,

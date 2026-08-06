@@ -1654,6 +1654,16 @@ return {
 						type = "checkbox",
 						default_value = false,
 					},
+					{
+						setting_id = "debug_armoury_requisition_window_increase_percent",
+						tooltip = "debug_armoury_requisition_window_increase_percent_tooltip",
+						type = "numeric",
+						default_value = 30,
+						range = {
+							10,
+							100,
+						},
+					},
 				},
 			},
 		},

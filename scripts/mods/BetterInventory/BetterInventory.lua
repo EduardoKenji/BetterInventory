@@ -684,8 +684,12 @@ local function align_quick_level_mastery_buttons(view)
 	local sacrifice_button = widgets_by_name and widgets_by_name.quick_sacrifice_button
 	local weapon_stats = view and view._weapon_stats
 
-	if not sacrifice_button or not purchase_button or not purchase_button.position or not purchase_button.size or not weapon_stats or type(weapon_stats._scenegraph_world_position) ~= "function" or type(weapon_stats._scenegraph_size) ~= "function" or type(view._scenegraph_world_position) ~= "function" or type(view._set_scenegraph_position) ~= "function" then
+	if not sacrifice_button or not purchase_button or not purchase_button.position or not purchase_button.size or not weapon_stats or type(weapon_stats.scenegraph_world_position) ~= "function" or type(weapon_stats._scenegraph_size) ~= "function" or type(view._scenegraph_world_position) ~= "function" or type(view._set_scenegraph_position) ~= "function" then
 		return
+	end
+
+	if type(weapon_stats._force_update_scenegraph) == "function" then
+		pcall(weapon_stats._force_update_scenegraph, weapon_stats)
 	end
 
 	local position = purchase_button.position
@@ -694,7 +698,7 @@ local function align_quick_level_mastery_buttons(view)
 	local purchase_offset = purchase_widget and purchase_widget.offset and tonumber(purchase_widget.offset[1]) or 0
 	local sacrifice_offset = sacrifice_button.offset and tonumber(sacrifice_button.offset[1])
 	local purchase_world_position = view:_scenegraph_world_position("purchase_button")
-	local weapon_stats_world_position = weapon_stats:_scenegraph_world_position("grid_background")
+	local weapon_stats_world_position = weapon_stats:scenegraph_world_position("grid_background")
 	local weapon_stats_width = weapon_stats:_scenegraph_size("grid_background")
 	local purchase_world_x = purchase_world_position and tonumber(purchase_world_position[1])
 	local weapon_stats_world_x = weapon_stats_world_position and tonumber(weapon_stats_world_position[1])
