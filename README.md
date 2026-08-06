@@ -1,16 +1,16 @@
 # BetterInventory
 
-> Project status: Phase 1 inventory implementation under active in-game testing; first Hadron and Armoury integrations implemented.
+> Project status: BetterInventory v1.7.2 is a feature-complete inventory and supported-vendor implementation under active in-game compatibility testing. Account-changing workflows remain opt-in and disabled by default.
 >
-> Audit date: 2026-08-03
+> Audit date: 2026-08-05
 
-BetterInventory is intended to be a standalone, modern replacement for the abandoned Inventory2D mod. The goal is larger than putting several inventory cards on one row: BetterInventory should become a safe, responsive and highly configurable presentation and management layer for Darktide items across the Inventory, Hadron, the Armoury/Brunt and Sire Melk.
+BetterInventory is a standalone, modern inventory and item-management layer for Warhammer 40,000: Darktide. It provides responsive item cards, weapon and Curio details, sorting priorities, supported vendor grids, compatibility integrations and optional safety-gated inventory automation.
 
-The initial release should remain a client-side UI and information mod. Read-only inventory analysis can follow. Any feature that buys, sells, discards or otherwise changes account state must remain behind a separate policy and safety gate.
+UI and information features are enabled through normal Mod Options. Features that discard gear or spend Ordo Dockets remain separate, conspicuous and disabled by default; enabling them is an explicit user choice.
 
 ## Current implementation
 
-The first executable vertical slice now lives beside this document as a normal standalone DMF mod:
+The current executable implementation lives beside this document as a normal standalone DMF mod:
 
 ```text
 BetterInventory/
@@ -18,7 +18,9 @@ BetterInventory/
 |-- scripts/mods/BetterInventory/
 |   |-- BetterInventory.lua
 |   |-- BetterInventory_curio_acquisition.lua
+|   |-- BetterInventory_curio_values.lua
 |   |-- BetterInventory_features.lua
+|   |-- BetterInventory_item_customization.lua
 |   |-- BetterInventory_layout.lua
 |   |-- BetterInventory_data.lua
 |   `-- BetterInventory_localization.lua
@@ -89,7 +91,25 @@ It currently covers the character melee, ranged and Curio inventory and provides
 
 The normal/default configuration does not alter filters or backend transactions. The account-changing discard-management group is disabled by default; enabling it still defaults to Manual with confirmation. Morningstar automation and confirmation skipping each require additional explicit choices. The automatic pass is bounded to once per hub entry, retries a failed inventory fetch at most three times, revalidates the character, hub, settings and captured IDs, and never performs repeated purchases or rerolls. The implementation has been statically checked against Darktide 1.12.3 source, but automatic mode still requires in-game passes for popup cancellation, controller navigation, character switching, backend failures, batches over 40 items and every supported resolution before it should be considered stable.
 
-For a manual development install, copy this entire `BetterInventory` directory into `Content/mods/BetterInventory`, add `BetterInventory` to `Content/mods/mod_load_order.txt`, and restart Darktide. Do not install it alongside the original Inventory2D or its compatibility patch during the first test pass because both target the same presentation method.
+## Supported integrations
+
+The following integrations are supported in v1.7.2. BetterInventory has no optional mod dependencies; each integration activates only when its corresponding mod is installed.
+
+- Quick Look Card: independent single-column and grid integration. BetterInventory also provides its own weapon-modifier display, so Quick Look Card is optional.
+- Enhanced Descriptions: rich-text-safe Curio handling with configurable ownership of simplified primary-stat labels.
+- GlobalStore: stylized Multi-Operative Supply cards and sorting, with native and integrated paths available. The supported integrated grid is capped at two-to-three columns.
+- Red Weapons at Home: compatible with red-colored equipment cards when the original mod marks the item accordingly.
+- Alf's DMF Extensions: stable tab layouts through a fixed DMF options schema.
+- Equipped Icon Plus: inactive-loadout equipped badges coexist with BetterInventory's favorite marker.
+- Inspect from Social and Inspect from Party Finder: detailed weapon and Curio cards in Character Overview when inspecting other players.
+- Visible Equipment: Loadout cards coexist with its Cosmetics placement widgets.
+- MyFavorites: color groups, cycling controls and compact favorite markers remain synchronized.
+- Enhanced Character Selection: no known conflict in the current implementation.
+- Name It: optional import/synchronization through BetterInventory's standalone **Custom Item Names and Colors** module.
+
+BetterInventory intentionally leaves Brunt's Armoury, Hadron's Sacrifice Weapons interface, and unrelated custom vendor services unchanged. Do not install it alongside Inventory2D or the Inventory2D Bound by Duty compatibility patch because they modify overlapping inventory presentation paths.
+
+For a manual development install, copy this entire `BetterInventory` directory into `Content/mods/BetterInventory`, add `BetterInventory` to `Content/mods/mod_load_order.txt`, and restart Darktide.
 
 Run the local verification from this directory with:
 
@@ -540,41 +560,17 @@ Each supported element should have an Off/On mode and appropriate size, color an
 
 Settings should support inheritance: a global default, overridden only where the user chooses a custom view/slot profile.
 
-## Roadmap
+## Roadmap and validation status
 
-### Phase 0: technical spike
+### Phases 0–1: completed in v1.7.2
 
-- Create the normal DMF mod skeleton.
-- Chain-hook `InventoryWeaponsView` safely.
-- Render two or three columns using current item blueprints.
-- Preserve pattern/mark, favorite, equipped, rarity and current expertise data.
-- Use managed icon loading/unloading.
-- Demonstrate clean enable/disable behavior.
-- Confirm mouse and controller selection behavior.
+The DMF skeleton, chain-safe inventory hooks, modern weapon and Curio cards, responsive two-to-five-column inventory layouts, settings synchronization, localization, and compatibility foundations are implemented and covered by the local verifier.
 
-Exit criterion: the normal melee/ranged/Curio inventory works without losing current card information or conflicting with the base sort button.
+### Phase 2: supported-view coverage
 
-### Phase 1: BetterInventory MVP
+Implemented views include the character inventory, Entreat Hadron, Requisition Weapons & Curios, GlobalStore's Multi-Operative Supply, and Character Overview. Hadron's Sacrifice Weapons interface, Brunt's Armoury, Sire Melk, and unrelated custom vendor services remain intentionally unchanged.
 
-- Responsive Inventory layout profiles.
-- Correct modern card field placement.
-- Weapon pattern/mark controls.
-- Favorite and equipped marker modes.
-- Current rating selectors and independent visibility.
-- Curio Detail Mode 2.0.
-- Real per-slot controls.
-- English localization structured for translation.
-- Safe settings-driven grid refresh.
-- Compatibility testing with GlobalStore and Item Sorting.
-
-### Phase 2: complete item-view coverage
-
-- Hadron modify view.
-- Hadron sacrifice/barter view.
-- Armoury/Brunt vendor views.
-- Melk vendor views.
-- Vendor prices, currency, owned/sold and warning layouts.
-- Per-view presets and customization.
+Remaining work for this phase is in-game compatibility validation across supported integrations, resolutions, input methods and hot-reload transitions—not the addition of the already implemented view hooks.
 
 ### Phase 3: inventory intelligence, read-only
 
@@ -589,17 +585,14 @@ Exit criterion: the normal melee/ranged/Curio inventory works without losing cur
 
 This phase should evaluate items without buying, selling, discarding or spending currency.
 
-### Phase 4: assisted operations, policy gated
+### Phase 4: experimental operations, policy gated
 
-Potential examples:
+The current branch contains two bounded account-changing workflows:
 
-- Select items matching explicit criteria.
-- Prepare a sale queue for review.
-- Present a candidate purchase with an explanation.
-- Require confirmation before every account-changing transaction or bounded batch.
-- Record a local audit log of requested and confirmed actions.
+- Experimental discard management, disabled by default, with Manual mode and confirmation as its initial state.
+- Automatic Curio Buyer, disabled by default, with explicit filters, target-character validation, sequential purchases and no per-purchase confirmation prompt once enabled.
 
-Bounded operations may enter this phase only after their native API path and failure modes are audited. BetterInventory's one-pass Morningstar cleanup remains experimental, disabled by default, and confirmation-gated unless the user separately opts out; continuous transaction loops remain excluded.
+Both workflows require additional in-game validation and remain separate from the layout core. Continuous transaction loops, rerolls and unattended farming remain excluded.
 
 #### Experimental quick-discard safety design
 
@@ -615,12 +608,12 @@ The Morningstar experiment is scheduled once when `GameplayStateRun` begins and 
 
 The installed `quick_level_mastery` mod is the feature remembered during BetterInventory's initial implementation. It adds an explicit Sacrifice button to Brunt's Armoury and other storefronts. In the Brunt flow, one press checks mastery and affordability, purchases the selected active offer, queues the resulting item for an upgrade when required, groups it by `parent_pattern`, and submits the grouped gear IDs to `Managers.data_service.crafting:extract_weapon_mastery` when the view closes.
 
-This is meaningful precedent for BetterInventory's Phase 4: a bounded workflow initiated by a visible user action can combine several ordinary inventory operations under the QoL umbrella. It is not the same risk class as an unattended reroll loop—the installed implementation acts on a selected offer, checks basic preconditions, and does not continuously purchase until arbitrary criteria match. BetterInventory should therefore distinguish:
+This is useful precedent for BetterInventory's bounded workflows: a visible, opt-in action can combine ordinary inventory operations under the QoL umbrella. It is not the same risk class as an unattended reroll loop—the installed implementation checks explicit criteria, validates the target offer and character, and does not continuously purchase until arbitrary criteria match. BetterInventory should therefore distinguish:
 
 - **Assisted operation:** the user selects or reviews a bounded action and triggers it explicitly.
 - **Unattended automation:** the mod repeatedly spends currency or disposes of items while evaluating future results.
 
-The former is a strong candidate for later implementation with better previews, limits and error handling. The latter remains outside the committed roadmap until policy and backend safety are clearer.
+The former is the model used by the current bounded workflows. The latter remains outside the committed roadmap until policy and backend safety are clearer.
 
 Local source references:
 
@@ -642,16 +635,16 @@ It requires answers to all of the following:
 - Can protected items be guaranteed safe despite other mods and delayed backend state?
 - Will the Darktide modding community permit distribution of such a feature?
 
-Until those questions have satisfactory answers, BetterInventory should offer a read-only evaluator and user-confirmed workflows instead of unattended transaction loops.
+Until those questions have satisfactory answers, BetterInventory should keep account-changing workflows bounded, opt-in and separately validated; continuous unattended transaction loops remain excluded.
 
 ## Transaction safety requirements
 
-If BetterInventory ever performs account-changing operations, the transaction subsystem must be isolated from the UI/layout core and meet at least these requirements:
+BetterInventory's account-changing workflows are isolated from the UI/layout core and meet the following safety requirements:
 
 - Disabled by default and clearly marked experimental.
-- No premium-currency operations under any circumstance.
+- No real-money or premium-currency operations; the Automatic Curio Buyer is limited to explicitly filtered Ordo Docket purchases.
 - Explicit per-run opt-in.
-- Dry-run preview showing every proposed action and total cost/proceeds.
+- A dry-run preview for destructive discard operations, with purchase notifications and bounded spend reporting for Curio acquisition.
 - Hard maximum transaction count.
 - Hard currency budget and stop-loss.
 - Never sell equipped, favorited or locked items.
@@ -686,7 +679,7 @@ The original Inventory2D Nexus permissions provide that permission unusually cle
 
 The Bound by Duty compatibility patch uses more restrictive permissions: its author requires permission for modification or asset reuse and prohibits re-uploading.
 
-The current BetterInventory technical spike is a standalone implementation rather than a repackaged copy. It uses a different module structure, current Darktide APIs, chain-safe DMF hooks, the game's managed icon lifecycle and new layout/name-fitting logic. It does not ship Inventory2D files, compatibility-patch files or third-party assets. That independent implementation substantially reduces copyright risk, but transparent attribution remains both ethically appropriate and required if any original Inventory2D material is ever incorporated.
+The current BetterInventory implementation is standalone rather than a repackaged copy. It uses a different module structure, current Darktide APIs, chain-safe DMF hooks, the game's managed icon lifecycle and new layout/name-fitting logic. It does not ship Inventory2D files, compatibility-patch files or third-party assets. That independent implementation substantially reduces copyright risk, but transparent attribution remains both ethically appropriate and required if any original Inventory2D material is ever incorporated.
 
 Nexus Mods also requires uploaders to possess the necessary rights and to acknowledge the authors of mods used in further modifications or enhancements. BetterInventory may accurately identify its maintainer as the author of its new implementation, but should not imply that the original Inventory2D concept or implementation was created by the BetterInventory maintainer.
 
@@ -698,7 +691,7 @@ Recommended strategy:
 4. Independently implement the factual API adaptations required by the current game.
 5. Audit every additional mod separately before integrating anything: feature ideas may be independently reimplemented, while code, icons, translations and other assets require compatible permission or a licence.
 6. Preserve dated evidence of relevant Nexus permissions and comply with any open-source licence terms.
-7. Keep a `CREDITS.md` or equivalent attribution before public release.
+7. Keep the attribution section in the public documentation, or add a `CREDITS.md`, before public release.
 
 Suggested public attribution:
 
@@ -770,4 +763,4 @@ References:
 
 ## Immediate next validation
 
-The next step is an in-game smoke-test matrix covering the existing character inventories, Entreat Hadron, Requisition Weapons & Curios and GlobalStore Multi-Operative Supply. Verify the Sorting and Darktide Native Sorting sections, controller selection and scrolling, active/owned/unaffordable cards, and GlobalStore character-footer placement at two or three columns (inventory tabs additionally cover four and five). Confirm that disabling Mod Integration: GlobalStore restores its native cards and sorting. Hot enable/disable and coexistence with GlobalStore and active sorting/information mods also need validation.
+The next validation step is an in-game smoke-test matrix covering character inventories, Character Overview, Entreat Hadron, Requisition Weapons & Curios and GlobalStore Multi-Operative Supply. Verify Sorting and Darktide Native Sorting, controller selection and scrolling, active/owned/unaffordable cards, character-footer placement at two or three columns, inventory layouts at four and five columns, the discard confirmation and revalidation paths, and the Automatic Curio Buyer character/wallet path. Confirm that disabling each integration restores its native presentation. Hot enable/disable and coexistence with the supported integrations still require runtime validation.

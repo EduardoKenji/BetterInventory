@@ -1,8 +1,8 @@
 # DMF options architecture and Alf's DMF Extensions compatibility
 
-Date: 2026-08-04
+Date: 2026-08-05
 
-Status: adopted on `fix/alfs-dmf-tabs-compatibility` in commit `d054567`
+Status: adopted on `main` and carried into BetterInventory v1.7.2. The original compatibility fix was developed on `fix/alfs-dmf-tabs-compatibility` and is now part of the release branch.
 
 ## Decision
 

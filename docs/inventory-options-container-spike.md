@@ -1,7 +1,9 @@
 # Inventory options container research spike
 
-Date: 2026-08-03  
+Date: 2026-08-03 (historical design spike)
 Branch: `research/inventory-options-container`
+
+Status: implemented on `main` for v1.7.2. The inventory options panel is enabled by default, retains the loose-widget path as a guarded fallback, and remains subject to in-game input and resolution validation.
 
 ## Outcome
 
@@ -17,7 +19,7 @@ The important constraint is that scrolling cannot be added safely by drawing a s
 
 ## Prototype status
 
-The first guarded implementation now exists on this branch behind the default-off `enable_inventory_options_panel_prototype` setting. It:
+The implementation described by this spike was carried into `main` behind `enable_inventory_options_panel_prototype`, which is enabled by default in v1.7.2. It:
 
 - creates one `ViewElementGrid` through the inventory view's managed element lifecycle;
 - uses a terminal background, native mask and scrollbar;
@@ -136,7 +138,7 @@ Recommended initial state:
 - Item Discard Management: expanded while the experimental feature is enabled;
 - native discard workflow: only Sorting exists, preserving today's behavior.
 
-For the first implementation, collapse state should be session-local to the live view. Once interaction has been validated, it can be persisted with two account-wide DMF settings. Persisting it immediately would make a broken or off-screen prototype harder for users to recover from.
+Collapse state remains session-local to the live view. Persisting it is intentionally deferred so a broken or off-screen layout can recover when the view is reopened.
 
 DMF's mod-options screen has its own persisted collapsed-widget machinery, but that implementation is specific to DMF's options data model and should not be copied into the inventory view. Only its state-management pattern is relevant.
 
@@ -155,7 +157,7 @@ When Darktide's native discard panel is active:
 
 ## Risks and test gates
 
-Before replacing the current widgets on `main`, a guarded prototype should pass:
+Remaining v1.7.2 in-game regression gates are:
 
 1. Mouse wheel scrolls the options only while the pointer is over the panel.
 2. Inventory scrolling still works normally outside it.
@@ -168,7 +170,7 @@ Before replacing the current widgets on `main`, a guarded prototype should pass:
 9. `1600x900`, `1920x1080`, `1920x1200`, `2560x1440` and `3840x2160` keep the panel within the safe canvas.
 10. Repeated entry/exit and `Ctrl+Shift+R` do not retain an orphan renderer, viewport or widget.
 
-## Proposed implementation sequence
+## Historical implementation sequence
 
 1. Add a dedicated `BetterInventory_inventory_options_panel.lua` module and custom row blueprints.
 2. Add a default-off research switch so the existing UI remains the fallback during in-game validation.
@@ -181,4 +183,4 @@ Before replacing the current widgets on `main`, a guarded prototype should pass:
 
 ## Decision
 
-Proceed with a guarded `ViewElementGrid` prototype. A simple framed collection of the existing root widgets would prove only the easiest part and would need to be discarded before scrolling could work. Migrating directly to Darktide's managed grid gives the bounded rectangle, clipping, scrollbar and lifecycle as one coherent system while preserving BetterInventory's existing settings and discard safety logic.
+The spike's decision was to proceed with a guarded `ViewElementGrid` prototype. That prototype is now part of the v1.7.2 implementation: it provides the bounded rectangle, clipping, scrollbar and lifecycle while preserving BetterInventory's existing settings and discard safety logic.

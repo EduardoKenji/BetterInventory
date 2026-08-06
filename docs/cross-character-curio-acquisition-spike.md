@@ -1,18 +1,20 @@
 # Cross-character Curio acquisition research spike
 
-Date: 2026-08-04
+Date: 2026-08-04 (historical research)
 
 Branch: `spike/cross-character-curio-acquisition`
 
-BetterInventory version: `1.2.0` (unchanged)
+Research baseline version: `1.2.0` (superseded by the v1.7.2 implementation on `main`)
 
-## Outcome
+> This document records the preimplementation design and validation gates. The Automatic Curio Buyer described here was implemented after the spike: it is disabled by default, targets the Armoury Credits storefront, supports class or character filters, revalidates offers and purchases through the target character's wallet. The historical gates below remain useful for in-game regression testing; they are not a statement that the feature is still scan-only.
+
+## Historical outcome
 
 Scanning Curio offers for every character and filtering them against configurable rules is feasible and already proven by CuriosChecker and GlobalStore.
 
 Purchasing a matching offer for a character other than the currently selected character also appears technically feasible. Darktide's offer object retains the target character ID, and the backend exposes wallets by explicit character ID. The important constraint is that BetterInventory must supply the target character's wallet explicitly; the ordinary `StoreService.purchase_item` path resolves the currently selected character's wallets and is unsafe for a cross-character transaction.
 
-The feature should be developed in three gated stages:
+The preimplementation plan was to develop the feature in three gated stages:
 
 1. Scan and notify only.
 2. Show a reviewed batch and prompt before each purchase or batch.
@@ -313,6 +315,4 @@ Automatic mode can be unlocked only after all prompted tests pass. It should rem
 
 ## Decision
 
-Proceed with a scan-only prototype on a future feature branch. The requested capability fits BetterInventory if it remains a modular, optional Curio-management feature.
-
-Do not implement unattended purchasing first. The correct next deliverable is a dedicated scanner plus pure matcher and review output. After its results match CuriosChecker across all characters, add a single-purchase prompted proof using the explicitly targeted wallet path. Only then consider the automatic mode.
+The original decision was to proceed with a scan-only prototype on a future feature branch and to gate any automatic mode behind explicit validation. That work is now superseded by the v1.7.2 implementation on `main`, which retains the proposed safeguards while making automatic purchasing an explicit opt-in feature.
