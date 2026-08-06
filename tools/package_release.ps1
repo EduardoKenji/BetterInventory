@@ -14,6 +14,7 @@ $runtimeFiles = [ordered]@{
 	"$archiveRoot/scripts/mods/BetterInventory/BetterInventory_curio_values.lua" = Join-Path $scriptRoot "BetterInventory_curio_values.lua"
 	"$archiveRoot/scripts/mods/BetterInventory/BetterInventory_data.lua" = Join-Path $scriptRoot "BetterInventory_data.lua"
 	"$archiveRoot/scripts/mods/BetterInventory/BetterInventory_features.lua" = Join-Path $scriptRoot "BetterInventory_features.lua"
+	"$archiveRoot/scripts/mods/BetterInventory/BetterInventory_item_customization.lua" = Join-Path $scriptRoot "BetterInventory_item_customization.lua"
 	"$archiveRoot/scripts/mods/BetterInventory/BetterInventory_layout.lua" = Join-Path $scriptRoot "BetterInventory_layout.lua"
 	"$archiveRoot/scripts/mods/BetterInventory/BetterInventory_localization.lua" = Join-Path $scriptRoot "BetterInventory_localization.lua"
 }

@@ -11,6 +11,7 @@ $requiredFiles = @(
 	(Join-Path $scriptRoot "BetterInventory_curio_acquisition.lua"),
 	(Join-Path $scriptRoot "BetterInventory_curio_values.lua"),
 	(Join-Path $scriptRoot "BetterInventory_features.lua"),
+	(Join-Path $scriptRoot "BetterInventory_item_customization.lua"),
 	(Join-Path $scriptRoot "BetterInventory_layout.lua"),
 	(Join-Path $scriptRoot "BetterInventory_data.lua"),
 	(Join-Path $scriptRoot "BetterInventory_localization.lua")
@@ -456,6 +457,7 @@ try {
 			"BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_values.lua",
 			"BetterInventory/scripts/mods/BetterInventory/BetterInventory_data.lua",
 			"BetterInventory/scripts/mods/BetterInventory/BetterInventory_features.lua",
+			"BetterInventory/scripts/mods/BetterInventory/BetterInventory_item_customization.lua",
 			"BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout.lua",
 			"BetterInventory/scripts/mods/BetterInventory/BetterInventory_localization.lua"
 		) | Sort-Object
