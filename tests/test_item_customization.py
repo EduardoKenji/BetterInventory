@@ -386,7 +386,18 @@ def main() -> None:
             )
         }
     )
-    globals_.captured_hooks.init(lua.eval("function() end"), view)
+    globals_.captured_hooks.init(
+        lua.eval(
+            """
+            function(initializing_view)
+                assert(type(initializing_view.cb_on_better_inventory_change_name_pressed) == "function")
+                assert(type(initializing_view.cb_on_better_inventory_name_color_pressed) == "function")
+                assert(type(initializing_view.cb_on_better_inventory_background_color_pressed) == "function")
+            end
+            """
+        ),
+        view,
+    )
     globals_.captured_hooks._setup_input_legend(
         lua.eval(
             "function(view) built_legend = table.clone(view._definitions.legend_inputs) end"

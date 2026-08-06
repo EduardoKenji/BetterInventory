@@ -1094,7 +1094,6 @@ ItemCustomization.install = function(mod, InventoryWeaponsView, layout)
 	end)
 
 	mod:hook(InventoryWeaponsView, "init", function(func, view, ...)
-		func(view, ...)
 		view.cb_on_better_inventory_change_name_pressed = function(self)
 			local context = selected_context(mod, self)
 			if context then show_name_editor(mod, context, layout) end
@@ -1107,6 +1106,10 @@ ItemCustomization.install = function(mod, InventoryWeaponsView, layout)
 			local context = selected_context(mod, self)
 			if context then show_color_picker(mod, "background", context, layout) end
 		end
+
+		-- Native init builds the input legend. Register every callback first so
+		-- the legend binds a live function instead of displaying an inert action.
+		return func(view, ...)
 	end)
 
 	mod:hook(InventoryWeaponsView, "_setup_input_legend", function(func, view, ...)

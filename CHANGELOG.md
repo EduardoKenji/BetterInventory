@@ -4,7 +4,7 @@
 
 ### Fixed
 
-- Fixed Change Name silently doing nothing when the shared popup text widget had not yet been cached.
+- Fixed Change Name silently doing nothing because its input-legend callback was registered after Darktide built the legend.
 - Resolve the active popup handler when opening or closing the name editor so recreated constant UI elements cannot leave a stale widget reference.
 
 ## 1.9.1 - 2026-08-06
