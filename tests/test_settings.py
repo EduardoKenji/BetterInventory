@@ -40,9 +40,10 @@ def main() -> None:
 			name_it_force_curio_name_in_detailed_mode = true,
 			curio_content_name_it_curio_name = false,
 			enable_custom_item_name_and_colors = true,
+			inventory_options_controller_focus_keybind = "navigate_secondary_right_pressed",
 			custom_item_name_keybind = "hotkey_menu_special_2",
 			custom_item_name_color_keybind = "hotkey_menu_special_1",
-			custom_item_background_color_keybind = "group_finder_refresh_groups",
+			custom_item_background_color_keybind = "navigate_secondary_left_pressed",
 			custom_item_skip_confirmation_prompts = true,
 			custom_item_preserve_card_shading = true,
 			custom_item_override_weapon_information_color = true,
@@ -877,6 +878,7 @@ def main() -> None:
 		"name_it_force_curio_name_in_detailed_mode",
 		"curio_content_name_it_curio_name",
 		"enable_custom_item_name_and_colors",
+		"inventory_options_controller_focus_keybind",
 		"custom_item_name_keybind",
 		"custom_item_name_color_keybind",
 		"custom_item_background_color_keybind",
@@ -1551,7 +1553,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "1.8.0"
+    assert data.version == "1.9.0"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
@@ -1821,7 +1823,8 @@ def main() -> None:
     assert defaults["enable_custom_item_name_and_colors"] is True
     assert defaults["custom_item_name_keybind"] == "hotkey_menu_special_2"
     assert defaults["custom_item_name_color_keybind"] == "hotkey_menu_special_1"
-    assert defaults["custom_item_background_color_keybind"] == "group_finder_refresh_groups"
+    assert defaults["inventory_options_controller_focus_keybind"] == "navigate_secondary_right_pressed"
+    assert defaults["custom_item_background_color_keybind"] == "navigate_secondary_left_pressed"
     assert defaults["custom_item_skip_confirmation_prompts"] is True
     assert defaults["custom_item_preserve_card_shading"] is True
     assert defaults["custom_item_override_weapon_information_color"] is True

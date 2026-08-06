@@ -205,6 +205,69 @@ local function is_inventory_view(layout, view)
 	return inventory_slot_kind(layout, view) ~= nil
 end
 
+local function inventory_grid_has_right_neighbour(view)
+	local item_grid = view and view._item_grid
+	local selected_index = item_grid and type(item_grid.selected_grid_index) == "function" and item_grid:selected_grid_index()
+	local widgets = item_grid and type(item_grid.widgets) == "function" and item_grid:widgets()
+	local selected_widget = selected_index and widgets and widgets[selected_index]
+	local selected_row = selected_widget and selected_widget.content and selected_widget.content.row
+
+	if type(selected_index) ~= "number" or type(widgets) ~= "table" or type(selected_row) ~= "number" then
+		return false
+	end
+
+	for index = selected_index + 1, #widgets do
+		local widget = widgets[index]
+		local content = widget and widget.content
+		local row = content and content.row
+
+		if type(row) == "number" and row > selected_row then
+			break
+		end
+
+		if row == selected_row and content.hotspot then
+			return true
+		end
+	end
+
+	return false
+end
+
+Features.capture_inventory_controller_navigation = function(view, input_service)
+	if view then
+		view._better_inventory_keep_right_navigation_in_grid = false
+	end
+
+	local weapon_options = view and view._weapon_options_element
+	local item_grid = view and view._item_grid
+
+	if not view or view._using_cursor_navigation ~= false or view._selected_options == true or not weapon_options or not item_grid or not input_service or type(input_service.get) ~= "function" then
+		return false
+	end
+
+	local options_visible = type(weapon_options.visible) == "function" and weapon_options:visible()
+	local options_input_disabled = type(weapon_options.input_disabled) == "function" and weapon_options:input_disabled()
+	local item_grid_input_disabled = type(item_grid.input_disabled) == "function" and item_grid:input_disabled()
+
+	if not options_visible or not options_input_disabled or item_grid_input_disabled or not input_service:get("navigate_right_continuous") or not inventory_grid_has_right_neighbour(view) then
+		return false
+	end
+
+	view._better_inventory_keep_right_navigation_in_grid = true
+
+	return true
+end
+
+Features.consume_inventory_controller_grid_navigation = function(view)
+	local keep_in_grid = view and view._better_inventory_keep_right_navigation_in_grid == true
+
+	if view then
+		view._better_inventory_keep_right_navigation_in_grid = false
+	end
+
+	return keep_in_grid
+end
+
 local function is_armoury_requisition_view(view)
 	return view and view.__class_name == "CreditsVendorView" and view._optional_store_service == nil
 end
@@ -1225,6 +1288,18 @@ Features.add_inventory_sort_toggle_definition = function(mod, layout, definition
 	local adjusted_definitions = table.clone(definitions)
 	local scenegraph = adjusted_definitions.scenegraph_definition
 	local widget_definitions = adjusted_definitions.widget_definitions
+	local focus_action = mod:get("inventory_options_controller_focus_keybind")
+
+	if focus_action and focus_action ~= "off" and type(adjusted_definitions.legend_inputs) == "table" then
+		adjusted_definitions.legend_inputs[#adjusted_definitions.legend_inputs + 1] = {
+			alignment = "right_alignment",
+			display_name = "better_inventory_toggle_panel_focus",
+			input_action = focus_action,
+			visibility_function = function(parent)
+				return parent._using_cursor_navigation == false and parent._better_inventory_options_panel_visible == true
+			end,
+		}
+	end
 
 	if not scenegraph or not widget_definitions then
 		return adjusted_definitions
@@ -1661,10 +1736,77 @@ local function armoury_native_sort_priority_entry(mod, layout, view, setting_id,
 	}
 end
 
-local function panel_entry(view, control_id, height, pass_template, initial_content, bind, refresh)
+local function panel_entry(view, control_id, height, pass_template, initial_content, bind, refresh, controller_targets)
 	local geometry = view._better_inventory_options_panel_geometry
 
+	if type(controller_targets) == "table" and #controller_targets > 0 then
+		initial_content = initial_content or {}
+		initial_content.hotspot = initial_content.hotspot or {}
+
+		if #controller_targets == 1 then
+			pass_template[#pass_template + 1] = {
+				pass_type = "rect",
+				style_id = "better_inventory_controller_focus",
+				style = {
+					color = Color.terminal_corner_selected(55, true),
+					offset = {
+						0,
+						0,
+						2,
+					},
+					size = {
+						geometry.content_width,
+						height,
+					},
+				},
+				visibility_function = function(content)
+					local hotspot = content.hotspot
+
+					return hotspot and (hotspot.is_selected or hotspot.is_focused) or false
+				end,
+			}
+		else
+			-- The grid selects a full-row proxy hotspot so vertical navigation and
+			-- scrolling continue to work. Multi-control rows must visualize only
+			-- the embedded hotspot selected with left/right, not that proxy row.
+			for target_index = 1, #controller_targets do
+				local target_id = controller_targets[target_index]
+				local target_style
+
+				for pass_index = 1, #pass_template do
+					local pass = pass_template[pass_index]
+
+					if pass.content_id == target_id then
+						target_style = pass.style
+						break
+					end
+				end
+
+				if target_style then
+					local target_offset = table.clone(target_style.offset or { 0, 0, 0 })
+					local focus_style = table.clone(target_style)
+
+					target_offset[3] = math.max(2, (tonumber(target_offset[3]) or 0) - 3)
+					focus_style.color = Color.terminal_corner_selected(75, true)
+					focus_style.offset = target_offset
+					focus_style.size = table.clone(target_style.size or { geometry.content_width, height })
+					pass_template[#pass_template + 1] = {
+						pass_type = "rect",
+						style_id = "better_inventory_controller_focus_" .. tostring(target_index),
+						style = focus_style,
+						visibility_function = function(content)
+							local hotspot = content[target_id]
+
+							return hotspot and (hotspot.is_selected or hotspot.is_focused) or false
+						end,
+					}
+				end
+			end
+		end
+	end
+
 	return {
+		controller_targets = controller_targets,
 		control_id = control_id,
 		initial_content = initial_content,
 		pass_template = pass_template,
@@ -1843,7 +1985,7 @@ local function panel_header_entry(mod, layout, view, control_id, section_id, lab
 		local is_collapsed = view._better_inventory_options_panel_collapsed[section_id] == true
 
 		widget.content.chevron = is_collapsed and ">" or "v"
-	end)
+	end, { "hotspot" })
 end
 
 local function panel_sort_entry(mod, layout, view)
@@ -1857,7 +1999,7 @@ local function panel_sort_entry(mod, layout, view)
 		end
 	end, function(widget)
 		widget.content.checked = mod:get("prioritize_equipped_favorites") ~= false
-	end)
+	end, { "hotspot" })
 end
 
 local function panel_perfect_sort_entry(mod, layout, view)
@@ -1871,7 +2013,7 @@ local function panel_perfect_sort_entry(mod, layout, view)
 		end
 	end, function(widget)
 		widget.content.checked = mod:get("prioritize_perfect_roll_weapons") == true
-	end)
+	end, { "hotspot" })
 end
 
 local function panel_mode_entry(mod, layout, view)
@@ -1898,7 +2040,7 @@ local function panel_mode_entry(mod, layout, view)
 			widget.content.better_inventory_mode = mode
 			widget.content.value = mod:localize("quick_discard_mode_" .. mode) .. "  >"
 		end
-	end)
+	end, { "hotspot" })
 end
 
 local function panel_curio_buyer_target_mode_entry(mod, layout, view)
@@ -1930,7 +2072,7 @@ local function panel_curio_buyer_target_mode_entry(mod, layout, view)
 			widget.content.better_inventory_mode = mode
 			widget.content.value = mod:localize("automatic_curio_target_mode_" .. mode) .. "  >"
 		end
-	end)
+	end, { "hotspot" })
 end
 
 local function panel_sub_label_entry(mod, view, control_id, label_id)
@@ -1972,7 +2114,7 @@ local function panel_quick_discard_entry(mod, layout, view)
 				widget.style.rarity_label.text_color = table.clone(rarity_color)
 			end
 		end
-	end)
+	end, { "rarity_hotspot", "discard_hotspot" })
 end
 
 local function panel_stepper_entry(mod, layout, view, control_id, setting_id, label_id, default_value, sync_function, minimum, maximum, step, suffix)
@@ -2011,7 +2153,7 @@ local function panel_stepper_entry(mod, layout, view, control_id, setting_id, la
 			widget.content.better_inventory_value = value
 			widget.content.value = tostring(value) .. suffix
 		end
-	end)
+	end, { "decrease_hotspot", "increase_hotspot" })
 end
 
 local function panel_checkbox_entry(mod, layout, view, control_id, setting_id, label_id, default_enabled, defer_panel_rebuild, sync_function)
@@ -2039,7 +2181,7 @@ local function panel_checkbox_entry(mod, layout, view, control_id, setting_id, l
 		end
 	end, function(widget)
 		widget.content.checked = is_enabled()
-	end)
+	end, { "hotspot" })
 end
 
 local function item_sorting_custom_option_start(view)
@@ -2108,7 +2250,7 @@ local function panel_item_sorting_option_entry(view, option, option_index)
 		end
 	end, function(widget)
 		widget.content.selected = (view._selected_sort_option_index or 1) == option_index
-	end)
+	end, { "hotspot" })
 end
 
 local function panel_type_entry(mod, layout, view)
@@ -2160,7 +2302,7 @@ local function panel_type_entry(mod, layout, view)
 
 			widget.content[config.content_id .. "_checked"] = mod:get(config.setting_id) ~= false
 		end
-	end)
+	end, { "melee_hotspot", "ranged_hotspot", "curio_hotspot" })
 end
 
 local function panel_curio_protection_type_entry(mod, layout, view)
@@ -2221,13 +2363,14 @@ local function panel_curio_protection_type_entry(mod, layout, view)
 
 			widget.content[config.content_id .. "_checked"] = mod:get(config.setting_id) ~= false
 		end
-	end)
+	end, { "health_hotspot", "toughness_hotspot", "wounds_hotspot", "stamina_hotspot" })
 end
 
 local function panel_checkbox_group_entry(mod, layout, view, control_id, settings)
 	local geometry = view._better_inventory_options_panel_geometry
 	local content = {}
 	local passes = {}
+	local controller_targets = {}
 	local gap = 6
 	local width = math.floor((geometry.content_width - gap * math.max(#settings - 1, 0)) / math.max(#settings, 1))
 
@@ -2247,6 +2390,7 @@ local function panel_checkbox_group_entry(mod, layout, view, control_id, setting
 
 		content[config.content_id .. "_checked"] = is_enabled(config)
 		content[config.content_id .. "_label"] = mod:localize(config.label_id)
+		controller_targets[#controller_targets + 1] = config.content_id .. "_hotspot"
 		append_panel_checkbox_passes(passes, config.content_id, x, width, config.content_id .. "_checked", config.content_id .. "_label")
 	end
 
@@ -2270,7 +2414,7 @@ local function panel_checkbox_group_entry(mod, layout, view, control_id, setting
 
 			widget.content[config.content_id .. "_checked"] = is_enabled(config)
 		end
-	end)
+	end, controller_targets)
 end
 
 local function panel_curio_buyer_type_entry(mod, layout, view)
@@ -2366,6 +2510,7 @@ local function panel_curio_buyer_character_entry(mod, layout, view, profiles, fi
 	local content = {}
 	local passes = {}
 	local settings = {}
+	local controller_targets = {}
 	local last_index = math.min(first_index + 1, #profiles)
 	local gap = 6
 	local width = math.floor((geometry.content_width - gap * (last_index - first_index)) / (last_index - first_index + 1))
@@ -2381,6 +2526,7 @@ local function panel_curio_buyer_character_entry(mod, layout, view, profiles, fi
 		}
 		content[content_id .. "_checked"] = curio_acquisition_provider.character_is_enabled(mod, profile.character_id)
 		content[content_id .. "_label"] = character_profile_label(profile, profiles)
+		controller_targets[#controller_targets + 1] = content_id .. "_hotspot"
 		append_panel_checkbox_passes(passes, content_id, x, width, content_id .. "_checked", content_id .. "_label")
 	end
 
@@ -2403,7 +2549,7 @@ local function panel_curio_buyer_character_entry(mod, layout, view, profiles, fi
 
 			widget.content[config.content_id .. "_checked"] = curio_acquisition_provider.character_is_enabled(mod, config.character_id)
 		end
-	end)
+	end, controller_targets)
 end
 
 local function panel_structure_key(mod, view)
@@ -2849,7 +2995,7 @@ Features.setup_inventory_options_panel = function(mod, layout, view, ViewElement
 		title_height = 0,
 		top_padding = geometry.top,
 		use_is_focused_for_navigation = false,
-		use_select_on_focused = false,
+		use_select_on_focused = true,
 		use_terminal_background = true,
 	}
 	local success, panel = pcall(view._add_element, view, ViewElementGrid, INVENTORY_OPTIONS_PANEL_REFERENCE, 25, menu_settings)
@@ -2909,6 +3055,199 @@ Features.setup_inventory_options_panel = function(mod, layout, view, ViewElement
 	end
 
 	return true
+end
+
+local function controller_element_state(element)
+	if not element then
+		return
+	end
+
+	local state = {}
+
+	if type(element.input_disabled) == "function" then
+		state.input_disabled = element:input_disabled()
+	end
+
+	if type(element.selected_grid_index) == "function" then
+		state.selected_index = element:selected_grid_index()
+	end
+
+	return state
+end
+
+local function clear_controller_element_selection(element)
+	if element and type(element.select_grid_index) == "function" then
+		element:select_grid_index()
+	end
+end
+
+local function restore_controller_element(element, state)
+	if not element or not state then
+		return
+	end
+
+	if type(element.disable_input) == "function" and state.input_disabled ~= nil then
+		element:disable_input(state.input_disabled)
+	end
+
+	if type(element.select_grid_index) == "function" then
+		element:select_grid_index(state.selected_index)
+	end
+end
+
+local function set_inventory_options_panel_controller_focus(view, focused)
+	local panel = view and view._better_inventory_options_panel
+	local item_grid = view and view._item_grid
+
+	if not panel or not item_grid then
+		return false
+	end
+
+	if focused then
+		if view._better_inventory_options_panel_controller_focused == true then
+			return true
+		end
+
+		view._better_inventory_options_panel_controller_restore = {
+			discard = controller_element_state(view._discard_items_element),
+			item_grid = controller_element_state(item_grid),
+			weapon_options = controller_element_state(view._weapon_options_element),
+		}
+		view._better_inventory_options_panel_controller_focused = true
+
+		for _, element in pairs({ item_grid, view._weapon_options_element, view._discard_items_element }) do
+			if element then
+				if type(element.disable_input) == "function" then
+					element:disable_input(true)
+				end
+
+				clear_controller_element_selection(element)
+			end
+		end
+
+		if type(panel.disable_input) == "function" then
+			panel:disable_input(false)
+		end
+
+		if type(panel.select_first_index) == "function" then
+			panel:select_first_index()
+		end
+
+		return true
+	end
+
+	local restore = view._better_inventory_options_panel_controller_restore or {}
+
+	view._better_inventory_options_panel_controller_focused = false
+	view._better_inventory_options_panel_controller_restore = nil
+	view._better_inventory_options_panel_controller_target = nil
+	clear_controller_element_selection(panel)
+	restore_controller_element(item_grid, restore.item_grid)
+	restore_controller_element(view._weapon_options_element, restore.weapon_options)
+	restore_controller_element(view._discard_items_element, restore.discard)
+
+	return false
+end
+
+Features.capture_inventory_options_panel_controller_focus = function(mod, layout, view, input_service)
+	if not view or not is_inventory_view(layout, view) then
+		return false
+	end
+
+	local focused = view._better_inventory_options_panel_controller_focused == true
+	local panel_available = mod:get("enable_inventory_options_panel_prototype") == true and mod:get("show_inventory_options_widget") ~= false and view._better_inventory_options_panel_visible == true and view._better_inventory_options_panel and view._better_inventory_options_panel._visible ~= false
+
+	if view._using_cursor_navigation ~= false or not panel_available then
+		if focused then
+			set_inventory_options_panel_controller_focus(view, false)
+		end
+
+		return false
+	end
+
+	local focus_action = mod:get("inventory_options_controller_focus_keybind")
+
+	if focus_action and focus_action ~= "off" and input_service and type(input_service.get) == "function" and input_service:get(focus_action) then
+		focused = set_inventory_options_panel_controller_focus(view, not focused)
+	end
+
+	if focused then
+		-- Native inventory code may revisit its own focus state after previews or
+		-- discard-mode changes. Keep the custom panel as the sole controller owner.
+		for _, element in pairs({ view._item_grid, view._weapon_options_element, view._discard_items_element }) do
+			if element and type(element.disable_input) == "function" then
+				element:disable_input(true)
+			end
+		end
+
+		local panel = view._better_inventory_options_panel
+
+		if panel and type(panel.selected_grid_index) == "function" and not panel:selected_grid_index() and type(panel.select_first_index) == "function" then
+			panel:select_first_index()
+		end
+	end
+
+	return focused
+end
+
+Features.update_inventory_options_panel_controller_selection = function(view, input_service)
+	if not view or view._better_inventory_options_panel_controller_focused ~= true then
+		return false
+	end
+
+	local panel = view._better_inventory_options_panel
+	local selected_widget = panel and type(panel.selected_grid_widget) == "function" and panel:selected_grid_widget()
+	local entry = selected_widget and selected_widget.content and selected_widget.content.entry
+	local targets = entry and entry.controller_targets
+
+	for _, widget in pairs(view._better_inventory_options_panel_widgets or {}) do
+		local widget_entry = widget.content and widget.content.entry
+
+		for _, target_id in ipairs(widget_entry and widget_entry.controller_targets or {}) do
+			local hotspot = widget.content[target_id]
+
+			if hotspot and target_id ~= "hotspot" then
+				hotspot.is_focused = false
+				hotspot.is_selected = false
+			end
+		end
+	end
+
+	if type(targets) ~= "table" or #targets == 0 then
+		return false
+	end
+
+	local target_state = view._better_inventory_options_panel_controller_target
+
+	if not target_state or target_state.control_id ~= entry.control_id then
+		target_state = {
+			control_id = entry.control_id,
+			index = 1,
+		}
+		view._better_inventory_options_panel_controller_target = target_state
+	end
+
+	if #targets > 1 and input_service and type(input_service.get) == "function" then
+		if input_service:get("navigate_left_continuous") then
+			target_state.index = math.max(target_state.index - 1, 1)
+		elseif input_service:get("navigate_right_continuous") then
+			target_state.index = math.min(target_state.index + 1, #targets)
+		end
+	end
+
+	target_state.index = math.clamp(target_state.index, 1, #targets)
+	local target_hotspot = selected_widget.content[targets[target_state.index]]
+
+	if target_hotspot and targets[target_state.index] ~= "hotspot" then
+		target_hotspot.is_focused = true
+		target_hotspot.is_selected = true
+	end
+
+	return true
+end
+
+Features.inventory_options_panel_controller_focused = function(view)
+	return view and view._better_inventory_options_panel_controller_focused == true
 end
 
 local function scenegraph_rect(owner, scenegraph_id)

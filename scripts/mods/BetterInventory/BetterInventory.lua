@@ -1060,6 +1060,7 @@ local function refresh_option_dependencies()
 	set_option_enabled(option_dependency_entries.custom_item_override_weapon_information_name_color, custom_item_colors_enabled, custom_item_colors_reason)
 
 	for _, setting_id in ipairs({
+		"inventory_options_controller_focus_keybind",
 		"curio_information_width_percent",
 		"curio_preview_height_percent",
 		"inventory_options_panel_width",
@@ -1254,6 +1255,7 @@ local function bind_option_dependencies(options_templates)
 		"custom_item_override_weapon_information_color",
 		"custom_item_override_weapon_rarity_keyword_color",
 		"custom_item_override_weapon_information_name_color",
+		"inventory_options_controller_focus_keybind",
 		"curio_information_width_percent",
 		"curio_preview_height_percent",
 		"enable_lantern_inventory_section",
@@ -1517,6 +1519,13 @@ function mod.on_enabled()
 end
 
 function mod.on_all_mods_loaded()
+	-- v1.8.0 used R/R3 for Background Color, which collides with Darktide's
+	-- native inventory discard action. Move that legacy default to A/LT once;
+	-- explicitly configured alternatives are preserved.
+	if mod:get("custom_item_background_color_keybind") == "group_finder_refresh_groups" then
+		mod:set("custom_item_background_color_keybind", "navigate_secondary_left_pressed", true)
+	end
+
 	ItemCustomization.on_all_mods_loaded(mod)
 	Features.set_lantern_integration(mod, get_mod("Lantern of the Omnissiah"))
 	Features.set_item_sorting_integration(get_mod("ItemSorting"))
@@ -1710,6 +1719,33 @@ if ensure_class_method(CreditsVendorView, "_setup_sort_options") then
 	end)
 end
 
+if ensure_class_method(InventoryWeaponsView, "update") then
+	mod:hook(InventoryWeaponsView, "update", function(func, view, dt, t, input_service)
+		Features.capture_inventory_options_panel_controller_focus(mod, Layout, view, input_service)
+		Features.capture_inventory_controller_navigation(view, input_service)
+		local results = pack_values(func(view, dt, t, input_service))
+
+		Features.update_inventory_sort_toggle(mod, Layout, view)
+		Features.update_inventory_options_panel_controller_selection(view, input_service)
+
+		return unpack_values(results, 1, results.n)
+	end)
+end
+
+if ensure_class_method(InventoryWeaponsView, "_handle_input") then
+	mod:hook(InventoryWeaponsView, "_handle_input", function(func, view, input_service, ...)
+		if Features.inventory_options_panel_controller_focused(view) or Features.consume_inventory_controller_grid_navigation(view) then
+			-- View elements process directional input before the parent view. The
+			-- multi-column item grid has already moved right this frame, so bypass
+			-- only InventoryWeaponsView's single-column-era focus transfer while
+			-- retaining the normal ItemGridViewBase/BaseView input chain.
+			return ItemGridViewBase._handle_input(view, input_service, ...)
+		end
+
+		return func(view, input_service, ...)
+	end)
+end
+
 mod:hook_safe(InventoryWeaponsView, "cb_on_favorite_pressed", function(view)
 	if mod:get("prioritize_equipped_favorites") ~= false then
 		Features.resort_inventory(mod, Layout, view)
@@ -1720,10 +1756,6 @@ mod:hook_safe(InventoryWeaponsView, "_equip_item", function(view)
 	if mod:get("prioritize_equipped_favorites") ~= false then
 		Features.resort_inventory(mod, Layout, view)
 	end
-end)
-
-mod:hook_safe(InventoryWeaponsView, "update", function(view)
-	Features.update_inventory_sort_toggle(mod, Layout, view)
 end)
 
 mod:hook_safe(InventoryWeaponsView, "on_exit", function(view)
