@@ -4365,6 +4365,18 @@ Features.update_inventory_sort_toggle = function(mod, layout, view)
 		return
 	end
 
+	if mod:get("show_inventory_options_widget") == false then
+		local panel = view._better_inventory_options_panel
+
+		set_legacy_inventory_options_visible(view, false)
+
+		if panel then
+			set_options_panel_visible(view, panel, false)
+		end
+
+		return
+	end
+
 	if update_inventory_options_panel(mod, layout, view, slot_kind) then
 		return
 	end

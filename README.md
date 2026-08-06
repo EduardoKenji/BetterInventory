@@ -1,6 +1,6 @@
 # BetterInventory
 
-> Project status: BetterInventory v1.7.3 is a feature-complete inventory and supported-vendor implementation under active in-game compatibility testing. Account-changing workflows remain opt-in and disabled by default.
+> Project status: BetterInventory v1.7.4 is a feature-complete inventory and supported-vendor implementation under active in-game compatibility testing. Account-changing workflows remain opt-in and disabled by default.
 >
 > Audit date: 2026-08-06
 
@@ -93,7 +93,7 @@ The normal/default configuration does not alter filters or backend transactions.
 
 ## Supported integrations
 
-The following integrations are supported in v1.7.3. BetterInventory has no optional mod dependencies; each integration activates only when its corresponding mod is installed.
+The following integrations are supported in v1.7.4. BetterInventory has no optional mod dependencies; each integration activates only when its corresponding mod is installed.
 
 - Quick Look Card: independent single-column and grid integration. BetterInventory also provides its own weapon-modifier display, so Quick Look Card is optional.
 - Enhanced Descriptions: rich-text-safe Curio handling with configurable ownership of simplified primary-stat labels.

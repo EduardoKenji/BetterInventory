@@ -1,5 +1,16 @@
 # BetterInventory changelog
 
+## 1.7.4 - 2026-08-06
+
+### Added
+
+- Added a default-on option to show or hide the complete inventory options widget without changing its saved sorting or item-management settings.
+- Added signed inventory and GlobalStore width stress controls for validating responsive cards and sibling-panel positioning.
+
+### Fixed
+
+- Anchored the inventory options widget to the live weapon-information right edge and native button-section bottom edge across centered ultrawide workspaces.
+
 ## 1.7.3 - 2026-08-06
 
 ### Added

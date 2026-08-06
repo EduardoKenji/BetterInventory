@@ -50,6 +50,12 @@ local localization = {
 	inventory_sorting_group = {
 		en = "Inventory sorting",
 	},
+	show_inventory_options_widget = {
+		en = "Show inventory options widget",
+	},
+	show_inventory_options_widget_tooltip = {
+		en = "Shows BetterInventory's Sorting and item-management widget in melee, ranged and Curio inventories. Turning it off hides both the scalable panel and the compact fallback without changing their saved settings.",
+	},
 	prioritize_equipped_favorites = {
 		en = "Equipped and favorited items at the top",
 	},
@@ -1817,6 +1823,8 @@ local zh_cn = {
 	automatic_curio_partial_failure = "- 后端验证失败后，剩余购买队列已停止。",
 	inventory_slots_group = "适用库存",
 	inventory_sorting_group = "库存排序",
+	show_inventory_options_widget = "显示库存选项组件",
+	show_inventory_options_widget_tooltip = "在近战、远程和珍品库存中显示 BetterInventory 的排序和物品管理组件。关闭后会隐藏可扩展面板及紧凑备用控件，但不会更改已保存的设置。",
 	prioritize_equipped_favorites = "已装备和收藏物品置顶",
 	prioritize_equipped_favorites_tooltip = "在近战、远程和珍品库存中，将已装备物品置于最前，收藏物品置于其后，同时仍由所选的原生排序方式排列各组。同步开关显示在珍品详情或武器操作按钮下方，并会在游戏会话间保存。",
 	prioritize_perfect_roll_weapons = "完美属性武器置顶",

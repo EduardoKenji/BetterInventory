@@ -193,6 +193,7 @@ def main() -> None:
         test_mod = {
             settings = {
                 prioritize_equipped_favorites = true,
+				show_inventory_options_widget = true,
             },
             get = function(self, setting_id)
                 return self.settings[setting_id]
@@ -1534,6 +1535,18 @@ def main() -> None:
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert prototype_view._widgets_by_name[sort_label_id].content.visible is False
     assert prototype_view._widgets_by_name[toggle_id].content.visible is False
+
+    mod.settings.show_inventory_options_widget = False
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert prototype_panel.visible is False
+    assert prototype_panel.input_disabled is True
+    assert prototype_view._widgets_by_name[sort_label_id].content.visible is False
+    assert prototype_view._widgets_by_name[toggle_id].content.visible is False
+    mod.settings.show_inventory_options_widget = True
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert prototype_panel.visible is True
+    assert prototype_panel.input_disabled is False
+
     assert prototype_panel.widgets["better_inventory_perfect_sort_priority"] is not None
     assert (
         prototype_panel.widgets[

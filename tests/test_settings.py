@@ -73,6 +73,7 @@ def main() -> None:
 			debug_inventory_window_width_adjustment_percent = 30,
 			debug_adjust_global_store_window_width = false,
 			debug_global_store_window_width_adjustment_percent = 30,
+			show_inventory_options_widget = true,
 			automatic_card_height = true,
 			show_weapon_perks = false,
 			show_weapon_blessings = true,
@@ -1503,7 +1504,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "1.7.3"
+    assert data.version == "1.7.4"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
@@ -1823,6 +1824,7 @@ def main() -> None:
     assert defaults["curio_display_profile"] == "detailed"
     assert defaults["show_curio_item_level"] is True
     assert defaults["prioritize_equipped_favorites"] is True
+    assert defaults["show_inventory_options_widget"] is True
     assert defaults["prioritize_perfect_roll_weapons"] is True
     assert defaults["enable_inventory_options_panel_prototype"] is True
     assert defaults["automatic_curio_target_mode"] == "characters"
