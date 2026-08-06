@@ -1521,12 +1521,33 @@ function mod.on_all_mods_loaded()
 	Features.set_lantern_integration(mod, get_mod("Lantern of the Omnissiah"))
 end
 
-local function lower_character_overview_equipped_icon(widget)
+local function lantern_recommendations_active()
+	return type(Features.lantern_recommendations_active) == "function" and Features.lantern_recommendations_active()
+end
+
+local function synchronize_character_overview_equipped_icon(widget, lantern_active)
 	local equipped_style = widget and widget.style and widget.style.equipped_icon
 	local offset = equipped_style and equipped_style.offset
+	local content = widget and widget.content
 
-	if offset then
-		offset[2] = 34
+	if not offset or not content then
+		return
+	end
+
+	if content.better_inventory_equipped_icon_original_y == nil then
+		content.better_inventory_equipped_icon_original_y = offset[2] or 2
+	end
+
+	offset[2] = lantern_active and 34 or content.better_inventory_equipped_icon_original_y
+end
+
+
+local function synchronize_character_overview_equipped_icons(view)
+	local widgets = view and view._loadout_widgets
+	local lantern_active = lantern_recommendations_active()
+
+	for index = 1, #(widgets or {}) do
+		synchronize_character_overview_equipped_icon(widgets[index], lantern_active)
 	end
 end
 
@@ -1803,7 +1824,7 @@ if ensure_class_method(InventoryView, "_create_entry_widget_from_config") then
 			local results = pack_values(func(view, resolved_config, suffix, callback_name, secondary_callback_name, optional_scenegraph_id))
 
 			if adjust_runtime_equipped_icon then
-				lower_character_overview_equipped_icon(results[1])
+				synchronize_character_overview_equipped_icon(results[1], lantern_recommendations_active())
 			end
 
 			return unpack_values(results, 1, results.n)
@@ -1829,6 +1850,10 @@ if ensure_class_method(InventoryView, "_create_entry_widget_from_config") then
 		return create_widget(config)
 	end)
 end
+
+mod:hook_safe(InventoryView, "update", function(view)
+	synchronize_character_overview_equipped_icons(view)
+end)
 
 local function present_additional_grid(func, view, layout, on_present_callback, setting_id, configuration)
 	if mod:get("enable_grid_layout") == false or mod:get(setting_id) == false then

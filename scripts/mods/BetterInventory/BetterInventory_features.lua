@@ -2323,8 +2323,22 @@ local function panel_structure_key(mod, view)
 	return tostring(key) .. ":" .. tostring(view._better_inventory_lantern_panel_signature or "")
 end
 
+local function lantern_is_enabled()
+	if not lantern_mod then
+		return false
+	end
+
+	if type(lantern_mod.is_enabled) ~= "function" then
+		return true
+	end
+
+	local success, enabled = pcall(lantern_mod.is_enabled, lantern_mod)
+
+	return success and enabled == true
+end
+
 local function lantern_recommendations_enabled()
-	if not lantern_mod or type(lantern_mod.get) ~= "function" then
+	if not lantern_is_enabled() or type(lantern_mod.get) ~= "function" then
 		return false
 	end
 
@@ -2332,6 +2346,8 @@ local function lantern_recommendations_enabled()
 
 	return success and enabled == true
 end
+
+Features.lantern_recommendations_active = lantern_recommendations_enabled
 
 local function lantern_weapon_signature(view)
 	local slot = view and view._selected_slot
@@ -2405,8 +2421,9 @@ end
 Features.update_lantern_inventory_section = function(mod, view)
 	local selected_slot_name = view and view._selected_slot and view._selected_slot.name
 	local separate_curio_panel = mod:get("keep_lantern_curio_panel_separate") ~= false and type(selected_slot_name) == "string" and string.match(selected_slot_name, "^slot_attachment_") ~= nil
+	local blocked_by_native_view_state = view and (view._discard_items_element ~= nil or view._item_compare_toggled == true)
 
-	if not lantern_mod or not lantern_overlay or separate_curio_panel or mod:get("enable_lantern_inventory_section") ~= true or mod:get("enable_inventory_options_panel_prototype") ~= true or mod:get("show_inventory_options_widget") == false or not view or not view._better_inventory_options_panel or view._better_inventory_options_panel_visible ~= true or view._better_inventory_options_panel._visible == false or view._filter_panel_element and view._show_filter_panel == true or not lantern_recommendations_enabled() or not lantern_preview_is_active(view) then
+	if not lantern_mod or not lantern_overlay or separate_curio_panel or blocked_by_native_view_state or mod:get("enable_lantern_inventory_section") ~= true or mod:get("enable_inventory_options_panel_prototype") ~= true or mod:get("show_inventory_options_widget") == false or not view or not view._better_inventory_options_panel or view._better_inventory_options_panel_visible ~= true or view._better_inventory_options_panel._visible == false or view._filter_panel_element and view._show_filter_panel == true or not lantern_recommendations_enabled() or not lantern_preview_is_active(view) then
 		restore_lantern_weapon_panel(view)
 
 		return false

@@ -1814,7 +1814,11 @@ def main() -> None:
             },
         }
         local integration_mod = {
+            enabled = true,
             _modules = {equipment_overlay = overlay},
+            is_enabled = function(self)
+                return self.enabled
+            end,
             get = function(self, setting_id)
                 return setting_id == "show_recommendations"
             end,
@@ -1860,6 +1864,39 @@ def main() -> None:
         prototype_panel, lantern_proxy
     )
     assert lantern_proxy.content.header == "Updated recommendation"
+
+    # Match Lantern's own native suppression rules while item comparison or
+    # discard management owns the inventory view.
+    prototype_view._item_compare_toggled = True
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert prototype_view._better_inventory_lantern_panel_hosted is False
+    assert prototype_panel.widgets["better_inventory_lantern_section"] is None
+    prototype_view._item_compare_toggled = False
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert prototype_view._better_inventory_lantern_panel_hosted is True
+
+    prototype_view._discard_items_element = lua.table_from({})
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert prototype_view._better_inventory_lantern_panel_hosted is False
+    assert prototype_panel.widgets["better_inventory_lantern_section"] is None
+    prototype_view._discard_items_element = None
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert prototype_view._better_inventory_lantern_panel_hosted is True
+
+    # Runtime disabling Lantern must release the hosted proxy rather than leave
+    # stale recommendation content behind.
+    lantern_mod.enabled = False
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert prototype_view._better_inventory_lantern_panel_hosted is False
+    assert prototype_panel.widgets["better_inventory_lantern_section"] is None
+    assert features.lantern_recommendations_active() is False
+    lantern_mod.enabled = True
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert prototype_view._better_inventory_lantern_panel_hosted is True
+    assert features.lantern_recommendations_active() is True
 
     # Curio recommendations keep Lantern's existing standalone placement by
     # default; users can explicitly opt them into the hosted panel.

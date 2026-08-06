@@ -10,6 +10,8 @@
 ### Fixed
 
 - Moved the equipped marker lower on Character Overview cards so it no longer collides with Lantern's recommendation icon.
+- Made the Character Overview marker offset follow Lantern's live enabled/recommendations state, and restore each card's original placement when inactive.
+- Hid hosted Lantern recommendations during item comparison and discard management, and released stale hosted content when Lantern is disabled at runtime.
 
 ## 1.7.4 - 2026-08-06
 

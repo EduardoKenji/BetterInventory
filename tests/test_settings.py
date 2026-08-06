@@ -156,6 +156,7 @@ def main() -> None:
 		inventory_sort_syncs = 0
 		quick_discard_syncs = 0
 		curio_acquisition_syncs = 0
+		lantern_recommendations_are_active = false
 		profile_discovery_requests = 0
 		last_profile_discovery_force = nil
 		test_features = {
@@ -171,6 +172,7 @@ def main() -> None:
 			sync_curio_acquisition_settings = function() curio_acquisition_syncs = curio_acquisition_syncs + 1 end,
 			morningstar_auto_discard_is_busy = function() return false end,
 			unregister_inventory_view = function() end,
+			lantern_recommendations_active = function() return lantern_recommendations_are_active end,
 		}
 		test_curio_acquisition = {
 			begin_morningstar_pass = function() end,
@@ -212,6 +214,7 @@ def main() -> None:
 		captured_item_grid_init_hook = nil
 		captured_armoury_on_enter_hook = nil
 		captured_character_overview_widget_hook = nil
+		captured_character_overview_update_hook = nil
 		captured_grid_widget_hook = nil
 		captured_grid_update_hook = nil
 		captured_module_errors = 0
@@ -270,6 +273,8 @@ def main() -> None:
         function test_mod:hook_safe(target, method, callback)
             if target == test_dmf and method == "create_mod_options_settings" then
                 captured_options_hook = callback
+			elseif target == test_inventory_view and method == "update" then
+				captured_character_overview_update_hook = callback
             end
         end
 
@@ -383,6 +388,48 @@ def main() -> None:
     )
     assert globals_.overview_equipped_item_calls == 3
     globals_.visible_equipment_available = True
+
+    overview_equipped_widget = lua.table_from(
+        {
+            "content": lua.table_from({}),
+            "style": lua.table_from(
+                {
+                    "equipped_icon": lua.table_from(
+                        {"offset": lua.table_from({1: -2, 2: 2, 3: 16})}
+                    )
+                }
+            ),
+        }
+    )
+    overview_widget_factory = lua.eval(
+        "function(view, config) return config.test_widget, config.test_widget end"
+    )
+    runtime_overview_config = lua.table_from(
+        {
+            "widget_type": "weapon_item_slot",
+            "item_type": "WEAPON_MELEE",
+            "slot": lua.table_from({"name": "slot_primary"}),
+            "test_widget": overview_equipped_widget,
+        }
+    )
+    globals_.captured_character_overview_widget_hook(
+        overview_widget_factory,
+        overview_view,
+        runtime_overview_config,
+        "test",
+        "pressed",
+        "right_pressed",
+        "slot_primary",
+    )
+    assert overview_equipped_widget.style.equipped_icon.offset[2] == 2
+    assert overview_equipped_widget.content.better_inventory_equipped_icon_original_y == 2
+    overview_view._loadout_widgets = lua.table_from([overview_equipped_widget])
+    globals_.lantern_recommendations_are_active = True
+    globals_.captured_character_overview_update_hook(overview_view)
+    assert overview_equipped_widget.style.equipped_icon.offset[2] == 34
+    globals_.lantern_recommendations_are_active = False
+    globals_.captured_character_overview_update_hook(overview_view)
+    assert overview_equipped_widget.style.equipped_icon.offset[2] == 2
 
     runtime_hotspot_style = lua.table_from(
         {

@@ -4056,7 +4056,7 @@ Layout.configure_item_blueprint = function(mod, item_blueprint, grid_width, conf
 		}
 		equipped_icon.style.offset = {
 			-2,
-			configuration.character_overview and 34 or 2,
+			2,
 			16,
 		}
 	end
