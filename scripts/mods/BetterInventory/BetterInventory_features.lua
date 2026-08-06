@@ -3280,6 +3280,34 @@ local function scenegraph_rect(owner, scenegraph_id)
 	}
 end
 
+local function inventory_grid_window_rect(view)
+	local item_grid = view and view._item_grid
+	local title_rect = scenegraph_rect(item_grid, "grid_title_background")
+
+	if title_rect and title_rect.width > 0 then
+		return title_rect
+	end
+
+	-- Older or modified ViewElementGrid definitions may omit the title node.
+	-- Its background still exposes the same horizontal bounds; extend its top
+	-- back by the configured title height to recover the complete window rect.
+	local background_rect = scenegraph_rect(item_grid, "grid_background")
+
+	if not background_rect or background_rect.width <= 0 then
+		return nil
+	end
+
+	local menu_settings = item_grid and item_grid._menu_settings
+	local title_height = math.max(tonumber(menu_settings and menu_settings.title_height) or 0, 0)
+
+	return {
+		x = background_rect.x,
+		y = background_rect.y - title_height,
+		width = background_rect.width,
+		height = background_rect.height + title_height,
+	}
+end
+
 local function armoury_native_sort_panel_position(view)
 	local canvas_width = INVENTORY_VIRTUAL_CANVAS_WIDTH
 	local canvas_position = {
@@ -5039,11 +5067,23 @@ local function update_inventory_options_panel(mod, layout, view, slot_kind)
 	local absolute_y
 
 	if native_discard_active then
-		local expansion = tonumber(view._better_inventory_grid_expansion) or 0
+		local inventory_rect = inventory_grid_window_rect(view)
 
-		parent_id = slot_kind == "curio" and "weapon_stats_pivot" or "weapon_compare_stats_pivot"
-		relative_x = slot_kind == "curio" and 0 or -566 - expansion
-		relative_y = weapon_stats_content_height(view, 660) + 15
+		if inventory_rect then
+			-- Native discard hides the comparison area and leaves the inventory
+			-- window as the stable sibling. Follow its live world rect so expanded
+			-- columns, resolution scaling, and Curio layouts share one placement.
+			absolute_x = inventory_rect.x + inventory_rect.width + INVENTORY_OPTIONS_PANEL_WEAPON_GAP
+			absolute_y = inventory_rect.y
+		else
+			-- Keep the established fallback for the brief setup frame before the
+			-- item-grid scenegraph has resolved.
+			local expansion = tonumber(view._better_inventory_grid_expansion) or 0
+
+			parent_id = slot_kind == "curio" and "weapon_stats_pivot" or "weapon_compare_stats_pivot"
+			relative_x = slot_kind == "curio" and 0 or -566 - expansion
+			relative_y = weapon_stats_content_height(view, 660) + 15
+		end
 	elseif slot_kind == "curio" then
 		relative_x = 0
 		relative_y = weapon_stats_content_height(view, 480) + 15

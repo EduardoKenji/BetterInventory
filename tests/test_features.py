@@ -1573,6 +1573,25 @@ def main() -> None:
             _ui_scenegraph = scenegraph,
             _widgets_by_name = widgets,
             _weapon_stats = weapon_stats,
+            _item_grid = {
+                scenegraph_world_position = function(self, scenegraph_id)
+                    if scenegraph_id == "grid_title_background" then
+                        return {100, 40, 3}
+                    end
+
+                    return {100, 148, 3}
+                end,
+                _scenegraph_size = function(self, scenegraph_id)
+                    if scenegraph_id == "grid_title_background" then
+                        return 680, 108
+                    end
+
+                    return 680, 860
+                end,
+                _menu_settings = {
+                    title_height = 108,
+                },
+            },
             _weapon_options_element = {
 				_pivot_offset = {1220, 60},
                 _menu_settings = {
@@ -2032,8 +2051,20 @@ def main() -> None:
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert len(prototype_panel.layout) == 3
     assert prototype_panel.widgets["better_inventory_discard_header"] is None
-    assert prototype_panel.pivot_x == -546
-    assert prototype_panel.pivot_y == 534
+    assert prototype_panel.pivot_x == 800
+    assert prototype_panel.pivot_y == 40
+
+    # Modified grid definitions may expose only the body background. Recover
+    # the complete window top from its live body rect and configured title.
+    prototype_view._item_grid.scenegraph_world_position = lua.eval(
+        "function(self, id) if id == 'grid_background' then return {120, 168, 3} end end"
+    )
+    prototype_view._item_grid._scenegraph_size = lua.eval(
+        "function(self, id) if id == 'grid_background' then return 700, 840 end end"
+    )
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert prototype_panel.pivot_x == 840
+    assert prototype_panel.pivot_y == 60
 
     prototype_view._discard_items_element = None
 
