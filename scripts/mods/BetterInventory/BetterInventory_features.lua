@@ -51,6 +51,8 @@ local INVENTORY_OPTIONS_PANEL_DEFAULT_MAX_HEIGHT = 360
 local INVENTORY_OPTIONS_PANEL_DEFAULT_ROW_SPACING = 8
 local INVENTORY_OPTIONS_PANEL_DEFAULT_VERTICAL_PADDING = 10
 local INVENTORY_OPTIONS_PANEL_DEFAULT_HORIZONTAL_PADDING = 12
+local INVENTORY_OPTIONS_PANEL_WEAPON_GAP = 20
+local INVENTORY_OPTIONS_PANEL_BUTTON_GAP = 15
 local ARMOURY_NATIVE_SORT_PANEL_REFERENCE = "better_inventory_armoury_native_sort_panel"
 local ARMOURY_NATIVE_SORT_PANEL_WIDTH = 350
 local ARMOURY_NATIVE_SORT_PANEL_HEIGHT = 520
@@ -4164,30 +4166,62 @@ local function update_inventory_options_panel(mod, layout, view, slot_kind)
 	local relative_x
 	local relative_y
 	local parent_id = slot_kind == "curio" and "weapon_stats_pivot" or "weapon_compare_stats_pivot"
+	local absolute_x
+	local absolute_y
 
 	if native_discard_active then
 		local expansion = tonumber(view._better_inventory_grid_expansion) or 0
 
+		parent_id = slot_kind == "curio" and "weapon_stats_pivot" or "weapon_compare_stats_pivot"
 		relative_x = slot_kind == "curio" and 0 or -566 - expansion
 		relative_y = weapon_stats_content_height(view, 660) + 15
 	elseif slot_kind == "curio" then
 		relative_x = 0
 		relative_y = weapon_stats_content_height(view, 480) + 15
 	else
-		local menu_settings = view._weapon_options_element and view._weapon_options_element._menu_settings
+		local weapon_stats = view._weapon_stats
+		local weapon_stats_pivot = weapon_stats and weapon_stats._pivot_offset
+		local weapon_stats_x = weapon_stats_pivot and tonumber(weapon_stats_pivot[1])
+		local weapon_stats_width
+		local weapon_options = view._weapon_options_element
+		local menu_settings = weapon_options and weapon_options._menu_settings
 		local grid_size = menu_settings and menu_settings.grid_size
+		local native_pivot = weapon_options and weapon_options._pivot_offset
+		local native_y = native_pivot and tonumber(native_pivot[2])
+		local native_x = native_pivot and tonumber(native_pivot[1])
 
-		relative_x = 20
-		relative_y = (grid_size and grid_size[2] or 300) + 15
+		if weapon_stats and type(weapon_stats._scenegraph_size) == "function" then
+			local size_success, width = pcall(weapon_stats._scenegraph_size, weapon_stats, "grid_background")
+
+			if size_success then
+				weapon_stats_width = tonumber(width)
+			end
+		end
+
+		if weapon_stats_x and weapon_stats_width and weapon_stats_width > 0 and native_y and native_x and (native_x ~= 0 or native_y ~= 0) then
+			-- Horizontal and vertical placement intentionally use different live
+			-- siblings: stay to the right of the weapon-information rectangle and
+			-- below Darktide's Marks/Cosmetics/Inspect button rectangle.
+			absolute_x = weapon_stats_x + weapon_stats_width + INVENTORY_OPTIONS_PANEL_WEAPON_GAP
+			absolute_y = native_y + (grid_size and grid_size[2] or 300) + INVENTORY_OPTIONS_PANEL_BUTTON_GAP
+		else
+			-- Preserve the old pivot contract only during the brief startup window
+			-- before both live sibling rectangles are available.
+			relative_x = 20
+			relative_y = (grid_size and grid_size[2] or 300) + INVENTORY_OPTIONS_PANEL_BUTTON_GAP
+		end
 	end
 
-	local success, parent_position = pcall(view._scenegraph_world_position, view, parent_id)
+	local success = absolute_x ~= nil and absolute_y ~= nil
+	local parent_position
 
-	if success and parent_position then
-		local unclamped_pivot_x = parent_position[1] + relative_x
-		local panel_width = view._better_inventory_options_panel_geometry and view._better_inventory_options_panel_geometry.width or INVENTORY_OPTIONS_PANEL_DEFAULT_WIDTH
-		local pivot_x = math.min(unclamped_pivot_x, INVENTORY_VIRTUAL_CANVAS_WIDTH - INVENTORY_VIRTUAL_EDGE_MARGIN - panel_width)
-		local pivot_y = parent_position[2] + relative_y
+	if not success then
+		success, parent_position = pcall(view._scenegraph_world_position, view, parent_id)
+	end
+
+	if success and (parent_position or absolute_x) then
+		local pivot_x = absolute_x or parent_position[1] + relative_x
+		local pivot_y = absolute_y or parent_position[2] + relative_y
 
 		if view._better_inventory_options_panel_pivot_x ~= pivot_x or view._better_inventory_options_panel_pivot_y ~= pivot_y then
 			view._better_inventory_options_panel_pivot_x = pivot_x

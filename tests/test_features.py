@@ -1372,6 +1372,11 @@ def main() -> None:
     )
     assert unchanged_malformed.gadget_header.size is None
 
+    view._weapon_stats._pivot_offset = lua.table_from([680, 60])
+    view._weapon_stats._scenegraph_size = lua.eval(
+        "function(self, scenegraph_id) return 520, 700 end"
+    )
+
     prototype_view = lua.execute(
         r"""
         local scenegraph, widgets, weapon_stats = ...
@@ -1384,12 +1389,17 @@ def main() -> None:
             _widgets_by_name = widgets,
             _weapon_stats = weapon_stats,
             _weapon_options_element = {
+				_pivot_offset = {1220, 60},
                 _menu_settings = {
                     grid_size = {420, 300},
                 },
             },
             _scenegraph_world_position = function(self, scenegraph_id)
-				return {self.test_parent_x or 100, 60, 3}
+				if scenegraph_id == "weapon_actions_pivot" then
+					return {self.test_actions_x or 1200, 60, 3}
+				end
+
+				return {100, 60, 3}
             end,
             _add_element = function(self, class, reference_name, layer, settings)
                 local panel = {
@@ -1489,14 +1499,39 @@ def main() -> None:
     assert prototype_panel._ui_scenegraph.grid_content_pivot.position[1] == 10
     assert len(prototype_panel.layout) == 17
     assert prototype_panel.grid_height == 360
+    # X follows the weapon-information right edge; Y independently follows the
+    # bottom edge of Darktide's native Marks/Cosmetics/Inspect buttons.
+    assert prototype_panel.pivot_x == 1220
+    assert prototype_panel.pivot_y == 375
+    prototype_view._weapon_stats._pivot_offset[1] = 760
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert prototype_panel.pivot_x == 1300
+    prototype_view._weapon_options_element._pivot_offset[2] = 100
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert prototype_panel.pivot_x == 1300
+    assert prototype_panel.pivot_y == 415
+    # Moving only the native buttons horizontally must not detach Sorting from
+    # the weapon-information right edge.
+    prototype_view._weapon_options_element._pivot_offset[1] = 1800
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert prototype_panel.pivot_x == 1300
+    prototype_view._weapon_stats._pivot_offset[1] = 680
+    prototype_view._weapon_options_element._pivot_offset[1] = 1220
+    prototype_view._weapon_options_element._pivot_offset[2] = 60
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert prototype_panel.pivot_x == 1220
+    assert prototype_panel.pivot_y == 375
+
+    # Before Darktide resolves the native element, fall back to the comparison
+    # pivot it normally uses for the final visible placement.
+    prototype_view._weapon_options_element._pivot_offset[1] = 0
+    prototype_view._weapon_options_element._pivot_offset[2] = 0
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert prototype_panel.pivot_x == 120
     assert prototype_panel.pivot_y == 375
-    prototype_view.test_parent_x = 1800
+    prototype_view._weapon_options_element._pivot_offset[1] = 1220
+    prototype_view._weapon_options_element._pivot_offset[2] = 60
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
-    assert prototype_panel.pivot_x == 1459
-    prototype_view.test_parent_x = 100
-    features.update_inventory_sort_toggle(mod, layout, prototype_view)
-    assert prototype_panel.pivot_x == 120
     assert prototype_view._widgets_by_name[sort_label_id].content.visible is False
     assert prototype_view._widgets_by_name[toggle_id].content.visible is False
     assert prototype_panel.widgets["better_inventory_perfect_sort_priority"] is not None
