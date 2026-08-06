@@ -672,6 +672,44 @@ local function is_armoury_sort_view(view)
 	return is_armoury_requisition_view(view) or is_global_store_view(view)
 end
 
+local function align_quick_level_mastery_buttons(view)
+	local expansion = tonumber(view and view._better_inventory_armoury_grid_expansion) or 0
+
+	if expansion <= 0 then
+		return
+	end
+
+	-- Quick Level Mastery adds its Sacrifice widget under Darktide's shared
+	-- purchase_button scenegraph node. Its _create_widgets hook restores that
+	-- node to the unexpanded native X position, while BetterInventory has already
+	-- moved the weapon-information panel and native action group to the right.
+	-- Detect the optional child widget instead of requiring the other mod.
+	local widgets_by_name = view and view._widgets_by_name
+	local ui_scenegraph = view and view._ui_scenegraph
+	local purchase_button = ui_scenegraph and ui_scenegraph.purchase_button
+
+	if not widgets_by_name or not widgets_by_name.quick_sacrifice_button or not purchase_button or not purchase_button.position or type(view._set_scenegraph_position) ~= "function" then
+		return
+	end
+
+	local previous_expansion = tonumber(view._better_inventory_quick_level_mastery_button_expansion) or 0
+	local delta = expansion - previous_expansion
+
+	if delta == 0 then
+		return
+	end
+
+	local position = purchase_button.position
+	local x = position[1]
+
+	if type(x) ~= "number" then
+		return
+	end
+
+	view:_set_scenegraph_position("purchase_button", x + delta, position[2], position[3])
+	view._better_inventory_quick_level_mastery_button_expansion = expansion
+end
+
 -- Darktide class tables can contain the exact same inherited function object.
 -- Give each target class its own forwarder before DMF hooks it, preventing
 -- duplicate-hook detection and keeping every view in the normal hook chain.
@@ -1821,6 +1859,8 @@ mod:hook(CreditsVendorView, "on_enter", function(func, view, ...)
 			20,
 		})
 	end
+
+	align_quick_level_mastery_buttons(view)
 
 	return result
 end)
