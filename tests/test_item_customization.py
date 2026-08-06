@@ -174,8 +174,23 @@ def main() -> None:
     assert globals_.settings_flushes == 0
     customization.update_runtime()
     assert globals_.settings_flushes == 1
+
+    assert customization.update(
+        mod, "bounded-name", lua.table_from({"name": "  A\n" + ("B" * 100) + "  "})
+    ) is True
+    bounded_name = customization.get(mod, "bounded-name").name
+    assert "\n" not in bounded_name
+    assert not bounded_name.startswith(" ")
+    assert not bounded_name.endswith(" ")
+    assert len(bounded_name) == 80
+    assert customization.update(
+        mod, "bounded-name", lua.table_from({"name": " \t\n "})
+    ) is True
+    assert customization.get(mod, "bounded-name") is None
     customization.update_runtime()
-    assert globals_.settings_flushes == 1
+    assert globals_.settings_flushes == 2
+    customization.update_runtime()
+    assert globals_.settings_flushes == 2
 
     context = lua.table_from(
         {

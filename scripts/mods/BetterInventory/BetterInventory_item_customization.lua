@@ -5,6 +5,7 @@ local STORAGE_SETTING_ID = "custom_item_name_and_colors"
 local NAME_IT_OWNS_NAMES_SETTING_ID = "_custom_item_name_it_owns_names"
 local INPUT_WIDGET_ID = "better_inventory_name_input"
 local NAME_EDITOR_DESCRIPTION = "Enter a custom name. Leave it blank to restore the default name."
+local MAX_NAME_LENGTH = 80
 local DEFAULT_NAME_COLOR = { 255, 220, 230, 210 }
 local DEFAULT_BACKGROUND_COLOR = { 255, 45, 55, 45 }
 local cached_records = {}
@@ -13,6 +14,34 @@ local input_widget
 local show_input_field = false
 local installed = false
 local persistence_pending = false
+
+local function normalize_name(value)
+	if type(value) ~= "string" then
+		return
+	end
+
+	-- Keep names single-line and prevent invisible whitespace-only records.
+	value = string.gsub(value, "[%c]", " ")
+	value = string.gsub(value, "%s+", " ")
+	value = string.gsub(value, "^%s+", "")
+	value = string.gsub(value, "%s+$", "")
+
+	if value == "" then
+		return
+	end
+
+	local utf8 = rawget(_G, "Utf8")
+
+	if utf8 and type(utf8.string_length) == "function" and type(utf8.sub_string) == "function" then
+		if utf8.string_length(value) > MAX_NAME_LENGTH then
+			value = utf8.sub_string(value, 1, MAX_NAME_LENGTH)
+		end
+	elseif #value > MAX_NAME_LENGTH then
+		value = string.sub(value, 1, MAX_NAME_LENGTH)
+	end
+
+	return value
+end
 
 local function clone_color(color, fallback)
 	local source = type(color) == "table" and color or fallback
@@ -132,7 +161,7 @@ ItemCustomization.update = function(mod, gear_id, changes)
 	local record = type(records[gear_id]) == "table" and records[gear_id] or {}
 
 	if changes.name ~= nil then
-		record.name = type(changes.name) == "string" and changes.name ~= "" and changes.name or nil
+		record.name = normalize_name(changes.name)
 		-- name_target only describes names imported from Name It's optional
 		-- pattern-name mode. Names entered through BetterInventory always replace
 		-- the primary card name and must not inherit stale imported metadata.
@@ -237,6 +266,15 @@ ItemCustomization.import_name_it_names = function(mod)
 	local replace_pattern_name = type(other_mod.get) == "function" and other_mod:get("replace_pattern_name") == true
 
 	for gear_id, external_name in pairs(names) do
+		local raw_external_name = external_name
+
+		external_name = normalize_name(external_name)
+
+		if external_name ~= raw_external_name then
+			names[gear_id] = external_name
+			names_changed = true
+		end
+
 		if type(gear_id) == "string" and type(external_name) == "string" and external_name ~= "" then
 			local record = type(records[gear_id]) == "table" and records[gear_id] or {}
 
@@ -289,6 +327,7 @@ ItemCustomization.reconcile_from_name_it = function(mod)
 
 	local records = customization_records(mod)
 	local replace_pattern_name = type(other_mod.get) == "function" and other_mod:get("replace_pattern_name") == true
+	local names_changed = false
 
 	for gear_id, record in pairs(records) do
 		if type(record) == "table" and type(record.name) == "string" then
@@ -306,6 +345,15 @@ ItemCustomization.reconcile_from_name_it = function(mod)
 	end
 
 	for gear_id, external_name in pairs(names) do
+		local raw_external_name = external_name
+
+		external_name = normalize_name(external_name)
+
+		if external_name ~= raw_external_name then
+			names[gear_id] = external_name
+			names_changed = true
+		end
+
 		if type(gear_id) == "string" and type(external_name) == "string" and external_name ~= "" then
 			local record = type(records[gear_id]) == "table" and records[gear_id] or {}
 
@@ -316,6 +364,11 @@ ItemCustomization.reconcile_from_name_it = function(mod)
 	end
 
 	save_records(mod, records)
+
+	if names_changed and type(other_mod.set) == "function" then
+		pcall(other_mod.set, other_mod, "name_list", names, false)
+	end
+
 	mod:set(NAME_IT_OWNS_NAMES_SETTING_ID, false, false)
 	persistence_pending = true
 
@@ -787,10 +840,28 @@ local function show_name_editor(mod, context, layout)
 end
 
 ItemCustomization.on_enabled = function(mod)
-	cached_records = customization_records(mod)
+	local records = customization_records(mod)
+	local records_changed = false
 
-	if type(mod:get(STORAGE_SETTING_ID)) ~= "table" then
-		save_records(mod, {})
+	for gear_id, record in pairs(records) do
+		if type(record) == "table" and record.name ~= nil then
+			local normalized = normalize_name(record.name)
+
+			if normalized ~= record.name then
+				record.name = normalized
+				records_changed = true
+			end
+
+			if normalized == nil and record.name_color == nil and record.background_color == nil and record.background_preserve_shading == nil then
+				records[gear_id] = nil
+			end
+		end
+	end
+
+	cached_records = records
+
+	if type(mod:get(STORAGE_SETTING_ID)) ~= "table" or records_changed then
+		save_records(mod, records)
 	end
 
 	-- on_all_mods_loaded is not guaranteed to run when a user re-enables the
@@ -940,6 +1011,7 @@ ItemCustomization.install = function(mod, InventoryWeaponsView, layout)
 		}
 		definitions.widget_definitions[INPUT_WIDGET_ID] = UIWidget.create_definition(table.clone(TextInputPassTemplates.simple_input_field), INPUT_WIDGET_ID)
 		definitions.widget_definitions[INPUT_WIDGET_ID].content.visible = false
+		definitions.widget_definitions[INPUT_WIDGET_ID].content.max_length = MAX_NAME_LENGTH
 	end)
 
 	mod:hook_safe("ConstantElementPopupHandler", "update", function(handler)
