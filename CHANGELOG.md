@@ -1,19 +1,14 @@
 # BetterInventory changelog
 
-## Unreleased
-
-- Added automatic ItemSorting integration to BetterInventory's existing melee, ranged, Curio, Armoury Exchange and GlobalStore sorting panels.
-- Added a collapsible `ItemSorting mod` section directly below `Sorting`, containing ItemSorting's complete custom method set—including Family + Mark—as direct choices while its customized Darktide methods remain under `Darktide Native Sorting`.
-- ItemSorting remains the owner of every comparator; BetterInventory reads ItemSorting's definitions, preserves their ordering and callbacks, and separates the native and custom ranges in its panel.
-- Preserved every vanilla-style sorting method when ItemSorting is active instead of inheriting ItemSorting's reduced default list; ItemSorting's complete custom method set is appended without changing its saved Mod Options.
-- Kept the Armoury and GlobalStore panel viewport bounded and scrollable with the additional choices.
-
 ## 1.8.0 - 2026-08-06
 
 ### Added
 
 - Added a default-on Lantern of the Omnissiah integration that hosts Lantern's weapon recommendation window as the top section of BetterInventory's scalable inventory-options panel and suppresses the duplicate floating panel while active.
 - Added a default-on option that keeps Lantern's Recommended Curios panel in its native standalone placement instead of hosting it inside BetterInventory's panel.
+- Added automatic ItemSorting integration to the melee, ranged, Curio, Armoury Exchange and GlobalStore sorting panels.
+- Added a collapsible `ItemSorting mod` section with its complete custom method set, including Family + Mark and both Base Rating directions, while preserving every vanilla-style method under `Darktide Native Sorting`.
+- Kept ItemSorting's comparator ownership, ordering and callbacks intact without changing its saved Mod Options, and kept the expanded store panels bounded and scrollable.
 
 ### Fixed
 
