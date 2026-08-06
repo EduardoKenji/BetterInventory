@@ -967,6 +967,8 @@ local function refresh_option_dependencies()
 	local automatic_curio_characters_reason = automatic_curio_enabled and mod:localize("option_requires_automatic_curio_characters_mode") or automatic_curio_reason
 	local inventory_options_panel_enabled = mod:get("enable_inventory_options_panel_prototype") == true
 	local inventory_options_panel_reason = mod:localize("option_requires_inventory_options_panel_prototype")
+	local lantern_installed = get_mod("Lantern of the Omnissiah") ~= nil
+	local lantern_reason = lantern_installed and inventory_options_panel_reason or mod:localize("option_requires_lantern_of_the_omnissiah")
 	local quick_look_card_grid_enabled = grid_enabled and mod:get("enable_quick_look_card_grid_integration") ~= false
 	local quick_look_card_grid_reason = grid_enabled and mod:localize("option_requires_quick_look_card_grid_integration") or native_reason
 	local quick_look_card_single_column_enabled = single_column_enabled and mod:get("enable_quick_look_card_single_column_integration") ~= false
@@ -1070,6 +1072,8 @@ local function refresh_option_dependencies()
 	}) do
 		set_option_enabled(option_dependency_entries[setting_id], inventory_options_panel_enabled, inventory_options_panel_reason)
 	end
+
+	set_option_enabled(option_dependency_entries.enable_lantern_inventory_section, lantern_installed and inventory_options_panel_enabled, lantern_reason)
 
 	for _, setting_id in ipairs({
 		"quick_discard_mode",
@@ -1251,6 +1255,7 @@ local function bind_option_dependencies(options_templates)
 		"custom_item_override_weapon_information_name_color",
 		"curio_information_width_percent",
 		"curio_preview_height_percent",
+		"enable_lantern_inventory_section",
 		"inventory_options_panel_width",
 		"inventory_options_panel_max_height",
 		"inventory_options_panel_row_spacing",
@@ -1511,6 +1516,16 @@ end
 
 function mod.on_all_mods_loaded()
 	ItemCustomization.on_all_mods_loaded(mod)
+	Features.set_lantern_integration(mod, get_mod("Lantern of the Omnissiah"))
+end
+
+local function lower_character_overview_equipped_icon(widget)
+	local equipped_style = widget and widget.style and widget.style.equipped_icon
+	local offset = equipped_style and equipped_style.offset
+
+	if offset then
+		offset[2] = 34
+	end
 end
 
 function mod.on_setting_changed(setting_id)
@@ -1533,7 +1548,7 @@ function mod.on_setting_changed(setting_id)
 		end
 	end
 
-	if setting_id == "enable_grid_layout" or setting_id == "melee_columns" or setting_id == "ranged_columns" or setting_id == "curio_columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "weapon_extra_width_column_threshold" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_hadron_single_column_mirror" or setting_id == "enable_armoury_requisition_grid" or setting_id == "enable_armoury_single_column_mirror" or setting_id == "enable_armoury_requisition_sorting_panel" or setting_id == "brighten_armoury_item_levels" or setting_id == "three_column_weapon_name_font_size" or setting_id == "expand_armoury_requisition_window" or setting_id == "debug_expand_armoury_requisition_window_30_percent" or setting_id == "enable_global_store_integration" or setting_id == "enable_global_store_grid" or setting_id == "enable_global_store_sorting_panel" or setting_id == "global_store_character_photo_size_percent" or setting_id == "global_store_price_row_padding" or setting_id == "global_store_character_info_gap" or setting_id == "global_store_character_class_icon_size" or setting_id == "global_store_character_name_font_size" or setting_id == "global_store_compact_character_names" or setting_id == "global_store_single_column_modifier_horizontal_position" or setting_id == "global_store_single_column_modifier_vertical_position" or setting_id == "enable_character_overview_melee_mirror" or setting_id == "enable_character_overview_ranged_mirror" or setting_id == "enable_character_overview_curio_details" or setting_id == "character_overview_curio_name_mode" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "single_column_blessing_icons_on_right" or setting_id == "curio_display_profile" or setting_id == "enable_inventory_options_panel_prototype" or setting_id == "enable_experimental_quick_discard" or setting_id == "quick_discard_mode" or setting_id == "quick_discard_protect_high_level_curios" or setting_id == "enable_automatic_curio_acquisition" or automatic_curio_setting or setting_id == "enable_quick_look_card_single_column_integration" or setting_id == "enable_quick_look_card_grid_integration" or setting_id == "quick_look_card_grid_stat_position" or setting_id == "enable_custom_item_name_and_colors" then
+	if setting_id == "enable_grid_layout" or setting_id == "melee_columns" or setting_id == "ranged_columns" or setting_id == "curio_columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "weapon_extra_width_column_threshold" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_hadron_single_column_mirror" or setting_id == "enable_armoury_requisition_grid" or setting_id == "enable_armoury_single_column_mirror" or setting_id == "enable_armoury_requisition_sorting_panel" or setting_id == "brighten_armoury_item_levels" or setting_id == "three_column_weapon_name_font_size" or setting_id == "expand_armoury_requisition_window" or setting_id == "debug_expand_armoury_requisition_window_30_percent" or setting_id == "enable_global_store_integration" or setting_id == "enable_global_store_grid" or setting_id == "enable_global_store_sorting_panel" or setting_id == "global_store_character_photo_size_percent" or setting_id == "global_store_price_row_padding" or setting_id == "global_store_character_info_gap" or setting_id == "global_store_character_class_icon_size" or setting_id == "global_store_character_name_font_size" or setting_id == "global_store_compact_character_names" or setting_id == "global_store_single_column_modifier_horizontal_position" or setting_id == "global_store_single_column_modifier_vertical_position" or setting_id == "enable_character_overview_melee_mirror" or setting_id == "enable_character_overview_ranged_mirror" or setting_id == "enable_character_overview_curio_details" or setting_id == "character_overview_curio_name_mode" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "single_column_blessing_icons_on_right" or setting_id == "curio_display_profile" or setting_id == "enable_inventory_options_panel_prototype" or setting_id == "enable_lantern_inventory_section" or setting_id == "enable_experimental_quick_discard" or setting_id == "quick_discard_mode" or setting_id == "quick_discard_protect_high_level_curios" or setting_id == "enable_automatic_curio_acquisition" or automatic_curio_setting or setting_id == "enable_quick_look_card_single_column_integration" or setting_id == "enable_quick_look_card_grid_integration" or setting_id == "quick_look_card_grid_stat_position" or setting_id == "enable_custom_item_name_and_colors" then
 		refresh_option_dependencies()
 	end
 
@@ -1682,6 +1697,7 @@ mod:hook_safe(InventoryWeaponsView, "update", function(view)
 end)
 
 mod:hook_safe(InventoryWeaponsView, "on_exit", function(view)
+	Features.release_lantern_inventory_section(view)
 	Features.unregister_inventory_view(view)
 end)
 
@@ -1779,6 +1795,17 @@ if ensure_class_method(InventoryView, "_create_entry_widget_from_config") then
 		local visible_equipment_mod = visible_equipment_placement and get_mod("visible_equipment")
 		local visible_equipment_active = visible_equipment_mod and (type(visible_equipment_mod.is_enabled) ~= "function" or visible_equipment_mod:is_enabled())
 		local preserve_visible_equipment_placement = visible_equipment_active
+		local adjust_runtime_equipped_icon = view and view.__class_name == "InventoryView" and not preserve_visible_equipment_placement and setting_id ~= nil
+
+		local function create_widget(resolved_config)
+			local results = pack_values(func(view, resolved_config, suffix, callback_name, secondary_callback_name, optional_scenegraph_id))
+
+			if adjust_runtime_equipped_icon then
+				lower_character_overview_equipped_icon(results[1])
+			end
+
+			return unpack_values(results, 1, results.n)
+		end
 
 		if view and view.__class_name == "InventoryView" and not preserve_visible_equipment_placement and setting_id and mod:get(setting_id) ~= false then
 			local equipped_item = view.equipped_item_in_slot and view:equipped_item_in_slot(config.slot.name)
@@ -1793,11 +1820,11 @@ if ensure_class_method(InventoryView, "_create_entry_widget_from_config") then
 				adapted_config.widget_type = widget_type
 				adapted_config.item = equipped_item
 
-				return func(view, adapted_config, suffix, callback_name, secondary_callback_name, optional_scenegraph_id)
+				return create_widget(adapted_config)
 			end
 		end
 
-		return func(view, config, suffix, callback_name, secondary_callback_name, optional_scenegraph_id)
+		return create_widget(config)
 	end)
 end
 

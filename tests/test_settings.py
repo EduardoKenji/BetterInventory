@@ -1504,7 +1504,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "1.7.4"
+    assert data.version == "1.8.0"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
@@ -1610,6 +1610,16 @@ def main() -> None:
         myfavorites_group.sub_widgets[index].setting_id
         for index in range(1, len(myfavorites_group.sub_widgets) + 1)
     ] == ["myfavorites_show_favorite_letter"]
+    lantern_group = next(
+        data.options.widgets[index]
+        for index in range(1, len(data.options.widgets) + 1)
+        if data.options.widgets[index].setting_id == "lantern_integration_group"
+    )
+    assert [
+        lantern_group.sub_widgets[index].setting_id
+        for index in range(1, len(lantern_group.sub_widgets) + 1)
+    ] == ["enable_lantern_inventory_section"]
+    assert lantern_group.sub_widgets[1].default_value is True
     hadron_view_group = additional_views_group.sub_widgets[1]
     assert [
         hadron_view_group.sub_widgets[index].setting_id
@@ -1676,7 +1686,8 @@ def main() -> None:
         == "quick_look_card_integration_group"
     )
     assert top_level_ids[enhanced_descriptions_index + 1] == "myfavorites_integration_group"
-    assert top_level_ids[enhanced_descriptions_index + 2] == "card_content_group"
+    assert top_level_ids[enhanced_descriptions_index + 2] == "lantern_integration_group"
+    assert top_level_ids[enhanced_descriptions_index + 3] == "card_content_group"
 
     card_content_group = next(
         data.options.widgets[index]

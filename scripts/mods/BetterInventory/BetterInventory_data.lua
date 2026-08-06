@@ -1,4 +1,4 @@
-local MOD_VERSION = "1.7.4"
+local MOD_VERSION = "1.8.0"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
@@ -1194,6 +1194,18 @@ return {
 						tooltip = "myfavorites_show_favorite_letter_tooltip",
 						type = "checkbox",
 						default_value = false,
+					},
+				},
+			},
+			{
+				setting_id = "lantern_integration_group",
+				type = "group",
+				sub_widgets = {
+					{
+						setting_id = "enable_lantern_inventory_section",
+						tooltip = "enable_lantern_inventory_section_tooltip",
+						type = "checkbox",
+						default_value = true,
 					},
 				},
 			},

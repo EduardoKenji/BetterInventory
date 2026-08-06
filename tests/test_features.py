@@ -122,6 +122,9 @@ def main() -> None:
 		}
 		TestProfileUtils = {
 			presets = {},
+			get_active_profile_preset_id = function()
+				return "active_profile"
+			end,
 			get_profile_presets = function()
 				return TestProfileUtils.presets
 			end,
@@ -1434,6 +1437,7 @@ def main() -> None:
 
                 function panel:present_grid_layout(layout, blueprints)
                     self.layout = layout
+					self.blueprints = blueprints
                     self.widgets = {}
 
                     for index = 1, #layout do
@@ -1778,6 +1782,91 @@ def main() -> None:
     assert prototype_view._widgets_by_name[sort_label_id].content.visible is True
     assert prototype_view._widgets_by_name[toggle_id].content.visible is True
     mod.settings.enable_inventory_options_panel_prototype = True
+
+    # Lantern's initialized widget belongs to the inventory view's renderer. The
+    # integration must create an independent grid row and never reparent, offset,
+    # or directly reuse Lantern's native pass instances (especially pass.data).
+    lantern_mod, lantern_overlay, lantern_source_widget = lua.execute(
+        r"""
+        lantern_native_draw_count = 0
+        local overlay = {
+            draw_weapon_select = function()
+                lantern_native_draw_count = lantern_native_draw_count + 1
+            end,
+        }
+        local source_widget = {
+            scenegraph_id = "screen",
+            offset = {11, 22, 200},
+            passes = {
+                {pass_type = "rect", style_id = "background", value_id = "value_id_1", data = {native_renderer_data = true}},
+                {pass_type = "text", style_id = "header", value_id = "header", data = {native_renderer_data = true}},
+                {pass_type = "texture", style_id = "trait_1", value_id = "value_id_3", data = {native_renderer_data = true}},
+            },
+            content = {
+                value_id_1 = {255, 8, 8, 8},
+                header = "The Voice Says Yes",
+                value_id_3 = "content/ui/materials/icons/traits/traits_container",
+            },
+            style = {
+                background = {offset = {0, 0, 200}, size = {380, 180}, color = {245, 8, 8, 8}},
+                header = {offset = {12, 10, 202}, size = {356, 30}, text_color = {180, 230, 230, 230}},
+                trait_1 = {offset = {12, 45, 202}, size = {40, 40}, material_values = {icon = "trait_icon"}},
+            },
+        }
+        local integration_mod = {
+            _modules = {equipment_overlay = overlay},
+            get = function(self, setting_id)
+                return setting_id == "show_recommendations"
+            end,
+        }
+        source_widget.style.background.runtime_cycle = source_widget.style.background
+
+        return integration_mod, overlay, source_widget
+        """
+    )
+    assert features.set_lantern_integration(mod, lantern_mod) is True
+    lantern_overlay.draw_weapon_select(prototype_view)
+    assert globals_.lantern_native_draw_count == 1
+    mod.settings.enable_lantern_inventory_section = True
+    prototype_view._selected_slot = lua.table_from({"name": "slot_primary"})
+    prototype_view.is_previewing_item = lua.eval("function() return true end")
+    prototype_view._lantern_weapon_panel = lua.table_from(
+        {
+            "widget": lantern_source_widget,
+            "sig": "active_profile|slot_primary",
+            "entry": lua.table_from({"recommendation": True}),
+        }
+    )
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert prototype_view._better_inventory_lantern_panel_hosted is True
+    assert prototype_panel.layout[1].control_id == "better_inventory_lantern_section"
+    lantern_entry = prototype_panel.layout[1]
+    lantern_proxy = prototype_panel.widgets["better_inventory_lantern_section"]
+    assert lantern_proxy.content.header == "The Voice Says Yes"
+    assert lantern_entry.pass_template[1].data is None
+    assert lantern_entry.pass_template[1].style.offset[3] == 0
+    assert lantern_entry.pass_template[1].style.runtime_cycle is None
+    assert lantern_entry.pass_template[2].style.offset[3] == 2
+    assert lantern_source_widget.scenegraph_id == "screen"
+    assert lantern_source_widget.offset[1] == 11
+    assert lantern_source_widget.offset[2] == 22
+    assert lantern_source_widget.offset[3] == 200
+    lantern_overlay.draw_weapon_select(prototype_view)
+    assert globals_.lantern_native_draw_count == 1
+    lantern_source_widget.content.header = "Updated recommendation"
+    prototype_panel.blueprints["better_inventory_lantern_section"].update(
+        prototype_panel, lantern_proxy
+    )
+    assert lantern_proxy.content.header == "Updated recommendation"
+
+    mod.settings.enable_lantern_inventory_section = False
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert prototype_view._better_inventory_lantern_panel_hosted is False
+    assert prototype_panel.widgets["better_inventory_lantern_section"] is None
+    lantern_overlay.draw_weapon_select(prototype_view)
+    assert globals_.lantern_native_draw_count == 2
 
     automatic_inventory = lua.table_from(
         {

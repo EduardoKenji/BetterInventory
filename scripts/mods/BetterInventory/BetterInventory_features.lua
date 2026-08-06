@@ -118,6 +118,8 @@ local perfect_roll_cache = setmetatable({}, {
 	__mode = "k",
 })
 local curio_acquisition_provider
+local lantern_mod
+local lantern_overlay
 
 Features.set_curio_acquisition_provider = function(provider)
 	curio_acquisition_provider = type(provider) == "table" and provider or nil
@@ -1430,6 +1432,38 @@ local INVENTORY_OPTIONS_PANEL_BLUEPRINTS = {
 			end
 		end,
 	},
+	better_inventory_lantern_section = {
+		size_function = function(_, entry)
+			return entry.size
+		end,
+		pass_template_function = function(_, entry)
+			return entry.pass_template
+		end,
+		init = function(_, widget, entry)
+			for key, value in pairs(entry.initial_content or {}) do
+				widget.content[key] = type(value) == "table" and table.clone(value) or value
+			end
+
+			widget.content.entry = entry
+
+			local view = entry.view
+
+			if view then
+				view._better_inventory_lantern_section_widget = widget
+			end
+
+			if entry.refresh then
+				entry.refresh(widget)
+			end
+		end,
+		update = function(_, widget)
+			local entry = widget.content.entry
+
+			if entry and entry.refresh then
+				entry.refresh(widget)
+			end
+		end,
+	},
 }
 
 local ARMOURY_NATIVE_SORT_BLUEPRINTS = {
@@ -1608,6 +1642,150 @@ local function panel_entry(view, control_id, height, pass_template, initial_cont
 		},
 		view = view,
 		widget_type = "better_inventory_control",
+	}
+end
+
+local function clone_lantern_value(value, seen, depth)
+	if type(value) ~= "table" then
+		return value
+	end
+
+	seen = seen or {}
+	depth = depth or 0
+
+	-- Initialized UI styles can contain engine-added parent/back references.
+	-- table.clone follows those references until DMF hits its duplicate-depth
+	-- guard. The hosted row needs only plain style/content data, so omit cycles
+	-- and unexpectedly deep runtime branches instead of cloning widget internals.
+	if seen[value] or depth >= 8 then
+		return
+	end
+
+	seen[value] = true
+
+	local copy = {}
+
+	for key, child in pairs(value) do
+		if type(key) ~= "table" then
+			local cloned_child = clone_lantern_value(child, seen, depth + 1)
+
+			if cloned_child ~= nil then
+				copy[key] = cloned_child
+			end
+		end
+	end
+
+	seen[value] = nil
+
+	return copy
+end
+
+local function lantern_proxy_definition(view)
+	local state = view._lantern_weapon_panel
+	local source_widget = state and state.widget
+	local source_passes = source_widget and source_widget.passes
+	local source_content = source_widget and source_widget.content
+	local source_styles = source_widget and source_widget.style
+	local geometry = view._better_inventory_options_panel_geometry
+	local background_style = source_styles and source_styles.background
+	local source_width = background_style and background_style.size and tonumber(background_style.size[1])
+
+	if type(source_passes) ~= "table" or type(source_content) ~= "table" or type(source_styles) ~= "table" or not geometry or not source_width then
+		return
+	end
+
+	local background_offset = background_style.offset or {}
+	local base_z = tonumber(background_offset[3]) or 0
+	local center_x = math.max(0, (geometry.content_width - source_width) * 0.5)
+	local pass_template = {}
+	local initial_content = {}
+	local value_ids = {}
+
+	for index = 1, #source_passes do
+		local source_pass = source_passes[index]
+		local style_id = source_pass and source_pass.style_id
+		local source_style = style_id and source_styles[style_id]
+
+		if source_pass and source_pass.pass_type and style_id and type(source_style) == "table" then
+			local style = clone_lantern_value(source_style)
+			local offset = style.offset or {
+				0,
+				0,
+				base_z,
+			}
+
+			style.offset = offset
+			offset[1] = (tonumber(offset[1]) or 0) + center_x
+			offset[3] = (tonumber(offset[3]) or base_z) - base_z
+
+			local pass = {
+				pass_type = source_pass.pass_type,
+				style_id = style_id,
+				style = style,
+			}
+			local value_id = source_pass.value_id
+
+			if value_id then
+				local value = clone_lantern_value(source_content[value_id])
+
+				pass.value_id = value_id
+				pass.value = clone_lantern_value(value)
+				initial_content[value_id] = value
+				value_ids[#value_ids + 1] = value_id
+			end
+
+			local content_id = source_pass.content_id
+
+			if content_id then
+				pass.content_id = content_id
+				pass.content = clone_lantern_value(source_content[content_id] or {})
+				initial_content[content_id] = clone_lantern_value(source_content[content_id] or {})
+			end
+
+			pass_template[#pass_template + 1] = pass
+		end
+	end
+
+	if #pass_template == 0 then
+		return
+	end
+
+	return pass_template, initial_content, value_ids
+end
+
+local function panel_lantern_entry(view)
+	local geometry = view._better_inventory_options_panel_geometry
+	local height = math.max(120, tonumber(view._better_inventory_lantern_panel_height) or 120)
+	local pass_template, initial_content, value_ids = lantern_proxy_definition(view)
+
+	if not pass_template then
+		return
+	end
+
+	return {
+		control_id = "better_inventory_lantern_section",
+		initial_content = initial_content,
+		pass_template = pass_template,
+		refresh = function(widget)
+			local state = view._lantern_weapon_panel
+			local source_content = state and state.widget and state.widget.content
+
+			if not source_content then
+				return
+			end
+
+			for index = 1, #value_ids do
+				local value_id = value_ids[index]
+
+				widget.content[value_id] = clone_lantern_value(source_content[value_id])
+			end
+		end,
+		size = {
+			geometry.content_width,
+			height,
+		},
+		view = view,
+		widget_type = "better_inventory_lantern_section",
 	}
 end
 
@@ -2142,7 +2320,113 @@ local function panel_structure_key(mod, view)
 	key = key + (mod:get("automatic_curio_target_mode") == "characters" and 1024 or 0)
 	key = key + curio_buyer_profile_revision() * 2048
 
-	return key
+	return tostring(key) .. ":" .. tostring(view._better_inventory_lantern_panel_signature or "")
+end
+
+local function lantern_recommendations_enabled()
+	if not lantern_mod or type(lantern_mod.get) ~= "function" then
+		return false
+	end
+
+	local success, enabled = pcall(lantern_mod.get, lantern_mod, "show_recommendations")
+
+	return success and enabled == true
+end
+
+local function lantern_weapon_signature(view)
+	local slot = view and view._selected_slot
+
+	if not slot or not slot.name or type(ProfileUtils.get_active_profile_preset_id) ~= "function" then
+		return
+	end
+
+	local success, active_id = pcall(ProfileUtils.get_active_profile_preset_id)
+
+	if not success then
+		return
+	end
+
+	return tostring(active_id) .. "|" .. tostring(slot.name)
+end
+
+local function lantern_preview_is_active(view)
+	if not view or type(view.is_previewing_item) ~= "function" then
+		return false
+	end
+
+	local success, is_previewing = pcall(view.is_previewing_item, view)
+
+	return success and is_previewing == true
+end
+
+local function restore_lantern_weapon_panel(view)
+	if view then
+		view._better_inventory_lantern_panel_available = false
+		view._better_inventory_lantern_panel_height = nil
+		view._better_inventory_lantern_panel_signature = nil
+		view._better_inventory_lantern_panel_hosted = false
+	end
+end
+
+Features.should_host_lantern_panel = function(view)
+	return view and view._better_inventory_lantern_panel_hosted == true
+end
+
+Features.set_lantern_integration = function(_, integration_mod)
+	lantern_mod = type(integration_mod) == "table" and integration_mod or nil
+	lantern_overlay = lantern_mod and lantern_mod._modules and lantern_mod._modules.equipment_overlay or nil
+
+	if not lantern_overlay or type(lantern_overlay.draw_weapon_select) ~= "function" then
+		return false
+	end
+
+	if type(lantern_overlay._better_inventory_original_draw_weapon_select) ~= "function" then
+		lantern_overlay._better_inventory_original_draw_weapon_select = lantern_overlay.draw_weapon_select
+		lantern_overlay.draw_weapon_select = function(view, ...)
+			local should_host = lantern_overlay._better_inventory_should_host_panel
+
+			if type(should_host) == "function" and should_host(view) then
+				return
+			end
+
+			return lantern_overlay._better_inventory_original_draw_weapon_select(view, ...)
+		end
+	end
+
+	lantern_overlay._better_inventory_should_host_panel = Features.should_host_lantern_panel
+
+	return true
+end
+
+Features.release_lantern_inventory_section = function(view)
+	restore_lantern_weapon_panel(view)
+end
+
+Features.update_lantern_inventory_section = function(mod, view)
+	if not lantern_mod or not lantern_overlay or mod:get("enable_lantern_inventory_section") ~= true or mod:get("enable_inventory_options_panel_prototype") ~= true or mod:get("show_inventory_options_widget") == false or not view or not view._better_inventory_options_panel or view._better_inventory_options_panel_visible ~= true or view._better_inventory_options_panel._visible == false or view._filter_panel_element and view._show_filter_panel == true or not lantern_recommendations_enabled() or not lantern_preview_is_active(view) then
+		restore_lantern_weapon_panel(view)
+
+		return false
+	end
+
+	local state = view._lantern_weapon_panel
+	local widget = state and state.widget
+	local expected_signature = lantern_weapon_signature(view)
+	local background_style = widget and widget.style and widget.style.background
+	local panel_height = background_style and tonumber(background_style.size and background_style.size[2])
+
+	if not state or not widget or not state.entry or not expected_signature or state.sig ~= expected_signature or not panel_height or panel_height <= 0 then
+		restore_lantern_weapon_panel(view)
+
+		return false
+	end
+
+	view._better_inventory_lantern_panel_available = true
+	view._better_inventory_lantern_panel_height = math.max(120, panel_height)
+	view._better_inventory_lantern_panel_signature = tostring(state.sig) .. "|" .. tostring(view._better_inventory_lantern_panel_height)
+	view._better_inventory_lantern_panel_hosted = view._better_inventory_lantern_section_widget ~= nil
+
+	return view._better_inventory_lantern_panel_hosted
 end
 
 rebuild_inventory_options_panel = function(mod, layout, view)
@@ -2155,11 +2439,19 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 	local collapsed = view._better_inventory_options_panel_collapsed
 	local native_discard_active = view._discard_items_element ~= nil
 	local quick_discard_enabled = mod:get("enable_experimental_quick_discard") == true
-	local entries = {
-		panel_header_entry(mod, layout, view, "better_inventory_sort_header", "sorting", function()
+	local entries = {}
+
+	if view._better_inventory_lantern_panel_available == true then
+		local lantern_entry = panel_lantern_entry(view)
+
+		if lantern_entry then
+			entries[#entries + 1] = lantern_entry
+		end
+	end
+
+	entries[#entries + 1] = panel_header_entry(mod, layout, view, "better_inventory_sort_header", "sorting", function()
 			return mod:localize("inventory_sorting_inventory_label")
-		end),
-	}
+		end)
 
 	if not collapsed.sorting then
 		entries[#entries + 1] = panel_sort_entry(mod, layout, view)
@@ -2253,6 +2545,8 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 	local panel_height = math.clamp(content_height + 31 + geometry.top + geometry.bottom, INVENTORY_OPTIONS_PANEL_MIN_HEIGHT, geometry.max_height)
 
 	view._better_inventory_options_panel_widgets = {}
+	view._better_inventory_lantern_section_widget = nil
+	view._better_inventory_lantern_panel_hosted = false
 	view._better_inventory_options_panel_structure_key = panel_structure_key(mod, view)
 	view._better_inventory_options_panel_height = panel_height
 	panel:update_grid_height(panel_height, panel_height)
@@ -4374,8 +4668,12 @@ Features.update_inventory_sort_toggle = function(mod, layout, view)
 			set_options_panel_visible(view, panel, false)
 		end
 
+		Features.release_lantern_inventory_section(view)
+
 		return
 	end
+
+	Features.update_lantern_inventory_section(mod, view)
 
 	if update_inventory_options_panel(mod, layout, view, slot_kind) then
 		return
@@ -4601,6 +4899,7 @@ end
 
 Features.disable_inventory_views = function()
 	for view in pairs(registered_inventory_views) do
+		restore_lantern_weapon_panel(view)
 		local panel = view._better_inventory_options_panel
 
 		if panel then

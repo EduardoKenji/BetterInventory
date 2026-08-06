@@ -614,6 +614,18 @@ local localization = {
 	myfavorites_integration_group = {
 		en = "Mod Integration: MyFavorites",
 	},
+	lantern_integration_group = {
+		en = "Mod Integration: Lantern of the Omnissiah",
+	},
+	enable_lantern_inventory_section = {
+		en = "Show Lantern recommendations in the inventory panel",
+	},
+	enable_lantern_inventory_section_tooltip = {
+		en = "When Lantern of the Omnissiah is installed, places its recommendation window in the top section of BetterInventory's scalable inventory-options panel and hides Lantern's duplicate floating weapon panel. Disable this to keep Lantern's native placement.",
+	},
+	option_requires_lantern_of_the_omnissiah = {
+		en = "Requires Lantern of the Omnissiah and the scalable inventory-options panel.",
+	},
 	myfavorites_show_favorite_letter = {
 		en = "Show F below favorite icon",
 	},
@@ -2378,6 +2390,10 @@ zh_cn.character_overview_curio_font_size_percent = "Character overview Curio fon
 zh_cn.character_overview_curio_font_size_percent_tooltip = "Scales all text on detailed Curio cards in the character overview (50-150%%, default 110%%). Does not affect Curio cards in inventory or stores."
 zh_cn.option_requires_character_overview_curio_details = "Requires detailed Curio cards on the character overview."
 zh_cn.myfavorites_integration_group = "Mod Integration: MyFavorites"
+zh_cn.lantern_integration_group = "Mod Integration: Lantern of the Omnissiah"
+zh_cn.enable_lantern_inventory_section = "Show Lantern recommendations in the inventory panel"
+zh_cn.enable_lantern_inventory_section_tooltip = "When Lantern of the Omnissiah is installed, places its recommendation window in the top section of BetterInventory's scalable inventory-options panel and hides Lantern's duplicate floating weapon panel. Disable this to keep Lantern's native placement."
+zh_cn.option_requires_lantern_of_the_omnissiah = "Requires Lantern of the Omnissiah and the scalable inventory-options panel."
 zh_cn.myfavorites_show_favorite_letter = "Show F below favorite icon"
 zh_cn.myfavorites_show_favorite_letter_tooltip = "Adds a compact F beneath the coloured MyFavorites icon. Disabled by default."
 zh_cn.debug_group = "Debug (testing only)"

@@ -1,6 +1,6 @@
 # BetterInventory
 
-> Project status: BetterInventory v1.7.4 is a feature-complete inventory and supported-vendor implementation under active in-game compatibility testing. Account-changing workflows remain opt-in and disabled by default.
+> Project status: BetterInventory v1.8.0 is a feature-complete inventory and supported-vendor implementation under active in-game compatibility testing. Account-changing workflows remain opt-in and disabled by default.
 >
 > Audit date: 2026-08-06
 
@@ -74,6 +74,7 @@ It currently covers the character melee, ranged and Curio inventory and provides
 - Darktide's complete native managed item-icon lifecycle. BetterInventory resizes only the card's icon pass and does not allocate, load, unload or destroy render-target resources.
 - Equipped Icon+ compatibility: when that mod marks an item equipped in an inactive loadout, BetterInventory detects the extended equipped-icon visibility pass and moves the favorite marker down so the configurable colored equipped icon and favorite icon never overlap. The integration is automatic and does not alter Equipped Icon+'s colors or loadout detection.
 - MyFavorites compatibility is automatic: it preserves MyFavorites color groups and cycling controls while enforcing BetterInventory's compact favorite glyph and moving its click area with the rendered marker. Its Mod Options section is grouped with the other integrations and contains only an optional, default-off setting that adds a compact `F` below the glyph. If Equipped Icon+ is also installed, its equipped marker retains the upper position and the colored favorite glyph is placed beneath it. MyFavorites' optional extra star remains under that mod's control.
+- Lantern of the Omnissiah compatibility is automatic when its recommendation panel and BetterInventory's scalable inventory-options panel are enabled: the weapon recommendation window becomes the top scrollable panel section, and Lantern's duplicate floating weapon panel is suppressed while hosted. The integration also lowers the equipped marker on Character Overview cards to keep it clear of Lantern's recommendation icon.
 - Standalone **Custom Item Names and Colors**: selecting an inventory item exposes three direct legend actions—**Change Name** (Q by default), **Name Color** (E), and **Background Color** (R)—without an intermediate menu. Changes are stored per gear ID, survive restarts, refresh the selected card immediately, and are removed when Darktide deletes the item. Reset confirmation prompts are skipped by default. Name It remains optional: BetterInventory imports its existing name map without overwriting BetterInventory records, mirrors subsequent name edits back for native-view compatibility, and replaces Name It's duplicate inventory legend action with BetterInventory's direct Change Name action using Name It's configured key. The same section owns the default-on Curio title option, which reserves a responsive two-line name area above all four attributes with or without Name It across Character Overview, Inventory, Hadron, the Armoury Exchange, GlobalStore and other supported grids.
 - Visible Equipment compatibility is automatic: BetterInventory always preserves that mod's injected Primary and Secondary Placement `gear_placement_slot` widgets in the Cosmetics tab while continuing to render its configured detailed melee, ranged and Curio cards in the Loadout tab. Because this narrow integration has no custom behavior to configure, it does not add a Mod Options section.
 - Independent default-on grid switches for Hadron's Entreat Hadron item selector, the Armoury's Requisition Weapons & Curios store, and GlobalStore's Multi-Operative Supply. Hadron, Requisition and GlobalStore retain a three-column cap; the independent Melee/Ranged/Curios column settings apply only to inventory tabs.
@@ -93,7 +94,7 @@ The normal/default configuration does not alter filters or backend transactions.
 
 ## Supported integrations
 
-The following integrations are supported in v1.7.4. BetterInventory has no optional mod dependencies; each integration activates only when its corresponding mod is installed.
+The following integrations are supported in v1.8.0. BetterInventory has no optional mod dependencies; each integration activates only when its corresponding mod is installed.
 
 - Quick Look Card: independent single-column and grid integration. BetterInventory also provides its own weapon-modifier display, so Quick Look Card is optional.
 - Enhanced Descriptions: rich-text-safe Curio handling with configurable ownership of simplified primary-stat labels.
@@ -104,6 +105,7 @@ The following integrations are supported in v1.7.4. BetterInventory has no optio
 - Inspect from Social and Inspect from Party Finder: detailed weapon and Curio cards in Character Overview when inspecting other players.
 - Visible Equipment: Loadout cards coexist with its Cosmetics placement widgets.
 - MyFavorites: color groups, cycling controls and compact favorite markers remain synchronized.
+- Lantern of the Omnissiah: recommendation panel hosted in BetterInventory's scalable inventory-options panel, with a default-on opt-out setting.
 - Enhanced Character Selection: no known conflict in the current implementation.
 - Name It: optional import/synchronization through BetterInventory's standalone **Custom Item Names and Colors** module.
 

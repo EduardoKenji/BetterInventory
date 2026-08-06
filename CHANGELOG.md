@@ -1,5 +1,15 @@
 # BetterInventory changelog
 
+## 1.8.0 - 2026-08-06
+
+### Added
+
+- Added a default-on Lantern of the Omnissiah integration that hosts Lantern's weapon recommendation window as the top section of BetterInventory's scalable inventory-options panel and suppresses the duplicate floating panel while active.
+
+### Fixed
+
+- Moved the equipped marker lower on Character Overview cards so it no longer collides with Lantern's recommendation icon.
+
 ## 1.7.4 - 2026-08-06
 
 ### Added
