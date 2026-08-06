@@ -523,6 +523,9 @@ def main() -> None:
     assert credits_view.received_definitions.armoury_expanded is True
     credits_view._widgets_by_name = lua.table_from(
         {
+            "purchase_button": lua.table_from(
+                {"offset": lua.table_from([0, 0, 0])}
+            ),
             "quick_sacrifice_button": lua.table_from(
                 {"offset": lua.table_from([250, 0, 0])}
             )
@@ -540,16 +543,17 @@ def main() -> None:
     )
     credits_view._weapon_stats = lua.table_from(
         {
-            "_menu_settings": lua.table_from(
-                {
-                    "grid_size": lua.table_from([518, 920]),
-                    "edge_padding": 12,
-                }
-            )
+            "_world_x": 894,
+            "_scenegraph_world_position": lua.eval(
+                "function(element, id) return {element._world_x, 0, 0} end"
+            ),
+            "_scenegraph_size": lua.eval(
+                "function(element, id) return 646, 920 end"
+            ),
         }
     )
     credits_view._world_x = lua.table_from(
-        {"purchase_button": 790, "weapon_stats_pivot": 894}
+        {"purchase_button": 790}
     )
     credits_view._scenegraph_world_position = lua.eval(
         "function(view, id) return {view._world_x[id], 0, 0} end"
@@ -581,7 +585,7 @@ def main() -> None:
     assert armoury_grid.top_width == 766
     assert armoury_grid.bottom_width == 788
     assert abs(
-        credits_view._ui_scenegraph.purchase_button.position[1] - 909.3333333333
+        credits_view._ui_scenegraph.purchase_button.position[1] - 967.3333333333
     ) < 0.0001
 
     # Re-entering must not apply the same compatibility offset twice.
@@ -589,7 +593,7 @@ def main() -> None:
         lua.eval("function() return 'entered again' end"), credits_view
     )
     assert abs(
-        credits_view._ui_scenegraph.purchase_button.position[1] - 909.3333333333
+        credits_view._ui_scenegraph.purchase_button.position[1] - 967.3333333333
     ) < 0.0001
 
     # CreditsVendorView is also reused by GlobalStore. Its custom cards use the
