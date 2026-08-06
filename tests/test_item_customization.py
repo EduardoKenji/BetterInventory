@@ -417,6 +417,38 @@ def main() -> None:
         for index in range(1, 4)
     )
 
+    # Q can be pressed before the popup handler's update hook has populated
+    # the cache. Resolve its live text widget on demand instead of no-oping.
+    live_input_widget = lua.table_from(
+        {"content": lua.table_from({"visible": False, "is_writing": False})}
+    )
+    globals_.live_popup_handler = lua.table_from(
+        {
+            "_widgets_by_name": lua.table_from(
+                {"better_inventory_name_input": live_input_widget}
+            )
+        }
+    )
+    lua.execute(
+        """
+        Managers.ui.ui_constant_elements = function()
+            return {
+                element = function(_, name)
+                    assert(name == "ConstantElementPopupHandler")
+                    return live_popup_handler
+                end,
+            }
+        end
+        """
+    )
+    assert customization.show_name_editor(mod, context, lua.table_from({})) is True
+    assert live_input_widget.content.visible is True
+    assert live_input_widget.content.is_writing is True
+    globals_.captured_popup.options[3].callback()
+    assert live_input_widget.content.visible is False
+    assert live_input_widget.content.is_writing is False
+    lua.execute("Managers.ui.ui_constant_elements = nil")
+
     # The name popup exposes and focuses a real text field, then reserves room
     # for it between the title/description and the three action buttons.
     detached_input_widget = lua.table_from(

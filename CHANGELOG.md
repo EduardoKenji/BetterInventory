@@ -1,5 +1,12 @@
 # BetterInventory changelog
 
+## 1.9.2 - 2026-08-06
+
+### Fixed
+
+- Fixed Change Name silently doing nothing when the shared popup text widget had not yet been cached.
+- Resolve the active popup handler when opening or closing the name editor so recreated constant UI elements cannot leave a stale widget reference.
+
 ## 1.9.1 - 2026-08-06
 
 ### Fixed

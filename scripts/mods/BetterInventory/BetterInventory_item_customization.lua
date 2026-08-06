@@ -813,7 +813,33 @@ local function show_color_picker(mod, target, context, layout)
 	})
 end
 
+local function resolve_input_widget()
+	local ui_manager = Managers and Managers.ui
+	local constant_elements
+	local popup_handler
+
+	if ui_manager and type(ui_manager.ui_constant_elements) == "function" then
+		local ok, value = pcall(ui_manager.ui_constant_elements, ui_manager)
+
+		constant_elements = ok and value or nil
+	end
+
+	if constant_elements and type(constant_elements.element) == "function" then
+		local ok, value = pcall(constant_elements.element, constant_elements, "ConstantElementPopupHandler")
+
+		popup_handler = ok and value or nil
+	end
+
+	if popup_handler and popup_handler._widgets_by_name then
+		input_widget = popup_handler._widgets_by_name[INPUT_WIDGET_ID]
+	end
+
+	return input_widget
+end
+
 local function close_input()
+	resolve_input_widget()
+
 	if input_widget and input_widget.content then
 		input_widget.content.is_writing = false
 		input_widget.content.visible = false
@@ -823,6 +849,11 @@ local function close_input()
 end
 
 local function show_name_editor(mod, context, layout)
+	-- Constant elements can be recreated independently from inventory views.
+	-- Resolve the currently active popup handler here instead of relying on its
+	-- update hook to have refreshed the cached text widget before Q is pressed.
+	resolve_input_widget()
+
 	if not input_widget or not input_widget.content then
 		return false
 	end
