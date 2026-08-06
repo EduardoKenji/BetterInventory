@@ -1,6 +1,6 @@
 # BetterInventory changelog
 
-## 1.8.1 - 2026-08-06
+## 1.9.0 - 2026-08-06
 
 ### Added
 
