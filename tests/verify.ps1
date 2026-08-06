@@ -31,6 +31,14 @@ if ($main -notmatch 'mod:hook\(InventoryWeaponsView,\s*"present_grid_layout"') {
 	throw "The InventoryWeaponsView hook was not found."
 }
 
+if ($main -notmatch 'mod:hook\(InventoryWeaponsView,\s*"_handle_input"' -or $main -notmatch 'capture_inventory_controller_navigation' -or $main -notmatch 'consume_inventory_controller_grid_navigation') {
+	throw "The multi-column controller-navigation guard was not found."
+}
+
+if ($main -match 'mod:hook_safe\(InventoryWeaponsView,\s*"update"') {
+	throw "InventoryWeaponsView.update must use one hook type so DMF hot reload does not reject a duplicate rehook."
+}
+
 if ($main -notmatch 'mod:hook\(CraftingMechanicusModifyView,\s*"present_grid_layout"') {
 	throw "The Entreat Hadron grid hook was not found."
 }
@@ -85,6 +93,14 @@ $layout = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_layou
 $features = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_features.lua") -Raw
 $curioAcquisition = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_acquisition.lua") -Raw
 $curioValues = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_values.lua") -Raw
+
+if ($features -notmatch 'inventory_grid_has_right_neighbour' -or $features -notmatch 'navigate_right_continuous') {
+	throw "The controller-navigation neighbour check was not found."
+}
+
+if ($data -notmatch 'setting_id\s*=\s*"inventory_options_controller_focus_keybind"[\s\S]*?default_value\s*=\s*"navigate_secondary_right_pressed"' -or $data -notmatch 'setting_id\s*=\s*"custom_item_background_color_keybind"[\s\S]*?default_value\s*=\s*"navigate_secondary_left_pressed"' -or $features -notmatch 'capture_inventory_options_panel_controller_focus' -or $features -notmatch 'update_inventory_options_panel_controller_selection' -or $main -notmatch 'inventory_options_panel_controller_focused') {
+	throw "Controller focus switching or its conflict-free default bindings were not found."
+}
 
 if ($main -notmatch 'Features\.set_item_sorting_integration\(get_mod\("ItemSorting"\)\)' -or $main -notmatch 'Features\.preserve_item_sorting_native_options' -or $features -notmatch 'ITEM_SORTING_INVENTORY_VANILLA_SETTINGS' -or $features -notmatch 'ITEM_SORTING_STORE_VANILLA_SETTINGS' -or $features -notmatch 'item_sorting_custom_option_start' -or $features -notmatch 'item_sorting_mod_header') {
 	throw "ItemSorting inventory/store panel integration was not found."

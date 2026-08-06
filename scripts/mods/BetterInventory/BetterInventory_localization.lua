@@ -77,6 +77,18 @@ local localization = {
 	enable_inventory_options_panel_prototype_tooltip = {
 		en = "Research prototype. After reopening the inventory, places BetterInventory's synchronized controls inside one bounded, scrollable Darktide panel with clickable collapsible section headers. Disable it to restore the established loose controls.",
 	},
+	inventory_options_controller_focus_keybind = {
+		en = "Items / widget focus keybind",
+	},
+	inventory_options_controller_focus_keybind_tooltip = {
+		en = "Switches controller focus between the inventory item grid and BetterInventory's options widget. RT is unused by Darktide's native melee, ranged and Curio inventory controls.",
+	},
+	inventory_options_controller_focus_keybind_rt = {
+		en = "[D / RT]",
+	},
+	inventory_options_controller_focus_legend = {
+		en = "Items / Widget Focus",
+	},
 	inventory_options_panel_geometry_group = {
 		en = "Scalable inventory panel (experimental)",
 	},
@@ -802,6 +814,9 @@ local localization = {
 	},
 	custom_item_editor_keybind_r = {
 		en = "[R]",
+	},
+	custom_item_editor_keybind_lt = {
+		en = "[A / LT]",
 	},
 	custom_item_editor_keybind_off = {
 		en = "Off",
@@ -2367,6 +2382,7 @@ zh_cn.custom_item_editor_keybind_e = "[E]"
 zh_cn.custom_item_editor_keybind_q = "[Q]"
 zh_cn.custom_item_editor_keybind_v = "[V]"
 zh_cn.custom_item_editor_keybind_r = "[R]"
+zh_cn.custom_item_editor_keybind_lt = "[A / LT]"
 zh_cn.custom_item_editor_keybind_off = "Off"
 zh_cn.custom_item_skip_confirmation_prompts = "Skip confirmation prompts"
 zh_cn.custom_item_skip_confirmation_prompts_tooltip = "Immediately applies reset actions instead of asking for confirmation. Enabled by default."
@@ -2406,6 +2422,10 @@ zh_cn.enable_lantern_inventory_section_tooltip = "When Lantern of the Omnissiah 
 zh_cn.keep_lantern_curio_panel_separate = "Keep Lantern's Curio panel separate"
 zh_cn.keep_lantern_curio_panel_separate_tooltip = "Leaves Lantern's Recommended Curios window in its native standalone placement instead of hosting it inside BetterInventory's inventory-options panel. Enabled by default because Lantern's Curio layout already fits beside BetterInventory's panel."
 zh_cn.option_requires_lantern_of_the_omnissiah = "Requires Lantern of the Omnissiah and the scalable inventory-options panel."
+zh_cn.inventory_options_controller_focus_keybind = "Items / widget focus keybind"
+zh_cn.inventory_options_controller_focus_keybind_tooltip = "Switches controller focus between the inventory item grid and BetterInventory's options widget. RT is unused by Darktide's native melee, ranged and Curio inventory controls."
+zh_cn.inventory_options_controller_focus_keybind_rt = "[D / RT]"
+zh_cn.inventory_options_controller_focus_legend = "Items / Widget Focus"
 zh_cn.myfavorites_show_favorite_letter = "Show F below favorite icon"
 zh_cn.myfavorites_show_favorite_letter_tooltip = "Adds a compact F beneath the coloured MyFavorites icon. Disabled by default."
 zh_cn.debug_group = "Debug (testing only)"

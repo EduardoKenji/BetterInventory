@@ -1,4 +1,4 @@
-local MOD_VERSION = "1.8.0"
+local MOD_VERSION = "1.8.1"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
@@ -187,6 +187,16 @@ return {
 								tooltip = "enable_inventory_options_panel_prototype_tooltip",
 								type = "checkbox",
 								default_value = true,
+							},
+							{
+								setting_id = "inventory_options_controller_focus_keybind",
+								tooltip = "inventory_options_controller_focus_keybind_tooltip",
+								type = "dropdown",
+								default_value = "navigate_secondary_right_pressed",
+								options = {
+									{ text = "inventory_options_controller_focus_keybind_rt", value = "navigate_secondary_right_pressed" },
+									{ text = "custom_item_editor_keybind_off", value = "off" },
+								},
 							},
 							{
 								setting_id = "curio_information_width_percent",
@@ -980,8 +990,9 @@ return {
 						setting_id = "custom_item_background_color_keybind",
 						tooltip = "custom_item_background_color_keybind_tooltip",
 						type = "dropdown",
-						default_value = "group_finder_refresh_groups",
+						default_value = "navigate_secondary_left_pressed",
 						options = {
+							{ text = "custom_item_editor_keybind_lt", value = "navigate_secondary_left_pressed" },
 							{ text = "custom_item_editor_keybind_e", value = "hotkey_menu_special_1" },
 							{ text = "custom_item_editor_keybind_q", value = "hotkey_menu_special_2" },
 							{ text = "custom_item_editor_keybind_v", value = "hotkey_item_inspect" },

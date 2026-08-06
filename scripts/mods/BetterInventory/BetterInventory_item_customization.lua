@@ -1013,6 +1013,7 @@ ItemCustomization.install = function(mod, InventoryWeaponsView, layout)
 			better_inventory_change_name = { en = "Change Name" },
 			better_inventory_name_color = { en = "Name Color" },
 			better_inventory_background_color = { en = "Background Color" },
+			better_inventory_toggle_panel_focus = { en = "Items / Widget Focus" },
 		})
 	end
 

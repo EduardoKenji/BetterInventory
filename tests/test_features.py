@@ -400,6 +400,187 @@ def main() -> None:
         == "weapon_compare_stats_pivot"
     )
 
+    controller_view, controller_input = lua.execute(
+        r"""
+        local selected_index = 1
+        local item_grid = {
+            input_disabled = function() return false end,
+            selected_grid_index = function() return selected_index end,
+            widgets = function()
+                return {
+                    {content = {row = 1, column = 1, hotspot = {}}},
+                    {content = {row = 1, column = 2, hotspot = {}}},
+                    {content = {row = 1, column = 3, hotspot = {}}},
+                    {content = {row = 2, column = 1, hotspot = {}}},
+                }
+            end,
+            set_selected_index = function(_, index)
+                selected_index = index
+            end,
+        }
+        local view = {
+            _using_cursor_navigation = false,
+            _selected_options = false,
+            _item_grid = item_grid,
+            _weapon_options_element = {
+                visible = function() return true end,
+                input_disabled = function() return true end,
+            },
+        }
+        local input = {
+            get = function(_, action)
+                return action == "navigate_right_continuous"
+            end,
+        }
+
+        return view, input
+        """
+    )
+    assert (
+        features.capture_inventory_controller_navigation(
+            controller_view, controller_input
+        )
+        is True
+    )
+    # The grid moves during ViewElementGrid.update; the later parent handler
+    # consumes the decision captured from the pre-move position.
+    controller_view._item_grid.set_selected_index(None, 2)
+    assert features.consume_inventory_controller_grid_navigation(controller_view) is True
+    assert features.consume_inventory_controller_grid_navigation(controller_view) is False
+    controller_view._item_grid.set_selected_index(None, 3)
+    assert (
+        features.capture_inventory_controller_navigation(
+            controller_view, controller_input
+        )
+        is False
+    )
+    controller_view._item_grid.set_selected_index(None, 1)
+    controller_view._using_cursor_navigation = True
+    assert (
+        features.capture_inventory_controller_navigation(
+            controller_view, controller_input
+        )
+        is False
+    )
+
+    mod.settings.enable_inventory_options_panel_prototype = True
+    mod.settings.show_inventory_options_widget = True
+    mod.settings.inventory_options_controller_focus_keybind = (
+        "navigate_secondary_right_pressed"
+    )
+    panel_focus_view, panel_focus_input = lua.execute(
+        r"""
+        local actions = {}
+
+        local function element(disabled, selected)
+            return {
+                disabled = disabled,
+                selected = selected,
+                disable_input = function(self, value)
+                    self.disabled = value
+                end,
+                input_disabled = function(self)
+                    return self.disabled
+                end,
+                select_grid_index = function(self, value)
+                    self.selected = value
+                end,
+                selected_grid_index = function(self)
+                    return self.selected
+                end,
+            }
+        end
+
+        local panel = element(true, nil)
+        local entry = {
+            control_id = "test_stepper",
+            controller_targets = {"decrease_hotspot", "increase_hotspot"},
+        }
+        local widget = {
+            content = {
+                entry = entry,
+                hotspot = {},
+                decrease_hotspot = {},
+                increase_hotspot = {},
+            },
+        }
+
+        panel._visible = true
+        panel.select_first_index = function(self)
+            self.selected = 1
+        end
+        panel.selected_grid_widget = function(self)
+            return self.selected and widget or nil
+        end
+
+        local view = {
+            __class_name = "InventoryWeaponsView",
+            slot_kind = "slot_primary",
+            _using_cursor_navigation = false,
+            _better_inventory_options_panel = panel,
+            _better_inventory_options_panel_visible = true,
+            _better_inventory_options_panel_widgets = {
+                test_stepper = widget,
+            },
+            _item_grid = element(false, 3),
+            _weapon_options_element = element(false, 2),
+            _discard_items_element = element(true, nil),
+        }
+        local input = {
+            actions = actions,
+            get = function(self, action)
+                return self.actions[action] == true
+            end,
+        }
+
+        return view, input
+        """
+    )
+    panel_focus_input.actions["navigate_secondary_right_pressed"] = True
+    assert (
+        features.capture_inventory_options_panel_controller_focus(
+            mod, layout, panel_focus_view, panel_focus_input
+        )
+        is True
+    )
+    panel_focus_input.actions["navigate_secondary_right_pressed"] = False
+    assert panel_focus_view._item_grid.disabled is True
+    assert panel_focus_view._weapon_options_element.disabled is True
+    assert panel_focus_view._discard_items_element.disabled is True
+    assert panel_focus_view._item_grid.selected is None
+    assert panel_focus_view._better_inventory_options_panel.selected == 1
+    assert panel_focus_view._better_inventory_options_panel.disabled is False
+    assert features.inventory_options_panel_controller_focused(panel_focus_view) is True
+
+    panel_focus_input.actions["navigate_right_continuous"] = True
+    assert (
+        features.update_inventory_options_panel_controller_selection(
+            panel_focus_view, panel_focus_input
+        )
+        is True
+    )
+    stepper_widget = panel_focus_view._better_inventory_options_panel_widgets[
+        "test_stepper"
+    ]
+    assert stepper_widget.content.decrease_hotspot.is_selected is not True
+    assert stepper_widget.content.increase_hotspot.is_selected is True
+    panel_focus_input.actions["navigate_right_continuous"] = False
+
+    panel_focus_input.actions["navigate_secondary_right_pressed"] = True
+    assert (
+        features.capture_inventory_options_panel_controller_focus(
+            mod, layout, panel_focus_view, panel_focus_input
+        )
+        is False
+    )
+    assert panel_focus_view._item_grid.disabled is False
+    assert panel_focus_view._item_grid.selected == 3
+    assert panel_focus_view._weapon_options_element.disabled is False
+    assert panel_focus_view._weapon_options_element.selected == 2
+    assert panel_focus_view._discard_items_element.disabled is True
+    assert features.inventory_options_panel_controller_focused(panel_focus_view) is False
+    panel_focus_input.actions["navigate_secondary_right_pressed"] = False
+
     sortable_view = lua.execute(
         r"""
         return {
@@ -1567,6 +1748,101 @@ def main() -> None:
     assert equipped_level_widget.content.checked is False
     mod.settings.quick_discard_protect_above_equipped_level = True
     assert prototype_panel.widgets["better_inventory_discard_curio_types"] is not None
+    multi_control_focus_passes = lua.eval(
+        r"""
+        function(layout, control_id)
+            local full_row_focus = 0
+            local child_focus = 0
+
+            for index = 1, #layout do
+                local entry = layout[index]
+
+                if entry.control_id == control_id then
+                    for pass_index = 1, #entry.pass_template do
+                        local style_id = entry.pass_template[pass_index].style_id
+
+                        if style_id == "better_inventory_controller_focus" then
+                            full_row_focus = full_row_focus + 1
+                        elseif type(style_id) == "string" and string.find(style_id, "better_inventory_controller_focus_", 1, true) == 1 then
+                            child_focus = child_focus + 1
+                        end
+                    end
+                end
+            end
+
+            return full_row_focus, child_focus
+        end
+        """
+    )
+    full_row_focus, child_focus = multi_control_focus_passes(
+        prototype_panel.layout, "better_inventory_discard_types"
+    )
+    assert full_row_focus == 0
+    assert child_focus == 3
+    visible_child_focus = lua.eval(
+        r"""
+        function(layout, control_id, widget, selected_target)
+            for _, target_id in ipairs({"melee_hotspot", "ranged_hotspot", "curio_hotspot"}) do
+                widget.content[target_id].is_selected = target_id == selected_target
+                widget.content[target_id].is_focused = false
+            end
+
+            local visible_count = 0
+            local visible_x
+
+            for index = 1, #layout do
+                local entry = layout[index]
+
+                if entry.control_id == control_id then
+                    for pass_index = 1, #entry.pass_template do
+                        local pass = entry.pass_template[pass_index]
+
+                        if type(pass.style_id) == "string" and string.find(pass.style_id, "better_inventory_controller_focus_", 1, true) == 1 and pass.visibility_function(widget.content) then
+                            visible_count = visible_count + 1
+                            visible_x = pass.style.offset[1]
+                        end
+                    end
+                end
+            end
+
+            return visible_count, visible_x
+        end
+        """
+    )
+    visible_count, visible_x = visible_child_focus(
+        prototype_panel.layout,
+        "better_inventory_discard_types",
+        prototype_panel.widgets["better_inventory_discard_types"],
+        "ranged_hotspot",
+    )
+    assert visible_count == 1
+    assert visible_x > 0
+    controller_focus_style = lua.eval(
+        r"""
+        function(layout, control_id, style_id)
+            for index = 1, #layout do
+                local entry = layout[index]
+
+                if entry.control_id == control_id then
+                    for pass_index = 1, #entry.pass_template do
+                        local pass = entry.pass_template[pass_index]
+
+                        if pass.style_id == style_id then
+                            return pass.style
+                        end
+                    end
+                end
+            end
+        end
+        """
+    )
+    discard_focus_style = controller_focus_style(
+        prototype_panel.layout,
+        "better_inventory_quick_discard",
+        "better_inventory_controller_focus_2",
+    )
+    assert discard_focus_style.horizontal_alignment == "right"
+    assert discard_focus_style.size[1] == 140
     assert (
         prototype_panel.widgets[
             "better_inventory_discard_curio_types_label"
