@@ -1764,11 +1764,31 @@ mod:hook_safe(InventoryWeaponsView, "on_exit", function(view)
 end)
 
 if ensure_class_method(CreditsVendorView, "update") then
-	mod:hook_safe(CreditsVendorView, "update", function(view)
+	mod:hook(CreditsVendorView, "update", function(func, view, dt, t, input_service)
+		if is_armoury_sort_view(view) then
+			Features.capture_armoury_sort_panel_controller_focus(mod, view, input_service)
+		end
+
+		local results = pack_values(func(view, dt, t, input_service))
+
 		if is_armoury_sort_view(view) then
 			Features.update_armoury_native_sort_panel(view)
 			align_quick_level_mastery_buttons(view)
 		end
+
+		return unpack_values(results, 1, results.n)
+	end)
+end
+
+if ensure_class_method(CreditsVendorView, "_handle_input") then
+	mod:hook(CreditsVendorView, "_handle_input", function(func, view, input_service, ...)
+		if Features.armoury_sort_panel_controller_focused(view) then
+			-- The panel's ViewElementGrid already processed navigation this frame.
+			-- Skip VendorViewBase's A-to-purchase path while widget focus is active.
+			return ItemGridViewBase._handle_input(view, input_service, ...)
+		end
+
+		return func(view, input_service, ...)
 	end)
 end
 

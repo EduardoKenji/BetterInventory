@@ -2,7 +2,7 @@
 
 ## Critical Nexus archive invariant
 
-The BetterInventory v1.9.0 release archive must contain exactly one install directory named `BetterInventory`. Every ZIP entry name must use a forward slash (`/`), never a Windows backslash (`\`). The descriptor and every `BetterInventory*.lua` file in `scripts/mods/BetterInventory` are mandatory runtime files. The current nine-file release is therefore stored as:
+The BetterInventory v1.9.1 release archive must contain exactly one install directory named `BetterInventory`. Every ZIP entry name must use a forward slash (`/`), never a Windows backslash (`\`). The descriptor and every `BetterInventory*.lua` file in `scripts/mods/BetterInventory` are mandatory runtime files. The current nine-file release is therefore stored as:
 
 ```text
 BetterInventory/BetterInventory.mod
