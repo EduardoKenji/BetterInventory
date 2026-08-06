@@ -4,8 +4,11 @@ local Items = require("scripts/utilities/items")
 local STORAGE_SETTING_ID = "custom_item_name_and_colors"
 local NAME_IT_OWNS_NAMES_SETTING_ID = "_custom_item_name_it_owns_names"
 local INPUT_WIDGET_ID = "better_inventory_name_input"
+local POPUP_HANDLER_NAME = "ConstantElementPopupHandler"
+local POPUP_DEFINITIONS_PATH = "scripts/ui/constant_elements/elements/popup_handler/constant_element_popup_handler_definitions"
 local NAME_EDITOR_DESCRIPTION = "Enter a custom name. Leave it blank to restore the default name."
 local MAX_NAME_LENGTH = 80
+local MAX_INPUT_WIDGET_CREATION_ATTEMPTS = 3
 local DEFAULT_NAME_COLOR = { 255, 220, 230, 210 }
 local DEFAULT_BACKGROUND_COLOR = { 255, 45, 55, 45 }
 local cached_records = {}
@@ -16,6 +19,7 @@ local show_input_field = false
 local installed = false
 local persistence_pending = false
 local pending_deleted_gear_ids = {}
+local name_it_legend_entries = setmetatable({}, { __mode = "k" })
 
 local function normalize_name(value)
 	if type(value) ~= "string" then
@@ -88,9 +92,13 @@ local function flush_persistence()
 	-- One deferred flush batches all edits/deletions performed in the same
 	-- frame while reducing the hard-crash loss window from an entire game state
 	-- to, normally, a single frame.
-	persistence_pending = false
+	local saved = pcall(dmf.save_unsaved_settings_to_file)
 
-	return pcall(dmf.save_unsaved_settings_to_file)
+	if saved then
+		persistence_pending = false
+	end
+
+	return saved
 end
 
 local function name_it_mod()
@@ -132,20 +140,69 @@ local function name_it_names()
 		ok, names = pcall(other_mod.get, other_mod, "name_list")
 	end
 
-	return other_mod, ok and type(names) == "table" and names or {}
+	return other_mod, ok and type(names) == "table" and names or nil
+end
+
+local function record_has_customization(record)
+	return record.name ~= nil or record.name_color ~= nil or record.background_color ~= nil
+end
+
+local function sanitize_record(record)
+	if type(record) ~= "table" then
+		return nil, true
+	end
+
+	local changed = false
+	local name = normalize_name(record.name)
+
+	if name ~= record.name then
+		record.name = name
+		changed = true
+	end
+
+	for _, field in ipairs({ "name_color", "background_color" }) do
+		if record[field] ~= nil and type(record[field]) ~= "table" then
+			record[field] = nil
+			changed = true
+		end
+	end
+
+	if record.background_color == nil and record.background_preserve_shading ~= nil then
+		record.background_preserve_shading = nil
+		changed = true
+	elseif record.background_preserve_shading ~= nil and type(record.background_preserve_shading) ~= "boolean" then
+		record.background_preserve_shading = nil
+		changed = true
+	end
+
+	if record.name == nil or (record.name_target ~= "primary" and record.name_target ~= "sub") then
+		if record.name_target ~= nil then
+			record.name_target = nil
+			changed = true
+		end
+	end
+
+	if record.character_id ~= nil and (type(record.character_id) ~= "string" or record.character_id == "") then
+		record.character_id = nil
+		changed = true
+	end
+
+	if not record_has_customization(record) then
+		return nil, true
+	end
+
+	return record, changed
 end
 
 local function sync_name_to_name_it(gear_id, name)
 	local other_mod, names = name_it_names()
 
-	if not other_mod or type(other_mod.set) ~= "function" then
+	if not other_mod or type(names) ~= "table" or type(other_mod.set) ~= "function" then
 		return false
 	end
 
 	names[gear_id] = type(name) == "string" and name ~= "" and name or nil
-	pcall(other_mod.set, other_mod, "name_list", names, false)
-
-	return true
+	return pcall(other_mod.set, other_mod, "name_list", names, false)
 end
 
 ItemCustomization.get = function(mod, gear_id)
@@ -269,7 +326,7 @@ ItemCustomization.import_name_it_names = function(mod)
 
 	local other_mod, names = name_it_names()
 
-	if not other_mod then
+	if not other_mod or type(names) ~= "table" then
 		return 0
 	end
 
@@ -335,7 +392,7 @@ end
 ItemCustomization.reconcile_from_name_it = function(mod)
 	local other_mod, names = name_it_names()
 
-	if not other_mod then
+	if not other_mod or type(names) ~= "table" then
 		return false
 	end
 
@@ -814,10 +871,9 @@ local function show_color_picker(mod, target, context, layout)
 	})
 end
 
-local function resolve_input_widget()
+local function active_popup_handler()
 	local ui_manager = Managers and Managers.ui
 	local constant_elements
-	local popup_handler
 
 	if ui_manager and type(ui_manager.ui_constant_elements) == "function" then
 		local ok, value = pcall(ui_manager.ui_constant_elements, ui_manager)
@@ -826,20 +882,75 @@ local function resolve_input_widget()
 	end
 
 	if constant_elements and type(constant_elements.element) == "function" then
-		local ok, value = pcall(constant_elements.element, constant_elements, "ConstantElementPopupHandler")
+		local ok, value = pcall(constant_elements.element, constant_elements, POPUP_HANDLER_NAME)
 
-		popup_handler = ok and value or nil
+		return ok and value or nil
+	end
+end
+
+local function ensure_input_widget(mod, popup_handler)
+	local widgets_by_name = popup_handler and popup_handler._widgets_by_name
+	local existing = widgets_by_name and widgets_by_name[INPUT_WIDGET_ID]
+
+	if existing then
+		return existing
 	end
 
-	if popup_handler and popup_handler._widgets_by_name then
-		input_widget = popup_handler._widgets_by_name[INPUT_WIDGET_ID]
+	local attempts = popup_handler and popup_handler._better_inventory_name_input_creation_attempts or 0
+
+	if not popup_handler or not widgets_by_name or not input_widget_definition or not popup_handler._definitions or type(popup_handler._create_widget) ~= "function" or attempts >= MAX_INPUT_WIDGET_CREATION_ATTEMPTS then
+		return
+	end
+
+	local ok, result = pcall(function()
+		local UIScenegraph = require("scripts/managers/ui/ui_scenegraph")
+		local definitions = popup_handler._definitions
+
+		-- The singleton popup handler can be instantiated before DMF applies
+		-- hook_require additions. Rebuild once from the now-patched complete
+		-- definition and attach the missing text field at runtime.
+		popup_handler._ui_scenegraph = UIScenegraph.init_scenegraph(definitions.scenegraph_definition)
+
+		local widget = popup_handler:_create_widget(INPUT_WIDGET_ID, input_widget_definition)
+
+		popup_handler._widgets = popup_handler._widgets or {}
+		popup_handler._widgets[#popup_handler._widgets + 1] = widget
+		widgets_by_name[INPUT_WIDGET_ID] = widget
+
+		return widget
+	end)
+
+	if ok and result then
+		popup_handler._better_inventory_name_input_creation_attempts = nil
+		popup_handler._better_inventory_name_input_creation_warning = nil
+
+		return result
+	end
+
+	popup_handler._better_inventory_name_input_creation_attempts = attempts + 1
+
+	if mod and not popup_handler._better_inventory_name_input_creation_warning then
+		popup_handler._better_inventory_name_input_creation_warning = true
+		mod:warning("Unable to create the Change Name text field: %s", tostring(result))
+	end
+end
+
+local function resolve_input_widget(mod, create_if_missing)
+	local popup_handler = active_popup_handler()
+
+	if popup_handler then
+		if create_if_missing then
+			input_widget = ensure_input_widget(mod, popup_handler)
+		else
+			input_widget = popup_handler._widgets_by_name and popup_handler._widgets_by_name[INPUT_WIDGET_ID] or nil
+		end
 	end
 
 	return input_widget
 end
 
-local function close_input()
-	resolve_input_widget()
+local function close_input(mod)
+	resolve_input_widget(mod, false)
 
 	if input_widget and input_widget.content then
 		input_widget.content.is_writing = false
@@ -853,7 +964,7 @@ local function show_name_editor(mod, context, layout)
 	-- Constant elements can be recreated independently from inventory views.
 	-- Resolve the currently active popup handler here instead of relying on its
 	-- update hook to have refreshed the cached text widget before Q is pressed.
-	resolve_input_widget()
+	resolve_input_widget(mod, true)
 
 	if not input_widget or not input_widget.content then
 		return false
@@ -865,23 +976,29 @@ local function show_name_editor(mod, context, layout)
 	input_widget.content.is_writing = true
 	show_input_field = true
 
-	return popup({
+	local shown = popup({
 		title_text_unlocalized = string.format("Change item name (%s)", context.name),
 		description_text_unlocalized = NAME_EDITOR_DESCRIPTION,
 		options = {
 			literal_button("Confirm", function()
 				local value = input_widget and input_widget.content and input_widget.content.input_text or ""
-				close_input()
+				close_input(mod)
 				ItemCustomization.update(mod, context.gear_id, { name = value, character_id = context.character_id })
 				refresh_item(mod, layout, context, true)
 			end),
 			literal_button("Reset to default", function()
-				close_input()
+				close_input(mod)
 				reset_field(mod, context, layout, "name", "name")
 			end),
-			literal_button("Cancel", close_input, true),
+			literal_button("Cancel", function() close_input(mod) end, true),
 		},
 	})
+
+	if not shown then
+		close_input(mod)
+	end
+
+	return shown
 end
 
 ItemCustomization.on_enabled = function(mod)
@@ -889,17 +1006,14 @@ ItemCustomization.on_enabled = function(mod)
 	local records_changed = false
 
 	for gear_id, record in pairs(records) do
-		if type(record) == "table" and record.name ~= nil then
-			local normalized = normalize_name(record.name)
+		local sanitized, changed = sanitize_record(record)
 
-			if normalized ~= record.name then
-				record.name = normalized
-				records_changed = true
-			end
-
-			if normalized == nil and record.name_color == nil and record.background_color == nil and record.background_preserve_shading == nil then
-				records[gear_id] = nil
-			end
+		if type(gear_id) ~= "string" or gear_id == "" or not sanitized then
+			records[gear_id] = nil
+			records_changed = true
+		elseif changed then
+			records[gear_id] = sanitized
+			records_changed = true
 		end
 	end
 
@@ -920,6 +1034,9 @@ ItemCustomization.on_enabled = function(mod)
 end
 
 ItemCustomization.on_disabled = function(mod)
+	pending_action = nil
+	close_input(mod)
+
 	if name_it_mod() then
 		mod:set(NAME_IT_OWNS_NAMES_SETTING_ID, true, false)
 		persistence_pending = true
@@ -1013,10 +1130,31 @@ local function remove_customization_legend_entries(inputs, remove_name_it)
 	for index = #inputs, 1, -1 do
 		local callback_name = inputs[index].on_pressed_callback
 
-		if (remove_name_it and callback_name == "cb_on_change_name_pressed") or (type(callback_name) == "string" and string.find(callback_name, "cb_on_better_inventory_", 1, true) == 1) then
+		if remove_name_it and callback_name == "cb_on_change_name_pressed" then
+			name_it_legend_entries[inputs] = name_it_legend_entries[inputs] or table.clone(inputs[index])
+			table.remove(inputs, index)
+		elseif type(callback_name) == "string" and string.find(callback_name, "cb_on_better_inventory_", 1, true) == 1 then
 			table.remove(inputs, index)
 		end
 	end
+end
+
+local function restore_name_it_legend_entry(inputs)
+	local saved = name_it_legend_entries[inputs]
+
+	if not saved then
+		return false
+	end
+
+	for index = 1, #inputs do
+		if inputs[index].on_pressed_callback == "cb_on_change_name_pressed" then
+			return false
+		end
+	end
+
+	inputs[#inputs + 1] = table.clone(saved)
+
+	return true
 end
 
 local function add_legend_entry(inputs, keybind, localization_id, callback_name)
@@ -1049,7 +1187,7 @@ ItemCustomization.install = function(mod, InventoryWeaponsView, layout)
 		})
 	end
 
-	mod:hook_require("scripts/ui/constant_elements/elements/popup_handler/constant_element_popup_handler_definitions", function(definitions)
+	mod:hook_require(POPUP_DEFINITIONS_PATH, function(definitions)
 		local TextInputPassTemplates = require("scripts/ui/pass_templates/text_input_pass_templates")
 		local UIWidget = require("scripts/managers/ui/ui_widget")
 
@@ -1064,35 +1202,10 @@ ItemCustomization.install = function(mod, InventoryWeaponsView, layout)
 	end)
 
 	mod:hook_safe("ConstantElementPopupHandler", "update", function(handler)
-		local widgets_by_name = handler._widgets_by_name
-
-		if widgets_by_name and not widgets_by_name[INPUT_WIDGET_ID] and input_widget_definition and handler._definitions and type(handler._create_widget) == "function" then
-			local ok, error_message = pcall(function()
-				local UIScenegraph = require("scripts/managers/ui/ui_scenegraph")
-				local definitions = handler._definitions
-
-				-- The singleton popup handler can be instantiated before DMF applies
-				-- hook_require additions. Rebuild once from the now-patched complete
-				-- definition and attach the missing text field at runtime.
-				handler._ui_scenegraph = UIScenegraph.init_scenegraph(definitions.scenegraph_definition)
-
-				local widget = handler:_create_widget(INPUT_WIDGET_ID, input_widget_definition)
-
-				handler._widgets = handler._widgets or {}
-				handler._widgets[#handler._widgets + 1] = widget
-				widgets_by_name[INPUT_WIDGET_ID] = widget
-			end)
-
-			if not ok and not handler._better_inventory_name_input_creation_warning then
-				handler._better_inventory_name_input_creation_warning = true
-				mod:warning("Unable to create the Change Name text field: %s", tostring(error_message))
-			end
-		end
-
 		-- Name It reinitializes the shared popup handler during on_all_mods_loaded,
 		-- replacing every widget instance. Never retain the detached pre-init
 		-- widget: always follow the instance the handler currently draws.
-		input_widget = handler._widgets_by_name and handler._widgets_by_name[INPUT_WIDGET_ID] or nil
+		input_widget = ensure_input_widget(mod, handler)
 		if input_widget and input_widget.content then input_widget.content.visible = show_input_field end
 	end)
 
@@ -1102,15 +1215,17 @@ ItemCustomization.install = function(mod, InventoryWeaponsView, layout)
 		local description = widgets and widgets.description_text
 		local title = widgets and widgets.title_text
 
-		if show_input_field and description and description.content and description.content.text == NAME_EDITOR_DESCRIPTION and title and not handler._better_inventory_name_input_layout_adjusted then
+		if show_input_field and description and description.content and description.content.text == NAME_EDITOR_DESCRIPTION and title and type(handler.scenegraph_position) == "function" and type(handler.set_scenegraph_position) == "function" and not handler._better_inventory_name_input_layout_adjusted then
 			local title_offset = handler:scenegraph_position(title.scenegraph_id)
 			local button_offset = handler:scenegraph_position("button_pivot")
 
-			handler:set_scenegraph_position(title.scenegraph_id, nil, title_offset[2] - 30)
-			handler:set_scenegraph_position("button_pivot", nil, button_offset[2] + 30)
-			handler._better_inventory_name_input_layout_adjusted = true
+			if title_offset and button_offset then
+				handler:set_scenegraph_position(title.scenegraph_id, nil, title_offset[2] - 30)
+				handler:set_scenegraph_position("button_pivot", nil, button_offset[2] + 30)
+				handler._better_inventory_name_input_layout_adjusted = true
 
-			return total_height + 60
+				return total_height + 60
+			end
 		end
 
 		if not show_input_field then
@@ -1151,6 +1266,8 @@ ItemCustomization.install = function(mod, InventoryWeaponsView, layout)
 				add_legend_entry(inputs, effective_name_keybind(mod), "better_inventory_change_name", "cb_on_better_inventory_change_name_pressed")
 				add_legend_entry(inputs, mod:get("custom_item_name_color_keybind"), "better_inventory_name_color", "cb_on_better_inventory_name_color_pressed")
 				add_legend_entry(inputs, mod:get("custom_item_background_color_keybind"), "better_inventory_background_color", "cb_on_better_inventory_background_color_pressed")
+			elseif name_it_mod() then
+				restore_name_it_legend_entry(inputs)
 			end
 		end
 
@@ -1206,7 +1323,7 @@ ItemCustomization.install = function(mod, InventoryWeaponsView, layout)
 		end
 
 		crafting_view.cb_on_change_name_pressed = function(self)
-				local mod_enabled = type(mod.is_enabled) ~= "function" or mod:is_enabled()
+			local mod_enabled = type(mod.is_enabled) ~= "function" or mod:is_enabled()
 
 			if mod_enabled and mod:get("enable_custom_item_name_and_colors") ~= false then
 				local ui_manager = Managers and Managers.ui
