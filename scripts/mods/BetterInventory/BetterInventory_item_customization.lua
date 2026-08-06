@@ -106,6 +106,10 @@ ItemCustomization.update = function(mod, gear_id, changes)
 
 	if changes.name ~= nil then
 		record.name = type(changes.name) == "string" and changes.name ~= "" and changes.name or nil
+		-- name_target only describes names imported from Name It's optional
+		-- pattern-name mode. Names entered through BetterInventory always replace
+		-- the primary card name and must not inherit stale imported metadata.
+		record.name_target = nil
 		sync_name_to_name_it(gear_id, record.name)
 	end
 

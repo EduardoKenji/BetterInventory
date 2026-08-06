@@ -255,6 +255,21 @@ def main() -> None:
         mod, "legacy-gear", lua.table_from({"name": "BetterInventory Name"})
     )
     assert globals_.name_it_settings.name_list["legacy-gear"] == "BetterInventory Name"
+    assert customization.get(mod, "legacy-gear").name_target is None
+
+    # Resetting an imported pattern-target name while retaining color data
+    # must not leak the old subtitle target into the next internal name.
+    customization.update(
+        mod,
+        "legacy-pattern",
+        lua.table_from({"name_color": lua.table_from([255, 1, 2, 3])}),
+    )
+    customization.update(mod, "legacy-pattern", lua.table_from({"name": False}))
+    assert customization.get(mod, "legacy-pattern").name_target is None
+    customization.update(
+        mod, "legacy-pattern", lua.table_from({"name": "New Primary Name"})
+    )
+    assert customization.get(mod, "legacy-pattern").name_target is None
 
     customization.remove(mod, "legacy-gear")
     assert globals_.name_it_settings.name_list["legacy-gear"] is None
