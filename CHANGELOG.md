@@ -1,5 +1,17 @@
 # BetterInventory changelog
 
+## 1.7.3 - 2026-08-06
+
+### Added
+
+- Added a default-off Armoury geometry stress test with a configurable 10-100% store-width increase and proportionally resized equipment cards.
+
+### Fixed
+
+- Centered the combined Acquire and Quick Level Mastery Sacrifice actions on the rendered weapon-information panel, independent of the store-grid width.
+- Anchored the Armoury Sorting panel to the weapon-information panel and kept it below the Ordo Dockets frame with consistent padding.
+- Corrected the weapon-information scenegraph API used by the Quick Level Mastery compatibility path.
+
 ## 1.7.2 - 2026-08-05
 
 ### Added
