@@ -710,6 +710,7 @@ def main() -> None:
     mod.settings.quick_discard_curio_protection_level = 410
     mod.settings.quick_discard_show_type_breakdown = True
     mod.settings.quick_discard_show_summary_notification = True
+    mod.settings.quick_discard_disable_no_eligible_notification = False
     mod.settings.quick_discard_mode = "manual"
     mod.settings.quick_discard_skip_automatic_confirmation = False
     quick_discard_view = lua.execute(
@@ -2063,6 +2064,15 @@ def main() -> None:
         == "quick_discard_automatic_nothing_notification_description"
     )
     features.cancel_morningstar_auto_discard()
+
+    # The opt-out suppresses only the empty automatic-pass notification.
+    mod.settings.quick_discard_disable_no_eligible_notification = True
+    globals_.captured_notification = None
+    features.begin_morningstar_auto_discard(mod)
+    features.update_morningstar_auto_discard(mod, 5)
+    assert globals_.captured_notification is None
+    features.cancel_morningstar_auto_discard()
+    mod.settings.quick_discard_disable_no_eligible_notification = False
 
     features.unregister_inventory_view(melee_view)
     mod.settings.prioritize_equipped_favorites = False

@@ -203,6 +203,12 @@ local localization = {
 	quick_discard_show_summary_notification_tooltip = {
 		en = "Shows a native notification after the backend confirms an automated discard, with discarded item counts colored by rarity. Manual discard completion remains owned by Darktide's native inventory flow.",
 	},
+	quick_discard_disable_no_eligible_notification = {
+		en = "Disable notification when no eligible discard items are found",
+	},
+	quick_discard_disable_no_eligible_notification_tooltip = {
+		en = "Suppresses the Morningstar automatic-discard notification when no items match the current filters. Successful discard notifications are unaffected.",
+	},
 	automatic_curio_buyer_group = {
 		en = "Automatic Curio Buyer",
 	},
@@ -223,6 +229,12 @@ local localization = {
 	},
 	automatic_curio_diagnostic_logging_tooltip = {
 		en = "Writes per-character, per-Curio and revalidation details to Darktide's shared session log during the single Morningstar scan. Disabled by default to minimize disk-log growth; failures are still logged.",
+	},
+	automatic_curio_disable_no_eligible_notification = {
+		en = "Disable notification when no eligible Curios are found",
+	},
+	automatic_curio_disable_no_eligible_notification_tooltip = {
+		en = "Suppresses the Automatic Curio Buyer notification when no Curios match the current filters. Purchase, insufficient-funds and failure notifications are unaffected.",
 	},
 	automatic_curio_target_mode = {
 		en = "Curio acquisition targets",
@@ -1725,6 +1737,8 @@ local zh_cn = {
 	automatic_curio_min_item_level_tooltip = "只有显示物品等级达到或超过此值的军械库珍品才符合条件。生命和韧性珍品还必须达到对应的最低主要属性数值。货币充足时，会购买所有已启用职业的每个匹配商品。默认值为 410。",
 	automatic_curio_diagnostic_logging = "启用详细诊断日志",
 	automatic_curio_diagnostic_logging_tooltip = "在每次晨星号单次扫描期间，将每个角色、每件珍品和重新验证的详细信息写入《暗潮》的共享会话日志。默认关闭以尽量减少磁盘日志增长；错误仍会记录。",
+	automatic_curio_disable_no_eligible_notification = "未找到符合条件的珍品时禁用通知",
+	automatic_curio_disable_no_eligible_notification_tooltip = "当没有珍品符合当前筛选条件时，隐藏自动珍品购买器通知。购买、资金不足和失败通知不受影响。",
 	automatic_curio_types_group = "我们正在寻找的珍品类型：",
 	automatic_curio_buy_health = "生命",
 	automatic_curio_min_health = "最低生命值 (%%)",
@@ -1828,6 +1842,8 @@ local zh_cn = {
 	quick_discard_show_type_breakdown_tooltip = "在快速丢弃确认窗口的每个稀有度行中显示近战武器、远程武器和珍品数量。此显示选项仅在模组选项中提供，默认启用。",
 	quick_discard_show_summary_notification = "显示自动丢弃通知",
 	quick_discard_show_summary_notification_tooltip = "在后端确认自动丢弃后显示原生通知，丢弃的物品数量按稀有度着色。手动丢弃完成仍然属于《暗潮》的原生库存流程。",
+	quick_discard_disable_no_eligible_notification = "未找到符合条件的丢弃物品时禁用通知",
+	quick_discard_disable_no_eligible_notification_tooltip = "当没有物品符合当前筛选条件时，隐藏晨星号自动丢弃通知。成功丢弃通知不受影响。",
 	quick_discard_inventory_prefix = "全部丢弃",
 	quick_discard_inventory_mode = "模式",
 	quick_discard_inventory_suffix = "及以下",

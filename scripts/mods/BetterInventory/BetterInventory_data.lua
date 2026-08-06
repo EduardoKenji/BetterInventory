@@ -398,6 +398,12 @@ return {
 						type = "checkbox",
 						default_value = true,
 					},
+					{
+						setting_id = "quick_discard_disable_no_eligible_notification",
+						tooltip = "quick_discard_disable_no_eligible_notification_tooltip",
+						type = "checkbox",
+						default_value = false,
+					},
 				},
 			},
 			{
@@ -423,6 +429,12 @@ return {
 							{
 								setting_id = "automatic_curio_diagnostic_logging",
 								tooltip = "automatic_curio_diagnostic_logging_tooltip",
+								type = "checkbox",
+								default_value = false,
+							},
+							{
+								setting_id = "automatic_curio_disable_no_eligible_notification",
+								tooltip = "automatic_curio_disable_no_eligible_notification_tooltip",
 								type = "checkbox",
 								default_value = false,
 							},

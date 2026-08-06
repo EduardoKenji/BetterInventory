@@ -1346,6 +1346,16 @@ local function notify(mod, title_id, description, final_line, final_line_color)
 	})
 end
 
+local function notify_no_eligible(mod)
+	if mod:get("automatic_curio_disable_no_eligible_notification") == true then
+		return false
+	end
+
+	notify(mod, "automatic_curio_none_title", mod:localize("automatic_curio_none_description"))
+
+	return true
+end
+
 local function color_channel(mod, setting_id, fallback)
 	local value = tonumber(mod:get(setting_id)) or fallback
 
@@ -1544,7 +1554,7 @@ local function purchase_candidates(mod, token, candidates)
 		if reported then
 			log_diagnostic(mod, string.format("Purchase pass completed with %d purchase(s) and %d insufficient-funds match(es).", #purchased, #insufficient))
 		else
-			notify(mod, "automatic_curio_none_title", mod:localize("automatic_curio_none_description"))
+			notify_no_eligible(mod)
 			log_diagnostic(mod, "No eligible Curios were available after final revalidation.")
 		end
 	end):catch(function(error_value)
@@ -1614,7 +1624,7 @@ local function start_scan(mod)
 
 		if #candidates == 0 then
 			finish_pass()
-			notify(mod, "automatic_curio_none_title", mod:localize("automatic_curio_none_description"))
+			notify_no_eligible(mod)
 		else
 			purchase_candidates(mod, token, candidates)
 		end

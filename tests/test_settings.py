@@ -121,6 +121,10 @@ def main() -> None:
 			curio_secondary_text_color_b = 210,
 			enable_experimental_quick_discard = false,
 			quick_discard_protect_high_level_curios = true,
+			quick_discard_mode = "manual",
+			quick_discard_disable_no_eligible_notification = false,
+			enable_automatic_curio_acquisition = false,
+			automatic_curio_disable_no_eligible_notification = false,
 			myfavorites_show_favorite_letter = false,
         }
 
@@ -795,10 +799,12 @@ def main() -> None:
 		"quick_discard_keep_stamina_curios",
 		"quick_discard_show_type_breakdown",
 		"quick_discard_show_summary_notification",
+		"quick_discard_disable_no_eligible_notification",
 		"automatic_curio_min_item_level",
 		"automatic_curio_min_health",
 		"automatic_curio_min_toughness",
 		"automatic_curio_diagnostic_logging",
+		"automatic_curio_disable_no_eligible_notification",
 		"automatic_curio_target_mode",
 		"automatic_curio_buy_health",
 		"automatic_curio_buy_toughness",
@@ -994,10 +1000,12 @@ def main() -> None:
     assert entries_by_id["quick_discard_keep_toughness_curios"].disabled is True
     assert entries_by_id["quick_discard_show_type_breakdown"].disabled is True
     assert entries_by_id["quick_discard_show_summary_notification"].disabled is True
+    assert entries_by_id["quick_discard_disable_no_eligible_notification"].disabled is True
     assert entries_by_id["automatic_curio_min_item_level"].disabled is True
     assert entries_by_id["automatic_curio_min_health"].disabled is True
     assert entries_by_id["automatic_curio_min_toughness"].disabled is True
     assert entries_by_id["automatic_curio_diagnostic_logging"].disabled is True
+    assert entries_by_id["automatic_curio_disable_no_eligible_notification"].disabled is True
     assert entries_by_id["automatic_curio_target_mode"].disabled is True
     assert entries_by_id["automatic_curio_buy_health"].disabled is True
     assert entries_by_id["automatic_curio_class_cryptic"].disabled is True
@@ -1050,6 +1058,12 @@ def main() -> None:
     assert entries_by_id["quick_discard_keep_stamina_curios"].disabled is False
     assert entries_by_id["quick_discard_show_type_breakdown"].disabled is False
     assert entries_by_id["quick_discard_show_summary_notification"].disabled is False
+    assert entries_by_id["quick_discard_disable_no_eligible_notification"].disabled is True
+    settings.quick_discard_mode = "automatic"
+    mod.on_setting_changed("quick_discard_mode")
+    assert entries_by_id["quick_discard_disable_no_eligible_notification"].disabled is False
+    settings.quick_discard_mode = "manual"
+    mod.on_setting_changed("quick_discard_mode")
     settings.quick_discard_protect_high_level_curios = False
     mod.on_setting_changed("quick_discard_protect_high_level_curios")
     assert entries_by_id["quick_discard_curio_protection_level"].disabled is True
@@ -1069,6 +1083,7 @@ def main() -> None:
     assert entries_by_id["automatic_curio_min_health"].disabled is False
     assert entries_by_id["automatic_curio_min_toughness"].disabled is False
     assert entries_by_id["automatic_curio_diagnostic_logging"].disabled is False
+    assert entries_by_id["automatic_curio_disable_no_eligible_notification"].disabled is False
     assert entries_by_id["automatic_curio_target_mode"].disabled is False
     assert entries_by_id["automatic_curio_buy_health"].disabled is False
     assert entries_by_id["automatic_curio_buy_toughness"].disabled is False
@@ -1742,11 +1757,13 @@ def main() -> None:
     assert defaults["quick_discard_max_item_level"] == 490
     assert defaults["quick_discard_protect_above_equipped_level"] is True
     assert defaults["quick_discard_show_summary_notification"] is True
+    assert defaults["quick_discard_disable_no_eligible_notification"] is False
     assert defaults["enable_automatic_curio_acquisition"] is False
     assert defaults["automatic_curio_min_item_level"] == 410
     assert defaults["automatic_curio_min_health"] == 21
     assert defaults["automatic_curio_min_toughness"] == 17
     assert defaults["automatic_curio_diagnostic_logging"] is False
+    assert defaults["automatic_curio_disable_no_eligible_notification"] is False
     assert defaults["automatic_curio_buy_health"] is True
     assert defaults["automatic_curio_buy_toughness"] is True
     assert defaults["automatic_curio_buy_stamina"] is False

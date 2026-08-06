@@ -3276,10 +3276,14 @@ local function show_discard_summary_notification(mod, candidates)
 end
 
 local function show_automatic_no_candidates_notification(mod)
+	if mod:get("quick_discard_disable_no_eligible_notification") == true then
+		return false
+	end
+
 	local event_manager = Managers and Managers.event
 
 	if not event_manager or type(event_manager.trigger) ~= "function" then
-		return
+		return false
 	end
 
 	pcall(event_manager.trigger, event_manager, "event_add_notification_message", "custom", {
@@ -3288,6 +3292,8 @@ local function show_automatic_no_candidates_notification(mod)
 		line_2 = mod:localize("quick_discard_automatic_nothing_notification_description"),
 		line_2_color = Color.white(255, true),
 	})
+
+	return true
 end
 
 local function show_popup(context)
@@ -3939,8 +3945,8 @@ Features.update_morningstar_auto_discard = function(mod, dt)
 		if #candidates > 0 then
 			present_automatic_discard(mod, token, character_id, candidates)
 		else
-			show_automatic_no_candidates_notification(mod)
-			automatic_discard_info(mod, "Displayed the no-eligible-items notification.")
+			local displayed = show_automatic_no_candidates_notification(mod)
+			automatic_discard_info(mod, displayed and "Displayed the no-eligible-items notification." or "Suppressed the no-eligible-items notification.")
 		end
 	end):catch(function(error_value)
 		automatic_discard_info(mod, "Inventory scan failed; scheduling a bounded retry. Reason: " .. automatic_discard_error(error_value))

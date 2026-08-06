@@ -245,6 +245,7 @@ def main() -> None:
             automatic_curio_min_health = 21,
             automatic_curio_min_toughness = 17,
             automatic_curio_diagnostic_logging = false,
+			automatic_curio_disable_no_eligible_notification = false,
             automatic_curio_buy_health = true,
             automatic_curio_buy_toughness = true,
             automatic_curio_buy_stamina = false,
@@ -740,6 +741,15 @@ def main() -> None:
     assert globals_.purchase_count == 1
     assert globals_.captured_notification.line_1 == "automatic_curio_none_title"
     assert len(globals_.captured_logs) == logs_before_quiet_scan
+
+    # Suppressing the no-match message does not affect the scan or purchases.
+    globals_.settings.automatic_curio_disable_no_eligible_notification = True
+    globals_.captured_notification = None
+    module.begin_morningstar_pass(globals_.test_mod)
+    module.update(globals_.test_mod, 6, False)
+    assert globals_.purchase_count == 1
+    assert globals_.captured_notification is None
+    globals_.settings.automatic_curio_disable_no_eligible_notification = False
 
     # A purchase already sent to the backend can still finish after the user
     # disables the buyer. It must be reported, while cancellation prevents any
