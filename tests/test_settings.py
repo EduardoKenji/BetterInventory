@@ -41,7 +41,7 @@ def main() -> None:
 			curio_content_name_it_curio_name = false,
 			enable_custom_item_name_and_colors = true,
 			inventory_options_controller_focus_keybind = "navigate_secondary_right_pressed",
-			custom_item_name_keybind = "hotkey_menu_special_2",
+			custom_item_name_keybind = "lobby_open_inventory",
 			custom_item_name_color_keybind = "hotkey_menu_special_1",
 			custom_item_background_color_keybind = "navigate_secondary_left_pressed",
 			custom_item_skip_confirmation_prompts = true,
@@ -1821,7 +1821,7 @@ def main() -> None:
     assert defaults["enable_quick_look_card_single_column_integration"] is True
     assert defaults["name_it_force_curio_name_in_detailed_mode"] is True
     assert defaults["enable_custom_item_name_and_colors"] is True
-    assert defaults["custom_item_name_keybind"] == "hotkey_menu_special_2"
+    assert defaults["custom_item_name_keybind"] == "lobby_open_inventory"
     assert defaults["custom_item_name_color_keybind"] == "hotkey_menu_special_1"
     assert defaults["inventory_options_controller_focus_keybind"] == "navigate_secondary_right_pressed"
     assert defaults["custom_item_background_color_keybind"] == "navigate_secondary_left_pressed"

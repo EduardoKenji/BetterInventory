@@ -19,6 +19,8 @@ This document describes the runtime invariants for `BetterInventory_item_customi
 ## Input legend lifecycle
 
 - Change Name, Name Color, and Background Color callbacks must exist before `InventoryWeaponsView.init` builds the native input legend.
+- BetterInventory owns the active Change Name binding while its standalone editor is enabled; Name It's saved binding must not override it. The default is `lobby_open_inventory` (I / Xbox View / PlayStation touchpad), because Q maps to Darktide's native controller Favorite action.
+- Existing Q defaults migrate once to `lobby_open_inventory`; explicit alternative bindings remain unchanged.
 - Repeated `_setup_input_legend` calls must be idempotent.
 - `off` keybinds must not create legend entries.
 - Legend visibility requires a selected grid widget; editor callbacks additionally require a real item with a non-empty gear ID.

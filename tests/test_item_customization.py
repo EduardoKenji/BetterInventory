@@ -498,12 +498,12 @@ def main() -> None:
         "better_inventory_background_color",
     ]
     assert [legend[index].input_action for index in range(1, 4)] == [
-        "hotkey_menu_special_2",
+        "hotkey_menu_special_1",
         "hotkey_menu_special_1",
         "group_finder_refresh_groups",
     ]
     assert [built_legend[index].input_action for index in range(1, 4)] == [
-        "hotkey_menu_special_2",
+        "hotkey_menu_special_1",
         "hotkey_menu_special_1",
         "group_finder_refresh_groups",
     ]

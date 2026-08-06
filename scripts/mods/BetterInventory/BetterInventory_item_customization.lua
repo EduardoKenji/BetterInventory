@@ -1116,13 +1116,9 @@ ItemCustomization.update_runtime = function(mod)
 end
 
 local function effective_name_keybind(mod)
-	local other_mod = name_it_mod()
-	local configured = other_mod and type(other_mod.get) == "function" and other_mod:get("keybind_change_name") or nil
-
-	if type(configured) == "string" then
-		return configured
-	end
-
+	-- BetterInventory owns the inventory action while its standalone editor is
+	-- enabled. Inheriting Name It's legacy Q/Y default here made Change Name and
+	-- Darktide's Add Favorite fire from the same controller button.
 	return mod:get("custom_item_name_keybind")
 end
 

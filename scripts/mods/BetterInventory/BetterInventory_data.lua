@@ -964,8 +964,9 @@ return {
 						setting_id = "custom_item_name_keybind",
 						tooltip = "custom_item_name_keybind_tooltip",
 						type = "dropdown",
-						default_value = "hotkey_menu_special_2",
+						default_value = "lobby_open_inventory",
 						options = {
+							{ text = "custom_item_editor_keybind_i_view", value = "lobby_open_inventory" },
 							{ text = "custom_item_editor_keybind_e", value = "hotkey_menu_special_1" },
 							{ text = "custom_item_editor_keybind_q", value = "hotkey_menu_special_2" },
 							{ text = "custom_item_editor_keybind_v", value = "hotkey_item_inspect" },
@@ -979,6 +980,7 @@ return {
 						type = "dropdown",
 						default_value = "hotkey_menu_special_1",
 						options = {
+							{ text = "custom_item_editor_keybind_i_view", value = "lobby_open_inventory" },
 							{ text = "custom_item_editor_keybind_e", value = "hotkey_menu_special_1" },
 							{ text = "custom_item_editor_keybind_q", value = "hotkey_menu_special_2" },
 							{ text = "custom_item_editor_keybind_v", value = "hotkey_item_inspect" },
@@ -992,6 +994,7 @@ return {
 						type = "dropdown",
 						default_value = "navigate_secondary_left_pressed",
 						options = {
+							{ text = "custom_item_editor_keybind_i_view", value = "lobby_open_inventory" },
 							{ text = "custom_item_editor_keybind_lt", value = "navigate_secondary_left_pressed" },
 							{ text = "custom_item_editor_keybind_e", value = "hotkey_menu_special_1" },
 							{ text = "custom_item_editor_keybind_q", value = "hotkey_menu_special_2" },
