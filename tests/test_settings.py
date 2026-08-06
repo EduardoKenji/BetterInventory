@@ -522,20 +522,45 @@ def main() -> None:
     assert credits_view._better_inventory_armoury_grid_expansion == 114
     assert credits_view.received_definitions.armoury_expanded is True
     credits_view._widgets_by_name = lua.table_from(
-        {"quick_sacrifice_button": lua.table_from({})}
+        {
+            "quick_sacrifice_button": lua.table_from(
+                {"offset": lua.table_from([250, 0, 0])}
+            )
+        }
     )
     credits_view._ui_scenegraph = lua.table_from(
         {
             "purchase_button": lua.table_from(
-                {"position": lua.table_from([790, -90, 1])}
+                {
+                    "position": lua.table_from([790, -90, 1]),
+                    "size": lua.table_from([374 / 1.5, 76, 0]),
+                }
             )
         }
     )
+    credits_view._weapon_stats = lua.table_from(
+        {
+            "_menu_settings": lua.table_from(
+                {
+                    "grid_size": lua.table_from([518, 920]),
+                    "edge_padding": 12,
+                }
+            )
+        }
+    )
+    credits_view._world_x = lua.table_from(
+        {"purchase_button": 790, "weapon_stats_pivot": 894}
+    )
+    credits_view._scenegraph_world_position = lua.eval(
+        "function(view, id) return {view._world_x[id], 0, 0} end"
+    )
     credits_view._set_scenegraph_position = lua.eval(
         "function(view, id, x, y, z) "
+        "local delta = x - view._ui_scenegraph[id].position[1] "
         "view._ui_scenegraph[id].position[1] = x "
         "view._ui_scenegraph[id].position[2] = y "
-        "view._ui_scenegraph[id].position[3] = z end"
+        "view._ui_scenegraph[id].position[3] = z "
+        "view._world_x[id] = view._world_x[id] + delta end"
     )
 
     armoury_grid = lua.execute(
@@ -555,14 +580,17 @@ def main() -> None:
     assert entered == "entered"
     assert armoury_grid.top_width == 766
     assert armoury_grid.bottom_width == 788
-    assert credits_view._ui_scenegraph.purchase_button.position[1] == 904
-    assert credits_view._better_inventory_quick_level_mastery_button_expansion == 114
+    assert abs(
+        credits_view._ui_scenegraph.purchase_button.position[1] - 909.3333333333
+    ) < 0.0001
 
     # Re-entering must not apply the same compatibility offset twice.
     globals_.captured_armoury_on_enter_hook(
         lua.eval("function() return 'entered again' end"), credits_view
     )
-    assert credits_view._ui_scenegraph.purchase_button.position[1] == 904
+    assert abs(
+        credits_view._ui_scenegraph.purchase_button.position[1] - 909.3333333333
+    ) < 0.0001
 
     # CreditsVendorView is also reused by GlobalStore. Its custom cards use the
     # same expanded grid geometry, while their portrait footer is handled by

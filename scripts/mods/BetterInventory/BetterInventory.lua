@@ -673,41 +673,50 @@ local function is_armoury_sort_view(view)
 end
 
 local function align_quick_level_mastery_buttons(view)
-	local expansion = tonumber(view and view._better_inventory_armoury_grid_expansion) or 0
-
-	if expansion <= 0 then
-		return
-	end
-
-	-- Quick Level Mastery adds its Sacrifice widget under Darktide's shared
-	-- purchase_button scenegraph node. Its _create_widgets hook restores that
-	-- node to the unexpanded native X position, while BetterInventory has already
-	-- moved the weapon-information panel and native action group to the right.
-	-- Detect the optional child widget instead of requiring the other mod.
+	-- Quick Level Mastery adds Sacrifice as an offset child of Darktide's shared
+	-- purchase_button node. Center the complete action group on the actual weapon
+	-- information panel instead of deriving its position from the store grid:
+	-- the grid can have a different width, and another hook can independently
+	-- restore the purchase node to its native position.
 	local widgets_by_name = view and view._widgets_by_name
 	local ui_scenegraph = view and view._ui_scenegraph
 	local purchase_button = ui_scenegraph and ui_scenegraph.purchase_button
+	local sacrifice_button = widgets_by_name and widgets_by_name.quick_sacrifice_button
+	local weapon_stats = view and view._weapon_stats
+	local weapon_stats_settings = weapon_stats and weapon_stats._menu_settings or view and view._definitions and view._definitions.weapon_stats_grid_settings
+	local weapon_stats_grid_size = weapon_stats_settings and weapon_stats_settings.grid_size
+	local weapon_stats_width = weapon_stats_grid_size and tonumber(weapon_stats_grid_size[1])
+	local weapon_stats_edge_padding = tonumber(weapon_stats_settings and weapon_stats_settings.edge_padding) or 0
 
-	if not widgets_by_name or not widgets_by_name.quick_sacrifice_button or not purchase_button or not purchase_button.position or type(view._set_scenegraph_position) ~= "function" then
-		return
-	end
-
-	local previous_expansion = tonumber(view._better_inventory_quick_level_mastery_button_expansion) or 0
-	local delta = expansion - previous_expansion
-
-	if delta == 0 then
+	if not sacrifice_button or not purchase_button or not purchase_button.position or not purchase_button.size or not weapon_stats_width or type(view._scenegraph_world_position) ~= "function" or type(view._set_scenegraph_position) ~= "function" then
 		return
 	end
 
 	local position = purchase_button.position
-	local x = position[1]
+	local purchase_width = tonumber(purchase_button.size[1])
+	local sacrifice_offset = sacrifice_button.offset and tonumber(sacrifice_button.offset[1])
+	local purchase_world_position = view:_scenegraph_world_position("purchase_button")
+	local weapon_stats_world_position = view:_scenegraph_world_position("weapon_stats_pivot")
+	local purchase_world_x = purchase_world_position and tonumber(purchase_world_position[1])
+	local weapon_stats_world_x = weapon_stats_world_position and tonumber(weapon_stats_world_position[1])
 
-	if type(x) ~= "number" then
+	if type(position[1]) ~= "number" or not purchase_width or not purchase_world_x or not weapon_stats_world_x then
 		return
 	end
 
-	view:_set_scenegraph_position("purchase_button", x + delta, position[2], position[3])
-	view._better_inventory_quick_level_mastery_button_expansion = expansion
+	sacrifice_offset = sacrifice_offset or purchase_width
+
+	local action_left = math.min(0, sacrifice_offset)
+	local action_right = math.max(purchase_width, sacrifice_offset + purchase_width)
+	local action_center = purchase_world_x + (action_left + action_right) * 0.5
+	local weapon_stats_center = weapon_stats_world_x + (weapon_stats_width + weapon_stats_edge_padding) * 0.5
+	local delta = weapon_stats_center - action_center
+
+	if math.abs(delta) < 0.01 then
+		return
+	end
+
+	view:_set_scenegraph_position("purchase_button", position[1] + delta, position[2], position[3])
 end
 
 -- Darktide class tables can contain the exact same inherited function object.
