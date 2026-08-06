@@ -12,6 +12,7 @@ local pending_action
 local input_widget
 local show_input_field = false
 local installed = false
+local persistence_pending = false
 
 local function clone_color(color, fallback)
 	local source = type(color) == "table" and color or fallback
@@ -33,6 +34,32 @@ end
 local function save_records(mod, records)
 	cached_records = records
 	mod:set(STORAGE_SETTING_ID, records, false)
+	persistence_pending = true
+end
+
+local function flush_persistence()
+	if not persistence_pending then
+		return false
+	end
+
+	local resolver = rawget(_G, "get_mod")
+
+	if type(resolver) ~= "function" then
+		return false
+	end
+
+	local ok, dmf = pcall(resolver, "DMF")
+
+	if not ok or type(dmf) ~= "table" or type(dmf.save_unsaved_settings_to_file) ~= "function" then
+		return false
+	end
+
+	-- One deferred flush batches all edits/deletions performed in the same
+	-- frame while reducing the hard-crash loss window from an entire game state
+	-- to, normally, a single frame.
+	persistence_pending = false
+
+	return pcall(dmf.save_unsaved_settings_to_file)
 end
 
 local function name_it_mod()
@@ -205,6 +232,7 @@ ItemCustomization.import_name_it_names = function(mod)
 
 	if names_changed and type(other_mod.set) == "function" then
 		pcall(other_mod.set, other_mod, "name_list", names, false)
+		persistence_pending = true
 	end
 
 	return imported
@@ -251,6 +279,7 @@ ItemCustomization.reconcile_from_name_it = function(mod)
 
 	save_records(mod, records)
 	mod:set(NAME_IT_OWNS_NAMES_SETTING_ID, false, false)
+	persistence_pending = true
 
 	return true
 end
@@ -730,6 +759,7 @@ ItemCustomization.on_enabled = function(mod)
 	if mod:get("enable_custom_item_name_and_colors") ~= false and mod:get(NAME_IT_OWNS_NAMES_SETTING_ID) == true then
 		if not ItemCustomization.reconcile_from_name_it(mod) then
 			mod:set(NAME_IT_OWNS_NAMES_SETTING_ID, false, false)
+			persistence_pending = true
 		end
 	end
 end
@@ -737,13 +767,17 @@ end
 ItemCustomization.on_disabled = function(mod)
 	if name_it_mod() then
 		mod:set(NAME_IT_OWNS_NAMES_SETTING_ID, true, false)
+		persistence_pending = true
 	end
+
+	flush_persistence()
 end
 
 ItemCustomization.on_all_mods_loaded = function(mod)
 	if mod:get("enable_custom_item_name_and_colors") == false then
 		if name_it_mod() then
 			mod:set(NAME_IT_OWNS_NAMES_SETTING_ID, true, false)
+			persistence_pending = true
 		end
 
 		return false
@@ -757,6 +791,7 @@ ItemCustomization.on_all_mods_loaded = function(mod)
 		-- Name It was removed or disabled before the handoff completed. Resume
 		-- BetterInventory ownership without leaving a stale future migration armed.
 		mod:set(NAME_IT_OWNS_NAMES_SETTING_ID, false, false)
+		persistence_pending = true
 	end
 
 	return ItemCustomization.import_name_it_names(mod)
@@ -767,6 +802,7 @@ ItemCustomization.on_setting_changed = function(mod, setting_id)
 		if mod:get(setting_id) == false then
 			if name_it_mod() then
 				mod:set(NAME_IT_OWNS_NAMES_SETTING_ID, true, false)
+				persistence_pending = true
 			end
 
 			return false
@@ -778,6 +814,7 @@ ItemCustomization.on_setting_changed = function(mod, setting_id)
 			end
 
 			mod:set(NAME_IT_OWNS_NAMES_SETTING_ID, false, false)
+			persistence_pending = true
 		end
 
 		return ItemCustomization.import_name_it_names(mod)
@@ -792,6 +829,8 @@ ItemCustomization.update_runtime = function()
 		pending_action = nil
 		action()
 	end
+
+	flush_persistence()
 end
 
 local function effective_name_keybind(mod)

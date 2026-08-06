@@ -78,8 +78,15 @@ def main() -> None:
             return name_it_settings.name_list
         end
 
+        settings_flushes = 0
+        test_dmf_mod = {
+            save_unsaved_settings_to_file = function()
+                settings_flushes = settings_flushes + 1
+            end,
+        }
+
         function get_mod(name)
-            return name == "name_it" and test_name_it_mod or nil
+            return name == "name_it" and test_name_it_mod or name == "DMF" and test_dmf_mod or nil
         end
 
         test_mod = {}
@@ -154,6 +161,11 @@ def main() -> None:
     assert record.background_preserve_shading is True
     assert customization.remove(mod, "gear-1") is True
     assert customization.get(mod, "gear-1") is None
+    assert globals_.settings_flushes == 0
+    customization.update_runtime()
+    assert globals_.settings_flushes == 1
+    customization.update_runtime()
+    assert globals_.settings_flushes == 1
 
     context = lua.table_from(
         {
