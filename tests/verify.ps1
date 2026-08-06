@@ -98,7 +98,7 @@ if ($features -notmatch 'inventory_grid_has_right_neighbour' -or $features -notm
 	throw "The controller-navigation neighbour check was not found."
 }
 
-if ($data -notmatch 'setting_id\s*=\s*"inventory_options_controller_focus_keybind"[\s\S]*?default_value\s*=\s*"navigate_secondary_right_pressed"' -or $data -notmatch 'setting_id\s*=\s*"custom_item_background_color_keybind"[\s\S]*?default_value\s*=\s*"navigate_secondary_left_pressed"' -or $features -notmatch 'capture_inventory_options_panel_controller_focus' -or $features -notmatch 'update_inventory_options_panel_controller_selection' -or $main -notmatch 'inventory_options_panel_controller_focused') {
+if ($data -notmatch 'setting_id\s*=\s*"inventory_options_controller_focus_keybind"[\s\S]*?default_value\s*=\s*"navigate_secondary_right_pressed"' -or $data -notmatch 'setting_id\s*=\s*"custom_item_name_keybind"[\s\S]*?default_value\s*=\s*"lobby_open_inventory"' -or $data -notmatch 'setting_id\s*=\s*"custom_item_background_color_keybind"[\s\S]*?default_value\s*=\s*"navigate_secondary_left_pressed"' -or $features -notmatch 'capture_inventory_options_panel_controller_focus' -or $features -notmatch 'update_inventory_options_panel_controller_selection' -or $main -notmatch 'inventory_options_panel_controller_focused') {
 	throw "Controller focus switching or its conflict-free default bindings were not found."
 }
 

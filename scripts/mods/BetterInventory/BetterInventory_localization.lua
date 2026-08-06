@@ -789,7 +789,7 @@ local localization = {
 		en = "Change Name keybind",
 	},
 	custom_item_name_keybind_tooltip = {
-		en = "Opens the name editor directly. When Name It is installed, BetterInventory uses its configured Change Name key and replaces its duplicate inventory action.",
+		en = "Opens the name editor directly. The default uses I / View / Touchpad to avoid Darktide's controller Favorite action. BetterInventory replaces Name It's duplicate inventory action while this editor is enabled.",
 	},
 	custom_item_name_color_keybind = {
 		en = "Name Color keybind",
@@ -805,6 +805,9 @@ local localization = {
 	},
 	custom_item_editor_keybind_e = {
 		en = "[E]",
+	},
+	custom_item_editor_keybind_i_view = {
+		en = "[I / View / Touchpad]",
 	},
 	custom_item_editor_keybind_q = {
 		en = "[Q]",
@@ -2373,11 +2376,12 @@ zh_cn.custom_item_name_and_colors_group = "Custom Item Names and Colors"
 zh_cn.enable_custom_item_name_and_colors = "Enable custom item names and colors"
 zh_cn.enable_custom_item_name_and_colors_tooltip = "Enables BetterInventory's standalone per-item name, name-color and background-color editor. Does not require Name It."
 zh_cn.custom_item_name_keybind = "Change Name keybind"
-zh_cn.custom_item_name_keybind_tooltip = "Opens the name editor directly. When Name It is installed, BetterInventory uses its configured Change Name key and replaces its duplicate inventory action."
+zh_cn.custom_item_name_keybind_tooltip = "Opens the name editor directly. The default uses I / View / Touchpad to avoid Darktide's controller Favorite action. BetterInventory replaces Name It's duplicate inventory action while this editor is enabled."
 zh_cn.custom_item_name_color_keybind = "Name Color keybind"
 zh_cn.custom_item_name_color_keybind_tooltip = "Opens the item-name RGB selector directly."
 zh_cn.custom_item_background_color_keybind = "Background Color keybind"
 zh_cn.custom_item_background_color_keybind_tooltip = "Opens the item-background RGB selector directly."
+zh_cn.custom_item_editor_keybind_i_view = "[I / View / Touchpad]"
 zh_cn.custom_item_editor_keybind_e = "[E]"
 zh_cn.custom_item_editor_keybind_q = "[Q]"
 zh_cn.custom_item_editor_keybind_v = "[V]"

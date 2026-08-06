@@ -57,6 +57,26 @@ def main() -> None:
                 return {
                     text_max_width = 800,
                 }
+            elseif string.find(path, "text_input_pass_templates", 1, true) then
+                return {
+                    simple_input_field = {},
+                }
+            elseif string.find(path, "ui_widget", 1, true) then
+                return {
+                    create_definition = function(_, scenegraph_id)
+                        return {
+                            scenegraph_id = scenegraph_id,
+                            content = {},
+                        }
+                    end,
+                }
+            elseif string.find(path, "ui_scenegraph", 1, true) then
+                return {
+                    init_scenegraph = function(definition)
+                        rebuilt_scenegraph_definition = definition
+                        return { rebuilt = true }
+                    end,
+                }
             end
 
             return {}
@@ -64,6 +84,9 @@ def main() -> None:
 
         settings = {}
         name_it_settings = { name_list = {} }
+        name_it_available = true
+        name_it_get_fails = false
+        name_it_set_calls = 0
         test_name_it_mod = {}
 
         function test_name_it_mod:get(setting_id)
@@ -71,22 +94,35 @@ def main() -> None:
         end
 
         function test_name_it_mod:set(setting_id, value)
+            name_it_set_calls = name_it_set_calls + 1
             name_it_settings[setting_id] = value
         end
 
         function test_name_it_mod.get_custom_name_list()
+            if name_it_get_fails then
+                error("simulated Name It read failure")
+            end
+
             return name_it_settings.name_list
         end
 
         settings_flushes = 0
+        settings_flush_attempts = 0
+        settings_flush_should_fail = false
         test_dmf_mod = {
             save_unsaved_settings_to_file = function()
+                settings_flush_attempts = settings_flush_attempts + 1
+
+                if settings_flush_should_fail then
+                    error("simulated settings write failure")
+                end
+
                 settings_flushes = settings_flushes + 1
             end,
         }
 
         function get_mod(name)
-            return name == "name_it" and test_name_it_mod or name == "DMF" and test_dmf_mod or nil
+            return name == "name_it" and name_it_available and test_name_it_mod or name == "DMF" and test_dmf_mod or nil
         end
 
         test_mod = {}
@@ -117,7 +153,23 @@ def main() -> None:
             global_strings = strings
         end
 
-        function test_mod:hook_require() end
+        popup_definitions = {
+            scenegraph_definition = {
+                center_pivot = {},
+            },
+            widget_definitions = {},
+        }
+
+        function test_mod:hook_require(path, callback)
+            callback(popup_definitions)
+        end
+
+        warning_count = 0
+
+        function test_mod:warning(message)
+            warning_count = warning_count + 1
+            last_warning = message
+        end
 
         function test_mod:hook(target, method, callback)
             captured_hooks[method] = callback
@@ -130,12 +182,14 @@ def main() -> None:
         end
 
         captured_popup = nil
+        function capture_popup(self, event_name, context)
+            assert(event_name == "event_show_ui_popup")
+            captured_popup = context
+        end
+
         Managers = {
             event = {
-                trigger = function(self, event_name, context)
-                    assert(event_name == "event_show_ui_popup")
-                    captured_popup = context
-                end,
+                trigger = capture_popup,
             },
             ui = {
                 view_instance = function() return active_inventory_view end,
@@ -150,6 +204,36 @@ def main() -> None:
 
     customization.on_enabled(mod)
     assert len(settings.custom_item_name_and_colors) == 0
+
+    # Startup sanitization removes malformed legacy records and fields without
+    # discarding a valid customization that can still be recovered safely.
+    settings.custom_item_name_and_colors = lua.table_from(
+        {
+            "recoverable": lua.table_from(
+                {
+                    "name": "  Safe\n Name  ",
+                    "name_color": "invalid",
+                    "background_color": lua.table_from([255, 1, 2, 3]),
+                    "background_preserve_shading": "invalid",
+                    "name_target": "invalid",
+                    "character_id": 12,
+                }
+            ),
+            "empty": lua.table_from({"character_id": "orphan-only"}),
+            12: "invalid record",
+        }
+    )
+    customization.on_enabled(mod)
+    recovered = customization.get(mod, "recoverable")
+    assert recovered.name == "Safe Name"
+    assert recovered.name_color is None
+    assert recovered.background_color[2] == 1
+    assert recovered.background_preserve_shading is None
+    assert recovered.name_target is None
+    assert recovered.character_id is None
+    assert customization.get(mod, "empty") is None
+    assert settings.custom_item_name_and_colors[12] is None
+    assert customization.remove(mod, "recoverable") is True
 
     changes = lua.table_from(
         {
@@ -386,7 +470,18 @@ def main() -> None:
             )
         }
     )
-    globals_.captured_hooks.init(lua.eval("function() end"), view)
+    globals_.captured_hooks.init(
+        lua.eval(
+            """
+            function(initializing_view)
+                assert(type(initializing_view.cb_on_better_inventory_change_name_pressed) == "function")
+                assert(type(initializing_view.cb_on_better_inventory_name_color_pressed) == "function")
+                assert(type(initializing_view.cb_on_better_inventory_background_color_pressed) == "function")
+            end
+            """
+        ),
+        view,
+    )
     globals_.captured_hooks._setup_input_legend(
         lua.eval(
             "function(view) built_legend = table.clone(view._definitions.legend_inputs) end"
@@ -403,12 +498,12 @@ def main() -> None:
         "better_inventory_background_color",
     ]
     assert [legend[index].input_action for index in range(1, 4)] == [
-        "hotkey_menu_special_2",
+        "hotkey_menu_special_1",
         "hotkey_menu_special_1",
         "group_finder_refresh_groups",
     ]
     assert [built_legend[index].input_action for index in range(1, 4)] == [
-        "hotkey_menu_special_2",
+        "hotkey_menu_special_1",
         "hotkey_menu_special_1",
         "group_finder_refresh_groups",
     ]
@@ -416,6 +511,123 @@ def main() -> None:
         legend[index].on_pressed_callback != "cb_on_change_name_pressed"
         for index in range(1, 4)
     )
+
+    # Rebuilding the legend is idempotent, and disabling BetterInventory's
+    # editor restores Name It's action instead of losing it permanently.
+    globals_.captured_hooks._setup_input_legend(lua.eval("function() end"), view)
+    assert len(legend) == 3
+    settings.enable_custom_item_name_and_colors = False
+    globals_.captured_hooks._setup_input_legend(lua.eval("function() end"), view)
+    assert len(legend) == 1
+    assert legend[1].on_pressed_callback == "cb_on_change_name_pressed"
+    settings.enable_custom_item_name_and_colors = True
+    globals_.captured_hooks._setup_input_legend(lua.eval("function() end"), view)
+    assert len(legend) == 3
+
+    # Standalone mode uses BetterInventory's key and never resurrects a saved
+    # Name It action while that optional mod is unavailable.
+    globals_.name_it_available = False
+    settings.custom_item_name_keybind = "hotkey_menu_special_1"
+    globals_.captured_hooks._setup_input_legend(lua.eval("function() end"), view)
+    assert len(legend) == 3
+
+    settings.custom_item_name_color_keybind = "off"
+    globals_.captured_hooks._setup_input_legend(lua.eval("function() end"), view)
+    assert len(legend) == 2
+    settings.custom_item_name_color_keybind = "hotkey_menu_special_1"
+    globals_.captured_hooks._setup_input_legend(lua.eval("function() end"), view)
+    assert len(legend) == 3
+    assert legend[1].input_action == "hotkey_menu_special_1"
+    settings.enable_custom_item_name_and_colors = False
+    globals_.captured_hooks._setup_input_legend(lua.eval("function() end"), view)
+    assert len(legend) == 0
+    globals_.name_it_available = True
+    settings.enable_custom_item_name_and_colors = True
+    settings.custom_item_name_keybind = "hotkey_menu_special_1"
+    globals_.captured_hooks._setup_input_legend(lua.eval("function() end"), view)
+    assert len(legend) == 3
+
+    # The global popup handler may predate hook_require's definition changes.
+    # Its update hook must repair the live scenegraph and attach the field.
+    dynamic_popup_handler = lua.table_from(
+        {
+            "_definitions": globals_.popup_definitions,
+            "_widgets": lua.table_from([]),
+            "_widgets_by_name": lua.table_from({}),
+            "_create_widget": lua.eval(
+                "function(_, name, definition) local widget = table.clone(definition); widget.name = name; return widget end"
+            ),
+        }
+    )
+    globals_.captured_safe_hooks.update(dynamic_popup_handler)
+    repaired_input_widget = dynamic_popup_handler._widgets_by_name[
+        "better_inventory_name_input"
+    ]
+    assert repaired_input_widget is not None
+    assert dynamic_popup_handler._ui_scenegraph.rebuilt is True
+    assert len(dynamic_popup_handler._widgets) == 1
+    globals_.captured_safe_hooks.update(dynamic_popup_handler)
+    assert len(dynamic_popup_handler._widgets) == 1
+
+    # A broken handler is bounded to three repair attempts and one warning,
+    # preventing a protected failure from becoming per-frame overhead.
+    failing_popup_handler = lua.table_from(
+        {
+            "_definitions": globals_.popup_definitions,
+            "_widgets": lua.table_from([]),
+            "_widgets_by_name": lua.table_from({}),
+            "_create_widget": lua.eval(
+                "function() error('simulated widget creation failure') end"
+            ),
+        }
+    )
+    initial_warning_count = globals_.warning_count
+    for _ in range(5):
+        globals_.captured_safe_hooks.update(failing_popup_handler)
+    assert failing_popup_handler._better_inventory_name_input_creation_attempts == 3
+    assert globals_.warning_count == initial_warning_count + 1
+
+    # Q can also be pressed before the popup handler update. The editor must
+    # repair the live handler on demand instead of silently doing nothing.
+    globals_.live_popup_handler = lua.table_from(
+        {
+            "_definitions": globals_.popup_definitions,
+            "_widgets": lua.table_from([]),
+            "_widgets_by_name": lua.table_from({}),
+            "_create_widget": lua.eval(
+                "function(_, name, definition) local widget = table.clone(definition); widget.name = name; return widget end"
+            ),
+        }
+    )
+    lua.execute(
+        """
+        Managers.ui.ui_constant_elements = function()
+            return {
+                element = function(_, name)
+                    assert(name == "ConstantElementPopupHandler")
+                    return live_popup_handler
+                end,
+            }
+        end
+        """
+    )
+    assert customization.show_name_editor(mod, context, lua.table_from({})) is True
+    live_input_widget = globals_.live_popup_handler._widgets_by_name[
+        "better_inventory_name_input"
+    ]
+    assert live_input_widget.content.visible is True
+    assert live_input_widget.content.is_writing is True
+    globals_.captured_popup.options[3].callback()
+    assert live_input_widget.content.visible is False
+    assert live_input_widget.content.is_writing is False
+
+    # If Darktide cannot open the popup, typing state is rolled back.
+    lua.execute("Managers.event = nil")
+    assert customization.show_name_editor(mod, context, lua.table_from({})) is False
+    assert live_input_widget.content.visible is False
+    assert live_input_widget.content.is_writing is False
+    lua.execute("Managers.event = { trigger = capture_popup }")
+    lua.execute("Managers.ui.ui_constant_elements = nil")
 
     # The name popup exposes and focuses a real text field, then reserves room
     # for it between the title/description and the three action buttons.
@@ -604,6 +816,34 @@ def main() -> None:
     assert gear_service.character_delete_called is True
     assert customization.get(mod, "owned-by-deleted-character") is None
     assert customization.get(mod, "legacy-owned-by-deleted-character") is None
+
+    # A failed Name It read must never be converted into a partial replacement
+    # map containing only the item BetterInventory just edited.
+    globals_.name_it_get_fails = True
+    name_it_set_calls_before_failure = globals_.name_it_set_calls
+    customization.update(mod, "name-it-read-failure", lua.table_from({"name": "Safe"}))
+    assert globals_.name_it_set_calls == name_it_set_calls_before_failure
+    globals_.name_it_get_fails = False
+
+    # DMF settings writes remain pending after a protected failure and retry on
+    # the next update instead of silently discarding the durability request.
+    globals_.settings_flush_should_fail = True
+    flushes_before_failure = globals_.settings_flushes
+    attempts_before_failure = globals_.settings_flush_attempts
+    customization.update_runtime(mod)
+    assert globals_.settings_flush_attempts == attempts_before_failure + 1
+    assert globals_.settings_flushes == flushes_before_failure
+    globals_.settings_flush_should_fail = False
+    customization.update_runtime(mod)
+    assert globals_.settings_flushes == flushes_before_failure + 1
+
+    # Disabling the mod while the editor is open must release keyboard capture.
+    globals_.captured_safe_hooks.update(popup_handler)
+    assert customization.show_name_editor(mod, context, lua.table_from({})) is True
+    assert input_widget.content.is_writing is True
+    customization.on_disabled(mod)
+    assert input_widget.content.visible is False
+    assert input_widget.content.is_writing is False
 
     print("BetterInventory item customization tests passed.")
 

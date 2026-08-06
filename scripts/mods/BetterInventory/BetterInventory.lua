@@ -1526,6 +1526,17 @@ function mod.on_all_mods_loaded()
 		mod:set("custom_item_background_color_keybind", "navigate_secondary_left_pressed", true)
 	end
 
+	-- v1.9.2 originally inherited Q/Y for Change Name. Y is Darktide's native
+	-- Favorite action in inventory views, so migrate that released default once
+	-- to I / View / Touchpad. Other explicitly selected bindings are preserved.
+	if mod:get("_custom_item_name_keybind_v2_migrated") ~= true then
+		if mod:get("custom_item_name_keybind") == "hotkey_menu_special_2" then
+			mod:set("custom_item_name_keybind", "lobby_open_inventory", false)
+		end
+
+		mod:set("_custom_item_name_keybind_v2_migrated", true, true)
+	end
+
 	ItemCustomization.on_all_mods_loaded(mod)
 	Features.set_lantern_integration(mod, get_mod("Lantern of the Omnissiah"))
 	Features.set_item_sorting_integration(get_mod("ItemSorting"))

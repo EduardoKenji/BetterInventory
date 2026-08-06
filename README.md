@@ -1,6 +1,6 @@
 # BetterInventory
 
-> Project status: BetterInventory v1.8.0 is a feature-complete inventory and supported-vendor implementation under active in-game compatibility testing. Account-changing workflows remain opt-in and disabled by default.
+> Project status: BetterInventory v1.8.1 is a feature-complete inventory and supported-vendor implementation under active in-game compatibility testing. Account-changing workflows remain opt-in and disabled by default.
 >
 > Audit date: 2026-08-06
 
@@ -95,21 +95,23 @@ The normal/default configuration does not alter filters or backend transactions.
 
 ## Supported integrations
 
-The following integrations are supported in v1.8.0. BetterInventory has no optional mod dependencies; each integration activates only when its corresponding mod is installed.
+The following integrations are supported in v1.8.1. BetterInventory has no optional mod dependencies; each integration activates only when its corresponding mod is installed.
 
-- Quick Look Card: independent single-column and grid integration. BetterInventory also provides its own weapon-modifier display, so Quick Look Card is optional.
-- Enhanced Descriptions: rich-text-safe Curio handling with configurable ownership of simplified primary-stat labels.
-- GlobalStore: stylized Multi-Operative Supply cards and sorting, with native and integrated paths available. The supported integrated grid is capped at two-to-three columns.
+- Quick Look Card: optional integration for single-column and grid layouts. BetterInventory also includes its own built-in weapon-modifier display.
+- Enhanced Descriptions: compatible Curio text handling with an option to preserve BetterInventory's simplified primary-stat labels.
+- GlobalStore: supported Multi-Operative Supply integration with stylized cards and custom sorting. Integrated grids support two or three columns.
 - Red Weapons at Home: compatible with red-colored equipment cards when the original mod marks the item accordingly.
-- Alf's DMF Extensions: stable tab layouts through a fixed DMF options schema.
+- Alf's DMF Extensions: compatible with BetterInventory's stable DMF options layout.
 - Equipped Icon Plus: inactive-loadout equipped badges coexist with BetterInventory's favorite marker.
-- Inspect from Social and Inspect from Party Finder: detailed weapon and Curio cards in Character Overview when inspecting other players.
-- Visible Equipment: Loadout cards coexist with its Cosmetics placement widgets.
-- MyFavorites: color groups, cycling controls and compact favorite markers remain synchronized.
-- Lantern of the Omnissiah: recommendation panel hosted in BetterInventory's scalable inventory-options panel, with a default-on opt-out setting.
-- ItemSorting: custom sort choices separated below BetterInventory's Sorting section in every view that already has a BetterInventory options panel.
+- Inspect from Social: supports detailed weapon and Curio cards in Character Overview when inspecting other players.
+- Inspect from Party Finder: supports detailed weapon and Curio cards in Character Overview when inspecting other players.
+- Visible Equipment: detailed Loadout cards coexist with its Cosmetics placement widgets.
+- MyFavorites: preserves colored favorite groups and cycling controls while synchronizing BetterInventory's compact favorite marker.
 - Enhanced Character Selection: no known conflict in the current implementation.
-- Name It: optional import/synchronization through BetterInventory's standalone **Custom Item Names and Colors** module.
+- Name It: optional import and synchronization through BetterInventory's standalone Custom Item Names and Colors module.
+- (v1.7.4+) Quick Level Mastery: correct 'Acquire' and 'Sacrifice' button alignment across different resolutions and layouts.
+- (v1.8.0+) Lantern of the Omnissiah: embeds weapon recommendations at the top of BetterInventory's scrollable inventory widget and prevents icon overlap. Curio recommendations remain separate by default.
+- (v1.8.0+) ItemSorting: preserves every native sorting option and adds a dedicated section for Family, Family + Mark, and both Base Rating sorting directions.
 
 BetterInventory intentionally leaves Brunt's Armoury, Hadron's Sacrifice Weapons interface, and unrelated custom vendor services unchanged. Do not install it alongside Inventory2D or the Inventory2D Bound by Duty compatibility patch because they modify overlapping inventory presentation paths.
 

@@ -1,5 +1,13 @@
 # BetterInventory changelog
 
+## 1.9.2 - 2026-08-06
+
+### Fixed
+
+- Fixed Change Name silently doing nothing when Darktide's global popup handler was created before BetterInventory added its text field.
+- Repair the live popup scenegraph when necessary and resolve its active text widget when opening or closing the name editor.
+- Hardened failed persistence writes, Name It map reads, editor shutdown, and repeated input-legend rebuilds; expanded lifecycle regression coverage and maintenance documentation.
+
 ## 1.9.1 - 2026-08-06
 
 ### Fixed
