@@ -2403,7 +2403,10 @@ Features.release_lantern_inventory_section = function(view)
 end
 
 Features.update_lantern_inventory_section = function(mod, view)
-	if not lantern_mod or not lantern_overlay or mod:get("enable_lantern_inventory_section") ~= true or mod:get("enable_inventory_options_panel_prototype") ~= true or mod:get("show_inventory_options_widget") == false or not view or not view._better_inventory_options_panel or view._better_inventory_options_panel_visible ~= true or view._better_inventory_options_panel._visible == false or view._filter_panel_element and view._show_filter_panel == true or not lantern_recommendations_enabled() or not lantern_preview_is_active(view) then
+	local selected_slot_name = view and view._selected_slot and view._selected_slot.name
+	local separate_curio_panel = mod:get("keep_lantern_curio_panel_separate") ~= false and type(selected_slot_name) == "string" and string.match(selected_slot_name, "^slot_attachment_") ~= nil
+
+	if not lantern_mod or not lantern_overlay or separate_curio_panel or mod:get("enable_lantern_inventory_section") ~= true or mod:get("enable_inventory_options_panel_prototype") ~= true or mod:get("show_inventory_options_widget") == false or not view or not view._better_inventory_options_panel or view._better_inventory_options_panel_visible ~= true or view._better_inventory_options_panel._visible == false or view._filter_panel_element and view._show_filter_panel == true or not lantern_recommendations_enabled() or not lantern_preview_is_active(view) then
 		restore_lantern_weapon_panel(view)
 
 		return false

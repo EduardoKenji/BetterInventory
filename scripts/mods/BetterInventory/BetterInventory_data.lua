@@ -1207,6 +1207,12 @@ return {
 						type = "checkbox",
 						default_value = true,
 					},
+					{
+						setting_id = "keep_lantern_curio_panel_separate",
+						tooltip = "keep_lantern_curio_panel_separate_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
 				},
 			},
 			{

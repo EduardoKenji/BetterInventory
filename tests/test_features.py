@@ -1861,12 +1861,29 @@ def main() -> None:
     )
     assert lantern_proxy.content.header == "Updated recommendation"
 
-    mod.settings.enable_lantern_inventory_section = False
+    # Curio recommendations keep Lantern's existing standalone placement by
+    # default; users can explicitly opt them into the hosted panel.
+    mod.settings.keep_lantern_curio_panel_separate = True
+    prototype_view._selected_slot.name = "slot_attachment_3"
+    prototype_view._lantern_weapon_panel.sig = "active_profile|slot_attachment_3"
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert prototype_view._better_inventory_lantern_panel_hosted is False
     assert prototype_panel.widgets["better_inventory_lantern_section"] is None
     lantern_overlay.draw_weapon_select(prototype_view)
     assert globals_.lantern_native_draw_count == 2
+
+    mod.settings.keep_lantern_curio_panel_separate = False
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert prototype_view._better_inventory_lantern_panel_hosted is True
+    assert prototype_panel.widgets["better_inventory_lantern_section"] is not None
+
+    mod.settings.enable_lantern_inventory_section = False
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert prototype_view._better_inventory_lantern_panel_hosted is False
+    assert prototype_panel.widgets["better_inventory_lantern_section"] is None
+    lantern_overlay.draw_weapon_select(prototype_view)
+    assert globals_.lantern_native_draw_count == 3
 
     automatic_inventory = lua.table_from(
         {

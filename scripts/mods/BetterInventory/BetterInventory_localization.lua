@@ -621,7 +621,13 @@ local localization = {
 		en = "Show Lantern recommendations in the inventory panel",
 	},
 	enable_lantern_inventory_section_tooltip = {
-		en = "When Lantern of the Omnissiah is installed, places its recommendation window in the top section of BetterInventory's scalable inventory-options panel and hides Lantern's duplicate floating weapon panel. Disable this to keep Lantern's native placement.",
+		en = "When Lantern of the Omnissiah is installed, places its recommendation window in the top section of BetterInventory's scalable inventory-options panel and hides Lantern's duplicate floating weapon panel. Curio recommendations remain separate by default.",
+	},
+	keep_lantern_curio_panel_separate = {
+		en = "Keep Lantern's Curio panel separate",
+	},
+	keep_lantern_curio_panel_separate_tooltip = {
+		en = "Leaves Lantern's Recommended Curios window in its native standalone placement instead of hosting it inside BetterInventory's inventory-options panel. Enabled by default because Lantern's Curio layout already fits beside BetterInventory's panel.",
 	},
 	option_requires_lantern_of_the_omnissiah = {
 		en = "Requires Lantern of the Omnissiah and the scalable inventory-options panel.",
@@ -2392,7 +2398,9 @@ zh_cn.option_requires_character_overview_curio_details = "Requires detailed Curi
 zh_cn.myfavorites_integration_group = "Mod Integration: MyFavorites"
 zh_cn.lantern_integration_group = "Mod Integration: Lantern of the Omnissiah"
 zh_cn.enable_lantern_inventory_section = "Show Lantern recommendations in the inventory panel"
-zh_cn.enable_lantern_inventory_section_tooltip = "When Lantern of the Omnissiah is installed, places its recommendation window in the top section of BetterInventory's scalable inventory-options panel and hides Lantern's duplicate floating weapon panel. Disable this to keep Lantern's native placement."
+zh_cn.enable_lantern_inventory_section_tooltip = "When Lantern of the Omnissiah is installed, places its recommendation window in the top section of BetterInventory's scalable inventory-options panel and hides Lantern's duplicate floating weapon panel. Curio recommendations remain separate by default."
+zh_cn.keep_lantern_curio_panel_separate = "Keep Lantern's Curio panel separate"
+zh_cn.keep_lantern_curio_panel_separate_tooltip = "Leaves Lantern's Recommended Curios window in its native standalone placement instead of hosting it inside BetterInventory's inventory-options panel. Enabled by default because Lantern's Curio layout already fits beside BetterInventory's panel."
 zh_cn.option_requires_lantern_of_the_omnissiah = "Requires Lantern of the Omnissiah and the scalable inventory-options panel."
 zh_cn.myfavorites_show_favorite_letter = "Show F below favorite icon"
 zh_cn.myfavorites_show_favorite_letter_tooltip = "Adds a compact F beneath the coloured MyFavorites icon. Disabled by default."

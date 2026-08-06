@@ -5,6 +5,7 @@
 ### Added
 
 - Added a default-on Lantern of the Omnissiah integration that hosts Lantern's weapon recommendation window as the top section of BetterInventory's scalable inventory-options panel and suppresses the duplicate floating panel while active.
+- Added a default-on option that keeps Lantern's Recommended Curios panel in its native standalone placement instead of hosting it inside BetterInventory's panel.
 
 ### Fixed
 

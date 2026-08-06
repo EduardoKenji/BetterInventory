@@ -1618,8 +1618,12 @@ def main() -> None:
     assert [
         lantern_group.sub_widgets[index].setting_id
         for index in range(1, len(lantern_group.sub_widgets) + 1)
-    ] == ["enable_lantern_inventory_section"]
+    ] == [
+        "enable_lantern_inventory_section",
+        "keep_lantern_curio_panel_separate",
+    ]
     assert lantern_group.sub_widgets[1].default_value is True
+    assert lantern_group.sub_widgets[2].default_value is True
     hadron_view_group = additional_views_group.sub_widgets[1]
     assert [
         hadron_view_group.sub_widgets[index].setting_id
