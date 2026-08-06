@@ -1,5 +1,11 @@
 # BetterInventory changelog
 
+## 1.9.1 - 2026-08-06
+
+### Fixed
+
+- Added RT controller focus switching and directional navigation to BetterInventory's Armoury Exchange and GlobalStore sorting panels, including a matching input-legend entry.
+
 ## 1.9.0 - 2026-08-06
 
 ### Added

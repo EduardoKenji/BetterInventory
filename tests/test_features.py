@@ -749,21 +749,64 @@ def main() -> None:
                 self.entries = entries
                 self.blueprints = blueprints
             end,
+            select_first_index = function(self)
+                self.selected_index = 1
+            end,
+            select_grid_index = function(self, index)
+                self.selected_index = index
+            end,
+            selected_grid_index = function(self)
+                return self.selected_index
+            end,
             set_pivot_offset = function(self, x, y)
                 self.pivot_x = x
                 self.pivot_y = y
             end,
             set_visibility = function(self, visible)
                 self.visible = visible
+                self._visible = visible
             end,
             update_grid_height = function(self, grid_height, mask_height)
                 self.grid_height = grid_height
                 self.mask_height = mask_height
             end,
         }
+        TestArmouryLegend = {
+            add_entry = function(self, display_name, input_action, visibility_function, callback, alignment)
+                self.display_name = display_name
+                self.input_action = input_action
+                self.visibility_function = visibility_function
+                self.alignment = alignment
+
+                return "store_focus_legend"
+            end,
+            remove_entry = function(self, id)
+                self.removed_id = id
+            end,
+        }
         armoury_view._item_grid = {
+            disabled = false,
+            selected_index = 2,
+            disable_input = function(self, disabled)
+                self.disabled = disabled
+            end,
+            input_disabled = function(self)
+                return self.disabled
+            end,
+            select_grid_index = function(self, index)
+                self.selected_index = index
+            end,
+            selected_grid_index = function(self)
+                return self.selected_index
+            end,
             trigger_sort_index = function(self, index)
                 self.triggered_sort_index = index
+            end,
+        }
+        armoury_view._using_cursor_navigation = false
+        armoury_view._parent = {
+            _element = function(self, id)
+                return id == "input_legend" and TestArmouryLegend or nil
             end,
         }
         armoury_view._add_element = function()
@@ -775,6 +818,45 @@ def main() -> None:
     assert armoury_view._better_inventory_armoury_native_sort_panel.visible is True
     assert globals_.TestArmouryPanel.pivot_x == 1450
     assert globals_.TestArmouryPanel.pivot_y == 100
+    assert globals_.TestArmouryLegend.display_name == "better_inventory_toggle_panel_focus"
+    assert globals_.TestArmouryLegend.input_action == "navigate_secondary_right_pressed"
+    assert globals_.TestArmouryLegend.alignment == "right_alignment"
+    assert globals_.TestArmouryLegend.visibility_function() is True
+
+    armoury_focus_input = lua.execute(
+        "return {actions = {}, get = function(self, action) return self.actions[action] == true end}"
+    )
+    armoury_focus_input.actions["navigate_secondary_right_pressed"] = True
+    assert (
+        features.capture_armoury_sort_panel_controller_focus(
+            mod, armoury_view, armoury_focus_input
+        )
+        is True
+    )
+    assert armoury_view._item_grid.disabled is True
+    assert armoury_view._item_grid.selected_index is None
+    assert globals_.TestArmouryPanel.input_disabled is False
+    assert globals_.TestArmouryPanel.selected_index == 1
+    assert features.armoury_sort_panel_controller_focused(armoury_view) is True
+    armoury_focus_input.actions["navigate_secondary_right_pressed"] = False
+    armoury_view._optional_store_service = "get_all_characters_store_custom"
+    assert (
+        features.capture_armoury_sort_panel_controller_focus(
+            mod, armoury_view, armoury_focus_input
+        )
+        is True
+    )
+    armoury_view._optional_store_service = None
+    armoury_focus_input.actions["navigate_secondary_right_pressed"] = True
+    assert (
+        features.capture_armoury_sort_panel_controller_focus(
+            mod, armoury_view, armoury_focus_input
+        )
+        is False
+    )
+    assert armoury_view._item_grid.disabled is False
+    assert armoury_view._item_grid.selected_index == 2
+    armoury_focus_input.actions["navigate_secondary_right_pressed"] = False
 
     lua.execute(
         r"""
@@ -838,6 +920,7 @@ def main() -> None:
     assert globals_.TestArmouryPanel.entries[2].initial_content.label == "armoury_native_sorting_header"
     assert globals_.TestArmouryPanel.entries[2].initial_content.chevron == ">"
     features.unregister_armoury_view(armoury_view)
+    assert globals_.TestArmouryLegend.removed_id == "store_focus_legend"
     mod.settings.prioritize_perfect_roll_weapons = False
 
     mod.settings.prioritize_equipped_favorites = False
