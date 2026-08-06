@@ -8,6 +8,7 @@
 
 ### Fixed
 
+- Anchored the scalable options widget beside the live weapon or Curio inventory window during Darktide's native discard mode, with aligned top edges and consistent padding across resolutions and expanded grids.
 - Fixed controller right-navigation in multi-column melee and ranged inventories so it selects the next item in the current row before transferring focus to Darktide's Marks/Cosmetics/Inspect options at the row edge.
 - Moved Background Color's default controller binding from R3 to LT so it no longer conflicts with Darktide's native Discard Items action, including migration of the previous default binding.
 - Kept controller handling action-based and device-agnostic for Xbox, PlayStation and custom controllers mapped through Darktide's normal navigation inputs.
