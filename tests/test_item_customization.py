@@ -172,7 +172,7 @@ def main() -> None:
     assert customization.remove(mod, "gear-1") is True
     assert customization.get(mod, "gear-1") is None
     assert globals_.settings_flushes == 0
-    customization.update_runtime()
+    customization.update_runtime(mod)
     assert globals_.settings_flushes == 1
 
     assert customization.update(
@@ -187,9 +187,9 @@ def main() -> None:
         mod, "bounded-name", lua.table_from({"name": " \t\n "})
     ) is True
     assert customization.get(mod, "bounded-name") is None
-    customization.update_runtime()
+    customization.update_runtime(mod)
     assert globals_.settings_flushes == 2
-    customization.update_runtime()
+    customization.update_runtime(mod)
     assert globals_.settings_flushes == 2
 
     context = lua.table_from(
@@ -555,6 +555,20 @@ def main() -> None:
     settings.enable_custom_item_name_and_colors = False
     crafting_parent.cb_on_change_name_pressed(crafting_parent)
     assert globals_.name_it_crafting_calls == 1
+
+    # Multiple backend deletion notifications in one frame are drained through
+    # one table update instead of cloning the complete settings map per item.
+    settings.enable_custom_item_name_and_colors = True
+    globals_.test_mod_enabled = True
+    customization.update(mod, "batch-delete-a", lua.table_from({"name": "A"}))
+    customization.update(mod, "batch-delete-b", lua.table_from({"name": "B"}))
+    globals_.captured_safe_hooks.on_gear_deleted(None, "batch-delete-a")
+    globals_.captured_safe_hooks.on_gear_deleted(None, "batch-delete-b")
+    assert customization.get(mod, "batch-delete-a") is not None
+    assert customization.get(mod, "batch-delete-b") is not None
+    customization.update_runtime(mod)
+    assert customization.get(mod, "batch-delete-a") is None
+    assert customization.get(mod, "batch-delete-b") is None
 
     # Character deletion removes both newly tagged records and legacy records
     # discoverable in Darktide's cache, with one batched storage update.

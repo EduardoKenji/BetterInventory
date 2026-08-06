@@ -14,6 +14,7 @@ local input_widget
 local show_input_field = false
 local installed = false
 local persistence_pending = false
+local pending_deleted_gear_ids = {}
 
 local function normalize_name(value)
 	if type(value) ~= "string" then
@@ -246,6 +247,18 @@ local function remove_records(mod, gear_ids)
 	end
 
 	return removed
+end
+
+local function drain_deleted_records(mod)
+	if next(pending_deleted_gear_ids) == nil then
+		return 0
+	end
+
+	local gear_ids = pending_deleted_gear_ids
+
+	pending_deleted_gear_ids = {}
+
+	return remove_records(mod, gear_ids)
 end
 
 ItemCustomization.import_name_it_names = function(mod)
@@ -880,6 +893,7 @@ ItemCustomization.on_disabled = function(mod)
 		persistence_pending = true
 	end
 
+	drain_deleted_records(mod)
 	flush_persistence()
 
 	-- DMF disables every hook before calling on_disabled. Keep only storage
@@ -941,13 +955,14 @@ ItemCustomization.on_setting_changed = function(mod, setting_id)
 	return false
 end
 
-ItemCustomization.update_runtime = function()
+ItemCustomization.update_runtime = function(mod)
 	if pending_action then
 		local action = pending_action
 		pending_action = nil
 		action()
 	end
 
+	drain_deleted_records(mod)
 	flush_persistence()
 end
 
@@ -1081,10 +1096,11 @@ ItemCustomization.install = function(mod, InventoryWeaponsView, layout)
 	end)
 
 	mod:hook_safe("GearService", "on_gear_deleted", function(_, gear_id)
-		ItemCustomization.remove(mod, gear_id)
-
 		if type(mod.is_enabled) == "function" and not mod:is_enabled() then
+			remove_records(mod, { [gear_id] = true })
 			flush_persistence()
+		else
+			pending_deleted_gear_ids[gear_id] = true
 		end
 	end)
 
