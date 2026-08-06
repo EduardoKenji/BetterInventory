@@ -341,6 +341,10 @@ def main() -> None:
 				armoury_requisition_target_card_width = 230,
 				debug_expand_armoury_requisition_window_30_percent = false,
 				debug_armoury_requisition_window_increase_percent = 30,
+				debug_adjust_inventory_window_width = false,
+				debug_inventory_window_width_adjustment_percent = 30,
+				debug_adjust_global_store_window_width = false,
+				debug_global_store_window_width_adjustment_percent = 30,
                 grid_spacing = 10,
                 card_height = 110,
 				automatic_card_height = true,
@@ -764,6 +768,32 @@ def main() -> None:
     )
     assert global_store_expansion == 114
     assert global_store_armoury.grid_settings.grid_size[1] == 710
+
+    mod.settings.debug_adjust_global_store_window_width = True
+    debug_global_store, debug_global_store_expansion = layout.expanded_global_store_view_definitions(
+        mod, armoury_definitions, armoury_base_definitions
+    )
+    assert debug_global_store_expansion == 327
+    assert debug_global_store.grid_settings.grid_size[1] == 923
+    assert debug_global_store.scenegraph_definition.weapon_stats_pivot.position[1] == -813
+    assert tuple(
+        layout.item_size(mod, 923, 3, store_configuration)[index]
+        for index in (1, 2)
+    ) == (301, 114)
+
+    mod.settings.debug_global_store_window_width_adjustment_percent = -25
+    shrunken_global_store, shrunken_global_store_expansion = layout.expanded_global_store_view_definitions(
+        mod, armoury_definitions, armoury_base_definitions
+    )
+    assert shrunken_global_store_expansion == -63
+    assert shrunken_global_store.grid_settings.grid_size[1] == 533
+    assert shrunken_global_store.scenegraph_definition.weapon_stats_pivot.position[1] == -1203
+    assert tuple(
+        layout.item_size(mod, 533, 3, store_configuration)[index]
+        for index in (1, 2)
+    ) == (171, 114)
+    mod.settings.debug_adjust_global_store_window_width = False
+    mod.settings.debug_global_store_window_width_adjustment_percent = 30
     mod.settings.debug_expand_armoury_requisition_window_30_percent = False
 
     mod.settings.expand_armoury_requisition_window = False
@@ -848,6 +878,28 @@ def main() -> None:
     assert expanded_definitions.scenegraph_definition.weapon_actions_pivot.position[1] == -436
     assert expanded_definitions.scenegraph_definition.equip_button.position[1] == 981
     assert tuple(layout.item_size(mod, 720)[index] for index in (1, 2)) == (136, 110)
+
+    mod.settings.debug_adjust_inventory_window_width = True
+    debug_inventory_definitions, debug_inventory_expansion = layout.expanded_view_definitions(
+        mod, view_definitions
+    )
+    assert debug_inventory_expansion == 340
+    assert debug_inventory_definitions.grid_settings.grid_size[1] == 936
+    assert debug_inventory_definitions.scenegraph_definition.weapon_stats_pivot.position[1] == -800
+    assert debug_inventory_definitions.scenegraph_definition.weapon_actions_pivot.position[1] == -220
+    assert tuple(layout.item_size(mod, 936)[index] for index in (1, 2)) == (179, 110)
+
+    mod.settings.debug_inventory_window_width_adjustment_percent = -25
+    shrunken_inventory_definitions, shrunken_inventory_expansion = layout.expanded_view_definitions(
+        mod, view_definitions
+    )
+    assert shrunken_inventory_expansion == -56
+    assert shrunken_inventory_definitions.grid_settings.grid_size[1] == 540
+    assert shrunken_inventory_definitions.scenegraph_definition.weapon_stats_pivot.position[1] == -1196
+    assert shrunken_inventory_definitions.scenegraph_definition.weapon_actions_pivot.position[1] == -616
+    assert tuple(layout.item_size(mod, 540)[index] for index in (1, 2)) == (100, 110)
+    mod.settings.debug_adjust_inventory_window_width = False
+    mod.settings.debug_inventory_window_width_adjustment_percent = 30
 
     mod.settings.five_column_weapon_extra_width = 0
     assert layout.grid_expansion(mod, 596) == 44

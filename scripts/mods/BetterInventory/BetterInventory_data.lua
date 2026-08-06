@@ -1664,6 +1664,38 @@ return {
 							100,
 						},
 					},
+					{
+						setting_id = "debug_adjust_inventory_window_width",
+						tooltip = "debug_adjust_inventory_window_width_tooltip",
+						type = "checkbox",
+						default_value = false,
+					},
+					{
+						setting_id = "debug_inventory_window_width_adjustment_percent",
+						tooltip = "debug_inventory_window_width_adjustment_percent_tooltip",
+						type = "numeric",
+						default_value = 30,
+						range = {
+							-50,
+							100,
+						},
+					},
+					{
+						setting_id = "debug_adjust_global_store_window_width",
+						tooltip = "debug_adjust_global_store_window_width_tooltip",
+						type = "checkbox",
+						default_value = false,
+					},
+					{
+						setting_id = "debug_global_store_window_width_adjustment_percent",
+						tooltip = "debug_global_store_window_width_adjustment_percent_tooltip",
+						type = "numeric",
+						default_value = 30,
+						range = {
+							-50,
+							100,
+						},
+					},
 				},
 			},
 		},

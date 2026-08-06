@@ -20,6 +20,30 @@ local localization = {
 	debug_armoury_requisition_window_increase_percent_tooltip = {
 		en = "Sets the artificial Armoury Exchange store-width increase from 10%% to 100%%. The default stress-test increase is 30%%.",
 	},
+	debug_adjust_inventory_window_width = {
+		en = "Adjust inventory window width",
+	},
+	debug_adjust_inventory_window_width_tooltip = {
+		en = "Debug geometry stress test for melee, ranged and Curio inventories. Applies the signed percentage below to the normally resolved grid width and proportionally refits its equipment cards. Reopen the inventory after changing this setting.",
+	},
+	debug_inventory_window_width_adjustment_percent = {
+		en = "Inventory width adjustment (%%)",
+	},
+	debug_inventory_window_width_adjustment_percent_tooltip = {
+		en = "Shrinks or enlarges the resolved inventory width from -50%% to +100%%. The default stress-test adjustment is +30%%.",
+	},
+	debug_adjust_global_store_window_width = {
+		en = "Adjust GlobalStore window width",
+	},
+	debug_adjust_global_store_window_width_tooltip = {
+		en = "Debug geometry stress test for GlobalStore's Multi-Operative Supply grid. Applies the signed percentage below to the normally resolved grid width and proportionally refits its equipment cards. Reopen GlobalStore after changing this setting.",
+	},
+	debug_global_store_window_width_adjustment_percent = {
+		en = "GlobalStore width adjustment (%%)",
+	},
+	debug_global_store_window_width_adjustment_percent_tooltip = {
+		en = "Shrinks or enlarges the resolved GlobalStore width from -50%% to +100%%. The default stress-test adjustment is +30%%.",
+	},
 	inventory_slots_group = {
 		en = "Inventory coverage",
 	},
@@ -2353,6 +2377,14 @@ zh_cn.debug_expand_armoury_requisition_window_30_percent = "Increase Armoury Exc
 zh_cn.debug_expand_armoury_requisition_window_30_percent_tooltip = "Debug geometry stress test. In Requisition Weapons & Curios only, increases the normally resolved store grid width by the percentage below and proportionally refits its equipment cards. Reopen the Armoury Exchange after changing this setting."
 zh_cn.debug_armoury_requisition_window_increase_percent = "Store width increase (%%)"
 zh_cn.debug_armoury_requisition_window_increase_percent_tooltip = "Sets the artificial Armoury Exchange store-width increase from 10%% to 100%%. The default stress-test increase is 30%%."
+zh_cn.debug_adjust_inventory_window_width = "Adjust inventory window width"
+zh_cn.debug_adjust_inventory_window_width_tooltip = "Debug geometry stress test for melee, ranged and Curio inventories. Applies the signed percentage below to the normally resolved grid width and proportionally refits its equipment cards. Reopen the inventory after changing this setting."
+zh_cn.debug_inventory_window_width_adjustment_percent = "Inventory width adjustment (%%)"
+zh_cn.debug_inventory_window_width_adjustment_percent_tooltip = "Shrinks or enlarges the resolved inventory width from -50%% to +100%%. The default stress-test adjustment is +30%%."
+zh_cn.debug_adjust_global_store_window_width = "Adjust GlobalStore window width"
+zh_cn.debug_adjust_global_store_window_width_tooltip = "Debug geometry stress test for GlobalStore's Multi-Operative Supply grid. Applies the signed percentage below to the normally resolved grid width and proportionally refits its equipment cards. Reopen GlobalStore after changing this setting."
+zh_cn.debug_global_store_window_width_adjustment_percent = "GlobalStore width adjustment (%%)"
+zh_cn.debug_global_store_window_width_adjustment_percent_tooltip = "Shrinks or enlarges the resolved GlobalStore width from -50%% to +100%%. The default stress-test adjustment is +30%%."
 
 for localization_id, text in pairs(zh_cn) do
 	local entry = localization[localization_id]

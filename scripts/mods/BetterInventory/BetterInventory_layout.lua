@@ -3079,6 +3079,18 @@ local function maximum_safe_inventory_expansion(definitions, slot_kind)
 	return math.max(0, available_expansion)
 end
 
+local function debug_width_adjustment(mod, current_width, resolved_expansion, enabled_setting_id, percent_setting_id)
+	if not setting(mod, enabled_setting_id, false) then
+		return resolved_expansion
+	end
+
+	local percent = math.max(-50, math.min(100, tonumber(setting(mod, percent_setting_id, 30)) or 30))
+	local resolved_width = current_width + resolved_expansion
+	local adjusted_width = math.max(1, math.floor(resolved_width * (1 + percent * 0.01) + 0.5))
+
+	return adjusted_width - current_width
+end
+
 Layout.expanded_armoury_view_definitions = function(mod, definitions, base_definitions, grid_setting_id, slot_kind)
 	local grid_settings = definitions and definitions.grid_settings
 	local grid_size = grid_settings and grid_settings.grid_size
@@ -3097,9 +3109,11 @@ Layout.expanded_armoury_view_definitions = function(mod, definitions, base_defin
 		local debug_grid_width = math.floor(resolved_grid_width * (1 + debug_percent * 0.01) + 0.5)
 
 		expansion = math.max(expansion, debug_grid_width - current_grid_width)
+	elseif grid_setting_id == "enable_global_store_grid" then
+		expansion = debug_width_adjustment(mod, current_grid_width, expansion, "debug_adjust_global_store_window_width", "debug_global_store_window_width_adjustment_percent")
 	end
 
-	if expansion <= 0 then
+	if expansion == 0 then
 		return definitions, 0
 	end
 
@@ -3164,7 +3178,9 @@ Layout.expanded_view_definitions = function(mod, definitions, view)
 	local safe_expansion = maximum_safe_inventory_expansion(definitions, slot_kind)
 	local expansion = math.min(requested_expansion, safe_expansion)
 
-	if expansion <= 0 then
+	expansion = debug_width_adjustment(mod, current_grid_width, expansion, "debug_adjust_inventory_window_width", "debug_inventory_window_width_adjustment_percent")
+
+	if expansion == 0 then
 		return definitions, 0
 	end
 

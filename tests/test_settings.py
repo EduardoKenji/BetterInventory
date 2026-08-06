@@ -69,6 +69,10 @@ def main() -> None:
 			armoury_requisition_target_card_width = 230,
 			debug_expand_armoury_requisition_window_30_percent = false,
 			debug_armoury_requisition_window_increase_percent = 30,
+			debug_adjust_inventory_window_width = false,
+			debug_inventory_window_width_adjustment_percent = 30,
+			debug_adjust_global_store_window_width = false,
+			debug_global_store_window_width_adjustment_percent = 30,
 			automatic_card_height = true,
 			show_weapon_perks = false,
 			show_weapon_blessings = true,
@@ -1576,6 +1580,10 @@ def main() -> None:
     ] == [
         "debug_expand_armoury_requisition_window_30_percent",
         "debug_armoury_requisition_window_increase_percent",
+		"debug_adjust_inventory_window_width",
+		"debug_inventory_window_width_adjustment_percent",
+		"debug_adjust_global_store_window_width",
+		"debug_global_store_window_width_adjustment_percent",
     ]
     additional_views_group = next(
         data.options.widgets[index]
@@ -1779,6 +1787,10 @@ def main() -> None:
     assert defaults["armoury_requisition_target_card_width"] == 230
     assert defaults["debug_expand_armoury_requisition_window_30_percent"] is False
     assert defaults["debug_armoury_requisition_window_increase_percent"] == 30
+    assert defaults["debug_adjust_inventory_window_width"] is False
+    assert defaults["debug_inventory_window_width_adjustment_percent"] == 30
+    assert defaults["debug_adjust_global_store_window_width"] is False
+    assert defaults["debug_global_store_window_width_adjustment_percent"] == 30
     assert defaults["automatic_card_height"] is True
     assert defaults["expand_curio_inventory_window"] is True
     assert defaults["weapon_extra_width_column_threshold"] == "four_plus"
