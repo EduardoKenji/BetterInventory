@@ -90,6 +90,8 @@ def main() -> None:
         end
 
         test_mod = {}
+		test_mod_enabled = true
+		enabled_cleanup_hooks = {}
 
         function test_mod:get(setting_id)
             local value = settings[setting_id]
@@ -100,6 +102,14 @@ def main() -> None:
         function test_mod:set(setting_id, value)
             settings[setting_id] = type(value) == "table" and table.clone(value) or value
         end
+
+		function test_mod:is_enabled()
+			return test_mod_enabled
+		end
+
+		function test_mod:hook_enable(target, method)
+			enabled_cleanup_hooks[method] = target
+		end
 
         captured_hooks = {}
 
@@ -296,6 +306,7 @@ def main() -> None:
             {
                 "name": "Old BetterInventory Name",
                 "name_color": lua.table_from([255, 1, 2, 3]),
+                "character_id": "character-a",
             }
         ),
     )
@@ -333,6 +344,8 @@ def main() -> None:
     customization.on_enabled(mod)
     assert customization.get(mod, "whole-mod-handoff").name == "After Toggle"
     assert settings._custom_item_name_it_owns_names is False
+    assert globals_.enabled_cleanup_hooks.on_gear_deleted == "GearService"
+    assert globals_.enabled_cleanup_hooks.on_character_deleted == "GearService"
 
     settings.custom_item_name_keybind = "hotkey_menu_special_1"
     settings.custom_item_name_color_keybind = "hotkey_menu_special_1"
@@ -527,6 +540,41 @@ def main() -> None:
     settings.enable_custom_item_name_and_colors = False
     crafting_parent.cb_on_change_name_pressed(crafting_parent)
     assert globals_.name_it_crafting_calls == 1
+
+    # Character deletion removes both newly tagged records and legacy records
+    # discoverable in Darktide's cache, with one batched storage update.
+    customization.update(
+        mod,
+        "owned-by-deleted-character",
+        lua.table_from(
+            {"name_color": lua.table_from([255, 1, 2, 3]), "character_id": "deleted-character"}
+        ),
+    )
+    customization.update(
+        mod,
+        "legacy-owned-by-deleted-character",
+        lua.table_from({"name": "Legacy Orphan"}),
+    )
+    gear_service = lua.table_from(
+        {
+            "_cached_gear_list": lua.table_from(
+                {
+                    "legacy-owned-by-deleted-character": lua.table_from(
+                        {"characterId": "deleted-character"}
+                    )
+                }
+            )
+        }
+    )
+    globals_.test_mod_enabled = False
+    globals_.captured_hooks.on_character_deleted(
+        lua.eval("function(service) service.character_delete_called = true end"),
+        gear_service,
+        "deleted-character",
+    )
+    assert gear_service.character_delete_called is True
+    assert customization.get(mod, "owned-by-deleted-character") is None
+    assert customization.get(mod, "legacy-owned-by-deleted-character") is None
 
     print("BetterInventory item customization tests passed.")
 

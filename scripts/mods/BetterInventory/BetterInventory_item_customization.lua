@@ -140,6 +140,10 @@ ItemCustomization.update = function(mod, gear_id, changes)
 		sync_name_to_name_it(gear_id, record.name)
 	end
 
+	if type(changes.character_id) == "string" and changes.character_id ~= "" then
+		record.character_id = changes.character_id
+	end
+
 	if changes.name_color ~= nil then
 		record.name_color = changes.name_color ~= false and clone_color(changes.name_color, DEFAULT_NAME_COLOR) or nil
 	end
@@ -179,6 +183,40 @@ ItemCustomization.remove = function(mod, gear_id)
 	sync_name_to_name_it(gear_id, nil)
 
 	return true
+end
+
+local function remove_records(mod, gear_ids)
+	if type(gear_ids) ~= "table" then
+		return 0
+	end
+
+	local records = customization_records(mod)
+	local other_mod, names = name_it_names()
+	local removed = 0
+	local names_changed = false
+
+	for gear_id in pairs(gear_ids) do
+		if records[gear_id] ~= nil then
+			records[gear_id] = nil
+			removed = removed + 1
+		end
+
+		if names and names[gear_id] ~= nil then
+			names[gear_id] = nil
+			names_changed = true
+		end
+	end
+
+	if removed > 0 then
+		save_records(mod, records)
+	end
+
+	if names_changed and other_mod and type(other_mod.set) == "function" then
+		pcall(other_mod.set, other_mod, "name_list", names, false)
+		persistence_pending = true
+	end
+
+	return removed
 end
 
 ItemCustomization.import_name_it_names = function(mod)
@@ -344,6 +382,7 @@ local function selected_context(mod, view)
 		widget = widget,
 		item = item,
 		gear_id = item.gear_id,
+		character_id = item.characterId or item.character_id,
 		name = widget.content.display_name or "Item",
 		default_name = default_name or widget.content.display_name or "Item",
 	}
@@ -407,7 +446,7 @@ end
 
 local function reset_field(mod, context, layout, field, label)
 	local function reset()
-		ItemCustomization.update(mod, context.gear_id, { [field] = false })
+		ItemCustomization.update(mod, context.gear_id, { [field] = false, character_id = context.character_id })
 		refresh_item(mod, layout, context, field == "name")
 	end
 
@@ -674,7 +713,7 @@ local function show_color_picker(mod, target, context, layout)
 	local title = string.format(is_background and "Change item background color(%s)" or "Change item name color(%s)", item_name)
 	local function confirm()
 		if context then
-			local changes = { [field] = clone_color(picker.draft, default_color) }
+			local changes = { [field] = clone_color(picker.draft, default_color), character_id = context.character_id }
 
 			if is_background then
 				changes.background_preserve_shading = picker.preserve_shading
@@ -735,7 +774,7 @@ local function show_name_editor(mod, context, layout)
 			literal_button("Confirm", function()
 				local value = input_widget and input_widget.content and input_widget.content.input_text or ""
 				close_input()
-				ItemCustomization.update(mod, context.gear_id, { name = value })
+				ItemCustomization.update(mod, context.gear_id, { name = value, character_id = context.character_id })
 				refresh_item(mod, layout, context, true)
 			end),
 			literal_button("Reset to default", function()
@@ -771,6 +810,14 @@ ItemCustomization.on_disabled = function(mod)
 	end
 
 	flush_persistence()
+
+	-- DMF disables every hook before calling on_disabled. Keep only storage
+	-- cleanup alive so discarded gear cannot become orphaned while the visual
+	-- mod is toggled off.
+	if type(mod.hook_enable) == "function" then
+		mod:hook_enable("GearService", "on_gear_deleted")
+		mod:hook_enable("GearService", "on_character_deleted")
+	end
 end
 
 ItemCustomization.on_all_mods_loaded = function(mod)
@@ -963,6 +1010,39 @@ ItemCustomization.install = function(mod, InventoryWeaponsView, layout)
 
 	mod:hook_safe("GearService", "on_gear_deleted", function(_, gear_id)
 		ItemCustomization.remove(mod, gear_id)
+
+		if type(mod.is_enabled) == "function" and not mod:is_enabled() then
+			flush_persistence()
+		end
+	end)
+
+	mod:hook("GearService", "on_character_deleted", function(func, gear_service, character_id, ...)
+		local gear_ids = {}
+		local records = customization_records(mod)
+
+		for gear_id, record in pairs(records) do
+			if type(record) == "table" and record.character_id == character_id then
+				gear_ids[gear_id] = true
+			end
+		end
+
+		-- Backfill coverage for records created before character ownership was
+		-- stored, whenever Darktide still has the deleted character's gear cached.
+		for gear_id, gear in pairs(gear_service._cached_gear_list or {}) do
+			if gear and (gear.characterId == character_id or gear.character_id == character_id) then
+				gear_ids[gear_id] = true
+			end
+		end
+
+		local result = func(gear_service, character_id, ...)
+
+		remove_records(mod, gear_ids)
+
+		if type(mod.is_enabled) == "function" and not mod:is_enabled() then
+			flush_persistence()
+		end
+
+		return result
 	end)
 
 	-- Name It also exposes its editor through Hadron's parent CraftingView. When
@@ -976,7 +1056,7 @@ ItemCustomization.install = function(mod, InventoryWeaponsView, layout)
 		end
 
 		crafting_view.cb_on_change_name_pressed = function(self)
-			local mod_enabled = type(mod.is_enabled) ~= "function" or mod:is_enabled()
+				local mod_enabled = type(mod.is_enabled) ~= "function" or mod:is_enabled()
 
 			if mod_enabled and mod:get("enable_custom_item_name_and_colors") ~= false then
 				local ui_manager = Managers and Managers.ui
