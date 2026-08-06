@@ -1573,25 +1573,6 @@ def main() -> None:
             _ui_scenegraph = scenegraph,
             _widgets_by_name = widgets,
             _weapon_stats = weapon_stats,
-            _item_grid = {
-                scenegraph_world_position = function(self, scenegraph_id)
-                    if scenegraph_id == "grid_title_background" then
-                        return {100, 40, 3}
-                    end
-
-                    return {100, 148, 3}
-                end,
-                _scenegraph_size = function(self, scenegraph_id)
-                    if scenegraph_id == "grid_title_background" then
-                        return 680, 108
-                    end
-
-                    return 680, 860
-                end,
-                _menu_settings = {
-                    title_height = 108,
-                },
-            },
             _weapon_options_element = {
 				_pivot_offset = {1220, 60},
                 _menu_settings = {
@@ -2047,24 +2028,33 @@ def main() -> None:
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert len(prototype_panel.layout) == 6
 
-    prototype_view._discard_items_element = lua.table_from({})
+    prototype_view._discard_items_element = lua.execute(
+        r"""
+        return {
+            scenegraph_world_position = function(self, id)
+                return {1320, 60, 3}
+            end,
+            _scenegraph_size = function(self, id)
+                return 500, 650
+            end,
+        }
+        """
+    )
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert len(prototype_panel.layout) == 3
     assert prototype_panel.widgets["better_inventory_discard_header"] is None
-    assert prototype_panel.pivot_x == 800
-    assert prototype_panel.pivot_y == 40
+    assert prototype_panel.pivot_x == 1320
+    assert prototype_panel.pivot_y == 725
 
-    # Modified grid definitions may expose only the body background. Recover
-    # the complete window top from its live body rect and configured title.
-    prototype_view._item_grid.scenegraph_world_position = lua.eval(
-        "function(self, id) if id == 'grid_background' then return {120, 168, 3} end end"
+    prototype_view._discard_items_element.scenegraph_world_position = lua.eval(
+        "function(self, id) return {1280, 80, 3} end"
     )
-    prototype_view._item_grid._scenegraph_size = lua.eval(
-        "function(self, id) if id == 'grid_background' then return 700, 840 end end"
+    prototype_view._discard_items_element._scenegraph_size = lua.eval(
+        "function(self, id) return 520, 620 end"
     )
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
-    assert prototype_panel.pivot_x == 840
-    assert prototype_panel.pivot_y == 60
+    assert prototype_panel.pivot_x == 1280
+    assert prototype_panel.pivot_y == 715
 
     prototype_view._discard_items_element = None
 
@@ -2322,6 +2312,31 @@ def main() -> None:
     prototype_panel.widgets["better_inventory_item_sorting_option_7"].content.hotspot.pressed_callback()
     assert prototype_view._item_grid.triggered_sort_index == 7
 
+    prototype_view._discard_items_element = lua.execute(
+        r"""
+        return {
+            scenegraph_world_position = function() return {1280, 80, 3} end,
+            _scenegraph_size = function() return 520, 620 end,
+        }
+        """
+    )
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert prototype_panel.layout[4].initial_content.label == "item_sorting_mod_header"
+    assert prototype_panel.layout[9].initial_content.label == "armoury_native_sorting_header"
+    assert prototype_panel.layout[10].initial_content.label == "Rating high to low"
+    assert prototype_panel.layout[15].initial_content.label == "Name Z-A"
+    prototype_panel.widgets[
+        "better_inventory_item_sorting_option_1"
+    ].content.hotspot.pressed_callback()
+    assert prototype_view._item_grid.triggered_sort_index == 1
+    prototype_panel.widgets[
+        "better_inventory_native_sorting_header"
+    ].content.hotspot.pressed_callback()
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert len(prototype_panel.layout) == 9
+    prototype_view._discard_items_element = None
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+
     armoury_view._sort_options = lua.table_from(
         [
             lua.table_from({"display_name": "Rating high to low", "sort_function": lua.eval("function() return false end")}),
@@ -2375,6 +2390,26 @@ def main() -> None:
         != "item_sorting_mod_header"
         for index in range(1, len(globals_.TestArmouryPanel.entries) + 1)
     )
+    prototype_view._sort_options = lua.table_from(
+        [
+            lua.table_from({"display_name": "Rating high to low", "sort_function": lua.eval("function() return false end")}),
+            lua.table_from({"display_name": "Rarity high to low", "sort_function": lua.eval("function() return false end")}),
+            lua.table_from({"display_name": "Name A-Z", "sort_function": lua.eval("function() return false end")}),
+        ]
+    )
+    prototype_view._discard_items_element = lua.execute(
+        "return {scenegraph_world_position = function() return {1280, 80, 3} end, _scenegraph_size = function() return 520, 620 end}"
+    )
+    prototype_view._better_inventory_options_panel_collapsed.native_sorting = False
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert prototype_panel.layout[4].initial_content.label == "armoury_native_sorting_header"
+    assert prototype_panel.layout[5].initial_content.label == "Rating high to low"
+    assert all(
+        prototype_panel.layout[index].initial_content.label != "item_sorting_mod_header"
+        for index in range(1, len(prototype_panel.layout) + 1)
+    )
+    prototype_view._discard_items_element = None
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
 
     automatic_inventory = lua.table_from(
         {

@@ -2570,6 +2570,7 @@ local function panel_structure_key(mod, view)
 	key = key + curio_buyer_profile_revision() * 2048
 	key = key + (item_sorting_is_enabled() and 4194304 or 0)
 	key = key + (collapsed.item_sorting and 8388608 or 0)
+	key = key + (collapsed.native_sorting and 16777216 or 0)
 
 	return tostring(key) .. ":" .. tostring(view._better_inventory_lantern_panel_signature or "") .. ":" .. item_sorting_options_signature(view)
 end
@@ -2818,6 +2819,23 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 		end
 	end
 
+	if native_discard_active then
+		local sort_options = view._sort_options or {}
+		local last_native_option = item_sorting_custom_option_start(view) - 1
+
+		if last_native_option > 0 then
+			entries[#entries + 1] = panel_header_entry(mod, layout, view, "better_inventory_native_sorting_header", "native_sorting", function()
+				return mod:localize("armoury_native_sorting_header")
+			end)
+
+			if not collapsed.native_sorting then
+				for option_index = 1, math.min(last_native_option, #sort_options) do
+					entries[#entries + 1] = panel_item_sorting_option_entry(view, sort_options[option_index], option_index)
+				end
+			end
+		end
+	end
+
 	if quick_discard_enabled and not native_discard_active then
 		entries[#entries + 1] = panel_header_entry(mod, layout, view, "better_inventory_discard_header", "discard", function()
 			local mode = mod:get("quick_discard_mode") == "automatic" and "automated" or "manual"
@@ -3019,6 +3037,7 @@ Features.setup_inventory_options_panel = function(mod, layout, view, ViewElement
 		curio_buyer = false,
 		discard = false,
 		item_sorting = false,
+		native_sorting = false,
 		sorting = false,
 	}
 
@@ -3277,34 +3296,6 @@ local function scenegraph_rect(owner, scenegraph_id)
 		y = position[2],
 		width = width,
 		height = height,
-	}
-end
-
-local function inventory_grid_window_rect(view)
-	local item_grid = view and view._item_grid
-	local title_rect = scenegraph_rect(item_grid, "grid_title_background")
-
-	if title_rect and title_rect.width > 0 then
-		return title_rect
-	end
-
-	-- Older or modified ViewElementGrid definitions may omit the title node.
-	-- Its background still exposes the same horizontal bounds; extend its top
-	-- back by the configured title height to recover the complete window rect.
-	local background_rect = scenegraph_rect(item_grid, "grid_background")
-
-	if not background_rect or background_rect.width <= 0 then
-		return nil
-	end
-
-	local menu_settings = item_grid and item_grid._menu_settings
-	local title_height = math.max(tonumber(menu_settings and menu_settings.title_height) or 0, 0)
-
-	return {
-		x = background_rect.x,
-		y = background_rect.y - title_height,
-		width = background_rect.width,
-		height = background_rect.height + title_height,
 	}
 end
 
@@ -5067,14 +5058,14 @@ local function update_inventory_options_panel(mod, layout, view, slot_kind)
 	local absolute_y
 
 	if native_discard_active then
-		local inventory_rect = inventory_grid_window_rect(view)
+		local discard_rect = scenegraph_rect(view._discard_items_element, "window")
 
-		if inventory_rect then
-			-- Native discard hides the comparison area and leaves the inventory
-			-- window as the stable sibling. Follow its live world rect so expanded
-			-- columns, resolution scaling, and Curio layouts share one placement.
-			absolute_x = inventory_rect.x + inventory_rect.width + INVENTORY_OPTIONS_PANEL_WEAPON_GAP
-			absolute_y = inventory_rect.y
+		if discard_rect then
+			-- The native filter window is the only stable free column in discard
+			-- mode. Align with its left edge and follow its live bottom so the
+			-- BetterInventory panel cannot cover item details or Discard Items.
+			absolute_x = discard_rect.x
+			absolute_y = discard_rect.y + discard_rect.height + INVENTORY_OPTIONS_PANEL_BUTTON_GAP
 		else
 			-- Keep the established fallback for the brief setup frame before the
 			-- item-grid scenegraph has resolved.
