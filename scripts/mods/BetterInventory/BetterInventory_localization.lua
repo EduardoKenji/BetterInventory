@@ -5,6 +5,15 @@ local localization = {
 	mod_description = {
 		en = "A responsive, information-preserving inventory layout for Darktide.",
 	},
+	debug_group = {
+		en = "Debug (testing only)",
+	},
+	debug_expand_armoury_requisition_window_30_percent = {
+		en = "Increase Armoury Exchange store width by 30%%",
+	},
+	debug_expand_armoury_requisition_window_30_percent_tooltip = {
+		en = "Debug geometry stress test. In Requisition Weapons & Curios only, increases the normally resolved store grid width by 30%% and proportionally refits its equipment cards. Reopen the Armoury Exchange after changing this setting.",
+	},
 	inventory_slots_group = {
 		en = "Inventory coverage",
 	},
@@ -2333,6 +2342,9 @@ zh_cn.option_requires_character_overview_curio_details = "Requires detailed Curi
 zh_cn.myfavorites_integration_group = "Mod Integration: MyFavorites"
 zh_cn.myfavorites_show_favorite_letter = "Show F below favorite icon"
 zh_cn.myfavorites_show_favorite_letter_tooltip = "Adds a compact F beneath the coloured MyFavorites icon. Disabled by default."
+zh_cn.debug_group = "Debug (testing only)"
+zh_cn.debug_expand_armoury_requisition_window_30_percent = "Increase Armoury Exchange store width by 30%%"
+zh_cn.debug_expand_armoury_requisition_window_30_percent_tooltip = "Debug geometry stress test. In Requisition Weapons & Curios only, increases the normally resolved store grid width by 30%% and proportionally refits its equipment cards. Reopen the Armoury Exchange after changing this setting."
 
 for localization_id, text in pairs(zh_cn) do
 	local entry = localization[localization_id]

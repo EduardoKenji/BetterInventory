@@ -1644,6 +1644,18 @@ return {
 					color_group("curio_secondary_text_color_group", "curio_secondary_text_color", "neutral", 220, 230, 210),
 				},
 			},
+			{
+				setting_id = "debug_group",
+				type = "group",
+				sub_widgets = {
+					{
+						setting_id = "debug_expand_armoury_requisition_window_30_percent",
+						tooltip = "debug_expand_armoury_requisition_window_30_percent_tooltip",
+						type = "checkbox",
+						default_value = false,
+					},
+				},
+			},
 		},
 	},
 }

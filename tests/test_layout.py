@@ -339,6 +339,7 @@ def main() -> None:
 				brighten_armoury_item_levels = true,
 				expand_armoury_requisition_window = true,
 				armoury_requisition_target_card_width = 230,
+				debug_expand_armoury_requisition_window_30_percent = false,
                 grid_spacing = 10,
                 card_height = 110,
 				automatic_card_height = true,
@@ -714,6 +715,31 @@ def main() -> None:
         layout.item_size(mod, 710, 3, store_configuration)[index]
         for index in (1, 2)
     ) == (230, 114)
+
+    mod.settings.debug_expand_armoury_requisition_window_30_percent = True
+    debug_armoury, debug_expansion = layout.expanded_armoury_view_definitions(
+        mod, armoury_definitions, armoury_base_definitions
+    )
+    assert debug_expansion == 327
+    assert debug_armoury.grid_settings.grid_size[1] == 923
+    assert debug_armoury.grid_settings.mask_size[1] == 1007
+    assert debug_armoury.scenegraph_definition.item_grid_pivot.size[1] == 967
+    assert debug_armoury.scenegraph_definition.weapon_stats_pivot.position[1] == -813
+    assert debug_armoury.scenegraph_definition.purchase_button.position[1] == 1184
+    assert tuple(
+        layout.item_size(mod, 923, 3, store_configuration)[index]
+        for index in (1, 2)
+    ) == (301, 114)
+
+    global_store_armoury, global_store_expansion = layout.expanded_armoury_view_definitions(
+        mod,
+        armoury_definitions,
+        armoury_base_definitions,
+        "enable_global_store_grid",
+    )
+    assert global_store_expansion == 114
+    assert global_store_armoury.grid_settings.grid_size[1] == 710
+    mod.settings.debug_expand_armoury_requisition_window_30_percent = False
 
     mod.settings.expand_armoury_requisition_window = False
     assert layout.armoury_grid_expansion(mod, 596) == 0

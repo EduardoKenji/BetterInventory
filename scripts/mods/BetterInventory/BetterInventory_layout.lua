@@ -3088,7 +3088,15 @@ Layout.expanded_armoury_view_definitions = function(mod, definitions, base_defin
 		return definitions, 0
 	end
 
+	local native_armoury = grid_setting_id == nil
 	local expansion = Layout.armoury_grid_expansion(mod, current_grid_width, grid_setting_id, slot_kind)
+
+	if native_armoury and setting(mod, "debug_expand_armoury_requisition_window_30_percent", false) then
+		local resolved_grid_width = current_grid_width + expansion
+		local debug_grid_width = math.floor(resolved_grid_width * 1.3 + 0.5)
+
+		expansion = math.max(expansion, debug_grid_width - current_grid_width)
+	end
 
 	if expansion <= 0 then
 		return definitions, 0
