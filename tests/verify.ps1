@@ -86,6 +86,10 @@ $features = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_fea
 $curioAcquisition = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_acquisition.lua") -Raw
 $curioValues = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_values.lua") -Raw
 
+if ($main -notmatch 'Features\.set_item_sorting_integration\(get_mod\("ItemSorting"\)\)' -or $main -notmatch 'Features\.preserve_item_sorting_native_options' -or $features -notmatch 'ITEM_SORTING_INVENTORY_VANILLA_SETTINGS' -or $features -notmatch 'ITEM_SORTING_STORE_VANILLA_SETTINGS' -or $features -notmatch 'item_sorting_custom_option_start' -or $features -notmatch 'item_sorting_mod_header') {
+	throw "ItemSorting inventory/store panel integration was not found."
+}
+
 if ($data -notmatch 'setting_id\s*=\s*"myfavorites_integration_group"' -or $data -match 'setting_id\s*=\s*"enable_myfavorites_integration"' -or $data -notmatch 'setting_id\s*=\s*"myfavorites_show_favorite_letter"[\s\S]*?default_value\s*=\s*false' -or $layout -notmatch 'myfavorites_compatibility\s*=\s*myfavorites_hotspot\s+and\s+myfavorites_hotspot\.style' -or $layout -notmatch 'resolved_size\s*=\s*size\s+or\s+hotspot_style\.size' -or $main -notmatch 'mod:hook\(ViewElementGrid,\s*"_create_entry_widget_from_config"' -or $main -notmatch 'widget\.content\.better_inventory_myfavorites_hotspot_style\s*=\s*widget\.style\.myfav_hotspot' -or $main -notmatch 'better_inventory_equipped_icon_visibility_function\s*=\s*pass\.visibility_function' -or $main -notmatch 'mod:hook\(ViewElementGrid,\s*"_update_grid_widgets"' -or $main -notmatch 'synchronize_myfavorites_marker\(widgets\[index\]\)' -or $layout -notmatch 'runtime_hotspot_style\.offset\[2\]\s*=\s*offset_y' -or $layout -notmatch 'content\.favorite_icon\s*=\s*compact_favorite_value' -or $layout -notmatch 'align_myfavorites_hotspot') {
 	throw "MyFavorites compact-marker compatibility integration was not found."
 }

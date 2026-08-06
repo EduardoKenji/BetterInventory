@@ -1519,6 +1519,7 @@ end
 function mod.on_all_mods_loaded()
 	ItemCustomization.on_all_mods_loaded(mod)
 	Features.set_lantern_integration(mod, get_mod("Lantern of the Omnissiah"))
+	Features.set_item_sorting_integration(get_mod("ItemSorting"))
 end
 
 local function lantern_recommendations_active()
@@ -1671,8 +1672,11 @@ end)
 
 if ensure_class_method(InventoryWeaponsView, "_setup_sort_options") then
 	mod:hook(InventoryWeaponsView, "_setup_sort_options", function(func, view, ...)
+		local selected_option = view._selected_sort_option or view._sort_options and view._sort_options[view._selected_sort_option_index or 1]
+		local selected_display_name = selected_option and selected_option.display_name
 		local result = func(view, ...)
 
+		Features.preserve_item_sorting_native_options(view, selected_display_name)
 		Features.configure_inventory_sort_options(mod, Layout, view)
 		Features.setup_inventory_options_panel(mod, Layout, view, ViewElementGrid)
 		Features.bind_inventory_sort_toggle(mod, Layout, view)
@@ -1683,8 +1687,11 @@ end
 
 if ensure_class_method(CreditsVendorView, "_setup_sort_options") then
 	mod:hook(CreditsVendorView, "_setup_sort_options", function(func, view, ...)
+		local selected_option = view._selected_sort_option or view._sort_options and view._sort_options[view._selected_sort_option_index or 1]
+		local selected_display_name = selected_option and selected_option.display_name
 		local result = func(view, ...)
 
+		Features.preserve_item_sorting_native_options(view, selected_display_name)
 		if is_armoury_requisition_view(view) then
 			Features.configure_armoury_sort_options(mod, view)
 

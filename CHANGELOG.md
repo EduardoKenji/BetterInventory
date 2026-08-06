@@ -1,5 +1,13 @@
 # BetterInventory changelog
 
+## Unreleased
+
+- Added automatic ItemSorting integration to BetterInventory's existing melee, ranged, Curio, Armoury Exchange and GlobalStore sorting panels.
+- Added a collapsible `ItemSorting mod` section directly below `Sorting`, containing ItemSorting's complete custom method set—including Family + Mark—as direct choices while its customized Darktide methods remain under `Darktide Native Sorting`.
+- ItemSorting remains the owner of every comparator; BetterInventory reads ItemSorting's definitions, preserves their ordering and callbacks, and separates the native and custom ranges in its panel.
+- Preserved every vanilla-style sorting method when ItemSorting is active instead of inheriting ItemSorting's reduced default list; ItemSorting's complete custom method set is appended without changing its saved Mod Options.
+- Kept the Armoury and GlobalStore panel viewport bounded and scrollable with the additional choices.
+
 ## 1.8.0 - 2026-08-06
 
 ### Added

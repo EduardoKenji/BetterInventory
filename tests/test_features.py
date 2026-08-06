@@ -1922,6 +1922,153 @@ def main() -> None:
     lantern_overlay.draw_weapon_select(prototype_view)
     assert globals_.lantern_native_draw_count == 3
 
+    # ItemSorting defines vanilla-style methods first and its own added methods
+    # second. BetterInventory presents the complete two ranges as sibling
+    # sections without replacing or invoking either mod's comparator functions.
+    item_sorting_mod = lua.execute(
+        r"""
+        local function sort_definition(id, name)
+            return {id = id, display_name = name, sort_function = function() return false end}
+        end
+        local definitions = {
+            customized_vanilla_methods = {
+                inventory = {
+                    sort_definition("level_desc", "Rating high to low"),
+                    sort_definition("level_asc", "Rating low to high"),
+                    sort_definition("rarity_desc", "Rarity high to low"),
+                    sort_definition("rarity_asc", "Rarity low to high"),
+                    sort_definition("name_asc", "Name A-Z"),
+                    sort_definition("name_desc", "Name Z-A"),
+                },
+                store = {
+                    sort_definition("level_desc", "Rating high to low"),
+                    sort_definition("level_asc", "Rating low to high"),
+                    sort_definition("rarity_desc", "Rarity high to low"),
+                    sort_definition("rarity_asc", "Rarity low to high"),
+                    sort_definition("price_asc", "Price low to high"),
+                    sort_definition("price_desc", "Price high to low"),
+                    sort_definition("name_asc", "Name A-Z"),
+                    sort_definition("name_desc", "Name Z-A"),
+                },
+            },
+            modded_methods = {
+                inventory = {
+                    sort_definition("category", "Category"),
+                    sort_definition("category_mark", "Category + Mark"),
+                    sort_definition("base_level_desc", "Base Rating high to low"),
+                    sort_definition("base_level_asc", "Base Rating low to high"),
+                },
+                store = {
+                    sort_definition("category", "Category"),
+                    sort_definition("category_mark", "Category + Mark"),
+                    sort_definition("base_level_desc", "Base Rating high to low"),
+                    sort_definition("base_level_asc", "Base Rating low to high"),
+                },
+            },
+        }
+        return {
+            enabled = true,
+            definitions = definitions,
+            settings = {
+                enable_vanilla_level_desc = true,
+                enable_vanilla_rarity_desc = true,
+                enable_vanilla_name_asc = true,
+                custom_sort_category = true,
+                custom_sort_category_mark = true,
+                custom_sort_base_level_desc = true,
+            },
+            is_enabled = function(self)
+                return self.enabled
+            end,
+            get = function(self, setting_id)
+                return self.settings[setting_id]
+            end,
+            io_dofile = function(self)
+                return self.definitions
+            end,
+        }
+        """
+    )
+    assert features.set_item_sorting_integration(item_sorting_mod) is True
+    prototype_view._sort_options = lua.table_from(
+        [
+            lua.table_from({"display_name": "Rating high to low", "sort_function": lua.eval("function() return false end")}),
+            lua.table_from({"display_name": "Rarity high to low", "sort_function": lua.eval("function() return false end")}),
+            lua.table_from({"display_name": "Name A-Z", "sort_function": lua.eval("function() return false end")}),
+            lua.table_from({"display_name": "Category", "sort_function": lua.eval("function() return false end")}),
+            lua.table_from({"display_name": "Base Rating high to low", "sort_function": lua.eval("function() return false end")}),
+        ]
+    )
+    prototype_view._item_grid = lua.table_from(
+        {"trigger_sort_index": lua.eval("function(self, index) self.triggered_sort_index = index end")}
+    )
+    assert features.preserve_item_sorting_native_options(prototype_view, "Name A-Z") is True
+    assert len(prototype_view._sort_options) == 10
+    assert prototype_view._selected_sort_option_index == 5
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert prototype_panel.layout[1].initial_content.label == "inventory_sorting_inventory_label"
+    assert prototype_panel.layout[4].initial_content.label == "item_sorting_mod_header"
+    assert prototype_panel.layout[5].initial_content.label == "Category"
+    assert prototype_panel.layout[6].initial_content.label == "Category + Mark"
+    assert prototype_panel.layout[7].initial_content.label == "Base Rating high to low"
+    assert prototype_panel.layout[8].initial_content.label == "Base Rating low to high"
+    prototype_panel.widgets["better_inventory_item_sorting_option_7"].content.hotspot.pressed_callback()
+    assert prototype_view._item_grid.triggered_sort_index == 7
+
+    armoury_view._sort_options = lua.table_from(
+        [
+            lua.table_from({"display_name": "Rating high to low", "sort_function": lua.eval("function() return false end")}),
+            lua.table_from({"display_name": "Rarity high to low", "sort_function": lua.eval("function() return false end")}),
+            lua.table_from({"display_name": "Name A-Z", "sort_function": lua.eval("function() return false end")}),
+            lua.table_from({"display_name": "Category", "sort_function": lua.eval("function() return false end")}),
+            lua.table_from({"display_name": "Category + Mark", "sort_function": lua.eval("function() return false end")}),
+        ]
+    )
+    assert features.preserve_item_sorting_native_options(armoury_view, "Name A-Z") is True
+    assert len(armoury_view._sort_options) == 12
+    assert armoury_view._selected_sort_option_index == 7
+    armoury_view._better_inventory_armoury_native_sort_collapsed.sorting = False
+    armoury_view._better_inventory_armoury_native_sort_collapsed.native_sorting = False
+    features.update_armoury_native_sort_panel(armoury_view)
+    assert globals_.TestArmouryPanel.entries[4].initial_content.label == "item_sorting_mod_header"
+    assert globals_.TestArmouryPanel.entries[5].initial_content.label == "Category"
+    assert globals_.TestArmouryPanel.entries[6].initial_content.label == "Category + Mark"
+    assert globals_.TestArmouryPanel.entries[7].initial_content.label == "Base Rating high to low"
+    assert globals_.TestArmouryPanel.entries[8].initial_content.label == "Base Rating low to high"
+    assert globals_.TestArmouryPanel.entries[9].initial_content.label == "armoury_native_sorting_header"
+    assert globals_.TestArmouryPanel.entries[10].initial_content.label == "Rating high to low"
+    assert globals_.TestArmouryPanel.entries[16].initial_content.label == "Name A-Z"
+    assert 140 <= globals_.TestArmouryPanel.grid_height <= 520
+    store_item_sorting_widget = lua.table_from({"content": lua.table_from({})})
+    globals_.TestArmouryPanel.blueprints.better_inventory_armoury_native_sort.init(
+        None, store_item_sorting_widget, globals_.TestArmouryPanel.entries[5]
+    )
+    store_item_sorting_widget.content.hotspot.pressed_callback()
+    assert armoury_view._item_grid.triggered_sort_index == 9
+
+    # BetterInventory exposes ItemSorting's complete documented method set even
+    # when that mod's reduced defaults leave individual method toggles disabled.
+    item_sorting_mod.settings.custom_sort_category = False
+    item_sorting_mod.settings.custom_sort_category_mark = False
+    features.preserve_item_sorting_native_options(armoury_view, "Name A-Z")
+    features.update_armoury_native_sort_panel(armoury_view)
+    assert globals_.TestArmouryPanel.entries[4].initial_content.label == "item_sorting_mod_header"
+    assert globals_.TestArmouryPanel.entries[6].initial_content.label == "Category + Mark"
+    assert len(globals_.TestArmouryPanel.entries) == 17
+
+    item_sorting_mod.enabled = False
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    features.update_armoury_native_sort_panel(armoury_view)
+    assert all(
+        prototype_panel.layout[index].initial_content.label != "item_sorting_mod_header"
+        for index in range(1, len(prototype_panel.layout) + 1)
+    )
+    assert all(
+        globals_.TestArmouryPanel.entries[index].initial_content.label
+        != "item_sorting_mod_header"
+        for index in range(1, len(globals_.TestArmouryPanel.entries) + 1)
+    )
+
     automatic_inventory = lua.table_from(
         {
             "auto_eligible": lua.table_from(

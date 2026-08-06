@@ -125,6 +125,9 @@ local localization = {
 	armoury_native_sorting_header = {
 		en = "Darktide Native Sorting",
 	},
+	item_sorting_mod_header = {
+		en = "ItemSorting mod",
+	},
 	inventory_discard_management_inventory_label = {
 		en = "Manual/Automated Item Discard Management",
 	},
@@ -2387,6 +2390,7 @@ zh_cn.enable_character_overview_ranged_mirror = "Mirror ranged weapon single-col
 zh_cn.enable_character_overview_ranged_mirror_tooltip = "Uses the detailed BetterInventory single-column card for the equipped ranged weapon on the character overview screen. Enabled by default."
 zh_cn.enable_character_overview_curio_details = "Show detailed Curio card on character overview"
 zh_cn.enable_character_overview_curio_details_tooltip = "Shows the equipped Curio's primary and secondary stats in a compact BetterInventory card on the character overview screen. Enabled by default."
+zh_cn.item_sorting_mod_header = "ItemSorting mod"
 zh_cn.character_overview_curio_name_mode = "Curio title mode"
 zh_cn.character_overview_curio_name_mode_tooltip = "Hides Curio titles or fits them within one or two lines above the four stat rows on the character overview."
 zh_cn.character_overview_curio_name_mode_none = "No title"
