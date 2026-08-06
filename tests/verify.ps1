@@ -5,17 +5,11 @@ param(
 $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $scriptRoot = Join-Path $projectRoot "scripts\mods\BetterInventory"
+$runtimeLuaFiles = @(Get-ChildItem -LiteralPath $scriptRoot -Filter "BetterInventory*.lua" -File | Sort-Object Name)
 $requiredFiles = @(
-	(Join-Path $projectRoot "BetterInventory.mod"),
-	(Join-Path $scriptRoot "BetterInventory.lua"),
-	(Join-Path $scriptRoot "BetterInventory_curio_acquisition.lua"),
-	(Join-Path $scriptRoot "BetterInventory_curio_values.lua"),
-	(Join-Path $scriptRoot "BetterInventory_features.lua"),
-	(Join-Path $scriptRoot "BetterInventory_item_customization.lua"),
-	(Join-Path $scriptRoot "BetterInventory_layout.lua"),
-	(Join-Path $scriptRoot "BetterInventory_data.lua"),
-	(Join-Path $scriptRoot "BetterInventory_localization.lua")
+	(Join-Path $projectRoot "BetterInventory.mod")
 )
+$requiredFiles += @($runtimeLuaFiles | ForEach-Object { $_.FullName })
 $releasePackager = Join-Path $projectRoot "tools\package_release.ps1"
 $packagingDocumentation = Join-Path $projectRoot "docs\release-packaging.md"
 
@@ -450,17 +444,9 @@ try {
 
 	try {
 		$actualReleasePaths = @($packagingTest.Entries | Where-Object { -not [string]::IsNullOrEmpty($_.Name) } | ForEach-Object { $_.FullName } | Sort-Object)
-		$expectedReleasePaths = @(
-			"BetterInventory/BetterInventory.mod",
-			"BetterInventory/scripts/mods/BetterInventory/BetterInventory.lua",
-			"BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_acquisition.lua",
-			"BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_values.lua",
-			"BetterInventory/scripts/mods/BetterInventory/BetterInventory_data.lua",
-			"BetterInventory/scripts/mods/BetterInventory/BetterInventory_features.lua",
-			"BetterInventory/scripts/mods/BetterInventory/BetterInventory_item_customization.lua",
-			"BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout.lua",
-			"BetterInventory/scripts/mods/BetterInventory/BetterInventory_localization.lua"
-		) | Sort-Object
+		$expectedReleasePaths = @("BetterInventory/BetterInventory.mod")
+		$expectedReleasePaths += @($runtimeLuaFiles | ForEach-Object { "BetterInventory/scripts/mods/BetterInventory/$($_.Name)" })
+		$expectedReleasePaths = @($expectedReleasePaths | Sort-Object)
 
 		if (@(Compare-Object $expectedReleasePaths $actualReleasePaths).Count -gt 0) {
 			throw "Independent release test found a Nexus-incompatible archive layout."
@@ -468,6 +454,20 @@ try {
 
 		if (@($actualReleasePaths | Where-Object { $_.Contains("\") }).Count -gt 0) {
 			throw "Independent release test found a backslash-bearing ZIP entry."
+		}
+
+		$localModuleReferences = @(
+			$runtimeLuaFiles | ForEach-Object {
+				$content = Get-Content -LiteralPath $_.FullName -Raw
+				[regex]::Matches($content, 'io_dofile\("BetterInventory/scripts/mods/BetterInventory/([^".]+)"\)') | ForEach-Object {
+					"BetterInventory/scripts/mods/BetterInventory/$($_.Groups[1].Value).lua"
+				}
+			} | Sort-Object -Unique
+		)
+		$missingReferencedModules = @($localModuleReferences | Where-Object { $_ -notin $actualReleasePaths })
+
+		if ($missingReferencedModules.Count -gt 0) {
+			throw "Release archive is missing locally loaded module(s): $($missingReferencedModules -join ', ')"
 		}
 	} finally {
 		$packagingTest.Dispose()

@@ -2,7 +2,7 @@
 
 ## Critical Nexus archive invariant
 
-`BetterInventory.zip` must contain exactly one install directory named `BetterInventory`. Every ZIP entry name must use a forward slash (`/`), never a Windows backslash (`\`). The eight runtime files must therefore be stored as:
+`BetterInventory.zip` must contain exactly one install directory named `BetterInventory`. Every ZIP entry name must use a forward slash (`/`), never a Windows backslash (`\`). The descriptor and every `BetterInventory*.lua` file in `scripts/mods/BetterInventory` are mandatory runtime files. The current nine-file release is therefore stored as:
 
 ```text
 BetterInventory/BetterInventory.mod
@@ -11,6 +11,7 @@ BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_acquisition.l
 BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_values.lua
 BetterInventory/scripts/mods/BetterInventory/BetterInventory_data.lua
 BetterInventory/scripts/mods/BetterInventory/BetterInventory_features.lua
+BetterInventory/scripts/mods/BetterInventory/BetterInventory_item_customization.lua
 BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout.lua
 BetterInventory/scripts/mods/BetterInventory/BetterInventory_localization.lua
 ```
@@ -36,6 +37,7 @@ Backslash-bearing entry names such as `BetterInventory\scripts\...` are also inv
 - The NexusMods v1.2.0 archive included the required outer directory but encoded paths with Windows backslashes. That was the original production failure.
 - The attempted safeguard incorrectly diagnosed the outer directory as the problem. It normalized backslashes during verification, removed the required install directory, and produced a rootless archive that worked only when manually extracted into an already-created `mods/BetterInventory` folder.
 - The verifier therefore validated an internally consistent but Nexus-incompatible archive. A successful hash comparison did not validate installation semantics.
+- The NexusMods v1.7.0 archive omitted `BetterInventory_item_customization.lua`. Both packager and verifier used the same manually maintained file list, so the duplicated omission passed. Packaging now discovers every runtime Lua source, while verification independently derives the required archive set from the source tree and checks every local `io_dofile` dependency.
 
 The invariant is now based on direct comparison with known-good Nexus mod archives: **one outer mod directory, no duplicate directory, forward slashes only**.
 
@@ -49,10 +51,11 @@ Only create the release archive with the repository-owned packager:
 
 The packager:
 
-1. writes only the eight runtime files beneath one `BetterInventory/` directory;
+1. discovers and writes the descriptor plus every `BetterInventory*.lua` runtime source beneath one `BetterInventory/` directory;
 2. constructs entry names explicitly with forward slashes;
 3. rejects rootless files, a duplicated outer directory, backslash-bearing names or any unexpected file;
 4. compares every compressed entry's SHA-256 with its source file before replacing the destination archive.
+5. is independently tested against the runtime source directory, including a check that every locally loaded `io_dofile` module exists in the archive.
 
 Before upload, the command output must end with `BetterInventory release archive verified`. Independently inspect the archive and confirm its first file is:
 

@@ -9,14 +9,19 @@ $scriptRoot = Join-Path $projectRoot "scripts\mods\BetterInventory"
 $archiveRoot = "BetterInventory"
 $runtimeFiles = [ordered]@{
 	"$archiveRoot/BetterInventory.mod" = Join-Path $projectRoot "BetterInventory.mod"
-	"$archiveRoot/scripts/mods/BetterInventory/BetterInventory.lua" = Join-Path $scriptRoot "BetterInventory.lua"
-	"$archiveRoot/scripts/mods/BetterInventory/BetterInventory_curio_acquisition.lua" = Join-Path $scriptRoot "BetterInventory_curio_acquisition.lua"
-	"$archiveRoot/scripts/mods/BetterInventory/BetterInventory_curio_values.lua" = Join-Path $scriptRoot "BetterInventory_curio_values.lua"
-	"$archiveRoot/scripts/mods/BetterInventory/BetterInventory_data.lua" = Join-Path $scriptRoot "BetterInventory_data.lua"
-	"$archiveRoot/scripts/mods/BetterInventory/BetterInventory_features.lua" = Join-Path $scriptRoot "BetterInventory_features.lua"
-	"$archiveRoot/scripts/mods/BetterInventory/BetterInventory_item_customization.lua" = Join-Path $scriptRoot "BetterInventory_item_customization.lua"
-	"$archiveRoot/scripts/mods/BetterInventory/BetterInventory_layout.lua" = Join-Path $scriptRoot "BetterInventory_layout.lua"
-	"$archiveRoot/scripts/mods/BetterInventory/BetterInventory_localization.lua" = Join-Path $scriptRoot "BetterInventory_localization.lua"
+}
+
+# Package every runtime Lua source by discovery. A hand-maintained allowlist
+# previously omitted a newly introduced module while still passing a verifier
+# that duplicated the same incomplete list.
+$runtimeLuaFiles = @(Get-ChildItem -LiteralPath $scriptRoot -Filter "BetterInventory*.lua" -File | Sort-Object Name)
+
+if ($runtimeLuaFiles.Count -eq 0) {
+	throw "No BetterInventory runtime Lua files were discovered in: $scriptRoot"
+}
+
+foreach ($sourceFile in $runtimeLuaFiles) {
+	$runtimeFiles["$archiveRoot/scripts/mods/BetterInventory/$($sourceFile.Name)"] = $sourceFile.FullName
 }
 
 foreach ($sourcePath in $runtimeFiles.Values) {
