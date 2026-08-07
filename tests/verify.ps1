@@ -52,6 +52,10 @@ if ($main -notmatch 'display_name\.style\.offset\[1\]\s*=\s*CHARACTER_OVERVIEW_N
 	throw "Centered native Curio title must use an additive X delta; horizontal inset belongs in the title width."
 }
 
+if ($main -notmatch 'local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_ITEM_LEVEL_SHIFT_Y\s*=\s*-\d+' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_MARKER_GAP_Y\s*=\s*16') {
+	throw "Native Curio item-level Y must move upward with a negative bottom-aligned delta, and the marker gap must remain explicit."
+}
+
 if ($curioVisualPlan -notmatch 'Coordinate contract and regression guard' -or $curioVisualPlan -notmatch 'offset\[1\].*X' -or $curioVisualPlan -notmatch 'offset\[2\].*Y' -or $curioVisualPlan -notmatch 'Never put a centered pass''s horizontal inset into `offset\[1\]`') {
 	throw "The native Curio coordinate contract is missing from the v1.9.4 visual plan."
 }
