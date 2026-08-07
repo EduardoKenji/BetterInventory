@@ -32,6 +32,38 @@ def main() -> None:
     assert ok is True
     assert value == 7
 
+    throwing_lookup = lua.execute(
+        "return setmetatable({}, {__index = function() error('lookup failed') end})"
+    )
+    ok, error = contracts.safe_method(throwing_lookup, "read")
+    assert ok is False
+    assert error is not None
+
+    explicit_false = lua.execute(
+        "return {read = function() return false end, broken = function() error('call failed') end}"
+    )
+    status, value = contracts.read_only(explicit_false, "read")
+    assert status == "ok"
+    assert value is False
+    status, detail = contracts.read_only(explicit_false, "missing")
+    assert status == "unavailable"
+    assert detail is not None
+    status, detail = contracts.mutation(explicit_false, "broken")
+    assert status == "error"
+    assert detail is not None
+    refresh_required, status, detail = contracts.registry_refresh_required(
+        throwing_lookup, "should_refresh_dependencies"
+    )
+    assert refresh_required is True
+    assert status == "unavailable"
+    assert detail is not None
+    refresh_required, status, value = contracts.registry_refresh_required(
+        explicit_false, "read"
+    )
+    assert refresh_required is False
+    assert status == "ok"
+    assert value is False
+
     print("BetterInventory contract adapter tests passed.")
 
 

@@ -1,21 +1,28 @@
 local mod = get_mod("BetterInventory")
 
-local function no_op_module(module, module_name)
+local function no_op_module(module, module_name, defaults)
 	if type(module) == "table" then
 		return module
 	end
 
 	mod:error("Failed to load %s; its features are disabled until the next successful reload.", module_name)
 
-	local no_op = function()
-		return false
-	end
-
 	return setmetatable({}, {
 		__index = function(fallback, key)
-			rawset(fallback, key, no_op)
+			local default_value = defaults and defaults[key]
+			local default_function
 
-			return no_op
+			if type(default_value) == "function" then
+				default_function = default_value
+			else
+				default_function = function()
+					return default_value
+				end
+			end
+
+			rawset(fallback, key, default_function)
+
+			return default_function
 		end,
 	})
 end
@@ -40,11 +47,32 @@ if type(Layout) ~= "table" then
 	return
 end
 
-local Features = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_features"), "BetterInventory_features.lua")
-local CurioAcquisition = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_acquisition"), "BetterInventory_curio_acquisition.lua")
+local Capabilities = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_contracts")
+
+if type(Capabilities) ~= "table" or type(Capabilities.registry_refresh_required) ~= "function" then
+	Capabilities = {
+		mutation = function()
+			return "unavailable", "method unavailable"
+		end,
+		registry_refresh_required = function()
+			return true, "unavailable", "method unavailable"
+		end,
+	}
+end
+
+local Features = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_features"), "BetterInventory_features.lua", {
+	quick_discard_candidates = function() return {} end,
+	quick_discard_candidates_from_items = function() return {} end,
+})
+local CurioAcquisition = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_acquisition"), "BetterInventory_curio_acquisition.lua", {
+	character_slots = function() return {} end,
+	known_profiles = function() return {} end,
+})
 local ItemCustomization = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_item_customization"), "BetterInventory_item_customization.lua")
 local EquipmentPersistence = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_equipment_persistence"), "BetterInventory_equipment_persistence.lua")
-local SettingsRegistry = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_settings"), "BetterInventory_settings.lua")
+local SettingsRegistry = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_settings"), "BetterInventory_settings.lua", {
+	should_refresh_dependencies = function() return true end,
+})
 local Diagnostics = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_diagnostics"), "BetterInventory_diagnostics.lua")
 
 if type(Features.set_curio_acquisition_provider) == "function" then
@@ -1670,8 +1698,9 @@ local function bind_option_dependencies(options_templates)
 		return
 	end
 
-	if type(SettingsRegistry.register) == "function" then
-		local registry_valid, _, duplicate_ids = SettingsRegistry.register(settings)
+	local registry_status, registry_valid, _, duplicate_ids = Capabilities.mutation(SettingsRegistry, "register", settings)
+
+	if registry_status == "ok" and not registry_valid and type(duplicate_ids) == "table" then
 
 		if not registry_valid and type(mod.error) == "function" then
 			mod:error("Duplicate BetterInventory setting IDs: " .. table.concat(duplicate_ids or {}, ", "))
@@ -2223,7 +2252,7 @@ function mod.on_setting_changed(setting_id)
 		end
 	end
 
-	local should_refresh_dependencies = type(SettingsRegistry.should_refresh_dependencies) ~= "function" or SettingsRegistry.should_refresh_dependencies(setting_id)
+	local should_refresh_dependencies = Capabilities.registry_refresh_required(SettingsRegistry, "should_refresh_dependencies", setting_id)
 
 	if should_refresh_dependencies then
 		refresh_option_dependencies()

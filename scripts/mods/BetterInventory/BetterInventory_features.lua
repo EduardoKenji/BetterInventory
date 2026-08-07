@@ -102,7 +102,7 @@ Features._contracts = get_mod("BetterInventory"):io_dofile("BetterInventory/scri
 
 if type(Features._contracts) ~= "table" or type(Features._contracts.safe_call) ~= "function" or type(Features._contracts.safe_method) ~= "function" then
 	Features._contracts = {
-		 safe_call = function(method, ...)
+			 safe_call = function(method, ...)
 			if type(method) ~= "function" then
 				return false, "method unavailable"
 			end
@@ -110,11 +110,20 @@ if type(Features._contracts) ~= "table" or type(Features._contracts.safe_call) ~
 			return pcall(method, ...)
 		end,
 		safe_method = function(object, method_name, ...)
-			if type(object) ~= "table" or type(method_name) ~= "string" or type(object[method_name]) ~= "function" then
+			local object_type = type(object)
+			if (object_type ~= "table" and object_type ~= "userdata") or type(method_name) ~= "string" then
 				return false, "method unavailable"
 			end
 
-			return pcall(object[method_name], object, ...)
+			local lookup_ok, method = pcall(function()
+				return object[method_name]
+			end)
+
+			if not lookup_ok or type(method) ~= "function" then
+				return false, lookup_ok and "method unavailable" or method
+			end
+
+			return pcall(method, object, ...)
 		end,
 	}
 end
