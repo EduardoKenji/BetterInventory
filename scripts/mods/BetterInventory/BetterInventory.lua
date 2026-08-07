@@ -1727,6 +1727,47 @@ local function lantern_recommendations_active()
 	return type(Features.lantern_recommendations_active) == "function" and Features.lantern_recommendations_active()
 end
 
+local function character_overview_native_curio_equipped_marker_y(widget)
+	local content = widget and widget.content
+	local element = content and content.element
+	local slot = element and element.slot
+	local slot_name = slot and slot.name
+
+	-- Character Overview Curios are the only widgets whose slot names use this
+	-- prefix. Keep the runtime correction scoped to those widgets so weapons,
+	-- inventory grids, and vendor cards retain their normal marker geometry.
+	if mod:get("character_overview_use_native_curio_overlay") ~= true or type(slot_name) ~= "string" or not string.match(slot_name, "^slot_attachment_") then
+		return
+	end
+
+	local styles = widget.style
+	local title_style = styles and styles.display_name
+	local first_stat_style = styles and styles.better_inventory_curio_stat_1
+	local title_bottom
+
+	if title_style and title_style.offset and title_style.size then
+		title_bottom = (title_style.offset[2] or 0) + (title_style.size[2] or 0)
+	end
+
+	-- The marker belongs beside the first stat row, not inside the title band.
+	-- Use the live widget styles rather than a cached blueprint coordinate: the
+	-- title can be resized for localization/font scale, and another pass hook
+	-- may rebuild or adjust the runtime style after widget construction.
+	if first_stat_style and first_stat_style.offset then
+		local marker_y = (first_stat_style.offset[2] or 0) - 2
+
+		if title_bottom then
+			marker_y = math.max(marker_y, title_bottom + 4)
+		end
+
+		return marker_y
+	end
+
+	if title_bottom then
+		return title_bottom + CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_MARKER_GAP_Y
+	end
+end
+
 local function synchronize_character_overview_equipped_icon(widget, lantern_active)
 	local equipped_style = widget and widget.style and widget.style.equipped_icon
 	local offset = equipped_style and equipped_style.offset
@@ -1742,8 +1783,14 @@ local function synchronize_character_overview_equipped_icon(widget, lantern_acti
 
 	local target_y = lantern_active and 34 or content.better_inventory_equipped_icon_original_y
 	local native_curio_min_y = equipped_style.better_inventory_native_curio_equipped_min_y
+	local native_curio_marker_y = character_overview_native_curio_equipped_marker_y(widget)
 
-	if native_curio_min_y then
+	if native_curio_marker_y then
+		-- This is the final runtime authority for the native yellow badge. It is
+		-- deliberately derived from the visible stat pass so a long/two-line
+		-- title cannot overlap it, even if a later callback rewrites offset[2].
+		target_y = native_curio_marker_y
+	elseif native_curio_min_y then
 		target_y = math.max(target_y, native_curio_min_y)
 	end
 
