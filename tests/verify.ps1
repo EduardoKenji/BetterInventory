@@ -110,6 +110,7 @@ $settingsRegistry = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInven
 $curioAcquisition = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_acquisition.lua") -Raw
 $curioValues = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_values.lua") -Raw
 $itemCustomization = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_item_customization.lua") -Raw
+$diagnostics = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_diagnostics.lua") -Raw
 
 $trackedReleaseArchive = Join-Path $projectRoot "BetterInventory.zip"
 
@@ -183,6 +184,10 @@ if ($features -notmatch 'read_promise\s*=\s*nil' -or $features -notmatch 'track_
 
 if ($itemCustomization -notmatch 'local save_ok, save_result = pcall\(dmf\.save_unsaved_settings_to_file\)' -or $itemCustomization -notmatch 'save_result == true' -or $itemCustomization -notmatch 'save_result == nil' -or $itemCustomization -notmatch 'persistence_last_outcome\s*=\s*"delegated"' -or $itemCustomization -notmatch 'MAX_PERSISTENCE_ATTEMPTS' -or $itemCustomization -notmatch 'ItemCustomization\.persistence_status' -or $itemCustomization -notmatch 'flush_persistence\(true\)' -or $itemCustomization -notmatch 'persistence_retry_elapsed') {
 	throw "Customization persistence must treat DMF no-return saves as delegated, bound retryable failures, and flush at disable."
+}
+
+if ($data -notmatch 'setting_id\s*=\s*"debug_enable_hot_path_diagnostics"[\s\S]*?default_value\s*=\s*false' -or $main -notmatch 'BetterInventory_diagnostics' -or $main -notmatch 'Diagnostics\.update\(mod,\s*dt,\s*CurioAcquisition,\s*Features\)' -or $diagnostics -notmatch 'SAMPLE_INTERVAL\s*=\s*1' -or $diagnostics -notmatch 'collectgarbage\("count"\)' -or $diagnostics -notmatch 'Diagnostics\.snapshot') {
+	throw "Opt-in sampled hot-path diagnostics or its safe default is missing."
 }
 
 if ($curioAcquisition -notmatch 'MAX_PENDING_REPORT_ITEMS' -or $curioAcquisition -notmatch 'pending_report' -or $curioAcquisition -notmatch 'deliver_pending_report' -or $curioAcquisition -notmatch 'report_context == "operative_selection"' -or $curioAcquisition -notmatch 'not is_morningstar\(\) or is_operative_selection\(\)') {

@@ -12,6 +12,8 @@ Normal card/layout features do not change inventory or wallet data. Experimental
 
 Weapon and Curio equips still use Darktide's native loadout request. BetterInventory preserves the shared local preview while navigating between equipment and Character Overview, observes the eventual request across rapid exits, retries only confirmed failures for the same account/character, and refreshes a reopened overview when Darktide publishes the authoritative profile.
 
+Customization persistence follows DMF's actual contract: a normal no-return save is delegated to DMF and is not retried forever; thrown, unavailable, or explicitly rejected calls are bounded and observable. Manual discard remains serialized through native deletion settlement. Same-gear item revisions refresh detailed overview cards. The Debug section's hot-path diagnostics are opt-in and should be enabled only for a short baseline capture, then disabled for normal play.
+
 ## Validation
 
 1. Run `tests/verify.ps1` for syntax, source contracts, behavior tests, schema drift, packaging, and archive parity.
