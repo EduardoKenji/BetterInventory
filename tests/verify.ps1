@@ -123,6 +123,10 @@ if ($features -notmatch 'popup_id\s*=\s*nil' -or $features -notmatch 'event_remo
 	throw "Discard popup lifecycle reconciliation and token ownership guard were not found."
 }
 
+if ($features -notmatch '_registered_sort_views' -or $features -notmatch 'Features\.rebind_sort_options' -or $features -notmatch 'Features\._registered_sort_views\[view\]\s*=\s*true' -or $features -notmatch 'Features\._registered_sort_views\[view\]\s*=\s*nil' -or $features -notmatch 'for view in pairs\(Features\._registered_sort_views\)' -or $main -notmatch 'Features\.rebind_sort_options\(mod,\s*Layout\)') {
+	throw "Sort comparator ownership and disable/re-enable rebinding contract was not found."
+}
+
 if (([regex]::Matches($main, 'local previous_item\s*=\s*content\s+and\s+content\.item')).Count -lt 2 -or ([regex]::Matches($main, 'character_overview_item_changed\(previous_item,\s*current_item\)')).Count -lt 2 -or $main -notmatch 'Layout\.restore_item_customization_style\(widget\)' -or $main -notmatch 'reset_character_overview_curio_fit_state\(widget\)' -or $main -notmatch 'better_inventory_overview_fitted_curio_stat_' -or $layout -notmatch 'restore_item_customization_style' -or $layout -notmatch 'restore_item_customization_style\(widget\)\s*\r?\n\s*original_update_data') {
 	throw "Character Overview item-swap cache/style refresh regression"
 }

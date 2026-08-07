@@ -15,6 +15,13 @@ end
 
 local Features = {}
 
+-- Keep sort ownership independent from the optional settings panels. A vendor
+-- can have a wrapped native comparator even when BetterInventory did not create
+-- a visible sorting panel for it.
+Features._registered_sort_views = setmetatable({}, {
+	__mode = "k",
+})
+
 local function shallow_copy(source)
 	local copy = {}
 
@@ -3797,6 +3804,8 @@ local function configure_sort_options(mod, view)
 		return
 	end
 
+	Features._registered_sort_views[view] = true
+
 	for index = 1, #sort_options do
 		local option = sort_options[index]
 		local wrapped_sort = option and option._better_inventory_wrapped_sort
@@ -3873,6 +3882,16 @@ Features.configure_global_store_sort_options = function(mod, view)
 	end
 
 	configure_sort_options(mod, view)
+end
+
+Features.rebind_sort_options = function(mod, layout)
+	for view in pairs(Features._registered_sort_views) do
+		if view._destroyed then
+			Features._registered_sort_views[view] = nil
+		elseif (layout and is_inventory_view(layout, view)) or is_armoury_sort_view(view) then
+			configure_sort_options(mod, view)
+		end
+	end
 end
 
 Features.resort_inventory = function(mod, layout, view)
@@ -5877,6 +5896,7 @@ Features.unregister_inventory_view = function(view)
 		Features.cancel_manual_discard()
 	end
 
+	Features._registered_sort_views[view] = nil
 	registered_inventory_views[view] = nil
 end
 
@@ -5900,11 +5920,16 @@ Features.unregister_armoury_view = function(view)
 		view._better_inventory_armoury_controller_legend_action = nil
 	end
 
+	Features._registered_sort_views[view] = nil
 	registered_armoury_views[view] = nil
 end
 
 Features.disable_inventory_views = function()
 	Features.cancel_manual_discard()
+
+	for view in pairs(Features._registered_sort_views) do
+		Features.restore_sort_options(view)
+	end
 
 	for view in pairs(registered_inventory_views) do
 		Features.restore_sort_options(view)

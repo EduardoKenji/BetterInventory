@@ -1953,6 +1953,7 @@ function mod.on_enabled()
 		CurioAcquisition.request_profile_discovery(true)
 	end
 
+	Features.rebind_sort_options(mod, Layout)
 	refresh_option_dependencies()
 end
 

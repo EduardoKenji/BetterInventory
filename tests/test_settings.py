@@ -171,6 +171,7 @@ def main() -> None:
 			sync_inventory_sort_setting = function() inventory_sort_syncs = inventory_sort_syncs + 1 end,
 			sync_quick_discard_settings = function() quick_discard_syncs = quick_discard_syncs + 1 end,
 			sync_curio_acquisition_settings = function() curio_acquisition_syncs = curio_acquisition_syncs + 1 end,
+			rebind_sort_options = function() end,
 			morningstar_auto_discard_is_busy = function() return false end,
 			cancel_manual_discard = function() end,
 			unregister_inventory_view = function() end,

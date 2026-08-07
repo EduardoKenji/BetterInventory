@@ -2956,6 +2956,51 @@ def main() -> None:
     features.configure_inventory_sort_options(mod, layout, sortable_view)
     assert not same_lua_function(sortable_view._sort_options[1].sort_function, wrapped_sort)
 
+    # A GlobalStore/vendor comparator must be tracked even when no optional
+    # native sorting panel was created. Disable restores it, and enable-style
+    # rebinding installs one fresh wrapper.
+    global_store_sort_view = lua.execute(
+        r'''
+        return {
+            __class_name = "CreditsVendorView",
+            _optional_store_service = "get_all_characters_store_custom",
+            _sort_options = {
+                {
+                    sort_function = function(left, right)
+                        return left.item.rating > right.item.rating
+                    end,
+                },
+            },
+        }
+        '''
+    )
+    features.configure_global_store_sort_options(mod, global_store_sort_view)
+    global_store_native_sort = global_store_sort_view._sort_options[1]._better_inventory_original_sort
+    features.disable_inventory_views()
+    assert same_lua_function(
+        global_store_sort_view._sort_options[1].sort_function,
+        global_store_native_sort,
+    )
+    features.rebind_sort_options(mod, layout)
+    global_store_wrapped_sort = global_store_sort_view._sort_options[1].sort_function
+    assert not same_lua_function(global_store_wrapped_sort, global_store_native_sort)
+
+    external_global_store_sort = lua.eval(
+        "function(left, right) return left.item.gear_id < right.item.gear_id end"
+    )
+    global_store_sort_view._sort_options[1].sort_function = external_global_store_sort
+    features.rebind_sort_options(mod, layout)
+    assert not same_lua_function(
+        global_store_sort_view._sort_options[1].sort_function,
+        external_global_store_sort,
+    )
+    features.restore_sort_options(global_store_sort_view)
+    assert same_lua_function(
+        global_store_sort_view._sort_options[1].sort_function,
+        external_global_store_sort,
+    )
+    features.unregister_armoury_view(global_store_sort_view)
+
 
 if __name__ == "__main__":
     main()
