@@ -12,6 +12,7 @@ $requiredFiles = @(
 $requiredFiles += @($runtimeLuaFiles | ForEach-Object { $_.FullName })
 $releasePackager = Join-Path $projectRoot "tools\package_release.ps1"
 $packagingDocumentation = Join-Path $projectRoot "docs\release-packaging.md"
+$packagingSource = Get-Content -LiteralPath $releasePackager -Raw
 
 foreach ($file in $requiredFiles) {
 	if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
@@ -148,6 +149,14 @@ if ($curioAcquisition -notmatch 'PromiseContainer' -or $curioAcquisition -notmat
 
 if ($itemCustomization -notmatch 'local save_ok, save_result = pcall\(dmf\.save_unsaved_settings_to_file\)' -or $itemCustomization -notmatch 'save_result == true' -or $itemCustomization -notmatch 'flush_persistence\(true\)' -or $itemCustomization -notmatch 'persistence_retry_elapsed') {
 	throw "Customization persistence must retain unknown save outcomes, retry on a bounded cadence, and flush at disable."
+}
+
+if ($curioAcquisition -notmatch 'MAX_PENDING_REPORT_ITEMS' -or $curioAcquisition -notmatch 'pending_report' -or $curioAcquisition -notmatch 'deliver_pending_report' -or $curioAcquisition -notmatch 'report_context == "operative_selection"' -or $curioAcquisition -notmatch 'not is_morningstar\(\) or is_operative_selection\(\)') {
+	throw "Operative Selection Curio outcomes must use bounded account-scoped deferred reporting delivered only in Morningstar."
+}
+
+if ($packagingSource -notmatch 'finally\s*{[\s\S]*?Test-Path -LiteralPath \$buildPath[\s\S]*?Remove-Item -LiteralPath \$buildPath') {
+	throw "Release packaging must remove an unresolved temporary build archive after failures."
 }
 
 if ($data -match 'setting_id\s*=\s*"visible_equipment_integration_group"' -or $data -match 'setting_id\s*=\s*"enable_visible_equipment_character_overview_override"' -or $main -notmatch 'config\.widget_type\s*==\s*"gear_placement_slot"' -or $main -notmatch 'visible_equipment_placement\s+and\s+get_mod\("visible_equipment"\)' -or $main -notmatch 'pcall\(visible_equipment_mod\.is_enabled,\s*visible_equipment_mod\)' -or $main -notmatch 'preserve_visible_equipment_placement\s*=\s*visible_equipment_active' -or $main -notmatch 'not\s+preserve_visible_equipment_placement\s+and\s+setting_id') {

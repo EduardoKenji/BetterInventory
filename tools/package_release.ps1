@@ -43,6 +43,7 @@ $buildPath = Join-Path $outputDirectory $buildName
 Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 
+try {
 $archive = [IO.Compression.ZipFile]::Open($buildPath, [IO.Compression.ZipArchiveMode]::Create)
 
 try {
@@ -118,3 +119,8 @@ Move-Item -LiteralPath $buildPath -Destination $resolvedOutput -Force
 
 Write-Host "BetterInventory release archive verified: $resolvedOutput" -ForegroundColor Green
 Write-Host "SHA-256: $((Get-FileHash -Algorithm SHA256 -LiteralPath $resolvedOutput).Hash)"
+} finally {
+	if (Test-Path -LiteralPath $buildPath -PathType Leaf) {
+		Remove-Item -LiteralPath $buildPath -Force
+	}
+}
