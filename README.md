@@ -6,6 +6,8 @@
 
 BetterInventory is a standalone, modern inventory and item-management layer for Warhammer 40,000: Darktide. It provides responsive item cards, weapon and Curio details, sorting priorities, supported vendor grids, compatibility integrations and optional safety-gated inventory automation.
 
+Focused documentation is available in [`docs/user-guide.md`](docs/user-guide.md) and [`docs/architecture.md`](docs/architecture.md). Historical research and the full implementation backlog remain in the audit document.
+
 UI and information features are enabled through normal Mod Options. Features that discard gear or spend Ordo Dockets remain separate, conspicuous and disabled by default; enabling them is an explicit user choice.
 
 ## Current implementation
