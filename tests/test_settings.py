@@ -197,6 +197,7 @@ def main() -> None:
 		}
 
         test_mod = {}
+        test_mod._better_inventory_test = {}
         test_dmf = {
             create_mod_options_settings = function() end,
         }
@@ -317,6 +318,49 @@ def main() -> None:
     globals_ = lua.globals()
     mod = globals_.test_mod
     settings = globals_.settings
+
+    normalizer = mod._better_inventory_test.normalized_displayed_value
+    normalized_values = lua.table_from({})
+    raw_values = lua.table_from({})
+    normalization_content = lua.table_from(
+        {
+            "display_name": "Guardian\r\nof the Hateful",
+            "better_inventory_fitted_curio_name": "stale fitted value",
+        }
+    )
+    assert (
+        normalizer(
+            normalization_content,
+            "display_name",
+            "better_inventory_fitted_curio_name",
+            "better_inventory_full_display_name",
+            None,
+            normalized_values,
+            raw_values,
+            0,
+        )
+        == "Guardian of the Hateful"
+    )
+    lua.execute(
+        "test_gsub_calls = 0; test_original_gsub = string.gsub; "
+        "string.gsub = function(...) test_gsub_calls = test_gsub_calls + 1; "
+        "return test_original_gsub(...) end"
+    )
+    assert (
+        normalizer(
+            normalization_content,
+            "display_name",
+            "better_inventory_fitted_curio_name",
+            "better_inventory_full_display_name",
+            None,
+            normalized_values,
+            raw_values,
+            0,
+        )
+        == "Guardian of the Hateful"
+    )
+    assert globals_.test_gsub_calls == 0
+    lua.execute("string.gsub = test_original_gsub")
 
     visible_equipment_config = lua.table_from(
         {

@@ -7,6 +7,7 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $scriptRoot = Join-Path $projectRoot "scripts\mods\BetterInventory"
 $testRunner = Join-Path $PSScriptRoot "run_tests.py"
 $structureChecker = Join-Path $PSScriptRoot "check_lua_structure.py"
+$schemaDriftChecker = Join-Path $PSScriptRoot "check_schema_drift.py"
 $runtimeLuaFiles = @(Get-ChildItem -LiteralPath $scriptRoot -Filter "BetterInventory*.lua" -File | Sort-Object Name)
 $requiredFiles = @(
 	(Join-Path $projectRoot "BetterInventory.mod")
@@ -59,7 +60,7 @@ if ($main -notmatch 'local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_ITEM_LEVEL_SH
 	throw "Native Curio item-level Y must move upward with a negative bottom-aligned delta, and the marker gap must remain explicit."
 }
 
-if ($main -notmatch 'local native_marker_min_y' -or $main -notmatch 'is_top_right_style' -or $main -notmatch 'attach_runtime_marker_styles' -or $main -notmatch 'refresh_character_overview_visual_layout_if_needed' -or $main -notmatch 'better_inventory_curio_fit_stat_sources' -or $main -notmatch 'fit_curio_text\(widget,\s*ui_renderer,\s*true\)' -or $main -notmatch 'type\(overview_init\)\s*==\s*"function"' -or $main -notmatch 'CHARACTER_OVERVIEW_MELEE_WIDGET_TYPE' -or $main -notmatch 'CHARACTER_OVERVIEW_RANGED_WIDGET_TYPE' -or $main -match 'CHARACTER_OVERVIEW_WEAPON_WIDGET_TYPE') {
+if ($main -notmatch 'local native_marker_min_y' -or $main -notmatch 'is_top_right_style' -or $main -notmatch 'attach_runtime_marker_styles' -or $main -notmatch 'refresh_character_overview_visual_layout_if_needed' -or $main -notmatch 'better_inventory_curio_fit_stat_sources' -or $main -notmatch 'better_inventory_curio_fit_normalized_values' -or $main -notmatch 'better_inventory_curio_fit_raw_values' -or $main -notmatch 'raw_values\[cache_index\]\s*~=\s*source_value' -or $main -notmatch 'fit_curio_text\(widget,\s*ui_renderer,\s*true\)' -or $main -notmatch 'type\(overview_init\)\s*==\s*"function"' -or $main -notmatch 'CHARACTER_OVERVIEW_MELEE_WIDGET_TYPE' -or $main -notmatch 'CHARACTER_OVERVIEW_RANGED_WIDGET_TYPE' -or $main -match 'CHARACTER_OVERVIEW_WEAPON_WIDGET_TYPE') {
 	throw "v1.9.4 audit corrections for marker scope, marker alignment, lifecycle refresh, text-fit caching, and separate weapon blueprints were not found."
 }
 
@@ -556,6 +557,16 @@ if ($hasLuaParser) {
 }
 
 if ($hasLupa) {
+	if (-not (Test-Path -LiteralPath $schemaDriftChecker -PathType Leaf)) {
+		throw "Schema drift checker is missing: $schemaDriftChecker"
+	}
+
+	py -3 $schemaDriftChecker
+
+	if ($LASTEXITCODE -ne 0) {
+		throw "Settings/localization schema drift checks failed."
+	}
+
 	if (-not (Test-Path -LiteralPath $testRunner -PathType Leaf)) {
 		throw "Behavior test runner is missing: $testRunner"
 	}

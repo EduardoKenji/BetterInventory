@@ -266,6 +266,8 @@ local function reset_character_overview_curio_fit_state(widget)
 	content.better_inventory_curio_fit_title_line_limit = nil
 	content.better_inventory_full_display_name = nil
 	content.better_inventory_fitted_curio_name = nil
+	content.better_inventory_curio_fit_normalized_values = nil
+	content.better_inventory_curio_fit_raw_values = nil
 
 	for index = 1, 4 do
 		content["better_inventory_overview_full_curio_stat_" .. index] = nil
@@ -511,6 +513,35 @@ local function character_overview_weapon_blueprint(rarity_strip_setting_id)
 	end
 
 	return blueprint
+end
+
+local function normalized_displayed_value(content, displayed_id, fitted_id, full_id, source_id, normalized_values, raw_values, cache_index)
+	local displayed_value = content[displayed_id]
+	local source_value
+
+	if displayed_value == content[fitted_id] then
+		source_value = content[full_id] or source_id and content[source_id] or displayed_value
+	else
+		source_value = source_id and content[source_id] or displayed_value
+	end
+
+	if raw_values[cache_index] ~= source_value then
+		raw_values[cache_index] = source_value
+
+		if type(source_value) == "string" then
+			normalized_values[cache_index] = string.gsub(source_value, "[\r\n]+", " ")
+		else
+			normalized_values[cache_index] = source_value
+		end
+	end
+
+	return normalized_values[cache_index]
+end
+
+local better_inventory_test = type(mod) == "table" and rawget(mod, "_better_inventory_test")
+
+if type(better_inventory_test) == "table" then
+	better_inventory_test.normalized_displayed_value = normalized_displayed_value
 end
 
 local function character_overview_curio_blueprint()
@@ -828,22 +859,6 @@ local function character_overview_curio_blueprint()
 		"better_inventory_full_curio_stat_4",
 	}
 
-	local function normalized_displayed_value(content, displayed_id, fitted_id, full_id, source_id)
-		local displayed_value = content[displayed_id]
-
-		if displayed_value == content[fitted_id] then
-			return content[full_id] or source_id and content[source_id] or displayed_value
-		end
-
-		local source_value = source_id and content[source_id] or displayed_value
-
-		if type(source_value) == "string" then
-			return string.gsub(source_value, "[\r\n]+", " ")
-		end
-
-		return displayed_value
-	end
-
 	local function fit_curio_text(widget, ui_renderer, force)
 		local content = widget and widget.content
 		local widget_style = widget and widget.style
@@ -856,6 +871,8 @@ local function character_overview_curio_blueprint()
 		local title_width = title_style and title_style.size and title_style.size[1]
 		local stat_sources = content.better_inventory_curio_fit_stat_sources
 		local stat_widths = content.better_inventory_curio_fit_stat_widths
+		local normalized_values = content.better_inventory_curio_fit_normalized_values
+		local raw_values = content.better_inventory_curio_fit_raw_values
 
 		if type(stat_sources) ~= "table" then
 			stat_sources = {}
@@ -869,7 +886,19 @@ local function character_overview_curio_blueprint()
 			force = true
 		end
 
-		local full_name = title_style and normalized_displayed_value(content, "display_name", "better_inventory_fitted_curio_name", "better_inventory_full_display_name")
+		if type(normalized_values) ~= "table" then
+			normalized_values = {}
+			content.better_inventory_curio_fit_normalized_values = normalized_values
+			force = true
+		end
+
+		if type(raw_values) ~= "table" then
+			raw_values = {}
+			content.better_inventory_curio_fit_raw_values = raw_values
+			force = true
+		end
+
+		local full_name = title_style and normalized_displayed_value(content, "display_name", "better_inventory_fitted_curio_name", "better_inventory_full_display_name", nil, normalized_values, raw_values, 0)
 		local needs_fit = force or content.better_inventory_curio_fit_initialized ~= true
 
 		if title_style and (content.better_inventory_curio_fit_name_source ~= full_name or content.better_inventory_curio_fit_title_width ~= title_width or content.better_inventory_curio_fit_title_font_size ~= curio_name_font_size or content.better_inventory_curio_fit_title_line_limit ~= curio_name_line_limit) then
@@ -882,7 +911,7 @@ local function character_overview_curio_blueprint()
 			local source_content_id = curio_stat_source_content_ids[index]
 			local stat_style = widget_style and widget_style[content_id]
 			local maximum_width = stat_style and (stat_style.better_inventory_max_text_width or stat_style.size and stat_style.size[1])
-			local full_value = normalized_displayed_value(content, content_id, fitted_content_id, curio_stat_full_content_ids[index], source_content_id)
+			local full_value = normalized_displayed_value(content, content_id, fitted_content_id, curio_stat_full_content_ids[index], source_content_id, normalized_values, raw_values, index)
 
 			if stat_style and (stat_sources[index] ~= full_value or stat_widths[index] ~= maximum_width) then
 				needs_fit = true
@@ -951,7 +980,7 @@ local function character_overview_curio_blueprint()
 			local displayed_value = content[content_id]
 
 			if stat_style then
-				local full_value = normalized_displayed_value(content, content_id, fitted_content_id, full_content_id, source_content_id)
+				local full_value = normalized_displayed_value(content, content_id, fitted_content_id, full_content_id, source_content_id, normalized_values, raw_values, index)
 				local maximum_width = stat_style.better_inventory_max_text_width or stat_style.size and stat_style.size[1]
 
 				content[full_content_id] = full_value
