@@ -23,6 +23,8 @@
 - Added a recursive active-settings registry with duplicate-ID diagnostics and declarative dependency-refresh routing, including generated character-slot settings.
 - Added timeout-bounded test discovery, machine-readable JSON results, GitHub Actions verification, and module-by-module Lua line coverage reporting.
 - Replaced representative implementation-text safety checks with Lua AST validation for forbidden direct class assignments, unsupported vendor requires, and render-resource ownership.
+- Added focused user/architecture documentation and a reproducible settings/localization manifest with drift verification.
+- Cached Character Overview Curio title/stat normalization by raw source identity so unchanged frames avoid repeated string allocations.
 
 ## 1.9.3 - 2026-08-07
 
