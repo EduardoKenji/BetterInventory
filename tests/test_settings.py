@@ -1921,7 +1921,7 @@ def main() -> None:
     assert defaults["quick_discard_disable_no_eligible_notification"] is False
     assert defaults["enable_automatic_curio_acquisition"] is False
     assert defaults["automatic_curio_scan_operative_selection"] is False
-    assert defaults["automatic_curio_once_per_store_rotation"] is True
+    assert defaults["automatic_curio_once_per_store_rotation"] is False
     assert defaults["automatic_curio_rescan_on_store_refresh"] is False
     assert defaults["automatic_curio_min_item_level"] == 410
     assert defaults["automatic_curio_min_health"] == 21

@@ -162,7 +162,7 @@ if ($data -notmatch 'setting_id\s*=\s*"automatic_curio_min_health"[\s\S]*?defaul
 	throw "Automatic Curio acquisition must keep its 21% Health, 17% Toughness and quiet diagnostic defaults."
 }
 
-if ($data -notmatch 'setting_id\s*=\s*"automatic_curio_scan_operative_selection"[\s\S]*?default_value\s*=\s*false' -or $data -notmatch 'setting_id\s*=\s*"automatic_curio_once_per_store_rotation"[\s\S]*?default_value\s*=\s*true' -or $data -notmatch 'setting_id\s*=\s*"automatic_curio_rescan_on_store_refresh"[\s\S]*?default_value\s*=\s*false') {
+if ($data -notmatch 'setting_id\s*=\s*"automatic_curio_scan_operative_selection"[\s\S]*?default_value\s*=\s*false' -or $data -notmatch 'setting_id\s*=\s*"automatic_curio_once_per_store_rotation"[\s\S]*?default_value\s*=\s*false' -or $data -notmatch 'setting_id\s*=\s*"automatic_curio_rescan_on_store_refresh"[\s\S]*?default_value\s*=\s*false') {
 	throw "Automatic Curio scheduling settings or their safe defaults are missing."
 }
 
