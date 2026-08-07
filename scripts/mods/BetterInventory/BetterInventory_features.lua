@@ -121,6 +121,8 @@ end
 
 Features._view_session = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_view_session")
 
+Features._operation_arbiter = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_operation_arbiter")
+
 Features.begin_view_session = function(view, kind)
 	local sessions = Features._view_session
 
@@ -4726,16 +4728,60 @@ local function show_popup(context, callback)
 	return pcall(event_manager.trigger, event_manager, "event_show_ui_popup", context, callback)
 end
 
-local discard_transaction = {
-	owner = nil,
-	token = 0,
-	view = nil,
-	popup_id = nil,
-	manual_delete_inflight = false,
-	manual_delete_transaction_token = nil,
-}
+local discard_transaction = Features._operation_arbiter and type(Features._operation_arbiter.new) == "function" and Features._operation_arbiter.new()
+
+if not discard_transaction then
+	-- Partial/test environments without the extracted module retain the same
+	-- guarded behavior until the next successful reload.
+	discard_transaction = {
+		owner = nil,
+		token = 0,
+		view = nil,
+		popup_id = nil,
+		manual_delete_inflight = false,
+		manual_delete_transaction_token = nil,
+	}
+end
+
+Features.discard_owner = function()
+	if type(discard_transaction.active_owner) == "function" then
+		return discard_transaction:active_owner()
+	end
+
+	return discard_transaction.owner
+end
+
+Features.discard_view = function()
+	if type(discard_transaction.active_view) == "function" then
+		return discard_transaction:active_view()
+	end
+
+	return discard_transaction.view
+end
+
+Features.discard_token = function()
+	if type(discard_transaction.active_token) == "function" then
+		return discard_transaction:active_token()
+	end
+
+	return discard_transaction.token
+end
 
 local function acquire_discard_transaction(owner, view)
+	if type(discard_transaction.acquire) == "function" then
+		local token = discard_transaction:acquire(owner, view)
+
+		if not token then
+			return false
+		end
+
+		if view then
+			view._better_inventory_discard_pending = true
+		end
+
+		return token
+	end
+
 	if discard_transaction.owner then
 		return false
 	end
@@ -4765,7 +4811,15 @@ Features.remove_discard_popup = function(popup_id)
 end
 
 Features.set_discard_popup_id = function(owner, token, popup_id)
-	if discard_transaction.owner == owner and discard_transaction.token == token then
+	if type(discard_transaction.set_popup) == "function" then
+		if discard_transaction:set_popup(owner, token, popup_id) then
+			return
+		end
+
+		-- Never let a delayed popup callback attach an old UI object to a newer
+		-- transaction.
+		Features.remove_discard_popup(popup_id)
+	elseif discard_transaction.owner == owner and discard_transaction.token == token then
 		discard_transaction.popup_id = popup_id
 	else
 		-- Never let a delayed popup callback attach an old UI object to a newer
@@ -4775,6 +4829,10 @@ Features.set_discard_popup_id = function(owner, token, popup_id)
 end
 
 Features.clear_discard_popup = function(owner, token)
+	if type(discard_transaction.clear_popup) == "function" then
+		return discard_transaction:clear_popup(owner, token)
+	end
+
 	if discard_transaction.owner ~= owner or discard_transaction.token ~= token then
 		return false
 	end
@@ -4785,6 +4843,22 @@ Features.clear_discard_popup = function(owner, token)
 end
 
 local function release_discard_transaction(owner, token)
+	if type(discard_transaction.release) == "function" then
+		local released, view, popup_id = discard_transaction:release(owner, token)
+
+		if not released then
+			return false
+		end
+
+		Features.remove_discard_popup(popup_id)
+
+		if view then
+			view._better_inventory_discard_pending = false
+		end
+
+		return true
+	end
+
 	if discard_transaction.owner ~= owner or token and discard_transaction.token ~= token then
 		return false
 	end
@@ -4813,6 +4887,12 @@ end
 -- GearService hook bridges the returned promise here without issuing a second
 -- delete request.
 Features.observe_manual_discard_settlement = function(promise)
+	if type(discard_transaction.observe_manual_settlement) == "function" then
+		return discard_transaction:observe_manual_settlement(promise, function(transaction_token)
+			release_discard_transaction("manual", transaction_token)
+		end)
+	end
+
 	if discard_transaction.owner ~= "manual" or discard_transaction.manual_delete_inflight then
 		return false
 	end
@@ -4850,10 +4930,18 @@ Features.observe_manual_discard_settlement = function(promise)
 end
 
 Features.manual_discard_settlement_active = function()
+	if type(discard_transaction.manual_settlement_active) == "function" then
+		return discard_transaction:manual_settlement_active()
+	end
+
 	return discard_transaction.manual_delete_inflight and discard_transaction.owner == "manual"
 end
 
 local function discard_transaction_is_current(owner, token)
+	if type(discard_transaction.is_current) == "function" then
+		return discard_transaction:is_current(owner, token)
+	end
+
 	return discard_transaction.owner == owner and discard_transaction.token == token
 end
 
@@ -4880,19 +4968,25 @@ Features.discard_popup_is_active = function(popup_id)
 end
 
 Features.reconcile_discard_transaction = function()
-	local popup_id = discard_transaction.popup_id
+	local popup_id = nil
+
+	if type(discard_transaction.current_popup) == "function" then
+		popup_id = discard_transaction:current_popup()
+	else
+		popup_id = discard_transaction.popup_id
+	end
 
 	if not popup_id then
 		return
 	end
 
 	if Features.discard_popup_is_active(popup_id) == false then
-		release_discard_transaction(discard_transaction.owner, discard_transaction.token)
+		release_discard_transaction(Features.discard_owner(), Features.discard_token())
 	end
 end
 
 Features.request_quick_discard = function(mod, layout, view)
-	if view._better_inventory_discard_pending or discard_transaction.owner then
+	if view._better_inventory_discard_pending or Features.discard_owner() then
 		return
 	end
 
@@ -5058,7 +5152,7 @@ Features.morningstar_auto_discard_is_busy = function(mod)
 	-- The scanner leaves `scheduled` set while its read-only fetch is in flight,
 	-- then the transaction owner remains authoritative through confirmation and
 	-- deletion. Once both clear, a Curio purchase can no longer enter this pass.
-	return automatic_discard_state.delete_inflight or discard_transaction.owner == "automatic" or automatic_discard_enabled(mod) and automatic_discard_state.scheduled
+	return automatic_discard_state.delete_inflight or Features.discard_owner() == "automatic" or automatic_discard_enabled(mod) and automatic_discard_state.scheduled
 end
 
 Features.automatic_discard_read_request_count = function()
@@ -5406,7 +5500,7 @@ Features.begin_morningstar_auto_discard = function(mod)
 	-- Some startup/state-transition orders can report GameplayStateRun enter
 	-- again after the one-shot transaction has presented its confirmation or
 	-- started deletion. Keep that transaction authoritative until it finishes.
-	if discard_transaction.owner == "automatic" then
+	if Features.discard_owner() == "automatic" then
 		automatic_discard_info(mod, "Ignored a duplicate automatic discard re-arm while a transaction is active.")
 
 		return
@@ -5424,7 +5518,7 @@ Features.cancel_morningstar_auto_discard = function(preserve_transaction)
 	-- A momentary unavailable/non-hub game-mode observation must not unlock an
 	-- active transaction. A real GameplayStateRun exit or mod disable calls this
 	-- without preservation because its UI and backend context are going away.
-	if preserve_transaction and discard_transaction.owner == "automatic" then
+	if preserve_transaction and Features.discard_owner() == "automatic" then
 		automatic_discard_state.scheduled = false
 		automatic_discard_state.started = true
 
@@ -5444,12 +5538,12 @@ Features.cancel_morningstar_auto_discard = function(preserve_transaction)
 end
 
 Features.cancel_manual_discard = function()
-	if discard_transaction.owner == "manual" then
-		if discard_transaction.manual_delete_inflight then
+	if Features.discard_owner() == "manual" then
+		if Features.manual_discard_settlement_active() then
 			return false
 		end
 
-		release_discard_transaction("manual", discard_transaction.token)
+		release_discard_transaction("manual", Features.discard_token())
 	end
 
 	return true
@@ -5457,7 +5551,7 @@ end
 
 Features.update_morningstar_auto_discard = function(mod, dt)
 	if not automatic_discard_enabled(mod) then
-		if automatic_discard_state.scheduled or automatic_discard_state.started or automatic_discard_state.hub_character_id or discard_transaction.owner == "automatic" then
+		if automatic_discard_state.scheduled or automatic_discard_state.started or automatic_discard_state.hub_character_id or Features.discard_owner() == "automatic" then
 			Features.cancel_morningstar_auto_discard()
 		end
 
@@ -6239,7 +6333,7 @@ Features.unregister_inventory_view = function(view)
 		Features.restore_sort_options(view)
 	end
 
-	if discard_transaction.owner == "manual" and discard_transaction.view == view then
+	if Features.discard_owner() == "manual" and Features.discard_view() == view then
 		Features.cancel_manual_discard()
 	end
 

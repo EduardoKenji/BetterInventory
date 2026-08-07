@@ -18,6 +18,13 @@ CURIO_VALUES_PATH = (
     / "BetterInventory"
     / "BetterInventory_curio_values.lua"
 )
+ARBITER_PATH = (
+    PROJECT_ROOT
+    / "scripts"
+    / "mods"
+    / "BetterInventory"
+    / "BetterInventory_operation_arbiter.lua"
+)
 
 
 def main() -> None:
@@ -211,6 +218,10 @@ def main() -> None:
 
         TestModLoader = {
             io_dofile = function(self, path)
+                if string.find(path, "BetterInventory_operation_arbiter", 1, true) then
+                    return TestOperationArbiter
+                end
+
                 return TestCurioValues
             end,
         }
@@ -244,6 +255,10 @@ def main() -> None:
         CURIO_VALUES_PATH.read_text(encoding="utf-8"), name=str(CURIO_VALUES_PATH)
     )
     lua.globals().TestCurioValues = curio_values
+    operation_arbiter = lua.execute(
+        ARBITER_PATH.read_text(encoding="utf-8"), name=str(ARBITER_PATH)
+    )
+    lua.globals().TestOperationArbiter = operation_arbiter
     features = lua.execute(
         FEATURES_PATH.read_text(encoding="utf-8"), name=str(FEATURES_PATH)
     )
