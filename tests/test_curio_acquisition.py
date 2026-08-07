@@ -358,6 +358,7 @@ def main() -> None:
 		}
 
         purchase_count = 0
+		wallet_hook = nil
 		wallet_balance = 100000
         fetched_store_count = 0
         requested_wallet_character = nil
@@ -427,6 +428,13 @@ def main() -> None:
                         end,
                         character_wallets = function(self, character_id)
                             requested_wallet_character = character_id
+
+							if wallet_hook then
+								local hook = wallet_hook
+								wallet_hook = nil
+								hook()
+							end
+
                             return TestPromise.resolved({
                                 {
                                     owner = character_id,
@@ -947,6 +955,36 @@ def main() -> None:
     assert globals_.purchase_count == purchases_before_idle_refresh + 1
     module.update(globals_.test_mod, 1, False)
     assert globals_.purchase_count == purchases_before_idle_refresh + 1
+    module.cancel()
+
+    # If context leaves after scan/revalidation but before first purchase POST,
+    # rotation remains retryable. Re-entering same rotation may purchase once.
+    globals_.main_menu_active = False
+    globals_.settings.automatic_curio_rescan_on_store_refresh = False
+    globals_.settings.automatic_curio_buy_health = True
+    globals_.settings.automatic_curio_buy_toughness = False
+    globals_.wallet_balance = 100000
+    globals_.health_item.traits[1].id = "health_trait"
+    globals_.health_item.traits[1].value = 21
+    globals_.test_offer.offerId = "interrupted-offer-health"
+    globals_.revalidated_offer.offerId = "interrupted-offer-health"
+    rotation_history = globals_.settings["_automatic_curio_rotation_history"]
+    committed_before_interrupted = rotation_history.accounts["default"].next_refresh_at_ms
+    globals_.server_clock = committed_before_interrupted + 5000
+    purchases_before_interrupted = globals_.purchase_count
+    globals_.buyer_module = module
+    lua.execute(
+        "wallet_hook = function() buyer_module.cancel() end"
+    )
+    module.begin_morningstar_pass(globals_.test_mod)
+    module.update(globals_.test_mod, 6, False)
+    assert globals_.purchase_count == purchases_before_interrupted
+    assert rotation_history.accounts["default"].next_refresh_at_ms == committed_before_interrupted
+
+    module.begin_morningstar_pass(globals_.test_mod)
+    module.update(globals_.test_mod, 6, False)
+    assert globals_.purchase_count == purchases_before_interrupted + 1
+    assert rotation_history.accounts["default"].next_refresh_at_ms > committed_before_interrupted
     module.cancel()
 
     print("BetterInventory automatic Curio acquisition tests passed.")
