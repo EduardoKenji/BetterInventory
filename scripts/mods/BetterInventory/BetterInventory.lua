@@ -342,6 +342,8 @@ local function attach_runtime_marker_styles(widget, item_grid)
 			end
 
 			tracked_widgets[widget] = true
+			item_grid._better_inventory_myfavorites_dirty = true
+			item_grid._better_inventory_myfavorites_generation = (item_grid._better_inventory_myfavorites_generation or 0) + 1
 		end
 	end
 
@@ -562,6 +564,21 @@ local function normalized_displayed_value(content, displayed_id, fitted_id, full
 	end
 
 	return normalized_values[cache_index]
+end
+
+local function invalidate_myfavorites_grid(item_grid)
+	if not item_grid or item_grid._better_inventory_myfavorites_active ~= true then
+		return false
+	end
+
+	item_grid._better_inventory_myfavorites_dirty = true
+	item_grid._better_inventory_myfavorites_generation = (item_grid._better_inventory_myfavorites_generation or 0) + 1
+
+	return true
+end
+
+local function invalidate_myfavorites_view(view)
+	return invalidate_myfavorites_grid(view and view._item_grid)
 end
 
 local better_inventory_test = type(mod) == "table" and rawget(mod, "_better_inventory_test")
@@ -2400,6 +2417,13 @@ if ensure_class_method(InventoryWeaponsView, "_handle_input") then
 end
 
 mod:hook_safe(InventoryWeaponsView, "cb_on_favorite_pressed", function(view)
+	local item_grid = view and view._item_grid
+
+	if item_grid and item_grid._better_inventory_myfavorites_active == true then
+		item_grid._better_inventory_myfavorites_dirty = true
+		item_grid._better_inventory_myfavorites_generation = (item_grid._better_inventory_myfavorites_generation or 0) + 1
+	end
+
 	if mod:get("prioritize_equipped_favorites") ~= false then
 		Features.resort_inventory(mod, Layout, view)
 	end
@@ -2428,6 +2452,13 @@ mod:hook("GearService", "delete_gear_batch", function(func, gear_service, gear_i
 	end)
 
 mod:hook_safe(InventoryWeaponsView, "_equip_item", function(view)
+	local item_grid = view and view._item_grid
+
+	if item_grid and item_grid._better_inventory_myfavorites_active == true then
+		item_grid._better_inventory_myfavorites_dirty = true
+		item_grid._better_inventory_myfavorites_generation = (item_grid._better_inventory_myfavorites_generation or 0) + 1
+	end
+
 	if mod:get("prioritize_equipped_favorites") ~= false then
 		Features.resort_inventory(mod, Layout, view)
 	end
@@ -2811,13 +2842,38 @@ if ensure_class_method(ViewElementGrid, "_update_grid_widgets") then
 		-- directly avoids allocating a packed vararg table for every active grid.
 		func(item_grid, ...)
 
+		local native_generation = item_grid._grid_generation or item_grid._layout_generation or item_grid._content_generation
+		local previous_native_generation = item_grid._better_inventory_myfavorites_native_generation
+
+		if native_generation ~= nil and native_generation ~= previous_native_generation then
+			item_grid._better_inventory_myfavorites_native_generation = native_generation
+			item_grid._better_inventory_myfavorites_dirty = true
+		elseif native_generation == nil then
+			-- Some Darktide builds expose no grid generation. Keep a bounded,
+			-- conservative fallback for backend-driven rebinds that bypass our
+			-- creation/favorite/equip hooks, while leaving idle frames untouched.
+			item_grid._better_inventory_myfavorites_fallback_frames = (item_grid._better_inventory_myfavorites_fallback_frames or 0) + 1
+
+			if item_grid._better_inventory_myfavorites_fallback_frames >= 15 then
+				item_grid._better_inventory_myfavorites_fallback_frames = 0
+				item_grid._better_inventory_myfavorites_dirty = true
+			end
+		end
+
+		if item_grid._better_inventory_myfavorites_dirty ~= true then
+			return
+		end
+
 		for widget in pairs(tracked_widgets) do
 			synchronize_myfavorites_marker(widget)
 		end
+
+		item_grid._better_inventory_myfavorites_dirty = false
 	end)
 end
 
 mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layout, content_blueprints, ...)
+	invalidate_myfavorites_grid(item_grid)
 	content_blueprints = Features.compact_inventory_curio_stats_blueprints(mod, item_grid, content_blueprints)
 
 	local view = active_grid_view or item_grid and item_grid._parent

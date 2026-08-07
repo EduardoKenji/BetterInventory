@@ -669,23 +669,43 @@ def main() -> None:
     assert grid_update_calls.count == 1
     assert runtime_hotspot_style.offset[2] == 7
     assert grid_widget.style.favorite_icon.offset[2] == 7
+
+    # Idle frames must not rescan the tracked set. When a Darktide build does
+    # not expose a native generation, the bounded fallback eventually notices
+    # backend-driven content changes without returning to per-frame work.
+    item_grid._better_inventory_myfavorites_fallback_frames = 0
+    grid_widget.content.equipped = True
+    for _ in range(14):
+        globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
+    assert runtime_hotspot_style.offset[2] == 7
+    globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
+    assert runtime_hotspot_style.offset[2] == 33
+    grid_widget.content.equipped = False
+    item_grid._better_inventory_myfavorites_dirty = True
+    globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
+
     grid_widget.content.favorite = True
+    item_grid._better_inventory_myfavorites_dirty = True
     globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
     assert runtime_hotspot_style.offset[2] == 7
     grid_widget.content.favorite = False
     grid_widget.content.equipped = True
+    item_grid._better_inventory_myfavorites_dirty = True
     globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
     assert runtime_hotspot_style.offset[2] == 33
     assert grid_widget.style.favorite_icon.offset[2] == 33
     grid_widget.content.equipped = False
+    item_grid._better_inventory_myfavorites_dirty = True
     globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
     assert runtime_hotspot_style.offset[2] == 7
 
     # Equipped Icon+ inactive-loadout state follows its live visibility pass.
     grid_widget.content.inactive_loadout_equipped = True
+    item_grid._better_inventory_myfavorites_dirty = True
     globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
     assert runtime_hotspot_style.offset[2] == 33
     grid_widget.content.inactive_loadout_equipped = False
+    item_grid._better_inventory_myfavorites_dirty = True
     globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
     assert runtime_hotspot_style.offset[2] == 7
 
@@ -694,6 +714,7 @@ def main() -> None:
     grid_widget.content.better_inventory_equipped_icon_visibility_function = lua.eval(
         "function() error('simulated Equipped Icon+ failure') end"
     )
+    item_grid._better_inventory_myfavorites_dirty = True
     globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
     assert runtime_hotspot_style.offset[2] == 7
 
