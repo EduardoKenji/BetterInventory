@@ -43,7 +43,7 @@ if ($main -notmatch 'mod:hook\(CraftingMechanicusModifyView,\s*"present_grid_lay
 	throw "The Entreat Hadron grid hook was not found."
 }
 
-if ($main -notmatch 'mod:hook\(InventoryView,\s*"_create_entry_widget_from_config"' -or $main -notmatch 'enable_character_overview_melee_mirror' -or $main -notmatch 'enable_character_overview_ranged_mirror' -or $main -notmatch 'enable_character_overview_curio_details' -or $main -notmatch 'character_overview_use_native_curio_overlay' -or $main -notmatch 'configure_native_curio_overlay' -or $main -notmatch 'inner_frame' -or $main -notmatch 'table\.clone\(native_inner_frame\)' -or $main -notmatch 'level_requirement_met\s*=\s*true') {
+if ($main -notmatch 'mod:hook\(InventoryView,\s*"_create_entry_widget_from_config"' -or $main -notmatch 'enable_character_overview_melee_mirror' -or $main -notmatch 'enable_character_overview_ranged_mirror' -or $main -notmatch 'enable_character_overview_curio_details' -or $main -notmatch 'character_overview_use_native_curio_overlay' -or $main -notmatch 'configure_native_curio_overlay' -or $main -notmatch 'inner_frame' -or $main -notmatch 'table\.clone\(native_inner_frame\)' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_CONTENT_SHIFT_Y' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_EQUIPPED_ICON_SHIFT_Y' -or $main -notmatch 'level_requirement_met\s*=\s*true') {
 	throw "Character overview weapon/Curio card integration was not found."
 }
 

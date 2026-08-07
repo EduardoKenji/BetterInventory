@@ -82,6 +82,8 @@ local CHARACTER_OVERVIEW_WEAPON_WIDGET_TYPE = "better_inventory_character_overvi
 local CHARACTER_OVERVIEW_CURIO_WIDGET_TYPE = "better_inventory_character_overview_curio"
 local CHARACTER_OVERVIEW_EMPTY_CURIO_WIDGET_TYPE = "better_inventory_character_overview_empty_curio"
 local CHARACTER_OVERVIEW_WEAPON_HEIGHT = 130
+local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_CONTENT_SHIFT_Y = 8
+local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_EQUIPPED_ICON_SHIFT_Y = 8
 local CHARACTER_OVERVIEW_BLUEPRINTS = type(ItemBlueprintGenerator) == "function" and ItemBlueprintGenerator({
 	600,
 	CHARACTER_OVERVIEW_WEAPON_HEIGHT,
@@ -503,6 +505,22 @@ local function character_overview_curio_blueprint()
 		end
 	end
 
+	if mod:get("character_overview_use_native_curio_overlay") == true then
+		local content_shift_y = CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_CONTENT_SHIFT_Y
+
+		if display_name and display_name.style and display_name.style.offset then
+			display_name.style.offset[2] = (display_name.style.offset[2] or 0) + content_shift_y
+		end
+
+		for index = 1, 4 do
+			local stat_style = curio_stat_passes[index] and curio_stat_passes[index].style
+
+			if stat_style and stat_style.offset then
+				stat_style.offset[2] = (stat_style.offset[2] or 0) + content_shift_y
+			end
+		end
+	end
+
 	for index = 1, 4 do
 		local stat_style = curio_stat_passes[index] and curio_stat_passes[index].style
 
@@ -535,6 +553,12 @@ local function character_overview_curio_blueprint()
 	-- geometry pass so the opt-in visual shell is the final authority.
 	if mod:get("character_overview_use_native_curio_overlay") == true then
 		configure_native_curio_overlay(blueprint, native_blueprint)
+
+		local equipped_icon = pass_by_style_id(blueprint.pass_template, "equipped_icon")
+
+		if equipped_icon and equipped_icon.style and equipped_icon.style.offset then
+			equipped_icon.style.offset[2] = (equipped_icon.style.offset[2] or 0) + CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_EQUIPPED_ICON_SHIFT_Y
+		end
 	end
 
 	if not show_curio_name and display_name then
