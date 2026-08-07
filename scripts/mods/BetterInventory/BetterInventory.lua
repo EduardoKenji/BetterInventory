@@ -89,6 +89,7 @@ local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_SHIFT_X = -1
 local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_ITEM_LEVEL_SHIFT_X = 16
 local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_ITEM_LEVEL_SHIFT_Y = -6
 local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_MARKER_SHIFT_X = 10
+local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_EQUIPPED_ICON_SHIFT_X = 8
 local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_FAVORITE_SHIFT_Y = 10
 local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_MARKER_GAP_Y = 40
 local CHARACTER_OVERVIEW_BLUEPRINTS = type(ItemBlueprintGenerator) == "function" and ItemBlueprintGenerator({
@@ -582,7 +583,7 @@ local function character_overview_curio_blueprint()
 				equipped_marker_y = math.max(equipped_marker_y, native_marker_min_y)
 			end
 
-			equipped_icon.style.offset[1] = (equipped_icon.style.offset[1] or 0) - CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_MARKER_SHIFT_X
+			equipped_icon.style.offset[1] = (equipped_icon.style.offset[1] or 0) - CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_EQUIPPED_ICON_SHIFT_X
 			equipped_icon.style.offset[2] = equipped_marker_y
 			equipped_icon.style.better_inventory_native_curio_equipped_min_y = native_marker_min_y
 		end
