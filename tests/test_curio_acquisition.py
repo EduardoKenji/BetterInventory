@@ -1037,7 +1037,7 @@ def main() -> None:
         "return {schema_version = 1, accounts = {account = {next_refresh_at_ms = 3600000, last_successful_scan_at_ms = 100000, last_used_at_ms = 100000, last_context = 'morningstar'}}}"
     )
     migrated_history = module._test.sanitize_rotation_history(legacy_history, 100000)
-    assert migrated_history.schema_version == 2
+    assert migrated_history.schema_version == 3
     assert migrated_history.accounts.account.next_refresh_at_ms is None
     assert migrated_history.accounts.account.last_successful_scan_at_ms is None
     assert migrated_history.accounts.account.last_used_at_ms == 100000
@@ -1048,6 +1048,40 @@ def main() -> None:
     sanitized_current = module._test.sanitize_rotation_history(current_history, 100000)
     assert sanitized_current.accounts.account.next_refresh_at_ms == 3600000
     assert sanitized_current.accounts.account.last_successful_scan_at_ms == 100000
+
+    pending_item = lua.table_from(
+        {
+            "character_id": "legacy-character",
+            "character_name": "Legacy Psyker",
+            "class_name": "Psyker",
+            "item_level": 410,
+            "label_id": "automatic_curio_health",
+            "primary_value": 21,
+            "price": 100,
+            "unit": "%",
+            "currency": "credits",
+        }
+    )
+    legacy_report = lua.table_from(
+        {
+            "account_key": "account",
+            "context": "operative_selection",
+            "created_at_ms": 100000,
+            "report_id": "legacy-report",
+            "purchased": lua.table_from([pending_item]),
+            "insufficient": lua.table_from([]),
+            "spent": lua.table_from({"credits": 100, "marks": 0}),
+        }
+    )
+    migrated_reports = module._test.sanitize_pending_reports(
+        None, legacy_report
+    )
+    assert len(migrated_reports) == 1
+    assert migrated_reports[1].report_id == "legacy-report"
+    duplicate_reports = module._test.sanitize_pending_reports(
+        lua.table_from([legacy_report, legacy_report]), None
+    )
+    assert len(duplicate_reports) == 1
 
     def set_storefront_boundary(boundary: int) -> None:
         globals_.test_storefront.data.currentRotationEnd = boundary
@@ -1109,7 +1143,7 @@ def main() -> None:
     module.enter_operative_selection(globals_.test_mod)
     module.update(globals_.test_mod, 1, False)
     assert globals_.purchase_count == purchases_before_rotation_test + 3
-    assert globals_.settings["_automatic_curio_rotation_history"].accounts["default"].pending_report is not None
+    assert len(globals_.settings["_automatic_curio_rotation_history"].accounts["default"].pending_reports) == 1
 
     # Idle refresh watcher arms once at the boundary, then performs one pass
     # on the following scheduler tick. It must not loop every frame.
@@ -1130,7 +1164,7 @@ def main() -> None:
     # Operative Selection keeps a bounded account-scoped report for the next
     # Morningstar because its notification visibility is not guaranteed.
     pending_history = globals_.settings["_automatic_curio_rotation_history"]
-    pending_report = pending_history.accounts["default"].pending_report
+    pending_report = pending_history.accounts["default"].pending_reports[1]
     assert pending_report is not None
     assert pending_report.context == "operative_selection"
     assert len(pending_report.purchased) == 1
@@ -1142,12 +1176,16 @@ def main() -> None:
     module.begin_morningstar_pass(globals_.test_mod)
     module.update(globals_.test_mod, 0, False)
     assert globals_.captured_notification is None
-    assert globals_.settings["_automatic_curio_rotation_history"].accounts["default"].pending_report is not None
+    assert len(globals_.settings["_automatic_curio_rotation_history"].accounts["default"].pending_reports) == 2
     globals_.backend_account_key = "default"
     module.update(globals_.test_mod, 0, False)
     assert globals_.captured_notification.line_1 == "automatic_curio_purchased_title"
     assert "Research Psyker(Psyker): 21% automatic_curio_health (410)" in globals_.captured_notification.line_2
-    assert globals_.settings["_automatic_curio_rotation_history"].accounts["default"].pending_report is None
+    assert len(globals_.settings["_automatic_curio_rotation_history"].accounts["default"].pending_reports) == 1
+    globals_.captured_notification = None
+    module.update(globals_.test_mod, 0, False)
+    assert globals_.captured_notification.line_1 == "automatic_curio_purchased_title"
+    assert len(globals_.settings["_automatic_curio_rotation_history"].accounts["default"].pending_reports) == 0
     module.cancel()
 
     # Crossing a predicted boundary does not prove that the backend has

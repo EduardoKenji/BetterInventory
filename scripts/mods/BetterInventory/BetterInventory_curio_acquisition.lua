@@ -33,6 +33,7 @@ local STORE_ROTATION_HOUR_MS = 60 * 60 * 1000
 local MAX_STORE_ROTATION_AHEAD_MS = 2 * STORE_ROTATION_HOUR_MS
 local MAX_ROTATION_HISTORY_ACCOUNTS = 4
 local MAX_PENDING_REPORT_ITEMS = 8
+local MAX_PENDING_REPORTS = 8
 local MAX_PENDING_REPORT_TEXT_LENGTH = 96
 local MAX_PENDING_REPORT_ID_LENGTH = 64
 local MAX_OFFER_ERROR_LOGS_PER_SCAN = 5
@@ -47,7 +48,7 @@ local KNOWN_CHARACTERS_SETTING_ID = "_automatic_curio_known_characters"
 local CHARACTER_SLOTS_SETTING_ID = "_automatic_curio_character_slots"
 local OPERATIVE_SLOT_CAPACITY_SETTING_ID = "_automatic_curio_operative_slot_capacity"
 local ROTATION_HISTORY_SETTING_ID = "_automatic_curio_rotation_history"
-local ROTATION_HISTORY_SCHEMA_VERSION = 2
+local ROTATION_HISTORY_SCHEMA_VERSION = 3
 local CHARACTER_SLOT_SETTING_PREFIX = "automatic_curio_character_slot_"
 
 local function native_operative_slot_capacity()
@@ -116,6 +117,7 @@ local state = {
 	rotation_boundary_ms = nil,
 	ledger_rotation_boundary_ms = nil,
 	context_entry_id = 0,
+	report_sequence = 0,
 	entry_consumed = false,
 	scheduled_reason = nil,
 	scheduler_poll_elapsed = 0,
@@ -536,6 +538,40 @@ local function sanitize_pending_report(source)
 	return result
 end
 
+local function sanitize_pending_reports(source, legacy_report)
+	local result = {}
+	local seen_ids = {}
+
+	local function append(candidate)
+		local report = sanitize_pending_report(candidate)
+
+		if not report or seen_ids[report.report_id] then
+			return
+		end
+
+		seen_ids[report.report_id] = true
+		result[#result + 1] = report
+	end
+
+	if type(source) == "table" then
+		for index = 1, #source do
+			if #result >= MAX_PENDING_REPORTS then
+				break
+			end
+
+			append(source[index])
+		end
+	end
+
+	-- Schema 1/2 installations have one pending_report. Migrate it once and
+	-- keep all newer reports in the ordered queue thereafter.
+	if #result == 0 then
+		append(legacy_report)
+	end
+
+	return result
+end
+
 local function sanitize_rotation_history(source, now)
 	local result = {
 		schema_version = ROTATION_HISTORY_SCHEMA_VERSION,
@@ -547,7 +583,9 @@ local function sanitize_rotation_history(source, now)
 	end
 
 	local source_schema_version = math.floor(tonumber(source.schema_version) or 1)
-	local boundaries_are_trusted = source_schema_version >= ROTATION_HISTORY_SCHEMA_VERSION
+	-- Schema 3 only adds the pending-report queue. Schema 2's confirmed
+	-- storefront boundaries remain trustworthy during this additive migration.
+	local boundaries_are_trusted = source_schema_version >= 2
 
 	for key, entry in pairs(source.accounts) do
 		if type(entry) == "table" then
@@ -576,9 +614,9 @@ local function sanitize_rotation_history(source, now)
 				account.last_context = entry.last_context
 			end
 
-			account.pending_report = sanitize_pending_report(entry.pending_report)
+			account.pending_reports = sanitize_pending_reports(entry.pending_reports, entry.pending_report)
 
-			if account.next_refresh_at_ms or account.last_successful_scan_at_ms or account.last_used_at_ms or account.pending_report then
+			if account.next_refresh_at_ms or account.last_successful_scan_at_ms or account.last_used_at_ms or #account.pending_reports > 0 then
 				result.accounts[tostring(key)] = account
 			end
 		end
@@ -594,9 +632,13 @@ local function ensure_rotation_history(mod)
 		local entry = state.rotation_history.accounts[account_key]
 
 		if not entry then
-			entry = {}
+			entry = {
+				pending_reports = {},
+			}
 			state.rotation_history.accounts[account_key] = entry
 		end
+
+		entry.pending_reports = entry.pending_reports or {}
 
 		state.next_rotation_at_ms = entry.next_refresh_at_ms
 
@@ -625,9 +667,13 @@ local function ensure_rotation_history(mod)
 	local entry = state.rotation_history.accounts[account_key]
 
 	if not entry then
-		entry = {}
+		entry = {
+			pending_reports = {},
+		}
 		state.rotation_history.accounts[account_key] = entry
 	end
+
+	entry.pending_reports = entry.pending_reports or {}
 
 	state.next_rotation_at_ms = entry.next_refresh_at_ms
 	state.rotation_boundary_ms = state.next_rotation_at_ms
@@ -2093,6 +2139,7 @@ local function compact_pending_report_item(candidate)
 end
 
 local function build_pending_report(account_key, context, purchased, insufficient, partial_failure)
+	state.report_sequence = state.report_sequence + 1
 	local report = {
 		account_key = account_key,
 		context = context,
@@ -2100,7 +2147,7 @@ local function build_pending_report(account_key, context, purchased, insufficien
 		insufficient = {},
 		partial_failure = partial_failure == true,
 		purchased = {},
-		report_id = string.format("%s:%s:%d", tostring(context), tostring(math.floor(server_time() or application_time())), state.context_entry_id),
+		report_id = string.format("%s:%s:%d:%d", tostring(context), tostring(math.floor(server_time() or application_time())), state.context_entry_id, state.report_sequence),
 		spent = {
 			credits = 0,
 			marks = 0,
@@ -2138,7 +2185,29 @@ local function persist_pending_report(mod, account_key, report)
 
 	local history = sanitize_rotation_history(mod:get(ROTATION_HISTORY_SETTING_ID), server_time())
 	local entry = history.accounts[account_key] or {}
-	entry.pending_report = report
+	local pending_reports = entry.pending_reports or {}
+	local replaced = false
+
+	for index = 1, #pending_reports do
+		if pending_reports[index].report_id == report.report_id then
+			pending_reports[index] = report
+			replaced = true
+			break
+		end
+	end
+
+	if not replaced then
+		pending_reports[#pending_reports + 1] = report
+	end
+
+	while #pending_reports > MAX_PENDING_REPORTS do
+		-- Preserve the newest bounded history. A prune is preferable to allowing
+		-- account settings to grow without limit, and delivery remains ordered
+		-- for every report retained in the queue.
+		table.remove(pending_reports, 1)
+	end
+
+	entry.pending_reports = pending_reports
 	history.accounts[account_key] = entry
 
 	local success = pcall(mod.set, mod, ROTATION_HISTORY_SETTING_ID, history, false)
@@ -2205,7 +2274,8 @@ local function deliver_pending_report(mod)
 	end
 
 	local entry = history.accounts[account_key]
-	local report = entry and entry.pending_report
+	local pending_reports = entry and entry.pending_reports
+	local report = pending_reports and pending_reports[1]
 
 	if not report then
 		return false
@@ -2231,11 +2301,11 @@ local function deliver_pending_report(mod)
 		state.last_delivered_report_id = report.report_id
 	end
 
-	entry.pending_report = nil
+	table.remove(pending_reports, 1)
 	local success = pcall(mod.set, mod, ROTATION_HISTORY_SETTING_ID, history, false)
 
 	if not success then
-		entry.pending_report = report
+		table.insert(pending_reports, 1, report)
 		return false
 	end
 
@@ -2963,6 +3033,7 @@ CurioAcquisition._test = {
 	profile_is_enabled = profile_is_enabled,
 	reconcile_character_slots = reconcile_character_slots,
 	rotation_gate_status = rotation_gate_status,
+	sanitize_pending_reports = sanitize_pending_reports,
 	sanitize_rotation_history = sanitize_rotation_history,
 	sane_rotation_boundary = sane_rotation_boundary,
 	same_candidate = same_candidate,
