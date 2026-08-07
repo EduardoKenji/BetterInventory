@@ -45,9 +45,14 @@ local CurioAcquisition = no_op_module(mod:io_dofile("BetterInventory/scripts/mod
 local ItemCustomization = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_item_customization"), "BetterInventory_item_customization.lua")
 local EquipmentPersistence = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_equipment_persistence"), "BetterInventory_equipment_persistence.lua")
 local SettingsRegistry = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_settings"), "BetterInventory_settings.lua")
+local Diagnostics = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_diagnostics"), "BetterInventory_diagnostics.lua")
 
 if type(Features.set_curio_acquisition_provider) == "function" then
 	Features.set_curio_acquisition_provider(CurioAcquisition)
+end
+
+if type(Features.set_diagnostics_provider) == "function" then
+	Features.set_diagnostics_provider(Diagnostics)
 end
 
 if type(Layout.set_item_customization_provider) == "function" then
@@ -237,6 +242,20 @@ local function mark_character_overview_requirement_met(widget)
 	end
 end
 
+local function character_overview_item_content_revision(item)
+	local explicit_revision = item.content_revision or item.item_revision or item.revision or item.version
+	local display_name = item.name or item.display_name or item.item_name
+	local icon = item.icon or item.icon_name or item.icon_material
+	local level = item.item_level or item.level
+	local rarity = item.rarity
+	local traits = type(item.traits) == "table" and #item.traits or -1
+	local perks = type(item.perks) == "table" and #item.perks or -1
+	local properties = type(item.properties) == "table" and #item.properties or -1
+	local stats = type(item.stats) == "table" and #item.stats or -1
+
+	return explicit_revision, display_name, icon, level, rarity, traits, perks, properties, stats
+end
+
 local function character_overview_item_changed(previous_item, current_item)
 	if previous_item == nil or current_item == nil then
 		return previous_item ~= current_item
@@ -246,10 +265,15 @@ local function character_overview_item_changed(previous_item, current_item)
 	local current_gear_id = current_item.gear_id
 
 	if previous_gear_id ~= nil or current_gear_id ~= nil then
-		return previous_gear_id ~= current_gear_id
+		if previous_gear_id ~= current_gear_id then
+			return true
+		end
 	end
 
-	return previous_item ~= current_item
+	local previous_revision, previous_name, previous_icon, previous_level, previous_rarity, previous_traits, previous_perks, previous_properties, previous_stats = character_overview_item_content_revision(previous_item)
+	local current_revision, current_name, current_icon, current_level, current_rarity, current_traits, current_perks, current_properties, current_stats = character_overview_item_content_revision(current_item)
+
+	return previous_revision ~= current_revision or previous_name ~= current_name or previous_icon ~= current_icon or previous_level ~= current_level or previous_rarity ~= current_rarity or previous_traits ~= current_traits or previous_perks ~= current_perks or previous_properties ~= current_properties or previous_stats ~= current_stats or previous_item ~= current_item
 end
 
 local function reset_character_overview_curio_fit_state(widget)
@@ -544,6 +568,7 @@ local better_inventory_test = type(mod) == "table" and rawget(mod, "_better_inve
 
 if type(better_inventory_test) == "table" then
 	better_inventory_test.normalized_displayed_value = normalized_displayed_value
+	better_inventory_test.character_overview_item_changed = character_overview_item_changed
 end
 
 local function character_overview_curio_blueprint()
@@ -1128,6 +1153,9 @@ local function is_armoury_sort_view(view)
 end
 
 local function align_quick_level_mastery_buttons(view)
+	if type(Diagnostics.count) == "function" then
+		Diagnostics.count("alignment_queries")
+	end
 	-- Quick Level Mastery adds Sacrifice as an offset child of Darktide's shared
 	-- purchase_button node. Center the complete action group on the actual weapon
 	-- information panel instead of deriving its position from the store grid:
@@ -1174,6 +1202,9 @@ local function align_quick_level_mastery_buttons(view)
 		return
 	end
 
+	if type(Diagnostics.count) == "function" then
+		Diagnostics.count("alignment_writes")
+	end
 	view:_set_scenegraph_position("purchase_button", position[1] + delta, position[2], position[3])
 end
 
@@ -1886,6 +1917,9 @@ end
 
 function mod.on_enabled()
 	ItemCustomization.on_enabled(mod)
+	if type(Diagnostics.configure) == "function" then
+		Diagnostics.configure(mod)
+	end
 
 	-- DMF requires unique setting IDs. Keep Curio content's mirror row aligned
 	-- with the established Name It setting, which remains authoritative across
@@ -2227,6 +2261,9 @@ function mod.update(dt)
 	Features.reconcile_discard_transaction()
 	Features.update_morningstar_auto_discard(mod, dt)
 	CurioAcquisition.update(mod, dt, Features.morningstar_auto_discard_is_busy(mod))
+	if type(Diagnostics.update) == "function" then
+		Diagnostics.update(mod, dt, CurioAcquisition, Features)
+	end
 end
 
 function mod.on_disabled()
@@ -2235,6 +2272,9 @@ function mod.on_disabled()
 	Features.cancel_manual_discard()
 	CurioAcquisition.cancel()
 	Features.disable_inventory_views()
+	if type(Diagnostics.reset) == "function" then
+		Diagnostics.reset()
+	end
 end
 
 local dmf_mod = get_mod("DMF")
@@ -2376,6 +2416,16 @@ if ensure_class_method(InventoryBackgroundView, "event_player_profile_updated") 
 		EquipmentPersistence.refresh_from_authoritative_profile(view, peer_id, local_player_id)
 	end)
 end
+
+-- Manual discard is dispatched through Darktide's native event path. Observe
+-- the single native deletion promise so the shared destructive-operation token
+-- remains held until backend settlement; no replacement request is issued.
+mod:hook("GearService", "delete_gear_batch", function(func, gear_service, gear_ids, ...)
+		local result = func(gear_service, gear_ids, ...)
+		Features.observe_manual_discard_settlement(result)
+
+		return result
+	end)
 
 mod:hook_safe(InventoryWeaponsView, "_equip_item", function(view)
 	if mod:get("prioritize_equipped_favorites") ~= false then
@@ -2693,6 +2743,9 @@ if ensure_class_method(ViewElementGrid, "_create_entry_widget_from_config") then
 end
 
 local function synchronize_myfavorites_marker(widget)
+	if type(Diagnostics.count) == "function" then
+		Diagnostics.count("marked_grid_scans")
+	end
 	local content = widget and widget.content
 	local styles = widget and widget.style
 	local hotspot_style = content and content.better_inventory_myfavorites_hotspot_style
@@ -2728,6 +2781,9 @@ local function synchronize_myfavorites_marker(widget)
 		return
 	end
 
+	if type(Diagnostics.count) == "function" then
+		Diagnostics.count("alignment_writes")
+	end
 	hotspot_style.offset[2] = offset_y
 
 	if favorite_offset then

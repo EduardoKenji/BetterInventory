@@ -1729,6 +1729,12 @@ return {
 				type = "group",
 				sub_widgets = {
 					{
+						setting_id = "debug_enable_hot_path_diagnostics",
+						tooltip = "debug_enable_hot_path_diagnostics_tooltip",
+						type = "checkbox",
+						default_value = false,
+					},
+					{
 						setting_id = "debug_expand_armoury_requisition_window_30_percent",
 						tooltip = "debug_expand_armoury_requisition_window_30_percent_tooltip",
 						type = "checkbox",

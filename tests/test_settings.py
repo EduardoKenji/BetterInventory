@@ -329,6 +329,7 @@ def main() -> None:
     settings = globals_.settings
 
     normalizer = mod._better_inventory_test.normalized_displayed_value
+    item_changed = mod._better_inventory_test.character_overview_item_changed
     normalized_values = lua.table_from({})
     raw_values = lua.table_from({})
     normalization_content = lua.table_from(
@@ -370,6 +371,56 @@ def main() -> None:
     )
     assert globals_.test_gsub_calls == 0
     lua.execute("string.gsub = test_original_gsub")
+
+    # Same gear IDs can receive a new backend object or revised content while
+    # the Character Overview widget is reused. The revision guard must refresh
+    # those changes, while an unchanged object remains a no-op.
+    overview_item = lua.table_from(
+        {
+            "gear_id": "same-gear",
+            "name": "Old Name",
+            "icon_name": "old-icon",
+            "item_level": 400,
+            "rarity": 4,
+            "traits": lua.table_from([lua.table_from({"id": "health"})]),
+        }
+    )
+    assert item_changed(overview_item, overview_item) is False
+    renamed_item = lua.table_from(
+        {
+            "gear_id": "same-gear",
+            "name": "New Name",
+            "icon_name": "old-icon",
+            "item_level": 400,
+            "rarity": 4,
+            "traits": lua.table_from([lua.table_from({"id": "health"})]),
+        }
+    )
+    assert item_changed(overview_item, renamed_item) is True
+    icon_item = lua.table_from(
+        {
+            "gear_id": "same-gear",
+            "name": "Old Name",
+            "icon_name": "new-icon",
+            "item_level": 400,
+            "rarity": 4,
+            "traits": lua.table_from([lua.table_from({"id": "health"})]),
+        }
+    )
+    assert item_changed(overview_item, icon_item) is True
+    expanded_item = lua.table_from(
+        {
+            "gear_id": "same-gear",
+            "name": "Old Name",
+            "icon_name": "old-icon",
+            "item_level": 400,
+            "rarity": 4,
+            "traits": lua.table_from(
+                [lua.table_from({"id": "health"}), lua.table_from({"id": "toughness"})]
+            ),
+        }
+    )
+    assert item_changed(overview_item, expanded_item) is True
 
     visible_equipment_config = lua.table_from(
         {
@@ -1790,6 +1841,7 @@ def main() -> None:
         debug_group.sub_widgets[index].setting_id
         for index in range(1, len(debug_group.sub_widgets) + 1)
     ] == [
+		"debug_enable_hot_path_diagnostics",
         "debug_expand_armoury_requisition_window_30_percent",
         "debug_armoury_requisition_window_increase_percent",
 		"debug_adjust_inventory_window_width",
@@ -2022,6 +2074,7 @@ def main() -> None:
     assert defaults["expand_armoury_requisition_window"] is True
     assert defaults["armoury_requisition_target_card_width"] == 230
     assert defaults["debug_expand_armoury_requisition_window_30_percent"] is False
+    assert defaults["debug_enable_hot_path_diagnostics"] is False
     assert defaults["debug_armoury_requisition_window_increase_percent"] == 30
     assert defaults["debug_adjust_inventory_window_width"] is False
     assert defaults["debug_inventory_window_width_adjustment_percent"] == 30

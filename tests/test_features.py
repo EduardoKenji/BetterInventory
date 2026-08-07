@@ -177,6 +177,10 @@ def main() -> None:
 						end
 					elseif event_name == "event_discard_items" then
 						captured_discard_ids = payload
+						if manual_delete_promise then
+							manual_bridge_ok, manual_bridge_result = pcall(TestFeatures.observe_manual_discard_settlement, manual_delete_promise)
+							manual_bridge_active = TestFeatures.manual_discard_settlement_active()
+						end
 					elseif event_name == "event_add_notification_message" and payload == "custom" then
 						captured_notification = secondary_payload
 					end
@@ -2673,7 +2677,8 @@ def main() -> None:
         automatic_add_mission_reward_on_invalidation = true
         automatic_defer_delete = false
         automatic_deleted_ids = nil
-        automatic_pending_delete = nil
+		automatic_pending_delete = nil
+		manual_delete_promise = nil
         automatic_game_mode_name = "hub"
         automatic_progression_fetching = true
         local profile = {
@@ -2875,6 +2880,56 @@ def main() -> None:
     mod.settings.quick_discard_mode = "automatic"
     globals_.automatic_defer_delete = False
     features.cancel_morningstar_auto_discard()
+
+    # Manual native deletion keeps the shared destructive token until the
+    # bridged GearService promise settles. This models the event hook without
+    # dispatching a second deletion request.
+    lua.execute(
+        r"""
+        function arm_manual_delete()
+            manual_delete_promise = {
+                next = function(self, callback)
+                    self.success_callback = callback
+                    return self
+                end,
+                catch = function(self, callback)
+                    self.error_callback = callback
+                    return self
+                end,
+            }
+        end
+        manual_bridge_ok = true
+        manual_bridge_result = nil
+        manual_bridge_active = false
+        arm_manual_delete()
+        function complete_manual_delete()
+            local pending = manual_delete_promise
+            manual_delete_promise = nil
+            if pending and pending.success_callback then
+                pending.success_callback({})
+            end
+        end
+        """
+    )
+    mod.settings.quick_discard_mode = "manual"
+    globals_.captured_popup = None
+    features.request_quick_discard(mod, layout, quick_discard_view)
+    assert globals_.captured_popup is not None
+    globals_.captured_popup.options[1].callback()
+    assert globals_.manual_bridge_ok is True
+    assert globals_.manual_bridge_result is True, globals_.manual_bridge_result
+    assert globals_.manual_bridge_active is True
+    assert features.manual_discard_settlement_active() is True
+    features.request_quick_discard(mod, layout, quick_discard_view)
+    assert globals_.captured_popup_count == popup_count_before_deferred_delete + 1
+    globals_.complete_manual_delete()
+    assert features.manual_discard_settlement_active() is False
+    globals_.arm_manual_delete()
+    features.request_quick_discard(mod, layout, quick_discard_view)
+    globals_.captured_popup.options[1].callback()
+    assert features.manual_discard_settlement_active() is True
+    globals_.complete_manual_delete()
+    mod.settings.quick_discard_mode = "automatic"
 
     # Missing save/favorite protection data fails closed and retries without
     # ever presenting or deleting the unprotected candidate set.

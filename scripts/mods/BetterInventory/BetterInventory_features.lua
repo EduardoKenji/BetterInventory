@@ -14,6 +14,19 @@ if type(CurioValues) ~= "table" then
 end
 
 local Features = {}
+Features._diagnostics = nil
+
+Features.set_diagnostics_provider = function(provider)
+	Features._diagnostics = provider
+end
+
+Features.count_diagnostic = function(name, amount)
+	local diagnostics = Features._diagnostics
+
+	if diagnostics and type(diagnostics.count) == "function" then
+		diagnostics.count(name, amount)
+	end
+end
 
 Features._contracts = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_contracts")
 
@@ -2312,6 +2325,7 @@ local function item_sorting_options_signature(view)
 	end
 
 	local signature = table.concat(parts, "|")
+	Features.count_diagnostic("panel_signatures")
 
 	if view then
 		local cache = view._better_inventory_item_sorting_signature_cache
@@ -2884,6 +2898,8 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 	if not panel or view._destroyed then
 		return
 	end
+
+	Features.count_diagnostic("panel_rebuilds")
 
 	local collapsed = view._better_inventory_options_panel_collapsed
 	local native_discard_active = view._discard_items_element ~= nil
@@ -3496,6 +3512,7 @@ local function armoury_native_sort_panel_height(entries)
 end
 
 local function rebuild_armoury_native_sort_panel(view)
+	Features.count_diagnostic("panel_rebuilds")
 	local panel = view and view._better_inventory_armoury_native_sort_panel
 
 	if not panel or view._destroyed then
@@ -3678,6 +3695,7 @@ Features.update_armoury_native_sort_panel = function(view)
 	local x, y = armoury_native_sort_panel_position(view)
 
 	if type(panel.set_pivot_offset) == "function" and (view._better_inventory_armoury_native_sort_pivot_x ~= x or view._better_inventory_armoury_native_sort_pivot_y ~= y) then
+		Features.count_diagnostic("pivot_writes")
 		panel:set_pivot_offset(x, y)
 		view._better_inventory_armoury_native_sort_pivot_x = x
 		view._better_inventory_armoury_native_sort_pivot_y = y
@@ -4556,6 +4574,8 @@ local discard_transaction = {
 	token = 0,
 	view = nil,
 	popup_id = nil,
+	manual_delete_inflight = false,
+	manual_delete_transaction_token = nil,
 }
 
 local function acquire_discard_transaction(owner, view)
@@ -4618,6 +4638,10 @@ local function release_discard_transaction(owner, token)
 	discard_transaction.owner = nil
 	discard_transaction.view = nil
 	discard_transaction.popup_id = nil
+	if owner == "manual" then
+		discard_transaction.manual_delete_inflight = false
+		discard_transaction.manual_delete_transaction_token = nil
+	end
 	Features.remove_discard_popup(popup_id)
 
 	if view then
@@ -4625,6 +4649,51 @@ local function release_discard_transaction(owner, token)
 	end
 
 	return true
+end
+
+-- The native manual discard event dispatches GearService.delete_gear_batch
+-- internally. The event itself has no completion value, so BetterInventory's
+-- GearService hook bridges the returned promise here without issuing a second
+-- delete request.
+Features.observe_manual_discard_settlement = function(promise)
+	if discard_transaction.owner ~= "manual" or discard_transaction.manual_delete_inflight then
+		return false
+	end
+
+	local transaction_token = discard_transaction.token
+
+	if not promise or type(promise.next) ~= "function" or type(promise.catch) ~= "function" then
+		return false
+	end
+
+	discard_transaction.manual_delete_inflight = true
+	discard_transaction.manual_delete_transaction_token = transaction_token
+
+	local function settle()
+		if discard_transaction.manual_delete_transaction_token == transaction_token and discard_transaction.owner == "manual" and discard_transaction.token == transaction_token then
+			release_discard_transaction("manual", transaction_token)
+		end
+	end
+
+	local continuation = promise:next(function(result)
+		settle()
+
+		return result
+	end)
+
+	if continuation and type(continuation.next) == "function" and type(continuation.catch) == "function" then
+		continuation:catch(function(error_value)
+			settle()
+
+			return error_value
+		end)
+	end
+
+	return true
+end
+
+Features.manual_discard_settlement_active = function()
+	return discard_transaction.manual_delete_inflight and discard_transaction.owner == "manual"
 end
 
 local function discard_transaction_is_current(owner, token)
@@ -4725,13 +4794,19 @@ Features.request_quick_discard = function(mod, layout, view)
 
 		local event_manager = Managers and Managers.event
 
+		local event_ok = false
+
 		if #gear_ids > 0 and event_manager and type(event_manager.trigger) == "function" then
-			pcall(event_manager.trigger, event_manager, "event_discard_items", gear_ids)
+			event_ok = pcall(event_manager.trigger, event_manager, "event_discard_items", gear_ids)
 		end
 
-		-- The native event owns its asynchronous backend request and does not
-		-- expose a completion result. Do not claim success before it completes.
-		clear_pending()
+		-- GearService.delete_gear_batch is normally observed by the main-module
+		-- bridge above. If the native event could not dispatch or no compatible
+		-- promise was exposed, release immediately to avoid a permanent UI lock;
+		-- the event remains the sole owner of any native request.
+		if not event_ok or not Features.manual_discard_settlement_active() then
+			clear_pending()
+		end
 	end
 
 	local popup_shown = show_popup({
@@ -5213,8 +5288,14 @@ end
 
 Features.cancel_manual_discard = function()
 	if discard_transaction.owner == "manual" then
+		if discard_transaction.manual_delete_inflight then
+			return false
+		end
+
 		release_discard_transaction("manual", discard_transaction.token)
 	end
+
+	return true
 end
 
 Features.update_morningstar_auto_discard = function(mod, dt)
