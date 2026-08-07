@@ -26,6 +26,7 @@ foreach ($releaseFile in @($releasePackager, $packagingDocumentation)) {
 }
 
 $main = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory.lua") -Raw
+$curioVisualPlan = Get-Content -LiteralPath (Join-Path $projectRoot "docs\v1.9.4-curio-card-visuals-plan.md") -Raw
 
 if ($main -notmatch 'mod:hook\(InventoryWeaponsView,\s*"present_grid_layout"') {
 	throw "The InventoryWeaponsView hook was not found."
@@ -43,11 +44,27 @@ if ($main -notmatch 'mod:hook\(CraftingMechanicusModifyView,\s*"present_grid_lay
 	throw "The Entreat Hadron grid hook was not found."
 }
 
-if ($main -notmatch 'mod:hook\(InventoryView,\s*"_create_entry_widget_from_config"' -or $main -notmatch 'enable_character_overview_melee_mirror' -or $main -notmatch 'enable_character_overview_ranged_mirror' -or $main -notmatch 'enable_character_overview_curio_details' -or $main -notmatch 'level_requirement_met\s*=\s*true') {
+if ($main -notmatch 'mod:hook\(InventoryView,\s*"_create_entry_widget_from_config"' -or $main -notmatch 'enable_character_overview_melee_mirror' -or $main -notmatch 'enable_character_overview_ranged_mirror' -or $main -notmatch 'enable_character_overview_curio_details' -or $main -notmatch 'character_overview_show_melee_rarity_strip' -or $main -notmatch 'character_overview_show_ranged_rarity_strip' -or $main -notmatch 'character_overview_show_curio_rarity_strip' -or $main -notmatch 'configure_character_overview_rarity_strip' -or $main -notmatch 'character_overview_use_native_curio_overlay' -or $main -notmatch 'configure_native_curio_overlay' -or $main -notmatch 'inner_frame' -or $main -notmatch 'table\.clone\(native_inner_frame\)' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_CONTENT_SHIFT_Y' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_EQUIPPED_ICON_SHIFT_Y' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_HORIZONTAL_PADDING' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_SHIFT_X' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_ITEM_LEVEL_SHIFT_X' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_ITEM_LEVEL_SHIFT_Y' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_MARKER_SHIFT_X' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_EQUIPPED_ICON_SHIFT_X' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_FAVORITE_SHIFT_Y' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_MARKER_GAP_Y' -or $main -notmatch 'better_inventory_native_curio_favorite_min_y' -or $main -notmatch 'better_inventory_native_curio_equipped_min_y' -or $main -notmatch 'character_overview_native_curio_equipped_marker_y' -or $main -notmatch 'better_inventory_curio_stat_1' -or $main -notmatch 'CHARACTER_OVERVIEW_CURIO_TITLE_STAT_PADDING_Y' -or $main -notmatch 'level_requirement_met\s*=\s*true') {
 	throw "Character overview weapon/Curio card integration was not found."
 }
 
-if ($main -notmatch 'move_up\s*=\s*9' -or $main -notmatch 'move_down\s*=\s*6' -or $main -notmatch 'move_down\s*=\s*4' -or $main -notmatch 'style\.offset\[2\]\s*=\s*\(style\.offset\[2\]\s*or\s*0\)\s*-\s*6' -or $main -notmatch 'style\.offset\[1\]\s*=\s*math\.max\(style\.offset\[1\]\s*or\s*0,\s*weapon_name_left\)' -or $main -notmatch 'character_overview_curio_name_mode' -or $main -notmatch 'character_overview_curio_font_size_percent' -or $main -notmatch 'curio_name_line_limit\s*=\s*curio_name_mode\s*==\s*"two_lines"\s*and\s*2' -or $main -notmatch 'curio_name_block_height\s*=\s*curio_name_font_size\s*\*\s*curio_name_line_limit\s*\+\s*11' -or $main -notmatch 'stat_style\.offset\[2\]\s*=\s*\(stat_style\.offset\[2\]\s*or\s*0\)\s*\+\s*curio_name_block_height' -or $main -notmatch 'Text\.word_wrap\(ui_renderer,\s*full_name,\s*style,\s*maximum_width\)' -or $main -notmatch 'table\.concat\(wrapped_rows,\s*"\\n"\)' -or $main -notmatch 'style\.font_size\s*=\s*math\.max\(1,\s*math\.floor\(style\.font_size\s*\*\s*curio_font_scale') {
+if ($main -notmatch 'display_name\.style\.offset\[1\]\s*=\s*CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_SHIFT_X' -or $main -match 'display_name\.style\.offset\[1\]\s*=\s*CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_HORIZONTAL_PADDING') {
+	throw "Centered native Curio title must use an additive X delta; horizontal inset belongs in the title width."
+}
+
+if ($main -notmatch 'local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_ITEM_LEVEL_SHIFT_Y\s*=\s*-\d+' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_MARKER_GAP_Y\s*=\s*40') {
+	throw "Native Curio item-level Y must move upward with a negative bottom-aligned delta, and the marker gap must remain explicit."
+}
+
+if ($main -notmatch 'local native_marker_min_y' -or $main -notmatch 'is_top_right_style' -or $main -notmatch 'attach_runtime_marker_styles' -or $main -notmatch 'refresh_character_overview_visual_layout_if_needed' -or $main -notmatch 'better_inventory_curio_fit_stat_sources' -or $main -notmatch 'fit_curio_text\(widget,\s*ui_renderer,\s*true\)' -or $main -notmatch 'type\(overview_init\)\s*==\s*"function"' -or $main -notmatch 'CHARACTER_OVERVIEW_MELEE_WIDGET_TYPE' -or $main -notmatch 'CHARACTER_OVERVIEW_RANGED_WIDGET_TYPE' -or $main -match 'CHARACTER_OVERVIEW_WEAPON_WIDGET_TYPE') {
+	throw "v1.9.4 audit corrections for marker scope, marker alignment, lifecycle refresh, text-fit caching, and separate weapon blueprints were not found."
+}
+
+if ($curioVisualPlan -notmatch 'Coordinate contract and regression guard' -or $curioVisualPlan -notmatch 'offset\[1\].*X' -or $curioVisualPlan -notmatch 'offset\[2\].*Y' -or $curioVisualPlan -notmatch 'Never put a centered pass''s horizontal inset into `offset\[1\]`') {
+	throw "The native Curio coordinate contract is missing from the v1.9.4 visual plan."
+}
+
+if ($main -notmatch 'move_up\s*=\s*9' -or $main -notmatch 'move_down\s*=\s*6' -or $main -notmatch 'move_down\s*=\s*4' -or $main -notmatch 'style\.offset\[2\]\s*=\s*\(style\.offset\[2\]\s*or\s*0\)\s*-\s*6' -or $main -notmatch 'style\.offset\[1\]\s*=\s*math\.max\(style\.offset\[1\]\s*or\s*0,\s*weapon_name_left\)' -or $main -notmatch 'character_overview_curio_name_mode' -or $main -notmatch 'character_overview_curio_font_size_percent' -or $main -notmatch 'curio_name_line_limit\s*=\s*curio_name_mode\s*==\s*"two_lines"\s*and\s*2' -or $main -notmatch 'curio_name_block_height\s*=\s*curio_name_font_size\s*\*\s*curio_name_line_limit\s*\+\s*11' -or $main -notmatch 'stat_style\.offset\[2\]\s*=\s*\(stat_style\.offset\[2\]\s*or\s*0\)\s*\+\s*curio_name_block_height' -or $main -notmatch 'Text\.word_wrap\(ui_renderer,\s*full_name,\s*title_style,\s*title_width\)' -or $main -notmatch 'table\.concat\(wrapped_rows,\s*"\\n"\)' -or $main -notmatch 'title_style\.font_size\s*=\s*curio_name_font_size' -or $main -notmatch 'fit_curio_text\(widget,\s*ui_renderer,\s*false\)') {
 	throw "Character overview visual offsets or Curio font scaling were not found."
 }
 
@@ -94,6 +111,10 @@ $features = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_fea
 $curioAcquisition = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_acquisition.lua") -Raw
 $curioValues = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_values.lua") -Raw
 
+if ($layout -notmatch 'synchronize_rarity_tag_color' -or $layout -notmatch 'Items\.rarity_color' -or $layout -notmatch 'better_inventory_original_color') {
+	throw "The shared Curio rarity-strip colour synchronization was not found."
+}
+
 if ($features -notmatch 'inventory_grid_has_right_neighbour' -or $features -notmatch 'navigate_right_continuous') {
 	throw "The controller-navigation neighbour check was not found."
 }
@@ -106,7 +127,7 @@ if ($main -notmatch 'Features\.set_item_sorting_integration\(get_mod\("ItemSorti
 	throw "ItemSorting inventory/store panel integration was not found."
 }
 
-if ($data -notmatch 'setting_id\s*=\s*"myfavorites_integration_group"' -or $data -match 'setting_id\s*=\s*"enable_myfavorites_integration"' -or $data -notmatch 'setting_id\s*=\s*"myfavorites_show_favorite_letter"[\s\S]*?default_value\s*=\s*false' -or $layout -notmatch 'myfavorites_compatibility\s*=\s*myfavorites_hotspot\s+and\s+myfavorites_hotspot\.style' -or $layout -notmatch 'resolved_size\s*=\s*size\s+or\s+hotspot_style\.size' -or $main -notmatch 'mod:hook\(ViewElementGrid,\s*"_create_entry_widget_from_config"' -or $main -notmatch 'widget\.content\.better_inventory_myfavorites_hotspot_style\s*=\s*widget\.style\.myfav_hotspot' -or $main -notmatch 'better_inventory_equipped_icon_visibility_function\s*=\s*pass\.visibility_function' -or $main -notmatch 'mod:hook\(ViewElementGrid,\s*"_update_grid_widgets"' -or $main -notmatch 'synchronize_myfavorites_marker\(widgets\[index\]\)' -or $layout -notmatch 'runtime_hotspot_style\.offset\[2\]\s*=\s*offset_y' -or $layout -notmatch 'content\.favorite_icon\s*=\s*compact_favorite_value' -or $layout -notmatch 'align_myfavorites_hotspot') {
+if ($data -notmatch 'setting_id\s*=\s*"myfavorites_integration_group"' -or $data -match 'setting_id\s*=\s*"enable_myfavorites_integration"' -or $data -notmatch 'setting_id\s*=\s*"myfavorites_show_favorite_letter"[\s\S]*?default_value\s*=\s*false' -or $layout -notmatch 'myfavorites_compatibility\s*=\s*myfavorites_hotspot\s+and\s+myfavorites_hotspot\.style' -or $layout -notmatch 'resolved_size\s*=\s*size\s+or\s+hotspot_style\.size' -or $main -notmatch 'mod:hook\(ViewElementGrid,\s*"_create_entry_widget_from_config"' -or $main -notmatch 'attach_runtime_marker_styles\(widget\)' -or $main -notmatch 'content\.better_inventory_myfavorites_hotspot_style\s*=\s*styles\.myfav_hotspot' -or $main -notmatch 'better_inventory_equipped_icon_visibility_function\s*=\s*pass\.visibility_function' -or $main -notmatch 'mod:hook\(ViewElementGrid,\s*"_update_grid_widgets"' -or $main -notmatch 'synchronize_myfavorites_marker\(widgets\[index\]\)' -or $layout -notmatch 'runtime_hotspot_style\.offset\[2\]\s*=\s*offset_y' -or $layout -notmatch 'content\.favorite_icon\s*=\s*compact_favorite_value' -or $layout -notmatch 'align_myfavorites_hotspot') {
 	throw "MyFavorites compact-marker compatibility integration was not found."
 }
 

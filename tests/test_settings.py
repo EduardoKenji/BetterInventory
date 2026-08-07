@@ -211,6 +211,7 @@ def main() -> None:
 		visible_equipment_available = true
 		visible_equipment_enabled = true
 		overview_equipped_item_calls = 0
+		overview_layout_switches = 0
 		captured_options_hook = nil
 		captured_item_grid_init_hook = nil
 		captured_armoury_on_enter_hook = nil
@@ -324,6 +325,9 @@ def main() -> None:
             equipped_item_in_slot = function()
                 overview_equipped_item_calls = overview_equipped_item_calls + 1
             end,
+            _switch_active_layout = function()
+                overview_layout_switches = overview_layout_switches + 1
+            end,
         }
         """
     )
@@ -395,10 +399,27 @@ def main() -> None:
             "content": lua.table_from({}),
             "style": lua.table_from(
                 {
+                    "myfav_hotspot": lua.table_from(
+                        {
+                            "horizontal_alignment": "right",
+                            "vertical_alignment": "top",
+                            "offset": lua.table_from({1: -8, 2: 7, 3: 17}),
+                        }
+                    ),
                     "equipped_icon": lua.table_from(
                         {"offset": lua.table_from({1: -2, 2: 2, 3: 16})}
                     )
-                }
+                },
+            ),
+            "passes": lua.table_from(
+                [
+                    lua.table_from(
+                        {
+                            "style_id": "equipped_icon",
+                            "visibility_function": lua.eval("function() return true end"),
+                        }
+                    )
+                ]
             ),
         }
     )
@@ -424,13 +445,27 @@ def main() -> None:
     )
     assert overview_equipped_widget.style.equipped_icon.offset[2] == 2
     assert overview_equipped_widget.content.better_inventory_equipped_icon_original_y == 2
+    assert overview_equipped_widget.content.better_inventory_myfavorites_hotspot_style.offset[2] == 7
+    assert overview_equipped_widget.content.better_inventory_myfavorites_hotspot_style.offset[1] == overview_equipped_widget.style.myfav_hotspot.offset[1]
+    assert overview_equipped_widget.content.better_inventory_equipped_icon_visibility_function is not None
     overview_view._loadout_widgets = lua.table_from([overview_equipped_widget])
+    overview_view._active_category_tab_context = lua.table_from({"is_grid_layout": False})
     globals_.lantern_recommendations_are_active = True
     globals_.captured_character_overview_update_hook(overview_view)
     assert overview_equipped_widget.style.equipped_icon.offset[2] == 34
     globals_.lantern_recommendations_are_active = False
     globals_.captured_character_overview_update_hook(overview_view)
     assert overview_equipped_widget.style.equipped_icon.offset[2] == 2
+    settings.character_overview_use_native_curio_overlay = True
+    mod.on_setting_changed("character_overview_use_native_curio_overlay")
+    globals_.captured_character_overview_update_hook(overview_view)
+    assert globals_.overview_layout_switches == 1
+    globals_.captured_character_overview_update_hook(overview_view)
+    assert globals_.overview_layout_switches == 1
+    settings.character_overview_show_curio_rarity_strip = False
+    mod.on_setting_changed("character_overview_show_curio_rarity_strip")
+    globals_.captured_character_overview_update_hook(overview_view)
+    assert globals_.overview_layout_switches == 2
 
     runtime_hotspot_style = lua.table_from(
         {
@@ -833,6 +868,10 @@ def main() -> None:
 		"global_store_compact_character_names",
 		"global_store_single_column_modifier_horizontal_position",
 		"global_store_single_column_modifier_vertical_position",
+		"character_overview_show_melee_rarity_strip",
+		"character_overview_show_ranged_rarity_strip",
+		"character_overview_show_curio_rarity_strip",
+		"character_overview_use_native_curio_overlay",
 		"character_overview_curio_name_mode",
 		"character_overview_curio_font_size_percent",
 		"weapon_perk_compression",
@@ -1008,14 +1047,22 @@ def main() -> None:
     assert entries_by_id["global_store_single_column_modifier_vertical_position"].disabled is True
     assert entries_by_id["character_overview_curio_name_mode"].disabled is False
     assert entries_by_id["character_overview_curio_font_size_percent"].disabled is False
+    assert entries_by_id["character_overview_show_melee_rarity_strip"].disabled is False
+    assert entries_by_id["character_overview_show_ranged_rarity_strip"].disabled is False
+    assert entries_by_id["character_overview_show_curio_rarity_strip"].disabled is False
+    assert entries_by_id["character_overview_use_native_curio_overlay"].disabled is False
     settings.enable_character_overview_curio_details = False
     mod.on_setting_changed("enable_character_overview_curio_details")
     assert entries_by_id["character_overview_curio_name_mode"].disabled is True
     assert entries_by_id["character_overview_curio_font_size_percent"].disabled is True
+    assert entries_by_id["character_overview_show_curio_rarity_strip"].disabled is True
+    assert entries_by_id["character_overview_use_native_curio_overlay"].disabled is True
     settings.enable_character_overview_curio_details = True
     mod.on_setting_changed("enable_character_overview_curio_details")
     assert entries_by_id["character_overview_curio_name_mode"].disabled is False
     assert entries_by_id["character_overview_curio_font_size_percent"].disabled is False
+    assert entries_by_id["character_overview_show_curio_rarity_strip"].disabled is False
+    assert entries_by_id["character_overview_use_native_curio_overlay"].disabled is False
     assert entries_by_id["expand_curio_inventory_window"].disabled is False
     assert entries_by_id["weapon_extra_width_column_threshold"].disabled is False
     assert entries_by_id["five_column_weapon_extra_width"].disabled is True
@@ -1493,6 +1540,10 @@ def main() -> None:
 			"custom_item_override_weapon_information_color",
 			"custom_item_override_weapon_rarity_keyword_color",
 			"custom_item_override_weapon_information_name_color",
+			"character_overview_show_melee_rarity_strip",
+			"character_overview_show_ranged_rarity_strip",
+			"character_overview_show_curio_rarity_strip",
+			"character_overview_use_native_curio_overlay",
 			"character_overview_curio_name_mode",
 			"character_overview_curio_font_size_percent",
         }:
@@ -1562,7 +1613,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "1.9.3"
+    assert data.version == "1.9.4"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
@@ -1727,8 +1778,12 @@ def main() -> None:
         for index in range(1, len(character_overview_view_group.sub_widgets) + 1)
     ] == [
         "enable_character_overview_melee_mirror",
+        "character_overview_show_melee_rarity_strip",
         "enable_character_overview_ranged_mirror",
+        "character_overview_show_ranged_rarity_strip",
         "enable_character_overview_curio_details",
+        "character_overview_show_curio_rarity_strip",
+        "character_overview_use_native_curio_overlay",
         "character_overview_curio_name_mode",
         "character_overview_curio_font_size_percent",
     ]
@@ -1810,8 +1865,12 @@ def main() -> None:
     assert defaults["enable_hadron_single_column_mirror"] is True
     assert defaults["enable_armoury_single_column_mirror"] is True
     assert defaults["enable_character_overview_melee_mirror"] is True
+    assert defaults["character_overview_show_melee_rarity_strip"] is True
     assert defaults["enable_character_overview_ranged_mirror"] is True
+    assert defaults["character_overview_show_ranged_rarity_strip"] is True
     assert defaults["enable_character_overview_curio_details"] is True
+    assert defaults["character_overview_show_curio_rarity_strip"] is True
+    assert defaults["character_overview_use_native_curio_overlay"] is False
     assert defaults["myfavorites_show_favorite_letter"] is False
     assert defaults["character_overview_curio_name_mode"] == "two_lines"
     assert defaults["character_overview_curio_font_size_percent"] == 110

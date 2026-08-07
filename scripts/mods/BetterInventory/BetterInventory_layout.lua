@@ -2479,6 +2479,34 @@ local function apply_item_customization_style(mod, widget, element)
 	apply_custom_color(style.rarity_tag, background_color, "color")
 end
 
+local function synchronize_rarity_tag_color(widget, element)
+	local content = widget and widget.content
+	local style = widget and widget.style
+	local rarity_tag = style and style.rarity_tag
+
+	if not rarity_tag then
+		return
+	end
+
+	local item = item_from_element(element or content and content.element)
+	local rarity_color
+
+	if item then
+		local ok, resolved_color = pcall(Items.rarity_color, item)
+		rarity_color = ok and resolved_color or nil
+	end
+
+	if type(rarity_color) == "table" then
+		rarity_tag.color = table.clone(rarity_color)
+		rarity_tag.better_inventory_original_color = table.clone(rarity_color)
+	elseif rarity_tag.default_color then
+		rarity_tag.color = table.clone(rarity_tag.default_color)
+		rarity_tag.better_inventory_original_color = table.clone(rarity_tag.default_color)
+	end
+end
+
+Layout.synchronize_rarity_tag_color = synchronize_rarity_tag_color
+
 Layout.apply_item_customization_style = apply_item_customization_style
 
 -- The weapon-information panel already composites its rarity tint through a
@@ -2866,6 +2894,7 @@ local function configure_card_content(mod, item_blueprint, configuration)
 		item_blueprint.init = function(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
 			original_init(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
 			format_item_name(mod, widget, element, append_mark_to_name)
+			synchronize_rarity_tag_color(widget, element)
 			apply_item_customization_style(mod, widget, element)
 			format_item_level(widget, element, show_item_level_icon)
 			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers, show_blessing_text_icons)
@@ -2880,6 +2909,7 @@ local function configure_card_content(mod, item_blueprint, configuration)
 		item_blueprint.update_data = function(parent, widget, element)
 			original_update_data(parent, widget, element)
 			format_item_name(mod, widget, element, append_mark_to_name)
+			synchronize_rarity_tag_color(widget, element)
 			apply_item_customization_style(mod, widget, element)
 			format_item_level(widget, element, show_item_level_icon)
 			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers, show_blessing_text_icons)
