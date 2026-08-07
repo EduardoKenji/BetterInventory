@@ -43,7 +43,7 @@ if ($main -notmatch 'mod:hook\(CraftingMechanicusModifyView,\s*"present_grid_lay
 	throw "The Entreat Hadron grid hook was not found."
 }
 
-if ($main -notmatch 'mod:hook\(InventoryView,\s*"_create_entry_widget_from_config"' -or $main -notmatch 'enable_character_overview_melee_mirror' -or $main -notmatch 'enable_character_overview_ranged_mirror' -or $main -notmatch 'enable_character_overview_curio_details' -or $main -notmatch 'level_requirement_met\s*=\s*true') {
+if ($main -notmatch 'mod:hook\(InventoryView,\s*"_create_entry_widget_from_config"' -or $main -notmatch 'enable_character_overview_melee_mirror' -or $main -notmatch 'enable_character_overview_ranged_mirror' -or $main -notmatch 'enable_character_overview_curio_details' -or $main -notmatch 'character_overview_use_native_curio_overlay' -or $main -notmatch 'configure_native_curio_overlay' -or $main -notmatch 'inner_frame' -or $main -notmatch 'table\.clone\(native_inner_frame\)' -or $main -notmatch 'level_requirement_met\s*=\s*true') {
 	throw "Character overview weapon/Curio card integration was not found."
 }
 
@@ -93,6 +93,10 @@ $layout = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_layou
 $features = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_features.lua") -Raw
 $curioAcquisition = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_acquisition.lua") -Raw
 $curioValues = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_values.lua") -Raw
+
+if ($layout -notmatch 'synchronize_rarity_tag_color' -or $layout -notmatch 'Items\.rarity_color' -or $layout -notmatch 'better_inventory_original_color') {
+	throw "The shared Curio rarity-strip colour synchronization was not found."
+}
 
 if ($features -notmatch 'inventory_grid_has_right_neighbour' -or $features -notmatch 'navigate_right_continuous') {
 	throw "The controller-navigation neighbour check was not found."

@@ -2,9 +2,10 @@
 
 ## 1.9.4 - Unreleased
 
-### Planned
+### Fixed / Added
 
-- Fix Curio rarity colour strips and add an optional native Curio visual overlay for detailed Character Overview cards. See `docs/v1.9.4-curio-card-visuals-plan.md`.
+- Fixed Curio rarity colour strips on native/hybrid card lifecycles while preserving per-item custom background colours.
+- Added the default-off **Use native Curio overlay** option for detailed Character Overview cards. It restores Darktide's ornate frame and portrait geometry while retaining BetterInventory's title and stat lines. See `docs/v1.9.4-curio-card-visuals-plan.md` for validation details.
 
 ## 1.9.3 - 2026-08-07
 

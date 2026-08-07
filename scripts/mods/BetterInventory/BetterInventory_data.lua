@@ -789,6 +789,12 @@ return {
 								default_value = true,
 							},
 							{
+								setting_id = "character_overview_use_native_curio_overlay",
+								tooltip = "character_overview_use_native_curio_overlay_tooltip",
+								type = "checkbox",
+								default_value = false,
+							},
+							{
 								setting_id = "character_overview_curio_name_mode",
 								tooltip = "character_overview_curio_name_mode_tooltip",
 								type = "dropdown",

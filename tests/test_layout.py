@@ -263,6 +263,10 @@ def main() -> None:
 			return "perk/rank_" .. tostring(rarity)
 		end
 
+		function TestItems.rarity_color(item)
+			return item and item.test_rarity_color or { 255, 145, 70, 40 }
+		end
+
 		function TestMasterItems.get_item(item_id)
 			return {
 				display_name = item_id == "blessing_one" and "Surgical" or item_id == "blessing_two" and "Weight of Fire" or item_id == "blessing_long" and "Rending Shockwave" or item_id,
@@ -2900,8 +2904,11 @@ def main() -> None:
             "style": lua.table_from(
                 {
                     "display_name": blueprint_pass(blueprint, "display_name").style,
-                    "better_inventory_curio_stat_1": curio_stat_pass.style,
-                }
+					"better_inventory_curio_stat_1": curio_stat_pass.style,
+					"rarity_tag": lua.table_from(
+						{"color": lua.table_from([255, 1, 2, 3]), "default_color": lua.table_from([255, 4, 5, 6])}
+					),
+				}
             ),
         }
     )
@@ -2967,6 +2974,11 @@ def main() -> None:
     assert curio_widget.content.better_inventory_curio_stat_1 == "+19% Health"
     assert curio_widget.content.better_inventory_curio_stat_2 == "+12% Stamina Regen"
     assert curio_stat_pass.visibility_function(curio_widget.content)
+    assert tuple(curio_widget.style.rarity_tag.color[index] for index in range(1, 5)) == (255, 145, 70, 40)
+
+    curio_element.item.test_rarity_color = lua.table_from([255, 30, 40, 50])
+    blueprint.update_data(test_grid, curio_widget, curio_element)
+    assert tuple(curio_widget.style.rarity_tag.color[index] for index in range(1, 5)) == (255, 30, 40, 50)
 
     # Enhanced Descriptions spells these modifiers as "Maximum". The setting
     # applies to both the innate line and supported secondary Curio perks.
