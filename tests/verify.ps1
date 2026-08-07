@@ -110,6 +110,7 @@ $localization = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory
 $layout = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_layout.lua") -Raw
 $features = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_features.lua") -Raw
 $contracts = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_contracts.lua") -Raw
+$settingsRegistry = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_settings.lua") -Raw
 $curioAcquisition = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_acquisition.lua") -Raw
 $curioValues = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_values.lua") -Raw
 $itemCustomization = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_item_customization.lua") -Raw
@@ -170,6 +171,10 @@ if (($features -notmatch 'pcall\(view\.is_item_equipped_in_any_slot' -and $featu
 
 if ($contracts -notmatch 'Contracts\.safe_call' -or $contracts -notmatch 'Contracts\.safe_method' -or $features -notmatch 'Features\._contracts\.safe_method' -or $features -notmatch 'Features\._contracts\.safe_call') {
 	throw "The guarded capability-contract seam was not found."
+}
+
+if ($settingsRegistry -notmatch 'Registry\.register' -or $settingsRegistry -notmatch 'collect_setting_entries\(entry\.sub_widgets\)' -or $settingsRegistry -notmatch 'Registry\.duplicates' -or $settingsRegistry -notmatch 'refresh_domains' -or $main -notmatch 'SettingsRegistry\.register\(settings\)' -or $main -notmatch 'SettingsRegistry\.should_refresh_dependencies' -or $main -match 'setting_id == "enable_grid_layout" or') {
+	throw "The declarative settings registry and registry-driven dependency refresh routing were not found."
 }
 
 if ($curioAcquisition -notmatch 'PromiseContainer' -or $curioAcquisition -notmatch 'track_read_promise' -or $curioAcquisition -notmatch 'reset_read_requests' -or $curioAcquisition -notmatch 'active_read_requests' -or $curioAcquisition -notmatch 'oldest_read_request_age' -or $curioAcquisition -notmatch 'track_read_promise\(call_promise\(service, service\.fetch_all_profiles\)\)' -or $curioAcquisition -notmatch 'call_promise\(store_service, store_service\.purchase_item_with_wallet') {
@@ -547,7 +552,7 @@ if ($hasLuaParser) {
 }
 
 if ($hasLupa) {
-	foreach ($behaviorTest in @("test_layout.py", "test_settings.py", "test_features.py", "test_contracts.py", "test_curio_acquisition.py", "test_item_customization.py")) {
+	foreach ($behaviorTest in @("test_layout.py", "test_settings.py", "test_features.py", "test_contracts.py", "test_settings_registry.py", "test_curio_acquisition.py", "test_item_customization.py")) {
 		py -3 (Join-Path $PSScriptRoot $behaviorTest)
 
 		if ($LASTEXITCODE -ne 0) {

@@ -20,6 +20,7 @@
 - Made customization persistence outcomes explicit: confirmed saves clear dirty state, thrown failures remain retryable as errors, and DMF-swallowed failures remain marked unknown instead of being reported durable.
 - Added comparator antisymmetry coverage so malformed equipped/favorite compatibility calls degrade to ordinary priority without destabilizing native sorting.
 - Extracted a small guarded capability-contract adapter used by sorting compatibility calls, establishing a behavior-neutral seam for future integration/domain extraction.
+- Added a recursive active-settings registry with duplicate-ID diagnostics and declarative dependency-refresh routing, including generated character-slot settings.
 
 ## 1.9.3 - 2026-08-07
 
