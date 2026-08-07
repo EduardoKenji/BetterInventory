@@ -115,6 +115,7 @@ def main() -> None:
         settings_flush_attempts = 0
         settings_flush_should_fail = false
         settings_flush_should_swallow_failure = false
+        settings_flush_should_reject = false
         test_dmf_mod = {
             save_unsaved_settings_to_file = function()
                 settings_flush_attempts = settings_flush_attempts + 1
@@ -125,6 +126,10 @@ def main() -> None:
 
                 if settings_flush_should_swallow_failure then
                     return nil
+                end
+
+                if settings_flush_should_reject then
+                    return false
                 end
 
                 settings_flushes = settings_flushes + 1
@@ -860,8 +865,8 @@ def main() -> None:
     assert globals_.settings_flushes == flushes_before_failure + 1
 
     # Current DMF can swallow an inner settings-write failure and return nil.
-    # BetterInventory must retain dirty state, retry later, and avoid retrying
-    # on every frame while the result remains unknown.
+    # A non-throwing no-return is the normal delegated contract: BetterInventory
+    # must end its obligation and never retry the same mutation forever.
     customization.update(mod, "dmf-swallowed-failure", lua.table_from({"name": "Retry me"}))
     globals_.settings_flush_should_swallow_failure = True
     attempts_before_swallowed_failure = globals_.settings_flush_attempts
@@ -870,13 +875,38 @@ def main() -> None:
     assert globals_.settings_flush_attempts == attempts_before_swallowed_failure + 1
     assert globals_.settings_flushes == flushes_before_swallowed_failure
     status, pending = customization.persistence_status()
-    assert status == "unknown"
-    assert pending is True
-    customization.update_runtime(mod)
-    assert globals_.settings_flush_attempts == attempts_before_swallowed_failure + 1
-    globals_.settings_flush_should_swallow_failure = False
+    assert status == "delegated"
+    assert pending is False
     customization.update_runtime(mod, 1)
-    assert globals_.settings_flush_attempts == attempts_before_swallowed_failure + 2
+    assert globals_.settings_flush_attempts == attempts_before_swallowed_failure + 1
+
+    # Throwing calls remain observable but are bounded per mutation. Once the
+    # cap is reached, later runtime frames must not call DMF forever.
+    globals_.settings_flush_should_swallow_failure = False
+    globals_.settings_flush_should_fail = True
+    customization.update(mod, "bounded-error", lua.table_from({"name": "Bounded"}))
+    bounded_attempts_before = globals_.settings_flush_attempts
+    customization.update_runtime(mod)
+    customization.update_runtime(mod, 1)
+    customization.update_runtime(mod, 1)
+    assert globals_.settings_flush_attempts == bounded_attempts_before + 3
+    status, pending = customization.persistence_status()
+    assert status == "error_exhausted"
+    assert pending is False
+    globals_.settings_flush_should_fail = False
+
+    customization.update(mod, "delegated-success", lua.table_from({"name": "Delegated"}))
+    globals_.settings_flush_should_swallow_failure = True
+    customization.update_runtime(mod)
+    status, pending = customization.persistence_status()
+    assert status == "delegated"
+    assert pending is False
+    globals_.settings_flush_should_swallow_failure = False
+    assert globals_.settings_flushes == flushes_before_swallowed_failure
+
+    # An explicit true remains the only result that can be called durable.
+    customization.update(mod, "explicit-success", lua.table_from({"name": "Saved"}))
+    customization.update_runtime(mod)
     assert globals_.settings_flushes == flushes_before_swallowed_failure + 1
     status, pending = customization.persistence_status()
     assert status == "saved"
