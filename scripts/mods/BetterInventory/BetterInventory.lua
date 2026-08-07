@@ -90,6 +90,7 @@ local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_ITEM_LEVEL_SHIFT_X = 16
 local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_ITEM_LEVEL_SHIFT_Y = 10
 local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_MARKER_SHIFT_X = 10
 local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_FAVORITE_SHIFT_Y = 10
+local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_MARKER_GAP_Y = 4
 local CHARACTER_OVERVIEW_BLUEPRINTS = type(ItemBlueprintGenerator) == "function" and ItemBlueprintGenerator({
 	600,
 	CHARACTER_OVERVIEW_WEAPON_HEIGHT,
@@ -514,13 +515,18 @@ local function character_overview_curio_blueprint()
 
 	if native_curio_overlay_enabled then
 		local content_shift_y = CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_CONTENT_SHIFT_Y
+		local favorite_marker_min_y
 
 		if display_name and display_name.style and display_name.style.offset then
 			display_name.style.horizontal_alignment = "center"
 			display_name.style.text_horizontal_alignment = "center"
-			display_name.style.offset[1] = CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_HORIZONTAL_PADDING + CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_SHIFT_X
+			-- Center alignment already places the title band inside the card. The
+			-- horizontal inset belongs in size[1]; offset[1] is only an additive
+			-- X delta. Adding the inset here would shift the title right.
+			display_name.style.offset[1] = CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_SHIFT_X
 			display_name.style.offset[2] = (display_name.style.offset[2] or 0) + content_shift_y
 			display_name.style.size[1] = math.max(40, card_width - CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_HORIZONTAL_PADDING * 2)
+			favorite_marker_min_y = (display_name.style.offset[2] or 0) + (display_name.style.size[2] or 0) + CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_MARKER_GAP_Y
 		end
 
 		for index = 1, 4 do
@@ -579,7 +585,13 @@ local function character_overview_curio_blueprint()
 				pass.style.offset[1] = (pass.style.offset[1] or 0) - CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_MARKER_SHIFT_X
 
 				if pass == myfavorites_hotspot then
-					pass.style.offset[2] = (pass.style.offset[2] or 0) + CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_FAVORITE_SHIFT_Y
+					local marker_y = (pass.style.offset[2] or 0) + CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_FAVORITE_SHIFT_Y
+
+					if favorite_marker_min_y then
+						marker_y = math.max(marker_y, favorite_marker_min_y)
+					end
+
+					pass.style.offset[2] = marker_y
 				end
 			end
 		end
@@ -587,8 +599,16 @@ local function character_overview_curio_blueprint()
 		if favorite_icon and favorite_icon.style and favorite_icon.style.offset then
 			local favorite_base_offset_y = favorite_icon.style.offset[2] or 0
 			favorite_icon.style.better_inventory_native_curio_favorite_shift_y = CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_FAVORITE_SHIFT_Y
+			favorite_icon.style.better_inventory_native_curio_favorite_min_y = favorite_marker_min_y
 			favorite_icon.style.better_inventory_native_curio_favorite_base_y = favorite_base_offset_y
-			favorite_icon.style.offset[2] = (favorite_icon.style.offset[2] or 0) + CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_FAVORITE_SHIFT_Y
+
+			local marker_y = (favorite_icon.style.offset[2] or 0) + CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_FAVORITE_SHIFT_Y
+
+			if favorite_marker_min_y then
+				marker_y = math.max(marker_y, favorite_marker_min_y)
+			end
+
+			favorite_icon.style.offset[2] = marker_y
 
 			local original_favorite_change_function = favorite_icon.change_function
 
@@ -599,7 +619,14 @@ local function character_overview_curio_blueprint()
 					style.offset[2] = style.better_inventory_native_curio_favorite_base_y or favorite_base_offset_y
 				end
 
-				style.offset[2] = (style.offset[2] or 0) + CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_FAVORITE_SHIFT_Y
+				local marker_y = (style.offset[2] or 0) + CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_FAVORITE_SHIFT_Y
+				local favorite_marker_min_y = style.better_inventory_native_curio_favorite_min_y
+
+				if favorite_marker_min_y then
+					marker_y = math.max(marker_y, favorite_marker_min_y)
+				end
+
+				style.offset[2] = marker_y
 
 				local runtime_hotspot_style = content and content.better_inventory_myfavorites_hotspot_style
 
@@ -2261,6 +2288,11 @@ local function synchronize_myfavorites_marker(widget)
 	local offset_y = equipped_visible and 33 or 7
 	local favorite_shift_y = favorite_style and favorite_style.better_inventory_native_curio_favorite_shift_y or 0
 	offset_y = offset_y + favorite_shift_y
+	local favorite_marker_min_y = favorite_style and favorite_style.better_inventory_native_curio_favorite_min_y
+
+	if favorite_marker_min_y then
+		offset_y = math.max(offset_y, favorite_marker_min_y)
+	end
 
 	hotspot_style.offset[2] = offset_y
 

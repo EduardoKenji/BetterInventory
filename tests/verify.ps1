@@ -26,6 +26,7 @@ foreach ($releaseFile in @($releasePackager, $packagingDocumentation)) {
 }
 
 $main = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory.lua") -Raw
+$curioVisualPlan = Get-Content -LiteralPath (Join-Path $projectRoot "docs\v1.9.4-curio-card-visuals-plan.md") -Raw
 
 if ($main -notmatch 'mod:hook\(InventoryWeaponsView,\s*"present_grid_layout"') {
 	throw "The InventoryWeaponsView hook was not found."
@@ -43,8 +44,16 @@ if ($main -notmatch 'mod:hook\(CraftingMechanicusModifyView,\s*"present_grid_lay
 	throw "The Entreat Hadron grid hook was not found."
 }
 
-if ($main -notmatch 'mod:hook\(InventoryView,\s*"_create_entry_widget_from_config"' -or $main -notmatch 'enable_character_overview_melee_mirror' -or $main -notmatch 'enable_character_overview_ranged_mirror' -or $main -notmatch 'enable_character_overview_curio_details' -or $main -notmatch 'character_overview_use_native_curio_overlay' -or $main -notmatch 'configure_native_curio_overlay' -or $main -notmatch 'inner_frame' -or $main -notmatch 'table\.clone\(native_inner_frame\)' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_CONTENT_SHIFT_Y' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_EQUIPPED_ICON_SHIFT_Y' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_HORIZONTAL_PADDING' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_SHIFT_X' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_ITEM_LEVEL_SHIFT_X' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_ITEM_LEVEL_SHIFT_Y' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_MARKER_SHIFT_X' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_FAVORITE_SHIFT_Y' -or $main -notmatch 'level_requirement_met\s*=\s*true') {
+if ($main -notmatch 'mod:hook\(InventoryView,\s*"_create_entry_widget_from_config"' -or $main -notmatch 'enable_character_overview_melee_mirror' -or $main -notmatch 'enable_character_overview_ranged_mirror' -or $main -notmatch 'enable_character_overview_curio_details' -or $main -notmatch 'character_overview_use_native_curio_overlay' -or $main -notmatch 'configure_native_curio_overlay' -or $main -notmatch 'inner_frame' -or $main -notmatch 'table\.clone\(native_inner_frame\)' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_CONTENT_SHIFT_Y' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_EQUIPPED_ICON_SHIFT_Y' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_HORIZONTAL_PADDING' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_SHIFT_X' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_ITEM_LEVEL_SHIFT_X' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_ITEM_LEVEL_SHIFT_Y' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_MARKER_SHIFT_X' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_FAVORITE_SHIFT_Y' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_MARKER_GAP_Y' -or $main -notmatch 'better_inventory_native_curio_favorite_min_y' -or $main -notmatch 'level_requirement_met\s*=\s*true') {
 	throw "Character overview weapon/Curio card integration was not found."
+}
+
+if ($main -notmatch 'display_name\.style\.offset\[1\]\s*=\s*CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_SHIFT_X' -or $main -match 'display_name\.style\.offset\[1\]\s*=\s*CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_HORIZONTAL_PADDING') {
+	throw "Centered native Curio title must use an additive X delta; horizontal inset belongs in the title width."
+}
+
+if ($curioVisualPlan -notmatch 'Coordinate contract and regression guard' -or $curioVisualPlan -notmatch 'offset\[1\].*X' -or $curioVisualPlan -notmatch 'offset\[2\].*Y' -or $curioVisualPlan -notmatch 'Never put a centered pass''s horizontal inset into `offset\[1\]`') {
+	throw "The native Curio coordinate contract is missing from the v1.9.4 visual plan."
 }
 
 if ($main -notmatch 'move_up\s*=\s*9' -or $main -notmatch 'move_down\s*=\s*6' -or $main -notmatch 'move_down\s*=\s*4' -or $main -notmatch 'style\.offset\[2\]\s*=\s*\(style\.offset\[2\]\s*or\s*0\)\s*-\s*6' -or $main -notmatch 'style\.offset\[1\]\s*=\s*math\.max\(style\.offset\[1\]\s*or\s*0,\s*weapon_name_left\)' -or $main -notmatch 'character_overview_curio_name_mode' -or $main -notmatch 'character_overview_curio_font_size_percent' -or $main -notmatch 'curio_name_line_limit\s*=\s*curio_name_mode\s*==\s*"two_lines"\s*and\s*2' -or $main -notmatch 'curio_name_block_height\s*=\s*curio_name_font_size\s*\*\s*curio_name_line_limit\s*\+\s*11' -or $main -notmatch 'stat_style\.offset\[2\]\s*=\s*\(stat_style\.offset\[2\]\s*or\s*0\)\s*\+\s*curio_name_block_height' -or $main -notmatch 'Text\.word_wrap\(ui_renderer,\s*full_name,\s*style,\s*maximum_width\)' -or $main -notmatch 'table\.concat\(wrapped_rows,\s*"\\n"\)' -or $main -notmatch 'style\.font_size\s*=\s*math\.max\(1,\s*math\.floor\(style\.font_size\s*\*\s*curio_font_scale') {
