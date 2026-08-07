@@ -254,7 +254,7 @@ local function configure_character_overview_rarity_strip(blueprint, setting_id)
 	end
 end
 
-local function attach_runtime_marker_styles(widget)
+local function attach_runtime_marker_styles(widget, item_grid)
 	local content = widget and widget.content
 	local styles = widget and widget.style
 
@@ -264,6 +264,17 @@ local function attach_runtime_marker_styles(widget)
 
 	if styles.myfav_hotspot then
 		content.better_inventory_myfavorites_hotspot_style = styles.myfav_hotspot
+
+		if item_grid then
+			local tracked_widgets = item_grid._better_inventory_myfavorites_widgets
+
+			if not tracked_widgets then
+				tracked_widgets = setmetatable({}, { __mode = "k" })
+				item_grid._better_inventory_myfavorites_widgets = tracked_widgets
+			end
+
+			tracked_widgets[widget] = true
+		end
 	end
 
 	for index = 1, #(widget.passes or {}) do
@@ -2559,7 +2570,7 @@ end
 if ensure_class_method(ViewElementGrid, "_create_entry_widget_from_config") then
 	mod:hook(ViewElementGrid, "_create_entry_widget_from_config", function(func, item_grid, config, suffix, callback_name, secondary_callback_name, double_click_callback_name)
 		local widget, alignment_widget = func(item_grid, config, suffix, callback_name, secondary_callback_name, double_click_callback_name)
-		attach_runtime_marker_styles(widget)
+		attach_runtime_marker_styles(widget, item_grid)
 
 		return widget, alignment_widget
 	end)
@@ -2606,11 +2617,16 @@ end
 -- pass is hidden. The input hotspot must still be ready at the correct place.
 if ensure_class_method(ViewElementGrid, "_update_grid_widgets") then
 	mod:hook(ViewElementGrid, "_update_grid_widgets", function(func, item_grid, ...)
-		local results = pack_values(func(item_grid, ...))
-		local widgets = item_grid and item_grid._grid_widgets
+		local tracked_widgets = item_grid and item_grid._better_inventory_myfavorites_widgets
 
-		for index = 1, #(widgets or {}) do
-			synchronize_myfavorites_marker(widgets[index])
+		if not tracked_widgets or next(tracked_widgets) == nil then
+			return func(item_grid, ...)
+		end
+
+		local results = pack_values(func(item_grid, ...))
+
+		for widget in pairs(tracked_widgets) do
+			synchronize_myfavorites_marker(widget)
 		end
 
 		return unpack_values(results, 1, results.n)

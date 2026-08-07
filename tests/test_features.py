@@ -627,6 +627,34 @@ def main() -> None:
     )
     assert sorted_ids == ("equipped", "favorite", "ordinary")
 
+    # Sort priority is a compatibility boundary. A partial view or item
+    # utility failure must degrade to native ordering rather than abort sort.
+    original_equipped_query = sortable_view.is_item_equipped_in_any_slot
+    sortable_view.is_item_equipped_in_any_slot = lua.eval(
+        "function() error('simulated equipped-query failure') end"
+    )
+    failure_safe_sort = lua.execute(
+        "local view, high, low = ...; return view._sort_options[1].sort_function(high, low)",
+        sortable_view,
+        lua.table_from({"item": lua.table_from({"gear_id": "high", "rating": 100, "slots": lua.table_from(["slot_attachment_1"])})}),
+        lua.table_from({"item": lua.table_from({"gear_id": "low", "rating": 1, "slots": lua.table_from(["slot_attachment_1"])})}),
+    )
+    assert failure_safe_sort is True
+    sortable_view.is_item_equipped_in_any_slot = original_equipped_query
+
+    original_favorite_query = globals_.TestItems.is_item_id_favorited
+    globals_.TestItems.is_item_id_favorited = lua.eval(
+        "function() error('simulated favorite-query failure') end"
+    )
+    failure_safe_favorite_sort = lua.execute(
+        "local view, high, low = ...; return view._sort_options[1].sort_function(high, low)",
+        sortable_view,
+        lua.table_from({"item": lua.table_from({"gear_id": "high", "rating": 100})}),
+        lua.table_from({"item": lua.table_from({"gear_id": "low", "rating": 1})}),
+    )
+    assert failure_safe_favorite_sort is True
+    globals_.TestItems.is_item_id_favorited = original_favorite_query
+
     mod.settings.prioritize_perfect_roll_weapons = True
     perfect_sort_ids = lua.execute(
         r"""
@@ -761,6 +789,7 @@ def main() -> None:
             set_pivot_offset = function(self, x, y)
                 self.pivot_x = x
                 self.pivot_y = y
+                self.pivot_set_calls = (self.pivot_set_calls or 0) + 1
             end,
             set_visibility = function(self, visible)
                 self.visible = visible
@@ -818,6 +847,9 @@ def main() -> None:
     assert armoury_view._better_inventory_armoury_native_sort_panel.visible is True
     assert globals_.TestArmouryPanel.pivot_x == 1450
     assert globals_.TestArmouryPanel.pivot_y == 100
+    pivot_set_calls_after_setup = globals_.TestArmouryPanel.pivot_set_calls
+    features.update_armoury_native_sort_panel(armoury_view)
+    assert globals_.TestArmouryPanel.pivot_set_calls == pivot_set_calls_after_setup
     assert globals_.TestArmouryLegend.display_name == "better_inventory_toggle_panel_focus"
     assert globals_.TestArmouryLegend.input_action == "navigate_secondary_right_pressed"
     assert globals_.TestArmouryLegend.alignment == "right_alignment"

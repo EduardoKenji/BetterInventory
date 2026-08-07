@@ -529,9 +529,12 @@ def main() -> None:
     grid_widget_factory = lua.eval(
         "function(item_grid, config) return config.widget, config.alignment_widget end"
     )
+    item_grid = lua.table_from(
+        {"_grid_widgets": lua.table_from({1: grid_widget})}
+    )
     returned_widget, returned_alignment = globals_.captured_grid_widget_hook(
         grid_widget_factory,
-        lua.table_from({}),
+        item_grid,
         lua.table_from(
             {"widget": grid_widget, "alignment_widget": grid_alignment_widget}
         ),
@@ -555,10 +558,6 @@ def main() -> None:
     original_grid_update = lua.eval(
         "function(item_grid, state) state.count = state.count + 1 return 'updated', nil, 'tail' end"
     )
-    item_grid = lua.table_from(
-        {"_grid_widgets": lua.table_from({1: grid_widget})}
-    )
-
     # MyFavorites only / native equipped state: favorite state never controls
     # placement, including transitions while the favorite icon is hidden.
     update_result, update_nil, update_tail = globals_.captured_grid_update_hook(
@@ -623,6 +622,32 @@ def main() -> None:
     item_grid._grid_widgets[1] = no_myfavorites_widget
     globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
     assert no_myfavorites_widget.style.favorite_icon.offset[2] == 7
+
+    # A grid that was not marked during widget creation must take the native
+    # fast path, even if a stale-looking marker table is present on a widget.
+    untracked_marker_widget = lua.table_from(
+        {
+            "content": lua.table_from(
+                {
+                    "better_inventory_myfavorites_hotspot_style": lua.table_from(
+                        {
+                            "horizontal_alignment": "right",
+                            "vertical_alignment": "top",
+                            "offset": lua.table_from({1: -8, 2: 1, 3: 17}),
+                        }
+                    ),
+                }
+            ),
+            "style": lua.table_from(
+                {"favorite_icon": lua.table_from({"offset": lua.table_from({1: -8, 2: 1, 3: 16})})}
+            ),
+        }
+    )
+    untracked_grid = lua.table_from(
+        {"_grid_widgets": lua.table_from({1: untracked_marker_widget})}
+    )
+    globals_.captured_grid_update_hook(original_grid_update, untracked_grid, grid_update_calls)
+    assert untracked_marker_widget.content.better_inventory_myfavorites_hotspot_style.offset[2] == 1
 
     credits_view = lua.table_from({"__class_name": "CreditsVendorView"})
     credits_definitions = lua.table_from({})

@@ -2243,8 +2243,34 @@ local function item_sorting_custom_option_start(view)
 end
 
 local function item_sorting_options_signature(view)
-	if not item_sorting_is_enabled() then
+	local item_sorting_active = item_sorting_is_enabled()
+
+	if not item_sorting_active then
+		if view and view._better_inventory_item_sorting_signature_cache and view._better_inventory_item_sorting_signature_cache.enabled ~= false then
+			view._better_inventory_item_sorting_signature_cache = {
+				enabled = false,
+				value = "",
+			}
+			view._better_inventory_item_sorting_signature_poll = 0
+		end
+
 		return ""
+	end
+
+	if view then
+		local cache = view._better_inventory_item_sorting_signature_cache
+		local poll = (view._better_inventory_item_sorting_signature_poll or 0) + 1
+
+		view._better_inventory_item_sorting_signature_poll = poll
+
+		-- ItemSorting settings are external to BetterInventory. Keep a bounded
+		-- compatibility poll, but avoid rebuilding the signature table/string on
+		-- every idle vendor or inventory frame.
+		if cache and cache.enabled == true and poll < 15 then
+			return cache.value
+		end
+
+		view._better_inventory_item_sorting_signature_poll = 0
 	end
 
 	local sort_options = view and view._sort_options or {}
@@ -2257,7 +2283,22 @@ local function item_sorting_options_signature(view)
 		parts[#parts + 1] = tostring(sort_options[index].display_name or index)
 	end
 
-	return table.concat(parts, "|")
+	local signature = table.concat(parts, "|")
+
+	if view then
+		local cache = view._better_inventory_item_sorting_signature_cache
+
+		if cache and cache.enabled == true and cache.value == signature then
+			return cache.value
+		end
+
+		view._better_inventory_item_sorting_signature_cache = {
+			enabled = true,
+			value = signature,
+		}
+	end
+
+	return signature
 end
 
 local function panel_item_sorting_option_entry(view, option, option_index)
@@ -2747,6 +2788,8 @@ Features.preserve_item_sorting_native_options = function(view, selected_display_
 	end
 
 	view._sort_options = options
+	view._better_inventory_item_sorting_signature_cache = nil
+	view._better_inventory_item_sorting_signature_poll = 0
 	local selected_index = 1
 
 	if selected_display_name ~= nil then
@@ -3606,8 +3649,10 @@ Features.update_armoury_native_sort_panel = function(view)
 
 	local x, y = armoury_native_sort_panel_position(view)
 
-	if type(panel.set_pivot_offset) == "function" then
+	if type(panel.set_pivot_offset) == "function" and (view._better_inventory_armoury_native_sort_pivot_x ~= x or view._better_inventory_armoury_native_sort_pivot_y ~= y) then
 		panel:set_pivot_offset(x, y)
+		view._better_inventory_armoury_native_sort_pivot_x = x
+		view._better_inventory_armoury_native_sort_pivot_y = y
 	end
 
 	return true
@@ -3701,14 +3746,23 @@ local function item_priority(view, layout_entry)
 	end
 
 	local slots = item.slots
-	local equipped = slots and type(view.is_item_equipped_in_any_slot) == "function" and view:is_item_equipped_in_any_slot(item, slots)
+	local equipped = false
+
+	if slots and type(view.is_item_equipped_in_any_slot) == "function" then
+		local equipped_ok, equipped_value = pcall(view.is_item_equipped_in_any_slot, view, item, slots)
+		equipped = equipped_ok and equipped_value == true
+	end
 
 	if equipped then
 		return 2
 	end
 
-	if item.gear_id and Items.is_item_id_favorited(item.gear_id) then
-		return 1
+	if item.gear_id and type(Items.is_item_id_favorited) == "function" then
+		local favorite_ok, favorite_value = pcall(Items.is_item_id_favorited, item.gear_id)
+
+		if favorite_ok and favorite_value == true then
+			return 1
+		end
 	end
 
 	return 0
