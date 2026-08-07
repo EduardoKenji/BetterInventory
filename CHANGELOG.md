@@ -1,6 +1,12 @@
 # BetterInventory changelog
 
-## 1.9.3 - Unreleased
+## 1.9.4 - Unreleased
+
+### Planned
+
+- Fix Curio rarity colour strips and add an optional native Curio visual overlay for detailed Character Overview cards. See `docs/v1.9.4-curio-card-visuals-plan.md`.
+
+## 1.9.3 - 2026-08-07
 
 ### Implemented
 
