@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from lupa import LuaRuntime
+from coverage_support import InstrumentedLuaRuntime as LuaRuntime
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -236,9 +236,13 @@ def main() -> None:
         }
         """
     )
-    curio_values = lua.execute(CURIO_VALUES_PATH.read_text(encoding="utf-8"))
+    curio_values = lua.execute(
+        CURIO_VALUES_PATH.read_text(encoding="utf-8"), name=str(CURIO_VALUES_PATH)
+    )
     lua.globals().TestCurioValues = curio_values
-    features = lua.execute(FEATURES_PATH.read_text(encoding="utf-8"))
+    features = lua.execute(
+        FEATURES_PATH.read_text(encoding="utf-8"), name=str(FEATURES_PATH)
+    )
     lua.globals().TestFeatures = features
     lua.execute(
         r"""

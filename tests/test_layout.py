@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from lupa import LuaRuntime
+from coverage_support import InstrumentedLuaRuntime as LuaRuntime
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -601,7 +601,9 @@ def main() -> None:
         """
     )
 
-    layout = lua.execute(LAYOUT_PATH.read_text(encoding="utf-8"))
+    layout = lua.execute(
+        LAYOUT_PATH.read_text(encoding="utf-8"), name=str(LAYOUT_PATH)
+    )
     globals_ = lua.globals()
     mod = globals_.test_mod
     blueprint = globals_.test_blueprint
@@ -3676,7 +3678,9 @@ def main() -> None:
 
     # DMF formats every localized value through string.format. Literal percent
     # signs therefore need to be escaped as %% in the source string.
-    localization = lua.execute(LOCALIZATION_PATH.read_text(encoding="utf-8"))
+    localization = lua.execute(
+        LOCALIZATION_PATH.read_text(encoding="utf-8"), name=str(LOCALIZATION_PATH)
+    )
     format_string = lua.eval("string.format")
 
     for _, localized_values in localization.items():

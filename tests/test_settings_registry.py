@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from lupa import LuaRuntime
+from coverage_support import InstrumentedLuaRuntime as LuaRuntime
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -22,7 +22,9 @@ DATA_PATH = (
 
 def main() -> None:
     lua = LuaRuntime(unpack_returned_tuples=True)
-    registry = lua.execute(REGISTRY_PATH.read_text(encoding="utf-8"))
+    registry = lua.execute(
+        REGISTRY_PATH.read_text(encoding="utf-8"), name=str(REGISTRY_PATH)
+    )
 
     settings = lua.table_from(
         [
@@ -67,7 +69,7 @@ def main() -> None:
         "function get_mod() return {localize = function(_, id) return id end} end; "
         "function require(_) return {max_num_characters = 10} end"
     )
-    data = lua.execute(DATA_PATH.read_text(encoding="utf-8"))
+    data = lua.execute(DATA_PATH.read_text(encoding="utf-8"), name=str(DATA_PATH))
     ok, count, duplicates = registry.register(data.options.widgets)
 
     assert ok is True

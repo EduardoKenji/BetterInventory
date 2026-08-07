@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from lupa import LuaRuntime
+from coverage_support import InstrumentedLuaRuntime as LuaRuntime
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -208,7 +208,9 @@ def main() -> None:
         }
         """
     )
-    customization = lua.execute(MODULE_PATH.read_text(encoding="utf-8"))
+    customization = lua.execute(
+        MODULE_PATH.read_text(encoding="utf-8"), name=str(MODULE_PATH)
+    )
     globals_ = lua.globals()
     mod = globals_.test_mod
     settings = globals_.settings

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from lupa import LuaRuntime
+from coverage_support import InstrumentedLuaRuntime as LuaRuntime
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -15,7 +15,9 @@ CONTRACTS_PATH = (
 
 def main() -> None:
     lua = LuaRuntime(unpack_returned_tuples=True)
-    contracts = lua.execute(CONTRACTS_PATH.read_text(encoding="utf-8"))
+    contracts = lua.execute(
+        CONTRACTS_PATH.read_text(encoding="utf-8"), name=str(CONTRACTS_PATH)
+    )
 
     ok, value = contracts.safe_call(lua.eval("function(value) return value + 1 end"), 4)
     assert ok is True

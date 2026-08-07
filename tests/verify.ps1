@@ -5,6 +5,7 @@ param(
 $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $scriptRoot = Join-Path $projectRoot "scripts\mods\BetterInventory"
+$testRunner = Join-Path $PSScriptRoot "run_tests.py"
 $runtimeLuaFiles = @(Get-ChildItem -LiteralPath $scriptRoot -Filter "BetterInventory*.lua" -File | Sort-Object Name)
 $requiredFiles = @(
 	(Join-Path $projectRoot "BetterInventory.mod")
@@ -552,12 +553,14 @@ if ($hasLuaParser) {
 }
 
 if ($hasLupa) {
-	foreach ($behaviorTest in @("test_layout.py", "test_settings.py", "test_features.py", "test_contracts.py", "test_settings_registry.py", "test_curio_acquisition.py", "test_item_customization.py")) {
-		py -3 (Join-Path $PSScriptRoot $behaviorTest)
+	if (-not (Test-Path -LiteralPath $testRunner -PathType Leaf)) {
+		throw "Behavior test runner is missing: $testRunner"
+	}
 
-		if ($LASTEXITCODE -ne 0) {
-			throw "Behavior test failed: $behaviorTest"
-		}
+	py -3 $testRunner --timeout-seconds 45
+
+	if ($LASTEXITCODE -ne 0) {
+		throw "Timeout-bounded behavior test runner failed."
 	}
 }
 

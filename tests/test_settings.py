@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from lupa import LuaRuntime
+from coverage_support import InstrumentedLuaRuntime as LuaRuntime
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -313,7 +313,7 @@ def main() -> None:
         end
         """
     )
-    lua.execute(MAIN_PATH.read_text(encoding="utf-8"))
+    lua.execute(MAIN_PATH.read_text(encoding="utf-8"), name=str(MAIN_PATH))
     globals_ = lua.globals()
     mod = globals_.test_mod
     settings = globals_.settings
@@ -1655,8 +1655,10 @@ def main() -> None:
     assert entries_by_id["weapon_modifier_lowest_color_b"].disabled is True
     assert entries_by_id["weapon_modifier_lowest_color_opacity"].disabled is True
 
-    data = lua.execute(DATA_PATH.read_text(encoding="utf-8"))
-    localization = lua.execute(LOCALIZATION_PATH.read_text(encoding="utf-8"))
+    data = lua.execute(DATA_PATH.read_text(encoding="utf-8"), name=str(DATA_PATH))
+    localization = lua.execute(
+        LOCALIZATION_PATH.read_text(encoding="utf-8"), name=str(LOCALIZATION_PATH)
+    )
     defaults = {}
     setting_ids = set()
 
@@ -2071,7 +2073,7 @@ def main() -> None:
     # A failed hot-reload dependency must disable that feature module once. It
     # must never leave a boolean upvalue that raises again on every frame.
     globals_.fail_feature_load = True
-    lua.execute(MAIN_PATH.read_text(encoding="utf-8"))
+    lua.execute(MAIN_PATH.read_text(encoding="utf-8"), name=str(MAIN_PATH))
     assert globals_.captured_module_errors == 1
     globals_.test_mod.update(0.016)
     globals_.test_mod.update(0.016)
@@ -2081,7 +2083,7 @@ def main() -> None:
     # before any hook indexes the missing module.
     globals_.fail_feature_load = False
     globals_.fail_layout_load = True
-    lua.execute(MAIN_PATH.read_text(encoding="utf-8"))
+    lua.execute(MAIN_PATH.read_text(encoding="utf-8"), name=str(MAIN_PATH))
     assert globals_.captured_module_errors == 2
     globals_.test_mod.update(0.016)
     assert globals_.captured_module_errors == 2
