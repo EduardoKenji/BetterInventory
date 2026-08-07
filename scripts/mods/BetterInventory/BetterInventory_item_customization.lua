@@ -19,7 +19,9 @@ local show_input_field = false
 local installed = false
 local persistence_pending = false
 local persistence_retry_elapsed = 0
+local persistence_attempts = 0
 local persistence_last_outcome = "idle"
+local MAX_PERSISTENCE_ATTEMPTS = 3
 local pending_deleted_gear_ids = {}
 local name_it_legend_entries = setmetatable({}, { __mode = "k" })
 
@@ -71,6 +73,7 @@ end
 local function mark_persistence_pending()
 	persistence_pending = true
 	persistence_last_outcome = "pending"
+	persistence_attempts = 0
 	-- A new mutation should be eligible for the next runtime flush. Once a
 	-- save attempt is made, unknown/failing outcomes are retried at a bounded
 	-- cadence instead of every frame.
@@ -92,19 +95,32 @@ local function flush_persistence(force)
 		return false
 	end
 
+	if persistence_attempts >= MAX_PERSISTENCE_ATTEMPTS then
+		persistence_pending = false
+		persistence_last_outcome = "exhausted"
+		return false
+	end
+
 	persistence_retry_elapsed = 0
+	persistence_attempts = persistence_attempts + 1
 
 	local resolver = rawget(_G, "get_mod")
 
 	if type(resolver) ~= "function" then
-		persistence_last_outcome = "unavailable"
+		persistence_last_outcome = persistence_attempts >= MAX_PERSISTENCE_ATTEMPTS and "unavailable_exhausted" or "unavailable"
+		if persistence_attempts >= MAX_PERSISTENCE_ATTEMPTS then
+			persistence_pending = false
+		end
 		return false
 	end
 
 	local ok, dmf = pcall(resolver, "DMF")
 
 	if not ok or type(dmf) ~= "table" or type(dmf.save_unsaved_settings_to_file) ~= "function" then
-		persistence_last_outcome = "unavailable"
+		persistence_last_outcome = persistence_attempts >= MAX_PERSISTENCE_ATTEMPTS and "unavailable_exhausted" or "unavailable"
+		if persistence_attempts >= MAX_PERSISTENCE_ATTEMPTS then
+			persistence_pending = false
+		end
 		return false
 	end
 
@@ -119,10 +135,23 @@ local function flush_persistence(force)
 	if save_ok and save_result == true then
 		persistence_pending = false
 		persistence_last_outcome = "saved"
+	elseif save_ok and save_result == nil then
+		-- DMF's normal implementation delegates the actual application-setting
+		-- write and returns no value. It cannot report durability to us, but the
+		-- call itself is the complete obligation BetterInventory owns. Retrying
+		-- this path forever causes repeated writes and misleading warnings.
+		persistence_pending = false
+		persistence_last_outcome = "delegated"
 	elseif not save_ok then
-		persistence_last_outcome = "error"
+		persistence_last_outcome = persistence_attempts >= MAX_PERSISTENCE_ATTEMPTS and "error_exhausted" or "error"
+		if persistence_attempts >= MAX_PERSISTENCE_ATTEMPTS then
+			persistence_pending = false
+		end
 	else
-		persistence_last_outcome = "unknown"
+		persistence_last_outcome = persistence_attempts >= MAX_PERSISTENCE_ATTEMPTS and "rejected_exhausted" or "rejected"
+		if persistence_attempts >= MAX_PERSISTENCE_ATTEMPTS then
+			persistence_pending = false
+		end
 	end
 
 	return save_ok and save_result == true
