@@ -1,5 +1,11 @@
 # BetterInventory changelog
 
+## 1.9.3 - Unreleased
+
+### Implemented
+
+- Added optional Operative Selection scanning, default-on account-scoped Armoury rotation throttling, backend-boundary timing, and optional idle refresh rescans for the Automatic Curio Buyer. See `docs/v1.9.3-automatic-curio-buyer-plan.md` for the implementation handoff and in-game validation matrix.
+
 ## 1.9.2 - 2026-08-06
 
 ### Fixed

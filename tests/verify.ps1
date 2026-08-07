@@ -162,6 +162,22 @@ if ($data -notmatch 'setting_id\s*=\s*"automatic_curio_min_health"[\s\S]*?defaul
 	throw "Automatic Curio acquisition must keep its 21% Health, 17% Toughness and quiet diagnostic defaults."
 }
 
+if ($data -notmatch 'setting_id\s*=\s*"automatic_curio_scan_operative_selection"[\s\S]*?default_value\s*=\s*false' -or $data -notmatch 'setting_id\s*=\s*"automatic_curio_once_per_store_rotation"[\s\S]*?default_value\s*=\s*true' -or $data -notmatch 'setting_id\s*=\s*"automatic_curio_rescan_on_store_refresh"[\s\S]*?default_value\s*=\s*false') {
+	throw "Automatic Curio scheduling settings or their safe defaults are missing."
+}
+
+if ($main -notmatch 'MainMenuView' -or $main -notmatch 'hook_safe\(MainMenuView,\s*"on_enter"' -or $main -notmatch 'hook_safe\(MainMenuView,\s*"on_exit"' -or $main -notmatch 'CurioAcquisition\.leave_morningstar') {
+	throw "Automatic Curio context lifecycle hooks are missing or unguarded."
+}
+
+if ($curioAcquisition -notmatch 'get_server_time' -or $curioAcquisition -notmatch 'currentRotationEnd' -or $curioAcquisition -notmatch 'validTo' -or $curioAcquisition -notmatch 'automatic_curio_once_per_store_rotation' -or $curioAcquisition -notmatch 'automatic_curio_rescan_on_store_refresh' -or $curioAcquisition -notmatch 'STORE_ROTATION_GRACE_MS') {
+	throw "Automatic Curio rotation scheduling is missing backend-time, boundary, throttle or idle-refresh safeguards."
+}
+
+if ($curioAcquisition -match 'os\.time\s*\(') {
+	throw "Automatic Curio rotation eligibility must not use the local OS clock."
+}
+
 if ($data -notmatch 'setting_id\s*=\s*"automatic_curio_target_mode"[\s\S]*?default_value\s*=\s*"characters"' -or $data -notmatch 'setting_id\s*=\s*"automatic_curio_characters_group"' -or $curioAcquisition -notmatch 'No usable characters were returned; safely falling back to class targeting') {
 	throw "Automatic Curio acquisition must default to character targeting and safely fall back to classes when no usable characters are returned."
 }

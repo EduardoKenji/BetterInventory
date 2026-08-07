@@ -238,8 +238,14 @@ def main() -> None:
             end,
         }
 
+        server_clock = 100000
+        main_menu_active = false
+
         settings = {
             enable_automatic_curio_acquisition = true,
+			automatic_curio_scan_operative_selection = false,
+			automatic_curio_once_per_store_rotation = false,
+			automatic_curio_rescan_on_store_refresh = false,
 			automatic_curio_target_mode = "characters",
             automatic_curio_min_item_level = 410,
             automatic_curio_min_health = 21,
@@ -368,6 +374,10 @@ def main() -> None:
             },
             player = {
                 local_player = function()
+                    if main_menu_active then
+                        return nil
+                    end
+
                     return {
                         character_id = function()
                             return "currently-selected-character"
@@ -385,7 +395,7 @@ def main() -> None:
                     return true
                 end,
                 get_server_time = function()
-                    return 100000
+                    return server_clock
                 end,
                 interfaces = {
                     store = {
@@ -444,6 +454,11 @@ def main() -> None:
                         wallet_cache_invalidated = true
                     end,
                 },
+            },
+            ui = {
+                view_active = function(self, view_name)
+                    return main_menu_active and view_name == "main_menu_view"
+                end,
             },
             event = {
                 trigger = function(self, event_name, payload, secondary_payload)
@@ -847,6 +862,81 @@ def main() -> None:
     slots = module.character_slots(globals_.test_mod)
     assert slots[1].character_id == "recreated-psyker"
     assert module.character_is_enabled(globals_.test_mod, "recreated-psyker") is True
+
+    # v1.9.3 scheduling uses backend milliseconds and the next store boundary,
+    # not a rolling 60-minute timer. The fallback is used by this fixture
+    # because its synthetic storefront intentionally has no expiry metadata.
+    assert module._test.fallback_rotation_boundary(100000) == 3600000
+    assert module._test.sane_rotation_boundary(3600000, 100000) == 3600000
+    assert module._test.sane_rotation_boundary(100000000, 100000) is None
+    observed_storefront = lua.execute(
+        "return {data = {currentRotationEnd = 1800000, catalog = {validTo = 1700000}, personal = {{price = {validTo = 1600000}}}}}"
+    )
+    assert module._test.observed_rotation_boundary(observed_storefront) == 1600000
+
+    globals_.settings.enable_automatic_curio_acquisition = True
+    globals_.settings.automatic_curio_once_per_store_rotation = True
+    globals_.settings.automatic_curio_scan_operative_selection = False
+    globals_.settings.automatic_curio_rescan_on_store_refresh = False
+    globals_.settings.automatic_curio_buy_health = True
+    globals_.settings.automatic_curio_buy_toughness = False
+    globals_.wallet_balance = 100000
+    globals_.health_item.traits[1].id = "health_trait"
+    globals_.health_item.traits[1].value = 21
+    globals_.test_offer.offerId = "scheduled-offer-health"
+    globals_.revalidated_offer.offerId = "scheduled-offer-health"
+    globals_.server_clock = 100000
+    purchases_before_rotation_test = globals_.purchase_count
+    module.begin_morningstar_pass(globals_.test_mod)
+    module.update(globals_.test_mod, 6, False)
+    assert globals_.purchase_count == purchases_before_rotation_test + 1
+
+    rotation_history = globals_.settings["_automatic_curio_rotation_history"]
+    first_next_refresh = rotation_history.accounts["default"].next_refresh_at_ms
+    assert first_next_refresh == 3600000
+    assert module._test.rotation_gate_status(globals_.test_mod) is False
+
+    # A second context entry during the same rotation must not buy again.
+    module.begin_morningstar_pass(globals_.test_mod)
+    module.update(globals_.test_mod, 6, False)
+    assert globals_.purchase_count == purchases_before_rotation_test + 1
+
+    # One second past reset grace is a new rotation even though less than an
+    # hour elapsed since a hypothetical 17:59 scan.
+    globals_.server_clock = first_next_refresh + 5000
+    module.begin_morningstar_pass(globals_.test_mod)
+    module.update(globals_.test_mod, 6, False)
+    assert globals_.purchase_count == purchases_before_rotation_test + 2
+
+    # Operative Selection can be active without a local Morningstar player.
+    globals_.main_menu_active = True
+    globals_.settings.automatic_curio_scan_operative_selection = True
+    rotation_history = globals_.settings["_automatic_curio_rotation_history"]
+    second_next_refresh = rotation_history.accounts["default"].next_refresh_at_ms
+    module.enter_operative_selection(globals_.test_mod)
+    module.update(globals_.test_mod, 1, False)
+    assert globals_.purchase_count == purchases_before_rotation_test + 2
+
+    globals_.server_clock = second_next_refresh + 5000
+    module.leave_operative_selection()
+    module.enter_operative_selection(globals_.test_mod)
+    module.update(globals_.test_mod, 1, False)
+    assert globals_.purchase_count == purchases_before_rotation_test + 3
+
+    # Idle refresh watcher arms once at the boundary, then performs one pass
+    # on the following scheduler tick. It must not loop every frame.
+    globals_.settings.automatic_curio_rescan_on_store_refresh = True
+    rotation_history = globals_.settings["_automatic_curio_rotation_history"]
+    third_next_refresh = rotation_history.accounts["default"].next_refresh_at_ms
+    globals_.server_clock = third_next_refresh + 5000
+    purchases_before_idle_refresh = globals_.purchase_count
+    module.update(globals_.test_mod, 1, False)
+    assert globals_.purchase_count == purchases_before_idle_refresh
+    module.update(globals_.test_mod, 1, False)
+    assert globals_.purchase_count == purchases_before_idle_refresh + 1
+    module.update(globals_.test_mod, 1, False)
+    assert globals_.purchase_count == purchases_before_idle_refresh + 1
+    module.cancel()
 
     print("BetterInventory automatic Curio acquisition tests passed.")
 

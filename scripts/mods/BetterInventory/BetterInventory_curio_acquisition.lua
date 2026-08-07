@@ -15,8 +15,14 @@ end
 local CurioAcquisition = {}
 
 local MORNINGSTAR_DELAY = 6
+local OPERATIVE_SELECTION_DELAY = 1
 local MAX_SCAN_ATTEMPTS = 3
 local RETRY_DELAY = 5
+local SCHEDULER_POLL_INTERVAL = 1
+local STORE_ROTATION_GRACE_MS = 5000
+local STORE_ROTATION_HOUR_MS = 60 * 60 * 1000
+local MAX_STORE_ROTATION_AHEAD_MS = 2 * STORE_ROTATION_HOUR_MS
+local MAX_ROTATION_HISTORY_ACCOUNTS = 4
 local MAX_OFFER_ERROR_LOGS_PER_SCAN = 5
 local MAX_ERROR_TEXT_LENGTH = 1000
 local PROFILE_DISCOVERY_DELAY = 1
@@ -28,6 +34,7 @@ local CHARACTER_SELECTION_SETTING_ID = "automatic_curio_character_selection"
 local KNOWN_CHARACTERS_SETTING_ID = "_automatic_curio_known_characters"
 local CHARACTER_SLOTS_SETTING_ID = "_automatic_curio_character_slots"
 local OPERATIVE_SLOT_CAPACITY_SETTING_ID = "_automatic_curio_operative_slot_capacity"
+local ROTATION_HISTORY_SETTING_ID = "_automatic_curio_rotation_history"
 local CHARACTER_SLOT_SETTING_PREFIX = "automatic_curio_character_slot_"
 
 local function native_operative_slot_capacity()
@@ -89,6 +96,16 @@ local ARCHETYPE_SETTINGS = {
 }
 
 local state = {
+	active_context = nil,
+	account_key = nil,
+	rotation_history = nil,
+	next_rotation_at_ms = nil,
+	rotation_boundary_ms = nil,
+	ledger_rotation_boundary_ms = nil,
+	context_entry_id = 0,
+	entry_consumed = false,
+	scheduled_reason = nil,
+	scheduler_poll_elapsed = 0,
 	character_selection = nil,
 	character_slots = nil,
 	completed = false,
@@ -213,6 +230,18 @@ local function is_morningstar()
 	return name == "hub" or name == "hub_singleplay"
 end
 
+local function is_operative_selection()
+	local ui_manager = Managers and Managers.ui
+
+	if not ui_manager or type(ui_manager.view_active) ~= "function" then
+		return false
+	end
+
+	local success, active = pcall(ui_manager.view_active, ui_manager, "main_menu_view")
+
+	return success and active == true
+end
+
 local function current_character_id()
 	local player_manager = Managers and Managers.player
 	local player
@@ -273,6 +302,226 @@ local function server_time()
 	end
 end
 
+local function current_account_key()
+	local backend = Managers and Managers.backend
+
+	if backend and type(backend.account_id) == "function" then
+		local success, account_id = pcall(backend.account_id, backend)
+
+		if success and account_id ~= nil and tostring(account_id) ~= "" then
+			return tostring(account_id)
+		end
+	end
+
+	local player_manager = Managers and Managers.player
+	local player
+
+	if player_manager and type(player_manager.local_player) == "function" then
+		local success, value = pcall(player_manager.local_player, player_manager, 1)
+
+		player = success and value or nil
+	end
+
+	if player and not player.__deleted and type(player.account_id) == "function" then
+		local success, account_id = pcall(player.account_id, player)
+
+		if success and account_id ~= nil and tostring(account_id) ~= "" then
+			return tostring(account_id)
+		end
+	end
+
+	return "default"
+end
+
+local function sane_rotation_boundary(value, now)
+	value = tonumber(value)
+	now = tonumber(now) or server_time()
+
+	if not value or value ~= value or not now or value <= now then
+		return
+	end
+
+	if value > now + MAX_STORE_ROTATION_AHEAD_MS then
+		return
+	end
+
+	return math.floor(value + 0.5)
+end
+
+local function fallback_rotation_boundary(now)
+	now = tonumber(now)
+
+	if not now then
+		return
+	end
+
+	return (math.floor(now / STORE_ROTATION_HOUR_MS) + 1) * STORE_ROTATION_HOUR_MS
+end
+
+local function sanitize_rotation_history(source, now)
+	local result = {
+		schema_version = 1,
+		accounts = {},
+	}
+
+	if type(source) ~= "table" or type(source.accounts) ~= "table" then
+		return result
+	end
+
+	for key, entry in pairs(source.accounts) do
+		if type(entry) == "table" then
+			local account = {}
+			local next_refresh_at_ms = tonumber(entry.next_refresh_at_ms)
+			local last_successful_scan_at_ms = tonumber(entry.last_successful_scan_at_ms)
+			local last_used_at_ms = tonumber(entry.last_used_at_ms)
+
+			if next_refresh_at_ms and next_refresh_at_ms > 0 and (not now or next_refresh_at_ms <= now + MAX_STORE_ROTATION_AHEAD_MS) then
+				account.next_refresh_at_ms = math.floor(next_refresh_at_ms + 0.5)
+			end
+
+			if last_successful_scan_at_ms and last_successful_scan_at_ms > 0 then
+				account.last_successful_scan_at_ms = math.floor(last_successful_scan_at_ms + 0.5)
+			end
+
+			if last_used_at_ms and last_used_at_ms > 0 then
+				account.last_used_at_ms = math.floor(last_used_at_ms + 0.5)
+			end
+
+			if type(entry.last_context) == "string" and #entry.last_context <= 32 then
+				account.last_context = entry.last_context
+			end
+
+			if account.next_refresh_at_ms or account.last_successful_scan_at_ms or account.last_used_at_ms then
+				result.accounts[tostring(key)] = account
+			end
+		end
+	end
+
+	return result
+end
+
+local function ensure_rotation_history(mod)
+	local account_key = current_account_key()
+
+	if state.account_key == account_key and state.rotation_history then
+		local entry = state.rotation_history.accounts[account_key]
+
+		if not entry then
+			entry = {}
+			state.rotation_history.accounts[account_key] = entry
+		end
+
+		state.next_rotation_at_ms = entry.next_refresh_at_ms
+
+		return entry
+	end
+
+	if state.account_key and state.account_key ~= account_key then
+		state.token = state.token + 1
+		state.entry_consumed = false
+		state.completed = false
+		state.elapsed = 0
+		state.scan_attempts = 0
+		state.scheduled = enabled(mod)
+		state.started = false
+		state.rotation_boundary_ms = nil
+		state.ledger_rotation_boundary_ms = nil
+		state.profile_discovery_inflight = false
+		state.profile_discovery_pending = true
+		state.profile_discovery_refresh_elapsed = 0
+		state.profile_discovery_token = state.profile_discovery_token + 1
+		processed_offer_keys = {}
+	end
+
+	state.account_key = account_key
+	state.rotation_history = sanitize_rotation_history(mod:get(ROTATION_HISTORY_SETTING_ID), server_time())
+	local entry = state.rotation_history.accounts[account_key]
+
+	if not entry then
+		entry = {}
+		state.rotation_history.accounts[account_key] = entry
+	end
+
+	state.next_rotation_at_ms = entry.next_refresh_at_ms
+	state.rotation_boundary_ms = state.next_rotation_at_ms
+
+	return entry
+end
+
+local function persist_rotation_boundary(mod, boundary_ms, context)
+	local entry = ensure_rotation_history(mod)
+	local now = server_time() or 0
+
+	if not boundary_ms or boundary_ms <= now then
+		return false
+	end
+
+	entry.next_refresh_at_ms = math.floor(boundary_ms + 0.5)
+	entry.last_successful_scan_at_ms = math.floor(now + 0.5)
+	entry.last_used_at_ms = math.floor(now + 0.5)
+	entry.last_context = context
+	state.next_rotation_at_ms = entry.next_refresh_at_ms
+
+	local accounts = state.rotation_history.accounts
+	local account_count = 0
+
+	for _ in pairs(accounts) do
+		account_count = account_count + 1
+	end
+
+	while account_count > MAX_ROTATION_HISTORY_ACCOUNTS do
+		local oldest_key
+		local oldest_time = math.huge
+
+		for key, value in pairs(accounts) do
+			if key ~= state.account_key then
+				local used_at = tonumber(value.last_used_at_ms) or 0
+
+				if used_at < oldest_time then
+					oldest_key = key
+					oldest_time = used_at
+				end
+			end
+		end
+
+		if not oldest_key then
+			break
+		end
+
+		accounts[oldest_key] = nil
+		account_count = account_count - 1
+	end
+
+	local success = pcall(mod.set, mod, ROTATION_HISTORY_SETTING_ID, state.rotation_history, false)
+
+	if not success then
+		log_info(mod, "Could not persist the Automatic Curio Buyer rotation boundary; session memory remains protective.")
+	end
+
+	return success
+end
+
+local function rotation_gate_status(mod)
+	if mod:get("automatic_curio_once_per_store_rotation") == false then
+		return true
+	end
+
+	local now = server_time()
+
+	if not now then
+		return
+	end
+
+	local entry = ensure_rotation_history(mod)
+	local next_refresh_at_ms = tonumber(entry.next_refresh_at_ms or state.next_rotation_at_ms)
+
+	if not next_refresh_at_ms then
+		return true
+	end
+
+	return now >= next_refresh_at_ms + STORE_ROTATION_GRACE_MS
+end
+
 local function compatible_promise(value)
 	return value and type(value.next) == "function" and type(value.catch) == "function"
 end
@@ -300,7 +549,17 @@ local function call_promise(object, method, ...)
 end
 
 local function context_is_current(mod, token)
-	return state.token == token and enabled(mod) and is_morningstar()
+	if state.token ~= token or not enabled(mod) then
+		return false
+	end
+
+	if state.active_context == "morningstar" then
+		return is_morningstar()
+	elseif state.active_context == "operative_selection" then
+		return mod:get("automatic_curio_scan_operative_selection") == true and is_operative_selection()
+	end
+
+	return false
 end
 
 local function archetype_name(profile)
@@ -854,6 +1113,21 @@ local function offer_is_active(offer)
 				return false
 			end
 		end
+	elseif type(offer.price) == "table" then
+		local now = server_time()
+
+		if now then
+			local valid_from = offer.price.validFrom and tonumber(offer.price.validFrom)
+			local valid_to = offer.price.validTo and tonumber(offer.price.validTo)
+
+			if (offer.price.validFrom ~= nil and not valid_from) or (offer.price.validTo ~= nil and not valid_to) then
+				return false
+			end
+
+			if (valid_from and now <= valid_from) or (valid_to and now >= valid_to) then
+				return false
+			end
+		end
 	end
 
 	return true
@@ -1020,6 +1294,33 @@ local function fetch_storefront(profile)
 	return call_promise(store_interface, method, application_time(), profile.character_id)
 end
 
+local function observed_rotation_boundary(storefront)
+	local now = server_time()
+	local data = storefront and storefront.data
+	local boundary
+
+	local function consider(value)
+		local candidate = sane_rotation_boundary(value, now)
+
+		if candidate and (not boundary or candidate < boundary) then
+			boundary = candidate
+		end
+	end
+
+	consider(data and data.currentRotationEnd)
+	consider(data and data.catalog and data.catalog.validTo)
+
+	local offers = data and data.personal
+
+	if type(offers) == "table" then
+		for index = 1, #offers do
+			consider(offers[index] and offers[index].price and offers[index].price.validTo)
+		end
+	end
+
+	return boundary
+end
+
 local function scan_candidates(mod, token)
 	local profiles_service = Managers and Managers.data_service and Managers.data_service.profiles
 
@@ -1043,6 +1344,7 @@ local function scan_candidates(mod, token)
 		local candidates = {}
 		local chain = Promise.resolved()
 		local diagnostics = new_scan_diagnostics()
+		local rotation_boundary_ms
 
 		diagnostics.profiles = #profiles
 
@@ -1068,6 +1370,12 @@ local function scan_candidates(mod, token)
 
 						if type(offers) ~= "table" then
 							return rejected("Armoury storefront returned no personal offers")
+						end
+
+						local observed_boundary = observed_rotation_boundary(storefront)
+
+						if observed_boundary and (not rotation_boundary_ms or observed_boundary < rotation_boundary_ms) then
+							rotation_boundary_ms = observed_boundary
 						end
 
 						diagnostics.storefronts = diagnostics.storefronts + 1
@@ -1126,7 +1434,10 @@ local function scan_candidates(mod, token)
 				return tostring(left.offer_id) < tostring(right.offer_id)
 			end)
 
-			return candidates
+			return {
+				candidates = candidates,
+				rotation_boundary_ms = rotation_boundary_ms,
+			}
 		end)
 	end)
 end
@@ -1499,6 +1810,7 @@ local function finish_pass()
 	state.completed = true
 	state.scheduled = false
 	state.started = false
+	state.scheduled_reason = nil
 end
 
 local function purchase_candidates(mod, token, candidates)
@@ -1552,7 +1864,7 @@ local function purchase_candidates(mod, token, candidates)
 		local reported = report_purchase_outcomes(mod, purchased, insufficient, false)
 
 		if reported then
-			log_diagnostic(mod, string.format("Purchase pass completed with %d purchase(s) and %d insufficient-funds match(es).", #purchased, #insufficient))
+			log_info(mod, string.format("Purchase pass completed with %d purchase(s) and %d insufficient-funds match(es).", #purchased, #insufficient))
 		else
 			notify_no_eligible(mod)
 			log_diagnostic(mod, "No eligible Curios were available after final revalidation.")
@@ -1590,10 +1902,11 @@ local function schedule_scan_retry(mod, token, error_value)
 	end
 
 	state.started = false
-	state.elapsed = MORNINGSTAR_DELAY - RETRY_DELAY
+	state.elapsed = math.max((state.active_context == "operative_selection" and OPERATIVE_SELECTION_DELAY or MORNINGSTAR_DELAY) - RETRY_DELAY, 0)
 	state.scheduled = state.scan_attempts < MAX_SCAN_ATTEMPTS
 
 	if state.scheduled then
+		state.scheduled_reason = "retry"
 		log_info(mod, string.format("Scan attempt %d failed; scheduling a bounded retry: %s", state.scan_attempts, error_text(error_value)))
 	else
 		finish_pass()
@@ -1609,15 +1922,33 @@ local function start_scan(mod)
 	state.scan_attempts = state.scan_attempts + 1
 	log_diagnostic(mod, string.format("Starting all-character Armoury scan attempt %d.", state.scan_attempts))
 
-	scan_candidates(mod, token):next(function(candidates)
+	scan_candidates(mod, token):next(function(scan_result)
 		if not context_is_current(mod, token) then
 			return
 		end
 
 		state.scheduled = false
 
-		if type(candidates) ~= "table" then
+		if type(scan_result) ~= "table" or type(scan_result.candidates) ~= "table" then
 			return schedule_scan_retry(mod, token, "scan returned no candidate list")
+		end
+
+		local candidates = scan_result.candidates
+		local boundary = scan_result.rotation_boundary_ms or fallback_rotation_boundary(server_time())
+
+		if not boundary then
+			return schedule_scan_retry(mod, token, "scan returned no trustworthy store rotation boundary")
+		end
+
+		state.rotation_boundary_ms = boundary
+		state.next_rotation_at_ms = boundary
+		state.ledger_rotation_boundary_ms = boundary
+
+		-- Persist only after the complete storefront scan produced a trustworthy
+		-- boundary, immediately before any purchase POST can be sent. This prevents
+		-- a restart or context transition from replaying the same rotation.
+		if mod:get("automatic_curio_once_per_store_rotation") ~= false then
+			persist_rotation_boundary(mod, boundary, state.active_context)
 		end
 
 		log_diagnostic(mod, string.format("Scan found %d eligible Curio offer(s).", #candidates))
@@ -1633,30 +1964,88 @@ local function start_scan(mod)
 	end)
 end
 
-CurioAcquisition.begin_morningstar_pass = function(mod)
+local function initialize_context(mod, context)
 	state.token = state.token + 1
+	state.active_context = context
+	state.context_entry_id = state.context_entry_id + 1
+	state.entry_consumed = false
 	state.completed = false
 	state.elapsed = 0
 	state.hub_character_id = nil
+	state.scan_attempts = 0
+	state.scheduled = enabled(mod)
+	state.scheduled_reason = "entry"
+	state.started = false
+	state.scheduler_poll_elapsed = 0
 	state.profile_discovery_elapsed = 0
 	state.profile_discovery_inflight = false
 	state.profile_discovery_pending = true
 	state.profile_discovery_refresh_elapsed = 0
 	state.profile_discovery_token = state.profile_discovery_token + 1
+	ensure_rotation_history(mod)
+	state.rotation_boundary_ms = state.next_rotation_at_ms
+
+	if mod:get("automatic_curio_once_per_store_rotation") == false then
+		processed_offer_keys = {}
+	end
+end
+
+local function arm_rotation_refresh(mod)
+	if state.started or state.scheduled or not state.active_context then
+		return
+	end
+
+	state.token = state.token + 1
+	state.completed = false
+	state.elapsed = 0
 	state.scan_attempts = 0
 	state.scheduled = enabled(mod)
+	state.scheduled_reason = "rotation_refresh"
 	state.started = false
+	state.entry_consumed = true
 	processed_offer_keys = {}
+	log_diagnostic(mod, "Scheduled one pass after the Armoury store rotation boundary while remaining in the current context.")
+end
+
+CurioAcquisition.enter_operative_selection = function(mod)
+	if mod:get("automatic_curio_scan_operative_selection") ~= true then
+		return false
+	end
+
+	initialize_context(mod, "operative_selection")
+	return true
+end
+
+CurioAcquisition.leave_operative_selection = function()
+	if state.active_context == "operative_selection" then
+		CurioAcquisition.cancel()
+	end
+end
+
+CurioAcquisition.leave_morningstar = function()
+	if state.active_context == "morningstar" then
+		CurioAcquisition.cancel()
+	end
+end
+
+CurioAcquisition.begin_morningstar_pass = function(mod)
+	initialize_context(mod, "morningstar")
 end
 
 CurioAcquisition.cancel = function()
 	state.token = state.token + 1
+	state.active_context = nil
+	state.entry_consumed = false
 	state.completed = false
 	state.elapsed = 0
 	state.hub_character_id = nil
 	state.scan_attempts = 0
 	state.scheduled = false
+	state.scheduled_reason = nil
 	state.started = false
+	state.next_rotation_at_ms = nil
+	state.rotation_boundary_ms = nil
+	state.profile_discovery_token = state.profile_discovery_token + 1
 end
 
 local function profiles_service()
@@ -1664,7 +2053,7 @@ local function profiles_service()
 end
 
 local function update_profile_discovery(mod, dt)
-	if not is_morningstar() then
+	if not is_morningstar() and not (is_operative_selection() and mod:get("automatic_curio_scan_operative_selection") == true) then
 		return
 	end
 
@@ -1857,19 +2246,47 @@ CurioAcquisition.on_setting_changed = function(mod, setting_id)
 
 	if setting_id == "enable_automatic_curio_acquisition" then
 		if enabled(mod) then
-			-- Let the live Morningstar observer arm a fresh pass. This also handles
-			-- enabling the feature without leaving and re-entering the hub.
-			state.completed = false
-			state.hub_character_id = nil
-			state.scheduled = false
-			state.started = false
-			state.elapsed = 0
-			state.scan_attempts = 0
-			state.token = state.token + 1
+			if state.active_context then
+				initialize_context(mod, state.active_context)
+			else
+				state.completed = false
+				state.scheduled = false
+				state.started = false
+				state.elapsed = 0
+				state.scan_attempts = 0
+				state.token = state.token + 1
+			end
 		else
 			CurioAcquisition.cancel()
 		end
-	elseif setting_id ~= "automatic_curio_diagnostic_logging" and type(setting_id) == "string" and string.sub(setting_id, 1, 16) == "automatic_curio_" and state.started then
+	elseif setting_id == "automatic_curio_scan_operative_selection" then
+		if state.active_context == "operative_selection" and mod:get(setting_id) ~= true then
+			CurioAcquisition.cancel()
+		elseif mod:get(setting_id) == true and is_operative_selection() and enabled(mod) then
+			initialize_context(mod, "operative_selection")
+		end
+	elseif setting_id == "automatic_curio_once_per_store_rotation" then
+		if state.active_context and not state.started then
+			if state.entry_consumed then
+				-- Changing the throttle must not replay an already-consumed entry.
+				-- The next context entry will use the newly selected policy.
+				state.completed = true
+				state.scheduled = false
+				state.scheduled_reason = nil
+			else
+				state.completed = false
+				state.scheduled = true
+				state.scheduled_reason = "entry"
+				state.elapsed = 0
+			end
+		end
+	elseif setting_id == "automatic_curio_rescan_on_store_refresh" then
+		if mod:get(setting_id) ~= true and state.scheduled_reason == "rotation_refresh" and not state.started then
+			state.completed = true
+			state.scheduled = false
+			state.scheduled_reason = nil
+		end
+	elseif setting_id ~= "automatic_curio_diagnostic_logging" and setting_id ~= "automatic_curio_rescan_on_store_refresh" and type(setting_id) == "string" and string.sub(setting_id, 1, 16) == "automatic_curio_" and state.started then
 		-- Changing a destructive filter invalidates every captured offer. Do not
 		-- re-run automatically in the same hub session after a partial transaction.
 		state.token = state.token + 1
@@ -1880,65 +2297,124 @@ CurioAcquisition.on_setting_changed = function(mod, setting_id)
 end
 
 CurioAcquisition.update = function(mod, dt, automatic_discard_busy)
+	ensure_rotation_history(mod)
 	update_profile_discovery(mod, dt)
 
 	if not enabled(mod) then
-		if state.scheduled or state.started or state.hub_character_id then
+		if state.active_context or state.scheduled or state.started then
 			CurioAcquisition.cancel()
 		end
 
 		return
 	end
 
-	local game_mode_name = current_game_mode_name()
-
-	if not game_mode_name then
-		return
+	if not state.active_context then
+		if is_morningstar() then
+			CurioAcquisition.begin_morningstar_pass(mod)
+		elseif is_operative_selection() and mod:get("automatic_curio_scan_operative_selection") == true then
+			CurioAcquisition.enter_operative_selection(mod)
+		else
+			return
+		end
 	end
 
-	if not is_morningstar() then
-		if state.scheduled or state.started or state.hub_character_id then
+	if state.active_context == "morningstar" then
+		if not is_morningstar() then
 			CurioAcquisition.cancel()
+			return
 		end
 
+		local character_id = current_character_id()
+
+		if not character_id then
+			return
+		end
+
+		if not state.hub_character_id then
+			state.hub_character_id = character_id
+			log_diagnostic(mod, "Observed a ready Morningstar session for the scheduled all-character pass.")
+		end
+	elseif state.active_context == "operative_selection" then
+		if mod:get("automatic_curio_scan_operative_selection") ~= true or not is_operative_selection() then
+			CurioAcquisition.cancel()
+			return
+		end
+	else
+		CurioAcquisition.cancel()
 		return
 	end
 
-	local character_id = current_character_id()
+	local now = server_time()
 
-	if not character_id then
-		return
-	end
-
-	if not state.hub_character_id then
-		state.token = state.token + 1
-		state.completed = false
-		state.elapsed = 0
-		state.hub_character_id = character_id
-		state.scan_attempts = 0
-		state.scheduled = true
-		state.started = false
+	if state.next_rotation_at_ms and now and now >= state.next_rotation_at_ms + STORE_ROTATION_GRACE_MS and state.ledger_rotation_boundary_ms == state.next_rotation_at_ms then
+		-- Offer IDs are safe to reuse only after the observed store boundary. A
+		-- fresh ledger lets the new rotation consider the same slot again.
 		processed_offer_keys = {}
-		log_diagnostic(mod, "Scheduled one all-character pass after detecting a ready Morningstar session.")
+		state.ledger_rotation_boundary_ms = nil
 	end
 
-	if state.completed or not state.scheduled or state.started or automatic_discard_busy then
+	if state.completed then
+		state.scheduler_poll_elapsed = state.scheduler_poll_elapsed + (tonumber(dt) or 0)
+
+		if state.scheduler_poll_elapsed < SCHEDULER_POLL_INTERVAL then
+			return
+		end
+
+		state.scheduler_poll_elapsed = 0
+
+		if mod:get("automatic_curio_rescan_on_store_refresh") == true and state.rotation_boundary_ms then
+			local now = server_time()
+
+			if now and now >= state.rotation_boundary_ms + STORE_ROTATION_GRACE_MS then
+				arm_rotation_refresh(mod)
+			end
+		end
+
+		return
+	end
+
+	if not state.scheduled or state.started then
+		return
+	end
+
+	if state.active_context == "morningstar" and automatic_discard_busy then
 		return
 	end
 
 	state.elapsed = state.elapsed + (tonumber(dt) or 0)
+	local delay = state.active_context == "operative_selection" and OPERATIVE_SELECTION_DELAY or MORNINGSTAR_DELAY
 
-	if state.elapsed < MORNINGSTAR_DELAY or not backend_ready() then
+	if state.elapsed < delay or not backend_ready() then
 		return
 	end
 
-	local progression_manager = Managers and Managers.progression
-
-	if progression_manager and type(progression_manager.is_fetching_session_report) == "function" and progression_manager:is_fetching_session_report() then
-		state.elapsed = 0
+	if state.active_context == "operative_selection" and state.profile_discovery_inflight then
+		-- Do not compete with the menu's roster synchronization. The next scheduler
+		-- tick will start the buyer after the shared profile request settles.
 		return
 	end
 
+	local gate = rotation_gate_status(mod)
+
+	if gate == nil then
+		return
+	elseif gate == false then
+		state.entry_consumed = true
+		finish_pass()
+		log_diagnostic(mod, "Skipped scheduled pass because the current Armoury store rotation was already consumed.")
+		return
+	end
+
+	if state.active_context == "morningstar" then
+		local progression_manager = Managers and Managers.progression
+
+		if progression_manager and type(progression_manager.is_fetching_session_report) == "function" and progression_manager:is_fetching_session_report() then
+			state.elapsed = 0
+			return
+		end
+	end
+
+	state.entry_consumed = true
 	start_scan(mod)
 end
 
@@ -1950,11 +2426,15 @@ CurioAcquisition._test = {
 	candidate_key = candidate_key,
 	character_slots = known_character_slots,
 	class_is_enabled = class_is_enabled,
+	fallback_rotation_boundary = fallback_rotation_boundary,
 	maximum_operative_slots = maximum_operative_slots,
 	normalized_offer = normalized_offer,
+	observed_rotation_boundary = observed_rotation_boundary,
 	primary_trait = primary_trait,
 	profile_is_enabled = profile_is_enabled,
 	reconcile_character_slots = reconcile_character_slots,
+	rotation_gate_status = rotation_gate_status,
+	sane_rotation_boundary = sane_rotation_boundary,
 	same_candidate = same_candidate,
 }
 

@@ -40,6 +40,9 @@ local INVENTORY_DISCARD_PROTECTION_ID = "better_inventory_discard_protection"
 local INVENTORY_DISCARD_CURIO_PROTECTION_ID = "better_inventory_discard_curio_protection"
 local INVENTORY_DISCARD_CURIO_LEVEL_ID = "better_inventory_discard_curio_level"
 local INVENTORY_CURIO_BUYER_ENABLE_ID = "better_inventory_curio_buyer_enable"
+local INVENTORY_CURIO_BUYER_OPERATIVE_SELECTION_ID = "better_inventory_curio_buyer_operative_selection"
+local INVENTORY_CURIO_BUYER_ROTATION_ID = "better_inventory_curio_buyer_rotation"
+local INVENTORY_CURIO_BUYER_REFRESH_ID = "better_inventory_curio_buyer_refresh"
 local INVENTORY_CURIO_BUYER_TARGET_MODE_ID = "better_inventory_curio_buyer_target_mode"
 local INVENTORY_CURIO_BUYER_MIN_LEVEL_ID = "better_inventory_curio_buyer_min_level"
 local INVENTORY_CURIO_BUYER_MIN_HEALTH_ID = "better_inventory_curio_buyer_min_health"
@@ -2590,10 +2593,13 @@ local function panel_structure_key(mod, view)
 	key = key + (collapsed.discard and 32 or 0)
 	key = key + (mod:get("enable_automatic_curio_acquisition") == true and 64 or 0)
 	key = key + (collapsed.curio_buyer and 128 or 0)
-	key = key + (mod:get("automatic_curio_buy_health") ~= false and 256 or 0)
-	key = key + (mod:get("automatic_curio_buy_toughness") ~= false and 512 or 0)
-	key = key + (mod:get("automatic_curio_target_mode") == "characters" and 1024 or 0)
-	key = key + curio_buyer_profile_revision() * 2048
+	key = key + (mod:get("automatic_curio_scan_operative_selection") == true and 256 or 0)
+	key = key + (mod:get("automatic_curio_once_per_store_rotation") ~= false and 512 or 0)
+	key = key + (mod:get("automatic_curio_rescan_on_store_refresh") == true and 1024 or 0)
+	key = key + (mod:get("automatic_curio_buy_health") ~= false and 2048 or 0)
+	key = key + (mod:get("automatic_curio_buy_toughness") ~= false and 4096 or 0)
+	key = key + (mod:get("automatic_curio_target_mode") == "characters" and 8192 or 0)
+	key = key + curio_buyer_profile_revision() * 16384
 	key = key + (item_sorting_is_enabled() and 4194304 or 0)
 	key = key + (collapsed.item_sorting and 8388608 or 0)
 	key = key + (collapsed.native_sorting and 16777216 or 0)
@@ -2902,6 +2908,9 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 			entries[#entries + 1] = panel_checkbox_entry(mod, layout, view, INVENTORY_CURIO_BUYER_ENABLE_ID, "enable_automatic_curio_acquisition", "enable_automatic_curio_acquisition", false, true, Features.sync_curio_acquisition_settings)
 
 			if mod:get("enable_automatic_curio_acquisition") == true then
+				entries[#entries + 1] = panel_checkbox_entry(mod, layout, view, INVENTORY_CURIO_BUYER_OPERATIVE_SELECTION_ID, "automatic_curio_scan_operative_selection", "automatic_curio_scan_operative_selection", false, true, Features.sync_curio_acquisition_settings)
+				entries[#entries + 1] = panel_checkbox_entry(mod, layout, view, INVENTORY_CURIO_BUYER_ROTATION_ID, "automatic_curio_once_per_store_rotation", "automatic_curio_once_per_store_rotation", true, true, Features.sync_curio_acquisition_settings)
+				entries[#entries + 1] = panel_checkbox_entry(mod, layout, view, INVENTORY_CURIO_BUYER_REFRESH_ID, "automatic_curio_rescan_on_store_refresh", "automatic_curio_rescan_on_store_refresh", false, true, Features.sync_curio_acquisition_settings)
 				entries[#entries + 1] = panel_stepper_entry(mod, layout, view, INVENTORY_CURIO_BUYER_MIN_LEVEL_ID, "automatic_curio_min_item_level", "automatic_curio_min_item_level", 410, Features.sync_curio_acquisition_settings)
 				entries[#entries + 1] = panel_sub_label_entry(mod, view, "better_inventory_curio_buyer_types_label", "automatic_curio_types_inventory_label")
 				entries[#entries + 1] = panel_curio_buyer_type_entry(mod, layout, view)
