@@ -119,6 +119,10 @@ if (-not (Test-Path -LiteralPath $trackedReleaseArchive -PathType Leaf)) {
 	throw "Tracked release archive is missing: $trackedReleaseArchive"
 }
 
+if (([regex]::Matches($main, 'local previous_item\s*=\s*content\s+and\s+content\.item')).Count -lt 2 -or ([regex]::Matches($main, 'character_overview_item_changed\(previous_item,\s*current_item\)')).Count -lt 2 -or $main -notmatch 'Layout\.restore_item_customization_style\(widget\)' -or $main -notmatch 'reset_character_overview_curio_fit_state\(widget\)' -or $main -notmatch 'better_inventory_overview_fitted_curio_stat_' -or $layout -notmatch 'restore_item_customization_style' -or $layout -notmatch 'restore_item_customization_style\(widget\)\s*\r?\n\s*original_update_data') {
+	throw "Character Overview item-swap cache/style refresh regression"
+}
+
 if ($layout -notmatch 'synchronize_rarity_tag_color' -or $layout -notmatch 'Items\.rarity_color' -or $layout -notmatch 'better_inventory_original_color') {
 	throw "The shared Curio rarity-strip colour synchronization was not found."
 }

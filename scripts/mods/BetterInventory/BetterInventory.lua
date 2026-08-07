@@ -234,6 +234,44 @@ local function mark_character_overview_requirement_met(widget)
 	end
 end
 
+local function character_overview_item_changed(previous_item, current_item)
+	if previous_item == nil or current_item == nil then
+		return previous_item ~= current_item
+	end
+
+	local previous_gear_id = previous_item.gear_id
+	local current_gear_id = current_item.gear_id
+
+	if previous_gear_id ~= nil or current_gear_id ~= nil then
+		return previous_gear_id ~= current_gear_id
+	end
+
+	return previous_item ~= current_item
+end
+
+local function reset_character_overview_curio_fit_state(widget)
+	local content = widget and widget.content
+
+	if not content then
+		return
+	end
+
+	content.better_inventory_curio_fit_initialized = nil
+	content.better_inventory_curio_fit_stat_sources = nil
+	content.better_inventory_curio_fit_stat_widths = nil
+	content.better_inventory_curio_fit_name_source = nil
+	content.better_inventory_curio_fit_title_width = nil
+	content.better_inventory_curio_fit_title_font_size = nil
+	content.better_inventory_curio_fit_title_line_limit = nil
+	content.better_inventory_full_display_name = nil
+	content.better_inventory_fitted_curio_name = nil
+
+	for index = 1, 4 do
+		content["better_inventory_overview_full_curio_stat_" .. index] = nil
+		content["better_inventory_overview_fitted_curio_stat_" .. index] = nil
+	end
+end
+
 local function configure_character_overview_rarity_strip(blueprint, setting_id)
 	local rarity_tag = pass_by_style_id(blueprint and blueprint.pass_template, "rarity_tag")
 
@@ -443,7 +481,17 @@ local function character_overview_weapon_blueprint(rarity_strip_setting_id)
 	blueprint.update = function(parent, widget, input_service, dt, t, ui_renderer)
 		local content = widget and widget.content
 		local element = content and content.element
-		local previous_item = element and element.item
+		-- Native overview blueprints treat content.item as the item currently
+		-- rendered by this reusable widget. element.item may already point at the
+		-- replacement when returning from the child inventory view.
+		local previous_item = content and content.item
+		local slot = element and element.slot
+		local current_item = slot and parent.equipped_item_in_slot and parent:equipped_item_in_slot(slot.name)
+		local item_changed = character_overview_item_changed(previous_item, current_item)
+
+		if item_changed and type(Layout.restore_item_customization_style) == "function" then
+			Layout.restore_item_customization_style(widget)
+		end
 
 		if type(native_update) == "function" then
 			native_update(parent, widget, input_service, dt, t, ui_renderer)
@@ -451,10 +499,7 @@ local function character_overview_weapon_blueprint(rarity_strip_setting_id)
 
 		mark_character_overview_requirement_met(widget)
 
-		local slot = element and element.slot
-		local current_item = slot and parent.equipped_item_in_slot and parent:equipped_item_in_slot(slot.name)
-
-		if element and current_item ~= previous_item then
+		if element and item_changed then
 			element.item = current_item
 
 			if type(blueprint.update_data) == "function" then
@@ -975,7 +1020,20 @@ local function character_overview_curio_blueprint()
 	blueprint.update = function(parent, widget, input_service, dt, t, ui_renderer)
 		local content = widget and widget.content
 		local element = content and content.element
-		local previous_item = element and element.item
+		-- Use the rendered item, not element.item: the child inventory can replace
+		-- the element first while this overview widget still shows the old Curio.
+		local previous_item = content and content.item
+		local slot = element and element.slot
+		local current_item = slot and parent.equipped_item_in_slot and parent:equipped_item_in_slot(slot.name)
+		local item_changed = character_overview_item_changed(previous_item, current_item)
+
+		if item_changed then
+			if type(Layout.restore_item_customization_style) == "function" then
+				Layout.restore_item_customization_style(widget)
+			end
+
+			reset_character_overview_curio_fit_state(widget)
+		end
 
 		if type(native_update) == "function" then
 			native_update(parent, widget, input_service, dt, t, ui_renderer)
@@ -983,10 +1041,7 @@ local function character_overview_curio_blueprint()
 
 		mark_character_overview_requirement_met(widget)
 
-		local slot = element and element.slot
-		local current_item = slot and parent.equipped_item_in_slot and parent:equipped_item_in_slot(slot.name)
-
-		if element and current_item ~= previous_item then
+		if element and item_changed then
 			element.item = current_item
 
 			if type(blueprint.update_data) == "function" then

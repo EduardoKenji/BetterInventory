@@ -3402,6 +3402,35 @@ def main() -> None:
     layout.apply_item_customization_style(mod, custom_weapon_widget, custom_weapon_element)
     assert tuple(custom_weapon_widget.style.background.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
 
+    # Reusing a Character Overview card for another gear ID must discard the
+    # first item's custom colors and rebuild from the card's native baseline.
+    replacement_weapon_element = lua.eval("table.clone")(narrow_weapon_element)
+    replacement_weapon_element.item.gear_id = "replacement-weapon"
+    custom_weapon_blueprint.update_data(
+        None, custom_weapon_widget, replacement_weapon_element
+    )
+    assert tuple(
+        custom_weapon_widget.style.display_name.text_color[index]
+        for index in range(1, 5)
+    ) == (255, 220, 230, 210)
+    assert tuple(
+        custom_weapon_widget.style.background.color[index] for index in range(1, 5)
+    ) == (255, 1, 2, 3)
+    assert tuple(
+        custom_weapon_widget.style.background_gradient.color[index]
+        for index in range(1, 5)
+    ) == (255, 4, 5, 6)
+
+    # The same reused widget can then acquire the original item's overrides
+    # again without treating the previous custom color as its native baseline.
+    custom_weapon_blueprint.update_data(
+        None, custom_weapon_widget, custom_weapon_element
+    )
+    assert tuple(
+        custom_weapon_widget.style.background_gradient.color[index]
+        for index in range(1, 5)
+    ) == (255, 40, 50, 60)
+
     # Weapon information always keeps its native background/shader; only the
     # gradient tint and optional rarity keyword receive the custom color.
     weapon_information_widget = lua.table_from(

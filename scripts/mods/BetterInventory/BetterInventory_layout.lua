@@ -2446,6 +2446,40 @@ local function apply_custom_color(style, color, field_name)
 	style[field_name] = table.clone(type(color) == "table" and color or style[backup_id])
 end
 
+local function restore_custom_color(style, field_name)
+	if type(style) ~= "table" then
+		return
+	end
+
+	local backup_id = "better_inventory_original_" .. field_name
+	local original_color = style[backup_id]
+
+	if type(original_color) == "table" then
+		style[field_name] = table.clone(original_color)
+		style[backup_id] = nil
+	end
+end
+
+local function restore_item_customization_style(widget)
+	local style = widget and widget.style
+
+	if type(style) ~= "table" then
+		return
+	end
+
+	for _, style_id in ipairs({ "display_name", "better_inventory_name_it_curio_name" }) do
+		local text_style = style[style_id]
+
+		restore_custom_color(text_style, "text_color")
+		restore_custom_color(text_style, "default_color")
+		restore_custom_color(text_style, "hover_color")
+	end
+
+	restore_custom_color(style.background, "color")
+	restore_custom_color(style.background_gradient, "color")
+	restore_custom_color(style.rarity_tag, "color")
+end
+
 local function apply_item_customization_style(mod, widget, element)
 	local content = widget and widget.content
 	local style = widget and widget.style
@@ -2508,6 +2542,8 @@ end
 Layout.synchronize_rarity_tag_color = synchronize_rarity_tag_color
 
 Layout.apply_item_customization_style = apply_item_customization_style
+
+Layout.restore_item_customization_style = restore_item_customization_style
 
 -- The weapon-information panel already composites its rarity tint through a
 -- vertical gradient over Darktide's dark terminal background. Only replace
@@ -2907,6 +2943,10 @@ local function configure_card_content(mod, item_blueprint, configuration)
 
 	if original_update_data then
 		item_blueprint.update_data = function(parent, widget, element)
+			-- A widget can be reused for a different equipped item. Remove the
+			-- previous item's overrides before the native/data refresh establishes
+			-- the new card's baseline colors.
+			restore_item_customization_style(widget)
 			original_update_data(parent, widget, element)
 			format_item_name(mod, widget, element, append_mark_to_name)
 			synchronize_rarity_tag_color(widget, element)
