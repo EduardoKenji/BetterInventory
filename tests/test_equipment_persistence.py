@@ -240,6 +240,13 @@ def main() -> None:
     assert "slot_primary=new-weapon" in captured.signature
     assert "slot_trinket_1=new-curio" in captured.signature
 
+    # Before the outer Character Overview closes, Y exists only in the shared
+    # preview table. A delayed/unrelated authoritative X event must not revert
+    # that local delta or the next child inventory will mark X as equipped.
+    assert module.refresh_from_authoritative_profile(globals_.view) is False
+    assert globals_.view_update_count == 0
+    assert globals_.view._preview_profile_equipped_items.slot_primary.gear_id == "new-weapon"
+
     # A merely pending native request must never trigger a parallel retry.
     globals_.native_promise = globals_.TestPromise.pending()
     globals_.native_calls = 0
@@ -270,10 +277,14 @@ def main() -> None:
     assert globals_.retry_calls == 1
     assert globals_.retried_items.slot_primary.gear_id == "new-weapon"
     assert globals_.retried_items.slot_trinket_1.gear_id == "new-curio"
+    assert globals_.view._starting_profile_equipped_items.slot_primary.gear_id == "new-weapon"
+    assert globals_.view._starting_profile_equipped_items.slot_trinket_1.gear_id == "new-curio"
     assert module.status() == ("idle", 0)
 
     # A profile event cannot erase an optimistic loadout while persistence is
     # pending, but it refreshes the reopened view after settlement.
+    globals_.view._starting_profile_equipped_items.slot_primary = globals_.old_weapon
+    globals_.view._starting_profile_equipped_items.slot_trinket_1 = globals_.old_curio
     globals_.native_promise = globals_.TestPromise.pending()
     module.persist_local_changes(globals_.test_mod, globals_.native_equip, globals_.view)
     assert module.refresh_from_authoritative_profile(globals_.view) is False
@@ -284,6 +295,8 @@ def main() -> None:
     assert globals_.view_update_count == 1
 
     # A retry from another character/account generation must become inert.
+    globals_.view._starting_profile_equipped_items.slot_primary = globals_.old_weapon
+    globals_.view._starting_profile_equipped_items.slot_trinket_1 = globals_.old_curio
     globals_.native_promise = globals_.TestPromise.pending()
     module.persist_local_changes(globals_.test_mod, globals_.native_equip, globals_.view)
     globals_.native_promise.resolve(globals_.native_promise, lua.table_from([False]))
@@ -295,6 +308,8 @@ def main() -> None:
     globals_.current_character = "character-a"
 
     # Confirmed failures are bounded and surface an error after two retries.
+    globals_.view._starting_profile_equipped_items.slot_primary = globals_.old_weapon
+    globals_.view._starting_profile_equipped_items.slot_trinket_1 = globals_.old_curio
     globals_.retry_results = lua.table_from([False, False])
     globals_.retry_calls = 0
     globals_.captured_errors = lua.table_from([])

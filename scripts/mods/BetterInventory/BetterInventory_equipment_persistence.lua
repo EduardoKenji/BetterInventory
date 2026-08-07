@@ -186,6 +186,21 @@ local function result_succeeded(result)
 	return true
 end
 
+local function apply_confirmed_intent(operation)
+	local view = operation and operation.view
+	local starting = type(view) == "table" and view._starting_profile_equipped_items or nil
+
+	if type(starting) ~= "table" then
+		return
+	end
+
+	for index = 1, #operation.intent.records do
+		local record = operation.intent.records[index]
+
+		starting[record.slot_name] = record.item
+	end
+end
+
 local function log_failure(mod, message)
 	if mod and type(mod.error) == "function" then
 		mod:error("[Equipment Persistence] " .. tostring(message))
@@ -270,6 +285,7 @@ observe_promise = function(mod, operation, promise)
 		end
 
 		if result_succeeded(result) then
+			apply_confirmed_intent(operation)
 			state.active = nil
 		else
 			schedule_retry(mod, operation, "backend equip resolved false")
@@ -299,6 +315,7 @@ EquipmentPersistence.persist_local_changes = function(mod, native_function, view
 		generation = state.generation,
 		intent = intent,
 		retries = 0,
+		view = view,
 	}
 
 	state.active = operation
@@ -360,6 +377,14 @@ EquipmentPersistence.refresh_from_authoritative_profile = function(view, peer_id
 	if operation and operation.character_id == view_character_id(view) then
 		-- Do not let an unrelated profile event erase the optimistic loadout while
 		-- its backend write is still pending or awaiting a confirmed-failure retry.
+		return false
+	end
+
+	-- A child inventory equip updates the parent preview immediately, but
+	-- Darktide does not start its backend write until the outer Character
+	-- Overview exits. An unrelated or delayed profile event during that window
+	-- must not replace the local Y preview with authoritative X.
+	if capture_intent(view) then
 		return false
 	end
 
