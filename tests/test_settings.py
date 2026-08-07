@@ -1613,7 +1613,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "1.9.4"
+    assert data.version == "2.0.0"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
