@@ -2199,6 +2199,10 @@ function mod.on_setting_changed(setting_id)
 	local color_change = color_target_by_setting_id[setting_id]
 	local automatic_curio_setting = type(setting_id) == "string" and string.sub(setting_id, 1, 16) == "automatic_curio_"
 
+	if type(Features.invalidate_all_view_composition) == "function" then
+		Features.invalidate_all_view_composition()
+	end
+
 	if type(setting_id) == "string" and CHARACTER_OVERVIEW_VISUAL_SETTING_IDS[setting_id] then
 		character_overview_visual_settings_generation = character_overview_visual_settings_generation + 1
 	end
@@ -2452,6 +2456,10 @@ mod:hook("GearService", "delete_gear_batch", function(func, gear_service, gear_i
 	end)
 
 mod:hook_safe(InventoryWeaponsView, "_equip_item", function(view)
+	if type(Features.invalidate_view_composition) == "function" then
+		Features.invalidate_view_composition(view)
+	end
+
 	local item_grid = view and view._item_grid
 
 	if item_grid and item_grid._better_inventory_myfavorites_active == true then
@@ -2538,6 +2546,10 @@ local function present_grid_with_configuration(func, view, layout, on_present_ca
 	local results = pack_values(pcall(func, view, layout, on_present_callback))
 	local success = results[1]
 	local result_count = results.n
+
+	if type(Features.invalidate_view_composition) == "function" then
+		Features.invalidate_view_composition(view)
+	end
 
 	active_grid_view = previous_active_view
 	active_grid_configuration = previous_configuration

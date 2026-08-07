@@ -28,6 +28,76 @@ Features.count_diagnostic = function(name, amount)
 	end
 end
 
+Features.invalidate_view_composition = function(view)
+	if not view then
+		return false
+	end
+
+	view._better_inventory_composition_generation = (view._better_inventory_composition_generation or 0) + 1
+	view._better_inventory_composition_dirty = true
+
+	return true
+end
+
+Features.composition_inputs_changed = function(view, slot_kind)
+	if not view then
+		return false
+	end
+
+	local scenegraph = view._ui_scenegraph
+	local window = scenegraph and scenegraph.window
+	local window_position = window and window.position
+	local window_size = window and window.size
+	local canvas = scenegraph and scenegraph.canvas
+	local canvas_size = canvas and canvas.size
+	local weapon_stats = view._weapon_stats
+	local weapon_stats_pivot = weapon_stats and weapon_stats._pivot_offset
+	local weapon_options = view._weapon_options_element
+	local weapon_options_pivot = weapon_options and weapon_options._pivot_offset
+	local window_x = window_position and window_position[1]
+	local window_y = window_position and window_position[2]
+	local window_width = window_size and window_size[1]
+	local window_height = window_size and window_size[2]
+	local stats_x = weapon_stats_pivot and weapon_stats_pivot[1]
+	local stats_y = weapon_stats_pivot and weapon_stats_pivot[2]
+	local options_x = weapon_options_pivot and weapon_options_pivot[1]
+	local options_y = weapon_options_pivot and weapon_options_pivot[2]
+	local discard_element = view._discard_items_element
+	local discard_position_reader = discard_element and discard_element.scenegraph_world_position
+	local discard_size_reader = discard_element and discard_element._scenegraph_size
+	local discard_active = view._discard_items_element ~= nil
+	local filter_active = view._show_filter_panel == true
+	local selected_slot = view._selected_slot
+	local lantern_state = view._lantern_weapon_panel
+	local item_sorting_enabled_flag = item_sorting_mod and item_sorting_mod.enabled
+	local canvas_width = canvas_size and canvas_size[1]
+	local canvas_height = canvas_size and canvas_size[2]
+	local changed = view._better_inventory_composition_slot_kind ~= slot_kind or view._better_inventory_composition_window_x ~= window_x or view._better_inventory_composition_window_y ~= window_y or view._better_inventory_composition_window_width ~= window_width or view._better_inventory_composition_window_height ~= window_height or view._better_inventory_composition_canvas_width ~= canvas_width or view._better_inventory_composition_canvas_height ~= canvas_height or view._better_inventory_composition_stats_x ~= stats_x or view._better_inventory_composition_stats_y ~= stats_y or view._better_inventory_composition_options_x ~= options_x or view._better_inventory_composition_options_y ~= options_y or view._better_inventory_composition_context ~= view._context or view._better_inventory_composition_discard ~= discard_active or view._better_inventory_composition_discard_position_reader ~= discard_position_reader or view._better_inventory_composition_discard_size_reader ~= discard_size_reader or view._better_inventory_composition_filter ~= filter_active or view._better_inventory_composition_selected_slot ~= selected_slot or view._better_inventory_composition_lantern_state ~= lantern_state or view._better_inventory_composition_item_sorting_mod ~= item_sorting_mod or view._better_inventory_composition_item_sorting_enabled ~= item_sorting_enabled_flag
+
+	view._better_inventory_composition_slot_kind = slot_kind
+	view._better_inventory_composition_window_x = window_x
+	view._better_inventory_composition_window_y = window_y
+	view._better_inventory_composition_window_width = window_width
+	view._better_inventory_composition_window_height = window_height
+	view._better_inventory_composition_canvas_width = canvas_width
+	view._better_inventory_composition_canvas_height = canvas_height
+	view._better_inventory_composition_stats_x = stats_x
+	view._better_inventory_composition_stats_y = stats_y
+	view._better_inventory_composition_options_x = options_x
+	view._better_inventory_composition_options_y = options_y
+	view._better_inventory_composition_context = view._context
+	view._better_inventory_composition_discard_position_reader = discard_position_reader
+	view._better_inventory_composition_discard_size_reader = discard_size_reader
+	view._better_inventory_composition_selected_slot = selected_slot
+	view._better_inventory_composition_lantern_state = lantern_state
+	view._better_inventory_composition_item_sorting_mod = item_sorting_mod
+	view._better_inventory_composition_item_sorting_enabled = item_sorting_enabled_flag
+	view._better_inventory_composition_discard = discard_active
+	view._better_inventory_composition_filter = filter_active
+
+	return changed
+end
+
 Features._contracts = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_contracts")
 
 if type(Features._contracts) ~= "table" or type(Features._contracts.safe_call) ~= "function" or type(Features._contracts.safe_method) ~= "function" then
@@ -158,6 +228,17 @@ local registered_inventory_views = setmetatable({}, {
 local registered_armoury_views = setmetatable({}, {
 	__mode = "k",
 })
+
+Features.invalidate_all_view_composition = function()
+	for view in pairs(registered_inventory_views) do
+		Features.invalidate_view_composition(view)
+	end
+
+	for view in pairs(registered_armoury_views) do
+		Features.invalidate_view_composition(view)
+	end
+end
+
 local perfect_roll_cache = setmetatable({}, {
 	__mode = "k",
 })
@@ -2046,6 +2127,7 @@ local function panel_header_entry(mod, layout, view, control_id, section_id, lab
 			local collapsed = view._better_inventory_options_panel_collapsed
 
 			collapsed[section_id] = not collapsed[section_id]
+			Features.invalidate_view_composition(view)
 			-- Hotspot callbacks execute while ViewElementGrid is drawing. Rebuilding
 			-- here clears the widget array underneath Darktide's active draw loop.
 			-- The changed structure key is detected and rebuilt safely on the next
@@ -2744,10 +2826,18 @@ end
 
 local function restore_lantern_weapon_panel(view)
 	if view then
+		local changed = view._better_inventory_lantern_panel_available == true or view._better_inventory_lantern_panel_height ~= nil or view._better_inventory_lantern_panel_signature ~= nil or view._better_inventory_lantern_panel_hosted == true
+
 		view._better_inventory_lantern_panel_available = false
 		view._better_inventory_lantern_panel_height = nil
 		view._better_inventory_lantern_panel_signature = nil
 		view._better_inventory_lantern_panel_hosted = false
+
+		if changed then
+			Features.invalidate_view_composition(view)
+			view._better_inventory_lantern_panel_last_hosted = false
+			view._better_inventory_lantern_panel_last_signature = nil
+		end
 	end
 end
 
@@ -2784,6 +2874,7 @@ end
 Features.set_item_sorting_integration = function(integration_mod)
 	item_sorting_mod = type(integration_mod) == "table" and integration_mod or nil
 	item_sorting_definitions = nil
+	Features.invalidate_all_view_composition()
 
 	if item_sorting_mod and type(item_sorting_mod.io_dofile) == "function" then
 		local success, definitions = pcall(item_sorting_mod.io_dofile, item_sorting_mod, "ItemSorting/scripts/mods/ItemSorting/ItemSorting_definitions")
@@ -2832,6 +2923,7 @@ Features.preserve_item_sorting_native_options = function(view, selected_display_
 	view._sort_options = options
 	view._better_inventory_item_sorting_signature_cache = nil
 	view._better_inventory_item_sorting_signature_poll = 0
+	Features.invalidate_view_composition(view)
 	local selected_index = 1
 
 	if selected_display_name ~= nil then
@@ -2888,6 +2980,12 @@ Features.update_lantern_inventory_section = function(mod, view)
 	view._better_inventory_lantern_panel_height = math.max(120, panel_height)
 	view._better_inventory_lantern_panel_signature = tostring(state.sig) .. "|" .. tostring(view._better_inventory_lantern_panel_height)
 	view._better_inventory_lantern_panel_hosted = view._better_inventory_lantern_section_widget ~= nil
+
+	if view._better_inventory_lantern_panel_hosted ~= view._better_inventory_lantern_panel_last_hosted or view._better_inventory_lantern_panel_signature ~= view._better_inventory_lantern_panel_last_signature then
+		Features.invalidate_view_composition(view)
+		view._better_inventory_lantern_panel_last_hosted = view._better_inventory_lantern_panel_hosted
+		view._better_inventory_lantern_panel_last_signature = view._better_inventory_lantern_panel_signature
+	end
 
 	return view._better_inventory_lantern_panel_hosted
 end
@@ -3676,6 +3774,25 @@ Features.update_armoury_native_sort_panel = function(view)
 		return false
 	end
 
+	local item_sorting_enabled_flag = item_sorting_mod and item_sorting_mod.enabled
+
+	if view._better_inventory_composition_item_sorting_enabled ~= item_sorting_enabled_flag then
+		Features.invalidate_view_composition(view)
+		view._better_inventory_composition_item_sorting_enabled = item_sorting_enabled_flag
+	end
+
+	local probe_count = (view._better_inventory_composition_probe_count or 0) + 1
+	local probe_due = probe_count >= 15
+	local input_changed = Features.composition_inputs_changed(view, "armoury")
+
+	if not view._better_inventory_composition_dirty and not input_changed and not view._better_inventory_armoury_native_sort_rebuild_pending and not probe_due then
+		view._better_inventory_composition_probe_count = probe_count
+
+		return true
+	end
+
+	view._better_inventory_composition_probe_count = 0
+
 	setup_armoury_controller_focus_legend(view._better_inventory_armoury_sort_mod, view)
 
 	local item_sorting_active = item_sorting_is_enabled()
@@ -3700,6 +3817,8 @@ Features.update_armoury_native_sort_panel = function(view)
 		view._better_inventory_armoury_native_sort_pivot_x = x
 		view._better_inventory_armoury_native_sort_pivot_y = y
 	end
+
+	view._better_inventory_composition_dirty = false
 
 	return true
 end
@@ -3766,6 +3885,8 @@ Features.setup_armoury_native_sort_panel = function(mod, layout, view, ViewEleme
 	view._better_inventory_armoury_native_sort_rebuild_pending = false
 	view._better_inventory_armoury_sort_layout = layout
 	view._better_inventory_armoury_sort_mod = mod
+	view._better_inventory_composition_dirty = true
+	view._better_inventory_composition_probe_count = 0
 	registered_armoury_views[view] = true
 	if type(panel.disable_input) == "function" then
 		panel:disable_input(false)
@@ -5569,6 +5690,8 @@ local function update_inventory_options_panel(mod, layout, view, slot_kind)
 	local panel = view._better_inventory_options_panel
 
 	if not panel or mod:get("enable_inventory_options_panel_prototype") ~= true then
+		Features.invalidate_view_composition(view)
+
 		if panel then
 			set_options_panel_visible(view, panel, false)
 		end
@@ -5587,6 +5710,18 @@ local function update_inventory_options_panel(mod, layout, view, slot_kind)
 
 		return true
 	end
+
+	local probe_count = (view._better_inventory_composition_probe_count or 0) + 1
+	local probe_due = probe_count >= 15
+	local input_changed = Features.composition_inputs_changed(view, slot_kind)
+
+	if not view._better_inventory_composition_dirty and not input_changed and not probe_due then
+		view._better_inventory_composition_probe_count = probe_count
+
+		return true
+	end
+
+	view._better_inventory_composition_probe_count = 0
 
 	set_legacy_inventory_options_visible(view, false)
 	set_options_panel_visible(view, panel, true)
@@ -5681,6 +5816,8 @@ local function update_inventory_options_panel(mod, layout, view, slot_kind)
 
 		return false
 	end
+
+	view._better_inventory_composition_dirty = false
 
 	return true
 end
@@ -5810,7 +5947,15 @@ Features.update_inventory_sort_toggle = function(mod, layout, view)
 		return
 	end
 
+	local item_sorting_enabled_flag = item_sorting_mod and item_sorting_mod.enabled
+
+	if view._better_inventory_composition_item_sorting_enabled ~= item_sorting_enabled_flag then
+		Features.invalidate_view_composition(view)
+		view._better_inventory_composition_item_sorting_enabled = item_sorting_enabled_flag
+	end
+
 	if mod:get("show_inventory_options_widget") == false then
+		Features.invalidate_view_composition(view)
 		local panel = view._better_inventory_options_panel
 
 		set_legacy_inventory_options_visible(view, false)
@@ -5885,6 +6030,7 @@ Features.sync_inventory_sort_setting = function(mod, layout)
 	local perfect_rolls_enabled = mod:get("prioritize_perfect_roll_weapons") == true
 
 	for view in pairs(registered_inventory_views) do
+		Features.invalidate_view_composition(view)
 		local widget = view._widgets_by_name and view._widgets_by_name[INVENTORY_SORT_TOGGLE_ID]
 		local panel_widget = view._better_inventory_options_panel_widgets and view._better_inventory_options_panel_widgets[INVENTORY_SORT_TOGGLE_ID]
 		local perfect_panel_widget = view._better_inventory_options_panel_widgets and view._better_inventory_options_panel_widgets[INVENTORY_PERFECT_SORT_TOGGLE_ID]
@@ -5908,22 +6054,31 @@ Features.sync_inventory_sort_setting = function(mod, layout)
 	end
 
 	for view in pairs(registered_armoury_views) do
+		Features.invalidate_view_composition(view)
 		Features.resort_inventory(mod, layout, view)
 	end
 end
 
 Features.sync_quick_discard_settings = function(mod, layout, deferred_view)
 	for view in pairs(registered_inventory_views) do
-		if not view._destroyed and view ~= deferred_view then
-			Features.update_inventory_sort_toggle(mod, layout, view)
+		if not view._destroyed then
+			Features.invalidate_view_composition(view)
+
+			if view ~= deferred_view then
+				Features.update_inventory_sort_toggle(mod, layout, view)
+			end
 		end
 	end
 end
 
 Features.sync_curio_acquisition_settings = function(mod, layout, deferred_view)
 	for view in pairs(registered_inventory_views) do
-		if not view._destroyed and view ~= deferred_view then
-			Features.update_inventory_sort_toggle(mod, layout, view)
+		if not view._destroyed then
+			Features.invalidate_view_composition(view)
+
+			if view ~= deferred_view then
+				Features.update_inventory_sort_toggle(mod, layout, view)
+			end
 		end
 	end
 end
@@ -5942,6 +6097,7 @@ Features.bind_inventory_sort_toggle = function(mod, layout, view)
 	end
 
 	registered_inventory_views[view] = true
+	Features.invalidate_view_composition(view)
 	Features.update_inventory_sort_toggle(mod, layout, view)
 	hotspot.pressed_callback = function()
 		local enabled = not content.checked
