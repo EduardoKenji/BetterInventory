@@ -172,6 +172,7 @@ def main() -> None:
 			sync_quick_discard_settings = function() quick_discard_syncs = quick_discard_syncs + 1 end,
 			sync_curio_acquisition_settings = function() curio_acquisition_syncs = curio_acquisition_syncs + 1 end,
 			morningstar_auto_discard_is_busy = function() return false end,
+			cancel_manual_discard = function() end,
 			unregister_inventory_view = function() end,
 			lantern_recommendations_active = function() return lantern_recommendations_are_active end,
 		}
@@ -210,6 +211,7 @@ def main() -> None:
 		}
 		visible_equipment_available = true
 		visible_equipment_enabled = true
+		fail_layout_load = false
 		overview_equipped_item_calls = 0
 		overview_layout_switches = 0
 		captured_options_hook = nil
@@ -239,6 +241,10 @@ def main() -> None:
         end
 
 		function test_mod:io_dofile(path)
+			if string.find(path, "BetterInventory_layout", 1, true) and fail_layout_load then
+				return false
+			end
+
 			if string.find(path, "BetterInventory_features", 1, true) then
 				if fail_feature_load then
 					return false
@@ -380,6 +386,24 @@ def main() -> None:
     )
     assert globals_.overview_equipped_item_calls == 2
     globals_.visible_equipment_enabled = True
+
+    # A broken optional integration probe must preserve the native widget.
+    globals_.test_visible_equipment.is_enabled = lua.eval(
+        "function() error('simulated Visible Equipment probe failure') end"
+    )
+    globals_.captured_character_overview_widget_hook(
+        original_widget_factory,
+        overview_view,
+        visible_equipment_config,
+        "test",
+        "pressed",
+        "right_pressed",
+        "slot_primary",
+    )
+    assert globals_.overview_equipped_item_calls == 2
+    globals_.test_visible_equipment.is_enabled = lua.eval(
+        "function() return visible_equipment_enabled end"
+    )
 
     globals_.visible_equipment_available = False
     globals_.captured_character_overview_widget_hook(
@@ -2029,6 +2053,15 @@ def main() -> None:
     globals_.test_mod.update(0.016)
     globals_.test_mod.update(0.016)
     assert globals_.captured_module_errors == 1
+
+    # Layout is a core dependency. A failed load must stop bootstrap cleanly
+    # before any hook indexes the missing module.
+    globals_.fail_feature_load = False
+    globals_.fail_layout_load = True
+    lua.execute(MAIN_PATH.read_text(encoding="utf-8"))
+    assert globals_.captured_module_errors == 2
+    globals_.test_mod.update(0.016)
+    assert globals_.captured_module_errors == 2
 
     print("BetterInventory live setting synchronization tests passed.")
 

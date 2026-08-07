@@ -3745,11 +3745,20 @@ local function configure_sort_options(mod, view)
 
 	for index = 1, #sort_options do
 		local option = sort_options[index]
+		local wrapped_sort = option and option._better_inventory_wrapped_sort
+
+		if option and option._better_inventory_original_sort and option.sort_function ~= wrapped_sort then
+			-- Another integration replaced the comparator after BetterInventory
+			-- wrapped it. Treat that comparator as the new native baseline.
+			option._better_inventory_original_sort = nil
+			option._better_inventory_wrapped_sort = nil
+		end
+
 		local original_sort = option and option.sort_function
 
 		if type(original_sort) == "function" and not option._better_inventory_original_sort then
 			option._better_inventory_original_sort = original_sort
-			option.sort_function = function(left, right)
+			local better_inventory_sort = function(left, right)
 				local left_priority = inventory_sort_priority(mod, view, left)
 				local right_priority = inventory_sort_priority(mod, view, right)
 
@@ -3759,6 +3768,31 @@ local function configure_sort_options(mod, view)
 
 				return original_sort(left, right)
 			end
+			option._better_inventory_wrapped_sort = better_inventory_sort
+			option.sort_function = better_inventory_sort
+		end
+	end
+end
+
+Features.restore_sort_options = function(view)
+	local sort_options = view and view._sort_options
+
+	if type(sort_options) ~= "table" then
+		return
+	end
+
+	for index = 1, #sort_options do
+		local option = sort_options[index]
+		local original_sort = option and option._better_inventory_original_sort
+		local wrapped_sort = option and option._better_inventory_wrapped_sort
+
+		if option and type(original_sort) == "function" and option.sort_function == wrapped_sort then
+			option.sort_function = original_sort
+		end
+
+		if option then
+			option._better_inventory_original_sort = nil
+			option._better_inventory_wrapped_sort = nil
 		end
 	end
 end
@@ -4425,6 +4459,7 @@ end
 
 local discard_transaction = {
 	owner = nil,
+	token = 0,
 	view = nil,
 }
 
@@ -4433,6 +4468,7 @@ local function acquire_discard_transaction(owner, view)
 		return false
 	end
 
+	discard_transaction.token = discard_transaction.token + 1
 	discard_transaction.owner = owner
 	discard_transaction.view = view
 
@@ -4440,11 +4476,11 @@ local function acquire_discard_transaction(owner, view)
 		view._better_inventory_discard_pending = true
 	end
 
-	return true
+	return discard_transaction.token
 end
 
-local function release_discard_transaction(owner)
-	if discard_transaction.owner ~= owner then
+local function release_discard_transaction(owner, token)
+	if discard_transaction.owner ~= owner or token and discard_transaction.token ~= token then
 		return false
 	end
 
@@ -4458,6 +4494,10 @@ local function release_discard_transaction(owner)
 	end
 
 	return true
+end
+
+local function discard_transaction_is_current(owner, token)
+	return discard_transaction.owner == owner and discard_transaction.token == token
 end
 
 Features.request_quick_discard = function(mod, layout, view)
@@ -4489,7 +4529,9 @@ Features.request_quick_discard = function(mod, layout, view)
 		captured_ids[candidates[index].gear_id] = true
 	end
 
-	if not acquire_discard_transaction("manual", view) then
+	local transaction_token = acquire_discard_transaction("manual", view)
+
+	if not transaction_token then
 		return
 	end
 
@@ -4501,11 +4543,11 @@ Features.request_quick_discard = function(mod, layout, view)
 		end
 
 		resolved = true
-		release_discard_transaction("manual")
+		release_discard_transaction("manual", transaction_token)
 	end
 
 	local function confirm_discard()
-		if resolved then
+		if resolved or not discard_transaction_is_current("manual", transaction_token) then
 			return
 		end
 
@@ -4556,6 +4598,8 @@ end
 local AUTOMATIC_DISCARD_DELAY = 5
 local AUTOMATIC_DISCARD_MAX_FETCH_ATTEMPTS = 3
 local automatic_discard_state = {
+	delete_inflight = false,
+	delete_transaction_token = nil,
 	elapsed = 0,
 	fetch_attempts = 0,
 	hub_character_id = nil,
@@ -4572,7 +4616,7 @@ Features.morningstar_auto_discard_is_busy = function(mod)
 	-- The scanner leaves `scheduled` set while its read-only fetch is in flight,
 	-- then the transaction owner remains authoritative through confirmation and
 	-- deletion. Once both clear, a Curio purchase can no longer enter this pass.
-	return automatic_discard_enabled(mod) and (automatic_discard_state.scheduled or discard_transaction.owner == "automatic")
+	return automatic_discard_enabled(mod) and (automatic_discard_state.delete_inflight or automatic_discard_state.scheduled or discard_transaction.owner == "automatic")
 end
 
 local function current_game_mode_name()
@@ -4759,16 +4803,16 @@ local function notify_discard_result(mod, candidates, result)
 	show_discard_summary_notification(mod, discarded_candidates)
 end
 
-local function delete_automatic_candidates(mod, token, character_id, captured_ids)
+local function delete_automatic_candidates(mod, token, character_id, captured_ids, transaction_token)
 	if not automatic_context_is_current(mod, token, character_id) then
-		release_discard_transaction("automatic")
+		release_discard_transaction("automatic", transaction_token)
 		return
 	end
 
 	local gear_service = Managers and Managers.data_service and Managers.data_service.gear
 
 	if not gear_service or type(gear_service.fetch_inventory) ~= "function" or type(gear_service.delete_gear_batch) ~= "function" then
-		release_discard_transaction("automatic")
+		release_discard_transaction("automatic", transaction_token)
 		return
 	end
 
@@ -4776,13 +4820,13 @@ local function delete_automatic_candidates(mod, token, character_id, captured_id
 
 	if not fetch_promise then
 		automatic_discard_info(mod, "Final revalidation could not start: " .. automatic_discard_error(fetch_error))
-		release_discard_transaction("automatic")
+		release_discard_transaction("automatic", transaction_token)
 		return
 	end
 
 	fetch_promise:next(function(items)
 		if not automatic_context_is_current(mod, token, character_id) or type(items) ~= "table" then
-			release_discard_transaction("automatic")
+			release_discard_transaction("automatic", transaction_token)
 			return
 		end
 
@@ -4790,7 +4834,7 @@ local function delete_automatic_candidates(mod, token, character_id, captured_id
 
 		if not protection then
 			automatic_discard_info(mod, "Final revalidation stopped safely because " .. automatic_discard_error(protection_error) .. ".")
-			release_discard_transaction("automatic")
+			release_discard_transaction("automatic", transaction_token)
 
 			return
 		end
@@ -4805,20 +4849,28 @@ local function delete_automatic_candidates(mod, token, character_id, captured_id
 		automatic_discard_info(mod, string.format("Revalidated %d candidate(s) immediately before deletion.", #gear_ids))
 
 		if #gear_ids == 0 then
-			release_discard_transaction("automatic")
+			release_discard_transaction("automatic", transaction_token)
 			return
 		end
 
 		local delete_ok, delete_promise = pcall(gear_service.delete_gear_batch, gear_service, gear_ids)
 
 		if not delete_ok or not delete_promise or type(delete_promise.next) ~= "function" or type(delete_promise.catch) ~= "function" then
-			release_discard_transaction("automatic")
+			release_discard_transaction("automatic", transaction_token)
 			error(delete_ok and "GearService.delete_gear_batch returned no compatible promise" or delete_promise)
 		end
 
+		automatic_discard_state.delete_inflight = true
+		automatic_discard_state.delete_transaction_token = transaction_token
+
 		return delete_promise:next(function(result)
+			if automatic_discard_state.delete_transaction_token == transaction_token then
+				automatic_discard_state.delete_inflight = false
+				automatic_discard_state.delete_transaction_token = nil
+			end
+
 			notify_discard_result(mod, candidates, result)
-			release_discard_transaction("automatic")
+			release_discard_transaction("automatic", transaction_token)
 
 			return result
 		end)
@@ -4826,12 +4878,19 @@ local function delete_automatic_candidates(mod, token, character_id, captured_id
 		-- GearService already reports backend failures. Keep the one-shot
 		-- Morningstar pass from surfacing an unhandled promise rejection.
 		automatic_discard_info(mod, "Final revalidation failed: " .. automatic_discard_error(error_value))
-		release_discard_transaction("automatic")
+		if automatic_discard_state.delete_transaction_token == transaction_token then
+			automatic_discard_state.delete_inflight = false
+			automatic_discard_state.delete_transaction_token = nil
+		end
+
+		release_discard_transaction("automatic", transaction_token)
 	end)
 end
 
 local function present_automatic_discard(mod, token, character_id, candidates)
-	if not acquire_discard_transaction("automatic") then
+	local transaction_token = acquire_discard_transaction("automatic")
+
+	if not transaction_token then
 		automatic_discard_info(mod, "Suppressed a duplicate automatic discard confirmation preview.")
 
 		return
@@ -4845,7 +4904,7 @@ local function present_automatic_discard(mod, token, character_id, candidates)
 
 	if mod:get("quick_discard_skip_automatic_confirmation") == true then
 		automatic_discard_info(mod, "Confirmation skipping is enabled; starting final safety revalidation.")
-		delete_automatic_candidates(mod, token, character_id, captured_ids)
+		delete_automatic_candidates(mod, token, character_id, captured_ids, transaction_token)
 
 		return
 	end
@@ -4858,7 +4917,7 @@ local function present_automatic_discard(mod, token, character_id, candidates)
 		end
 
 		confirmation_resolved = true
-		release_discard_transaction("automatic")
+		release_discard_transaction("automatic", transaction_token)
 	end
 
 	local popup_shown = show_popup({
@@ -4866,9 +4925,9 @@ local function present_automatic_discard(mod, token, character_id, candidates)
 		options = {
 			{
 				callback = function()
-					if not confirmation_resolved and discard_transaction.owner == "automatic" then
+					if not confirmation_resolved and discard_transaction_is_current("automatic", transaction_token) then
 						confirmation_resolved = true
-						delete_automatic_candidates(mod, token, character_id, captured_ids)
+						delete_automatic_candidates(mod, token, character_id, captured_ids, transaction_token)
 					end
 				end,
 				close_on_pressed = true,
@@ -4924,12 +4983,20 @@ Features.cancel_morningstar_auto_discard = function(preserve_transaction)
 	end
 
 	automatic_discard_state.token = automatic_discard_state.token + 1
-	release_discard_transaction("automatic")
+	if not automatic_discard_state.delete_inflight then
+		release_discard_transaction("automatic")
+	end
 	automatic_discard_state.elapsed = 0
 	automatic_discard_state.fetch_attempts = 0
 	automatic_discard_state.hub_character_id = nil
 	automatic_discard_state.scheduled = false
 	automatic_discard_state.started = false
+end
+
+Features.cancel_manual_discard = function()
+	if discard_transaction.owner == "manual" then
+		release_discard_transaction("manual", discard_transaction.token)
+	end
 end
 
 Features.update_morningstar_auto_discard = function(mod, dt)
@@ -5674,10 +5741,18 @@ Features.bind_inventory_sort_toggle = function(mod, layout, view)
 end
 
 Features.unregister_inventory_view = function(view)
+	Features.restore_sort_options(view)
+
+	if discard_transaction.owner == "manual" and discard_transaction.view == view then
+		Features.cancel_manual_discard()
+	end
+
 	registered_inventory_views[view] = nil
 end
 
 Features.unregister_armoury_view = function(view)
+	Features.restore_sort_options(view)
+
 	if view and view._better_inventory_armoury_controller_focused == true then
 		set_armoury_controller_focus(view, false)
 	end
@@ -5699,7 +5774,10 @@ Features.unregister_armoury_view = function(view)
 end
 
 Features.disable_inventory_views = function()
+	Features.cancel_manual_discard()
+
 	for view in pairs(registered_inventory_views) do
+		Features.restore_sort_options(view)
 		restore_lantern_weapon_panel(view)
 		local panel = view._better_inventory_options_panel
 
@@ -5711,6 +5789,8 @@ Features.disable_inventory_views = function()
 	end
 
 	for view in pairs(registered_armoury_views) do
+		Features.restore_sort_options(view)
+
 		if view._better_inventory_armoury_controller_focused == true then
 			set_armoury_controller_focus(view, false)
 		end

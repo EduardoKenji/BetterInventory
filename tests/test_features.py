@@ -921,6 +921,7 @@ def main() -> None:
     assert globals_.TestArmouryPanel.entries[2].initial_content.chevron == ">"
     features.unregister_armoury_view(armoury_view)
     assert globals_.TestArmouryLegend.removed_id == "store_focus_legend"
+    assert armoury_view._sort_options[1]._better_inventory_original_sort is None
     mod.settings.prioritize_perfect_roll_weapons = False
 
     mod.settings.prioritize_equipped_favorites = False
@@ -2775,7 +2776,9 @@ def main() -> None:
     features.request_quick_discard(mod, layout, quick_discard_view)
     assert globals_.automatic_fetch_count == fetch_count_before_deferred_delete + 2
     assert globals_.captured_popup_count == popup_count_before_deferred_delete
+    assert features.morningstar_auto_discard_is_busy(mod) is True
     globals_.complete_automatic_delete()
+    assert features.morningstar_auto_discard_is_busy(mod) is False
     globals_.automatic_defer_delete = False
     features.cancel_morningstar_auto_discard()
 
@@ -2806,6 +2809,17 @@ def main() -> None:
     globals_.Managers.save.character_data = saved_character_data
     features.request_quick_discard(mod, layout, quick_discard_view)
     assert globals_.captured_popup.title_text_unlocalized == "quick_discard_confirmation_title"
+    globals_.captured_popup.options[2].callback()
+
+    # Leaving the inventory while the manual confirmation is open must release
+    # its transaction. A stale popup callback must not affect a later request.
+    features.request_quick_discard(mod, layout, quick_discard_view)
+    stale_manual_popup = globals_.captured_popup
+    manual_popup_count = globals_.captured_popup_count
+    features.unregister_inventory_view(quick_discard_view)
+    features.request_quick_discard(mod, layout, quick_discard_view)
+    assert globals_.captured_popup_count == manual_popup_count + 1
+    stale_manual_popup.options[1].callback()
     globals_.captured_popup.options[2].callback()
     features.cancel_morningstar_auto_discard()
 
@@ -2860,6 +2874,18 @@ def main() -> None:
     features.sync_inventory_sort_setting(mod, layout)
     assert sortable_view._widgets_by_name[toggle_id].content.checked is False
     assert melee_view._widgets_by_name[toggle_id].content.checked is True
+
+    features.configure_inventory_sort_options(mod, layout, sortable_view)
+    features.bind_inventory_sort_toggle(mod, layout, sortable_view)
+    wrapped_sort = sortable_view._sort_options[1].sort_function
+    native_sort = sortable_view._sort_options[1]._better_inventory_original_sort
+    same_lua_function = lua.eval("function(left, right) return left == right end")
+    features.unregister_inventory_view(sortable_view)
+    assert same_lua_function(sortable_view._sort_options[1].sort_function, native_sort)
+    assert sortable_view._sort_options[1]._better_inventory_original_sort is None
+    assert sortable_view._sort_options[1]._better_inventory_wrapped_sort is None
+    features.configure_inventory_sort_options(mod, layout, sortable_view)
+    assert not same_lua_function(sortable_view._sort_options[1].sort_function, wrapped_sort)
 
 
 if __name__ == "__main__":

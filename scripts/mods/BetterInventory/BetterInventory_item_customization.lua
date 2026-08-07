@@ -143,6 +143,16 @@ local function name_it_names()
 	return other_mod, ok and type(names) == "table" and names or nil
 end
 
+local function name_it_replace_pattern_name(other_mod)
+	if not other_mod or type(other_mod.get) ~= "function" then
+		return false
+	end
+
+	local success, value = pcall(other_mod.get, other_mod, "replace_pattern_name")
+
+	return success and value == true
+end
+
 local function record_has_customization(record)
 	return record.name ~= nil or record.name_color ~= nil or record.background_color ~= nil
 end
@@ -334,7 +344,7 @@ ItemCustomization.import_name_it_names = function(mod)
 	local imported = 0
 	local records_changed = false
 	local names_changed = false
-	local replace_pattern_name = type(other_mod.get) == "function" and other_mod:get("replace_pattern_name") == true
+	local replace_pattern_name = name_it_replace_pattern_name(other_mod)
 
 	for gear_id, external_name in pairs(names) do
 		local raw_external_name = external_name
@@ -397,7 +407,7 @@ ItemCustomization.reconcile_from_name_it = function(mod)
 	end
 
 	local records = customization_records(mod)
-	local replace_pattern_name = type(other_mod.get) == "function" and other_mod:get("replace_pattern_name") == true
+	local replace_pattern_name = name_it_replace_pattern_name(other_mod)
 	local names_changed = false
 
 	for gear_id, record in pairs(records) do

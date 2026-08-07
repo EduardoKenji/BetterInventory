@@ -86,10 +86,15 @@ def main() -> None:
         name_it_settings = { name_list = {} }
         name_it_available = true
         name_it_get_fails = false
+        name_it_replace_pattern_get_fails = false
         name_it_set_calls = 0
         test_name_it_mod = {}
 
         function test_name_it_mod:get(setting_id)
+            if name_it_replace_pattern_get_fails and setting_id == "replace_pattern_name" then
+                error("simulated Name It setting read failure")
+            end
+
             return name_it_settings[setting_id]
         end
 
@@ -371,6 +376,12 @@ def main() -> None:
     globals_.name_it_settings.name_list["legacy-pattern"] = "Legacy Pattern Name"
     assert customization.import_name_it_names(mod) == 1
     assert customization.get(mod, "legacy-pattern").name_target == "sub"
+
+    globals_.name_it_replace_pattern_get_fails = True
+    globals_.name_it_settings.name_list["guarded-pattern"] = "Guarded Pattern Name"
+    assert customization.import_name_it_names(mod) == 1
+    assert customization.get(mod, "guarded-pattern").name_target == "primary"
+    globals_.name_it_replace_pattern_get_fails = False
 
     customization.update(
         mod, "legacy-gear", lua.table_from({"name": "BetterInventory Name"})

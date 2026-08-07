@@ -131,7 +131,7 @@ if ($data -notmatch 'setting_id\s*=\s*"myfavorites_integration_group"' -or $data
 	throw "MyFavorites compact-marker compatibility integration was not found."
 }
 
-if ($data -match 'setting_id\s*=\s*"visible_equipment_integration_group"' -or $data -match 'setting_id\s*=\s*"enable_visible_equipment_character_overview_override"' -or $main -notmatch 'config\.widget_type\s*==\s*"gear_placement_slot"' -or $main -notmatch 'visible_equipment_placement\s+and\s+get_mod\("visible_equipment"\)' -or $main -notmatch 'visible_equipment_mod:is_enabled\(\)' -or $main -notmatch 'preserve_visible_equipment_placement\s*=\s*visible_equipment_active' -or $main -notmatch 'not\s+preserve_visible_equipment_placement\s+and\s+setting_id') {
+if ($data -match 'setting_id\s*=\s*"visible_equipment_integration_group"' -or $data -match 'setting_id\s*=\s*"enable_visible_equipment_character_overview_override"' -or $main -notmatch 'config\.widget_type\s*==\s*"gear_placement_slot"' -or $main -notmatch 'visible_equipment_placement\s+and\s+get_mod\("visible_equipment"\)' -or $main -notmatch 'pcall\(visible_equipment_mod\.is_enabled,\s*visible_equipment_mod\)' -or $main -notmatch 'preserve_visible_equipment_placement\s*=\s*visible_equipment_active' -or $main -notmatch 'not\s+preserve_visible_equipment_placement\s+and\s+setting_id') {
 	throw "Visible Equipment character-overview compatibility integration was not found."
 }
 

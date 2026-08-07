@@ -32,6 +32,13 @@ local ViewElementGrid = require("scripts/ui/view_elements/view_element_grid/view
 local ItemBlueprintGenerator = require("scripts/ui/view_content_blueprints/item_blueprints")
 local Text = require("scripts/utilities/ui/text")
 local Layout = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout")
+
+if type(Layout) ~= "table" then
+	mod:error("Failed to load BetterInventory_layout.lua; BetterInventory hooks are disabled until the next successful reload.")
+
+	return
+end
+
 local Features = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_features"), "BetterInventory_features.lua")
 local CurioAcquisition = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_acquisition"), "BetterInventory_curio_acquisition.lua")
 local ItemCustomization = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_item_customization"), "BetterInventory_item_customization.lua")
@@ -2113,6 +2120,7 @@ end
 function mod.on_disabled()
 	ItemCustomization.on_disabled(mod)
 	Features.cancel_morningstar_auto_discard()
+	Features.cancel_manual_discard()
 	CurioAcquisition.cancel()
 	Features.disable_inventory_views()
 end
@@ -2366,7 +2374,19 @@ if ensure_class_method(InventoryView, "_create_entry_widget_from_config") then
 		-- BetterInventory's detailed cards; this guard targets Cosmetics placements.
 		local visible_equipment_placement = config and config.widget_type == "gear_placement_slot"
 		local visible_equipment_mod = visible_equipment_placement and get_mod("visible_equipment")
-		local visible_equipment_active = visible_equipment_mod and (type(visible_equipment_mod.is_enabled) ~= "function" or visible_equipment_mod:is_enabled())
+		local visible_equipment_active = false
+
+		if visible_equipment_mod then
+			if type(visible_equipment_mod.is_enabled) ~= "function" then
+				visible_equipment_active = true
+			else
+				local enabled_ok, enabled = pcall(visible_equipment_mod.is_enabled, visible_equipment_mod)
+				-- If the optional integration cannot answer, preserve its widget
+				-- conservatively instead of risking a broken character overview.
+				visible_equipment_active = not enabled_ok or enabled == true
+			end
+		end
+
 		local preserve_visible_equipment_placement = visible_equipment_active
 		local adjust_runtime_equipped_icon = view and view.__class_name == "InventoryView" and not preserve_visible_equipment_placement and setting_id ~= nil
 
