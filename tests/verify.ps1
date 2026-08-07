@@ -175,7 +175,7 @@ if ($features -notmatch 'read_promise\s*=\s*nil' -or $features -notmatch 'track_
 	throw "Automatic Discard read requests must retain an explicit cancelable handle without owning purchase POSTs."
 }
 
-if ($itemCustomization -notmatch 'local save_ok, save_result = pcall\(dmf\.save_unsaved_settings_to_file\)' -or $itemCustomization -notmatch 'save_result == true' -or $itemCustomization -notmatch 'flush_persistence\(true\)' -or $itemCustomization -notmatch 'persistence_retry_elapsed') {
+if ($itemCustomization -notmatch 'local save_ok, save_result = pcall\(dmf\.save_unsaved_settings_to_file\)' -or $itemCustomization -notmatch 'save_result == true' -or $itemCustomization -notmatch 'persistence_last_outcome\s*=\s*"unknown"' -or $itemCustomization -notmatch 'ItemCustomization\.persistence_status' -or $itemCustomization -notmatch 'flush_persistence\(true\)' -or $itemCustomization -notmatch 'persistence_retry_elapsed') {
 	throw "Customization persistence must retain unknown save outcomes, retry on a bounded cadence, and flush at disable."
 }
 

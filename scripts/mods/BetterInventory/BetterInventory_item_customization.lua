@@ -19,6 +19,7 @@ local show_input_field = false
 local installed = false
 local persistence_pending = false
 local persistence_retry_elapsed = 0
+local persistence_last_outcome = "idle"
 local pending_deleted_gear_ids = {}
 local name_it_legend_entries = setmetatable({}, { __mode = "k" })
 
@@ -69,6 +70,7 @@ end
 
 local function mark_persistence_pending()
 	persistence_pending = true
+	persistence_last_outcome = "pending"
 	-- A new mutation should be eligible for the next runtime flush. Once a
 	-- save attempt is made, unknown/failing outcomes are retried at a bounded
 	-- cadence instead of every frame.
@@ -95,12 +97,14 @@ local function flush_persistence(force)
 	local resolver = rawget(_G, "get_mod")
 
 	if type(resolver) ~= "function" then
+		persistence_last_outcome = "unavailable"
 		return false
 	end
 
 	local ok, dmf = pcall(resolver, "DMF")
 
 	if not ok or type(dmf) ~= "table" or type(dmf.save_unsaved_settings_to_file) ~= "function" then
+		persistence_last_outcome = "unavailable"
 		return false
 	end
 
@@ -114,6 +118,11 @@ local function flush_persistence(force)
 	-- the dirty state otherwise so a later lifecycle/save boundary can retry.
 	if save_ok and save_result == true then
 		persistence_pending = false
+		persistence_last_outcome = "saved"
+	elseif not save_ok then
+		persistence_last_outcome = "error"
+	else
+		persistence_last_outcome = "unknown"
 	end
 
 	return save_ok and save_result == true
@@ -1143,6 +1152,10 @@ ItemCustomization.update_runtime = function(mod, dt)
 
 	drain_deleted_records(mod)
 	flush_persistence(false)
+end
+
+ItemCustomization.persistence_status = function()
+	return persistence_last_outcome, persistence_pending
 end
 
 local function effective_name_keybind(mod)

@@ -850,6 +850,9 @@ def main() -> None:
     customization.update_runtime(mod)
     assert globals_.settings_flush_attempts == attempts_before_failure + 1
     assert globals_.settings_flushes == flushes_before_failure
+    status, pending = customization.persistence_status()
+    assert status == "error"
+    assert pending is True
     globals_.settings_flush_should_fail = False
     customization.update_runtime(mod, 1)
     assert globals_.settings_flushes == flushes_before_failure + 1
@@ -864,12 +867,18 @@ def main() -> None:
     customization.update_runtime(mod)
     assert globals_.settings_flush_attempts == attempts_before_swallowed_failure + 1
     assert globals_.settings_flushes == flushes_before_swallowed_failure
+    status, pending = customization.persistence_status()
+    assert status == "unknown"
+    assert pending is True
     customization.update_runtime(mod)
     assert globals_.settings_flush_attempts == attempts_before_swallowed_failure + 1
     globals_.settings_flush_should_swallow_failure = False
     customization.update_runtime(mod, 1)
     assert globals_.settings_flush_attempts == attempts_before_swallowed_failure + 2
     assert globals_.settings_flushes == flushes_before_swallowed_failure + 1
+    status, pending = customization.persistence_status()
+    assert status == "saved"
+    assert pending is False
 
     # Disabling the mod while the editor is open must release keyboard capture.
     globals_.captured_safe_hooks.update(popup_handler)
