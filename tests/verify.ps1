@@ -131,6 +131,10 @@ if ($main -notmatch '_better_inventory_myfavorites_active\s*=\s*true' -or $main 
 	throw "Known UI update contracts and MyFavorites idle fast paths were not found."
 }
 
+if ($features -notmatch 'set_inventory_options_panel_controller_focus\(view,\s*false\)' -or $features -notmatch 'set_armoury_controller_focus\(view,\s*false\)' -or $features -notmatch 'legend\.remove_entry' -or $features -notmatch '_better_inventory_armoury_controller_legend_action\s*=\s*nil') {
+	throw "Disable cleanup must restore live controller ownership and input legends."
+}
+
 if ($features -notmatch '_registered_sort_views' -or $features -notmatch 'Features\.rebind_sort_options' -or $features -notmatch 'Features\._registered_sort_views\[view\]\s*=\s*true' -or $features -notmatch 'Features\._registered_sort_views\[view\]\s*=\s*nil' -or $features -notmatch 'for view in pairs\(Features\._registered_sort_views\)' -or $main -notmatch 'Features\.rebind_sort_options\(mod,\s*Layout\)') {
 	throw "Sort comparator ownership and disable/re-enable rebinding contract was not found."
 }

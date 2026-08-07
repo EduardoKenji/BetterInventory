@@ -972,6 +972,22 @@ def main() -> None:
     assert len(globals_.TestArmouryPanel.entries) == 2
     assert globals_.TestArmouryPanel.entries[2].initial_content.label == "armoury_native_sorting_header"
     assert globals_.TestArmouryPanel.entries[2].initial_content.chevron == ">"
+
+    # Disable must restore controller ownership and remove the live legend
+    # action while the vendor view remains open.
+    armoury_focus_input.actions["navigate_secondary_right_pressed"] = True
+    assert features.capture_armoury_sort_panel_controller_focus(
+        mod, armoury_view, armoury_focus_input
+    ) is True
+    armoury_focus_input.actions["navigate_secondary_right_pressed"] = False
+    assert armoury_view._item_grid.disabled is True
+    features.disable_inventory_views()
+    assert armoury_view._item_grid.disabled is False
+    assert armoury_view._item_grid.selected_index == 2
+    assert globals_.TestArmouryPanel.visible is False
+    assert globals_.TestArmouryLegend.removed_id == "store_focus_legend"
+    assert armoury_view._better_inventory_armoury_controller_legend is None
+
     features.unregister_armoury_view(armoury_view)
     assert globals_.TestArmouryLegend.removed_id == "store_focus_legend"
     assert armoury_view._sort_options[1]._better_inventory_original_sort is None

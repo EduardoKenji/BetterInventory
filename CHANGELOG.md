@@ -15,6 +15,7 @@
 - Fixed sort comparators remaining wrapped after disable or hot reload; GlobalStore/vendor views without an optional sorting panel are now tracked, restored, and rebound safely.
 - Fixed Automatic Discard releasing shared workflow ownership when canceled or disabled during an in-flight backend deletion; Curio Buyer and manual discard remain blocked until settlement.
 - Reduced idle UI allocation churn by preserving fixed update return contracts and limiting MyFavorites marker synchronization to active marked grids and changed offsets.
+- Fixed disabling BetterInventory with an open inventory/vendor view leaving controller focus ownership or Armoury input-legend actions attached to the live native view.
 
 ## 1.9.3 - 2026-08-07
 

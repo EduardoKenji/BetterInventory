@@ -5934,6 +5934,11 @@ Features.disable_inventory_views = function()
 	for view in pairs(registered_inventory_views) do
 		Features.restore_sort_options(view)
 		restore_lantern_weapon_panel(view)
+
+		if view._better_inventory_options_panel_controller_focused == true then
+			set_inventory_options_panel_controller_focus(view, false)
+		end
+
 		local panel = view._better_inventory_options_panel
 
 		if panel then
@@ -5949,6 +5954,17 @@ Features.disable_inventory_views = function()
 		if view._better_inventory_armoury_controller_focused == true then
 			set_armoury_controller_focus(view, false)
 		end
+
+		local legend = view._better_inventory_armoury_controller_legend
+		local legend_id = view._better_inventory_armoury_controller_legend_id
+
+		if legend and legend_id and type(legend.remove_entry) == "function" then
+			pcall(legend.remove_entry, legend, legend_id)
+		end
+
+		view._better_inventory_armoury_controller_legend = nil
+		view._better_inventory_armoury_controller_legend_id = nil
+		view._better_inventory_armoury_controller_legend_action = nil
 
 		local panel = view._better_inventory_armoury_native_sort_panel
 
