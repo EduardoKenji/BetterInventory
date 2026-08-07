@@ -127,6 +127,10 @@ if ($features -notmatch 'return automatic_discard_state\.delete_inflight\s+or di
 	throw "Automatic discard must retain shared ownership until backend deletion settles."
 }
 
+if ($main -notmatch '_better_inventory_myfavorites_active\s*=\s*true' -or $main -notmatch '_better_inventory_myfavorites_active\s*~=\s*true' -or $main -notmatch 'local pass_input, pass_draw = func\(view, dt, t, input_service\)' -or $main -notmatch 'func\(item_grid, \.\.\.\)\s*\r?\n\s*for widget in pairs\(tracked_widgets\)' -or $main -notmatch 'hotspot_style\.offset\[2\] == offset_y') {
+	throw "Known UI update contracts and MyFavorites idle fast paths were not found."
+}
+
 if ($features -notmatch '_registered_sort_views' -or $features -notmatch 'Features\.rebind_sort_options' -or $features -notmatch 'Features\._registered_sort_views\[view\]\s*=\s*true' -or $features -notmatch 'Features\._registered_sort_views\[view\]\s*=\s*nil' -or $features -notmatch 'for view in pairs\(Features\._registered_sort_views\)' -or $main -notmatch 'Features\.rebind_sort_options\(mod,\s*Layout\)') {
 	throw "Sort comparator ownership and disable/re-enable rebinding contract was not found."
 }

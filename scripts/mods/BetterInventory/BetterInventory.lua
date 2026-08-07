@@ -304,6 +304,7 @@ local function attach_runtime_marker_styles(widget, item_grid)
 		content.better_inventory_myfavorites_hotspot_style = styles.myfav_hotspot
 
 		if item_grid then
+			item_grid._better_inventory_myfavorites_active = true
 			local tracked_widgets = item_grid._better_inventory_myfavorites_widgets
 
 			if not tracked_widgets then
@@ -2290,12 +2291,14 @@ if ensure_class_method(InventoryWeaponsView, "update") then
 	mod:hook(InventoryWeaponsView, "update", function(func, view, dt, t, input_service)
 		Features.capture_inventory_options_panel_controller_focus(mod, Layout, view, input_service)
 		Features.capture_inventory_controller_navigation(view, input_service)
-		local results = pack_values(func(view, dt, t, input_service))
+		-- InventoryWeaponsView ultimately returns BaseView's two-value input/draw
+		-- contract. Keep those values without allocating a vararg table each frame.
+		local pass_input, pass_draw = func(view, dt, t, input_service)
 
 		Features.update_inventory_sort_toggle(mod, Layout, view)
 		Features.update_inventory_options_panel_controller_selection(view, input_service)
 
-		return unpack_values(results, 1, results.n)
+		return pass_input, pass_draw
 	end)
 end
 
@@ -2336,14 +2339,15 @@ if ensure_class_method(CreditsVendorView, "update") then
 			Features.capture_armoury_sort_panel_controller_focus(mod, view, input_service)
 		end
 
-		local results = pack_values(func(view, dt, t, input_service))
+		-- VendorViewBase/BaseView has the same fixed two-value update contract.
+		local pass_input, pass_draw = func(view, dt, t, input_service)
 
 		if is_armoury_sort_view(view) then
 			Features.update_armoury_native_sort_panel(view)
 			align_quick_level_mastery_buttons(view)
 		end
 
-		return unpack_values(results, 1, results.n)
+		return pass_input, pass_draw
 	end)
 end
 
@@ -2661,10 +2665,18 @@ local function synchronize_myfavorites_marker(widget)
 		offset_y = math.max(offset_y, favorite_marker_min_y)
 	end
 
+	-- Equipped/favorite state can be revisited every frame by the native grid,
+	-- but the marker position usually remains unchanged for many frames. Avoid
+	-- rewriting shared style tables unless an external update actually moved it.
+	local favorite_offset = favorite_style and favorite_style.offset
+	if hotspot_style.offset[2] == offset_y and (not favorite_offset or favorite_offset[2] == offset_y) then
+		return
+	end
+
 	hotspot_style.offset[2] = offset_y
 
-	if favorite_style and favorite_style.offset then
-		favorite_style.offset[2] = offset_y
+	if favorite_offset then
+		favorite_offset[2] = offset_y
 	end
 end
 
@@ -2674,19 +2686,23 @@ end
 -- pass is hidden. The input hotspot must still be ready at the correct place.
 if ensure_class_method(ViewElementGrid, "_update_grid_widgets") then
 	mod:hook(ViewElementGrid, "_update_grid_widgets", function(func, item_grid, ...)
+		if not item_grid or item_grid._better_inventory_myfavorites_active ~= true then
+			return func(item_grid, ...)
+		end
+
 		local tracked_widgets = item_grid and item_grid._better_inventory_myfavorites_widgets
 
 		if not tracked_widgets or next(tracked_widgets) == nil then
 			return func(item_grid, ...)
 		end
 
-		local results = pack_values(func(item_grid, ...))
+		-- Darktide's _update_grid_widgets contract returns no values. Calling it
+		-- directly avoids allocating a packed vararg table for every active grid.
+		func(item_grid, ...)
 
 		for widget in pairs(tracked_widgets) do
 			synchronize_myfavorites_marker(widget)
 		end
-
-		return unpack_values(results, 1, results.n)
 	end)
 end
 

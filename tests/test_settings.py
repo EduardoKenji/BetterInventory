@@ -557,14 +557,11 @@ def main() -> None:
 
     grid_update_calls = lua.table_from({"count": 0})
     original_grid_update = lua.eval(
-        "function(item_grid, state) state.count = state.count + 1 return 'updated', nil, 'tail' end"
+        "function(item_grid, state) state.count = state.count + 1 end"
     )
     # MyFavorites only / native equipped state: favorite state never controls
     # placement, including transitions while the favorite icon is hidden.
-    update_result, update_nil, update_tail = globals_.captured_grid_update_hook(
-        original_grid_update, item_grid, grid_update_calls
-    )
-    assert (update_result, update_nil, update_tail) == ("updated", None, "tail")
+    globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
     assert grid_update_calls.count == 1
     assert runtime_hotspot_style.offset[2] == 7
     assert grid_widget.style.favorite_icon.offset[2] == 7
