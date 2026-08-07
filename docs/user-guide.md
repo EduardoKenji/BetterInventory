@@ -10,6 +10,8 @@ Copy the `BetterInventory` directory into `Content/mods`, add `BetterInventory` 
 
 Normal card/layout features do not change inventory or wallet data. Experimental Quick Discard, automatic discard, and Automatic Curio Buyer are opt-in. Automatic writes re-fetch and revalidate state immediately before dispatch, protect favorites/loadouts, serialize destructive work, and fail closed when required profile data is unavailable.
 
+Weapon and Curio equips still use Darktide's native loadout request. BetterInventory observes that request across rapid Character Overview exits, retries only confirmed failures for the same account/character, and refreshes a reopened overview when Darktide publishes the authoritative profile.
+
 ## Validation
 
 1. Run `tests/verify.ps1` for syntax, source contracts, behavior tests, schema drift, packaging, and archive parity.

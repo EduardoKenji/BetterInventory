@@ -10,6 +10,7 @@
 | Optional integrations and operations | `BetterInventory_features.lua` | guarded capability calls, discard ownership, sorting ownership |
 | Curio acquisition | `BetterInventory_curio_acquisition.lua` | serialized reads/purchases, generations, account context |
 | Customization persistence | `BetterInventory_item_customization.lua` | dirty state and explicit DMF save outcomes |
+| Equipment persistence | `BetterInventory_equipment_persistence.lua` | native equip outcome observation, bounded idempotent retry, authoritative profile reconciliation |
 | Localization | `BetterInventory_localization.lua` | DMF localization map, generated character-slot keys |
 
 ## Generated-contract workflow
