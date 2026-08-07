@@ -1154,10 +1154,13 @@ def main() -> None:
     assert globals_.pending_profile_promise is not None
     assert module.active_read_request_count() == 1
     assert module.read_request_generation() == generation_before_pending + 1
+    module.update(globals_.test_mod, 0.5, False)
+    assert module.oldest_read_request_age() >= 0.5
 
     pending_profile_promise = globals_.pending_profile_promise
     module.cancel()
     assert module.active_read_request_count() == 0
+    assert module.oldest_read_request_age() == 0
     assert pending_profile_promise._cancelled is True
 
     # A canceled promise cannot mutate the newly idle state if a backend test

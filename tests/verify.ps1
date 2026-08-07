@@ -167,8 +167,12 @@ if ($features -notmatch 'pcall\(view\.is_item_equipped_in_any_slot' -or $feature
 	throw "Fail-closed sort priority or idle signature/pivot caching was not found."
 }
 
-if ($curioAcquisition -notmatch 'PromiseContainer' -or $curioAcquisition -notmatch 'track_read_promise' -or $curioAcquisition -notmatch 'reset_read_requests' -or $curioAcquisition -notmatch 'active_read_requests' -or $curioAcquisition -notmatch 'track_read_promise\(call_promise\(service, service\.fetch_all_profiles\)\)' -or $curioAcquisition -notmatch 'call_promise\(store_service, store_service\.purchase_item_with_wallet') {
+if ($curioAcquisition -notmatch 'PromiseContainer' -or $curioAcquisition -notmatch 'track_read_promise' -or $curioAcquisition -notmatch 'reset_read_requests' -or $curioAcquisition -notmatch 'active_read_requests' -or $curioAcquisition -notmatch 'oldest_read_request_age' -or $curioAcquisition -notmatch 'track_read_promise\(call_promise\(service, service\.fetch_all_profiles\)\)' -or $curioAcquisition -notmatch 'call_promise\(store_service, store_service\.purchase_item_with_wallet') {
 	throw "Read-only Curio requests must be owned/cancelable without tracking purchase POSTs."
+}
+
+if ($features -notmatch 'read_promise\s*=\s*nil' -or $features -notmatch 'track_automatic_read_promise' -or $features -notmatch 'cancel_automatic_read_promise' -or $features -notmatch 'type\(promise\.cancel\)\s*==\s*"function"') {
+	throw "Automatic Discard read requests must retain an explicit cancelable handle without owning purchase POSTs."
 }
 
 if ($itemCustomization -notmatch 'local save_ok, save_result = pcall\(dmf\.save_unsaved_settings_to_file\)' -or $itemCustomization -notmatch 'save_result == true' -or $itemCustomization -notmatch 'flush_persistence\(true\)' -or $itemCustomization -notmatch 'persistence_retry_elapsed') {

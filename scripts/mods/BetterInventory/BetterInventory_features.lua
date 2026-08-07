@@ -4748,11 +4748,54 @@ local automatic_discard_state = {
 	delete_transaction_token = nil,
 	elapsed = 0,
 	fetch_attempts = 0,
+	read_promise = nil,
+	read_inflight = false,
 	hub_character_id = nil,
 	scheduled = false,
 	started = false,
 	token = 0,
 }
+
+Features.clear_automatic_read_promise = function(promise)
+	if automatic_discard_state.read_promise == promise then
+		automatic_discard_state.read_promise = nil
+		automatic_discard_state.read_inflight = false
+	end
+end
+
+Features.track_automatic_read_promise = function(promise)
+	if not promise then
+		return promise
+	end
+
+	automatic_discard_state.read_promise = promise
+	automatic_discard_state.read_inflight = true
+
+	if type(promise.next) == "function" and type(promise.catch) == "function" then
+		promise:next(function(result)
+			Features.clear_automatic_read_promise(promise)
+
+			return result
+		end):catch(function(error_value)
+			Features.clear_automatic_read_promise(promise)
+
+			return error_value
+		end)
+	end
+
+	return promise
+end
+
+Features.cancel_automatic_read_promise = function()
+	local promise = automatic_discard_state.read_promise
+
+	automatic_discard_state.read_promise = nil
+	automatic_discard_state.read_inflight = false
+
+	if promise and type(promise.cancel) == "function" then
+		pcall(promise.cancel, promise)
+	end
+end
 
 local function automatic_discard_enabled(mod)
 	return mod:get("enable_experimental_quick_discard") == true and mod:get("quick_discard_mode") == "automatic"
@@ -4763,6 +4806,10 @@ Features.morningstar_auto_discard_is_busy = function(mod)
 	-- then the transaction owner remains authoritative through confirmation and
 	-- deletion. Once both clear, a Curio purchase can no longer enter this pass.
 	return automatic_discard_state.delete_inflight or discard_transaction.owner == "automatic" or automatic_discard_enabled(mod) and automatic_discard_state.scheduled
+end
+
+Features.automatic_discard_read_request_count = function()
+	return automatic_discard_state.read_inflight and 1 or 0
 end
 
 local function current_game_mode_name()
@@ -4886,7 +4933,7 @@ local function fetch_inventory_promise(gear_service, character_id)
 		return nil, "GearService.fetch_inventory returned no compatible promise"
 	end
 
-	return promise
+	return Features.track_automatic_read_promise(promise)
 end
 
 local function automatic_context_is_current(mod, token, character_id)
@@ -5131,6 +5178,7 @@ Features.cancel_morningstar_auto_discard = function(preserve_transaction)
 		return
 	end
 
+	Features.cancel_automatic_read_promise()
 	automatic_discard_state.token = automatic_discard_state.token + 1
 	if not automatic_discard_state.delete_inflight then
 		release_discard_transaction("automatic")
@@ -5181,6 +5229,7 @@ Features.update_morningstar_auto_discard = function(mod, dt)
 	-- hub and character identity so hot reloads and unusual state transition
 	-- orders cannot silently leave Automatic mode dormant.
 	if automatic_discard_state.hub_character_id ~= character_id then
+		Features.cancel_automatic_read_promise()
 		automatic_discard_state.token = automatic_discard_state.token + 1
 		automatic_discard_state.elapsed = 0
 		automatic_discard_state.fetch_attempts = 0

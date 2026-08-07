@@ -134,6 +134,9 @@ local state = {
 	last_delivered_report_id = nil,
 	read_promise_container = nil,
 	read_request_generation = 0,
+	read_request_clock = 0,
+	read_request_started_at = {},
+	oldest_read_request_age = 0,
 	active_read_requests = 0,
 	scan_attempts = 0,
 	scheduled = false,
@@ -734,7 +737,20 @@ local function reset_read_requests()
 
 	state.read_request_generation = state.read_request_generation + 1
 	state.active_read_requests = 0
+	state.read_request_started_at = {}
+	state.oldest_read_request_age = 0
 	state.read_promise_container = new_read_promise_container()
+end
+
+local function update_read_request_metrics(dt)
+	state.read_request_clock = state.read_request_clock + math.max(tonumber(dt) or 0, 0)
+	local oldest_age = 0
+
+	for _, started_at in pairs(state.read_request_started_at) do
+		oldest_age = math.max(oldest_age, state.read_request_clock - started_at)
+	end
+
+	state.oldest_read_request_age = oldest_age
 end
 
 local function track_read_promise(promise)
@@ -744,6 +760,8 @@ local function track_read_promise(promise)
 
 	local request_generation = state.read_request_generation
 	local released = false
+	local request_id = tostring(promise) .. ":" .. tostring(state.active_read_requests + 1)
+	state.read_request_started_at[request_id] = state.read_request_clock
 	state.active_read_requests = state.active_read_requests + 1
 
 	local function release_request()
@@ -752,6 +770,7 @@ local function track_read_promise(promise)
 		end
 
 		released = true
+		state.read_request_started_at[request_id] = nil
 
 		if request_generation == state.read_request_generation then
 			state.active_read_requests = math.max(state.active_read_requests - 1, 0)
@@ -2751,6 +2770,7 @@ CurioAcquisition.on_setting_changed = function(mod, setting_id)
 end
 
 CurioAcquisition.update = function(mod, dt, automatic_discard_busy)
+	update_read_request_metrics(dt)
 	ensure_rotation_history(mod)
 	deliver_pending_report(mod)
 	update_profile_discovery(mod, dt)
@@ -2879,6 +2899,10 @@ end
 
 CurioAcquisition.read_request_generation = function()
 	return state.read_request_generation
+end
+
+CurioAcquisition.oldest_read_request_age = function()
+	return state.oldest_read_request_age
 end
 
 CurioAcquisition._test = {
