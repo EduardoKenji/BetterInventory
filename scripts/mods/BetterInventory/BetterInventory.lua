@@ -84,6 +84,10 @@ local CHARACTER_OVERVIEW_EMPTY_CURIO_WIDGET_TYPE = "better_inventory_character_o
 local CHARACTER_OVERVIEW_WEAPON_HEIGHT = 130
 local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_CONTENT_SHIFT_Y = 8
 local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_EQUIPPED_ICON_SHIFT_Y = 8
+local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_HORIZONTAL_PADDING = 8
+local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_ITEM_LEVEL_SHIFT_X = 16
+local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_ITEM_LEVEL_SHIFT_Y = 10
+local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_MARKER_SHIFT_X = 10
 local CHARACTER_OVERVIEW_BLUEPRINTS = type(ItemBlueprintGenerator) == "function" and ItemBlueprintGenerator({
 	600,
 	CHARACTER_OVERVIEW_WEAPON_HEIGHT,
@@ -379,6 +383,7 @@ local function character_overview_curio_blueprint()
 	end
 
 	local blueprint = table.clone(detailed_blueprint)
+	local native_curio_overlay_enabled = mod:get("character_overview_use_native_curio_overlay") == true
 	blueprint.size = table.clone(native_blueprint.size or {
 		193,
 		250,
@@ -509,7 +514,11 @@ local function character_overview_curio_blueprint()
 		local content_shift_y = CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_CONTENT_SHIFT_Y
 
 		if display_name and display_name.style and display_name.style.offset then
+			display_name.style.horizontal_alignment = "center"
+			display_name.style.text_horizontal_alignment = "center"
+			display_name.style.offset[1] = CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_HORIZONTAL_PADDING
 			display_name.style.offset[2] = (display_name.style.offset[2] or 0) + content_shift_y
+			display_name.style.size[1] = math.max(40, card_width - CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_HORIZONTAL_PADDING * 2)
 		end
 
 		for index = 1, 4 do
@@ -551,13 +560,22 @@ local function character_overview_curio_blueprint()
 
 	-- Apply the native Curio portrait geometry after the normal BetterInventory
 	-- geometry pass so the opt-in visual shell is the final authority.
-	if mod:get("character_overview_use_native_curio_overlay") == true then
+	if native_curio_overlay_enabled then
 		configure_native_curio_overlay(blueprint, native_blueprint)
 
 		local equipped_icon = pass_by_style_id(blueprint.pass_template, "equipped_icon")
+		local favorite_icon = pass_by_style_id(blueprint.pass_template, "favorite_icon")
+		local myfavorites_hotspot = pass_by_style_id(blueprint.pass_template, "myfav_hotspot")
 
 		if equipped_icon and equipped_icon.style and equipped_icon.style.offset then
+			equipped_icon.style.offset[1] = (equipped_icon.style.offset[1] or 0) - CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_MARKER_SHIFT_X
 			equipped_icon.style.offset[2] = (equipped_icon.style.offset[2] or 0) + CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_EQUIPPED_ICON_SHIFT_Y
+		end
+
+		for _, pass in ipairs({ favorite_icon, myfavorites_hotspot }) do
+			if pass and pass.style and pass.style.offset then
+				pass.style.offset[1] = (pass.style.offset[1] or 0) - CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_MARKER_SHIFT_X
+			end
 		end
 	end
 
@@ -685,6 +703,11 @@ local function character_overview_curio_blueprint()
 			-8,
 			12,
 		}
+
+		if native_curio_overlay_enabled then
+			item_level.style.offset[1] = item_level.style.offset[1] - CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_ITEM_LEVEL_SHIFT_X
+			item_level.style.offset[2] = item_level.style.offset[2] + CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_ITEM_LEVEL_SHIFT_Y
+		end
 		item_level.style.size = {
 			card_width - 16,
 			30,
