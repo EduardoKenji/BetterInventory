@@ -52,7 +52,7 @@ if ($main -notmatch 'display_name\.style\.offset\[1\]\s*=\s*CHARACTER_OVERVIEW_N
 	throw "Centered native Curio title must use an additive X delta; horizontal inset belongs in the title width."
 }
 
-if ($main -notmatch 'local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_ITEM_LEVEL_SHIFT_Y\s*=\s*-\d+' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_MARKER_GAP_Y\s*=\s*16') {
+if ($main -notmatch 'local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_ITEM_LEVEL_SHIFT_Y\s*=\s*-\d+' -or $main -notmatch 'CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_MARKER_GAP_Y\s*=\s*40') {
 	throw "Native Curio item-level Y must move upward with a negative bottom-aligned delta, and the marker gap must remain explicit."
 }
 
