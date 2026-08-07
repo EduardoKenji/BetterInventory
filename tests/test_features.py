@@ -676,6 +676,17 @@ def main() -> None:
     assert failure_safe_favorite_sort is True
     globals_.TestItems.is_item_id_favorited = original_favorite_query
 
+    # A malformed/partially protected pair must still produce a deterministic
+    # strict ordering. Fail-closed priority contributes zero; native ordering
+    # remains the only tie-breaker and cannot make both directions true.
+    antisymmetric_result = lua.execute(
+        "local view, high, low = ...; local compare = view._sort_options[1].sort_function; return compare(high, low), compare(low, high)",
+        sortable_view,
+        lua.table_from({"item": lua.table_from({"gear_id": "high", "rating": 100, "slots": lua.table_from(["slot_attachment_1"])})}),
+        lua.table_from({"item": lua.table_from({"gear_id": "low", "rating": 1, "slots": lua.table_from(["slot_attachment_1"])})}),
+    )
+    assert antisymmetric_result == (True, False)
+
     mod.settings.prioritize_perfect_roll_weapons = True
     perfect_sort_ids = lua.execute(
         r"""

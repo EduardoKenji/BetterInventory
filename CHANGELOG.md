@@ -18,6 +18,7 @@
 - Fixed disabling BetterInventory with an open inventory/vendor view leaving controller focus ownership or Armoury input-legend actions attached to the live native view.
 - Added explicit read-request ownership metrics and cancellation for Automatic Discard; Curio Buyer reports active and oldest read-only request state while purchase POSTs remain non-cancelable.
 - Made customization persistence outcomes explicit: confirmed saves clear dirty state, thrown failures remain retryable as errors, and DMF-swallowed failures remain marked unknown instead of being reported durable.
+- Added comparator antisymmetry coverage so malformed equipped/favorite compatibility calls degrade to ordinary priority without destabilizing native sorting.
 
 ## 1.9.3 - 2026-08-07
 
