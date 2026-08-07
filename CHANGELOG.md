@@ -8,8 +8,12 @@
 - Hardened weapon and Curio equip persistence across rapid Character Overview exits. BetterInventory observes Darktide's native request, retries only confirmed idempotent failures with account/character guards, preserves uncommitted Y previews from delayed authoritative-X events when reopening the child inventory, and refreshes the overview after confirmed persistence.
 - Fixed DMF customization-save handling: normal non-throwing no-return saves are treated as delegated instead of retried forever, while unavailable/throwing/rejected paths use bounded attempts. Manual discard now retains the shared destructive-operation lock until the native deletion promise settles, and same-gear Character Overview revisions invalidate stale detailed-card content.
 - Added repository-only clean-checkout verification plus optional explicit DMF/Darktide compatibility paths. Added opt-in sampled hot-path diagnostics for UI counters, async read age, active promises, and Lua memory; diagnostics remain disabled by default.
+- Reduced idle MyFavorites marker scans and panel geometry writes with dirty-generation invalidation, bounded compatibility probes, and weak-key lifecycle ownership.
+- Added scoped ViewSession teardown and a generation-owned destructive-operation arbiter for discard popup/backend settlement lifecycles.
+- Replaced the single pending Automatic Curio report with a bounded, deduplicated, account-scoped queue delivered oldest-first.
+- Added typed guarded capability outcomes for optional integrations and conservative settings-registry refresh fallback when lookup or invocation fails.
 - Bumped active release metadata to 2.0.0 and added the full-project audit, prioritized findings, phased remediation plan, and release gates in `docs/v2.0.0-full-project-audit.md`.
-- Added bounded account-scoped Automatic Curio Buyer reports for Operative Selection, delivered once on the matching account's next Morningstar readiness.
+- Added bounded account-scoped Automatic Curio Buyer report history for Operative Selection, delivered oldest-first once on the matching account's next Morningstar readiness.
 - Release packaging now removes unresolved temporary build archives after verification failures.
 - Fixed Curio rarity colour strips on native/hybrid card lifecycles while preserving per-item custom background colours.
 - Added the default-off **Use native Curio overlay** option for detailed Character Overview cards. It restores Darktide's ornate frame and portrait geometry while retaining BetterInventory's title and stat lines. See `docs/v1.9.4-curio-card-visuals-plan.md` for validation details.

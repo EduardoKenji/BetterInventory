@@ -106,6 +106,7 @@ $localization = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory
 $layout = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_layout.lua") -Raw
 $features = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_features.lua") -Raw
 $contracts = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_contracts.lua") -Raw
+$operationArbiter = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_operation_arbiter.lua") -Raw
 $settingsRegistry = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_settings.lua") -Raw
 $curioAcquisition = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_acquisition.lua") -Raw
 $curioValues = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_values.lua") -Raw
@@ -122,11 +123,11 @@ if ($features -notmatch 'popup_id\s*=\s*nil' -or $features -notmatch 'event_remo
 	throw "Discard popup lifecycle reconciliation and token ownership guard were not found."
 }
 
-if ($features -notmatch 'return automatic_discard_state\.delete_inflight\s+or discard_transaction\.owner == "automatic"' -or $features -notmatch 'delete_transaction_token\s*=\s*transaction_token' -or $features -notmatch 'release_discard_transaction\("automatic",\s*transaction_token\)') {
+if (($features -notmatch 'return automatic_discard_state\.delete_inflight' -and $features -notmatch 'discard_owner\(\) == "automatic"') -or $features -notmatch 'delete_transaction_token\s*=\s*transaction_token' -or $features -notmatch 'release_discard_transaction\("automatic",\s*transaction_token\)' -or $operationArbiter -notmatch 'function arbiter:release' -or $operationArbiter -notmatch 'manual_settlement_active') {
 	throw "Automatic discard must retain shared ownership until backend deletion settles."
 }
 
-if ($main -notmatch '_better_inventory_myfavorites_active\s*=\s*true' -or $main -notmatch '_better_inventory_myfavorites_active\s*~=\s*true' -or $main -notmatch 'local pass_input, pass_draw = func\(view, dt, t, input_service\)' -or $main -notmatch 'func\(item_grid, \.\.\.\)\s*\r?\n\s*for widget in pairs\(tracked_widgets\)' -or $main -notmatch 'hotspot_style\.offset\[2\] == offset_y') {
+if ($main -notmatch '_better_inventory_myfavorites_active\s*=\s*true' -or $main -notmatch '_better_inventory_myfavorites_active\s*~=\s*true' -or $main -notmatch 'local pass_input, pass_draw = func\(view, dt, t, input_service\)' -or $main -notmatch 'func\(item_grid, \.\.\.\)' -or $main -notmatch '_better_inventory_myfavorites_dirty' -or $main -notmatch 'hotspot_style\.offset\[2\] == offset_y') {
 	throw "Known UI update contracts and MyFavorites idle fast paths were not found."
 }
 
@@ -166,11 +167,11 @@ if (($features -notmatch 'pcall\(view\.is_item_equipped_in_any_slot' -and $featu
 	throw "Fail-closed sort priority or idle signature/pivot caching was not found."
 }
 
-if ($contracts -notmatch 'Contracts\.safe_call' -or $contracts -notmatch 'Contracts\.safe_method' -or $features -notmatch 'Features\._contracts\.safe_method' -or $features -notmatch 'Features\._contracts\.safe_call') {
+if ($contracts -notmatch 'Contracts\.safe_call' -or $contracts -notmatch 'Contracts\.safe_method' -or $contracts -notmatch 'Contracts\.read_only' -or $contracts -notmatch 'Contracts\.mutation' -or $contracts -notmatch 'Contracts\.registry_refresh_required' -or $contracts -notmatch 'pcall\(function\(\)' -or $features -notmatch 'Features\._contracts\.safe_method' -or $features -notmatch 'Features\._contracts\.safe_call') {
 	throw "The guarded capability-contract seam was not found."
 }
 
-if ($settingsRegistry -notmatch 'Registry\.register' -or $settingsRegistry -notmatch 'collect_setting_entries\(entry\.sub_widgets\)' -or $settingsRegistry -notmatch 'Registry\.duplicates' -or $settingsRegistry -notmatch 'refresh_domains' -or $main -notmatch 'SettingsRegistry\.register\(settings\)' -or $main -notmatch 'SettingsRegistry\.should_refresh_dependencies' -or $main -match 'setting_id == "enable_grid_layout" or') {
+if ($settingsRegistry -notmatch 'Registry\.register' -or $settingsRegistry -notmatch 'collect_setting_entries\(entry\.sub_widgets\)' -or $settingsRegistry -notmatch 'Registry\.duplicates' -or $settingsRegistry -notmatch 'refresh_domains' -or $main -notmatch 'Capabilities\.mutation\(SettingsRegistry,\s*"register",\s*settings\)' -or $main -notmatch 'Capabilities\.registry_refresh_required\(SettingsRegistry,\s*"should_refresh_dependencies",\s*setting_id\)' -or $main -match 'setting_id == "enable_grid_layout" or') {
 	throw "The declarative settings registry and registry-driven dependency refresh routing were not found."
 }
 
