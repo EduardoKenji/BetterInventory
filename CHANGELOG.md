@@ -5,6 +5,8 @@
 ### Fixed / Added
 
 - Bumped active release metadata to 2.0.0 and added the full-project audit, prioritized findings, phased remediation plan, and release gates in `docs/v2.0.0-full-project-audit.md`.
+- Added bounded account-scoped Automatic Curio Buyer reports for Operative Selection, delivered once on the matching account's next Morningstar readiness.
+- Release packaging now removes unresolved temporary build archives after verification failures.
 - Fixed Curio rarity colour strips on native/hybrid card lifecycles while preserving per-item custom background colours.
 - Added the default-off **Use native Curio overlay** option for detailed Character Overview cards. It restores Darktide's ornate frame and portrait geometry while retaining BetterInventory's title and stat lines. See `docs/v1.9.4-curio-card-visuals-plan.md` for validation details.
 - Corrected native-overlay Curio coordinate handling: the centered title now uses its width for the 19 px inset and an additive 1 px left shift, the favorite/checkmark marker stays below the full title band after runtime synchronization, and bottom-aligned item levels move higher with the correct negative Y delta.

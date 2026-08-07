@@ -358,6 +358,7 @@ def main() -> None:
         }
 
         server_clock = 100000
+        backend_account_key = "default"
         main_menu_active = false
 
         settings = {
@@ -524,6 +525,9 @@ def main() -> None:
                 end,
             },
             backend = {
+                account_id = function()
+                    return backend_account_key
+                end,
                 authenticated = function()
                     return true
                 end,
@@ -1067,6 +1071,7 @@ def main() -> None:
     module.enter_operative_selection(globals_.test_mod)
     module.update(globals_.test_mod, 1, False)
     assert globals_.purchase_count == purchases_before_rotation_test + 3
+    assert globals_.settings["_automatic_curio_rotation_history"].accounts["default"].pending_report is not None
 
     # Idle refresh watcher arms once at the boundary, then performs one pass
     # on the following scheduler tick. It must not loop every frame.
@@ -1081,6 +1086,29 @@ def main() -> None:
     assert globals_.purchase_count == purchases_before_idle_refresh + 1
     module.update(globals_.test_mod, 1, False)
     assert globals_.purchase_count == purchases_before_idle_refresh + 1
+    module.cancel()
+
+    # Operative Selection keeps a bounded account-scoped report for the next
+    # Morningstar because its notification visibility is not guaranteed.
+    pending_history = globals_.settings["_automatic_curio_rotation_history"]
+    pending_report = pending_history.accounts["default"].pending_report
+    assert pending_report is not None
+    assert pending_report.context == "operative_selection"
+    assert len(pending_report.purchased) == 1
+    assert pending_report.purchased[1].character_id == "target-psyker"
+
+    globals_.captured_notification = None
+    globals_.main_menu_active = False
+    globals_.backend_account_key = "other-account"
+    module.begin_morningstar_pass(globals_.test_mod)
+    module.update(globals_.test_mod, 0, False)
+    assert globals_.captured_notification is None
+    assert globals_.settings["_automatic_curio_rotation_history"].accounts["default"].pending_report is not None
+    globals_.backend_account_key = "default"
+    module.update(globals_.test_mod, 0, False)
+    assert globals_.captured_notification.line_1 == "automatic_curio_purchased_title"
+    assert "Research Psyker(Psyker): 21% automatic_curio_health (410)" in globals_.captured_notification.line_2
+    assert globals_.settings["_automatic_curio_rotation_history"].accounts["default"].pending_report is None
     module.cancel()
 
     # If context leaves after scan/revalidation but before first purchase POST,

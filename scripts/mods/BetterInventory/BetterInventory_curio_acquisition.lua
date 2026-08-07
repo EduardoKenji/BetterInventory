@@ -32,6 +32,9 @@ local STORE_ROTATION_GRACE_MS = 5000
 local STORE_ROTATION_HOUR_MS = 60 * 60 * 1000
 local MAX_STORE_ROTATION_AHEAD_MS = 2 * STORE_ROTATION_HOUR_MS
 local MAX_ROTATION_HISTORY_ACCOUNTS = 4
+local MAX_PENDING_REPORT_ITEMS = 8
+local MAX_PENDING_REPORT_TEXT_LENGTH = 96
+local MAX_PENDING_REPORT_ID_LENGTH = 64
 local MAX_OFFER_ERROR_LOGS_PER_SCAN = 5
 local MAX_ERROR_TEXT_LENGTH = 1000
 local PROFILE_DISCOVERY_DELAY = 1
@@ -127,6 +130,8 @@ local state = {
 	profile_discovery_refresh_elapsed = 0,
 	profile_discovery_token = 0,
 	profile_revision = 0,
+	last_delivered_report_account = nil,
+	last_delivered_report_id = nil,
 	read_promise_container = nil,
 	read_request_generation = 0,
 	active_read_requests = 0,
@@ -270,6 +275,16 @@ local function error_text(error_value)
 	end
 
 	return result
+end
+
+local function bounded_report_text(value, maximum)
+	local text = tostring(value or "")
+
+	if #text > maximum then
+		return string.sub(text, 1, maximum)
+	end
+
+	return text
 end
 
 local function enabled(mod)
@@ -421,6 +436,102 @@ local function fallback_rotation_boundary(now)
 	return (math.floor(now / STORE_ROTATION_HOUR_MS) + 1) * STORE_ROTATION_HOUR_MS
 end
 
+local function sanitize_pending_report_item(source)
+	if type(source) ~= "table" then
+		return
+	end
+
+	local character_id = bounded_report_text(source.character_id, MAX_PENDING_REPORT_TEXT_LENGTH)
+	local character_name = bounded_report_text(source.character_name, MAX_PENDING_REPORT_TEXT_LENGTH)
+	local class_name = bounded_report_text(source.class_name, MAX_PENDING_REPORT_TEXT_LENGTH)
+	local label_id = bounded_report_text(source.label_id, MAX_PENDING_REPORT_TEXT_LENGTH)
+	local currency
+
+	if source.currency == "credits" or source.currency == "marks" then
+		currency = source.currency
+	end
+	local primary_value = tonumber(source.primary_value)
+	local item_level = tonumber(source.item_level)
+	local price = tonumber(source.price)
+
+	if label_id == "" or not currency or not primary_value or not item_level or not price then
+		return
+	end
+
+	return {
+		character_id = character_id,
+		character_name = character_name,
+		class_name = class_name,
+		item_level = math.max(0, math.floor(item_level + 0.5)),
+		label_id = label_id,
+		primary_value = primary_value,
+		price = math.max(0, math.floor(price + 0.5)),
+		unit = bounded_report_text(source.unit, 16),
+		currency = currency,
+	}
+end
+
+local function sanitize_pending_report(source)
+	if type(source) ~= "table" then
+		return
+	end
+
+	local report_id = bounded_report_text(source.report_id, MAX_PENDING_REPORT_ID_LENGTH)
+
+	if report_id == "" then
+		return
+	end
+
+	local result = {
+		account_key = bounded_report_text(source.account_key, MAX_PENDING_REPORT_TEXT_LENGTH),
+		context = source.context == "operative_selection" and source.context or "morningstar",
+		created_at_ms = tonumber(source.created_at_ms) or 0,
+		insufficient = {},
+		partial_failure = source.partial_failure == true,
+		purchased = {},
+		report_id = report_id,
+		spent = {
+			credits = 0,
+			marks = 0,
+		},
+	}
+
+	local item_count = 0
+
+	for _, field in ipairs({"purchased", "insufficient"}) do
+		local source_items = source[field]
+
+		if type(source_items) == "table" then
+			for index = 1, #source_items do
+				if item_count >= MAX_PENDING_REPORT_ITEMS then
+					break
+				end
+
+				local item = sanitize_pending_report_item(source_items[index])
+
+				if item then
+					result[field][#result[field] + 1] = item
+					item_count = item_count + 1
+				end
+			end
+		end
+	end
+
+	local source_spent = source.spent
+
+	if type(source_spent) == "table" then
+		for _, currency in ipairs({"credits", "marks"}) do
+			result.spent[currency] = math.max(0, math.floor(tonumber(source_spent[currency]) or 0))
+		end
+	end
+
+	if item_count == 0 then
+		return
+	end
+
+	return result
+end
+
 local function sanitize_rotation_history(source, now)
 	local result = {
 		schema_version = 1,
@@ -454,7 +565,9 @@ local function sanitize_rotation_history(source, now)
 				account.last_context = entry.last_context
 			end
 
-			if account.next_refresh_at_ms or account.last_successful_scan_at_ms or account.last_used_at_ms then
+			account.pending_report = sanitize_pending_report(entry.pending_report)
+
+			if account.next_refresh_at_ms or account.last_successful_scan_at_ms or account.last_used_at_ms or account.pending_report then
 				result.accounts[tostring(key)] = account
 			end
 		end
@@ -1784,10 +1897,10 @@ local function notify(mod, title_id, description, final_line, final_line_color)
 	local event_manager = Managers and Managers.event
 
 	if not event_manager or type(event_manager.trigger) ~= "function" then
-		return
+		return false
 	end
 
-	pcall(event_manager.trigger, event_manager, "event_add_notification_message", "custom", {
+	local success = pcall(event_manager.trigger, event_manager, "event_add_notification_message", "custom", {
 		line_1 = mod:localize(title_id),
 		line_1_color = Color.terminal_text_header(255, true),
 		line_2 = description,
@@ -1795,6 +1908,8 @@ local function notify(mod, title_id, description, final_line, final_line_color)
 		line_3 = final_line,
 		line_3_color = final_line_color,
 	})
+
+	return success
 end
 
 local function notify_no_eligible(mod)
@@ -1909,6 +2024,182 @@ local function spending_line(mod, purchased)
 	return #lines > 0 and "\n" .. table.concat(lines, "\n") or nil
 end
 
+local function compact_pending_report_item(candidate)
+	local config = candidate and candidate.primary_config
+
+	if not candidate or type(config) ~= "table" then
+		return
+	end
+
+	return sanitize_pending_report_item({
+		character_id = candidate.character_id,
+		character_name = candidate.character_name,
+		class_name = candidate.class_name,
+		item_level = candidate.item_level,
+		label_id = config.label_id,
+		primary_value = candidate.primary_value,
+		price = candidate.price,
+		unit = config.unit,
+		currency = candidate.currency,
+	})
+end
+
+local function build_pending_report(account_key, context, purchased, insufficient, partial_failure)
+	local report = {
+		account_key = account_key,
+		context = context,
+		created_at_ms = server_time() or 0,
+		insufficient = {},
+		partial_failure = partial_failure == true,
+		purchased = {},
+		report_id = string.format("%s:%s:%d", tostring(context), tostring(math.floor(server_time() or application_time())), state.context_entry_id),
+		spent = {
+			credits = 0,
+			marks = 0,
+		},
+	}
+
+	for _, source in ipairs({
+		{field = "purchased", values = purchased},
+		{field = "insufficient", values = insufficient},
+	}) do
+		for index = 1, #(source.values or {}) do
+			if #report.purchased + #report.insufficient >= MAX_PENDING_REPORT_ITEMS then
+				break
+			end
+
+			local item = compact_pending_report_item(source.values[index])
+
+			if item then
+				report[source.field][#report[source.field] + 1] = item
+
+				if source.field == "purchased" and report.spent[item.currency] then
+					report.spent[item.currency] = report.spent[item.currency] + item.price
+				end
+			end
+		end
+	end
+
+	return sanitize_pending_report(report)
+end
+
+local function persist_pending_report(mod, account_key, report)
+	if not report or not account_key then
+		return false
+	end
+
+	local history = sanitize_rotation_history(mod:get(ROTATION_HISTORY_SETTING_ID), server_time())
+	local entry = history.accounts[account_key] or {}
+	entry.pending_report = report
+	history.accounts[account_key] = entry
+
+	local success = pcall(mod.set, mod, ROTATION_HISTORY_SETTING_ID, history, false)
+
+	if not success then
+		log_info(mod, "Could not persist the pending Automatic Curio Buyer report; the confirmed result remains in the current session log.")
+	elseif state.account_key == account_key then
+		state.rotation_history = history
+	end
+
+	return success
+end
+
+local function pending_report_item_line(mod, item)
+	local owner = item.character_name ~= "" and string.format("%s(%s)", item.character_name, item.class_name) or item.class_name
+	local shown_value = item.primary_value == math.floor(item.primary_value) and tostring(math.floor(item.primary_value)) or tostring(item.primary_value)
+	local label = item.label_id
+
+	if type(mod.localize) == "function" then
+		local success, localized = pcall(mod.localize, mod, item.label_id)
+
+		if success and type(localized) == "string" and localized ~= "" then
+			label = localized
+		end
+	end
+
+	return string.format("%s: %s%s %s (%d)", owner, shown_value, item.unit, label, item.item_level)
+end
+
+local function pending_report_description(mod, report)
+	local lines = {}
+
+	for index = 1, #report.purchased do
+		lines[#lines + 1] = pending_report_item_line(mod, report.purchased[index])
+	end
+
+	if #report.insufficient > 0 then
+		local insufficient_lines = {}
+
+		for index = 1, #report.insufficient do
+			insufficient_lines[#insufficient_lines + 1] = pending_report_item_line(mod, report.insufficient[index])
+		end
+
+		lines[#lines + 1] = mod:localize("automatic_curio_insufficient_title") .. ": " .. table.concat(insufficient_lines, "; ")
+	end
+
+	if report.partial_failure then
+		lines[#lines + 1] = mod:localize("automatic_curio_partial_failure")
+	end
+
+	return table.concat(lines, "\n")
+end
+
+local function deliver_pending_report(mod)
+	if not is_morningstar() or is_operative_selection() then
+		return false
+	end
+
+	local account_key = state.account_key
+	local history = state.rotation_history
+
+	if not account_key or type(history) ~= "table" then
+		return false
+	end
+
+	local entry = history.accounts[account_key]
+	local report = entry and entry.pending_report
+
+	if not report then
+		return false
+	end
+
+	local already_dispatched = state.last_delivered_report_account == account_key and state.last_delivered_report_id == report.report_id
+
+	if not already_dispatched then
+		local title_id = #report.purchased > 0 and "automatic_curio_purchased_title" or "automatic_curio_insufficient_title"
+		local delivered = notify(
+			mod,
+			title_id,
+			pending_report_description(mod, report),
+			spending_line(mod, report.purchased),
+			Color.terminal_corner_selected(255, true)
+		)
+
+		if not delivered then
+			return false
+		end
+
+		state.last_delivered_report_account = account_key
+		state.last_delivered_report_id = report.report_id
+	end
+
+	entry.pending_report = nil
+	local success = pcall(mod.set, mod, ROTATION_HISTORY_SETTING_ID, history, false)
+
+	if not success then
+		entry.pending_report = report
+		return false
+	end
+
+	if state.account_key == account_key then
+		state.rotation_history = history
+	end
+
+	log_info(mod, "Delivered the pending Automatic Curio Buyer report from " .. tostring(report.context) .. " (" .. tostring(report.report_id) .. ").")
+
+	return true
+end
+
 local function refresh_after_purchase()
 	local store_service = Managers and Managers.data_service and Managers.data_service.store
 
@@ -1924,7 +2215,7 @@ local function refresh_after_purchase()
 	end
 end
 
-local function report_purchase_outcomes(mod, purchased, insufficient, partial_failure)
+local function report_purchase_outcomes(mod, purchased, insufficient, partial_failure, report_context, report_account_key)
 	local reported = false
 
 	if #purchased > 0 then
@@ -1943,6 +2234,14 @@ local function report_purchase_outcomes(mod, purchased, insufficient, partial_fa
 		reported = true
 	end
 
+	if report_context == "operative_selection" and (#purchased > 0 or #insufficient > 0) then
+		local pending_report = build_pending_report(report_account_key, report_context, purchased, insufficient, partial_failure)
+
+		if pending_report then
+			persist_pending_report(mod, report_account_key, pending_report)
+		end
+	end
+
 	return reported
 end
 
@@ -1956,6 +2255,8 @@ end
 local function purchase_candidates(mod, token, candidates, boundary_ms)
 	local purchased = {}
 	local insufficient = {}
+	local report_account_key = state.account_key
+	local report_context = state.active_context
 	local boundary_committed = false
 	local chain = Promise.resolved()
 
@@ -1995,7 +2296,7 @@ local function purchase_candidates(mod, token, candidates, boundary_ms)
 				refresh_after_purchase()
 			end
 
-			report_purchase_outcomes(mod, purchased, insufficient, false)
+			report_purchase_outcomes(mod, purchased, insufficient, false, report_context, report_account_key)
 
 			if #purchased > 0 or #insufficient > 0 then
 				log_diagnostic(mod, string.format("Reported %d purchase(s) and %d insufficient-funds match(es) after the pass was cancelled.", #purchased, #insufficient))
@@ -2017,7 +2318,7 @@ local function purchase_candidates(mod, token, candidates, boundary_ms)
 			refresh_after_purchase()
 		end
 
-		local reported = report_purchase_outcomes(mod, purchased, insufficient, false)
+		local reported = report_purchase_outcomes(mod, purchased, insufficient, false, report_context, report_account_key)
 
 		if reported then
 			log_info(mod, string.format("Purchase pass completed with %d purchase(s) and %d insufficient-funds match(es).", #purchased, #insufficient))
@@ -2031,7 +2332,7 @@ local function purchase_candidates(mod, token, candidates, boundary_ms)
 				refresh_after_purchase()
 			end
 
-			report_purchase_outcomes(mod, purchased, insufficient, true)
+			report_purchase_outcomes(mod, purchased, insufficient, true, report_context, report_account_key)
 			log_info(mod, string.format("Reported %d purchase(s) and %d insufficient-funds match(es) after a cancelled pass encountered an error: %s", #purchased, #insufficient, error_text(error_value)))
 
 			return
@@ -2042,7 +2343,7 @@ local function purchase_candidates(mod, token, candidates, boundary_ms)
 			refresh_after_purchase()
 		end
 
-		report_purchase_outcomes(mod, purchased, insufficient, true)
+		report_purchase_outcomes(mod, purchased, insufficient, true, report_context, report_account_key)
 
 		if #purchased == 0 then
 			notify(mod, "automatic_curio_failed_title", mod:localize("automatic_curio_failed_description"))
@@ -2451,6 +2752,7 @@ end
 
 CurioAcquisition.update = function(mod, dt, automatic_discard_busy)
 	ensure_rotation_history(mod)
+	deliver_pending_report(mod)
 	update_profile_discovery(mod, dt)
 
 	if not enabled(mod) then
