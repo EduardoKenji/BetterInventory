@@ -25,6 +25,7 @@ local CreditsVendorView = require("scripts/ui/views/credits_vendor_view/credits_
 local MainMenuView = require("scripts/ui/views/main_menu_view/main_menu_view")
 local InventoryView = require("scripts/ui/views/inventory_view/inventory_view")
 local InventoryViewContentBlueprints = require("scripts/ui/views/inventory_view/inventory_view_content_blueprints")
+local InventoryBackgroundView = require("scripts/ui/views/inventory_background_view/inventory_background_view")
 local ItemGridViewBase = require("scripts/ui/views/item_grid_view_base/item_grid_view_base")
 local ItemGridViewBaseDefinitions = require("scripts/ui/views/item_grid_view_base/item_grid_view_base_definitions")
 local InventoryWeaponsView = require("scripts/ui/views/inventory_weapons_view/inventory_weapons_view")
@@ -42,6 +43,7 @@ end
 local Features = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_features"), "BetterInventory_features.lua")
 local CurioAcquisition = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_acquisition"), "BetterInventory_curio_acquisition.lua")
 local ItemCustomization = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_item_customization"), "BetterInventory_item_customization.lua")
+local EquipmentPersistence = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_equipment_persistence"), "BetterInventory_equipment_persistence.lua")
 local SettingsRegistry = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_settings"), "BetterInventory_settings.lua")
 
 if type(Features.set_curio_acquisition_provider) == "function" then
@@ -2221,6 +2223,7 @@ end)
 
 function mod.update(dt)
 	ItemCustomization.update_runtime(mod, dt)
+	EquipmentPersistence.update(mod, dt)
 	Features.reconcile_discard_transaction()
 	Features.update_morningstar_auto_discard(mod, dt)
 	CurioAcquisition.update(mod, dt, Features.morningstar_auto_discard_is_busy(mod))
@@ -2361,6 +2364,18 @@ mod:hook_safe(InventoryWeaponsView, "cb_on_favorite_pressed", function(view)
 		Features.resort_inventory(mod, Layout, view)
 	end
 end)
+
+if ensure_class_method(InventoryBackgroundView, "_equip_local_changes") then
+	mod:hook(InventoryBackgroundView, "_equip_local_changes", function(func, view, ...)
+		return EquipmentPersistence.persist_local_changes(mod, func, view, ...)
+	end)
+end
+
+if ensure_class_method(InventoryBackgroundView, "event_player_profile_updated") then
+	mod:hook_safe(InventoryBackgroundView, "event_player_profile_updated", function(view, peer_id, local_player_id)
+		EquipmentPersistence.refresh_from_authoritative_profile(view, peer_id, local_player_id)
+	end)
+end
 
 mod:hook_safe(InventoryWeaponsView, "_equip_item", function(view)
 	if mod:get("prioritize_equipped_favorites") ~= false then

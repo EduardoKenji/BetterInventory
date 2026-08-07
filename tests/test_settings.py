@@ -195,6 +195,13 @@ def main() -> None:
 			update_runtime = function() end,
 			import_name_it_names = function() end,
 		}
+		test_equipment_persistence = {
+			persist_local_changes = function(_, native_function, view, ...)
+				return native_function(view, ...)
+			end,
+			refresh_from_authoritative_profile = function() end,
+			update = function() end,
+		}
 
         test_mod = {}
         test_mod._better_inventory_test = {}
@@ -257,6 +264,8 @@ def main() -> None:
 				return test_curio_acquisition
 			elseif string.find(path, "BetterInventory_item_customization", 1, true) then
 				return test_item_customization
+			elseif string.find(path, "BetterInventory_equipment_persistence", 1, true) then
+				return test_equipment_persistence
 			end
 
 			return test_layout
