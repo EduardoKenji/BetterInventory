@@ -1587,7 +1587,7 @@ local function observed_rotation_boundary(storefront)
 	return boundary
 end
 
-local function scan_candidates(mod, token)
+local function scan_candidates(mod, token, minimum_rotation_boundary_ms)
 	local profiles_service = Managers and Managers.data_service and Managers.data_service.profiles
 
 	if not profiles_service or type(profiles_service.fetch_all_profiles) ~= "function" then
@@ -1634,13 +1634,27 @@ local function scan_candidates(mod, token)
 							return
 						end
 
+						local observed_boundary = observed_rotation_boundary(storefront)
+
+						-- The backend can briefly return the expired storefront after its
+						-- advertised rotation boundary. A boundary-based pass must prove
+						-- that every character storefront advanced before it evaluates or
+						-- consumes the new rotation. Falling back to the next wall-clock
+						-- hour here would incorrectly bless stale offers and suppress the
+						-- real refreshed pass.
+						if minimum_rotation_boundary_ms and (not observed_boundary or observed_boundary <= minimum_rotation_boundary_ms) then
+							return rejected(string.format(
+								"Armoury storefront for %s has not advanced beyond rotation boundary %s",
+								profile_label(profile),
+								tostring(minimum_rotation_boundary_ms)
+							))
+						end
+
 						local offers = storefront and storefront.data and storefront.data.personal
 
 						if type(offers) ~= "table" then
 							return rejected("Armoury storefront returned no personal offers")
 						end
-
-						local observed_boundary = observed_rotation_boundary(storefront)
 
 						if observed_boundary and (not rotation_boundary_ms or observed_boundary < rotation_boundary_ms) then
 							rotation_boundary_ms = observed_boundary
@@ -2393,12 +2407,15 @@ end
 
 local function start_scan(mod)
 	local token = state.token
+	local now = server_time()
+	local previous_boundary = tonumber(state.rotation_boundary_ms)
+	local minimum_rotation_boundary_ms = previous_boundary and now and now >= previous_boundary + STORE_ROTATION_GRACE_MS and previous_boundary or nil
 
 	state.started = true
 	state.scan_attempts = state.scan_attempts + 1
 	log_diagnostic(mod, string.format("Starting all-character Armoury scan attempt %d.", state.scan_attempts))
 
-	scan_candidates(mod, token):next(function(scan_result)
+	scan_candidates(mod, token, minimum_rotation_boundary_ms):next(function(scan_result)
 		if not context_is_current(mod, token) then
 			return
 		end

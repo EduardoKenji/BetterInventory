@@ -483,6 +483,7 @@ def main() -> None:
 		wallet_hook = nil
 		wallet_balance = 100000
         fetched_store_count = 0
+        storefront_hook = nil
         requested_wallet_character = nil
         purchased_wallet_owner = nil
         captured_notification = nil
@@ -539,6 +540,10 @@ def main() -> None:
                         psyker_store = function(self, time, character_id)
                             fetched_store_count = fetched_store_count + 1
                             assert(character_id == "target-psyker")
+
+							if storefront_hook then
+								return TestPromise.resolved(storefront_hook(fetched_store_count))
+							end
 
 							if fetched_store_count == 2 then
 								return TestPromise.resolved(revalidated_storefront)
@@ -1025,6 +1030,16 @@ def main() -> None:
     )
     assert module._test.observed_rotation_boundary(observed_storefront) == 1600000
 
+    def set_storefront_boundary(boundary: int) -> None:
+        globals_.test_storefront.data.currentRotationEnd = boundary
+        globals_.test_storefront.data.catalog = lua.table_from({"validTo": boundary})
+        globals_.test_offer.price.validTo = boundary
+        globals_.revalidated_storefront.data.currentRotationEnd = boundary
+        globals_.revalidated_storefront.data.catalog = lua.table_from(
+            {"validTo": boundary}
+        )
+        globals_.revalidated_offer.price.validTo = boundary
+
     globals_.settings.enable_automatic_curio_acquisition = True
     globals_.settings.automatic_curio_once_per_store_rotation = True
     globals_.settings.automatic_curio_scan_operative_selection = False
@@ -1054,6 +1069,7 @@ def main() -> None:
 
     # One second past reset grace is a new rotation even though less than an
     # hour elapsed since a hypothetical 17:59 scan.
+    set_storefront_boundary(first_next_refresh + 3600000)
     globals_.server_clock = first_next_refresh + 5000
     module.begin_morningstar_pass(globals_.test_mod)
     module.update(globals_.test_mod, 6, False)
@@ -1068,6 +1084,7 @@ def main() -> None:
     module.update(globals_.test_mod, 1, False)
     assert globals_.purchase_count == purchases_before_rotation_test + 2
 
+    set_storefront_boundary(second_next_refresh + 3600000)
     globals_.server_clock = second_next_refresh + 5000
     module.leave_operative_selection()
     module.enter_operative_selection(globals_.test_mod)
@@ -1080,6 +1097,7 @@ def main() -> None:
     globals_.settings.automatic_curio_rescan_on_store_refresh = True
     rotation_history = globals_.settings["_automatic_curio_rotation_history"]
     third_next_refresh = rotation_history.accounts["default"].next_refresh_at_ms
+    set_storefront_boundary(third_next_refresh + 3600000)
     globals_.server_clock = third_next_refresh + 5000
     purchases_before_idle_refresh = globals_.purchase_count
     module.update(globals_.test_mod, 1, False)
@@ -1113,6 +1131,69 @@ def main() -> None:
     assert globals_.settings["_automatic_curio_rotation_history"].accounts["default"].pending_report is None
     module.cancel()
 
+    # Crossing a predicted boundary does not prove that the backend has
+    # published the new storefront. An expired response must not be evaluated
+    # or allowed to consume the following rotation through the hourly fallback.
+    globals_.settings.automatic_curio_rescan_on_store_refresh = True
+    globals_.settings.automatic_curio_once_per_store_rotation = True
+    globals_.settings.automatic_curio_buy_health = True
+    globals_.settings.automatic_curio_buy_toughness = False
+    globals_.main_menu_active = False
+    globals_.test_offer.offerId = "stale-boundary-health"
+    globals_.revalidated_offer.offerId = "stale-boundary-health"
+    stale_boundary = globals_.settings["_automatic_curio_rotation_history"].accounts[
+        "default"
+    ].next_refresh_at_ms
+    globals_.server_clock = stale_boundary + 5000
+    lua.execute(
+        """
+        storefront_is_stale = true
+        fresh_store_fetch_count = 0
+        stale_storefront = {
+            data = {
+                currentRotationEnd = %d,
+                catalog = {validTo = %d},
+                personal = {test_offer},
+            },
+        }
+        storefront_hook = function()
+            if storefront_is_stale then
+                return stale_storefront
+            end
+
+            fresh_store_fetch_count = fresh_store_fetch_count + 1
+            return fresh_store_fetch_count %% 2 == 1 and test_storefront or revalidated_storefront
+        end
+        """
+        % (stale_boundary, stale_boundary)
+    )
+    purchases_before_stale_boundary = globals_.purchase_count
+    module.begin_morningstar_pass(globals_.test_mod)
+    module.update(globals_.test_mod, 6, False)
+    assert globals_.purchase_count == purchases_before_stale_boundary
+    assert (
+        globals_.settings["_automatic_curio_rotation_history"].accounts[
+            "default"
+        ].next_refresh_at_ms
+        == stale_boundary
+    )
+
+    # Once the backend advertises a boundary beyond the consumed rotation, the
+    # bounded retry may evaluate and purchase the newly published offer.
+    fresh_boundary = stale_boundary + 3600000
+    set_storefront_boundary(fresh_boundary)
+    globals_.storefront_is_stale = False
+    module.update(globals_.test_mod, 5, False)
+    assert globals_.purchase_count == purchases_before_stale_boundary + 1
+    assert (
+        globals_.settings["_automatic_curio_rotation_history"].accounts[
+            "default"
+        ].next_refresh_at_ms
+        == fresh_boundary
+    )
+    globals_.storefront_hook = None
+    module.cancel()
+
     # If context leaves after scan/revalidation but before first purchase POST,
     # rotation remains retryable. Re-entering same rotation may purchase once.
     globals_.main_menu_active = False
@@ -1126,6 +1207,7 @@ def main() -> None:
     globals_.revalidated_offer.offerId = "interrupted-offer-health"
     rotation_history = globals_.settings["_automatic_curio_rotation_history"]
     committed_before_interrupted = rotation_history.accounts["default"].next_refresh_at_ms
+    set_storefront_boundary(committed_before_interrupted + 3600000)
     globals_.server_clock = committed_before_interrupted + 5000
     purchases_before_interrupted = globals_.purchase_count
     globals_.buyer_module = module
