@@ -111,6 +111,12 @@ $features = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_fea
 $curioAcquisition = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_acquisition.lua") -Raw
 $curioValues = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_values.lua") -Raw
 
+$trackedReleaseArchive = Join-Path $projectRoot "BetterInventory.zip"
+
+if (-not (Test-Path -LiteralPath $trackedReleaseArchive -PathType Leaf)) {
+	throw "Tracked release archive is missing: $trackedReleaseArchive"
+}
+
 if ($layout -notmatch 'synchronize_rarity_tag_color' -or $layout -notmatch 'Items\.rarity_color' -or $layout -notmatch 'better_inventory_original_color') {
 	throw "The shared Curio rarity-strip colour synchronization was not found."
 }
@@ -538,5 +544,73 @@ try {
 		[IO.File]::Delete($packagingTestArchive)
 	}
 }
+
+$trackedArchive = [IO.Compression.ZipFile]::OpenRead($trackedReleaseArchive)
+
+try {
+	$trackedEntryMap = @{}
+
+	foreach ($entry in $trackedArchive.Entries) {
+		if (-not [string]::IsNullOrEmpty($entry.Name)) {
+			if ($entry.FullName.Contains("\")) {
+				throw "Tracked release archive entry uses a Windows path separator: $($entry.FullName)"
+			}
+
+			$trackedEntryMap[$entry.FullName] = $entry
+		}
+	}
+
+	$expectedTrackedPaths = @("BetterInventory/BetterInventory.mod")
+	$expectedTrackedPaths += @($runtimeLuaFiles | ForEach-Object { "BetterInventory/scripts/mods/BetterInventory/$($_.Name)" })
+	$expectedTrackedPaths = @($expectedTrackedPaths | Sort-Object)
+	$actualTrackedPaths = @($trackedEntryMap.Keys | Sort-Object)
+
+	if (@(Compare-Object $expectedTrackedPaths $actualTrackedPaths).Count -gt 0) {
+		throw "Tracked release archive does not contain the current runtime file set. Rebuild BetterInventory.zip."
+	}
+
+	foreach ($archivePath in $expectedTrackedPaths) {
+		$entryStream = $trackedEntryMap[$archivePath].Open()
+		$sha256 = [Security.Cryptography.SHA256]::Create()
+
+		try {
+			$entryHash = ([BitConverter]::ToString($sha256.ComputeHash($entryStream))).Replace("-", "")
+		} finally {
+			$sha256.Dispose()
+			$entryStream.Dispose()
+		}
+
+		$sourcePath = if ($archivePath -eq "BetterInventory/BetterInventory.mod") {
+			Join-Path $projectRoot "BetterInventory.mod"
+		} else {
+			Join-Path $scriptRoot ([IO.Path]::GetFileName($archivePath))
+		}
+		$sourceHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $sourcePath).Hash
+
+		if ($entryHash -ne $sourceHash) {
+			throw "Tracked release archive hash mismatch: $archivePath. Rebuild BetterInventory.zip."
+		}
+	}
+
+	$dataEntry = $trackedEntryMap["BetterInventory/scripts/mods/BetterInventory/BetterInventory_data.lua"]
+	$dataReader = New-Object IO.StreamReader($dataEntry.Open())
+
+	try {
+		$trackedData = $dataReader.ReadToEnd()
+	} finally {
+		$dataReader.Dispose()
+	}
+
+	$sourceVersionMatch = [regex]::Match($data, 'MOD_VERSION\s*=\s*"([^"]+)"')
+	$trackedVersionMatch = [regex]::Match($trackedData, 'MOD_VERSION\s*=\s*"([^"]+)"')
+
+	if (-not $sourceVersionMatch.Success -or -not $trackedVersionMatch.Success -or $sourceVersionMatch.Groups[1].Value -ne $trackedVersionMatch.Groups[1].Value) {
+		throw "Tracked release archive version does not match BetterInventory_data.lua. Rebuild BetterInventory.zip."
+	}
+} finally {
+	$trackedArchive.Dispose()
+}
+
+Write-Host "Tracked release archive parity verified: $trackedReleaseArchive" -ForegroundColor Green
 
 Write-Host "BetterInventory static verification passed." -ForegroundColor Green
