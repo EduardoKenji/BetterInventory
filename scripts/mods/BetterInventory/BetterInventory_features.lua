@@ -119,6 +119,36 @@ if type(Features._contracts) ~= "table" or type(Features._contracts.safe_call) ~
 	}
 end
 
+Features._view_session = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_view_session")
+
+Features.begin_view_session = function(view, kind)
+	local sessions = Features._view_session
+
+	if sessions and type(sessions.begin) == "function" then
+		return sessions.begin(view, kind)
+	end
+end
+
+Features.end_view_session = function(view, reason)
+	local sessions = Features._view_session
+
+	if sessions and type(sessions.close) == "function" then
+		return sessions.close(view, reason)
+	end
+
+	return false
+end
+
+Features.register_view_session_cleanup = function(view, cleanup_id, callback)
+	local sessions = Features._view_session
+
+	if sessions and type(sessions.register_cleanup) == "function" then
+		return sessions.register_cleanup(view, cleanup_id, callback)
+	end
+
+	return false
+end
+
 -- Keep sort ownership independent from the optional settings panels. A vendor
 -- can have a wrapped native comparator even when BetterInventory did not create
 -- a visible sorting panel for it.
@@ -3964,6 +3994,12 @@ local function configure_sort_options(mod, view)
 		return
 	end
 
+	local session_kind = is_armoury_sort_view(view) and "armoury" or "inventory"
+	Features.begin_view_session(view, session_kind)
+	Features.register_view_session_cleanup(view, "sort_options", function(session_view)
+		Features.restore_sort_options(session_view)
+	end)
+
 	Features._registered_sort_views[view] = true
 
 	for index = 1, #sort_options do
@@ -6197,7 +6233,11 @@ Features.bind_inventory_sort_toggle = function(mod, layout, view)
 end
 
 Features.unregister_inventory_view = function(view)
-	Features.restore_sort_options(view)
+	local session_closed = Features.end_view_session(view, "view_exit")
+
+	if not session_closed then
+		Features.restore_sort_options(view)
+	end
 
 	if discard_transaction.owner == "manual" and discard_transaction.view == view then
 		Features.cancel_manual_discard()
@@ -6208,7 +6248,11 @@ Features.unregister_inventory_view = function(view)
 end
 
 Features.unregister_armoury_view = function(view)
-	Features.restore_sort_options(view)
+	local session_closed = Features.end_view_session(view, "view_exit")
+
+	if not session_closed then
+		Features.restore_sort_options(view)
+	end
 
 	if view and view._better_inventory_armoury_controller_focused == true then
 		set_armoury_controller_focus(view, false)
@@ -6235,11 +6279,16 @@ Features.disable_inventory_views = function()
 	Features.cancel_manual_discard()
 
 	for view in pairs(Features._registered_sort_views) do
-		Features.restore_sort_options(view)
+		local session_closed = Features.end_view_session(view, "mod_disable")
+
+		if not session_closed then
+			Features.restore_sort_options(view)
+		else
+			view._better_inventory_session_disable_handled = true
+		end
 	end
 
 	for view in pairs(registered_inventory_views) do
-		Features.restore_sort_options(view)
 		restore_lantern_weapon_panel(view)
 
 		if view._better_inventory_options_panel_controller_focused == true then
@@ -6256,7 +6305,13 @@ Features.disable_inventory_views = function()
 	end
 
 	for view in pairs(registered_armoury_views) do
-		Features.restore_sort_options(view)
+		-- The shared session was closed by the registered-sort pass above. A
+		-- compatibility restore remains for views that could not open a session.
+		if view._better_inventory_session_disable_handled then
+			view._better_inventory_session_disable_handled = nil
+		else
+			Features.restore_sort_options(view)
+		end
 
 		if view._better_inventory_armoury_controller_focused == true then
 			set_armoury_controller_focus(view, false)
