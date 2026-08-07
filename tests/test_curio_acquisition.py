@@ -1030,6 +1030,25 @@ def main() -> None:
     )
     assert module._test.observed_rotation_boundary(observed_storefront) == 1600000
 
+    # Pre-hotfix schema 1 boundaries may have been poisoned by a stale response.
+    # Migrate account metadata but force one corrected scan; schema 2 boundaries
+    # remain trusted after they were confirmed by the new synchronization rule.
+    legacy_history = lua.execute(
+        "return {schema_version = 1, accounts = {account = {next_refresh_at_ms = 3600000, last_successful_scan_at_ms = 100000, last_used_at_ms = 100000, last_context = 'morningstar'}}}"
+    )
+    migrated_history = module._test.sanitize_rotation_history(legacy_history, 100000)
+    assert migrated_history.schema_version == 2
+    assert migrated_history.accounts.account.next_refresh_at_ms is None
+    assert migrated_history.accounts.account.last_successful_scan_at_ms is None
+    assert migrated_history.accounts.account.last_used_at_ms == 100000
+    assert migrated_history.accounts.account.last_context == "morningstar"
+    current_history = lua.execute(
+        "return {schema_version = 2, accounts = {account = {next_refresh_at_ms = 3600000, last_successful_scan_at_ms = 100000}}}"
+    )
+    sanitized_current = module._test.sanitize_rotation_history(current_history, 100000)
+    assert sanitized_current.accounts.account.next_refresh_at_ms == 3600000
+    assert sanitized_current.accounts.account.last_successful_scan_at_ms == 100000
+
     def set_storefront_boundary(boundary: int) -> None:
         globals_.test_storefront.data.currentRotationEnd = boundary
         globals_.test_storefront.data.catalog = lua.table_from({"validTo": boundary})

@@ -47,6 +47,7 @@ local KNOWN_CHARACTERS_SETTING_ID = "_automatic_curio_known_characters"
 local CHARACTER_SLOTS_SETTING_ID = "_automatic_curio_character_slots"
 local OPERATIVE_SLOT_CAPACITY_SETTING_ID = "_automatic_curio_operative_slot_capacity"
 local ROTATION_HISTORY_SETTING_ID = "_automatic_curio_rotation_history"
+local ROTATION_HISTORY_SCHEMA_VERSION = 2
 local CHARACTER_SLOT_SETTING_PREFIX = "automatic_curio_character_slot_"
 
 local function native_operative_slot_capacity()
@@ -537,13 +538,16 @@ end
 
 local function sanitize_rotation_history(source, now)
 	local result = {
-		schema_version = 1,
+		schema_version = ROTATION_HISTORY_SCHEMA_VERSION,
 		accounts = {},
 	}
 
 	if type(source) ~= "table" or type(source.accounts) ~= "table" then
 		return result
 	end
+
+	local source_schema_version = math.floor(tonumber(source.schema_version) or 1)
+	local boundaries_are_trusted = source_schema_version >= ROTATION_HISTORY_SCHEMA_VERSION
 
 	for key, entry in pairs(source.accounts) do
 		if type(entry) == "table" then
@@ -552,11 +556,15 @@ local function sanitize_rotation_history(source, now)
 			local last_successful_scan_at_ms = tonumber(entry.last_successful_scan_at_ms)
 			local last_used_at_ms = tonumber(entry.last_used_at_ms)
 
-			if next_refresh_at_ms and next_refresh_at_ms > 0 and (not now or next_refresh_at_ms <= now + MAX_STORE_ROTATION_AHEAD_MS) then
+			-- Schema 1 could persist the next fallback hour after evaluating an
+			-- expired pre-refresh response. Preserve reports and account metadata,
+			-- but force one safe scan under the confirmed-boundary rules instead of
+			-- trusting a potentially poisoned consumption gate.
+			if boundaries_are_trusted and next_refresh_at_ms and next_refresh_at_ms > 0 and (not now or next_refresh_at_ms <= now + MAX_STORE_ROTATION_AHEAD_MS) then
 				account.next_refresh_at_ms = math.floor(next_refresh_at_ms + 0.5)
 			end
 
-			if last_successful_scan_at_ms and last_successful_scan_at_ms > 0 then
+			if boundaries_are_trusted and last_successful_scan_at_ms and last_successful_scan_at_ms > 0 then
 				account.last_successful_scan_at_ms = math.floor(last_successful_scan_at_ms + 0.5)
 			end
 
@@ -2955,6 +2963,7 @@ CurioAcquisition._test = {
 	profile_is_enabled = profile_is_enabled,
 	reconcile_character_slots = reconcile_character_slots,
 	rotation_gate_status = rotation_gate_status,
+	sanitize_rotation_history = sanitize_rotation_history,
 	sane_rotation_boundary = sane_rotation_boundary,
 	same_candidate = same_candidate,
 }
