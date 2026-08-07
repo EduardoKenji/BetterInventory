@@ -833,6 +833,9 @@ def main() -> None:
 		"global_store_compact_character_names",
 		"global_store_single_column_modifier_horizontal_position",
 		"global_store_single_column_modifier_vertical_position",
+		"character_overview_show_melee_rarity_strip",
+		"character_overview_show_ranged_rarity_strip",
+		"character_overview_show_curio_rarity_strip",
 		"character_overview_use_native_curio_overlay",
 		"character_overview_curio_name_mode",
 		"character_overview_curio_font_size_percent",
@@ -1009,16 +1012,21 @@ def main() -> None:
     assert entries_by_id["global_store_single_column_modifier_vertical_position"].disabled is True
     assert entries_by_id["character_overview_curio_name_mode"].disabled is False
     assert entries_by_id["character_overview_curio_font_size_percent"].disabled is False
+    assert entries_by_id["character_overview_show_melee_rarity_strip"].disabled is False
+    assert entries_by_id["character_overview_show_ranged_rarity_strip"].disabled is False
+    assert entries_by_id["character_overview_show_curio_rarity_strip"].disabled is False
     assert entries_by_id["character_overview_use_native_curio_overlay"].disabled is False
     settings.enable_character_overview_curio_details = False
     mod.on_setting_changed("enable_character_overview_curio_details")
     assert entries_by_id["character_overview_curio_name_mode"].disabled is True
     assert entries_by_id["character_overview_curio_font_size_percent"].disabled is True
+    assert entries_by_id["character_overview_show_curio_rarity_strip"].disabled is True
     assert entries_by_id["character_overview_use_native_curio_overlay"].disabled is True
     settings.enable_character_overview_curio_details = True
     mod.on_setting_changed("enable_character_overview_curio_details")
     assert entries_by_id["character_overview_curio_name_mode"].disabled is False
     assert entries_by_id["character_overview_curio_font_size_percent"].disabled is False
+    assert entries_by_id["character_overview_show_curio_rarity_strip"].disabled is False
     assert entries_by_id["character_overview_use_native_curio_overlay"].disabled is False
     assert entries_by_id["expand_curio_inventory_window"].disabled is False
     assert entries_by_id["weapon_extra_width_column_threshold"].disabled is False
@@ -1497,6 +1505,9 @@ def main() -> None:
 			"custom_item_override_weapon_information_color",
 			"custom_item_override_weapon_rarity_keyword_color",
 			"custom_item_override_weapon_information_name_color",
+			"character_overview_show_melee_rarity_strip",
+			"character_overview_show_ranged_rarity_strip",
+			"character_overview_show_curio_rarity_strip",
 			"character_overview_use_native_curio_overlay",
 			"character_overview_curio_name_mode",
 			"character_overview_curio_font_size_percent",
@@ -1732,8 +1743,11 @@ def main() -> None:
         for index in range(1, len(character_overview_view_group.sub_widgets) + 1)
     ] == [
         "enable_character_overview_melee_mirror",
+        "character_overview_show_melee_rarity_strip",
         "enable_character_overview_ranged_mirror",
+        "character_overview_show_ranged_rarity_strip",
         "enable_character_overview_curio_details",
+        "character_overview_show_curio_rarity_strip",
         "character_overview_use_native_curio_overlay",
         "character_overview_curio_name_mode",
         "character_overview_curio_font_size_percent",
@@ -1816,8 +1830,11 @@ def main() -> None:
     assert defaults["enable_hadron_single_column_mirror"] is True
     assert defaults["enable_armoury_single_column_mirror"] is True
     assert defaults["enable_character_overview_melee_mirror"] is True
+    assert defaults["character_overview_show_melee_rarity_strip"] is True
     assert defaults["enable_character_overview_ranged_mirror"] is True
+    assert defaults["character_overview_show_ranged_rarity_strip"] is True
     assert defaults["enable_character_overview_curio_details"] is True
+    assert defaults["character_overview_show_curio_rarity_strip"] is True
     assert defaults["character_overview_use_native_curio_overlay"] is False
     assert defaults["myfavorites_show_favorite_letter"] is False
     assert defaults["character_overview_curio_name_mode"] == "two_lines"

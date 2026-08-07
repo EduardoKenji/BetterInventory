@@ -608,17 +608,35 @@ local localization = {
 	enable_character_overview_melee_mirror_tooltip = {
 		en = "Uses the detailed BetterInventory single-column card for the equipped melee weapon on the character overview screen. Enabled by default.",
 	},
+	character_overview_show_melee_rarity_strip = {
+		en = "Show melee weapon colour strip",
+	},
+	character_overview_show_melee_rarity_strip_tooltip = {
+		en = "Draws the left rarity-colour strip on the mirrored melee weapon card. Enabled by default.",
+	},
 	enable_character_overview_ranged_mirror = {
 		en = "Mirror ranged weapon single-column format from inventory",
 	},
 	enable_character_overview_ranged_mirror_tooltip = {
 		en = "Uses the detailed BetterInventory single-column card for the equipped ranged weapon on the character overview screen. Enabled by default.",
 	},
+	character_overview_show_ranged_rarity_strip = {
+		en = "Show ranged weapon colour strip",
+	},
+	character_overview_show_ranged_rarity_strip_tooltip = {
+		en = "Draws the left rarity-colour strip on the mirrored ranged weapon card. Enabled by default.",
+	},
 	enable_character_overview_curio_details = {
 		en = "Show detailed Curio card on character overview",
 	},
 	enable_character_overview_curio_details_tooltip = {
 		en = "Shows the equipped Curio's primary and secondary stats in a compact BetterInventory card on the character overview screen. Enabled by default.",
+	},
+	character_overview_show_curio_rarity_strip = {
+		en = "Show Curio colour strip",
+	},
+	character_overview_show_curio_rarity_strip_tooltip = {
+		en = "Draws the left rarity-colour strip on the detailed Curio card. Enabled by default.",
 	},
 	character_overview_use_native_curio_overlay = {
 		en = "Use native Curio overlay",
@@ -2436,10 +2454,16 @@ zh_cn.curio_content_name_it_curio_name_tooltip = "Shows a two-line Curio name ab
 zh_cn.character_overview_group = "Character overview"
 zh_cn.enable_character_overview_melee_mirror = "Mirror melee weapon single-column format from inventory"
 zh_cn.enable_character_overview_melee_mirror_tooltip = "Uses the detailed BetterInventory single-column card for the equipped melee weapon on the character overview screen. Enabled by default."
+zh_cn.character_overview_show_melee_rarity_strip = "Show melee weapon colour strip"
+zh_cn.character_overview_show_melee_rarity_strip_tooltip = "Draws the left rarity-colour strip on the mirrored melee weapon card. Enabled by default."
 zh_cn.enable_character_overview_ranged_mirror = "Mirror ranged weapon single-column format from inventory"
 zh_cn.enable_character_overview_ranged_mirror_tooltip = "Uses the detailed BetterInventory single-column card for the equipped ranged weapon on the character overview screen. Enabled by default."
+zh_cn.character_overview_show_ranged_rarity_strip = "Show ranged weapon colour strip"
+zh_cn.character_overview_show_ranged_rarity_strip_tooltip = "Draws the left rarity-colour strip on the mirrored ranged weapon card. Enabled by default."
 zh_cn.enable_character_overview_curio_details = "Show detailed Curio card on character overview"
 zh_cn.enable_character_overview_curio_details_tooltip = "Shows the equipped Curio's primary and secondary stats in a compact BetterInventory card on the character overview screen. Enabled by default."
+zh_cn.character_overview_show_curio_rarity_strip = "Show Curio colour strip"
+zh_cn.character_overview_show_curio_rarity_strip_tooltip = "Draws the left rarity-colour strip on the detailed Curio card. Enabled by default."
 zh_cn.character_overview_use_native_curio_overlay = "Use native Curio overlay"
 zh_cn.character_overview_use_native_curio_overlay_tooltip = "Uses Darktide's ornate Curio frame and portrait layout for detailed Character Overview Curios while keeping BetterInventory's title and stat lines. Disabled by default."
 zh_cn.item_sorting_mod_header = "ItemSorting mod"

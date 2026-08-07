@@ -82,6 +82,7 @@ local CHARACTER_OVERVIEW_WEAPON_WIDGET_TYPE = "better_inventory_character_overvi
 local CHARACTER_OVERVIEW_CURIO_WIDGET_TYPE = "better_inventory_character_overview_curio"
 local CHARACTER_OVERVIEW_EMPTY_CURIO_WIDGET_TYPE = "better_inventory_character_overview_empty_curio"
 local CHARACTER_OVERVIEW_WEAPON_HEIGHT = 130
+local CHARACTER_OVERVIEW_CURIO_TITLE_STAT_PADDING_Y = 6
 local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_CONTENT_SHIFT_Y = 8
 local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_EQUIPPED_ICON_SHIFT_Y = 8
 local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_HORIZONTAL_PADDING = 19
@@ -209,6 +210,29 @@ local function mark_character_overview_requirement_met(widget)
 	end
 end
 
+local function configure_character_overview_rarity_strip(blueprint, setting_id)
+	local rarity_tag = pass_by_style_id(blueprint and blueprint.pass_template, "rarity_tag")
+
+	if not rarity_tag then
+		return
+	end
+
+	local original_visibility_function = rarity_tag.visibility_function
+	local show_strip = mod:get(setting_id) ~= false
+
+	rarity_tag.visibility_function = function(content, style)
+		if not show_strip then
+			return false
+		end
+
+		if type(original_visibility_function) == "function" then
+			return original_visibility_function(content, style)
+		end
+
+		return true
+	end
+end
+
 local function configure_character_overview_weapon_passes(blueprint)
 	local weapon_name_left = 0
 
@@ -308,7 +332,7 @@ local function move_character_overview_weapon_icon(blueprint)
 	end
 end
 
-local function character_overview_weapon_blueprint()
+local function character_overview_weapon_blueprint(rarity_strip_setting_id)
 	local native_blueprint = InventoryViewContentBlueprints.item_slot
 	local detailed_blueprint = CHARACTER_OVERVIEW_BLUEPRINTS and CHARACTER_OVERVIEW_BLUEPRINTS.item
 
@@ -337,6 +361,7 @@ local function character_overview_weapon_blueprint()
 		native_single_column = true,
 		character_overview = true,
 	})
+	configure_character_overview_rarity_strip(blueprint, rarity_strip_setting_id)
 	configure_character_overview_weapon_passes(blueprint)
 	move_character_overview_weapon_icon(blueprint)
 
@@ -407,6 +432,7 @@ local function character_overview_curio_blueprint()
 		native_single_column = true,
 		character_overview = true,
 	})
+	configure_character_overview_rarity_strip(blueprint, "character_overview_show_curio_rarity_strip")
 
 	local curio_font_scale = math.max(50, math.min(150, tonumber(mod:get("character_overview_curio_font_size_percent")) or 110)) / 100
 	local curio_name_mode = mod:get("character_overview_curio_name_mode")
@@ -509,7 +535,7 @@ local function character_overview_curio_blueprint()
 			local stat_style = curio_stat_passes[index] and curio_stat_passes[index].style
 
 			if stat_style and stat_style.offset then
-				stat_style.offset[2] = (stat_style.offset[2] or 0) + curio_name_block_height
+				stat_style.offset[2] = (stat_style.offset[2] or 0) + curio_name_block_height + CHARACTER_OVERVIEW_CURIO_TITLE_STAT_PADDING_Y
 			end
 		end
 	end
@@ -1176,6 +1202,11 @@ local function refresh_option_dependencies()
 	set_option_enabled(option_dependency_entries.global_store_single_column_modifier_horizontal_position, global_store_native_enabled, global_store_integration_reason)
 	set_option_enabled(option_dependency_entries.global_store_single_column_modifier_vertical_position, global_store_native_enabled, global_store_integration_reason)
 	local character_overview_curio_enabled = mod:get("enable_character_overview_curio_details") ~= false
+	local character_overview_melee_enabled = mod:get("enable_character_overview_melee_mirror") ~= false
+	local character_overview_ranged_enabled = mod:get("enable_character_overview_ranged_mirror") ~= false
+	set_option_enabled(option_dependency_entries.character_overview_show_melee_rarity_strip, character_overview_melee_enabled, mod:localize("option_requires_character_overview_melee_mirror"))
+	set_option_enabled(option_dependency_entries.character_overview_show_ranged_rarity_strip, character_overview_ranged_enabled, mod:localize("option_requires_character_overview_ranged_mirror"))
+	set_option_enabled(option_dependency_entries.character_overview_show_curio_rarity_strip, character_overview_curio_enabled, mod:localize("option_requires_character_overview_curio_details"))
 	set_option_enabled(option_dependency_entries.character_overview_curio_name_mode, character_overview_curio_enabled, mod:localize("option_requires_character_overview_curio_details"))
 	set_option_enabled(option_dependency_entries.character_overview_curio_font_size_percent, character_overview_curio_enabled, mod:localize("option_requires_character_overview_curio_details"))
 	set_option_enabled(option_dependency_entries.character_overview_use_native_curio_overlay, character_overview_curio_enabled, mod:localize("option_requires_character_overview_curio_details"))
@@ -1380,6 +1411,9 @@ local function bind_option_dependencies(options_templates)
 		"global_store_compact_character_names",
 		"global_store_single_column_modifier_horizontal_position",
 		"global_store_single_column_modifier_vertical_position",
+		"character_overview_show_melee_rarity_strip",
+		"character_overview_show_ranged_rarity_strip",
+		"character_overview_show_curio_rarity_strip",
 		"character_overview_use_native_curio_overlay",
 		"character_overview_curio_name_mode",
 		"character_overview_curio_font_size_percent",
@@ -1828,7 +1862,7 @@ function mod.on_setting_changed(setting_id)
 		end
 	end
 
-	if setting_id == "enable_grid_layout" or setting_id == "melee_columns" or setting_id == "ranged_columns" or setting_id == "curio_columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "weapon_extra_width_column_threshold" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_hadron_single_column_mirror" or setting_id == "enable_armoury_requisition_grid" or setting_id == "enable_armoury_single_column_mirror" or setting_id == "enable_armoury_requisition_sorting_panel" or setting_id == "brighten_armoury_item_levels" or setting_id == "three_column_weapon_name_font_size" or setting_id == "expand_armoury_requisition_window" or setting_id == "debug_expand_armoury_requisition_window_30_percent" or setting_id == "enable_global_store_integration" or setting_id == "enable_global_store_grid" or setting_id == "enable_global_store_sorting_panel" or setting_id == "global_store_character_photo_size_percent" or setting_id == "global_store_price_row_padding" or setting_id == "global_store_character_info_gap" or setting_id == "global_store_character_class_icon_size" or setting_id == "global_store_character_name_font_size" or setting_id == "global_store_compact_character_names" or setting_id == "global_store_single_column_modifier_horizontal_position" or setting_id == "global_store_single_column_modifier_vertical_position" or setting_id == "enable_character_overview_melee_mirror" or setting_id == "enable_character_overview_ranged_mirror" or setting_id == "enable_character_overview_curio_details" or setting_id == "character_overview_use_native_curio_overlay" or setting_id == "character_overview_curio_name_mode" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "single_column_blessing_icons_on_right" or setting_id == "curio_display_profile" or setting_id == "enable_inventory_options_panel_prototype" or setting_id == "enable_lantern_inventory_section" or setting_id == "keep_lantern_curio_panel_separate" or setting_id == "enable_experimental_quick_discard" or setting_id == "quick_discard_mode" or setting_id == "quick_discard_protect_high_level_curios" or setting_id == "enable_automatic_curio_acquisition" or automatic_curio_setting or setting_id == "enable_quick_look_card_single_column_integration" or setting_id == "enable_quick_look_card_grid_integration" or setting_id == "quick_look_card_grid_stat_position" or setting_id == "enable_custom_item_name_and_colors" then
+	if setting_id == "enable_grid_layout" or setting_id == "melee_columns" or setting_id == "ranged_columns" or setting_id == "curio_columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "weapon_extra_width_column_threshold" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_hadron_single_column_mirror" or setting_id == "enable_armoury_requisition_grid" or setting_id == "enable_armoury_single_column_mirror" or setting_id == "enable_armoury_requisition_sorting_panel" or setting_id == "brighten_armoury_item_levels" or setting_id == "three_column_weapon_name_font_size" or setting_id == "expand_armoury_requisition_window" or setting_id == "debug_expand_armoury_requisition_window_30_percent" or setting_id == "enable_global_store_integration" or setting_id == "enable_global_store_grid" or setting_id == "enable_global_store_sorting_panel" or setting_id == "global_store_character_photo_size_percent" or setting_id == "global_store_price_row_padding" or setting_id == "global_store_character_info_gap" or setting_id == "global_store_character_class_icon_size" or setting_id == "global_store_character_name_font_size" or setting_id == "global_store_compact_character_names" or setting_id == "global_store_single_column_modifier_horizontal_position" or setting_id == "global_store_single_column_modifier_vertical_position" or setting_id == "enable_character_overview_melee_mirror" or setting_id == "enable_character_overview_ranged_mirror" or setting_id == "enable_character_overview_curio_details" or setting_id == "character_overview_show_melee_rarity_strip" or setting_id == "character_overview_show_ranged_rarity_strip" or setting_id == "character_overview_show_curio_rarity_strip" or setting_id == "character_overview_use_native_curio_overlay" or setting_id == "character_overview_curio_name_mode" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "single_column_blessing_icons_on_right" or setting_id == "curio_display_profile" or setting_id == "enable_inventory_options_panel_prototype" or setting_id == "enable_lantern_inventory_section" or setting_id == "keep_lantern_curio_panel_separate" or setting_id == "enable_experimental_quick_discard" or setting_id == "quick_discard_mode" or setting_id == "quick_discard_protect_high_level_curios" or setting_id == "enable_automatic_curio_acquisition" or automatic_curio_setting or setting_id == "enable_quick_look_card_single_column_integration" or setting_id == "enable_quick_look_card_grid_integration" or setting_id == "quick_look_card_grid_stat_position" or setting_id == "enable_custom_item_name_and_colors" then
 		refresh_option_dependencies()
 	end
 
@@ -2158,7 +2192,8 @@ if ensure_class_method(InventoryView, "_create_entry_widget_from_config") then
 		if view and view.__class_name == "InventoryView" and not preserve_visible_equipment_placement and setting_id and mod:get(setting_id) ~= false then
 			local equipped_item = view.equipped_item_in_slot and view:equipped_item_in_slot(config.slot.name)
 			local empty_curio_slot = curio_slot and equipped_item == nil
-			local blueprint = empty_curio_slot and character_overview_empty_curio_blueprint() or curio_slot and character_overview_curio_blueprint() or character_overview_weapon_blueprint()
+			local rarity_strip_setting_id = weapon_kind == "melee" and "character_overview_show_melee_rarity_strip" or weapon_kind == "ranged" and "character_overview_show_ranged_rarity_strip"
+			local blueprint = empty_curio_slot and character_overview_empty_curio_blueprint() or curio_slot and character_overview_curio_blueprint() or character_overview_weapon_blueprint(rarity_strip_setting_id)
 			local widget_type = empty_curio_slot and CHARACTER_OVERVIEW_EMPTY_CURIO_WIDGET_TYPE or curio_slot and CHARACTER_OVERVIEW_CURIO_WIDGET_TYPE or CHARACTER_OVERVIEW_WEAPON_WIDGET_TYPE
 
 			if blueprint then

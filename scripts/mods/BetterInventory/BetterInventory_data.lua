@@ -777,14 +777,32 @@ return {
 								default_value = true,
 							},
 							{
+								setting_id = "character_overview_show_melee_rarity_strip",
+								tooltip = "character_overview_show_melee_rarity_strip_tooltip",
+								type = "checkbox",
+								default_value = true,
+							},
+							{
 								setting_id = "enable_character_overview_ranged_mirror",
 								tooltip = "enable_character_overview_ranged_mirror_tooltip",
 								type = "checkbox",
 								default_value = true,
 							},
 							{
+								setting_id = "character_overview_show_ranged_rarity_strip",
+								tooltip = "character_overview_show_ranged_rarity_strip_tooltip",
+								type = "checkbox",
+								default_value = true,
+							},
+							{
 								setting_id = "enable_character_overview_curio_details",
 								tooltip = "enable_character_overview_curio_details_tooltip",
+								type = "checkbox",
+								default_value = true,
+							},
+							{
+								setting_id = "character_overview_show_curio_rarity_strip",
+								tooltip = "character_overview_show_curio_rarity_strip_tooltip",
 								type = "checkbox",
 								default_value = true,
 							},
