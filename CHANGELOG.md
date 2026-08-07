@@ -4,7 +4,7 @@
 
 ### Fixed / Added
 
-- Fixed Automatic Curio Buyer consuming a predicted new rotation while Darktide's backend still returned the expired storefront. Rotation-triggered passes now require storefront boundary advancement and retry stale responses without evaluating offers or suppressing the real refresh pass.
+- Fixed Automatic Curio Buyer consuming a predicted new rotation while Darktide's backend still returned the expired storefront. Rotation-triggered passes now require storefront boundary advancement and poll stale responses as a nonterminal wait without evaluating offers, showing a false failure, or suppressing the real refresh pass.
 - Hardened weapon and Curio equip persistence across rapid Character Overview exits. BetterInventory observes Darktide's native request, retries only confirmed idempotent failures with account/character guards, and refreshes a reopened overview when the authoritative profile update arrives.
 - Bumped active release metadata to 2.0.0 and added the full-project audit, prioritized findings, phased remediation plan, and release gates in `docs/v2.0.0-full-project-audit.md`.
 - Added bounded account-scoped Automatic Curio Buyer reports for Operative Selection, delivered once on the matching account's next Morningstar readiness.
