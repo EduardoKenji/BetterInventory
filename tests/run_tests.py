@@ -159,6 +159,11 @@ def main() -> int:
         parser.error("--timeout-seconds must be positive")
 
     tests = discover_tests()
+
+    if not tests:
+        print("No BetterInventory behavior scripts discovered.", file=sys.stderr)
+        return 2
+
     temporary_coverage_directory = None
 
     if args.coverage_output:

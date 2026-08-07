@@ -23,13 +23,13 @@ jobs:
       - name: Install verification dependencies
         run: python -m pip install lupa luaparser
 
-      - name: Run timeout-bounded behavior suite
+      - name: Run repository-owned behavior suite from clean checkout
         shell: pwsh
         run: |
           python tests/run_tests.py --timeout-seconds 45 --coverage-output lua-coverage.json | Tee-Object test-results.json
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Run static, source-contract, and package verification
+      - name: Run repository-only static and package verification
         shell: pwsh
         run: .\tests\verify.ps1
 

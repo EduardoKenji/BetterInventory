@@ -1,5 +1,6 @@
 param(
-	[string] $DarktideSourcePath
+	[string] $DarktideSourcePath,
+	[string] $DmfSourcePath
 )
 
 $ErrorActionPreference = "Stop"
@@ -180,8 +181,8 @@ if ($features -notmatch 'read_promise\s*=\s*nil' -or $features -notmatch 'track_
 	throw "Automatic Discard read requests must retain an explicit cancelable handle without owning purchase POSTs."
 }
 
-if ($itemCustomization -notmatch 'local save_ok, save_result = pcall\(dmf\.save_unsaved_settings_to_file\)' -or $itemCustomization -notmatch 'save_result == true' -or $itemCustomization -notmatch 'persistence_last_outcome\s*=\s*"unknown"' -or $itemCustomization -notmatch 'ItemCustomization\.persistence_status' -or $itemCustomization -notmatch 'flush_persistence\(true\)' -or $itemCustomization -notmatch 'persistence_retry_elapsed') {
-	throw "Customization persistence must retain unknown save outcomes, retry on a bounded cadence, and flush at disable."
+if ($itemCustomization -notmatch 'local save_ok, save_result = pcall\(dmf\.save_unsaved_settings_to_file\)' -or $itemCustomization -notmatch 'save_result == true' -or $itemCustomization -notmatch 'save_result == nil' -or $itemCustomization -notmatch 'persistence_last_outcome\s*=\s*"delegated"' -or $itemCustomization -notmatch 'MAX_PERSISTENCE_ATTEMPTS' -or $itemCustomization -notmatch 'ItemCustomization\.persistence_status' -or $itemCustomization -notmatch 'flush_persistence\(true\)' -or $itemCustomization -notmatch 'persistence_retry_elapsed') {
+	throw "Customization persistence must treat DMF no-return saves as delegated, bound retryable failures, and flush at disable."
 }
 
 if ($curioAcquisition -notmatch 'MAX_PENDING_REPORT_ITEMS' -or $curioAcquisition -notmatch 'pending_report' -or $curioAcquisition -notmatch 'deliver_pending_report' -or $curioAcquisition -notmatch 'report_context == "operative_selection"' -or $curioAcquisition -notmatch 'not is_morningstar\(\) or is_operative_selection\(\)') {
@@ -341,27 +342,39 @@ foreach ($settingId in $settingIds) {
 	}
 }
 
-$dmfRoot = Join-Path $projectRoot "..\..\mods\dmf"
+$dmfRoot = if ($DmfSourcePath) {
+	(Resolve-Path -LiteralPath $DmfSourcePath).Path
+} else {
+	Join-Path $projectRoot "..\..\mods\dmf"
+}
+
 $dmfSettings = Join-Path $dmfRoot "scripts\mods\dmf\modules\core\settings.lua"
 $dmfOptionBlueprints = Join-Path $dmfRoot "scripts\mods\dmf\modules\ui\options\dmf_options_view_content_blueprints.lua"
 $dmfModOptions = Join-Path $dmfRoot "scripts\mods\dmf\modules\ui\options\mod_options.lua"
+$dmfContractFiles = @($dmfSettings, $dmfOptionBlueprints, $dmfModOptions)
 
-foreach ($dmfFile in @($dmfSettings, $dmfOptionBlueprints, $dmfModOptions)) {
-	if (-not (Test-Path -LiteralPath $dmfFile -PathType Leaf)) {
-		throw "Missing expected DMF source file: $dmfFile"
+if (($DmfSourcePath -or (Test-Path -LiteralPath $dmfRoot -PathType Container))) {
+	foreach ($dmfFile in $dmfContractFiles) {
+		if (-not (Test-Path -LiteralPath $dmfFile -PathType Leaf)) {
+			throw "Missing expected DMF source file: $dmfFile"
+		}
 	}
-}
 
-if ((Get-Content -LiteralPath $dmfSettings -Raw) -notmatch 'mod_setting_changed_event\(self, setting_id\)') {
-	throw "DMF no longer appears to dispatch live mod setting changes."
-}
+	if ((Get-Content -LiteralPath $dmfSettings -Raw) -notmatch 'mod_setting_changed_event\(self, setting_id\)') {
+		throw "DMF no longer appears to dispatch live mod setting changes."
+	}
 
-if ((Get-Content -LiteralPath $dmfOptionBlueprints -Raw) -notmatch 'local is_disabled = entry\.disabled or false') {
-	throw "DMF option widgets no longer appear to consume final-template disabled state."
-}
+	if ((Get-Content -LiteralPath $dmfOptionBlueprints -Raw) -notmatch 'local is_disabled = entry\.disabled or false') {
+		throw "DMF option widgets no longer appear to consume final-template disabled state."
+	}
 
-if ((Get-Content -LiteralPath $dmfModOptions -Raw) -notmatch 'create_mod_options_settings') {
-	throw "DMF's final mod-options template seam was not found."
+	if ((Get-Content -LiteralPath $dmfModOptions -Raw) -notmatch 'create_mod_options_settings') {
+		throw "DMF's final mod-options template seam was not found."
+	}
+
+	Write-Host "External DMF contract verification passed: $dmfRoot"
+} else {
+	Write-Host "Repository-only verification: DMF source checks skipped; pass -DmfSourcePath for external compatibility checks."
 }
 
 if ($DarktideSourcePath) {
