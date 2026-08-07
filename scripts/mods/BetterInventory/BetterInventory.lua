@@ -2179,6 +2179,7 @@ end)
 
 function mod.update(dt)
 	ItemCustomization.update_runtime(mod, dt)
+	Features.reconcile_discard_transaction()
 	Features.update_morningstar_auto_discard(mod, dt)
 	CurioAcquisition.update(mod, dt, Features.morningstar_auto_discard_is_busy(mod))
 end

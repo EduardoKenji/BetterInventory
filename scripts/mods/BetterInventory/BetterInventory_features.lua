@@ -4501,20 +4501,21 @@ local function show_automatic_no_candidates_notification(mod)
 	return true
 end
 
-local function show_popup(context)
+local function show_popup(context, callback)
 	local event_manager = Managers and Managers.event
 
 	if not event_manager or type(event_manager.trigger) ~= "function" then
 		return false
 	end
 
-	return pcall(event_manager.trigger, event_manager, "event_show_ui_popup", context)
+	return pcall(event_manager.trigger, event_manager, "event_show_ui_popup", context, callback)
 end
 
 local discard_transaction = {
 	owner = nil,
 	token = 0,
 	view = nil,
+	popup_id = nil,
 }
 
 local function acquire_discard_transaction(owner, view)
@@ -4525,6 +4526,7 @@ local function acquire_discard_transaction(owner, view)
 	discard_transaction.token = discard_transaction.token + 1
 	discard_transaction.owner = owner
 	discard_transaction.view = view
+	discard_transaction.popup_id = nil
 
 	if view then
 		view._better_inventory_discard_pending = true
@@ -4533,15 +4535,50 @@ local function acquire_discard_transaction(owner, view)
 	return discard_transaction.token
 end
 
+Features.remove_discard_popup = function(popup_id)
+	if not popup_id then
+		return
+	end
+
+	local event_manager = Managers and Managers.event
+
+	if event_manager and type(event_manager.trigger) == "function" then
+		pcall(event_manager.trigger, event_manager, "event_remove_ui_popup", popup_id)
+	end
+end
+
+Features.set_discard_popup_id = function(owner, token, popup_id)
+	if discard_transaction.owner == owner and discard_transaction.token == token then
+		discard_transaction.popup_id = popup_id
+	else
+		-- Never let a delayed popup callback attach an old UI object to a newer
+		-- transaction.
+		Features.remove_discard_popup(popup_id)
+	end
+end
+
+Features.clear_discard_popup = function(owner, token)
+	if discard_transaction.owner ~= owner or discard_transaction.token ~= token then
+		return false
+	end
+
+	discard_transaction.popup_id = nil
+
+	return true
+end
+
 local function release_discard_transaction(owner, token)
 	if discard_transaction.owner ~= owner or token and discard_transaction.token ~= token then
 		return false
 	end
 
 	local view = discard_transaction.view
+	local popup_id = discard_transaction.popup_id
 
 	discard_transaction.owner = nil
 	discard_transaction.view = nil
+	discard_transaction.popup_id = nil
+	Features.remove_discard_popup(popup_id)
 
 	if view then
 		view._better_inventory_discard_pending = false
@@ -4552,6 +4589,40 @@ end
 
 local function discard_transaction_is_current(owner, token)
 	return discard_transaction.owner == owner and discard_transaction.token == token
+end
+
+Features.discard_popup_is_active = function(popup_id)
+	local ui_manager = Managers and Managers.ui
+
+	if not ui_manager or type(ui_manager.active_popups) ~= "function" then
+		return nil
+	end
+
+	local ok, active_popups = pcall(ui_manager.active_popups, ui_manager)
+
+	if not ok or type(active_popups) ~= "table" then
+		return nil
+	end
+
+	for index = 1, #active_popups do
+		if active_popups[index] and active_popups[index].id == popup_id then
+			return true
+		end
+	end
+
+	return false
+end
+
+Features.reconcile_discard_transaction = function()
+	local popup_id = discard_transaction.popup_id
+
+	if not popup_id then
+		return
+	end
+
+	if Features.discard_popup_is_active(popup_id) == false then
+		release_discard_transaction(discard_transaction.owner, discard_transaction.token)
+	end
 end
 
 Features.request_quick_discard = function(mod, layout, view)
@@ -4642,7 +4713,9 @@ Features.request_quick_discard = function(mod, layout, view)
 			},
 		},
 		title_text_unlocalized = mod:localize("quick_discard_confirmation_title"),
-	})
+	}, function(popup_id)
+		Features.set_discard_popup_id("manual", transaction_token, popup_id)
+	end)
 
 	if not popup_shown then
 		clear_pending()
@@ -4981,6 +5054,7 @@ local function present_automatic_discard(mod, token, character_id, candidates)
 				callback = function()
 					if not confirmation_resolved and discard_transaction_is_current("automatic", transaction_token) then
 						confirmation_resolved = true
+						Features.clear_discard_popup("automatic", transaction_token)
 						delete_automatic_candidates(mod, token, character_id, captured_ids, transaction_token)
 					end
 				end,
@@ -4998,7 +5072,9 @@ local function present_automatic_discard(mod, token, character_id, candidates)
 			},
 		},
 		title_text_unlocalized = mod:localize("quick_discard_automatic_confirmation_title"),
-	})
+	}, function(popup_id)
+		Features.set_discard_popup_id("automatic", transaction_token, popup_id)
+	end)
 
 	if not popup_shown then
 		clear_confirmation()

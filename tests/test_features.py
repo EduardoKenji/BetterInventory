@@ -146,14 +146,35 @@ def main() -> None:
         }
 		captured_popup = nil
 		captured_popup_count = 0
+		captured_popup_id = nil
+		next_popup_id = 0
 		captured_discard_ids = nil
 		captured_notification = nil
 		Managers = {
+			ui = {
+				_active_popups = {},
+				active_popups = function(self)
+					return self._active_popups
+				end,
+			},
 			event = {
 				trigger = function(self, event_name, payload, secondary_payload)
 					if event_name == "event_show_ui_popup" then
 						captured_popup = payload
 						captured_popup_count = captured_popup_count + 1
+						next_popup_id = next_popup_id + 1
+						captured_popup_id = next_popup_id
+						Managers.ui._active_popups[#Managers.ui._active_popups + 1] = {id = captured_popup_id}
+
+						if secondary_payload then
+							secondary_payload(captured_popup_id)
+						end
+					elseif event_name == "event_remove_ui_popup" then
+						for index = #Managers.ui._active_popups, 1, -1 do
+							if Managers.ui._active_popups[index].id == payload then
+								table.remove(Managers.ui._active_popups, index)
+							end
+						end
 					elseif event_name == "event_discard_items" then
 						captured_discard_ids = payload
 					elseif event_name == "event_add_notification_message" and payload == "custom" then
@@ -2841,6 +2862,22 @@ def main() -> None:
     globals_.Managers.save.character_data = saved_character_data
     features.request_quick_discard(mod, layout, quick_discard_view)
     assert globals_.captured_popup.title_text_unlocalized == "quick_discard_confirmation_title"
+    globals_.captured_popup.options[2].callback()
+
+    # Removing the native popup without invoking an option callback must also
+    # release the shared transaction. A later request must be allowed through.
+    features.request_quick_discard(mod, layout, quick_discard_view)
+    orphaned_popup = globals_.captured_popup
+    orphaned_popup_id = globals_.captured_popup_id
+    globals_.Managers.event.trigger(
+        globals_.Managers.event, "event_remove_ui_popup", orphaned_popup_id
+    )
+    features.reconcile_discard_transaction()
+    assert quick_discard_view._better_inventory_discard_pending is False
+    orphaned_popup.options[1].callback()
+    manual_popup_count = globals_.captured_popup_count
+    features.request_quick_discard(mod, layout, quick_discard_view)
+    assert globals_.captured_popup_count == manual_popup_count + 1
     globals_.captured_popup.options[2].callback()
 
     # Leaving the inventory while the manual confirmation is open must release
