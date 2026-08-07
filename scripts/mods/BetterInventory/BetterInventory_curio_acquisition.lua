@@ -3,6 +3,15 @@ local MasterItems = require("scripts/backend/master_items")
 local Promise = require("scripts/foundation/utilities/promise")
 local StoreNames = require("scripts/settings/backend/store_names")
 local CurioValues = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_values")
+local PromiseContainer
+
+do
+	local promise_container_ok, promise_container_module = pcall(require, "scripts/utilities/ui/promise_container")
+
+	if promise_container_ok and type(promise_container_module) == "table" then
+		PromiseContainer = promise_container_module
+	end
+end
 
 if type(CurioValues) ~= "table" then
 	CurioValues = {
@@ -118,12 +127,68 @@ local state = {
 	profile_discovery_refresh_elapsed = 0,
 	profile_discovery_token = 0,
 	profile_revision = 0,
+	read_promise_container = nil,
+	read_request_generation = 0,
+	active_read_requests = 0,
 	scan_attempts = 0,
 	scheduled = false,
 	started = false,
 	token = 0,
 }
 local processed_offer_keys = {}
+
+local function new_read_promise_container()
+	if PromiseContainer and type(PromiseContainer.new) == "function" then
+		local success, container = pcall(PromiseContainer.new, PromiseContainer)
+
+		if success and container then
+			return container
+		end
+	end
+
+	-- Older/partial test or game environments may not expose the UI helper.
+	-- Keep the ownership contract locally: cancellation is best-effort, while
+	-- generation checks still make every late callback inert.
+	local fallback = {
+		_promises = {},
+	}
+
+	function fallback:cancel_on_destroy(promise)
+		if not promise then
+			return promise
+		end
+
+		local pending = type(promise.is_pending) ~= "function" or promise:is_pending()
+
+		if pending then
+			self._promises[promise] = true
+
+			if type(promise.next) == "function" and type(promise.catch) == "function" then
+				promise:next(function()
+					self._promises[promise] = nil
+				end):catch(function()
+					self._promises[promise] = nil
+				end)
+			end
+		end
+
+		return promise
+	end
+
+	function fallback:destroy()
+		for promise in pairs(self._promises) do
+			if type(promise.cancel) == "function" then
+				pcall(promise.cancel, promise)
+			end
+		end
+
+		self._promises = {}
+	end
+
+	return fallback
+end
+
+state.read_promise_container = new_read_promise_container()
 
 local function log_info(mod, message)
 	if mod and type(mod.info) == "function" then
@@ -547,6 +612,52 @@ end
 
 local function compatible_promise(value)
 	return value and type(value.next) == "function" and type(value.catch) == "function"
+end
+
+local function reset_read_requests()
+	if state.read_promise_container and type(state.read_promise_container.destroy) == "function" then
+		pcall(state.read_promise_container.destroy, state.read_promise_container)
+	end
+
+	state.read_request_generation = state.read_request_generation + 1
+	state.active_read_requests = 0
+	state.read_promise_container = new_read_promise_container()
+end
+
+local function track_read_promise(promise)
+	if not compatible_promise(promise) then
+		return promise
+	end
+
+	local request_generation = state.read_request_generation
+	local released = false
+	state.active_read_requests = state.active_read_requests + 1
+
+	local function release_request()
+		if released then
+			return
+		end
+
+		released = true
+
+		if request_generation == state.read_request_generation then
+			state.active_read_requests = math.max(state.active_read_requests - 1, 0)
+		end
+	end
+
+	local tracked = promise
+
+	if state.read_promise_container and type(state.read_promise_container.cancel_on_destroy) == "function" then
+		local track_ok, tracked_promise = pcall(state.read_promise_container.cancel_on_destroy, state.read_promise_container, promise)
+
+		if track_ok and tracked_promise then
+			tracked = tracked_promise
+		end
+	end
+
+	tracked:next(release_request):catch(release_request)
+
+	return tracked
 end
 
 local function rejected(reason)
@@ -1314,7 +1425,7 @@ local function fetch_storefront(profile)
 		return rejected("no Armoury storefront mapping for " .. tostring(archetype_name(profile)))
 	end
 
-	return call_promise(store_interface, method, application_time(), profile.character_id)
+	return track_read_promise(call_promise(store_interface, method, application_time(), profile.character_id))
 end
 
 local function observed_rotation_boundary(storefront)
@@ -1351,7 +1462,9 @@ local function scan_candidates(mod, token)
 		return rejected("ProfilesService.fetch_all_profiles is unavailable")
 	end
 
-	return call_promise(profiles_service, profiles_service.fetch_all_profiles):next(function(result)
+	local profile_promise = track_read_promise(call_promise(profiles_service, profiles_service.fetch_all_profiles))
+
+	return profile_promise:next(function(result)
 		if not context_is_current(mod, token) then
 			return {}
 		end
@@ -1537,7 +1650,7 @@ local function fetch_target_wallet(candidate)
 		return rejected("wallet backend is unavailable")
 	end
 
-	local account_promise = call_promise(wallet_interface, wallet_interface.account_wallets)
+	local account_promise = track_read_promise(call_promise(wallet_interface, wallet_interface.account_wallets))
 
 	if candidate.currency ~= "credits" and candidate.currency ~= "marks" then
 		return account_promise:next(function(wallets)
@@ -1545,7 +1658,7 @@ local function fetch_target_wallet(candidate)
 		end)
 	end
 
-	local character_promise = call_promise(wallet_interface, wallet_interface.character_wallets, candidate.character_id)
+	local character_promise = track_read_promise(call_promise(wallet_interface, wallet_interface.character_wallets, candidate.character_id))
 
 	return Promise.all(account_promise, character_promise):next(function(results)
 		local account_wallet = find_wallet(results and results[1], candidate.currency)
@@ -2003,6 +2116,7 @@ local function start_scan(mod)
 end
 
 local function initialize_context(mod, context)
+	reset_read_requests()
 	state.token = state.token + 1
 	state.active_context = context
 	state.context_entry_id = state.context_entry_id + 1
@@ -2071,6 +2185,7 @@ CurioAcquisition.begin_morningstar_pass = function(mod)
 end
 
 CurioAcquisition.cancel = function()
+	reset_read_requests()
 	state.token = state.token + 1
 	state.active_context = nil
 	state.entry_consumed = false
@@ -2125,7 +2240,7 @@ local function update_profile_discovery(mod, dt)
 	state.profile_discovery_inflight = true
 	local discovery_token = state.profile_discovery_token
 
-	call_promise(service, service.fetch_all_profiles):next(function(result)
+	track_read_promise(call_promise(service, service.fetch_all_profiles)):next(function(result)
 		if discovery_token ~= state.profile_discovery_token then
 			return
 		end
@@ -2454,6 +2569,14 @@ CurioAcquisition.update = function(mod, dt, automatic_discard_busy)
 
 	state.entry_consumed = true
 	start_scan(mod)
+end
+
+CurioAcquisition.active_read_request_count = function()
+	return state.active_read_requests
+end
+
+CurioAcquisition.read_request_generation = function()
+	return state.read_request_generation
 end
 
 CurioAcquisition._test = {

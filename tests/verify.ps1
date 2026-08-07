@@ -110,6 +110,7 @@ $layout = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_layou
 $features = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_features.lua") -Raw
 $curioAcquisition = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_acquisition.lua") -Raw
 $curioValues = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_values.lua") -Raw
+$itemCustomization = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_item_customization.lua") -Raw
 
 $trackedReleaseArchive = Join-Path $projectRoot "BetterInventory.zip"
 
@@ -139,6 +140,14 @@ if ($data -notmatch 'setting_id\s*=\s*"myfavorites_integration_group"' -or $data
 
 if ($features -notmatch 'pcall\(view\.is_item_equipped_in_any_slot' -or $features -notmatch 'pcall\(Items\.is_item_id_favorited' -or $features -notmatch '_better_inventory_item_sorting_signature_cache' -or $features -notmatch 'poll\s*<\s*15' -or $features -notmatch '_better_inventory_armoury_native_sort_pivot_x\s*~=\s*x') {
 	throw "Fail-closed sort priority or idle signature/pivot caching was not found."
+}
+
+if ($curioAcquisition -notmatch 'PromiseContainer' -or $curioAcquisition -notmatch 'track_read_promise' -or $curioAcquisition -notmatch 'reset_read_requests' -or $curioAcquisition -notmatch 'active_read_requests' -or $curioAcquisition -notmatch 'track_read_promise\(call_promise\(service, service\.fetch_all_profiles\)\)' -or $curioAcquisition -notmatch 'call_promise\(store_service, store_service\.purchase_item_with_wallet') {
+	throw "Read-only Curio requests must be owned/cancelable without tracking purchase POSTs."
+}
+
+if ($itemCustomization -notmatch 'local save_ok, save_result = pcall\(dmf\.save_unsaved_settings_to_file\)' -or $itemCustomization -notmatch 'save_result == true' -or $itemCustomization -notmatch 'flush_persistence\(true\)' -or $itemCustomization -notmatch 'persistence_retry_elapsed') {
+	throw "Customization persistence must retain unknown save outcomes, retry on a bounded cadence, and flush at disable."
 }
 
 if ($data -match 'setting_id\s*=\s*"visible_equipment_integration_group"' -or $data -match 'setting_id\s*=\s*"enable_visible_equipment_character_overview_override"' -or $main -notmatch 'config\.widget_type\s*==\s*"gear_placement_slot"' -or $main -notmatch 'visible_equipment_placement\s+and\s+get_mod\("visible_equipment"\)' -or $main -notmatch 'pcall\(visible_equipment_mod\.is_enabled,\s*visible_equipment_mod\)' -or $main -notmatch 'preserve_visible_equipment_placement\s*=\s*visible_equipment_active' -or $main -notmatch 'not\s+preserve_visible_equipment_placement\s+and\s+setting_id') {

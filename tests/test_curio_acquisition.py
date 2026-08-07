@@ -84,12 +84,131 @@ def main() -> None:
             return promise
         end
 
+        local function new_pending_promise()
+            local promise = {
+                __test_promise = true,
+                _cancelled = false,
+                _error = nil,
+                _failure_callbacks = {},
+                _settled = false,
+                _success_callbacks = {},
+            }
+
+            function promise:is_pending()
+                return not self._settled
+            end
+
+            local function settle_child(child, result, is_error)
+                if is_error then
+                    child:reject(result)
+                elseif is_promise(result) then
+                    result:next(function(value)
+                        child:resolve(value)
+                    end):catch(function(error_value)
+                        child:reject(error_value)
+                    end)
+                else
+                    child:resolve(result)
+                end
+            end
+
+            function promise:next(callback, failure_callback)
+                local child = new_pending_promise()
+
+                local function on_success(value)
+                    if type(callback) ~= "function" then
+                        child:resolve(value)
+                        return
+                    end
+
+                    local results = {pcall(callback, value)}
+
+                    if not results[1] then
+                        child:reject(results[2])
+                    else
+                        settle_child(child, results[2], false)
+                    end
+                end
+
+                local function on_failure(error_value)
+                    if type(failure_callback) ~= "function" then
+                        child:reject(error_value)
+                        return
+                    end
+
+                    local results = {pcall(failure_callback, error_value)}
+
+                    if not results[1] then
+                        child:reject(results[2])
+                    else
+                        settle_child(child, results[2], false)
+                    end
+                end
+
+                if not self._settled then
+                    table.insert(self._success_callbacks, on_success)
+                    table.insert(self._failure_callbacks, on_failure)
+                elseif self._error == nil then
+                    on_success(self._value)
+                else
+                    on_failure(self._error)
+                end
+
+                return child
+            end
+
+            function promise:catch(callback)
+                return self:next(nil, callback)
+            end
+
+            function promise:resolve(value)
+                if self._settled then
+                    return self
+                end
+
+                self._settled = true
+                self._value = value
+
+                for _, callback in ipairs(self._success_callbacks) do
+                    callback(value)
+                end
+
+                return self
+            end
+
+            function promise:reject(error_value)
+                if self._settled then
+                    return self
+                end
+
+                self._settled = true
+                self._error = error_value
+
+                for _, callback in ipairs(self._failure_callbacks) do
+                    callback(error_value)
+                end
+
+                return self
+            end
+
+            function promise:cancel()
+                self._cancelled = true
+                return self:reject("cancelled")
+            end
+
+            return promise
+        end
+
         function TestPromise.resolved(value)
             return new_promise(value, nil)
         end
 
         function TestPromise.rejected(error_value)
             return new_promise(nil, error_value)
+        end
+
+        function TestPromise.pending()
+            return new_pending_promise()
         end
 
         function TestPromise.all(...)
@@ -358,6 +477,8 @@ def main() -> None:
 		}
 
         purchase_count = 0
+		profile_fetch_pending = false
+		pending_profile_promise = nil
 		wallet_hook = nil
 		wallet_balance = 100000
         fetched_store_count = 0
@@ -452,6 +573,11 @@ def main() -> None:
             data_service = {
                 profiles = {
                     fetch_all_profiles = function()
+                        if profile_fetch_pending then
+                            pending_profile_promise = pending_profile_promise or TestPromise.pending()
+                            return pending_profile_promise
+                        end
+
                         return TestPromise.resolved({
                             profiles = {target_profile},
                             gear = {},
@@ -986,6 +1112,34 @@ def main() -> None:
     assert globals_.purchase_count == purchases_before_interrupted + 1
     assert rotation_history.accounts["default"].next_refresh_at_ms > committed_before_interrupted
     module.cancel()
+
+    # Read-only profile requests are owned by the current context. Leaving the
+    # menu cancels a pending GET, clears its debug count, and invalidates late
+    # callbacks without touching purchase POST ownership.
+    globals_.main_menu_active = True
+    globals_.settings.automatic_curio_scan_operative_selection = True
+    globals_.profile_fetch_pending = True
+    globals_.pending_profile_promise = None
+    generation_before_pending = module.read_request_generation()
+    module.enter_operative_selection(globals_.test_mod)
+    module.update(globals_.test_mod, 1, False)
+    assert globals_.pending_profile_promise is not None
+    assert module.active_read_request_count() == 1
+    assert module.read_request_generation() == generation_before_pending + 1
+
+    pending_profile_promise = globals_.pending_profile_promise
+    module.cancel()
+    assert module.active_read_request_count() == 0
+    assert pending_profile_promise._cancelled is True
+
+    # A canceled promise cannot mutate the newly idle state if a backend test
+    # double attempts to resolve it after cancellation.
+    pending_profile_promise.resolve(
+        pending_profile_promise,
+        lua.table_from({"profiles": lua.table_from([])}),
+    )
+    assert module.active_read_request_count() == 0
+    globals_.profile_fetch_pending = False
 
     print("BetterInventory automatic Curio acquisition tests passed.")
 
