@@ -174,6 +174,10 @@ if ($curioAcquisition -notmatch 'get_server_time' -or $curioAcquisition -notmatc
 	throw "Automatic Curio rotation scheduling is missing backend-time, boundary, throttle or idle-refresh safeguards."
 }
 
+if ($curioAcquisition -notmatch 'local_player_safe' -or $curioAcquisition -match 'local_player,\s*player_manager,\s*1') {
+	throw "Automatic Curio startup readiness must use Darktide's nil-safe local-player lookup."
+}
+
 if ($curioAcquisition -match 'os\.time\s*\(') {
 	throw "Automatic Curio rotation eligibility must not use the local OS clock."
 }

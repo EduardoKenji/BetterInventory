@@ -384,6 +384,17 @@ def main() -> None:
                         end,
                     }
                 end,
+                local_player_safe = function()
+                    if main_menu_active then
+                        return nil
+                    end
+
+                    return {
+                        character_id = function()
+                            return "currently-selected-character"
+                        end,
+                    }
+                end,
             },
             progression = {
                 is_fetching_session_report = function()

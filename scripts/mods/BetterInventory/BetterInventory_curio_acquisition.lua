@@ -242,15 +242,20 @@ local function is_operative_selection()
 	return success and active == true
 end
 
-local function current_character_id()
+local function local_player_safe()
 	local player_manager = Managers and Managers.player
-	local player
 
-	if player_manager and type(player_manager.local_player) == "function" then
-		local success, value = pcall(player_manager.local_player, player_manager, 1)
-
-		player = success and value or nil
+	if not player_manager or type(player_manager.local_player_safe) ~= "function" then
+		return
 	end
+
+	local success, player = pcall(player_manager.local_player_safe, player_manager, 1)
+
+	return success and player or nil
+end
+
+local function current_character_id()
+	local player = local_player_safe()
 
 	if not player or player.__deleted or type(player.character_id) ~= "function" then
 		return
@@ -313,14 +318,7 @@ local function current_account_key()
 		end
 	end
 
-	local player_manager = Managers and Managers.player
-	local player
-
-	if player_manager and type(player_manager.local_player) == "function" then
-		local success, value = pcall(player_manager.local_player, player_manager, 1)
-
-		player = success and value or nil
-	end
+	local player = local_player_safe()
 
 	if player and not player.__deleted and type(player.account_id) == "function" then
 		local success, account_id = pcall(player.account_id, player)
