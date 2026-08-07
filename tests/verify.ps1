@@ -6,6 +6,7 @@ $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $scriptRoot = Join-Path $projectRoot "scripts\mods\BetterInventory"
 $testRunner = Join-Path $PSScriptRoot "run_tests.py"
+$structureChecker = Join-Path $PSScriptRoot "check_lua_structure.py"
 $runtimeLuaFiles = @(Get-ChildItem -LiteralPath $scriptRoot -Filter "BetterInventory*.lua" -File | Sort-Object Name)
 $requiredFiles = @(
 	(Join-Path $projectRoot "BetterInventory.mod")
@@ -84,14 +85,6 @@ if ($main -notmatch 'Layout\.expanded_armoury_view_definitions' -or $main -notma
 
 if ($main -notmatch 'ItemGridViewBaseDefinitions\s*=\s*require\("scripts/ui/views/item_grid_view_base/item_grid_view_base_definitions"\)') {
 	throw "The base scenegraph fallback required to move Armoury weapon details was not found."
-}
-
-if ($main -match 'CreditsGoodsVendorView\s*=\s*require' -or $main -match 'CraftingMechanicusBarterItemsView\s*=\s*require') {
-	throw "The focused vendor settings must not hook Brunt's Armoury or Hadron's sacrifice flow."
-}
-
-if ($main -match 'InventoryWeaponsView\.present_grid_layout\s*=') {
-	throw "Direct class assignment found; BetterInventory must remain in the DMF hook chain."
 }
 
 if ($main -notmatch 'is_armoury_requisition_view' -or $main -notmatch '_optional_store_service\s*==\s*nil' -or $main -notmatch 'is_global_store_view' -or $main -notmatch 'get_all_characters_store_custom') {
@@ -540,6 +533,16 @@ if (Get-Command py -ErrorAction SilentlyContinue) {
 }
 
 if ($hasLuaParser) {
+	if (-not (Test-Path -LiteralPath $structureChecker -PathType Leaf)) {
+		throw "AST structure checker is missing: $structureChecker"
+	}
+
+	py -3 $structureChecker
+
+	if ($LASTEXITCODE -ne 0) {
+		throw "AST-backed Lua structure checks failed."
+	}
+
 	$luaFiles = Get-ChildItem -LiteralPath $projectRoot -Recurse -File |
 		Where-Object { $_.Extension -in @(".lua", ".mod") }
 
