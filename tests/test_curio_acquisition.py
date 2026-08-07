@@ -1141,6 +1141,7 @@ def main() -> None:
     globals_.main_menu_active = False
     globals_.test_offer.offerId = "stale-boundary-health"
     globals_.revalidated_offer.offerId = "stale-boundary-health"
+    globals_.captured_notification = None
     stale_boundary = globals_.settings["_automatic_curio_rotation_history"].accounts[
         "default"
     ].next_refresh_at_ms
@@ -1171,6 +1172,7 @@ def main() -> None:
     module.begin_morningstar_pass(globals_.test_mod)
     module.update(globals_.test_mod, 6, False)
     assert globals_.purchase_count == purchases_before_stale_boundary
+    assert globals_.captured_notification is None
     assert (
         globals_.settings["_automatic_curio_rotation_history"].accounts[
             "default"

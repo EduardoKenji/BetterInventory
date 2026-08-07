@@ -796,6 +796,13 @@ local function rejected(reason)
 	return Promise.rejected(reason)
 end
 
+local function rotation_pending(reason)
+	return rejected({
+		kind = "store_rotation_pending",
+		message = reason,
+	})
+end
+
 local function call_promise(object, method, ...)
 	if type(object) ~= "table" or type(method) ~= "function" then
 		return rejected("required backend method is unavailable")
@@ -1643,7 +1650,7 @@ local function scan_candidates(mod, token, minimum_rotation_boundary_ms)
 						-- hour here would incorrectly bless stale offers and suppress the
 						-- real refreshed pass.
 						if minimum_rotation_boundary_ms and (not observed_boundary or observed_boundary <= minimum_rotation_boundary_ms) then
-							return rejected(string.format(
+							return rotation_pending(string.format(
 								"Armoury storefront for %s has not advanced beyond rotation boundary %s",
 								profile_label(profile),
 								tostring(minimum_rotation_boundary_ms)
@@ -2388,6 +2395,16 @@ end
 
 local function schedule_scan_retry(mod, token, error_value)
 	if not context_is_current(mod, token) then
+		return
+	end
+
+	if type(error_value) == "table" and error_value.kind == "store_rotation_pending" then
+		state.started = false
+		state.elapsed = math.max((state.active_context == "operative_selection" and OPERATIVE_SELECTION_DELAY or MORNINGSTAR_DELAY) - RETRY_DELAY, 0)
+		state.scan_attempts = 0
+		state.scheduled = true
+		state.scheduled_reason = "rotation_wait"
+		log_diagnostic(mod, "Store rotation is not published yet; waiting before the next synchronization check: " .. error_text(error_value))
 		return
 	end
 
