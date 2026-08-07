@@ -25,6 +25,7 @@
 - Replaced representative implementation-text safety checks with Lua AST validation for forbidden direct class assignments, unsupported vendor requires, and render-resource ownership.
 - Added focused user/architecture documentation and a reproducible settings/localization manifest with drift verification.
 - Cached Character Overview Curio title/stat normalization by raw source identity so unchanged frames avoid repeated string allocations.
+- Added deterministic failed-package cleanup coverage that verifies the outer packager `finally` removes temporary build archives before destination replacement.
 
 ## 1.9.3 - 2026-08-07
 

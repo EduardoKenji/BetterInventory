@@ -622,6 +622,36 @@ try {
 	}
 }
 
+$packagingFailureDirectory = Join-Path ([IO.Path]::GetTempPath()) "BetterInventory-package-failure-$([Guid]::NewGuid().ToString('N'))"
+$packagingFailureArchive = Join-Path $packagingFailureDirectory "failed.zip"
+New-Item -ItemType Directory -Path $packagingFailureDirectory -Force | Out-Null
+
+try {
+	$packagingFailureErrorAction = $ErrorActionPreference
+
+	try {
+		$ErrorActionPreference = "Continue"
+		powershell.exe -NoProfile -ExecutionPolicy Bypass -File $releasePackager -OutputPath $packagingFailureArchive -TestFailBeforeMove 2>&1 | Out-Null
+		$packagingFailureExitCode = $LASTEXITCODE
+	} finally {
+		$ErrorActionPreference = $packagingFailureErrorAction
+	}
+
+	if ($packagingFailureExitCode -eq 0) {
+		throw "Intentional packaging failure test unexpectedly succeeded."
+	}
+
+	$residualBuildArchives = @(Get-ChildItem -LiteralPath $packagingFailureDirectory -Filter ".BetterInventory-build-*.zip" -File)
+
+	if ($residualBuildArchives.Count -ne 0) {
+		throw "Failed packaging left temporary archive(s): $($residualBuildArchives.Name -join ', ')"
+	}
+} finally {
+	if (Test-Path -LiteralPath $packagingFailureDirectory -PathType Container) {
+		[IO.Directory]::Delete($packagingFailureDirectory, $true)
+	}
+}
+
 $trackedArchive = [IO.Compression.ZipFile]::OpenRead($trackedReleaseArchive)
 
 try {

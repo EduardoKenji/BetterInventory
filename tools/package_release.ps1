@@ -1,6 +1,7 @@
 param(
 	[Parameter(Mandatory = $true)]
-	[string] $OutputPath
+	[string] $OutputPath,
+	[switch] $TestFailBeforeMove
 )
 
 $ErrorActionPreference = "Stop"
@@ -113,6 +114,10 @@ try {
 	}
 } finally {
 	$archive.Dispose()
+}
+
+if ($TestFailBeforeMove) {
+	throw "Intentional packaging failure before destination replacement."
 }
 
 Move-Item -LiteralPath $buildPath -Destination $resolvedOutput -Force
