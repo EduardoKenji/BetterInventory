@@ -114,6 +114,7 @@ def main() -> None:
         settings_flushes = 0
         settings_flush_attempts = 0
         settings_flush_should_fail = false
+        settings_flush_should_swallow_failure = false
         test_dmf_mod = {
             save_unsaved_settings_to_file = function()
                 settings_flush_attempts = settings_flush_attempts + 1
@@ -122,7 +123,12 @@ def main() -> None:
                     error("simulated settings write failure")
                 end
 
+                if settings_flush_should_swallow_failure then
+                    return nil
+                end
+
                 settings_flushes = settings_flushes + 1
+                return true
             end,
         }
 
@@ -845,8 +851,25 @@ def main() -> None:
     assert globals_.settings_flush_attempts == attempts_before_failure + 1
     assert globals_.settings_flushes == flushes_before_failure
     globals_.settings_flush_should_fail = False
-    customization.update_runtime(mod)
+    customization.update_runtime(mod, 1)
     assert globals_.settings_flushes == flushes_before_failure + 1
+
+    # Current DMF can swallow an inner settings-write failure and return nil.
+    # BetterInventory must retain dirty state, retry later, and avoid retrying
+    # on every frame while the result remains unknown.
+    customization.update(mod, "dmf-swallowed-failure", lua.table_from({"name": "Retry me"}))
+    globals_.settings_flush_should_swallow_failure = True
+    attempts_before_swallowed_failure = globals_.settings_flush_attempts
+    flushes_before_swallowed_failure = globals_.settings_flushes
+    customization.update_runtime(mod)
+    assert globals_.settings_flush_attempts == attempts_before_swallowed_failure + 1
+    assert globals_.settings_flushes == flushes_before_swallowed_failure
+    customization.update_runtime(mod)
+    assert globals_.settings_flush_attempts == attempts_before_swallowed_failure + 1
+    globals_.settings_flush_should_swallow_failure = False
+    customization.update_runtime(mod, 1)
+    assert globals_.settings_flush_attempts == attempts_before_swallowed_failure + 2
+    assert globals_.settings_flushes == flushes_before_swallowed_failure + 1
 
     # Disabling the mod while the editor is open must release keyboard capture.
     globals_.captured_safe_hooks.update(popup_handler)
