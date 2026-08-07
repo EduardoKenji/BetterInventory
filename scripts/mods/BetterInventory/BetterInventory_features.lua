@@ -4762,7 +4762,7 @@ Features.morningstar_auto_discard_is_busy = function(mod)
 	-- The scanner leaves `scheduled` set while its read-only fetch is in flight,
 	-- then the transaction owner remains authoritative through confirmation and
 	-- deletion. Once both clear, a Curio purchase can no longer enter this pass.
-	return automatic_discard_enabled(mod) and (automatic_discard_state.delete_inflight or automatic_discard_state.scheduled or discard_transaction.owner == "automatic")
+	return automatic_discard_state.delete_inflight or discard_transaction.owner == "automatic" or automatic_discard_enabled(mod) and automatic_discard_state.scheduled
 end
 
 local function current_game_mode_name()

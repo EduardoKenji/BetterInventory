@@ -2830,8 +2830,18 @@ def main() -> None:
     assert globals_.automatic_fetch_count == fetch_count_before_deferred_delete + 2
     assert globals_.captured_popup_count == popup_count_before_deferred_delete
     assert features.morningstar_auto_discard_is_busy(mod) is True
+
+    # Canceling the scheduler or switching modes must not release arbitration
+    # while the destructive backend request is still in flight. A new manual
+    # request remains blocked until the backend finalizer runs.
+    features.cancel_morningstar_auto_discard()
+    mod.settings.quick_discard_mode = "manual"
+    assert features.morningstar_auto_discard_is_busy(mod) is True
+    features.request_quick_discard(mod, layout, quick_discard_view)
+    assert globals_.captured_popup_count == popup_count_before_deferred_delete
     globals_.complete_automatic_delete()
     assert features.morningstar_auto_discard_is_busy(mod) is False
+    mod.settings.quick_discard_mode = "automatic"
     globals_.automatic_defer_delete = False
     features.cancel_morningstar_auto_discard()
 

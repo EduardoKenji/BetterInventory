@@ -123,6 +123,10 @@ if ($features -notmatch 'popup_id\s*=\s*nil' -or $features -notmatch 'event_remo
 	throw "Discard popup lifecycle reconciliation and token ownership guard were not found."
 }
 
+if ($features -notmatch 'return automatic_discard_state\.delete_inflight\s+or discard_transaction\.owner == "automatic"' -or $features -notmatch 'delete_transaction_token\s*=\s*transaction_token' -or $features -notmatch 'release_discard_transaction\("automatic",\s*transaction_token\)') {
+	throw "Automatic discard must retain shared ownership until backend deletion settles."
+}
+
 if ($features -notmatch '_registered_sort_views' -or $features -notmatch 'Features\.rebind_sort_options' -or $features -notmatch 'Features\._registered_sort_views\[view\]\s*=\s*true' -or $features -notmatch 'Features\._registered_sort_views\[view\]\s*=\s*nil' -or $features -notmatch 'for view in pairs\(Features\._registered_sort_views\)' -or $main -notmatch 'Features\.rebind_sort_options\(mod,\s*Layout\)') {
 	throw "Sort comparator ownership and disable/re-enable rebinding contract was not found."
 }

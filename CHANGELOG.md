@@ -13,6 +13,7 @@
 - Fixed reused Character Overview cards retaining the previously equipped weapon/Curio background or the previous Curio's fitted secondary-stat rows after returning from equipment selection.
 - Fixed manual discard transactions remaining locked when Darktide removes their confirmation popup without invoking an option callback; popup IDs are now reconciled and lifecycle cleanup is token-aware.
 - Fixed sort comparators remaining wrapped after disable or hot reload; GlobalStore/vendor views without an optional sorting panel are now tracked, restored, and rebound safely.
+- Fixed Automatic Discard releasing shared workflow ownership when canceled or disabled during an in-flight backend deletion; Curio Buyer and manual discard remain blocked until settlement.
 
 ## 1.9.3 - 2026-08-07
 
