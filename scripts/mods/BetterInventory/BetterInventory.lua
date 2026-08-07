@@ -78,7 +78,8 @@ local GLOBAL_STORE_NATIVE_CONFIGURATION = {
 	native_single_column = true,
 	store_item = true,
 }
-local CHARACTER_OVERVIEW_WEAPON_WIDGET_TYPE = "better_inventory_character_overview_weapon"
+local CHARACTER_OVERVIEW_MELEE_WIDGET_TYPE = "better_inventory_character_overview_melee_weapon"
+local CHARACTER_OVERVIEW_RANGED_WIDGET_TYPE = "better_inventory_character_overview_ranged_weapon"
 local CHARACTER_OVERVIEW_CURIO_WIDGET_TYPE = "better_inventory_character_overview_curio"
 local CHARACTER_OVERVIEW_EMPTY_CURIO_WIDGET_TYPE = "better_inventory_character_overview_empty_curio"
 local CHARACTER_OVERVIEW_WEAPON_HEIGHT = 130
@@ -93,6 +94,22 @@ local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_MARKER_SHIFT_X = 10
 local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_EQUIPPED_ICON_SHIFT_X = 6
 local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_FAVORITE_SHIFT_Y = 10
 local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_MARKER_GAP_Y = 40
+local character_overview_visual_settings_generation = 0
+local CHARACTER_OVERVIEW_VISUAL_SETTING_IDS = {
+	show_rarity_tag = true,
+	enable_character_overview_melee_mirror = true,
+	character_overview_show_melee_rarity_strip = true,
+	enable_character_overview_ranged_mirror = true,
+	character_overview_show_ranged_rarity_strip = true,
+	enable_character_overview_curio_details = true,
+	character_overview_show_curio_rarity_strip = true,
+	character_overview_use_native_curio_overlay = true,
+	character_overview_curio_name_mode = true,
+	character_overview_curio_font_size_percent = true,
+	character_overview_show_curio_names = true,
+	name_it_force_curio_name_in_detailed_mode = true,
+	curio_content_name_it_curio_name = true,
+}
 local CHARACTER_OVERVIEW_BLUEPRINTS = type(ItemBlueprintGenerator) == "function" and ItemBlueprintGenerator({
 	600,
 	CHARACTER_OVERVIEW_WEAPON_HEIGHT,
@@ -217,20 +234,48 @@ local function configure_character_overview_rarity_strip(blueprint, setting_id)
 		return
 	end
 
-	local original_visibility_function = rarity_tag.visibility_function
-	local show_strip = mod:get(setting_id) ~= false
-
 	rarity_tag.visibility_function = function(content, style)
-		if not show_strip then
+		-- `show_rarity_tag` remains the global master switch. The category-specific
+		-- Character Overview setting is deliberately evaluated at draw time so a
+		-- setting change can update an already-open overview after its layout is
+		-- rebuilt, without retaining the widget or view in module state.
+		if mod:get("show_rarity_tag") == false or setting_id and mod:get(setting_id) == false then
 			return false
-		end
-
-		if type(original_visibility_function) == "function" then
-			return original_visibility_function(content, style)
 		end
 
 		return true
 	end
+end
+
+local function attach_runtime_marker_styles(widget)
+	local content = widget and widget.content
+	local styles = widget and widget.style
+
+	if not content or not styles then
+		return
+	end
+
+	if styles.myfav_hotspot then
+		content.better_inventory_myfavorites_hotspot_style = styles.myfav_hotspot
+	end
+
+	for index = 1, #(widget.passes or {}) do
+		local pass = widget.passes[index]
+
+		if pass and pass.style_id == "equipped_icon" then
+			content.better_inventory_equipped_icon_visibility_function = pass.visibility_function
+
+			break
+		end
+	end
+end
+
+local function is_top_right_style(style)
+	return style and style.horizontal_alignment == "right" and style.vertical_alignment == "top"
+end
+
+local function is_top_right_marker(pass)
+	return is_top_right_style(pass and pass.style)
 end
 
 local function configure_character_overview_weapon_passes(blueprint)
@@ -368,7 +413,7 @@ local function character_overview_weapon_blueprint(rarity_strip_setting_id)
 	local configured_init = blueprint.init
 
 	blueprint.init = function(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
-		if configured_init then
+		if type(configured_init) == "function" then
 			configured_init(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
 		end
 
@@ -382,7 +427,7 @@ local function character_overview_weapon_blueprint(rarity_strip_setting_id)
 		local element = content and content.element
 		local previous_item = element and element.item
 
-		if native_update then
+		if type(native_update) == "function" then
 			native_update(parent, widget, input_service, dt, t, ui_renderer)
 		end
 
@@ -394,7 +439,7 @@ local function character_overview_weapon_blueprint(rarity_strip_setting_id)
 		if element and current_item ~= previous_item then
 			element.item = current_item
 
-			if blueprint.update_data then
+			if type(blueprint.update_data) == "function" then
 				blueprint.update_data(parent, widget, element)
 			end
 		end
@@ -459,11 +504,15 @@ local function character_overview_curio_blueprint()
 	local configured_init = blueprint.init
 
 	blueprint.init = function(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
-		if configured_init then
+		if type(configured_init) == "function" then
 			configured_init(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
 		end
 
 		mark_character_overview_requirement_met(widget)
+
+		if widget and widget.content then
+			widget.content.better_inventory_native_curio_overlay_enabled = native_curio_overlay_enabled
+		end
 	end
 
 	local card_width = blueprint.size[1]
@@ -502,6 +551,7 @@ local function character_overview_curio_blueprint()
 	local curio_name_block_height = curio_name_font_size * curio_name_line_limit + 11
 	local curio_stat_base_offsets = {}
 	local curio_stat_line_heights = {}
+	local native_marker_min_y
 
 	if show_curio_name and display_name and display_name.style then
 		display_name.visibility_function = function(content)
@@ -542,7 +592,6 @@ local function character_overview_curio_blueprint()
 
 	if native_curio_overlay_enabled then
 		local content_shift_y = CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_CONTENT_SHIFT_Y
-		local native_marker_min_y
 
 		if display_name and display_name.style and display_name.style.offset then
 			display_name.style.horizontal_alignment = "center"
@@ -552,6 +601,10 @@ local function character_overview_curio_blueprint()
 			-- X delta. Adding the inset here would shift the title right.
 			display_name.style.offset[1] = CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_SHIFT_X
 			display_name.style.offset[2] = (display_name.style.offset[2] or 0) + content_shift_y
+			display_name.style.size = display_name.style.size or {
+				card_width - CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_HORIZONTAL_PADDING * 2,
+				curio_name_block_height,
+			}
 			display_name.style.size[1] = math.max(40, card_width - CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_HORIZONTAL_PADDING * 2)
 			native_marker_min_y = (display_name.style.offset[2] or 0) + (display_name.style.size[2] or 0) + CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_MARKER_GAP_Y
 		end
@@ -602,7 +655,7 @@ local function character_overview_curio_blueprint()
 		local favorite_icon = pass_by_style_id(blueprint.pass_template, "favorite_icon")
 		local myfavorites_hotspot = pass_by_style_id(blueprint.pass_template, "myfav_hotspot")
 
-		if equipped_icon and equipped_icon.style and equipped_icon.style.offset then
+		if equipped_icon and equipped_icon.style and equipped_icon.style.offset and is_top_right_marker(equipped_icon) then
 			local equipped_marker_y = (equipped_icon.style.offset[2] or 0) + CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_EQUIPPED_ICON_SHIFT_Y
 
 			if native_marker_min_y then
@@ -615,7 +668,7 @@ local function character_overview_curio_blueprint()
 		end
 
 		for _, pass in ipairs({ favorite_icon, myfavorites_hotspot }) do
-			if pass and pass.style and pass.style.offset then
+			if pass and pass.style and pass.style.offset and is_top_right_marker(pass) then
 				pass.style.offset[1] = (pass.style.offset[1] or 0) - CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_MARKER_SHIFT_X
 
 				if pass == myfavorites_hotspot then
@@ -630,7 +683,7 @@ local function character_overview_curio_blueprint()
 			end
 		end
 
-		if favorite_icon and favorite_icon.style and favorite_icon.style.offset then
+		if favorite_icon and favorite_icon.style and favorite_icon.style.offset and is_top_right_marker(favorite_icon) then
 			local favorite_base_offset_y = favorite_icon.style.offset[2] or 0
 			favorite_icon.style.better_inventory_native_curio_favorite_shift_y = CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_FAVORITE_SHIFT_Y
 			favorite_icon.style.better_inventory_native_curio_favorite_min_y = native_marker_min_y
@@ -685,44 +738,121 @@ local function character_overview_curio_blueprint()
 		end
 	end
 
-	local function fit_curio_text(widget, ui_renderer)
-		local style = show_curio_name and widget and widget.style and widget.style.display_name
+	local curio_stat_content_ids = {
+		"better_inventory_curio_stat_1",
+		"better_inventory_curio_stat_2",
+		"better_inventory_curio_stat_3",
+		"better_inventory_curio_stat_4",
+	}
+	local curio_stat_full_content_ids = {
+		"better_inventory_overview_full_curio_stat_1",
+		"better_inventory_overview_full_curio_stat_2",
+		"better_inventory_overview_full_curio_stat_3",
+		"better_inventory_overview_full_curio_stat_4",
+	}
+	local curio_stat_fitted_content_ids = {
+		"better_inventory_overview_fitted_curio_stat_1",
+		"better_inventory_overview_fitted_curio_stat_2",
+		"better_inventory_overview_fitted_curio_stat_3",
+		"better_inventory_overview_fitted_curio_stat_4",
+	}
+	local curio_stat_source_content_ids = {
+		"better_inventory_full_curio_stat_1",
+		"better_inventory_full_curio_stat_2",
+		"better_inventory_full_curio_stat_3",
+		"better_inventory_full_curio_stat_4",
+	}
+
+	local function normalized_displayed_value(content, displayed_id, fitted_id, full_id, source_id)
+		local displayed_value = content[displayed_id]
+
+		if displayed_value == content[fitted_id] then
+			return content[full_id] or source_id and content[source_id] or displayed_value
+		end
+
+		local source_value = source_id and content[source_id] or displayed_value
+
+		if type(source_value) == "string" then
+			return string.gsub(source_value, "[\r\n]+", " ")
+		end
+
+		return displayed_value
+	end
+
+	local function fit_curio_text(widget, ui_renderer, force)
 		local content = widget and widget.content
+		local widget_style = widget and widget.style
 
-		if style and content then
-			style.font_size = curio_name_font_size
+		if not content or not ui_renderer then
+			return
+		end
 
-			local displayed_name = content.display_name
+		local title_style = show_curio_name and widget_style and widget_style.display_name
+		local title_width = title_style and title_style.size and title_style.size[1]
+		local stat_sources = content.better_inventory_curio_fit_stat_sources
+		local stat_widths = content.better_inventory_curio_fit_stat_widths
 
-			if type(displayed_name) == "string" and displayed_name ~= "" and displayed_name ~= content.better_inventory_fitted_curio_name then
-				content.better_inventory_full_display_name = string.gsub(displayed_name, "[\r\n]+", " ")
+		if type(stat_sources) ~= "table" then
+			stat_sources = {}
+			content.better_inventory_curio_fit_stat_sources = stat_sources
+			force = true
+		end
+
+		if type(stat_widths) ~= "table" then
+			stat_widths = {}
+			content.better_inventory_curio_fit_stat_widths = stat_widths
+			force = true
+		end
+
+		local full_name = title_style and normalized_displayed_value(content, "display_name", "better_inventory_fitted_curio_name", "better_inventory_full_display_name")
+		local needs_fit = force or content.better_inventory_curio_fit_initialized ~= true
+
+		if title_style and (content.better_inventory_curio_fit_name_source ~= full_name or content.better_inventory_curio_fit_title_width ~= title_width or content.better_inventory_curio_fit_title_font_size ~= curio_name_font_size or content.better_inventory_curio_fit_title_line_limit ~= curio_name_line_limit) then
+			needs_fit = true
+		end
+
+		for index = 1, 4 do
+			local content_id = curio_stat_content_ids[index]
+			local fitted_content_id = curio_stat_fitted_content_ids[index]
+			local source_content_id = curio_stat_source_content_ids[index]
+			local stat_style = widget_style and widget_style[content_id]
+			local maximum_width = stat_style and (stat_style.better_inventory_max_text_width or stat_style.size and stat_style.size[1])
+			local full_value = normalized_displayed_value(content, content_id, fitted_content_id, curio_stat_full_content_ids[index], source_content_id)
+
+			if stat_style and (stat_sources[index] ~= full_value or stat_widths[index] ~= maximum_width) then
+				needs_fit = true
 			end
+		end
 
-			local full_name = content.better_inventory_full_display_name or displayed_name
-			local maximum_width = style.size and style.size[1]
+		if not needs_fit then
+			return
+		end
 
-			if ui_renderer and type(full_name) == "string" and full_name ~= "" and type(maximum_width) == "number" then
+		if title_style then
+			title_style.font_size = curio_name_font_size
+
+			if type(full_name) == "string" and full_name ~= "" and type(title_width) == "number" then
 				local minimum_font_size = 8
 				local wrapped_rows
 
-				while style.font_size > minimum_font_size do
-					wrapped_rows = Text.word_wrap(ui_renderer, full_name, style, maximum_width)
+				while title_style.font_size > minimum_font_size do
+					wrapped_rows = Text.word_wrap(ui_renderer, full_name, title_style, title_width)
 
 					if not wrapped_rows or #wrapped_rows <= curio_name_line_limit then
 						break
 					end
 
-					style.font_size = style.font_size - 1
+					title_style.font_size = title_style.font_size - 1
 				end
 
-				wrapped_rows = Text.word_wrap(ui_renderer, full_name, style, maximum_width)
+				wrapped_rows = Text.word_wrap(ui_renderer, full_name, title_style, title_width)
 
 				local fitted_name
 
 				if wrapped_rows and #wrapped_rows <= curio_name_line_limit then
 					fitted_name = table.concat(wrapped_rows, "\n")
 				elseif curio_name_line_limit == 1 then
-					fitted_name = Text.crop_text_width(ui_renderer, full_name, style, maximum_width)
+					fitted_name = Text.crop_text_width(ui_renderer, full_name, title_style, title_width)
 				else
 					local fitted_rows = {}
 
@@ -730,59 +860,73 @@ local function character_overview_curio_blueprint()
 						fitted_rows[index] = wrapped_rows and wrapped_rows[index] or ""
 					end
 
-					fitted_rows[curio_name_line_limit] = Text.crop_text_width(ui_renderer, fitted_rows[curio_name_line_limit] .. "…", style, maximum_width)
+					fitted_rows[curio_name_line_limit] = Text.crop_text_width(ui_renderer, fitted_rows[curio_name_line_limit] .. "…", title_style, title_width)
 					fitted_name = table.concat(fitted_rows, "\n")
 				end
 
 				content.display_name = fitted_name
 				content.better_inventory_fitted_curio_name = fitted_name
 			end
-		end
 
-		if not content or not ui_renderer then
-			return
+			content.better_inventory_full_display_name = full_name
+			content.better_inventory_curio_fit_name_source = full_name
+			content.better_inventory_curio_fit_title_width = title_width
+			content.better_inventory_curio_fit_title_font_size = curio_name_font_size
+			content.better_inventory_curio_fit_title_line_limit = curio_name_line_limit
 		end
 
 		local cumulative_extra_height = 0
 
 		for index = 1, 4 do
-			local content_id = "better_inventory_curio_stat_" .. index
-			local full_content_id = "better_inventory_overview_full_curio_stat_" .. index
-			local fitted_content_id = "better_inventory_overview_fitted_curio_stat_" .. index
-			local stat_style = widget.style and widget.style[content_id]
+			local content_id = curio_stat_content_ids[index]
+			local full_content_id = curio_stat_full_content_ids[index]
+			local fitted_content_id = curio_stat_fitted_content_ids[index]
+			local source_content_id = curio_stat_source_content_ids[index]
+			local stat_style = widget_style and widget_style[content_id]
 			local displayed_value = content[content_id]
 
-			if stat_style and type(displayed_value) == "string" and displayed_value ~= "" then
-				if displayed_value ~= content[fitted_content_id] then
-					local full_value = content["better_inventory_full_curio_stat_" .. index] or displayed_value
-
-					content[full_content_id] = string.gsub(full_value, "[\r\n]+", " ")
-				end
-
-				local full_value = content[full_content_id] or displayed_value
+			if stat_style then
+				local full_value = normalized_displayed_value(content, content_id, fitted_content_id, full_content_id, source_content_id)
 				local maximum_width = stat_style.better_inventory_max_text_width or stat_style.size and stat_style.size[1]
-				local wrapped_rows = maximum_width and Text.word_wrap(ui_renderer, full_value, stat_style, maximum_width)
-				local line_count = math.max(1, wrapped_rows and #wrapped_rows or 1)
-				local fitted_value = wrapped_rows and table.concat(wrapped_rows, "\n") or full_value
-				local line_height = curio_stat_line_heights[index] or (stat_style.font_size or 13) + 5
 
-				stat_style.offset[2] = (curio_stat_base_offsets[index] or 0) + cumulative_extra_height
-				stat_style.size[2] = line_height * line_count
-				content[content_id] = fitted_value
-				content[fitted_content_id] = fitted_value
-				cumulative_extra_height = cumulative_extra_height + (line_count - 1) * line_height
-			elseif stat_style then
-				stat_style.offset[2] = (curio_stat_base_offsets[index] or 0) + cumulative_extra_height
-				stat_style.size[2] = curio_stat_line_heights[index] or stat_style.size[2]
+				content[full_content_id] = full_value
+				stat_sources[index] = full_value
+				stat_widths[index] = maximum_width
+
+				if type(displayed_value) == "string" and displayed_value ~= "" and type(full_value) == "string" and maximum_width then
+					local wrapped_rows = Text.word_wrap(ui_renderer, full_value, stat_style, maximum_width)
+					local line_count = math.max(1, wrapped_rows and #wrapped_rows or 1)
+					local fitted_value = wrapped_rows and table.concat(wrapped_rows, "\n") or full_value
+					local line_height = curio_stat_line_heights[index] or (stat_style.font_size or 13) + 5
+
+					if stat_style.offset then
+						stat_style.offset[2] = (curio_stat_base_offsets[index] or 0) + cumulative_extra_height
+					end
+
+					if stat_style.size then
+						stat_style.size[2] = line_height * line_count
+					end
+
+					content[content_id] = fitted_value
+					content[fitted_content_id] = fitted_value
+					cumulative_extra_height = cumulative_extra_height + (line_count - 1) * line_height
+				elseif stat_style.offset then
+					stat_style.offset[2] = (curio_stat_base_offsets[index] or 0) + cumulative_extra_height
+				end
 			end
 		end
+
+		content.better_inventory_curio_fit_initialized = true
 	end
 
 	local overview_init = blueprint.init
 
 	blueprint.init = function(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
-		overview_init(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
-		fit_curio_text(widget, ui_renderer)
+		if type(overview_init) == "function" then
+			overview_init(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
+		end
+
+		fit_curio_text(widget, ui_renderer, true)
 	end
 
 	if item_level and item_level.style then
@@ -815,12 +959,11 @@ local function character_overview_curio_blueprint()
 		local element = content and content.element
 		local previous_item = element and element.item
 
-		if native_update then
+		if type(native_update) == "function" then
 			native_update(parent, widget, input_service, dt, t, ui_renderer)
 		end
 
 		mark_character_overview_requirement_met(widget)
-		fit_curio_text(widget, ui_renderer)
 
 		local slot = element and element.slot
 		local current_item = slot and parent.equipped_item_in_slot and parent:equipped_item_in_slot(slot.name)
@@ -828,9 +971,15 @@ local function character_overview_curio_blueprint()
 		if element and current_item ~= previous_item then
 			element.item = current_item
 
-			if blueprint.update_data then
+			if type(blueprint.update_data) == "function" then
 				blueprint.update_data(parent, widget, element)
 			end
+
+			fit_curio_text(widget, ui_renderer, true)
+		else
+			-- This performs only cache-key comparisons when the item and layout are
+			-- unchanged; word wrapping and table allocation happen only on a miss.
+			fit_curio_text(widget, ui_renderer, false)
 		end
 	end
 
@@ -1767,15 +1916,26 @@ local function character_overview_native_curio_equipped_marker_y(widget)
 	local element = content and content.element
 	local slot = element and element.slot
 	local slot_name = slot and slot.name
+	local native_overlay_enabled = content and content.better_inventory_native_curio_overlay_enabled
+
+	if native_overlay_enabled == nil then
+		native_overlay_enabled = mod:get("character_overview_use_native_curio_overlay") == true
+	end
 
 	-- Character Overview Curios are the only widgets whose slot names use this
 	-- prefix. Keep the runtime correction scoped to those widgets so weapons,
 	-- inventory grids, and vendor cards retain their normal marker geometry.
-	if mod:get("character_overview_use_native_curio_overlay") ~= true or type(slot_name) ~= "string" or not string.match(slot_name, "^slot_attachment_") then
+	if native_overlay_enabled ~= true or type(slot_name) ~= "string" or not string.match(slot_name, "^slot_attachment_") then
 		return
 	end
 
 	local styles = widget.style
+	local equipped_style = styles and styles.equipped_icon
+
+	if not is_top_right_style(equipped_style) then
+		return
+	end
+
 	local title_style = styles and styles.display_name
 	local first_stat_style = styles and styles.better_inventory_curio_stat_1
 	local title_bottom
@@ -1817,7 +1977,8 @@ local function synchronize_character_overview_equipped_icon(widget, lantern_acti
 	end
 
 	local target_y = lantern_active and 34 or content.better_inventory_equipped_icon_original_y
-	local native_curio_min_y = equipped_style.better_inventory_native_curio_equipped_min_y
+	local native_overlay_enabled = content.better_inventory_native_curio_overlay_enabled == true
+	local native_curio_min_y = native_overlay_enabled and equipped_style.better_inventory_native_curio_equipped_min_y
 	local native_curio_marker_y = character_overview_native_curio_equipped_marker_y(widget)
 
 	if native_curio_marker_y then
@@ -1825,7 +1986,7 @@ local function synchronize_character_overview_equipped_icon(widget, lantern_acti
 		-- deliberately derived from the visible stat pass so a long/two-line
 		-- title cannot overlap it, even if a later callback rewrites offset[2].
 		target_y = native_curio_marker_y
-	elseif native_curio_min_y then
+	elseif native_overlay_enabled and native_curio_min_y then
 		target_y = math.max(target_y, native_curio_min_y)
 	end
 
@@ -1842,9 +2003,39 @@ local function synchronize_character_overview_equipped_icons(view)
 	end
 end
 
+local function refresh_character_overview_visual_layout_if_needed(view)
+	if not view then
+		return
+	end
+
+	if view.better_inventory_character_overview_visual_settings_generation == nil then
+		view.better_inventory_character_overview_visual_settings_generation = character_overview_visual_settings_generation
+
+		return
+	end
+
+	if view.better_inventory_character_overview_visual_settings_generation == character_overview_visual_settings_generation then
+		return
+	end
+
+	view.better_inventory_character_overview_visual_settings_generation = character_overview_visual_settings_generation
+
+	local active_context = view._active_category_tab_context
+
+	if active_context and active_context.is_grid_layout ~= true and type(view._switch_active_layout) == "function" then
+		-- Reuse Darktide's own layout lifecycle so old widgets, native icon
+		-- resources, hotspots, and exclamation widgets are destroyed together.
+		view:_switch_active_layout(active_context)
+	end
+end
+
 function mod.on_setting_changed(setting_id)
 	local color_change = color_target_by_setting_id[setting_id]
 	local automatic_curio_setting = type(setting_id) == "string" and string.sub(setting_id, 1, 16) == "automatic_curio_"
+
+	if type(setting_id) == "string" and CHARACTER_OVERVIEW_VISUAL_SETTING_IDS[setting_id] then
+		character_overview_visual_settings_generation = character_overview_visual_settings_generation + 1
+	end
 
 	ItemCustomization.on_setting_changed(mod, setting_id)
 
@@ -2181,6 +2372,7 @@ if ensure_class_method(InventoryView, "_create_entry_widget_from_config") then
 
 		local function create_widget(resolved_config)
 			local results = pack_values(func(view, resolved_config, suffix, callback_name, secondary_callback_name, optional_scenegraph_id))
+			attach_runtime_marker_styles(results[1])
 
 			if adjust_runtime_equipped_icon then
 				synchronize_character_overview_equipped_icon(results[1], lantern_recommendations_active())
@@ -2194,7 +2386,7 @@ if ensure_class_method(InventoryView, "_create_entry_widget_from_config") then
 			local empty_curio_slot = curio_slot and equipped_item == nil
 			local rarity_strip_setting_id = weapon_kind == "melee" and "character_overview_show_melee_rarity_strip" or weapon_kind == "ranged" and "character_overview_show_ranged_rarity_strip"
 			local blueprint = empty_curio_slot and character_overview_empty_curio_blueprint() or curio_slot and character_overview_curio_blueprint() or character_overview_weapon_blueprint(rarity_strip_setting_id)
-			local widget_type = empty_curio_slot and CHARACTER_OVERVIEW_EMPTY_CURIO_WIDGET_TYPE or curio_slot and CHARACTER_OVERVIEW_CURIO_WIDGET_TYPE or CHARACTER_OVERVIEW_WEAPON_WIDGET_TYPE
+			local widget_type = empty_curio_slot and CHARACTER_OVERVIEW_EMPTY_CURIO_WIDGET_TYPE or curio_slot and CHARACTER_OVERVIEW_CURIO_WIDGET_TYPE or weapon_kind == "melee" and CHARACTER_OVERVIEW_MELEE_WIDGET_TYPE or CHARACTER_OVERVIEW_RANGED_WIDGET_TYPE
 
 			if blueprint then
 				InventoryViewContentBlueprints[widget_type] = blueprint
@@ -2212,6 +2404,7 @@ if ensure_class_method(InventoryView, "_create_entry_widget_from_config") then
 end
 
 mod:hook_safe(InventoryView, "update", function(view)
+	refresh_character_overview_visual_layout_if_needed(view)
 	synchronize_character_overview_equipped_icons(view)
 end)
 
@@ -2346,20 +2539,7 @@ end
 if ensure_class_method(ViewElementGrid, "_create_entry_widget_from_config") then
 	mod:hook(ViewElementGrid, "_create_entry_widget_from_config", function(func, item_grid, config, suffix, callback_name, secondary_callback_name, double_click_callback_name)
 		local widget, alignment_widget = func(item_grid, config, suffix, callback_name, secondary_callback_name, double_click_callback_name)
-
-		if widget and widget.content and widget.style and widget.style.myfav_hotspot then
-			widget.content.better_inventory_myfavorites_hotspot_style = widget.style.myfav_hotspot
-
-			for index = 1, #(widget.passes or {}) do
-				local pass = widget.passes[index]
-
-				if pass.style_id == "equipped_icon" then
-					widget.content.better_inventory_equipped_icon_visibility_function = pass.visibility_function
-
-					break
-				end
-			end
-		end
+		attach_runtime_marker_styles(widget)
 
 		return widget, alignment_widget
 	end)
