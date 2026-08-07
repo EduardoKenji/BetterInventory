@@ -515,7 +515,7 @@ local function character_overview_curio_blueprint()
 
 	if native_curio_overlay_enabled then
 		local content_shift_y = CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_CONTENT_SHIFT_Y
-		local favorite_marker_min_y
+		local native_marker_min_y
 
 		if display_name and display_name.style and display_name.style.offset then
 			display_name.style.horizontal_alignment = "center"
@@ -526,7 +526,7 @@ local function character_overview_curio_blueprint()
 			display_name.style.offset[1] = CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_SHIFT_X
 			display_name.style.offset[2] = (display_name.style.offset[2] or 0) + content_shift_y
 			display_name.style.size[1] = math.max(40, card_width - CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_HORIZONTAL_PADDING * 2)
-			favorite_marker_min_y = (display_name.style.offset[2] or 0) + (display_name.style.size[2] or 0) + CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_MARKER_GAP_Y
+			native_marker_min_y = (display_name.style.offset[2] or 0) + (display_name.style.size[2] or 0) + CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_MARKER_GAP_Y
 		end
 
 		for index = 1, 4 do
@@ -576,8 +576,15 @@ local function character_overview_curio_blueprint()
 		local myfavorites_hotspot = pass_by_style_id(blueprint.pass_template, "myfav_hotspot")
 
 		if equipped_icon and equipped_icon.style and equipped_icon.style.offset then
+			local equipped_marker_y = (equipped_icon.style.offset[2] or 0) + CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_EQUIPPED_ICON_SHIFT_Y
+
+			if native_marker_min_y then
+				equipped_marker_y = math.max(equipped_marker_y, native_marker_min_y)
+			end
+
 			equipped_icon.style.offset[1] = (equipped_icon.style.offset[1] or 0) - CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_MARKER_SHIFT_X
-			equipped_icon.style.offset[2] = (equipped_icon.style.offset[2] or 0) + CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_EQUIPPED_ICON_SHIFT_Y
+			equipped_icon.style.offset[2] = equipped_marker_y
+			equipped_icon.style.better_inventory_native_curio_equipped_min_y = native_marker_min_y
 		end
 
 		for _, pass in ipairs({ favorite_icon, myfavorites_hotspot }) do
@@ -587,8 +594,8 @@ local function character_overview_curio_blueprint()
 				if pass == myfavorites_hotspot then
 					local marker_y = (pass.style.offset[2] or 0) + CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_FAVORITE_SHIFT_Y
 
-					if favorite_marker_min_y then
-						marker_y = math.max(marker_y, favorite_marker_min_y)
+					if native_marker_min_y then
+						marker_y = math.max(marker_y, native_marker_min_y)
 					end
 
 					pass.style.offset[2] = marker_y
@@ -599,13 +606,13 @@ local function character_overview_curio_blueprint()
 		if favorite_icon and favorite_icon.style and favorite_icon.style.offset then
 			local favorite_base_offset_y = favorite_icon.style.offset[2] or 0
 			favorite_icon.style.better_inventory_native_curio_favorite_shift_y = CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_FAVORITE_SHIFT_Y
-			favorite_icon.style.better_inventory_native_curio_favorite_min_y = favorite_marker_min_y
+			favorite_icon.style.better_inventory_native_curio_favorite_min_y = native_marker_min_y
 			favorite_icon.style.better_inventory_native_curio_favorite_base_y = favorite_base_offset_y
 
 			local marker_y = (favorite_icon.style.offset[2] or 0) + CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_FAVORITE_SHIFT_Y
 
-			if favorite_marker_min_y then
-				marker_y = math.max(marker_y, favorite_marker_min_y)
+			if native_marker_min_y then
+				marker_y = math.max(marker_y, native_marker_min_y)
 			end
 
 			favorite_icon.style.offset[2] = marker_y
@@ -1733,7 +1740,14 @@ local function synchronize_character_overview_equipped_icon(widget, lantern_acti
 		content.better_inventory_equipped_icon_original_y = offset[2] or 2
 	end
 
-	offset[2] = lantern_active and 34 or content.better_inventory_equipped_icon_original_y
+	local target_y = lantern_active and 34 or content.better_inventory_equipped_icon_original_y
+	local native_curio_min_y = equipped_style.better_inventory_native_curio_equipped_min_y
+
+	if native_curio_min_y then
+		target_y = math.max(target_y, native_curio_min_y)
+	end
+
+	offset[2] = target_y
 end
 
 
