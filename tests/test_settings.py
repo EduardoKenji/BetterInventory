@@ -911,8 +911,11 @@ def main() -> None:
 		"quick_discard_keep_stamina_curios",
 		"quick_discard_show_type_breakdown",
 		"quick_discard_show_summary_notification",
-		"quick_discard_disable_no_eligible_notification",
-		"automatic_curio_min_item_level",
+        "quick_discard_disable_no_eligible_notification",
+        "automatic_curio_scan_operative_selection",
+        "automatic_curio_once_per_store_rotation",
+        "automatic_curio_rescan_on_store_refresh",
+        "automatic_curio_min_item_level",
 		"automatic_curio_min_health",
 		"automatic_curio_min_toughness",
 		"automatic_curio_diagnostic_logging",
@@ -1113,6 +1116,9 @@ def main() -> None:
     assert entries_by_id["quick_discard_show_type_breakdown"].disabled is True
     assert entries_by_id["quick_discard_show_summary_notification"].disabled is True
     assert entries_by_id["quick_discard_disable_no_eligible_notification"].disabled is True
+    assert entries_by_id["automatic_curio_scan_operative_selection"].disabled is True
+    assert entries_by_id["automatic_curio_once_per_store_rotation"].disabled is True
+    assert entries_by_id["automatic_curio_rescan_on_store_refresh"].disabled is True
     assert entries_by_id["automatic_curio_min_item_level"].disabled is True
     assert entries_by_id["automatic_curio_min_health"].disabled is True
     assert entries_by_id["automatic_curio_min_toughness"].disabled is True
@@ -1191,6 +1197,9 @@ def main() -> None:
 
     settings.enable_automatic_curio_acquisition = True
     mod.on_setting_changed("enable_automatic_curio_acquisition")
+    assert entries_by_id["automatic_curio_scan_operative_selection"].disabled is False
+    assert entries_by_id["automatic_curio_once_per_store_rotation"].disabled is False
+    assert entries_by_id["automatic_curio_rescan_on_store_refresh"].disabled is False
     assert entries_by_id["automatic_curio_min_item_level"].disabled is False
     assert entries_by_id["automatic_curio_min_health"].disabled is False
     assert entries_by_id["automatic_curio_min_toughness"].disabled is False
@@ -1553,7 +1562,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "1.9.2"
+    assert data.version == "1.9.3"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
@@ -1911,6 +1920,9 @@ def main() -> None:
     assert defaults["quick_discard_show_summary_notification"] is True
     assert defaults["quick_discard_disable_no_eligible_notification"] is False
     assert defaults["enable_automatic_curio_acquisition"] is False
+    assert defaults["automatic_curio_scan_operative_selection"] is False
+    assert defaults["automatic_curio_once_per_store_rotation"] is True
+    assert defaults["automatic_curio_rescan_on_store_refresh"] is False
     assert defaults["automatic_curio_min_item_level"] == 410
     assert defaults["automatic_curio_min_health"] == 21
     assert defaults["automatic_curio_min_toughness"] == 17

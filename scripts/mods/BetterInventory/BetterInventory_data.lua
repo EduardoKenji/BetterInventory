@@ -1,4 +1,4 @@
-local MOD_VERSION = "1.9.2"
+local MOD_VERSION = "1.9.3"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
@@ -432,6 +432,24 @@ return {
 						type = "checkbox",
 						default_value = false,
 						sub_widgets = {
+							{
+								setting_id = "automatic_curio_scan_operative_selection",
+								tooltip = "automatic_curio_scan_operative_selection_tooltip",
+								type = "checkbox",
+								default_value = false,
+							},
+							{
+								setting_id = "automatic_curio_once_per_store_rotation",
+								tooltip = "automatic_curio_once_per_store_rotation_tooltip",
+								type = "checkbox",
+								default_value = true,
+							},
+							{
+								setting_id = "automatic_curio_rescan_on_store_refresh",
+								tooltip = "automatic_curio_rescan_on_store_refresh_tooltip",
+								type = "checkbox",
+								default_value = false,
+							},
 							{
 								setting_id = "automatic_curio_min_item_level",
 								tooltip = "automatic_curio_min_item_level_tooltip",

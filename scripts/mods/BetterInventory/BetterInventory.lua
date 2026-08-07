@@ -22,6 +22,7 @@ end
 
 local CraftingMechanicusModifyView = require("scripts/ui/views/crafting_mechanicus_modify_view/crafting_mechanicus_modify_view")
 local CreditsVendorView = require("scripts/ui/views/credits_vendor_view/credits_vendor_view")
+local MainMenuView = require("scripts/ui/views/main_menu_view/main_menu_view")
 local InventoryView = require("scripts/ui/views/inventory_view/inventory_view")
 local InventoryViewContentBlueprints = require("scripts/ui/views/inventory_view/inventory_view_content_blueprints")
 local ItemGridViewBase = require("scripts/ui/views/item_grid_view_base/item_grid_view_base")
@@ -1108,6 +1109,9 @@ local function refresh_option_dependencies()
 	set_option_enabled(option_dependency_entries.quick_discard_curio_protection_level, curio_protection_enabled, quick_discard_enabled and mod:localize("option_requires_curio_discard_protection") or quick_discard_reason)
 
 	for _, setting_id in ipairs({
+		"automatic_curio_scan_operative_selection",
+		"automatic_curio_once_per_store_rotation",
+		"automatic_curio_rescan_on_store_refresh",
 		"automatic_curio_min_item_level",
 		"automatic_curio_min_health",
 		"automatic_curio_min_toughness",
@@ -1285,6 +1289,9 @@ local function bind_option_dependencies(options_templates)
 		"quick_discard_show_type_breakdown",
 		"quick_discard_show_summary_notification",
 		"quick_discard_disable_no_eligible_notification",
+		"automatic_curio_scan_operative_selection",
+		"automatic_curio_once_per_store_rotation",
+		"automatic_curio_rescan_on_store_refresh",
 		"automatic_curio_min_item_level",
 		"automatic_curio_min_health",
 		"automatic_curio_min_toughness",
@@ -1620,9 +1627,28 @@ function mod.on_game_state_changed(status, state_name)
 		CurioAcquisition.begin_morningstar_pass(mod)
 	elseif status == "exit" then
 		Features.cancel_morningstar_auto_discard()
-		CurioAcquisition.cancel()
+		if type(CurioAcquisition.leave_morningstar) == "function" then
+			CurioAcquisition.leave_morningstar()
+		else
+			CurioAcquisition.cancel()
+		end
 	end
 end
+
+-- MainMenuView is Darktide's Operative Selection screen. Keep this lifecycle
+-- separate from GameplayStateRun so buyer scheduling never mistakes a loading
+-- state or a missing hub player for a usable context.
+mod:hook_safe(MainMenuView, "on_enter", function()
+	if type(CurioAcquisition.enter_operative_selection) == "function" then
+		CurioAcquisition.enter_operative_selection(mod)
+	end
+end)
+
+mod:hook_safe(MainMenuView, "on_exit", function()
+	if type(CurioAcquisition.leave_operative_selection) == "function" then
+		CurioAcquisition.leave_operative_selection()
+	end
+end)
 
 function mod.update(dt)
 	ItemCustomization.update_runtime(mod, dt)
