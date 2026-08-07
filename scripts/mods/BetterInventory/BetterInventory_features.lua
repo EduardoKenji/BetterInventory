@@ -15,6 +15,27 @@ end
 
 local Features = {}
 
+Features._contracts = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_contracts")
+
+if type(Features._contracts) ~= "table" or type(Features._contracts.safe_call) ~= "function" or type(Features._contracts.safe_method) ~= "function" then
+	Features._contracts = {
+		 safe_call = function(method, ...)
+			if type(method) ~= "function" then
+				return false, "method unavailable"
+			end
+
+			return pcall(method, ...)
+		end,
+		safe_method = function(object, method_name, ...)
+			if type(object) ~= "table" or type(method_name) ~= "string" or type(object[method_name]) ~= "function" then
+				return false, "method unavailable"
+			end
+
+			return pcall(object[method_name], object, ...)
+		end,
+	}
+end
+
 -- Keep sort ownership independent from the optional settings panels. A vendor
 -- can have a wrapped native comparator even when BetterInventory did not create
 -- a visible sorting panel for it.
@@ -3755,8 +3776,8 @@ local function item_priority(view, layout_entry)
 	local slots = item.slots
 	local equipped = false
 
-	if slots and type(view.is_item_equipped_in_any_slot) == "function" then
-		local equipped_ok, equipped_value = pcall(view.is_item_equipped_in_any_slot, view, item, slots)
+	if slots then
+		local equipped_ok, equipped_value = Features._contracts.safe_method(view, "is_item_equipped_in_any_slot", item, slots)
 		equipped = equipped_ok and equipped_value == true
 	end
 
@@ -3765,7 +3786,7 @@ local function item_priority(view, layout_entry)
 	end
 
 	if item.gear_id and type(Items.is_item_id_favorited) == "function" then
-		local favorite_ok, favorite_value = pcall(Items.is_item_id_favorited, item.gear_id)
+		local favorite_ok, favorite_value = Features._contracts.safe_call(Items.is_item_id_favorited, item.gear_id)
 
 		if favorite_ok and favorite_value == true then
 			return 1

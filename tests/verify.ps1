@@ -109,6 +109,7 @@ $data = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_data.lu
 $localization = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_localization.lua") -Raw
 $layout = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_layout.lua") -Raw
 $features = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_features.lua") -Raw
+$contracts = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_contracts.lua") -Raw
 $curioAcquisition = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_acquisition.lua") -Raw
 $curioValues = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_values.lua") -Raw
 $itemCustomization = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_item_customization.lua") -Raw
@@ -163,8 +164,12 @@ if ($data -notmatch 'setting_id\s*=\s*"myfavorites_integration_group"' -or $data
 	throw "MyFavorites compact-marker compatibility integration was not found."
 }
 
-if ($features -notmatch 'pcall\(view\.is_item_equipped_in_any_slot' -or $features -notmatch 'pcall\(Items\.is_item_id_favorited' -or $features -notmatch '_better_inventory_item_sorting_signature_cache' -or $features -notmatch 'poll\s*<\s*15' -or $features -notmatch '_better_inventory_armoury_native_sort_pivot_x\s*~=\s*x') {
+if (($features -notmatch 'pcall\(view\.is_item_equipped_in_any_slot' -and $features -notmatch 'Features\._contracts\.safe_method') -or ($features -notmatch 'pcall\(Items\.is_item_id_favorited' -and $features -notmatch 'Features\._contracts\.safe_call') -or $features -notmatch '_better_inventory_item_sorting_signature_cache' -or $features -notmatch 'poll\s*<\s*15' -or $features -notmatch '_better_inventory_armoury_native_sort_pivot_x\s*~=\s*x') {
 	throw "Fail-closed sort priority or idle signature/pivot caching was not found."
+}
+
+if ($contracts -notmatch 'Contracts\.safe_call' -or $contracts -notmatch 'Contracts\.safe_method' -or $features -notmatch 'Features\._contracts\.safe_method' -or $features -notmatch 'Features\._contracts\.safe_call') {
+	throw "The guarded capability-contract seam was not found."
 }
 
 if ($curioAcquisition -notmatch 'PromiseContainer' -or $curioAcquisition -notmatch 'track_read_promise' -or $curioAcquisition -notmatch 'reset_read_requests' -or $curioAcquisition -notmatch 'active_read_requests' -or $curioAcquisition -notmatch 'oldest_read_request_age' -or $curioAcquisition -notmatch 'track_read_promise\(call_promise\(service, service\.fetch_all_profiles\)\)' -or $curioAcquisition -notmatch 'call_promise\(store_service, store_service\.purchase_item_with_wallet') {
@@ -542,7 +547,7 @@ if ($hasLuaParser) {
 }
 
 if ($hasLupa) {
-	foreach ($behaviorTest in @("test_layout.py", "test_settings.py", "test_features.py", "test_curio_acquisition.py", "test_item_customization.py")) {
+	foreach ($behaviorTest in @("test_layout.py", "test_settings.py", "test_features.py", "test_contracts.py", "test_curio_acquisition.py", "test_item_customization.py")) {
 		py -3 (Join-Path $PSScriptRoot $behaviorTest)
 
 		if ($LASTEXITCODE -ne 0) {
