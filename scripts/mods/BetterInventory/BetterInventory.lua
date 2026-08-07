@@ -84,10 +84,12 @@ local CHARACTER_OVERVIEW_EMPTY_CURIO_WIDGET_TYPE = "better_inventory_character_o
 local CHARACTER_OVERVIEW_WEAPON_HEIGHT = 130
 local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_CONTENT_SHIFT_Y = 8
 local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_EQUIPPED_ICON_SHIFT_Y = 8
-local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_HORIZONTAL_PADDING = 8
+local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_HORIZONTAL_PADDING = 19
+local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_SHIFT_X = -1
 local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_ITEM_LEVEL_SHIFT_X = 16
 local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_ITEM_LEVEL_SHIFT_Y = 10
 local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_MARKER_SHIFT_X = 10
+local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_FAVORITE_SHIFT_Y = 10
 local CHARACTER_OVERVIEW_BLUEPRINTS = type(ItemBlueprintGenerator) == "function" and ItemBlueprintGenerator({
 	600,
 	CHARACTER_OVERVIEW_WEAPON_HEIGHT,
@@ -510,13 +512,13 @@ local function character_overview_curio_blueprint()
 		end
 	end
 
-	if mod:get("character_overview_use_native_curio_overlay") == true then
+	if native_curio_overlay_enabled then
 		local content_shift_y = CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_CONTENT_SHIFT_Y
 
 		if display_name and display_name.style and display_name.style.offset then
 			display_name.style.horizontal_alignment = "center"
 			display_name.style.text_horizontal_alignment = "center"
-			display_name.style.offset[1] = CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_HORIZONTAL_PADDING
+			display_name.style.offset[1] = CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_HORIZONTAL_PADDING + CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_SHIFT_X
 			display_name.style.offset[2] = (display_name.style.offset[2] or 0) + content_shift_y
 			display_name.style.size[1] = math.max(40, card_width - CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_TITLE_HORIZONTAL_PADDING * 2)
 		end
@@ -575,6 +577,35 @@ local function character_overview_curio_blueprint()
 		for _, pass in ipairs({ favorite_icon, myfavorites_hotspot }) do
 			if pass and pass.style and pass.style.offset then
 				pass.style.offset[1] = (pass.style.offset[1] or 0) - CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_MARKER_SHIFT_X
+
+				if pass == myfavorites_hotspot then
+					pass.style.offset[2] = (pass.style.offset[2] or 0) + CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_FAVORITE_SHIFT_Y
+				end
+			end
+		end
+
+		if favorite_icon and favorite_icon.style and favorite_icon.style.offset then
+			local favorite_base_offset_y = favorite_icon.style.offset[2] or 0
+			favorite_icon.style.better_inventory_native_curio_favorite_shift_y = CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_FAVORITE_SHIFT_Y
+			favorite_icon.style.better_inventory_native_curio_favorite_base_y = favorite_base_offset_y
+			favorite_icon.style.offset[2] = (favorite_icon.style.offset[2] or 0) + CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_FAVORITE_SHIFT_Y
+
+			local original_favorite_change_function = favorite_icon.change_function
+
+			favorite_icon.change_function = function(content, style, animations, dt)
+				if original_favorite_change_function then
+					original_favorite_change_function(content, style, animations, dt)
+				else
+					style.offset[2] = style.better_inventory_native_curio_favorite_base_y or favorite_base_offset_y
+				end
+
+				style.offset[2] = (style.offset[2] or 0) + CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_FAVORITE_SHIFT_Y
+
+				local runtime_hotspot_style = content and content.better_inventory_myfavorites_hotspot_style
+
+				if runtime_hotspot_style and runtime_hotspot_style.offset then
+					runtime_hotspot_style.offset[2] = style.offset[2]
+				end
 			end
 		end
 	end
@@ -2228,6 +2259,8 @@ local function synchronize_myfavorites_marker(widget)
 	end
 
 	local offset_y = equipped_visible and 33 or 7
+	local favorite_shift_y = favorite_style and favorite_style.better_inventory_native_curio_favorite_shift_y or 0
+	offset_y = offset_y + favorite_shift_y
 
 	hotspot_style.offset[2] = offset_y
 

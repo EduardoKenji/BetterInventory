@@ -6,7 +6,7 @@
 
 - Fixed Curio rarity colour strips on native/hybrid card lifecycles while preserving per-item custom background colours.
 - Added the default-off **Use native Curio overlay** option for detailed Character Overview cards. It restores Darktide's ornate frame and portrait geometry while retaining BetterInventory's title and stat lines. See `docs/v1.9.4-curio-card-visuals-plan.md` for validation details.
-- Aligned native-overlay Curio titles and stat rows 8 px lower, centered Curio names, moved item levels 16 px left and 10 px up, and moved equipped/favorite markers 10 px left within the ornate frame.
+- Aligned native-overlay Curio titles and stat rows 8 px lower, narrowed and centered Curio names with a 1 px left bias, moved item levels 16 px left and 10 px up, moved equipped/favorite markers 10 px left, and moved the checkmark marker 10 px lower to clear long names.
 
 ## 1.9.3 - 2026-08-07
 
