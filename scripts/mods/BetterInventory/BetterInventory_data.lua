@@ -442,7 +442,7 @@ return {
 								setting_id = "automatic_curio_once_per_store_rotation",
 								tooltip = "automatic_curio_once_per_store_rotation_tooltip",
 								type = "checkbox",
-								default_value = true,
+								default_value = false,
 							},
 							{
 								setting_id = "automatic_curio_rescan_on_store_refresh",

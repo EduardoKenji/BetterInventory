@@ -499,6 +499,31 @@ local function persist_rotation_boundary(mod, boundary_ms, context)
 	return success
 end
 
+local function commit_rotation_boundary(mod, boundary_ms, context)
+	local now = server_time()
+	boundary_ms = sane_rotation_boundary(boundary_ms, now)
+
+	if not boundary_ms then
+		return false
+	end
+
+	-- Keep the in-memory gate protective even if the settings write fails. The
+	-- boundary is committed only when a pass is terminal or immediately before
+	-- the first purchase POST is dispatched.
+	state.rotation_boundary_ms = boundary_ms
+	state.next_rotation_at_ms = boundary_ms
+	state.ledger_rotation_boundary_ms = boundary_ms
+
+	if mod:get("automatic_curio_once_per_store_rotation") ~= false then
+		persist_rotation_boundary(mod, boundary_ms, context)
+		-- persist_rotation_boundary rehydrates state from the old entry before
+		-- writing it; restore the committed value for this live session.
+		state.next_rotation_at_ms = boundary_ms
+	end
+
+	return true
+end
+
 local function rotation_gate_status(mod)
 	if mod:get("automatic_curio_once_per_store_rotation") == false then
 		return true
@@ -1535,7 +1560,7 @@ local function fetch_target_wallet(candidate)
 	end)
 end
 
-local function revalidate_and_purchase(mod, token, captured)
+local function revalidate_and_purchase(mod, token, captured, on_purchase_dispatch)
 	if not context_is_current(mod, token) or not profile_is_enabled(mod, captured.profile) then
 		return Promise.resolved()
 	end
@@ -1619,6 +1644,10 @@ local function revalidate_and_purchase(mod, token, captured)
 			end
 
 			processed_offer_keys[key] = "in_flight"
+
+			if on_purchase_dispatch then
+				on_purchase_dispatch()
+			end
 
 			return call_promise(store_service, store_service.purchase_item_with_wallet, current.offer, wallet):next(function()
 				processed_offer_keys[key] = "complete"
@@ -1811,10 +1840,19 @@ local function finish_pass()
 	state.scheduled_reason = nil
 end
 
-local function purchase_candidates(mod, token, candidates)
+local function purchase_candidates(mod, token, candidates, boundary_ms)
 	local purchased = {}
 	local insufficient = {}
+	local boundary_committed = false
 	local chain = Promise.resolved()
+
+	local function commit_before_purchase()
+		if boundary_committed then
+			return
+		end
+
+		boundary_committed = commit_rotation_boundary(mod, boundary_ms, state.active_context)
+	end
 
 	for index = 1, #candidates do
 		local candidate = candidates[index]
@@ -1824,7 +1862,7 @@ local function purchase_candidates(mod, token, candidates)
 				return
 			end
 
-			return revalidate_and_purchase(mod, token, candidate):next(function(result)
+			return revalidate_and_purchase(mod, token, candidate, commit_before_purchase):next(function(result)
 				if result and result.status == "purchased" and result.candidate then
 					purchased[#purchased + 1] = result.candidate
 				elseif result and result.status == "insufficient_funds" and result.candidate then
@@ -1851,6 +1889,13 @@ local function purchase_candidates(mod, token, candidates)
 			end
 
 			return
+		end
+
+		-- No purchase was dispatched, but the current pass completed its full
+		-- candidate queue. Consume this rotation after final evaluation so empty
+		-- and insufficient-funds passes do not repeat on every context entry.
+		if not boundary_committed then
+			commit_rotation_boundary(mod, boundary_ms, state.active_context)
 		end
 
 		finish_pass()
@@ -1938,24 +1983,19 @@ local function start_scan(mod)
 			return schedule_scan_retry(mod, token, "scan returned no trustworthy store rotation boundary")
 		end
 
+		-- Keep boundary pending until the pass either finishes evaluation or reaches
+		-- the first purchase POST. Leaving during scan/revalidation can therefore
+		-- retry the same rotation without risking a duplicate spend.
 		state.rotation_boundary_ms = boundary
-		state.next_rotation_at_ms = boundary
-		state.ledger_rotation_boundary_ms = boundary
-
-		-- Persist only after the complete storefront scan produced a trustworthy
-		-- boundary, immediately before any purchase POST can be sent. This prevents
-		-- a restart or context transition from replaying the same rotation.
-		if mod:get("automatic_curio_once_per_store_rotation") ~= false then
-			persist_rotation_boundary(mod, boundary, state.active_context)
-		end
 
 		log_diagnostic(mod, string.format("Scan found %d eligible Curio offer(s).", #candidates))
 
 		if #candidates == 0 then
+			commit_rotation_boundary(mod, boundary, state.active_context)
 			finish_pass()
 			notify_no_eligible(mod)
 		else
-			purchase_candidates(mod, token, candidates)
+			purchase_candidates(mod, token, candidates, boundary)
 		end
 	end):catch(function(error_value)
 		schedule_scan_retry(mod, token, error_value)
