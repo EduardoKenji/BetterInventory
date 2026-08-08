@@ -5,6 +5,12 @@ local DEFAULT_MASTERY_POLL_DELAY = 0.5
 local MAX_MASTERY_POLL_ATTEMPTS = 12
 local REDEEMED_RARITY = 2
 
+local function mastery_poll_delay(attempt)
+	local exponent = math.max(0, tonumber(attempt) or 0)
+
+	return math.min(5, DEFAULT_MASTERY_POLL_DELAY * 2 ^ exponent)
+end
+
 local function finite_dt(dt)
 	local value = tonumber(dt)
 
@@ -156,6 +162,7 @@ function Controller.new(dependencies)
 		_mastery = nil,
 		_mastery_poll_elapsed = 0,
 		_mastery_poll_attempts = 0,
+		_mastery_poll_wait = DEFAULT_MASTERY_POLL_DELAY,
 		_selected_target_key = nil,
 		_selected_native_key = nil,
 		_planner_signature = nil,
@@ -800,8 +807,9 @@ function Controller.new(dependencies)
 			self:_dispatch_operation(generation, "mastery_claim", function ()
 				return backend:claim_mastery_levels(data, mastery.amount)
 			end, function ()
-				self._mastery_poll_elapsed = DEFAULT_MASTERY_POLL_DELAY
+				self._mastery_poll_elapsed = 0
 				self._mastery_poll_attempts = 0
+				self._mastery_poll_wait = mastery_poll_delay(0)
 				self._phase = "mastery_sync_wait"
 				operation_report("mastery_sync_started", {
 					amount = mastery.amount,
@@ -965,6 +973,7 @@ function Controller.new(dependencies)
 			end
 
 			self._mastery_poll_elapsed = 0
+			self._mastery_poll_wait = mastery_poll_delay(self._mastery_poll_attempts)
 		end)
 	end
 
@@ -1104,7 +1113,7 @@ function Controller.new(dependencies)
 		if self._mastery and self._mastery.running and not self._operation_inflight then
 			self._mastery_poll_elapsed = self._mastery_poll_elapsed + finite_dt(dt)
 
-			if self._mastery_poll_elapsed >= DEFAULT_MASTERY_POLL_DELAY then
+			if self._mastery_poll_elapsed >= (self._mastery_poll_wait or DEFAULT_MASTERY_POLL_DELAY) then
 				self:_poll_mastery()
 			end
 		end
