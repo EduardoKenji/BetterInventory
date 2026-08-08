@@ -5,7 +5,7 @@ local Panel = {}
 local PANEL_REFERENCE = "auto_crafter_diagnostic_panel"
 local PANEL_WIDTH = 500
 local PANEL_HEIGHT = 650
-local PANEL_X = 1280
+local PANEL_X = 1380
 local PANEL_Y = 110
 local ROW_HEIGHT = 36
 local ROW_SPACING = 4
@@ -282,10 +282,12 @@ function Panel.new(dependencies)
 
 		if options.section_header then
 			entry.bind = function(widget)
-				widget.content.hotspot.pressed_callback = function()
+				local function toggle_offers()
 					self._offers_collapsed = not self._offers_collapsed
 					self._layout_pending = true
 				end
+
+				widget.content.hotspot.pressed_callback = toggle_offers
 			end
 			entry.refresh = function(widget)
 				local chevron = self._offers_collapsed and "> " or "v "
@@ -307,45 +309,21 @@ function Panel.new(dependencies)
 		local offers = store.offers or {}
 		local selected_offer = self._selected_offer
 
-		if not selected_offer then
-			return {}, nil
-		end
-
-		local selected_parent_pattern
 		local selected_display_name
 
-		for _, offer in ipairs(offers) do
-			local offer_matches = selected_offer.offer_id and offer.offer_id == selected_offer.offer_id or selected_offer.master_id and offer.master_id == selected_offer.master_id
+		if selected_offer then
+			for _, offer in ipairs(offers) do
+				local offer_matches = selected_offer.offer_id and offer.offer_id == selected_offer.offer_id or selected_offer.master_id and offer.master_id == selected_offer.master_id
 
-			if offer_matches then
-				selected_parent_pattern = offer.parent_pattern
-				selected_display_name = offer.display_name
-
-				break
-			end
-		end
-
-		local filtered = {}
-
-		for _, offer in ipairs(offers) do
-			local matches
-
-			if selected_parent_pattern then
-				matches = offer.parent_pattern == selected_parent_pattern
-			else
-				matches = selected_offer.offer_id and offer.offer_id == selected_offer.offer_id or selected_offer.master_id and offer.master_id == selected_offer.master_id
-			end
-
-			if matches then
-				filtered[#filtered + 1] = offer
-
-				if not selected_display_name then
+				if offer_matches then
 					selected_display_name = offer.display_name
+
+					break
 				end
 			end
 		end
 
-		return filtered, selected_display_name or localize("auto_crafter_panel_selected_weapon", "Selected weapon")
+		return offers, selected_display_name or localize("auto_crafter_panel_selected_weapon", "Selected weapon")
 	end
 
 	function self:_entries(snapshot)
@@ -367,12 +345,6 @@ function Panel.new(dependencies)
 				section_header = true,
 			}),
 		}
-
-		if not self._selected_offer then
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_select_weapon", "Select a weapon in Brunt's list."), ""))
-
-			return entries
-		end
 
 		if self._offers_collapsed then
 			return entries
@@ -397,7 +369,7 @@ function Panel.new(dependencies)
 		if shown == 0 then
 			table.insert(entries, self:_entry(localize("auto_crafter_panel_no_offers", "No weapon offers exposed yet."), ""))
 		elseif #offers > shown then
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_more", "More matching offers available"), tostring(#offers - shown) .. " not shown"))
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_more", "More weapon offers available"), tostring(#offers - shown) .. " not shown"))
 		end
 
 		return entries
