@@ -64,9 +64,6 @@ local function row_passes(width)
 					ROW_HEIGHT,
 				},
 			},
-			visibility_function = function(content)
-				return content.selectable == true
-			end,
 		},
 		{
 			pass_type = "rect",
@@ -266,7 +263,9 @@ function Panel.new(dependencies)
 			initial_content = {
 				detail = detail or "",
 				header = options.header == true,
-				hotspot = {},
+				hotspot = {
+					disabled = options.selectable ~= true,
+				},
 				label = label or "",
 				selectable = options.selectable == true,
 				section_header = options.section_header == true,
