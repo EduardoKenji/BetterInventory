@@ -2,11 +2,11 @@
   "archive": {
     "file_count": 20,
     "path": "BetterInventory.zip",
-    "sha256": "52A2EB01ED6820816E744834A4365413B545853E7CA12684DF226DEA209CE62E",
-    "runtime_tree_sha256": "55b924001a47635069f90634c8b681a52cffc57042b99ce7240cf4bbbda68e8e"
+    "sha256": "27C468F2418812FB3667DA2329F62EB8F73D40CECDAB9574A0E1CE80F57D704F",
+    "runtime_tree_sha256": "999e95e3129cf32edf1c68a82363589c56dbfbdb06d73186e122bd97a1f9de74"
   },
   "automated_verification": {
-    "behavior_cases": 43,
+    "behavior_cases": 45,
     "behavior_cases_failed": 0,
     "schema_settings": 240,
     "schema_localization_keys": 704,
@@ -15,11 +15,11 @@
     "archive_parity": "passed"
   },
   "branch": "audit/v2.0.0",
-  "implementation_batches": "B42-B46 and B48 first slice complete; B50 empty-Curio lifecycle fix complete for repository scope; B47 live evidence pending; B49 residual extraction planned",
+  "implementation_batches": "B42-B46, B48, and B51-B54 complete for repository scope; B50 superseded after failed live acceptance; B47 live evidence pending; B49 optional residual extraction planned",
   "live_runtime_mirror": {
     "lua_files": 19,
     "source_live_byte_parity": "passed",
-    "zip_sha256": "52A2EB01ED6820816E744834A4365413B545853E7CA12684DF226DEA209CE62E"
+    "zip_sha256": "27C468F2418812FB3667DA2329F62EB8F73D40CECDAB9574A0E1CE80F57D704F"
   },
   "post_audit_hotfix": "665801b strict Character Overview scenegraph probes",
   "live_validation": {
