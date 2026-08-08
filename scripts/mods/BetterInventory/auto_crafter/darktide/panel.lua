@@ -892,9 +892,12 @@ function Panel.new(dependencies)
 			}))
 			table.insert(entries, self:_entry(localize("auto_crafter_panel_dump_stat", "Dump stat"), self:_planner_dump_stat_text(), {
 				selectable = true,
-				variant = "selector",
-				action = function()
-					self:_cycle_setting("auto_crafter_target_dump_stat", { "damage", "auto" }, "damage")
+				variant = "enum_stepper",
+				decrease = function()
+					self:_step_enum_setting("auto_crafter_target_dump_stat", { "damage", "auto" }, "damage", -1)
+				end,
+				increase = function()
+					self:_step_enum_setting("auto_crafter_target_dump_stat", { "damage", "auto" }, "damage", 1)
 				end,
 				refresh = function(widget)
 					widget.content.detail = self:_planner_dump_stat_text()
