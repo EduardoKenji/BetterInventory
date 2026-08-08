@@ -55,14 +55,14 @@
       "test": "test_features.py",
       "case": "discard_operation_ownership",
       "outcome": "manual and automatic destructive paths cannot overlap and ownership survives in-flight deletion",
-      "modules": ["BetterInventory_discard_policy.lua", "BetterInventory_discard_transaction.lua", "BetterInventory_features.lua", "BetterInventory_operation_arbiter.lua"]
+      "modules": ["BetterInventory_discard_automatic.lua", "BetterInventory_discard_policy.lua", "BetterInventory_discard_transaction.lua", "BetterInventory_features.lua", "BetterInventory_operation_arbiter.lua"]
     },
     {
       "name": "discard.fails-closed",
       "test": "test_features.py",
       "case": "optional_integration_fallbacks",
       "outcome": "missing protection or optional integration data aborts safely without destructive action",
-      "modules": ["BetterInventory_discard_policy.lua", "BetterInventory_discard_transaction.lua", "BetterInventory_features.lua", "BetterInventory_contracts.lua"]
+      "modules": ["BetterInventory_discard_automatic.lua", "BetterInventory_discard_policy.lua", "BetterInventory_discard_transaction.lua", "BetterInventory_features.lua", "BetterInventory_contracts.lua"]
     },
     {
       "name": "session.restores-owned-fields",

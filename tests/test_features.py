@@ -39,6 +39,13 @@ TRANSACTION_PATH = (
     / "BetterInventory"
     / "BetterInventory_discard_transaction.lua"
 )
+AUTOMATIC_PATH = (
+    PROJECT_ROOT
+    / "scripts"
+    / "mods"
+    / "BetterInventory"
+    / "BetterInventory_discard_automatic.lua"
+)
 FEATURE_DOMAINS_PATH = (
     PROJECT_ROOT
     / "scripts"
@@ -277,6 +284,10 @@ def main() -> None:
                     return TestDiscardTransaction
                 end
 
+                if string.find(path, "BetterInventory_discard_automatic", 1, true) then
+                    return TestAutomaticDiscard
+                end
+
                 return TestCurioValues
             end,
         }
@@ -318,6 +329,10 @@ def main() -> None:
         TRANSACTION_PATH.read_text(encoding="utf-8"), name=str(TRANSACTION_PATH)
     )
     lua.globals().TestDiscardTransaction = transaction
+    automatic = lua.execute(
+        AUTOMATIC_PATH.read_text(encoding="utf-8"), name=str(AUTOMATIC_PATH)
+    )
+    lua.globals().TestAutomaticDiscard = automatic
     feature_domains = lua.execute(
         FEATURE_DOMAINS_PATH.read_text(encoding="utf-8"), name=str(FEATURE_DOMAINS_PATH)
     )

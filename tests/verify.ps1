@@ -118,9 +118,11 @@ $layout = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_layou
 $features = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_features.lua") -Raw
 $features = @(
 	$features
+	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_discard_automatic.lua") -Raw
 	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_discard_policy.lua") -Raw
 	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_discard_transaction.lua") -Raw
 ) -join "`n"
+$automaticDiscard = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_discard_automatic.lua") -Raw
 $featureSorting = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_feature_sorting.lua") -Raw
 $contracts = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_contracts.lua") -Raw
 $operationArbiter = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_operation_arbiter.lua") -Raw
@@ -161,11 +163,11 @@ if ($LASTEXITCODE -ne 0) {
 	throw "Runtime bundle manifest checks failed."
 }
 
-if ($features -notmatch 'popup_id\s*=\s*nil' -or $features -notmatch 'event_remove_ui_popup' -or $features -notmatch 'active_popups' -or $features -notmatch 'Features\.reconcile_discard_transaction' -or $main -notmatch 'Features\.reconcile_discard_transaction\(\)' -or $features -notmatch 'discard_transaction_is_current\("automatic",\s*transaction_token\)' -or $features -notmatch 'Features\.clear_discard_popup\("automatic",\s*transaction_token\)') {
+if ($features -notmatch 'popup_id\s*=\s*nil' -or $features -notmatch 'event_remove_ui_popup' -or $features -notmatch 'active_popups' -or $features -notmatch 'Features\.reconcile_discard_transaction' -or $main -notmatch 'Features\.reconcile_discard_transaction\(\)' -or ($features -notmatch 'discard_transaction_is_current\("automatic",\s*transaction_token\)' -and $automaticDiscard -notmatch 'is_current\("automatic",\s*transaction_token\)') -or ($features -notmatch 'Features\.clear_discard_popup\("automatic",\s*transaction_token\)' -and $automaticDiscard -notmatch 'clear_popup\("automatic",\s*transaction_token\)')) {
 	throw "Discard popup lifecycle reconciliation and token ownership guard were not found."
 }
 
-if (($features -notmatch 'return automatic_discard_state\.delete_inflight' -and $features -notmatch 'discard_owner\(\) == "automatic"') -or $features -notmatch 'delete_transaction_token\s*=\s*transaction_token' -or $features -notmatch 'release_discard_transaction\("automatic",\s*transaction_token\)' -or $operationArbiter -notmatch 'function arbiter:release' -or $operationArbiter -notmatch 'manual_settlement_active') {
+if ((($features -notmatch 'return automatic_discard_state\.delete_inflight' -and $features -notmatch 'discard_owner\(\) == "automatic"') -and $automaticDiscard -notmatch 'state\.delete_inflight') -or (($features -notmatch 'delete_transaction_token\s*=\s*transaction_token') -and $automaticDiscard -notmatch 'state\.delete_transaction_token\s*=\s*transaction_token') -or (($features -notmatch 'release_discard_transaction\("automatic",\s*transaction_token\)') -and $automaticDiscard -notmatch '_transaction:release\("automatic",\s*transaction_token\)') -or $operationArbiter -notmatch 'function arbiter:release' -or $operationArbiter -notmatch 'manual_settlement_active') {
 	throw "Automatic discard must retain shared ownership until backend deletion settles."
 }
 
@@ -371,7 +373,10 @@ if ($features -notmatch 'progression_manager\.is_fetching_session_report' -or $f
 	throw "Automatic discard must wait for mission rewards and refresh the gear cache before its first inventory scan."
 }
 
-if ($features -notmatch 'automatic_protection_snapshot\(character_id\)' -or $features -notmatch 'quick_discard_candidates_from_items\(mod,\s*items,\s*protection\.equipped_gear_ids,\s*captured_ids,\s*protection\.favorite_gear_ids\)' -or $features -notmatch 'quick_discard_skip_automatic_confirmation' -or $features -notmatch 'gear_service\.delete_gear_batch') {
+${hasAutomaticProtectionSnapshot} = $features -match 'automatic_protection_snapshot\(character_id\)' -or $automaticDiscard -match 'protection_snapshot\(character_id\)'
+${hasAutomaticCandidateRevalidation} = $features -match 'quick_discard_candidates_from_items\(mod,\s*items,\s*protection\.equipped_gear_ids,\s*captured_ids,\s*protection\.favorite_gear_ids\)' -or $automaticDiscard -match 'candidates_from_items\(mod,\s*items,\s*protection\.equipped_gear_ids'
+
+if (-not ${hasAutomaticProtectionSnapshot} -or -not ${hasAutomaticCandidateRevalidation} -or $features -notmatch 'quick_discard_skip_automatic_confirmation' -or $features -notmatch 'gear_service\.delete_gear_batch') {
 	throw "Automatic discard must re-fetch and revalidate captured IDs before the native gear service deletes them."
 }
 
