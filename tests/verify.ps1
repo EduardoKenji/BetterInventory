@@ -9,6 +9,7 @@ $scriptRoot = Join-Path $projectRoot "scripts\mods\BetterInventory"
 $testRunner = Join-Path $PSScriptRoot "run_tests.py"
 $structureChecker = Join-Path $PSScriptRoot "check_lua_structure.py"
 $schemaDriftChecker = Join-Path $PSScriptRoot "check_schema_drift.py"
+$architectureChecker = Join-Path $PSScriptRoot "check_architecture.py"
 $runtimeBundleChecker = Join-Path $PSScriptRoot "check_runtime_bundle.py"
 $runtimeLuaFiles = @(Get-ChildItem -LiteralPath $scriptRoot -Filter "BetterInventory*.lua" -File | Sort-Object Name)
 $requiredFiles = @(
@@ -127,6 +128,16 @@ if (-not (Test-Path -LiteralPath $trackedReleaseArchive -PathType Leaf)) {
 
 if (-not (Test-Path -LiteralPath $runtimeBundleChecker -PathType Leaf)) {
 	throw "Runtime bundle manifest checker is missing: $runtimeBundleChecker"
+}
+
+if (-not (Test-Path -LiteralPath $architectureChecker -PathType Leaf)) {
+	throw "Architecture ownership checker is missing: $architectureChecker"
+}
+
+py -3 $architectureChecker
+
+if ($LASTEXITCODE -ne 0) {
+	throw "Architecture ownership checks failed."
 }
 
 py -3 $runtimeBundleChecker
