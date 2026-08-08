@@ -1230,18 +1230,6 @@ if ensure_class_method(CreditsVendorView, "_setup_sort_options") then
 	end)
 end
 
-if ensure_class_method(CreditsVendorView, "on_exit") then
-	mod:hook(CreditsVendorView, "on_exit", function(func, view, ...)
-		local result = func(view, ...)
-
-		if AutoCrafter and type(AutoCrafter.on_view_closed) == "function" then
-			AutoCrafter.on_view_closed(view)
-		end
-
-		return result
-	end)
-end
-
 if ensure_class_method(InventoryWeaponsView, "update") then
 	mod:hook(InventoryWeaponsView, "update", function(func, view, dt, t, input_service)
 		Features.capture_inventory_options_panel_controller_focus(mod, Layout, view, input_service)
@@ -1360,6 +1348,10 @@ end
 
 if ensure_class_method(CreditsVendorView, "on_exit") then
 	mod:hook_safe(CreditsVendorView, "on_exit", function(view)
+		if AutoCrafter and type(AutoCrafter.on_view_closed) == "function" then
+			AutoCrafter.on_view_closed(view)
+		end
+
 		Features.unregister_armoury_view(view)
 	end)
 end
