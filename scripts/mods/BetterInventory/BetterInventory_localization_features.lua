@@ -542,6 +542,36 @@ local localization = {
 	curio_content_name_it_curio_name_tooltip = {
 		en = "Shows every Curio name in a reserved two-line title area above the primary attribute and three secondary attributes. Works with or without Name It. Reopen the current view after changing this option.",
 	},
+	auto_crafter_group = {
+		en = "Auto Crafter Helper (read-only Phase 0)",
+	},
+	auto_crafter_enable = {
+		en = "Enable Auto Crafter Helper probe",
+	},
+	auto_crafter_enable_tooltip = {
+		en = "Phase 0 only: enables a read-only Brunt's Armoury probe when the Brunt view opens. No purchases, crafting, sacrifices, or other account mutations are performed.",
+	},
+	auto_crafter_read_only_probe = {
+		en = "Run read-only Brunt probe",
+	},
+	auto_crafter_read_only_probe_tooltip = {
+		en = "Reads current Brunt offers, wallets, and gear once after entering the Armoury view. Disabled automatically when Auto Crafter Helper is disabled.",
+	},
+	auto_crafter_show_probe_notifications = {
+		en = "Show Auto Crafter probe notifications",
+	},
+	auto_crafter_show_probe_notifications_tooltip = {
+		en = "Enabled by default. Shows native notification status after the read-only probe starts, completes, or fails. Notification errors cannot affect game data.",
+	},
+	auto_crafter_notification_title = {
+		en = "Auto Crafter Helper",
+	},
+	auto_crafter_probe_started = {
+		en = "Read-only Brunt probe started.",
+	},
+	auto_crafter_probe_failed = {
+		en = "Read-only Brunt probe failed",
+	},
 }
 
 return localization

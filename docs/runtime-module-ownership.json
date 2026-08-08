@@ -10,7 +10,7 @@
     "BetterInventory_runtime.lua": "runtime-lifecycle-and-grid-hooks"
   },
   "modules": {
-    "BetterInventory.lua": {"category": "bootstrap", "risk": "critical", "dependencies": ["BetterInventory_character_overview.lua", "BetterInventory_character_overview_ui.lua", "BetterInventory_contracts.lua", "BetterInventory_curio_acquisition.lua", "BetterInventory_diagnostics.lua", "BetterInventory_equipment_persistence.lua", "BetterInventory_feature_domains.lua", "BetterInventory_features.lua", "BetterInventory_item_customization.lua", "BetterInventory_layout.lua", "BetterInventory_runtime.lua", "BetterInventory_settings.lua"]},
+    "BetterInventory.lua": {"category": "bootstrap", "risk": "critical", "dependencies": ["BetterInventory_auto_crafter.lua", "BetterInventory_character_overview.lua", "BetterInventory_character_overview_ui.lua", "BetterInventory_contracts.lua", "BetterInventory_curio_acquisition.lua", "BetterInventory_diagnostics.lua", "BetterInventory_equipment_persistence.lua", "BetterInventory_feature_domains.lua", "BetterInventory_features.lua", "BetterInventory_item_customization.lua", "BetterInventory_layout.lua", "BetterInventory_runtime.lua", "BetterInventory_settings.lua"]},
     "BetterInventory_character_overview.lua": {"category": "pure-domain", "risk": "high", "dependencies": []},
     "BetterInventory_character_overview_ui.lua": {"category": "character-overview-ui", "risk": "critical", "dependencies": []},
     "BetterInventory_contracts.lua": {"category": "core-contract", "risk": "high", "dependencies": []},
@@ -30,6 +30,7 @@
     "BetterInventory_panel_definitions.lua": {"category": "ui-definition", "risk": "high", "dependencies": []},
     "BetterInventory_panel_runtime.lua": {"category": "ui-runtime-primitive", "risk": "high", "dependencies": []},
     "BetterInventory_armoury_panel.lua": {"category": "ui-runtime", "risk": "high", "dependencies": []},
+    "BetterInventory_auto_crafter.lua": {"category": "feature-bootstrap", "risk": "high", "dependencies": []},
     "BetterInventory_discard_policy.lua": {"category": "pure-domain", "risk": "critical", "dependencies": ["BetterInventory_curio_values.lua"]},
     "BetterInventory_discard_automatic.lua": {"category": "async-state", "risk": "critical", "dependencies": []},
     "BetterInventory_discard_transaction.lua": {"category": "async-state", "risk": "critical", "dependencies": []},

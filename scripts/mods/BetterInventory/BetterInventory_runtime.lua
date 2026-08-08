@@ -8,6 +8,7 @@ local ItemCustomization
 local EquipmentPersistence
 local SettingsRegistry
 local Diagnostics
+local AutoCrafter
 local Capabilities
 local CharacterOverviewUI
 local CraftingMechanicusModifyView
@@ -28,6 +29,7 @@ local function configure_dependencies(dependencies)
 	EquipmentPersistence = dependencies.EquipmentPersistence
 	SettingsRegistry = dependencies.SettingsRegistry
 	Diagnostics = dependencies.Diagnostics
+	AutoCrafter = dependencies.AutoCrafter
 	Capabilities = dependencies.Capabilities
 	CharacterOverviewUI = dependencies.CharacterOverviewUI
 	CraftingMechanicusModifyView = dependencies.CraftingMechanicusModifyView
@@ -1018,6 +1020,10 @@ function mod.on_setting_changed(setting_id)
 
 	ItemCustomization.on_setting_changed(mod, setting_id)
 
+	if type(setting_id) == "string" and string.sub(setting_id, 1, #"auto_crafter_") == "auto_crafter_" and AutoCrafter and type(AutoCrafter.on_setting_changed) == "function" then
+		AutoCrafter.on_setting_changed(setting_id)
+	end
+
 	if setting_id == "name_it_force_curio_name_in_detailed_mode" then
 		mod:set("curio_content_name_it_curio_name", mod:get(setting_id), false)
 	elseif setting_id == "curio_content_name_it_curio_name" then
@@ -1061,6 +1067,10 @@ function mod.on_game_state_changed(status, state_name)
 		Features.begin_morningstar_auto_discard(mod)
 		CurioAcquisition.begin_morningstar_pass(mod)
 	elseif status == "exit" then
+		if AutoCrafter and type(AutoCrafter.on_context_exit) == "function" then
+			AutoCrafter.on_context_exit("GameplayStateRun_exit")
+		end
+
 		Features.cancel_morningstar_auto_discard()
 		if type(CurioAcquisition.leave_morningstar) == "function" then
 			CurioAcquisition.leave_morningstar()
@@ -1074,18 +1084,30 @@ end
 -- separate from GameplayStateRun so buyer scheduling never mistakes a loading
 -- state or a missing hub player for a usable context.
 mod:hook_safe(MainMenuView, "on_enter", function()
+	if AutoCrafter and type(AutoCrafter.on_context_exit) == "function" then
+		AutoCrafter.on_context_exit("operative_selection_entered")
+	end
+
 	if type(CurioAcquisition.enter_operative_selection) == "function" then
 		CurioAcquisition.enter_operative_selection(mod)
 	end
 end)
 
 mod:hook_safe(MainMenuView, "on_exit", function()
+	if AutoCrafter and type(AutoCrafter.on_context_exit) == "function" then
+		AutoCrafter.on_context_exit("operative_selection_exited")
+	end
+
 	if type(CurioAcquisition.leave_operative_selection) == "function" then
 		CurioAcquisition.leave_operative_selection()
 	end
 end)
 
 function mod.update(dt)
+	if AutoCrafter and type(AutoCrafter.update) == "function" then
+		AutoCrafter.update(dt)
+	end
+
 	ItemCustomization.update_runtime(mod, dt)
 	EquipmentPersistence.update(mod, dt)
 	Features.reconcile_discard_transaction()
@@ -1097,6 +1119,10 @@ function mod.update(dt)
 end
 
 function mod.on_disabled()
+	if AutoCrafter and type(AutoCrafter.shutdown) == "function" then
+		AutoCrafter.shutdown()
+	end
+
 	ItemCustomization.on_disabled(mod)
 	Features.cancel_morningstar_auto_discard()
 	Features.cancel_manual_discard()
@@ -1183,6 +1209,10 @@ if ensure_class_method(CreditsVendorView, "_setup_sort_options") then
 
 		Features.preserve_item_sorting_native_options(view, selected_display_name)
 		if is_armoury_requisition_view(view) then
+			if AutoCrafter and type(AutoCrafter.on_brunt_view_ready) == "function" then
+				AutoCrafter.on_brunt_view_ready(view)
+			end
+
 			Features.configure_armoury_sort_options(mod, view)
 
 			if mod:get("enable_armoury_requisition_grid") ~= false and mod:get("enable_armoury_requisition_sorting_panel") ~= false then
@@ -1194,6 +1224,18 @@ if ensure_class_method(CreditsVendorView, "_setup_sort_options") then
 			if mod:get("enable_global_store_grid") ~= false and mod:get("enable_global_store_sorting_panel") ~= false then
 				Features.setup_armoury_native_sort_panel(mod, Layout, view, ViewElementGrid)
 			end
+		end
+
+		return result
+	end)
+end
+
+if ensure_class_method(CreditsVendorView, "on_exit") then
+	mod:hook(CreditsVendorView, "on_exit", function(func, view, ...)
+		local result = func(view, ...)
+
+		if AutoCrafter and type(AutoCrafter.on_view_closed) == "function" then
+			AutoCrafter.on_view_closed(view)
 		end
 
 		return result

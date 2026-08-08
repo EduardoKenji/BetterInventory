@@ -30,7 +30,10 @@ def runtime_version() -> str:
 
 
 def runtime_files() -> list[dict[str, object]]:
-    files = [DESCRIPTOR_PATH, *sorted(RUNTIME_ROOT.glob("BetterInventory*.lua"), key=lambda path: path.name)]
+    files = [
+        DESCRIPTOR_PATH,
+        *sorted(RUNTIME_ROOT.rglob("*.lua"), key=lambda path: path.relative_to(RUNTIME_ROOT).as_posix()),
+    ]
     records = []
 
     for path in files:
@@ -38,10 +41,10 @@ def runtime_files() -> list[dict[str, object]]:
             raise RuntimeError(f"Missing runtime bundle source: {path}")
 
         relative = path.relative_to(PROJECT_ROOT).as_posix()
-        archive_path = "BetterInventory/" + (
-            "BetterInventory.mod"
+        archive_path = (
+            "BetterInventory/BetterInventory.mod"
             if path == DESCRIPTOR_PATH
-            else "scripts/mods/BetterInventory/" + path.name
+            else "BetterInventory/scripts/mods/BetterInventory/" + path.relative_to(RUNTIME_ROOT).as_posix()
         )
         records.append({
             "archive_path": archive_path,

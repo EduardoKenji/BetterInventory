@@ -104,6 +104,30 @@ local SettingsRegistry = no_op_module(mod:io_dofile("BetterInventory/scripts/mod
 	should_refresh_dependencies = function() return true end,
 })
 local Diagnostics = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_diagnostics"), "BetterInventory_diagnostics.lua")
+local AutoCrafter = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_auto_crafter")
+
+if type(AutoCrafter) ~= "table" then
+	AutoCrafter = {}
+end
+
+AutoCrafter.configure = type(AutoCrafter.configure) == "function" and AutoCrafter.configure or function()
+	return false
+end
+AutoCrafter.on_brunt_view_ready = type(AutoCrafter.on_brunt_view_ready) == "function" and AutoCrafter.on_brunt_view_ready or function()
+	return false
+end
+AutoCrafter.on_view_closed = type(AutoCrafter.on_view_closed) == "function" and AutoCrafter.on_view_closed or function()
+	return false
+end
+AutoCrafter.on_context_exit = type(AutoCrafter.on_context_exit) == "function" and AutoCrafter.on_context_exit or function()
+end
+AutoCrafter.on_setting_changed = type(AutoCrafter.on_setting_changed) == "function" and AutoCrafter.on_setting_changed or function()
+	return false
+end
+AutoCrafter.update = type(AutoCrafter.update) == "function" and AutoCrafter.update or function()
+end
+AutoCrafter.shutdown = type(AutoCrafter.shutdown) == "function" and AutoCrafter.shutdown or function()
+end
 
 local CharacterOverviewUI = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_character_overview_ui"), "BetterInventory_character_overview_ui.lua", {
 	configure = function()
@@ -146,6 +170,10 @@ if type(ItemCustomization.install) == "function" then
 	ItemCustomization.install(mod, InventoryWeaponsView, Layout)
 end
 
+AutoCrafter.configure({
+	mod = mod,
+})
+
 local Runtime = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_runtime"), "BetterInventory_runtime.lua", {
 	configure = function()
 		return nil
@@ -164,6 +192,7 @@ Runtime.configure({
 	EquipmentPersistence = EquipmentPersistence,
 	SettingsRegistry = SettingsRegistry,
 	Diagnostics = Diagnostics,
+	AutoCrafter = AutoCrafter,
 	Capabilities = Capabilities,
 	CharacterOverviewUI = CharacterOverviewUI,
 	CraftingMechanicusModifyView = CraftingMechanicusModifyView,

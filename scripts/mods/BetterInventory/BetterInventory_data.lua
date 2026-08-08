@@ -589,6 +589,30 @@ return {
 				},
 			},
 			{
+				setting_id = "auto_crafter_group",
+				type = "group",
+				sub_widgets = {
+					{
+						setting_id = "auto_crafter_enable",
+						tooltip = "auto_crafter_enable_tooltip",
+						type = "checkbox",
+						default_value = false,
+					},
+					{
+						setting_id = "auto_crafter_read_only_probe",
+						tooltip = "auto_crafter_read_only_probe_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
+						setting_id = "auto_crafter_show_probe_notifications",
+						tooltip = "auto_crafter_show_probe_notifications_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+				},
+			},
+			{
 				setting_id = "additional_views_group",
 				type = "group",
 				sub_widgets = {
@@ -664,10 +688,10 @@ return {
 									230,
 								},
 							},
-						},
-					},
-					{
-						setting_id = "global_store_integration_group",
+									},
+								},
+								{
+									setting_id = "global_store_integration_group",
 						type = "group",
 						sub_widgets = {
 							{
