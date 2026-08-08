@@ -20,6 +20,16 @@ def main() -> None:
     lua = LuaRuntime(unpack_returned_tuples=True)
     lua.execute(
         r"""
+        function table.clone(value)
+            local copy = {}
+
+            for key, item in pairs(value or {}) do
+                copy[key] = item
+            end
+
+            return copy
+        end
+
         settings = {
 			melee_columns = 3,
 			ranged_columns = 3,
@@ -532,6 +542,84 @@ def main() -> None:
     )
     assert globals_.overview_equipped_item_calls == 3
     globals_.visible_equipment_available = True
+
+    # An empty Curio slot starts with Darktide's native placeholder blueprint.
+    # Equipping a plain, uncustomized Curio while Character Overview remains
+    # open must replace that widget definition immediately; changing only
+    # content.item would leave the native placeholder format on screen until
+    # the overview is reopened. The reverse transition is covered too.
+    curio_transition_type = mod._better_inventory_test.character_overview_curio_transition_type
+    empty_curio_widget_type = "better_inventory_character_overview_empty_curio"
+    curio_widget_type = "better_inventory_character_overview_curio"
+    assert curio_transition_type(empty_curio_widget_type, True) == curio_widget_type
+    assert curio_transition_type(curio_widget_type, False) == empty_curio_widget_type
+    assert curio_transition_type(curio_widget_type, True) is None
+
+    lua.globals().overview_curio_item = lua.table_from(
+        {"gear_id": "plain-curio", "name": "Uncustomized Curio", "item_level": 420}
+    )
+    overview_view.equipped_item_in_slot = lua.eval(
+        "function() overview_equipped_item_calls = overview_equipped_item_calls + 1; return overview_curio_item end"
+    )
+    overview_view.has_widget = lua.eval("function() return false end")
+    overview_view._unregister_widget_name = lua.eval("function() end")
+    overview_view._create_entry_widget_from_config = lua.eval(
+        """
+        function(view, config, suffix, callback_name, secondary_callback_name, scenegraph_id)
+            local target_type = config.item and "better_inventory_character_overview_curio" or "better_inventory_character_overview_empty_curio"
+            view.last_transition_config_widget_type = config.widget_type
+            view.last_transition_callback_name = callback_name
+            view.last_transition_scenegraph_id = scenegraph_id
+            local widget = {
+                name = "widget_" .. suffix,
+                type = target_type,
+                offset = { 0, 0, 0 },
+                visible = true,
+                content = { element = config, item = config.item, index = 3 },
+                style = {},
+            }
+            return widget, widget
+        end
+        """
+    )
+    empty_curio_element = lua.table_from(
+        {
+            "widget_type": empty_curio_widget_type,
+            "item_type": "GADGET",
+            "slot": lua.table_from({"name": "slot_attachment_1"}),
+            "scenegraph_id": "slot_attachment_1",
+            "better_inventory_character_overview_callback_name": "cb_on_grid_entry_pressed",
+            "better_inventory_character_overview_secondary_callback_name": "cb_on_grid_entry_right_pressed",
+            "better_inventory_character_overview_scenegraph_id": "slot_attachment_1",
+        }
+    )
+    empty_curio_widget = lua.table_from(
+        {
+            "name": "widget_entry_curio",
+            "type": empty_curio_widget_type,
+            "offset": lua.table_from([14, 27, -15]),
+            "visible": True,
+            "content": lua.table_from(
+                {"element": empty_curio_element, "item": None, "index": 3}
+            ),
+            "style": lua.table_from({}),
+        }
+    )
+    overview_view._loadout_widgets = lua.table_from([empty_curio_widget])
+    globals_.captured_character_overview_update_hook(overview_view)
+    equipped_curio_widget = overview_view._loadout_widgets[1]
+    assert equipped_curio_widget.type == curio_widget_type
+    assert equipped_curio_widget.content.item.gear_id == "plain-curio"
+    assert tuple(equipped_curio_widget.offset[index] for index in range(1, 4)) == (14, 27, -15)
+    assert overview_view.last_transition_config_widget_type == "gadget_item_slot"
+    assert overview_view.last_transition_callback_name == "cb_on_grid_entry_pressed"
+    assert overview_view.last_transition_scenegraph_id == "slot_attachment_1"
+
+    lua.globals().overview_curio_item = None
+    globals_.captured_character_overview_update_hook(overview_view)
+    unequipped_curio_widget = overview_view._loadout_widgets[1]
+    assert unequipped_curio_widget.type == empty_curio_widget_type
+    assert unequipped_curio_widget.content.item is None
 
     overview_equipped_widget = lua.table_from(
         {

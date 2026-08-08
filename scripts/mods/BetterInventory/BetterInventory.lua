@@ -2176,6 +2176,137 @@ local function synchronize_character_overview_equipped_icons(view)
 	end
 end
 
+local function copy_character_overview_widget_placement(source_widget, target_widget)
+	if not source_widget or not target_widget then
+		return
+	end
+
+	if source_widget.offset and target_widget.offset then
+		for index = 1, 3 do
+			target_widget.offset[index] = source_widget.offset[index]
+		end
+	end
+
+	if source_widget.visible ~= nil then
+		target_widget.visible = source_widget.visible
+	end
+
+	if source_widget.alpha_multiplier ~= nil then
+		target_widget.alpha_multiplier = source_widget.alpha_multiplier
+	end
+
+	local source_content = source_widget.content
+	local target_content = target_widget.content
+
+	if source_content and target_content and source_content.index ~= nil then
+		target_content.index = source_content.index
+	end
+end
+
+local function character_overview_curio_transition_type(widget_type, has_item)
+	if widget_type == CHARACTER_OVERVIEW_EMPTY_CURIO_WIDGET_TYPE and has_item then
+		return CHARACTER_OVERVIEW_CURIO_WIDGET_TYPE
+	elseif widget_type == CHARACTER_OVERVIEW_CURIO_WIDGET_TYPE and not has_item then
+		return CHARACTER_OVERVIEW_EMPTY_CURIO_WIDGET_TYPE
+	end
+
+	return nil
+end
+
+local function rebuild_character_overview_curio_widget(view, index, widget, equipped_item, target_type)
+	local content = widget and widget.content
+	local element = content and content.element
+	local create_entry_widget = view and view._create_entry_widget_from_config
+
+	if not element or type(create_entry_widget) ~= "function" then
+		return false
+	end
+
+	-- Re-enter native creation through our existing hook. This gives replacement
+	-- widget a fresh UIWidget definition, native icon lifecycle, and original
+	-- equip callbacks. Calling native gadget creation directly would bypass
+	-- BetterInventory's detailed Curio blueprint selection.
+	local replacement_config = table.clone(element)
+	replacement_config.widget_type = "gadget_item_slot"
+	replacement_config.item = equipped_item
+	local transition_counter = (view._better_inventory_character_overview_curio_transition_counter or 0) + 1
+	view._better_inventory_character_overview_curio_transition_counter = transition_counter
+	local suffix = "better_inventory_curio_transition_" .. tostring(index) .. "_" .. tostring(transition_counter)
+	local callback_name = element.better_inventory_character_overview_callback_name or "cb_on_grid_entry_pressed"
+	local secondary_callback_name = element.better_inventory_character_overview_secondary_callback_name or "cb_on_grid_entry_right_pressed"
+	local scenegraph_id = element.better_inventory_character_overview_scenegraph_id or widget.scenegraph_id
+	local create_ok, replacement_widget = pcall(create_entry_widget, view, replacement_config, suffix, callback_name, secondary_callback_name, scenegraph_id)
+
+	if not create_ok or not replacement_widget or replacement_widget.type ~= target_type then
+		if replacement_widget then
+			local replacement_template = InventoryViewContentBlueprints[replacement_widget.type]
+			local replacement_destroy = replacement_template and replacement_template.destroy
+
+			if type(replacement_destroy) == "function" then
+				pcall(replacement_destroy, view, replacement_widget, replacement_widget.content and replacement_widget.content.element, view._ui_renderer)
+			end
+
+			if type(view.has_widget) == "function" and type(view._unregister_widget_name) == "function" and replacement_widget.name and view:has_widget(replacement_widget.name) then
+				view:_unregister_widget_name(replacement_widget.name)
+			end
+		end
+
+		return false
+	end
+
+	copy_character_overview_widget_placement(widget, replacement_widget)
+
+	local old_template = InventoryViewContentBlueprints[widget.type]
+	local old_destroy = old_template and old_template.destroy
+
+	if type(old_destroy) == "function" then
+		pcall(old_destroy, view, widget, element, view._ui_renderer)
+	end
+
+	if type(view.has_widget) == "function" and type(view._unregister_widget_name) == "function" and widget.name and view:has_widget(widget.name) then
+		view:_unregister_widget_name(widget.name)
+	end
+
+	view._loadout_widgets[index] = replacement_widget
+
+	return true
+end
+
+local function reconcile_character_overview_curio_widgets(view)
+	local widgets = view and view._loadout_widgets
+	local replacements = 0
+
+	for index = 1, #(widgets or {}) do
+		local widget = widgets[index]
+		local target_type
+
+		if widget and (widget.type == CHARACTER_OVERVIEW_EMPTY_CURIO_WIDGET_TYPE or widget.type == CHARACTER_OVERVIEW_CURIO_WIDGET_TYPE) then
+			local content = widget.content
+			local element = content and content.element
+			local slot = element and element.slot
+
+			if slot and type(view.equipped_item_in_slot) == "function" then
+				local equipped_ok, equipped_item = pcall(view.equipped_item_in_slot, view, slot.name)
+
+				if equipped_ok then
+					target_type = character_overview_curio_transition_type(widget.type, equipped_item ~= nil)
+
+					if target_type and rebuild_character_overview_curio_widget(view, index, widget, equipped_item, target_type) then
+						replacements = replacements + 1
+					end
+				end
+			end
+		end
+	end
+
+	return replacements
+end
+
+if type(better_inventory_test) == "table" then
+	better_inventory_test.character_overview_curio_transition_type = character_overview_curio_transition_type
+	better_inventory_test.reconcile_character_overview_curio_widgets = reconcile_character_overview_curio_widgets
+end
+
 local function refresh_character_overview_visual_layout_if_needed(view)
 	if not view then
 		return
@@ -2641,6 +2772,9 @@ if ensure_class_method(InventoryView, "_create_entry_widget_from_config") then
 			local adapted_config = table.clone(config)
 			adapted_config.widget_type = widget_type
 			adapted_config.item = equipped_item
+			adapted_config.better_inventory_character_overview_callback_name = callback_name
+			adapted_config.better_inventory_character_overview_secondary_callback_name = secondary_callback_name
+			adapted_config.better_inventory_character_overview_scenegraph_id = optional_scenegraph_id
 
 			return create_widget(adapted_config)
 			end
@@ -2652,6 +2786,7 @@ end
 
 mod:hook_safe(InventoryView, "update", function(view)
 	refresh_character_overview_visual_layout_if_needed(view)
+	reconcile_character_overview_curio_widgets(view)
 	synchronize_character_overview_equipped_icons(view)
 end)
 

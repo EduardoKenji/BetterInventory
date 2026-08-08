@@ -78,6 +78,10 @@ if ($main -notmatch 'better_inventory_overview_full_curio_stat_' -or $main -notm
 	throw "Character overview multiline Curio stats or empty-slot handling were not found."
 }
 
+if ($main -notmatch 'reconcile_character_overview_curio_widgets' -or $main -notmatch 'rebuild_character_overview_curio_widget' -or $main -notmatch 'character_overview_curio_transition_type' -or $main -notmatch 'replacement_config\.widget_type\s*=\s*"gadget_item_slot"' -or $main -notmatch 'better_inventory_character_overview_callback_name') {
+	throw "Empty-to-equipped Curio cards must rebuild their widget blueprint and preserve native callbacks."
+}
+
 if ($main -notmatch 'mod:hook\(CreditsVendorView,\s*"present_grid_layout"') {
 	throw "The Requisition Weapons & Curios grid hook was not found."
 }
