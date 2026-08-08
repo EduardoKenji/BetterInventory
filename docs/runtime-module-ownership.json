@@ -4,8 +4,7 @@
   "preferred_bytes": 80000,
   "temporary_size_exceptions": {
     "BetterInventory.lua": "R14 bootstrap extraction pending",
-    "BetterInventory_features.lua": "R04-R09 feature extraction pending",
-    "BetterInventory_layout.lua": "R10-R12 card extraction pending"
+    "BetterInventory_features.lua": "R04-R09 feature extraction pending"
   },
   "hook_modules": {
     "BetterInventory.lua": "bootstrap-and-runtime-hooks",
@@ -36,7 +35,8 @@
     "BetterInventory_item_customization_editor.lua": {"category": "ui-integration", "risk": "high", "dependencies": []},
     "BetterInventory_item_customization_name_it.lua": {"category": "integration-adapter", "risk": "high", "dependencies": []},
     "BetterInventory_item_customization_store.lua": {"category": "async-state", "risk": "high", "dependencies": []},
-    "BetterInventory_layout.lua": {"category": "ui-facade-pending-extraction", "risk": "high", "dependencies": []},
+    "BetterInventory_layout.lua": {"category": "ui-facade", "risk": "high", "dependencies": ["BetterInventory_layout_content.lua"]},
+    "BetterInventory_layout_content.lua": {"category": "ui-content-model", "risk": "high", "dependencies": []},
     "BetterInventory_localization.lua": {"category": "declarative-entrypoint", "risk": "medium", "dependencies": ["BetterInventory_localization_core.lua", "BetterInventory_localization_features.lua", "BetterInventory_localization_zh_cn.lua"]},
     "BetterInventory_localization_core.lua": {"category": "declarative-shard", "risk": "medium", "dependencies": []},
     "BetterInventory_localization_features.lua": {"category": "declarative-shard", "risk": "medium", "dependencies": []},

@@ -6,6 +6,7 @@ from localization_support import load_localization
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 LAYOUT_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_layout.lua"
+LAYOUT_CONTENT_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_layout_content.lua"
 LOCALIZATION_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_localization.lua"
 
 
@@ -278,6 +279,10 @@ def main() -> None:
 		end
 
 		function require(path)
+			if path == "scripts/mods/BetterInventory/BetterInventory_layout_content" then
+				return TestLayoutContent
+			end
+
 			if path == "scripts/utilities/ui/text" then
 				return TestText
 			end
@@ -602,6 +607,9 @@ def main() -> None:
         """
     )
 
+    lua.globals().TestLayoutContent = lua.execute(
+        LAYOUT_CONTENT_PATH.read_text(encoding="utf-8"), name=str(LAYOUT_CONTENT_PATH)
+    )
     layout = lua.execute(
         LAYOUT_PATH.read_text(encoding="utf-8"), name=str(LAYOUT_PATH)
     )

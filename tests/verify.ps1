@@ -115,6 +115,10 @@ $localization = @(
 	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_localization_zh_cn.lua") -Raw
 ) -join "`n"
 $layout = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_layout.lua") -Raw
+$layout = @(
+	$layout
+	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_layout_content.lua") -Raw
+) -join "`n"
 $features = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_features.lua") -Raw
 $features = @(
 	$features

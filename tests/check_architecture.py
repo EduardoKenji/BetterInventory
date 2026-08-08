@@ -20,6 +20,9 @@ LOCAL_SAFE_DOFWILE_PATTERN = re.compile(
 LOCAL_SHARD_PATTERN = re.compile(
     r'load_shard\(\s*"(BetterInventory_[^"/]+)"\s*\)'
 )
+LOCAL_REQUIRE_PATTERN = re.compile(
+    r'require\(\s*"scripts/mods/BetterInventory/(BetterInventory_[^"/]+)"\s*\)'
+)
 HOOK_PATTERN = re.compile(
     r'mod:hook(?:_safe)?\(\s*([^,\n]+?)\s*,\s*"([^"]+)"'
 )
@@ -68,7 +71,10 @@ def actual_dependencies(module_name: str) -> set[str]:
     shard_dependencies = {
         match.group(1) + ".lua" for match in LOCAL_SHARD_PATTERN.finditer(source)
     }
-    return direct_dependencies | guarded_dependencies | shard_dependencies
+    require_dependencies = {
+        match.group(1) + ".lua" for match in LOCAL_REQUIRE_PATTERN.finditer(source)
+    }
+    return direct_dependencies | guarded_dependencies | shard_dependencies | require_dependencies
 
 
 def validate_dependencies(contract: dict[str, object]) -> None:
