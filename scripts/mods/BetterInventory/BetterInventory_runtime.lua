@@ -1364,14 +1364,6 @@ if ensure_class_method(CreditsGoodsVendorView, "on_enter") then
 	end)
 end
 
-if ensure_class_method(CreditsGoodsVendorView, "on_exit") then
-	mod:hook_safe(CreditsGoodsVendorView, "on_exit", function(view)
-		if AutoCrafter and type(AutoCrafter.on_view_closed) == "function" then
-			AutoCrafter.on_view_closed(view)
-		end
-	end)
-end
-
 mod:hook(InventoryWeaponsView, "_setup_item_grid_materials", function(func, view, ...)
 	func(view, ...)
 

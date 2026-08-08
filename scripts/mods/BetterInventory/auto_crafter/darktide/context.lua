@@ -40,6 +40,10 @@ function Context.new(dependencies)
 			return false
 		end
 
+		if view._destroyed == true then
+			return false
+		end
+
 		local mode_name = current_game_mode_name()
 
 		-- During view setup the game-mode object can briefly be unavailable. Do
