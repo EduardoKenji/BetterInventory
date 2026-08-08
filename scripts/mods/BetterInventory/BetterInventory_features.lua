@@ -17,6 +17,25 @@ local Features = {}
 Features._diagnostics = nil
 Features._domains = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_feature_domains")
 
+-- Darktide scenegraph definitions can be strict tables. Optional geometry
+-- probes must therefore use raw reads; a missing node is a normal degraded
+-- state during Character Overview transitions, not a fatal contract error.
+Features._optional_field = function(object, field_name)
+	if type(object) == "table" then
+		return rawget(object, field_name)
+	elseif object ~= nil then
+		local success, value = pcall(function()
+			return object[field_name]
+		end)
+
+		if success then
+			return value
+		end
+	end
+
+	return nil
+end
+
 if type(Features._domains) ~= "table" or type(Features._domains.sorting) ~= "table" or type(Features._domains.sorting.signature) ~= "function" then
 	Features._domains = {
 		markers = {
@@ -66,11 +85,11 @@ Features.composition_inputs_changed = function(view, slot_kind)
 	end
 
 	local scenegraph = view._ui_scenegraph
-	local window = scenegraph and scenegraph.window
-	local window_position = window and window.position
-	local window_size = window and window.size
-	local canvas = scenegraph and scenegraph.canvas
-	local canvas_size = canvas and canvas.size
+	local window = Features._optional_field(scenegraph, "window")
+	local window_position = Features._optional_field(window, "position")
+	local window_size = Features._optional_field(window, "size")
+	local canvas = Features._optional_field(scenegraph, "canvas")
+	local canvas_size = Features._optional_field(canvas, "size")
 	local weapon_stats = view._weapon_stats
 	local weapon_stats_pivot = weapon_stats and weapon_stats._pivot_offset
 	local weapon_options = view._weapon_options_element
@@ -84,8 +103,8 @@ Features.composition_inputs_changed = function(view, slot_kind)
 	local options_x = weapon_options_pivot and weapon_options_pivot[1]
 	local options_y = weapon_options_pivot and weapon_options_pivot[2]
 	local discard_element = view._discard_items_element
-	local discard_position_reader = discard_element and discard_element.scenegraph_world_position
-	local discard_size_reader = discard_element and discard_element._scenegraph_size
+	local discard_position_reader = Features._optional_field(discard_element, "scenegraph_world_position")
+	local discard_size_reader = Features._optional_field(discard_element, "_scenegraph_size")
 	local discard_active = view._discard_items_element ~= nil
 	local filter_active = view._show_filter_panel == true
 	local selected_slot = view._selected_slot

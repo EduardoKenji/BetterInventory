@@ -305,6 +305,29 @@ def main() -> None:
     mod = globals_.test_mod
     layout = globals_.test_layout
 
+    # Character Overview can expose a strict scenegraph without the optional
+    # inventory window/canvas nodes. The composition probe must treat those
+    # nodes as absent instead of reproducing Darktide's strict-table crash.
+    strict_scenegraph_view = lua.execute(
+        r"""
+        local scenegraph = setmetatable({
+            canvas = {size = {1920, 1080}},
+        }, {
+            __index = function(_, field_name)
+                error('Table does not have field_name "' .. tostring(field_name) .. '" defined.')
+            end,
+        })
+
+        return {
+            _ui_scenegraph = scenegraph,
+            _context = {},
+        }
+        """
+    )
+    assert features.composition_inputs_changed(strict_scenegraph_view, "melee") is True
+    assert strict_scenegraph_view._better_inventory_composition_window_x is None
+    assert strict_scenegraph_view._better_inventory_composition_canvas_width == 1920
+
     definitions = lua.table_from(
         {
             "scenegraph_definition": lua.table_from({}),
