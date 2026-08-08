@@ -4,6 +4,7 @@
 
 ### Fixed / Added
 
+- Fixed Automatic Curio Buyer showing the same successful Operative Selection purchase report again in white during the transition to the Morningstar. Successfully dispatched reports are now acknowledged once per Lua session while their persisted fallback remains available after a restart or failed notification dispatch.
 - P0 hotfix `665801b`: prevent Character Overview composition probes from reading absent optional `window`/`canvas` scenegraph nodes through Darktide strict tables. This removes the reported `table.lua:1204` crash when opening a melee weapon card and adds a strict-scenegraph regression test.
 - B42/B43 remediation: production-facing harnesses now execute the real extracted Character Overview, feature, and Curio domain modules. Automatic Curio scan continuations carry an account/context/read-generation snapshot, and mixed or missing multi-character store boundaries wait without evaluating or purchasing offers.
 - B44-B46 remediation: settings metadata/localization audits are authoritative; the verifier now attributes failures to one named case, gates critical async/destructive outcomes, and rejects unassigned runtime modules; composition invalidation moved into its own production-loaded module and the unused Character Overview config-model attachment was removed.

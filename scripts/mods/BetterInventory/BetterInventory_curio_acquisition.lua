@@ -86,6 +86,8 @@ local state = {
 	hub_character_id = nil,
 	last_delivered_report_account = nil,
 	last_delivered_report_id = nil,
+	session_dispatched_report_keys = {},
+	session_dispatched_report_order = {},
 	read_promise_container = nil,
 	read_request_generation = 0,
 	read_request_clock = 0,
@@ -99,6 +101,56 @@ local state = {
 	token = 0,
 }
 local processed_offer_keys = {}
+
+local function report_dispatch_key(account_key, report_id)
+	if account_key == nil or type(report_id) ~= "string" or report_id == "" then
+		return
+	end
+
+	account_key = tostring(account_key)
+
+	return string.format("%d:%s:%s", #account_key, account_key, report_id)
+end
+
+local function remember_session_report_dispatch(account_key, report_id)
+	local key = report_dispatch_key(account_key, report_id)
+
+	if not key or state.session_dispatched_report_keys[key] then
+		return
+	end
+
+	state.session_dispatched_report_keys[key] = true
+	state.session_dispatched_report_order[#state.session_dispatched_report_order + 1] = key
+
+	local maximum = MAX_PENDING_REPORTS * MAX_ROTATION_HISTORY_ACCOUNTS
+
+	while #state.session_dispatched_report_order > maximum do
+		local expired_key = table.remove(state.session_dispatched_report_order, 1)
+
+		state.session_dispatched_report_keys[expired_key] = nil
+	end
+end
+
+local function session_report_was_dispatched(account_key, report_id)
+	local key = report_dispatch_key(account_key, report_id)
+
+	return key ~= nil and state.session_dispatched_report_keys[key] == true
+end
+
+local function forget_session_report_dispatch(account_key, report_id)
+	local key = report_dispatch_key(account_key, report_id)
+
+	if key then
+		state.session_dispatched_report_keys[key] = nil
+
+		for index = #state.session_dispatched_report_order, 1, -1 do
+			if state.session_dispatched_report_order[index] == key then
+				table.remove(state.session_dispatched_report_order, index)
+				break
+			end
+		end
+	end
+end
 
 local function new_read_promise_container()
 	if PromiseContainer and type(PromiseContainer.new) == "function" then
@@ -1019,7 +1071,7 @@ local function deliver_pending_report(mod)
 		return false
 	end
 
-	local already_dispatched = state.last_delivered_report_account == account_key and state.last_delivered_report_id == report.report_id
+	local already_dispatched = session_report_was_dispatched(account_key, report.report_id) or state.last_delivered_report_account == account_key and state.last_delivered_report_id == report.report_id
 
 	if not already_dispatched then
 		local title_id = #report.purchased > 0 and "automatic_curio_purchased_title" or "automatic_curio_insufficient_title"
@@ -1058,7 +1110,11 @@ local function deliver_pending_report(mod)
 		state.rotation_history = history
 	end
 
-	log_info(mod, "Delivered the pending Automatic Curio Buyer report from " .. tostring(report.context) .. " (" .. tostring(report.report_id) .. ").")
+	forget_session_report_dispatch(account_key, report.report_id)
+
+	local action = already_dispatched and "Acknowledged" or "Delivered"
+
+	log_info(mod, action .. " the pending Automatic Curio Buyer report from " .. tostring(report.context) .. " (" .. tostring(report.report_id) .. ").")
 
 	return true
 end
@@ -1080,28 +1136,33 @@ end
 
 local function report_purchase_outcomes(mod, purchased, insufficient, partial_failure, report_context, report_account_key)
 	local reported = false
+	local notifications_dispatched = true
 
 	if #purchased > 0 then
-		notify(
+		notifications_dispatched = notify(
 			mod,
 			"automatic_curio_purchased_title",
 			candidate_lines(mod, purchased, partial_failure),
 			spending_line(mod, purchased),
 			Color.terminal_corner_selected(255, true)
-		)
+		) and notifications_dispatched
 		reported = true
 	end
 
 	if #insufficient > 0 then
-		notify(mod, "automatic_curio_insufficient_title", candidate_lines(mod, insufficient, false))
+		notifications_dispatched = notify(mod, "automatic_curio_insufficient_title", candidate_lines(mod, insufficient, false)) and notifications_dispatched
 		reported = true
 	end
 
 	if report_context == "operative_selection" and (#purchased > 0 or #insufficient > 0) then
 		local pending_report = build_pending_report(report_account_key, report_context, purchased, insufficient, partial_failure)
 
-		if pending_report then
-			persist_pending_report(mod, report_account_key, pending_report)
+		if pending_report and persist_pending_report(mod, report_account_key, pending_report) and notifications_dispatched then
+			-- Operative Selection notifications can remain visible during the
+			-- transition into the Morningstar. Remember successful dispatches only
+			-- for this Lua session so the durable fallback is consumed without being
+			-- shown twice. A restart loses this marker and still delivers the report.
+			remember_session_report_dispatch(report_account_key, pending_report.report_id)
 		end
 	end
 

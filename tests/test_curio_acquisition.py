@@ -1249,8 +1249,9 @@ def main() -> None:
     assert globals_.purchase_count == purchases_before_idle_refresh + 1
     module.cancel()
 
-    # Operative Selection keeps a bounded account-scoped report for the next
-    # Morningstar because its notification visibility is not guaranteed.
+    # Operative Selection keeps a bounded account-scoped report as a durable
+    # fallback. Reports already dispatched in this Lua session are acknowledged
+    # without producing duplicate white-text notifications during loading.
     pending_history = globals_.settings["_automatic_curio_rotation_history"]
     pending_report = pending_history.accounts["default"].pending_reports[1]
     assert pending_report is not None
@@ -1267,12 +1268,27 @@ def main() -> None:
     assert len(globals_.settings["_automatic_curio_rotation_history"].accounts["default"].pending_reports) == 2
     globals_.backend_account_key = "default"
     module.update(globals_.test_mod, 0, False)
-    assert globals_.captured_notification.line_1 == "automatic_curio_purchased_title"
-    assert "Research Psyker(Psyker): 21% automatic_curio_health (410)" in globals_.captured_notification.line_2
+    assert globals_.captured_notification is None
     assert len(globals_.settings["_automatic_curio_rotation_history"].accounts["default"].pending_reports) == 1
-    globals_.captured_notification = None
+    module.update(globals_.test_mod, 0, False)
+    assert globals_.captured_notification is None
+    assert len(globals_.settings["_automatic_curio_rotation_history"].accounts["default"].pending_reports) == 0
+
+    # A report restored in a later Lua session has no volatile acknowledgement
+    # marker and must still be delivered. Changing the ID models persisted state
+    # loaded after a restart without coupling the test to module reloading.
+    pending_report.report_id = "prior-session-operative-report"
+    pending_history.accounts["default"].pending_reports = lua.table_from([pending_report])
+    globals_.settings["_automatic_curio_rotation_history"] = pending_history
+    globals_.backend_account_key = "other-account"
+    module.cancel()
+    module.begin_morningstar_pass(globals_.test_mod)
+    module.update(globals_.test_mod, 0, False)
+    assert globals_.captured_notification is None
+    globals_.backend_account_key = "default"
     module.update(globals_.test_mod, 0, False)
     assert globals_.captured_notification.line_1 == "automatic_curio_purchased_title"
+    assert "Research Psyker(Psyker): 21% automatic_curio_health (410)" in globals_.captured_notification.line_2
     assert len(globals_.settings["_automatic_curio_rotation_history"].accounts["default"].pending_reports) == 0
     module.cancel()
 

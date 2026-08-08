@@ -40,8 +40,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_acquisition.lua",
-      "bytes": 49389,
-      "sha256": "8b5dd893aaef5f4da25afb800785f35661a0c20dd027feacdbb25f83a16fd5f4",
+      "bytes": 51736,
+      "sha256": "6dfbc030539566ad11fc478d721b8052eeae87e0e513a0850ea198ca88b97827",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_curio_acquisition.lua"
     },
     {
@@ -279,6 +279,6 @@
       "source_path": "scripts/mods/BetterInventory/BetterInventory_view_session.lua"
     }
   ],
-  "runtime_tree_sha256": "08ca64c1d3c716d8f94fb06d3bbcbbf377f1bb2c26c872de9ea3b8549204dcff",
+  "runtime_tree_sha256": "552238f6993794617c3b54c249ac44b8968a7116cbb6953ca5d18ecafc0b3ec4",
   "version": "2.0.0"
 }

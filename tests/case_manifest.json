@@ -9,9 +9,9 @@
     {"name": "typed_fallbacks", "risk": "high", "start_line": 42, "end_line": 65}
   ],
   "test_curio_acquisition.py": [
-    {"name": "store_rotation_gate", "risk": "critical", "start_line": 1065, "end_line": 1350},
+    {"name": "store_rotation_gate", "risk": "critical", "start_line": 1065, "end_line": 1390},
     {"name": "purchase_revalidation", "risk": "critical", "start_line": 668, "end_line": 864},
-    {"name": "read_cancellation_and_generation", "risk": "critical", "start_line": 1351, "end_line": 1404},
+    {"name": "read_cancellation_and_generation", "risk": "critical", "start_line": 1391, "end_line": 1426},
     {"name": "account_scoped_reports", "risk": "high", "start_line": 865, "end_line": 1064}
   ],
   "test_curio_domains.py": [
