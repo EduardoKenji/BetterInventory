@@ -176,6 +176,18 @@ def validate_auto_crafter_phase_1b() -> int:
     if missing:
         raise SystemExit("Auto Crafter planner contract missing: " + ", ".join(missing))
 
+    panel_source = (auto_crafter_root / "darktide" / "panel.lua").read_text(encoding="utf-8")
+    visual_contract = (
+        "frame_tile_2px",
+        "Color.terminal_frame(255, true)",
+        "selected_mark",
+        "chevron",
+    )
+    missing_visual = [token for token in visual_contract if token not in panel_source]
+
+    if missing_visual:
+        raise SystemExit("Auto Crafter visual contract missing: " + ", ".join(missing_visual))
+
     return len(lua_paths)
 
 

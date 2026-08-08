@@ -3,11 +3,12 @@ local UISoundEvents = require("scripts/settings/ui/ui_sound_events")
 local Panel = {}
 
 local PANEL_REFERENCE = "auto_crafter_diagnostic_panel"
-local PANEL_WIDTH = 500
-local PANEL_HEIGHT = 650
+local PANEL_WIDTH = 445
+local PANEL_HEIGHT = 520
 local PANEL_X = 1380
 local PANEL_Y = 110
-local ROW_HEIGHT = 36
+local ROW_HEIGHT = 32
+local SECTION_ROW_HEIGHT = 40
 local ROW_SPACING = 4
 local MAX_OFFER_ROWS = 10
 local MAX_SELECTION_ATTEMPTS = 240
@@ -68,8 +69,16 @@ local function wallet_amount(snapshot, currency)
 	return entry and entry.amount
 end
 
-local function row_passes(width)
+local function row_passes(width, height)
 	local label_width = width - 210
+
+	local function selected(content)
+		return content.header ~= true and content.selected == true
+	end
+
+	local function not_selected(content)
+		return content.header ~= true and content.selected ~= true
+	end
 
 	return {
 		{
@@ -79,26 +88,20 @@ local function row_passes(width)
 				on_hover_sound = UISoundEvents.default_mouse_hover,
 				on_pressed_sound = UISoundEvents.default_click,
 			},
-			style = {
-				size = {
-					width,
-					ROW_HEIGHT,
-				},
-			},
 		},
 		{
 			pass_type = "rect",
 			style_id = "header_background",
 			style = {
-				color = Color.terminal_corner_selected(150, true),
-				size = {
-					width,
-					ROW_HEIGHT,
-				},
+				color = Color.terminal_background(210, true),
 				offset = {
 					0,
 					0,
-					0,
+					1,
+				},
+				size = {
+					width,
+					height,
 				},
 			},
 			visibility_function = function(content)
@@ -109,38 +112,75 @@ local function row_passes(width)
 			pass_type = "rect",
 			style_id = "selected_background",
 			style = {
-				color = Color.terminal_corner_selected(110, true),
-				size = {
-					width,
-					ROW_HEIGHT,
-				},
+				color = Color.terminal_corner_selected(90, true),
 				offset = {
 					0,
 					0,
-					0,
+					1,
+				},
+				size = {
+					width,
+					height,
 				},
 			},
-			visibility_function = function(content)
-				return content.header ~= true and content.selected == true
-			end,
+			visibility_function = selected,
 		},
 		{
 			pass_type = "rect",
 			style_id = "normal_background",
 			style = {
-				color = Color.terminal_background(160, true),
-				size = {
-					width,
-					ROW_HEIGHT,
-				},
+				color = Color.terminal_background(220, true),
 				offset = {
 					0,
 					0,
+					1,
+				},
+				size = {
+					width,
+					height,
+				},
+			},
+			visibility_function = not_selected,
+		},
+		{
+			pass_type = "texture",
+			style_id = "frame",
+			value = "content/ui/materials/frames/frame_tile_2px",
+			style = {
+				color = Color.terminal_frame(255, true),
+				offset = {
 					0,
+					0,
+					3,
+				},
+				size = {
+					width,
+					height,
+				},
+			},
+		},
+		{
+			pass_type = "text",
+			style_id = "header_label",
+			value_id = "label",
+			style = {
+				font_size = 18,
+				font_type = "proxima_nova_bold",
+				text_horizontal_alignment = "left",
+				text_vertical_alignment = "center",
+				text_color = Color.terminal_text_header(255, true),
+				offset = {
+					10,
+					0,
+					4,
+				},
+				size = {
+					width - 50,
+					height,
 				},
 			},
 			visibility_function = function(content)
-				return content.header ~= true and content.selected ~= true
+				return content.header == true
 			end,
 		},
 		{
@@ -148,45 +188,138 @@ local function row_passes(width)
 			style_id = "label",
 			value_id = "label",
 			style = {
-				font_size = 17,
+				font_size = 15,
 				font_type = "proxima_nova_bold",
-				horizontal_alignment = "left",
 				text_horizontal_alignment = "left",
 				text_vertical_alignment = "center",
-				vertical_alignment = "center",
 				text_color = Color.terminal_text_body(255, true),
 				offset = {
 					12,
 					0,
-					2,
+					4,
 				},
 				size = {
 					label_width,
-					ROW_HEIGHT,
+					height,
 				},
 			},
+			visibility_function = not_selected,
+		},
+		{
+			pass_type = "text",
+			style_id = "selected_label",
+			value_id = "label",
+			style = {
+				font_size = 15,
+				font_type = "proxima_nova_bold",
+				text_horizontal_alignment = "left",
+				text_vertical_alignment = "center",
+				text_color = Color.terminal_corner_selected(255, true),
+				offset = {
+					12,
+					0,
+					4,
+				},
+				size = {
+					label_width,
+					height,
+				},
+			},
+			visibility_function = selected,
 		},
 		{
 			pass_type = "text",
 			style_id = "detail",
 			value_id = "detail",
 			style = {
-				font_size = 15,
+				font_size = 14,
 				font_type = "proxima_nova_medium",
 				text_horizontal_alignment = "right",
 				text_vertical_alignment = "center",
-				vertical_alignment = "center",
 				text_color = Color.terminal_text_body_sub_header(255, true),
 				offset = {
 					label_width,
 					0,
-					2,
+					4,
 				},
 				size = {
-					width - label_width - 12,
-					ROW_HEIGHT,
+					width - label_width - 34,
+					height,
 				},
 			},
+			visibility_function = function(content)
+				return content.section_header ~= true and content.selected ~= true
+			end,
+		},
+		{
+			pass_type = "text",
+			style_id = "selected_detail",
+			value_id = "detail",
+			style = {
+				font_size = 14,
+				font_type = "proxima_nova_medium",
+				text_horizontal_alignment = "right",
+				text_vertical_alignment = "center",
+				text_color = Color.terminal_corner_selected(255, true),
+				offset = {
+					label_width,
+					0,
+					4,
+				},
+				size = {
+					width - label_width - 34,
+					height,
+				},
+			},
+			visibility_function = selected,
+		},
+		{
+			pass_type = "text",
+			style_id = "selected_mark",
+			value = "✓",
+			style = {
+				font_size = 16,
+				font_type = "proxima_nova_bold",
+				horizontal_alignment = "right",
+				text_horizontal_alignment = "center",
+				text_vertical_alignment = "center",
+				text_color = Color.terminal_corner_selected(255, true),
+				offset = {
+					-4,
+					0,
+					5,
+				},
+				size = {
+					28,
+					height,
+				},
+			},
+			visibility_function = selected,
+		},
+		{
+			pass_type = "text",
+			style_id = "chevron",
+			value_id = "chevron",
+			style = {
+				font_size = 18,
+				font_type = "proxima_nova_bold",
+				horizontal_alignment = "right",
+				text_horizontal_alignment = "center",
+				text_vertical_alignment = "center",
+				text_color = Color.terminal_text_header(255, true),
+				offset = {
+					0,
+					0,
+					4,
+				},
+				size = {
+					40,
+					height,
+				},
+			},
+			visibility_function = function(content)
+				return content.section_header == true
+			end,
 		},
 	}
 end
@@ -197,7 +330,7 @@ local BLUEPRINTS = {
 			return entry.size
 		end,
 		pass_template_function = function(_, entry)
-			return row_passes(entry.size[1])
+			return row_passes(entry.size[1], entry.size[2])
 		end,
 		init = function(parent, widget, entry, callback_name)
 			for key, value in pairs(entry.initial_content or {}) do
@@ -325,11 +458,12 @@ function Panel.new(dependencies)
 				section_header = options.section_header == true,
 				section_id = options.section_id,
 				selected = false,
+				chevron = "",
 			},
 			pass_template = nil,
 			size = {
 				PANEL_WIDTH - 20,
-				ROW_HEIGHT,
+				options.header and SECTION_ROW_HEIGHT or ROW_HEIGHT,
 			},
 			widget_type = "auto_crafter_row",
 		}
@@ -351,9 +485,8 @@ function Panel.new(dependencies)
 			end
 			entry.refresh = function(widget)
 				local collapsed = self._section_collapsed[options.section_id] == true
-				local chevron = collapsed and "> " or "v "
 
-				widget.content.label = chevron .. (label or "")
+				widget.content.chevron = collapsed and ">" or "v"
 			end
 		elseif options.offer then
 			entry.offer = options.offer
