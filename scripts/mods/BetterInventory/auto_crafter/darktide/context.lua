@@ -1,5 +1,11 @@
 local Context = {}
 
+local function is_brunt_view_class(view)
+	local class_name = view and view.__class_name
+
+	return class_name == "CreditsGoodsVendorView"
+end
+
 local function current_game_mode_name()
 	local managers = rawget(_G, "Managers")
 	local state = managers and managers.state
@@ -49,7 +55,7 @@ function Context.new(dependencies)
 			return ok and result == true
 		end
 
-		return true
+		return is_brunt_view_class(view)
 	end
 
 	return context

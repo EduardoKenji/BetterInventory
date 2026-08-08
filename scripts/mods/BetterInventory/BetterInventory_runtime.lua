@@ -19,6 +19,7 @@ local ItemGridViewBase
 local ItemGridViewBaseDefinitions
 local InventoryWeaponsView
 local ViewElementGrid
+local CreditsGoodsVendorView = require("scripts/ui/views/credits_goods_vendor_view/credits_goods_vendor_view")
 
 local function configure_dependencies(dependencies)
 	mod = dependencies.mod
@@ -1348,11 +1349,26 @@ end
 
 if ensure_class_method(CreditsVendorView, "on_exit") then
 	mod:hook_safe(CreditsVendorView, "on_exit", function(view)
+		Features.unregister_armoury_view(view)
+	end)
+end
+
+-- Brunt's Armoury uses CreditsGoodsVendorView, not CreditsVendorView. Keep
+-- Auto Crafter lifecycle hooks on the exact vanilla view so the read-only
+-- probe is armed only for Brunt and not for Requisition or GlobalStore.
+if ensure_class_method(CreditsGoodsVendorView, "on_enter") then
+	mod:hook_safe(CreditsGoodsVendorView, "on_enter", function(view)
+		if AutoCrafter and type(AutoCrafter.on_brunt_view_ready) == "function" then
+			AutoCrafter.on_brunt_view_ready(view)
+		end
+	end)
+end
+
+if ensure_class_method(CreditsGoodsVendorView, "on_exit") then
+	mod:hook_safe(CreditsGoodsVendorView, "on_exit", function(view)
 		if AutoCrafter and type(AutoCrafter.on_view_closed) == "function" then
 			AutoCrafter.on_view_closed(view)
 		end
-
-		Features.unregister_armoury_view(view)
 	end)
 end
 
