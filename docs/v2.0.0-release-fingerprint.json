@@ -1,9 +1,9 @@
 {
   "archive": {
-    "file_count": 18,
+    "file_count": 19,
     "path": "BetterInventory.zip",
-    "sha256": "890642B9AF98A479E2AFBDF5785559E1AE8C442FCD197FFE5719482686E4DB36",
-    "runtime_tree_sha256": "61e4e83d066c730a3934f4c158817084d76ad680c9ada6624fb0a9f39ff30798"
+    "sha256": "7722A2A5636073841B249BB6FBD30FB03FC2EA6EFCBBB017CCCCF0914A966C1B",
+    "runtime_tree_sha256": "206358b098eda339e24059d2b53fa01add79b94e5b6712293f9cf7f75a4af1e9"
   },
   "automated_verification": {
     "behavior_cases": 43,
@@ -15,7 +15,12 @@
     "archive_parity": "passed"
   },
   "branch": "audit/v2.0.0",
-  "implementation_batches": "B34-B39 complete",
+  "implementation_batches": "B42-B46 repository scope complete; B47 live evidence pending; B48 planned",
+  "live_runtime_mirror": {
+    "lua_files": 18,
+    "source_live_byte_parity": "passed",
+    "zip_sha256": "7722A2A5636073841B249BB6FBD30FB03FC2EA6EFCBBB017CCCCF0914A966C1B"
+  },
   "post_audit_hotfix": "665801b strict Character Overview scenegraph probes",
   "live_validation": {
     "record": "docs/b40-live-validation-record.md",
