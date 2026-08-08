@@ -110,6 +110,115 @@ if type(AutoCrafter) ~= "table" then
 	AutoCrafter = {}
 end
 
+local function auto_crafter_read(object, key)
+	if type(object) ~= "table" and type(object) ~= "userdata" then
+		return nil
+	end
+
+	local ok, value = pcall(function()
+		return object[key]
+	end)
+
+	return ok and value or nil
+end
+
+local function auto_crafter_master_id(offer)
+	local description = auto_crafter_read(offer, "description")
+	local choices = auto_crafter_read(description, "lootChoices") or auto_crafter_read(description, "loot_choices")
+	local choice = type(choices) == "table" and choices[1] or nil
+
+	if type(choice) == "table" then
+		return choice.masterId or choice.master_id or choice.id or choice.name
+	end
+
+	return choice or auto_crafter_read(description, "masterId") or auto_crafter_read(description, "master_id")
+end
+
+local function auto_crafter_same_id(left, right)
+	return left ~= nil and right ~= nil and (left == right or tostring(left) == tostring(right))
+end
+
+local function auto_crafter_select_offer(view, selected_offer)
+	if not view or not selected_offer then
+		return false
+	end
+
+	local native_offer
+	local offers = auto_crafter_read(view, "_offers")
+
+	if type(offers) == "table" then
+		for _, offer in ipairs(offers) do
+			local offer_id = auto_crafter_read(offer, "offerId") or auto_crafter_read(offer, "offer_id")
+			local master_id = auto_crafter_master_id(offer)
+			local id_matches = auto_crafter_same_id(selected_offer.offer_id, offer_id)
+			local master_matches = auto_crafter_same_id(selected_offer.master_id, master_id)
+
+			if id_matches or selected_offer.offer_id == nil and master_matches then
+				native_offer = offer
+
+				break
+			end
+		end
+	end
+
+	if not native_offer or type(view.focus_on_offer) ~= "function" then
+		return false
+	end
+
+	local tabs = auto_crafter_read(view, "_tabs_content")
+	local target_tab_index
+
+	if selected_offer.slot_type and type(tabs) == "table" then
+		for tab_index, tab in ipairs(tabs) do
+			local slot_types = auto_crafter_read(tab, "slot_types")
+
+			if type(slot_types) == "table" then
+				for _, slot_type in ipairs(slot_types) do
+					if slot_type == selected_offer.slot_type then
+						target_tab_index = tab_index
+
+						break
+					end
+				end
+			end
+
+			if target_tab_index then
+				break
+			end
+		end
+	end
+
+	local tab_menu = auto_crafter_read(view, "_tab_menu_element")
+	local selected_tab_index
+
+	if tab_menu and type(tab_menu.selected_index) == "function" then
+		local selected_ok, value = pcall(tab_menu.selected_index, tab_menu)
+
+		if selected_ok then
+			selected_tab_index = value
+		end
+	end
+
+	if target_tab_index and selected_tab_index and target_tab_index ~= selected_tab_index then
+		if type(view.cb_switch_tab) == "function" then
+			pcall(view.cb_switch_tab, view, target_tab_index, true)
+		end
+
+		return false
+	end
+
+	local focused_ok = pcall(view.focus_on_offer, view, native_offer)
+
+	if not focused_ok then
+		return false
+	end
+
+	local previewed_offer = auto_crafter_read(view, "_previewed_offer")
+	local previewed_id = auto_crafter_read(previewed_offer, "offerId") or auto_crafter_read(previewed_offer, "offer_id")
+
+	return auto_crafter_same_id(selected_offer.offer_id, previewed_id) or selected_offer.offer_id == nil and auto_crafter_same_id(selected_offer.master_id, auto_crafter_master_id(previewed_offer))
+end
+
 AutoCrafter.configure = type(AutoCrafter.configure) == "function" and AutoCrafter.configure or function()
 	return false
 end
@@ -175,6 +284,7 @@ AutoCrafter.configure({
 	get_selected_offer = function(view)
 		return view and view._previewed_offer
 	end,
+	select_offer = auto_crafter_select_offer,
 	ViewElementGrid = ViewElementGrid,
 })
 

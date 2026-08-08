@@ -181,6 +181,7 @@ function AutoCrafter.configure(dependencies)
 	panel = Panel and Panel.new({
 		ViewElementGrid = dependencies.ViewElementGrid,
 		get_selected_offer = dependencies.get_selected_offer,
+		select_offer = dependencies.select_offer,
 		localize = function(setting_id)
 			return localize(setting_id, setting_id)
 		end,

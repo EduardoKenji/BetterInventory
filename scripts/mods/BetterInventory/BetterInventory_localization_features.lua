@@ -599,6 +599,12 @@ local localization = {
 	auto_crafter_panel_offer_list = {
 		en = "Weapon offers",
 	},
+	auto_crafter_panel_melee_weapons = {
+		en = "Melee Weapons",
+	},
+	auto_crafter_panel_ranged_weapons = {
+		en = "Ranged Weapons",
+	},
 	auto_crafter_panel_selected_weapon = {
 		en = "Selected weapon",
 	},

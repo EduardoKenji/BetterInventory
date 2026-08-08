@@ -96,7 +96,9 @@ local function summarize_store(store)
 				price_type = safe_member(amount, "type"),
 				price_amount = tonumber(safe_member(amount, "discounted_price") or safe_member(amount, "amount")),
 				sku_category = safe_member(sku, "category"),
+				slot_type = details.slot_type,
 				sub_display_name = details.sub_display_name,
+				weapon_category = details.weapon_category,
 			}
 		end
 	end
@@ -117,6 +119,9 @@ master_item_details = function(master_id)
 
 	local display_name
 	local sub_display_name
+	local slots = safe_member(master_item, "slots")
+	local slot_type = type(slots) == "table" and slots[1] or nil
+	local weapon_category = slot_type == "slot_secondary" and "ranged" or slot_type == "slot_primary" and "melee" or nil
 
 	if type(Items) == "table" and type(Items.weapon_card_display_name) == "function" then
 		local name_ok, value = pcall(Items.weapon_card_display_name, master_item)
@@ -137,7 +142,9 @@ master_item_details = function(master_id)
 	return {
 		display_name = display_name or safe_member(master_item, "name"),
 		parent_pattern = safe_member(master_item, "parent_pattern"),
+		slot_type = slot_type,
 		sub_display_name = sub_display_name,
+		weapon_category = weapon_category,
 	}
 end
 

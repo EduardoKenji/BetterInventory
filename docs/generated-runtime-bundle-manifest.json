@@ -10,8 +10,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory.lua",
-      "bytes": 8247,
-      "sha256": "bcaac83c261708eef080af1d803fe201e1c35e923c7fb26f9939a9ef83ed2d91",
+      "bytes": 11492,
+      "sha256": "1d3e36de5252a3a43adeb9f6f425a0774b1a708c6fbb34b10059048f4da055f2",
       "source_path": "scripts/mods/BetterInventory/BetterInventory.lua"
     },
     {
@@ -22,8 +22,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_auto_crafter.lua",
-      "bytes": 7301,
-      "sha256": "5ca900ce4a7fe0a96024b1a4709fdd71f31e1d7d24609efad97a2b95c088aea0",
+      "bytes": 7345,
+      "sha256": "f2ed36dab9269d97156288e173e401b8ec7c442b675f1f7242da9ecd7d32c6aa",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_auto_crafter.lua"
     },
     {
@@ -238,14 +238,14 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_localization_features.lua",
-      "bytes": 22598,
-      "sha256": "9d3afb6e9ecdc74a6054a91df2d43deb08a5c1b10adcbc8215df842e49c22420",
+      "bytes": 22732,
+      "sha256": "6c6da79ee28340ead0aed2ea64161383b924067eeff06ee015d6af4f162ac3c7",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_localization_features.lua"
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_localization_zh_cn.lua",
-      "bytes": 62225,
-      "sha256": "78a68d545fdf14410ab689fa260f6ff96872476229f3b66a8d42fa41f10c65bf",
+      "bytes": 62352,
+      "sha256": "192385e1ec3412975a2105599f201ae7c3efba78129df522b05f258789985ddb",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_localization_zh_cn.lua"
     },
     {
@@ -292,8 +292,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/backend.lua",
-      "bytes": 6409,
-      "sha256": "1fa83fe002c393db76ff9692352474f0571c51242181286448dea7a613578b6d",
+      "bytes": 6782,
+      "sha256": "b97c249e71f10d8c8e7e77b217b25f94506f8bc3b8c745fdeaa87c6ee586a092",
       "source_path": "scripts/mods/BetterInventory/auto_crafter/darktide/backend.lua"
     },
     {
@@ -304,11 +304,11 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/panel.lua",
-      "bytes": 13971,
-      "sha256": "9589952ae71125812733bc317afe8cf439525c5aa32ce339548e3ff5c0db77cb",
+      "bytes": 17676,
+      "sha256": "a58067022a7eba66a61574f4f72f7d0aa1ec3211f3124fe6b18c25bfa4469b46",
       "source_path": "scripts/mods/BetterInventory/auto_crafter/darktide/panel.lua"
     }
   ],
-  "runtime_tree_sha256": "db38b3ca92b6a9c15ee3c142f3693fceb14b0d663269d3abd730a14561343b99",
+  "runtime_tree_sha256": "32feb93a62e39d96d460197713bfd72655bcc94f72de9b1c2d5b72772d6fed45",
   "version": "2.0.0"
 }
