@@ -39,6 +39,13 @@ FEATURE_COMPOSITION_PATH = (
     / "BetterInventory"
     / "BetterInventory_feature_composition.lua"
 )
+FEATURE_SORTING_PATH = (
+    PROJECT_ROOT
+    / "scripts"
+    / "mods"
+    / "BetterInventory"
+    / "BetterInventory_feature_sorting.lua"
+)
 
 
 def main() -> None:
@@ -244,6 +251,10 @@ def main() -> None:
                     return TestFeatureComposition
                 end
 
+                if string.find(path, "BetterInventory_feature_sorting", 1, true) then
+                    return TestFeatureSorting
+                end
+
                 return TestCurioValues
             end,
         }
@@ -290,6 +301,11 @@ def main() -> None:
         name=str(FEATURE_COMPOSITION_PATH),
     )
     lua.globals().TestFeatureComposition = feature_composition
+    feature_sorting = lua.execute(
+        FEATURE_SORTING_PATH.read_text(encoding="utf-8"),
+        name=str(FEATURE_SORTING_PATH),
+    )
+    lua.globals().TestFeatureSorting = feature_sorting
     features = lua.execute(
         FEATURES_PATH.read_text(encoding="utf-8"), name=str(FEATURES_PATH)
     )

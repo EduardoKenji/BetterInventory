@@ -50,6 +50,33 @@ if type(Features._composition) ~= "table" or type(Features._composition.invalida
 	}
 end
 
+Features._sorting = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_feature_sorting")
+
+if type(Features._sorting) ~= "table" or type(Features._sorting.is_enabled) ~= "function" or type(Features._sorting.set_integration) ~= "function" then
+	Features._sorting = {
+		is_enabled = function()
+			return false
+		end,
+		mod = function()
+			return nil
+		end,
+		definitions = function()
+			return nil
+		end,
+		set_invalidation = function()
+		end,
+		native_option_start = function(view)
+			return #(view and view._sort_options or {}) + 1
+		end,
+		set_integration = function()
+			return false
+		end,
+		preserve_native_options = function()
+			return false
+		end,
+	}
+end
+
 Features.set_diagnostics_provider = function(provider)
 	Features._diagnostics = provider
 end
@@ -66,8 +93,10 @@ Features.invalidate_view_composition = function(view)
 	return Features._composition.invalidate_view(view)
 end
 
+Features._sorting.set_invalidation(Features.invalidate_view_composition)
+
 Features.composition_inputs_changed = function(view, slot_kind)
-	return Features._composition.inputs_changed(view, slot_kind, item_sorting_mod)
+	return Features._composition.inputs_changed(view, slot_kind, Features._sorting.mod())
 end
 
 Features._contracts = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_contracts")
@@ -258,39 +287,9 @@ local perfect_roll_cache = setmetatable({}, {
 local curio_acquisition_provider
 local lantern_mod
 local lantern_overlay
-local item_sorting_mod
-local item_sorting_definitions
-local ITEM_SORTING_INVENTORY_VANILLA_SETTINGS = {
-	"enable_vanilla_level_desc",
-	"enable_vanilla_level_asc",
-	"enable_vanilla_rarity_desc",
-	"enable_vanilla_rarity_asc",
-	"enable_vanilla_name_asc",
-	"enable_vanilla_name_desc",
-}
-local ITEM_SORTING_STORE_VANILLA_SETTINGS = {
-	"enable_vanilla_level_desc",
-	"enable_vanilla_level_asc",
-	"enable_vanilla_rarity_desc",
-	"enable_vanilla_rarity_asc",
-	"enable_vanilla_price_asc",
-	"enable_vanilla_price_desc",
-	"enable_vanilla_name_asc",
-	"enable_vanilla_name_desc",
-}
 
 local function item_sorting_is_enabled()
-	if not item_sorting_mod then
-		return false
-	end
-
-	if type(item_sorting_mod.is_enabled) ~= "function" then
-		return true
-	end
-
-	local success, enabled = pcall(item_sorting_mod.is_enabled, item_sorting_mod)
-
-	return success and enabled == true
+	return Features._sorting.is_enabled()
 end
 
 Features.set_curio_acquisition_provider = function(provider)
@@ -2350,32 +2349,7 @@ local function panel_checkbox_entry(mod, layout, view, control_id, setting_id, l
 end
 
 local function item_sorting_custom_option_start(view)
-	local sort_options = view and view._sort_options or {}
-
-	if not item_sorting_is_enabled() or type(item_sorting_mod.get) ~= "function" then
-		return #sort_options + 1
-	end
-
-	local view_type = is_armoury_sort_view(view) and "store" or "inventory"
-	local definition_group = item_sorting_definitions and item_sorting_definitions.customized_vanilla_methods
-	local vanilla_definitions = definition_group and definition_group[view_type]
-
-	if type(vanilla_definitions) == "table" then
-		return math.min(#vanilla_definitions + 1, #sort_options + 1)
-	end
-
-	local setting_ids = view_type == "store" and ITEM_SORTING_STORE_VANILLA_SETTINGS or ITEM_SORTING_INVENTORY_VANILLA_SETTINGS
-	local native_count = 0
-
-	for index = 1, #setting_ids do
-		local success, enabled = pcall(item_sorting_mod.get, item_sorting_mod, setting_ids[index])
-
-		if success and enabled == true then
-			native_count = native_count + 1
-		end
-	end
-
-	return math.min(native_count + 1, #sort_options + 1)
+	return Features._sorting.native_option_start(view, is_armoury_sort_view)
 end
 
 local function item_sorting_options_signature(view)
@@ -2885,81 +2859,11 @@ Features.set_lantern_integration = function(_, integration_mod)
 end
 
 Features.set_item_sorting_integration = function(integration_mod)
-	item_sorting_mod = type(integration_mod) == "table" and integration_mod or nil
-	item_sorting_definitions = nil
-	Features.invalidate_all_view_composition()
-
-	if item_sorting_mod and type(item_sorting_mod.io_dofile) == "function" then
-		local success, definitions = pcall(item_sorting_mod.io_dofile, item_sorting_mod, "ItemSorting/scripts/mods/ItemSorting/ItemSorting_definitions")
-
-		if success and type(definitions) == "table" then
-			item_sorting_definitions = definitions
-		end
-	end
-
-	return item_sorting_is_enabled()
+	return Features._sorting.set_integration(integration_mod, Features.invalidate_all_view_composition)
 end
 
 Features.preserve_item_sorting_native_options = function(view, selected_display_name)
-	if not item_sorting_is_enabled() or type(item_sorting_definitions) ~= "table" or not view then
-		return false
-	end
-
-	local view_type = is_armoury_sort_view(view) and "store" or view.__class_name == "InventoryWeaponsView" and "inventory" or nil
-	local vanilla_group = item_sorting_definitions.customized_vanilla_methods
-	local custom_group = item_sorting_definitions.modded_methods
-	local vanilla_definitions = view_type and vanilla_group and vanilla_group[view_type]
-	local custom_definitions = view_type and custom_group and custom_group[view_type]
-
-	if type(vanilla_definitions) ~= "table" or type(custom_definitions) ~= "table" then
-		return false
-	end
-
-	local options = {}
-	local function append_option(definition)
-		if type(definition) == "table" and type(definition.sort_function) == "function" then
-			options[#options + 1] = {
-				display_name = definition.display_name,
-				sort_function = definition.sort_function,
-			}
-		end
-	end
-
-	for index = 1, #vanilla_definitions do
-		append_option(vanilla_definitions[index])
-	end
-
-	for index = 1, #custom_definitions do
-		append_option(custom_definitions[index])
-	end
-
-	view._sort_options = options
-	view._better_inventory_item_sorting_signature_cache = nil
-	view._better_inventory_item_sorting_signature_poll = 0
-	Features.invalidate_view_composition(view)
-	local selected_index = 1
-
-	if selected_display_name ~= nil then
-		for index = 1, #options do
-			if options[index].display_name == selected_display_name then
-				selected_index = index
-				break
-			end
-		end
-	end
-
-	view._selected_sort_option_index = selected_index
-	view._selected_sort_option = options[selected_index]
-
-	local item_grid = view._item_grid
-
-	if item_grid and type(item_grid.setup_sort_button) == "function" and type(view.cb_on_sort_button_pressed) == "function" then
-		item_grid:setup_sort_button(options, function(...)
-			return view:cb_on_sort_button_pressed(...)
-		end)
-	end
-
-	return true
+	return Features._sorting.preserve_native_options(view, selected_display_name, is_armoury_sort_view, Features.invalidate_view_composition)
 end
 
 Features.release_lantern_inventory_section = function(view)
@@ -3787,7 +3691,8 @@ Features.update_armoury_native_sort_panel = function(view)
 		return false
 	end
 
-	local item_sorting_enabled_flag = item_sorting_mod and item_sorting_mod.enabled
+	local sorting_mod = Features._sorting.mod()
+	local item_sorting_enabled_flag = sorting_mod and sorting_mod.enabled
 
 	if view._better_inventory_composition_item_sorting_enabled ~= item_sorting_enabled_flag then
 		Features.invalidate_view_composition(view)
@@ -6058,7 +5963,8 @@ Features.update_inventory_sort_toggle = function(mod, layout, view)
 		return
 	end
 
-	local item_sorting_enabled_flag = item_sorting_mod and item_sorting_mod.enabled
+	local sorting_mod = Features._sorting.mod()
+	local item_sorting_enabled_flag = sorting_mod and sorting_mod.enabled
 
 	if view._better_inventory_composition_item_sorting_enabled ~= item_sorting_enabled_flag then
 		Features.invalidate_view_composition(view)
