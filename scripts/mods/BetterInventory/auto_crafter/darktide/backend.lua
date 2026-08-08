@@ -297,6 +297,100 @@ store_item_preview = function(description)
 	return ok and item or nil
 end
 
+local function canonical_master_item_name(value)
+	if type(value) == "string" then
+		return value
+	end
+
+	return safe_member(value, "name") or safe_member(value, "id")
+end
+
+local function summarize_perk_catalog(metadata)
+	local ranks = safe_member(metadata, "perks") or {}
+	local catalog = {}
+
+	if type(ranks) ~= "table" then
+		return catalog
+	end
+
+	for rank, rank_data in pairs(ranks) do
+		local tier = tonumber(safe_member(rank_data, "rarity") or safe_member(rank_data, "rank") or rank)
+		local perks = safe_member(rank_data, "perks") or rank_data
+
+		if type(perks) == "table" then
+			for _, perk in pairs(perks) do
+				local name = canonical_master_item_name(perk)
+
+				if name ~= nil then
+					catalog[#catalog + 1] = {
+						id = tostring(name),
+						tier = tier,
+					}
+				end
+			end
+		end
+	end
+
+	table.sort(catalog, function (left, right)
+		if left.tier == right.tier then
+			return left.id < right.id
+		end
+
+		return (left.tier or 0) < (right.tier or 0)
+	end)
+
+	return catalog
+end
+
+local function summarize_blessing_catalog(sticker_book)
+	local catalog = {}
+
+	if type(sticker_book) ~= "table" then
+		return catalog
+	end
+
+	for trait_name, statuses in pairs(sticker_book) do
+		local valid_master_item = false
+
+		if type(MasterItems) == "table" and type(MasterItems.get_item) == "function" then
+			local ok, item = pcall(MasterItems.get_item, trait_name)
+			valid_master_item = ok and item ~= nil
+		end
+
+		if valid_master_item then
+			local tiers = {}
+
+			if type(statuses) == "table" then
+				for tier, status in pairs(statuses) do
+					local numeric_tier = tonumber(tier)
+
+					if numeric_tier ~= nil and status ~= "invalid" then
+						tiers[#tiers + 1] = {
+							status = tostring(status),
+							tier = numeric_tier,
+						}
+					end
+				end
+			end
+
+			table.sort(tiers, function (left, right)
+				return left.tier < right.tier
+			end)
+
+			catalog[#catalog + 1] = {
+				id = tostring(trait_name),
+				tiers = tiers,
+			}
+		end
+	end
+
+	table.sort(catalog, function (left, right)
+		return left.id < right.id
+	end)
+
+	return catalog
+end
+
 local function summarize_item(gear, gear_id)
 	local item = item_instance(gear, gear_id)
 
@@ -522,6 +616,56 @@ function Backend.new(dependencies)
 		end
 
 		return self:_mutate("mastery", "claim_levels_by_new_exp", mastery_data, added_xp)
+	end
+
+	function backend:discover_weapon_catalog(offer)
+		if type(offer) ~= "table" or offer.master_id == nil then
+			return rejected("selected weapon master item unavailable for trait discovery")
+		end
+
+		if type(MasterItems) ~= "table" or type(MasterItems.get_item) ~= "function" then
+			return rejected("master item service unavailable for trait discovery")
+		end
+
+		local item_ok, master_item = pcall(MasterItems.get_item, offer.master_id)
+
+		if not item_ok or not master_item then
+			return rejected("selected weapon master item could not be resolved")
+		end
+
+		local item_name = safe_member(master_item, "name") or offer.master_id
+		local parent_pattern = offer.parent_pattern or safe_member(master_item, "parent_pattern")
+		local category_ok, trait_category = pcall(Items.trait_category, master_item)
+
+		if not category_ok or trait_category == nil then
+			return rejected("selected weapon trait category unavailable")
+		end
+
+		return self:_read("crafting", "get_item_crafting_metadata", item_name):next(function (metadata)
+			return self:_read("mastery", "get_mastery_by_pattern", parent_pattern):next(function (mastery_data)
+				return self:_read("crafting", "trait_sticker_book", trait_category):next(function (sticker_book)
+					local perks = summarize_perk_catalog(metadata)
+					local blessings = summarize_blessing_catalog(sticker_book)
+
+					return {
+						available = true,
+						blessing_count = #blessings,
+						blessings = blessings,
+						item_name = item_name,
+						mastery = {
+							claimed_level = tonumber(safe_member(mastery_data, "claimed_level")),
+							current_xp = tonumber(safe_member(mastery_data, "current_xp")),
+							mastery_id = safe_member(mastery_data, "mastery_id") or parent_pattern,
+							mastery_level = tonumber(safe_member(mastery_data, "mastery_level")),
+						},
+						parent_pattern = parent_pattern,
+						perk_count = #perks,
+						perks = perks,
+						trait_category = trait_category,
+					}
+				end)
+			end)
+		end)
 	end
 
 	return backend

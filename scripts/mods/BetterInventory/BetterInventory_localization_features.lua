@@ -690,7 +690,7 @@ local localization = {
 		en = "Perk target 2",
 	},
 	auto_crafter_perk_target_tooltip = {
-		en = "Placeholder policy until the game-data catalogue can populate weapon-compatible perk names. Keep current performs no replacement; Auto-select is stored but not executed.",
+		en = "Auto-select reads the currently selected Brunt weapon's compatible perk catalogue. Target replacement remains backend-inert until its guarded crafting phase is enabled.",
 	},
 	auto_crafter_blessing_1_target = {
 		en = "Blessing target 1",
@@ -699,13 +699,28 @@ local localization = {
 		en = "Blessing target 2",
 	},
 	auto_crafter_blessing_target_tooltip = {
-		en = "Placeholder policy until weapon-compatible blessing discovery and mastery-point allocation are implemented. This value cannot dispatch backend work.",
+		en = "Auto-select reads the selected weapon family's valid trait sticker-book catalogue. Mastery-point allocation and replacement remain backend-inert until their guarded phases are enabled.",
 	},
 	auto_crafter_target_keep = {
 		en = "Keep current",
 	},
 	auto_crafter_target_auto = {
-		en = "Auto-select (planned)",
+		en = "Auto-select",
+	},
+	auto_crafter_target_auto_discovered = {
+		en = "Auto-select",
+	},
+	auto_crafter_target_auto_pending = {
+		en = "Auto-select (waiting for discovery)",
+	},
+	auto_crafter_trait_catalog_ready = {
+		en = "Perks and blessings discovered",
+	},
+	auto_crafter_trait_catalog_pending = {
+		en = "Discovering selected weapon",
+	},
+	auto_crafter_trait_catalog_failed = {
+		en = "Discovery unavailable",
 	},
 	auto_crafter_output_group = {
 		en = "Final item handling (planned)",

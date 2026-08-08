@@ -736,7 +736,35 @@ function Panel.new(dependencies)
 	end
 
 	function self:_target_policy_text(setting_id)
-		return self:_setting(setting_id, "keep") == "auto" and localize("auto_crafter_target_auto", "Auto-select (planned)") or localize("auto_crafter_target_keep", "Keep current")
+		local value = self:_setting(setting_id, "keep")
+
+		if value ~= "auto" then
+			return value == "keep" and localize("auto_crafter_target_keep", "Keep current") or tostring(value)
+		end
+
+		local catalog = self._plan and self._plan.trait_catalog
+		local catalog_kind = string.find(setting_id, "blessing", 1, true) and "blessings" or "perks"
+		local count = catalog and catalog.available == true and tonumber(catalog[catalog_kind == "perks" and "perk_count" or "blessing_count"])
+
+		if count ~= nil then
+			return localize("auto_crafter_target_auto_discovered", "Auto-select") .. " (" .. tostring(count) .. " discovered)"
+		end
+
+		return localize("auto_crafter_target_auto_pending", "Auto-select (waiting for discovery)")
+	end
+
+	function self:_trait_catalog_text()
+		local catalog = self._plan and self._plan.trait_catalog
+
+		if catalog and catalog.available == true then
+			return localize("auto_crafter_trait_catalog_ready", "Perks and blessings discovered") .. " (" .. tostring(tonumber(catalog.perk_count) or 0) .. " | " .. tostring(tonumber(catalog.blessing_count) or 0) .. ")"
+		end
+
+		if catalog and catalog.reason then
+			return localize("auto_crafter_trait_catalog_failed", "Discovery unavailable")
+		end
+
+		return localize("auto_crafter_trait_catalog_pending", "Discovering selected weapon")
 	end
 
 	function self:_mutation_gate_text()
@@ -1017,7 +1045,7 @@ function Panel.new(dependencies)
 			end)
 		end
 
-		table.insert(entries, self:_entry(localize("auto_crafter_panel_trait_targets", "Perk and blessing targets"), localize("auto_crafter_panel_ui_plan", "UI PLAN"), {
+		table.insert(entries, self:_entry(localize("auto_crafter_panel_trait_targets", "Perk and blessing targets"), self:_trait_catalog_text(), {
 			selectable = true,
 			section_header = true,
 			section_id = SECTION_TRAITS,

@@ -246,6 +246,9 @@ def validate_auto_crafter_mutation_boundaries() -> int:
         "MasterItems.get_store_item_instance",
         "summarize_base_stats",
         "base_stats = base_stats",
+        "discover_weapon_catalog",
+        "get_item_crafting_metadata",
+        "trait_sticker_book",
     )
     missing_backend = [token for token in backend_contract if token not in backend_source]
 
@@ -260,11 +263,23 @@ def validate_auto_crafter_mutation_boundaries() -> int:
         "extraction_contains_gear_id",
         "plan.resolved_dump_stat",
         "auto dump-stat discovery unavailable",
+        "_schedule_catalog",
+        "catalog_discovery_complete",
     )
     missing_controller = [token for token in controller_contract if token not in controller_source]
 
     if missing_controller:
         raise SystemExit("Auto Crafter controller guard contract missing: " + ", ".join(missing_controller))
+
+    trait_catalog_contract = (
+        "_trait_catalog_text",
+        "auto_crafter_target_auto_discovered",
+        "trait_catalog",
+    )
+    missing_trait_catalog = [token for token in trait_catalog_contract if token not in panel_source]
+
+    if missing_trait_catalog:
+        raise SystemExit("Auto Crafter trait catalogue UI contract missing: " + ", ".join(missing_trait_catalog))
 
     return len(lua_paths)
 

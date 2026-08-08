@@ -197,6 +197,7 @@ local function normalize_config(config)
 		max_purchases = number_or(config.max_purchases, DEFAULTS.max_purchases),
 		best_candidate_fallback = config.best_candidate_fallback == true,
 		request_mode = request_mode,
+		trait_catalog = config.trait_catalog,
 		target_offer = config.target_offer,
 	}
 end
@@ -349,6 +350,7 @@ function Planner.build(snapshot, config)
 		resolved_dump_stat = resolved_dump_stat,
 		dump_stat_candidates = dump_stat_candidates,
 		dump_stat_resolution = dump_stat_resolution,
+		trait_catalog = normalized.trait_catalog,
 		dump_target = normalized.dump_target,
 		cap_by_dockets = normalized.cap_by_dockets,
 		best_candidate_fallback = normalized.best_candidate_fallback,

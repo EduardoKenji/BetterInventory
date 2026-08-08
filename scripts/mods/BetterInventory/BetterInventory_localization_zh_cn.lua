@@ -722,7 +722,12 @@ localization.auto_crafter_blessing_1_target = "祝福目标 1"
 localization.auto_crafter_blessing_2_target = "祝福目标 2"
 localization.auto_crafter_blessing_target_tooltip = "在兼容祝福发现和精通点分配实现前使用的占位策略。此值不能发送后端操作。"
 localization.auto_crafter_target_keep = "保留当前"
-localization.auto_crafter_target_auto = "自动选择（计划）"
+localization.auto_crafter_target_auto = "自动选择"
+localization.auto_crafter_target_auto_discovered = "自动选择（已发现 %d 项）"
+localization.auto_crafter_target_auto_pending = "自动选择（等待发现）"
+localization.auto_crafter_trait_catalog_ready = "专长：%d | 祝福：%d"
+localization.auto_crafter_trait_catalog_pending = "正在发现所选武器"
+localization.auto_crafter_trait_catalog_failed = "发现不可用"
 localization.auto_crafter_output_group = "最终物品处理（计划）"
 localization.auto_crafter_favorite_result = "收藏最终武器"
 localization.auto_crafter_favorite_result_tooltip = "目前仅为界面规划选项。最终装备 ID 稳定后才会执行收藏。"
@@ -759,6 +764,11 @@ localization.auto_crafter_panel_name_provider_later = "命名提供器连接尚�
 localization.auto_crafter_panel_advanced = "高级与安全"
 localization.auto_crafter_value_on = "开"
 localization.auto_crafter_value_off = "关"
+
+-- Counts are composed by the panel so localization values remain valid with
+-- the layout verifier and do not require positional string.format arguments.
+localization.auto_crafter_target_auto_discovered = "自动选择"
+localization.auto_crafter_trait_catalog_ready = "已发现专长和祝福"
 
 
 return localization

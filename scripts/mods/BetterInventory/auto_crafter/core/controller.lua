@@ -165,6 +165,11 @@ function Controller.new(dependencies)
 		_mastery_poll_elapsed = 0,
 		_mastery_poll_attempts = 0,
 		_mastery_poll_wait = DEFAULT_MASTERY_POLL_DELAY,
+		_catalog = nil,
+		_catalog_generation = 0,
+		_catalog_inflight = false,
+		_catalog_key = nil,
+		_catalog_promise = nil,
 		_selected_target_key = nil,
 		_selected_native_key = nil,
 		_planner_signature = nil,
@@ -239,6 +244,7 @@ function Controller.new(dependencies)
 			max_purchases = setting("auto_crafter_max_purchases", 100),
 			best_candidate_fallback = setting("auto_crafter_best_candidate_fallback", false),
 			request_mode = setting("auto_crafter_request_mode", "sequential"),
+			trait_catalog = self._catalog,
 			target_offer = nil,
 		}
 	end
@@ -437,6 +443,144 @@ function Controller.new(dependencies)
 		self._probe_promise = nil
 	end
 
+	local function cancel_catalog()
+		local promise = self._catalog_promise
+
+		if promise and type(promise.cancel) == "function" then
+			pcall(promise.cancel, promise)
+		end
+
+		self._catalog_generation = self._catalog_generation + 1
+		self._catalog_inflight = false
+		self._catalog_promise = nil
+	end
+
+	function self:_schedule_catalog(reason)
+		if not self._snapshot or not self._view_is_valid then
+			return false
+		end
+
+		local target = self:_selected_offer_summary()
+		local key = offer_key(target)
+
+		if not key then
+			cancel_catalog()
+			self._catalog = nil
+			self._catalog_key = nil
+			self:_refresh_plan("catalog_target_missing")
+
+			return false
+		end
+
+		if key == self._catalog_key and (self._catalog_inflight or self._catalog) then
+			return true
+		end
+
+		cancel_catalog()
+		self._catalog = nil
+		self._catalog_key = key
+		self._catalog_inflight = true
+		self._phase = "trait_discovery"
+		report("catalog_discovery_started", {
+			reason = reason or "target_changed",
+			target = target,
+		})
+
+		local backend = self._backend
+
+		if not backend or type(backend.discover_weapon_catalog) ~= "function" then
+			self._catalog_inflight = false
+			self._catalog = {
+				available = false,
+				reason = "weapon trait discovery adapter unavailable",
+			}
+			self:_refresh_plan("catalog_failed")
+			report("catalog_discovery_failed", {
+				error = self._catalog.reason,
+			})
+
+			return false
+		end
+
+		local generation = self._catalog_generation
+		local call_ok, promise = safe_call(backend.discover_weapon_catalog, backend, target)
+
+		if not call_ok or not promise or type(promise.next) ~= "function" or type(promise.catch) ~= "function" then
+			self._catalog_inflight = false
+			self._catalog = {
+				available = false,
+				reason = call_ok and "backend returned no Promise" or tostring(promise),
+			}
+			self:_refresh_plan("catalog_failed")
+			report("catalog_discovery_failed", {
+				error = self._catalog.reason,
+			})
+
+			return false
+		end
+
+		self._catalog_promise = promise
+
+		local chain_ok, chain = pcall(function ()
+			return promise:next(function (catalog)
+				if generation ~= self._catalog_generation or not self._view_is_valid or key ~= offer_key(self:_selected_offer_summary()) then
+					return catalog
+				end
+
+				self._catalog_inflight = false
+				self._catalog_promise = nil
+				self._catalog = type(catalog) == "table" and catalog or {
+					available = false,
+					reason = "weapon trait discovery returned malformed data",
+				}
+				self._phase = self._catalog.available == true and "probe_complete" or "trait_discovery_failed"
+				self:_refresh_plan("catalog_complete")
+				report("catalog_discovery_complete", {
+					catalog = self._catalog,
+					target = target,
+				})
+
+				return catalog
+			end):catch(function (error_value)
+				if generation ~= self._catalog_generation then
+					return error_value
+				end
+
+				self._catalog_inflight = false
+				self._catalog_promise = nil
+				self._catalog = {
+					available = false,
+					reason = tostring(error_value),
+				}
+				self._phase = "trait_discovery_failed"
+				self:_refresh_plan("catalog_failed")
+				report("catalog_discovery_failed", {
+					error = self._catalog.reason,
+					target = target,
+				})
+
+				return error_value
+			end)
+		end)
+
+		if chain_ok then
+			self._catalog_promise = chain
+		else
+			self._catalog_inflight = false
+			self._catalog_promise = nil
+			self._catalog = {
+				available = false,
+				reason = tostring(chain),
+			}
+			self:_refresh_plan("catalog_failed")
+			report("catalog_discovery_failed", {
+				error = self._catalog.reason,
+			})
+		end
+
+		return chain_ok
+	end
+
 	function self:_schedule_probe(reason)
 		if not probe_enabled() or not self._view_is_valid or self._probe_inflight then
 			return false
@@ -467,6 +611,7 @@ function Controller.new(dependencies)
 		self._last_probe_at = type(self._clock.now) == "function" and self._clock:now() or nil
 		self._probe_count = self._probe_count + 1
 		self:_refresh_plan("probe_complete")
+		self:_schedule_catalog("probe_complete")
 		report("probe_complete", snapshot)
 	end
 
@@ -1003,6 +1148,7 @@ function Controller.new(dependencies)
 
 		if self._active_view ~= view then
 			cancel_probe()
+			cancel_catalog()
 			invalidate_generation()
 			self._search = nil
 			self._mastery = nil
@@ -1010,6 +1156,8 @@ function Controller.new(dependencies)
 			self._active_view = view
 			self._view_is_valid = true
 			self._phase = "view_ready"
+			self._catalog = nil
+			self._catalog_key = nil
 			self._plan = nil
 			self._selected_target_key = nil
 			self._selected_native_key = nil
@@ -1026,6 +1174,7 @@ function Controller.new(dependencies)
 
 		invalidate_generation()
 		cancel_probe()
+		cancel_catalog()
 		self._active_view = nil
 		self._view_is_valid = false
 		self._phase = "idle"
@@ -1033,6 +1182,8 @@ function Controller.new(dependencies)
 		self._plan = nil
 		self._search = nil
 		self._mastery = nil
+		self._catalog = nil
+		self._catalog_key = nil
 		self._last_purchased = nil
 		self._selected_target_key = nil
 		self._selected_native_key = nil
@@ -1044,6 +1195,7 @@ function Controller.new(dependencies)
 	function self:on_context_exit(reason)
 		invalidate_generation()
 		cancel_probe()
+		cancel_catalog()
 		self._active_view = nil
 		self._view_is_valid = false
 		self._phase = "context_exit"
@@ -1051,6 +1203,8 @@ function Controller.new(dependencies)
 		self._plan = nil
 		self._search = nil
 		self._mastery = nil
+		self._catalog = nil
+		self._catalog_key = nil
 		self._last_purchased = nil
 		self._selected_target_key = nil
 		self._selected_native_key = nil
@@ -1068,6 +1222,7 @@ function Controller.new(dependencies)
 		if not enabled() then
 			invalidate_generation()
 			cancel_probe()
+			cancel_catalog()
 			if self._search then
 				self._search.running = false
 			end
@@ -1150,6 +1305,7 @@ function Controller.new(dependencies)
 			if selected_key ~= self._selected_native_key then
 				self._selected_native_key = selected_key
 				self:_refresh_plan("target_changed")
+				self:_schedule_catalog("target_changed")
 			end
 		end
 
@@ -1174,6 +1330,8 @@ function Controller.new(dependencies)
 			last_error = self._last_error,
 			data = self._snapshot,
 			plan = self._plan,
+			catalog = self._catalog,
+			catalog_inflight = self._catalog_inflight,
 			last_purchased = self._last_purchased,
 			search = self._search,
 			mastery = self._mastery,
@@ -1197,6 +1355,7 @@ function Controller.new(dependencies)
 	function self:shutdown()
 		invalidate_generation()
 		cancel_probe()
+		cancel_catalog()
 		self._active_view = nil
 		self._view_is_valid = false
 		self._phase = "shutdown"

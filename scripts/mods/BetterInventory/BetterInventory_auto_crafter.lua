@@ -93,6 +93,18 @@ local function format_plan(plan)
 	return string.format("%s | %s | %s", preflight, estimate, plan.mode_note or "sequential requests")
 end
 
+local function format_catalog(catalog)
+	if not catalog or catalog.available ~= true then
+		return "Weapon trait discovery unavailable: " .. tostring(catalog and catalog.reason or "unknown reason")
+	end
+
+	return string.format(
+		"Selected weapon catalogue | Perks %s | Blessings %s",
+		tostring(catalog.perk_count or 0),
+		tostring(catalog.blessing_count or 0)
+	)
+end
+
 local function format_candidate(candidate)
 	if not candidate then
 		return "candidate unavailable"
@@ -130,6 +142,28 @@ local function reporter(ui_panel)
 
 				log("error", "Auto Crafter Helper read-only probe failed: " .. tostring(payload and payload.error))
 				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), string.format("%s: %s", localize("auto_crafter_probe_failed", "Read-only probe failed"), tostring(payload and payload.error)))
+			elseif kind == "catalog_discovery_started" then
+				if ui_panel then
+					ui_panel:set_phase("trait_discovery")
+				end
+
+				log("info", "Auto Crafter Helper selected-weapon perk/blessing discovery started.")
+			elseif kind == "catalog_discovery_complete" then
+				if ui_panel then
+					ui_panel:set_phase("probe_complete")
+				end
+
+				log("info", "Auto Crafter Helper " .. format_catalog(payload and payload.catalog))
+				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), format_catalog(payload and payload.catalog))
+			elseif kind == "catalog_discovery_failed" then
+				if ui_panel then
+					ui_panel:set_phase("trait_discovery_failed")
+				end
+
+				local discovery_error = payload and payload.error
+				local message = discovery_error and "Weapon trait discovery unavailable: " .. tostring(discovery_error) or format_catalog(payload and payload.catalog)
+				log("error", "Auto Crafter Helper " .. message)
+				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), message)
 			elseif kind == "plan_preview" then
 				log("info", "Auto Crafter Helper read-only plan preview: " .. format_plan(payload and payload.plan))
 				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), format_plan(payload and payload.plan))
