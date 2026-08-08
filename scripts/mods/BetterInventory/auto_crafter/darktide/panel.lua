@@ -337,6 +337,8 @@ function Panel.new(dependencies)
 			entry.refresh = function(widget)
 				widget.content.selected = self._selected_offer_key ~= nil and self._selected_offer_key == offer_selection_key(options.offer)
 			end
+		elseif options.refresh then
+			entry.refresh = options.refresh
 		end
 
 		return entry
@@ -404,8 +406,6 @@ function Panel.new(dependencies)
 
 			return false
 		end
-		self._layout_pending = true
-
 		if type(self._select_offer) ~= "function" then
 			return false
 		end
@@ -439,7 +439,13 @@ function Panel.new(dependencies)
 			self:_entry(localize("auto_crafter_panel_offers", "Offers"), value_text(store.offer_count, "?")),
 			self:_entry(localize("auto_crafter_panel_wallet", "Wallet"), string.format("%s / %s / %s", value_text(wallet_amount(snapshot, "credits")), value_text(wallet_amount(snapshot, "plasteel")), value_text(wallet_amount(snapshot, "diamantine")))),
 			self:_entry(localize("auto_crafter_panel_gear", "Gear"), value_text(snapshot and snapshot.gear and snapshot.gear.item_count, "?")),
-			self:_entry(localize("auto_crafter_panel_target", "Target"), selected),
+			self:_entry(localize("auto_crafter_panel_target", "Target"), selected, {
+				refresh = function(widget)
+					local _, current_weapon = self:_selected_offers(self._snapshot)
+
+					widget.content.detail = current_weapon or localize("auto_crafter_panel_no_target", "no weapon selected")
+				end,
+			}),
 			self:_entry(localize("auto_crafter_panel_offer_list", "Weapon offers"), string.format("%s / %s", tostring(#offers), value_text(store.offer_count, "?")), {
 				header = true,
 			}),
@@ -569,7 +575,6 @@ function Panel.new(dependencies)
 			self._selected_offer_key = selected_key
 			self._selected_offer_id = selected_offer and selected_offer.offer_id
 			self._selected_offer_master_id = selected_offer and selected_offer.master_id
-			self._layout_pending = true
 		end
 
 		if self._layout_pending then
