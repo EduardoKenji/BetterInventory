@@ -20,6 +20,7 @@
     "BetterInventory_feature_domains.lua": {"minimum_percent": 70.0, "risk": "high"},
     "BetterInventory_feature_sorting.lua": {"minimum_percent": 65.0, "risk": "high"},
     "BetterInventory_panel_definitions.lua": {"minimum_percent": 60.0, "risk": "high"},
+    "BetterInventory_panel_runtime.lua": {"minimum_percent": 65.0, "risk": "high"},
     "BetterInventory_discard_automatic.lua": {"minimum_percent": 60.0, "risk": "critical"},
     "BetterInventory_discard_policy.lua": {"minimum_percent": 65.0, "risk": "critical"},
     "BetterInventory_discard_transaction.lua": {"minimum_percent": 65.0, "risk": "critical"},

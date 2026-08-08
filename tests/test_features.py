@@ -74,6 +74,13 @@ PANEL_DEFINITIONS_PATH = (
     / "BetterInventory"
     / "BetterInventory_panel_definitions.lua"
 )
+PANEL_RUNTIME_PATH = (
+    PROJECT_ROOT
+    / "scripts"
+    / "mods"
+    / "BetterInventory"
+    / "BetterInventory_panel_runtime.lua"
+)
 
 
 def main() -> None:
@@ -287,6 +294,10 @@ def main() -> None:
                     return TestPanelDefinitions
                 end
 
+                if string.find(path, "BetterInventory_panel_runtime", 1, true) then
+                    return TestPanelRuntime
+                end
+
                 if string.find(path, "BetterInventory_discard_policy", 1, true) then
                     return TestDiscardPolicy
                 end
@@ -363,6 +374,11 @@ def main() -> None:
         name=str(PANEL_DEFINITIONS_PATH),
     )
     lua.globals().TestPanelDefinitions = panel_definitions
+    panel_runtime = lua.execute(
+        PANEL_RUNTIME_PATH.read_text(encoding="utf-8"),
+        name=str(PANEL_RUNTIME_PATH),
+    )
+    lua.globals().TestPanelRuntime = panel_runtime
     policy = lua.execute(
         POLICY_PATH.read_text(encoding="utf-8"), name=str(POLICY_PATH)
     )
