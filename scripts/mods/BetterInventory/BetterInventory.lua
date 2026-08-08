@@ -47,6 +47,29 @@ if type(Layout) ~= "table" then
 	return
 end
 
+local CharacterOverview = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_character_overview"), "BetterInventory_character_overview.lua", {
+	content_revision = function()
+		return nil, nil, nil, nil, nil, -1, -1, -1, -1
+	end,
+	identity = function()
+		return
+	end,
+	changed = function(previous_item, current_item)
+		return previous_item ~= current_item
+	end,
+	build_model = function(item, category, options)
+		return {
+			category = category,
+			empty = item == nil,
+			selected = options and options.selected == true or false,
+			widget_type = options and options.widget_type,
+		}
+	end,
+	clear_derived_content = function()
+		return false
+	end,
+})
+
 local Capabilities = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_contracts")
 
 if type(Capabilities) ~= "table" or type(Capabilities.registry_refresh_required) ~= "function" then
@@ -271,62 +294,17 @@ local function mark_character_overview_requirement_met(widget)
 end
 
 local function character_overview_item_content_revision(item)
-	local explicit_revision = item.content_revision or item.item_revision or item.revision or item.version
-	local display_name = item.name or item.display_name or item.item_name
-	local icon = item.icon or item.icon_name or item.icon_material
-	local level = item.item_level or item.level
-	local rarity = item.rarity
-	local traits = type(item.traits) == "table" and #item.traits or -1
-	local perks = type(item.perks) == "table" and #item.perks or -1
-	local properties = type(item.properties) == "table" and #item.properties or -1
-	local stats = type(item.stats) == "table" and #item.stats or -1
-
-	return explicit_revision, display_name, icon, level, rarity, traits, perks, properties, stats
+	return CharacterOverview.content_revision(item)
 end
 
 local function character_overview_item_changed(previous_item, current_item)
-	if previous_item == nil or current_item == nil then
-		return previous_item ~= current_item
-	end
-
-	local previous_gear_id = previous_item.gear_id
-	local current_gear_id = current_item.gear_id
-
-	if previous_gear_id ~= nil or current_gear_id ~= nil then
-		if previous_gear_id ~= current_gear_id then
-			return true
-		end
-	end
-
-	local previous_revision, previous_name, previous_icon, previous_level, previous_rarity, previous_traits, previous_perks, previous_properties, previous_stats = character_overview_item_content_revision(previous_item)
-	local current_revision, current_name, current_icon, current_level, current_rarity, current_traits, current_perks, current_properties, current_stats = character_overview_item_content_revision(current_item)
-
-	return previous_revision ~= current_revision or previous_name ~= current_name or previous_icon ~= current_icon or previous_level ~= current_level or previous_rarity ~= current_rarity or previous_traits ~= current_traits or previous_perks ~= current_perks or previous_properties ~= current_properties or previous_stats ~= current_stats or previous_item ~= current_item
+	return CharacterOverview.changed(previous_item, current_item)
 end
 
 local function reset_character_overview_curio_fit_state(widget)
 	local content = widget and widget.content
 
-	if not content then
-		return
-	end
-
-	content.better_inventory_curio_fit_initialized = nil
-	content.better_inventory_curio_fit_stat_sources = nil
-	content.better_inventory_curio_fit_stat_widths = nil
-	content.better_inventory_curio_fit_name_source = nil
-	content.better_inventory_curio_fit_title_width = nil
-	content.better_inventory_curio_fit_title_font_size = nil
-	content.better_inventory_curio_fit_title_line_limit = nil
-	content.better_inventory_full_display_name = nil
-	content.better_inventory_fitted_curio_name = nil
-	content.better_inventory_curio_fit_normalized_values = nil
-	content.better_inventory_curio_fit_raw_values = nil
-
-	for index = 1, 4 do
-		content["better_inventory_overview_full_curio_stat_" .. index] = nil
-		content["better_inventory_overview_fitted_curio_stat_" .. index] = nil
-	end
+	return CharacterOverview.clear_derived_content(content, 4)
 end
 
 local function configure_character_overview_rarity_strip(blueprint, setting_id)
@@ -2660,11 +2638,14 @@ if ensure_class_method(InventoryView, "_create_entry_widget_from_config") then
 			if blueprint then
 				InventoryViewContentBlueprints[widget_type] = blueprint
 
-				local adapted_config = table.clone(config)
-				adapted_config.widget_type = widget_type
-				adapted_config.item = equipped_item
+			local adapted_config = table.clone(config)
+			adapted_config.widget_type = widget_type
+			adapted_config.item = equipped_item
+			adapted_config.better_inventory_view_model = CharacterOverview.build_model(equipped_item, weapon_kind or "curio", {
+				widget_type = widget_type,
+			})
 
-				return create_widget(adapted_config)
+			return create_widget(adapted_config)
 			end
 		end
 

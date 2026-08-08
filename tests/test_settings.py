@@ -254,6 +254,63 @@ def main() -> None:
 				return false
 			end
 
+			if string.find(path, "BetterInventory_character_overview", 1, true) then
+				return {
+					content_revision = function(item)
+						local explicit_revision = item.content_revision or item.item_revision or item.revision or item.version
+						local display_name = item.name or item.display_name or item.item_name
+						local icon = item.icon or item.icon_name or item.icon_material
+						local level = item.item_level or item.level
+						local rarity = item.rarity
+						local traits = type(item.traits) == "table" and #item.traits or -1
+						local perks = type(item.perks) == "table" and #item.perks or -1
+						local properties = type(item.properties) == "table" and #item.properties or -1
+						local stats = type(item.stats) == "table" and #item.stats or -1
+
+						return explicit_revision, display_name, icon, level, rarity, traits, perks, properties, stats
+					end,
+					changed = function(previous_item, current_item)
+						if previous_item == nil or current_item == nil then
+							return previous_item ~= current_item
+						end
+
+						local previous_gear_id = previous_item.gear_id
+						local current_gear_id = current_item.gear_id
+
+						if previous_gear_id ~= nil or current_gear_id ~= nil then
+							if previous_gear_id ~= current_gear_id then
+								return true
+							end
+						end
+
+						local previous_revision = previous_item.content_revision or previous_item.item_revision or previous_item.revision or previous_item.version
+						local previous_name = previous_item.name or previous_item.display_name or previous_item.item_name
+						local previous_icon = previous_item.icon or previous_item.icon_name or previous_item.icon_material
+						local previous_level = previous_item.item_level or previous_item.level
+						local previous_rarity = previous_item.rarity
+						local previous_traits = type(previous_item.traits) == "table" and #previous_item.traits or -1
+						local previous_perks = type(previous_item.perks) == "table" and #previous_item.perks or -1
+						local previous_properties = type(previous_item.properties) == "table" and #previous_item.properties or -1
+						local previous_stats = type(previous_item.stats) == "table" and #previous_item.stats or -1
+						local current_revision = current_item.content_revision or current_item.item_revision or current_item.revision or current_item.version
+						local current_name = current_item.name or current_item.display_name or current_item.item_name
+						local current_icon = current_item.icon or current_item.icon_name or current_item.icon_material
+						local current_level = current_item.item_level or current_item.level
+						local current_rarity = current_item.rarity
+						local current_traits = type(current_item.traits) == "table" and #current_item.traits or -1
+						local current_perks = type(current_item.perks) == "table" and #current_item.perks or -1
+						local current_properties = type(current_item.properties) == "table" and #current_item.properties or -1
+						local current_stats = type(current_item.stats) == "table" and #current_item.stats or -1
+
+						return previous_revision ~= current_revision or previous_name ~= current_name or previous_icon ~= current_icon or previous_level ~= current_level or previous_rarity ~= current_rarity or previous_traits ~= current_traits or previous_perks ~= current_perks or previous_properties ~= current_properties or previous_stats ~= current_stats
+					end,
+					build_model = function(item, category, options)
+						return {category = category, empty = item == nil, selected = options and options.selected == true or false, widget_type = options and options.widget_type}
+					end,
+					clear_derived_content = function() return true end,
+				}
+			end
+
 			if string.find(path, "BetterInventory_features", 1, true) then
 				if fail_feature_load then
 					return false
