@@ -180,6 +180,7 @@ function AutoCrafter.configure(dependencies)
 
 	panel = Panel and Panel.new({
 		ViewElementGrid = dependencies.ViewElementGrid,
+		get_selected_offer = dependencies.get_selected_offer,
 		localize = function(setting_id)
 			return localize(setting_id, setting_id)
 		end,
@@ -247,6 +248,10 @@ function AutoCrafter.on_setting_changed(setting_id)
 end
 
 function AutoCrafter.update(dt)
+	if panel then
+		panel:update()
+	end
+
 	if controller then
 		controller:update(dt)
 	end

@@ -597,7 +597,13 @@ local localization = {
 		en = "no target selected",
 	},
 	auto_crafter_panel_offer_list = {
-		en = "Weapon offers (click to select)",
+		en = "Weapon offers",
+	},
+	auto_crafter_panel_selected_weapon = {
+		en = "Selected weapon",
+	},
+	auto_crafter_panel_select_weapon = {
+		en = "Select a weapon in Brunt's list.",
 	},
 	auto_crafter_panel_no_offers = {
 		en = "No weapon offers exposed yet.",

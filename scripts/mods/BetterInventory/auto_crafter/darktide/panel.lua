@@ -19,6 +19,18 @@ local function safe_call(fn, ...)
 	return pcall(fn, ...)
 end
 
+local function safe_member(object, key)
+	if type(object) ~= "table" and type(object) ~= "userdata" then
+		return nil
+	end
+
+	local ok, value = pcall(function()
+		return object[key]
+	end)
+
+	return ok and value or nil
+end
+
 local function value_text(value, fallback)
 	if value == nil or value == "" then
 		return fallback or "?"
@@ -214,6 +226,7 @@ function Panel.new(dependencies)
 	dependencies = dependencies or {}
 
 	local self = {
+		_get_selected_offer = dependencies.get_selected_offer,
 		_localize = dependencies.localize,
 		_logger = dependencies.logger,
 		_ViewElementGrid = dependencies.ViewElementGrid,
@@ -222,6 +235,10 @@ function Panel.new(dependencies)
 		_snapshot = nil,
 		_phase = "idle",
 		_selected_offer_id = nil,
+		_selected_offer_key = nil,
+		_selected_offer = nil,
+		_offers_collapsed = false,
+		_layout_pending = false,
 	}
 
 	local function localize(setting_id, fallback)
@@ -252,6 +269,7 @@ function Panel.new(dependencies)
 				hotspot = {},
 				label = label or "",
 				selectable = options.selectable == true,
+				section_header = options.section_header == true,
 				selected = false,
 			},
 			pass_template = nil,
@@ -262,13 +280,20 @@ function Panel.new(dependencies)
 			widget_type = "auto_crafter_row",
 		}
 
-		if options.offer then
-			entry.offer = options.offer
+		if options.section_header then
 			entry.bind = function(widget)
 				widget.content.hotspot.pressed_callback = function()
-					self._selected_offer_id = offer_key(options.offer)
+					self._offers_collapsed = not self._offers_collapsed
+					self._layout_pending = true
 				end
 			end
+			entry.refresh = function(widget)
+				local chevron = self._offers_collapsed and "> " or "v "
+
+				widget.content.label = chevron .. (label or "")
+			end
+		elseif options.offer then
+			entry.offer = options.offer
 			entry.refresh = function(widget)
 				widget.content.selected = self._selected_offer_id ~= nil and self._selected_offer_id == offer_key(options.offer)
 			end
@@ -277,10 +302,56 @@ function Panel.new(dependencies)
 		return entry
 	end
 
-	function self:_entries(snapshot)
+	function self:_selected_offers(snapshot)
 		local store = snapshot and snapshot.store or {}
 		local offers = store.offers or {}
-		local selected = self._selected_offer_id and "selected" or localize("auto_crafter_panel_no_target", "no target selected")
+		local selected_offer = self._selected_offer
+
+		if not selected_offer then
+			return {}, nil
+		end
+
+		local selected_parent_pattern
+		local selected_display_name
+
+		for _, offer in ipairs(offers) do
+			local offer_matches = selected_offer.offer_id and offer.offer_id == selected_offer.offer_id or selected_offer.master_id and offer.master_id == selected_offer.master_id
+
+			if offer_matches then
+				selected_parent_pattern = offer.parent_pattern
+				selected_display_name = offer.display_name
+
+				break
+			end
+		end
+
+		local filtered = {}
+
+		for _, offer in ipairs(offers) do
+			local matches
+
+			if selected_parent_pattern then
+				matches = offer.parent_pattern == selected_parent_pattern
+			else
+				matches = selected_offer.offer_id and offer.offer_id == selected_offer.offer_id or selected_offer.master_id and offer.master_id == selected_offer.master_id
+			end
+
+			if matches then
+				filtered[#filtered + 1] = offer
+
+				if not selected_display_name then
+					selected_display_name = offer.display_name
+				end
+			end
+		end
+
+		return filtered, selected_display_name or localize("auto_crafter_panel_selected_weapon", "Selected weapon")
+	end
+
+	function self:_entries(snapshot)
+		local store = snapshot and snapshot.store or {}
+		local offers, selected_weapon = self:_selected_offers(snapshot)
+		local selected = selected_weapon or localize("auto_crafter_panel_no_target", "no weapon selected")
 		local entries = {
 			self:_entry(localize("auto_crafter_panel_title", "Auto Crafter Helper"), localize("auto_crafter_panel_read_only", "READ-ONLY"), {
 				header = true,
@@ -290,10 +361,22 @@ function Panel.new(dependencies)
 			self:_entry(localize("auto_crafter_panel_wallet", "Wallet"), string.format("%s / %s / %s", value_text(wallet_amount(snapshot, "credits")), value_text(wallet_amount(snapshot, "plasteel")), value_text(wallet_amount(snapshot, "diamantine")))),
 			self:_entry(localize("auto_crafter_panel_gear", "Gear"), value_text(snapshot and snapshot.gear and snapshot.gear.item_count, "?")),
 			self:_entry(localize("auto_crafter_panel_target", "Target"), selected),
-			self:_entry(localize("auto_crafter_panel_offer_list", "Weapon offers (click to select)"), "", {
+			self:_entry(localize("auto_crafter_panel_offer_list", "Weapon offers"), string.format("%s / %s", tostring(#offers), value_text(store.offer_count, "?")), {
 				header = true,
+				selectable = true,
+				section_header = true,
 			}),
 		}
+
+		if not self._selected_offer then
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_select_weapon", "Select a weapon in Brunt's list."), ""))
+
+			return entries
+		end
+
+		if self._offers_collapsed then
+			return entries
+		end
 
 		local shown = 0
 
@@ -313,8 +396,8 @@ function Panel.new(dependencies)
 
 		if shown == 0 then
 			table.insert(entries, self:_entry(localize("auto_crafter_panel_no_offers", "No weapon offers exposed yet."), ""))
-		elseif tonumber(store.offer_count) and tonumber(store.offer_count) > shown then
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_more", "More offers available"), tostring(store.offer_count - shown) .. " not shown"))
+		elseif #offers > shown then
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_more", "More matching offers available"), tostring(#offers - shown) .. " not shown"))
 		end
 
 		return entries
@@ -348,6 +431,52 @@ function Panel.new(dependencies)
 		self._phase = phase or self._phase
 
 		return self:render(snapshot)
+	end
+
+	function self:update()
+		if not self._view or self._view._destroyed or type(self._get_selected_offer) ~= "function" then
+			return
+		end
+
+		local ok, raw_offer = pcall(self._get_selected_offer, self._view)
+		local selected_offer
+
+		if ok and raw_offer then
+			selected_offer = {
+				offer_id = safe_member(raw_offer, "offerId") or safe_member(raw_offer, "offer_id"),
+				master_id = safe_member(raw_offer, "masterId") or safe_member(raw_offer, "master_id"),
+			}
+
+			local description = safe_member(raw_offer, "description")
+			local choices = safe_member(description, "lootChoices") or safe_member(description, "loot_choices")
+			local choice = type(choices) == "table" and choices[1] or nil
+
+			if selected_offer.master_id == nil then
+				if type(choice) == "table" then
+					selected_offer.master_id = choice.masterId or choice.master_id or choice.id or choice.name
+				else
+					selected_offer.master_id = choice
+				end
+			end
+
+			if selected_offer.offer_id == nil and selected_offer.master_id == nil then
+				selected_offer = nil
+			end
+		end
+
+		local selected_key = selected_offer and (selected_offer.offer_id and "offer:" .. tostring(selected_offer.offer_id) or selected_offer.master_id and "master:" .. tostring(selected_offer.master_id))
+
+		if selected_key ~= self._selected_offer_key then
+			self._selected_offer = selected_offer
+			self._selected_offer_key = selected_key
+			self._selected_offer_id = selected_offer and selected_offer.offer_id
+			self._layout_pending = true
+		end
+
+		if self._layout_pending then
+			self._layout_pending = false
+			self:render()
+		end
 	end
 
 	function self:attach(view)
@@ -402,6 +531,10 @@ function Panel.new(dependencies)
 		self._snapshot = nil
 		self._phase = "view_ready"
 		self._selected_offer_id = nil
+		self._selected_offer_key = nil
+		self._selected_offer = nil
+		self._offers_collapsed = false
+		self._layout_pending = false
 
 		if type(panel.set_pivot_offset) == "function" then
 			panel:set_pivot_offset(PANEL_X, PANEL_Y)
@@ -430,6 +563,10 @@ function Panel.new(dependencies)
 		self._snapshot = nil
 		self._phase = "idle"
 		self._selected_offer_id = nil
+		self._selected_offer_key = nil
+		self._selected_offer = nil
+		self._offers_collapsed = false
+		self._layout_pending = false
 	end
 
 	return self

@@ -172,6 +172,9 @@ end
 
 AutoCrafter.configure({
 	mod = mod,
+	get_selected_offer = function(view)
+		return view and view._previewed_offer
+	end,
 	ViewElementGrid = ViewElementGrid,
 })
 
