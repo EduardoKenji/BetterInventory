@@ -1210,10 +1210,6 @@ if ensure_class_method(CreditsVendorView, "_setup_sort_options") then
 
 		Features.preserve_item_sorting_native_options(view, selected_display_name)
 		if is_armoury_requisition_view(view) then
-			if AutoCrafter and type(AutoCrafter.on_brunt_view_ready) == "function" then
-				AutoCrafter.on_brunt_view_ready(view)
-			end
-
 			Features.configure_armoury_sort_options(mod, view)
 
 			if mod:get("enable_armoury_requisition_grid") ~= false and mod:get("enable_armoury_requisition_sorting_panel") ~= false then

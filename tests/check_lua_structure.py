@@ -179,6 +179,31 @@ def validate_auto_crafter_phase_1b() -> int:
     return len(lua_paths)
 
 
+def validate_auto_crafter_brunt_route() -> None:
+    runtime_source = (RUNTIME_ROOT / "BetterInventory_runtime.lua").read_text(encoding="utf-8")
+    lifecycle_call = 'AutoCrafter.on_brunt_view_ready(view)'
+
+    if runtime_source.count(lifecycle_call) != 1:
+        raise SystemExit(
+            "Auto Crafter Brunt lifecycle must have exactly one runtime call site"
+        )
+
+    credits_vendor_hook_start = runtime_source.find(
+        'if ensure_class_method(CreditsVendorView, "_setup_sort_options") then'
+    )
+    brunt_hook_start = runtime_source.find("-- Brunt's Armoury uses CreditsGoodsVendorView")
+
+    if credits_vendor_hook_start < 0 or brunt_hook_start <= credits_vendor_hook_start:
+        raise SystemExit("Could not locate vendor lifecycle route boundaries")
+
+    credits_vendor_hook = runtime_source[credits_vendor_hook_start:brunt_hook_start]
+
+    if lifecycle_call in credits_vendor_hook:
+        raise SystemExit(
+            "Auto Crafter must not attach to the Armoury Exchange Requisition route"
+        )
+
+
 def run() -> None:
     main_path = RUNTIME_ROOT / "BetterInventory.lua"
     layout_path = RUNTIME_ROOT / "BetterInventory_layout.lua"
@@ -251,6 +276,7 @@ def run() -> None:
 
     panel_font_count = validate_panel_font_types()
     auto_crafter_file_count = validate_auto_crafter_phase_1b()
+    validate_auto_crafter_brunt_route()
 
     print(
         "BetterInventory AST structure checks passed "
