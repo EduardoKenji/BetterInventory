@@ -279,10 +279,6 @@ def main() -> None:
 		end
 
 		function require(path)
-			if path == "scripts/mods/BetterInventory/BetterInventory_layout_content" then
-				return TestLayoutContent
-			end
-
 			if path == "scripts/utilities/ui/text" then
 				return TestText
 			end
@@ -309,6 +305,10 @@ def main() -> None:
 		test_name_it_mod = nil
 
 		function get_mod(name)
+			if name == "BetterInventory" then
+				return test_mod
+			end
+
 			if name == "name_it" then
 				return test_name_it_mod
 			end
@@ -509,6 +509,14 @@ def main() -> None:
 			}
 
 			return values[localization_id] or localization_id
+		end
+
+		function test_mod:io_dofile(path)
+			if path == "BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_content" then
+				return TestLayoutContent
+			end
+
+			error("Unexpected test io_dofile: " .. tostring(path))
 		end
 
 		sentinel_load = function() end

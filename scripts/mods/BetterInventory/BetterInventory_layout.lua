@@ -1,7 +1,7 @@
 local Text = require("scripts/utilities/ui/text")
 local Items = require("scripts/utilities/items")
 local MasterItems = require("scripts/backend/master_items")
-local LayoutContent = require("scripts/mods/BetterInventory/BetterInventory_layout_content")
+local LayoutContent = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_content")
 
 local Layout = {}
 local content = LayoutContent

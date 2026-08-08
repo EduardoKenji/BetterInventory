@@ -48,7 +48,7 @@
   "test_layout.py": [
     {"name": "card_geometry", "risk": "high", "start_line": 621, "end_line": 1594},
     {"name": "content_and_resource_ownership", "risk": "high", "start_line": 1595, "end_line": 2342},
-    {"name": "integration_boundaries", "risk": "medium", "start_line": 2343, "end_line": 3690}
+    {"name": "integration_boundaries", "risk": "medium", "start_line": 2343, "end_line": 3701}
   ],
   "test_operation_arbiter.py": [
     {"name": "manual_automatic_exclusion", "risk": "critical", "start_line": 20, "end_line": 34},
