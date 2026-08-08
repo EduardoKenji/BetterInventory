@@ -1250,12 +1250,13 @@ def main() -> None:
     module.cancel()
 
     # Operative Selection keeps a bounded account-scoped report as a durable
-    # fallback. Reports already dispatched in this Lua session are acknowledged
-    # without producing duplicate white-text notifications during loading.
+    # fallback. Its persisted dispatch status survives module/VM recreation and
+    # prevents duplicate white-text notifications during loading.
     pending_history = globals_.settings["_automatic_curio_rotation_history"]
     pending_report = pending_history.accounts["default"].pending_reports[1]
     assert pending_report is not None
     assert pending_report.context == "operative_selection"
+    assert pending_report.notification_dispatched is True
     assert len(pending_report.purchased) == 1
     assert pending_report.purchased[1].character_id == "target-psyker"
 
@@ -1274,10 +1275,11 @@ def main() -> None:
     assert globals_.captured_notification is None
     assert len(globals_.settings["_automatic_curio_rotation_history"].accounts["default"].pending_reports) == 0
 
-    # A report restored in a later Lua session has no volatile acknowledgement
-    # marker and must still be delivered. Changing the ID models persisted state
-    # loaded after a restart without coupling the test to module reloading.
+    # A report whose immediate notification failed must still be delivered.
+    # Changing the ID models a distinct persisted fallback without coupling the
+    # test to module reloading.
     pending_report.report_id = "prior-session-operative-report"
+    pending_report.notification_dispatched = False
     pending_history.accounts["default"].pending_reports = lua.table_from([pending_report])
     globals_.settings["_automatic_curio_rotation_history"] = pending_history
     globals_.backend_account_key = "other-account"

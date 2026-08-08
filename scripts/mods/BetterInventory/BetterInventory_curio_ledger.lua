@@ -134,6 +134,7 @@ local function sanitize_pending_report(source)
 		context = source.context == "operative_selection" and source.context or "morningstar",
 		created_at_ms = tonumber(source.created_at_ms) or 0,
 		insufficient = {},
+		notification_dispatched = source.notification_dispatched == true,
 		partial_failure = source.partial_failure == true,
 		purchased = {},
 		report_id = report_id,

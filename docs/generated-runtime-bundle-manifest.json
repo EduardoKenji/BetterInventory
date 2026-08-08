@@ -40,8 +40,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_acquisition.lua",
-      "bytes": 51736,
-      "sha256": "6dfbc030539566ad11fc478d721b8052eeae87e0e513a0850ea198ca88b97827",
+      "bytes": 49995,
+      "sha256": "35c97af465781754ad427a5cfc205b1a9bb5762d0487cdea3917d2be5e1e3414",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_curio_acquisition.lua"
     },
     {
@@ -52,8 +52,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_ledger.lua",
-      "bytes": 12427,
-      "sha256": "4cc584a9c9f9d7dcdc25aa1684d56ade6330f3b7c8513a4a3b9065cc39d4519a",
+      "bytes": 12495,
+      "sha256": "6a72a5f1cd2b4ee4cb3de8830d771846a6fdc56ef1466f4a875a49043584c4fe",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_curio_ledger.lua"
     },
     {
@@ -279,6 +279,6 @@
       "source_path": "scripts/mods/BetterInventory/BetterInventory_view_session.lua"
     }
   ],
-  "runtime_tree_sha256": "323fcbc5d96ad980db2e11a637f12d8c00702d44681567c38748e99c9daafbf5",
+  "runtime_tree_sha256": "c70f96d5632e6194fb89d5d52a55ca45e51221ddfe9f9695c3d703ef2133479e",
   "version": "2.0.0"
 }
