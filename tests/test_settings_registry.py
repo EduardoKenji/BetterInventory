@@ -92,6 +92,8 @@ def main() -> None:
     assert registry.has("automatic_curio_character_slot_10") is True
     assert registry.metadata("automatic_curio_character_slot_10").owner == "curio_acquisition"
     assert registry.metadata("automatic_curio_character_slot_10").default_value is False
+    assert registry.is_visible("enable_grid_layout", lua.table_from({"dependencies_enabled": False})) is False
+    assert registry.is_visible("enable_grid_layout", lua.table_from({"dependencies_enabled": True})) is True
     manifest = registry.metadata_manifest()
     assert len(manifest) == count
     assert manifest[1].setting_id == "additional_views_group"

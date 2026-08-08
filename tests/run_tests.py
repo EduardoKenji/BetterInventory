@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -18,6 +19,7 @@ PROJECT_ROOT = TEST_ROOT.parent
 OUTPUT_LIMIT = 4000
 CASE_MANIFEST_PATH = TEST_ROOT / "case_manifest.json"
 COVERAGE_POLICY_PATH = TEST_ROOT / "coverage_policy.json"
+BRANCH_MATRIX_PATH = TEST_ROOT / "branch_matrix.json"
 
 
 def discover_tests() -> list[Path]:
@@ -31,13 +33,13 @@ def tail(value: str) -> str:
     return value[-OUTPUT_LIMIT:]
 
 
-def load_case_manifest() -> dict[str, list[dict[str, str]]]:
+def load_case_manifest() -> dict[str, list[dict[str, object]]]:
     manifest = json.loads(CASE_MANIFEST_PATH.read_text(encoding="utf-8"))
 
     if not isinstance(manifest, dict):
         raise ValueError("case manifest must be an object")
 
-    normalized: dict[str, list[dict[str, str]]] = {}
+    normalized: dict[str, list[dict[str, object]]] = {}
 
     for test_name, cases in manifest.items():
         if not isinstance(test_name, str) or not isinstance(cases, list) or not cases:
@@ -53,6 +55,8 @@ def load_case_manifest() -> dict[str, list[dict[str, str]]]:
                 {
                     "name": str(case["name"]),
                     "risk": str(case.get("risk", "medium")),
+                    "start_line": int(case["start_line"]),
+                    "end_line": int(case["end_line"]),
                 }
             )
 
@@ -61,22 +65,140 @@ def load_case_manifest() -> dict[str, list[dict[str, str]]]:
     return normalized
 
 
-def case_results(cases: list[dict[str, str]], status: str) -> list[dict[str, str]]:
-    return [
-        {
-            "name": case["name"],
-            "risk": case["risk"],
-            "status": "passed" if status == "passed" else "failed",
-        }
-        for case in cases
+def load_branch_matrix(
+    case_manifest: dict[str, list[dict[str, object]]],
+) -> list[dict[str, object]]:
+    matrix = json.loads(BRANCH_MATRIX_PATH.read_text(encoding="utf-8"))
+
+    if not isinstance(matrix, dict) or not isinstance(matrix.get("required"), list):
+        raise ValueError("branch matrix must contain a required list")
+
+    normalized = []
+    runtime_names = {
+        path.name
+        for path in (PROJECT_ROOT / "scripts" / "mods" / "BetterInventory").glob(
+            "BetterInventory*.lua"
+        )
+    }
+
+    for entry in matrix["required"]:
+        if not isinstance(entry, dict):
+            raise ValueError("branch matrix entry is invalid")
+
+        test_name = str(entry.get("test", ""))
+        case_name = str(entry.get("case", ""))
+        outcome = str(entry.get("outcome", ""))
+        modules = entry.get("modules", [])
+
+        if not test_name or not case_name or not outcome or not isinstance(modules, list) or not modules:
+            raise ValueError(f"branch matrix entry is incomplete: {entry!r}")
+
+        unknown_modules = sorted(set(str(module) for module in modules) - runtime_names)
+        if unknown_modules:
+            raise ValueError(
+                f"branch matrix references unknown runtime module(s): {unknown_modules}"
+            )
+
+        manifest_cases = case_manifest.get(test_name, [])
+        if not any(case["name"] == case_name for case in manifest_cases):
+            raise ValueError(
+                f"branch matrix references unknown case {test_name}:{case_name}"
+            )
+
+        normalized.append(
+            {
+                "name": str(entry.get("name", f"{test_name}:{case_name}")),
+                "test": test_name,
+                "case": case_name,
+                "outcome": outcome,
+                "modules": [str(module) for module in modules],
+            }
+        )
+
+    if not normalized:
+        raise ValueError("branch matrix must contain at least one required outcome")
+
+    return normalized
+
+
+def validate_case_ranges(
+    case_manifest: dict[str, list[dict[str, object]]], tests: list[Path]
+) -> None:
+    test_by_name = {test.name: test for test in tests}
+
+    for test_name, cases in case_manifest.items():
+        test_path = test_by_name[test_name]
+        line_count = len(test_path.read_text(encoding="utf-8").splitlines())
+
+        for case in cases:
+            start_line = case["start_line"]
+            end_line = case["end_line"]
+
+            if not isinstance(start_line, int) or not isinstance(end_line, int):
+                raise ValueError(f"case range is not numeric: {test_name}:{case['name']}")
+
+            if start_line < 1 or end_line < start_line or end_line > line_count:
+                raise ValueError(
+                    f"case range is outside {test_name}: {case['name']} "
+                    f"({start_line}-{end_line}, lines={line_count})"
+                )
+
+
+def failure_line(test_path: Path, stdout: str, stderr: str) -> int | None:
+    pattern = re.compile(r'File ["\']([^"\']+)["\'], line (\d+)')
+
+    for stream in (stderr, stdout):
+        for source, line in reversed(pattern.findall(stream)):
+            if Path(source).name == test_path.name:
+                return int(line)
+
+    return None
+
+
+def case_results(
+    cases: list[dict[str, object]], status: str, failed_line: int | None = None
+) -> list[dict[str, object]]:
+    results = []
+
+    for case in cases:
+        case_status = "passed" if status == "passed" else "not_run"
+
+        if (
+            status == "failed"
+            and failed_line is not None
+            and case["start_line"] <= failed_line <= case["end_line"]
+        ):
+            case_status = "failed"
+
+        results.append(
+            {
+                "name": case["name"],
+                "risk": case["risk"],
+                "status": case_status,
+                "source_range": f"{case['start_line']}-{case['end_line']}",
+            }
+        )
+
+    return results
+
+
+def case_for_line(
+    cases: list[dict[str, object]], line: int | None
+) -> dict[str, object] | None:
+    if line is None:
+        return None
+
+    matches = [
+        case for case in cases if case["start_line"] <= line <= case["end_line"]
     ]
+    return min(matches, key=lambda case: case["end_line"] - case["start_line"]) if matches else None
 
 
 def run_test(
     test_path: Path,
     timeout_seconds: float,
     coverage_directory: Path | None,
-    cases: list[dict[str, str]],
+    cases: list[dict[str, object]],
 ) -> dict[str, object]:
     started_at = time.perf_counter()
     command = [sys.executable, str(test_path)]
@@ -98,17 +220,21 @@ def run_test(
             env=environment,
         )
         status = "passed" if result.returncode == 0 else "failed"
+        failed_line = failure_line(test_path, result.stdout, result.stderr)
         record: dict[str, object] = {
             "name": test_path.name,
             "status": status,
             "returncode": result.returncode,
             "duration_seconds": round(time.perf_counter() - started_at, 3),
-            "cases": case_results(cases, status),
+            "cases": case_results(cases, status, failed_line),
         }
 
         if status == "failed":
             record["stdout_tail"] = tail(result.stdout)
             record["stderr_tail"] = tail(result.stderr)
+            record["failure_line"] = failed_line
+            failed_case = case_for_line(cases, failed_line)
+            record["failure_case"] = failed_case["name"] if failed_case else None
 
         return record
     except subprocess.TimeoutExpired as error:
@@ -160,24 +286,53 @@ def build_coverage_report(
 
     modules = []
     runtime_root = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory"
+    runtime_names = {path.name for path in runtime_root.glob("BetterInventory*.lua")}
+    policy_names = set(policy_modules)
+    policy_failures = [
+        {
+            "policy_module": name,
+            "reason": "policy_references_missing_runtime_module",
+        }
+        for name in sorted(policy_names - runtime_names)
+    ]
 
     for runtime_path in sorted(runtime_root.glob("BetterInventory*.lua")):
         total_lines = count_source_lines(runtime_path)
         covered_lines = covered_by_name.get(runtime_path.name, set())
         covered_count = len(covered_lines)
-        policy_entry = policy_modules.get(runtime_path.name, {})
-        minimum_percent = float(policy_entry.get("minimum_percent", 0.0))
+        policy_entry = policy_modules.get(runtime_path.name)
+        declarative = runtime_path.name in declarative_modules
+        unassigned = policy_entry is None and not declarative
+        minimum_percent = (
+            float(policy_entry.get("minimum_percent", 0.0))
+            if policy_entry is not None
+            else None
+        )
         coverage_percent = round(covered_count * 100 / total_lines, 2) if total_lines else 100.0
+        gate_passed = (
+            declarative
+            or (not unassigned and coverage_percent >= minimum_percent)
+        )
+
+        if unassigned:
+            policy_failures.append(
+                {
+                    "module": runtime_path.name,
+                    "reason": "unassigned_non_declarative_runtime_module",
+                }
+            )
+
         modules.append(
             {
                 "module": runtime_path.name,
                 "source_lines": total_lines,
                 "covered_lines": covered_count,
                 "coverage_percent": coverage_percent,
-                "declarative": runtime_path.name in declarative_modules,
+                "declarative": declarative,
                 "minimum_percent": minimum_percent,
-                "risk": policy_entry.get("risk", "declarative" if runtime_path.name in declarative_modules else "unassigned"),
-                "gate_passed": coverage_percent >= minimum_percent,
+                "risk": policy_entry.get("risk", "declarative" if declarative else "unassigned") if policy_entry else ("declarative" if declarative else "unassigned"),
+                "gate_passed": gate_passed,
+                "failure": "unassigned_non_declarative_runtime_module" if unassigned else None,
             }
         )
 
@@ -187,6 +342,7 @@ def build_coverage_report(
     return {
         "method": "Lua debug.sethook line events",
         "policy": str(policy_path.relative_to(PROJECT_ROOT)),
+        "policy_failures": policy_failures,
         "modules": modules,
         "source_lines": total_source_lines,
         "covered_lines": total_covered_lines,
@@ -245,6 +401,13 @@ def main() -> int:
         )
         return 2
 
+    try:
+        validate_case_ranges(case_manifest, tests)
+        branch_matrix = load_branch_matrix(case_manifest)
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        print(f"Invalid case/branch contract: {error}", file=sys.stderr)
+        return 2
+
     temporary_coverage_directory = None
     coverage_report = None
     coverage_failures: list[dict[str, object]] = []
@@ -270,8 +433,35 @@ def main() -> int:
             1
             for result in results
             for case in result["cases"]
-            if case["status"] != "passed"
+            if case["status"] == "failed"
         )
+        not_run_cases = sum(
+            1
+            for result in results
+            for case in result["cases"]
+            if case["status"] == "not_run"
+        )
+        result_by_name = {result["name"]: result for result in results}
+        branch_results = []
+
+        for required in branch_matrix:
+            test_result = result_by_name[required["test"]]
+            matching_case = next(
+                case
+                for case in test_result["cases"]
+                if case["name"] == required["case"]
+            )
+            branch_results.append(
+                {
+                    **required,
+                    "status": matching_case["status"],
+                    "gate_passed": matching_case["status"] == "passed",
+                }
+            )
+
+        branch_failures = [
+            result for result in branch_results if not result["gate_passed"]
+        ]
         summary = {
             "runner": "BetterInventory behavior suite",
             "timeout_seconds_per_test": args.timeout_seconds,
@@ -281,6 +471,9 @@ def main() -> int:
             "cases_discovered": total_cases,
             "cases_passed": total_cases - failed_cases,
             "cases_failed": failed_cases,
+            "cases_not_run": not_run_cases,
+            "branch_matrix": branch_results,
+            "branch_matrix_failures": branch_failures,
             "results": results,
         }
 
@@ -299,6 +492,7 @@ def main() -> int:
                 for module in coverage_report["modules"]
                 if not module["gate_passed"] and not module["declarative"]
             ]
+            coverage_failures.extend(coverage_report["policy_failures"])
             summary["coverage_failures"] = coverage_failures
     finally:
         if temporary_coverage_directory:
@@ -306,7 +500,7 @@ def main() -> int:
 
     print(json.dumps(summary, indent=2, sort_keys=True))
 
-    return 1 if failures or coverage_failures else 0
+    return 1 if failures or coverage_failures or branch_failures else 0
 
 
 if __name__ == "__main__":

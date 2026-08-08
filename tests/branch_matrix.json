@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "required": [
+    {
+      "name": "arbiter.rejects-overlap",
+      "test": "test_operation_arbiter.py",
+      "case": "manual_automatic_exclusion",
+      "outcome": "automatic acquisition cannot acquire while manual destructive work owns the arbiter",
+      "modules": ["BetterInventory_operation_arbiter.lua", "BetterInventory_features.lua"]
+    },
+    {
+      "name": "arbiter.releases-once",
+      "test": "test_operation_arbiter.py",
+      "case": "terminal_release_once",
+      "outcome": "settlement callback releases exactly once and stale generations cannot release a newer owner",
+      "modules": ["BetterInventory_operation_arbiter.lua"]
+    },
+    {
+      "name": "equipment.preserves-preview",
+      "test": "test_equipment_persistence.py",
+      "case": "authoritative_reconciliation",
+      "outcome": "a delayed authoritative profile event cannot overwrite an uncommitted local equip preview",
+      "modules": ["BetterInventory_equipment_persistence.lua", "BetterInventory.lua"]
+    },
+    {
+      "name": "equipment.bounds-retry",
+      "test": "test_equipment_persistence.py",
+      "case": "bounded_retry",
+      "outcome": "only confirmed idempotent failure retries and retry count is bounded",
+      "modules": ["BetterInventory_equipment_persistence.lua"]
+    },
+    {
+      "name": "curio.rotation-waits",
+      "test": "test_curio_acquisition.py",
+      "case": "store_rotation_gate",
+      "outcome": "stale, mixed, or incomplete storefront boundaries remain nonterminal and cannot purchase",
+      "modules": ["BetterInventory_curio_acquisition.lua", "BetterInventory_curio_domains.lua"]
+    },
+    {
+      "name": "curio.purchase-revalidates",
+      "test": "test_curio_acquisition.py",
+      "case": "purchase_revalidation",
+      "outcome": "candidate identity and eligibility are revalidated before a purchase POST",
+      "modules": ["BetterInventory_curio_acquisition.lua"]
+    },
+    {
+      "name": "curio.reads-cancel",
+      "test": "test_curio_acquisition.py",
+      "case": "read_cancellation_and_generation",
+      "outcome": "leaving a context cancels owned read promises and late callbacks are inert",
+      "modules": ["BetterInventory_curio_acquisition.lua", "BetterInventory_curio_domains.lua"]
+    },
+    {
+      "name": "discard.keeps-ownership",
+      "test": "test_features.py",
+      "case": "discard_operation_ownership",
+      "outcome": "manual and automatic destructive paths cannot overlap and ownership survives in-flight deletion",
+      "modules": ["BetterInventory_features.lua", "BetterInventory_operation_arbiter.lua"]
+    },
+    {
+      "name": "discard.fails-closed",
+      "test": "test_features.py",
+      "case": "optional_integration_fallbacks",
+      "outcome": "missing protection or optional integration data aborts safely without destructive action",
+      "modules": ["BetterInventory_features.lua", "BetterInventory_contracts.lua"]
+    },
+    {
+      "name": "session.restores-owned-fields",
+      "test": "test_view_session.py",
+      "case": "ownership_preserving_restore",
+      "outcome": "teardown restores only fields still owned by BetterInventory",
+      "modules": ["BetterInventory_view_session.lua"]
+    },
+    {
+      "name": "settings.audit-localization",
+      "test": "test_settings_registry.py",
+      "case": "metadata_manifest",
+      "outcome": "active settings have authoritative metadata and localization IDs",
+      "modules": ["BetterInventory_settings.lua", "BetterInventory_localization.lua"]
+    },
+    {
+      "name": "customization.persistence-bounds",
+      "test": "test_item_customization.py",
+      "case": "dirty_save_outcomes",
+      "outcome": "delegated and failed DMF saves have bounded, observable persistence outcomes",
+      "modules": ["BetterInventory_item_customization.lua"]
+    }
+  ]
+}
