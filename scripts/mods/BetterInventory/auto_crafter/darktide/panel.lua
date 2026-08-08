@@ -14,9 +14,15 @@ local SECTION_ROW_HEIGHT = 40
 local ROW_SPACING = 8
 local CONTENT_HORIZONTAL_PADDING = 12
 local CONTENT_VERTICAL_PADDING = 10
+local STEPPER_CONTROLS_WIDTH = 182
+local STEPPER_VALUE_WIDTH = 114
 local MAX_OFFER_ROWS = 10
 local MAX_SELECTION_ATTEMPTS = 240
 local SECTION_PLANNER = "planner"
+local SECTION_WORKFLOW = "workflow"
+local SECTION_TRAITS = "traits"
+local SECTION_OUTPUT = "output"
+local SECTION_ADVANCED = "advanced"
 local SECTION_MELEE = "melee"
 local SECTION_RANGED = "ranged"
 
@@ -306,26 +312,45 @@ local function compact_selector_passes(width)
 end
 
 local function compact_checkbox_passes(width)
+	local function enabled(content) return content.enabled == true end
+	local function disabled(content) return content.enabled ~= true end
 	return {
 		{ content_id = "hotspot", pass_type = "hotspot", content = { on_hover_sound = UISoundEvents.default_mouse_hover, on_pressed_sound = UISoundEvents.default_click } },
 		{ pass_type = "rect", style = { color = Color.terminal_background(220, true), size = { 22, 22 }, offset = { 0, 2, 1 } } },
 		{ pass_type = "texture", value = "content/ui/materials/frames/frame_tile_2px", style = { color = Color.terminal_frame(255, true), size = { 22, 22 }, offset = { 0, 2, 2 } } },
 		{ pass_type = "text", style_id = "selected_mark", value = "✓", style = { font_size = 17, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_corner_selected(255, true), size = { 22, 22 }, offset = { 0, 2, 3 } }, visibility_function = function(content) return content.checked == true end },
-		{ pass_type = "text", value_id = "label", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "center", text_color = Color.terminal_text_body(255, true), size = { width - 28, COMPACT_ROW_HEIGHT }, offset = { 28, 0, 3 } } },
+		{ pass_type = "text", value_id = "label", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "center", text_color = Color.terminal_text_body(255, true), size = { width - 28, COMPACT_ROW_HEIGHT }, offset = { 28, 0, 3 } }, visibility_function = enabled },
+		{ pass_type = "text", value_id = "label", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "center", text_color = Color.terminal_text_body_sub_header(150, true), size = { width - 28, COMPACT_ROW_HEIGHT }, offset = { 28, 0, 3 } }, visibility_function = disabled },
 	}
 end
 
 local function compact_stepper_passes(width)
-	local controls_x = width - 138
+	local controls_x = width - STEPPER_CONTROLS_WIDTH
 	return {
 		{ pass_type = "text", value_id = "label", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "center", text_color = Color.terminal_text_body(255, true), size = { controls_x - 8, COMPACT_ROW_HEIGHT } } },
 		{ content_id = "decrease_hotspot", pass_type = "hotspot", content = { on_hover_sound = UISoundEvents.default_mouse_hover, on_pressed_sound = UISoundEvents.default_click }, style = { size = { 32, COMPACT_ROW_HEIGHT }, offset = { controls_x, 0, 5 } } },
 		{ pass_type = "text", value = "<", style = { font_size = 16, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_text_header(255, true), size = { 32, COMPACT_ROW_HEIGHT }, offset = { controls_x, 0, 3 } } },
-		{ pass_type = "rect", style = { color = Color.terminal_background(220, true), size = { 70, COMPACT_ROW_HEIGHT }, offset = { controls_x + 34, 0, 1 } } },
-		{ pass_type = "texture", value = "content/ui/materials/frames/frame_tile_2px", style = { color = Color.terminal_frame(255, true), size = { 70, COMPACT_ROW_HEIGHT }, offset = { controls_x + 34, 0, 2 } } },
-		{ pass_type = "text", value_id = "detail", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_text_body(255, true), size = { 70, COMPACT_ROW_HEIGHT }, offset = { controls_x + 34, 0, 3 } } },
-		{ content_id = "increase_hotspot", pass_type = "hotspot", content = { on_hover_sound = UISoundEvents.default_mouse_hover, on_pressed_sound = UISoundEvents.default_click }, style = { size = { 32, COMPACT_ROW_HEIGHT }, offset = { controls_x + 106, 0, 5 } } },
-		{ pass_type = "text", value = ">", style = { font_size = 16, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_text_header(255, true), size = { 32, COMPACT_ROW_HEIGHT }, offset = { controls_x + 106, 0, 3 } } },
+		{ pass_type = "rect", style = { color = Color.terminal_background(220, true), size = { STEPPER_VALUE_WIDTH, COMPACT_ROW_HEIGHT }, offset = { controls_x + 34, 0, 1 } } },
+		{ pass_type = "texture", value = "content/ui/materials/frames/frame_tile_2px", style = { color = Color.terminal_frame(255, true), size = { STEPPER_VALUE_WIDTH, COMPACT_ROW_HEIGHT }, offset = { controls_x + 34, 0, 2 } } },
+		{ pass_type = "text", value_id = "detail", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_text_body(255, true), size = { STEPPER_VALUE_WIDTH, COMPACT_ROW_HEIGHT }, offset = { controls_x + 34, 0, 3 } } },
+		{ content_id = "increase_hotspot", pass_type = "hotspot", content = { on_hover_sound = UISoundEvents.default_mouse_hover, on_pressed_sound = UISoundEvents.default_click }, style = { size = { 32, COMPACT_ROW_HEIGHT }, offset = { controls_x + 150, 0, 5 } } },
+		{ pass_type = "text", value = ">", style = { font_size = 16, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_text_header(255, true), size = { 32, COMPACT_ROW_HEIGHT }, offset = { controls_x + 150, 0, 3 } } },
+	}
+end
+
+local function enum_stepper_passes(width)
+	local controls_width = 270
+	local controls_x = width - controls_width
+	local value_width = controls_width - 68
+	return {
+		{ pass_type = "text", value_id = "label", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "center", text_color = Color.terminal_text_body(255, true), size = { controls_x - 8, COMPACT_ROW_HEIGHT } } },
+		{ content_id = "decrease_hotspot", pass_type = "hotspot", content = { on_hover_sound = UISoundEvents.default_mouse_hover, on_pressed_sound = UISoundEvents.default_click }, style = { size = { 32, COMPACT_ROW_HEIGHT }, offset = { controls_x, 0, 5 } } },
+		{ pass_type = "text", value = "<", style = { font_size = 16, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_text_header(255, true), size = { 32, COMPACT_ROW_HEIGHT }, offset = { controls_x, 0, 3 } } },
+		{ pass_type = "rect", style = { color = Color.terminal_background(220, true), size = { value_width, COMPACT_ROW_HEIGHT }, offset = { controls_x + 34, 0, 1 } } },
+		{ pass_type = "texture", value = "content/ui/materials/frames/frame_tile_2px", style = { color = Color.terminal_frame(255, true), size = { value_width, COMPACT_ROW_HEIGHT }, offset = { controls_x + 34, 0, 2 } } },
+		{ pass_type = "text", value_id = "detail", style = { font_size = 13, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_text_body(255, true), size = { value_width, COMPACT_ROW_HEIGHT }, offset = { controls_x + 34, 0, 3 } } },
+		{ content_id = "increase_hotspot", pass_type = "hotspot", content = { on_hover_sound = UISoundEvents.default_mouse_hover, on_pressed_sound = UISoundEvents.default_click }, style = { size = { 32, COMPACT_ROW_HEIGHT }, offset = { controls_x + controls_width - 32, 0, 5 } } },
+		{ pass_type = "text", value = ">", style = { font_size = 16, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_text_header(255, true), size = { 32, COMPACT_ROW_HEIGHT }, offset = { controls_x + controls_width - 32, 0, 3 } } },
 	}
 end
 
@@ -363,6 +388,8 @@ local BLUEPRINTS = {
 				return compact_checkbox_passes(width)
 			elseif variant == "stepper" then
 				return compact_stepper_passes(width)
+			elseif variant == "enum_stepper" then
+				return enum_stepper_passes(width)
 			elseif variant == "action" then
 				return action_button_passes(width)
 			elseif variant == "offer" then
@@ -458,6 +485,10 @@ function Panel.new(dependencies)
 		_selected_offer_master_id = nil,
 		_section_collapsed = {
 			[SECTION_PLANNER] = false,
+			[SECTION_WORKFLOW] = false,
+			[SECTION_TRAITS] = true,
+			[SECTION_OUTPUT] = true,
+			[SECTION_ADVANCED] = true,
 			[SECTION_MELEE] = true,
 			[SECTION_RANGED] = true,
 		},
@@ -644,6 +675,21 @@ function Panel.new(dependencies)
 		self:_set_setting(setting_id, math.max(minimum, math.min(maximum, current + step)))
 	end
 
+	function self:_step_enum_setting(setting_id, values, default_value, direction)
+		local current = self:_setting(setting_id, default_value)
+		local current_index = 1
+
+		for index, value in ipairs(values) do
+			if value == current then
+				current_index = index
+				break
+			end
+		end
+
+		local next_index = (current_index - 1 + direction) % #values + 1
+		self:_set_setting(setting_id, values[next_index])
+	end
+
 	function self:_planner_target_text()
 		local _, current_weapon = self:_selected_offers(self._snapshot)
 
@@ -674,6 +720,10 @@ function Panel.new(dependencies)
 
 	function self:_planner_fallback_text()
 		return self:_setting("auto_crafter_best_candidate_fallback", false) == true and localize("auto_crafter_value_on", "On") or localize("auto_crafter_value_off", "Off")
+	end
+
+	function self:_target_policy_text(setting_id)
+		return self:_setting(setting_id, "keep") == "auto" and localize("auto_crafter_target_auto", "Auto-select (planned)") or localize("auto_crafter_target_keep", "Keep current")
 	end
 
 	function self:_mutation_gate_text()
@@ -784,6 +834,55 @@ function Panel.new(dependencies)
 				variant = "section",
 			}),
 		}
+		local function add_checkbox(setting_id, label_id, fallback, default_value, enabled)
+			local function is_enabled()
+				if type(enabled) == "function" then
+					return enabled() == true
+				end
+
+				return enabled ~= false
+			end
+			local initial_enabled = is_enabled()
+			table.insert(entries, self:_entry(localize(label_id, fallback), "", {
+				checked = self:_setting(setting_id, default_value) == true,
+				enabled = initial_enabled,
+				selectable = initial_enabled,
+				variant = "checkbox",
+				action = function()
+					self:_set_setting(setting_id, not (self:_setting(setting_id, default_value) == true))
+				end,
+				refresh = function(widget)
+					local current_enabled = is_enabled()
+					widget.content.checked = self:_setting(setting_id, default_value) == true
+					widget.content.enabled = current_enabled
+					widget.content.hotspot.disabled = not current_enabled
+				end,
+			}))
+		end
+		local function add_target_selector(setting_id, label_id, fallback, enabled, unavailable_text)
+			local function is_enabled()
+				if type(enabled) == "function" then
+					return enabled() == true
+				end
+
+				return enabled ~= false
+			end
+			local initial_enabled = is_enabled()
+			table.insert(entries, self:_entry(localize(label_id, fallback), initial_enabled and self:_target_policy_text(setting_id) or unavailable_text, {
+				enabled = initial_enabled,
+				selectable = initial_enabled,
+				variant = "selector",
+				action = function()
+					self:_cycle_setting(setting_id, { "keep", "auto" }, "keep")
+				end,
+				refresh = function(widget)
+					local current_enabled = is_enabled()
+					widget.content.enabled = current_enabled
+					widget.content.detail = current_enabled and self:_target_policy_text(setting_id) or unavailable_text
+					widget.content.hotspot.disabled = not current_enabled
+				end,
+			}))
+		end
 
 		if not self._section_collapsed[SECTION_PLANNER] then
 			table.insert(entries, self:_entry(localize("auto_crafter_panel_planner_target", "Planner target"), self:_planner_target_text(), {
@@ -851,16 +950,6 @@ function Panel.new(dependencies)
 					widget.content.checked = self:_setting("auto_crafter_best_candidate_fallback", false) == true
 				end,
 			}))
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_request_mode", "Request mode"), self:_planner_request_mode_text(), {
-				selectable = true,
-				variant = "selector",
-				action = function()
-					self:_cycle_setting("auto_crafter_request_mode", { "sequential", "parallel_reads", "experimental_parallel_mutations" }, "sequential")
-				end,
-				refresh = function(widget)
-					widget.content.detail = self:_planner_request_mode_text()
-				end,
-			}))
 			table.insert(entries, self:_entry(localize("auto_crafter_panel_estimate", "Estimate"), plan and plan.estimate and plan.estimate.summary or localize("auto_crafter_panel_waiting", "waiting for probe"), {
 				variant = "status",
 				refresh = function(widget)
@@ -877,52 +966,126 @@ function Panel.new(dependencies)
 					widget.content.detail = current_plan and current_plan.preflight and current_plan.preflight.summary or localize("auto_crafter_panel_waiting", "waiting for probe")
 				end,
 			}))
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_mutation_gate", "Mutation gate"), self:_mutation_gate_text(), {
-				checked = self:_setting("auto_crafter_allow_mutations", false) == true,
-				selectable = true,
-				variant = "checkbox",
-				action = function()
-					self:_set_setting("auto_crafter_allow_mutations", not (self:_setting("auto_crafter_allow_mutations", false) == true))
-				end,
-				refresh = function(widget)
-					widget.content.checked = self:_setting("auto_crafter_allow_mutations", false) == true
-				end,
-			}))
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_preview", "Craft / purchase search"), self:_setting("auto_crafter_allow_mutations", false) == true and localize("auto_crafter_panel_serial_start", "SERIAL; click to start") or localize("auto_crafter_panel_read_only_preview", "Read-only preview"), {
-				enabled = true,
-				selectable = true,
-				variant = "action",
-				action = function()
-					if self:_setting("auto_crafter_allow_mutations", false) == true and type(self._start_purchase_search) == "function" then
-						self._start_purchase_search()
-					elseif type(self._preview_plan) == "function" then
-						self._preview_plan()
-					end
-				end,
-				refresh = function(widget)
-					local enabled = self:_setting("auto_crafter_allow_mutations", false) == true
-					widget.content.enabled = true
-					widget.content.hotspot.disabled = false
-					widget.content.detail = enabled and localize("auto_crafter_panel_serial_start", "SERIAL; click to start") or localize("auto_crafter_panel_read_only_preview", "Read-only preview")
-				end,
-			}))
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_phase_2", "Redeem + sacrifice one"), self:_last_candidate_text(), {
-				enabled = self._controller_state and self._controller_state.last_purchased ~= nil and self:_setting("auto_crafter_allow_mutations", false) == true,
-				selectable = true,
-				variant = "action",
-				action = function()
-					if type(self._start_mastery_operation) == "function" then
-						self._start_mastery_operation()
-					end
-				end,
-				refresh = function(widget)
-					local enabled = self._controller_state and self._controller_state.last_purchased ~= nil and self:_setting("auto_crafter_allow_mutations", false) == true
-					widget.content.enabled = enabled
-					widget.content.hotspot.disabled = not enabled
-					widget.content.detail = self:_last_candidate_text()
-				end,
-			}))
 		end
+
+		table.insert(entries, self:_entry(localize("auto_crafter_panel_workflow", "Crafting workflow"), localize("auto_crafter_panel_ui_plan", "UI PLAN"), {
+			selectable = true,
+			section_header = true,
+			section_id = SECTION_WORKFLOW,
+			variant = "section",
+		}))
+
+		if not self._section_collapsed[SECTION_WORKFLOW] then
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_saved_only", "Saved configuration"), localize("auto_crafter_panel_not_connected", "Later phases will connect these options."), {
+				variant = "status",
+			}))
+			add_checkbox("auto_crafter_buy_until_target", "auto_crafter_buy_until_target", "Buy until dump-stat target", true)
+			add_checkbox("auto_crafter_level_mastery_20", "auto_crafter_level_mastery_20", "Level weapon mastery to 20", false)
+			add_checkbox("auto_crafter_allocate_mastery_points", "auto_crafter_allocate_mastery_points", "Allocate mastery points", false, function()
+				return self:_setting("auto_crafter_level_mastery_20", false) == true
+			end)
+			add_checkbox("auto_crafter_consecrate_transcendent", "auto_crafter_consecrate_transcendent", "Consecrate to Transcendent", true)
+			add_checkbox("auto_crafter_upgrade_expertise_500", "auto_crafter_upgrade_expertise_500", "Upgrade expertise to 500", true)
+			add_checkbox("auto_crafter_change_perks", "auto_crafter_change_perks", "Change perks", false)
+			add_checkbox("auto_crafter_change_blessings", "auto_crafter_change_blessings", "Change blessings", false, function()
+				return self:_setting("auto_crafter_level_mastery_20", false) == true
+			end)
+		end
+
+		table.insert(entries, self:_entry(localize("auto_crafter_panel_trait_targets", "Perk and blessing targets"), localize("auto_crafter_panel_ui_plan", "UI PLAN"), {
+			selectable = true,
+			section_header = true,
+			section_id = SECTION_TRAITS,
+			variant = "section",
+		}))
+
+		if not self._section_collapsed[SECTION_TRAITS] then
+			local unavailable = localize("auto_crafter_panel_option_unavailable", "Enable prerequisite options")
+			add_target_selector("auto_crafter_perk_1_target", "auto_crafter_perk_1_target", "Perk target 1", function()
+				return self:_setting("auto_crafter_change_perks", false) == true
+			end, unavailable)
+			add_target_selector("auto_crafter_perk_2_target", "auto_crafter_perk_2_target", "Perk target 2", function()
+				return self:_setting("auto_crafter_change_perks", false) == true
+			end, unavailable)
+			local function blessing_targets_enabled()
+				return self:_setting("auto_crafter_level_mastery_20", false) == true and self:_setting("auto_crafter_allocate_mastery_points", false) == true and self:_setting("auto_crafter_change_blessings", false) == true
+			end
+			add_target_selector("auto_crafter_blessing_1_target", "auto_crafter_blessing_1_target", "Blessing target 1", blessing_targets_enabled, unavailable)
+			add_target_selector("auto_crafter_blessing_2_target", "auto_crafter_blessing_2_target", "Blessing target 2", blessing_targets_enabled, unavailable)
+		end
+
+		table.insert(entries, self:_entry(localize("auto_crafter_panel_output", "Final item handling"), localize("auto_crafter_panel_ui_plan", "UI PLAN"), {
+			selectable = true,
+			section_header = true,
+			section_id = SECTION_OUTPUT,
+			variant = "section",
+		}))
+
+		if not self._section_collapsed[SECTION_OUTPUT] then
+			add_checkbox("auto_crafter_favorite_result", "auto_crafter_favorite_result", "Favorite final weapon", true)
+			add_checkbox("auto_crafter_rename_result", "auto_crafter_rename_result", "Rename final weapon", false)
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_result_name", "Result name"), localize("auto_crafter_panel_name_provider_later", "Naming provider connection planned")))
+		end
+
+		table.insert(entries, self:_entry(localize("auto_crafter_panel_advanced", "Advanced and safety"), "", {
+			selectable = true,
+			section_header = true,
+			section_id = SECTION_ADVANCED,
+			variant = "section",
+		}))
+
+		if not self._section_collapsed[SECTION_ADVANCED] then
+			local request_modes = { "sequential", "parallel_reads", "experimental_parallel_mutations" }
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_request_mode", "Request mode"), self:_planner_request_mode_text(), {
+				selectable = true,
+				variant = "enum_stepper",
+				decrease = function()
+					self:_step_enum_setting("auto_crafter_request_mode", request_modes, "sequential", -1)
+				end,
+				increase = function()
+					self:_step_enum_setting("auto_crafter_request_mode", request_modes, "sequential", 1)
+				end,
+				refresh = function(widget)
+					widget.content.detail = self:_planner_request_mode_text()
+				end,
+			}))
+			add_checkbox("auto_crafter_allow_mutations", "auto_crafter_panel_mutation_gate", "Mutation gate", false)
+		end
+
+		table.insert(entries, self:_entry(localize("auto_crafter_panel_preview", "Craft / purchase search"), self:_setting("auto_crafter_allow_mutations", false) == true and localize("auto_crafter_panel_serial_start", "SERIAL; click to start") or localize("auto_crafter_panel_read_only_preview", "Read-only preview"), {
+			enabled = true,
+			selectable = true,
+			variant = "action",
+			action = function()
+				if self:_setting("auto_crafter_allow_mutations", false) == true and type(self._start_purchase_search) == "function" then
+					self._start_purchase_search()
+				elseif type(self._preview_plan) == "function" then
+					self._preview_plan()
+				end
+			end,
+			refresh = function(widget)
+				local enabled = self:_setting("auto_crafter_allow_mutations", false) == true
+				widget.content.enabled = true
+				widget.content.hotspot.disabled = false
+				widget.content.detail = enabled and localize("auto_crafter_panel_serial_start", "SERIAL; click to start") or localize("auto_crafter_panel_read_only_preview", "Read-only preview")
+			end,
+		}))
+		table.insert(entries, self:_entry(localize("auto_crafter_panel_phase_2", "Redeem + sacrifice one"), self:_last_candidate_text(), {
+			enabled = self._controller_state and self._controller_state.last_purchased ~= nil and self:_setting("auto_crafter_allow_mutations", false) == true,
+			selectable = true,
+			variant = "action",
+			action = function()
+				if type(self._start_mastery_operation) == "function" then
+					self._start_mastery_operation()
+				end
+			end,
+			refresh = function(widget)
+				local enabled = self._controller_state and self._controller_state.last_purchased ~= nil and self:_setting("auto_crafter_allow_mutations", false) == true
+				widget.content.enabled = enabled
+				widget.content.hotspot.disabled = not enabled
+				widget.content.detail = self:_last_candidate_text()
+			end,
+		}))
 
 		table.insert(entries, self:_entry(localize("auto_crafter_panel_offer_list", "Weapon selection"), tostring(#offers)))
 
@@ -1086,10 +1249,10 @@ function Panel.new(dependencies)
 
 		local menu_settings = {
 			bottom_chin = CONTENT_VERTICAL_PADDING,
-			edge_padding = 0,
+			edge_padding = CONTENT_HORIZONTAL_PADDING * 2,
 			enable_gamepad_scrolling = true,
 			grid_size = {
-				PANEL_WIDTH,
+				PANEL_WIDTH - CONTENT_HORIZONTAL_PADDING * 2,
 				PANEL_HEIGHT,
 			},
 			grid_spacing = {
@@ -1131,6 +1294,10 @@ function Panel.new(dependencies)
 		self._selected_offer_master_id = nil
 		self._section_collapsed = {
 			[SECTION_PLANNER] = false,
+			[SECTION_WORKFLOW] = false,
+			[SECTION_TRAITS] = true,
+			[SECTION_OUTPUT] = true,
+			[SECTION_ADVANCED] = true,
 			[SECTION_MELEE] = true,
 			[SECTION_RANGED] = true,
 		}

@@ -192,13 +192,47 @@ def validate_auto_crafter_mutation_boundaries() -> int:
         "local function compact_selector_passes",
         "local function compact_checkbox_passes",
         "local function compact_stepper_passes",
+        "local function enum_stepper_passes",
         "local function action_button_passes",
         "local function offer_row_passes",
+        "edge_padding = CONTENT_HORIZONTAL_PADDING * 2",
+        "PANEL_WIDTH - CONTENT_HORIZONTAL_PADDING * 2",
     )
     missing_visual = [token for token in visual_contract if token not in panel_source]
 
     if missing_visual:
         raise SystemExit("Auto Crafter visual contract missing: " + ", ".join(missing_visual))
+
+    future_ui_settings = (
+        "auto_crafter_buy_until_target",
+        "auto_crafter_level_mastery_20",
+        "auto_crafter_allocate_mastery_points",
+        "auto_crafter_consecrate_transcendent",
+        "auto_crafter_upgrade_expertise_500",
+        "auto_crafter_change_perks",
+        "auto_crafter_change_blessings",
+        "auto_crafter_perk_1_target",
+        "auto_crafter_perk_2_target",
+        "auto_crafter_blessing_1_target",
+        "auto_crafter_blessing_2_target",
+        "auto_crafter_favorite_result",
+        "auto_crafter_rename_result",
+    )
+    data_source = (RUNTIME_ROOT / "BetterInventory_data.lua").read_text(encoding="utf-8")
+    controller_source = (auto_crafter_root / "core" / "controller.lua").read_text(encoding="utf-8")
+    missing_future_ui = [
+        token for token in future_ui_settings if token not in data_source or token not in panel_source
+    ]
+    wired_future_backend = [token for token in future_ui_settings if token in controller_source]
+
+    if missing_future_ui:
+        raise SystemExit("Auto Crafter future UI contract missing: " + ", ".join(missing_future_ui))
+
+    if wired_future_backend:
+        raise SystemExit(
+            "Auto Crafter future UI options must remain backend-inert: "
+            + ", ".join(wired_future_backend)
+        )
 
     backend_source = (auto_crafter_root / "darktide" / "backend.lua").read_text(encoding="utf-8")
     backend_contract = (

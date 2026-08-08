@@ -688,6 +688,73 @@ return {
 							},
 						},
 					},
+					{
+						setting_id = "auto_crafter_workflow_group",
+						type = "group",
+						sub_widgets = {
+							{ setting_id = "auto_crafter_buy_until_target", tooltip = "auto_crafter_buy_until_target_tooltip", type = "checkbox", default_value = true },
+							{ setting_id = "auto_crafter_level_mastery_20", tooltip = "auto_crafter_level_mastery_20_tooltip", type = "checkbox", default_value = false },
+							{ setting_id = "auto_crafter_allocate_mastery_points", tooltip = "auto_crafter_allocate_mastery_points_tooltip", type = "checkbox", default_value = false },
+							{ setting_id = "auto_crafter_consecrate_transcendent", tooltip = "auto_crafter_consecrate_transcendent_tooltip", type = "checkbox", default_value = true },
+							{ setting_id = "auto_crafter_upgrade_expertise_500", tooltip = "auto_crafter_upgrade_expertise_500_tooltip", type = "checkbox", default_value = true },
+							{ setting_id = "auto_crafter_change_perks", tooltip = "auto_crafter_change_perks_tooltip", type = "checkbox", default_value = false },
+							{ setting_id = "auto_crafter_change_blessings", tooltip = "auto_crafter_change_blessings_tooltip", type = "checkbox", default_value = false },
+						},
+					},
+					{
+						setting_id = "auto_crafter_trait_targets_group",
+						type = "group",
+						sub_widgets = {
+							{
+								setting_id = "auto_crafter_perk_1_target",
+								tooltip = "auto_crafter_perk_target_tooltip",
+								type = "dropdown",
+								default_value = "keep",
+								options = {
+									{ text = "auto_crafter_target_keep", value = "keep" },
+									{ text = "auto_crafter_target_auto", value = "auto" },
+								},
+							},
+							{
+								setting_id = "auto_crafter_perk_2_target",
+								tooltip = "auto_crafter_perk_target_tooltip",
+								type = "dropdown",
+								default_value = "keep",
+								options = {
+									{ text = "auto_crafter_target_keep", value = "keep" },
+									{ text = "auto_crafter_target_auto", value = "auto" },
+								},
+							},
+							{
+								setting_id = "auto_crafter_blessing_1_target",
+								tooltip = "auto_crafter_blessing_target_tooltip",
+								type = "dropdown",
+								default_value = "keep",
+								options = {
+									{ text = "auto_crafter_target_keep", value = "keep" },
+									{ text = "auto_crafter_target_auto", value = "auto" },
+								},
+							},
+							{
+								setting_id = "auto_crafter_blessing_2_target",
+								tooltip = "auto_crafter_blessing_target_tooltip",
+								type = "dropdown",
+								default_value = "keep",
+								options = {
+									{ text = "auto_crafter_target_keep", value = "keep" },
+									{ text = "auto_crafter_target_auto", value = "auto" },
+								},
+							},
+						},
+					},
+					{
+						setting_id = "auto_crafter_output_group",
+						type = "group",
+						sub_widgets = {
+							{ setting_id = "auto_crafter_favorite_result", tooltip = "auto_crafter_favorite_result_tooltip", type = "checkbox", default_value = true },
+							{ setting_id = "auto_crafter_rename_result", tooltip = "auto_crafter_rename_result_tooltip", type = "checkbox", default_value = false },
+						},
+					},
 				},
 			},
 			{

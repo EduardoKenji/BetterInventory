@@ -620,6 +620,93 @@ local localization = {
 	auto_crafter_request_mode_experimental = {
 		en = "Experimental parallel mutations",
 	},
+	auto_crafter_workflow_group = {
+		en = "Crafting workflow (planned options)",
+	},
+	auto_crafter_buy_until_target = {
+		en = "Buy until dump-stat target is found",
+	},
+	auto_crafter_buy_until_target_tooltip = {
+		en = "Uses the implemented serialized Brunt purchase search. Later phases will connect the remaining workflow options to the selected candidate.",
+	},
+	auto_crafter_level_mastery_20 = {
+		en = "Automatically level weapon mastery to 20",
+	},
+	auto_crafter_level_mastery_20_tooltip = {
+		en = "UI planning option only. It will later repeat the guarded buy, Redeem, sacrifice, claim and synchronization loop until authoritative mastery reaches level 20.",
+	},
+	auto_crafter_allocate_mastery_points = {
+		en = "Automatically allocate mastery points",
+	},
+	auto_crafter_allocate_mastery_points_tooltip = {
+		en = "UI planning option only. Available in the Armoury panel when mastery-to-20 is selected; backend allocation is not connected yet.",
+	},
+	auto_crafter_consecrate_transcendent = {
+		en = "Consecrate weapon to Transcendent",
+	},
+	auto_crafter_consecrate_transcendent_tooltip = {
+		en = "UI planning option only. The final candidate will later be consecrated through only the missing rarity tiers.",
+	},
+	auto_crafter_upgrade_expertise_500 = {
+		en = "Upgrade weapon expertise to 500",
+	},
+	auto_crafter_upgrade_expertise_500_tooltip = {
+		en = "UI planning option only. The final candidate will later be empowered to expertise 500 after mastery rewards permit it.",
+	},
+	auto_crafter_change_perks = {
+		en = "Change perks",
+	},
+	auto_crafter_change_perks_tooltip = {
+		en = "UI planning option only. Perk target discovery and replacement are not connected yet.",
+	},
+	auto_crafter_change_blessings = {
+		en = "Change blessings",
+	},
+	auto_crafter_change_blessings_tooltip = {
+		en = "UI planning option only. Requires mastery-to-20 in the Armoury panel; blessing discovery, unlock and replacement are not connected yet.",
+	},
+	auto_crafter_trait_targets_group = {
+		en = "Perk and blessing targets (planned)",
+	},
+	auto_crafter_perk_1_target = {
+		en = "Perk target 1",
+	},
+	auto_crafter_perk_2_target = {
+		en = "Perk target 2",
+	},
+	auto_crafter_perk_target_tooltip = {
+		en = "Placeholder policy until the game-data catalogue can populate weapon-compatible perk names. Keep current performs no replacement; Auto-select is stored but not executed.",
+	},
+	auto_crafter_blessing_1_target = {
+		en = "Blessing target 1",
+	},
+	auto_crafter_blessing_2_target = {
+		en = "Blessing target 2",
+	},
+	auto_crafter_blessing_target_tooltip = {
+		en = "Placeholder policy until weapon-compatible blessing discovery and mastery-point allocation are implemented. This value cannot dispatch backend work.",
+	},
+	auto_crafter_target_keep = {
+		en = "Keep current",
+	},
+	auto_crafter_target_auto = {
+		en = "Auto-select (planned)",
+	},
+	auto_crafter_output_group = {
+		en = "Final item handling (planned)",
+	},
+	auto_crafter_favorite_result = {
+		en = "Favorite final weapon",
+	},
+	auto_crafter_favorite_result_tooltip = {
+		en = "UI planning option only. Favoriting will run after the final gear ID is stable.",
+	},
+	auto_crafter_rename_result = {
+		en = "Rename final weapon",
+	},
+	auto_crafter_rename_result_tooltip = {
+		en = "Disabled by default. Later connection requires a tested BetterInventory or Name It naming provider and a stable final gear ID.",
+	},
 	auto_crafter_notification_title = {
 		en = "Auto Crafter Helper",
 	},
@@ -733,6 +820,36 @@ local localization = {
 	},
 	auto_crafter_panel_waiting = {
 		en = "waiting for probe",
+	},
+	auto_crafter_panel_ui_plan = {
+		en = "UI PLAN",
+	},
+	auto_crafter_panel_workflow = {
+		en = "Crafting workflow",
+	},
+	auto_crafter_panel_trait_targets = {
+		en = "Perk and blessing targets",
+	},
+	auto_crafter_panel_output = {
+		en = "Final item handling",
+	},
+	auto_crafter_panel_saved_only = {
+		en = "Saved configuration",
+	},
+	auto_crafter_panel_not_connected = {
+		en = "Later phases will connect these options. Current Phase 1/2 actions remain separately guarded.",
+	},
+	auto_crafter_panel_option_unavailable = {
+		en = "Enable prerequisite options",
+	},
+	auto_crafter_panel_result_name = {
+		en = "Result name",
+	},
+	auto_crafter_panel_name_provider_later = {
+		en = "Naming provider connection planned",
+	},
+	auto_crafter_panel_advanced = {
+		en = "Advanced and safety",
 	},
 	auto_crafter_value_on = {
 		en = "On",
