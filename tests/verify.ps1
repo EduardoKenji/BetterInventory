@@ -786,3 +786,7 @@ try {
 Write-Host "Tracked release archive parity verified: $trackedReleaseArchive" -ForegroundColor Green
 
 Write-Host "BetterInventory static verification passed." -ForegroundColor Green
+
+# The intentional packaging-failure probe above must not leak its expected
+# non-zero child-process status to callers after every verification gate passes.
+$global:LASTEXITCODE = 0
