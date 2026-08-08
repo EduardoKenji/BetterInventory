@@ -543,13 +543,13 @@ local localization = {
 		en = "Shows every Curio name in a reserved two-line title area above the primary attribute and three secondary attributes. Works with or without Name It. Reopen the current view after changing this option.",
 	},
 	auto_crafter_group = {
-		en = "Auto Crafter Helper (read-only Phase 1B planner)",
+		en = "Auto Crafter Helper (Phase 1C/2 guarded mutations)",
 	},
 	auto_crafter_enable = {
 		en = "Enable Auto Crafter Helper probe",
 	},
 	auto_crafter_enable_tooltip = {
-		en = "Phase 1 only: enables a read-only Brunt's Armoury diagnostic panel when the Brunt view opens. No purchases, crafting, sacrifices, or other account mutations are performed.",
+		en = "Enables the Brunt's Armoury Auto Crafter panel. Account mutations remain separately disabled until explicitly allowed below.",
 	},
 	auto_crafter_read_only_probe = {
 		en = "Run read-only Brunt probe",
@@ -558,10 +558,16 @@ local localization = {
 		en = "Reads current Brunt offers, wallets, and gear once after entering the Armoury view. Disabled automatically when Auto Crafter Helper is disabled.",
 	},
 	auto_crafter_show_probe_notifications = {
-		en = "Show Auto Crafter read-only notifications",
+		en = "Show Auto Crafter status notifications",
 	},
 	auto_crafter_show_probe_notifications_tooltip = {
-		en = "Enabled by default. Shows native notification status for read-only probes and plan previews. Notification errors cannot affect game data.",
+		en = "Enabled by default. Shows native notification status for probes, plans, purchase search, and mastery synchronization. Notification errors cannot affect game data.",
+	},
+	auto_crafter_allow_mutations = {
+		en = "Allow Auto Crafter account mutations",
+	},
+	auto_crafter_allow_mutations_tooltip = {
+		en = "Disabled by default. Explicitly authorizes serialized Brunt purchases and the Phase 2 one-item Redeemed/sacrifice proof. It does not enable automatic mastery-to-20 repetition, perks, blessings, favorite, or rename operations.",
 	},
 	auto_crafter_target_dump_stat = {
 		en = "Auto Crafter target dump stat",
@@ -579,25 +585,25 @@ local localization = {
 		en = "Dump stat target",
 	},
 	auto_crafter_dump_stat_target_tooltip = {
-		en = "Desired dump-stat percentage. Phase 1B only validates this value; it does not purchase or modify items.",
+		en = "Desired dump-stat percentage used by the guarded serialized purchase search. Unknown stat shapes stop the run.",
 	},
 	auto_crafter_docket_cap = {
 		en = "Auto Crafter docket cap",
 	},
 	auto_crafter_docket_cap_tooltip = {
-		en = "Maximum dockets the future purchase loop may budget. The Phase 1B planner reports a floor and cap only; it does not spend dockets.",
+		en = "Maximum dockets the serialized purchase search may spend. The controller stops before dispatching a purchase that would cross this cap.",
 	},
 	auto_crafter_max_purchases = {
 		en = "Auto Crafter maximum purchases",
 	},
 	auto_crafter_max_purchases_tooltip = {
-		en = "Hard upper bound for the future serialized search loop. Phase 1B uses it for preflight and cost planning only.",
+		en = "Hard upper bound for the serialized purchase search. No next purchase is dispatched after this count.",
 	},
 	auto_crafter_best_candidate_fallback = {
 		en = "Keep best candidate if target is missed",
 	},
 	auto_crafter_best_candidate_fallback_tooltip = {
-		en = "Allows the future loop to retain the closest dump-stat candidate when the exact target is not found before a cap. Disabled by default.",
+		en = "Retains the closest candidate for later review when the exact target is not found before a cap. Misses are never silently discarded.",
 	},
 	auto_crafter_request_mode = {
 		en = "Auto Crafter request mode",
@@ -699,10 +705,25 @@ local localization = {
 		en = "Preflight",
 	},
 	auto_crafter_panel_preview = {
-		en = "Craft (read-only preview)",
+		en = "Craft / purchase search",
 	},
 	auto_crafter_panel_read_only_preview = {
-		en = "READ-ONLY; no mutations",
+		en = "Enable mutation gate first",
+	},
+	auto_crafter_panel_mutation_gate = {
+		en = "Mutation gate",
+	},
+	auto_crafter_panel_phase_2 = {
+		en = "Phase 2: Redeem + sacrifice one",
+	},
+	auto_crafter_panel_phase_2_waiting = {
+		en = "No purchased candidate",
+	},
+	auto_crafter_panel_mutations_on = {
+		en = "SERIAL MUTATIONS ON",
+	},
+	auto_crafter_panel_mutations_off = {
+		en = "MUTATIONS OFF",
 	},
 	auto_crafter_panel_waiting = {
 		en = "waiting for probe",

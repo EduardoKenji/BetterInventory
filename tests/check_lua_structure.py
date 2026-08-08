@@ -138,8 +138,8 @@ def validate_panel_font_types() -> int:
     return len(panel_fonts)
 
 
-def validate_auto_crafter_phase_1b() -> int:
-    """Keep the planner milestone read-only until a later mutation phase is reviewed."""
+def validate_auto_crafter_mutation_boundaries() -> int:
+    """Keep mutation calls behind the guarded controller/backend boundary."""
 
     auto_crafter_root = RUNTIME_ROOT / "auto_crafter"
     lua_paths = sorted(auto_crafter_root.rglob("*.lua"))
@@ -156,12 +156,12 @@ def validate_auto_crafter_phase_1b() -> int:
         source = path.read_text(encoding="utf-8")
         ast.parse(source)
 
-        if path.name in {"planner.lua", "controller.lua", "panel.lua", "BetterInventory_auto_crafter.lua"}:
+        if path.name == "planner.lua":
             forbidden = [token for token in mutation_tokens if token in source]
 
             if forbidden:
                 raise SystemExit(
-                    f"Phase 1B Auto Crafter file contains mutation token(s): {path.name}: {', '.join(forbidden)}"
+                    f"Auto Crafter planner contains mutation token(s): {', '.join(forbidden)}"
                 )
 
     planner_source = (auto_crafter_root / "core" / "planner.lua").read_text(encoding="utf-8")
@@ -187,6 +187,30 @@ def validate_auto_crafter_phase_1b() -> int:
 
     if missing_visual:
         raise SystemExit("Auto Crafter visual contract missing: " + ", ".join(missing_visual))
+
+    backend_source = (auto_crafter_root / "darktide" / "backend.lua").read_text(encoding="utf-8")
+    backend_contract = (
+        "function backend:purchase_offer",
+        "function backend:upgrade_weapon_rarity",
+        "function backend:extract_weapon_mastery",
+        "function backend:get_mastery_by_pattern",
+    )
+    missing_backend = [token for token in backend_contract if token not in backend_source]
+
+    if missing_backend:
+        raise SystemExit("Auto Crafter backend mutation contract missing: " + ", ".join(missing_backend))
+
+    controller_source = (auto_crafter_root / "core" / "controller.lua").read_text(encoding="utf-8")
+    controller_contract = (
+        'setting("auto_crafter_allow_mutations", false)',
+        "_operation_inflight",
+        "MAX_MASTERY_POLL_ATTEMPTS",
+        "extraction_contains_gear_id",
+    )
+    missing_controller = [token for token in controller_contract if token not in controller_source]
+
+    if missing_controller:
+        raise SystemExit("Auto Crafter controller guard contract missing: " + ", ".join(missing_controller))
 
     return len(lua_paths)
 
@@ -287,7 +311,7 @@ def run() -> None:
         )
 
     panel_font_count = validate_panel_font_types()
-    auto_crafter_file_count = validate_auto_crafter_phase_1b()
+    auto_crafter_file_count = validate_auto_crafter_mutation_boundaries()
     validate_auto_crafter_brunt_route()
 
     print(
@@ -295,7 +319,7 @@ def run() -> None:
         f"(main assignments={len(actual_assignments)}, layout calls={len(found_calls)}, "
         f"local module references checked={len(missing_modules) + len(local_io_dofile_targets(main_tree))}, "
         f"Auto Crafter panel fonts checked={panel_font_count}, "
-        f"Phase 1B files checked={auto_crafter_file_count})."
+        f"Phase 1C/2 files checked={auto_crafter_file_count})."
     )
 
 

@@ -93,6 +93,19 @@ local function format_plan(plan)
 	return string.format("%s | %s | %s", preflight, estimate, plan.mode_note or "sequential requests")
 end
 
+local function format_candidate(candidate)
+	if not candidate then
+		return "candidate unavailable"
+	end
+
+	return string.format(
+		"%s | dump %s | gear %s",
+		tostring(candidate.display_name or candidate.mastery_id or "weapon"),
+		tostring(candidate.dump_stat or "?"),
+		tostring(candidate.gear_id or "?")
+	)
+end
+
 local function reporter(ui_panel)
 	return {
 		emit = function(_, kind, payload)
@@ -120,6 +133,58 @@ local function reporter(ui_panel)
 			elseif kind == "plan_preview" then
 				log("info", "Auto Crafter Helper read-only plan preview: " .. format_plan(payload and payload.plan))
 				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), format_plan(payload and payload.plan))
+			elseif kind == "mutation_blocked" then
+				if ui_panel then
+					ui_panel:set_phase("mutation_blocked")
+				end
+
+				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Mutation blocked: " .. tostring(payload and payload.reason or "preflight failed"))
+			elseif kind == "purchase_search_started" then
+				if ui_panel then
+					ui_panel:set_phase("search_purchase")
+				end
+
+				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Serialized purchase search started.")
+			elseif kind == "purchase_result" then
+				if ui_panel then
+					ui_panel:set_phase("search_purchase")
+				end
+
+				local search = payload and payload.search or {}
+				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), string.format("Purchase %s/%s | %s | spent %s", tostring(search.purchases or "?"), tostring(search.max_purchases or "?"), format_candidate(payload and payload.candidate), tostring(search.spent or "?")))
+			elseif kind == "purchase_search_complete" then
+				if ui_panel then
+					ui_panel:set_phase("search_complete")
+				end
+
+				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Exact dump-stat candidate found: " .. format_candidate(payload and payload.candidate))
+			elseif kind == "purchase_search_stopped" then
+				if ui_panel then
+					ui_panel:set_phase(tostring(payload and payload.reason or "search_stopped"))
+				end
+
+				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Purchase search stopped: " .. tostring(payload and payload.reason or "limit"))
+			elseif kind == "mastery_operation_started" then
+				if ui_panel then
+					ui_panel:set_phase("mastery_preflight")
+				end
+
+				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Phase 2 started: " .. format_candidate(payload and payload.candidate))
+			elseif kind == "mastery_upgrade_complete" or kind == "mastery_sacrifice_complete" or kind == "mastery_sync_started" or kind == "mastery_poll_result" or kind == "mastery_operation_complete" or kind == "mastery_sync_timeout" then
+				if ui_panel then
+					ui_panel:set_phase(kind)
+				end
+
+				if kind ~= "mastery_poll_result" then
+					notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Phase 2 " .. string.gsub(kind, "_", " ") .. ".")
+				end
+			elseif kind == "operation_failed" then
+				if ui_panel then
+					ui_panel:set_phase("operation_failed")
+				end
+
+				log("error", "Auto Crafter Helper operation failed: " .. tostring(payload and payload.error))
+				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Operation failed: " .. tostring(payload and payload.error))
 			elseif kind == "context_exit" then
 				log("info", "Auto Crafter Helper stopped read-only work: " .. tostring(payload and payload.reason or "context exit"))
 			end
@@ -215,6 +280,12 @@ function AutoCrafter.configure(dependencies)
 		settings = settings_adapter(),
 		preview_plan = function()
 			return controller and controller:preview_plan() or false
+		end,
+		start_purchase_search = function()
+			return controller and controller:start_purchase_search() or false
+		end,
+		start_mastery_operation = function(candidate)
+			return controller and controller:start_mastery_operation(candidate) or false
 		end,
 		localize = function(setting_id)
 			return localize(setting_id, setting_id)

@@ -611,6 +611,12 @@ return {
 						default_value = true,
 					},
 					{
+						setting_id = "auto_crafter_allow_mutations",
+						tooltip = "auto_crafter_allow_mutations_tooltip",
+						type = "checkbox",
+						default_value = false,
+					},
+					{
 						setting_id = "auto_crafter_target_dump_stat",
 						tooltip = "auto_crafter_target_dump_stat_tooltip",
 						type = "dropdown",

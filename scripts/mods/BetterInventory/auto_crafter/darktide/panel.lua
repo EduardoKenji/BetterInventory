@@ -401,6 +401,8 @@ function Panel.new(dependencies)
 		_get_selected_offer = dependencies.get_selected_offer,
 		_select_offer = dependencies.select_offer,
 		_preview_plan = dependencies.preview_plan,
+		_start_purchase_search = dependencies.start_purchase_search,
+		_start_mastery_operation = dependencies.start_mastery_operation,
 		_settings = dependencies.settings or {},
 		_localize = dependencies.localize,
 		_logger = dependencies.logger,
@@ -556,6 +558,7 @@ function Panel.new(dependencies)
 		end
 
 		local ok, result = pcall(set, self._settings, setting_id, value)
+		self._layout_pending = true
 
 		return ok and result ~= false
 	end
@@ -605,6 +608,20 @@ function Panel.new(dependencies)
 
 	function self:_planner_fallback_text()
 		return self:_setting("auto_crafter_best_candidate_fallback", false) == true and localize("auto_crafter_value_on", "On") or localize("auto_crafter_value_off", "Off")
+	end
+
+	function self:_mutation_gate_text()
+		return self:_setting("auto_crafter_allow_mutations", false) == true and localize("auto_crafter_panel_mutations_on", "SERIAL MUTATIONS ON") or localize("auto_crafter_panel_mutations_off", "MUTATIONS OFF")
+	end
+
+	function self:_last_candidate_text()
+		local candidate = self._controller_state and self._controller_state.last_purchased
+
+		if not candidate then
+			return localize("auto_crafter_panel_phase_2_waiting", "No purchased candidate")
+		end
+
+		return string.format("%s | %s", value_text(candidate.display_name, candidate.mastery_id or "weapon"), value_text(candidate.gear_id, "gear ?"))
 	end
 
 	function self:_split_offers(offers)
@@ -674,7 +691,7 @@ function Panel.new(dependencies)
 		local selected = selected_weapon or localize("auto_crafter_panel_no_target", "no weapon selected")
 		local plan = self._plan or snapshot and snapshot.plan
 		local entries = {
-			self:_entry(localize("auto_crafter_panel_title", "Auto Crafter Helper"), localize("auto_crafter_panel_read_only", "READ-ONLY"), {
+			self:_entry(localize("auto_crafter_panel_title", "Auto Crafter Helper"), self:_setting("auto_crafter_allow_mutations", false) == true and localize("auto_crafter_panel_mutations_on", "SERIAL MUTATIONS ON") or localize("auto_crafter_panel_mutations_off", "MUTATIONS OFF"), {
 				header = true,
 			}),
 			self:_entry(localize("auto_crafter_panel_status", "Status"), self._phase or value_text(snapshot and snapshot.phase, "idle"), {
@@ -763,19 +780,41 @@ function Panel.new(dependencies)
 					widget.content.detail = current_plan and current_plan.estimate and current_plan.estimate.summary or localize("auto_crafter_panel_waiting", "waiting for probe")
 				end,
 			}))
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_preflight", "Preflight"), plan and plan.preflight and plan.preflight.summary or localize("auto_crafter_panel_waiting", "waiting for probe"), {
+			 table.insert(entries, self:_entry(localize("auto_crafter_panel_preflight", "Preflight"), plan and plan.preflight and plan.preflight.summary or localize("auto_crafter_panel_waiting", "waiting for probe"), {
 				refresh = function(widget)
 					local current_plan = self._plan
 
 					widget.content.detail = current_plan and current_plan.preflight and current_plan.preflight.summary or localize("auto_crafter_panel_waiting", "waiting for probe")
 				end,
 			}))
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_preview", "Preview plan"), localize("auto_crafter_panel_read_only_preview", "READ-ONLY; no mutations"), {
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_mutation_gate", "Mutation gate"), self:_mutation_gate_text(), {
 				selectable = true,
 				action = function()
-					if type(self._preview_plan) == "function" then
+					self:_set_setting("auto_crafter_allow_mutations", not (self:_setting("auto_crafter_allow_mutations", false) == true))
+				end,
+				refresh = function(widget)
+					widget.content.detail = self:_mutation_gate_text()
+				end,
+			}))
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_preview", "Craft / purchase search"), self:_setting("auto_crafter_allow_mutations", false) == true and localize("auto_crafter_panel_estimate", "SERIAL; click to start") or localize("auto_crafter_panel_read_only_preview", "Enable mutation gate first"), {
+				selectable = true,
+				action = function()
+					if self:_setting("auto_crafter_allow_mutations", false) == true and type(self._start_purchase_search) == "function" then
+						self._start_purchase_search()
+					elseif type(self._preview_plan) == "function" then
 						self._preview_plan()
 					end
+				end,
+			}))
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_phase_2", "Phase 2: Redeem + sacrifice one"), self:_last_candidate_text(), {
+				selectable = self._controller_state and self._controller_state.last_purchased ~= nil and self:_setting("auto_crafter_allow_mutations", false) == true,
+				action = function()
+					if type(self._start_mastery_operation) == "function" then
+						self._start_mastery_operation()
+					end
+				end,
+				refresh = function(widget)
+					widget.content.detail = self:_last_candidate_text()
 				end,
 			}))
 		end

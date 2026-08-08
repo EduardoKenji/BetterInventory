@@ -1161,12 +1161,14 @@ UI may prefill targets from current item and display `Already satisfied` beside 
 
 - Phase 0 read-only service probe is implemented and validated in-game. It resolves the Brunt view, storefront, wallet, and gear data without spending or deleting anything.
 - Phase 1B read-only planner is now implemented. It exposes a mandatory dump-stat target (Damage or a clearly marked future auto-discovery mode), target percentage, docket cap, maximum purchase count, best-candidate fallback, and request scheduling mode. The widget builds a fail-closed preflight from the currently selected native Brunt offer and reports a conservative docket floor/cap; plasteel and diamantine remain explicitly deferred until a candidate exists. The widget's `Craft (read-only preview)` action only rebuilds this plan and emits a notification; it does not call purchase, crafting, sacrifice, mastery, favorite, or rename operations.
+- Phase 1C guarded purchase search is now implemented behind `auto_crafter_allow_mutations`, which defaults off. A user click starts one serialized purchase at a time through the native `StoreService.purchase_item(offer)` adapter. Every purchased item remains in inventory; misses are never silently discarded. The loop parses authoritative purchased gear, stops on the configured exact dump-stat target, and stops before the next request when docket, wallet, or purchase-count limits would be exceeded. Unknown item/stat shapes fail closed. Parallel mutation settings remain presentation-only; account mutations always stay serialized.
+- Phase 2 one-item mastery proof is now implemented behind the same gate. It accepts one explicitly selected purchased candidate, verifies it still exists and belongs to the expected weapon family, upgrades it to Redeemed only when needed, sacrifices exactly one `gear_id`, requires the service to confirm that ID and positive XP, claims reachable tiers, then polls fresh mastery state with bounded attempts. It never repeats the operation automatically and stops on missing/ambiguous gear, zero-XP extraction, context exit, or synchronization timeout.
 - Auto Crafter UI polish is implemented before destructive phases: its rows now reuse BetterInventory's terminal palette, tiled row frames, compact 32/40 px geometry, gold selected state/checkmark, right-side chevrons, and bounded 445 x 520 scroll-panel geometry. The Auto Crafter module keeps these visual contracts locally so a future standalone extraction does not require BetterInventory panel imports.
 - Sequential requests are the default. Parallel reads and experimental parallel mutations are visible as planning choices so the eventual state machine can preserve the documented policy, but Phase 1B still performs the existing sequential read probe and blocks all mutations. Planner setting changes refresh the plan without rebuilding the offer grid, preserving scroll position.
 - Phase 1A diagnostic UI is now implemented: Auto Crafter owns a separate `ViewElementGrid` attached to `CreditsGoodsVendorView`, displays bounded offer details plus live wallet/gear totals, mirrors the selected Brunt weapon through a thin `_previewed_offer` adapter, and splits offers into canonical `slot_primary` melee and `slot_secondary` ranged sections. Both sections start collapsed; each has an independent deferred-safe toggle. Offer rows use the native `ViewElementGrid` left-click callback contract and resolve through Brunt's `focus_on_offer`, including deferred tab switching when the clicked row belongs to the other native tab. It does not call purchase, crafting, mastery, sacrifice, perk, blessing, favorite, or rename operations.
 - Store enrichment is bounded to the first 128 offers for UI/performance safety while the total offer count remains preserved. The panel renders at most ten rows and reports the remainder.
 - The implementation uses the actual Brunt class and a safe `on_enter` lifecycle seam. It intentionally does not install a competing `CreditsGoodsVendorView.on_exit` hook because Quick Level Mastery already owns that risky seam; context teardown and destroyed-view checks remain fail-closed.
-- The next mutation milestone is still Phase 1 safe purchase search below. No purchase loop is implied by the planner panel.
+- The next mutation milestone is Phase 3 mastery-to-20 repetition. It remains intentionally unimplemented: Phase 1C and Phase 2 must be live-validated first, especially gear/stat representation, cost responses, mastery claim lag, context cancellation, and interactions with Quick Level Mastery or other mutation mods.
 
 ### Phase 0: read-only probe
 
@@ -1183,13 +1185,17 @@ UI may prefill targets from current item and display `Already satisfied` beside 
 - Implement serialized Brunt purchase loop.
 - Keep every failure item.
 - Stop on exact dump-stat match or hard limits.
-- Add favorite/rename finalization.
+- Keep account mutation gate disabled by default; require explicit Start click and current authoritative preflight.
+- Refresh wallet/gear/store after each settled purchase before dispatching next purchase.
+- Add favorite/rename finalization only in later final-crafting phase, through optional providers.
 - Live-validate cancellation and stale offers.
 
 ### Phase 2: one-item mastery operation
 
 - For one explicitly selected purchased item: consecrate to Redeemed, sacrifice, claim tiers, poll convergence.
 - No automatic repeat yet.
+- Treat `extract_weapon_mastery` resolution as insufficient by itself: returned `gear_id` membership and positive `amount` are required.
+- Poll fresh `get_mastery_by_pattern` state on a bounded schedule; timeout stops sync work without starting another purchase.
 - Verify XP amount and claimed-point behavior from multiple starting mastery levels.
 
 ### Phase 3: mastery-to-20 loop

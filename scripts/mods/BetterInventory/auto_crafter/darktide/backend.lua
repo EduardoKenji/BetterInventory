@@ -215,10 +215,162 @@ local function count_collection(collection)
 	return count
 end
 
-local function summarize_gear(gear)
+local function item_instance(gear, gear_id)
+	if type(MasterItems) ~= "table" or type(MasterItems.get_item_instance) ~= "function" then
+		return nil
+	end
+
+	local ok, item = pcall(MasterItems.get_item_instance, gear, gear_id)
+
+	return ok and item or nil
+end
+
+local function item_stat_value(item, stat_name)
+	local base_stats = safe_member(item, "base_stats")
+
+	if type(base_stats) ~= "table" then
+		return nil
+	end
+
+	for _, stat in ipairs(base_stats) do
+		local name = safe_member(stat, "name")
+
+		if name == stat_name then
+			local value = tonumber(safe_member(stat, "value"))
+
+			if value == nil then
+				return nil
+			end
+
+			return value <= 1.01 and math.floor(value * 100 + 0.5) or math.floor(value + 0.5)
+		end
+	end
+
+	return nil
+end
+
+local function summarize_item(gear, gear_id)
+	local item = item_instance(gear, gear_id)
+
+	if not item then
+		return {
+			gear_id = gear_id,
+			available = false,
+		}
+	end
+
+	local base_stats = safe_member(item, "base_stats")
+	local stat_values = {}
+
+	if type(base_stats) == "table" then
+		for _, stat in ipairs(base_stats) do
+			local name = safe_member(stat, "name")
+			local value = tonumber(safe_member(stat, "value"))
+
+			if name and value ~= nil then
+				stat_values[name] = value <= 1.01 and math.floor(value * 100 + 0.5) or math.floor(value + 0.5)
+			end
+		end
+	end
+
+	local display_name
+
+	if type(Items) == "table" and type(Items.weapon_card_display_name) == "function" then
+		local ok, value = pcall(Items.weapon_card_display_name, item)
+
+		if ok then
+			display_name = value
+		end
+	end
+
 	return {
+		available = true,
+		base_item_level = tonumber(safe_member(item, "baseItemLevel")),
+		base_stats = stat_values,
+		damage = item_stat_value(item, "damage"),
+		display_name = display_name or safe_member(item, "name"),
+		gear_id = gear_id,
+		item_type = safe_member(item, "item_type"),
+		mastery_id = safe_member(item, "parent_pattern"),
+		parent_pattern = safe_member(item, "parent_pattern"),
+		rarity = tonumber(safe_member(item, "rarity")),
+	}
+end
+
+local function summarize_gear(gear)
+	local summary = {
 		available = gear ~= nil,
 		item_count = count_collection(gear),
+		items = {},
+	}
+
+	if type(gear) ~= "table" then
+		return summary
+	end
+
+	local added = 0
+
+	for gear_id, raw_gear in pairs(gear) do
+		if added >= 256 then
+			break
+		end
+
+		local resolved_gear_id = safe_member(raw_gear, "uuid") or safe_member(raw_gear, "gear_id") or gear_id
+
+		if resolved_gear_id ~= nil then
+			added = added + 1
+			summary.items[added] = summarize_item(raw_gear, resolved_gear_id)
+		end
+	end
+
+	return summary
+end
+
+local function summarize_purchase(result)
+	local items = safe_member(result, "items") or {}
+	local summary = {
+		available = type(items) == "table",
+		item_count = 0,
+		items = {},
+		transaction_id = safe_member(result, "transactionId") or safe_member(result, "transaction_id"),
+	}
+
+	if type(items) ~= "table" then
+		return summary
+	end
+
+	for index, item in ipairs(items) do
+		local gear_id = safe_member(item, "uuid") or safe_member(item, "gear_id") or safe_member(item, "gearId")
+
+		if gear_id ~= nil then
+			summary.item_count = summary.item_count + 1
+			summary.items[summary.item_count] = summarize_item(item, gear_id)
+		end
+	end
+
+	return summary
+end
+
+local function summarize_extraction(result)
+	local details = safe_member(result, "details")
+	local amounts = safe_member(details, "amounts") or {}
+	local amount = tonumber(safe_member(result, "amount"))
+
+	if amount == nil and type(amounts) == "table" then
+		for _, value in pairs(amounts) do
+			amount = tonumber(value)
+
+			if amount ~= nil then
+				break
+			end
+		end
+	end
+
+	local gear_ids = safe_member(result, "gear_ids") or safe_member(result, "gearIds") or {}
+
+	return {
+		amount = amount or 0,
+		gear_ids = gear_ids,
 	}
 end
 
@@ -240,6 +392,13 @@ function Backend.new(dependencies)
 	end
 
 	function backend:_read(service_name, method_name, ...)
+		local services = self:_services_now()
+		local service = services and services[service_name]
+
+		return call_service(service, method_name, ...)
+	end
+
+	function backend:_mutate(service_name, method_name, ...)
 		local services = self:_services_now()
 		local service = services and services[service_name]
 
@@ -271,6 +430,50 @@ function Backend.new(dependencies)
 
 			return snapshot
 		end)
+	end
+
+	function backend:purchase_offer(offer)
+		if not offer then
+			return rejected("purchase offer unavailable")
+		end
+
+		return self:_mutate("store", "purchase_item", offer):next(function (result)
+			return summarize_purchase(result)
+		end)
+	end
+
+	function backend:upgrade_weapon_rarity(gear_id)
+		if gear_id == nil then
+			return rejected("gear id unavailable for rarity upgrade")
+		end
+
+		return self:_mutate("crafting", "upgrade_weapon_rarity", gear_id)
+	end
+
+	function backend:extract_weapon_mastery(mastery_id, gear_ids)
+		if mastery_id == nil or type(gear_ids) ~= "table" or #gear_ids ~= 1 then
+			return rejected("phase 2 requires exactly one mastery item")
+		end
+
+		return self:_mutate("crafting", "extract_weapon_mastery", mastery_id, gear_ids):next(function (result)
+			return summarize_extraction(result)
+		end)
+	end
+
+	function backend:get_mastery_by_pattern(pattern_id)
+		if pattern_id == nil then
+			return rejected("mastery pattern unavailable")
+		end
+
+		return self:_read("mastery", "get_mastery_by_pattern", pattern_id)
+	end
+
+	function backend:claim_mastery_levels(mastery_data, added_xp)
+		if type(mastery_data) ~= "table" then
+			return rejected("mastery data unavailable for tier claim")
+		end
+
+		return self:_mutate("mastery", "claim_levels_by_new_exp", mastery_data, added_xp)
 	end
 
 	return backend
