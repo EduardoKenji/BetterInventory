@@ -108,7 +108,12 @@ if ($main -notmatch '_compact_card_defaults_v1_migrated' -or $main -notmatch 'mo
 }
 
 $data = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_data.lua") -Raw
-$localization = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_localization.lua") -Raw
+$localization = @(
+	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_localization.lua") -Raw
+	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_localization_core.lua") -Raw
+	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_localization_features.lua") -Raw
+	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_localization_zh_cn.lua") -Raw
+) -join "`n"
 $layout = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_layout.lua") -Raw
 $features = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_features.lua") -Raw
 $featureSorting = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_feature_sorting.lua") -Raw

@@ -1,0 +1,547 @@
+local localization = {
+	inventory_options_controller_focus_keybind = {
+		en = "Items / widget focus keybind",
+	},
+	inventory_options_controller_focus_keybind_tooltip = {
+		en = "Switches controller focus between the inventory item grid and BetterInventory's options widget. RT is unused by Darktide's native melee, ranged and Curio inventory controls.",
+	},
+	inventory_options_controller_focus_keybind_rt = {
+		en = "[D / RT]",
+	},
+	inventory_options_controller_focus_legend = {
+		en = "Items / Widget Focus",
+	},
+	item_sorting_mod_header = {
+		en = "ItemSorting mod",
+	},
+	inventory_discard_management_inventory_label = {
+		en = "Manual/Automated Item Discard Management",
+	},
+	inventory_manual_discard_management_inventory_label = {
+		en = "Manual Item Discard Management",
+	},
+	inventory_automated_discard_management_inventory_label = {
+		en = "Automated Item Discard Management",
+	},
+	experimental_quick_discard_group = {
+		en = "Manual/Automated Item Discard Management",
+	},
+	quick_discard_mode = {
+		en = "Discard mode",
+	},
+	quick_discard_mode_tooltip = {
+		en = "Manual only discards when you press the inventory button and confirm. Automated performs one protected cleanup pass after each Morningstar entry, following a five-second readiness delay. The manual button remains available in either mode.",
+	},
+	quick_discard_mode_manual = {
+		en = "Manual",
+	},
+	quick_discard_mode_automatic = {
+		en = "Automated",
+	},
+	quick_discard_skip_automatic_confirmation = {
+		en = "Skip confirmation prompts",
+	},
+	quick_discard_skip_automatic_confirmation_tooltip = {
+		en = "Automated mode only. When enabled, the once-per-Morningstar cleanup permanently discards all currently eligible items without asking first. The manual inventory button always retains its confirmation.",
+	},
+	quick_discard_rarity = {
+		en = "Discard rarity threshold",
+	},
+	quick_discard_rarity_tooltip = {
+		en = "Only items at this rarity or below are considered. The compact selector in the inventory cycles through the same saved value.",
+	},
+	quick_discard_rarity_1 = {
+		en = "Profane",
+	},
+	quick_discard_rarity_2 = {
+		en = "Redeemed",
+	},
+	quick_discard_rarity_3 = {
+		en = "Anointed",
+	},
+	quick_discard_rarity_4 = {
+		en = "Exalted",
+	},
+	quick_discard_rarity_5 = {
+		en = "Transcendent",
+	},
+	quick_discard_max_item_level = {
+		en = "Maximum item level to discard",
+	},
+	quick_discard_max_item_level_tooltip = {
+		en = "Items above this displayed item level are protected even when their rarity matches. Set this conservatively while testing the feature.",
+	},
+	quick_discard_protect_above_equipped_level = {
+		en = "Do not discard higher item level than equipped",
+	},
+	quick_discard_protect_above_equipped_level_tooltip = {
+		en = "Protects an item when its displayed item level exceeds the highest equipped item of the same category across the active and every saved loadout. Melee weapons, ranged weapons and Curios are compared separately.",
+	},
+	quick_discard_include_melee = {
+		en = "Allow melee weapons",
+	},
+	quick_discard_include_ranged = {
+		en = "Allow ranged weapons",
+	},
+	quick_discard_include_curios = {
+		en = "Allow Curios",
+	},
+	quick_discard_protect_perfect_weapons = {
+		en = "Do not discard perfect-roll weapons",
+	},
+	quick_discard_protect_perfect_weapons_tooltip = {
+		en = "Protects weapons that already have, or Darktide's maximum-expertise preview predicts will have, four displayed attributes at 80 plus one at 60 or higher. A completed raw 380 allocation can display 381 or 382 because each attribute is rounded independently.",
+	},
+	quick_discard_protect_high_level_curios = {
+		en = "Keep curios of a minimum item level",
+	},
+	quick_discard_protect_high_level_curios_tooltip = {
+		en = "Protects Curios at or above the configured minimum item level, regardless of rarity. Curio-type filters remain configurable while this option is off.",
+	},
+	quick_discard_curio_protection_level = {
+		en = "Minimum item level to keep curios",
+	},
+	quick_discard_curio_protection_level_tooltip = {
+		en = "Curios at or above this displayed item level are protected when their primary blessing type is enabled below. This setting is shown only while minimum-item-level Curio protection is enabled. The default is 410.",
+	},
+	quick_discard_keep_health_curios = {
+		en = "Keep Health Curios",
+	},
+	quick_discard_keep_toughness_curios = {
+		en = "Keep Toughness Curios",
+	},
+	quick_discard_keep_wound_curios = {
+		en = "Keep Wound Curios",
+	},
+	quick_discard_keep_stamina_curios = {
+		en = "Keep Stamina Curios",
+	},
+	quick_discard_keep_curio_type_tooltip = {
+		en = "Selects the Curio primary blessing types protected by the minimum-item-level rule. These filters can be configured independently while that rule is off. All types default to enabled. Unknown future Curio types fail safe and remain protected.",
+	},
+	quick_discard_show_type_breakdown = {
+		en = "Show equipment-type counts in confirmation",
+	},
+	quick_discard_show_type_breakdown_tooltip = {
+		en = "Adds melee weapon, ranged weapon and Curio counts to each rarity line in the quick-discard confirmation. This presentation option is available only in mod options and is enabled by default.",
+	},
+	quick_discard_show_summary_notification = {
+		en = "Show automated discard notification",
+	},
+	quick_discard_show_summary_notification_tooltip = {
+		en = "Shows a native notification after the backend confirms an automated discard, with discarded item counts colored by rarity. Manual discard completion remains owned by Darktide's native inventory flow.",
+	},
+	quick_discard_disable_no_eligible_notification = {
+		en = "Disable notification when no eligible discard items are found",
+	},
+	quick_discard_disable_no_eligible_notification_tooltip = {
+		en = "Suppresses the Morningstar automatic-discard notification when no items match the current filters. Successful discard notifications are unaffected.",
+	},
+	automatic_curio_buyer_group = {
+		en = "Automatic Curio Buyer",
+	},
+	automatic_curio_scan_operative_selection = {
+		en = "Scan and purchase from Operative Selection",
+	},
+	automatic_curio_scan_operative_selection_tooltip = {
+		en = "Allows the Automatic Curio Buyer to run while the Operative Selection screen is open. Disabled by default. It still respects the store-rotation throttle and never waits for a selected Morningstar player.",
+	},
+	automatic_curio_once_per_store_rotation = {
+		en = "Scan at most once per store rotation (experimental)",
+	},
+	automatic_curio_once_per_store_rotation_tooltip = {
+		en = "Experimental. When enabled, Morningstar and Operative Selection share one account-scoped Armoury rotation gate. A scan at 17:06 permits the next scan after the store reset at 18:00; this is not a rolling 60-minute timer. Disabled by default.",
+	},
+	automatic_curio_rescan_on_store_refresh = {
+		en = "Rescan when store refreshes while idle (experimental)",
+	},
+	automatic_curio_rescan_on_store_refresh_tooltip = {
+		en = "Experimental. When enabled, performs one additional pass after the next Armoury store reset if you remain in an eligible screen. A scan just before reset can therefore be followed by another scan just after reset. Disabled by default to limit backend work and unexpected close-together purchases.",
+	},
+	automatic_curio_min_item_level = {
+		en = "Minimum curio item level to acquire",
+	},
+	automatic_curio_min_item_level_tooltip = {
+		en = "Only Armoury Curios at or above this displayed item level are eligible. Health and Toughness Curios must also meet their enabled minimum-roll setting. Every matching offer for every enabled target is purchased when sufficient currency is available. The default is 410.",
+	},
+	automatic_curio_diagnostic_logging = {
+		en = "Enable detailed diagnostic logging",
+	},
+	automatic_curio_diagnostic_logging_tooltip = {
+		en = "Writes per-character, per-Curio and revalidation details to Darktide's shared session log during the single Morningstar scan. Disabled by default to minimize disk-log growth; failures are still logged.",
+	},
+	automatic_curio_disable_no_eligible_notification = {
+		en = "Disable notification when no eligible Curios are found",
+	},
+	automatic_curio_disable_no_eligible_notification_tooltip = {
+		en = "Suppresses the Automatic Curio Buyer notification when no Curios match the current filters. Purchase, insufficient-funds and failure notifications are unaffected.",
+	},
+	automatic_curio_target_mode = {
+		en = "Curio acquisition targets",
+	},
+	automatic_curio_target_mode_tooltip = {
+		en = "Characters is the default and lets each discovered operative be enabled independently. Classes applies each class checkbox to every operative of that class. New characters are enabled automatically; a confirmed empty character scan safely falls back to Classes.",
+	},
+	automatic_curio_target_mode_classes = {
+		en = "Classes",
+	},
+	automatic_curio_target_mode_characters = {
+		en = "Characters",
+	},
+	automatic_curio_target_mode_inventory_suffix = {
+		en = "to acquire curios:",
+	},
+	automatic_curio_types_group = {
+		en = "Curio types we are looking for:",
+	},
+	automatic_curio_buy_health = {
+		en = "Health",
+	},
+	automatic_curio_min_health = {
+		en = "Minimum Health (%%)",
+	},
+	automatic_curio_min_health_tooltip = {
+		en = "A Health Curio must meet both this primary-roll threshold and the minimum item level. The comparison is inclusive. The default is 21%%.",
+	},
+	automatic_curio_buy_toughness = {
+		en = "Toughness",
+	},
+	automatic_curio_min_toughness = {
+		en = "Minimum Toughness (%%)",
+	},
+	automatic_curio_min_toughness_tooltip = {
+		en = "A Toughness Curio must meet both this primary-roll threshold and the minimum item level. The comparison is inclusive. The default is 17%%.",
+	},
+	automatic_curio_buy_stamina = {
+		en = "Stamina",
+	},
+	automatic_curio_buy_wounds = {
+		en = "Wound",
+	},
+	automatic_curio_classes_group = {
+		en = "Classes to acquire curios:",
+	},
+	automatic_curio_characters_group = {
+		en = "Characters to acquire curios:",
+	},
+	automatic_curio_characters_discovering = {
+		en = "Discovering characters... Reopen mod options shortly, or use the inventory options panel.",
+	},
+	automatic_curio_characters_discovering_inventory = {
+		en = "Discovering characters...",
+	},
+	automatic_curio_character_options_placeholder = {
+		en = "Discovering characters...",
+	},
+	automatic_curio_character_slot_placeholder = {
+		en = "Character",
+	},
+	automatic_curio_character_slot_unavailable = {
+		en = "(not currently found)",
+	},
+	automatic_curio_character_slot_empty_reason = {
+		en = "No operative is currently assigned to this slot. BetterInventory refreshes the roster after entering the Morningstar and periodically while in the hub.",
+	},
+	automatic_curio_class_veteran = {
+		en = "Veteran",
+	},
+	automatic_curio_class_zealot = {
+		en = "Zealot",
+	},
+	automatic_curio_class_psyker = {
+		en = "Psyker",
+	},
+	automatic_curio_class_ogryn = {
+		en = "Ogryn",
+	},
+	automatic_curio_class_adamant = {
+		en = "Arbites",
+	},
+	automatic_curio_class_broker = {
+		en = "Hive Scum",
+	},
+	automatic_curio_class_cryptic = {
+		en = "Skitarii",
+	},
+	automatic_curio_buyer_inventory_label = {
+		en = "Automatic Curio Buyer",
+	},
+	automatic_curio_types_inventory_label = {
+		en = "Curio types we are looking for:",
+	},
+	automatic_curio_classes_inventory_label = {
+		en = "Classes to acquire curios:",
+	},
+	automatic_curio_characters_inventory_label = {
+		en = "Characters to acquire curios:",
+	},
+	automatic_curio_health = {
+		en = "Health",
+	},
+	automatic_curio_toughness = {
+		en = "Toughness",
+	},
+	automatic_curio_stamina = {
+		en = "Stamina",
+	},
+	automatic_curio_wounds = {
+		en = "Wound",
+	},
+	automatic_curio_purchased_title = {
+		en = "Automatic Curio Buyer - Purchased Curios:",
+	},
+	automatic_curio_insufficient_title = {
+		en = "Automatic Curio Buyer - Insufficient Ordo Dockets for:",
+	},
+	automatic_curio_currency_spent_label = {
+		en = "Spent:",
+	},
+	automatic_curio_none_title = {
+		en = "No eligible Curios found",
+	},
+	automatic_curio_none_description = {
+		en = "The Morningstar Armoury scan found no Curios matching the current automatic-buyer filters.",
+	},
+	automatic_curio_failed_title = {
+		en = "Automatic Curio Buyer could not finish",
+	},
+	automatic_curio_failed_description = {
+		en = "The Armoury or wallet backend could not be validated. No failed or ambiguous purchase was retried automatically.",
+	},
+	automatic_curio_partial_failure = {
+		en = "- The remaining queue stopped after a backend validation failure.",
+	},
+	quick_discard_inventory_prefix = {
+		en = "Discard all",
+	},
+	quick_discard_inventory_mode = {
+		en = "Mode",
+	},
+	quick_discard_inventory_suffix = {
+		en = "and below",
+	},
+	quick_discard_inventory_action = {
+		en = "CLICK TO DISCARD",
+	},
+	quick_discard_inventory_max_level = {
+		en = "Maximum item level to discard",
+	},
+	quick_discard_inventory_item_types_label = {
+		en = "Types of items to discard:",
+	},
+	quick_discard_inventory_melee = {
+		en = "Melee",
+	},
+	quick_discard_inventory_ranged = {
+		en = "Ranged",
+	},
+	quick_discard_inventory_curios = {
+		en = "Curios",
+	},
+	quick_discard_inventory_curio_level = {
+		en = "Minimum item level to keep curios",
+	},
+	quick_discard_inventory_protect_above_equipped_level = {
+		en = "Do not discard higher item level than equipped",
+	},
+	quick_discard_inventory_keep_curio_types_label = {
+		en = "Keep curios of this type:",
+	},
+	quick_discard_inventory_protect_weapons = {
+		en = "Do not discard perfect-roll weapons",
+	},
+	quick_discard_inventory_protect_curios = {
+		en = "Keep curios of a minimum item level",
+	},
+	quick_discard_inventory_keep_health_curios = {
+		en = "Health",
+	},
+	quick_discard_inventory_keep_toughness_curios = {
+		en = "Toughness",
+	},
+	quick_discard_inventory_keep_wound_curios = {
+		en = "Wounds",
+	},
+	quick_discard_inventory_keep_stamina_curios = {
+		en = "Stamina",
+	},
+	quick_discard_automatic_confirmation_title = {
+		en = "Confirm automated discard",
+	},
+	quick_discard_confirmation_title = {
+		en = "Confirm quick discard",
+	},
+	quick_discard_confirmation_description = {
+		en = "non-favorited, non-equipped item(s) from the enabled equipment types will be permanently discarded. Protected items are excluded.",
+	},
+	quick_discard_summary_melee_singular = {
+		en = "melee weapon",
+	},
+	quick_discard_summary_melee_plural = {
+		en = "melee weapons",
+	},
+	quick_discard_summary_ranged_singular = {
+		en = "ranged weapon",
+	},
+	quick_discard_summary_ranged_plural = {
+		en = "ranged weapons",
+	},
+	quick_discard_summary_curio_singular = {
+		en = "Curio",
+	},
+	quick_discard_summary_curio_plural = {
+		en = "Curios",
+	},
+	quick_discard_summary_and = {
+		en = "and",
+	},
+	quick_discard_confirmation_warning = {
+		en = "This action cannot be undone.",
+	},
+	quick_discard_confirmation_yes = {
+		en = "Yes, discard items",
+	},
+	quick_discard_confirmation_no = {
+		en = "No, keep items",
+	},
+	quick_discard_nothing_title = {
+		en = "No eligible items",
+	},
+	quick_discard_nothing_description = {
+		en = "No items in this inventory match the current quick-discard filters. Favorited, equipped and protected items are always excluded.",
+	},
+	quick_discard_automatic_nothing_description = {
+		en = "The automated Morningstar scan completed, but no items match the current discard filters. Favorited, equipped and protected items are always excluded.",
+	},
+	quick_discard_automatic_nothing_notification_title = {
+		en = "No items found to discard",
+	},
+	quick_discard_automatic_nothing_notification_description = {
+		en = "The automated Morningstar scan found no eligible items.",
+	},
+	quick_discard_notification_title = {
+		en = "Discarded items:",
+	},
+	quick_discard_notification_items = {
+		en = "items",
+	},
+	quick_discard_close = {
+		en = "Close",
+	},
+	myfavorites_integration_group = {
+		en = "Mod Integration: MyFavorites",
+	},
+	enable_lantern_inventory_section = {
+		en = "Show Lantern recommendations in the inventory panel",
+	},
+	enable_lantern_inventory_section_tooltip = {
+		en = "When Lantern of the Omnissiah is installed, places its recommendation window in the top section of BetterInventory's scalable inventory-options panel and hides Lantern's duplicate floating weapon panel. Curio recommendations remain separate by default.",
+	},
+	keep_lantern_curio_panel_separate = {
+		en = "Keep Lantern's Curio panel separate",
+	},
+	keep_lantern_curio_panel_separate_tooltip = {
+		en = "Leaves Lantern's Recommended Curios window in its native standalone placement instead of hosting it inside BetterInventory's inventory-options panel. Enabled by default because Lantern's Curio layout already fits beside BetterInventory's panel.",
+	},
+	option_requires_lantern_of_the_omnissiah = {
+		en = "Requires Lantern of the Omnissiah and the scalable inventory-options panel.",
+	},
+	myfavorites_show_favorite_letter = {
+		en = "Show F below favorite icon",
+	},
+	myfavorites_show_favorite_letter_tooltip = {
+		en = "Adds a compact F beneath the coloured MyFavorites icon. Disabled by default.",
+	},
+	custom_item_name_and_colors_group = {
+		en = "Custom Item Names and Colors",
+	},
+	enable_custom_item_name_and_colors = {
+		en = "Enable custom item names and colors",
+	},
+	enable_custom_item_name_and_colors_tooltip = {
+		en = "Enables BetterInventory's standalone per-item name, name-color and background-color editor. Does not require Name It.",
+	},
+	custom_item_name_keybind = {
+		en = "Change Name keybind",
+	},
+	custom_item_name_keybind_tooltip = {
+		en = "Opens the name editor directly. The default uses I / View / Touchpad to avoid Darktide's controller Favorite action. BetterInventory replaces Name It's duplicate inventory action while this editor is enabled.",
+	},
+	custom_item_name_color_keybind = {
+		en = "Name Color keybind",
+	},
+	custom_item_name_color_keybind_tooltip = {
+		en = "Opens the item-name RGB selector directly.",
+	},
+	custom_item_background_color_keybind = {
+		en = "Background Color keybind",
+	},
+	custom_item_background_color_keybind_tooltip = {
+		en = "Opens the item-background RGB selector directly.",
+	},
+	custom_item_editor_keybind_e = {
+		en = "[E]",
+	},
+	custom_item_editor_keybind_i_view = {
+		en = "[I / View / Touchpad]",
+	},
+	custom_item_editor_keybind_q = {
+		en = "[Q]",
+	},
+	custom_item_editor_keybind_v = {
+		en = "[V]",
+	},
+	custom_item_editor_keybind_r = {
+		en = "[R]",
+	},
+	custom_item_editor_keybind_lt = {
+		en = "[A / LT]",
+	},
+	custom_item_editor_keybind_off = {
+		en = "Off",
+	},
+	custom_item_skip_confirmation_prompts = {
+		en = "Skip confirmation prompts",
+	},
+	custom_item_skip_confirmation_prompts_tooltip = {
+		en = "Immediately applies reset actions instead of asking for confirmation. Enabled by default.",
+	},
+	custom_item_preserve_card_shading = {
+		en = "Preserve Darktide Equipment Card Shading",
+	},
+	custom_item_preserve_card_shading_tooltip = {
+		en = "Uses Darktide's dark base layer beneath custom background colors. Disable this to paint the entire card with the selected color. This is the default for newly painted backgrounds; each item retains the choice confirmed in its Background Color prompt.",
+	},
+	custom_item_override_weapon_information_color = {
+		en = "Apply custom color to weapon information",
+	},
+	custom_item_override_weapon_information_color_tooltip = {
+		en = "Uses an item's custom background color for the weapon-information header. Darktide's native dark base and gradient shading are always preserved in this panel.",
+	},
+	custom_item_override_weapon_rarity_keyword_color = {
+		en = "Apply custom color to rarity keyword",
+	},
+	custom_item_override_weapon_rarity_keyword_color_tooltip = {
+		en = "Uses an item's custom background color for its rarity keyword in the weapon-information panel.",
+	},
+	custom_item_override_weapon_information_name_color = {
+		en = "Apply custom name color to weapon information",
+	},
+	custom_item_override_weapon_information_name_color_tooltip = {
+		en = "Uses an item's custom name color for its name in the weapon-information panel.",
+	},
+	name_it_force_curio_name_in_detailed_mode = {
+		en = "Show Curio name with all four attributes",
+	},
+	name_it_force_curio_name_in_detailed_mode_tooltip = {
+		en = "Shows every Curio name in a reserved two-line title area above the primary attribute and three secondary attributes. Works with or without Name It. Reopen the current view after changing this option.",
+	},
+	curio_content_name_it_curio_name = {
+		en = "Show Curio name with all four attributes",
+	},
+	curio_content_name_it_curio_name_tooltip = {
+		en = "Shows every Curio name in a reserved two-line title area above the primary attribute and three secondary attributes. Works with or without Name It. Reopen the current view after changing this option.",
+	},
+}
+
+return localization

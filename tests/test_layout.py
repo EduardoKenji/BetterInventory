@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from coverage_support import InstrumentedLuaRuntime as LuaRuntime
+from localization_support import load_localization
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -3678,9 +3679,7 @@ def main() -> None:
 
     # DMF formats every localized value through string.format. Literal percent
     # signs therefore need to be escaped as %% in the source string.
-    localization = lua.execute(
-        LOCALIZATION_PATH.read_text(encoding="utf-8"), name=str(LOCALIZATION_PATH)
-    )
+    localization = load_localization(lua, LOCALIZATION_PATH)
     format_string = lua.eval("string.format")
 
     for _, localized_values in localization.items():

@@ -3,6 +3,9 @@
   "declarative_modules": [
     "BetterInventory_data.lua",
     "BetterInventory_localization.lua",
+    "BetterInventory_localization_core.lua",
+    "BetterInventory_localization_features.lua",
+    "BetterInventory_localization_zh_cn.lua",
     "BetterInventory_curio_values.lua"
   ],
   "modules": {

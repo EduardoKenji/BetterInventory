@@ -1,6 +1,6 @@
 {
   "archive_root": "BetterInventory",
-  "file_count": 20,
+  "file_count": 23,
   "files": [
     {
       "archive_path": "BetterInventory/BetterInventory.mod",
@@ -100,9 +100,27 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_localization.lua",
-      "bytes": 129248,
-      "sha256": "7b4c04e5c2cbc6f48cd13204643216d9e9ee8c2bb97b41643aeed3b58ee1fe9e",
+      "bytes": 1504,
+      "sha256": "506b77c38d12e681f9448f7a4a0d19b2e4e7336fd71ef631c382f60675a7d712",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_localization.lua"
+    },
+    {
+      "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_localization_core.lua",
+      "bytes": 48745,
+      "sha256": "1d528e54a6cd1dc9afcece26ac8c26d5af6d5a4c10dd8754c4c09ae463f2a180",
+      "source_path": "scripts/mods/BetterInventory/BetterInventory_localization_core.lua"
+    },
+    {
+      "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_localization_features.lua",
+      "bytes": 20613,
+      "sha256": "468e5a7aeb9a7b3828a6b389aca69cf104d9ff9c14588585982286287d200bad",
+      "source_path": "scripts/mods/BetterInventory/BetterInventory_localization_features.lua"
+    },
+    {
+      "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_localization_zh_cn.lua",
+      "bytes": 60395,
+      "sha256": "0ba20a3935f8b9cbfab875d9557268accfc4f9e371b100fde94894bc6d16d08e",
+      "source_path": "scripts/mods/BetterInventory/BetterInventory_localization_zh_cn.lua"
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_operation_arbiter.lua",
@@ -123,6 +141,6 @@
       "source_path": "scripts/mods/BetterInventory/BetterInventory_view_session.lua"
     }
   ],
-  "runtime_tree_sha256": "8156ca4d7df4ddfaf8423a278c7468f2e2c38f007993dd993e67e3d0d5043701",
+  "runtime_tree_sha256": "48f072d4047ca25cd91c4e7bd0497120c908b81531967c60dc3c0835b4f331b2",
   "version": "2.0.0"
 }

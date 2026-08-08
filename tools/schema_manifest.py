@@ -15,12 +15,32 @@ RUNTIME_ROOT = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory"
 DATA_PATH = RUNTIME_ROOT / "BetterInventory_data.lua"
 LOCALIZATION_PATH = RUNTIME_ROOT / "BetterInventory_localization.lua"
 REGISTRY_PATH = RUNTIME_ROOT / "BetterInventory_settings.lua"
+LOCALIZATION_SHARD_PATHS = tuple(
+    RUNTIME_ROOT / f"BetterInventory_localization_{suffix}.lua"
+    for suffix in ("core", "features", "zh_cn")
+)
 
 
 def load_schema() -> tuple[object, object, object]:
     lua = LuaRuntime(unpack_returned_tuples=True)
+    localization_shards = {
+        path.stem: lua.execute(
+            path.read_text(encoding="utf-8"), name=str(path)
+        )
+        for path in LOCALIZATION_SHARD_PATHS
+    }
+    lua.globals().better_inventory_localization_shards = lua.table_from(
+        localization_shards
+    )
     lua.execute(
-        "function get_mod() return {localize = function(_, id) return id end} end; "
+        "function get_mod(name) "
+        "if name == 'BetterInventory' then "
+        "return {localize = function(_, id) return id end, "
+        "io_dofile = function(_, path) "
+        "local shard_name = string.match(path, '([^/]+)$'); "
+        "return better_inventory_localization_shards[shard_name] end} "
+        "end; "
+        "return {localize = function(_, id) return id end} end; "
         "function require(_) return {max_num_characters = 10} end"
     )
     data = lua.execute(DATA_PATH.read_text(encoding="utf-8"), name=str(DATA_PATH))

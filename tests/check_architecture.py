@@ -14,6 +14,9 @@ OWNERSHIP_PATH = PROJECT_ROOT / "docs" / "runtime-module-ownership.json"
 LOCAL_DOFWILE_PATTERN = re.compile(
     r'io_dofile\(\s*"BetterInventory/scripts/mods/BetterInventory/([^"/]+)"\s*\)'
 )
+LOCAL_SHARD_PATTERN = re.compile(
+    r'load_shard\(\s*"(BetterInventory_[^"/]+)"\s*\)'
+)
 HOOK_PATTERN = re.compile(
     r'mod:hook(?:_safe)?\(\s*([^,\n]+?)\s*,\s*"([^"]+)"'
 )
@@ -52,7 +55,13 @@ def validate_modules(contract: dict[str, object]) -> None:
 
 def actual_dependencies(module_name: str) -> set[str]:
     source = (RUNTIME_ROOT / module_name).read_text(encoding="utf-8")
-    return {match.group(1) + ".lua" for match in LOCAL_DOFWILE_PATTERN.finditer(source)}
+    direct_dependencies = {
+        match.group(1) + ".lua" for match in LOCAL_DOFWILE_PATTERN.finditer(source)
+    }
+    shard_dependencies = {
+        match.group(1) + ".lua" for match in LOCAL_SHARD_PATTERN.finditer(source)
+    }
+    return direct_dependencies | shard_dependencies
 
 
 def validate_dependencies(contract: dict[str, object]) -> None:

@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from coverage_support import InstrumentedLuaRuntime as LuaRuntime
+from localization_support import load_localization
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -81,9 +82,7 @@ def main() -> None:
         "function require(_) return {max_num_characters = 10} end"
     )
     data = lua.execute(DATA_PATH.read_text(encoding="utf-8"), name=str(DATA_PATH))
-    localization = lua.execute(
-        LOCALIZATION_PATH.read_text(encoding="utf-8"), name=str(LOCALIZATION_PATH)
-    )
+    localization = load_localization(lua, LOCALIZATION_PATH)
     ok, count, duplicates = registry.register(data.options.widgets)
 
     assert ok is True

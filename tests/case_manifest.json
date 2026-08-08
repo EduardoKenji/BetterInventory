@@ -60,12 +60,12 @@
     {"name": "migration_preservation", "risk": "high", "start_line": 385, "end_line": 504},
     {"name": "character_overview_refresh", "risk": "high", "start_line": 505, "end_line": 1359},
     {"name": "localization_contract", "risk": "medium", "start_line": 1360, "end_line": 2230},
-    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2231, "end_line": 2332}
+    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2231, "end_line": 2331}
   ],
   "test_settings_registry.py": [
-    {"name": "duplicate_detection", "risk": "high", "start_line": 53, "end_line": 77},
-    {"name": "metadata_manifest", "risk": "high", "start_line": 83, "end_line": 105},
-    {"name": "generated_character_slots", "risk": "high", "start_line": 106, "end_line": 120}
+    {"name": "duplicate_detection", "risk": "high", "start_line": 53, "end_line": 78},
+    {"name": "metadata_manifest", "risk": "high", "start_line": 80, "end_line": 105},
+    {"name": "generated_character_slots", "risk": "high", "start_line": 107, "end_line": 119}
   ],
   "test_view_session.py": [
     {"name": "idempotent_close", "risk": "high", "start_line": 22, "end_line": 41},

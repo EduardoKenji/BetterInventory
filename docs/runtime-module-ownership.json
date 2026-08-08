@@ -5,8 +5,7 @@
   "temporary_size_exceptions": {
     "BetterInventory.lua": "R14 bootstrap extraction pending",
     "BetterInventory_features.lua": "R04-R09 feature extraction pending",
-    "BetterInventory_layout.lua": "R10-R12 card extraction pending",
-    "BetterInventory_localization.lua": "R01 localization shard extraction pending"
+    "BetterInventory_layout.lua": "R10-R12 card extraction pending"
   },
   "hook_modules": {
     "BetterInventory.lua": "bootstrap-and-runtime-hooks",
@@ -28,7 +27,10 @@
     "BetterInventory_features.lua": {"category": "feature-facade-pending-extraction", "risk": "critical", "dependencies": ["BetterInventory_curio_values.lua", "BetterInventory_feature_domains.lua", "BetterInventory_feature_composition.lua", "BetterInventory_feature_sorting.lua", "BetterInventory_contracts.lua", "BetterInventory_view_session.lua", "BetterInventory_operation_arbiter.lua"]},
     "BetterInventory_item_customization.lua": {"category": "feature-facade-pending-extraction", "risk": "high", "dependencies": []},
     "BetterInventory_layout.lua": {"category": "ui-facade-pending-extraction", "risk": "high", "dependencies": []},
-    "BetterInventory_localization.lua": {"category": "declarative-entrypoint", "risk": "medium", "dependencies": []},
+    "BetterInventory_localization.lua": {"category": "declarative-entrypoint", "risk": "medium", "dependencies": ["BetterInventory_localization_core.lua", "BetterInventory_localization_features.lua", "BetterInventory_localization_zh_cn.lua"]},
+    "BetterInventory_localization_core.lua": {"category": "declarative-shard", "risk": "medium", "dependencies": []},
+    "BetterInventory_localization_features.lua": {"category": "declarative-shard", "risk": "medium", "dependencies": []},
+    "BetterInventory_localization_zh_cn.lua": {"category": "declarative-shard", "risk": "medium", "dependencies": []},
     "BetterInventory_operation_arbiter.lua": {"category": "core-state-primitive", "risk": "critical", "dependencies": []},
     "BetterInventory_settings.lua": {"category": "settings-registry", "risk": "high", "dependencies": []},
     "BetterInventory_view_session.lua": {"category": "core-state-primitive", "risk": "high", "dependencies": []}
