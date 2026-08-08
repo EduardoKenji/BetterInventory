@@ -208,7 +208,6 @@ def validate_auto_crafter_mutation_boundaries() -> int:
 
     future_ui_settings = (
         "auto_crafter_buy_until_target",
-        "auto_crafter_level_mastery_20",
         "auto_crafter_allocate_mastery_points",
         "auto_crafter_consecrate_transcendent",
         "auto_crafter_upgrade_expertise_500",
@@ -265,6 +264,10 @@ def validate_auto_crafter_mutation_boundaries() -> int:
         "auto dump-stat discovery unavailable",
         "_schedule_catalog",
         "catalog_discovery_complete",
+        "auto_crafter_level_mastery_20",
+        "_phase3_check_mastery",
+        "_phase3_start_fodder",
+        "phase3_complete",
     )
     missing_controller = [token for token in controller_contract if token not in controller_source]
 

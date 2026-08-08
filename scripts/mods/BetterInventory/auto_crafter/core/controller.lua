@@ -108,6 +108,10 @@ local function mastery_summary(data)
 	}
 end
 
+local function mastery_target_reached(summary)
+	return summary and tonumber(summary.mastery_level) ~= nil and tonumber(summary.mastery_level) >= 20
+end
+
 local function extraction_contains_gear_id(gear_ids, gear_id)
 	for _, extracted_id in ipairs(gear_ids or {}) do
 		if extracted_id == gear_id then
@@ -161,6 +165,7 @@ function Controller.new(dependencies)
 		_operation_promise = nil,
 		_operation_kind = nil,
 		_search = nil,
+		_phase3 = nil,
 		_mastery = nil,
 		_mastery_poll_elapsed = 0,
 		_mastery_poll_attempts = 0,
@@ -232,6 +237,7 @@ function Controller.new(dependencies)
 
 	local mutation_setting_ids = {
 		auto_crafter_allow_mutations = true,
+		auto_crafter_level_mastery_20 = true,
 	}
 
 	local function planner_config()
@@ -347,6 +353,27 @@ function Controller.new(dependencies)
 		operation_report("operation_failed", {
 			error = error_value,
 		})
+
+		if self._phase3 and self._phase3.running then
+			self._phase3.running = false
+
+			if self._mastery and self._mastery.phase3 then
+				self._mastery.running = false
+			end
+
+			if self._search then
+				self._search.running = false
+
+				if self._phase3.target_candidate then
+					self._search.result = self._phase3.target_candidate
+				end
+			end
+
+			operation_report("phase3_stopped", {
+				error = error_value,
+				reason = "operation_failed",
+			})
+		end
 	end
 
 	function self:_dispatch_operation(generation, kind, fn, on_success)
@@ -682,14 +709,30 @@ function Controller.new(dependencies)
 
 	function self:_stop_search(reason, candidate)
 		local search = self._search
+		local phase3 = self._phase3
+		local result = candidate or search and search.result
+
+		if phase3 and phase3.target_candidate then
+			result = phase3.target_candidate
+		end
 
 		if search then
 			search.running = false
-			search.result = candidate or search.best
+			search.result = result or search.best
 
-			if not candidate and setting("auto_crafter_best_candidate_fallback", false) ~= true then
+			if not result and setting("auto_crafter_best_candidate_fallback", false) ~= true then
 				search.result = nil
 			end
+		end
+
+		if phase3 and phase3.running then
+			phase3.running = false
+			phase3.stop_reason = reason or "search_stopped"
+			operation_report("phase3_stopped", {
+				candidate = phase3.target_candidate,
+				reason = reason or "search_stopped",
+				search = search,
+			})
 		end
 
 		self._phase = reason or "search_stopped"
@@ -718,6 +761,173 @@ function Controller.new(dependencies)
 		end
 
 		return (tonumber(candidate.damage) or 0) > (tonumber(current.damage) or 0)
+	end
+
+	function self:_phase3_stop(reason, current)
+		local phase3 = self._phase3
+		local search = self._search
+
+		if phase3 then
+			phase3.running = false
+			phase3.current = current or phase3.current
+			phase3.stop_reason = reason or "phase3_stopped"
+		end
+
+		if self._mastery and self._mastery.phase3 then
+			self._mastery.running = false
+		end
+
+		if search then
+			search.running = false
+
+			if phase3 and phase3.target_candidate then
+				search.result = phase3.target_candidate
+			end
+		end
+
+		self._phase = reason or "phase3_stopped"
+		operation_report("phase3_stopped", {
+			candidate = phase3 and phase3.target_candidate,
+			current = current,
+			reason = reason or "phase3_stopped",
+			search = search,
+		})
+	end
+
+	function self:_phase3_finish(current)
+		local phase3 = self._phase3
+		local search = self._search
+		local target = phase3 and phase3.target_candidate
+		local item = target and find_item(self._snapshot and self._snapshot.gear and self._snapshot.gear.items, target.gear_id)
+		local authoritative_dump = item and item.base_stats and item.base_stats[search and search.dump_stat]
+
+		if not phase3 or not phase3.running or not target or not search then
+			return false
+		end
+
+		if not item or item.available ~= true or item.parent_pattern ~= target.mastery_id or tonumber(authoritative_dump) ~= tonumber(target.dump_stat) then
+			self:_phase3_stop("phase3_target_reconciliation_failed", current)
+
+			return false
+		end
+
+		phase3.running = false
+		phase3.current = current or phase3.current
+		search.running = false
+		search.result = phase3.target_candidate
+		self._phase = "phase3_complete"
+		operation_report("phase3_complete", {
+			candidate = phase3.target_candidate,
+			current = phase3.current,
+			fodder_count = phase3.fodder_count,
+			search = search,
+		})
+
+		return true
+	end
+
+	function self:_phase3_start_fodder(generation, candidate)
+		local phase3 = self._phase3
+
+		if not phase3 or not phase3.running or not candidate or not candidate.gear_id or not candidate.mastery_id then
+			self:_phase3_stop("phase3_fodder_candidate_invalid")
+
+			return false
+		end
+
+		if self._operation_inflight or self._mastery and self._mastery.running then
+			return false
+		end
+
+		self._mastery = {
+			candidate = candidate,
+			gear_id = candidate.gear_id,
+			mastery_id = candidate.mastery_id,
+			on_complete = function (current)
+				local active_phase3 = self._phase3
+
+				if not active_phase3 or not active_phase3.running then
+					return
+				end
+
+				active_phase3.fodder_count = active_phase3.fodder_count + 1
+				active_phase3.current = current
+				operation_report("phase3_fodder_complete", {
+					candidate = candidate,
+					current = current,
+					fodder_count = active_phase3.fodder_count,
+				})
+				self._mastery = nil
+
+				if active_phase3.target_candidate and mastery_target_reached(current) then
+					self:_phase3_finish(current)
+				else
+					self:_purchase_search_step(generation)
+				end
+			end,
+			phase3 = true,
+			running = true,
+		}
+		self._phase = "phase3_fodder_preflight"
+		operation_report("phase3_fodder_started", {
+			candidate = candidate,
+			current = phase3.current,
+		})
+
+		local refreshed = self:_refresh_after_operation(generation, function (snapshot)
+			self:_mastery_after_refresh(generation, snapshot)
+		end)
+
+		if not refreshed then
+			self:_phase3_stop("phase3_fodder_refresh_failed")
+		end
+
+		return refreshed
+	end
+
+	function self:_phase3_check_mastery(generation, candidate)
+		local phase3 = self._phase3
+		local target = phase3 and (phase3.target_candidate or candidate)
+		local backend = self._backend
+
+		if not phase3 or not phase3.running or not target or not target.mastery_id then
+			self:_phase3_stop("phase3_mastery_target_missing")
+
+			return false
+		end
+
+		if not backend or type(backend.get_mastery_by_pattern) ~= "function" then
+			self:_phase3_stop("phase3_mastery_read_unavailable")
+
+			return false
+		end
+
+		return self:_dispatch_operation(generation, "phase3_mastery_check", function ()
+			return backend:get_mastery_by_pattern(target.mastery_id)
+		end, function (data)
+			local current = mastery_summary(data)
+			local candidate_is_target = phase3.target_candidate and candidate and phase3.target_candidate.gear_id == candidate.gear_id
+
+			if not current or current.mastery_level == nil then
+				self:_phase3_stop("phase3_mastery_level_unavailable")
+
+				return
+			end
+
+			phase3.current = current
+			operation_report("phase3_mastery_check_complete", {
+				candidate = candidate,
+				current = current,
+			})
+
+			if phase3.target_candidate and mastery_target_reached(current) then
+				self:_phase3_finish(current)
+			elseif candidate and not candidate_is_target and not mastery_target_reached(current) then
+				self:_phase3_start_fodder(generation, candidate)
+			else
+				self:_purchase_search_step(generation)
+			end
+		end)
 	end
 
 	function self:_purchase_search_step(generation)
@@ -815,13 +1025,25 @@ function Controller.new(dependencies)
 
 			self:_refresh_after_operation(generation, function ()
 				if candidate.exact_match then
-					search.running = false
 					search.result = candidate
+
+					if self._phase3 and self._phase3.running then
+						self._phase3.target_candidate = candidate
+					end
+
 					self._phase = "search_complete"
 					operation_report("purchase_search_complete", {
 						candidate = candidate,
 						search = search,
 					})
+
+					if self._phase3 and self._phase3.running then
+						self:_phase3_check_mastery(generation)
+					else
+						search.running = false
+					end
+				elseif self._phase3 and self._phase3.running then
+					self:_phase3_check_mastery(generation, candidate)
 				else
 					self:_purchase_search_step(generation)
 				end
@@ -892,14 +1114,22 @@ function Controller.new(dependencies)
 			cap_by_max_purchases = setting("auto_crafter_cap_by_max_purchases", false) == true,
 			max_purchases = tonumber(setting("auto_crafter_max_purchases", 100)) or 0,
 			purchases = 0,
+			phase3 = setting("auto_crafter_level_mastery_20", false) == true,
 			running = true,
 			spent = 0,
 			target_dump = tonumber(setting("auto_crafter_dump_stat_target", 60)) or 60,
 			target_offer = plan.target,
 		}
+		self._phase3 = setting("auto_crafter_level_mastery_20", false) == true and {
+			current = nil,
+			fodder_count = 0,
+			running = true,
+			target_candidate = nil,
+		} or nil
 		self._last_error = nil
-		self._phase = "search_purchase"
+		self._phase = self._phase3 and "phase3_search_purchase" or "search_purchase"
 		operation_report("purchase_search_started", {
+			phase3 = self._phase3 ~= nil,
 			search = self._search,
 		})
 
@@ -1113,11 +1343,24 @@ function Controller.new(dependencies)
 			if xp_converged and claims_converged then
 				mastery.running = false
 				mastery.current = current
-				self._phase = "mastery_complete"
-				operation_report("mastery_operation_complete", {
-					current = current,
-					gear_id = mastery.gear_id,
-				})
+
+				if mastery.phase3 then
+					self._phase = "phase3_fodder_sync_complete"
+					operation_report("phase3_fodder_mastery_complete", {
+						current = current,
+						gear_id = mastery.gear_id,
+					})
+
+					if type(mastery.on_complete) == "function" then
+						mastery.on_complete(current)
+					end
+				else
+					self._phase = "mastery_complete"
+					operation_report("mastery_operation_complete", {
+						current = current,
+						gear_id = mastery.gear_id,
+					})
+				end
 
 				return
 			end
@@ -1127,11 +1370,16 @@ function Controller.new(dependencies)
 			if self._mastery_poll_attempts >= MAX_MASTERY_POLL_ATTEMPTS then
 				mastery.running = false
 				mastery.current = current
-				self._phase = "mastery_sync_timeout"
-				operation_report("mastery_sync_timeout", {
-					current = current,
-					attempts = self._mastery_poll_attempts,
-				})
+
+				if mastery.phase3 then
+					self:_phase3_stop("phase3_mastery_sync_timeout", current)
+				else
+					self._phase = "mastery_sync_timeout"
+					operation_report("mastery_sync_timeout", {
+						current = current,
+						attempts = self._mastery_poll_attempts,
+					})
+				end
 
 				return
 			end
@@ -1151,6 +1399,7 @@ function Controller.new(dependencies)
 			cancel_catalog()
 			invalidate_generation()
 			self._search = nil
+			self._phase3 = nil
 			self._mastery = nil
 			self._last_purchased = nil
 			self._active_view = view
@@ -1181,6 +1430,7 @@ function Controller.new(dependencies)
 		self._snapshot = nil
 		self._plan = nil
 		self._search = nil
+		self._phase3 = nil
 		self._mastery = nil
 		self._catalog = nil
 		self._catalog_key = nil
@@ -1202,6 +1452,7 @@ function Controller.new(dependencies)
 		self._snapshot = nil
 		self._plan = nil
 		self._search = nil
+		self._phase3 = nil
 		self._mastery = nil
 		self._catalog = nil
 		self._catalog_key = nil
@@ -1226,6 +1477,9 @@ function Controller.new(dependencies)
 			if self._search then
 				self._search.running = false
 			end
+			if self._phase3 then
+				self._phase3.running = false
+			end
 			if self._mastery then
 				self._mastery.running = false
 			end
@@ -1240,11 +1494,38 @@ function Controller.new(dependencies)
 			if self._search then
 				self._search.running = false
 			end
+			if self._phase3 then
+				self._phase3.running = false
+			end
 			if self._mastery then
 				self._mastery.running = false
 			end
 
 			self._phase = "mutations_disabled"
+			return true
+		end
+
+		if setting_id == "auto_crafter_level_mastery_20" and self._phase3 and self._phase3.running and setting("auto_crafter_level_mastery_20", false) ~= true then
+			invalidate_generation()
+			self._phase3.running = false
+
+			if self._search then
+				self._search.running = false
+
+				if self._phase3.target_candidate then
+					self._search.result = self._phase3.target_candidate
+				end
+			end
+
+			if self._mastery then
+				self._mastery.running = false
+			end
+
+			self._phase = "phase3_disabled"
+			operation_report("phase3_stopped", {
+				reason = "phase3_disabled",
+			})
+
 			return true
 		end
 
@@ -1334,6 +1615,7 @@ function Controller.new(dependencies)
 			catalog_inflight = self._catalog_inflight,
 			last_purchased = self._last_purchased,
 			search = self._search,
+			phase3 = self._phase3,
 			mastery = self._mastery,
 		}
 	end
@@ -1362,6 +1644,7 @@ function Controller.new(dependencies)
 		self._snapshot = nil
 		self._plan = nil
 		self._search = nil
+		self._phase3 = nil
 		self._mastery = nil
 		self._last_purchased = nil
 		self._selected_target_key = nil

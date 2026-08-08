@@ -175,13 +175,13 @@ local function reporter(ui_panel)
 				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Mutation blocked: " .. tostring(payload and payload.reason or "preflight failed"))
 			elseif kind == "purchase_search_started" then
 				if ui_panel then
-					ui_panel:set_phase("search_purchase")
+					ui_panel:set_phase(payload and payload.phase3 and "phase3_search_purchase" or "search_purchase")
 				end
 
-				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Serialized purchase search started.")
+				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), payload and payload.phase3 and "Phase 3 serialized mastery search started." or "Serialized purchase search started.")
 			elseif kind == "purchase_result" then
 				if ui_panel then
-					ui_panel:set_phase("search_purchase")
+					ui_panel:set_phase(payload and payload.search and payload.search.phase3 and "phase3_search_purchase" or "search_purchase")
 				end
 
 				local search = payload and payload.search or {}
@@ -198,6 +198,31 @@ local function reporter(ui_panel)
 				end
 
 				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Purchase search stopped: " .. tostring(payload and payload.reason or "limit"))
+			elseif kind == "phase3_fodder_started" then
+				if ui_panel then
+					ui_panel:set_phase("phase3_fodder_preflight")
+				end
+
+				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Phase 3: preparing one non-target weapon as mastery fodder.")
+			elseif kind == "phase3_fodder_complete" then
+				if ui_panel then
+					ui_panel:set_phase("phase3_fodder_complete")
+				end
+
+				local fodder_payload = payload or {}
+				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Phase 3: fodder sacrificed; mastery sync converged (" .. tostring(fodder_payload.fodder_count or "?") .. ").")
+			elseif kind == "phase3_complete" then
+				if ui_panel then
+					ui_panel:set_phase("phase3_complete")
+				end
+
+				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Phase 3 complete: target weapon preserved at mastery 20.")
+			elseif kind == "phase3_stopped" then
+				if ui_panel then
+					ui_panel:set_phase(tostring(payload and payload.reason or "phase3_stopped"))
+				end
+
+				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Phase 3 stopped: " .. tostring(payload and payload.reason or "safety condition"))
 			elseif kind == "mastery_operation_started" then
 				if ui_panel then
 					ui_panel:set_phase("mastery_preflight")
