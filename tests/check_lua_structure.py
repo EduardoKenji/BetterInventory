@@ -248,6 +248,8 @@ def validate_auto_crafter_mutation_boundaries() -> int:
         "discover_weapon_catalog",
         "get_item_crafting_metadata",
         "trait_sticker_book",
+        "GEAR_SUMMARY_LIMIT",
+        "master_id = safe_member(item, \"name\")",
     )
     missing_backend = [token for token in backend_contract if token not in backend_source]
 

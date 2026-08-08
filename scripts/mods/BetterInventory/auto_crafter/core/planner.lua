@@ -120,7 +120,7 @@ local function discover_from_stats(base_stats)
 end
 
 local function discover_from_matching_gear(snapshot, target)
-	if not target or not target.parent_pattern then
+	if not target then
 		return nil, "no matching weapon-family inventory item is available", nil
 	end
 
@@ -129,7 +129,11 @@ local function discover_from_matching_gear(snapshot, target)
 	local counts = {}
 
 	for _, item in ipairs(items) do
-		if item and item.parent_pattern == target.parent_pattern then
+		local same_parent_pattern = target.parent_pattern and item and item.parent_pattern == target.parent_pattern
+		local same_master_id = target.master_id and item and (item.master_id == target.master_id or item.name == target.master_id)
+		local same_display_name = target.display_name and item and item.display_name == target.display_name
+
+		if same_parent_pattern or same_master_id or same_display_name then
 			for _, entry in ipairs(stat_entries(item.base_stats)) do
 				sums[entry.name] = (sums[entry.name] or 0) + entry.value
 				counts[entry.name] = (counts[entry.name] or 0) + 1

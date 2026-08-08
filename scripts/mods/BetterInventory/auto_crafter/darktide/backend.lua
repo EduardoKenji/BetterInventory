@@ -3,6 +3,7 @@ local Items = require("scripts/utilities/items")
 local MasterItems = require("scripts/backend/master_items")
 
 local Backend = {}
+local GEAR_SUMMARY_LIMIT = 1024
 
 local function rejected(description)
 	return Promise.rejected({
@@ -90,7 +91,15 @@ local function summarize_store(store)
 			local details = master_item_details(master_id)
 			local description = safe_member(offer, "description")
 			local preview_item = store_item_preview(description)
-			local base_stats = summarize_base_stats(preview_item) or summarize_base_stats(description)
+			local master_item
+
+			if not preview_item and master_id and type(MasterItems) == "table" and type(MasterItems.get_item) == "function" then
+				local master_ok, resolved_master_item = pcall(MasterItems.get_item, master_id)
+
+				master_item = master_ok and resolved_master_item or nil
+			end
+
+			local base_stats = summarize_base_stats(preview_item) or summarize_base_stats(master_item) or summarize_base_stats(description)
 			local parent_pattern = details.parent_pattern or safe_member(preview_item, "parent_pattern") or safe_member(description, "parent_pattern")
 			local sku = safe_member(offer, "sku")
 
@@ -433,6 +442,8 @@ local function summarize_item(gear, gear_id)
 		display_name = display_name or safe_member(item, "name"),
 		gear_id = gear_id,
 		item_type = safe_member(item, "item_type"),
+		master_id = safe_member(item, "name") or safe_member(item, "id"),
+		name = safe_member(item, "name"),
 		mastery_id = safe_member(item, "parent_pattern"),
 		parent_pattern = safe_member(item, "parent_pattern"),
 		rarity = tonumber(safe_member(item, "rarity")),
@@ -453,7 +464,7 @@ local function summarize_gear(gear)
 	local added = 0
 
 	for gear_id, raw_gear in pairs(gear) do
-		if added >= 256 then
+		if added >= GEAR_SUMMARY_LIMIT then
 			break
 		end
 
