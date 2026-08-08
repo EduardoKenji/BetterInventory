@@ -81,11 +81,10 @@ local ARMOURY_NATIVE_CARD_HEIGHT_EXTRA = 16
 local ARMOURY_NATIVE_FOOTER_GAP = 8
 local ARMOURY_NATIVE_MODIFIER_HORIZONTAL_PERCENT = 62
 
-local columns_provider
-
-Cards.set_columns = function(provider)
-	columns_provider = provider
+Cards.set_item_customization_provider = function(provider)
+	content.set_item_customization_provider(provider)
 end
+
 local function configure_native_quick_look_card_passes(mod, pass_template, card_width, card_height, configuration)
 	local armoury_native = configuration and configuration.store_item == true and configuration.global_store ~= true
 	local font_size = numeric_setting(mod, "quick_look_card_single_column_font_size", 14, 8, 20)
@@ -1404,7 +1403,7 @@ local function grid_weapon_name_font_size(mod, configuration)
 
 	-- The temporary compact-name override is intentionally scoped to Armoury
 	-- store cards. Inventory and Hadron cards retain the general grid setting.
-	if configuration and configuration.store_item == true and columns_provider(mod, maximum_columns) == 3 then
+	if configuration and configuration.store_item == true and content.columns(mod, maximum_columns, configuration.slot_kind) == 3 then
 		return numeric_setting(mod, "three_column_weapon_name_font_size", 14, 10, 20)
 	end
 

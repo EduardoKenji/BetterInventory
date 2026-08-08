@@ -71,6 +71,12 @@ local GLOBAL_STORE_CHARACTER_CLASS_ICON_SIZE_DEFAULT = content.GLOBAL_STORE_CHAR
 local GLOBAL_STORE_CHARACTER_NAME_FONT_SIZE_DEFAULT = content.GLOBAL_STORE_CHARACTER_NAME_FONT_SIZE_DEFAULT
 local GLOBAL_STORE_CHARACTER_NAME_FIT_SAFETY_MARGIN = content.GLOBAL_STORE_CHARACTER_NAME_FIT_SAFETY_MARGIN
 
+Blueprints.set_item_customization_provider = function(provider)
+	content.set_item_customization_provider(provider)
+	Cards.set_item_customization_provider(provider)
+	Geometry.set_item_customization_provider(provider)
+end
+
 local configure_native_quick_look_card_passes = Cards.configure_native_quick_look_card_passes
 local disable_quick_look_card_passes = Cards.disable_quick_look_card_passes
 local preserve_visibility = Cards.preserve_visibility
@@ -880,4 +886,3 @@ Blueprints.configure_item_blueprint = function(mod, item_blueprint, grid_width, 
 	return item_size
 end
 return Blueprints
-

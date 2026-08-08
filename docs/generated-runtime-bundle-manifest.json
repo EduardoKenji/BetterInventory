@@ -190,32 +190,32 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout.lua",
-      "bytes": 9229,
-      "sha256": "79dcbba616c1f0d9488db565e50be0a001257d5732d77a54adae72cb6a7f17d2",
+      "bytes": 9173,
+      "sha256": "3fa4fd077787b95579326e7c5d00c19e212846e61c2b61610eeb84e4838d1faa",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_layout.lua"
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_blueprints.lua",
-      "bytes": 32785,
-      "sha256": "f8611b1eb8143149e2ff538572e706f86c87a0752c633a36aab50f0e80a406cb",
+      "bytes": 33005,
+      "sha256": "f081dfe8d9f655e7ec924afa85ba6a822d0e3c73e295f0828fa02471b49fc764",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_layout_blueprints.lua"
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_cards.lua",
-      "bytes": 55791,
-      "sha256": "143f47bbb945d0cac3e4f44708b61445e9622276b5cadc6a5b3770a5692f963e",
+      "bytes": 55834,
+      "sha256": "24a2ba5f306ffc9853aefdbc2e8bda35bd8fae3f6d8aae5d7a00dd97a2ab1b93",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_layout_cards.lua"
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_content.lua",
-      "bytes": 55845,
-      "sha256": "de5b1101a33a848e4b062ee9591e6b9f140edc7b481761928614bf7c917508a5",
+      "bytes": 56224,
+      "sha256": "f9bc54d92b45a5e15bece8ca04feaaa57972bf0199da1dd40cee935d46c34b0e",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_layout_content.lua"
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_geometry.lua",
-      "bytes": 24472,
-      "sha256": "d32e8d00ea51b91acd6dce9ef07eccec80891ff82b0f9c07b686bc4f2c5d6673",
+      "bytes": 24160,
+      "sha256": "aa8a5a1a9426a8f8efe89ca87af84c87468f7424d6e0ea648ce3a54a62576bd9",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_layout_geometry.lua"
     },
     {
@@ -279,6 +279,6 @@
       "source_path": "scripts/mods/BetterInventory/BetterInventory_view_session.lua"
     }
   ],
-  "runtime_tree_sha256": "552238f6993794617c3b54c249ac44b8968a7116cbb6953ca5d18ecafc0b3ec4",
+  "runtime_tree_sha256": "323fcbc5d96ad980db2e11a637f12d8c00702d44681567c38748e99c9daafbf5",
   "version": "2.0.0"
 }

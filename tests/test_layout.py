@@ -636,6 +636,16 @@ def main() -> None:
     lua.globals().TestLayoutCards = lua.execute(
         LAYOUT_CARDS_PATH.read_text(encoding="utf-8"), name=str(LAYOUT_CARDS_PATH)
     )
+    # DMF io_dofile evaluates extracted modules independently. Cards must be
+    # usable before the Layout facade loads; relying on facade-side injection
+    # crashed Armoury/GlobalStore card setup with a nil columns_provider.
+    assert (
+        lua.globals().TestLayoutCards.grid_weapon_name_font_size(
+            lua.globals().test_mod,
+            lua.table_from({"store_item": True, "maximum_columns": 3}),
+        )
+        == 14
+    )
     lua.globals().TestLayoutGeometry = lua.execute(
         LAYOUT_GEOMETRY_PATH.read_text(encoding="utf-8"), name=str(LAYOUT_GEOMETRY_PATH)
     )

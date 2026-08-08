@@ -70,6 +70,11 @@ local GLOBAL_STORE_CHARACTER_CLASS_ICON_SIZE_DEFAULT = content.GLOBAL_STORE_CHAR
 local GLOBAL_STORE_CHARACTER_NAME_FONT_SIZE_DEFAULT = content.GLOBAL_STORE_CHARACTER_NAME_FONT_SIZE_DEFAULT
 local GLOBAL_STORE_CHARACTER_NAME_FIT_SAFETY_MARGIN = content.GLOBAL_STORE_CHARACTER_NAME_FIT_SAFETY_MARGIN
 
+Geometry.set_item_customization_provider = function(provider)
+	content.set_item_customization_provider(provider)
+	Cards.set_item_customization_provider(provider)
+end
+
 local configure_native_quick_look_card_passes = Cards.configure_native_quick_look_card_passes
 local disable_quick_look_card_passes = Cards.disable_quick_look_card_passes
 local preserve_visibility = Cards.preserve_visibility
@@ -186,20 +191,7 @@ Geometry.is_enabled_for_view = function(mod, view)
 	return setting_id and setting(mod, setting_id, true) or false
 end
 
-Geometry.columns = function(mod, maximum_columns, slot_kind)
-	local column_limit = math.floor(math.max(2, math.min(5, tonumber(maximum_columns) or 5)))
-	local setting_id = COLUMN_SETTING_BY_SLOT[slot_kind]
-
-	local configured_columns = setting_id and tonumber(mod:get(setting_id))
-
-	if not setting_id or configured_columns == nil then
-		setting_id = "columns"
-	end
-
-	local requested_columns = math.floor(numeric_setting(mod, setting_id, 3, 2, 5))
-
-	return math.max(2, math.min(column_limit, requested_columns))
-end
+Geometry.columns = content.columns
 
 local function weapon_extra_width_applies(mod, columns)
 	local threshold = setting(mod, "weapon_extra_width_column_threshold", "four_plus")

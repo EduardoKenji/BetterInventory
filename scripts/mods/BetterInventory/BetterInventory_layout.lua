@@ -7,9 +7,6 @@ local Layout = {}
 local content = LayoutContent
 
 local Cards = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_cards")
-Cards.set_columns(function(mod, maximum_columns, slot_kind)
-	return Layout.columns(mod, maximum_columns, slot_kind)
-end)
 
 local configure_native_quick_look_card_passes = Cards.configure_native_quick_look_card_passes
 local disable_quick_look_card_passes = Cards.disable_quick_look_card_passes
@@ -23,10 +20,6 @@ local configure_equipped_highlight = Cards.configure_equipped_highlight
 local add_custom_content_passes = Cards.add_custom_content_passes
 local grid_weapon_name_font_size = Cards.grid_weapon_name_font_size
 local configure_card_content = Cards.configure_card_content
-
-content.set_columns(function(mod, maximum_columns, slot_kind)
-	return Layout.columns(mod, maximum_columns, slot_kind)
-end)
 
 local Geometry = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_geometry")
 local Blueprints = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_blueprints")
@@ -102,7 +95,12 @@ local GLOBAL_STORE_CHARACTER_CLASS_ICON_SIZE_DEFAULT = content.GLOBAL_STORE_CHAR
 local GLOBAL_STORE_CHARACTER_NAME_FONT_SIZE_DEFAULT = content.GLOBAL_STORE_CHARACTER_NAME_FONT_SIZE_DEFAULT
 local GLOBAL_STORE_CHARACTER_NAME_FIT_SAFETY_MARGIN = content.GLOBAL_STORE_CHARACTER_NAME_FIT_SAFETY_MARGIN
 
-Layout.set_item_customization_provider = content.set_item_customization_provider
+Layout.set_item_customization_provider = function(provider)
+	content.set_item_customization_provider(provider)
+	Cards.set_item_customization_provider(provider)
+	Geometry.set_item_customization_provider(provider)
+	Blueprints.set_item_customization_provider(provider)
+end
 Layout.synchronize_rarity_tag_color = content.synchronize_rarity_tag_color
 Layout.apply_item_customization_style = content.apply_item_customization_style
 Layout.restore_item_customization_style = content.restore_item_customization_style

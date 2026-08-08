@@ -4,6 +4,7 @@
 
 ### Fixed / Added
 
+- Fixed Armoury Exchange/GlobalStore card construction crashing after the layout split because independently evaluated card modules could call an unset `columns_provider`. Column policy is now owned directly by the shared content domain, and customization-provider wiring is forwarded to every independently loaded layout collaborator.
 - Fixed Automatic Curio Buyer showing the same successful Operative Selection purchase report again in white during the transition to the Morningstar. Successfully dispatched reports are now acknowledged once per Lua session while their persisted fallback remains available after a restart or failed notification dispatch.
 - P0 hotfix `665801b`: prevent Character Overview composition probes from reading absent optional `window`/`canvas` scenegraph nodes through Darktide strict tables. This removes the reported `table.lua:1204` crash when opening a melee weapon card and adds a strict-scenegraph regression test.
 - B42/B43 remediation: production-facing harnesses now execute the real extracted Character Overview, feature, and Curio domain modules. Automatic Curio scan continuations carry an account/context/read-generation snapshot, and mixed or missing multi-character store boundaries wait without evaluating or purchasing offers.

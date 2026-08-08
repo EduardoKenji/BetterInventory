@@ -1,5 +1,5 @@
 local Content = {}
-local columns = function() return 0 end
+local columns
 
 local Items = require("scripts/utilities/items")
 local RankSettings = require("scripts/settings/item/rank_settings")
@@ -580,6 +580,20 @@ local function numeric_setting(mod, setting_id, fallback, minimum, maximum)
 	end
 
 	return value
+end
+
+columns = function(mod, maximum_columns, slot_kind)
+	local column_limit = math.floor(math.max(2, math.min(5, tonumber(maximum_columns) or 5)))
+	local setting_id = COLUMN_SETTING_BY_SLOT[slot_kind]
+	local configured_columns = setting_id and tonumber(mod:get(setting_id))
+
+	if not setting_id or configured_columns == nil then
+		setting_id = "columns"
+	end
+
+	local requested_columns = math.floor(numeric_setting(mod, setting_id, 3, 2, 5))
+
+	return math.max(2, math.min(column_limit, requested_columns))
 end
 
 local function curio_primary_font_size(mod)
@@ -1553,10 +1567,6 @@ local function add_quick_look_card_grid_pass(mod, pass_template, card_width, tex
 	return label_width
 end
 
-Content.set_columns = function(callback)
-	columns = type(callback) == "function" and callback or function() return 0 end
-end
-
 Content.GLOBAL_STORE_CHARACTER_PHOTO_BASE_SIZE = GLOBAL_STORE_CHARACTER_PHOTO_BASE_SIZE
 Content.GLOBAL_STORE_CHARACTER_PHOTO_MIN_PERCENT = GLOBAL_STORE_CHARACTER_PHOTO_MIN_PERCENT
 Content.GLOBAL_STORE_CHARACTER_PHOTO_DEFAULT_PERCENT = GLOBAL_STORE_CHARACTER_PHOTO_DEFAULT_PERCENT
@@ -1606,6 +1616,7 @@ Content.global_store_character_info_gap = global_store_character_info_gap
 Content.global_store_character_class_icon_size = global_store_character_class_icon_size
 Content.global_store_character_name_font_size = global_store_character_name_font_size
 Content.global_store_extra_height = global_store_extra_height
+Content.columns = columns
 Content.setting = setting
 Content.enabled_name_it_mod = enabled_name_it_mod
 Content.fallback_name_it_name = fallback_name_it_name
