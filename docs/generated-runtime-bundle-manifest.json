@@ -82,8 +82,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_features.lua",
-      "bytes": 208756,
-      "sha256": "55b709419a77cbe66a827d9cc0a20a2caac166f33dd2eb39a7213ad073f813ef",
+      "bytes": 209380,
+      "sha256": "291a0cf2fa74703355f2c57bfe129d973107eceb048bff3ef1edcb7a8f49e8d0",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_features.lua"
     },
     {
@@ -123,6 +123,6 @@
       "source_path": "scripts/mods/BetterInventory/BetterInventory_view_session.lua"
     }
   ],
-  "runtime_tree_sha256": "ca30811c314c3ad1da8b9a1a297ca6ae10237e1891df0d355db3a435ecae5f9c",
+  "runtime_tree_sha256": "45e289e26accb483beebab5dba28d4efbaaf99bff984cc2c0c62bb48af371343",
   "version": "2.0.0"
 }

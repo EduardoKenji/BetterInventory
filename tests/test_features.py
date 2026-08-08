@@ -3000,13 +3000,24 @@ def main() -> None:
     globals_.captured_popup = None
     features.request_quick_discard(mod, layout, quick_discard_view)
     assert globals_.captured_popup is not None
+    manual_delete_popup_id = globals_.captured_popup_id
     globals_.captured_popup.options[1].callback()
     assert globals_.manual_bridge_ok is True
     assert globals_.manual_bridge_result is True, globals_.manual_bridge_result
     assert globals_.manual_bridge_active is True
     assert features.manual_discard_settlement_active() is True
+
+    # close_on_pressed removes the confirmation before GearService settles.
+    # Per-frame popup reconciliation must not release destructive ownership in
+    # that window or a second manual/automatic operation could overlap it.
+    globals_.Managers.event.trigger(
+        globals_.Managers.event, "event_remove_ui_popup", manual_delete_popup_id
+    )
+    features.reconcile_discard_transaction()
+    assert features.manual_discard_settlement_active() is True
+    popup_count_during_manual_delete = globals_.captured_popup_count
     features.request_quick_discard(mod, layout, quick_discard_view)
-    assert globals_.captured_popup_count == popup_count_before_deferred_delete + 1
+    assert globals_.captured_popup_count == popup_count_during_manual_delete
     globals_.complete_manual_delete()
     assert features.manual_discard_settlement_active() is False
     globals_.arm_manual_delete()

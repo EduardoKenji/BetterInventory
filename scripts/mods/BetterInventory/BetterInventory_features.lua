@@ -4854,6 +4854,14 @@ Features.discard_popup_is_active = function(popup_id)
 end
 
 Features.reconcile_discard_transaction = function()
+	-- Confirmation popups close before their destructive promise settles. The
+	-- popup is no longer the owner once native deletion starts; settlement is.
+	-- Never interpret that expected UI close as permission to release the shared
+	-- manual/automatic exclusion token.
+	if Features.manual_discard_settlement_active() then
+		return
+	end
+
 	local popup_id = nil
 
 	if type(discard_transaction.current_popup) == "function" then
@@ -4932,6 +4940,10 @@ Features.request_quick_discard = function(mod, layout, view)
 		local event_manager = Managers and Managers.event
 
 		local event_ok = false
+		-- Match the automatic-discard path: detach popup lifecycle ownership before
+		-- dispatching the native event. GearService settlement becomes the sole
+		-- terminal owner if the event exposes a compatible deletion promise.
+		Features.clear_discard_popup("manual", transaction_token)
 
 		if #gear_ids > 0 and event_manager and type(event_manager.trigger) == "function" then
 			event_ok = pcall(event_manager.trigger, event_manager, "event_discard_items", gear_ids)
