@@ -573,13 +573,16 @@ local localization = {
 		en = "Auto Crafter target dump stat",
 	},
 	auto_crafter_target_dump_stat_tooltip = {
-		en = "Mandatory planner target. Damage is the safe default; Auto-discover is reserved for dynamic candidate-stat discovery in a later mutation phase.",
+		en = "Mandatory planner target. Auto-discover resolves the lowest valid base stat from the selected Brunt weapon preview; Damage remains available as a manual override.",
 	},
 	auto_crafter_dump_stat_damage = {
 		en = "Damage",
 	},
 	auto_crafter_dump_stat_auto = {
-		en = "Auto-discover (future)",
+		en = "Auto-discover",
+	},
+	auto_crafter_dump_stat_auto_pending = {
+		en = "Auto-discover (waiting for weapon preview)",
 	},
 	auto_crafter_dump_stat_target = {
 		en = "Dump stat target",

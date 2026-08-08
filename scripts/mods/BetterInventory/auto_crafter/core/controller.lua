@@ -231,7 +231,7 @@ function Controller.new(dependencies)
 
 	local function planner_config()
 		return {
-			dump_stat = setting("auto_crafter_target_dump_stat", "damage"),
+			dump_stat = setting("auto_crafter_target_dump_stat", "auto"),
 			dump_target = setting("auto_crafter_dump_stat_target", 60),
 			cap_by_dockets = setting("auto_crafter_cap_by_dockets", false),
 			docket_cap = setting("auto_crafter_docket_cap", 1000000),
@@ -717,11 +717,22 @@ function Controller.new(dependencies)
 			return false
 		end
 
-		local dump_stat = setting("auto_crafter_target_dump_stat", "damage")
+		local configured_dump_stat = setting("auto_crafter_target_dump_stat", "auto")
+		local dump_stat = configured_dump_stat
 
-		if dump_stat == "auto" then
+		if configured_dump_stat == "auto" then
+			dump_stat = plan.resolved_dump_stat
+
+			if not dump_stat then
+				operation_report("mutation_blocked", {
+					reason = plan.dump_stat_resolution or "auto dump-stat discovery unavailable",
+				})
+
+				return false
+			end
+		elseif dump_stat == nil or dump_stat == "" then
 			operation_report("mutation_blocked", {
-				reason = "auto dump-stat discovery is not implemented",
+				reason = "configured dump-stat is unavailable",
 			})
 
 			return false

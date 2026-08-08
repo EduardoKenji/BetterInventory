@@ -71,6 +71,13 @@ local function integer_text(value, fallback)
 	return text
 end
 
+local function display_stat_name(stat_name)
+	local text = tostring(stat_name or "?")
+	text = string.gsub(text, "_", " ")
+
+	return string.upper(string.sub(text, 1, 1)) .. string.sub(text, 2)
+end
+
 local function wallet_amount(snapshot, currency)
 	local wallets = snapshot and snapshot.wallets
 	local currencies = wallets and wallets.currencies
@@ -697,10 +704,16 @@ function Panel.new(dependencies)
 	end
 
 	function self:_planner_dump_stat_text()
-		local value = self:_setting("auto_crafter_target_dump_stat", "damage")
+		local value = self:_setting("auto_crafter_target_dump_stat", "auto")
 
 		if value == "auto" then
-			return localize("auto_crafter_dump_stat_auto", "Auto-discover (future)")
+			local resolved = self._plan and self._plan.resolved_dump_stat
+
+			if resolved then
+				return string.format("%s: %s", localize("auto_crafter_dump_stat_auto", "Auto-discover"), display_stat_name(resolved))
+			end
+
+			return localize("auto_crafter_dump_stat_auto_pending", "Auto-discover (waiting for weapon preview)")
 		end
 
 		return localize("auto_crafter_dump_stat_damage", "Damage")
@@ -897,10 +910,10 @@ function Panel.new(dependencies)
 				selectable = true,
 				variant = "enum_stepper",
 				decrease = function()
-					self:_step_enum_setting("auto_crafter_target_dump_stat", { "damage", "auto" }, "damage", -1)
+					self:_step_enum_setting("auto_crafter_target_dump_stat", { "damage", "auto" }, "auto", -1)
 				end,
 				increase = function()
-					self:_step_enum_setting("auto_crafter_target_dump_stat", { "damage", "auto" }, "damage", 1)
+					self:_step_enum_setting("auto_crafter_target_dump_stat", { "damage", "auto" }, "auto", 1)
 				end,
 				refresh = function(widget)
 					widget.content.detail = self:_planner_dump_stat_text()

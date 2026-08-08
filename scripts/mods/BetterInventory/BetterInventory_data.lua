@@ -620,7 +620,7 @@ return {
 						setting_id = "auto_crafter_target_dump_stat",
 						tooltip = "auto_crafter_target_dump_stat_tooltip",
 						type = "dropdown",
-						default_value = "damage",
+						default_value = "auto",
 						options = {
 							{
 								text = "auto_crafter_dump_stat_damage",

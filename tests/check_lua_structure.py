@@ -170,6 +170,9 @@ def validate_auto_crafter_mutation_boundaries() -> int:
         'status = preflight.ok and "ready" or "blocked"',
         'request_mode = "sequential"',
         "materials deferred",
+        "discover_from_stats",
+        "resolved_dump_stat",
+        "ambiguous lowest base stat",
     )
     missing = [token for token in required_contract if token not in planner_source]
 
@@ -240,6 +243,9 @@ def validate_auto_crafter_mutation_boundaries() -> int:
         "function backend:upgrade_weapon_rarity",
         "function backend:extract_weapon_mastery",
         "function backend:get_mastery_by_pattern",
+        "MasterItems.get_store_item_instance",
+        "summarize_base_stats",
+        "base_stats = base_stats",
     )
     missing_backend = [token for token in backend_contract if token not in backend_source]
 
@@ -252,6 +258,8 @@ def validate_auto_crafter_mutation_boundaries() -> int:
         "_operation_inflight",
         "MAX_MASTERY_POLL_ATTEMPTS",
         "extraction_contains_gear_id",
+        "plan.resolved_dump_stat",
+        "auto dump-stat discovery unavailable",
     )
     missing_controller = [token for token in controller_contract if token not in controller_source]
 

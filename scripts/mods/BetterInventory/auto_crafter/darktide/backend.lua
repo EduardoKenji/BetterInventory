@@ -64,6 +64,8 @@ local function offer_master_id(offer)
 end
 
 local master_item_details
+local summarize_base_stats
+local store_item_preview
 
 local function summarize_store(store)
 	local offers = safe_member(store, "offers") or {}
@@ -86,13 +88,18 @@ local function summarize_store(store)
 			local amount = safe_member(price, "amount")
 			local master_id = offer_master_id(offer)
 			local details = master_item_details(master_id)
+			local description = safe_member(offer, "description")
+			local preview_item = store_item_preview(description)
+			local base_stats = summarize_base_stats(preview_item) or summarize_base_stats(description)
+			local parent_pattern = details.parent_pattern or safe_member(preview_item, "parent_pattern") or safe_member(description, "parent_pattern")
 			local sku = safe_member(offer, "sku")
 
 			summary.offers[index] = {
+				base_stats = base_stats,
 				display_name = details.display_name,
 				offer_id = safe_member(offer, "offerId") or safe_member(offer, "offer_id"),
 				master_id = master_id,
-				parent_pattern = details.parent_pattern,
+				parent_pattern = parent_pattern,
 				price_type = safe_member(amount, "type"),
 				price_amount = tonumber(safe_member(amount, "discounted_price") or safe_member(amount, "amount")),
 				sku_category = safe_member(sku, "category"),
@@ -247,6 +254,47 @@ local function item_stat_value(item, stat_name)
 	end
 
 	return nil
+end
+
+summarize_base_stats = function(source)
+	local base_stats = safe_member(source, "base_stats") or safe_member(source, "baseStats")
+
+	if type(base_stats) ~= "table" then
+		return nil
+	end
+
+	local summary = {}
+
+	for key, stat in pairs(base_stats) do
+		local name = safe_member(stat, "name") or safe_member(stat, "stat_name") or safe_member(stat, "statName")
+		local value = safe_member(stat, "value")
+
+		if name == nil and type(key) == "string" and type(stat) == "number" then
+			name = key
+			value = stat
+		end
+
+		local numeric_value = tonumber(value)
+
+		if name ~= nil and numeric_value ~= nil then
+			summary[#summary + 1] = {
+				name = tostring(name),
+				value = numeric_value,
+			}
+		end
+	end
+
+	return #summary > 0 and summary or nil
+end
+
+store_item_preview = function(description)
+	if description == nil or type(MasterItems) ~= "table" or type(MasterItems.get_store_item_instance) ~= "function" then
+		return nil
+	end
+
+	local ok, item = pcall(MasterItems.get_store_item_instance, description)
+
+	return ok and item or nil
 end
 
 local function summarize_item(gear, gear_id)

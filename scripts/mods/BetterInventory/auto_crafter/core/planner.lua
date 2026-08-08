@@ -1,7 +1,7 @@
 local Planner = {}
 
 local DEFAULTS = {
-	dump_stat = "damage",
+	dump_stat = "auto",
 	dump_target = 60,
 	cap_by_dockets = false,
 	docket_cap = 1000000,
@@ -55,6 +55,130 @@ local function target_key(offer)
 	return nil
 end
 
+local function stat_entries(base_stats)
+	if type(base_stats) ~= "table" then
+		return {}
+	end
+
+	local entries = {}
+
+	for key, stat in pairs(base_stats) do
+		local name
+		local value
+
+		if type(stat) == "table" then
+			name = stat.name or stat.stat_name or stat.statName
+			value = stat.value
+		elseif type(key) == "string" and type(stat) == "number" then
+			name = key
+			value = stat
+		end
+
+		value = tonumber(value)
+
+		if name ~= nil and value ~= nil then
+			if value <= 1.01 then
+				value = value * 100
+			end
+
+			entries[#entries + 1] = {
+				name = tostring(name),
+				value = value,
+			}
+		end
+	end
+
+	return entries
+end
+
+local function discover_from_stats(base_stats)
+	local entries = stat_entries(base_stats)
+
+	if #entries == 0 then
+		return nil, "selected weapon preview exposed no base stats", nil
+	end
+
+	local minimum = math.huge
+	local minimum_name
+	local minimum_count = 0
+
+	for _, entry in ipairs(entries) do
+		if entry.value < minimum then
+			minimum = entry.value
+			minimum_name = entry.name
+			minimum_count = 1
+		elseif math.abs(entry.value - minimum) < 0.0001 then
+			minimum_count = minimum_count + 1
+		end
+	end
+
+	if minimum_count ~= 1 then
+		return nil, "selected weapon preview has an ambiguous lowest base stat", entries
+	end
+
+	return minimum_name, nil, entries
+end
+
+local function discover_from_matching_gear(snapshot, target)
+	if not target or not target.parent_pattern then
+		return nil, "no matching weapon-family inventory item is available", nil
+	end
+
+	local items = snapshot and snapshot.gear and snapshot.gear.items or {}
+	local sums = {}
+	local counts = {}
+
+	for _, item in ipairs(items) do
+		if item and item.parent_pattern == target.parent_pattern then
+			for _, entry in ipairs(stat_entries(item.base_stats)) do
+				sums[entry.name] = (sums[entry.name] or 0) + entry.value
+				counts[entry.name] = (counts[entry.name] or 0) + 1
+			end
+		end
+	end
+
+	local averaged = {}
+
+	for name, sum in pairs(sums) do
+		averaged[#averaged + 1] = {
+			name = name,
+			value = sum / counts[name],
+		}
+	end
+
+	if #averaged == 0 then
+		return nil, "no matching weapon-family inventory item is available", nil
+	end
+
+	local stat, reason = discover_from_stats(averaged)
+
+	return stat, reason, averaged
+end
+
+local function resolve_dump_stat(snapshot, target, configured_dump_stat)
+	if configured_dump_stat ~= "auto" then
+		return configured_dump_stat, "configured canonical stat", nil
+	end
+
+	local stat, reason, candidates = discover_from_stats(target and target.base_stats)
+
+	if stat then
+		return stat, "auto-discovered from selected weapon preview", candidates
+	end
+
+	if candidates and #candidates > 0 then
+		return nil, reason, candidates
+	end
+
+	local fallback_stat, fallback_reason, fallback_candidates = discover_from_matching_gear(snapshot, target)
+
+	if fallback_stat then
+		return fallback_stat, "auto-discovered from matching weapon-family inventory", fallback_candidates
+	end
+
+	return nil, reason or fallback_reason or "selected weapon stat discovery unavailable", candidates or fallback_candidates
+end
+
 local function normalize_config(config)
 	config = config or {}
 
@@ -102,6 +226,9 @@ function Planner.build(snapshot, config)
 	local target = normalized.target_offer
 	local wallets = snapshot and snapshot.wallets or {}
 	local reasons = {}
+	local resolved_dump_stat
+	local dump_stat_resolution
+	local dump_stat_candidates
 
 	if snapshot == nil then
 		append_reason(reasons, "probe data unavailable")
@@ -113,6 +240,16 @@ function Planner.build(snapshot, config)
 
 	if not target then
 		append_reason(reasons, "select a weapon offer")
+	end
+
+	if normalized.dump_stat == "auto" and target then
+		resolved_dump_stat, dump_stat_resolution, dump_stat_candidates = resolve_dump_stat(snapshot, target, normalized.dump_stat)
+
+		if not resolved_dump_stat then
+			append_reason(reasons, "auto dump-stat discovery unavailable: " .. tostring(dump_stat_resolution))
+		end
+	elseif normalized.dump_stat ~= "auto" then
+		resolved_dump_stat, dump_stat_resolution = resolve_dump_stat(snapshot, target, normalized.dump_stat)
 	end
 
 	local price = target and tonumber(target.price_amount)
@@ -194,8 +331,6 @@ function Planner.build(snapshot, config)
 		mode_note = "sequential requests (recommended)"
 	end
 
-	local dump_stat_resolution = normalized.dump_stat == "auto" and "deferred until candidate exists" or "configured canonical stat"
-
 	return {
 		kind = "read_only_plan",
 		status = preflight.ok and "ready" or "blocked",
@@ -206,9 +341,13 @@ function Planner.build(snapshot, config)
 			display_name = target.display_name,
 			offer_id = target.offer_id,
 			master_id = target.master_id,
+			base_stats = target.base_stats,
+			parent_pattern = target.parent_pattern,
 			price = price,
 		} or nil,
 		dump_stat = normalized.dump_stat,
+		resolved_dump_stat = resolved_dump_stat,
+		dump_stat_candidates = dump_stat_candidates,
 		dump_stat_resolution = dump_stat_resolution,
 		dump_target = normalized.dump_target,
 		cap_by_dockets = normalized.cap_by_dockets,
