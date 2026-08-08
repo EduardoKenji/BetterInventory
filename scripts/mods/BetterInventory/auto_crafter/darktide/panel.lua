@@ -143,7 +143,6 @@ local function row_passes(width)
 			style = {
 				font_size = 15,
 				font_type = "proxima_nova_medium",
-				horizontal_alignment = "right",
 				text_horizontal_alignment = "right",
 				text_vertical_alignment = "center",
 				vertical_alignment = "center",

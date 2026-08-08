@@ -304,11 +304,11 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/panel.lua",
-      "bytes": 10720,
-      "sha256": "e92ebfeb5c37000d6f7195ee288c414eff399f1d5b983e969013be58b6393ec7",
+      "bytes": 10684,
+      "sha256": "bb39a8c27f5ae232304280ff2b8f32730ff152385ee72492c375e8ad538d1bc4",
       "source_path": "scripts/mods/BetterInventory/auto_crafter/darktide/panel.lua"
     }
   ],
-  "runtime_tree_sha256": "7bbd06add2c27d66ce4977fe3af969c75bf8df936a4cd23e6035c66a7e98bd02",
+  "runtime_tree_sha256": "5f98f3cc31e0b866207fa68284a64ba37cbc5cc0dafed313766bc8280df7aabf",
   "version": "2.0.0"
 }
