@@ -142,6 +142,7 @@ local state = {
 	read_request_started_at = {},
 	oldest_read_request_age = 0,
 	active_read_requests = 0,
+	operation_snapshot = nil,
 	scan_attempts = 0,
 	scheduled = false,
 	started = false,
@@ -200,9 +201,21 @@ local function new_read_promise_container()
 	return fallback
 end
 
-if type(CurioDomains) ~= "table" or type(CurioDomains.context) ~= "table" or type(CurioDomains.context.token_matches) ~= "function" then
+if type(CurioDomains) ~= "table" or type(CurioDomains.context) ~= "table" or type(CurioDomains.context.token_matches) ~= "function" or type(CurioDomains.context.snapshot) ~= "function" or type(CurioDomains.context.matches) ~= "function" then
 	CurioDomains = {
 		context = {
+			snapshot = function(current_state)
+				return {
+					account_key = current_state and current_state.account_key,
+					context = current_state and current_state.active_context,
+					context_entry_id = current_state and current_state.context_entry_id,
+					read_request_generation = current_state and current_state.read_request_generation,
+					token = current_state and current_state.token,
+				}
+			end,
+			matches = function(snapshot, current_state)
+				return type(snapshot) == "table" and type(current_state) == "table" and snapshot.account_key == current_state.account_key and snapshot.context == current_state.active_context and snapshot.context_entry_id == current_state.context_entry_id and snapshot.read_request_generation == current_state.read_request_generation and snapshot.token == current_state.token
+			end,
 			token_matches = function(current_state, token)
 				return current_state and current_state.token == token
 			end,
@@ -916,7 +929,17 @@ local function call_promise(object, method, ...)
 end
 
 local function context_is_current(mod, token)
-	if not CurioDomains.context.token_matches(state, token) or not enabled(mod) then
+	local snapshot = state.operation_snapshot
+
+	if type(snapshot) == "table" and snapshot.token == token then
+		if not CurioDomains.context.matches(snapshot, state) then
+			return false
+		end
+	elseif not CurioDomains.context.token_matches(state, token) then
+		return false
+	end
+
+	if not enabled(mod) then
 		return false
 	end
 
@@ -1688,6 +1711,18 @@ local function observed_rotation_boundary(storefront)
 	return boundary
 end
 
+local function rotation_boundary_compatible(current_boundary, observed_boundary, missing_metadata)
+	if not observed_boundary then
+		return current_boundary == nil, current_boundary, true
+	end
+
+	if missing_metadata or current_boundary and observed_boundary ~= current_boundary then
+		return false, current_boundary, missing_metadata
+	end
+
+	return true, current_boundary or observed_boundary, false
+end
+
 local function scan_candidates(mod, token, minimum_rotation_boundary_ms)
 	local profiles_service = Managers and Managers.data_service and Managers.data_service.profiles
 
@@ -1714,6 +1749,7 @@ local function scan_candidates(mod, token, minimum_rotation_boundary_ms)
 		local chain = Promise.resolved()
 		local diagnostics = new_scan_diagnostics()
 		local rotation_boundary_ms
+		local rotation_boundary_missing = false
 
 		diagnostics.profiles = #profiles
 
@@ -1751,14 +1787,25 @@ local function scan_candidates(mod, token, minimum_rotation_boundary_ms)
 							))
 						end
 
+						-- A single account-wide pass must observe one coherent backend
+						-- boundary. Mixed or missing per-character metadata means the
+						-- storefronts are not synchronized enough to evaluate or purchase.
+						local boundary_compatible, next_boundary, next_missing = rotation_boundary_compatible(rotation_boundary_ms, observed_boundary, rotation_boundary_missing)
+
+						if not boundary_compatible then
+							return rotation_pending(string.format(
+								"Armoury storefront rotation boundary mismatch or missing metadata for %s",
+								profile_label(profile)
+							))
+						end
+
+						rotation_boundary_ms = next_boundary
+						rotation_boundary_missing = next_missing
+
 						local offers = storefront and storefront.data and storefront.data.personal
 
 						if type(offers) ~= "table" then
 							return rejected("Armoury storefront returned no personal offers")
-						end
-
-						if observed_boundary and (not rotation_boundary_ms or observed_boundary < rotation_boundary_ms) then
-							rotation_boundary_ms = observed_boundary
 						end
 
 						diagnostics.storefronts = diagnostics.storefronts + 1
@@ -2533,6 +2580,8 @@ end
 
 local function start_scan(mod)
 	local token = state.token
+	state.operation_snapshot = CurioDomains.context.snapshot(state)
+	state.operation_snapshot.token = token
 	local now = server_time()
 	local previous_boundary = tonumber(state.rotation_boundary_ms)
 	local minimum_rotation_boundary_ms = previous_boundary and now and now >= previous_boundary + STORE_ROTATION_GRACE_MS and previous_boundary or nil
@@ -2597,6 +2646,7 @@ local function initialize_context(mod, context)
 	state.profile_discovery_pending = true
 	state.profile_discovery_refresh_elapsed = 0
 	state.profile_discovery_token = state.profile_discovery_token + 1
+	state.operation_snapshot = nil
 	ensure_rotation_history(mod)
 	state.rotation_boundary_ms = state.next_rotation_at_ms
 
@@ -2661,6 +2711,7 @@ CurioAcquisition.cancel = function()
 	state.started = false
 	state.next_rotation_at_ms = nil
 	state.rotation_boundary_ms = nil
+	state.operation_snapshot = nil
 	state.profile_discovery_token = state.profile_discovery_token + 1
 end
 
@@ -3060,6 +3111,7 @@ CurioAcquisition._test = {
 	maximum_operative_slots = maximum_operative_slots,
 	normalized_offer = normalized_offer,
 	observed_rotation_boundary = observed_rotation_boundary,
+	rotation_boundary_compatible = rotation_boundary_compatible,
 	primary_trait = primary_trait,
 	profile_is_enabled = profile_is_enabled,
 	reconcile_character_slots = reconcile_character_slots,
@@ -3068,6 +3120,9 @@ CurioAcquisition._test = {
 	sanitize_rotation_history = sanitize_rotation_history,
 	sane_rotation_boundary = sane_rotation_boundary,
 	same_candidate = same_candidate,
+	operation_snapshot = function()
+		return state.operation_snapshot
+	end,
 }
 
 return CurioAcquisition

@@ -1045,6 +1045,27 @@ def main() -> None:
     )
     assert module._test.observed_rotation_boundary(observed_storefront) == 1600000
 
+    compatible, boundary, missing = module._test.rotation_boundary_compatible(
+        None, 1600000, False
+    )
+    assert compatible is True
+    assert boundary == 1600000
+    assert missing is False
+    compatible, _, _ = module._test.rotation_boundary_compatible(
+        1600000, 1700000, False
+    )
+    assert compatible is False
+    compatible, _, _ = module._test.rotation_boundary_compatible(
+        1600000, None, False
+    )
+    assert compatible is False
+    compatible, boundary, missing = module._test.rotation_boundary_compatible(
+        None, None, False
+    )
+    assert compatible is True
+    assert boundary is None
+    assert missing is True
+
     # Pre-hotfix schema 1 boundaries may have been poisoned by a stale response.
     # Migrate account metadata but force one corrected scan; schema 2 boundaries
     # remain trusted after they were confirmed by the new synchronization rule.
