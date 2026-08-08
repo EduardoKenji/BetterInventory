@@ -1,10 +1,11 @@
 from pathlib import Path
 
-from lupa import LuaRuntime
+from coverage_support import InstrumentedLuaRuntime as LuaRuntime
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 MAIN_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory.lua"
+CHARACTER_OVERVIEW_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_character_overview.lua"
 DATA_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_data.lua"
 LOCALIZATION_PATH = (
     PROJECT_ROOT
@@ -19,6 +20,16 @@ def main() -> None:
     lua = LuaRuntime(unpack_returned_tuples=True)
     lua.execute(
         r"""
+        function table.clone(value)
+            local copy = {}
+
+            for key, item in pairs(value or {}) do
+                copy[key] = item
+            end
+
+            return copy
+        end
+
         settings = {
 			melee_columns = 3,
 			ranged_columns = 3,
@@ -171,7 +182,9 @@ def main() -> None:
 			sync_inventory_sort_setting = function() inventory_sort_syncs = inventory_sort_syncs + 1 end,
 			sync_quick_discard_settings = function() quick_discard_syncs = quick_discard_syncs + 1 end,
 			sync_curio_acquisition_settings = function() curio_acquisition_syncs = curio_acquisition_syncs + 1 end,
+			rebind_sort_options = function() end,
 			morningstar_auto_discard_is_busy = function() return false end,
+			cancel_manual_discard = function() end,
 			unregister_inventory_view = function() end,
 			lantern_recommendations_active = function() return lantern_recommendations_are_active end,
 		}
@@ -193,8 +206,16 @@ def main() -> None:
 			update_runtime = function() end,
 			import_name_it_names = function() end,
 		}
+		test_equipment_persistence = {
+			persist_local_changes = function(_, native_function, view, ...)
+				return native_function(view, ...)
+			end,
+			refresh_from_authoritative_profile = function() end,
+			update = function() end,
+		}
 
         test_mod = {}
+        test_mod._better_inventory_test = {}
         test_dmf = {
             create_mod_options_settings = function() end,
         }
@@ -210,6 +231,7 @@ def main() -> None:
 		}
 		visible_equipment_available = true
 		visible_equipment_enabled = true
+		fail_layout_load = false
 		overview_equipped_item_calls = 0
 		overview_layout_switches = 0
 		captured_options_hook = nil
@@ -239,6 +261,14 @@ def main() -> None:
         end
 
 		function test_mod:io_dofile(path)
+			if string.find(path, "BetterInventory_layout", 1, true) and fail_layout_load then
+				return false
+			end
+
+			if string.find(path, "BetterInventory_character_overview", 1, true) then
+				return TestCharacterOverview
+			end
+
 			if string.find(path, "BetterInventory_features", 1, true) then
 				if fail_feature_load then
 					return false
@@ -249,6 +279,8 @@ def main() -> None:
 				return test_curio_acquisition
 			elseif string.find(path, "BetterInventory_item_customization", 1, true) then
 				return test_item_customization
+			elseif string.find(path, "BetterInventory_equipment_persistence", 1, true) then
+				return test_equipment_persistence
 			end
 
 			return test_layout
@@ -306,10 +338,109 @@ def main() -> None:
         end
         """
     )
-    lua.execute(MAIN_PATH.read_text(encoding="utf-8"))
+    character_overview = lua.execute(
+        CHARACTER_OVERVIEW_PATH.read_text(encoding="utf-8"),
+        name=str(CHARACTER_OVERVIEW_PATH),
+    )
+    lua.globals().TestCharacterOverview = character_overview
+    lua.execute(MAIN_PATH.read_text(encoding="utf-8"), name=str(MAIN_PATH))
     globals_ = lua.globals()
     mod = globals_.test_mod
     settings = globals_.settings
+
+    normalizer = mod._better_inventory_test.normalized_displayed_value
+    item_changed = mod._better_inventory_test.character_overview_item_changed
+    normalized_values = lua.table_from({})
+    raw_values = lua.table_from({})
+    normalization_content = lua.table_from(
+        {
+            "display_name": "Guardian\r\nof the Hateful",
+            "better_inventory_fitted_curio_name": "stale fitted value",
+        }
+    )
+    assert (
+        normalizer(
+            normalization_content,
+            "display_name",
+            "better_inventory_fitted_curio_name",
+            "better_inventory_full_display_name",
+            None,
+            normalized_values,
+            raw_values,
+            0,
+        )
+        == "Guardian of the Hateful"
+    )
+    lua.execute(
+        "test_gsub_calls = 0; test_original_gsub = string.gsub; "
+        "string.gsub = function(...) test_gsub_calls = test_gsub_calls + 1; "
+        "return test_original_gsub(...) end"
+    )
+    assert (
+        normalizer(
+            normalization_content,
+            "display_name",
+            "better_inventory_fitted_curio_name",
+            "better_inventory_full_display_name",
+            None,
+            normalized_values,
+            raw_values,
+            0,
+        )
+        == "Guardian of the Hateful"
+    )
+    assert globals_.test_gsub_calls == 0
+    lua.execute("string.gsub = test_original_gsub")
+
+    # Same gear IDs can receive a new backend object or revised content while
+    # the Character Overview widget is reused. The revision guard must refresh
+    # those changes, while an unchanged object remains a no-op.
+    overview_item = lua.table_from(
+        {
+            "gear_id": "same-gear",
+            "name": "Old Name",
+            "icon_name": "old-icon",
+            "item_level": 400,
+            "rarity": 4,
+            "traits": lua.table_from([lua.table_from({"id": "health"})]),
+        }
+    )
+    assert item_changed(overview_item, overview_item) is False
+    renamed_item = lua.table_from(
+        {
+            "gear_id": "same-gear",
+            "name": "New Name",
+            "icon_name": "old-icon",
+            "item_level": 400,
+            "rarity": 4,
+            "traits": lua.table_from([lua.table_from({"id": "health"})]),
+        }
+    )
+    assert item_changed(overview_item, renamed_item) is True
+    icon_item = lua.table_from(
+        {
+            "gear_id": "same-gear",
+            "name": "Old Name",
+            "icon_name": "new-icon",
+            "item_level": 400,
+            "rarity": 4,
+            "traits": lua.table_from([lua.table_from({"id": "health"})]),
+        }
+    )
+    assert item_changed(overview_item, icon_item) is True
+    expanded_item = lua.table_from(
+        {
+            "gear_id": "same-gear",
+            "name": "Old Name",
+            "icon_name": "old-icon",
+            "item_level": 400,
+            "rarity": 4,
+            "traits": lua.table_from(
+                [lua.table_from({"id": "health"}), lua.table_from({"id": "toughness"})]
+            ),
+        }
+    )
+    assert item_changed(overview_item, expanded_item) is True
 
     visible_equipment_config = lua.table_from(
         {
@@ -381,6 +512,24 @@ def main() -> None:
     assert globals_.overview_equipped_item_calls == 2
     globals_.visible_equipment_enabled = True
 
+    # A broken optional integration probe must preserve the native widget.
+    globals_.test_visible_equipment.is_enabled = lua.eval(
+        "function() error('simulated Visible Equipment probe failure') end"
+    )
+    globals_.captured_character_overview_widget_hook(
+        original_widget_factory,
+        overview_view,
+        visible_equipment_config,
+        "test",
+        "pressed",
+        "right_pressed",
+        "slot_primary",
+    )
+    assert globals_.overview_equipped_item_calls == 2
+    globals_.test_visible_equipment.is_enabled = lua.eval(
+        "function() return visible_equipment_enabled end"
+    )
+
     globals_.visible_equipment_available = False
     globals_.captured_character_overview_widget_hook(
         original_widget_factory,
@@ -393,6 +542,96 @@ def main() -> None:
     )
     assert globals_.overview_equipped_item_calls == 3
     globals_.visible_equipment_available = True
+
+    # An empty Curio slot starts with Darktide's native placeholder blueprint.
+    # Equipping a plain, uncustomized Curio while Character Overview remains
+    # open must re-present the complete native individual layout; replacing one
+    # widget bypasses coupled registrations, exclamation widgets, navigation,
+    # and icon ownership in the live engine. The reverse transition is covered.
+    curio_transition_type = mod._better_inventory_test.character_overview_curio_transition_type
+    empty_curio_widget_type = "better_inventory_character_overview_empty_curio"
+    curio_widget_type = "better_inventory_character_overview_curio"
+    assert curio_transition_type(empty_curio_widget_type, True) == curio_widget_type
+    assert curio_transition_type(curio_widget_type, False) == empty_curio_widget_type
+    assert curio_transition_type(curio_widget_type, True) is None
+
+    lua.globals().overview_curio_item = lua.table_from(
+        {"gear_id": "plain-curio", "name": "Uncustomized Curio", "item_level": 420}
+    )
+    overview_view.equipped_item_in_slot = lua.eval(
+        "function() overview_equipped_item_calls = overview_equipped_item_calls + 1; return overview_curio_item end"
+    )
+    overview_view._active_category_tab_context = lua.table_from(
+        {
+            "is_grid_layout": False,
+            "layout": lua.table_from([lua.table_from({"slot": lua.table_from({"name": "slot_attachment_1"})})]),
+        }
+    )
+    original_overview_switch_active_layout = overview_view._switch_active_layout
+    overview_view._switch_active_layout = lua.eval(
+        """
+        function(view, context)
+            view.layout_rebuilds = (view.layout_rebuilds or 0) + 1
+            view.last_rebuild_context = context
+            local item = overview_curio_item
+            local target_type = item and "better_inventory_character_overview_curio" or "better_inventory_character_overview_empty_curio"
+            local widget = {
+                name = "widget_rebuilt_curio",
+                type = target_type,
+                offset = { 0, 0, 0 },
+                visible = true,
+                content = {
+                    element = {
+                        widget_type = target_type,
+                        slot = {name = "slot_attachment_1"},
+                    },
+                    item = item,
+                    index = 3,
+                },
+                style = {},
+            }
+            view._loadout_widgets = {widget}
+        end
+        """
+    )
+    empty_curio_element = lua.table_from(
+        {
+            "widget_type": empty_curio_widget_type,
+            "item_type": "GADGET",
+            "slot": lua.table_from({"name": "slot_attachment_1"}),
+            "scenegraph_id": "slot_attachment_1",
+            "better_inventory_character_overview_callback_name": "cb_on_grid_entry_pressed",
+            "better_inventory_character_overview_secondary_callback_name": "cb_on_grid_entry_right_pressed",
+            "better_inventory_character_overview_scenegraph_id": "slot_attachment_1",
+        }
+    )
+    empty_curio_widget = lua.table_from(
+        {
+            "name": "widget_entry_curio",
+            "type": empty_curio_widget_type,
+            "offset": lua.table_from([14, 27, -15]),
+            "visible": True,
+            "content": lua.table_from(
+                {"element": empty_curio_element, "item": None, "index": 3}
+            ),
+            "style": lua.table_from({}),
+        }
+    )
+    overview_view._loadout_widgets = lua.table_from([empty_curio_widget])
+    globals_.captured_character_overview_update_hook(overview_view)
+    equipped_curio_widget = overview_view._loadout_widgets[1]
+    assert equipped_curio_widget.type == curio_widget_type
+    assert equipped_curio_widget.content.item.gear_id == "plain-curio"
+    assert overview_view.layout_rebuilds == 1
+    assert overview_view.last_rebuild_context.is_grid_layout is False
+
+    lua.globals().overview_curio_item = None
+    globals_.captured_character_overview_update_hook(overview_view)
+    unequipped_curio_widget = overview_view._loadout_widgets[1]
+    assert unequipped_curio_widget.type == empty_curio_widget_type
+    assert unequipped_curio_widget.content.item is None
+    assert overview_view.layout_rebuilds == 2
+    overview_view._switch_active_layout = original_overview_switch_active_layout
 
     overview_equipped_widget = lua.table_from(
         {
@@ -505,9 +744,12 @@ def main() -> None:
     grid_widget_factory = lua.eval(
         "function(item_grid, config) return config.widget, config.alignment_widget end"
     )
+    item_grid = lua.table_from(
+        {"_grid_widgets": lua.table_from({1: grid_widget})}
+    )
     returned_widget, returned_alignment = globals_.captured_grid_widget_hook(
         grid_widget_factory,
-        lua.table_from({}),
+        item_grid,
         lua.table_from(
             {"widget": grid_widget, "alignment_widget": grid_alignment_widget}
         ),
@@ -529,38 +771,51 @@ def main() -> None:
 
     grid_update_calls = lua.table_from({"count": 0})
     original_grid_update = lua.eval(
-        "function(item_grid, state) state.count = state.count + 1 return 'updated', nil, 'tail' end"
+        "function(item_grid, state) state.count = state.count + 1 end"
     )
-    item_grid = lua.table_from(
-        {"_grid_widgets": lua.table_from({1: grid_widget})}
-    )
-
     # MyFavorites only / native equipped state: favorite state never controls
     # placement, including transitions while the favorite icon is hidden.
-    update_result, update_nil, update_tail = globals_.captured_grid_update_hook(
-        original_grid_update, item_grid, grid_update_calls
-    )
-    assert (update_result, update_nil, update_tail) == ("updated", None, "tail")
+    globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
     assert grid_update_calls.count == 1
     assert runtime_hotspot_style.offset[2] == 7
     assert grid_widget.style.favorite_icon.offset[2] == 7
+
+    # Idle frames must not rescan the tracked set. When a Darktide build does
+    # not expose a native generation, the bounded fallback eventually notices
+    # backend-driven content changes without returning to per-frame work.
+    item_grid._better_inventory_myfavorites_fallback_frames = 0
+    grid_widget.content.equipped = True
+    for _ in range(14):
+        globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
+    assert runtime_hotspot_style.offset[2] == 7
+    globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
+    assert runtime_hotspot_style.offset[2] == 33
+    grid_widget.content.equipped = False
+    item_grid._better_inventory_myfavorites_dirty = True
+    globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
+
     grid_widget.content.favorite = True
+    item_grid._better_inventory_myfavorites_dirty = True
     globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
     assert runtime_hotspot_style.offset[2] == 7
     grid_widget.content.favorite = False
     grid_widget.content.equipped = True
+    item_grid._better_inventory_myfavorites_dirty = True
     globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
     assert runtime_hotspot_style.offset[2] == 33
     assert grid_widget.style.favorite_icon.offset[2] == 33
     grid_widget.content.equipped = False
+    item_grid._better_inventory_myfavorites_dirty = True
     globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
     assert runtime_hotspot_style.offset[2] == 7
 
     # Equipped Icon+ inactive-loadout state follows its live visibility pass.
     grid_widget.content.inactive_loadout_equipped = True
+    item_grid._better_inventory_myfavorites_dirty = True
     globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
     assert runtime_hotspot_style.offset[2] == 33
     grid_widget.content.inactive_loadout_equipped = False
+    item_grid._better_inventory_myfavorites_dirty = True
     globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
     assert runtime_hotspot_style.offset[2] == 7
 
@@ -569,6 +824,7 @@ def main() -> None:
     grid_widget.content.better_inventory_equipped_icon_visibility_function = lua.eval(
         "function() error('simulated Equipped Icon+ failure') end"
     )
+    item_grid._better_inventory_myfavorites_dirty = True
     globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
     assert runtime_hotspot_style.offset[2] == 7
 
@@ -599,6 +855,32 @@ def main() -> None:
     item_grid._grid_widgets[1] = no_myfavorites_widget
     globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
     assert no_myfavorites_widget.style.favorite_icon.offset[2] == 7
+
+    # A grid that was not marked during widget creation must take the native
+    # fast path, even if a stale-looking marker table is present on a widget.
+    untracked_marker_widget = lua.table_from(
+        {
+            "content": lua.table_from(
+                {
+                    "better_inventory_myfavorites_hotspot_style": lua.table_from(
+                        {
+                            "horizontal_alignment": "right",
+                            "vertical_alignment": "top",
+                            "offset": lua.table_from({1: -8, 2: 1, 3: 17}),
+                        }
+                    ),
+                }
+            ),
+            "style": lua.table_from(
+                {"favorite_icon": lua.table_from({"offset": lua.table_from({1: -8, 2: 1, 3: 16})})}
+            ),
+        }
+    )
+    untracked_grid = lua.table_from(
+        {"_grid_widgets": lua.table_from({1: untracked_marker_widget})}
+    )
+    globals_.captured_grid_update_hook(original_grid_update, untracked_grid, grid_update_calls)
+    assert untracked_marker_widget.content.better_inventory_myfavorites_hotspot_style.offset[2] == 1
 
     credits_view = lua.table_from({"__class_name": "CreditsVendorView"})
     credits_definitions = lua.table_from({})
@@ -1608,12 +1890,14 @@ def main() -> None:
     assert entries_by_id["weapon_modifier_lowest_color_b"].disabled is True
     assert entries_by_id["weapon_modifier_lowest_color_opacity"].disabled is True
 
-    data = lua.execute(DATA_PATH.read_text(encoding="utf-8"))
-    localization = lua.execute(LOCALIZATION_PATH.read_text(encoding="utf-8"))
+    data = lua.execute(DATA_PATH.read_text(encoding="utf-8"), name=str(DATA_PATH))
+    localization = lua.execute(
+        LOCALIZATION_PATH.read_text(encoding="utf-8"), name=str(LOCALIZATION_PATH)
+    )
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "1.9.4"
+    assert data.version == "2.0.0"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
@@ -1688,6 +1972,7 @@ def main() -> None:
         debug_group.sub_widgets[index].setting_id
         for index in range(1, len(debug_group.sub_widgets) + 1)
     ] == [
+		"debug_enable_hot_path_diagnostics",
         "debug_expand_armoury_requisition_window_30_percent",
         "debug_armoury_requisition_window_increase_percent",
 		"debug_adjust_inventory_window_width",
@@ -1920,6 +2205,7 @@ def main() -> None:
     assert defaults["expand_armoury_requisition_window"] is True
     assert defaults["armoury_requisition_target_card_width"] == 230
     assert defaults["debug_expand_armoury_requisition_window_30_percent"] is False
+    assert defaults["debug_enable_hot_path_diagnostics"] is False
     assert defaults["debug_armoury_requisition_window_increase_percent"] == 30
     assert defaults["debug_adjust_inventory_window_width"] is False
     assert defaults["debug_inventory_window_width_adjustment_percent"] == 30
@@ -2024,11 +2310,20 @@ def main() -> None:
     # A failed hot-reload dependency must disable that feature module once. It
     # must never leave a boolean upvalue that raises again on every frame.
     globals_.fail_feature_load = True
-    lua.execute(MAIN_PATH.read_text(encoding="utf-8"))
+    lua.execute(MAIN_PATH.read_text(encoding="utf-8"), name=str(MAIN_PATH))
     assert globals_.captured_module_errors == 1
     globals_.test_mod.update(0.016)
     globals_.test_mod.update(0.016)
     assert globals_.captured_module_errors == 1
+
+    # Layout is a core dependency. A failed load must stop bootstrap cleanly
+    # before any hook indexes the missing module.
+    globals_.fail_feature_load = False
+    globals_.fail_layout_load = True
+    lua.execute(MAIN_PATH.read_text(encoding="utf-8"), name=str(MAIN_PATH))
+    assert globals_.captured_module_errors == 2
+    globals_.test_mod.update(0.016)
+    assert globals_.captured_module_errors == 2
 
     print("BetterInventory live setting synchronization tests passed.")
 

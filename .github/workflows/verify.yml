@@ -1,0 +1,43 @@
+name: BetterInventory verification
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install verification dependencies
+        run: python -m pip install lupa luaparser
+
+      - name: Run repository-owned behavior suite from clean checkout
+        shell: pwsh
+        run: |
+          python tests/run_tests.py --timeout-seconds 45 --coverage-output lua-coverage.json | Tee-Object test-results.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run repository-only static and package verification
+        shell: pwsh
+        run: .\tests\verify.ps1
+
+      - name: Upload machine-readable behavior results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: betterinventory-test-results
+          path: |
+            test-results.json
+            lua-coverage.json

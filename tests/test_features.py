@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from lupa import LuaRuntime
+from coverage_support import InstrumentedLuaRuntime as LuaRuntime
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -17,6 +17,34 @@ CURIO_VALUES_PATH = (
     / "mods"
     / "BetterInventory"
     / "BetterInventory_curio_values.lua"
+)
+ARBITER_PATH = (
+    PROJECT_ROOT
+    / "scripts"
+    / "mods"
+    / "BetterInventory"
+    / "BetterInventory_operation_arbiter.lua"
+)
+FEATURE_DOMAINS_PATH = (
+    PROJECT_ROOT
+    / "scripts"
+    / "mods"
+    / "BetterInventory"
+    / "BetterInventory_feature_domains.lua"
+)
+FEATURE_COMPOSITION_PATH = (
+    PROJECT_ROOT
+    / "scripts"
+    / "mods"
+    / "BetterInventory"
+    / "BetterInventory_feature_composition.lua"
+)
+FEATURE_SORTING_PATH = (
+    PROJECT_ROOT
+    / "scripts"
+    / "mods"
+    / "BetterInventory"
+    / "BetterInventory_feature_sorting.lua"
 )
 
 
@@ -146,16 +174,41 @@ def main() -> None:
         }
 		captured_popup = nil
 		captured_popup_count = 0
+		captured_popup_id = nil
+		next_popup_id = 0
 		captured_discard_ids = nil
 		captured_notification = nil
 		Managers = {
+			ui = {
+				_active_popups = {},
+				active_popups = function(self)
+					return self._active_popups
+				end,
+			},
 			event = {
 				trigger = function(self, event_name, payload, secondary_payload)
 					if event_name == "event_show_ui_popup" then
 						captured_popup = payload
 						captured_popup_count = captured_popup_count + 1
+						next_popup_id = next_popup_id + 1
+						captured_popup_id = next_popup_id
+						Managers.ui._active_popups[#Managers.ui._active_popups + 1] = {id = captured_popup_id}
+
+						if secondary_payload then
+							secondary_payload(captured_popup_id)
+						end
+					elseif event_name == "event_remove_ui_popup" then
+						for index = #Managers.ui._active_popups, 1, -1 do
+							if Managers.ui._active_popups[index].id == payload then
+								table.remove(Managers.ui._active_popups, index)
+							end
+						end
 					elseif event_name == "event_discard_items" then
 						captured_discard_ids = payload
+						if manual_delete_promise then
+							manual_bridge_ok, manual_bridge_result = pcall(TestFeatures.observe_manual_discard_settlement, manual_delete_promise)
+							manual_bridge_active = TestFeatures.manual_discard_settlement_active()
+						end
 					elseif event_name == "event_add_notification_message" and payload == "custom" then
 						captured_notification = secondary_payload
 					end
@@ -186,6 +239,22 @@ def main() -> None:
 
         TestModLoader = {
             io_dofile = function(self, path)
+                if string.find(path, "BetterInventory_operation_arbiter", 1, true) then
+                    return TestOperationArbiter
+                end
+
+                if string.find(path, "BetterInventory_feature_domains", 1, true) then
+                    return TestFeatureDomains
+                end
+
+                if string.find(path, "BetterInventory_feature_composition", 1, true) then
+                    return TestFeatureComposition
+                end
+
+                if string.find(path, "BetterInventory_feature_sorting", 1, true) then
+                    return TestFeatureSorting
+                end
+
                 return TestCurioValues
             end,
         }
@@ -215,9 +284,31 @@ def main() -> None:
         }
         """
     )
-    curio_values = lua.execute(CURIO_VALUES_PATH.read_text(encoding="utf-8"))
+    curio_values = lua.execute(
+        CURIO_VALUES_PATH.read_text(encoding="utf-8"), name=str(CURIO_VALUES_PATH)
+    )
     lua.globals().TestCurioValues = curio_values
-    features = lua.execute(FEATURES_PATH.read_text(encoding="utf-8"))
+    operation_arbiter = lua.execute(
+        ARBITER_PATH.read_text(encoding="utf-8"), name=str(ARBITER_PATH)
+    )
+    lua.globals().TestOperationArbiter = operation_arbiter
+    feature_domains = lua.execute(
+        FEATURE_DOMAINS_PATH.read_text(encoding="utf-8"), name=str(FEATURE_DOMAINS_PATH)
+    )
+    lua.globals().TestFeatureDomains = feature_domains
+    feature_composition = lua.execute(
+        FEATURE_COMPOSITION_PATH.read_text(encoding="utf-8"),
+        name=str(FEATURE_COMPOSITION_PATH),
+    )
+    lua.globals().TestFeatureComposition = feature_composition
+    feature_sorting = lua.execute(
+        FEATURE_SORTING_PATH.read_text(encoding="utf-8"),
+        name=str(FEATURE_SORTING_PATH),
+    )
+    lua.globals().TestFeatureSorting = feature_sorting
+    features = lua.execute(
+        FEATURES_PATH.read_text(encoding="utf-8"), name=str(FEATURES_PATH)
+    )
     lua.globals().TestFeatures = features
     lua.execute(
         r"""
@@ -260,6 +351,29 @@ def main() -> None:
     globals_ = lua.globals()
     mod = globals_.test_mod
     layout = globals_.test_layout
+
+    # Character Overview can expose a strict scenegraph without the optional
+    # inventory window/canvas nodes. The composition probe must treat those
+    # nodes as absent instead of reproducing Darktide's strict-table crash.
+    strict_scenegraph_view = lua.execute(
+        r"""
+        local scenegraph = setmetatable({
+            canvas = {size = {1920, 1080}},
+        }, {
+            __index = function(_, field_name)
+                error('Table does not have field_name "' .. tostring(field_name) .. '" defined.')
+            end,
+        })
+
+        return {
+            _ui_scenegraph = scenegraph,
+            _context = {},
+        }
+        """
+    )
+    assert features.composition_inputs_changed(strict_scenegraph_view, "melee") is True
+    assert strict_scenegraph_view._better_inventory_composition_window_x is None
+    assert strict_scenegraph_view._better_inventory_composition_canvas_width == 1920
 
     definitions = lua.table_from(
         {
@@ -627,6 +741,45 @@ def main() -> None:
     )
     assert sorted_ids == ("equipped", "favorite", "ordinary")
 
+    # Sort priority is a compatibility boundary. A partial view or item
+    # utility failure must degrade to native ordering rather than abort sort.
+    original_equipped_query = sortable_view.is_item_equipped_in_any_slot
+    sortable_view.is_item_equipped_in_any_slot = lua.eval(
+        "function() error('simulated equipped-query failure') end"
+    )
+    failure_safe_sort = lua.execute(
+        "local view, high, low = ...; return view._sort_options[1].sort_function(high, low)",
+        sortable_view,
+        lua.table_from({"item": lua.table_from({"gear_id": "high", "rating": 100, "slots": lua.table_from(["slot_attachment_1"])})}),
+        lua.table_from({"item": lua.table_from({"gear_id": "low", "rating": 1, "slots": lua.table_from(["slot_attachment_1"])})}),
+    )
+    assert failure_safe_sort is True
+    sortable_view.is_item_equipped_in_any_slot = original_equipped_query
+
+    original_favorite_query = globals_.TestItems.is_item_id_favorited
+    globals_.TestItems.is_item_id_favorited = lua.eval(
+        "function() error('simulated favorite-query failure') end"
+    )
+    failure_safe_favorite_sort = lua.execute(
+        "local view, high, low = ...; return view._sort_options[1].sort_function(high, low)",
+        sortable_view,
+        lua.table_from({"item": lua.table_from({"gear_id": "high", "rating": 100})}),
+        lua.table_from({"item": lua.table_from({"gear_id": "low", "rating": 1})}),
+    )
+    assert failure_safe_favorite_sort is True
+    globals_.TestItems.is_item_id_favorited = original_favorite_query
+
+    # A malformed/partially protected pair must still produce a deterministic
+    # strict ordering. Fail-closed priority contributes zero; native ordering
+    # remains the only tie-breaker and cannot make both directions true.
+    antisymmetric_result = lua.execute(
+        "local view, high, low = ...; local compare = view._sort_options[1].sort_function; return compare(high, low), compare(low, high)",
+        sortable_view,
+        lua.table_from({"item": lua.table_from({"gear_id": "high", "rating": 100, "slots": lua.table_from(["slot_attachment_1"])})}),
+        lua.table_from({"item": lua.table_from({"gear_id": "low", "rating": 1, "slots": lua.table_from(["slot_attachment_1"])})}),
+    )
+    assert antisymmetric_result == (True, False)
+
     mod.settings.prioritize_perfect_roll_weapons = True
     perfect_sort_ids = lua.execute(
         r"""
@@ -761,6 +914,7 @@ def main() -> None:
             set_pivot_offset = function(self, x, y)
                 self.pivot_x = x
                 self.pivot_y = y
+                self.pivot_set_calls = (self.pivot_set_calls or 0) + 1
             end,
             set_visibility = function(self, visible)
                 self.visible = visible
@@ -818,6 +972,9 @@ def main() -> None:
     assert armoury_view._better_inventory_armoury_native_sort_panel.visible is True
     assert globals_.TestArmouryPanel.pivot_x == 1450
     assert globals_.TestArmouryPanel.pivot_y == 100
+    pivot_set_calls_after_setup = globals_.TestArmouryPanel.pivot_set_calls
+    features.update_armoury_native_sort_panel(armoury_view)
+    assert globals_.TestArmouryPanel.pivot_set_calls == pivot_set_calls_after_setup
     assert globals_.TestArmouryLegend.display_name == "better_inventory_toggle_panel_focus"
     assert globals_.TestArmouryLegend.input_action == "navigate_secondary_right_pressed"
     assert globals_.TestArmouryLegend.alignment == "right_alignment"
@@ -919,8 +1076,25 @@ def main() -> None:
     assert len(globals_.TestArmouryPanel.entries) == 2
     assert globals_.TestArmouryPanel.entries[2].initial_content.label == "armoury_native_sorting_header"
     assert globals_.TestArmouryPanel.entries[2].initial_content.chevron == ">"
+
+    # Disable must restore controller ownership and remove the live legend
+    # action while the vendor view remains open.
+    armoury_focus_input.actions["navigate_secondary_right_pressed"] = True
+    assert features.capture_armoury_sort_panel_controller_focus(
+        mod, armoury_view, armoury_focus_input
+    ) is True
+    armoury_focus_input.actions["navigate_secondary_right_pressed"] = False
+    assert armoury_view._item_grid.disabled is True
+    features.disable_inventory_views()
+    assert armoury_view._item_grid.disabled is False
+    assert armoury_view._item_grid.selected_index == 2
+    assert globals_.TestArmouryPanel.visible is False
+    assert globals_.TestArmouryLegend.removed_id == "store_focus_legend"
+    assert armoury_view._better_inventory_armoury_controller_legend is None
+
     features.unregister_armoury_view(armoury_view)
     assert globals_.TestArmouryLegend.removed_id == "store_focus_legend"
+    assert armoury_view._sort_options[1]._better_inventory_original_sort is None
     mod.settings.prioritize_perfect_roll_weapons = False
 
     mod.settings.prioritize_equipped_favorites = False
@@ -2588,7 +2762,8 @@ def main() -> None:
         automatic_add_mission_reward_on_invalidation = true
         automatic_defer_delete = false
         automatic_deleted_ids = nil
-        automatic_pending_delete = nil
+		automatic_pending_delete = nil
+		manual_delete_promise = nil
         automatic_game_mode_name = "hub"
         automatic_progression_fetching = true
         local profile = {
@@ -2775,9 +2950,82 @@ def main() -> None:
     features.request_quick_discard(mod, layout, quick_discard_view)
     assert globals_.automatic_fetch_count == fetch_count_before_deferred_delete + 2
     assert globals_.captured_popup_count == popup_count_before_deferred_delete
+    assert features.morningstar_auto_discard_is_busy(mod) is True
+
+    # Canceling the scheduler or switching modes must not release arbitration
+    # while the destructive backend request is still in flight. A new manual
+    # request remains blocked until the backend finalizer runs.
+    features.cancel_morningstar_auto_discard()
+    mod.settings.quick_discard_mode = "manual"
+    assert features.morningstar_auto_discard_is_busy(mod) is True
+    features.request_quick_discard(mod, layout, quick_discard_view)
+    assert globals_.captured_popup_count == popup_count_before_deferred_delete
     globals_.complete_automatic_delete()
+    assert features.morningstar_auto_discard_is_busy(mod) is False
+    mod.settings.quick_discard_mode = "automatic"
     globals_.automatic_defer_delete = False
     features.cancel_morningstar_auto_discard()
+
+    # Manual native deletion keeps the shared destructive token until the
+    # bridged GearService promise settles. This models the event hook without
+    # dispatching a second deletion request.
+    lua.execute(
+        r"""
+        function arm_manual_delete()
+            manual_delete_promise = {
+                next = function(self, callback)
+                    self.success_callback = callback
+                    return self
+                end,
+                catch = function(self, callback)
+                    self.error_callback = callback
+                    return self
+                end,
+            }
+        end
+        manual_bridge_ok = true
+        manual_bridge_result = nil
+        manual_bridge_active = false
+        arm_manual_delete()
+        function complete_manual_delete()
+            local pending = manual_delete_promise
+            manual_delete_promise = nil
+            if pending and pending.success_callback then
+                pending.success_callback({})
+            end
+        end
+        """
+    )
+    mod.settings.quick_discard_mode = "manual"
+    globals_.captured_popup = None
+    features.request_quick_discard(mod, layout, quick_discard_view)
+    assert globals_.captured_popup is not None
+    manual_delete_popup_id = globals_.captured_popup_id
+    globals_.captured_popup.options[1].callback()
+    assert globals_.manual_bridge_ok is True
+    assert globals_.manual_bridge_result is True, globals_.manual_bridge_result
+    assert globals_.manual_bridge_active is True
+    assert features.manual_discard_settlement_active() is True
+
+    # close_on_pressed removes the confirmation before GearService settles.
+    # Per-frame popup reconciliation must not release destructive ownership in
+    # that window or a second manual/automatic operation could overlap it.
+    globals_.Managers.event.trigger(
+        globals_.Managers.event, "event_remove_ui_popup", manual_delete_popup_id
+    )
+    features.reconcile_discard_transaction()
+    assert features.manual_discard_settlement_active() is True
+    popup_count_during_manual_delete = globals_.captured_popup_count
+    features.request_quick_discard(mod, layout, quick_discard_view)
+    assert globals_.captured_popup_count == popup_count_during_manual_delete
+    globals_.complete_manual_delete()
+    assert features.manual_discard_settlement_active() is False
+    globals_.arm_manual_delete()
+    features.request_quick_discard(mod, layout, quick_discard_view)
+    globals_.captured_popup.options[1].callback()
+    assert features.manual_discard_settlement_active() is True
+    globals_.complete_manual_delete()
+    mod.settings.quick_discard_mode = "automatic"
 
     # Missing save/favorite protection data fails closed and retries without
     # ever presenting or deleting the unprotected candidate set.
@@ -2806,6 +3054,33 @@ def main() -> None:
     globals_.Managers.save.character_data = saved_character_data
     features.request_quick_discard(mod, layout, quick_discard_view)
     assert globals_.captured_popup.title_text_unlocalized == "quick_discard_confirmation_title"
+    globals_.captured_popup.options[2].callback()
+
+    # Removing the native popup without invoking an option callback must also
+    # release the shared transaction. A later request must be allowed through.
+    features.request_quick_discard(mod, layout, quick_discard_view)
+    orphaned_popup = globals_.captured_popup
+    orphaned_popup_id = globals_.captured_popup_id
+    globals_.Managers.event.trigger(
+        globals_.Managers.event, "event_remove_ui_popup", orphaned_popup_id
+    )
+    features.reconcile_discard_transaction()
+    assert quick_discard_view._better_inventory_discard_pending is False
+    orphaned_popup.options[1].callback()
+    manual_popup_count = globals_.captured_popup_count
+    features.request_quick_discard(mod, layout, quick_discard_view)
+    assert globals_.captured_popup_count == manual_popup_count + 1
+    globals_.captured_popup.options[2].callback()
+
+    # Leaving the inventory while the manual confirmation is open must release
+    # its transaction. A stale popup callback must not affect a later request.
+    features.request_quick_discard(mod, layout, quick_discard_view)
+    stale_manual_popup = globals_.captured_popup
+    manual_popup_count = globals_.captured_popup_count
+    features.unregister_inventory_view(quick_discard_view)
+    features.request_quick_discard(mod, layout, quick_discard_view)
+    assert globals_.captured_popup_count == manual_popup_count + 1
+    stale_manual_popup.options[1].callback()
     globals_.captured_popup.options[2].callback()
     features.cancel_morningstar_auto_discard()
 
@@ -2860,6 +3135,63 @@ def main() -> None:
     features.sync_inventory_sort_setting(mod, layout)
     assert sortable_view._widgets_by_name[toggle_id].content.checked is False
     assert melee_view._widgets_by_name[toggle_id].content.checked is True
+
+    features.configure_inventory_sort_options(mod, layout, sortable_view)
+    features.bind_inventory_sort_toggle(mod, layout, sortable_view)
+    wrapped_sort = sortable_view._sort_options[1].sort_function
+    native_sort = sortable_view._sort_options[1]._better_inventory_original_sort
+    same_lua_function = lua.eval("function(left, right) return left == right end")
+    features.unregister_inventory_view(sortable_view)
+    assert same_lua_function(sortable_view._sort_options[1].sort_function, native_sort)
+    assert sortable_view._sort_options[1]._better_inventory_original_sort is None
+    assert sortable_view._sort_options[1]._better_inventory_wrapped_sort is None
+    features.configure_inventory_sort_options(mod, layout, sortable_view)
+    assert not same_lua_function(sortable_view._sort_options[1].sort_function, wrapped_sort)
+
+    # A GlobalStore/vendor comparator must be tracked even when no optional
+    # native sorting panel was created. Disable restores it, and enable-style
+    # rebinding installs one fresh wrapper.
+    global_store_sort_view = lua.execute(
+        r'''
+        return {
+            __class_name = "CreditsVendorView",
+            _optional_store_service = "get_all_characters_store_custom",
+            _sort_options = {
+                {
+                    sort_function = function(left, right)
+                        return left.item.rating > right.item.rating
+                    end,
+                },
+            },
+        }
+        '''
+    )
+    features.configure_global_store_sort_options(mod, global_store_sort_view)
+    global_store_native_sort = global_store_sort_view._sort_options[1]._better_inventory_original_sort
+    features.disable_inventory_views()
+    assert same_lua_function(
+        global_store_sort_view._sort_options[1].sort_function,
+        global_store_native_sort,
+    )
+    features.rebind_sort_options(mod, layout)
+    global_store_wrapped_sort = global_store_sort_view._sort_options[1].sort_function
+    assert not same_lua_function(global_store_wrapped_sort, global_store_native_sort)
+
+    external_global_store_sort = lua.eval(
+        "function(left, right) return left.item.gear_id < right.item.gear_id end"
+    )
+    global_store_sort_view._sort_options[1].sort_function = external_global_store_sort
+    features.rebind_sort_options(mod, layout)
+    assert not same_lua_function(
+        global_store_sort_view._sort_options[1].sort_function,
+        external_global_store_sort,
+    )
+    features.restore_sort_options(global_store_sort_view)
+    assert same_lua_function(
+        global_store_sort_view._sort_options[1].sort_function,
+        external_global_store_sort,
+    )
+    features.unregister_armoury_view(global_store_sort_view)
 
 
 if __name__ == "__main__":

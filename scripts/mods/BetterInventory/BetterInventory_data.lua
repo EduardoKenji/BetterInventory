@@ -1,4 +1,4 @@
-local MOD_VERSION = "1.9.4"
+local MOD_VERSION = "2.0.0"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
@@ -1728,6 +1728,12 @@ return {
 				setting_id = "debug_group",
 				type = "group",
 				sub_widgets = {
+					{
+						setting_id = "debug_enable_hot_path_diagnostics",
+						tooltip = "debug_enable_hot_path_diagnostics_tooltip",
+						type = "checkbox",
+						default_value = false,
+					},
 					{
 						setting_id = "debug_expand_armoury_requisition_window_30_percent",
 						tooltip = "debug_expand_armoury_requisition_window_30_percent_tooltip",

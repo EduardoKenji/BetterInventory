@@ -1,21 +1,28 @@
 local mod = get_mod("BetterInventory")
 
-local function no_op_module(module, module_name)
+local function no_op_module(module, module_name, defaults)
 	if type(module) == "table" then
 		return module
 	end
 
 	mod:error("Failed to load %s; its features are disabled until the next successful reload.", module_name)
 
-	local no_op = function()
-		return false
-	end
-
 	return setmetatable({}, {
 		__index = function(fallback, key)
-			rawset(fallback, key, no_op)
+			local default_value = defaults and defaults[key]
+			local default_function
 
-			return no_op
+			if type(default_value) == "function" then
+				default_function = default_value
+			else
+				default_function = function()
+					return default_value
+				end
+			end
+
+			rawset(fallback, key, default_function)
+
+			return default_function
 		end,
 	})
 end
@@ -25,6 +32,7 @@ local CreditsVendorView = require("scripts/ui/views/credits_vendor_view/credits_
 local MainMenuView = require("scripts/ui/views/main_menu_view/main_menu_view")
 local InventoryView = require("scripts/ui/views/inventory_view/inventory_view")
 local InventoryViewContentBlueprints = require("scripts/ui/views/inventory_view/inventory_view_content_blueprints")
+local InventoryBackgroundView = require("scripts/ui/views/inventory_background_view/inventory_background_view")
 local ItemGridViewBase = require("scripts/ui/views/item_grid_view_base/item_grid_view_base")
 local ItemGridViewBaseDefinitions = require("scripts/ui/views/item_grid_view_base/item_grid_view_base_definitions")
 local InventoryWeaponsView = require("scripts/ui/views/inventory_weapons_view/inventory_weapons_view")
@@ -32,12 +40,77 @@ local ViewElementGrid = require("scripts/ui/view_elements/view_element_grid/view
 local ItemBlueprintGenerator = require("scripts/ui/view_content_blueprints/item_blueprints")
 local Text = require("scripts/utilities/ui/text")
 local Layout = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout")
-local Features = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_features"), "BetterInventory_features.lua")
-local CurioAcquisition = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_acquisition"), "BetterInventory_curio_acquisition.lua")
+
+if type(Layout) ~= "table" then
+	mod:error("Failed to load BetterInventory_layout.lua; BetterInventory hooks are disabled until the next successful reload.")
+
+	return
+end
+
+local CharacterOverview = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_character_overview"), "BetterInventory_character_overview.lua", {
+	content_revision = function()
+		return nil, nil, nil, nil, nil, -1, -1, -1, -1
+	end,
+	identity = function()
+		return
+	end,
+	changed = function(previous_item, current_item)
+		return previous_item ~= current_item
+	end,
+	build_model = function(item, category, options)
+		return {
+			category = category,
+			empty = item == nil,
+			selected = options and options.selected == true or false,
+			widget_type = options and options.widget_type,
+		}
+	end,
+	clear_derived_content = function()
+		return false
+	end,
+})
+local FeatureDomains = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_feature_domains"), "BetterInventory_feature_domains.lua", {
+	markers = {
+		invalidate_grid = function()
+			return false
+		end,
+	},
+})
+
+local Capabilities = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_contracts")
+
+if type(Capabilities) ~= "table" or type(Capabilities.registry_refresh_required) ~= "function" then
+	Capabilities = {
+		mutation = function()
+			return "unavailable", "method unavailable"
+		end,
+		registry_refresh_required = function()
+			return true, "unavailable", "method unavailable"
+		end,
+	}
+end
+
+local Features = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_features"), "BetterInventory_features.lua", {
+	quick_discard_candidates = function() return {} end,
+	quick_discard_candidates_from_items = function() return {} end,
+})
+local CurioAcquisition = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_acquisition"), "BetterInventory_curio_acquisition.lua", {
+	character_slots = function() return {} end,
+	known_profiles = function() return {} end,
+})
 local ItemCustomization = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_item_customization"), "BetterInventory_item_customization.lua")
+local EquipmentPersistence = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_equipment_persistence"), "BetterInventory_equipment_persistence.lua")
+local SettingsRegistry = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_settings"), "BetterInventory_settings.lua", {
+	should_refresh_dependencies = function() return true end,
+})
+local Diagnostics = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_diagnostics"), "BetterInventory_diagnostics.lua")
 
 if type(Features.set_curio_acquisition_provider) == "function" then
 	Features.set_curio_acquisition_provider(CurioAcquisition)
+end
+
+if type(Features.set_diagnostics_provider) == "function" then
+	Features.set_diagnostics_provider(Diagnostics)
 end
 
 if type(Layout.set_item_customization_provider) == "function" then
@@ -227,6 +300,20 @@ local function mark_character_overview_requirement_met(widget)
 	end
 end
 
+local function character_overview_item_content_revision(item)
+	return CharacterOverview.content_revision(item)
+end
+
+local function character_overview_item_changed(previous_item, current_item)
+	return CharacterOverview.changed(previous_item, current_item)
+end
+
+local function reset_character_overview_curio_fit_state(widget)
+	local content = widget and widget.content
+
+	return CharacterOverview.clear_derived_content(content, 4)
+end
+
 local function configure_character_overview_rarity_strip(blueprint, setting_id)
 	local rarity_tag = pass_by_style_id(blueprint and blueprint.pass_template, "rarity_tag")
 
@@ -247,7 +334,7 @@ local function configure_character_overview_rarity_strip(blueprint, setting_id)
 	end
 end
 
-local function attach_runtime_marker_styles(widget)
+local function attach_runtime_marker_styles(widget, item_grid)
 	local content = widget and widget.content
 	local styles = widget and widget.style
 
@@ -257,6 +344,20 @@ local function attach_runtime_marker_styles(widget)
 
 	if styles.myfav_hotspot then
 		content.better_inventory_myfavorites_hotspot_style = styles.myfav_hotspot
+
+		if item_grid then
+			item_grid._better_inventory_myfavorites_active = true
+			local tracked_widgets = item_grid._better_inventory_myfavorites_widgets
+
+			if not tracked_widgets then
+				tracked_widgets = setmetatable({}, { __mode = "k" })
+				item_grid._better_inventory_myfavorites_widgets = tracked_widgets
+			end
+
+			tracked_widgets[widget] = true
+			item_grid._better_inventory_myfavorites_dirty = true
+			item_grid._better_inventory_myfavorites_generation = (item_grid._better_inventory_myfavorites_generation or 0) + 1
+		end
 	end
 
 	for index = 1, #(widget.passes or {}) do
@@ -425,7 +526,17 @@ local function character_overview_weapon_blueprint(rarity_strip_setting_id)
 	blueprint.update = function(parent, widget, input_service, dt, t, ui_renderer)
 		local content = widget and widget.content
 		local element = content and content.element
-		local previous_item = element and element.item
+		-- Native overview blueprints treat content.item as the item currently
+		-- rendered by this reusable widget. element.item may already point at the
+		-- replacement when returning from the child inventory view.
+		local previous_item = content and content.item
+		local slot = element and element.slot
+		local current_item = slot and parent.equipped_item_in_slot and parent:equipped_item_in_slot(slot.name)
+		local item_changed = character_overview_item_changed(previous_item, current_item)
+
+		if item_changed and type(Layout.restore_item_customization_style) == "function" then
+			Layout.restore_item_customization_style(widget)
+		end
 
 		if type(native_update) == "function" then
 			native_update(parent, widget, input_service, dt, t, ui_renderer)
@@ -433,10 +544,7 @@ local function character_overview_weapon_blueprint(rarity_strip_setting_id)
 
 		mark_character_overview_requirement_met(widget)
 
-		local slot = element and element.slot
-		local current_item = slot and parent.equipped_item_in_slot and parent:equipped_item_in_slot(slot.name)
-
-		if element and current_item ~= previous_item then
+		if element and item_changed then
 			element.item = current_item
 
 			if type(blueprint.update_data) == "function" then
@@ -446,6 +554,44 @@ local function character_overview_weapon_blueprint(rarity_strip_setting_id)
 	end
 
 	return blueprint
+end
+
+local function normalized_displayed_value(content, displayed_id, fitted_id, full_id, source_id, normalized_values, raw_values, cache_index)
+	local displayed_value = content[displayed_id]
+	local source_value
+
+	if displayed_value == content[fitted_id] then
+		source_value = content[full_id] or source_id and content[source_id] or displayed_value
+	else
+		source_value = source_id and content[source_id] or displayed_value
+	end
+
+	if raw_values[cache_index] ~= source_value then
+		raw_values[cache_index] = source_value
+
+		if type(source_value) == "string" then
+			normalized_values[cache_index] = string.gsub(source_value, "[\r\n]+", " ")
+		else
+			normalized_values[cache_index] = source_value
+		end
+	end
+
+	return normalized_values[cache_index]
+end
+
+local function invalidate_myfavorites_grid(item_grid)
+	return FeatureDomains.markers.invalidate_grid(item_grid)
+end
+
+local function invalidate_myfavorites_view(view)
+	return invalidate_myfavorites_grid(view and view._item_grid)
+end
+
+local better_inventory_test = type(mod) == "table" and rawget(mod, "_better_inventory_test")
+
+if type(better_inventory_test) == "table" then
+	better_inventory_test.normalized_displayed_value = normalized_displayed_value
+	better_inventory_test.character_overview_item_changed = character_overview_item_changed
 end
 
 local function character_overview_curio_blueprint()
@@ -763,22 +909,6 @@ local function character_overview_curio_blueprint()
 		"better_inventory_full_curio_stat_4",
 	}
 
-	local function normalized_displayed_value(content, displayed_id, fitted_id, full_id, source_id)
-		local displayed_value = content[displayed_id]
-
-		if displayed_value == content[fitted_id] then
-			return content[full_id] or source_id and content[source_id] or displayed_value
-		end
-
-		local source_value = source_id and content[source_id] or displayed_value
-
-		if type(source_value) == "string" then
-			return string.gsub(source_value, "[\r\n]+", " ")
-		end
-
-		return displayed_value
-	end
-
 	local function fit_curio_text(widget, ui_renderer, force)
 		local content = widget and widget.content
 		local widget_style = widget and widget.style
@@ -791,6 +921,8 @@ local function character_overview_curio_blueprint()
 		local title_width = title_style and title_style.size and title_style.size[1]
 		local stat_sources = content.better_inventory_curio_fit_stat_sources
 		local stat_widths = content.better_inventory_curio_fit_stat_widths
+		local normalized_values = content.better_inventory_curio_fit_normalized_values
+		local raw_values = content.better_inventory_curio_fit_raw_values
 
 		if type(stat_sources) ~= "table" then
 			stat_sources = {}
@@ -804,7 +936,19 @@ local function character_overview_curio_blueprint()
 			force = true
 		end
 
-		local full_name = title_style and normalized_displayed_value(content, "display_name", "better_inventory_fitted_curio_name", "better_inventory_full_display_name")
+		if type(normalized_values) ~= "table" then
+			normalized_values = {}
+			content.better_inventory_curio_fit_normalized_values = normalized_values
+			force = true
+		end
+
+		if type(raw_values) ~= "table" then
+			raw_values = {}
+			content.better_inventory_curio_fit_raw_values = raw_values
+			force = true
+		end
+
+		local full_name = title_style and normalized_displayed_value(content, "display_name", "better_inventory_fitted_curio_name", "better_inventory_full_display_name", nil, normalized_values, raw_values, 0)
 		local needs_fit = force or content.better_inventory_curio_fit_initialized ~= true
 
 		if title_style and (content.better_inventory_curio_fit_name_source ~= full_name or content.better_inventory_curio_fit_title_width ~= title_width or content.better_inventory_curio_fit_title_font_size ~= curio_name_font_size or content.better_inventory_curio_fit_title_line_limit ~= curio_name_line_limit) then
@@ -817,7 +961,7 @@ local function character_overview_curio_blueprint()
 			local source_content_id = curio_stat_source_content_ids[index]
 			local stat_style = widget_style and widget_style[content_id]
 			local maximum_width = stat_style and (stat_style.better_inventory_max_text_width or stat_style.size and stat_style.size[1])
-			local full_value = normalized_displayed_value(content, content_id, fitted_content_id, curio_stat_full_content_ids[index], source_content_id)
+			local full_value = normalized_displayed_value(content, content_id, fitted_content_id, curio_stat_full_content_ids[index], source_content_id, normalized_values, raw_values, index)
 
 			if stat_style and (stat_sources[index] ~= full_value or stat_widths[index] ~= maximum_width) then
 				needs_fit = true
@@ -886,7 +1030,7 @@ local function character_overview_curio_blueprint()
 			local displayed_value = content[content_id]
 
 			if stat_style then
-				local full_value = normalized_displayed_value(content, content_id, fitted_content_id, full_content_id, source_content_id)
+				local full_value = normalized_displayed_value(content, content_id, fitted_content_id, full_content_id, source_content_id, normalized_values, raw_values, index)
 				local maximum_width = stat_style.better_inventory_max_text_width or stat_style.size and stat_style.size[1]
 
 				content[full_content_id] = full_value
@@ -957,7 +1101,20 @@ local function character_overview_curio_blueprint()
 	blueprint.update = function(parent, widget, input_service, dt, t, ui_renderer)
 		local content = widget and widget.content
 		local element = content and content.element
-		local previous_item = element and element.item
+		-- Use the rendered item, not element.item: the child inventory can replace
+		-- the element first while this overview widget still shows the old Curio.
+		local previous_item = content and content.item
+		local slot = element and element.slot
+		local current_item = slot and parent.equipped_item_in_slot and parent:equipped_item_in_slot(slot.name)
+		local item_changed = character_overview_item_changed(previous_item, current_item)
+
+		if item_changed then
+			if type(Layout.restore_item_customization_style) == "function" then
+				Layout.restore_item_customization_style(widget)
+			end
+
+			reset_character_overview_curio_fit_state(widget)
+		end
 
 		if type(native_update) == "function" then
 			native_update(parent, widget, input_service, dt, t, ui_renderer)
@@ -965,10 +1122,7 @@ local function character_overview_curio_blueprint()
 
 		mark_character_overview_requirement_met(widget)
 
-		local slot = element and element.slot
-		local current_item = slot and parent.equipped_item_in_slot and parent:equipped_item_in_slot(slot.name)
-
-		if element and current_item ~= previous_item then
+		if element and item_changed then
 			element.item = current_item
 
 			if type(blueprint.update_data) == "function" then
@@ -1022,6 +1176,9 @@ local function is_armoury_sort_view(view)
 end
 
 local function align_quick_level_mastery_buttons(view)
+	if type(Diagnostics.count) == "function" then
+		Diagnostics.count("alignment_queries")
+	end
 	-- Quick Level Mastery adds Sacrifice as an offset child of Darktide's shared
 	-- purchase_button node. Center the complete action group on the actual weapon
 	-- information panel instead of deriving its position from the store grid:
@@ -1068,6 +1225,9 @@ local function align_quick_level_mastery_buttons(view)
 		return
 	end
 
+	if type(Diagnostics.count) == "function" then
+		Diagnostics.count("alignment_writes")
+	end
 	view:_set_scenegraph_position("purchase_button", position[1] + delta, position[2], position[3])
 end
 
@@ -1516,6 +1676,15 @@ local function bind_option_dependencies(options_templates)
 		return
 	end
 
+	local registry_status, registry_valid, _, duplicate_ids = Capabilities.mutation(SettingsRegistry, "register", settings)
+
+	if registry_status == "ok" and not registry_valid and type(duplicate_ids) == "table" then
+
+		if not registry_valid and type(mod.error) == "function" then
+			mod:error("Duplicate BetterInventory setting IDs: " .. table.concat(duplicate_ids or {}, ", "))
+		end
+	end
+
 	local category_name = mod:get_readable_name()
 	local setting_by_title = {}
 	local curio_buyer_subsection_titles = {
@@ -1772,6 +1941,9 @@ end
 
 function mod.on_enabled()
 	ItemCustomization.on_enabled(mod)
+	if type(Diagnostics.configure) == "function" then
+		Diagnostics.configure(mod)
+	end
 
 	-- DMF requires unique setting IDs. Keep Curio content's mirror row aligned
 	-- with the established Name It setting, which remains authoritative across
@@ -1880,6 +2052,7 @@ function mod.on_enabled()
 		CurioAcquisition.request_profile_discovery(true)
 	end
 
+	Features.rebind_sort_options(mod, Layout)
 	refresh_option_dependencies()
 end
 
@@ -2003,6 +2176,63 @@ local function synchronize_character_overview_equipped_icons(view)
 	end
 end
 
+local function character_overview_curio_transition_type(widget_type, has_item)
+	if widget_type == CHARACTER_OVERVIEW_EMPTY_CURIO_WIDGET_TYPE and has_item then
+		return CHARACTER_OVERVIEW_CURIO_WIDGET_TYPE
+	elseif widget_type == CHARACTER_OVERVIEW_CURIO_WIDGET_TYPE and not has_item then
+		return CHARACTER_OVERVIEW_EMPTY_CURIO_WIDGET_TYPE
+	end
+
+	return nil
+end
+
+local function reconcile_character_overview_curio_widgets(view)
+	local widgets = view and view._loadout_widgets
+	local active_context = view and view._active_category_tab_context
+
+	for index = 1, #(widgets or {}) do
+		local widget = widgets[index]
+		local target_type
+
+		if widget and (widget.type == CHARACTER_OVERVIEW_EMPTY_CURIO_WIDGET_TYPE or widget.type == CHARACTER_OVERVIEW_CURIO_WIDGET_TYPE) then
+			local content = widget.content
+			local element = content and content.element
+			local slot = element and element.slot
+
+			if slot and type(view.equipped_item_in_slot) == "function" then
+				local equipped_ok, equipped_item = pcall(view.equipped_item_in_slot, view, slot.name)
+
+				if equipped_ok then
+					target_type = character_overview_curio_transition_type(widget.type, equipped_item ~= nil)
+
+					if target_type then
+						-- Individual-layout widgets are one native lifecycle unit: their
+						-- registrations, exclamation widgets, navigation state, callbacks,
+						-- and icon resources are created and destroyed together. Rebuilding
+						-- only this widget left the live engine on the old placeholder path.
+						-- Re-present the current individual layout once, matching the proven
+						-- close/reopen behavior while leaving grid layouts untouched.
+						if active_context and active_context.is_grid_layout ~= true and type(view._switch_active_layout) == "function" then
+							local rebuild_ok = pcall(view._switch_active_layout, view, active_context)
+
+							return rebuild_ok and 1 or 0
+						end
+
+						return 0
+					end
+				end
+			end
+		end
+	end
+
+	return 0
+end
+
+if type(better_inventory_test) == "table" then
+	better_inventory_test.character_overview_curio_transition_type = character_overview_curio_transition_type
+	better_inventory_test.reconcile_character_overview_curio_widgets = reconcile_character_overview_curio_widgets
+end
+
 local function refresh_character_overview_visual_layout_if_needed(view)
 	if not view then
 		return
@@ -2033,6 +2263,10 @@ function mod.on_setting_changed(setting_id)
 	local color_change = color_target_by_setting_id[setting_id]
 	local automatic_curio_setting = type(setting_id) == "string" and string.sub(setting_id, 1, 16) == "automatic_curio_"
 
+	if type(Features.invalidate_all_view_composition) == "function" then
+		Features.invalidate_all_view_composition()
+	end
+
 	if type(setting_id) == "string" and CHARACTER_OVERVIEW_VISUAL_SETTING_IDS[setting_id] then
 		character_overview_visual_settings_generation = character_overview_visual_settings_generation + 1
 	end
@@ -2053,7 +2287,9 @@ function mod.on_setting_changed(setting_id)
 		end
 	end
 
-	if setting_id == "enable_grid_layout" or setting_id == "melee_columns" or setting_id == "ranged_columns" or setting_id == "curio_columns" or setting_id == "automatic_card_height" or setting_id == "expand_inventory_window" or setting_id == "weapon_extra_width_column_threshold" or setting_id == "expand_curio_inventory_window" or setting_id == "enable_hadron_single_column_mirror" or setting_id == "enable_armoury_requisition_grid" or setting_id == "enable_armoury_single_column_mirror" or setting_id == "enable_armoury_requisition_sorting_panel" or setting_id == "brighten_armoury_item_levels" or setting_id == "three_column_weapon_name_font_size" or setting_id == "expand_armoury_requisition_window" or setting_id == "debug_expand_armoury_requisition_window_30_percent" or setting_id == "enable_global_store_integration" or setting_id == "enable_global_store_grid" or setting_id == "enable_global_store_sorting_panel" or setting_id == "global_store_character_photo_size_percent" or setting_id == "global_store_price_row_padding" or setting_id == "global_store_character_info_gap" or setting_id == "global_store_character_class_icon_size" or setting_id == "global_store_character_name_font_size" or setting_id == "global_store_compact_character_names" or setting_id == "global_store_single_column_modifier_horizontal_position" or setting_id == "global_store_single_column_modifier_vertical_position" or setting_id == "enable_character_overview_melee_mirror" or setting_id == "enable_character_overview_ranged_mirror" or setting_id == "enable_character_overview_curio_details" or setting_id == "character_overview_show_melee_rarity_strip" or setting_id == "character_overview_show_ranged_rarity_strip" or setting_id == "character_overview_show_curio_rarity_strip" or setting_id == "character_overview_use_native_curio_overlay" or setting_id == "character_overview_curio_name_mode" or setting_id == "weapon_blessing_display_mode" or setting_id == "show_weapon_perks" or setting_id == "show_weapon_perk_rank_symbols" or setting_id == "single_column_blessing_icons_on_right" or setting_id == "curio_display_profile" or setting_id == "enable_inventory_options_panel_prototype" or setting_id == "enable_lantern_inventory_section" or setting_id == "keep_lantern_curio_panel_separate" or setting_id == "enable_experimental_quick_discard" or setting_id == "quick_discard_mode" or setting_id == "quick_discard_protect_high_level_curios" or setting_id == "enable_automatic_curio_acquisition" or automatic_curio_setting or setting_id == "enable_quick_look_card_single_column_integration" or setting_id == "enable_quick_look_card_grid_integration" or setting_id == "quick_look_card_grid_stat_position" or setting_id == "enable_custom_item_name_and_colors" then
+	local should_refresh_dependencies = Capabilities.registry_refresh_required(SettingsRegistry, "should_refresh_dependencies", setting_id)
+
+	if should_refresh_dependencies then
 		refresh_option_dependencies()
 	end
 
@@ -2106,15 +2342,24 @@ end)
 
 function mod.update(dt)
 	ItemCustomization.update_runtime(mod, dt)
+	EquipmentPersistence.update(mod, dt)
+	Features.reconcile_discard_transaction()
 	Features.update_morningstar_auto_discard(mod, dt)
 	CurioAcquisition.update(mod, dt, Features.morningstar_auto_discard_is_busy(mod))
+	if type(Diagnostics.update) == "function" then
+		Diagnostics.update(mod, dt, CurioAcquisition, Features)
+	end
 end
 
 function mod.on_disabled()
 	ItemCustomization.on_disabled(mod)
 	Features.cancel_morningstar_auto_discard()
+	Features.cancel_manual_discard()
 	CurioAcquisition.cancel()
 	Features.disable_inventory_views()
+	if type(Diagnostics.reset) == "function" then
+		Diagnostics.reset()
+	end
 end
 
 local dmf_mod = get_mod("DMF")
@@ -2214,12 +2459,14 @@ if ensure_class_method(InventoryWeaponsView, "update") then
 	mod:hook(InventoryWeaponsView, "update", function(func, view, dt, t, input_service)
 		Features.capture_inventory_options_panel_controller_focus(mod, Layout, view, input_service)
 		Features.capture_inventory_controller_navigation(view, input_service)
-		local results = pack_values(func(view, dt, t, input_service))
+		-- InventoryWeaponsView ultimately returns BaseView's two-value input/draw
+		-- contract. Keep those values without allocating a vararg table each frame.
+		local pass_input, pass_draw = func(view, dt, t, input_service)
 
 		Features.update_inventory_sort_toggle(mod, Layout, view)
 		Features.update_inventory_options_panel_controller_selection(view, input_service)
 
-		return unpack_values(results, 1, results.n)
+		return pass_input, pass_draw
 	end)
 end
 
@@ -2238,12 +2485,52 @@ if ensure_class_method(InventoryWeaponsView, "_handle_input") then
 end
 
 mod:hook_safe(InventoryWeaponsView, "cb_on_favorite_pressed", function(view)
+	local item_grid = view and view._item_grid
+
+	if item_grid and item_grid._better_inventory_myfavorites_active == true then
+		item_grid._better_inventory_myfavorites_dirty = true
+		item_grid._better_inventory_myfavorites_generation = (item_grid._better_inventory_myfavorites_generation or 0) + 1
+	end
+
 	if mod:get("prioritize_equipped_favorites") ~= false then
 		Features.resort_inventory(mod, Layout, view)
 	end
 end)
 
+if ensure_class_method(InventoryBackgroundView, "_equip_local_changes") then
+	mod:hook(InventoryBackgroundView, "_equip_local_changes", function(func, view, ...)
+		return EquipmentPersistence.persist_local_changes(mod, func, view, ...)
+	end)
+end
+
+if ensure_class_method(InventoryBackgroundView, "event_player_profile_updated") then
+	mod:hook_safe(InventoryBackgroundView, "event_player_profile_updated", function(view, peer_id, local_player_id)
+		EquipmentPersistence.refresh_from_authoritative_profile(view, peer_id, local_player_id)
+	end)
+end
+
+-- Manual discard is dispatched through Darktide's native event path. Observe
+-- the single native deletion promise so the shared destructive-operation token
+-- remains held until backend settlement; no replacement request is issued.
+mod:hook("GearService", "delete_gear_batch", function(func, gear_service, gear_ids, ...)
+		local result = func(gear_service, gear_ids, ...)
+		Features.observe_manual_discard_settlement(result)
+
+		return result
+	end)
+
 mod:hook_safe(InventoryWeaponsView, "_equip_item", function(view)
+	if type(Features.invalidate_view_composition) == "function" then
+		Features.invalidate_view_composition(view)
+	end
+
+	local item_grid = view and view._item_grid
+
+	if item_grid and item_grid._better_inventory_myfavorites_active == true then
+		item_grid._better_inventory_myfavorites_dirty = true
+		item_grid._better_inventory_myfavorites_generation = (item_grid._better_inventory_myfavorites_generation or 0) + 1
+	end
+
 	if mod:get("prioritize_equipped_favorites") ~= false then
 		Features.resort_inventory(mod, Layout, view)
 	end
@@ -2260,14 +2547,15 @@ if ensure_class_method(CreditsVendorView, "update") then
 			Features.capture_armoury_sort_panel_controller_focus(mod, view, input_service)
 		end
 
-		local results = pack_values(func(view, dt, t, input_service))
+		-- VendorViewBase/BaseView has the same fixed two-value update contract.
+		local pass_input, pass_draw = func(view, dt, t, input_service)
 
 		if is_armoury_sort_view(view) then
 			Features.update_armoury_native_sort_panel(view)
 			align_quick_level_mastery_buttons(view)
 		end
 
-		return unpack_values(results, 1, results.n)
+		return pass_input, pass_draw
 	end)
 end
 
@@ -2323,6 +2611,10 @@ local function present_grid_with_configuration(func, view, layout, on_present_ca
 	local success = results[1]
 	local result_count = results.n
 
+	if type(Features.invalidate_view_composition) == "function" then
+		Features.invalidate_view_composition(view)
+	end
+
 	active_grid_view = previous_active_view
 	active_grid_configuration = previous_configuration
 
@@ -2366,7 +2658,19 @@ if ensure_class_method(InventoryView, "_create_entry_widget_from_config") then
 		-- BetterInventory's detailed cards; this guard targets Cosmetics placements.
 		local visible_equipment_placement = config and config.widget_type == "gear_placement_slot"
 		local visible_equipment_mod = visible_equipment_placement and get_mod("visible_equipment")
-		local visible_equipment_active = visible_equipment_mod and (type(visible_equipment_mod.is_enabled) ~= "function" or visible_equipment_mod:is_enabled())
+		local visible_equipment_active = false
+
+		if visible_equipment_mod then
+			if type(visible_equipment_mod.is_enabled) ~= "function" then
+				visible_equipment_active = true
+			else
+				local enabled_ok, enabled = pcall(visible_equipment_mod.is_enabled, visible_equipment_mod)
+				-- If the optional integration cannot answer, preserve its widget
+				-- conservatively instead of risking a broken character overview.
+				visible_equipment_active = not enabled_ok or enabled == true
+			end
+		end
+
 		local preserve_visible_equipment_placement = visible_equipment_active
 		local adjust_runtime_equipped_icon = view and view.__class_name == "InventoryView" and not preserve_visible_equipment_placement and setting_id ~= nil
 
@@ -2391,11 +2695,14 @@ if ensure_class_method(InventoryView, "_create_entry_widget_from_config") then
 			if blueprint then
 				InventoryViewContentBlueprints[widget_type] = blueprint
 
-				local adapted_config = table.clone(config)
-				adapted_config.widget_type = widget_type
-				adapted_config.item = equipped_item
+			local adapted_config = table.clone(config)
+			adapted_config.widget_type = widget_type
+			adapted_config.item = equipped_item
+			adapted_config.better_inventory_character_overview_callback_name = callback_name
+			adapted_config.better_inventory_character_overview_secondary_callback_name = secondary_callback_name
+			adapted_config.better_inventory_character_overview_scenegraph_id = optional_scenegraph_id
 
-				return create_widget(adapted_config)
+			return create_widget(adapted_config)
 			end
 		end
 
@@ -2405,6 +2712,7 @@ end
 
 mod:hook_safe(InventoryView, "update", function(view)
 	refresh_character_overview_visual_layout_if_needed(view)
+	reconcile_character_overview_curio_widgets(view)
 	synchronize_character_overview_equipped_icons(view)
 end)
 
@@ -2539,13 +2847,16 @@ end
 if ensure_class_method(ViewElementGrid, "_create_entry_widget_from_config") then
 	mod:hook(ViewElementGrid, "_create_entry_widget_from_config", function(func, item_grid, config, suffix, callback_name, secondary_callback_name, double_click_callback_name)
 		local widget, alignment_widget = func(item_grid, config, suffix, callback_name, secondary_callback_name, double_click_callback_name)
-		attach_runtime_marker_styles(widget)
+		attach_runtime_marker_styles(widget, item_grid)
 
 		return widget, alignment_widget
 	end)
 end
 
 local function synchronize_myfavorites_marker(widget)
+	if type(Diagnostics.count) == "function" then
+		Diagnostics.count("marked_grid_scans")
+	end
 	local content = widget and widget.content
 	local styles = widget and widget.style
 	local hotspot_style = content and content.better_inventory_myfavorites_hotspot_style
@@ -2573,10 +2884,21 @@ local function synchronize_myfavorites_marker(widget)
 		offset_y = math.max(offset_y, favorite_marker_min_y)
 	end
 
+	-- Equipped/favorite state can be revisited every frame by the native grid,
+	-- but the marker position usually remains unchanged for many frames. Avoid
+	-- rewriting shared style tables unless an external update actually moved it.
+	local favorite_offset = favorite_style and favorite_style.offset
+	if hotspot_style.offset[2] == offset_y and (not favorite_offset or favorite_offset[2] == offset_y) then
+		return
+	end
+
+	if type(Diagnostics.count) == "function" then
+		Diagnostics.count("alignment_writes")
+	end
 	hotspot_style.offset[2] = offset_y
 
-	if favorite_style and favorite_style.offset then
-		favorite_style.offset[2] = offset_y
+	if favorite_offset then
+		favorite_offset[2] = offset_y
 	end
 end
 
@@ -2586,18 +2908,52 @@ end
 -- pass is hidden. The input hotspot must still be ready at the correct place.
 if ensure_class_method(ViewElementGrid, "_update_grid_widgets") then
 	mod:hook(ViewElementGrid, "_update_grid_widgets", function(func, item_grid, ...)
-		local results = pack_values(func(item_grid, ...))
-		local widgets = item_grid and item_grid._grid_widgets
-
-		for index = 1, #(widgets or {}) do
-			synchronize_myfavorites_marker(widgets[index])
+		if not item_grid or item_grid._better_inventory_myfavorites_active ~= true then
+			return func(item_grid, ...)
 		end
 
-		return unpack_values(results, 1, results.n)
+		local tracked_widgets = item_grid and item_grid._better_inventory_myfavorites_widgets
+
+		if not tracked_widgets or next(tracked_widgets) == nil then
+			return func(item_grid, ...)
+		end
+
+		-- Darktide's _update_grid_widgets contract returns no values. Calling it
+		-- directly avoids allocating a packed vararg table for every active grid.
+		func(item_grid, ...)
+
+		local native_generation = item_grid._grid_generation or item_grid._layout_generation or item_grid._content_generation
+		local previous_native_generation = item_grid._better_inventory_myfavorites_native_generation
+
+		if native_generation ~= nil and native_generation ~= previous_native_generation then
+			item_grid._better_inventory_myfavorites_native_generation = native_generation
+			item_grid._better_inventory_myfavorites_dirty = true
+		elseif native_generation == nil then
+			-- Some Darktide builds expose no grid generation. Keep a bounded,
+			-- conservative fallback for backend-driven rebinds that bypass our
+			-- creation/favorite/equip hooks, while leaving idle frames untouched.
+			item_grid._better_inventory_myfavorites_fallback_frames = (item_grid._better_inventory_myfavorites_fallback_frames or 0) + 1
+
+			if item_grid._better_inventory_myfavorites_fallback_frames >= 15 then
+				item_grid._better_inventory_myfavorites_fallback_frames = 0
+				item_grid._better_inventory_myfavorites_dirty = true
+			end
+		end
+
+		if item_grid._better_inventory_myfavorites_dirty ~= true then
+			return
+		end
+
+		for widget in pairs(tracked_widgets) do
+			synchronize_myfavorites_marker(widget)
+		end
+
+		item_grid._better_inventory_myfavorites_dirty = false
 	end)
 end
 
 mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layout, content_blueprints, ...)
+	invalidate_myfavorites_grid(item_grid)
 	content_blueprints = Features.compact_inventory_curio_stats_blueprints(mod, item_grid, content_blueprints)
 
 	local view = active_grid_view or item_grid and item_grid._parent

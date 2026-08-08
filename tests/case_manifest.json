@@ -1,0 +1,75 @@
+{
+  "test_character_overview.py": [
+    {"name": "item_identity_and_revision", "risk": "high", "start_line": 52, "end_line": 55},
+    {"name": "empty_slot_model", "risk": "high", "start_line": 57, "end_line": 72},
+    {"name": "derived_content_reset", "risk": "high", "start_line": 74, "end_line": 86}
+  ],
+  "test_contracts.py": [
+    {"name": "guarded_lookup", "risk": "high", "start_line": 22, "end_line": 40},
+    {"name": "typed_fallbacks", "risk": "high", "start_line": 42, "end_line": 65}
+  ],
+  "test_curio_acquisition.py": [
+    {"name": "store_rotation_gate", "risk": "critical", "start_line": 1037, "end_line": 1322},
+    {"name": "purchase_revalidation", "risk": "critical", "start_line": 640, "end_line": 836},
+    {"name": "read_cancellation_and_generation", "risk": "critical", "start_line": 1323, "end_line": 1352},
+    {"name": "account_scoped_reports", "risk": "high", "start_line": 837, "end_line": 1036}
+  ],
+  "test_curio_domains.py": [
+    {"name": "context_snapshot", "risk": "high", "start_line": 20, "end_line": 33},
+    {"name": "bounded_report_queue", "risk": "high", "start_line": 35, "end_line": 50},
+    {"name": "retry_delay_policy", "risk": "medium", "start_line": 51, "end_line": 52}
+  ],
+  "test_diagnostics.py": [
+    {"name": "bounded_counters", "risk": "medium", "start_line": 23, "end_line": 28},
+    {"name": "diagnostic_toggle", "risk": "medium", "start_line": 30, "end_line": 60}
+  ],
+  "test_equipment_persistence.py": [
+    {"name": "authoritative_reconciliation", "risk": "critical", "start_line": 237, "end_line": 248},
+    {"name": "bounded_retry", "risk": "critical", "start_line": 249, "end_line": 283},
+    {"name": "stale_callback_guard", "risk": "critical", "start_line": 284, "end_line": 324},
+    {"name": "retry_invocation_safety", "risk": "critical", "start_line": 325, "end_line": 361}
+  ],
+  "test_feature_domains.py": [
+    {"name": "marker_generation", "risk": "high", "start_line": 20, "end_line": 34},
+    {"name": "sorting_signature", "risk": "high", "start_line": 36, "end_line": 42},
+    {"name": "panel_composition", "risk": "high", "start_line": 44, "end_line": 49}
+  ],
+  "test_features.py": [
+    {"name": "discard_operation_ownership", "risk": "critical", "start_line": 2866, "end_line": 3198},
+    {"name": "sorting_and_navigation", "risk": "high", "start_line": 323, "end_line": 1263},
+    {"name": "optional_integration_fallbacks", "risk": "high", "start_line": 1264, "end_line": 1690},
+    {"name": "panel_lifecycle", "risk": "high", "start_line": 1691, "end_line": 2865}
+  ],
+  "test_item_customization.py": [
+    {"name": "dirty_save_outcomes", "risk": "high", "start_line": 224, "end_line": 404},
+    {"name": "bounded_retry_and_disable", "risk": "high", "start_line": 405, "end_line": 717},
+    {"name": "callback_failure_safety", "risk": "high", "start_line": 718, "end_line": 927}
+  ],
+  "test_layout.py": [
+    {"name": "card_geometry", "risk": "high", "start_line": 621, "end_line": 1594},
+    {"name": "content_and_resource_ownership", "risk": "high", "start_line": 1595, "end_line": 2342},
+    {"name": "integration_boundaries", "risk": "medium", "start_line": 2343, "end_line": 3690}
+  ],
+  "test_operation_arbiter.py": [
+    {"name": "manual_automatic_exclusion", "risk": "critical", "start_line": 20, "end_line": 34},
+    {"name": "terminal_release_once", "risk": "critical", "start_line": 35, "end_line": 48},
+    {"name": "cancel_and_reconcile", "risk": "critical", "start_line": 49, "end_line": 53}
+  ],
+  "test_settings.py": [
+    {"name": "schema_dependency_refresh", "risk": "high", "start_line": 19, "end_line": 384},
+    {"name": "migration_preservation", "risk": "high", "start_line": 385, "end_line": 504},
+    {"name": "character_overview_refresh", "risk": "high", "start_line": 505, "end_line": 1359},
+    {"name": "localization_contract", "risk": "medium", "start_line": 1360, "end_line": 2230},
+    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2231, "end_line": 2332}
+  ],
+  "test_settings_registry.py": [
+    {"name": "duplicate_detection", "risk": "high", "start_line": 53, "end_line": 77},
+    {"name": "metadata_manifest", "risk": "high", "start_line": 83, "end_line": 105},
+    {"name": "generated_character_slots", "risk": "high", "start_line": 106, "end_line": 120}
+  ],
+  "test_view_session.py": [
+    {"name": "idempotent_close", "risk": "high", "start_line": 22, "end_line": 41},
+    {"name": "ownership_preserving_restore", "risk": "high", "start_line": 43, "end_line": 50},
+    {"name": "cleanup_order", "risk": "high", "start_line": 52, "end_line": 56}
+  ]
+}

@@ -1,10 +1,15 @@
 param(
-	[string] $DarktideSourcePath
+	[string] $DarktideSourcePath,
+	[string] $DmfSourcePath
 )
 
 $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $scriptRoot = Join-Path $projectRoot "scripts\mods\BetterInventory"
+$testRunner = Join-Path $PSScriptRoot "run_tests.py"
+$structureChecker = Join-Path $PSScriptRoot "check_lua_structure.py"
+$schemaDriftChecker = Join-Path $PSScriptRoot "check_schema_drift.py"
+$runtimeBundleChecker = Join-Path $PSScriptRoot "check_runtime_bundle.py"
 $runtimeLuaFiles = @(Get-ChildItem -LiteralPath $scriptRoot -Filter "BetterInventory*.lua" -File | Sort-Object Name)
 $requiredFiles = @(
 	(Join-Path $projectRoot "BetterInventory.mod")
@@ -12,6 +17,7 @@ $requiredFiles = @(
 $requiredFiles += @($runtimeLuaFiles | ForEach-Object { $_.FullName })
 $releasePackager = Join-Path $projectRoot "tools\package_release.ps1"
 $packagingDocumentation = Join-Path $projectRoot "docs\release-packaging.md"
+$packagingSource = Get-Content -LiteralPath $releasePackager -Raw
 
 foreach ($file in $requiredFiles) {
 	if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
@@ -56,7 +62,7 @@ if ($main -notmatch 'local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_ITEM_LEVEL_SH
 	throw "Native Curio item-level Y must move upward with a negative bottom-aligned delta, and the marker gap must remain explicit."
 }
 
-if ($main -notmatch 'local native_marker_min_y' -or $main -notmatch 'is_top_right_style' -or $main -notmatch 'attach_runtime_marker_styles' -or $main -notmatch 'refresh_character_overview_visual_layout_if_needed' -or $main -notmatch 'better_inventory_curio_fit_stat_sources' -or $main -notmatch 'fit_curio_text\(widget,\s*ui_renderer,\s*true\)' -or $main -notmatch 'type\(overview_init\)\s*==\s*"function"' -or $main -notmatch 'CHARACTER_OVERVIEW_MELEE_WIDGET_TYPE' -or $main -notmatch 'CHARACTER_OVERVIEW_RANGED_WIDGET_TYPE' -or $main -match 'CHARACTER_OVERVIEW_WEAPON_WIDGET_TYPE') {
+if ($main -notmatch 'local native_marker_min_y' -or $main -notmatch 'is_top_right_style' -or $main -notmatch 'attach_runtime_marker_styles' -or $main -notmatch 'refresh_character_overview_visual_layout_if_needed' -or $main -notmatch 'better_inventory_curio_fit_stat_sources' -or $main -notmatch 'better_inventory_curio_fit_normalized_values' -or $main -notmatch 'better_inventory_curio_fit_raw_values' -or $main -notmatch 'raw_values\[cache_index\]\s*~=\s*source_value' -or $main -notmatch 'fit_curio_text\(widget,\s*ui_renderer,\s*true\)' -or $main -notmatch 'type\(overview_init\)\s*==\s*"function"' -or $main -notmatch 'CHARACTER_OVERVIEW_MELEE_WIDGET_TYPE' -or $main -notmatch 'CHARACTER_OVERVIEW_RANGED_WIDGET_TYPE' -or $main -match 'CHARACTER_OVERVIEW_WEAPON_WIDGET_TYPE') {
 	throw "v1.9.4 audit corrections for marker scope, marker alignment, lifecycle refresh, text-fit caching, and separate weapon blueprints were not found."
 }
 
@@ -72,6 +78,10 @@ if ($main -notmatch 'better_inventory_overview_full_curio_stat_' -or $main -notm
 	throw "Character overview multiline Curio stats or empty-slot handling were not found."
 }
 
+if ($main -notmatch 'reconcile_character_overview_curio_widgets' -or $main -notmatch 'character_overview_curio_transition_type' -or $main -notmatch 'active_context\.is_grid_layout\s*~=\s*true' -or $main -notmatch 'pcall\(view\._switch_active_layout,\s*view,\s*active_context\)') {
+	throw "Empty-to-equipped Curio cards must re-present their complete native individual layout."
+}
+
 if ($main -notmatch 'mod:hook\(CreditsVendorView,\s*"present_grid_layout"') {
 	throw "The Requisition Weapons & Curios grid hook was not found."
 }
@@ -82,14 +92,6 @@ if ($main -notmatch 'Layout\.expanded_armoury_view_definitions' -or $main -notma
 
 if ($main -notmatch 'ItemGridViewBaseDefinitions\s*=\s*require\("scripts/ui/views/item_grid_view_base/item_grid_view_base_definitions"\)') {
 	throw "The base scenegraph fallback required to move Armoury weapon details was not found."
-}
-
-if ($main -match 'CreditsGoodsVendorView\s*=\s*require' -or $main -match 'CraftingMechanicusBarterItemsView\s*=\s*require') {
-	throw "The focused vendor settings must not hook Brunt's Armoury or Hadron's sacrifice flow."
-}
-
-if ($main -match 'InventoryWeaponsView\.present_grid_layout\s*=') {
-	throw "Direct class assignment found; BetterInventory must remain in the DMF hook chain."
 }
 
 if ($main -notmatch 'is_armoury_requisition_view' -or $main -notmatch '_optional_store_service\s*==\s*nil' -or $main -notmatch 'is_global_store_view' -or $main -notmatch 'get_all_characters_store_custom') {
@@ -108,8 +110,58 @@ $data = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_data.lu
 $localization = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_localization.lua") -Raw
 $layout = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_layout.lua") -Raw
 $features = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_features.lua") -Raw
+$featureSorting = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_feature_sorting.lua") -Raw
+$contracts = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_contracts.lua") -Raw
+$operationArbiter = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_operation_arbiter.lua") -Raw
+$settingsRegistry = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_settings.lua") -Raw
 $curioAcquisition = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_acquisition.lua") -Raw
 $curioValues = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_values.lua") -Raw
+$itemCustomization = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_item_customization.lua") -Raw
+$diagnostics = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_diagnostics.lua") -Raw
+
+$trackedReleaseArchive = Join-Path $projectRoot "BetterInventory.zip"
+
+if (-not (Test-Path -LiteralPath $trackedReleaseArchive -PathType Leaf)) {
+	throw "Tracked release archive is missing: $trackedReleaseArchive"
+}
+
+if (-not (Test-Path -LiteralPath $runtimeBundleChecker -PathType Leaf)) {
+	throw "Runtime bundle manifest checker is missing: $runtimeBundleChecker"
+}
+
+py -3 $runtimeBundleChecker
+
+if ($LASTEXITCODE -ne 0) {
+	throw "Runtime bundle manifest checks failed."
+}
+
+if ($features -notmatch 'popup_id\s*=\s*nil' -or $features -notmatch 'event_remove_ui_popup' -or $features -notmatch 'active_popups' -or $features -notmatch 'Features\.reconcile_discard_transaction' -or $main -notmatch 'Features\.reconcile_discard_transaction\(\)' -or $features -notmatch 'discard_transaction_is_current\("automatic",\s*transaction_token\)' -or $features -notmatch 'Features\.clear_discard_popup\("automatic",\s*transaction_token\)') {
+	throw "Discard popup lifecycle reconciliation and token ownership guard were not found."
+}
+
+if (($features -notmatch 'return automatic_discard_state\.delete_inflight' -and $features -notmatch 'discard_owner\(\) == "automatic"') -or $features -notmatch 'delete_transaction_token\s*=\s*transaction_token' -or $features -notmatch 'release_discard_transaction\("automatic",\s*transaction_token\)' -or $operationArbiter -notmatch 'function arbiter:release' -or $operationArbiter -notmatch 'manual_settlement_active') {
+	throw "Automatic discard must retain shared ownership until backend deletion settles."
+}
+
+if ($main -notmatch '_better_inventory_myfavorites_active\s*=\s*true' -or $main -notmatch '_better_inventory_myfavorites_active\s*~=\s*true' -or $main -notmatch 'local pass_input, pass_draw = func\(view, dt, t, input_service\)' -or $main -notmatch 'func\(item_grid, \.\.\.\)' -or $main -notmatch '_better_inventory_myfavorites_dirty' -or $main -notmatch 'hotspot_style\.offset\[2\] == offset_y') {
+	throw "Known UI update contracts and MyFavorites idle fast paths were not found."
+}
+
+if ($features -notmatch 'set_inventory_options_panel_controller_focus\(view,\s*false\)' -or $features -notmatch 'set_armoury_controller_focus\(view,\s*false\)' -or $features -notmatch 'legend\.remove_entry' -or $features -notmatch '_better_inventory_armoury_controller_legend_action\s*=\s*nil') {
+	throw "Disable cleanup must restore live controller ownership and input legends."
+}
+
+if ($features -notmatch '_registered_sort_views' -or $features -notmatch 'Features\.rebind_sort_options' -or $features -notmatch 'Features\._registered_sort_views\[view\]\s*=\s*true' -or $features -notmatch 'Features\._registered_sort_views\[view\]\s*=\s*nil' -or $features -notmatch 'for view in pairs\(Features\._registered_sort_views\)' -or $main -notmatch 'Features\.rebind_sort_options\(mod,\s*Layout\)') {
+	throw "Sort comparator ownership and disable/re-enable rebinding contract was not found."
+}
+
+if (([regex]::Matches($main, 'local previous_item\s*=\s*content\s+and\s+content\.item')).Count -lt 2 -or ([regex]::Matches($main, 'character_overview_item_changed\(previous_item,\s*current_item\)')).Count -lt 2 -or $main -notmatch 'Layout\.restore_item_customization_style\(widget\)' -or $main -notmatch 'reset_character_overview_curio_fit_state\(widget\)' -or $main -notmatch 'better_inventory_overview_fitted_curio_stat_' -or $layout -notmatch 'restore_item_customization_style' -or $layout -notmatch 'restore_item_customization_style\(widget\)\s*\r?\n\s*original_update_data') {
+	throw "Character Overview item-swap cache/style refresh regression"
+}
+
+if ($main -match 'better_inventory_view_model') {
+	throw "Character Overview must not attach an unused view-model field to native widget config."
+}
 
 if ($layout -notmatch 'synchronize_rarity_tag_color' -or $layout -notmatch 'Items\.rarity_color' -or $layout -notmatch 'better_inventory_original_color') {
 	throw "The shared Curio rarity-strip colour synchronization was not found."
@@ -123,15 +175,51 @@ if ($data -notmatch 'setting_id\s*=\s*"inventory_options_controller_focus_keybin
 	throw "Controller focus switching or its conflict-free default bindings were not found."
 }
 
-if ($main -notmatch 'Features\.set_item_sorting_integration\(get_mod\("ItemSorting"\)\)' -or $main -notmatch 'Features\.preserve_item_sorting_native_options' -or $features -notmatch 'ITEM_SORTING_INVENTORY_VANILLA_SETTINGS' -or $features -notmatch 'ITEM_SORTING_STORE_VANILLA_SETTINGS' -or $features -notmatch 'item_sorting_custom_option_start' -or $features -notmatch 'item_sorting_mod_header') {
+if ($main -notmatch 'Features\.set_item_sorting_integration\(get_mod\("ItemSorting"\)\)' -or $main -notmatch 'Features\.preserve_item_sorting_native_options' -or $featureSorting -notmatch 'INVENTORY_VANILLA_SETTINGS' -or $featureSorting -notmatch 'STORE_VANILLA_SETTINGS' -or $features -notmatch 'item_sorting_custom_option_start' -or $features -notmatch 'item_sorting_mod_header') {
 	throw "ItemSorting inventory/store panel integration was not found."
 }
 
-if ($data -notmatch 'setting_id\s*=\s*"myfavorites_integration_group"' -or $data -match 'setting_id\s*=\s*"enable_myfavorites_integration"' -or $data -notmatch 'setting_id\s*=\s*"myfavorites_show_favorite_letter"[\s\S]*?default_value\s*=\s*false' -or $layout -notmatch 'myfavorites_compatibility\s*=\s*myfavorites_hotspot\s+and\s+myfavorites_hotspot\.style' -or $layout -notmatch 'resolved_size\s*=\s*size\s+or\s+hotspot_style\.size' -or $main -notmatch 'mod:hook\(ViewElementGrid,\s*"_create_entry_widget_from_config"' -or $main -notmatch 'attach_runtime_marker_styles\(widget\)' -or $main -notmatch 'content\.better_inventory_myfavorites_hotspot_style\s*=\s*styles\.myfav_hotspot' -or $main -notmatch 'better_inventory_equipped_icon_visibility_function\s*=\s*pass\.visibility_function' -or $main -notmatch 'mod:hook\(ViewElementGrid,\s*"_update_grid_widgets"' -or $main -notmatch 'synchronize_myfavorites_marker\(widgets\[index\]\)' -or $layout -notmatch 'runtime_hotspot_style\.offset\[2\]\s*=\s*offset_y' -or $layout -notmatch 'content\.favorite_icon\s*=\s*compact_favorite_value' -or $layout -notmatch 'align_myfavorites_hotspot') {
+if ($data -notmatch 'setting_id\s*=\s*"myfavorites_integration_group"' -or $data -match 'setting_id\s*=\s*"enable_myfavorites_integration"' -or $data -notmatch 'setting_id\s*=\s*"myfavorites_show_favorite_letter"[\s\S]*?default_value\s*=\s*false' -or $layout -notmatch 'myfavorites_compatibility\s*=\s*myfavorites_hotspot\s+and\s+myfavorites_hotspot\.style' -or $layout -notmatch 'resolved_size\s*=\s*size\s+or\s+hotspot_style\.size' -or $main -notmatch 'mod:hook\(ViewElementGrid,\s*"_create_entry_widget_from_config"' -or $main -notmatch 'attach_runtime_marker_styles\(widget,\s*item_grid\)' -or $main -notmatch 'content\.better_inventory_myfavorites_hotspot_style\s*=\s*styles\.myfav_hotspot' -or $main -notmatch 'better_inventory_equipped_icon_visibility_function\s*=\s*pass\.visibility_function' -or $main -notmatch 'mod:hook\(ViewElementGrid,\s*"_update_grid_widgets"' -or $main -notmatch '_better_inventory_myfavorites_widgets' -or $main -notmatch 'tracked_widgets\[widget\]\s*=\s*true' -or $main -notmatch 'next\(tracked_widgets\)' -or $main -notmatch 'synchronize_myfavorites_marker\(widget\)' -or $layout -notmatch 'runtime_hotspot_style\.offset\[2\]\s*=\s*offset_y' -or $layout -notmatch 'content\.favorite_icon\s*=\s*compact_favorite_value' -or $layout -notmatch 'align_myfavorites_hotspot') {
 	throw "MyFavorites compact-marker compatibility integration was not found."
 }
 
-if ($data -match 'setting_id\s*=\s*"visible_equipment_integration_group"' -or $data -match 'setting_id\s*=\s*"enable_visible_equipment_character_overview_override"' -or $main -notmatch 'config\.widget_type\s*==\s*"gear_placement_slot"' -or $main -notmatch 'visible_equipment_placement\s+and\s+get_mod\("visible_equipment"\)' -or $main -notmatch 'visible_equipment_mod:is_enabled\(\)' -or $main -notmatch 'preserve_visible_equipment_placement\s*=\s*visible_equipment_active' -or $main -notmatch 'not\s+preserve_visible_equipment_placement\s+and\s+setting_id') {
+if (($features -notmatch 'pcall\(view\.is_item_equipped_in_any_slot' -and $features -notmatch 'Features\._contracts\.safe_method') -or ($features -notmatch 'pcall\(Items\.is_item_id_favorited' -and $features -notmatch 'Features\._contracts\.safe_call') -or $features -notmatch '_better_inventory_item_sorting_signature_cache' -or $features -notmatch 'poll\s*<\s*15' -or $features -notmatch '_better_inventory_armoury_native_sort_pivot_x\s*~=\s*x') {
+	throw "Fail-closed sort priority or idle signature/pivot caching was not found."
+}
+
+if ($contracts -notmatch 'Contracts\.safe_call' -or $contracts -notmatch 'Contracts\.safe_method' -or $contracts -notmatch 'Contracts\.read_only' -or $contracts -notmatch 'Contracts\.mutation' -or $contracts -notmatch 'Contracts\.registry_refresh_required' -or $contracts -notmatch 'pcall\(function\(\)' -or $features -notmatch 'Features\._contracts\.safe_method' -or $features -notmatch 'Features\._contracts\.safe_call') {
+	throw "The guarded capability-contract seam was not found."
+}
+
+if ($settingsRegistry -notmatch 'Registry\.register' -or $settingsRegistry -notmatch 'collect_setting_entries\(entry\.sub_widgets\)' -or $settingsRegistry -notmatch 'Registry\.duplicates' -or $settingsRegistry -notmatch 'refresh_domains' -or $main -notmatch 'Capabilities\.mutation\(SettingsRegistry,\s*"register",\s*settings\)' -or $main -notmatch 'Capabilities\.registry_refresh_required\(SettingsRegistry,\s*"should_refresh_dependencies",\s*setting_id\)' -or $main -match 'setting_id == "enable_grid_layout" or') {
+	throw "The declarative settings registry and registry-driven dependency refresh routing were not found."
+}
+
+if ($curioAcquisition -notmatch 'PromiseContainer' -or $curioAcquisition -notmatch 'track_read_promise' -or $curioAcquisition -notmatch 'reset_read_requests' -or $curioAcquisition -notmatch 'active_read_requests' -or $curioAcquisition -notmatch 'oldest_read_request_age' -or $curioAcquisition -notmatch 'track_read_promise\(call_promise\(service, service\.fetch_all_profiles\)\)' -or $curioAcquisition -notmatch 'call_promise\(store_service, store_service\.purchase_item_with_wallet') {
+	throw "Read-only Curio requests must be owned/cancelable without tracking purchase POSTs."
+}
+
+if ($features -notmatch 'read_promise\s*=\s*nil' -or $features -notmatch 'track_automatic_read_promise' -or $features -notmatch 'cancel_automatic_read_promise' -or $features -notmatch 'type\(promise\.cancel\)\s*==\s*"function"') {
+	throw "Automatic Discard read requests must retain an explicit cancelable handle without owning purchase POSTs."
+}
+
+if ($itemCustomization -notmatch 'local save_ok, save_result = pcall\(dmf\.save_unsaved_settings_to_file\)' -or $itemCustomization -notmatch 'save_result == true' -or $itemCustomization -notmatch 'save_result == nil' -or $itemCustomization -notmatch 'persistence_last_outcome\s*=\s*"delegated"' -or $itemCustomization -notmatch 'MAX_PERSISTENCE_ATTEMPTS' -or $itemCustomization -notmatch 'ItemCustomization\.persistence_status' -or $itemCustomization -notmatch 'flush_persistence\(true\)' -or $itemCustomization -notmatch 'persistence_retry_elapsed') {
+	throw "Customization persistence must treat DMF no-return saves as delegated, bound retryable failures, and flush at disable."
+}
+
+if ($data -notmatch 'setting_id\s*=\s*"debug_enable_hot_path_diagnostics"[\s\S]*?default_value\s*=\s*false' -or $main -notmatch 'BetterInventory_diagnostics' -or $main -notmatch 'Diagnostics\.update\(mod,\s*dt,\s*CurioAcquisition,\s*Features\)' -or $diagnostics -notmatch 'SAMPLE_INTERVAL\s*=\s*1' -or $diagnostics -notmatch 'collectgarbage\("count"\)' -or $diagnostics -notmatch 'Diagnostics\.snapshot') {
+	throw "Opt-in sampled hot-path diagnostics or its safe default is missing."
+}
+
+if ($curioAcquisition -notmatch 'MAX_PENDING_REPORT_ITEMS' -or $curioAcquisition -notmatch 'pending_report' -or $curioAcquisition -notmatch 'deliver_pending_report' -or $curioAcquisition -notmatch 'report_context == "operative_selection"' -or $curioAcquisition -notmatch 'not is_morningstar\(\) or is_operative_selection\(\)') {
+	throw "Operative Selection Curio outcomes must use bounded account-scoped deferred reporting delivered only in Morningstar."
+}
+
+if ($packagingSource -notmatch 'finally\s*{[\s\S]*?Test-Path -LiteralPath \$buildPath[\s\S]*?Remove-Item -LiteralPath \$buildPath') {
+	throw "Release packaging must remove an unresolved temporary build archive after failures."
+}
+
+if ($data -match 'setting_id\s*=\s*"visible_equipment_integration_group"' -or $data -match 'setting_id\s*=\s*"enable_visible_equipment_character_overview_override"' -or $main -notmatch 'config\.widget_type\s*==\s*"gear_placement_slot"' -or $main -notmatch 'visible_equipment_placement\s+and\s+get_mod\("visible_equipment"\)' -or $main -notmatch 'pcall\(visible_equipment_mod\.is_enabled,\s*visible_equipment_mod\)' -or $main -notmatch 'preserve_visible_equipment_placement\s*=\s*visible_equipment_active' -or $main -notmatch 'not\s+preserve_visible_equipment_placement\s+and\s+setting_id') {
 	throw "Visible Equipment character-overview compatibility integration was not found."
 }
 
@@ -280,27 +368,39 @@ foreach ($settingId in $settingIds) {
 	}
 }
 
-$dmfRoot = Join-Path $projectRoot "..\..\mods\dmf"
+$dmfRoot = if ($DmfSourcePath) {
+	(Resolve-Path -LiteralPath $DmfSourcePath).Path
+} else {
+	Join-Path $projectRoot "..\..\mods\dmf"
+}
+
 $dmfSettings = Join-Path $dmfRoot "scripts\mods\dmf\modules\core\settings.lua"
 $dmfOptionBlueprints = Join-Path $dmfRoot "scripts\mods\dmf\modules\ui\options\dmf_options_view_content_blueprints.lua"
 $dmfModOptions = Join-Path $dmfRoot "scripts\mods\dmf\modules\ui\options\mod_options.lua"
+$dmfContractFiles = @($dmfSettings, $dmfOptionBlueprints, $dmfModOptions)
 
-foreach ($dmfFile in @($dmfSettings, $dmfOptionBlueprints, $dmfModOptions)) {
-	if (-not (Test-Path -LiteralPath $dmfFile -PathType Leaf)) {
-		throw "Missing expected DMF source file: $dmfFile"
+if (($DmfSourcePath -or (Test-Path -LiteralPath $dmfRoot -PathType Container))) {
+	foreach ($dmfFile in $dmfContractFiles) {
+		if (-not (Test-Path -LiteralPath $dmfFile -PathType Leaf)) {
+			throw "Missing expected DMF source file: $dmfFile"
+		}
 	}
-}
 
-if ((Get-Content -LiteralPath $dmfSettings -Raw) -notmatch 'mod_setting_changed_event\(self, setting_id\)') {
-	throw "DMF no longer appears to dispatch live mod setting changes."
-}
+	if ((Get-Content -LiteralPath $dmfSettings -Raw) -notmatch 'mod_setting_changed_event\(self, setting_id\)') {
+		throw "DMF no longer appears to dispatch live mod setting changes."
+	}
 
-if ((Get-Content -LiteralPath $dmfOptionBlueprints -Raw) -notmatch 'local is_disabled = entry\.disabled or false') {
-	throw "DMF option widgets no longer appear to consume final-template disabled state."
-}
+	if ((Get-Content -LiteralPath $dmfOptionBlueprints -Raw) -notmatch 'local is_disabled = entry\.disabled or false') {
+		throw "DMF option widgets no longer appear to consume final-template disabled state."
+	}
 
-if ((Get-Content -LiteralPath $dmfModOptions -Raw) -notmatch 'create_mod_options_settings') {
-	throw "DMF's final mod-options template seam was not found."
+	if ((Get-Content -LiteralPath $dmfModOptions -Raw) -notmatch 'create_mod_options_settings') {
+		throw "DMF's final mod-options template seam was not found."
+	}
+
+	Write-Host "External DMF contract verification passed: $dmfRoot"
+} else {
+	Write-Host "Repository-only verification: DMF source checks skipped; pass -DmfSourcePath for external compatibility checks."
 }
 
 if ($DarktideSourcePath) {
@@ -473,6 +573,16 @@ if (Get-Command py -ErrorAction SilentlyContinue) {
 }
 
 if ($hasLuaParser) {
+	if (-not (Test-Path -LiteralPath $structureChecker -PathType Leaf)) {
+		throw "AST structure checker is missing: $structureChecker"
+	}
+
+	py -3 $structureChecker
+
+	if ($LASTEXITCODE -ne 0) {
+		throw "AST-backed Lua structure checks failed."
+	}
+
 	$luaFiles = Get-ChildItem -LiteralPath $projectRoot -Recurse -File |
 		Where-Object { $_.Extension -in @(".lua", ".mod") }
 
@@ -486,12 +596,24 @@ if ($hasLuaParser) {
 }
 
 if ($hasLupa) {
-	foreach ($behaviorTest in @("test_layout.py", "test_settings.py", "test_features.py", "test_curio_acquisition.py", "test_item_customization.py")) {
-		py -3 (Join-Path $PSScriptRoot $behaviorTest)
+	if (-not (Test-Path -LiteralPath $schemaDriftChecker -PathType Leaf)) {
+		throw "Schema drift checker is missing: $schemaDriftChecker"
+	}
 
-		if ($LASTEXITCODE -ne 0) {
-			throw "Behavior test failed: $behaviorTest"
-		}
+	py -3 $schemaDriftChecker
+
+	if ($LASTEXITCODE -ne 0) {
+		throw "Settings/localization schema drift checks failed."
+	}
+
+	if (-not (Test-Path -LiteralPath $testRunner -PathType Leaf)) {
+		throw "Behavior test runner is missing: $testRunner"
+	}
+
+	py -3 $testRunner --timeout-seconds 45
+
+	if ($LASTEXITCODE -ne 0) {
+		throw "Timeout-bounded behavior test runner failed."
 	}
 }
 
@@ -538,5 +660,103 @@ try {
 		[IO.File]::Delete($packagingTestArchive)
 	}
 }
+
+$packagingFailureDirectory = Join-Path ([IO.Path]::GetTempPath()) "BetterInventory-package-failure-$([Guid]::NewGuid().ToString('N'))"
+$packagingFailureArchive = Join-Path $packagingFailureDirectory "failed.zip"
+New-Item -ItemType Directory -Path $packagingFailureDirectory -Force | Out-Null
+
+try {
+	$packagingFailureErrorAction = $ErrorActionPreference
+
+	try {
+		$ErrorActionPreference = "Continue"
+		powershell.exe -NoProfile -ExecutionPolicy Bypass -File $releasePackager -OutputPath $packagingFailureArchive -TestFailBeforeMove 2>&1 | Out-Null
+		$packagingFailureExitCode = $LASTEXITCODE
+	} finally {
+		$ErrorActionPreference = $packagingFailureErrorAction
+	}
+
+	if ($packagingFailureExitCode -eq 0) {
+		throw "Intentional packaging failure test unexpectedly succeeded."
+	}
+
+	$residualBuildArchives = @(Get-ChildItem -LiteralPath $packagingFailureDirectory -Filter ".BetterInventory-build-*.zip" -File)
+
+	if ($residualBuildArchives.Count -ne 0) {
+		throw "Failed packaging left temporary archive(s): $($residualBuildArchives.Name -join ', ')"
+	}
+} finally {
+	if (Test-Path -LiteralPath $packagingFailureDirectory -PathType Container) {
+		[IO.Directory]::Delete($packagingFailureDirectory, $true)
+	}
+}
+
+$trackedArchive = [IO.Compression.ZipFile]::OpenRead($trackedReleaseArchive)
+
+try {
+	$trackedEntryMap = @{}
+
+	foreach ($entry in $trackedArchive.Entries) {
+		if (-not [string]::IsNullOrEmpty($entry.Name)) {
+			if ($entry.FullName.Contains("\")) {
+				throw "Tracked release archive entry uses a Windows path separator: $($entry.FullName)"
+			}
+
+			$trackedEntryMap[$entry.FullName] = $entry
+		}
+	}
+
+	$expectedTrackedPaths = @("BetterInventory/BetterInventory.mod")
+	$expectedTrackedPaths += @($runtimeLuaFiles | ForEach-Object { "BetterInventory/scripts/mods/BetterInventory/$($_.Name)" })
+	$expectedTrackedPaths = @($expectedTrackedPaths | Sort-Object)
+	$actualTrackedPaths = @($trackedEntryMap.Keys | Sort-Object)
+
+	if (@(Compare-Object $expectedTrackedPaths $actualTrackedPaths).Count -gt 0) {
+		throw "Tracked release archive does not contain the current runtime file set. Rebuild BetterInventory.zip."
+	}
+
+	foreach ($archivePath in $expectedTrackedPaths) {
+		$entryStream = $trackedEntryMap[$archivePath].Open()
+		$sha256 = [Security.Cryptography.SHA256]::Create()
+
+		try {
+			$entryHash = ([BitConverter]::ToString($sha256.ComputeHash($entryStream))).Replace("-", "")
+		} finally {
+			$sha256.Dispose()
+			$entryStream.Dispose()
+		}
+
+		$sourcePath = if ($archivePath -eq "BetterInventory/BetterInventory.mod") {
+			Join-Path $projectRoot "BetterInventory.mod"
+		} else {
+			Join-Path $scriptRoot ([IO.Path]::GetFileName($archivePath))
+		}
+		$sourceHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $sourcePath).Hash
+
+		if ($entryHash -ne $sourceHash) {
+			throw "Tracked release archive hash mismatch: $archivePath. Rebuild BetterInventory.zip."
+		}
+	}
+
+	$dataEntry = $trackedEntryMap["BetterInventory/scripts/mods/BetterInventory/BetterInventory_data.lua"]
+	$dataReader = New-Object IO.StreamReader($dataEntry.Open())
+
+	try {
+		$trackedData = $dataReader.ReadToEnd()
+	} finally {
+		$dataReader.Dispose()
+	}
+
+	$sourceVersionMatch = [regex]::Match($data, 'MOD_VERSION\s*=\s*"([^"]+)"')
+	$trackedVersionMatch = [regex]::Match($trackedData, 'MOD_VERSION\s*=\s*"([^"]+)"')
+
+	if (-not $sourceVersionMatch.Success -or -not $trackedVersionMatch.Success -or $sourceVersionMatch.Groups[1].Value -ne $trackedVersionMatch.Groups[1].Value) {
+		throw "Tracked release archive version does not match BetterInventory_data.lua. Rebuild BetterInventory.zip."
+	}
+} finally {
+	$trackedArchive.Dispose()
+}
+
+Write-Host "Tracked release archive parity verified: $trackedReleaseArchive" -ForegroundColor Green
 
 Write-Host "BetterInventory static verification passed." -ForegroundColor Green

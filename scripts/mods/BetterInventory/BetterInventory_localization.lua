@@ -8,6 +8,12 @@ local localization = {
 	debug_group = {
 		en = "Debug (testing only)",
 	},
+	debug_enable_hot_path_diagnostics = {
+		en = "Enable hot-path diagnostics",
+	},
+	debug_enable_hot_path_diagnostics_tooltip = {
+		en = "Opt-in sampled counters for UI rebuilds, alignment/pivot writes, active read promises, operation age and Lua memory. Disabled by default; enable only while collecting a baseline.",
+	},
 	debug_expand_armoury_requisition_window_30_percent = {
 		en = "Increase Armoury Exchange store width",
 	},
@@ -2489,6 +2495,8 @@ zh_cn.inventory_options_controller_focus_legend = "Items / Widget Focus"
 zh_cn.myfavorites_show_favorite_letter = "Show F below favorite icon"
 zh_cn.myfavorites_show_favorite_letter_tooltip = "Adds a compact F beneath the coloured MyFavorites icon. Disabled by default."
 zh_cn.debug_group = "Debug (testing only)"
+zh_cn.debug_enable_hot_path_diagnostics = "Enable hot-path diagnostics"
+zh_cn.debug_enable_hot_path_diagnostics_tooltip = "Opt-in sampled counters for UI rebuilds, alignment/pivot writes, active read promises, operation age and Lua memory. Disabled by default; enable only while collecting a baseline."
 zh_cn.debug_expand_armoury_requisition_window_30_percent = "Increase Armoury Exchange store width"
 zh_cn.debug_expand_armoury_requisition_window_30_percent_tooltip = "Debug geometry stress test. In Requisition Weapons & Curios only, increases the normally resolved store grid width by the percentage below and proportionally refits its equipment cards. Reopen the Armoury Exchange after changing this setting."
 zh_cn.debug_armoury_requisition_window_increase_percent = "Store width increase (%%)"

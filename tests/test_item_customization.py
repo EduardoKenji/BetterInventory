@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from lupa import LuaRuntime
+from coverage_support import InstrumentedLuaRuntime as LuaRuntime
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -86,10 +86,15 @@ def main() -> None:
         name_it_settings = { name_list = {} }
         name_it_available = true
         name_it_get_fails = false
+        name_it_replace_pattern_get_fails = false
         name_it_set_calls = 0
         test_name_it_mod = {}
 
         function test_name_it_mod:get(setting_id)
+            if name_it_replace_pattern_get_fails and setting_id == "replace_pattern_name" then
+                error("simulated Name It setting read failure")
+            end
+
             return name_it_settings[setting_id]
         end
 
@@ -109,6 +114,8 @@ def main() -> None:
         settings_flushes = 0
         settings_flush_attempts = 0
         settings_flush_should_fail = false
+        settings_flush_should_swallow_failure = false
+        settings_flush_should_reject = false
         test_dmf_mod = {
             save_unsaved_settings_to_file = function()
                 settings_flush_attempts = settings_flush_attempts + 1
@@ -117,7 +124,16 @@ def main() -> None:
                     error("simulated settings write failure")
                 end
 
+                if settings_flush_should_swallow_failure then
+                    return nil
+                end
+
+                if settings_flush_should_reject then
+                    return false
+                end
+
                 settings_flushes = settings_flushes + 1
+                return true
             end,
         }
 
@@ -197,7 +213,9 @@ def main() -> None:
         }
         """
     )
-    customization = lua.execute(MODULE_PATH.read_text(encoding="utf-8"))
+    customization = lua.execute(
+        MODULE_PATH.read_text(encoding="utf-8"), name=str(MODULE_PATH)
+    )
     globals_ = lua.globals()
     mod = globals_.test_mod
     settings = globals_.settings
@@ -371,6 +389,12 @@ def main() -> None:
     globals_.name_it_settings.name_list["legacy-pattern"] = "Legacy Pattern Name"
     assert customization.import_name_it_names(mod) == 1
     assert customization.get(mod, "legacy-pattern").name_target == "sub"
+
+    globals_.name_it_replace_pattern_get_fails = True
+    globals_.name_it_settings.name_list["guarded-pattern"] = "Guarded Pattern Name"
+    assert customization.import_name_it_names(mod) == 1
+    assert customization.get(mod, "guarded-pattern").name_target == "primary"
+    globals_.name_it_replace_pattern_get_fails = False
 
     customization.update(
         mod, "legacy-gear", lua.table_from({"name": "BetterInventory Name"})
@@ -833,9 +857,60 @@ def main() -> None:
     customization.update_runtime(mod)
     assert globals_.settings_flush_attempts == attempts_before_failure + 1
     assert globals_.settings_flushes == flushes_before_failure
+    status, pending = customization.persistence_status()
+    assert status == "error"
+    assert pending is True
     globals_.settings_flush_should_fail = False
-    customization.update_runtime(mod)
+    customization.update_runtime(mod, 1)
     assert globals_.settings_flushes == flushes_before_failure + 1
+
+    # Current DMF can swallow an inner settings-write failure and return nil.
+    # A non-throwing no-return is the normal delegated contract: BetterInventory
+    # must end its obligation and never retry the same mutation forever.
+    customization.update(mod, "dmf-swallowed-failure", lua.table_from({"name": "Retry me"}))
+    globals_.settings_flush_should_swallow_failure = True
+    attempts_before_swallowed_failure = globals_.settings_flush_attempts
+    flushes_before_swallowed_failure = globals_.settings_flushes
+    customization.update_runtime(mod)
+    assert globals_.settings_flush_attempts == attempts_before_swallowed_failure + 1
+    assert globals_.settings_flushes == flushes_before_swallowed_failure
+    status, pending = customization.persistence_status()
+    assert status == "delegated"
+    assert pending is False
+    customization.update_runtime(mod, 1)
+    assert globals_.settings_flush_attempts == attempts_before_swallowed_failure + 1
+
+    # Throwing calls remain observable but are bounded per mutation. Once the
+    # cap is reached, later runtime frames must not call DMF forever.
+    globals_.settings_flush_should_swallow_failure = False
+    globals_.settings_flush_should_fail = True
+    customization.update(mod, "bounded-error", lua.table_from({"name": "Bounded"}))
+    bounded_attempts_before = globals_.settings_flush_attempts
+    customization.update_runtime(mod)
+    customization.update_runtime(mod, 1)
+    customization.update_runtime(mod, 1)
+    assert globals_.settings_flush_attempts == bounded_attempts_before + 3
+    status, pending = customization.persistence_status()
+    assert status == "error_exhausted"
+    assert pending is False
+    globals_.settings_flush_should_fail = False
+
+    customization.update(mod, "delegated-success", lua.table_from({"name": "Delegated"}))
+    globals_.settings_flush_should_swallow_failure = True
+    customization.update_runtime(mod)
+    status, pending = customization.persistence_status()
+    assert status == "delegated"
+    assert pending is False
+    globals_.settings_flush_should_swallow_failure = False
+    assert globals_.settings_flushes == flushes_before_swallowed_failure
+
+    # An explicit true remains the only result that can be called durable.
+    customization.update(mod, "explicit-success", lua.table_from({"name": "Saved"}))
+    customization.update_runtime(mod)
+    assert globals_.settings_flushes == flushes_before_swallowed_failure + 1
+    status, pending = customization.persistence_status()
+    assert status == "saved"
+    assert pending is False
 
     # Disabling the mod while the editor is open must release keyboard capture.
     globals_.captured_safe_hooks.update(popup_handler)

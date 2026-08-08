@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from lupa import LuaRuntime
+from coverage_support import InstrumentedLuaRuntime as LuaRuntime
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -17,6 +17,13 @@ CURIO_VALUES_PATH = (
     / "mods"
     / "BetterInventory"
     / "BetterInventory_curio_values.lua"
+)
+CURIO_DOMAINS_PATH = (
+    PROJECT_ROOT
+    / "scripts"
+    / "mods"
+    / "BetterInventory"
+    / "BetterInventory_curio_domains.lua"
 )
 
 
@@ -84,12 +91,131 @@ def main() -> None:
             return promise
         end
 
+        local function new_pending_promise()
+            local promise = {
+                __test_promise = true,
+                _cancelled = false,
+                _error = nil,
+                _failure_callbacks = {},
+                _settled = false,
+                _success_callbacks = {},
+            }
+
+            function promise:is_pending()
+                return not self._settled
+            end
+
+            local function settle_child(child, result, is_error)
+                if is_error then
+                    child:reject(result)
+                elseif is_promise(result) then
+                    result:next(function(value)
+                        child:resolve(value)
+                    end):catch(function(error_value)
+                        child:reject(error_value)
+                    end)
+                else
+                    child:resolve(result)
+                end
+            end
+
+            function promise:next(callback, failure_callback)
+                local child = new_pending_promise()
+
+                local function on_success(value)
+                    if type(callback) ~= "function" then
+                        child:resolve(value)
+                        return
+                    end
+
+                    local results = {pcall(callback, value)}
+
+                    if not results[1] then
+                        child:reject(results[2])
+                    else
+                        settle_child(child, results[2], false)
+                    end
+                end
+
+                local function on_failure(error_value)
+                    if type(failure_callback) ~= "function" then
+                        child:reject(error_value)
+                        return
+                    end
+
+                    local results = {pcall(failure_callback, error_value)}
+
+                    if not results[1] then
+                        child:reject(results[2])
+                    else
+                        settle_child(child, results[2], false)
+                    end
+                end
+
+                if not self._settled then
+                    table.insert(self._success_callbacks, on_success)
+                    table.insert(self._failure_callbacks, on_failure)
+                elseif self._error == nil then
+                    on_success(self._value)
+                else
+                    on_failure(self._error)
+                end
+
+                return child
+            end
+
+            function promise:catch(callback)
+                return self:next(nil, callback)
+            end
+
+            function promise:resolve(value)
+                if self._settled then
+                    return self
+                end
+
+                self._settled = true
+                self._value = value
+
+                for _, callback in ipairs(self._success_callbacks) do
+                    callback(value)
+                end
+
+                return self
+            end
+
+            function promise:reject(error_value)
+                if self._settled then
+                    return self
+                end
+
+                self._settled = true
+                self._error = error_value
+
+                for _, callback in ipairs(self._failure_callbacks) do
+                    callback(error_value)
+                end
+
+                return self
+            end
+
+            function promise:cancel()
+                self._cancelled = true
+                return self:reject("cancelled")
+            end
+
+            return promise
+        end
+
         function TestPromise.resolved(value)
             return new_promise(value, nil)
         end
 
         function TestPromise.rejected(error_value)
             return new_promise(nil, error_value)
+        end
+
+        function TestPromise.pending()
+            return new_pending_promise()
         end
 
         function TestPromise.all(...)
@@ -207,6 +333,10 @@ def main() -> None:
 
         TestModLoader = {
             io_dofile = function(self, path)
+                if string.find(path, "BetterInventory_curio_domains", 1, true) then
+                    return TestCurioDomains
+                end
+
                 return TestCurioValues
             end,
         }
@@ -239,6 +369,7 @@ def main() -> None:
         }
 
         server_clock = 100000
+        backend_account_key = "default"
         main_menu_active = false
 
         settings = {
@@ -358,9 +489,12 @@ def main() -> None:
 		}
 
         purchase_count = 0
+		profile_fetch_pending = false
+		pending_profile_promise = nil
 		wallet_hook = nil
 		wallet_balance = 100000
         fetched_store_count = 0
+        storefront_hook = nil
         requested_wallet_character = nil
         purchased_wallet_owner = nil
         captured_notification = nil
@@ -403,6 +537,9 @@ def main() -> None:
                 end,
             },
             backend = {
+                account_id = function()
+                    return backend_account_key
+                end,
                 authenticated = function()
                     return true
                 end,
@@ -414,6 +551,10 @@ def main() -> None:
                         psyker_store = function(self, time, character_id)
                             fetched_store_count = fetched_store_count + 1
                             assert(character_id == "target-psyker")
+
+							if storefront_hook then
+								return TestPromise.resolved(storefront_hook(fetched_store_count))
+							end
 
 							if fetched_store_count == 2 then
 								return TestPromise.resolved(revalidated_storefront)
@@ -452,6 +593,11 @@ def main() -> None:
             data_service = {
                 profiles = {
                     fetch_all_profiles = function()
+                        if profile_fetch_pending then
+                            pending_profile_promise = pending_profile_promise or TestPromise.pending()
+                            return pending_profile_promise
+                        end
+
                         return TestPromise.resolved({
                             profiles = {target_profile},
                             gear = {},
@@ -490,9 +636,15 @@ def main() -> None:
         """
     )
 
-    curio_values = lua.execute(CURIO_VALUES_PATH.read_text(encoding="utf-8"))
+    curio_values = lua.execute(
+        CURIO_VALUES_PATH.read_text(encoding="utf-8"), name=str(CURIO_VALUES_PATH)
+    )
     lua.globals().TestCurioValues = curio_values
-    module = lua.execute(MODULE_PATH.read_text(encoding="utf-8"))
+    curio_domains = lua.execute(
+        CURIO_DOMAINS_PATH.read_text(encoding="utf-8"), name=str(CURIO_DOMAINS_PATH)
+    )
+    lua.globals().TestCurioDomains = curio_domains
+    module = lua.execute(MODULE_PATH.read_text(encoding="utf-8"), name=str(MODULE_PATH))
     globals_ = lua.globals()
 
     assert (
@@ -893,6 +1045,90 @@ def main() -> None:
     )
     assert module._test.observed_rotation_boundary(observed_storefront) == 1600000
 
+    compatible, boundary, missing = module._test.rotation_boundary_compatible(
+        None, 1600000, False
+    )
+    assert compatible is True
+    assert boundary == 1600000
+    assert missing is False
+    compatible, _, _ = module._test.rotation_boundary_compatible(
+        1600000, 1700000, False
+    )
+    assert compatible is False
+    compatible, _, _ = module._test.rotation_boundary_compatible(
+        1600000, None, False
+    )
+    assert compatible is False
+    compatible, boundary, missing = module._test.rotation_boundary_compatible(
+        None, None, False
+    )
+    assert compatible is True
+    assert boundary is None
+    assert missing is True
+
+    # Pre-hotfix schema 1 boundaries may have been poisoned by a stale response.
+    # Migrate account metadata but force one corrected scan; schema 2 boundaries
+    # remain trusted after they were confirmed by the new synchronization rule.
+    legacy_history = lua.execute(
+        "return {schema_version = 1, accounts = {account = {next_refresh_at_ms = 3600000, last_successful_scan_at_ms = 100000, last_used_at_ms = 100000, last_context = 'morningstar'}}}"
+    )
+    migrated_history = module._test.sanitize_rotation_history(legacy_history, 100000)
+    assert migrated_history.schema_version == 3
+    assert migrated_history.accounts.account.next_refresh_at_ms is None
+    assert migrated_history.accounts.account.last_successful_scan_at_ms is None
+    assert migrated_history.accounts.account.last_used_at_ms == 100000
+    assert migrated_history.accounts.account.last_context == "morningstar"
+    current_history = lua.execute(
+        "return {schema_version = 2, accounts = {account = {next_refresh_at_ms = 3600000, last_successful_scan_at_ms = 100000}}}"
+    )
+    sanitized_current = module._test.sanitize_rotation_history(current_history, 100000)
+    assert sanitized_current.accounts.account.next_refresh_at_ms == 3600000
+    assert sanitized_current.accounts.account.last_successful_scan_at_ms == 100000
+
+    pending_item = lua.table_from(
+        {
+            "character_id": "legacy-character",
+            "character_name": "Legacy Psyker",
+            "class_name": "Psyker",
+            "item_level": 410,
+            "label_id": "automatic_curio_health",
+            "primary_value": 21,
+            "price": 100,
+            "unit": "%",
+            "currency": "credits",
+        }
+    )
+    legacy_report = lua.table_from(
+        {
+            "account_key": "account",
+            "context": "operative_selection",
+            "created_at_ms": 100000,
+            "report_id": "legacy-report",
+            "purchased": lua.table_from([pending_item]),
+            "insufficient": lua.table_from([]),
+            "spent": lua.table_from({"credits": 100, "marks": 0}),
+        }
+    )
+    migrated_reports = module._test.sanitize_pending_reports(
+        None, legacy_report
+    )
+    assert len(migrated_reports) == 1
+    assert migrated_reports[1].report_id == "legacy-report"
+    duplicate_reports = module._test.sanitize_pending_reports(
+        lua.table_from([legacy_report, legacy_report]), None
+    )
+    assert len(duplicate_reports) == 1
+
+    def set_storefront_boundary(boundary: int) -> None:
+        globals_.test_storefront.data.currentRotationEnd = boundary
+        globals_.test_storefront.data.catalog = lua.table_from({"validTo": boundary})
+        globals_.test_offer.price.validTo = boundary
+        globals_.revalidated_storefront.data.currentRotationEnd = boundary
+        globals_.revalidated_storefront.data.catalog = lua.table_from(
+            {"validTo": boundary}
+        )
+        globals_.revalidated_offer.price.validTo = boundary
+
     globals_.settings.enable_automatic_curio_acquisition = True
     globals_.settings.automatic_curio_once_per_store_rotation = True
     globals_.settings.automatic_curio_scan_operative_selection = False
@@ -922,6 +1158,7 @@ def main() -> None:
 
     # One second past reset grace is a new rotation even though less than an
     # hour elapsed since a hypothetical 17:59 scan.
+    set_storefront_boundary(first_next_refresh + 3600000)
     globals_.server_clock = first_next_refresh + 5000
     module.begin_morningstar_pass(globals_.test_mod)
     module.update(globals_.test_mod, 6, False)
@@ -936,17 +1173,20 @@ def main() -> None:
     module.update(globals_.test_mod, 1, False)
     assert globals_.purchase_count == purchases_before_rotation_test + 2
 
+    set_storefront_boundary(second_next_refresh + 3600000)
     globals_.server_clock = second_next_refresh + 5000
     module.leave_operative_selection()
     module.enter_operative_selection(globals_.test_mod)
     module.update(globals_.test_mod, 1, False)
     assert globals_.purchase_count == purchases_before_rotation_test + 3
+    assert len(globals_.settings["_automatic_curio_rotation_history"].accounts["default"].pending_reports) == 1
 
     # Idle refresh watcher arms once at the boundary, then performs one pass
     # on the following scheduler tick. It must not loop every frame.
     globals_.settings.automatic_curio_rescan_on_store_refresh = True
     rotation_history = globals_.settings["_automatic_curio_rotation_history"]
     third_next_refresh = rotation_history.accounts["default"].next_refresh_at_ms
+    set_storefront_boundary(third_next_refresh + 3600000)
     globals_.server_clock = third_next_refresh + 5000
     purchases_before_idle_refresh = globals_.purchase_count
     module.update(globals_.test_mod, 1, False)
@@ -955,6 +1195,98 @@ def main() -> None:
     assert globals_.purchase_count == purchases_before_idle_refresh + 1
     module.update(globals_.test_mod, 1, False)
     assert globals_.purchase_count == purchases_before_idle_refresh + 1
+    module.cancel()
+
+    # Operative Selection keeps a bounded account-scoped report for the next
+    # Morningstar because its notification visibility is not guaranteed.
+    pending_history = globals_.settings["_automatic_curio_rotation_history"]
+    pending_report = pending_history.accounts["default"].pending_reports[1]
+    assert pending_report is not None
+    assert pending_report.context == "operative_selection"
+    assert len(pending_report.purchased) == 1
+    assert pending_report.purchased[1].character_id == "target-psyker"
+
+    globals_.captured_notification = None
+    globals_.main_menu_active = False
+    globals_.backend_account_key = "other-account"
+    module.begin_morningstar_pass(globals_.test_mod)
+    module.update(globals_.test_mod, 0, False)
+    assert globals_.captured_notification is None
+    assert len(globals_.settings["_automatic_curio_rotation_history"].accounts["default"].pending_reports) == 2
+    globals_.backend_account_key = "default"
+    module.update(globals_.test_mod, 0, False)
+    assert globals_.captured_notification.line_1 == "automatic_curio_purchased_title"
+    assert "Research Psyker(Psyker): 21% automatic_curio_health (410)" in globals_.captured_notification.line_2
+    assert len(globals_.settings["_automatic_curio_rotation_history"].accounts["default"].pending_reports) == 1
+    globals_.captured_notification = None
+    module.update(globals_.test_mod, 0, False)
+    assert globals_.captured_notification.line_1 == "automatic_curio_purchased_title"
+    assert len(globals_.settings["_automatic_curio_rotation_history"].accounts["default"].pending_reports) == 0
+    module.cancel()
+
+    # Crossing a predicted boundary does not prove that the backend has
+    # published the new storefront. An expired response must not be evaluated
+    # or allowed to consume the following rotation through the hourly fallback.
+    globals_.settings.automatic_curio_rescan_on_store_refresh = True
+    globals_.settings.automatic_curio_once_per_store_rotation = True
+    globals_.settings.automatic_curio_buy_health = True
+    globals_.settings.automatic_curio_buy_toughness = False
+    globals_.main_menu_active = False
+    globals_.test_offer.offerId = "stale-boundary-health"
+    globals_.revalidated_offer.offerId = "stale-boundary-health"
+    globals_.captured_notification = None
+    stale_boundary = globals_.settings["_automatic_curio_rotation_history"].accounts[
+        "default"
+    ].next_refresh_at_ms
+    globals_.server_clock = stale_boundary + 5000
+    lua.execute(
+        """
+        storefront_is_stale = true
+        fresh_store_fetch_count = 0
+        stale_storefront = {
+            data = {
+                currentRotationEnd = %d,
+                catalog = {validTo = %d},
+                personal = {test_offer},
+            },
+        }
+        storefront_hook = function()
+            if storefront_is_stale then
+                return stale_storefront
+            end
+
+            fresh_store_fetch_count = fresh_store_fetch_count + 1
+            return fresh_store_fetch_count %% 2 == 1 and test_storefront or revalidated_storefront
+        end
+        """
+        % (stale_boundary, stale_boundary)
+    )
+    purchases_before_stale_boundary = globals_.purchase_count
+    module.begin_morningstar_pass(globals_.test_mod)
+    module.update(globals_.test_mod, 6, False)
+    assert globals_.purchase_count == purchases_before_stale_boundary
+    assert globals_.captured_notification is None
+    assert (
+        globals_.settings["_automatic_curio_rotation_history"].accounts[
+            "default"
+        ].next_refresh_at_ms
+        == stale_boundary
+    )
+
+    # Once the backend advertises a boundary beyond the consumed rotation, the
+    # bounded retry may evaluate and purchase the newly published offer.
+    fresh_boundary = stale_boundary + 3600000
+    set_storefront_boundary(fresh_boundary)
+    globals_.storefront_is_stale = False
+    module.update(globals_.test_mod, 5, False)
+    assert globals_.purchase_count == purchases_before_stale_boundary + 1
+    assert (
+        globals_.settings["_automatic_curio_rotation_history"].accounts[
+            "default"
+        ].next_refresh_at_ms
+        == fresh_boundary
+    )
+    globals_.storefront_hook = None
     module.cancel()
 
     # If context leaves after scan/revalidation but before first purchase POST,
@@ -970,6 +1302,7 @@ def main() -> None:
     globals_.revalidated_offer.offerId = "interrupted-offer-health"
     rotation_history = globals_.settings["_automatic_curio_rotation_history"]
     committed_before_interrupted = rotation_history.accounts["default"].next_refresh_at_ms
+    set_storefront_boundary(committed_before_interrupted + 3600000)
     globals_.server_clock = committed_before_interrupted + 5000
     purchases_before_interrupted = globals_.purchase_count
     globals_.buyer_module = module
@@ -986,6 +1319,37 @@ def main() -> None:
     assert globals_.purchase_count == purchases_before_interrupted + 1
     assert rotation_history.accounts["default"].next_refresh_at_ms > committed_before_interrupted
     module.cancel()
+
+    # Read-only profile requests are owned by the current context. Leaving the
+    # menu cancels a pending GET, clears its debug count, and invalidates late
+    # callbacks without touching purchase POST ownership.
+    globals_.main_menu_active = True
+    globals_.settings.automatic_curio_scan_operative_selection = True
+    globals_.profile_fetch_pending = True
+    globals_.pending_profile_promise = None
+    generation_before_pending = module.read_request_generation()
+    module.enter_operative_selection(globals_.test_mod)
+    module.update(globals_.test_mod, 1, False)
+    assert globals_.pending_profile_promise is not None
+    assert module.active_read_request_count() == 1
+    assert module.read_request_generation() == generation_before_pending + 1
+    module.update(globals_.test_mod, 0.5, False)
+    assert module.oldest_read_request_age() >= 0.5
+
+    pending_profile_promise = globals_.pending_profile_promise
+    module.cancel()
+    assert module.active_read_request_count() == 0
+    assert module.oldest_read_request_age() == 0
+    assert pending_profile_promise._cancelled is True
+
+    # A canceled promise cannot mutate the newly idle state if a backend test
+    # double attempts to resolve it after cancellation.
+    pending_profile_promise.resolve(
+        pending_profile_promise,
+        lua.table_from({"profiles": lua.table_from([])}),
+    )
+    assert module.active_read_request_count() == 0
+    globals_.profile_fetch_pending = False
 
     print("BetterInventory automatic Curio acquisition tests passed.")
 

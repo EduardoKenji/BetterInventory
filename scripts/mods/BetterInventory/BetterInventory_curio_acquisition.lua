@@ -3,6 +3,16 @@ local MasterItems = require("scripts/backend/master_items")
 local Promise = require("scripts/foundation/utilities/promise")
 local StoreNames = require("scripts/settings/backend/store_names")
 local CurioValues = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_values")
+local CurioDomains = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_domains")
+local PromiseContainer
+
+do
+	local promise_container_ok, promise_container_module = pcall(require, "scripts/utilities/ui/promise_container")
+
+	if promise_container_ok and type(promise_container_module) == "table" then
+		PromiseContainer = promise_container_module
+	end
+end
 
 if type(CurioValues) ~= "table" then
 	CurioValues = {
@@ -23,6 +33,10 @@ local STORE_ROTATION_GRACE_MS = 5000
 local STORE_ROTATION_HOUR_MS = 60 * 60 * 1000
 local MAX_STORE_ROTATION_AHEAD_MS = 2 * STORE_ROTATION_HOUR_MS
 local MAX_ROTATION_HISTORY_ACCOUNTS = 4
+local MAX_PENDING_REPORT_ITEMS = 8
+local MAX_PENDING_REPORTS = 8
+local MAX_PENDING_REPORT_TEXT_LENGTH = 96
+local MAX_PENDING_REPORT_ID_LENGTH = 64
 local MAX_OFFER_ERROR_LOGS_PER_SCAN = 5
 local MAX_ERROR_TEXT_LENGTH = 1000
 local PROFILE_DISCOVERY_DELAY = 1
@@ -35,6 +49,7 @@ local KNOWN_CHARACTERS_SETTING_ID = "_automatic_curio_known_characters"
 local CHARACTER_SLOTS_SETTING_ID = "_automatic_curio_character_slots"
 local OPERATIVE_SLOT_CAPACITY_SETTING_ID = "_automatic_curio_operative_slot_capacity"
 local ROTATION_HISTORY_SETTING_ID = "_automatic_curio_rotation_history"
+local ROTATION_HISTORY_SCHEMA_VERSION = 3
 local CHARACTER_SLOT_SETTING_PREFIX = "automatic_curio_character_slot_"
 
 local function native_operative_slot_capacity()
@@ -103,6 +118,7 @@ local state = {
 	rotation_boundary_ms = nil,
 	ledger_rotation_boundary_ms = nil,
 	context_entry_id = 0,
+	report_sequence = 0,
 	entry_consumed = false,
 	scheduled_reason = nil,
 	scheduler_poll_elapsed = 0,
@@ -118,12 +134,125 @@ local state = {
 	profile_discovery_refresh_elapsed = 0,
 	profile_discovery_token = 0,
 	profile_revision = 0,
+	last_delivered_report_account = nil,
+	last_delivered_report_id = nil,
+	read_promise_container = nil,
+	read_request_generation = 0,
+	read_request_clock = 0,
+	read_request_started_at = {},
+	oldest_read_request_age = 0,
+	active_read_requests = 0,
+	operation_snapshot = nil,
 	scan_attempts = 0,
 	scheduled = false,
 	started = false,
 	token = 0,
 }
 local processed_offer_keys = {}
+
+local function new_read_promise_container()
+	if PromiseContainer and type(PromiseContainer.new) == "function" then
+		local success, container = pcall(PromiseContainer.new, PromiseContainer)
+
+		if success and container then
+			return container
+		end
+	end
+
+	-- Older/partial test or game environments may not expose the UI helper.
+	-- Keep the ownership contract locally: cancellation is best-effort, while
+	-- generation checks still make every late callback inert.
+	local fallback = {
+		_promises = {},
+	}
+
+	function fallback:cancel_on_destroy(promise)
+		if not promise then
+			return promise
+		end
+
+		local pending = type(promise.is_pending) ~= "function" or promise:is_pending()
+
+		if pending then
+			self._promises[promise] = true
+
+			if type(promise.next) == "function" and type(promise.catch) == "function" then
+				promise:next(function()
+					self._promises[promise] = nil
+				end):catch(function()
+					self._promises[promise] = nil
+				end)
+			end
+		end
+
+		return promise
+	end
+
+	function fallback:destroy()
+		for promise in pairs(self._promises) do
+			if type(promise.cancel) == "function" then
+				pcall(promise.cancel, promise)
+			end
+		end
+
+		self._promises = {}
+	end
+
+	return fallback
+end
+
+if type(CurioDomains) ~= "table" or type(CurioDomains.context) ~= "table" or type(CurioDomains.context.token_matches) ~= "function" or type(CurioDomains.context.snapshot) ~= "function" or type(CurioDomains.context.matches) ~= "function" then
+	CurioDomains = {
+		context = {
+			snapshot = function(current_state)
+				return {
+					account_key = current_state and current_state.account_key,
+					context = current_state and current_state.active_context,
+					context_entry_id = current_state and current_state.context_entry_id,
+					read_request_generation = current_state and current_state.read_request_generation,
+					token = current_state and current_state.token,
+				}
+			end,
+			matches = function(snapshot, current_state)
+				return type(snapshot) == "table" and type(current_state) == "table" and snapshot.account_key == current_state.account_key and snapshot.context == current_state.active_context and snapshot.context_entry_id == current_state.context_entry_id and snapshot.read_request_generation == current_state.read_request_generation and snapshot.token == current_state.token
+			end,
+			token_matches = function(current_state, token)
+				return current_state and current_state.token == token
+			end,
+		},
+		reports = {
+			upsert_bounded = function(queue, report)
+				local result = {}
+
+				for index = 1, #(queue or {}) do
+					result[index] = queue[index]
+				end
+
+				result[#result + 1] = report
+
+				return result, true
+			end,
+			remove_head = function(queue)
+				local result = {}
+
+				for index = 2, #(queue or {}) do
+					result[#result + 1] = queue[index]
+				end
+
+				return result, queue and queue[1]
+			end,
+		},
+		scheduler = {
+			next_retry_delay = function(context, retry_delay, morningstar_delay, operative_selection_delay)
+				local base_delay = context == "operative_selection" and operative_selection_delay or morningstar_delay
+
+				return math.max((tonumber(base_delay) or 0) - (tonumber(retry_delay) or 0), 0)
+			end,
+		},
+	}
+end
+
+state.read_promise_container = new_read_promise_container()
 
 local function log_info(mod, message)
 	if mod and type(mod.info) == "function" then
@@ -205,6 +334,16 @@ local function error_text(error_value)
 	end
 
 	return result
+end
+
+local function bounded_report_text(value, maximum)
+	local text = tostring(value or "")
+
+	if #text > maximum then
+		return string.sub(text, 1, maximum)
+	end
+
+	return text
 end
 
 local function enabled(mod)
@@ -356,15 +495,150 @@ local function fallback_rotation_boundary(now)
 	return (math.floor(now / STORE_ROTATION_HOUR_MS) + 1) * STORE_ROTATION_HOUR_MS
 end
 
+local function sanitize_pending_report_item(source)
+	if type(source) ~= "table" then
+		return
+	end
+
+	local character_id = bounded_report_text(source.character_id, MAX_PENDING_REPORT_TEXT_LENGTH)
+	local character_name = bounded_report_text(source.character_name, MAX_PENDING_REPORT_TEXT_LENGTH)
+	local class_name = bounded_report_text(source.class_name, MAX_PENDING_REPORT_TEXT_LENGTH)
+	local label_id = bounded_report_text(source.label_id, MAX_PENDING_REPORT_TEXT_LENGTH)
+	local currency
+
+	if source.currency == "credits" or source.currency == "marks" then
+		currency = source.currency
+	end
+	local primary_value = tonumber(source.primary_value)
+	local item_level = tonumber(source.item_level)
+	local price = tonumber(source.price)
+
+	if label_id == "" or not currency or not primary_value or not item_level or not price then
+		return
+	end
+
+	return {
+		character_id = character_id,
+		character_name = character_name,
+		class_name = class_name,
+		item_level = math.max(0, math.floor(item_level + 0.5)),
+		label_id = label_id,
+		primary_value = primary_value,
+		price = math.max(0, math.floor(price + 0.5)),
+		unit = bounded_report_text(source.unit, 16),
+		currency = currency,
+	}
+end
+
+local function sanitize_pending_report(source)
+	if type(source) ~= "table" then
+		return
+	end
+
+	local report_id = bounded_report_text(source.report_id, MAX_PENDING_REPORT_ID_LENGTH)
+
+	if report_id == "" then
+		return
+	end
+
+	local result = {
+		account_key = bounded_report_text(source.account_key, MAX_PENDING_REPORT_TEXT_LENGTH),
+		context = source.context == "operative_selection" and source.context or "morningstar",
+		created_at_ms = tonumber(source.created_at_ms) or 0,
+		insufficient = {},
+		partial_failure = source.partial_failure == true,
+		purchased = {},
+		report_id = report_id,
+		spent = {
+			credits = 0,
+			marks = 0,
+		},
+	}
+
+	local item_count = 0
+
+	for _, field in ipairs({"purchased", "insufficient"}) do
+		local source_items = source[field]
+
+		if type(source_items) == "table" then
+			for index = 1, #source_items do
+				if item_count >= MAX_PENDING_REPORT_ITEMS then
+					break
+				end
+
+				local item = sanitize_pending_report_item(source_items[index])
+
+				if item then
+					result[field][#result[field] + 1] = item
+					item_count = item_count + 1
+				end
+			end
+		end
+	end
+
+	local source_spent = source.spent
+
+	if type(source_spent) == "table" then
+		for _, currency in ipairs({"credits", "marks"}) do
+			result.spent[currency] = math.max(0, math.floor(tonumber(source_spent[currency]) or 0))
+		end
+	end
+
+	if item_count == 0 then
+		return
+	end
+
+	return result
+end
+
+local function sanitize_pending_reports(source, legacy_report)
+	local result = {}
+	local seen_ids = {}
+
+	local function append(candidate)
+		local report = sanitize_pending_report(candidate)
+
+		if not report or seen_ids[report.report_id] then
+			return
+		end
+
+		seen_ids[report.report_id] = true
+		result[#result + 1] = report
+	end
+
+	if type(source) == "table" then
+		for index = 1, #source do
+			if #result >= MAX_PENDING_REPORTS then
+				break
+			end
+
+			append(source[index])
+		end
+	end
+
+	-- Schema 1/2 installations have one pending_report. Migrate it once and
+	-- keep all newer reports in the ordered queue thereafter.
+	if #result == 0 then
+		append(legacy_report)
+	end
+
+	return result
+end
+
 local function sanitize_rotation_history(source, now)
 	local result = {
-		schema_version = 1,
+		schema_version = ROTATION_HISTORY_SCHEMA_VERSION,
 		accounts = {},
 	}
 
 	if type(source) ~= "table" or type(source.accounts) ~= "table" then
 		return result
 	end
+
+	local source_schema_version = math.floor(tonumber(source.schema_version) or 1)
+	-- Schema 3 only adds the pending-report queue. Schema 2's confirmed
+	-- storefront boundaries remain trustworthy during this additive migration.
+	local boundaries_are_trusted = source_schema_version >= 2
 
 	for key, entry in pairs(source.accounts) do
 		if type(entry) == "table" then
@@ -373,11 +647,15 @@ local function sanitize_rotation_history(source, now)
 			local last_successful_scan_at_ms = tonumber(entry.last_successful_scan_at_ms)
 			local last_used_at_ms = tonumber(entry.last_used_at_ms)
 
-			if next_refresh_at_ms and next_refresh_at_ms > 0 and (not now or next_refresh_at_ms <= now + MAX_STORE_ROTATION_AHEAD_MS) then
+			-- Schema 1 could persist the next fallback hour after evaluating an
+			-- expired pre-refresh response. Preserve reports and account metadata,
+			-- but force one safe scan under the confirmed-boundary rules instead of
+			-- trusting a potentially poisoned consumption gate.
+			if boundaries_are_trusted and next_refresh_at_ms and next_refresh_at_ms > 0 and (not now or next_refresh_at_ms <= now + MAX_STORE_ROTATION_AHEAD_MS) then
 				account.next_refresh_at_ms = math.floor(next_refresh_at_ms + 0.5)
 			end
 
-			if last_successful_scan_at_ms and last_successful_scan_at_ms > 0 then
+			if boundaries_are_trusted and last_successful_scan_at_ms and last_successful_scan_at_ms > 0 then
 				account.last_successful_scan_at_ms = math.floor(last_successful_scan_at_ms + 0.5)
 			end
 
@@ -389,7 +667,9 @@ local function sanitize_rotation_history(source, now)
 				account.last_context = entry.last_context
 			end
 
-			if account.next_refresh_at_ms or account.last_successful_scan_at_ms or account.last_used_at_ms then
+			account.pending_reports = sanitize_pending_reports(entry.pending_reports, entry.pending_report)
+
+			if account.next_refresh_at_ms or account.last_successful_scan_at_ms or account.last_used_at_ms or #account.pending_reports > 0 then
 				result.accounts[tostring(key)] = account
 			end
 		end
@@ -405,9 +685,13 @@ local function ensure_rotation_history(mod)
 		local entry = state.rotation_history.accounts[account_key]
 
 		if not entry then
-			entry = {}
+			entry = {
+				pending_reports = {},
+			}
 			state.rotation_history.accounts[account_key] = entry
 		end
+
+		entry.pending_reports = entry.pending_reports or {}
 
 		state.next_rotation_at_ms = entry.next_refresh_at_ms
 
@@ -436,9 +720,13 @@ local function ensure_rotation_history(mod)
 	local entry = state.rotation_history.accounts[account_key]
 
 	if not entry then
-		entry = {}
+		entry = {
+			pending_reports = {},
+		}
 		state.rotation_history.accounts[account_key] = entry
 	end
+
+	entry.pending_reports = entry.pending_reports or {}
 
 	state.next_rotation_at_ms = entry.next_refresh_at_ms
 	state.rotation_boundary_ms = state.next_rotation_at_ms
@@ -549,8 +837,77 @@ local function compatible_promise(value)
 	return value and type(value.next) == "function" and type(value.catch) == "function"
 end
 
+local function reset_read_requests()
+	if state.read_promise_container and type(state.read_promise_container.destroy) == "function" then
+		pcall(state.read_promise_container.destroy, state.read_promise_container)
+	end
+
+	state.read_request_generation = state.read_request_generation + 1
+	state.active_read_requests = 0
+	state.read_request_started_at = {}
+	state.oldest_read_request_age = 0
+	state.read_promise_container = new_read_promise_container()
+end
+
+local function update_read_request_metrics(dt)
+	state.read_request_clock = state.read_request_clock + math.max(tonumber(dt) or 0, 0)
+	local oldest_age = 0
+
+	for _, started_at in pairs(state.read_request_started_at) do
+		oldest_age = math.max(oldest_age, state.read_request_clock - started_at)
+	end
+
+	state.oldest_read_request_age = oldest_age
+end
+
+local function track_read_promise(promise)
+	if not compatible_promise(promise) then
+		return promise
+	end
+
+	local request_generation = state.read_request_generation
+	local released = false
+	local request_id = tostring(promise) .. ":" .. tostring(state.active_read_requests + 1)
+	state.read_request_started_at[request_id] = state.read_request_clock
+	state.active_read_requests = state.active_read_requests + 1
+
+	local function release_request()
+		if released then
+			return
+		end
+
+		released = true
+		state.read_request_started_at[request_id] = nil
+
+		if request_generation == state.read_request_generation then
+			state.active_read_requests = math.max(state.active_read_requests - 1, 0)
+		end
+	end
+
+	local tracked = promise
+
+	if state.read_promise_container and type(state.read_promise_container.cancel_on_destroy) == "function" then
+		local track_ok, tracked_promise = pcall(state.read_promise_container.cancel_on_destroy, state.read_promise_container, promise)
+
+		if track_ok and tracked_promise then
+			tracked = tracked_promise
+		end
+	end
+
+	tracked:next(release_request):catch(release_request)
+
+	return tracked
+end
+
 local function rejected(reason)
 	return Promise.rejected(reason)
+end
+
+local function rotation_pending(reason)
+	return rejected({
+		kind = "store_rotation_pending",
+		message = reason,
+	})
 end
 
 local function call_promise(object, method, ...)
@@ -572,7 +929,17 @@ local function call_promise(object, method, ...)
 end
 
 local function context_is_current(mod, token)
-	if state.token ~= token or not enabled(mod) then
+	local snapshot = state.operation_snapshot
+
+	if type(snapshot) == "table" and snapshot.token == token then
+		if not CurioDomains.context.matches(snapshot, state) then
+			return false
+		end
+	elseif not CurioDomains.context.token_matches(state, token) then
+		return false
+	end
+
+	if not enabled(mod) then
 		return false
 	end
 
@@ -1314,7 +1681,7 @@ local function fetch_storefront(profile)
 		return rejected("no Armoury storefront mapping for " .. tostring(archetype_name(profile)))
 	end
 
-	return call_promise(store_interface, method, application_time(), profile.character_id)
+	return track_read_promise(call_promise(store_interface, method, application_time(), profile.character_id))
 end
 
 local function observed_rotation_boundary(storefront)
@@ -1344,14 +1711,28 @@ local function observed_rotation_boundary(storefront)
 	return boundary
 end
 
-local function scan_candidates(mod, token)
+local function rotation_boundary_compatible(current_boundary, observed_boundary, missing_metadata)
+	if not observed_boundary then
+		return current_boundary == nil, current_boundary, true
+	end
+
+	if missing_metadata or current_boundary and observed_boundary ~= current_boundary then
+		return false, current_boundary, missing_metadata
+	end
+
+	return true, current_boundary or observed_boundary, false
+end
+
+local function scan_candidates(mod, token, minimum_rotation_boundary_ms)
 	local profiles_service = Managers and Managers.data_service and Managers.data_service.profiles
 
 	if not profiles_service or type(profiles_service.fetch_all_profiles) ~= "function" then
 		return rejected("ProfilesService.fetch_all_profiles is unavailable")
 	end
 
-	return call_promise(profiles_service, profiles_service.fetch_all_profiles):next(function(result)
+	local profile_promise = track_read_promise(call_promise(profiles_service, profiles_service.fetch_all_profiles))
+
+	return profile_promise:next(function(result)
 		if not context_is_current(mod, token) then
 			return {}
 		end
@@ -1368,6 +1749,7 @@ local function scan_candidates(mod, token)
 		local chain = Promise.resolved()
 		local diagnostics = new_scan_diagnostics()
 		local rotation_boundary_ms
+		local rotation_boundary_missing = false
 
 		diagnostics.profiles = #profiles
 
@@ -1389,16 +1771,41 @@ local function scan_candidates(mod, token)
 							return
 						end
 
+						local observed_boundary = observed_rotation_boundary(storefront)
+
+						-- The backend can briefly return the expired storefront after its
+						-- advertised rotation boundary. A boundary-based pass must prove
+						-- that every character storefront advanced before it evaluates or
+						-- consumes the new rotation. Falling back to the next wall-clock
+						-- hour here would incorrectly bless stale offers and suppress the
+						-- real refreshed pass.
+						if minimum_rotation_boundary_ms and (not observed_boundary or observed_boundary <= minimum_rotation_boundary_ms) then
+							return rotation_pending(string.format(
+								"Armoury storefront for %s has not advanced beyond rotation boundary %s",
+								profile_label(profile),
+								tostring(minimum_rotation_boundary_ms)
+							))
+						end
+
+						-- A single account-wide pass must observe one coherent backend
+						-- boundary. Mixed or missing per-character metadata means the
+						-- storefronts are not synchronized enough to evaluate or purchase.
+						local boundary_compatible, next_boundary, next_missing = rotation_boundary_compatible(rotation_boundary_ms, observed_boundary, rotation_boundary_missing)
+
+						if not boundary_compatible then
+							return rotation_pending(string.format(
+								"Armoury storefront rotation boundary mismatch or missing metadata for %s",
+								profile_label(profile)
+							))
+						end
+
+						rotation_boundary_ms = next_boundary
+						rotation_boundary_missing = next_missing
+
 						local offers = storefront and storefront.data and storefront.data.personal
 
 						if type(offers) ~= "table" then
 							return rejected("Armoury storefront returned no personal offers")
-						end
-
-						local observed_boundary = observed_rotation_boundary(storefront)
-
-						if observed_boundary and (not rotation_boundary_ms or observed_boundary < rotation_boundary_ms) then
-							rotation_boundary_ms = observed_boundary
 						end
 
 						diagnostics.storefronts = diagnostics.storefronts + 1
@@ -1537,7 +1944,7 @@ local function fetch_target_wallet(candidate)
 		return rejected("wallet backend is unavailable")
 	end
 
-	local account_promise = call_promise(wallet_interface, wallet_interface.account_wallets)
+	local account_promise = track_read_promise(call_promise(wallet_interface, wallet_interface.account_wallets))
 
 	if candidate.currency ~= "credits" and candidate.currency ~= "marks" then
 		return account_promise:next(function(wallets)
@@ -1545,7 +1952,7 @@ local function fetch_target_wallet(candidate)
 		end)
 	end
 
-	local character_promise = call_promise(wallet_interface, wallet_interface.character_wallets, candidate.character_id)
+	local character_promise = track_read_promise(call_promise(wallet_interface, wallet_interface.character_wallets, candidate.character_id))
 
 	return Promise.all(account_promise, character_promise):next(function(results)
 		local account_wallet = find_wallet(results and results[1], candidate.currency)
@@ -1671,10 +2078,10 @@ local function notify(mod, title_id, description, final_line, final_line_color)
 	local event_manager = Managers and Managers.event
 
 	if not event_manager or type(event_manager.trigger) ~= "function" then
-		return
+		return false
 	end
 
-	pcall(event_manager.trigger, event_manager, "event_add_notification_message", "custom", {
+	local success = pcall(event_manager.trigger, event_manager, "event_add_notification_message", "custom", {
 		line_1 = mod:localize(title_id),
 		line_1_color = Color.terminal_text_header(255, true),
 		line_2 = description,
@@ -1682,6 +2089,8 @@ local function notify(mod, title_id, description, final_line, final_line_color)
 		line_3 = final_line,
 		line_3_color = final_line_color,
 	})
+
+	return success
 end
 
 local function notify_no_eligible(mod)
@@ -1796,6 +2205,197 @@ local function spending_line(mod, purchased)
 	return #lines > 0 and "\n" .. table.concat(lines, "\n") or nil
 end
 
+local function compact_pending_report_item(candidate)
+	local config = candidate and candidate.primary_config
+
+	if not candidate or type(config) ~= "table" then
+		return
+	end
+
+	return sanitize_pending_report_item({
+		character_id = candidate.character_id,
+		character_name = candidate.character_name,
+		class_name = candidate.class_name,
+		item_level = candidate.item_level,
+		label_id = config.label_id,
+		primary_value = candidate.primary_value,
+		price = candidate.price,
+		unit = config.unit,
+		currency = candidate.currency,
+	})
+end
+
+local function build_pending_report(account_key, context, purchased, insufficient, partial_failure)
+	state.report_sequence = state.report_sequence + 1
+	local report = {
+		account_key = account_key,
+		context = context,
+		created_at_ms = server_time() or 0,
+		insufficient = {},
+		partial_failure = partial_failure == true,
+		purchased = {},
+		report_id = string.format("%s:%s:%d:%d", tostring(context), tostring(math.floor(server_time() or application_time())), state.context_entry_id, state.report_sequence),
+		spent = {
+			credits = 0,
+			marks = 0,
+		},
+	}
+
+	for _, source in ipairs({
+		{field = "purchased", values = purchased},
+		{field = "insufficient", values = insufficient},
+	}) do
+		for index = 1, #(source.values or {}) do
+			if #report.purchased + #report.insufficient >= MAX_PENDING_REPORT_ITEMS then
+				break
+			end
+
+			local item = compact_pending_report_item(source.values[index])
+
+			if item then
+				report[source.field][#report[source.field] + 1] = item
+
+				if source.field == "purchased" and report.spent[item.currency] then
+					report.spent[item.currency] = report.spent[item.currency] + item.price
+				end
+			end
+		end
+	end
+
+	return sanitize_pending_report(report)
+end
+
+local function persist_pending_report(mod, account_key, report)
+	if not report or not account_key then
+		return false
+	end
+
+	local history = sanitize_rotation_history(mod:get(ROTATION_HISTORY_SETTING_ID), server_time())
+	local entry = history.accounts[account_key] or {}
+	local pending_reports = CurioDomains.reports.upsert_bounded(entry.pending_reports or {}, report, MAX_PENDING_REPORTS)
+
+	-- Preserve the newest bounded history. A prune is preferable to allowing
+	-- account settings to grow without limit, and delivery remains ordered
+	-- for every report retained in the queue.
+
+	entry.pending_reports = pending_reports
+	history.accounts[account_key] = entry
+
+	local success = pcall(mod.set, mod, ROTATION_HISTORY_SETTING_ID, history, false)
+
+	if not success then
+		log_info(mod, "Could not persist the pending Automatic Curio Buyer report; the confirmed result remains in the current session log.")
+	elseif state.account_key == account_key then
+		state.rotation_history = history
+	end
+
+	return success
+end
+
+local function pending_report_item_line(mod, item)
+	local owner = item.character_name ~= "" and string.format("%s(%s)", item.character_name, item.class_name) or item.class_name
+	local shown_value = item.primary_value == math.floor(item.primary_value) and tostring(math.floor(item.primary_value)) or tostring(item.primary_value)
+	local label = item.label_id
+
+	if type(mod.localize) == "function" then
+		local success, localized = pcall(mod.localize, mod, item.label_id)
+
+		if success and type(localized) == "string" and localized ~= "" then
+			label = localized
+		end
+	end
+
+	return string.format("%s: %s%s %s (%d)", owner, shown_value, item.unit, label, item.item_level)
+end
+
+local function pending_report_description(mod, report)
+	local lines = {}
+
+	for index = 1, #report.purchased do
+		lines[#lines + 1] = pending_report_item_line(mod, report.purchased[index])
+	end
+
+	if #report.insufficient > 0 then
+		local insufficient_lines = {}
+
+		for index = 1, #report.insufficient do
+			insufficient_lines[#insufficient_lines + 1] = pending_report_item_line(mod, report.insufficient[index])
+		end
+
+		lines[#lines + 1] = mod:localize("automatic_curio_insufficient_title") .. ": " .. table.concat(insufficient_lines, "; ")
+	end
+
+	if report.partial_failure then
+		lines[#lines + 1] = mod:localize("automatic_curio_partial_failure")
+	end
+
+	return table.concat(lines, "\n")
+end
+
+local function deliver_pending_report(mod)
+	if not is_morningstar() or is_operative_selection() then
+		return false
+	end
+
+	local account_key = state.account_key
+	local history = state.rotation_history
+
+	if not account_key or type(history) ~= "table" then
+		return false
+	end
+
+	local entry = history.accounts[account_key]
+	local pending_reports = entry and entry.pending_reports
+	local report = pending_reports and pending_reports[1]
+
+	if not report then
+		return false
+	end
+
+	local already_dispatched = state.last_delivered_report_account == account_key and state.last_delivered_report_id == report.report_id
+
+	if not already_dispatched then
+		local title_id = #report.purchased > 0 and "automatic_curio_purchased_title" or "automatic_curio_insufficient_title"
+		local delivered = notify(
+			mod,
+			title_id,
+			pending_report_description(mod, report),
+			spending_line(mod, report.purchased),
+			Color.terminal_corner_selected(255, true)
+		)
+
+		if not delivered then
+			return false
+		end
+
+		state.last_delivered_report_account = account_key
+		state.last_delivered_report_id = report.report_id
+	end
+
+	local remaining_reports, removed_report = CurioDomains.reports.remove_head(pending_reports)
+
+	if removed_report ~= report then
+		return false
+	end
+
+	entry.pending_reports = remaining_reports
+	local success = pcall(mod.set, mod, ROTATION_HISTORY_SETTING_ID, history, false)
+
+	if not success then
+		table.insert(remaining_reports, 1, report)
+		entry.pending_reports = remaining_reports
+		return false
+	end
+
+	if state.account_key == account_key then
+		state.rotation_history = history
+	end
+
+	log_info(mod, "Delivered the pending Automatic Curio Buyer report from " .. tostring(report.context) .. " (" .. tostring(report.report_id) .. ").")
+
+	return true
+end
+
 local function refresh_after_purchase()
 	local store_service = Managers and Managers.data_service and Managers.data_service.store
 
@@ -1811,7 +2411,7 @@ local function refresh_after_purchase()
 	end
 end
 
-local function report_purchase_outcomes(mod, purchased, insufficient, partial_failure)
+local function report_purchase_outcomes(mod, purchased, insufficient, partial_failure, report_context, report_account_key)
 	local reported = false
 
 	if #purchased > 0 then
@@ -1830,6 +2430,14 @@ local function report_purchase_outcomes(mod, purchased, insufficient, partial_fa
 		reported = true
 	end
 
+	if report_context == "operative_selection" and (#purchased > 0 or #insufficient > 0) then
+		local pending_report = build_pending_report(report_account_key, report_context, purchased, insufficient, partial_failure)
+
+		if pending_report then
+			persist_pending_report(mod, report_account_key, pending_report)
+		end
+	end
+
 	return reported
 end
 
@@ -1843,6 +2451,8 @@ end
 local function purchase_candidates(mod, token, candidates, boundary_ms)
 	local purchased = {}
 	local insufficient = {}
+	local report_account_key = state.account_key
+	local report_context = state.active_context
 	local boundary_committed = false
 	local chain = Promise.resolved()
 
@@ -1882,7 +2492,7 @@ local function purchase_candidates(mod, token, candidates, boundary_ms)
 				refresh_after_purchase()
 			end
 
-			report_purchase_outcomes(mod, purchased, insufficient, false)
+			report_purchase_outcomes(mod, purchased, insufficient, false, report_context, report_account_key)
 
 			if #purchased > 0 or #insufficient > 0 then
 				log_diagnostic(mod, string.format("Reported %d purchase(s) and %d insufficient-funds match(es) after the pass was cancelled.", #purchased, #insufficient))
@@ -1904,7 +2514,7 @@ local function purchase_candidates(mod, token, candidates, boundary_ms)
 			refresh_after_purchase()
 		end
 
-		local reported = report_purchase_outcomes(mod, purchased, insufficient, false)
+		local reported = report_purchase_outcomes(mod, purchased, insufficient, false, report_context, report_account_key)
 
 		if reported then
 			log_info(mod, string.format("Purchase pass completed with %d purchase(s) and %d insufficient-funds match(es).", #purchased, #insufficient))
@@ -1918,7 +2528,7 @@ local function purchase_candidates(mod, token, candidates, boundary_ms)
 				refresh_after_purchase()
 			end
 
-			report_purchase_outcomes(mod, purchased, insufficient, true)
+			report_purchase_outcomes(mod, purchased, insufficient, true, report_context, report_account_key)
 			log_info(mod, string.format("Reported %d purchase(s) and %d insufficient-funds match(es) after a cancelled pass encountered an error: %s", #purchased, #insufficient, error_text(error_value)))
 
 			return
@@ -1929,7 +2539,7 @@ local function purchase_candidates(mod, token, candidates, boundary_ms)
 			refresh_after_purchase()
 		end
 
-		report_purchase_outcomes(mod, purchased, insufficient, true)
+		report_purchase_outcomes(mod, purchased, insufficient, true, report_context, report_account_key)
 
 		if #purchased == 0 then
 			notify(mod, "automatic_curio_failed_title", mod:localize("automatic_curio_failed_description"))
@@ -1944,8 +2554,18 @@ local function schedule_scan_retry(mod, token, error_value)
 		return
 	end
 
+	if type(error_value) == "table" and error_value.kind == "store_rotation_pending" then
+		state.started = false
+		state.elapsed = CurioDomains.scheduler.next_retry_delay(state.active_context, RETRY_DELAY, MORNINGSTAR_DELAY, OPERATIVE_SELECTION_DELAY)
+		state.scan_attempts = 0
+		state.scheduled = true
+		state.scheduled_reason = "rotation_wait"
+		log_diagnostic(mod, "Store rotation is not published yet; waiting before the next synchronization check: " .. error_text(error_value))
+		return
+	end
+
 	state.started = false
-	state.elapsed = math.max((state.active_context == "operative_selection" and OPERATIVE_SELECTION_DELAY or MORNINGSTAR_DELAY) - RETRY_DELAY, 0)
+	state.elapsed = CurioDomains.scheduler.next_retry_delay(state.active_context, RETRY_DELAY, MORNINGSTAR_DELAY, OPERATIVE_SELECTION_DELAY)
 	state.scheduled = state.scan_attempts < MAX_SCAN_ATTEMPTS
 
 	if state.scheduled then
@@ -1960,12 +2580,17 @@ end
 
 local function start_scan(mod)
 	local token = state.token
+	state.operation_snapshot = CurioDomains.context.snapshot(state)
+	state.operation_snapshot.token = token
+	local now = server_time()
+	local previous_boundary = tonumber(state.rotation_boundary_ms)
+	local minimum_rotation_boundary_ms = previous_boundary and now and now >= previous_boundary + STORE_ROTATION_GRACE_MS and previous_boundary or nil
 
 	state.started = true
 	state.scan_attempts = state.scan_attempts + 1
 	log_diagnostic(mod, string.format("Starting all-character Armoury scan attempt %d.", state.scan_attempts))
 
-	scan_candidates(mod, token):next(function(scan_result)
+	scan_candidates(mod, token, minimum_rotation_boundary_ms):next(function(scan_result)
 		if not context_is_current(mod, token) then
 			return
 		end
@@ -2003,6 +2628,7 @@ local function start_scan(mod)
 end
 
 local function initialize_context(mod, context)
+	reset_read_requests()
 	state.token = state.token + 1
 	state.active_context = context
 	state.context_entry_id = state.context_entry_id + 1
@@ -2020,6 +2646,7 @@ local function initialize_context(mod, context)
 	state.profile_discovery_pending = true
 	state.profile_discovery_refresh_elapsed = 0
 	state.profile_discovery_token = state.profile_discovery_token + 1
+	state.operation_snapshot = nil
 	ensure_rotation_history(mod)
 	state.rotation_boundary_ms = state.next_rotation_at_ms
 
@@ -2071,6 +2698,7 @@ CurioAcquisition.begin_morningstar_pass = function(mod)
 end
 
 CurioAcquisition.cancel = function()
+	reset_read_requests()
 	state.token = state.token + 1
 	state.active_context = nil
 	state.entry_consumed = false
@@ -2083,6 +2711,7 @@ CurioAcquisition.cancel = function()
 	state.started = false
 	state.next_rotation_at_ms = nil
 	state.rotation_boundary_ms = nil
+	state.operation_snapshot = nil
 	state.profile_discovery_token = state.profile_discovery_token + 1
 end
 
@@ -2125,7 +2754,7 @@ local function update_profile_discovery(mod, dt)
 	state.profile_discovery_inflight = true
 	local discovery_token = state.profile_discovery_token
 
-	call_promise(service, service.fetch_all_profiles):next(function(result)
+	track_read_promise(call_promise(service, service.fetch_all_profiles)):next(function(result)
 		if discovery_token ~= state.profile_discovery_token then
 			return
 		end
@@ -2335,7 +2964,9 @@ CurioAcquisition.on_setting_changed = function(mod, setting_id)
 end
 
 CurioAcquisition.update = function(mod, dt, automatic_discard_busy)
+	update_read_request_metrics(dt)
 	ensure_rotation_history(mod)
+	deliver_pending_report(mod)
 	update_profile_discovery(mod, dt)
 
 	if not enabled(mod) then
@@ -2456,6 +3087,18 @@ CurioAcquisition.update = function(mod, dt, automatic_discard_busy)
 	start_scan(mod)
 end
 
+CurioAcquisition.active_read_request_count = function()
+	return state.active_read_requests
+end
+
+CurioAcquisition.read_request_generation = function()
+	return state.read_request_generation
+end
+
+CurioAcquisition.oldest_read_request_age = function()
+	return state.oldest_read_request_age
+end
+
 CurioAcquisition._test = {
 	ARCHETYPE_SETTINGS = ARCHETYPE_SETTINGS,
 	PRIMARY_TRAITS = PRIMARY_TRAITS,
@@ -2468,12 +3111,18 @@ CurioAcquisition._test = {
 	maximum_operative_slots = maximum_operative_slots,
 	normalized_offer = normalized_offer,
 	observed_rotation_boundary = observed_rotation_boundary,
+	rotation_boundary_compatible = rotation_boundary_compatible,
 	primary_trait = primary_trait,
 	profile_is_enabled = profile_is_enabled,
 	reconcile_character_slots = reconcile_character_slots,
 	rotation_gate_status = rotation_gate_status,
+	sanitize_pending_reports = sanitize_pending_reports,
+	sanitize_rotation_history = sanitize_rotation_history,
 	sane_rotation_boundary = sane_rotation_boundary,
 	same_candidate = same_candidate,
+	operation_snapshot = function()
+		return state.operation_snapshot
+	end,
 }
 
 return CurioAcquisition

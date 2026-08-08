@@ -14,6 +14,159 @@ if type(CurioValues) ~= "table" then
 end
 
 local Features = {}
+Features._diagnostics = nil
+Features._domains = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_feature_domains")
+
+if type(Features._domains) ~= "table" or type(Features._domains.sorting) ~= "table" or type(Features._domains.sorting.signature) ~= "function" then
+	Features._domains = {
+		markers = {
+			invalidate_grid = function()
+				return false
+			end,
+		},
+		sorting = {
+			signature = function(parts)
+				return table.concat(parts or {}, "|")
+			end,
+		},
+		panels = {
+			composite_key = function(structure_key, lantern_signature, sorting_signature)
+				return tostring(structure_key or 0) .. ":" .. tostring(lantern_signature or "") .. ":" .. tostring(sorting_signature or "")
+			end,
+		},
+	}
+end
+
+Features._composition = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_feature_composition")
+
+if type(Features._composition) ~= "table" or type(Features._composition.invalidate_view) ~= "function" or type(Features._composition.inputs_changed) ~= "function" then
+	Features._composition = {
+		invalidate_view = function()
+			return false
+		end,
+		inputs_changed = function()
+			return false
+		end,
+	}
+end
+
+Features._sorting = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_feature_sorting")
+
+if type(Features._sorting) ~= "table" or type(Features._sorting.is_enabled) ~= "function" or type(Features._sorting.set_integration) ~= "function" then
+	Features._sorting = {
+		is_enabled = function()
+			return false
+		end,
+		mod = function()
+			return nil
+		end,
+		definitions = function()
+			return nil
+		end,
+		set_invalidation = function()
+		end,
+		native_option_start = function(view)
+			return #(view and view._sort_options or {}) + 1
+		end,
+		set_integration = function()
+			return false
+		end,
+		preserve_native_options = function()
+			return false
+		end,
+	}
+end
+
+Features.set_diagnostics_provider = function(provider)
+	Features._diagnostics = provider
+end
+
+Features.count_diagnostic = function(name, amount)
+	local diagnostics = Features._diagnostics
+
+	if diagnostics and type(diagnostics.count) == "function" then
+		diagnostics.count(name, amount)
+	end
+end
+
+Features.invalidate_view_composition = function(view)
+	return Features._composition.invalidate_view(view)
+end
+
+Features._sorting.set_invalidation(Features.invalidate_view_composition)
+
+Features.composition_inputs_changed = function(view, slot_kind)
+	return Features._composition.inputs_changed(view, slot_kind, Features._sorting.mod())
+end
+
+Features._contracts = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_contracts")
+
+if type(Features._contracts) ~= "table" or type(Features._contracts.safe_call) ~= "function" or type(Features._contracts.safe_method) ~= "function" then
+	Features._contracts = {
+			 safe_call = function(method, ...)
+			if type(method) ~= "function" then
+				return false, "method unavailable"
+			end
+
+			return pcall(method, ...)
+		end,
+		safe_method = function(object, method_name, ...)
+			local object_type = type(object)
+			if (object_type ~= "table" and object_type ~= "userdata") or type(method_name) ~= "string" then
+				return false, "method unavailable"
+			end
+
+			local lookup_ok, method = pcall(function()
+				return object[method_name]
+			end)
+
+			if not lookup_ok or type(method) ~= "function" then
+				return false, lookup_ok and "method unavailable" or method
+			end
+
+			return pcall(method, object, ...)
+		end,
+	}
+end
+
+Features._view_session = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_view_session")
+
+Features._operation_arbiter = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_operation_arbiter")
+
+Features.begin_view_session = function(view, kind)
+	local sessions = Features._view_session
+
+	if sessions and type(sessions.begin) == "function" then
+		return sessions.begin(view, kind)
+	end
+end
+
+Features.end_view_session = function(view, reason)
+	local sessions = Features._view_session
+
+	if sessions and type(sessions.close) == "function" then
+		return sessions.close(view, reason)
+	end
+
+	return false
+end
+
+Features.register_view_session_cleanup = function(view, cleanup_id, callback)
+	local sessions = Features._view_session
+
+	if sessions and type(sessions.register_cleanup) == "function" then
+		return sessions.register_cleanup(view, cleanup_id, callback)
+	end
+
+	return false
+end
+
+-- Keep sort ownership independent from the optional settings panels. A vendor
+-- can have a wrapped native comparator even when BetterInventory did not create
+-- a visible sorting panel for it.
+Features._registered_sort_views = setmetatable({}, {
+	__mode = "k",
+})
 
 local function shallow_copy(source)
 	local copy = {}
@@ -117,45 +270,26 @@ local registered_inventory_views = setmetatable({}, {
 local registered_armoury_views = setmetatable({}, {
 	__mode = "k",
 })
+
+Features.invalidate_all_view_composition = function()
+	for view in pairs(registered_inventory_views) do
+		Features.invalidate_view_composition(view)
+	end
+
+	for view in pairs(registered_armoury_views) do
+		Features.invalidate_view_composition(view)
+	end
+end
+
 local perfect_roll_cache = setmetatable({}, {
 	__mode = "k",
 })
 local curio_acquisition_provider
 local lantern_mod
 local lantern_overlay
-local item_sorting_mod
-local item_sorting_definitions
-local ITEM_SORTING_INVENTORY_VANILLA_SETTINGS = {
-	"enable_vanilla_level_desc",
-	"enable_vanilla_level_asc",
-	"enable_vanilla_rarity_desc",
-	"enable_vanilla_rarity_asc",
-	"enable_vanilla_name_asc",
-	"enable_vanilla_name_desc",
-}
-local ITEM_SORTING_STORE_VANILLA_SETTINGS = {
-	"enable_vanilla_level_desc",
-	"enable_vanilla_level_asc",
-	"enable_vanilla_rarity_desc",
-	"enable_vanilla_rarity_asc",
-	"enable_vanilla_price_asc",
-	"enable_vanilla_price_desc",
-	"enable_vanilla_name_asc",
-	"enable_vanilla_name_desc",
-}
 
 local function item_sorting_is_enabled()
-	if not item_sorting_mod then
-		return false
-	end
-
-	if type(item_sorting_mod.is_enabled) ~= "function" then
-		return true
-	end
-
-	local success, enabled = pcall(item_sorting_mod.is_enabled, item_sorting_mod)
-
-	return success and enabled == true
+	return Features._sorting.is_enabled()
 end
 
 Features.set_curio_acquisition_provider = function(provider)
@@ -2005,6 +2139,7 @@ local function panel_header_entry(mod, layout, view, control_id, section_id, lab
 			local collapsed = view._better_inventory_options_panel_collapsed
 
 			collapsed[section_id] = not collapsed[section_id]
+			Features.invalidate_view_composition(view)
 			-- Hotspot callbacks execute while ViewElementGrid is drawing. Rebuilding
 			-- here clears the widget array underneath Darktide's active draw loop.
 			-- The changed structure key is detected and rebuilt safely on the next
@@ -2214,37 +2349,38 @@ local function panel_checkbox_entry(mod, layout, view, control_id, setting_id, l
 end
 
 local function item_sorting_custom_option_start(view)
-	local sort_options = view and view._sort_options or {}
-
-	if not item_sorting_is_enabled() or type(item_sorting_mod.get) ~= "function" then
-		return #sort_options + 1
-	end
-
-	local view_type = is_armoury_sort_view(view) and "store" or "inventory"
-	local definition_group = item_sorting_definitions and item_sorting_definitions.customized_vanilla_methods
-	local vanilla_definitions = definition_group and definition_group[view_type]
-
-	if type(vanilla_definitions) == "table" then
-		return math.min(#vanilla_definitions + 1, #sort_options + 1)
-	end
-
-	local setting_ids = view_type == "store" and ITEM_SORTING_STORE_VANILLA_SETTINGS or ITEM_SORTING_INVENTORY_VANILLA_SETTINGS
-	local native_count = 0
-
-	for index = 1, #setting_ids do
-		local success, enabled = pcall(item_sorting_mod.get, item_sorting_mod, setting_ids[index])
-
-		if success and enabled == true then
-			native_count = native_count + 1
-		end
-	end
-
-	return math.min(native_count + 1, #sort_options + 1)
+	return Features._sorting.native_option_start(view, is_armoury_sort_view)
 end
 
 local function item_sorting_options_signature(view)
-	if not item_sorting_is_enabled() then
+	local item_sorting_active = item_sorting_is_enabled()
+
+	if not item_sorting_active then
+		if view and view._better_inventory_item_sorting_signature_cache and view._better_inventory_item_sorting_signature_cache.enabled ~= false then
+			view._better_inventory_item_sorting_signature_cache = {
+				enabled = false,
+				value = "",
+			}
+			view._better_inventory_item_sorting_signature_poll = 0
+		end
+
 		return ""
+	end
+
+	if view then
+		local cache = view._better_inventory_item_sorting_signature_cache
+		local poll = (view._better_inventory_item_sorting_signature_poll or 0) + 1
+
+		view._better_inventory_item_sorting_signature_poll = poll
+
+		-- ItemSorting settings are external to BetterInventory. Keep a bounded
+		-- compatibility poll, but avoid rebuilding the signature table/string on
+		-- every idle vendor or inventory frame.
+		if cache and cache.enabled == true and poll < 15 then
+			return cache.value
+		end
+
+		view._better_inventory_item_sorting_signature_poll = 0
 	end
 
 	local sort_options = view and view._sort_options or {}
@@ -2257,7 +2393,23 @@ local function item_sorting_options_signature(view)
 		parts[#parts + 1] = tostring(sort_options[index].display_name or index)
 	end
 
-	return table.concat(parts, "|")
+	local signature = Features._domains.sorting.signature(parts)
+	Features.count_diagnostic("panel_signatures")
+
+	if view then
+		local cache = view._better_inventory_item_sorting_signature_cache
+
+		if cache and cache.enabled == true and cache.value == signature then
+			return cache.value
+		end
+
+		view._better_inventory_item_sorting_signature_cache = {
+			enabled = true,
+			value = signature,
+		}
+	end
+
+	return signature
 end
 
 local function panel_item_sorting_option_entry(view, option, option_index)
@@ -2604,7 +2756,7 @@ local function panel_structure_key(mod, view)
 	key = key + (collapsed.item_sorting and 8388608 or 0)
 	key = key + (collapsed.native_sorting and 16777216 or 0)
 
-	return tostring(key) .. ":" .. tostring(view._better_inventory_lantern_panel_signature or "") .. ":" .. item_sorting_options_signature(view)
+	return Features._domains.panels.composite_key(key, view._better_inventory_lantern_panel_signature, item_sorting_options_signature(view))
 end
 
 local function lantern_is_enabled()
@@ -2661,10 +2813,18 @@ end
 
 local function restore_lantern_weapon_panel(view)
 	if view then
+		local changed = view._better_inventory_lantern_panel_available == true or view._better_inventory_lantern_panel_height ~= nil or view._better_inventory_lantern_panel_signature ~= nil or view._better_inventory_lantern_panel_hosted == true
+
 		view._better_inventory_lantern_panel_available = false
 		view._better_inventory_lantern_panel_height = nil
 		view._better_inventory_lantern_panel_signature = nil
 		view._better_inventory_lantern_panel_hosted = false
+
+		if changed then
+			Features.invalidate_view_composition(view)
+			view._better_inventory_lantern_panel_last_hosted = false
+			view._better_inventory_lantern_panel_last_signature = nil
+		end
 	end
 end
 
@@ -2699,77 +2859,11 @@ Features.set_lantern_integration = function(_, integration_mod)
 end
 
 Features.set_item_sorting_integration = function(integration_mod)
-	item_sorting_mod = type(integration_mod) == "table" and integration_mod or nil
-	item_sorting_definitions = nil
-
-	if item_sorting_mod and type(item_sorting_mod.io_dofile) == "function" then
-		local success, definitions = pcall(item_sorting_mod.io_dofile, item_sorting_mod, "ItemSorting/scripts/mods/ItemSorting/ItemSorting_definitions")
-
-		if success and type(definitions) == "table" then
-			item_sorting_definitions = definitions
-		end
-	end
-
-	return item_sorting_is_enabled()
+	return Features._sorting.set_integration(integration_mod, Features.invalidate_all_view_composition)
 end
 
 Features.preserve_item_sorting_native_options = function(view, selected_display_name)
-	if not item_sorting_is_enabled() or type(item_sorting_definitions) ~= "table" or not view then
-		return false
-	end
-
-	local view_type = is_armoury_sort_view(view) and "store" or view.__class_name == "InventoryWeaponsView" and "inventory" or nil
-	local vanilla_group = item_sorting_definitions.customized_vanilla_methods
-	local custom_group = item_sorting_definitions.modded_methods
-	local vanilla_definitions = view_type and vanilla_group and vanilla_group[view_type]
-	local custom_definitions = view_type and custom_group and custom_group[view_type]
-
-	if type(vanilla_definitions) ~= "table" or type(custom_definitions) ~= "table" then
-		return false
-	end
-
-	local options = {}
-	local function append_option(definition)
-		if type(definition) == "table" and type(definition.sort_function) == "function" then
-			options[#options + 1] = {
-				display_name = definition.display_name,
-				sort_function = definition.sort_function,
-			}
-		end
-	end
-
-	for index = 1, #vanilla_definitions do
-		append_option(vanilla_definitions[index])
-	end
-
-	for index = 1, #custom_definitions do
-		append_option(custom_definitions[index])
-	end
-
-	view._sort_options = options
-	local selected_index = 1
-
-	if selected_display_name ~= nil then
-		for index = 1, #options do
-			if options[index].display_name == selected_display_name then
-				selected_index = index
-				break
-			end
-		end
-	end
-
-	view._selected_sort_option_index = selected_index
-	view._selected_sort_option = options[selected_index]
-
-	local item_grid = view._item_grid
-
-	if item_grid and type(item_grid.setup_sort_button) == "function" and type(view.cb_on_sort_button_pressed) == "function" then
-		item_grid:setup_sort_button(options, function(...)
-			return view:cb_on_sort_button_pressed(...)
-		end)
-	end
-
-	return true
+	return Features._sorting.preserve_native_options(view, selected_display_name, is_armoury_sort_view, Features.invalidate_view_composition)
 end
 
 Features.release_lantern_inventory_section = function(view)
@@ -2804,6 +2898,12 @@ Features.update_lantern_inventory_section = function(mod, view)
 	view._better_inventory_lantern_panel_signature = tostring(state.sig) .. "|" .. tostring(view._better_inventory_lantern_panel_height)
 	view._better_inventory_lantern_panel_hosted = view._better_inventory_lantern_section_widget ~= nil
 
+	if view._better_inventory_lantern_panel_hosted ~= view._better_inventory_lantern_panel_last_hosted or view._better_inventory_lantern_panel_signature ~= view._better_inventory_lantern_panel_last_signature then
+		Features.invalidate_view_composition(view)
+		view._better_inventory_lantern_panel_last_hosted = view._better_inventory_lantern_panel_hosted
+		view._better_inventory_lantern_panel_last_signature = view._better_inventory_lantern_panel_signature
+	end
+
 	return view._better_inventory_lantern_panel_hosted
 end
 
@@ -2813,6 +2913,8 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 	if not panel or view._destroyed then
 		return
 	end
+
+	Features.count_diagnostic("panel_rebuilds")
 
 	local collapsed = view._better_inventory_options_panel_collapsed
 	local native_discard_active = view._discard_items_element ~= nil
@@ -3425,6 +3527,7 @@ local function armoury_native_sort_panel_height(entries)
 end
 
 local function rebuild_armoury_native_sort_panel(view)
+	Features.count_diagnostic("panel_rebuilds")
 	local panel = view and view._better_inventory_armoury_native_sort_panel
 
 	if not panel or view._destroyed then
@@ -3588,6 +3691,26 @@ Features.update_armoury_native_sort_panel = function(view)
 		return false
 	end
 
+	local sorting_mod = Features._sorting.mod()
+	local item_sorting_enabled_flag = sorting_mod and sorting_mod.enabled
+
+	if view._better_inventory_composition_item_sorting_enabled ~= item_sorting_enabled_flag then
+		Features.invalidate_view_composition(view)
+		view._better_inventory_composition_item_sorting_enabled = item_sorting_enabled_flag
+	end
+
+	local probe_count = (view._better_inventory_composition_probe_count or 0) + 1
+	local probe_due = probe_count >= 15
+	local input_changed = Features.composition_inputs_changed(view, "armoury")
+
+	if not view._better_inventory_composition_dirty and not input_changed and not view._better_inventory_armoury_native_sort_rebuild_pending and not probe_due then
+		view._better_inventory_composition_probe_count = probe_count
+
+		return true
+	end
+
+	view._better_inventory_composition_probe_count = 0
+
 	setup_armoury_controller_focus_legend(view._better_inventory_armoury_sort_mod, view)
 
 	local item_sorting_active = item_sorting_is_enabled()
@@ -3606,9 +3729,14 @@ Features.update_armoury_native_sort_panel = function(view)
 
 	local x, y = armoury_native_sort_panel_position(view)
 
-	if type(panel.set_pivot_offset) == "function" then
+	if type(panel.set_pivot_offset) == "function" and (view._better_inventory_armoury_native_sort_pivot_x ~= x or view._better_inventory_armoury_native_sort_pivot_y ~= y) then
+		Features.count_diagnostic("pivot_writes")
 		panel:set_pivot_offset(x, y)
+		view._better_inventory_armoury_native_sort_pivot_x = x
+		view._better_inventory_armoury_native_sort_pivot_y = y
 	end
+
+	view._better_inventory_composition_dirty = false
 
 	return true
 end
@@ -3675,6 +3803,8 @@ Features.setup_armoury_native_sort_panel = function(mod, layout, view, ViewEleme
 	view._better_inventory_armoury_native_sort_rebuild_pending = false
 	view._better_inventory_armoury_sort_layout = layout
 	view._better_inventory_armoury_sort_mod = mod
+	view._better_inventory_composition_dirty = true
+	view._better_inventory_composition_probe_count = 0
 	registered_armoury_views[view] = true
 	if type(panel.disable_input) == "function" then
 		panel:disable_input(false)
@@ -3701,14 +3831,23 @@ local function item_priority(view, layout_entry)
 	end
 
 	local slots = item.slots
-	local equipped = slots and type(view.is_item_equipped_in_any_slot) == "function" and view:is_item_equipped_in_any_slot(item, slots)
+	local equipped = false
+
+	if slots then
+		local equipped_ok, equipped_value = Features._contracts.safe_method(view, "is_item_equipped_in_any_slot", item, slots)
+		equipped = equipped_ok and equipped_value == true
+	end
 
 	if equipped then
 		return 2
 	end
 
-	if item.gear_id and Items.is_item_id_favorited(item.gear_id) then
-		return 1
+	if item.gear_id and type(Items.is_item_id_favorited) == "function" then
+		local favorite_ok, favorite_value = Features._contracts.safe_call(Items.is_item_id_favorited, item.gear_id)
+
+		if favorite_ok and favorite_value == true then
+			return 1
+		end
 	end
 
 	return 0
@@ -3743,13 +3882,30 @@ local function configure_sort_options(mod, view)
 		return
 	end
 
+	local session_kind = is_armoury_sort_view(view) and "armoury" or "inventory"
+	Features.begin_view_session(view, session_kind)
+	Features.register_view_session_cleanup(view, "sort_options", function(session_view)
+		Features.restore_sort_options(session_view)
+	end)
+
+	Features._registered_sort_views[view] = true
+
 	for index = 1, #sort_options do
 		local option = sort_options[index]
+		local wrapped_sort = option and option._better_inventory_wrapped_sort
+
+		if option and option._better_inventory_original_sort and option.sort_function ~= wrapped_sort then
+			-- Another integration replaced the comparator after BetterInventory
+			-- wrapped it. Treat that comparator as the new native baseline.
+			option._better_inventory_original_sort = nil
+			option._better_inventory_wrapped_sort = nil
+		end
+
 		local original_sort = option and option.sort_function
 
 		if type(original_sort) == "function" and not option._better_inventory_original_sort then
 			option._better_inventory_original_sort = original_sort
-			option.sort_function = function(left, right)
+			local better_inventory_sort = function(left, right)
 				local left_priority = inventory_sort_priority(mod, view, left)
 				local right_priority = inventory_sort_priority(mod, view, right)
 
@@ -3759,6 +3915,31 @@ local function configure_sort_options(mod, view)
 
 				return original_sort(left, right)
 			end
+			option._better_inventory_wrapped_sort = better_inventory_sort
+			option.sort_function = better_inventory_sort
+		end
+	end
+end
+
+Features.restore_sort_options = function(view)
+	local sort_options = view and view._sort_options
+
+	if type(sort_options) ~= "table" then
+		return
+	end
+
+	for index = 1, #sort_options do
+		local option = sort_options[index]
+		local original_sort = option and option._better_inventory_original_sort
+		local wrapped_sort = option and option._better_inventory_wrapped_sort
+
+		if option and type(original_sort) == "function" and option.sort_function == wrapped_sort then
+			option.sort_function = original_sort
+		end
+
+		if option then
+			option._better_inventory_original_sort = nil
+			option._better_inventory_wrapped_sort = nil
 		end
 	end
 end
@@ -3785,6 +3966,16 @@ Features.configure_global_store_sort_options = function(mod, view)
 	end
 
 	configure_sort_options(mod, view)
+end
+
+Features.rebind_sort_options = function(mod, layout)
+	for view in pairs(Features._registered_sort_views) do
+		if view._destroyed then
+			Features._registered_sort_views[view] = nil
+		elseif (layout and is_inventory_view(layout, view)) or is_armoury_sort_view(view) then
+			configure_sort_options(mod, view)
+		end
+	end
 end
 
 Features.resort_inventory = function(mod, layout, view)
@@ -4413,45 +4604,162 @@ local function show_automatic_no_candidates_notification(mod)
 	return true
 end
 
-local function show_popup(context)
+local function show_popup(context, callback)
 	local event_manager = Managers and Managers.event
 
 	if not event_manager or type(event_manager.trigger) ~= "function" then
 		return false
 	end
 
-	return pcall(event_manager.trigger, event_manager, "event_show_ui_popup", context)
+	return pcall(event_manager.trigger, event_manager, "event_show_ui_popup", context, callback)
 end
 
-local discard_transaction = {
-	owner = nil,
-	view = nil,
-}
+local discard_transaction = Features._operation_arbiter and type(Features._operation_arbiter.new) == "function" and Features._operation_arbiter.new()
+
+if not discard_transaction then
+	-- Partial/test environments without the extracted module retain the same
+	-- guarded behavior until the next successful reload.
+	discard_transaction = {
+		owner = nil,
+		token = 0,
+		view = nil,
+		popup_id = nil,
+		manual_delete_inflight = false,
+		manual_delete_transaction_token = nil,
+	}
+end
+
+Features.discard_owner = function()
+	if type(discard_transaction.active_owner) == "function" then
+		return discard_transaction:active_owner()
+	end
+
+	return discard_transaction.owner
+end
+
+Features.discard_view = function()
+	if type(discard_transaction.active_view) == "function" then
+		return discard_transaction:active_view()
+	end
+
+	return discard_transaction.view
+end
+
+Features.discard_token = function()
+	if type(discard_transaction.active_token) == "function" then
+		return discard_transaction:active_token()
+	end
+
+	return discard_transaction.token
+end
 
 local function acquire_discard_transaction(owner, view)
+	if type(discard_transaction.acquire) == "function" then
+		local token = discard_transaction:acquire(owner, view)
+
+		if not token then
+			return false
+		end
+
+		if view then
+			view._better_inventory_discard_pending = true
+		end
+
+		return token
+	end
+
 	if discard_transaction.owner then
 		return false
 	end
 
+	discard_transaction.token = discard_transaction.token + 1
 	discard_transaction.owner = owner
 	discard_transaction.view = view
+	discard_transaction.popup_id = nil
 
 	if view then
 		view._better_inventory_discard_pending = true
 	end
 
+	return discard_transaction.token
+end
+
+Features.remove_discard_popup = function(popup_id)
+	if not popup_id then
+		return
+	end
+
+	local event_manager = Managers and Managers.event
+
+	if event_manager and type(event_manager.trigger) == "function" then
+		pcall(event_manager.trigger, event_manager, "event_remove_ui_popup", popup_id)
+	end
+end
+
+Features.set_discard_popup_id = function(owner, token, popup_id)
+	if type(discard_transaction.set_popup) == "function" then
+		if discard_transaction:set_popup(owner, token, popup_id) then
+			return
+		end
+
+		-- Never let a delayed popup callback attach an old UI object to a newer
+		-- transaction.
+		Features.remove_discard_popup(popup_id)
+	elseif discard_transaction.owner == owner and discard_transaction.token == token then
+		discard_transaction.popup_id = popup_id
+	else
+		-- Never let a delayed popup callback attach an old UI object to a newer
+		-- transaction.
+		Features.remove_discard_popup(popup_id)
+	end
+end
+
+Features.clear_discard_popup = function(owner, token)
+	if type(discard_transaction.clear_popup) == "function" then
+		return discard_transaction:clear_popup(owner, token)
+	end
+
+	if discard_transaction.owner ~= owner or discard_transaction.token ~= token then
+		return false
+	end
+
+	discard_transaction.popup_id = nil
+
 	return true
 end
 
-local function release_discard_transaction(owner)
-	if discard_transaction.owner ~= owner then
+local function release_discard_transaction(owner, token)
+	if type(discard_transaction.release) == "function" then
+		local released, view, popup_id = discard_transaction:release(owner, token)
+
+		if not released then
+			return false
+		end
+
+		Features.remove_discard_popup(popup_id)
+
+		if view then
+			view._better_inventory_discard_pending = false
+		end
+
+		return true
+	end
+
+	if discard_transaction.owner ~= owner or token and discard_transaction.token ~= token then
 		return false
 	end
 
 	local view = discard_transaction.view
+	local popup_id = discard_transaction.popup_id
 
 	discard_transaction.owner = nil
 	discard_transaction.view = nil
+	discard_transaction.popup_id = nil
+	if owner == "manual" then
+		discard_transaction.manual_delete_inflight = false
+		discard_transaction.manual_delete_transaction_token = nil
+	end
+	Features.remove_discard_popup(popup_id)
 
 	if view then
 		view._better_inventory_discard_pending = false
@@ -4460,8 +4768,119 @@ local function release_discard_transaction(owner)
 	return true
 end
 
+-- The native manual discard event dispatches GearService.delete_gear_batch
+-- internally. The event itself has no completion value, so BetterInventory's
+-- GearService hook bridges the returned promise here without issuing a second
+-- delete request.
+Features.observe_manual_discard_settlement = function(promise)
+	if type(discard_transaction.observe_manual_settlement) == "function" then
+		return discard_transaction:observe_manual_settlement(promise, function(transaction_token)
+			release_discard_transaction("manual", transaction_token)
+		end)
+	end
+
+	if discard_transaction.owner ~= "manual" or discard_transaction.manual_delete_inflight then
+		return false
+	end
+
+	local transaction_token = discard_transaction.token
+
+	if not promise or type(promise.next) ~= "function" or type(promise.catch) ~= "function" then
+		return false
+	end
+
+	discard_transaction.manual_delete_inflight = true
+	discard_transaction.manual_delete_transaction_token = transaction_token
+
+	local function settle()
+		if discard_transaction.manual_delete_transaction_token == transaction_token and discard_transaction.owner == "manual" and discard_transaction.token == transaction_token then
+			release_discard_transaction("manual", transaction_token)
+		end
+	end
+
+	local continuation = promise:next(function(result)
+		settle()
+
+		return result
+	end)
+
+	if continuation and type(continuation.next) == "function" and type(continuation.catch) == "function" then
+		continuation:catch(function(error_value)
+			settle()
+
+			return error_value
+		end)
+	end
+
+	return true
+end
+
+Features.manual_discard_settlement_active = function()
+	if type(discard_transaction.manual_settlement_active) == "function" then
+		return discard_transaction:manual_settlement_active()
+	end
+
+	return discard_transaction.manual_delete_inflight and discard_transaction.owner == "manual"
+end
+
+local function discard_transaction_is_current(owner, token)
+	if type(discard_transaction.is_current) == "function" then
+		return discard_transaction:is_current(owner, token)
+	end
+
+	return discard_transaction.owner == owner and discard_transaction.token == token
+end
+
+Features.discard_popup_is_active = function(popup_id)
+	local ui_manager = Managers and Managers.ui
+
+	if not ui_manager or type(ui_manager.active_popups) ~= "function" then
+		return nil
+	end
+
+	local ok, active_popups = pcall(ui_manager.active_popups, ui_manager)
+
+	if not ok or type(active_popups) ~= "table" then
+		return nil
+	end
+
+	for index = 1, #active_popups do
+		if active_popups[index] and active_popups[index].id == popup_id then
+			return true
+		end
+	end
+
+	return false
+end
+
+Features.reconcile_discard_transaction = function()
+	-- Confirmation popups close before their destructive promise settles. The
+	-- popup is no longer the owner once native deletion starts; settlement is.
+	-- Never interpret that expected UI close as permission to release the shared
+	-- manual/automatic exclusion token.
+	if Features.manual_discard_settlement_active() then
+		return
+	end
+
+	local popup_id = nil
+
+	if type(discard_transaction.current_popup) == "function" then
+		popup_id = discard_transaction:current_popup()
+	else
+		popup_id = discard_transaction.popup_id
+	end
+
+	if not popup_id then
+		return
+	end
+
+	if Features.discard_popup_is_active(popup_id) == false then
+		release_discard_transaction(Features.discard_owner(), Features.discard_token())
+	end
+end
+
 Features.request_quick_discard = function(mod, layout, view)
-	if view._better_inventory_discard_pending or discard_transaction.owner then
+	if view._better_inventory_discard_pending or Features.discard_owner() then
 		return
 	end
 
@@ -4489,7 +4908,9 @@ Features.request_quick_discard = function(mod, layout, view)
 		captured_ids[candidates[index].gear_id] = true
 	end
 
-	if not acquire_discard_transaction("manual", view) then
+	local transaction_token = acquire_discard_transaction("manual", view)
+
+	if not transaction_token then
 		return
 	end
 
@@ -4501,11 +4922,11 @@ Features.request_quick_discard = function(mod, layout, view)
 		end
 
 		resolved = true
-		release_discard_transaction("manual")
+		release_discard_transaction("manual", transaction_token)
 	end
 
 	local function confirm_discard()
-		if resolved then
+		if resolved or not discard_transaction_is_current("manual", transaction_token) then
 			return
 		end
 
@@ -4518,13 +4939,23 @@ Features.request_quick_discard = function(mod, layout, view)
 
 		local event_manager = Managers and Managers.event
 
+		local event_ok = false
+		-- Match the automatic-discard path: detach popup lifecycle ownership before
+		-- dispatching the native event. GearService settlement becomes the sole
+		-- terminal owner if the event exposes a compatible deletion promise.
+		Features.clear_discard_popup("manual", transaction_token)
+
 		if #gear_ids > 0 and event_manager and type(event_manager.trigger) == "function" then
-			pcall(event_manager.trigger, event_manager, "event_discard_items", gear_ids)
+			event_ok = pcall(event_manager.trigger, event_manager, "event_discard_items", gear_ids)
 		end
 
-		-- The native event owns its asynchronous backend request and does not
-		-- expose a completion result. Do not claim success before it completes.
-		clear_pending()
+		-- GearService.delete_gear_batch is normally observed by the main-module
+		-- bridge above. If the native event could not dispatch or no compatible
+		-- promise was exposed, release immediately to avoid a permanent UI lock;
+		-- the event remains the sole owner of any native request.
+		if not event_ok or not Features.manual_discard_settlement_active() then
+			clear_pending()
+		end
 	end
 
 	local popup_shown = show_popup({
@@ -4546,7 +4977,9 @@ Features.request_quick_discard = function(mod, layout, view)
 			},
 		},
 		title_text_unlocalized = mod:localize("quick_discard_confirmation_title"),
-	})
+	}, function(popup_id)
+		Features.set_discard_popup_id("manual", transaction_token, popup_id)
+	end)
 
 	if not popup_shown then
 		clear_pending()
@@ -4556,13 +4989,58 @@ end
 local AUTOMATIC_DISCARD_DELAY = 5
 local AUTOMATIC_DISCARD_MAX_FETCH_ATTEMPTS = 3
 local automatic_discard_state = {
+	delete_inflight = false,
+	delete_transaction_token = nil,
 	elapsed = 0,
 	fetch_attempts = 0,
+	read_promise = nil,
+	read_inflight = false,
 	hub_character_id = nil,
 	scheduled = false,
 	started = false,
 	token = 0,
 }
+
+Features.clear_automatic_read_promise = function(promise)
+	if automatic_discard_state.read_promise == promise then
+		automatic_discard_state.read_promise = nil
+		automatic_discard_state.read_inflight = false
+	end
+end
+
+Features.track_automatic_read_promise = function(promise)
+	if not promise then
+		return promise
+	end
+
+	automatic_discard_state.read_promise = promise
+	automatic_discard_state.read_inflight = true
+
+	if type(promise.next) == "function" and type(promise.catch) == "function" then
+		promise:next(function(result)
+			Features.clear_automatic_read_promise(promise)
+
+			return result
+		end):catch(function(error_value)
+			Features.clear_automatic_read_promise(promise)
+
+			return error_value
+		end)
+	end
+
+	return promise
+end
+
+Features.cancel_automatic_read_promise = function()
+	local promise = automatic_discard_state.read_promise
+
+	automatic_discard_state.read_promise = nil
+	automatic_discard_state.read_inflight = false
+
+	if promise and type(promise.cancel) == "function" then
+		pcall(promise.cancel, promise)
+	end
+end
 
 local function automatic_discard_enabled(mod)
 	return mod:get("enable_experimental_quick_discard") == true and mod:get("quick_discard_mode") == "automatic"
@@ -4572,7 +5050,11 @@ Features.morningstar_auto_discard_is_busy = function(mod)
 	-- The scanner leaves `scheduled` set while its read-only fetch is in flight,
 	-- then the transaction owner remains authoritative through confirmation and
 	-- deletion. Once both clear, a Curio purchase can no longer enter this pass.
-	return automatic_discard_enabled(mod) and (automatic_discard_state.scheduled or discard_transaction.owner == "automatic")
+	return automatic_discard_state.delete_inflight or Features.discard_owner() == "automatic" or automatic_discard_enabled(mod) and automatic_discard_state.scheduled
+end
+
+Features.automatic_discard_read_request_count = function()
+	return automatic_discard_state.read_inflight and 1 or 0
 end
 
 local function current_game_mode_name()
@@ -4696,7 +5178,7 @@ local function fetch_inventory_promise(gear_service, character_id)
 		return nil, "GearService.fetch_inventory returned no compatible promise"
 	end
 
-	return promise
+	return Features.track_automatic_read_promise(promise)
 end
 
 local function automatic_context_is_current(mod, token, character_id)
@@ -4759,16 +5241,16 @@ local function notify_discard_result(mod, candidates, result)
 	show_discard_summary_notification(mod, discarded_candidates)
 end
 
-local function delete_automatic_candidates(mod, token, character_id, captured_ids)
+local function delete_automatic_candidates(mod, token, character_id, captured_ids, transaction_token)
 	if not automatic_context_is_current(mod, token, character_id) then
-		release_discard_transaction("automatic")
+		release_discard_transaction("automatic", transaction_token)
 		return
 	end
 
 	local gear_service = Managers and Managers.data_service and Managers.data_service.gear
 
 	if not gear_service or type(gear_service.fetch_inventory) ~= "function" or type(gear_service.delete_gear_batch) ~= "function" then
-		release_discard_transaction("automatic")
+		release_discard_transaction("automatic", transaction_token)
 		return
 	end
 
@@ -4776,13 +5258,13 @@ local function delete_automatic_candidates(mod, token, character_id, captured_id
 
 	if not fetch_promise then
 		automatic_discard_info(mod, "Final revalidation could not start: " .. automatic_discard_error(fetch_error))
-		release_discard_transaction("automatic")
+		release_discard_transaction("automatic", transaction_token)
 		return
 	end
 
 	fetch_promise:next(function(items)
 		if not automatic_context_is_current(mod, token, character_id) or type(items) ~= "table" then
-			release_discard_transaction("automatic")
+			release_discard_transaction("automatic", transaction_token)
 			return
 		end
 
@@ -4790,7 +5272,7 @@ local function delete_automatic_candidates(mod, token, character_id, captured_id
 
 		if not protection then
 			automatic_discard_info(mod, "Final revalidation stopped safely because " .. automatic_discard_error(protection_error) .. ".")
-			release_discard_transaction("automatic")
+			release_discard_transaction("automatic", transaction_token)
 
 			return
 		end
@@ -4805,20 +5287,28 @@ local function delete_automatic_candidates(mod, token, character_id, captured_id
 		automatic_discard_info(mod, string.format("Revalidated %d candidate(s) immediately before deletion.", #gear_ids))
 
 		if #gear_ids == 0 then
-			release_discard_transaction("automatic")
+			release_discard_transaction("automatic", transaction_token)
 			return
 		end
 
 		local delete_ok, delete_promise = pcall(gear_service.delete_gear_batch, gear_service, gear_ids)
 
 		if not delete_ok or not delete_promise or type(delete_promise.next) ~= "function" or type(delete_promise.catch) ~= "function" then
-			release_discard_transaction("automatic")
+			release_discard_transaction("automatic", transaction_token)
 			error(delete_ok and "GearService.delete_gear_batch returned no compatible promise" or delete_promise)
 		end
 
+		automatic_discard_state.delete_inflight = true
+		automatic_discard_state.delete_transaction_token = transaction_token
+
 		return delete_promise:next(function(result)
+			if automatic_discard_state.delete_transaction_token == transaction_token then
+				automatic_discard_state.delete_inflight = false
+				automatic_discard_state.delete_transaction_token = nil
+			end
+
 			notify_discard_result(mod, candidates, result)
-			release_discard_transaction("automatic")
+			release_discard_transaction("automatic", transaction_token)
 
 			return result
 		end)
@@ -4826,12 +5316,19 @@ local function delete_automatic_candidates(mod, token, character_id, captured_id
 		-- GearService already reports backend failures. Keep the one-shot
 		-- Morningstar pass from surfacing an unhandled promise rejection.
 		automatic_discard_info(mod, "Final revalidation failed: " .. automatic_discard_error(error_value))
-		release_discard_transaction("automatic")
+		if automatic_discard_state.delete_transaction_token == transaction_token then
+			automatic_discard_state.delete_inflight = false
+			automatic_discard_state.delete_transaction_token = nil
+		end
+
+		release_discard_transaction("automatic", transaction_token)
 	end)
 end
 
 local function present_automatic_discard(mod, token, character_id, candidates)
-	if not acquire_discard_transaction("automatic") then
+	local transaction_token = acquire_discard_transaction("automatic")
+
+	if not transaction_token then
 		automatic_discard_info(mod, "Suppressed a duplicate automatic discard confirmation preview.")
 
 		return
@@ -4845,7 +5342,7 @@ local function present_automatic_discard(mod, token, character_id, candidates)
 
 	if mod:get("quick_discard_skip_automatic_confirmation") == true then
 		automatic_discard_info(mod, "Confirmation skipping is enabled; starting final safety revalidation.")
-		delete_automatic_candidates(mod, token, character_id, captured_ids)
+		delete_automatic_candidates(mod, token, character_id, captured_ids, transaction_token)
 
 		return
 	end
@@ -4858,7 +5355,7 @@ local function present_automatic_discard(mod, token, character_id, candidates)
 		end
 
 		confirmation_resolved = true
-		release_discard_transaction("automatic")
+		release_discard_transaction("automatic", transaction_token)
 	end
 
 	local popup_shown = show_popup({
@@ -4866,9 +5363,10 @@ local function present_automatic_discard(mod, token, character_id, candidates)
 		options = {
 			{
 				callback = function()
-					if not confirmation_resolved and discard_transaction.owner == "automatic" then
+					if not confirmation_resolved and discard_transaction_is_current("automatic", transaction_token) then
 						confirmation_resolved = true
-						delete_automatic_candidates(mod, token, character_id, captured_ids)
+						Features.clear_discard_popup("automatic", transaction_token)
+						delete_automatic_candidates(mod, token, character_id, captured_ids, transaction_token)
 					end
 				end,
 				close_on_pressed = true,
@@ -4885,7 +5383,9 @@ local function present_automatic_discard(mod, token, character_id, candidates)
 			},
 		},
 		title_text_unlocalized = mod:localize("quick_discard_automatic_confirmation_title"),
-	})
+	}, function(popup_id)
+		Features.set_discard_popup_id("automatic", transaction_token, popup_id)
+	end)
 
 	if not popup_shown then
 		clear_confirmation()
@@ -4898,7 +5398,7 @@ Features.begin_morningstar_auto_discard = function(mod)
 	-- Some startup/state-transition orders can report GameplayStateRun enter
 	-- again after the one-shot transaction has presented its confirmation or
 	-- started deletion. Keep that transaction authoritative until it finishes.
-	if discard_transaction.owner == "automatic" then
+	if Features.discard_owner() == "automatic" then
 		automatic_discard_info(mod, "Ignored a duplicate automatic discard re-arm while a transaction is active.")
 
 		return
@@ -4916,15 +5416,18 @@ Features.cancel_morningstar_auto_discard = function(preserve_transaction)
 	-- A momentary unavailable/non-hub game-mode observation must not unlock an
 	-- active transaction. A real GameplayStateRun exit or mod disable calls this
 	-- without preservation because its UI and backend context are going away.
-	if preserve_transaction and discard_transaction.owner == "automatic" then
+	if preserve_transaction and Features.discard_owner() == "automatic" then
 		automatic_discard_state.scheduled = false
 		automatic_discard_state.started = true
 
 		return
 	end
 
+	Features.cancel_automatic_read_promise()
 	automatic_discard_state.token = automatic_discard_state.token + 1
-	release_discard_transaction("automatic")
+	if not automatic_discard_state.delete_inflight then
+		release_discard_transaction("automatic")
+	end
 	automatic_discard_state.elapsed = 0
 	automatic_discard_state.fetch_attempts = 0
 	automatic_discard_state.hub_character_id = nil
@@ -4932,9 +5435,21 @@ Features.cancel_morningstar_auto_discard = function(preserve_transaction)
 	automatic_discard_state.started = false
 end
 
+Features.cancel_manual_discard = function()
+	if Features.discard_owner() == "manual" then
+		if Features.manual_discard_settlement_active() then
+			return false
+		end
+
+		release_discard_transaction("manual", Features.discard_token())
+	end
+
+	return true
+end
+
 Features.update_morningstar_auto_discard = function(mod, dt)
 	if not automatic_discard_enabled(mod) then
-		if automatic_discard_state.scheduled or automatic_discard_state.started or automatic_discard_state.hub_character_id or discard_transaction.owner == "automatic" then
+		if automatic_discard_state.scheduled or automatic_discard_state.started or automatic_discard_state.hub_character_id or Features.discard_owner() == "automatic" then
 			Features.cancel_morningstar_auto_discard()
 		end
 
@@ -4965,6 +5480,7 @@ Features.update_morningstar_auto_discard = function(mod, dt)
 	-- hub and character identity so hot reloads and unusual state transition
 	-- orders cannot silently leave Automatic mode dormant.
 	if automatic_discard_state.hub_character_id ~= character_id then
+		Features.cancel_automatic_read_promise()
 		automatic_discard_state.token = automatic_discard_state.token + 1
 		automatic_discard_state.elapsed = 0
 		automatic_discard_state.fetch_attempts = 0
@@ -5202,6 +5718,8 @@ local function update_inventory_options_panel(mod, layout, view, slot_kind)
 	local panel = view._better_inventory_options_panel
 
 	if not panel or mod:get("enable_inventory_options_panel_prototype") ~= true then
+		Features.invalidate_view_composition(view)
+
 		if panel then
 			set_options_panel_visible(view, panel, false)
 		end
@@ -5220,6 +5738,18 @@ local function update_inventory_options_panel(mod, layout, view, slot_kind)
 
 		return true
 	end
+
+	local probe_count = (view._better_inventory_composition_probe_count or 0) + 1
+	local probe_due = probe_count >= 15
+	local input_changed = Features.composition_inputs_changed(view, slot_kind)
+
+	if not view._better_inventory_composition_dirty and not input_changed and not probe_due then
+		view._better_inventory_composition_probe_count = probe_count
+
+		return true
+	end
+
+	view._better_inventory_composition_probe_count = 0
 
 	set_legacy_inventory_options_visible(view, false)
 	set_options_panel_visible(view, panel, true)
@@ -5314,6 +5844,8 @@ local function update_inventory_options_panel(mod, layout, view, slot_kind)
 
 		return false
 	end
+
+	view._better_inventory_composition_dirty = false
 
 	return true
 end
@@ -5443,7 +5975,16 @@ Features.update_inventory_sort_toggle = function(mod, layout, view)
 		return
 	end
 
+	local sorting_mod = Features._sorting.mod()
+	local item_sorting_enabled_flag = sorting_mod and sorting_mod.enabled
+
+	if view._better_inventory_composition_item_sorting_enabled ~= item_sorting_enabled_flag then
+		Features.invalidate_view_composition(view)
+		view._better_inventory_composition_item_sorting_enabled = item_sorting_enabled_flag
+	end
+
 	if mod:get("show_inventory_options_widget") == false then
+		Features.invalidate_view_composition(view)
 		local panel = view._better_inventory_options_panel
 
 		set_legacy_inventory_options_visible(view, false)
@@ -5518,6 +6059,7 @@ Features.sync_inventory_sort_setting = function(mod, layout)
 	local perfect_rolls_enabled = mod:get("prioritize_perfect_roll_weapons") == true
 
 	for view in pairs(registered_inventory_views) do
+		Features.invalidate_view_composition(view)
 		local widget = view._widgets_by_name and view._widgets_by_name[INVENTORY_SORT_TOGGLE_ID]
 		local panel_widget = view._better_inventory_options_panel_widgets and view._better_inventory_options_panel_widgets[INVENTORY_SORT_TOGGLE_ID]
 		local perfect_panel_widget = view._better_inventory_options_panel_widgets and view._better_inventory_options_panel_widgets[INVENTORY_PERFECT_SORT_TOGGLE_ID]
@@ -5541,22 +6083,31 @@ Features.sync_inventory_sort_setting = function(mod, layout)
 	end
 
 	for view in pairs(registered_armoury_views) do
+		Features.invalidate_view_composition(view)
 		Features.resort_inventory(mod, layout, view)
 	end
 end
 
 Features.sync_quick_discard_settings = function(mod, layout, deferred_view)
 	for view in pairs(registered_inventory_views) do
-		if not view._destroyed and view ~= deferred_view then
-			Features.update_inventory_sort_toggle(mod, layout, view)
+		if not view._destroyed then
+			Features.invalidate_view_composition(view)
+
+			if view ~= deferred_view then
+				Features.update_inventory_sort_toggle(mod, layout, view)
+			end
 		end
 	end
 end
 
 Features.sync_curio_acquisition_settings = function(mod, layout, deferred_view)
 	for view in pairs(registered_inventory_views) do
-		if not view._destroyed and view ~= deferred_view then
-			Features.update_inventory_sort_toggle(mod, layout, view)
+		if not view._destroyed then
+			Features.invalidate_view_composition(view)
+
+			if view ~= deferred_view then
+				Features.update_inventory_sort_toggle(mod, layout, view)
+			end
 		end
 	end
 end
@@ -5575,6 +6126,7 @@ Features.bind_inventory_sort_toggle = function(mod, layout, view)
 	end
 
 	registered_inventory_views[view] = true
+	Features.invalidate_view_composition(view)
 	Features.update_inventory_sort_toggle(mod, layout, view)
 	hotspot.pressed_callback = function()
 		local enabled = not content.checked
@@ -5674,10 +6226,27 @@ Features.bind_inventory_sort_toggle = function(mod, layout, view)
 end
 
 Features.unregister_inventory_view = function(view)
+	local session_closed = Features.end_view_session(view, "view_exit")
+
+	if not session_closed then
+		Features.restore_sort_options(view)
+	end
+
+	if Features.discard_owner() == "manual" and Features.discard_view() == view then
+		Features.cancel_manual_discard()
+	end
+
+	Features._registered_sort_views[view] = nil
 	registered_inventory_views[view] = nil
 end
 
 Features.unregister_armoury_view = function(view)
+	local session_closed = Features.end_view_session(view, "view_exit")
+
+	if not session_closed then
+		Features.restore_sort_options(view)
+	end
+
 	if view and view._better_inventory_armoury_controller_focused == true then
 		set_armoury_controller_focus(view, false)
 	end
@@ -5695,12 +6264,30 @@ Features.unregister_armoury_view = function(view)
 		view._better_inventory_armoury_controller_legend_action = nil
 	end
 
+	Features._registered_sort_views[view] = nil
 	registered_armoury_views[view] = nil
 end
 
 Features.disable_inventory_views = function()
+	Features.cancel_manual_discard()
+
+	for view in pairs(Features._registered_sort_views) do
+		local session_closed = Features.end_view_session(view, "mod_disable")
+
+		if not session_closed then
+			Features.restore_sort_options(view)
+		else
+			view._better_inventory_session_disable_handled = true
+		end
+	end
+
 	for view in pairs(registered_inventory_views) do
 		restore_lantern_weapon_panel(view)
+
+		if view._better_inventory_options_panel_controller_focused == true then
+			set_inventory_options_panel_controller_focus(view, false)
+		end
+
 		local panel = view._better_inventory_options_panel
 
 		if panel then
@@ -5711,9 +6298,28 @@ Features.disable_inventory_views = function()
 	end
 
 	for view in pairs(registered_armoury_views) do
+		-- The shared session was closed by the registered-sort pass above. A
+		-- compatibility restore remains for views that could not open a session.
+		if view._better_inventory_session_disable_handled then
+			view._better_inventory_session_disable_handled = nil
+		else
+			Features.restore_sort_options(view)
+		end
+
 		if view._better_inventory_armoury_controller_focused == true then
 			set_armoury_controller_focus(view, false)
 		end
+
+		local legend = view._better_inventory_armoury_controller_legend
+		local legend_id = view._better_inventory_armoury_controller_legend_id
+
+		if legend and legend_id and type(legend.remove_entry) == "function" then
+			pcall(legend.remove_entry, legend, legend_id)
+		end
+
+		view._better_inventory_armoury_controller_legend = nil
+		view._better_inventory_armoury_controller_legend_id = nil
+		view._better_inventory_armoury_controller_legend_action = nil
 
 		local panel = view._better_inventory_armoury_native_sort_panel
 

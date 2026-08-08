@@ -1,12 +1,50 @@
 # BetterInventory changelog
 
-## 1.9.4 - Unreleased
+## 2.0.0 - Unreleased
 
 ### Fixed / Added
 
+- P0 hotfix `665801b`: prevent Character Overview composition probes from reading absent optional `window`/`canvas` scenegraph nodes through Darktide strict tables. This removes the reported `table.lua:1204` crash when opening a melee weapon card and adds a strict-scenegraph regression test.
+- B42/B43 remediation: production-facing harnesses now execute the real extracted Character Overview, feature, and Curio domain modules. Automatic Curio scan continuations carry an account/context/read-generation snapshot, and mixed or missing multi-character store boundaries wait without evaluating or purchasing offers.
+- B44-B46 remediation: settings metadata/localization audits are authoritative; the verifier now attributes failures to one named case, gates critical async/destructive outcomes, and rejects unassigned runtime modules; composition invalidation moved into its own production-loaded module and the unused Character Overview config-model attachment was removed.
+- B48 first architecture slice: ItemSorting integration state and native-option assembly now live behind a dedicated production-loaded adapter; remaining panel, optional-integration, and discard extraction is tracked as B49.
+- B50/B51: owner live testing showed that rebuilding only one empty/equipped Curio widget was incomplete. The replacement fix triggers Darktide's native complete individual-layout rebuild on a Curio presence/type mismatch, restoring coupled registrations, navigation, callbacks, and icon lifecycle in both directions. Owner testing confirms the reported empty-slot→equipped regression is fixed in-game.
+- B52/B53: manual discard ownership now survives popup removal until native deletion settles; equipment persistence retries now fail closed and retry as one unit when an Items call throws or returns an invalid promise.
+- B54: every Python assertion must map to exactly one named risk case. The suite now passes 14 tests, 45 cases, and 12 critical async/destructive outcome gates.
+- Finalized the B40/B41 release-candidate handoff with a repeatable live stress/compatibility matrix, deterministic release fingerprint, and explicit documentation that live-engine validation remains the final release blocker.
+- Fixed Automatic Curio Buyer consuming a predicted new rotation while Darktide's backend still returned the expired storefront. Rotation-triggered passes now require storefront boundary advancement and poll stale responses as a nonterminal wait without evaluating offers, showing a false failure, or suppressing the real refresh pass. A one-time ledger migration invalidates potentially poisoned pre-hotfix boundaries while preserving pending reports and account metadata.
+- Hardened weapon and Curio equip persistence across rapid Character Overview exits. BetterInventory observes Darktide's native request, retries only confirmed idempotent failures with account/character guards, preserves uncommitted Y previews from delayed authoritative-X events when reopening the child inventory, and refreshes the overview after confirmed persistence.
+- Fixed DMF customization-save handling: normal non-throwing no-return saves are treated as delegated instead of retried forever, while unavailable/throwing/rejected paths use bounded attempts. Manual discard now retains the shared destructive-operation lock until the native deletion promise settles, and same-gear Character Overview revisions invalidate stale detailed-card content.
+- Added repository-only clean-checkout verification plus optional explicit DMF/Darktide compatibility paths. Added opt-in sampled hot-path diagnostics for UI counters, async read age, active promises, and Lua memory; diagnostics remain disabled by default.
+- Reduced idle MyFavorites marker scans and panel geometry writes with dirty-generation invalidation, bounded compatibility probes, and weak-key lifecycle ownership.
+- Added scoped ViewSession teardown and a generation-owned destructive-operation arbiter for discard popup/backend settlement lifecycles.
+- Replaced the single pending Automatic Curio report with a bounded, deduplicated, account-scoped queue delivered oldest-first.
+- Added typed guarded capability outcomes for optional integrations and conservative settings-registry refresh fallback when lookup or invocation fails.
+- Extracted Character Overview item models and complete derived-content reset policy, explicit feature/Curio domain adapters, and auditable metadata for all active settings.
+- Added deterministic runtime bundle manifests with source hashes and a documented DMF-safe deferral for authoring-file splitting.
+- Behavior verification now reports named risk cases, checks AST-discovered local module references, and enforces risk-weighted coverage thresholds for behavior-bearing runtime modules.
+- Bumped active release metadata to 2.0.0 and added the full-project audit, prioritized findings, phased remediation plan, and release gates in `docs/v2.0.0-full-project-audit.md`.
+- Added bounded account-scoped Automatic Curio Buyer report history for Operative Selection, delivered oldest-first once on the matching account's next Morningstar readiness.
+- Release packaging now removes unresolved temporary build archives after verification failures.
 - Fixed Curio rarity colour strips on native/hybrid card lifecycles while preserving per-item custom background colours.
 - Added the default-off **Use native Curio overlay** option for detailed Character Overview cards. It restores Darktide's ornate frame and portrait geometry while retaining BetterInventory's title and stat lines. See `docs/v1.9.4-curio-card-visuals-plan.md` for validation details.
 - Corrected native-overlay Curio coordinate handling: the centered title now uses its width for the 19 px inset and an additive 1 px left shift, the favorite/checkmark marker stays below the full title band after runtime synchronization, and bottom-aligned item levels move higher with the correct negative Y delta.
+- Fixed reused Character Overview cards retaining the previously equipped weapon/Curio background or the previous Curio's fitted secondary-stat rows after returning from equipment selection.
+- Fixed manual discard transactions remaining locked when Darktide removes their confirmation popup without invoking an option callback; popup IDs are now reconciled and lifecycle cleanup is token-aware.
+- Fixed sort comparators remaining wrapped after disable or hot reload; GlobalStore/vendor views without an optional sorting panel are now tracked, restored, and rebound safely.
+- Fixed Automatic Discard releasing shared workflow ownership when canceled or disabled during an in-flight backend deletion; Curio Buyer and manual discard remain blocked until settlement.
+- Reduced idle UI allocation churn by preserving fixed update return contracts and limiting MyFavorites marker synchronization to active marked grids and changed offsets.
+- Fixed disabling BetterInventory with an open inventory/vendor view leaving controller focus ownership or Armoury input-legend actions attached to the live native view.
+- Added explicit read-request ownership metrics and cancellation for Automatic Discard; Curio Buyer reports active and oldest read-only request state while purchase POSTs remain non-cancelable.
+- Made customization persistence outcomes explicit: confirmed saves clear dirty state, thrown failures remain retryable as errors, and DMF-swallowed failures remain marked unknown instead of being reported durable.
+- Added comparator antisymmetry coverage so malformed equipped/favorite compatibility calls degrade to ordinary priority without destabilizing native sorting.
+- Extracted a small guarded capability-contract adapter used by sorting compatibility calls, establishing a behavior-neutral seam for future integration/domain extraction.
+- Added a recursive active-settings registry with duplicate-ID diagnostics and declarative dependency-refresh routing, including generated character-slot settings.
+- Added timeout-bounded test discovery, machine-readable JSON results, GitHub Actions verification, and module-by-module Lua line coverage reporting.
+- Replaced representative implementation-text safety checks with Lua AST validation for forbidden direct class assignments, unsupported vendor requires, and render-resource ownership.
+- Added focused user/architecture documentation and a reproducible settings/localization manifest with drift verification.
+- Cached Character Overview Curio title/stat normalization by raw source identity so unchanged frames avoid repeated string allocations.
+- Added deterministic failed-package cleanup coverage that verifies the outer packager `finally` removes temporary build archives before destination replacement.
 
 ## 1.9.3 - 2026-08-07
 

@@ -18,6 +18,10 @@ local input_widget_definition
 local show_input_field = false
 local installed = false
 local persistence_pending = false
+local persistence_retry_elapsed = 0
+local persistence_attempts = 0
+local persistence_last_outcome = "idle"
+local MAX_PERSISTENCE_ATTEMPTS = 3
 local pending_deleted_gear_ids = {}
 local name_it_legend_entries = setmetatable({}, { __mode = "k" })
 
@@ -66,39 +70,91 @@ local function customization_records(mod)
 	return type(records) == "table" and records or {}
 end
 
+local function mark_persistence_pending()
+	persistence_pending = true
+	persistence_last_outcome = "pending"
+	persistence_attempts = 0
+	-- A new mutation should be eligible for the next runtime flush. Once a
+	-- save attempt is made, unknown/failing outcomes are retried at a bounded
+	-- cadence instead of every frame.
+	persistence_retry_elapsed = 1
+end
+
 local function save_records(mod, records)
 	cached_records = records
 	mod:set(STORAGE_SETTING_ID, records, false)
-	persistence_pending = true
+	mark_persistence_pending()
 end
 
-local function flush_persistence()
+local function flush_persistence(force)
 	if not persistence_pending then
 		return false
 	end
 
+	if not force and persistence_retry_elapsed < 1 then
+		return false
+	end
+
+	if persistence_attempts >= MAX_PERSISTENCE_ATTEMPTS then
+		persistence_pending = false
+		persistence_last_outcome = "exhausted"
+		return false
+	end
+
+	persistence_retry_elapsed = 0
+	persistence_attempts = persistence_attempts + 1
+
 	local resolver = rawget(_G, "get_mod")
 
 	if type(resolver) ~= "function" then
+		persistence_last_outcome = persistence_attempts >= MAX_PERSISTENCE_ATTEMPTS and "unavailable_exhausted" or "unavailable"
+		if persistence_attempts >= MAX_PERSISTENCE_ATTEMPTS then
+			persistence_pending = false
+		end
 		return false
 	end
 
 	local ok, dmf = pcall(resolver, "DMF")
 
 	if not ok or type(dmf) ~= "table" or type(dmf.save_unsaved_settings_to_file) ~= "function" then
+		persistence_last_outcome = persistence_attempts >= MAX_PERSISTENCE_ATTEMPTS and "unavailable_exhausted" or "unavailable"
+		if persistence_attempts >= MAX_PERSISTENCE_ATTEMPTS then
+			persistence_pending = false
+		end
 		return false
 	end
 
 	-- One deferred flush batches all edits/deletions performed in the same
 	-- frame while reducing the hard-crash loss window from an entire game state
 	-- to, normally, a single frame.
-	local saved = pcall(dmf.save_unsaved_settings_to_file)
+	local save_ok, save_result = pcall(dmf.save_unsaved_settings_to_file)
 
-	if saved then
+	-- Current DMF releases swallow Application.set_user_setting failures and
+	-- return nil. Treat only an explicit true result as durable success; keep
+	-- the dirty state otherwise so a later lifecycle/save boundary can retry.
+	if save_ok and save_result == true then
 		persistence_pending = false
+		persistence_last_outcome = "saved"
+	elseif save_ok and save_result == nil then
+		-- DMF's normal implementation delegates the actual application-setting
+		-- write and returns no value. It cannot report durability to us, but the
+		-- call itself is the complete obligation BetterInventory owns. Retrying
+		-- this path forever causes repeated writes and misleading warnings.
+		persistence_pending = false
+		persistence_last_outcome = "delegated"
+	elseif not save_ok then
+		persistence_last_outcome = persistence_attempts >= MAX_PERSISTENCE_ATTEMPTS and "error_exhausted" or "error"
+		if persistence_attempts >= MAX_PERSISTENCE_ATTEMPTS then
+			persistence_pending = false
+		end
+	else
+		persistence_last_outcome = persistence_attempts >= MAX_PERSISTENCE_ATTEMPTS and "rejected_exhausted" or "rejected"
+		if persistence_attempts >= MAX_PERSISTENCE_ATTEMPTS then
+			persistence_pending = false
+		end
 	end
 
-	return saved
+	return save_ok and save_result == true
 end
 
 local function name_it_mod()
@@ -141,6 +197,16 @@ local function name_it_names()
 	end
 
 	return other_mod, ok and type(names) == "table" and names or nil
+end
+
+local function name_it_replace_pattern_name(other_mod)
+	if not other_mod or type(other_mod.get) ~= "function" then
+		return false
+	end
+
+	local success, value = pcall(other_mod.get, other_mod, "replace_pattern_name")
+
+	return success and value == true
 end
 
 local function record_has_customization(record)
@@ -301,7 +367,7 @@ local function remove_records(mod, gear_ids)
 
 	if names_changed and other_mod and type(other_mod.set) == "function" then
 		pcall(other_mod.set, other_mod, "name_list", names, false)
-		persistence_pending = true
+		mark_persistence_pending()
 	end
 
 	return removed
@@ -334,7 +400,7 @@ ItemCustomization.import_name_it_names = function(mod)
 	local imported = 0
 	local records_changed = false
 	local names_changed = false
-	local replace_pattern_name = type(other_mod.get) == "function" and other_mod:get("replace_pattern_name") == true
+	local replace_pattern_name = name_it_replace_pattern_name(other_mod)
 
 	for gear_id, external_name in pairs(names) do
 		local raw_external_name = external_name
@@ -379,7 +445,7 @@ ItemCustomization.import_name_it_names = function(mod)
 
 	if names_changed and type(other_mod.set) == "function" then
 		pcall(other_mod.set, other_mod, "name_list", names, false)
-		persistence_pending = true
+		mark_persistence_pending()
 	end
 
 	return imported
@@ -397,7 +463,7 @@ ItemCustomization.reconcile_from_name_it = function(mod)
 	end
 
 	local records = customization_records(mod)
-	local replace_pattern_name = type(other_mod.get) == "function" and other_mod:get("replace_pattern_name") == true
+	local replace_pattern_name = name_it_replace_pattern_name(other_mod)
 	local names_changed = false
 
 	for gear_id, record in pairs(records) do
@@ -441,7 +507,7 @@ ItemCustomization.reconcile_from_name_it = function(mod)
 	end
 
 	mod:set(NAME_IT_OWNS_NAMES_SETTING_ID, false, false)
-	persistence_pending = true
+	mark_persistence_pending()
 
 	return true
 end
@@ -1028,7 +1094,7 @@ ItemCustomization.on_enabled = function(mod)
 	if mod:get("enable_custom_item_name_and_colors") ~= false and mod:get(NAME_IT_OWNS_NAMES_SETTING_ID) == true then
 		if not ItemCustomization.reconcile_from_name_it(mod) then
 			mod:set(NAME_IT_OWNS_NAMES_SETTING_ID, false, false)
-			persistence_pending = true
+			mark_persistence_pending()
 		end
 	end
 end
@@ -1039,11 +1105,11 @@ ItemCustomization.on_disabled = function(mod)
 
 	if name_it_mod() then
 		mod:set(NAME_IT_OWNS_NAMES_SETTING_ID, true, false)
-		persistence_pending = true
+		mark_persistence_pending()
 	end
 
 	drain_deleted_records(mod)
-	flush_persistence()
+	flush_persistence(true)
 
 	-- DMF disables every hook before calling on_disabled. Keep only storage
 	-- cleanup alive so discarded gear cannot become orphaned while the visual
@@ -1058,7 +1124,7 @@ ItemCustomization.on_all_mods_loaded = function(mod)
 	if mod:get("enable_custom_item_name_and_colors") == false then
 		if name_it_mod() then
 			mod:set(NAME_IT_OWNS_NAMES_SETTING_ID, true, false)
-			persistence_pending = true
+			mark_persistence_pending()
 		end
 
 		return false
@@ -1072,7 +1138,7 @@ ItemCustomization.on_all_mods_loaded = function(mod)
 		-- Name It was removed or disabled before the handoff completed. Resume
 		-- BetterInventory ownership without leaving a stale future migration armed.
 		mod:set(NAME_IT_OWNS_NAMES_SETTING_ID, false, false)
-		persistence_pending = true
+		mark_persistence_pending()
 	end
 
 	return ItemCustomization.import_name_it_names(mod)
@@ -1083,7 +1149,7 @@ ItemCustomization.on_setting_changed = function(mod, setting_id)
 		if mod:get(setting_id) == false then
 			if name_it_mod() then
 				mod:set(NAME_IT_OWNS_NAMES_SETTING_ID, true, false)
-				persistence_pending = true
+				mark_persistence_pending()
 			end
 
 			return false
@@ -1095,7 +1161,7 @@ ItemCustomization.on_setting_changed = function(mod, setting_id)
 			end
 
 			mod:set(NAME_IT_OWNS_NAMES_SETTING_ID, false, false)
-			persistence_pending = true
+			mark_persistence_pending()
 		end
 
 		return ItemCustomization.import_name_it_names(mod)
@@ -1104,7 +1170,9 @@ ItemCustomization.on_setting_changed = function(mod, setting_id)
 	return false
 end
 
-ItemCustomization.update_runtime = function(mod)
+ItemCustomization.update_runtime = function(mod, dt)
+	persistence_retry_elapsed = math.min(1, persistence_retry_elapsed + math.max(tonumber(dt) or 0, 0))
+
 	if pending_action then
 		local action = pending_action
 		pending_action = nil
@@ -1112,7 +1180,11 @@ ItemCustomization.update_runtime = function(mod)
 	end
 
 	drain_deleted_records(mod)
-	flush_persistence()
+	flush_persistence(false)
+end
+
+ItemCustomization.persistence_status = function()
+	return persistence_last_outcome, persistence_pending
 end
 
 local function effective_name_keybind(mod)

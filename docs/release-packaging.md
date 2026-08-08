@@ -2,19 +2,11 @@
 
 ## Critical Nexus archive invariant
 
-The BetterInventory v1.9.4 release archive must contain exactly one install directory named `BetterInventory`. Every ZIP entry name must use a forward slash (`/`), never a Windows backslash (`\`). The descriptor and every `BetterInventory*.lua` file in `scripts/mods/BetterInventory` are mandatory runtime files. The current nine-file release is therefore stored as:
+The BetterInventory v2.0.0 release archive must contain exactly one install directory named `BetterInventory`. Every ZIP entry name must use a forward slash (`/`), never a Windows backslash (`\`). The descriptor and every `BetterInventory*.lua` file in `scripts/mods/BetterInventory` are mandatory runtime files. The exact source set is recorded in `docs/generated-runtime-bundle-manifest.json` and is therefore not duplicated here:
 
-```text
-BetterInventory/BetterInventory.mod
-BetterInventory/scripts/mods/BetterInventory/BetterInventory.lua
-BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_acquisition.lua
-BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_values.lua
-BetterInventory/scripts/mods/BetterInventory/BetterInventory_data.lua
-BetterInventory/scripts/mods/BetterInventory/BetterInventory_features.lua
-BetterInventory/scripts/mods/BetterInventory/BetterInventory_item_customization.lua
-BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout.lua
-BetterInventory/scripts/mods/BetterInventory/BetterInventory_localization.lua
-```
+Use the manifest as the authoritative list when inspecting an archive; the
+packager and verifier discover the same set directly from the runtime source
+directory.
 
 This is the archive layout used by known-good Nexus releases in `Inventory2D_mod_research`, including Inventory2D, Quick Look Card and Alf's DMF Extensions. It lets a mod manager install the outer directory directly as `Darktide/mods/BetterInventory`.
 
