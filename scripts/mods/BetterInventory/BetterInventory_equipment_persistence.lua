@@ -219,22 +219,47 @@ local observe_promise
 local function execute_intent(operation)
 	local intent = operation.intent
 	local promises = {}
+	local function append_required_promise(method, argument, label)
+		if type(method) ~= "function" then
+			return false, label .. " is unavailable"
+		end
 
-	if next(intent.gear_items) and type(Items.equip_slot_items) == "function" then
-		promises[#promises + 1] = Items.equip_slot_items(intent.gear_items)
+		local call_ok, promise = pcall(method, argument)
+
+		if not call_ok then
+			return false, promise
+		end
+
+		if not compatible_promise(promise) then
+			return false, label .. " returned no compatible promise"
+		end
+
+		promises[#promises + 1] = promise
+
+		return true
 	end
 
-	if next(intent.local_items) and type(Items.equip_slot_master_items) == "function" then
-		promises[#promises + 1] = Items.equip_slot_master_items(intent.local_items)
+	if next(intent.gear_items) then
+		local appended, error_value = append_required_promise(Items.equip_slot_items, intent.gear_items, "Items.equip_slot_items")
+
+		if not appended then
+			return nil, error_value
+		end
 	end
 
-	if next(intent.unequip_slots) and type(Items.unequip_slots) == "function" then
-		promises[#promises + 1] = Items.unequip_slots(intent.unequip_slots)
+	if next(intent.local_items) then
+		local appended, error_value = append_required_promise(Items.equip_slot_master_items, intent.local_items, "Items.equip_slot_master_items")
+
+		if not appended then
+			return nil, error_value
+		end
 	end
 
-	for index = #promises, 1, -1 do
-		if not compatible_promise(promises[index]) then
-			table.remove(promises, index)
+	if next(intent.unequip_slots) then
+		local appended, error_value = append_required_promise(Items.unequip_slots, intent.unequip_slots, "Items.unequip_slots")
+
+		if not appended then
+			return nil, error_value
 		end
 	end
 
@@ -242,7 +267,13 @@ local function execute_intent(operation)
 		return
 	end
 
-	return Promise.all(unpack(promises))
+	local aggregate_ok, aggregate = pcall(Promise.all, unpack(promises))
+
+	if not aggregate_ok or not compatible_promise(aggregate) then
+		return nil, aggregate_ok and "Promise.all returned no compatible promise" or aggregate
+	end
+
+	return aggregate
 end
 
 local function schedule_retry(mod, operation, reason)
@@ -346,10 +377,10 @@ EquipmentPersistence.update = function(mod, dt)
 	operation.waiting_retry = false
 	operation.retry_elapsed = 0
 
-	local promise = execute_intent(operation)
+	local promise, retry_error = execute_intent(operation)
 
 	if not promise then
-		return schedule_retry(mod, operation, "retry methods were unavailable")
+		return schedule_retry(mod, operation, retry_error or "retry methods were unavailable")
 	end
 
 	observe_promise(mod, operation, promise)

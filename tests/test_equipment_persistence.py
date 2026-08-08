@@ -123,10 +123,21 @@ def main() -> None:
         retry_results = {}
         retry_calls = 0
         retried_items = nil
+        retry_throw = false
+        retry_invalid = false
         Items = {
             equip_slot_items = function(items)
                 retry_calls = retry_calls + 1
                 retried_items = items
+
+                if retry_throw then
+                    error("synchronous retry failure")
+                end
+
+                if retry_invalid then
+                    return nil
+                end
+
                 local result = retry_results[retry_calls]
 
                 if result == nil then
@@ -322,6 +333,26 @@ def main() -> None:
     assert globals_.retry_calls == 2
     assert module.status() == ("idle", 0)
     assert len(globals_.captured_errors) == 1
+
+    # Retry helpers execute from the frame update. Synchronous exceptions and
+    # incompatible promise results must remain inside the bounded retry state
+    # instead of crashing the frame or treating a partial operation as success.
+    for failure_flag in ("retry_throw", "retry_invalid"):
+        globals_.view._starting_profile_equipped_items.slot_primary = globals_.old_weapon
+        globals_.view._starting_profile_equipped_items.slot_trinket_1 = globals_.old_curio
+        globals_.retry_results = lua.table_from([])
+        globals_.retry_calls = 0
+        globals_.native_promise = globals_.TestPromise.pending()
+        setattr(globals_, failure_flag, True)
+        module.persist_local_changes(globals_.test_mod, globals_.native_equip, globals_.view)
+        globals_.native_promise.resolve(globals_.native_promise, lua.table_from([False]))
+        module.update(globals_.test_mod, 1.5)
+        assert module.status() == ("waiting_retry", 1)
+        assert globals_.view._starting_profile_equipped_items.slot_primary.gear_id == "old-weapon"
+        setattr(globals_, failure_flag, False)
+        module.update(globals_.test_mod, 1.5)
+        assert module.status() == ("idle", 0)
+        assert globals_.view._starting_profile_equipped_items.slot_primary.gear_id == "new-weapon"
 
     print("BetterInventory equipment persistence tests passed.")
 
