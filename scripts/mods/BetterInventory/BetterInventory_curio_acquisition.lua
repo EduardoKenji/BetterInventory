@@ -3,6 +3,7 @@ local MasterItems = require("scripts/backend/master_items")
 local Promise = require("scripts/foundation/utilities/promise")
 local StoreNames = require("scripts/settings/backend/store_names")
 local CurioValues = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_values")
+local CurioDomains = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_domains")
 local PromiseContainer
 
 do
@@ -197,6 +198,45 @@ local function new_read_promise_container()
 	end
 
 	return fallback
+end
+
+if type(CurioDomains) ~= "table" or type(CurioDomains.context) ~= "table" or type(CurioDomains.context.token_matches) ~= "function" then
+	CurioDomains = {
+		context = {
+			token_matches = function(current_state, token)
+				return current_state and current_state.token == token
+			end,
+		},
+		reports = {
+			upsert_bounded = function(queue, report)
+				local result = {}
+
+				for index = 1, #(queue or {}) do
+					result[index] = queue[index]
+				end
+
+				result[#result + 1] = report
+
+				return result, true
+			end,
+			remove_head = function(queue)
+				local result = {}
+
+				for index = 2, #(queue or {}) do
+					result[#result + 1] = queue[index]
+				end
+
+				return result, queue and queue[1]
+			end,
+		},
+		scheduler = {
+			next_retry_delay = function(context, retry_delay, morningstar_delay, operative_selection_delay)
+				local base_delay = context == "operative_selection" and operative_selection_delay or morningstar_delay
+
+				return math.max((tonumber(base_delay) or 0) - (tonumber(retry_delay) or 0), 0)
+			end,
+		},
+	}
 end
 
 state.read_promise_container = new_read_promise_container()
@@ -876,7 +916,7 @@ local function call_promise(object, method, ...)
 end
 
 local function context_is_current(mod, token)
-	if state.token ~= token or not enabled(mod) then
+	if not CurioDomains.context.token_matches(state, token) or not enabled(mod) then
 		return false
 	end
 
@@ -2185,27 +2225,11 @@ local function persist_pending_report(mod, account_key, report)
 
 	local history = sanitize_rotation_history(mod:get(ROTATION_HISTORY_SETTING_ID), server_time())
 	local entry = history.accounts[account_key] or {}
-	local pending_reports = entry.pending_reports or {}
-	local replaced = false
+	local pending_reports = CurioDomains.reports.upsert_bounded(entry.pending_reports or {}, report, MAX_PENDING_REPORTS)
 
-	for index = 1, #pending_reports do
-		if pending_reports[index].report_id == report.report_id then
-			pending_reports[index] = report
-			replaced = true
-			break
-		end
-	end
-
-	if not replaced then
-		pending_reports[#pending_reports + 1] = report
-	end
-
-	while #pending_reports > MAX_PENDING_REPORTS do
-		-- Preserve the newest bounded history. A prune is preferable to allowing
-		-- account settings to grow without limit, and delivery remains ordered
-		-- for every report retained in the queue.
-		table.remove(pending_reports, 1)
-	end
+	-- Preserve the newest bounded history. A prune is preferable to allowing
+	-- account settings to grow without limit, and delivery remains ordered
+	-- for every report retained in the queue.
 
 	entry.pending_reports = pending_reports
 	history.accounts[account_key] = entry
@@ -2301,11 +2325,18 @@ local function deliver_pending_report(mod)
 		state.last_delivered_report_id = report.report_id
 	end
 
-	table.remove(pending_reports, 1)
+	local remaining_reports, removed_report = CurioDomains.reports.remove_head(pending_reports)
+
+	if removed_report ~= report then
+		return false
+	end
+
+	entry.pending_reports = remaining_reports
 	local success = pcall(mod.set, mod, ROTATION_HISTORY_SETTING_ID, history, false)
 
 	if not success then
-		table.insert(pending_reports, 1, report)
+		table.insert(remaining_reports, 1, report)
+		entry.pending_reports = remaining_reports
 		return false
 	end
 
@@ -2478,7 +2509,7 @@ local function schedule_scan_retry(mod, token, error_value)
 
 	if type(error_value) == "table" and error_value.kind == "store_rotation_pending" then
 		state.started = false
-		state.elapsed = math.max((state.active_context == "operative_selection" and OPERATIVE_SELECTION_DELAY or MORNINGSTAR_DELAY) - RETRY_DELAY, 0)
+		state.elapsed = CurioDomains.scheduler.next_retry_delay(state.active_context, RETRY_DELAY, MORNINGSTAR_DELAY, OPERATIVE_SELECTION_DELAY)
 		state.scan_attempts = 0
 		state.scheduled = true
 		state.scheduled_reason = "rotation_wait"
@@ -2487,7 +2518,7 @@ local function schedule_scan_retry(mod, token, error_value)
 	end
 
 	state.started = false
-	state.elapsed = math.max((state.active_context == "operative_selection" and OPERATIVE_SELECTION_DELAY or MORNINGSTAR_DELAY) - RETRY_DELAY, 0)
+	state.elapsed = CurioDomains.scheduler.next_retry_delay(state.active_context, RETRY_DELAY, MORNINGSTAR_DELAY, OPERATIVE_SELECTION_DELAY)
 	state.scheduled = state.scan_attempts < MAX_SCAN_ATTEMPTS
 
 	if state.scheduled then
