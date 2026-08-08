@@ -2,9 +2,7 @@
   "schema_version": 1,
   "max_bytes": 100000,
   "preferred_bytes": 80000,
-  "temporary_size_exceptions": {
-    "BetterInventory_features.lua": "R15-R16 remaining feature-facade extraction pending"
-  },
+  "temporary_size_exceptions": {},
   "hook_modules": {
     "BetterInventory_character_overview_ui.lua": "character-overview-hooks",
     "BetterInventory_item_customization.lua": "customization-storage-hooks",
