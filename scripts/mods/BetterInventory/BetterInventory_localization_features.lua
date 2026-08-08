@@ -642,10 +642,13 @@ local localization = {
 		en = "Offers",
 	},
 	auto_crafter_panel_wallet = {
-		en = "Wallet",
+		en = "Resources",
 	},
 	auto_crafter_panel_gear = {
 		en = "Gear",
+	},
+	auto_crafter_panel_inventory = {
+		en = "Inventory",
 	},
 	auto_crafter_panel_target = {
 		en = "Target",
@@ -654,7 +657,7 @@ local localization = {
 		en = "no target selected",
 	},
 	auto_crafter_panel_offer_list = {
-		en = "Weapon offers",
+		en = "Weapon selection",
 	},
 	auto_crafter_panel_melee_weapons = {
 		en = "Melee Weapons",
@@ -708,13 +711,16 @@ local localization = {
 		en = "Craft / purchase search",
 	},
 	auto_crafter_panel_read_only_preview = {
-		en = "Enable mutation gate first",
+		en = "Read-only preview",
+	},
+	auto_crafter_panel_serial_start = {
+		en = "SERIAL; click to start",
 	},
 	auto_crafter_panel_mutation_gate = {
 		en = "Mutation gate",
 	},
 	auto_crafter_panel_phase_2 = {
-		en = "Phase 2: Redeem + sacrifice one",
+		en = "Redeem + sacrifice one",
 	},
 	auto_crafter_panel_phase_2_waiting = {
 		en = "No purchased candidate",

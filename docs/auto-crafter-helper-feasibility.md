@@ -1133,6 +1133,20 @@ Do not fit every option into the compact panel. BetterInventory’s existing Arm
 
 Use a managed `ViewElementGrid` or dedicated view element for clipping, scrolling, controller navigation, and lifecycle. Keep Auto Crafter state in controller, not widget content. Shared visual constants must live inside neutral UI package or vanilla-derived adapter, not BetterInventory feature modules.
 
+### BetterInventory visual-language contract
+
+The embedded Auto Crafter panel should look like a sibling of BetterInventory's inventory options panel, not a separate diagnostic overlay. This is a presentation contract, not a runtime dependency: Auto Crafter locally owns vanilla-derived pass templates and must not import `BetterInventory_panel_definitions.lua`.
+
+- Keep the 445 px outer panel and terminal frame, with 12 px horizontal content padding, 10 px top/bottom padding, and an 8 px vertical rhythm.
+- Reserve full-width framed rows for hierarchy and decisive interaction: 40 px title/section headers, 32 px offer choices, and 32 px primary actions. Do not put a frame around every diagnostic label/value pair.
+- Render short status, resources, inventory count, and target data as quiet 26 px label/value lines. Give longer estimate/preflight text an unframed two-line status block so it remains readable instead of competing for a narrow right column. Labels use bold terminal body text; values use the subdued sub-header color.
+- Render enum settings as compact framed selectors, booleans as 22 px checkboxes with adjacent labels, and bounded numeric settings as `< value >` steppers. These dimensions, typography, and colors should match inventory controls.
+- Use gold only for selected offers and enabled primary actions. Disabled actions retain terminal background, remain visibly inert, and expose no active hotspot.
+- Keep section headers full-width with a right chevron and optional count. Planner, Melee Weapons, and Ranged Weapons collapse independently; both weapon sections start collapsed.
+- Preserve scroll position when selecting an offer or changing a same-size planner value. Rebuild grid layout only when row membership or geometry changes.
+- Keep visible copy task-oriented: combine raw probe counts into concise summary lines, distinguish `Read-only preview` from serial mutation start, and avoid exposing internal diagnostic noise as equal-weight boxed rows.
+- Validate mouse and controller hit targets independently. Selector, checkbox, stepper arrows, section chevrons, offer rows, and action buttons must invoke only their own semantic action.
+
 ### Later entry point: continue crafting an existing inventory weapon
 
 Plan this as later module/UI phase, not first release. Add an **Auto Crafter / Continue Crafting** action or compact section to weapon detail area in inventory/character equipment view. Entry passes selected `gear_id` into same controller; do not create separate crafting engine.
@@ -1163,7 +1177,7 @@ UI may prefill targets from current item and display `Already satisfied` beside 
 - Phase 1B read-only planner is now implemented. It exposes a mandatory dump-stat target (Damage or a clearly marked future auto-discovery mode), target percentage, docket cap, maximum purchase count, best-candidate fallback, and request scheduling mode. The widget builds a fail-closed preflight from the currently selected native Brunt offer and reports a conservative docket floor/cap; plasteel and diamantine remain explicitly deferred until a candidate exists. The widget's `Craft (read-only preview)` action only rebuilds this plan and emits a notification; it does not call purchase, crafting, sacrifice, mastery, favorite, or rename operations.
 - Phase 1C guarded purchase search is now implemented behind `auto_crafter_allow_mutations`, which defaults off. A user click starts one serialized purchase at a time through the native `StoreService.purchase_item(offer)` adapter. Every purchased item remains in inventory; misses are never silently discarded. The loop parses authoritative purchased gear, stops on the configured exact dump-stat target, and stops before the next request when docket, wallet, or purchase-count limits would be exceeded. Unknown item/stat shapes fail closed. Parallel mutation settings remain presentation-only; account mutations always stay serialized.
 - Phase 2 one-item mastery proof is now implemented behind the same gate. It accepts one explicitly selected purchased candidate, verifies it still exists and belongs to the expected weapon family, upgrades it to Redeemed only when needed, sacrifices exactly one `gear_id`, requires the service to confirm that ID and positive XP, claims reachable tiers, then polls fresh mastery state with bounded attempts. It never repeats the operation automatically and stops on missing/ambiguous gear, zero-XP extraction, context exit, or synchronization timeout.
-- Auto Crafter UI polish is implemented before destructive phases: its rows now reuse BetterInventory's terminal palette, tiled row frames, compact 32/40 px geometry, gold selected state/checkmark, right-side chevrons, and bounded 445 x 520 scroll-panel geometry. The Auto Crafter module keeps these visual contracts locally so a future standalone extraction does not require BetterInventory panel imports.
+- Auto Crafter UI polish is implemented before destructive phases. The 445 x 520 scroll panel now follows the inventory panel's 12 px side padding, 10 px vertical padding, and 8 px row rhythm. It uses semantic local controls instead of one frame-heavy generic row: quiet 26 px summary lines, readable two-line estimate/preflight blocks, compact selectors, 22 px checkboxes, bounded steppers, 40 px collapsible headers, gold action buttons, and gold selected offer rows. Planner setting updates refresh in place so scroll position is preserved. These visual contracts are locally owned for future standalone extraction and do not import BetterInventory panel modules.
 - Sequential requests are the default. Parallel reads and experimental parallel mutations are visible as planning choices so the eventual state machine can preserve the documented policy, but Phase 1B still performs the existing sequential read probe and blocks all mutations. Planner setting changes refresh the plan without rebuilding the offer grid, preserving scroll position.
 - Phase 1A diagnostic UI is now implemented: Auto Crafter owns a separate `ViewElementGrid` attached to `CreditsGoodsVendorView`, displays bounded offer details plus live wallet/gear totals, mirrors the selected Brunt weapon through a thin `_previewed_offer` adapter, and splits offers into canonical `slot_primary` melee and `slot_secondary` ranged sections. Both sections start collapsed; each has an independent deferred-safe toggle. Offer rows use the native `ViewElementGrid` left-click callback contract and resolve through Brunt's `focus_on_offer`, including deferred tab switching when the clicked row belongs to the other native tab. It does not call purchase, crafting, mastery, sacrifice, perk, blessing, favorite, or rename operations.
 - Store enrichment is bounded to the first 128 offers for UI/performance safety while the total offer count remains preserved. The panel renders at most ten rows and reports the remainder.
@@ -1312,6 +1326,10 @@ Do not begin with a 37-item bulk loop. Phase ordering deliberately proves each d
 - Brunt widget setup is idempotent and teardown removes only Auto Crafter-owned elements;
 - controller continues or stops correctly when self-owned widget is destroyed/recreated;
 - BetterInventory host adapter and standalone fake adapter produce identical controller transitions for same fixtures.
+- visual contract test requires local summary, selector, checkbox, stepper, section-header, action, and offer pass families plus 12/10/8 spacing constants;
+- status/setting rows are not all wrapped in full-width frames; gold is limited to selected offers and enabled primary actions;
+- changing a planner selector, checkbox, or stepper value does not reset current grid scroll;
+- disabled action has disabled hotspot and cannot dispatch a controller operation;
 
 ### Performance and soak tests
 
@@ -1367,6 +1385,8 @@ Run on a test character with strict low limits:
 27. Test vanilla, common UI scales/resolutions, and adjacent BetterInventory panel; verify geometry/focus isolation.
 28. Test rename with BetterInventory only, Name It only, both, and neither; absent provider shows gray disabled control.
 29. Load extracted standalone rehearsal with no BetterInventory files available; complete read-only probe and one capped purchase.
+30. Compare Auto Crafter beside BetterInventory inventory options at 16:9, ultrawide, windowed, and supported UI scales; verify matching padding, typography, control sizes, section rhythm, clipping, and scrollbar placement.
+31. Exercise every control with mouse and controller; verify semantic hit targets, disabled-action inertness, section collapse, and no scroll jump after planner changes or offer selection.
 
 ## Known risks and unresolved live questions
 

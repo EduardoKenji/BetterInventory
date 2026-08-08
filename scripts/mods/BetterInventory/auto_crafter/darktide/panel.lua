@@ -8,8 +8,12 @@ local PANEL_HEIGHT = 520
 local PANEL_X = 1380
 local PANEL_Y = 110
 local ROW_HEIGHT = 32
+local COMPACT_ROW_HEIGHT = 26
+local STATUS_ROW_HEIGHT = 42
 local SECTION_ROW_HEIGHT = 40
-local ROW_SPACING = 4
+local ROW_SPACING = 8
+local CONTENT_HORIZONTAL_PADDING = 12
+local CONTENT_VERTICAL_PADDING = 10
 local MAX_OFFER_ROWS = 10
 local MAX_SELECTION_ATTEMPTS = 240
 local SECTION_PLANNER = "planner"
@@ -69,15 +73,16 @@ local function wallet_amount(snapshot, currency)
 	return entry and entry.amount
 end
 
-local function row_passes(width, height)
-	local label_width = width - 210
+local function offer_row_passes(width, height)
+	local label_width = width - 220
+	local detail_x = width - 200
 
 	local function selected(content)
-		return content.header ~= true and content.selected == true
+		return content.selected == true
 	end
 
 	local function not_selected(content)
-		return content.header ~= true and content.selected ~= true
+		return content.selected ~= true
 	end
 
 	return {
@@ -88,25 +93,6 @@ local function row_passes(width, height)
 				on_hover_sound = UISoundEvents.default_mouse_hover,
 				on_pressed_sound = UISoundEvents.default_click,
 			},
-		},
-		{
-			pass_type = "rect",
-			style_id = "header_background",
-			style = {
-				color = Color.terminal_background(210, true),
-				offset = {
-					0,
-					0,
-					1,
-				},
-				size = {
-					width,
-					height,
-				},
-			},
-			visibility_function = function(content)
-				return content.header == true
-			end,
 		},
 		{
 			pass_type = "rect",
@@ -158,30 +144,6 @@ local function row_passes(width, height)
 					height,
 				},
 			},
-		},
-		{
-			pass_type = "text",
-			style_id = "header_label",
-			value_id = "label",
-			style = {
-				font_size = 18,
-				font_type = "proxima_nova_bold",
-				text_horizontal_alignment = "left",
-				text_vertical_alignment = "center",
-				text_color = Color.terminal_text_header(255, true),
-				offset = {
-					10,
-					0,
-					4,
-				},
-				size = {
-					width - 50,
-					height,
-				},
-			},
-			visibility_function = function(content)
-				return content.header == true
-			end,
 		},
 		{
 			pass_type = "text",
@@ -238,18 +200,16 @@ local function row_passes(width, height)
 				text_vertical_alignment = "center",
 				text_color = Color.terminal_text_body_sub_header(255, true),
 				offset = {
-					label_width,
+					detail_x,
 					0,
 					4,
 				},
 				size = {
-					width - label_width - 34,
+					width - detail_x - 34,
 					height,
 				},
 			},
-			visibility_function = function(content)
-				return content.section_header ~= true and content.selected ~= true
-			end,
+			visibility_function = not_selected,
 		},
 		{
 			pass_type = "text",
@@ -262,12 +222,12 @@ local function row_passes(width, height)
 				text_vertical_alignment = "center",
 				text_color = Color.terminal_corner_selected(255, true),
 				offset = {
-					label_width,
+					detail_x,
 					0,
 					4,
 				},
 				size = {
-					width - label_width - 34,
+					width - detail_x - 34,
 					height,
 				},
 			},
@@ -296,31 +256,89 @@ local function row_passes(width, height)
 			},
 			visibility_function = selected,
 		},
-		{
-			pass_type = "text",
-			style_id = "chevron",
-			value_id = "chevron",
-			style = {
-				font_size = 18,
-				font_type = "proxima_nova_bold",
-				horizontal_alignment = "right",
-				text_horizontal_alignment = "center",
-				text_vertical_alignment = "center",
-				text_color = Color.terminal_text_header(255, true),
-				offset = {
-					0,
-					0,
-					4,
-				},
-				size = {
-					40,
-					height,
-				},
-			},
-			visibility_function = function(content)
-				return content.section_header == true
-			end,
-		},
+	}
+end
+
+local function title_passes(width)
+	return {
+		{ pass_type = "rect", style = { color = Color.terminal_background(210, true), size = { width, SECTION_ROW_HEIGHT }, offset = { 0, 0, 1 } } },
+		{ pass_type = "texture", value = "content/ui/materials/frames/frame_tile_2px", style = { color = Color.terminal_frame(255, true), size = { width, SECTION_ROW_HEIGHT }, offset = { 0, 0, 2 } } },
+		{ pass_type = "text", value_id = "label", style = { font_size = 18, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "center", text_color = Color.terminal_text_header(255, true), size = { width - 190, SECTION_ROW_HEIGHT }, offset = { 10, 0, 3 } } },
+		{ pass_type = "text", value_id = "detail", style = { font_size = 13, font_type = "proxima_nova_medium", text_horizontal_alignment = "right", text_vertical_alignment = "center", text_color = Color.terminal_text_body_sub_header(255, true), size = { 170, SECTION_ROW_HEIGHT }, offset = { width - 180, 0, 3 } } },
+	}
+end
+
+local function summary_line_passes(width)
+	return {
+		{ pass_type = "text", value_id = "label", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "center", text_color = Color.terminal_text_body(255, true), size = { 120, COMPACT_ROW_HEIGHT } } },
+		{ pass_type = "text", value_id = "detail", style = { font_size = 14, font_type = "proxima_nova_medium", text_horizontal_alignment = "right", text_vertical_alignment = "center", text_color = Color.terminal_text_body_sub_header(255, true), size = { width - 128, COMPACT_ROW_HEIGHT }, offset = { 128, 0, 1 } } },
+	}
+end
+
+local function status_block_passes(width)
+	return {
+		{ pass_type = "text", value_id = "label", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "top", text_color = Color.terminal_text_body(255, true), size = { width, 18 } } },
+		{ pass_type = "text", value_id = "detail", style = { font_size = 13, font_type = "proxima_nova_medium", text_horizontal_alignment = "left", text_vertical_alignment = "top", text_color = Color.terminal_text_body_sub_header(255, true), size = { width, 22 }, offset = { 0, 18, 1 } } },
+	}
+end
+
+local function section_header_passes(width)
+	return {
+		{ content_id = "hotspot", pass_type = "hotspot", content = { on_hover_sound = UISoundEvents.default_mouse_hover, on_pressed_sound = UISoundEvents.default_click } },
+		{ pass_type = "rect", style = { color = Color.terminal_background(210, true), size = { width, SECTION_ROW_HEIGHT }, offset = { 0, 0, 1 } } },
+		{ pass_type = "texture", value = "content/ui/materials/frames/frame_tile_2px", style = { color = Color.terminal_frame(255, true), size = { width, SECTION_ROW_HEIGHT }, offset = { 0, 0, 2 } } },
+		{ pass_type = "text", value_id = "label", style = { font_size = 18, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "center", text_color = Color.terminal_text_header(255, true), size = { width - 115, SECTION_ROW_HEIGHT }, offset = { 10, 0, 3 } } },
+		{ pass_type = "text", value_id = "detail", style = { font_size = 14, font_type = "proxima_nova_medium", text_horizontal_alignment = "right", text_vertical_alignment = "center", text_color = Color.terminal_text_body_sub_header(255, true), size = { 50, SECTION_ROW_HEIGHT }, offset = { width - 94, 0, 3 } } },
+		{ pass_type = "text", style_id = "chevron", value_id = "chevron", style = { font_size = 18, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_text_header(255, true), size = { 40, SECTION_ROW_HEIGHT }, offset = { width - 40, 0, 4 } } },
+	}
+end
+
+local function compact_selector_passes(width)
+	local selector_width = 235
+	local selector_x = width - selector_width
+	return {
+		{ pass_type = "text", value_id = "label", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "center", text_color = Color.terminal_text_body(255, true), size = { selector_x - 8, COMPACT_ROW_HEIGHT } } },
+		{ content_id = "hotspot", pass_type = "hotspot", content = { on_hover_sound = UISoundEvents.default_mouse_hover, on_pressed_sound = UISoundEvents.default_click }, style = { size = { selector_width, COMPACT_ROW_HEIGHT }, offset = { selector_x, 0, 5 } } },
+		{ pass_type = "rect", style = { color = Color.terminal_background(220, true), size = { selector_width, COMPACT_ROW_HEIGHT }, offset = { selector_x, 0, 1 } } },
+		{ pass_type = "texture", value = "content/ui/materials/frames/frame_tile_2px", style = { color = Color.terminal_frame(255, true), size = { selector_width, COMPACT_ROW_HEIGHT }, offset = { selector_x, 0, 2 } } },
+		{ pass_type = "text", value_id = "detail", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_text_body(255, true), size = { selector_width, COMPACT_ROW_HEIGHT }, offset = { selector_x, 0, 3 } } },
+	}
+end
+
+local function compact_checkbox_passes(width)
+	return {
+		{ content_id = "hotspot", pass_type = "hotspot", content = { on_hover_sound = UISoundEvents.default_mouse_hover, on_pressed_sound = UISoundEvents.default_click } },
+		{ pass_type = "rect", style = { color = Color.terminal_background(220, true), size = { 22, 22 }, offset = { 0, 2, 1 } } },
+		{ pass_type = "texture", value = "content/ui/materials/frames/frame_tile_2px", style = { color = Color.terminal_frame(255, true), size = { 22, 22 }, offset = { 0, 2, 2 } } },
+		{ pass_type = "text", style_id = "selected_mark", value = "✓", style = { font_size = 17, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_corner_selected(255, true), size = { 22, 22 }, offset = { 0, 2, 3 } }, visibility_function = function(content) return content.checked == true end },
+		{ pass_type = "text", value_id = "label", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "center", text_color = Color.terminal_text_body(255, true), size = { width - 28, COMPACT_ROW_HEIGHT }, offset = { 28, 0, 3 } } },
+	}
+end
+
+local function compact_stepper_passes(width)
+	local controls_x = width - 138
+	return {
+		{ pass_type = "text", value_id = "label", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "center", text_color = Color.terminal_text_body(255, true), size = { controls_x - 8, COMPACT_ROW_HEIGHT } } },
+		{ content_id = "decrease_hotspot", pass_type = "hotspot", content = { on_hover_sound = UISoundEvents.default_mouse_hover, on_pressed_sound = UISoundEvents.default_click }, style = { size = { 32, COMPACT_ROW_HEIGHT }, offset = { controls_x, 0, 5 } } },
+		{ pass_type = "text", value = "<", style = { font_size = 16, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_text_header(255, true), size = { 32, COMPACT_ROW_HEIGHT }, offset = { controls_x, 0, 3 } } },
+		{ pass_type = "rect", style = { color = Color.terminal_background(220, true), size = { 70, COMPACT_ROW_HEIGHT }, offset = { controls_x + 34, 0, 1 } } },
+		{ pass_type = "texture", value = "content/ui/materials/frames/frame_tile_2px", style = { color = Color.terminal_frame(255, true), size = { 70, COMPACT_ROW_HEIGHT }, offset = { controls_x + 34, 0, 2 } } },
+		{ pass_type = "text", value_id = "detail", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_text_body(255, true), size = { 70, COMPACT_ROW_HEIGHT }, offset = { controls_x + 34, 0, 3 } } },
+		{ content_id = "increase_hotspot", pass_type = "hotspot", content = { on_hover_sound = UISoundEvents.default_mouse_hover, on_pressed_sound = UISoundEvents.default_click }, style = { size = { 32, COMPACT_ROW_HEIGHT }, offset = { controls_x + 106, 0, 5 } } },
+		{ pass_type = "text", value = ">", style = { font_size = 16, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_text_header(255, true), size = { 32, COMPACT_ROW_HEIGHT }, offset = { controls_x + 106, 0, 3 } } },
+	}
+end
+
+local function action_button_passes(width)
+	local function enabled(content) return content.enabled == true end
+	local function disabled(content) return content.enabled ~= true end
+	return {
+		{ content_id = "hotspot", pass_type = "hotspot", content = { on_hover_sound = UISoundEvents.default_mouse_hover, on_pressed_sound = UISoundEvents.default_click } },
+		{ pass_type = "rect", style = { color = Color.terminal_corner_selected(110, true), size = { width, ROW_HEIGHT }, offset = { 0, 0, 1 } }, visibility_function = enabled },
+		{ pass_type = "rect", style = { color = Color.terminal_background(220, true), size = { width, ROW_HEIGHT }, offset = { 0, 0, 1 } }, visibility_function = disabled },
+		{ pass_type = "texture", value = "content/ui/materials/frames/frame_tile_2px", style = { color = Color.terminal_frame(255, true), size = { width, ROW_HEIGHT }, offset = { 0, 0, 2 } } },
+		{ pass_type = "text", value_id = "label", style = { font_size = 16, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "center", text_color = Color.terminal_text_header(255, true), size = { width - 185, ROW_HEIGHT }, offset = { 10, 0, 3 } } },
+		{ pass_type = "text", value_id = "detail", style = { font_size = 13, font_type = "proxima_nova_medium", text_horizontal_alignment = "right", text_vertical_alignment = "center", text_color = Color.terminal_text_body_sub_header(255, true), size = { 165, ROW_HEIGHT }, offset = { width - 175, 0, 3 } } },
 	}
 end
 
@@ -330,7 +348,28 @@ local BLUEPRINTS = {
 			return entry.size
 		end,
 		pass_template_function = function(_, entry)
-			return row_passes(entry.size[1], entry.size[2])
+			local width = entry.size[1]
+			local variant = entry.variant
+
+			if variant == "title" then
+				return title_passes(width)
+			elseif variant == "status" then
+				return status_block_passes(width)
+			elseif variant == "section" then
+				return section_header_passes(width)
+			elseif variant == "selector" then
+				return compact_selector_passes(width)
+			elseif variant == "checkbox" then
+				return compact_checkbox_passes(width)
+			elseif variant == "stepper" then
+				return compact_stepper_passes(width)
+			elseif variant == "action" then
+				return action_button_passes(width)
+			elseif variant == "offer" then
+				return offer_row_passes(width, entry.size[2])
+			end
+
+			return summary_line_passes(width)
 		end,
 		init = function(parent, widget, entry, callback_name)
 			for key, value in pairs(entry.initial_content or {}) do
@@ -340,7 +379,7 @@ local BLUEPRINTS = {
 			widget.content.entry = entry
 			widget.content.element = entry
 
-			if callback_name and widget.content.hotspot then
+			if callback_name and widget.content.hotspot and entry.offer then
 				widget.content.hotspot.pressed_callback = callback(parent, callback_name, widget, entry)
 			end
 
@@ -447,13 +486,24 @@ function Panel.new(dependencies)
 
 	function self:_entry(label, detail, options)
 		options = options or {}
+		local variant = options.variant or "summary"
+		local height = COMPACT_ROW_HEIGHT
+
+		if variant == "title" or variant == "section" then
+			height = SECTION_ROW_HEIGHT
+		elseif variant == "status" then
+			height = STATUS_ROW_HEIGHT
+		elseif variant == "offer" or variant == "action" then
+			height = ROW_HEIGHT
+		end
 
 		local entry = {
 			initial_content = {
+				checked = options.checked == true,
 				detail = detail or "",
-				header = options.header == true,
+				enabled = options.enabled ~= false,
 				hotspot = {
-					disabled = options.selectable ~= true,
+					disabled = options.selectable ~= true or variant == "action" and options.enabled == false,
 				},
 				label = label or "",
 				selectable = options.selectable == true,
@@ -464,9 +514,10 @@ function Panel.new(dependencies)
 			},
 			pass_template = nil,
 			size = {
-				PANEL_WIDTH - 20,
-				options.header and SECTION_ROW_HEIGHT or ROW_HEIGHT,
+				PANEL_WIDTH - CONTENT_HORIZONTAL_PADDING * 2,
+				height,
 			},
+			variant = variant,
 			widget_type = "auto_crafter_row",
 		}
 
@@ -501,6 +552,17 @@ function Panel.new(dependencies)
 			entry.bind = function(widget)
 				widget.content.hotspot.pressed_callback = function()
 					options.action()
+				end
+			end
+		end
+
+		if options.decrease or options.increase then
+			entry.bind = function(widget)
+				if widget.content.decrease_hotspot then
+					widget.content.decrease_hotspot.pressed_callback = options.decrease
+				end
+				if widget.content.increase_hotspot then
+					widget.content.increase_hotspot.pressed_callback = options.increase
 				end
 			end
 		end
@@ -558,7 +620,6 @@ function Panel.new(dependencies)
 		end
 
 		local ok, result = pcall(set, self._settings, setting_id, value)
-		self._layout_pending = true
 
 		return ok and result ~= false
 	end
@@ -576,6 +637,11 @@ function Panel.new(dependencies)
 		end
 
 		self:_set_setting(setting_id, values[next_index])
+	end
+
+	function self:_adjust_numeric_setting(setting_id, default_value, minimum, maximum, step)
+		local current = tonumber(self:_setting(setting_id, default_value)) or default_value
+		self:_set_setting(setting_id, math.max(minimum, math.min(maximum, current + step)))
 	end
 
 	function self:_planner_target_text()
@@ -692,16 +758,18 @@ function Panel.new(dependencies)
 		local plan = self._plan or snapshot and snapshot.plan
 		local entries = {
 			self:_entry(localize("auto_crafter_panel_title", "Auto Crafter Helper"), self:_setting("auto_crafter_allow_mutations", false) == true and localize("auto_crafter_panel_mutations_on", "SERIAL MUTATIONS ON") or localize("auto_crafter_panel_mutations_off", "MUTATIONS OFF"), {
-				header = true,
+				variant = "title",
+				refresh = function(widget)
+					widget.content.detail = self:_mutation_gate_text()
+				end,
 			}),
 			self:_entry(localize("auto_crafter_panel_status", "Status"), self._phase or value_text(snapshot and snapshot.phase, "idle"), {
 				refresh = function(widget)
 					widget.content.detail = self._phase or value_text(self._controller_state and self._controller_state.phase, "idle")
 				end,
 			}),
-			self:_entry(localize("auto_crafter_panel_offers", "Offers"), value_text(store.offer_count, "?")),
-			self:_entry(localize("auto_crafter_panel_wallet", "Wallet"), string.format("%s / %s / %s", value_text(wallet_amount(snapshot, "credits")), value_text(wallet_amount(snapshot, "plasteel")), value_text(wallet_amount(snapshot, "diamantine")))),
-			self:_entry(localize("auto_crafter_panel_gear", "Gear"), value_text(snapshot and snapshot.gear and snapshot.gear.item_count, "?")),
+			self:_entry(localize("auto_crafter_panel_wallet", "Resources"), string.format("%s  |  %s  |  %s", integer_text(wallet_amount(snapshot, "credits")), integer_text(wallet_amount(snapshot, "plasteel")), integer_text(wallet_amount(snapshot, "diamantine")))),
+			self:_entry(localize("auto_crafter_panel_inventory", "Inventory"), string.format("%s: %s  |  %s: %s", localize("auto_crafter_panel_offers", "Offers"), value_text(store.offer_count, "?"), localize("auto_crafter_panel_gear", "Gear"), value_text(snapshot and snapshot.gear and snapshot.gear.item_count, "?"))),
 			self:_entry(localize("auto_crafter_panel_target", "Target"), selected, {
 				refresh = function(widget)
 					local _, current_weapon = self:_selected_offers(self._snapshot)
@@ -709,11 +777,11 @@ function Panel.new(dependencies)
 					widget.content.detail = current_weapon or localize("auto_crafter_panel_no_target", "no weapon selected")
 				end,
 			}),
-			self:_entry(localize("auto_crafter_panel_planner", "Planner configuration"), localize("auto_crafter_panel_read_only", "READ-ONLY"), {
-				header = true,
+			self:_entry(localize("auto_crafter_panel_planner", "Planner configuration"), "", {
 				selectable = true,
 				section_header = true,
 				section_id = SECTION_PLANNER,
+				variant = "section",
 			}),
 		}
 
@@ -725,6 +793,7 @@ function Panel.new(dependencies)
 			}))
 			table.insert(entries, self:_entry(localize("auto_crafter_panel_dump_stat", "Dump stat"), self:_planner_dump_stat_text(), {
 				selectable = true,
+				variant = "selector",
 				action = function()
 					self:_cycle_setting("auto_crafter_target_dump_stat", { "damage", "auto" }, "damage")
 				end,
@@ -733,14 +802,26 @@ function Panel.new(dependencies)
 				end,
 			}))
 			table.insert(entries, self:_entry(localize("auto_crafter_panel_dump_target", "Dump target"), integer_text(self:_setting("auto_crafter_dump_stat_target", 60)), {
+				selectable = true,
+				variant = "stepper",
+				decrease = function()
+					self:_adjust_numeric_setting("auto_crafter_dump_stat_target", 60, 1, 100, -1)
+				end,
+				increase = function()
+					self:_adjust_numeric_setting("auto_crafter_dump_stat_target", 60, 1, 100, 1)
+				end,
 				refresh = function(widget)
 					widget.content.detail = integer_text(self:_setting("auto_crafter_dump_stat_target", 60))
 				end,
 			}))
 			table.insert(entries, self:_entry(localize("auto_crafter_panel_docket_cap", "Docket cap"), integer_text(self:_setting("auto_crafter_docket_cap", 1000000)), {
 				selectable = true,
-				action = function()
-					self:_cycle_setting("auto_crafter_docket_cap", { 100000, 200000, 300000, 500000, 1000000 }, 1000000)
+				variant = "stepper",
+				decrease = function()
+					self:_adjust_numeric_setting("auto_crafter_docket_cap", 1000000, 0, 10000000, -100000)
+				end,
+				increase = function()
+					self:_adjust_numeric_setting("auto_crafter_docket_cap", 1000000, 0, 10000000, 100000)
 				end,
 				refresh = function(widget)
 					widget.content.detail = integer_text(self:_setting("auto_crafter_docket_cap", 1000000))
@@ -748,24 +829,31 @@ function Panel.new(dependencies)
 			}))
 			table.insert(entries, self:_entry(localize("auto_crafter_panel_max_purchases", "Max purchases"), integer_text(self:_setting("auto_crafter_max_purchases", 100)), {
 				selectable = true,
-				action = function()
-					self:_cycle_setting("auto_crafter_max_purchases", { 10, 25, 50, 100, 250, 500 }, 100)
+				variant = "stepper",
+				decrease = function()
+					self:_adjust_numeric_setting("auto_crafter_max_purchases", 100, 1, 10000, -1)
+				end,
+				increase = function()
+					self:_adjust_numeric_setting("auto_crafter_max_purchases", 100, 1, 10000, 1)
 				end,
 				refresh = function(widget)
 					widget.content.detail = integer_text(self:_setting("auto_crafter_max_purchases", 100))
 				end,
 			}))
 			table.insert(entries, self:_entry(localize("auto_crafter_panel_best_fallback", "Best-candidate fallback"), self:_planner_fallback_text(), {
+				checked = self:_setting("auto_crafter_best_candidate_fallback", false) == true,
 				selectable = true,
+				variant = "checkbox",
 				action = function()
 					self:_set_setting("auto_crafter_best_candidate_fallback", not (self:_setting("auto_crafter_best_candidate_fallback", false) == true))
 				end,
 				refresh = function(widget)
-					widget.content.detail = self:_planner_fallback_text()
+					widget.content.checked = self:_setting("auto_crafter_best_candidate_fallback", false) == true
 				end,
 			}))
 			table.insert(entries, self:_entry(localize("auto_crafter_panel_request_mode", "Request mode"), self:_planner_request_mode_text(), {
 				selectable = true,
+				variant = "selector",
 				action = function()
 					self:_cycle_setting("auto_crafter_request_mode", { "sequential", "parallel_reads", "experimental_parallel_mutations" }, "sequential")
 				end,
@@ -774,13 +862,15 @@ function Panel.new(dependencies)
 				end,
 			}))
 			table.insert(entries, self:_entry(localize("auto_crafter_panel_estimate", "Estimate"), plan and plan.estimate and plan.estimate.summary or localize("auto_crafter_panel_waiting", "waiting for probe"), {
+				variant = "status",
 				refresh = function(widget)
 					local current_plan = self._plan
 
 					widget.content.detail = current_plan and current_plan.estimate and current_plan.estimate.summary or localize("auto_crafter_panel_waiting", "waiting for probe")
 				end,
 			}))
-			 table.insert(entries, self:_entry(localize("auto_crafter_panel_preflight", "Preflight"), plan and plan.preflight and plan.preflight.summary or localize("auto_crafter_panel_waiting", "waiting for probe"), {
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_preflight", "Preflight"), plan and plan.preflight and plan.preflight.summary or localize("auto_crafter_panel_waiting", "waiting for probe"), {
+				variant = "status",
 				refresh = function(widget)
 					local current_plan = self._plan
 
@@ -788,16 +878,20 @@ function Panel.new(dependencies)
 				end,
 			}))
 			table.insert(entries, self:_entry(localize("auto_crafter_panel_mutation_gate", "Mutation gate"), self:_mutation_gate_text(), {
+				checked = self:_setting("auto_crafter_allow_mutations", false) == true,
 				selectable = true,
+				variant = "checkbox",
 				action = function()
 					self:_set_setting("auto_crafter_allow_mutations", not (self:_setting("auto_crafter_allow_mutations", false) == true))
 				end,
 				refresh = function(widget)
-					widget.content.detail = self:_mutation_gate_text()
+					widget.content.checked = self:_setting("auto_crafter_allow_mutations", false) == true
 				end,
 			}))
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_preview", "Craft / purchase search"), self:_setting("auto_crafter_allow_mutations", false) == true and localize("auto_crafter_panel_estimate", "SERIAL; click to start") or localize("auto_crafter_panel_read_only_preview", "Enable mutation gate first"), {
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_preview", "Craft / purchase search"), self:_setting("auto_crafter_allow_mutations", false) == true and localize("auto_crafter_panel_serial_start", "SERIAL; click to start") or localize("auto_crafter_panel_read_only_preview", "Read-only preview"), {
+				enabled = true,
 				selectable = true,
+				variant = "action",
 				action = function()
 					if self:_setting("auto_crafter_allow_mutations", false) == true and type(self._start_purchase_search) == "function" then
 						self._start_purchase_search()
@@ -805,33 +899,42 @@ function Panel.new(dependencies)
 						self._preview_plan()
 					end
 				end,
+				refresh = function(widget)
+					local enabled = self:_setting("auto_crafter_allow_mutations", false) == true
+					widget.content.enabled = true
+					widget.content.hotspot.disabled = false
+					widget.content.detail = enabled and localize("auto_crafter_panel_serial_start", "SERIAL; click to start") or localize("auto_crafter_panel_read_only_preview", "Read-only preview")
+				end,
 			}))
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_phase_2", "Phase 2: Redeem + sacrifice one"), self:_last_candidate_text(), {
-				selectable = self._controller_state and self._controller_state.last_purchased ~= nil and self:_setting("auto_crafter_allow_mutations", false) == true,
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_phase_2", "Redeem + sacrifice one"), self:_last_candidate_text(), {
+				enabled = self._controller_state and self._controller_state.last_purchased ~= nil and self:_setting("auto_crafter_allow_mutations", false) == true,
+				selectable = true,
+				variant = "action",
 				action = function()
 					if type(self._start_mastery_operation) == "function" then
 						self._start_mastery_operation()
 					end
 				end,
 				refresh = function(widget)
+					local enabled = self._controller_state and self._controller_state.last_purchased ~= nil and self:_setting("auto_crafter_allow_mutations", false) == true
+					widget.content.enabled = enabled
+					widget.content.hotspot.disabled = not enabled
 					widget.content.detail = self:_last_candidate_text()
 				end,
 			}))
 		end
 
-		table.insert(entries, self:_entry(localize("auto_crafter_panel_offer_list", "Weapon offers"), string.format("%s / %s", tostring(#offers), value_text(store.offer_count, "?")), {
-			header = true,
-		}))
+		table.insert(entries, self:_entry(localize("auto_crafter_panel_offer_list", "Weapon selection"), tostring(#offers)))
 
 		for _, section_id in ipairs({ SECTION_MELEE, SECTION_RANGED }) do
 			local section_offers = grouped_offers[section_id]
 			local section_label = section_id == SECTION_RANGED and localize("auto_crafter_panel_ranged_weapons", "Ranged Weapons") or localize("auto_crafter_panel_melee_weapons", "Melee Weapons")
 
 			table.insert(entries, self:_entry(section_label, tostring(#section_offers), {
-				header = true,
 				selectable = true,
 				section_header = true,
 				section_id = section_id,
+				variant = "section",
 			}))
 
 			if not self._section_collapsed[section_id] then
@@ -846,6 +949,7 @@ function Panel.new(dependencies)
 					table.insert(entries, self:_entry(offer_label(offer, index), offer_detail(offer), {
 						offer = offer,
 						selectable = true,
+						variant = "offer",
 					}))
 				end
 
@@ -981,7 +1085,7 @@ function Panel.new(dependencies)
 		self:detach()
 
 		local menu_settings = {
-			bottom_chin = 10,
+			bottom_chin = CONTENT_VERTICAL_PADDING,
 			edge_padding = 0,
 			enable_gamepad_scrolling = true,
 			grid_size = {
@@ -1001,7 +1105,7 @@ function Panel.new(dependencies)
 			reset_selection_on_navigation_change = false,
 			scrollbar_width = 7,
 			title_height = 0,
-			top_padding = 10,
+			top_padding = CONTENT_VERTICAL_PADDING,
 			use_is_focused_for_navigation = false,
 			use_select_on_focused = true,
 			use_terminal_background = true,

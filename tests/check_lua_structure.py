@@ -182,6 +182,18 @@ def validate_auto_crafter_mutation_boundaries() -> int:
         "Color.terminal_frame(255, true)",
         "selected_mark",
         "chevron",
+        "local ROW_SPACING = 8",
+        "local CONTENT_HORIZONTAL_PADDING = 12",
+        "local CONTENT_VERTICAL_PADDING = 10",
+        "local COMPACT_ROW_HEIGHT = 26",
+        "local function summary_line_passes",
+        "local function status_block_passes",
+        "local function section_header_passes",
+        "local function compact_selector_passes",
+        "local function compact_checkbox_passes",
+        "local function compact_stepper_passes",
+        "local function action_button_passes",
+        "local function offer_row_passes",
     )
     missing_visual = [token for token in visual_contract if token not in panel_source]
 
