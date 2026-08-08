@@ -1,9 +1,9 @@
 # B40 live-engine validation record
 
-Status: **not run — awaiting owner practical testing**  
+Status: **in progress — B51 focused acceptance recorded; full matrix incomplete**
 Branch: `audit/v2.0.0`  
 Package: `BetterInventory.zip`  
-Package SHA-256: `890642B9AF98A479E2AFBDF5785559E1AE8C442FCD197FFE5719482686E4DB36`
+Package SHA-256: `27C468F2418812FB3667DA2329F62EB8F73D40CECDAB9574A0E1CE80F57D704F`
 
 This is the final live gate for B22–B39. Run it with the packaged/deployed
 2.0.0 runtime, record the result for every row, and attach screenshots or log
@@ -15,7 +15,7 @@ the stated repetitions are complete.
 | Field | Value |
 | --- | --- |
 | Darktide build | pending owner entry |
-| BetterInventory commit/package | `665801b` / SHA above |
+| BetterInventory commit/package | `a9eac7d` runtime / SHA above |
 | DMF and load order | pending owner entry |
 | Resolution and UI scale | pending owner entry |
 | Input mode | pending owner entry |
@@ -30,7 +30,7 @@ the stated repetitions are complete.
 | B40-01 | Cold start, enter Morningstar, open inventory, vendor, and Character Overview | No BetterInventory error, missing module, stale card, or native UI damage | Not run |
 | B40-02 | Swap weapon X→Y; leave inventory; ESC overview; reopen overview/inventory; repeat 20 rapid cycles | Y remains authoritative everywhere; equipped icon never reverts to X | Not run |
 | B40-03 | Swap Curio with one secondary line to Curio with 2+ lines; repeat with different rarity/background | Current background, rarity, name, stats, and every secondary line belong to current Curio | Not run |
-| B40-04 | Empty Curio slot → populated Curio → empty slot → different Curio | No old background, stat line, fit cache, or equipped marker survives | Not run |
+| B40-04 | Empty Curio slot → populated Curio → empty slot → different Curio | No old background, stat line, fit cache, or equipped marker survives | Partial pass — owner confirmed empty→populated after B51; reverse/different-Curio sequence not recorded |
 | B40-05 | Open/close inventory and Character Overview 100 times; include ESC, back button, and view transition | No stale focus, duplicate panels, leaked markers, warnings, or progressive UI degradation | Not run |
 | B40-06 | Scroll melee/ranged/Curio inventories continuously for 10 minutes; change columns/layouts repeatedly | No crash, visible hitch growth, resource warning, or unexplained post-GC memory trend | Not run |
 | B40-07 | Use controller navigation through inventory options, vendor sorting, collapse/expand, and return to grid | Focus, legend, selection, and row navigation remain correct | Not run |

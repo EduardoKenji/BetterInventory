@@ -24,6 +24,9 @@
   "post_audit_hotfix": "665801b strict Character Overview scenegraph probes",
   "live_validation": {
     "record": "docs/b40-live-validation-record.md",
+    "accepted_fixes": [
+      "B51 empty Curio slot to equipped Curio transition"
+    ],
     "status": "not_run",
     "release_blocker": true
   },
