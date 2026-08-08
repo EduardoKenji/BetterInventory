@@ -21,6 +21,7 @@
     "BetterInventory_feature_sorting.lua": {"minimum_percent": 65.0, "risk": "high"},
     "BetterInventory_features.lua": {"minimum_percent": 70.0, "risk": "critical"},
     "BetterInventory_item_customization.lua": {"minimum_percent": 65.0, "risk": "high"},
+    "BetterInventory_item_customization_store.lua": {"minimum_percent": 65.0, "risk": "high"},
     "BetterInventory_layout.lua": {"minimum_percent": 70.0, "risk": "high"},
     "BetterInventory_operation_arbiter.lua": {"minimum_percent": 80.0, "risk": "critical"},
     "BetterInventory_settings.lua": {"minimum_percent": 80.0, "risk": "high"},

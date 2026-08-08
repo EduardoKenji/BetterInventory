@@ -14,6 +14,9 @@ OWNERSHIP_PATH = PROJECT_ROOT / "docs" / "runtime-module-ownership.json"
 LOCAL_DOFWILE_PATTERN = re.compile(
     r'io_dofile\(\s*"BetterInventory/scripts/mods/BetterInventory/([^"/]+)"\s*\)'
 )
+LOCAL_SAFE_DOFWILE_PATTERN = re.compile(
+    r'io_dofile\s*,\s*[^,\n]+,\s*"BetterInventory/scripts/mods/BetterInventory/([^"/]+)"'
+)
 LOCAL_SHARD_PATTERN = re.compile(
     r'load_shard\(\s*"(BetterInventory_[^"/]+)"\s*\)'
 )
@@ -58,10 +61,14 @@ def actual_dependencies(module_name: str) -> set[str]:
     direct_dependencies = {
         match.group(1) + ".lua" for match in LOCAL_DOFWILE_PATTERN.finditer(source)
     }
+    guarded_dependencies = {
+        match.group(1) + ".lua"
+        for match in LOCAL_SAFE_DOFWILE_PATTERN.finditer(source)
+    }
     shard_dependencies = {
         match.group(1) + ".lua" for match in LOCAL_SHARD_PATTERN.finditer(source)
     }
-    return direct_dependencies | shard_dependencies
+    return direct_dependencies | guarded_dependencies | shard_dependencies
 
 
 def validate_dependencies(contract: dict[str, object]) -> None:

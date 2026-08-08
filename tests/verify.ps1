@@ -122,7 +122,10 @@ $operationArbiter = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInven
 $settingsRegistry = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_settings.lua") -Raw
 $curioAcquisition = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_acquisition.lua") -Raw
 $curioValues = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_values.lua") -Raw
-$itemCustomization = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_item_customization.lua") -Raw
+$itemCustomization = @(
+	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_item_customization.lua") -Raw
+	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_item_customization_store.lua") -Raw
+) -join "`n"
 $diagnostics = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_diagnostics.lua") -Raw
 
 $trackedReleaseArchive = Join-Path $projectRoot "BetterInventory.zip"

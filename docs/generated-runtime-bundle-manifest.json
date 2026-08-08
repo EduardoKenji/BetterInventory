@@ -1,6 +1,6 @@
 {
   "archive_root": "BetterInventory",
-  "file_count": 23,
+  "file_count": 24,
   "files": [
     {
       "archive_path": "BetterInventory/BetterInventory.mod",
@@ -88,9 +88,15 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_item_customization.lua",
-      "bytes": 49104,
-      "sha256": "c2b71bc4bb61187150d0b46f1e1b8cfdca1ea2aff94a5c78ecab111f2fa38eba",
+      "bytes": 42146,
+      "sha256": "4c320f8096444d1d50bd3aa1e10f9d0db35498a1dbb65ad2c618dcdd473fea05",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_item_customization.lua"
+    },
+    {
+      "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_item_customization_store.lua",
+      "bytes": 9755,
+      "sha256": "eec22b35c03eafb4128040d3a68363cd7d3518b79d12538638aa7b74e6ab1536",
+      "source_path": "scripts/mods/BetterInventory/BetterInventory_item_customization_store.lua"
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout.lua",
@@ -141,6 +147,6 @@
       "source_path": "scripts/mods/BetterInventory/BetterInventory_view_session.lua"
     }
   ],
-  "runtime_tree_sha256": "48f072d4047ca25cd91c4e7bd0497120c908b81531967c60dc3c0835b4f331b2",
+  "runtime_tree_sha256": "b2f9d2bec75df1c0a67f6baedf53033590f6dd8561fe0b6006bd09f11b02b537",
   "version": "2.0.0"
 }

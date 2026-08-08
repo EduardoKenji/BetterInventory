@@ -1,161 +1,44 @@
 local ItemCustomization = {}
 local Items = require("scripts/utilities/items")
 
-local STORAGE_SETTING_ID = "custom_item_name_and_colors"
 local NAME_IT_OWNS_NAMES_SETTING_ID = "_custom_item_name_it_owns_names"
 local INPUT_WIDGET_ID = "better_inventory_name_input"
 local POPUP_HANDLER_NAME = "ConstantElementPopupHandler"
 local POPUP_DEFINITIONS_PATH = "scripts/ui/constant_elements/elements/popup_handler/constant_element_popup_handler_definitions"
 local NAME_EDITOR_DESCRIPTION = "Enter a custom name. Leave it blank to restore the default name."
-local MAX_NAME_LENGTH = 80
 local MAX_INPUT_WIDGET_CREATION_ATTEMPTS = 3
-local DEFAULT_NAME_COLOR = { 255, 220, 230, 210 }
-local DEFAULT_BACKGROUND_COLOR = { 255, 45, 55, 45 }
-local cached_records = {}
 local pending_action
 local input_widget
 local input_widget_definition
 local show_input_field = false
 local installed = false
-local persistence_pending = false
-local persistence_retry_elapsed = 0
-local persistence_attempts = 0
-local persistence_last_outcome = "idle"
-local MAX_PERSISTENCE_ATTEMPTS = 3
-local pending_deleted_gear_ids = {}
 local name_it_legend_entries = setmetatable({}, { __mode = "k" })
 
-local function normalize_name(value)
-	if type(value) ~= "string" then
-		return
-	end
-
-	-- Keep names single-line and prevent invisible whitespace-only records.
-	value = string.gsub(value, "[%c]", " ")
-	value = string.gsub(value, "%s+", " ")
-	value = string.gsub(value, "^%s+", "")
-	value = string.gsub(value, "%s+$", "")
-
-	if value == "" then
-		return
-	end
-
-	local utf8 = rawget(_G, "Utf8")
-
-	if utf8 and type(utf8.string_length) == "function" and type(utf8.sub_string) == "function" then
-		if utf8.string_length(value) > MAX_NAME_LENGTH then
-			value = utf8.sub_string(value, 1, MAX_NAME_LENGTH)
-		end
-	elseif #value > MAX_NAME_LENGTH then
-		value = string.sub(value, 1, MAX_NAME_LENGTH)
-	end
-
-	return value
-end
-
-local function clone_color(color, fallback)
-	local source = type(color) == "table" and color or fallback
-
-	return {
-		255,
-		math.max(0, math.min(255, math.floor(tonumber(source[2]) or fallback[2]))),
-		math.max(0, math.min(255, math.floor(tonumber(source[3]) or fallback[3]))),
-		math.max(0, math.min(255, math.floor(tonumber(source[4]) or fallback[4]))),
-	}
-end
-
-local function customization_records(mod)
-	local records = mod:get(STORAGE_SETTING_ID)
-
-	return type(records) == "table" and records or {}
-end
-
-local function mark_persistence_pending()
-	persistence_pending = true
-	persistence_last_outcome = "pending"
-	persistence_attempts = 0
-	-- A new mutation should be eligible for the next runtime flush. Once a
-	-- save attempt is made, unknown/failing outcomes are retried at a bounded
-	-- cadence instead of every frame.
-	persistence_retry_elapsed = 1
-end
-
-local function save_records(mod, records)
-	cached_records = records
-	mod:set(STORAGE_SETTING_ID, records, false)
-	mark_persistence_pending()
-end
-
-local function flush_persistence(force)
-	if not persistence_pending then
-		return false
-	end
-
-	if not force and persistence_retry_elapsed < 1 then
-		return false
-	end
-
-	if persistence_attempts >= MAX_PERSISTENCE_ATTEMPTS then
-		persistence_pending = false
-		persistence_last_outcome = "exhausted"
-		return false
-	end
-
-	persistence_retry_elapsed = 0
-	persistence_attempts = persistence_attempts + 1
-
+local Store = {}
+do
 	local resolver = rawget(_G, "get_mod")
+	local host_mod = type(resolver) == "function" and resolver("BetterInventory") or nil
 
-	if type(resolver) ~= "function" then
-		persistence_last_outcome = persistence_attempts >= MAX_PERSISTENCE_ATTEMPTS and "unavailable_exhausted" or "unavailable"
-		if persistence_attempts >= MAX_PERSISTENCE_ATTEMPTS then
-			persistence_pending = false
-		end
-		return false
-	end
+	if host_mod and type(host_mod.io_dofile) == "function" then
+		local ok, loaded = pcall(host_mod.io_dofile, host_mod, "BetterInventory/scripts/mods/BetterInventory/BetterInventory_item_customization_store")
 
-	local ok, dmf = pcall(resolver, "DMF")
-
-	if not ok or type(dmf) ~= "table" or type(dmf.save_unsaved_settings_to_file) ~= "function" then
-		persistence_last_outcome = persistence_attempts >= MAX_PERSISTENCE_ATTEMPTS and "unavailable_exhausted" or "unavailable"
-		if persistence_attempts >= MAX_PERSISTENCE_ATTEMPTS then
-			persistence_pending = false
-		end
-		return false
-	end
-
-	-- One deferred flush batches all edits/deletions performed in the same
-	-- frame while reducing the hard-crash loss window from an entire game state
-	-- to, normally, a single frame.
-	local save_ok, save_result = pcall(dmf.save_unsaved_settings_to_file)
-
-	-- Current DMF releases swallow Application.set_user_setting failures and
-	-- return nil. Treat only an explicit true result as durable success; keep
-	-- the dirty state otherwise so a later lifecycle/save boundary can retry.
-	if save_ok and save_result == true then
-		persistence_pending = false
-		persistence_last_outcome = "saved"
-	elseif save_ok and save_result == nil then
-		-- DMF's normal implementation delegates the actual application-setting
-		-- write and returns no value. It cannot report durability to us, but the
-		-- call itself is the complete obligation BetterInventory owns. Retrying
-		-- this path forever causes repeated writes and misleading warnings.
-		persistence_pending = false
-		persistence_last_outcome = "delegated"
-	elseif not save_ok then
-		persistence_last_outcome = persistence_attempts >= MAX_PERSISTENCE_ATTEMPTS and "error_exhausted" or "error"
-		if persistence_attempts >= MAX_PERSISTENCE_ATTEMPTS then
-			persistence_pending = false
-		end
-	else
-		persistence_last_outcome = persistence_attempts >= MAX_PERSISTENCE_ATTEMPTS and "rejected_exhausted" or "rejected"
-		if persistence_attempts >= MAX_PERSISTENCE_ATTEMPTS then
-			persistence_pending = false
+		if ok and type(loaded) == "table" then
+			Store = loaded
 		end
 	end
-
-	return save_ok and save_result == true
 end
+
+local normalize_name = Store.normalize_name
+local clone_color = Store.clone_color
+local sanitize_record = Store.sanitize_record
+local customization_records = Store.records
+local mark_persistence_pending = Store.mark_persistence_pending
+local save_records = Store.save_records
+local flush_persistence = Store.flush_persistence
+local DEFAULT_NAME_COLOR = Store.default_name_color
+local DEFAULT_BACKGROUND_COLOR = Store.default_background_color
+local MAX_NAME_LENGTH = Store.max_name_length
+local STORAGE_SETTING_ID = Store.storage_setting_id
 
 local function name_it_mod()
 	local resolver = rawget(_G, "get_mod")
@@ -209,57 +92,6 @@ local function name_it_replace_pattern_name(other_mod)
 	return success and value == true
 end
 
-local function record_has_customization(record)
-	return record.name ~= nil or record.name_color ~= nil or record.background_color ~= nil
-end
-
-local function sanitize_record(record)
-	if type(record) ~= "table" then
-		return nil, true
-	end
-
-	local changed = false
-	local name = normalize_name(record.name)
-
-	if name ~= record.name then
-		record.name = name
-		changed = true
-	end
-
-	for _, field in ipairs({ "name_color", "background_color" }) do
-		if record[field] ~= nil and type(record[field]) ~= "table" then
-			record[field] = nil
-			changed = true
-		end
-	end
-
-	if record.background_color == nil and record.background_preserve_shading ~= nil then
-		record.background_preserve_shading = nil
-		changed = true
-	elseif record.background_preserve_shading ~= nil and type(record.background_preserve_shading) ~= "boolean" then
-		record.background_preserve_shading = nil
-		changed = true
-	end
-
-	if record.name == nil or (record.name_target ~= "primary" and record.name_target ~= "sub") then
-		if record.name_target ~= nil then
-			record.name_target = nil
-			changed = true
-		end
-	end
-
-	if record.character_id ~= nil and (type(record.character_id) ~= "string" or record.character_id == "") then
-		record.character_id = nil
-		changed = true
-	end
-
-	if not record_has_customization(record) then
-		return nil, true
-	end
-
-	return record, changed
-end
-
 local function sync_name_to_name_it(gear_id, name)
 	local other_mod, names = name_it_names()
 
@@ -272,71 +104,28 @@ local function sync_name_to_name_it(gear_id, name)
 end
 
 ItemCustomization.get = function(mod, gear_id)
-	local record = gear_id and cached_records[gear_id]
-
-	return type(record) == "table" and record or nil
+	return Store.get(mod, gear_id)
 end
 
 ItemCustomization.update = function(mod, gear_id, changes)
-	if type(gear_id) ~= "string" or gear_id == "" or type(changes) ~= "table" then
-		return false
+	local updated = Store.update(mod, gear_id, changes)
+
+	if updated and changes.name ~= nil then
+		local record = Store.get(mod, gear_id)
+		sync_name_to_name_it(gear_id, record and record.name)
 	end
 
-	local records = customization_records(mod)
-	local record = type(records[gear_id]) == "table" and records[gear_id] or {}
-
-	if changes.name ~= nil then
-		record.name = normalize_name(changes.name)
-		-- name_target only describes names imported from Name It's optional
-		-- pattern-name mode. Names entered through BetterInventory always replace
-		-- the primary card name and must not inherit stale imported metadata.
-		record.name_target = nil
-		sync_name_to_name_it(gear_id, record.name)
-	end
-
-	if type(changes.character_id) == "string" and changes.character_id ~= "" then
-		record.character_id = changes.character_id
-	end
-
-	if changes.name_color ~= nil then
-		record.name_color = changes.name_color ~= false and clone_color(changes.name_color, DEFAULT_NAME_COLOR) or nil
-	end
-
-	if changes.background_color ~= nil then
-		record.background_color = changes.background_color ~= false and clone_color(changes.background_color, DEFAULT_BACKGROUND_COLOR) or nil
-
-		if changes.background_color == false then
-			record.background_preserve_shading = nil
-		end
-	end
-
-	if changes.background_preserve_shading ~= nil and record.background_color ~= nil then
-		record.background_preserve_shading = changes.background_preserve_shading == true
-	end
-
-	if record.name == nil and record.name_color == nil and record.background_color == nil and record.background_preserve_shading == nil then
-		records[gear_id] = nil
-	else
-		records[gear_id] = record
-	end
-
-	save_records(mod, records)
-
-	return true
+	return updated
 end
 
 ItemCustomization.remove = function(mod, gear_id)
-	local records = customization_records(mod)
+	local removed = Store.remove(mod, gear_id)
 
-	if gear_id == nil or records[gear_id] == nil then
-		return false
+	if removed then
+		sync_name_to_name_it(gear_id, nil)
 	end
 
-	records[gear_id] = nil
-	save_records(mod, records)
-	sync_name_to_name_it(gear_id, nil)
-
-	return true
+	return removed
 end
 
 local function remove_records(mod, gear_ids)
@@ -344,26 +133,17 @@ local function remove_records(mod, gear_ids)
 		return 0
 	end
 
-	local records = customization_records(mod)
 	local other_mod, names = name_it_names()
-	local removed = 0
 	local names_changed = false
 
 	for gear_id in pairs(gear_ids) do
-		if records[gear_id] ~= nil then
-			records[gear_id] = nil
-			removed = removed + 1
-		end
-
 		if names and names[gear_id] ~= nil then
 			names[gear_id] = nil
 			names_changed = true
 		end
 	end
 
-	if removed > 0 then
-		save_records(mod, records)
-	end
+	local removed = Store.remove_records(mod, gear_ids)
 
 	if names_changed and other_mod and type(other_mod.set) == "function" then
 		pcall(other_mod.set, other_mod, "name_list", names, false)
@@ -374,13 +154,11 @@ local function remove_records(mod, gear_ids)
 end
 
 local function drain_deleted_records(mod)
-	if next(pending_deleted_gear_ids) == nil then
+	local gear_ids = Store.take_pending_deleted_gear_ids()
+
+	if next(gear_ids) == nil then
 		return 0
 	end
-
-	local gear_ids = pending_deleted_gear_ids
-
-	pending_deleted_gear_ids = {}
 
 	return remove_records(mod, gear_ids)
 end
@@ -440,7 +218,7 @@ ItemCustomization.import_name_it_names = function(mod)
 	if records_changed then
 		save_records(mod, records)
 	else
-		cached_records = records
+		Store.cache_records(records)
 	end
 
 	if names_changed and type(other_mod.set) == "function" then
@@ -1083,7 +861,7 @@ ItemCustomization.on_enabled = function(mod)
 		end
 	end
 
-	cached_records = records
+	Store.cache_records(records)
 
 	if type(mod:get(STORAGE_SETTING_ID)) ~= "table" or records_changed then
 		save_records(mod, records)
@@ -1171,8 +949,6 @@ ItemCustomization.on_setting_changed = function(mod, setting_id)
 end
 
 ItemCustomization.update_runtime = function(mod, dt)
-	persistence_retry_elapsed = math.min(1, persistence_retry_elapsed + math.max(tonumber(dt) or 0, 0))
-
 	if pending_action then
 		local action = pending_action
 		pending_action = nil
@@ -1180,11 +956,11 @@ ItemCustomization.update_runtime = function(mod, dt)
 	end
 
 	drain_deleted_records(mod)
-	flush_persistence(false)
+	Store.update_runtime(mod, dt)
 end
 
 ItemCustomization.persistence_status = function()
-	return persistence_last_outcome, persistence_pending
+	return Store.persistence_status()
 end
 
 local function effective_name_keybind(mod)
@@ -1347,7 +1123,7 @@ ItemCustomization.install = function(mod, InventoryWeaponsView, layout)
 			remove_records(mod, { [gear_id] = true })
 			flush_persistence()
 		else
-			pending_deleted_gear_ids[gear_id] = true
+			Store.queue_deleted_gear(gear_id)
 		end
 	end)
 

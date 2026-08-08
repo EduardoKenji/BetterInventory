@@ -11,6 +11,13 @@ MODULE_PATH = (
     / "BetterInventory"
     / "BetterInventory_item_customization.lua"
 )
+STORE_PATH = (
+    PROJECT_ROOT
+    / "scripts"
+    / "mods"
+    / "BetterInventory"
+    / "BetterInventory_item_customization_store.lua"
+)
 
 
 def main() -> None:
@@ -138,7 +145,7 @@ def main() -> None:
         }
 
         function get_mod(name)
-            return name == "name_it" and name_it_available and test_name_it_mod or name == "DMF" and test_dmf_mod or nil
+            return name == "BetterInventory" and test_mod or name == "name_it" and name_it_available and test_name_it_mod or name == "DMF" and test_dmf_mod or nil
         end
 
         test_mod = {}
@@ -153,6 +160,12 @@ def main() -> None:
 
         function test_mod:set(setting_id, value)
             settings[setting_id] = type(value) == "table" and table.clone(value) or value
+        end
+
+        function test_mod:io_dofile(path)
+            if string.find(path, "BetterInventory_item_customization_store", 1, true) then
+                return better_inventory_store
+            end
         end
 
 		function test_mod:is_enabled()
@@ -213,6 +226,8 @@ def main() -> None:
         }
         """
     )
+    store = lua.execute(STORE_PATH.read_text(encoding="utf-8"), name=str(STORE_PATH))
+    lua.globals().better_inventory_store = store
     customization = lua.execute(
         MODULE_PATH.read_text(encoding="utf-8"), name=str(MODULE_PATH)
     )
