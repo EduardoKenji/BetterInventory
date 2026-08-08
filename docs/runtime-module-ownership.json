@@ -4,7 +4,7 @@
   "preferred_bytes": 80000,
   "temporary_size_exceptions": {
     "BetterInventory.lua": "R14 bootstrap extraction pending",
-    "BetterInventory_features.lua": "R04-R09 feature extraction pending"
+    "BetterInventory_features.lua": "R11-R14 remaining feature-facade extraction pending"
   },
   "hook_modules": {
     "BetterInventory.lua": "bootstrap-and-runtime-hooks",
