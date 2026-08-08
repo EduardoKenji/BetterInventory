@@ -3,7 +3,7 @@
 Status: **not run — awaiting owner practical testing**  
 Branch: `audit/v2.0.0`  
 Package: `BetterInventory.zip`  
-Package SHA-256: `B6987E8CDC9BF876A1B470067E1E5B6BF9D2F1A99C02C464D82F21E24E8DFEAD`
+Package SHA-256: `890642B9AF98A479E2AFBDF5785559E1AE8C442FCD197FFE5719482686E4DB36`
 
 This is the final live gate for B22–B39. Run it with the packaged/deployed
 2.0.0 runtime, record the result for every row, and attach screenshots or log
@@ -15,7 +15,7 @@ the stated repetitions are complete.
 | Field | Value |
 | --- | --- |
 | Darktide build | pending owner entry |
-| BetterInventory commit/package | `26314df` / SHA above |
+| BetterInventory commit/package | `665801b` / SHA above |
 | DMF and load order | pending owner entry |
 | Resolution and UI scale | pending owner entry |
 | Input mode | pending owner entry |
@@ -51,6 +51,12 @@ active views/panels, marker scans, panel rebuilds, async read age, operation
 generation, and Lua memory. Disable it afterward and repeat a short smoke test.
 
 ## Failure record
+
+Latest owner observation before this record update: opening a melee weapon from
+Character Overview produced a Darktide crash reporting missing strict-table
+field `window` at `table.lua:1204`. This is fixed in `665801b`; rerun B40-01,
+B40-02, and B40-06 before treating the hotfix as accepted. The result remains
+`Not run` until those repetitions are completed.
 
 For every failure, record: scenario ID, exact action sequence, character and
 account, item gear IDs if visible, settings, optional-mod list, timestamp,

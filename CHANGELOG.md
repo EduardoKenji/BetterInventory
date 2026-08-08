@@ -4,6 +4,7 @@
 
 ### Fixed / Added
 
+- P0 hotfix `665801b`: prevent Character Overview composition probes from reading absent optional `window`/`canvas` scenegraph nodes through Darktide strict tables. This removes the reported `table.lua:1204` crash when opening a melee weapon card and adds a strict-scenegraph regression test.
 - Finalized the B40/B41 release-candidate handoff with a repeatable live stress/compatibility matrix, deterministic release fingerprint, and explicit documentation that live-engine validation remains the final release blocker.
 - Fixed Automatic Curio Buyer consuming a predicted new rotation while Darktide's backend still returned the expired storefront. Rotation-triggered passes now require storefront boundary advancement and poll stale responses as a nonterminal wait without evaluating offers, showing a false failure, or suppressing the real refresh pass. A one-time ledger migration invalidates potentially poisoned pre-hotfix boundaries while preserving pending reports and account metadata.
 - Hardened weapon and Curio equip persistence across rapid Character Overview exits. BetterInventory observes Darktide's native request, retries only confirmed idempotent failures with account/character guards, preserves uncommitted Y previews from delayed authoritative-X events when reopening the child inventory, and refreshes the overview after confirmed persistence.
