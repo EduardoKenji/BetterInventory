@@ -69,6 +69,13 @@ local CharacterOverview = no_op_module(mod:io_dofile("BetterInventory/scripts/mo
 		return false
 	end,
 })
+local FeatureDomains = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_feature_domains"), "BetterInventory_feature_domains.lua", {
+	markers = {
+		invalidate_grid = function()
+			return false
+		end,
+	},
+})
 
 local Capabilities = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_contracts")
 
@@ -573,14 +580,7 @@ local function normalized_displayed_value(content, displayed_id, fitted_id, full
 end
 
 local function invalidate_myfavorites_grid(item_grid)
-	if not item_grid or item_grid._better_inventory_myfavorites_active ~= true then
-		return false
-	end
-
-	item_grid._better_inventory_myfavorites_dirty = true
-	item_grid._better_inventory_myfavorites_generation = (item_grid._better_inventory_myfavorites_generation or 0) + 1
-
-	return true
+	return FeatureDomains.markers.invalidate_grid(item_grid)
 end
 
 local function invalidate_myfavorites_view(view)

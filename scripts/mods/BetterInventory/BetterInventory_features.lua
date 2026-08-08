@@ -15,6 +15,27 @@ end
 
 local Features = {}
 Features._diagnostics = nil
+Features._domains = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_feature_domains")
+
+if type(Features._domains) ~= "table" or type(Features._domains.sorting) ~= "table" or type(Features._domains.sorting.signature) ~= "function" then
+	Features._domains = {
+		markers = {
+			invalidate_grid = function()
+				return false
+			end,
+		},
+		sorting = {
+			signature = function(parts)
+				return table.concat(parts or {}, "|")
+			end,
+		},
+		panels = {
+			composite_key = function(structure_key, lantern_signature, sorting_signature)
+				return tostring(structure_key or 0) .. ":" .. tostring(lantern_signature or "") .. ":" .. tostring(sorting_signature or "")
+			end,
+		},
+	}
+end
 
 Features.set_diagnostics_provider = function(provider)
 	Features._diagnostics = provider
@@ -2447,7 +2468,7 @@ local function item_sorting_options_signature(view)
 		parts[#parts + 1] = tostring(sort_options[index].display_name or index)
 	end
 
-	local signature = table.concat(parts, "|")
+	local signature = Features._domains.sorting.signature(parts)
 	Features.count_diagnostic("panel_signatures")
 
 	if view then
@@ -2810,7 +2831,7 @@ local function panel_structure_key(mod, view)
 	key = key + (collapsed.item_sorting and 8388608 or 0)
 	key = key + (collapsed.native_sorting and 16777216 or 0)
 
-	return tostring(key) .. ":" .. tostring(view._better_inventory_lantern_panel_signature or "") .. ":" .. item_sorting_options_signature(view)
+	return Features._domains.panels.composite_key(key, view._better_inventory_lantern_panel_signature, item_sorting_options_signature(view))
 end
 
 local function lantern_is_enabled()
