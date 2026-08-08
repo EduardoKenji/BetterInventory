@@ -1,0 +1,73 @@
+{
+  "test_character_overview.py": [
+    {"name": "item_identity_and_revision", "risk": "high"},
+    {"name": "empty_slot_model", "risk": "high"},
+    {"name": "derived_content_reset", "risk": "high"}
+  ],
+  "test_contracts.py": [
+    {"name": "guarded_lookup", "risk": "high"},
+    {"name": "typed_fallbacks", "risk": "high"}
+  ],
+  "test_curio_acquisition.py": [
+    {"name": "store_rotation_gate", "risk": "critical"},
+    {"name": "purchase_revalidation", "risk": "critical"},
+    {"name": "read_cancellation_and_generation", "risk": "critical"},
+    {"name": "account_scoped_reports", "risk": "high"}
+  ],
+  "test_curio_domains.py": [
+    {"name": "context_snapshot", "risk": "high"},
+    {"name": "bounded_report_queue", "risk": "high"},
+    {"name": "retry_delay_policy", "risk": "medium"}
+  ],
+  "test_diagnostics.py": [
+    {"name": "bounded_counters", "risk": "medium"},
+    {"name": "diagnostic_toggle", "risk": "medium"}
+  ],
+  "test_equipment_persistence.py": [
+    {"name": "authoritative_reconciliation", "risk": "critical"},
+    {"name": "bounded_retry", "risk": "critical"},
+    {"name": "stale_callback_guard", "risk": "critical"}
+  ],
+  "test_feature_domains.py": [
+    {"name": "marker_generation", "risk": "high"},
+    {"name": "sorting_signature", "risk": "high"},
+    {"name": "panel_composition", "risk": "high"}
+  ],
+  "test_features.py": [
+    {"name": "discard_operation_ownership", "risk": "critical"},
+    {"name": "sorting_and_navigation", "risk": "high"},
+    {"name": "optional_integration_fallbacks", "risk": "high"},
+    {"name": "panel_lifecycle", "risk": "high"}
+  ],
+  "test_item_customization.py": [
+    {"name": "dirty_save_outcomes", "risk": "high"},
+    {"name": "bounded_retry_and_disable", "risk": "high"},
+    {"name": "callback_failure_safety", "risk": "high"}
+  ],
+  "test_layout.py": [
+    {"name": "card_geometry", "risk": "high"},
+    {"name": "content_and_resource_ownership", "risk": "high"},
+    {"name": "integration_boundaries", "risk": "medium"}
+  ],
+  "test_operation_arbiter.py": [
+    {"name": "manual_automatic_exclusion", "risk": "critical"},
+    {"name": "terminal_release_once", "risk": "critical"},
+    {"name": "cancel_and_reconcile", "risk": "critical"}
+  ],
+  "test_settings.py": [
+    {"name": "schema_dependency_refresh", "risk": "high"},
+    {"name": "migration_preservation", "risk": "high"},
+    {"name": "character_overview_refresh", "risk": "high"},
+    {"name": "localization_contract", "risk": "medium"}
+  ],
+  "test_settings_registry.py": [
+    {"name": "duplicate_detection", "risk": "high"},
+    {"name": "metadata_manifest", "risk": "high"},
+    {"name": "generated_character_slots", "risk": "high"}
+  ],
+  "test_view_session.py": [
+    {"name": "idempotent_close", "risk": "high"},
+    {"name": "ownership_preserving_restore", "risk": "high"},
+    {"name": "cleanup_order", "risk": "high"}
+  ]
+}

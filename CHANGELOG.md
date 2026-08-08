@@ -12,6 +12,9 @@
 - Added scoped ViewSession teardown and a generation-owned destructive-operation arbiter for discard popup/backend settlement lifecycles.
 - Replaced the single pending Automatic Curio report with a bounded, deduplicated, account-scoped queue delivered oldest-first.
 - Added typed guarded capability outcomes for optional integrations and conservative settings-registry refresh fallback when lookup or invocation fails.
+- Extracted Character Overview item models and complete derived-content reset policy, explicit feature/Curio domain adapters, and auditable metadata for all active settings.
+- Added deterministic runtime bundle manifests with source hashes and a documented DMF-safe deferral for authoring-file splitting.
+- Behavior verification now reports named risk cases, checks AST-discovered local module references, and enforces risk-weighted coverage thresholds for behavior-bearing runtime modules.
 - Bumped active release metadata to 2.0.0 and added the full-project audit, prioritized findings, phased remediation plan, and release gates in `docs/v2.0.0-full-project-audit.md`.
 - Added bounded account-scoped Automatic Curio Buyer report history for Operative Selection, delivered oldest-first once on the matching account's next Morningstar readiness.
 - Release packaging now removes unresolved temporary build archives after verification failures.

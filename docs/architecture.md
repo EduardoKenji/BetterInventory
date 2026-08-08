@@ -9,6 +9,9 @@
 | Settings schema | `BetterInventory_data.lua` + `BetterInventory_settings.lua` | stable IDs, nested DMF widgets, dependency refresh metadata |
 | Optional integrations and operations | `BetterInventory_features.lua` | guarded capability calls, discard ownership, sorting ownership |
 | Curio acquisition | `BetterInventory_curio_acquisition.lua` | serialized reads/purchases, generations, account context |
+| Feature domain policies | `BetterInventory_feature_domains.lua` | marker generations, sorting signatures, panel composition keys |
+| Curio domain policies | `BetterInventory_curio_domains.lua` | operation snapshots, bounded report queues, retry timing |
+| Character Overview model | `BetterInventory_character_overview.lua` | item identity/revision, complete rebuilt card inputs, derived-content reset |
 | Customization persistence | `BetterInventory_item_customization.lua` | dirty state and explicit DMF save outcomes |
 | Equipment persistence | `BetterInventory_equipment_persistence.lua` | native equip outcome observation, bounded idempotent retry, authoritative profile reconciliation |
 | Localization | `BetterInventory_localization.lua` | DMF localization map, generated character-slot keys |
@@ -16,6 +19,10 @@
 ## Generated-contract workflow
 
 `tools/schema_manifest.py` loads the actual data and localization Lua tables, validates referenced localization IDs, and produces `docs/generated-settings-manifest.json`. The verifier runs `tests/check_schema_drift.py`; any setting/schema/localization edit must regenerate and review the manifest in the same change.
+
+`tools/runtime_bundle_manifest.py` records the descriptor and every discovered runtime Lua source in `docs/generated-runtime-bundle-manifest.json`. B38 intentionally keeps DMF's fixed data/localization entry points until a clean-install generator smoke test proves source splitting safe.
+
+`tests/case_manifest.json` names the risk cases represented by each behavior script. `tests/run_tests.py` rejects zero-test or manifest drift, reports case-level status, and applies `tests/coverage_policy.json` only to behavior-bearing runtime modules; declarative data/localization files remain visible but do not gate aggregate coverage.
 
 ## Refactoring rules
 

@@ -17,7 +17,7 @@ Customization persistence follows DMF's actual contract: a normal no-return save
 ## Validation
 
 1. Run `tests/verify.ps1` for syntax, source contracts, behavior tests, schema drift, packaging, and archive parity.
-2. Run `py -3 tests/run_tests.py --coverage-output lua-coverage.json` for timeout-bounded JSON results and Lua line coverage.
+2. Run `py -3 tests/run_tests.py --coverage-output lua-coverage.json` for timeout-bounded JSON results, 43 named risk cases, and risk-weighted Lua line coverage. The command fails if the case manifest is incomplete or a non-declarative runtime module falls below its threshold.
 3. Validate in-game after changing one setting at a time, reopening affected views, switching operatives, and exercising disabled/cancelled flows.
 
 The prioritized backlog and remaining release gates are maintained in [`v2.0.0-full-project-audit.md`](v2.0.0-full-project-audit.md).

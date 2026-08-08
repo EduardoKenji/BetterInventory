@@ -16,6 +16,8 @@ from pathlib import Path
 TEST_ROOT = Path(__file__).resolve().parent
 PROJECT_ROOT = TEST_ROOT.parent
 OUTPUT_LIMIT = 4000
+CASE_MANIFEST_PATH = TEST_ROOT / "case_manifest.json"
+COVERAGE_POLICY_PATH = TEST_ROOT / "coverage_policy.json"
 
 
 def discover_tests() -> list[Path]:
@@ -29,10 +31,52 @@ def tail(value: str) -> str:
     return value[-OUTPUT_LIMIT:]
 
 
+def load_case_manifest() -> dict[str, list[dict[str, str]]]:
+    manifest = json.loads(CASE_MANIFEST_PATH.read_text(encoding="utf-8"))
+
+    if not isinstance(manifest, dict):
+        raise ValueError("case manifest must be an object")
+
+    normalized: dict[str, list[dict[str, str]]] = {}
+
+    for test_name, cases in manifest.items():
+        if not isinstance(test_name, str) or not isinstance(cases, list) or not cases:
+            raise ValueError(f"case manifest entry is invalid: {test_name!r}")
+
+        normalized_cases = []
+
+        for case in cases:
+            if not isinstance(case, dict) or not case.get("name"):
+                raise ValueError(f"case manifest case is invalid: {test_name!r}")
+
+            normalized_cases.append(
+                {
+                    "name": str(case["name"]),
+                    "risk": str(case.get("risk", "medium")),
+                }
+            )
+
+        normalized[test_name] = normalized_cases
+
+    return normalized
+
+
+def case_results(cases: list[dict[str, str]], status: str) -> list[dict[str, str]]:
+    return [
+        {
+            "name": case["name"],
+            "risk": case["risk"],
+            "status": "passed" if status == "passed" else "failed",
+        }
+        for case in cases
+    ]
+
+
 def run_test(
     test_path: Path,
     timeout_seconds: float,
     coverage_directory: Path | None,
+    cases: list[dict[str, str]],
 ) -> dict[str, object]:
     started_at = time.perf_counter()
     command = [sys.executable, str(test_path)]
@@ -59,6 +103,7 @@ def run_test(
             "status": status,
             "returncode": result.returncode,
             "duration_seconds": round(time.perf_counter() - started_at, 3),
+            "cases": case_results(cases, status),
         }
 
         if status == "failed":
@@ -72,6 +117,7 @@ def run_test(
             "status": "timeout",
             "returncode": None,
             "duration_seconds": round(time.perf_counter() - started_at, 3),
+            "cases": case_results(cases, "timeout"),
             "stdout_tail": tail(error.stdout or ""),
             "stderr_tail": tail(error.stderr or ""),
         }
@@ -81,6 +127,7 @@ def run_test(
             "status": "runner_error",
             "returncode": None,
             "duration_seconds": round(time.perf_counter() - started_at, 3),
+            "cases": case_results(cases, "runner_error"),
             "error": str(error),
         }
 
@@ -93,8 +140,13 @@ def count_source_lines(path: Path) -> int:
     )
 
 
-def build_coverage_report(coverage_directory: Path) -> dict[str, object]:
+def build_coverage_report(
+    coverage_directory: Path, policy_path: Path
+) -> dict[str, object]:
     covered_by_name: dict[str, set[int]] = {}
+    policy = json.loads(policy_path.read_text(encoding="utf-8"))
+    policy_modules = policy.get("modules", {})
+    declarative_modules = set(policy.get("declarative_modules", []))
 
     for part_path in coverage_directory.glob("*.json"):
         try:
@@ -113,14 +165,19 @@ def build_coverage_report(coverage_directory: Path) -> dict[str, object]:
         total_lines = count_source_lines(runtime_path)
         covered_lines = covered_by_name.get(runtime_path.name, set())
         covered_count = len(covered_lines)
+        policy_entry = policy_modules.get(runtime_path.name, {})
+        minimum_percent = float(policy_entry.get("minimum_percent", 0.0))
+        coverage_percent = round(covered_count * 100 / total_lines, 2) if total_lines else 100.0
         modules.append(
             {
                 "module": runtime_path.name,
                 "source_lines": total_lines,
                 "covered_lines": covered_count,
-                "coverage_percent": round(covered_count * 100 / total_lines, 2)
-                if total_lines
-                else 100.0,
+                "coverage_percent": coverage_percent,
+                "declarative": runtime_path.name in declarative_modules,
+                "minimum_percent": minimum_percent,
+                "risk": policy_entry.get("risk", "declarative" if runtime_path.name in declarative_modules else "unassigned"),
+                "gate_passed": coverage_percent >= minimum_percent,
             }
         )
 
@@ -129,6 +186,7 @@ def build_coverage_report(coverage_directory: Path) -> dict[str, object]:
 
     return {
         "method": "Lua debug.sethook line events",
+        "policy": str(policy_path.relative_to(PROJECT_ROOT)),
         "modules": modules,
         "source_lines": total_source_lines,
         "covered_lines": total_covered_lines,
@@ -153,6 +211,12 @@ def main() -> int:
         type=Path,
         help="Write a module-by-module Lua line coverage JSON report.",
     )
+    parser.add_argument(
+        "--coverage-policy",
+        type=Path,
+        default=COVERAGE_POLICY_PATH,
+        help="Risk-weighted module coverage policy used when coverage is requested.",
+    )
     args = parser.parse_args()
 
     if args.timeout_seconds <= 0:
@@ -164,7 +228,26 @@ def main() -> int:
         print("No BetterInventory behavior scripts discovered.", file=sys.stderr)
         return 2
 
+    try:
+        case_manifest = load_case_manifest()
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        print(f"Invalid case manifest: {error}", file=sys.stderr)
+        return 2
+
+    discovered_names = {test_path.name for test_path in tests}
+    manifest_names = set(case_manifest)
+    if discovered_names != manifest_names:
+        missing = sorted(discovered_names - manifest_names)
+        stale = sorted(manifest_names - discovered_names)
+        print(
+            f"Case manifest mismatch; missing={missing}, stale={stale}",
+            file=sys.stderr,
+        )
+        return 2
+
     temporary_coverage_directory = None
+    coverage_report = None
+    coverage_failures: list[dict[str, object]] = []
 
     if args.coverage_output:
         temporary_coverage_directory = Path(
@@ -173,34 +256,57 @@ def main() -> int:
 
     try:
         results = [
-            run_test(test_path, args.timeout_seconds, temporary_coverage_directory)
+            run_test(
+                test_path,
+                args.timeout_seconds,
+                temporary_coverage_directory,
+                case_manifest[test_path.name],
+            )
             for test_path in tests
         ]
         failures = [result for result in results if result["status"] != "passed"]
+        total_cases = sum(len(result["cases"]) for result in results)
+        failed_cases = sum(
+            1
+            for result in results
+            for case in result["cases"]
+            if case["status"] != "passed"
+        )
         summary = {
             "runner": "BetterInventory behavior suite",
             "timeout_seconds_per_test": args.timeout_seconds,
             "tests_discovered": len(results),
             "tests_passed": len(results) - len(failures),
             "tests_failed": len(failures),
+            "cases_discovered": total_cases,
+            "cases_passed": total_cases - failed_cases,
+            "cases_failed": failed_cases,
             "results": results,
         }
 
         if args.coverage_output and temporary_coverage_directory:
-            coverage_report = build_coverage_report(temporary_coverage_directory)
+            coverage_report = build_coverage_report(
+                temporary_coverage_directory, args.coverage_policy
+            )
             args.coverage_output.parent.mkdir(parents=True, exist_ok=True)
             args.coverage_output.write_text(
                 json.dumps(coverage_report, indent=2, sort_keys=True),
                 encoding="utf-8",
             )
             summary["coverage_report"] = str(args.coverage_output)
+            coverage_failures = [
+                module
+                for module in coverage_report["modules"]
+                if not module["gate_passed"] and not module["declarative"]
+            ]
+            summary["coverage_failures"] = coverage_failures
     finally:
         if temporary_coverage_directory:
             shutil.rmtree(temporary_coverage_directory, ignore_errors=True)
 
     print(json.dumps(summary, indent=2, sort_keys=True))
 
-    return 1 if failures else 0
+    return 1 if failures or coverage_failures else 0
 
 
 if __name__ == "__main__":

@@ -86,6 +86,25 @@ def require_target_names(tree: object) -> set[str]:
     return names
 
 
+def local_io_dofile_targets(tree: object) -> set[str]:
+    targets: set[str] = set()
+
+    for node in ast.walk(tree):
+        if node_type(node) not in {"Call", "Invoke"}:
+            continue
+
+        if call_path(node) not in {"mod.io_dofile", "self.io_dofile"}:
+            continue
+
+        arguments = list(getattr(node, "args", []) or [])
+        target = string_value(arguments[0]) if arguments else None
+
+        if target and target.startswith("BetterInventory/scripts/mods/BetterInventory/"):
+            targets.add(target)
+
+    return targets
+
+
 def run() -> None:
     main_path = RUNTIME_ROOT / "BetterInventory.lua"
     layout_path = RUNTIME_ROOT / "BetterInventory_layout.lua"
@@ -136,9 +155,30 @@ def run() -> None:
             + ", ".join(forbidden_layout_calls)
         )
 
+    missing_modules = []
+
+    for lua_path in sorted(RUNTIME_ROOT.glob("BetterInventory*.lua")):
+        tree = ast.parse(lua_path.read_text(encoding="utf-8"))
+
+        for target in local_io_dofile_targets(tree):
+            relative = target.removeprefix("BetterInventory/")
+            module_path = PROJECT_ROOT / relative
+
+            if module_path.suffix != ".lua":
+                module_path = module_path.with_suffix(".lua")
+
+            if not module_path.is_file():
+                missing_modules.append(f"{lua_path.name} -> {target}")
+
+    if missing_modules:
+        raise SystemExit(
+            "Missing AST-discovered local module(s): " + ", ".join(sorted(missing_modules))
+        )
+
     print(
         "BetterInventory AST structure checks passed "
-        f"(main assignments={len(actual_assignments)}, layout calls={len(found_calls)})."
+        f"(main assignments={len(actual_assignments)}, layout calls={len(found_calls)}, "
+        f"local module references checked={len(missing_modules) + len(local_io_dofile_targets(main_tree))})."
     )
 
 
