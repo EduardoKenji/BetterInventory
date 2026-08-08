@@ -1,0 +1,26 @@
+{
+  "archive": {
+    "file_count": 18,
+    "path": "BetterInventory.zip",
+    "sha256": "B6987E8CDC9BF876A1B470067E1E5B6BF9D2F1A99C02C464D82F21E24E8DFEAD",
+    "runtime_tree_sha256": "42f4ea4da092b11eaf0d007910ffd3fd47f0b8afef3002da22ecb44e8eb272da"
+  },
+  "automated_verification": {
+    "behavior_cases": 43,
+    "behavior_cases_failed": 0,
+    "schema_settings": 240,
+    "schema_localization_keys": 704,
+    "runtime_manifest": "passed",
+    "repository_verifier": "passed",
+    "archive_parity": "passed"
+  },
+  "branch": "audit/v2.0.0",
+  "implementation_batches": "B34-B39 complete",
+  "live_validation": {
+    "record": "docs/b40-live-validation-record.md",
+    "status": "not_run",
+    "release_blocker": true
+  },
+  "release_status": "2.0.0 release candidate pending live validation",
+  "version": "2.0.0"
+}

@@ -4,6 +4,7 @@
 
 ### Fixed / Added
 
+- Finalized the B40/B41 release-candidate handoff with a repeatable live stress/compatibility matrix, deterministic release fingerprint, and explicit documentation that live-engine validation remains the final release blocker.
 - Fixed Automatic Curio Buyer consuming a predicted new rotation while Darktide's backend still returned the expired storefront. Rotation-triggered passes now require storefront boundary advancement and poll stale responses as a nonterminal wait without evaluating offers, showing a false failure, or suppressing the real refresh pass. A one-time ledger migration invalidates potentially poisoned pre-hotfix boundaries while preserving pending reports and account metadata.
 - Hardened weapon and Curio equip persistence across rapid Character Overview exits. BetterInventory observes Darktide's native request, retries only confirmed idempotent failures with account/character guards, preserves uncommitted Y previews from delayed authoritative-X events when reopening the child inventory, and refreshes the overview after confirmed persistence.
 - Fixed DMF customization-save handling: normal non-throwing no-return saves are treated as delegated instead of retried forever, while unavailable/throwing/rejected paths use bounded attempts. Manual discard now retains the shared destructive-operation lock until the native deletion promise settles, and same-gear Character Overview revisions invalidate stale detailed-card content.

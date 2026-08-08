@@ -1,12 +1,12 @@
 # BetterInventory
 
-> Project status: BetterInventory v2.0.0 is an inventory and supported-vendor implementation under active in-game compatibility testing. Account-changing workflows remain opt-in and disabled by default.
+> Project status: BetterInventory v2.0.0 is a release candidate pending final B40 in-game stress and compatibility validation. Account-changing workflows remain opt-in and disabled by default.
 >
 > Audit date: 2026-08-07. See [`docs/v2.0.0-full-project-audit.md`](docs/v2.0.0-full-project-audit.md) for the prioritized implementation backlog and release gates.
 
 BetterInventory is a standalone, modern inventory and item-management layer for Warhammer 40,000: Darktide. It provides responsive item cards, weapon and Curio details, sorting priorities, supported vendor grids, compatibility integrations and optional safety-gated inventory automation.
 
-Focused documentation is available in [`docs/user-guide.md`](docs/user-guide.md) and [`docs/architecture.md`](docs/architecture.md). Historical research and the full implementation backlog remain in the audit document.
+Focused documentation is available in [`docs/user-guide.md`](docs/user-guide.md), [`docs/architecture.md`](docs/architecture.md), and the [B40 live-validation record](docs/b40-live-validation-record.md). Historical research and the full implementation backlog remain in the audit document.
 
 UI and information features are enabled through normal Mod Options. Features that discard gear or spend Ordo Dockets remain separate, conspicuous and disabled by default; enabling them is an explicit user choice.
 
