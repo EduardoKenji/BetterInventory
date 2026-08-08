@@ -25,6 +25,13 @@ ARBITER_PATH = (
     / "BetterInventory"
     / "BetterInventory_operation_arbiter.lua"
 )
+FEATURE_DOMAINS_PATH = (
+    PROJECT_ROOT
+    / "scripts"
+    / "mods"
+    / "BetterInventory"
+    / "BetterInventory_feature_domains.lua"
+)
 
 
 def main() -> None:
@@ -222,6 +229,10 @@ def main() -> None:
                     return TestOperationArbiter
                 end
 
+                if string.find(path, "BetterInventory_feature_domains", 1, true) then
+                    return TestFeatureDomains
+                end
+
                 return TestCurioValues
             end,
         }
@@ -259,6 +270,10 @@ def main() -> None:
         ARBITER_PATH.read_text(encoding="utf-8"), name=str(ARBITER_PATH)
     )
     lua.globals().TestOperationArbiter = operation_arbiter
+    feature_domains = lua.execute(
+        FEATURE_DOMAINS_PATH.read_text(encoding="utf-8"), name=str(FEATURE_DOMAINS_PATH)
+    )
+    lua.globals().TestFeatureDomains = feature_domains
     features = lua.execute(
         FEATURES_PATH.read_text(encoding="utf-8"), name=str(FEATURES_PATH)
     )
