@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import os
 import re
@@ -128,7 +129,8 @@ def validate_case_ranges(
 
     for test_name, cases in case_manifest.items():
         test_path = test_by_name[test_name]
-        line_count = len(test_path.read_text(encoding="utf-8").splitlines())
+        source = test_path.read_text(encoding="utf-8")
+        line_count = len(source.splitlines())
 
         for case in cases:
             start_line = case["start_line"]
@@ -141,6 +143,24 @@ def validate_case_ranges(
                 raise ValueError(
                     f"case range is outside {test_name}: {case['name']} "
                     f"({start_line}-{end_line}, lines={line_count})"
+                )
+
+        assertion_lines = sorted(
+            node.lineno for node in ast.walk(ast.parse(source, filename=str(test_path)))
+            if isinstance(node, ast.Assert)
+        )
+
+        for assertion_line in assertion_lines:
+            matches = [
+                case for case in cases
+                if case["start_line"] <= assertion_line <= case["end_line"]
+            ]
+
+            if len(matches) != 1:
+                names = ", ".join(str(case["name"]) for case in matches) or "none"
+                raise ValueError(
+                    f"assertion must map to exactly one case: {test_name}:{assertion_line} "
+                    f"(matches={names})"
                 )
 
 

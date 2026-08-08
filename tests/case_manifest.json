@@ -25,8 +25,9 @@
   ],
   "test_equipment_persistence.py": [
     {"name": "authoritative_reconciliation", "risk": "critical", "start_line": 237, "end_line": 248},
-    {"name": "bounded_retry", "risk": "critical", "start_line": 250, "end_line": 283},
-    {"name": "stale_callback_guard", "risk": "critical", "start_line": 284, "end_line": 324}
+    {"name": "bounded_retry", "risk": "critical", "start_line": 249, "end_line": 283},
+    {"name": "stale_callback_guard", "risk": "critical", "start_line": 284, "end_line": 324},
+    {"name": "retry_invocation_safety", "risk": "critical", "start_line": 325, "end_line": 361}
   ],
   "test_feature_domains.py": [
     {"name": "marker_generation", "risk": "high", "start_line": 20, "end_line": 34},
@@ -34,18 +35,18 @@
     {"name": "panel_composition", "risk": "high", "start_line": 44, "end_line": 49}
   ],
   "test_features.py": [
-    {"name": "discard_operation_ownership", "risk": "critical", "start_line": 2866, "end_line": 3150},
+    {"name": "discard_operation_ownership", "risk": "critical", "start_line": 2866, "end_line": 3198},
     {"name": "sorting_and_navigation", "risk": "high", "start_line": 323, "end_line": 1263},
     {"name": "optional_integration_fallbacks", "risk": "high", "start_line": 1264, "end_line": 1690},
     {"name": "panel_lifecycle", "risk": "high", "start_line": 1691, "end_line": 2865}
   ],
   "test_item_customization.py": [
-    {"name": "dirty_save_outcomes", "risk": "high", "start_line": 226, "end_line": 404},
+    {"name": "dirty_save_outcomes", "risk": "high", "start_line": 224, "end_line": 404},
     {"name": "bounded_retry_and_disable", "risk": "high", "start_line": 405, "end_line": 717},
-    {"name": "callback_failure_safety", "risk": "high", "start_line": 718, "end_line": 915}
+    {"name": "callback_failure_safety", "risk": "high", "start_line": 718, "end_line": 927}
   ],
   "test_layout.py": [
-    {"name": "card_geometry", "risk": "high", "start_line": 624, "end_line": 1594},
+    {"name": "card_geometry", "risk": "high", "start_line": 621, "end_line": 1594},
     {"name": "content_and_resource_ownership", "risk": "high", "start_line": 1595, "end_line": 2342},
     {"name": "integration_boundaries", "risk": "medium", "start_line": 2343, "end_line": 3690}
   ],
@@ -58,12 +59,13 @@
     {"name": "schema_dependency_refresh", "risk": "high", "start_line": 19, "end_line": 384},
     {"name": "migration_preservation", "risk": "high", "start_line": 385, "end_line": 504},
     {"name": "character_overview_refresh", "risk": "high", "start_line": 505, "end_line": 1359},
-    {"name": "localization_contract", "risk": "medium", "start_line": 1360, "end_line": 2230}
+    {"name": "localization_contract", "risk": "medium", "start_line": 1360, "end_line": 2230},
+    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2231, "end_line": 2332}
   ],
   "test_settings_registry.py": [
     {"name": "duplicate_detection", "risk": "high", "start_line": 53, "end_line": 77},
-    {"name": "metadata_manifest", "risk": "high", "start_line": 83, "end_line": 104},
-    {"name": "generated_character_slots", "risk": "high", "start_line": 106, "end_line": 112}
+    {"name": "metadata_manifest", "risk": "high", "start_line": 83, "end_line": 105},
+    {"name": "generated_character_slots", "risk": "high", "start_line": 106, "end_line": 120}
   ],
   "test_view_session.py": [
     {"name": "idempotent_close", "risk": "high", "start_line": 22, "end_line": 41},
