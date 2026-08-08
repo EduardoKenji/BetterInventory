@@ -1,9 +1,9 @@
 {
   "archive": {
-    "file_count": 19,
+    "file_count": 20,
     "path": "BetterInventory.zip",
-    "sha256": "7722A2A5636073841B249BB6FBD30FB03FC2EA6EFCBBB017CCCCF0914A966C1B",
-    "runtime_tree_sha256": "206358b098eda339e24059d2b53fa01add79b94e5b6712293f9cf7f75a4af1e9"
+    "sha256": "046EB485F459B9C5BC2C2EE951163F5021DC303B30C6C798D42A5DB9A3C3CEEC",
+    "runtime_tree_sha256": "7c704d0be6dec09b36316bb6408bacd459a5bd51e56a5986b50a207743fbbede"
   },
   "automated_verification": {
     "behavior_cases": 43,
@@ -15,11 +15,11 @@
     "archive_parity": "passed"
   },
   "branch": "audit/v2.0.0",
-  "implementation_batches": "B42-B46 repository scope complete; B47 live evidence pending; B48 planned",
+  "implementation_batches": "B42-B46 and B48 first slice complete; B47 live evidence pending; B49 planned",
   "live_runtime_mirror": {
-    "lua_files": 18,
+    "lua_files": 19,
     "source_live_byte_parity": "passed",
-    "zip_sha256": "7722A2A5636073841B249BB6FBD30FB03FC2EA6EFCBBB017CCCCF0914A966C1B"
+    "zip_sha256": "046EB485F459B9C5BC2C2EE951163F5021DC303B30C6C798D42A5DB9A3C3CEEC"
   },
   "post_audit_hotfix": "665801b strict Character Overview scenegraph probes",
   "live_validation": {

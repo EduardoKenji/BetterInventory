@@ -106,6 +106,7 @@ $data = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_data.lu
 $localization = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_localization.lua") -Raw
 $layout = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_layout.lua") -Raw
 $features = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_features.lua") -Raw
+$featureSorting = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_feature_sorting.lua") -Raw
 $contracts = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_contracts.lua") -Raw
 $operationArbiter = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_operation_arbiter.lua") -Raw
 $settingsRegistry = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_settings.lua") -Raw
@@ -170,7 +171,7 @@ if ($data -notmatch 'setting_id\s*=\s*"inventory_options_controller_focus_keybin
 	throw "Controller focus switching or its conflict-free default bindings were not found."
 }
 
-if ($main -notmatch 'Features\.set_item_sorting_integration\(get_mod\("ItemSorting"\)\)' -or $main -notmatch 'Features\.preserve_item_sorting_native_options' -or $features -notmatch 'ITEM_SORTING_INVENTORY_VANILLA_SETTINGS' -or $features -notmatch 'ITEM_SORTING_STORE_VANILLA_SETTINGS' -or $features -notmatch 'item_sorting_custom_option_start' -or $features -notmatch 'item_sorting_mod_header') {
+if ($main -notmatch 'Features\.set_item_sorting_integration\(get_mod\("ItemSorting"\)\)' -or $main -notmatch 'Features\.preserve_item_sorting_native_options' -or $featureSorting -notmatch 'INVENTORY_VANILLA_SETTINGS' -or $featureSorting -notmatch 'STORE_VANILLA_SETTINGS' -or $features -notmatch 'item_sorting_custom_option_start' -or $features -notmatch 'item_sorting_mod_header') {
 	throw "ItemSorting inventory/store panel integration was not found."
 }
 
