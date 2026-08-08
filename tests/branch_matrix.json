@@ -34,21 +34,21 @@
       "test": "test_curio_acquisition.py",
       "case": "store_rotation_gate",
       "outcome": "stale, mixed, or incomplete storefront boundaries remain nonterminal and cannot purchase",
-      "modules": ["BetterInventory_curio_acquisition.lua", "BetterInventory_curio_domains.lua"]
+      "modules": ["BetterInventory_curio_acquisition.lua", "BetterInventory_curio_domains.lua", "BetterInventory_curio_ledger.lua", "BetterInventory_curio_profiles.lua", "BetterInventory_curio_store.lua"]
     },
     {
       "name": "curio.purchase-revalidates",
       "test": "test_curio_acquisition.py",
       "case": "purchase_revalidation",
       "outcome": "candidate identity and eligibility are revalidated before a purchase POST",
-      "modules": ["BetterInventory_curio_acquisition.lua"]
+      "modules": ["BetterInventory_curio_acquisition.lua", "BetterInventory_curio_profiles.lua", "BetterInventory_curio_purchase.lua", "BetterInventory_curio_store.lua"]
     },
     {
       "name": "curio.reads-cancel",
       "test": "test_curio_acquisition.py",
       "case": "read_cancellation_and_generation",
       "outcome": "leaving a context cancels owned read promises and late callbacks are inert",
-      "modules": ["BetterInventory_curio_acquisition.lua", "BetterInventory_curio_domains.lua"]
+      "modules": ["BetterInventory_curio_acquisition.lua", "BetterInventory_curio_domains.lua", "BetterInventory_curio_profiles.lua"]
     },
     {
       "name": "discard.keeps-ownership",

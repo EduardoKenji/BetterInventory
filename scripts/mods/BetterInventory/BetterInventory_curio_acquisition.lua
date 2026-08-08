@@ -1,9 +1,9 @@
-local Items = require("scripts/utilities/items")
-local MasterItems = require("scripts/backend/master_items")
 local Promise = require("scripts/foundation/utilities/promise")
-local StoreNames = require("scripts/settings/backend/store_names")
-local CurioValues = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_values")
 local CurioDomains = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_domains")
+local CurioProfiles = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_profiles")
+local CurioLedger = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_ledger")
+local CurioStore = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_store")
+local CurioPurchase = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_purchase")
 local PromiseContainer
 
 do
@@ -12,14 +12,6 @@ do
 	if promise_container_ok and type(promise_container_module) == "table" then
 		PromiseContainer = promise_container_module
 	end
-end
-
-if type(CurioValues) ~= "table" then
-	CurioValues = {
-		resolve = function()
-			return
-		end,
-	}
 end
 
 local CurioAcquisition = {}
@@ -65,40 +57,7 @@ end
 
 local NATIVE_OPERATIVE_SLOT_CAPACITY = native_operative_slot_capacity()
 
-local PRIMARY_TRAITS = {
-	gadget_innate_health_increase = {
-		color_default = {235, 85, 85},
-		color_prefix = "curio_health_color",
-		minimum_roll_default = 21,
-		minimum_roll_setting_id = "automatic_curio_min_health",
-		setting_id = "automatic_curio_buy_health",
-		label_id = "automatic_curio_health",
-		unit = "%",
-	},
-	gadget_innate_toughness_increase = {
-		color_default = {105, 200, 235},
-		color_prefix = "curio_toughness_color",
-		minimum_roll_default = 17,
-		minimum_roll_setting_id = "automatic_curio_min_toughness",
-		setting_id = "automatic_curio_buy_toughness",
-		label_id = "automatic_curio_toughness",
-		unit = "%",
-	},
-	gadget_innate_max_wounds_increase = {
-		color_default = {190, 105, 230},
-		color_prefix = "curio_wound_color",
-		setting_id = "automatic_curio_buy_wounds",
-		label_id = "automatic_curio_wounds",
-		unit = "",
-	},
-	gadget_stamina_increase = {
-		color_default = {235, 205, 80},
-		color_prefix = "curio_stamina_color",
-		setting_id = "automatic_curio_buy_stamina",
-		label_id = "automatic_curio_stamina",
-		unit = "",
-	},
-}
+local PRIMARY_TRAITS = CurioStore._test.PRIMARY_TRAITS
 
 local ARCHETYPE_SETTINGS = {
 	adamant = "automatic_curio_class_adamant",
@@ -122,18 +81,9 @@ local state = {
 	entry_consumed = false,
 	scheduled_reason = nil,
 	scheduler_poll_elapsed = 0,
-	character_selection = nil,
-	character_slots = nil,
 	completed = false,
 	elapsed = 0,
 	hub_character_id = nil,
-	known_profiles = nil,
-	profile_discovery_elapsed = 0,
-	profile_discovery_inflight = false,
-	profile_discovery_pending = false,
-	profile_discovery_refresh_elapsed = 0,
-	profile_discovery_token = 0,
-	profile_revision = 0,
 	last_delivered_report_account = nil,
 	last_delivered_report_id = nil,
 	read_promise_container = nil,
@@ -471,366 +421,43 @@ local function current_account_key()
 end
 
 local function sane_rotation_boundary(value, now)
-	value = tonumber(value)
-	now = tonumber(now) or server_time()
-
-	if not value or value ~= value or not now or value <= now then
-		return
-	end
-
-	if value > now + MAX_STORE_ROTATION_AHEAD_MS then
-		return
-	end
-
-	return math.floor(value + 0.5)
+	return CurioLedger.sane_rotation_boundary(value, now)
 end
 
 local function fallback_rotation_boundary(now)
-	now = tonumber(now)
-
-	if not now then
-		return
-	end
-
-	return (math.floor(now / STORE_ROTATION_HOUR_MS) + 1) * STORE_ROTATION_HOUR_MS
+	return CurioLedger.fallback_rotation_boundary(now)
 end
 
 local function sanitize_pending_report_item(source)
-	if type(source) ~= "table" then
-		return
-	end
-
-	local character_id = bounded_report_text(source.character_id, MAX_PENDING_REPORT_TEXT_LENGTH)
-	local character_name = bounded_report_text(source.character_name, MAX_PENDING_REPORT_TEXT_LENGTH)
-	local class_name = bounded_report_text(source.class_name, MAX_PENDING_REPORT_TEXT_LENGTH)
-	local label_id = bounded_report_text(source.label_id, MAX_PENDING_REPORT_TEXT_LENGTH)
-	local currency
-
-	if source.currency == "credits" or source.currency == "marks" then
-		currency = source.currency
-	end
-	local primary_value = tonumber(source.primary_value)
-	local item_level = tonumber(source.item_level)
-	local price = tonumber(source.price)
-
-	if label_id == "" or not currency or not primary_value or not item_level or not price then
-		return
-	end
-
-	return {
-		character_id = character_id,
-		character_name = character_name,
-		class_name = class_name,
-		item_level = math.max(0, math.floor(item_level + 0.5)),
-		label_id = label_id,
-		primary_value = primary_value,
-		price = math.max(0, math.floor(price + 0.5)),
-		unit = bounded_report_text(source.unit, 16),
-		currency = currency,
-	}
+	return CurioLedger.sanitize_pending_report_item(source)
 end
 
 local function sanitize_pending_report(source)
-	if type(source) ~= "table" then
-		return
-	end
-
-	local report_id = bounded_report_text(source.report_id, MAX_PENDING_REPORT_ID_LENGTH)
-
-	if report_id == "" then
-		return
-	end
-
-	local result = {
-		account_key = bounded_report_text(source.account_key, MAX_PENDING_REPORT_TEXT_LENGTH),
-		context = source.context == "operative_selection" and source.context or "morningstar",
-		created_at_ms = tonumber(source.created_at_ms) or 0,
-		insufficient = {},
-		partial_failure = source.partial_failure == true,
-		purchased = {},
-		report_id = report_id,
-		spent = {
-			credits = 0,
-			marks = 0,
-		},
-	}
-
-	local item_count = 0
-
-	for _, field in ipairs({"purchased", "insufficient"}) do
-		local source_items = source[field]
-
-		if type(source_items) == "table" then
-			for index = 1, #source_items do
-				if item_count >= MAX_PENDING_REPORT_ITEMS then
-					break
-				end
-
-				local item = sanitize_pending_report_item(source_items[index])
-
-				if item then
-					result[field][#result[field] + 1] = item
-					item_count = item_count + 1
-				end
-			end
-		end
-	end
-
-	local source_spent = source.spent
-
-	if type(source_spent) == "table" then
-		for _, currency in ipairs({"credits", "marks"}) do
-			result.spent[currency] = math.max(0, math.floor(tonumber(source_spent[currency]) or 0))
-		end
-	end
-
-	if item_count == 0 then
-		return
-	end
-
-	return result
+	return CurioLedger.sanitize_pending_report(source)
 end
 
 local function sanitize_pending_reports(source, legacy_report)
-	local result = {}
-	local seen_ids = {}
-
-	local function append(candidate)
-		local report = sanitize_pending_report(candidate)
-
-		if not report or seen_ids[report.report_id] then
-			return
-		end
-
-		seen_ids[report.report_id] = true
-		result[#result + 1] = report
-	end
-
-	if type(source) == "table" then
-		for index = 1, #source do
-			if #result >= MAX_PENDING_REPORTS then
-				break
-			end
-
-			append(source[index])
-		end
-	end
-
-	-- Schema 1/2 installations have one pending_report. Migrate it once and
-	-- keep all newer reports in the ordered queue thereafter.
-	if #result == 0 then
-		append(legacy_report)
-	end
-
-	return result
+	return CurioLedger.sanitize_pending_reports(source, legacy_report)
 end
 
 local function sanitize_rotation_history(source, now)
-	local result = {
-		schema_version = ROTATION_HISTORY_SCHEMA_VERSION,
-		accounts = {},
-	}
-
-	if type(source) ~= "table" or type(source.accounts) ~= "table" then
-		return result
-	end
-
-	local source_schema_version = math.floor(tonumber(source.schema_version) or 1)
-	-- Schema 3 only adds the pending-report queue. Schema 2's confirmed
-	-- storefront boundaries remain trustworthy during this additive migration.
-	local boundaries_are_trusted = source_schema_version >= 2
-
-	for key, entry in pairs(source.accounts) do
-		if type(entry) == "table" then
-			local account = {}
-			local next_refresh_at_ms = tonumber(entry.next_refresh_at_ms)
-			local last_successful_scan_at_ms = tonumber(entry.last_successful_scan_at_ms)
-			local last_used_at_ms = tonumber(entry.last_used_at_ms)
-
-			-- Schema 1 could persist the next fallback hour after evaluating an
-			-- expired pre-refresh response. Preserve reports and account metadata,
-			-- but force one safe scan under the confirmed-boundary rules instead of
-			-- trusting a potentially poisoned consumption gate.
-			if boundaries_are_trusted and next_refresh_at_ms and next_refresh_at_ms > 0 and (not now or next_refresh_at_ms <= now + MAX_STORE_ROTATION_AHEAD_MS) then
-				account.next_refresh_at_ms = math.floor(next_refresh_at_ms + 0.5)
-			end
-
-			if boundaries_are_trusted and last_successful_scan_at_ms and last_successful_scan_at_ms > 0 then
-				account.last_successful_scan_at_ms = math.floor(last_successful_scan_at_ms + 0.5)
-			end
-
-			if last_used_at_ms and last_used_at_ms > 0 then
-				account.last_used_at_ms = math.floor(last_used_at_ms + 0.5)
-			end
-
-			if type(entry.last_context) == "string" and #entry.last_context <= 32 then
-				account.last_context = entry.last_context
-			end
-
-			account.pending_reports = sanitize_pending_reports(entry.pending_reports, entry.pending_report)
-
-			if account.next_refresh_at_ms or account.last_successful_scan_at_ms or account.last_used_at_ms or #account.pending_reports > 0 then
-				result.accounts[tostring(key)] = account
-			end
-		end
-	end
-
-	return result
+	return CurioLedger.sanitize_rotation_history(source, now)
 end
 
 local function ensure_rotation_history(mod)
-	local account_key = current_account_key()
-
-	if state.account_key == account_key and state.rotation_history then
-		local entry = state.rotation_history.accounts[account_key]
-
-		if not entry then
-			entry = {
-				pending_reports = {},
-			}
-			state.rotation_history.accounts[account_key] = entry
-		end
-
-		entry.pending_reports = entry.pending_reports or {}
-
-		state.next_rotation_at_ms = entry.next_refresh_at_ms
-
-		return entry
-	end
-
-	if state.account_key and state.account_key ~= account_key then
-		state.token = state.token + 1
-		state.entry_consumed = false
-		state.completed = false
-		state.elapsed = 0
-		state.scan_attempts = 0
-		state.scheduled = enabled(mod)
-		state.started = false
-		state.rotation_boundary_ms = nil
-		state.ledger_rotation_boundary_ms = nil
-		state.profile_discovery_inflight = false
-		state.profile_discovery_pending = true
-		state.profile_discovery_refresh_elapsed = 0
-		state.profile_discovery_token = state.profile_discovery_token + 1
-		processed_offer_keys = {}
-	end
-
-	state.account_key = account_key
-	state.rotation_history = sanitize_rotation_history(mod:get(ROTATION_HISTORY_SETTING_ID), server_time())
-	local entry = state.rotation_history.accounts[account_key]
-
-	if not entry then
-		entry = {
-			pending_reports = {},
-		}
-		state.rotation_history.accounts[account_key] = entry
-	end
-
-	entry.pending_reports = entry.pending_reports or {}
-
-	state.next_rotation_at_ms = entry.next_refresh_at_ms
-	state.rotation_boundary_ms = state.next_rotation_at_ms
-
-	return entry
+	return CurioLedger.ensure_rotation_history(mod, state)
 end
 
 local function persist_rotation_boundary(mod, boundary_ms, context)
-	local entry = ensure_rotation_history(mod)
-	local now = server_time() or 0
-
-	if not boundary_ms or boundary_ms <= now then
-		return false
-	end
-
-	entry.next_refresh_at_ms = math.floor(boundary_ms + 0.5)
-	entry.last_successful_scan_at_ms = math.floor(now + 0.5)
-	entry.last_used_at_ms = math.floor(now + 0.5)
-	entry.last_context = context
-	state.next_rotation_at_ms = entry.next_refresh_at_ms
-
-	local accounts = state.rotation_history.accounts
-	local account_count = 0
-
-	for _ in pairs(accounts) do
-		account_count = account_count + 1
-	end
-
-	while account_count > MAX_ROTATION_HISTORY_ACCOUNTS do
-		local oldest_key
-		local oldest_time = math.huge
-
-		for key, value in pairs(accounts) do
-			if key ~= state.account_key then
-				local used_at = tonumber(value.last_used_at_ms) or 0
-
-				if used_at < oldest_time then
-					oldest_key = key
-					oldest_time = used_at
-				end
-			end
-		end
-
-		if not oldest_key then
-			break
-		end
-
-		accounts[oldest_key] = nil
-		account_count = account_count - 1
-	end
-
-	local success = pcall(mod.set, mod, ROTATION_HISTORY_SETTING_ID, state.rotation_history, false)
-
-	if not success then
-		log_info(mod, "Could not persist the Automatic Curio Buyer rotation boundary; session memory remains protective.")
-	end
-
-	return success
+	return CurioLedger.persist_rotation_boundary(mod, state, boundary_ms, context)
 end
 
 local function commit_rotation_boundary(mod, boundary_ms, context)
-	local now = server_time()
-	boundary_ms = sane_rotation_boundary(boundary_ms, now)
-
-	if not boundary_ms then
-		return false
-	end
-
-	-- Keep the in-memory gate protective even if the settings write fails. The
-	-- boundary is committed only when a pass is terminal or immediately before
-	-- the first purchase POST is dispatched.
-	state.rotation_boundary_ms = boundary_ms
-	state.next_rotation_at_ms = boundary_ms
-	state.ledger_rotation_boundary_ms = boundary_ms
-
-	if mod:get("automatic_curio_once_per_store_rotation") ~= false then
-		persist_rotation_boundary(mod, boundary_ms, context)
-		-- persist_rotation_boundary rehydrates state from the old entry before
-		-- writing it; restore the committed value for this live session.
-		state.next_rotation_at_ms = boundary_ms
-	end
-
-	return true
+	return CurioLedger.commit_rotation_boundary(mod, state, boundary_ms, context)
 end
 
 local function rotation_gate_status(mod)
-	if mod:get("automatic_curio_once_per_store_rotation") == false then
-		return true
-	end
-
-	local now = server_time()
-
-	if not now then
-		return
-	end
-
-	local entry = ensure_rotation_history(mod)
-	local next_refresh_at_ms = tonumber(entry.next_refresh_at_ms or state.next_rotation_at_ms)
-
-	if not next_refresh_at_ms then
-		return true
-	end
-
-	return now >= next_refresh_at_ms + STORE_ROTATION_GRACE_MS
+	return CurioLedger.rotation_gate_status(mod, state)
 end
 
 local function compatible_promise(value)
@@ -953,1126 +580,167 @@ local function context_is_current(mod, token)
 end
 
 local function archetype_name(profile)
-	local archetype = profile and profile.archetype
-	local name = type(archetype) == "table" and archetype.name or nil
-
-	return type(name) == "string" and name or nil
+	return CurioProfiles.archetype_name(profile)
 end
 
 local function class_is_enabled(mod, profile)
-	local name = archetype_name(profile)
-	local setting_id = name and ARCHETYPE_SETTINGS[name]
-
-	-- A future archetype will not have a dedicated checkbox until BetterInventory
-	-- is updated. Include it by default instead of silently making its Curios
-	-- unreachable; the backend storefront map remains the final capability check.
-	return name ~= nil and (setting_id == nil or mod:get(setting_id) ~= false) or false
+	return CurioProfiles.class_is_enabled(mod, profile)
 end
 
 local function localized_class_name(profile)
-	local archetype = profile and profile.archetype
-	local localization_id = type(archetype) == "table" and archetype.archetype_name or nil
-
-	if type(localization_id) == "string" and type(Localize) == "function" then
-		local success, name = pcall(Localize, localization_id)
-
-		if success and type(name) == "string" and name ~= "" and not string.find(name, "<", 1, true) then
-			return name
-		end
-	end
-
-	local name = archetype_name(profile)
-
-	if name then
-		return string.upper(string.sub(name, 1, 1)) .. string.sub(name, 2)
-	end
-
-	return "?"
+	return CurioProfiles.class_name(profile)
 end
 
 local function character_name(profile)
-	local name = profile and profile.name
-
-	if type(name) ~= "string" then
-		return
-	end
-
-	name = string.match(name, "^%s*(.-)%s*$")
-
-	return name ~= "" and name or nil
+	return CurioProfiles.character_name(profile)
 end
 
 local function profile_label(profile)
-	local class_name = localized_class_name(profile)
-	local name = character_name(profile)
-
-	return name and string.format("%s(%s)", name, class_name) or class_name
-end
-
-local function profile_summary(profile)
-	local character_id = profile and profile.character_id
-
-	if not character_id then
-		return
-	end
-
-	return {
-		archetype = archetype_name(profile),
-		character_id = tostring(character_id),
-		character_name = character_name(profile),
-		class_name = localized_class_name(profile),
-	}
-end
-
-local function sort_profile_summaries(profiles)
-	table.sort(profiles, function(left, right)
-		local left_name = tostring(left.character_name or left.class_name or "")
-		local right_name = tostring(right.character_name or right.class_name or "")
-
-		if left_name ~= right_name then
-			return left_name < right_name
-		elseif left.class_name ~= right.class_name then
-			return tostring(left.class_name) < tostring(right.class_name)
-		end
-
-		return tostring(left.character_id) < tostring(right.character_id)
-	end)
-end
-
-local function same_profile_summaries(left, right)
-	if #left ~= #right then
-		return false
-	end
-
-	for index = 1, #left do
-		local left_profile = left[index]
-		local right_profile = right[index]
-
-		if left_profile.character_id ~= right_profile.character_id or left_profile.character_name ~= right_profile.character_name or left_profile.class_name ~= right_profile.class_name or left_profile.archetype ~= right_profile.archetype then
-			return false
-		end
-	end
-
-	return true
-end
-
-local function sanitize_profile_summaries(profiles)
-	local summaries = {}
-
-	if type(profiles) ~= "table" then
-		return summaries
-	end
-
-	for index = 1, #profiles do
-		local source = profiles[index]
-
-		if type(source) == "table" and source.character_id then
-			summaries[#summaries + 1] = {
-				archetype = type(source.archetype) == "string" and source.archetype or nil,
-				character_id = tostring(source.character_id),
-				character_name = type(source.character_name) == "string" and source.character_name ~= "" and source.character_name or nil,
-				class_name = type(source.class_name) == "string" and source.class_name ~= "" and source.class_name or "?",
-			}
-		end
-	end
-
-	sort_profile_summaries(summaries)
-
-	return summaries
+	return CurioProfiles.profile_label(profile)
 end
 
 local function known_profiles(mod)
-	if state.known_profiles == nil then
-		state.known_profiles = sanitize_profile_summaries(mod:get(KNOWN_CHARACTERS_SETTING_ID))
-	end
-
-	return state.known_profiles
-end
-
-local function bounded_slot_capacity(value)
-	value = tonumber(value)
-
-	if not value or value < 1 then
-		return 0
-	end
-
-	return math.min(math.floor(value), MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY)
-end
-
-local function stored_slot_extent(slots)
-	local extent = 0
-
-	if type(slots) == "table" then
-		for key in pairs(slots) do
-			local index = tonumber(key)
-
-			if index and index >= 1 and index == math.floor(index) then
-				extent = math.max(extent, index)
-			end
-		end
-	end
-
-	return bounded_slot_capacity(extent)
+	return CurioProfiles.known_profiles(mod)
 end
 
 local function maximum_operative_slots(mod, observed_profiles)
-	local saved_capacity = bounded_slot_capacity(mod:get(OPERATIVE_SLOT_CAPACITY_SETTING_ID))
-	local saved_slots = mod:get(CHARACTER_SLOTS_SETTING_ID)
-	local capacity = math.max(
-		DEFAULT_OPERATIVE_SLOT_CAPACITY,
-		NATIVE_OPERATIVE_SLOT_CAPACITY,
-		saved_capacity,
-		stored_slot_extent(saved_slots),
-		bounded_slot_capacity(observed_profiles)
-	)
-
-	if saved_capacity ~= capacity then
-		mod:set(OPERATIVE_SLOT_CAPACITY_SETTING_ID, capacity, false)
-	end
-
-	return capacity
-end
-
-local function sanitize_character_slots(source, capacity)
-	local slots = {}
-
-	for index = 1, capacity do
-		local saved = type(source) == "table" and (source[index] or source[tostring(index)]) or nil
-		local character_id = type(saved) == "table" and saved.character_id or nil
-
-		if character_id then
-			slots[index] = {
-				archetype = type(saved.archetype) == "string" and saved.archetype or nil,
-				character_id = tostring(character_id),
-				character_name = type(saved.character_name) == "string" and saved.character_name ~= "" and saved.character_name or nil,
-				class_name = type(saved.class_name) == "string" and saved.class_name ~= "" and saved.class_name or "?",
-				missing_confirmations = math.max(0, math.floor(tonumber(saved.missing_confirmations) or 0)),
-			}
-		else
-			slots[index] = {}
-		end
-	end
-
-	return slots
-end
-
-local function same_character_slots(left, right, capacity)
-	for index = 1, capacity do
-		local left_slot = left[index] or {}
-		local right_slot = right[index] or {}
-
-		if left_slot.character_id ~= right_slot.character_id or left_slot.character_name ~= right_slot.character_name or left_slot.class_name ~= right_slot.class_name or left_slot.archetype ~= right_slot.archetype or (left_slot.missing_confirmations or 0) ~= (right_slot.missing_confirmations or 0) then
-			return false
-		end
-	end
-
-	return true
+	return CurioProfiles.maximum_operative_slots(mod)
 end
 
 local function known_character_slots(mod, capacity)
-	capacity = capacity or maximum_operative_slots(mod)
-
-	if state.character_slots == nil or #state.character_slots ~= capacity then
-		state.character_slots = sanitize_character_slots(mod:get(CHARACTER_SLOTS_SETTING_ID), capacity)
-	end
-
-	return state.character_slots
-end
-
-local function prune_character_exclusion(mod, character_id)
-	local saved = mod:get(CHARACTER_SELECTION_SETTING_ID)
-	local key = tostring(character_id)
-
-	if type(saved) ~= "table" or saved[key] ~= false then
-		return
-	end
-
-	local selection = {}
-
-	for saved_id, enabled_value in pairs(saved) do
-		if tostring(saved_id) ~= key and enabled_value == false then
-			selection[tostring(saved_id)] = false
-		end
-	end
-
-	mod:set(CHARACTER_SELECTION_SETTING_ID, next(selection) and selection or nil, false)
-	state.character_selection = nil
-end
-
-local function character_slot_setting_id(index)
-	return CHARACTER_SLOT_SETTING_PREFIX .. tostring(index)
-end
-
-local function character_slot_index(setting_id)
-	if type(setting_id) ~= "string" or string.sub(setting_id, 1, #CHARACTER_SLOT_SETTING_PREFIX) ~= CHARACTER_SLOT_SETTING_PREFIX then
-		return nil
-	end
-
-	local index = tonumber(string.sub(setting_id, #CHARACTER_SLOT_SETTING_PREFIX + 1))
-
-	if not index or index < 1 or index ~= math.floor(index) then
-		return nil
-	end
-
-	return index
-end
-
-local function character_slot_bindings(mod, slots, summaries)
-	local profiles_by_id = {}
-	local duplicate_counts = {}
-	local saved_selection = mod:get(CHARACTER_SELECTION_SETTING_ID)
-	local bindings = {}
-
-	for index = 1, #summaries do
-		profiles_by_id[summaries[index].character_id] = summaries[index]
-	end
-
-	for index = 1, #slots do
-		local slot = slots[index]
-
-		if slot.character_id then
-			local label = slot.character_name and string.format("%s(%s)", slot.character_name, slot.class_name) or slot.class_name
-
-			duplicate_counts[label] = (duplicate_counts[label] or 0) + 1
-		end
-	end
-
-	for index = 1, #slots do
-		local slot = slots[index]
-		local character_id = slot.character_id
-		local available = character_id ~= nil and profiles_by_id[character_id] ~= nil
-		local display_name = mod:localize("automatic_curio_character_slot_placeholder") .. " " .. tostring(index)
-
-		if character_id then
-			display_name = slot.character_name and string.format("%s(%s)", slot.character_name, slot.class_name) or slot.class_name
-
-			if duplicate_counts[display_name] > 1 then
-				display_name = string.format("%s [%s]", display_name, string.sub(character_id, -6))
-			end
-
-			if not available then
-				display_name = display_name .. " " .. mod:localize("automatic_curio_character_slot_unavailable")
-			end
-		end
-
-		bindings[index] = {
-			available = available,
-			character_id = available and character_id or nil,
-			display_name = display_name,
-			enabled = available and not (type(saved_selection) == "table" and saved_selection[tostring(character_id)] == false) or false,
-			setting_id = character_slot_setting_id(index),
-		}
-	end
-
-	return bindings
-end
-
-local function refresh_registered_character_options(mod, slots, summaries)
-	local bindings = character_slot_bindings(mod, slots, summaries)
-	local dmf = get_mod("DMF")
-	local option_sets = dmf and dmf.options_widgets_data
-
-	-- Keep the static slot values synchronized with the backend-ID selection map.
-	-- No setting-change notification is emitted here: discovery is presentation
-	-- synchronization, not a user filter change.
-	for index = 1, #bindings do
-		mod:set(bindings[index].setting_id, bindings[index].enabled, false)
-	end
-
-	if type(option_sets) ~= "table" then
-		return bindings
-	end
-
-	for _, widgets in ipairs(option_sets) do
-		local header = type(widgets) == "table" and widgets[1]
-
-		if type(header) == "table" and header.mod_name == mod:get_name() then
-			for _, widget in ipairs(widgets) do
-				local index = type(widget) == "table" and character_slot_index(widget.setting_id) or nil
-				local binding = index and bindings[index]
-
-				if binding then
-					widget.title = binding.display_name
-					widget._better_inventory_curio_character_available = binding.available
-					widget._better_inventory_curio_character_id = binding.character_id
-					widget._better_inventory_curio_character_slot_index = index
-				end
-			end
-
-			break
-		end
-	end
-
-	return bindings
+	return CurioProfiles.character_slots(mod)
 end
 
 local function reconcile_character_slots(mod, summaries, confirm_absences)
-	local capacity = maximum_operative_slots(mod, #summaries)
-	local previous = known_character_slots(mod, capacity)
-	local slots = sanitize_character_slots(previous, capacity)
-	local summaries_by_id = {}
-	local assigned_ids = {}
-	local evicted_ids = {}
-
-	for index = 1, #summaries do
-		local summary = summaries[index]
-
-		summaries_by_id[summary.character_id] = summary
-	end
-
-	for index = 1, capacity do
-		local slot = slots[index]
-		local character_id = slot.character_id
-		local summary = character_id and summaries_by_id[character_id] or nil
-
-		if summary then
-			if not assigned_ids[character_id] then
-				slots[index] = {
-					archetype = summary.archetype,
-					character_id = summary.character_id,
-					character_name = summary.character_name,
-					class_name = summary.class_name,
-					missing_confirmations = 0,
-				}
-				assigned_ids[character_id] = true
-			else
-				-- Corrupt or legacy duplicate bindings must not let one character
-				-- own multiple DMF rows.
-				slots[index] = {}
-			end
-		elseif character_id and confirm_absences then
-			local missing_confirmations = (slot.missing_confirmations or 0) + 1
-
-			if missing_confirmations >= 2 then
-				evicted_ids[#evicted_ids + 1] = character_id
-				slots[index] = {}
-			else
-				slot.missing_confirmations = missing_confirmations
-			end
-		end
-	end
-
-	for summary_index = 1, #summaries do
-		local summary = summaries[summary_index]
-
-		if not assigned_ids[summary.character_id] then
-			for slot_index = 1, capacity do
-				if not slots[slot_index].character_id then
-					slots[slot_index] = {
-						archetype = summary.archetype,
-						character_id = summary.character_id,
-						character_name = summary.character_name,
-						class_name = summary.class_name,
-						missing_confirmations = 0,
-					}
-					assigned_ids[summary.character_id] = true
-
-					break
-				end
-			end
-		end
-	end
-
-	if not same_character_slots(previous, slots, capacity) then
-		state.character_slots = slots
-		state.profile_revision = state.profile_revision + 1
-		mod:set(CHARACTER_SLOTS_SETTING_ID, slots, false)
-	end
-
-	for index = 1, #evicted_ids do
-		prune_character_exclusion(mod, evicted_ids[index])
-	end
-
-	if #summaries > capacity then
-		log_info(mod, string.format("Discovered %d operatives but only %d stable Mod Options slots are available; all operatives remain available in the inventory panel.", #summaries, capacity))
-	end
-
-	refresh_registered_character_options(mod, state.character_slots or slots, summaries)
-
-	return state.character_slots or slots, capacity
+	return CurioProfiles.reconcile_character_slots(mod, summaries, confirm_absences)
 end
 
 local function cache_profiles(mod, profiles)
-	local summaries = {}
-
-	for index = 1, #(profiles or {}) do
-		local summary = profile_summary(profiles[index])
-
-		if summary then
-			summaries[#summaries + 1] = summary
-		end
-	end
-
-	sort_profile_summaries(summaries)
-	reconcile_character_slots(mod, summaries, true)
-
-	if not same_profile_summaries(known_profiles(mod), summaries) then
-		state.known_profiles = summaries
-		state.profile_revision = state.profile_revision + 1
-		mod:set(KNOWN_CHARACTERS_SETTING_ID, summaries, false)
-	end
-
-	-- Character targeting is the default, but a successful backend response with
-	-- no usable character IDs cannot populate its controls or produce a safe
-	-- purchase target. Fall back only after that result is confirmed; an initial,
-	-- pending, or failed discovery must not overwrite the user's chosen mode.
-	if #summaries == 0 and mod:get("automatic_curio_target_mode") == "characters" then
-		mod:set("automatic_curio_target_mode", "classes", false)
-		log_info(mod, "No usable characters were returned; safely falling back to class targeting.")
-	end
-
-	return summaries
-end
-
-local function character_selection(mod)
-	if state.character_selection == nil then
-		local saved = mod:get(CHARACTER_SELECTION_SETTING_ID)
-
-		state.character_selection = {}
-
-		if type(saved) == "table" then
-			for character_id, enabled_value in pairs(saved) do
-				if enabled_value == false then
-					state.character_selection[tostring(character_id)] = false
-				end
-			end
-		end
-	end
-
-	return state.character_selection
+	return CurioProfiles.cache_profiles(mod, profiles)
 end
 
 local function character_is_enabled(mod, character_id)
-	local selection = character_selection(mod)
-
-	return selection[tostring(character_id)] ~= false
+	return CurioProfiles.character_is_enabled(mod, character_id)
 end
 
 local function profile_is_enabled(mod, profile)
-	if mod:get("automatic_curio_target_mode") == "characters" then
-		return profile and profile.character_id and character_is_enabled(mod, profile.character_id) or false
-	end
-
-	return class_is_enabled(mod, profile)
+	return CurioProfiles.profile_is_enabled(mod, profile)
 end
 
+CurioProfiles.configure({
+	call_promise = call_promise,
+	error_text = error_text,
+	is_morningstar = is_morningstar,
+	is_operative_selection = is_operative_selection,
+	log_diagnostic = log_diagnostic,
+	log_info = log_info,
+	track_read_promise = track_read_promise,
+})
+
+CurioLedger.configure({
+	account_key = current_account_key,
+	enabled = enabled,
+	log_info = log_info,
+	on_account_changed = function()
+		CurioProfiles.reset_context()
+		processed_offer_keys = {}
+	end,
+	server_time = server_time,
+})
+
+
 local function primary_trait(item)
-	local traits = item and item.traits
-
-	if type(traits) ~= "table" then
-		return
-	end
-
-	for index = 1, #traits do
-		local entry = traits[index]
-		local trait_name, value = CurioValues.resolve(entry)
-		local config = trait_name and PRIMARY_TRAITS[trait_name]
-
-		if config then
-			return trait_name, value, config
-		end
-	end
+	return CurioStore.primary_trait(item)
 end
 
 local function item_level(item)
-	if not item or type(Items.expertise_level) ~= "function" then
-		return
-	end
-
-	local success, level = pcall(Items.expertise_level, item, true)
-
-	return success and tonumber(level) or nil
+	return CurioStore.item_level(item)
 end
 
 local function offer_is_active(offer)
-	if not offer or type(offer) ~= "table" then
-		return false
-	end
-
-	if type(offer.state) == "string" and offer.state ~= "active" then
-		return false
-	end
-
-	if type(offer.is_valid_at) == "function" then
-		local now = server_time()
-
-		if now then
-			local success, valid = pcall(offer.is_valid_at, offer, now)
-
-			if not success or not valid then
-				return false
-			end
-		end
-	elseif type(offer.price) == "table" then
-		local now = server_time()
-
-		if now then
-			local valid_from = offer.price.validFrom and tonumber(offer.price.validFrom)
-			local valid_to = offer.price.validTo and tonumber(offer.price.validTo)
-
-			if (offer.price.validFrom ~= nil and not valid_from) or (offer.price.validTo ~= nil and not valid_to) then
-				return false
-			end
-
-			if (valid_from and now <= valid_from) or (valid_to and now >= valid_to) then
-				return false
-			end
-		end
-	end
-
-	return true
-end
-
-local function log_curio_evaluation(mod, profile, offer_id, level, trait_name, trait_value, result)
-	log_diagnostic(mod, string.format(
-		"%s Curio offer %s: item_level=%s, primary_trait=%s, primary_value=%s; %s.",
-		profile_label(profile),
-		tostring(offer_id or "?"),
-		tostring(level or "?"),
-		tostring(trait_name or "?"),
-		tostring(trait_value or "?"),
-		result
-	))
+	return CurioStore.offer_is_active(offer)
 end
 
 local function normalized_offer(mod, profile, offer, diagnostics)
-	local sku = offer and offer.sku
-	local description = offer and offer.description
-	local offer_id = offer and offer.offerId
-	local price = offer and offer.price and offer.price.amount
-
-	if diagnostics then
-		diagnostics.offers = diagnostics.offers + 1
-	end
-
-	if not offer_is_active(offer) or not sku or sku.category ~= "item_instance" or type(description) ~= "table" or not offer_id or type(price) ~= "table" then
-		return
-	end
-
-	local resolved, item = pcall(MasterItems.get_store_item_instance, description)
-
-	if not resolved or not item or item.item_type ~= "GADGET" then
-		return
-	end
-
-	if diagnostics then
-		diagnostics.curios = diagnostics.curios + 1
-	end
-
-	local level = item_level(item)
-	local minimum_level = math.clamp(math.floor(tonumber(mod:get("automatic_curio_min_item_level")) or 410), 0, 500)
-
-	if not level then
-		count_exclusion(diagnostics, "unreadable_item_level")
-
-		if diagnostics then
-			log_curio_evaluation(mod, profile, offer_id, level, nil, nil, "excluded: unreadable item level")
-		end
-
-		return
-	elseif level < minimum_level then
-		count_exclusion(diagnostics, "below_minimum_level")
-
-		if diagnostics then
-			log_curio_evaluation(mod, profile, offer_id, level, nil, nil, "excluded: below configured minimum " .. tostring(minimum_level))
-		end
-
-		return
-	end
-
-	local trait_name, trait_value, trait_config = primary_trait(item)
-
-	if not trait_name or not trait_config then
-		count_exclusion(diagnostics, "unsupported_primary_trait")
-
-		if diagnostics then
-			log_curio_evaluation(mod, profile, offer_id, level, trait_name, trait_value, "excluded: unsupported or unreadable primary trait")
-		end
-
-		return
-	elseif mod:get(trait_config.setting_id) == false then
-		count_exclusion(diagnostics, "primary_type_disabled")
-
-		if diagnostics then
-			log_curio_evaluation(mod, profile, offer_id, level, trait_name, trait_value, "excluded: primary type disabled")
-		end
-
-		return
-	end
-
-	if trait_config.minimum_roll_setting_id then
-		local minimum_roll = math.clamp(tonumber(mod:get(trait_config.minimum_roll_setting_id)) or trait_config.minimum_roll_default, 0, 100)
-
-		if not trait_value then
-			count_exclusion(diagnostics, "unreadable_primary_value")
-
-			if diagnostics then
-				log_curio_evaluation(mod, profile, offer_id, level, trait_name, trait_value, "excluded: unreadable primary value for configured roll threshold")
-			end
-
-			return
-		elseif trait_value + 0.0001 < minimum_roll then
-			count_exclusion(diagnostics, "below_minimum_primary_roll")
-
-			if diagnostics then
-				log_curio_evaluation(mod, profile, offer_id, level, trait_name, trait_value, "excluded: below configured primary-roll minimum " .. tostring(minimum_roll))
-			end
-
-			return
-		end
-	end
-
-	local amount = tonumber(price.amount)
-	local currency = price.type
-
-	if not amount or amount < 0 or type(currency) ~= "string" then
-		count_exclusion(diagnostics, "invalid_price")
-
-		if diagnostics then
-			log_curio_evaluation(mod, profile, offer_id, level, trait_name, trait_value, "excluded: invalid price")
-		end
-
-		return
-	end
-
-	if diagnostics then
-		diagnostics.eligible = diagnostics.eligible + 1
-		log_curio_evaluation(mod, profile, offer_id, level, trait_name, trait_value, string.format("eligible at %s %s", tostring(amount), currency))
-	end
-
-	return {
-		archetype = archetype_name(profile),
-		character_id = profile.character_id,
-		character_name = character_name(profile),
-		class_name = localized_class_name(profile),
-		currency = currency,
-		gear_id = description.gear_id or description.gearId,
-		item_level = math.floor(level + 0.5),
-		offer = offer,
-		offer_id = offer_id,
-		price = amount,
-		primary_config = trait_config,
-		primary_trait = trait_name,
-		primary_value = trait_value,
-		profile = profile,
-	}
+	return CurioStore.normalized_offer(mod, profile, offer, diagnostics)
 end
 
 local function candidate_key(candidate)
-	return table.concat({
-		tostring(candidate.character_id or "?"),
-		tostring(candidate.offer_id or "?"),
-	}, ":")
+	return CurioStore.candidate_key(candidate)
 end
 
 local function store_method_for_profile(profile)
-	local store_interface = Managers and Managers.backend and Managers.backend.interfaces and Managers.backend.interfaces.store
-	local by_archetype = StoreNames and StoreNames.by_archetype and StoreNames.by_archetype.credit
-	local method_name = by_archetype and by_archetype[archetype_name(profile)]
-	local method = method_name and store_interface and store_interface[method_name]
-
-	return store_interface, method
+	return CurioStore.store_method_for_profile(profile)
 end
 
 local function fetch_storefront(profile)
-	local store_interface, method = store_method_for_profile(profile)
-
-	if not method then
-		return rejected("no Armoury storefront mapping for " .. tostring(archetype_name(profile)))
-	end
-
-	return track_read_promise(call_promise(store_interface, method, application_time(), profile.character_id))
+	return CurioStore.fetch_storefront(profile)
 end
 
 local function observed_rotation_boundary(storefront)
-	local now = server_time()
-	local data = storefront and storefront.data
-	local boundary
-
-	local function consider(value)
-		local candidate = sane_rotation_boundary(value, now)
-
-		if candidate and (not boundary or candidate < boundary) then
-			boundary = candidate
-		end
-	end
-
-	consider(data and data.currentRotationEnd)
-	consider(data and data.catalog and data.catalog.validTo)
-
-	local offers = data and data.personal
-
-	if type(offers) == "table" then
-		for index = 1, #offers do
-			consider(offers[index] and offers[index].price and offers[index].price.validTo)
-		end
-	end
-
-	return boundary
+	return CurioStore.observed_rotation_boundary(storefront)
 end
 
 local function rotation_boundary_compatible(current_boundary, observed_boundary, missing_metadata)
-	if not observed_boundary then
-		return current_boundary == nil, current_boundary, true
-	end
-
-	if missing_metadata or current_boundary and observed_boundary ~= current_boundary then
-		return false, current_boundary, missing_metadata
-	end
-
-	return true, current_boundary or observed_boundary, false
+	return CurioStore.rotation_boundary_compatible(current_boundary, observed_boundary, missing_metadata)
 end
 
 local function scan_candidates(mod, token, minimum_rotation_boundary_ms)
-	local profiles_service = Managers and Managers.data_service and Managers.data_service.profiles
-
-	if not profiles_service or type(profiles_service.fetch_all_profiles) ~= "function" then
-		return rejected("ProfilesService.fetch_all_profiles is unavailable")
-	end
-
-	local profile_promise = track_read_promise(call_promise(profiles_service, profiles_service.fetch_all_profiles))
-
-	return profile_promise:next(function(result)
-		if not context_is_current(mod, token) then
-			return {}
-		end
-
-		local profiles = result and result.profiles
-
-		if type(profiles) ~= "table" then
-			return rejected("profile scan returned no profile list")
-		end
-
-		cache_profiles(mod, profiles)
-
-		local candidates = {}
-		local chain = Promise.resolved()
-		local diagnostics = new_scan_diagnostics()
-		local rotation_boundary_ms
-		local rotation_boundary_missing = false
-
-		diagnostics.profiles = #profiles
-
-		for index = 1, #profiles do
-			local profile = profiles[index]
-
-			if profile and profile.character_id and profile_is_enabled(mod, profile) then
-				diagnostics.enabled_profiles = diagnostics.enabled_profiles + 1
-				local _, storefront_method = store_method_for_profile(profile)
-
-				if storefront_method then
-					chain = chain:next(function()
-					if not context_is_current(mod, token) then
-						return
-					end
-
-					return fetch_storefront(profile):next(function(storefront)
-						if not context_is_current(mod, token) then
-							return
-						end
-
-						local observed_boundary = observed_rotation_boundary(storefront)
-
-						-- The backend can briefly return the expired storefront after its
-						-- advertised rotation boundary. A boundary-based pass must prove
-						-- that every character storefront advanced before it evaluates or
-						-- consumes the new rotation. Falling back to the next wall-clock
-						-- hour here would incorrectly bless stale offers and suppress the
-						-- real refreshed pass.
-						if minimum_rotation_boundary_ms and (not observed_boundary or observed_boundary <= minimum_rotation_boundary_ms) then
-							return rotation_pending(string.format(
-								"Armoury storefront for %s has not advanced beyond rotation boundary %s",
-								profile_label(profile),
-								tostring(minimum_rotation_boundary_ms)
-							))
-						end
-
-						-- A single account-wide pass must observe one coherent backend
-						-- boundary. Mixed or missing per-character metadata means the
-						-- storefronts are not synchronized enough to evaluate or purchase.
-						local boundary_compatible, next_boundary, next_missing = rotation_boundary_compatible(rotation_boundary_ms, observed_boundary, rotation_boundary_missing)
-
-						if not boundary_compatible then
-							return rotation_pending(string.format(
-								"Armoury storefront rotation boundary mismatch or missing metadata for %s",
-								profile_label(profile)
-							))
-						end
-
-						rotation_boundary_ms = next_boundary
-						rotation_boundary_missing = next_missing
-
-						local offers = storefront and storefront.data and storefront.data.personal
-
-						if type(offers) ~= "table" then
-							return rejected("Armoury storefront returned no personal offers")
-						end
-
-						diagnostics.storefronts = diagnostics.storefronts + 1
-
-						local offers_before = diagnostics.offers
-						local curios_before = diagnostics.curios
-						local eligible_before = diagnostics.eligible
-
-						for offer_index = 1, #offers do
-							local success, candidate = pcall(normalized_offer, mod, profile, offers[offer_index], diagnostics)
-
-							if success and candidate and not processed_offer_keys[candidate_key(candidate)] then
-								candidates[#candidates + 1] = candidate
-							elseif not success then
-								diagnostics.offer_errors = diagnostics.offer_errors + 1
-
-								if diagnostics.offer_errors_logged < MAX_OFFER_ERROR_LOGS_PER_SCAN then
-									diagnostics.offer_errors_logged = diagnostics.offer_errors_logged + 1
-									log_info(mod, "Safety-excluded an unreadable offer: " .. error_text(candidate))
-								end
-							end
-						end
-
-						log_diagnostic(mod, string.format(
-							"%s storefront summary: offers=%d, Curios=%d, eligible=%d.",
-							profile_label(profile),
-							diagnostics.offers - offers_before,
-							diagnostics.curios - curios_before,
-							diagnostics.eligible - eligible_before
-						))
-					end)
-					end)
-				else
-					log_diagnostic(mod, profile_label(profile) .. " was skipped because Darktide exposes no Armoury storefront for its archetype.")
-				end
-			end
-		end
-
-		return chain:next(function()
-			if diagnostics.offer_errors > diagnostics.offer_errors_logged then
-				log_info(mod, string.format(
-					"Suppressed %d additional unreadable-offer error log(s) during this scan.",
-					diagnostics.offer_errors - diagnostics.offer_errors_logged
-				))
-			end
-
-			log_scan_summary(mod, diagnostics)
-
-			table.sort(candidates, function(left, right)
-				if left.class_name ~= right.class_name then
-					return left.class_name < right.class_name
-				elseif left.item_level ~= right.item_level then
-					return left.item_level > right.item_level
-				end
-
-				return tostring(left.offer_id) < tostring(right.offer_id)
-			end)
-
-			return {
-				candidates = candidates,
-				rotation_boundary_ms = rotation_boundary_ms,
-			}
-		end)
-	end)
+	return CurioStore.scan_candidates(mod, token, minimum_rotation_boundary_ms, processed_offer_keys)
 end
 
 local function find_offer(storefront, offer_id)
-	local offers = storefront and storefront.data and storefront.data.personal
-
-	if type(offers) ~= "table" then
-		return
-	end
-
-	for index = 1, #offers do
-		if offers[index] and offers[index].offerId == offer_id then
-			return offers[index]
-		end
-	end
+	return CurioPurchase.find_offer(storefront, offer_id)
 end
 
-local STABLE_REVALIDATION_FIELDS = {
-	"character_id",
-	"offer_id",
-	"currency",
-	"price",
-	"item_level",
-	"primary_trait",
-}
-
-local VOLATILE_REVALIDATION_FIELDS = {
-	"gear_id",
-	"primary_value",
-}
-
 local function candidate_differences(left, right, fields)
-	local differences = {}
-
-	if not left or not right then
-		return {"candidate_missing"}
-	end
-
-	for index = 1, #fields do
-		local field = fields[index]
-
-		if left[field] ~= right[field] then
-			differences[#differences + 1] = string.format("%s:%s->%s", field, tostring(left[field]), tostring(right[field]))
-		end
-	end
-
-	return differences
+	return CurioPurchase.candidate_differences(left, right, fields)
 end
 
 local function same_candidate(left, right)
-	return #candidate_differences(left, right, STABLE_REVALIDATION_FIELDS) == 0
-end
-
-local function find_wallet(wallets, currency)
-	if type(wallets) ~= "table" then
-		return
-	end
-
-	for index = 1, #wallets do
-		local wallet = wallets[index]
-		local balance = wallet and wallet.balance
-
-		if balance and balance.type == currency then
-			return wallet
-		end
-	end
-end
-
-local function fetch_target_wallet(candidate)
-	local wallet_interface = Managers and Managers.backend and Managers.backend.interfaces and Managers.backend.interfaces.wallet
-
-	if not wallet_interface then
-		return rejected("wallet backend is unavailable")
-	end
-
-	local account_promise = track_read_promise(call_promise(wallet_interface, wallet_interface.account_wallets))
-
-	if candidate.currency ~= "credits" and candidate.currency ~= "marks" then
-		return account_promise:next(function(wallets)
-			return find_wallet(wallets, candidate.currency)
-		end)
-	end
-
-	local character_promise = track_read_promise(call_promise(wallet_interface, wallet_interface.character_wallets, candidate.character_id))
-
-	return Promise.all(account_promise, character_promise):next(function(results)
-		local account_wallet = find_wallet(results and results[1], candidate.currency)
-		local character_wallet = find_wallet(results and results[2], candidate.currency)
-		local wallet = account_wallet or character_wallet
-
-		if wallet == character_wallet and wallet and wallet.owner and tostring(wallet.owner) ~= tostring(candidate.character_id) then
-			return rejected("target character wallet owner did not match the offer character")
-		end
-
-		return wallet
-	end)
+	return CurioPurchase.same_candidate(left, right)
 end
 
 local function revalidate_and_purchase(mod, token, captured, on_purchase_dispatch)
-	if not context_is_current(mod, token) or not profile_is_enabled(mod, captured.profile) then
-		return Promise.resolved()
-	end
-
-	return fetch_storefront(captured.profile):next(function(storefront)
-		if not context_is_current(mod, token) then
-			return
-		end
-
-		local offer = find_offer(storefront, captured.offer_id)
-
-		if not offer then
-			log_info(mod, "Revalidation rejected offer " .. tostring(captured.offer_id) .. ": offer ID was no longer present in the target storefront.")
-			return
-		end
-
-		local success, current = pcall(normalized_offer, mod, captured.profile, offer)
-
-		if not success then
-			return rejected(current)
-		end
-
-		if not current then
-			log_info(mod, "Revalidation rejected offer " .. tostring(captured.offer_id) .. ": it no longer passed the current Curio filters or safety checks.")
-			return
-		end
-
-		if not same_candidate(captured, current) then
-			local differences = candidate_differences(captured, current, STABLE_REVALIDATION_FIELDS)
-
-			log_info(mod, string.format(
-				"Revalidation rejected offer %s because stable field(s) changed: %s.",
-				tostring(captured.offer_id),
-				table.concat(differences, ", ")
-			))
-			return
-		end
-
-		local volatile_differences = candidate_differences(captured, current, VOLATILE_REVALIDATION_FIELDS)
-
-		if #volatile_differences > 0 then
-			log_diagnostic(mod, string.format(
-				"Revalidation accepted offer %s; non-transactional field(s) changed after refetch: %s.",
-				tostring(captured.offer_id),
-				table.concat(volatile_differences, ", ")
-			))
-		end
-
-		local key = candidate_key(current)
-
-		if processed_offer_keys[key] then
-			return
-		end
-
-		return fetch_target_wallet(current):next(function(wallet)
-			if not context_is_current(mod, token) then
-				return
-			end
-
-			local balance = wallet and wallet.balance
-			local available = balance and tonumber(balance.amount)
-
-			if not wallet or not balance or balance.type ~= current.currency or not available then
-				return rejected("matching target wallet was unavailable")
-		end
-
-			if available < current.price then
-				log_diagnostic(mod, string.format("Skipped %s: %s balance was insufficient.", tostring(current.offer_id), current.currency))
-
-				return {
-					available = available,
-					candidate = current,
-					status = "insufficient_funds",
-				}
-			end
-
-			local store_service = Managers and Managers.data_service and Managers.data_service.store
-
-			if not store_service or type(store_service.purchase_item_with_wallet) ~= "function" then
-				return rejected("StoreService.purchase_item_with_wallet is unavailable")
-			end
-
-			processed_offer_keys[key] = "in_flight"
-
-			if on_purchase_dispatch then
-				on_purchase_dispatch()
-			end
-
-			return call_promise(store_service, store_service.purchase_item_with_wallet, current.offer, wallet):next(function()
-				processed_offer_keys[key] = "complete"
-
-				return {
-					candidate = current,
-					status = "purchased",
-				}
-			end):catch(function(error_value)
-				-- A timeout can be ambiguous after the POST reaches the backend. Keep the
-				-- session key blocked and never retry this offer automatically.
-				processed_offer_keys[key] = "unknown"
-
-				return rejected(error_value)
-			end)
-		end)
-	end)
+	return CurioPurchase.revalidate_and_purchase(mod, token, captured, on_purchase_dispatch, processed_offer_keys)
 end
+
+CurioStore.configure({
+	application_time = application_time,
+	archetype_name = archetype_name,
+	cache_profiles = cache_profiles,
+	call_promise = call_promise,
+	character_name = character_name,
+	context_is_current = context_is_current,
+	count_exclusion = count_exclusion,
+	error_text = error_text,
+	localized_class_name = localized_class_name,
+	log_diagnostic = log_diagnostic,
+	log_info = log_info,
+	log_scan_summary = log_scan_summary,
+	new_scan_diagnostics = new_scan_diagnostics,
+	profile_is_enabled = profile_is_enabled,
+	profile_label = profile_label,
+	rejected = rejected,
+	rotation_pending = rotation_pending,
+	sane_rotation_boundary = sane_rotation_boundary,
+	server_time = server_time,
+	track_read_promise = track_read_promise,
+})
+
+CurioPurchase.configure({
+	call_promise = call_promise,
+	candidate_key = candidate_key,
+	context_is_current = context_is_current,
+	error_text = error_text,
+	fetch_storefront = fetch_storefront,
+	log_diagnostic = log_diagnostic,
+	log_info = log_info,
+	normalized_offer = normalized_offer,
+	profile_is_enabled = profile_is_enabled,
+	rejected = rejected,
+	track_read_promise = track_read_promise,
+})
 
 local function notify(mod, title_id, description, final_line, final_line_color)
 	local event_manager = Managers and Managers.event
@@ -2254,7 +922,6 @@ local function build_pending_report(account_key, context, purchased, insufficien
 
 			if item then
 				report[source.field][#report[source.field] + 1] = item
-
 				if source.field == "purchased" and report.spent[item.currency] then
 					report.spent[item.currency] = report.spent[item.currency] + item.price
 				end
@@ -2641,11 +1308,7 @@ local function initialize_context(mod, context)
 	state.scheduled_reason = "entry"
 	state.started = false
 	state.scheduler_poll_elapsed = 0
-	state.profile_discovery_elapsed = 0
-	state.profile_discovery_inflight = false
-	state.profile_discovery_pending = true
-	state.profile_discovery_refresh_elapsed = 0
-	state.profile_discovery_token = state.profile_discovery_token + 1
+	CurioProfiles.reset_context()
 	state.operation_snapshot = nil
 	ensure_rotation_history(mod)
 	state.rotation_boundary_ms = state.next_rotation_at_ms
@@ -2712,204 +1375,47 @@ CurioAcquisition.cancel = function()
 	state.next_rotation_at_ms = nil
 	state.rotation_boundary_ms = nil
 	state.operation_snapshot = nil
-	state.profile_discovery_token = state.profile_discovery_token + 1
-end
-
-local function profiles_service()
-	return Managers and Managers.data_service and Managers.data_service.profiles
-end
-
-local function update_profile_discovery(mod, dt)
-	if not is_morningstar() and not (is_operative_selection() and mod:get("automatic_curio_scan_operative_selection") == true) then
-		return
-	end
-
-	if not state.profile_discovery_pending then
-		state.profile_discovery_refresh_elapsed = state.profile_discovery_refresh_elapsed + (tonumber(dt) or 0)
-
-		if state.profile_discovery_refresh_elapsed < PROFILE_DISCOVERY_REFRESH_INTERVAL then
-			return
-		end
-
-		state.profile_discovery_pending = true
-		state.profile_discovery_elapsed = PROFILE_DISCOVERY_DELAY
-	end
-
-	if state.profile_discovery_inflight then
-		return
-	end
-
-	state.profile_discovery_elapsed = state.profile_discovery_elapsed + (tonumber(dt) or 0)
-
-	if state.profile_discovery_elapsed < PROFILE_DISCOVERY_DELAY then
-		return
-	end
-
-	local service = profiles_service()
-
-	if not service or type(service.fetch_all_profiles) ~= "function" then
-		return
-	end
-
-	state.profile_discovery_inflight = true
-	local discovery_token = state.profile_discovery_token
-
-	track_read_promise(call_promise(service, service.fetch_all_profiles)):next(function(result)
-		if discovery_token ~= state.profile_discovery_token then
-			return
-		end
-
-		state.profile_discovery_inflight = false
-
-		local profiles = result and result.profiles
-
-		if type(profiles) == "table" then
-			cache_profiles(mod, profiles)
-			state.profile_discovery_pending = false
-			state.profile_discovery_refresh_elapsed = 0
-		else
-			state.profile_discovery_elapsed = PROFILE_DISCOVERY_DELAY - PROFILE_DISCOVERY_RETRY_DELAY
-		end
-	end):catch(function(error_value)
-		if discovery_token ~= state.profile_discovery_token then
-			return
-		end
-
-		state.profile_discovery_inflight = false
-		state.profile_discovery_elapsed = PROFILE_DISCOVERY_DELAY - PROFILE_DISCOVERY_RETRY_DELAY
-		log_diagnostic(mod, "Character discovery failed and will retry later: " .. error_text(error_value))
-	end)
+	CurioProfiles.cancel()
 end
 
 CurioAcquisition.request_profile_discovery = function(force)
-	if force == true or state.known_profiles == nil or #state.known_profiles == 0 or state.profile_discovery_refresh_elapsed >= PROFILE_DISCOVERY_REFRESH_INTERVAL then
-		state.profile_discovery_pending = true
-		state.profile_discovery_elapsed = PROFILE_DISCOVERY_DELAY
-	end
+	return CurioProfiles.request_profile_discovery(force)
 end
 
 CurioAcquisition.known_profiles = function(mod)
-	return known_profiles(mod)
+	return CurioProfiles.known_profiles(mod)
 end
 
 CurioAcquisition.maximum_operative_slots = function(mod)
-	return maximum_operative_slots(mod, #known_profiles(mod))
+	return CurioProfiles.maximum_operative_slots(mod)
 end
 
 CurioAcquisition.character_slots = function(mod)
-	local profiles = known_profiles(mod)
-	local slots = reconcile_character_slots(mod, profiles, false)
-
-	return slots
+	return CurioProfiles.character_slots(mod)
 end
 
 CurioAcquisition.profile_revision = function()
-	return state.profile_revision
+	return CurioProfiles.profile_revision()
 end
 
 CurioAcquisition.character_is_enabled = function(mod, character_id)
-	return character_is_enabled(mod, character_id)
+	return CurioProfiles.character_is_enabled(mod, character_id)
 end
 
 CurioAcquisition.set_character_enabled = function(mod, character_id, enabled_value)
-	if not character_id then
-		return false
-	end
-
-	local existing = character_selection(mod)
-	local selection = {}
-
-	for key, value in pairs(existing) do
-		selection[key] = value
-	end
-
-	local key = tostring(character_id)
-
-	-- Missing entries mean enabled, so new characters are automatically covered
-	-- and the persisted table contains only explicit exclusions.
-	if enabled_value == false then
-		selection[key] = false
-	else
-		selection[key] = nil
-	end
-	mod:set(CHARACTER_SELECTION_SETTING_ID, next(selection) and selection or nil, false)
-
-	if type(CurioAcquisition.on_setting_changed) == "function" then
-		CurioAcquisition.on_setting_changed(mod, CHARACTER_SELECTION_SETTING_ID)
-	end
-
-	state.character_selection = selection
-
-	for index = 1, #known_character_slots(mod) do
-		if known_character_slots(mod)[index].character_id == key then
-			mod:set(character_slot_setting_id(index), enabled_value ~= false, false)
-			break
-		end
-	end
-
-	return true
+	return CurioProfiles.set_character_enabled(mod, character_id, enabled_value)
 end
 
 CurioAcquisition.inject_character_options = function(mod, options_templates)
-	local settings = options_templates and options_templates.settings
-
-	if type(settings) ~= "table" then
-		return false
-	end
-
-	local category_name = mod:get_readable_name()
-	local profiles = known_profiles(mod)
-	local slots = reconcile_character_slots(mod, profiles, false)
-	local bindings = refresh_registered_character_options(mod, slots, profiles)
-	local binding_by_title = {}
-
-	if #profiles == 0 then
-		CurioAcquisition.request_profile_discovery()
-	end
-
-	for index = 1, #bindings do
-		binding_by_title[bindings[index].display_name] = index
-		binding_by_title[mod:localize(bindings[index].setting_id)] = index
-	end
-
-	for _, entry in ipairs(settings) do
-		local index = type(entry) == "table" and entry.category == category_name and binding_by_title[entry.display_name] or nil
-		local binding = index and bindings[index]
-
-		if binding then
-			entry._better_inventory_curio_character_available = binding.available
-			entry._better_inventory_curio_character_id = binding.character_id
-			entry._better_inventory_curio_character_slot_index = index
-			entry.display_name = binding.display_name
-		end
-	end
-
-	return #profiles > 0
+	return CurioProfiles.inject_character_options(mod, options_templates)
 end
 
 CurioAcquisition.refresh_character_options = function(mod)
-	local profiles = known_profiles(mod)
-	local slots = reconcile_character_slots(mod, profiles, false)
-
-	refresh_registered_character_options(mod, slots, profiles)
+	return CurioProfiles.refresh_character_options(mod)
 end
 
 CurioAcquisition.on_setting_changed = function(mod, setting_id)
-	local slot_index = character_slot_index(setting_id)
-
-	if slot_index then
-		local slot = known_character_slots(mod)[slot_index]
-
-		if slot and slot.character_id then
-			CurioAcquisition.set_character_enabled(mod, slot.character_id, mod:get(setting_id) ~= false)
-		end
-
-		return
-	end
-
-	if setting_id == CHARACTER_SELECTION_SETTING_ID then
-		state.character_selection = nil
-	end
+	CurioProfiles.on_setting_changed(mod, setting_id)
 
 	if setting_id == "enable_automatic_curio_acquisition" then
 		if enabled(mod) then
@@ -2935,8 +1441,6 @@ CurioAcquisition.on_setting_changed = function(mod, setting_id)
 	elseif setting_id == "automatic_curio_once_per_store_rotation" then
 		if state.active_context and not state.started then
 			if state.entry_consumed then
-				-- Changing the throttle must not replay an already-consumed entry.
-				-- The next context entry will use the newly selected policy.
 				state.completed = true
 				state.scheduled = false
 				state.scheduled_reason = nil
@@ -2954,8 +1458,6 @@ CurioAcquisition.on_setting_changed = function(mod, setting_id)
 			state.scheduled_reason = nil
 		end
 	elseif setting_id ~= "automatic_curio_diagnostic_logging" and setting_id ~= "automatic_curio_rescan_on_store_refresh" and type(setting_id) == "string" and string.sub(setting_id, 1, 16) == "automatic_curio_" and state.started then
-		-- Changing a destructive filter invalidates every captured offer. Do not
-		-- re-run automatically in the same hub session after a partial transaction.
 		state.token = state.token + 1
 		state.completed = true
 		state.scheduled = false
@@ -2967,7 +1469,7 @@ CurioAcquisition.update = function(mod, dt, automatic_discard_busy)
 	update_read_request_metrics(dt)
 	ensure_rotation_history(mod)
 	deliver_pending_report(mod)
-	update_profile_discovery(mod, dt)
+	CurioProfiles.update(mod, dt)
 
 	if not enabled(mod) then
 		if state.active_context or state.scheduled or state.started then
@@ -3057,7 +1559,7 @@ CurioAcquisition.update = function(mod, dt, automatic_discard_busy)
 		return
 	end
 
-	if state.active_context == "operative_selection" and state.profile_discovery_inflight then
+	if state.active_context == "operative_selection" and CurioProfiles.discovery_inflight() then
 		-- Do not compete with the menu's roster synchronization. The next scheduler
 		-- tick will start the buyer after the shared profile request settles.
 		return

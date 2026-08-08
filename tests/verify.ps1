@@ -136,6 +136,10 @@ $features = @(
 	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_panel_definitions.lua") -Raw
 	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_panel_runtime.lua") -Raw
 	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_armoury_panel.lua") -Raw
+	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_feature_lantern.lua") -Raw
+	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_feature_panel_state.lua") -Raw
+	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_feature_sort_options.lua") -Raw
+	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_feature_discard_summary.lua") -Raw
 ) -join "`n"
 $automaticDiscard = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_discard_automatic.lua") -Raw
 $featureSorting = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_feature_sorting.lua") -Raw
@@ -143,6 +147,13 @@ $contracts = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_co
 $operationArbiter = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_operation_arbiter.lua") -Raw
 $settingsRegistry = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_settings.lua") -Raw
 $curioAcquisition = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_acquisition.lua") -Raw
+$curioAcquisition = @(
+	$curioAcquisition
+	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_profiles.lua") -Raw
+	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_ledger.lua") -Raw
+	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_store.lua") -Raw
+	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_purchase.lua") -Raw
+) -join "`n"
 $curioValues = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_values.lua") -Raw
 $itemCustomization = @(
 	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_item_customization.lua") -Raw
@@ -398,7 +409,7 @@ if (-not ${hasAutomaticProtectionSnapshot} -or -not ${hasAutomaticCandidateReval
 	throw "Automatic discard must re-fetch and revalidate captured IDs before the native gear service deletes them."
 }
 
-if ($main -notmatch 'local_blueprints\s*=\s*shallow_copy\(content_blueprints\)[\s\S]*?local_item_blueprint\s*=\s*table\.clone\(item_blueprint\)' -or $features -notmatch 'adjusted_blueprints\s*=\s*shallow_copy\(content_blueprints\)[\s\S]*?adjusted_header\s*=\s*table\.clone\(gadget_header\)') {
+if ($main -notmatch 'local_blueprints\s*=\s*shallow_copy\(content_blueprints\)[\s\S]*?local_item_blueprint\s*=\s*table\.clone\(item_blueprint\)' -or $features -notmatch 'adjusted_blueprints\s*=\s*(?:shallow_copy|PanelState\.shallow_copy)\(content_blueprints\)[\s\S]*?adjusted_header\s*=\s*table\.clone\(gadget_header\)') {
 	throw "Blueprint transforms must clone only the target blueprint instead of every shared blueprint."
 }
 

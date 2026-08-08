@@ -6,6 +6,10 @@ local PanelRuntime = get_mod("BetterInventory"):io_dofile("BetterInventory/scrip
 local ArmouryPanel = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_armoury_panel")
 local CurioValues = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_values")
 local DiscardPolicy = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_discard_policy")
+local Lantern = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_feature_lantern")
+local SortOptions = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_feature_sort_options")
+local PanelState = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_feature_panel_state")
+local DiscardSummary = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_feature_discard_summary")
 
 if type(CurioValues) ~= "table" then
 	CurioValues = {
@@ -195,6 +199,15 @@ Features.invalidate_view_composition = function(view)
 	return Features._composition.invalidate_view(view)
 end
 
+Lantern.configure(function(view)
+	return Features.invalidate_view_composition(view)
+end)
+
+local function restore_lantern_weapon_panel(view)
+	return Lantern.release_lantern_inventory_section(view)
+end
+
+
 Features._sorting.set_invalidation(Features.invalidate_view_composition)
 
 Features.composition_inputs_changed = function(view, slot_kind)
@@ -270,15 +283,6 @@ Features._registered_sort_views = setmetatable({}, {
 	__mode = "k",
 })
 
-local function shallow_copy(source)
-	local copy = {}
-
-	for key, value in pairs(source or {}) do
-		copy[key] = value
-	end
-
-	return copy
-end
 local registered_inventory_views = setmetatable({}, {
 	__mode = "k",
 })
@@ -300,8 +304,6 @@ local perfect_roll_cache = setmetatable({}, {
 	__mode = "k",
 })
 local curio_acquisition_provider
-local lantern_mod
-local lantern_overlay
 
 local function item_sorting_is_enabled()
 	return Features._sorting.is_enabled()
@@ -439,7 +441,6 @@ end
 Features.add_inventory_sort_toggle_definition = function(mod, layout, definitions, view)
 	return PanelDefinitions.add_inventory_sort_toggle_definition(mod, layout, definitions, view, inventory_slot_kind)
 end
-
 local function panel_header_entry(mod, layout, view, control_id, section_id, label_function)
 	local geometry = view._better_inventory_options_panel_geometry
 
@@ -661,68 +662,20 @@ local function panel_checkbox_entry(mod, layout, view, control_id, setting_id, l
 	end, { "hotspot" })
 end
 
+SortOptions.configure({
+	count_diagnostic = Features.count_diagnostic,
+	is_armoury_sort_view = is_armoury_sort_view,
+	item_sorting_is_enabled = item_sorting_is_enabled,
+	signature = Features._domains.sorting.signature,
+	sorting = Features._sorting,
+})
+
 local function item_sorting_custom_option_start(view)
-	return Features._sorting.native_option_start(view, is_armoury_sort_view)
+	return SortOptions.item_sorting_custom_option_start(view)
 end
 
 local function item_sorting_options_signature(view)
-	local item_sorting_active = item_sorting_is_enabled()
-
-	if not item_sorting_active then
-		if view and view._better_inventory_item_sorting_signature_cache and view._better_inventory_item_sorting_signature_cache.enabled ~= false then
-			view._better_inventory_item_sorting_signature_cache = {
-				enabled = false,
-				value = "",
-			}
-			view._better_inventory_item_sorting_signature_poll = 0
-		end
-
-		return ""
-	end
-
-	if view then
-		local cache = view._better_inventory_item_sorting_signature_cache
-		local poll = (view._better_inventory_item_sorting_signature_poll or 0) + 1
-
-		view._better_inventory_item_sorting_signature_poll = poll
-
-		-- ItemSorting settings are external to BetterInventory. Keep a bounded
-		-- compatibility poll, but avoid rebuilding the signature table/string on
-		-- every idle vendor or inventory frame.
-		if cache and cache.enabled == true and poll < 15 then
-			return cache.value
-		end
-
-		view._better_inventory_item_sorting_signature_poll = 0
-	end
-
-	local sort_options = view and view._sort_options or {}
-	local parts = {
-		tostring(item_sorting_custom_option_start(view)),
-		tostring(#sort_options),
-	}
-
-	for index = 1, #sort_options do
-		parts[#parts + 1] = tostring(sort_options[index].display_name or index)
-	end
-
-	local signature = Features._domains.sorting.signature(parts)
-	Features.count_diagnostic("panel_signatures")
-
-	if view then
-		local cache = view._better_inventory_item_sorting_signature_cache
-
-		if cache and cache.enabled == true and cache.value == signature then
-			return cache.value
-		end
-
-		view._better_inventory_item_sorting_signature_cache = {
-			enabled = true,
-			value = signature,
-		}
-	end
-
-	return signature
+	return SortOptions.item_sorting_options_signature(view)
 end
 
 armoury_panel = ArmouryPanel.new({
@@ -1080,129 +1033,23 @@ local function panel_curio_buyer_character_entry(mod, layout, view, profiles, fi
 	end, controller_targets)
 end
 
-local function panel_structure_key(mod, view)
-	local collapsed = view._better_inventory_options_panel_collapsed or {}
-	local key = 0
+PanelState.configure({
+	composite_key = Features._domains.panels.composite_key,
+	curio_buyer_profile_revision = curio_buyer_profile_revision,
+	item_sorting_is_enabled = item_sorting_is_enabled,
+	item_sorting_options_signature = item_sorting_options_signature,
+})
 
-	key = key + (view._discard_items_element and 1 or 0)
-	key = key + (mod:get("enable_experimental_quick_discard") == true and 2 or 0)
-	key = key + (mod:get("quick_discard_mode") == "automatic" and 4 or 0)
-	key = key + (mod:get("quick_discard_protect_high_level_curios") ~= false and 8 or 0)
-	key = key + (collapsed.sorting and 16 or 0)
-	key = key + (collapsed.discard and 32 or 0)
-	key = key + (mod:get("enable_automatic_curio_acquisition") == true and 64 or 0)
-	key = key + (collapsed.curio_buyer and 128 or 0)
-	key = key + (mod:get("automatic_curio_scan_operative_selection") == true and 256 or 0)
-	key = key + (mod:get("automatic_curio_once_per_store_rotation") ~= false and 512 or 0)
-	key = key + (mod:get("automatic_curio_rescan_on_store_refresh") == true and 1024 or 0)
-	key = key + (mod:get("automatic_curio_buy_health") ~= false and 2048 or 0)
-	key = key + (mod:get("automatic_curio_buy_toughness") ~= false and 4096 or 0)
-	key = key + (mod:get("automatic_curio_target_mode") == "characters" and 8192 or 0)
-	key = key + curio_buyer_profile_revision() * 16384
-	key = key + (item_sorting_is_enabled() and 4194304 or 0)
-	key = key + (collapsed.item_sorting and 8388608 or 0)
-	key = key + (collapsed.native_sorting and 16777216 or 0)
-
-	return Features._domains.panels.composite_key(key, view._better_inventory_lantern_panel_signature, item_sorting_options_signature(view))
-end
-
-local function lantern_is_enabled()
-	if not lantern_mod then
-		return false
-	end
-
-	if type(lantern_mod.is_enabled) ~= "function" then
-		return true
-	end
-
-	local success, enabled = pcall(lantern_mod.is_enabled, lantern_mod)
-
-	return success and enabled == true
-end
-
-local function lantern_recommendations_enabled()
-	if not lantern_is_enabled() or type(lantern_mod.get) ~= "function" then
-		return false
-	end
-
-	local success, enabled = pcall(lantern_mod.get, lantern_mod, "show_recommendations")
-
-	return success and enabled == true
-end
-
-Features.lantern_recommendations_active = lantern_recommendations_enabled
-
-local function lantern_weapon_signature(view)
-	local slot = view and view._selected_slot
-
-	if not slot or not slot.name or type(ProfileUtils.get_active_profile_preset_id) ~= "function" then
-		return
-	end
-
-	local success, active_id = pcall(ProfileUtils.get_active_profile_preset_id)
-
-	if not success then
-		return
-	end
-
-	return tostring(active_id) .. "|" .. tostring(slot.name)
-end
-
-local function lantern_preview_is_active(view)
-	if not view or type(view.is_previewing_item) ~= "function" then
-		return false
-	end
-
-	local success, is_previewing = pcall(view.is_previewing_item, view)
-
-	return success and is_previewing == true
-end
-
-local function restore_lantern_weapon_panel(view)
-	if view then
-		local changed = view._better_inventory_lantern_panel_available == true or view._better_inventory_lantern_panel_height ~= nil or view._better_inventory_lantern_panel_signature ~= nil or view._better_inventory_lantern_panel_hosted == true
-
-		view._better_inventory_lantern_panel_available = false
-		view._better_inventory_lantern_panel_height = nil
-		view._better_inventory_lantern_panel_signature = nil
-		view._better_inventory_lantern_panel_hosted = false
-
-		if changed then
-			Features.invalidate_view_composition(view)
-			view._better_inventory_lantern_panel_last_hosted = false
-			view._better_inventory_lantern_panel_last_signature = nil
-		end
-	end
+Features.lantern_recommendations_active = function()
+	return Lantern.lantern_recommendations_active()
 end
 
 Features.should_host_lantern_panel = function(view)
-	return view and view._better_inventory_lantern_panel_hosted == true
+	return Lantern.should_host_lantern_panel(view)
 end
 
 Features.set_lantern_integration = function(_, integration_mod)
-	lantern_mod = type(integration_mod) == "table" and integration_mod or nil
-	lantern_overlay = lantern_mod and lantern_mod._modules and lantern_mod._modules.equipment_overlay or nil
-
-	if not lantern_overlay or type(lantern_overlay.draw_weapon_select) ~= "function" then
-		return false
-	end
-
-	if type(lantern_overlay._better_inventory_original_draw_weapon_select) ~= "function" then
-		lantern_overlay._better_inventory_original_draw_weapon_select = lantern_overlay.draw_weapon_select
-		lantern_overlay.draw_weapon_select = function(view, ...)
-			local should_host = lantern_overlay._better_inventory_should_host_panel
-
-			if type(should_host) == "function" and should_host(view) then
-				return
-			end
-
-			return lantern_overlay._better_inventory_original_draw_weapon_select(view, ...)
-		end
-	end
-
-	lantern_overlay._better_inventory_should_host_panel = Features.should_host_lantern_panel
-
-	return true
+	return Lantern.set_lantern_integration(_, integration_mod)
 end
 
 Features.set_item_sorting_integration = function(integration_mod)
@@ -1214,44 +1061,11 @@ Features.preserve_item_sorting_native_options = function(view, selected_display_
 end
 
 Features.release_lantern_inventory_section = function(view)
-	restore_lantern_weapon_panel(view)
+	return Lantern.release_lantern_inventory_section(view)
 end
 
 Features.update_lantern_inventory_section = function(mod, view)
-	local selected_slot_name = view and view._selected_slot and view._selected_slot.name
-	local separate_curio_panel = mod:get("keep_lantern_curio_panel_separate") ~= false and type(selected_slot_name) == "string" and string.match(selected_slot_name, "^slot_attachment_") ~= nil
-	local blocked_by_native_view_state = view and (view._discard_items_element ~= nil or view._item_compare_toggled == true)
-
-	if not lantern_mod or not lantern_overlay or separate_curio_panel or blocked_by_native_view_state or mod:get("enable_lantern_inventory_section") ~= true or mod:get("enable_inventory_options_panel_prototype") ~= true or mod:get("show_inventory_options_widget") == false or not view or not view._better_inventory_options_panel or view._better_inventory_options_panel_visible ~= true or view._better_inventory_options_panel._visible == false or view._filter_panel_element and view._show_filter_panel == true or not lantern_recommendations_enabled() or not lantern_preview_is_active(view) then
-		restore_lantern_weapon_panel(view)
-
-		return false
-	end
-
-	local state = view._lantern_weapon_panel
-	local widget = state and state.widget
-	local expected_signature = lantern_weapon_signature(view)
-	local background_style = widget and widget.style and widget.style.background
-	local panel_height = background_style and tonumber(background_style.size and background_style.size[2])
-
-	if not state or not widget or not state.entry or not expected_signature or state.sig ~= expected_signature or not panel_height or panel_height <= 0 then
-		restore_lantern_weapon_panel(view)
-
-		return false
-	end
-
-	view._better_inventory_lantern_panel_available = true
-	view._better_inventory_lantern_panel_height = math.max(120, panel_height)
-	view._better_inventory_lantern_panel_signature = tostring(state.sig) .. "|" .. tostring(view._better_inventory_lantern_panel_height)
-	view._better_inventory_lantern_panel_hosted = view._better_inventory_lantern_section_widget ~= nil
-
-	if view._better_inventory_lantern_panel_hosted ~= view._better_inventory_lantern_panel_last_hosted or view._better_inventory_lantern_panel_signature ~= view._better_inventory_lantern_panel_last_signature then
-		Features.invalidate_view_composition(view)
-		view._better_inventory_lantern_panel_last_hosted = view._better_inventory_lantern_panel_hosted
-		view._better_inventory_lantern_panel_last_signature = view._better_inventory_lantern_panel_signature
-	end
-
-	return view._better_inventory_lantern_panel_hosted
+	return Lantern.update_lantern_inventory_section(mod, view)
 end
 
 rebuild_inventory_options_panel = function(mod, layout, view)
@@ -1347,7 +1161,6 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 			entries[#entries + 1] = panel_curio_protection_type_entry(mod, layout, view)
 		end
 	end
-
 	if not native_discard_active then
 		entries[#entries + 1] = panel_header_entry(mod, layout, view, "better_inventory_curio_buyer_header", "curio_buyer", function()
 			return mod:localize("automatic_curio_buyer_inventory_label")
@@ -1409,7 +1222,7 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 	view._better_inventory_options_panel_widgets = {}
 	view._better_inventory_lantern_section_widget = nil
 	view._better_inventory_lantern_panel_hosted = false
-	view._better_inventory_options_panel_structure_key = panel_structure_key(mod, view)
+	view._better_inventory_options_panel_structure_key = PanelState.panel_structure_key(mod, view)
 	view._better_inventory_options_panel_height = panel_height
 	panel:update_grid_height(panel_height, panel_height)
 	panel:present_grid_layout(entries, INVENTORY_OPTIONS_PANEL_BLUEPRINTS)
@@ -1433,7 +1246,7 @@ Features.compact_inventory_curio_stats_blueprints = function(mod, item_grid, con
 		return content_blueprints
 	end
 
-	local adjusted_blueprints = shallow_copy(content_blueprints)
+	local adjusted_blueprints = PanelState.shallow_copy(content_blueprints)
 	local adjusted_header = table.clone(gadget_header)
 
 	adjusted_blueprints.gadget_header = adjusted_header
@@ -1792,57 +1605,11 @@ Features.quick_discard_candidates = function(mod, layout, view, allowed_gear_ids
 end
 
 local function summary_type_name(mod, count, singular_id, plural_id)
-	return mod:localize(count == 1 and singular_id or plural_id)
+	return DiscardSummary.summary_type_name(mod, count, singular_id, plural_id)
 end
 
 local function rarity_summary(mod, candidates)
-	local counts = {}
-	local lines = {}
-
-	for index = 1, #candidates do
-		local item = candidates[index]
-		local rarity = tonumber(item.rarity)
-
-		if rarity then
-			local rarity_counts = counts[rarity] or {
-				curios = 0,
-				melee = 0,
-				ranged = 0,
-				total = 0,
-			}
-
-			rarity_counts.total = rarity_counts.total + 1
-
-			if item.item_type == "WEAPON_MELEE" then
-				rarity_counts.melee = rarity_counts.melee + 1
-			elseif item.item_type == "WEAPON_RANGED" then
-				rarity_counts.ranged = rarity_counts.ranged + 1
-			elseif item.item_type == "GADGET" then
-				rarity_counts.curios = rarity_counts.curios + 1
-			end
-
-			counts[rarity] = rarity_counts
-		end
-	end
-
-	for rarity = 1, 5 do
-		local rarity_counts = counts[rarity]
-
-		if rarity_counts then
-			local settings = RaritySettings[rarity]
-			local color = settings and settings.color or Color.white(255, true)
-			local name = settings and Localize(settings.display_name) or tostring(rarity)
-			local breakdown = ""
-
-			if mod:get("quick_discard_show_type_breakdown") ~= false then
-				breakdown = string.format(" (%d %s, %d %s %s %d %s)", rarity_counts.melee, summary_type_name(mod, rarity_counts.melee, "quick_discard_summary_melee_singular", "quick_discard_summary_melee_plural"), rarity_counts.ranged, summary_type_name(mod, rarity_counts.ranged, "quick_discard_summary_ranged_singular", "quick_discard_summary_ranged_plural"), mod:localize("quick_discard_summary_and"), rarity_counts.curios, summary_type_name(mod, rarity_counts.curios, "quick_discard_summary_curio_singular", "quick_discard_summary_curio_plural"))
-			end
-
-			lines[#lines + 1] = string.format("{#color(%d,%d,%d)}%d %s%s{#reset()}", color[2], color[3], color[4], rarity_counts.total, name, breakdown)
-		end
-	end
-
-	return table.concat(lines, "\n")
+	return DiscardSummary.rarity_summary(mod, candidates)
 end
 
 local function discarded_rarity_summary(mod, candidates)
@@ -1985,7 +1752,6 @@ end
 Features.reconcile_discard_transaction = function()
 	return discard_transaction:reconcile()
 end
-
 Features.request_quick_discard = function(mod, layout, view)
 	return discard_transaction:request_manual(mod, layout, view)
 end
@@ -2212,7 +1978,7 @@ local function update_inventory_options_panel(mod, layout, view, slot_kind)
 	set_legacy_inventory_options_visible(view, false)
 	set_options_panel_visible(view, panel, true)
 
-	if view._better_inventory_options_panel_structure_key ~= panel_structure_key(mod, view) then
+	if view._better_inventory_options_panel_structure_key ~= PanelState.panel_structure_key(mod, view) then
 		rebuild_inventory_options_panel(mod, layout, view)
 	end
 
@@ -2335,7 +2101,7 @@ local function update_quick_discard_content(mod, slot_kind, view, base_y)
 	end
 
 	if mode_changed and mode_widget then
-		mode_widget.content.value = mod:localize("quick_discard_mode_" .. discard_mode) .. "  ›"
+		mode_widget.content.value = mod:localize("quick_discard_mode_" .. discard_mode) .. "  ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Âº"
 	end
 
 	view._better_inventory_legacy_discard_mode = discard_mode
@@ -2353,7 +2119,7 @@ local function update_quick_discard_content(mod, slot_kind, view, base_y)
 		local rarity_color = rarity_settings and rarity_settings.color or Color.terminal_text_body(255, true)
 
 		discard_content.better_inventory_rarity = rarity
-		discard_content.rarity_label = mod:localize("quick_discard_rarity_" .. rarity) .. "  ›"
+		discard_content.rarity_label = mod:localize("quick_discard_rarity_" .. rarity) .. "  ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Âº"
 
 		if discard_widget.style and discard_widget.style.rarity_label then
 			discard_widget.style.rarity_label.text_color = table.clone(rarity_color)
@@ -2435,7 +2201,6 @@ Features.update_inventory_sort_toggle = function(mod, layout, view)
 
 	local sorting_mod = Features._sorting.mod()
 	local item_sorting_enabled_flag = sorting_mod and sorting_mod.enabled
-
 	if view._better_inventory_composition_item_sorting_enabled ~= item_sorting_enabled_flag then
 		Features.invalidate_view_composition(view)
 		view._better_inventory_composition_item_sorting_enabled = item_sorting_enabled_flag
@@ -2697,7 +2462,6 @@ Features.unregister_inventory_view = function(view)
 	Features._registered_sort_views[view] = nil
 	registered_inventory_views[view] = nil
 end
-
 Features.unregister_armoury_view = function(view)
 	local session_closed = Features.end_view_session(view, "view_exit")
 

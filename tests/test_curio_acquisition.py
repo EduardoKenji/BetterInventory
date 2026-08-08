@@ -25,6 +25,34 @@ CURIO_DOMAINS_PATH = (
     / "BetterInventory"
     / "BetterInventory_curio_domains.lua"
 )
+CURIO_PROFILES_PATH = (
+    PROJECT_ROOT
+    / "scripts"
+    / "mods"
+    / "BetterInventory"
+    / "BetterInventory_curio_profiles.lua"
+)
+CURIO_LEDGER_PATH = (
+    PROJECT_ROOT
+    / "scripts"
+    / "mods"
+    / "BetterInventory"
+    / "BetterInventory_curio_ledger.lua"
+)
+CURIO_STORE_PATH = (
+    PROJECT_ROOT
+    / "scripts"
+    / "mods"
+    / "BetterInventory"
+    / "BetterInventory_curio_store.lua"
+)
+CURIO_PURCHASE_PATH = (
+    PROJECT_ROOT
+    / "scripts"
+    / "mods"
+    / "BetterInventory"
+    / "BetterInventory_curio_purchase.lua"
+)
 
 
 def main() -> None:
@@ -335,6 +363,14 @@ def main() -> None:
             io_dofile = function(self, path)
                 if string.find(path, "BetterInventory_curio_domains", 1, true) then
                     return TestCurioDomains
+                elseif string.find(path, "BetterInventory_curio_profiles", 1, true) then
+                    return TestCurioProfiles
+                elseif string.find(path, "BetterInventory_curio_ledger", 1, true) then
+                    return TestCurioLedger
+                elseif string.find(path, "BetterInventory_curio_store", 1, true) then
+                    return TestCurioStore
+                elseif string.find(path, "BetterInventory_curio_purchase", 1, true) then
+                    return TestCurioPurchase
                 end
 
                 return TestCurioValues
@@ -644,6 +680,22 @@ def main() -> None:
         CURIO_DOMAINS_PATH.read_text(encoding="utf-8"), name=str(CURIO_DOMAINS_PATH)
     )
     lua.globals().TestCurioDomains = curio_domains
+    curio_profiles = lua.execute(
+        CURIO_PROFILES_PATH.read_text(encoding="utf-8"), name=str(CURIO_PROFILES_PATH)
+    )
+    lua.globals().TestCurioProfiles = curio_profiles
+    curio_ledger = lua.execute(
+        CURIO_LEDGER_PATH.read_text(encoding="utf-8"), name=str(CURIO_LEDGER_PATH)
+    )
+    lua.globals().TestCurioLedger = curio_ledger
+    curio_store = lua.execute(
+        CURIO_STORE_PATH.read_text(encoding="utf-8"), name=str(CURIO_STORE_PATH)
+    )
+    lua.globals().TestCurioStore = curio_store
+    curio_purchase = lua.execute(
+        CURIO_PURCHASE_PATH.read_text(encoding="utf-8"), name=str(CURIO_PURCHASE_PATH)
+    )
+    lua.globals().TestCurioPurchase = curio_purchase
     module = lua.execute(MODULE_PATH.read_text(encoding="utf-8"), name=str(MODULE_PATH))
     globals_ = lua.globals()
 

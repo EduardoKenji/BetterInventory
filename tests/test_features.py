@@ -88,6 +88,34 @@ ARMOURY_PANEL_PATH = (
     / "BetterInventory"
     / "BetterInventory_armoury_panel.lua"
 )
+FEATURE_LANTERN_PATH = (
+    PROJECT_ROOT
+    / "scripts"
+    / "mods"
+    / "BetterInventory"
+    / "BetterInventory_feature_lantern.lua"
+)
+FEATURE_SORT_OPTIONS_PATH = (
+    PROJECT_ROOT
+    / "scripts"
+    / "mods"
+    / "BetterInventory"
+    / "BetterInventory_feature_sort_options.lua"
+)
+FEATURE_PANEL_STATE_PATH = (
+    PROJECT_ROOT
+    / "scripts"
+    / "mods"
+    / "BetterInventory"
+    / "BetterInventory_feature_panel_state.lua"
+)
+FEATURE_DISCARD_SUMMARY_PATH = (
+    PROJECT_ROOT
+    / "scripts"
+    / "mods"
+    / "BetterInventory"
+    / "BetterInventory_feature_discard_summary.lua"
+)
 
 
 def main() -> None:
@@ -309,6 +337,22 @@ def main() -> None:
                     return TestArmouryPanel
                 end
 
+                if string.find(path, "BetterInventory_feature_lantern", 1, true) then
+                    return TestFeatureLantern
+                end
+
+                if string.find(path, "BetterInventory_feature_sort_options", 1, true) then
+                    return TestFeatureSortOptions
+                end
+
+                if string.find(path, "BetterInventory_feature_panel_state", 1, true) then
+                    return TestFeaturePanelState
+                end
+
+                if string.find(path, "BetterInventory_feature_discard_summary", 1, true) then
+                    return TestFeatureDiscardSummary
+                end
+
                 if string.find(path, "BetterInventory_discard_policy", 1, true) then
                     return TestDiscardPolicy
                 end
@@ -354,6 +398,22 @@ def main() -> None:
         CURIO_VALUES_PATH.read_text(encoding="utf-8"), name=str(CURIO_VALUES_PATH)
     )
     lua.globals().TestCurioValues = curio_values
+    feature_lantern = lua.execute(
+        FEATURE_LANTERN_PATH.read_text(encoding="utf-8"), name=str(FEATURE_LANTERN_PATH)
+    )
+    lua.globals().TestFeatureLantern = feature_lantern
+    feature_sort_options = lua.execute(
+        FEATURE_SORT_OPTIONS_PATH.read_text(encoding="utf-8"), name=str(FEATURE_SORT_OPTIONS_PATH)
+    )
+    lua.globals().TestFeatureSortOptions = feature_sort_options
+    feature_panel_state = lua.execute(
+        FEATURE_PANEL_STATE_PATH.read_text(encoding="utf-8"), name=str(FEATURE_PANEL_STATE_PATH)
+    )
+    lua.globals().TestFeaturePanelState = feature_panel_state
+    feature_discard_summary = lua.execute(
+        FEATURE_DISCARD_SUMMARY_PATH.read_text(encoding="utf-8"), name=str(FEATURE_DISCARD_SUMMARY_PATH)
+    )
+    lua.globals().TestFeatureDiscardSummary = feature_discard_summary
     operation_arbiter = lua.execute(
         ARBITER_PATH.read_text(encoding="utf-8"), name=str(ARBITER_PATH)
     )
