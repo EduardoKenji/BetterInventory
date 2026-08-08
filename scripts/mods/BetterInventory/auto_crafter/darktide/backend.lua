@@ -1,4 +1,6 @@
 local Promise = require("scripts/foundation/utilities/promise")
+local Items = require("scripts/utilities/items")
+local MasterItems = require("scripts/backend/master_items")
 
 local Backend = {}
 
@@ -61,6 +63,8 @@ local function offer_master_id(offer)
 	return choice or safe_member(description, "masterId") or safe_member(description, "master_id")
 end
 
+local master_item_details
+
 local function summarize_store(store)
 	local offers = safe_member(store, "offers") or {}
 	local summary = {
@@ -75,23 +79,66 @@ local function summarize_store(store)
 	end
 
 	for index, offer in ipairs(offers) do
-		if index > 128 then
-			break
-		end
-
-		local price = safe_member(offer, "price")
-		local amount = safe_member(price, "amount")
-
 		summary.offer_count = summary.offer_count + 1
-		summary.offers[index] = {
-			offer_id = safe_member(offer, "offerId") or safe_member(offer, "offer_id"),
-			master_id = offer_master_id(offer),
-			price_type = safe_member(amount, "type"),
-			price_amount = tonumber(safe_member(amount, "amount")),
-		}
+
+		if index <= 128 then
+			local price = safe_member(offer, "price")
+			local amount = safe_member(price, "amount")
+			local master_id = offer_master_id(offer)
+			local details = master_item_details(master_id)
+			local sku = safe_member(offer, "sku")
+
+			summary.offers[index] = {
+				display_name = details.display_name,
+				offer_id = safe_member(offer, "offerId") or safe_member(offer, "offer_id"),
+				master_id = master_id,
+				parent_pattern = details.parent_pattern,
+				price_type = safe_member(amount, "type"),
+				price_amount = tonumber(safe_member(amount, "discounted_price") or safe_member(amount, "amount")),
+				sku_category = safe_member(sku, "category"),
+				sub_display_name = details.sub_display_name,
+			}
+		end
 	end
 
 	return summary
+end
+
+master_item_details = function(master_id)
+	if master_id == nil or type(MasterItems) ~= "table" or type(MasterItems.get_item) ~= "function" then
+		return {}
+	end
+
+	local ok, master_item = pcall(MasterItems.get_item, master_id)
+
+	if not ok or not master_item then
+		return {}
+	end
+
+	local display_name
+	local sub_display_name
+
+	if type(Items) == "table" and type(Items.weapon_card_display_name) == "function" then
+		local name_ok, value = pcall(Items.weapon_card_display_name, master_item)
+
+		if name_ok then
+			display_name = value
+		end
+	end
+
+	if type(Items) == "table" and type(Items.weapon_card_sub_display_name) == "function" then
+		local sub_ok, value = pcall(Items.weapon_card_sub_display_name, master_item)
+
+		if sub_ok then
+			sub_display_name = value
+		end
+	end
+
+	return {
+		display_name = display_name or safe_member(master_item, "name"),
+		parent_pattern = safe_member(master_item, "parent_pattern"),
+		sub_display_name = sub_display_name,
+	}
 end
 
 local function find_wallet(data, currency_type)

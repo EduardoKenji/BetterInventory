@@ -543,13 +543,13 @@ local localization = {
 		en = "Shows every Curio name in a reserved two-line title area above the primary attribute and three secondary attributes. Works with or without Name It. Reopen the current view after changing this option.",
 	},
 	auto_crafter_group = {
-		en = "Auto Crafter Helper (read-only Phase 0)",
+		en = "Auto Crafter Helper (read-only Phase 1)",
 	},
 	auto_crafter_enable = {
 		en = "Enable Auto Crafter Helper probe",
 	},
 	auto_crafter_enable_tooltip = {
-		en = "Phase 0 only: enables a read-only Brunt's Armoury probe when the Brunt view opens. No purchases, crafting, sacrifices, or other account mutations are performed.",
+		en = "Phase 1 only: enables a read-only Brunt's Armoury diagnostic panel when the Brunt view opens. No purchases, crafting, sacrifices, or other account mutations are performed.",
 	},
 	auto_crafter_read_only_probe = {
 		en = "Run read-only Brunt probe",
@@ -571,6 +571,39 @@ local localization = {
 	},
 	auto_crafter_probe_failed = {
 		en = "Read-only Brunt probe failed",
+	},
+	auto_crafter_panel_title = {
+		en = "Auto Crafter Helper",
+	},
+	auto_crafter_panel_read_only = {
+		en = "READ-ONLY",
+	},
+	auto_crafter_panel_status = {
+		en = "Status",
+	},
+	auto_crafter_panel_offers = {
+		en = "Offers",
+	},
+	auto_crafter_panel_wallet = {
+		en = "Wallet",
+	},
+	auto_crafter_panel_gear = {
+		en = "Gear",
+	},
+	auto_crafter_panel_target = {
+		en = "Target",
+	},
+	auto_crafter_panel_no_target = {
+		en = "no target selected",
+	},
+	auto_crafter_panel_offer_list = {
+		en = "Weapon offers (click to select)",
+	},
+	auto_crafter_panel_no_offers = {
+		en = "No weapon offers exposed yet.",
+	},
+	auto_crafter_panel_more = {
+		en = "More offers available",
 	},
 }
 

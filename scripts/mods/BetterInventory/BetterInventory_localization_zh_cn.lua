@@ -649,9 +649,9 @@ localization.debug_adjust_global_store_window_width_tooltip = "Debug geometry st
 localization.debug_global_store_window_width_adjustment_percent = "GlobalStore width adjustment (%%)"
 localization.debug_global_store_window_width_adjustment_percent_tooltip = "Shrinks or enlarges the resolved GlobalStore width from -50%% to +100%%. The default stress-test adjustment is +30%%."
 
-localization.auto_crafter_group = "自动制作助手（只读阶段 0）"
+localization.auto_crafter_group = "自动制作助手（只读阶段 1）"
 localization.auto_crafter_enable = "启用自动制作助手探测"
-localization.auto_crafter_enable_tooltip = "仅阶段 0：打开布伦特军械库时执行只读探测。不执行购买、制作、牺牲或其他账户修改。"
+localization.auto_crafter_enable_tooltip = "仅阶段 1：打开布伦特军械库时显示只读诊断面板。不执行购买、制作、牺牲或其他账户修改。"
 localization.auto_crafter_read_only_probe = "运行只读布伦特探测"
 localization.auto_crafter_read_only_probe_tooltip = "进入军械库后读取当前布伦特商品、钱包和装备一次。禁用自动制作助手后会自动停用。"
 localization.auto_crafter_show_probe_notifications = "显示自动制作助手探测通知"
@@ -659,6 +659,17 @@ localization.auto_crafter_show_probe_notifications_tooltip = "默认启用。只
 localization.auto_crafter_notification_title = "自动制作助手"
 localization.auto_crafter_probe_started = "只读布伦特探测已开始。"
 localization.auto_crafter_probe_failed = "只读布伦特探测失败"
+localization.auto_crafter_panel_title = "自动制作助手"
+localization.auto_crafter_panel_read_only = "只读"
+localization.auto_crafter_panel_status = "状态"
+localization.auto_crafter_panel_offers = "商品"
+localization.auto_crafter_panel_wallet = "钱包"
+localization.auto_crafter_panel_gear = "装备"
+localization.auto_crafter_panel_target = "目标"
+localization.auto_crafter_panel_no_target = "未选择目标"
+localization.auto_crafter_panel_offer_list = "武器商品（点击选择）"
+localization.auto_crafter_panel_no_offers = "暂无可用武器商品。"
+localization.auto_crafter_panel_more = "还有更多商品"
 
 
 return localization

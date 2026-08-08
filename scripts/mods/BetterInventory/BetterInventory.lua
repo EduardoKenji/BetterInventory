@@ -172,6 +172,7 @@ end
 
 AutoCrafter.configure({
 	mod = mod,
+	ViewElementGrid = ViewElementGrid,
 })
 
 local Runtime = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_runtime"), "BetterInventory_runtime.lua", {
