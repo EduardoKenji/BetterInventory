@@ -142,7 +142,7 @@ local function row_passes(width)
 			value_id = "detail",
 			style = {
 				font_size = 15,
-				font_type = "proxima_nova",
+				font_type = "proxima_nova_medium",
 				horizontal_alignment = "right",
 				text_horizontal_alignment = "right",
 				text_vertical_alignment = "center",

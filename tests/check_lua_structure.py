@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -10,6 +11,14 @@ from luaparser import ast
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_ROOT = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory"
+GAME_SOURCE_FONT_DEFINITIONS = (
+    PROJECT_ROOT.parent.parent
+    / "Darktide-Source-Code"
+    / "scripts"
+    / "managers"
+    / "ui"
+    / "ui_fonts_definitions.lua"
+)
 
 
 def node_type(node: object) -> str:
@@ -105,6 +114,30 @@ def local_io_dofile_targets(tree: object) -> set[str]:
     return targets
 
 
+def validate_panel_font_types() -> int:
+    panel_path = RUNTIME_ROOT / "auto_crafter" / "darktide" / "panel.lua"
+
+    if not panel_path.is_file() or not GAME_SOURCE_FONT_DEFINITIONS.is_file():
+        return 0
+
+    font_definitions = GAME_SOURCE_FONT_DEFINITIONS.read_text(encoding="utf-8")
+    valid_fonts = set(
+        re.findall(r"^\s+([a-z0-9_]+)\s*=\s*FONT_TYPES\.", font_definitions, re.MULTILINE)
+    )
+    panel_source = panel_path.read_text(encoding="utf-8")
+    panel_fonts = set(
+        re.findall(r'font_type\s*=\s*"([^"]+)"', panel_source)
+    )
+    unknown_fonts = sorted(panel_fonts - valid_fonts)
+
+    if unknown_fonts:
+        raise SystemExit(
+            "Unknown Auto Crafter panel font type(s): " + ", ".join(unknown_fonts)
+        )
+
+    return len(panel_fonts)
+
+
 def run() -> None:
     main_path = RUNTIME_ROOT / "BetterInventory.lua"
     layout_path = RUNTIME_ROOT / "BetterInventory_layout.lua"
@@ -175,10 +208,13 @@ def run() -> None:
             "Missing AST-discovered local module(s): " + ", ".join(sorted(missing_modules))
         )
 
+    panel_font_count = validate_panel_font_types()
+
     print(
         "BetterInventory AST structure checks passed "
         f"(main assignments={len(actual_assignments)}, layout calls={len(found_calls)}, "
-        f"local module references checked={len(missing_modules) + len(local_io_dofile_targets(main_tree))})."
+        f"local module references checked={len(missing_modules) + len(local_io_dofile_targets(main_tree))}, "
+        f"Auto Crafter panel fonts checked={panel_font_count})."
     )
 
 
