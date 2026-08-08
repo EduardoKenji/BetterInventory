@@ -3,6 +3,7 @@ local ProfileUtils = require("scripts/utilities/profile_utils")
 local RaritySettings = require("scripts/settings/item/rarity_settings")
 local PanelDefinitions = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_panel_definitions")
 local PanelRuntime = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_panel_runtime")
+local ArmouryPanel = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_armoury_panel")
 local CurioValues = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_values")
 local DiscardPolicy = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_discard_policy")
 
@@ -15,6 +16,8 @@ if type(CurioValues) ~= "table" then
 end
 
 local Features = {}
+local armoury_panel
+local scenegraph_rect
 local panel_entry = PanelRuntime.panel_entry
 local panel_lantern_entry = PanelRuntime.panel_lantern_entry
 local controller_element_state = PanelRuntime.controller_element_state
@@ -149,6 +152,29 @@ if type(Features._sorting) ~= "table" or type(Features._sorting.is_enabled) ~= "
 		end,
 		preserve_native_options = function()
 			return false
+		end,
+		new_comparator_manager = function()
+			local registered_views = setmetatable({}, {
+				__mode = "k",
+			})
+
+			return {
+				registered_views = registered_views,
+				configure = function()
+				end,
+				configure_inventory = function()
+				end,
+				configure_armoury = function()
+				end,
+				configure_global_store = function()
+				end,
+				rebind = function()
+				end,
+				restore = function()
+				end,
+				resort = function()
+				end,
+			}
 		end,
 	}
 end
@@ -413,152 +439,6 @@ end
 Features.add_inventory_sort_toggle_definition = function(mod, layout, definitions, view)
 	return PanelDefinitions.add_inventory_sort_toggle_definition(mod, layout, definitions, view, inventory_slot_kind)
 end
-
-local function armoury_controller_focus_passes(pass_template, height)
-	pass_template[#pass_template + 1] = {
-		pass_type = "rect",
-		style_id = "better_inventory_armoury_controller_focus",
-		style = {
-			color = Color.terminal_corner_selected(55, true),
-			offset = {
-				0,
-				0,
-				2,
-			},
-			size = {
-				ARMOURY_NATIVE_SORT_PANEL_WIDTH,
-				height,
-			},
-		},
-		visibility_function = function(content)
-			local hotspot = content.hotspot
-
-			return hotspot and (hotspot.is_selected or hotspot.is_focused) or false
-		end,
-	}
-
-	return pass_template
-end
-
-local function armoury_native_sort_entry(view, option, option_index)
-	local selected_sort_index = view._selected_sort_option_index or 1
-
-	return {
-		initial_content = {
-			hotspot = {},
-			label = option.display_name or tostring(option_index),
-			selected = selected_sort_index == option_index,
-		},
-		option_index = option_index,
-		option = option,
-		pass_template = armoury_controller_focus_passes(armoury_native_sort_option_passes(ARMOURY_NATIVE_SORT_PANEL_WIDTH), ARMOURY_NATIVE_SORT_PANEL_ROW_HEIGHT),
-		size = {
-			ARMOURY_NATIVE_SORT_PANEL_WIDTH,
-			ARMOURY_NATIVE_SORT_PANEL_ROW_HEIGHT,
-		},
-		view = view,
-		widget_type = "better_inventory_armoury_native_sort",
-		bind = function(widget)
-			widget.content.hotspot.pressed_callback = function()
-				local item_grid = view._item_grid
-
-				if item_grid and type(item_grid.trigger_sort_index) == "function" then
-					item_grid:trigger_sort_index(option_index)
-				elseif type(view.cb_on_sort_button_pressed) == "function" then
-					view:cb_on_sort_button_pressed(option)
-				end
-			end
-		end,
-		refresh = function(widget)
-			widget.content.selected = (view._selected_sort_option_index or 1) == option_index
-		end,
-	}
-end
-
-local function armoury_native_sort_toggle_passes()
-	local passes = inventory_sort_toggle_passes()
-	local checkbox_style_ids = {
-		checkbox_background = true,
-		checkbox_frame = true,
-		checkmark = true,
-	}
-
-	for index = 1, #passes do
-		local pass = passes[index]
-
-		if checkbox_style_ids[pass.style_id] then
-			local style = pass.style or {}
-			local offset = style.offset or {
-				0,
-				0,
-				0,
-			}
-
-			offset[1] = (offset[1] or 0) + ARMOURY_NATIVE_SORT_CHECKBOX_LEFT_PADDING
-			style.offset = offset
-			pass.style = style
-		end
-	end
-
-	return passes
-end
-
-local function armoury_native_sort_header_entry(mod, layout, view, section_id, label)
-	return {
-		initial_content = {
-			chevron = view._better_inventory_armoury_native_sort_collapsed[section_id] and ">" or "v",
-			hotspot = {},
-			label = label,
-		},
-		option_index = "header_" .. section_id,
-		pass_template = armoury_controller_focus_passes(panel_section_header_passes(ARMOURY_NATIVE_SORT_PANEL_WIDTH), 40),
-		size = {
-			ARMOURY_NATIVE_SORT_PANEL_WIDTH,
-			40,
-		},
-		view = view,
-		widget_type = "better_inventory_armoury_native_sort",
-		bind = function(widget)
-			widget.content.hotspot.pressed_callback = function()
-				local collapsed = view._better_inventory_armoury_native_sort_collapsed
-
-				collapsed[section_id] = not collapsed[section_id]
-				view._better_inventory_armoury_native_sort_rebuild_pending = true
-			end
-		end,
-		refresh = function(widget)
-			widget.content.chevron = view._better_inventory_armoury_native_sort_collapsed[section_id] and ">" or "v"
-		end,
-	}
-end
-
-local function armoury_native_sort_priority_entry(mod, layout, view, setting_id, label)
-	return {
-		initial_content = {
-			checked = setting_id == "prioritize_equipped_favorites" and mod:get(setting_id) ~= false or mod:get(setting_id) == true,
-			hotspot = {},
-			label = label,
-		},
-		option_index = "priority_" .. setting_id,
-		pass_template = armoury_controller_focus_passes(armoury_native_sort_toggle_passes(), 38),
-		size = {
-			ARMOURY_NATIVE_SORT_PANEL_WIDTH,
-			38,
-		},
-		view = view,
-		widget_type = "better_inventory_armoury_native_sort",
-		bind = function(widget)
-			widget.content.hotspot.pressed_callback = function()
-				mod:set(setting_id, not widget.content.checked, false)
-				Features.sync_inventory_sort_setting(mod, layout)
-			end
-		end,
-		refresh = function(widget)
-			widget.content.checked = setting_id == "prioritize_equipped_favorites" and mod:get(setting_id) ~= false or mod:get(setting_id) == true
-		end,
-	}
-end
-
 
 local function panel_header_entry(mod, layout, view, control_id, section_id, label_function)
 	local geometry = view._better_inventory_options_panel_geometry
@@ -844,6 +724,40 @@ local function item_sorting_options_signature(view)
 
 	return signature
 end
+
+armoury_panel = ArmouryPanel.new({
+	ARMOURY_NATIVE_SORT_BLUEPRINTS = ARMOURY_NATIVE_SORT_BLUEPRINTS,
+	ARMOURY_NATIVE_SORT_CHECKBOX_LEFT_PADDING = ARMOURY_NATIVE_SORT_CHECKBOX_LEFT_PADDING,
+	ARMOURY_NATIVE_SORT_PANEL_HEIGHT = ARMOURY_NATIVE_SORT_PANEL_HEIGHT,
+	ARMOURY_NATIVE_SORT_PANEL_MIN_HEIGHT = ARMOURY_NATIVE_SORT_PANEL_MIN_HEIGHT,
+	ARMOURY_NATIVE_SORT_PANEL_PADDING = ARMOURY_NATIVE_SORT_PANEL_PADDING,
+	ARMOURY_NATIVE_SORT_PANEL_REFERENCE = ARMOURY_NATIVE_SORT_PANEL_REFERENCE,
+	ARMOURY_NATIVE_SORT_PANEL_RIGHT_MARGIN = ARMOURY_NATIVE_SORT_PANEL_RIGHT_MARGIN,
+	ARMOURY_NATIVE_SORT_PANEL_ROW_HEIGHT = ARMOURY_NATIVE_SORT_PANEL_ROW_HEIGHT,
+	ARMOURY_NATIVE_SORT_PANEL_ROW_SPACING = ARMOURY_NATIVE_SORT_PANEL_ROW_SPACING,
+	ARMOURY_NATIVE_SORT_PANEL_TOP = ARMOURY_NATIVE_SORT_PANEL_TOP,
+	ARMOURY_NATIVE_SORT_PANEL_WALLET_GAP = ARMOURY_NATIVE_SORT_PANEL_WALLET_GAP,
+	ARMOURY_NATIVE_SORT_PANEL_WEAPON_GAP = ARMOURY_NATIVE_SORT_PANEL_WEAPON_GAP,
+	ARMOURY_NATIVE_SORT_PANEL_WIDTH = ARMOURY_NATIVE_SORT_PANEL_WIDTH,
+	INVENTORY_VIRTUAL_CANVAS_WIDTH = INVENTORY_VIRTUAL_CANVAS_WIDTH,
+	armoury_native_sort_option_passes = armoury_native_sort_option_passes,
+	begin_view_session = Features.begin_view_session,
+	clear_controller_element_selection = clear_controller_element_selection,
+	controller_element_state = controller_element_state,
+	features = Features,
+	inventory_sort_toggle_passes = inventory_sort_toggle_passes,
+	is_armoury_sort_view = is_armoury_sort_view,
+	item_sorting_custom_option_start = item_sorting_custom_option_start,
+	item_sorting_is_enabled = item_sorting_is_enabled,
+	item_sorting_options_signature = item_sorting_options_signature,
+	panel_section_header_passes = panel_section_header_passes,
+	registered_views = registered_armoury_views,
+	restore_controller_element = restore_controller_element,
+	sync_inventory_sort_setting = function(mod, layout)
+		return Features.sync_inventory_sort_setting(mod, layout)
+	end,
+})
+scenegraph_rect = armoury_panel.scenegraph_rect
 
 local function panel_item_sorting_option_entry(view, option, option_index)
 	local geometry = view._better_inventory_options_panel_geometry
@@ -1747,597 +1661,78 @@ Features.inventory_options_panel_controller_focused = function(view)
 	return view and view._better_inventory_options_panel_controller_focused == true
 end
 
-local function scenegraph_rect(owner, scenegraph_id)
-	if type(owner) ~= "table" or type(owner._scenegraph_size) ~= "function" then
-		return nil
+local set_armoury_controller_focus = function(view, focused)
+	if armoury_panel then
+		return armoury_panel.set_focus(view, focused)
 	end
-
-	local world_position = owner.scenegraph_world_position or owner._scenegraph_world_position
-
-	if type(world_position) ~= "function" then
-		return nil
-	end
-
-	if type(owner._force_update_scenegraph) == "function" then
-		pcall(owner._force_update_scenegraph, owner)
-	end
-
-	local position_success, position = pcall(world_position, owner, scenegraph_id)
-	local size_success, width, height = pcall(owner._scenegraph_size, owner, scenegraph_id)
-
-	if not position_success or not size_success or type(position) ~= "table" or type(position[1]) ~= "number" or type(position[2]) ~= "number" or type(width) ~= "number" or type(height) ~= "number" then
-		return nil
-	end
-
-	return {
-		x = position[1],
-		y = position[2],
-		width = width,
-		height = height,
-	}
-end
-
-local function armoury_native_sort_panel_position(view)
-	local canvas_width = INVENTORY_VIRTUAL_CANVAS_WIDTH
-	local canvas_position = {
-		0,
-		0,
-	}
-	local scenegraph = view and view._ui_scenegraph
-	local canvas = scenegraph and scenegraph.canvas
-
-	if canvas and type(canvas.size) == "table" and type(canvas.size[1]) == "number" then
-		canvas_width = canvas.size[1]
-	end
-
-	if view and type(view._scenegraph_world_position) == "function" then
-		local success, position = pcall(view._scenegraph_world_position, view, "canvas")
-
-		if success and type(position) == "table" then
-			canvas_position = position
-		end
-	end
-
-	local fallback_x = canvas_position[1] + canvas_width - ARMOURY_NATIVE_SORT_PANEL_RIGHT_MARGIN - ARMOURY_NATIVE_SORT_PANEL_WIDTH
-	local fallback_y = canvas_position[2] + ARMOURY_NATIVE_SORT_PANEL_TOP
-	local weapon_rect = scenegraph_rect(view and view._weapon_stats, "grid_background")
-
-	if not weapon_rect then
-		return fallback_x, fallback_y
-	end
-
-	local x = weapon_rect.x + weapon_rect.width + ARMOURY_NATIVE_SORT_PANEL_WEAPON_GAP
-	local y = weapon_rect.y
-	local parent = view and view._context and view._context.parent
-	local wallet_frame = scenegraph_rect(parent, "corner_top_right")
-
-	if wallet_frame then
-		y = math.max(y, wallet_frame.y + wallet_frame.height + ARMOURY_NATIVE_SORT_PANEL_WALLET_GAP)
-	end
-
-	return x, y
-end
-
-local function armoury_native_sort_entries(mod, layout, view)
-	local collapsed = view._better_inventory_armoury_native_sort_collapsed
-	local sort_options = view._sort_options or {}
-	local first_item_sorting_option = item_sorting_custom_option_start(view)
-	local entries = {
-		armoury_native_sort_header_entry(mod, layout, view, "sorting", mod:localize("inventory_sorting_inventory_label")),
-	}
-
-	if not collapsed.sorting then
-		entries[#entries + 1] = armoury_native_sort_priority_entry(mod, layout, view, "prioritize_equipped_favorites", mod:localize("prioritize_equipped_favorites_inventory_label"))
-		entries[#entries + 1] = armoury_native_sort_priority_entry(mod, layout, view, "prioritize_perfect_roll_weapons", mod:localize("prioritize_perfect_roll_weapons_inventory_label"))
-	end
-
-	if item_sorting_is_enabled() then
-		entries[#entries + 1] = armoury_native_sort_header_entry(mod, layout, view, "item_sorting", mod:localize("item_sorting_mod_header"))
-
-		if not collapsed.item_sorting then
-			for option_index = first_item_sorting_option, #sort_options do
-				entries[#entries + 1] = armoury_native_sort_entry(view, sort_options[option_index], option_index)
-			end
-		end
-	end
-
-	-- Native sorting is a sibling section, not part of the custom-priority
-	-- section. Keep its header (and its own collapsed state) visible when the
-	-- Sorting section is collapsed.
-	entries[#entries + 1] = armoury_native_sort_header_entry(mod, layout, view, "native_sorting", mod:localize("armoury_native_sorting_header"))
-
-	if not collapsed.native_sorting then
-		for option_index = 1, first_item_sorting_option - 1 do
-			entries[#entries + 1] = armoury_native_sort_entry(view, sort_options[option_index], option_index)
-		end
-	end
-
-	return entries
-end
-
-local function armoury_native_sort_panel_height(entries)
-	local content_height = 0
-
-	for index = 1, #entries do
-		content_height = content_height + entries[index].size[2]
-	end
-
-	content_height = content_height + math.max(#entries - 1, 0) * ARMOURY_NATIVE_SORT_PANEL_ROW_SPACING
-
-	return math.max(ARMOURY_NATIVE_SORT_PANEL_MIN_HEIGHT, content_height + ARMOURY_NATIVE_SORT_PANEL_PADDING * 2 + 31)
-end
-
-local function rebuild_armoury_native_sort_panel(view)
-	Features.count_diagnostic("panel_rebuilds")
-	local panel = view and view._better_inventory_armoury_native_sort_panel
-
-	if not panel or view._destroyed then
-		return false
-	end
-
-	local entries = armoury_native_sort_entries(view._better_inventory_armoury_sort_mod, view._better_inventory_armoury_sort_layout, view)
-	local panel_height = math.min(ARMOURY_NATIVE_SORT_PANEL_HEIGHT, armoury_native_sort_panel_height(entries))
-
-	panel:update_grid_height(panel_height, panel_height)
-	panel:present_grid_layout(entries, ARMOURY_NATIVE_SORT_BLUEPRINTS)
-
-	return true
-end
-
-local function armoury_input_legend(view)
-	local parent = view and (view._parent or view._context and view._context.parent)
-
-	if not parent then
-		return nil
-	end
-
-	if parent._input_legend_element then
-		return parent._input_legend_element
-	end
-
-	if type(parent._element) == "function" then
-		local success, legend = pcall(parent._element, parent, "input_legend")
-
-		if success then
-			return legend
-		end
-	end
-end
-
-local function setup_armoury_controller_focus_legend(mod, view)
-	local focus_action = mod:get("inventory_options_controller_focus_keybind")
-
-	if view._better_inventory_armoury_controller_legend_id and view._better_inventory_armoury_controller_legend_action == focus_action then
-		return true
-	end
-
-	local previous_legend = view._better_inventory_armoury_controller_legend
-	local previous_id = view._better_inventory_armoury_controller_legend_id
-
-	if previous_legend and previous_id and type(previous_legend.remove_entry) == "function" then
-		pcall(previous_legend.remove_entry, previous_legend, previous_id)
-	end
-
-	view._better_inventory_armoury_controller_legend = nil
-	view._better_inventory_armoury_controller_legend_id = nil
-	view._better_inventory_armoury_controller_legend_action = nil
-
-	local legend = focus_action and focus_action ~= "off" and armoury_input_legend(view)
-
-	if not legend or type(legend.add_entry) ~= "function" then
-		return false
-	end
-
-	local success, legend_id = pcall(legend.add_entry, legend, "better_inventory_toggle_panel_focus", focus_action, function()
-		return view._using_cursor_navigation == false and view._better_inventory_armoury_native_sort_panel ~= nil
-	end, nil, "right_alignment")
-
-	if not success or not legend_id then
-		return false
-	end
-
-	view._better_inventory_armoury_controller_legend = legend
-	view._better_inventory_armoury_controller_legend_id = legend_id
-	view._better_inventory_armoury_controller_legend_action = focus_action
-
-	return true
-end
-
-local function set_armoury_controller_focus(view, focused)
-	local panel = view and view._better_inventory_armoury_native_sort_panel
-	local item_grid = view and view._item_grid
-
-	if not panel or not item_grid then
-		return false
-	end
-
-	if focused then
-		if view._better_inventory_armoury_controller_focused == true then
-			return true
-		end
-
-		view._better_inventory_armoury_controller_restore = controller_element_state(item_grid)
-		view._better_inventory_armoury_controller_focused = true
-
-		if type(item_grid.disable_input) == "function" then
-			item_grid:disable_input(true)
-		end
-
-		clear_controller_element_selection(item_grid)
-
-		if type(panel.disable_input) == "function" then
-			panel:disable_input(false)
-		end
-
-		if type(panel.select_first_index) == "function" then
-			panel:select_first_index()
-		end
-
-		return true
-	end
-
-	view._better_inventory_armoury_controller_focused = false
-	clear_controller_element_selection(panel)
-	restore_controller_element(item_grid, view._better_inventory_armoury_controller_restore)
-	view._better_inventory_armoury_controller_restore = nil
 
 	return false
 end
 
 Features.capture_armoury_sort_panel_controller_focus = function(mod, view, input_service)
-	if not is_armoury_sort_view(view) then
-		return false
+	if armoury_panel then
+		return armoury_panel.capture(mod, view, input_service)
 	end
 
-	local panel = view._better_inventory_armoury_native_sort_panel
-	local focused = view._better_inventory_armoury_controller_focused == true
-
-	if view._using_cursor_navigation ~= false or not panel or panel._visible == false then
-		if focused then
-			set_armoury_controller_focus(view, false)
-		end
-
-		return false
-	end
-
-	local focus_action = mod:get("inventory_options_controller_focus_keybind")
-
-	if focus_action and focus_action ~= "off" and input_service and type(input_service.get) == "function" and input_service:get(focus_action) then
-		focused = set_armoury_controller_focus(view, not focused)
-	end
-
-	if focused then
-		local item_grid = view._item_grid
-
-		if item_grid and type(item_grid.disable_input) == "function" then
-			item_grid:disable_input(true)
-		end
-
-		if type(panel.selected_grid_index) == "function" and not panel:selected_grid_index() and type(panel.select_first_index) == "function" then
-			panel:select_first_index()
-		end
-	end
-
-	return focused
+	return false
 end
 
 Features.armoury_sort_panel_controller_focused = function(view)
-	return view and view._better_inventory_armoury_controller_focused == true
+	return armoury_panel and armoury_panel.focused(view) or false
 end
 
 Features.update_armoury_native_sort_panel = function(view)
-	local panel = view and view._better_inventory_armoury_native_sort_panel
-
-	if not panel or view._destroyed then
-		return false
+	if armoury_panel then
+		return armoury_panel.update(view)
 	end
 
-	local sorting_mod = Features._sorting.mod()
-	local item_sorting_enabled_flag = sorting_mod and sorting_mod.enabled
-
-	if view._better_inventory_composition_item_sorting_enabled ~= item_sorting_enabled_flag then
-		Features.invalidate_view_composition(view)
-		view._better_inventory_composition_item_sorting_enabled = item_sorting_enabled_flag
-	end
-
-	local probe_count = (view._better_inventory_composition_probe_count or 0) + 1
-	local probe_due = probe_count >= 15
-	local input_changed = Features.composition_inputs_changed(view, "armoury")
-
-	if not view._better_inventory_composition_dirty and not input_changed and not view._better_inventory_armoury_native_sort_rebuild_pending and not probe_due then
-		view._better_inventory_composition_probe_count = probe_count
-
-		return true
-	end
-
-	view._better_inventory_composition_probe_count = 0
-
-	setup_armoury_controller_focus_legend(view._better_inventory_armoury_sort_mod, view)
-
-	local item_sorting_active = item_sorting_is_enabled()
-	local item_sorting_signature = item_sorting_options_signature(view)
-
-	if view._better_inventory_item_sorting_active ~= item_sorting_active or view._better_inventory_item_sorting_signature ~= item_sorting_signature then
-		view._better_inventory_item_sorting_active = item_sorting_active
-		view._better_inventory_item_sorting_signature = item_sorting_signature
-		view._better_inventory_armoury_native_sort_rebuild_pending = true
-	end
-
-	if view._better_inventory_armoury_native_sort_rebuild_pending then
-		view._better_inventory_armoury_native_sort_rebuild_pending = false
-		rebuild_armoury_native_sort_panel(view)
-	end
-
-	local x, y = armoury_native_sort_panel_position(view)
-
-	if type(panel.set_pivot_offset) == "function" and (view._better_inventory_armoury_native_sort_pivot_x ~= x or view._better_inventory_armoury_native_sort_pivot_y ~= y) then
-		Features.count_diagnostic("pivot_writes")
-		panel:set_pivot_offset(x, y)
-		view._better_inventory_armoury_native_sort_pivot_x = x
-		view._better_inventory_armoury_native_sort_pivot_y = y
-	end
-
-	view._better_inventory_composition_dirty = false
-
-	return true
+	return false
 end
 
 Features.setup_armoury_native_sort_panel = function(mod, layout, view, ViewElementGrid)
-	if not is_armoury_sort_view(view) or view._better_inventory_armoury_native_sort_panel then
-		return false
+	if armoury_panel then
+		return armoury_panel.setup(mod, layout, view, ViewElementGrid)
 	end
 
-	local sort_options = view._sort_options
-
-	if type(sort_options) ~= "table" or (#sort_options == 0 and not item_sorting_is_enabled()) or type(ViewElementGrid) ~= "table" or type(view._add_element) ~= "function" then
-		return false
-	end
-
-	local menu_settings = {
-		bottom_chin = ARMOURY_NATIVE_SORT_PANEL_PADDING,
-		edge_padding = 0,
-		enable_gamepad_scrolling = true,
-		grid_size = {
-			ARMOURY_NATIVE_SORT_PANEL_WIDTH,
-			ARMOURY_NATIVE_SORT_PANEL_HEIGHT,
-		},
-		grid_spacing = {
-			0,
-			ARMOURY_NATIVE_SORT_PANEL_ROW_SPACING,
-		},
-		ignore_blur = true,
-		mask_size = {
-			ARMOURY_NATIVE_SORT_PANEL_WIDTH,
-			ARMOURY_NATIVE_SORT_PANEL_HEIGHT,
-		},
-		reset_selection_on_navigation_change = false,
-		scrollbar_width = 7,
-		title_height = 0,
-		top_padding = ARMOURY_NATIVE_SORT_PANEL_PADDING,
-		use_is_focused_for_navigation = false,
-		use_select_on_focused = true,
-		use_terminal_background = true,
-	}
-	local success, panel = pcall(view._add_element, view, ViewElementGrid, ARMOURY_NATIVE_SORT_PANEL_REFERENCE, 25, menu_settings)
-
-	if not success or not panel then
-		if type(mod.error) == "function" then
-			mod:error("BetterInventory Armoury native-sort panel could not initialize: " .. tostring(panel))
-		end
-
-		if type(view._remove_element) == "function" then
-			pcall(view._remove_element, view, ARMOURY_NATIVE_SORT_PANEL_REFERENCE)
-		end
-
-		return false
-	end
-
-	view._better_inventory_armoury_native_sort_panel = panel
-	view._better_inventory_armoury_native_sort_widgets = {}
-	view._better_inventory_armoury_native_sort_collapsed = {
-		item_sorting = false,
-		native_sorting = false,
-		sorting = false,
-	}
-	view._better_inventory_item_sorting_active = item_sorting_is_enabled()
-	view._better_inventory_item_sorting_signature = item_sorting_options_signature(view)
-	view._better_inventory_armoury_native_sort_rebuild_pending = false
-	view._better_inventory_armoury_sort_layout = layout
-	view._better_inventory_armoury_sort_mod = mod
-	view._better_inventory_composition_dirty = true
-	view._better_inventory_composition_probe_count = 0
-	registered_armoury_views[view] = true
-	if type(panel.disable_input) == "function" then
-		panel:disable_input(false)
-	end
-
-	if type(panel.set_visibility) == "function" then
-		panel:set_visibility(true)
-	end
-
-	local entries = armoury_native_sort_entries(mod, layout, view)
-
-	panel:update_grid_height(ARMOURY_NATIVE_SORT_PANEL_HEIGHT, ARMOURY_NATIVE_SORT_PANEL_HEIGHT)
-	panel:present_grid_layout(entries, ARMOURY_NATIVE_SORT_BLUEPRINTS)
-	Features.update_armoury_native_sort_panel(view)
-
-	return true
+	return false
 end
 
-local function item_priority(view, layout_entry)
-	local item = layout_entry and (layout_entry.real_item or layout_entry.item)
 
-	if not item then
-		return 0
-	end
-
-	local slots = item.slots
-	local equipped = false
-
-	if slots then
-		local equipped_ok, equipped_value = Features._contracts.safe_method(view, "is_item_equipped_in_any_slot", item, slots)
-		equipped = equipped_ok and equipped_value == true
-	end
-
-	if equipped then
-		return 2
-	end
-
-	if item.gear_id and type(Items.is_item_id_favorited) == "function" then
-		local favorite_ok, favorite_value = Features._contracts.safe_call(Items.is_item_id_favorited, item.gear_id)
-
-		if favorite_ok and favorite_value == true then
-			return 1
-		end
-	end
-
-	return 0
-end
-
-local function inventory_sort_priority(mod, view, layout_entry)
-	local item = layout_entry and (layout_entry.real_item or layout_entry.item)
-
-	if not item then
-		return 0
-	end
-
-	if mod:get("prioritize_equipped_favorites") ~= false then
-		local equipped_favorite_priority = item_priority(view, layout_entry)
-
-		if equipped_favorite_priority > 0 then
-			return equipped_favorite_priority + 2
-		end
-	end
-
-	if mod:get("prioritize_perfect_roll_weapons") == true and Features.is_perfect_roll_weapon(item) then
-		return 1
-	end
-
-	return 0
-end
-
-local function configure_sort_options(mod, view)
-	local sort_options = view._sort_options
-
-	if type(sort_options) ~= "table" then
-		return
-	end
-
-	local session_kind = is_armoury_sort_view(view) and "armoury" or "inventory"
-	Features.begin_view_session(view, session_kind)
-	Features.register_view_session_cleanup(view, "sort_options", function(session_view)
-		Features.restore_sort_options(session_view)
-	end)
-
-	Features._registered_sort_views[view] = true
-
-	for index = 1, #sort_options do
-		local option = sort_options[index]
-		local wrapped_sort = option and option._better_inventory_wrapped_sort
-
-		if option and option._better_inventory_original_sort and option.sort_function ~= wrapped_sort then
-			-- Another integration replaced the comparator after BetterInventory
-			-- wrapped it. Treat that comparator as the new native baseline.
-			option._better_inventory_original_sort = nil
-			option._better_inventory_wrapped_sort = nil
-		end
-
-		local original_sort = option and option.sort_function
-
-		if type(original_sort) == "function" and not option._better_inventory_original_sort then
-			option._better_inventory_original_sort = original_sort
-			local better_inventory_sort = function(left, right)
-				local left_priority = inventory_sort_priority(mod, view, left)
-				local right_priority = inventory_sort_priority(mod, view, right)
-
-				if left_priority ~= right_priority then
-					return left_priority > right_priority
-				end
-
-				return original_sort(left, right)
-			end
-			option._better_inventory_wrapped_sort = better_inventory_sort
-			option.sort_function = better_inventory_sort
-		end
-	end
-end
+local sort_comparator_manager
 
 Features.restore_sort_options = function(view)
-	local sort_options = view and view._sort_options
-
-	if type(sort_options) ~= "table" then
-		return
-	end
-
-	for index = 1, #sort_options do
-		local option = sort_options[index]
-		local original_sort = option and option._better_inventory_original_sort
-		local wrapped_sort = option and option._better_inventory_wrapped_sort
-
-		if option and type(original_sort) == "function" and option.sort_function == wrapped_sort then
-			option.sort_function = original_sort
-		end
-
-		if option then
-			option._better_inventory_original_sort = nil
-			option._better_inventory_wrapped_sort = nil
-		end
+	if sort_comparator_manager then
+		return sort_comparator_manager.restore(view)
 	end
 end
 
 Features.configure_inventory_sort_options = function(mod, layout, view)
-	if not is_inventory_view(layout, view) then
-		return
+	if sort_comparator_manager then
+		return sort_comparator_manager.configure_inventory(mod, layout, view)
 	end
-
-	configure_sort_options(mod, view)
 end
 
 Features.configure_armoury_sort_options = function(mod, view)
-	if not is_armoury_requisition_view(view) then
-		return
+	if sort_comparator_manager then
+		return sort_comparator_manager.configure_armoury(mod, view)
 	end
-
-	configure_sort_options(mod, view)
 end
 
 Features.configure_global_store_sort_options = function(mod, view)
-	if not is_global_store_view(view) then
-		return
+	if sort_comparator_manager then
+		return sort_comparator_manager.configure_global_store(mod, view)
 	end
-
-	configure_sort_options(mod, view)
 end
 
 Features.rebind_sort_options = function(mod, layout)
-	for view in pairs(Features._registered_sort_views) do
-		if view._destroyed then
-			Features._registered_sort_views[view] = nil
-		elseif (layout and is_inventory_view(layout, view)) or is_armoury_sort_view(view) then
-			configure_sort_options(mod, view)
-		end
+	if sort_comparator_manager then
+		return sort_comparator_manager.rebind(mod, layout)
 	end
 end
 
 Features.resort_inventory = function(mod, layout, view)
-	if not is_sortable_view(layout, view) or view._destroyed or type(view._sort_grid_layout) ~= "function" then
-		return
-	end
-
-	-- The native discard view temporarily presents a filtered copy of the inventory.
-	-- Re-presenting that copy here can leave stale layout/spacing entries when ESC
-	-- restores the full inventory. Darktide sorts the full offer layout itself while
-	-- closing discard mode, using the current wrapped comparator.
-	if view._discard_items_element then
-		return
-	end
-
-	local sort_options = view._sort_options
-	local option = sort_options and (view._selected_sort_option or sort_options[view._selected_sort_option_index or 1])
-	local sort_function = option and option.sort_function
-
-	if sort_function then
-		view:_sort_grid_layout(sort_function)
+	if sort_comparator_manager then
+		return sort_comparator_manager.resort(mod, layout, view)
 	end
 end
 
@@ -2354,6 +1749,20 @@ local function preview_profile_for_discard(view)
 end
 
 Features.is_perfect_roll_weapon = DiscardPolicy.is_perfect_roll_weapon
+sort_comparator_manager = Features._sorting.new_comparator_manager({
+	begin_view_session = Features.begin_view_session,
+	contracts = Features._contracts,
+	is_armoury_requisition_view = is_armoury_requisition_view,
+	is_armoury_sort_view = is_armoury_sort_view,
+	is_global_store_view = is_global_store_view,
+	is_inventory_view = is_inventory_view,
+	is_perfect_roll_weapon = function(item)
+		return Features.is_perfect_roll_weapon(item)
+	end,
+	is_sortable_view = is_sortable_view,
+	register_view_session_cleanup = Features.register_view_session_cleanup,
+})
+Features._registered_sort_views = sort_comparator_manager.registered_views
 Features.automatic_curio_acquisition_protects = DiscardPolicy.automatic_curio_acquisition_protects
 Features.quick_discard_candidates_from_items = DiscardPolicy.quick_discard_candidates_from_items
 local quick_discard_candidates_from_items_detailed = DiscardPolicy.quick_discard_candidates_from_items_detailed

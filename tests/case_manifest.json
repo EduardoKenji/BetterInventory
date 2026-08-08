@@ -35,7 +35,7 @@
     {"name": "panel_composition", "risk": "high", "start_line": 44, "end_line": 49}
   ],
   "test_features.py": [
-        {"name": "discard_operation_ownership", "risk": "critical", "start_line": 2881, "end_line": 3308},
+        {"name": "discard_operation_ownership", "risk": "critical", "start_line": 2881, "end_line": 3324},
       {"name": "sorting_and_navigation", "risk": "high", "start_line": 338, "end_line": 1278},
       {"name": "optional_integration_fallbacks", "risk": "high", "start_line": 1279, "end_line": 1705},
       {"name": "panel_lifecycle", "risk": "high", "start_line": 1706, "end_line": 2880}

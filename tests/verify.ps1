@@ -123,6 +123,7 @@ $features = @(
 	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_discard_transaction.lua") -Raw
 	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_panel_definitions.lua") -Raw
 	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_panel_runtime.lua") -Raw
+	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_armoury_panel.lua") -Raw
 ) -join "`n"
 $automaticDiscard = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_discard_automatic.lua") -Raw
 $featureSorting = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_feature_sorting.lua") -Raw
@@ -181,7 +182,10 @@ if ($features -notmatch 'set_inventory_options_panel_controller_focus\(view,\s*f
 	throw "Disable cleanup must restore live controller ownership and input legends."
 }
 
-if ($features -notmatch '_registered_sort_views' -or $features -notmatch 'Features\.rebind_sort_options' -or $features -notmatch 'Features\._registered_sort_views\[view\]\s*=\s*true' -or $features -notmatch 'Features\._registered_sort_views\[view\]\s*=\s*nil' -or $features -notmatch 'for view in pairs\(Features\._registered_sort_views\)' -or $main -notmatch 'Features\.rebind_sort_options\(mod,\s*Layout\)') {
+
+$sort_registration_contract = ($features -match 'Features\._registered_sort_views\[view\]\s*=\s*true' -and $features -match 'Features\._registered_sort_views\[view\]\s*=\s*nil' -and $features -match 'for view in pairs\(Features\._registered_sort_views\)') -or ($featureSorting -match 'registered_views\[view\]\s*=\s*true' -and $featureSorting -match 'registered_views\[view\]\s*=\s*nil' -and $featureSorting -match 'for view in pairs\(registered_views\)')
+
+if (($features -notmatch 'Features\.rebind_sort_options' -and $featureSorting -notmatch 'Sorting\.new_comparator_manager') -or -not $sort_registration_contract -or $main -notmatch 'Features\.rebind_sort_options\(mod,\s*Layout\)') {
 	throw "Sort comparator ownership and disable/re-enable rebinding contract was not found."
 }
 
