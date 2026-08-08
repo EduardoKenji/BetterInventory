@@ -18,6 +18,13 @@ DATA_PATH = (
     / "BetterInventory"
     / "BetterInventory_data.lua"
 )
+LOCALIZATION_PATH = (
+    PROJECT_ROOT
+    / "scripts"
+    / "mods"
+    / "BetterInventory"
+    / "BetterInventory_localization.lua"
+)
 
 
 def main() -> None:
@@ -53,6 +60,7 @@ def main() -> None:
     assert registry.metadata("child").owner == "general"
     assert registry.metadata("child").visibility == "always"
     assert registry.metadata("child").test_id == "settings:child"
+    assert registry.is_visible("child") is True
     assert registry.should_refresh_dependencies("child") is False
     assert registry.should_refresh_dependencies("automatic_curio_character_slot_1") is True
 
@@ -73,6 +81,9 @@ def main() -> None:
         "function require(_) return {max_num_characters = 10} end"
     )
     data = lua.execute(DATA_PATH.read_text(encoding="utf-8"), name=str(DATA_PATH))
+    localization = lua.execute(
+        LOCALIZATION_PATH.read_text(encoding="utf-8"), name=str(LOCALIZATION_PATH)
+    )
     ok, count, duplicates = registry.register(data.options.widgets)
 
     assert ok is True
@@ -84,11 +95,21 @@ def main() -> None:
     manifest = registry.metadata_manifest()
     assert len(manifest) == count
     assert manifest[1].setting_id == "additional_views_group"
-    audit = registry.audit()
+    audit = registry.audit(localization)
     assert audit.active_count == count
     assert len(audit.duplicate_ids) == 0
+    assert len(audit.metadata_issues) == 0
+    assert len(audit.missing_localization) == 0
     assert len(audit.orphan_metadata) == 0
     assert len(audit.unregistered_active_settings) == 0
+
+    incomplete_settings = lua.table_from(
+        [lua.table_from({"setting_id": "missing_metadata"})]
+    )
+    registry.register(incomplete_settings)
+    incomplete_audit = registry.audit(lua.table_from({}))
+    assert incomplete_audit.unregistered_active_settings[1] == "missing_metadata:title_id=missing_metadata"
+    assert incomplete_audit.unregistered_active_settings[2] == "missing_metadata:type"
 
     print("BetterInventory settings registry tests passed.")
 

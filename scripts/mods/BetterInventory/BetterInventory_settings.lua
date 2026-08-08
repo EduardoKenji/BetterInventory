@@ -134,6 +134,7 @@ end
 local active_ids = {}
 local active_entries = {}
 local duplicate_ids = {}
+local metadata_issues = {}
 local active_count = 0
 
 local function collect_setting_entries(entries)
@@ -147,7 +148,16 @@ local function collect_setting_entries(entries)
 				else
 					active_ids[setting_id] = true
 					active_count = active_count + 1
-					active_entries[setting_id] = metadata_for_entry(entry)
+					local metadata = metadata_for_entry(entry)
+					active_entries[setting_id] = metadata
+
+					if metadata.title_id == false then
+						metadata_issues[#metadata_issues + 1] = setting_id .. ":title_id"
+					end
+
+					if metadata.type == "" then
+						metadata_issues[#metadata_issues + 1] = setting_id .. ":type"
+					end
 				end
 			end
 
@@ -160,6 +170,7 @@ Registry.register = function(settings)
 	active_ids = {}
 	active_entries = {}
 	duplicate_ids = {}
+	metadata_issues = {}
 	active_count = 0
 	collect_setting_entries(settings)
 
@@ -196,8 +207,10 @@ Registry.metadata_manifest = function()
 	return manifest
 end
 
-Registry.audit = function()
+Registry.audit = function(localization)
 	local orphan_metadata = {}
+	local missing_localization = {}
+	local unregistered_active_settings = {}
 
 	for setting_id in pairs(MIGRATION_KEYS) do
 		if not active_ids[setting_id] then
@@ -207,12 +220,57 @@ Registry.audit = function()
 
 	table.sort(orphan_metadata)
 
+	if type(localization) == "table" then
+		for setting_id, metadata in pairs(active_entries) do
+			if metadata.title_id ~= false and localization[metadata.title_id] == nil then
+				missing_localization[#missing_localization + 1] = setting_id .. ":title_id=" .. tostring(metadata.title_id)
+			end
+
+			if metadata.tooltip_id ~= false and localization[metadata.tooltip_id] == nil then
+				missing_localization[#missing_localization + 1] = setting_id .. ":tooltip_id=" .. tostring(metadata.tooltip_id)
+			end
+		end
+	end
+
+	table.sort(metadata_issues)
+	table.sort(missing_localization)
+
+	for index = 1, #metadata_issues do
+		unregistered_active_settings[#unregistered_active_settings + 1] = metadata_issues[index]
+	end
+
+	for index = 1, #missing_localization do
+		unregistered_active_settings[#unregistered_active_settings + 1] = missing_localization[index]
+	end
+
+	table.sort(unregistered_active_settings)
+
 	return {
 		active_count = active_count,
 		duplicate_ids = duplicate_ids,
+		metadata_issues = metadata_issues,
+		missing_localization = missing_localization,
 		orphan_metadata = orphan_metadata,
-		unregistered_active_settings = {},
+		unregistered_active_settings = unregistered_active_settings,
 	}
+end
+
+Registry.is_visible = function(setting_id, context)
+	local metadata = Registry.metadata(setting_id)
+
+	if not metadata then
+		return false
+	end
+
+	if metadata.visibility == "always" then
+		return true
+	end
+
+	if metadata.visibility == "runtime_dependency" then
+		return type(context) ~= "table" or context.dependencies_enabled ~= false
+	end
+
+	return false
 end
 
 Registry.should_refresh_dependencies = function(setting_id)

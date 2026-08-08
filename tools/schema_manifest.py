@@ -69,16 +69,18 @@ def digest(value: object) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
-def metadata_records(registry: object, settings: object) -> list[dict[str, object]]:
+def metadata_records(registry: object, settings: object, localization: object) -> list[dict[str, object]]:
     ok, _, duplicates = registry.register(settings["options"]["widgets"])
 
     if not ok:
         raise RuntimeError("Duplicate settings metadata IDs: " + ", ".join(str(value) for value in duplicates))
 
-    audit = registry.audit()
+    audit = registry.audit(localization)
 
-    if len(audit.orphan_metadata) > 0 or len(audit.unregistered_active_settings) > 0:
+    if len(audit.orphan_metadata) > 0 or len(audit.unregistered_active_settings) > 0 or len(audit.missing_localization) > 0:
         raise RuntimeError("Settings metadata audit failed: " + json.dumps({
+            "metadata_issues": [str(value) for value in audit.metadata_issues.values()],
+            "missing_localization": [str(value) for value in audit.missing_localization.values()],
             "orphan_metadata": [str(value) for value in audit.orphan_metadata.values()],
             "unregistered_active_settings": [str(value) for value in audit.unregistered_active_settings.values()],
         }, sort_keys=True))
@@ -113,7 +115,7 @@ def metadata_records(registry: object, settings: object) -> list[dict[str, objec
 def build_manifest() -> dict[str, object]:
     data, localization, registry = load_schema()
     settings = collect_settings(data["options"]["widgets"])
-    metadata = metadata_records(registry, data)
+    metadata = metadata_records(registry, data, localization)
     localization_keys = sorted(str(key) for key, _ in localization.items())
     missing_localization = []
 
