@@ -9,6 +9,7 @@ $scriptRoot = Join-Path $projectRoot "scripts\mods\BetterInventory"
 $testRunner = Join-Path $PSScriptRoot "run_tests.py"
 $structureChecker = Join-Path $PSScriptRoot "check_lua_structure.py"
 $schemaDriftChecker = Join-Path $PSScriptRoot "check_schema_drift.py"
+$runtimeBundleChecker = Join-Path $PSScriptRoot "check_runtime_bundle.py"
 $runtimeLuaFiles = @(Get-ChildItem -LiteralPath $scriptRoot -Filter "BetterInventory*.lua" -File | Sort-Object Name)
 $requiredFiles = @(
 	(Join-Path $projectRoot "BetterInventory.mod")
@@ -117,6 +118,16 @@ $trackedReleaseArchive = Join-Path $projectRoot "BetterInventory.zip"
 
 if (-not (Test-Path -LiteralPath $trackedReleaseArchive -PathType Leaf)) {
 	throw "Tracked release archive is missing: $trackedReleaseArchive"
+}
+
+if (-not (Test-Path -LiteralPath $runtimeBundleChecker -PathType Leaf)) {
+	throw "Runtime bundle manifest checker is missing: $runtimeBundleChecker"
+}
+
+py -3 $runtimeBundleChecker
+
+if ($LASTEXITCODE -ne 0) {
+	throw "Runtime bundle manifest checks failed."
 }
 
 if ($features -notmatch 'popup_id\s*=\s*nil' -or $features -notmatch 'event_remove_ui_popup' -or $features -notmatch 'active_popups' -or $features -notmatch 'Features\.reconcile_discard_transaction' -or $main -notmatch 'Features\.reconcile_discard_transaction\(\)' -or $features -notmatch 'discard_transaction_is_current\("automatic",\s*transaction_token\)' -or $features -notmatch 'Features\.clear_discard_popup\("automatic",\s*transaction_token\)') {
