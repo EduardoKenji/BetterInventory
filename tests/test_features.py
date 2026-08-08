@@ -11,6 +11,13 @@ FEATURES_PATH = (
     / "BetterInventory"
     / "BetterInventory_features.lua"
 )
+POLICY_PATH = (
+    PROJECT_ROOT
+    / "scripts"
+    / "mods"
+    / "BetterInventory"
+    / "BetterInventory_discard_policy.lua"
+)
 CURIO_VALUES_PATH = (
     PROJECT_ROOT
     / "scripts"
@@ -24,6 +31,13 @@ ARBITER_PATH = (
     / "mods"
     / "BetterInventory"
     / "BetterInventory_operation_arbiter.lua"
+)
+TRANSACTION_PATH = (
+    PROJECT_ROOT
+    / "scripts"
+    / "mods"
+    / "BetterInventory"
+    / "BetterInventory_discard_transaction.lua"
 )
 FEATURE_DOMAINS_PATH = (
     PROJECT_ROOT
@@ -255,6 +269,14 @@ def main() -> None:
                     return TestFeatureSorting
                 end
 
+                if string.find(path, "BetterInventory_discard_policy", 1, true) then
+                    return TestDiscardPolicy
+                end
+
+                if string.find(path, "BetterInventory_discard_transaction", 1, true) then
+                    return TestDiscardTransaction
+                end
+
                 return TestCurioValues
             end,
         }
@@ -292,6 +314,10 @@ def main() -> None:
         ARBITER_PATH.read_text(encoding="utf-8"), name=str(ARBITER_PATH)
     )
     lua.globals().TestOperationArbiter = operation_arbiter
+    transaction = lua.execute(
+        TRANSACTION_PATH.read_text(encoding="utf-8"), name=str(TRANSACTION_PATH)
+    )
+    lua.globals().TestDiscardTransaction = transaction
     feature_domains = lua.execute(
         FEATURE_DOMAINS_PATH.read_text(encoding="utf-8"), name=str(FEATURE_DOMAINS_PATH)
     )
@@ -306,6 +332,10 @@ def main() -> None:
         name=str(FEATURE_SORTING_PATH),
     )
     lua.globals().TestFeatureSorting = feature_sorting
+    policy = lua.execute(
+        POLICY_PATH.read_text(encoding="utf-8"), name=str(POLICY_PATH)
+    )
+    lua.globals().TestDiscardPolicy = policy
     features = lua.execute(
         FEATURES_PATH.read_text(encoding="utf-8"), name=str(FEATURES_PATH)
     )
@@ -2875,6 +2905,46 @@ def main() -> None:
         """,
         automatic_inventory,
     )
+
+    # Exercise the transaction module's guarded fallback independently from
+    # the production arbiter injection. Partial hot-reload/test environments
+    # must retain token, popup, and settlement safety rather than crash.
+    fallback_transaction = globals_.TestDiscardTransaction.new(None)
+    fallback_view = lua.table_from({})
+    fallback_token = fallback_transaction.acquire(
+        fallback_transaction, "manual", fallback_view
+    )
+    assert fallback_token == 1
+    assert fallback_transaction.active_owner(fallback_transaction) == "manual"
+    assert fallback_transaction.active_view(fallback_transaction) is not None
+    assert fallback_transaction.is_current(
+        fallback_transaction, "manual", fallback_token
+    ) is True
+    assert fallback_transaction.set_popup(
+        fallback_transaction, "manual", fallback_token, 901
+    ) is True
+    assert fallback_transaction.current_popup(fallback_transaction) == 901
+    assert fallback_transaction.set_popup(
+        fallback_transaction, "automatic", fallback_token, 902
+    ) is False
+    assert fallback_transaction.clear_popup(
+        fallback_transaction, "manual", fallback_token
+    ) is True
+    fallback_promise = lua.execute(
+        "return { next = function(self, callback) self.success_callback = callback return self end, "
+        "catch = function(self, callback) self.error_callback = callback return self end }"
+    )
+    assert fallback_transaction.observe_manual_settlement(
+        fallback_transaction, fallback_promise
+    ) is True
+    assert fallback_transaction.manual_settlement_active(fallback_transaction) is True
+    globals_.TestFallbackPromise = fallback_promise
+    lua.execute("TestFallbackPromise.success_callback({})")
+    assert fallback_transaction.manual_settlement_active(fallback_transaction) is False
+    assert fallback_transaction.release(
+        fallback_transaction, "manual", fallback_token
+    ) is False
+
     globals_.captured_popup = None
     globals_.captured_popup_count = 0
     globals_.automatic_deleted_ids = None

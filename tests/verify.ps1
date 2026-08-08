@@ -116,6 +116,11 @@ $localization = @(
 ) -join "`n"
 $layout = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_layout.lua") -Raw
 $features = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_features.lua") -Raw
+$features = @(
+	$features
+	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_discard_policy.lua") -Raw
+	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_discard_transaction.lua") -Raw
+) -join "`n"
 $featureSorting = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_feature_sorting.lua") -Raw
 $contracts = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_contracts.lua") -Raw
 $operationArbiter = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_operation_arbiter.lua") -Raw
@@ -276,7 +281,7 @@ if ($features -notmatch 'Items\.is_item_id_favorited' -or $features -notmatch 'i
 	throw "Quick discard is missing a required protected-item gate."
 }
 
-if ($features -notmatch 'quick_discard_candidates\(mod,\s*layout,\s*view,\s*captured_ids\)' -or $features -notmatch 'event_discard_items') {
+if (($features -notmatch 'quick_discard_candidates\(mod,\s*layout,\s*view,\s*captured_ids\)' -and $features -notmatch 'pcall\(collect_candidates,\s*mod,\s*layout,\s*view,\s*captured_ids\)') -or $features -notmatch 'event_discard_items') {
 	throw "Quick discard must revalidate the captured preview before using Darktide's native discard event."
 }
 

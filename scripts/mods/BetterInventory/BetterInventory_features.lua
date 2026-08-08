@@ -4,6 +4,7 @@ local RaritySettings = require("scripts/settings/item/rarity_settings")
 local UIWidget = require("scripts/managers/ui/ui_widget")
 local UISoundEvents = require("scripts/settings/ui/ui_sound_events")
 local CurioValues = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_values")
+local DiscardPolicy = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_discard_policy")
 
 if type(CurioValues) ~= "table" then
 	CurioValues = {
@@ -15,6 +16,7 @@ end
 
 local Features = {}
 Features._diagnostics = nil
+Features._discard_policy = DiscardPolicy
 Features._domains = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_feature_domains")
 
 if type(Features._domains) ~= "table" or type(Features._domains.sorting) ~= "table" or type(Features._domains.sorting.signature) ~= "function" then
@@ -4000,438 +4002,7 @@ Features.resort_inventory = function(mod, layout, view)
 	end
 end
 
-local function item_level(item)
-	local expertise = Items.expertise_level(item, true)
-
-	return tonumber(expertise)
-end
-
-local function item_type_is_enabled(mod, item_type)
-	if item_type == "WEAPON_MELEE" then
-		return mod:get("quick_discard_include_melee") ~= false
-	elseif item_type == "WEAPON_RANGED" then
-		return mod:get("quick_discard_include_ranged") ~= false
-	elseif item_type == "GADGET" then
-		return mod:get("quick_discard_include_curios") ~= false
-	end
-
-	return false
-end
-
-local function displayed_base_stat_values(item)
-	local base_stats = item and item.base_stats
-
-	if type(base_stats) ~= "table" or #base_stats ~= 5 then
-		return
-	end
-
-	local values = {}
-
-	for index = 1, #base_stats do
-		local stat = base_stats[index]
-		local raw_value = type(stat) == "table" and tonumber(stat.value)
-
-		if not raw_value then
-			return
-		end
-
-		values[index] = math.floor(raw_value * 100 + 0.5)
-	end
-
-	return values
-end
-
-local function projected_max_base_stat_values(item)
-	local base_stats = item and item.base_stats
-
-	if type(base_stats) ~= "table" or #base_stats ~= 5 or type(Items.preview_stats_change) ~= "function" or type(Items.max_expertise_level) ~= "function" then
-		return
-	end
-
-	-- expertise_level also returns a boolean indicating whether baseItemLevel was
-	-- present. Passing the call directly to tonumber forwards that boolean as
-	-- tonumber's optional numeric base and raises for virtually every weapon.
-	local current_expertise = Items.expertise_level(item, true)
-
-	current_expertise = tonumber(current_expertise)
-	local maximum_expertise = tonumber(Items.max_expertise_level())
-
-	if not current_expertise or not maximum_expertise or current_expertise >= maximum_expertise then
-		return
-	end
-
-	local preview_stats = {}
-	local preview_keys = {}
-
-	for index = 1, #base_stats do
-		local stat = base_stats[index]
-		local raw_value = type(stat) == "table" and tonumber(stat.value)
-
-		if not raw_value then
-			return
-		end
-
-		local preview_key = "better_inventory_stat_" .. index
-
-		preview_keys[index] = preview_key
-		preview_stats[index] = {
-			display_name = preview_key,
-			fraction = raw_value,
-			name = stat.name or preview_key,
-		}
-	end
-
-	local projected_stats = Items.preview_stats_change(item, maximum_expertise - current_expertise, preview_stats)
-
-	if type(projected_stats) ~= "table" then
-		return
-	end
-
-	local values = {}
-
-	for index = 1, #preview_keys do
-		local projected_stat = projected_stats[preview_keys[index]]
-		local projected_value = tonumber(projected_stat and projected_stat.value)
-
-		if not projected_value then
-			return
-		end
-
-		values[index] = math.floor(projected_value + 0.5)
-	end
-
-	return values
-end
-
-local function values_are_perfect_roll(values)
-	if type(values) ~= "table" or #values ~= 5 then
-		return false
-	end
-
-	local maximum_stats = 0
-	local remaining_stats = 0
-
-	for index = 1, #values do
-		local displayed_value = values[index]
-
-		if displayed_value == 80 then
-			maximum_stats = maximum_stats + 1
-		elseif displayed_value >= 60 then
-			remaining_stats = remaining_stats + 1
-		else
-			return false
-		end
-	end
-
-	return maximum_stats == 4 and remaining_stats == 1
-end
-
-local function calculate_is_perfect_roll_weapon(item)
-	if not item or not Items.is_weapon(item.item_type) then
-		return false
-	end
-
-	local total = Items.total_stats_value(item)
-
-	if not total or total > 380 then
-		return false
-	end
-
-	local base_stats = item.base_stats
-	local current_expertise
-
-	if total ~= 380 then
-		local expertise = Items.expertise_level(item, true)
-
-		current_expertise = tonumber(expertise)
-	end
-	local cached = perfect_roll_cache[item]
-	local cache_matches = cached and cached.total == total and cached.current_expertise == current_expertise and type(base_stats) == "table" and #base_stats == 5
-
-	if cache_matches then
-		for index = 1, 5 do
-			local raw_value = type(base_stats[index]) == "table" and tonumber(base_stats[index].value)
-
-			if raw_value ~= cached.raw_values[index] then
-				cache_matches = false
-				break
-			end
-		end
-	end
-
-	if cache_matches then
-		return cached.result
-	end
-
-	-- Total power is calculated from unrounded backend values, while each visible
-	-- attribute is rounded independently. Consequently the fifth visible stat can
-	-- legitimately show 61 or 62 on an otherwise perfect 380 roll.
-	local result = total == 380 and values_are_perfect_roll(displayed_base_stat_values(item)) or values_are_perfect_roll(projected_max_base_stat_values(item))
-
-	if type(base_stats) == "table" and #base_stats == 5 then
-		local raw_values = {}
-
-		for index = 1, 5 do
-			raw_values[index] = type(base_stats[index]) == "table" and tonumber(base_stats[index].value) or false
-		end
-
-		perfect_roll_cache[item] = {
-			current_expertise = current_expertise,
-			raw_values = raw_values,
-			result = result,
-			total = total,
-		}
-	end
-
-	-- Rarity upgrades do not change base attributes, but expertise upgrades do.
-	-- Protect an underpowered weapon when Darktide's own maximum-expertise preview
-	-- resolves to the same four-at-80, fifth-at-least-60 distribution.
-	return result
-end
-
-Features.is_perfect_roll_weapon = function(item)
-	-- Sorting invokes this from a native comparator. A legacy or partially
-	-- materialized item must sort as ordinary instead of taking down the view.
-	local success, result = pcall(calculate_is_perfect_roll_weapon, item)
-
-	return success and result == true
-end
-
-local CURIO_PRIMARY_TRAIT_SETTINGS = {
-	gadget_innate_health_increase = "quick_discard_keep_health_curios",
-	gadget_innate_toughness_increase = "quick_discard_keep_toughness_curios",
-	gadget_innate_max_wounds_increase = "quick_discard_keep_wound_curios",
-	gadget_stamina_increase = "quick_discard_keep_stamina_curios",
-}
-local CURIO_BUYER_PRIMARY_TRAIT_SETTINGS = {
-	gadget_innate_health_increase = "automatic_curio_buy_health",
-	gadget_innate_toughness_increase = "automatic_curio_buy_toughness",
-	gadget_innate_max_wounds_increase = "automatic_curio_buy_wounds",
-	gadget_stamina_increase = "automatic_curio_buy_stamina",
-}
-local CURIO_BUYER_PRIMARY_ROLL_SETTINGS = {
-	gadget_innate_health_increase = {
-		default = 21,
-		setting_id = "automatic_curio_min_health",
-	},
-	gadget_innate_toughness_increase = {
-		default = 17,
-		setting_id = "automatic_curio_min_toughness",
-	},
-}
-
-local function curio_primary_trait_name(item)
-	local primary_trait = item and item.traits and item.traits[1]
-	local trait_name, value = CurioValues.resolve(primary_trait)
-
-	if type(trait_name) ~= "string" then
-		return
-	end
-
-	for known_trait_name in pairs(CURIO_PRIMARY_TRAIT_SETTINGS) do
-		if trait_name == known_trait_name or string.find(trait_name, known_trait_name, 1, true) then
-			return known_trait_name, value
-		end
-	end
-end
-
-local function high_level_curio_is_protected(mod, item, level, protected_level)
-	if level < protected_level then
-		return false
-	end
-
-	local primary_trait_name = curio_primary_trait_name(item)
-	local setting_id = primary_trait_name and CURIO_PRIMARY_TRAIT_SETTINGS[primary_trait_name]
-
-	-- Unknown or future primary blessings fail closed. A game update must not turn
-	-- an unrecognized high-level Curio into an automatic-discard candidate.
-	return not setting_id or mod:get(setting_id) ~= false
-end
-
-local function automatic_curio_acquisition_protects(mod, item, level)
-	if mod:get("enable_automatic_curio_acquisition") ~= true then
-		return false
-	end
-
-	local minimum_level = math.clamp(math.floor(tonumber(mod:get("automatic_curio_min_item_level")) or 410), 0, 500)
-
-	if level < minimum_level then
-		return false
-	end
-
-	local primary_trait_name, primary_value = curio_primary_trait_name(item)
-	local setting_id = primary_trait_name and CURIO_BUYER_PRIMARY_TRAIT_SETTINGS[primary_trait_name]
-
-	if not setting_id or mod:get(setting_id) == false then
-		return false
-	end
-
-	local roll_config = CURIO_BUYER_PRIMARY_ROLL_SETTINGS[primary_trait_name]
-
-	if roll_config then
-		-- Missing inventory roll data fails safe. It must never make an acquired or
-		-- partially materialized Curio eligible for destructive automatic discard.
-		if primary_value then
-			local minimum_roll = math.clamp(tonumber(mod:get(roll_config.setting_id)) or roll_config.default, 0, 100)
-
-			if primary_value + 0.0001 < minimum_roll then
-				return false
-			end
-		end
-	end
-
-	return true
-end
-
-local function eligible_for_quick_discard(mod, item, is_equipped, maximum_equipped_levels, favorite_gear_ids)
-	if not item or not item.gear_id or not item_type_is_enabled(mod, item.item_type) then
-		return false
-	end
-
-	local rarity = tonumber(item.rarity)
-	local rarity_threshold = math.clamp(math.floor(tonumber(mod:get("quick_discard_rarity")) or 1), 1, 5)
-
-	if not rarity or rarity < 1 or rarity > rarity_threshold then
-		return false
-	end
-
-	local favorited = favorite_gear_ids and favorite_gear_ids[item.gear_id] or not favorite_gear_ids and Items.is_item_id_favorited(item.gear_id)
-
-	if favorited then
-		return false
-	end
-
-	if is_equipped and is_equipped(item) then
-		return false
-	end
-
-	local level = item_level(item)
-	local maximum_level = math.clamp(math.floor(tonumber(mod:get("quick_discard_max_item_level")) or 490), 0, 500)
-
-	if not level or level > maximum_level then
-		return false
-	end
-
-	if mod:get("quick_discard_protect_above_equipped_level") ~= false then
-		local maximum_equipped_level = maximum_equipped_levels and maximum_equipped_levels[item.item_type]
-
-		if maximum_equipped_level and level > maximum_equipped_level then
-			return false
-		end
-	end
-
-	if Items.is_weapon(item.item_type) and mod:get("quick_discard_protect_perfect_weapons") ~= false and Features.is_perfect_roll_weapon(item) then
-		return false
-	end
-
-	-- Buying and automatically discarding the same Curio on a later hub entry is
-	-- incoherent and wastes currency. Acquisition-filter matches remain protected
-	-- even when the general high-level Curio protection is configured differently.
-	if item.item_type == "GADGET" and automatic_curio_acquisition_protects(mod, item, level) then
-		return false
-	end
-
-	if item.item_type == "GADGET" and mod:get("quick_discard_protect_high_level_curios") ~= false then
-		local protected_level = math.clamp(math.floor(tonumber(mod:get("quick_discard_curio_protection_level")) or 410), 0, 500)
-
-		if high_level_curio_is_protected(mod, item, level, protected_level) then
-			return false
-		end
-	end
-
-	return true
-end
-
-local function collect_quick_discard_candidates(mod, source_items, is_equipped, allowed_gear_ids, maximum_equipped_levels, favorite_gear_ids)
-	local candidates = {}
-	local excluded_errors = 0
-	local first_error
-	local seen = {}
-
-	for _, entry in pairs(source_items or {}) do
-		local item = entry and (entry.real_item or entry.item or entry)
-		local gear_id = item and item.gear_id
-
-		if gear_id and not seen[gear_id] and (not allowed_gear_ids or allowed_gear_ids[gear_id]) then
-			local success, eligible = pcall(eligible_for_quick_discard, mod, item, is_equipped, maximum_equipped_levels, favorite_gear_ids)
-
-			if success and eligible then
-				seen[gear_id] = true
-				candidates[#candidates + 1] = item
-			elseif not success then
-				-- Account inventories can contain legacy or partially materialized gear
-				-- that current item utilities cannot evaluate. Automatic discard must
-				-- fail closed for those entries instead of aborting the entire scan.
-				excluded_errors = excluded_errors + 1
-				first_error = first_error or eligible
-			end
-		end
-	end
-
-	return candidates, excluded_errors, first_error
-end
-
-local function add_loadout_gear_ids(target, loadout)
-	for _, item in pairs(loadout or {}) do
-		local gear_id = type(item) == "table" and item.gear_id or type(item) == "string" and item or nil
-
-		if gear_id then
-			target[gear_id] = true
-		end
-	end
-end
-
-local function equipped_gear_ids(profile, profile_presets)
-	local equipped = {}
-
-	add_loadout_gear_ids(equipped, profile and profile.loadout)
-	add_loadout_gear_ids(equipped, profile and profile.loadout_item_ids)
-
-	-- Profile presets are saved independently from the currently active profile.
-	-- Treat every item referenced by every preset as equipped: an unfavorited item
-	-- used only by an inactive loadout must never enter any discard candidate set.
-	if type(profile_presets) == "table" then
-		for _, preset in pairs(profile_presets) do
-			if type(preset) == "table" then
-				add_loadout_gear_ids(equipped, preset.loadout)
-				add_loadout_gear_ids(equipped, preset.loadout_item_ids)
-			end
-		end
-	end
-
-	return equipped
-end
-
-local function maximum_equipped_levels(source_items, protected_gear_ids)
-	local maximums = {}
-	local unreadable_level = -1
-
-	for _, entry in pairs(source_items or {}) do
-		local item = entry and (entry.real_item or entry.item or entry)
-		local gear_id = item and item.gear_id
-		local item_type = item and item.item_type
-
-		-- Item level 500 is the absolute ceiling. Once a category reaches it,
-		-- subsequent equipped items of that category cannot improve its maximum.
-		-- An unreadable equipped/loadout item is more important than any readable
-		-- maximum: use a sentinel below every valid level so the later
-		-- `level > maximum` check protects the entire category. This keeps both
-		-- manual and automatic discard fail-closed for legacy account gear.
-		if gear_id and protected_gear_ids[gear_id] and item_type and maximums[item_type] ~= 500 and maximums[item_type] ~= unreadable_level then
-			local level_ok, level = pcall(item_level, item)
-
-			if level_ok and level then
-				maximums[item_type] = math.min(math.max(maximums[item_type] or 0, level), 500)
-			else
-				maximums[item_type] = unreadable_level
-			end
-		end
-	end
-
-	return maximums
-end
-
-local function preview_profile(view)
+local function preview_profile_for_discard(view)
 	local player = view and view._preview_player
 
 	if player and not player.__deleted and type(player.profile) == "function" then
@@ -4443,6 +4014,11 @@ local function preview_profile(view)
 	end
 end
 
+Features.is_perfect_roll_weapon = DiscardPolicy.is_perfect_roll_weapon
+Features.automatic_curio_acquisition_protects = DiscardPolicy.automatic_curio_acquisition_protects
+Features.quick_discard_candidates_from_items = DiscardPolicy.quick_discard_candidates_from_items
+local quick_discard_candidates_from_items_detailed = DiscardPolicy.quick_discard_candidates_from_items_detailed
+
 Features.quick_discard_candidates = function(mod, layout, view, allowed_gear_ids)
 	if not is_inventory_view(layout, view) or view._destroyed then
 		return {}
@@ -4451,8 +4027,7 @@ Features.quick_discard_candidates = function(mod, layout, view, allowed_gear_ids
 	local parent_inventory = view._parent and view._parent._inventory_items
 	local source_items = type(parent_inventory) == "table" and next(parent_inventory) and parent_inventory or view._offer_items_layout or {}
 	local presets_ok, profile_presets = pcall(ProfileUtils.get_profile_presets)
-	local protected_gear_ids = equipped_gear_ids(preview_profile(view), presets_ok and profile_presets or nil)
-	local equipped_levels = maximum_equipped_levels(source_items, protected_gear_ids)
+	local protected_gear_ids = DiscardPolicy.equipped_gear_ids(preview_profile_for_discard(view), presets_ok and profile_presets or nil)
 	local function is_equipped(item)
 		if item.gear_id and protected_gear_ids[item.gear_id] then
 			return true
@@ -4463,22 +4038,7 @@ Features.quick_discard_candidates = function(mod, layout, view, allowed_gear_ids
 		return slots and type(view.is_item_equipped_in_any_slot) == "function" and view:is_item_equipped_in_any_slot(item, slots) or false
 	end
 
-	local candidates = collect_quick_discard_candidates(mod, source_items, is_equipped, allowed_gear_ids, equipped_levels)
-
-	return candidates
-end
-
-local function quick_discard_candidates_from_items_detailed(mod, source_items, equipped_gear_ids, allowed_gear_ids, favorite_gear_ids)
-	local equipped_levels = maximum_equipped_levels(source_items, equipped_gear_ids or {})
-	local function is_equipped(item)
-		return equipped_gear_ids and equipped_gear_ids[item.gear_id] == true
-	end
-
-	return collect_quick_discard_candidates(mod, source_items, is_equipped, allowed_gear_ids, equipped_levels, favorite_gear_ids)
-end
-
-Features.quick_discard_candidates_from_items = function(mod, source_items, equipped_gear_ids, allowed_gear_ids, favorite_gear_ids)
-	local candidates = quick_discard_candidates_from_items_detailed(mod, source_items, equipped_gear_ids, allowed_gear_ids, favorite_gear_ids)
+	local candidates = DiscardPolicy.quick_discard_candidates_from_source(mod, source_items, is_equipped, protected_gear_ids, allowed_gear_ids)
 
 	return candidates
 end
@@ -4614,376 +4174,72 @@ local function show_popup(context, callback)
 	return pcall(event_manager.trigger, event_manager, "event_show_ui_popup", context, callback)
 end
 
-local discard_transaction = Features._operation_arbiter and type(Features._operation_arbiter.new) == "function" and Features._operation_arbiter.new()
-
-if not discard_transaction then
-	-- Partial/test environments without the extracted module retain the same
-	-- guarded behavior until the next successful reload.
-	discard_transaction = {
-		owner = nil,
-		token = 0,
-		view = nil,
-		popup_id = nil,
-		manual_delete_inflight = false,
-		manual_delete_transaction_token = nil,
-	}
-end
+local DiscardTransaction = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_discard_transaction")
+local discard_transaction = DiscardTransaction.new(Features._operation_arbiter, {
+	collect_candidates = function(mod, layout, view, allowed_gear_ids)
+		return Features.quick_discard_candidates(mod, layout, view, allowed_gear_ids)
+	end,
+	rarity_summary = rarity_summary,
+})
 
 Features.discard_owner = function()
-	if type(discard_transaction.active_owner) == "function" then
-		return discard_transaction:active_owner()
-	end
-
-	return discard_transaction.owner
+	return discard_transaction:active_owner()
 end
 
 Features.discard_view = function()
-	if type(discard_transaction.active_view) == "function" then
-		return discard_transaction:active_view()
-	end
-
-	return discard_transaction.view
+	return discard_transaction:active_view()
 end
 
 Features.discard_token = function()
-	if type(discard_transaction.active_token) == "function" then
-		return discard_transaction:active_token()
-	end
-
-	return discard_transaction.token
+	return discard_transaction:active_token()
 end
 
 local function acquire_discard_transaction(owner, view)
-	if type(discard_transaction.acquire) == "function" then
-		local token = discard_transaction:acquire(owner, view)
-
-		if not token then
-			return false
-		end
-
-		if view then
-			view._better_inventory_discard_pending = true
-		end
-
-		return token
-	end
-
-	if discard_transaction.owner then
-		return false
-	end
-
-	discard_transaction.token = discard_transaction.token + 1
-	discard_transaction.owner = owner
-	discard_transaction.view = view
-	discard_transaction.popup_id = nil
-
-	if view then
-		view._better_inventory_discard_pending = true
-	end
-
-	return discard_transaction.token
+	return discard_transaction:acquire(owner, view)
 end
 
 Features.remove_discard_popup = function(popup_id)
-	if not popup_id then
-		return
-	end
-
-	local event_manager = Managers and Managers.event
-
-	if event_manager and type(event_manager.trigger) == "function" then
-		pcall(event_manager.trigger, event_manager, "event_remove_ui_popup", popup_id)
-	end
+	return discard_transaction:remove_popup(popup_id)
 end
 
 Features.set_discard_popup_id = function(owner, token, popup_id)
-	if type(discard_transaction.set_popup) == "function" then
-		if discard_transaction:set_popup(owner, token, popup_id) then
-			return
-		end
-
-		-- Never let a delayed popup callback attach an old UI object to a newer
-		-- transaction.
-		Features.remove_discard_popup(popup_id)
-	elseif discard_transaction.owner == owner and discard_transaction.token == token then
-		discard_transaction.popup_id = popup_id
-	else
-		-- Never let a delayed popup callback attach an old UI object to a newer
-		-- transaction.
-		Features.remove_discard_popup(popup_id)
-	end
+	return discard_transaction:set_popup(owner, token, popup_id)
 end
 
 Features.clear_discard_popup = function(owner, token)
-	if type(discard_transaction.clear_popup) == "function" then
-		return discard_transaction:clear_popup(owner, token)
-	end
-
-	if discard_transaction.owner ~= owner or discard_transaction.token ~= token then
-		return false
-	end
-
-	discard_transaction.popup_id = nil
-
-	return true
+	return discard_transaction:clear_popup(owner, token)
 end
 
 local function release_discard_transaction(owner, token)
-	if type(discard_transaction.release) == "function" then
-		local released, view, popup_id = discard_transaction:release(owner, token)
+	local released = discard_transaction:release(owner, token)
 
-		if not released then
-			return false
-		end
-
-		Features.remove_discard_popup(popup_id)
-
-		if view then
-			view._better_inventory_discard_pending = false
-		end
-
-		return true
-	end
-
-	if discard_transaction.owner ~= owner or token and discard_transaction.token ~= token then
-		return false
-	end
-
-	local view = discard_transaction.view
-	local popup_id = discard_transaction.popup_id
-
-	discard_transaction.owner = nil
-	discard_transaction.view = nil
-	discard_transaction.popup_id = nil
-	if owner == "manual" then
-		discard_transaction.manual_delete_inflight = false
-		discard_transaction.manual_delete_transaction_token = nil
-	end
-	Features.remove_discard_popup(popup_id)
-
-	if view then
-		view._better_inventory_discard_pending = false
-	end
-
-	return true
+	return released == true
 end
 
--- The native manual discard event dispatches GearService.delete_gear_batch
--- internally. The event itself has no completion value, so BetterInventory's
--- GearService hook bridges the returned promise here without issuing a second
--- delete request.
+-- GearService settlement is observed by the main-module bridge. This module
+-- only owns the promise callback and releases the matching transaction token.
 Features.observe_manual_discard_settlement = function(promise)
-	if type(discard_transaction.observe_manual_settlement) == "function" then
-		return discard_transaction:observe_manual_settlement(promise, function(transaction_token)
-			release_discard_transaction("manual", transaction_token)
-		end)
-	end
-
-	if discard_transaction.owner ~= "manual" or discard_transaction.manual_delete_inflight then
-		return false
-	end
-
-	local transaction_token = discard_transaction.token
-
-	if not promise or type(promise.next) ~= "function" or type(promise.catch) ~= "function" then
-		return false
-	end
-
-	discard_transaction.manual_delete_inflight = true
-	discard_transaction.manual_delete_transaction_token = transaction_token
-
-	local function settle()
-		if discard_transaction.manual_delete_transaction_token == transaction_token and discard_transaction.owner == "manual" and discard_transaction.token == transaction_token then
-			release_discard_transaction("manual", transaction_token)
-		end
-	end
-
-	local continuation = promise:next(function(result)
-		settle()
-
-		return result
-	end)
-
-	if continuation and type(continuation.next) == "function" and type(continuation.catch) == "function" then
-		continuation:catch(function(error_value)
-			settle()
-
-			return error_value
-		end)
-	end
-
-	return true
+	return discard_transaction:observe_manual_settlement(promise)
 end
 
 Features.manual_discard_settlement_active = function()
-	if type(discard_transaction.manual_settlement_active) == "function" then
-		return discard_transaction:manual_settlement_active()
-	end
-
-	return discard_transaction.manual_delete_inflight and discard_transaction.owner == "manual"
+	return discard_transaction:manual_settlement_active()
 end
 
 local function discard_transaction_is_current(owner, token)
-	if type(discard_transaction.is_current) == "function" then
-		return discard_transaction:is_current(owner, token)
-	end
-
-	return discard_transaction.owner == owner and discard_transaction.token == token
+	return discard_transaction:is_current(owner, token)
 end
 
 Features.discard_popup_is_active = function(popup_id)
-	local ui_manager = Managers and Managers.ui
-
-	if not ui_manager or type(ui_manager.active_popups) ~= "function" then
-		return nil
-	end
-
-	local ok, active_popups = pcall(ui_manager.active_popups, ui_manager)
-
-	if not ok or type(active_popups) ~= "table" then
-		return nil
-	end
-
-	for index = 1, #active_popups do
-		if active_popups[index] and active_popups[index].id == popup_id then
-			return true
-		end
-	end
-
-	return false
+	return discard_transaction:popup_is_active(popup_id)
 end
 
 Features.reconcile_discard_transaction = function()
-	-- Confirmation popups close before their destructive promise settles. The
-	-- popup is no longer the owner once native deletion starts; settlement is.
-	-- Never interpret that expected UI close as permission to release the shared
-	-- manual/automatic exclusion token.
-	if Features.manual_discard_settlement_active() then
-		return
-	end
-
-	local popup_id = nil
-
-	if type(discard_transaction.current_popup) == "function" then
-		popup_id = discard_transaction:current_popup()
-	else
-		popup_id = discard_transaction.popup_id
-	end
-
-	if not popup_id then
-		return
-	end
-
-	if Features.discard_popup_is_active(popup_id) == false then
-		release_discard_transaction(Features.discard_owner(), Features.discard_token())
-	end
+	return discard_transaction:reconcile()
 end
 
 Features.request_quick_discard = function(mod, layout, view)
-	if view._better_inventory_discard_pending or Features.discard_owner() then
-		return
-	end
-
-	local candidates = Features.quick_discard_candidates(mod, layout, view)
-
-	if #candidates == 0 then
-		show_popup({
-			description_text_unlocalized = mod:localize("quick_discard_nothing_description"),
-			options = {
-				{
-					close_on_pressed = true,
-					no_localization = true,
-					text = mod:localize("quick_discard_close"),
-				},
-			},
-			title_text_unlocalized = mod:localize("quick_discard_nothing_title"),
-		})
-
-		return
-	end
-
-	local captured_ids = {}
-
-	for index = 1, #candidates do
-		captured_ids[candidates[index].gear_id] = true
-	end
-
-	local transaction_token = acquire_discard_transaction("manual", view)
-
-	if not transaction_token then
-		return
-	end
-
-	local resolved = false
-
-	local function clear_pending()
-		if resolved then
-			return
-		end
-
-		resolved = true
-		release_discard_transaction("manual", transaction_token)
-	end
-
-	local function confirm_discard()
-		if resolved or not discard_transaction_is_current("manual", transaction_token) then
-			return
-		end
-
-		local revalidated = Features.quick_discard_candidates(mod, layout, view, captured_ids)
-		local gear_ids = {}
-
-		for index = 1, #revalidated do
-			gear_ids[#gear_ids + 1] = revalidated[index].gear_id
-		end
-
-		local event_manager = Managers and Managers.event
-
-		local event_ok = false
-		-- Match the automatic-discard path: detach popup lifecycle ownership before
-		-- dispatching the native event. GearService settlement becomes the sole
-		-- terminal owner if the event exposes a compatible deletion promise.
-		Features.clear_discard_popup("manual", transaction_token)
-
-		if #gear_ids > 0 and event_manager and type(event_manager.trigger) == "function" then
-			event_ok = pcall(event_manager.trigger, event_manager, "event_discard_items", gear_ids)
-		end
-
-		-- GearService.delete_gear_batch is normally observed by the main-module
-		-- bridge above. If the native event could not dispatch or no compatible
-		-- promise was exposed, release immediately to avoid a permanent UI lock;
-		-- the event remains the sole owner of any native request.
-		if not event_ok or not Features.manual_discard_settlement_active() then
-			clear_pending()
-		end
-	end
-
-	local popup_shown = show_popup({
-		description_text_unlocalized = tostring(#candidates) .. " " .. mod:localize("quick_discard_confirmation_description") .. "\n\n" .. rarity_summary(mod, candidates) .. "\n\n" .. mod:localize("quick_discard_confirmation_warning"),
-		options = {
-			{
-				callback = confirm_discard,
-				close_on_pressed = true,
-				no_localization = true,
-				text = mod:localize("quick_discard_confirmation_yes"),
-			},
-			{
-				callback = clear_pending,
-				close_on_pressed = true,
-				hotkey = "back",
-				no_localization = true,
-				template_type = "terminal_button_small",
-				text = mod:localize("quick_discard_confirmation_no"),
-			},
-		},
-		title_text_unlocalized = mod:localize("quick_discard_confirmation_title"),
-	}, function(popup_id)
-		Features.set_discard_popup_id("manual", transaction_token, popup_id)
-	end)
-
-	if not popup_shown then
-		clear_pending()
-	end
+	return discard_transaction:request_manual(mod, layout, view)
 end
 
 local AUTOMATIC_DISCARD_DELAY = 5
@@ -5158,7 +4414,7 @@ local function automatic_protection_snapshot(character_id)
 	end
 
 	return {
-		equipped_gear_ids = equipped_gear_ids(profile, profile_presets),
+		equipped_gear_ids = DiscardPolicy.equipped_gear_ids(profile, profile_presets),
 		favorite_gear_ids = character_data.favorite_items,
 	}
 end
