@@ -834,7 +834,7 @@ function Panel.new(dependencies)
 				variant = "section",
 			}),
 		}
-		local function add_checkbox(setting_id, label_id, fallback, default_value, enabled)
+		local function add_checkbox(setting_id, label_id, fallback, default_value, enabled, reflow)
 			local function is_enabled()
 				if type(enabled) == "function" then
 					return enabled() == true
@@ -850,6 +850,9 @@ function Panel.new(dependencies)
 				variant = "checkbox",
 				action = function()
 					self:_set_setting(setting_id, not (self:_setting(setting_id, default_value) == true))
+					if reflow then
+						self._layout_pending = true
+					end
 				end,
 				refresh = function(widget)
 					local current_enabled = is_enabled()
@@ -916,32 +919,38 @@ function Panel.new(dependencies)
 					widget.content.detail = integer_text(self:_setting("auto_crafter_dump_stat_target", 60))
 				end,
 			}))
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_docket_cap", "Docket cap"), integer_text(self:_setting("auto_crafter_docket_cap", 1000000)), {
-				selectable = true,
-				variant = "stepper",
-				decrease = function()
-					self:_adjust_numeric_setting("auto_crafter_docket_cap", 1000000, 0, 10000000, -100000)
-				end,
-				increase = function()
-					self:_adjust_numeric_setting("auto_crafter_docket_cap", 1000000, 0, 10000000, 100000)
-				end,
-				refresh = function(widget)
-					widget.content.detail = integer_text(self:_setting("auto_crafter_docket_cap", 1000000))
-				end,
-			}))
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_max_purchases", "Max purchases"), integer_text(self:_setting("auto_crafter_max_purchases", 100)), {
-				selectable = true,
-				variant = "stepper",
-				decrease = function()
-					self:_adjust_numeric_setting("auto_crafter_max_purchases", 100, 1, 10000, -1)
-				end,
-				increase = function()
-					self:_adjust_numeric_setting("auto_crafter_max_purchases", 100, 1, 10000, 1)
-				end,
-				refresh = function(widget)
-					widget.content.detail = integer_text(self:_setting("auto_crafter_max_purchases", 100))
-				end,
-			}))
+			add_checkbox("auto_crafter_cap_by_dockets", "auto_crafter_cap_by_dockets", "Cap perfect-roll weapon acquisition by Ordo dockets", false, nil, true)
+			if self:_setting("auto_crafter_cap_by_dockets", false) == true then
+				table.insert(entries, self:_entry(localize("auto_crafter_panel_docket_cap", "Ordo dockets cap"), integer_text(self:_setting("auto_crafter_docket_cap", 1000000)), {
+					selectable = true,
+					variant = "stepper",
+					decrease = function()
+						self:_adjust_numeric_setting("auto_crafter_docket_cap", 1000000, 0, 10000000, -100000)
+					end,
+					increase = function()
+						self:_adjust_numeric_setting("auto_crafter_docket_cap", 1000000, 0, 10000000, 100000)
+					end,
+					refresh = function(widget)
+						widget.content.detail = integer_text(self:_setting("auto_crafter_docket_cap", 1000000))
+					end,
+				}))
+			end
+			add_checkbox("auto_crafter_cap_by_max_purchases", "auto_crafter_cap_by_max_purchases", "Cap perfect-roll weapon acquisition by max purchases", false, nil, true)
+			if self:_setting("auto_crafter_cap_by_max_purchases", false) == true then
+				table.insert(entries, self:_entry(localize("auto_crafter_panel_max_purchases", "Max purchases"), integer_text(self:_setting("auto_crafter_max_purchases", 100)), {
+					selectable = true,
+					variant = "stepper",
+					decrease = function()
+						self:_adjust_numeric_setting("auto_crafter_max_purchases", 100, 1, 10000, -1)
+					end,
+					increase = function()
+						self:_adjust_numeric_setting("auto_crafter_max_purchases", 100, 1, 10000, 1)
+					end,
+					refresh = function(widget)
+						widget.content.detail = integer_text(self:_setting("auto_crafter_max_purchases", 100))
+					end,
+				}))
+			end
 			table.insert(entries, self:_entry(localize("auto_crafter_panel_best_fallback", "Best-candidate fallback"), self:_planner_fallback_text(), {
 				checked = self:_setting("auto_crafter_best_candidate_fallback", false) == true,
 				selectable = true,

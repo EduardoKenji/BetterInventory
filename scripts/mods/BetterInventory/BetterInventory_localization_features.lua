@@ -587,11 +587,23 @@ local localization = {
 	auto_crafter_dump_stat_target_tooltip = {
 		en = "Desired dump-stat percentage used by the guarded serialized purchase search. Unknown stat shapes stop the run.",
 	},
+	auto_crafter_cap_by_dockets = {
+		en = "Cap perfect-roll weapon acquisition by Ordo dockets",
+	},
+	auto_crafter_cap_by_dockets_tooltip = {
+		en = "Enable the Ordo dockets cap for the perfect-roll weapon acquisition search. The numeric cap stays saved when this option is disabled.",
+	},
 	auto_crafter_docket_cap = {
-		en = "Auto Crafter docket cap",
+		en = "Ordo dockets cap",
 	},
 	auto_crafter_docket_cap_tooltip = {
 		en = "Maximum dockets the serialized purchase search may spend. The controller stops before dispatching a purchase that would cross this cap.",
+	},
+	auto_crafter_cap_by_max_purchases = {
+		en = "Cap perfect-roll weapon acquisition by max purchases",
+	},
+	auto_crafter_cap_by_max_purchases_tooltip = {
+		en = "Enable the maximum-purchases cap for the perfect-roll weapon acquisition search. The numeric limit stays saved when this option is disabled.",
 	},
 	auto_crafter_max_purchases = {
 		en = "Auto Crafter maximum purchases",
@@ -777,7 +789,7 @@ local localization = {
 		en = "Dump target",
 	},
 	auto_crafter_panel_docket_cap = {
-		en = "Docket cap",
+		en = "Ordo dockets cap",
 	},
 	auto_crafter_panel_max_purchases = {
 		en = "Max purchases",

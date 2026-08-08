@@ -643,6 +643,12 @@ return {
 						},
 					},
 					{
+						setting_id = "auto_crafter_cap_by_dockets",
+						tooltip = "auto_crafter_cap_by_dockets_tooltip",
+						type = "checkbox",
+						default_value = false,
+					},
+					{
 						setting_id = "auto_crafter_docket_cap",
 						tooltip = "auto_crafter_docket_cap_tooltip",
 						type = "numeric",
@@ -651,6 +657,12 @@ return {
 							0,
 							10000000,
 						},
+					},
+					{
+						setting_id = "auto_crafter_cap_by_max_purchases",
+						tooltip = "auto_crafter_cap_by_max_purchases_tooltip",
+						type = "checkbox",
+						default_value = false,
 					},
 					{
 						setting_id = "auto_crafter_max_purchases",
