@@ -20,6 +20,7 @@ def main() -> None:
     print(
         "BetterInventory schema drift checks passed: "
         f"{actual['settings_count']} settings, "
+        f"{actual['metadata_count']} metadata records, "
         f"{actual['localization_keys_count']} localization keys."
     )
 

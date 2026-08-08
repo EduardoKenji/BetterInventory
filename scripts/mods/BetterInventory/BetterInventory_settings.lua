@@ -67,6 +67,70 @@ for _, setting_id in ipairs(DEPENDENCY_REFRESH_SETTING_IDS) do
 	}
 end
 
+-- Migration markers are intentionally declared once here so a setting's
+-- schema entry, runtime owner, and migration contract can be audited together.
+-- `false` in the generated metadata means "no migration required"; it is not
+-- the same as an omitted field.
+local MIGRATION_KEYS = {
+	melee_columns = "_grid_columns_v1_migrated",
+	ranged_columns = "_grid_columns_v1_migrated",
+	curio_columns = "_grid_columns_v1_migrated",
+	show_pattern_mark = "_compact_card_defaults_v1_migrated",
+	character_overview_curio_name_mode = "_character_overview_curio_name_mode_v1_migrated",
+	curio_display_profile = "_curio_compression_mode_v1_migrated",
+	show_curio_item_level = "_curio_heavy_default_v1_migrated",
+	custom_item_name_keybind = "_custom_item_name_keybind_v2_migrated",
+	weapon_blessing_display_mode = "_weapon_blessing_display_mode_v1_migrated",
+}
+
+local function setting_owner(setting_id)
+	local owners = {
+		"automatic_curio_", "curio_acquisition",
+		"quick_discard_", "discard",
+		"character_overview_", "character_overview",
+		"global_store_", "global_store",
+		"armoury_", "armoury",
+		"custom_item_", "customization",
+		"weapon_", "weapons",
+		"blessing_", "weapons",
+		"curio_", "curios",
+		"myfavorites_", "markers",
+		"debug_", "diagnostics",
+	}
+
+	for index = 1, #owners, 2 do
+		if string.sub(setting_id, 1, #owners[index]) == owners[index] then
+			return owners[index + 1]
+		end
+	end
+
+	if string.find(setting_id, "columns", 1, true) or string.find(setting_id, "inventory", 1, true) then
+		return "inventory"
+	end
+
+	return "general"
+end
+
+local function metadata_for_entry(entry)
+	local setting_id = entry.setting_id
+	local refresh_domains = dependency_refresh_metadata[setting_id] and {
+		dependencies = true,
+	}
+
+	return {
+		default_value = entry.default_value,
+		migration_key = MIGRATION_KEYS[setting_id] or false,
+		owner = setting_owner(setting_id),
+		refresh_domains = refresh_domains,
+		setting_id = setting_id,
+		test_id = "settings:" .. setting_id,
+		title_id = entry.text or setting_id,
+		tooltip_id = entry.tooltip or false,
+		type = entry.type or "",
+		visibility = refresh_domains and "runtime_dependency" or "always",
+	}
+end
+
 local active_ids = {}
 local active_entries = {}
 local duplicate_ids = {}
@@ -83,12 +147,7 @@ local function collect_setting_entries(entries)
 				else
 					active_ids[setting_id] = true
 					active_count = active_count + 1
-					active_entries[setting_id] = {
-						setting_id = setting_id,
-						refresh_domains = dependency_refresh_metadata[setting_id] and {
-							dependencies = true,
-						},
-					}
+					active_entries[setting_id] = metadata_for_entry(entry)
 				end
 			end
 
@@ -121,6 +180,39 @@ end
 
 Registry.metadata = function(setting_id)
 	return type(setting_id) == "string" and active_entries[setting_id] or nil
+end
+
+Registry.metadata_manifest = function()
+	local manifest = {}
+
+	for _, metadata in pairs(active_entries) do
+		manifest[#manifest + 1] = metadata
+	end
+
+	table.sort(manifest, function(left, right)
+		return left.setting_id < right.setting_id
+	end)
+
+	return manifest
+end
+
+Registry.audit = function()
+	local orphan_metadata = {}
+
+	for setting_id in pairs(MIGRATION_KEYS) do
+		if not active_ids[setting_id] then
+			orphan_metadata[#orphan_metadata + 1] = setting_id
+		end
+	end
+
+	table.sort(orphan_metadata)
+
+	return {
+		active_count = active_count,
+		duplicate_ids = duplicate_ids,
+		orphan_metadata = orphan_metadata,
+		unregistered_active_settings = {},
+	}
 end
 
 Registry.should_refresh_dependencies = function(setting_id)

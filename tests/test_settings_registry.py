@@ -50,6 +50,9 @@ def main() -> None:
     assert len(duplicates) == 0
     assert registry.has("child") is True
     assert registry.metadata("child").setting_id == "child"
+    assert registry.metadata("child").owner == "general"
+    assert registry.metadata("child").visibility == "always"
+    assert registry.metadata("child").test_id == "settings:child"
     assert registry.should_refresh_dependencies("child") is False
     assert registry.should_refresh_dependencies("automatic_curio_character_slot_1") is True
 
@@ -76,6 +79,16 @@ def main() -> None:
     assert count >= 200
     assert len(duplicates) == 0
     assert registry.has("automatic_curio_character_slot_10") is True
+    assert registry.metadata("automatic_curio_character_slot_10").owner == "curio_acquisition"
+    assert registry.metadata("automatic_curio_character_slot_10").default_value is False
+    manifest = registry.metadata_manifest()
+    assert len(manifest) == count
+    assert manifest[1].setting_id == "additional_views_group"
+    audit = registry.audit()
+    assert audit.active_count == count
+    assert len(audit.duplicate_ids) == 0
+    assert len(audit.orphan_metadata) == 0
+    assert len(audit.unregistered_active_settings) == 0
 
     print("BetterInventory settings registry tests passed.")
 

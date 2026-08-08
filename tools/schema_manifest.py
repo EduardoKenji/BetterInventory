@@ -14,9 +14,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_ROOT = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory"
 DATA_PATH = RUNTIME_ROOT / "BetterInventory_data.lua"
 LOCALIZATION_PATH = RUNTIME_ROOT / "BetterInventory_localization.lua"
+REGISTRY_PATH = RUNTIME_ROOT / "BetterInventory_settings.lua"
 
 
-def load_schema() -> tuple[object, object]:
+def load_schema() -> tuple[object, object, object]:
     lua = LuaRuntime(unpack_returned_tuples=True)
     lua.execute(
         "function get_mod() return {localize = function(_, id) return id end} end; "
@@ -26,8 +27,9 @@ def load_schema() -> tuple[object, object]:
     localization = lua.execute(
         LOCALIZATION_PATH.read_text(encoding="utf-8"), name=str(LOCALIZATION_PATH)
     )
+    registry = lua.execute(REGISTRY_PATH.read_text(encoding="utf-8"), name=str(REGISTRY_PATH))
 
-    return data, localization
+    return data, localization, registry
 
 
 def collect_settings(entries: object) -> list[dict[str, object]]:
@@ -67,9 +69,51 @@ def digest(value: object) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+def metadata_records(registry: object, settings: object) -> list[dict[str, object]]:
+    ok, _, duplicates = registry.register(settings["options"]["widgets"])
+
+    if not ok:
+        raise RuntimeError("Duplicate settings metadata IDs: " + ", ".join(str(value) for value in duplicates))
+
+    audit = registry.audit()
+
+    if len(audit.orphan_metadata) > 0 or len(audit.unregistered_active_settings) > 0:
+        raise RuntimeError("Settings metadata audit failed: " + json.dumps({
+            "orphan_metadata": [str(value) for value in audit.orphan_metadata.values()],
+            "unregistered_active_settings": [str(value) for value in audit.unregistered_active_settings.values()],
+        }, sort_keys=True))
+
+    records = []
+
+    for _, metadata in registry.metadata_manifest().items():
+        default_value = metadata.default_value
+
+        if not isinstance(default_value, (bool, int, float, str)):
+            default_value = None
+
+        records.append({
+            "default_value": default_value,
+            "migration_key": False if metadata.migration_key is False else str(metadata.migration_key),
+            "owner": str(metadata.owner),
+            "refresh_domains": {
+                str(key): bool(value)
+                for key, value in (metadata.refresh_domains or {}).items()
+            },
+            "setting_id": str(metadata.setting_id),
+            "test_id": str(metadata.test_id),
+            "title_id": False if metadata.title_id is False else str(metadata.title_id),
+            "tooltip_id": False if metadata.tooltip_id is False else str(metadata.tooltip_id),
+            "type": str(metadata.type),
+            "visibility": str(metadata.visibility),
+        })
+
+    return records
+
+
 def build_manifest() -> dict[str, object]:
-    data, localization = load_schema()
+    data, localization, registry = load_schema()
     settings = collect_settings(data["options"]["widgets"])
+    metadata = metadata_records(registry, data)
     localization_keys = sorted(str(key) for key, _ in localization.items())
     missing_localization = []
 
@@ -87,6 +131,8 @@ def build_manifest() -> dict[str, object]:
 
     return {
         "schema_version": 1,
+        "metadata_count": len(metadata),
+        "metadata_sha256": digest(metadata),
         "settings_count": len(settings),
         "setting_ids_sha256": digest(settings),
         "localization_keys_count": len(localization_keys),
