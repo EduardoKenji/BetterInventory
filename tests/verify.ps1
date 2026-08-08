@@ -124,6 +124,8 @@ $curioAcquisition = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInven
 $curioValues = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_curio_values.lua") -Raw
 $itemCustomization = @(
 	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_item_customization.lua") -Raw
+	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_item_customization_editor.lua") -Raw
+	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_item_customization_name_it.lua") -Raw
 	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_item_customization_store.lua") -Raw
 ) -join "`n"
 $diagnostics = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_diagnostics.lua") -Raw

@@ -9,7 +9,8 @@
   },
   "hook_modules": {
     "BetterInventory.lua": "bootstrap-and-runtime-hooks",
-    "BetterInventory_item_customization.lua": "customization-editor-hooks"
+    "BetterInventory_item_customization.lua": "customization-storage-hooks",
+    "BetterInventory_item_customization_editor.lua": "customization-editor-hooks"
   },
   "modules": {
     "BetterInventory.lua": {"category": "bootstrap", "risk": "critical", "dependencies": ["BetterInventory_layout.lua", "BetterInventory_character_overview.lua", "BetterInventory_feature_domains.lua", "BetterInventory_contracts.lua", "BetterInventory_features.lua", "BetterInventory_curio_acquisition.lua", "BetterInventory_item_customization.lua", "BetterInventory_equipment_persistence.lua", "BetterInventory_settings.lua", "BetterInventory_diagnostics.lua"]},
@@ -25,7 +26,9 @@
     "BetterInventory_feature_domains.lua": {"category": "pure-domain", "risk": "high", "dependencies": []},
     "BetterInventory_feature_sorting.lua": {"category": "integration-adapter", "risk": "high", "dependencies": []},
     "BetterInventory_features.lua": {"category": "feature-facade-pending-extraction", "risk": "critical", "dependencies": ["BetterInventory_curio_values.lua", "BetterInventory_feature_domains.lua", "BetterInventory_feature_composition.lua", "BetterInventory_feature_sorting.lua", "BetterInventory_contracts.lua", "BetterInventory_view_session.lua", "BetterInventory_operation_arbiter.lua"]},
-    "BetterInventory_item_customization.lua": {"category": "feature-facade-pending-extraction", "risk": "high", "dependencies": ["BetterInventory_item_customization_store.lua"]},
+    "BetterInventory_item_customization.lua": {"category": "feature-facade-pending-extraction", "risk": "high", "dependencies": ["BetterInventory_item_customization_editor.lua", "BetterInventory_item_customization_name_it.lua", "BetterInventory_item_customization_store.lua"]},
+    "BetterInventory_item_customization_editor.lua": {"category": "ui-integration", "risk": "high", "dependencies": []},
+    "BetterInventory_item_customization_name_it.lua": {"category": "integration-adapter", "risk": "high", "dependencies": []},
     "BetterInventory_item_customization_store.lua": {"category": "async-state", "risk": "high", "dependencies": []},
     "BetterInventory_layout.lua": {"category": "ui-facade-pending-extraction", "risk": "high", "dependencies": []},
     "BetterInventory_localization.lua": {"category": "declarative-entrypoint", "risk": "medium", "dependencies": ["BetterInventory_localization_core.lua", "BetterInventory_localization_features.lua", "BetterInventory_localization_zh_cn.lua"]},

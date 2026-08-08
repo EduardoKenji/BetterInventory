@@ -18,6 +18,20 @@ STORE_PATH = (
     / "BetterInventory"
     / "BetterInventory_item_customization_store.lua"
 )
+NAME_IT_PATH = (
+    PROJECT_ROOT
+    / "scripts"
+    / "mods"
+    / "BetterInventory"
+    / "BetterInventory_item_customization_name_it.lua"
+)
+EDITOR_PATH = (
+    PROJECT_ROOT
+    / "scripts"
+    / "mods"
+    / "BetterInventory"
+    / "BetterInventory_item_customization_editor.lua"
+)
 
 
 def main() -> None:
@@ -165,6 +179,10 @@ def main() -> None:
         function test_mod:io_dofile(path)
             if string.find(path, "BetterInventory_item_customization_store", 1, true) then
                 return better_inventory_store
+            elseif string.find(path, "BetterInventory_item_customization_name_it", 1, true) then
+                return better_inventory_name_it
+            elseif string.find(path, "BetterInventory_item_customization_editor", 1, true) then
+                return better_inventory_editor
             end
         end
 
@@ -228,6 +246,10 @@ def main() -> None:
     )
     store = lua.execute(STORE_PATH.read_text(encoding="utf-8"), name=str(STORE_PATH))
     lua.globals().better_inventory_store = store
+    name_it = lua.execute(NAME_IT_PATH.read_text(encoding="utf-8"), name=str(NAME_IT_PATH))
+    lua.globals().better_inventory_name_it = name_it
+    editor = lua.execute(EDITOR_PATH.read_text(encoding="utf-8"), name=str(EDITOR_PATH))
+    lua.globals().better_inventory_editor = editor
     customization = lua.execute(
         MODULE_PATH.read_text(encoding="utf-8"), name=str(MODULE_PATH)
     )

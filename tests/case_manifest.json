@@ -41,9 +41,9 @@
     {"name": "panel_lifecycle", "risk": "high", "start_line": 1691, "end_line": 2865}
   ],
   "test_item_customization.py": [
-      {"name": "dirty_save_outcomes", "risk": "high", "start_line": 224, "end_line": 419},
-      {"name": "bounded_retry_and_disable", "risk": "high", "start_line": 420, "end_line": 732},
-      {"name": "callback_failure_safety", "risk": "high", "start_line": 733, "end_line": 942}
+      {"name": "dirty_save_outcomes", "risk": "high", "start_line": 224, "end_line": 441},
+      {"name": "bounded_retry_and_disable", "risk": "high", "start_line": 442, "end_line": 754},
+      {"name": "callback_failure_safety", "risk": "high", "start_line": 755, "end_line": 964}
   ],
   "test_layout.py": [
     {"name": "card_geometry", "risk": "high", "start_line": 621, "end_line": 1594},
