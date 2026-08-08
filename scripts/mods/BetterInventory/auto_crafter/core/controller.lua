@@ -122,7 +122,9 @@ local function planner_config_signature(config)
 	return table.concat({
 		tostring(config.dump_stat),
 		tostring(config.dump_target),
+		tostring(config.cap_by_dockets),
 		tostring(config.docket_cap),
+		tostring(config.cap_by_max_purchases),
 		tostring(config.max_purchases),
 		tostring(config.best_candidate_fallback),
 		tostring(config.request_mode),
@@ -215,7 +217,9 @@ function Controller.new(dependencies)
 	local planner_setting_ids = {
 		auto_crafter_target_dump_stat = true,
 		auto_crafter_dump_stat_target = true,
+		auto_crafter_cap_by_dockets = true,
 		auto_crafter_docket_cap = true,
+		auto_crafter_cap_by_max_purchases = true,
 		auto_crafter_max_purchases = true,
 		auto_crafter_best_candidate_fallback = true,
 		auto_crafter_request_mode = true,
@@ -229,7 +233,9 @@ function Controller.new(dependencies)
 		return {
 			dump_stat = setting("auto_crafter_target_dump_stat", "damage"),
 			dump_target = setting("auto_crafter_dump_stat_target", 60),
+			cap_by_dockets = setting("auto_crafter_cap_by_dockets", false),
 			docket_cap = setting("auto_crafter_docket_cap", 1000000),
+			cap_by_max_purchases = setting("auto_crafter_cap_by_max_purchases", false),
 			max_purchases = setting("auto_crafter_max_purchases", 100),
 			best_candidate_fallback = setting("auto_crafter_best_candidate_fallback", false),
 			request_mode = setting("auto_crafter_request_mode", "sequential"),
@@ -587,13 +593,13 @@ function Controller.new(dependencies)
 			return false
 		end
 
-		if search.purchases >= max_purchases then
+		if search.cap_by_max_purchases and search.purchases >= max_purchases then
 			self:_stop_search("search_max_purchases")
 
 			return false
 		end
 
-		if search.spent + price > search.docket_cap then
+		if search.cap_by_dockets and search.spent + price > search.docket_cap then
 			self:_stop_search("search_docket_cap")
 
 			return false
@@ -723,9 +729,11 @@ function Controller.new(dependencies)
 
 		self._generation = self._generation + 1
 		self._search = {
+			cap_by_dockets = setting("auto_crafter_cap_by_dockets", false) == true,
 			docket_cap = tonumber(setting("auto_crafter_docket_cap", 1000000)) or 0,
 			dump_stat = dump_stat,
 			generation = self._generation,
+			cap_by_max_purchases = setting("auto_crafter_cap_by_max_purchases", false) == true,
 			max_purchases = tonumber(setting("auto_crafter_max_purchases", 100)) or 0,
 			purchases = 0,
 			running = true,

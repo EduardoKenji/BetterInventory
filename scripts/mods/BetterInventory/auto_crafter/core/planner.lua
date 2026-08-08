@@ -3,7 +3,9 @@ local Planner = {}
 local DEFAULTS = {
 	dump_stat = "damage",
 	dump_target = 60,
+	cap_by_dockets = false,
 	docket_cap = 1000000,
+	cap_by_max_purchases = false,
 	max_purchases = 100,
 	best_candidate_fallback = false,
 	request_mode = "sequential",
@@ -65,7 +67,9 @@ local function normalize_config(config)
 	return {
 		dump_stat = text_or(config.dump_stat, DEFAULTS.dump_stat),
 		dump_target = number_or(config.dump_target, DEFAULTS.dump_target),
+		cap_by_dockets = config.cap_by_dockets == true,
 		docket_cap = number_or(config.docket_cap, DEFAULTS.docket_cap),
+		cap_by_max_purchases = config.cap_by_max_purchases == true,
 		max_purchases = number_or(config.max_purchases, DEFAULTS.max_purchases),
 		best_candidate_fallback = config.best_candidate_fallback == true,
 		request_mode = request_mode,
@@ -125,11 +129,15 @@ function Planner.build(snapshot, config)
 		append_reason(reasons, "dump-stat target must be between 1 and 100")
 	end
 
-	if normalized.max_purchases <= 0 then
+	if not normalized.cap_by_dockets and not normalized.cap_by_max_purchases then
+		append_reason(reasons, "enable at least one acquisition cap")
+	end
+
+	if normalized.cap_by_max_purchases and normalized.max_purchases <= 0 then
 		append_reason(reasons, "maximum purchases must be greater than zero")
 	end
 
-	if normalized.docket_cap <= 0 then
+	if normalized.cap_by_dockets and normalized.docket_cap <= 0 then
 		append_reason(reasons, "docket cap must be greater than zero")
 	end
 
@@ -143,14 +151,20 @@ function Planner.build(snapshot, config)
 		append_reason(reasons, "insufficient dockets for one offer")
 	end
 
-	if price and normalized.docket_cap < price then
+	if normalized.cap_by_dockets and price and normalized.docket_cap < price then
 		append_reason(reasons, "docket cap is below one offer")
 	end
 
 	local dockets_cap
 
-	if price and normalized.max_purchases > 0 and normalized.docket_cap > 0 then
-		dockets_cap = math.min(normalized.docket_cap, price * normalized.max_purchases)
+	if normalized.cap_by_dockets and normalized.docket_cap > 0 then
+		dockets_cap = normalized.docket_cap
+	end
+
+	if normalized.cap_by_max_purchases and price and normalized.max_purchases > 0 then
+		local purchase_cap = price * normalized.max_purchases
+
+		dockets_cap = dockets_cap and math.min(dockets_cap, purchase_cap) or purchase_cap
 	end
 
 	local estimate = {
@@ -160,7 +174,7 @@ function Planner.build(snapshot, config)
 		plasteel = "deferred until a candidate exists",
 		diamantine = "deferred until a candidate exists",
 		purchase_count_floor = price and 1 or nil,
-		purchase_count_cap = normalized.max_purchases,
+		purchase_count_cap = normalized.cap_by_max_purchases and normalized.max_purchases or nil,
 	}
 
 	local preflight = {
@@ -197,7 +211,9 @@ function Planner.build(snapshot, config)
 		dump_stat = normalized.dump_stat,
 		dump_stat_resolution = dump_stat_resolution,
 		dump_target = normalized.dump_target,
+		cap_by_dockets = normalized.cap_by_dockets,
 		best_candidate_fallback = normalized.best_candidate_fallback,
+		cap_by_max_purchases = normalized.cap_by_max_purchases,
 		max_purchases = normalized.max_purchases,
 		docket_cap = normalized.docket_cap,
 		preflight = preflight,
