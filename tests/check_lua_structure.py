@@ -138,6 +138,47 @@ def validate_panel_font_types() -> int:
     return len(panel_fonts)
 
 
+def validate_auto_crafter_phase_1b() -> int:
+    """Keep the planner milestone read-only until a later mutation phase is reviewed."""
+
+    auto_crafter_root = RUNTIME_ROOT / "auto_crafter"
+    lua_paths = sorted(auto_crafter_root.rglob("*.lua"))
+    mutation_tokens = (
+        "purchase_item",
+        "upgrade_weapon_rarity",
+        "add_weapon_expertise",
+        "extract_weapon_mastery",
+        "replace_trait_in_weapon",
+        "replace_perk_in_weapon",
+    )
+
+    for path in lua_paths:
+        source = path.read_text(encoding="utf-8")
+        ast.parse(source)
+
+        if path.name in {"planner.lua", "controller.lua", "panel.lua", "BetterInventory_auto_crafter.lua"}:
+            forbidden = [token for token in mutation_tokens if token in source]
+
+            if forbidden:
+                raise SystemExit(
+                    f"Phase 1B Auto Crafter file contains mutation token(s): {path.name}: {', '.join(forbidden)}"
+                )
+
+    planner_source = (auto_crafter_root / "core" / "planner.lua").read_text(encoding="utf-8")
+    required_contract = (
+        "function Planner.build",
+        'status = preflight.ok and "ready" or "blocked"',
+        'request_mode = "sequential"',
+        "materials deferred",
+    )
+    missing = [token for token in required_contract if token not in planner_source]
+
+    if missing:
+        raise SystemExit("Auto Crafter planner contract missing: " + ", ".join(missing))
+
+    return len(lua_paths)
+
+
 def run() -> None:
     main_path = RUNTIME_ROOT / "BetterInventory.lua"
     layout_path = RUNTIME_ROOT / "BetterInventory_layout.lua"
@@ -209,12 +250,14 @@ def run() -> None:
         )
 
     panel_font_count = validate_panel_font_types()
+    auto_crafter_file_count = validate_auto_crafter_phase_1b()
 
     print(
         "BetterInventory AST structure checks passed "
         f"(main assignments={len(actual_assignments)}, layout calls={len(found_calls)}, "
         f"local module references checked={len(missing_modules) + len(local_io_dofile_targets(main_tree))}, "
-        f"Auto Crafter panel fonts checked={panel_font_count})."
+        f"Auto Crafter panel fonts checked={panel_font_count}, "
+        f"Phase 1B files checked={auto_crafter_file_count})."
     )
 
 

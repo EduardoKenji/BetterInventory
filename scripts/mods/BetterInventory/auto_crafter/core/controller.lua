@@ -16,11 +16,80 @@ local function safe_call(fn, ...)
 	return pcall(fn, ...)
 end
 
+local function safe_member(object, key)
+	if type(object) ~= "table" and type(object) ~= "userdata" then
+		return nil
+	end
+
+	local ok, value = pcall(function()
+		return object[key]
+	end)
+
+	return ok and value or nil
+end
+
+local function offer_key(offer)
+	if not offer then
+		return nil
+	end
+
+	if offer.offer_id ~= nil then
+		return "offer:" .. tostring(offer.offer_id)
+	end
+
+	if offer.master_id ~= nil then
+		return "master:" .. tostring(offer.master_id)
+	end
+
+	return nil
+end
+
+local function selected_offer_ids(raw_offer)
+	if not raw_offer then
+		return nil
+	end
+
+	local selected_offer = {
+		offer_id = safe_member(raw_offer, "offerId") or safe_member(raw_offer, "offer_id"),
+		master_id = safe_member(raw_offer, "masterId") or safe_member(raw_offer, "master_id"),
+	}
+	local description = safe_member(raw_offer, "description")
+	local choices = safe_member(description, "lootChoices") or safe_member(description, "loot_choices")
+	local choice = type(choices) == "table" and choices[1] or nil
+
+	if selected_offer.master_id == nil then
+		if type(choice) == "table" then
+			selected_offer.master_id = choice.masterId or choice.master_id or choice.id or choice.name
+		else
+			selected_offer.master_id = choice
+		end
+	end
+
+	if selected_offer.offer_id == nil and selected_offer.master_id == nil then
+		return nil
+	end
+
+	return selected_offer
+end
+
+local function planner_config_signature(config)
+	return table.concat({
+		tostring(config.dump_stat),
+		tostring(config.dump_target),
+		tostring(config.docket_cap),
+		tostring(config.max_purchases),
+		tostring(config.best_candidate_fallback),
+		tostring(config.request_mode),
+	}, "|")
+end
+
 function Controller.new(dependencies)
 	dependencies = dependencies or {}
 
 	local self = {
 		_backend = dependencies.backend,
+		_planner = dependencies.planner,
+		_get_selected_offer = dependencies.get_selected_offer,
 		_context = dependencies.context or {},
 		_reporter = dependencies.reporter or {},
 		_logger = dependencies.logger or {},
@@ -38,6 +107,10 @@ function Controller.new(dependencies)
 		_last_error = nil,
 		_last_probe_at = nil,
 		_probe_count = 0,
+		_plan = nil,
+		_selected_target_key = nil,
+		_selected_native_key = nil,
+		_planner_signature = nil,
 	}
 
 	local function report(kind, payload)
@@ -78,6 +151,88 @@ function Controller.new(dependencies)
 
 	local function probe_enabled()
 		return enabled() and setting("auto_crafter_read_only_probe", true) == true
+	end
+
+	local planner_setting_ids = {
+		auto_crafter_target_dump_stat = true,
+		auto_crafter_dump_stat_target = true,
+		auto_crafter_docket_cap = true,
+		auto_crafter_max_purchases = true,
+		auto_crafter_best_candidate_fallback = true,
+		auto_crafter_request_mode = true,
+	}
+
+	local function planner_config()
+		return {
+			dump_stat = setting("auto_crafter_target_dump_stat", "damage"),
+			dump_target = setting("auto_crafter_dump_stat_target", 60),
+			docket_cap = setting("auto_crafter_docket_cap", 1000000),
+			max_purchases = setting("auto_crafter_max_purchases", 100),
+			best_candidate_fallback = setting("auto_crafter_best_candidate_fallback", false),
+			request_mode = setting("auto_crafter_request_mode", "sequential"),
+			target_offer = nil,
+		}
+	end
+
+	function self:_selected_offer_summary()
+		if not self._snapshot or type(self._get_selected_offer) ~= "function" then
+			return nil
+		end
+
+		local ok, raw_offer = safe_call(self._get_selected_offer, self._active_view)
+		local selected_offer = ok and selected_offer_ids(raw_offer) or nil
+
+		if not selected_offer then
+			return nil
+		end
+
+		local offers = self._snapshot.store and self._snapshot.store.offers or {}
+
+		for _, offer in ipairs(offers) do
+			local matches = selected_offer.offer_id and offer.offer_id == selected_offer.offer_id or selected_offer.master_id and offer.master_id == selected_offer.master_id
+
+			if matches then
+				return offer
+			end
+		end
+
+		return nil
+	end
+
+	function self:_refresh_plan(reason)
+		if not self._snapshot or not self._planner or type(self._planner.build) ~= "function" then
+			return false
+		end
+
+		local config = planner_config()
+		config.target_offer = self:_selected_offer_summary()
+		self._selected_native_key = offer_key(config.target_offer)
+		self._planner_signature = planner_config_signature(config)
+		local ok, plan = pcall(self._planner.build, self._snapshot, config)
+
+		if not ok or type(plan) ~= "table" then
+			self._plan = {
+				kind = "read_only_plan",
+				status = "blocked",
+				preflight = {
+					ok = false,
+					reasons = {
+						"planner failed: " .. tostring(plan),
+					},
+					summary = "BLOCKED | planner failed",
+				},
+			}
+		else
+			self._plan = plan
+		end
+
+		self._selected_target_key = self._plan.target and offer_key(self._plan.target) or nil
+		report("plan_updated", {
+			reason = reason or "refresh",
+			plan = self._plan,
+		})
+
+		return true
 	end
 
 	local function context_is_valid(view)
@@ -138,6 +293,7 @@ function Controller.new(dependencies)
 		self._last_error = nil
 		self._last_probe_at = type(self._clock.now) == "function" and self._clock:now() or nil
 		self._probe_count = self._probe_count + 1
+		self:_refresh_plan("probe_complete")
 		report("probe_complete", snapshot)
 	end
 
@@ -217,6 +373,10 @@ function Controller.new(dependencies)
 			self._active_view = view
 			self._view_is_valid = true
 			self._phase = "view_ready"
+			self._plan = nil
+			self._selected_target_key = nil
+			self._selected_native_key = nil
+			self._planner_signature = nil
 		end
 
 		return self:_schedule_probe("brunt_view_ready")
@@ -232,6 +392,11 @@ function Controller.new(dependencies)
 		self._active_view = nil
 		self._view_is_valid = false
 		self._phase = "idle"
+		self._snapshot = nil
+		self._plan = nil
+		self._selected_target_key = nil
+		self._selected_native_key = nil
+		self._planner_signature = nil
 
 		return true
 	end
@@ -242,6 +407,11 @@ function Controller.new(dependencies)
 		self._active_view = nil
 		self._view_is_valid = false
 		self._phase = "context_exit"
+		self._snapshot = nil
+		self._plan = nil
+		self._selected_target_key = nil
+		self._selected_native_key = nil
+		self._planner_signature = nil
 		report("context_exit", {
 			reason = reason or "game_state_exit",
 		})
@@ -256,6 +426,13 @@ function Controller.new(dependencies)
 			invalidate_generation()
 			cancel_probe()
 			self._phase = "disabled"
+			self._plan = nil
+			return true
+		end
+
+		if planner_setting_ids[setting_id] then
+			self:_refresh_plan("planner_setting_changed")
+
 			return true
 		end
 
@@ -289,6 +466,22 @@ function Controller.new(dependencies)
 			return
 		end
 
+		if self._snapshot and not self._probe_inflight and type(self._get_selected_offer) == "function" then
+			local current_config = planner_config()
+
+			if planner_config_signature(current_config) ~= self._planner_signature then
+				self:_refresh_plan("planner_setting_changed")
+			end
+
+			local selected_ok, raw_offer = safe_call(self._get_selected_offer, self._active_view)
+			local selected_key = selected_ok and offer_key(selected_offer_ids(raw_offer)) or nil
+
+			if selected_key ~= self._selected_native_key then
+				self._selected_native_key = selected_key
+				self:_refresh_plan("target_changed")
+			end
+		end
+
 		if self._probe_scheduled and not self._probe_inflight then
 			self._probe_elapsed = self._probe_elapsed + finite_dt(dt)
 
@@ -307,7 +500,22 @@ function Controller.new(dependencies)
 			last_probe_at = self._last_probe_at,
 			last_error = self._last_error,
 			data = self._snapshot,
+			plan = self._plan,
 		}
+	end
+
+	function self:preview_plan()
+		if not self._snapshot then
+			return false
+		end
+
+		self:_refresh_plan("manual_preview")
+		self._phase = "plan_preview"
+		report("plan_preview", {
+			plan = self._plan,
+		})
+
+		return true
 	end
 
 	function self:shutdown()
@@ -316,6 +524,11 @@ function Controller.new(dependencies)
 		self._active_view = nil
 		self._view_is_valid = false
 		self._phase = "shutdown"
+		self._snapshot = nil
+		self._plan = nil
+		self._selected_target_key = nil
+		self._selected_native_key = nil
+		self._planner_signature = nil
 	end
 
 	return self

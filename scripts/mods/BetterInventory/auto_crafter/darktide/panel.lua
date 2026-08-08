@@ -11,6 +11,7 @@ local ROW_HEIGHT = 36
 local ROW_SPACING = 4
 local MAX_OFFER_ROWS = 10
 local MAX_SELECTION_ATTEMPTS = 240
+local SECTION_PLANNER = "planner"
 local SECTION_MELEE = "melee"
 local SECTION_RANGED = "ranged"
 
@@ -40,6 +41,23 @@ local function value_text(value, fallback)
 	end
 
 	return tostring(value)
+end
+
+local function integer_text(value, fallback)
+	local number = tonumber(value)
+
+	if not number then
+		return fallback or "?"
+	end
+
+	local text = tostring(math.floor(number))
+	local changed
+
+	repeat
+		text, changed = string.gsub(text, "^(%-?%d+)(%d%d%d)", "%1,%2")
+	until changed == 0
+
+	return text
 end
 
 local function wallet_amount(snapshot, currency)
@@ -249,18 +267,23 @@ function Panel.new(dependencies)
 	local self = {
 		_get_selected_offer = dependencies.get_selected_offer,
 		_select_offer = dependencies.select_offer,
+		_preview_plan = dependencies.preview_plan,
+		_settings = dependencies.settings or {},
 		_localize = dependencies.localize,
 		_logger = dependencies.logger,
 		_ViewElementGrid = dependencies.ViewElementGrid,
 		_panel = nil,
 		_view = nil,
 		_snapshot = nil,
+		_controller_state = nil,
+		_plan = nil,
 		_phase = "idle",
 		_selected_offer_id = nil,
 		_selected_offer_key = nil,
 		_selected_offer = nil,
 		_selected_offer_master_id = nil,
 		_section_collapsed = {
+			[SECTION_PLANNER] = false,
 			[SECTION_MELEE] = true,
 			[SECTION_RANGED] = true,
 		},
@@ -337,7 +360,17 @@ function Panel.new(dependencies)
 			entry.refresh = function(widget)
 				widget.content.selected = self._selected_offer_key ~= nil and self._selected_offer_key == offer_selection_key(options.offer)
 			end
-		elseif options.refresh then
+		end
+
+		if options.action then
+			entry.bind = function(widget)
+				widget.content.hotspot.pressed_callback = function()
+					options.action()
+				end
+			end
+		end
+
+		if options.refresh then
 			entry.refresh = options.refresh
 		end
 
@@ -363,7 +396,82 @@ function Panel.new(dependencies)
 			end
 		end
 
-		return offers, selected_display_name or localize("auto_crafter_panel_selected_weapon", "Selected weapon")
+		if selected_display_name then
+			return offers, selected_display_name
+		end
+
+		return offers, selected_offer and localize("auto_crafter_panel_selected_weapon", "Selected weapon") or localize("auto_crafter_panel_no_target", "no weapon selected")
+	end
+
+	function self:_setting(setting_id, default_value)
+		local get = self._settings and self._settings.get
+
+		if type(get) ~= "function" then
+			return default_value
+		end
+
+		local ok, value = pcall(get, self._settings, setting_id)
+
+		return ok and value ~= nil and value or default_value
+	end
+
+	function self:_set_setting(setting_id, value)
+		local set = self._settings and self._settings.set
+
+		if type(set) ~= "function" then
+			return false
+		end
+
+		local ok, result = pcall(set, self._settings, setting_id, value)
+
+		return ok and result ~= false
+	end
+
+	function self:_cycle_setting(setting_id, values, default_value)
+		local current = self:_setting(setting_id, default_value)
+		local next_index = 1
+
+		for index, value in ipairs(values) do
+			if value == current then
+				next_index = index % #values + 1
+
+				break
+			end
+		end
+
+		self:_set_setting(setting_id, values[next_index])
+	end
+
+	function self:_planner_target_text()
+		local _, current_weapon = self:_selected_offers(self._snapshot)
+
+		return current_weapon or localize("auto_crafter_panel_no_target", "no weapon selected")
+	end
+
+	function self:_planner_dump_stat_text()
+		local value = self:_setting("auto_crafter_target_dump_stat", "damage")
+
+		if value == "auto" then
+			return localize("auto_crafter_dump_stat_auto", "Auto-discover (future)")
+		end
+
+		return localize("auto_crafter_dump_stat_damage", "Damage")
+	end
+
+	function self:_planner_request_mode_text()
+		local value = self:_setting("auto_crafter_request_mode", "sequential")
+
+		if value == "parallel_reads" then
+			return localize("auto_crafter_request_mode_parallel_reads", "Parallel reads")
+		elseif value == "experimental_parallel_mutations" then
+			return localize("auto_crafter_request_mode_experimental", "Experimental parallel mutations")
+		end
+
+		return localize("auto_crafter_request_mode_sequential", "Sequential (recommended)")
+	end
+
+	function self:_planner_fallback_text()
+		return self:_setting("auto_crafter_best_candidate_fallback", false) == true and localize("auto_crafter_value_on", "On") or localize("auto_crafter_value_off", "Off")
 	end
 
 	function self:_split_offers(offers)
@@ -431,11 +539,16 @@ function Panel.new(dependencies)
 		local offers, selected_weapon = self:_selected_offers(snapshot)
 		local grouped_offers = self:_split_offers(offers)
 		local selected = selected_weapon or localize("auto_crafter_panel_no_target", "no weapon selected")
+		local plan = self._plan or snapshot and snapshot.plan
 		local entries = {
 			self:_entry(localize("auto_crafter_panel_title", "Auto Crafter Helper"), localize("auto_crafter_panel_read_only", "READ-ONLY"), {
 				header = true,
 			}),
-			self:_entry(localize("auto_crafter_panel_status", "Status"), self._phase or value_text(snapshot and snapshot.phase, "idle")),
+			self:_entry(localize("auto_crafter_panel_status", "Status"), self._phase or value_text(snapshot and snapshot.phase, "idle"), {
+				refresh = function(widget)
+					widget.content.detail = self._phase or value_text(self._controller_state and self._controller_state.phase, "idle")
+				end,
+			}),
 			self:_entry(localize("auto_crafter_panel_offers", "Offers"), value_text(store.offer_count, "?")),
 			self:_entry(localize("auto_crafter_panel_wallet", "Wallet"), string.format("%s / %s / %s", value_text(wallet_amount(snapshot, "credits")), value_text(wallet_amount(snapshot, "plasteel")), value_text(wallet_amount(snapshot, "diamantine")))),
 			self:_entry(localize("auto_crafter_panel_gear", "Gear"), value_text(snapshot and snapshot.gear and snapshot.gear.item_count, "?")),
@@ -446,10 +559,97 @@ function Panel.new(dependencies)
 					widget.content.detail = current_weapon or localize("auto_crafter_panel_no_target", "no weapon selected")
 				end,
 			}),
-			self:_entry(localize("auto_crafter_panel_offer_list", "Weapon offers"), string.format("%s / %s", tostring(#offers), value_text(store.offer_count, "?")), {
+			self:_entry(localize("auto_crafter_panel_planner", "Planner configuration"), localize("auto_crafter_panel_read_only", "READ-ONLY"), {
 				header = true,
+				selectable = true,
+				section_header = true,
+				section_id = SECTION_PLANNER,
 			}),
 		}
+
+		if not self._section_collapsed[SECTION_PLANNER] then
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_planner_target", "Planner target"), self:_planner_target_text(), {
+				refresh = function(widget)
+					widget.content.detail = self:_planner_target_text()
+				end,
+			}))
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_dump_stat", "Dump stat"), self:_planner_dump_stat_text(), {
+				selectable = true,
+				action = function()
+					self:_cycle_setting("auto_crafter_target_dump_stat", { "damage", "auto" }, "damage")
+				end,
+				refresh = function(widget)
+					widget.content.detail = self:_planner_dump_stat_text()
+				end,
+			}))
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_dump_target", "Dump target"), integer_text(self:_setting("auto_crafter_dump_stat_target", 60)), {
+				refresh = function(widget)
+					widget.content.detail = integer_text(self:_setting("auto_crafter_dump_stat_target", 60))
+				end,
+			}))
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_docket_cap", "Docket cap"), integer_text(self:_setting("auto_crafter_docket_cap", 1000000)), {
+				selectable = true,
+				action = function()
+					self:_cycle_setting("auto_crafter_docket_cap", { 100000, 200000, 300000, 500000, 1000000 }, 1000000)
+				end,
+				refresh = function(widget)
+					widget.content.detail = integer_text(self:_setting("auto_crafter_docket_cap", 1000000))
+				end,
+			}))
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_max_purchases", "Max purchases"), integer_text(self:_setting("auto_crafter_max_purchases", 100)), {
+				selectable = true,
+				action = function()
+					self:_cycle_setting("auto_crafter_max_purchases", { 10, 25, 50, 100, 250, 500 }, 100)
+				end,
+				refresh = function(widget)
+					widget.content.detail = integer_text(self:_setting("auto_crafter_max_purchases", 100))
+				end,
+			}))
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_best_fallback", "Best-candidate fallback"), self:_planner_fallback_text(), {
+				selectable = true,
+				action = function()
+					self:_set_setting("auto_crafter_best_candidate_fallback", not (self:_setting("auto_crafter_best_candidate_fallback", false) == true))
+				end,
+				refresh = function(widget)
+					widget.content.detail = self:_planner_fallback_text()
+				end,
+			}))
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_request_mode", "Request mode"), self:_planner_request_mode_text(), {
+				selectable = true,
+				action = function()
+					self:_cycle_setting("auto_crafter_request_mode", { "sequential", "parallel_reads", "experimental_parallel_mutations" }, "sequential")
+				end,
+				refresh = function(widget)
+					widget.content.detail = self:_planner_request_mode_text()
+				end,
+			}))
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_estimate", "Estimate"), plan and plan.estimate and plan.estimate.summary or localize("auto_crafter_panel_waiting", "waiting for probe"), {
+				refresh = function(widget)
+					local current_plan = self._plan
+
+					widget.content.detail = current_plan and current_plan.estimate and current_plan.estimate.summary or localize("auto_crafter_panel_waiting", "waiting for probe")
+				end,
+			}))
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_preflight", "Preflight"), plan and plan.preflight and plan.preflight.summary or localize("auto_crafter_panel_waiting", "waiting for probe"), {
+				refresh = function(widget)
+					local current_plan = self._plan
+
+					widget.content.detail = current_plan and current_plan.preflight and current_plan.preflight.summary or localize("auto_crafter_panel_waiting", "waiting for probe")
+				end,
+			}))
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_preview", "Preview plan"), localize("auto_crafter_panel_read_only_preview", "READ-ONLY; no mutations"), {
+				selectable = true,
+				action = function()
+					if type(self._preview_plan) == "function" then
+						self._preview_plan()
+					end
+				end,
+			}))
+		end
+
+		table.insert(entries, self:_entry(localize("auto_crafter_panel_offer_list", "Weapon offers"), string.format("%s / %s", tostring(#offers), value_text(store.offer_count, "?")), {
+			header = true,
+		}))
 
 		for _, section_id in ipairs({ SECTION_MELEE, SECTION_RANGED }) do
 			local section_offers = grouped_offers[section_id]
@@ -522,6 +722,19 @@ function Panel.new(dependencies)
 		self._phase = phase or self._phase
 
 		return self:render(snapshot)
+	end
+
+	function self:sync_controller_snapshot(state)
+		if type(state) ~= "table" then
+			return false
+		end
+
+		self._controller_state = state
+		self._phase = state.phase or self._phase
+		self._snapshot = state.data or self._snapshot
+		self._plan = state.plan
+
+		return true
 	end
 
 	function self:update()
@@ -633,12 +846,15 @@ function Panel.new(dependencies)
 		self._view = view
 		self._panel = panel
 		self._snapshot = nil
+		self._controller_state = nil
+		self._plan = nil
 		self._phase = "view_ready"
 		self._selected_offer_id = nil
 		self._selected_offer_key = nil
 		self._selected_offer = nil
 		self._selected_offer_master_id = nil
 		self._section_collapsed = {
+			[SECTION_PLANNER] = false,
 			[SECTION_MELEE] = true,
 			[SECTION_RANGED] = true,
 		}
@@ -671,12 +887,15 @@ function Panel.new(dependencies)
 		self._view = nil
 		self._panel = nil
 		self._snapshot = nil
+		self._controller_state = nil
+		self._plan = nil
 		self._phase = "idle"
 		self._selected_offer_id = nil
 		self._selected_offer_key = nil
 		self._selected_offer = nil
 		self._selected_offer_master_id = nil
 		self._section_collapsed = {
+			[SECTION_PLANNER] = false,
 			[SECTION_MELEE] = true,
 			[SECTION_RANGED] = true,
 		}

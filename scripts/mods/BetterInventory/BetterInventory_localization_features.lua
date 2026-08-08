@@ -543,7 +543,7 @@ local localization = {
 		en = "Shows every Curio name in a reserved two-line title area above the primary attribute and three secondary attributes. Works with or without Name It. Reopen the current view after changing this option.",
 	},
 	auto_crafter_group = {
-		en = "Auto Crafter Helper (read-only Phase 1)",
+		en = "Auto Crafter Helper (read-only Phase 1B planner)",
 	},
 	auto_crafter_enable = {
 		en = "Enable Auto Crafter Helper probe",
@@ -558,10 +558,61 @@ local localization = {
 		en = "Reads current Brunt offers, wallets, and gear once after entering the Armoury view. Disabled automatically when Auto Crafter Helper is disabled.",
 	},
 	auto_crafter_show_probe_notifications = {
-		en = "Show Auto Crafter probe notifications",
+		en = "Show Auto Crafter read-only notifications",
 	},
 	auto_crafter_show_probe_notifications_tooltip = {
-		en = "Enabled by default. Shows native notification status after the read-only probe starts, completes, or fails. Notification errors cannot affect game data.",
+		en = "Enabled by default. Shows native notification status for read-only probes and plan previews. Notification errors cannot affect game data.",
+	},
+	auto_crafter_target_dump_stat = {
+		en = "Auto Crafter target dump stat",
+	},
+	auto_crafter_target_dump_stat_tooltip = {
+		en = "Mandatory planner target. Damage is the safe default; Auto-discover is reserved for dynamic candidate-stat discovery in a later mutation phase.",
+	},
+	auto_crafter_dump_stat_damage = {
+		en = "Damage",
+	},
+	auto_crafter_dump_stat_auto = {
+		en = "Auto-discover (future)",
+	},
+	auto_crafter_dump_stat_target = {
+		en = "Dump stat target",
+	},
+	auto_crafter_dump_stat_target_tooltip = {
+		en = "Desired dump-stat percentage. Phase 1B only validates this value; it does not purchase or modify items.",
+	},
+	auto_crafter_docket_cap = {
+		en = "Auto Crafter docket cap",
+	},
+	auto_crafter_docket_cap_tooltip = {
+		en = "Maximum dockets the future purchase loop may budget. The Phase 1B planner reports a floor and cap only; it does not spend dockets.",
+	},
+	auto_crafter_max_purchases = {
+		en = "Auto Crafter maximum purchases",
+	},
+	auto_crafter_max_purchases_tooltip = {
+		en = "Hard upper bound for the future serialized search loop. Phase 1B uses it for preflight and cost planning only.",
+	},
+	auto_crafter_best_candidate_fallback = {
+		en = "Keep best candidate if target is missed",
+	},
+	auto_crafter_best_candidate_fallback_tooltip = {
+		en = "Allows the future loop to retain the closest dump-stat candidate when the exact target is not found before a cap. Disabled by default.",
+	},
+	auto_crafter_request_mode = {
+		en = "Auto Crafter request mode",
+	},
+	auto_crafter_request_mode_tooltip = {
+		en = "Sequential is the default and safest mode. Parallel reads are a future opt-in experiment; parallel mutations remain blocked until backend behavior is proven.",
+	},
+	auto_crafter_request_mode_sequential = {
+		en = "Sequential (recommended)",
+	},
+	auto_crafter_request_mode_parallel_reads = {
+		en = "Parallel reads",
+	},
+	auto_crafter_request_mode_experimental = {
+		en = "Experimental parallel mutations",
 	},
 	auto_crafter_notification_title = {
 		en = "Auto Crafter Helper",
@@ -576,7 +627,7 @@ local localization = {
 		en = "Auto Crafter Helper",
 	},
 	auto_crafter_panel_read_only = {
-		en = "READ-ONLY",
+		en = "READ-ONLY PLANNER",
 	},
 	auto_crafter_panel_status = {
 		en = "Status",
@@ -616,6 +667,51 @@ local localization = {
 	},
 	auto_crafter_panel_more = {
 		en = "More offers available",
+	},
+	auto_crafter_panel_planner = {
+		en = "Planner configuration",
+	},
+	auto_crafter_panel_planner_target = {
+		en = "Planner target",
+	},
+	auto_crafter_panel_dump_stat = {
+		en = "Dump stat",
+	},
+	auto_crafter_panel_dump_target = {
+		en = "Dump target",
+	},
+	auto_crafter_panel_docket_cap = {
+		en = "Docket cap",
+	},
+	auto_crafter_panel_max_purchases = {
+		en = "Max purchases",
+	},
+	auto_crafter_panel_best_fallback = {
+		en = "Best-candidate fallback",
+	},
+	auto_crafter_panel_request_mode = {
+		en = "Request mode",
+	},
+	auto_crafter_panel_estimate = {
+		en = "Estimate",
+	},
+	auto_crafter_panel_preflight = {
+		en = "Preflight",
+	},
+	auto_crafter_panel_preview = {
+		en = "Craft (read-only preview)",
+	},
+	auto_crafter_panel_read_only_preview = {
+		en = "READ-ONLY; no mutations",
+	},
+	auto_crafter_panel_waiting = {
+		en = "waiting for probe",
+	},
+	auto_crafter_value_on = {
+		en = "On",
+	},
+	auto_crafter_value_off = {
+		en = "Off",
 	},
 }
 

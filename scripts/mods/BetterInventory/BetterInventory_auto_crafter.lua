@@ -82,6 +82,17 @@ local function format_probe(snapshot)
 	)
 end
 
+local function format_plan(plan)
+	if not plan then
+		return "Read-only planner is waiting for probe data."
+	end
+
+	local preflight = plan.preflight and plan.preflight.summary or "preflight unavailable"
+	local estimate = plan.estimate and plan.estimate.summary or "estimate unavailable"
+
+	return string.format("%s | %s | %s", preflight, estimate, plan.mode_note or "sequential requests")
+end
+
 local function reporter(ui_panel)
 	return {
 		emit = function(_, kind, payload)
@@ -106,6 +117,9 @@ local function reporter(ui_panel)
 
 				log("error", "Auto Crafter Helper read-only probe failed: " .. tostring(payload and payload.error))
 				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), string.format("%s: %s", localize("auto_crafter_probe_failed", "Read-only probe failed"), tostring(payload and payload.error)))
+			elseif kind == "plan_preview" then
+				log("info", "Auto Crafter Helper read-only plan preview: " .. format_plan(payload and payload.plan))
+				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), format_plan(payload and payload.plan))
 			elseif kind == "context_exit" then
 				log("info", "Auto Crafter Helper stopped read-only work: " .. tostring(payload and payload.reason or "context exit"))
 			end
@@ -117,6 +131,15 @@ local function settings_adapter()
 	return {
 		get = function(_, setting_id)
 			return setting(setting_id)
+		end,
+		set = function(_, setting_id, value)
+			if not mod or type(mod.set) ~= "function" then
+				return false
+			end
+
+			local ok = pcall(mod.set, mod, setting_id, value, false)
+
+			return ok
 		end,
 	}
 end
@@ -146,12 +169,19 @@ function AutoCrafter.configure(dependencies)
 	end
 
 	local ok_controller, Controller = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/core/controller")
+	local ok_planner, Planner = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/core/planner")
 	local ok_backend, Backend = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/backend")
 	local ok_context, Context = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/context")
 	local ok_panel, Panel = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/panel")
 
 	if not ok_controller or type(Controller) ~= "table" or type(Controller.new) ~= "function" then
 		log("error", "Auto Crafter Helper controller unavailable; feature disabled.")
+
+		return false
+	end
+
+	if not ok_planner or type(Planner) ~= "table" or type(Planner.build) ~= "function" then
+		log("error", "Auto Crafter Helper planner unavailable; feature disabled.")
 
 		return false
 	end
@@ -182,6 +212,10 @@ function AutoCrafter.configure(dependencies)
 		ViewElementGrid = dependencies.ViewElementGrid,
 		get_selected_offer = dependencies.get_selected_offer,
 		select_offer = dependencies.select_offer,
+		settings = settings_adapter(),
+		preview_plan = function()
+			return controller and controller:preview_plan() or false
+		end,
 		localize = function(setting_id)
 			return localize(setting_id, setting_id)
 		end,
@@ -193,7 +227,9 @@ function AutoCrafter.configure(dependencies)
 
 	controller = Controller.new({
 		backend = backend,
+		planner = Planner,
 		context = context,
+		get_selected_offer = dependencies.get_selected_offer,
 		reporter = reporter(panel),
 		logger = {
 			info = function(_, message) log("info", message) end,
@@ -255,6 +291,10 @@ function AutoCrafter.update(dt)
 
 	if controller then
 		controller:update(dt)
+
+		if panel and type(panel.sync_controller_snapshot) == "function" then
+			panel:sync_controller_snapshot(controller:snapshot())
+		end
 	end
 end
 

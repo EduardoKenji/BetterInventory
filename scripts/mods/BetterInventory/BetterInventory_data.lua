@@ -610,6 +610,78 @@ return {
 						type = "checkbox",
 						default_value = true,
 					},
+					{
+						setting_id = "auto_crafter_target_dump_stat",
+						tooltip = "auto_crafter_target_dump_stat_tooltip",
+						type = "dropdown",
+						default_value = "damage",
+						options = {
+							{
+								text = "auto_crafter_dump_stat_damage",
+								value = "damage",
+							},
+							{
+								text = "auto_crafter_dump_stat_auto",
+								value = "auto",
+							},
+						},
+					},
+					{
+						setting_id = "auto_crafter_dump_stat_target",
+						tooltip = "auto_crafter_dump_stat_target_tooltip",
+						type = "numeric",
+						default_value = 60,
+						range = {
+							1,
+							100,
+						},
+					},
+					{
+						setting_id = "auto_crafter_docket_cap",
+						tooltip = "auto_crafter_docket_cap_tooltip",
+						type = "numeric",
+						default_value = 1000000,
+						range = {
+							0,
+							10000000,
+						},
+					},
+					{
+						setting_id = "auto_crafter_max_purchases",
+						tooltip = "auto_crafter_max_purchases_tooltip",
+						type = "numeric",
+						default_value = 100,
+						range = {
+							1,
+							10000,
+						},
+					},
+					{
+						setting_id = "auto_crafter_best_candidate_fallback",
+						tooltip = "auto_crafter_best_candidate_fallback_tooltip",
+						type = "checkbox",
+						default_value = false,
+					},
+					{
+						setting_id = "auto_crafter_request_mode",
+						tooltip = "auto_crafter_request_mode_tooltip",
+						type = "dropdown",
+						default_value = "sequential",
+						options = {
+							{
+								text = "auto_crafter_request_mode_sequential",
+								value = "sequential",
+							},
+							{
+								text = "auto_crafter_request_mode_parallel_reads",
+								value = "parallel_reads",
+							},
+							{
+								text = "auto_crafter_request_mode_experimental",
+								value = "experimental_parallel_mutations",
+							},
+						},
+					},
 				},
 			},
 			{
