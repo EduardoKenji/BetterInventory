@@ -2641,9 +2641,6 @@ if ensure_class_method(InventoryView, "_create_entry_widget_from_config") then
 			local adapted_config = table.clone(config)
 			adapted_config.widget_type = widget_type
 			adapted_config.item = equipped_item
-			adapted_config.better_inventory_view_model = CharacterOverview.build_model(equipped_item, weapon_kind or "curio", {
-				widget_type = widget_type,
-			})
 
 			return create_widget(adapted_config)
 			end

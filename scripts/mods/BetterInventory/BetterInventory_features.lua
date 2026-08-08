@@ -17,25 +17,6 @@ local Features = {}
 Features._diagnostics = nil
 Features._domains = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_feature_domains")
 
--- Darktide scenegraph definitions can be strict tables. Optional geometry
--- probes must therefore use raw reads; a missing node is a normal degraded
--- state during Character Overview transitions, not a fatal contract error.
-Features._optional_field = function(object, field_name)
-	if type(object) == "table" then
-		return rawget(object, field_name)
-	elseif object ~= nil then
-		local success, value = pcall(function()
-			return object[field_name]
-		end)
-
-		if success then
-			return value
-		end
-	end
-
-	return nil
-end
-
 if type(Features._domains) ~= "table" or type(Features._domains.sorting) ~= "table" or type(Features._domains.sorting.signature) ~= "function" then
 	Features._domains = {
 		markers = {
@@ -56,6 +37,19 @@ if type(Features._domains) ~= "table" or type(Features._domains.sorting) ~= "tab
 	}
 end
 
+Features._composition = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_feature_composition")
+
+if type(Features._composition) ~= "table" or type(Features._composition.invalidate_view) ~= "function" or type(Features._composition.inputs_changed) ~= "function" then
+	Features._composition = {
+		invalidate_view = function()
+			return false
+		end,
+		inputs_changed = function()
+			return false
+		end,
+	}
+end
+
 Features.set_diagnostics_provider = function(provider)
 	Features._diagnostics = provider
 end
@@ -69,73 +63,11 @@ Features.count_diagnostic = function(name, amount)
 end
 
 Features.invalidate_view_composition = function(view)
-	if not view then
-		return false
-	end
-
-	view._better_inventory_composition_generation = (view._better_inventory_composition_generation or 0) + 1
-	view._better_inventory_composition_dirty = true
-
-	return true
+	return Features._composition.invalidate_view(view)
 end
 
 Features.composition_inputs_changed = function(view, slot_kind)
-	if not view then
-		return false
-	end
-
-	local scenegraph = view._ui_scenegraph
-	local window = Features._optional_field(scenegraph, "window")
-	local window_position = Features._optional_field(window, "position")
-	local window_size = Features._optional_field(window, "size")
-	local canvas = Features._optional_field(scenegraph, "canvas")
-	local canvas_size = Features._optional_field(canvas, "size")
-	local weapon_stats = view._weapon_stats
-	local weapon_stats_pivot = weapon_stats and weapon_stats._pivot_offset
-	local weapon_options = view._weapon_options_element
-	local weapon_options_pivot = weapon_options and weapon_options._pivot_offset
-	local window_x = window_position and window_position[1]
-	local window_y = window_position and window_position[2]
-	local window_width = window_size and window_size[1]
-	local window_height = window_size and window_size[2]
-	local stats_x = weapon_stats_pivot and weapon_stats_pivot[1]
-	local stats_y = weapon_stats_pivot and weapon_stats_pivot[2]
-	local options_x = weapon_options_pivot and weapon_options_pivot[1]
-	local options_y = weapon_options_pivot and weapon_options_pivot[2]
-	local discard_element = view._discard_items_element
-	local discard_position_reader = Features._optional_field(discard_element, "scenegraph_world_position")
-	local discard_size_reader = Features._optional_field(discard_element, "_scenegraph_size")
-	local discard_active = view._discard_items_element ~= nil
-	local filter_active = view._show_filter_panel == true
-	local selected_slot = view._selected_slot
-	local lantern_state = view._lantern_weapon_panel
-	local item_sorting_enabled_flag = item_sorting_mod and item_sorting_mod.enabled
-	local canvas_width = canvas_size and canvas_size[1]
-	local canvas_height = canvas_size and canvas_size[2]
-	local changed = view._better_inventory_composition_slot_kind ~= slot_kind or view._better_inventory_composition_window_x ~= window_x or view._better_inventory_composition_window_y ~= window_y or view._better_inventory_composition_window_width ~= window_width or view._better_inventory_composition_window_height ~= window_height or view._better_inventory_composition_canvas_width ~= canvas_width or view._better_inventory_composition_canvas_height ~= canvas_height or view._better_inventory_composition_stats_x ~= stats_x or view._better_inventory_composition_stats_y ~= stats_y or view._better_inventory_composition_options_x ~= options_x or view._better_inventory_composition_options_y ~= options_y or view._better_inventory_composition_context ~= view._context or view._better_inventory_composition_discard ~= discard_active or view._better_inventory_composition_discard_position_reader ~= discard_position_reader or view._better_inventory_composition_discard_size_reader ~= discard_size_reader or view._better_inventory_composition_filter ~= filter_active or view._better_inventory_composition_selected_slot ~= selected_slot or view._better_inventory_composition_lantern_state ~= lantern_state or view._better_inventory_composition_item_sorting_mod ~= item_sorting_mod or view._better_inventory_composition_item_sorting_enabled ~= item_sorting_enabled_flag
-
-	view._better_inventory_composition_slot_kind = slot_kind
-	view._better_inventory_composition_window_x = window_x
-	view._better_inventory_composition_window_y = window_y
-	view._better_inventory_composition_window_width = window_width
-	view._better_inventory_composition_window_height = window_height
-	view._better_inventory_composition_canvas_width = canvas_width
-	view._better_inventory_composition_canvas_height = canvas_height
-	view._better_inventory_composition_stats_x = stats_x
-	view._better_inventory_composition_stats_y = stats_y
-	view._better_inventory_composition_options_x = options_x
-	view._better_inventory_composition_options_y = options_y
-	view._better_inventory_composition_context = view._context
-	view._better_inventory_composition_discard_position_reader = discard_position_reader
-	view._better_inventory_composition_discard_size_reader = discard_size_reader
-	view._better_inventory_composition_selected_slot = selected_slot
-	view._better_inventory_composition_lantern_state = lantern_state
-	view._better_inventory_composition_item_sorting_mod = item_sorting_mod
-	view._better_inventory_composition_item_sorting_enabled = item_sorting_enabled_flag
-	view._better_inventory_composition_discard = discard_active
-	view._better_inventory_composition_filter = filter_active
-
-	return changed
+	return Features._composition.inputs_changed(view, slot_kind, item_sorting_mod)
 end
 
 Features._contracts = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_contracts")

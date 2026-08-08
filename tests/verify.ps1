@@ -154,6 +154,10 @@ if (([regex]::Matches($main, 'local previous_item\s*=\s*content\s+and\s+content\
 	throw "Character Overview item-swap cache/style refresh regression"
 }
 
+if ($main -match 'better_inventory_view_model') {
+	throw "Character Overview must not attach an unused view-model field to native widget config."
+}
+
 if ($layout -notmatch 'synchronize_rarity_tag_color' -or $layout -notmatch 'Items\.rarity_color' -or $layout -notmatch 'better_inventory_original_color') {
 	throw "The shared Curio rarity-strip colour synchronization was not found."
 }
