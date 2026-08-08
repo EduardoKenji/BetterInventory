@@ -121,6 +121,7 @@ $features = @(
 	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_discard_automatic.lua") -Raw
 	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_discard_policy.lua") -Raw
 	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_discard_transaction.lua") -Raw
+	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_panel_definitions.lua") -Raw
 ) -join "`n"
 $automaticDiscard = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_discard_automatic.lua") -Raw
 $featureSorting = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_feature_sorting.lua") -Raw

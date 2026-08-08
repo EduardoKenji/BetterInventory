@@ -67,6 +67,13 @@ FEATURE_SORTING_PATH = (
     / "BetterInventory"
     / "BetterInventory_feature_sorting.lua"
 )
+PANEL_DEFINITIONS_PATH = (
+    PROJECT_ROOT
+    / "scripts"
+    / "mods"
+    / "BetterInventory"
+    / "BetterInventory_panel_definitions.lua"
+)
 
 
 def main() -> None:
@@ -276,6 +283,10 @@ def main() -> None:
                     return TestFeatureSorting
                 end
 
+                if string.find(path, "BetterInventory_panel_definitions", 1, true) then
+                    return TestPanelDefinitions
+                end
+
                 if string.find(path, "BetterInventory_discard_policy", 1, true) then
                     return TestDiscardPolicy
                 end
@@ -347,6 +358,11 @@ def main() -> None:
         name=str(FEATURE_SORTING_PATH),
     )
     lua.globals().TestFeatureSorting = feature_sorting
+    panel_definitions = lua.execute(
+        PANEL_DEFINITIONS_PATH.read_text(encoding="utf-8"),
+        name=str(PANEL_DEFINITIONS_PATH),
+    )
+    lua.globals().TestPanelDefinitions = panel_definitions
     policy = lua.execute(
         POLICY_PATH.read_text(encoding="utf-8"), name=str(POLICY_PATH)
     )
