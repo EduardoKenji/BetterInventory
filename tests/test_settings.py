@@ -7,6 +7,8 @@ from localization_support import load_localization
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 MAIN_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory.lua"
 CHARACTER_OVERVIEW_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_character_overview.lua"
+CHARACTER_OVERVIEW_UI_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_character_overview_ui.lua"
+RUNTIME_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_runtime.lua"
 DATA_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_data.lua"
 LOCALIZATION_PATH = (
     PROJECT_ROOT
@@ -266,6 +268,14 @@ def main() -> None:
 				return false
 			end
 
+			if string.find(path, "BetterInventory_runtime", 1, true) then
+				return TestRuntime
+			end
+
+			if string.find(path, "BetterInventory_character_overview_ui", 1, true) then
+				return TestCharacterOverviewUI
+			end
+
 			if string.find(path, "BetterInventory_character_overview", 1, true) then
 				return TestCharacterOverview
 			end
@@ -343,7 +353,17 @@ def main() -> None:
         CHARACTER_OVERVIEW_PATH.read_text(encoding="utf-8"),
         name=str(CHARACTER_OVERVIEW_PATH),
     )
+    character_overview_ui = lua.execute(
+        CHARACTER_OVERVIEW_UI_PATH.read_text(encoding="utf-8"),
+        name=str(CHARACTER_OVERVIEW_UI_PATH),
+    )
+    runtime_module = lua.execute(
+        RUNTIME_PATH.read_text(encoding="utf-8"),
+        name=str(RUNTIME_PATH),
+    )
     lua.globals().TestCharacterOverview = character_overview
+    lua.globals().TestCharacterOverviewUI = character_overview_ui
+    lua.globals().TestRuntime = runtime_module
     lua.execute(MAIN_PATH.read_text(encoding="utf-8"), name=str(MAIN_PATH))
     globals_ = lua.globals()
     mod = globals_.test_mod

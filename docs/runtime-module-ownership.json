@@ -3,17 +3,18 @@
   "max_bytes": 100000,
   "preferred_bytes": 80000,
   "temporary_size_exceptions": {
-    "BetterInventory.lua": "R14 bootstrap extraction pending",
-    "BetterInventory_features.lua": "R11-R14 remaining feature-facade extraction pending"
+    "BetterInventory_features.lua": "R15-R16 remaining feature-facade extraction pending"
   },
   "hook_modules": {
-    "BetterInventory.lua": "bootstrap-and-runtime-hooks",
+    "BetterInventory_character_overview_ui.lua": "character-overview-hooks",
     "BetterInventory_item_customization.lua": "customization-storage-hooks",
-    "BetterInventory_item_customization_editor.lua": "customization-editor-hooks"
+    "BetterInventory_item_customization_editor.lua": "customization-editor-hooks",
+    "BetterInventory_runtime.lua": "runtime-lifecycle-and-grid-hooks"
   },
   "modules": {
-    "BetterInventory.lua": {"category": "bootstrap", "risk": "critical", "dependencies": ["BetterInventory_layout.lua", "BetterInventory_character_overview.lua", "BetterInventory_feature_domains.lua", "BetterInventory_contracts.lua", "BetterInventory_features.lua", "BetterInventory_curio_acquisition.lua", "BetterInventory_item_customization.lua", "BetterInventory_equipment_persistence.lua", "BetterInventory_settings.lua", "BetterInventory_diagnostics.lua"]},
+    "BetterInventory.lua": {"category": "bootstrap", "risk": "critical", "dependencies": ["BetterInventory_character_overview.lua", "BetterInventory_character_overview_ui.lua", "BetterInventory_contracts.lua", "BetterInventory_curio_acquisition.lua", "BetterInventory_diagnostics.lua", "BetterInventory_equipment_persistence.lua", "BetterInventory_feature_domains.lua", "BetterInventory_features.lua", "BetterInventory_item_customization.lua", "BetterInventory_layout.lua", "BetterInventory_runtime.lua", "BetterInventory_settings.lua"]},
     "BetterInventory_character_overview.lua": {"category": "pure-domain", "risk": "high", "dependencies": []},
+    "BetterInventory_character_overview_ui.lua": {"category": "character-overview-ui", "risk": "critical", "dependencies": []},
     "BetterInventory_contracts.lua": {"category": "core-contract", "risk": "high", "dependencies": []},
     "BetterInventory_curio_acquisition.lua": {"category": "async-orchestrator", "risk": "critical", "dependencies": ["BetterInventory_curio_values.lua", "BetterInventory_curio_domains.lua"]},
     "BetterInventory_curio_domains.lua": {"category": "pure-domain", "risk": "high", "dependencies": []},
@@ -35,7 +36,11 @@
     "BetterInventory_item_customization_editor.lua": {"category": "ui-integration", "risk": "high", "dependencies": []},
     "BetterInventory_item_customization_name_it.lua": {"category": "integration-adapter", "risk": "high", "dependencies": []},
     "BetterInventory_item_customization_store.lua": {"category": "async-state", "risk": "high", "dependencies": []},
-    "BetterInventory_layout.lua": {"category": "ui-facade", "risk": "high", "dependencies": ["BetterInventory_layout_content.lua"]},
+    "BetterInventory_layout.lua": {"category": "ui-facade", "risk": "high", "dependencies": ["BetterInventory_layout_blueprints.lua", "BetterInventory_layout_cards.lua", "BetterInventory_layout_content.lua", "BetterInventory_layout_geometry.lua"]},
+    "BetterInventory_layout_cards.lua": {"category": "ui-card-composition", "risk": "high", "dependencies": ["BetterInventory_layout_content.lua"]},
+    "BetterInventory_layout_geometry.lua": {"category": "ui-geometry", "risk": "high", "dependencies": ["BetterInventory_layout_cards.lua", "BetterInventory_layout_content.lua"]},
+    "BetterInventory_layout_blueprints.lua": {"category": "ui-blueprint-coordinator", "risk": "high", "dependencies": ["BetterInventory_layout_cards.lua", "BetterInventory_layout_content.lua", "BetterInventory_layout_geometry.lua"]},
+    "BetterInventory_runtime.lua": {"category": "runtime-hooks-and-lifecycle", "risk": "critical", "dependencies": []},
     "BetterInventory_layout_content.lua": {"category": "ui-content-model", "risk": "high", "dependencies": []},
     "BetterInventory_localization.lua": {"category": "declarative-entrypoint", "risk": "medium", "dependencies": ["BetterInventory_localization_core.lua", "BetterInventory_localization_features.lua", "BetterInventory_localization_zh_cn.lua"]},
     "BetterInventory_localization_core.lua": {"category": "declarative-shard", "risk": "medium", "dependencies": []},

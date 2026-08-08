@@ -11,6 +11,7 @@
   "modules": {
     "BetterInventory.lua": {"minimum_percent": 45.0, "risk": "critical"},
     "BetterInventory_character_overview.lua": {"minimum_percent": 75.0, "risk": "high"},
+    "BetterInventory_character_overview_ui.lua": {"minimum_percent": 25.0, "risk": "critical"},
     "BetterInventory_contracts.lua": {"minimum_percent": 60.0, "risk": "high"},
     "BetterInventory_curio_acquisition.lua": {"minimum_percent": 64.5, "risk": "critical"},
     "BetterInventory_curio_domains.lua": {"minimum_percent": 75.0, "risk": "high"},
@@ -32,6 +33,10 @@
     "BetterInventory_item_customization_name_it.lua": {"minimum_percent": 65.0, "risk": "high"},
     "BetterInventory_item_customization_store.lua": {"minimum_percent": 65.0, "risk": "high"},
     "BetterInventory_layout.lua": {"minimum_percent": 70.0, "risk": "high"},
+    "BetterInventory_layout_cards.lua": {"minimum_percent": 70.0, "risk": "high"},
+    "BetterInventory_layout_geometry.lua": {"minimum_percent": 70.0, "risk": "high"},
+    "BetterInventory_layout_blueprints.lua": {"minimum_percent": 70.0, "risk": "high"},
+    "BetterInventory_runtime.lua": {"minimum_percent": 60.0, "risk": "critical"},
     "BetterInventory_operation_arbiter.lua": {"minimum_percent": 80.0, "risk": "critical"},
     "BetterInventory_settings.lua": {"minimum_percent": 80.0, "risk": "high"},
     "BetterInventory_view_session.lua": {"minimum_percent": 65.0, "risk": "high"}

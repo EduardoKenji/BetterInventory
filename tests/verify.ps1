@@ -33,6 +33,11 @@ foreach ($releaseFile in @($releasePackager, $packagingDocumentation)) {
 }
 
 $main = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory.lua") -Raw
+$main = @(
+	$main
+	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_character_overview_ui.lua") -Raw
+	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_runtime.lua") -Raw
+) -join "`n"
 $curioVisualPlan = Get-Content -LiteralPath (Join-Path $projectRoot "docs\v1.9.4-curio-card-visuals-plan.md") -Raw
 
 if ($main -notmatch 'mod:hook\(InventoryWeaponsView,\s*"present_grid_layout"') {
@@ -118,6 +123,9 @@ $layout = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_layou
 $layout = @(
 	$layout
 	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_layout_content.lua") -Raw
+	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_layout_cards.lua") -Raw
+	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_layout_geometry.lua") -Raw
+	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_layout_blueprints.lua") -Raw
 ) -join "`n"
 $features = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_features.lua") -Raw
 $features = @(
@@ -261,7 +269,7 @@ if ($data -match 'setting_id\s*=\s*"visible_equipment_integration_group"' -or $d
 	throw "Visible Equipment character-overview compatibility integration was not found."
 }
 
-if ($layout -notmatch 'Layout\.armoury_grid_expansion' -or $layout -notmatch 'armoury_requisition_target_card_width') {
+if ($layout -notmatch '(Layout|Geometry)\.armoury_grid_expansion' -or $layout -notmatch 'armoury_requisition_target_card_width') {
 	throw "The Armoury target-width expansion contract was not found."
 }
 

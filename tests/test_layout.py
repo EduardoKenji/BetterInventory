@@ -7,6 +7,9 @@ from localization_support import load_localization
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 LAYOUT_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_layout.lua"
 LAYOUT_CONTENT_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_layout_content.lua"
+LAYOUT_CARDS_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_layout_cards.lua"
+LAYOUT_GEOMETRY_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_layout_geometry.lua"
+LAYOUT_BLUEPRINTS_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_layout_blueprints.lua"
 LOCALIZATION_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_localization.lua"
 
 
@@ -516,6 +519,18 @@ def main() -> None:
 				return TestLayoutContent
 			end
 
+			if path == "BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_cards" then
+				return TestLayoutCards
+			end
+
+			if path == "BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_geometry" then
+				return TestLayoutGeometry
+			end
+
+			if path == "BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_blueprints" then
+				return TestLayoutBlueprints
+			end
+
 			error("Unexpected test io_dofile: " .. tostring(path))
 		end
 
@@ -617,6 +632,15 @@ def main() -> None:
 
     lua.globals().TestLayoutContent = lua.execute(
         LAYOUT_CONTENT_PATH.read_text(encoding="utf-8"), name=str(LAYOUT_CONTENT_PATH)
+    )
+    lua.globals().TestLayoutCards = lua.execute(
+        LAYOUT_CARDS_PATH.read_text(encoding="utf-8"), name=str(LAYOUT_CARDS_PATH)
+    )
+    lua.globals().TestLayoutGeometry = lua.execute(
+        LAYOUT_GEOMETRY_PATH.read_text(encoding="utf-8"), name=str(LAYOUT_GEOMETRY_PATH)
+    )
+    lua.globals().TestLayoutBlueprints = lua.execute(
+        LAYOUT_BLUEPRINTS_PATH.read_text(encoding="utf-8"), name=str(LAYOUT_BLUEPRINTS_PATH)
     )
     layout = lua.execute(
         LAYOUT_PATH.read_text(encoding="utf-8"), name=str(LAYOUT_PATH)
