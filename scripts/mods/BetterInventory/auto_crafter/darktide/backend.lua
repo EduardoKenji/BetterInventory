@@ -475,6 +475,7 @@ end
 local function summarize_perk_catalog(metadata)
 	local ranks = safe_member(metadata, "perks") or {}
 	local catalog = {}
+	local maximum_tier
 
 	if type(ranks) ~= "table" then
 		return catalog
@@ -482,9 +483,20 @@ local function summarize_perk_catalog(metadata)
 
 	for rank, rank_data in pairs(ranks) do
 		local tier = tonumber(safe_member(rank_data, "rarity") or safe_member(rank_data, "rank") or rank)
+
+		if tier ~= nil then
+			maximum_tier = math.max(maximum_tier or tier, tier)
+		end
+	end
+
+	for rank, rank_data in pairs(ranks) do
+		local tier = tonumber(safe_member(rank_data, "rarity") or safe_member(rank_data, "rank") or rank)
 		local perks = safe_member(rank_data, "perks") or rank_data
 
-		if type(perks) == "table" then
+		-- Auto Crafter always targets best-in-slot perk rank. Lower tiers are
+		-- valid vanilla choices before their mastery reward unlocks, but exposing
+		-- them here creates accidental Tier I plans that nobody wants to keep.
+		if type(perks) == "table" and (maximum_tier == nil or tier == maximum_tier) then
 			for _, perk in pairs(perks) do
 				local name = canonical_master_item_name(perk)
 

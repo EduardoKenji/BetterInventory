@@ -484,6 +484,20 @@ local function refresh_option_dependencies()
 	set_option_enabled(option_dependency_entries.custom_item_override_weapon_rarity_keyword_color, custom_item_colors_enabled, custom_item_colors_reason)
 	set_option_enabled(option_dependency_entries.custom_item_override_weapon_information_name_color, custom_item_colors_enabled, custom_item_colors_reason)
 
+	local auto_crafter_mastery_enabled = mod:get("auto_crafter_level_mastery_20") == true
+	local auto_crafter_perks_enabled = auto_crafter_mastery_enabled and mod:get("auto_crafter_change_perks") == true
+	local auto_crafter_allocate_enabled = auto_crafter_mastery_enabled and mod:get("auto_crafter_allocate_mastery_points") == true
+	local auto_crafter_blessings_enabled = auto_crafter_allocate_enabled and mod:get("auto_crafter_change_blessings") == true
+	local mastery_reason = mod:localize("option_requires_auto_crafter_mastery_20")
+
+	set_option_enabled(option_dependency_entries.auto_crafter_allocate_mastery_points, auto_crafter_mastery_enabled, mastery_reason)
+	set_option_enabled(option_dependency_entries.auto_crafter_change_perks, auto_crafter_mastery_enabled, mastery_reason)
+	set_option_enabled(option_dependency_entries.auto_crafter_change_blessings, auto_crafter_mastery_enabled, mastery_reason)
+	set_option_enabled(option_dependency_entries.auto_crafter_perk_1_target, auto_crafter_perks_enabled, auto_crafter_mastery_enabled and mod:localize("option_requires_auto_crafter_change_perks") or mastery_reason)
+	set_option_enabled(option_dependency_entries.auto_crafter_perk_2_target, auto_crafter_perks_enabled, auto_crafter_mastery_enabled and mod:localize("option_requires_auto_crafter_change_perks") or mastery_reason)
+	set_option_enabled(option_dependency_entries.auto_crafter_blessing_1_target, auto_crafter_blessings_enabled, auto_crafter_mastery_enabled and mod:localize("option_requires_auto_crafter_blessing_workflow") or mastery_reason)
+	set_option_enabled(option_dependency_entries.auto_crafter_blessing_2_target, auto_crafter_blessings_enabled, auto_crafter_mastery_enabled and mod:localize("option_requires_auto_crafter_blessing_workflow") or mastery_reason)
+
 	for _, setting_id in ipairs({
 		"inventory_options_controller_focus_keybind",
 		"curio_information_width_percent",

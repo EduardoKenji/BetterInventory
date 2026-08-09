@@ -150,7 +150,10 @@ def main() -> None:
             },
             crafting = {
                 get_item_crafting_metadata = function()
-                    return promise({perks = {[4] = {rarity = 4, perks = {"perk_flak"}}}})
+                    return promise({perks = {
+                        [1] = {rarity = 1, perks = {"perk_flak"}},
+                        [4] = {rarity = 4, perks = {"perk_flak"}},
+                    }})
                 end,
                 trait_sticker_book = function() return promise({}) end,
             },
@@ -182,7 +185,9 @@ def main() -> None:
 
     catalog_promise = backend.discover_weapon_catalog(backend, offer)
     assert catalog_promise.failure is None
+    assert catalog_promise.value.perk_count == 1
     assert catalog_promise.value.perks[1].display_name == "+25% Damage vs Flak Armoured (T4)"
+    assert catalog_promise.value.perks[1].tier == 4
 
     planner = lua.execute(PLANNER_PATH.read_text(encoding="utf-8"))
 
@@ -437,8 +442,11 @@ def main() -> None:
     assert "length_scrolled" in panel_source
     assert "restore_scroll_offset" in panel_source
     assert "set_scrollbar_progress" in panel_source
+    assert 'add_checkbox("auto_crafter_change_perks"' in panel_source
+    assert 'self:_setting("auto_crafter_level_mastery_20", false) == true and self:_setting("auto_crafter_change_perks", false) == true' in panel_source
     backend_source = BACKEND_PATH.read_text(encoding="utf-8")
     assert "Items.trait_description" in backend_source
+    assert "tier == maximum_tier" in backend_source
 
     print("Auto Crafter weapon stat catalogue and display-label tests passed.")
 

@@ -1445,7 +1445,9 @@ function Panel.new(dependencies)
 			end)
 			add_checkbox("auto_crafter_consecrate_transcendent", "auto_crafter_consecrate_transcendent", "Consecrate to Transcendent", true)
 			add_checkbox("auto_crafter_upgrade_expertise_500", "auto_crafter_upgrade_expertise_500", "Upgrade expertise to 500", true)
-			add_checkbox("auto_crafter_change_perks", "auto_crafter_change_perks", "Change perks", false)
+			add_checkbox("auto_crafter_change_perks", "auto_crafter_change_perks", "Change perks", false, function()
+				return self:_setting("auto_crafter_level_mastery_20", false) == true
+			end)
 			add_checkbox("auto_crafter_change_blessings", "auto_crafter_change_blessings", "Change blessings", false, function()
 				return self:_setting("auto_crafter_level_mastery_20", false) == true
 			end)
@@ -1461,10 +1463,10 @@ function Panel.new(dependencies)
 		if not self._section_collapsed[SECTION_TRAITS] then
 			local unavailable = localize("auto_crafter_panel_option_unavailable", "Enable prerequisite options")
 			add_target_selector("auto_crafter_perk_1_target", "auto_crafter_perk_1_target", "Perk target 1", function()
-				return self:_setting("auto_crafter_change_perks", false) == true
+				return self:_setting("auto_crafter_level_mastery_20", false) == true and self:_setting("auto_crafter_change_perks", false) == true
 			end, unavailable)
 			add_target_selector("auto_crafter_perk_2_target", "auto_crafter_perk_2_target", "Perk target 2", function()
-				return self:_setting("auto_crafter_change_perks", false) == true
+				return self:_setting("auto_crafter_level_mastery_20", false) == true and self:_setting("auto_crafter_change_perks", false) == true
 			end, unavailable)
 			local function blessing_targets_enabled()
 				return self:_setting("auto_crafter_level_mastery_20", false) == true and self:_setting("auto_crafter_allocate_mastery_points", false) == true and self:_setting("auto_crafter_change_blessings", false) == true

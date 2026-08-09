@@ -657,7 +657,7 @@ local localization = {
 		en = "Automatically level weapon mastery to 20",
 	},
 	auto_crafter_level_mastery_20_tooltip = {
-		en = "UI planning option only. It will later repeat the guarded buy, Redeem, sacrifice, claim and synchronization loop until authoritative mastery reaches level 20.",
+		en = "Runs the guarded serialized buy, Redeem, sacrifice, claim and synchronization loop until authoritative mastery reaches level 20. Also unlocks Rank IV perk planning.",
 	},
 	auto_crafter_allocate_mastery_points = {
 		en = "Automatically allocate mastery points",
@@ -681,7 +681,7 @@ local localization = {
 		en = "Change perks",
 	},
 	auto_crafter_change_perks_tooltip = {
-		en = "UI planning option only. Perk target discovery and replacement are not connected yet.",
+		en = "Requires mastery-to-20 so Rank IV perks are unlocked. Target discovery is active; replacement is not connected yet.",
 	},
 	auto_crafter_change_blessings = {
 		en = "Change blessings",
@@ -699,7 +699,16 @@ local localization = {
 		en = "Perk target 2",
 	},
 	auto_crafter_perk_target_tooltip = {
-		en = "Auto-select reads the currently selected Brunt weapon's compatible perk catalogue. Target replacement remains backend-inert until its guarded crafting phase is enabled.",
+		en = "Requires mastery-to-20 and Change perks. Auto-select uses only compatible Rank IV perks from the selected weapon catalogue. Replacement remains backend-inert.",
+	},
+	option_requires_auto_crafter_mastery_20 = {
+		en = "Enable Automatically level weapon mastery to 20 to unlock Rank IV perk planning.",
+	},
+	option_requires_auto_crafter_change_perks = {
+		en = "Enable Change perks.",
+	},
+	option_requires_auto_crafter_blessing_workflow = {
+		en = "Enable mastery allocation and Change blessings.",
 	},
 	auto_crafter_blessing_1_target = {
 		en = "Blessing target 1",
