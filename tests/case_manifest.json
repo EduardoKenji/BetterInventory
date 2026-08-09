@@ -24,7 +24,7 @@
     {"name": "presacrifice_mastery_baseline_convergence_and_level_event", "risk": "critical", "start_line": 190, "end_line": 269},
     {"name": "local_mastery_projection_avoids_per_item_poll", "risk": "critical", "start_line": 270, "end_line": 306},
     {"name": "deferred_mastery_projected_minimum_and_spare_cleanup", "risk": "critical", "start_line": 307, "end_line": 375},
-    {"name": "ordered_purchase_bounded_upgrade_pipeline", "risk": "critical", "start_line": 376, "end_line": 431},
+    {"name": "ordered_purchase_single_upgrade_pipeline", "risk": "critical", "start_line": 376, "end_line": 431},
     {"name": "authoritative_claim_result_completes_twenty", "risk": "critical", "start_line": 432, "end_line": 468},
     {"name": "bounded_claim_retry_becomes_visible_failure", "risk": "critical", "start_line": 469, "end_line": 503},
     {"name": "already_max_mastery_preserves_item", "risk": "critical", "start_line": 504, "end_line": 523},
@@ -38,8 +38,10 @@
     {"name": "phase3_live_best_fallback", "risk": "critical", "start_line": 698, "end_line": 725},
     {"name": "inventory_base_reuse_avoids_purchase", "risk": "critical", "start_line": 726, "end_line": 811},
     {"name": "phase4_serial_final_crafting", "risk": "critical", "start_line": 812, "end_line": 941},
-    {"name": "configuration_change_closes_dispatch", "risk": "critical", "start_line": 942, "end_line": 959},
-    {"name": "explicit_stop_preserves_inflight_boundary", "risk": "critical", "start_line": 960, "end_line": 975}
+    {"name": "unowned_blessing_fails_before_final_material_spend", "risk": "critical", "start_line": 942, "end_line": 987},
+    {"name": "four_back_to_back_already_mastered_fully_allocated_crafts", "risk": "critical", "start_line": 988, "end_line": 1178},
+    {"name": "configuration_change_closes_dispatch", "risk": "critical", "start_line": 1179, "end_line": 1196},
+    {"name": "explicit_stop_preserves_inflight_boundary", "risk": "critical", "start_line": 1197, "end_line": 1212}
   ],
   "test_contracts.py": [
     {"name": "guarded_lookup", "risk": "high", "start_line": 22, "end_line": 40},

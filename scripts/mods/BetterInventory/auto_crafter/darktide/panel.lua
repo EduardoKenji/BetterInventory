@@ -1740,7 +1740,7 @@ function Panel.new(dependencies)
 				}))
 			end
 			local function blessing_targets_enabled()
-				return self:_setting("auto_crafter_level_mastery_20", true) == true and self:_setting("auto_crafter_allocate_mastery_points", true) == true and self:_setting("auto_crafter_change_blessings", true) == true
+				return self:_setting("auto_crafter_level_mastery_20", true) == true and self:_setting("auto_crafter_change_blessings", true) == true
 			end
 			add_target_selector("auto_crafter_blessing_1_target", "auto_crafter_blessing_1_target", "Blessing target 1", blessing_targets_enabled, unavailable)
 			add_target_selector("auto_crafter_blessing_2_target", "auto_crafter_blessing_2_target", "Blessing target 2", blessing_targets_enabled, unavailable)

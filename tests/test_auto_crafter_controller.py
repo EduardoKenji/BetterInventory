@@ -373,8 +373,8 @@ def main() -> None:
 			assert(#state.items == 1 and state.items[1].gear_id == target.gear_id)
 		end
 
-		-- Post-target purchases remain wallet-ordered while two rarity upgrades
-		-- overlap them. Extraction starts only after both workers and one gear read.
+		-- Post-target purchases remain wallet-ordered while one rarity upgrade lane
+		-- overlaps them. Extraction starts only after every upgrade and one gear read.
 		do
 			local target = summarized_item("gear-pipeline-target", 2, 60)
 			local fodder_a = summarized_item("gear-pipeline-a", 0, 55)
@@ -421,9 +421,9 @@ def main() -> None:
 			assert(backend.purchase_calls == 2 and backend.upgrade_calls == 1)
 			assert(controller:snapshot().operation_kind == "purchase")
 			purchase_promises[2].next_callback({items = {fodder_b}})
-			assert(backend.upgrade_calls == 2 and backend.probe_calls == 0 and backend.extract_calls == 0)
+			assert(backend.upgrade_calls == 1 and backend.probe_calls == 0 and backend.extract_calls == 0)
 			upgrade_promises[1].next_callback({gear_id = fodder_a.gear_id})
-			assert(backend.probe_calls == 0 and backend.extract_calls == 0)
+			assert(backend.upgrade_calls == 2 and backend.probe_calls == 0 and backend.extract_calls == 0)
 			upgrade_promises[2].next_callback({gear_id = fodder_b.gear_id})
 			assert(backend.probe_calls >= 1 and backend.extract_calls == 1)
 			assert(controller:snapshot().operation_timings.phase3_fast_upgrade.count == 2)
@@ -937,6 +937,243 @@ def main() -> None:
 			assert(item.perks[1].id == "new_perk" and item.perks[2].id == "other_perk" and item.traits[1].id == "new_blessing")
 			controller:_operation_failed(controller._generation, {code = "backend_error", description = "readable backend failure"})
 			assert(controller:snapshot().last_error == "readable backend failure")
+		end
+
+		-- Replacement-only blessing mode verifies ownership before spending any
+		-- final-crafting materials when automatic point allocation is disabled.
+		do
+			local item = summarized_item("gear-unowned-blessing", 2, 60)
+			item.expertise_level = 300
+			item.perks = {{id = "keep_perk", rarity = 4}, {id = "other_perk", rarity = 4}}
+			item.traits = {{id = "old_blessing", rarity = 4}, {id = "keep_blessing", rarity = 4}}
+			local backend = {rarity_calls = 0}
+			function backend:purchase_offer(_) return resolved({items = {item}}) end
+			function backend:probe_snapshot() return resolved(snapshot_with(item)) end
+			function backend:get_mastery_by_pattern(_) return resolved({mastery_id = "pattern-1", current_xp = 20000, mastery_level = 20, claimed_level = 19, mastery_max_level = 20}) end
+			function backend:get_trait_sticker_book(_)
+				return resolved({
+					{id = "new_blessing", tiers = {{tier = 4, status = "unseen"}}},
+					{id = "keep_blessing", tiers = {{tier = 4, status = "seen"}}},
+				})
+			end
+			function backend:upgrade_weapon_rarity(_) self.rarity_calls = self.rarity_calls + 1 return resolved({}) end
+			local settings = base_settings({
+				auto_crafter_allocate_mastery_points = false,
+				auto_crafter_blessing_1_target = "new_blessing",
+				auto_crafter_blessing_2_target = "keep_blessing",
+				auto_crafter_change_blessings = true,
+				auto_crafter_consecrate_transcendent = true,
+				auto_crafter_level_mastery_20 = true,
+			})
+			CurrentOffer = raw_offer()
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = settings, reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			controller._catalog = {
+				available = true,
+				trait_category = "test_category",
+				perks = {},
+				blessings = {
+					{id = "new_blessing", tiers = {{tier = 4, status = "unseen"}}},
+					{id = "keep_blessing", tiers = {{tier = 4, status = "seen"}}},
+				},
+			}
+			controller._snapshot = snapshot_with(nil)
+			controller._active_view = {}
+			controller._view_is_valid = true
+			assert(controller:start_purchase_search() == true)
+			assert(controller:snapshot().phase == "operation_failed")
+			assert(controller:snapshot().last_error == "selected blessing tier is not allocated in mastery")
+			assert(backend.rarity_calls == 0)
+		end
+
+		-- Four complete crafts may run back to back through one controller. Each run
+		-- owns fresh generation/state, preserves prior results, and reports only its
+		-- own wallet/material deltas and operation counts.
+		do
+			local state = {
+				claimed_level = 18,
+				inventory = {},
+				wallet = {credits = 50000, plasteel = 10000, diamantine = 5000},
+			}
+			local backend = {
+				claim_calls = 0,
+				expertise_calls = 0,
+				favorite_calls = 0,
+				mastery_cost_calls = 0,
+				perk_calls = 0,
+				purchase_calls = 0,
+				rarity_calls = 0,
+				trait_calls = 0,
+			}
+			local function integration_snapshot()
+				local snapshot = snapshot_with_items(state.inventory)
+				snapshot.wallets.currencies.credits.amount = state.wallet.credits
+				snapshot.wallets.currencies.plasteel = {amount = state.wallet.plasteel}
+				snapshot.wallets.currencies.diamantine = {amount = state.wallet.diamantine}
+
+				return snapshot
+			end
+			function backend:purchase_offer(_)
+				self.purchase_calls = self.purchase_calls + 1
+				local run = self.purchase_calls
+				local item = summarized_item("gear-integration-" .. tostring(run), 2, 60)
+				item.expertise_level = 290 + run * 10
+				item.favorite_known = true
+				item.favorited = false
+				item.perks = {{id = "old_perk_" .. tostring(run), rarity = 4}, {id = "keep_perk", rarity = 4}}
+				item.traits = {{id = "old_blessing_" .. tostring(run), rarity = 4}, {id = "keep_blessing", rarity = 4}}
+				state.inventory[#state.inventory + 1] = item
+				state.wallet.credits = state.wallet.credits - 100
+
+				return resolved({items = {item}})
+			end
+			function backend:probe_snapshot()
+				return resolved(integration_snapshot())
+			end
+			function backend:get_mastery_by_pattern(_)
+				return resolved({mastery_id = "pattern-1", current_xp = 20000, mastery_level = 20, claimed_level = state.claimed_level, mastery_max_level = 20})
+			end
+			function backend:claim_mastery_levels(_, _)
+				self.claim_calls = self.claim_calls + 1
+				state.claimed_level = 19
+
+				return resolved({mastery_id = "pattern-1", current_xp = 20000, mastery_level = 20, claimed_level = state.claimed_level, mastery_max_level = 20})
+			end
+			function backend:favorite_item(gear_id)
+				self.favorite_calls = self.favorite_calls + 1
+
+				for _, item in ipairs(state.inventory) do
+					if item.gear_id == gear_id then
+						item.favorited = true
+						return resolved({gear_id = gear_id})
+					end
+				end
+
+				return rejected("favorite target missing")
+			end
+			function backend:upgrade_weapon_rarity(gear_id)
+				self.rarity_calls = self.rarity_calls + 1
+
+				for _, item in ipairs(state.inventory) do
+					if item.gear_id == gear_id then
+						item.rarity = item.rarity + 1
+						state.wallet.plasteel = state.wallet.plasteel - 10
+						state.wallet.diamantine = state.wallet.diamantine - 2
+						return resolved({gear_id = gear_id})
+					end
+				end
+
+				return rejected("rarity target missing")
+			end
+			function backend:add_weapon_expertise(gear_id, target)
+				self.expertise_calls = self.expertise_calls + 1
+
+				for _, item in ipairs(state.inventory) do
+					if item.gear_id == gear_id then
+						item.expertise_level = target
+						state.wallet.plasteel = state.wallet.plasteel - 5
+						return resolved({gear_id = gear_id})
+					end
+				end
+
+				return rejected("expertise target missing")
+			end
+			function backend:get_trait_sticker_book(_)
+				return resolved({
+					{id = "new_blessing", tiers = {{tier = 4, status = "seen"}}},
+					{id = "keep_blessing", tiers = {{tier = 4, status = "seen"}}},
+				})
+			end
+			function backend:get_mastery_trait_costs()
+				self.mastery_cost_calls = self.mastery_cost_calls + 1
+
+				return rejected("already allocated mastery tree must not request costs")
+			end
+			function backend:replace_perk(gear_id, index, id, tier)
+				self.perk_calls = self.perk_calls + 1
+
+				for _, item in ipairs(state.inventory) do
+					if item.gear_id == gear_id then
+						item.perks[index] = {id = id, rarity = tier}
+						return resolved({gear_id = gear_id})
+					end
+				end
+
+				return rejected("perk target missing")
+			end
+			function backend:replace_blessing(gear_id, index, id, tier)
+				self.trait_calls = self.trait_calls + 1
+
+				for _, item in ipairs(state.inventory) do
+					if item.gear_id == gear_id then
+						item.traits[index] = {id = id, rarity = tier}
+						return resolved({gear_id = gear_id})
+					end
+				end
+
+				return rejected("blessing target missing")
+			end
+
+			local settings = base_settings({
+				auto_crafter_allocate_mastery_points = true,
+				auto_crafter_change_blessings = true,
+				auto_crafter_change_perks = true,
+				auto_crafter_consecrate_transcendent = true,
+				auto_crafter_favorite_result = true,
+				auto_crafter_level_mastery_20 = true,
+				auto_crafter_max_purchases = 1,
+				auto_crafter_perk_1_target = "perk:new_perk:4",
+				auto_crafter_perk_2_target = "perk:keep_perk:4",
+				auto_crafter_blessing_1_target = "new_blessing",
+				auto_crafter_blessing_2_target = "keep_blessing",
+				auto_crafter_upgrade_expertise_500 = true,
+			})
+			CurrentOffer = raw_offer()
+			TestTime = 200
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = settings, reporter = reports(), clock = {now = function() return TestTime end}, get_selected_offer = function() return CurrentOffer end})
+			controller._catalog = {
+				available = true,
+				trait_category = "test_category",
+				perks = {{id = "new_perk", tier = 4}, {id = "keep_perk", tier = 4}},
+				blessings = {
+					{id = "new_blessing", tiers = {{tier = 4, status = "seen"}}},
+					{id = "keep_blessing", tiers = {{tier = 4, status = "seen"}}},
+				},
+			}
+			controller._snapshot = integration_snapshot()
+			controller._active_view = {}
+			controller._view_is_valid = true
+
+			for run = 1, 4 do
+				local before_rarity = backend.rarity_calls
+				local before_expertise = backend.expertise_calls
+				local before_perks = backend.perk_calls
+				local before_traits = backend.trait_calls
+				assert(controller:start_purchase_search() == true, "run " .. tostring(run) .. " did not start")
+				TestTime = TestTime + 1
+				local result = controller:snapshot()
+				local item = state.inventory[run]
+				assert(result.phase == "phase4_complete", "run " .. tostring(run) .. " stopped at " .. tostring(result.phase) .. ": " .. tostring(result.last_error))
+				assert(result.search.generation == run)
+				assert(result.search.purchases == 1 and result.search.result.gear_id == item.gear_id)
+				assert(result.phase3.fodder_count == 0 and result.phase3.target_candidate.gear_id == item.gear_id)
+				assert(result.phase4.gear_id == item.gear_id and result.phase4.result.gear_id == item.gear_id)
+				assert(item.rarity == 5 and item.expertise_level == 500 and item.favorited == true)
+				assert(item.perks[1].id == "new_perk" and item.perks[2].id == "keep_perk")
+				assert(item.traits[1].id == "new_blessing" and item.traits[2].id == "keep_blessing", "traits " .. tostring(item.traits[1].id) .. "/" .. tostring(item.traits[2].id))
+				assert(backend.rarity_calls - before_rarity == 3)
+				assert(backend.expertise_calls - before_expertise == 2)
+				assert(backend.perk_calls - before_perks == 1)
+				assert(backend.trait_calls - before_traits == 1)
+				assert(result.resource_costs.credits == 100 and result.resource_costs.plasteel == 40 and result.resource_costs.diamantine == 6)
+				controller._snapshot = integration_snapshot()
+			end
+
+			assert(#state.inventory == 4 and backend.purchase_calls == 4 and backend.favorite_calls == 4 and backend.claim_calls == 1 and backend.mastery_cost_calls == 0)
+			assert(backend.rarity_calls == 12 and backend.expertise_calls == 8 and backend.perk_calls == 4 and backend.trait_calls == 4)
+			for run, item in ipairs(state.inventory) do
+				assert(item.gear_id == "gear-integration-" .. tostring(run))
+				assert(item.rarity == 5 and item.expertise_level == 500 and item.favorited == true)
+			end
 		end
 
 		-- Configuration changes close dispatch gate while current request remains unsettled.

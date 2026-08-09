@@ -5,11 +5,9 @@ local MasterItems = require("scripts/backend/master_items")
 local ProfileUtils = require("scripts/utilities/profile_utils")
 local CraftingSettings = require("scripts/settings/item/crafting_settings")
 local WeaponTemplate = require("scripts/utilities/weapon/weapon_template")
-local unpack = unpack or table.unpack
 
 local Backend = {}
 local GEAR_SUMMARY_LIMIT = 1024
-local MAX_PARALLEL_RARITY_UPGRADES = 2
 
 local function rejected(description)
 	return Promise.rejected({
@@ -1271,6 +1269,7 @@ function Backend.new(dependencies)
 
 		local unique = {}
 		local results = {}
+		local sequence = Promise.resolved(results)
 
 		for _, gear_id in ipairs(gear_ids) do
 			if gear_id == nil or unique[gear_id] then
@@ -1278,34 +1277,19 @@ function Backend.new(dependencies)
 			end
 
 			unique[gear_id] = true
-		end
+			local pending_gear_id = gear_id
+			sequence = sequence:next(function ()
+				return self:upgrade_weapon_rarity(pending_gear_id):next(function (result)
+					results[#results + 1] = result
 
-		local next_index = 1
-		local function worker()
-			local index = next_index
-			local gear_id = gear_ids[index]
-
-			if gear_id == nil then
-				return Promise.resolved(results)
-			end
-
-			next_index = next_index + 1
-
-			return self:upgrade_weapon_rarity(gear_id):next(function (result)
-				results[index] = result
-
-				return worker()
+					return results
+				end)
 			end)
 		end
-		local workers = {}
 
-		for _ = 1, math.min(MAX_PARALLEL_RARITY_UPGRADES, #gear_ids) do
-			workers[#workers + 1] = worker()
-		end
-
-		-- Two bounded workers mirror the proven fast manual path without releasing
-		-- an unbounded wave of crafting mutations. Extraction still waits for all.
-		return Promise.all(unpack(workers)):next(function ()
+		-- Crafting requests share backend material/cache state. Keep them ordered;
+		-- the controller may still overlap this lane with one Credits purchase.
+		return sequence:next(function ()
 			return {
 				count = #gear_ids,
 				results = results,

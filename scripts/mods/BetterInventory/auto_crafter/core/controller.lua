@@ -9,7 +9,7 @@ local MAX_MASTERY_CLAIM_RETRIES = 2
 local MAX_OPERATION_SECONDS = 45
 local MAX_IDLE_WORKFLOW_SECONDS = 5
 local PHASE3_FODDER_BATCH_SIZE = 8
-local MAX_PARALLEL_FODDER_UPGRADES = 2
+local MAX_PARALLEL_FODDER_UPGRADES = 1
 local REDEEMED_RARITY = 2
 local TRANSCENDENT_RARITY = 5
 local MAX_EXPERTISE_LEVEL = 500
@@ -291,6 +291,20 @@ local function mastery_allocation_progress(catalog, costs)
 	return spent, total, unseen
 end
 
+local function unseen_blessing_tier_count(catalog)
+	local unseen = 0
+
+	for _, blessing in ipairs(catalog or {}) do
+		for _, entry in ipairs(blessing.tiers or {}) do
+			if tonumber(entry.tier) ~= nil and entry.status ~= "seen" then
+				unseen = unseen + 1
+			end
+		end
+	end
+
+	return unseen
+end
+
 local function mastery_allocation_operations(catalog, targets, costs)
 	local working = {}
 
@@ -380,6 +394,13 @@ end
 
 local function mastery_target_reached(summary)
 	return summary and tonumber(summary.mastery_level) ~= nil and tonumber(summary.mastery_level) >= 20
+end
+
+local function mastery_claims_converged(summary)
+	local level = summary and tonumber(summary.mastery_level)
+	local claimed = summary and tonumber(summary.claimed_level)
+
+	return level ~= nil and claimed ~= nil and claimed >= math.max(0, level - 1)
 end
 
 local function extraction_contains_gear_id(gear_ids, gear_id)
@@ -1679,7 +1700,7 @@ function Controller.new(dependencies)
 		local mastery_enabled = setting("auto_crafter_level_mastery_20", true) == true
 		local allocate_mastery = mastery_enabled and setting("auto_crafter_allocate_mastery_points", true) == true
 		local change_perks = mastery_enabled and setting("auto_crafter_change_perks", true) == true
-		local change_blessings = allocate_mastery and setting("auto_crafter_change_blessings", true) == true
+		local change_blessings = mastery_enabled and setting("auto_crafter_change_blessings", true) == true
 
 		if type(catalog) ~= "table" or catalog.available ~= true then
 			return nil, "weapon perk/blessing catalogue unavailable"
@@ -2072,7 +2093,7 @@ function Controller.new(dependencies)
 		local mastery_enabled = setting("auto_crafter_level_mastery_20", true) == true
 		local allocate_mastery = mastery_enabled and setting("auto_crafter_allocate_mastery_points", true) == true
 		local change_perks = mastery_enabled and setting("auto_crafter_change_perks", true) == true
-		local change_blessings = allocate_mastery and setting("auto_crafter_change_blessings", true) == true
+		local change_blessings = mastery_enabled and setting("auto_crafter_change_blessings", true) == true
 
 		if not consecrate and not expertise_enabled and not allocate_mastery and not change_perks and not change_blessings then
 			if self._search then
@@ -2140,6 +2161,19 @@ function Controller.new(dependencies)
 				end, function (sticker_book)
 					self._phase4.sticker_book = sticker_book
 
+					if not allocate_mastery or unseen_blessing_tier_count(sticker_book) == 0 then
+						for _, target in pairs(targets.traits or {}) do
+							if target and sticker_status(sticker_book, target.id, target.rarity) ~= "seen" then
+								self:_operation_failed(self._generation, "selected blessing tier is not allocated in mastery")
+
+								return
+							end
+						end
+
+						self:_phase4_step(self._generation, snapshot)
+						return
+					end
+
 					if type(backend.get_mastery_trait_costs) ~= "function" then
 						self:_operation_failed(self._generation, "live mastery blessing cost adapter unavailable")
 						return
@@ -2169,6 +2203,18 @@ function Controller.new(dependencies)
 			return false
 		end
 
+		phase3.current = current or phase3.current
+
+		if mastery_target_reached(phase3.current) and not mastery_claims_converged(phase3.current) then
+			if not phase3.current_data then
+				self:_operation_failed(self._generation, "mastery level 20 reached but raw state is unavailable for missing tier claims")
+
+				return false
+			end
+
+			return self:_phase3_sync_projected(self._generation)
+		end
+
 		if not item or item.available ~= true or item.parent_pattern ~= target.mastery_id or tonumber(authoritative_dump) ~= tonumber(target.dump_stat) then
 			self:_operation_failed(self._generation, "Phase 3 target failed authoritative family or dump-stat reconciliation")
 
@@ -2176,7 +2222,6 @@ function Controller.new(dependencies)
 		end
 
 		phase3.running = false
-		phase3.current = current or phase3.current
 		search.running = false
 		search.result = phase3.target_candidate
 		self._phase = "phase3_complete"
