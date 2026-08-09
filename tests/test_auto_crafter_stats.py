@@ -62,12 +62,15 @@ def main() -> None:
             weapon_template = "crowbar_p1_m1",
             _weapon_template = crowbar_template,
         }
-        local modules = {
+		TestFavoriteItems = {}
+		local modules = {
             ["scripts/foundation/utilities/promise"] = {
                 resolved = function(value) return promise(value) end,
                 rejected = function(value) return promise(nil, value) end,
             },
             ["scripts/utilities/items"] = {
+				is_item_id_favorited = function(gear_id) return TestFavoriteItems[gear_id] == true end,
+				set_item_id_as_favorite = function(gear_id, state) TestFavoriteItems[gear_id] = state end,
                 weapon_card_display_name = function(item) return item.display_name end,
                 weapon_card_sub_display_name = function() return "" end,
                 trait_category = function() return "crowbar_traits" end,
@@ -189,6 +192,10 @@ def main() -> None:
     purchased = purchase_promise.value["items"][1]
     assert purchased.damage == 78
     assert purchased.base_stats["crowbar_p1_m1_dps_stat"] == 78
+    favorite_promise = backend.favorite_item(backend, "crowbar_gear")
+    assert favorite_promise.failure is None
+    assert favorite_promise.value.favorited is True
+    assert lua.globals().TestFavoriteItems["crowbar_gear"] is True
 
     catalog_promise = backend.discover_weapon_catalog(backend, offer)
     assert catalog_promise.failure is None

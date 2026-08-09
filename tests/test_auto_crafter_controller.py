@@ -80,6 +80,7 @@ def main() -> None:
                 auto_crafter_cap_by_max_purchases = true,
                 auto_crafter_max_purchases = 1,
                 auto_crafter_best_candidate_fallback = false,
+				auto_crafter_favorite_result = false,
                 auto_crafter_level_mastery_20 = false,
                 auto_crafter_request_mode = "sequential",
             }
@@ -237,6 +238,15 @@ def main() -> None:
             assert(controller:snapshot().mastery.expected_xp == 160)
             controller:update(1)
             assert(controller:snapshot().phase == "mastery_complete")
+			local level_events = 0
+			for _, event in ipairs(reporter.events) do
+				if event.kind == "mastery_level_increased" then
+					level_events = level_events + 1
+					assert(event.payload.previous_level == 5)
+					assert(event.payload.current.mastery_level == 6)
+				end
+			end
+			assert(level_events == 1)
         end
 
         -- Reaching mastery 20 before mutation must preserve candidate: no upgrade or sacrifice.
@@ -273,8 +283,77 @@ def main() -> None:
             local started = controller:start_purchase_search()
             assert(started == false, "mismatch start " .. tostring(started))
             assert(backend.purchase_calls == 0, "mismatch purchase calls " .. tostring(backend.purchase_calls))
-            assert(controller:snapshot().phase == "search_selected_offer_changed", "mismatch phase " .. tostring(controller:snapshot().phase))
+			assert(controller:snapshot().phase == "idle", "mismatch phase " .. tostring(controller:snapshot().phase))
         end
+
+		-- Closing Brunt detaches UI only; frozen search continues in Morningstar.
+		do
+			local state = {item = nil}
+			local backend = {purchase_promise = pending()}
+			function backend:purchase_offer(_) return self.purchase_promise end
+			function backend:probe_snapshot() return resolved(snapshot_with(state.item)) end
+			CurrentOffer = raw_offer()
+			local view = {}
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings(), reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = snapshot_with(nil)
+			controller._active_view = view
+			controller._view_is_valid = true
+			assert(controller:start_purchase_search() == true)
+			assert(controller:on_view_closed(view) == true)
+			assert(controller:snapshot().view_is_valid == false)
+			assert(controller:snapshot().search.running == true)
+			state.item = summarized_item("gear-background", 0, 60)
+			backend.purchase_promise.next_callback({items = {state.item}})
+			assert(controller:snapshot().search.running == false)
+			assert(controller:snapshot().search.result.gear_id == "gear-background")
+			assert(controller:snapshot().phase == "search_complete")
+		end
+
+		-- Purchase response cannot declare exact result; refreshed inventory is authoritative.
+		do
+			local authoritative = summarized_item("gear-revalidated", 0, 55)
+			local backend = {favorite_calls = 0}
+			function backend:purchase_offer(_) return resolved({items = {summarized_item("gear-revalidated", 0, 60)}}) end
+			function backend:probe_snapshot() return resolved(snapshot_with(authoritative)) end
+			function backend:favorite_item(_) self.favorite_calls = self.favorite_calls + 1 return resolved({favorited = true}) end
+			local reporter = reports()
+			CurrentOffer = raw_offer()
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings({auto_crafter_favorite_result = true}), reporter = reporter, get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = snapshot_with(nil)
+			controller._active_view = {}
+			controller._view_is_valid = true
+			assert(controller:start_purchase_search() == true)
+			assert(controller:snapshot().phase == "search_max_purchases")
+			assert(controller:snapshot().search.best.dump_stat == 55)
+			assert(backend.favorite_calls == 0)
+			for _, event in ipairs(reporter.events) do
+				assert(event.kind ~= "purchase_search_complete")
+			end
+		end
+
+		-- Exact authoritative candidate is favorited before completion is reported.
+		do
+			local authoritative = summarized_item("gear-favorite", 0, 60)
+			local backend = {favorite_calls = 0}
+			function backend:purchase_offer(_) return resolved({items = {authoritative}}) end
+			function backend:probe_snapshot() return resolved(snapshot_with(authoritative)) end
+			function backend:favorite_item(gear_id)
+				assert(gear_id == "gear-favorite")
+				self.favorite_calls = self.favorite_calls + 1
+				return resolved({favorited = true})
+			end
+			local reporter = reports()
+			CurrentOffer = raw_offer()
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings({auto_crafter_favorite_result = true}), reporter = reporter, get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = snapshot_with(nil)
+			controller._active_view = {}
+			controller._view_is_valid = true
+			assert(controller:start_purchase_search() == true)
+			assert(backend.favorite_calls == 1)
+			assert(controller:snapshot().search.result.gear_id == "gear-favorite")
+			assert(reporter.events[#reporter.events - 1].kind == "candidate_favorited")
+			assert(reporter.events[#reporter.events].kind == "purchase_search_complete")
+		end
 
         -- Phase 3 fallback reserves one live best candidate instead of sacrificing it.
         do

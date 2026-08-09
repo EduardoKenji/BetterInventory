@@ -753,13 +753,13 @@ local localization = {
 		en = "Discovery unavailable",
 	},
 	auto_crafter_output_group = {
-		en = "Final item handling (planned)",
+		en = "Final item handling",
 	},
 	auto_crafter_favorite_result = {
 		en = "Favorite final weapon",
 	},
 	auto_crafter_favorite_result_tooltip = {
-		en = "UI planning option only. Favoriting will run after the final gear ID is stable.",
+		en = "Favorite an exact matching weapon after authoritative inventory verification.",
 	},
 	auto_crafter_rename_result = {
 		en = "Rename final weapon",

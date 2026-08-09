@@ -820,6 +820,43 @@ function Backend.new(dependencies)
 		end)
 	end
 
+	function backend:favorite_item(gear_id)
+		if gear_id == nil then
+			return rejected("gear id unavailable for favorite")
+		end
+
+		if type(Items) ~= "table" or type(Items.is_item_id_favorited) ~= "function" or type(Items.set_item_id_as_favorite) ~= "function" then
+			return rejected("favorite item API unavailable")
+		end
+
+		local query_ok, already_favorited = pcall(Items.is_item_id_favorited, gear_id)
+
+		if query_ok and already_favorited == true then
+			return Promise.resolved({
+				already_favorited = true,
+				favorited = true,
+				gear_id = gear_id,
+			})
+		end
+
+		local set_ok, set_error = pcall(Items.set_item_id_as_favorite, gear_id, true)
+
+		if not set_ok then
+			return rejected(set_error)
+		end
+
+		local verify_ok, favorited = pcall(Items.is_item_id_favorited, gear_id)
+
+		if not verify_ok or favorited ~= true then
+			return rejected("favorite state was not confirmed")
+		end
+
+		return Promise.resolved({
+			favorited = true,
+			gear_id = gear_id,
+		})
+	end
+
 	function backend:upgrade_weapon_rarity(gear_id)
 		if gear_id == nil then
 			return rejected("gear id unavailable for rarity upgrade")

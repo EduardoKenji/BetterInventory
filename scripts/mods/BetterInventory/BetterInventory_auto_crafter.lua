@@ -105,17 +105,67 @@ local function format_catalog(catalog)
 	)
 end
 
+local function game_localize(key)
+	if type(key) ~= "string" or key == "" then
+		return nil
+	end
+
+	local fn = rawget(_G, "Localize")
+
+	if type(fn) ~= "function" then
+		return nil
+	end
+
+	local ok, value = pcall(fn, key)
+
+	return ok and type(value) == "string" and value ~= key and value or nil
+end
+
+local function readable_stat_name(candidate)
+	local localized = game_localize(candidate and candidate.dump_stat_label)
+
+	if localized then
+		return localized
+	end
+
+	local stat_id = tostring(candidate and candidate.dump_stat_id or "stat")
+	local readable = string.gsub(stat_id, "^.*[/_]m%d+[_/]", "")
+	readable = string.gsub(readable, "_stat$", "")
+	readable = string.gsub(readable, "_", " ")
+	readable = string.gsub(readable, "(%a)([%w']*)", function(first, rest)
+		return string.upper(first) .. rest
+	end)
+
+	return readable
+end
+
 local function format_candidate(candidate)
 	if not candidate then
-		return "candidate unavailable"
+		return "weapon details unavailable"
 	end
 
 	return string.format(
-		"%s | dump %s | gear %s",
+		"%s — %s %s, item level %s",
 		tostring(candidate.display_name or candidate.mastery_id or "weapon"),
+		readable_stat_name(candidate),
 		tostring(candidate.dump_stat or "?"),
-		tostring(candidate.gear_id or "?")
+		tostring(candidate.base_item_level or "?")
 	)
+end
+
+local function search_stop_message(reason)
+	local messages = {
+		operation_failed = "Crafting stopped because a game operation failed.",
+		run_configuration_changed = "Crafting stopped because its configuration changed.",
+		search_blocked = "Crafting could not continue with current settings.",
+		search_docket_cap = "Stopped after reaching Ordo dockets limit.",
+		search_insufficient_dockets = "Stopped because available Ordo dockets are insufficient.",
+		search_max_purchases = "Stopped after reaching weapon purchase limit.",
+		search_offer_missing = "Stopped because frozen Brunt weapon offer became unavailable.",
+		user_stopped = "Crafting stopped by user.",
+	}
+
+	return messages[reason] or "Crafting stopped for safety."
 end
 
 local function progress_milestone(value, interval)
@@ -184,7 +234,10 @@ local function reporter(ui_panel)
 					ui_panel:set_phase(payload and payload.phase3 and "phase3_search_purchase" or "search_purchase")
 				end
 
-				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), payload and payload.phase3 and "Phase 3 serialized mastery search started." or "Serialized purchase search started.")
+				local search = payload and payload.search or {}
+				local target = search.target_offer or {}
+				local cap = search.cap_by_dockets and string.format(" Ordo dockets limit: %s.", tostring(search.docket_cap or "?")) or ""
+				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), string.format("Started buying %s. Target: %s %s.%s", tostring(target.display_name or "selected weapon"), readable_stat_name({dump_stat_id = search.dump_stat}), tostring(search.target_dump or "?"), cap))
 			elseif kind == "purchase_result" then
 				if ui_panel then
 					ui_panel:set_phase(payload and payload.search and payload.search.phase3 and "phase3_search_purchase" or "search_purchase")
@@ -193,20 +246,22 @@ local function reporter(ui_panel)
 				local search = payload and payload.search or {}
 
 				if progress_milestone(search.purchases, 10) then
-					notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), string.format("Purchase %s/%s | %s | spent %s", tostring(search.purchases or "?"), tostring(search.max_purchases or "?"), format_candidate(payload and payload.candidate), tostring(search.spent or "?")))
+					notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), string.format("Purchased %s weapons. Spent %s Ordo dockets. Best result: %s", tostring(search.purchases or "?"), tostring(search.spent or "?"), format_candidate(search.best)))
 				end
 			elseif kind == "purchase_search_complete" then
 				if ui_panel then
 					ui_panel:set_phase("search_complete")
 				end
 
-				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Exact dump-stat candidate found: " .. format_candidate(payload and payload.candidate))
+				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Found matching weapon: " .. format_candidate(payload and payload.candidate))
+			elseif kind == "candidate_favorited" then
+				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Saved matching weapon as favorite: " .. tostring(payload and payload.candidate and payload.candidate.display_name or "weapon"))
 			elseif kind == "purchase_search_stopped" then
 				if ui_panel then
 					ui_panel:set_phase(tostring(payload and payload.reason or "search_stopped"))
 				end
 
-				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Purchase search stopped: " .. tostring(payload and payload.reason or "limit"))
+				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), search_stop_message(payload and payload.reason))
 			elseif kind == "phase3_fodder_started" then
 				if ui_panel then
 					ui_panel:set_phase("phase3_fodder_preflight")
@@ -216,37 +271,40 @@ local function reporter(ui_panel)
 				if ui_panel then
 					ui_panel:set_phase("phase3_fodder_complete")
 				end
-
-				local fodder_payload = payload or {}
-
-				if progress_milestone(fodder_payload.fodder_count, 5) then
-					notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Phase 3: fodder sacrificed; mastery sync converged (" .. tostring(fodder_payload.fodder_count or "?") .. ").")
-				end
 			elseif kind == "phase3_complete" then
 				if ui_panel then
 					ui_panel:set_phase("phase3_complete")
 				end
-
-				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Phase 3 complete: target weapon preserved at mastery 20.")
 			elseif kind == "phase3_stopped" then
 				if ui_panel then
 					ui_panel:set_phase(tostring(payload and payload.reason or "phase3_stopped"))
 				end
 
-				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Phase 3 stopped: " .. tostring(payload and payload.reason or "safety condition"))
+				local reason = tostring(payload and payload.reason or "phase3_stopped")
+
+				if string.sub(reason, 1, #"phase3_") == "phase3_" then
+					notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), search_stop_message(reason))
+				end
 			elseif kind == "mastery_operation_started" then
 				if ui_panel then
 					ui_panel:set_phase("mastery_preflight")
 				end
 
-				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Phase 2 started: " .. format_candidate(payload and payload.candidate))
 			elseif kind == "mastery_upgrade_complete" or kind == "mastery_sacrifice_complete" or kind == "mastery_sync_started" or kind == "mastery_poll_result" or kind == "mastery_operation_complete" or kind == "mastery_sync_timeout" then
 				if ui_panel then
 					ui_panel:set_phase(kind)
 				end
+			elseif kind == "mastery_level_increased" then
+				local current = payload and payload.current or {}
+				local current_level = tonumber(current.mastery_level)
+				local maximum_level = tonumber(current.mastery_max_level) or 20
 
-				if kind ~= "mastery_poll_result" then
-					notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Phase 2 " .. string.gsub(kind, "_", " ") .. ".")
+				if ui_panel then
+					ui_panel:set_phase("mastery_level_increased")
+				end
+
+				if current_level then
+					notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), string.format("Weapon mastery reached level %d/%d.", current_level, maximum_level))
 				end
 			elseif kind == "operation_failed" then
 				if ui_panel then

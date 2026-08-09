@@ -378,8 +378,24 @@ function Controller.new(dependencies)
 		return ok and valid == true
 	end
 
+	local function runtime_context_valid()
+		local fn = self._context.is_runtime_valid
+
+		if type(fn) ~= "function" then
+			return true
+		end
+
+		local ok, valid = safe_call(fn, self._context)
+
+		return ok and valid == true
+	end
+
+	local function run_is_active()
+		return self._search and self._search.running == true or self._phase3 and self._phase3.running == true or self._mastery and self._mastery.running == true
+	end
+
 	local function operation_context_valid(generation)
-		return generation == self._generation and self._view_is_valid and context_is_valid(self._active_view) and mutations_enabled()
+		return generation == self._generation and runtime_context_valid() and mutations_enabled()
 	end
 
 	local function operation_report(kind, payload)
@@ -403,6 +419,10 @@ function Controller.new(dependencies)
 		operation_report("operation_failed", {
 			error = error_value,
 		})
+
+		if self._search then
+			self._search.running = false
+		end
 
 		if self._phase3 and self._phase3.running then
 			self._phase3.running = false
@@ -1090,17 +1110,10 @@ function Controller.new(dependencies)
 			return false
 		end
 
-		local selected_ok, raw_offer = safe_call(self._get_selected_offer, self._active_view)
-		local selected_offer = selected_ok and selected_offer_ids(raw_offer) or nil
+		local raw_offer = search.raw_offer
 
-		if not selected_ok or not raw_offer then
-			self:_stop_search("search_selected_offer_missing")
-
-			return false
-		end
-
-		if not selected_offer_matches_target(selected_offer, target) then
-			self:_stop_search("search_selected_offer_changed")
+		if not raw_offer then
+			self:_stop_search("search_offer_missing")
 
 			return false
 		end
@@ -1116,57 +1129,95 @@ function Controller.new(dependencies)
 		return self:_dispatch_operation(generation, "purchase", function ()
 			return backend:purchase_offer(raw_offer)
 		end, function (purchase)
-			local candidate = purchase and purchase.items and purchase.items[1]
+			local purchase_candidate = purchase and purchase.items and purchase.items[1]
 
-			if not candidate or not candidate.gear_id or candidate.available ~= true then
+			if not purchase_candidate or not purchase_candidate.gear_id or purchase_candidate.available ~= true then
 				self:_operation_failed(generation, "purchase result did not expose a usable weapon")
 
 				return
 			end
 
-			local dump_stat = candidate.base_stats and candidate.base_stats[search.dump_stat]
-
-			if dump_stat == nil then
-				self:_operation_failed(generation, "purchase result did not expose configured dump stat")
-
-				return
-			end
-
-			candidate.dump_stat = dump_stat
-			candidate.damage = candidate.damage or candidate.base_stats.damage
-			candidate.exact_match = dump_stat == search.target_dump
 			search.purchases = search.purchases + 1
 			search.spent = search.spent + price
-			search.last = candidate
-			self._last_purchased = candidate
 
-			if self:_candidate_is_better(candidate, search.best) then
-				search.best = candidate
-			end
+			self:_refresh_after_operation(generation, function (snapshot)
+				local candidate = find_item(snapshot and snapshot.gear and snapshot.gear.items, purchase_candidate.gear_id)
 
-			operation_report("purchase_result", {
-				candidate = candidate,
-				search = search,
-			})
+				if not candidate or candidate.available ~= true then
+					self:_operation_failed(generation, "purchased weapon was not found in authoritative inventory")
 
-			self:_refresh_after_operation(generation, function ()
+					return
+				end
+
+				if target.parent_pattern and candidate.parent_pattern ~= target.parent_pattern then
+					self:_operation_failed(generation, "purchased weapon family did not match frozen target")
+
+					return
+				end
+
+				local dump_stat = candidate.base_stats and candidate.base_stats[search.dump_stat]
+
+				if dump_stat == nil then
+					self:_operation_failed(generation, "authoritative weapon did not expose configured dump stat")
+
+					return
+				end
+
+				candidate.dump_stat = dump_stat
+				candidate.dump_stat_id = search.dump_stat
+				candidate.dump_stat_label = candidate.base_stat_labels and candidate.base_stat_labels[search.dump_stat]
+				candidate.damage = candidate.damage or candidate.base_stats.damage
+				candidate.exact_match = tonumber(dump_stat) == tonumber(search.target_dump)
+				search.last = candidate
+				self._last_purchased = candidate
+
+				if self:_candidate_is_better(candidate, search.best) then
+					search.best = candidate
+				end
+
+				operation_report("purchase_result", {
+					candidate = candidate,
+					search = search,
+				})
+
 				if candidate.exact_match then
-					search.result = candidate
+					local function complete_exact_match()
+						search.result = candidate
 
-					if self._phase3 and self._phase3.running then
-						self._phase3.target_candidate = candidate
+						if self._phase3 and self._phase3.running then
+							self._phase3.target_candidate = candidate
+						end
+
+						self._phase = "search_complete"
+						operation_report("purchase_search_complete", {
+							candidate = candidate,
+							search = search,
+						})
+
+						if self._phase3 and self._phase3.running then
+							self:_phase3_check_mastery(generation)
+						else
+							search.running = false
+						end
 					end
 
-					self._phase = "search_complete"
-					operation_report("purchase_search_complete", {
-						candidate = candidate,
-						search = search,
-					})
+					if search.favorite_result then
+						if type(backend.favorite_item) ~= "function" then
+							self:_operation_failed(generation, "favorite adapter unavailable")
 
-					if self._phase3 and self._phase3.running then
-						self:_phase3_check_mastery(generation)
+							return
+						end
+
+						self:_dispatch_operation(generation, "favorite", function ()
+							return backend:favorite_item(candidate.gear_id)
+						end, function ()
+							operation_report("candidate_favorited", {
+								candidate = candidate,
+							})
+							complete_exact_match()
+						end)
 					else
-						search.running = false
+						complete_exact_match()
 					end
 				elseif self._phase3 and self._phase3.running then
 					self:_phase3_check_mastery(generation, candidate)
@@ -1229,11 +1280,31 @@ function Controller.new(dependencies)
 			return false
 		end
 
+		local selected_ok, raw_offer = safe_call(self._get_selected_offer, self._active_view)
+		local selected_offer = selected_ok and selected_offer_ids(raw_offer) or nil
+
+		if not selected_ok or not raw_offer then
+			operation_report("mutation_blocked", {
+				reason = "selected Brunt weapon offer is unavailable",
+			})
+
+			return false
+		end
+
+		if not selected_offer_matches_target(selected_offer, plan.target) then
+			operation_report("mutation_blocked", {
+				reason = "selected Brunt weapon changed before search start",
+			})
+
+			return false
+		end
+
 		self._generation = self._generation + 1
 		self._search = {
 			cap_by_dockets = setting("auto_crafter_cap_by_dockets", false) == true,
 			docket_cap = tonumber(setting("auto_crafter_docket_cap", 1000000)) or 0,
 			dump_stat = dump_stat,
+			favorite_result = setting("auto_crafter_favorite_result", true) == true,
 			generation = self._generation,
 			cap_by_max_purchases = setting("auto_crafter_cap_by_max_purchases", false) == true,
 			max_purchases = tonumber(setting("auto_crafter_max_purchases", 100)) or 0,
@@ -1243,6 +1314,7 @@ function Controller.new(dependencies)
 			spent = 0,
 			target_dump = tonumber(setting("auto_crafter_dump_stat_target", 60)) or 60,
 			target_offer = plan.target,
+			raw_offer = raw_offer,
 		}
 		self._phase3 = setting("auto_crafter_level_mastery_20", false) == true and {
 			current = nil,
@@ -1521,6 +1593,13 @@ function Controller.new(dependencies)
 				mastery.running = false
 				mastery.current = current
 
+				if current and mastery.before and tonumber(current.mastery_level) and tonumber(mastery.before.mastery_level) and current.mastery_level > mastery.before.mastery_level then
+					operation_report("mastery_level_increased", {
+						current = current,
+						previous_level = mastery.before.mastery_level,
+					})
+				end
+
 				if mastery.phase3 then
 					self._phase = "phase3_fodder_sync_complete"
 					operation_report("phase3_fodder_mastery_complete", {
@@ -1574,6 +1653,14 @@ function Controller.new(dependencies)
 		if self._active_view ~= view then
 			cancel_probe()
 			cancel_catalog()
+
+			if run_is_active() then
+				self._active_view = view
+				self._view_is_valid = true
+
+				return true
+			end
+
 			invalidate_generation()
 			self._search = nil
 			self._phase3 = nil
@@ -1598,11 +1685,22 @@ function Controller.new(dependencies)
 			return false
 		end
 
-		invalidate_generation()
 		cancel_probe()
 		cancel_catalog()
 		self._active_view = nil
 		self._view_is_valid = false
+
+		if run_is_active() then
+			self._catalog = nil
+			self._catalog_key = nil
+			self._selected_target_key = nil
+			self._selected_native_key = nil
+			self._planner_signature = nil
+
+			return true
+		end
+
+		invalidate_generation()
 		self._phase = "idle"
 		self._snapshot = nil
 		self._plan = nil
@@ -1726,26 +1824,18 @@ function Controller.new(dependencies)
 	end
 
 	function self:update(dt)
-		if not enabled() or not self._view_is_valid then
+		if not enabled() or not self._view_is_valid and not run_is_active() then
 			return
 		end
 
-		local runtime_valid = self._context.is_runtime_valid
-
-		if type(runtime_valid) == "function" then
-			local ok, valid = safe_call(runtime_valid, self._context)
-
-			if not ok or valid ~= true then
-				self:on_context_exit("runtime_context_invalid")
-
-				return
-			end
-		end
-
-		if not context_is_valid(self._active_view) then
-			self:on_context_exit("brunt_context_invalid")
+		if not runtime_context_valid() then
+			self:on_context_exit("runtime_context_invalid")
 
 			return
+		end
+
+		if self._view_is_valid and not context_is_valid(self._active_view) then
+			self:on_view_closed(self._active_view)
 		end
 
 		if self._mastery and self._mastery.running and not self._operation_inflight then
@@ -1756,7 +1846,7 @@ function Controller.new(dependencies)
 			end
 		end
 
-		if self._snapshot and not self._probe_inflight and type(self._get_selected_offer) == "function" then
+		if self._view_is_valid and not run_is_active() and self._snapshot and not self._probe_inflight and type(self._get_selected_offer) == "function" then
 			local current_config = planner_config()
 
 			if planner_config_signature(current_config) ~= self._planner_signature then
@@ -1774,7 +1864,7 @@ function Controller.new(dependencies)
 			end
 		end
 
-		if self._probe_scheduled and not self._probe_inflight then
+		if self._view_is_valid and self._probe_scheduled and not self._probe_inflight then
 			self._probe_elapsed = self._probe_elapsed + finite_dt(dt)
 
 			if self._probe_elapsed >= DEFAULT_PROBE_DELAY then

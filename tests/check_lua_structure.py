@@ -237,7 +237,6 @@ def validate_auto_crafter_mutation_boundaries() -> int:
         "auto_crafter_perk_2_target",
         "auto_crafter_blessing_1_target",
         "auto_crafter_blessing_2_target",
-        "auto_crafter_favorite_result",
         "auto_crafter_rename_result",
     )
     data_source = (RUNTIME_ROOT / "BetterInventory_data.lua").read_text(encoding="utf-8")
@@ -247,6 +246,10 @@ def validate_auto_crafter_mutation_boundaries() -> int:
         raise SystemExit("Auto Crafter host must load mod-local modules through mod:io_dofile, not Lua require")
     if 'pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_content")' not in host_source:
         raise SystemExit("Auto Crafter compact-label adapter must guard its mod-local layout-content load")
+    if 'kind == "mastery_level_increased"' not in host_source or "Weapon mastery reached level %d/%d." not in host_source:
+        raise SystemExit("Auto Crafter mastery notifications must report authoritative current/max level")
+    if '"Phase 2 " .. string.gsub(kind, "_", " ")' in host_source:
+        raise SystemExit("Auto Crafter must not notify mastery preparation, sacrifice, or unchanged polling events")
     missing_future_ui = [
         token for token in future_ui_settings if token not in data_source or token not in panel_source
     ]
@@ -276,11 +279,14 @@ def validate_auto_crafter_mutation_boundaries() -> int:
     backend_source = (auto_crafter_root / "darktide" / "backend.lua").read_text(encoding="utf-8")
     backend_contract = (
         "function backend:purchase_offer",
+        "function backend:favorite_item",
         "function backend:upgrade_weapon_rarity",
         "function backend:extract_weapon_mastery",
         "function backend:get_mastery_by_pattern",
         "MasterItems.get_store_item_instance",
         "summarize_base_stats",
+        "Items.set_item_id_as_favorite",
+        "Items.is_item_id_favorited",
         "summarize_weapon_template_stats",
         "WeaponTemplate.weapon_template_from_item",
         "display_name_key",
