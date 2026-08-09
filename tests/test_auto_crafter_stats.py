@@ -838,6 +838,8 @@ def main() -> None:
     assert 'size = { width - 20, ROW_HEIGHT }' in panel_source
     assert "phase4 and phase4.running == true" in panel_source
     assert "auto_crafter_rename_result" not in panel_source
+    assert "Resume matching dump stat weapon from inventory" in panel_source
+    assert "Include favorited inventory weapons when resuming" in panel_source
     backend_source = BACKEND_PATH.read_text(encoding="utf-8")
     assert "Items.trait_description" in backend_source
     assert "Items.trait_textures" in backend_source

@@ -896,9 +896,9 @@ local localization = {
 	auto_crafter_value_off = {
 		en = "Off",
 	},
-	auto_crafter_reuse_inventory_base = { en = "Reuse matching weapon from inventory" },
+	auto_crafter_reuse_inventory_base = { en = "Resume matching dump stat weapon from inventory" },
 	auto_crafter_reuse_inventory_base_tooltip = { en = "Before buying, use the best matching weapon already in inventory. Favorited weapons remain protected unless explicitly included." },
-	auto_crafter_include_favorite_inventory_bases = { en = "Include favorited inventory weapons" },
+	auto_crafter_include_favorite_inventory_bases = { en = "Include favorited inventory weapons when resuming" },
 	auto_crafter_include_favorite_inventory_bases_tooltip = { en = "Allow an already-favorited matching weapon to become the final crafting base." },
 	auto_crafter_show_status_hud = { en = "Show top crafting HUD" },
 	auto_crafter_show_status_hud_tooltip = { en = "Show active Auto Crafter objectives at the top of Morningstar store and inventory views. Hidden during missions and mission matchmaking." },
