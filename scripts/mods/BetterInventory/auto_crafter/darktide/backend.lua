@@ -1103,24 +1103,47 @@ function Backend.new(dependencies)
 			return rejected("mastery trait purchase parameters unavailable")
 		end
 
-		-- purchase_trait catches backend rejection and returns the error as a
-		-- resolved value. The controller therefore always verifies sticker-book
-		-- state before it permits a replacement.
-		return self:_mutate("mastery", "purchase_trait", pattern_id, trait_id, tonumber(tier)):next(function (result)
-			return self:_mutate("crafting", "reset_sticker_book"):next(function ()
-				return result
-			end)
+		-- Follow vanilla MasteryView. purchase_trait() swallows a rejected PUT into
+		-- a resolved error value; purchase_traits() returns explicit failed entries
+		-- and resets/warms the sticker-book cache after its serialized batch.
+		local operation = {
+			rarity = tonumber(tier),
+			trait_name = trait_id,
+		}
+
+		return self:_mutate("mastery", "purchase_traits", pattern_id, { operation }):next(function (failed_traits)
+			if type(failed_traits) ~= "table" then
+				return rejected("mastery blessing allocation returned an invalid result")
+			end
+
+			if next(failed_traits) ~= nil then
+				return rejected("mastery blessing allocation was rejected by the backend")
+			end
+
+			return {
+				rarity = tonumber(tier),
+				submitted = true,
+				trait_id = trait_id,
+			}
 		end)
 	end
 
-	function backend:get_trait_sticker_book(trait_category)
+	function backend:get_trait_sticker_book(trait_category, force_refresh)
 		if trait_category == nil then
 			return rejected("trait category unavailable")
 		end
 
-		return self:_read("crafting", "trait_sticker_book", trait_category):next(function (sticker_book)
-			return summarize_blessing_catalog(sticker_book)
-		end)
+		local function read_sticker_book()
+			return self:_read("crafting", "trait_sticker_book", trait_category):next(function (sticker_book)
+				return summarize_blessing_catalog(sticker_book)
+			end)
+		end
+
+		if force_refresh == true then
+			return self:_mutate("crafting", "reset_sticker_book"):next(read_sticker_book)
+		end
+
+		return read_sticker_book()
 	end
 
 	function backend:extract_weapon_mastery(mastery_id, gear_ids)

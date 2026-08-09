@@ -65,6 +65,8 @@ def main() -> None:
 		TestFavoriteItems = {}
 		TestExpertise = 300
 		TestGear = {}
+		TestMasteryPurchaseFails = false
+		TestPurchasedTraits = nil
 		TestPreviewCalls = 0
 		local modules = {
             ["scripts/foundation/utilities/promise"] = {
@@ -209,8 +211,12 @@ def main() -> None:
                 end,
                 trait_sticker_book = function() return promise({}) end,
             },
-            mastery = {
-                get_mastery_by_pattern = function()
+			mastery = {
+				purchase_traits = function(_, pattern_id, operations)
+					TestPurchasedTraits = {operations = operations, pattern_id = pattern_id}
+					return promise(TestMasteryPurchaseFails and operations or {})
+				end,
+				get_mastery_by_pattern = function()
                     return promise({current_xp = 0, mastery_level = 0, milestones = {{level = 1, xpLimit = 100}}})
                 end,
             },
@@ -237,6 +243,17 @@ def main() -> None:
     assert purchased.potential_damage == 80
     assert purchased.potential_base_stats["crowbar_p1_m1_dps_stat"] == 80
     assert purchased.potential_base_stats["crowbar_p1_m1_defence_stat"] == 60
+
+    allocation = backend.purchase_mastery_trait(backend, "crowbar_p1", "headtaker", 4)
+    assert allocation.failure is None
+    assert allocation.value.submitted is True
+    assert lua.globals().TestPurchasedTraits.pattern_id == "crowbar_p1"
+    assert lua.globals().TestPurchasedTraits.operations[1].trait_name == "headtaker"
+    assert lua.globals().TestPurchasedTraits.operations[1].rarity == 4
+    lua.globals().TestMasteryPurchaseFails = True
+    rejected_allocation = backend.purchase_mastery_trait(backend, "crowbar_p1", "headtaker", 4)
+    assert rejected_allocation.failure.description == "mastery blessing allocation was rejected by the backend"
+    lua.globals().TestMasteryPurchaseFails = False
 
     # A max-level weapon needs no zero-delta preview response to remain reusable.
     lua.globals().TestExpertise = 500

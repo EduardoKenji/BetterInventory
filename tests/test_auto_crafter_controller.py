@@ -584,15 +584,18 @@ def main() -> None:
 			item.expertise_level = 330
 			item.perks = {{id = "old_perk", rarity = 4}, {id = "new_perk", rarity = 4}}
 			item.traits = {{id = "old_blessing", rarity = 4}, {id = "keep_blessing", rarity = 4}}
-			local state = {perk_order = {}, sticker_seen = false}
+			local state = {allocation_submitted = false, perk_order = {}, post_purchase_reads = 0}
 			local backend = {purchase_calls = 0, rarity_calls = 0, expertise_calls = 0, perk_calls = 0, blessing_calls = 0, allocation_calls = 0}
 			function backend:purchase_offer(_) self.purchase_calls = self.purchase_calls + 1 return resolved({items = {item}}) end
 			function backend:probe_snapshot() return resolved(snapshot_with(item)) end
 			function backend:get_mastery_by_pattern(_) return resolved({mastery_id = "pattern-1", current_xp = 999, mastery_level = 20, claimed_level = 19, mastery_max_level = 20}) end
 			function backend:upgrade_weapon_rarity(_) self.rarity_calls = self.rarity_calls + 1 item.rarity = item.rarity + 1 return resolved({}) end
 			function backend:add_weapon_expertise(_, target) self.expertise_calls = self.expertise_calls + 1 item.expertise_level = target return resolved({}) end
-			function backend:purchase_mastery_trait(_, id, tier) assert(id == "new_blessing" and tier == 4) self.allocation_calls = self.allocation_calls + 1 state.sticker_seen = true return resolved({}) end
-			function backend:get_trait_sticker_book(_) return resolved({{id = "new_blessing", tiers = {{tier = 4, status = state.sticker_seen and "seen" or "unseen"}}}}) end
+			function backend:purchase_mastery_trait(_, id, tier) assert(id == "new_blessing" and tier == 4) self.allocation_calls = self.allocation_calls + 1 state.allocation_submitted = true return resolved({}) end
+			function backend:get_trait_sticker_book(_)
+				if state.allocation_submitted then state.post_purchase_reads = state.post_purchase_reads + 1 end
+				return resolved({{id = "new_blessing", tiers = {{tier = 4, status = state.post_purchase_reads >= 2 and "seen" or "unseen"}}}})
+			end
 			function backend:replace_perk(_, index, id, tier) self.perk_calls = self.perk_calls + 1 state.perk_order[#state.perk_order + 1] = index item.perks[index] = {id = id, rarity = tier} return resolved({}) end
 			function backend:replace_blessing(_, index, id, tier) self.blessing_calls = self.blessing_calls + 1 item.traits[index] = {id = id, rarity = tier} return resolved({}) end
 
@@ -620,11 +623,15 @@ def main() -> None:
 			controller._active_view = {}
 			controller._view_is_valid = true
 			assert(controller:start_purchase_search() == true)
+			controller:update(1)
+			assert(controller:snapshot().phase == "phase4_blessing_sync")
+			controller:update(2)
 			local result = controller:snapshot()
 			assert(result.phase == "phase4_complete", tostring(result.phase) .. " " .. tostring(result.last_error))
 			assert(item.rarity == 5 and item.expertise_level == 500)
 			assert(backend.rarity_calls == 2 and backend.expertise_calls == 2)
 			assert(backend.allocation_calls == 1 and backend.perk_calls == 2 and backend.blessing_calls == 1)
+			assert(state.post_purchase_reads == 2)
 			assert(state.perk_order[1] == 2 and state.perk_order[2] == 1)
 			assert(item.perks[1].id == "new_perk" and item.perks[2].id == "other_perk" and item.traits[1].id == "new_blessing")
 		end

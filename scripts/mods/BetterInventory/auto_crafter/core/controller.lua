@@ -3,6 +3,7 @@ local Controller = {}
 local DEFAULT_PROBE_DELAY = 0.5
 local DEFAULT_MASTERY_POLL_DELAY = 0.5
 local MAX_MASTERY_POLL_ATTEMPTS = 12
+local MAX_BLESSING_SYNC_ATTEMPTS = 12
 local REDEEMED_RARITY = 2
 local TRANSCENDENT_RARITY = 5
 local MAX_EXPERTISE_LEVEL = 500
@@ -1154,6 +1155,10 @@ function Controller.new(dependencies)
 			return false
 		end
 
+		if phase4.pending_blessing then
+			return true
+		end
+
 		if not item or item.available ~= true or item.parent_pattern ~= phase4.mastery_id or tonumber(candidate_stat(item, phase4.dump_stat)) ~= tonumber(phase4.target_dump) then
 			self:_operation_failed(generation, "final weapon failed authoritative identity or level-500 stat verification")
 
@@ -1264,16 +1269,18 @@ function Controller.new(dependencies)
 				return self:_dispatch_operation(generation, "phase4_allocate_blessing", function ()
 					return backend:purchase_mastery_trait(phase4.mastery_id, desired.id, purchase_tier)
 				end, function ()
-					self:_dispatch_operation(generation, "phase4_verify_blessing", function ()
-						return backend:get_trait_sticker_book(phase4.trait_category)
-					end, function (sticker_book)
-						phase4.sticker_book = sticker_book
-						if sticker_status(sticker_book, desired.id, purchase_tier) ~= "seen" then
-							self:_operation_failed(generation, "mastery blessing allocation was not confirmed")
-							return
-						end
-						self:_phase4_step(generation, self._snapshot)
-					end)
+					phase4.pending_blessing = {
+						rarity = purchase_tier,
+						trait_id = desired.id,
+					}
+					phase4.blessing_poll_attempts = 0
+					phase4.blessing_poll_elapsed = 0
+					phase4.blessing_poll_wait = mastery_poll_delay(0)
+					self._phase = "phase4_blessing_sync"
+					operation_report("phase4_blessing_allocation_submitted", {
+						rarity = purchase_tier,
+						trait_id = desired.id,
+					})
 				end)
 			end
 		end
@@ -1346,6 +1353,52 @@ function Controller.new(dependencies)
 		return self:_phase4_complete(item)
 	end
 
+	function self:_poll_phase4_blessing()
+		local phase4 = self._phase4
+		local pending = phase4 and phase4.pending_blessing
+		local generation = self._generation
+		local backend = self._backend
+
+		if not phase4 or not phase4.running or not pending or self._operation_inflight then
+			return false
+		end
+
+		if not backend or type(backend.get_trait_sticker_book) ~= "function" then
+			self:_operation_failed(generation, "fresh blessing sticker-book adapter unavailable")
+			return false
+		end
+
+		phase4.blessing_poll_elapsed = 0
+
+		return self:_dispatch_operation(generation, "phase4_verify_blessing", function ()
+			return backend:get_trait_sticker_book(phase4.trait_category, true)
+		end, function (sticker_book)
+			phase4.sticker_book = sticker_book
+
+			if sticker_status(sticker_book, pending.trait_id, pending.rarity) == "seen" then
+				phase4.pending_blessing = nil
+				phase4.blessing_poll_attempts = 0
+				phase4.blessing_poll_wait = mastery_poll_delay(0)
+				operation_report("phase4_blessing_allocation_confirmed", {
+					rarity = pending.rarity,
+					trait_id = pending.trait_id,
+				})
+				self:_phase4_step(generation, self._snapshot)
+				return
+			end
+
+			phase4.blessing_poll_attempts = (phase4.blessing_poll_attempts or 0) + 1
+
+			if phase4.blessing_poll_attempts >= MAX_BLESSING_SYNC_ATTEMPTS then
+				self:_operation_failed(generation, "mastery blessing allocation did not synchronize after bounded polling")
+				return
+			end
+
+			phase4.blessing_poll_wait = mastery_poll_delay(phase4.blessing_poll_attempts)
+			self._phase = "phase4_blessing_sync"
+		end)
+	end
+
 	function self:_start_phase4(candidate)
 		if not candidate or not candidate.gear_id then
 			self:_operation_failed(self._generation, "final crafting candidate unavailable")
@@ -1390,6 +1443,9 @@ function Controller.new(dependencies)
 
 		self._phase4 = {
 			allocate_mastery = allocate_mastery,
+			blessing_poll_attempts = 0,
+			blessing_poll_elapsed = 0,
+			blessing_poll_wait = mastery_poll_delay(0),
 			consecrate = consecrate,
 			dump_stat = self._search and self._search.dump_stat,
 			expertise = expertise_enabled,
@@ -1417,7 +1473,7 @@ function Controller.new(dependencies)
 				end
 
 				self:_dispatch_operation(self._generation, "phase4_sticker_preflight", function ()
-					return backend:get_trait_sticker_book(self._phase4.trait_category)
+					return backend:get_trait_sticker_book(self._phase4.trait_category, true)
 				end, function (sticker_book)
 					self._phase4.sticker_book = sticker_book
 					self:_phase4_step(self._generation, snapshot)
@@ -2716,6 +2772,14 @@ function Controller.new(dependencies)
 
 			if self._mastery_poll_elapsed >= (self._mastery_poll_wait or DEFAULT_MASTERY_POLL_DELAY) then
 				self:_poll_mastery()
+			end
+		end
+
+		if self._phase4 and self._phase4.running and self._phase4.pending_blessing and not self._operation_inflight then
+			self._phase4.blessing_poll_elapsed = (self._phase4.blessing_poll_elapsed or 0) + finite_dt(dt)
+
+			if self._phase4.blessing_poll_elapsed >= (self._phase4.blessing_poll_wait or DEFAULT_MASTERY_POLL_DELAY) then
+				self:_poll_phase4_blessing()
 			end
 		end
 
