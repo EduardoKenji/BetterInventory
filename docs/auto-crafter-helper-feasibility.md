@@ -1536,6 +1536,12 @@ Quick Level Mastery demonstrates the throughput benefit of overlapping independe
 
 View-rendered status overlays use the same fixed 42 px top inset as the normal Morningstar HUD element. They must not derive a bottom offset from a view's scenegraph height, because vendor and inventory view roots use top-aligned widget coordinates.
 
+### Local deployment and character-switch compatibility
+
+Every runtime edit must be deployed before an in-game test. From repository root run `powershell -ExecutionPolicy Bypass -File .\tools\sync_installed_mod.ps1`. This copies and hash-verifies `BetterInventory.mod` plus every runtime Lua file into `Content\mods\BetterInventory`. Results from an unsynchronized installed folder are invalid. Run synchronization again after rebuilding or changing runtime code.
+
+Auto Crafter snapshots and active runs are scoped to `HumanPlayer:character_id()`. This is mandatory for compatibility with InstantCharacterChange and any mod that calls `HumanPlayer:set_profile()` without reloading Morningstar. Account-wide `GearService.fetch_gear()` results are filtered to gear whose `characterId` matches active profile (plus genuinely account-shared records). A live character-ID change invalidates probe, catalog, plan, and active run generation; late callbacks become inert; a still-valid Brunt view schedules a fresh probe. No mutation may start from an unknown or mismatched character snapshot.
+
 ## Bottom line for implementation agent
 
 All requested operations are reachable from current client service APIs. Build this as a guarded account-mutation state machine, not as UI click automation.
