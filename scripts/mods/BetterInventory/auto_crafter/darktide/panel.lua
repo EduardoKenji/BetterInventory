@@ -1758,7 +1758,7 @@ function Panel.new(dependencies)
 			add_checkbox("auto_crafter_favorite_result", "auto_crafter_favorite_result", "Favorite final weapon", true)
 		end
 
-		table.insert(entries, self:_entry(localize("auto_crafter_panel_preview", "CRAFT"), "", {
+		table.insert(entries, self:_entry(localize("auto_crafter_panel_preview", "> CLICK HERE TO CRAFT <"), "", {
 			enabled = true,
 			selectable = true,
 			variant = "action",
@@ -1783,7 +1783,7 @@ function Panel.new(dependencies)
 			return search and search.running == true or phase3 and phase3.running == true or phase4 and phase4.running == true or mastery and mastery.running == true
 		end
 		local stop_enabled = run_is_active()
-		table.insert(entries, self:_entry(localize("auto_crafter_panel_stop", "STOP / INTERRUPT"), "", {
+		table.insert(entries, self:_entry(localize("auto_crafter_panel_stop", "> CLICK HERE TO STOP / INTERRUPT <"), "", {
 			enabled = stop_enabled,
 			selectable = true,
 			variant = "action",

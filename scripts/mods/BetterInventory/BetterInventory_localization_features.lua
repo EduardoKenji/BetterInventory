@@ -852,7 +852,7 @@ local localization = {
 		en = "disabled",
 	},
 	auto_crafter_panel_preview = {
-		en = "CRAFT",
+		en = "> CLICK HERE TO CRAFT <",
 	},
 	auto_crafter_panel_phase_2 = {
 		en = "Redeem + sacrifice one",
@@ -861,7 +861,7 @@ local localization = {
 		en = "No purchased candidate",
 	},
 	auto_crafter_panel_stop = {
-		en = "STOP / INTERRUPT",
+		en = "> CLICK HERE TO STOP / INTERRUPT <",
 	},
 	auto_crafter_panel_waiting = {
 		en = "waiting for probe",
