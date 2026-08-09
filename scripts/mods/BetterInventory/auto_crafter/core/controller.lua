@@ -1901,16 +1901,152 @@ function Controller.new(dependencies)
 		end
 
 		local queue = phase3.deferred_candidates or {}
-		local index = phase3.deferred_index or 1
-		local candidate = queue[index]
 
-		if candidate then
-			phase3.deferred_index = index + 1
-
-			return self:_phase3_start_fodder(generation, candidate)
+		if queue[phase3.deferred_index or 1] then
+			return self:_phase3_start_deferred_batch(generation)
 		end
 
 		return self:_purchase_search_step(generation)
+	end
+
+	function self:_phase3_extract_deferred_batch(generation)
+		local phase3 = self._phase3
+		local backend = self._backend
+		local batch = phase3 and phase3.deferred_batch
+
+		if not phase3 or not phase3.running or not batch or #batch.gear_ids == 0 or not backend or type(backend.extract_weapon_mastery) ~= "function" then
+			self:_phase3_stop("phase3_deferred_batch_invalid")
+
+			return false
+		end
+
+		return self:_dispatch_operation(generation, "mastery_sacrifice_batch", function ()
+			return backend:extract_weapon_mastery(batch.mastery_id, batch.gear_ids)
+		end, function (result)
+			local amount = tonumber(result and result.amount) or 0
+
+			if amount <= 0 or not extraction_contains_all(result and result.gear_ids, batch.gear_ids) then
+				self:_operation_failed(generation, "batched mastery extraction did not confirm every fodder item")
+
+				return
+			end
+
+			local projected = type(backend.project_mastery) == "function" and backend:project_mastery(phase3.current_data, amount) or nil
+			local current = mastery_summary(projected)
+
+			if not projected or not current or current.current_xp == nil or current.mastery_level == nil then
+				self:_operation_failed(generation, "local mastery projection failed after batched extraction")
+
+				return
+			end
+
+			remove_snapshot_gear(self._snapshot, batch.gear_ids)
+			phase3.current = current
+			phase3.current_data = projected
+			phase3.projected_xp_pending = true
+			phase3.fodder_count = phase3.fodder_count + #batch.gear_ids
+			phase3.deferred_index = batch.queue_end + 1
+			phase3.deferred_batch = nil
+			operation_report("phase3_fodder_batch_complete", {
+				amount = amount,
+				count = #batch.gear_ids,
+				current = current,
+				fodder_count = phase3.fodder_count,
+			})
+
+			if mastery_target_reached(current) then
+				self:_phase3_sync_projected(generation)
+			else
+				self:_purchase_search_step(generation)
+			end
+		end)
+	end
+
+	function self:_phase3_upgrade_deferred_batch(generation)
+		local phase3 = self._phase3
+		local backend = self._backend
+		local batch = phase3 and phase3.deferred_batch
+
+		if not phase3 or not phase3.running or not batch then
+			return false
+		end
+
+		local item = batch.items[batch.upgrade_index]
+
+		if not item then
+			return self:_phase3_extract_deferred_batch(generation)
+		end
+
+		if tonumber(item.rarity) and item.rarity >= REDEEMED_RARITY then
+			batch.upgrade_index = batch.upgrade_index + 1
+
+			return self:_phase3_upgrade_deferred_batch(generation)
+		end
+
+		if not backend or type(backend.upgrade_weapon_rarity) ~= "function" then
+			self:_operation_failed(generation, "batched fodder rarity upgrade adapter unavailable")
+
+			return false
+		end
+
+		return self:_dispatch_operation(generation, "mastery_upgrade_batch_item", function ()
+			return backend:upgrade_weapon_rarity(item.gear_id)
+		end, function ()
+			item.rarity = REDEEMED_RARITY
+			batch.upgrade_index = batch.upgrade_index + 1
+			self:_phase3_upgrade_deferred_batch(generation)
+		end)
+	end
+
+	function self:_phase3_start_deferred_batch(generation)
+		local phase3 = self._phase3
+
+		if not phase3 or not phase3.running or not phase3.current_data or phase3.deferred_batch then
+			return false
+		end
+
+		return self:_refresh_after_operation(generation, function (snapshot)
+			local queue = phase3.deferred_candidates or {}
+			local start_index = phase3.deferred_index or 1
+			local items = {}
+			local gear_ids = {}
+			local queue_end = start_index - 1
+
+			for index = start_index, #queue do
+				local candidate = queue[index]
+				local item = candidate and find_item(snapshot and snapshot.gear and snapshot.gear.items, candidate.gear_id)
+
+				if item then
+					if item.available ~= true or item.gear_id == phase3.target_candidate.gear_id or item.parent_pattern ~= phase3.target_candidate.mastery_id then
+						self:_operation_failed(generation, "deferred mastery batch failed authoritative family protection")
+
+						return
+					end
+
+					items[#items + 1] = item
+					gear_ids[#gear_ids + 1] = item.gear_id
+				end
+
+				queue_end = index
+			end
+
+			if #gear_ids == 0 then
+				phase3.deferred_index = queue_end + 1
+				self:_purchase_search_step(generation)
+
+				return
+			end
+
+			phase3.deferred_batch = {
+				gear_ids = gear_ids,
+				items = items,
+				mastery_id = phase3.target_candidate.mastery_id,
+				queue_end = queue_end,
+				upgrade_index = 1,
+			}
+			self._phase = "phase3_deferred_batch_upgrade"
+			self:_phase3_upgrade_deferred_batch(generation)
+		end)
 	end
 
 	function self:_phase3_sync_projected(generation)
@@ -2071,11 +2207,12 @@ function Controller.new(dependencies)
 			})
 
 			if phase3.defer_bad_processing and phase3.target_candidate and candidate and not candidate_is_target then
+				phase3.deferred_candidates[#phase3.deferred_candidates + 1] = candidate
+
 				if mastery_target_reached(current) then
-					phase3.deferred_candidates[#phase3.deferred_candidates + 1] = candidate
 					self:_phase3_discard_deferred(generation, current)
 				else
-					self:_phase3_start_fodder(generation, candidate)
+					self:_phase3_process_deferred(generation, current)
 				end
 			elseif phase3.defer_bad_processing and phase3.target_candidate then
 				self:_phase3_process_deferred(generation, current)

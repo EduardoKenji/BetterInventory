@@ -286,8 +286,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/auto_crafter/core/controller.lua",
-      "bytes": 97073,
-      "sha256": "fc6fa3b45d39534f7bc8e7f87dc982d42f5d9f78d49f5345e093aeb52b3fe07c",
+      "bytes": 101407,
+      "sha256": "61376ee74cec7de71f802ea383a57b8722400c671bbef9e7a374c2e476cbfb40",
       "source_path": "scripts/mods/BetterInventory/auto_crafter/core/controller.lua"
     },
     {
@@ -327,6 +327,6 @@
       "source_path": "scripts/mods/BetterInventory/auto_crafter/darktide/view_status_overlay.lua"
     }
   ],
-  "runtime_tree_sha256": "58e0993b0cdb6919e1a1f2ed328fd42d2a85bf3f15c3bb21280f5ed3828785e4",
+  "runtime_tree_sha256": "0d0c09e9a67a75023cf151f29d6fa193981ede1143d751625f46bac35ccedd10",
   "version": "2.0.0"
 }

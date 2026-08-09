@@ -304,6 +304,57 @@ def main() -> None:
 			assert(#controller:snapshot().data.gear.items == 0)
 		end
 
+		-- Deferred misses are upgraded serially but extracted in one backend batch.
+		do
+			local target = summarized_item("gear-batch-target", 2, 60)
+			local miss_a = summarized_item("gear-batch-a", 0, 55)
+			local miss_b = summarized_item("gear-batch-b", 1, 56)
+			local state = {items = {target, miss_a, miss_b}, claimed = false}
+			local backend = {extract_calls = 0, upgrade_calls = 0}
+			function backend:probe_snapshot() return resolved(snapshot_with_items(state.items)) end
+			function backend:upgrade_weapon_rarity(gear_id)
+				self.upgrade_calls = self.upgrade_calls + 1
+				return resolved({gear_id = gear_id})
+			end
+			function backend:extract_weapon_mastery(_, gear_ids)
+				self.extract_calls = self.extract_calls + 1
+				assert(#gear_ids == 2)
+				state.items = {target}
+				return resolved({amount = 100, gear_ids = {gear_ids[1], gear_ids[2]}})
+			end
+			function backend:project_mastery(data, amount)
+				return {mastery_id = data.mastery_id, current_xp = data.current_xp + amount, mastery_level = 20, claimed_level = 18, mastery_max_level = 20}
+			end
+			function backend:claim_mastery_levels(_, _)
+				state.claimed = true
+				return resolved({claimed_level = 19})
+			end
+			function backend:get_mastery_by_pattern(_)
+				assert(state.claimed == true)
+				return resolved({mastery_id = "pattern-1", current_xp = 200, mastery_level = 20, claimed_level = 19, mastery_max_level = 20})
+			end
+
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings({auto_crafter_level_mastery_20 = true, auto_crafter_defer_bad_weapon_processing = true}), reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = snapshot_with_items(state.items)
+			controller._search = {dump_stat = "damage_stat", running = true, target_dump = 60}
+			controller._phase3 = {
+				current = {mastery_id = "pattern-1", current_xp = 100, mastery_level = 19, claimed_level = 18, mastery_max_level = 20},
+				current_data = {mastery_id = "pattern-1", current_xp = 100, mastery_level = 19, claimed_level = 18, mastery_max_level = 20},
+				defer_bad_processing = true,
+				deferred_candidates = {miss_a, miss_b},
+				deferred_index = 1,
+				fodder_count = 0,
+				running = true,
+				target_candidate = target,
+			}
+			assert(controller:_phase3_process_deferred(0, controller._phase3.current) == true)
+			assert(backend.upgrade_calls == 2)
+			assert(backend.extract_calls == 1)
+			controller:update(1)
+			assert(controller:snapshot().phase3.fodder_count == 2)
+			assert(controller:snapshot().search.result.gear_id == target.gear_id)
+		end
+
         -- Reaching mastery 20 before mutation must preserve candidate: no upgrade or sacrifice.
         do
             local item = summarized_item("gear-max", 0, 50)
