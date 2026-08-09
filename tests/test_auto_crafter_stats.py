@@ -191,7 +191,7 @@ def main() -> None:
         previous_plan, shiv_plan, "combatsword_p1_m1_cleave_targets_stat"
     )
     assert changed is True
-    assert reconciled == "auto"
+    assert reconciled == "dual_shivs_p1_m1_finesse_stat"
 
     compatible_plan = lua.table_from(
         {

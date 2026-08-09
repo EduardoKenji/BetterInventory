@@ -513,7 +513,13 @@ function Planner.reconcile_dump_stat(previous_plan, next_plan, configured_dump_s
 		end
 	end
 
-	return "auto", true
+	for _, candidate in ipairs(next_candidates) do
+		if type(candidate) == "table" and candidate.name ~= nil then
+			return candidate.name, candidate.name ~= configured_dump_stat
+		end
+	end
+
+	return configured_dump_stat, false
 end
 
 return Planner
