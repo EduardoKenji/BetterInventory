@@ -835,6 +835,7 @@ def main() -> None:
     assert "auto_crafter_panel_request_mode" not in panel_source
     assert 'localize("auto_crafter_panel_preview", "> CLICK HERE TO CRAFT <"), ""' in panel_source
     assert 'localize("auto_crafter_panel_stop", "> CLICK HERE TO STOP / INTERRUPT <"), ""' in panel_source
+    assert 'size = { width - 20, ROW_HEIGHT }' in panel_source
     assert "phase4 and phase4.running == true" in panel_source
     assert "auto_crafter_rename_result" not in panel_source
     backend_source = BACKEND_PATH.read_text(encoding="utf-8")

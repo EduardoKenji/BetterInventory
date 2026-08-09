@@ -639,8 +639,7 @@ local function action_button_passes(width)
 		{ pass_type = "rect", style = { color = Color.terminal_corner_selected(110, true), size = { width, ROW_HEIGHT }, offset = { 0, 0, 1 } }, visibility_function = enabled },
 		{ pass_type = "rect", style = { color = Color.terminal_background(220, true), size = { width, ROW_HEIGHT }, offset = { 0, 0, 1 } }, visibility_function = disabled },
 		{ pass_type = "texture", value = "content/ui/materials/frames/frame_tile_2px", style = { color = Color.terminal_frame(255, true), size = { width, ROW_HEIGHT }, offset = { 0, 0, 2 } } },
-		{ pass_type = "text", value_id = "label", style = { font_size = 16, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "center", text_color = Color.terminal_text_header(255, true), size = { width - 185, ROW_HEIGHT }, offset = { 10, 0, 3 } } },
-		{ pass_type = "text", value_id = "detail", style = { font_size = 13, font_type = "proxima_nova_medium", text_horizontal_alignment = "right", text_vertical_alignment = "center", text_color = Color.terminal_text_body_sub_header(255, true), size = { 165, ROW_HEIGHT }, offset = { width - 175, 0, 3 } } },
+		{ pass_type = "text", value_id = "label", style = { font_size = 16, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "center", text_color = Color.terminal_text_header(255, true), size = { width - 20, ROW_HEIGHT }, offset = { 10, 0, 3 } } },
 	}
 end
 
