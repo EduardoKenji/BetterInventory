@@ -501,7 +501,7 @@ local function enum_stepper_passes(width)
 	}
 end
 
-local function stat_grid_passes(width)
+local function stat_grid_passes(width, entry)
 	local passes = {}
 	local function available(index)
 		return function(content)
@@ -528,8 +528,13 @@ local function stat_grid_passes(width)
 		local y = row * (STAT_GRID_BUTTON_HEIGHT + STAT_GRID_GAP)
 		local hotspot_id = "stat_hotspot_" .. tostring(index)
 		local label_id = "stat_label_" .. tostring(index)
+		local stat_button = entry and entry.stat_buttons and entry.stat_buttons[index]
+		local stat_name = stat_button and stat_button.name
+		local pressed_callback = stat_name and entry.stat_pressed_callback and function()
+			entry.stat_pressed_callback(stat_name)
+		end or nil
 
-		passes[#passes + 1] = { content_id = hotspot_id, pass_type = "hotspot", content = { on_hover_sound = UISoundEvents.default_mouse_hover, on_pressed_sound = UISoundEvents.default_click }, style = { size = { button_width, STAT_GRID_BUTTON_HEIGHT }, offset = { x, y, 5 } }, visibility_function = available(index) }
+		passes[#passes + 1] = { content_id = hotspot_id, pass_type = "hotspot", content = { on_hover_sound = UISoundEvents.default_mouse_hover, on_pressed_sound = UISoundEvents.default_click, pressed_callback = pressed_callback }, style = { size = { button_width, STAT_GRID_BUTTON_HEIGHT }, offset = { x, y, 5 } }, visibility_function = available(index) }
 		passes[#passes + 1] = { pass_type = "rect", style = { color = Color.terminal_corner_selected(110, true), size = { button_width, STAT_GRID_BUTTON_HEIGHT }, offset = { x, y, 1 } }, visibility_function = selected(index) }
 		passes[#passes + 1] = { pass_type = "rect", style = { color = Color.terminal_background(220, true), size = { button_width, STAT_GRID_BUTTON_HEIGHT }, offset = { x, y, 1 } }, visibility_function = not_selected(index) }
 		passes[#passes + 1] = { pass_type = "texture", value = "content/ui/materials/frames/frame_tile_2px", style = { color = Color.terminal_frame(255, true), size = { button_width, STAT_GRID_BUTTON_HEIGHT }, offset = { x, y, 2 } }, visibility_function = available(index) }
@@ -539,6 +544,8 @@ local function stat_grid_passes(width)
 
 	return passes
 end
+
+Panel.stat_grid_passes = stat_grid_passes
 
 local function trait_grid_passes(width, entry)
 	local count = entry.trait_count or 0
@@ -640,7 +647,7 @@ local BLUEPRINTS = {
 			elseif variant == "enum_stepper" then
 				return enum_stepper_passes(width)
 			elseif variant == "stat_grid" then
-				return stat_grid_passes(width)
+				return stat_grid_passes(width, entry)
 			elseif variant == "trait_grid" then
 				return trait_grid_passes(width, entry)
 			elseif variant == "action" then
@@ -839,6 +846,10 @@ function Panel.new(dependencies)
 			trait_columns = options.trait_columns,
 			trait_count = #(options.trait_options or {}),
 			trait_icons = options.trait_icons == true,
+			stat_buttons = options.stat_buttons,
+			stat_pressed_callback = options.stat_buttons and function(stat_name)
+				self:_set_setting("auto_crafter_target_dump_stat", stat_name)
+			end or nil,
 			widget_type = "auto_crafter_row",
 		}
 
@@ -889,17 +900,6 @@ function Panel.new(dependencies)
 		end
 
 		if options.stat_buttons then
-			entry.bind = function(widget)
-				widget.content.stat_pressed_callbacks = {}
-
-				for index, button in ipairs(options.stat_buttons) do
-					local stat_name = button.name
-
-					widget.content.stat_pressed_callbacks[index] = function()
-						self:_set_setting("auto_crafter_target_dump_stat", stat_name)
-					end
-				end
-			end
 			entry.refresh = function(widget)
 				local selected_name = self:_planner_selected_dump_stat()
 
@@ -907,12 +907,6 @@ function Panel.new(dependencies)
 
 				for index, button in ipairs(options.stat_buttons) do
 					widget.content["stat_label_" .. tostring(index)] = button.label
-					local hotspot = widget.content["stat_hotspot_" .. tostring(index)]
-
-					if hotspot then
-						hotspot.pressed_callback = widget.content.stat_pressed_callbacks[index]
-						hotspot.disabled = false
-					end
 				end
 
 				widget.content.selected_stat_index = 0

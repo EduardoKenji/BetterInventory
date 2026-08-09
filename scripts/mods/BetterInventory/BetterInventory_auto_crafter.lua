@@ -272,7 +272,7 @@ local function settings_adapter()
 				return false
 			end
 
-			local ok = pcall(mod.set, mod, setting_id, value, false)
+			local ok = pcall(mod.set, mod, setting_id, value, true)
 
 			return ok
 		end,

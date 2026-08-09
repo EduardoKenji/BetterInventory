@@ -96,6 +96,13 @@ def main() -> None:
             return modules[name]
         end
 
+        Color = setmetatable({}, {
+            __index = function()
+                return function() return {255, 255, 255, 255} end
+            end,
+            __call = function() return {255, 255, 255, 255} end,
+        })
+
         local localized = {
             loc_stats_display_damage_stat = "Damage",
             loc_stats_display_defense_stat = "Defenses",
@@ -372,12 +379,17 @@ def main() -> None:
         {f"stat_hotspot_{index}": lua.table_from({}) for index in range(1, 6)}
     )
     widget = lua.table_from({"content": widget_content})
-    grid_entry.bind(widget)
     grid_entry.refresh(widget)
     assert grid_entry.initial_content.selectable is True
     assert widget.content.selected_stat_index == 5
-    assert widget.content.stat_hotspot_1.pressed_callback is not None
-    widget.content.stat_hotspot_1.pressed_callback()
+    stat_grid_passes = panel_module.stat_grid_passes(421, grid_entry)
+    stat_hotspot_pass = next(
+        stat_grid_passes[index]
+        for index in range(1, len(stat_grid_passes) + 1)
+        if stat_grid_passes[index].content_id == "stat_hotspot_1"
+    )
+    assert stat_hotspot_pass.content.pressed_callback is not None
+    stat_hotspot_pass.content.pressed_callback()
     grid_entry.refresh(widget)
     assert lua.globals().TestPanelSettings.value == "crowbar_p1_m1_dps_stat"
     assert widget.content.selected_stat_index == 1
