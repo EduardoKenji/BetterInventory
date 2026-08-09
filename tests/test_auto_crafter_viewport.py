@@ -35,6 +35,8 @@ def main() -> None:
     assert "layout.panel_pivot" in panel_source
     assert "self:_update_pivot()" in panel_source
     assert "ViewportLayout.centered_top_pivot" in overlay_source
+    assert "pcall(mod.io_dofile" in overlay_source
+    assert 'require("scripts/mods/BetterInventory' not in overlay_source
     assert 'horizontal_alignment = "center"' in hud_source
     assert 'vertical_alignment = "top"' in hud_source
 

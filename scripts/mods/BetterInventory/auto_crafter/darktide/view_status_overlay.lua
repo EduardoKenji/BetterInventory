@@ -1,8 +1,8 @@
 local UIRenderer = require("scripts/managers/ui/ui_renderer")
 local UIWidget = require("scripts/managers/ui/ui_widget")
-local ViewportLayout = require("scripts/mods/BetterInventory/auto_crafter/darktide/viewport_layout")
 
 local Overlay = {}
+local ViewportLayout
 
 local WIDGET_DEFINITION = UIWidget.create_definition({
 	{
@@ -77,6 +77,18 @@ function Overlay.install(mod, view_classes)
 	if not mod or type(view_classes) ~= "table" then
 		return false
 	end
+
+	if type(mod.io_dofile) ~= "function" then
+		return false
+	end
+
+	local layout_ok, layout = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/viewport_layout")
+
+	if not layout_ok or type(layout) ~= "table" or type(layout.centered_top_pivot) ~= "function" then
+		return false
+	end
+
+	ViewportLayout = layout
 
 	local installed = false
 
