@@ -52,7 +52,7 @@
   "test_curio_acquisition.py": [
     {"name": "store_rotation_gate", "risk": "critical", "start_line": 1065, "end_line": 1390},
     {"name": "purchase_revalidation", "risk": "critical", "start_line": 668, "end_line": 864},
-    {"name": "read_cancellation_and_generation", "risk": "critical", "start_line": 1391, "end_line": 1426},
+    {"name": "read_cancellation_and_generation", "risk": "critical", "start_line": 1391, "end_line": 1434},
     {"name": "account_scoped_reports", "risk": "high", "start_line": 865, "end_line": 1064}
   ],
   "test_curio_domains.py": [
@@ -62,7 +62,7 @@
   ],
   "test_diagnostics.py": [
     {"name": "bounded_counters", "risk": "medium", "start_line": 23, "end_line": 28},
-    {"name": "diagnostic_toggle", "risk": "medium", "start_line": 30, "end_line": 60}
+    {"name": "diagnostic_toggle", "risk": "medium", "start_line": 30, "end_line": 61}
   ],
   "test_equipment_persistence.py": [
     {"name": "authoritative_reconciliation", "risk": "critical", "start_line": 237, "end_line": 248},
