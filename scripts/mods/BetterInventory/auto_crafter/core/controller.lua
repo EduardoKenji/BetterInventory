@@ -169,6 +169,67 @@ local function same_optional_trait(left, right)
 	return left == nil and right == nil or same_trait(left, right)
 end
 
+local function temporary_swap_trait(kind, current_traits, targets, catalog, sticker_book)
+	local excluded = {}
+
+	for index = 1, 2 do
+		local current = trait_at(current_traits, index)
+		local target = targets and targets[index]
+
+		if current and current.id then
+			excluded[current.id] = true
+		end
+		if target and target.id then
+			excluded[target.id] = true
+		end
+	end
+
+	if kind == "perk" then
+		for _, entry in ipairs(catalog and catalog.perks or {}) do
+			if entry.id and not excluded[entry.id] and tonumber(entry.tier) then
+				return { id = entry.id, rarity = tonumber(entry.tier) }
+			end
+		end
+	else
+		for _, blessing in ipairs(sticker_book or {}) do
+			if blessing.id and not excluded[blessing.id] then
+				local highest_seen
+
+				for _, entry in ipairs(blessing.tiers or {}) do
+					if entry.status == "seen" and tonumber(entry.tier) then
+						highest_seen = math.max(highest_seen or 0, tonumber(entry.tier))
+					end
+				end
+
+				if highest_seen then
+					return { id = blessing.id, rarity = highest_seen }
+				end
+			end
+		end
+	end
+
+	return nil
+end
+
+local function requires_temporary_swap(current_traits, targets)
+	local mismatch = false
+
+	for index = 1, 2 do
+		local desired = targets and targets[index]
+		local current = trait_at(current_traits, index)
+
+		if desired and not same_trait(current, desired) then
+			mismatch = true
+
+			if not same_trait(trait_at(current_traits, index == 1 and 2 or 1), desired) then
+				return false
+			end
+		end
+	end
+
+	return mismatch
+end
+
 local function sticker_status(catalog, trait_id, tier)
 	for _, blessing in ipairs(catalog or {}) do
 		if blessing.id == trait_id then
@@ -548,6 +609,8 @@ function Controller.new(dependencies)
 		_last_progress_elapsed = 0,
 		_failure_at = nil,
 		_operation_timings = {},
+		_observed_character_id = nil,
+		_run_character_id = nil,
 	}
 
 	local function report(kind, payload)
@@ -928,8 +991,26 @@ function Controller.new(dependencies)
 		return ok and valid == true
 	end
 
+	local function current_character_id()
+		local fn = self._context.current_character_id
+
+		if type(fn) ~= "function" then
+			return nil
+		end
+
+		local ok, character_id = safe_call(fn, self._context)
+
+		return ok and character_id ~= nil and tostring(character_id) or nil
+	end
+
+	local function snapshot_matches_character(snapshot, character_id)
+		return type(snapshot) == "table" and character_id ~= nil and snapshot.character_id ~= nil and tostring(snapshot.character_id) == character_id
+	end
+
 	local function operation_context_valid(generation)
-		return generation == self._generation and runtime_context_valid() and mutations_enabled()
+		local character_id = current_character_id()
+
+		return generation == self._generation and runtime_context_valid() and mutations_enabled() and (self._run_character_id == nil or character_id == self._run_character_id)
 	end
 
 	local function operation_report(kind, payload)
@@ -1015,6 +1096,7 @@ function Controller.new(dependencies)
 		end
 
 		self._frozen_run_settings = nil
+		self._run_character_id = nil
 	end
 
 	function self:_dispatch_operation(generation, kind, fn, on_success)
@@ -1052,6 +1134,10 @@ function Controller.new(dependencies)
 						self._operation_started_at = nil
 					end
 
+					return result
+				end
+
+				if not operation_context_valid(generation) then
 					return result
 				end
 
@@ -1260,6 +1346,14 @@ function Controller.new(dependencies)
 
 			return refresh_method(backend, self._snapshot)
 		end, function (snapshot)
+			local character_id = current_character_id()
+
+			if not snapshot_matches_character(snapshot, character_id) or self._run_character_id ~= nil and character_id ~= self._run_character_id then
+				self:_operation_failed(generation, "active character changed during authoritative refresh")
+
+				return
+			end
+
 			self._snapshot = snapshot
 			self._last_probe_at = type(self._clock.now) == "function" and self._clock:now() or nil
 			self._probe_count = self._probe_count + 1
@@ -1443,6 +1537,14 @@ function Controller.new(dependencies)
 
 	function self:_finish_probe(generation, snapshot)
 		if generation ~= self._generation then
+			return
+		end
+
+		local character_id = current_character_id()
+
+		if not snapshot_matches_character(snapshot, character_id) then
+			self:_fail_probe(generation, "active character changed during probe")
+
 			return
 		end
 
@@ -1940,12 +2042,14 @@ function Controller.new(dependencies)
 		end
 
 		local replacement_groups = {
-			{ adapter = "replace_perk", current = item.perks, kind = "perk", targets = phase4.targets.perks },
-			{ adapter = "replace_blessing", current = item.traits, kind = "blessing", targets = phase4.targets.traits },
+			{ adapter = "replace_perk", current = item.perks, kind = "perk", source = "perks", targets = phase4.targets.perks },
+			{ adapter = "replace_blessing", current = item.traits, kind = "blessing", source = "traits", targets = phase4.targets.traits },
 		}
 
 		for _, group in ipairs(replacement_groups) do
 			local replacement_index
+			local replacement_target
+			local temporary_swap = false
 
 			for index = 1, 2 do
 				local desired = group.targets[index]
@@ -1970,15 +2074,23 @@ function Controller.new(dependencies)
 					local current = trait_at(group.current, index)
 
 					if desired and not same_trait(current, desired) then
-						self:_operation_failed(generation, group.kind .. " targets require an unsupported two-slot swap")
-						return false
+						replacement_target = temporary_swap_trait(group.kind, group.current, group.targets, phase4.catalog, phase4.sticker_book)
+
+						if not replacement_target then
+							self:_operation_failed(generation, group.kind .. " two-slot swap has no safe temporary target")
+							return false
+						end
+
+						replacement_index = index
+						temporary_swap = true
+						break
 					end
 				end
 			end
 
 			if replacement_index then
 				local index = replacement_index
-				local desired = group.targets[index]
+				local desired = replacement_target or group.targets[index]
 				local adapter = backend and backend[group.adapter]
 
 				if type(adapter) ~= "function" then
@@ -1986,7 +2098,14 @@ function Controller.new(dependencies)
 					return false
 				end
 
-				return self:_dispatch_operation(generation, "phase4_replace_" .. group.kind, function ()
+				if temporary_swap then
+					operation_report("phase4_temporary_swap_started", {
+						gear_id = phase4.gear_id,
+						kind = group.kind,
+					})
+				end
+
+				return self:_dispatch_operation(generation, temporary_swap and "phase4_temporary_swap_" .. group.kind or "phase4_replace_" .. group.kind, function ()
 					return adapter(backend, phase4.gear_id, index, desired.id, desired.rarity)
 				end, function ()
 					self:_refresh_after_operation(generation, function (updated)
@@ -1997,7 +2116,7 @@ function Controller.new(dependencies)
 							self:_operation_failed(generation, group.kind .. " replacement was not confirmed")
 							return
 						end
-						phase4.replacement_baseline[group.kind == "perk" and "perks" or "traits"][index] = desired
+						phase4.replacement_baseline[group.source][index] = desired
 						self:_phase4_step(generation, updated)
 					end)
 				end)
@@ -2123,12 +2242,27 @@ function Controller.new(dependencies)
 		end
 
 		local catalog = self._search and self._search.catalog or self._catalog
+		local function validate_swap_preflight(sticker_book)
+			for _, group in ipairs({
+				{ current = item.perks, kind = "perk", targets = targets.perks },
+				{ current = item.traits, kind = "blessing", targets = targets.traits },
+			}) do
+				if requires_temporary_swap(group.current, group.targets) and not temporary_swap_trait(group.kind, group.current, group.targets, catalog, sticker_book) then
+					self:_operation_failed(self._generation, group.kind .. " two-slot swap has no safe temporary target; no final crafting materials were spent")
+
+					return false
+				end
+			end
+
+			return true
+		end
 
 		self._phase4 = {
 			allocate_mastery = allocate_mastery,
 			blessing_poll_attempts = 0,
 			blessing_poll_elapsed = 0,
 			blessing_poll_wait = blessing_poll_delay(0),
+			catalog = catalog,
 			consecrate = consecrate,
 			dump_stat = self._search and self._search.dump_stat,
 			expertise = expertise_enabled,
@@ -2161,6 +2295,10 @@ function Controller.new(dependencies)
 				end, function (sticker_book)
 					self._phase4.sticker_book = sticker_book
 
+					if not validate_swap_preflight(sticker_book) then
+						return
+					end
+
 					if not allocate_mastery or unseen_blessing_tier_count(sticker_book) == 0 then
 						for _, target in pairs(targets.traits or {}) do
 							if target and sticker_status(sticker_book, target.id, target.rarity) ~= "seen" then
@@ -2187,6 +2325,10 @@ function Controller.new(dependencies)
 					end)
 				end)
 			else
+				if not validate_swap_preflight(self._phase4.sticker_book) then
+					return
+				end
+
 				self:_phase4_step(self._generation, snapshot)
 			end
 		end)
@@ -3240,6 +3382,16 @@ function Controller.new(dependencies)
 			return false
 		end
 
+		local character_id = current_character_id()
+
+		if not snapshot_matches_character(self._snapshot, character_id) then
+			operation_report("mutation_blocked", {
+				reason = "inventory snapshot belongs to another or unknown character; wait for a fresh probe",
+			})
+
+			return false
+		end
+
 		if setting("auto_crafter_buy_until_target", true) ~= true then
 			operation_report("mutation_blocked", {
 				reason = "buy-until-target workflow is disabled",
@@ -3291,6 +3443,8 @@ function Controller.new(dependencies)
 		end
 
 		self._generation = self._generation + 1
+		self._run_character_id = character_id
+		self._observed_character_id = character_id
 		self._run_elapsed = 0
 		self._run_started_at = clock_now()
 		self._operation_timings = {}
@@ -3811,9 +3965,62 @@ function Controller.new(dependencies)
 			self._selected_target_key = nil
 			self._selected_native_key = nil
 			self._planner_signature = nil
+			self._observed_character_id = current_character_id()
+		end
+
+		if self._observed_character_id == nil then
+			self._observed_character_id = current_character_id()
 		end
 
 		return self:_schedule_probe("brunt_view_ready")
+	end
+
+	function self:on_character_changed(previous_character_id, character_id)
+		local had_active_run = run_is_active()
+		local failed_kind = self._operation_kind
+
+		invalidate_generation()
+		self._operation_sequence = self._operation_sequence + 1
+		cancel_probe()
+		cancel_catalog()
+		self._operation_inflight = false
+		self._operation_promise = nil
+		self._operation_kind = nil
+		self._operation_elapsed = 0
+		self._operation_started_at = nil
+		self._snapshot = nil
+		self._plan = nil
+		self._search = nil
+		self._phase3 = nil
+		self._phase4 = nil
+		self._mastery = nil
+		self._catalog = nil
+		self._catalog_key = nil
+		self._last_purchased = nil
+		self._selected_target_key = nil
+		self._selected_native_key = nil
+		self._planner_signature = nil
+		self._frozen_run_settings = nil
+		self._run_character_id = nil
+		self._observed_character_id = character_id
+		self._phase = "character_changed"
+		self._last_error = had_active_run and "active character changed; run stopped before any further operation" or nil
+
+		if had_active_run then
+			operation_report("operation_failed", {
+				error = self._last_error,
+				kind = failed_kind,
+			})
+		end
+
+		operation_report("character_changed", {
+			current_character_id = character_id,
+			previous_character_id = previous_character_id,
+		})
+
+		if self._view_is_valid and self._active_view and context_is_valid(self._active_view) then
+			self:_schedule_probe("character_changed")
+		end
 	end
 
 	function self:on_view_closed(view)
@@ -3845,6 +4052,7 @@ function Controller.new(dependencies)
 		self._selected_native_key = nil
 		self._planner_signature = nil
 		self._frozen_run_settings = nil
+		self._run_character_id = nil
 
 		return true
 	end
@@ -3869,6 +4077,7 @@ function Controller.new(dependencies)
 		self._selected_native_key = nil
 		self._planner_signature = nil
 		self._frozen_run_settings = nil
+		self._run_character_id = nil
 		report("context_exit", {
 			reason = reason or "game_state_exit",
 		})
@@ -3982,6 +4191,16 @@ function Controller.new(dependencies)
 			self:on_context_exit("runtime_context_invalid")
 
 			return
+		end
+
+		local character_id = current_character_id()
+
+		if character_id ~= nil and self._observed_character_id ~= nil and character_id ~= self._observed_character_id then
+			self:on_character_changed(self._observed_character_id, character_id)
+
+			return
+		elseif character_id ~= nil and self._observed_character_id == nil then
+			self._observed_character_id = character_id
 		end
 
 		if run_is_active() then

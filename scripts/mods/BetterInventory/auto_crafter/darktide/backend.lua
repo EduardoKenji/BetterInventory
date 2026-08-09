@@ -136,6 +136,26 @@ local function discard_protection_snapshot()
 	}
 end
 
+local function current_character_id()
+	local managers = rawget(_G, "Managers")
+	local player_manager = managers and managers.player
+	local ok, player = pcall(player_manager and player_manager.local_player or function () end, player_manager, 1)
+
+	if not ok or not player or player.__deleted then
+		return nil
+	end
+
+	if type(player.character_id) == "function" then
+		local id_ok, character_id = pcall(player.character_id, player)
+
+		if id_ok and character_id ~= nil then
+			return tostring(character_id)
+		end
+	end
+
+	return nil
+end
+
 local function offer_master_id(offer)
 	local description = safe_member(offer, "description")
 	local choices = safe_member(description, "lootChoices") or safe_member(description, "loot_choices")
@@ -854,7 +874,7 @@ local function summarize_item(gear, gear_id)
 	}
 end
 
-local function summarize_gear(gear)
+local function summarize_gear(gear, character_id)
 	local summary = {
 		available = gear ~= nil,
 		item_count = count_collection(gear),
@@ -872,13 +892,17 @@ local function summarize_gear(gear)
 			break
 		end
 
-		local resolved_gear_id = safe_member(raw_gear, "uuid") or safe_member(raw_gear, "gear_id") or gear_id
+		local owner_id = safe_member(raw_gear, "characterId") or safe_member(raw_gear, "character_id")
+		local belongs_to_character = owner_id == nil or character_id == nil or tostring(owner_id) == tostring(character_id)
+		local resolved_gear_id = belongs_to_character and (safe_member(raw_gear, "uuid") or safe_member(raw_gear, "gear_id") or gear_id) or nil
 
 		if resolved_gear_id ~= nil then
 			added = added + 1
 			summary.items[added] = summarize_item(raw_gear, resolved_gear_id)
 		end
 	end
+
+	summary.item_count = added
 
 	return summary
 end
@@ -988,7 +1012,9 @@ function Backend.new(dependencies)
 
 	function backend:probe_snapshot()
 		self._purchase_wallets = {}
+		local character_id = current_character_id()
 		local snapshot = {
+			character_id = character_id,
 			crafting_costs = {
 				available = false,
 				sacrifice_mastery = nil,
@@ -1017,7 +1043,7 @@ function Backend.new(dependencies)
 			return self:_read("gear", "fetch_gear")
 		end):next(function (gear)
 			self._raw_gear = gear or {}
-			snapshot.gear = summarize_gear(gear)
+			snapshot.gear = summarize_gear(gear, character_id)
 
 			return snapshot
 		end)
@@ -1035,10 +1061,12 @@ function Backend.new(dependencies)
 
 	function backend:refresh_gear_snapshot(previous)
 		local snapshot = inherited_snapshot(previous)
+		local character_id = current_character_id()
+		snapshot.character_id = character_id
 
 		return self:_read("gear", "fetch_gear"):next(function (gear)
 			self._raw_gear = gear or {}
-			snapshot.gear = summarize_gear(gear)
+			snapshot.gear = summarize_gear(gear, character_id)
 
 			return snapshot
 		end)
@@ -1047,6 +1075,8 @@ function Backend.new(dependencies)
 	function backend:refresh_runtime_snapshot(previous)
 		self._purchase_wallets = {}
 		local snapshot = inherited_snapshot(previous)
+		local character_id = current_character_id()
+		snapshot.character_id = character_id
 
 		-- Keep reads serial by default. The frozen Brunt catalogue and local cost
 		-- tables are inherited; only mutable wallet and gear state are reconciled.
@@ -1056,7 +1086,7 @@ function Backend.new(dependencies)
 			return self:_read("gear", "fetch_gear")
 		end):next(function (gear)
 			self._raw_gear = gear or {}
-			snapshot.gear = summarize_gear(gear)
+			snapshot.gear = summarize_gear(gear, character_id)
 
 			return snapshot
 		end)

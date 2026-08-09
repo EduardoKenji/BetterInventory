@@ -295,6 +295,31 @@ def main() -> None:
     assert stat_keys["crowbar_p1_m1_dps_stat"] == "loc_stats_display_damage_stat"
     assert stat_keys["crowbar_p1_m1_defence_stat"] == "loc_stats_display_defense_stat"
 
+    # Account-wide gear cache must be narrowed to active character. Live profile
+    # swaps otherwise let Auto Crafter reuse another operative's weapon.
+    lua.execute(
+        r'''
+        TestGear = {
+            current = {uuid = "current", characterId = "character-1", rarity = 0, base_stats = {{name = "damage", value = 0.5}}},
+            other = {uuid = "other", characterId = "character-2", rarity = 0, base_stats = {{name = "damage", value = 0.5}}},
+            shared = {uuid = "shared", rarity = 0, base_stats = {{name = "damage", value = 0.5}}},
+        }
+        '''
+    )
+    character_snapshot = backend.probe_snapshot(backend).value
+    assert character_snapshot.character_id == "character-1"
+    character_gear_ids = {character_snapshot.gear["items"][index].gear_id for index in range(1, 3)}
+    assert character_gear_ids == {"current", "shared"}
+    lua.execute(
+        r'''
+        TestGear = {
+            ["gear-a"] = {uuid = "gear-a", rarity = 0, base_stats = {{name = "damage", value = 0.5}}},
+            ["gear-b"] = {uuid = "gear-b", rarity = 0, base_stats = {{name = "damage", value = 0.5}}},
+        }
+        '''
+    )
+    backend.probe_snapshot(backend)
+
     purchase_promise = backend.purchase_offer(backend, lua.table_from({
         "offerId": "crowbar_offer",
         "price": {"amount": {"amount": 11600, "type": "credits"}},

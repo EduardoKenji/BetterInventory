@@ -5,17 +5,17 @@
     {"name": "derived_content_reset", "risk": "high", "start_line": 74, "end_line": 86}
   ],
   "test_auto_crafter_stats.py": [
-      {"name": "template_stats_purchase_reconciliation_traits_favorite_discard_and_potential_projection", "risk": "critical", "start_line": 270, "end_line": 385},
-      {"name": "indexed_manual_resolution_and_search_budget", "risk": "critical", "start_line": 386, "end_line": 422},
-      {"name": "phase_material_and_mastery_fodder_ranges", "risk": "high", "start_line": 423, "end_line": 508},
-      {"name": "default_on_workflow_checkbox_false_persistence", "risk": "critical", "start_line": 509, "end_line": 547},
-      {"name": "manual_selector_and_shortcut_grid", "risk": "critical", "start_line": 548, "end_line": 610},
-      {"name": "localized_display_labels", "risk": "high", "start_line": 611, "end_line": 687},
-      {"name": "tier_qualified_trait_target_selection", "risk": "high", "start_line": 688, "end_line": 700},
-      {"name": "dual_target_trait_grid_selection_exclusivity_and_icon", "risk": "high", "start_line": 701, "end_line": 742},
-      {"name": "category_specific_ranged_perk_defaults", "risk": "high", "start_line": 743, "end_line": 779},
-      {"name": "deferred_grid_rebuild_scroll_restore_and_mastery_gate", "risk": "critical", "start_line": 780, "end_line": 800},
-      {"name": "right_click_routing_blessing_icon_and_runtime_progress", "risk": "high", "start_line": 801, "end_line": 833}
+      {"name": "template_stats_purchase_reconciliation_traits_favorite_discard_and_potential_projection", "risk": "critical", "start_line": 270, "end_line": 415},
+      {"name": "indexed_manual_resolution_and_search_budget", "risk": "critical", "start_line": 416, "end_line": 452},
+      {"name": "phase_material_and_mastery_fodder_ranges", "risk": "high", "start_line": 453, "end_line": 538},
+      {"name": "default_on_workflow_checkbox_false_persistence", "risk": "critical", "start_line": 539, "end_line": 577},
+      {"name": "manual_selector_and_shortcut_grid", "risk": "critical", "start_line": 578, "end_line": 640},
+      {"name": "localized_display_labels", "risk": "high", "start_line": 641, "end_line": 717},
+      {"name": "tier_qualified_trait_target_selection", "risk": "high", "start_line": 718, "end_line": 730},
+      {"name": "dual_target_trait_grid_selection_exclusivity_and_icon", "risk": "high", "start_line": 731, "end_line": 772},
+      {"name": "category_specific_ranged_perk_defaults", "risk": "high", "start_line": 773, "end_line": 809},
+      {"name": "deferred_grid_rebuild_scroll_restore_and_mastery_gate", "risk": "critical", "start_line": 810, "end_line": 830},
+      {"name": "right_click_routing_blessing_icon_and_runtime_progress", "risk": "high", "start_line": 831, "end_line": 863}
   ],
   "test_auto_crafter_viewport.py": [
     {"name": "panel_and_hud_resolution_matrix", "risk": "high", "start_line": 14, "end_line": 54}
@@ -39,9 +39,11 @@
     {"name": "inventory_base_reuse_avoids_purchase", "risk": "critical", "start_line": 726, "end_line": 811},
     {"name": "phase4_serial_final_crafting", "risk": "critical", "start_line": 812, "end_line": 941},
     {"name": "unowned_blessing_fails_before_final_material_spend", "risk": "critical", "start_line": 942, "end_line": 987},
-    {"name": "four_back_to_back_already_mastered_fully_allocated_crafts", "risk": "critical", "start_line": 988, "end_line": 1178},
-    {"name": "configuration_change_closes_dispatch", "risk": "critical", "start_line": 1179, "end_line": 1196},
-    {"name": "explicit_stop_preserves_inflight_boundary", "risk": "critical", "start_line": 1197, "end_line": 1212}
+    {"name": "four_back_to_back_already_mastered_fully_allocated_crafts_and_two_slot_swaps", "risk": "critical", "start_line": 991, "end_line": 1185},
+    {"name": "equipment_starting_state_matrix", "risk": "critical", "start_line": 1186, "end_line": 1304},
+    {"name": "instant_character_change_snapshot_and_callback_isolation", "risk": "critical", "start_line": 1305, "end_line": 1362},
+    {"name": "configuration_change_closes_dispatch", "risk": "critical", "start_line": 1363, "end_line": 1380},
+    {"name": "explicit_stop_preserves_inflight_boundary", "risk": "critical", "start_line": 1381, "end_line": 1398}
   ],
   "test_contracts.py": [
     {"name": "guarded_lookup", "risk": "high", "start_line": 22, "end_line": 40},

@@ -137,6 +137,7 @@ def main() -> None:
             end
 
             return {
+				character_id = "character-1",
                 store = {available = true, offer_count = 1, offers = {target_offer()}},
                 wallets = {currencies = {credits = {amount = 10000}}},
                 gear = {available = true, item_count = #items, items = items},
@@ -147,6 +148,7 @@ def main() -> None:
 			items = items or {}
 
 			return {
+				character_id = "character-1",
 				store = {available = true, offer_count = 1, offers = {target_offer()}},
 				wallets = {currencies = {credits = {amount = 10000}}},
 				gear = {available = true, item_count = #items, items = items},
@@ -171,6 +173,7 @@ def main() -> None:
 
         function context()
             return {
+				current_character_id = function() return "character-1" end,
                 is_valid_brunt_view = function() return true end,
                 is_runtime_valid = function() return true end,
             }
@@ -1019,8 +1022,8 @@ def main() -> None:
 				item.expertise_level = 290 + run * 10
 				item.favorite_known = true
 				item.favorited = false
-				item.perks = {{id = "old_perk_" .. tostring(run), rarity = 4}, {id = "keep_perk", rarity = 4}}
-				item.traits = {{id = "old_blessing_" .. tostring(run), rarity = 4}, {id = "keep_blessing", rarity = 4}}
+				item.perks = run >= 3 and {{id = "keep_perk", rarity = 4}, {id = "new_perk", rarity = 4}} or {{id = "old_perk_" .. tostring(run), rarity = 4}, {id = "keep_perk", rarity = 4}}
+				item.traits = (run == 2 or run == 4) and {{id = "keep_blessing", rarity = 4}, {id = "new_blessing", rarity = 4}} or {{id = "old_blessing_" .. tostring(run), rarity = 4}, {id = "keep_blessing", rarity = 4}}
 				state.inventory[#state.inventory + 1] = item
 				state.wallet.credits = state.wallet.credits - 100
 
@@ -1081,6 +1084,7 @@ def main() -> None:
 				return resolved({
 					{id = "new_blessing", tiers = {{tier = 4, status = "seen"}}},
 					{id = "keep_blessing", tiers = {{tier = 4, status = "seen"}}},
+					{id = "temporary_blessing", tiers = {{tier = 4, status = "seen"}}},
 				})
 			end
 			function backend:get_mastery_trait_costs()
@@ -1133,10 +1137,11 @@ def main() -> None:
 			controller._catalog = {
 				available = true,
 				trait_category = "test_category",
-				perks = {{id = "new_perk", tier = 4}, {id = "keep_perk", tier = 4}},
+				perks = {{id = "new_perk", tier = 4}, {id = "keep_perk", tier = 4}, {id = "temporary_perk", tier = 4}},
 				blessings = {
 					{id = "new_blessing", tiers = {{tier = 4, status = "seen"}}},
 					{id = "keep_blessing", tiers = {{tier = 4, status = "seen"}}},
+					{id = "temporary_blessing", tiers = {{tier = 4, status = "seen"}}},
 				},
 			}
 			controller._snapshot = integration_snapshot()
@@ -1144,6 +1149,8 @@ def main() -> None:
 			controller._view_is_valid = true
 
 			for run = 1, 4 do
+				local expected_perk_calls = run >= 3 and 3 or 1
+				local expected_trait_calls = (run == 2 or run == 4) and 3 or 1
 				local before_rarity = backend.rarity_calls
 				local before_expertise = backend.expertise_calls
 				local before_perks = backend.perk_calls
@@ -1162,18 +1169,196 @@ def main() -> None:
 				assert(item.traits[1].id == "new_blessing" and item.traits[2].id == "keep_blessing", "traits " .. tostring(item.traits[1].id) .. "/" .. tostring(item.traits[2].id))
 				assert(backend.rarity_calls - before_rarity == 3)
 				assert(backend.expertise_calls - before_expertise == 2)
-				assert(backend.perk_calls - before_perks == 1)
-				assert(backend.trait_calls - before_traits == 1)
+				assert(backend.perk_calls - before_perks == expected_perk_calls)
+				assert(backend.trait_calls - before_traits == expected_trait_calls)
 				assert(result.resource_costs.credits == 100 and result.resource_costs.plasteel == 40 and result.resource_costs.diamantine == 6)
 				controller._snapshot = integration_snapshot()
 			end
 
 			assert(#state.inventory == 4 and backend.purchase_calls == 4 and backend.favorite_calls == 4 and backend.claim_calls == 1 and backend.mastery_cost_calls == 0)
-			assert(backend.rarity_calls == 12 and backend.expertise_calls == 8 and backend.perk_calls == 4 and backend.trait_calls == 4)
+			assert(backend.rarity_calls == 12 and backend.expertise_calls == 8 and backend.perk_calls == 8 and backend.trait_calls == 8)
 			for run, item in ipairs(state.inventory) do
 				assert(item.gear_id == "gear-integration-" .. tostring(run))
 				assert(item.rarity == 5 and item.expertise_level == 500 and item.favorited == true)
 			end
+		end
+
+		-- Explicit starting-state matrix covers fresh acquisition, partial inventory
+		-- reuse, complete inventory reuse, unallocated mastery, and allocated mastery.
+		do
+			local matrix = {
+				{name = "fresh_profane", reuse = false, rarity = 0, expertise = 300, allocated = true, matching_traits = false, purchases = 1, rarity_calls = 5, expertise_calls = 2, allocation_calls = 0, replacement_calls = 1},
+				{name = "reuse_below_500", reuse = true, rarity = 2, expertise = 320, allocated = true, matching_traits = false, purchases = 0, rarity_calls = 3, expertise_calls = 2, allocation_calls = 0, replacement_calls = 1},
+				{name = "reuse_complete_500", reuse = true, rarity = 5, expertise = 500, allocated = true, matching_traits = true, purchases = 0, rarity_calls = 0, expertise_calls = 0, allocation_calls = 0, replacement_calls = 0},
+				{name = "mastery_20_unallocated", reuse = true, rarity = 5, expertise = 500, allocated = false, matching_traits = false, purchases = 0, rarity_calls = 0, expertise_calls = 0, allocation_calls = 1, replacement_calls = 1},
+				{name = "mastery_20_allocated", reuse = true, rarity = 5, expertise = 500, allocated = true, matching_traits = false, purchases = 0, rarity_calls = 0, expertise_calls = 0, allocation_calls = 0, replacement_calls = 1},
+			}
+
+			for case_index, case in ipairs(matrix) do
+				local state = {item = nil, statuses = {}}
+				for _, id in ipairs({"new_blessing", "keep_blessing", "temporary_blessing"}) do
+					state.statuses[id] = {}
+					for tier = 1, 4 do state.statuses[id][tier] = case.allocated and "seen" or "unseen" end
+				end
+				local function make_item()
+					local item = summarized_item("gear-state-" .. tostring(case_index), case.rarity, 60)
+					item.expertise_level = case.expertise
+					item.favorite_known = true
+					item.favorited = false
+					item.perks = {{id = "keep_perk", rarity = 4}, {id = "other_perk", rarity = 4}}
+					item.traits = case.matching_traits and {{id = "new_blessing", rarity = 4}, {id = "keep_blessing", rarity = 4}} or {{id = "old_blessing", rarity = 4}, {id = "keep_blessing", rarity = 4}}
+
+					return item
+				end
+				if case.reuse then
+					state.item = make_item()
+				end
+
+				local backend = {allocation_calls = 0, expertise_calls = 0, mastery_cost_calls = 0, purchase_calls = 0, rarity_calls = 0, replacement_calls = 0}
+				local function state_snapshot()
+					return snapshot_with(state.item)
+				end
+				function backend:purchase_offer(_)
+					self.purchase_calls = self.purchase_calls + 1
+					state.item = make_item()
+
+					return resolved({items = {state.item}})
+				end
+				function backend:probe_snapshot() return resolved(state_snapshot()) end
+				function backend:get_mastery_by_pattern(_) return resolved({mastery_id = "pattern-1", current_xp = 20000, mastery_level = 20, claimed_level = 19, mastery_max_level = 20}) end
+				function backend:upgrade_weapon_rarity(_)
+					self.rarity_calls = self.rarity_calls + 1
+					state.item.rarity = state.item.rarity + 1
+
+					return resolved({})
+				end
+				function backend:add_weapon_expertise(_, target)
+					self.expertise_calls = self.expertise_calls + 1
+					state.item.expertise_level = target
+
+					return resolved({})
+				end
+				function backend:get_trait_sticker_book(_)
+					local result = {}
+					for _, id in ipairs({"new_blessing", "keep_blessing", "temporary_blessing"}) do
+						local tiers = {}
+						for tier = 1, 4 do tiers[#tiers + 1] = {tier = tier, status = state.statuses[id][tier]} end
+						result[#result + 1] = {id = id, tiers = tiers}
+					end
+
+					return resolved(result)
+				end
+				function backend:get_mastery_trait_costs()
+					self.mastery_cost_calls = self.mastery_cost_calls + 1
+
+					return resolved({tier_costs = {["1"] = 1, ["2"] = 1, ["3"] = 1, ["4"] = 1}, tier_thresholds = {["1"] = 0, ["2"] = 1, ["3"] = 4, ["4"] = 7}})
+				end
+				function backend:purchase_mastery_traits(_, operations)
+					self.allocation_calls = self.allocation_calls + 1
+					for _, operation in ipairs(operations) do state.statuses[operation.trait_id][operation.rarity] = "seen" end
+
+					return resolved({count = #operations})
+				end
+				function backend:replace_blessing(_, index, id, tier)
+					self.replacement_calls = self.replacement_calls + 1
+					state.item.traits[index] = {id = id, rarity = tier}
+
+					return resolved({})
+				end
+
+				local settings = base_settings({
+					auto_crafter_allocate_mastery_points = true,
+					auto_crafter_blessing_1_target = "new_blessing",
+					auto_crafter_blessing_2_target = "keep_blessing",
+					auto_crafter_change_blessings = true,
+					auto_crafter_consecrate_transcendent = true,
+					auto_crafter_level_mastery_20 = true,
+					auto_crafter_reuse_inventory_base = case.reuse,
+					auto_crafter_upgrade_expertise_500 = true,
+				})
+				CurrentOffer = raw_offer()
+				local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = settings, reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+				controller._catalog = {
+					available = true,
+					trait_category = "test_category",
+					perks = {},
+					blessings = {
+						{id = "new_blessing", tiers = {{tier = 4, status = state.statuses.new_blessing[4]}}},
+						{id = "keep_blessing", tiers = {{tier = 4, status = state.statuses.keep_blessing[4]}}},
+						{id = "temporary_blessing", tiers = {{tier = 4, status = state.statuses.temporary_blessing[4]}}},
+					},
+				}
+				controller._snapshot = state_snapshot()
+				controller._active_view = {}
+				controller._view_is_valid = true
+				assert(controller:start_purchase_search() == true, case.name .. " did not start")
+				for _ = 1, 20 do controller:update(1) end
+				local result = controller:snapshot()
+				assert(result.phase == "phase4_complete", case.name .. " stopped at " .. tostring(result.phase) .. ": " .. tostring(result.last_error))
+				assert(backend.purchase_calls == case.purchases and backend.rarity_calls == case.rarity_calls and backend.expertise_calls == case.expertise_calls, case.name .. " acquisition/final level call mismatch")
+				assert(backend.allocation_calls == case.allocation_calls and backend.replacement_calls == case.replacement_calls, case.name .. " mastery/replacement call mismatch")
+				assert(backend.mastery_cost_calls == case.allocation_calls, case.name .. " redundant or missing mastery cost read")
+				assert(state.item.rarity == 5 and state.item.expertise_level == 500 and state.item.traits[1].id == "new_blessing" and state.item.traits[2].id == "keep_blessing")
+			end
+		end
+
+		-- Character identity is part of every mutation boundary. This covers
+		-- InstantCharacterChange-style live profile swaps without a hub reload.
+		do
+			local active_character = "character-2"
+			local stale = snapshot_with(nil)
+			stale.character_id = "character-1"
+			local backend = {purchase_calls = 0}
+			function backend:purchase_offer(_) self.purchase_calls = self.purchase_calls + 1 return resolved({items = {}}) end
+			local live_context = {
+				current_character_id = function() return active_character end,
+				is_valid_brunt_view = function() return true end,
+				is_runtime_valid = function() return true end,
+			}
+			CurrentOffer = raw_offer()
+			local controller = Controller.new({backend = backend, planner = Planner, context = live_context, settings = base_settings(), reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = stale
+			controller._active_view = {}
+			controller._view_is_valid = true
+			assert(controller:start_purchase_search() == false)
+			assert(backend.purchase_calls == 0 and controller:snapshot().phase ~= "purchase_offer_inflight")
+		end
+
+		do
+			local active_character = "character-1"
+			local backend = {purchase_calls = 0, purchase_promise = pending()}
+			function backend:purchase_offer(_)
+				self.purchase_calls = self.purchase_calls + 1
+				return self.purchase_promise
+			end
+			function backend:probe_snapshot()
+				local snapshot = snapshot_with(nil)
+				snapshot.character_id = active_character
+				return resolved(snapshot)
+			end
+			local live_context = {
+				current_character_id = function() return active_character end,
+				is_valid_brunt_view = function() return true end,
+				is_runtime_valid = function() return true end,
+			}
+			CurrentOffer = raw_offer()
+			local reporter = reports()
+			local controller = Controller.new({backend = backend, planner = Planner, context = live_context, settings = base_settings(), reporter = reporter, get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = snapshot_with(nil)
+			controller._active_view = {}
+			controller._view_is_valid = true
+			controller._observed_character_id = active_character
+			assert(controller:start_purchase_search() == true and backend.purchase_calls == 1)
+			active_character = "character-2"
+			controller:on_brunt_view_ready(controller._active_view)
+			controller:update(0.1)
+			assert(controller:snapshot().phase == "probe_scheduled")
+			assert(controller:snapshot().data == nil and controller:snapshot().search == nil)
+			backend.purchase_promise.next_callback({items = {{uuid = "wrong-character-item"}}})
+			assert(backend.purchase_calls == 1 and controller:snapshot().search == nil)
+			local saw_character_change = false
+			for _, event in ipairs(reporter.events) do saw_character_change = saw_character_change or event.kind == "character_changed" end
+			assert(saw_character_change == true)
 		end
 
 		-- Configuration changes close dispatch gate while current request remains unsettled.

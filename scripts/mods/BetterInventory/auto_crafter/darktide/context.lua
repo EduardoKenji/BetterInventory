@@ -38,6 +38,40 @@ function Context.new(dependencies)
 
 	local context = {}
 
+	function context:current_character_id()
+		if type(dependencies.current_character_id) == "function" then
+			local ok, character_id = pcall(dependencies.current_character_id)
+
+			return ok and character_id or nil
+		end
+
+		local managers = rawget(_G, "Managers")
+		local player_manager = managers and managers.player
+		local ok, player = pcall(player_manager and player_manager.local_player or function () end, player_manager, 1)
+
+		if not ok or not player or player.__deleted then
+			return nil
+		end
+
+		if type(player.character_id) == "function" then
+			local id_ok, character_id = pcall(player.character_id, player)
+
+			if id_ok and character_id ~= nil then
+				return tostring(character_id)
+			end
+		end
+
+		if type(player.profile) == "function" then
+			local profile_ok, profile = pcall(player.profile, player)
+
+			if profile_ok and type(profile) == "table" and profile.character_id ~= nil then
+				return tostring(profile.character_id)
+			end
+		end
+
+		return nil
+	end
+
 	function context:is_morningstar()
 		local mode_name = current_game_mode_name()
 
