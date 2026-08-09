@@ -699,7 +699,7 @@ local localization = {
 		en = "Perk target 2",
 	},
 	auto_crafter_perk_target_tooltip = {
-		en = "Requires mastery-to-20 and Change perks. Auto-select uses only compatible Rank IV perks from the selected weapon catalogue. Replacement remains backend-inert.",
+		en = "Requires mastery-to-20 and Change perks. Choose two distinct compatible Rank IV perks from the selected weapon catalogue.",
 	},
 	auto_crafter_show_perk_grid = {
 		en = "Show perk grid",
@@ -723,7 +723,7 @@ local localization = {
 		en = "Blessing target 2",
 	},
 	auto_crafter_blessing_target_tooltip = {
-		en = "Auto-select reads the selected weapon family's valid trait sticker-book catalogue. Mastery-point allocation and replacement remain backend-inert until their guarded phases are enabled.",
+		en = "Choose two distinct compatible blessings from the selected weapon family's trait sticker-book catalogue.",
 	},
 	auto_crafter_show_blessing_grid = {
 		en = "Show blessing grid",
@@ -953,8 +953,8 @@ local localization = {
 	auto_crafter_reuse_inventory_base = { en = "Reuse matching weapon from inventory" },
 	auto_crafter_reuse_inventory_base_tooltip = { en = "Before buying, use the best matching weapon already in inventory. Favorited weapons remain protected unless explicitly included." },
 	auto_crafter_include_favorite_inventory_bases = { en = "Include favorited inventory weapons" },
-	auto_crafter_include_favorite_inventory_bases_tooltip = { en = "Allow an already-favorited matching weapon to become the final crafting base. Disabled by default." },
-	auto_crafter_show_status_hud = { en = "Show persistent crafting status" },
+	auto_crafter_include_favorite_inventory_bases_tooltip = { en = "Allow an already-favorited matching weapon to become the final crafting base." },
+	auto_crafter_show_status_hud = { en = "Show top crafting HUD" },
 	auto_crafter_show_status_hud_tooltip = { en = "Show active Auto Crafter objectives at the top of Morningstar store and inventory views. Hidden during missions and mission matchmaking." },
 	option_requires_auto_crafter_inventory_reuse = { en = "Requires inventory-base reuse" },
 }

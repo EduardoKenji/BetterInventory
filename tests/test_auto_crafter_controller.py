@@ -87,7 +87,7 @@ def main() -> None:
 				auto_crafter_reuse_inventory_base = false,
 				auto_crafter_consecrate_transcendent = false,
 				auto_crafter_upgrade_expertise_500 = false,
-				auto_crafter_change_perks = false,
+				auto_crafter_allocate_mastery_points = false, auto_crafter_change_perks = false,
 				auto_crafter_change_blessings = false,
             }
 

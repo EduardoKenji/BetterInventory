@@ -611,13 +611,31 @@ def main() -> None:
                         [
                             lua.table_from(
                                 {
-                                    "id": "perk_damage_t4",
+                                    "id": "content/items/perks/melee/unyielding_t4",
+                                    "display_name": "+25% Damage vs Unyielding Enemies",
+                                    "display_name_key": "loc_stats_display_damage_stat",
+                                    "tier": 4,
+									"trait": "weapon_trait_melee_common_wield_increased_resistant_damage",
+                                }
+                            ),
+                            lua.table_from(
+                                {
+                                    "id": "content/items/perks/melee/carapace_t4",
+                                    "display_name": "+25% Damage vs Carapace Armoured Enemies",
+                                    "display_name_key": "loc_stats_display_damage_stat",
+                                    "tier": 4,
+									"trait": "weapon_trait_melee_common_wield_increased_super_armor_damage",
+                                }
+                            ),
+                            lua.table_from(
+                                {
+                                    "id": "content/items/perks/melee/flak_t4",
                                     "display_name": "+25% Damage vs Flak Armoured Enemies",
                                     "display_name_key": "loc_stats_display_damage_stat",
                                     "tier": 4,
-                                    "trait": "damage_vs_flak",
+									"trait": "weapon_trait_melee_common_wield_increased_armored_damage",
                                 }
-                            )
+                            ),
                         ]
                     ),
                     "blessings": lua.table_from(
@@ -628,7 +646,14 @@ def main() -> None:
                                     "display_name_key": "loc_stats_display_finesse_stat",
                                     "icon": "content/ui/textures/icons/traits/test_blessing",
                                 }
-                            )
+                            ),
+                            lua.table_from(
+                                {
+                                    "id": "blessing_speed",
+                                    "display_name_key": "loc_stats_display_mobility_stat",
+                                    "icon": "content/ui/textures/icons/traits/test_blessing_2",
+                                }
+                            ),
                         ]
                     ),
                 }
@@ -637,22 +662,19 @@ def main() -> None:
     )
     perk_options = trait_panel._trait_target_options(trait_panel, "auto_crafter_perk_1_target")
     assert [perk_options[index].value for index in range(1, len(perk_options) + 1)] == [
-        "keep",
-        "auto",
-        "perk:perk_damage_t4:4",
+        "perk:content/items/perks/melee/unyielding_t4:4",
+        "perk:content/items/perks/melee/carapace_t4:4",
+        "perk:content/items/perks/melee/flak_t4:4",
     ]
     assert perk_options[3].label == "+25% Damage vs Flak Armoured Enemies"
-    trait_panel._step_trait_target(trait_panel, "auto_crafter_perk_1_target", 1)
-    assert lua.globals().TraitSettings["values"].auto_crafter_perk_1_target == "auto"
-    trait_panel._step_trait_target(trait_panel, "auto_crafter_perk_1_target", 1)
-    assert lua.globals().TraitSettings["values"].auto_crafter_perk_1_target == "perk:perk_damage_t4:4"
     trait_panel._reconcile_trait_targets(trait_panel)
-    assert lua.globals().TraitSettings["values"].auto_crafter_perk_2_target == "keep"
-    assert lua.globals().TraitSettings["values"].auto_crafter_blessing_1_target == "keep"
-    assert lua.globals().TraitSettings["values"].auto_crafter_blessing_2_target == "auto"
+    assert lua.globals().TraitSettings["values"].auto_crafter_perk_1_target == "perk:content/items/perks/melee/unyielding_t4:4"
+    assert lua.globals().TraitSettings["values"].auto_crafter_perk_2_target == "perk:content/items/perks/melee/carapace_t4:4"
+    assert lua.globals().TraitSettings["values"].auto_crafter_blessing_1_target == "blessing_power"
+    assert lua.globals().TraitSettings["values"].auto_crafter_blessing_2_target == "blessing_speed"
+    trait_panel._step_trait_target(trait_panel, "auto_crafter_perk_1_target", 1)
+    assert lua.globals().TraitSettings["values"].auto_crafter_perk_1_target == "perk:content/items/perks/melee/flak_t4:4"
 
-    lua.globals().TraitSettings["values"].auto_crafter_perk_1_target = "keep"
-    lua.globals().TraitSettings["values"].auto_crafter_perk_2_target = "auto"
     perk_grid_entry = trait_panel._entry(
         trait_panel,
         "",
@@ -681,24 +703,56 @@ def main() -> None:
     )
     perk_grid_entry.bind(perk_grid_widget)
     perk_grid_entry.refresh(perk_grid_widget)
-    assert perk_grid_widget.content.trait_target_1_index == 1
+    assert perk_grid_widget.content.trait_target_1_index == 3
     assert perk_grid_widget.content.trait_target_2_index == 2
     assert perk_grid_widget.content.trait_label_3 == "+25% Damage vs Flak Armoured Enemies"
-    perk_grid_widget.content.trait_left_callbacks[3]()
+    perk_grid_widget.content.trait_right_callbacks[1]()
     perk_grid_entry.refresh(perk_grid_widget)
-    assert lua.globals().TraitSettings["values"].auto_crafter_perk_1_target == "perk:perk_damage_t4:4"
+    assert lua.globals().TraitSettings["values"].auto_crafter_perk_2_target == "perk:content/items/perks/melee/unyielding_t4:4"
     assert perk_grid_widget.content.trait_target_1_index == 3
-    perk_grid_widget.content.trait_right_callbacks[3]()
-    perk_grid_entry.refresh(perk_grid_widget)
-    assert lua.globals().TraitSettings["values"].auto_crafter_perk_1_target == "keep"
-    assert lua.globals().TraitSettings["values"].auto_crafter_perk_2_target == "perk:perk_damage_t4:4"
-    assert perk_grid_widget.content.trait_target_1_index == 1
-    assert perk_grid_widget.content.trait_target_2_index == 3
+    assert perk_grid_widget.content.trait_target_2_index == 1
 
     blessing_options = trait_panel._trait_target_options(
         trait_panel, "auto_crafter_blessing_1_target"
     )
-    assert blessing_options[3].icon == "content/ui/textures/icons/traits/test_blessing"
+    assert blessing_options[1].icon == "content/ui/textures/icons/traits/test_blessing"
+
+    lua.globals().TraitSettings["values"].auto_crafter_perk_1_target = "stale_melee_perk"
+    lua.globals().TraitSettings["values"].auto_crafter_perk_2_target = "auto"
+    trait_panel._plan = lua.table_from(
+        {
+            "trait_catalog": lua.table_from(
+                {
+                    "available": True,
+                    "parent_pattern": "lasgun_p1",
+                    "perks": lua.table_from(
+                        [
+                            lua.table_from(
+                                {
+                                    "id": "content/items/perks/ranged/flak_t4",
+                                    "display_name": "+25% Damage vs Flak Armoured Enemies",
+                                    "tier": 4,
+									"trait": "weapon_trait_ranged_common_wield_increased_armored_damage",
+                                }
+                            ),
+                            lua.table_from(
+                                {
+                                    "id": "content/items/perks/ranged/maniacs_t4",
+                                    "display_name": "+25% Damage vs Maniacs",
+                                    "tier": 4,
+									"trait": "weapon_trait_ranged_common_wield_increased_berserker_damage",
+                                }
+                            ),
+                        ]
+                    ),
+                    "blessings": lua.table_from([]),
+                }
+            )
+        }
+    )
+    trait_panel._reconcile_trait_targets(trait_panel)
+    assert lua.globals().TraitSettings["values"].auto_crafter_perk_1_target == "perk:content/items/perks/ranged/flak_t4:4"
+    assert lua.globals().TraitSettings["values"].auto_crafter_perk_2_target == "perk:content/items/perks/ranged/maniacs_t4:4"
 
     lua.execute("RenderCalls = 0")
     trait_panel.render = lua.eval("function() RenderCalls = RenderCalls + 1 return true end")
@@ -712,7 +766,7 @@ def main() -> None:
     assert "restore_scroll_offset" in panel_source
     assert "set_scrollbar_progress" in panel_source
     assert 'add_checkbox("auto_crafter_change_perks"' in panel_source
-    assert 'self:_setting("auto_crafter_level_mastery_20", false) == true and self:_setting("auto_crafter_change_perks", false) == true' in panel_source
+    assert 'self:_setting("auto_crafter_level_mastery_20", true) == true and self:_setting("auto_crafter_change_perks", true) == true' in panel_source
     assert "on_right_pressed" in panel_source
     assert 'add_checkbox("auto_crafter_show_perk_grid"' in panel_source
     assert 'add_checkbox("auto_crafter_show_blessing_grid"' in panel_source

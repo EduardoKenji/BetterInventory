@@ -796,7 +796,7 @@ localization.auto_crafter_reuse_inventory_base = "Reuse matching weapon from inv
 localization.auto_crafter_reuse_inventory_base_tooltip = "Use a matching non-favorite inventory weapon before buying a new weapon."
 localization.auto_crafter_include_favorite_inventory_bases = "Include favorited inventory weapons"
 localization.auto_crafter_include_favorite_inventory_bases_tooltip = "Allow favorited weapons as final crafting bases."
-localization.auto_crafter_show_status_hud = "Show persistent crafting status"
+localization.auto_crafter_show_status_hud = "Show top crafting HUD"
 localization.auto_crafter_show_status_hud_tooltip = "Show crafting objectives in Morningstar store and inventory views."
 localization.option_requires_auto_crafter_inventory_reuse = "Requires inventory-base reuse"
 

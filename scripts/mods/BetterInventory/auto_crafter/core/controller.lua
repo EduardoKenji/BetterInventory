@@ -542,7 +542,7 @@ function Controller.new(dependencies)
 	end
 
 	local function enabled()
-		return setting("auto_crafter_enable", false) == true
+		return setting("auto_crafter_enable", true) == true
 	end
 
 	local function probe_enabled()
@@ -550,7 +550,7 @@ function Controller.new(dependencies)
 	end
 
 	local function mutations_enabled()
-		return enabled() and setting("auto_crafter_allow_mutations", false) == true
+		return enabled() and setting("auto_crafter_allow_mutations", true) == true
 	end
 
 	local planner_setting_ids = {
@@ -629,18 +629,18 @@ function Controller.new(dependencies)
 		return {
 			dump_stat = setting("auto_crafter_target_dump_stat", "damage"),
 			dump_target = setting("auto_crafter_dump_stat_target", 60),
-			cap_by_dockets = setting("auto_crafter_cap_by_dockets", false),
-			docket_cap = setting("auto_crafter_docket_cap", 1000000),
+			cap_by_dockets = setting("auto_crafter_cap_by_dockets", true),
+			docket_cap = setting("auto_crafter_docket_cap", 500000),
 			cap_by_max_purchases = setting("auto_crafter_cap_by_max_purchases", false),
 			max_purchases = setting("auto_crafter_max_purchases", 100),
-			best_candidate_fallback = setting("auto_crafter_best_candidate_fallback", false),
-			defer_bad_weapon_processing = setting("auto_crafter_defer_bad_weapon_processing", false),
+			best_candidate_fallback = setting("auto_crafter_best_candidate_fallback", true),
+			defer_bad_weapon_processing = setting("auto_crafter_defer_bad_weapon_processing", true),
 			consecrate_transcendent = setting("auto_crafter_consecrate_transcendent", true),
-			level_mastery_20 = setting("auto_crafter_level_mastery_20", false),
+			level_mastery_20 = setting("auto_crafter_level_mastery_20", true),
 			request_mode = setting("auto_crafter_request_mode", "sequential"),
 			upgrade_expertise_500 = setting("auto_crafter_upgrade_expertise_500", true),
 			reuse_inventory_base = setting("auto_crafter_reuse_inventory_base", true),
-			include_favorite_inventory_bases = setting("auto_crafter_include_favorite_inventory_bases", false),
+			include_favorite_inventory_bases = setting("auto_crafter_include_favorite_inventory_bases", true),
 			trait_catalog = self._catalog,
 			target_offer = nil,
 		}
@@ -1161,7 +1161,7 @@ function Controller.new(dependencies)
 			search.running = false
 			search.result = result or search.best
 
-			if not result and setting("auto_crafter_best_candidate_fallback", false) ~= true then
+			if not result and setting("auto_crafter_best_candidate_fallback", true) ~= true then
 				search.result = nil
 			end
 		end
@@ -1321,10 +1321,10 @@ function Controller.new(dependencies)
 
 	function self:_phase4_targets(item)
 		local catalog = self._search and self._search.catalog or self._catalog
-		local mastery_enabled = setting("auto_crafter_level_mastery_20", false) == true
-		local allocate_mastery = mastery_enabled and setting("auto_crafter_allocate_mastery_points", false) == true
-		local change_perks = mastery_enabled and setting("auto_crafter_change_perks", false) == true
-		local change_blessings = allocate_mastery and setting("auto_crafter_change_blessings", false) == true
+		local mastery_enabled = setting("auto_crafter_level_mastery_20", true) == true
+		local allocate_mastery = mastery_enabled and setting("auto_crafter_allocate_mastery_points", true) == true
+		local change_perks = mastery_enabled and setting("auto_crafter_change_perks", true) == true
+		local change_blessings = allocate_mastery and setting("auto_crafter_change_blessings", true) == true
 
 		if type(catalog) ~= "table" or catalog.available ~= true then
 			return nil, "weapon perk/blessing catalogue unavailable"
@@ -1335,12 +1335,12 @@ function Controller.new(dependencies)
 			traits = {},
 		}
 		local perk_values = {
-			setting("auto_crafter_perk_1_target", "keep"),
-			setting("auto_crafter_perk_2_target", "auto"),
+			setting("auto_crafter_perk_1_target"),
+			setting("auto_crafter_perk_2_target"),
 		}
 		local blessing_values = {
-			setting("auto_crafter_blessing_1_target", "keep"),
-			setting("auto_crafter_blessing_2_target", "auto"),
+			setting("auto_crafter_blessing_1_target"),
+			setting("auto_crafter_blessing_2_target"),
 		}
 
 		if change_perks then
@@ -1694,10 +1694,10 @@ function Controller.new(dependencies)
 
 		local consecrate = setting("auto_crafter_consecrate_transcendent", true) == true
 		local expertise_enabled = setting("auto_crafter_upgrade_expertise_500", true) == true
-		local mastery_enabled = setting("auto_crafter_level_mastery_20", false) == true
-		local allocate_mastery = mastery_enabled and setting("auto_crafter_allocate_mastery_points", false) == true
-		local change_perks = mastery_enabled and setting("auto_crafter_change_perks", false) == true
-		local change_blessings = allocate_mastery and setting("auto_crafter_change_blessings", false) == true
+		local mastery_enabled = setting("auto_crafter_level_mastery_20", true) == true
+		local allocate_mastery = mastery_enabled and setting("auto_crafter_allocate_mastery_points", true) == true
+		local change_perks = mastery_enabled and setting("auto_crafter_change_perks", true) == true
+		local change_blessings = allocate_mastery and setting("auto_crafter_change_blessings", true) == true
 
 		if not consecrate and not expertise_enabled and not allocate_mastery and not change_perks and not change_blessings then
 			if self._search then
@@ -2223,7 +2223,7 @@ function Controller.new(dependencies)
 					self:_phase3_finish(current)
 				end
 			elseif candidate and not candidate_is_target and not mastery_target_reached(current) then
-				if setting("auto_crafter_best_candidate_fallback", false) == true then
+				if setting("auto_crafter_best_candidate_fallback", true) == true then
 					local reserved = phase3.fallback_candidate
 
 					if not reserved then
@@ -2340,7 +2340,7 @@ function Controller.new(dependencies)
 			return nil
 		end
 
-		local include_favorites = setting("auto_crafter_include_favorite_inventory_bases", false) == true
+		local include_favorites = setting("auto_crafter_include_favorite_inventory_bases", true) == true
 		local best
 		local best_analysis
 		local target = search.target_offer or {}
@@ -2716,26 +2716,26 @@ function Controller.new(dependencies)
 		self._run_elapsed = 0
 		self._run_started_at = clock_now()
 		self._search = {
-			cap_by_dockets = setting("auto_crafter_cap_by_dockets", false) == true,
+			cap_by_dockets = setting("auto_crafter_cap_by_dockets", true) == true,
 			catalog = self._catalog,
-			docket_cap = tonumber(setting("auto_crafter_docket_cap", 1000000)) or 0,
+			docket_cap = tonumber(setting("auto_crafter_docket_cap", 500000)) or 0,
 			dump_stat = dump_stat,
 			favorite_result = setting("auto_crafter_favorite_result", true) == true,
 			generation = self._generation,
 			cap_by_max_purchases = setting("auto_crafter_cap_by_max_purchases", false) == true,
 			max_purchases = tonumber(setting("auto_crafter_max_purchases", 100)) or 0,
 			purchases = 0,
-			phase3 = setting("auto_crafter_level_mastery_20", false) == true,
+			phase3 = setting("auto_crafter_level_mastery_20", true) == true,
 			running = true,
 			spent = 0,
 			target_dump = tonumber(setting("auto_crafter_dump_stat_target", 60)) or 60,
 			target_offer = plan.target,
 			raw_offer = raw_offer,
 		}
-		self._phase3 = setting("auto_crafter_level_mastery_20", false) == true and {
+		self._phase3 = setting("auto_crafter_level_mastery_20", true) == true and {
 			cleanup_started = false,
 			current = nil,
-			defer_bad_processing = setting("auto_crafter_defer_bad_weapon_processing", false) == true,
+			defer_bad_processing = setting("auto_crafter_defer_bad_weapon_processing", true) == true,
 			deferred_candidates = {},
 			deferred_index = 1,
 			fallback_candidate = nil,
@@ -3289,7 +3289,7 @@ function Controller.new(dependencies)
 			return true
 		end
 
-		if setting_id == "auto_crafter_level_mastery_20" and self._phase3 and self._phase3.running and setting("auto_crafter_level_mastery_20", false) ~= true then
+		if setting_id == "auto_crafter_level_mastery_20" and self._phase3 and self._phase3.running and setting("auto_crafter_level_mastery_20", true) ~= true then
 			invalidate_generation()
 			self._phase3.running = false
 

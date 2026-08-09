@@ -47,6 +47,16 @@ local TRAIT_TARGET_PAIRS = {
 	auto_crafter_blessing_1_target = "auto_crafter_blessing_2_target",
 	auto_crafter_blessing_2_target = "auto_crafter_blessing_1_target",
 }
+local DEFAULT_PERK_IDS = {
+	melee = {
+		"weapon_trait_melee_common_wield_increased_resistant_damage",
+		"weapon_trait_melee_common_wield_increased_super_armor_damage",
+	},
+	ranged = {
+		"weapon_trait_ranged_common_wield_increased_armored_damage",
+		"weapon_trait_ranged_common_wield_increased_berserker_damage",
+	},
+}
 
 local function clean_single_line(value)
 	if type(value) ~= "string" then
@@ -1188,7 +1198,7 @@ function Panel.new(dependencies)
 	end
 
 	function self:_planner_fallback_text()
-		return self:_setting("auto_crafter_best_candidate_fallback", false) == true and localize("auto_crafter_value_on", "On") or localize("auto_crafter_value_off", "Off")
+		return self:_setting("auto_crafter_best_candidate_fallback", true) == true and localize("auto_crafter_value_on", "On") or localize("auto_crafter_value_off", "Off")
 	end
 
 	function self:_estimate_acquisition_text()
@@ -1229,23 +1239,17 @@ function Panel.new(dependencies)
 		local mastery = self._plan and self._plan.estimate and self._plan.estimate.phases and self._plan.estimate.phases.mastery
 
 		if not mastery then
-			return self:_setting("auto_crafter_level_mastery_20", false) == true and localize("auto_crafter_panel_waiting", "waiting for probe") or localize("auto_crafter_panel_disabled", "disabled")
+			return self:_setting("auto_crafter_level_mastery_20", true) == true and localize("auto_crafter_panel_waiting", "waiting for probe") or localize("auto_crafter_panel_disabled", "disabled")
 		end
 
 		return string.format("%s-%s Redeemed weapons | %s XP remaining", integer_text(mastery.count_min), integer_text(mastery.count_max), integer_text(mastery.remaining_xp))
 	end
 
 	function self:_trait_target_options(setting_id)
-		local options = {
-			{ label = localize("auto_crafter_target_keep", "Keep current"), short_label = localize("auto_crafter_target_keep", "Keep current"), value = "keep" },
-			{ label = localize("auto_crafter_target_auto", "Auto-select"), short_label = localize("auto_crafter_target_auto", "Auto-select"), value = "auto" },
-		}
+		local options = {}
 		local catalog = self._plan and self._plan.trait_catalog
 		local catalog_kind = string.find(setting_id, "blessing", 1, true) and "blessings" or "perks"
-		local seen = {
-			auto = true,
-			keep = true,
-		}
+		local seen = {}
 
 		if not catalog or catalog.available ~= true then
 			return options
@@ -1270,6 +1274,7 @@ function Panel.new(dependencies)
 						icon = entry.icon,
 						label = label,
 						short_label = short_label ~= "" and short_label or label,
+						trait = entry.trait,
 						value = value,
 					}
 				end
@@ -1280,7 +1285,7 @@ function Panel.new(dependencies)
 	end
 
 	function self:_target_policy_text(setting_id)
-		local value = self:_setting(setting_id, "keep")
+		local value = self:_setting(setting_id)
 
 		for _, option in ipairs(self:_trait_target_options(setting_id)) do
 			if option.value == value then
@@ -1288,13 +1293,48 @@ function Panel.new(dependencies)
 			end
 		end
 
-		return localize("auto_crafter_target_keep", "Keep current")
+		return localize("auto_crafter_panel_waiting", "waiting for probe")
+	end
+
+	function self:_default_trait_target(setting_id, options, excluded_value)
+		local target_slot = string.find(setting_id, "_2_target", 1, true) and 2 or 1
+
+		if string.find(setting_id, "perk", 1, true) then
+			local category = "melee"
+
+			for _, option in ipairs(options) do
+				local identity = option.trait or option.value or ""
+
+				if string.find(identity, "weapon_trait_ranged_", 1, true) then
+					category = "ranged"
+					break
+				end
+			end
+
+			local preferred_id = DEFAULT_PERK_IDS[category][target_slot]
+
+			for _, option in ipairs(options) do
+				local value_matches = string.find(option.value or "", "perk:" .. preferred_id .. ":", 1, true) == 1
+
+				if option.value ~= excluded_value and (option.trait == preferred_id or value_matches) then
+					return option.value
+				end
+			end
+		end
+
+		for _, option in ipairs(options) do
+			if option.value ~= excluded_value then
+				return option.value
+			end
+		end
+
+		return nil
 	end
 
 	function self:_step_trait_target(setting_id, direction)
 		local options = self:_trait_target_options(setting_id)
 		local values = {}
-		local peer_value = self:_setting(TRAIT_TARGET_PAIRS[setting_id], "keep")
+		local peer_value = self:_setting(TRAIT_TARGET_PAIRS[setting_id])
 
 		for _, option in ipairs(options) do
 			if option.value ~= peer_value then
@@ -1326,12 +1366,12 @@ function Panel.new(dependencies)
 
 		local peer_id = TRAIT_TARGET_PAIRS[setting_id]
 
-		if peer_id and self:_setting(peer_id, "keep") == value then
-			for _, option in ipairs(self:_trait_target_options(peer_id)) do
-				if option.value ~= value then
-					self:_set_setting(peer_id, option.value)
-					break
-				end
+		if peer_id and self:_setting(peer_id) == value then
+			local peer_options = self:_trait_target_options(peer_id)
+			local replacement = self:_default_trait_target(peer_id, peer_options, value)
+
+			if replacement then
+				self:_set_setting(peer_id, replacement)
 			end
 		end
 
@@ -1345,39 +1385,45 @@ function Panel.new(dependencies)
 		}
 
 		for _, pair in ipairs(pairs) do
-			for _, setting_id in ipairs(pair) do
-				local current = self:_setting(setting_id, "keep")
+			for index, setting_id in ipairs(pair) do
+				local options = self:_trait_target_options(setting_id)
+				local current = self:_setting(setting_id)
 				local found = false
 
-				for _, option in ipairs(self:_trait_target_options(setting_id)) do
+				for _, option in ipairs(options) do
 					if option.value == current then
 						found = true
 						break
 					end
 				end
 
-				if not found then
-					self:_set_setting(setting_id, "keep")
+				if not found and #options > 0 then
+					local excluded = index == 2 and self:_setting(pair[1]) or nil
+					local replacement = self:_default_trait_target(setting_id, options, excluded)
+
+					if replacement then
+						self:_set_setting(setting_id, replacement)
+					end
 				end
 			end
 
 			local first_id = pair[1]
 			local second_id = pair[2]
-			local first_value = self:_setting(first_id, "keep")
+			local first_value = self:_setting(first_id)
 
-			if self:_setting(second_id, "keep") == first_value then
-				for _, option in ipairs(self:_trait_target_options(second_id)) do
-					if option.value ~= first_value then
-						self:_set_setting(second_id, option.value)
-						break
-					end
+			if first_value ~= nil and self:_setting(second_id) == first_value then
+				local options = self:_trait_target_options(second_id)
+				local replacement = self:_default_trait_target(second_id, options, first_value)
+
+				if replacement then
+					self:_set_setting(second_id, replacement)
 				end
 			end
 		end
 	end
 
 	function self:_mutation_gate_text()
-		return self:_setting("auto_crafter_allow_mutations", false) == true and localize("auto_crafter_panel_mutations_on", "SERIAL MUTATIONS ON") or localize("auto_crafter_panel_mutations_off", "MUTATIONS OFF")
+		return self:_setting("auto_crafter_allow_mutations", true) == true and localize("auto_crafter_panel_mutations_on", "SERIAL MUTATIONS ON") or localize("auto_crafter_panel_mutations_off", "MUTATIONS OFF")
 	end
 
 	function self:_split_offers(offers)
@@ -1447,7 +1493,7 @@ function Panel.new(dependencies)
 		local selected = selected_weapon or localize("auto_crafter_panel_no_target", "no weapon selected")
 		local plan = self._plan or snapshot and snapshot.plan
 		local entries = {
-			self:_entry(localize("auto_crafter_panel_title", "Auto Crafter Helper"), self:_setting("auto_crafter_allow_mutations", false) == true and localize("auto_crafter_panel_mutations_on", "SERIAL MUTATIONS ON") or localize("auto_crafter_panel_mutations_off", "MUTATIONS OFF"), {
+			self:_entry(localize("auto_crafter_panel_title", "Auto Crafter Helper"), self:_setting("auto_crafter_allow_mutations", true) == true and localize("auto_crafter_panel_mutations_on", "SERIAL MUTATIONS ON") or localize("auto_crafter_panel_mutations_off", "MUTATIONS OFF"), {
 				variant = "title",
 				refresh = function(widget)
 					widget.content.detail = self:_mutation_gate_text()
@@ -1592,19 +1638,19 @@ function Panel.new(dependencies)
 					widget.content.detail = integer_text(self:_setting("auto_crafter_dump_stat_target", 60))
 				end,
 			}))
-			add_checkbox("auto_crafter_cap_by_dockets", "auto_crafter_cap_by_dockets", "Cap perfect-roll weapon acquisition by Ordo dockets", false, nil, true)
-			if self:_setting("auto_crafter_cap_by_dockets", false) == true then
-				table.insert(entries, self:_entry(localize("auto_crafter_panel_docket_cap", "Ordo dockets cap"), integer_text(self:_setting("auto_crafter_docket_cap", 1000000)), {
+			add_checkbox("auto_crafter_cap_by_dockets", "auto_crafter_cap_by_dockets", "Cap perfect-roll weapon acquisition by Ordo dockets", true, nil, true)
+			if self:_setting("auto_crafter_cap_by_dockets", true) == true then
+				table.insert(entries, self:_entry(localize("auto_crafter_panel_docket_cap", "Ordo dockets cap"), integer_text(self:_setting("auto_crafter_docket_cap", 500000)), {
 					selectable = true,
 					variant = "stepper",
 					decrease = function()
-						self:_adjust_numeric_setting("auto_crafter_docket_cap", 1000000, 0, 10000000, -100000)
+						self:_adjust_numeric_setting("auto_crafter_docket_cap", 500000, 0, 10000000, -100000)
 					end,
 					increase = function()
-						self:_adjust_numeric_setting("auto_crafter_docket_cap", 1000000, 0, 10000000, 100000)
+						self:_adjust_numeric_setting("auto_crafter_docket_cap", 500000, 0, 10000000, 100000)
 					end,
 					refresh = function(widget)
-						widget.content.detail = integer_text(self:_setting("auto_crafter_docket_cap", 1000000))
+						widget.content.detail = integer_text(self:_setting("auto_crafter_docket_cap", 500000))
 					end,
 				}))
 			end
@@ -1625,14 +1671,14 @@ function Panel.new(dependencies)
 				}))
 			end
 			table.insert(entries, self:_entry(localize("auto_crafter_panel_best_fallback", "Best-candidate fallback"), self:_planner_fallback_text(), {
-				checked = self:_setting("auto_crafter_best_candidate_fallback", false) == true,
+				checked = self:_setting("auto_crafter_best_candidate_fallback", true) == true,
 				selectable = true,
 				variant = "checkbox",
 				action = function()
-					self:_set_setting("auto_crafter_best_candidate_fallback", not (self:_setting("auto_crafter_best_candidate_fallback", false) == true))
+					self:_set_setting("auto_crafter_best_candidate_fallback", not (self:_setting("auto_crafter_best_candidate_fallback", true) == true))
 				end,
 				refresh = function(widget)
-					widget.content.checked = self:_setting("auto_crafter_best_candidate_fallback", false) == true
+					widget.content.checked = self:_setting("auto_crafter_best_candidate_fallback", true) == true
 				end,
 			}))
 			table.insert(entries, self:_entry(localize("auto_crafter_panel_estimate", "Search budget"), self:_estimate_acquisition_text(), {
@@ -1693,23 +1739,23 @@ function Panel.new(dependencies)
 			}))
 			add_checkbox("auto_crafter_buy_until_target", "auto_crafter_buy_until_target", "Buy until dump-stat target", true)
 			add_checkbox("auto_crafter_reuse_inventory_base", "auto_crafter_reuse_inventory_base", "Reuse matching weapon from inventory", true)
-			add_checkbox("auto_crafter_include_favorite_inventory_bases", "auto_crafter_include_favorite_inventory_bases", "Include favorited inventory weapons", false, function()
+			add_checkbox("auto_crafter_include_favorite_inventory_bases", "auto_crafter_include_favorite_inventory_bases", "Include favorited inventory weapons", true, function()
 				return self:_setting("auto_crafter_reuse_inventory_base", true) == true
 			end, nil, 44)
-			add_checkbox("auto_crafter_level_mastery_20", "auto_crafter_level_mastery_20", "Level weapon mastery to 20", false)
-			add_checkbox("auto_crafter_defer_bad_weapon_processing", "auto_crafter_defer_bad_weapon_processing", "Only process bad weapons after finding perfect-rolled weapon", false, function()
-				return self:_setting("auto_crafter_level_mastery_20", false) == true
+			add_checkbox("auto_crafter_level_mastery_20", "auto_crafter_level_mastery_20", "Level weapon mastery to 20", true)
+			add_checkbox("auto_crafter_defer_bad_weapon_processing", "auto_crafter_defer_bad_weapon_processing", "Only process bad weapons after finding perfect-rolled weapon", true, function()
+				return self:_setting("auto_crafter_level_mastery_20", true) == true
 			end, nil, 44)
-			add_checkbox("auto_crafter_allocate_mastery_points", "auto_crafter_allocate_mastery_points", "Allocate mastery points", false, function()
-				return self:_setting("auto_crafter_level_mastery_20", false) == true
+			add_checkbox("auto_crafter_allocate_mastery_points", "auto_crafter_allocate_mastery_points", "Allocate mastery points", true, function()
+				return self:_setting("auto_crafter_level_mastery_20", true) == true
 			end)
 			add_checkbox("auto_crafter_consecrate_transcendent", "auto_crafter_consecrate_transcendent", "Consecrate to Transcendent", true)
 			add_checkbox("auto_crafter_upgrade_expertise_500", "auto_crafter_upgrade_expertise_500", "Upgrade weapon level to 500", true)
-			add_checkbox("auto_crafter_change_perks", "auto_crafter_change_perks", "Change perks", false, function()
-				return self:_setting("auto_crafter_level_mastery_20", false) == true
+			add_checkbox("auto_crafter_change_perks", "auto_crafter_change_perks", "Change perks", true, function()
+				return self:_setting("auto_crafter_level_mastery_20", true) == true
 			end)
-			add_checkbox("auto_crafter_change_blessings", "auto_crafter_change_blessings", "Change blessings", false, function()
-				return self:_setting("auto_crafter_level_mastery_20", false) == true
+			add_checkbox("auto_crafter_change_blessings", "auto_crafter_change_blessings", "Change blessings", true, function()
+				return self:_setting("auto_crafter_level_mastery_20", true) == true
 			end)
 		end
 
@@ -1723,12 +1769,12 @@ function Panel.new(dependencies)
 		if not self._section_collapsed[SECTION_TRAITS] then
 			local unavailable = localize("auto_crafter_panel_option_unavailable", "Enable prerequisite options")
 			local function perk_targets_enabled()
-				return self:_setting("auto_crafter_level_mastery_20", false) == true and self:_setting("auto_crafter_change_perks", false) == true
+				return self:_setting("auto_crafter_level_mastery_20", true) == true and self:_setting("auto_crafter_change_perks", true) == true
 			end
 			add_target_selector("auto_crafter_perk_1_target", "auto_crafter_perk_1_target", "Perk target 1", perk_targets_enabled, unavailable)
 			add_target_selector("auto_crafter_perk_2_target", "auto_crafter_perk_2_target", "Perk target 2", perk_targets_enabled, unavailable)
-			add_checkbox("auto_crafter_show_perk_grid", "auto_crafter_show_perk_grid", "Show perk grid", false, perk_targets_enabled, true)
-			if self:_setting("auto_crafter_show_perk_grid", false) == true and perk_targets_enabled() then
+			add_checkbox("auto_crafter_show_perk_grid", "auto_crafter_show_perk_grid", "Show perk grid", true, perk_targets_enabled, true)
+			if self:_setting("auto_crafter_show_perk_grid", true) == true and perk_targets_enabled() then
 				local perk_grid_options = self:_trait_target_options("auto_crafter_perk_1_target")
 
 				table.insert(entries, self:_entry("", "", {
@@ -1742,12 +1788,12 @@ function Panel.new(dependencies)
 				}))
 			end
 			local function blessing_targets_enabled()
-				return self:_setting("auto_crafter_level_mastery_20", false) == true and self:_setting("auto_crafter_allocate_mastery_points", false) == true and self:_setting("auto_crafter_change_blessings", false) == true
+				return self:_setting("auto_crafter_level_mastery_20", true) == true and self:_setting("auto_crafter_allocate_mastery_points", true) == true and self:_setting("auto_crafter_change_blessings", true) == true
 			end
 			add_target_selector("auto_crafter_blessing_1_target", "auto_crafter_blessing_1_target", "Blessing target 1", blessing_targets_enabled, unavailable)
 			add_target_selector("auto_crafter_blessing_2_target", "auto_crafter_blessing_2_target", "Blessing target 2", blessing_targets_enabled, unavailable)
-			add_checkbox("auto_crafter_show_blessing_grid", "auto_crafter_show_blessing_grid", "Show blessing grid", false, blessing_targets_enabled, true)
-			if self:_setting("auto_crafter_show_blessing_grid", false) == true and blessing_targets_enabled() then
+			add_checkbox("auto_crafter_show_blessing_grid", "auto_crafter_show_blessing_grid", "Show blessing grid", true, blessing_targets_enabled, true)
+			if self:_setting("auto_crafter_show_blessing_grid", true) == true and blessing_targets_enabled() then
 				local blessing_grid_options = self:_trait_target_options("auto_crafter_blessing_1_target")
 
 				table.insert(entries, self:_entry("", "", {
@@ -1798,22 +1844,22 @@ function Panel.new(dependencies)
 					widget.content.detail = self:_planner_request_mode_text()
 				end,
 			}))
-			add_checkbox("auto_crafter_allow_mutations", "auto_crafter_panel_mutation_gate", "Mutation gate", false)
+			add_checkbox("auto_crafter_allow_mutations", "auto_crafter_panel_mutation_gate", "Mutation gate", true)
 		end
 
-		table.insert(entries, self:_entry(localize("auto_crafter_panel_preview", "Craft / purchase search"), self:_setting("auto_crafter_allow_mutations", false) == true and localize("auto_crafter_panel_serial_start", "SERIAL; click to start") or localize("auto_crafter_panel_read_only_preview", "Read-only preview"), {
+		table.insert(entries, self:_entry(localize("auto_crafter_panel_preview", "Craft / purchase search"), self:_setting("auto_crafter_allow_mutations", true) == true and localize("auto_crafter_panel_serial_start", "SERIAL; click to start") or localize("auto_crafter_panel_read_only_preview", "Read-only preview"), {
 			enabled = true,
 			selectable = true,
 			variant = "action",
 			action = function()
-				if self:_setting("auto_crafter_allow_mutations", false) == true and type(self._start_purchase_search) == "function" then
+				if self:_setting("auto_crafter_allow_mutations", true) == true and type(self._start_purchase_search) == "function" then
 					self._start_purchase_search()
 				elseif type(self._preview_plan) == "function" then
 					self._preview_plan()
 				end
 			end,
 			refresh = function(widget)
-				local enabled = self:_setting("auto_crafter_allow_mutations", false) == true
+				local enabled = self:_setting("auto_crafter_allow_mutations", true) == true
 				widget.content.enabled = true
 				widget.content.hotspot.disabled = false
 				widget.content.detail = enabled and localize("auto_crafter_panel_serial_start", "SERIAL; click to start") or localize("auto_crafter_panel_read_only_preview", "Read-only preview")

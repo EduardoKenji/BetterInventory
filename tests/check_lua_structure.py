@@ -233,10 +233,6 @@ def validate_auto_crafter_mutation_boundaries() -> int:
         "auto_crafter_upgrade_expertise_500",
         "auto_crafter_change_perks",
         "auto_crafter_change_blessings",
-        "auto_crafter_perk_1_target",
-        "auto_crafter_perk_2_target",
-        "auto_crafter_blessing_1_target",
-        "auto_crafter_blessing_2_target",
         "auto_crafter_rename_result",
     )
     data_source = (RUNTIME_ROOT / "BetterInventory_data.lua").read_text(encoding="utf-8")
@@ -253,6 +249,22 @@ def validate_auto_crafter_mutation_boundaries() -> int:
     missing_future_ui = [
         token for token in future_ui_settings if token not in data_source or token not in panel_source
     ]
+
+    # Trait values are catalog-dependent and belong only to the Brunt panel. A
+    # static DMF dropdown cannot safely represent both weapon categories or a
+    # weapon family's blessing sticker book.
+    contextual_trait_settings = (
+        "auto_crafter_perk_1_target",
+        "auto_crafter_perk_2_target",
+        "auto_crafter_blessing_1_target",
+        "auto_crafter_blessing_2_target",
+    )
+    missing_contextual_traits = [token for token in contextual_trait_settings if token not in panel_source]
+    static_contextual_traits = [token for token in contextual_trait_settings if token in data_source]
+    if missing_contextual_traits:
+        raise SystemExit("Auto Crafter contextual trait UI missing: " + ", ".join(missing_contextual_traits))
+    if static_contextual_traits:
+        raise SystemExit("Auto Crafter contextual trait targets must not be static DMF options: " + ", ".join(static_contextual_traits))
     if missing_future_ui:
         raise SystemExit("Auto Crafter future UI contract missing: " + ", ".join(missing_future_ui))
 
@@ -302,7 +314,7 @@ def validate_auto_crafter_mutation_boundaries() -> int:
 
     controller_source = (auto_crafter_root / "core" / "controller.lua").read_text(encoding="utf-8")
     controller_contract = (
-        'setting("auto_crafter_allow_mutations", false)',
+        'setting("auto_crafter_allow_mutations", true)',
         "_operation_inflight",
         "MAX_MASTERY_POLL_ATTEMPTS",
         "extraction_contains_gear_id",

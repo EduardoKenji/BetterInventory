@@ -3,13 +3,13 @@ local Planner = {}
 local DEFAULTS = {
 	dump_stat = "damage",
 	dump_target = 60,
-	cap_by_dockets = false,
-	docket_cap = 1000000,
+	cap_by_dockets = true,
+	docket_cap = 500000,
 	cap_by_max_purchases = false,
 	max_purchases = 100,
-	best_candidate_fallback = false,
+	best_candidate_fallback = true,
 	consecrate_transcendent = true,
-	level_mastery_20 = false,
+	level_mastery_20 = true,
 	upgrade_expertise_500 = true,
 	request_mode = "sequential",
 }
