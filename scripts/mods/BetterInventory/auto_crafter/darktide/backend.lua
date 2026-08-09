@@ -1,6 +1,7 @@
 local Promise = require("scripts/foundation/utilities/promise")
 local Items = require("scripts/utilities/items")
 local MasterItems = require("scripts/backend/master_items")
+local ProfileUtils = require("scripts/utilities/profile_utils")
 local WeaponTemplate = require("scripts/utilities/weapon/weapon_template")
 
 local Backend = {}
@@ -51,6 +52,66 @@ local function call_service(service, method_name, ...)
 	end
 
 	return promise_or_resolved(result)
+end
+
+local function add_loadout_gear_ids(target, loadout)
+	for _, item in pairs(loadout or {}) do
+		local gear_id = type(item) == "table" and item.gear_id or type(item) == "string" and item or nil
+
+		if gear_id then
+			target[gear_id] = true
+		end
+	end
+end
+
+local function discard_protection_snapshot()
+	local managers = rawget(_G, "Managers")
+	local player_manager = managers and managers.player
+	local save_manager = managers and managers.save
+	local player_ok, player = pcall(player_manager and player_manager.local_player or function () end, player_manager, 1)
+
+	if not player_ok or not player or player.__deleted or type(player.profile) ~= "function" or type(player.character_id) ~= "function" then
+		return nil, "current player is unavailable"
+	end
+
+	local profile_ok, profile = pcall(player.profile, player)
+	local character_ok, character_id = pcall(player.character_id, player)
+
+	if not profile_ok or type(profile) ~= "table" or not character_ok or character_id == nil then
+		return nil, "current profile is unavailable"
+	end
+
+	if not save_manager or type(save_manager.character_data) ~= "function" then
+		return nil, "character save data is unavailable"
+	end
+
+	local save_ok, character_data = pcall(save_manager.character_data, save_manager, character_id)
+	local presets_ok, profile_presets = pcall(ProfileUtils.get_profile_presets)
+
+	if not save_ok or type(character_data) ~= "table" or type(character_data.favorite_items) ~= "table" then
+		return nil, "favorite-item data is unavailable"
+	end
+
+	if not presets_ok or type(profile_presets) ~= "table" then
+		return nil, "saved loadout data is unavailable"
+	end
+
+	local equipped = {}
+
+	add_loadout_gear_ids(equipped, profile.loadout)
+	add_loadout_gear_ids(equipped, profile.loadout_item_ids)
+
+	for _, preset in pairs(profile_presets) do
+		if type(preset) == "table" then
+			add_loadout_gear_ids(equipped, preset.loadout)
+			add_loadout_gear_ids(equipped, preset.loadout_item_ids)
+		end
+	end
+
+	return {
+		equipped = equipped,
+		favorites = character_data.favorite_items,
+	}
 end
 
 local function offer_master_id(offer)
@@ -855,6 +916,40 @@ function Backend.new(dependencies)
 			favorited = true,
 			gear_id = gear_id,
 		})
+	end
+
+	function backend:discard_items(gear_ids)
+		if type(gear_ids) ~= "table" or #gear_ids == 0 then
+			return rejected("no gear ids supplied for discard")
+		end
+
+		local protection, protection_error = discard_protection_snapshot()
+
+		if not protection then
+			return rejected(protection_error)
+		end
+
+		local unique = {}
+		local validated = {}
+
+		for _, gear_id in ipairs(gear_ids) do
+			if gear_id == nil or unique[gear_id] then
+				return rejected("discard gear ids are missing or duplicated")
+			end
+
+			if protection.favorites[gear_id] == true then
+				return rejected("queued weapon became favorited before discard")
+			end
+
+			if protection.equipped[gear_id] == true then
+				return rejected("queued weapon became equipped or used by a saved loadout")
+			end
+
+			unique[gear_id] = true
+			validated[#validated + 1] = gear_id
+		end
+
+		return self:_mutate("gear", "delete_gear_batch", validated)
 	end
 
 	function backend:upgrade_weapon_rarity(gear_id)

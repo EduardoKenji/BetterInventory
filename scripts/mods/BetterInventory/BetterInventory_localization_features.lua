@@ -755,6 +755,12 @@ local localization = {
 	auto_crafter_output_group = {
 		en = "Final item handling",
 	},
+	auto_crafter_defer_bad_weapon_processing = {
+		en = "Only process bad weapons after finding perfect-rolled weapon",
+	},
+	auto_crafter_defer_bad_weapon_processing_tooltip = {
+		en = "Keep purchased misses untouched until an exact target is confirmed. Then use them for mastery and discard any leftovers after mastery reaches level 20. Requires mastery-to-20.",
+	},
 	auto_crafter_favorite_result = {
 		en = "Favorite final weapon",
 	},

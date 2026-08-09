@@ -56,6 +56,7 @@ local DEPENDENCY_REFRESH_SETTING_IDS = {
 	"quick_look_card_grid_stat_position",
 	"enable_custom_item_name_and_colors",
 	"auto_crafter_level_mastery_20",
+	"auto_crafter_defer_bad_weapon_processing",
 	"auto_crafter_allocate_mastery_points",
 	"auto_crafter_change_perks",
 	"auto_crafter_change_blessings",

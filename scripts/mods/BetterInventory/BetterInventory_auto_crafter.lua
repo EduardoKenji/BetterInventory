@@ -271,6 +271,16 @@ local function reporter(ui_panel)
 				if ui_panel then
 					ui_panel:set_phase("phase3_fodder_complete")
 				end
+			elseif kind == "phase3_candidate_deferred" then
+				if ui_panel then
+					ui_panel:set_phase("phase3_candidate_deferred")
+				end
+			elseif kind == "phase3_deferred_cleanup_complete" then
+				if ui_panel then
+					ui_panel:set_phase("phase3_deferred_cleanup_complete")
+				end
+
+				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), string.format("Discarded %d unused purchased weapon(s) after mastery reached level 20.", tonumber(payload and payload.count) or 0))
 			elseif kind == "phase3_complete" then
 				if ui_panel then
 					ui_panel:set_phase("phase3_complete")

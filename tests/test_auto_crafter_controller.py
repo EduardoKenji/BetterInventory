@@ -80,6 +80,7 @@ def main() -> None:
                 auto_crafter_cap_by_max_purchases = true,
                 auto_crafter_max_purchases = 1,
                 auto_crafter_best_candidate_fallback = false,
+				auto_crafter_defer_bad_weapon_processing = false,
 				auto_crafter_favorite_result = false,
                 auto_crafter_level_mastery_20 = false,
                 auto_crafter_request_mode = "sequential",
@@ -137,6 +138,16 @@ def main() -> None:
                 gear = {available = true, item_count = #items, items = items},
             }
         end
+
+		function snapshot_with_items(items)
+			items = items or {}
+
+			return {
+				store = {available = true, offer_count = 1, offers = {target_offer()}},
+				wallets = {currencies = {credits = {amount = 10000}}},
+				gear = {available = true, item_count = #items, items = items},
+			}
+		end
 
         function summarized_item(gear_id, rarity, dump_stat)
             return {
@@ -353,6 +364,70 @@ def main() -> None:
 			assert(controller:snapshot().search.result.gear_id == "gear-favorite")
 			assert(reporter.events[#reporter.events - 1].kind == "candidate_favorited")
 			assert(reporter.events[#reporter.events].kind == "purchase_search_complete")
+		end
+
+		-- Deferred processing leaves misses untouched until exact target exists,
+		-- then discards all leftovers when mastery is already 20.
+		do
+			local state = {items = {}}
+			local backend = {discard_calls = 0, extract_calls = 0, purchase_calls = 0}
+			function backend:purchase_offer(_)
+				self.purchase_calls = self.purchase_calls + 1
+				local item = summarized_item(self.purchase_calls == 1 and "gear-deferred" or "gear-exact", 2, self.purchase_calls == 1 and 55 or 60)
+				state.items[#state.items + 1] = item
+
+				return resolved({items = {item}})
+			end
+			function backend:probe_snapshot() return resolved(snapshot_with_items(state.items)) end
+			function backend:get_mastery_by_pattern(_) return resolved({mastery_id = "pattern-1", current_xp = 999, mastery_level = 20, claimed_level = 19, mastery_max_level = 20}) end
+			function backend:extract_weapon_mastery(_, _) self.extract_calls = self.extract_calls + 1 return resolved({}) end
+			function backend:discard_items(gear_ids)
+				assert(self.purchase_calls == 2)
+				assert(#gear_ids == 1 and gear_ids[1] == "gear-deferred")
+				self.discard_calls = self.discard_calls + 1
+				state.items = {state.items[2]}
+
+				return resolved({})
+			end
+			local settings = base_settings({auto_crafter_level_mastery_20 = true, auto_crafter_defer_bad_weapon_processing = true, auto_crafter_max_purchases = 3})
+			CurrentOffer = raw_offer()
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = settings, reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = snapshot_with_items(state.items)
+			controller._active_view = {}
+			controller._view_is_valid = true
+			assert(controller:start_purchase_search() == true)
+			assert(backend.purchase_calls == 2)
+			assert(backend.extract_calls == 0)
+			assert(backend.discard_calls == 1)
+			assert(controller:snapshot().phase == "phase3_complete")
+			assert(controller:snapshot().search.result.gear_id == "gear-exact")
+			assert(#state.items == 1 and state.items[1].gear_id == "gear-exact")
+		end
+
+		-- Acquisition cap before exact target preserves every deferred miss.
+		do
+			local state = {item = nil}
+			local backend = {discard_calls = 0, mastery_reads = 0}
+			function backend:purchase_offer(_)
+				state.item = summarized_item("gear-preserved-miss", 0, 55)
+
+				return resolved({items = {state.item}})
+			end
+			function backend:probe_snapshot() return resolved(snapshot_with(state.item)) end
+			function backend:get_mastery_by_pattern(_) self.mastery_reads = self.mastery_reads + 1 return resolved({}) end
+			function backend:discard_items(_) self.discard_calls = self.discard_calls + 1 return resolved({}) end
+			local settings = base_settings({auto_crafter_level_mastery_20 = true, auto_crafter_defer_bad_weapon_processing = true})
+			CurrentOffer = raw_offer()
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = settings, reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = snapshot_with(nil)
+			controller._active_view = {}
+			controller._view_is_valid = true
+			assert(controller:start_purchase_search() == true)
+			assert(controller:snapshot().phase == "search_max_purchases")
+			assert(controller:snapshot().phase3.deferred_candidates[1].gear_id == "gear-preserved-miss")
+			assert(backend.mastery_reads == 0)
+			assert(backend.discard_calls == 0)
+			assert(controller:snapshot().data.gear.items[1].gear_id == "gear-preserved-miss")
 		end
 
         -- Phase 3 fallback reserves one live best candidate instead of sacrificing it.

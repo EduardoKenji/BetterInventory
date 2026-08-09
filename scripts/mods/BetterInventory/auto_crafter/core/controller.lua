@@ -147,6 +147,7 @@ local function planner_config_signature(config)
 		tostring(config.cap_by_max_purchases),
 		tostring(config.max_purchases),
 		tostring(config.best_candidate_fallback),
+		tostring(config.defer_bad_weapon_processing),
 		tostring(config.consecrate_transcendent),
 		tostring(config.level_mastery_20),
 		tostring(config.request_mode),
@@ -263,6 +264,7 @@ function Controller.new(dependencies)
 		auto_crafter_cap_by_max_purchases = true,
 		auto_crafter_max_purchases = true,
 		auto_crafter_best_candidate_fallback = true,
+		auto_crafter_defer_bad_weapon_processing = true,
 		auto_crafter_consecrate_transcendent = true,
 		auto_crafter_level_mastery_20 = true,
 		auto_crafter_request_mode = true,
@@ -271,6 +273,7 @@ function Controller.new(dependencies)
 
 	local mutation_setting_ids = {
 		auto_crafter_allow_mutations = true,
+		auto_crafter_defer_bad_weapon_processing = true,
 		auto_crafter_level_mastery_20 = true,
 	}
 
@@ -283,6 +286,7 @@ function Controller.new(dependencies)
 			cap_by_max_purchases = setting("auto_crafter_cap_by_max_purchases", false),
 			max_purchases = setting("auto_crafter_max_purchases", 100),
 			best_candidate_fallback = setting("auto_crafter_best_candidate_fallback", false),
+			defer_bad_weapon_processing = setting("auto_crafter_defer_bad_weapon_processing", false),
 			consecrate_transcendent = setting("auto_crafter_consecrate_transcendent", true),
 			level_mastery_20 = setting("auto_crafter_level_mastery_20", false),
 			request_mode = setting("auto_crafter_request_mode", "sequential"),
@@ -943,6 +947,101 @@ function Controller.new(dependencies)
 		return true
 	end
 
+	function self:_phase3_discard_deferred(generation, current)
+		local phase3 = self._phase3
+		local backend = self._backend
+
+		if not phase3 or not phase3.running or not phase3.target_candidate then
+			return false
+		end
+
+		if phase3.cleanup_started then
+			return false
+		end
+
+		phase3.cleanup_started = true
+		self._phase = "phase3_deferred_cleanup_preflight"
+
+		return self:_refresh_after_operation(generation, function (snapshot)
+			local target = phase3.target_candidate
+			local queue = phase3.deferred_candidates or {}
+			local gear_ids = {}
+
+			for index = phase3.deferred_index or 1, #queue do
+				local queued = queue[index]
+				local item = queued and find_item(snapshot and snapshot.gear and snapshot.gear.items, queued.gear_id)
+
+				if item then
+					if item.available ~= true or item.gear_id == target.gear_id or item.parent_pattern ~= target.mastery_id then
+						self:_operation_failed(generation, "deferred weapon cleanup failed authoritative family protection")
+
+						return
+					end
+
+					gear_ids[#gear_ids + 1] = item.gear_id
+				end
+			end
+
+			if #gear_ids == 0 then
+				phase3.deferred_index = #queue + 1
+				self:_phase3_finish(current)
+
+				return
+			end
+
+			if not backend or type(backend.discard_items) ~= "function" then
+				self:_operation_failed(generation, "deferred weapon discard adapter unavailable")
+
+				return
+			end
+
+			self:_dispatch_operation(generation, "phase3_deferred_cleanup", function ()
+				return backend:discard_items(gear_ids)
+			end, function ()
+				self:_refresh_after_operation(generation, function (updated_snapshot)
+					for _, gear_id in ipairs(gear_ids) do
+						if find_item(updated_snapshot and updated_snapshot.gear and updated_snapshot.gear.items, gear_id) then
+							self:_operation_failed(generation, "deferred weapon discard was not confirmed by authoritative inventory")
+
+							return
+						end
+					end
+
+					phase3.deferred_index = #queue + 1
+					operation_report("phase3_deferred_cleanup_complete", {
+						count = #gear_ids,
+						current = current,
+					})
+					self:_phase3_finish(current)
+				end)
+			end)
+		end)
+	end
+
+	function self:_phase3_process_deferred(generation, current)
+		local phase3 = self._phase3
+
+		if not phase3 or not phase3.running or not phase3.target_candidate then
+			return false
+		end
+
+		if mastery_target_reached(current) then
+			return self:_phase3_discard_deferred(generation, current)
+		end
+
+		local queue = phase3.deferred_candidates or {}
+		local index = phase3.deferred_index or 1
+		local candidate = queue[index]
+
+		if candidate then
+			phase3.deferred_index = index + 1
+
+			return self:_phase3_start_fodder(generation, candidate)
+		end
+
+		return self:_purchase_search_step(generation)
+	end
+
 	function self:_phase3_start_fodder(generation, candidate)
 		local phase3 = self._phase3
 
@@ -976,7 +1075,9 @@ function Controller.new(dependencies)
 				})
 				self._mastery = nil
 
-				if active_phase3.target_candidate and mastery_target_reached(current) then
+				if active_phase3.defer_bad_processing and active_phase3.target_candidate then
+					self:_phase3_process_deferred(generation, current)
+				elseif active_phase3.target_candidate and mastery_target_reached(current) then
 					self:_phase3_finish(current)
 				else
 					self:_purchase_search_step(generation)
@@ -1037,7 +1138,16 @@ function Controller.new(dependencies)
 				current = current,
 			})
 
-			if phase3.target_candidate and mastery_target_reached(current) then
+			if phase3.defer_bad_processing and phase3.target_candidate and candidate and not candidate_is_target then
+				if mastery_target_reached(current) then
+					phase3.deferred_candidates[#phase3.deferred_candidates + 1] = candidate
+					self:_phase3_discard_deferred(generation, current)
+				else
+					self:_phase3_start_fodder(generation, candidate)
+				end
+			elseif phase3.defer_bad_processing and phase3.target_candidate then
+				self:_phase3_process_deferred(generation, current)
+			elseif phase3.target_candidate and mastery_target_reached(current) then
 				self:_phase3_finish(current)
 			elseif candidate and not candidate_is_target and not mastery_target_reached(current) then
 				if setting("auto_crafter_best_candidate_fallback", false) == true then
@@ -1180,7 +1290,9 @@ function Controller.new(dependencies)
 					search = search,
 				})
 
-				if candidate.exact_match then
+				local phase3_has_target = self._phase3 and self._phase3.running and self._phase3.target_candidate ~= nil
+
+				if candidate.exact_match and not phase3_has_target then
 					local function complete_exact_match()
 						search.result = candidate
 
@@ -1219,6 +1331,13 @@ function Controller.new(dependencies)
 					else
 						complete_exact_match()
 					end
+				elseif self._phase3 and self._phase3.running and self._phase3.defer_bad_processing and not self._phase3.target_candidate then
+					self._phase3.deferred_candidates[#self._phase3.deferred_candidates + 1] = candidate
+					operation_report("phase3_candidate_deferred", {
+						candidate = candidate,
+						count = #self._phase3.deferred_candidates,
+					})
+					self:_purchase_search_step(generation)
 				elseif self._phase3 and self._phase3.running then
 					self:_phase3_check_mastery(generation, candidate)
 				else
@@ -1317,7 +1436,11 @@ function Controller.new(dependencies)
 			raw_offer = raw_offer,
 		}
 		self._phase3 = setting("auto_crafter_level_mastery_20", false) == true and {
+			cleanup_started = false,
 			current = nil,
+			defer_bad_processing = setting("auto_crafter_defer_bad_weapon_processing", false) == true,
+			deferred_candidates = {},
+			deferred_index = 1,
 			fallback_candidate = nil,
 			fodder_count = 0,
 			running = true,

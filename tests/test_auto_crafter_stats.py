@@ -89,6 +89,9 @@ def main() -> None:
                 get_store_item_instance = function() error("Brunt lootChoices has no rolled item id") end,
                 get_item_instance = function(gear) return gear and gear.base_stats and gear or nil end,
             },
+			["scripts/utilities/profile_utils"] = {
+				get_profile_presets = function() return {} end,
+			},
             ["scripts/utilities/weapon/weapon_template"] = {
                 weapon_template_from_item = function(item) return item and item._weapon_template end,
             },
@@ -118,6 +121,23 @@ def main() -> None:
         function Localize(key)
             return localized[key] or key
         end
+
+		TestCharacterData = {favorite_items = {}}
+		TestProfile = {loadout = {}, loadout_item_ids = {}}
+		TestDeletedGearIds = nil
+		Managers = {
+			player = {
+				local_player = function()
+					return {
+						character_id = function() return "character-1" end,
+						profile = function() return TestProfile end,
+					}
+				end,
+			},
+			save = {
+				character_data = function(_, _) return TestCharacterData end,
+			},
+		}
 
         TestServices = {
             store = {
@@ -156,6 +176,11 @@ def main() -> None:
                 end,
             },
             gear = {
+				delete_gear_batch = function(_, gear_ids)
+					TestDeletedGearIds = gear_ids
+
+					return promise({{gearId = gear_ids[1]}})
+				end,
                 fetch_gear = function() return promise({}) end,
             },
             crafting = {
@@ -196,6 +221,12 @@ def main() -> None:
     assert favorite_promise.failure is None
     assert favorite_promise.value.favorited is True
     assert lua.globals().TestFavoriteItems["crowbar_gear"] is True
+    discard_promise = backend.discard_items(backend, lua.table_from(["bad-gear-1"]))
+    assert discard_promise.failure is None
+    assert lua.globals().TestDeletedGearIds[1] == "bad-gear-1"
+    lua.globals().TestCharacterData.favorite_items["protected-gear"] = True
+    protected_discard = backend.discard_items(backend, lua.table_from(["protected-gear"]))
+    assert protected_discard.failure is not None
 
     catalog_promise = backend.discover_weapon_catalog(backend, offer)
     assert catalog_promise.failure is None

@@ -456,16 +456,18 @@ local function compact_selector_passes(width)
 	}
 end
 
-local function compact_checkbox_passes(width)
+local function compact_checkbox_passes(width, height)
+	height = height or COMPACT_ROW_HEIGHT
+	local checkbox_y = 2
 	local function enabled(content) return content.enabled == true end
 	local function disabled(content) return content.enabled ~= true end
 	return {
 		{ content_id = "hotspot", pass_type = "hotspot", content = { on_hover_sound = UISoundEvents.default_mouse_hover, on_pressed_sound = UISoundEvents.default_click } },
-		{ pass_type = "rect", style = { color = Color.terminal_background(220, true), size = { 22, 22 }, offset = { 0, 2, 1 } } },
-		{ pass_type = "texture", value = "content/ui/materials/frames/frame_tile_2px", style = { color = Color.terminal_frame(255, true), size = { 22, 22 }, offset = { 0, 2, 2 } } },
+		{ pass_type = "rect", style = { color = Color.terminal_background(220, true), size = { 22, 22 }, offset = { 0, checkbox_y, 1 } } },
+		{ pass_type = "texture", value = "content/ui/materials/frames/frame_tile_2px", style = { color = Color.terminal_frame(255, true), size = { 22, 22 }, offset = { 0, checkbox_y, 2 } } },
 		{ pass_type = "text", style_id = "selected_mark", value = "✓", style = { font_size = 17, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_corner_selected(255, true), size = { 22, 22 }, offset = { 0, 2, 3 } }, visibility_function = function(content) return content.checked == true end },
-		{ pass_type = "text", value_id = "label", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "center", text_color = Color.terminal_text_body(255, true), size = { width - 28, COMPACT_ROW_HEIGHT }, offset = { 28, 0, 3 } }, visibility_function = enabled },
-		{ pass_type = "text", value_id = "label", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "center", text_color = Color.terminal_text_body_sub_header(150, true), size = { width - 28, COMPACT_ROW_HEIGHT }, offset = { 28, 0, 3 } }, visibility_function = disabled },
+		{ pass_type = "text", value_id = "label", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "center", text_color = Color.terminal_text_body(255, true), size = { width - 28, height }, offset = { 28, 0, 3 } }, visibility_function = enabled },
+		{ pass_type = "text", value_id = "label", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "center", text_color = Color.terminal_text_body_sub_header(150, true), size = { width - 28, height }, offset = { 28, 0, 3 } }, visibility_function = disabled },
 	}
 end
 
@@ -656,7 +658,7 @@ local BLUEPRINTS = {
 			elseif variant == "selector" then
 				return compact_selector_passes(width)
 			elseif variant == "checkbox" then
-				return compact_checkbox_passes(width)
+				return compact_checkbox_passes(width, entry.size[2])
 			elseif variant == "stepper" then
 				return compact_stepper_passes(width)
 			elseif variant == "enum_stepper" then
@@ -805,7 +807,7 @@ function Panel.new(dependencies)
 	function self:_entry(label, detail, options)
 		options = options or {}
 		local variant = options.variant or "summary"
-		local height = COMPACT_ROW_HEIGHT
+		local height = options.height or COMPACT_ROW_HEIGHT
 
 		if variant == "title" or variant == "section" then
 			height = SECTION_ROW_HEIGHT
@@ -1472,7 +1474,7 @@ function Panel.new(dependencies)
 				variant = "section",
 			}),
 		}
-		local function add_checkbox(setting_id, label_id, fallback, default_value, enabled, reflow)
+		local function add_checkbox(setting_id, label_id, fallback, default_value, enabled, reflow, height)
 			local function is_enabled()
 				if type(enabled) == "function" then
 					return enabled() == true
@@ -1484,6 +1486,7 @@ function Panel.new(dependencies)
 			table.insert(entries, self:_entry(localize(label_id, fallback), "", {
 				checked = self:_setting(setting_id, default_value) == true,
 				enabled = initial_enabled,
+				height = height,
 				selectable = initial_enabled,
 				variant = "checkbox",
 				action = function()
@@ -1679,6 +1682,9 @@ function Panel.new(dependencies)
 			}))
 			add_checkbox("auto_crafter_buy_until_target", "auto_crafter_buy_until_target", "Buy until dump-stat target", true)
 			add_checkbox("auto_crafter_level_mastery_20", "auto_crafter_level_mastery_20", "Level weapon mastery to 20", false)
+			add_checkbox("auto_crafter_defer_bad_weapon_processing", "auto_crafter_defer_bad_weapon_processing", "Only process bad weapons after finding perfect-rolled weapon", false, function()
+				return self:_setting("auto_crafter_level_mastery_20", false) == true
+			end, nil, 44)
 			add_checkbox("auto_crafter_allocate_mastery_points", "auto_crafter_allocate_mastery_points", "Allocate mastery points", false, function()
 				return self:_setting("auto_crafter_level_mastery_20", false) == true
 			end)
