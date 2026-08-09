@@ -831,6 +831,8 @@ def main() -> None:
     assert "on_right_pressed" in panel_source
     assert 'add_checkbox("auto_crafter_show_perk_grid"' in panel_source
     assert 'add_checkbox("auto_crafter_show_blessing_grid"' in panel_source
+    assert "SECTION_ADVANCED" not in panel_source
+    assert "auto_crafter_panel_request_mode" not in panel_source
     backend_source = BACKEND_PATH.read_text(encoding="utf-8")
     assert "Items.trait_description" in backend_source
     assert "Items.trait_textures" in backend_source
@@ -851,6 +853,8 @@ def main() -> None:
     host_source = (RUNTIME_ROOT / "BetterInventory_auto_crafter.lua").read_text(encoding="utf-8")
     assert "DEFAULT_BLESSING_POLL_DELAY = 0.05" in controller_source
     assert "DEFAULT_MASTERY_POLL_DELAY = 0.05" in controller_source
+    assert "auto_crafter_request_mode = true" in controller_source
+    assert "MAX_PARALLEL_FODDER_UPGRADES = 1" in controller_source
     assert "phase4.allocate_mastery and unseen_blessing_tiers > 0" in controller_source
     assert "Allocating mastery blessing points (%d/%d)" in host_source
     assert "Invested: %s Ordo Dockets | %s Plasteel | %s Diamantine" in host_source

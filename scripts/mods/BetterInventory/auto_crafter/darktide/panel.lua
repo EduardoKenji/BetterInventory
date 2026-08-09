@@ -37,7 +37,6 @@ local SECTION_PLANNER = "planner"
 local SECTION_WORKFLOW = "workflow"
 local SECTION_TRAITS = "traits"
 local SECTION_OUTPUT = "output"
-local SECTION_ADVANCED = "advanced"
 local TRAIT_TARGET_PAIRS = {
 	auto_crafter_perk_1_target = "auto_crafter_perk_2_target",
 	auto_crafter_perk_2_target = "auto_crafter_perk_1_target",
@@ -774,7 +773,6 @@ function Panel.new(dependencies)
 			[SECTION_WORKFLOW] = false,
 			[SECTION_TRAITS] = true,
 			[SECTION_OUTPUT] = true,
-			[SECTION_ADVANCED] = true,
 		},
 		_pending_offer = nil,
 		_pending_offer_attempts = 0,
@@ -1181,18 +1179,6 @@ function Panel.new(dependencies)
 		local next_index = (current_index - 1 + direction) % #values + 1
 
 		self:_set_setting("auto_crafter_target_dump_stat", values[next_index])
-	end
-
-	function self:_planner_request_mode_text()
-		local value = self:_setting("auto_crafter_request_mode", "sequential")
-
-		if value == "parallel_reads" then
-			return localize("auto_crafter_request_mode_parallel_reads", "Parallel reads")
-		elseif value == "experimental_parallel_mutations" then
-			return localize("auto_crafter_request_mode_experimental", "Experimental parallel mutations")
-		end
-
-		return localize("auto_crafter_request_mode_sequential", "Sequential (recommended)")
 	end
 
 	function self:_planner_fallback_text()
@@ -1774,30 +1760,6 @@ function Panel.new(dependencies)
 			table.insert(entries, self:_entry(localize("auto_crafter_panel_result_name", "Result name"), localize("auto_crafter_panel_name_provider_later", "Naming provider connection planned")))
 		end
 
-		table.insert(entries, self:_entry(localize("auto_crafter_panel_advanced", "Advanced and safety"), "", {
-			selectable = true,
-			section_header = true,
-			section_id = SECTION_ADVANCED,
-			variant = "section",
-		}))
-
-		if not self._section_collapsed[SECTION_ADVANCED] then
-			local request_modes = { "sequential", "parallel_reads", "experimental_parallel_mutations" }
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_request_mode", "Request mode"), self:_planner_request_mode_text(), {
-				selectable = true,
-				variant = "enum_stepper",
-				decrease = function()
-					self:_step_enum_setting("auto_crafter_request_mode", request_modes, "sequential", -1)
-				end,
-				increase = function()
-					self:_step_enum_setting("auto_crafter_request_mode", request_modes, "sequential", 1)
-				end,
-				refresh = function(widget)
-					widget.content.detail = self:_planner_request_mode_text()
-				end,
-			}))
-		end
-
 		table.insert(entries, self:_entry(localize("auto_crafter_panel_preview", "Craft / purchase search"), localize("auto_crafter_panel_serial_start", "SERIAL; click to start"), {
 			enabled = true,
 			selectable = true,
@@ -2095,7 +2057,6 @@ function Panel.new(dependencies)
 			[SECTION_WORKFLOW] = false,
 			[SECTION_TRAITS] = true,
 			[SECTION_OUTPUT] = true,
-			[SECTION_ADVANCED] = true,
 		}
 		self._pending_offer = nil
 		self._pending_offer_attempts = 0

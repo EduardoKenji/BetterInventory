@@ -15,7 +15,7 @@
       {"name": "dual_target_trait_grid_selection_exclusivity_and_icon", "risk": "high", "start_line": 731, "end_line": 772},
       {"name": "category_specific_ranged_perk_defaults", "risk": "high", "start_line": 773, "end_line": 809},
       {"name": "deferred_grid_rebuild_scroll_restore_and_mastery_gate", "risk": "critical", "start_line": 810, "end_line": 830},
-      {"name": "right_click_routing_blessing_icon_and_runtime_progress", "risk": "high", "start_line": 831, "end_line": 863}
+      {"name": "right_click_routing_blessing_icon_and_runtime_progress", "risk": "high", "start_line": 831, "end_line": 867}
   ],
   "test_auto_crafter_viewport.py": [
     {"name": "panel_and_hud_resolution_matrix", "risk": "high", "start_line": 14, "end_line": 67}
