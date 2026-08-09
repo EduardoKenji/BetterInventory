@@ -254,7 +254,7 @@ function Controller.new(dependencies)
 
 	local function planner_config()
 		return {
-			dump_stat = setting("auto_crafter_target_dump_stat", "auto"),
+			dump_stat = setting("auto_crafter_target_dump_stat", "damage"),
 			dump_target = setting("auto_crafter_dump_stat_target", 60),
 			cap_by_dockets = setting("auto_crafter_cap_by_dockets", false),
 			docket_cap = setting("auto_crafter_docket_cap", 1000000),
@@ -297,18 +297,20 @@ function Controller.new(dependencies)
 			return false
 		end
 
-		local previous_plan = self._plan
+		local previous_target_key = self._selected_target_key
 		local config = planner_config()
 		config.target_offer = self:_selected_offer_summary()
 		self._selected_native_key = offer_key(config.target_offer)
 		self._planner_signature = planner_config_signature(config)
 		local ok, plan = pcall(self._planner.build, self._snapshot, config)
 
-		if ok and type(plan) == "table" and type(self._planner.reconcile_dump_stat) == "function" then
-			local reconciled_dump_stat, changed = self._planner.reconcile_dump_stat(previous_plan, plan, config.dump_stat)
+		if ok and type(plan) == "table" and type(self._planner.default_dump_stat) == "function" then
+			local next_target_key = plan.target and offer_key(plan.target) or nil
+			local target_changed = next_target_key ~= previous_target_key
+			local default_dump_stat = self._planner.default_dump_stat(plan)
 
-			if changed and set_setting("auto_crafter_target_dump_stat", reconciled_dump_stat) then
-				config.dump_stat = reconciled_dump_stat
+			if default_dump_stat and (target_changed or config.dump_stat == "auto") and config.dump_stat ~= default_dump_stat and set_setting("auto_crafter_target_dump_stat", default_dump_stat) then
+				config.dump_stat = default_dump_stat
 				self._planner_signature = planner_config_signature(config)
 				ok, plan = pcall(self._planner.build, self._snapshot, config)
 			end
@@ -1107,12 +1109,12 @@ function Controller.new(dependencies)
 			return false
 		end
 
-		local configured_dump_stat = setting("auto_crafter_target_dump_stat", "auto")
+		local configured_dump_stat = setting("auto_crafter_target_dump_stat", "damage")
 		local dump_stat = plan.resolved_dump_stat
 
 		if dump_stat == nil or dump_stat == "" then
 			operation_report("mutation_blocked", {
-				reason = plan.dump_stat_resolution or (configured_dump_stat == "auto" and "auto dump-stat discovery unavailable" or "configured dump stat is unavailable"),
+				reason = plan.dump_stat_resolution or "configured dump stat is unavailable",
 			})
 
 			return false

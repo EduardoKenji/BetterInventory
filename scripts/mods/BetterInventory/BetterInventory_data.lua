@@ -620,7 +620,7 @@ return {
 						setting_id = "auto_crafter_target_dump_stat",
 						tooltip = "auto_crafter_target_dump_stat_tooltip",
 						type = "dropdown",
-						default_value = "auto",
+						default_value = "damage",
 						options = {
 							{
 								text = "auto_crafter_dump_stat_damage",
@@ -631,20 +631,20 @@ return {
 								value = "mobility",
 							},
 							{
-								text = "auto_crafter_dump_stat_penetration",
-								value = "penetration",
+								text = "auto_crafter_dump_stat_finesse",
+								value = "finesse",
 							},
 							{
 								text = "auto_crafter_dump_stat_first_target",
 								value = "first_target",
 							},
 							{
-								text = "auto_crafter_dump_stat_defenses",
-								value = "defenses",
+								text = "auto_crafter_dump_stat_penetration",
+								value = "penetration",
 							},
 							{
-								text = "auto_crafter_dump_stat_auto",
-								value = "auto",
+								text = "auto_crafter_dump_stat_defenses",
+								value = "defenses",
 							},
 						},
 					},

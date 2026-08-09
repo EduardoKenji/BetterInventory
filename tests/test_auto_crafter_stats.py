@@ -150,72 +150,29 @@ def main() -> None:
             ),
         )
 
-    auto_plan = plan("auto")
-    assert len(auto_plan.dump_stat_candidates) == 5
-    assert auto_plan.resolved_dump_stat is None
+    legacy_auto_plan = plan("auto")
+    assert len(legacy_auto_plan.dump_stat_candidates) == 5
+    ordered_names = [legacy_auto_plan.dump_stat_candidates[index].name for index in range(1, 6)]
+    assert ordered_names == [
+        "crowbar_p1_m1_dps_stat",
+        "crowbar_p1_m1_mobility_stat",
+        "crowbar_p1_m1_first_target_stat",
+        "crowbar_p1_m1_armor_pierce_stat",
+        "crowbar_p1_m1_defence_stat",
+    ]
+    assert legacy_auto_plan.resolved_dump_stat == "crowbar_p1_m1_dps_stat"
+    assert planner.default_dump_stat(legacy_auto_plan) == "crowbar_p1_m1_dps_stat"
     defense_plan = plan("defenses")
     assert defense_plan.resolved_dump_stat == "crowbar_p1_m1_defence_stat"
     penetration_plan = plan("penetration")
     assert penetration_plan.resolved_dump_stat == "crowbar_p1_m1_armor_pierce_stat"
 
-    previous_plan = lua.table_from(
-        {
-            "resolved_dump_stat": "combatsword_p1_m1_cleave_targets_stat",
-            "dump_stat_candidates": lua.table_from(
-                [
-                    lua.table_from(
-                        {
-                            "name": "combatsword_p1_m1_cleave_targets_stat",
-                            "display_name_key": "loc_stats_display_cleave_targets_stat",
-                        }
-                    )
-                ]
-            ),
-        }
-    )
-    shiv_plan = lua.table_from(
-        {
-            "dump_stat_candidates": lua.table_from(
-                [
-                    lua.table_from(
-                        {
-                            "name": "dual_shivs_p1_m1_finesse_stat",
-                            "display_name_key": "loc_stats_display_finesse_stat",
-                        }
-                    )
-                ]
-            )
-        }
-    )
-    reconciled, changed = planner.reconcile_dump_stat(
-        previous_plan, shiv_plan, "combatsword_p1_m1_cleave_targets_stat"
-    )
-    assert changed is True
-    assert reconciled == "dual_shivs_p1_m1_finesse_stat"
-
-    compatible_plan = lua.table_from(
-        {
-            "dump_stat_candidates": lua.table_from(
-                [
-                    lua.table_from(
-                        {
-                            "name": "dual_shivs_p1_m1_cleave_targets_stat",
-                            "display_name_key": "loc_stats_display_cleave_targets_stat",
-                        }
-                    )
-                ]
-            )
-        }
-    )
-    reconciled, changed = planner.reconcile_dump_stat(
-        previous_plan, compatible_plan, "combatsword_p1_m1_cleave_targets_stat"
-    )
-    assert changed is True
-    assert reconciled == "dual_shivs_p1_m1_cleave_targets_stat"
-
     panel_module = lua.execute(PANEL_PATH.read_text(encoding="utf-8"))
     panel = panel_module.new(lua.table_from({}))
     panel._plan = defense_plan
+    panel_options = panel._planner_dump_stat_options(panel)
+    assert [panel_options[index] for index in range(1, len(panel_options) + 1)] == ordered_names
+    assert "auto" not in [panel_options[index] for index in range(1, len(panel_options) + 1)]
     assert panel._planner_dump_stat_label(panel, "crowbar_p1_m1_defence_stat") == "Defenses"
     panel._plan = lua.table_from(
         {

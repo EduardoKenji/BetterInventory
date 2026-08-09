@@ -1,7 +1,7 @@
 local Planner = {}
 
 local DEFAULTS = {
-	dump_stat = "auto",
+	dump_stat = "damage",
 	dump_target = 60,
 	cap_by_dockets = false,
 	docket_cap = 1000000,
@@ -9,6 +9,14 @@ local DEFAULTS = {
 	max_purchases = 100,
 	best_candidate_fallback = false,
 	request_mode = "sequential",
+}
+
+local STAT_INDEX_BY_DISPLAY_NAME = {
+	loc_stats_display_damage_stat = 0,
+	loc_stats_display_mobility_stat = 1,
+	loc_stats_display_finesse_stat = 2,
+	loc_stats_display_first_target_stat = 3,
+	loc_stats_display_ap_stat = 4,
 }
 
 local REQUEST_MODES = {
@@ -94,6 +102,12 @@ local function stat_entries(base_stats)
 	table.sort(entries, function (left, right)
 		local left_key = string.lower(tostring(left.display_name_key or left.name))
 		local right_key = string.lower(tostring(right.display_name_key or right.name))
+		local left_index = STAT_INDEX_BY_DISPLAY_NAME[left.display_name_key] or 100
+		local right_index = STAT_INDEX_BY_DISPLAY_NAME[right.display_name_key] or 100
+
+		if left_index ~= right_index then
+			return left_index < right_index
+		end
 
 		return left_key == right_key and string.lower(left.name) < string.lower(right.name) or left_key < right_key
 	end)
@@ -150,144 +164,22 @@ local function stat_name_matches(configured_name, candidate)
 	return false
 end
 
-local function discover_from_stats(base_stats)
-	local entries = stat_entries(base_stats)
+local function resolve_dump_stat(_, target, configured_dump_stat)
+	local candidates = stat_entries(target and target.base_stats)
 
-	if #entries == 0 then
-		return nil, "selected weapon preview exposed no base stats", nil
+	if #candidates == 0 then
+		return nil, "selected weapon exposed no base-stat catalogue", candidates
 	end
 
-	local minimum = math.huge
-	local minimum_name
-	local minimum_count = 0
-	local numeric_count = 0
-
-	for _, entry in ipairs(entries) do
-		if entry.value ~= nil then
-			numeric_count = numeric_count + 1
-
-			if entry.value < minimum then
-			minimum = entry.value
-			minimum_name = entry.name
-			minimum_count = 1
-			elseif math.abs(entry.value - minimum) < 0.0001 then
-				minimum_count = minimum_count + 1
-			end
-		end
-	end
-
-	if numeric_count == 0 then
-		return nil, "selected weapon stat catalogue exposed no rolled values", entries
-	end
-
-	if minimum_count ~= 1 then
-		return nil, "selected weapon preview has an ambiguous lowest base stat", entries
-	end
-
-	return minimum_name, nil, entries
-end
-
-local function discover_from_matching_gear(snapshot, target)
-	if not target then
-		return nil, "no matching weapon-family inventory item is available", nil
-	end
-
-	local items = snapshot and snapshot.gear and snapshot.gear.items or {}
-	local sums = {}
-	local counts = {}
-	local metadata = {}
-	local target_candidates = stat_entries(target.base_stats)
-	local target_by_name = {}
-	local target_by_display_name = {}
-
-	for _, candidate in ipairs(target_candidates) do
-		target_by_name[candidate.name] = candidate
-
-		if candidate.display_name_key then
-			target_by_display_name[candidate.display_name_key] = candidate
-		end
-	end
-
-	for _, item in ipairs(items) do
-		local same_parent_pattern = target.parent_pattern and item and item.parent_pattern == target.parent_pattern
-		local same_master_id = target.master_id and item and (item.master_id == target.master_id or item.name == target.master_id)
-		local same_display_name = target.display_name and item and item.display_name == target.display_name
-
-		if same_parent_pattern or same_master_id or same_display_name then
-			for _, entry in ipairs(stat_entries(item.base_stats)) do
-				entry.display_name_key = entry.display_name_key or item.base_stat_labels and item.base_stat_labels[entry.name]
-
-				local target_candidate = target_by_name[entry.name] or entry.display_name_key and target_by_display_name[entry.display_name_key]
-				local selected = target_candidate or #target_candidates == 0 and entry or nil
-
-				if selected and entry.value ~= nil then
-					sums[selected.name] = (sums[selected.name] or 0) + entry.value
-					counts[selected.name] = (counts[selected.name] or 0) + 1
-					metadata[selected.name] = selected.display_name_key or entry.display_name_key
-				end
-			end
-		end
-	end
-
-	local averaged = {}
-
-	for name, sum in pairs(sums) do
-		averaged[#averaged + 1] = {
-			display_name_key = metadata[name],
-			name = name,
-			value = sum / counts[name],
-		}
-	end
-
-	if #averaged == 0 then
-		return nil, "no matching weapon-family inventory item is available", nil
-	end
-
-	local candidates = stat_entries(averaged)
-	local stat, reason = discover_from_stats(candidates)
-
-	return stat, reason, candidates
-end
-
-local function resolve_dump_stat(snapshot, target, configured_dump_stat)
-	if configured_dump_stat ~= "auto" then
-		local candidates = stat_entries(target and target.base_stats)
-
-		if #candidates == 0 then
-			local _, _, fallback_candidates = discover_from_matching_gear(snapshot, target)
-
-			candidates = fallback_candidates or {}
-		end
-
+	if configured_dump_stat ~= nil and configured_dump_stat ~= "auto" then
 		for _, candidate in ipairs(candidates) do
 			if stat_name_matches(configured_dump_stat, candidate) then
 				return candidate.name, "configured stat selected by user", candidates
 			end
 		end
-
-		return nil, "configured dump stat is not available for the selected weapon", candidates
 	end
 
-	local direct_candidates = stat_entries(target and target.base_stats)
-	local stat, reason = discover_from_stats(direct_candidates)
-
-	if stat then
-		return stat, "auto-discovered from selected weapon preview", direct_candidates
-	end
-
-	for _, candidate in ipairs(direct_candidates) do
-		if candidate.value ~= nil then
-		return nil, reason, direct_candidates
-		end
-	end
-
-	local fallback_stat, fallback_reason, fallback_candidates = discover_from_matching_gear(snapshot, target)
-
-	if fallback_stat then
-		return fallback_stat, "auto-discovered from matching weapon-family inventory", fallback_candidates
-	end
-
-	return nil, fallback_reason or reason or "selected weapon stat discovery unavailable", #direct_candidates > 0 and direct_candidates or fallback_candidates
+	return candidates[1].name, "defaulted to dump-stat index 0", candidates
 end
 
 local function normalize_config(config)
@@ -482,44 +374,11 @@ end
 Planner.DEFAULTS = DEFAULTS
 Planner.REQUEST_MODES = REQUEST_MODES
 
-function Planner.reconcile_dump_stat(previous_plan, next_plan, configured_dump_stat)
-	if configured_dump_stat == nil or configured_dump_stat == "auto" or type(next_plan) ~= "table" or next_plan.resolved_dump_stat ~= nil then
-		return configured_dump_stat, false
-	end
+function Planner.default_dump_stat(plan)
+	local candidates = type(plan) == "table" and plan.dump_stat_candidates or {}
+	local first = candidates[1]
 
-	local next_candidates = next_plan.dump_stat_candidates or {}
-
-	if #next_candidates == 0 then
-		return configured_dump_stat, false
-	end
-
-	local previous_candidates = type(previous_plan) == "table" and previous_plan.dump_stat_candidates or {}
-	local previous_resolved = type(previous_plan) == "table" and previous_plan.resolved_dump_stat or nil
-	local previous_display_name_key
-
-	for _, candidate in ipairs(previous_candidates) do
-		if type(candidate) == "table" and (candidate.name == configured_dump_stat or candidate.name == previous_resolved) then
-			previous_display_name_key = candidate.display_name_key
-
-			break
-		end
-	end
-
-	if previous_display_name_key then
-		for _, candidate in ipairs(next_candidates) do
-			if type(candidate) == "table" and candidate.display_name_key == previous_display_name_key then
-				return candidate.name, candidate.name ~= configured_dump_stat
-			end
-		end
-	end
-
-	for _, candidate in ipairs(next_candidates) do
-		if type(candidate) == "table" and candidate.name ~= nil then
-			return candidate.name, candidate.name ~= configured_dump_stat
-		end
-	end
-
-	return configured_dump_stat, false
+	return type(first) == "table" and first.name or nil
 end
 
 return Planner

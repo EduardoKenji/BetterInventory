@@ -573,13 +573,16 @@ local localization = {
 		en = "Auto Crafter target dump stat",
 	},
 	auto_crafter_target_dump_stat_tooltip = {
-		en = "Choose the dump stat manually when desired. The Brunt widget exposes the selected weapon's discovered base stats as choices; Auto-discover is the final recommendation option and never overrides an explicit choice.",
+		en = "Choose the dump stat manually from the selected weapon's indexed base stats. Changing weapons resets the selector to index 0.",
 	},
 	auto_crafter_dump_stat_damage = {
 		en = "Damage",
 	},
 	auto_crafter_dump_stat_mobility = {
 		en = "Mobility",
+	},
+	auto_crafter_dump_stat_finesse = {
+		en = "Finesse",
 	},
 	auto_crafter_dump_stat_penetration = {
 		en = "Penetration",
@@ -589,15 +592,6 @@ local localization = {
 	},
 	auto_crafter_dump_stat_defenses = {
 		en = "Defenses",
-	},
-	auto_crafter_dump_stat_auto = {
-		en = "Auto-discover recommendation",
-	},
-	auto_crafter_dump_stat_auto_unavailable = {
-		en = "Auto recommendation unavailable (choose a stat)",
-	},
-	auto_crafter_dump_stat_auto_pending = {
-		en = "Auto-discover recommendation (waiting for weapon preview)",
 	},
 	auto_crafter_dump_stat_target = {
 		en = "Dump stat target",

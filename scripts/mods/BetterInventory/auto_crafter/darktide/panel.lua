@@ -774,24 +774,7 @@ function Panel.new(dependencies)
 	end
 
 	function self:_planner_dump_stat_text()
-		local value = self:_setting("auto_crafter_target_dump_stat", "auto")
-
-		if value == "auto" then
-			local resolved = self._plan and self._plan.resolved_dump_stat
-
-			if resolved then
-				return string.format("%s: %s", localize("auto_crafter_dump_stat_auto", "Auto-discover recommendation"), self:_planner_dump_stat_label(resolved))
-			end
-
-			local candidates = self._plan and self._plan.dump_stat_candidates or {}
-
-			if #candidates > 0 then
-				return localize("auto_crafter_dump_stat_auto_unavailable", "Auto recommendation unavailable (choose a stat)")
-			end
-
-			return localize("auto_crafter_dump_stat_auto_pending", "Auto-discover (waiting for weapon preview)")
-		end
-
+		local value = self:_setting("auto_crafter_target_dump_stat", "damage")
 		local resolved = self._plan and self._plan.resolved_dump_stat
 
 		return self:_planner_dump_stat_label(resolved or value)
@@ -824,25 +807,17 @@ function Panel.new(dependencies)
 			end
 		end
 
-		local value = self:_setting("auto_crafter_target_dump_stat", "auto")
-		local resolved = plan and plan.resolved_dump_stat
-		local current_is_candidate = seen[value] or value ~= "auto" and resolved and seen[resolved]
-
-		if value ~= "auto" and not current_is_candidate and not seen[value] then
-			options[#options + 1] = value
-			seen[value] = true
-		end
-
-		if not seen.auto then
-			options[#options + 1] = "auto"
-		end
-
 		return options
 	end
 
 	function self:_step_planner_dump_stat(direction)
 		local values = self:_planner_dump_stat_options()
-		local current = self:_setting("auto_crafter_target_dump_stat", "auto")
+
+		if #values == 0 then
+			return
+		end
+
+		local current = self:_setting("auto_crafter_target_dump_stat", "damage")
 		local resolved = self._plan and self._plan.resolved_dump_stat
 		local current_index
 
@@ -854,7 +829,7 @@ function Panel.new(dependencies)
 			end
 		end
 
-		current_index = current_index or #values
+		current_index = current_index or 1
 		local next_index = (current_index - 1 + direction) % #values + 1
 
 		self:_set_setting("auto_crafter_target_dump_stat", values[next_index])
