@@ -1672,19 +1672,16 @@ function Panel.new(dependencies)
 
 		if not self._section_collapsed[SECTION_WORKFLOW] then
 			add_checkbox("auto_crafter_favorite_result", "auto_crafter_favorite_result", "Automatically favorite crafted weapon", true)
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_saved_only", "Runtime scope"), localize("auto_crafter_panel_not_connected", "Purchase, mastery, and final crafting run serially in the Morningstar."), {
-				variant = "status",
-			}))
 			add_checkbox("auto_crafter_buy_until_target", "auto_crafter_buy_until_target", "Automatically buy until dump stat target weapon is found", true, nil, nil, 44)
-			add_checkbox("auto_crafter_level_mastery_20", "auto_crafter_level_mastery_20", "Level weapon mastery to 20", true)
 			add_checkbox("auto_crafter_defer_bad_weapon_processing", "auto_crafter_defer_bad_weapon_processing", "Only process bad weapons after finding perfect-rolled weapon", true, function()
 				return self:_setting("auto_crafter_level_mastery_20", true) == true
 			end, nil, 44)
+			add_checkbox("auto_crafter_level_mastery_20", "auto_crafter_level_mastery_20", "Level weapon mastery to 20", true)
 			add_checkbox("auto_crafter_allocate_mastery_points", "auto_crafter_allocate_mastery_points", "Allocate mastery points", true, function()
 				return self:_setting("auto_crafter_level_mastery_20", true) == true
 			end)
-			add_checkbox("auto_crafter_consecrate_transcendent", "auto_crafter_consecrate_transcendent", "Consecrate to Transcendent", true)
-			add_checkbox("auto_crafter_upgrade_expertise_500", "auto_crafter_upgrade_expertise_500", "Upgrade weapon level to 500", true)
+			add_checkbox("auto_crafter_consecrate_transcendent", "auto_crafter_consecrate_transcendent", "Automatically consecrate weapon to Transcendent", true, nil, nil, 44)
+			add_checkbox("auto_crafter_upgrade_expertise_500", "auto_crafter_upgrade_expertise_500", "Automatically upgrade weapon item level to 500", true, nil, nil, 44)
 			add_checkbox("auto_crafter_change_perks", "auto_crafter_change_perks", "Change perks", true, function()
 				return self:_setting("auto_crafter_level_mastery_20", true) == true
 			end)

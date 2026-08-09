@@ -487,8 +487,8 @@ Selected Brunt weapon type plus dump-stat key are mandatory inputs. All controls
 | Control | Type | Enabled when | Meaning |
 | --- | --- | --- | --- |
 | Automatically buy until dump stat target weapon is found | checkbox | weapon and dump stat valid | Run serialized Brunt search; exact displayed target value is success. |
-| Consecrate to Transcendent | checkbox | final candidate exists/planned | Raise final rarity one authoritative step at a time. |
-| Upgrade to 500 | checkbox | final candidate exists/planned | Empower when claimed mastery cap permits 500. |
+| Automatically consecrate weapon to Transcendent | checkbox | final candidate exists/planned | Raise final rarity one authoritative step at a time. |
+| Automatically upgrade weapon item level to 500 | checkbox | final candidate exists/planned | Empower when claimed mastery cap permits 500. |
 | Automatically favorite crafted weapon | checkbox | always | Apply only after final verification. |
 | Level weapon mastery to 20 | checkbox | mastery family resolved | Buy/upgrade/sacrifice fodder until fast level-complete gate. |
 | Allocate mastery points | checkbox | level-to-20 checked | Claim/synchronize points, buy requested blessing tiers first, then apply chosen remainder policy. |

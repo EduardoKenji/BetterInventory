@@ -722,8 +722,8 @@ return {
 						sub_widgets = {
 							{ setting_id = "auto_crafter_favorite_result", tooltip = "auto_crafter_favorite_result_tooltip", type = "checkbox", default_value = true },
 							{ setting_id = "auto_crafter_buy_until_target", tooltip = "auto_crafter_buy_until_target_tooltip", type = "checkbox", default_value = true },
-							{ setting_id = "auto_crafter_level_mastery_20", tooltip = "auto_crafter_level_mastery_20_tooltip", type = "checkbox", default_value = true },
 							{ setting_id = "auto_crafter_defer_bad_weapon_processing", tooltip = "auto_crafter_defer_bad_weapon_processing_tooltip", type = "checkbox", default_value = true },
+							{ setting_id = "auto_crafter_level_mastery_20", tooltip = "auto_crafter_level_mastery_20_tooltip", type = "checkbox", default_value = true },
 							{ setting_id = "auto_crafter_allocate_mastery_points", tooltip = "auto_crafter_allocate_mastery_points_tooltip", type = "checkbox", default_value = true },
 							{ setting_id = "auto_crafter_consecrate_transcendent", tooltip = "auto_crafter_consecrate_transcendent_tooltip", type = "checkbox", default_value = true },
 							{ setting_id = "auto_crafter_upgrade_expertise_500", tooltip = "auto_crafter_upgrade_expertise_500_tooltip", type = "checkbox", default_value = true },

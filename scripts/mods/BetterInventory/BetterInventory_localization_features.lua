@@ -663,13 +663,13 @@ local localization = {
 		en = "UI planning option only. Available in the Armoury panel when mastery-to-20 is selected; backend allocation is not connected yet.",
 	},
 	auto_crafter_consecrate_transcendent = {
-		en = "Consecrate weapon to Transcendent",
+		en = "Automatically consecrate weapon to Transcendent",
 	},
 	auto_crafter_consecrate_transcendent_tooltip = {
 		en = "UI planning option only. The final candidate will later be consecrated through only the missing rarity tiers.",
 	},
 	auto_crafter_upgrade_expertise_500 = {
-		en = "Upgrade weapon level to 500",
+		en = "Automatically upgrade weapon item level to 500",
 	},
 	auto_crafter_upgrade_expertise_500_tooltip = {
 		en = "UI planning option only. The final candidate will later be upgraded to weapon level 500 after mastery rewards permit it.",
@@ -877,12 +877,6 @@ local localization = {
 	},
 	auto_crafter_panel_resuming = {
 		en = "Resuming item options",
-	},
-	auto_crafter_panel_saved_only = {
-		en = "Runtime scope",
-	},
-	auto_crafter_panel_not_connected = {
-		en = "Purchase, mastery, and final crafting run serially in the Morningstar.",
 	},
 	auto_crafter_panel_option_unavailable = {
 		en = "Enable prerequisite options",

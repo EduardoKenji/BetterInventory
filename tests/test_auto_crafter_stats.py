@@ -844,6 +844,10 @@ def main() -> None:
     assert "Automatically buy until dump stat target weapon is found" in panel_source
     assert "SECTION_RESUMING" in panel_source and "SECTION_OUTPUT" not in panel_source
     assert panel_source.index('add_checkbox("auto_crafter_favorite_result"') < panel_source.index('add_checkbox("auto_crafter_buy_until_target"') < panel_source.index('localize("auto_crafter_panel_resuming"')
+    assert "auto_crafter_panel_saved_only" not in panel_source and "auto_crafter_panel_not_connected" not in panel_source
+    assert "Automatically consecrate weapon to Transcendent" in panel_source
+    assert "Automatically upgrade weapon item level to 500" in panel_source
+    assert panel_source.index('add_checkbox("auto_crafter_defer_bad_weapon_processing"') < panel_source.index('add_checkbox("auto_crafter_level_mastery_20"')
     backend_source = BACKEND_PATH.read_text(encoding="utf-8")
     assert "Items.trait_description" in backend_source
     assert "Items.trait_textures" in backend_source
