@@ -383,6 +383,17 @@ def main() -> None:
     assert grid_entry.initial_content.selectable is True
     assert widget.content.selected_stat_index == 5
     stat_grid_passes = panel_module.stat_grid_passes(421, grid_entry)
+    stat_hotspot_passes = [
+        stat_grid_passes[index]
+        for index in range(1, len(stat_grid_passes) + 1)
+        if getattr(stat_grid_passes[index], "content_id", None)
+        and str(stat_grid_passes[index].content_id).startswith("stat_hotspot_")
+    ]
+    assert len(stat_hotspot_passes) == 5
+    assert all(
+        getattr(hotspot_pass, "visibility_function", None) is None
+        for hotspot_pass in stat_hotspot_passes
+    )
     stat_logic_pass = next(
         stat_grid_passes[index]
         for index in range(1, len(stat_grid_passes) + 1)
