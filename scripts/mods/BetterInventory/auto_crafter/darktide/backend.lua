@@ -34,6 +34,26 @@ local function safe_member(object, key)
 	return ok and value or nil
 end
 
+local function error_description(error_value)
+	if type(error_value) == "table" then
+		local description = safe_member(error_value, "description") or safe_member(error_value, "message") or safe_member(error_value, "error")
+
+		if description ~= nil and description ~= error_value then
+			return error_description(description)
+		end
+
+		local code = safe_member(error_value, "code")
+
+		return code ~= nil and tostring(code) or "unknown backend error"
+	end
+
+	return tostring(error_value or "unknown backend error")
+end
+
+local function transaction_id_mismatch(error_value)
+	return string.find(string.lower(error_description(error_value)), "transaction id mismatch", 1, true) ~= nil
+end
+
 local function call_service(service, method_name, ...)
 	if not service then
 		return rejected("service unavailable: " .. tostring(method_name))
@@ -980,7 +1000,55 @@ function Backend.new(dependencies)
 			return rejected("purchase offer unavailable")
 		end
 
-		return self:_mutate("store", "purchase_item", offer):next(function (result)
+		local services = self:_services_now()
+		local store_service = services and services.store
+		local price = safe_member(offer, "price")
+		local amount = safe_member(price, "amount")
+		local wallet_type = safe_member(amount, "type")
+
+		if not store_service or wallet_type == nil then
+			return rejected("purchase wallet unavailable")
+		end
+
+		local function fresh_purchase(retried)
+			-- Offer.make_purchase posts wallet.lastTransactionId. Always invalidate the
+			-- local wallet before a serial Auto Crafter purchase so Ctrl+Shift+R or a
+			-- prior native transaction cannot leave this mutation using stale state.
+			local invalidate = safe_member(store_service, "invalidate_wallets_cache")
+
+			if type(invalidate) == "function" then
+				pcall(invalidate, store_service)
+			end
+
+			local wallet_method = (wallet_type == "credits" or wallet_type == "marks") and "combined_wallets" or "account_wallets"
+
+			return call_service(store_service, wallet_method):next(function (wallets)
+				local by_type = safe_member(wallets, "by_type")
+				local wallet
+
+				if type(by_type) == "function" then
+					local wallet_ok, resolved_wallet = pcall(by_type, wallets, wallet_type)
+
+					wallet = wallet_ok and resolved_wallet or nil
+				end
+
+				if not wallet then
+					return rejected("purchase wallet unavailable: " .. tostring(wallet_type))
+				end
+
+				return call_service(store_service, "purchase_item_with_wallet", offer, wallet)
+			end):catch(function (error_value)
+				-- A transaction-id mismatch is a confirmed rejection before item creation,
+				-- so one fresh-wallet retry is safe. Never retry ambiguous failures.
+				if not retried and transaction_id_mismatch(error_value) then
+					return fresh_purchase(true)
+				end
+
+				return Promise.rejected(error_value)
+			end)
+		end
+
+		return fresh_purchase(false):next(function (result)
 			return summarize_purchase(result)
 		end)
 	end

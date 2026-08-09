@@ -39,6 +39,7 @@ local InventoryWeaponsView = require("scripts/ui/views/inventory_weapons_view/in
 local ViewElementGrid = require("scripts/ui/view_elements/view_element_grid/view_element_grid")
 local ItemBlueprintGenerator = require("scripts/ui/view_content_blueprints/item_blueprints")
 local Text = require("scripts/utilities/ui/text")
+local BaseView = require("scripts/ui/views/base_view")
 local Layout = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout")
 
 if type(Layout) ~= "table" then
@@ -121,7 +122,31 @@ rawset(_G, "AutoCrafterHelperHudState", {
 	lines = function()
 		return mod:auto_crafter_hud_lines()
 	end,
+	visible_context = function()
+		local managers = rawget(_G, "Managers")
+		local state = managers and managers.state
+		local game_mode = state and state.game_mode
+		local ok, mode = pcall(game_mode and game_mode.game_mode_name or function () end, game_mode)
+
+		if not ok or mode ~= "hub" and mode ~= "hub_singleplay" then
+			return false
+		end
+
+		local party = managers and managers.party_immaterium
+		local matchmaking_ok, matchmaking = pcall(party and party.is_in_matchmaking or function () return false end, party)
+
+		return not matchmaking_ok or matchmaking ~= true
+	end,
 })
+
+local AutoCrafterViewStatusOverlay = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/view_status_overlay")
+
+if type(AutoCrafterViewStatusOverlay) == "table" and type(AutoCrafterViewStatusOverlay.install) == "function" then
+	AutoCrafterViewStatusOverlay.install(mod, {
+		BaseView,
+		ItemGridViewBase,
+	})
+end
 
 if type(mod.register_hud_element) == "function" then
 	mod:register_hud_element({

@@ -37,7 +37,13 @@ def main() -> None:
                 end,
                 catch = function(self, callback)
                     if self.failure then
-                        return promise(callback(self.failure))
+						local result = callback(self.failure)
+
+						if type(result) == "table" and type(result.next) == "function" then
+							return result
+						end
+
+						return promise(result)
                     end
 
                     return self
@@ -68,6 +74,9 @@ def main() -> None:
 		TestMasteryPurchaseFails = false
 		TestPurchasedTraits = nil
 		TestPreviewCalls = 0
+		TestWalletInvalidations = 0
+		TestPurchaseAttempts = 0
+		TestTransactionMismatchOnce = false
 		local modules = {
             ["scripts/foundation/utilities/promise"] = {
                 resolved = function(value) return promise(value) end,
@@ -173,9 +182,27 @@ def main() -> None:
                     })
                 end,
                 combined_wallets = function()
-                    return promise({wallets = {{balance = {amount = 1000000, type = "credits"}}}})
+					local wallet = {balance = {amount = 1000000, type = "credits"}, lastTransactionId = 42}
+
+					return promise({
+						wallets = {wallet},
+						by_type = function(_, wallet_type)
+							return wallet_type == "credits" and wallet or nil
+						end,
+					})
                 end,
-                purchase_item = function()
+				invalidate_wallets_cache = function()
+					TestWalletInvalidations = TestWalletInvalidations + 1
+				end,
+				purchase_item_with_wallet = function(_, _, wallet)
+					TestPurchaseAttempts = TestPurchaseAttempts + 1
+
+					if TestTransactionMismatchOnce and TestPurchaseAttempts == 1 then
+						return promise(nil, {description = "Transaction id mismatch"})
+					end
+
+					assert(wallet and wallet.lastTransactionId == 42)
+
                     return promise({
                         items = {
                             {
@@ -238,7 +265,10 @@ def main() -> None:
     assert stat_keys["crowbar_p1_m1_dps_stat"] == "loc_stats_display_damage_stat"
     assert stat_keys["crowbar_p1_m1_defence_stat"] == "loc_stats_display_defense_stat"
 
-    purchase_promise = backend.purchase_offer(backend, lua.table_from({"offerId": "crowbar_offer"}))
+    purchase_promise = backend.purchase_offer(backend, lua.table_from({
+        "offerId": "crowbar_offer",
+        "price": {"amount": {"amount": 11600, "type": "credits"}},
+    }))
     assert purchase_promise.failure is None
     purchased = purchase_promise.value["items"][1]
     assert purchased.damage == 78
@@ -246,6 +276,22 @@ def main() -> None:
     assert purchased.potential_damage == 80
     assert purchased.potential_base_stats["crowbar_p1_m1_dps_stat"] == 80
     assert purchased.potential_base_stats["crowbar_p1_m1_defence_stat"] == 60
+    assert lua.globals().TestWalletInvalidations == 1
+    assert lua.globals().TestPurchaseAttempts == 1
+
+    # An explicit optimistic-concurrency rejection is safe to retry exactly once
+    # after another authoritative wallet refresh. No other failure is retried.
+    lua.globals().TestTransactionMismatchOnce = True
+    lua.globals().TestPurchaseAttempts = 0
+    lua.globals().TestWalletInvalidations = 0
+    retry_purchase = backend.purchase_offer(backend, lua.table_from({
+        "offerId": "crowbar_offer",
+        "price": {"amount": {"amount": 11600, "type": "credits"}},
+    }))
+    assert retry_purchase.failure is None
+    assert lua.globals().TestPurchaseAttempts == 2
+    assert lua.globals().TestWalletInvalidations == 2
+    lua.globals().TestTransactionMismatchOnce = False
 
     allocation = backend.purchase_mastery_trait(backend, "crowbar_p1", "headtaker", 4)
     assert allocation.failure is None

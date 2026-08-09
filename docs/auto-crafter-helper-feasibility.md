@@ -1524,6 +1524,12 @@ Default mode should be conservative:
 
 Advanced users can enable allowlisted `Parallel reads`. `Experimental parallel mutations` remains warning-gated with an initially empty mutation allowlist; enable pairs only after current-version live tests prove them safe. Small batches and reviewed auto-discard remain separate advanced options.
 
+### Hot-reload wallet reconciliation and view-layer status
+
+Brunt purchases use optimistic wallet concurrency: `Offer.make_purchase` sends the cached wallet's `lastTransactionId`. A DMF hot reload, native purchase, or another wallet mutation can make that cache stale and produce `Transaction id mismatch`. Auto Crafter therefore invalidates and refetches the relevant wallet immediately before every serial purchase. It retries exactly once only when the backend explicitly reports a transaction-ID mismatch, because that response confirms rejection before item creation. Timeouts, transport errors, and other ambiguous failures are never retried automatically.
+
+The normal player HUD renderer can sit behind full-screen vendor, inventory, and crafting views. Persistent status therefore has two render paths backed by the same read-only status bridge: the registered HUD element for free-roaming Morningstar and a post-view overlay for supported vendor/inventory/crafting views. Both retain the hub and matchmaking gates, so the status remains hidden in missions and mission countdown loadout screens.
+
 ## Bottom line for implementation agent
 
 All requested operations are reachable from current client service APIs. Build this as a guarded account-mutation state machine, not as UI click automation.
