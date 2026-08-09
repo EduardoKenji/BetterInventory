@@ -70,9 +70,19 @@ def main() -> None:
             ["scripts/utilities/items"] = {
                 weapon_card_display_name = function(item) return item.display_name end,
                 weapon_card_sub_display_name = function() return "" end,
+                trait_category = function() return "crowbar_traits" end,
+                trait_description = function(item, rarity)
+                    return string.format(item.trait_text, rarity)
+                end,
             },
             ["scripts/backend/master_items"] = {
-                get_item = function() return crowbar_item end,
+                get_item = function(name)
+                    if name == "perk_flak" then
+                        return {name = name, display_name = "internal/perk/path", trait_text = "+25%% Damage vs Flak Armoured (T%d)"}
+                    end
+
+                    return crowbar_item
+                end,
                 get_store_item_instance = function() error("Brunt lootChoices has no rolled item id") end,
                 get_item_instance = function(gear) return gear and gear.base_stats and gear or nil end,
             },
@@ -138,6 +148,17 @@ def main() -> None:
             gear = {
                 fetch_gear = function() return promise({}) end,
             },
+            crafting = {
+                get_item_crafting_metadata = function()
+                    return promise({perks = {[4] = {rarity = 4, perks = {"perk_flak"}}}})
+                end,
+                trait_sticker_book = function() return promise({}) end,
+            },
+            mastery = {
+                get_mastery_by_pattern = function()
+                    return promise({current_xp = 0, mastery_level = 0, milestones = {{level = 1, xpLimit = 100}}})
+                end,
+            },
         }
         '''
     )
@@ -158,6 +179,10 @@ def main() -> None:
     purchased = purchase_promise.value["items"][1]
     assert purchased.damage == 78
     assert purchased.base_stats["crowbar_p1_m1_dps_stat"] == 78
+
+    catalog_promise = backend.discover_weapon_catalog(backend, offer)
+    assert catalog_promise.failure is None
+    assert catalog_promise.value.perks[1].display_name == "+25% Damage vs Flak Armoured (T4)"
 
     planner = lua.execute(PLANNER_PATH.read_text(encoding="utf-8"))
 
@@ -193,7 +218,7 @@ def main() -> None:
     assert penetration_plan.estimate.base_level_min == 290
     assert penetration_plan.estimate.base_level_max == 330
     assert penetration_plan.estimate.dockets_floor == 11600
-    assert penetration_plan.estimate.configured_total_dockets == 1000000
+    assert penetration_plan.estimate.dockets_cap == 1000000
     assert penetration_plan.estimate.purchase_count_cap == 86
 
     rarity_costs = lua.table_from(
@@ -233,10 +258,54 @@ def main() -> None:
         }
     )
     material_plan = plan("penetration")
-    assert material_plan.estimate.plasteel_min == 220
-    assert material_plan.estimate.plasteel_max == 260
-    assert material_plan.estimate.diamantine_min == 10
-    assert material_plan.estimate.diamantine_max == 10
+    assert material_plan.estimate.plasteel_min == 210
+    assert material_plan.estimate.plasteel_max == 250
+    assert material_plan.estimate.diamantine_min == 8
+    assert material_plan.estimate.diamantine_max == 8
+    assert material_plan.estimate.phases.consecrate.plasteel_min == 40
+    assert material_plan.estimate.phases.expertise.plasteel_min == 170
+
+    snapshot.crafting_costs.sacrifice_mastery = lua.table_from(
+        {
+            "sacrifice_muiltiplier": 1,
+            "minimumExpertiseLevel": 0,
+            "baseReward": 0,
+            "masteryXpPerExpertiseLevel": 10,
+        }
+    )
+    mastery_plan = planner.build(
+        snapshot,
+        lua.table_from(
+            {
+                "target_offer": offer,
+                "dump_stat": "penetration",
+                "cap_by_dockets": True,
+                "docket_cap": 1000000,
+                "level_mastery_20": True,
+                "trait_catalog": lua.table_from(
+                    {
+                        "mastery": lua.table_from(
+                            {
+                                "current_xp": 0,
+                                "milestones": lua.table_from(
+                                    [
+                                        lua.table_from(
+                                            {"level": level, "xpLimit": level * 500}
+                                        )
+                                        for level in range(1, 21)
+                                    ]
+                                ),
+                            }
+                        )
+                    }
+                ),
+            }
+        ),
+    )
+    assert mastery_plan.estimate.phases.mastery.count_min == 30
+    assert mastery_plan.estimate.phases.mastery.count_max == 34
+    assert mastery_plan.estimate.phases.mastery.dockets_min == 348000
+    assert mastery_plan.estimate.phases.mastery.dockets_max == 394400
 
     lua.execute(
         '''
@@ -322,6 +391,7 @@ def main() -> None:
                             lua.table_from(
                                 {
                                     "id": "perk_damage_t4",
+                                    "display_name": "+25% Damage vs Flak Armoured Enemies",
                                     "display_name_key": "loc_stats_display_damage_stat",
                                     "tier": 4,
                                 }
@@ -346,13 +416,13 @@ def main() -> None:
     assert [perk_options[index].value for index in range(1, len(perk_options) + 1)] == [
         "keep",
         "auto",
-        "perk_damage_t4",
+        "perk:perk_damage_t4:4",
     ]
-    assert perk_options[3].label == "Damage  T4"
+    assert perk_options[3].label == "+25% Damage vs Flak Armoured Enemies"
     trait_panel._step_trait_target(trait_panel, "auto_crafter_perk_1_target", 1)
     assert lua.globals().TraitSettings["values"].auto_crafter_perk_1_target == "auto"
     trait_panel._step_trait_target(trait_panel, "auto_crafter_perk_1_target", 1)
-    assert lua.globals().TraitSettings["values"].auto_crafter_perk_1_target == "perk_damage_t4"
+    assert lua.globals().TraitSettings["values"].auto_crafter_perk_1_target == "perk:perk_damage_t4:4"
     trait_panel._reconcile_trait_targets(trait_panel)
     assert lua.globals().TraitSettings["values"].auto_crafter_perk_2_target == "keep"
 
@@ -362,6 +432,13 @@ def main() -> None:
     assert lua.globals().RenderCalls == 0
     assert trait_panel._layout_pending is True
     assert trait_panel._layout_defer_frames == 1
+
+    panel_source = PANEL_PATH.read_text(encoding="utf-8")
+    assert "length_scrolled" in panel_source
+    assert "restore_scroll_offset" in panel_source
+    assert "set_scrollbar_progress" in panel_source
+    backend_source = BACKEND_PATH.read_text(encoding="utf-8")
+    assert "Items.trait_description" in backend_source
 
     print("Auto Crafter weapon stat catalogue and display-label tests passed.")
 

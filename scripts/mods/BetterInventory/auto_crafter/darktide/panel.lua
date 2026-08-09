@@ -10,7 +10,7 @@ local PANEL_Y = 110
 local ROW_HEIGHT = 32
 local COMPACT_ROW_HEIGHT = 26
 local STATUS_ROW_HEIGHT = 50
-local CURRENCY_ROW_HEIGHT = 52
+local CURRENCY_ROW_HEIGHT = 58
 local STAT_GRID_BUTTON_HEIGHT = 30
 local STAT_GRID_GAP = 6
 local STAT_GRID_HEIGHT = STAT_GRID_BUTTON_HEIGHT * 2 + STAT_GRID_GAP
@@ -384,8 +384,8 @@ local function currency_row_passes(width)
 	for index, currency in ipairs(currencies) do
 		local x = (index - 1) * segment_width
 
-		passes[#passes + 1] = { pass_type = "texture", value = CURRENCY_ICONS[currency], style = { size = { 16, 16 }, offset = { x, 28, 2 } } }
-		passes[#passes + 1] = { pass_type = "text", value_id = currency, style = { font_size = 13, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "center", text_color = Color.terminal_text_body_sub_header(255, true), size = { segment_width - 20, 28 }, offset = { x + 19, 22, 3 } } }
+		passes[#passes + 1] = { pass_type = "texture", value = CURRENCY_ICONS[currency], style = { size = { 24, 24 }, offset = { x, 27, 2 } } }
+		passes[#passes + 1] = { pass_type = "text", value_id = currency, style = { font_size = 14, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "center", text_color = Color.terminal_text_body_sub_header(255, true), size = { segment_width - 28, 30 }, offset = { x + 28, 24, 3 } } }
 	end
 
 	return passes
@@ -442,7 +442,9 @@ local function compact_stepper_passes(width)
 end
 
 local function enum_stepper_passes(width)
-	local controls_width = 270
+	-- Long vanilla perk descriptions need more room than stat/request enums.
+	-- Keep one line at common UI scales while retaining a usable label column.
+	local controls_width = 320
 	local controls_x = width - controls_width
 	local value_width = controls_width - 68
 	return {
@@ -670,7 +672,11 @@ function Panel.new(dependencies)
 
 		local ok, text = pcall(self._localize, setting_id)
 
-		return ok and text or fallback or setting_id
+		if not ok or type(text) ~= "string" or text == "" or text == setting_id or text == "<" .. tostring(setting_id) .. ">" then
+			return fallback or setting_id
+		end
+
+		return text
 	end
 
 	local function log(level, message)
@@ -1024,7 +1030,7 @@ function Panel.new(dependencies)
 			return localize("auto_crafter_panel_waiting", "waiting for probe")
 		end
 
-		return string.format("%s-%s purchases | %s-%s dockets", integer_text(estimate.purchase_count_floor), integer_text(estimate.purchase_count_cap, "uncapped"), integer_text(estimate.dockets_floor), integer_text(estimate.dockets_cap, "uncapped"))
+		return string.format("%s each | %s-%s purchases | budget %s", integer_text(estimate.dockets_floor), integer_text(estimate.purchase_count_floor), integer_text(estimate.purchase_count_cap, "uncapped"), integer_text(estimate.dockets_cap, "uncapped"))
 	end
 
 	function self:_estimate_base_level_text()
@@ -1037,8 +1043,9 @@ function Panel.new(dependencies)
 		return string.format("%s-%s starting base item level", integer_text(estimate.base_level_min), integer_text(estimate.base_level_max))
 	end
 
-	function self:_estimate_currency_values()
+	function self:_estimate_currency_values(phase_name)
 		local estimate = self._plan and self._plan.estimate or {}
+		local phase = phase_name == "total" and estimate or estimate.phases and estimate.phases[phase_name] or {}
 		local function range_text(minimum, maximum)
 			if minimum == nil or maximum == nil then
 				return "—"
@@ -1047,9 +1054,17 @@ function Panel.new(dependencies)
 			return minimum == maximum and integer_text(minimum) or integer_text(minimum) .. "-" .. integer_text(maximum)
 		end
 
-		local docket_text = estimate.dockets_floor and (integer_text(estimate.dockets_floor) .. "-" .. integer_text(estimate.dockets_cap, "uncapped")) or "—"
+		return phase.dockets_min and range_text(phase.dockets_min, phase.dockets_max) or "-", range_text(phase.plasteel_min, phase.plasteel_max), range_text(phase.diamantine_min, phase.diamantine_max)
+	end
 
-		return docket_text, range_text(estimate.plasteel_min, estimate.plasteel_max), range_text(estimate.diamantine_min, estimate.diamantine_max)
+	function self:_estimate_mastery_text()
+		local mastery = self._plan and self._plan.estimate and self._plan.estimate.phases and self._plan.estimate.phases.mastery
+
+		if not mastery then
+			return self:_setting("auto_crafter_level_mastery_20", false) == true and localize("auto_crafter_panel_waiting", "waiting for probe") or localize("auto_crafter_panel_disabled", "disabled")
+		end
+
+		return string.format("%s-%s Redeemed weapons | %s XP remaining", integer_text(mastery.count_min), integer_text(mastery.count_max), integer_text(mastery.remaining_xp))
 	end
 
 	function self:_trait_target_options(setting_id)
@@ -1066,15 +1081,12 @@ function Panel.new(dependencies)
 
 		for _, entry in ipairs(catalog[catalog_kind] or {}) do
 			if entry.id then
-				local label = localized_game_text(entry.display_name_key) or display_stat_name(entry.id)
-
-				if catalog_kind == "perks" and entry.tier then
-					label = label .. "  T" .. tostring(entry.tier)
-				end
+				local label = entry.display_name or localized_game_text(entry.display_name_key) or display_stat_name(entry.id)
+				local value = catalog_kind == "perks" and entry.tier and string.format("perk:%s:%s", tostring(entry.id), tostring(entry.tier)) or entry.id
 
 				options[#options + 1] = {
 					label = label,
-					value = entry.id,
+					value = value,
 				}
 			end
 		end
@@ -1370,7 +1382,7 @@ function Panel.new(dependencies)
 					widget.content.checked = self:_setting("auto_crafter_best_candidate_fallback", false) == true
 				end,
 			}))
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_estimate", "Acquisition estimate"), self:_estimate_acquisition_text(), {
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_estimate", "Search budget"), self:_estimate_acquisition_text(), {
 				variant = "status",
 				refresh = function(widget)
 					widget.content.detail = self:_estimate_acquisition_text()
@@ -1382,16 +1394,29 @@ function Panel.new(dependencies)
 					widget.content.detail = self:_estimate_base_level_text()
 				end,
 			}))
-			local estimate_credits, estimate_plasteel, estimate_diamantine = self:_estimate_currency_values()
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_total_cost", "Configured total"), "", {
-				credits = estimate_credits,
-				diamantine = estimate_diamantine,
-				plasteel = estimate_plasteel,
-				variant = "currency",
+			local function add_estimate_currency(label_id, fallback, phase_name)
+				local credits, plasteel, diamantine = self:_estimate_currency_values(phase_name)
+				table.insert(entries, self:_entry(localize(label_id, fallback), "", {
+					credits = credits,
+					diamantine = diamantine,
+					plasteel = plasteel,
+					variant = "currency",
+					refresh = function(widget)
+						widget.content.credits, widget.content.plasteel, widget.content.diamantine = self:_estimate_currency_values(phase_name)
+					end,
+				}))
+			end
+
+			add_estimate_currency("auto_crafter_panel_consecrate_cost", "Profane to Transcendent", "consecrate")
+			add_estimate_currency("auto_crafter_panel_expertise_cost", "Base item level to 500", "expertise")
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_mastery_fodder", "Mastery 20 fodder"), self:_estimate_mastery_text(), {
+				variant = "status",
 				refresh = function(widget)
-					widget.content.credits, widget.content.plasteel, widget.content.diamantine = self:_estimate_currency_values()
+					widget.content.detail = self:_estimate_mastery_text()
 				end,
 			}))
+			add_estimate_currency("auto_crafter_panel_mastery_cost", "Mastery fodder investment", "mastery")
+			add_estimate_currency("auto_crafter_panel_total_cost", "Known crafting investment", "total")
 			table.insert(entries, self:_entry(localize("auto_crafter_panel_preflight", "Preflight"), plan and plan.preflight and plan.preflight.summary or localize("auto_crafter_panel_waiting", "waiting for probe"), {
 				variant = "status",
 				refresh = function(widget)
@@ -1577,6 +1602,12 @@ function Panel.new(dependencies)
 		end
 
 		local entries = self:_entries(self._snapshot)
+		local scroll_offset = 0
+		local scroll_ok, current_offset = safe_call(self._panel.length_scrolled, self._panel)
+
+		if scroll_ok then
+			scroll_offset = tonumber(current_offset) or 0
+		end
 
 		local height_ok = safe_call(self._panel.update_grid_height, self._panel, PANEL_HEIGHT, PANEL_HEIGHT)
 
@@ -1590,7 +1621,18 @@ function Panel.new(dependencies)
 			end
 		end
 
-		local present_ok, present_error = safe_call(self._panel.present_grid_layout, self._panel, entries, BLUEPRINTS, on_row_clicked)
+		local function restore_scroll_offset()
+			local length_ok, scroll_length = safe_call(self._panel.scroll_length, self._panel)
+			scroll_length = length_ok and tonumber(scroll_length) or 0
+
+			if scroll_length and scroll_length > 0 and type(self._panel.set_scrollbar_progress) == "function" then
+				local progress = math.max(0, math.min(1, scroll_offset / scroll_length))
+
+				safe_call(self._panel.set_scrollbar_progress, self._panel, progress, true)
+			end
+		end
+
+		local present_ok, present_error = safe_call(self._panel.present_grid_layout, self._panel, entries, BLUEPRINTS, on_row_clicked, nil, nil, nil, restore_scroll_offset)
 
 		if not present_ok then
 			log("error", "Auto Crafter diagnostic panel could not present layout: " .. tostring(present_error))

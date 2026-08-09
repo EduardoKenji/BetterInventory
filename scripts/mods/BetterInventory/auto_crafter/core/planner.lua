@@ -9,6 +9,7 @@ local DEFAULTS = {
 	max_purchases = 100,
 	best_candidate_fallback = false,
 	consecrate_transcendent = true,
+	level_mastery_20 = false,
 	upgrade_expertise_500 = true,
 	request_mode = "sequential",
 }
@@ -99,7 +100,14 @@ local function scaled_rarity_costs(weapon_costs, rarity, item_level)
 	return scaled
 end
 
-local function workflow_material_quote(snapshot, normalized, target, base_level)
+local function material_result(total)
+	return {
+		diamantine = rounded(total.diamantine or 0),
+		plasteel = rounded(total.plasteel or 0),
+	}
+end
+
+local function rarity_material_quote(snapshot, target, base_level, resulting_rarity)
 	local crafting_costs = snapshot and snapshot.crafting_costs
 	local weapon_costs = crafting_costs and crafting_costs.weapon
 
@@ -108,57 +116,172 @@ local function workflow_material_quote(snapshot, normalized, target, base_level)
 	end
 
 	local total = {}
+	-- Brunt always generates Profane weapons (rarity 1). Recipe costs are keyed
+	-- by source rarity, so reaching rarity N spends entries start..N-1.
+	local start_rarity = tonumber(target and target.rarity) or 1
 
-	if normalized.consecrate_transcendent then
-		local start_rarity = tonumber(target and target.rarity) or 0
+	for rarity = start_rarity, resulting_rarity - 1 do
+		local costs = scaled_rarity_costs(weapon_costs, rarity, base_level)
 
-		for rarity = start_rarity, 4 do
-			local costs = scaled_rarity_costs(weapon_costs, rarity, base_level)
-
-			if costs == nil then
-				return nil, "rarity-upgrade recipe quote incomplete"
-			end
-
-			add_costs(total, costs)
+		if costs == nil then
+			return nil, "rarity-upgrade recipe quote incomplete"
 		end
+
+		add_costs(total, costs)
 	end
 
-	if normalized.upgrade_expertise_500 then
-		local add_expertise = weapon_costs.addExpertise
-		local start_costs = type(add_expertise) == "table" and add_expertise.startCost
-
-		if type(start_costs) ~= "table" then
-			return nil, "expertise recipe quote unavailable"
-		end
-
-		for level = base_level + 1, 500 do
-			local bucket = math.floor(level / 10) * 10
-			add_costs(total, start_costs[tostring(math.max(1, bucket))])
-		end
-	end
-
-	return {
-		diamantine = rounded(total.diamantine or 0),
-		plasteel = rounded(total.plasteel or 0),
-	}
+	return material_result(total)
 end
 
-local function workflow_material_estimate(snapshot, normalized, target)
-	local low_quote, low_reason = workflow_material_quote(snapshot, normalized, target, ESTIMATE_BASE_LEVEL_MIN)
-	local high_quote, high_reason = workflow_material_quote(snapshot, normalized, target, ESTIMATE_BASE_LEVEL_MAX)
+local function expertise_material_quote(snapshot, base_level)
+	local crafting_costs = snapshot and snapshot.crafting_costs
+	local weapon_costs = crafting_costs and crafting_costs.weapon
 
+	if type(weapon_costs) ~= "table" then
+		return nil, "live crafting recipe costs unavailable"
+	end
+
+	local total = {}
+	local add_expertise = weapon_costs.addExpertise
+	local start_costs = type(add_expertise) == "table" and add_expertise.startCost
+
+	if type(start_costs) ~= "table" then
+		return nil, "expertise recipe quote unavailable"
+	end
+
+	for level = base_level + 1, 500 do
+		local bucket = math.floor(level / 10) * 10
+		add_costs(total, start_costs[tostring(math.max(1, bucket))])
+	end
+
+	return material_result(total)
+end
+
+local function quote_range(low_quote, high_quote)
 	if not low_quote or not high_quote then
-		return nil, low_reason or high_reason
+		return nil
 	end
 
 	return {
-		base_level_max = ESTIMATE_BASE_LEVEL_MAX,
-		base_level_min = ESTIMATE_BASE_LEVEL_MIN,
 		diamantine_max = math.max(low_quote.diamantine, high_quote.diamantine),
 		diamantine_min = math.min(low_quote.diamantine, high_quote.diamantine),
 		plasteel_max = math.max(low_quote.plasteel, high_quote.plasteel),
 		plasteel_min = math.min(low_quote.plasteel, high_quote.plasteel),
-	}, "live recipe range for a 290-330 starting base level"
+	}
+end
+
+local function mastery_target_xp(mastery, target_level)
+	local milestones = mastery and mastery.milestones
+
+	if type(milestones) ~= "table" then
+		return nil
+	end
+
+	for index, milestone in ipairs(milestones) do
+		local level = tonumber(milestone and milestone.level) or index
+
+		if level == target_level then
+			return tonumber(milestone.xpLimit or milestone.xp_limit)
+		end
+	end
+
+	return nil
+end
+
+local function sacrifice_xp(costs, expertise_level)
+	if type(costs) ~= "table" then
+		return nil
+	end
+
+	local multiplier = tonumber(costs.sacrifice_muiltiplier or costs.sacrifice_multiplier) or 6
+	local minimum = tonumber(costs.minimumExpertiseLevel) or 0
+	local base_reward = tonumber(costs.baseReward) or 25
+	local per_level = tonumber(costs.masteryXpPerExpertiseLevel) or 30
+
+	return (base_reward + (((tonumber(expertise_level) or 0) - minimum) / 10 + 1) * per_level) * multiplier
+end
+
+local function mastery_fodder_estimate(snapshot, normalized, target)
+	if not normalized.level_mastery_20 then
+		return nil, "disabled"
+	end
+
+	local mastery = normalized.trait_catalog and normalized.trait_catalog.mastery
+	local target_xp = mastery_target_xp(mastery, 20)
+	local current_xp = tonumber(mastery and mastery.current_xp)
+	local sacrifice_costs = snapshot and snapshot.crafting_costs and snapshot.crafting_costs.sacrifice_mastery
+
+	if not target_xp or not current_xp or type(sacrifice_costs) ~= "table" then
+		return nil, "mastery curve or sacrifice XP costs unavailable"
+	end
+
+	local remaining_xp = math.max(0, target_xp - current_xp)
+	local xp_low = sacrifice_xp(sacrifice_costs, ESTIMATE_BASE_LEVEL_MIN)
+	local xp_high = sacrifice_xp(sacrifice_costs, ESTIMATE_BASE_LEVEL_MAX)
+
+	if not xp_low or not xp_high or xp_low <= 0 or xp_high <= 0 then
+		return nil, "sacrifice XP quote unavailable"
+	end
+
+	local count_min = math.ceil(remaining_xp / math.max(xp_low, xp_high))
+	local count_max = math.ceil(remaining_xp / math.min(xp_low, xp_high))
+	local price = tonumber(target and target.price_amount) or 0
+	local redeem_low, redeem_low_reason = rarity_material_quote(snapshot, target, ESTIMATE_BASE_LEVEL_MIN, 2)
+	local redeem_high, redeem_high_reason = rarity_material_quote(snapshot, target, ESTIMATE_BASE_LEVEL_MAX, 2)
+	local redeem_range = quote_range(redeem_low, redeem_high)
+
+	return {
+		count_max = count_max,
+		count_min = count_min,
+		dockets_max = price * count_max,
+		dockets_min = price * count_min,
+		remaining_xp = remaining_xp,
+		target_xp = target_xp,
+		diamantine_max = redeem_range and redeem_range.diamantine_max * count_max or nil,
+		diamantine_min = redeem_range and redeem_range.diamantine_min * count_min or nil,
+		plasteel_max = redeem_range and redeem_range.plasteel_max * count_max or nil,
+		plasteel_min = redeem_range and redeem_range.plasteel_min * count_min or nil,
+	}, redeem_range and "live mastery curve, sacrifice XP and Redeemed recipe costs" or redeem_low_reason or redeem_high_reason
+end
+
+local function workflow_material_estimate(snapshot, normalized, target)
+	local phases = {}
+	local reason
+
+	if normalized.consecrate_transcendent then
+		local low, low_reason = rarity_material_quote(snapshot, target, ESTIMATE_BASE_LEVEL_MIN, 5)
+		local high, high_reason = rarity_material_quote(snapshot, target, ESTIMATE_BASE_LEVEL_MAX, 5)
+
+		phases.consecrate = quote_range(low, high)
+		reason = reason or low_reason or high_reason
+	end
+
+	if normalized.upgrade_expertise_500 then
+		local low, low_reason = expertise_material_quote(snapshot, ESTIMATE_BASE_LEVEL_MIN)
+		local high, high_reason = expertise_material_quote(snapshot, ESTIMATE_BASE_LEVEL_MAX)
+
+		phases.expertise = quote_range(low, high)
+		reason = reason or low_reason or high_reason
+	end
+
+	phases.mastery, phases.mastery_note = mastery_fodder_estimate(snapshot, normalized, target)
+
+	local total = { diamantine_max = 0, diamantine_min = 0, plasteel_max = 0, plasteel_min = 0 }
+	local any
+
+	for _, phase in pairs({ phases.consecrate, phases.expertise, phases.mastery }) do
+		if phase then
+			any = true
+			for _, currency in ipairs({ "diamantine", "plasteel" }) do
+				total[currency .. "_min"] = total[currency .. "_min"] + (phase[currency .. "_min"] or 0)
+				total[currency .. "_max"] = total[currency .. "_max"] + (phase[currency .. "_max"] or 0)
+			end
+		end
+	end
+
+	phases.total = any and total or nil
+
+	return phases, reason or phases.mastery_note or "live recipe range for a 290-330 starting base level"
 end
 
 local function target_key(offer)
@@ -314,6 +437,7 @@ local function normalize_config(config)
 		max_purchases = number_or(config.max_purchases, DEFAULTS.max_purchases),
 		best_candidate_fallback = config.best_candidate_fallback == true,
 		consecrate_transcendent = config.consecrate_transcendent ~= false,
+		level_mastery_20 = config.level_mastery_20 == true,
 		request_mode = request_mode,
 		upgrade_expertise_500 = config.upgrade_expertise_500 ~= false,
 		trait_catalog = config.trait_catalog,
@@ -425,18 +549,21 @@ function Planner.build(snapshot, config)
 		dockets_cap = dockets_cap and math.min(dockets_cap, purchase_cap) or purchase_cap
 	end
 
-	local material_estimate, material_note = workflow_material_estimate(snapshot, normalized, target)
+	local phases, material_note = workflow_material_estimate(snapshot, normalized, target)
+	local material_estimate = phases and phases.total
 	local purchase_count_cap = price and dockets_cap and math.floor(dockets_cap / price) or nil
 	local estimate = {
 		base_level_max = material_estimate and material_estimate.base_level_max or ESTIMATE_BASE_LEVEL_MAX,
 		base_level_min = material_estimate and material_estimate.base_level_min or ESTIMATE_BASE_LEVEL_MIN,
 		confidence = material_estimate and "live_recipe_range" or "acquisition_only",
-		configured_total_dockets = dockets_cap,
 		dockets_floor = price,
 		dockets_cap = dockets_cap,
+		dockets_max = phases and phases.mastery and phases.mastery.dockets_max or nil,
+		dockets_min = phases and phases.mastery and phases.mastery.dockets_min or nil,
 		diamantine_max = material_estimate and material_estimate.diamantine_max or nil,
 		diamantine_min = material_estimate and material_estimate.diamantine_min or nil,
 		material_note = material_note,
+		phases = phases,
 		plasteel_max = material_estimate and material_estimate.plasteel_max or nil,
 		plasteel_min = material_estimate and material_estimate.plasteel_min or nil,
 		purchase_count_floor = price and 1 or nil,

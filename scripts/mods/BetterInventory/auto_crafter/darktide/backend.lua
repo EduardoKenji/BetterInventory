@@ -146,6 +146,21 @@ local function local_weapon_crafting_costs()
 	return ok and safe_member(costs, "weapon") or nil
 end
 
+local function local_sacrifice_mastery_costs()
+	local managers = rawget(_G, "Managers")
+	local data_service = safe_member(managers, "data_service")
+	local crafting = safe_member(data_service, "crafting")
+	local get_costs = safe_member(crafting, "get_sacrifice_mastery_costs")
+
+	if type(get_costs) ~= "function" then
+		return nil
+	end
+
+	local ok, costs = pcall(get_costs, crafting)
+
+	return ok and costs or nil
+end
+
 master_item_details = function(master_id, resolved_master_item)
 	if master_id == nil or type(MasterItems) ~= "table" or type(MasterItems.get_item) ~= "function" then
 		return {}
@@ -474,7 +489,26 @@ local function summarize_perk_catalog(metadata)
 				local name = canonical_master_item_name(perk)
 
 				if name ~= nil then
+					local perk_item
+					local display_name
+
+					if type(MasterItems) == "table" and type(MasterItems.get_item) == "function" then
+						local item_ok, resolved_item = pcall(MasterItems.get_item, name)
+
+						perk_item = item_ok and resolved_item or nil
+					end
+
+					-- Match ViewElementPerksItem exactly. Perk master-item display_name is
+					-- an internal content label; vanilla renders the interpolated trait
+					-- description instead (for example "+25% Damage vs Flak Armoured").
+					if perk_item and tier and type(Items) == "table" and type(Items.trait_description) == "function" then
+						local description_ok, description = pcall(Items.trait_description, perk_item, tier, 1)
+
+						display_name = description_ok and description or nil
+					end
+
 					catalog[#catalog + 1] = {
+						display_name = display_name,
 						display_name_key = trait_display_name_key(name, perk),
 						id = tostring(name),
 						tier = tier,
@@ -715,6 +749,7 @@ function Backend.new(dependencies)
 		local snapshot = {
 			crafting_costs = {
 				available = false,
+				sacrifice_mastery = nil,
 				weapon = nil,
 			},
 			kind = "read_only_brunt_probe",
@@ -727,6 +762,7 @@ function Backend.new(dependencies)
 			},
 		}
 		snapshot.crafting_costs.weapon = local_weapon_crafting_costs()
+		snapshot.crafting_costs.sacrifice_mastery = local_sacrifice_mastery_costs()
 		snapshot.crafting_costs.available = snapshot.crafting_costs.weapon ~= nil
 
 		return self:_read("store", "get_credits_goods_store", true):next(function (store)
@@ -825,6 +861,7 @@ function Backend.new(dependencies)
 						mastery = {
 							claimed_level = tonumber(safe_member(mastery_data, "claimed_level")),
 							current_xp = tonumber(safe_member(mastery_data, "current_xp")),
+							milestones = safe_member(mastery_data, "milestones"),
 							mastery_id = safe_member(mastery_data, "mastery_id") or parent_pattern,
 							mastery_level = tonumber(safe_member(mastery_data, "mastery_level")),
 						},

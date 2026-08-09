@@ -828,7 +828,28 @@ local localization = {
 		en = "Request mode",
 	},
 	auto_crafter_panel_estimate = {
-		en = "Estimate",
+		en = "Search budget",
+	},
+	auto_crafter_panel_base_level_range = {
+		en = "Generated base item level range",
+	},
+	auto_crafter_panel_consecrate_cost = {
+		en = "Profane to Transcendent",
+	},
+	auto_crafter_panel_expertise_cost = {
+		en = "Base item level to 500",
+	},
+	auto_crafter_panel_mastery_fodder = {
+		en = "Mastery 20 fodder",
+	},
+	auto_crafter_panel_mastery_cost = {
+		en = "Mastery fodder investment",
+	},
+	auto_crafter_panel_total_cost = {
+		en = "Known crafting investment",
+	},
+	auto_crafter_panel_disabled = {
+		en = "disabled",
 	},
 	auto_crafter_panel_preflight = {
 		en = "Preflight",

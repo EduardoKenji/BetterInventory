@@ -5,13 +5,13 @@
     {"name": "derived_content_reset", "risk": "high", "start_line": 74, "end_line": 86}
   ],
   "test_auto_crafter_stats.py": [
-    {"name": "template_stat_catalog_and_damage_identity", "risk": "critical", "start_line": 145, "end_line": 160},
-    {"name": "indexed_manual_resolution", "risk": "critical", "start_line": 162, "end_line": 197},
-    {"name": "live_recipe_material_range", "risk": "high", "start_line": 199, "end_line": 239},
-    {"name": "manual_selector_and_shortcut_grid", "risk": "critical", "start_line": 241, "end_line": 282},
-    {"name": "localized_display_labels", "risk": "high", "start_line": 283, "end_line": 297},
-    {"name": "individual_trait_target_selection", "risk": "high", "start_line": 299, "end_line": 357},
-    {"name": "deferred_grid_rebuild", "risk": "critical", "start_line": 359, "end_line": 364}
+      {"name": "template_stat_catalog_and_vanilla_perk_labels", "risk": "critical", "start_line": 169, "end_line": 185},
+      {"name": "indexed_manual_resolution_and_search_budget", "risk": "critical", "start_line": 203, "end_line": 222},
+      {"name": "phase_material_and_mastery_fodder_ranges", "risk": "high", "start_line": 261, "end_line": 308},
+      {"name": "manual_selector_and_shortcut_grid", "risk": "critical", "start_line": 323, "end_line": 351},
+      {"name": "localized_display_labels", "risk": "high", "start_line": 366, "end_line": 366},
+      {"name": "tier_qualified_trait_target_selection", "risk": "high", "start_line": 416, "end_line": 427},
+      {"name": "deferred_grid_rebuild_and_scroll_restore", "risk": "critical", "start_line": 432, "end_line": 441}
   ],
   "test_auto_crafter_controller.py": [
     {"name": "presacrifice_mastery_baseline_and_convergence", "risk": "critical", "start_line": 176, "end_line": 240},
