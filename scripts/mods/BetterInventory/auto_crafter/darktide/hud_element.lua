@@ -1,6 +1,14 @@
 local UIWorkspaceSettings = require("scripts/settings/ui/ui_workspace_settings")
 local UIWidget = require("scripts/managers/ui/ui_widget")
 
+local MINIMUM_HEIGHT = 112
+local LINE_HEIGHT = 26
+local VERTICAL_PADDING = 8
+
+local function status_height(line_count)
+	return math.max(MINIMUM_HEIGHT, VERTICAL_PADDING + math.max(0, tonumber(line_count) or 0) * LINE_HEIGHT)
+end
+
 local definitions = {
 	scenegraph_definition = {
 		screen = UIWorkspaceSettings.screen,
@@ -8,7 +16,7 @@ local definitions = {
 			parent = "screen",
 			horizontal_alignment = "center",
 			vertical_alignment = "top",
-			size = { 760, 112 },
+			size = { 760, MINIMUM_HEIGHT },
 			position = { 0, 42, 80 },
 		},
 	},
@@ -24,6 +32,7 @@ local definitions = {
 			},
 			{
 				pass_type = "text",
+				style_id = "text",
 				value = "",
 				value_id = "text",
 				style = {
@@ -31,9 +40,9 @@ local definitions = {
 					font_type = "proxima_nova_bold",
 					horizontal_alignment = "center",
 					text_color = { 255, 225, 225, 210 },
-					vertical_alignment = "center",
-					offset = { 12, 0, 2 },
-					size = { 736, 104 },
+					vertical_alignment = "top",
+					offset = { 12, 4, 2 },
+					size = { 736, MINIMUM_HEIGHT - VERTICAL_PADDING },
 				},
 			},
 		}, "status"),
@@ -68,10 +77,18 @@ HudElementBetterInventoryAutoCrafter.update = function (self, dt, t, ui_renderer
 	local enabled = bridge and type(bridge.enabled) == "function" and bridge.enabled() == true and visible_context()
 	local lines = enabled and type(bridge.lines) == "function" and bridge.lines() or nil
 	local text = type(lines) == "table" and table.concat(lines, "\n") or ""
+	local line_count = type(lines) == "table" and #lines or 0
+	local height = status_height(line_count)
+	local scenegraph = self._ui_scenegraph and self._ui_scenegraph.status
+	local widget = self._widgets_by_name.status
 
 	self._visible = text ~= ""
-	self._widgets_by_name.status.content.text = text
-	self._widgets_by_name.status.visible = self._visible
+	if scenegraph and scenegraph.size then
+		scenegraph.size[2] = height
+	end
+	widget.style.text.size[2] = height - VERTICAL_PADDING
+	widget.content.text = text
+	widget.visible = self._visible
 	HudElementBetterInventoryAutoCrafter.super.update(self, dt, t, ui_renderer, render_settings, input_service)
 end
 

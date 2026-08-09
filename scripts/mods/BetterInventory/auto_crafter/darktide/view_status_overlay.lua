@@ -4,33 +4,42 @@ local UIWidget = require("scripts/managers/ui/ui_widget")
 local Overlay = {}
 
 local WIDTH = 760
-local HEIGHT = 112
+local MINIMUM_HEIGHT = 112
+local LINE_HEIGHT = 26
+local VERTICAL_PADDING = 8
 local TOP_INSET = 42
-local BRUNT_HORIZONTAL_OFFSET = 190
+local BRUNT_HORIZONTAL_OFFSET = 360
+
+local function status_height(line_count)
+	return math.max(MINIMUM_HEIGHT, VERTICAL_PADDING + math.max(0, tonumber(line_count) or 0) * LINE_HEIGHT)
+end
 
 local WIDGET_DEFINITION = UIWidget.create_definition({
 	{
 		pass_type = "rect",
+		style_id = "background",
 		style = {
 			color = { 150, 14, 25, 20 },
 			horizontal_alignment = "center",
 			offset = { 0, TOP_INSET, 0 },
-			size = { WIDTH, HEIGHT },
+			size = { WIDTH, MINIMUM_HEIGHT },
 			vertical_alignment = "top",
 		},
 	},
 	{
 		pass_type = "rect",
+		style_id = "accent",
 		style = {
 			color = { 220, 164, 139, 69 },
 			horizontal_alignment = "center",
 			offset = { -(WIDTH - 4) * 0.5, TOP_INSET, 1 },
-			size = { 4, HEIGHT },
+			size = { 4, MINIMUM_HEIGHT },
 			vertical_alignment = "top",
 		},
 	},
 	{
 		pass_type = "text",
+		style_id = "text",
 		value = "",
 		value_id = "text",
 		style = {
@@ -38,7 +47,7 @@ local WIDGET_DEFINITION = UIWidget.create_definition({
 			font_type = "proxima_nova_bold",
 			horizontal_alignment = "center",
 			offset = { 0, TOP_INSET + 4, 2 },
-			size = { WIDTH - 24, HEIGHT - 8 },
+			size = { WIDTH - 24, MINIMUM_HEIGHT - VERTICAL_PADDING },
 			text_color = { 255, 225, 225, 210 },
 			vertical_alignment = "top",
 		},
@@ -71,7 +80,7 @@ local function horizontal_offset(view)
 	return 0
 end
 
-local function status_text(view)
+local function status_lines(view)
 	if not supported_view(view) then
 		return nil
 	end
@@ -88,7 +97,7 @@ local function status_text(view)
 
 	local lines = type(bridge.lines) == "function" and bridge.lines() or nil
 
-	return type(lines) == "table" and #lines > 0 and table.concat(lines, "\n") or nil
+	return type(lines) == "table" and #lines > 0 and lines or nil
 end
 
 function Overlay.install(mod, view_classes)
@@ -104,7 +113,8 @@ function Overlay.install(mod, view_classes)
 				view._auto_crafter_status_draw_depth = (view._auto_crafter_status_draw_depth or 0) + 1
 				local results = { func(view, dt, t, input_service, layer) }
 				view._auto_crafter_status_draw_depth = math.max(0, (view._auto_crafter_status_draw_depth or 1) - 1)
-				local text = status_text(view)
+				local lines = status_lines(view)
+				local text = lines and table.concat(lines, "\n") or nil
 				local ui_renderer = view._ui_default_renderer or view._ui_renderer
 
 				if text and ui_renderer and view._ui_scenegraph and view._render_settings and view._auto_crafter_status_draw_depth == 0 then
@@ -116,6 +126,10 @@ function Overlay.install(mod, view_classes)
 					end
 
 					widget.content.text = text
+					local height = status_height(#lines)
+					widget.style.background.size[2] = height
+					widget.style.accent.size[2] = height
+					widget.style.text.size[2] = height - VERTICAL_PADDING
 					widget.offset[1] = horizontal_offset(view)
 					widget.offset[2] = 0
 					widget.offset[3] = 0

@@ -18,7 +18,7 @@
       {"name": "right_click_routing_blessing_icon_and_runtime_progress", "risk": "high", "start_line": 831, "end_line": 863}
   ],
   "test_auto_crafter_viewport.py": [
-    {"name": "panel_and_hud_resolution_matrix", "risk": "high", "start_line": 14, "end_line": 54}
+    {"name": "panel_and_hud_resolution_matrix", "risk": "high", "start_line": 14, "end_line": 67}
   ],
   "test_auto_crafter_controller.py": [
     {"name": "presacrifice_mastery_baseline_convergence_and_level_event", "risk": "critical", "start_line": 190, "end_line": 269},

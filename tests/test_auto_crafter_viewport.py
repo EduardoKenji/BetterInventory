@@ -46,12 +46,19 @@ def main() -> None:
     assert "widget.offset[1] = horizontal_offset(view)" in overlay_source
     assert "widget.offset[2] = 0" in overlay_source
     assert 'string.find(class_name, "CreditsGoodsVendorView", 1, true)' in overlay_source
-    assert "BRUNT_HORIZONTAL_OFFSET = 190" in overlay_source
+    assert "BRUNT_HORIZONTAL_OFFSET = 360" in overlay_source
+    assert "status_height(#lines)" in overlay_source
+    assert "widget.style.background.size[2] = height" in overlay_source
+    assert "widget.style.accent.size[2] = height" in overlay_source
+    assert "widget.style.text.size[2] = height - VERTICAL_PADDING" in overlay_source
     assert "centered_top_pivot" not in overlay_source
     assert "view._auto_crafter_status_draw_depth == 0" in overlay_source
     assert 'require("scripts/mods/BetterInventory' not in overlay_source
     assert 'horizontal_alignment = "center"' in hud_source
     assert 'vertical_alignment = "top"' in hud_source
+    assert "status_height(line_count)" in hud_source
+    assert "scenegraph.size[2] = height" in hud_source
+    assert "widget.style.text.size[2] = height - VERTICAL_PADDING" in hud_source
 
     print("Auto Crafter viewport resolution matrix tests passed.")
 
