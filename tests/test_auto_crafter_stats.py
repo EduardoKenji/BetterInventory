@@ -190,6 +190,53 @@ def main() -> None:
     assert defense_plan.resolved_dump_stat == "crowbar_p1_m1_defence_stat"
     penetration_plan = plan("penetration")
     assert penetration_plan.resolved_dump_stat == "crowbar_p1_m1_armor_pierce_stat"
+    assert penetration_plan.estimate.base_level_min == 290
+    assert penetration_plan.estimate.base_level_max == 330
+    assert penetration_plan.estimate.dockets_floor == 11600
+    assert penetration_plan.estimate.configured_total_dockets == 1000000
+    assert penetration_plan.estimate.purchase_count_cap == 86
+
+    rarity_costs = lua.table_from(
+        {
+            str(rarity): lua.table_from(
+                [
+                    lua.table_from({"type": "plasteel", "amount": 10}),
+                    lua.table_from({"type": "diamantine", "amount": 2}),
+                ]
+            )
+            for rarity in range(5)
+        }
+    )
+    expertise_costs = lua.table_from(
+        {
+            str(bucket): lua.table_from(
+                [lua.table_from({"type": "plasteel", "amount": 1})]
+            )
+            for bucket in range(290, 501, 10)
+        }
+    )
+    snapshot.crafting_costs = lua.table_from(
+        {
+            "available": True,
+            "weapon": lua.table_from(
+                {
+                    "baseItemLevelSpan": lua.table_from({"min": 1, "max": 380}),
+                    "costScalingSpan": lua.table_from({"min": 1, "max": 1}),
+                    "rarityUpgrade": lua.table_from(
+                        {"startCost": rarity_costs}
+                    ),
+                    "addExpertise": lua.table_from(
+                        {"startCost": expertise_costs}
+                    ),
+                }
+            ),
+        }
+    )
+    material_plan = plan("penetration")
+    assert material_plan.estimate.plasteel_min == 220
+    assert material_plan.estimate.plasteel_max == 260
+    assert material_plan.estimate.diamantine_min == 10
+    assert material_plan.estimate.diamantine_max == 10
 
     lua.execute(
         '''
@@ -248,6 +295,73 @@ def main() -> None:
         }
     )
     assert panel._planner_dump_stat_label(panel, "dual_shivs_p1_m1_finesse_stat") == "Finesse"
+
+    lua.execute(
+        '''
+        TraitSettings = {
+            values = {
+                auto_crafter_perk_1_target = "keep",
+                auto_crafter_perk_2_target = "stale_trait",
+                auto_crafter_blessing_1_target = "keep",
+                auto_crafter_blessing_2_target = "keep",
+            },
+            get = function(self, key) return self.values[key] end,
+            set = function(self, key, value) self.values[key] = value return true end,
+        }
+        '''
+    )
+    trait_panel = panel_module.new(lua.table_from({"settings": lua.globals().TraitSettings}))
+    trait_panel._plan = lua.table_from(
+        {
+            "trait_catalog": lua.table_from(
+                {
+                    "available": True,
+                    "parent_pattern": "crowbar_p1",
+                    "perks": lua.table_from(
+                        [
+                            lua.table_from(
+                                {
+                                    "id": "perk_damage_t4",
+                                    "display_name_key": "loc_stats_display_damage_stat",
+                                    "tier": 4,
+                                }
+                            )
+                        ]
+                    ),
+                    "blessings": lua.table_from(
+                        [
+                            lua.table_from(
+                                {
+                                    "id": "blessing_power",
+                                    "display_name_key": "loc_stats_display_finesse_stat",
+                                }
+                            )
+                        ]
+                    ),
+                }
+            )
+        }
+    )
+    perk_options = trait_panel._trait_target_options(trait_panel, "auto_crafter_perk_1_target")
+    assert [perk_options[index].value for index in range(1, len(perk_options) + 1)] == [
+        "keep",
+        "auto",
+        "perk_damage_t4",
+    ]
+    assert perk_options[3].label == "Damage  T4"
+    trait_panel._step_trait_target(trait_panel, "auto_crafter_perk_1_target", 1)
+    assert lua.globals().TraitSettings["values"].auto_crafter_perk_1_target == "auto"
+    trait_panel._step_trait_target(trait_panel, "auto_crafter_perk_1_target", 1)
+    assert lua.globals().TraitSettings["values"].auto_crafter_perk_1_target == "perk_damage_t4"
+    trait_panel._reconcile_trait_targets(trait_panel)
+    assert lua.globals().TraitSettings["values"].auto_crafter_perk_2_target == "keep"
+
+    lua.execute("RenderCalls = 0")
+    trait_panel.render = lua.eval("function() RenderCalls = RenderCalls + 1 return true end")
+    trait_panel.set_phase(trait_panel, "plan_preview")
+    assert lua.globals().RenderCalls == 0
+    assert trait_panel._layout_pending is True
+    assert trait_panel._layout_defer_frames == 1
 
     print("Auto Crafter weapon stat catalogue and display-label tests passed.")
 

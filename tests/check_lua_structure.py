@@ -169,7 +169,8 @@ def validate_auto_crafter_mutation_boundaries() -> int:
         "function Planner.build",
         'status = preflight.ok and "ready" or "blocked"',
         'request_mode = "sequential"',
-        "materials deferred",
+        "workflow_material_estimate",
+        "live recipe range for a 290-330 starting base level",
         "STAT_INDEX_BY_DISPLAY_NAME",
         "dump_stat_candidates",
         "configured stat selected by user",
@@ -245,7 +246,19 @@ def validate_auto_crafter_mutation_boundaries() -> int:
     missing_future_ui = [
         token for token in future_ui_settings if token not in data_source or token not in panel_source
     ]
-    wired_future_backend = [token for token in future_ui_settings if token in controller_source]
+    estimate_only_settings = {
+        "auto_crafter_consecrate_transcendent",
+        "auto_crafter_upgrade_expertise_500",
+    }
+    wired_future_backend = [
+        token
+        for token in future_ui_settings
+        if token not in estimate_only_settings and token in controller_source
+    ]
+
+    for token in estimate_only_settings:
+        if token not in controller_source:
+            raise SystemExit(f"Auto Crafter estimate-only setting missing from planner bridge: {token}")
 
     if missing_future_ui:
         raise SystemExit("Auto Crafter future UI contract missing: " + ", ".join(missing_future_ui))
@@ -317,8 +330,9 @@ def validate_auto_crafter_mutation_boundaries() -> int:
         raise SystemExit("Auto Crafter progress notifications must remain milestone-coalesced")
 
     trait_catalog_contract = (
-        "_trait_catalog_text",
-        "auto_crafter_target_auto_discovered",
+        "_trait_target_options",
+        "_step_trait_target",
+        "_reconcile_trait_targets",
         "trait_catalog",
     )
     missing_trait_catalog = [token for token in trait_catalog_contract if token not in panel_source]

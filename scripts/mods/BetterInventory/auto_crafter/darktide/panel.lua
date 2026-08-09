@@ -9,7 +9,8 @@ local PANEL_X = 1380
 local PANEL_Y = 110
 local ROW_HEIGHT = 32
 local COMPACT_ROW_HEIGHT = 26
-local STATUS_ROW_HEIGHT = 42
+local STATUS_ROW_HEIGHT = 50
+local CURRENCY_ROW_HEIGHT = 52
 local STAT_GRID_BUTTON_HEIGHT = 30
 local STAT_GRID_GAP = 6
 local STAT_GRID_HEIGHT = STAT_GRID_BUTTON_HEIGHT * 2 + STAT_GRID_GAP
@@ -21,6 +22,11 @@ local STEPPER_CONTROLS_WIDTH = 182
 local STEPPER_VALUE_WIDTH = 114
 local MAX_OFFER_ROWS = 10
 local MAX_SELECTION_ATTEMPTS = 240
+local CURRENCY_ICONS = {
+	credits = "content/ui/materials/mission_board/currencies/credits_small_digital",
+	diamantine = "content/ui/materials/mission_board/currencies/diamantine_small_digital",
+	plasteel = "content/ui/materials/mission_board/currencies/plasteel_small_digital",
+}
 local SECTION_PLANNER = "planner"
 local SECTION_WORKFLOW = "workflow"
 local SECTION_TRAITS = "traits"
@@ -364,8 +370,25 @@ end
 local function status_block_passes(width)
 	return {
 		{ pass_type = "text", value_id = "label", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "top", text_color = Color.terminal_text_body(255, true), size = { width, 18 } } },
-		{ pass_type = "text", value_id = "detail", style = { font_size = 13, font_type = "proxima_nova_medium", text_horizontal_alignment = "left", text_vertical_alignment = "top", text_color = Color.terminal_text_body_sub_header(255, true), size = { width, 22 }, offset = { 0, 18, 1 } } },
+		{ pass_type = "text", value_id = "detail", style = { font_size = 13, font_type = "proxima_nova_medium", text_horizontal_alignment = "left", text_vertical_alignment = "top", text_color = Color.terminal_text_body_sub_header(255, true), size = { width, 30 }, offset = { 0, 18, 1 } } },
 	}
+end
+
+local function currency_row_passes(width)
+	local segment_width = width / 3
+	local passes = {
+		{ pass_type = "text", value_id = "label", style = { font_size = 14, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "top", text_color = Color.terminal_text_body(255, true), size = { width, 20 } } },
+	}
+	local currencies = { "credits", "plasteel", "diamantine" }
+
+	for index, currency in ipairs(currencies) do
+		local x = (index - 1) * segment_width
+
+		passes[#passes + 1] = { pass_type = "texture", value = CURRENCY_ICONS[currency], style = { size = { 16, 16 }, offset = { x, 28, 2 } } }
+		passes[#passes + 1] = { pass_type = "text", value_id = currency, style = { font_size = 13, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "center", text_color = Color.terminal_text_body_sub_header(255, true), size = { segment_width - 20, 28 }, offset = { x + 19, 22, 3 } } }
+	end
+
+	return passes
 end
 
 local function section_header_passes(width)
@@ -517,6 +540,8 @@ local BLUEPRINTS = {
 				return title_passes(width)
 			elseif variant == "status" then
 				return status_block_passes(width)
+			elseif variant == "currency" then
+				return currency_row_passes(width)
 			elseif variant == "section" then
 				return section_header_passes(width)
 			elseif variant == "selector" then
@@ -634,6 +659,8 @@ function Panel.new(dependencies)
 		_pending_offer = nil,
 		_pending_offer_attempts = 0,
 		_layout_pending = false,
+		_layout_defer_frames = 0,
+		_trait_catalog_key = nil,
 	}
 
 	local function localize(setting_id, fallback)
@@ -654,6 +681,11 @@ function Panel.new(dependencies)
 		end
 	end
 
+	function self:_queue_layout(frames)
+		self._layout_pending = true
+		self._layout_defer_frames = math.max(self._layout_defer_frames or 0, tonumber(frames) or 1)
+	end
+
 	function self:_entry(label, detail, options)
 		options = options or {}
 		local variant = options.variant or "summary"
@@ -663,6 +695,8 @@ function Panel.new(dependencies)
 			height = SECTION_ROW_HEIGHT
 		elseif variant == "status" then
 			height = STATUS_ROW_HEIGHT
+		elseif variant == "currency" then
+			height = CURRENCY_ROW_HEIGHT
 		elseif variant == "stat_grid" then
 			height = STAT_GRID_HEIGHT
 		elseif variant == "offer" or variant == "action" then
@@ -686,6 +720,9 @@ function Panel.new(dependencies)
 				stat_count = 0,
 				stat_pressed_callbacks = {},
 				chevron = "",
+				credits = options.credits or "—",
+				plasteel = options.plasteel or "—",
+				diamantine = options.diamantine or "—",
 			},
 			pass_template = nil,
 			size = {
@@ -706,7 +743,7 @@ function Panel.new(dependencies)
 					end
 
 					self._section_collapsed[section_id] = not self._section_collapsed[section_id]
-					self._layout_pending = true
+					self:_queue_layout(1)
 				end
 
 				widget.content.hotspot.pressed_callback = toggle_section
@@ -980,36 +1017,110 @@ function Panel.new(dependencies)
 		return self:_setting("auto_crafter_best_candidate_fallback", false) == true and localize("auto_crafter_value_on", "On") or localize("auto_crafter_value_off", "Off")
 	end
 
+	function self:_estimate_acquisition_text()
+		local estimate = self._plan and self._plan.estimate
+
+		if not estimate or not estimate.dockets_floor then
+			return localize("auto_crafter_panel_waiting", "waiting for probe")
+		end
+
+		return string.format("%s-%s purchases | %s-%s dockets", integer_text(estimate.purchase_count_floor), integer_text(estimate.purchase_count_cap, "uncapped"), integer_text(estimate.dockets_floor), integer_text(estimate.dockets_cap, "uncapped"))
+	end
+
+	function self:_estimate_base_level_text()
+		local estimate = self._plan and self._plan.estimate
+
+		if not estimate then
+			return localize("auto_crafter_panel_waiting", "waiting for probe")
+		end
+
+		return string.format("%s-%s starting base item level", integer_text(estimate.base_level_min), integer_text(estimate.base_level_max))
+	end
+
+	function self:_estimate_currency_values()
+		local estimate = self._plan and self._plan.estimate or {}
+		local function range_text(minimum, maximum)
+			if minimum == nil or maximum == nil then
+				return "—"
+			end
+
+			return minimum == maximum and integer_text(minimum) or integer_text(minimum) .. "-" .. integer_text(maximum)
+		end
+
+		local docket_text = estimate.dockets_floor and (integer_text(estimate.dockets_floor) .. "-" .. integer_text(estimate.dockets_cap, "uncapped")) or "—"
+
+		return docket_text, range_text(estimate.plasteel_min, estimate.plasteel_max), range_text(estimate.diamantine_min, estimate.diamantine_max)
+	end
+
+	function self:_trait_target_options(setting_id)
+		local options = {
+			{ label = localize("auto_crafter_target_keep", "Keep current"), value = "keep" },
+			{ label = localize("auto_crafter_target_auto", "Auto-select"), value = "auto" },
+		}
+		local catalog = self._plan and self._plan.trait_catalog
+		local catalog_kind = string.find(setting_id, "blessing", 1, true) and "blessings" or "perks"
+
+		if not catalog or catalog.available ~= true then
+			return options
+		end
+
+		for _, entry in ipairs(catalog[catalog_kind] or {}) do
+			if entry.id then
+				local label = localized_game_text(entry.display_name_key) or display_stat_name(entry.id)
+
+				if catalog_kind == "perks" and entry.tier then
+					label = label .. "  T" .. tostring(entry.tier)
+				end
+
+				options[#options + 1] = {
+					label = label,
+					value = entry.id,
+				}
+			end
+		end
+
+		return options
+	end
+
 	function self:_target_policy_text(setting_id)
 		local value = self:_setting(setting_id, "keep")
 
-		if value ~= "auto" then
-			return value == "keep" and localize("auto_crafter_target_keep", "Keep current") or tostring(value)
+		for _, option in ipairs(self:_trait_target_options(setting_id)) do
+			if option.value == value then
+				return option.label
+			end
 		end
 
-		local catalog = self._plan and self._plan.trait_catalog
-		local catalog_kind = string.find(setting_id, "blessing", 1, true) and "blessings" or "perks"
-		local count = catalog and catalog.available == true and tonumber(catalog[catalog_kind == "perks" and "perk_count" or "blessing_count"])
-
-		if count ~= nil then
-			return localize("auto_crafter_target_auto_discovered", "Auto-select") .. " (" .. tostring(count) .. " discovered)"
-		end
-
-		return localize("auto_crafter_target_auto_pending", "Auto-select (waiting for discovery)")
+		return localize("auto_crafter_target_keep", "Keep current")
 	end
 
-	function self:_trait_catalog_text()
-		local catalog = self._plan and self._plan.trait_catalog
+	function self:_step_trait_target(setting_id, direction)
+		local options = self:_trait_target_options(setting_id)
+		local values = {}
 
-		if catalog and catalog.available == true then
-			return localize("auto_crafter_trait_catalog_ready", "Perks and blessings discovered") .. " (" .. tostring(tonumber(catalog.perk_count) or 0) .. " | " .. tostring(tonumber(catalog.blessing_count) or 0) .. ")"
+		for _, option in ipairs(options) do
+			values[#values + 1] = option.value
 		end
 
-		if catalog and catalog.reason then
-			return localize("auto_crafter_trait_catalog_failed", "Discovery unavailable")
-		end
+		self:_step_enum_setting(setting_id, values, "keep", direction)
+	end
 
-		return localize("auto_crafter_trait_catalog_pending", "Discovering selected weapon")
+	function self:_reconcile_trait_targets()
+		for _, setting_id in ipairs({ "auto_crafter_perk_1_target", "auto_crafter_perk_2_target", "auto_crafter_blessing_1_target", "auto_crafter_blessing_2_target" }) do
+			local current = self:_setting(setting_id, "keep")
+			local found = false
+
+			for _, option in ipairs(self:_trait_target_options(setting_id)) do
+				if option.value == current then
+					found = true
+					break
+				end
+			end
+
+			if not found then
+				self:_set_setting(setting_id, "keep")
+			end
+		end
 	end
 
 	function self:_mutation_gate_text()
@@ -1127,7 +1238,7 @@ function Panel.new(dependencies)
 				action = function()
 					self:_set_setting(setting_id, not (self:_setting(setting_id, default_value) == true))
 					if reflow then
-						self._layout_pending = true
+						self:_queue_layout(1)
 					end
 				end,
 				refresh = function(widget)
@@ -1150,15 +1261,27 @@ function Panel.new(dependencies)
 			table.insert(entries, self:_entry(localize(label_id, fallback), initial_enabled and self:_target_policy_text(setting_id) or unavailable_text, {
 				enabled = initial_enabled,
 				selectable = initial_enabled,
-				variant = "selector",
-				action = function()
-					self:_cycle_setting(setting_id, { "keep", "auto" }, "keep")
+				variant = "enum_stepper",
+				decrease = function()
+					if is_enabled() then
+						self:_step_trait_target(setting_id, -1)
+					end
+				end,
+				increase = function()
+					if is_enabled() then
+						self:_step_trait_target(setting_id, 1)
+					end
 				end,
 				refresh = function(widget)
 					local current_enabled = is_enabled()
 					widget.content.enabled = current_enabled
 					widget.content.detail = current_enabled and self:_target_policy_text(setting_id) or unavailable_text
-					widget.content.hotspot.disabled = not current_enabled
+					if widget.content.decrease_hotspot then
+						widget.content.decrease_hotspot.disabled = not current_enabled
+					end
+					if widget.content.increase_hotspot then
+						widget.content.increase_hotspot.disabled = not current_enabled
+					end
 				end,
 			}))
 		end
@@ -1247,12 +1370,26 @@ function Panel.new(dependencies)
 					widget.content.checked = self:_setting("auto_crafter_best_candidate_fallback", false) == true
 				end,
 			}))
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_estimate", "Estimate"), plan and plan.estimate and plan.estimate.summary or localize("auto_crafter_panel_waiting", "waiting for probe"), {
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_estimate", "Acquisition estimate"), self:_estimate_acquisition_text(), {
 				variant = "status",
 				refresh = function(widget)
-					local current_plan = self._plan
-
-					widget.content.detail = current_plan and current_plan.estimate and current_plan.estimate.summary or localize("auto_crafter_panel_waiting", "waiting for probe")
+					widget.content.detail = self:_estimate_acquisition_text()
+				end,
+			}))
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_base_level_range", "Upgrade estimate range"), self:_estimate_base_level_text(), {
+				variant = "status",
+				refresh = function(widget)
+					widget.content.detail = self:_estimate_base_level_text()
+				end,
+			}))
+			local estimate_credits, estimate_plasteel, estimate_diamantine = self:_estimate_currency_values()
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_total_cost", "Configured total"), "", {
+				credits = estimate_credits,
+				diamantine = estimate_diamantine,
+				plasteel = estimate_plasteel,
+				variant = "currency",
+				refresh = function(widget)
+					widget.content.credits, widget.content.plasteel, widget.content.diamantine = self:_estimate_currency_values()
 				end,
 			}))
 			table.insert(entries, self:_entry(localize("auto_crafter_panel_preflight", "Preflight"), plan and plan.preflight and plan.preflight.summary or localize("auto_crafter_panel_waiting", "waiting for probe"), {
@@ -1265,7 +1402,7 @@ function Panel.new(dependencies)
 			}))
 		end
 
-		table.insert(entries, self:_entry(localize("auto_crafter_panel_workflow", "Crafting workflow"), localize("auto_crafter_panel_ui_plan", "UI PLAN"), {
+		table.insert(entries, self:_entry(localize("auto_crafter_panel_workflow", "Crafting workflow"), "", {
 			selectable = true,
 			section_header = true,
 			section_id = SECTION_WORKFLOW,
@@ -1289,7 +1426,7 @@ function Panel.new(dependencies)
 			end)
 		end
 
-		table.insert(entries, self:_entry(localize("auto_crafter_panel_trait_targets", "Perk and blessing targets"), self:_trait_catalog_text(), {
+		table.insert(entries, self:_entry(localize("auto_crafter_panel_trait_targets", "Perk and blessing targets"), "", {
 			selectable = true,
 			section_header = true,
 			section_id = SECTION_TRAITS,
@@ -1311,7 +1448,7 @@ function Panel.new(dependencies)
 			add_target_selector("auto_crafter_blessing_2_target", "auto_crafter_blessing_2_target", "Blessing target 2", blessing_targets_enabled, unavailable)
 		end
 
-		table.insert(entries, self:_entry(localize("auto_crafter_panel_output", "Final item handling"), localize("auto_crafter_panel_ui_plan", "UI PLAN"), {
+		table.insert(entries, self:_entry(localize("auto_crafter_panel_output", "Final item handling"), "", {
 			selectable = true,
 			section_header = true,
 			section_id = SECTION_OUTPUT,
@@ -1464,8 +1601,10 @@ function Panel.new(dependencies)
 
 	function self:set_phase(phase, snapshot)
 		self._phase = phase or self._phase
+		self._snapshot = snapshot or self._snapshot
+		self:_queue_layout(1)
 
-		return self:render(snapshot)
+		return true
 	end
 
 	function self:sync_controller_snapshot(state)
@@ -1473,10 +1612,22 @@ function Panel.new(dependencies)
 			return false
 		end
 
+		local previous_plan = self._plan
 		self._controller_state = state
 		self._phase = state.phase or self._phase
 		self._snapshot = state.data or self._snapshot
 		self._plan = state.plan
+		local catalog = self._plan and self._plan.trait_catalog
+		local catalog_key = catalog and tostring(catalog.parent_pattern or catalog.item_name or catalog.trait_category) or nil
+
+		if catalog_key ~= self._trait_catalog_key then
+			self._trait_catalog_key = catalog_key
+			self:_reconcile_trait_targets()
+		end
+
+		if previous_plan ~= self._plan then
+			self:_queue_layout(1)
+		end
 
 		return true
 	end
@@ -1534,7 +1685,9 @@ function Panel.new(dependencies)
 			self._selected_offer_master_id = selected_offer and selected_offer.master_id
 		end
 
-		if self._layout_pending then
+		if self._layout_pending and (self._layout_defer_frames or 0) > 0 then
+			self._layout_defer_frames = self._layout_defer_frames - 1
+		elseif self._layout_pending then
 			self._layout_pending = false
 			self:render()
 		end
@@ -1609,6 +1762,8 @@ function Panel.new(dependencies)
 		self._pending_offer = nil
 		self._pending_offer_attempts = 0
 		self._layout_pending = false
+		self._layout_defer_frames = 0
+		self._trait_catalog_key = nil
 
 		if type(panel.set_pivot_offset) == "function" then
 			panel:set_pivot_offset(PANEL_X, PANEL_Y)
@@ -1650,6 +1805,8 @@ function Panel.new(dependencies)
 		self._pending_offer = nil
 		self._pending_offer_attempts = 0
 		self._layout_pending = false
+		self._layout_defer_frames = 0
+		self._trait_catalog_key = nil
 	end
 
 	return self

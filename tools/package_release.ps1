@@ -15,14 +15,15 @@ $runtimeFiles = [ordered]@{
 # Package every runtime Lua source by discovery. A hand-maintained allowlist
 # previously omitted a newly introduced module while still passing a verifier
 # that duplicated the same incomplete list.
-$runtimeLuaFiles = @(Get-ChildItem -LiteralPath $scriptRoot -Filter "BetterInventory*.lua" -File | Sort-Object Name)
+$runtimeLuaFiles = @(Get-ChildItem -LiteralPath $scriptRoot -Filter "*.lua" -File -Recurse | Sort-Object FullName)
 
 if ($runtimeLuaFiles.Count -eq 0) {
 	throw "No BetterInventory runtime Lua files were discovered in: $scriptRoot"
 }
 
 foreach ($sourceFile in $runtimeLuaFiles) {
-	$runtimeFiles["$archiveRoot/scripts/mods/BetterInventory/$($sourceFile.Name)"] = $sourceFile.FullName
+	$relativeRuntimePath = $sourceFile.FullName.Substring($scriptRoot.Length).TrimStart("\").Replace("\", "/")
+	$runtimeFiles["$archiveRoot/scripts/mods/BetterInventory/$relativeRuntimePath"] = $sourceFile.FullName
 }
 
 foreach ($sourcePath in $runtimeFiles.Values) {

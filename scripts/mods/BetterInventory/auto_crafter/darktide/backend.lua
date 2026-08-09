@@ -109,6 +109,7 @@ local function summarize_store(store)
 			local sku = safe_member(offer, "sku")
 
 			summary.offers[index] = {
+				base_item_level = tonumber(safe_member(preview_item, "baseItemLevel") or safe_member(description, "baseItemLevel")),
 				base_stats = base_stats,
 				display_name = details.display_name,
 				offer_id = safe_member(offer, "offerId") or safe_member(offer, "offer_id"),
@@ -116,6 +117,7 @@ local function summarize_store(store)
 				parent_pattern = parent_pattern,
 				price_type = safe_member(amount, "type"),
 				price_amount = tonumber(safe_member(amount, "discounted_price") or safe_member(amount, "amount")),
+				rarity = tonumber(safe_member(preview_item, "rarity") or safe_member(description, "rarity")),
 				sku_category = safe_member(sku, "category"),
 				slot_type = details.slot_type,
 				sub_display_name = details.sub_display_name,
@@ -126,6 +128,22 @@ local function summarize_store(store)
 	end
 
 	return summary
+end
+
+local function local_weapon_crafting_costs()
+	local managers = rawget(_G, "Managers")
+	local backend_manager = safe_member(managers, "backend")
+	local interfaces = safe_member(backend_manager, "interfaces")
+	local crafting = safe_member(interfaces, "crafting")
+	local crafting_costs = safe_member(crafting, "crafting_costs")
+
+	if type(crafting_costs) ~= "function" then
+		return nil
+	end
+
+	local ok, costs = pcall(crafting_costs, crafting)
+
+	return ok and safe_member(costs, "weapon") or nil
 end
 
 master_item_details = function(master_id, resolved_master_item)
@@ -421,6 +439,24 @@ local function canonical_master_item_name(value)
 	return safe_member(value, "name") or safe_member(value, "id")
 end
 
+local function trait_display_name_key(trait_id, source)
+	local display_name = safe_member(source, "display_name") or safe_member(source, "displayName")
+
+	if display_name ~= nil then
+		return display_name
+	end
+
+	if trait_id ~= nil and type(MasterItems) == "table" and type(MasterItems.get_item) == "function" then
+		local ok, trait_item = pcall(MasterItems.get_item, trait_id)
+
+		if ok and trait_item then
+			return safe_member(trait_item, "display_name") or safe_member(trait_item, "displayName")
+		end
+	end
+
+	return nil
+end
+
 local function summarize_perk_catalog(metadata)
 	local ranks = safe_member(metadata, "perks") or {}
 	local catalog = {}
@@ -439,6 +475,7 @@ local function summarize_perk_catalog(metadata)
 
 				if name ~= nil then
 					catalog[#catalog + 1] = {
+						display_name_key = trait_display_name_key(name, perk),
 						id = tostring(name),
 						tier = tier,
 					}
@@ -494,6 +531,7 @@ local function summarize_blessing_catalog(sticker_book)
 			end)
 
 			catalog[#catalog + 1] = {
+				display_name_key = trait_display_name_key(trait_name),
 				id = tostring(trait_name),
 				tiers = tiers,
 			}
@@ -675,6 +713,10 @@ function Backend.new(dependencies)
 
 	function backend:probe_snapshot()
 		local snapshot = {
+			crafting_costs = {
+				available = false,
+				weapon = nil,
+			},
 			kind = "read_only_brunt_probe",
 			store = nil,
 			wallets = nil,
@@ -684,6 +726,8 @@ function Backend.new(dependencies)
 				reason = "No weapon-family target selected in Phase 0.",
 			},
 		}
+		snapshot.crafting_costs.weapon = local_weapon_crafting_costs()
+		snapshot.crafting_costs.available = snapshot.crafting_costs.weapon ~= nil
 
 		return self:_read("store", "get_credits_goods_store", true):next(function (store)
 			snapshot.store = summarize_store(store)

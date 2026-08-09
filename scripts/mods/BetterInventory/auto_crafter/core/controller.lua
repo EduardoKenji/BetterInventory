@@ -147,7 +147,9 @@ local function planner_config_signature(config)
 		tostring(config.cap_by_max_purchases),
 		tostring(config.max_purchases),
 		tostring(config.best_candidate_fallback),
+		tostring(config.consecrate_transcendent),
 		tostring(config.request_mode),
+		tostring(config.upgrade_expertise_500),
 	}, "|")
 end
 
@@ -260,7 +262,9 @@ function Controller.new(dependencies)
 		auto_crafter_cap_by_max_purchases = true,
 		auto_crafter_max_purchases = true,
 		auto_crafter_best_candidate_fallback = true,
+		auto_crafter_consecrate_transcendent = true,
 		auto_crafter_request_mode = true,
+		auto_crafter_upgrade_expertise_500 = true,
 	}
 
 	local mutation_setting_ids = {
@@ -277,7 +281,9 @@ function Controller.new(dependencies)
 			cap_by_max_purchases = setting("auto_crafter_cap_by_max_purchases", false),
 			max_purchases = setting("auto_crafter_max_purchases", 100),
 			best_candidate_fallback = setting("auto_crafter_best_candidate_fallback", false),
+			consecrate_transcendent = setting("auto_crafter_consecrate_transcendent", true),
 			request_mode = setting("auto_crafter_request_mode", "sequential"),
+			upgrade_expertise_500 = setting("auto_crafter_upgrade_expertise_500", true),
 			trait_catalog = self._catalog,
 			target_offer = nil,
 		}

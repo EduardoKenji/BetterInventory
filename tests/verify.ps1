@@ -11,7 +11,7 @@ $structureChecker = Join-Path $PSScriptRoot "check_lua_structure.py"
 $schemaDriftChecker = Join-Path $PSScriptRoot "check_schema_drift.py"
 $architectureChecker = Join-Path $PSScriptRoot "check_architecture.py"
 $runtimeBundleChecker = Join-Path $PSScriptRoot "check_runtime_bundle.py"
-$runtimeLuaFiles = @(Get-ChildItem -LiteralPath $scriptRoot -Filter "BetterInventory*.lua" -File | Sort-Object Name)
+$runtimeLuaFiles = @(Get-ChildItem -LiteralPath $scriptRoot -Filter "*.lua" -File -Recurse | Sort-Object FullName)
 $requiredFiles = @(
 	(Join-Path $projectRoot "BetterInventory.mod")
 )
@@ -688,7 +688,10 @@ try {
 	try {
 		$actualReleasePaths = @($packagingTest.Entries | Where-Object { -not [string]::IsNullOrEmpty($_.Name) } | ForEach-Object { $_.FullName } | Sort-Object)
 		$expectedReleasePaths = @("BetterInventory/BetterInventory.mod")
-		$expectedReleasePaths += @($runtimeLuaFiles | ForEach-Object { "BetterInventory/scripts/mods/BetterInventory/$($_.Name)" })
+		$expectedReleasePaths += @($runtimeLuaFiles | ForEach-Object {
+			$relativeRuntimePath = $_.FullName.Substring($scriptRoot.Length).TrimStart("\").Replace("\", "/")
+			"BetterInventory/scripts/mods/BetterInventory/$relativeRuntimePath"
+		})
 		$expectedReleasePaths = @($expectedReleasePaths | Sort-Object)
 
 		if (@(Compare-Object $expectedReleasePaths $actualReleasePaths).Count -gt 0) {
@@ -767,7 +770,10 @@ try {
 	}
 
 	$expectedTrackedPaths = @("BetterInventory/BetterInventory.mod")
-	$expectedTrackedPaths += @($runtimeLuaFiles | ForEach-Object { "BetterInventory/scripts/mods/BetterInventory/$($_.Name)" })
+	$expectedTrackedPaths += @($runtimeLuaFiles | ForEach-Object {
+		$relativeRuntimePath = $_.FullName.Substring($scriptRoot.Length).TrimStart("\").Replace("\", "/")
+		"BetterInventory/scripts/mods/BetterInventory/$relativeRuntimePath"
+	})
 	$expectedTrackedPaths = @($expectedTrackedPaths | Sort-Object)
 	$actualTrackedPaths = @($trackedEntryMap.Keys | Sort-Object)
 
@@ -789,7 +795,9 @@ try {
 		$sourcePath = if ($archivePath -eq "BetterInventory/BetterInventory.mod") {
 			Join-Path $projectRoot "BetterInventory.mod"
 		} else {
-			Join-Path $scriptRoot ([IO.Path]::GetFileName($archivePath))
+			$runtimePrefix = "BetterInventory/scripts/mods/BetterInventory/"
+			$relativeRuntimePath = $archivePath.Substring($runtimePrefix.Length).Replace("/", "\")
+			Join-Path $scriptRoot $relativeRuntimePath
 		}
 		$sourceHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $sourcePath).Hash
 

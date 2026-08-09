@@ -8,8 +8,13 @@ local DEFAULTS = {
 	cap_by_max_purchases = false,
 	max_purchases = 100,
 	best_candidate_fallback = false,
+	consecrate_transcendent = true,
+	upgrade_expertise_500 = true,
 	request_mode = "sequential",
 }
+
+local ESTIMATE_BASE_LEVEL_MIN = 290
+local ESTIMATE_BASE_LEVEL_MAX = 330
 
 local STAT_INDEX_BY_DISPLAY_NAME = {
 	loc_stats_display_damage_stat = 0,
@@ -45,6 +50,115 @@ local function currency_amount(snapshot, currency)
 	local entry = currencies and currencies[currency]
 
 	return entry and tonumber(entry.amount)
+end
+
+local function rounded(value)
+	return math.floor((tonumber(value) or 0) + 0.5)
+end
+
+local function add_costs(total, costs, multiplier)
+	for _, cost in ipairs(costs or {}) do
+		local currency = cost.type
+		local amount = tonumber(cost.amount)
+
+		if currency and amount then
+			total[currency] = (total[currency] or 0) + amount * (multiplier or 1)
+		end
+	end
+end
+
+local function scaled_rarity_costs(weapon_costs, rarity, item_level)
+	local rarity_upgrade = type(weapon_costs) == "table" and weapon_costs.rarityUpgrade
+	local start_costs = type(rarity_upgrade) == "table" and rarity_upgrade.startCost
+	local costs = type(start_costs) == "table" and start_costs[tostring(rarity)] or nil
+
+	if type(costs) ~= "table" then
+		return nil
+	end
+
+	local item_level_span = weapon_costs.baseItemLevelSpan or {}
+	local scaling_span = weapon_costs.costScalingSpan or {}
+	local scale = tonumber(item_level_span.scale) or 1
+	local source_min = tonumber(item_level_span.minInt or item_level_span.min) or scale
+	local source_max = tonumber(item_level_span.maxInt or item_level_span.max) or 380 * scale
+	local target_min = tonumber(scaling_span.minInt or scaling_span.min) or scale
+	local target_max = tonumber(scaling_span.maxInt or scaling_span.max) or scale
+	local scaled_level = (tonumber(item_level) or ESTIMATE_BASE_LEVEL_MAX) * scale
+	local clamped_level = math.max(source_min, math.min(source_max, scaled_level))
+	local ratio = source_max ~= source_min and (clamped_level - source_min) / (source_max - source_min) or 0
+	local span_multiplier = (target_min + (target_max - target_min) * ratio) / scale
+	local scaled = {}
+
+	for _, cost in ipairs(costs) do
+		scaled[#scaled + 1] = {
+			amount = rounded((tonumber(cost.amount) or 0) * span_multiplier),
+			type = cost.type,
+		}
+	end
+
+	return scaled
+end
+
+local function workflow_material_quote(snapshot, normalized, target, base_level)
+	local crafting_costs = snapshot and snapshot.crafting_costs
+	local weapon_costs = crafting_costs and crafting_costs.weapon
+
+	if type(weapon_costs) ~= "table" then
+		return nil, "live crafting recipe costs unavailable"
+	end
+
+	local total = {}
+
+	if normalized.consecrate_transcendent then
+		local start_rarity = tonumber(target and target.rarity) or 0
+
+		for rarity = start_rarity, 4 do
+			local costs = scaled_rarity_costs(weapon_costs, rarity, base_level)
+
+			if costs == nil then
+				return nil, "rarity-upgrade recipe quote incomplete"
+			end
+
+			add_costs(total, costs)
+		end
+	end
+
+	if normalized.upgrade_expertise_500 then
+		local add_expertise = weapon_costs.addExpertise
+		local start_costs = type(add_expertise) == "table" and add_expertise.startCost
+
+		if type(start_costs) ~= "table" then
+			return nil, "expertise recipe quote unavailable"
+		end
+
+		for level = base_level + 1, 500 do
+			local bucket = math.floor(level / 10) * 10
+			add_costs(total, start_costs[tostring(math.max(1, bucket))])
+		end
+	end
+
+	return {
+		diamantine = rounded(total.diamantine or 0),
+		plasteel = rounded(total.plasteel or 0),
+	}
+end
+
+local function workflow_material_estimate(snapshot, normalized, target)
+	local low_quote, low_reason = workflow_material_quote(snapshot, normalized, target, ESTIMATE_BASE_LEVEL_MIN)
+	local high_quote, high_reason = workflow_material_quote(snapshot, normalized, target, ESTIMATE_BASE_LEVEL_MAX)
+
+	if not low_quote or not high_quote then
+		return nil, low_reason or high_reason
+	end
+
+	return {
+		base_level_max = ESTIMATE_BASE_LEVEL_MAX,
+		base_level_min = ESTIMATE_BASE_LEVEL_MIN,
+		diamantine_max = math.max(low_quote.diamantine, high_quote.diamantine),
+		diamantine_min = math.min(low_quote.diamantine, high_quote.diamantine),
+		plasteel_max = math.max(low_quote.plasteel, high_quote.plasteel),
+		plasteel_min = math.min(low_quote.plasteel, high_quote.plasteel),
+	}, "live recipe range for a 290-330 starting base level"
 end
 
 local function target_key(offer)
@@ -199,7 +313,9 @@ local function normalize_config(config)
 		cap_by_max_purchases = config.cap_by_max_purchases == true,
 		max_purchases = number_or(config.max_purchases, DEFAULTS.max_purchases),
 		best_candidate_fallback = config.best_candidate_fallback == true,
+		consecrate_transcendent = config.consecrate_transcendent ~= false,
 		request_mode = request_mode,
+		upgrade_expertise_500 = config.upgrade_expertise_500 ~= false,
 		trait_catalog = config.trait_catalog,
 		target_offer = config.target_offer,
 	}
@@ -219,9 +335,9 @@ end
 
 local function estimate_summary(estimate)
 	local floor_text = estimate.dockets_floor and tostring(estimate.dockets_floor) or "?"
-	local cap_text = estimate.dockets_cap and tostring(estimate.dockets_cap) or "?"
+	local cap_text = estimate.dockets_cap and tostring(estimate.dockets_cap) or "uncapped"
 
-	return string.format("floor %s dockets | cap %s | materials deferred | expected: estimating", floor_text, cap_text)
+	return string.format("acquisition %s-%s dockets | upgrades modeled separately", floor_text, cap_text)
 end
 
 function Planner.build(snapshot, config)
@@ -309,14 +425,22 @@ function Planner.build(snapshot, config)
 		dockets_cap = dockets_cap and math.min(dockets_cap, purchase_cap) or purchase_cap
 	end
 
+	local material_estimate, material_note = workflow_material_estimate(snapshot, normalized, target)
+	local purchase_count_cap = price and dockets_cap and math.floor(dockets_cap / price) or nil
 	local estimate = {
-		confidence = "floor_only",
+		base_level_max = material_estimate and material_estimate.base_level_max or ESTIMATE_BASE_LEVEL_MAX,
+		base_level_min = material_estimate and material_estimate.base_level_min or ESTIMATE_BASE_LEVEL_MIN,
+		confidence = material_estimate and "live_recipe_range" or "acquisition_only",
+		configured_total_dockets = dockets_cap,
 		dockets_floor = price,
 		dockets_cap = dockets_cap,
-		plasteel = "deferred until a candidate exists",
-		diamantine = "deferred until a candidate exists",
+		diamantine_max = material_estimate and material_estimate.diamantine_max or nil,
+		diamantine_min = material_estimate and material_estimate.diamantine_min or nil,
+		material_note = material_note,
+		plasteel_max = material_estimate and material_estimate.plasteel_max or nil,
+		plasteel_min = material_estimate and material_estimate.plasteel_min or nil,
 		purchase_count_floor = price and 1 or nil,
-		purchase_count_cap = normalized.cap_by_max_purchases and normalized.max_purchases or nil,
+		purchase_count_cap = purchase_count_cap,
 	}
 
 	local preflight = {
@@ -342,6 +466,7 @@ function Planner.build(snapshot, config)
 		mode = normalized.request_mode,
 		mode_note = mode_note,
 		target = target and {
+			base_item_level = target.base_item_level,
 			key = target_key(target),
 			display_name = target.display_name,
 			offer_id = target.offer_id,
@@ -349,6 +474,7 @@ function Planner.build(snapshot, config)
 			base_stats = target.base_stats,
 			parent_pattern = target.parent_pattern,
 			price = price,
+			rarity = target.rarity,
 		} or nil,
 		dump_stat = normalized.dump_stat,
 		resolved_dump_stat = resolved_dump_stat,

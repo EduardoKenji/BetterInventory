@@ -2,7 +2,7 @@
 
 ## Critical Nexus archive invariant
 
-The BetterInventory v2.0.0 release archive must contain exactly one install directory named `BetterInventory`. Every ZIP entry name must use a forward slash (`/`), never a Windows backslash (`\`). The descriptor and every `BetterInventory*.lua` file in `scripts/mods/BetterInventory` are mandatory runtime files. The exact source set is recorded in `docs/generated-runtime-bundle-manifest.json` and is therefore not duplicated here:
+The BetterInventory v2.0.0 release archive must contain exactly one install directory named `BetterInventory`. Every ZIP entry name must use a forward slash (`/`), never a Windows backslash (`\`). The descriptor and every `.lua` file recursively beneath `scripts/mods/BetterInventory` are mandatory runtime files, including portable subtrees such as `auto_crafter/`. The exact source set is recorded in `docs/generated-runtime-bundle-manifest.json` and is therefore not duplicated here:
 
 Use the manifest as the authoritative list when inspecting an archive; the
 packager and verifier discover the same set directly from the runtime source
@@ -43,7 +43,7 @@ Only create the release archive with the repository-owned packager:
 
 The packager:
 
-1. discovers and writes the descriptor plus every `BetterInventory*.lua` runtime source beneath one `BetterInventory/` directory;
+1. recursively discovers and writes the descriptor plus every `.lua` runtime source beneath one `BetterInventory/` directory;
 2. constructs entry names explicitly with forward slashes;
 3. rejects rootless files, a duplicated outer directory, backslash-bearing names or any unexpected file;
 4. compares every compressed entry's SHA-256 with its source file before replacing the destination archive.
