@@ -957,6 +957,14 @@ def main() -> None:
     assert input_widget.content.visible is False
     assert input_widget.content.is_writing is False
 
+    # Quiescent frames must not allocate and replace an empty deletion queue.
+    assert store.has_pending_deleted_gear() is False
+    assert store.take_pending_deleted_gear_ids() is None
+    store.queue_deleted_gear("perf-probe")
+    assert store.has_pending_deleted_gear() is True
+    assert store.take_pending_deleted_gear_ids()["perf-probe"] is True
+    assert store.has_pending_deleted_gear() is False
+
     print("BetterInventory item customization tests passed.")
 
 

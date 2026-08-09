@@ -319,7 +319,15 @@ Store.queue_deleted_gear = function(gear_id)
 	end
 end
 
+Store.has_pending_deleted_gear = function()
+	return next(pending_deleted_gear_ids) ~= nil
+end
+
 Store.take_pending_deleted_gear_ids = function()
+	if next(pending_deleted_gear_ids) == nil then
+		return nil
+	end
+
 	local gear_ids = pending_deleted_gear_ids
 
 	pending_deleted_gear_ids = {}

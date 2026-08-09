@@ -1,6 +1,7 @@
 local Controller = {}
 
 local DEFAULT_PROBE_DELAY = 0.5
+local DEFAULT_VIEW_IDLE_POLL_INTERVAL = 0.1
 local DEFAULT_MASTERY_POLL_DELAY = 0.05
 local DEFAULT_BLESSING_POLL_DELAY = 0.05
 local MAX_MASTERY_POLL_ATTEMPTS = 12
@@ -572,6 +573,7 @@ function Controller.new(dependencies)
 		_active_view = nil,
 		_view_is_valid = false,
 		_probe_elapsed = 0,
+		_view_idle_poll_elapsed = 0,
 		_probe_scheduled = false,
 		_probe_inflight = false,
 		_probe_promise = nil,
@@ -4260,7 +4262,20 @@ function Controller.new(dependencies)
 			end
 		end
 
-		if self._view_is_valid and not run_is_active() and self._snapshot and not self._probe_inflight and type(self._get_selected_offer) == "function" then
+		local view_idle_poll_due = false
+
+		if self._view_is_valid and not run_is_active() then
+			self._view_idle_poll_elapsed = self._view_idle_poll_elapsed + finite_dt(dt)
+
+			if self._view_idle_poll_elapsed >= DEFAULT_VIEW_IDLE_POLL_INTERVAL then
+				self._view_idle_poll_elapsed = 0
+				view_idle_poll_due = true
+			end
+		else
+			self._view_idle_poll_elapsed = 0
+		end
+
+		if view_idle_poll_due and self._snapshot and not self._probe_inflight and type(self._get_selected_offer) == "function" then
 			local current_config = planner_config()
 
 			if planner_config_signature(current_config) ~= self._planner_signature then

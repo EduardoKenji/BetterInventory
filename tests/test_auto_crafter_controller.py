@@ -1459,6 +1459,31 @@ def main() -> None:
 			assert(controller:snapshot().phase == "user_stopped")
 		end
 
+		-- Idle Brunt selection/config reconciliation is amortized, while active
+		-- operation timeout accounting remains frame-driven.
+		do
+			local selected_reads = 0
+			local controller = Controller.new({backend = {}, planner = Planner, context = context(), settings = base_settings(), reporter = reports(), get_selected_offer = function()
+				selected_reads = selected_reads + 1
+				return raw_offer()
+			end})
+			controller._snapshot = snapshot_with(nil)
+			controller._active_view = {}
+			controller._view_is_valid = true
+			controller:update(0.03)
+			controller:update(0.03)
+			controller:update(0.03)
+			assert(selected_reads == 0)
+			controller:update(0.03)
+			assert(selected_reads > 0)
+
+			local operation = pending()
+			controller._search = {running = true}
+			assert(controller:_dispatch_operation(0, "purchase", function() return operation end, function() end) == true)
+			controller:update(0.03)
+			assert(controller:snapshot().operation_elapsed_seconds >= 0.03)
+		end
+
 		print("Auto Crafter controller Phase 2/3/4 behavior tests passed.")
         '''
     )

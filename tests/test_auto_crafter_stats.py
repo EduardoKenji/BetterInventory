@@ -874,6 +874,11 @@ def main() -> None:
     assert "Allocating mastery blessing points (%d/%d)" in host_source
     assert "Invested: %s Ordo Dockets | %s Plasteel | %s Diamantine" in host_source
     assert "Final weapon crafting complete in " in host_source
+    assert "presentation_dirty" in host_source
+    assert "PRESENTATION_CLOCK_INTERVAL = 0.25" in host_source
+    assert "if presentation_dirty or cached == nil or clock_due then" in host_source
+    assert "IDLE_POLL_INTERVAL = 0.1" in panel_source
+    assert "DEFAULT_VIEW_IDLE_POLL_INTERVAL = 0.1" in controller_source
 
     print("Auto Crafter weapon stat catalogue and display-label tests passed.")
 

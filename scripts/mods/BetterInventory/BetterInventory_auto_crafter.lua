@@ -4,6 +4,10 @@ local mod
 local controller
 local panel
 local hud_lines = {}
+local presentation_dirty = true
+local presentation_elapsed = 0
+local presentation_snapshot
+local PRESENTATION_CLOCK_INTERVAL = 0.25
 
 local function monotonic_now()
 	local application = rawget(_G, "Application")
@@ -292,7 +296,9 @@ end
 
 local function reporter(ui_panel)
 	return {
-			emit = function(_, kind, payload)
+		emit = function(_, kind, payload)
+			presentation_dirty = true
+
 			if kind == "probe_started" then
 				if ui_panel then
 					ui_panel:set_phase("probe_inflight")
@@ -589,11 +595,16 @@ function AutoCrafter.configure(dependencies)
 		settings = settings_adapter(),
 		clock = clock_adapter(),
 	})
+	presentation_dirty = true
+	presentation_elapsed = 0
+	presentation_snapshot = nil
 
 	return true
 end
 
 function AutoCrafter.on_brunt_view_ready(view)
+	presentation_dirty = true
+
 	if not setting("auto_crafter_enable", false) then
 		if panel then
 			panel:detach()
@@ -610,6 +621,8 @@ function AutoCrafter.on_brunt_view_ready(view)
 end
 
 function AutoCrafter.on_view_closed(view)
+	presentation_dirty = true
+
 	if panel then
 		panel:detach()
 	end
@@ -618,6 +631,8 @@ function AutoCrafter.on_view_closed(view)
 end
 
 function AutoCrafter.on_context_exit(reason)
+	presentation_dirty = true
+
 	if controller then
 		controller:on_context_exit(reason)
 	end
@@ -628,6 +643,8 @@ function AutoCrafter.on_context_exit(reason)
 end
 
 function AutoCrafter.on_setting_changed(setting_id)
+	presentation_dirty = true
+
 	if not setting("auto_crafter_enable", false) and panel then
 		panel:detach()
 	end
@@ -637,16 +654,27 @@ end
 
 function AutoCrafter.update(dt)
 	if panel then
-		panel:update()
+		panel:update(dt)
 	end
 
 	if controller then
 		controller:update(dt)
-		local snapshot = controller:snapshot()
-		rebuild_hud_lines(snapshot)
+		presentation_elapsed = presentation_elapsed + math.max(tonumber(dt) or 0, 0)
+		local cached = presentation_snapshot
+		local run_active = cached and (cached.search and cached.search.running or cached.phase3 and cached.phase3.running or cached.phase4 and cached.phase4.running or cached.mastery and cached.mastery.running)
+		local completion_visible = cached and not cached.last_error and cached.phase4 and not cached.phase4.running and cached.phase4.elapsed_seconds ~= nil and #hud_lines > 0
+		local clock_due = presentation_elapsed >= PRESENTATION_CLOCK_INTERVAL and (run_active or completion_visible)
 
-		if panel and type(panel.sync_controller_snapshot) == "function" then
-			panel:sync_controller_snapshot(snapshot)
+		if presentation_dirty or cached == nil or clock_due then
+			local snapshot = controller:snapshot()
+			presentation_snapshot = snapshot
+			presentation_dirty = false
+			presentation_elapsed = 0
+			rebuild_hud_lines(snapshot)
+
+			if panel and type(panel.sync_controller_snapshot) == "function" then
+				panel:sync_controller_snapshot(snapshot)
+			end
 		end
 	end
 end
@@ -663,6 +691,9 @@ end
 
 function AutoCrafter.shutdown()
 	hud_lines = {}
+	presentation_dirty = true
+	presentation_elapsed = 0
+	presentation_snapshot = nil
 	if panel then
 		panel:detach()
 		panel = nil

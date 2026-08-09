@@ -28,6 +28,7 @@ local STEPPER_CONTROLS_WIDTH = 182
 local STEPPER_VALUE_WIDTH = 114
 local MAX_OFFER_ROWS = 10
 local MAX_SELECTION_ATTEMPTS = 240
+local IDLE_POLL_INTERVAL = 0.1
 local CURRENCY_ICONS = {
 	credits = "content/ui/materials/mission_board/currencies/credits_small_digital",
 	diamantine = "content/ui/materials/mission_board/currencies/diamantine_small_digital",
@@ -775,6 +776,7 @@ function Panel.new(dependencies)
 		},
 		_pending_offer = nil,
 		_pending_offer_attempts = 0,
+		_idle_poll_elapsed = 0,
 		_layout_pending = false,
 		_layout_defer_frames = 0,
 		_trait_catalog_key = nil,
@@ -1880,10 +1882,22 @@ function Panel.new(dependencies)
 		return true
 	end
 
-	function self:update()
+	function self:update(dt)
+		if not self._panel or not self._view or self._view._destroyed then
+			return
+		end
+
+		self._idle_poll_elapsed = (self._idle_poll_elapsed or 0) + math.max(tonumber(dt) or IDLE_POLL_INTERVAL, 0)
+		local immediate = self._pending_offer ~= nil or self._layout_pending == true
+
+		if not immediate and self._idle_poll_elapsed < IDLE_POLL_INTERVAL then
+			return
+		end
+
+		self._idle_poll_elapsed = 0
 		self:_update_pivot()
 
-		if not self._view or self._view._destroyed or type(self._get_selected_offer) ~= "function" then
+		if type(self._get_selected_offer) ~= "function" then
 			return
 		end
 
@@ -2055,6 +2069,7 @@ function Panel.new(dependencies)
 		}
 		self._pending_offer = nil
 		self._pending_offer_attempts = 0
+		self._idle_poll_elapsed = IDLE_POLL_INTERVAL
 		self._layout_pending = false
 		self._layout_defer_frames = 0
 		self._trait_catalog_key = nil

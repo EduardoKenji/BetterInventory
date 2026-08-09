@@ -15,7 +15,7 @@
       {"name": "dual_target_trait_grid_selection_exclusivity_and_icon", "risk": "high", "start_line": 731, "end_line": 772},
       {"name": "category_specific_ranged_perk_defaults", "risk": "high", "start_line": 773, "end_line": 809},
       {"name": "deferred_grid_rebuild_scroll_restore_and_mastery_gate", "risk": "critical", "start_line": 810, "end_line": 830},
-      {"name": "right_click_routing_blessing_icon_and_runtime_progress", "risk": "high", "start_line": 831, "end_line": 882}
+      {"name": "right_click_routing_blessing_icon_and_runtime_progress", "risk": "high", "start_line": 831, "end_line": 887}
   ],
   "test_auto_crafter_viewport.py": [
     {"name": "panel_and_hud_resolution_matrix", "risk": "high", "start_line": 14, "end_line": 67}
@@ -43,7 +43,7 @@
     {"name": "equipment_starting_state_matrix", "risk": "critical", "start_line": 1186, "end_line": 1304},
     {"name": "instant_character_change_snapshot_and_callback_isolation", "risk": "critical", "start_line": 1305, "end_line": 1362},
     {"name": "configuration_change_closes_dispatch", "risk": "critical", "start_line": 1363, "end_line": 1380},
-    {"name": "explicit_stop_across_all_inflight_boundaries", "risk": "critical", "start_line": 1381, "end_line": 1468}
+    {"name": "explicit_stop_and_idle_cpu_amortization", "risk": "critical", "start_line": 1381, "end_line": 1493}
   ],
   "test_contracts.py": [
     {"name": "guarded_lookup", "risk": "high", "start_line": 22, "end_line": 40},
@@ -84,7 +84,7 @@
   "test_item_customization.py": [
       {"name": "dirty_save_outcomes", "risk": "high", "start_line": 224, "end_line": 441},
       {"name": "bounded_retry_and_disable", "risk": "high", "start_line": 442, "end_line": 754},
-      {"name": "callback_failure_safety", "risk": "high", "start_line": 755, "end_line": 964}
+      {"name": "callback_failure_safety", "risk": "high", "start_line": 755, "end_line": 972}
   ],
   "test_layout.py": [
     {"name": "card_geometry", "risk": "high", "start_line": 621, "end_line": 1604},

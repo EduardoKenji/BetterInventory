@@ -96,7 +96,7 @@ end
 local function drain_deleted_records(mod)
 	local gear_ids = Store.take_pending_deleted_gear_ids()
 
-	if next(gear_ids) == nil then
+	if not gear_ids then
 		return 0
 	end
 
@@ -220,9 +220,13 @@ end
 
 ItemCustomization.update_runtime = function(mod, dt)
 	Editor.run_pending()
-
 	drain_deleted_records(mod)
-	Store.update_runtime(mod, dt)
+
+	local _, persistence_pending = Store.persistence_status()
+
+	if persistence_pending then
+		Store.update_runtime(mod, dt)
+	end
 end
 
 ItemCustomization.persistence_status = function()
