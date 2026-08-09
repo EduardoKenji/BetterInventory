@@ -20,6 +20,19 @@ local function current_game_mode_name()
 	return ok and name or nil
 end
 
+local function mission_matchmaking_active()
+	local managers = rawget(_G, "Managers")
+	local party = managers and managers.party_immaterium
+
+	if not party or type(party.is_in_matchmaking) ~= "function" then
+		return false
+	end
+
+	local ok, active = pcall(party.is_in_matchmaking, party)
+
+	return ok and active == true
+end
+
 function Context.new(dependencies)
 	dependencies = dependencies or {}
 
@@ -32,7 +45,7 @@ function Context.new(dependencies)
 	end
 
 	function context:is_runtime_valid()
-		return self:is_morningstar()
+		return self:is_morningstar() and not mission_matchmaking_active()
 	end
 
 	function context:is_valid_brunt_view(view)

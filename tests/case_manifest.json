@@ -27,8 +27,10 @@
     {"name": "deferred_processing_after_exact_target", "risk": "critical", "start_line": 390, "end_line": 426},
     {"name": "deferred_misses_preserved_without_exact_target", "risk": "critical", "start_line": 428, "end_line": 452},
     {"name": "phase3_live_best_fallback", "risk": "critical", "start_line": 454, "end_line": 480},
-    {"name": "configuration_change_closes_dispatch", "risk": "critical", "start_line": 482, "end_line": 498},
-    {"name": "explicit_stop_preserves_inflight_boundary", "risk": "critical", "start_line": 500, "end_line": 514}
+	{"name": "inventory_base_reuse_avoids_purchase", "risk": "critical", "start_line": 487, "end_line": 507},
+	{"name": "phase4_serial_final_crafting", "risk": "critical", "start_line": 509, "end_line": 560},
+    {"name": "configuration_change_closes_dispatch", "risk": "critical", "start_line": 562, "end_line": 578},
+    {"name": "explicit_stop_preserves_inflight_boundary", "risk": "critical", "start_line": 580, "end_line": 594}
   ],
   "test_contracts.py": [
     {"name": "guarded_lookup", "risk": "high", "start_line": 22, "end_line": 40},

@@ -721,6 +721,8 @@ return {
 						type = "group",
 						sub_widgets = {
 							{ setting_id = "auto_crafter_buy_until_target", tooltip = "auto_crafter_buy_until_target_tooltip", type = "checkbox", default_value = true },
+							{ setting_id = "auto_crafter_reuse_inventory_base", tooltip = "auto_crafter_reuse_inventory_base_tooltip", type = "checkbox", default_value = true },
+							{ setting_id = "auto_crafter_include_favorite_inventory_bases", tooltip = "auto_crafter_include_favorite_inventory_bases_tooltip", type = "checkbox", default_value = false },
 							{ setting_id = "auto_crafter_level_mastery_20", tooltip = "auto_crafter_level_mastery_20_tooltip", type = "checkbox", default_value = false },
 							{ setting_id = "auto_crafter_defer_bad_weapon_processing", tooltip = "auto_crafter_defer_bad_weapon_processing_tooltip", type = "checkbox", default_value = false },
 							{ setting_id = "auto_crafter_allocate_mastery_points", tooltip = "auto_crafter_allocate_mastery_points_tooltip", type = "checkbox", default_value = false },
@@ -728,6 +730,7 @@ return {
 							{ setting_id = "auto_crafter_upgrade_expertise_500", tooltip = "auto_crafter_upgrade_expertise_500_tooltip", type = "checkbox", default_value = true },
 							{ setting_id = "auto_crafter_change_perks", tooltip = "auto_crafter_change_perks_tooltip", type = "checkbox", default_value = false },
 							{ setting_id = "auto_crafter_change_blessings", tooltip = "auto_crafter_change_blessings_tooltip", type = "checkbox", default_value = false },
+							{ setting_id = "auto_crafter_show_status_hud", tooltip = "auto_crafter_show_status_hud_tooltip", type = "checkbox", default_value = true },
 						},
 					},
 					{

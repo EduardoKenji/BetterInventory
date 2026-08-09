@@ -792,4 +792,12 @@ localization.auto_crafter_target_auto_discovered = "自动选择"
 localization.auto_crafter_trait_catalog_ready = "已发现专长和祝福"
 
 
+localization.auto_crafter_reuse_inventory_base = "Reuse matching weapon from inventory"
+localization.auto_crafter_reuse_inventory_base_tooltip = "Use a matching non-favorite inventory weapon before buying a new weapon."
+localization.auto_crafter_include_favorite_inventory_bases = "Include favorited inventory weapons"
+localization.auto_crafter_include_favorite_inventory_bases_tooltip = "Allow favorited weapons as final crafting bases."
+localization.auto_crafter_show_status_hud = "Show persistent crafting status"
+localization.auto_crafter_show_status_hud_tooltip = "Show crafting objectives in Morningstar store and inventory views."
+localization.option_requires_auto_crafter_inventory_reuse = "Requires inventory-base reuse"
+
 return localization

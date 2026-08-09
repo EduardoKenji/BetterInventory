@@ -753,6 +753,36 @@ local function summarize_item(gear, gear_id)
 	end
 
 	local potential_stat_values = summarize_potential_base_stats(item, rolled_stats)
+	local expertise_level
+	local favorite_known = false
+	local favorited = false
+
+	if type(Items) == "table" and type(Items.expertise_level) == "function" then
+		local ok, value = pcall(Items.expertise_level, item, true)
+
+		expertise_level = ok and tonumber(value) or nil
+	end
+
+	if type(Items) == "table" and type(Items.is_item_id_favorited) == "function" then
+		local ok, value = pcall(Items.is_item_id_favorited, gear_id)
+
+		favorite_known = ok
+		favorited = ok and value == true or false
+	end
+
+	local function summarize_traits(source)
+		local result = {}
+
+		for index, trait in ipairs(type(source) == "table" and source or {}) do
+			result[#result + 1] = {
+				id = safe_member(trait, "id") or safe_member(trait, "name") or safe_member(trait, "trait"),
+				index = index,
+				rarity = tonumber(safe_member(trait, "rarity") or safe_member(trait, "tier")),
+			}
+		end
+
+		return result
+	end
 
 	local display_name
 
@@ -771,6 +801,9 @@ local function summarize_item(gear, gear_id)
 		base_stats = stat_values,
 		damage = damage_stat_value(stat_values, base_stat_labels) or item_stat_value(item, "damage"),
 		display_name = display_name or safe_member(item, "name"),
+		expertise_level = expertise_level,
+		favorite_known = favorite_known,
+		favorited = favorited,
 		gear_id = gear_id,
 		item_type = safe_member(item, "item_type"),
 		master_id = safe_member(item, "name") or safe_member(item, "id"),
@@ -779,7 +812,9 @@ local function summarize_item(gear, gear_id)
 		parent_pattern = safe_member(item, "parent_pattern"),
 		potential_base_stats = potential_stat_values,
 		potential_damage = damage_stat_value(potential_stat_values, base_stat_labels),
+		perks = summarize_traits(safe_member(item, "perks")),
 		rarity = tonumber(safe_member(item, "rarity")),
+		traits = summarize_traits(safe_member(item, "traits")),
 		weapon_template = safe_member(item, "weapon_progression_template") or safe_member(item, "weapon_template"),
 	}
 end
@@ -1014,6 +1049,65 @@ function Backend.new(dependencies)
 		end
 
 		return self:_mutate("crafting", "upgrade_weapon_rarity", gear_id)
+	end
+
+	function backend:add_weapon_expertise(gear_id, displayed_target)
+		if gear_id == nil or tonumber(displayed_target) == nil then
+			return rejected("gear id or expertise target unavailable")
+		end
+
+		if type(Items) ~= "table" or type(Items.get_expertise_multiplier) ~= "function" then
+			return rejected("expertise multiplier unavailable")
+		end
+
+		local ok, multiplier = pcall(Items.get_expertise_multiplier)
+
+		if not ok or tonumber(multiplier) == nil or tonumber(multiplier) <= 0 then
+			return rejected("expertise multiplier invalid")
+		end
+
+		return self:_mutate("crafting", "add_weapon_expertise", gear_id, tonumber(displayed_target) / tonumber(multiplier))
+	end
+
+	function backend:replace_perk(gear_id, index, perk_id, tier)
+		if gear_id == nil or tonumber(index) == nil or perk_id == nil or tonumber(tier) == nil then
+			return rejected("perk replacement parameters unavailable")
+		end
+
+		return self:_mutate("crafting", "replace_perk_in_weapon", gear_id, tonumber(index), perk_id, nil, tonumber(tier))
+	end
+
+	function backend:replace_blessing(gear_id, index, blessing_id, tier)
+		if gear_id == nil or tonumber(index) == nil or blessing_id == nil or tonumber(tier) == nil then
+			return rejected("blessing replacement parameters unavailable")
+		end
+
+		return self:_mutate("crafting", "replace_trait_in_weapon", gear_id, tonumber(index), blessing_id, tonumber(tier))
+	end
+
+	function backend:purchase_mastery_trait(pattern_id, trait_id, tier)
+		if pattern_id == nil or trait_id == nil or tonumber(tier) == nil then
+			return rejected("mastery trait purchase parameters unavailable")
+		end
+
+		-- purchase_trait catches backend rejection and returns the error as a
+		-- resolved value. The controller therefore always verifies sticker-book
+		-- state before it permits a replacement.
+		return self:_mutate("mastery", "purchase_trait", pattern_id, trait_id, tonumber(tier)):next(function (result)
+			return self:_mutate("crafting", "reset_sticker_book"):next(function ()
+				return result
+			end)
+		end)
+	end
+
+	function backend:get_trait_sticker_book(trait_category)
+		if trait_category == nil then
+			return rejected("trait category unavailable")
+		end
+
+		return self:_read("crafting", "trait_sticker_book", trait_category):next(function (sticker_book)
+			return summarize_blessing_catalog(sticker_book)
+		end)
 	end
 
 	function backend:extract_weapon_mastery(mastery_id, gear_ids)

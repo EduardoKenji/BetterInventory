@@ -491,6 +491,8 @@ local function refresh_option_dependencies()
 	local mastery_reason = mod:localize("option_requires_auto_crafter_mastery_20")
 
 	set_option_enabled(option_dependency_entries.auto_crafter_defer_bad_weapon_processing, auto_crafter_mastery_enabled, mastery_reason)
+	local reuse_inventory_base = mod:get("auto_crafter_reuse_inventory_base") ~= false
+	set_option_enabled(option_dependency_entries.auto_crafter_include_favorite_inventory_bases, reuse_inventory_base, mod:localize("option_requires_auto_crafter_inventory_reuse"))
 	set_option_enabled(option_dependency_entries.auto_crafter_allocate_mastery_points, auto_crafter_mastery_enabled, mastery_reason)
 	set_option_enabled(option_dependency_entries.auto_crafter_change_perks, auto_crafter_mastery_enabled, mastery_reason)
 	set_option_enabled(option_dependency_entries.auto_crafter_change_blessings, auto_crafter_mastery_enabled, mastery_reason)

@@ -3,6 +3,7 @@ local AutoCrafter = {}
 local mod
 local controller
 local panel
+local hud_lines = {}
 
 local function localize(setting_id, fallback)
 	if not mod or type(mod.localize) ~= "function" then
@@ -149,7 +150,7 @@ local function format_candidate(candidate)
 		tostring(candidate.display_name or candidate.mastery_id or "weapon"),
 		readable_stat_name(candidate),
 		tostring(candidate.dump_stat or "?"),
-		tostring(candidate.base_item_level or "?")
+		tostring(candidate.expertise_level or candidate.base_item_level or "?")
 	)
 end
 
@@ -174,9 +175,40 @@ local function progress_milestone(value, interval)
 	return count == 1 or count > 0 and count % interval == 0
 end
 
+local function rebuild_hud_lines(snapshot)
+	local lines = {}
+	local search = snapshot and snapshot.search
+	local phase3 = snapshot and snapshot.phase3
+	local phase4 = snapshot and snapshot.phase4
+
+	if search and search.running and not search.result then
+		lines[#lines + 1] = "Searching for perfect dump-stat weapon"
+	end
+
+	if phase3 and phase3.running then
+		local level = phase3.current and tonumber(phase3.current.mastery_level)
+		lines[#lines + 1] = level and string.format("Leveling weapon mastery to 20 (%d/20)", level) or "Leveling weapon mastery to 20"
+	end
+
+	if phase4 and phase4.running then
+		local item = phase4.current_item or {}
+		if phase4.consecrate and (tonumber(item.rarity) or 0) < 5 then
+			lines[#lines + 1] = "Consecrating weapon to Transcendent"
+		end
+		if phase4.expertise and (tonumber(item.expertise_level) or 0) < 500 then
+			lines[#lines + 1] = string.format("Upgrading weapon level to 500 (%s/500)", tostring(item.expertise_level or "?"))
+		end
+		if phase4.targets and (next(phase4.targets.perks or {}) ~= nil or next(phase4.targets.traits or {}) ~= nil) then
+			lines[#lines + 1] = "Applying selected perks and blessings"
+		end
+	end
+
+	hud_lines = lines
+end
+
 local function reporter(ui_panel)
 	return {
-		emit = function(_, kind, payload)
+			emit = function(_, kind, payload)
 			if kind == "probe_started" then
 				if ui_panel then
 					ui_panel:set_phase("probe_inflight")
@@ -253,7 +285,8 @@ local function reporter(ui_panel)
 					ui_panel:set_phase("search_complete")
 				end
 
-				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Found matching weapon: " .. format_candidate(payload and payload.candidate))
+				local prefix = payload and payload.reused_inventory and "Using matching inventory weapon: " or "Found matching weapon: "
+				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), prefix .. format_candidate(payload and payload.candidate))
 			elseif kind == "candidate_favorited" then
 				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Saved matching weapon as favorite: " .. tostring(payload and payload.candidate and payload.candidate.display_name or "weapon"))
 			elseif kind == "purchase_search_stopped" then
@@ -316,6 +349,20 @@ local function reporter(ui_panel)
 				if current_level then
 					notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), string.format("Weapon mastery reached level %d/%d.", current_level, maximum_level))
 				end
+			elseif kind == "phase4_started" then
+				if ui_panel then
+					ui_panel:set_phase("phase4_preflight")
+				end
+			elseif kind == "phase4_expertise_milestone" then
+				local level = tonumber(payload and payload.level)
+				if level and level % 100 == 0 then
+					notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), string.format("Weapon level reached %d/500.", level))
+				end
+			elseif kind == "phase4_complete" then
+				if ui_panel then
+					ui_panel:set_phase("phase4_complete")
+				end
+				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Final weapon crafting complete: " .. format_candidate(payload and payload.candidate))
 			elseif kind == "operation_failed" then
 				if ui_panel then
 					ui_panel:set_phase("operation_failed")
@@ -511,11 +558,17 @@ function AutoCrafter.update(dt)
 
 	if controller then
 		controller:update(dt)
+		local snapshot = controller:snapshot()
+		rebuild_hud_lines(snapshot)
 
 		if panel and type(panel.sync_controller_snapshot) == "function" then
-			panel:sync_controller_snapshot(controller:snapshot())
+			panel:sync_controller_snapshot(snapshot)
 		end
 	end
+end
+
+function AutoCrafter.hud_lines()
+	return hud_lines
 end
 
 function AutoCrafter.snapshot()
@@ -525,6 +578,7 @@ function AutoCrafter.snapshot()
 end
 
 function AutoCrafter.shutdown()
+	hud_lines = {}
 	if panel then
 		panel:detach()
 		panel = nil

@@ -4,6 +4,8 @@ local DEFAULT_PROBE_DELAY = 0.5
 local DEFAULT_MASTERY_POLL_DELAY = 0.5
 local MAX_MASTERY_POLL_ATTEMPTS = 12
 local REDEEMED_RARITY = 2
+local TRANSCENDENT_RARITY = 5
+local MAX_EXPERTISE_LEVEL = 500
 
 local function mastery_poll_delay(attempt)
 	local exponent = math.max(0, tonumber(attempt) or 0)
@@ -117,6 +119,51 @@ local function candidate_stat(candidate, stat_name)
 	return potential_stats and potential_stats[stat_name]
 end
 
+local function trait_at(traits, index)
+	local trait = type(traits) == "table" and traits[index] or nil
+
+	return trait and {
+		id = trait.id,
+		rarity = tonumber(trait.rarity),
+	} or nil
+end
+
+local function same_trait(left, right)
+	return left and right and left.id == right.id and tonumber(left.rarity) == tonumber(right.rarity)
+end
+
+local function same_optional_trait(left, right)
+	return left == nil and right == nil or same_trait(left, right)
+end
+
+local function sticker_status(catalog, trait_id, tier)
+	for _, blessing in ipairs(catalog or {}) do
+		if blessing.id == trait_id then
+			for _, entry in ipairs(blessing.tiers or {}) do
+				if tonumber(entry.tier) == tonumber(tier) then
+					return entry.status
+				end
+			end
+		end
+	end
+
+	return nil
+end
+
+local function parse_perk_target(value)
+	local id
+	local tier
+
+	if type(value) == "string" then
+		id, tier = string.match(value, "^perk:(.+):(%d+)$")
+	end
+
+	return id and {
+		id = id,
+		rarity = tonumber(tier),
+	} or nil
+end
+
 local function mastery_summary(data)
 	if type(data) ~= "table" then
 		return nil
@@ -162,6 +209,8 @@ local function planner_config_signature(config)
 		tostring(config.level_mastery_20),
 		tostring(config.request_mode),
 		tostring(config.upgrade_expertise_500),
+		tostring(config.reuse_inventory_base),
+		tostring(config.include_favorite_inventory_bases),
 	}, "|")
 end
 
@@ -196,6 +245,7 @@ function Controller.new(dependencies)
 		_operation_kind = nil,
 		_search = nil,
 		_phase3 = nil,
+		_phase4 = nil,
 		_mastery = nil,
 		_mastery_poll_elapsed = 0,
 		_mastery_poll_attempts = 0,
@@ -279,12 +329,26 @@ function Controller.new(dependencies)
 		auto_crafter_level_mastery_20 = true,
 		auto_crafter_request_mode = true,
 		auto_crafter_upgrade_expertise_500 = true,
+		auto_crafter_reuse_inventory_base = true,
+		auto_crafter_include_favorite_inventory_bases = true,
+		auto_crafter_allocate_mastery_points = true,
+		auto_crafter_change_perks = true,
+		auto_crafter_change_blessings = true,
+		auto_crafter_perk_1_target = true,
+		auto_crafter_perk_2_target = true,
+		auto_crafter_blessing_1_target = true,
+		auto_crafter_blessing_2_target = true,
 	}
 
 	local mutation_setting_ids = {
 		auto_crafter_allow_mutations = true,
 		auto_crafter_defer_bad_weapon_processing = true,
 		auto_crafter_level_mastery_20 = true,
+		auto_crafter_consecrate_transcendent = true,
+		auto_crafter_upgrade_expertise_500 = true,
+		auto_crafter_allocate_mastery_points = true,
+		auto_crafter_change_perks = true,
+		auto_crafter_change_blessings = true,
 	}
 
 	local function planner_config()
@@ -301,6 +365,8 @@ function Controller.new(dependencies)
 			level_mastery_20 = setting("auto_crafter_level_mastery_20", false),
 			request_mode = setting("auto_crafter_request_mode", "sequential"),
 			upgrade_expertise_500 = setting("auto_crafter_upgrade_expertise_500", true),
+			reuse_inventory_base = setting("auto_crafter_reuse_inventory_base", true),
+			include_favorite_inventory_bases = setting("auto_crafter_include_favorite_inventory_bases", false),
 			trait_catalog = self._catalog,
 			target_offer = nil,
 		}
@@ -405,7 +471,7 @@ function Controller.new(dependencies)
 	end
 
 	local function run_is_active()
-		return self._search and self._search.running == true or self._phase3 and self._phase3.running == true or self._mastery and self._mastery.running == true
+		return self._search and self._search.running == true or self._phase3 and self._phase3.running == true or self._phase4 and self._phase4.running == true or self._mastery and self._mastery.running == true
 	end
 
 	local function operation_context_valid(generation)
@@ -457,6 +523,10 @@ function Controller.new(dependencies)
 				error = error_value,
 				reason = "operation_failed",
 			})
+		end
+
+		if self._phase4 then
+			self._phase4.running = false
 		end
 	end
 
@@ -831,7 +901,8 @@ function Controller.new(dependencies)
 		local search = self._search
 		local phase3 = self._phase3
 		local mastery = self._mastery
-		local active = search and search.running or phase3 and phase3.running or mastery and mastery.running
+		local phase4 = self._phase4
+		local active = search and search.running or phase3 and phase3.running or phase4 and phase4.running or mastery and mastery.running
 
 		if not active then
 			return false
@@ -854,6 +925,10 @@ function Controller.new(dependencies)
 
 		if mastery then
 			mastery.running = false
+		end
+
+		if phase4 then
+			phase4.running = false
 		end
 
 		self._phase = reason
@@ -925,6 +1000,381 @@ function Controller.new(dependencies)
 		})
 	end
 
+	local function catalog_choice(catalog, value, current_trait, excluded_id, is_perk)
+		if value == "keep" then
+			return nil
+		end
+
+		local explicit = is_perk and parse_perk_target(value) or nil
+
+		for _, entry in ipairs(catalog or {}) do
+			local highest = entry.tier
+
+			if not is_perk then
+				for _, tier in ipairs(entry.tiers or {}) do
+					highest = math.max(tonumber(highest) or 0, tonumber(tier.tier) or 0)
+				end
+			end
+
+			local matches_explicit = explicit and entry.id == explicit.id and tonumber(highest) == tonumber(explicit.rarity)
+			local matches_blessing = not is_perk and value ~= "auto" and entry.id == value
+			local matches_auto = value == "auto" and entry.id ~= excluded_id and (not current_trait or entry.id ~= current_trait.id)
+
+			if matches_explicit or matches_blessing or matches_auto then
+				return {
+					id = entry.id,
+					rarity = explicit and explicit.rarity or tonumber(highest),
+				}
+			end
+		end
+
+		return nil
+	end
+
+	function self:_phase4_targets(item)
+		local catalog = self._search and self._search.catalog or self._catalog
+		local mastery_enabled = setting("auto_crafter_level_mastery_20", false) == true
+		local allocate_mastery = mastery_enabled and setting("auto_crafter_allocate_mastery_points", false) == true
+		local change_perks = mastery_enabled and setting("auto_crafter_change_perks", false) == true
+		local change_blessings = allocate_mastery and setting("auto_crafter_change_blessings", false) == true
+
+		if type(catalog) ~= "table" or catalog.available ~= true then
+			return nil, "weapon perk/blessing catalogue unavailable"
+		end
+
+		local targets = {
+			perks = {},
+			traits = {},
+		}
+		local perk_values = {
+			setting("auto_crafter_perk_1_target", "keep"),
+			setting("auto_crafter_perk_2_target", "auto"),
+		}
+		local blessing_values = {
+			setting("auto_crafter_blessing_1_target", "keep"),
+			setting("auto_crafter_blessing_2_target", "auto"),
+		}
+
+		if change_perks then
+			for index = 1, 2 do
+				local excluded = targets.perks[index == 1 and 2 or 1]
+				local peer_index = index == 1 and 2 or 1
+				local kept_peer = perk_values[peer_index] == "keep" and trait_at(item.perks, peer_index) or nil
+				targets.perks[index] = catalog_choice(catalog.perks, perk_values[index], trait_at(item.perks, index), excluded and excluded.id or kept_peer and kept_peer.id, true)
+
+				if perk_values[index] ~= "keep" and not targets.perks[index] then
+					return nil, "selected Tier IV perk target is unavailable"
+				end
+			end
+		end
+
+		if change_blessings then
+			for index = 1, 2 do
+				local excluded = targets.traits[index == 1 and 2 or 1]
+				local peer_index = index == 1 and 2 or 1
+				local kept_peer = blessing_values[peer_index] == "keep" and trait_at(item.traits, peer_index) or nil
+				targets.traits[index] = catalog_choice(catalog.blessings, blessing_values[index], trait_at(item.traits, index), excluded and excluded.id or kept_peer and kept_peer.id, false)
+
+				if blessing_values[index] ~= "keep" and not targets.traits[index] then
+					return nil, "selected blessing target is unavailable"
+				end
+			end
+		end
+
+		if targets.perks[1] and targets.perks[2] and targets.perks[1].id == targets.perks[2].id then
+			return nil, "perk targets must be different"
+		end
+		if targets.perks[1] and perk_values[2] == "keep" and targets.perks[1].id == (trait_at(item.perks, 2) or {}).id or targets.perks[2] and perk_values[1] == "keep" and targets.perks[2].id == (trait_at(item.perks, 1) or {}).id then
+			return nil, "selected perk duplicates a kept perk"
+		end
+
+		if targets.traits[1] and targets.traits[2] and targets.traits[1].id == targets.traits[2].id then
+			return nil, "blessing targets must be different"
+		end
+		if targets.traits[1] and blessing_values[2] == "keep" and targets.traits[1].id == (trait_at(item.traits, 2) or {}).id or targets.traits[2] and blessing_values[1] == "keep" and targets.traits[2].id == (trait_at(item.traits, 1) or {}).id then
+			return nil, "selected blessing duplicates a kept blessing"
+		end
+
+		return targets
+	end
+
+	function self:_phase4_complete(item)
+		local phase4 = self._phase4
+
+		if not phase4 or not phase4.running then
+			return false
+		end
+
+		phase4.running = false
+		phase4.result = item
+		if self._search then
+			self._search.running = false
+			self._search.result = item
+		end
+		self._phase = "phase4_complete"
+		operation_report("phase4_complete", {
+			candidate = item,
+			phase4 = phase4,
+		})
+
+		return true
+	end
+
+	function self:_phase4_step(generation, snapshot)
+		local phase4 = self._phase4
+		local backend = self._backend
+		local item = phase4 and find_item(snapshot and snapshot.gear and snapshot.gear.items, phase4.gear_id)
+
+		if not phase4 or not phase4.running then
+			return false
+		end
+
+		if not item or item.available ~= true or item.parent_pattern ~= phase4.mastery_id or tonumber(candidate_stat(item, phase4.dump_stat)) ~= tonumber(phase4.target_dump) then
+			self:_operation_failed(generation, "final weapon failed authoritative identity or level-500 stat verification")
+
+			return false
+		end
+
+		phase4.current_item = item
+
+		if phase4.consecrate and (tonumber(item.rarity) or -1) < TRANSCENDENT_RARITY then
+			if not backend or type(backend.upgrade_weapon_rarity) ~= "function" then
+				self:_operation_failed(generation, "final rarity upgrade adapter unavailable")
+				return false
+			end
+
+			local before = tonumber(item.rarity) or -1
+			return self:_dispatch_operation(generation, "phase4_consecrate", function ()
+				return backend:upgrade_weapon_rarity(phase4.gear_id)
+			end, function ()
+				self:_refresh_after_operation(generation, function (updated)
+					local upgraded = find_item(updated and updated.gear and updated.gear.items, phase4.gear_id)
+
+					if not upgraded or (tonumber(upgraded.rarity) or -1) <= before then
+						self:_operation_failed(generation, "final rarity upgrade was not confirmed")
+						return
+					end
+					self:_phase4_step(generation, updated)
+				end)
+			end)
+		end
+
+		local expertise = tonumber(item.expertise_level)
+
+		if phase4.expertise and (expertise == nil or expertise < MAX_EXPERTISE_LEVEL) then
+			if expertise == nil then
+				self:_operation_failed(generation, "final weapon expertise is unavailable")
+				return false
+			end
+
+			if not backend or type(backend.add_weapon_expertise) ~= "function" then
+				self:_operation_failed(generation, "weapon expertise adapter unavailable")
+				return false
+			end
+
+			local target_level = math.min(MAX_EXPERTISE_LEVEL, (math.floor(expertise / 100) + 1) * 100)
+
+			return self:_dispatch_operation(generation, "phase4_expertise", function ()
+				return backend:add_weapon_expertise(phase4.gear_id, target_level)
+			end, function ()
+				self:_refresh_after_operation(generation, function (updated)
+					local upgraded = find_item(updated and updated.gear and updated.gear.items, phase4.gear_id)
+
+					if not upgraded or (tonumber(upgraded.expertise_level) or -1) < target_level then
+						self:_operation_failed(generation, "weapon level milestone was not confirmed")
+						return
+					end
+					operation_report("phase4_expertise_milestone", {
+						candidate = upgraded,
+						level = tonumber(upgraded.expertise_level),
+					})
+					self:_phase4_step(generation, updated)
+				end)
+			end)
+		end
+
+		if not phase4.replacement_baseline then
+			phase4.replacement_baseline = {
+				perks = { trait_at(item.perks, 1), trait_at(item.perks, 2) },
+				traits = { trait_at(item.traits, 1), trait_at(item.traits, 2) },
+			}
+		else
+			for _, group in ipairs({ "perks", "traits" }) do
+				for index = 1, 2 do
+					if not same_optional_trait(trait_at(item[group], index), phase4.replacement_baseline[group][index]) then
+						self:_operation_failed(generation, "final weapon perks or blessings changed outside the active run")
+						return false
+					end
+				end
+			end
+		end
+
+		for index = 1, 2 do
+			local desired = phase4.targets.traits[index]
+
+			if desired and sticker_status(phase4.sticker_book, desired.id, desired.rarity) ~= "seen" then
+				if not phase4.allocate_mastery then
+					self:_operation_failed(generation, "selected blessing tier is not allocated in mastery")
+					return false
+				end
+
+				if not backend or type(backend.purchase_mastery_trait) ~= "function" or type(backend.get_trait_sticker_book) ~= "function" then
+					self:_operation_failed(generation, "mastery blessing allocation adapter unavailable")
+					return false
+				end
+
+				local purchase_tier = desired.rarity
+
+				for _, blessing in ipairs(phase4.sticker_book or {}) do
+					if blessing.id == desired.id then
+						for _, tier in ipairs(blessing.tiers or {}) do
+							if tonumber(tier.tier) <= tonumber(desired.rarity) and tier.status ~= "seen" then
+								purchase_tier = tonumber(tier.tier)
+								break
+							end
+						end
+					end
+				end
+
+				return self:_dispatch_operation(generation, "phase4_allocate_blessing", function ()
+					return backend:purchase_mastery_trait(phase4.mastery_id, desired.id, purchase_tier)
+				end, function ()
+					self:_dispatch_operation(generation, "phase4_verify_blessing", function ()
+						return backend:get_trait_sticker_book(phase4.trait_category)
+					end, function (sticker_book)
+						phase4.sticker_book = sticker_book
+						if sticker_status(sticker_book, desired.id, purchase_tier) ~= "seen" then
+							self:_operation_failed(generation, "mastery blessing allocation was not confirmed")
+							return
+						end
+						self:_phase4_step(generation, self._snapshot)
+					end)
+				end)
+			end
+		end
+
+		local replacement_groups = {
+			{ adapter = "replace_perk", current = item.perks, kind = "perk", targets = phase4.targets.perks },
+			{ adapter = "replace_blessing", current = item.traits, kind = "blessing", targets = phase4.targets.traits },
+		}
+
+		for _, group in ipairs(replacement_groups) do
+			for index = 1, 2 do
+				local desired = group.targets[index]
+				local current = trait_at(group.current, index)
+
+				if desired and not same_trait(current, desired) then
+					local adapter = backend and backend[group.adapter]
+
+					if type(adapter) ~= "function" then
+						self:_operation_failed(generation, group.kind .. " replacement adapter unavailable")
+						return false
+					end
+
+					return self:_dispatch_operation(generation, "phase4_replace_" .. group.kind, function ()
+						return adapter(backend, phase4.gear_id, index, desired.id, desired.rarity)
+					end, function ()
+						self:_refresh_after_operation(generation, function (updated)
+							local changed = find_item(updated and updated.gear and updated.gear.items, phase4.gear_id)
+							local changed_traits = changed and (group.kind == "perk" and changed.perks or changed.traits)
+
+							if not same_trait(trait_at(changed_traits, index), desired) then
+								self:_operation_failed(generation, group.kind .. " replacement was not confirmed")
+								return
+							end
+							phase4.replacement_baseline[group.kind == "perk" and "perks" or "traits"][index] = desired
+							self:_phase4_step(generation, updated)
+						end)
+					end)
+				end
+			end
+		end
+
+		return self:_phase4_complete(item)
+	end
+
+	function self:_start_phase4(candidate)
+		if not candidate or not candidate.gear_id then
+			self:_operation_failed(self._generation, "final crafting candidate unavailable")
+			return false
+		end
+
+		local consecrate = setting("auto_crafter_consecrate_transcendent", true) == true
+		local expertise_enabled = setting("auto_crafter_upgrade_expertise_500", true) == true
+		local mastery_enabled = setting("auto_crafter_level_mastery_20", false) == true
+		local allocate_mastery = mastery_enabled and setting("auto_crafter_allocate_mastery_points", false) == true
+		local change_perks = mastery_enabled and setting("auto_crafter_change_perks", false) == true
+		local change_blessings = allocate_mastery and setting("auto_crafter_change_blessings", false) == true
+
+		if not consecrate and not expertise_enabled and not change_perks and not change_blessings then
+			if self._search then
+				self._search.running = false
+			end
+			return true
+		end
+
+		local item = find_item(self._snapshot and self._snapshot.gear and self._snapshot.gear.items, candidate.gear_id)
+
+		if not item or item.available ~= true then
+			self:_operation_failed(self._generation, "final crafting candidate is absent from authoritative inventory")
+			return false
+		end
+
+		local needs_traits = change_perks or change_blessings
+		local targets = { perks = {}, traits = {} }
+
+		if needs_traits then
+			local error_value
+			targets, error_value = self:_phase4_targets(item)
+
+			if not targets then
+				self:_operation_failed(self._generation, error_value)
+				return false
+			end
+		end
+
+		local catalog = self._search and self._search.catalog or self._catalog
+
+		self._phase4 = {
+			allocate_mastery = allocate_mastery,
+			consecrate = consecrate,
+			dump_stat = self._search and self._search.dump_stat,
+			expertise = expertise_enabled,
+			gear_id = candidate.gear_id,
+			mastery_id = candidate.mastery_id or candidate.parent_pattern,
+			running = true,
+			sticker_book = catalog and catalog.blessings or {},
+			target_dump = self._search and self._search.target_dump,
+			targets = targets,
+			trait_category = catalog and catalog.trait_category,
+		}
+		self._phase = "phase4_preflight"
+		operation_report("phase4_started", {
+			candidate = candidate,
+			phase4 = self._phase4,
+		})
+
+		return self:_refresh_after_operation(self._generation, function (snapshot)
+			if next(targets.traits or {}) ~= nil then
+				local backend = self._backend
+
+				if not backend or type(backend.get_trait_sticker_book) ~= "function" or not self._phase4.trait_category then
+					self:_operation_failed(self._generation, "fresh blessing sticker-book adapter unavailable")
+					return
+				end
+
+				self:_dispatch_operation(self._generation, "phase4_sticker_preflight", function ()
+					return backend:get_trait_sticker_book(self._phase4.trait_category)
+				end, function (sticker_book)
+					self._phase4.sticker_book = sticker_book
+					self:_phase4_step(self._generation, snapshot)
+				end)
+			else
+				self:_phase4_step(self._generation, snapshot)
+			end
+		end)
+	end
+
 	function self:_phase3_finish(current)
 		local phase3 = self._phase3
 		local search = self._search
@@ -953,6 +1403,7 @@ function Controller.new(dependencies)
 			fodder_count = phase3.fodder_count,
 			search = search,
 		})
+		self:_start_phase4(phase3.target_candidate)
 
 		return true
 	end
@@ -1190,6 +1641,105 @@ function Controller.new(dependencies)
 		end)
 	end
 
+	function self:_accept_exact_candidate(generation, candidate, source)
+		local search = self._search
+		local backend = self._backend
+
+		if not search or not search.running or not candidate or not candidate.gear_id then
+			return false
+		end
+
+		candidate.dump_stat = candidate_stat(candidate, search.dump_stat)
+		candidate.dump_stat_id = search.dump_stat
+		candidate.dump_stat_label = candidate.base_stat_labels and candidate.base_stat_labels[search.dump_stat]
+		candidate.damage = candidate.potential_damage or candidate_stat(candidate, "damage")
+		candidate.exact_match = tonumber(candidate.dump_stat) == tonumber(search.target_dump)
+
+		if not candidate.exact_match then
+			return false
+		end
+
+		local function continue_exact_match()
+			search.result = candidate
+			search.last = candidate
+			search.best = candidate
+
+			if self._phase3 and self._phase3.running then
+				self._phase3.target_candidate = candidate
+			end
+
+			self._phase = "search_complete"
+			operation_report("purchase_search_complete", {
+				candidate = candidate,
+				reused_inventory = source == "inventory",
+				search = search,
+			})
+
+			if self._phase3 and self._phase3.running then
+				self:_phase3_check_mastery(generation, candidate)
+			else
+				self:_start_phase4(candidate)
+			end
+		end
+
+		if source == "inventory" then
+			operation_report("inventory_base_selected", {
+				candidate = candidate,
+			})
+		end
+
+		if search.favorite_result and candidate.favorited ~= true then
+			if not backend or type(backend.favorite_item) ~= "function" then
+				self:_operation_failed(generation, "favorite adapter unavailable")
+				return false
+			end
+
+			return self:_dispatch_operation(generation, "favorite", function ()
+				return backend:favorite_item(candidate.gear_id)
+			end, function ()
+				candidate.favorited = true
+				candidate.favorite_known = true
+				operation_report("candidate_favorited", {
+					candidate = candidate,
+				})
+				continue_exact_match()
+			end)
+		end
+
+		continue_exact_match()
+
+		return true
+	end
+
+	function self:_find_inventory_base()
+		local search = self._search
+
+		if not search or setting("auto_crafter_reuse_inventory_base", true) ~= true then
+			return nil
+		end
+
+		local include_favorites = setting("auto_crafter_include_favorite_inventory_bases", false) == true
+		local best
+
+		for _, candidate in ipairs(self._snapshot and self._snapshot.gear and self._snapshot.gear.items or {}) do
+			local family_matches = candidate.parent_pattern ~= nil and candidate.parent_pattern == search.target_offer.parent_pattern
+			local favorite_allowed = include_favorites and candidate.favorite_known == true or candidate.favorite_known == true and candidate.favorited ~= true
+
+			if candidate.available == true and family_matches and favorite_allowed and tonumber(candidate_stat(candidate, search.dump_stat)) == tonumber(search.target_dump) then
+				local better = not best
+					or (tonumber(candidate.expertise_level) or -1) > (tonumber(best.expertise_level) or -1)
+					or tonumber(candidate.expertise_level) == tonumber(best.expertise_level) and (tonumber(candidate.rarity) or -1) > (tonumber(best.rarity) or -1)
+					or tonumber(candidate.expertise_level) == tonumber(best.expertise_level) and tonumber(candidate.rarity) == tonumber(best.rarity) and tostring(candidate.gear_id) < tostring(best.gear_id)
+
+				if better then
+					best = candidate
+				end
+			end
+		end
+
+		return best
+	end
+
 	function self:_purchase_search_step(generation)
 		if not operation_context_valid(generation) then
 			return false
@@ -1303,44 +1853,7 @@ function Controller.new(dependencies)
 				local phase3_has_target = self._phase3 and self._phase3.running and self._phase3.target_candidate ~= nil
 
 				if candidate.exact_match and not phase3_has_target then
-					local function complete_exact_match()
-						search.result = candidate
-
-						if self._phase3 and self._phase3.running then
-							self._phase3.target_candidate = candidate
-						end
-
-						self._phase = "search_complete"
-						operation_report("purchase_search_complete", {
-							candidate = candidate,
-							search = search,
-						})
-
-						if self._phase3 and self._phase3.running then
-							self:_phase3_check_mastery(generation)
-						else
-							search.running = false
-						end
-					end
-
-					if search.favorite_result then
-						if type(backend.favorite_item) ~= "function" then
-							self:_operation_failed(generation, "favorite adapter unavailable")
-
-							return
-						end
-
-						self:_dispatch_operation(generation, "favorite", function ()
-							return backend:favorite_item(candidate.gear_id)
-						end, function ()
-							operation_report("candidate_favorited", {
-								candidate = candidate,
-							})
-							complete_exact_match()
-						end)
-					else
-						complete_exact_match()
-					end
+					self:_accept_exact_candidate(generation, candidate, "purchase")
 				elseif self._phase3 and self._phase3.running and self._phase3.defer_bad_processing and not self._phase3.target_candidate then
 					self._phase3.deferred_candidates[#self._phase3.deferred_candidates + 1] = candidate
 					operation_report("phase3_candidate_deferred", {
@@ -1431,6 +1944,7 @@ function Controller.new(dependencies)
 		self._generation = self._generation + 1
 		self._search = {
 			cap_by_dockets = setting("auto_crafter_cap_by_dockets", false) == true,
+			catalog = self._catalog,
 			docket_cap = tonumber(setting("auto_crafter_docket_cap", 1000000)) or 0,
 			dump_stat = dump_stat,
 			favorite_result = setting("auto_crafter_favorite_result", true) == true,
@@ -1462,6 +1976,18 @@ function Controller.new(dependencies)
 			phase3 = self._phase3 ~= nil,
 			search = self._search,
 		})
+
+		if setting("auto_crafter_reuse_inventory_base", true) == true then
+			return self:_refresh_after_operation(self._generation, function ()
+				local inventory_base = self:_find_inventory_base()
+
+				if inventory_base then
+					self:_accept_exact_candidate(self._generation, inventory_base, "inventory")
+				else
+					self:_purchase_search_step(self._generation)
+				end
+			end)
+		end
 
 		return self:_purchase_search_step(self._generation)
 	end
@@ -1797,6 +2323,7 @@ function Controller.new(dependencies)
 			invalidate_generation()
 			self._search = nil
 			self._phase3 = nil
+			self._phase4 = nil
 			self._mastery = nil
 			self._last_purchased = nil
 			self._active_view = view
@@ -1839,6 +2366,7 @@ function Controller.new(dependencies)
 		self._plan = nil
 		self._search = nil
 		self._phase3 = nil
+		self._phase4 = nil
 		self._mastery = nil
 		self._catalog = nil
 		self._catalog_key = nil
@@ -1861,6 +2389,7 @@ function Controller.new(dependencies)
 		self._plan = nil
 		self._search = nil
 		self._phase3 = nil
+		self._phase4 = nil
 		self._mastery = nil
 		self._catalog = nil
 		self._catalog_key = nil
@@ -1891,6 +2420,9 @@ function Controller.new(dependencies)
 			if self._mastery then
 				self._mastery.running = false
 			end
+			if self._phase4 then
+				self._phase4.running = false
+			end
 			self._phase = "disabled"
 			self._plan = nil
 			return true
@@ -1913,6 +2445,9 @@ function Controller.new(dependencies)
 			end
 			if self._mastery then
 				self._mastery.running = false
+			end
+			if self._phase4 then
+				self._phase4.running = false
 			end
 
 			self._phase = "mutations_disabled"
@@ -2023,6 +2558,7 @@ function Controller.new(dependencies)
 			last_purchased = self._last_purchased,
 			search = self._search,
 			phase3 = self._phase3,
+			phase4 = self._phase4,
 			mastery = self._mastery,
 		}
 	end
@@ -2052,6 +2588,7 @@ function Controller.new(dependencies)
 		self._plan = nil
 		self._search = nil
 		self._phase3 = nil
+		self._phase4 = nil
 		self._mastery = nil
 		self._last_purchased = nil
 		self._selected_target_key = nil

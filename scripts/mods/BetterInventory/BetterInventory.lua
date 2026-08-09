@@ -110,6 +110,28 @@ if type(AutoCrafter) ~= "table" then
 	AutoCrafter = {}
 end
 
+mod.auto_crafter_hud_lines = function()
+	return type(AutoCrafter.hud_lines) == "function" and AutoCrafter.hud_lines() or {}
+end
+
+rawset(_G, "AutoCrafterHelperHudState", {
+	enabled = function()
+		return mod:get("auto_crafter_enable") == true and mod:get("auto_crafter_show_status_hud") ~= false
+	end,
+	lines = function()
+		return mod:auto_crafter_hud_lines()
+	end,
+})
+
+if type(mod.register_hud_element) == "function" then
+	mod:register_hud_element({
+		class_name = "HudElementBetterInventoryAutoCrafter",
+		filename = "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/hud_element",
+		use_hud_scale = true,
+		visibility_groups = { "alive", "in_hub_view" },
+	})
+end
+
 local function auto_crafter_read(object, key)
 	if type(object) ~= "table" and type(object) ~= "userdata" then
 		return nil

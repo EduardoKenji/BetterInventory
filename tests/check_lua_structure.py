@@ -253,28 +253,13 @@ def validate_auto_crafter_mutation_boundaries() -> int:
     missing_future_ui = [
         token for token in future_ui_settings if token not in data_source or token not in panel_source
     ]
-    estimate_only_settings = {
-        "auto_crafter_consecrate_transcendent",
-        "auto_crafter_upgrade_expertise_500",
-    }
-    wired_future_backend = [
-        token
-        for token in future_ui_settings
-        if token not in estimate_only_settings and token in controller_source
-    ]
-
-    for token in estimate_only_settings:
-        if token not in controller_source:
-            raise SystemExit(f"Auto Crafter estimate-only setting missing from planner bridge: {token}")
-
     if missing_future_ui:
         raise SystemExit("Auto Crafter future UI contract missing: " + ", ".join(missing_future_ui))
 
-    if wired_future_backend:
-        raise SystemExit(
-            "Auto Crafter future UI options must remain backend-inert: "
-            + ", ".join(wired_future_backend)
-        )
+    phase4_settings = set(future_ui_settings) - {"auto_crafter_rename_result"}
+    missing_phase4_wiring = [token for token in phase4_settings if token not in controller_source]
+    if missing_phase4_wiring:
+        raise SystemExit("Auto Crafter Phase 4 setting wiring missing: " + ", ".join(missing_phase4_wiring))
 
     backend_source = (auto_crafter_root / "darktide" / "backend.lua").read_text(encoding="utf-8")
     backend_contract = (
@@ -282,6 +267,11 @@ def validate_auto_crafter_mutation_boundaries() -> int:
         "function backend:favorite_item",
         "function backend:discard_items",
         "function backend:upgrade_weapon_rarity",
+		"function backend:add_weapon_expertise",
+		"function backend:replace_perk",
+		"function backend:replace_blessing",
+		"function backend:purchase_mastery_trait",
+		"function backend:get_trait_sticker_book",
         "function backend:extract_weapon_mastery",
         "function backend:get_mastery_by_pattern",
         "MasterItems.get_store_item_instance",

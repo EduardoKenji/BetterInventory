@@ -1677,10 +1677,14 @@ function Panel.new(dependencies)
 		}))
 
 		if not self._section_collapsed[SECTION_WORKFLOW] then
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_saved_only", "Runtime scope"), localize("auto_crafter_panel_not_connected", "Purchase search and mastery loop are connected; remaining options are saved plans."), {
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_saved_only", "Runtime scope"), localize("auto_crafter_panel_not_connected", "Purchase, mastery, and final crafting run serially in the Morningstar."), {
 				variant = "status",
 			}))
 			add_checkbox("auto_crafter_buy_until_target", "auto_crafter_buy_until_target", "Buy until dump-stat target", true)
+			add_checkbox("auto_crafter_reuse_inventory_base", "auto_crafter_reuse_inventory_base", "Reuse matching weapon from inventory", true)
+			add_checkbox("auto_crafter_include_favorite_inventory_bases", "auto_crafter_include_favorite_inventory_bases", "Include favorited inventory weapons", false, function()
+				return self:_setting("auto_crafter_reuse_inventory_base", true) == true
+			end, nil, 44)
 			add_checkbox("auto_crafter_level_mastery_20", "auto_crafter_level_mastery_20", "Level weapon mastery to 20", false)
 			add_checkbox("auto_crafter_defer_bad_weapon_processing", "auto_crafter_defer_bad_weapon_processing", "Only process bad weapons after finding perfect-rolled weapon", false, function()
 				return self:_setting("auto_crafter_level_mastery_20", false) == true
@@ -1696,6 +1700,7 @@ function Panel.new(dependencies)
 			add_checkbox("auto_crafter_change_blessings", "auto_crafter_change_blessings", "Change blessings", false, function()
 				return self:_setting("auto_crafter_level_mastery_20", false) == true
 			end)
+			add_checkbox("auto_crafter_show_status_hud", "auto_crafter_show_status_hud", "Show persistent crafting status", true)
 		end
 
 		table.insert(entries, self:_entry(localize("auto_crafter_panel_trait_targets", "Perk and blessing targets"), "", {

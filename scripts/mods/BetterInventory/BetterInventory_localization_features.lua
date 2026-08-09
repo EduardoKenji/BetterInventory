@@ -930,7 +930,7 @@ local localization = {
 		en = "Runtime scope",
 	},
 	auto_crafter_panel_not_connected = {
-		en = "Purchase search and mastery loop are connected; remaining options are saved plans.",
+		en = "Purchase, mastery, and final crafting run serially in the Morningstar.",
 	},
 	auto_crafter_panel_option_unavailable = {
 		en = "Enable prerequisite options",
@@ -950,6 +950,13 @@ local localization = {
 	auto_crafter_value_off = {
 		en = "Off",
 	},
+	auto_crafter_reuse_inventory_base = { en = "Reuse matching weapon from inventory" },
+	auto_crafter_reuse_inventory_base_tooltip = { en = "Before buying, use the best matching weapon already in inventory. Favorited weapons remain protected unless explicitly included." },
+	auto_crafter_include_favorite_inventory_bases = { en = "Include favorited inventory weapons" },
+	auto_crafter_include_favorite_inventory_bases_tooltip = { en = "Allow an already-favorited matching weapon to become the final crafting base. Disabled by default." },
+	auto_crafter_show_status_hud = { en = "Show persistent crafting status" },
+	auto_crafter_show_status_hud_tooltip = { en = "Show active Auto Crafter objectives at the top of Morningstar store and inventory views. Hidden during missions and mission matchmaking." },
+	option_requires_auto_crafter_inventory_reuse = { en = "Requires inventory-base reuse" },
 }
 
 return localization
