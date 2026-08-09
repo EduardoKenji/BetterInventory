@@ -12,7 +12,8 @@
       {"name": "localized_display_labels", "risk": "high", "start_line": 371, "end_line": 371},
       {"name": "tier_qualified_trait_target_selection", "risk": "high", "start_line": 422, "end_line": 436},
       {"name": "dual_target_trait_grid_selection_and_exclusivity", "risk": "high", "start_line": 438, "end_line": 485},
-      {"name": "deferred_grid_rebuild_scroll_restore_and_mastery_gate", "risk": "critical", "start_line": 487, "end_line": 506}
+      {"name": "deferred_grid_rebuild_scroll_restore_and_mastery_gate", "risk": "critical", "start_line": 487, "end_line": 506},
+      {"name": "right_click_routing_and_blessing_icon_material", "risk": "high", "start_line": 508, "end_line": 517}
   ],
   "test_auto_crafter_controller.py": [
     {"name": "presacrifice_mastery_baseline_and_convergence", "risk": "critical", "start_line": 176, "end_line": 240},

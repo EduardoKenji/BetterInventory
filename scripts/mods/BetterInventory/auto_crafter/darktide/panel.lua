@@ -20,6 +20,7 @@ local PERK_GRID_BUTTON_HEIGHT = 38
 local BLESSING_GRID_COLUMNS = 3
 local BLESSING_GRID_BUTTON_HEIGHT = 54
 local BLESSING_ICON_SIZE = 30
+local BLESSING_ICON_MATERIAL = "content/ui/materials/icons/traits/traits_container"
 local SECTION_ROW_HEIGHT = 40
 local ROW_SPACING = 8
 local CONTENT_HORIZONTAL_PADDING = 12
@@ -59,6 +60,22 @@ local function clean_single_line(value)
 
 	return value
 end
+
+local function dispatch_trait_press(hotspot, left_callback, right_callback)
+	if hotspot and hotspot.on_right_pressed and right_callback then
+		right_callback()
+
+		return true
+	elseif hotspot and hotspot.on_pressed and left_callback then
+		left_callback()
+
+		return true
+	end
+
+	return false
+end
+
+Panel.dispatch_trait_press = dispatch_trait_press
 
 local function safe_call(fn, ...)
 	if type(fn) ~= "function" then
@@ -557,11 +574,7 @@ local function trait_grid_passes(width, entry)
 				for index = 1, content.trait_count or 0 do
 					local hotspot = content["trait_hotspot_" .. tostring(index)]
 
-					if hotspot and hotspot.on_pressed and left_callbacks[index] then
-						left_callbacks[index]()
-						break
-					elseif hotspot and hotspot.on_right_pressed and right_callbacks[index] then
-						right_callbacks[index]()
+					if dispatch_trait_press(hotspot, left_callbacks[index], right_callbacks[index]) then
 						break
 					end
 				end
@@ -594,11 +607,11 @@ local function trait_grid_passes(width, entry)
 
 		passes[#passes + 1] = { content_id = hotspot_id, pass_type = "hotspot", content = { on_hover_sound = UISoundEvents.default_mouse_hover, on_pressed_sound = UISoundEvents.default_click }, style = { size = { button_width, button_height }, offset = { x, y, 6 } } }
 		passes[#passes + 1] = { pass_type = "rect", style = { color = Color.terminal_corner_selected(120, true), size = { button_width, button_height }, offset = { x, y, 1 } }, visibility_function = target_one }
-		passes[#passes + 1] = { pass_type = "rect", style = { color = Color.ui_hud_green_medium(120, true), size = { button_width, button_height }, offset = { x, y, 1 } }, visibility_function = target_two }
+		passes[#passes + 1] = { pass_type = "rect", style = { color = { 180, 65, 165, 75 }, size = { button_width, button_height }, offset = { x, y, 1 } }, visibility_function = target_two }
 		passes[#passes + 1] = { pass_type = "rect", style = { color = Color.terminal_background(220, true), size = { button_width, button_height }, offset = { x, y, 1 } }, visibility_function = unselected }
 		passes[#passes + 1] = { pass_type = "texture", value = "content/ui/materials/frames/frame_tile_2px", style = { color = Color.terminal_frame(255, true), size = { button_width, button_height }, offset = { x, y, 2 } } }
 		if show_icons then
-			passes[#passes + 1] = { pass_type = "texture", value_id = icon_id, style = { color = Color.white(255, true), size = { BLESSING_ICON_SIZE, BLESSING_ICON_SIZE }, offset = { x + 5, y + (button_height - BLESSING_ICON_SIZE) / 2, 3 } }, visibility_function = has_icon }
+			passes[#passes + 1] = { pass_type = "texture", style_id = icon_id, value = BLESSING_ICON_MATERIAL, style = { color = Color.white(255, true), material_values = { frame = "", icon = "" }, size = { BLESSING_ICON_SIZE, BLESSING_ICON_SIZE }, offset = { x + 5, y + (button_height - BLESSING_ICON_SIZE) / 2, 3 } }, visibility_function = has_icon }
 		end
 		passes[#passes + 1] = { pass_type = "text", value_id = label_id, style = { font_size = show_icons and 12 or 11, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_text_header(255, true), size = { text_width, button_height }, offset = { x + text_x, y, 4 } } }
 	end
@@ -953,6 +966,12 @@ function Panel.new(dependencies)
 				for index, option in ipairs(options.trait_options) do
 					widget.content["trait_label_" .. tostring(index)] = option.short_label or option.label
 					widget.content["trait_icon_" .. tostring(index)] = option.icon or ""
+					local icon_style = widget.style and widget.style["trait_icon_" .. tostring(index)]
+
+					if icon_style and icon_style.material_values then
+						icon_style.material_values.icon = option.icon or ""
+						icon_style.material_values.frame = option.frame or ""
+					end
 
 					if option.value == target_1 then
 						widget.content.trait_target_1_index = index
@@ -1244,6 +1263,7 @@ function Panel.new(dependencies)
 				if not seen[value] then
 					seen[value] = true
 					options[#options + 1] = {
+						frame = entry.frame,
 						icon = entry.icon,
 						label = label,
 						short_label = short_label ~= "" and short_label or label,

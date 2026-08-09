@@ -505,6 +505,17 @@ def main() -> None:
     assert "Items.trait_textures" in backend_source
     assert "tier == maximum_tier" in backend_source
 
+    lua.execute("TraitLeftPresses = 0; TraitRightPresses = 0")
+    both_press_flags = lua.table_from({"on_pressed": True, "on_right_pressed": True})
+    left_callback = lua.eval("function() TraitLeftPresses = TraitLeftPresses + 1 end")
+    right_callback = lua.eval("function() TraitRightPresses = TraitRightPresses + 1 end")
+    assert panel_module.dispatch_trait_press(both_press_flags, left_callback, right_callback) is True
+    assert lua.globals().TraitLeftPresses == 0
+    assert lua.globals().TraitRightPresses == 1
+    assert "BLESSING_ICON_MATERIAL" in panel_source
+    assert "material_values.icon" in panel_source
+    assert "material_values.frame" in panel_source
+
     print("Auto Crafter weapon stat catalogue and display-label tests passed.")
 
 
