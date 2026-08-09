@@ -40,6 +40,26 @@ local function safe_member(object, key)
 	return ok and value or nil
 end
 
+local function error_description(error_value)
+	if type(error_value) == "table" then
+		local description = safe_member(error_value, "description") or safe_member(error_value, "message") or safe_member(error_value, "error")
+
+		if description ~= nil and description ~= error_value then
+			return error_description(description)
+		end
+
+		local code = safe_member(error_value, "code")
+
+		if code ~= nil then
+			return tostring(code)
+		end
+
+		return "unknown backend error"
+	end
+
+	return tostring(error_value or "unknown operation error")
+end
+
 local function offer_key(offer)
 	if not offer then
 		return nil
@@ -149,6 +169,89 @@ local function sticker_status(catalog, trait_id, tier)
 	end
 
 	return nil
+end
+
+local function mastery_cost(costs, field, tier)
+	local values = type(costs) == "table" and costs[field] or nil
+
+	return type(values) == "table" and (tonumber(values[tostring(tier)]) or tonumber(values[tier])) or nil
+end
+
+local function next_unseen_blessing_tier(blessing, maximum_tier)
+	for _, entry in ipairs(blessing and blessing.tiers or {}) do
+		local tier = tonumber(entry.tier)
+
+		if tier and tier <= (tonumber(maximum_tier) or tier) and entry.status ~= "seen" then
+			return tier
+		end
+	end
+
+	return nil
+end
+
+local function mastery_allocation_candidate(catalog, targets, costs)
+	local tier_costs = type(costs) == "table" and costs.tier_costs or nil
+	local thresholds = type(costs) == "table" and costs.tier_thresholds or nil
+
+	if type(tier_costs) ~= "table" or next(tier_costs) == nil or type(thresholds) ~= "table" or next(thresholds) == nil then
+		return nil, nil, nil, "live mastery blessing costs or tier thresholds are unavailable"
+	end
+
+	local spent = 0
+	local maximum_rank = 1
+
+	for _, blessing in ipairs(catalog or {}) do
+		for _, entry in ipairs(blessing.tiers or {}) do
+			local tier = tonumber(entry.tier)
+
+			if tier then
+				maximum_rank = math.max(maximum_rank, tier)
+
+				if entry.status == "seen" then
+					spent = spent + (mastery_cost(costs, "tier_costs", tier) or 0)
+				end
+			end
+		end
+	end
+
+	local unlocked_rank = maximum_rank
+
+	if spent == 0 then
+		unlocked_rank = 1
+	else
+		for tier = 1, maximum_rank do
+			local threshold = mastery_cost(costs, "tier_thresholds", tier)
+
+			if threshold and spent < threshold then
+				unlocked_rank = math.max(1, tier - 1)
+				break
+			end
+		end
+	end
+
+	for _, target in ipairs(targets or {}) do
+		if target and sticker_status(catalog, target.id, target.rarity) ~= "seen" then
+			for _, blessing in ipairs(catalog or {}) do
+				if blessing.id == target.id then
+					local tier = next_unseen_blessing_tier(blessing, target.rarity)
+
+					if tier and tier <= unlocked_rank then
+						return target.id, tier, "selected"
+					end
+				end
+			end
+		end
+	end
+
+	for _, blessing in ipairs(catalog or {}) do
+		local tier = next_unseen_blessing_tier(blessing, unlocked_rank)
+
+		if tier then
+			return blessing.id, tier, "prerequisite"
+		end
+	end
+
+	return nil, nil, nil, string.format("no valid mastery blessing can be allocated at unlocked Tier %s after spending %s points", tostring(unlocked_rank), tostring(spent))
 end
 
 local function parse_perk_target(value)
@@ -518,6 +621,7 @@ function Controller.new(dependencies)
 		self._operation_promise = nil
 		self._operation_kind = nil
 		self._phase = "operation_failed"
+		error_value = error_description(error_value)
 		self._last_error = error_value
 		operation_report("operation_failed", {
 			error = error_value,
@@ -1239,50 +1343,52 @@ function Controller.new(dependencies)
 			end
 		end
 
+		local blessing_targets_pending = false
+
 		for index = 1, 2 do
 			local desired = phase4.targets.traits[index]
 
 			if desired and sticker_status(phase4.sticker_book, desired.id, desired.rarity) ~= "seen" then
-				if not phase4.allocate_mastery then
-					self:_operation_failed(generation, "selected blessing tier is not allocated in mastery")
-					return false
-				end
-
-				if not backend or type(backend.purchase_mastery_trait) ~= "function" or type(backend.get_trait_sticker_book) ~= "function" then
-					self:_operation_failed(generation, "mastery blessing allocation adapter unavailable")
-					return false
-				end
-
-				local purchase_tier = desired.rarity
-
-				for _, blessing in ipairs(phase4.sticker_book or {}) do
-					if blessing.id == desired.id then
-						for _, tier in ipairs(blessing.tiers or {}) do
-							if tonumber(tier.tier) <= tonumber(desired.rarity) and tier.status ~= "seen" then
-								purchase_tier = tonumber(tier.tier)
-								break
-							end
-						end
-					end
-				end
-
-				return self:_dispatch_operation(generation, "phase4_allocate_blessing", function ()
-					return backend:purchase_mastery_trait(phase4.mastery_id, desired.id, purchase_tier)
-				end, function ()
-					phase4.pending_blessing = {
-						rarity = purchase_tier,
-						trait_id = desired.id,
-					}
-					phase4.blessing_poll_attempts = 0
-					phase4.blessing_poll_elapsed = 0
-					phase4.blessing_poll_wait = mastery_poll_delay(0)
-					self._phase = "phase4_blessing_sync"
-					operation_report("phase4_blessing_allocation_submitted", {
-						rarity = purchase_tier,
-						trait_id = desired.id,
-					})
-				end)
+				blessing_targets_pending = true
 			end
+		end
+
+		if blessing_targets_pending then
+			if not phase4.allocate_mastery then
+				self:_operation_failed(generation, "selected blessing tier is not allocated in mastery")
+				return false
+			end
+
+			if not backend or type(backend.purchase_mastery_trait) ~= "function" or type(backend.get_trait_sticker_book) ~= "function" or type(backend.get_mastery_trait_costs) ~= "function" then
+				self:_operation_failed(generation, "mastery blessing allocation adapter unavailable")
+				return false
+			end
+
+			local trait_id, purchase_tier, allocation_kind, allocation_error = mastery_allocation_candidate(phase4.sticker_book, phase4.targets.traits, phase4.mastery_costs)
+
+			if not trait_id or not purchase_tier then
+				self:_operation_failed(generation, allocation_error or "mastery blessing allocation prerequisites could not be resolved")
+				return false
+			end
+
+			return self:_dispatch_operation(generation, "phase4_allocate_blessing", function ()
+				return backend:purchase_mastery_trait(phase4.mastery_id, trait_id, purchase_tier)
+			end, function ()
+				phase4.pending_blessing = {
+					allocation_kind = allocation_kind,
+					rarity = purchase_tier,
+					trait_id = trait_id,
+				}
+				phase4.blessing_poll_attempts = 0
+				phase4.blessing_poll_elapsed = 0
+				phase4.blessing_poll_wait = mastery_poll_delay(0)
+				self._phase = "phase4_blessing_sync"
+				operation_report("phase4_blessing_allocation_submitted", {
+					allocation_kind = allocation_kind,
+					rarity = purchase_tier,
+					trait_id = trait_id,
+				})
+			end)
 		end
 
 		local replacement_groups = {
@@ -1453,6 +1559,7 @@ function Controller.new(dependencies)
 			mastery_id = candidate.mastery_id or candidate.parent_pattern,
 			running = true,
 			sticker_book = catalog and catalog.blessings or {},
+			mastery_costs = nil,
 			target_dump = self._search and self._search.target_dump,
 			targets = targets,
 			trait_category = catalog and catalog.trait_category,
@@ -1476,7 +1583,18 @@ function Controller.new(dependencies)
 					return backend:get_trait_sticker_book(self._phase4.trait_category, true)
 				end, function (sticker_book)
 					self._phase4.sticker_book = sticker_book
-					self:_phase4_step(self._generation, snapshot)
+
+					if type(backend.get_mastery_trait_costs) ~= "function" then
+						self:_operation_failed(self._generation, "live mastery blessing cost adapter unavailable")
+						return
+					end
+
+					self:_dispatch_operation(self._generation, "phase4_mastery_cost_preflight", function ()
+						return backend:get_mastery_trait_costs()
+					end, function (costs)
+						self._phase4.mastery_costs = costs
+						self:_phase4_step(self._generation, snapshot)
+					end)
 				end)
 			else
 				self:_phase4_step(self._generation, snapshot)

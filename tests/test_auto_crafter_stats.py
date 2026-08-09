@@ -203,6 +203,9 @@ def main() -> None:
 				fetch_gear = function() return promise(TestGear) end,
             },
             crafting = {
+                get_traits_mastery_costs = function()
+                    return {tierCosts = {["1"] = 1, ["2"] = 2, ["3"] = 3, ["4"] = 4}, tierThresholds = {["1"] = 0, ["2"] = 5, ["3"] = 10, ["4"] = 20}}
+                end,
                 get_item_crafting_metadata = function()
                     return promise({perks = {
                         [1] = {rarity = 1, perks = {"perk_flak"}},
@@ -250,9 +253,13 @@ def main() -> None:
     assert lua.globals().TestPurchasedTraits.pattern_id == "crowbar_p1"
     assert lua.globals().TestPurchasedTraits.operations[1].trait_name == "headtaker"
     assert lua.globals().TestPurchasedTraits.operations[1].rarity == 4
+    mastery_costs = backend.get_mastery_trait_costs(backend)
+    assert mastery_costs.failure is None
+    assert mastery_costs.value.tier_costs["4"] == 4
+    assert mastery_costs.value.tier_thresholds["3"] == 10
     lua.globals().TestMasteryPurchaseFails = True
     rejected_allocation = backend.purchase_mastery_trait(backend, "crowbar_p1", "headtaker", 4)
-    assert rejected_allocation.failure.description == "mastery blessing allocation was rejected by the backend"
+    assert "mastery blessing allocation was rejected by the backend" in rejected_allocation.failure.description
     lua.globals().TestMasteryPurchaseFails = False
 
     # A max-level weapon needs no zero-delta preview response to remain reusable.

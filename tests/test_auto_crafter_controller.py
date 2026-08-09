@@ -584,17 +584,56 @@ def main() -> None:
 			item.expertise_level = 330
 			item.perks = {{id = "old_perk", rarity = 4}, {id = "new_perk", rarity = 4}}
 			item.traits = {{id = "old_blessing", rarity = 4}, {id = "keep_blessing", rarity = 4}}
-			local state = {allocation_submitted = false, perk_order = {}, post_purchase_reads = 0}
+			local state = {
+				allocation_order = {},
+				pending = nil,
+				perk_order = {},
+				statuses = {
+					filler_blessing = {"unseen", "unseen", "unseen", "unseen"},
+					new_blessing = {"unseen", "unseen", "unseen", "unseen"},
+				},
+			}
 			local backend = {purchase_calls = 0, rarity_calls = 0, expertise_calls = 0, perk_calls = 0, blessing_calls = 0, allocation_calls = 0}
 			function backend:purchase_offer(_) self.purchase_calls = self.purchase_calls + 1 return resolved({items = {item}}) end
 			function backend:probe_snapshot() return resolved(snapshot_with(item)) end
 			function backend:get_mastery_by_pattern(_) return resolved({mastery_id = "pattern-1", current_xp = 999, mastery_level = 20, claimed_level = 19, mastery_max_level = 20}) end
 			function backend:upgrade_weapon_rarity(_) self.rarity_calls = self.rarity_calls + 1 item.rarity = item.rarity + 1 return resolved({}) end
 			function backend:add_weapon_expertise(_, target) self.expertise_calls = self.expertise_calls + 1 item.expertise_level = target return resolved({}) end
-			function backend:purchase_mastery_trait(_, id, tier) assert(id == "new_blessing" and tier == 4) self.allocation_calls = self.allocation_calls + 1 state.allocation_submitted = true return resolved({}) end
+			function backend:purchase_mastery_trait(_, id, tier)
+				self.allocation_calls = self.allocation_calls + 1
+				state.allocation_order[#state.allocation_order + 1] = id .. ":" .. tostring(tier)
+				state.pending = {id = id, reads = 0, tier = tier}
+				return resolved({})
+			end
+			function backend:get_mastery_trait_costs()
+				return resolved({
+					tier_costs = {["1"] = 1, ["2"] = 1, ["3"] = 1, ["4"] = 1},
+					tier_thresholds = {["1"] = 0, ["2"] = 2, ["3"] = 4, ["4"] = 6},
+				})
+			end
 			function backend:get_trait_sticker_book(_)
-				if state.allocation_submitted then state.post_purchase_reads = state.post_purchase_reads + 1 end
-				return resolved({{id = "new_blessing", tiers = {{tier = 4, status = state.post_purchase_reads >= 2 and "seen" or "unseen"}}}})
+				if state.pending then
+					state.pending.reads = state.pending.reads + 1
+
+					if state.pending.reads >= 2 then
+						state.statuses[state.pending.id][state.pending.tier] = "seen"
+						state.pending = nil
+					end
+				end
+
+				local result = {}
+
+				for _, id in ipairs({"filler_blessing", "new_blessing"}) do
+					local tiers = {}
+
+					for tier = 1, 4 do
+						tiers[tier] = {tier = tier, status = state.statuses[id][tier]}
+					end
+
+					result[#result + 1] = {id = id, tiers = tiers}
+				end
+
+				return resolved(result)
 			end
 			function backend:replace_perk(_, index, id, tier) self.perk_calls = self.perk_calls + 1 state.perk_order[#state.perk_order + 1] = index item.perks[index] = {id = id, rarity = tier} return resolved({}) end
 			function backend:replace_blessing(_, index, id, tier) self.blessing_calls = self.blessing_calls + 1 item.traits[index] = {id = id, rarity = tier} return resolved({}) end
@@ -617,23 +656,28 @@ def main() -> None:
 				available = true,
 				trait_category = "test_category",
 				perks = {{id = "new_perk", tier = 4}, {id = "other_perk", tier = 4}},
-				blessings = {{id = "new_blessing", tiers = {{tier = 4, status = "unseen"}}}},
+				blessings = {
+					{id = "filler_blessing", tiers = {{tier = 1, status = "unseen"}, {tier = 2, status = "unseen"}, {tier = 3, status = "unseen"}, {tier = 4, status = "unseen"}}},
+					{id = "new_blessing", tiers = {{tier = 1, status = "unseen"}, {tier = 2, status = "unseen"}, {tier = 3, status = "unseen"}, {tier = 4, status = "unseen"}}},
+				},
 			}
 			controller._snapshot = snapshot_with(nil)
 			controller._active_view = {}
 			controller._view_is_valid = true
 			assert(controller:start_purchase_search() == true)
-			controller:update(1)
-			assert(controller:snapshot().phase == "phase4_blessing_sync")
-			controller:update(2)
+			for _ = 1, 30 do controller:update(10) end
 			local result = controller:snapshot()
 			assert(result.phase == "phase4_complete", tostring(result.phase) .. " " .. tostring(result.last_error))
 			assert(item.rarity == 5 and item.expertise_level == 500)
 			assert(backend.rarity_calls == 2 and backend.expertise_calls == 2)
-			assert(backend.allocation_calls == 1 and backend.perk_calls == 2 and backend.blessing_calls == 1)
-			assert(state.post_purchase_reads == 2)
+			assert(backend.allocation_calls == 7 and backend.perk_calls == 2 and backend.blessing_calls == 1)
+			assert(state.allocation_order[1] == "new_blessing:1")
+			assert(state.allocation_order[2] == "filler_blessing:1")
+			assert(state.allocation_order[7] == "new_blessing:4")
 			assert(state.perk_order[1] == 2 and state.perk_order[2] == 1)
 			assert(item.perks[1].id == "new_perk" and item.perks[2].id == "other_perk" and item.traits[1].id == "new_blessing")
+			controller:_operation_failed(controller._generation, {code = "backend_error", description = "readable backend failure"})
+			assert(controller:snapshot().last_error == "readable backend failure")
 		end
 
 		-- Configuration changes close dispatch gate while current request remains unsettled.

@@ -1117,13 +1117,29 @@ function Backend.new(dependencies)
 			end
 
 			if next(failed_traits) ~= nil then
-				return rejected("mastery blessing allocation was rejected by the backend")
+				return rejected(string.format("mastery blessing allocation was rejected by the backend (%s Tier %s); its tier may still be locked by mastery-tree spend requirements", tostring(trait_id), tostring(tier)))
 			end
 
 			return {
 				rarity = tonumber(tier),
 				submitted = true,
 				trait_id = trait_id,
+			}
+		end)
+	end
+
+	function backend:get_mastery_trait_costs()
+		return self:_read("crafting", "get_traits_mastery_costs"):next(function (costs)
+			if type(costs) ~= "table" then
+				return {
+					tier_costs = {},
+					tier_thresholds = {},
+				}
+			end
+
+			return {
+				tier_costs = type(costs.tierCosts) == "table" and costs.tierCosts or type(costs.tier_costs) == "table" and costs.tier_costs or {},
+				tier_thresholds = type(costs.tierThresholds) == "table" and costs.tierThresholds or type(costs.tier_thresholds) == "table" and costs.tier_thresholds or {},
 			}
 		end)
 	end
