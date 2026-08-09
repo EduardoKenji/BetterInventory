@@ -171,6 +171,8 @@ def validate_auto_crafter_mutation_boundaries() -> int:
         'request_mode = "sequential"',
         "materials deferred",
         "discover_from_stats",
+        "dump_stat_candidates",
+        "configured stat selected by user",
         "resolved_dump_stat",
         "ambiguous lowest base stat",
     )
@@ -196,6 +198,8 @@ def validate_auto_crafter_mutation_boundaries() -> int:
         "local function compact_checkbox_passes",
         "local function compact_stepper_passes",
         "local function enum_stepper_passes",
+        "function self:_planner_dump_stat_options",
+        "function self:_step_planner_dump_stat",
         "local function action_button_passes",
         "local function offer_row_passes",
         "edge_padding = CONTENT_HORIZONTAL_PADDING * 2",

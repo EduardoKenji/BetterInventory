@@ -88,7 +88,56 @@ local function stat_entries(base_stats)
 		end
 	end
 
+	table.sort(entries, function (left, right)
+		return string.lower(left.name) < string.lower(right.name)
+	end)
+
 	return entries
+end
+
+local STAT_ALIASES = {
+	damage = { "damage" },
+	finesse = { "finesse" },
+	first_target = { "first_target", "firsttarget" },
+	mobility = { "mobility" },
+	penetration = { "penetration" },
+	defenses = { "defence", "defences", "defense", "defenses" },
+}
+
+local function normalized_stat_name(value)
+	local text = string.lower(tostring(value or ""))
+	text = string.gsub(text, "[^%w]+", "_")
+	text = string.gsub(text, "^_+", "")
+	text = string.gsub(text, "_+$", "")
+
+	return text
+end
+
+local function stat_name_matches(configured_name, candidate_name)
+	local configured = normalized_stat_name(configured_name)
+	local candidate = normalized_stat_name(candidate_name)
+
+	if configured == "" or candidate == "" then
+		return false
+	end
+
+	if configured == candidate then
+		return true
+	end
+
+	local aliases = STAT_ALIASES[configured] or { configured }
+	local compact_candidate = string.gsub(candidate, "_", "")
+
+	for _, alias in ipairs(aliases) do
+		local normalized_alias = normalized_stat_name(alias)
+		local compact_alias = string.gsub(normalized_alias, "_", "")
+
+		if candidate == normalized_alias or string.find(compact_candidate, compact_alias, 1, true) then
+			return true
+		end
+	end
+
+	return false
 end
 
 local function discover_from_stats(base_stats)
@@ -154,24 +203,40 @@ local function discover_from_matching_gear(snapshot, target)
 		return nil, "no matching weapon-family inventory item is available", nil
 	end
 
-	local stat, reason = discover_from_stats(averaged)
+	local candidates = stat_entries(averaged)
+	local stat, reason = discover_from_stats(candidates)
 
-	return stat, reason, averaged
+	return stat, reason, candidates
 end
 
 local function resolve_dump_stat(snapshot, target, configured_dump_stat)
 	if configured_dump_stat ~= "auto" then
-		return configured_dump_stat, "configured canonical stat", nil
+		local candidates = stat_entries(target and target.base_stats)
+
+		if #candidates == 0 then
+			local _, _, fallback_candidates = discover_from_matching_gear(snapshot, target)
+
+			candidates = fallback_candidates or {}
+		end
+
+		for _, candidate in ipairs(candidates) do
+			if stat_name_matches(configured_dump_stat, candidate.name) then
+				return candidate.name, "configured stat selected by user", candidates
+			end
+		end
+
+		return nil, "configured dump stat is not available for the selected weapon", candidates
 	end
 
-	local stat, reason, candidates = discover_from_stats(target and target.base_stats)
+	local direct_candidates = stat_entries(target and target.base_stats)
+	local stat, reason = discover_from_stats(direct_candidates)
 
-	if stat then
-		return stat, "auto-discovered from selected weapon preview", candidates
-	end
+	if #direct_candidates > 0 then
+		if stat then
+			return stat, "auto-discovered from selected weapon preview", direct_candidates
+		end
 
-	if candidates and #candidates > 0 then
-		return nil, reason, candidates
+		return nil, reason, direct_candidates
 	end
 
 	local fallback_stat, fallback_reason, fallback_candidates = discover_from_matching_gear(snapshot, target)
@@ -180,7 +245,7 @@ local function resolve_dump_stat(snapshot, target, configured_dump_stat)
 		return fallback_stat, "auto-discovered from matching weapon-family inventory", fallback_candidates
 	end
 
-	return nil, reason or fallback_reason or "selected weapon stat discovery unavailable", candidates or fallback_candidates
+	return nil, reason or fallback_reason or "selected weapon stat discovery unavailable", fallback_candidates
 end
 
 local function normalize_config(config)
@@ -247,11 +312,12 @@ function Planner.build(snapshot, config)
 		append_reason(reasons, "select a weapon offer")
 	end
 
-	if normalized.dump_stat == "auto" and target then
+	if target then
 		resolved_dump_stat, dump_stat_resolution, dump_stat_candidates = resolve_dump_stat(snapshot, target, normalized.dump_stat)
 
 		if not resolved_dump_stat then
-			append_reason(reasons, "auto dump-stat discovery unavailable: " .. tostring(dump_stat_resolution))
+			local reason_prefix = normalized.dump_stat == "auto" and "auto dump-stat discovery unavailable: " or "configured dump stat unavailable: "
+			append_reason(reasons, reason_prefix .. tostring(dump_stat_resolution))
 		end
 	elseif normalized.dump_stat ~= "auto" then
 		resolved_dump_stat, dump_stat_resolution = resolve_dump_stat(snapshot, target, normalized.dump_stat)

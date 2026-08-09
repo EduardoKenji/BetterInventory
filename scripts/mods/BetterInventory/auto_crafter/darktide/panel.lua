@@ -710,13 +710,66 @@ function Panel.new(dependencies)
 			local resolved = self._plan and self._plan.resolved_dump_stat
 
 			if resolved then
-				return string.format("%s: %s", localize("auto_crafter_dump_stat_auto", "Auto-discover"), display_stat_name(resolved))
+				return string.format("%s: %s", localize("auto_crafter_dump_stat_auto", "Auto-discover recommendation"), display_stat_name(resolved))
 			end
 
 			return localize("auto_crafter_dump_stat_auto_pending", "Auto-discover (waiting for weapon preview)")
 		end
 
-		return localize("auto_crafter_dump_stat_damage", "Damage")
+		local resolved = self._plan and self._plan.resolved_dump_stat
+
+		return display_stat_name(resolved or value)
+	end
+
+	function self:_planner_dump_stat_options()
+		local options = {}
+		local seen = {}
+		local plan = self._plan
+		local candidates = plan and plan.dump_stat_candidates or {}
+
+		for _, candidate in ipairs(candidates or {}) do
+			local name = type(candidate) == "table" and candidate.name or candidate
+
+			if name and not seen[name] then
+				options[#options + 1] = name
+				seen[name] = true
+			end
+		end
+
+		local value = self:_setting("auto_crafter_target_dump_stat", "auto")
+		local resolved = plan and plan.resolved_dump_stat
+		local current_is_candidate = seen[value] or value ~= "auto" and resolved and seen[resolved]
+
+		if value ~= "auto" and not current_is_candidate and not seen[value] then
+			options[#options + 1] = value
+			seen[value] = true
+		end
+
+		if not seen.auto then
+			options[#options + 1] = "auto"
+		end
+
+		return options
+	end
+
+	function self:_step_planner_dump_stat(direction)
+		local values = self:_planner_dump_stat_options()
+		local current = self:_setting("auto_crafter_target_dump_stat", "auto")
+		local resolved = self._plan and self._plan.resolved_dump_stat
+		local current_index
+
+		for index, value in ipairs(values) do
+			if value == current or current ~= "auto" and resolved and value == resolved then
+				current_index = index
+
+				break
+			end
+		end
+
+		current_index = current_index or #values
+		local next_index = (current_index - 1 + direction) % #values + 1
+
+		self:_set_setting("auto_crafter_target_dump_stat", values[next_index])
 	end
 
 	function self:_planner_request_mode_text()
@@ -938,10 +991,10 @@ function Panel.new(dependencies)
 				selectable = true,
 				variant = "enum_stepper",
 				decrease = function()
-					self:_step_enum_setting("auto_crafter_target_dump_stat", { "damage", "auto" }, "auto", -1)
+					self:_step_planner_dump_stat(-1)
 				end,
 				increase = function()
-					self:_step_enum_setting("auto_crafter_target_dump_stat", { "damage", "auto" }, "auto", 1)
+					self:_step_planner_dump_stat(1)
 				end,
 				refresh = function(widget)
 					widget.content.detail = self:_planner_dump_stat_text()

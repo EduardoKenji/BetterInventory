@@ -627,6 +627,22 @@ return {
 								value = "damage",
 							},
 							{
+								text = "auto_crafter_dump_stat_mobility",
+								value = "mobility",
+							},
+							{
+								text = "auto_crafter_dump_stat_penetration",
+								value = "penetration",
+							},
+							{
+								text = "auto_crafter_dump_stat_first_target",
+								value = "first_target",
+							},
+							{
+								text = "auto_crafter_dump_stat_defenses",
+								value = "defenses",
+							},
+							{
 								text = "auto_crafter_dump_stat_auto",
 								value = "auto",
 							},

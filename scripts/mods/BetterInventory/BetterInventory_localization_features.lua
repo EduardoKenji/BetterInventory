@@ -573,16 +573,28 @@ local localization = {
 		en = "Auto Crafter target dump stat",
 	},
 	auto_crafter_target_dump_stat_tooltip = {
-		en = "Mandatory planner target. Auto-discover resolves the lowest valid base stat from the selected Brunt weapon preview; Damage remains available as a manual override.",
+		en = "Choose the dump stat manually when desired. The Brunt widget exposes the selected weapon's discovered base stats as choices; Auto-discover is the final recommendation option and never overrides an explicit choice.",
 	},
 	auto_crafter_dump_stat_damage = {
 		en = "Damage",
 	},
+	auto_crafter_dump_stat_mobility = {
+		en = "Mobility",
+	},
+	auto_crafter_dump_stat_penetration = {
+		en = "Penetration",
+	},
+	auto_crafter_dump_stat_first_target = {
+		en = "First Target",
+	},
+	auto_crafter_dump_stat_defenses = {
+		en = "Defenses",
+	},
 	auto_crafter_dump_stat_auto = {
-		en = "Auto-discover",
+		en = "Auto-discover recommendation",
 	},
 	auto_crafter_dump_stat_auto_pending = {
-		en = "Auto-discover (waiting for weapon preview)",
+		en = "Auto-discover recommendation (waiting for weapon preview)",
 	},
 	auto_crafter_dump_stat_target = {
 		en = "Dump stat target",
