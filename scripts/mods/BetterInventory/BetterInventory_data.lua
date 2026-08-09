@@ -747,12 +747,13 @@ return {
 								setting_id = "auto_crafter_perk_2_target",
 								tooltip = "auto_crafter_perk_target_tooltip",
 								type = "dropdown",
-								default_value = "keep",
+								default_value = "auto",
 								options = {
 									{ text = "auto_crafter_target_keep", value = "keep" },
 									{ text = "auto_crafter_target_auto", value = "auto" },
 								},
 							},
+							{ setting_id = "auto_crafter_show_perk_grid", tooltip = "auto_crafter_show_perk_grid_tooltip", type = "checkbox", default_value = false },
 							{
 								setting_id = "auto_crafter_blessing_1_target",
 								tooltip = "auto_crafter_blessing_target_tooltip",
@@ -767,12 +768,13 @@ return {
 								setting_id = "auto_crafter_blessing_2_target",
 								tooltip = "auto_crafter_blessing_target_tooltip",
 								type = "dropdown",
-								default_value = "keep",
+								default_value = "auto",
 								options = {
 									{ text = "auto_crafter_target_keep", value = "keep" },
 									{ text = "auto_crafter_target_auto", value = "auto" },
 								},
 							},
+							{ setting_id = "auto_crafter_show_blessing_grid", tooltip = "auto_crafter_show_blessing_grid_tooltip", type = "checkbox", default_value = false },
 						},
 					},
 					{

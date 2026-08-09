@@ -701,6 +701,12 @@ local localization = {
 	auto_crafter_perk_target_tooltip = {
 		en = "Requires mastery-to-20 and Change perks. Auto-select uses only compatible Rank IV perks from the selected weapon catalogue. Replacement remains backend-inert.",
 	},
+	auto_crafter_show_perk_grid = {
+		en = "Show perk grid",
+	},
+	auto_crafter_show_perk_grid_tooltip = {
+		en = "Shows every compatible Rank IV perk in four columns. Left click assigns target 1 (yellow); right click assigns target 2 (green). Duplicate targets are prevented.",
+	},
 	option_requires_auto_crafter_mastery_20 = {
 		en = "Enable Automatically level weapon mastery to 20 to unlock Rank IV perk planning.",
 	},
@@ -718,6 +724,12 @@ local localization = {
 	},
 	auto_crafter_blessing_target_tooltip = {
 		en = "Auto-select reads the selected weapon family's valid trait sticker-book catalogue. Mastery-point allocation and replacement remain backend-inert until their guarded phases are enabled.",
+	},
+	auto_crafter_show_blessing_grid = {
+		en = "Show blessing grid",
+	},
+	auto_crafter_show_blessing_grid_tooltip = {
+		en = "Shows compatible blessings with icons in three columns. Left click assigns target 1 (yellow); right click assigns target 2 (green). Duplicate targets are prevented.",
 	},
 	auto_crafter_target_keep = {
 		en = "Keep current",

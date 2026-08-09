@@ -10,8 +10,9 @@
       {"name": "phase_material_and_mastery_fodder_ranges", "risk": "high", "start_line": 266, "end_line": 313},
       {"name": "manual_selector_and_shortcut_grid", "risk": "critical", "start_line": 328, "end_line": 356},
       {"name": "localized_display_labels", "risk": "high", "start_line": 371, "end_line": 371},
-      {"name": "tier_qualified_trait_target_selection", "risk": "high", "start_line": 421, "end_line": 432},
-      {"name": "deferred_grid_rebuild_scroll_restore_and_mastery_gate", "risk": "critical", "start_line": 437, "end_line": 449}
+      {"name": "tier_qualified_trait_target_selection", "risk": "high", "start_line": 422, "end_line": 436},
+      {"name": "dual_target_trait_grid_selection_and_exclusivity", "risk": "high", "start_line": 438, "end_line": 485},
+      {"name": "deferred_grid_rebuild_scroll_restore_and_mastery_gate", "risk": "critical", "start_line": 487, "end_line": 506}
   ],
   "test_auto_crafter_controller.py": [
     {"name": "presacrifice_mastery_baseline_and_convergence", "risk": "critical", "start_line": 176, "end_line": 240},

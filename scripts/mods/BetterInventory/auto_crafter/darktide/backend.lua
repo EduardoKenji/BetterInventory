@@ -524,6 +524,7 @@ local function summarize_perk_catalog(metadata)
 						display_name_key = trait_display_name_key(name, perk),
 						id = tostring(name),
 						tier = tier,
+						trait = perk_item and safe_member(perk_item, "trait") or nil,
 					}
 				end
 			end
@@ -550,10 +551,12 @@ local function summarize_blessing_catalog(sticker_book)
 
 	for trait_name, statuses in pairs(sticker_book) do
 		local valid_master_item = false
+		local trait_item
 
 		if type(MasterItems) == "table" and type(MasterItems.get_item) == "function" then
 			local ok, item = pcall(MasterItems.get_item, trait_name)
 			valid_master_item = ok and item ~= nil
+			trait_item = valid_master_item and item or nil
 		end
 
 		if valid_master_item then
@@ -576,9 +579,24 @@ local function summarize_blessing_catalog(sticker_book)
 				return left.tier < right.tier
 			end)
 
+			local icon
+			local frame
+			local highest_tier = tiers[#tiers] and tiers[#tiers].tier
+
+			if trait_item and highest_tier and type(Items) == "table" and type(Items.trait_textures) == "function" then
+				local textures_ok, texture_icon, texture_frame = pcall(Items.trait_textures, trait_item, highest_tier)
+
+				if textures_ok then
+					icon = texture_icon
+					frame = texture_frame
+				end
+			end
+
 			catalog[#catalog + 1] = {
 				display_name_key = trait_display_name_key(trait_name),
+				frame = frame,
 				id = tostring(trait_name),
+				icon = icon,
 				tiers = tiers,
 			}
 		end

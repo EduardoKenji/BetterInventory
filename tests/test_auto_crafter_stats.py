@@ -399,6 +399,7 @@ def main() -> None:
                                     "display_name": "+25% Damage vs Flak Armoured Enemies",
                                     "display_name_key": "loc_stats_display_damage_stat",
                                     "tier": 4,
+                                    "trait": "damage_vs_flak",
                                 }
                             )
                         ]
@@ -409,6 +410,7 @@ def main() -> None:
                                 {
                                     "id": "blessing_power",
                                     "display_name_key": "loc_stats_display_finesse_stat",
+                                    "icon": "content/ui/textures/icons/traits/test_blessing",
                                 }
                             )
                         ]
@@ -430,6 +432,57 @@ def main() -> None:
     assert lua.globals().TraitSettings["values"].auto_crafter_perk_1_target == "perk:perk_damage_t4:4"
     trait_panel._reconcile_trait_targets(trait_panel)
     assert lua.globals().TraitSettings["values"].auto_crafter_perk_2_target == "keep"
+    assert lua.globals().TraitSettings["values"].auto_crafter_blessing_1_target == "keep"
+    assert lua.globals().TraitSettings["values"].auto_crafter_blessing_2_target == "auto"
+
+    lua.globals().TraitSettings["values"].auto_crafter_perk_1_target = "keep"
+    lua.globals().TraitSettings["values"].auto_crafter_perk_2_target = "auto"
+    perk_grid_entry = trait_panel._entry(
+        trait_panel,
+        "",
+        "",
+        lua.table_from(
+            {
+                "selectable": True,
+                "target_1_setting": "auto_crafter_perk_1_target",
+                "target_2_setting": "auto_crafter_perk_2_target",
+                "trait_button_height": 38,
+                "trait_columns": 4,
+                "trait_options": perk_options,
+                "variant": "trait_grid",
+            }
+        ),
+    )
+    perk_grid_widget = lua.table_from(
+        {
+            "content": lua.table_from(
+                {
+                    f"trait_hotspot_{index}": lua.table_from({})
+                    for index in range(1, len(perk_options) + 1)
+                }
+            )
+        }
+    )
+    perk_grid_entry.bind(perk_grid_widget)
+    perk_grid_entry.refresh(perk_grid_widget)
+    assert perk_grid_widget.content.trait_target_1_index == 1
+    assert perk_grid_widget.content.trait_target_2_index == 2
+    assert perk_grid_widget.content.trait_label_3 == "+25% Damage vs Flak Armoured Enemies"
+    perk_grid_widget.content.trait_left_callbacks[3]()
+    perk_grid_entry.refresh(perk_grid_widget)
+    assert lua.globals().TraitSettings["values"].auto_crafter_perk_1_target == "perk:perk_damage_t4:4"
+    assert perk_grid_widget.content.trait_target_1_index == 3
+    perk_grid_widget.content.trait_right_callbacks[3]()
+    perk_grid_entry.refresh(perk_grid_widget)
+    assert lua.globals().TraitSettings["values"].auto_crafter_perk_1_target == "keep"
+    assert lua.globals().TraitSettings["values"].auto_crafter_perk_2_target == "perk:perk_damage_t4:4"
+    assert perk_grid_widget.content.trait_target_1_index == 1
+    assert perk_grid_widget.content.trait_target_2_index == 3
+
+    blessing_options = trait_panel._trait_target_options(
+        trait_panel, "auto_crafter_blessing_1_target"
+    )
+    assert blessing_options[3].icon == "content/ui/textures/icons/traits/test_blessing"
 
     lua.execute("RenderCalls = 0")
     trait_panel.render = lua.eval("function() RenderCalls = RenderCalls + 1 return true end")
@@ -444,8 +497,12 @@ def main() -> None:
     assert "set_scrollbar_progress" in panel_source
     assert 'add_checkbox("auto_crafter_change_perks"' in panel_source
     assert 'self:_setting("auto_crafter_level_mastery_20", false) == true and self:_setting("auto_crafter_change_perks", false) == true' in panel_source
+    assert "on_right_pressed" in panel_source
+    assert 'add_checkbox("auto_crafter_show_perk_grid"' in panel_source
+    assert 'add_checkbox("auto_crafter_show_blessing_grid"' in panel_source
     backend_source = BACKEND_PATH.read_text(encoding="utf-8")
     assert "Items.trait_description" in backend_source
+    assert "Items.trait_textures" in backend_source
     assert "tier == maximum_tier" in backend_source
 
     print("Auto Crafter weapon stat catalogue and display-label tests passed.")

@@ -14,6 +14,12 @@ local CURRENCY_ROW_HEIGHT = 58
 local STAT_GRID_BUTTON_HEIGHT = 30
 local STAT_GRID_GAP = 6
 local STAT_GRID_HEIGHT = STAT_GRID_BUTTON_HEIGHT * 2 + STAT_GRID_GAP
+local TRAIT_GRID_GAP = 5
+local PERK_GRID_COLUMNS = 4
+local PERK_GRID_BUTTON_HEIGHT = 38
+local BLESSING_GRID_COLUMNS = 3
+local BLESSING_GRID_BUTTON_HEIGHT = 54
+local BLESSING_ICON_SIZE = 30
 local SECTION_ROW_HEIGHT = 40
 local ROW_SPACING = 8
 local CONTENT_HORIZONTAL_PADDING = 12
@@ -34,6 +40,25 @@ local SECTION_OUTPUT = "output"
 local SECTION_ADVANCED = "advanced"
 local SECTION_MELEE = "melee"
 local SECTION_RANGED = "ranged"
+local TRAIT_TARGET_PAIRS = {
+	auto_crafter_perk_1_target = "auto_crafter_perk_2_target",
+	auto_crafter_perk_2_target = "auto_crafter_perk_1_target",
+	auto_crafter_blessing_1_target = "auto_crafter_blessing_2_target",
+	auto_crafter_blessing_2_target = "auto_crafter_blessing_1_target",
+}
+
+local function clean_single_line(value)
+	if type(value) ~= "string" then
+		return ""
+	end
+
+	value = string.gsub(value, "{#[^}]*}", "")
+	value = string.gsub(value, "%s+", " ")
+	value = string.gsub(value, "^%s+", "")
+	value = string.gsub(value, "%s+$", "")
+
+	return value
+end
 
 local function safe_call(fn, ...)
 	if type(fn) ~= "function" then
@@ -516,6 +541,71 @@ local function stat_grid_passes(width)
 	return passes
 end
 
+local function trait_grid_passes(width, entry)
+	local count = entry.trait_count or 0
+	local columns = entry.trait_columns or PERK_GRID_COLUMNS
+	local button_height = entry.trait_button_height or PERK_GRID_BUTTON_HEIGHT
+	local show_icons = entry.trait_icons == true
+	local button_width = (width - TRAIT_GRID_GAP * (columns - 1)) / columns
+	local passes = {
+		{
+			pass_type = "logic",
+			value = function(_, _, _, content)
+				local left_callbacks = content.trait_left_callbacks or {}
+				local right_callbacks = content.trait_right_callbacks or {}
+
+				for index = 1, content.trait_count or 0 do
+					local hotspot = content["trait_hotspot_" .. tostring(index)]
+
+					if hotspot and hotspot.on_pressed and left_callbacks[index] then
+						left_callbacks[index]()
+						break
+					elseif hotspot and hotspot.on_right_pressed and right_callbacks[index] then
+						right_callbacks[index]()
+						break
+					end
+				end
+			end,
+		},
+	}
+
+	for index = 1, count do
+		local column = (index - 1) % columns
+		local row = math.floor((index - 1) / columns)
+		local x = column * (button_width + TRAIT_GRID_GAP)
+		local y = row * (button_height + TRAIT_GRID_GAP)
+		local hotspot_id = "trait_hotspot_" .. tostring(index)
+		local label_id = "trait_label_" .. tostring(index)
+		local icon_id = "trait_icon_" .. tostring(index)
+		local function target_one(content)
+			return content.trait_target_1_index == index
+		end
+		local function target_two(content)
+			return content.trait_target_2_index == index
+		end
+		local function unselected(content)
+			return content.trait_target_1_index ~= index and content.trait_target_2_index ~= index
+		end
+		local function has_icon(content)
+			return show_icons and type(content[icon_id]) == "string" and content[icon_id] ~= ""
+		end
+		local text_x = show_icons and BLESSING_ICON_SIZE + 7 or 4
+		local text_width = button_width - text_x - 4
+
+		passes[#passes + 1] = { content_id = hotspot_id, pass_type = "hotspot", content = { on_hover_sound = UISoundEvents.default_mouse_hover, on_pressed_sound = UISoundEvents.default_click }, style = { size = { button_width, button_height }, offset = { x, y, 6 } } }
+		passes[#passes + 1] = { pass_type = "rect", style = { color = Color.terminal_corner_selected(120, true), size = { button_width, button_height }, offset = { x, y, 1 } }, visibility_function = target_one }
+		passes[#passes + 1] = { pass_type = "rect", style = { color = Color.ui_hud_green_medium(120, true), size = { button_width, button_height }, offset = { x, y, 1 } }, visibility_function = target_two }
+		passes[#passes + 1] = { pass_type = "rect", style = { color = Color.terminal_background(220, true), size = { button_width, button_height }, offset = { x, y, 1 } }, visibility_function = unselected }
+		passes[#passes + 1] = { pass_type = "texture", value = "content/ui/materials/frames/frame_tile_2px", style = { color = Color.terminal_frame(255, true), size = { button_width, button_height }, offset = { x, y, 2 } } }
+		if show_icons then
+			passes[#passes + 1] = { pass_type = "texture", value_id = icon_id, style = { color = Color.white(255, true), size = { BLESSING_ICON_SIZE, BLESSING_ICON_SIZE }, offset = { x + 5, y + (button_height - BLESSING_ICON_SIZE) / 2, 3 } }, visibility_function = has_icon }
+		end
+		passes[#passes + 1] = { pass_type = "text", value_id = label_id, style = { font_size = show_icons and 12 or 11, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_text_header(255, true), size = { text_width, button_height }, offset = { x + text_x, y, 4 } } }
+	end
+
+	return passes
+end
+
 local function action_button_passes(width)
 	local function enabled(content) return content.enabled == true end
 	local function disabled(content) return content.enabled ~= true end
@@ -556,6 +646,8 @@ local BLUEPRINTS = {
 				return enum_stepper_passes(width)
 			elseif variant == "stat_grid" then
 				return stat_grid_passes(width)
+			elseif variant == "trait_grid" then
+				return trait_grid_passes(width, entry)
 			elseif variant == "action" then
 				return action_button_passes(width)
 			elseif variant == "offer" then
@@ -637,6 +729,7 @@ function Panel.new(dependencies)
 		_stop_active_run = dependencies.stop_active_run,
 		_settings = dependencies.settings or {},
 		_localize = dependencies.localize,
+		_compact_perk_label = dependencies.compact_perk_label,
 		_logger = dependencies.logger,
 		_ViewElementGrid = dependencies.ViewElementGrid,
 		_panel = nil,
@@ -705,6 +798,12 @@ function Panel.new(dependencies)
 			height = CURRENCY_ROW_HEIGHT
 		elseif variant == "stat_grid" then
 			height = STAT_GRID_HEIGHT
+		elseif variant == "trait_grid" then
+			local columns = options.trait_columns or PERK_GRID_COLUMNS
+			local button_height = options.trait_button_height or PERK_GRID_BUTTON_HEIGHT
+			local rows = math.max(1, math.ceil(#(options.trait_options or {}) / columns))
+
+			height = rows * button_height + (rows - 1) * TRAIT_GRID_GAP
 		elseif variant == "offer" or variant == "action" then
 			height = ROW_HEIGHT
 		end
@@ -725,6 +824,11 @@ function Panel.new(dependencies)
 				selected_stat_index = 0,
 				stat_count = 0,
 				stat_pressed_callbacks = {},
+				trait_count = #(options.trait_options or {}),
+				trait_left_callbacks = {},
+				trait_right_callbacks = {},
+				trait_target_1_index = 0,
+				trait_target_2_index = 0,
 				chevron = "",
 				credits = options.credits or "—",
 				plasteel = options.plasteel or "—",
@@ -736,6 +840,10 @@ function Panel.new(dependencies)
 				height,
 			},
 			variant = variant,
+			trait_button_height = options.trait_button_height,
+			trait_columns = options.trait_columns,
+			trait_count = #(options.trait_options or {}),
+			trait_icons = options.trait_icons == true,
 			widget_type = "auto_crafter_row",
 		}
 
@@ -813,6 +921,44 @@ function Panel.new(dependencies)
 						widget.content.selected_stat_index = index
 
 						break
+					end
+				end
+			end
+		end
+
+		if options.trait_options then
+			entry.bind = function(widget)
+				widget.content.trait_left_callbacks = {}
+				widget.content.trait_right_callbacks = {}
+
+				for index, option in ipairs(options.trait_options) do
+					local value = option.value
+
+					widget.content.trait_left_callbacks[index] = function()
+						self:_set_trait_target(options.target_1_setting, value)
+					end
+					widget.content.trait_right_callbacks[index] = function()
+						self:_set_trait_target(options.target_2_setting, value)
+					end
+				end
+			end
+			entry.refresh = function(widget)
+				local target_1 = self:_setting(options.target_1_setting, "keep")
+				local target_2 = self:_setting(options.target_2_setting, "keep")
+
+				widget.content.trait_count = #options.trait_options
+				widget.content.trait_target_1_index = 0
+				widget.content.trait_target_2_index = 0
+
+				for index, option in ipairs(options.trait_options) do
+					widget.content["trait_label_" .. tostring(index)] = option.short_label or option.label
+					widget.content["trait_icon_" .. tostring(index)] = option.icon or ""
+
+					if option.value == target_1 then
+						widget.content.trait_target_1_index = index
+					end
+					if option.value == target_2 then
+						widget.content.trait_target_2_index = index
 					end
 				end
 			end
@@ -1069,11 +1215,15 @@ function Panel.new(dependencies)
 
 	function self:_trait_target_options(setting_id)
 		local options = {
-			{ label = localize("auto_crafter_target_keep", "Keep current"), value = "keep" },
-			{ label = localize("auto_crafter_target_auto", "Auto-select"), value = "auto" },
+			{ label = localize("auto_crafter_target_keep", "Keep current"), short_label = localize("auto_crafter_target_keep", "Keep current"), value = "keep" },
+			{ label = localize("auto_crafter_target_auto", "Auto-select"), short_label = localize("auto_crafter_target_auto", "Auto-select"), value = "auto" },
 		}
 		local catalog = self._plan and self._plan.trait_catalog
 		local catalog_kind = string.find(setting_id, "blessing", 1, true) and "blessings" or "perks"
+		local seen = {
+			auto = true,
+			keep = true,
+		}
 
 		if not catalog or catalog.available ~= true then
 			return options
@@ -1081,13 +1231,25 @@ function Panel.new(dependencies)
 
 		for _, entry in ipairs(catalog[catalog_kind] or {}) do
 			if entry.id then
-				local label = entry.display_name or localized_game_text(entry.display_name_key) or display_stat_name(entry.id)
+				local label = clean_single_line(entry.display_name or localized_game_text(entry.display_name_key) or display_stat_name(entry.id))
 				local value = catalog_kind == "perks" and entry.tier and string.format("perk:%s:%s", tostring(entry.id), tostring(entry.tier)) or entry.id
+				local short_label = label
 
-				options[#options + 1] = {
-					label = label,
-					value = value,
-				}
+				if catalog_kind == "perks" and type(self._compact_perk_label) == "function" then
+					local compact_ok, compact = pcall(self._compact_perk_label, entry, label)
+
+					short_label = compact_ok and clean_single_line(compact) or label
+				end
+
+				if not seen[value] then
+					seen[value] = true
+					options[#options + 1] = {
+						icon = entry.icon,
+						label = label,
+						short_label = short_label ~= "" and short_label or label,
+						value = value,
+					}
+				end
 			end
 		end
 
@@ -1109,28 +1271,84 @@ function Panel.new(dependencies)
 	function self:_step_trait_target(setting_id, direction)
 		local options = self:_trait_target_options(setting_id)
 		local values = {}
+		local peer_value = self:_setting(TRAIT_TARGET_PAIRS[setting_id], "keep")
 
 		for _, option in ipairs(options) do
-			values[#values + 1] = option.value
+			if option.value ~= peer_value then
+				values[#values + 1] = option.value
+			end
 		end
 
-		self:_step_enum_setting(setting_id, values, "keep", direction)
+		if #values > 0 then
+			self:_step_enum_setting(setting_id, values, values[1], direction)
+		end
 	end
 
-	function self:_reconcile_trait_targets()
-		for _, setting_id in ipairs({ "auto_crafter_perk_1_target", "auto_crafter_perk_2_target", "auto_crafter_blessing_1_target", "auto_crafter_blessing_2_target" }) do
-			local current = self:_setting(setting_id, "keep")
-			local found = false
+	function self:_set_trait_target(setting_id, value)
+		local options = self:_trait_target_options(setting_id)
+		local valid = false
 
-			for _, option in ipairs(self:_trait_target_options(setting_id)) do
-				if option.value == current then
-					found = true
+		for _, option in ipairs(options) do
+			if option.value == value then
+				valid = true
+				break
+			end
+		end
+
+		if not valid then
+			return false
+		end
+
+		self:_set_setting(setting_id, value)
+
+		local peer_id = TRAIT_TARGET_PAIRS[setting_id]
+
+		if peer_id and self:_setting(peer_id, "keep") == value then
+			for _, option in ipairs(self:_trait_target_options(peer_id)) do
+				if option.value ~= value then
+					self:_set_setting(peer_id, option.value)
 					break
 				end
 			end
+		end
 
-			if not found then
-				self:_set_setting(setting_id, "keep")
+		return true
+	end
+
+	function self:_reconcile_trait_targets()
+		local pairs = {
+			{ "auto_crafter_perk_1_target", "auto_crafter_perk_2_target" },
+			{ "auto_crafter_blessing_1_target", "auto_crafter_blessing_2_target" },
+		}
+
+		for _, pair in ipairs(pairs) do
+			for _, setting_id in ipairs(pair) do
+				local current = self:_setting(setting_id, "keep")
+				local found = false
+
+				for _, option in ipairs(self:_trait_target_options(setting_id)) do
+					if option.value == current then
+						found = true
+						break
+					end
+				end
+
+				if not found then
+					self:_set_setting(setting_id, "keep")
+				end
+			end
+
+			local first_id = pair[1]
+			local second_id = pair[2]
+			local first_value = self:_setting(first_id, "keep")
+
+			if self:_setting(second_id, "keep") == first_value then
+				for _, option in ipairs(self:_trait_target_options(second_id)) do
+					if option.value ~= first_value then
+						self:_set_setting(second_id, option.value)
+						break
+					end
+				end
 			end
 		end
 	end
@@ -1462,17 +1680,45 @@ function Panel.new(dependencies)
 
 		if not self._section_collapsed[SECTION_TRAITS] then
 			local unavailable = localize("auto_crafter_panel_option_unavailable", "Enable prerequisite options")
-			add_target_selector("auto_crafter_perk_1_target", "auto_crafter_perk_1_target", "Perk target 1", function()
+			local function perk_targets_enabled()
 				return self:_setting("auto_crafter_level_mastery_20", false) == true and self:_setting("auto_crafter_change_perks", false) == true
-			end, unavailable)
-			add_target_selector("auto_crafter_perk_2_target", "auto_crafter_perk_2_target", "Perk target 2", function()
-				return self:_setting("auto_crafter_level_mastery_20", false) == true and self:_setting("auto_crafter_change_perks", false) == true
-			end, unavailable)
+			end
+			add_target_selector("auto_crafter_perk_1_target", "auto_crafter_perk_1_target", "Perk target 1", perk_targets_enabled, unavailable)
+			add_target_selector("auto_crafter_perk_2_target", "auto_crafter_perk_2_target", "Perk target 2", perk_targets_enabled, unavailable)
+			add_checkbox("auto_crafter_show_perk_grid", "auto_crafter_show_perk_grid", "Show perk grid", false, perk_targets_enabled, true)
+			if self:_setting("auto_crafter_show_perk_grid", false) == true and perk_targets_enabled() then
+				local perk_grid_options = self:_trait_target_options("auto_crafter_perk_1_target")
+
+				table.insert(entries, self:_entry("", "", {
+					selectable = true,
+					target_1_setting = "auto_crafter_perk_1_target",
+					target_2_setting = "auto_crafter_perk_2_target",
+					trait_button_height = PERK_GRID_BUTTON_HEIGHT,
+					trait_columns = PERK_GRID_COLUMNS,
+					trait_options = perk_grid_options,
+					variant = "trait_grid",
+				}))
+			end
 			local function blessing_targets_enabled()
 				return self:_setting("auto_crafter_level_mastery_20", false) == true and self:_setting("auto_crafter_allocate_mastery_points", false) == true and self:_setting("auto_crafter_change_blessings", false) == true
 			end
 			add_target_selector("auto_crafter_blessing_1_target", "auto_crafter_blessing_1_target", "Blessing target 1", blessing_targets_enabled, unavailable)
 			add_target_selector("auto_crafter_blessing_2_target", "auto_crafter_blessing_2_target", "Blessing target 2", blessing_targets_enabled, unavailable)
+			add_checkbox("auto_crafter_show_blessing_grid", "auto_crafter_show_blessing_grid", "Show blessing grid", false, blessing_targets_enabled, true)
+			if self:_setting("auto_crafter_show_blessing_grid", false) == true and blessing_targets_enabled() then
+				local blessing_grid_options = self:_trait_target_options("auto_crafter_blessing_1_target")
+
+				table.insert(entries, self:_entry("", "", {
+					selectable = true,
+					target_1_setting = "auto_crafter_blessing_1_target",
+					target_2_setting = "auto_crafter_blessing_2_target",
+					trait_button_height = BLESSING_GRID_BUTTON_HEIGHT,
+					trait_columns = BLESSING_GRID_COLUMNS,
+					trait_icons = true,
+					trait_options = blessing_grid_options,
+					variant = "trait_grid",
+				}))
+			end
 		end
 
 		table.insert(entries, self:_entry(localize("auto_crafter_panel_output", "Final item handling"), "", {
@@ -1602,6 +1848,8 @@ function Panel.new(dependencies)
 		if not self._panel or type(self._panel.present_grid_layout) ~= "function" then
 			return false
 		end
+
+		self:_reconcile_trait_targets()
 
 		local entries = self:_entries(self._snapshot)
 		local scroll_offset = 0

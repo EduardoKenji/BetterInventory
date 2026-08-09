@@ -1,4 +1,5 @@
 local AutoCrafter = {}
+local LayoutContent = require("scripts/mods/BetterInventory/BetterInventory_layout_content")
 
 local mod
 local controller
@@ -345,6 +346,16 @@ function AutoCrafter.configure(dependencies)
 
 	panel = Panel and Panel.new({
 		ViewElementGrid = dependencies.ViewElementGrid,
+		compact_perk_label = function(entry, label)
+			if type(LayoutContent) ~= "table" or type(LayoutContent.compact_weapon_perk_description) ~= "function" then
+				return label
+			end
+
+			return LayoutContent.compact_weapon_perk_description(mod, {
+				description = label,
+				id = entry and entry.trait,
+			}, "heavy")
+		end,
 		get_selected_offer = dependencies.get_selected_offer,
 		select_offer = dependencies.select_offer,
 		settings = settings_adapter(),
