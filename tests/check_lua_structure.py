@@ -174,6 +174,7 @@ def validate_auto_crafter_mutation_boundaries() -> int:
         "dump_stat_candidates",
         "configured stat selected by user",
         "resolved_dump_stat",
+        "function Planner.reconcile_dump_stat",
         "ambiguous lowest base stat",
     )
     missing = [token for token in required_contract if token not in planner_source]
@@ -277,6 +278,7 @@ def validate_auto_crafter_mutation_boundaries() -> int:
         "_schedule_catalog",
         "catalog_discovery_complete",
         "auto_crafter_level_mastery_20",
+        "reconcile_dump_stat(previous_plan, plan, config.dump_stat)",
         "_phase3_check_mastery",
         "_phase3_start_fodder",
         "phase3_complete",

@@ -212,6 +212,18 @@ function Controller.new(dependencies)
 		return value
 	end
 
+	local function set_setting(id, value)
+		local set = self._settings.set
+
+		if type(set) ~= "function" then
+			return false
+		end
+
+		local ok, result = pcall(set, self._settings, id, value)
+
+		return ok and result ~= false
+	end
+
 	local function enabled()
 		return setting("auto_crafter_enable", false) == true
 	end
@@ -285,11 +297,22 @@ function Controller.new(dependencies)
 			return false
 		end
 
+		local previous_plan = self._plan
 		local config = planner_config()
 		config.target_offer = self:_selected_offer_summary()
 		self._selected_native_key = offer_key(config.target_offer)
 		self._planner_signature = planner_config_signature(config)
 		local ok, plan = pcall(self._planner.build, self._snapshot, config)
+
+		if ok and type(plan) == "table" and type(self._planner.reconcile_dump_stat) == "function" then
+			local reconciled_dump_stat, changed = self._planner.reconcile_dump_stat(previous_plan, plan, config.dump_stat)
+
+			if changed and set_setting("auto_crafter_target_dump_stat", reconciled_dump_stat) then
+				config.dump_stat = reconciled_dump_stat
+				self._planner_signature = planner_config_signature(config)
+				ok, plan = pcall(self._planner.build, self._snapshot, config)
+			end
+		end
 
 		if not ok or type(plan) ~= "table" then
 			self._plan = {

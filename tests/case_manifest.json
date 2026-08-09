@@ -7,7 +7,8 @@
   "test_auto_crafter_stats.py": [
     {"name": "template_stat_catalog", "risk": "critical", "start_line": 127, "end_line": 136},
     {"name": "manual_and_auto_resolution", "risk": "critical", "start_line": 138, "end_line": 159},
-    {"name": "localized_display_labels", "risk": "high", "start_line": 161, "end_line": 179}
+    {"name": "target_change_reconciliation", "risk": "critical", "start_line": 161, "end_line": 214},
+    {"name": "localized_display_labels", "risk": "high", "start_line": 216, "end_line": 234}
   ],
   "test_contracts.py": [
     {"name": "guarded_lookup", "risk": "high", "start_line": 22, "end_line": 40},

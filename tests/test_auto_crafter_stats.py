@@ -158,6 +158,61 @@ def main() -> None:
     penetration_plan = plan("penetration")
     assert penetration_plan.resolved_dump_stat == "crowbar_p1_m1_armor_pierce_stat"
 
+    previous_plan = lua.table_from(
+        {
+            "resolved_dump_stat": "combatsword_p1_m1_cleave_targets_stat",
+            "dump_stat_candidates": lua.table_from(
+                [
+                    lua.table_from(
+                        {
+                            "name": "combatsword_p1_m1_cleave_targets_stat",
+                            "display_name_key": "loc_stats_display_cleave_targets_stat",
+                        }
+                    )
+                ]
+            ),
+        }
+    )
+    shiv_plan = lua.table_from(
+        {
+            "dump_stat_candidates": lua.table_from(
+                [
+                    lua.table_from(
+                        {
+                            "name": "dual_shivs_p1_m1_finesse_stat",
+                            "display_name_key": "loc_stats_display_finesse_stat",
+                        }
+                    )
+                ]
+            )
+        }
+    )
+    reconciled, changed = planner.reconcile_dump_stat(
+        previous_plan, shiv_plan, "combatsword_p1_m1_cleave_targets_stat"
+    )
+    assert changed is True
+    assert reconciled == "auto"
+
+    compatible_plan = lua.table_from(
+        {
+            "dump_stat_candidates": lua.table_from(
+                [
+                    lua.table_from(
+                        {
+                            "name": "dual_shivs_p1_m1_cleave_targets_stat",
+                            "display_name_key": "loc_stats_display_cleave_targets_stat",
+                        }
+                    )
+                ]
+            )
+        }
+    )
+    reconciled, changed = planner.reconcile_dump_stat(
+        previous_plan, compatible_plan, "combatsword_p1_m1_cleave_targets_stat"
+    )
+    assert changed is True
+    assert reconciled == "dual_shivs_p1_m1_cleave_targets_stat"
+
     panel_module = lua.execute(PANEL_PATH.read_text(encoding="utf-8"))
     panel = panel_module.new(lua.table_from({}))
     panel._plan = defense_plan

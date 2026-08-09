@@ -468,6 +468,7 @@ Never assume every weapon family has `damage` as its dump stat. Candidate discov
 - Crowbar failure was caused by treating rolled offer data as candidate metadata. Brunt descriptions can expose only `lootChoices`, `MasterItems.get_store_item_instance(description)` can return no usable preview, and the old inventory fallback found nothing when the operative owned no matching Crowbar. Crowbar's template still exposes Damage, Defenses, Penetration, First Target, and Mobility, so candidate discovery must succeed without either source.
 - Template catalogue entries may have no numeric value. They remain valid manual choices but cannot support an Auto recommendation. Numeric rolled values from a preview or compatible inventory item enrich the catalogue; they do not define it.
 - Cross-mark fallback never copies a sibling mark's raw key into the purchase plan. It matches the localized display key, then resolves the selected mark's corresponding canonical key.
+- Weapon selection changes reconcile the saved manual dump stat against the new template catalogue. A semantically compatible stat is remapped by vanilla display key to the new weapon's exact canonical key; an incompatible stat resets to Auto. Do not show or preserve a stale choice from the previous weapon. While a new catalogue is genuinely empty or loading, defer reconciliation instead of resetting prematurely.
 
 ### Perk and blessing discovery
 

@@ -482,4 +482,38 @@ end
 Planner.DEFAULTS = DEFAULTS
 Planner.REQUEST_MODES = REQUEST_MODES
 
+function Planner.reconcile_dump_stat(previous_plan, next_plan, configured_dump_stat)
+	if configured_dump_stat == nil or configured_dump_stat == "auto" or type(next_plan) ~= "table" or next_plan.resolved_dump_stat ~= nil then
+		return configured_dump_stat, false
+	end
+
+	local next_candidates = next_plan.dump_stat_candidates or {}
+
+	if #next_candidates == 0 then
+		return configured_dump_stat, false
+	end
+
+	local previous_candidates = type(previous_plan) == "table" and previous_plan.dump_stat_candidates or {}
+	local previous_resolved = type(previous_plan) == "table" and previous_plan.resolved_dump_stat or nil
+	local previous_display_name_key
+
+	for _, candidate in ipairs(previous_candidates) do
+		if type(candidate) == "table" and (candidate.name == configured_dump_stat or candidate.name == previous_resolved) then
+			previous_display_name_key = candidate.display_name_key
+
+			break
+		end
+	end
+
+	if previous_display_name_key then
+		for _, candidate in ipairs(next_candidates) do
+			if type(candidate) == "table" and candidate.display_name_key == previous_display_name_key then
+				return candidate.name, candidate.name ~= configured_dump_stat
+			end
+		end
+	end
+
+	return "auto", true
+end
+
 return Planner
