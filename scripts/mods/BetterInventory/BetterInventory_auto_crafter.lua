@@ -1,5 +1,4 @@
 local AutoCrafter = {}
-local LayoutContent = require("scripts/mods/BetterInventory/BetterInventory_layout_content")
 
 local mod
 local controller
@@ -309,6 +308,7 @@ function AutoCrafter.configure(dependencies)
 	local ok_backend, Backend = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/backend")
 	local ok_context, Context = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/context")
 	local ok_panel, Panel = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/panel")
+	local ok_layout_content, LayoutContent = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_content")
 
 	if not ok_controller or type(Controller) ~= "table" or type(Controller.new) ~= "function" then
 		log("error", "Auto Crafter Helper controller unavailable; feature disabled.")
@@ -347,7 +347,7 @@ function AutoCrafter.configure(dependencies)
 	panel = Panel and Panel.new({
 		ViewElementGrid = dependencies.ViewElementGrid,
 		compact_perk_label = function(entry, label)
-			if type(LayoutContent) ~= "table" or type(LayoutContent.compact_weapon_perk_description) ~= "function" then
+			if not ok_layout_content or type(LayoutContent) ~= "table" or type(LayoutContent.compact_weapon_perk_description) ~= "function" then
 				return label
 			end
 

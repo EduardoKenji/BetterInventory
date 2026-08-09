@@ -243,6 +243,10 @@ def validate_auto_crafter_mutation_boundaries() -> int:
     data_source = (RUNTIME_ROOT / "BetterInventory_data.lua").read_text(encoding="utf-8")
     controller_source = (auto_crafter_root / "core" / "controller.lua").read_text(encoding="utf-8")
     host_source = (RUNTIME_ROOT / "BetterInventory_auto_crafter.lua").read_text(encoding="utf-8")
+    if 'require("scripts/mods/BetterInventory/' in host_source:
+        raise SystemExit("Auto Crafter host must load mod-local modules through mod:io_dofile, not Lua require")
+    if 'pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_content")' not in host_source:
+        raise SystemExit("Auto Crafter compact-label adapter must guard its mod-local layout-content load")
     missing_future_ui = [
         token for token in future_ui_settings if token not in data_source or token not in panel_source
     ]
