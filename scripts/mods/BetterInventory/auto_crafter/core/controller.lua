@@ -107,6 +107,16 @@ local function find_item(items, gear_id)
 	return nil
 end
 
+local function candidate_stat(candidate, stat_name)
+	if not candidate or not stat_name then
+		return nil
+	end
+
+	local potential_stats = candidate.potential_base_stats
+
+	return potential_stats and potential_stats[stat_name]
+end
+
 local function mastery_summary(data)
 	if type(data) ~= "table" then
 		return nil
@@ -920,7 +930,7 @@ function Controller.new(dependencies)
 		local search = self._search
 		local target = phase3 and phase3.target_candidate
 		local item = target and find_item(self._snapshot and self._snapshot.gear and self._snapshot.gear.items, target.gear_id)
-		local authoritative_dump = item and item.base_stats and item.base_stats[search and search.dump_stat]
+		local authoritative_dump = candidate_stat(item, search and search.dump_stat)
 
 		if not phase3 or not phase3.running or not target or not search then
 			return false
@@ -1265,7 +1275,7 @@ function Controller.new(dependencies)
 					return
 				end
 
-				local dump_stat = candidate.base_stats and candidate.base_stats[search.dump_stat]
+				local dump_stat = candidate_stat(candidate, search.dump_stat)
 
 				if dump_stat == nil then
 					self:_operation_failed(generation, "authoritative weapon did not expose configured dump stat")
@@ -1276,7 +1286,7 @@ function Controller.new(dependencies)
 				candidate.dump_stat = dump_stat
 				candidate.dump_stat_id = search.dump_stat
 				candidate.dump_stat_label = candidate.base_stat_labels and candidate.base_stat_labels[search.dump_stat]
-				candidate.damage = candidate.damage or candidate.base_stats.damage
+				candidate.damage = candidate.potential_damage or candidate_stat(candidate, "damage")
 				candidate.exact_match = tonumber(dump_stat) == tonumber(search.target_dump)
 				search.last = candidate
 				self._last_purchased = candidate

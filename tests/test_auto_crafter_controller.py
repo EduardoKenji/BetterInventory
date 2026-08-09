@@ -158,6 +158,8 @@ def main() -> None:
                 parent_pattern = "pattern-1",
                 base_stats = {damage_stat = dump_stat or 50},
                 damage = dump_stat or 50,
+				potential_base_stats = {damage_stat = dump_stat or 50},
+				potential_damage = dump_stat or 50,
                 display_name = "Test Weapon",
             }
         end
@@ -340,6 +342,25 @@ def main() -> None:
 			for _, event in ipairs(reporter.events) do
 				assert(event.kind ~= "purchase_search_complete")
 			end
+		end
+
+		-- A current stat matching 60 is not exact when its level-500 potential is 80.
+		do
+			local authoritative = summarized_item("gear-current-only-match", 0, 60)
+			authoritative.potential_base_stats = {damage_stat = 80}
+			local backend = {favorite_calls = 0}
+			function backend:purchase_offer(_) return resolved({items = {authoritative}}) end
+			function backend:probe_snapshot() return resolved(snapshot_with(authoritative)) end
+			function backend:favorite_item(_) self.favorite_calls = self.favorite_calls + 1 return resolved({favorited = true}) end
+			CurrentOffer = raw_offer()
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings({auto_crafter_favorite_result = true}), reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = snapshot_with(nil)
+			controller._active_view = {}
+			controller._view_is_valid = true
+			assert(controller:start_purchase_search() == true)
+			assert(controller:snapshot().phase == "search_max_purchases")
+			assert(controller:snapshot().search.best.dump_stat == 80)
+			assert(backend.favorite_calls == 0)
 		end
 
 		-- Exact authoritative candidate is favorited before completion is reported.

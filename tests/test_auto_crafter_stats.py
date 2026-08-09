@@ -69,6 +69,19 @@ def main() -> None:
                 rejected = function(value) return promise(nil, value) end,
             },
             ["scripts/utilities/items"] = {
+				expertise_level = function() return "300", true end,
+				max_expertise_level = function() return 500 end,
+				preview_stats_change = function(_, _, stats)
+					local result = {}
+
+					for _, stat in ipairs(stats) do
+						result[stat.display_name] = {
+							value = stat.name == "crowbar_p1_m1_defence_stat" and 60 or 80,
+						}
+					end
+
+					return result
+				end,
 				is_item_id_favorited = function(gear_id) return TestFavoriteItems[gear_id] == true end,
 				set_item_id_as_favorite = function(gear_id, state) TestFavoriteItems[gear_id] = state end,
                 weapon_card_display_name = function(item) return item.display_name end,
@@ -217,6 +230,9 @@ def main() -> None:
     purchased = purchase_promise.value["items"][1]
     assert purchased.damage == 78
     assert purchased.base_stats["crowbar_p1_m1_dps_stat"] == 78
+    assert purchased.potential_damage == 80
+    assert purchased.potential_base_stats["crowbar_p1_m1_dps_stat"] == 80
+    assert purchased.potential_base_stats["crowbar_p1_m1_defence_stat"] == 60
     favorite_promise = backend.favorite_item(backend, "crowbar_gear")
     assert favorite_promise.failure is None
     assert favorite_promise.value.favorited is True

@@ -417,6 +417,58 @@ summarize_base_stats = function(source)
 	return #summary > 0 and summary or nil
 end
 
+local function summarize_potential_base_stats(item, rolled_stats)
+	if type(Items) ~= "table" or type(Items.preview_stats_change) ~= "function" or type(Items.expertise_level) ~= "function" or type(Items.max_expertise_level) ~= "function" then
+		return nil
+	end
+
+	local comparing_stats = {}
+
+	for _, stat in ipairs(rolled_stats or {}) do
+		local value = tonumber(stat.value)
+
+		if stat.name and value ~= nil then
+			comparing_stats[#comparing_stats + 1] = {
+				display_name = stat.name,
+				fraction = value <= 1.01 and value or value / 100,
+				name = stat.name,
+			}
+		end
+	end
+
+	if #comparing_stats == 0 then
+		return nil
+	end
+
+	local expertise_ok, current_expertise = pcall(Items.expertise_level, item, true)
+	local maximum_ok, maximum_expertise = pcall(Items.max_expertise_level)
+	current_expertise = expertise_ok and tonumber(current_expertise) or nil
+	maximum_expertise = maximum_ok and tonumber(maximum_expertise) or nil
+
+	if current_expertise == nil or maximum_expertise == nil or maximum_expertise < current_expertise then
+		return nil
+	end
+
+	local preview_ok, preview = pcall(Items.preview_stats_change, item, maximum_expertise - current_expertise, comparing_stats)
+
+	if not preview_ok or type(preview) ~= "table" then
+		return nil
+	end
+
+	local summary = {}
+
+	for _, stat in ipairs(comparing_stats) do
+		local preview_stat = preview[stat.name]
+		local value = tonumber(safe_member(preview_stat, "value"))
+
+		if value ~= nil then
+			summary[stat.name] = math.floor(value + 0.5)
+		end
+	end
+
+	return next(summary) and summary or nil
+end
+
 summarize_weapon_template_stats = function(source)
 	if source == nil or type(WeaponTemplate) ~= "table" or type(WeaponTemplate.weapon_template_from_item) ~= "function" then
 		return nil
@@ -700,6 +752,8 @@ local function summarize_item(gear, gear_id)
 		end
 	end
 
+	local potential_stat_values = summarize_potential_base_stats(item, rolled_stats)
+
 	local display_name
 
 	if type(Items) == "table" and type(Items.weapon_card_display_name) == "function" then
@@ -723,6 +777,8 @@ local function summarize_item(gear, gear_id)
 		name = safe_member(item, "name"),
 		mastery_id = safe_member(item, "parent_pattern"),
 		parent_pattern = safe_member(item, "parent_pattern"),
+		potential_base_stats = potential_stat_values,
+		potential_damage = damage_stat_value(potential_stat_values, base_stat_labels),
 		rarity = tonumber(safe_member(item, "rarity")),
 		weapon_template = safe_member(item, "weapon_progression_template") or safe_member(item, "weapon_template"),
 	}
