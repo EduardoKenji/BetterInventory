@@ -1025,7 +1025,11 @@ function Panel.new(dependencies)
 
 		local ok, value = pcall(get, self._settings, setting_id)
 
-		return ok and value ~= nil and value or default_value
+		if not ok or value == nil then
+			return default_value
+		end
+
+		return value
 	end
 
 	function self:_set_setting(setting_id, value)
@@ -1682,7 +1686,7 @@ function Panel.new(dependencies)
 				return self:_setting("auto_crafter_level_mastery_20", false) == true
 			end)
 			add_checkbox("auto_crafter_consecrate_transcendent", "auto_crafter_consecrate_transcendent", "Consecrate to Transcendent", true)
-			add_checkbox("auto_crafter_upgrade_expertise_500", "auto_crafter_upgrade_expertise_500", "Upgrade expertise to 500", true)
+			add_checkbox("auto_crafter_upgrade_expertise_500", "auto_crafter_upgrade_expertise_500", "Upgrade weapon level to 500", true)
 			add_checkbox("auto_crafter_change_perks", "auto_crafter_change_perks", "Change perks", false, function()
 				return self:_setting("auto_crafter_level_mastery_20", false) == true
 			end)

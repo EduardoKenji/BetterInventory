@@ -672,10 +672,10 @@ local localization = {
 		en = "UI planning option only. The final candidate will later be consecrated through only the missing rarity tiers.",
 	},
 	auto_crafter_upgrade_expertise_500 = {
-		en = "Upgrade weapon expertise to 500",
+		en = "Upgrade weapon level to 500",
 	},
 	auto_crafter_upgrade_expertise_500_tooltip = {
-		en = "UI planning option only. The final candidate will later be empowered to expertise 500 after mastery rewards permit it.",
+		en = "UI planning option only. The final candidate will later be upgraded to weapon level 500 after mastery rewards permit it.",
 	},
 	auto_crafter_change_perks = {
 		en = "Change perks",

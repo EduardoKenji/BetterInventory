@@ -323,6 +323,34 @@ def main() -> None:
     )
     panel_module = lua.execute(PANEL_PATH.read_text(encoding="utf-8"))
     panel = panel_module.new(lua.table_from({"settings": lua.globals().TestPanelSettings}))
+
+    # Lua's common `condition and value or fallback` idiom loses explicit false.
+    # Default-on workflow checkboxes must be able to persist and display false.
+    lua.execute(
+        '''
+        TestPanelBooleanSettings = {
+            values = {
+                auto_crafter_buy_until_target = false,
+                auto_crafter_consecrate_transcendent = false,
+                auto_crafter_upgrade_expertise_500 = false,
+            },
+            get = function(self, key) return self.values[key] end,
+            set = function(self, key, value) self.values[key] = value return true end,
+        }
+        '''
+    )
+    boolean_panel = panel_module.new(
+        lua.table_from({"settings": lua.globals().TestPanelBooleanSettings})
+    )
+    for setting_id in (
+        "auto_crafter_buy_until_target",
+        "auto_crafter_consecrate_transcendent",
+        "auto_crafter_upgrade_expertise_500",
+    ):
+        assert boolean_panel._setting(boolean_panel, setting_id, True) is False
+        assert boolean_panel._set_setting(boolean_panel, setting_id, True) is True
+        assert boolean_panel._setting(boolean_panel, setting_id, False) is True
+
     panel._plan = defense_plan
     panel_options = panel._planner_dump_stat_options(panel)
     assert [panel_options[index] for index in range(1, len(panel_options) + 1)] == ordered_names
