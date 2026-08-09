@@ -96,11 +96,13 @@ function Overlay.install(mod, view_classes)
 
 					local screen = view._ui_scenegraph.screen
 					local screen_width = screen and screen.size and tonumber(screen.size[1]) or 1920
-					local screen_height = screen and screen.size and tonumber(screen.size[2]) or 1080
 
 					widget.content.text = text
 					widget.offset[1] = math.max(0, (screen_width - 760) * 0.5)
-					widget.offset[2] = math.max(0, screen_height - 42 - 112)
+					-- The root screen scenegraph uses top-aligned widget coordinates in
+					-- these views. Mirroring the HUD element's 42 px inset keeps the
+					-- status at the top instead of pinning it near the bottom.
+					widget.offset[2] = 42
 					widget.offset[3] = 0
 
 					local render_settings = view._render_settings

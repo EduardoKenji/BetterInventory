@@ -1,5 +1,6 @@
 local Promise = require("scripts/foundation/utilities/promise")
 local Items = require("scripts/utilities/items")
+local Mastery = require("scripts/utilities/mastery")
 local MasterItems = require("scripts/backend/master_items")
 local ProfileUtils = require("scripts/utilities/profile_utils")
 local WeaponTemplate = require("scripts/utilities/weapon/weapon_template")
@@ -1316,13 +1317,30 @@ function Backend.new(dependencies)
 	end
 
 	function backend:extract_weapon_mastery(mastery_id, gear_ids)
-		if mastery_id == nil or type(gear_ids) ~= "table" or #gear_ids ~= 1 then
-			return rejected("phase 2 requires exactly one mastery item")
+		if mastery_id == nil or type(gear_ids) ~= "table" or #gear_ids == 0 then
+			return rejected("mastery extraction requires at least one item")
 		end
 
 		return self:_mutate("crafting", "extract_weapon_mastery", mastery_id, gear_ids):next(function (result)
 			return summarize_extraction(result)
 		end)
+	end
+
+	function backend:project_mastery(mastery_data, added_xp)
+		if type(mastery_data) ~= "table" or type(Mastery) ~= "table" or type(Mastery.get_level_by_xp) ~= "function" then
+			return nil
+		end
+
+		local projected = {}
+
+		for key, value in pairs(mastery_data) do
+			projected[key] = value
+		end
+
+		projected.current_xp = (tonumber(mastery_data.current_xp) or 0) + (tonumber(added_xp) or 0)
+		projected.mastery_level = Mastery.get_level_by_xp(projected, projected.current_xp)
+
+		return projected
 	end
 
 	function backend:get_mastery_by_pattern(pattern_id)

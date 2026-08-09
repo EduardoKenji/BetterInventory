@@ -387,6 +387,48 @@ local function extraction_contains_gear_id(gear_ids, gear_id)
 	return false
 end
 
+local function extraction_contains_all(gear_ids, expected_ids)
+	local extracted = {}
+
+	for _, gear_id in ipairs(gear_ids or {}) do
+		extracted[gear_id] = true
+	end
+
+	for _, gear_id in ipairs(expected_ids or {}) do
+		if extracted[gear_id] ~= true then
+			return false
+		end
+	end
+
+	return true
+end
+
+local function remove_snapshot_gear(snapshot, gear_ids)
+	local gear = snapshot and snapshot.gear
+	local items = gear and gear.items
+
+	if type(items) ~= "table" then
+		return
+	end
+
+	local removed = {}
+
+	for _, gear_id in ipairs(gear_ids or {}) do
+		removed[gear_id] = true
+	end
+
+	local retained = {}
+
+	for _, item in ipairs(items) do
+		if not removed[item and item.gear_id] then
+			retained[#retained + 1] = item
+		end
+	end
+
+	gear.items = retained
+	gear.item_count = #retained
+end
+
 local function planner_config_signature(config)
 	return table.concat({
 		tostring(config.dump_stat),
@@ -1852,7 +1894,9 @@ function Controller.new(dependencies)
 			return false
 		end
 
-		if mastery_target_reached(current) then
+		if mastery_target_reached(current) and phase3.projected_xp_pending then
+			return self:_phase3_sync_projected(generation)
+		elseif mastery_target_reached(current) then
 			return self:_phase3_discard_deferred(generation, current)
 		end
 
@@ -1867,6 +1911,65 @@ function Controller.new(dependencies)
 		end
 
 		return self:_purchase_search_step(generation)
+	end
+
+	function self:_phase3_sync_projected(generation)
+		local phase3 = self._phase3
+		local backend = self._backend
+		local projected_data = phase3 and phase3.current_data
+		local projected = mastery_summary(projected_data)
+
+		if not phase3 or not phase3.running or not projected_data or not mastery_target_reached(projected) then
+			self:_phase3_stop("phase3_projected_mastery_unavailable", projected)
+
+			return false
+		end
+
+		if self._mastery and self._mastery.running or not backend or type(backend.claim_mastery_levels) ~= "function" then
+			return false
+		end
+
+		self._mastery = {
+			before = phase3.authoritative_current or projected,
+			expected_xp = projected.current_xp,
+			mastery_id = projected.mastery_id or phase3.target_candidate and phase3.target_candidate.mastery_id,
+			on_complete = function (current)
+				local active = self._phase3
+
+				self._mastery = nil
+
+				if not active or not active.running then
+					return
+				end
+
+				active.current = current
+				active.current_data = nil
+				active.projected_xp_pending = false
+
+				if active.defer_bad_processing and active.target_candidate then
+					self:_phase3_discard_deferred(generation, current)
+				else
+					self:_phase3_finish(current)
+				end
+			end,
+			phase3 = true,
+			running = true,
+		}
+		self._phase = "phase3_mastery_claim"
+
+		return self:_dispatch_operation(generation, "mastery_claim", function ()
+			-- The projected object already contains the extraction XP, matching the
+			-- vanilla sacrifice view's local update before it claims milestones.
+			return backend:claim_mastery_levels(projected_data, 0)
+		end, function ()
+			self._mastery_poll_elapsed = 0
+			self._mastery_poll_attempts = 0
+			self._mastery_poll_wait = mastery_poll_delay(0)
+			self._phase = "mastery_sync_wait"
+			operation_report("mastery_sync_started", {
+				expected_xp = projected.current_xp,
+			})
+		end)
 	end
 
 	function self:_phase3_start_fodder(generation, candidate)
@@ -1905,7 +2008,7 @@ function Controller.new(dependencies)
 				if active_phase3.defer_bad_processing and active_phase3.target_candidate then
 					self:_phase3_process_deferred(generation, current)
 				elseif active_phase3.target_candidate and mastery_target_reached(current) then
-					self:_phase3_finish(current)
+					self:_phase3_sync_projected(generation)
 				else
 					self:_purchase_search_step(generation)
 				end
@@ -1947,9 +2050,7 @@ function Controller.new(dependencies)
 			return false
 		end
 
-		return self:_dispatch_operation(generation, "phase3_mastery_check", function ()
-			return backend:get_mastery_by_pattern(target.mastery_id)
-		end, function (data)
+		local function handle_mastery(data)
 			local current = mastery_summary(data)
 			local candidate_is_target = phase3.target_candidate and candidate and phase3.target_candidate.gear_id == candidate.gear_id
 
@@ -1960,6 +2061,10 @@ function Controller.new(dependencies)
 			end
 
 			phase3.current = current
+			phase3.current_data = data
+			if not phase3.projected_xp_pending then
+				phase3.authoritative_current = current
+			end
 			operation_report("phase3_mastery_check_complete", {
 				candidate = candidate,
 				current = current,
@@ -1975,7 +2080,11 @@ function Controller.new(dependencies)
 			elseif phase3.defer_bad_processing and phase3.target_candidate then
 				self:_phase3_process_deferred(generation, current)
 			elseif phase3.target_candidate and mastery_target_reached(current) then
-				self:_phase3_finish(current)
+				if phase3.projected_xp_pending then
+					self:_phase3_sync_projected(generation)
+				else
+					self:_phase3_finish(current)
+				end
 			elseif candidate and not candidate_is_target and not mastery_target_reached(current) then
 				if setting("auto_crafter_best_candidate_fallback", false) == true then
 					local reserved = phase3.fallback_candidate
@@ -2004,7 +2113,17 @@ function Controller.new(dependencies)
 			else
 				self:_purchase_search_step(generation)
 			end
-		end)
+		end
+
+		if phase3.projected_xp_pending and phase3.current_data then
+			handle_mastery(phase3.current_data)
+
+			return true
+		end
+
+		return self:_dispatch_operation(generation, "phase3_mastery_check", function ()
+			return backend:get_mastery_by_pattern(target.mastery_id)
+		end, handle_mastery)
 	end
 
 	function self:_accept_exact_candidate(generation, candidate, source)
@@ -2541,6 +2660,40 @@ function Controller.new(dependencies)
 				amount = amount,
 				gear_id = mastery.gear_id,
 			})
+
+			local phase3 = mastery.phase3 and self._phase3 or nil
+			local project_mastery = backend and backend.project_mastery
+
+			if phase3 and type(project_mastery) == "function" then
+				local projected = project_mastery(backend, mastery.before_data, amount)
+				local current = mastery_summary(projected)
+
+				if not projected or not current or current.current_xp == nil or current.mastery_level == nil then
+					self:_operation_failed(generation, "local mastery projection failed after confirmed extraction")
+
+					return
+				end
+
+				remove_snapshot_gear(self._snapshot, { mastery.gear_id })
+				phase3.current = current
+				phase3.current_data = projected
+				phase3.projected_xp_pending = true
+				mastery.current = current
+				mastery.running = false
+				if tonumber(current.mastery_level) > (tonumber(mastery.before.mastery_level) or -1) then
+					operation_report("mastery_level_increased", {
+						current = current,
+						previous_level = mastery.before.mastery_level,
+					})
+				end
+
+				if type(mastery.on_complete) == "function" then
+					mastery.on_complete(current)
+				end
+
+				return
+			end
+
 			self:_refresh_after_operation(generation, function (snapshot)
 				if find_item(snapshot and snapshot.gear and snapshot.gear.items, mastery.gear_id) then
 					self:_operation_failed(generation, "sacrificed mastery item still exists in authoritative gear")
@@ -2587,9 +2740,7 @@ function Controller.new(dependencies)
 			return false
 		end
 
-		return self:_dispatch_operation(generation, "mastery_baseline", function ()
-			return backend:get_mastery_by_pattern(mastery.mastery_id)
-		end, function (data)
+		local function accept_baseline(data)
 			local before = mastery_summary(data)
 
 			if not before or before.current_xp == nil or before.mastery_level == nil then
@@ -2628,7 +2779,19 @@ function Controller.new(dependencies)
 			end
 
 			self:_mastery_after_refresh(generation, snapshot)
-		end)
+		end
+
+		local phase3 = mastery.phase3 and self._phase3 or nil
+
+		if phase3 and phase3.current_data then
+			accept_baseline(phase3.current_data)
+
+			return true
+		end
+
+		return self:_dispatch_operation(generation, "mastery_baseline", function ()
+			return backend:get_mastery_by_pattern(mastery.mastery_id)
+		end, accept_baseline)
 	end
 
 	function self:_mastery_after_refresh(generation, snapshot)
@@ -2675,6 +2838,17 @@ function Controller.new(dependencies)
 			operation_report("mastery_upgrade_complete", {
 				gear_id = mastery.gear_id,
 			})
+
+			if mastery.phase3 and type(backend.project_mastery) == "function" then
+				-- A resolved crafting mutation is sufficient to feed the immediately
+				-- following extraction. Avoid two inventory reads per fodder item;
+				-- the extraction result and final reconciliation remain authoritative.
+				item.rarity = REDEEMED_RARITY
+				self:_mastery_extract(generation)
+
+				return
+			end
+
 			self:_refresh_after_operation(generation, function (updated_snapshot)
 				local upgraded = find_item(updated_snapshot and updated_snapshot.gear and updated_snapshot.gear.items, mastery.gear_id)
 

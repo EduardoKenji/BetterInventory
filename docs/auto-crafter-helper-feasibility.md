@@ -1534,6 +1534,10 @@ Mastery synchronization uses a 50 ms initial poll with bounded exponential backo
 
 Active-run HUD status always ends with `Elapsed: N seconds`, rebuilt from the controller's monotonic run timer every frame. Post-mutation reconciliation is scoped for throughput: the frozen Brunt catalogue and local crafting-cost tables are retained, crafting/sacrifice operations refetch authoritative gear only, and each purchase reuses its already-refreshed/mutated wallet result before refetching gear. Full storefront probes remain reserved for view/catalogue discovery. This removes redundant network reads without weakening item postcondition checks or enabling parallel mutations.
 
+Quick Level Mastery and Darktide's native sacrifice view both demonstrate a faster mastery-control model: after `extract_weapon_mastery` confirms the consumed gear IDs and awarded XP, the client immediately adds that XP to its cached mastery record and derives the new level with `Mastery.get_level_by_xp`. Auto Crafter now follows that model during its fodder loop. A resolved rarity upgrade flows directly into extraction; a confirmed extraction removes the item from the local run snapshot and advances projected XP without a gear read, level claim, or mastery poll after every weapon. Mutations remain serial. Once projected mastery reaches 20, the controller submits milestone claims once and polls authoritative mastery/claimed-level convergence before allocating blessing points or finishing the weapon. This separates the fast, reliable local loop stop condition from the slower backend synchronization barrier that truly matters to final crafting.
+
+View-rendered status overlays use the same fixed 42 px top inset as the normal Morningstar HUD element. They must not derive a bottom offset from a view's scenegraph height, because vendor and inventory view roots use top-aligned widget coordinates.
+
 ## Bottom line for implementation agent
 
 All requested operations are reachable from current client service APIs. Build this as a guarded account-mutation state machine, not as UI click automation.

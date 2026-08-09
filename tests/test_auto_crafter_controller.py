@@ -267,6 +267,43 @@ def main() -> None:
 			assert(level_events == 1)
         end
 
+		-- Phase 3 uses the confirmed extraction award to advance a local mastery
+		-- projection immediately. It must not perform a gear refresh, claim, or
+		-- mastery poll for every fodder weapon.
+		do
+			local item = summarized_item("gear-fast-fodder", 2, 50)
+			local baseline = {mastery_id = "pattern-1", current_xp = 100, mastery_level = 5, claimed_level = 4, mastery_max_level = 20}
+			local backend = {extract_calls = 0, probe_calls = 0}
+			function backend:probe_snapshot() self.probe_calls = self.probe_calls + 1 return resolved(snapshot_with(nil)) end
+			function backend:extract_weapon_mastery(_, gear_ids)
+				self.extract_calls = self.extract_calls + 1
+				return resolved({amount = 50, gear_ids = {gear_ids[1]}})
+			end
+			function backend:project_mastery(data, amount)
+				return {mastery_id = data.mastery_id, current_xp = data.current_xp + amount, mastery_level = 6, claimed_level = data.claimed_level, mastery_max_level = 20}
+			end
+
+			local completed
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings({auto_crafter_level_mastery_20 = true}), reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = snapshot_with(item)
+			controller._phase3 = {running = true, current_data = baseline}
+			controller._mastery = {
+				before = {current_xp = 100, mastery_level = 5},
+				before_data = baseline,
+				gear_id = item.gear_id,
+				mastery_id = "pattern-1",
+				on_complete = function(current) completed = current end,
+				phase3 = true,
+				running = true,
+			}
+			assert(controller:_mastery_extract(0) == true)
+			assert(backend.extract_calls == 1)
+			assert(backend.probe_calls == 0)
+			assert(completed and completed.mastery_level == 6)
+			assert(controller:snapshot().phase3.projected_xp_pending == true)
+			assert(#controller:snapshot().data.gear.items == 0)
+		end
+
         -- Reaching mastery 20 before mutation must preserve candidate: no upgrade or sacrifice.
         do
             local item = summarized_item("gear-max", 0, 50)
