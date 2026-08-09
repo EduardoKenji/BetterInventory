@@ -641,8 +641,11 @@ local localization = {
 	auto_crafter_workflow_group = {
 		en = "Crafting workflow (planned options)",
 	},
+	auto_crafter_resuming_group = {
+		en = "Resuming item options",
+	},
 	auto_crafter_buy_until_target = {
-		en = "Buy until dump-stat target is found",
+		en = "Automatically buy until dump stat target weapon is found",
 	},
 	auto_crafter_buy_until_target_tooltip = {
 		en = "Uses the implemented serialized Brunt purchase search. Later phases will connect the remaining workflow options to the selected candidate.",
@@ -746,9 +749,6 @@ local localization = {
 	auto_crafter_trait_catalog_failed = {
 		en = "Discovery unavailable",
 	},
-	auto_crafter_output_group = {
-		en = "Final item handling",
-	},
 	auto_crafter_defer_bad_weapon_processing = {
 		en = "Only process bad weapons after finding perfect-rolled weapon",
 	},
@@ -756,7 +756,7 @@ local localization = {
 		en = "Keep purchased misses untouched until an exact target is confirmed. Then use them for mastery and discard any leftovers after mastery reaches level 20. Requires mastery-to-20.",
 	},
 	auto_crafter_favorite_result = {
-		en = "Favorite final weapon",
+		en = "Automatically favorite crafted weapon",
 	},
 	auto_crafter_favorite_result_tooltip = {
 		en = "Favorite an exact matching weapon after authoritative inventory verification.",
@@ -875,8 +875,8 @@ local localization = {
 	auto_crafter_panel_trait_targets = {
 		en = "Perk and blessing targets",
 	},
-	auto_crafter_panel_output = {
-		en = "Final item handling",
+	auto_crafter_panel_resuming = {
+		en = "Resuming item options",
 	},
 	auto_crafter_panel_saved_only = {
 		en = "Runtime scope",

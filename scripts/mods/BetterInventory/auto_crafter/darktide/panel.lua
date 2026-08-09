@@ -35,8 +35,8 @@ local CURRENCY_ICONS = {
 }
 local SECTION_PLANNER = "planner"
 local SECTION_WORKFLOW = "workflow"
+local SECTION_RESUMING = "resuming"
 local SECTION_TRAITS = "traits"
-local SECTION_OUTPUT = "output"
 local TRAIT_TARGET_PAIRS = {
 	auto_crafter_perk_1_target = "auto_crafter_perk_2_target",
 	auto_crafter_perk_2_target = "auto_crafter_perk_1_target",
@@ -770,8 +770,8 @@ function Panel.new(dependencies)
 		_section_collapsed = {
 			[SECTION_PLANNER] = false,
 			[SECTION_WORKFLOW] = false,
+			[SECTION_RESUMING] = false,
 			[SECTION_TRAITS] = true,
-			[SECTION_OUTPUT] = true,
 		},
 		_pending_offer = nil,
 		_pending_offer_attempts = 0,
@@ -1671,14 +1671,11 @@ function Panel.new(dependencies)
 		}))
 
 		if not self._section_collapsed[SECTION_WORKFLOW] then
+			add_checkbox("auto_crafter_favorite_result", "auto_crafter_favorite_result", "Automatically favorite crafted weapon", true)
 			table.insert(entries, self:_entry(localize("auto_crafter_panel_saved_only", "Runtime scope"), localize("auto_crafter_panel_not_connected", "Purchase, mastery, and final crafting run serially in the Morningstar."), {
 				variant = "status",
 			}))
-			add_checkbox("auto_crafter_buy_until_target", "auto_crafter_buy_until_target", "Buy until dump-stat target", true)
-			add_checkbox("auto_crafter_reuse_inventory_base", "auto_crafter_reuse_inventory_base", "Resume matching dump stat weapon from inventory", true)
-			add_checkbox("auto_crafter_include_favorite_inventory_bases", "auto_crafter_include_favorite_inventory_bases", "Include favorited inventory weapons when resuming", true, function()
-				return self:_setting("auto_crafter_reuse_inventory_base", true) == true
-			end, nil, 44)
+			add_checkbox("auto_crafter_buy_until_target", "auto_crafter_buy_until_target", "Automatically buy until dump stat target weapon is found", true, nil, nil, 44)
 			add_checkbox("auto_crafter_level_mastery_20", "auto_crafter_level_mastery_20", "Level weapon mastery to 20", true)
 			add_checkbox("auto_crafter_defer_bad_weapon_processing", "auto_crafter_defer_bad_weapon_processing", "Only process bad weapons after finding perfect-rolled weapon", true, function()
 				return self:_setting("auto_crafter_level_mastery_20", true) == true
@@ -1694,6 +1691,20 @@ function Panel.new(dependencies)
 			add_checkbox("auto_crafter_change_blessings", "auto_crafter_change_blessings", "Change blessings", true, function()
 				return self:_setting("auto_crafter_level_mastery_20", true) == true
 			end)
+		end
+
+		table.insert(entries, self:_entry(localize("auto_crafter_panel_resuming", "Resuming item options"), "", {
+			selectable = true,
+			section_header = true,
+			section_id = SECTION_RESUMING,
+			variant = "section",
+		}))
+
+		if not self._section_collapsed[SECTION_RESUMING] then
+			add_checkbox("auto_crafter_reuse_inventory_base", "auto_crafter_reuse_inventory_base", "Resume matching dump stat weapon from inventory", true, nil, nil, 44)
+			add_checkbox("auto_crafter_include_favorite_inventory_bases", "auto_crafter_include_favorite_inventory_bases", "Include favorited inventory weapons when resuming", true, function()
+				return self:_setting("auto_crafter_reuse_inventory_base", true) == true
+			end, nil, 44)
 		end
 
 		table.insert(entries, self:_entry(localize("auto_crafter_panel_trait_targets", "Perk and blessing targets"), "", {
@@ -1744,17 +1755,6 @@ function Panel.new(dependencies)
 					variant = "trait_grid",
 				}))
 			end
-		end
-
-		table.insert(entries, self:_entry(localize("auto_crafter_panel_output", "Final item handling"), "", {
-			selectable = true,
-			section_header = true,
-			section_id = SECTION_OUTPUT,
-			variant = "section",
-		}))
-
-		if not self._section_collapsed[SECTION_OUTPUT] then
-			add_checkbox("auto_crafter_favorite_result", "auto_crafter_favorite_result", "Favorite final weapon", true)
 		end
 
 		table.insert(entries, self:_entry(localize("auto_crafter_panel_preview", "> CLICK HERE TO CRAFT <"), "", {
@@ -2053,8 +2053,8 @@ function Panel.new(dependencies)
 		self._section_collapsed = {
 			[SECTION_PLANNER] = false,
 			[SECTION_WORKFLOW] = false,
+			[SECTION_RESUMING] = false,
 			[SECTION_TRAITS] = true,
-			[SECTION_OUTPUT] = true,
 		}
 		self._pending_offer = nil
 		self._pending_offer_attempts = 0

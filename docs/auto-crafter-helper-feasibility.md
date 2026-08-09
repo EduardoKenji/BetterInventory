@@ -486,10 +486,10 @@ Selected Brunt weapon type plus dump-stat key are mandatory inputs. All controls
 
 | Control | Type | Enabled when | Meaning |
 | --- | --- | --- | --- |
-| Buy until dump stat is 60 | checkbox | weapon and dump stat valid | Run serialized Brunt search; exact displayed value 60 is success. |
+| Automatically buy until dump stat target weapon is found | checkbox | weapon and dump stat valid | Run serialized Brunt search; exact displayed target value is success. |
 | Consecrate to Transcendent | checkbox | final candidate exists/planned | Raise final rarity one authoritative step at a time. |
 | Upgrade to 500 | checkbox | final candidate exists/planned | Empower when claimed mastery cap permits 500. |
-| Favorite final weapon | checkbox | always | Apply only after final verification. |
+| Automatically favorite crafted weapon | checkbox | always | Apply only after final verification. |
 | Level weapon mastery to 20 | checkbox | mastery family resolved | Buy/upgrade/sacrifice fodder until fast level-complete gate. |
 | Allocate mastery points | checkbox | level-to-20 checked | Claim/synchronize points, buy requested blessing tiers first, then apply chosen remainder policy. |
 | Change perks | checkbox | level-to-20 checked | Conservative product rule: mastery 20 guarantees Rank IV perk unlocks, so Auto Crafter never plans a lower-rank final perk. |
@@ -1135,7 +1135,7 @@ Suggested two-stage UI:
    - limits and destructive policies;
    - preflight estimate and confirmation.
 
-Expose the complete workflow policy in the self-owned scroll panel before later backend phases are connected. Split it into independently collapsible Search and limits, Crafting workflow, Perk and blessing targets, Final item handling, Advanced and safety, and Weapon selection sections. A later configuration popup may provide richer searchable perk/blessing catalogues, but every persisted toggle and target policy must remain visible and understandable from Brunt's Armoury.
+Expose the complete workflow policy in the self-owned scroll panel. Split it into independently collapsible Search and limits, Crafting workflow, Resuming item options, Perk and blessing targets, and Weapon selection sections. A later configuration popup may provide richer searchable perk/blessing catalogues, but every persisted toggle and target policy must remain visible and understandable from Brunt's Armoury.
 
 Use a managed `ViewElementGrid` or dedicated view element for clipping, scrolling, controller navigation, and lifecycle. Keep Auto Crafter state in controller, not widget content. Shared visual constants must live inside neutral UI package or vanilla-derived adapter, not BetterInventory feature modules.
 
@@ -1220,7 +1220,7 @@ Full source-level audit found and corrected several blockers that prior structur
 
 - Planner exposes selected price as `plan.target.price`; mutation loop incorrectly read `price_amount`, causing every Craft run to stop as `search_blocked` before its first POST. Controller now accepts the canonical planner field and behavior tests execute the public start path.
 - Each run now freezes selected raw Brunt offer, identity, family, and price once at Start. Later UI selection changes cannot retarget it, and closing Brunt cannot erase it; work continues in Morningstar without retaining a live view dependency. Planner-setting changes still close dispatch gate instead of silently changing a live run.
-- `Buy until dump-stat target` is no longer a misleading inert checkbox. Disabling it blocks purchase-search start explicitly.
+- `Automatically buy until dump stat target weapon is found` is connected directly to purchase-search start; disabling it blocks purchase dispatch explicitly.
 - Phase 2 previously fetched mastery after extraction, then passed both that post-extraction XP and returned sacrifice XP to `claim_levels_by_new_exp`; this could double-count claim calculations and set an unreachable poll target. Baseline is now read before mutation and reused for both claim and convergence arithmetic.
 - Purchased-item Damage tie-break no longer assumes a literal `damage` stat ID. It resolves the template's `loc_stats_display_damage_stat` identity, with bounded name fallback for `dps`/`damage`, so weapon-specific canonical IDs still support the best-candidate policy.
 - Default progress reporting is human-facing and coalesced: first purchase plus every tenth purchase, exact result, favorite confirmation, readable stop/failure reasons, and actual mastery level increases. Upgrade, sacrifice, claim, polling, unchanged mastery, and fodder bookkeeping remain panel/log state only. A mastery notification is emitted only after authoritative XP and claimed-level convergence reports `current.mastery_level > pre-sacrifice mastery_level`, and displays `current/max` (for example `Weapon mastery reached level 12/20`).

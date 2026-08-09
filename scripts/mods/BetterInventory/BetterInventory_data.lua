@@ -720,9 +720,8 @@ return {
 						setting_id = "auto_crafter_workflow_group",
 						type = "group",
 						sub_widgets = {
+							{ setting_id = "auto_crafter_favorite_result", tooltip = "auto_crafter_favorite_result_tooltip", type = "checkbox", default_value = true },
 							{ setting_id = "auto_crafter_buy_until_target", tooltip = "auto_crafter_buy_until_target_tooltip", type = "checkbox", default_value = true },
-							{ setting_id = "auto_crafter_reuse_inventory_base", tooltip = "auto_crafter_reuse_inventory_base_tooltip", type = "checkbox", default_value = true },
-							{ setting_id = "auto_crafter_include_favorite_inventory_bases", tooltip = "auto_crafter_include_favorite_inventory_bases_tooltip", type = "checkbox", default_value = true },
 							{ setting_id = "auto_crafter_level_mastery_20", tooltip = "auto_crafter_level_mastery_20_tooltip", type = "checkbox", default_value = true },
 							{ setting_id = "auto_crafter_defer_bad_weapon_processing", tooltip = "auto_crafter_defer_bad_weapon_processing_tooltip", type = "checkbox", default_value = true },
 							{ setting_id = "auto_crafter_allocate_mastery_points", tooltip = "auto_crafter_allocate_mastery_points_tooltip", type = "checkbox", default_value = true },
@@ -733,18 +732,19 @@ return {
 						},
 					},
 					{
+						setting_id = "auto_crafter_resuming_group",
+						type = "group",
+						sub_widgets = {
+							{ setting_id = "auto_crafter_reuse_inventory_base", tooltip = "auto_crafter_reuse_inventory_base_tooltip", type = "checkbox", default_value = true },
+							{ setting_id = "auto_crafter_include_favorite_inventory_bases", tooltip = "auto_crafter_include_favorite_inventory_bases_tooltip", type = "checkbox", default_value = true },
+						},
+					},
+					{
 						setting_id = "auto_crafter_trait_targets_group",
 						type = "group",
 						sub_widgets = {
 							{ setting_id = "auto_crafter_show_perk_grid", tooltip = "auto_crafter_show_perk_grid_tooltip", type = "checkbox", default_value = true },
 							{ setting_id = "auto_crafter_show_blessing_grid", tooltip = "auto_crafter_show_blessing_grid_tooltip", type = "checkbox", default_value = true },
-						},
-					},
-					{
-						setting_id = "auto_crafter_output_group",
-						type = "group",
-						sub_widgets = {
-							{ setting_id = "auto_crafter_favorite_result", tooltip = "auto_crafter_favorite_result_tooltip", type = "checkbox", default_value = true },
 						},
 					},
 				},
