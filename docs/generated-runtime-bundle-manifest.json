@@ -1,6 +1,6 @@
 {
   "archive_root": "BetterInventory",
-  "file_count": 54,
+  "file_count": 55,
   "files": [
     {
       "archive_path": "BetterInventory/BetterInventory.mod",
@@ -22,8 +22,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_auto_crafter.lua",
-      "bytes": 22566,
-      "sha256": "2ae4eb432179bc279141024e1503fbb52f949b94d606dc9e5d3e322b361054ec",
+      "bytes": 22978,
+      "sha256": "4ac412f1cc174b9a99badb5cef27e0852a9ad58b2915ddbcfd59e57046e21ced",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_auto_crafter.lua"
     },
     {
@@ -316,17 +316,23 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/panel.lua",
-      "bytes": 79623,
-      "sha256": "d321daf1498c73c3b7bbf66ab438e6ed8c6094553130e3e8620c6bb27e916a7d",
+      "bytes": 80421,
+      "sha256": "3a99b25ad05b27b61cc968908c2d3df33843d602fe6fa40dfa7ef803dd40b347",
       "source_path": "scripts/mods/BetterInventory/auto_crafter/darktide/panel.lua"
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/view_status_overlay.lua",
-      "bytes": 3478,
-      "sha256": "426e3d33b655887ba6cb9c5e69cf9cb1eb605ea92f38c64c853682e89c84295c",
+      "bytes": 3411,
+      "sha256": "b6e3b98c988b8d5a5ebead7549bbddcd3e3de8cca31dad23ac0a14f53b82f893",
       "source_path": "scripts/mods/BetterInventory/auto_crafter/darktide/view_status_overlay.lua"
+    },
+    {
+      "archive_path": "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/viewport_layout.lua",
+      "bytes": 2177,
+      "sha256": "33c117ded09e16982aee52575c2379df934866c61e08d70805f509d8c88f2a95",
+      "source_path": "scripts/mods/BetterInventory/auto_crafter/darktide/viewport_layout.lua"
     }
   ],
-  "runtime_tree_sha256": "92b3135dcc962630ca14aa346dbaa0df7d6fa175023aeadc9fc55c6992133ace",
+  "runtime_tree_sha256": "8d2eefca22679e14f70ce0de962409b81663b392922d5e4b7c1986844f1ed58f",
   "version": "2.0.0"
 }

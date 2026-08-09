@@ -488,6 +488,7 @@ function AutoCrafter.configure(dependencies)
 	local ok_backend, Backend = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/backend")
 	local ok_context, Context = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/context")
 	local ok_panel, Panel = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/panel")
+	local ok_viewport_layout, ViewportLayout = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/viewport_layout")
 	local ok_layout_content, LayoutContent = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_content")
 
 	if not ok_controller or type(Controller) ~= "table" or type(Controller.new) ~= "function" then
@@ -519,6 +520,11 @@ function AutoCrafter.configure(dependencies)
 		Panel = nil
 	end
 
+	if not ok_viewport_layout or type(ViewportLayout) ~= "table" or type(ViewportLayout.panel_pivot) ~= "function" then
+		log("error", "Auto Crafter Helper viewport layout unavailable; panel disabled.")
+		Panel = nil
+	end
+
 	local backend = Backend.new()
 	local context = Context.new({
 		is_brunt_view = dependencies.is_brunt_view,
@@ -526,6 +532,7 @@ function AutoCrafter.configure(dependencies)
 
 	panel = Panel and Panel.new({
 		ViewElementGrid = dependencies.ViewElementGrid,
+		viewport_layout = ViewportLayout,
 		compact_perk_label = function(entry, label)
 			if not ok_layout_content or type(LayoutContent) ~= "table" or type(LayoutContent.compact_weapon_perk_description) ~= "function" then
 				return label

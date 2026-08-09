@@ -1,5 +1,6 @@
 local UIRenderer = require("scripts/managers/ui/ui_renderer")
 local UIWidget = require("scripts/managers/ui/ui_widget")
+local ViewportLayout = require("scripts/mods/BetterInventory/auto_crafter/darktide/viewport_layout")
 
 local Overlay = {}
 
@@ -94,15 +95,12 @@ function Overlay.install(mod, view_classes)
 						view._auto_crafter_status_overlay = widget
 					end
 
-					local screen = view._ui_scenegraph.screen
-					local screen_width = screen and screen.size and tonumber(screen.size[1]) or 1920
-
 					widget.content.text = text
-					widget.offset[1] = math.max(0, (screen_width - 760) * 0.5)
-					-- The root screen scenegraph uses top-aligned widget coordinates in
-					-- these views. Mirroring the HUD element's 42 px inset keeps the
-					-- status at the top instead of pinning it near the bottom.
-					widget.offset[2] = 42
+					local resolution = rawget(_G, "RESOLUTION_LOOKUP") or {}
+					local x, y = ViewportLayout.centered_top_pivot(resolution.width, resolution.height, view._render_settings.scale or resolution.scale, 760, 112, 42)
+
+					widget.offset[1] = x
+					widget.offset[2] = y
 					widget.offset[3] = 0
 
 					local render_settings = view._render_settings

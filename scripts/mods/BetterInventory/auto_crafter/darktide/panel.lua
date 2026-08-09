@@ -5,8 +5,6 @@ local Panel = {}
 local PANEL_REFERENCE = "auto_crafter_diagnostic_panel"
 local PANEL_WIDTH = 445
 local PANEL_HEIGHT = 520
-local PANEL_X = 1380
-local PANEL_Y = 110
 local ROW_HEIGHT = 32
 local COMPACT_ROW_HEIGHT = 26
 local STATUS_ROW_HEIGHT = 50
@@ -759,6 +757,7 @@ function Panel.new(dependencies)
 		_compact_perk_label = dependencies.compact_perk_label,
 		_logger = dependencies.logger,
 		_ViewElementGrid = dependencies.ViewElementGrid,
+		_viewport_layout = dependencies.viewport_layout,
 		_panel = nil,
 		_view = nil,
 		_snapshot = nil,
@@ -781,6 +780,8 @@ function Panel.new(dependencies)
 		_layout_pending = false,
 		_layout_defer_frames = 0,
 		_trait_catalog_key = nil,
+		_pivot_x = nil,
+		_pivot_y = nil,
 	}
 
 	local function localize(setting_id, fallback)
@@ -1922,6 +1923,8 @@ function Panel.new(dependencies)
 	end
 
 	function self:update()
+		self:_update_pivot()
+
 		if not self._view or self._view._destroyed or type(self._get_selected_offer) ~= "function" then
 			return
 		end
@@ -1980,6 +1983,39 @@ function Panel.new(dependencies)
 			self._layout_pending = false
 			self:render()
 		end
+	end
+
+	function self:_update_pivot()
+		local panel = self._panel
+
+		if not panel or type(panel.set_pivot_offset) ~= "function" then
+			return false
+		end
+
+		local resolution = rawget(_G, "RESOLUTION_LOOKUP") or {}
+		local scale_ok, render_scale = safe_call(panel.render_scale, panel)
+
+		if not scale_ok then
+			render_scale = resolution.scale
+		end
+
+		local layout = self._viewport_layout
+
+		if type(layout) ~= "table" or type(layout.panel_pivot) ~= "function" then
+			return false
+		end
+
+		local x, y = layout.panel_pivot(resolution.width, resolution.height, render_scale, PANEL_WIDTH, PANEL_HEIGHT)
+
+		if x == self._pivot_x and y == self._pivot_y then
+			return false
+		end
+
+		panel:set_pivot_offset(x, y)
+		self._pivot_x = x
+		self._pivot_y = y
+
+		return true
 	end
 
 	function self:attach(view)
@@ -2052,9 +2088,8 @@ function Panel.new(dependencies)
 		self._layout_defer_frames = 0
 		self._trait_catalog_key = nil
 
-		if type(panel.set_pivot_offset) == "function" then
-			panel:set_pivot_offset(PANEL_X, PANEL_Y)
-		end
+
+		self:_update_pivot()
 
 		if type(panel.disable_input) == "function" then
 			panel:disable_input(false)
@@ -2092,6 +2127,8 @@ function Panel.new(dependencies)
 		self._layout_pending = false
 		self._layout_defer_frames = 0
 		self._trait_catalog_key = nil
+		self._pivot_x = nil
+		self._pivot_y = nil
 	end
 
 	return self

@@ -218,6 +218,8 @@ def validate_auto_crafter_mutation_boundaries() -> int:
         "local function offer_row_passes",
         "edge_padding = CONTENT_HORIZONTAL_PADDING * 2",
         "PANEL_WIDTH - CONTENT_HORIZONTAL_PADDING * 2",
+		"layout.panel_pivot",
+		"self:_update_pivot()",
     )
     missing_visual = [token for token in visual_contract if token not in panel_source]
 
