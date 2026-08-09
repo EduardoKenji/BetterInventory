@@ -74,7 +74,7 @@ def main() -> None:
             ["scripts/backend/master_items"] = {
                 get_item = function() return crowbar_item end,
                 get_store_item_instance = function() error("Brunt lootChoices has no rolled item id") end,
-                get_item_instance = function() return nil end,
+                get_item_instance = function(gear) return gear and gear.base_stats and gear or nil end,
             },
             ["scripts/utilities/weapon/weapon_template"] = {
                 weapon_template_from_item = function(item) return item and item._weapon_template end,
@@ -116,6 +116,24 @@ def main() -> None:
                 combined_wallets = function()
                     return promise({wallets = {{balance = {amount = 1000000, type = "credits"}}}})
                 end,
+                purchase_item = function()
+                    return promise({
+                        items = {
+                            {
+                                uuid = "crowbar_gear",
+                                name = "content/items/weapons/player/melee/crowbar_p1_m1",
+                                display_name = "Crowbar",
+                                parent_pattern = "crowbar_p1",
+                                rarity = 0,
+                                _weapon_template = crowbar_template,
+                                base_stats = {
+                                    {name = "crowbar_p1_m1_dps_stat", value = 0.78},
+                                    {name = "crowbar_p1_m1_defence_stat", value = 0.60},
+                                },
+                            },
+                        },
+                    })
+                end,
             },
             gear = {
                 fetch_gear = function() return promise({}) end,
@@ -134,6 +152,12 @@ def main() -> None:
     stat_keys = {offer.base_stats[index].name: offer.base_stats[index].display_name_key for index in range(1, 6)}
     assert stat_keys["crowbar_p1_m1_dps_stat"] == "loc_stats_display_damage_stat"
     assert stat_keys["crowbar_p1_m1_defence_stat"] == "loc_stats_display_defense_stat"
+
+    purchase_promise = backend.purchase_offer(backend, lua.table_from({"offerId": "crowbar_offer"}))
+    assert purchase_promise.failure is None
+    purchased = purchase_promise.value["items"][1]
+    assert purchased.damage == 78
+    assert purchased.base_stats["crowbar_p1_m1_dps_stat"] == 78
 
     planner = lua.execute(PLANNER_PATH.read_text(encoding="utf-8"))
 

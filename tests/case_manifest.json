@@ -5,10 +5,18 @@
     {"name": "derived_content_reset", "risk": "high", "start_line": 74, "end_line": 86}
   ],
   "test_auto_crafter_stats.py": [
-    {"name": "template_stat_catalog", "risk": "critical", "start_line": 127, "end_line": 136},
-    {"name": "indexed_manual_resolution", "risk": "critical", "start_line": 138, "end_line": 168},
-    {"name": "manual_selector_and_shortcut_grid", "risk": "critical", "start_line": 170, "end_line": 210},
-    {"name": "localized_display_labels", "risk": "high", "start_line": 211, "end_line": 226}
+    {"name": "template_stat_catalog_and_damage_identity", "risk": "critical", "start_line": 145, "end_line": 160},
+    {"name": "indexed_manual_resolution", "risk": "critical", "start_line": 162, "end_line": 192},
+    {"name": "manual_selector_and_shortcut_grid", "risk": "critical", "start_line": 194, "end_line": 235},
+    {"name": "localized_display_labels", "risk": "high", "start_line": 236, "end_line": 250}
+  ],
+  "test_auto_crafter_controller.py": [
+    {"name": "presacrifice_mastery_baseline_and_convergence", "risk": "critical", "start_line": 176, "end_line": 240},
+    {"name": "already_max_mastery_preserves_item", "risk": "critical", "start_line": 242, "end_line": 260},
+    {"name": "frozen_target_revalidation", "risk": "critical", "start_line": 262, "end_line": 277},
+    {"name": "phase3_live_best_fallback", "risk": "critical", "start_line": 279, "end_line": 305},
+    {"name": "configuration_change_closes_dispatch", "risk": "critical", "start_line": 307, "end_line": 323},
+    {"name": "explicit_stop_preserves_inflight_boundary", "risk": "critical", "start_line": 325, "end_line": 339}
   ],
   "test_contracts.py": [
     {"name": "guarded_lookup", "risk": "high", "start_line": 22, "end_line": 40},

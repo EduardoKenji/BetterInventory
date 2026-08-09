@@ -1,0 +1,347 @@
+from pathlib import Path
+
+from lupa import LuaRuntime
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+RUNTIME_ROOT = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory"
+CONTROLLER_PATH = RUNTIME_ROOT / "auto_crafter" / "core" / "controller.lua"
+PLANNER_PATH = RUNTIME_ROOT / "auto_crafter" / "core" / "planner.lua"
+
+
+def main() -> None:
+    lua = LuaRuntime(unpack_returned_tuples=True)
+    lua.execute(
+        r'''
+        package.preload["scripts/foundation/utilities/promise"] = function() return {} end
+
+        function resolved(value)
+            local promise = {value = value}
+
+            function promise:next(callback)
+                local ok, result = pcall(callback, self.value)
+
+                if not ok then
+                    return rejected(result)
+                end
+
+                if type(result) == "table" and type(result.next) == "function" then
+                    return result
+                end
+
+                return resolved(result)
+            end
+
+            function promise:catch(_)
+                return self
+            end
+
+            return promise
+        end
+
+        function rejected(error_value)
+            local promise = {error_value = error_value}
+
+            function promise:next(_)
+                return self
+            end
+
+            function promise:catch(callback)
+                return resolved(callback(self.error_value))
+            end
+
+            return promise
+        end
+
+        function pending()
+            local promise = {}
+
+            function promise:next(callback)
+                self.next_callback = callback
+                return self
+            end
+
+            function promise:catch(callback)
+                self.catch_callback = callback
+                return self
+            end
+
+            return promise
+        end
+
+        function base_settings(overrides)
+            local values = {
+                auto_crafter_enable = true,
+                auto_crafter_allow_mutations = true,
+                auto_crafter_buy_until_target = true,
+                auto_crafter_target_dump_stat = "damage_stat",
+                auto_crafter_dump_stat_target = 60,
+                auto_crafter_cap_by_dockets = false,
+                auto_crafter_cap_by_max_purchases = true,
+                auto_crafter_max_purchases = 1,
+                auto_crafter_best_candidate_fallback = false,
+                auto_crafter_level_mastery_20 = false,
+                auto_crafter_request_mode = "sequential",
+            }
+
+            for key, value in pairs(overrides or {}) do
+                values[key] = value
+            end
+
+            return {
+                values = values,
+                get = function(self, key) return self.values[key] end,
+                set = function(self, key, value)
+                    self.values[key] = value
+
+                    if self.switch_offer_on_set then
+                        CurrentOffer = self.switch_offer_on_set
+                        self.switch_offer_on_set = nil
+                    end
+
+                    return true
+                end,
+            }
+        end
+
+        function target_offer()
+            return {
+                offer_id = "offer-1",
+                master_id = "weapon-1",
+                parent_pattern = "pattern-1",
+                display_name = "Test Weapon",
+                price_amount = 100,
+                price_type = "credits",
+                base_stats = {
+                    {name = "damage_stat", display_name_key = "loc_stats_display_damage_stat"},
+                    {name = "mobility_stat", display_name_key = "loc_stats_display_mobility_stat"},
+                },
+            }
+        end
+
+        function raw_offer(master_id)
+            return {offerId = "offer-1", masterId = master_id or "weapon-1"}
+        end
+
+        function snapshot_with(item)
+            local items = {}
+
+            if item then
+                items[1] = item
+            end
+
+            return {
+                store = {available = true, offer_count = 1, offers = {target_offer()}},
+                wallets = {currencies = {credits = {amount = 10000}}},
+                gear = {available = true, item_count = #items, items = items},
+            }
+        end
+
+        function summarized_item(gear_id, rarity, dump_stat)
+            return {
+                available = true,
+                gear_id = gear_id,
+                rarity = rarity,
+                mastery_id = "pattern-1",
+                parent_pattern = "pattern-1",
+                base_stats = {damage_stat = dump_stat or 50},
+                damage = dump_stat or 50,
+                display_name = "Test Weapon",
+            }
+        end
+
+        function context()
+            return {
+                is_valid_brunt_view = function() return true end,
+                is_runtime_valid = function() return true end,
+            }
+        end
+
+        function reports()
+            return {
+                events = {},
+                emit = function(self, kind, payload)
+                    self.events[#self.events + 1] = {kind = kind, payload = payload}
+                end,
+            }
+        end
+        '''
+    )
+    planner = lua.execute(PLANNER_PATH.read_text(encoding="utf-8"))
+    controller_module = lua.execute(CONTROLLER_PATH.read_text(encoding="utf-8"))
+    lua.globals().Planner = planner
+    lua.globals().Controller = controller_module
+    lua.execute(
+        r'''
+        -- Phase 2 must capture mastery before sacrifice, claim from that baseline,
+        -- verify deletion, and converge against baseline + awarded XP exactly once.
+        do
+            local state = {item = summarized_item("gear-1", 1, 50), extracted = false, claimed = false, baseline_reads = 0}
+            local backend = {extract_calls = 0, claim_calls = 0, upgrade_calls = 0}
+
+            function backend:probe_snapshot()
+                if state.extracted then
+                    return resolved(snapshot_with(nil))
+                end
+
+                return resolved(snapshot_with(state.item))
+            end
+
+            function backend:get_mastery_by_pattern(_)
+                if state.claimed then
+                    return resolved({mastery_id = "pattern-1", current_xp = 160, mastery_level = 6, claimed_level = 5, mastery_max_level = 20})
+                end
+
+                state.baseline_reads = state.baseline_reads + 1
+                local current_xp = state.baseline_reads == 1 and 100 or 110
+
+                return resolved({mastery_id = "pattern-1", current_xp = current_xp, mastery_level = 5, claimed_level = 4, mastery_max_level = 20})
+            end
+
+            function backend:extract_weapon_mastery(_, gear_ids)
+                self.extract_calls = self.extract_calls + 1
+                assert(gear_ids[1] == "gear-1")
+                state.extracted = true
+                return resolved({amount = 50, gear_ids = {"gear-1"}})
+            end
+
+            function backend:claim_mastery_levels(before, amount)
+                self.claim_calls = self.claim_calls + 1
+                self.claim_before_xp = before.current_xp
+                self.claim_added_xp = amount
+                state.claimed = true
+                return resolved({claimed_level = 5})
+            end
+
+            function backend:upgrade_weapon_rarity(_)
+                self.upgrade_calls = self.upgrade_calls + 1
+                state.item.rarity = 2
+                return resolved({})
+            end
+
+            local settings = base_settings()
+            local reporter = reports()
+            CurrentOffer = raw_offer()
+            local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = settings, reporter = reporter, get_selected_offer = function() return CurrentOffer end})
+            controller._snapshot = snapshot_with(state.item)
+            controller._active_view = {}
+            controller._view_is_valid = true
+
+            assert(controller:start_mastery_operation(state.item) == true)
+            assert(backend.extract_calls == 1, "extract calls " .. tostring(backend.extract_calls))
+            assert(backend.claim_calls == 1, "claim calls " .. tostring(backend.claim_calls) .. " phase " .. tostring(controller:snapshot().phase) .. " error " .. tostring(controller:snapshot().last_error))
+            assert(backend.upgrade_calls == 1)
+            assert(state.baseline_reads == 2)
+            assert(backend.claim_before_xp == 110)
+            assert(backend.claim_added_xp == 50)
+            assert(controller:snapshot().mastery.expected_xp == 160)
+            controller:update(1)
+            assert(controller:snapshot().phase == "mastery_complete")
+        end
+
+        -- Reaching mastery 20 before mutation must preserve candidate: no upgrade or sacrifice.
+        do
+            local item = summarized_item("gear-max", 0, 50)
+            local backend = {extract_calls = 0, upgrade_calls = 0}
+            function backend:probe_snapshot() return resolved(snapshot_with(item)) end
+            function backend:get_mastery_by_pattern(_) return resolved({mastery_id = "pattern-1", current_xp = 999, mastery_level = 20, claimed_level = 19, mastery_max_level = 20}) end
+            function backend:extract_weapon_mastery(_, _) self.extract_calls = self.extract_calls + 1 return resolved({}) end
+            function backend:upgrade_weapon_rarity(_) self.upgrade_calls = self.upgrade_calls + 1 return resolved({}) end
+
+            CurrentOffer = raw_offer()
+            local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings(), reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+            controller._snapshot = snapshot_with(item)
+            controller._active_view = {}
+            controller._view_is_valid = true
+            assert(controller:start_mastery_operation(item) == true)
+            assert(backend.extract_calls == 0)
+            assert(backend.upgrade_calls == 0)
+            assert(controller:snapshot().phase == "mastery_already_complete")
+        end
+
+        -- Selected Brunt target is frozen. A changed native selection stops before purchase POST.
+        do
+            local backend = {purchase_calls = 0}
+            function backend:purchase_offer(_) self.purchase_calls = self.purchase_calls + 1 return resolved({}) end
+            local settings = base_settings({auto_crafter_target_dump_stat = "damage"})
+            settings.switch_offer_on_set = raw_offer("weapon-2")
+            CurrentOffer = raw_offer()
+            local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = settings, reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+            controller._snapshot = snapshot_with(nil)
+            controller._active_view = {}
+            controller._view_is_valid = true
+            local started = controller:start_purchase_search()
+            assert(started == false, "mismatch start " .. tostring(started))
+            assert(backend.purchase_calls == 0, "mismatch purchase calls " .. tostring(backend.purchase_calls))
+            assert(controller:snapshot().phase == "search_selected_offer_changed", "mismatch phase " .. tostring(controller:snapshot().phase))
+        end
+
+        -- Phase 3 fallback reserves one live best candidate instead of sacrificing it.
+        do
+            local state = {item = nil}
+            local backend = {purchase_calls = 0, extract_calls = 0}
+            function backend:purchase_offer(_)
+                self.purchase_calls = self.purchase_calls + 1
+                state.item = summarized_item("gear-best", 0, 55)
+                return resolved({items = {state.item}})
+            end
+            function backend:probe_snapshot() return resolved(snapshot_with(state.item)) end
+            function backend:get_mastery_by_pattern(_) return resolved({mastery_id = "pattern-1", current_xp = 100, mastery_level = 5, claimed_level = 4, mastery_max_level = 20}) end
+            function backend:extract_weapon_mastery(_, _) self.extract_calls = self.extract_calls + 1 return resolved({}) end
+
+            local settings = base_settings({auto_crafter_level_mastery_20 = true, auto_crafter_best_candidate_fallback = true})
+            CurrentOffer = raw_offer()
+            local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = settings, reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+            controller._snapshot = snapshot_with(nil)
+            controller._active_view = {}
+            controller._view_is_valid = true
+            assert(controller:start_purchase_search() == true)
+            local result = controller:snapshot()
+            assert(backend.purchase_calls == 1)
+            assert(backend.extract_calls == 0)
+            assert(result.search.running == false)
+            assert(result.search.result.gear_id == "gear-best")
+            assert(result.phase == "search_max_purchases")
+        end
+
+        -- Configuration changes close dispatch gate while current request remains unsettled.
+        do
+            local backend = {purchase_promise = pending()}
+            function backend:purchase_offer(_) return self.purchase_promise end
+            local settings = base_settings()
+            CurrentOffer = raw_offer()
+            local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = settings, reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+            controller._snapshot = snapshot_with(nil)
+            controller._active_view = {}
+            controller._view_is_valid = true
+            assert(controller:start_purchase_search() == true)
+            assert(controller:snapshot().search.running == true)
+            settings.values.auto_crafter_dump_stat_target = 59
+            assert(controller:on_setting_changed("auto_crafter_dump_stat_target") == true)
+            assert(controller:snapshot().search.running == false)
+            assert(controller:snapshot().phase == "run_configuration_changed")
+        end
+
+        -- Explicit Stop control closes dispatch without attempting to cancel an account mutation.
+        do
+            local backend = {purchase_promise = pending()}
+            function backend:purchase_offer(_) return self.purchase_promise end
+            CurrentOffer = raw_offer()
+            local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings(), reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+            controller._snapshot = snapshot_with(nil)
+            controller._active_view = {}
+            controller._view_is_valid = true
+            assert(controller:start_purchase_search() == true)
+            assert(controller:stop_active_run() == true)
+            assert(controller:snapshot().search.running == false)
+            assert(controller:snapshot().operation_inflight == true)
+            assert(controller:snapshot().phase == "user_stopped")
+        end
+
+        print("Auto Crafter controller Phase 2/3 behavior tests passed.")
+        '''
+    )
+
+
+if __name__ == "__main__":
+    main()

@@ -277,6 +277,19 @@ local function item_stat_value(item, stat_name)
 	return nil
 end
 
+local function damage_stat_value(stat_values, stat_labels)
+	for name, value in pairs(stat_values or {}) do
+		local normalized_name = string.lower(tostring(name))
+		local display_name_key = stat_labels and stat_labels[name]
+
+		if display_name_key == "loc_stats_display_damage_stat" or string.find(normalized_name, "dps", 1, true) or string.find(normalized_name, "damage", 1, true) then
+			return value
+		end
+	end
+
+	return nil
+end
+
 summarize_base_stats = function(source)
 	local base_stats = safe_member(source, "base_stats") or safe_member(source, "baseStats")
 
@@ -539,7 +552,7 @@ local function summarize_item(gear, gear_id)
 		base_item_level = tonumber(safe_member(item, "baseItemLevel")),
 		base_stat_labels = base_stat_labels,
 		base_stats = stat_values,
-		damage = item_stat_value(item, "damage"),
+		damage = damage_stat_value(stat_values, base_stat_labels) or item_stat_value(item, "damage"),
 		display_name = display_name or safe_member(item, "name"),
 		gear_id = gear_id,
 		item_type = safe_member(item, "item_type"),

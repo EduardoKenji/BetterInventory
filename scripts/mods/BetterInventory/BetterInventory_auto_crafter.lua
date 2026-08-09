@@ -118,6 +118,12 @@ local function format_candidate(candidate)
 	)
 end
 
+local function progress_milestone(value, interval)
+	local count = tonumber(value) or 0
+
+	return count == 1 or count > 0 and count % interval == 0
+end
+
 local function reporter(ui_panel)
 	return {
 		emit = function(_, kind, payload)
@@ -185,7 +191,10 @@ local function reporter(ui_panel)
 				end
 
 				local search = payload and payload.search or {}
-				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), string.format("Purchase %s/%s | %s | spent %s", tostring(search.purchases or "?"), tostring(search.max_purchases or "?"), format_candidate(payload and payload.candidate), tostring(search.spent or "?")))
+
+				if progress_milestone(search.purchases, 10) then
+					notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), string.format("Purchase %s/%s | %s | spent %s", tostring(search.purchases or "?"), tostring(search.max_purchases or "?"), format_candidate(payload and payload.candidate), tostring(search.spent or "?")))
+				end
 			elseif kind == "purchase_search_complete" then
 				if ui_panel then
 					ui_panel:set_phase("search_complete")
@@ -203,14 +212,16 @@ local function reporter(ui_panel)
 					ui_panel:set_phase("phase3_fodder_preflight")
 				end
 
-				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Phase 3: preparing one non-target weapon as mastery fodder.")
 			elseif kind == "phase3_fodder_complete" then
 				if ui_panel then
 					ui_panel:set_phase("phase3_fodder_complete")
 				end
 
 				local fodder_payload = payload or {}
-				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Phase 3: fodder sacrificed; mastery sync converged (" .. tostring(fodder_payload.fodder_count or "?") .. ").")
+
+				if progress_milestone(fodder_payload.fodder_count, 5) then
+					notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Phase 3: fodder sacrificed; mastery sync converged (" .. tostring(fodder_payload.fodder_count or "?") .. ").")
+				end
 			elseif kind == "phase3_complete" then
 				if ui_panel then
 					ui_panel:set_phase("phase3_complete")
@@ -343,8 +354,8 @@ function AutoCrafter.configure(dependencies)
 		start_purchase_search = function()
 			return controller and controller:start_purchase_search() or false
 		end,
-		start_mastery_operation = function(candidate)
-			return controller and controller:start_mastery_operation(candidate) or false
+		stop_active_run = function()
+			return controller and controller:stop_active_run() or false
 		end,
 		localize = function(setting_id)
 			return localize(setting_id, setting_id)

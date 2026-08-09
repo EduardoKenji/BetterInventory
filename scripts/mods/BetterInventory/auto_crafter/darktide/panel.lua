@@ -607,7 +607,7 @@ function Panel.new(dependencies)
 		_select_offer = dependencies.select_offer,
 		_preview_plan = dependencies.preview_plan,
 		_start_purchase_search = dependencies.start_purchase_search,
-		_start_mastery_operation = dependencies.start_mastery_operation,
+		_stop_active_run = dependencies.stop_active_run,
 		_settings = dependencies.settings or {},
 		_localize = dependencies.localize,
 		_logger = dependencies.logger,
@@ -1016,16 +1016,6 @@ function Panel.new(dependencies)
 		return self:_setting("auto_crafter_allow_mutations", false) == true and localize("auto_crafter_panel_mutations_on", "SERIAL MUTATIONS ON") or localize("auto_crafter_panel_mutations_off", "MUTATIONS OFF")
 	end
 
-	function self:_last_candidate_text()
-		local candidate = self._controller_state and self._controller_state.last_purchased
-
-		if not candidate then
-			return localize("auto_crafter_panel_phase_2_waiting", "No purchased candidate")
-		end
-
-		return string.format("%s | %s", value_text(candidate.display_name, candidate.mastery_id or "weapon"), value_text(candidate.gear_id, "gear ?"))
-	end
-
 	function self:_split_offers(offers)
 		local grouped = {
 			[SECTION_MELEE] = {},
@@ -1283,7 +1273,7 @@ function Panel.new(dependencies)
 		}))
 
 		if not self._section_collapsed[SECTION_WORKFLOW] then
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_saved_only", "Saved configuration"), localize("auto_crafter_panel_not_connected", "Later phases will connect these options."), {
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_saved_only", "Runtime scope"), localize("auto_crafter_panel_not_connected", "Purchase search and mastery loop are connected; remaining options are saved plans."), {
 				variant = "status",
 			}))
 			add_checkbox("auto_crafter_buy_until_target", "auto_crafter_buy_until_target", "Buy until dump-stat target", true)
@@ -1377,23 +1367,31 @@ function Panel.new(dependencies)
 				widget.content.detail = enabled and localize("auto_crafter_panel_serial_start", "SERIAL; click to start") or localize("auto_crafter_panel_read_only_preview", "Read-only preview")
 			end,
 		}))
-		table.insert(entries, self:_entry(localize("auto_crafter_panel_phase_2", "Redeem + sacrifice one"), self:_last_candidate_text(), {
-			enabled = self._controller_state and self._controller_state.last_purchased ~= nil and self:_setting("auto_crafter_allow_mutations", false) == true,
+		local function run_is_active()
+			local state = self._controller_state or {}
+			local search = state.search
+			local phase3 = state.phase3
+			local mastery = state.mastery
+
+			return search and search.running == true or phase3 and phase3.running == true or mastery and mastery.running == true
+		end
+		local stop_enabled = run_is_active()
+		table.insert(entries, self:_entry(localize("auto_crafter_panel_stop", "Stop active run"), localize("auto_crafter_panel_stop_detail", "Stops after any in-flight request settles"), {
+			enabled = stop_enabled,
 			selectable = true,
 			variant = "action",
 			action = function()
-				if type(self._start_mastery_operation) == "function" then
-					self._start_mastery_operation()
+				if type(self._stop_active_run) == "function" then
+					self._stop_active_run()
 				end
 			end,
 			refresh = function(widget)
-				local enabled = self._controller_state and self._controller_state.last_purchased ~= nil and self:_setting("auto_crafter_allow_mutations", false) == true
+				local enabled = run_is_active()
+
 				widget.content.enabled = enabled
 				widget.content.hotspot.disabled = not enabled
-				widget.content.detail = self:_last_candidate_text()
 			end,
 		}))
-
 		table.insert(entries, self:_entry(localize("auto_crafter_panel_offer_list", "Weapon selection"), tostring(#offers)))
 
 		for _, section_id in ipairs({ SECTION_MELEE, SECTION_RANGED }) do

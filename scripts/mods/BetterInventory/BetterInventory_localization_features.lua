@@ -851,6 +851,12 @@ local localization = {
 	auto_crafter_panel_phase_2_waiting = {
 		en = "No purchased candidate",
 	},
+	auto_crafter_panel_stop = {
+		en = "Stop active run",
+	},
+	auto_crafter_panel_stop_detail = {
+		en = "Stops after any in-flight request settles",
+	},
 	auto_crafter_panel_mutations_on = {
 		en = "SERIAL MUTATIONS ON",
 	},
@@ -873,10 +879,10 @@ local localization = {
 		en = "Final item handling",
 	},
 	auto_crafter_panel_saved_only = {
-		en = "Saved configuration",
+		en = "Runtime scope",
 	},
 	auto_crafter_panel_not_connected = {
-		en = "Later phases will connect these options. Current Phase 1/2 actions remain separately guarded.",
+		en = "Purchase search and mastery loop are connected; remaining options are saved plans.",
 	},
 	auto_crafter_panel_option_unavailable = {
 		en = "Enable prerequisite options",

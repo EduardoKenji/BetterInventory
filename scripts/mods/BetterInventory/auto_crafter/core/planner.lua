@@ -329,7 +329,7 @@ function Planner.build(snapshot, config)
 	local mode_note
 
 	if normalized.request_mode == "parallel_reads" then
-		mode_note = "parallel reads selected; mutations remain unavailable"
+		mode_note = "parallel-read preference saved; current reads and mutations remain serialized"
 	elseif normalized.request_mode == "experimental_parallel_mutations" then
 		mode_note = "experimental mutation mode selected; blocked in Phase 1B"
 	else

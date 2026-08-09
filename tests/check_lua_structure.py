@@ -213,6 +213,7 @@ def validate_auto_crafter_mutation_boundaries() -> int:
         "selected_stat_index",
         "localized_game_text",
         "local function action_button_passes",
+        "auto_crafter_panel_stop",
         "local function offer_row_passes",
         "edge_padding = CONTENT_HORIZONTAL_PADDING * 2",
         "PANEL_WIDTH - CONTENT_HORIZONTAL_PADDING * 2",
@@ -222,8 +223,10 @@ def validate_auto_crafter_mutation_boundaries() -> int:
     if missing_visual:
         raise SystemExit("Auto Crafter visual contract missing: " + ", ".join(missing_visual))
 
+    if 'localize("auto_crafter_panel_phase_2"' in panel_source:
+        raise SystemExit("Auto Crafter panel must not expose the destructive one-item Phase 2 proof action")
+
     future_ui_settings = (
-        "auto_crafter_buy_until_target",
         "auto_crafter_allocate_mastery_points",
         "auto_crafter_consecrate_transcendent",
         "auto_crafter_upgrade_expertise_500",
@@ -238,6 +241,7 @@ def validate_auto_crafter_mutation_boundaries() -> int:
     )
     data_source = (RUNTIME_ROOT / "BetterInventory_data.lua").read_text(encoding="utf-8")
     controller_source = (auto_crafter_root / "core" / "controller.lua").read_text(encoding="utf-8")
+    host_source = (RUNTIME_ROOT / "BetterInventory_auto_crafter.lua").read_text(encoding="utf-8")
     missing_future_ui = [
         token for token in future_ui_settings if token not in data_source or token not in panel_source
     ]
@@ -287,16 +291,30 @@ def validate_auto_crafter_mutation_boundaries() -> int:
         "_schedule_catalog",
         "catalog_discovery_complete",
         "auto_crafter_level_mastery_20",
+        "auto_crafter_buy_until_target",
         "self._planner.default_dump_stat(plan)",
         "target_changed or config.dump_stat == \"auto\"",
         "_phase3_check_mastery",
         "_phase3_start_fodder",
         "phase3_complete",
+        "selected_offer_matches_target",
+        "mastery_baseline",
+        "mastery.before.current_xp + amount",
+        "mastery.before_data, mastery.amount",
+        "sacrificed mastery item still exists in authoritative gear",
+        "run_configuration_changed",
+        "selected_weapon_changed",
+        "fallback_candidate",
+        "function self:stop_active_run",
+        "mastery_target_reached(current) or current.current_xp",
     )
     missing_controller = [token for token in controller_contract if token not in controller_source]
 
     if missing_controller:
         raise SystemExit("Auto Crafter controller guard contract missing: " + ", ".join(missing_controller))
+
+    if "progress_milestone" not in host_source:
+        raise SystemExit("Auto Crafter progress notifications must remain milestone-coalesced")
 
     trait_catalog_contract = (
         "_trait_catalog_text",

@@ -81,6 +81,22 @@ local function selected_offer_ids(raw_offer)
 	return selected_offer
 end
 
+local function selected_offer_matches_target(selected_offer, target)
+	if not selected_offer or not target then
+		return false
+	end
+
+	if selected_offer.master_id ~= nil and target.master_id ~= nil and selected_offer.master_id ~= target.master_id then
+		return false
+	end
+
+	if selected_offer.offer_id ~= nil and target.offer_id ~= nil and selected_offer.offer_id ~= target.offer_id then
+		return false
+	end
+
+	return selected_offer.master_id ~= nil and target.master_id ~= nil or selected_offer.offer_id ~= nil and target.offer_id ~= nil
+end
+
 local function find_item(items, gear_id)
 	for _, item in ipairs(items or {}) do
 		if item and item.gear_id == gear_id then
@@ -768,6 +784,53 @@ function Controller.new(dependencies)
 		})
 	end
 
+	function self:_stop_active_run(reason)
+		local search = self._search
+		local phase3 = self._phase3
+		local mastery = self._mastery
+		local active = search and search.running or phase3 and phase3.running or mastery and mastery.running
+
+		if not active then
+			return false
+		end
+
+		invalidate_generation()
+
+		if search then
+			search.running = false
+
+			if phase3 and phase3.target_candidate then
+				search.result = phase3.target_candidate
+			end
+		end
+
+		if phase3 then
+			phase3.running = false
+			phase3.stop_reason = reason
+		end
+
+		if mastery then
+			mastery.running = false
+		end
+
+		self._phase = reason
+		operation_report("purchase_search_stopped", {
+			candidate = phase3 and phase3.target_candidate or search and search.result,
+			reason = reason,
+			search = search,
+		})
+
+		if phase3 then
+			operation_report("phase3_stopped", {
+				candidate = phase3.target_candidate,
+				reason = reason,
+				search = search,
+			})
+		end
+
+		return true
+	end
+
 	function self:_candidate_is_better(candidate, current)
 		if not candidate then
 			return false
@@ -948,7 +1011,30 @@ function Controller.new(dependencies)
 			if phase3.target_candidate and mastery_target_reached(current) then
 				self:_phase3_finish(current)
 			elseif candidate and not candidate_is_target and not mastery_target_reached(current) then
-				self:_phase3_start_fodder(generation, candidate)
+				if setting("auto_crafter_best_candidate_fallback", false) == true then
+					local reserved = phase3.fallback_candidate
+
+					if not reserved then
+						phase3.fallback_candidate = candidate
+						self:_purchase_search_step(generation)
+					elseif self:_candidate_is_better(candidate, reserved) then
+						phase3.fallback_candidate = candidate
+						self:_phase3_start_fodder(generation, reserved)
+					else
+						self:_phase3_start_fodder(generation, candidate)
+					end
+				else
+					if self._search and self._search.best == candidate then
+						self._search.best = nil
+					end
+
+					self:_phase3_start_fodder(generation, candidate)
+				end
+			elseif phase3.target_candidate and phase3.fallback_candidate and not mastery_target_reached(current) then
+				local fallback_candidate = phase3.fallback_candidate
+
+				phase3.fallback_candidate = nil
+				self:_phase3_start_fodder(generation, fallback_candidate)
 			else
 				self:_purchase_search_step(generation)
 			end
@@ -961,10 +1047,9 @@ function Controller.new(dependencies)
 		end
 
 		local search = self._search
-		local plan = self._plan
-		local target = plan and plan.target
+		local target = search and search.target_offer
 		local max_purchases = tonumber(search and search.max_purchases) or 0
-		local price = tonumber(target and target.price_amount)
+		local price = tonumber(target and (target.price_amount or target.price))
 		local credits
 
 		if not search or not search.running or not target or not price or price <= 0 then
@@ -997,9 +1082,16 @@ function Controller.new(dependencies)
 		end
 
 		local selected_ok, raw_offer = safe_call(self._get_selected_offer, self._active_view)
+		local selected_offer = selected_ok and selected_offer_ids(raw_offer) or nil
 
 		if not selected_ok or not raw_offer then
 			self:_stop_search("search_selected_offer_missing")
+
+			return false
+		end
+
+		if not selected_offer_matches_target(selected_offer, target) then
+			self:_stop_search("search_selected_offer_changed")
 
 			return false
 		end
@@ -1097,6 +1189,14 @@ function Controller.new(dependencies)
 			return false
 		end
 
+		if setting("auto_crafter_buy_until_target", true) ~= true then
+			operation_report("mutation_blocked", {
+				reason = "buy-until-target workflow is disabled",
+			})
+
+			return false
+		end
+
 		self:_refresh_plan("purchase_search_start")
 
 		local plan = self._plan
@@ -1137,6 +1237,7 @@ function Controller.new(dependencies)
 		}
 		self._phase3 = setting("auto_crafter_level_mastery_20", false) == true and {
 			current = nil,
+			fallback_candidate = nil,
 			fodder_count = 0,
 			running = true,
 			target_candidate = nil,
@@ -1149,6 +1250,10 @@ function Controller.new(dependencies)
 		})
 
 		return self:_purchase_search_step(self._generation)
+	end
+
+	function self:stop_active_run()
+		return self:_stop_active_run("user_stopped")
 	end
 
 	function self:_mastery_extract(generation)
@@ -1173,17 +1278,48 @@ function Controller.new(dependencies)
 			end
 
 			mastery.amount = amount
+			mastery.expected_xp = mastery.before.current_xp + amount
 			operation_report("mastery_sacrifice_complete", {
 				amount = amount,
 				gear_id = mastery.gear_id,
 			})
-			self:_refresh_after_operation(generation, function ()
-				self:_mastery_fetch_before_claim(generation)
+			self:_refresh_after_operation(generation, function (snapshot)
+				if find_item(snapshot and snapshot.gear and snapshot.gear.items, mastery.gear_id) then
+					self:_operation_failed(generation, "sacrificed mastery item still exists in authoritative gear")
+
+					return
+				end
+
+				self:_mastery_claim_after_extract(generation)
 			end)
 		end)
 	end
 
-	function self:_mastery_fetch_before_claim(generation)
+	function self:_mastery_claim_after_extract(generation)
+		local mastery = self._mastery
+		local backend = self._backend
+
+		if not mastery or not mastery.before_data or not mastery.before or not mastery.amount or not backend or type(backend.claim_mastery_levels) ~= "function" then
+			self:_operation_failed(generation, "pre-sacrifice mastery baseline unavailable for tier claim")
+
+			return false
+		end
+
+		return self:_dispatch_operation(generation, "mastery_claim", function ()
+			return backend:claim_mastery_levels(mastery.before_data, mastery.amount)
+		end, function ()
+			self._mastery_poll_elapsed = 0
+			self._mastery_poll_attempts = 0
+			self._mastery_poll_wait = mastery_poll_delay(0)
+			self._phase = "mastery_sync_wait"
+			operation_report("mastery_sync_started", {
+				amount = mastery.amount,
+				expected_xp = mastery.expected_xp,
+			})
+		end)
+	end
+
+	function self:_mastery_read_baseline(generation, snapshot)
 		local mastery = self._mastery
 		local backend = self._backend
 
@@ -1193,38 +1329,47 @@ function Controller.new(dependencies)
 			return false
 		end
 
-		return self:_dispatch_operation(generation, "mastery_read", function ()
+		return self:_dispatch_operation(generation, "mastery_baseline", function ()
 			return backend:get_mastery_by_pattern(mastery.mastery_id)
 		end, function (data)
 			local before = mastery_summary(data)
 
-			if not before or before.current_xp == nil then
-				self:_operation_failed(generation, "mastery response missing current XP")
+			if not before or before.current_xp == nil or before.mastery_level == nil then
+				self:_operation_failed(generation, "mastery baseline missing XP or level")
 
 				return
 			end
 
 			mastery.before = before
-			mastery.expected_xp = before.current_xp + mastery.amount
+			mastery.before_data = data
 
-			if type(backend.claim_mastery_levels) ~= "function" then
-				self:_operation_failed(generation, "mastery tier-claim adapter unavailable")
+			if mastery_target_reached(before) then
+				mastery.running = false
+				mastery.current = before
+				self._phase = "mastery_already_complete"
+
+				if mastery.phase3 then
+					local phase3 = self._phase3
+
+					self._mastery = nil
+
+					if phase3 and phase3.target_candidate then
+						self:_phase3_finish(before)
+					elseif phase3 and phase3.running then
+						self:_purchase_search_step(generation)
+					end
+				else
+					operation_report("mastery_operation_complete", {
+						current = before,
+						gear_id = mastery.gear_id,
+						skipped = "mastery_already_20",
+					})
+				end
 
 				return
 			end
 
-			self:_dispatch_operation(generation, "mastery_claim", function ()
-				return backend:claim_mastery_levels(data, mastery.amount)
-			end, function ()
-				self._mastery_poll_elapsed = 0
-				self._mastery_poll_attempts = 0
-				self._mastery_poll_wait = mastery_poll_delay(0)
-				self._phase = "mastery_sync_wait"
-				operation_report("mastery_sync_started", {
-					amount = mastery.amount,
-					expected_xp = mastery.expected_xp,
-				})
-			end)
+			self:_mastery_after_refresh(generation, snapshot)
 		end)
 	end
 
@@ -1248,6 +1393,10 @@ function Controller.new(dependencies)
 			self:_operation_failed(generation, "mastery item rarity unavailable")
 
 			return false
+		end
+
+		if not mastery.before_data then
+			return self:_mastery_read_baseline(generation, snapshot)
 		end
 
 		if item.rarity >= REDEEMED_RARITY then
@@ -1277,7 +1426,11 @@ function Controller.new(dependencies)
 					return
 				end
 
-				self:_mastery_extract(generation)
+				-- Rarity mutation can take long enough for external mastery state to
+				-- move. Re-read baseline immediately before destructive extraction.
+				mastery.before = nil
+				mastery.before_data = nil
+				self:_mastery_after_refresh(generation, updated_snapshot)
 			end)
 		end)
 	end
@@ -1346,7 +1499,7 @@ function Controller.new(dependencies)
 			return backend:get_mastery_by_pattern(mastery.mastery_id)
 		end, function (data)
 			local current = mastery_summary(data)
-			local xp_converged = current and current.current_xp and mastery.expected_xp and current.current_xp >= mastery.expected_xp
+			local xp_converged = current and (mastery_target_reached(current) or current.current_xp and mastery.expected_xp and current.current_xp >= mastery.expected_xp)
 			local required_claim = current and current.mastery_level and math.max(0, current.mastery_level - 1)
 			local claims_converged = required_claim == nil or current.claimed_level ~= nil and current.claimed_level >= required_claim
 
@@ -1503,6 +1656,12 @@ function Controller.new(dependencies)
 			return true
 		end
 
+		if (planner_setting_ids[setting_id] or setting_id == "auto_crafter_buy_until_target") and self:_stop_active_run("run_configuration_changed") then
+			self:_refresh_plan("planner_setting_changed")
+
+			return true
+		end
+
 		if mutation_setting_ids[setting_id] and not mutations_enabled() then
 			invalidate_generation()
 
@@ -1599,6 +1758,7 @@ function Controller.new(dependencies)
 			local selected_key = selected_ok and offer_key(selected_offer_ids(raw_offer)) or nil
 
 			if selected_key ~= self._selected_native_key then
+				self:_stop_active_run("selected_weapon_changed")
 				self._selected_native_key = selected_key
 				self:_refresh_plan("target_changed")
 				self:_schedule_catalog("target_changed")
