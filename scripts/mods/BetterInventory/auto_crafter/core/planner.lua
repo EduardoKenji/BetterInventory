@@ -451,7 +451,7 @@ end
 
 local function preflight_summary(preflight)
 	if preflight.ok then
-		return "READY | read-only preview"
+		return "READY"
 	end
 
 	return "BLOCKED | " .. tostring(preflight.reasons[1] or "preflight incomplete")

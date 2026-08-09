@@ -314,7 +314,7 @@ def validate_auto_crafter_mutation_boundaries() -> int:
 
     controller_source = (auto_crafter_root / "core" / "controller.lua").read_text(encoding="utf-8")
     controller_contract = (
-        'setting("auto_crafter_allow_mutations", true)',
+        "wallet_consumption",
         "_operation_inflight",
         "MAX_MASTERY_POLL_ATTEMPTS",
         "extraction_contains_gear_id",

@@ -34,6 +34,28 @@ local function format_elapsed(seconds)
 	return string.format("%ds", remaining)
 end
 
+local function format_number(value)
+	local text = tostring(math.max(0, math.floor((tonumber(value) or 0) + 0.5)))
+	local changed
+
+	repeat
+		text, changed = string.gsub(text, "^(-?%d+)(%d%d%d)", "%1,%2")
+	until changed == 0
+
+	return text
+end
+
+local function format_resource_costs(costs)
+	costs = costs or {}
+
+	return string.format(
+		"Invested: %s Ordo Dockets | %s Plasteel | %s Diamantine",
+		format_number(costs.credits),
+		format_number(costs.plasteel),
+		format_number(costs.diamantine)
+	)
+end
+
 local function localize(setting_id, fallback)
 	if not mod or type(mod.localize) ~= "function" then
 		return fallback or setting_id
@@ -242,12 +264,14 @@ local function rebuild_hud_lines(snapshot)
 
 		if recently_completed then
 			lines[#lines + 1] = "Crafting complete in " .. format_elapsed(phase4.elapsed_seconds)
+			lines[#lines + 1] = format_resource_costs(phase4.resource_costs or snapshot and snapshot.resource_costs)
 		end
 	end
 
 	local run_active = search and search.running or phase3 and phase3.running or phase4 and phase4.running or snapshot and snapshot.mastery and snapshot.mastery.running
 
 	if run_active then
+		lines[#lines + 1] = format_resource_costs(snapshot and snapshot.resource_costs)
 		lines[#lines + 1] = string.format("Elapsed: %d seconds", math.max(0, math.floor(tonumber(snapshot and snapshot.run_elapsed_seconds) or 0)))
 	end
 
@@ -411,7 +435,7 @@ local function reporter(ui_panel)
 					ui_panel:set_phase("phase4_complete")
 				end
 				local elapsed = format_elapsed(payload and payload.elapsed_seconds)
-				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Final weapon crafting complete in " .. elapsed .. ": " .. format_candidate(payload and payload.candidate))
+				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Final weapon crafting complete in " .. elapsed .. ". " .. format_resource_costs(payload and payload.resource_costs) .. ". " .. format_candidate(payload and payload.candidate))
 			elseif kind == "operation_failed" then
 				if ui_panel then
 					ui_panel:set_phase("operation_failed")

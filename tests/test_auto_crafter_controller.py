@@ -72,7 +72,6 @@ def main() -> None:
         function base_settings(overrides)
             local values = {
                 auto_crafter_enable = true,
-                auto_crafter_allow_mutations = true,
                 auto_crafter_buy_until_target = true,
                 auto_crafter_target_dump_stat = "damage_stat",
                 auto_crafter_dump_stat_target = 60,
@@ -674,6 +673,7 @@ def main() -> None:
 			item.traits = {{id = "old_blessing", rarity = 4}, {id = "keep_blessing", rarity = 4}}
 			local state = {
 				allocation_order = {},
+				wallet = {credits = 10000, plasteel = 5000, diamantine = 1000},
 				pending = nil,
 				perk_order = {},
 				statuses = {
@@ -682,11 +682,18 @@ def main() -> None:
 				},
 			}
 			local backend = {purchase_calls = 0, rarity_calls = 0, expertise_calls = 0, perk_calls = 0, blessing_calls = 0, allocation_calls = 0}
-			function backend:purchase_offer(_) self.purchase_calls = self.purchase_calls + 1 return resolved({items = {item}}) end
-			function backend:probe_snapshot() return resolved(snapshot_with(item)) end
+			local function phase_snapshot(current_item)
+				local snapshot = snapshot_with(current_item)
+				snapshot.wallets.currencies.plasteel = {amount = state.wallet.plasteel}
+				snapshot.wallets.currencies.diamantine = {amount = state.wallet.diamantine}
+				snapshot.wallets.currencies.credits.amount = state.wallet.credits
+				return snapshot
+			end
+			function backend:purchase_offer(_) self.purchase_calls = self.purchase_calls + 1 state.wallet.credits = state.wallet.credits - 100 return resolved({items = {item}}) end
+			function backend:probe_snapshot() return resolved(phase_snapshot(item)) end
 			function backend:get_mastery_by_pattern(_) return resolved({mastery_id = "pattern-1", current_xp = 999, mastery_level = 20, claimed_level = 19, mastery_max_level = 20}) end
-			function backend:upgrade_weapon_rarity(_) self.rarity_calls = self.rarity_calls + 1 item.rarity = item.rarity + 1 return resolved({}) end
-			function backend:add_weapon_expertise(_, target) self.expertise_calls = self.expertise_calls + 1 item.expertise_level = target return resolved({}) end
+			function backend:upgrade_weapon_rarity(_) self.rarity_calls = self.rarity_calls + 1 state.wallet.plasteel = state.wallet.plasteel - 10 state.wallet.diamantine = state.wallet.diamantine - 2 item.rarity = item.rarity + 1 return resolved({}) end
+			function backend:add_weapon_expertise(_, target) self.expertise_calls = self.expertise_calls + 1 state.wallet.plasteel = state.wallet.plasteel - 5 item.expertise_level = target return resolved({}) end
 			function backend:purchase_mastery_trait(_, id, tier)
 				self.allocation_calls = self.allocation_calls + 1
 				state.allocation_order[#state.allocation_order + 1] = id .. ":" .. tostring(tier)
@@ -761,7 +768,7 @@ def main() -> None:
 					{id = "new_blessing", tiers = {{tier = 1, status = "unseen"}, {tier = 2, status = "unseen"}, {tier = 3, status = "unseen"}, {tier = 4, status = "unseen"}}},
 				},
 			}
-			controller._snapshot = snapshot_with(nil)
+			controller._snapshot = phase_snapshot(nil)
 			controller._active_view = {}
 			controller._view_is_valid = true
 			assert(controller:start_purchase_search() == true)
@@ -777,6 +784,8 @@ def main() -> None:
 			assert(state.allocation_order[8] == "filler_blessing:4")
 			assert(result.phase4.blessing_points_spent == 8 and result.phase4.blessing_points_total == 8)
 			assert(result.phase4.elapsed_seconds > 0 and result.search.elapsed_seconds == result.phase4.elapsed_seconds)
+			assert(result.resource_costs.credits == 100 and result.resource_costs.plasteel == 30 and result.resource_costs.diamantine == 4)
+			assert(result.phase4.resource_costs.credits == 100 and result.phase4.resource_costs.plasteel == 30 and result.phase4.resource_costs.diamantine == 4)
 			assert(state.perk_order[1] == 2 and state.perk_order[2] == 1)
 			assert(item.perks[1].id == "new_perk" and item.perks[2].id == "other_perk" and item.traits[1].id == "new_blessing")
 			controller:_operation_failed(controller._generation, {code = "backend_error", description = "readable backend failure"})

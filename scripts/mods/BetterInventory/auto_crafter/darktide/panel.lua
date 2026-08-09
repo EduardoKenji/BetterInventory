@@ -39,8 +39,6 @@ local SECTION_WORKFLOW = "workflow"
 local SECTION_TRAITS = "traits"
 local SECTION_OUTPUT = "output"
 local SECTION_ADVANCED = "advanced"
-local SECTION_MELEE = "melee"
-local SECTION_RANGED = "ranged"
 local TRAIT_TARGET_PAIRS = {
 	auto_crafter_perk_1_target = "auto_crafter_perk_2_target",
 	auto_crafter_perk_2_target = "auto_crafter_perk_1_target",
@@ -777,8 +775,6 @@ function Panel.new(dependencies)
 			[SECTION_TRAITS] = true,
 			[SECTION_OUTPUT] = true,
 			[SECTION_ADVANCED] = true,
-			[SECTION_MELEE] = true,
-			[SECTION_RANGED] = true,
 		},
 		_pending_offer = nil,
 		_pending_offer_attempts = 0,
@@ -1422,27 +1418,6 @@ function Panel.new(dependencies)
 		end
 	end
 
-	function self:_mutation_gate_text()
-		return self:_setting("auto_crafter_allow_mutations", true) == true and localize("auto_crafter_panel_mutations_on", "SERIAL MUTATIONS ON") or localize("auto_crafter_panel_mutations_off", "MUTATIONS OFF")
-	end
-
-	function self:_split_offers(offers)
-		local grouped = {
-			[SECTION_MELEE] = {},
-			[SECTION_RANGED] = {},
-		}
-
-		for _, offer in ipairs(offers or {}) do
-			if offer then
-				local section_id = offer.weapon_category == SECTION_RANGED and SECTION_RANGED or SECTION_MELEE
-
-				grouped[section_id][#grouped[section_id] + 1] = offer
-			end
-		end
-
-		return grouped
-	end
-
 	function self:_select_offer_from_row(offer)
 		if not offer then
 			return false
@@ -1488,16 +1463,12 @@ function Panel.new(dependencies)
 
 	function self:_entries(snapshot)
 		local store = snapshot and snapshot.store or {}
-		local offers, selected_weapon = self:_selected_offers(snapshot)
-		local grouped_offers = self:_split_offers(offers)
+		local _, selected_weapon = self:_selected_offers(snapshot)
 		local selected = selected_weapon or localize("auto_crafter_panel_no_target", "no weapon selected")
 		local plan = self._plan or snapshot and snapshot.plan
 		local entries = {
-			self:_entry(localize("auto_crafter_panel_title", "Auto Crafter Helper"), self:_setting("auto_crafter_allow_mutations", true) == true and localize("auto_crafter_panel_mutations_on", "SERIAL MUTATIONS ON") or localize("auto_crafter_panel_mutations_off", "MUTATIONS OFF"), {
+			self:_entry(localize("auto_crafter_panel_title", "Auto Crafter Helper"), "", {
 				variant = "title",
-				refresh = function(widget)
-					widget.content.detail = self:_mutation_gate_text()
-				end,
 			}),
 			self:_entry(localize("auto_crafter_panel_status", "Status"), self._phase or value_text(snapshot and snapshot.phase, "idle"), {
 				refresh = function(widget)
@@ -1687,12 +1658,6 @@ function Panel.new(dependencies)
 					widget.content.detail = self:_estimate_acquisition_text()
 				end,
 			}))
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_base_level_range", "Upgrade estimate range"), self:_estimate_base_level_text(), {
-				variant = "status",
-				refresh = function(widget)
-					widget.content.detail = self:_estimate_base_level_text()
-				end,
-			}))
 			local function add_estimate_currency(label_id, fallback, phase_name)
 				local credits, plasteel, diamantine = self:_estimate_currency_values(phase_name)
 				table.insert(entries, self:_entry(localize(label_id, fallback), "", {
@@ -1707,23 +1672,8 @@ function Panel.new(dependencies)
 			end
 
 			add_estimate_currency("auto_crafter_panel_consecrate_cost", "Profane to Transcendent", "consecrate")
-			add_estimate_currency("auto_crafter_panel_expertise_cost", "Base item level to 500", "expertise")
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_mastery_fodder", "Mastery 20 fodder"), self:_estimate_mastery_text(), {
-				variant = "status",
-				refresh = function(widget)
-					widget.content.detail = self:_estimate_mastery_text()
-				end,
-			}))
 			add_estimate_currency("auto_crafter_panel_mastery_cost", "Mastery fodder investment", "mastery")
 			add_estimate_currency("auto_crafter_panel_total_cost", "Known crafting investment", "total")
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_preflight", "Preflight"), plan and plan.preflight and plan.preflight.summary or localize("auto_crafter_panel_waiting", "waiting for probe"), {
-				variant = "status",
-				refresh = function(widget)
-					local current_plan = self._plan
-
-					widget.content.detail = current_plan and current_plan.preflight and current_plan.preflight.summary or localize("auto_crafter_panel_waiting", "waiting for probe")
-				end,
-			}))
 		end
 
 		table.insert(entries, self:_entry(localize("auto_crafter_panel_workflow", "Crafting workflow"), "", {
@@ -1844,25 +1794,21 @@ function Panel.new(dependencies)
 					widget.content.detail = self:_planner_request_mode_text()
 				end,
 			}))
-			add_checkbox("auto_crafter_allow_mutations", "auto_crafter_panel_mutation_gate", "Mutation gate", true)
 		end
 
-		table.insert(entries, self:_entry(localize("auto_crafter_panel_preview", "Craft / purchase search"), self:_setting("auto_crafter_allow_mutations", true) == true and localize("auto_crafter_panel_serial_start", "SERIAL; click to start") or localize("auto_crafter_panel_read_only_preview", "Read-only preview"), {
+		table.insert(entries, self:_entry(localize("auto_crafter_panel_preview", "Craft / purchase search"), localize("auto_crafter_panel_serial_start", "SERIAL; click to start"), {
 			enabled = true,
 			selectable = true,
 			variant = "action",
 			action = function()
-				if self:_setting("auto_crafter_allow_mutations", true) == true and type(self._start_purchase_search) == "function" then
+				if type(self._start_purchase_search) == "function" then
 					self._start_purchase_search()
-				elseif type(self._preview_plan) == "function" then
-					self._preview_plan()
 				end
 			end,
 			refresh = function(widget)
-				local enabled = self:_setting("auto_crafter_allow_mutations", true) == true
 				widget.content.enabled = true
 				widget.content.hotspot.disabled = false
-				widget.content.detail = enabled and localize("auto_crafter_panel_serial_start", "SERIAL; click to start") or localize("auto_crafter_panel_read_only_preview", "Read-only preview")
+				widget.content.detail = localize("auto_crafter_panel_serial_start", "SERIAL; click to start")
 			end,
 		}))
 		local function run_is_active()
@@ -1890,43 +1836,6 @@ function Panel.new(dependencies)
 				widget.content.hotspot.disabled = not enabled
 			end,
 		}))
-		table.insert(entries, self:_entry(localize("auto_crafter_panel_offer_list", "Weapon selection"), tostring(#offers)))
-
-		for _, section_id in ipairs({ SECTION_MELEE, SECTION_RANGED }) do
-			local section_offers = grouped_offers[section_id]
-			local section_label = section_id == SECTION_RANGED and localize("auto_crafter_panel_ranged_weapons", "Ranged Weapons") or localize("auto_crafter_panel_melee_weapons", "Melee Weapons")
-
-			table.insert(entries, self:_entry(section_label, tostring(#section_offers), {
-				selectable = true,
-				section_header = true,
-				section_id = section_id,
-				variant = "section",
-			}))
-
-			if not self._section_collapsed[section_id] then
-				local shown = 0
-
-				for index, offer in ipairs(section_offers) do
-					if shown >= MAX_OFFER_ROWS then
-						break
-					end
-
-					shown = shown + 1
-					table.insert(entries, self:_entry(offer_label(offer, index), offer_detail(offer), {
-						offer = offer,
-						selectable = true,
-						variant = "offer",
-					}))
-				end
-
-				if shown == 0 then
-					table.insert(entries, self:_entry(localize("auto_crafter_panel_no_offers", "No weapon offers exposed yet."), ""))
-				elseif #section_offers > shown then
-					table.insert(entries, self:_entry(localize("auto_crafter_panel_more", "More offers available"), tostring(#section_offers - shown) .. " not shown"))
-				end
-			end
-		end
-
 		return entries
 	end
 
@@ -2136,8 +2045,6 @@ function Panel.new(dependencies)
 			[SECTION_TRAITS] = true,
 			[SECTION_OUTPUT] = true,
 			[SECTION_ADVANCED] = true,
-			[SECTION_MELEE] = true,
-			[SECTION_RANGED] = true,
 		}
 		self._pending_offer = nil
 		self._pending_offer_attempts = 0
@@ -2179,8 +2086,6 @@ function Panel.new(dependencies)
 		self._selected_offer_master_id = nil
 		self._section_collapsed = {
 			[SECTION_PLANNER] = false,
-			[SECTION_MELEE] = true,
-			[SECTION_RANGED] = true,
 		}
 		self._pending_offer = nil
 		self._pending_offer_attempts = 0

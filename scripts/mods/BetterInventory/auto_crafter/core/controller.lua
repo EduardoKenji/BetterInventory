@@ -448,6 +448,27 @@ local function planner_config_signature(config)
 	}, "|")
 end
 
+local function wallet_values(snapshot)
+	local currencies = snapshot and snapshot.wallets and snapshot.wallets.currencies or {}
+
+	return {
+		credits = tonumber(currencies.credits and currencies.credits.amount) or 0,
+		diamantine = tonumber(currencies.diamantine and currencies.diamantine.amount) or 0,
+		plasteel = tonumber(currencies.plasteel and currencies.plasteel.amount) or 0,
+	}
+end
+
+local function wallet_consumption(start_wallet, current_wallet)
+	start_wallet = start_wallet or {}
+	current_wallet = current_wallet or {}
+
+	return {
+		credits = math.max(0, (tonumber(start_wallet.credits) or 0) - (tonumber(current_wallet.credits) or 0)),
+		diamantine = math.max(0, (tonumber(start_wallet.diamantine) or 0) - (tonumber(current_wallet.diamantine) or 0)),
+		plasteel = math.max(0, (tonumber(start_wallet.plasteel) or 0) - (tonumber(current_wallet.plasteel) or 0)),
+	}
+end
+
 function Controller.new(dependencies)
 	dependencies = dependencies or {}
 
@@ -550,7 +571,7 @@ function Controller.new(dependencies)
 	end
 
 	local function mutations_enabled()
-		return enabled() and setting("auto_crafter_allow_mutations", true) == true
+		return enabled()
 	end
 
 	local planner_setting_ids = {
@@ -615,7 +636,6 @@ function Controller.new(dependencies)
 	end
 
 	local mutation_setting_ids = {
-		auto_crafter_allow_mutations = true,
 		auto_crafter_defer_bad_weapon_processing = true,
 		auto_crafter_level_mastery_20 = true,
 		auto_crafter_consecrate_transcendent = true,
@@ -1386,7 +1406,7 @@ function Controller.new(dependencies)
 		return targets
 	end
 
-	function self:_phase4_complete(item)
+	function self:_phase4_complete(item, snapshot)
 		local phase4 = self._phase4
 
 		if not phase4 or not phase4.running then
@@ -1395,11 +1415,13 @@ function Controller.new(dependencies)
 
 		local completed_at = clock_now()
 		local elapsed = completed_at and self._run_started_at and math.max(0, completed_at - self._run_started_at) or math.max(0, self._run_elapsed or 0)
+		local resource_costs = wallet_consumption(self._search and self._search.start_wallet, wallet_values(snapshot or self._snapshot))
 
 		phase4.running = false
 		phase4.result = item
 		phase4.completed_at = completed_at
 		phase4.elapsed_seconds = elapsed
+		phase4.resource_costs = resource_costs
 		if self._search then
 			self._search.running = false
 			self._search.result = item
@@ -1410,6 +1432,7 @@ function Controller.new(dependencies)
 			candidate = item,
 			elapsed_seconds = elapsed,
 			phase4 = phase4,
+			resource_costs = resource_costs,
 		})
 
 		return true
@@ -1625,7 +1648,7 @@ function Controller.new(dependencies)
 			end
 		end
 
-		return self:_phase4_complete(item)
+		return self:_phase4_complete(item, snapshot)
 	end
 
 	function self:_poll_phase4_blessing()
@@ -2731,6 +2754,7 @@ function Controller.new(dependencies)
 			target_dump = tonumber(setting("auto_crafter_dump_stat_target", 60)) or 60,
 			target_offer = plan.target,
 			raw_offer = raw_offer,
+			start_wallet = wallet_values(self._snapshot),
 		}
 		self._phase3 = setting("auto_crafter_level_mastery_20", true) == true and {
 			cleanup_started = false,
@@ -3389,6 +3413,8 @@ function Controller.new(dependencies)
 	end
 
 	function self:snapshot()
+		local resource_costs = self._search and wallet_consumption(self._search.start_wallet, wallet_values(self._snapshot)) or nil
+
 		return {
 			phase = self._phase,
 			view_is_valid = self._view_is_valid,
@@ -3408,6 +3434,7 @@ function Controller.new(dependencies)
 			phase4 = self._phase4,
 			mastery = self._mastery,
 			run_elapsed_seconds = self._run_elapsed,
+			resource_costs = resource_costs,
 		}
 	end
 

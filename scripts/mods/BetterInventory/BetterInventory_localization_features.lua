@@ -549,7 +549,7 @@ local localization = {
 		en = "Enable Auto Crafter Helper probe",
 	},
 	auto_crafter_enable_tooltip = {
-		en = "Enables the Brunt's Armoury Auto Crafter panel. Account mutations remain separately disabled until explicitly allowed below.",
+		en = "Enables the Brunt's Armoury Auto Crafter panel. Account changes begin only after an explicit Craft click and current authoritative validation.",
 	},
 	auto_crafter_read_only_probe = {
 		en = "Run read-only Brunt probe",
@@ -562,12 +562,6 @@ local localization = {
 	},
 	auto_crafter_show_probe_notifications_tooltip = {
 		en = "Enabled by default. Shows native notification status for probes, plans, purchase search, and mastery synchronization. Notification errors cannot affect game data.",
-	},
-	auto_crafter_allow_mutations = {
-		en = "Allow Auto Crafter account mutations",
-	},
-	auto_crafter_allow_mutations_tooltip = {
-		en = "Disabled by default. Explicitly authorizes serialized Brunt purchases and the Phase 2 one-item Redeemed/sacrifice proof. It does not enable automatic mastery-to-20 repetition, perks, blessings, favorite, or rename operations.",
 	},
 	auto_crafter_target_dump_stat = {
 		en = "Auto Crafter target dump stat",
@@ -812,12 +806,6 @@ local localization = {
 	auto_crafter_panel_offer_list = {
 		en = "Weapon selection",
 	},
-	auto_crafter_panel_melee_weapons = {
-		en = "Melee Weapons",
-	},
-	auto_crafter_panel_ranged_weapons = {
-		en = "Ranged Weapons",
-	},
 	auto_crafter_panel_selected_weapon = {
 		en = "Selected weapon",
 	},
@@ -857,17 +845,8 @@ local localization = {
 	auto_crafter_panel_estimate = {
 		en = "Search budget",
 	},
-	auto_crafter_panel_base_level_range = {
-		en = "Generated base item level range",
-	},
 	auto_crafter_panel_consecrate_cost = {
 		en = "Profane to Transcendent",
-	},
-	auto_crafter_panel_expertise_cost = {
-		en = "Base item level to 500",
-	},
-	auto_crafter_panel_mastery_fodder = {
-		en = "Mastery 20 fodder",
 	},
 	auto_crafter_panel_mastery_cost = {
 		en = "Mastery fodder investment",
@@ -878,20 +857,11 @@ local localization = {
 	auto_crafter_panel_disabled = {
 		en = "disabled",
 	},
-	auto_crafter_panel_preflight = {
-		en = "Preflight",
-	},
 	auto_crafter_panel_preview = {
 		en = "Craft / purchase search",
 	},
-	auto_crafter_panel_read_only_preview = {
-		en = "Read-only preview",
-	},
 	auto_crafter_panel_serial_start = {
 		en = "SERIAL; click to start",
-	},
-	auto_crafter_panel_mutation_gate = {
-		en = "Mutation gate",
 	},
 	auto_crafter_panel_phase_2 = {
 		en = "Redeem + sacrifice one",
@@ -904,12 +874,6 @@ local localization = {
 	},
 	auto_crafter_panel_stop_detail = {
 		en = "Stops after any in-flight request settles",
-	},
-	auto_crafter_panel_mutations_on = {
-		en = "SERIAL MUTATIONS ON",
-	},
-	auto_crafter_panel_mutations_off = {
-		en = "MUTATIONS OFF",
 	},
 	auto_crafter_panel_waiting = {
 		en = "waiting for probe",

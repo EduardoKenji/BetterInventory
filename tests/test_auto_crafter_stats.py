@@ -792,6 +792,7 @@ def main() -> None:
     assert "DEFAULT_MASTERY_POLL_DELAY = 0.05" in controller_source
     assert "phase4.allocate_mastery and unseen_blessing_tiers > 0" in controller_source
     assert "Allocating mastery blessing points (%d/%d)" in host_source
+    assert "Invested: %s Ordo Dockets | %s Plasteel | %s Diamantine" in host_source
     assert "Final weapon crafting complete in " in host_source
 
     print("Auto Crafter weapon stat catalogue and display-label tests passed.")
