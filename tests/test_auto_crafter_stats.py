@@ -63,15 +63,19 @@ def main() -> None:
             _weapon_template = crowbar_template,
         }
 		TestFavoriteItems = {}
+		TestExpertise = 300
+		TestGear = {}
+		TestPreviewCalls = 0
 		local modules = {
             ["scripts/foundation/utilities/promise"] = {
                 resolved = function(value) return promise(value) end,
                 rejected = function(value) return promise(nil, value) end,
             },
             ["scripts/utilities/items"] = {
-				expertise_level = function() return "300", true end,
+				expertise_level = function() return tostring(TestExpertise), true end,
 				max_expertise_level = function() return 500 end,
 				preview_stats_change = function(_, _, stats)
+					TestPreviewCalls = TestPreviewCalls + 1
 					local result = {}
 
 					for _, stat in ipairs(stats) do
@@ -194,7 +198,7 @@ def main() -> None:
 
 					return promise({{gearId = gear_ids[1]}})
 				end,
-                fetch_gear = function() return promise({}) end,
+				fetch_gear = function() return promise(TestGear) end,
             },
             crafting = {
                 get_item_crafting_metadata = function()
@@ -233,6 +237,34 @@ def main() -> None:
     assert purchased.potential_damage == 80
     assert purchased.potential_base_stats["crowbar_p1_m1_dps_stat"] == 80
     assert purchased.potential_base_stats["crowbar_p1_m1_defence_stat"] == 60
+
+    # A max-level weapon needs no zero-delta preview response to remain reusable.
+    lua.globals().TestExpertise = 500
+    lua.globals().TestPreviewCalls = 0
+    lua.execute(
+        r'''
+        TestGear = {
+            maxed_crowbar = {
+                uuid = "maxed_crowbar",
+                name = "content/items/weapons/player/melee/crowbar_p1_m1",
+                display_name = "Crowbar",
+                parent_pattern = "crowbar_p1",
+                rarity = 5,
+                base_stats = {
+                    {name = "crowbar_p1_m1_dps_stat", value = 0.80},
+                    {name = "crowbar_p1_m1_defence_stat", value = 0.60},
+                },
+            },
+        }
+        '''
+    )
+    maxed_snapshot = backend.probe_snapshot(backend).value
+    maxed = maxed_snapshot.gear["items"][1]
+    assert maxed.potential_base_stats["crowbar_p1_m1_dps_stat"] == 80
+    assert maxed.potential_base_stats["crowbar_p1_m1_defence_stat"] == 60
+    assert lua.globals().TestPreviewCalls == 0
+    lua.globals().TestExpertise = 300
+    lua.globals().TestGear = lua.table_from({})
     favorite_promise = backend.favorite_item(backend, "crowbar_gear")
     assert favorite_promise.failure is None
     assert favorite_promise.value.favorited is True

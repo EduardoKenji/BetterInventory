@@ -449,6 +449,19 @@ local function summarize_potential_base_stats(item, rolled_stats)
 		return nil
 	end
 
+	-- A level-500 item already exposes its final values. Some game builds return no
+	-- preview table for a zero-level change, so do not make completed weapons
+	-- invisible to inventory-base reuse.
+	if maximum_expertise == current_expertise then
+		local summary = {}
+
+		for _, stat in ipairs(comparing_stats) do
+			summary[stat.name] = math.floor(stat.fraction * 100 + 0.5)
+		end
+
+		return next(summary) and summary or nil
+	end
+
 	local preview_ok, preview = pcall(Items.preview_stats_change, item, maximum_expertise - current_expertise, comparing_stats)
 
 	if not preview_ok or type(preview) ~= "table" then

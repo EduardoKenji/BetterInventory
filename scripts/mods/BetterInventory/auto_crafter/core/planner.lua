@@ -602,6 +602,7 @@ function Planner.build(snapshot, config)
 			parent_pattern = target.parent_pattern,
 			price = price,
 			rarity = target.rarity,
+			weapon_template = target.weapon_template,
 		} or nil,
 		dump_stat = normalized.dump_stat,
 		resolved_dump_stat = resolved_dump_stat,

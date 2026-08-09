@@ -1284,34 +1284,62 @@ function Controller.new(dependencies)
 		}
 
 		for _, group in ipairs(replacement_groups) do
+			local replacement_index
+
 			for index = 1, 2 do
 				local desired = group.targets[index]
 				local current = trait_at(group.current, index)
 
 				if desired and not same_trait(current, desired) then
-					local adapter = backend and backend[group.adapter]
+					local peer = trait_at(group.current, index == 1 and 2 or 1)
 
-					if type(adapter) ~= "function" then
-						self:_operation_failed(generation, group.kind .. " replacement adapter unavailable")
+					-- Free an occupied desired trait first. Example: current [Stamina,
+					-- Carapace], desired [Carapace, Unyielding] must replace slot 2
+					-- before slot 1 or Darktide may reject a transient duplicate.
+					if not peer or peer.id ~= desired.id then
+						replacement_index = index
+						break
+					end
+				end
+			end
+
+			if not replacement_index then
+				for index = 1, 2 do
+					local desired = group.targets[index]
+					local current = trait_at(group.current, index)
+
+					if desired and not same_trait(current, desired) then
+						self:_operation_failed(generation, group.kind .. " targets require an unsupported two-slot swap")
 						return false
 					end
-
-					return self:_dispatch_operation(generation, "phase4_replace_" .. group.kind, function ()
-						return adapter(backend, phase4.gear_id, index, desired.id, desired.rarity)
-					end, function ()
-						self:_refresh_after_operation(generation, function (updated)
-							local changed = find_item(updated and updated.gear and updated.gear.items, phase4.gear_id)
-							local changed_traits = changed and (group.kind == "perk" and changed.perks or changed.traits)
-
-							if not same_trait(trait_at(changed_traits, index), desired) then
-								self:_operation_failed(generation, group.kind .. " replacement was not confirmed")
-								return
-							end
-							phase4.replacement_baseline[group.kind == "perk" and "perks" or "traits"][index] = desired
-							self:_phase4_step(generation, updated)
-						end)
-					end)
 				end
+			end
+
+			if replacement_index then
+				local index = replacement_index
+				local desired = group.targets[index]
+				local adapter = backend and backend[group.adapter]
+
+				if type(adapter) ~= "function" then
+					self:_operation_failed(generation, group.kind .. " replacement adapter unavailable")
+					return false
+				end
+
+				return self:_dispatch_operation(generation, "phase4_replace_" .. group.kind, function ()
+					return adapter(backend, phase4.gear_id, index, desired.id, desired.rarity)
+				end, function ()
+					self:_refresh_after_operation(generation, function (updated)
+						local changed = find_item(updated and updated.gear and updated.gear.items, phase4.gear_id)
+						local changed_traits = changed and (group.kind == "perk" and changed.perks or changed.traits)
+
+						if not same_trait(trait_at(changed_traits, index), desired) then
+							self:_operation_failed(generation, group.kind .. " replacement was not confirmed")
+							return
+						end
+						phase4.replacement_baseline[group.kind == "perk" and "perks" or "traits"][index] = desired
+						self:_phase4_step(generation, updated)
+					end)
+				end)
 			end
 		end
 
@@ -1745,21 +1773,166 @@ function Controller.new(dependencies)
 
 		local include_favorites = setting("auto_crafter_include_favorite_inventory_bases", false) == true
 		local best
+		local best_analysis
+		local target = search.target_offer or {}
 
-		for _, candidate in ipairs(self._snapshot and self._snapshot.gear and self._snapshot.gear.items or {}) do
-			local family_matches = candidate.parent_pattern ~= nil and candidate.parent_pattern == search.target_offer.parent_pattern
-			local favorite_allowed = include_favorites and candidate.favorite_known == true or candidate.favorite_known == true and candidate.favorited ~= true
+		local function family_matches(candidate)
+			local target_pattern = target.parent_pattern
+			local candidate_pattern = candidate.parent_pattern or candidate.mastery_id
 
-			if candidate.available == true and family_matches and favorite_allowed and tonumber(candidate_stat(candidate, search.dump_stat)) == tonumber(search.target_dump) then
-				local better = not best
-					or (tonumber(candidate.expertise_level) or -1) > (tonumber(best.expertise_level) or -1)
-					or tonumber(candidate.expertise_level) == tonumber(best.expertise_level) and (tonumber(candidate.rarity) or -1) > (tonumber(best.rarity) or -1)
-					or tonumber(candidate.expertise_level) == tonumber(best.expertise_level) and tonumber(candidate.rarity) == tonumber(best.rarity) and tostring(candidate.gear_id) < tostring(best.gear_id)
+			-- Mastery family is strongest identity. A known mismatch must never fall
+			-- through to weaker mark/template aliases.
+			if target_pattern ~= nil and candidate_pattern ~= nil then
+				return target_pattern == candidate_pattern, "mastery_family"
+			end
 
-				if better then
-					best = candidate
+			if target.weapon_template ~= nil and candidate.weapon_template ~= nil then
+				return target.weapon_template == candidate.weapon_template, "weapon_template"
+			end
+
+			if target.master_id ~= nil and candidate.master_id ~= nil then
+				return target.master_id == candidate.master_id, "master_item"
+			end
+
+			return false, "identity_unavailable"
+		end
+
+		local function profile_analysis(candidate)
+			local names = {}
+
+			for key, stat in pairs(type(target.base_stats) == "table" and target.base_stats or {}) do
+				local name = type(stat) == "table" and stat.name or type(key) == "string" and key or nil
+
+				if name ~= nil then
+					names[tostring(name)] = true
 				end
 			end
+
+			local expected = 0
+			local known = 0
+			local non_dump_min = math.huge
+			local non_dump_sum = 0
+			local all_other_stats_maxed = true
+
+			for name in pairs(names) do
+				expected = expected + 1
+				local value = tonumber(candidate_stat(candidate, name))
+
+				if value ~= nil then
+					known = known + 1
+
+					if name ~= search.dump_stat then
+						non_dump_min = math.min(non_dump_min, value)
+						non_dump_sum = non_dump_sum + value
+						all_other_stats_maxed = all_other_stats_maxed and value >= 80
+					end
+				elseif name ~= search.dump_stat then
+					all_other_stats_maxed = false
+				end
+			end
+
+			if non_dump_min == math.huge then
+				non_dump_min = -1
+			end
+
+			return {
+				all_other_stats_maxed = expected > 1 and known == expected and all_other_stats_maxed,
+				expected_stats = expected,
+				known_stats = known,
+				non_dump_min = non_dump_min,
+				non_dump_sum = non_dump_sum,
+			}
+		end
+
+		local function remaining_steps(candidate)
+			local steps = 0
+
+			if setting("auto_crafter_consecrate_transcendent", true) == true then
+				steps = steps + math.max(0, 5 - (tonumber(candidate.rarity) or 0))
+			end
+
+			if setting("auto_crafter_upgrade_expertise_500", true) == true then
+				steps = steps + math.max(0, math.ceil((500 - (tonumber(candidate.expertise_level) or 0)) / 100))
+			end
+
+			if search.favorite_result and candidate.favorited ~= true then
+				steps = steps + 1
+			end
+
+			local targets = self:_phase4_targets(candidate)
+
+			if type(targets) == "table" then
+				for index = 1, 2 do
+					if targets.perks[index] and not same_trait(trait_at(candidate.perks, index), targets.perks[index]) then
+						steps = steps + 1
+					end
+
+					if targets.traits[index] and not same_trait(trait_at(candidate.traits, index), targets.traits[index]) then
+						steps = steps + 1
+					end
+				end
+			end
+
+			return steps
+		end
+
+		local function analysis_is_better(left, right)
+			if not right then
+				return true
+			end
+
+			if left.all_other_stats_maxed ~= right.all_other_stats_maxed then
+				return left.all_other_stats_maxed
+			end
+
+			if left.known_stats ~= right.known_stats then
+				return left.known_stats > right.known_stats
+			end
+
+			if left.non_dump_min ~= right.non_dump_min then
+				return left.non_dump_min > right.non_dump_min
+			end
+
+			if left.non_dump_sum ~= right.non_dump_sum then
+				return left.non_dump_sum > right.non_dump_sum
+			end
+
+			if left.remaining_steps ~= right.remaining_steps then
+				return left.remaining_steps < right.remaining_steps
+			end
+
+			if left.expertise ~= right.expertise then
+				return left.expertise > right.expertise
+			end
+
+			if left.rarity ~= right.rarity then
+				return left.rarity > right.rarity
+			end
+
+			return left.gear_id < right.gear_id
+		end
+
+		for _, candidate in ipairs(self._snapshot and self._snapshot.gear and self._snapshot.gear.items or {}) do
+			local matched, identity_source = family_matches(candidate)
+			local favorite_allowed = include_favorites or candidate.favorite_known == true and candidate.favorited ~= true
+
+			if candidate.available == true and candidate.gear_id ~= nil and matched and favorite_allowed and tonumber(candidate_stat(candidate, search.dump_stat)) == tonumber(search.target_dump) then
+				local analysis = profile_analysis(candidate)
+				analysis.expertise = tonumber(candidate.expertise_level) or -1
+				analysis.family_identity = identity_source
+				analysis.gear_id = tostring(candidate.gear_id)
+				analysis.rarity = tonumber(candidate.rarity) or -1
+				analysis.remaining_steps = remaining_steps(candidate)
+
+				if analysis_is_better(analysis, best_analysis) then
+					best = candidate
+					best_analysis = analysis
+				end
+			end
+		end
+
+		if best then
+			best.resume_analysis = best_analysis
 		end
 
 		return best

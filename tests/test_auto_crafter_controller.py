@@ -511,6 +511,70 @@ def main() -> None:
 			assert(reporter.events[#reporter.events - 1].kind == "inventory_base_selected")
 		end
 
+		-- Explicitly allowing favorites makes favorite-state availability irrelevant.
+		-- Prefer a complete 80/80/.../60 profile and less remaining crafting work,
+		-- rather than blindly choosing highest current expertise.
+		do
+			local cheap_but_incomplete = summarized_item("gear-incomplete", 0, 60)
+			cheap_but_incomplete.favorite_known = true
+			cheap_but_incomplete.favorited = false
+			cheap_but_incomplete.expertise_level = 500
+			cheap_but_incomplete.potential_base_stats = {damage_stat = 70, mobility_stat = 60}
+			local resumed = summarized_item("gear-resumed", 5, 60)
+			resumed.favorite_known = false
+			resumed.favorited = true
+			resumed.expertise_level = 400
+			resumed.potential_base_stats = {damage_stat = 80, mobility_stat = 60}
+			local backend = {purchase_calls = 0}
+			function backend:purchase_offer(_) self.purchase_calls = self.purchase_calls + 1 return resolved({}) end
+			function backend:probe_snapshot() return resolved(snapshot_with_items({cheap_but_incomplete, resumed})) end
+			CurrentOffer = raw_offer()
+			local settings = base_settings({
+				auto_crafter_include_favorite_inventory_bases = true,
+				auto_crafter_reuse_inventory_base = true,
+				auto_crafter_target_dump_stat = "mobility_stat",
+			})
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = settings, reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = snapshot_with_items({cheap_but_incomplete, resumed})
+			controller._active_view = {}
+			controller._view_is_valid = true
+			controller:_refresh_plan("test_target_ready")
+			settings.values.auto_crafter_target_dump_stat = "mobility_stat"
+			assert(controller:start_purchase_search() == true)
+			local result = controller:snapshot()
+			assert(backend.purchase_calls == 0, "unexpected purchases " .. tostring(backend.purchase_calls) .. " phase " .. tostring(result.phase))
+			assert(result.search.result and result.search.result.gear_id == "gear-resumed", "selected " .. tostring(result.search.result and result.search.result.gear_id))
+			assert(controller:snapshot().search.result.resume_analysis.all_other_stats_maxed == true)
+			assert(controller:snapshot().search.result.resume_analysis.remaining_steps == 0)
+		end
+
+		-- Missing parent-pattern metadata can safely fall back to matching weapon
+		-- templates. Known parent-pattern mismatches still fail closed.
+		do
+			local item = summarized_item("gear-template-fallback", 5, 60)
+			item.parent_pattern = nil
+			item.mastery_id = nil
+			item.weapon_template = "template-1"
+			item.favorite_known = true
+			item.favorited = false
+			item.expertise_level = 500
+			local snapshot = snapshot_with(item)
+			snapshot.store.offers[1].parent_pattern = nil
+			snapshot.store.offers[1].weapon_template = "template-1"
+			local backend = {purchase_calls = 0}
+			function backend:purchase_offer(_) self.purchase_calls = self.purchase_calls + 1 return resolved({}) end
+			function backend:probe_snapshot() return resolved(snapshot) end
+			CurrentOffer = raw_offer()
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings({auto_crafter_reuse_inventory_base = true}), reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = snapshot
+			controller._active_view = {}
+			controller._view_is_valid = true
+			assert(controller:start_purchase_search() == true)
+			assert(backend.purchase_calls == 0)
+			assert(controller:snapshot().search.result.gear_id == "gear-template-fallback")
+			assert(controller:snapshot().search.result.resume_analysis.family_identity == "weapon_template")
+		end
+
 		-- Phase 4 serially consecrates, advances 100-level milestones, allocates
 		-- a selected blessing, replaces targets, and verifies every refresh.
 		do
@@ -518,9 +582,9 @@ def main() -> None:
 			item.favorite_known = true
 			item.favorited = false
 			item.expertise_level = 330
-			item.perks = {{id = "old_perk", rarity = 4}, {id = "keep_perk", rarity = 4}}
+			item.perks = {{id = "old_perk", rarity = 4}, {id = "new_perk", rarity = 4}}
 			item.traits = {{id = "old_blessing", rarity = 4}, {id = "keep_blessing", rarity = 4}}
-			local state = {sticker_seen = false}
+			local state = {perk_order = {}, sticker_seen = false}
 			local backend = {purchase_calls = 0, rarity_calls = 0, expertise_calls = 0, perk_calls = 0, blessing_calls = 0, allocation_calls = 0}
 			function backend:purchase_offer(_) self.purchase_calls = self.purchase_calls + 1 return resolved({items = {item}}) end
 			function backend:probe_snapshot() return resolved(snapshot_with(item)) end
@@ -529,7 +593,7 @@ def main() -> None:
 			function backend:add_weapon_expertise(_, target) self.expertise_calls = self.expertise_calls + 1 item.expertise_level = target return resolved({}) end
 			function backend:purchase_mastery_trait(_, id, tier) assert(id == "new_blessing" and tier == 4) self.allocation_calls = self.allocation_calls + 1 state.sticker_seen = true return resolved({}) end
 			function backend:get_trait_sticker_book(_) return resolved({{id = "new_blessing", tiers = {{tier = 4, status = state.sticker_seen and "seen" or "unseen"}}}}) end
-			function backend:replace_perk(_, index, id, tier) self.perk_calls = self.perk_calls + 1 item.perks[index] = {id = id, rarity = tier} return resolved({}) end
+			function backend:replace_perk(_, index, id, tier) self.perk_calls = self.perk_calls + 1 state.perk_order[#state.perk_order + 1] = index item.perks[index] = {id = id, rarity = tier} return resolved({}) end
 			function backend:replace_blessing(_, index, id, tier) self.blessing_calls = self.blessing_calls + 1 item.traits[index] = {id = id, rarity = tier} return resolved({}) end
 
 			local settings = base_settings({
@@ -540,7 +604,7 @@ def main() -> None:
 				auto_crafter_change_perks = true,
 				auto_crafter_change_blessings = true,
 				auto_crafter_perk_1_target = "perk:new_perk:4",
-				auto_crafter_perk_2_target = "keep",
+				auto_crafter_perk_2_target = "perk:other_perk:4",
 				auto_crafter_blessing_1_target = "new_blessing",
 				auto_crafter_blessing_2_target = "keep",
 			})
@@ -549,7 +613,7 @@ def main() -> None:
 			controller._catalog = {
 				available = true,
 				trait_category = "test_category",
-				perks = {{id = "new_perk", tier = 4}},
+				perks = {{id = "new_perk", tier = 4}, {id = "other_perk", tier = 4}},
 				blessings = {{id = "new_blessing", tiers = {{tier = 4, status = "unseen"}}}},
 			}
 			controller._snapshot = snapshot_with(nil)
@@ -560,8 +624,9 @@ def main() -> None:
 			assert(result.phase == "phase4_complete", tostring(result.phase) .. " " .. tostring(result.last_error))
 			assert(item.rarity == 5 and item.expertise_level == 500)
 			assert(backend.rarity_calls == 2 and backend.expertise_calls == 2)
-			assert(backend.allocation_calls == 1 and backend.perk_calls == 1 and backend.blessing_calls == 1)
-			assert(item.perks[1].id == "new_perk" and item.traits[1].id == "new_blessing")
+			assert(backend.allocation_calls == 1 and backend.perk_calls == 2 and backend.blessing_calls == 1)
+			assert(state.perk_order[1] == 2 and state.perk_order[2] == 1)
+			assert(item.perks[1].id == "new_perk" and item.perks[2].id == "other_perk" and item.traits[1].id == "new_blessing")
 		end
 
 		-- Configuration changes close dispatch gate while current request remains unsettled.
