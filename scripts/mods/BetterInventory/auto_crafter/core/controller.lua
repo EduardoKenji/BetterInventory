@@ -258,6 +258,7 @@ function Controller.new(dependencies)
 		_selected_target_key = nil,
 		_selected_native_key = nil,
 		_planner_signature = nil,
+		_frozen_run_settings = nil,
 	}
 
 	local function report(kind, payload)
@@ -340,6 +341,31 @@ function Controller.new(dependencies)
 		auto_crafter_blessing_2_target = true,
 	}
 
+	local function run_is_active()
+		return self._search and self._search.running == true or self._phase3 and self._phase3.running == true or self._phase4 and self._phase4.running == true or self._mastery and self._mastery.running == true
+	end
+
+	local function freeze_run_settings()
+		local frozen = {}
+
+		for setting_id in pairs(planner_setting_ids) do
+			frozen[setting_id] = setting(setting_id)
+		end
+
+		frozen.auto_crafter_buy_until_target = setting("auto_crafter_buy_until_target", true)
+		self._frozen_run_settings = frozen
+	end
+
+	local function run_setting_changed(setting_id)
+		local frozen = self._frozen_run_settings
+
+		if not frozen then
+			return true
+		end
+
+		return setting(setting_id) ~= frozen[setting_id]
+	end
+
 	local mutation_setting_ids = {
 		auto_crafter_allow_mutations = true,
 		auto_crafter_defer_bad_weapon_processing = true,
@@ -414,7 +440,7 @@ function Controller.new(dependencies)
 			local target_changed = next_target_key ~= previous_target_key
 			local default_dump_stat = self._planner.default_dump_stat(plan)
 
-			if default_dump_stat and (target_changed or config.dump_stat == "auto") and config.dump_stat ~= default_dump_stat and set_setting("auto_crafter_target_dump_stat", default_dump_stat) then
+			if not run_is_active() and default_dump_stat and (target_changed or config.dump_stat == "auto") and config.dump_stat ~= default_dump_stat and set_setting("auto_crafter_target_dump_stat", default_dump_stat) then
 				config.dump_stat = default_dump_stat
 				self._planner_signature = planner_config_signature(config)
 				ok, plan = pcall(self._planner.build, self._snapshot, config)
@@ -468,10 +494,6 @@ function Controller.new(dependencies)
 		local ok, valid = safe_call(fn, self._context)
 
 		return ok and valid == true
-	end
-
-	local function run_is_active()
-		return self._search and self._search.running == true or self._phase3 and self._phase3.running == true or self._phase4 and self._phase4.running == true or self._mastery and self._mastery.running == true
 	end
 
 	local function operation_context_valid(generation)
@@ -602,7 +624,9 @@ function Controller.new(dependencies)
 			self._snapshot = snapshot
 			self._last_probe_at = type(self._clock.now) == "function" and self._clock:now() or nil
 			self._probe_count = self._probe_count + 1
-			self:_refresh_plan("operation_refresh")
+			if self._view_is_valid and self._active_view then
+				self:_refresh_plan("operation_refresh")
+			end
 			callback(snapshot)
 		end)
 	end
@@ -932,6 +956,7 @@ function Controller.new(dependencies)
 		end
 
 		self._phase = reason
+		self._frozen_run_settings = nil
 		operation_report("purchase_search_stopped", {
 			candidate = phase3 and phase3.target_candidate or search and search.result,
 			reason = reason,
@@ -1970,6 +1995,7 @@ function Controller.new(dependencies)
 			running = true,
 			target_candidate = nil,
 		} or nil
+		freeze_run_settings()
 		self._last_error = nil
 		self._phase = self._phase3 and "phase3_search_purchase" or "search_purchase"
 		operation_report("purchase_search_started", {
@@ -2351,12 +2377,6 @@ function Controller.new(dependencies)
 		self._view_is_valid = false
 
 		if run_is_active() then
-			self._catalog = nil
-			self._catalog_key = nil
-			self._selected_target_key = nil
-			self._selected_native_key = nil
-			self._planner_signature = nil
-
 			return true
 		end
 
@@ -2374,6 +2394,7 @@ function Controller.new(dependencies)
 		self._selected_target_key = nil
 		self._selected_native_key = nil
 		self._planner_signature = nil
+		self._frozen_run_settings = nil
 
 		return true
 	end
@@ -2397,6 +2418,7 @@ function Controller.new(dependencies)
 		self._selected_target_key = nil
 		self._selected_native_key = nil
 		self._planner_signature = nil
+		self._frozen_run_settings = nil
 		report("context_exit", {
 			reason = reason or "game_state_exit",
 		})
@@ -2428,10 +2450,20 @@ function Controller.new(dependencies)
 			return true
 		end
 
-		if (planner_setting_ids[setting_id] or setting_id == "auto_crafter_buy_until_target") and self:_stop_active_run("run_configuration_changed") then
-			self:_refresh_plan("planner_setting_changed")
+		local run_setting = planner_setting_ids[setting_id] or setting_id == "auto_crafter_buy_until_target"
 
-			return true
+		if run_setting and run_is_active() then
+			if not run_setting_changed(setting_id) then
+				return true
+			end
+
+			if self:_stop_active_run("run_configuration_changed") then
+				if self._view_is_valid then
+					self:_refresh_plan("planner_setting_changed")
+				end
+
+				return true
+			end
 		end
 
 		if mutation_setting_ids[setting_id] and not mutations_enabled() then
@@ -2594,6 +2626,7 @@ function Controller.new(dependencies)
 		self._selected_target_key = nil
 		self._selected_native_key = nil
 		self._planner_signature = nil
+		self._frozen_run_settings = nil
 	end
 
 	return self

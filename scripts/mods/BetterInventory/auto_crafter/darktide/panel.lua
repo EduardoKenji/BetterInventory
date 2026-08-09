@@ -1467,6 +1467,17 @@ function Panel.new(dependencies)
 					widget.content.detail = current_weapon or localize("auto_crafter_panel_no_target", "no weapon selected")
 				end,
 			}),
+			self:_entry(localize("auto_crafter_show_status_hud", "Show persistent crafting status"), "", {
+				checked = self:_setting("auto_crafter_show_status_hud", true) == true,
+				selectable = true,
+				variant = "checkbox",
+				action = function()
+					self:_set_setting("auto_crafter_show_status_hud", not (self:_setting("auto_crafter_show_status_hud", true) == true))
+				end,
+				refresh = function(widget)
+					widget.content.checked = self:_setting("auto_crafter_show_status_hud", true) == true
+				end,
+			}),
 			self:_entry(localize("auto_crafter_panel_planner", "Planner configuration"), "", {
 				selectable = true,
 				section_header = true,
@@ -1700,7 +1711,6 @@ function Panel.new(dependencies)
 			add_checkbox("auto_crafter_change_blessings", "auto_crafter_change_blessings", "Change blessings", false, function()
 				return self:_setting("auto_crafter_level_mastery_20", false) == true
 			end)
-			add_checkbox("auto_crafter_show_status_hud", "auto_crafter_show_status_hud", "Show persistent crafting status", true)
 		end
 
 		table.insert(entries, self:_entry(localize("auto_crafter_panel_trait_targets", "Perk and blessing targets"), "", {

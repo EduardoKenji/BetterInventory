@@ -611,6 +611,12 @@ return {
 						default_value = true,
 					},
 					{
+						setting_id = "auto_crafter_show_status_hud",
+						tooltip = "auto_crafter_show_status_hud_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
 						setting_id = "auto_crafter_allow_mutations",
 						tooltip = "auto_crafter_allow_mutations_tooltip",
 						type = "checkbox",
@@ -730,7 +736,6 @@ return {
 							{ setting_id = "auto_crafter_upgrade_expertise_500", tooltip = "auto_crafter_upgrade_expertise_500_tooltip", type = "checkbox", default_value = true },
 							{ setting_id = "auto_crafter_change_perks", tooltip = "auto_crafter_change_perks_tooltip", type = "checkbox", default_value = false },
 							{ setting_id = "auto_crafter_change_blessings", tooltip = "auto_crafter_change_blessings_tooltip", type = "checkbox", default_value = false },
-							{ setting_id = "auto_crafter_show_status_hud", tooltip = "auto_crafter_show_status_hud_tooltip", type = "checkbox", default_value = true },
 						},
 					},
 					{

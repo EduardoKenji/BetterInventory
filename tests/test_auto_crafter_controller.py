@@ -320,6 +320,11 @@ def main() -> None:
 			assert(controller:on_view_closed(view) == true)
 			assert(controller:snapshot().view_is_valid == false)
 			assert(controller:snapshot().search.running == true)
+			-- DMF/panel teardown may replay unchanged values. Same-value callbacks are noise,
+			-- not user configuration changes, and must not stop frozen background work.
+			assert(controller:on_setting_changed("auto_crafter_target_dump_stat") == true)
+			assert(controller:on_setting_changed("auto_crafter_dump_stat_target") == true)
+			assert(controller:snapshot().search.running == true)
 			state.item = summarized_item("gear-background", 0, 60)
 			backend.purchase_promise.next_callback({items = {state.item}})
 			assert(controller:snapshot().search.running == false)
