@@ -502,7 +502,23 @@ local function enum_stepper_passes(width)
 end
 
 local function stat_grid_passes(width, entry)
-	local passes = {}
+	local passes = {
+		{
+			pass_type = "logic",
+			value = function(_, _, _, content)
+				for index = 1, content.stat_count or 0 do
+					local hotspot = content["stat_hotspot_" .. tostring(index)]
+					local stat_button = entry and entry.stat_buttons and entry.stat_buttons[index]
+
+					if hotspot and hotspot.on_pressed and stat_button and entry.stat_pressed_callback then
+						entry.stat_pressed_callback(stat_button.name)
+
+						break
+					end
+				end
+			end,
+		},
+	}
 	local function available(index)
 		return function(content)
 			return (content.stat_count or 0) >= index
@@ -518,6 +534,13 @@ local function stat_grid_passes(width, entry)
 			return (content.stat_count or 0) >= index and content.selected_stat_index ~= index
 		end
 	end
+	local function hovered(index)
+		return function(content)
+			local hotspot = content["stat_hotspot_" .. tostring(index)]
+
+			return (content.stat_count or 0) >= index and hotspot and hotspot.is_hover == true and content.selected_stat_index ~= index
+		end
+	end
 
 	for index = 1, 5 do
 		local columns = index <= 3 and 3 or 2
@@ -528,15 +551,11 @@ local function stat_grid_passes(width, entry)
 		local y = row * (STAT_GRID_BUTTON_HEIGHT + STAT_GRID_GAP)
 		local hotspot_id = "stat_hotspot_" .. tostring(index)
 		local label_id = "stat_label_" .. tostring(index)
-		local stat_button = entry and entry.stat_buttons and entry.stat_buttons[index]
-		local stat_name = stat_button and stat_button.name
-		local pressed_callback = stat_name and entry.stat_pressed_callback and function()
-			entry.stat_pressed_callback(stat_name)
-		end or nil
 
-		passes[#passes + 1] = { content_id = hotspot_id, pass_type = "hotspot", content = { on_hover_sound = UISoundEvents.default_mouse_hover, on_pressed_sound = UISoundEvents.default_click, pressed_callback = pressed_callback }, style = { size = { button_width, STAT_GRID_BUTTON_HEIGHT }, offset = { x, y, 5 } }, visibility_function = available(index) }
+		passes[#passes + 1] = { content_id = hotspot_id, pass_type = "hotspot", content = { on_hover_sound = UISoundEvents.default_mouse_hover, on_pressed_sound = UISoundEvents.default_click }, style = { size = { button_width, STAT_GRID_BUTTON_HEIGHT }, offset = { x, y, 6 } }, visibility_function = available(index) }
 		passes[#passes + 1] = { pass_type = "rect", style = { color = Color.terminal_corner_selected(110, true), size = { button_width, STAT_GRID_BUTTON_HEIGHT }, offset = { x, y, 1 } }, visibility_function = selected(index) }
 		passes[#passes + 1] = { pass_type = "rect", style = { color = Color.terminal_background(220, true), size = { button_width, STAT_GRID_BUTTON_HEIGHT }, offset = { x, y, 1 } }, visibility_function = not_selected(index) }
+		passes[#passes + 1] = { pass_type = "rect", style = { color = Color.terminal_corner_selected(55, true), size = { button_width, STAT_GRID_BUTTON_HEIGHT }, offset = { x, y, 2 } }, visibility_function = hovered(index) }
 		passes[#passes + 1] = { pass_type = "texture", value = "content/ui/materials/frames/frame_tile_2px", style = { color = Color.terminal_frame(255, true), size = { button_width, STAT_GRID_BUTTON_HEIGHT }, offset = { x, y, 2 } }, visibility_function = available(index) }
 		passes[#passes + 1] = { pass_type = "text", value_id = label_id, style = { font_size = 13, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_corner_selected(255, true), size = { button_width - 8, STAT_GRID_BUTTON_HEIGHT }, offset = { x + 4, y, 3 } }, visibility_function = selected(index) }
 		passes[#passes + 1] = { pass_type = "text", value_id = label_id, style = { font_size = 13, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_text_body(255, true), size = { button_width - 8, STAT_GRID_BUTTON_HEIGHT }, offset = { x + 4, y, 3 } }, visibility_function = not_selected(index) }

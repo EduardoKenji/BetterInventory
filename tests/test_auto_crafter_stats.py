@@ -383,13 +383,13 @@ def main() -> None:
     assert grid_entry.initial_content.selectable is True
     assert widget.content.selected_stat_index == 5
     stat_grid_passes = panel_module.stat_grid_passes(421, grid_entry)
-    stat_hotspot_pass = next(
+    stat_logic_pass = next(
         stat_grid_passes[index]
         for index in range(1, len(stat_grid_passes) + 1)
-        if stat_grid_passes[index].content_id == "stat_hotspot_1"
+        if stat_grid_passes[index].pass_type == "logic"
     )
-    assert stat_hotspot_pass.content.pressed_callback is not None
-    stat_hotspot_pass.content.pressed_callback()
+    widget.content.stat_hotspot_1.on_pressed = True
+    stat_logic_pass.value(None, None, None, widget.content)
     grid_entry.refresh(widget)
     assert lua.globals().TestPanelSettings.value == "crowbar_p1_m1_dps_stat"
     assert widget.content.selected_stat_index == 1
