@@ -1,6 +1,7 @@
 local Promise = require("scripts/foundation/utilities/promise")
 local Items = require("scripts/utilities/items")
 local MasterItems = require("scripts/backend/master_items")
+local WeaponTemplate = require("scripts/utilities/weapon/weapon_template")
 
 local Backend = {}
 local GEAR_SUMMARY_LIMIT = 1024
@@ -65,7 +66,9 @@ local function offer_master_id(offer)
 end
 
 local master_item_details
+local merge_stat_catalog
 local summarize_base_stats
+local summarize_weapon_template_stats
 local store_item_preview
 
 local function summarize_store(store)
@@ -88,18 +91,20 @@ local function summarize_store(store)
 			local price = safe_member(offer, "price")
 			local amount = safe_member(price, "amount")
 			local master_id = offer_master_id(offer)
-			local details = master_item_details(master_id)
 			local description = safe_member(offer, "description")
 			local preview_item = store_item_preview(description)
 			local master_item
 
-			if not preview_item and master_id and type(MasterItems) == "table" and type(MasterItems.get_item) == "function" then
+			if master_id and type(MasterItems) == "table" and type(MasterItems.get_item) == "function" then
 				local master_ok, resolved_master_item = pcall(MasterItems.get_item, master_id)
 
 				master_item = master_ok and resolved_master_item or nil
 			end
 
-			local base_stats = summarize_base_stats(preview_item) or summarize_base_stats(master_item) or summarize_base_stats(description)
+			local details = master_item_details(master_id, master_item)
+			local rolled_stats = summarize_base_stats(preview_item) or summarize_base_stats(description)
+			local template_stats = summarize_weapon_template_stats(preview_item or master_item)
+			local base_stats = merge_stat_catalog(template_stats, rolled_stats)
 			local parent_pattern = details.parent_pattern or safe_member(preview_item, "parent_pattern") or safe_member(description, "parent_pattern")
 			local sku = safe_member(offer, "sku")
 
@@ -115,6 +120,7 @@ local function summarize_store(store)
 				slot_type = details.slot_type,
 				sub_display_name = details.sub_display_name,
 				weapon_category = details.weapon_category,
+				weapon_template = details.weapon_template,
 			}
 		end
 	end
@@ -122,12 +128,17 @@ local function summarize_store(store)
 	return summary
 end
 
-master_item_details = function(master_id)
+master_item_details = function(master_id, resolved_master_item)
 	if master_id == nil or type(MasterItems) ~= "table" or type(MasterItems.get_item) ~= "function" then
 		return {}
 	end
 
-	local ok, master_item = pcall(MasterItems.get_item, master_id)
+	local master_item = resolved_master_item
+	local ok = master_item ~= nil
+
+	if not master_item then
+		ok, master_item = pcall(MasterItems.get_item, master_id)
+	end
 
 	if not ok or not master_item then
 		return {}
@@ -161,6 +172,7 @@ master_item_details = function(master_id)
 		slot_type = slot_type,
 		sub_display_name = sub_display_name,
 		weapon_category = weapon_category,
+		weapon_template = safe_member(master_item, "weapon_progression_template") or safe_member(master_item, "weapon_template"),
 	}
 end
 
@@ -277,6 +289,7 @@ summarize_base_stats = function(source)
 	for key, stat in pairs(base_stats) do
 		local name = safe_member(stat, "name") or safe_member(stat, "stat_name") or safe_member(stat, "statName")
 		local value = safe_member(stat, "value")
+		local display_name_key = safe_member(stat, "display_name") or safe_member(stat, "displayName")
 
 		if name == nil and type(key) == "string" and type(stat) == "number" then
 			name = key
@@ -287,6 +300,7 @@ summarize_base_stats = function(source)
 
 		if name ~= nil and numeric_value ~= nil then
 			summary[#summary + 1] = {
+				display_name_key = display_name_key,
 				name = tostring(name),
 				value = numeric_value,
 			}
@@ -294,6 +308,86 @@ summarize_base_stats = function(source)
 	end
 
 	return #summary > 0 and summary or nil
+end
+
+summarize_weapon_template_stats = function(source)
+	if source == nil or type(WeaponTemplate) ~= "table" or type(WeaponTemplate.weapon_template_from_item) ~= "function" then
+		return nil
+	end
+
+	local ok, weapon_template = pcall(WeaponTemplate.weapon_template_from_item, source)
+
+	if not ok or type(weapon_template) ~= "table" then
+		return nil
+	end
+
+	local definitions = safe_member(weapon_template, "base_stats")
+
+	if type(definitions) ~= "table" then
+		return nil
+	end
+
+	local summary = {}
+
+	for name, definition in pairs(definitions) do
+		if type(name) == "string" and type(definition) == "table" and safe_member(definition, "is_stat_trait") ~= false then
+			summary[#summary + 1] = {
+				display_name_key = safe_member(definition, "display_name") or safe_member(definition, "displayName"),
+				name = name,
+			}
+		end
+	end
+
+	table.sort(summary, function (left, right)
+		local left_key = tostring(left.display_name_key or left.name)
+		local right_key = tostring(right.display_name_key or right.name)
+
+		return left_key == right_key and left.name < right.name or left_key < right_key
+	end)
+
+	return #summary > 0 and summary or nil
+end
+
+merge_stat_catalog = function(template_stats, rolled_stats)
+	local merged = {}
+	local by_name = {}
+
+	for _, stat in ipairs(template_stats or {}) do
+		local entry = {
+			display_name_key = stat.display_name_key,
+			name = stat.name,
+			value = stat.value,
+		}
+
+		merged[#merged + 1] = entry
+		by_name[entry.name] = entry
+	end
+
+	for _, stat in ipairs(rolled_stats or {}) do
+		local entry = by_name[stat.name]
+
+		if entry then
+			entry.display_name_key = entry.display_name_key or stat.display_name_key
+			entry.value = stat.value
+		else
+			entry = {
+				display_name_key = stat.display_name_key,
+				name = stat.name,
+				value = stat.value,
+			}
+			merged[#merged + 1] = entry
+			by_name[entry.name] = entry
+		end
+	end
+
+	table.sort(merged, function (left, right)
+		local left_key = tostring(left.display_name_key or left.name)
+		local right_key = tostring(right.display_name_key or right.name)
+
+		return left_key == right_key and left.name < right.name or left_key < right_key
+	end)
+
+	return #merged > 0 and merged or nil
 end
 
 store_item_preview = function(description)
@@ -410,17 +504,23 @@ local function summarize_item(gear, gear_id)
 		}
 	end
 
-	local base_stats = safe_member(item, "base_stats")
 	local stat_values = {}
+	local base_stat_labels = {}
+	local rolled_stats = summarize_base_stats(item) or {}
+	local template_stats = summarize_weapon_template_stats(item) or {}
 
-	if type(base_stats) == "table" then
-		for _, stat in ipairs(base_stats) do
-			local name = safe_member(stat, "name")
-			local value = tonumber(safe_member(stat, "value"))
+	for _, stat in ipairs(template_stats) do
+		if stat.name and stat.display_name_key then
+			base_stat_labels[stat.name] = stat.display_name_key
+		end
+	end
 
-			if name and value ~= nil then
-				stat_values[name] = value <= 1.01 and math.floor(value * 100 + 0.5) or math.floor(value + 0.5)
-			end
+	for _, stat in ipairs(rolled_stats) do
+		local value = tonumber(stat.value)
+
+		if stat.name and value ~= nil then
+			stat_values[stat.name] = value <= 1.01 and math.floor(value * 100 + 0.5) or math.floor(value + 0.5)
+			base_stat_labels[stat.name] = base_stat_labels[stat.name] or stat.display_name_key
 		end
 	end
 
@@ -437,6 +537,7 @@ local function summarize_item(gear, gear_id)
 	return {
 		available = true,
 		base_item_level = tonumber(safe_member(item, "baseItemLevel")),
+		base_stat_labels = base_stat_labels,
 		base_stats = stat_values,
 		damage = item_stat_value(item, "damage"),
 		display_name = display_name or safe_member(item, "name"),
@@ -447,6 +548,7 @@ local function summarize_item(gear, gear_id)
 		mastery_id = safe_member(item, "parent_pattern"),
 		parent_pattern = safe_member(item, "parent_pattern"),
 		rarity = tonumber(safe_member(item, "rarity")),
+		weapon_template = safe_member(item, "weapon_progression_template") or safe_member(item, "weapon_template"),
 	}
 end
 

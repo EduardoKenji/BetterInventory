@@ -65,10 +65,12 @@ local function stat_entries(base_stats)
 	for key, stat in pairs(base_stats) do
 		local name
 		local value
+		local display_name_key
 
 		if type(stat) == "table" then
 			name = stat.name or stat.stat_name or stat.statName
 			value = stat.value
+			display_name_key = stat.display_name_key or stat.display_name or stat.displayName
 		elseif type(key) == "string" and type(stat) == "number" then
 			name = key
 			value = stat
@@ -76,12 +78,13 @@ local function stat_entries(base_stats)
 
 		value = tonumber(value)
 
-		if name ~= nil and value ~= nil then
-			if value <= 1.01 then
+		if name ~= nil then
+			if value ~= nil and value <= 1.01 then
 				value = value * 100
 			end
 
 			entries[#entries + 1] = {
+				display_name_key = display_name_key,
 				name = tostring(name),
 				value = value,
 			}
@@ -89,19 +92,22 @@ local function stat_entries(base_stats)
 	end
 
 	table.sort(entries, function (left, right)
-		return string.lower(left.name) < string.lower(right.name)
+		local left_key = string.lower(tostring(left.display_name_key or left.name))
+		local right_key = string.lower(tostring(right.display_name_key or right.name))
+
+		return left_key == right_key and string.lower(left.name) < string.lower(right.name) or left_key < right_key
 	end)
 
 	return entries
 end
 
 local STAT_ALIASES = {
-	damage = { "damage" },
-	finesse = { "finesse" },
+	damage = { "damage", "dps", "stats_display_damage" },
+	finesse = { "finesse", "crit", "stats_display_finesse" },
 	first_target = { "first_target", "firsttarget" },
 	mobility = { "mobility" },
-	penetration = { "penetration" },
-	defenses = { "defence", "defences", "defense", "defenses" },
+	penetration = { "penetration", "armor_pierce", "armour_pierce", "stats_display_ap_stat" },
+	defenses = { "defence", "defences", "defense", "defenses", "stats_display_defense" },
 }
 
 local function normalized_stat_name(value)
@@ -113,26 +119,30 @@ local function normalized_stat_name(value)
 	return text
 end
 
-local function stat_name_matches(configured_name, candidate_name)
+local function stat_name_matches(configured_name, candidate)
 	local configured = normalized_stat_name(configured_name)
-	local candidate = normalized_stat_name(candidate_name)
+	local candidate_name = type(candidate) == "table" and candidate.name or candidate
+	local candidate_display_name = type(candidate) == "table" and candidate.display_name_key or nil
+	local normalized_candidate = normalized_stat_name(candidate_name)
+	local normalized_display_name = normalized_stat_name(candidate_display_name)
 
-	if configured == "" or candidate == "" then
+	if configured == "" or normalized_candidate == "" then
 		return false
 	end
 
-	if configured == candidate then
+	if configured == normalized_candidate then
 		return true
 	end
 
 	local aliases = STAT_ALIASES[configured] or { configured }
-	local compact_candidate = string.gsub(candidate, "_", "")
+	local compact_candidate = string.gsub(normalized_candidate, "_", "")
+	local compact_display_name = string.gsub(normalized_display_name, "_", "")
 
 	for _, alias in ipairs(aliases) do
 		local normalized_alias = normalized_stat_name(alias)
 		local compact_alias = string.gsub(normalized_alias, "_", "")
 
-		if candidate == normalized_alias or string.find(compact_candidate, compact_alias, 1, true) then
+		if normalized_candidate == normalized_alias or string.find(compact_candidate, compact_alias, 1, true) or compact_display_name ~= "" and string.find(compact_display_name, compact_alias, 1, true) then
 			return true
 		end
 	end
@@ -150,15 +160,24 @@ local function discover_from_stats(base_stats)
 	local minimum = math.huge
 	local minimum_name
 	local minimum_count = 0
+	local numeric_count = 0
 
 	for _, entry in ipairs(entries) do
-		if entry.value < minimum then
+		if entry.value ~= nil then
+			numeric_count = numeric_count + 1
+
+			if entry.value < minimum then
 			minimum = entry.value
 			minimum_name = entry.name
 			minimum_count = 1
-		elseif math.abs(entry.value - minimum) < 0.0001 then
-			minimum_count = minimum_count + 1
+			elseif math.abs(entry.value - minimum) < 0.0001 then
+				minimum_count = minimum_count + 1
+			end
 		end
+	end
+
+	if numeric_count == 0 then
+		return nil, "selected weapon stat catalogue exposed no rolled values", entries
 	end
 
 	if minimum_count ~= 1 then
@@ -176,6 +195,18 @@ local function discover_from_matching_gear(snapshot, target)
 	local items = snapshot and snapshot.gear and snapshot.gear.items or {}
 	local sums = {}
 	local counts = {}
+	local metadata = {}
+	local target_candidates = stat_entries(target.base_stats)
+	local target_by_name = {}
+	local target_by_display_name = {}
+
+	for _, candidate in ipairs(target_candidates) do
+		target_by_name[candidate.name] = candidate
+
+		if candidate.display_name_key then
+			target_by_display_name[candidate.display_name_key] = candidate
+		end
+	end
 
 	for _, item in ipairs(items) do
 		local same_parent_pattern = target.parent_pattern and item and item.parent_pattern == target.parent_pattern
@@ -184,8 +215,16 @@ local function discover_from_matching_gear(snapshot, target)
 
 		if same_parent_pattern or same_master_id or same_display_name then
 			for _, entry in ipairs(stat_entries(item.base_stats)) do
-				sums[entry.name] = (sums[entry.name] or 0) + entry.value
-				counts[entry.name] = (counts[entry.name] or 0) + 1
+				entry.display_name_key = entry.display_name_key or item.base_stat_labels and item.base_stat_labels[entry.name]
+
+				local target_candidate = target_by_name[entry.name] or entry.display_name_key and target_by_display_name[entry.display_name_key]
+				local selected = target_candidate or #target_candidates == 0 and entry or nil
+
+				if selected and entry.value ~= nil then
+					sums[selected.name] = (sums[selected.name] or 0) + entry.value
+					counts[selected.name] = (counts[selected.name] or 0) + 1
+					metadata[selected.name] = selected.display_name_key or entry.display_name_key
+				end
 			end
 		end
 	end
@@ -194,6 +233,7 @@ local function discover_from_matching_gear(snapshot, target)
 
 	for name, sum in pairs(sums) do
 		averaged[#averaged + 1] = {
+			display_name_key = metadata[name],
 			name = name,
 			value = sum / counts[name],
 		}
@@ -220,7 +260,7 @@ local function resolve_dump_stat(snapshot, target, configured_dump_stat)
 		end
 
 		for _, candidate in ipairs(candidates) do
-			if stat_name_matches(configured_dump_stat, candidate.name) then
+			if stat_name_matches(configured_dump_stat, candidate) then
 				return candidate.name, "configured stat selected by user", candidates
 			end
 		end
@@ -231,12 +271,14 @@ local function resolve_dump_stat(snapshot, target, configured_dump_stat)
 	local direct_candidates = stat_entries(target and target.base_stats)
 	local stat, reason = discover_from_stats(direct_candidates)
 
-	if #direct_candidates > 0 then
-		if stat then
-			return stat, "auto-discovered from selected weapon preview", direct_candidates
-		end
+	if stat then
+		return stat, "auto-discovered from selected weapon preview", direct_candidates
+	end
 
+	for _, candidate in ipairs(direct_candidates) do
+		if candidate.value ~= nil then
 		return nil, reason, direct_candidates
+		end
 	end
 
 	local fallback_stat, fallback_reason, fallback_candidates = discover_from_matching_gear(snapshot, target)
@@ -245,7 +287,7 @@ local function resolve_dump_stat(snapshot, target, configured_dump_stat)
 		return fallback_stat, "auto-discovered from matching weapon-family inventory", fallback_candidates
 	end
 
-	return nil, reason or fallback_reason or "selected weapon stat discovery unavailable", fallback_candidates
+	return nil, fallback_reason or reason or "selected weapon stat discovery unavailable", #direct_candidates > 0 and direct_candidates or fallback_candidates
 end
 
 local function normalize_config(config)

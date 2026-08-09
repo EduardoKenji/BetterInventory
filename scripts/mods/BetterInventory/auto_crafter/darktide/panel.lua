@@ -71,11 +71,81 @@ local function integer_text(value, fallback)
 	return text
 end
 
-local function display_stat_name(stat_name)
-	local text = tostring(stat_name or "?")
-	text = string.gsub(text, "_", " ")
+local STAT_LABEL_PATTERNS = {
+	{ "cleave_damage_and_targets", "Cleave Damage & Targets" },
+	{ "armor_pierce", "Penetration" },
+	{ "armour_pierce", "Penetration" },
+	{ "first_target", "First Target" },
+	{ "cleave_targets", "Cleave Targets" },
+	{ "cleave_damage", "Cleave Damage" },
+	{ "reload_speed", "Reload Speed" },
+	{ "warp_resist", "Warp Resistance" },
+	{ "heat_management", "Heat Management" },
+	{ "charge_speed", "Charge Speed" },
+	{ "power_output", "Power Output" },
+	{ "explosion_damage", "Explosion Damage" },
+	{ "explosion_ap", "Explosion Penetration" },
+	{ "first_saw_damage", "First Target" },
+	{ "finesse", "Finesse" },
+	{ "mobility", "Mobility" },
+	{ "stability", "Stability" },
+	{ "defence", "Defenses" },
+	{ "defense", "Defenses" },
+	{ "control", "Control" },
+	{ "critical", "Critical Bonus" },
+	{ "crit", "Critical Bonus" },
+	{ "damage", "Damage" },
+	{ "dps", "Damage" },
+	{ "ammo", "Ammo" },
+	{ "range", "Range" },
+	{ "power", "Power" },
+	{ "burn", "Burn" },
+	{ "vent", "Vent Speed" },
+	{ "arc", "Arc" },
+}
 
-	return string.upper(string.sub(text, 1, 1)) .. string.sub(text, 2)
+local function localized_game_text(localization_key)
+	if type(localization_key) ~= "string" or localization_key == "" then
+		return nil
+	end
+
+	local localize_function = rawget(_G, "Localize")
+
+	if type(localize_function) ~= "function" then
+		return nil
+	end
+
+	local ok, value = pcall(localize_function, localization_key)
+
+	if not ok or type(value) ~= "string" or value == "" or value == localization_key then
+		return nil
+	end
+
+	return value
+end
+
+local function display_stat_name(stat_name, display_name_key)
+	local localized = localized_game_text(display_name_key)
+
+	if localized then
+		return localized
+	end
+
+	local raw_name = string.lower(tostring(stat_name or "?"))
+
+	for _, definition in ipairs(STAT_LABEL_PATTERNS) do
+		if string.find(raw_name, definition[1], 1, true) then
+			return definition[2]
+		end
+	end
+
+	local semantic_name = string.match(raw_name, "_p%d+_m%d+_(.+)_stat$") or string.match(raw_name, "_p%d+_(.+)_stat$") or string.match(raw_name, "^(.+)_stat$") or raw_name
+	semantic_name = string.gsub(semantic_name, "_", " ")
+	semantic_name = string.gsub(semantic_name, "(%a)([%w']*)", function (first, rest)
+		return string.upper(first) .. rest
+	end)
+
+	return semantic_name
 end
 
 local function wallet_amount(snapshot, currency)
@@ -710,7 +780,13 @@ function Panel.new(dependencies)
 			local resolved = self._plan and self._plan.resolved_dump_stat
 
 			if resolved then
-				return string.format("%s: %s", localize("auto_crafter_dump_stat_auto", "Auto-discover recommendation"), display_stat_name(resolved))
+				return string.format("%s: %s", localize("auto_crafter_dump_stat_auto", "Auto-discover recommendation"), self:_planner_dump_stat_label(resolved))
+			end
+
+			local candidates = self._plan and self._plan.dump_stat_candidates or {}
+
+			if #candidates > 0 then
+				return localize("auto_crafter_dump_stat_auto_unavailable", "Auto recommendation unavailable (choose a stat)")
 			end
 
 			return localize("auto_crafter_dump_stat_auto_pending", "Auto-discover (waiting for weapon preview)")
@@ -718,7 +794,19 @@ function Panel.new(dependencies)
 
 		local resolved = self._plan and self._plan.resolved_dump_stat
 
-		return display_stat_name(resolved or value)
+		return self:_planner_dump_stat_label(resolved or value)
+	end
+
+	function self:_planner_dump_stat_label(stat_name)
+		local candidates = self._plan and self._plan.dump_stat_candidates or {}
+
+		for _, candidate in ipairs(candidates) do
+			if type(candidate) == "table" and candidate.name == stat_name then
+				return display_stat_name(stat_name, candidate.display_name_key)
+			end
+		end
+
+		return display_stat_name(stat_name)
 	end
 
 	function self:_planner_dump_stat_options()

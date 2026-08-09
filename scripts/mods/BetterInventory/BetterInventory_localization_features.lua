@@ -593,6 +593,9 @@ local localization = {
 	auto_crafter_dump_stat_auto = {
 		en = "Auto-discover recommendation",
 	},
+	auto_crafter_dump_stat_auto_unavailable = {
+		en = "Auto recommendation unavailable (choose a stat)",
+	},
 	auto_crafter_dump_stat_auto_pending = {
 		en = "Auto-discover recommendation (waiting for weapon preview)",
 	},

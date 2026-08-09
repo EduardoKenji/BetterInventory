@@ -4,6 +4,11 @@
     {"name": "empty_slot_model", "risk": "high", "start_line": 57, "end_line": 72},
     {"name": "derived_content_reset", "risk": "high", "start_line": 74, "end_line": 86}
   ],
+  "test_auto_crafter_stats.py": [
+    {"name": "template_stat_catalog", "risk": "critical", "start_line": 127, "end_line": 136},
+    {"name": "manual_and_auto_resolution", "risk": "critical", "start_line": 138, "end_line": 159},
+    {"name": "localized_display_labels", "risk": "high", "start_line": 161, "end_line": 179}
+  ],
   "test_contracts.py": [
     {"name": "guarded_lookup", "risk": "high", "start_line": 22, "end_line": 40},
     {"name": "typed_fallbacks", "risk": "high", "start_line": 42, "end_line": 65}
