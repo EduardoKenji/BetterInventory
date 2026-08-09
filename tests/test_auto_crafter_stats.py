@@ -376,7 +376,8 @@ def main() -> None:
     grid_entry.refresh(widget)
     assert grid_entry.initial_content.selectable is True
     assert widget.content.selected_stat_index == 5
-    widget.content.stat_pressed_callbacks[1]()
+    assert widget.content.stat_hotspot_1.pressed_callback is not None
+    widget.content.stat_hotspot_1.pressed_callback()
     grid_entry.refresh(widget)
     assert lua.globals().TestPanelSettings.value == "crowbar_p1_m1_dps_stat"
     assert widget.content.selected_stat_index == 1

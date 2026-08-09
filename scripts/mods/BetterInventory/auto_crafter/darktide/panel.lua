@@ -502,25 +502,7 @@ local function enum_stepper_passes(width)
 end
 
 local function stat_grid_passes(width)
-	local passes = {
-		{
-			pass_type = "logic",
-			value = function(_, _, _, content)
-				local callbacks = content.stat_pressed_callbacks or {}
-
-				for index = 1, content.stat_count or 0 do
-					local hotspot = content["stat_hotspot_" .. tostring(index)]
-					local pressed_callback = callbacks[index]
-
-					if hotspot and hotspot.on_pressed and pressed_callback then
-						pressed_callback()
-
-						break
-					end
-				end
-			end,
-		},
-	}
+	local passes = {}
 	local function available(index)
 		return function(content)
 			return (content.stat_count or 0) >= index
@@ -925,6 +907,12 @@ function Panel.new(dependencies)
 
 				for index, button in ipairs(options.stat_buttons) do
 					widget.content["stat_label_" .. tostring(index)] = button.label
+					local hotspot = widget.content["stat_hotspot_" .. tostring(index)]
+
+					if hotspot then
+						hotspot.pressed_callback = widget.content.stat_pressed_callbacks[index]
+						hotspot.disabled = false
+					end
 				end
 
 				widget.content.selected_stat_index = 0
