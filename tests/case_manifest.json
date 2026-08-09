@@ -7,8 +7,8 @@
   "test_auto_crafter_stats.py": [
     {"name": "template_stat_catalog", "risk": "critical", "start_line": 127, "end_line": 136},
     {"name": "indexed_manual_resolution", "risk": "critical", "start_line": 138, "end_line": 168},
-    {"name": "manual_selector_options", "risk": "critical", "start_line": 170, "end_line": 175},
-    {"name": "localized_display_labels", "risk": "high", "start_line": 176, "end_line": 191}
+    {"name": "manual_selector_and_shortcut_grid", "risk": "critical", "start_line": 170, "end_line": 207},
+    {"name": "localized_display_labels", "risk": "high", "start_line": 208, "end_line": 223}
   ],
   "test_contracts.py": [
     {"name": "guarded_lookup", "risk": "high", "start_line": 22, "end_line": 40},

@@ -167,12 +167,44 @@ def main() -> None:
     penetration_plan = plan("penetration")
     assert penetration_plan.resolved_dump_stat == "crowbar_p1_m1_armor_pierce_stat"
 
+    lua.execute(
+        '''
+        TestPanelSettings = {
+            value = "crowbar_p1_m1_defence_stat",
+            get = function(self, _) return self.value end,
+            set = function(self, _, value) self.value = value return true end,
+        }
+        '''
+    )
     panel_module = lua.execute(PANEL_PATH.read_text(encoding="utf-8"))
-    panel = panel_module.new(lua.table_from({}))
+    panel = panel_module.new(lua.table_from({"settings": lua.globals().TestPanelSettings}))
     panel._plan = defense_plan
     panel_options = panel._planner_dump_stat_options(panel)
     assert [panel_options[index] for index in range(1, len(panel_options) + 1)] == ordered_names
     assert "auto" not in [panel_options[index] for index in range(1, len(panel_options) + 1)]
+    stat_buttons = panel._planner_dump_stat_buttons(panel)
+    assert len(stat_buttons) == 5
+    assert [stat_buttons[index].name for index in range(1, 6)] == ordered_names
+    assert stat_buttons[1].label == "Damage"
+    assert stat_buttons[2].label == "Mobility"
+    grid_entry = panel._entry(
+        panel,
+        "",
+        "",
+        lua.table_from({"variant": "stat_grid", "stat_buttons": stat_buttons}),
+    )
+    widget_content = lua.table_from(
+        {f"stat_hotspot_{index}": lua.table_from({}) for index in range(1, 6)}
+    )
+    widget = lua.table_from({"content": widget_content})
+    grid_entry.bind(widget)
+    grid_entry.refresh(widget)
+    assert widget.content.selected_stat_index == 5
+    widget.content.stat_hotspot_1.pressed_callback()
+    grid_entry.refresh(widget)
+    assert lua.globals().TestPanelSettings.value == "crowbar_p1_m1_dps_stat"
+    assert widget.content.selected_stat_index == 1
+    assert panel._planner_dump_stat_text(panel) == "Damage"
     assert panel._planner_dump_stat_label(panel, "crowbar_p1_m1_defence_stat") == "Defenses"
     panel._plan = lua.table_from(
         {

@@ -10,6 +10,9 @@ local PANEL_Y = 110
 local ROW_HEIGHT = 32
 local COMPACT_ROW_HEIGHT = 26
 local STATUS_ROW_HEIGHT = 42
+local STAT_GRID_BUTTON_HEIGHT = 30
+local STAT_GRID_GAP = 6
+local STAT_GRID_HEIGHT = STAT_GRID_BUTTON_HEIGHT * 2 + STAT_GRID_GAP
 local SECTION_ROW_HEIGHT = 40
 local ROW_SPACING = 8
 local CONTENT_HORIZONTAL_PADDING = 12
@@ -431,6 +434,45 @@ local function enum_stepper_passes(width)
 	}
 end
 
+local function stat_grid_passes(width)
+	local passes = {}
+	local function available(index)
+		return function(content)
+			return (content.stat_count or 0) >= index
+		end
+	end
+	local function selected(index)
+		return function(content)
+			return (content.stat_count or 0) >= index and content.selected_stat_index == index
+		end
+	end
+	local function not_selected(index)
+		return function(content)
+			return (content.stat_count or 0) >= index and content.selected_stat_index ~= index
+		end
+	end
+
+	for index = 1, 5 do
+		local columns = index <= 3 and 3 or 2
+		local column = index <= 3 and index - 1 or index - 4
+		local row = index <= 3 and 0 or 1
+		local button_width = (width - STAT_GRID_GAP * (columns - 1)) / columns
+		local x = column * (button_width + STAT_GRID_GAP)
+		local y = row * (STAT_GRID_BUTTON_HEIGHT + STAT_GRID_GAP)
+		local hotspot_id = "stat_hotspot_" .. tostring(index)
+		local label_id = "stat_label_" .. tostring(index)
+
+		passes[#passes + 1] = { content_id = hotspot_id, pass_type = "hotspot", content = { on_hover_sound = UISoundEvents.default_mouse_hover, on_pressed_sound = UISoundEvents.default_click }, style = { size = { button_width, STAT_GRID_BUTTON_HEIGHT }, offset = { x, y, 5 } }, visibility_function = available(index) }
+		passes[#passes + 1] = { pass_type = "rect", style = { color = Color.terminal_corner_selected(110, true), size = { button_width, STAT_GRID_BUTTON_HEIGHT }, offset = { x, y, 1 } }, visibility_function = selected(index) }
+		passes[#passes + 1] = { pass_type = "rect", style = { color = Color.terminal_background(220, true), size = { button_width, STAT_GRID_BUTTON_HEIGHT }, offset = { x, y, 1 } }, visibility_function = not_selected(index) }
+		passes[#passes + 1] = { pass_type = "texture", value = "content/ui/materials/frames/frame_tile_2px", style = { color = Color.terminal_frame(255, true), size = { button_width, STAT_GRID_BUTTON_HEIGHT }, offset = { x, y, 2 } }, visibility_function = available(index) }
+		passes[#passes + 1] = { pass_type = "text", value_id = label_id, style = { font_size = 13, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_corner_selected(255, true), size = { button_width - 8, STAT_GRID_BUTTON_HEIGHT }, offset = { x + 4, y, 3 } }, visibility_function = selected(index) }
+		passes[#passes + 1] = { pass_type = "text", value_id = label_id, style = { font_size = 13, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_text_body(255, true), size = { button_width - 8, STAT_GRID_BUTTON_HEIGHT }, offset = { x + 4, y, 3 } }, visibility_function = not_selected(index) }
+	end
+
+	return passes
+end
+
 local function action_button_passes(width)
 	local function enabled(content) return content.enabled == true end
 	local function disabled(content) return content.enabled ~= true end
@@ -467,6 +509,8 @@ local BLUEPRINTS = {
 				return compact_stepper_passes(width)
 			elseif variant == "enum_stepper" then
 				return enum_stepper_passes(width)
+			elseif variant == "stat_grid" then
+				return stat_grid_passes(width)
 			elseif variant == "action" then
 				return action_button_passes(width)
 			elseif variant == "offer" then
@@ -601,6 +645,8 @@ function Panel.new(dependencies)
 			height = SECTION_ROW_HEIGHT
 		elseif variant == "status" then
 			height = STATUS_ROW_HEIGHT
+		elseif variant == "stat_grid" then
+			height = STAT_GRID_HEIGHT
 		elseif variant == "offer" or variant == "action" then
 			height = ROW_HEIGHT
 		end
@@ -618,6 +664,8 @@ function Panel.new(dependencies)
 				section_header = options.section_header == true,
 				section_id = options.section_id,
 				selected = false,
+				selected_stat_index = 0,
+				stat_count = 0,
 				chevron = "",
 			},
 			pass_template = nil,
@@ -671,6 +719,40 @@ function Panel.new(dependencies)
 				end
 				if widget.content.increase_hotspot then
 					widget.content.increase_hotspot.pressed_callback = options.increase
+				end
+			end
+		end
+
+		if options.stat_buttons then
+			entry.bind = function(widget)
+				for index, button in ipairs(options.stat_buttons) do
+					local hotspot = widget.content["stat_hotspot_" .. tostring(index)]
+					local stat_name = button.name
+
+					if hotspot then
+						hotspot.pressed_callback = function()
+							self:_set_setting("auto_crafter_target_dump_stat", stat_name)
+						end
+					end
+				end
+			end
+			entry.refresh = function(widget)
+				local selected_name = self:_planner_selected_dump_stat()
+
+				widget.content.stat_count = #options.stat_buttons
+
+				for index, button in ipairs(options.stat_buttons) do
+					widget.content["stat_label_" .. tostring(index)] = button.label
+				end
+
+				widget.content.selected_stat_index = 0
+
+				for index, button in ipairs(options.stat_buttons) do
+					if button.name == selected_name then
+						widget.content.selected_stat_index = index
+
+						break
+					end
 				end
 			end
 		end
@@ -774,10 +856,20 @@ function Panel.new(dependencies)
 	end
 
 	function self:_planner_dump_stat_text()
-		local value = self:_setting("auto_crafter_target_dump_stat", "damage")
-		local resolved = self._plan and self._plan.resolved_dump_stat
+		return self:_planner_dump_stat_label(self:_planner_selected_dump_stat())
+	end
 
-		return self:_planner_dump_stat_label(resolved or value)
+	function self:_planner_selected_dump_stat()
+		local configured = self:_setting("auto_crafter_target_dump_stat", "damage")
+		local candidates = self._plan and self._plan.dump_stat_candidates or {}
+
+		for _, candidate in ipairs(candidates) do
+			if type(candidate) == "table" and candidate.name == configured then
+				return configured
+			end
+		end
+
+		return self._plan and self._plan.resolved_dump_stat or configured
 	end
 
 	function self:_planner_dump_stat_label(stat_name)
@@ -810,6 +902,25 @@ function Panel.new(dependencies)
 		return options
 	end
 
+	function self:_planner_dump_stat_buttons()
+		local buttons = {}
+		local candidates = self._plan and self._plan.dump_stat_candidates or {}
+
+		for index = 1, math.min(#candidates, 5) do
+			local candidate = candidates[index]
+			local name = type(candidate) == "table" and candidate.name or candidate
+
+			if name then
+				buttons[#buttons + 1] = {
+					label = self:_planner_dump_stat_label(name),
+					name = name,
+				}
+			end
+		end
+
+		return buttons
+	end
+
 	function self:_step_planner_dump_stat(direction)
 		local values = self:_planner_dump_stat_options()
 
@@ -822,7 +933,7 @@ function Panel.new(dependencies)
 		local current_index
 
 		for index, value in ipairs(values) do
-			if value == current or current ~= "auto" and resolved and value == resolved then
+			if value == current or resolved and value == resolved then
 				current_index = index
 
 				break
@@ -1063,6 +1174,14 @@ function Panel.new(dependencies)
 					widget.content.detail = self:_planner_dump_stat_text()
 				end,
 			}))
+			local stat_buttons = self:_planner_dump_stat_buttons()
+
+			if #stat_buttons > 0 then
+				table.insert(entries, self:_entry("", "", {
+					stat_buttons = stat_buttons,
+					variant = "stat_grid",
+				}))
+			end
 			table.insert(entries, self:_entry(localize("auto_crafter_panel_dump_target", "Dump target"), integer_text(self:_setting("auto_crafter_dump_stat_target", 60)), {
 				selectable = true,
 				variant = "stepper",
