@@ -2,6 +2,7 @@ local Controller = {}
 
 local DEFAULT_PROBE_DELAY = 0.5
 local DEFAULT_MASTERY_POLL_DELAY = 0.5
+local DEFAULT_BLESSING_POLL_DELAY = 0.05
 local MAX_MASTERY_POLL_ATTEMPTS = 12
 local MAX_BLESSING_SYNC_ATTEMPTS = 12
 local REDEEMED_RARITY = 2
@@ -12,6 +13,12 @@ local function mastery_poll_delay(attempt)
 	local exponent = math.max(0, tonumber(attempt) or 0)
 
 	return math.min(5, DEFAULT_MASTERY_POLL_DELAY * 2 ^ exponent)
+end
+
+local function blessing_poll_delay(attempt)
+	local exponent = math.max(0, tonumber(attempt) or 0)
+
+	return math.min(1, DEFAULT_BLESSING_POLL_DELAY * 2 ^ exponent)
 end
 
 local function finite_dt(dt)
@@ -254,6 +261,31 @@ local function mastery_allocation_candidate(catalog, targets, costs)
 	return nil, nil, nil, string.format("no valid mastery blessing can be allocated at unlocked Tier %s after spending %s points", tostring(unlocked_rank), tostring(spent))
 end
 
+local function mastery_allocation_progress(catalog, costs)
+	local spent = 0
+	local total = 0
+	local unseen = 0
+
+	for _, blessing in ipairs(catalog or {}) do
+		for _, entry in ipairs(blessing.tiers or {}) do
+			local tier = tonumber(entry.tier)
+			local cost = tier and mastery_cost(costs, "tier_costs", tier) or nil
+
+			if cost then
+				total = total + cost
+
+				if entry.status == "seen" then
+					spent = spent + cost
+				else
+					unseen = unseen + 1
+				end
+			end
+		end
+	end
+
+	return spent, total, unseen
+end
+
 local function parse_perk_target(value)
 	local id
 	local tier
@@ -363,6 +395,8 @@ function Controller.new(dependencies)
 		_selected_native_key = nil,
 		_planner_signature = nil,
 		_frozen_run_settings = nil,
+		_run_elapsed = 0,
+		_run_started_at = nil,
 	}
 
 	local function report(kind, payload)
@@ -447,6 +481,18 @@ function Controller.new(dependencies)
 
 	local function run_is_active()
 		return self._search and self._search.running == true or self._phase3 and self._phase3.running == true or self._phase4 and self._phase4.running == true or self._mastery and self._mastery.running == true
+	end
+
+	local function clock_now()
+		local now = self._clock and self._clock.now
+
+		if type(now) ~= "function" then
+			return nil
+		end
+
+		local ok, value = pcall(now, self._clock)
+
+		return ok and tonumber(value) or nil
 	end
 
 	local function freeze_run_settings()
@@ -1235,15 +1281,22 @@ function Controller.new(dependencies)
 			return false
 		end
 
+		local completed_at = clock_now()
+		local elapsed = completed_at and self._run_started_at and math.max(0, completed_at - self._run_started_at) or math.max(0, self._run_elapsed or 0)
+
 		phase4.running = false
 		phase4.result = item
+		phase4.completed_at = completed_at
+		phase4.elapsed_seconds = elapsed
 		if self._search then
 			self._search.running = false
 			self._search.result = item
+			self._search.elapsed_seconds = elapsed
 		end
 		self._phase = "phase4_complete"
 		operation_report("phase4_complete", {
 			candidate = item,
+			elapsed_seconds = elapsed,
 			phase4 = phase4,
 		})
 
@@ -1353,7 +1406,12 @@ function Controller.new(dependencies)
 			end
 		end
 
-		if blessing_targets_pending then
+		local blessing_points_spent, blessing_points_total, unseen_blessing_tiers = mastery_allocation_progress(phase4.sticker_book, phase4.mastery_costs)
+		phase4.blessing_points_spent = blessing_points_spent
+		phase4.blessing_points_total = blessing_points_total
+		phase4.blessing_tiers_remaining = unseen_blessing_tiers
+
+		if blessing_targets_pending or phase4.allocate_mastery and unseen_blessing_tiers > 0 then
 			if not phase4.allocate_mastery then
 				self:_operation_failed(generation, "selected blessing tier is not allocated in mastery")
 				return false
@@ -1381,7 +1439,7 @@ function Controller.new(dependencies)
 				}
 				phase4.blessing_poll_attempts = 0
 				phase4.blessing_poll_elapsed = 0
-				phase4.blessing_poll_wait = mastery_poll_delay(0)
+				phase4.blessing_poll_wait = blessing_poll_delay(0)
 				self._phase = "phase4_blessing_sync"
 				operation_report("phase4_blessing_allocation_submitted", {
 					allocation_kind = allocation_kind,
@@ -1484,8 +1542,11 @@ function Controller.new(dependencies)
 			if sticker_status(sticker_book, pending.trait_id, pending.rarity) == "seen" then
 				phase4.pending_blessing = nil
 				phase4.blessing_poll_attempts = 0
-				phase4.blessing_poll_wait = mastery_poll_delay(0)
+				phase4.blessing_poll_wait = blessing_poll_delay(0)
+				phase4.blessing_points_spent, phase4.blessing_points_total, phase4.blessing_tiers_remaining = mastery_allocation_progress(sticker_book, phase4.mastery_costs)
 				operation_report("phase4_blessing_allocation_confirmed", {
+					points_spent = phase4.blessing_points_spent,
+					points_total = phase4.blessing_points_total,
 					rarity = pending.rarity,
 					trait_id = pending.trait_id,
 				})
@@ -1500,7 +1561,7 @@ function Controller.new(dependencies)
 				return
 			end
 
-			phase4.blessing_poll_wait = mastery_poll_delay(phase4.blessing_poll_attempts)
+			phase4.blessing_poll_wait = blessing_poll_delay(phase4.blessing_poll_attempts)
 			self._phase = "phase4_blessing_sync"
 		end)
 	end
@@ -1518,7 +1579,7 @@ function Controller.new(dependencies)
 		local change_perks = mastery_enabled and setting("auto_crafter_change_perks", false) == true
 		local change_blessings = allocate_mastery and setting("auto_crafter_change_blessings", false) == true
 
-		if not consecrate and not expertise_enabled and not change_perks and not change_blessings then
+		if not consecrate and not expertise_enabled and not allocate_mastery and not change_perks and not change_blessings then
 			if self._search then
 				self._search.running = false
 			end
@@ -1532,7 +1593,7 @@ function Controller.new(dependencies)
 			return false
 		end
 
-		local needs_traits = change_perks or change_blessings
+		local needs_traits = allocate_mastery or change_perks or change_blessings
 		local targets = { perks = {}, traits = {} }
 
 		if needs_traits then
@@ -1551,7 +1612,7 @@ function Controller.new(dependencies)
 			allocate_mastery = allocate_mastery,
 			blessing_poll_attempts = 0,
 			blessing_poll_elapsed = 0,
-			blessing_poll_wait = mastery_poll_delay(0),
+			blessing_poll_wait = blessing_poll_delay(0),
 			consecrate = consecrate,
 			dump_stat = self._search and self._search.dump_stat,
 			expertise = expertise_enabled,
@@ -1571,7 +1632,7 @@ function Controller.new(dependencies)
 		})
 
 		return self:_refresh_after_operation(self._generation, function (snapshot)
-			if next(targets.traits or {}) ~= nil then
+			if allocate_mastery or next(targets.traits or {}) ~= nil then
 				local backend = self._backend
 
 				if not backend or type(backend.get_trait_sticker_book) ~= "function" or not self._phase4.trait_category then
@@ -2314,6 +2375,8 @@ function Controller.new(dependencies)
 		end
 
 		self._generation = self._generation + 1
+		self._run_elapsed = 0
+		self._run_started_at = clock_now()
 		self._search = {
 			cap_by_dockets = setting("auto_crafter_cap_by_dockets", false) == true,
 			catalog = self._catalog,
@@ -2881,6 +2944,10 @@ function Controller.new(dependencies)
 			return
 		end
 
+		if run_is_active() then
+			self._run_elapsed = self._run_elapsed + finite_dt(dt)
+		end
+
 		if self._view_is_valid and not context_is_valid(self._active_view) then
 			self:on_view_closed(self._active_view)
 		end
@@ -2896,7 +2963,7 @@ function Controller.new(dependencies)
 		if self._phase4 and self._phase4.running and self._phase4.pending_blessing and not self._operation_inflight then
 			self._phase4.blessing_poll_elapsed = (self._phase4.blessing_poll_elapsed or 0) + finite_dt(dt)
 
-			if self._phase4.blessing_poll_elapsed >= (self._phase4.blessing_poll_wait or DEFAULT_MASTERY_POLL_DELAY) then
+			if self._phase4.blessing_poll_elapsed >= (self._phase4.blessing_poll_wait or DEFAULT_BLESSING_POLL_DELAY) then
 				self:_poll_phase4_blessing()
 			end
 		end
@@ -2947,6 +3014,7 @@ function Controller.new(dependencies)
 			phase3 = self._phase3,
 			phase4 = self._phase4,
 			mastery = self._mastery,
+			run_elapsed_seconds = self._run_elapsed,
 		}
 	end
 
@@ -2982,6 +3050,8 @@ function Controller.new(dependencies)
 		self._selected_native_key = nil
 		self._planner_signature = nil
 		self._frozen_run_settings = nil
+		self._run_elapsed = 0
+		self._run_started_at = nil
 	end
 
 	return self

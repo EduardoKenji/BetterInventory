@@ -5,6 +5,35 @@ local controller
 local panel
 local hud_lines = {}
 
+local function monotonic_now()
+	local application = rawget(_G, "Application")
+
+	if application and type(application.time_since_launch) == "function" then
+		local ok, value = pcall(application.time_since_launch)
+
+		return ok and tonumber(value) or nil
+	end
+
+	return nil
+end
+
+local function format_elapsed(seconds)
+	local total = math.max(0, math.floor((tonumber(seconds) or 0) + 0.5))
+	local hours = math.floor(total / 3600)
+	local minutes = math.floor(total % 3600 / 60)
+	local remaining = total % 60
+
+	if hours > 0 then
+		return string.format("%dh %02dm %02ds", hours, minutes, remaining)
+	end
+
+	if minutes > 0 then
+		return string.format("%dm %02ds", minutes, remaining)
+	end
+
+	return string.format("%ds", remaining)
+end
+
 local function localize(setting_id, fallback)
 	if not mod or type(mod.localize) ~= "function" then
 		return fallback or setting_id
@@ -198,8 +227,21 @@ local function rebuild_hud_lines(snapshot)
 		if phase4.expertise and (tonumber(item.expertise_level) or 0) < 500 then
 			lines[#lines + 1] = string.format("Upgrading weapon level to 500 (%s/500)", tostring(item.expertise_level or "?"))
 		end
-		if phase4.targets and (next(phase4.targets.perks or {}) ~= nil or next(phase4.targets.traits or {}) ~= nil) then
+		local points_spent = tonumber(phase4.blessing_points_spent)
+		local points_total = tonumber(phase4.blessing_points_total)
+		local allocating_points = phase4.allocate_mastery and (points_total == nil or points_spent == nil or points_spent < points_total)
+
+		if allocating_points then
+			lines[#lines + 1] = points_spent and points_total and points_total > 0 and string.format("Allocating mastery blessing points (%d/%d)", points_spent, points_total) or "Allocating mastery blessing points"
+		elseif phase4.targets and (next(phase4.targets.perks or {}) ~= nil or next(phase4.targets.traits or {}) ~= nil) then
 			lines[#lines + 1] = "Applying selected perks and blessings"
+		end
+	elseif phase4 and phase4.elapsed_seconds ~= nil then
+		local now = monotonic_now()
+		local recently_completed = not phase4.completed_at or not now or now - phase4.completed_at <= 12
+
+		if recently_completed then
+			lines[#lines + 1] = "Crafting complete in " .. format_elapsed(phase4.elapsed_seconds)
 		end
 	end
 
@@ -362,7 +404,8 @@ local function reporter(ui_panel)
 				if ui_panel then
 					ui_panel:set_phase("phase4_complete")
 				end
-				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Final weapon crafting complete: " .. format_candidate(payload and payload.candidate))
+				local elapsed = format_elapsed(payload and payload.elapsed_seconds)
+				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Final weapon crafting complete in " .. elapsed .. ": " .. format_candidate(payload and payload.candidate))
 			elseif kind == "operation_failed" then
 				if ui_panel then
 					ui_panel:set_phase("operation_failed")
@@ -396,15 +439,7 @@ end
 
 local function clock_adapter()
 	return {
-		now = function()
-			local application = rawget(_G, "Application")
-
-			if application and type(application.time_since_launch) == "function" then
-				local ok, value = pcall(application.time_since_launch)
-
-				return ok and value or nil
-			end
-		end,
+		now = monotonic_now,
 	}
 end
 

@@ -651,7 +651,8 @@ def main() -> None:
 				auto_crafter_blessing_2_target = "keep",
 			})
 			CurrentOffer = raw_offer()
-			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = settings, reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			TestTime = 100
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = settings, reporter = reports(), clock = {now = function() return TestTime end}, get_selected_offer = function() return CurrentOffer end})
 			controller._catalog = {
 				available = true,
 				trait_category = "test_category",
@@ -665,15 +666,18 @@ def main() -> None:
 			controller._active_view = {}
 			controller._view_is_valid = true
 			assert(controller:start_purchase_search() == true)
-			for _ = 1, 30 do controller:update(10) end
+			for _ = 1, 30 do TestTime = TestTime + 1 controller:update(10) end
 			local result = controller:snapshot()
 			assert(result.phase == "phase4_complete", tostring(result.phase) .. " " .. tostring(result.last_error))
 			assert(item.rarity == 5 and item.expertise_level == 500)
 			assert(backend.rarity_calls == 2 and backend.expertise_calls == 2)
-			assert(backend.allocation_calls == 7 and backend.perk_calls == 2 and backend.blessing_calls == 1)
+			assert(backend.allocation_calls == 8 and backend.perk_calls == 2 and backend.blessing_calls == 1)
 			assert(state.allocation_order[1] == "new_blessing:1")
 			assert(state.allocation_order[2] == "filler_blessing:1")
 			assert(state.allocation_order[7] == "new_blessing:4")
+			assert(state.allocation_order[8] == "filler_blessing:4")
+			assert(result.phase4.blessing_points_spent == 8 and result.phase4.blessing_points_total == 8)
+			assert(result.phase4.elapsed_seconds > 0 and result.search.elapsed_seconds == result.phase4.elapsed_seconds)
 			assert(state.perk_order[1] == 2 and state.perk_order[2] == 1)
 			assert(item.perks[1].id == "new_perk" and item.perks[2].id == "other_perk" and item.traits[1].id == "new_blessing")
 			controller:_operation_failed(controller._generation, {code = "backend_error", description = "readable backend failure"})

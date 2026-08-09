@@ -678,6 +678,13 @@ def main() -> None:
     assert "material_values.icon" in panel_source
     assert "material_values.frame" in panel_source
 
+    controller_source = (RUNTIME_ROOT / "auto_crafter" / "core" / "controller.lua").read_text(encoding="utf-8")
+    host_source = (RUNTIME_ROOT / "BetterInventory_auto_crafter.lua").read_text(encoding="utf-8")
+    assert "DEFAULT_BLESSING_POLL_DELAY = 0.05" in controller_source
+    assert "phase4.allocate_mastery and unseen_blessing_tiers > 0" in controller_source
+    assert "Allocating mastery blessing points (%d/%d)" in host_source
+    assert "Final weapon crafting complete in " in host_source
+
     print("Auto Crafter weapon stat catalogue and display-label tests passed.")
 
 
