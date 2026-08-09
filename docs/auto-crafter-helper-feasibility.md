@@ -1532,6 +1532,8 @@ The normal player HUD renderer can sit behind full-screen vendor, inventory, and
 
 Mastery synchronization uses a 50 ms initial poll with bounded exponential backoff capped at 500 ms. This removes the former half-second minimum between confirmed sacrifices while retaining authoritative XP/claim convergence. At mastery level 20, blessing allocation is submitted through vanilla's `MasteryService.purchase_traits` batch path: operations remain serial and prerequisite-ordered internally, but run immediately after each backend response and reset/refetch the sticker book only once for final confirmation instead of once per point.
 
+Active-run HUD status always ends with `Elapsed: N seconds`, rebuilt from the controller's monotonic run timer every frame. Post-mutation reconciliation is scoped for throughput: the frozen Brunt catalogue and local crafting-cost tables are retained, crafting/sacrifice operations refetch authoritative gear only, and each purchase reuses its already-refreshed/mutated wallet result before refetching gear. Full storefront probes remain reserved for view/catalogue discovery. This removes redundant network reads without weakening item postcondition checks or enabling parallel mutations.
+
 ## Bottom line for implementation agent
 
 All requested operations are reachable from current client service APIs. Build this as a guarded account-mutation state machine, not as UI click automation.

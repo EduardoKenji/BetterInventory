@@ -995,6 +995,42 @@ function Backend.new(dependencies)
 		end)
 	end
 
+	local function inherited_snapshot(previous)
+		local snapshot = {}
+
+		for key, value in pairs(type(previous) == "table" and previous or {}) do
+			snapshot[key] = value
+		end
+
+		return snapshot
+	end
+
+	function backend:refresh_gear_snapshot(previous)
+		local snapshot = inherited_snapshot(previous)
+
+		return self:_read("gear", "fetch_gear"):next(function (gear)
+			snapshot.gear = summarize_gear(gear)
+
+			return snapshot
+		end)
+	end
+
+	function backend:refresh_runtime_snapshot(previous)
+		local snapshot = inherited_snapshot(previous)
+
+		-- Keep reads serial by default. The frozen Brunt catalogue and local cost
+		-- tables are inherited; only mutable wallet and gear state are reconciled.
+		return self:_read("store", "combined_wallets"):next(function (wallets)
+			snapshot.wallets = summarize_wallets(wallets)
+
+			return self:_read("gear", "fetch_gear")
+		end):next(function (gear)
+			snapshot.gear = summarize_gear(gear)
+
+			return snapshot
+		end)
+	end
+
 	function backend:purchase_offer(offer)
 		if not offer then
 			return rejected("purchase offer unavailable")
@@ -1036,7 +1072,13 @@ function Backend.new(dependencies)
 					return rejected("purchase wallet unavailable: " .. tostring(wallet_type))
 				end
 
-				return call_service(store_service, "purchase_item_with_wallet", offer, wallet)
+				return call_service(store_service, "purchase_item_with_wallet", offer, wallet):next(function (result)
+					if type(result) == "table" then
+						result._auto_crafter_wallets = summarize_wallets(wallets)
+					end
+
+					return result
+				end)
 			end):catch(function (error_value)
 				-- A transaction-id mismatch is a confirmed rejection before item creation,
 				-- so one fresh-wallet retry is safe. Never retry ambiguous failures.
@@ -1049,7 +1091,11 @@ function Backend.new(dependencies)
 		end
 
 		return fresh_purchase(false):next(function (result)
-			return summarize_purchase(result)
+			local summary = summarize_purchase(result)
+
+			summary.wallets = safe_member(result, "_auto_crafter_wallets")
+
+			return summary
 		end)
 	end
 

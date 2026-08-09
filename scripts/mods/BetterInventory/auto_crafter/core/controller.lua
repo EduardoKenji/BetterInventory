@@ -812,7 +812,7 @@ function Controller.new(dependencies)
 		return true
 	end
 
-	function self:_refresh_after_operation(generation, callback)
+	function self:_refresh_after_operation(generation, callback, scope)
 		if not operation_context_valid(generation) or self._operation_inflight then
 			return false
 		end
@@ -825,8 +825,22 @@ function Controller.new(dependencies)
 			return false
 		end
 
+		local refresh_method
+
+		if scope == "runtime" and type(backend.refresh_runtime_snapshot) == "function" then
+			refresh_method = backend.refresh_runtime_snapshot
+		elseif scope ~= "full" and type(backend.refresh_gear_snapshot) == "function" then
+			refresh_method = backend.refresh_gear_snapshot
+		else
+			refresh_method = backend.probe_snapshot
+		end
+
 		return self:_dispatch_operation(generation, "authoritative_refresh", function ()
-			return backend:probe_snapshot()
+			if refresh_method == backend.probe_snapshot then
+				return refresh_method(backend)
+			end
+
+			return refresh_method(backend, self._snapshot)
 		end, function (snapshot)
 			self._snapshot = snapshot
 			self._last_probe_at = type(self._clock.now) == "function" and self._clock:now() or nil
@@ -2306,6 +2320,10 @@ function Controller.new(dependencies)
 
 			search.purchases = search.purchases + 1
 			search.spent = search.spent + price
+
+			if purchase.wallets and self._snapshot then
+				self._snapshot.wallets = purchase.wallets
+			end
 
 			self:_refresh_after_operation(generation, function (snapshot)
 				local candidate = find_item(snapshot and snapshot.gear and snapshot.gear.items, purchase_candidate.gear_id)

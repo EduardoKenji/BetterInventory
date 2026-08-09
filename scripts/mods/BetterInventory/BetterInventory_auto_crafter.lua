@@ -245,6 +245,12 @@ local function rebuild_hud_lines(snapshot)
 		end
 	end
 
+	local run_active = search and search.running or phase3 and phase3.running or phase4 and phase4.running or snapshot and snapshot.mastery and snapshot.mastery.running
+
+	if run_active then
+		lines[#lines + 1] = string.format("Elapsed: %d seconds", math.max(0, math.floor(tonumber(snapshot and snapshot.run_elapsed_seconds) or 0)))
+	end
+
 	hud_lines = lines
 end
 
