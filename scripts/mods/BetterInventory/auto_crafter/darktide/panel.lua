@@ -435,7 +435,25 @@ local function enum_stepper_passes(width)
 end
 
 local function stat_grid_passes(width)
-	local passes = {}
+	local passes = {
+		{
+			pass_type = "logic",
+			value = function(_, _, _, content)
+				local callbacks = content.stat_pressed_callbacks or {}
+
+				for index = 1, content.stat_count or 0 do
+					local hotspot = content["stat_hotspot_" .. tostring(index)]
+					local pressed_callback = callbacks[index]
+
+					if hotspot and hotspot.on_pressed and pressed_callback then
+						pressed_callback()
+
+						break
+					end
+				end
+			end,
+		},
+	}
 	local function available(index)
 		return function(content)
 			return (content.stat_count or 0) >= index
@@ -666,6 +684,7 @@ function Panel.new(dependencies)
 				selected = false,
 				selected_stat_index = 0,
 				stat_count = 0,
+				stat_pressed_callbacks = {},
 				chevron = "",
 			},
 			pass_template = nil,
@@ -725,14 +744,13 @@ function Panel.new(dependencies)
 
 		if options.stat_buttons then
 			entry.bind = function(widget)
+				widget.content.stat_pressed_callbacks = {}
+
 				for index, button in ipairs(options.stat_buttons) do
-					local hotspot = widget.content["stat_hotspot_" .. tostring(index)]
 					local stat_name = button.name
 
-					if hotspot then
-						hotspot.pressed_callback = function()
-							self:_set_setting("auto_crafter_target_dump_stat", stat_name)
-						end
+					widget.content.stat_pressed_callbacks[index] = function()
+						self:_set_setting("auto_crafter_target_dump_stat", stat_name)
 					end
 				end
 			end
@@ -1178,6 +1196,7 @@ function Panel.new(dependencies)
 
 			if #stat_buttons > 0 then
 				table.insert(entries, self:_entry("", "", {
+					selectable = true,
 					stat_buttons = stat_buttons,
 					variant = "stat_grid",
 				}))

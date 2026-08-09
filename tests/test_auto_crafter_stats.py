@@ -191,7 +191,9 @@ def main() -> None:
         panel,
         "",
         "",
-        lua.table_from({"variant": "stat_grid", "stat_buttons": stat_buttons}),
+        lua.table_from(
+            {"variant": "stat_grid", "selectable": True, "stat_buttons": stat_buttons}
+        ),
     )
     widget_content = lua.table_from(
         {f"stat_hotspot_{index}": lua.table_from({}) for index in range(1, 6)}
@@ -199,8 +201,9 @@ def main() -> None:
     widget = lua.table_from({"content": widget_content})
     grid_entry.bind(widget)
     grid_entry.refresh(widget)
+    assert grid_entry.initial_content.selectable is True
     assert widget.content.selected_stat_index == 5
-    widget.content.stat_hotspot_1.pressed_callback()
+    widget.content.stat_pressed_callbacks[1]()
     grid_entry.refresh(widget)
     assert lua.globals().TestPanelSettings.value == "crowbar_p1_m1_dps_stat"
     assert widget.content.selected_stat_index == 1
