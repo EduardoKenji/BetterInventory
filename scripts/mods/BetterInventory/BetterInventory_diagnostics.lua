@@ -35,7 +35,7 @@ Diagnostics.count = function(name, amount)
 end
 
 Diagnostics.update = function(mod, dt, curio_acquisition, features)
-	if not Diagnostics.configure(mod) then
+	if not state.enabled then
 		return false
 	end
 
@@ -69,6 +69,10 @@ Diagnostics.update = function(mod, dt, curio_acquisition, features)
 	state.samples.sample_count = (state.samples.sample_count or 0) + 1
 
 	return true
+end
+
+Diagnostics.enabled = function()
+	return state.enabled
 end
 
 Diagnostics.snapshot = function()

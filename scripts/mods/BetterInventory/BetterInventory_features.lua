@@ -1815,6 +1815,10 @@ Features.update_morningstar_auto_discard = function(mod, dt)
 	return automatic_discard:update(mod, dt)
 end
 
+Features.morningstar_auto_discard_needs_update = function(mod)
+	return automatic_discard:needs_update(mod)
+end
+
 local function rendered_weapon_stats_height(weapon_stats)
 	local scenegraph = weapon_stats and weapon_stats._ui_scenegraph
 	local background_pivot = scenegraph and scenegraph.grid_background_pivot

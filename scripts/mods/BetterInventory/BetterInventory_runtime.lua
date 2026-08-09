@@ -1068,6 +1068,10 @@ function mod.on_setting_changed(setting_id)
 		Features.sync_inventory_sort_setting(mod, Layout)
 	end
 
+	if setting_id == "debug_enable_hot_path_diagnostics" and type(Diagnostics.configure) == "function" then
+		Diagnostics.configure(mod)
+	end
+
 	if type(setting_id) == "string" and string.sub(setting_id, 1, 14) == "quick_discard_" then
 		Features.sync_quick_discard_settings(mod, Layout)
 	end
@@ -1130,10 +1134,16 @@ function mod.update(dt)
 
 	ItemCustomization.update_runtime(mod, dt)
 	EquipmentPersistence.update(mod, dt)
-	Features.reconcile_discard_transaction()
-	Features.update_morningstar_auto_discard(mod, dt)
-	CurioAcquisition.update(mod, dt, Features.morningstar_auto_discard_is_busy(mod))
-	if type(Diagnostics.update) == "function" then
+	if Features.discard_owner() then
+		Features.reconcile_discard_transaction()
+	end
+	if Features.morningstar_auto_discard_needs_update(mod) then
+		Features.update_morningstar_auto_discard(mod, dt)
+	end
+	if CurioAcquisition.needs_update(mod) then
+		CurioAcquisition.update(mod, dt, Features.morningstar_auto_discard_is_busy(mod))
+	end
+	if type(Diagnostics.update) == "function" and type(Diagnostics.enabled) == "function" and Diagnostics.enabled() then
 		Diagnostics.update(mod, dt, CurioAcquisition, Features)
 	end
 end

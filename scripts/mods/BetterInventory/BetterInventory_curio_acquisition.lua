@@ -1596,6 +1596,26 @@ CurioAcquisition.update = function(mod, dt, automatic_discard_busy)
 	start_scan(mod)
 end
 
+CurioAcquisition.needs_update = function(mod)
+	if enabled(mod)
+		or state.active_context ~= nil
+		or state.scheduled
+		or state.started
+		or state.active_read_requests > 0
+		or CurioProfiles.needs_update() then
+		return true
+	end
+
+	if not state.rotation_history or not state.account_key then
+		return true
+	end
+
+	local entry = state.rotation_history.accounts and state.rotation_history.accounts[state.account_key]
+	local pending_reports = entry and entry.pending_reports
+
+	return pending_reports and pending_reports[1] ~= nil or false
+end
+
 CurioAcquisition.active_read_request_count = function()
 	return state.active_read_requests
 end

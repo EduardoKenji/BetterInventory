@@ -53,6 +53,7 @@ def main() -> None:
     assert sampled_snapshot.samples.lua_memory_kb > 0
 
     mod.debug_enable_hot_path_diagnostics = False
+    diagnostics.configure(mod)
     diagnostics.update(mod, 0, curio, features)
     reset_snapshot = diagnostics.snapshot()
     assert reset_snapshot.enabled is False

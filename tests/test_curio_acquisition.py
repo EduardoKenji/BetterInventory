@@ -1421,6 +1421,14 @@ def main() -> None:
     assert module.active_read_request_count() == 0
     globals_.profile_fetch_pending = False
 
+    # Disabled, settled buyer becomes fully dormant. Enabling remains enough
+    # to wake it without relying on a prior lifecycle callback.
+    globals_.settings.enable_automatic_curio_acquisition = False
+    module.on_setting_changed(globals_.test_mod, "enable_automatic_curio_acquisition")
+    assert module.needs_update(globals_.test_mod) is False
+    globals_.settings.enable_automatic_curio_acquisition = True
+    assert module.needs_update(globals_.test_mod) is True
+
     print("BetterInventory automatic Curio acquisition tests passed.")
 
 

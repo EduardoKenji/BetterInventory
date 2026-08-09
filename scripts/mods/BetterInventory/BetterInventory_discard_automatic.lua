@@ -612,6 +612,16 @@ function AutomaticDiscard.new(transaction, dependencies)
 		end
 	end
 
+	function automatic:needs_update(mod)
+		return enabled(mod)
+			or state.scheduled
+			or state.started
+			or state.read_inflight
+			or state.delete_inflight
+			or state.hub_character_id ~= nil
+			or self._transaction:active_owner() == "automatic"
+	end
+
 	return automatic
 end
 

@@ -3323,6 +3323,13 @@ def main() -> None:
     features.cancel_morningstar_auto_discard()
     mod.settings.quick_discard_disable_no_eligible_notification = False
 
+    # Settled Automatic Discard sleeps outside Automatic mode, while changing
+    # the setting wakes it immediately.
+    mod.settings.quick_discard_mode = "manual"
+    assert features.morningstar_auto_discard_needs_update(mod) is False
+    mod.settings.quick_discard_mode = "automatic"
+    assert features.morningstar_auto_discard_needs_update(mod) is True
+
     features.unregister_inventory_view(melee_view)
     mod.settings.prioritize_equipped_favorites = False
     features.sync_inventory_sort_setting(mod, layout)

@@ -121,7 +121,14 @@ end
 
 CurioProfiles.cancel = function()
 	profile_state.profile_discovery_inflight = false
+	profile_state.profile_discovery_pending = false
+	profile_state.profile_discovery_elapsed = 0
+	profile_state.profile_discovery_refresh_elapsed = 0
 	profile_state.profile_discovery_token = profile_state.profile_discovery_token + 1
+end
+
+CurioProfiles.needs_update = function()
+	return profile_state.profile_discovery_inflight or profile_state.profile_discovery_pending
 end
 
 local function archetype_name(profile)
