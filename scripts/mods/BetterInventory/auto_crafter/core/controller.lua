@@ -2894,6 +2894,44 @@ function Controller.new(dependencies)
 				self._snapshot.wallets = purchase.wallets
 			end
 
+			local phase3 = self._phase3
+			local phase3_has_target = phase3 and phase3.running and phase3.target_candidate ~= nil
+
+			-- Once the exact target is frozen, later purchases are fodder only. The
+			-- decorated purchase response owns their identity and rolled expertise;
+			-- one batch preflight refresh will revalidate every ID before extraction.
+			if phase3_has_target then
+				if purchase_candidate.available ~= true or purchase_candidate.parent_pattern ~= phase3.target_candidate.mastery_id or purchase_candidate.rarity == nil or purchase_candidate.expertise_level == nil then
+					self:_operation_failed(generation, "post-target fodder purchase omitted required identity, rarity, or expertise")
+
+					return
+				end
+
+				track_purchased_spare(phase3, purchase_candidate)
+				phase3.deferred_candidates[#phase3.deferred_candidates + 1] = purchase_candidate
+				search.last = purchase_candidate
+				self._last_purchased = purchase_candidate
+				operation_report("phase3_fast_fodder_purchase", {
+					candidate = purchase_candidate,
+					count = pending_deferred_count(phase3),
+					search = search,
+				})
+
+				local projection_reaches_target, projected_xp = pending_fodder_reaches_target(phase3)
+				operation_report("phase3_pending_fodder_projected", {
+					count = pending_deferred_count(phase3),
+					expected_xp = projected_xp,
+				})
+
+				if projection_reaches_target or pending_deferred_count(phase3) >= PHASE3_FODDER_BATCH_SIZE then
+					self:_phase3_process_deferred(generation, phase3.current)
+				else
+					self:_purchase_search_step(generation)
+				end
+
+				return
+			end
+
 			local function process_candidate(candidate)
 				if not candidate or candidate.available ~= true then
 					self:_operation_failed(generation, "purchased weapon was not found in authoritative inventory")
@@ -2935,8 +2973,6 @@ function Controller.new(dependencies)
 					candidate = candidate,
 					search = search,
 				})
-
-				local phase3_has_target = self._phase3 and self._phase3.running and self._phase3.target_candidate ~= nil
 
 				if candidate.exact_match and not phase3_has_target then
 					self:_accept_exact_candidate(generation, candidate, "purchase")

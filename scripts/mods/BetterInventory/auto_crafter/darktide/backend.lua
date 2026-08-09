@@ -1133,6 +1133,14 @@ function Backend.new(dependencies)
 		end
 
 		return fresh_purchase(false):next(function (result)
+			for _, raw_item in ipairs(type(result) == "table" and type(result.items) == "table" and result.items or {}) do
+				local gear_id = safe_member(raw_item, "uuid") or safe_member(raw_item, "gear_id") or safe_member(raw_item, "gearId")
+
+				if gear_id ~= nil then
+					self._raw_gear[gear_id] = raw_item
+				end
+			end
+
 			local summary = summarize_purchase(result)
 
 			summary.wallets = safe_member(result, "_auto_crafter_wallets")
