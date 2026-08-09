@@ -307,6 +307,14 @@ def main() -> None:
     rejected_allocation = backend.purchase_mastery_trait(backend, "crowbar_p1", "headtaker", 4)
     assert "mastery blessing allocation was rejected by the backend" in rejected_allocation.failure.description
     lua.globals().TestMasteryPurchaseFails = False
+    batch_allocation = backend.purchase_mastery_traits(backend, "crowbar_p1", lua.table_from([
+        {"trait_id": "headtaker", "rarity": 1},
+        {"trait_id": "headtaker", "rarity": 2},
+    ]))
+    assert batch_allocation.failure is None
+    assert batch_allocation.value.count == 2
+    assert lua.globals().TestPurchasedTraits.operations[1].trait_name == "headtaker"
+    assert lua.globals().TestPurchasedTraits.operations[2].rarity == 2
 
     # A max-level weapon needs no zero-delta preview response to remain reusable.
     lua.globals().TestExpertise = 500
@@ -727,6 +735,7 @@ def main() -> None:
     controller_source = (RUNTIME_ROOT / "auto_crafter" / "core" / "controller.lua").read_text(encoding="utf-8")
     host_source = (RUNTIME_ROOT / "BetterInventory_auto_crafter.lua").read_text(encoding="utf-8")
     assert "DEFAULT_BLESSING_POLL_DELAY = 0.05" in controller_source
+    assert "DEFAULT_MASTERY_POLL_DELAY = 0.05" in controller_source
     assert "phase4.allocate_mastery and unseen_blessing_tiers > 0" in controller_source
     assert "Allocating mastery blessing points (%d/%d)" in host_source
     assert "Final weapon crafting complete in " in host_source

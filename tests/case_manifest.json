@@ -5,16 +5,16 @@
     {"name": "derived_content_reset", "risk": "high", "start_line": 74, "end_line": 86}
   ],
   "test_auto_crafter_stats.py": [
-      {"name": "template_stats_purchase_reconciliation_traits_favorite_discard_and_potential_projection", "risk": "critical", "start_line": 220, "end_line": 353},
-      {"name": "indexed_manual_resolution_and_search_budget", "risk": "critical", "start_line": 355, "end_line": 390},
-      {"name": "phase_material_and_mastery_fodder_ranges", "risk": "high", "start_line": 392, "end_line": 476},
-      {"name": "default_on_workflow_checkbox_false_persistence", "risk": "critical", "start_line": 490, "end_line": 515},
-      {"name": "manual_selector_and_shortcut_grid", "risk": "critical", "start_line": 517, "end_line": 564},
-      {"name": "localized_display_labels", "risk": "high", "start_line": 579, "end_line": 579},
-      {"name": "tier_qualified_trait_target_selection", "risk": "high", "start_line": 630, "end_line": 644},
-      {"name": "dual_target_trait_grid_selection_exclusivity_and_icon", "risk": "high", "start_line": 676, "end_line": 693},
-      {"name": "deferred_grid_rebuild_scroll_restore_and_mastery_gate", "risk": "critical", "start_line": 695, "end_line": 714},
-      {"name": "right_click_routing_blessing_icon_and_runtime_progress", "risk": "high", "start_line": 716, "end_line": 732}
+      {"name": "template_stats_purchase_reconciliation_traits_favorite_discard_and_potential_projection", "risk": "critical", "start_line": 220, "end_line": 361},
+      {"name": "indexed_manual_resolution_and_search_budget", "risk": "critical", "start_line": 363, "end_line": 398},
+      {"name": "phase_material_and_mastery_fodder_ranges", "risk": "high", "start_line": 400, "end_line": 484},
+      {"name": "default_on_workflow_checkbox_false_persistence", "risk": "critical", "start_line": 498, "end_line": 523},
+      {"name": "manual_selector_and_shortcut_grid", "risk": "critical", "start_line": 525, "end_line": 572},
+      {"name": "localized_display_labels", "risk": "high", "start_line": 587, "end_line": 587},
+      {"name": "tier_qualified_trait_target_selection", "risk": "high", "start_line": 638, "end_line": 652},
+      {"name": "dual_target_trait_grid_selection_exclusivity_and_icon", "risk": "high", "start_line": 684, "end_line": 701},
+      {"name": "deferred_grid_rebuild_scroll_restore_and_mastery_gate", "risk": "critical", "start_line": 703, "end_line": 722},
+      {"name": "right_click_routing_blessing_icon_and_runtime_progress", "risk": "high", "start_line": 724, "end_line": 741}
   ],
   "test_auto_crafter_controller.py": [
     {"name": "presacrifice_mastery_baseline_convergence_and_level_event", "risk": "critical", "start_line": 190, "end_line": 263},
@@ -28,9 +28,9 @@
     {"name": "deferred_misses_preserved_without_exact_target", "risk": "critical", "start_line": 428, "end_line": 452},
     {"name": "phase3_live_best_fallback", "risk": "critical", "start_line": 454, "end_line": 480},
 	{"name": "inventory_base_reuse_avoids_purchase", "risk": "critical", "start_line": 487, "end_line": 576},
-	{"name": "phase4_serial_final_crafting", "risk": "critical", "start_line": 578, "end_line": 685},
-    {"name": "configuration_change_closes_dispatch", "risk": "critical", "start_line": 687, "end_line": 703},
-    {"name": "explicit_stop_preserves_inflight_boundary", "risk": "critical", "start_line": 705, "end_line": 719}
+	{"name": "phase4_serial_final_crafting", "risk": "critical", "start_line": 578, "end_line": 695},
+    {"name": "configuration_change_closes_dispatch", "risk": "critical", "start_line": 698, "end_line": 713},
+    {"name": "explicit_stop_preserves_inflight_boundary", "risk": "critical", "start_line": 716, "end_line": 729}
   ],
   "test_contracts.py": [
     {"name": "guarded_lookup", "risk": "high", "start_line": 22, "end_line": 40},

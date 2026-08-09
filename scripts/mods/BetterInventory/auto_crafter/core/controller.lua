@@ -1,7 +1,7 @@
 local Controller = {}
 
 local DEFAULT_PROBE_DELAY = 0.5
-local DEFAULT_MASTERY_POLL_DELAY = 0.5
+local DEFAULT_MASTERY_POLL_DELAY = 0.05
 local DEFAULT_BLESSING_POLL_DELAY = 0.05
 local MAX_MASTERY_POLL_ATTEMPTS = 12
 local MAX_BLESSING_SYNC_ATTEMPTS = 12
@@ -12,7 +12,7 @@ local MAX_EXPERTISE_LEVEL = 500
 local function mastery_poll_delay(attempt)
 	local exponent = math.max(0, tonumber(attempt) or 0)
 
-	return math.min(5, DEFAULT_MASTERY_POLL_DELAY * 2 ^ exponent)
+	return math.min(0.5, DEFAULT_MASTERY_POLL_DELAY * 2 ^ exponent)
 end
 
 local function blessing_poll_delay(attempt)
@@ -284,6 +284,62 @@ local function mastery_allocation_progress(catalog, costs)
 	end
 
 	return spent, total, unseen
+end
+
+local function mastery_allocation_operations(catalog, targets, costs)
+	local working = {}
+
+	for blessing_index, blessing in ipairs(catalog or {}) do
+		local copy = {
+			id = blessing.id,
+			tiers = {},
+		}
+
+		for tier_index, entry in ipairs(blessing.tiers or {}) do
+			copy.tiers[tier_index] = {
+				status = entry.status,
+				tier = entry.tier,
+			}
+		end
+
+		working[blessing_index] = copy
+	end
+
+	local operations = {}
+	local _, _, unseen = mastery_allocation_progress(working, costs)
+	local maximum_operations = math.max(1, unseen)
+
+	while unseen > 0 and #operations < maximum_operations do
+		local trait_id, tier, allocation_kind, allocation_error = mastery_allocation_candidate(working, targets, costs)
+
+		if not trait_id or not tier then
+			return nil, allocation_error or "mastery blessing allocation prerequisites could not be resolved"
+		end
+
+		operations[#operations + 1] = {
+			allocation_kind = allocation_kind,
+			rarity = tier,
+			trait_id = trait_id,
+		}
+
+		for _, blessing in ipairs(working) do
+			if blessing.id == trait_id then
+				for _, entry in ipairs(blessing.tiers) do
+					if tonumber(entry.tier) == tonumber(tier) then
+						entry.status = "seen"
+					end
+				end
+			end
+		end
+
+		_, _, unseen = mastery_allocation_progress(working, costs)
+	end
+
+	if unseen > 0 then
+		return nil, "mastery blessing allocation plan exceeded its bounded operation count"
+	end
+
+	return operations
 end
 
 local function parse_perk_target(value)
@@ -1417,34 +1473,33 @@ function Controller.new(dependencies)
 				return false
 			end
 
-			if not backend or type(backend.purchase_mastery_trait) ~= "function" or type(backend.get_trait_sticker_book) ~= "function" or type(backend.get_mastery_trait_costs) ~= "function" then
+			if not backend or type(backend.purchase_mastery_traits) ~= "function" or type(backend.get_trait_sticker_book) ~= "function" or type(backend.get_mastery_trait_costs) ~= "function" then
 				self:_operation_failed(generation, "mastery blessing allocation adapter unavailable")
 				return false
 			end
 
-			local trait_id, purchase_tier, allocation_kind, allocation_error = mastery_allocation_candidate(phase4.sticker_book, phase4.targets.traits, phase4.mastery_costs)
+			local operations, allocation_error = mastery_allocation_operations(phase4.sticker_book, phase4.targets.traits, phase4.mastery_costs)
 
-			if not trait_id or not purchase_tier then
+			if not operations or #operations == 0 then
 				self:_operation_failed(generation, allocation_error or "mastery blessing allocation prerequisites could not be resolved")
 				return false
 			end
 
-			return self:_dispatch_operation(generation, "phase4_allocate_blessing", function ()
-				return backend:purchase_mastery_trait(phase4.mastery_id, trait_id, purchase_tier)
+			self._phase = "phase4_allocate_blessing_batch"
+			phase4.blessing_operations_pending = #operations
+
+			return self:_dispatch_operation(generation, "phase4_allocate_blessing_batch", function ()
+				return backend:purchase_mastery_traits(phase4.mastery_id, operations)
 			end, function ()
 				phase4.pending_blessing = {
-					allocation_kind = allocation_kind,
-					rarity = purchase_tier,
-					trait_id = trait_id,
+					operations = operations,
 				}
 				phase4.blessing_poll_attempts = 0
 				phase4.blessing_poll_elapsed = 0
 				phase4.blessing_poll_wait = blessing_poll_delay(0)
 				self._phase = "phase4_blessing_sync"
-				operation_report("phase4_blessing_allocation_submitted", {
-					allocation_kind = allocation_kind,
-					rarity = purchase_tier,
-					trait_id = trait_id,
+				operation_report("phase4_blessing_allocation_batch_submitted", {
+					count = #operations,
 				})
 			end)
 		end
@@ -1539,16 +1594,25 @@ function Controller.new(dependencies)
 		end, function (sticker_book)
 			phase4.sticker_book = sticker_book
 
-			if sticker_status(sticker_book, pending.trait_id, pending.rarity) == "seen" then
+			local all_seen = true
+
+			for _, operation in ipairs(pending.operations or {}) do
+				if sticker_status(sticker_book, operation.trait_id, operation.rarity) ~= "seen" then
+					all_seen = false
+					break
+				end
+			end
+
+			if all_seen then
 				phase4.pending_blessing = nil
+				phase4.blessing_operations_pending = 0
 				phase4.blessing_poll_attempts = 0
 				phase4.blessing_poll_wait = blessing_poll_delay(0)
 				phase4.blessing_points_spent, phase4.blessing_points_total, phase4.blessing_tiers_remaining = mastery_allocation_progress(sticker_book, phase4.mastery_costs)
 				operation_report("phase4_blessing_allocation_confirmed", {
 					points_spent = phase4.blessing_points_spent,
 					points_total = phase4.blessing_points_total,
-					rarity = pending.rarity,
-					trait_id = pending.trait_id,
+					count = #(pending.operations or {}),
 				})
 				self:_phase4_step(generation, self._snapshot)
 				return

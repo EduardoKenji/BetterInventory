@@ -605,6 +605,17 @@ def main() -> None:
 				state.pending = {id = id, reads = 0, tier = tier}
 				return resolved({})
 			end
+			function backend:purchase_mastery_traits(_, operations)
+				self.allocation_calls = self.allocation_calls + #operations
+
+				for _, operation in ipairs(operations) do
+					state.allocation_order[#state.allocation_order + 1] = operation.trait_id .. ":" .. tostring(operation.rarity)
+					state.statuses[operation.trait_id][operation.rarity] = "seen"
+				end
+
+				state.pending = nil
+				return resolved({count = #operations})
+			end
 			function backend:get_mastery_trait_costs()
 				return resolved({
 					tier_costs = {["1"] = 1, ["2"] = 1, ["3"] = 1, ["4"] = 1},

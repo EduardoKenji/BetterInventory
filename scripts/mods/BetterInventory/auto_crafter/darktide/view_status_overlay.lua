@@ -41,7 +41,7 @@ local WIDGET_DEFINITION = UIWidget.create_definition({
 local function supported_view(view)
 	local class_name = tostring(view and view.__class_name or "")
 
-	if class_name == "CreditsGoodsVendorView" or class_name == "CreditsVendorView" then
+	if string.find(class_name, "Vendor", 1, true) then
 		return true
 	end
 
@@ -96,10 +96,11 @@ function Overlay.install(mod, view_classes)
 
 					local screen = view._ui_scenegraph.screen
 					local screen_width = screen and screen.size and tonumber(screen.size[1]) or 1920
+					local screen_height = screen and screen.size and tonumber(screen.size[2]) or 1080
 
 					widget.content.text = text
 					widget.offset[1] = math.max(0, (screen_width - 760) * 0.5)
-					widget.offset[2] = 42
+					widget.offset[2] = math.max(0, screen_height - 42 - 112)
 					widget.offset[3] = 0
 
 					local render_settings = view._render_settings

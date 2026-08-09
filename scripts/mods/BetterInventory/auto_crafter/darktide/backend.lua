@@ -1196,6 +1196,45 @@ function Backend.new(dependencies)
 		end)
 	end
 
+	function backend:purchase_mastery_traits(pattern_id, requested_operations)
+		if pattern_id == nil or type(requested_operations) ~= "table" or #requested_operations == 0 then
+			return rejected("mastery trait batch parameters unavailable")
+		end
+
+		local operations = {}
+
+		for index, requested in ipairs(requested_operations) do
+			local trait_id = requested and requested.trait_id
+			local tier = requested and tonumber(requested.rarity)
+
+			if trait_id == nil or tier == nil then
+				return rejected("mastery trait batch contains an invalid operation")
+			end
+
+			operations[index] = {
+				rarity = tier,
+				trait_name = trait_id,
+			}
+		end
+
+		-- MasteryService.purchase_traits performs these operations recursively and
+		-- serially at backend-response speed, then resets the sticker-book cache once.
+		return self:_mutate("mastery", "purchase_traits", pattern_id, operations):next(function (failed_traits)
+			if type(failed_traits) ~= "table" then
+				return rejected("mastery blessing batch returned an invalid result")
+			end
+
+			if next(failed_traits) ~= nil then
+				return rejected(string.format("mastery blessing batch rejected %s of %s operations", tostring(#failed_traits), tostring(#operations)))
+			end
+
+			return {
+				count = #operations,
+				submitted = true,
+			}
+		end)
+	end
+
 	function backend:get_mastery_trait_costs()
 		return self:_read("crafting", "get_traits_mastery_costs"):next(function (costs)
 			if type(costs) ~= "table" then

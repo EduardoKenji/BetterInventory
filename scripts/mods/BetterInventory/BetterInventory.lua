@@ -40,6 +40,7 @@ local ViewElementGrid = require("scripts/ui/view_elements/view_element_grid/view
 local ItemBlueprintGenerator = require("scripts/ui/view_content_blueprints/item_blueprints")
 local Text = require("scripts/utilities/ui/text")
 local BaseView = require("scripts/ui/views/base_view")
+local VendorInteractionViewBase = require("scripts/ui/views/vendor_interaction_view_base/vendor_interaction_view_base")
 local Layout = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout")
 
 if type(Layout) ~= "table" then
@@ -145,6 +146,8 @@ if type(AutoCrafterViewStatusOverlay) == "table" and type(AutoCrafterViewStatusO
 	AutoCrafterViewStatusOverlay.install(mod, {
 		BaseView,
 		ItemGridViewBase,
+		InventoryView,
+		VendorInteractionViewBase,
 	})
 end
 

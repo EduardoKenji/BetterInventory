@@ -1530,6 +1530,8 @@ Brunt purchases use optimistic wallet concurrency: `Offer.make_purchase` sends t
 
 The normal player HUD renderer can sit behind full-screen vendor, inventory, and crafting views. Persistent status therefore has two render paths backed by the same read-only status bridge: the registered HUD element for free-roaming Morningstar and a post-view overlay for supported vendor/inventory/crafting views. Both retain the hub and matchmaking gates, so the status remains hidden in missions and mission countdown loadout screens.
 
+Mastery synchronization uses a 50 ms initial poll with bounded exponential backoff capped at 500 ms. This removes the former half-second minimum between confirmed sacrifices while retaining authoritative XP/claim convergence. At mastery level 20, blessing allocation is submitted through vanilla's `MasteryService.purchase_traits` batch path: operations remain serial and prerequisite-ordered internally, but run immediately after each backend response and reset/refetch the sticker book only once for final confirmation instead of once per point.
+
 ## Bottom line for implementation agent
 
 All requested operations are reachable from current client service APIs. Build this as a guarded account-mutation state machine, not as UI click automation.
