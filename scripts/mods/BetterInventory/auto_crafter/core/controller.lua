@@ -5,6 +5,10 @@ local DEFAULT_MASTERY_POLL_DELAY = 0.05
 local DEFAULT_BLESSING_POLL_DELAY = 0.05
 local MAX_MASTERY_POLL_ATTEMPTS = 12
 local MAX_BLESSING_SYNC_ATTEMPTS = 12
+local MAX_MASTERY_CLAIM_RETRIES = 2
+local MAX_OPERATION_SECONDS = 45
+local MAX_IDLE_WORKFLOW_SECONDS = 5
+local PHASE3_FODDER_BATCH_SIZE = 8
 local REDEEMED_RARITY = 2
 local TRANSCENDENT_RARITY = 5
 local MAX_EXPERTISE_LEVEL = 500
@@ -498,6 +502,9 @@ function Controller.new(dependencies)
 		_operation_inflight = false,
 		_operation_promise = nil,
 		_operation_kind = nil,
+		_operation_sequence = 0,
+		_operation_elapsed = 0,
+		_operation_started_at = nil,
 		_search = nil,
 		_phase3 = nil,
 		_phase4 = nil,
@@ -516,6 +523,8 @@ function Controller.new(dependencies)
 		_frozen_run_settings = nil,
 		_run_elapsed = 0,
 		_run_started_at = nil,
+		_last_progress_elapsed = 0,
+		_failure_at = nil,
 	}
 
 	local function report(kind, payload)
@@ -532,6 +541,48 @@ function Controller.new(dependencies)
 		if type(fn) == "function" then
 			pcall(fn, self._logger, message)
 		end
+	end
+
+	local function diagnostic_message(kind, payload)
+		payload = payload or {}
+		local fields = {
+			"[AutoCrafter]",
+			"event=" .. tostring(kind),
+			"run=" .. tostring(self._generation),
+			"op=" .. tostring(self._operation_sequence),
+			"phase=" .. tostring(self._phase),
+			string.format("elapsed=%.2fs", tonumber(self._run_elapsed) or 0),
+		}
+		local search = payload.search or self._search
+		local current = payload.current or type(payload.phase3) == "table" and payload.phase3.current or self._phase3 and self._phase3.current
+		local candidate = payload.candidate or payload.current_item
+		local values = {
+			{ "kind", payload.kind },
+			{ "reason", payload.reason },
+			{ "error", payload.error },
+			{ "gear", payload.gear_id or candidate and candidate.gear_id },
+			{ "count", payload.count },
+			{ "amount", payload.amount },
+			{ "expected_xp", payload.expected_xp },
+			{ "attempt", payload.attempt or payload.attempts },
+			{ "retry", payload.retry },
+			{ "mastery", current and current.mastery_level },
+			{ "claimed", current and current.claimed_level },
+			{ "xp", current and current.current_xp },
+			{ "purchases", search and search.purchases },
+			{ "fodder", payload.fodder_count or self._phase3 and self._phase3.fodder_count },
+			{ "rarity", candidate and candidate.rarity },
+			{ "expertise", candidate and candidate.expertise_level },
+			{ "duration", payload.duration and string.format("%.3fs", payload.duration) },
+		}
+
+		for _, entry in ipairs(values) do
+			if entry[2] ~= nil then
+				fields[#fields + 1] = entry[1] .. "=" .. tostring(entry[2])
+			end
+		end
+
+		return table.concat(fields, " ")
 	end
 
 	local function setting(id, default_value)
@@ -600,6 +651,84 @@ function Controller.new(dependencies)
 
 	local function run_is_active()
 		return self._search and self._search.running == true or self._phase3 and self._phase3.running == true or self._phase4 and self._phase4.running == true or self._mastery and self._mastery.running == true
+	end
+
+	local function pending_deferred_count(phase3)
+		local queue = phase3 and phase3.deferred_candidates or {}
+		local first = phase3 and phase3.deferred_index or 1
+
+		return math.max(0, #queue - first + 1)
+	end
+
+	local function mastery_level_target_xp(data, target_level)
+		local milestones = type(data) == "table" and data.milestones or nil
+
+		for index, milestone in ipairs(type(milestones) == "table" and milestones or {}) do
+			local level = tonumber(milestone and milestone.level) or index
+
+			if level == target_level then
+				return tonumber(milestone.xpLimit or milestone.xp_limit)
+			end
+		end
+
+		return nil
+	end
+
+	local function estimated_fodder_xp(candidate)
+		local costs = self._snapshot and self._snapshot.crafting_costs and self._snapshot.crafting_costs.sacrifice_mastery
+		local expertise = tonumber(candidate and candidate.expertise_level)
+
+		if type(costs) ~= "table" or expertise == nil then
+			return nil
+		end
+
+		local multiplier = tonumber(costs.sacrifice_muiltiplier or costs.sacrifice_multiplier) or 6
+		local minimum = tonumber(costs.minimumExpertiseLevel) or 0
+		local base_reward = tonumber(costs.baseReward) or 25
+		local per_level = tonumber(costs.masteryXpPerExpertiseLevel) or 30
+
+		return (base_reward + ((expertise - minimum) / 10 + 1) * per_level) * multiplier
+	end
+
+	local function pending_fodder_reaches_target(phase3)
+		local target_xp = mastery_level_target_xp(phase3 and phase3.current_data, 20)
+		local current_xp = tonumber(phase3 and phase3.current and phase3.current.current_xp)
+		local queue = phase3 and phase3.deferred_candidates or {}
+		local first = phase3 and phase3.deferred_index or 1
+
+		if target_xp == nil or current_xp == nil then
+			return false, nil
+		end
+
+		local projected_xp = current_xp
+
+		for index = first, #queue do
+			local amount = estimated_fodder_xp(queue[index])
+
+			if amount == nil then
+				return false, nil
+			end
+
+			projected_xp = projected_xp + amount
+		end
+
+		return projected_xp >= target_xp, projected_xp
+	end
+
+	local function track_purchased_spare(phase3, candidate)
+		if not phase3 or not candidate or candidate.gear_id == nil then
+			return
+		end
+
+		phase3.purchased_spare_ids = phase3.purchased_spare_ids or {}
+
+		if phase3.purchased_spare_ids[candidate.gear_id] then
+			return
+		end
+
+		phase3.purchased_spare_ids[candidate.gear_id] = true
+		phase3.purchased_spares = phase3.purchased_spares or {}
+		phase3.purchased_spares[#phase3.purchased_spares + 1] = candidate
 	end
 
 	local function clock_now()
@@ -769,26 +898,32 @@ function Controller.new(dependencies)
 	end
 
 	local function operation_report(kind, payload)
-		report(kind, payload or {})
+		payload = payload or {}
+		self._last_progress_elapsed = self._run_elapsed
+		log(kind == "operation_failed" and "error" or "info", diagnostic_message(kind, payload))
+		report(kind, payload)
 	end
 
 	function self:_operation_failed(generation, error_value)
 		if generation ~= self._generation then
-			self._operation_inflight = false
-			self._operation_promise = nil
-			self._operation_kind = nil
-
+			log("info", string.format("[AutoCrafter] ignored stale failure run=%s current_run=%s error=%s", tostring(generation), tostring(self._generation), error_description(error_value)))
 			return
 		end
 
+		local failed_kind = self._operation_kind
+		self._operation_sequence = self._operation_sequence + 1
 		self._operation_inflight = false
 		self._operation_promise = nil
 		self._operation_kind = nil
+		self._operation_elapsed = 0
+		self._operation_started_at = nil
 		self._phase = "operation_failed"
 		error_value = error_description(error_value)
 		self._last_error = error_value
+		self._failure_at = clock_now()
 		operation_report("operation_failed", {
 			error = error_value,
+			kind = failed_kind,
 		})
 
 		if self._search then
@@ -819,6 +954,12 @@ function Controller.new(dependencies)
 		if self._phase4 then
 			self._phase4.running = false
 		end
+
+		if self._mastery then
+			self._mastery.running = false
+		end
+
+		self._frozen_run_settings = nil
 	end
 
 	function self:_dispatch_operation(generation, kind, fn, on_success)
@@ -826,6 +967,8 @@ function Controller.new(dependencies)
 			return false
 		end
 
+		self._operation_sequence = self._operation_sequence + 1
+		local operation_sequence = self._operation_sequence
 		local call_ok, promise = safe_call(fn)
 
 		if not call_ok or not promise or type(promise.next) ~= "function" or type(promise.catch) ~= "function" then
@@ -836,6 +979,8 @@ function Controller.new(dependencies)
 
 		self._operation_inflight = true
 		self._operation_kind = kind
+		self._operation_elapsed = 0
+		self._operation_started_at = clock_now()
 		self._phase = kind .. "_inflight"
 		operation_report("operation_started", {
 			kind = kind,
@@ -843,13 +988,29 @@ function Controller.new(dependencies)
 
 		local chain_ok, chain = pcall(function()
 			return promise:next(function(result)
+				if generation ~= self._generation or operation_sequence ~= self._operation_sequence then
+					if operation_sequence == self._operation_sequence then
+						self._operation_inflight = false
+						self._operation_promise = nil
+						self._operation_kind = nil
+						self._operation_elapsed = 0
+						self._operation_started_at = nil
+					end
+
+					return result
+				end
+
+				local completed_at = clock_now()
+				local duration = completed_at and self._operation_started_at and math.max(0, completed_at - self._operation_started_at) or self._operation_elapsed
 				self._operation_inflight = false
 				self._operation_promise = nil
 				self._operation_kind = nil
-
-				if generation ~= self._generation then
-					return result
-				end
+				self._operation_elapsed = 0
+				self._operation_started_at = nil
+				operation_report("operation_completed", {
+					duration = duration,
+					kind = kind,
+				})
 
 				local callback_ok, callback_error = pcall(on_success, result)
 
@@ -859,6 +1020,18 @@ function Controller.new(dependencies)
 
 				return result
 			end):catch(function (error_value)
+				if generation ~= self._generation or operation_sequence ~= self._operation_sequence then
+					if operation_sequence == self._operation_sequence then
+						self._operation_inflight = false
+						self._operation_promise = nil
+						self._operation_kind = nil
+						self._operation_elapsed = 0
+						self._operation_started_at = nil
+					end
+
+					return error_value
+				end
+
 				self:_operation_failed(generation, error_value)
 
 				return error_value
@@ -867,7 +1040,7 @@ function Controller.new(dependencies)
 
 		if not chain_ok then
 			self:_operation_failed(generation, chain)
-		else
+		elseif operation_sequence == self._operation_sequence and self._operation_inflight then
 			self._operation_promise = chain
 		end
 
@@ -1648,7 +1821,24 @@ function Controller.new(dependencies)
 			end
 		end
 
-		return self:_phase4_complete(item, snapshot)
+		if not phase4.final_reconcile_started then
+			phase4.final_reconcile_started = true
+			self._phase = "phase4_final_reconcile"
+
+			return self:_refresh_after_operation(generation, function (updated_snapshot)
+				local completed_item = find_item(updated_snapshot and updated_snapshot.gear and updated_snapshot.gear.items, phase4.gear_id)
+
+				if not completed_item or completed_item.available ~= true then
+					self:_operation_failed(generation, "final crafted weapon was not found during authoritative reconciliation")
+
+					return
+				end
+
+				self:_phase4_complete(completed_item, updated_snapshot)
+			end, "runtime")
+		end
+
+		return false
 	end
 
 	function self:_poll_phase4_blessing()
@@ -1818,7 +2008,7 @@ function Controller.new(dependencies)
 		end
 
 		if not item or item.available ~= true or item.parent_pattern ~= target.mastery_id or tonumber(authoritative_dump) ~= tonumber(target.dump_stat) then
-			self:_phase3_stop("phase3_target_reconciliation_failed", current)
+			self:_operation_failed(self._generation, "Phase 3 target failed authoritative family or dump-stat reconciliation")
 
 			return false
 		end
@@ -1857,20 +2047,26 @@ function Controller.new(dependencies)
 		return self:_refresh_after_operation(generation, function (snapshot)
 			local target = phase3.target_candidate
 			local queue = phase3.deferred_candidates or {}
+			local cleanup_candidates = phase3.purchased_spares or queue
 			local gear_ids = {}
+			local included = {}
 
-			for index = phase3.deferred_index or 1, #queue do
-				local queued = queue[index]
+			for _, queued in ipairs(cleanup_candidates) do
 				local item = queued and find_item(snapshot and snapshot.gear and snapshot.gear.items, queued.gear_id)
 
-				if item then
+				if item and not included[item.gear_id] then
 					if item.available ~= true or item.gear_id == target.gear_id or item.parent_pattern ~= target.mastery_id then
-						self:_operation_failed(generation, "deferred weapon cleanup failed authoritative family protection")
+						if item.gear_id == target.gear_id then
+							included[item.gear_id] = true
+						else
+							self:_operation_failed(generation, "run-owned spare cleanup failed authoritative family protection")
 
-						return
+							return
+						end
+					else
+						included[item.gear_id] = true
+						gear_ids[#gear_ids + 1] = item.gear_id
 					end
-
-					gear_ids[#gear_ids + 1] = item.gear_id
 				end
 			end
 
@@ -1938,7 +2134,7 @@ function Controller.new(dependencies)
 		local batch = phase3 and phase3.deferred_batch
 
 		if not phase3 or not phase3.running or not batch or #batch.gear_ids == 0 or not backend or type(backend.extract_weapon_mastery) ~= "function" then
-			self:_phase3_stop("phase3_deferred_batch_invalid")
+			self:_operation_failed(generation, "deferred mastery extraction batch became invalid")
 
 			return false
 		end
@@ -2000,6 +2196,40 @@ function Controller.new(dependencies)
 			return self:_phase3_extract_deferred_batch(generation)
 		end
 
+		if batch.upgrade_index == 1 and type(backend and backend.upgrade_weapon_rarities) == "function" then
+			local gear_ids = {}
+
+			for _, pending_item in ipairs(batch.items) do
+				if tonumber(pending_item.rarity) == nil or pending_item.rarity < REDEEMED_RARITY then
+					gear_ids[#gear_ids + 1] = pending_item.gear_id
+				end
+			end
+
+			if #gear_ids == 0 then
+				batch.upgrade_index = #batch.items + 1
+
+				return self:_phase3_extract_deferred_batch(generation)
+			end
+
+			operation_report("phase3_fodder_batch_upgrade_started", {
+				count = #gear_ids,
+			})
+
+			return self:_dispatch_operation(generation, "mastery_upgrade_batch", function ()
+				return backend:upgrade_weapon_rarities(gear_ids)
+			end, function ()
+				for _, pending_item in ipairs(batch.items) do
+					pending_item.rarity = math.max(tonumber(pending_item.rarity) or 0, REDEEMED_RARITY)
+				end
+
+				batch.upgrade_index = #batch.items + 1
+				operation_report("phase3_fodder_batch_upgrade_complete", {
+					count = #gear_ids,
+				})
+				self:_phase3_extract_deferred_batch(generation)
+			end)
+		end
+
 		if tonumber(item.rarity) and item.rarity >= REDEEMED_RARITY then
 			batch.upgrade_index = batch.upgrade_index + 1
 
@@ -2035,7 +2265,10 @@ function Controller.new(dependencies)
 			local gear_ids = {}
 			local queue_end = start_index - 1
 
-			for index = start_index, #queue do
+			local target_xp = mastery_level_target_xp(phase3.current_data, 20)
+			local projected_xp = tonumber(phase3.current and phase3.current.current_xp)
+
+			for index = start_index, math.min(#queue, start_index + PHASE3_FODDER_BATCH_SIZE - 1) do
 				local candidate = queue[index]
 				local item = candidate and find_item(snapshot and snapshot.gear and snapshot.gear.items, candidate.gear_id)
 
@@ -2048,9 +2281,20 @@ function Controller.new(dependencies)
 
 					items[#items + 1] = item
 					gear_ids[#gear_ids + 1] = item.gear_id
+					local amount = estimated_fodder_xp(item)
+
+					if projected_xp and amount then
+						projected_xp = projected_xp + amount
+					else
+						projected_xp = nil
+					end
 				end
 
 				queue_end = index
+
+				if target_xp and projected_xp and projected_xp >= target_xp then
+					break
+				end
 			end
 
 			if #gear_ids == 0 then
@@ -2079,12 +2323,20 @@ function Controller.new(dependencies)
 		local projected = mastery_summary(projected_data)
 
 		if not phase3 or not phase3.running or not projected_data or not mastery_target_reached(projected) then
-			self:_phase3_stop("phase3_projected_mastery_unavailable", projected)
+			self:_operation_failed(generation, "projected mastery level 20 state became unavailable before final claim")
 
 			return false
 		end
 
-		if self._mastery and self._mastery.running or not backend or type(backend.claim_mastery_levels) ~= "function" then
+		if self._mastery and self._mastery.running then
+			self:_operation_failed(generation, "projected mastery claim collided with an active mastery operation")
+
+			return false
+		end
+
+		if not backend or type(backend.claim_mastery_levels) ~= "function" then
+			self:_operation_failed(generation, "projected mastery claim adapter unavailable")
+
 			return false
 		end
 
@@ -2112,6 +2364,7 @@ function Controller.new(dependencies)
 				end
 			end,
 			phase3 = true,
+			claim_retries = 0,
 			running = true,
 		}
 		self._phase = "phase3_mastery_claim"
@@ -2120,7 +2373,11 @@ function Controller.new(dependencies)
 			-- The projected object already contains the extraction XP, matching the
 			-- vanilla sacrifice view's local update before it claims milestones.
 			return backend:claim_mastery_levels(projected_data, 0)
-		end, function ()
+		end, function (result)
+			if self:_complete_mastery_sync(generation, mastery_summary(result), "claim_result") then
+				return
+			end
+
 			self._mastery_poll_elapsed = 0
 			self._mastery_poll_attempts = 0
 			self._mastery_poll_wait = mastery_poll_delay(0)
@@ -2135,7 +2392,7 @@ function Controller.new(dependencies)
 		local phase3 = self._phase3
 
 		if not phase3 or not phase3.running or not candidate or not candidate.gear_id or not candidate.mastery_id then
-			self:_phase3_stop("phase3_fodder_candidate_invalid")
+			self:_operation_failed(generation, "Phase 3 fodder candidate is missing gear or mastery identity")
 
 			return false
 		end
@@ -2146,6 +2403,7 @@ function Controller.new(dependencies)
 
 		self._mastery = {
 			candidate = candidate,
+			claim_retries = 0,
 			gear_id = candidate.gear_id,
 			mastery_id = candidate.mastery_id,
 			on_complete = function (current)
@@ -2186,7 +2444,9 @@ function Controller.new(dependencies)
 		end)
 
 		if not refreshed then
-			self:_phase3_stop("phase3_fodder_refresh_failed")
+			if generation == self._generation and phase3.running then
+				self:_operation_failed(generation, "Phase 3 fodder authoritative refresh could not start")
+			end
 		end
 
 		return refreshed
@@ -2198,13 +2458,13 @@ function Controller.new(dependencies)
 		local backend = self._backend
 
 		if not phase3 or not phase3.running or not target or not target.mastery_id then
-			self:_phase3_stop("phase3_mastery_target_missing")
+			self:_operation_failed(generation, "Phase 3 mastery target identity is missing")
 
 			return false
 		end
 
 		if not backend or type(backend.get_mastery_by_pattern) ~= "function" then
-			self:_phase3_stop("phase3_mastery_read_unavailable")
+			self:_operation_failed(generation, "Phase 3 mastery read adapter is unavailable")
 
 			return false
 		end
@@ -2214,7 +2474,7 @@ function Controller.new(dependencies)
 			local candidate_is_target = phase3.target_candidate and candidate and phase3.target_candidate.gear_id == candidate.gear_id
 
 			if not current or current.mastery_level == nil then
-				self:_phase3_stop("phase3_mastery_level_unavailable")
+				self:_operation_failed(generation, "Phase 3 authoritative mastery response omitted level data")
 
 				return
 			end
@@ -2231,11 +2491,18 @@ function Controller.new(dependencies)
 
 			if phase3.defer_bad_processing and phase3.target_candidate and candidate and not candidate_is_target then
 				phase3.deferred_candidates[#phase3.deferred_candidates + 1] = candidate
+				local projection_reaches_target, projected_xp = pending_fodder_reaches_target(phase3)
+				operation_report("phase3_pending_fodder_projected", {
+					count = pending_deferred_count(phase3),
+					expected_xp = projected_xp,
+				})
 
 				if mastery_target_reached(current) then
 					self:_phase3_discard_deferred(generation, current)
-				else
+				elseif projection_reaches_target or pending_deferred_count(phase3) >= PHASE3_FODDER_BATCH_SIZE then
 					self:_phase3_process_deferred(generation, current)
+				else
+					self:_purchase_search_step(generation)
 				end
 			elseif phase3.defer_bad_processing and phase3.target_candidate then
 				self:_phase3_process_deferred(generation, current)
@@ -2275,7 +2542,7 @@ function Controller.new(dependencies)
 			end
 		end
 
-		if phase3.projected_xp_pending and phase3.current_data then
+		if phase3.current_data then
 			handle_mastery(phase3.current_data)
 
 			return true
@@ -2540,6 +2807,17 @@ function Controller.new(dependencies)
 		local max_purchases = tonumber(search and search.max_purchases) or 0
 		local price = tonumber(target and (target.price_amount or target.price))
 		local credits
+		local function flush_pending_fodder()
+			local phase3 = self._phase3
+
+			if phase3 and phase3.running and phase3.target_candidate and pending_deferred_count(phase3) > 0 then
+				self:_phase3_process_deferred(generation, phase3.current)
+
+				return true
+			end
+
+			return false
+		end
 
 		if not search or not search.running or not target or not price or price <= 0 then
 			self:_stop_search("search_blocked")
@@ -2548,12 +2826,20 @@ function Controller.new(dependencies)
 		end
 
 		if search.cap_by_max_purchases and search.purchases >= max_purchases then
+			if flush_pending_fodder() then
+				return true
+			end
+
 			self:_stop_search("search_max_purchases")
 
 			return false
 		end
 
 		if search.cap_by_dockets and search.spent + price > search.docket_cap then
+			if flush_pending_fodder() then
+				return true
+			end
+
 			self:_stop_search("search_docket_cap")
 
 			return false
@@ -2565,6 +2851,10 @@ function Controller.new(dependencies)
 		credits = tonumber(currency and currency.amount)
 
 		if credits and credits < price then
+			if flush_pending_fodder() then
+				return true
+			end
+
 			self:_stop_search("search_insufficient_dockets")
 
 			return false
@@ -2591,8 +2881,8 @@ function Controller.new(dependencies)
 		end, function (purchase)
 			local purchase_candidate = purchase and purchase.items and purchase.items[1]
 
-			if not purchase_candidate or not purchase_candidate.gear_id or purchase_candidate.available ~= true then
-				self:_operation_failed(generation, "purchase result did not expose a usable weapon")
+			if not purchase_candidate or not purchase_candidate.gear_id then
+				self:_operation_failed(generation, "purchase result did not expose a weapon id")
 
 				return
 			end
@@ -2604,9 +2894,7 @@ function Controller.new(dependencies)
 				self._snapshot.wallets = purchase.wallets
 			end
 
-			self:_refresh_after_operation(generation, function (snapshot)
-				local candidate = find_item(snapshot and snapshot.gear and snapshot.gear.items, purchase_candidate.gear_id)
-
+			local function process_candidate(candidate)
 				if not candidate or candidate.available ~= true then
 					self:_operation_failed(generation, "purchased weapon was not found in authoritative inventory")
 
@@ -2632,6 +2920,10 @@ function Controller.new(dependencies)
 				candidate.dump_stat_label = candidate.base_stat_labels and candidate.base_stat_labels[search.dump_stat]
 				candidate.damage = candidate.potential_damage or candidate_stat(candidate, "damage")
 				candidate.exact_match = tonumber(dump_stat) == tonumber(search.target_dump)
+
+				if self._phase3 and self._phase3.running and not candidate.exact_match then
+					track_purchased_spare(self._phase3, candidate)
+				end
 				search.last = candidate
 				self._last_purchased = candidate
 
@@ -2660,6 +2952,13 @@ function Controller.new(dependencies)
 				else
 					self:_purchase_search_step(generation)
 				end
+			end
+
+			operation_report("purchase_response_received", {
+				candidate = purchase_candidate,
+			})
+			self:_refresh_after_operation(generation, function (snapshot)
+				process_candidate(find_item(snapshot and snapshot.gear and snapshot.gear.items, purchase_candidate.gear_id))
 			end)
 		end)
 	end
@@ -2738,6 +3037,8 @@ function Controller.new(dependencies)
 		self._generation = self._generation + 1
 		self._run_elapsed = 0
 		self._run_started_at = clock_now()
+		self._last_progress_elapsed = 0
+		self._failure_at = nil
 		self._search = {
 			cap_by_dockets = setting("auto_crafter_cap_by_dockets", true) == true,
 			catalog = self._catalog,
@@ -2764,6 +3065,8 @@ function Controller.new(dependencies)
 			deferred_index = 1,
 			fallback_candidate = nil,
 			fodder_count = 0,
+			purchased_spare_ids = {},
+			purchased_spares = {},
 			running = true,
 			target_candidate = nil,
 		} or nil
@@ -2867,6 +3170,57 @@ function Controller.new(dependencies)
 		end)
 	end
 
+	function self:_complete_mastery_sync(generation, current, source)
+		local mastery = self._mastery
+
+		if not mastery or not mastery.running or generation ~= self._generation or not current then
+			return false
+		end
+
+		local xp_converged = mastery_target_reached(current) or current.current_xp and mastery.expected_xp and current.current_xp >= mastery.expected_xp
+		local required_claim = current.mastery_level and math.max(0, current.mastery_level - 1)
+		local claims_converged = required_claim == nil or current.claimed_level ~= nil and current.claimed_level >= required_claim
+
+		if not xp_converged or not claims_converged then
+			return false
+		end
+
+		mastery.running = false
+		mastery.current = current
+		operation_report("mastery_sync_confirmed", {
+			current = current,
+			expected_xp = mastery.expected_xp,
+			reason = source,
+		})
+
+		if mastery.before and tonumber(current.mastery_level) and tonumber(mastery.before.mastery_level) and current.mastery_level > mastery.before.mastery_level then
+			operation_report("mastery_level_increased", {
+				current = current,
+				previous_level = mastery.before.mastery_level,
+			})
+		end
+
+		if mastery.phase3 then
+			self._phase = "phase3_fodder_sync_complete"
+			operation_report("phase3_fodder_mastery_complete", {
+				current = current,
+				gear_id = mastery.gear_id,
+			})
+
+			if type(mastery.on_complete) == "function" then
+				mastery.on_complete(current)
+			end
+		else
+			self._phase = "mastery_complete"
+			operation_report("mastery_operation_complete", {
+				current = current,
+				gear_id = mastery.gear_id,
+			})
+		end
+
+		return true
+	end
+
 	function self:_mastery_claim_after_extract(generation)
 		local mastery = self._mastery
 		local backend = self._backend
@@ -2879,7 +3233,11 @@ function Controller.new(dependencies)
 
 		return self:_dispatch_operation(generation, "mastery_claim", function ()
 			return backend:claim_mastery_levels(mastery.before_data, mastery.amount)
-		end, function ()
+		end, function (result)
+			if self:_complete_mastery_sync(generation, mastery_summary(result), "claim_result") then
+				return
+			end
+
 			self._mastery_poll_elapsed = 0
 			self._mastery_poll_attempts = 0
 			self._mastery_poll_wait = mastery_poll_delay(0)
@@ -3062,8 +3420,13 @@ function Controller.new(dependencies)
 		end
 
 		self._generation = self._generation + 1
+		self._run_elapsed = 0
+		self._run_started_at = clock_now()
+		self._last_progress_elapsed = 0
+		self._failure_at = nil
 		self._mastery = {
 			candidate = candidate,
+			claim_retries = 0,
 			gear_id = candidate.gear_id,
 			mastery_id = candidate.mastery_id,
 			running = true,
@@ -3101,53 +3464,49 @@ function Controller.new(dependencies)
 				attempt = self._mastery_poll_attempts + 1,
 			})
 
-			if xp_converged and claims_converged then
-				mastery.running = false
-				mastery.current = current
-
-				if current and mastery.before and tonumber(current.mastery_level) and tonumber(mastery.before.mastery_level) and current.mastery_level > mastery.before.mastery_level then
-					operation_report("mastery_level_increased", {
-						current = current,
-						previous_level = mastery.before.mastery_level,
-					})
-				end
-
-				if mastery.phase3 then
-					self._phase = "phase3_fodder_sync_complete"
-					operation_report("phase3_fodder_mastery_complete", {
-						current = current,
-						gear_id = mastery.gear_id,
-					})
-
-					if type(mastery.on_complete) == "function" then
-						mastery.on_complete(current)
-					end
-				else
-					self._phase = "mastery_complete"
-					operation_report("mastery_operation_complete", {
-						current = current,
-						gear_id = mastery.gear_id,
-					})
-				end
-
+			if xp_converged and claims_converged and self:_complete_mastery_sync(generation, current, "poll") then
 				return
 			end
 
 			self._mastery_poll_attempts = self._mastery_poll_attempts + 1
 
 			if self._mastery_poll_attempts >= MAX_MASTERY_POLL_ATTEMPTS then
-				mastery.running = false
 				mastery.current = current
 
-				if mastery.phase3 then
-					self:_phase3_stop("phase3_mastery_sync_timeout", current)
-				else
-					self._phase = "mastery_sync_timeout"
-					operation_report("mastery_sync_timeout", {
+				if xp_converged and not claims_converged and (mastery.claim_retries or 0) < MAX_MASTERY_CLAIM_RETRIES and backend and type(backend.claim_mastery_levels) == "function" then
+					mastery.claim_retries = (mastery.claim_retries or 0) + 1
+					operation_report("mastery_claim_retry_started", {
 						current = current,
-						attempts = self._mastery_poll_attempts,
+						retry = mastery.claim_retries,
 					})
+
+					return self:_dispatch_operation(generation, "mastery_claim_retry", function ()
+						return backend:claim_mastery_levels(data, 0)
+					end, function (result)
+						if self:_complete_mastery_sync(generation, mastery_summary(result), "claim_retry_result") then
+							return
+						end
+
+						self._mastery_poll_elapsed = 0
+						self._mastery_poll_attempts = 0
+						self._mastery_poll_wait = mastery_poll_delay(0)
+						self._phase = "mastery_sync_wait"
+					end)
 				end
+
+				operation_report("mastery_sync_timeout", {
+					current = current,
+					attempts = self._mastery_poll_attempts,
+				})
+				self:_operation_failed(generation, string.format(
+					"mastery synchronization failed after %s polls and %s claim retries (expected XP %s, current XP %s, level %s, claimed %s)",
+					tostring(self._mastery_poll_attempts),
+					tostring(mastery.claim_retries or 0),
+					tostring(mastery.expected_xp),
+					tostring(current and current.current_xp),
+					tostring(current and current.mastery_level),
+					tostring(current and current.claimed_level)
+				))
 
 				return
 			end
@@ -3365,6 +3724,14 @@ function Controller.new(dependencies)
 			self._run_elapsed = self._run_elapsed + finite_dt(dt)
 		end
 
+		if self._operation_inflight then
+			self._operation_elapsed = self._operation_elapsed + finite_dt(dt)
+
+			if self._operation_elapsed >= MAX_OPERATION_SECONDS then
+				self:_operation_failed(self._generation, string.format("operation %s timed out after %.1f seconds", tostring(self._operation_kind), self._operation_elapsed))
+			end
+		end
+
 		if self._view_is_valid and not context_is_valid(self._active_view) then
 			self:on_view_closed(self._active_view)
 		end
@@ -3382,6 +3749,16 @@ function Controller.new(dependencies)
 
 			if self._phase4.blessing_poll_elapsed >= (self._phase4.blessing_poll_wait or DEFAULT_BLESSING_POLL_DELAY) then
 				self:_poll_phase4_blessing()
+			end
+		end
+
+		if run_is_active() and not self._operation_inflight then
+			local mastery_waiting = self._mastery and self._mastery.running and self._phase == "mastery_sync_wait"
+			local blessing_waiting = self._phase4 and self._phase4.running and self._phase4.pending_blessing ~= nil
+			local idle_seconds = self._run_elapsed - (tonumber(self._last_progress_elapsed) or 0)
+
+			if not mastery_waiting and not blessing_waiting and idle_seconds >= MAX_IDLE_WORKFLOW_SECONDS then
+				self:_operation_failed(self._generation, string.format("workflow stalled in phase %s for %.1f seconds with no request or bounded poll pending", tostring(self._phase), idle_seconds))
 			end
 		end
 
@@ -3422,8 +3799,11 @@ function Controller.new(dependencies)
 			probe_count = self._probe_count,
 			operation_inflight = self._operation_inflight,
 			operation_kind = self._operation_kind,
+			operation_sequence = self._operation_sequence,
+			operation_elapsed_seconds = self._operation_elapsed,
 			last_probe_at = self._last_probe_at,
 			last_error = self._last_error,
+			failure_at = self._failure_at,
 			data = self._snapshot,
 			plan = self._plan,
 			catalog = self._catalog,

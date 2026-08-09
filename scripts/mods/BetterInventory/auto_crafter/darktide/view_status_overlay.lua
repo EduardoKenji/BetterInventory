@@ -2,22 +2,31 @@ local UIRenderer = require("scripts/managers/ui/ui_renderer")
 local UIWidget = require("scripts/managers/ui/ui_widget")
 
 local Overlay = {}
-local ViewportLayout
+
+local WIDTH = 760
+local HEIGHT = 112
+local TOP_INSET = 42
+local BRUNT_HORIZONTAL_OFFSET = 190
 
 local WIDGET_DEFINITION = UIWidget.create_definition({
 	{
 		pass_type = "rect",
 		style = {
 			color = { 150, 14, 25, 20 },
-			offset = { 0, 0, 0 },
+			horizontal_alignment = "center",
+			offset = { 0, TOP_INSET, 0 },
+			size = { WIDTH, HEIGHT },
+			vertical_alignment = "top",
 		},
 	},
 	{
 		pass_type = "rect",
 		style = {
 			color = { 220, 164, 139, 69 },
-			offset = { 0, 0, 1 },
-			size = { 4, nil },
+			horizontal_alignment = "center",
+			offset = { -(WIDTH - 4) * 0.5, TOP_INSET, 1 },
+			size = { 4, HEIGHT },
+			vertical_alignment = "top",
 		},
 	},
 	{
@@ -28,16 +37,13 @@ local WIDGET_DEFINITION = UIWidget.create_definition({
 			font_size = 21,
 			font_type = "proxima_nova_bold",
 			horizontal_alignment = "center",
-			offset = { 12, 0, 2 },
-			size = { 736, 104 },
+			offset = { 0, TOP_INSET + 4, 2 },
+			size = { WIDTH - 24, HEIGHT - 8 },
 			text_color = { 255, 225, 225, 210 },
-			vertical_alignment = "center",
+			vertical_alignment = "top",
 		},
 	},
-}, "screen", nil, {
-	760,
-	112,
-})
+}, "screen")
 
 local function supported_view(view)
 	local class_name = tostring(view and view.__class_name or "")
@@ -51,6 +57,18 @@ local function supported_view(view)
 	end
 
 	return string.find(class_name, "Crafting", 1, true) ~= nil
+end
+
+local function horizontal_offset(view)
+	local class_name = tostring(view and view.__class_name or "")
+
+	-- Brunt's Custom Armoury owns a wide panel on the left side of the screen.
+	-- Move only this vendor overlay clear of that panel; other views stay centered.
+	if string.find(class_name, "CreditsGoodsVendorView", 1, true) then
+		return BRUNT_HORIZONTAL_OFFSET
+	end
+
+	return 0
 end
 
 local function status_text(view)
@@ -78,28 +96,18 @@ function Overlay.install(mod, view_classes)
 		return false
 	end
 
-	if type(mod.io_dofile) ~= "function" then
-		return false
-	end
-
-	local layout_ok, layout = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/viewport_layout")
-
-	if not layout_ok or type(layout) ~= "table" or type(layout.centered_top_pivot) ~= "function" then
-		return false
-	end
-
-	ViewportLayout = layout
-
 	local installed = false
 
 	for _, view_class in ipairs(view_classes) do
 		if view_class and type(view_class.draw) == "function" then
 			mod:hook(view_class, "draw", function(func, view, dt, t, input_service, layer)
+				view._auto_crafter_status_draw_depth = (view._auto_crafter_status_draw_depth or 0) + 1
 				local results = { func(view, dt, t, input_service, layer) }
+				view._auto_crafter_status_draw_depth = math.max(0, (view._auto_crafter_status_draw_depth or 1) - 1)
 				local text = status_text(view)
 				local ui_renderer = view._ui_default_renderer or view._ui_renderer
 
-				if text and ui_renderer and view._ui_scenegraph and view._render_settings then
+				if text and ui_renderer and view._ui_scenegraph and view._render_settings and view._auto_crafter_status_draw_depth == 0 then
 					local widget = view._auto_crafter_status_overlay
 
 					if not widget then
@@ -108,11 +116,8 @@ function Overlay.install(mod, view_classes)
 					end
 
 					widget.content.text = text
-					local resolution = rawget(_G, "RESOLUTION_LOOKUP") or {}
-					local x, y = ViewportLayout.centered_top_pivot(resolution.width, resolution.height, view._render_settings.scale or resolution.scale, 760, 112, 42)
-
-					widget.offset[1] = x
-					widget.offset[2] = y
+					widget.offset[1] = horizontal_offset(view)
+					widget.offset[2] = 0
 					widget.offset[3] = 0
 
 					local render_settings = view._render_settings

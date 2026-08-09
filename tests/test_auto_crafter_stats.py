@@ -70,15 +70,32 @@ def main() -> None:
         }
 		TestFavoriteItems = {}
 		TestExpertise = 300
-		TestGear = {}
+		TestGear = {
+			["gear-a"] = {uuid = "gear-a", rarity = 0, base_stats = {{name = "damage", value = 0.5}}},
+			["gear-b"] = {uuid = "gear-b", rarity = 0, base_stats = {{name = "damage", value = 0.5}}},
+		}
 		TestMasteryPurchaseFails = false
 		TestPurchasedTraits = nil
+		TestBatchUpgradeIds = {}
 		TestPreviewCalls = 0
 		TestWalletInvalidations = 0
 		TestPurchaseAttempts = 0
 		TestTransactionMismatchOnce = false
 		local modules = {
             ["scripts/foundation/utilities/promise"] = {
+				all = function(...)
+					local results = {}
+
+					for index, operation in ipairs({...}) do
+						if operation.failure then
+							return operation
+						end
+
+						results[index] = operation.value
+					end
+
+					return promise(results)
+				end,
                 resolved = function(value) return promise(value) end,
                 rejected = function(value) return promise(nil, value) end,
             },
@@ -119,6 +136,14 @@ def main() -> None:
             },
 			["scripts/utilities/profile_utils"] = {
 				get_profile_presets = function() return {} end,
+			},
+			["scripts/settings/item/crafting_settings"] = {
+				recipes = {
+					upgrade_item = {
+						is_valid_item = function(item) return item and item.rarity < 2 end,
+						get_costs = function(context) return {plasteel = 10, rarity = context.item.rarity} end,
+					},
+				},
 			},
             ["scripts/utilities/weapon/weapon_template"] = {
                 weapon_template_from_item = function(item) return item and item._weapon_template end,
@@ -230,6 +255,11 @@ def main() -> None:
 				fetch_gear = function() return promise(TestGear) end,
             },
             crafting = {
+				upgrade_weapon_rarity = function(_, gear_id, costs)
+					assert(costs and costs.plasteel == 10)
+					TestBatchUpgradeIds[#TestBatchUpgradeIds + 1] = gear_id
+					return promise({gear_id = gear_id})
+				end,
                 get_traits_mastery_costs = function()
                     return {tierCosts = {["1"] = 1, ["2"] = 2, ["3"] = 3, ["4"] = 4}, tierThresholds = {["1"] = 0, ["2"] = 5, ["3"] = 10, ["4"] = 20}}
                 end,
@@ -276,7 +306,7 @@ def main() -> None:
     assert purchased.potential_damage == 80
     assert purchased.potential_base_stats["crowbar_p1_m1_dps_stat"] == 80
     assert purchased.potential_base_stats["crowbar_p1_m1_defence_stat"] == 60
-    assert lua.globals().TestWalletInvalidations == 1
+    assert lua.globals().TestWalletInvalidations == 0
     assert lua.globals().TestPurchaseAttempts == 1
 
     # An explicit optimistic-concurrency rejection is safe to retry exactly once
@@ -290,8 +320,14 @@ def main() -> None:
     }))
     assert retry_purchase.failure is None
     assert lua.globals().TestPurchaseAttempts == 2
-    assert lua.globals().TestWalletInvalidations == 2
+    assert lua.globals().TestWalletInvalidations == 1
     lua.globals().TestTransactionMismatchOnce = False
+
+    batch_upgrade = backend.upgrade_weapon_rarities(backend, lua.table_from(["gear-a", "gear-b"]))
+    assert batch_upgrade.failure is None
+    assert batch_upgrade.value.count == 2
+    assert lua.globals().TestBatchUpgradeIds[1] == "gear-a"
+    assert lua.globals().TestBatchUpgradeIds[2] == "gear-b"
 
     allocation = backend.purchase_mastery_trait(backend, "crowbar_p1", "headtaker", 4)
     assert allocation.failure is None

@@ -303,55 +303,145 @@ def main() -> None:
 			assert(#controller:snapshot().data.gear.items == 0)
 		end
 
-		-- Deferred misses are upgraded serially but extracted in one backend batch.
+		-- Near level 20, queued XP selects only the minimal fodder prefix and
+		-- discards every run-owned spare that survives extraction.
 		do
 			local target = summarized_item("gear-batch-target", 2, 60)
 			local miss_a = summarized_item("gear-batch-a", 0, 55)
 			local miss_b = summarized_item("gear-batch-b", 1, 56)
-			local state = {items = {target, miss_a, miss_b}, claimed = false}
-			local backend = {extract_calls = 0, upgrade_calls = 0}
-			function backend:probe_snapshot() return resolved(snapshot_with_items(state.items)) end
+			local miss_c = summarized_item("gear-batch-c", 0, 57)
+			miss_a.expertise_level = 40
+			miss_b.expertise_level = 40
+			miss_c.expertise_level = 40
+			local state = {items = {target, miss_a, miss_b, miss_c}, claimed = false}
+			local backend = {batch_upgrade_calls = 0, discard_calls = 0, extract_calls = 0, upgrade_calls = 0}
+			function backend:probe_snapshot()
+				local snapshot = snapshot_with_items(state.items)
+				snapshot.crafting_costs = {sacrifice_mastery = {sacrifice_muiltiplier = 1, minimumExpertiseLevel = 0, baseReward = 0, masteryXpPerExpertiseLevel = 10}}
+				return resolved(snapshot)
+			end
+			function backend:upgrade_weapon_rarities(gear_ids)
+				self.batch_upgrade_calls = self.batch_upgrade_calls + 1
+				assert(#gear_ids == 1 and gear_ids[1] == miss_a.gear_id)
+				return resolved({count = #gear_ids})
+			end
 			function backend:upgrade_weapon_rarity(gear_id)
 				self.upgrade_calls = self.upgrade_calls + 1
 				return resolved({gear_id = gear_id})
 			end
 			function backend:extract_weapon_mastery(_, gear_ids)
 				self.extract_calls = self.extract_calls + 1
-				assert(#gear_ids == 2)
-				state.items = {target}
-				return resolved({amount = 100, gear_ids = {gear_ids[1], gear_ids[2]}})
+				assert(#gear_ids == 1 and gear_ids[1] == miss_a.gear_id)
+				state.items = {target, miss_b, miss_c}
+				return resolved({amount = 50, gear_ids = {gear_ids[1]}})
 			end
 			function backend:project_mastery(data, amount)
-				return {mastery_id = data.mastery_id, current_xp = data.current_xp + amount, mastery_level = 20, claimed_level = 18, mastery_max_level = 20}
+				return {mastery_id = data.mastery_id, current_xp = data.current_xp + amount, mastery_level = 20, claimed_level = 18, mastery_max_level = 20, milestones = data.milestones}
 			end
 			function backend:claim_mastery_levels(_, _)
 				state.claimed = true
-				return resolved({claimed_level = 19})
+				return resolved({mastery_id = "pattern-1", current_xp = 150, mastery_level = 20, claimed_level = 19, mastery_max_level = 20})
 			end
-			function backend:get_mastery_by_pattern(_)
-				assert(state.claimed == true)
-				return resolved({mastery_id = "pattern-1", current_xp = 200, mastery_level = 20, claimed_level = 19, mastery_max_level = 20})
+			function backend:discard_items(gear_ids)
+				self.discard_calls = self.discard_calls + 1
+				assert(#gear_ids == 2 and gear_ids[1] == miss_b.gear_id and gear_ids[2] == miss_c.gear_id)
+				state.items = {target}
+				return resolved({})
 			end
 
 			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings({auto_crafter_level_mastery_20 = true, auto_crafter_defer_bad_weapon_processing = true}), reporter = reports(), get_selected_offer = function() return CurrentOffer end})
-			controller._snapshot = snapshot_with_items(state.items)
+			controller._snapshot = backend:probe_snapshot().value
 			controller._search = {dump_stat = "damage_stat", running = true, target_dump = 60}
 			controller._phase3 = {
 				current = {mastery_id = "pattern-1", current_xp = 100, mastery_level = 19, claimed_level = 18, mastery_max_level = 20},
-				current_data = {mastery_id = "pattern-1", current_xp = 100, mastery_level = 19, claimed_level = 18, mastery_max_level = 20},
+				current_data = {mastery_id = "pattern-1", current_xp = 100, mastery_level = 19, claimed_level = 18, mastery_max_level = 20, milestones = {{level = 20, xpLimit = 150}}},
 				defer_bad_processing = true,
-				deferred_candidates = {miss_a, miss_b},
+				deferred_candidates = {miss_a, miss_b, miss_c},
 				deferred_index = 1,
 				fodder_count = 0,
 				running = true,
 				target_candidate = target,
 			}
 			assert(controller:_phase3_process_deferred(0, controller._phase3.current) == true)
-			assert(backend.upgrade_calls == 2)
+			assert(backend.batch_upgrade_calls == 1)
+			assert(backend.upgrade_calls == 0)
 			assert(backend.extract_calls == 1)
-			controller:update(1)
-			assert(controller:snapshot().phase3.fodder_count == 2)
+			assert(backend.discard_calls == 1)
+			assert(controller:snapshot().phase3.fodder_count == 1)
 			assert(controller:snapshot().search.result.gear_id == target.gear_id)
+			assert(#state.items == 1 and state.items[1].gear_id == target.gear_id)
+		end
+
+		-- Final projected claim result is authoritative. Completing directly avoids
+		-- an unnecessary poll and cannot leave Phase 3 parked at visible 20/20.
+		do
+			local target = summarized_item("gear-direct-claim", 2, 60)
+			target.dump_stat = 60
+			local projected = {mastery_id = "pattern-1", current_xp = 500, mastery_level = 20, claimed_level = 18, mastery_max_level = 20}
+			local backend = {claim_calls = 0, mastery_reads = 0}
+			function backend:claim_mastery_levels(_, _)
+				self.claim_calls = self.claim_calls + 1
+				return resolved({mastery_id = "pattern-1", current_xp = 500, mastery_level = 20, claimed_level = 19, mastery_max_level = 20})
+			end
+			function backend:get_mastery_by_pattern(_)
+				self.mastery_reads = self.mastery_reads + 1
+				return resolved({})
+			end
+
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings({auto_crafter_level_mastery_20 = true}), reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = snapshot_with(target)
+			controller._search = {dump_stat = "damage_stat", running = true, target_dump = 60}
+			controller._phase3 = {
+				authoritative_current = {mastery_id = "pattern-1", current_xp = 100, mastery_level = 5, claimed_level = 4, mastery_max_level = 20},
+				current = projected,
+				current_data = projected,
+				defer_bad_processing = false,
+				deferred_candidates = {},
+				deferred_index = 1,
+				fodder_count = 2,
+				projected_xp_pending = true,
+				running = true,
+				target_candidate = target,
+			}
+			assert(controller:_phase3_sync_projected(0) == true)
+			assert(backend.claim_calls == 1 and backend.mastery_reads == 0)
+			assert(controller:snapshot().phase == "phase3_complete", tostring(controller:snapshot().phase) .. " " .. tostring(controller:snapshot().last_error))
+			assert(controller:snapshot().last_error == nil)
+		end
+
+		-- Swallowed/stale claim result retries from authoritative mastery data. Two
+		-- bounded retries then become a visible operation failure, never silent stop.
+		do
+			local backend = {claim_calls = 0, mastery_reads = 0}
+			function backend:get_mastery_by_pattern(_)
+				self.mastery_reads = self.mastery_reads + 1
+				return resolved({mastery_id = "pattern-1", current_xp = 500, mastery_level = 20, claimed_level = 18, mastery_max_level = 20})
+			end
+			function backend:claim_mastery_levels(_, _)
+				self.claim_calls = self.claim_calls + 1
+				return resolved(nil)
+			end
+
+			local reporter = reports()
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings(), reporter = reporter, get_selected_offer = function() return CurrentOffer end})
+			controller._mastery = {
+				before = {current_xp = 100, mastery_level = 5},
+				claim_retries = 0,
+				expected_xp = 500,
+				mastery_id = "pattern-1",
+				running = true,
+			}
+			controller._phase = "mastery_sync_wait"
+			controller._mastery_poll_wait = 0
+			for _ = 1, 50 do controller:update(1) end
+			assert(backend.claim_calls == 2)
+			assert(controller:snapshot().phase == "operation_failed")
+			assert(string.find(controller:snapshot().last_error, "mastery synchronization failed", 1, true) ~= nil)
+			local failed = false
+			for _, event in ipairs(reporter.events) do
+				failed = failed or event.kind == "operation_failed"
+			end
+			assert(failed == true)
 		end
 
         -- Reaching mastery 20 before mutation must preserve candidate: no upgrade or sacrifice.
@@ -824,6 +914,8 @@ def main() -> None:
             assert(controller:snapshot().search.running == false)
             assert(controller:snapshot().operation_inflight == true)
             assert(controller:snapshot().phase == "user_stopped")
+			backend.purchase_promise.next_callback({items = {}})
+			assert(controller:snapshot().operation_inflight == false)
         end
 
 		print("Auto Crafter controller Phase 2/3/4 behavior tests passed.")

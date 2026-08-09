@@ -41,8 +41,14 @@ def main() -> None:
     assert "layout.anchored_panel_pivot" in panel_source
     assert "scenegraph.info_box" in panel_source
     assert "self:_update_pivot()" in panel_source
-    assert "ViewportLayout.centered_top_pivot" in overlay_source
-    assert "pcall(mod.io_dofile" in overlay_source
+    assert 'horizontal_alignment = "center"' in overlay_source
+    assert 'vertical_alignment = "top"' in overlay_source
+    assert "widget.offset[1] = horizontal_offset(view)" in overlay_source
+    assert "widget.offset[2] = 0" in overlay_source
+    assert 'string.find(class_name, "CreditsGoodsVendorView", 1, true)' in overlay_source
+    assert "BRUNT_HORIZONTAL_OFFSET = 190" in overlay_source
+    assert "centered_top_pivot" not in overlay_source
+    assert "view._auto_crafter_status_draw_depth == 0" in overlay_source
     assert 'require("scripts/mods/BetterInventory' not in overlay_source
     assert 'horizontal_alignment = "center"' in hud_source
     assert 'vertical_alignment = "top"' in hud_source

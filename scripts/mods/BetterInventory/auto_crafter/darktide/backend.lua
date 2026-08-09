@@ -3,6 +3,7 @@ local Items = require("scripts/utilities/items")
 local Mastery = require("scripts/utilities/mastery")
 local MasterItems = require("scripts/backend/master_items")
 local ProfileUtils = require("scripts/utilities/profile_utils")
+local CraftingSettings = require("scripts/settings/item/crafting_settings")
 local WeaponTemplate = require("scripts/utilities/weapon/weapon_template")
 
 local Backend = {}
@@ -882,6 +883,28 @@ local function summarize_gear(gear)
 	return summary
 end
 
+local function raw_gear_item(gear, gear_id)
+	if type(gear) ~= "table" then
+		return nil
+	end
+
+	local direct = gear[gear_id]
+
+	if direct ~= nil then
+		return direct
+	end
+
+	for key, raw_item in pairs(gear) do
+		local resolved_id = safe_member(raw_item, "uuid") or safe_member(raw_item, "gear_id") or key
+
+		if resolved_id == gear_id then
+			return raw_item
+		end
+	end
+
+	return nil
+end
+
 local function summarize_purchase(result)
 	local items = safe_member(result, "items") or {}
 	local summary = {
@@ -934,6 +957,8 @@ function Backend.new(dependencies)
 	dependencies = dependencies or {}
 
 	local backend = {
+		_purchase_wallets = {},
+		_raw_gear = {},
 		_services = dependencies.services,
 	}
 
@@ -962,6 +987,7 @@ function Backend.new(dependencies)
 	end
 
 	function backend:probe_snapshot()
+		self._purchase_wallets = {}
 		local snapshot = {
 			crafting_costs = {
 				available = false,
@@ -990,6 +1016,7 @@ function Backend.new(dependencies)
 
 			return self:_read("gear", "fetch_gear")
 		end):next(function (gear)
+			self._raw_gear = gear or {}
 			snapshot.gear = summarize_gear(gear)
 
 			return snapshot
@@ -1010,6 +1037,7 @@ function Backend.new(dependencies)
 		local snapshot = inherited_snapshot(previous)
 
 		return self:_read("gear", "fetch_gear"):next(function (gear)
+			self._raw_gear = gear or {}
 			snapshot.gear = summarize_gear(gear)
 
 			return snapshot
@@ -1017,6 +1045,7 @@ function Backend.new(dependencies)
 	end
 
 	function backend:refresh_runtime_snapshot(previous)
+		self._purchase_wallets = {}
 		local snapshot = inherited_snapshot(previous)
 
 		-- Keep reads serial by default. The frozen Brunt catalogue and local cost
@@ -1026,6 +1055,7 @@ function Backend.new(dependencies)
 
 			return self:_read("gear", "fetch_gear")
 		end):next(function (gear)
+			self._raw_gear = gear or {}
 			snapshot.gear = summarize_gear(gear)
 
 			return snapshot
@@ -1048,18 +1078,9 @@ function Backend.new(dependencies)
 		end
 
 		local function fresh_purchase(retried)
-			-- Offer.make_purchase posts wallet.lastTransactionId. Always invalidate the
-			-- local wallet before a serial Auto Crafter purchase so Ctrl+Shift+R or a
-			-- prior native transaction cannot leave this mutation using stale state.
-			local invalidate = safe_member(store_service, "invalidate_wallets_cache")
-
-			if type(invalidate) == "function" then
-				pcall(invalidate, store_service)
-			end
-
 			local wallet_method = (wallet_type == "credits" or wallet_type == "marks") and "combined_wallets" or "account_wallets"
-
-			return call_service(store_service, wallet_method):next(function (wallets)
+			local cached = self._purchase_wallets[wallet_type]
+			local wallet_promise = cached and Promise.resolved(cached) or call_service(store_service, wallet_method):next(function (wallets)
 				local by_type = safe_member(wallets, "by_type")
 				local wallet
 
@@ -1073,14 +1094,34 @@ function Backend.new(dependencies)
 					return rejected("purchase wallet unavailable: " .. tostring(wallet_type))
 				end
 
-				return call_service(store_service, "purchase_item_with_wallet", offer, wallet):next(function (result)
+				local entry = {
+					wallet = wallet,
+					wallets = wallets,
+				}
+				self._purchase_wallets[wallet_type] = entry
+
+				return entry
+			end)
+
+			-- Offer.make_purchase mutates this wallet's balance and transaction id after
+			-- each successful POST. Reusing that exact object keeps the serial chain fast
+			-- and correct; mismatch fallback below performs one forced authoritative read.
+			return wallet_promise:next(function (entry)
+				return call_service(store_service, "purchase_item_with_wallet", offer, entry.wallet):next(function (result)
 					if type(result) == "table" then
-						result._auto_crafter_wallets = summarize_wallets(wallets)
+						result._auto_crafter_wallets = summarize_wallets(entry.wallets)
 					end
 
 					return result
 				end)
 			end):catch(function (error_value)
+				self._purchase_wallets[wallet_type] = nil
+				local invalidate = safe_member(store_service, "invalidate_wallets_cache")
+
+				if type(invalidate) == "function" then
+					pcall(invalidate, store_service)
+				end
+
 				-- A transaction-id mismatch is a confirmed rejection before item creation,
 				-- so one fresh-wallet retry is safe. Never retry ambiguous failures.
 				if not retried and transaction_id_mismatch(error_value) then
@@ -1176,7 +1217,76 @@ function Backend.new(dependencies)
 			return rejected("gear id unavailable for rarity upgrade")
 		end
 
-		return self:_mutate("crafting", "upgrade_weapon_rarity", gear_id)
+		local raw_item = raw_gear_item(self._raw_gear, gear_id)
+		local local_item = raw_item and item_instance(raw_item, gear_id)
+		local recipes = safe_member(CraftingSettings, "recipes")
+		local recipe = safe_member(recipes, "upgrade_item")
+		local is_valid_item = safe_member(recipe, "is_valid_item")
+		local get_costs = safe_member(recipe, "get_costs")
+
+		if not local_item then
+			return rejected("rarity upgrade item unavailable in authoritative gear: " .. tostring(gear_id))
+		end
+
+		if type(is_valid_item) ~= "function" or type(get_costs) ~= "function" then
+			return rejected("rarity upgrade recipe unavailable for gear: " .. tostring(gear_id))
+		end
+
+		local valid_ok, valid = pcall(is_valid_item, local_item)
+
+		if not valid_ok or valid ~= true then
+			return rejected("rarity upgrade recipe rejected gear: " .. tostring(gear_id))
+		end
+
+		local costs_ok, costs = pcall(get_costs, {
+			item = local_item,
+		})
+
+		if not costs_ok or type(costs) ~= "table" then
+			return rejected("rarity upgrade costs unavailable for gear: " .. tostring(gear_id))
+		end
+
+		return self:_mutate("crafting", "upgrade_weapon_rarity", gear_id, costs):catch(function (error_value)
+			return Promise.rejected({
+				code = safe_member(error_value, "code") or "rarity_upgrade_failed",
+				description = string.format("rarity upgrade failed for gear %s: %s", tostring(gear_id), error_description(error_value)),
+			})
+		end)
+	end
+
+	function backend:upgrade_weapon_rarities(gear_ids)
+		if type(gear_ids) ~= "table" or #gear_ids == 0 then
+			return rejected("rarity upgrade batch requires at least one item")
+		end
+
+		local unique = {}
+		local results = {}
+		local sequence = Promise.resolved(results)
+
+		for _, gear_id in ipairs(gear_ids) do
+			if gear_id == nil or unique[gear_id] then
+				return rejected("rarity upgrade batch contains missing or duplicate gear ids")
+			end
+
+			unique[gear_id] = true
+			local pending_gear_id = gear_id
+			sequence = sequence:next(function ()
+				return self:upgrade_weapon_rarity(pending_gear_id):next(function (result)
+					results[#results + 1] = result
+
+					return results
+				end)
+			end)
+		end
+
+		-- Crafting mutations contend when posted concurrently. Keep one controller
+		-- operation and one extraction batch, but serialize backend rarity writes.
+		return sequence:next(function ()
+			return {
+				count = #gear_ids,
+				results = results,
+			}
+		end)
 	end
 
 	function backend:add_weapon_expertise(gear_id, displayed_target)

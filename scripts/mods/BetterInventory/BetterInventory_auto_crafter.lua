@@ -231,6 +231,17 @@ local function rebuild_hud_lines(snapshot)
 	local search = snapshot and snapshot.search
 	local phase3 = snapshot and snapshot.phase3
 	local phase4 = snapshot and snapshot.phase4
+	local last_error = snapshot and snapshot.last_error
+
+	if last_error then
+		lines[#lines + 1] = "AUTO CRAFTER FAILED: " .. tostring(last_error)
+		lines[#lines + 1] = string.format("Stopped at %s%s", tostring(snapshot.phase or "unknown phase"), snapshot.operation_kind and " (" .. tostring(snapshot.operation_kind) .. ")" or "")
+		lines[#lines + 1] = "Weapon preserved at last confirmed step. Check BetterInventory log for full trace."
+		lines[#lines + 1] = string.format("Elapsed: %d seconds", math.max(0, math.floor(tonumber(snapshot.run_elapsed_seconds) or 0)))
+		hud_lines = lines
+
+		return
+	end
 
 	if search and search.running and not search.result then
 		lines[#lines + 1] = "Searching for perfect dump-stat weapon"
@@ -271,6 +282,7 @@ local function rebuild_hud_lines(snapshot)
 	local run_active = search and search.running or phase3 and phase3.running or phase4 and phase4.running or snapshot and snapshot.mastery and snapshot.mastery.running
 
 	if run_active then
+		lines[#lines + 1] = "Step: " .. tostring(snapshot and snapshot.phase or "unknown")
 		lines[#lines + 1] = format_resource_costs(snapshot and snapshot.resource_costs)
 		lines[#lines + 1] = string.format("Elapsed: %d seconds", math.max(0, math.floor(tonumber(snapshot and snapshot.run_elapsed_seconds) or 0)))
 	end
