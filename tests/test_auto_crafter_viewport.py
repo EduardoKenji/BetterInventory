@@ -16,23 +16,30 @@ def main() -> None:
         LAYOUT_PATH.read_text(encoding="utf-8")
     )
     resolution_matrix = (
-        (1920, 1080, 1.0, 1380, 580),
-        (2560, 1440, 4 / 3, 1380, 580),
-        (3440, 1440, 4 / 3, 2040, 910),
-        (5120, 1440, 4 / 3, 3300, 1540),
-        (3840, 2160, 2.0, 1380, 580),
+        (1920, 1080, 1.0, 1380, 1380, 580),
+        (2560, 1440, 4 / 3, 1380, 1380, 580),
+        (3440, 1440, 4 / 3, 2040, 1710, 910),
+        (5120, 1440, 4 / 3, 3300, 2340, 1540),
+        (3840, 2160, 2.0, 1380, 1380, 580),
     )
 
-    for width, height, scale, expected_panel_x, expected_hud_x in resolution_matrix:
+    for width, height, scale, expected_fallback_x, expected_anchored_x, expected_hud_x in resolution_matrix:
+        virtual_width, _ = layout.virtual_size(width, height, scale)
+        brunt_canvas_left = (virtual_width - 1920) / 2
+        info_box_right = brunt_canvas_left + 1307.5
         panel_x, panel_y = layout.panel_pivot(width, height, scale, 445, 520)
+        anchored_x, anchored_y = layout.anchored_panel_pivot(width, height, scale, 445, 520, info_box_right, 0, 72, 110)
         hud_x, hud_y = layout.centered_top_pivot(width, height, scale, 760, 112, 42)
-        assert (panel_x, panel_y) == (expected_panel_x, 110)
+        assert (panel_x, panel_y) == (expected_fallback_x, 110)
+        assert (anchored_x, anchored_y) == (expected_anchored_x, 110)
         assert (hud_x, hud_y) == (expected_hud_x, 42)
 
     panel_source = PANEL_PATH.read_text(encoding="utf-8")
     overlay_source = OVERLAY_PATH.read_text(encoding="utf-8")
     hud_source = HUD_PATH.read_text(encoding="utf-8")
     assert "layout.panel_pivot" in panel_source
+    assert "layout.anchored_panel_pivot" in panel_source
+    assert "scenegraph.info_box" in panel_source
     assert "self:_update_pivot()" in panel_source
     assert "ViewportLayout.centered_top_pivot" in overlay_source
     assert "pcall(mod.io_dofile" in overlay_source

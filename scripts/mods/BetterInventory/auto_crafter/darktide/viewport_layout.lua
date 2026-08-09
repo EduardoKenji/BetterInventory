@@ -38,6 +38,27 @@ function ViewportLayout.panel_pivot(width, height, render_scale, panel_width, pa
 	return math.floor(x + 0.5), math.floor(y + 0.5)
 end
 
+function ViewportLayout.anchored_panel_pivot(width, height, render_scale, panel_width, panel_height, anchor_right, canvas_top, horizontal_gap, top_inset)
+	local virtual_width, virtual_height = ViewportLayout.virtual_size(width, height, render_scale)
+	panel_width = positive_number(panel_width, 445)
+	panel_height = positive_number(panel_height, 520)
+	anchor_right = tonumber(anchor_right)
+	canvas_top = tonumber(canvas_top)
+	horizontal_gap = tonumber(horizontal_gap) or 72
+	top_inset = tonumber(top_inset) or PANEL_TOP_INSET
+
+	if not anchor_right or not canvas_top then
+		return ViewportLayout.panel_pivot(width, height, render_scale, panel_width, panel_height)
+	end
+
+	local maximum_x = math.max(SAFE_INSET, virtual_width - panel_width - SAFE_INSET)
+	local maximum_y = math.max(SAFE_INSET, virtual_height - panel_height - SAFE_INSET)
+	local x = math.max(SAFE_INSET, math.min(maximum_x, anchor_right + horizontal_gap))
+	local y = math.max(SAFE_INSET, math.min(maximum_y, canvas_top + top_inset))
+
+	return math.floor(x + 0.5), math.floor(y + 0.5)
+end
+
 function ViewportLayout.centered_top_pivot(width, height, render_scale, widget_width, widget_height, top_inset)
 	local virtual_width, virtual_height = ViewportLayout.virtual_size(width, height, render_scale)
 	widget_width = positive_number(widget_width, 760)

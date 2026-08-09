@@ -5,6 +5,7 @@ local Panel = {}
 local PANEL_REFERENCE = "auto_crafter_diagnostic_panel"
 local PANEL_WIDTH = 445
 local PANEL_HEIGHT = 520
+local ANCHORED_PANEL_GAP = 72
 local ROW_HEIGHT = 32
 local COMPACT_ROW_HEIGHT = 26
 local STATUS_ROW_HEIGHT = 50
@@ -2005,7 +2006,21 @@ function Panel.new(dependencies)
 			return false
 		end
 
-		local x, y = layout.panel_pivot(resolution.width, resolution.height, render_scale, PANEL_WIDTH, PANEL_HEIGHT)
+		local scenegraph = self._view and self._view._ui_scenegraph
+		local info_box = scenegraph and scenegraph.info_box
+		local canvas = scenegraph and scenegraph.canvas
+		local info_position = info_box and info_box.world_position
+		local info_size = info_box and info_box.size
+		local canvas_position = canvas and canvas.world_position
+		local anchor_right = info_position and info_size and tonumber(info_position[1]) and tonumber(info_size[1]) and info_position[1] + info_size[1]
+		local canvas_top = canvas_position and tonumber(canvas_position[2])
+		local x, y
+
+		if type(layout.anchored_panel_pivot) == "function" and anchor_right and canvas_top then
+			x, y = layout.anchored_panel_pivot(resolution.width, resolution.height, render_scale, PANEL_WIDTH, PANEL_HEIGHT, anchor_right, canvas_top, ANCHORED_PANEL_GAP, 110)
+		else
+			x, y = layout.panel_pivot(resolution.width, resolution.height, render_scale, PANEL_WIDTH, PANEL_HEIGHT)
+		end
 
 		if x == self._pivot_x and y == self._pivot_y then
 			return false
