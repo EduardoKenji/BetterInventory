@@ -761,12 +761,6 @@ local localization = {
 	auto_crafter_favorite_result_tooltip = {
 		en = "Favorite an exact matching weapon after authoritative inventory verification.",
 	},
-	auto_crafter_rename_result = {
-		en = "Rename final weapon",
-	},
-	auto_crafter_rename_result_tooltip = {
-		en = "Disabled by default. Later connection requires a tested BetterInventory or Name It naming provider and a stable final gear ID.",
-	},
 	auto_crafter_notification_title = {
 		en = "Auto Crafter Helper",
 	},
@@ -858,10 +852,7 @@ local localization = {
 		en = "disabled",
 	},
 	auto_crafter_panel_preview = {
-		en = "Craft / purchase search",
-	},
-	auto_crafter_panel_serial_start = {
-		en = "SERIAL; click to start",
+		en = "CRAFT",
 	},
 	auto_crafter_panel_phase_2 = {
 		en = "Redeem + sacrifice one",
@@ -870,10 +861,7 @@ local localization = {
 		en = "No purchased candidate",
 	},
 	auto_crafter_panel_stop = {
-		en = "Stop active run",
-	},
-	auto_crafter_panel_stop_detail = {
-		en = "Stops after any in-flight request settles",
+		en = "STOP / INTERRUPT",
 	},
 	auto_crafter_panel_waiting = {
 		en = "waiting for probe",
@@ -898,12 +886,6 @@ local localization = {
 	},
 	auto_crafter_panel_option_unavailable = {
 		en = "Enable prerequisite options",
-	},
-	auto_crafter_panel_result_name = {
-		en = "Result name",
-	},
-	auto_crafter_panel_name_provider_later = {
-		en = "Naming provider connection planned",
 	},
 	auto_crafter_panel_advanced = {
 		en = "Advanced and safety",

@@ -490,8 +490,6 @@ Selected Brunt weapon type plus dump-stat key are mandatory inputs. All controls
 | Consecrate to Transcendent | checkbox | final candidate exists/planned | Raise final rarity one authoritative step at a time. |
 | Upgrade to 500 | checkbox | final candidate exists/planned | Empower when claimed mastery cap permits 500. |
 | Favorite final weapon | checkbox | always | Apply only after final verification. |
-| Rename final weapon | checkbox + text | supported naming provider detected | **Disabled by default.** Enable only through BetterInventory or Name It naming adapter; otherwise gray control with explanation. |
-| Naming provider | dropdown | two supported providers detected | `Automatic`, `BetterInventory`, or `Name It`; write through exactly one provider. |
 | Level weapon mastery to 20 | checkbox | mastery family resolved | Buy/upgrade/sacrifice fodder until fast level-complete gate. |
 | Allocate mastery points | checkbox | level-to-20 checked | Claim/synchronize points, buy requested blessing tiers first, then apply chosen remainder policy. |
 | Change perks | checkbox | level-to-20 checked | Conservative product rule: mastery 20 guarantees Rank IV perk unlocks, so Auto Crafter never plans a lower-rank final perk. |
@@ -717,7 +715,6 @@ idle
   -> replace_perks
   -> replace_blessings
   -> favorite_final
-  -> rename_final
   -> verify_final
   -> complete
 
@@ -1227,9 +1224,9 @@ Full source-level audit found and corrected several blockers that prior structur
 - Phase 2 previously fetched mastery after extraction, then passed both that post-extraction XP and returned sacrifice XP to `claim_levels_by_new_exp`; this could double-count claim calculations and set an unreachable poll target. Baseline is now read before mutation and reused for both claim and convergence arithmetic.
 - Purchased-item Damage tie-break no longer assumes a literal `damage` stat ID. It resolves the template's `loc_stats_display_damage_stat` identity, with bounded name fallback for `dps`/`damage`, so weapon-specific canonical IDs still support the best-candidate policy.
 - Default progress reporting is human-facing and coalesced: first purchase plus every tenth purchase, exact result, favorite confirmation, readable stop/failure reasons, and actual mastery level increases. Upgrade, sacrifice, claim, polling, unchanged mastery, and fodder bookkeeping remain panel/log state only. A mastery notification is emitted only after authoritative XP and claimed-level convergence reports `current.mastery_level > pre-sacrifice mastery_level`, and displays `current/max` (for example `Weapon mastery reached level 12/20`).
-- Widget now has a guarded `Stop active run` action. It closes future dispatch immediately but does not pretend an already submitted account mutation can be cancelled; button text states that in-flight request settles first.
+- Widget now has a guarded `STOP / INTERRUPT` action in every active phase. It closes future dispatch immediately but does not pretend an already submitted account mutation can be cancelled; that request settles behind a generation guard and its continuation remains inert.
 - Workflow scope copy distinguishes connected purchase/mastery behavior from saved-only future options. User-facing experimental parallel-mutation settings remain inert; the only runtime mutation overlap is one ordered Phase 3 rarity upgrade with one ordered purchase, as described above.
-- New executable controller regressions cover pre-sacrifice mastery baseline, claim input, deletion reconciliation, already-20 preservation, frozen-target rejection, live fallback retention, configuration-change stop, and explicit user stop. Static token checks remain secondary.
+- New executable controller regressions cover pre-sacrifice mastery baseline, claim input, deletion reconciliation, already-20 preservation, frozen-target rejection, live fallback retention, configuration-change stop, and explicit user stop across fresh/adopted equipment and every request family. Static token checks remain secondary.
 
 ### Phase 0: read-only probe
 

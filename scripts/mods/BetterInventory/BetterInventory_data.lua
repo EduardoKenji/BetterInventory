@@ -745,7 +745,6 @@ return {
 						type = "group",
 						sub_widgets = {
 							{ setting_id = "auto_crafter_favorite_result", tooltip = "auto_crafter_favorite_result_tooltip", type = "checkbox", default_value = true },
-							{ setting_id = "auto_crafter_rename_result", tooltip = "auto_crafter_rename_result_tooltip", type = "checkbox", default_value = false },
 						},
 					},
 				},

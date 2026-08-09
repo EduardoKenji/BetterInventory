@@ -833,6 +833,10 @@ def main() -> None:
     assert 'add_checkbox("auto_crafter_show_blessing_grid"' in panel_source
     assert "SECTION_ADVANCED" not in panel_source
     assert "auto_crafter_panel_request_mode" not in panel_source
+    assert 'localize("auto_crafter_panel_preview", "CRAFT"), ""' in panel_source
+    assert 'localize("auto_crafter_panel_stop", "STOP / INTERRUPT"), ""' in panel_source
+    assert "phase4 and phase4.running == true" in panel_source
+    assert "auto_crafter_rename_result" not in panel_source
     backend_source = BACKEND_PATH.read_text(encoding="utf-8")
     assert "Items.trait_description" in backend_source
     assert "Items.trait_textures" in backend_source

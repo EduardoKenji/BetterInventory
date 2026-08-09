@@ -235,7 +235,6 @@ def validate_auto_crafter_mutation_boundaries() -> int:
         "auto_crafter_upgrade_expertise_500",
         "auto_crafter_change_perks",
         "auto_crafter_change_blessings",
-        "auto_crafter_rename_result",
     )
     data_source = (RUNTIME_ROOT / "BetterInventory_data.lua").read_text(encoding="utf-8")
     controller_source = (auto_crafter_root / "core" / "controller.lua").read_text(encoding="utf-8")
@@ -270,7 +269,7 @@ def validate_auto_crafter_mutation_boundaries() -> int:
     if missing_future_ui:
         raise SystemExit("Auto Crafter future UI contract missing: " + ", ".join(missing_future_ui))
 
-    phase4_settings = set(future_ui_settings) - {"auto_crafter_rename_result"}
+    phase4_settings = set(future_ui_settings)
     missing_phase4_wiring = [token for token in phase4_settings if token not in controller_source]
     if missing_phase4_wiring:
         raise SystemExit("Auto Crafter Phase 4 setting wiring missing: " + ", ".join(missing_phase4_wiring))

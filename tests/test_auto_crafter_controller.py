@@ -1397,6 +1397,68 @@ def main() -> None:
 			assert(controller:snapshot().operation_inflight == false)
         end
 
+		-- Every request family shares same graceful interruption boundary. Settled
+		-- callbacks become inert, including runs adopting partially crafted gear.
+		do
+			local cases = {
+				{kind = "purchase", field = "_search", state = {running = true}},
+				{kind = "authoritative_refresh", field = "_phase3", state = {running = true, current = {gear_id = "resumed-base"}}},
+				{kind = "mastery_upgrade_batch", field = "_phase3", state = {running = true, current = {gear_id = "resumed-mastery"}}},
+				{kind = "mastery_sacrifice_batch", field = "_mastery", state = {running = true, gear_id = "fodder"}},
+				{kind = "mastery_claim", field = "_mastery", state = {running = true, mastery_id = "track"}},
+				{kind = "phase4_sticker_preflight", field = "_phase4", state = {running = true, gear_id = "resumed-final"}},
+				{kind = "phase4_consecrate", field = "_phase4", state = {running = true, gear_id = "resumed-final"}},
+				{kind = "phase4_expertise", field = "_phase4", state = {running = true, gear_id = "resumed-final"}},
+				{kind = "phase4_allocate_blessing_batch", field = "_phase4", state = {running = true, gear_id = "resumed-final"}},
+				{kind = "phase4_replace_perk", field = "_phase4", state = {running = true, gear_id = "resumed-final"}},
+				{kind = "phase4_replace_blessing", field = "_phase4", state = {running = true, gear_id = "resumed-final"}},
+				{kind = "favorite", field = "_phase4", state = {running = true, gear_id = "resumed-final"}},
+			}
+
+			for _, case in ipairs(cases) do
+				local promise = pending()
+				local followups = 0
+				local controller = Controller.new({backend = {}, planner = Planner, context = context(), settings = base_settings(), reporter = reports()})
+				controller[case.field] = case.state
+				assert(controller:_dispatch_operation(0, case.kind, function() return promise end, function() followups = followups + 1 end) == true, case.kind)
+				assert(controller:stop_active_run() == true, case.kind)
+				assert(controller:snapshot().operation_inflight == true, case.kind)
+				assert(controller:snapshot().phase == "user_stopped", case.kind)
+				promise.next_callback({})
+				assert(controller:snapshot().operation_inflight == false, case.kind)
+				assert(controller:snapshot().phase == "user_stopped", case.kind)
+				assert(followups == 0, case.kind .. " dispatched follow-up after stop")
+				assert(controller:stop_active_run() == false, case.kind)
+			end
+		end
+
+		-- Fast mastery upgrade lane is outside generic operation gate but obeys
+		-- same generation guard and cannot pump another upgrade after Stop.
+		do
+			local upgrade_promise = pending()
+			local upgrade_calls = 0
+			local backend = {}
+			function backend:upgrade_weapon_rarity(_)
+				upgrade_calls = upgrade_calls + 1
+				return upgrade_promise
+			end
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings(), reporter = reports()})
+			controller._phase3 = {
+				running = true,
+				fast_upgrade_head = 1,
+				fast_upgrade_inflight = {},
+				fast_upgrade_inflight_count = 0,
+				fast_upgrade_queue = {},
+				fast_upgrade_states = {},
+			}
+			assert(controller:_phase3_queue_fast_upgrade(0, {gear_id = "fast-fodder", rarity = 1}) == true)
+			assert(upgrade_calls == 1)
+			assert(controller:stop_active_run() == true)
+			upgrade_promise.next_callback({})
+			assert(upgrade_calls == 1)
+			assert(controller:snapshot().phase == "user_stopped")
+		end
+
 		print("Auto Crafter controller Phase 2/3/4 behavior tests passed.")
         '''
     )

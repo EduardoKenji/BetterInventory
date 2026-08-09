@@ -1756,11 +1756,9 @@ function Panel.new(dependencies)
 
 		if not self._section_collapsed[SECTION_OUTPUT] then
 			add_checkbox("auto_crafter_favorite_result", "auto_crafter_favorite_result", "Favorite final weapon", true)
-			add_checkbox("auto_crafter_rename_result", "auto_crafter_rename_result", "Rename final weapon", false)
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_result_name", "Result name"), localize("auto_crafter_panel_name_provider_later", "Naming provider connection planned")))
 		end
 
-		table.insert(entries, self:_entry(localize("auto_crafter_panel_preview", "Craft / purchase search"), localize("auto_crafter_panel_serial_start", "SERIAL; click to start"), {
+		table.insert(entries, self:_entry(localize("auto_crafter_panel_preview", "CRAFT"), "", {
 			enabled = true,
 			selectable = true,
 			variant = "action",
@@ -1772,19 +1770,20 @@ function Panel.new(dependencies)
 			refresh = function(widget)
 				widget.content.enabled = true
 				widget.content.hotspot.disabled = false
-				widget.content.detail = localize("auto_crafter_panel_serial_start", "SERIAL; click to start")
+				widget.content.detail = ""
 			end,
 		}))
 		local function run_is_active()
 			local state = self._controller_state or {}
 			local search = state.search
 			local phase3 = state.phase3
+			local phase4 = state.phase4
 			local mastery = state.mastery
 
-			return search and search.running == true or phase3 and phase3.running == true or mastery and mastery.running == true
+			return search and search.running == true or phase3 and phase3.running == true or phase4 and phase4.running == true or mastery and mastery.running == true
 		end
 		local stop_enabled = run_is_active()
-		table.insert(entries, self:_entry(localize("auto_crafter_panel_stop", "Stop active run"), localize("auto_crafter_panel_stop_detail", "Stops after any in-flight request settles"), {
+		table.insert(entries, self:_entry(localize("auto_crafter_panel_stop", "STOP / INTERRUPT"), "", {
 			enabled = stop_enabled,
 			selectable = true,
 			variant = "action",
