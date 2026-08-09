@@ -9,6 +9,7 @@ local MAX_MASTERY_CLAIM_RETRIES = 2
 local MAX_OPERATION_SECONDS = 45
 local MAX_IDLE_WORKFLOW_SECONDS = 5
 local PHASE3_FODDER_BATCH_SIZE = 8
+local MAX_PARALLEL_FODDER_UPGRADES = 2
 local REDEEMED_RARITY = 2
 local TRANSCENDENT_RARITY = 5
 local MAX_EXPERTISE_LEVEL = 500
@@ -525,6 +526,7 @@ function Controller.new(dependencies)
 		_run_started_at = nil,
 		_last_progress_elapsed = 0,
 		_failure_at = nil,
+		_operation_timings = {},
 	}
 
 	local function report(kind, payload)
@@ -575,6 +577,18 @@ function Controller.new(dependencies)
 			{ "expertise", candidate and candidate.expertise_level },
 			{ "duration", payload.duration and string.format("%.3fs", payload.duration) },
 		}
+		local timings = payload.timings
+
+		if type(timings) == "table" then
+			local timing_fields = {}
+
+			for timing_kind, timing in pairs(timings) do
+				timing_fields[#timing_fields + 1] = string.format("%s:%dx/%.2fs", tostring(timing_kind), tonumber(timing.count) or 0, tonumber(timing.total) or 0)
+			end
+
+			table.sort(timing_fields)
+			values[#values + 1] = { "timings", table.concat(timing_fields, ",") }
+		end
 
 		for _, entry in ipairs(values) do
 			if entry[2] ~= nil then
@@ -904,6 +918,25 @@ function Controller.new(dependencies)
 		report(kind, payload)
 	end
 
+	local function record_timing(kind, duration)
+		if kind == nil or tonumber(duration) == nil then
+			return
+		end
+
+		local timings = self._operation_timings
+		local timing = timings[kind] or {
+			count = 0,
+			maximum = 0,
+			total = 0,
+		}
+		local elapsed = math.max(0, tonumber(duration) or 0)
+
+		timing.count = timing.count + 1
+		timing.maximum = math.max(timing.maximum, elapsed)
+		timing.total = timing.total + elapsed
+		timings[kind] = timing
+	end
+
 	function self:_operation_failed(generation, error_value)
 		if generation ~= self._generation then
 			log("info", string.format("[AutoCrafter] ignored stale failure run=%s current_run=%s error=%s", tostring(generation), tostring(self._generation), error_description(error_value)))
@@ -924,6 +957,7 @@ function Controller.new(dependencies)
 		operation_report("operation_failed", {
 			error = error_value,
 			kind = failed_kind,
+			timings = self._operation_timings,
 		})
 
 		if self._search then
@@ -1007,6 +1041,7 @@ function Controller.new(dependencies)
 				self._operation_kind = nil
 				self._operation_elapsed = 0
 				self._operation_started_at = nil
+				record_timing(kind, duration)
 				operation_report("operation_completed", {
 					duration = duration,
 					kind = kind,
@@ -1045,6 +1080,133 @@ function Controller.new(dependencies)
 		end
 
 		return true
+	end
+
+	local function fast_upgrade_pending(phase3)
+		local queue = phase3 and phase3.fast_upgrade_queue or {}
+		local head = phase3 and phase3.fast_upgrade_head or 1
+
+		return phase3 and ((phase3.fast_upgrade_inflight_count or 0) > 0 or queue[head] ~= nil) or false
+	end
+
+	function self:_phase3_resume_after_fast_upgrades(generation)
+		local phase3 = self._phase3
+
+		if not phase3 or not phase3.running or generation ~= self._generation or not phase3.fast_purchase_paused or self._operation_inflight or fast_upgrade_pending(phase3) then
+			return false
+		end
+
+		phase3.fast_purchase_paused = false
+
+		return self:_phase3_process_deferred(generation, phase3.current)
+	end
+
+	function self:_phase3_pump_fast_upgrades(generation)
+		local phase3 = self._phase3
+		local backend = self._backend
+
+		if not phase3 or not phase3.running or generation ~= self._generation or not backend or type(backend.upgrade_weapon_rarity) ~= "function" then
+			return false
+		end
+
+		phase3.fast_upgrade_inflight = phase3.fast_upgrade_inflight or {}
+		phase3.fast_upgrade_inflight_count = phase3.fast_upgrade_inflight_count or 0
+		phase3.fast_upgrade_head = phase3.fast_upgrade_head or 1
+
+		while phase3.fast_upgrade_inflight_count < MAX_PARALLEL_FODDER_UPGRADES do
+			local candidate = phase3.fast_upgrade_queue and phase3.fast_upgrade_queue[phase3.fast_upgrade_head]
+
+			if not candidate then
+				break
+			end
+
+			phase3.fast_upgrade_head = phase3.fast_upgrade_head + 1
+			local gear_id = candidate.gear_id
+			local call_ok, promise = safe_call(backend.upgrade_weapon_rarity, backend, gear_id)
+
+			if not call_ok or not promise or type(promise.next) ~= "function" or type(promise.catch) ~= "function" then
+				self:_operation_failed(generation, call_ok and "fast fodder upgrade returned no Promise" or promise)
+
+				return false
+			end
+
+			local entry = {
+				candidate = candidate,
+				elapsed = 0,
+				started_at = clock_now(),
+			}
+			phase3.fast_upgrade_inflight[gear_id] = entry
+			phase3.fast_upgrade_inflight_count = phase3.fast_upgrade_inflight_count + 1
+			operation_report("phase3_fast_upgrade_started", {
+				gear_id = gear_id,
+			})
+
+			local chain_ok, chain_error = pcall(function ()
+				return promise:next(function (result)
+					if generation ~= self._generation or self._phase3 ~= phase3 or not phase3.running or phase3.fast_upgrade_inflight[gear_id] ~= entry then
+						return result
+					end
+
+					phase3.fast_upgrade_inflight[gear_id] = nil
+					phase3.fast_upgrade_inflight_count = math.max(0, phase3.fast_upgrade_inflight_count - 1)
+					phase3.fast_upgrade_states[gear_id] = "complete"
+					candidate.rarity = math.max(tonumber(candidate.rarity) or 0, REDEEMED_RARITY)
+					local completed_at = clock_now()
+					local duration = completed_at and entry.started_at and math.max(0, completed_at - entry.started_at) or entry.elapsed
+					record_timing("phase3_fast_upgrade", duration)
+					operation_report("phase3_fast_upgrade_complete", {
+						duration = duration,
+						gear_id = gear_id,
+					})
+					self:_phase3_pump_fast_upgrades(generation)
+					self:_phase3_resume_after_fast_upgrades(generation)
+
+					return result
+				end):catch(function (error_value)
+					if generation == self._generation and self._phase3 == phase3 and phase3.running and phase3.fast_upgrade_inflight[gear_id] == entry then
+						phase3.fast_upgrade_inflight[gear_id] = nil
+						phase3.fast_upgrade_inflight_count = math.max(0, phase3.fast_upgrade_inflight_count - 1)
+						self:_operation_failed(generation, string.format("fast fodder rarity upgrade failed for gear %s: %s", tostring(gear_id), error_description(error_value)))
+					end
+
+					return error_value
+				end)
+			end)
+
+			if not chain_ok then
+				self:_operation_failed(generation, chain_error)
+
+				return false
+			end
+		end
+
+		return true
+	end
+
+	function self:_phase3_queue_fast_upgrade(generation, candidate)
+		local phase3 = self._phase3
+
+		if not phase3 or not phase3.running or not candidate or candidate.gear_id == nil then
+			return false
+		end
+
+		phase3.fast_upgrade_states = phase3.fast_upgrade_states or {}
+
+		if phase3.fast_upgrade_states[candidate.gear_id] then
+			return true
+		end
+
+		if tonumber(candidate.rarity) and candidate.rarity >= REDEEMED_RARITY then
+			phase3.fast_upgrade_states[candidate.gear_id] = "complete"
+
+			return true
+		end
+
+		phase3.fast_upgrade_states[candidate.gear_id] = "queued"
+		phase3.fast_upgrade_queue = phase3.fast_upgrade_queue or {}
+		phase3.fast_upgrade_queue[#phase3.fast_upgrade_queue + 1] = candidate
+
+		return self:_phase3_pump_fast_upgrades(generation)
 	end
 
 	function self:_refresh_after_operation(generation, callback, scope)
@@ -2024,6 +2186,10 @@ function Controller.new(dependencies)
 			fodder_count = phase3.fodder_count,
 			search = search,
 		})
+		operation_report("phase3_timing_summary", {
+			current = phase3.current,
+			timings = self._operation_timings,
+		})
 		self:_start_phase4(phase3.target_candidate)
 
 		return true
@@ -2111,6 +2277,14 @@ function Controller.new(dependencies)
 
 		if not phase3 or not phase3.running or not phase3.target_candidate then
 			return false
+		end
+
+		if fast_upgrade_pending(phase3) then
+			phase3.fast_purchase_paused = true
+			self._phase = "phase3_fast_upgrade_wait"
+			self:_phase3_pump_fast_upgrades(generation)
+
+			return true
 		end
 
 		if mastery_target_reached(current) and phase3.projected_xp_pending then
@@ -2909,6 +3083,7 @@ function Controller.new(dependencies)
 
 				track_purchased_spare(phase3, purchase_candidate)
 				phase3.deferred_candidates[#phase3.deferred_candidates + 1] = purchase_candidate
+				self:_phase3_queue_fast_upgrade(generation, purchase_candidate)
 				search.last = purchase_candidate
 				self._last_purchased = purchase_candidate
 				operation_report("phase3_fast_fodder_purchase", {
@@ -3073,6 +3248,7 @@ function Controller.new(dependencies)
 		self._generation = self._generation + 1
 		self._run_elapsed = 0
 		self._run_started_at = clock_now()
+		self._operation_timings = {}
 		self._last_progress_elapsed = 0
 		self._failure_at = nil
 		self._search = {
@@ -3101,6 +3277,12 @@ function Controller.new(dependencies)
 			deferred_index = 1,
 			fallback_candidate = nil,
 			fodder_count = 0,
+			fast_purchase_paused = false,
+			fast_upgrade_head = 1,
+			fast_upgrade_inflight = {},
+			fast_upgrade_inflight_count = 0,
+			fast_upgrade_queue = {},
+			fast_upgrade_states = {},
 			purchased_spare_ids = {},
 			purchased_spares = {},
 			running = true,
@@ -3458,6 +3640,7 @@ function Controller.new(dependencies)
 		self._generation = self._generation + 1
 		self._run_elapsed = 0
 		self._run_started_at = clock_now()
+		self._operation_timings = {}
 		self._last_progress_elapsed = 0
 		self._failure_at = nil
 		self._mastery = {
@@ -3768,6 +3951,20 @@ function Controller.new(dependencies)
 			end
 		end
 
+		local phase3 = self._phase3
+
+		if phase3 and phase3.running and type(phase3.fast_upgrade_inflight) == "table" then
+			for gear_id, entry in pairs(phase3.fast_upgrade_inflight) do
+				entry.elapsed = (tonumber(entry.elapsed) or 0) + finite_dt(dt)
+
+				if entry.elapsed >= MAX_OPERATION_SECONDS then
+					self:_operation_failed(self._generation, string.format("fast fodder rarity upgrade timed out for gear %s after %.1f seconds", tostring(gear_id), entry.elapsed))
+
+					return
+				end
+			end
+		end
+
 		if self._view_is_valid and not context_is_valid(self._active_view) then
 			self:on_view_closed(self._active_view)
 		end
@@ -3791,9 +3988,10 @@ function Controller.new(dependencies)
 		if run_is_active() and not self._operation_inflight then
 			local mastery_waiting = self._mastery and self._mastery.running and self._phase == "mastery_sync_wait"
 			local blessing_waiting = self._phase4 and self._phase4.running and self._phase4.pending_blessing ~= nil
+			local fast_upgrades_waiting = fast_upgrade_pending(self._phase3)
 			local idle_seconds = self._run_elapsed - (tonumber(self._last_progress_elapsed) or 0)
 
-			if not mastery_waiting and not blessing_waiting and idle_seconds >= MAX_IDLE_WORKFLOW_SECONDS then
+			if not mastery_waiting and not blessing_waiting and not fast_upgrades_waiting and idle_seconds >= MAX_IDLE_WORKFLOW_SECONDS then
 				self:_operation_failed(self._generation, string.format("workflow stalled in phase %s for %.1f seconds with no request or bounded poll pending", tostring(self._phase), idle_seconds))
 			end
 		end
@@ -3837,6 +4035,7 @@ function Controller.new(dependencies)
 			operation_kind = self._operation_kind,
 			operation_sequence = self._operation_sequence,
 			operation_elapsed_seconds = self._operation_elapsed,
+			operation_timings = self._operation_timings,
 			last_probe_at = self._last_probe_at,
 			last_error = self._last_error,
 			failure_at = self._failure_at,

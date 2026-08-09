@@ -162,6 +162,7 @@ def main() -> None:
                 parent_pattern = "pattern-1",
                 base_stats = {damage_stat = dump_stat or 50},
                 damage = dump_stat or 50,
+				expertise_level = 320,
 				potential_base_stats = {damage_stat = dump_stat or 50},
 				potential_damage = dump_stat or 50,
                 display_name = "Test Weapon",
@@ -370,6 +371,62 @@ def main() -> None:
 			assert(controller:snapshot().phase3.fodder_count == 1)
 			assert(controller:snapshot().search.result.gear_id == target.gear_id)
 			assert(#state.items == 1 and state.items[1].gear_id == target.gear_id)
+		end
+
+		-- Post-target purchases remain wallet-ordered while two rarity upgrades
+		-- overlap them. Extraction starts only after both workers and one gear read.
+		do
+			local target = summarized_item("gear-pipeline-target", 2, 60)
+			local fodder_a = summarized_item("gear-pipeline-a", 0, 55)
+			local fodder_b = summarized_item("gear-pipeline-b", 0, 56)
+			local purchase_promises = {pending(), pending()}
+			local upgrade_promises = {pending(), pending()}
+			local state = {items = {target, fodder_a, fodder_b}}
+			local backend = {extract_calls = 0, probe_calls = 0, purchase_calls = 0, upgrade_calls = 0}
+			function backend:purchase_offer(_)
+				self.purchase_calls = self.purchase_calls + 1
+				return purchase_promises[self.purchase_calls]
+			end
+			function backend:upgrade_weapon_rarity(_)
+				self.upgrade_calls = self.upgrade_calls + 1
+				return upgrade_promises[self.upgrade_calls]
+			end
+			function backend:probe_snapshot()
+				self.probe_calls = self.probe_calls + 1
+				local snapshot = snapshot_with_items(state.items)
+				snapshot.crafting_costs = {sacrifice_mastery = {sacrifice_muiltiplier = 1, minimumExpertiseLevel = 0, baseReward = 0, masteryXpPerExpertiseLevel = 10}}
+				return resolved(snapshot)
+			end
+			function backend:extract_weapon_mastery(_, gear_ids)
+				self.extract_calls = self.extract_calls + 1
+				assert(#gear_ids == 2)
+				state.items = {target}
+				return resolved({amount = 660, gear_ids = gear_ids})
+			end
+			function backend:project_mastery(data, amount)
+				return {mastery_id = data.mastery_id, current_xp = data.current_xp + amount, mastery_level = 20, claimed_level = 18, mastery_max_level = 20, milestones = data.milestones}
+			end
+			function backend:claim_mastery_levels(_, _)
+				return resolved({mastery_id = "pattern-1", current_xp = 660, mastery_level = 20, claimed_level = 19, mastery_max_level = 20})
+			end
+
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings({auto_crafter_level_mastery_20 = true, auto_crafter_defer_bad_weapon_processing = true, auto_crafter_max_purchases = 2}), reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = backend:probe_snapshot().value
+			backend.probe_calls = 0
+			controller._search = {cap_by_dockets = false, cap_by_max_purchases = true, dump_stat = "damage_stat", max_purchases = 2, purchases = 0, raw_offer = raw_offer(), running = true, spent = 0, target_dump = 60, target_offer = target_offer()}
+			controller._phase3 = {current = {mastery_id = "pattern-1", current_xp = 0, mastery_level = 19, claimed_level = 18, mastery_max_level = 20}, current_data = {mastery_id = "pattern-1", current_xp = 0, mastery_level = 19, claimed_level = 18, mastery_max_level = 20, milestones = {{level = 20, xpLimit = 660}}}, defer_bad_processing = true, deferred_candidates = {}, deferred_index = 1, fodder_count = 0, running = true, target_candidate = target}
+
+			assert(controller:_purchase_search_step(0) == true)
+			purchase_promises[1].next_callback({items = {fodder_a}})
+			assert(backend.purchase_calls == 2 and backend.upgrade_calls == 1)
+			assert(controller:snapshot().operation_kind == "purchase")
+			purchase_promises[2].next_callback({items = {fodder_b}})
+			assert(backend.upgrade_calls == 2 and backend.probe_calls == 0 and backend.extract_calls == 0)
+			upgrade_promises[1].next_callback({gear_id = fodder_a.gear_id})
+			assert(backend.probe_calls == 0 and backend.extract_calls == 0)
+			upgrade_promises[2].next_callback({gear_id = fodder_b.gear_id})
+			assert(backend.probe_calls >= 1 and backend.extract_calls == 1)
+			assert(controller:snapshot().operation_timings.phase3_fast_upgrade.count == 2)
 		end
 
 		-- Final projected claim result is authoritative. Completing directly avoids
