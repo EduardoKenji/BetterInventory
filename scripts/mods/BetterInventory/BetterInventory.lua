@@ -112,6 +112,15 @@ if type(AutoCrafter) ~= "table" then
 	AutoCrafter = {}
 end
 
+local AccountMutationGuard = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_account_mutation_guard"), "BetterInventory_account_mutation_guard.lua", {
+	configure = function() end,
+	install_hooks = function() return false end,
+	with_owned_call = function(callback) return callback() end,
+})
+AccountMutationGuard.configure = type(AccountMutationGuard.configure) == "function" and AccountMutationGuard.configure or function() end
+AccountMutationGuard.install_hooks = type(AccountMutationGuard.install_hooks) == "function" and AccountMutationGuard.install_hooks or function() return false end
+AccountMutationGuard.with_owned_call = type(AccountMutationGuard.with_owned_call) == "function" and AccountMutationGuard.with_owned_call or function(callback) return callback() end
+
 mod.auto_crafter_hud_lines = function()
 	return type(AutoCrafter.hud_lines) == "function" and AutoCrafter.hud_lines() or {}
 end
@@ -287,6 +296,15 @@ AutoCrafter.update = type(AutoCrafter.update) == "function" and AutoCrafter.upda
 end
 AutoCrafter.shutdown = type(AutoCrafter.shutdown) == "function" and AutoCrafter.shutdown or function()
 end
+AutoCrafter.is_busy = type(AutoCrafter.is_busy) == "function" and AutoCrafter.is_busy or function()
+	return false
+end
+AutoCrafter.snapshot = type(AutoCrafter.snapshot) == "function" and AutoCrafter.snapshot or function()
+	return {}
+end
+AutoCrafter.interrupt_for_external_mutation = type(AutoCrafter.interrupt_for_external_mutation) == "function" and AutoCrafter.interrupt_for_external_mutation or function()
+	return false
+end
 
 local CharacterOverviewUI = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_character_overview_ui"), "BetterInventory_character_overview_ui.lua", {
 	configure = function()
@@ -329,8 +347,14 @@ if type(ItemCustomization.install) == "function" then
 	ItemCustomization.install(mod, InventoryWeaponsView, Layout)
 end
 
+AccountMutationGuard.configure({
+	mod = mod,
+	auto_crafter = AutoCrafter,
+})
+
 AutoCrafter.configure({
 	mod = mod,
+	mutation_guard = AccountMutationGuard,
 	account_operation = {
 		acquire = function(owner, view)
 			return type(Features.acquire_account_operation) == "function" and Features.acquire_account_operation(owner, view) or nil
@@ -365,6 +389,7 @@ AutoCrafter.configure({
 	select_offer = auto_crafter_select_offer,
 	ViewElementGrid = ViewElementGrid,
 })
+AccountMutationGuard.install_hooks(mod)
 
 local Runtime = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_runtime"), "BetterInventory_runtime.lua", {
 	configure = function()

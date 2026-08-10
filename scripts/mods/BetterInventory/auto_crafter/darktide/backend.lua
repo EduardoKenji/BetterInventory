@@ -1,4 +1,8 @@
 local Promise = require("scripts/foundation/utilities/promise")
+local pack_values = table.pack or function(...)
+	return { n = select("#", ...), ... }
+end
+local unpack_values = table.unpack or unpack
 local Items = require("scripts/utilities/items")
 local Mastery = require("scripts/utilities/mastery")
 local MasterItems = require("scripts/backend/master_items")
@@ -990,6 +994,7 @@ function Backend.new(dependencies)
 	dependencies = dependencies or {}
 
 	local backend = {
+		_mutation_guard = dependencies.mutation_guard,
 		_purchase_wallets = {},
 		_raw_gear = {},
 		_services = dependencies.services,
@@ -1015,8 +1020,19 @@ function Backend.new(dependencies)
 	function backend:_mutate(service_name, method_name, ...)
 		local services = self:_services_now()
 		local service = services and services[service_name]
+		local arguments = pack_values(...)
+		local function invoke()
+			return call_service(service, method_name, unpack_values(arguments, 1, arguments.n))
+		end
+		local with_owned_call = self._mutation_guard and self._mutation_guard.with_owned_call
 
-		return call_service(service, method_name, ...)
+		if type(with_owned_call) == "function" then
+			local ok, result = pcall(with_owned_call, invoke)
+
+			return ok and promise_or_resolved(result) or rejected(result)
+		end
+
+		return invoke()
 	end
 
 	function backend:probe_snapshot()
@@ -1146,7 +1162,21 @@ function Backend.new(dependencies)
 			-- each successful POST. Reusing that exact object keeps the serial chain fast
 			-- and correct; mismatch fallback below performs one forced authoritative read.
 			return wallet_promise:next(function (entry)
-				return call_service(store_service, "purchase_item_with_wallet", offer, entry.wallet):next(function (result)
+				local arguments = pack_values(offer, entry.wallet)
+				local function purchase()
+					return call_service(store_service, "purchase_item_with_wallet", unpack_values(arguments, 1, arguments.n))
+				end
+				local with_owned_call = self._mutation_guard and self._mutation_guard.with_owned_call
+				local purchase_promise
+
+				if type(with_owned_call) == "function" then
+					local purchase_ok, result = pcall(with_owned_call, purchase)
+					purchase_promise = purchase_ok and promise_or_resolved(result) or rejected(result)
+				else
+					purchase_promise = purchase()
+				end
+
+				return purchase_promise:next(function (result)
 					if type(result) == "table" then
 						result._auto_crafter_wallets = summarize_wallets(entry.wallets)
 					end
@@ -1207,7 +1237,17 @@ function Backend.new(dependencies)
 			})
 		end
 
-		local set_ok, set_error = pcall(Items.set_item_id_as_favorite, gear_id, true)
+		local function set_favorite()
+			return Items.set_item_id_as_favorite(gear_id, true)
+		end
+		local with_owned_call = self._mutation_guard and self._mutation_guard.with_owned_call
+		local set_ok, set_error
+
+		if type(with_owned_call) == "function" then
+			set_ok, set_error = pcall(with_owned_call, set_favorite)
+		else
+			set_ok, set_error = pcall(set_favorite)
+		end
 
 		if not set_ok then
 			return rejected(set_error)

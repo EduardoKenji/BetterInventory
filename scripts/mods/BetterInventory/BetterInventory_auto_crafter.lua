@@ -544,7 +544,9 @@ function AutoCrafter.configure(dependencies)
 		Panel = nil
 	end
 
-	local backend = Backend.new()
+	local backend = Backend.new({
+		mutation_guard = dependencies.mutation_guard,
+	})
 	local context = Context.new({
 		is_brunt_view = dependencies.is_brunt_view,
 	})
@@ -733,7 +735,22 @@ end
 function AutoCrafter.is_busy()
 	local snapshot = AutoCrafter.snapshot()
 
-	return snapshot and (snapshot.operation_inflight or (tonumber(snapshot.auxiliary_inflight_count) or 0) > 0 or snapshot.search and snapshot.search.running or snapshot.phase3 and snapshot.phase3.running or snapshot.phase4 and snapshot.phase4.running or snapshot.mastery and snapshot.mastery.running) == true or false
+	return snapshot and (snapshot.operation_inflight or snapshot.operation_quarantined or (tonumber(snapshot.auxiliary_inflight_count) or 0) > 0 or snapshot.search and snapshot.search.running or snapshot.phase3 and snapshot.phase3.running or snapshot.phase4 and snapshot.phase4.running or snapshot.mastery and snapshot.mastery.running) == true or false
+end
+
+function AutoCrafter.interrupt_for_external_mutation(kind)
+	if not controller or controller_faulted then
+		return false
+	end
+
+	local snapshot = AutoCrafter.snapshot()
+	if snapshot.operation_inflight or snapshot.operation_quarantined or (tonumber(snapshot.auxiliary_inflight_count) or 0) > 0 then
+		return false
+	end
+
+	local ok, interrupted = pcall(controller.interrupt_for_external_mutation, controller, kind)
+
+	return ok and interrupted == true
 end
 
 function AutoCrafter.shutdown()

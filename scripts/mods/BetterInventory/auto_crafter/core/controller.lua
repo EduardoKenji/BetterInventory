@@ -3828,6 +3828,14 @@ function Controller.new(dependencies)
 		return self:_stop_active_run("user_stopped")
 	end
 
+	function self:interrupt_for_external_mutation(kind)
+		if self._operation_inflight or self._operation_quarantined or (self._auxiliary_inflight_count or 0) > 0 then
+			return false
+		end
+
+		return self:_stop_active_run("external_mutation_" .. tostring(kind or "unknown"))
+	end
+
 	function self:_mastery_extract(generation)
 		local mastery = self._mastery
 		local backend = self._backend
