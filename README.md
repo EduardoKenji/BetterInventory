@@ -1,6 +1,6 @@
 # BetterInventory
 
-> Project status: BetterInventory v2.0.0 is a release candidate pending final B40 in-game stress and compatibility validation. Account-changing workflows remain opt-in and disabled by default.
+> Project status: BetterInventory v2.0.1. Account-changing workflows remain opt-in and disabled by default.
 >
 > Audit date: 2026-08-07. See [`docs/v2.0.0-full-project-audit.md`](docs/v2.0.0-full-project-audit.md) for the prioritized implementation backlog and release gates.
 
@@ -100,7 +100,7 @@ The normal/default configuration does not alter filters or backend transactions.
 
 ## Supported integrations
 
-The following integrations are supported in v2.0.0. BetterInventory has no optional mod dependencies; each integration activates only when its corresponding mod is installed.
+The following integrations are supported in v2.0.1. BetterInventory has no optional mod dependencies; each integration activates only when its corresponding mod is installed.
 
 - Quick Look Card: optional integration for single-column and grid layouts. BetterInventory also includes its own built-in weapon-modifier display.
 - Enhanced Descriptions: compatible Curio text handling with an option to preserve BetterInventory's simplified primary-stat labels.
