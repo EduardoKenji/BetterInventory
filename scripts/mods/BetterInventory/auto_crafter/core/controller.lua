@@ -4,10 +4,13 @@ local DEFAULT_PROBE_DELAY = 0.5
 local DEFAULT_VIEW_IDLE_POLL_INTERVAL = 0.1
 local DEFAULT_MASTERY_POLL_DELAY = 0.05
 local DEFAULT_BLESSING_POLL_DELAY = 0.05
+local DEFAULT_PURCHASE_CONFIRMATION_POLL_DELAY = 0.05
 local MAX_MASTERY_POLL_ATTEMPTS = 12
 local MAX_BLESSING_SYNC_ATTEMPTS = 12
+local MAX_PURCHASE_CONFIRMATION_ATTEMPTS = 6
 local MAX_MASTERY_CLAIM_RETRIES = 2
 local MAX_OPERATION_SECONDS = 45
+local MAX_READ_SECONDS = 45
 local MAX_IDLE_WORKFLOW_SECONDS = 5
 local PHASE3_FODDER_BATCH_SIZE = 8
 local MAX_PARALLEL_FODDER_UPGRADES = 1
@@ -25,6 +28,12 @@ local function blessing_poll_delay(attempt)
 	local exponent = math.max(0, tonumber(attempt) or 0)
 
 	return math.min(1, DEFAULT_BLESSING_POLL_DELAY * 2 ^ exponent)
+end
+
+local function purchase_confirmation_poll_delay(attempt)
+	local exponent = math.max(0, (tonumber(attempt) or 1) - 1)
+
+	return math.min(0.5, DEFAULT_PURCHASE_CONFIRMATION_POLL_DELAY * 2 ^ exponent)
 end
 
 local function finite_dt(dt)
@@ -133,7 +142,14 @@ local function selected_offer_matches_target(selected_offer, target)
 	return selected_offer.master_id ~= nil and target.master_id ~= nil or selected_offer.offer_id ~= nil and target.offer_id ~= nil
 end
 
-local function find_item(items, gear_id)
+local function find_item(items, gear_id, items_by_id)
+	items_by_id = items_by_id or type(items) == "table" and rawget(items, "by_id")
+	local indexed = type(items_by_id) == "table" and items_by_id[gear_id] or nil
+
+	if indexed ~= nil then
+		return indexed
+	end
+
 	for _, item in ipairs(items or {}) do
 		if item and item.gear_id == gear_id then
 			return item
@@ -562,6 +578,7 @@ function Controller.new(dependencies)
 
 	local self = {
 		_backend = dependencies.backend,
+		_account_operation = dependencies.account_operation or {},
 		_planner = dependencies.planner,
 		_get_selected_offer = dependencies.get_selected_offer,
 		_context = dependencies.context or {},
@@ -577,6 +594,8 @@ function Controller.new(dependencies)
 		_probe_scheduled = false,
 		_probe_inflight = false,
 		_probe_promise = nil,
+		_probe_request_elapsed = 0,
+		_probe_sequence = 0,
 		_phase = "idle",
 		_snapshot = nil,
 		_last_error = nil,
@@ -590,6 +609,9 @@ function Controller.new(dependencies)
 		_operation_sequence = 0,
 		_operation_elapsed = 0,
 		_operation_started_at = nil,
+		_operation_quarantined = false,
+		_reconciliation_required = false,
+		_auxiliary_inflight_count = 0,
 		_search = nil,
 		_phase3 = nil,
 		_phase4 = nil,
@@ -597,9 +619,11 @@ function Controller.new(dependencies)
 		_mastery_poll_elapsed = 0,
 		_mastery_poll_attempts = 0,
 		_mastery_poll_wait = DEFAULT_MASTERY_POLL_DELAY,
+		_purchase_confirmation = nil,
 		_catalog = nil,
 		_catalog_generation = 0,
 		_catalog_inflight = false,
+		_catalog_elapsed = 0,
 		_catalog_key = nil,
 		_catalog_promise = nil,
 		_selected_target_key = nil,
@@ -613,6 +637,7 @@ function Controller.new(dependencies)
 		_operation_timings = {},
 		_observed_character_id = nil,
 		_run_character_id = nil,
+		_account_operation_token = nil,
 	}
 
 	local function report(kind, payload)
@@ -751,6 +776,75 @@ function Controller.new(dependencies)
 
 	local function run_is_active()
 		return self._search and self._search.running == true or self._phase3 and self._phase3.running == true or self._phase4 and self._phase4.running == true or self._mastery and self._mastery.running == true
+	end
+
+	local ACCOUNT_OPERATION_OWNER = "auto_crafter"
+
+	local function account_operation_is_current()
+		if self._account_operation_token == nil then
+			return true
+		end
+
+		local is_current = self._account_operation.is_current
+		local ok, current = safe_call(is_current, ACCOUNT_OPERATION_OWNER, self._account_operation_token)
+
+		return type(is_current) ~= "function" or ok and current == true
+	end
+
+	local function acquire_account_operation()
+		if self._account_operation_token ~= nil then
+			return account_operation_is_current(), account_operation_is_current() and nil or "Auto Crafter lost account-operation ownership"
+		end
+
+		local conflict = self._account_operation.conflict
+		if type(conflict) == "function" then
+			local conflict_ok, reason = safe_call(conflict, self._active_view)
+
+			if not conflict_ok then
+				return false, "account-operation conflict check failed: " .. tostring(reason)
+			elseif reason then
+				return false, tostring(reason)
+			end
+		end
+
+		local acquire = self._account_operation.acquire
+		if type(acquire) ~= "function" then
+			return true
+		end
+
+		local ok, token = safe_call(acquire, ACCOUNT_OPERATION_OWNER, self._active_view)
+		if not ok or token == nil then
+			return false, ok and "another BetterInventory account operation is active" or tostring(token)
+		end
+
+		self._account_operation_token = token
+
+		return true
+	end
+
+	local function release_account_operation()
+		local token = self._account_operation_token
+		if token == nil then
+			return true
+		end
+
+		local release = self._account_operation.release
+		self._account_operation_token = nil
+		if type(release) ~= "function" then
+			return true
+		end
+
+		local ok, released = safe_call(release, ACCOUNT_OPERATION_OWNER, token)
+
+		return ok and released ~= false
+	end
+
+	local function release_account_operation_if_settled()
+		if not run_is_active() and not self._operation_inflight and (self._auxiliary_inflight_count or 0) == 0 then
+			return release_account_operation()
+		end
+
+		return false
 	end
 
 	local function pending_deferred_count(phase3)
@@ -1012,7 +1106,7 @@ function Controller.new(dependencies)
 	local function operation_context_valid(generation)
 		local character_id = current_character_id()
 
-		return generation == self._generation and runtime_context_valid() and mutations_enabled() and (self._run_character_id == nil or character_id == self._run_character_id)
+		return generation == self._generation and runtime_context_valid() and mutations_enabled() and account_operation_is_current() and (self._run_character_id == nil or character_id == self._run_character_id)
 	end
 
 	local function operation_report(kind, payload)
@@ -1054,6 +1148,7 @@ function Controller.new(dependencies)
 		self._operation_kind = nil
 		self._operation_elapsed = 0
 		self._operation_started_at = nil
+		self._purchase_confirmation = nil
 		self._phase = "operation_failed"
 		error_value = error_description(error_value)
 		self._last_error = error_value
@@ -1099,6 +1194,123 @@ function Controller.new(dependencies)
 
 		self._frozen_run_settings = nil
 		self._run_character_id = nil
+		release_account_operation_if_settled()
+	end
+
+	function self:_quarantine_operation(generation, error_value)
+		if generation ~= self._generation or not self._operation_inflight then
+			return false
+		end
+
+		-- Mutations cannot be cancelled safely. Stop all continuations but retain
+		-- the dispatch gate until the original Promise settles.
+		self._generation = self._generation + 1
+		self._probe_scheduled = false
+		self._probe_elapsed = 0
+		self._purchase_confirmation = nil
+		self._operation_quarantined = true
+		self._reconciliation_required = true
+		error_value = error_description(error_value)
+		self._last_error = error_value
+		self._failure_at = clock_now()
+
+		if self._search then self._search.running = false end
+		if self._phase3 then self._phase3.running = false end
+		if self._phase4 then self._phase4.running = false end
+		if self._mastery then self._mastery.running = false end
+
+		self._phase = "operation_quarantined"
+		self._frozen_run_settings = nil
+		operation_report("operation_quarantined", {
+			error = error_value,
+			kind = self._operation_kind,
+		})
+
+		return true
+	end
+
+	function self:_abort_for_auxiliary_failure(generation, error_value)
+		if generation ~= self._generation then
+			return false
+		end
+
+		self._generation = self._generation + 1
+		self._probe_scheduled = false
+		self._probe_elapsed = 0
+		self._purchase_confirmation = nil
+		self._reconciliation_required = true
+		self._operation_quarantined = self._operation_inflight == true
+		error_value = error_description(error_value)
+		self._last_error = error_value
+		self._failure_at = clock_now()
+
+		if self._search then self._search.running = false end
+		if self._phase3 then self._phase3.running = false end
+		if self._phase4 then self._phase4.running = false end
+		if self._mastery then self._mastery.running = false end
+
+		self._phase = self._operation_inflight and "operation_quarantined" or "operation_reconciliation_required"
+		self._frozen_run_settings = nil
+		operation_report("operation_quarantined", {
+			error = error_value,
+			kind = "phase3_fast_upgrade",
+		})
+
+		if not self._operation_inflight and (self._auxiliary_inflight_count or 0) == 0 and self._view_is_valid then
+			self:_schedule_probe("auxiliary_failure")
+		end
+
+		return true
+	end
+
+	local function settle_operation(operation_sequence, kind)
+		if operation_sequence ~= self._operation_sequence or not self._operation_inflight then
+			return false, false, nil
+		end
+
+		local completed_at = clock_now()
+		local duration = completed_at and self._operation_started_at and math.max(0, completed_at - self._operation_started_at) or self._operation_elapsed
+		local was_quarantined = self._operation_quarantined
+		self._operation_inflight = false
+		self._operation_promise = nil
+		self._operation_kind = nil
+		self._operation_elapsed = 0
+		self._operation_started_at = nil
+		self._operation_quarantined = false
+		record_timing(kind, duration)
+
+		if was_quarantined then
+			self._run_character_id = nil
+			self._phase = "operation_reconciliation_required"
+			operation_report("operation_quarantine_settled", {
+				duration = duration,
+				kind = kind,
+			})
+
+			if self._view_is_valid then
+				self:_schedule_probe("operation_quarantine_settled")
+			end
+		end
+		release_account_operation_if_settled()
+
+		return true, was_quarantined, duration
+	end
+
+	local function require_reconciliation(reason)
+		self._reconciliation_required = true
+		if self._search then self._search.running = false end
+		if self._phase3 then self._phase3.running = false end
+		if self._phase4 then self._phase4.running = false end
+		if self._mastery then self._mastery.running = false end
+		self._phase = "operation_reconciliation_required"
+		self._frozen_run_settings = nil
+		operation_report("operation_reconciliation_required", {
+			reason = reason,
+		})
+
+		if self._view_is_valid then
+			self:_schedule_probe(reason)
+		end
 	end
 
 	function self:_dispatch_operation(generation, kind, fn, on_success)
@@ -1127,30 +1339,15 @@ function Controller.new(dependencies)
 
 		local chain_ok, chain = pcall(function()
 			return promise:next(function(result)
-				if generation ~= self._generation or operation_sequence ~= self._operation_sequence then
-					if operation_sequence == self._operation_sequence then
-						self._operation_inflight = false
-						self._operation_promise = nil
-						self._operation_kind = nil
-						self._operation_elapsed = 0
-						self._operation_started_at = nil
-					end
+				local settled, was_quarantined, duration = settle_operation(operation_sequence, kind)
 
-					return result
+				if settled and not was_quarantined and generation == self._generation and not operation_context_valid(generation) then
+					require_reconciliation("operation_settled_outside_frozen_context")
 				end
 
-				if not operation_context_valid(generation) then
+				if not settled or was_quarantined or generation ~= self._generation or not operation_context_valid(generation) then
 					return result
 				end
-
-				local completed_at = clock_now()
-				local duration = completed_at and self._operation_started_at and math.max(0, completed_at - self._operation_started_at) or self._operation_elapsed
-				self._operation_inflight = false
-				self._operation_promise = nil
-				self._operation_kind = nil
-				self._operation_elapsed = 0
-				self._operation_started_at = nil
-				record_timing(kind, duration)
 				operation_report("operation_completed", {
 					duration = duration,
 					kind = kind,
@@ -1164,15 +1361,9 @@ function Controller.new(dependencies)
 
 				return result
 			end):catch(function (error_value)
-				if generation ~= self._generation or operation_sequence ~= self._operation_sequence then
-					if operation_sequence == self._operation_sequence then
-						self._operation_inflight = false
-						self._operation_promise = nil
-						self._operation_kind = nil
-						self._operation_elapsed = 0
-						self._operation_started_at = nil
-					end
+				local settled, was_quarantined = settle_operation(operation_sequence, kind)
 
+				if not settled or was_quarantined or generation ~= self._generation then
 					return error_value
 				end
 
@@ -1214,7 +1405,7 @@ function Controller.new(dependencies)
 		local phase3 = self._phase3
 		local backend = self._backend
 
-		if not phase3 or not phase3.running or generation ~= self._generation or not backend or type(backend.upgrade_weapon_rarity) ~= "function" then
+		if not phase3 or not phase3.running or generation ~= self._generation or not operation_context_valid(generation) or not backend or type(backend.upgrade_weapon_rarity) ~= "function" then
 			return false
 		end
 
@@ -1242,22 +1433,47 @@ function Controller.new(dependencies)
 			local entry = {
 				candidate = candidate,
 				elapsed = 0,
+				generation = generation,
 				started_at = clock_now(),
 			}
 			phase3.fast_upgrade_inflight[gear_id] = entry
 			phase3.fast_upgrade_inflight_count = phase3.fast_upgrade_inflight_count + 1
+			self._auxiliary_inflight_count = (self._auxiliary_inflight_count or 0) + 1
 			operation_report("phase3_fast_upgrade_started", {
 				gear_id = gear_id,
 			})
 
+			local function settle_fast_entry()
+				if entry.settled then
+					return false
+				end
+
+				entry.settled = true
+				if phase3.fast_upgrade_inflight[gear_id] == entry then
+					phase3.fast_upgrade_inflight[gear_id] = nil
+					phase3.fast_upgrade_inflight_count = math.max(0, phase3.fast_upgrade_inflight_count - 1)
+				end
+				self._auxiliary_inflight_count = math.max(0, (self._auxiliary_inflight_count or 0) - 1)
+
+				if self._reconciliation_required and not self._operation_inflight and self._auxiliary_inflight_count == 0 and self._view_is_valid then
+					self._phase = "operation_reconciliation_required"
+					self:_schedule_probe("auxiliary_operation_settled")
+				end
+				release_account_operation_if_settled()
+
+				return true
+			end
+
 			local chain_ok, chain_error = pcall(function ()
 				return promise:next(function (result)
-					if generation ~= self._generation or self._phase3 ~= phase3 or not phase3.running or phase3.fast_upgrade_inflight[gear_id] ~= entry then
+					if not settle_fast_entry() then
 						return result
 					end
 
-					phase3.fast_upgrade_inflight[gear_id] = nil
-					phase3.fast_upgrade_inflight_count = math.max(0, phase3.fast_upgrade_inflight_count - 1)
+					if generation ~= self._generation or self._phase3 ~= phase3 or not phase3.running or not operation_context_valid(generation) then
+						return result
+					end
+
 					phase3.fast_upgrade_states[gear_id] = "complete"
 					candidate.rarity = math.max(tonumber(candidate.rarity) or 0, REDEEMED_RARITY)
 					local completed_at = clock_now()
@@ -1272,10 +1488,8 @@ function Controller.new(dependencies)
 
 					return result
 				end):catch(function (error_value)
-					if generation == self._generation and self._phase3 == phase3 and phase3.running and phase3.fast_upgrade_inflight[gear_id] == entry then
-						phase3.fast_upgrade_inflight[gear_id] = nil
-						phase3.fast_upgrade_inflight_count = math.max(0, phase3.fast_upgrade_inflight_count - 1)
-						self:_operation_failed(generation, string.format("fast fodder rarity upgrade failed for gear %s: %s", tostring(gear_id), error_description(error_value)))
+					if settle_fast_entry() and generation == self._generation and self._phase3 == phase3 and phase3.running then
+						self:_abort_for_auxiliary_failure(generation, string.format("fast fodder rarity upgrade failed for gear %s: %s", tostring(gear_id), error_description(error_value)))
 					end
 
 					return error_value
@@ -1283,7 +1497,7 @@ function Controller.new(dependencies)
 			end)
 
 			if not chain_ok then
-				self:_operation_failed(generation, chain_error)
+				self:_abort_for_auxiliary_failure(generation, chain_error)
 
 				return false
 			end
@@ -1325,20 +1539,20 @@ function Controller.new(dependencies)
 
 		local backend = self._backend
 
-		if not backend or type(backend.probe_snapshot) ~= "function" then
+		local refresh_method
+
+		if backend and scope == "runtime" and type(backend.refresh_runtime_snapshot) == "function" then
+			refresh_method = backend.refresh_runtime_snapshot
+		elseif backend and scope ~= "full" and type(backend.refresh_gear_snapshot) == "function" then
+			refresh_method = backend.refresh_gear_snapshot
+		elseif backend and type(backend.probe_snapshot) == "function" then
+			refresh_method = backend.probe_snapshot
+		end
+
+		if type(refresh_method) ~= "function" then
 			self:_operation_failed(generation, "backend probe unavailable after mutation")
 
 			return false
-		end
-
-		local refresh_method
-
-		if scope == "runtime" and type(backend.refresh_runtime_snapshot) == "function" then
-			refresh_method = backend.refresh_runtime_snapshot
-		elseif scope ~= "full" and type(backend.refresh_gear_snapshot) == "function" then
-			refresh_method = backend.refresh_gear_snapshot
-		else
-			refresh_method = backend.probe_snapshot
 		end
 
 		return self:_dispatch_operation(generation, "authoritative_refresh", function ()
@@ -1366,10 +1580,81 @@ function Controller.new(dependencies)
 		end)
 	end
 
+	function self:_poll_purchase_confirmation()
+		local confirmation = self._purchase_confirmation
+		local generation = self._generation
+
+		if not confirmation or self._operation_inflight or not operation_context_valid(generation) then
+			return false
+		end
+
+		confirmation.attempts = confirmation.attempts + 1
+		confirmation.elapsed = 0
+		operation_report("purchase_confirmation_poll", {
+			attempt = confirmation.attempts,
+			gear_id = confirmation.gear_id,
+		})
+
+		return self:_refresh_after_operation(generation, function (snapshot)
+			if self._purchase_confirmation ~= confirmation then
+				return
+			end
+
+			local gear = snapshot and snapshot.gear
+			local candidate = find_item(gear and gear.items, confirmation.gear_id, gear and gear.items_by_id)
+
+			if candidate and candidate.available == true then
+				self._purchase_confirmation = nil
+				operation_report("purchase_confirmation_complete", {
+					attempt = confirmation.attempts,
+					candidate = candidate,
+				})
+				confirmation.on_confirmed(candidate)
+
+				return
+			end
+
+			if confirmation.attempts >= MAX_PURCHASE_CONFIRMATION_ATTEMPTS then
+				self._purchase_confirmation = nil
+				self:_operation_failed(generation, string.format(
+					"purchased weapon %s was not found after %s authoritative inventory refreshes; purchase was confirmed and will not be repeated",
+					tostring(confirmation.gear_id),
+					tostring(confirmation.attempts)
+				))
+
+				return
+			end
+
+			confirmation.wait = purchase_confirmation_poll_delay(confirmation.attempts)
+			self._phase = "purchase_confirmation_wait"
+			operation_report("purchase_confirmation_pending", {
+				attempt = confirmation.attempts,
+				gear_id = confirmation.gear_id,
+			})
+		end)
+	end
+
+	function self:_begin_purchase_confirmation(generation, purchase_candidate, on_confirmed)
+		if not operation_context_valid(generation) or self._purchase_confirmation then
+			return false
+		end
+
+		self._purchase_confirmation = {
+			attempts = 0,
+			elapsed = 0,
+			gear_id = purchase_candidate.gear_id,
+			on_confirmed = on_confirmed,
+			wait = 0,
+		}
+
+		return self:_poll_purchase_confirmation()
+	end
+
 	local function invalidate_generation()
 		self._generation = self._generation + 1
 		self._probe_scheduled = false
 		self._probe_elapsed = 0
+		self._purchase_confirmation = nil
 	end
 
 	local function cancel_probe()
@@ -1379,8 +1664,10 @@ function Controller.new(dependencies)
 			pcall(promise.cancel, promise)
 		end
 
+		self._probe_sequence = self._probe_sequence + 1
 		self._probe_inflight = false
 		self._probe_promise = nil
+		self._probe_request_elapsed = 0
 	end
 
 	local function cancel_catalog()
@@ -1393,6 +1680,7 @@ function Controller.new(dependencies)
 		self._catalog_generation = self._catalog_generation + 1
 		self._catalog_inflight = false
 		self._catalog_promise = nil
+		self._catalog_elapsed = 0
 	end
 
 	function self:_schedule_catalog(reason)
@@ -1420,6 +1708,7 @@ function Controller.new(dependencies)
 		self._catalog = nil
 		self._catalog_key = key
 		self._catalog_inflight = true
+		self._catalog_elapsed = 0
 		self._phase = "trait_discovery"
 		report("catalog_discovery_started", {
 			reason = reason or "target_changed",
@@ -1430,6 +1719,7 @@ function Controller.new(dependencies)
 
 		if not backend or type(backend.discover_weapon_catalog) ~= "function" then
 			self._catalog_inflight = false
+			self._catalog_elapsed = 0
 			self._catalog = {
 				available = false,
 				reason = "weapon trait discovery adapter unavailable",
@@ -1447,6 +1737,7 @@ function Controller.new(dependencies)
 
 		if not call_ok or not promise or type(promise.next) ~= "function" or type(promise.catch) ~= "function" then
 			self._catalog_inflight = false
+			self._catalog_elapsed = 0
 			self._catalog = {
 				available = false,
 				reason = call_ok and "backend returned no Promise" or tostring(promise),
@@ -1468,6 +1759,7 @@ function Controller.new(dependencies)
 				end
 
 				self._catalog_inflight = false
+				self._catalog_elapsed = 0
 				self._catalog_promise = nil
 				self._catalog = type(catalog) == "table" and catalog or {
 					available = false,
@@ -1487,6 +1779,7 @@ function Controller.new(dependencies)
 				end
 
 				self._catalog_inflight = false
+				self._catalog_elapsed = 0
 				self._catalog_promise = nil
 				self._catalog = {
 					available = false,
@@ -1507,6 +1800,7 @@ function Controller.new(dependencies)
 			self._catalog_promise = chain
 		else
 			self._catalog_inflight = false
+			self._catalog_elapsed = 0
 			self._catalog_promise = nil
 			self._catalog = {
 				available = false,
@@ -1537,24 +1831,26 @@ function Controller.new(dependencies)
 		return true
 	end
 
-	function self:_finish_probe(generation, snapshot)
-		if generation ~= self._generation then
+	function self:_finish_probe(generation, probe_sequence, snapshot)
+		if generation ~= self._generation or probe_sequence ~= self._probe_sequence then
 			return
 		end
 
 		local character_id = current_character_id()
 
 		if not snapshot_matches_character(snapshot, character_id) then
-			self:_fail_probe(generation, "active character changed during probe")
+			self:_fail_probe(generation, probe_sequence, "active character changed during probe")
 
 			return
 		end
 
 		self._probe_inflight = false
 		self._probe_promise = nil
+		self._probe_request_elapsed = 0
 		self._probe_scheduled = false
 		self._phase = "probe_complete"
 		self._snapshot = snapshot
+		self._reconciliation_required = false
 		self._last_error = nil
 		self._last_probe_at = type(self._clock.now) == "function" and self._clock:now() or nil
 		self._probe_count = self._probe_count + 1
@@ -1563,13 +1859,14 @@ function Controller.new(dependencies)
 		report("probe_complete", snapshot)
 	end
 
-	function self:_fail_probe(generation, error_value)
-		if generation ~= self._generation then
+	function self:_fail_probe(generation, probe_sequence, error_value)
+		if generation ~= self._generation or probe_sequence ~= self._probe_sequence then
 			return
 		end
 
 		self._probe_inflight = false
 		self._probe_promise = nil
+		self._probe_request_elapsed = 0
 		self._probe_scheduled = false
 		self._phase = "probe_failed"
 		self._last_error = error_value
@@ -1580,14 +1877,16 @@ function Controller.new(dependencies)
 	end
 
 	function self:_start_probe()
-		if self._probe_inflight or not self._view_is_valid or not probe_enabled() then
+		if self._probe_inflight or self._operation_inflight or (self._auxiliary_inflight_count or 0) > 0 or not self._view_is_valid or not probe_enabled() then
 			return false
 		end
 
 		local backend = self._backend
+		self._probe_sequence = self._probe_sequence + 1
+		local probe_sequence = self._probe_sequence
 
 		if not backend or type(backend.probe_snapshot) ~= "function" then
-			self:_fail_probe(self._generation, "backend probe unavailable")
+			self:_fail_probe(self._generation, probe_sequence, "backend probe unavailable")
 
 			return false
 		end
@@ -1596,7 +1895,7 @@ function Controller.new(dependencies)
 		local call_ok, promise = safe_call(backend.probe_snapshot, backend)
 
 		if not call_ok or not promise or type(promise.next) ~= "function" or type(promise.catch) ~= "function" then
-			self:_fail_probe(generation, call_ok and "backend returned no Promise" or promise)
+			self:_fail_probe(generation, probe_sequence, call_ok and "backend returned no Promise" or promise)
 
 			return false
 		end
@@ -1605,22 +1904,23 @@ function Controller.new(dependencies)
 		self._probe_scheduled = false
 		self._phase = "probe_inflight"
 		self._probe_promise = promise
+		self._probe_request_elapsed = 0
 		report("probe_started", {})
 
 		local chain_ok, chain = pcall(function()
 			return promise:next(function(snapshot)
-				self:_finish_probe(generation, snapshot)
+				self:_finish_probe(generation, probe_sequence, snapshot)
 
 				return snapshot
 			end):catch(function(error_value)
-				self:_fail_probe(generation, error_value)
+				self:_fail_probe(generation, probe_sequence, error_value)
 
 				return error_value
 			end)
 		end)
 
 		if not chain_ok then
-			self:_fail_probe(generation, chain)
+			self:_fail_probe(generation, probe_sequence, chain)
 		else
 			self._probe_promise = chain
 		end
@@ -1662,6 +1962,7 @@ function Controller.new(dependencies)
 			reason = reason or "search_stopped",
 			search = search,
 		})
+		release_account_operation_if_settled()
 	end
 
 	function self:_stop_active_run(reason)
@@ -1713,6 +2014,7 @@ function Controller.new(dependencies)
 				search = search,
 			})
 		end
+		release_account_operation_if_settled()
 
 		return true
 	end
@@ -1894,6 +2196,7 @@ function Controller.new(dependencies)
 			phase4 = phase4,
 			resource_costs = resource_costs,
 		})
+		release_account_operation_if_settled()
 
 		return true
 	end
@@ -2216,18 +2519,20 @@ function Controller.new(dependencies)
 		local change_perks = mastery_enabled and setting("auto_crafter_change_perks", true) == true
 		local change_blessings = mastery_enabled and setting("auto_crafter_change_blessings", true) == true
 
-		if not consecrate and not expertise_enabled and not allocate_mastery and not change_perks and not change_blessings then
-			if self._search then
-				self._search.running = false
-			end
-			return true
-		end
-
 		local item = find_item(self._snapshot and self._snapshot.gear and self._snapshot.gear.items, candidate.gear_id)
 
 		if not item or item.available ~= true then
 			self:_operation_failed(self._generation, "final crafting candidate is absent from authoritative inventory")
 			return false
+		end
+
+		if not consecrate and not expertise_enabled and not allocate_mastery and not change_perks and not change_blessings then
+			self._phase4 = {
+				gear_id = candidate.gear_id,
+				running = true,
+			}
+
+			return self:_phase4_complete(item, self._snapshot)
 		end
 
 		local needs_traits = allocate_mastery or change_perks or change_blessings
@@ -2999,21 +3304,21 @@ function Controller.new(dependencies)
 		local target = search.target_offer or {}
 
 		local function family_matches(candidate)
-			local target_pattern = target.parent_pattern
-			local candidate_pattern = candidate.parent_pattern or candidate.mastery_id
-
-			-- Mastery family is strongest identity. A known mismatch must never fall
-			-- through to weaker mark/template aliases.
-			if target_pattern ~= nil and candidate_pattern ~= nil then
-				return target_pattern == candidate_pattern, "mastery_family"
+			if target.master_id ~= nil and candidate.master_id ~= nil then
+				return target.master_id == candidate.master_id, "master_item"
 			end
 
 			if target.weapon_template ~= nil and candidate.weapon_template ~= nil then
 				return target.weapon_template == candidate.weapon_template, "weapon_template"
 			end
 
-			if target.master_id ~= nil and candidate.master_id ~= nil then
-				return target.master_id == candidate.master_id, "master_item"
+			local target_pattern = target.parent_pattern
+			local candidate_pattern = candidate.parent_pattern or candidate.mastery_id
+
+			-- Mastery family is a safe fallback only when exact mark/template identity
+			-- is unavailable on one side.
+			if target_pattern ~= nil and candidate_pattern ~= nil then
+				return target_pattern == candidate_pattern, "mastery_family"
 			end
 
 			return false, "identity_unavailable"
@@ -3138,7 +3443,7 @@ function Controller.new(dependencies)
 			local matched, identity_source = family_matches(candidate)
 			local favorite_allowed = include_favorites or candidate.favorite_known == true and candidate.favorited ~= true
 
-			if candidate.available == true and candidate.gear_id ~= nil and matched and favorite_allowed and tonumber(candidate_stat(candidate, search.dump_stat)) == tonumber(search.target_dump) then
+			if candidate.available == true and candidate.gear_id ~= nil and candidate.equipped ~= true and matched and favorite_allowed and tonumber(candidate_stat(candidate, search.dump_stat)) == tonumber(search.target_dump) then
 				local analysis = profile_analysis(candidate)
 				analysis.expertise = tonumber(candidate.expertise_level) or -1
 				analysis.family_identity = identity_source
@@ -3357,9 +3662,7 @@ function Controller.new(dependencies)
 			operation_report("purchase_response_received", {
 				candidate = purchase_candidate,
 			})
-			self:_refresh_after_operation(generation, function (snapshot)
-				process_candidate(find_item(snapshot and snapshot.gear and snapshot.gear.items, purchase_candidate.gear_id))
-			end)
+			self:_begin_purchase_confirmation(generation, purchase_candidate, process_candidate)
 		end)
 	end
 
@@ -3372,7 +3675,7 @@ function Controller.new(dependencies)
 			return false
 		end
 
-		if self._operation_inflight or self._search and self._search.running or self._mastery and self._mastery.running then
+		if self._operation_inflight or self._operation_quarantined or self._reconciliation_required or (self._auxiliary_inflight_count or 0) > 0 or self._search and self._search.running or self._mastery and self._mastery.running then
 			return false
 		end
 
@@ -3439,6 +3742,15 @@ function Controller.new(dependencies)
 		if not selected_offer_matches_target(selected_offer, plan.target) then
 			operation_report("mutation_blocked", {
 				reason = "selected Brunt weapon changed before search start",
+			})
+
+			return false
+		end
+
+		local acquired, ownership_error = acquire_account_operation()
+		if not acquired then
+			operation_report("mutation_blocked", {
+				reason = ownership_error or "another account operation is active",
 			})
 
 			return false
@@ -3514,6 +3826,14 @@ function Controller.new(dependencies)
 
 	function self:stop_active_run()
 		return self:_stop_active_run("user_stopped")
+	end
+
+	function self:interrupt_for_external_mutation(kind)
+		if self._operation_inflight or self._operation_quarantined or (self._auxiliary_inflight_count or 0) > 0 then
+			return false
+		end
+
+		return self:_stop_active_run("external_mutation_" .. tostring(kind or "unknown"))
 	end
 
 	function self:_mastery_extract(generation)
@@ -3838,6 +4158,15 @@ function Controller.new(dependencies)
 			return false
 		end
 
+		local acquired, ownership_error = acquire_account_operation()
+		if not acquired then
+			operation_report("mutation_blocked", {
+				reason = ownership_error or "another account operation is active",
+			})
+
+			return false
+		end
+
 		self._generation = self._generation + 1
 		self._run_elapsed = 0
 		self._run_started_at = clock_now()
@@ -3980,16 +4309,22 @@ function Controller.new(dependencies)
 	function self:on_character_changed(previous_character_id, character_id)
 		local had_active_run = run_is_active()
 		local failed_kind = self._operation_kind
+		local unresolved_operation = self._operation_inflight or (self._auxiliary_inflight_count or 0) > 0
 
 		invalidate_generation()
-		self._operation_sequence = self._operation_sequence + 1
 		cancel_probe()
 		cancel_catalog()
-		self._operation_inflight = false
-		self._operation_promise = nil
-		self._operation_kind = nil
-		self._operation_elapsed = 0
-		self._operation_started_at = nil
+		if unresolved_operation then
+			self._operation_quarantined = true
+			self._reconciliation_required = true
+		else
+			self._operation_sequence = self._operation_sequence + 1
+			self._operation_inflight = false
+			self._operation_promise = nil
+			self._operation_kind = nil
+			self._operation_elapsed = 0
+			self._operation_started_at = nil
+		end
 		self._snapshot = nil
 		self._plan = nil
 		self._search = nil
@@ -3999,6 +4334,7 @@ function Controller.new(dependencies)
 		self._catalog = nil
 		self._catalog_key = nil
 		self._last_purchased = nil
+		self._purchase_confirmation = nil
 		self._selected_target_key = nil
 		self._selected_native_key = nil
 		self._planner_signature = nil
@@ -4023,6 +4359,7 @@ function Controller.new(dependencies)
 		if self._view_is_valid and self._active_view and context_is_valid(self._active_view) then
 			self:_schedule_probe("character_changed")
 		end
+		release_account_operation_if_settled()
 	end
 
 	function self:on_view_closed(view)
@@ -4050,16 +4387,22 @@ function Controller.new(dependencies)
 		self._catalog = nil
 		self._catalog_key = nil
 		self._last_purchased = nil
+		self._purchase_confirmation = nil
 		self._selected_target_key = nil
 		self._selected_native_key = nil
 		self._planner_signature = nil
 		self._frozen_run_settings = nil
 		self._run_character_id = nil
+		release_account_operation_if_settled()
 
 		return true
 	end
 
 	function self:on_context_exit(reason)
+		if self._operation_inflight or (self._auxiliary_inflight_count or 0) > 0 then
+			self._operation_quarantined = true
+			self._reconciliation_required = true
+		end
 		invalidate_generation()
 		cancel_probe()
 		cancel_catalog()
@@ -4075,6 +4418,7 @@ function Controller.new(dependencies)
 		self._catalog = nil
 		self._catalog_key = nil
 		self._last_purchased = nil
+		self._purchase_confirmation = nil
 		self._selected_target_key = nil
 		self._selected_native_key = nil
 		self._planner_signature = nil
@@ -4083,6 +4427,7 @@ function Controller.new(dependencies)
 		report("context_exit", {
 			reason = reason or "game_state_exit",
 		})
+		release_account_operation_if_settled()
 	end
 
 	function self:on_setting_changed(setting_id)
@@ -4212,19 +4557,55 @@ function Controller.new(dependencies)
 		if self._operation_inflight then
 			self._operation_elapsed = self._operation_elapsed + finite_dt(dt)
 
-			if self._operation_elapsed >= MAX_OPERATION_SECONDS then
-				self:_operation_failed(self._generation, string.format("operation %s timed out after %.1f seconds", tostring(self._operation_kind), self._operation_elapsed))
+			if self._operation_elapsed >= MAX_OPERATION_SECONDS and not self._operation_quarantined then
+				self:_quarantine_operation(self._generation, string.format("operation %s timed out after %.1f seconds", tostring(self._operation_kind), self._operation_elapsed))
+			end
+		end
+
+		if self._probe_inflight then
+			self._probe_request_elapsed = self._probe_request_elapsed + finite_dt(dt)
+
+			if self._probe_request_elapsed >= MAX_READ_SECONDS then
+				local generation = self._generation
+				local probe_sequence = self._probe_sequence
+				local promise = self._probe_promise
+				if promise and type(promise.cancel) == "function" then
+					pcall(promise.cancel, promise)
+				end
+				self:_fail_probe(generation, probe_sequence, string.format("read-only probe timed out after %.1f seconds", self._probe_request_elapsed))
+				self._probe_sequence = self._probe_sequence + 1
+			end
+		end
+
+		if self._catalog_inflight then
+			self._catalog_elapsed = self._catalog_elapsed + finite_dt(dt)
+
+			if self._catalog_elapsed >= MAX_READ_SECONDS then
+				local target = self:_selected_offer_summary()
+				local reason = string.format("weapon trait discovery timed out after %.1f seconds", self._catalog_elapsed)
+				cancel_catalog()
+				self._catalog = {
+					available = false,
+					reason = reason,
+				}
+				self._phase = "trait_discovery_failed"
+				self:_refresh_plan("catalog_timeout")
+				report("catalog_discovery_failed", {
+					error = reason,
+					target = target,
+				})
 			end
 		end
 
 		local phase3 = self._phase3
 
-		if phase3 and phase3.running and type(phase3.fast_upgrade_inflight) == "table" then
+		if phase3 and type(phase3.fast_upgrade_inflight) == "table" then
 			for gear_id, entry in pairs(phase3.fast_upgrade_inflight) do
 				entry.elapsed = (tonumber(entry.elapsed) or 0) + finite_dt(dt)
 
-				if entry.elapsed >= MAX_OPERATION_SECONDS then
-					self:_operation_failed(self._generation, string.format("fast fodder rarity upgrade timed out for gear %s after %.1f seconds", tostring(gear_id), entry.elapsed))
+				if entry.elapsed >= MAX_OPERATION_SECONDS and not entry.timed_out then
+					entry.timed_out = true
+					self:_abort_for_auxiliary_failure(entry.generation, string.format("fast fodder rarity upgrade timed out for gear %s after %.1f seconds", tostring(gear_id), entry.elapsed))
 
 					return
 				end
@@ -4243,6 +4624,16 @@ function Controller.new(dependencies)
 			end
 		end
 
+		if self._purchase_confirmation and not self._operation_inflight then
+			local confirmation = self._purchase_confirmation
+
+			confirmation.elapsed = (tonumber(confirmation.elapsed) or 0) + finite_dt(dt)
+
+			if confirmation.elapsed >= (confirmation.wait or DEFAULT_PURCHASE_CONFIRMATION_POLL_DELAY) then
+				self:_poll_purchase_confirmation()
+			end
+		end
+
 		if self._phase4 and self._phase4.running and self._phase4.pending_blessing and not self._operation_inflight then
 			self._phase4.blessing_poll_elapsed = (self._phase4.blessing_poll_elapsed or 0) + finite_dt(dt)
 
@@ -4254,10 +4645,11 @@ function Controller.new(dependencies)
 		if run_is_active() and not self._operation_inflight then
 			local mastery_waiting = self._mastery and self._mastery.running and self._phase == "mastery_sync_wait"
 			local blessing_waiting = self._phase4 and self._phase4.running and self._phase4.pending_blessing ~= nil
+			local purchase_confirmation_waiting = self._purchase_confirmation ~= nil
 			local fast_upgrades_waiting = fast_upgrade_pending(self._phase3)
 			local idle_seconds = self._run_elapsed - (tonumber(self._last_progress_elapsed) or 0)
 
-			if not mastery_waiting and not blessing_waiting and not fast_upgrades_waiting and idle_seconds >= MAX_IDLE_WORKFLOW_SECONDS then
+			if not mastery_waiting and not blessing_waiting and not purchase_confirmation_waiting and not fast_upgrades_waiting and idle_seconds >= MAX_IDLE_WORKFLOW_SECONDS then
 				self:_operation_failed(self._generation, string.format("workflow stalled in phase %s for %.1f seconds with no request or bounded poll pending", tostring(self._phase), idle_seconds))
 			end
 		end
@@ -4309,11 +4701,15 @@ function Controller.new(dependencies)
 			phase = self._phase,
 			view_is_valid = self._view_is_valid,
 			probe_inflight = self._probe_inflight,
+			probe_elapsed_seconds = self._probe_request_elapsed,
 			probe_count = self._probe_count,
 			operation_inflight = self._operation_inflight,
 			operation_kind = self._operation_kind,
 			operation_sequence = self._operation_sequence,
 			operation_elapsed_seconds = self._operation_elapsed,
+			operation_quarantined = self._operation_quarantined,
+			reconciliation_required = self._reconciliation_required,
+			auxiliary_inflight_count = self._auxiliary_inflight_count,
 			operation_timings = self._operation_timings,
 			last_probe_at = self._last_probe_at,
 			last_error = self._last_error,
@@ -4322,6 +4718,7 @@ function Controller.new(dependencies)
 			plan = self._plan,
 			catalog = self._catalog,
 			catalog_inflight = self._catalog_inflight,
+			catalog_elapsed_seconds = self._catalog_elapsed,
 			last_purchased = self._last_purchased,
 			search = self._search,
 			phase3 = self._phase3,
@@ -4366,6 +4763,7 @@ function Controller.new(dependencies)
 		self._frozen_run_settings = nil
 		self._run_elapsed = 0
 		self._run_started_at = nil
+		release_account_operation_if_settled()
 	end
 
 	return self

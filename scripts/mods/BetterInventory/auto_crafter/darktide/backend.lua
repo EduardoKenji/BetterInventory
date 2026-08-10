@@ -1,4 +1,8 @@
 local Promise = require("scripts/foundation/utilities/promise")
+local pack_values = table.pack or function(...)
+	return { n = select("#", ...), ... }
+end
+local unpack_values = table.unpack or unpack
 local Items = require("scripts/utilities/items")
 local Mastery = require("scripts/utilities/mastery")
 local MasterItems = require("scripts/backend/master_items")
@@ -7,7 +11,6 @@ local CraftingSettings = require("scripts/settings/item/crafting_settings")
 local WeaponTemplate = require("scripts/utilities/weapon/weapon_template")
 
 local Backend = {}
-local GEAR_SUMMARY_LIMIT = 1024
 
 local function rejected(description)
 	return Promise.rejected({
@@ -875,9 +878,13 @@ local function summarize_item(gear, gear_id)
 end
 
 local function summarize_gear(gear, character_id)
+	local protection = discard_protection_snapshot()
 	local summary = {
 		available = gear ~= nil,
-		item_count = count_collection(gear),
+		item_count = 0,
+		items_by_id = {},
+		raw_item_count = count_collection(gear),
+		unavailable_item_count = 0,
 		items = {},
 	}
 
@@ -888,21 +895,27 @@ local function summarize_gear(gear, character_id)
 	local added = 0
 
 	for gear_id, raw_gear in pairs(gear) do
-		if added >= GEAR_SUMMARY_LIMIT then
-			break
-		end
-
 		local owner_id = safe_member(raw_gear, "characterId") or safe_member(raw_gear, "character_id")
 		local belongs_to_character = owner_id == nil or character_id == nil or tostring(owner_id) == tostring(character_id)
 		local resolved_gear_id = belongs_to_character and (safe_member(raw_gear, "uuid") or safe_member(raw_gear, "gear_id") or gear_id) or nil
 
 		if resolved_gear_id ~= nil then
+			local item = summarize_item(raw_gear, resolved_gear_id)
+			item.equipped = protection ~= nil and protection.equipped[resolved_gear_id] == true
+			item.equipped_known = protection ~= nil
+
 			added = added + 1
-			summary.items[added] = summarize_item(raw_gear, resolved_gear_id)
+			summary.items[added] = item
+			summary.items_by_id[resolved_gear_id] = item
+
+			if item.available ~= true then
+				summary.unavailable_item_count = summary.unavailable_item_count + 1
+			end
 		end
 	end
 
 	summary.item_count = added
+	summary.items.by_id = summary.items_by_id
 
 	return summary
 end
@@ -981,6 +994,7 @@ function Backend.new(dependencies)
 	dependencies = dependencies or {}
 
 	local backend = {
+		_mutation_guard = dependencies.mutation_guard,
 		_purchase_wallets = {},
 		_raw_gear = {},
 		_services = dependencies.services,
@@ -1006,8 +1020,19 @@ function Backend.new(dependencies)
 	function backend:_mutate(service_name, method_name, ...)
 		local services = self:_services_now()
 		local service = services and services[service_name]
+		local arguments = pack_values(...)
+		local function invoke()
+			return call_service(service, method_name, unpack_values(arguments, 1, arguments.n))
+		end
+		local with_owned_call = self._mutation_guard and self._mutation_guard.with_owned_call
 
-		return call_service(service, method_name, ...)
+		if type(with_owned_call) == "function" then
+			local ok, result = pcall(with_owned_call, invoke)
+
+			return ok and promise_or_resolved(result) or rejected(result)
+		end
+
+		return invoke()
 	end
 
 	function backend:probe_snapshot()
@@ -1137,7 +1162,21 @@ function Backend.new(dependencies)
 			-- each successful POST. Reusing that exact object keeps the serial chain fast
 			-- and correct; mismatch fallback below performs one forced authoritative read.
 			return wallet_promise:next(function (entry)
-				return call_service(store_service, "purchase_item_with_wallet", offer, entry.wallet):next(function (result)
+				local arguments = pack_values(offer, entry.wallet)
+				local function purchase()
+					return call_service(store_service, "purchase_item_with_wallet", unpack_values(arguments, 1, arguments.n))
+				end
+				local with_owned_call = self._mutation_guard and self._mutation_guard.with_owned_call
+				local purchase_promise
+
+				if type(with_owned_call) == "function" then
+					local purchase_ok, result = pcall(with_owned_call, purchase)
+					purchase_promise = purchase_ok and promise_or_resolved(result) or rejected(result)
+				else
+					purchase_promise = purchase()
+				end
+
+				return purchase_promise:next(function (result)
 					if type(result) == "table" then
 						result._auto_crafter_wallets = summarize_wallets(entry.wallets)
 					end
@@ -1198,7 +1237,17 @@ function Backend.new(dependencies)
 			})
 		end
 
-		local set_ok, set_error = pcall(Items.set_item_id_as_favorite, gear_id, true)
+		local function set_favorite()
+			return Items.set_item_id_as_favorite(gear_id, true)
+		end
+		local with_owned_call = self._mutation_guard and self._mutation_guard.with_owned_call
+		local set_ok, set_error
+
+		if type(with_owned_call) == "function" then
+			set_ok, set_error = pcall(with_owned_call, set_favorite)
+		else
+			set_ok, set_error = pcall(set_favorite)
+		end
 
 		if not set_ok then
 			return rejected(set_error)

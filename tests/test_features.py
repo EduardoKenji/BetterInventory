@@ -3078,6 +3078,13 @@ def main() -> None:
     assert globals_.automatic_fetch_count == 0
     assert globals_.automatic_cache_invalidation_count == 0
     globals_.automatic_progression_fetching = False
+
+    # Auto Crafter ownership pauses the scheduled pass without consuming it or
+    # touching inventory. The same pass resumes after ownership is released.
+    features.update_morningstar_auto_discard(mod, 30, True)
+    assert globals_.automatic_fetch_count == 0
+    assert globals_.automatic_cache_invalidation_count == 0
+    assert features.morningstar_auto_discard_is_busy(mod) is True
     features.update_morningstar_auto_discard(mod, 4.9)
     assert globals_.captured_popup is None
     features.update_morningstar_auto_discard(mod, 0.1)

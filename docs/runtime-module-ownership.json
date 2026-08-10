@@ -4,13 +4,15 @@
   "preferred_bytes": 80000,
   "temporary_size_exceptions": {},
   "hook_modules": {
+    "BetterInventory_account_mutation_guard.lua": "account-mutation-service-hooks",
     "BetterInventory_character_overview_ui.lua": "character-overview-hooks",
     "BetterInventory_item_customization.lua": "customization-storage-hooks",
     "BetterInventory_item_customization_editor.lua": "customization-editor-hooks",
     "BetterInventory_runtime.lua": "runtime-lifecycle-and-grid-hooks"
   },
   "modules": {
-    "BetterInventory.lua": {"category": "bootstrap", "risk": "critical", "dependencies": ["BetterInventory_auto_crafter.lua", "BetterInventory_character_overview.lua", "BetterInventory_character_overview_ui.lua", "BetterInventory_contracts.lua", "BetterInventory_curio_acquisition.lua", "BetterInventory_diagnostics.lua", "BetterInventory_equipment_persistence.lua", "BetterInventory_feature_domains.lua", "BetterInventory_features.lua", "BetterInventory_item_customization.lua", "BetterInventory_layout.lua", "BetterInventory_runtime.lua", "BetterInventory_settings.lua"]},
+    "BetterInventory.lua": {"category": "bootstrap", "risk": "critical", "dependencies": ["BetterInventory_account_mutation_guard.lua", "BetterInventory_auto_crafter.lua", "BetterInventory_character_overview.lua", "BetterInventory_character_overview_ui.lua", "BetterInventory_contracts.lua", "BetterInventory_curio_acquisition.lua", "BetterInventory_diagnostics.lua", "BetterInventory_equipment_persistence.lua", "BetterInventory_feature_domains.lua", "BetterInventory_features.lua", "BetterInventory_item_customization.lua", "BetterInventory_layout.lua", "BetterInventory_runtime.lua", "BetterInventory_settings.lua"]},
+    "BetterInventory_account_mutation_guard.lua": {"category": "account-mutation-guard", "risk": "critical", "dependencies": []},
     "BetterInventory_character_overview.lua": {"category": "pure-domain", "risk": "high", "dependencies": []},
     "BetterInventory_character_overview_ui.lua": {"category": "character-overview-ui", "risk": "critical", "dependencies": []},
     "BetterInventory_contracts.lua": {"category": "core-contract", "risk": "high", "dependencies": []},

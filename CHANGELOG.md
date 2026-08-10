@@ -1,5 +1,23 @@
 # BetterInventory changelog
 
+## 2.0.3 - 2026-08-10
+
+- Prevented Auto Crafter from overlapping native, manual, or third-party account mutations.
+- Deferred Automatic Discard and Curio Buyer passes until Auto Crafter releases ownership.
+- Added critical regression coverage for purchases, upgrades, mastery, favorites, and discards.
+
+## 2.0.2 - 2026-08-10
+
+- Fixed Auto Crafter losing purchased weapons when inventories exceeded 1,024 records.
+- Added bounded post-purchase visibility reconciliation without repeating purchase requests.
+- Added large-inventory, malformed-record, delayed-visibility and interruption regression coverage.
+- Quarantined timed-out/ambiguous mutations until their original promises settle, preventing overlapping retries and silent continuation after character or context changes.
+- Added one shared account-operation gate across Auto Crafter, discard and Automatic Curio Buyer workflows.
+- Deferred scheduled automatic discard and Curio purchases until Auto Crafter fully releases account-operation ownership.
+- Guarded native/manual purchases, crafting, mastery, deletion and favorite changes: manual actions stop Auto Crafter between requests and fail closed while a request is unresolved.
+- Hardened inventory reuse with exact-mark identity, equipped-item exclusion, deterministic selection and live minimum-material preflight.
+- Added bounded read timeouts, frame-update crash containment, and integration coverage for resource exhaustion, full inventory, network stalls and loading transitions.
+
 ## 2.0.1 - 2026-08-09
 
 - Added optional Character Overview dump-stat-only weapon display.

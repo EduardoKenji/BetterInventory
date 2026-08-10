@@ -394,7 +394,7 @@ if ($curioAcquisition -notmatch 'fetch_storefront\(captured\.profile\)[\s\S]*?sa
 	throw "Automatic Curio acquisition must re-fetch every offer and establish idempotency before purchase."
 }
 
-if ($main -notmatch 'CurioAcquisition\.update\(mod,\s*dt,\s*Features\.morningstar_auto_discard_is_busy\(mod\)\)' -or $features -notmatch 'automatic_curio_acquisition_protects') {
+if ($main -notmatch 'auto_crafter_busy\s*=\s*AutoCrafter' -or $main -notmatch 'CurioAcquisition\.update\(mod,\s*dt,\s*Features\.morningstar_auto_discard_is_busy\(mod\)\s*or\s*auto_crafter_busy\)' -or $features -notmatch 'automatic_curio_acquisition_protects') {
 	throw "Automatic discard and Curio acquisition are missing their sequencing or cross-feature protection contract."
 }
 

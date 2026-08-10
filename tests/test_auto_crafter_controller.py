@@ -465,7 +465,7 @@ def main() -> None:
 			}
 			assert(controller:_phase3_sync_projected(0) == true)
 			assert(backend.claim_calls == 1 and backend.mastery_reads == 0)
-			assert(controller:snapshot().phase == "phase3_complete", tostring(controller:snapshot().phase) .. " " .. tostring(controller:snapshot().last_error))
+			assert(controller:snapshot().phase == "phase4_complete", tostring(controller:snapshot().phase) .. " " .. tostring(controller:snapshot().last_error))
 			assert(controller:snapshot().last_error == nil)
 		end
 
@@ -566,7 +566,7 @@ def main() -> None:
 			backend.purchase_promise.next_callback({items = {state.item}})
 			assert(controller:snapshot().search.running == false)
 			assert(controller:snapshot().search.result.gear_id == "gear-background")
-			assert(controller:snapshot().phase == "search_complete")
+			assert(controller:snapshot().phase == "phase4_complete")
 		end
 
 		-- Purchase response cannot declare exact result; refreshed inventory is authoritative.
@@ -630,8 +630,9 @@ def main() -> None:
 			assert(controller:start_purchase_search() == true)
 			assert(backend.favorite_calls == 1)
 			assert(controller:snapshot().search.result.gear_id == "gear-favorite")
-			assert(reporter.events[#reporter.events - 1].kind == "candidate_favorited")
-			assert(reporter.events[#reporter.events].kind == "purchase_search_complete")
+			assert(reporter.events[#reporter.events - 2].kind == "candidate_favorited")
+			assert(reporter.events[#reporter.events - 1].kind == "purchase_search_complete")
+			assert(reporter.events[#reporter.events].kind == "phase4_complete")
 		end
 
 		-- Deferred processing leaves misses untouched until exact target exists,
@@ -667,7 +668,7 @@ def main() -> None:
 			assert(backend.purchase_calls == 2)
 			assert(backend.extract_calls == 0)
 			assert(backend.discard_calls == 1)
-			assert(controller:snapshot().phase == "phase3_complete")
+			assert(controller:snapshot().phase == "phase4_complete")
 			assert(controller:snapshot().search.result.gear_id == "gear-exact")
 			assert(#state.items == 1 and state.items[1].gear_id == "gear-exact")
 		end
@@ -745,7 +746,8 @@ def main() -> None:
 			assert(controller:start_purchase_search() == true)
 			assert(backend.purchase_calls == 0)
 			assert(controller:snapshot().search.result.gear_id == "gear-reused")
-			assert(reporter.events[#reporter.events - 1].kind == "inventory_base_selected")
+			assert(reporter.events[#reporter.events - 2].kind == "inventory_base_selected")
+			assert(reporter.events[#reporter.events].kind == "phase4_complete")
 		end
 
 		-- Explicitly allowing favorites makes favorite-state availability irrelevant.
@@ -810,6 +812,35 @@ def main() -> None:
 			assert(backend.purchase_calls == 0)
 			assert(controller:snapshot().search.result.gear_id == "gear-template-fallback")
 			assert(controller:snapshot().search.result.resume_analysis.family_identity == "weapon_template")
+		end
+
+		-- Exact mark identity outranks a shared mastery family; equipped candidates
+		-- are never resumed. Equivalent safe candidates resolve deterministically.
+		do
+			local wrong_mark = summarized_item("gear-0-wrong-mark", 5, 60)
+			wrong_mark.master_id = "weapon-2"
+			wrong_mark.favorite_known = true
+			wrong_mark.favorited = false
+			local equipped = summarized_item("gear-0-equipped", 5, 60)
+			equipped.master_id = "weapon-1"
+			equipped.equipped = true
+			equipped.favorite_known = true
+			equipped.favorited = false
+			local safe_b = summarized_item("gear-b", 5, 60)
+			safe_b.master_id = "weapon-1"
+			safe_b.favorite_known = true
+			safe_b.favorited = false
+			local safe_a = summarized_item("gear-a", 5, 60)
+			safe_a.master_id = "weapon-1"
+			safe_a.favorite_known = true
+			safe_a.favorited = false
+			local settings = base_settings({auto_crafter_reuse_inventory_base = true})
+			local controller = Controller.new({backend = {}, planner = Planner, context = context(), settings = settings, reporter = reports()})
+			controller._snapshot = snapshot_with_items({wrong_mark, equipped, safe_b, safe_a})
+			controller._search = {dump_stat = "damage_stat", favorite_result = false, target_dump = 60, target_offer = target_offer()}
+			local selected = controller:_find_inventory_base()
+			assert(selected and selected.gear_id == "gear-a")
+			assert(selected.resume_analysis.family_identity == "master_item")
 		end
 
 		-- Phase 4 serially consecrates, advances 100-level milestones, allocates
@@ -1482,6 +1513,361 @@ def main() -> None:
 			assert(controller:_dispatch_operation(0, "purchase", function() return operation end, function() end) == true)
 			controller:update(0.03)
 			assert(controller:snapshot().operation_elapsed_seconds >= 0.03)
+		end
+
+		-- A confirmed purchase may be temporarily absent from GearService. Poll only
+		-- its UUID and never dispatch a second purchase while visibility converges.
+		do
+			local item = summarized_item("gear-delayed-visibility", 0, 60)
+			local backend = {purchase_calls = 0, refresh_calls = 0}
+			function backend:purchase_offer(_)
+				self.purchase_calls = self.purchase_calls + 1
+				return resolved({items = {item}})
+			end
+			function backend:refresh_gear_snapshot(_)
+				self.refresh_calls = self.refresh_calls + 1
+				return resolved(self.refresh_calls < 3 and snapshot_with(nil) or snapshot_with(item))
+			end
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings(), reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = snapshot_with(nil)
+			controller._active_view = {}
+			controller._view_is_valid = true
+			CurrentOffer = raw_offer()
+			assert(controller:start_purchase_search() == true)
+			assert(controller:snapshot().phase == "purchase_confirmation_wait", "unexpected delayed phase " .. tostring(controller:snapshot().phase) .. " error " .. tostring(controller:snapshot().last_error) .. " refreshes " .. tostring(backend.refresh_calls))
+			controller:update(0.05)
+			assert(backend.purchase_calls == 1 and backend.refresh_calls == 2)
+			controller:update(0.1)
+			assert(backend.purchase_calls == 1 and backend.refresh_calls == 3)
+			assert(controller:snapshot().search.result.gear_id == item.gear_id)
+		end
+
+		-- Exhausted visibility polling fails closed with the confirmed UUID. It must
+		-- neither rebuy nor allow Stop to dispatch another request.
+		do
+			local item = summarized_item("gear-never-visible", 0, 60)
+			local backend = {purchase_calls = 0, refresh_calls = 0}
+			function backend:purchase_offer(_)
+				self.purchase_calls = self.purchase_calls + 1
+				return resolved({items = {item}})
+			end
+			function backend:refresh_gear_snapshot(_)
+				self.refresh_calls = self.refresh_calls + 1
+				return resolved(snapshot_with(nil))
+			end
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings(), reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = snapshot_with(nil)
+			controller._active_view = {}
+			controller._view_is_valid = true
+			CurrentOffer = raw_offer()
+			assert(controller:start_purchase_search() == true)
+			for _ = 1, 8 do controller:update(0.5) end
+			assert(controller:snapshot().phase == "operation_failed")
+			assert(string.find(controller:snapshot().last_error, item.gear_id, 1, true) ~= nil)
+			assert(string.find(controller:snapshot().last_error, "will not be repeated", 1, true) ~= nil)
+			assert(backend.purchase_calls == 1 and backend.refresh_calls == 6)
+		end
+
+		-- Stop during purchase visibility reconciliation cancels future polls at the
+		-- request boundary; the already-confirmed purchase is neither retried nor used.
+		do
+			local item = summarized_item("gear-stopped-confirmation", 0, 60)
+			local backend = {purchase_calls = 0, refresh_calls = 0}
+			function backend:purchase_offer(_)
+				self.purchase_calls = self.purchase_calls + 1
+				return resolved({items = {item}})
+			end
+			function backend:refresh_gear_snapshot(_)
+				self.refresh_calls = self.refresh_calls + 1
+				return resolved(snapshot_with(nil))
+			end
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings(), reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = snapshot_with(nil)
+			controller._active_view = {}
+			controller._view_is_valid = true
+			CurrentOffer = raw_offer()
+			assert(controller:start_purchase_search() == true)
+			assert(controller:stop_active_run() == true)
+			controller:update(1)
+			assert(controller:snapshot().phase == "user_stopped")
+			assert(backend.purchase_calls == 1 and backend.refresh_calls == 1)
+		end
+
+		-- A mutation settling while character identity is temporarily unavailable
+		-- must release its gate, suppress continuations, and require reconciliation.
+		do
+			local active_character = "character-1"
+			local operation = pending()
+			local followups = 0
+			local live_context = {
+				current_character_id = function() return active_character end,
+				is_valid_brunt_view = function() return true end,
+				is_runtime_valid = function() return true end,
+			}
+			local controller = Controller.new({backend = {}, planner = Planner, context = live_context, settings = base_settings(), reporter = reports()})
+			controller._active_view = {}
+			controller._view_is_valid = true
+			controller._search = {running = true}
+			controller._run_character_id = "character-1"
+			assert(controller:_dispatch_operation(0, "purchase", function() return operation end, function() followups = followups + 1 end) == true)
+			active_character = nil
+			operation.next_callback({items = {}})
+			local result = controller:snapshot()
+			assert(result.operation_inflight == false and result.reconciliation_required == true)
+			assert(followups == 0)
+		end
+
+		-- Timed-out account mutations remain quarantined until original Promise
+		-- settles; no new request can overlap ambiguous backend state.
+		do
+			local operation = pending()
+			local controller = Controller.new({backend = {}, planner = Planner, context = context(), settings = base_settings(), reporter = reports()})
+			controller._active_view = {}
+			controller._view_is_valid = true
+			controller._search = {running = true}
+			assert(controller:_dispatch_operation(0, "purchase", function() return operation end, function() error("stale continuation") end) == true)
+			controller:update(46)
+			assert(controller:snapshot().operation_inflight == true)
+			assert(controller:snapshot().operation_quarantined == true)
+			assert(controller:_dispatch_operation(controller._generation, "purchase", function() return resolved({}) end, function() end) == false)
+			operation.next_callback({items = {}})
+			assert(controller:snapshot().operation_inflight == false)
+			assert(controller:snapshot().reconciliation_required == true)
+		end
+
+		-- Fast-lane settlement outside valid runtime cannot pump another queued
+		-- crafting mutation.
+		do
+			local runtime_valid = true
+			local promises = {pending(), pending()}
+			local backend = {upgrade_calls = 0}
+			function backend:upgrade_weapon_rarity(_)
+				self.upgrade_calls = self.upgrade_calls + 1
+				return promises[self.upgrade_calls]
+			end
+			local live_context = {
+				current_character_id = function() return "character-1" end,
+				is_valid_brunt_view = function() return true end,
+				is_runtime_valid = function() return runtime_valid end,
+			}
+			local controller = Controller.new({backend = backend, planner = Planner, context = live_context, settings = base_settings(), reporter = reports()})
+			controller._phase3 = {running = true, fast_upgrade_head = 1, fast_upgrade_inflight = {}, fast_upgrade_inflight_count = 0, fast_upgrade_queue = {}, fast_upgrade_states = {}}
+			assert(controller:_phase3_queue_fast_upgrade(0, {gear_id = "fast-a", rarity = 1}) == true)
+			assert(controller:_phase3_queue_fast_upgrade(0, {gear_id = "fast-b", rarity = 1}) == true)
+			assert(backend.upgrade_calls == 1)
+			runtime_valid = false
+			promises[1].next_callback({})
+			assert(backend.upgrade_calls == 1)
+			assert(controller:snapshot().auxiliary_inflight_count == 0)
+		end
+
+		-- Fast-upgrade rejection while next purchase is pending quarantines the
+		-- purchase instead of clearing its gate and losing its late settlement.
+		do
+			local upgrade = pending()
+			local purchase = pending()
+			local backend = {}
+			function backend:upgrade_weapon_rarity(_) return upgrade end
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings(), reporter = reports()})
+			controller._active_view = {}
+			controller._view_is_valid = true
+			controller._phase3 = {running = true, fast_upgrade_head = 1, fast_upgrade_inflight = {}, fast_upgrade_inflight_count = 0, fast_upgrade_queue = {}, fast_upgrade_states = {}}
+			controller._search = {running = true}
+			assert(controller:_phase3_queue_fast_upgrade(0, {gear_id = "fast-fail", rarity = 1}) == true)
+			assert(controller:_dispatch_operation(0, "purchase", function() return purchase end, function() error("stale purchase continuation") end) == true)
+			upgrade.catch_callback("backend rejected")
+			assert(controller:snapshot().operation_inflight == true)
+			assert(controller:snapshot().operation_quarantined == true)
+			purchase.next_callback({items = {{gear_id = "late-purchase"}}})
+			assert(controller:snapshot().operation_inflight == false)
+			assert(controller:snapshot().reconciliation_required == true)
+		end
+
+		-- Auto Crafter must join the shared account-operation arbiter. A held
+		-- owner blocks the run before any purchase is dispatched.
+		do
+			local backend = {purchase_calls = 0}
+			function backend:purchase_offer(_)
+				self.purchase_calls = self.purchase_calls + 1
+				return resolved({})
+			end
+			local account_operation = {
+				acquire = function() return nil end,
+				is_current = function() return false end,
+			}
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings(), reporter = reports(), account_operation = account_operation, get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = snapshot_with(nil)
+			controller._active_view = {}
+			controller._view_is_valid = true
+			CurrentOffer = raw_offer()
+			assert(controller:start_purchase_search() == false)
+			assert(backend.purchase_calls == 0)
+		end
+
+		-- STOP cannot release shared ownership while its already-dispatched
+		-- mutation is unresolved. The late settlement releases exactly once.
+		do
+			local purchase = pending()
+			local held_token = nil
+			local releases = 0
+			local account_operation = {
+				acquire = function(owner)
+					assert(owner == "auto_crafter" and held_token == nil)
+					held_token = 91
+					return held_token
+				end,
+				is_current = function(owner, token)
+					return owner == "auto_crafter" and token == held_token
+				end,
+				release = function(owner, token)
+					assert(owner == "auto_crafter" and token == held_token)
+					releases = releases + 1
+					held_token = nil
+					return true
+				end,
+			}
+			local backend = {purchase_calls = 0}
+			function backend:purchase_offer(_)
+				self.purchase_calls = self.purchase_calls + 1
+				return purchase
+			end
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings(), reporter = reports(), account_operation = account_operation, get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = snapshot_with(nil)
+			controller._active_view = {}
+			controller._view_is_valid = true
+			CurrentOffer = raw_offer()
+			assert(controller:start_purchase_search() == true)
+			assert(held_token == 91 and backend.purchase_calls == 1)
+			assert(controller:stop_active_run() == true)
+			assert(held_token == 91 and releases == 0)
+			purchase.next_callback({items = {summarized_item("late-owned-purchase", 0, 60)}})
+			assert(held_token == nil and releases == 1)
+			assert(controller:snapshot().operation_inflight == false)
+		end
+
+		-- Every mutation family fails closed on resource/capacity rejection. No
+		-- continuation or hidden retry may spend again after the backend rejects.
+		do
+			local cases = {
+				{kind = "purchase", error = "insufficient dockets"},
+				{kind = "purchase", error = "inventory full"},
+				{kind = "phase4_consecrate", error = "insufficient plasteel"},
+				{kind = "phase4_expertise", error = "insufficient plasteel"},
+				{kind = "phase4_replace_perk", error = "insufficient diamantine"},
+				{kind = "phase4_replace_blessing", error = "insufficient diamantine"},
+			}
+
+			for _, case in ipairs(cases) do
+				local dispatches = 0
+				local followups = 0
+				local controller = Controller.new({backend = {}, planner = Planner, context = context(), settings = base_settings(), reporter = reports()})
+				controller._active_view = {}
+				controller._view_is_valid = true
+				controller._search = {running = true}
+				assert(controller:_dispatch_operation(0, case.kind, function()
+					dispatches = dispatches + 1
+					return rejected(case.error)
+				end, function() followups = followups + 1 end) == true)
+				assert(dispatches == 1 and followups == 0)
+				assert(controller:snapshot().operation_inflight == false)
+				assert(controller:snapshot().phase == "operation_failed")
+				assert(string.find(controller:snapshot().last_error, case.error, 1, true) ~= nil)
+			end
+		end
+
+		-- A transient 7-second network stall is below the quarantine threshold and
+		-- resumes exactly once when the original request settles.
+		do
+			local operation = pending()
+			local followups = 0
+			local controller = Controller.new({backend = {}, planner = Planner, context = context(), settings = base_settings(), reporter = reports()})
+			controller._active_view = {}
+			controller._view_is_valid = true
+			controller._search = {running = true}
+			assert(controller:_dispatch_operation(0, "purchase", function() return operation end, function() followups = followups + 1 end) == true)
+			controller:update(7)
+			assert(controller:snapshot().operation_inflight == true)
+			assert(controller:snapshot().operation_quarantined == false)
+			operation.next_callback({items = {}})
+			assert(followups == 1 and controller:snapshot().operation_inflight == false)
+		end
+
+		-- Entering a loading/non-hub context stops continuations but preserves the
+		-- mutation lock until the backend request settles.
+		do
+			local operation = pending()
+			local followups = 0
+			local controller = Controller.new({backend = {}, planner = Planner, context = context(), settings = base_settings(), reporter = reports()})
+			controller._active_view = {}
+			controller._view_is_valid = true
+			controller._search = {running = true}
+			assert(controller:_dispatch_operation(0, "phase4_expertise", function() return operation end, function() followups = followups + 1 end) == true)
+			controller:on_context_exit("loading")
+			assert(controller:snapshot().operation_inflight == true)
+			operation.next_callback({})
+			assert(followups == 0)
+			assert(controller:snapshot().operation_inflight == false)
+			assert(controller:snapshot().reconciliation_required == true)
+		end
+
+		-- Read-only probe/catalog promises have bounded lifetimes. Late callbacks
+		-- after timeout are inert and cannot overwrite the visible failure.
+		do
+			local probe = pending()
+			local backend = {}
+			function backend:probe_snapshot() return probe end
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings(), reporter = reports()})
+			controller._active_view = {}
+			controller._view_is_valid = true
+			assert(controller:_schedule_probe("timeout_test") == true)
+			controller:update(1)
+			assert(controller:snapshot().probe_inflight == true)
+			controller:update(46)
+			assert(controller:snapshot().probe_inflight == false)
+			assert(controller:snapshot().phase == "probe_failed")
+			probe.next_callback(snapshot_with(nil))
+			assert(controller:snapshot().phase == "probe_failed")
+		end
+
+		do
+			local catalog = pending()
+			local backend = {}
+			function backend:discover_weapon_catalog(_) return catalog end
+			CurrentOffer = raw_offer()
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings(), reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = snapshot_with(nil)
+			controller._active_view = {}
+			controller._view_is_valid = true
+			assert(controller:_schedule_catalog("timeout_test") == true)
+			controller:update(46)
+			assert(controller:snapshot().catalog_inflight == false)
+			assert(controller:snapshot().phase == "trait_discovery_failed")
+			catalog.next_callback({available = true})
+			assert(controller:snapshot().phase == "trait_discovery_failed")
+		end
+
+		-- External account writes may stop an active workflow only between backend
+		-- requests. An unresolved mutation retains ownership and must be blocked by
+		-- the service guard until its original promise settles.
+		do
+			local controller = Controller.new({backend = {}, planner = Planner, context = context(), settings = base_settings(), reporter = reports()})
+			controller._active_view = {}
+			controller._view_is_valid = true
+			controller._search = {running = true}
+			assert(controller:interrupt_for_external_mutation("store.purchase_item") == true)
+			assert(controller:snapshot().search.running == false)
+			assert(controller:snapshot().phase == "external_mutation_store.purchase_item")
+
+			controller._search = {running = true}
+			controller._operation_inflight = true
+			assert(controller:interrupt_for_external_mutation("gear.delete_gear_batch") == false)
+			assert(controller:snapshot().search.running == true)
+			assert(controller:snapshot().operation_inflight == true)
+
+			controller._operation_inflight = false
+			controller._auxiliary_inflight_count = 1
+			assert(controller:interrupt_for_external_mutation("mastery.purchase_traits") == false)
+			assert(controller:snapshot().search.running == true)
 		end
 
 		print("Auto Crafter controller Phase 2/3/4 behavior tests passed.")

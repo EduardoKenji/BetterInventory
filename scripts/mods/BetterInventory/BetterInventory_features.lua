@@ -1713,6 +1713,13 @@ local function acquire_discard_transaction(owner, view)
 	return discard_transaction:acquire(owner, view)
 end
 
+-- Shared destructive/account-operation gate. Auto Crafter uses same owner token
+-- as manual and automatic discard so BetterInventory cannot mutate one wallet or
+-- gear collection through two workflows at once.
+Features.acquire_account_operation = function(owner, view)
+	return acquire_discard_transaction(owner, view)
+end
+
 Features.remove_discard_popup = function(popup_id)
 	return discard_transaction:remove_popup(popup_id)
 end
@@ -1731,6 +1738,10 @@ local function release_discard_transaction(owner, token)
 	return released == true
 end
 
+Features.release_account_operation = function(owner, token)
+	return release_discard_transaction(owner, token)
+end
+
 -- GearService settlement is observed by the main-module bridge. This module
 -- only owns the promise callback and releases the matching transaction token.
 Features.observe_manual_discard_settlement = function(promise)
@@ -1743,6 +1754,10 @@ end
 
 local function discard_transaction_is_current(owner, token)
 	return discard_transaction:is_current(owner, token)
+end
+
+Features.account_operation_is_current = function(owner, token)
+	return discard_transaction_is_current(owner, token)
 end
 
 Features.discard_popup_is_active = function(popup_id)
@@ -1787,6 +1802,10 @@ Features.morningstar_auto_discard_is_busy = function(mod)
 	return automatic_discard:morningstar_auto_discard_is_busy(mod)
 end
 
+Features.morningstar_auto_discard_has_started = function()
+	return automatic_discard:morningstar_auto_discard_has_started()
+end
+
 Features.automatic_discard_read_request_count = function()
 	return automatic_discard:automatic_discard_read_request_count()
 end
@@ -1811,8 +1830,8 @@ Features.cancel_manual_discard = function()
 	return true
 end
 
-Features.update_morningstar_auto_discard = function(mod, dt)
-	return automatic_discard:update(mod, dt)
+Features.update_morningstar_auto_discard = function(mod, dt, account_operation_busy)
+	return automatic_discard:update(mod, dt, account_operation_busy)
 end
 
 Features.morningstar_auto_discard_needs_update = function(mod)

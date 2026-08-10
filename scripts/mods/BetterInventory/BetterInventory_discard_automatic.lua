@@ -426,6 +426,10 @@ function AutomaticDiscard.new(transaction, dependencies)
 		return state.delete_inflight or self._transaction:active_owner() == "automatic" or enabled(mod) and state.scheduled
 	end
 
+	function automatic:morningstar_auto_discard_has_started()
+		return state.started or state.read_inflight or state.delete_inflight or self._transaction:active_owner() == "automatic"
+	end
+
 	function automatic:automatic_discard_read_request_count()
 		return state.read_inflight and 1 or 0
 	end
@@ -467,7 +471,7 @@ function AutomaticDiscard.new(transaction, dependencies)
 		state.started = false
 	end
 
-	function automatic:update(mod, dt)
+	function automatic:update(mod, dt, account_operation_busy)
 		if not enabled(mod) then
 			if state.scheduled or state.started or state.hub_character_id or self._transaction:active_owner() == "automatic" then
 				self:cancel()
@@ -508,6 +512,13 @@ function AutomaticDiscard.new(transaction, dependencies)
 		end
 
 		if not state.scheduled or state.started then
+			return
+		end
+
+		-- Keep the one-shot pass armed while Auto Crafter owns account mutation.
+		-- Do not even invalidate/fetch inventory: the complete scan and its final
+		-- revalidation run after crafting releases ownership.
+		if account_operation_busy then
 			return
 		end
 
