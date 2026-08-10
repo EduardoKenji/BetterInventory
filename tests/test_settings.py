@@ -1386,14 +1386,15 @@ def main() -> None:
     assert entries_by_id["character_overview_show_melee_rarity_strip"].disabled is False
     assert entries_by_id["character_overview_show_ranged_rarity_strip"].disabled is False
     assert entries_by_id["character_overview_show_only_dump_stat"].disabled is False
-    for dump_style_id in (
+    dump_style_ids = (
         "character_overview_dump_stat_horizontal_offset",
         "character_overview_dump_stat_font_scale_percent",
         "character_overview_dump_stat_color_preset",
         "character_overview_dump_stat_color_r",
         "character_overview_dump_stat_color_g",
         "character_overview_dump_stat_color_b",
-    ):
+    )
+    for dump_style_id in dump_style_ids:
         assert entries_by_id[dump_style_id].disabled is False
     assert entries_by_id["character_overview_show_curio_rarity_strip"].disabled is False
     assert entries_by_id["character_overview_use_native_curio_overlay"].disabled is False
@@ -1416,10 +1417,12 @@ def main() -> None:
     assert entries_by_id["character_overview_dump_stat_horizontal_offset"].disabled is False
     settings.character_overview_show_only_dump_stat = False
     mod.on_setting_changed("character_overview_show_only_dump_stat")
-    assert entries_by_id["character_overview_dump_stat_horizontal_offset"].disabled is True
+    for dump_style_id in dump_style_ids:
+        assert entries_by_id[dump_style_id].disabled is True
     settings.character_overview_show_only_dump_stat = True
     mod.on_setting_changed("character_overview_show_only_dump_stat")
-    assert entries_by_id["character_overview_dump_stat_horizontal_offset"].disabled is False
+    for dump_style_id in dump_style_ids:
+        assert entries_by_id[dump_style_id].disabled is False
     settings.enable_character_overview_ranged_mirror = True
     settings.enable_character_overview_curio_details = False
     mod.on_setting_changed("enable_character_overview_curio_details")
