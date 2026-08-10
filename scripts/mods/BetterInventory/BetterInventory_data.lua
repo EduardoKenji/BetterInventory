@@ -956,6 +956,12 @@ return {
 								default_value = true,
 							},
 							{
+								setting_id = "character_overview_show_only_dump_stat",
+								tooltip = "character_overview_show_only_dump_stat_tooltip",
+								type = "checkbox",
+								default_value = false,
+							},
+							{
 								setting_id = "enable_character_overview_curio_details",
 								tooltip = "enable_character_overview_curio_details_tooltip",
 								type = "checkbox",

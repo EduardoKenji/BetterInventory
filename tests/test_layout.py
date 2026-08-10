@@ -324,6 +324,7 @@ def main() -> None:
 				enable_grid_layout = true,
 				enable_quick_look_card_single_column_integration = true,
 				enable_quick_look_card_grid_integration = true,
+				character_overview_show_only_dump_stat = false,
 				quick_look_card_single_column_font_size = 14,
 				quick_look_card_single_column_label_value_gap = 1,
 				quick_look_card_single_column_horizontal_position = 79,
@@ -3317,6 +3318,64 @@ def main() -> None:
         != "better_inventory_name_it_curio_name"
         for index in range(1, len(character_overview_blueprint.pass_template) + 1)
     )
+
+    # Character Overview can replace its five maximum-potential modifier rows
+    # with the same single dump-stat label used by grid and Armoury cards.
+    mod.settings.character_overview_show_only_dump_stat = True
+    dump_only_overview_blueprint = lua.eval("table.clone")(
+        globals_.raw_test_blueprint
+    )
+    dump_only_overview_blueprint.pass_template[
+        len(dump_only_overview_blueprint.pass_template) + 1
+    ] = lua.table_from(
+        {
+            "pass_type": "text",
+            "style_id": "better_inventory_quick_look_card_dump_stat",
+            "value_id": "better_inventory_quick_look_card_dump_stat",
+            "style": lua.table_from({}),
+            "visibility_function": lua.eval("function() return false end"),
+        }
+    )
+    layout.configure_native_item_blueprint(
+        mod,
+        dump_only_overview_blueprint,
+        193,
+        lua.table_from({"character_overview": True}),
+    )
+    overview_dump_pass = blueprint_pass(
+        dump_only_overview_blueprint,
+        "better_inventory_quick_look_card_dump_stat",
+    )
+    assert overview_dump_pass is not None
+    assert overview_dump_pass.style.horizontal_alignment == "right"
+    assert overview_dump_pass.style.vertical_alignment == "bottom"
+    assert sum(
+        dump_only_overview_blueprint.pass_template[index].style_id
+        == "better_inventory_quick_look_card_dump_stat"
+        for index in range(1, len(dump_only_overview_blueprint.pass_template) + 1)
+    ) == 1
+    assert all(
+        not str(dump_only_overview_blueprint.pass_template[index].style_id).startswith(
+            "better_inventory_weapon_modifier_"
+        )
+        for index in range(1, len(dump_only_overview_blueprint.pass_template) + 1)
+    )
+    overview_dump_content = lua.eval(
+        """
+        {
+            element = {
+                item = {
+                    item_type = "WEAPON_RANGED",
+                    expertise = 320,
+                    projected_values = { 80, 80, 60, 80, 80 }
+                }
+            }
+        }
+        """
+    )
+    assert overview_dump_pass.visibility_function(overview_dump_content) is True
+    assert overview_dump_content.better_inventory_quick_look_card_dump_stat == "CLVD 60"
+    mod.settings.character_overview_show_only_dump_stat = False
 
     name_it_weapon_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     layout.configure_item_blueprint(mod, name_it_weapon_blueprint, 640)

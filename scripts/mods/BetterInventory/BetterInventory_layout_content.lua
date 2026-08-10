@@ -1547,22 +1547,26 @@ local function add_quick_look_card_grid_pass(mod, pass_template, card_width, tex
 		}
 	end
 
-	pass_template[#pass_template + 1] = {
-		pass_type = "text",
-		style_id = QUICK_LOOK_CARD_DUMP_STAT_ID,
-		value = "",
-		value_id = QUICK_LOOK_CARD_DUMP_STAT_ID,
-		style = style,
-		visibility_function = function(content)
-			local label = quick_look_card_lowest_stat_text(mod, content, parenthesized)
+	local pass = pass_by_style_id(pass_template, QUICK_LOOK_CARD_DUMP_STAT_ID) or {}
 
-			if content then
-				content[QUICK_LOOK_CARD_DUMP_STAT_ID] = label or ""
-			end
+	pass.pass_type = "text"
+	pass.style_id = QUICK_LOOK_CARD_DUMP_STAT_ID
+	pass.value = ""
+	pass.value_id = QUICK_LOOK_CARD_DUMP_STAT_ID
+	pass.style = style
+	pass.visibility_function = function(content)
+		local label = quick_look_card_lowest_stat_text(mod, content, parenthesized)
 
-			return label ~= nil
-		end,
-	}
+		if content then
+			content[QUICK_LOOK_CARD_DUMP_STAT_ID] = label or ""
+		end
+
+		return label ~= nil
+	end
+
+	if not pass_by_style_id(pass_template, QUICK_LOOK_CARD_DUMP_STAT_ID) then
+		pass_template[#pass_template + 1] = pass
+	end
 
 	return label_width
 end

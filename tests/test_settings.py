@@ -41,6 +41,7 @@ def main() -> None:
             enable_grid_layout = true,
 			enable_quick_look_card_single_column_integration = true,
 			enable_quick_look_card_grid_integration = true,
+			character_overview_show_only_dump_stat = false,
 			quick_look_card_single_column_font_size = 14,
 			quick_look_card_single_column_label_value_gap = 1,
 			quick_look_card_single_column_horizontal_position = 79,
@@ -728,6 +729,10 @@ def main() -> None:
     mod.on_setting_changed("character_overview_show_curio_rarity_strip")
     globals_.captured_character_overview_update_hook(overview_view)
     assert globals_.overview_layout_switches == 2
+    settings.character_overview_show_only_dump_stat = True
+    mod.on_setting_changed("character_overview_show_only_dump_stat")
+    globals_.captured_character_overview_update_hook(overview_view)
+    assert globals_.overview_layout_switches == 3
 
     runtime_hotspot_style = lua.table_from(
         {
@@ -1175,6 +1180,7 @@ def main() -> None:
 		"global_store_single_column_modifier_vertical_position",
 		"character_overview_show_melee_rarity_strip",
 		"character_overview_show_ranged_rarity_strip",
+		"character_overview_show_only_dump_stat",
 		"character_overview_show_curio_rarity_strip",
 		"character_overview_use_native_curio_overlay",
 		"character_overview_curio_name_mode",
@@ -1354,8 +1360,23 @@ def main() -> None:
     assert entries_by_id["character_overview_curio_font_size_percent"].disabled is False
     assert entries_by_id["character_overview_show_melee_rarity_strip"].disabled is False
     assert entries_by_id["character_overview_show_ranged_rarity_strip"].disabled is False
+    assert entries_by_id["character_overview_show_only_dump_stat"].disabled is False
     assert entries_by_id["character_overview_show_curio_rarity_strip"].disabled is False
     assert entries_by_id["character_overview_use_native_curio_overlay"].disabled is False
+    settings.enable_character_overview_melee_mirror = False
+    settings.enable_character_overview_ranged_mirror = False
+    mod.on_setting_changed("enable_character_overview_ranged_mirror")
+    assert entries_by_id["character_overview_show_only_dump_stat"].disabled is True
+    settings.enable_character_overview_melee_mirror = True
+    mod.on_setting_changed("enable_character_overview_melee_mirror")
+    assert entries_by_id["character_overview_show_only_dump_stat"].disabled is False
+    settings.enable_quick_look_card_single_column_integration = False
+    mod.on_setting_changed("enable_quick_look_card_single_column_integration")
+    assert entries_by_id["character_overview_show_only_dump_stat"].disabled is True
+    settings.enable_quick_look_card_single_column_integration = True
+    mod.on_setting_changed("enable_quick_look_card_single_column_integration")
+    assert entries_by_id["character_overview_show_only_dump_stat"].disabled is False
+    settings.enable_character_overview_ranged_mirror = True
     settings.enable_character_overview_curio_details = False
     mod.on_setting_changed("enable_character_overview_curio_details")
     assert entries_by_id["character_overview_curio_name_mode"].disabled is True
@@ -1847,6 +1868,7 @@ def main() -> None:
 			"custom_item_override_weapon_information_name_color",
 			"character_overview_show_melee_rarity_strip",
 			"character_overview_show_ranged_rarity_strip",
+			"character_overview_show_only_dump_stat",
 			"character_overview_show_curio_rarity_strip",
 			"character_overview_use_native_curio_overlay",
 			"character_overview_curio_name_mode",
@@ -2087,6 +2109,7 @@ def main() -> None:
         "character_overview_show_melee_rarity_strip",
         "enable_character_overview_ranged_mirror",
         "character_overview_show_ranged_rarity_strip",
+        "character_overview_show_only_dump_stat",
         "enable_character_overview_curio_details",
         "character_overview_show_curio_rarity_strip",
         "character_overview_use_native_curio_overlay",
@@ -2174,6 +2197,7 @@ def main() -> None:
     assert defaults["character_overview_show_melee_rarity_strip"] is True
     assert defaults["enable_character_overview_ranged_mirror"] is True
     assert defaults["character_overview_show_ranged_rarity_strip"] is True
+    assert defaults["character_overview_show_only_dump_stat"] is False
     assert defaults["enable_character_overview_curio_details"] is True
     assert defaults["character_overview_show_curio_rarity_strip"] is True
     assert defaults["character_overview_use_native_curio_overlay"] is False

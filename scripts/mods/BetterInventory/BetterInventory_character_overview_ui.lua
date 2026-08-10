@@ -38,6 +38,7 @@ local CHARACTER_OVERVIEW_VISUAL_SETTING_IDS = {
 	character_overview_show_melee_rarity_strip = true,
 	enable_character_overview_ranged_mirror = true,
 	character_overview_show_ranged_rarity_strip = true,
+	character_overview_show_only_dump_stat = true,
 	enable_character_overview_curio_details = true,
 	character_overview_show_curio_rarity_strip = true,
 	character_overview_use_native_curio_overlay = true,

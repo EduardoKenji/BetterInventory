@@ -203,6 +203,15 @@ local localization = {
 	character_overview_show_ranged_rarity_strip_tooltip = {
 		en = "Draws the left rarity-colour strip on the mirrored ranged weapon card. Enabled by default.",
 	},
+	character_overview_show_only_dump_stat = {
+		en = "Show only weapon dump stat",
+	},
+	character_overview_show_only_dump_stat_tooltip = {
+		en = "Replaces the five maximum-potential modifier rows on mirrored Character Overview weapons with only the lowest modifier above item power. Disabled by default.",
+	},
+	option_requires_character_overview_weapon_mirror = {
+		en = "Requires a mirrored Character Overview weapon card and single-column weapon modifiers.",
+	},
 	enable_character_overview_curio_details = {
 		en = "Show detailed Curio card on character overview",
 	},
