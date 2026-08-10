@@ -465,7 +465,7 @@ def main() -> None:
 			}
 			assert(controller:_phase3_sync_projected(0) == true)
 			assert(backend.claim_calls == 1 and backend.mastery_reads == 0)
-			assert(controller:snapshot().phase == "phase3_complete", tostring(controller:snapshot().phase) .. " " .. tostring(controller:snapshot().last_error))
+			assert(controller:snapshot().phase == "phase4_complete", tostring(controller:snapshot().phase) .. " " .. tostring(controller:snapshot().last_error))
 			assert(controller:snapshot().last_error == nil)
 		end
 
@@ -566,7 +566,7 @@ def main() -> None:
 			backend.purchase_promise.next_callback({items = {state.item}})
 			assert(controller:snapshot().search.running == false)
 			assert(controller:snapshot().search.result.gear_id == "gear-background")
-			assert(controller:snapshot().phase == "search_complete")
+			assert(controller:snapshot().phase == "phase4_complete")
 		end
 
 		-- Purchase response cannot declare exact result; refreshed inventory is authoritative.
@@ -630,8 +630,9 @@ def main() -> None:
 			assert(controller:start_purchase_search() == true)
 			assert(backend.favorite_calls == 1)
 			assert(controller:snapshot().search.result.gear_id == "gear-favorite")
-			assert(reporter.events[#reporter.events - 1].kind == "candidate_favorited")
-			assert(reporter.events[#reporter.events].kind == "purchase_search_complete")
+			assert(reporter.events[#reporter.events - 2].kind == "candidate_favorited")
+			assert(reporter.events[#reporter.events - 1].kind == "purchase_search_complete")
+			assert(reporter.events[#reporter.events].kind == "phase4_complete")
 		end
 
 		-- Deferred processing leaves misses untouched until exact target exists,
@@ -667,7 +668,7 @@ def main() -> None:
 			assert(backend.purchase_calls == 2)
 			assert(backend.extract_calls == 0)
 			assert(backend.discard_calls == 1)
-			assert(controller:snapshot().phase == "phase3_complete")
+			assert(controller:snapshot().phase == "phase4_complete")
 			assert(controller:snapshot().search.result.gear_id == "gear-exact")
 			assert(#state.items == 1 and state.items[1].gear_id == "gear-exact")
 		end
@@ -745,7 +746,8 @@ def main() -> None:
 			assert(controller:start_purchase_search() == true)
 			assert(backend.purchase_calls == 0)
 			assert(controller:snapshot().search.result.gear_id == "gear-reused")
-			assert(reporter.events[#reporter.events - 1].kind == "inventory_base_selected")
+			assert(reporter.events[#reporter.events - 2].kind == "inventory_base_selected")
+			assert(reporter.events[#reporter.events].kind == "phase4_complete")
 		end
 
 		-- Explicitly allowing favorites makes favorite-state availability irrelevant.
@@ -810,6 +812,35 @@ def main() -> None:
 			assert(backend.purchase_calls == 0)
 			assert(controller:snapshot().search.result.gear_id == "gear-template-fallback")
 			assert(controller:snapshot().search.result.resume_analysis.family_identity == "weapon_template")
+		end
+
+		-- Exact mark identity outranks a shared mastery family; equipped candidates
+		-- are never resumed. Equivalent safe candidates resolve deterministically.
+		do
+			local wrong_mark = summarized_item("gear-0-wrong-mark", 5, 60)
+			wrong_mark.master_id = "weapon-2"
+			wrong_mark.favorite_known = true
+			wrong_mark.favorited = false
+			local equipped = summarized_item("gear-0-equipped", 5, 60)
+			equipped.master_id = "weapon-1"
+			equipped.equipped = true
+			equipped.favorite_known = true
+			equipped.favorited = false
+			local safe_b = summarized_item("gear-b", 5, 60)
+			safe_b.master_id = "weapon-1"
+			safe_b.favorite_known = true
+			safe_b.favorited = false
+			local safe_a = summarized_item("gear-a", 5, 60)
+			safe_a.master_id = "weapon-1"
+			safe_a.favorite_known = true
+			safe_a.favorited = false
+			local settings = base_settings({auto_crafter_reuse_inventory_base = true})
+			local controller = Controller.new({backend = {}, planner = Planner, context = context(), settings = settings, reporter = reports()})
+			controller._snapshot = snapshot_with_items({wrong_mark, equipped, safe_b, safe_a})
+			controller._search = {dump_stat = "damage_stat", favorite_result = false, target_dump = 60, target_offer = target_offer()}
+			local selected = controller:_find_inventory_base()
+			assert(selected and selected.gear_id == "gear-a")
+			assert(selected.resume_analysis.family_identity == "master_item")
 		end
 
 		-- Phase 4 serially consecrates, advances 100-level milestones, allocates
@@ -1712,6 +1743,71 @@ def main() -> None:
 			purchase.next_callback({items = {summarized_item("late-owned-purchase", 0, 60)}})
 			assert(held_token == nil and releases == 1)
 			assert(controller:snapshot().operation_inflight == false)
+		end
+
+		-- Every mutation family fails closed on resource/capacity rejection. No
+		-- continuation or hidden retry may spend again after the backend rejects.
+		do
+			local cases = {
+				{kind = "purchase", error = "insufficient dockets"},
+				{kind = "purchase", error = "inventory full"},
+				{kind = "phase4_consecrate", error = "insufficient plasteel"},
+				{kind = "phase4_expertise", error = "insufficient plasteel"},
+				{kind = "phase4_replace_perk", error = "insufficient diamantine"},
+				{kind = "phase4_replace_blessing", error = "insufficient diamantine"},
+			}
+
+			for _, case in ipairs(cases) do
+				local dispatches = 0
+				local followups = 0
+				local controller = Controller.new({backend = {}, planner = Planner, context = context(), settings = base_settings(), reporter = reports()})
+				controller._active_view = {}
+				controller._view_is_valid = true
+				controller._search = {running = true}
+				assert(controller:_dispatch_operation(0, case.kind, function()
+					dispatches = dispatches + 1
+					return rejected(case.error)
+				end, function() followups = followups + 1 end) == true)
+				assert(dispatches == 1 and followups == 0)
+				assert(controller:snapshot().operation_inflight == false)
+				assert(controller:snapshot().phase == "operation_failed")
+				assert(string.find(controller:snapshot().last_error, case.error, 1, true) ~= nil)
+			end
+		end
+
+		-- A transient 7-second network stall is below the quarantine threshold and
+		-- resumes exactly once when the original request settles.
+		do
+			local operation = pending()
+			local followups = 0
+			local controller = Controller.new({backend = {}, planner = Planner, context = context(), settings = base_settings(), reporter = reports()})
+			controller._active_view = {}
+			controller._view_is_valid = true
+			controller._search = {running = true}
+			assert(controller:_dispatch_operation(0, "purchase", function() return operation end, function() followups = followups + 1 end) == true)
+			controller:update(7)
+			assert(controller:snapshot().operation_inflight == true)
+			assert(controller:snapshot().operation_quarantined == false)
+			operation.next_callback({items = {}})
+			assert(followups == 1 and controller:snapshot().operation_inflight == false)
+		end
+
+		-- Entering a loading/non-hub context stops continuations but preserves the
+		-- mutation lock until the backend request settles.
+		do
+			local operation = pending()
+			local followups = 0
+			local controller = Controller.new({backend = {}, planner = Planner, context = context(), settings = base_settings(), reporter = reports()})
+			controller._active_view = {}
+			controller._view_is_valid = true
+			controller._search = {running = true}
+			assert(controller:_dispatch_operation(0, "phase4_expertise", function() return operation end, function() followups = followups + 1 end) == true)
+			controller:on_context_exit("loading")
+			assert(controller:snapshot().operation_inflight == true)
+			operation.next_callback({})
+			assert(followups == 0)
+			assert(controller:snapshot().operation_inflight == false)
+			assert(controller:snapshot().reconciliation_required == true)
 		end
 
 		print("Auto Crafter controller Phase 2/3/4 behavior tests passed.")

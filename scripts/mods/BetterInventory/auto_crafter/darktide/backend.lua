@@ -874,6 +874,7 @@ local function summarize_item(gear, gear_id)
 end
 
 local function summarize_gear(gear, character_id)
+	local protection = discard_protection_snapshot()
 	local summary = {
 		available = gear ~= nil,
 		item_count = 0,
@@ -896,6 +897,8 @@ local function summarize_gear(gear, character_id)
 
 		if resolved_gear_id ~= nil then
 			local item = summarize_item(raw_gear, resolved_gear_id)
+			item.equipped = protection ~= nil and protection.equipped[resolved_gear_id] == true
+			item.equipped_known = protection ~= nil
 
 			added = added + 1
 			summary.items[added] = item

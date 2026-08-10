@@ -2501,18 +2501,20 @@ function Controller.new(dependencies)
 		local change_perks = mastery_enabled and setting("auto_crafter_change_perks", true) == true
 		local change_blessings = mastery_enabled and setting("auto_crafter_change_blessings", true) == true
 
-		if not consecrate and not expertise_enabled and not allocate_mastery and not change_perks and not change_blessings then
-			if self._search then
-				self._search.running = false
-			end
-			return true
-		end
-
 		local item = find_item(self._snapshot and self._snapshot.gear and self._snapshot.gear.items, candidate.gear_id)
 
 		if not item or item.available ~= true then
 			self:_operation_failed(self._generation, "final crafting candidate is absent from authoritative inventory")
 			return false
+		end
+
+		if not consecrate and not expertise_enabled and not allocate_mastery and not change_perks and not change_blessings then
+			self._phase4 = {
+				gear_id = candidate.gear_id,
+				running = true,
+			}
+
+			return self:_phase4_complete(item, self._snapshot)
 		end
 
 		local needs_traits = allocate_mastery or change_perks or change_blessings
@@ -3284,21 +3286,21 @@ function Controller.new(dependencies)
 		local target = search.target_offer or {}
 
 		local function family_matches(candidate)
-			local target_pattern = target.parent_pattern
-			local candidate_pattern = candidate.parent_pattern or candidate.mastery_id
-
-			-- Mastery family is strongest identity. A known mismatch must never fall
-			-- through to weaker mark/template aliases.
-			if target_pattern ~= nil and candidate_pattern ~= nil then
-				return target_pattern == candidate_pattern, "mastery_family"
+			if target.master_id ~= nil and candidate.master_id ~= nil then
+				return target.master_id == candidate.master_id, "master_item"
 			end
 
 			if target.weapon_template ~= nil and candidate.weapon_template ~= nil then
 				return target.weapon_template == candidate.weapon_template, "weapon_template"
 			end
 
-			if target.master_id ~= nil and candidate.master_id ~= nil then
-				return target.master_id == candidate.master_id, "master_item"
+			local target_pattern = target.parent_pattern
+			local candidate_pattern = candidate.parent_pattern or candidate.mastery_id
+
+			-- Mastery family is a safe fallback only when exact mark/template identity
+			-- is unavailable on one side.
+			if target_pattern ~= nil and candidate_pattern ~= nil then
+				return target_pattern == candidate_pattern, "mastery_family"
 			end
 
 			return false, "identity_unavailable"
@@ -3423,7 +3425,7 @@ function Controller.new(dependencies)
 			local matched, identity_source = family_matches(candidate)
 			local favorite_allowed = include_favorites or candidate.favorite_known == true and candidate.favorited ~= true
 
-			if candidate.available == true and candidate.gear_id ~= nil and matched and favorite_allowed and tonumber(candidate_stat(candidate, search.dump_stat)) == tonumber(search.target_dump) then
+			if candidate.available == true and candidate.gear_id ~= nil and candidate.equipped ~= true and matched and favorite_allowed and tonumber(candidate_stat(candidate, search.dump_stat)) == tonumber(search.target_dump) then
 				local analysis = profile_analysis(candidate)
 				analysis.expertise = tonumber(candidate.expertise_level) or -1
 				analysis.family_identity = identity_source

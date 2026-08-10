@@ -502,6 +502,16 @@ def main() -> None:
     assert material_plan.estimate.phases.consecrate.plasteel_min == 40
     assert material_plan.estimate.phases.expertise.plasteel_min == 170
 
+    # Live recipe minimums are hard preflight bounds; absent wallet currencies
+    # remain unknown rather than being treated as zero.
+    snapshot.wallets.currencies["plasteel"] = lua.table_from({"amount": 209})
+    snapshot.wallets.currencies["diamantine"] = lua.table_from({"amount": 8})
+    low_material_plan = plan("penetration")
+    assert low_material_plan.preflight.ok is False
+    assert "insufficient plasteel" in low_material_plan.preflight.summary
+    snapshot.wallets.currencies["plasteel"] = None
+    snapshot.wallets.currencies["diamantine"] = None
+
     snapshot.crafting_costs.sacrifice_mastery = lua.table_from(
         {
             "sacrifice_muiltiplier": 1,

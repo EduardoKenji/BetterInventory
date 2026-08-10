@@ -551,6 +551,19 @@ function Planner.build(snapshot, config)
 
 	local phases, material_note = workflow_material_estimate(snapshot, normalized, target)
 	local material_estimate = phases and phases.total
+	local plasteel = currency_amount(snapshot, "plasteel")
+	local diamantine = currency_amount(snapshot, "diamantine")
+
+	-- Only block against the live-recipe minimum. Maximums remain estimates and
+	-- must never reject a run that can complete more cheaply.
+	if material_estimate and plasteel and material_estimate.plasteel_min and plasteel < material_estimate.plasteel_min then
+		append_reason(reasons, "insufficient plasteel for minimum enabled workflow")
+	end
+
+	if material_estimate and diamantine and material_estimate.diamantine_min and diamantine < material_estimate.diamantine_min then
+		append_reason(reasons, "insufficient diamantine for minimum enabled workflow")
+	end
+
 	local purchase_count_cap = price and dockets_cap and math.floor(dockets_cap / price) or nil
 	local estimate = {
 		base_level_max = material_estimate and material_estimate.base_level_max or ESTIMATE_BASE_LEVEL_MAX,
@@ -619,8 +632,8 @@ function Planner.build(snapshot, config)
 		estimate = estimate,
 		wallet = {
 			credits = credits,
-			plasteel = currency_amount(snapshot, "plasteel"),
-			diamantine = currency_amount(snapshot, "diamantine"),
+			plasteel = plasteel,
+			diamantine = diamantine,
 		},
 	}
 end
