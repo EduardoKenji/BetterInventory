@@ -1484,6 +1484,84 @@ def main() -> None:
 			assert(controller:snapshot().operation_elapsed_seconds >= 0.03)
 		end
 
+		-- A confirmed purchase may be temporarily absent from GearService. Poll only
+		-- its UUID and never dispatch a second purchase while visibility converges.
+		do
+			local item = summarized_item("gear-delayed-visibility", 0, 60)
+			local backend = {purchase_calls = 0, refresh_calls = 0}
+			function backend:purchase_offer(_)
+				self.purchase_calls = self.purchase_calls + 1
+				return resolved({items = {item}})
+			end
+			function backend:refresh_gear_snapshot(_)
+				self.refresh_calls = self.refresh_calls + 1
+				return resolved(self.refresh_calls < 3 and snapshot_with(nil) or snapshot_with(item))
+			end
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings(), reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = snapshot_with(nil)
+			controller._active_view = {}
+			controller._view_is_valid = true
+			CurrentOffer = raw_offer()
+			assert(controller:start_purchase_search() == true)
+			assert(controller:snapshot().phase == "purchase_confirmation_wait", "unexpected delayed phase " .. tostring(controller:snapshot().phase) .. " error " .. tostring(controller:snapshot().last_error) .. " refreshes " .. tostring(backend.refresh_calls))
+			controller:update(0.05)
+			assert(backend.purchase_calls == 1 and backend.refresh_calls == 2)
+			controller:update(0.1)
+			assert(backend.purchase_calls == 1 and backend.refresh_calls == 3)
+			assert(controller:snapshot().search.result.gear_id == item.gear_id)
+		end
+
+		-- Exhausted visibility polling fails closed with the confirmed UUID. It must
+		-- neither rebuy nor allow Stop to dispatch another request.
+		do
+			local item = summarized_item("gear-never-visible", 0, 60)
+			local backend = {purchase_calls = 0, refresh_calls = 0}
+			function backend:purchase_offer(_)
+				self.purchase_calls = self.purchase_calls + 1
+				return resolved({items = {item}})
+			end
+			function backend:refresh_gear_snapshot(_)
+				self.refresh_calls = self.refresh_calls + 1
+				return resolved(snapshot_with(nil))
+			end
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings(), reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = snapshot_with(nil)
+			controller._active_view = {}
+			controller._view_is_valid = true
+			CurrentOffer = raw_offer()
+			assert(controller:start_purchase_search() == true)
+			for _ = 1, 8 do controller:update(0.5) end
+			assert(controller:snapshot().phase == "operation_failed")
+			assert(string.find(controller:snapshot().last_error, item.gear_id, 1, true) ~= nil)
+			assert(string.find(controller:snapshot().last_error, "will not be repeated", 1, true) ~= nil)
+			assert(backend.purchase_calls == 1 and backend.refresh_calls == 6)
+		end
+
+		-- Stop during purchase visibility reconciliation cancels future polls at the
+		-- request boundary; the already-confirmed purchase is neither retried nor used.
+		do
+			local item = summarized_item("gear-stopped-confirmation", 0, 60)
+			local backend = {purchase_calls = 0, refresh_calls = 0}
+			function backend:purchase_offer(_)
+				self.purchase_calls = self.purchase_calls + 1
+				return resolved({items = {item}})
+			end
+			function backend:refresh_gear_snapshot(_)
+				self.refresh_calls = self.refresh_calls + 1
+				return resolved(snapshot_with(nil))
+			end
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings(), reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = snapshot_with(nil)
+			controller._active_view = {}
+			controller._view_is_valid = true
+			CurrentOffer = raw_offer()
+			assert(controller:start_purchase_search() == true)
+			assert(controller:stop_active_run() == true)
+			controller:update(1)
+			assert(controller:snapshot().phase == "user_stopped")
+			assert(backend.purchase_calls == 1 and backend.refresh_calls == 1)
+		end
+
 		print("Auto Crafter controller Phase 2/3/4 behavior tests passed.")
         '''
     )

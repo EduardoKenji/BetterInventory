@@ -4,8 +4,10 @@ local DEFAULT_PROBE_DELAY = 0.5
 local DEFAULT_VIEW_IDLE_POLL_INTERVAL = 0.1
 local DEFAULT_MASTERY_POLL_DELAY = 0.05
 local DEFAULT_BLESSING_POLL_DELAY = 0.05
+local DEFAULT_PURCHASE_CONFIRMATION_POLL_DELAY = 0.05
 local MAX_MASTERY_POLL_ATTEMPTS = 12
 local MAX_BLESSING_SYNC_ATTEMPTS = 12
+local MAX_PURCHASE_CONFIRMATION_ATTEMPTS = 6
 local MAX_MASTERY_CLAIM_RETRIES = 2
 local MAX_OPERATION_SECONDS = 45
 local MAX_IDLE_WORKFLOW_SECONDS = 5
@@ -25,6 +27,12 @@ local function blessing_poll_delay(attempt)
 	local exponent = math.max(0, tonumber(attempt) or 0)
 
 	return math.min(1, DEFAULT_BLESSING_POLL_DELAY * 2 ^ exponent)
+end
+
+local function purchase_confirmation_poll_delay(attempt)
+	local exponent = math.max(0, (tonumber(attempt) or 1) - 1)
+
+	return math.min(0.5, DEFAULT_PURCHASE_CONFIRMATION_POLL_DELAY * 2 ^ exponent)
 end
 
 local function finite_dt(dt)
@@ -133,7 +141,14 @@ local function selected_offer_matches_target(selected_offer, target)
 	return selected_offer.master_id ~= nil and target.master_id ~= nil or selected_offer.offer_id ~= nil and target.offer_id ~= nil
 end
 
-local function find_item(items, gear_id)
+local function find_item(items, gear_id, items_by_id)
+	items_by_id = items_by_id or type(items) == "table" and rawget(items, "by_id")
+	local indexed = type(items_by_id) == "table" and items_by_id[gear_id] or nil
+
+	if indexed ~= nil then
+		return indexed
+	end
+
 	for _, item in ipairs(items or {}) do
 		if item and item.gear_id == gear_id then
 			return item
@@ -597,6 +612,7 @@ function Controller.new(dependencies)
 		_mastery_poll_elapsed = 0,
 		_mastery_poll_attempts = 0,
 		_mastery_poll_wait = DEFAULT_MASTERY_POLL_DELAY,
+		_purchase_confirmation = nil,
 		_catalog = nil,
 		_catalog_generation = 0,
 		_catalog_inflight = false,
@@ -1054,6 +1070,7 @@ function Controller.new(dependencies)
 		self._operation_kind = nil
 		self._operation_elapsed = 0
 		self._operation_started_at = nil
+		self._purchase_confirmation = nil
 		self._phase = "operation_failed"
 		error_value = error_description(error_value)
 		self._last_error = error_value
@@ -1325,20 +1342,20 @@ function Controller.new(dependencies)
 
 		local backend = self._backend
 
-		if not backend or type(backend.probe_snapshot) ~= "function" then
+		local refresh_method
+
+		if backend and scope == "runtime" and type(backend.refresh_runtime_snapshot) == "function" then
+			refresh_method = backend.refresh_runtime_snapshot
+		elseif backend and scope ~= "full" and type(backend.refresh_gear_snapshot) == "function" then
+			refresh_method = backend.refresh_gear_snapshot
+		elseif backend and type(backend.probe_snapshot) == "function" then
+			refresh_method = backend.probe_snapshot
+		end
+
+		if type(refresh_method) ~= "function" then
 			self:_operation_failed(generation, "backend probe unavailable after mutation")
 
 			return false
-		end
-
-		local refresh_method
-
-		if scope == "runtime" and type(backend.refresh_runtime_snapshot) == "function" then
-			refresh_method = backend.refresh_runtime_snapshot
-		elseif scope ~= "full" and type(backend.refresh_gear_snapshot) == "function" then
-			refresh_method = backend.refresh_gear_snapshot
-		else
-			refresh_method = backend.probe_snapshot
 		end
 
 		return self:_dispatch_operation(generation, "authoritative_refresh", function ()
@@ -1366,10 +1383,81 @@ function Controller.new(dependencies)
 		end)
 	end
 
+	function self:_poll_purchase_confirmation()
+		local confirmation = self._purchase_confirmation
+		local generation = self._generation
+
+		if not confirmation or self._operation_inflight or not operation_context_valid(generation) then
+			return false
+		end
+
+		confirmation.attempts = confirmation.attempts + 1
+		confirmation.elapsed = 0
+		operation_report("purchase_confirmation_poll", {
+			attempt = confirmation.attempts,
+			gear_id = confirmation.gear_id,
+		})
+
+		return self:_refresh_after_operation(generation, function (snapshot)
+			if self._purchase_confirmation ~= confirmation then
+				return
+			end
+
+			local gear = snapshot and snapshot.gear
+			local candidate = find_item(gear and gear.items, confirmation.gear_id, gear and gear.items_by_id)
+
+			if candidate and candidate.available == true then
+				self._purchase_confirmation = nil
+				operation_report("purchase_confirmation_complete", {
+					attempt = confirmation.attempts,
+					candidate = candidate,
+				})
+				confirmation.on_confirmed(candidate)
+
+				return
+			end
+
+			if confirmation.attempts >= MAX_PURCHASE_CONFIRMATION_ATTEMPTS then
+				self._purchase_confirmation = nil
+				self:_operation_failed(generation, string.format(
+					"purchased weapon %s was not found after %s authoritative inventory refreshes; purchase was confirmed and will not be repeated",
+					tostring(confirmation.gear_id),
+					tostring(confirmation.attempts)
+				))
+
+				return
+			end
+
+			confirmation.wait = purchase_confirmation_poll_delay(confirmation.attempts)
+			self._phase = "purchase_confirmation_wait"
+			operation_report("purchase_confirmation_pending", {
+				attempt = confirmation.attempts,
+				gear_id = confirmation.gear_id,
+			})
+		end)
+	end
+
+	function self:_begin_purchase_confirmation(generation, purchase_candidate, on_confirmed)
+		if not operation_context_valid(generation) or self._purchase_confirmation then
+			return false
+		end
+
+		self._purchase_confirmation = {
+			attempts = 0,
+			elapsed = 0,
+			gear_id = purchase_candidate.gear_id,
+			on_confirmed = on_confirmed,
+			wait = 0,
+		}
+
+		return self:_poll_purchase_confirmation()
+	end
+
 	local function invalidate_generation()
 		self._generation = self._generation + 1
 		self._probe_scheduled = false
 		self._probe_elapsed = 0
+		self._purchase_confirmation = nil
 	end
 
 	local function cancel_probe()
@@ -3357,9 +3445,7 @@ function Controller.new(dependencies)
 			operation_report("purchase_response_received", {
 				candidate = purchase_candidate,
 			})
-			self:_refresh_after_operation(generation, function (snapshot)
-				process_candidate(find_item(snapshot and snapshot.gear and snapshot.gear.items, purchase_candidate.gear_id))
-			end)
+			self:_begin_purchase_confirmation(generation, purchase_candidate, process_candidate)
 		end)
 	end
 
@@ -3999,6 +4085,7 @@ function Controller.new(dependencies)
 		self._catalog = nil
 		self._catalog_key = nil
 		self._last_purchased = nil
+		self._purchase_confirmation = nil
 		self._selected_target_key = nil
 		self._selected_native_key = nil
 		self._planner_signature = nil
@@ -4050,6 +4137,7 @@ function Controller.new(dependencies)
 		self._catalog = nil
 		self._catalog_key = nil
 		self._last_purchased = nil
+		self._purchase_confirmation = nil
 		self._selected_target_key = nil
 		self._selected_native_key = nil
 		self._planner_signature = nil
@@ -4075,6 +4163,7 @@ function Controller.new(dependencies)
 		self._catalog = nil
 		self._catalog_key = nil
 		self._last_purchased = nil
+		self._purchase_confirmation = nil
 		self._selected_target_key = nil
 		self._selected_native_key = nil
 		self._planner_signature = nil
@@ -4243,6 +4332,16 @@ function Controller.new(dependencies)
 			end
 		end
 
+		if self._purchase_confirmation and not self._operation_inflight then
+			local confirmation = self._purchase_confirmation
+
+			confirmation.elapsed = (tonumber(confirmation.elapsed) or 0) + finite_dt(dt)
+
+			if confirmation.elapsed >= (confirmation.wait or DEFAULT_PURCHASE_CONFIRMATION_POLL_DELAY) then
+				self:_poll_purchase_confirmation()
+			end
+		end
+
 		if self._phase4 and self._phase4.running and self._phase4.pending_blessing and not self._operation_inflight then
 			self._phase4.blessing_poll_elapsed = (self._phase4.blessing_poll_elapsed or 0) + finite_dt(dt)
 
@@ -4254,10 +4353,11 @@ function Controller.new(dependencies)
 		if run_is_active() and not self._operation_inflight then
 			local mastery_waiting = self._mastery and self._mastery.running and self._phase == "mastery_sync_wait"
 			local blessing_waiting = self._phase4 and self._phase4.running and self._phase4.pending_blessing ~= nil
+			local purchase_confirmation_waiting = self._purchase_confirmation ~= nil
 			local fast_upgrades_waiting = fast_upgrade_pending(self._phase3)
 			local idle_seconds = self._run_elapsed - (tonumber(self._last_progress_elapsed) or 0)
 
-			if not mastery_waiting and not blessing_waiting and not fast_upgrades_waiting and idle_seconds >= MAX_IDLE_WORKFLOW_SECONDS then
+			if not mastery_waiting and not blessing_waiting and not purchase_confirmation_waiting and not fast_upgrades_waiting and idle_seconds >= MAX_IDLE_WORKFLOW_SECONDS then
 				self:_operation_failed(self._generation, string.format("workflow stalled in phase %s for %.1f seconds with no request or bounded poll pending", tostring(self._phase), idle_seconds))
 			end
 		end

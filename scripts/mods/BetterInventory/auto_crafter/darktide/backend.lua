@@ -7,7 +7,6 @@ local CraftingSettings = require("scripts/settings/item/crafting_settings")
 local WeaponTemplate = require("scripts/utilities/weapon/weapon_template")
 
 local Backend = {}
-local GEAR_SUMMARY_LIMIT = 1024
 
 local function rejected(description)
 	return Promise.rejected({
@@ -877,7 +876,10 @@ end
 local function summarize_gear(gear, character_id)
 	local summary = {
 		available = gear ~= nil,
-		item_count = count_collection(gear),
+		item_count = 0,
+		items_by_id = {},
+		raw_item_count = count_collection(gear),
+		unavailable_item_count = 0,
 		items = {},
 	}
 
@@ -888,21 +890,25 @@ local function summarize_gear(gear, character_id)
 	local added = 0
 
 	for gear_id, raw_gear in pairs(gear) do
-		if added >= GEAR_SUMMARY_LIMIT then
-			break
-		end
-
 		local owner_id = safe_member(raw_gear, "characterId") or safe_member(raw_gear, "character_id")
 		local belongs_to_character = owner_id == nil or character_id == nil or tostring(owner_id) == tostring(character_id)
 		local resolved_gear_id = belongs_to_character and (safe_member(raw_gear, "uuid") or safe_member(raw_gear, "gear_id") or gear_id) or nil
 
 		if resolved_gear_id ~= nil then
+			local item = summarize_item(raw_gear, resolved_gear_id)
+
 			added = added + 1
-			summary.items[added] = summarize_item(raw_gear, resolved_gear_id)
+			summary.items[added] = item
+			summary.items_by_id[resolved_gear_id] = item
+
+			if item.available ~= true then
+				summary.unavailable_item_count = summary.unavailable_item_count + 1
+			end
 		end
 	end
 
 	summary.item_count = added
+	summary.items.by_id = summary.items_by_id
 
 	return summary
 end

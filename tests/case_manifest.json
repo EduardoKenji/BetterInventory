@@ -20,6 +20,9 @@
   "test_auto_crafter_viewport.py": [
     {"name": "panel_and_hud_resolution_matrix", "risk": "high", "start_line": 14, "end_line": 67}
   ],
+  "test_auto_crafter_backend.py": [
+    {"name": "complete_authoritative_inventory_summary", "risk": "critical", "start_line": 16, "end_line": 119}
+  ],
   "test_auto_crafter_controller.py": [
     {"name": "presacrifice_mastery_baseline_convergence_and_level_event", "risk": "critical", "start_line": 190, "end_line": 269},
     {"name": "local_mastery_projection_avoids_per_item_poll", "risk": "critical", "start_line": 270, "end_line": 306},
@@ -43,7 +46,8 @@
     {"name": "equipment_starting_state_matrix", "risk": "critical", "start_line": 1186, "end_line": 1304},
     {"name": "instant_character_change_snapshot_and_callback_isolation", "risk": "critical", "start_line": 1305, "end_line": 1362},
     {"name": "configuration_change_closes_dispatch", "risk": "critical", "start_line": 1363, "end_line": 1380},
-    {"name": "explicit_stop_and_idle_cpu_amortization", "risk": "critical", "start_line": 1381, "end_line": 1493}
+    {"name": "explicit_stop_and_idle_cpu_amortization", "risk": "critical", "start_line": 1381, "end_line": 1486},
+    {"name": "purchase_visibility_reconciliation", "risk": "critical", "start_line": 1487, "end_line": 1568}
   ],
   "test_contracts.py": [
     {"name": "guarded_lookup", "risk": "high", "start_line": 22, "end_line": 40},
