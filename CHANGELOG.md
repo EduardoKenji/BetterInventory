@@ -1,5 +1,11 @@
 # BetterInventory changelog
 
+## 2.0.2 - 2026-08-10
+
+- Fixed Auto Crafter losing purchased weapons when inventories exceeded 1,024 records.
+- Added bounded post-purchase visibility reconciliation without repeating purchase requests.
+- Added large-inventory, malformed-record, delayed-visibility and interruption regression coverage.
+
 ## 2.0.1 - 2026-08-09
 
 - Added optional Character Overview dump-stat-only weapon display.
