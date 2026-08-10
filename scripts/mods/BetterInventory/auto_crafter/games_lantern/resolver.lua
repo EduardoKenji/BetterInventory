@@ -364,7 +364,7 @@ local function resolve_traits(external_values, entries, kind)
 	return result, nil
 end
 
-local function resolve_one(external, slot, context)
+local function resolve_identity(external, slot, context)
 	local offers = context and (context.offers or (slot == "melee" and context.melee_offers or context.ranged_offers)) or {}
 	local resolved, reason = resolve_weapon(external, slot, offers, context and context.classify_offer)
 
@@ -378,11 +378,26 @@ local function resolve_one(external, slot, context)
 		return nil, dump_reason
 	end
 
-	local catalog = catalog_for(context, resolved.offer)
+	return {
+		kind = "games_lantern_job",
+		slot = slot,
+		display_name = external.display_name,
+		offer = resolved.offer,
+		external = external,
+		dump_stat = dump_stat.id,
+		dump_stat_label = dump_stat.label,
+		dump_target = 60,
+		parent_pattern = resolved.offer.parent_pattern,
+		master_id = resolved.offer.master_id,
+	}, nil
+end
 
+local function attach_catalog(job, catalog)
 	if type(catalog) ~= "table" or catalog.available ~= true then
 		return nil, "trait_catalog_unavailable"
 	end
+
+	local external = job.external or {}
 
 	local perks, perk_reason = resolve_traits(external.perks, catalog.perks, "perk")
 
@@ -396,20 +411,106 @@ local function resolve_one(external, slot, context)
 		return nil, blessing_reason
 	end
 
+	job.perks = perks
+	job.blessings = blessings
+	job.catalog = catalog
+
+	return job, nil
+end
+
+local function resolve_one(external, slot, context)
+	local job, reason = resolve_identity(external, slot, context)
+
+	if not job then
+		return nil, reason
+	end
+
+	local catalog = catalog_for(context, job.offer)
+	local completed, catalog_reason = attach_catalog(job, catalog)
+
+	if not completed then
+		return nil, catalog_reason
+	end
+
+	return completed, nil
+end
+
+-- Identity resolution is split from trait resolution so the host can perform
+-- the two live read-only catalogue requests without installing a partial
+-- queue. Neither function mutates settings, selection, or account state.
+function Resolver.resolve_identities(model, context)
+	if type(model) ~= "table" or type(model.weapons) ~= "table" then
+		return nil, "external_model_unavailable"
+	end
+
+	context = context or {}
+
+	if model.source_archetype and context.active_archetype and tostring(model.source_archetype) ~= tostring(context.active_archetype) then
+		return nil, "archetype_mismatch"
+	end
+
+	if #model.weapons ~= 2 then
+		return nil, "expected_two_weapons"
+	end
+
+	local melee_candidates = {}
+	local ranged_candidates = {}
+
+	for _, external in ipairs(model.weapons) do
+		local melee = resolve_identity(external, "melee", context)
+		local ranged = resolve_identity(external, "ranged", context)
+
+		if melee then
+			melee_candidates[#melee_candidates + 1] = melee
+		end
+
+		if ranged then
+			ranged_candidates[#ranged_candidates + 1] = ranged
+		end
+	end
+
+	if #melee_candidates ~= 1 then
+		return nil, #melee_candidates == 0 and "melee_weapon_unavailable" or "multiple_melee_weapons"
+	end
+
+	if #ranged_candidates ~= 1 then
+		return nil, #ranged_candidates == 0 and "ranged_weapon_unavailable" or "multiple_ranged_weapons"
+	end
+
 	return {
-		kind = "games_lantern_job",
-		slot = slot,
-		display_name = external.display_name,
-		offer = resolved.offer,
-		external = external,
-		dump_stat = dump_stat.id,
-		dump_stat_label = dump_stat.label,
-		dump_target = 60,
-		perks = perks,
-		blessings = blessings,
-		parent_pattern = resolved.offer.parent_pattern,
-		master_id = resolved.offer.master_id,
-		catalog = catalog,
+		kind = "games_lantern_identity_build",
+		resolver_contract_version = Resolver.CONTRACT_VERSION,
+		source_uuid = model.source_uuid,
+		source_archetype = model.source_archetype,
+		jobs = { melee_candidates[1], ranged_candidates[1] },
+	}, nil
+end
+
+function Resolver.attach_catalogs(identity_build, catalogs)
+	if type(identity_build) ~= "table" or type(identity_build.jobs) ~= "table" or #identity_build.jobs ~= 2 then
+		return nil, "identity_build_unavailable"
+	end
+
+	local completed_jobs = {}
+
+	for index, job in ipairs(identity_build.jobs) do
+		local key = job.master_id or job.offer and (job.offer.master_id or job.offer.parent_pattern)
+		local catalog = type(catalogs) == "table" and key ~= nil and catalogs[key] or nil
+		local completed, reason = attach_catalog(job, catalog)
+
+		if not completed then
+			return nil, tostring(reason or "trait_catalog_unavailable") .. "_" .. tostring(index)
+		end
+
+		completed_jobs[index] = completed
+	end
+
+	return {
+		kind = "games_lantern_build",
+		resolver_contract_version = Resolver.CONTRACT_VERSION,
+		source_uuid = identity_build.source_uuid,
+		source_archetype = identity_build.source_archetype,
+		jobs = completed_jobs,
 	}, nil
 end
 

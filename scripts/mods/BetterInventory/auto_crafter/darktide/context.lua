@@ -72,6 +72,28 @@ function Context.new(dependencies)
 		return nil
 	end
 
+	function context:current_archetype()
+		if type(dependencies.current_archetype) == "function" then
+			local ok, archetype = pcall(dependencies.current_archetype)
+
+			return ok and archetype or nil
+		end
+
+		local managers = rawget(_G, "Managers")
+		local player_manager = managers and managers.player
+		local ok, player = pcall(player_manager and player_manager.local_player or function () end, player_manager, 1)
+
+		if not ok or not player or player.__deleted or type(player.profile) ~= "function" then
+			return nil
+		end
+
+		local profile_ok, profile = pcall(player.profile, player)
+		local archetype = profile_ok and profile and profile.archetype
+		local name = archetype and (archetype.name or archetype.archetype_name)
+
+		return name and tostring(name) or nil
+	end
+
 	function context:is_morningstar()
 		local mode_name = current_game_mode_name()
 

@@ -2,11 +2,11 @@
 
 Date: 2026-08-10  
 Branch: `research/2.1.0-games-lantern-import`  
-Status: research and handoff-safety audit complete; Batch 1 contracts implemented; UI/network/account integration not started
+Status: Batches 1-5 implemented; import remains explicitly opt-in and manual Auto Crafter workflow is unchanged
 Target surface: Auto Crafter Helper in Brunt's Armoury
 
 Handoff audit: 2026-08-10 against the current controller, planner, operation arbiter, mutation guard, panel, and regression suite
-Runtime baseline: `44fbad1` (BetterInventory 2.1.0; Batch 1 modules are dormant and do not change current workflow behavior)
+Runtime baseline: `44fbad1` (BetterInventory 2.1.0; imported queue is session-local and does not change persistent manual settings)
 Specification baseline reviewed: `e2abbc3`
 Verification baseline: 21 behavior suites / 92 cases plus architecture, schema, Lua structure, runtime bundle, ZIP parity, and static checks passed
 
@@ -1089,7 +1089,7 @@ Keep parser/resolver/controller pure enough to run outside Darktide tests. Injec
 - Adapt current Auto Crafter catalog snapshots into a pure resolver input.
 - Resolve weapon, dump stat, perks, and blessings with explicit ambiguity results.
 - Add complete resolver matrix, especially localization and reused blessing icon IDs.
-- No settings or crafting changes.
+- No settings or crafting changes; asynchronous catalogue reads are required before queue installation.
 
 ### Batch 3 — read-only Brunt queue UI
 
@@ -1098,19 +1098,19 @@ Keep parser/resolver/controller pure enough to run outside Darktide tests. Injec
 - Render the always-present Active Queue section: one manual row or two imported rows.
 - Render slot-specific chooser and queue-validation errors.
 - Highlight the current job yellow and prove completed/stopped/failed states.
-- Assert zero backend mutation calls.
+- Assert zero backend mutation calls; manual CRAFT is guarded while an imported queue is staged.
 
 ### Batch 4 — bounded transport
 
 - Implement native Windows and Proton adapters independently of Lantern.
 - Add timeout, size, protocol, diagnostics, generation cancellation, and temp cleanup.
-- Integrate live fetch into queue validation only.
+- Integrate live fetch into queue validation only; reject non-canonical URLs before any process launch.
 
 ### Batch 5 — atomic queue installation
 
 - Preserve persistent manual settings, install both frozen jobs, activate the melee overlay, rebuild plan, verify, and rollback local/native selection changes on failure.
 - Preserve dump target and all workflow/resource-cap settings.
-- Keep CRAFT as a separate action.
+- Keep CRAFT as a separate action; Ctrl+V stages only after both live catalogues resolve, and native melee selection plus queue installation fail closed.
 
 ### Batch 6 — serial queue orchestration
 

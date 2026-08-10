@@ -76,6 +76,9 @@
     "test_games_lantern_transport.py": [
       {"name": "bounded_transport_timeout_status_size_and_cancel", "risk": "critical", "start_line": 10, "end_line": 89}
     ],
+    "test_games_lantern_import_controller.py": [
+      {"name": "atomic_import_lifecycle_and_stale_callback_guard", "risk": "critical", "start_line": 11, "end_line": 114}
+    ],
   "test_account_mutation_guard.py": [
     {"name": "service_level_account_mutation_exclusion", "risk": "critical", "start_line": 1, "end_line": 149}
   ],

@@ -93,6 +93,51 @@ local function safe_call(fn, ...)
 	return pcall(fn, ...)
 end
 
+local function keyboard_key_down(name)
+	local keyboard = rawget(_G, "Keyboard")
+	if not keyboard or type(keyboard.button_index) ~= "function" then
+		return false
+	end
+
+	local index_ok, index = pcall(keyboard.button_index, name)
+	if not index_ok or index == nil then
+		index_ok, index = pcall(keyboard.button_index, keyboard, name)
+	end
+
+	if not index_ok or index == nil then
+		return false
+	end
+
+	if type(keyboard.pressed) == "function" then
+		local ok, pressed = pcall(keyboard.pressed, index)
+
+		if ok then
+			return pressed == true
+		end
+
+		ok, pressed = pcall(keyboard.pressed, keyboard, index)
+		if ok then
+			return pressed == true
+		end
+	end
+
+	if type(keyboard.button) == "function" then
+		local ok, value = pcall(keyboard.button, index)
+
+		return ok and (value == true or tonumber(value) and tonumber(value) > 0) or false
+	end
+
+	return false
+end
+
+local function ctrl_v_down()
+	if not keyboard_key_down("v") then
+		return false
+	end
+
+	return keyboard_key_down("left ctrl") or keyboard_key_down("right ctrl") or keyboard_key_down("left_control") or keyboard_key_down("right_control")
+end
+
 local function safe_member(object, key)
 	if type(object) ~= "table" and type(object) ~= "userdata" then
 		return nil
@@ -774,6 +819,8 @@ function Panel.new(dependencies)
 		_start_purchase_search = dependencies.start_purchase_search,
 		_stop_active_run = dependencies.stop_active_run,
 		_games_lantern_queue_snapshot = dependencies.games_lantern_queue_snapshot,
+		_games_lantern_import_snapshot = dependencies.games_lantern_import_snapshot,
+		_games_lantern_paste = dependencies.games_lantern_paste,
 		_settings = dependencies.settings or {},
 		_localize = dependencies.localize,
 		_compact_perk_label = dependencies.compact_perk_label,
@@ -804,6 +851,7 @@ function Panel.new(dependencies)
 		_layout_defer_frames = 0,
 		_trait_catalog_key = nil,
 		_queue_signature = nil,
+		_ctrl_v_down = false,
 		_pivot_x = nil,
 		_pivot_y = nil,
 	}
@@ -1072,6 +1120,16 @@ function Panel.new(dependencies)
 		local ok, queue = safe_call(self._games_lantern_queue_snapshot)
 
 		return ok and type(queue) == "table" and queue or nil
+	end
+
+	function self:_games_lantern_import()
+		if type(self._games_lantern_import_snapshot) ~= "function" then
+			return nil
+		end
+
+		local ok, import_state = safe_call(self._games_lantern_import_snapshot)
+
+		return ok and type(import_state) == "table" and import_state or nil
 	end
 
 	function self:_games_lantern_queue_signature(queue)
@@ -1543,6 +1601,7 @@ function Panel.new(dependencies)
 		local selected = selected_weapon or localize("auto_crafter_panel_no_target", "no weapon selected")
 		local plan = self._plan or snapshot and snapshot.plan
 		local queue = self:_games_lantern_queue()
+		local imported = self:_games_lantern_import()
 		local entries = {
 			self:_entry(localize("auto_crafter_panel_title", "Auto Crafter Helper"), "", {
 				variant = "title",
@@ -1572,7 +1631,7 @@ function Panel.new(dependencies)
 					widget.content.checked = self:_setting("auto_crafter_show_status_hud", true) == true
 				end,
 			}),
-			self:_entry(localize("auto_crafter_panel_active_queue", "Active Queue"), queue and queue.state or "manual", {
+			self:_entry(localize("auto_crafter_panel_active_queue", "Active Queue"), imported and imported.state or queue and queue.state or "manual", {
 				selectable = false,
 				section_header = true,
 				section_id = SECTION_QUEUE,
@@ -1609,6 +1668,21 @@ function Panel.new(dependencies)
 				queue_index = 1,
 				queue_current = selected_weapon ~= nil,
 				variant = "queue_job",
+			}))
+		end
+
+		if type(self._games_lantern_paste) == "function" and not self._section_collapsed[SECTION_QUEUE] then
+			table.insert(entries, #entries, self:_entry("Paste Games Lantern build (Ctrl+V)", "", {
+				enabled = true,
+				selectable = true,
+				variant = "action",
+				action = function()
+					local ok, result = pcall(self._games_lantern_paste)
+
+					if not ok then
+						log("error", "Games Lantern paste failed: " .. tostring(result))
+					end
+				end,
 			}))
 		end
 		local function add_checkbox(setting_id, label_id, fallback, default_value, enabled, reflow, height)
@@ -2016,6 +2090,17 @@ function Panel.new(dependencies)
 
 		self._idle_poll_elapsed = 0
 		self:_update_pivot()
+		local ctrl_v = ctrl_v_down()
+
+		if ctrl_v and not self._ctrl_v_down and type(self._games_lantern_paste) == "function" then
+			local paste_ok, paste_error = pcall(self._games_lantern_paste)
+
+			if not paste_ok then
+				log("error", "Games Lantern Ctrl+V import failed: " .. tostring(paste_error))
+			end
+		end
+
+		self._ctrl_v_down = ctrl_v
 		local queue = self:_games_lantern_queue()
 		local queue_signature = self:_games_lantern_queue_signature(queue)
 

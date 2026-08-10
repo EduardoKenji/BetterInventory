@@ -4,6 +4,10 @@ local mod
 local controller
 local panel
 local games_lantern_queue
+local games_lantern_import
+local active_brunt_view
+local games_lantern_catalog_generation = 0
+local runtime_context
 local hud_lines = {}
 local presentation_dirty = true
 local presentation_elapsed = 0
@@ -21,6 +25,20 @@ local function monotonic_now()
 	end
 
 	return nil
+end
+
+local function running_under_wine()
+	local application = rawget(_G, "Application")
+	if not application or type(application.wine_version) ~= "function" then
+		return false
+	end
+
+	local ok, version = pcall(application.wine_version)
+	if not ok then
+		ok, version = pcall(application.wine_version, application)
+	end
+
+	return ok and version ~= nil and version ~= false
 end
 
 local function format_elapsed(seconds)
@@ -508,6 +526,14 @@ function AutoCrafter.configure(dependencies)
 	local ok_backend, Backend = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/backend")
 	local ok_context, Context = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/context")
 	local ok_games_lantern_queue, GamesLanternQueue = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/games_lantern/queue")
+	local ok_games_lantern_clipboard, GamesLanternClipboard = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/games_lantern/clipboard")
+	local ok_games_lantern_clipboard_host, GamesLanternClipboardHost = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/games_lantern/clipboard_host")
+	local ok_games_lantern_parser, GamesLanternParser = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/games_lantern/parser")
+	local ok_games_lantern_resolver, GamesLanternResolver = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/games_lantern/resolver")
+	local ok_games_lantern_transport, GamesLanternTransport = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/games_lantern/transport")
+	local ok_games_lantern_transport_win, GamesLanternTransportWin = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/games_lantern/transport_win")
+	local ok_games_lantern_transport_wine, GamesLanternTransportWine = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/games_lantern/transport_wine")
+	local ok_games_lantern_import, GamesLanternImport = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/games_lantern/import_controller")
 	local ok_panel, Panel = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/panel")
 	local ok_viewport_layout, ViewportLayout = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/viewport_layout")
 	local ok_layout_content, LayoutContent = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_content")
@@ -541,6 +567,11 @@ function AutoCrafter.configure(dependencies)
 		GamesLanternQueue = nil
 	end
 
+	local games_lantern_import_available = ok_games_lantern_clipboard and type(GamesLanternClipboard) == "table" and type(GamesLanternClipboard.extract_url) == "function" and ok_games_lantern_clipboard_host and type(GamesLanternClipboardHost) == "table" and type(GamesLanternClipboardHost.read) == "function" and ok_games_lantern_parser and type(GamesLanternParser) == "table" and type(GamesLanternParser.parse) == "function" and ok_games_lantern_resolver and type(GamesLanternResolver) == "table" and type(GamesLanternResolver.resolve_identities) == "function" and type(GamesLanternResolver.attach_catalogs) == "function" and ok_games_lantern_transport and type(GamesLanternTransport) == "table" and type(GamesLanternTransport.new) == "function" and ok_games_lantern_import and type(GamesLanternImport) == "table" and type(GamesLanternImport.new) == "function" and ((not running_under_wine() and ok_games_lantern_transport_win and type(GamesLanternTransportWin) == "table" and type(GamesLanternTransportWin.spawn) == "function") or (running_under_wine() and ok_games_lantern_transport_wine and type(GamesLanternTransportWine) == "table" and type(GamesLanternTransportWine.spawn) == "function"))
+	if not games_lantern_import_available then
+		log("error", "Games Lantern import modules unavailable; Ctrl+V import disabled.")
+	end
+
 	if not ok_panel or type(Panel) ~= "table" or type(Panel.new) ~= "function" then
 		log("error", "Auto Crafter Helper diagnostic panel unavailable; continuing without UI.")
 		Panel = nil
@@ -557,7 +588,156 @@ function AutoCrafter.configure(dependencies)
 	local context = Context.new({
 		is_brunt_view = dependencies.is_brunt_view,
 	})
+	runtime_context = context
 	games_lantern_queue = GamesLanternQueue and GamesLanternQueue.new() or nil
+
+	local function games_lantern_resolution_context()
+		local snapshot = controller and controller:snapshot()
+		local data = snapshot and snapshot.data or {}
+		local store = data.store or {}
+		local melee_offers = {}
+		local ranged_offers = {}
+
+		for _, offer in ipairs(store.offers or {}) do
+			local category = tostring(offer.weapon_category or offer.slot_type or "")
+
+			if category == "melee" or category == "slot_primary" then
+				melee_offers[#melee_offers + 1] = offer
+			elseif category == "ranged" or category == "slot_secondary" then
+				ranged_offers[#ranged_offers + 1] = offer
+			end
+		end
+
+		return {
+			active_archetype = runtime_context and runtime_context:current_archetype() or nil,
+			melee_offers = melee_offers,
+			ranged_offers = ranged_offers,
+		}
+	end
+
+	local function games_lantern_fetch_catalogs(identity, complete, generation)
+		games_lantern_catalog_generation = generation
+		local catalogs = {}
+		local index = 1
+		local settled = false
+
+		local function finish(result, error_value)
+			if settled or games_lantern_catalog_generation ~= generation then
+				return false
+			end
+
+			settled = true
+
+			return complete(result, error_value)
+		end
+
+		local function read_next()
+			if games_lantern_catalog_generation ~= generation then
+				return false
+			end
+
+			local job = identity and identity.jobs and identity.jobs[index]
+			if not job then
+				return finish(catalogs, nil)
+			end
+
+			local call_ok, promise = pcall(backend.discover_weapon_catalog, backend, job.offer)
+			if not call_ok or not promise or type(promise.next) ~= "function" or type(promise.catch) ~= "function" then
+				return finish(nil, call_ok and "catalog discovery returned no Promise" or tostring(promise))
+			end
+
+			promise:next(function(catalog)
+				if games_lantern_catalog_generation ~= generation then
+					return catalog
+				end
+
+				if type(catalog) ~= "table" or catalog.available ~= true then
+					finish(nil, "trait catalog unavailable for " .. tostring(job.master_id or index))
+
+					return catalog
+				end
+
+				local key = job.master_id or job.offer and (job.offer.master_id or job.offer.parent_pattern)
+				catalogs[key] = catalog
+				index = index + 1
+				read_next()
+
+				return catalog
+			end):catch(function(error_value)
+				finish(nil, tostring(error_value or "catalog discovery failed"))
+
+				return nil
+			end)
+
+			return true
+		end
+
+		return read_next()
+	end
+
+	local function games_lantern_cancel_catalogs(generation)
+		if games_lantern_catalog_generation == generation then
+			games_lantern_catalog_generation = games_lantern_catalog_generation + 1
+		end
+
+		return true
+	end
+
+	local function games_lantern_install_queue(build)
+		if not games_lantern_queue or not active_brunt_view or type(dependencies.select_offer) ~= "function" then
+			return false, "Brunt view or native selection unavailable"
+		end
+
+		local selected_ok, selected = pcall(dependencies.select_offer, active_brunt_view, build.jobs[1].offer)
+		if not selected_ok or selected ~= true then
+			return false, selected_ok and "melee offer selection failed" or selected
+		end
+
+		local installed_ok, installed, install_reason = pcall(games_lantern_queue.install, games_lantern_queue, build)
+		if not installed_ok or installed ~= true then
+			return false, installed_ok and install_reason or installed
+		end
+
+		return true
+	end
+
+	if games_lantern_import_available then
+		local adapter = running_under_wine() and GamesLanternTransportWine or GamesLanternTransportWin
+		local transport_ok, transport_instance = pcall(GamesLanternTransport.new, {
+			adapter = adapter,
+			clock = monotonic_now,
+			report = function(kind, payload)
+				presentation_dirty = true
+				log(kind == "transport_failed" and "error" or "info", "Games Lantern transport " .. tostring(kind) .. ".")
+			end,
+		})
+
+		if transport_ok and transport_instance then
+			games_lantern_import = GamesLanternImport.new({
+				clipboard_read = GamesLanternClipboardHost.read,
+				clipboard = GamesLanternClipboard,
+				transport = transport_instance,
+				parser = GamesLanternParser,
+				resolver = GamesLanternResolver,
+				get_resolution_context = games_lantern_resolution_context,
+				fetch_catalogs = games_lantern_fetch_catalogs,
+				cancel_catalogs = games_lantern_cancel_catalogs,
+				install_queue = games_lantern_install_queue,
+				queue_snapshot = function()
+					return games_lantern_queue and games_lantern_queue:snapshot() or nil
+				end,
+				report = function(kind, payload)
+					presentation_dirty = true
+					if kind == "import_failed" then
+						log("error", "Games Lantern import failed: " .. tostring(payload and payload.reason))
+						notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Games Lantern import failed: " .. tostring(payload and payload.reason))
+					else
+						log("info", "Games Lantern import " .. tostring(kind) .. ".")
+					end
+				end,
+			})
+		end
+	end
 
 	panel = Panel and Panel.new({
 		ViewElementGrid = dependencies.ViewElementGrid,
@@ -579,6 +759,12 @@ function AutoCrafter.configure(dependencies)
 			return controller and controller:preview_plan() or false
 		end,
 		start_purchase_search = function()
+			if games_lantern_import and games_lantern_import:snapshot().state == "staged" then
+				log("info", "Manual craft ignored while a Games Lantern queue is staged.")
+
+				return false
+			end
+
 			return controller and controller:start_purchase_search() or false
 		end,
 		stop_active_run = function()
@@ -586,6 +772,12 @@ function AutoCrafter.configure(dependencies)
 		end,
 		games_lantern_queue_snapshot = function()
 			return games_lantern_queue and games_lantern_queue:snapshot() or nil
+		end,
+		games_lantern_import_snapshot = function()
+			return games_lantern_import and games_lantern_import:snapshot() or nil
+		end,
+		games_lantern_paste = function()
+			return games_lantern_import and games_lantern_import:paste() or false
 		end,
 		localize = function(setting_id)
 			return localize(setting_id, setting_id)
@@ -619,6 +811,7 @@ function AutoCrafter.configure(dependencies)
 end
 
 function AutoCrafter.on_brunt_view_ready(view)
+	active_brunt_view = view
 	presentation_dirty = true
 
 	if not setting("auto_crafter_enable", false) then
@@ -637,7 +830,12 @@ function AutoCrafter.on_brunt_view_ready(view)
 end
 
 function AutoCrafter.on_view_closed(view)
+	active_brunt_view = nil
 	presentation_dirty = true
+
+	if games_lantern_import then
+		pcall(games_lantern_import.cancel, games_lantern_import, "brunt_view_closed")
+	end
 
 	if panel then
 		panel:detach()
@@ -647,7 +845,12 @@ function AutoCrafter.on_view_closed(view)
 end
 
 function AutoCrafter.on_context_exit(reason)
+	active_brunt_view = nil
 	presentation_dirty = true
+
+	if games_lantern_import then
+		pcall(games_lantern_import.cancel, games_lantern_import, reason or "context_exit")
+	end
 
 	if controller then
 		controller:on_context_exit(reason)
@@ -677,6 +880,14 @@ function AutoCrafter.update(dt)
 			log("error", "Auto Crafter panel update failed and was detached: " .. tostring(panel_error))
 			pcall(active_panel.detach, active_panel)
 			panel = nil
+		end
+	end
+
+	if games_lantern_import then
+		local import_ok, import_error = pcall(games_lantern_import.update, games_lantern_import)
+
+		if not import_ok then
+			log("error", "Games Lantern import update failed: " .. tostring(import_error))
 		end
 	end
 
@@ -745,8 +956,10 @@ end
 
 function AutoCrafter.is_busy()
 	local snapshot = AutoCrafter.snapshot()
+	local import_snapshot = games_lantern_import and games_lantern_import:snapshot()
+	local import_busy = import_snapshot and (import_snapshot.state == "fetching" or import_snapshot.state == "resolving_catalogues" or import_snapshot.state == "staged")
 
-	return snapshot and (snapshot.operation_inflight or snapshot.operation_quarantined or (tonumber(snapshot.auxiliary_inflight_count) or 0) > 0 or snapshot.search and snapshot.search.running or snapshot.phase3 and snapshot.phase3.running or snapshot.phase4 and snapshot.phase4.running or snapshot.mastery and snapshot.mastery.running) == true or false
+	return import_busy == true or snapshot and (snapshot.operation_inflight or snapshot.operation_quarantined or (tonumber(snapshot.auxiliary_inflight_count) or 0) > 0 or snapshot.search and snapshot.search.running or snapshot.phase3 and snapshot.phase3.running or snapshot.phase4 and snapshot.phase4.running or snapshot.mastery and snapshot.mastery.running) == true or false
 end
 
 function AutoCrafter.interrupt_for_external_mutation(kind)
