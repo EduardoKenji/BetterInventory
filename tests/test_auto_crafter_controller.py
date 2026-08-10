@@ -1810,6 +1810,42 @@ def main() -> None:
 			assert(controller:snapshot().reconciliation_required == true)
 		end
 
+		-- Read-only probe/catalog promises have bounded lifetimes. Late callbacks
+		-- after timeout are inert and cannot overwrite the visible failure.
+		do
+			local probe = pending()
+			local backend = {}
+			function backend:probe_snapshot() return probe end
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings(), reporter = reports()})
+			controller._active_view = {}
+			controller._view_is_valid = true
+			assert(controller:_schedule_probe("timeout_test") == true)
+			controller:update(1)
+			assert(controller:snapshot().probe_inflight == true)
+			controller:update(46)
+			assert(controller:snapshot().probe_inflight == false)
+			assert(controller:snapshot().phase == "probe_failed")
+			probe.next_callback(snapshot_with(nil))
+			assert(controller:snapshot().phase == "probe_failed")
+		end
+
+		do
+			local catalog = pending()
+			local backend = {}
+			function backend:discover_weapon_catalog(_) return catalog end
+			CurrentOffer = raw_offer()
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings(), reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = snapshot_with(nil)
+			controller._active_view = {}
+			controller._view_is_valid = true
+			assert(controller:_schedule_catalog("timeout_test") == true)
+			controller:update(46)
+			assert(controller:snapshot().catalog_inflight == false)
+			assert(controller:snapshot().phase == "trait_discovery_failed")
+			catalog.next_callback({available = true})
+			assert(controller:snapshot().phase == "trait_discovery_failed")
+		end
+
 		print("Auto Crafter controller Phase 2/3/4 behavior tests passed.")
         '''
     )

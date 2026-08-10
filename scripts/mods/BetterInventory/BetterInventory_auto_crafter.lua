@@ -7,6 +7,7 @@ local hud_lines = {}
 local presentation_dirty = true
 local presentation_elapsed = 0
 local presentation_snapshot
+local controller_faulted = false
 local PRESENTATION_CLOCK_INTERVAL = 0.25
 
 local function monotonic_now()
@@ -596,6 +597,7 @@ function AutoCrafter.configure(dependencies)
 		settings = settings_adapter(),
 		clock = clock_adapter(),
 	})
+	controller_faulted = false
 	presentation_dirty = true
 	presentation_elapsed = 0
 	presentation_snapshot = nil
@@ -655,11 +657,27 @@ end
 
 function AutoCrafter.update(dt)
 	if panel then
-		panel:update(dt)
+		local active_panel = panel
+		local panel_ok, panel_error = pcall(active_panel.update, active_panel, dt)
+
+		if not panel_ok then
+			log("error", "Auto Crafter panel update failed and was detached: " .. tostring(panel_error))
+			pcall(active_panel.detach, active_panel)
+			panel = nil
+		end
 	end
 
-	if controller then
-		controller:update(dt)
+	if controller and not controller_faulted then
+		local update_ok, update_error = pcall(controller.update, controller, dt)
+
+		if not update_ok then
+			controller_faulted = true
+			log("error", "Auto Crafter controller update failed; workflow disabled until reload: " .. tostring(update_error))
+			pcall(controller.on_context_exit, controller, "controller_update_crash")
+
+			return
+		end
+
 		presentation_elapsed = presentation_elapsed + math.max(tonumber(dt) or 0, 0)
 		local cached = presentation_snapshot
 		local run_active = cached and (cached.search and cached.search.running or cached.phase3 and cached.phase3.running or cached.phase4 and cached.phase4.running or cached.mastery and cached.mastery.running)
@@ -667,14 +685,33 @@ function AutoCrafter.update(dt)
 		local clock_due = presentation_elapsed >= PRESENTATION_CLOCK_INTERVAL and (run_active or completion_visible)
 
 		if presentation_dirty or cached == nil or clock_due then
-			local snapshot = controller:snapshot()
+			local snapshot_ok, snapshot = pcall(controller.snapshot, controller)
+
+			if not snapshot_ok then
+				log("error", "Auto Crafter snapshot presentation failed: " .. tostring(snapshot))
+
+				return
+			end
+
 			presentation_snapshot = snapshot
 			presentation_dirty = false
 			presentation_elapsed = 0
-			rebuild_hud_lines(snapshot)
+			local rebuild_ok, rebuild_error = pcall(rebuild_hud_lines, snapshot)
+
+			if not rebuild_ok then
+				presentation_dirty = true
+				log("error", "Auto Crafter HUD rebuild failed: " .. tostring(rebuild_error))
+			end
 
 			if panel and type(panel.sync_controller_snapshot) == "function" then
-				panel:sync_controller_snapshot(snapshot)
+				local sync_ok, sync_error = pcall(panel.sync_controller_snapshot, panel, snapshot)
+
+				if not sync_ok then
+					local active_panel = panel
+					log("error", "Auto Crafter panel sync failed and was detached: " .. tostring(sync_error))
+					pcall(active_panel.detach, active_panel)
+					panel = nil
+				end
 			end
 		end
 	end
@@ -685,13 +722,16 @@ function AutoCrafter.hud_lines()
 end
 
 function AutoCrafter.snapshot()
-	return controller and controller:snapshot() or {
+	local ok, snapshot = controller and pcall(controller.snapshot, controller)
+
+	return ok and snapshot or {
 		phase = "unavailable",
+		last_error = controller_faulted and "controller update failed; reload required" or nil,
 	}
 end
 
 function AutoCrafter.is_busy()
-	local snapshot = controller and controller:snapshot()
+	local snapshot = AutoCrafter.snapshot()
 
 	return snapshot and (snapshot.operation_inflight or (tonumber(snapshot.auxiliary_inflight_count) or 0) > 0 or snapshot.search and snapshot.search.running or snapshot.phase3 and snapshot.phase3.running or snapshot.phase4 and snapshot.phase4.running or snapshot.mastery and snapshot.mastery.running) == true or false
 end
@@ -710,6 +750,7 @@ function AutoCrafter.shutdown()
 		controller:shutdown()
 		controller = nil
 	end
+	controller_faulted = false
 end
 
 return AutoCrafter

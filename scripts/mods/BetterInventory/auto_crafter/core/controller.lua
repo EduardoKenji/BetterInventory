@@ -10,6 +10,7 @@ local MAX_BLESSING_SYNC_ATTEMPTS = 12
 local MAX_PURCHASE_CONFIRMATION_ATTEMPTS = 6
 local MAX_MASTERY_CLAIM_RETRIES = 2
 local MAX_OPERATION_SECONDS = 45
+local MAX_READ_SECONDS = 45
 local MAX_IDLE_WORKFLOW_SECONDS = 5
 local PHASE3_FODDER_BATCH_SIZE = 8
 local MAX_PARALLEL_FODDER_UPGRADES = 1
@@ -593,6 +594,8 @@ function Controller.new(dependencies)
 		_probe_scheduled = false,
 		_probe_inflight = false,
 		_probe_promise = nil,
+		_probe_request_elapsed = 0,
+		_probe_sequence = 0,
 		_phase = "idle",
 		_snapshot = nil,
 		_last_error = nil,
@@ -620,6 +623,7 @@ function Controller.new(dependencies)
 		_catalog = nil,
 		_catalog_generation = 0,
 		_catalog_inflight = false,
+		_catalog_elapsed = 0,
 		_catalog_key = nil,
 		_catalog_promise = nil,
 		_selected_target_key = nil,
@@ -1660,8 +1664,10 @@ function Controller.new(dependencies)
 			pcall(promise.cancel, promise)
 		end
 
+		self._probe_sequence = self._probe_sequence + 1
 		self._probe_inflight = false
 		self._probe_promise = nil
+		self._probe_request_elapsed = 0
 	end
 
 	local function cancel_catalog()
@@ -1674,6 +1680,7 @@ function Controller.new(dependencies)
 		self._catalog_generation = self._catalog_generation + 1
 		self._catalog_inflight = false
 		self._catalog_promise = nil
+		self._catalog_elapsed = 0
 	end
 
 	function self:_schedule_catalog(reason)
@@ -1701,6 +1708,7 @@ function Controller.new(dependencies)
 		self._catalog = nil
 		self._catalog_key = key
 		self._catalog_inflight = true
+		self._catalog_elapsed = 0
 		self._phase = "trait_discovery"
 		report("catalog_discovery_started", {
 			reason = reason or "target_changed",
@@ -1711,6 +1719,7 @@ function Controller.new(dependencies)
 
 		if not backend or type(backend.discover_weapon_catalog) ~= "function" then
 			self._catalog_inflight = false
+			self._catalog_elapsed = 0
 			self._catalog = {
 				available = false,
 				reason = "weapon trait discovery adapter unavailable",
@@ -1728,6 +1737,7 @@ function Controller.new(dependencies)
 
 		if not call_ok or not promise or type(promise.next) ~= "function" or type(promise.catch) ~= "function" then
 			self._catalog_inflight = false
+			self._catalog_elapsed = 0
 			self._catalog = {
 				available = false,
 				reason = call_ok and "backend returned no Promise" or tostring(promise),
@@ -1749,6 +1759,7 @@ function Controller.new(dependencies)
 				end
 
 				self._catalog_inflight = false
+				self._catalog_elapsed = 0
 				self._catalog_promise = nil
 				self._catalog = type(catalog) == "table" and catalog or {
 					available = false,
@@ -1768,6 +1779,7 @@ function Controller.new(dependencies)
 				end
 
 				self._catalog_inflight = false
+				self._catalog_elapsed = 0
 				self._catalog_promise = nil
 				self._catalog = {
 					available = false,
@@ -1788,6 +1800,7 @@ function Controller.new(dependencies)
 			self._catalog_promise = chain
 		else
 			self._catalog_inflight = false
+			self._catalog_elapsed = 0
 			self._catalog_promise = nil
 			self._catalog = {
 				available = false,
@@ -1818,21 +1831,22 @@ function Controller.new(dependencies)
 		return true
 	end
 
-	function self:_finish_probe(generation, snapshot)
-		if generation ~= self._generation then
+	function self:_finish_probe(generation, probe_sequence, snapshot)
+		if generation ~= self._generation or probe_sequence ~= self._probe_sequence then
 			return
 		end
 
 		local character_id = current_character_id()
 
 		if not snapshot_matches_character(snapshot, character_id) then
-			self:_fail_probe(generation, "active character changed during probe")
+			self:_fail_probe(generation, probe_sequence, "active character changed during probe")
 
 			return
 		end
 
 		self._probe_inflight = false
 		self._probe_promise = nil
+		self._probe_request_elapsed = 0
 		self._probe_scheduled = false
 		self._phase = "probe_complete"
 		self._snapshot = snapshot
@@ -1845,13 +1859,14 @@ function Controller.new(dependencies)
 		report("probe_complete", snapshot)
 	end
 
-	function self:_fail_probe(generation, error_value)
-		if generation ~= self._generation then
+	function self:_fail_probe(generation, probe_sequence, error_value)
+		if generation ~= self._generation or probe_sequence ~= self._probe_sequence then
 			return
 		end
 
 		self._probe_inflight = false
 		self._probe_promise = nil
+		self._probe_request_elapsed = 0
 		self._probe_scheduled = false
 		self._phase = "probe_failed"
 		self._last_error = error_value
@@ -1867,9 +1882,11 @@ function Controller.new(dependencies)
 		end
 
 		local backend = self._backend
+		self._probe_sequence = self._probe_sequence + 1
+		local probe_sequence = self._probe_sequence
 
 		if not backend or type(backend.probe_snapshot) ~= "function" then
-			self:_fail_probe(self._generation, "backend probe unavailable")
+			self:_fail_probe(self._generation, probe_sequence, "backend probe unavailable")
 
 			return false
 		end
@@ -1878,7 +1895,7 @@ function Controller.new(dependencies)
 		local call_ok, promise = safe_call(backend.probe_snapshot, backend)
 
 		if not call_ok or not promise or type(promise.next) ~= "function" or type(promise.catch) ~= "function" then
-			self:_fail_probe(generation, call_ok and "backend returned no Promise" or promise)
+			self:_fail_probe(generation, probe_sequence, call_ok and "backend returned no Promise" or promise)
 
 			return false
 		end
@@ -1887,22 +1904,23 @@ function Controller.new(dependencies)
 		self._probe_scheduled = false
 		self._phase = "probe_inflight"
 		self._probe_promise = promise
+		self._probe_request_elapsed = 0
 		report("probe_started", {})
 
 		local chain_ok, chain = pcall(function()
 			return promise:next(function(snapshot)
-				self:_finish_probe(generation, snapshot)
+				self:_finish_probe(generation, probe_sequence, snapshot)
 
 				return snapshot
 			end):catch(function(error_value)
-				self:_fail_probe(generation, error_value)
+				self:_fail_probe(generation, probe_sequence, error_value)
 
 				return error_value
 			end)
 		end)
 
 		if not chain_ok then
-			self:_fail_probe(generation, chain)
+			self:_fail_probe(generation, probe_sequence, chain)
 		else
 			self._probe_promise = chain
 		end
@@ -4536,6 +4554,41 @@ function Controller.new(dependencies)
 			end
 		end
 
+		if self._probe_inflight then
+			self._probe_request_elapsed = self._probe_request_elapsed + finite_dt(dt)
+
+			if self._probe_request_elapsed >= MAX_READ_SECONDS then
+				local generation = self._generation
+				local probe_sequence = self._probe_sequence
+				local promise = self._probe_promise
+				if promise and type(promise.cancel) == "function" then
+					pcall(promise.cancel, promise)
+				end
+				self:_fail_probe(generation, probe_sequence, string.format("read-only probe timed out after %.1f seconds", self._probe_request_elapsed))
+				self._probe_sequence = self._probe_sequence + 1
+			end
+		end
+
+		if self._catalog_inflight then
+			self._catalog_elapsed = self._catalog_elapsed + finite_dt(dt)
+
+			if self._catalog_elapsed >= MAX_READ_SECONDS then
+				local target = self:_selected_offer_summary()
+				local reason = string.format("weapon trait discovery timed out after %.1f seconds", self._catalog_elapsed)
+				cancel_catalog()
+				self._catalog = {
+					available = false,
+					reason = reason,
+				}
+				self._phase = "trait_discovery_failed"
+				self:_refresh_plan("catalog_timeout")
+				report("catalog_discovery_failed", {
+					error = reason,
+					target = target,
+				})
+			end
+		end
+
 		local phase3 = self._phase3
 
 		if phase3 and type(phase3.fast_upgrade_inflight) == "table" then
@@ -4640,6 +4693,7 @@ function Controller.new(dependencies)
 			phase = self._phase,
 			view_is_valid = self._view_is_valid,
 			probe_inflight = self._probe_inflight,
+			probe_elapsed_seconds = self._probe_request_elapsed,
 			probe_count = self._probe_count,
 			operation_inflight = self._operation_inflight,
 			operation_kind = self._operation_kind,
@@ -4656,6 +4710,7 @@ function Controller.new(dependencies)
 			plan = self._plan,
 			catalog = self._catalog,
 			catalog_inflight = self._catalog_inflight,
+			catalog_elapsed_seconds = self._catalog_elapsed,
 			last_purchased = self._last_purchased,
 			search = self._search,
 			phase3 = self._phase3,
