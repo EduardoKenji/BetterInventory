@@ -100,6 +100,20 @@
       "modules": ["BetterInventory_auto_crafter.lua", "BetterInventory_features.lua", "BetterInventory_operation_arbiter.lua"]
     },
     {
+      "name": "auto-crafter.blocks-external-account-writes",
+      "test": "test_account_mutation_guard.py",
+      "case": "service_level_account_mutation_exclusion",
+      "outcome": "native UI, Quick Level Mastery, and other service writes stop Auto Crafter between requests or fail closed while one is unresolved",
+      "modules": ["BetterInventory_account_mutation_guard.lua", "BetterInventory_auto_crafter.lua"]
+    },
+    {
+      "name": "auto-crafter.external-interrupt-is-atomic",
+      "test": "test_auto_crafter_controller.py",
+      "case": "external_account_mutation_exclusion",
+      "outcome": "external account writes can interrupt only between requests and cannot release an in-flight or auxiliary mutation gate",
+      "modules": ["BetterInventory_account_mutation_guard.lua", "BetterInventory_auto_crafter.lua"]
+    },
+    {
       "name": "auto-crafter.bounds-failures",
       "test": "test_auto_crafter_controller.py",
       "case": "resource_capacity_network_and_loading_failure_matrix",

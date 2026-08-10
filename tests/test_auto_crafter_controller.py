@@ -1846,6 +1846,30 @@ def main() -> None:
 			assert(controller:snapshot().phase == "trait_discovery_failed")
 		end
 
+		-- External account writes may stop an active workflow only between backend
+		-- requests. An unresolved mutation retains ownership and must be blocked by
+		-- the service guard until its original promise settles.
+		do
+			local controller = Controller.new({backend = {}, planner = Planner, context = context(), settings = base_settings(), reporter = reports()})
+			controller._active_view = {}
+			controller._view_is_valid = true
+			controller._search = {running = true}
+			assert(controller:interrupt_for_external_mutation("store.purchase_item") == true)
+			assert(controller:snapshot().search.running == false)
+			assert(controller:snapshot().phase == "external_mutation_store.purchase_item")
+
+			controller._search = {running = true}
+			controller._operation_inflight = true
+			assert(controller:interrupt_for_external_mutation("gear.delete_gear_batch") == false)
+			assert(controller:snapshot().search.running == true)
+			assert(controller:snapshot().operation_inflight == true)
+
+			controller._operation_inflight = false
+			controller._auxiliary_inflight_count = 1
+			assert(controller:interrupt_for_external_mutation("mastery.purchase_traits") == false)
+			assert(controller:snapshot().search.running == true)
+		end
+
 		print("Auto Crafter controller Phase 2/3/4 behavior tests passed.")
         '''
     )

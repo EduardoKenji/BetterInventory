@@ -22,6 +22,8 @@ def main() -> None:
     assert "controller_faulted = true" in source
     assert "pcall(rebuild_hud_lines, snapshot)" in source
     assert "pcall(panel.sync_controller_snapshot, panel, snapshot)" in source
+    assert "function AutoCrafter.interrupt_for_external_mutation(kind)" in source
+    assert "snapshot.operation_inflight or snapshot.operation_quarantined" in source
 
     print("Auto Crafter facade crash-containment checks passed.")
 

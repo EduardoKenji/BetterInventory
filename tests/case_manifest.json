@@ -24,7 +24,7 @@
     {"name": "complete_authoritative_inventory_summary", "risk": "critical", "start_line": 16, "end_line": 119}
   ],
   "test_auto_crafter_facade.py": [
-    {"name": "frame_update_crash_containment", "risk": "critical", "start_line": 14, "end_line": 25}
+    {"name": "frame_update_crash_containment", "risk": "critical", "start_line": 14, "end_line": 27}
   ],
   "test_auto_crafter_controller.py": [
     {"name": "presacrifice_mastery_baseline_convergence_and_level_event", "risk": "critical", "start_line": 190, "end_line": 269},
@@ -54,7 +54,11 @@
     {"name": "mutation_quarantine_and_fast_lane_interleavings", "risk": "critical", "start_line": 1596, "end_line": 1685},
     {"name": "auto_crafter_account_operation_ownership", "risk": "critical", "start_line": 1686, "end_line": 1747},
     {"name": "resource_capacity_network_and_loading_failure_matrix", "risk": "critical", "start_line": 1748, "end_line": 1814},
-    {"name": "bounded_probe_and_catalog_reads", "risk": "critical", "start_line": 1815, "end_line": 1848}
+    {"name": "bounded_probe_and_catalog_reads", "risk": "critical", "start_line": 1815, "end_line": 1848},
+    {"name": "external_account_mutation_exclusion", "risk": "critical", "start_line": 1849, "end_line": 1879}
+  ],
+  "test_account_mutation_guard.py": [
+    {"name": "service_level_account_mutation_exclusion", "risk": "critical", "start_line": 1, "end_line": 149}
   ],
   "test_contracts.py": [
     {"name": "guarded_lookup", "risk": "high", "start_line": 22, "end_line": 40},
