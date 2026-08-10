@@ -271,6 +271,10 @@ local COLOR_TARGETS = {
 }
 local color_target_by_setting_id = {}
 local option_dependency_entries = {}
+local option_dependency_entry_sets = {}
+local option_dependency_setting_ids = setmetatable({}, {
+	__mode = "k",
+})
 
 for i = 1, #COLOR_TARGETS do
 	local target = COLOR_TARGETS[i]
@@ -307,7 +311,7 @@ local function apply_color_preset(target)
 	end
 end
 
-local function set_option_enabled(entry, enabled, reason)
+local function apply_option_enabled(entry, enabled, reason)
 	if not entry then
 		return
 	end
@@ -316,6 +320,36 @@ local function set_option_enabled(entry, enabled, reason)
 	entry.disabled_by = enabled and nil or {
 		reason,
 	}
+end
+
+local function set_option_enabled(entry, enabled, reason)
+	local setting_id = entry and option_dependency_setting_ids[entry]
+	local entries = setting_id and option_dependency_entry_sets[setting_id]
+
+	if entries then
+		for bound_entry in pairs(entries) do
+			apply_option_enabled(bound_entry, enabled, reason)
+		end
+
+		return
+	end
+
+	apply_option_enabled(entry, enabled, reason)
+end
+
+local function bind_option_dependency_entry(setting_id, entry)
+	local entries = option_dependency_entry_sets[setting_id]
+
+	if not entries then
+		entries = setmetatable({}, {
+			__mode = "k",
+		})
+		option_dependency_entry_sets[setting_id] = entries
+	end
+
+	entries[entry] = true
+	option_dependency_setting_ids[entry] = setting_id
+	option_dependency_entries[setting_id] = entry
 end
 
 local function refresh_option_dependencies()
@@ -832,7 +866,10 @@ local function bind_option_dependencies(options_templates)
 		end
 
 		if setting_id then
-			option_dependency_entries[setting_id] = entry
+			-- DMF caches generated option-template trees per view instance. Keep every
+			-- still-live copy synchronized so a later generation cannot strand an
+			-- already-open options menu with stale dependency state.
+			bind_option_dependency_entry(setting_id, entry)
 		elseif type(entry) == "table" and entry._better_inventory_curio_character_slot_index then
 			option_dependency_entries.automatic_curio_character_entries[#option_dependency_entries.automatic_curio_character_entries + 1] = entry
 		end

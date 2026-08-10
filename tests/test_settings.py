@@ -1419,10 +1419,25 @@ def main() -> None:
     mod.on_setting_changed("character_overview_show_only_dump_stat")
     for dump_style_id in dump_style_ids:
         assert entries_by_id[dump_style_id].disabled is True
+
+    # DMF caches generated template trees per options-view instance. A later
+    # generation must not strand the still-live first tree with stale states.
+    replacement_entries = [lua.eval("table.clone")(entry) for entry in entries]
+    replacement_templates = lua.table_from(
+        {"settings": lua.table_from(replacement_entries)}
+    )
+    globals_.captured_options_hook(globals_.test_dmf, replacement_templates)
+    replacement_by_id = dict(zip(option_ids, replacement_entries))
+    for dump_style_id in dump_style_ids:
+        assert entries_by_id[dump_style_id].disabled is True
+        assert replacement_by_id[dump_style_id].disabled is True
+
     settings.character_overview_show_only_dump_stat = True
     mod.on_setting_changed("character_overview_show_only_dump_stat")
     for dump_style_id in dump_style_ids:
         assert entries_by_id[dump_style_id].disabled is False
+        assert replacement_by_id[dump_style_id].disabled is False
+    globals_.captured_options_hook(globals_.test_dmf, options_templates)
     settings.enable_character_overview_ranged_mirror = True
     settings.enable_character_overview_curio_details = False
     mod.on_setting_changed("enable_character_overview_curio_details")
