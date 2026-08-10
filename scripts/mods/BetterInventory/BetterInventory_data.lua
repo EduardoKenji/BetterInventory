@@ -965,7 +965,7 @@ return {
 								setting_id = "character_overview_dump_stat_horizontal_offset",
 								tooltip = "character_overview_dump_stat_horizontal_offset_tooltip",
 								type = "numeric",
-								default_value = 0,
+								default_value = -10,
 								range = {
 									-300,
 									300,
@@ -975,7 +975,7 @@ return {
 								setting_id = "character_overview_dump_stat_font_scale_percent",
 								tooltip = "character_overview_dump_stat_font_scale_percent_tooltip",
 								type = "numeric",
-								default_value = 100,
+								default_value = 130,
 								range = {
 									50,
 									200,

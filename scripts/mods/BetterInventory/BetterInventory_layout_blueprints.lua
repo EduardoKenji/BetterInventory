@@ -172,8 +172,8 @@ Blueprints.configure_native_item_blueprint = function(mod, item_blueprint, grid_
 			local dump_stat_style = dump_stat_pass and dump_stat_pass.style
 
 			if dump_stat_style then
-				local horizontal_offset = numeric_setting(mod, "character_overview_dump_stat_horizontal_offset", 0, -300, 300)
-				local font_scale = numeric_setting(mod, "character_overview_dump_stat_font_scale_percent", 100, 50, 200) * 0.01
+				local horizontal_offset = numeric_setting(mod, "character_overview_dump_stat_horizontal_offset", -10, -300, 300)
+				local font_scale = numeric_setting(mod, "character_overview_dump_stat_font_scale_percent", 130, 50, 200) * 0.01
 				local font_size = math.max(6, math.floor((tonumber(dump_stat_style.font_size) or 13) * font_scale + 0.5))
 				-- Anchor Character Overview labels by a shared center instead of their
 				-- right edge. Different abbreviations (for example MOB and STB) then

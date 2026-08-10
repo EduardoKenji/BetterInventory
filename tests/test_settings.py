@@ -2276,8 +2276,8 @@ def main() -> None:
     assert defaults["enable_character_overview_ranged_mirror"] is True
     assert defaults["character_overview_show_ranged_rarity_strip"] is True
     assert defaults["character_overview_show_only_dump_stat"] is False
-    assert defaults["character_overview_dump_stat_horizontal_offset"] == 0
-    assert defaults["character_overview_dump_stat_font_scale_percent"] == 100
+    assert defaults["character_overview_dump_stat_horizontal_offset"] == -10
+    assert defaults["character_overview_dump_stat_font_scale_percent"] == 130
     assert defaults["character_overview_dump_stat_color_preset"] == "pink"
     assert defaults["character_overview_dump_stat_color_r"] == 255
     assert defaults["character_overview_dump_stat_color_g"] == 94
