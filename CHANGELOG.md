@@ -7,6 +7,8 @@
 - Added large-inventory, malformed-record, delayed-visibility and interruption regression coverage.
 - Quarantined timed-out/ambiguous mutations until their original promises settle, preventing overlapping retries and silent continuation after character or context changes.
 - Added one shared account-operation gate across Auto Crafter, discard and Automatic Curio Buyer workflows.
+- Deferred scheduled automatic discard and Curio purchases until Auto Crafter fully releases account-operation ownership.
+- Guarded native/manual purchases, crafting, mastery, deletion and favorite changes: manual actions stop Auto Crafter between requests and fail closed while a request is unresolved.
 - Hardened inventory reuse with exact-mark identity, equipped-item exclusion, deterministic selection and live minimum-material preflight.
 - Added bounded read timeouts, frame-update crash containment, and integration coverage for resource exhaustion, full inventory, network stalls and loading transitions.
 
