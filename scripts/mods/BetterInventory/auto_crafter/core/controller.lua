@@ -605,6 +605,9 @@ function Controller.new(dependencies)
 		_operation_sequence = 0,
 		_operation_elapsed = 0,
 		_operation_started_at = nil,
+		_operation_quarantined = false,
+		_reconciliation_required = false,
+		_auxiliary_inflight_count = 0,
 		_search = nil,
 		_phase3 = nil,
 		_phase4 = nil,
@@ -1118,6 +1121,121 @@ function Controller.new(dependencies)
 		self._run_character_id = nil
 	end
 
+	function self:_quarantine_operation(generation, error_value)
+		if generation ~= self._generation or not self._operation_inflight then
+			return false
+		end
+
+		-- Mutations cannot be cancelled safely. Stop all continuations but retain
+		-- the dispatch gate until the original Promise settles.
+		self._generation = self._generation + 1
+		self._probe_scheduled = false
+		self._probe_elapsed = 0
+		self._purchase_confirmation = nil
+		self._operation_quarantined = true
+		self._reconciliation_required = true
+		error_value = error_description(error_value)
+		self._last_error = error_value
+		self._failure_at = clock_now()
+
+		if self._search then self._search.running = false end
+		if self._phase3 then self._phase3.running = false end
+		if self._phase4 then self._phase4.running = false end
+		if self._mastery then self._mastery.running = false end
+
+		self._phase = "operation_quarantined"
+		self._frozen_run_settings = nil
+		operation_report("operation_quarantined", {
+			error = error_value,
+			kind = self._operation_kind,
+		})
+
+		return true
+	end
+
+	function self:_abort_for_auxiliary_failure(generation, error_value)
+		if generation ~= self._generation then
+			return false
+		end
+
+		self._generation = self._generation + 1
+		self._probe_scheduled = false
+		self._probe_elapsed = 0
+		self._purchase_confirmation = nil
+		self._reconciliation_required = true
+		self._operation_quarantined = self._operation_inflight == true
+		error_value = error_description(error_value)
+		self._last_error = error_value
+		self._failure_at = clock_now()
+
+		if self._search then self._search.running = false end
+		if self._phase3 then self._phase3.running = false end
+		if self._phase4 then self._phase4.running = false end
+		if self._mastery then self._mastery.running = false end
+
+		self._phase = self._operation_inflight and "operation_quarantined" or "operation_reconciliation_required"
+		self._frozen_run_settings = nil
+		operation_report("operation_quarantined", {
+			error = error_value,
+			kind = "phase3_fast_upgrade",
+		})
+
+		if not self._operation_inflight and (self._auxiliary_inflight_count or 0) == 0 and self._view_is_valid then
+			self:_schedule_probe("auxiliary_failure")
+		end
+
+		return true
+	end
+
+	local function settle_operation(operation_sequence, kind)
+		if operation_sequence ~= self._operation_sequence or not self._operation_inflight then
+			return false, false, nil
+		end
+
+		local completed_at = clock_now()
+		local duration = completed_at and self._operation_started_at and math.max(0, completed_at - self._operation_started_at) or self._operation_elapsed
+		local was_quarantined = self._operation_quarantined
+		self._operation_inflight = false
+		self._operation_promise = nil
+		self._operation_kind = nil
+		self._operation_elapsed = 0
+		self._operation_started_at = nil
+		self._operation_quarantined = false
+		record_timing(kind, duration)
+
+		if was_quarantined then
+			self._run_character_id = nil
+			self._phase = "operation_reconciliation_required"
+			operation_report("operation_quarantine_settled", {
+				duration = duration,
+				kind = kind,
+			})
+
+			if self._view_is_valid then
+				self:_schedule_probe("operation_quarantine_settled")
+			end
+		end
+
+		return true, was_quarantined, duration
+	end
+
+	local function require_reconciliation(reason)
+		self._reconciliation_required = true
+		if self._search then self._search.running = false end
+		if self._phase3 then self._phase3.running = false end
+		if self._phase4 then self._phase4.running = false end
+		if self._mastery then self._mastery.running = false end
+		self._phase = "operation_reconciliation_required"
+		self._frozen_run_settings = nil
+		operation_report("operation_reconciliation_required", {
+			reason = reason,
+		})
+
+		if self._view_is_valid then
+			self:_schedule_probe(reason)
+		end
+	end
+
 	function self:_dispatch_operation(generation, kind, fn, on_success)
 		if not operation_context_valid(generation) or self._operation_inflight then
 			return false
@@ -1144,30 +1262,15 @@ function Controller.new(dependencies)
 
 		local chain_ok, chain = pcall(function()
 			return promise:next(function(result)
-				if generation ~= self._generation or operation_sequence ~= self._operation_sequence then
-					if operation_sequence == self._operation_sequence then
-						self._operation_inflight = false
-						self._operation_promise = nil
-						self._operation_kind = nil
-						self._operation_elapsed = 0
-						self._operation_started_at = nil
-					end
+				local settled, was_quarantined, duration = settle_operation(operation_sequence, kind)
 
-					return result
+				if settled and not was_quarantined and generation == self._generation and not operation_context_valid(generation) then
+					require_reconciliation("operation_settled_outside_frozen_context")
 				end
 
-				if not operation_context_valid(generation) then
+				if not settled or was_quarantined or generation ~= self._generation or not operation_context_valid(generation) then
 					return result
 				end
-
-				local completed_at = clock_now()
-				local duration = completed_at and self._operation_started_at and math.max(0, completed_at - self._operation_started_at) or self._operation_elapsed
-				self._operation_inflight = false
-				self._operation_promise = nil
-				self._operation_kind = nil
-				self._operation_elapsed = 0
-				self._operation_started_at = nil
-				record_timing(kind, duration)
 				operation_report("operation_completed", {
 					duration = duration,
 					kind = kind,
@@ -1181,15 +1284,9 @@ function Controller.new(dependencies)
 
 				return result
 			end):catch(function (error_value)
-				if generation ~= self._generation or operation_sequence ~= self._operation_sequence then
-					if operation_sequence == self._operation_sequence then
-						self._operation_inflight = false
-						self._operation_promise = nil
-						self._operation_kind = nil
-						self._operation_elapsed = 0
-						self._operation_started_at = nil
-					end
+				local settled, was_quarantined = settle_operation(operation_sequence, kind)
 
+				if not settled or was_quarantined or generation ~= self._generation then
 					return error_value
 				end
 
@@ -1231,7 +1328,7 @@ function Controller.new(dependencies)
 		local phase3 = self._phase3
 		local backend = self._backend
 
-		if not phase3 or not phase3.running or generation ~= self._generation or not backend or type(backend.upgrade_weapon_rarity) ~= "function" then
+		if not phase3 or not phase3.running or generation ~= self._generation or not operation_context_valid(generation) or not backend or type(backend.upgrade_weapon_rarity) ~= "function" then
 			return false
 		end
 
@@ -1259,22 +1356,46 @@ function Controller.new(dependencies)
 			local entry = {
 				candidate = candidate,
 				elapsed = 0,
+				generation = generation,
 				started_at = clock_now(),
 			}
 			phase3.fast_upgrade_inflight[gear_id] = entry
 			phase3.fast_upgrade_inflight_count = phase3.fast_upgrade_inflight_count + 1
+			self._auxiliary_inflight_count = (self._auxiliary_inflight_count or 0) + 1
 			operation_report("phase3_fast_upgrade_started", {
 				gear_id = gear_id,
 			})
 
+			local function settle_fast_entry()
+				if entry.settled then
+					return false
+				end
+
+				entry.settled = true
+				if phase3.fast_upgrade_inflight[gear_id] == entry then
+					phase3.fast_upgrade_inflight[gear_id] = nil
+					phase3.fast_upgrade_inflight_count = math.max(0, phase3.fast_upgrade_inflight_count - 1)
+				end
+				self._auxiliary_inflight_count = math.max(0, (self._auxiliary_inflight_count or 0) - 1)
+
+				if self._reconciliation_required and not self._operation_inflight and self._auxiliary_inflight_count == 0 and self._view_is_valid then
+					self._phase = "operation_reconciliation_required"
+					self:_schedule_probe("auxiliary_operation_settled")
+				end
+
+				return true
+			end
+
 			local chain_ok, chain_error = pcall(function ()
 				return promise:next(function (result)
-					if generation ~= self._generation or self._phase3 ~= phase3 or not phase3.running or phase3.fast_upgrade_inflight[gear_id] ~= entry then
+					if not settle_fast_entry() then
 						return result
 					end
 
-					phase3.fast_upgrade_inflight[gear_id] = nil
-					phase3.fast_upgrade_inflight_count = math.max(0, phase3.fast_upgrade_inflight_count - 1)
+					if generation ~= self._generation or self._phase3 ~= phase3 or not phase3.running or not operation_context_valid(generation) then
+						return result
+					end
+
 					phase3.fast_upgrade_states[gear_id] = "complete"
 					candidate.rarity = math.max(tonumber(candidate.rarity) or 0, REDEEMED_RARITY)
 					local completed_at = clock_now()
@@ -1289,10 +1410,8 @@ function Controller.new(dependencies)
 
 					return result
 				end):catch(function (error_value)
-					if generation == self._generation and self._phase3 == phase3 and phase3.running and phase3.fast_upgrade_inflight[gear_id] == entry then
-						phase3.fast_upgrade_inflight[gear_id] = nil
-						phase3.fast_upgrade_inflight_count = math.max(0, phase3.fast_upgrade_inflight_count - 1)
-						self:_operation_failed(generation, string.format("fast fodder rarity upgrade failed for gear %s: %s", tostring(gear_id), error_description(error_value)))
+					if settle_fast_entry() and generation == self._generation and self._phase3 == phase3 and phase3.running then
+						self:_abort_for_auxiliary_failure(generation, string.format("fast fodder rarity upgrade failed for gear %s: %s", tostring(gear_id), error_description(error_value)))
 					end
 
 					return error_value
@@ -1300,7 +1419,7 @@ function Controller.new(dependencies)
 			end)
 
 			if not chain_ok then
-				self:_operation_failed(generation, chain_error)
+				self:_abort_for_auxiliary_failure(generation, chain_error)
 
 				return false
 			end
@@ -1643,6 +1762,7 @@ function Controller.new(dependencies)
 		self._probe_scheduled = false
 		self._phase = "probe_complete"
 		self._snapshot = snapshot
+		self._reconciliation_required = false
 		self._last_error = nil
 		self._last_probe_at = type(self._clock.now) == "function" and self._clock:now() or nil
 		self._probe_count = self._probe_count + 1
@@ -1668,7 +1788,7 @@ function Controller.new(dependencies)
 	end
 
 	function self:_start_probe()
-		if self._probe_inflight or not self._view_is_valid or not probe_enabled() then
+		if self._probe_inflight or self._operation_inflight or (self._auxiliary_inflight_count or 0) > 0 or not self._view_is_valid or not probe_enabled() then
 			return false
 		end
 
@@ -3458,7 +3578,7 @@ function Controller.new(dependencies)
 			return false
 		end
 
-		if self._operation_inflight or self._search and self._search.running or self._mastery and self._mastery.running then
+		if self._operation_inflight or self._operation_quarantined or self._reconciliation_required or (self._auxiliary_inflight_count or 0) > 0 or self._search and self._search.running or self._mastery and self._mastery.running then
 			return false
 		end
 
@@ -4066,16 +4186,22 @@ function Controller.new(dependencies)
 	function self:on_character_changed(previous_character_id, character_id)
 		local had_active_run = run_is_active()
 		local failed_kind = self._operation_kind
+		local unresolved_operation = self._operation_inflight or (self._auxiliary_inflight_count or 0) > 0
 
 		invalidate_generation()
-		self._operation_sequence = self._operation_sequence + 1
 		cancel_probe()
 		cancel_catalog()
-		self._operation_inflight = false
-		self._operation_promise = nil
-		self._operation_kind = nil
-		self._operation_elapsed = 0
-		self._operation_started_at = nil
+		if unresolved_operation then
+			self._operation_quarantined = true
+			self._reconciliation_required = true
+		else
+			self._operation_sequence = self._operation_sequence + 1
+			self._operation_inflight = false
+			self._operation_promise = nil
+			self._operation_kind = nil
+			self._operation_elapsed = 0
+			self._operation_started_at = nil
+		end
 		self._snapshot = nil
 		self._plan = nil
 		self._search = nil
@@ -4148,6 +4274,10 @@ function Controller.new(dependencies)
 	end
 
 	function self:on_context_exit(reason)
+		if self._operation_inflight or (self._auxiliary_inflight_count or 0) > 0 then
+			self._operation_quarantined = true
+			self._reconciliation_required = true
+		end
 		invalidate_generation()
 		cancel_probe()
 		cancel_catalog()
@@ -4301,19 +4431,20 @@ function Controller.new(dependencies)
 		if self._operation_inflight then
 			self._operation_elapsed = self._operation_elapsed + finite_dt(dt)
 
-			if self._operation_elapsed >= MAX_OPERATION_SECONDS then
-				self:_operation_failed(self._generation, string.format("operation %s timed out after %.1f seconds", tostring(self._operation_kind), self._operation_elapsed))
+			if self._operation_elapsed >= MAX_OPERATION_SECONDS and not self._operation_quarantined then
+				self:_quarantine_operation(self._generation, string.format("operation %s timed out after %.1f seconds", tostring(self._operation_kind), self._operation_elapsed))
 			end
 		end
 
 		local phase3 = self._phase3
 
-		if phase3 and phase3.running and type(phase3.fast_upgrade_inflight) == "table" then
+		if phase3 and type(phase3.fast_upgrade_inflight) == "table" then
 			for gear_id, entry in pairs(phase3.fast_upgrade_inflight) do
 				entry.elapsed = (tonumber(entry.elapsed) or 0) + finite_dt(dt)
 
-				if entry.elapsed >= MAX_OPERATION_SECONDS then
-					self:_operation_failed(self._generation, string.format("fast fodder rarity upgrade timed out for gear %s after %.1f seconds", tostring(gear_id), entry.elapsed))
+				if entry.elapsed >= MAX_OPERATION_SECONDS and not entry.timed_out then
+					entry.timed_out = true
+					self:_abort_for_auxiliary_failure(entry.generation, string.format("fast fodder rarity upgrade timed out for gear %s after %.1f seconds", tostring(gear_id), entry.elapsed))
 
 					return
 				end
@@ -4414,6 +4545,9 @@ function Controller.new(dependencies)
 			operation_kind = self._operation_kind,
 			operation_sequence = self._operation_sequence,
 			operation_elapsed_seconds = self._operation_elapsed,
+			operation_quarantined = self._operation_quarantined,
+			reconciliation_required = self._reconciliation_required,
+			auxiliary_inflight_count = self._auxiliary_inflight_count,
 			operation_timings = self._operation_timings,
 			last_probe_at = self._last_probe_at,
 			last_error = self._last_error,

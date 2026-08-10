@@ -1562,6 +1562,96 @@ def main() -> None:
 			assert(backend.purchase_calls == 1 and backend.refresh_calls == 1)
 		end
 
+		-- A mutation settling while character identity is temporarily unavailable
+		-- must release its gate, suppress continuations, and require reconciliation.
+		do
+			local active_character = "character-1"
+			local operation = pending()
+			local followups = 0
+			local live_context = {
+				current_character_id = function() return active_character end,
+				is_valid_brunt_view = function() return true end,
+				is_runtime_valid = function() return true end,
+			}
+			local controller = Controller.new({backend = {}, planner = Planner, context = live_context, settings = base_settings(), reporter = reports()})
+			controller._active_view = {}
+			controller._view_is_valid = true
+			controller._search = {running = true}
+			controller._run_character_id = "character-1"
+			assert(controller:_dispatch_operation(0, "purchase", function() return operation end, function() followups = followups + 1 end) == true)
+			active_character = nil
+			operation.next_callback({items = {}})
+			local result = controller:snapshot()
+			assert(result.operation_inflight == false and result.reconciliation_required == true)
+			assert(followups == 0)
+		end
+
+		-- Timed-out account mutations remain quarantined until original Promise
+		-- settles; no new request can overlap ambiguous backend state.
+		do
+			local operation = pending()
+			local controller = Controller.new({backend = {}, planner = Planner, context = context(), settings = base_settings(), reporter = reports()})
+			controller._active_view = {}
+			controller._view_is_valid = true
+			controller._search = {running = true}
+			assert(controller:_dispatch_operation(0, "purchase", function() return operation end, function() error("stale continuation") end) == true)
+			controller:update(46)
+			assert(controller:snapshot().operation_inflight == true)
+			assert(controller:snapshot().operation_quarantined == true)
+			assert(controller:_dispatch_operation(controller._generation, "purchase", function() return resolved({}) end, function() end) == false)
+			operation.next_callback({items = {}})
+			assert(controller:snapshot().operation_inflight == false)
+			assert(controller:snapshot().reconciliation_required == true)
+		end
+
+		-- Fast-lane settlement outside valid runtime cannot pump another queued
+		-- crafting mutation.
+		do
+			local runtime_valid = true
+			local promises = {pending(), pending()}
+			local backend = {upgrade_calls = 0}
+			function backend:upgrade_weapon_rarity(_)
+				self.upgrade_calls = self.upgrade_calls + 1
+				return promises[self.upgrade_calls]
+			end
+			local live_context = {
+				current_character_id = function() return "character-1" end,
+				is_valid_brunt_view = function() return true end,
+				is_runtime_valid = function() return runtime_valid end,
+			}
+			local controller = Controller.new({backend = backend, planner = Planner, context = live_context, settings = base_settings(), reporter = reports()})
+			controller._phase3 = {running = true, fast_upgrade_head = 1, fast_upgrade_inflight = {}, fast_upgrade_inflight_count = 0, fast_upgrade_queue = {}, fast_upgrade_states = {}}
+			assert(controller:_phase3_queue_fast_upgrade(0, {gear_id = "fast-a", rarity = 1}) == true)
+			assert(controller:_phase3_queue_fast_upgrade(0, {gear_id = "fast-b", rarity = 1}) == true)
+			assert(backend.upgrade_calls == 1)
+			runtime_valid = false
+			promises[1].next_callback({})
+			assert(backend.upgrade_calls == 1)
+			assert(controller:snapshot().auxiliary_inflight_count == 0)
+		end
+
+		-- Fast-upgrade rejection while next purchase is pending quarantines the
+		-- purchase instead of clearing its gate and losing its late settlement.
+		do
+			local upgrade = pending()
+			local purchase = pending()
+			local backend = {}
+			function backend:upgrade_weapon_rarity(_) return upgrade end
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings(), reporter = reports()})
+			controller._active_view = {}
+			controller._view_is_valid = true
+			controller._phase3 = {running = true, fast_upgrade_head = 1, fast_upgrade_inflight = {}, fast_upgrade_inflight_count = 0, fast_upgrade_queue = {}, fast_upgrade_states = {}}
+			controller._search = {running = true}
+			assert(controller:_phase3_queue_fast_upgrade(0, {gear_id = "fast-fail", rarity = 1}) == true)
+			assert(controller:_dispatch_operation(0, "purchase", function() return purchase end, function() error("stale purchase continuation") end) == true)
+			upgrade.catch_callback("backend rejected")
+			assert(controller:snapshot().operation_inflight == true)
+			assert(controller:snapshot().operation_quarantined == true)
+			purchase.next_callback({items = {{gear_id = "late-purchase"}}})
+			assert(controller:snapshot().operation_inflight == false)
+			assert(controller:snapshot().reconciliation_required == true)
+		end
+
 		print("Auto Crafter controller Phase 2/3/4 behavior tests passed.")
         '''
     )
