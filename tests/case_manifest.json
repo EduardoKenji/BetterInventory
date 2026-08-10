@@ -89,7 +89,7 @@
   "test_layout.py": [
     {"name": "card_geometry", "risk": "high", "start_line": 621, "end_line": 1604},
     {"name": "content_and_resource_ownership", "risk": "high", "start_line": 1605, "end_line": 2352},
-    {"name": "integration_boundaries", "risk": "medium", "start_line": 2353, "end_line": 3743}
+    {"name": "integration_boundaries", "risk": "medium", "start_line": 2353, "end_line": 3815}
   ],
   "test_operation_arbiter.py": [
     {"name": "manual_automatic_exclusion", "risk": "critical", "start_line": 20, "end_line": 34},
@@ -100,8 +100,8 @@
     {"name": "schema_dependency_refresh", "risk": "high", "start_line": 19, "end_line": 384},
     {"name": "migration_preservation", "risk": "high", "start_line": 385, "end_line": 504},
     {"name": "character_overview_refresh", "risk": "high", "start_line": 505, "end_line": 1359},
-    {"name": "localization_contract", "risk": "medium", "start_line": 1360, "end_line": 2230},
-    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2231, "end_line": 2351}
+    {"name": "localization_contract", "risk": "medium", "start_line": 1360, "end_line": 2249},
+    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2250, "end_line": 2455}
   ],
   "test_settings_registry.py": [
     {"name": "duplicate_detection", "risk": "high", "start_line": 53, "end_line": 78},

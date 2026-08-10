@@ -1,5 +1,11 @@
 # BetterInventory changelog
 
+## 2.0.1 - 2026-08-09
+
+- Added optional Character Overview dump-stat-only weapon display.
+- Added horizontal offset, font scale, colour preset and RGB controls.
+- Centered dump-stat labels and fixed live enable/disable states.
+
 ## 2.0.0 - Unreleased
 
 ### Fixed / Added

@@ -1,0 +1,3 @@
+- Added optional Character Overview dump-stat-only weapon display.
+- Added offset, font scale, colour preset and RGB controls.
+- Centered labels and fixed live option enable/disable states.

@@ -245,6 +245,10 @@ local COLOR_TARGETS = {
 		default_preset = "pink",
 	},
 	{
+		prefix = "character_overview_dump_stat_color",
+		default_preset = "pink",
+	},
+	{
 		prefix = "curio_secondary_text_color",
 		default_preset = "neutral",
 	},
@@ -267,6 +271,14 @@ local COLOR_TARGETS = {
 }
 local color_target_by_setting_id = {}
 local option_dependency_entries = {}
+local CHARACTER_OVERVIEW_DUMP_STAT_STYLE_SETTING_IDS = {
+	character_overview_dump_stat_horizontal_offset = true,
+	character_overview_dump_stat_font_scale_percent = true,
+	character_overview_dump_stat_color_preset = true,
+	character_overview_dump_stat_color_r = true,
+	character_overview_dump_stat_color_g = true,
+	character_overview_dump_stat_color_b = true,
+}
 
 for i = 1, #COLOR_TARGETS do
 	local target = COLOR_TARGETS[i]
@@ -303,7 +315,7 @@ local function apply_color_preset(target)
 	end
 end
 
-local function set_option_enabled(entry, enabled, reason)
+local function apply_option_enabled(entry, enabled, reason)
 	if not entry then
 		return
 	end
@@ -312,6 +324,40 @@ local function set_option_enabled(entry, enabled, reason)
 	entry.disabled_by = enabled and nil or {
 		reason,
 	}
+end
+
+local function set_option_enabled(entry, enabled, reason)
+	apply_option_enabled(entry, enabled, reason)
+end
+
+local function character_overview_dump_stat_style_state()
+	local weapon_enabled = (mod:get("enable_character_overview_melee_mirror") ~= false or mod:get("enable_character_overview_ranged_mirror") ~= false)
+		and mod:get("enable_quick_look_card_single_column_integration") ~= false
+	local enabled = weapon_enabled and mod:get("character_overview_show_only_dump_stat") == true
+	local reason = weapon_enabled and mod:localize("option_requires_character_overview_dump_stat_only") or mod:localize("option_requires_character_overview_weapon_mirror")
+
+	return enabled, reason
+end
+
+local function bind_live_option_dependency(setting_id, entry)
+	if not CHARACTER_OVERVIEW_DUMP_STAT_STYLE_SETTING_IDS[setting_id] or entry._better_inventory_live_dependency_getter then
+		return
+	end
+
+	local original_get_function = entry.get_function
+
+	if type(original_get_function) ~= "function" then
+		return
+	end
+
+	entry._better_inventory_live_dependency_getter = true
+	entry.get_function = function(...)
+		local enabled, reason = character_overview_dump_stat_style_state()
+
+		apply_option_enabled(entry, enabled, reason)
+
+		return original_get_function(...)
+	end
 end
 
 local function refresh_option_dependencies()
@@ -423,8 +469,17 @@ local function refresh_option_dependencies()
 	local character_overview_curio_enabled = mod:get("enable_character_overview_curio_details") ~= false
 	local character_overview_melee_enabled = mod:get("enable_character_overview_melee_mirror") ~= false
 	local character_overview_ranged_enabled = mod:get("enable_character_overview_ranged_mirror") ~= false
+	local character_overview_weapon_enabled = (character_overview_melee_enabled or character_overview_ranged_enabled) and mod:get("enable_quick_look_card_single_column_integration") ~= false
+	local character_overview_dump_stat_enabled, character_overview_dump_stat_reason = character_overview_dump_stat_style_state()
 	set_option_enabled(option_dependency_entries.character_overview_show_melee_rarity_strip, character_overview_melee_enabled, mod:localize("option_requires_character_overview_melee_mirror"))
 	set_option_enabled(option_dependency_entries.character_overview_show_ranged_rarity_strip, character_overview_ranged_enabled, mod:localize("option_requires_character_overview_ranged_mirror"))
+	set_option_enabled(option_dependency_entries.character_overview_show_only_dump_stat, character_overview_weapon_enabled, mod:localize("option_requires_character_overview_weapon_mirror"))
+	set_option_enabled(option_dependency_entries.character_overview_dump_stat_horizontal_offset, character_overview_dump_stat_enabled, character_overview_dump_stat_reason)
+	set_option_enabled(option_dependency_entries.character_overview_dump_stat_font_scale_percent, character_overview_dump_stat_enabled, character_overview_dump_stat_reason)
+	set_option_enabled(option_dependency_entries.character_overview_dump_stat_color_preset, character_overview_dump_stat_enabled, character_overview_dump_stat_reason)
+	set_option_enabled(option_dependency_entries.character_overview_dump_stat_color_r, character_overview_dump_stat_enabled, character_overview_dump_stat_reason)
+	set_option_enabled(option_dependency_entries.character_overview_dump_stat_color_g, character_overview_dump_stat_enabled, character_overview_dump_stat_reason)
+	set_option_enabled(option_dependency_entries.character_overview_dump_stat_color_b, character_overview_dump_stat_enabled, character_overview_dump_stat_reason)
 	set_option_enabled(option_dependency_entries.character_overview_show_curio_rarity_strip, character_overview_curio_enabled, mod:localize("option_requires_character_overview_curio_details"))
 	set_option_enabled(option_dependency_entries.character_overview_curio_name_mode, character_overview_curio_enabled, mod:localize("option_requires_character_overview_curio_details"))
 	set_option_enabled(option_dependency_entries.character_overview_curio_font_size_percent, character_overview_curio_enabled, mod:localize("option_requires_character_overview_curio_details"))
@@ -660,6 +715,13 @@ local function bind_option_dependencies(options_templates)
 		"global_store_single_column_modifier_vertical_position",
 		"character_overview_show_melee_rarity_strip",
 		"character_overview_show_ranged_rarity_strip",
+		"character_overview_show_only_dump_stat",
+		"character_overview_dump_stat_horizontal_offset",
+		"character_overview_dump_stat_font_scale_percent",
+		"character_overview_dump_stat_color_preset",
+		"character_overview_dump_stat_color_r",
+		"character_overview_dump_stat_color_g",
+		"character_overview_dump_stat_color_b",
 		"character_overview_show_curio_rarity_strip",
 		"character_overview_use_native_curio_overlay",
 		"character_overview_curio_name_mode",
@@ -812,6 +874,10 @@ local function bind_option_dependencies(options_templates)
 
 		if setting_id then
 			option_dependency_entries[setting_id] = entry
+			-- DMF caches generated option trees per view. Let each live child derive
+			-- its disabled state from saved settings while DMF polls its getter, so
+			-- neither an older nor newer tree can strand the opposite visual state.
+			bind_live_option_dependency(setting_id, entry)
 		elseif type(entry) == "table" and entry._better_inventory_curio_character_slot_index then
 			option_dependency_entries.automatic_curio_character_entries[#option_dependency_entries.automatic_curio_character_entries + 1] = entry
 		end

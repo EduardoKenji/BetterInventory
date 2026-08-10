@@ -133,6 +133,7 @@ Blueprints.configure_native_item_blueprint = function(mod, item_blueprint, grid_
 	local show_curio_item_level = setting(mod, "show_curio_item_level", true)
 	local quick_look_card_present = has_quick_look_card_passes(pass_template)
 	local weapon_modifier_stats_enabled = setting(mod, "enable_quick_look_card_single_column_integration", true)
+	local character_overview_dump_stat_only = configuration.character_overview == true and setting(mod, "character_overview_show_only_dump_stat", false)
 	local managed_native_card = not quick_look_card_present or weapon_modifier_stats_enabled
 
 	if global_store and pass_by_style_id(pass_template, "character_info_text") and not pass_by_style_id(pass_template, "character_class_icon_text") then
@@ -163,7 +164,33 @@ Blueprints.configure_native_item_blueprint = function(mod, item_blueprint, grid_
 	end
 
 	if weapon_modifier_stats_enabled then
-		configure_native_quick_look_card_passes(mod, pass_template, card_width, item_size[2] or 110, configuration)
+		if character_overview_dump_stat_only then
+			disable_quick_look_card_passes(pass_template)
+			add_quick_look_card_grid_pass(mod, pass_template, card_width, 12, "above_power", 0)
+
+			local dump_stat_pass = pass_by_style_id(pass_template, content.QUICK_LOOK_CARD_DUMP_STAT_ID)
+			local dump_stat_style = dump_stat_pass and dump_stat_pass.style
+
+			if dump_stat_style then
+				local horizontal_offset = numeric_setting(mod, "character_overview_dump_stat_horizontal_offset", -10, -300, 300)
+				local font_scale = numeric_setting(mod, "character_overview_dump_stat_font_scale_percent", 130, 50, 200) * 0.01
+				local font_size = math.max(6, math.floor((tonumber(dump_stat_style.font_size) or 13) * font_scale + 0.5))
+				-- Anchor Character Overview labels by a shared center instead of their
+				-- right edge. Different abbreviations (for example MOB and STB) then
+				-- remain optically aligned, and the user offset moves that center.
+				local label_width = math.max(52, 2 * math.ceil(font_size * 1.625))
+				local center_from_card_right = -34 + horizontal_offset
+
+				dump_stat_style.offset[1] = center_from_card_right + label_width * 0.5
+				dump_stat_style.font_size = font_size
+				dump_stat_style.size[1] = label_width
+				dump_stat_style.size[2] = font_size + 4
+				dump_stat_style.text_horizontal_alignment = "center"
+				dump_stat_style.text_color = configured_text_color(mod, "character_overview_dump_stat_color", QUICK_LOOK_CARD_HIGHLIGHT_COLOR)
+			end
+		else
+			configure_native_quick_look_card_passes(mod, pass_template, card_width, item_size[2] or 110, configuration)
+		end
 	end
 
 	local display_name = pass_by_style_id(pass_template, "display_name")
@@ -379,7 +406,7 @@ Blueprints.configure_native_item_blueprint = function(mod, item_blueprint, grid_
 
 	if managed_native_card then
 		add_custom_content_passes(mod, pass_template, card_width, 15, sub_display_name and sub_display_name.style, {
-			content_right = weapon_modifier_stats_enabled and 260 or nil,
+			content_right = weapon_modifier_stats_enabled and not character_overview_dump_stat_only and 260 or nil,
 			native_single_column = true,
 			global_store = global_store,
 			store_item = store_item,
@@ -411,7 +438,7 @@ Blueprints.configure_native_item_blueprint = function(mod, item_blueprint, grid_
 		native_single_column = true,
 		global_store = global_store,
 		store_item = store_item,
-		weapon_modifier_stats_enabled = weapon_modifier_stats_enabled,
+		weapon_modifier_stats_enabled = weapon_modifier_stats_enabled and not character_overview_dump_stat_only,
 	})
 
 	return item_size

@@ -1,4 +1,4 @@
-local MOD_VERSION = "2.0.0"
+local MOD_VERSION = "2.0.1"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
@@ -954,6 +954,66 @@ return {
 								tooltip = "character_overview_show_ranged_rarity_strip_tooltip",
 								type = "checkbox",
 								default_value = true,
+							},
+							{
+								setting_id = "character_overview_show_only_dump_stat",
+								tooltip = "character_overview_show_only_dump_stat_tooltip",
+								type = "checkbox",
+								default_value = false,
+							},
+							{
+								setting_id = "character_overview_dump_stat_horizontal_offset",
+								tooltip = "character_overview_dump_stat_horizontal_offset_tooltip",
+								type = "numeric",
+								default_value = -10,
+								range = {
+									-300,
+									300,
+								},
+							},
+							{
+								setting_id = "character_overview_dump_stat_font_scale_percent",
+								tooltip = "character_overview_dump_stat_font_scale_percent_tooltip",
+								type = "numeric",
+								default_value = 130,
+								range = {
+									50,
+									200,
+								},
+							},
+							{
+								setting_id = "character_overview_dump_stat_color_preset",
+								tooltip = "character_overview_dump_stat_color_preset_tooltip",
+								type = "dropdown",
+								default_value = "pink",
+								options = color_preset_options(),
+							},
+							{
+								setting_id = "character_overview_dump_stat_color_r",
+								type = "numeric",
+								default_value = 255,
+								range = {
+									0,
+									255,
+								},
+							},
+							{
+								setting_id = "character_overview_dump_stat_color_g",
+								type = "numeric",
+								default_value = 94,
+								range = {
+									0,
+									255,
+								},
+							},
+							{
+								setting_id = "character_overview_dump_stat_color_b",
+								type = "numeric",
+								default_value = 132,
+								range = {
+									0,
+									255,
+								},
 							},
 							{
 								setting_id = "enable_character_overview_curio_details",
