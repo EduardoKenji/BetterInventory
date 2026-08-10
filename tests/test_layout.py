@@ -3359,7 +3359,14 @@ def main() -> None:
     assert overview_dump_pass is not None
     assert overview_dump_pass.style.horizontal_alignment == "right"
     assert overview_dump_pass.style.vertical_alignment == "bottom"
-    assert overview_dump_pass.style.offset[1] == -53
+    assert overview_dump_pass.style.text_horizontal_alignment == "center"
+    assert overview_dump_pass.style.offset[1] == -46
+    assert overview_dump_pass.style.size[1] == 66
+    assert (
+        overview_dump_pass.style.offset[1]
+        - overview_dump_pass.style.size[1] * 0.5
+        == -79
+    )
     assert overview_dump_pass.style.font_size == 20
     assert overview_dump_pass.style.size[2] == 24
     assert tuple(

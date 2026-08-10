@@ -175,10 +175,17 @@ Blueprints.configure_native_item_blueprint = function(mod, item_blueprint, grid_
 				local horizontal_offset = numeric_setting(mod, "character_overview_dump_stat_horizontal_offset", 0, -300, 300)
 				local font_scale = numeric_setting(mod, "character_overview_dump_stat_font_scale_percent", 100, 50, 200) * 0.01
 				local font_size = math.max(6, math.floor((tonumber(dump_stat_style.font_size) or 13) * font_scale + 0.5))
+				-- Anchor Character Overview labels by a shared center instead of their
+				-- right edge. Different abbreviations (for example MOB and STB) then
+				-- remain optically aligned, and the user offset moves that center.
+				local label_width = math.max(52, 2 * math.ceil(font_size * 1.625))
+				local center_from_card_right = -34 + horizontal_offset
 
-				dump_stat_style.offset[1] = (dump_stat_style.offset[1] or 0) + horizontal_offset
+				dump_stat_style.offset[1] = center_from_card_right + label_width * 0.5
 				dump_stat_style.font_size = font_size
+				dump_stat_style.size[1] = label_width
 				dump_stat_style.size[2] = font_size + 4
+				dump_stat_style.text_horizontal_alignment = "center"
 				dump_stat_style.text_color = configured_text_color(mod, "character_overview_dump_stat_color", QUICK_LOOK_CARD_HIGHLIGHT_COLOR)
 			end
 		else
