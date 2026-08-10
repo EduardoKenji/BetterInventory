@@ -245,6 +245,10 @@ local COLOR_TARGETS = {
 		default_preset = "pink",
 	},
 	{
+		prefix = "character_overview_dump_stat_color",
+		default_preset = "pink",
+	},
+	{
 		prefix = "curio_secondary_text_color",
 		default_preset = "neutral",
 	},
@@ -424,9 +428,17 @@ local function refresh_option_dependencies()
 	local character_overview_melee_enabled = mod:get("enable_character_overview_melee_mirror") ~= false
 	local character_overview_ranged_enabled = mod:get("enable_character_overview_ranged_mirror") ~= false
 	local character_overview_weapon_enabled = (character_overview_melee_enabled or character_overview_ranged_enabled) and mod:get("enable_quick_look_card_single_column_integration") ~= false
+	local character_overview_dump_stat_enabled = character_overview_weapon_enabled and mod:get("character_overview_show_only_dump_stat") == true
+	local character_overview_dump_stat_reason = character_overview_weapon_enabled and mod:localize("option_requires_character_overview_dump_stat_only") or mod:localize("option_requires_character_overview_weapon_mirror")
 	set_option_enabled(option_dependency_entries.character_overview_show_melee_rarity_strip, character_overview_melee_enabled, mod:localize("option_requires_character_overview_melee_mirror"))
 	set_option_enabled(option_dependency_entries.character_overview_show_ranged_rarity_strip, character_overview_ranged_enabled, mod:localize("option_requires_character_overview_ranged_mirror"))
 	set_option_enabled(option_dependency_entries.character_overview_show_only_dump_stat, character_overview_weapon_enabled, mod:localize("option_requires_character_overview_weapon_mirror"))
+	set_option_enabled(option_dependency_entries.character_overview_dump_stat_horizontal_offset, character_overview_dump_stat_enabled, character_overview_dump_stat_reason)
+	set_option_enabled(option_dependency_entries.character_overview_dump_stat_font_scale_percent, character_overview_dump_stat_enabled, character_overview_dump_stat_reason)
+	set_option_enabled(option_dependency_entries.character_overview_dump_stat_color_preset, character_overview_dump_stat_enabled, character_overview_dump_stat_reason)
+	set_option_enabled(option_dependency_entries.character_overview_dump_stat_color_r, character_overview_dump_stat_enabled, character_overview_dump_stat_reason)
+	set_option_enabled(option_dependency_entries.character_overview_dump_stat_color_g, character_overview_dump_stat_enabled, character_overview_dump_stat_reason)
+	set_option_enabled(option_dependency_entries.character_overview_dump_stat_color_b, character_overview_dump_stat_enabled, character_overview_dump_stat_reason)
 	set_option_enabled(option_dependency_entries.character_overview_show_curio_rarity_strip, character_overview_curio_enabled, mod:localize("option_requires_character_overview_curio_details"))
 	set_option_enabled(option_dependency_entries.character_overview_curio_name_mode, character_overview_curio_enabled, mod:localize("option_requires_character_overview_curio_details"))
 	set_option_enabled(option_dependency_entries.character_overview_curio_font_size_percent, character_overview_curio_enabled, mod:localize("option_requires_character_overview_curio_details"))
@@ -663,6 +675,12 @@ local function bind_option_dependencies(options_templates)
 		"character_overview_show_melee_rarity_strip",
 		"character_overview_show_ranged_rarity_strip",
 		"character_overview_show_only_dump_stat",
+		"character_overview_dump_stat_horizontal_offset",
+		"character_overview_dump_stat_font_scale_percent",
+		"character_overview_dump_stat_color_preset",
+		"character_overview_dump_stat_color_r",
+		"character_overview_dump_stat_color_g",
+		"character_overview_dump_stat_color_b",
 		"character_overview_show_curio_rarity_strip",
 		"character_overview_use_native_curio_overlay",
 		"character_overview_curio_name_mode",

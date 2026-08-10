@@ -325,6 +325,11 @@ def main() -> None:
 				enable_quick_look_card_single_column_integration = true,
 				enable_quick_look_card_grid_integration = true,
 				character_overview_show_only_dump_stat = false,
+				character_overview_dump_stat_horizontal_offset = 0,
+				character_overview_dump_stat_font_scale_percent = 100,
+				character_overview_dump_stat_color_r = 255,
+				character_overview_dump_stat_color_g = 94,
+				character_overview_dump_stat_color_b = 132,
 				quick_look_card_single_column_font_size = 14,
 				quick_look_card_single_column_label_value_gap = 1,
 				quick_look_card_single_column_horizontal_position = 79,
@@ -3322,6 +3327,11 @@ def main() -> None:
     # Character Overview can replace its five maximum-potential modifier rows
     # with the same single dump-stat label used by grid and Armoury cards.
     mod.settings.character_overview_show_only_dump_stat = True
+    mod.settings.character_overview_dump_stat_horizontal_offset = -45
+    mod.settings.character_overview_dump_stat_font_scale_percent = 150
+    mod.settings.character_overview_dump_stat_color_r = 10
+    mod.settings.character_overview_dump_stat_color_g = 20
+    mod.settings.character_overview_dump_stat_color_b = 30
     dump_only_overview_blueprint = lua.eval("table.clone")(
         globals_.raw_test_blueprint
     )
@@ -3349,6 +3359,12 @@ def main() -> None:
     assert overview_dump_pass is not None
     assert overview_dump_pass.style.horizontal_alignment == "right"
     assert overview_dump_pass.style.vertical_alignment == "bottom"
+    assert overview_dump_pass.style.offset[1] == -53
+    assert overview_dump_pass.style.font_size == 20
+    assert overview_dump_pass.style.size[2] == 24
+    assert tuple(
+        overview_dump_pass.style.text_color[index] for index in range(1, 5)
+    ) == (255, 10, 20, 30)
     assert sum(
         dump_only_overview_blueprint.pass_template[index].style_id
         == "better_inventory_quick_look_card_dump_stat"
@@ -3376,6 +3392,11 @@ def main() -> None:
     assert overview_dump_pass.visibility_function(overview_dump_content) is True
     assert overview_dump_content.better_inventory_quick_look_card_dump_stat == "CLVD 60"
     mod.settings.character_overview_show_only_dump_stat = False
+    mod.settings.character_overview_dump_stat_horizontal_offset = 0
+    mod.settings.character_overview_dump_stat_font_scale_percent = 100
+    mod.settings.character_overview_dump_stat_color_r = 255
+    mod.settings.character_overview_dump_stat_color_g = 94
+    mod.settings.character_overview_dump_stat_color_b = 132
 
     name_it_weapon_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     layout.configure_item_blueprint(mod, name_it_weapon_blueprint, 640)

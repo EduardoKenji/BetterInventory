@@ -42,6 +42,12 @@ def main() -> None:
 			enable_quick_look_card_single_column_integration = true,
 			enable_quick_look_card_grid_integration = true,
 			character_overview_show_only_dump_stat = false,
+			character_overview_dump_stat_horizontal_offset = 0,
+			character_overview_dump_stat_font_scale_percent = 100,
+			character_overview_dump_stat_color_preset = "pink",
+			character_overview_dump_stat_color_r = 255,
+			character_overview_dump_stat_color_g = 94,
+			character_overview_dump_stat_color_b = 132,
 			quick_look_card_single_column_font_size = 14,
 			quick_look_card_single_column_label_value_gap = 1,
 			quick_look_card_single_column_horizontal_position = 79,
@@ -1122,6 +1128,19 @@ def main() -> None:
 
     settings.weapon_modifier_lowest_color_preset = "pink"
     mod.on_setting_changed("weapon_modifier_lowest_color_preset")
+
+    settings.character_overview_dump_stat_color_preset = "green"
+    mod.on_setting_changed("character_overview_dump_stat_color_preset")
+    assert (
+        settings.character_overview_dump_stat_color_r,
+        settings.character_overview_dump_stat_color_g,
+        settings.character_overview_dump_stat_color_b,
+    ) == (105, 210, 120)
+    settings.character_overview_dump_stat_color_b = 77
+    mod.on_setting_changed("character_overview_dump_stat_color_b")
+    assert settings.character_overview_dump_stat_color_preset == "custom"
+    settings.character_overview_dump_stat_color_preset = "pink"
+    mod.on_setting_changed("character_overview_dump_stat_color_preset")
     assert (
         settings.weapon_modifier_lowest_color_r,
         settings.weapon_modifier_lowest_color_g,
@@ -1181,6 +1200,12 @@ def main() -> None:
 		"character_overview_show_melee_rarity_strip",
 		"character_overview_show_ranged_rarity_strip",
 		"character_overview_show_only_dump_stat",
+		"character_overview_dump_stat_horizontal_offset",
+		"character_overview_dump_stat_font_scale_percent",
+		"character_overview_dump_stat_color_preset",
+		"character_overview_dump_stat_color_r",
+		"character_overview_dump_stat_color_g",
+		"character_overview_dump_stat_color_b",
 		"character_overview_show_curio_rarity_strip",
 		"character_overview_use_native_curio_overlay",
 		"character_overview_curio_name_mode",
@@ -1361,21 +1386,40 @@ def main() -> None:
     assert entries_by_id["character_overview_show_melee_rarity_strip"].disabled is False
     assert entries_by_id["character_overview_show_ranged_rarity_strip"].disabled is False
     assert entries_by_id["character_overview_show_only_dump_stat"].disabled is False
+    for dump_style_id in (
+        "character_overview_dump_stat_horizontal_offset",
+        "character_overview_dump_stat_font_scale_percent",
+        "character_overview_dump_stat_color_preset",
+        "character_overview_dump_stat_color_r",
+        "character_overview_dump_stat_color_g",
+        "character_overview_dump_stat_color_b",
+    ):
+        assert entries_by_id[dump_style_id].disabled is False
     assert entries_by_id["character_overview_show_curio_rarity_strip"].disabled is False
     assert entries_by_id["character_overview_use_native_curio_overlay"].disabled is False
     settings.enable_character_overview_melee_mirror = False
     settings.enable_character_overview_ranged_mirror = False
     mod.on_setting_changed("enable_character_overview_ranged_mirror")
     assert entries_by_id["character_overview_show_only_dump_stat"].disabled is True
+    assert entries_by_id["character_overview_dump_stat_horizontal_offset"].disabled is True
     settings.enable_character_overview_melee_mirror = True
     mod.on_setting_changed("enable_character_overview_melee_mirror")
     assert entries_by_id["character_overview_show_only_dump_stat"].disabled is False
+    assert entries_by_id["character_overview_dump_stat_horizontal_offset"].disabled is False
     settings.enable_quick_look_card_single_column_integration = False
     mod.on_setting_changed("enable_quick_look_card_single_column_integration")
     assert entries_by_id["character_overview_show_only_dump_stat"].disabled is True
+    assert entries_by_id["character_overview_dump_stat_horizontal_offset"].disabled is True
     settings.enable_quick_look_card_single_column_integration = True
     mod.on_setting_changed("enable_quick_look_card_single_column_integration")
     assert entries_by_id["character_overview_show_only_dump_stat"].disabled is False
+    assert entries_by_id["character_overview_dump_stat_horizontal_offset"].disabled is False
+    settings.character_overview_show_only_dump_stat = False
+    mod.on_setting_changed("character_overview_show_only_dump_stat")
+    assert entries_by_id["character_overview_dump_stat_horizontal_offset"].disabled is True
+    settings.character_overview_show_only_dump_stat = True
+    mod.on_setting_changed("character_overview_show_only_dump_stat")
+    assert entries_by_id["character_overview_dump_stat_horizontal_offset"].disabled is False
     settings.enable_character_overview_ranged_mirror = True
     settings.enable_character_overview_curio_details = False
     mod.on_setting_changed("enable_character_overview_curio_details")
@@ -1869,6 +1913,12 @@ def main() -> None:
 			"character_overview_show_melee_rarity_strip",
 			"character_overview_show_ranged_rarity_strip",
 			"character_overview_show_only_dump_stat",
+			"character_overview_dump_stat_horizontal_offset",
+			"character_overview_dump_stat_font_scale_percent",
+			"character_overview_dump_stat_color_preset",
+			"character_overview_dump_stat_color_r",
+			"character_overview_dump_stat_color_g",
+			"character_overview_dump_stat_color_b",
 			"character_overview_show_curio_rarity_strip",
 			"character_overview_use_native_curio_overlay",
 			"character_overview_curio_name_mode",
@@ -2110,6 +2160,12 @@ def main() -> None:
         "enable_character_overview_ranged_mirror",
         "character_overview_show_ranged_rarity_strip",
         "character_overview_show_only_dump_stat",
+        "character_overview_dump_stat_horizontal_offset",
+        "character_overview_dump_stat_font_scale_percent",
+        "character_overview_dump_stat_color_preset",
+        "character_overview_dump_stat_color_r",
+        "character_overview_dump_stat_color_g",
+        "character_overview_dump_stat_color_b",
         "enable_character_overview_curio_details",
         "character_overview_show_curio_rarity_strip",
         "character_overview_use_native_curio_overlay",
@@ -2198,6 +2254,12 @@ def main() -> None:
     assert defaults["enable_character_overview_ranged_mirror"] is True
     assert defaults["character_overview_show_ranged_rarity_strip"] is True
     assert defaults["character_overview_show_only_dump_stat"] is False
+    assert defaults["character_overview_dump_stat_horizontal_offset"] == 0
+    assert defaults["character_overview_dump_stat_font_scale_percent"] == 100
+    assert defaults["character_overview_dump_stat_color_preset"] == "pink"
+    assert defaults["character_overview_dump_stat_color_r"] == 255
+    assert defaults["character_overview_dump_stat_color_g"] == 94
+    assert defaults["character_overview_dump_stat_color_b"] == 132
     assert defaults["enable_character_overview_curio_details"] is True
     assert defaults["character_overview_show_curio_rarity_strip"] is True
     assert defaults["character_overview_use_native_curio_overlay"] is False

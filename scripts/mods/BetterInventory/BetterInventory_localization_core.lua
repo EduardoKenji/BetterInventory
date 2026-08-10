@@ -212,6 +212,36 @@ local localization = {
 	option_requires_character_overview_weapon_mirror = {
 		en = "Requires a mirrored Character Overview weapon card and single-column weapon modifiers.",
 	},
+	character_overview_dump_stat_horizontal_offset = {
+		en = "Dump stat horizontal offset",
+	},
+	character_overview_dump_stat_horizontal_offset_tooltip = {
+		en = "Moves the Character Overview dump-stat label horizontally from -300 to 300 pixels. Negative values move left; positive values move right.",
+	},
+	character_overview_dump_stat_font_scale_percent = {
+		en = "Dump stat font scale (%%)",
+	},
+	character_overview_dump_stat_font_scale_percent_tooltip = {
+		en = "Scales the Character Overview dump-stat label from 50%% to 200%% without changing other card text.",
+	},
+	character_overview_dump_stat_color_preset = {
+		en = "Dump stat font colour preset",
+	},
+	character_overview_dump_stat_color_preset_tooltip = {
+		en = "Sets the Character Overview dump-stat label colour. Editing an RGB channel selects Custom.",
+	},
+	character_overview_dump_stat_color_r = {
+		en = "Dump stat font colour red",
+	},
+	character_overview_dump_stat_color_g = {
+		en = "Dump stat font colour green",
+	},
+	character_overview_dump_stat_color_b = {
+		en = "Dump stat font colour blue",
+	},
+	option_requires_character_overview_dump_stat_only = {
+		en = "Requires Show only weapon dump stat.",
+	},
 	enable_character_overview_curio_details = {
 		en = "Show detailed Curio card on character overview",
 	},

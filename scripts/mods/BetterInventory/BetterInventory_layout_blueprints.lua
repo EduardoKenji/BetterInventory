@@ -167,6 +167,20 @@ Blueprints.configure_native_item_blueprint = function(mod, item_blueprint, grid_
 		if character_overview_dump_stat_only then
 			disable_quick_look_card_passes(pass_template)
 			add_quick_look_card_grid_pass(mod, pass_template, card_width, 12, "above_power", 0)
+
+			local dump_stat_pass = pass_by_style_id(pass_template, content.QUICK_LOOK_CARD_DUMP_STAT_ID)
+			local dump_stat_style = dump_stat_pass and dump_stat_pass.style
+
+			if dump_stat_style then
+				local horizontal_offset = numeric_setting(mod, "character_overview_dump_stat_horizontal_offset", 0, -300, 300)
+				local font_scale = numeric_setting(mod, "character_overview_dump_stat_font_scale_percent", 100, 50, 200) * 0.01
+				local font_size = math.max(6, math.floor((tonumber(dump_stat_style.font_size) or 13) * font_scale + 0.5))
+
+				dump_stat_style.offset[1] = (dump_stat_style.offset[1] or 0) + horizontal_offset
+				dump_stat_style.font_size = font_size
+				dump_stat_style.size[2] = font_size + 4
+				dump_stat_style.text_color = configured_text_color(mod, "character_overview_dump_stat_color", QUICK_LOOK_CARD_HIGHLIGHT_COLOR)
+			end
 		else
 			configure_native_quick_look_card_passes(mod, pass_template, card_width, item_size[2] or 110, configuration)
 		end
