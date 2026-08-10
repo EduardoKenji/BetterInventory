@@ -1652,6 +1652,68 @@ def main() -> None:
 			assert(controller:snapshot().reconciliation_required == true)
 		end
 
+		-- Auto Crafter must join the shared account-operation arbiter. A held
+		-- owner blocks the run before any purchase is dispatched.
+		do
+			local backend = {purchase_calls = 0}
+			function backend:purchase_offer(_)
+				self.purchase_calls = self.purchase_calls + 1
+				return resolved({})
+			end
+			local account_operation = {
+				acquire = function() return nil end,
+				is_current = function() return false end,
+			}
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings(), reporter = reports(), account_operation = account_operation, get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = snapshot_with(nil)
+			controller._active_view = {}
+			controller._view_is_valid = true
+			CurrentOffer = raw_offer()
+			assert(controller:start_purchase_search() == false)
+			assert(backend.purchase_calls == 0)
+		end
+
+		-- STOP cannot release shared ownership while its already-dispatched
+		-- mutation is unresolved. The late settlement releases exactly once.
+		do
+			local purchase = pending()
+			local held_token = nil
+			local releases = 0
+			local account_operation = {
+				acquire = function(owner)
+					assert(owner == "auto_crafter" and held_token == nil)
+					held_token = 91
+					return held_token
+				end,
+				is_current = function(owner, token)
+					return owner == "auto_crafter" and token == held_token
+				end,
+				release = function(owner, token)
+					assert(owner == "auto_crafter" and token == held_token)
+					releases = releases + 1
+					held_token = nil
+					return true
+				end,
+			}
+			local backend = {purchase_calls = 0}
+			function backend:purchase_offer(_)
+				self.purchase_calls = self.purchase_calls + 1
+				return purchase
+			end
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings(), reporter = reports(), account_operation = account_operation, get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = snapshot_with(nil)
+			controller._active_view = {}
+			controller._view_is_valid = true
+			CurrentOffer = raw_offer()
+			assert(controller:start_purchase_search() == true)
+			assert(held_token == 91 and backend.purchase_calls == 1)
+			assert(controller:stop_active_run() == true)
+			assert(held_token == 91 and releases == 0)
+			purchase.next_callback({items = {summarized_item("late-owned-purchase", 0, 60)}})
+			assert(held_token == nil and releases == 1)
+			assert(controller:snapshot().operation_inflight == false)
+		end
+
 		print("Auto Crafter controller Phase 2/3/4 behavior tests passed.")
         '''
     )

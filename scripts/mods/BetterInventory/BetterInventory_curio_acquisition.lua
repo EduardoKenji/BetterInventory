@@ -1628,6 +1628,10 @@ CurioAcquisition.oldest_read_request_age = function()
 	return state.oldest_read_request_age
 end
 
+CurioAcquisition.is_busy = function()
+	return state.started == true
+end
+
 CurioAcquisition._test = {
 	ARCHETYPE_SETTINGS = ARCHETYPE_SETTINGS,
 	PRIMARY_TRAITS = PRIMARY_TRAITS,

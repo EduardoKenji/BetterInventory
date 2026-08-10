@@ -1207,7 +1207,8 @@ function mod.update(dt)
 		Features.update_morningstar_auto_discard(mod, dt)
 	end
 	if CurioAcquisition.needs_update(mod) then
-		CurioAcquisition.update(mod, dt, Features.morningstar_auto_discard_is_busy(mod))
+		local auto_crafter_busy = AutoCrafter and type(AutoCrafter.is_busy) == "function" and AutoCrafter.is_busy()
+		CurioAcquisition.update(mod, dt, Features.morningstar_auto_discard_is_busy(mod) or auto_crafter_busy)
 	end
 	if type(Diagnostics.update) == "function" and type(Diagnostics.enabled) == "function" and Diagnostics.enabled() then
 		Diagnostics.update(mod, dt, CurioAcquisition, Features)

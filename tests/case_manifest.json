@@ -48,7 +48,8 @@
     {"name": "configuration_change_closes_dispatch", "risk": "critical", "start_line": 1363, "end_line": 1380},
     {"name": "explicit_stop_and_idle_cpu_amortization", "risk": "critical", "start_line": 1381, "end_line": 1486},
     {"name": "purchase_visibility_reconciliation", "risk": "critical", "start_line": 1487, "end_line": 1564},
-    {"name": "mutation_quarantine_and_fast_lane_interleavings", "risk": "critical", "start_line": 1565, "end_line": 1654}
+    {"name": "mutation_quarantine_and_fast_lane_interleavings", "risk": "critical", "start_line": 1565, "end_line": 1654},
+    {"name": "auto_crafter_account_operation_ownership", "risk": "critical", "start_line": 1655, "end_line": 1715}
   ],
   "test_contracts.py": [
     {"name": "guarded_lookup", "risk": "high", "start_line": 22, "end_line": 40},

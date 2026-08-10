@@ -1713,6 +1713,13 @@ local function acquire_discard_transaction(owner, view)
 	return discard_transaction:acquire(owner, view)
 end
 
+-- Shared destructive/account-operation gate. Auto Crafter uses same owner token
+-- as manual and automatic discard so BetterInventory cannot mutate one wallet or
+-- gear collection through two workflows at once.
+Features.acquire_account_operation = function(owner, view)
+	return acquire_discard_transaction(owner, view)
+end
+
 Features.remove_discard_popup = function(popup_id)
 	return discard_transaction:remove_popup(popup_id)
 end
@@ -1731,6 +1738,10 @@ local function release_discard_transaction(owner, token)
 	return released == true
 end
 
+Features.release_account_operation = function(owner, token)
+	return release_discard_transaction(owner, token)
+end
+
 -- GearService settlement is observed by the main-module bridge. This module
 -- only owns the promise callback and releases the matching transaction token.
 Features.observe_manual_discard_settlement = function(promise)
@@ -1743,6 +1754,10 @@ end
 
 local function discard_transaction_is_current(owner, token)
 	return discard_transaction:is_current(owner, token)
+end
+
+Features.account_operation_is_current = function(owner, token)
+	return discard_transaction_is_current(owner, token)
 end
 
 Features.discard_popup_is_active = function(popup_id)

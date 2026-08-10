@@ -577,6 +577,7 @@ function Controller.new(dependencies)
 
 	local self = {
 		_backend = dependencies.backend,
+		_account_operation = dependencies.account_operation or {},
 		_planner = dependencies.planner,
 		_get_selected_offer = dependencies.get_selected_offer,
 		_context = dependencies.context or {},
@@ -632,6 +633,7 @@ function Controller.new(dependencies)
 		_operation_timings = {},
 		_observed_character_id = nil,
 		_run_character_id = nil,
+		_account_operation_token = nil,
 	}
 
 	local function report(kind, payload)
@@ -770,6 +772,75 @@ function Controller.new(dependencies)
 
 	local function run_is_active()
 		return self._search and self._search.running == true or self._phase3 and self._phase3.running == true or self._phase4 and self._phase4.running == true or self._mastery and self._mastery.running == true
+	end
+
+	local ACCOUNT_OPERATION_OWNER = "auto_crafter"
+
+	local function account_operation_is_current()
+		if self._account_operation_token == nil then
+			return true
+		end
+
+		local is_current = self._account_operation.is_current
+		local ok, current = safe_call(is_current, ACCOUNT_OPERATION_OWNER, self._account_operation_token)
+
+		return type(is_current) ~= "function" or ok and current == true
+	end
+
+	local function acquire_account_operation()
+		if self._account_operation_token ~= nil then
+			return account_operation_is_current(), account_operation_is_current() and nil or "Auto Crafter lost account-operation ownership"
+		end
+
+		local conflict = self._account_operation.conflict
+		if type(conflict) == "function" then
+			local conflict_ok, reason = safe_call(conflict, self._active_view)
+
+			if not conflict_ok then
+				return false, "account-operation conflict check failed: " .. tostring(reason)
+			elseif reason then
+				return false, tostring(reason)
+			end
+		end
+
+		local acquire = self._account_operation.acquire
+		if type(acquire) ~= "function" then
+			return true
+		end
+
+		local ok, token = safe_call(acquire, ACCOUNT_OPERATION_OWNER, self._active_view)
+		if not ok or token == nil then
+			return false, ok and "another BetterInventory account operation is active" or tostring(token)
+		end
+
+		self._account_operation_token = token
+
+		return true
+	end
+
+	local function release_account_operation()
+		local token = self._account_operation_token
+		if token == nil then
+			return true
+		end
+
+		local release = self._account_operation.release
+		self._account_operation_token = nil
+		if type(release) ~= "function" then
+			return true
+		end
+
+		local ok, released = safe_call(release, ACCOUNT_OPERATION_OWNER, token)
+
+		return ok and released ~= false
+	end
+
+	local function release_account_operation_if_settled()
+		if not run_is_active() and not self._operation_inflight and (self._auxiliary_inflight_count or 0) == 0 then
+			return release_account_operation()
+		end
+
+		return false
 	end
 
 	local function pending_deferred_count(phase3)
@@ -1031,7 +1102,7 @@ function Controller.new(dependencies)
 	local function operation_context_valid(generation)
 		local character_id = current_character_id()
 
-		return generation == self._generation and runtime_context_valid() and mutations_enabled() and (self._run_character_id == nil or character_id == self._run_character_id)
+		return generation == self._generation and runtime_context_valid() and mutations_enabled() and account_operation_is_current() and (self._run_character_id == nil or character_id == self._run_character_id)
 	end
 
 	local function operation_report(kind, payload)
@@ -1119,6 +1190,7 @@ function Controller.new(dependencies)
 
 		self._frozen_run_settings = nil
 		self._run_character_id = nil
+		release_account_operation_if_settled()
 	end
 
 	function self:_quarantine_operation(generation, error_value)
@@ -1215,6 +1287,7 @@ function Controller.new(dependencies)
 				self:_schedule_probe("operation_quarantine_settled")
 			end
 		end
+		release_account_operation_if_settled()
 
 		return true, was_quarantined, duration
 	end
@@ -1382,6 +1455,7 @@ function Controller.new(dependencies)
 					self._phase = "operation_reconciliation_required"
 					self:_schedule_probe("auxiliary_operation_settled")
 				end
+				release_account_operation_if_settled()
 
 				return true
 			end
@@ -1870,6 +1944,7 @@ function Controller.new(dependencies)
 			reason = reason or "search_stopped",
 			search = search,
 		})
+		release_account_operation_if_settled()
 	end
 
 	function self:_stop_active_run(reason)
@@ -1921,6 +1996,7 @@ function Controller.new(dependencies)
 				search = search,
 			})
 		end
+		release_account_operation_if_settled()
 
 		return true
 	end
@@ -2102,6 +2178,7 @@ function Controller.new(dependencies)
 			phase4 = phase4,
 			resource_costs = resource_costs,
 		})
+		release_account_operation_if_settled()
 
 		return true
 	end
@@ -3650,6 +3727,15 @@ function Controller.new(dependencies)
 			return false
 		end
 
+		local acquired, ownership_error = acquire_account_operation()
+		if not acquired then
+			operation_report("mutation_blocked", {
+				reason = ownership_error or "another account operation is active",
+			})
+
+			return false
+		end
+
 		self._generation = self._generation + 1
 		self._run_character_id = character_id
 		self._observed_character_id = character_id
@@ -4044,6 +4130,15 @@ function Controller.new(dependencies)
 			return false
 		end
 
+		local acquired, ownership_error = acquire_account_operation()
+		if not acquired then
+			operation_report("mutation_blocked", {
+				reason = ownership_error or "another account operation is active",
+			})
+
+			return false
+		end
+
 		self._generation = self._generation + 1
 		self._run_elapsed = 0
 		self._run_started_at = clock_now()
@@ -4236,6 +4331,7 @@ function Controller.new(dependencies)
 		if self._view_is_valid and self._active_view and context_is_valid(self._active_view) then
 			self:_schedule_probe("character_changed")
 		end
+		release_account_operation_if_settled()
 	end
 
 	function self:on_view_closed(view)
@@ -4269,6 +4365,7 @@ function Controller.new(dependencies)
 		self._planner_signature = nil
 		self._frozen_run_settings = nil
 		self._run_character_id = nil
+		release_account_operation_if_settled()
 
 		return true
 	end
@@ -4302,6 +4399,7 @@ function Controller.new(dependencies)
 		report("context_exit", {
 			reason = reason or "game_state_exit",
 		})
+		release_account_operation_if_settled()
 	end
 
 	function self:on_setting_changed(setting_id)
@@ -4600,6 +4698,7 @@ function Controller.new(dependencies)
 		self._frozen_run_settings = nil
 		self._run_elapsed = 0
 		self._run_started_at = nil
+		release_account_operation_if_settled()
 	end
 
 	return self

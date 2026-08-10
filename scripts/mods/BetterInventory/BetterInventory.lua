@@ -331,6 +331,30 @@ end
 
 AutoCrafter.configure({
 	mod = mod,
+	account_operation = {
+		acquire = function(owner, view)
+			return type(Features.acquire_account_operation) == "function" and Features.acquire_account_operation(owner, view) or nil
+		end,
+		conflict = function(view)
+			if type(CurioAcquisition.is_busy) == "function" and CurioAcquisition.is_busy() then
+				return "automatic Curio acquisition is already running"
+			end
+
+			-- Quick Level Mastery and native vendor purchases expose their active
+			-- request through this field. Never start over that wallet mutation.
+			if auto_crafter_read(view, "_purchase_promise") ~= nil then
+				return "another Brunt purchase is already in flight"
+			end
+
+			return nil
+		end,
+		is_current = function(owner, token)
+			return type(Features.account_operation_is_current) ~= "function" or Features.account_operation_is_current(owner, token)
+		end,
+		release = function(owner, token)
+			return type(Features.release_account_operation) ~= "function" or Features.release_account_operation(owner, token)
+		end,
+	},
 	get_selected_offer = function(view)
 		return view and view._previewed_offer
 	end,

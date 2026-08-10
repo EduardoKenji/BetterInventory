@@ -583,6 +583,7 @@ function AutoCrafter.configure(dependencies)
 	}) or nil
 
 	controller = Controller.new({
+		account_operation = dependencies.account_operation,
 		backend = backend,
 		planner = Planner,
 		context = context,
@@ -687,6 +688,12 @@ function AutoCrafter.snapshot()
 	return controller and controller:snapshot() or {
 		phase = "unavailable",
 	}
+end
+
+function AutoCrafter.is_busy()
+	local snapshot = controller and controller:snapshot()
+
+	return snapshot and (snapshot.operation_inflight or (tonumber(snapshot.auxiliary_inflight_count) or 0) > 0 or snapshot.search and snapshot.search.running or snapshot.phase3 and snapshot.phase3.running or snapshot.phase4 and snapshot.phase4.running or snapshot.mastery and snapshot.mastery.running) == true or false
 end
 
 function AutoCrafter.shutdown()
