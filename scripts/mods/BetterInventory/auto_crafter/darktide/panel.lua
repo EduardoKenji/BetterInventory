@@ -35,6 +35,7 @@ local CURRENCY_ICONS = {
 	plasteel = "content/ui/materials/mission_board/currencies/plasteel_small_digital",
 }
 local SECTION_PLANNER = "planner"
+local SECTION_QUEUE = "games_lantern_queue"
 local SECTION_WORKFLOW = "workflow"
 local SECTION_RESUMING = "resuming"
 local SECTION_TRAITS = "traits"
@@ -423,6 +424,24 @@ local function status_block_passes(width)
 	}
 end
 
+local function queue_job_passes(width, height)
+	height = height or 76
+	local function current(content)
+		return content.queue_current == true
+	end
+	local function not_current(content)
+		return content.queue_current ~= true
+	end
+
+	return {
+		{ pass_type = "rect", style = { color = Color.terminal_corner_selected(85, true), size = { width, height }, offset = { 0, 0, 1 } }, visibility_function = current },
+		{ pass_type = "rect", style = { color = Color.terminal_background(220, true), size = { width, height }, offset = { 0, 0, 1 } }, visibility_function = not_current },
+		{ pass_type = "texture", value = "content/ui/materials/frames/frame_tile_2px", style = { color = Color.terminal_frame(255, true), size = { width, height }, offset = { 0, 0, 2 } } },
+		{ pass_type = "text", value_id = "label", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "top", text_color = Color.terminal_text_header(255, true), size = { width - 16, 20 }, offset = { 8, 5, 3 } } },
+		{ pass_type = "text", value_id = "detail", style = { font_size = 12, font_type = "proxima_nova_medium", text_horizontal_alignment = "left", text_vertical_alignment = "top", text_color = Color.terminal_text_body(255, true), size = { width - 16, height - 28 }, offset = { 8, 25, 3 } } },
+	}
+end
+
 local function currency_row_passes(width)
 	local segment_width = width / 3
 	local passes = {
@@ -657,6 +676,8 @@ local BLUEPRINTS = {
 				return title_passes(width)
 			elseif variant == "status" then
 				return status_block_passes(width)
+			elseif variant == "queue_job" then
+				return queue_job_passes(width, entry.size[2])
 			elseif variant == "currency" then
 				return currency_row_passes(width)
 			elseif variant == "section" then
@@ -752,6 +773,7 @@ function Panel.new(dependencies)
 		_preview_plan = dependencies.preview_plan,
 		_start_purchase_search = dependencies.start_purchase_search,
 		_stop_active_run = dependencies.stop_active_run,
+		_games_lantern_queue_snapshot = dependencies.games_lantern_queue_snapshot,
 		_settings = dependencies.settings or {},
 		_localize = dependencies.localize,
 		_compact_perk_label = dependencies.compact_perk_label,
@@ -769,6 +791,7 @@ function Panel.new(dependencies)
 		_selected_offer = nil,
 		_selected_offer_master_id = nil,
 		_section_collapsed = {
+			[SECTION_QUEUE] = false,
 			[SECTION_PLANNER] = false,
 			[SECTION_WORKFLOW] = false,
 			[SECTION_RESUMING] = false,
@@ -780,6 +803,7 @@ function Panel.new(dependencies)
 		_layout_pending = false,
 		_layout_defer_frames = 0,
 		_trait_catalog_key = nil,
+		_queue_signature = nil,
 		_pivot_x = nil,
 		_pivot_y = nil,
 	}
@@ -820,6 +844,8 @@ function Panel.new(dependencies)
 			height = SECTION_ROW_HEIGHT
 		elseif variant == "status" then
 			height = STATUS_ROW_HEIGHT
+		elseif variant == "queue_job" then
+			height = options.height or 76
 		elseif variant == "currency" then
 			height = CURRENCY_ROW_HEIGHT
 		elseif variant == "stat_grid" then
@@ -848,6 +874,7 @@ function Panel.new(dependencies)
 				section_id = options.section_id,
 				selected = false,
 				selected_stat_index = 0,
+				queue_current = options.queue_current == true,
 				stat_count = 0,
 				stat_pressed_callbacks = {},
 				trait_count = #(options.trait_options or {}),
@@ -901,6 +928,21 @@ function Panel.new(dependencies)
 			entry.offer = options.offer
 			entry.refresh = function(widget)
 				widget.content.selected = self._selected_offer_key ~= nil and self._selected_offer_key == offer_selection_key(options.offer)
+			end
+		end
+
+		if options.queue_job then
+			entry.refresh = function(widget)
+				local queue_ok, queue = safe_call(self._games_lantern_queue_snapshot)
+
+				if queue_ok and type(queue) == "table" then
+					local jobs = queue.jobs or {}
+					local current_index = tonumber(queue.current_index) or 0
+					local index = tonumber(options.queue_index) or 0
+					local job = jobs[index]
+
+					widget.content.queue_current = job and job.current == true or index == current_index
+				end
 			end
 		end
 
@@ -1020,6 +1062,51 @@ function Panel.new(dependencies)
 		end
 
 		return offers, selected_offer and localize("auto_crafter_panel_selected_weapon", "Selected weapon") or localize("auto_crafter_panel_no_target", "no weapon selected")
+	end
+
+	function self:_games_lantern_queue()
+		if type(self._games_lantern_queue_snapshot) ~= "function" then
+			return nil
+		end
+
+		local ok, queue = safe_call(self._games_lantern_queue_snapshot)
+
+		return ok and type(queue) == "table" and queue or nil
+	end
+
+	function self:_games_lantern_queue_signature(queue)
+		if type(queue) ~= "table" then
+			return "none"
+		end
+
+		return table.concat({
+			tostring(queue.state or "empty"),
+			tostring(queue.current_index or 0),
+			tostring(queue.job_count or 0),
+			tostring(queue.last_error or ""),
+		}, "|")
+	end
+
+	function self:_games_lantern_job_detail(job)
+		job = job or {}
+		local perks = {}
+		local blessings = {}
+
+		for _, target in ipairs(job.perks or {}) do
+			perks[#perks + 1] = value_text(target.label or target.display_name, target.id or "?")
+		end
+
+		for _, target in ipairs(job.blessings or {}) do
+			blessings[#blessings + 1] = value_text(target.label or target.display_name, target.id or "?")
+		end
+
+		return string.format(
+			"Dump: %s | Perks: %s\nBlessings: %s | Status: %s",
+			value_text(job.dump_stat_label or job.dump_stat, "?"),
+			#perks > 0 and table.concat(perks, " / ") or "?",
+			#blessings > 0 and table.concat(blessings, " / ") or "?",
+			value_text(job.status, "queued")
+		)
 	end
 
 	function self:_setting(setting_id, default_value)
@@ -1455,6 +1542,7 @@ function Panel.new(dependencies)
 		local _, selected_weapon = self:_selected_offers(snapshot)
 		local selected = selected_weapon or localize("auto_crafter_panel_no_target", "no weapon selected")
 		local plan = self._plan or snapshot and snapshot.plan
+		local queue = self:_games_lantern_queue()
 		local entries = {
 			self:_entry(localize("auto_crafter_panel_title", "Auto Crafter Helper"), "", {
 				variant = "title",
@@ -1484,6 +1572,12 @@ function Panel.new(dependencies)
 					widget.content.checked = self:_setting("auto_crafter_show_status_hud", true) == true
 				end,
 			}),
+			self:_entry(localize("auto_crafter_panel_active_queue", "Active Queue"), queue and queue.state or "manual", {
+				selectable = false,
+				section_header = true,
+				section_id = SECTION_QUEUE,
+				variant = "section",
+			}),
 			self:_entry(localize("auto_crafter_panel_planner", "Planner configuration"), "", {
 				selectable = true,
 				section_header = true,
@@ -1491,6 +1585,32 @@ function Panel.new(dependencies)
 				variant = "section",
 			}),
 		}
+		local queue_jobs = queue and queue.jobs
+
+		if not self._section_collapsed[SECTION_QUEUE] and type(queue_jobs) == "table" and #queue_jobs > 0 then
+			for index, job in ipairs(queue_jobs) do
+				local offer = job.offer or {}
+				local name = value_text(job.display_name or offer.display_name, value_text(offer.master_id, "Weapon"))
+
+				table.insert(entries, #entries, self:_entry(string.format("%d. %s", index, name), self:_games_lantern_job_detail(job), {
+					height = 76,
+					queue_job = true,
+					queue_index = index,
+					queue_current = job.current == true,
+					variant = "queue_job",
+				}))
+			end
+		elseif not self._section_collapsed[SECTION_QUEUE] then
+			local selected_detail = string.format("Selected weapon | Status: %s", value_text(plan and plan.status, "manual"))
+
+			table.insert(entries, #entries, self:_entry("1. " .. selected, selected_detail, {
+				height = 76,
+				queue_job = true,
+				queue_index = 1,
+				queue_current = selected_weapon ~= nil,
+				variant = "queue_job",
+			}))
+		end
 		local function add_checkbox(setting_id, label_id, fallback, default_value, enabled, reflow, height)
 			local function is_enabled()
 				if type(enabled) == "function" then
@@ -1896,6 +2016,13 @@ function Panel.new(dependencies)
 
 		self._idle_poll_elapsed = 0
 		self:_update_pivot()
+		local queue = self:_games_lantern_queue()
+		local queue_signature = self:_games_lantern_queue_signature(queue)
+
+		if queue_signature ~= self._queue_signature then
+			self._queue_signature = queue_signature
+			self:_queue_layout(1)
+		end
 
 		if type(self._get_selected_offer) ~= "function" then
 			return

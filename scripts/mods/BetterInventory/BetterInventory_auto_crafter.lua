@@ -3,6 +3,7 @@ local AutoCrafter = {}
 local mod
 local controller
 local panel
+local games_lantern_queue
 local hud_lines = {}
 local presentation_dirty = true
 local presentation_elapsed = 0
@@ -506,6 +507,7 @@ function AutoCrafter.configure(dependencies)
 	local ok_planner, Planner = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/core/planner")
 	local ok_backend, Backend = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/backend")
 	local ok_context, Context = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/context")
+	local ok_games_lantern_queue, GamesLanternQueue = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/games_lantern/queue")
 	local ok_panel, Panel = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/panel")
 	local ok_viewport_layout, ViewportLayout = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/viewport_layout")
 	local ok_layout_content, LayoutContent = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_content")
@@ -534,6 +536,11 @@ function AutoCrafter.configure(dependencies)
 		return false
 	end
 
+	if not ok_games_lantern_queue or type(GamesLanternQueue) ~= "table" or type(GamesLanternQueue.new) ~= "function" then
+		log("error", "Games Lantern queue unavailable; imported build support disabled.")
+		GamesLanternQueue = nil
+	end
+
 	if not ok_panel or type(Panel) ~= "table" or type(Panel.new) ~= "function" then
 		log("error", "Auto Crafter Helper diagnostic panel unavailable; continuing without UI.")
 		Panel = nil
@@ -550,6 +557,7 @@ function AutoCrafter.configure(dependencies)
 	local context = Context.new({
 		is_brunt_view = dependencies.is_brunt_view,
 	})
+	games_lantern_queue = GamesLanternQueue and GamesLanternQueue.new() or nil
 
 	panel = Panel and Panel.new({
 		ViewElementGrid = dependencies.ViewElementGrid,
@@ -575,6 +583,9 @@ function AutoCrafter.configure(dependencies)
 		end,
 		stop_active_run = function()
 			return controller and controller:stop_active_run() or false
+		end,
+		games_lantern_queue_snapshot = function()
+			return games_lantern_queue and games_lantern_queue:snapshot() or nil
 		end,
 		localize = function(setting_id)
 			return localize(setting_id, setting_id)
