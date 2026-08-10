@@ -1345,6 +1345,8 @@ def main() -> None:
             "automatic_curio_characters_group",
         }:
             entry.widget_type = "group_header"
+        if option_id.startswith("character_overview_dump_stat_"):
+            entry.get_function = lua.eval("function() return true end")
     options_templates = lua.table_from(
         {"settings": lua.table_from(entries)}
     )
@@ -1435,6 +1437,8 @@ def main() -> None:
     settings.character_overview_show_only_dump_stat = True
     mod.on_setting_changed("character_overview_show_only_dump_stat")
     for dump_style_id in dump_style_ids:
+        entries_by_id[dump_style_id].get_function()
+        replacement_by_id[dump_style_id].get_function()
         assert entries_by_id[dump_style_id].disabled is False
         assert replacement_by_id[dump_style_id].disabled is False
     globals_.captured_options_hook(globals_.test_dmf, options_templates)
