@@ -789,6 +789,40 @@ function AutoCrafter.configure(dependencies)
 		return true
 	end
 
+	local function games_lantern_import_allowed()
+		if not controller or controller_faulted then
+			return false, "controller_unavailable"
+		end
+
+		local snapshot_ok, snapshot = pcall(controller.snapshot, controller)
+
+		if not snapshot_ok or type(snapshot) ~= "table" then
+			return false, "controller_snapshot_unavailable"
+		end
+
+		if snapshot.operation_inflight or snapshot.operation_quarantined or snapshot.reconciliation_required or (tonumber(snapshot.auxiliary_inflight_count) or 0) > 0 then
+			return false, "auto_crafter_busy"
+		end
+
+		local search = snapshot.search
+		local phase3 = snapshot.phase3
+		local phase4 = snapshot.phase4
+		local mastery = snapshot.mastery
+
+		if search and search.running or phase3 and phase3.running or phase4 and phase4.running or mastery and mastery.running then
+			return false, "auto_crafter_busy"
+		end
+
+		local queue_snapshot = games_lantern_queue and games_lantern_queue:snapshot()
+		local queue_state = queue_snapshot and queue_snapshot.state
+
+		if queue_state == "starting" or queue_state == "selecting" or queue_state == "dispatching" or queue_state == "running" or queue_state == "waiting_next" or queue_state == "stopping" then
+			return false, "games_lantern_queue_busy"
+		end
+
+		return true
+	end
+
 	local function games_lantern_install_queue(build)
 		if not games_lantern_queue or not active_brunt_view or type(dependencies.select_offer) ~= "function" then
 			return false, "Brunt view or native selection unavailable"
@@ -841,6 +875,7 @@ function AutoCrafter.configure(dependencies)
 				fetch_catalogs = games_lantern_fetch_catalogs,
 				cancel_catalogs = games_lantern_cancel_catalogs,
 				install_queue = games_lantern_install_queue,
+				can_import = games_lantern_import_allowed,
 				queue_snapshot = function()
 					return games_lantern_queue and games_lantern_queue:snapshot() or nil
 				end,

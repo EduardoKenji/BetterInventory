@@ -47,6 +47,7 @@ function ImportController.new(dependencies)
 		_cancel_catalogs = dependencies.cancel_catalogs,
 		_install_queue = dependencies.install_queue,
 		_queue_snapshot = dependencies.queue_snapshot,
+		_can_import = dependencies.can_import,
 		_report = dependencies.report,
 		_state = "idle",
 		_generation = 0,
@@ -99,6 +100,14 @@ function ImportController.new(dependencies)
 	function self:paste()
 		if queue_busy() then
 			return false, "queue_busy"
+		end
+
+		if type(self._can_import) == "function" then
+			local admission_ok, admitted, admission_reason = safe_call(self._can_import)
+
+			if not admission_ok or admitted ~= true then
+				return false, admission_ok and admission_reason or "import_admission_failed"
+			end
 		end
 
 		self._generation = self._generation + 1

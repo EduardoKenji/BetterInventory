@@ -126,6 +126,13 @@
       "case": "frame_update_crash_containment",
       "outcome": "panel, controller, snapshot, and HUD presentation faults cannot escape through the per-frame mod update",
       "modules": ["BetterInventory_auto_crafter.lua", "BetterInventory_runtime.lua"]
+    },
+    {
+      "name": "auto-crafter.optional-mod-compatibility-soak",
+      "test": "test_games_lantern_compatibility.py",
+      "case": "optional_mod_lifecycle_admission_and_four_run_soak",
+      "outcome": "optional Lantern and InstantCharacterChange neighbors do not own BetterInventory state, imports are blocked during active crafting, and four serial two-job runs remain isolated",
+      "modules": ["BetterInventory_auto_crafter.lua", "BetterInventory_runtime.lua"]
     }
   ]
 }

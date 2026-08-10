@@ -2102,10 +2102,12 @@ function Panel.new(dependencies)
 		local ctrl_v = ctrl_v_down()
 
 		if ctrl_v and not self._ctrl_v_down and type(self._games_lantern_paste) == "function" then
-			local paste_ok, paste_error = pcall(self._games_lantern_paste)
+			local paste_ok, pasted, paste_error = pcall(self._games_lantern_paste)
 
 			if not paste_ok then
 				log("error", "Games Lantern Ctrl+V import failed: " .. tostring(paste_error))
+			elseif pasted ~= true and paste_error then
+				log("info", "Games Lantern Ctrl+V import was not started: " .. tostring(paste_error))
 			end
 		end
 
@@ -2294,6 +2296,8 @@ function Panel.new(dependencies)
 		self._layout_pending = false
 		self._layout_defer_frames = 0
 		self._trait_catalog_key = nil
+		self._queue_signature = nil
+		self._ctrl_v_down = false
 
 
 		self:_update_pivot()
@@ -2334,6 +2338,8 @@ function Panel.new(dependencies)
 		self._layout_pending = false
 		self._layout_defer_frames = 0
 		self._trait_catalog_key = nil
+		self._queue_signature = nil
+		self._ctrl_v_down = false
 		self._pivot_x = nil
 		self._pivot_y = nil
 	end

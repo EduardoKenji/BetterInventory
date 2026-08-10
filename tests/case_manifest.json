@@ -79,6 +79,9 @@
     "test_games_lantern_import_controller.py": [
       {"name": "atomic_import_lifecycle_and_stale_callback_guard", "risk": "critical", "start_line": 11, "end_line": 114}
     ],
+    "test_games_lantern_compatibility.py": [
+      {"name": "optional_mod_lifecycle_admission_and_four_run_soak", "risk": "critical", "start_line": 1, "end_line": 173}
+    ],
   "test_account_mutation_guard.py": [
     {"name": "service_level_account_mutation_exclusion", "risk": "critical", "start_line": 1, "end_line": 149}
   ],
