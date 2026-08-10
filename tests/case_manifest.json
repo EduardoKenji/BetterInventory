@@ -57,6 +57,11 @@
     {"name": "bounded_probe_and_catalog_reads", "risk": "critical", "start_line": 1815, "end_line": 1848},
     {"name": "external_account_mutation_exclusion", "risk": "critical", "start_line": 1849, "end_line": 1879}
   ],
+  "test_games_lantern_import.py": [
+    {"name": "strict_url_canonicalization", "risk": "critical", "start_line": 18, "end_line": 47},
+    {"name": "versioned_weapon_model", "risk": "critical", "start_line": 49, "end_line": 64},
+    {"name": "bounded_parser_drift_fail_closed", "risk": "critical", "start_line": 66, "end_line": 81}
+  ],
   "test_account_mutation_guard.py": [
     {"name": "service_level_account_mutation_exclusion", "risk": "critical", "start_line": 1, "end_line": 149}
   ],
