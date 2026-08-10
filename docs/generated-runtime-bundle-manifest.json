@@ -95,7 +95,7 @@
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_data.lua",
       "bytes": 54695,
-      "sha256": "bc8a99ba1f9e895311c8acad79d46a89c212ed8b255b5009235692e462d17b99",
+      "sha256": "7f80e53a570225aa8abff8801132d43f00b50df72c2274369b20903b2a45fd1d",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_data.lua"
     },
     {
@@ -339,6 +339,6 @@
       "source_path": "scripts/mods/BetterInventory/auto_crafter/darktide/viewport_layout.lua"
     }
   ],
-  "runtime_tree_sha256": "b9cbf5ee6f01019e4598f1255e04df4bf85ce7de99156dd32f52f51ff377b196",
-  "version": "2.0.2"
+  "runtime_tree_sha256": "cad356bf922be92909fd0dd0c490e799b4538cb5374fd5d2d7883160a3ca705c",
+  "version": "2.0.3"
 }

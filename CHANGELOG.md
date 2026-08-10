@@ -1,5 +1,11 @@
 # BetterInventory changelog
 
+## 2.0.3 - 2026-08-10
+
+- Prevented Auto Crafter from overlapping native, manual, or third-party account mutations.
+- Deferred Automatic Discard and Curio Buyer passes until Auto Crafter releases ownership.
+- Added critical regression coverage for purchases, upgrades, mastery, favorites, and discards.
+
 ## 2.0.2 - 2026-08-10
 
 - Fixed Auto Crafter losing purchased weapons when inventories exceeded 1,024 records.
