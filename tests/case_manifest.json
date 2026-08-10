@@ -73,6 +73,9 @@
     "test_games_lantern_queue_ui.py": [
       {"name": "active_queue_is_display_only", "risk": "high", "start_line": 9, "end_line": 25}
     ],
+    "test_games_lantern_transport.py": [
+      {"name": "bounded_transport_timeout_status_size_and_cancel", "risk": "critical", "start_line": 10, "end_line": 89}
+    ],
   "test_account_mutation_guard.py": [
     {"name": "service_level_account_mutation_exclusion", "risk": "critical", "start_line": 1, "end_line": 149}
   ],
