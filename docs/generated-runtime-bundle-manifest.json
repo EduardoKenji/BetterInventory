@@ -1,6 +1,6 @@
 {
   "archive_root": "BetterInventory",
-  "file_count": 56,
+  "file_count": 58,
   "files": [
     {
       "archive_path": "BetterInventory/BetterInventory.mod",
@@ -337,8 +337,20 @@
       "bytes": 3227,
       "sha256": "2c64cd5ba987dab623939bf93b67ff69807fcd79088eb3a9eb959f03ba29b716",
       "source_path": "scripts/mods/BetterInventory/auto_crafter/darktide/viewport_layout.lua"
+    },
+    {
+      "archive_path": "BetterInventory/scripts/mods/BetterInventory/auto_crafter/games_lantern/clipboard.lua",
+      "bytes": 2656,
+      "sha256": "9532b53ca51d16f43ef0a1d9373784274322ec65656ab997dea9e337cea0f6f3",
+      "source_path": "scripts/mods/BetterInventory/auto_crafter/games_lantern/clipboard.lua"
+    },
+    {
+      "archive_path": "BetterInventory/scripts/mods/BetterInventory/auto_crafter/games_lantern/parser.lua",
+      "bytes": 4924,
+      "sha256": "60cba03d88e72d9a89fd0b6e64298bb13d4c73482c687106846bdd5f5eb02cb2",
+      "source_path": "scripts/mods/BetterInventory/auto_crafter/games_lantern/parser.lua"
     }
   ],
-  "runtime_tree_sha256": "f9a8f260ca08babedc0c8fe7903e454bb1332b59a881ce624266d2ad638e60ab",
+  "runtime_tree_sha256": "14d2c89f23c87107eca81e667116548851a73172e835a34bf52c895c6b472ba4",
   "version": "2.1.0"
 }
