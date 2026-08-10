@@ -1148,6 +1148,23 @@ function AutoCrafter.shutdown()
 	presentation_dirty = true
 	presentation_elapsed = 0
 	presentation_snapshot = nil
+	if games_lantern_import then
+		pcall(games_lantern_import.cancel, games_lantern_import, "shutdown")
+	end
+
+	if games_lantern_queue then
+		local queue_state = games_lantern_queue:snapshot()
+		if queue_state and (queue_state.state == "running" or queue_state.state == "selecting" or queue_state.state == "dispatching" or queue_state.state == "waiting_next" or queue_state.state == "starting") then
+			pcall(games_lantern_queue.stop, games_lantern_queue, "shutdown")
+		end
+
+		pcall(games_lantern_queue.clear, games_lantern_queue)
+	end
+
+	if games_lantern_import then
+		pcall(games_lantern_import.clear, games_lantern_import)
+	end
+
 	if panel then
 		panel:detach()
 		panel = nil

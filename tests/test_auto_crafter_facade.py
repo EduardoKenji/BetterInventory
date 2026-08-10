@@ -27,6 +27,7 @@ def main() -> None:
     assert "queue_owned = queue_state and queue_state.job_count == 2" in source
     assert "local queue_busy = queue_snapshot and" in source
     assert "pcall(games_lantern_queue.clear, games_lantern_queue)" in source
+    assert 'pcall(games_lantern_import.cancel, games_lantern_import, "shutdown")' in source
 
     print("Auto Crafter facade crash-containment checks passed.")
 

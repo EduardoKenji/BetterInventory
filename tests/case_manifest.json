@@ -24,7 +24,7 @@
     {"name": "complete_authoritative_inventory_summary", "risk": "critical", "start_line": 16, "end_line": 119}
   ],
     "test_auto_crafter_facade.py": [
-      {"name": "frame_update_crash_containment", "risk": "critical", "start_line": 14, "end_line": 30}
+      {"name": "frame_update_crash_containment", "risk": "critical", "start_line": 14, "end_line": 31}
   ],
   "test_auto_crafter_controller.py": [
     {"name": "presacrifice_mastery_baseline_convergence_and_level_event", "risk": "critical", "start_line": 190, "end_line": 269},
