@@ -1,6 +1,6 @@
 # BetterInventory
 
-> Project status: BetterInventory v2.0.1. Account-changing workflows remain opt-in and disabled by default.
+> Project status: BetterInventory v2.1.0 development. Account-changing workflows remain opt-in and disabled by default.
 >
 > Audit date: 2026-08-07. See [`docs/v2.0.0-full-project-audit.md`](docs/v2.0.0-full-project-audit.md) for the prioritized implementation backlog and release gates.
 
