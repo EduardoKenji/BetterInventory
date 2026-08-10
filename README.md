@@ -114,7 +114,7 @@ The following integrations are supported in v2.0.1. BetterInventory has no optio
 - MyFavorites: preserves colored favorite groups and cycling controls while synchronizing BetterInventory's compact favorite marker.
 - Enhanced Character Selection: no known conflict in the current implementation.
 - Name It: optional import and synchronization through BetterInventory's standalone Custom Item Names and Colors module.
-- (v1.7.4+) Quick Level Mastery: correct 'Acquire' and 'Sacrifice' button alignment across different resolutions and layouts.
+- (v1.7.4+) Quick Level Mastery: correct 'Acquire' and 'Sacrifice' button alignment across different resolutions and layouts. BetterInventory detects its visible Brunt purchase promise before starting Auto Crafter, but Quick Level Mastery exposes no public lock for its later upgrade/extraction queue; do not use its Sacrifice action during an Auto Crafter run.
 - (v1.8.0+) Lantern of the Omnissiah: embeds weapon recommendations at the top of BetterInventory's scrollable inventory widget and prevents icon overlap. Curio recommendations remain separate by default.
 - (v1.8.0+) ItemSorting: preserves every native sorting option and adds a dedicated section for Family, Family + Mark, and both Base Rating sorting directions.
 

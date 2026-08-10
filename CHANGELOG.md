@@ -5,6 +5,10 @@
 - Fixed Auto Crafter losing purchased weapons when inventories exceeded 1,024 records.
 - Added bounded post-purchase visibility reconciliation without repeating purchase requests.
 - Added large-inventory, malformed-record, delayed-visibility and interruption regression coverage.
+- Quarantined timed-out/ambiguous mutations until their original promises settle, preventing overlapping retries and silent continuation after character or context changes.
+- Added one shared account-operation gate across Auto Crafter, discard and Automatic Curio Buyer workflows.
+- Hardened inventory reuse with exact-mark identity, equipped-item exclusion, deterministic selection and live minimum-material preflight.
+- Added bounded read timeouts, frame-update crash containment, and integration coverage for resource exhaustion, full inventory, network stalls and loading transitions.
 
 ## 2.0.1 - 2026-08-09
 

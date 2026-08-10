@@ -84,6 +84,34 @@
       "case": "dirty_save_outcomes",
       "outcome": "delegated and failed DMF saves have bounded, observable persistence outcomes",
       "modules": ["BetterInventory_item_customization.lua", "BetterInventory_item_customization_editor.lua", "BetterInventory_item_customization_name_it.lua", "BetterInventory_item_customization_store.lua"]
+    },
+    {
+      "name": "auto-crafter.quarantines-ambiguous-mutations",
+      "test": "test_auto_crafter_controller.py",
+      "case": "mutation_quarantine_and_fast_lane_interleavings",
+      "outcome": "timeouts, character loss, and fast-lane failures retain mutation gates until original requests settle",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
+      "name": "auto-crafter.owns-account-operation",
+      "test": "test_auto_crafter_controller.py",
+      "case": "auto_crafter_account_operation_ownership",
+      "outcome": "Auto Crafter cannot overlap BetterInventory discard or Curio mutations and STOP retains ownership through late settlement",
+      "modules": ["BetterInventory_auto_crafter.lua", "BetterInventory_features.lua", "BetterInventory_operation_arbiter.lua"]
+    },
+    {
+      "name": "auto-crafter.bounds-failures",
+      "test": "test_auto_crafter_controller.py",
+      "case": "resource_capacity_network_and_loading_failure_matrix",
+      "outcome": "resource exhaustion, full inventory, transient network stalls, and loading transitions fail or resume without duplicate writes",
+      "modules": ["BetterInventory_auto_crafter.lua", "BetterInventory_runtime.lua"]
+    },
+    {
+      "name": "auto-crafter.contains-frame-crashes",
+      "test": "test_auto_crafter_facade.py",
+      "case": "frame_update_crash_containment",
+      "outcome": "panel, controller, snapshot, and HUD presentation faults cannot escape through the per-frame mod update",
+      "modules": ["BetterInventory_auto_crafter.lua", "BetterInventory_runtime.lua"]
     }
   ]
 }
