@@ -2,13 +2,13 @@
 
 Date: 2026-08-10  
 Branch: `research/2.1.0-games-lantern-import`  
-Status: Batches 1-5 implemented; import remains explicitly opt-in and manual Auto Crafter workflow is unchanged
+Status: Batches 1-6 implemented; import remains explicitly opt-in and manual Auto Crafter workflow is unchanged
 Target surface: Auto Crafter Helper in Brunt's Armoury
 
 Handoff audit: 2026-08-10 against the current controller, planner, operation arbiter, mutation guard, panel, and regression suite
 Runtime baseline: `44fbad1` (BetterInventory 2.1.0; imported queue is session-local and does not change persistent manual settings)
 Specification baseline reviewed: `e2abbc3`
-Verification baseline: 21 behavior suites / 92 cases plus architecture, schema, Lua structure, runtime bundle, ZIP parity, and static checks passed
+Verification baseline: 26 behavior suites / 99 cases plus architecture, schema, Lua structure, runtime bundle, ZIP parity, and static checks passed
 
 ## Executive decision
 
@@ -1115,8 +1115,9 @@ Keep parser/resolver/controller pure enough to run outside Darktide tests. Injec
 ### Batch 6 — serial queue orchestration
 
 - Reuse the current invariant single-item workflow for each job.
-- Add authoritative melee-complete -> ranged-preflight transition.
-- Add exact-existing, resume, resource-block, STOP, failure, and recovery semantics.
+- Add authoritative melee-complete -> ranged-preflight transition with one account-operation owner across the boundary.
+- Add exact-existing, resume, resource-block, STOP, failure, view-loss, and character-change recovery semantics.
+- Preserve completed-job position when Brunt closes at the boundary; a resumed queue starts only the next job.
 - Never dispatch ranged until melee terminal success is authoritative.
 
 ### Batch 7 — compatibility and soak validation

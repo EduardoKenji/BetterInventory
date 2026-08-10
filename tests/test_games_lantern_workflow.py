@@ -57,12 +57,12 @@ def main() -> None:
                 {
                     "available": True,
                     "perks": [
-                            {"id": "perk_cara", "display_name": "Damage Carapace Armoured"},
-                            {"id": "perk_unyielding", "display_name": "Damage Unyielding"},
+                            {"id": "perk_cara", "display_name": "Damage Carapace Armoured", "tier": 4},
+                            {"id": "perk_unyielding", "display_name": "Damage Unyielding", "tier": 4},
                         ],
                     "blessings": [
-                            {"id": "blessing_unstable_power", "display_name": "Unstable Power"},
-                            {"id": "blessing_riposte", "display_name": "Riposte"},
+                            {"id": "blessing_unstable_power", "display_name": "Unstable Power", "tiers": [{"tier": 4, "status": "seen"}]},
+                            {"id": "blessing_riposte", "display_name": "Riposte", "tiers": [{"tier": 4, "status": "seen"}]},
                         ],
                 }
             )
@@ -70,12 +70,12 @@ def main() -> None:
             {
                 "available": True,
                 "perks": [
-                        {"id": "perk_cara", "display_name": "Damage Carapace Armoured"},
-                        {"id": "perk_unyielding", "display_name": "Damage Unyielding"},
+                        {"id": "perk_cara", "display_name": "Damage Carapace Armoured", "tier": 4},
+                        {"id": "perk_unyielding", "display_name": "Damage Unyielding", "tier": 4},
                     ],
                 "blessings": [
-                        {"id": "blessing_warp_nexus", "display_name": "Warp Nexus"},
-                        {"id": "blessing_surge", "display_name": "Surge"},
+                        {"id": "blessing_warp_nexus", "display_name": "Warp Nexus", "tiers": [{"tier": 4, "status": "seen"}]},
+                        {"id": "blessing_surge", "display_name": "Surge", "tiers": [{"tier": 4, "status": "seen"}]},
                     ],
             }
         )
@@ -99,6 +99,8 @@ def main() -> None:
     assert resolved["jobs"][1]["dump_stat"] == "warp_resist"
     assert resolved["jobs"][2]["dump_stat"] == "charge_speed"
     assert resolved["jobs"][1]["perks"][1]["id"] == "perk_cara"
+    assert resolved["jobs"][1]["perks"][1]["rarity"] == 4
+    assert resolved["jobs"][1]["blessings"][1]["rarity"] == 4
     assert resolved["jobs"][2]["blessings"][2]["id"] == "blessing_surge"
 
     # Class mismatch, ambiguous marks, and tied dump stats must reject the

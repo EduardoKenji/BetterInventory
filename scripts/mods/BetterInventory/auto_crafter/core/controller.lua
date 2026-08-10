@@ -638,6 +638,9 @@ function Controller.new(dependencies)
 		_observed_character_id = nil,
 		_run_character_id = nil,
 		_account_operation_token = nil,
+		_queue_operation_owner = false,
+		_imported_job = nil,
+		_run_imported_job = nil,
 	}
 
 	local function report(kind, payload)
@@ -840,6 +843,10 @@ function Controller.new(dependencies)
 	end
 
 	local function release_account_operation_if_settled()
+		if self._queue_operation_owner then
+			return false
+		end
+
 		if not run_is_active() and not self._operation_inflight and (self._auxiliary_inflight_count or 0) == 0 then
 			return release_account_operation()
 		end
@@ -969,9 +976,11 @@ function Controller.new(dependencies)
 	}
 
 	local function planner_config()
+		local imported_job = self._run_imported_job or self._imported_job
+
 		return {
-			dump_stat = setting("auto_crafter_target_dump_stat", "damage"),
-			dump_target = setting("auto_crafter_dump_stat_target", 60),
+			dump_stat = imported_job and imported_job.dump_stat or setting("auto_crafter_target_dump_stat", "damage"),
+			dump_target = imported_job and imported_job.dump_target or setting("auto_crafter_dump_stat_target", 60),
 			cap_by_dockets = setting("auto_crafter_cap_by_dockets", true),
 			docket_cap = setting("auto_crafter_docket_cap", 500000),
 			cap_by_max_purchases = setting("auto_crafter_cap_by_max_purchases", false),
@@ -984,8 +993,8 @@ function Controller.new(dependencies)
 			upgrade_expertise_500 = setting("auto_crafter_upgrade_expertise_500", true),
 			reuse_inventory_base = setting("auto_crafter_reuse_inventory_base", true),
 			include_favorite_inventory_bases = setting("auto_crafter_include_favorite_inventory_bases", true),
-			trait_catalog = self._catalog,
-			target_offer = nil,
+			trait_catalog = imported_job and imported_job.catalog or self._catalog,
+			target_offer = imported_job and imported_job.offer or nil,
 		}
 	end
 
@@ -1021,7 +1030,7 @@ function Controller.new(dependencies)
 
 		local previous_target_key = self._selected_target_key
 		local config = planner_config()
-		config.target_offer = self:_selected_offer_summary()
+		config.target_offer = (self._run_imported_job or self._imported_job) and config.target_offer or self:_selected_offer_summary()
 		self._selected_native_key = offer_key(config.target_offer)
 		self._planner_signature = planner_config_signature(config)
 		local ok, plan = pcall(self._planner.build, self._snapshot, config)
@@ -1031,7 +1040,7 @@ function Controller.new(dependencies)
 			local target_changed = next_target_key ~= previous_target_key
 			local default_dump_stat = self._planner.default_dump_stat(plan)
 
-			if not run_is_active() and default_dump_stat and (target_changed or config.dump_stat == "auto") and config.dump_stat ~= default_dump_stat and set_setting("auto_crafter_target_dump_stat", default_dump_stat) then
+			if not self._run_imported_job and not self._imported_job and not run_is_active() and default_dump_stat and (target_changed or config.dump_stat == "auto") and config.dump_stat ~= default_dump_stat and set_setting("auto_crafter_target_dump_stat", default_dump_stat) then
 				config.dump_stat = default_dump_stat
 				self._planner_signature = planner_config_signature(config)
 				ok, plan = pcall(self._planner.build, self._snapshot, config)
@@ -2102,7 +2111,8 @@ function Controller.new(dependencies)
 	end
 
 	function self:_phase4_targets(item)
-		local catalog = self._search and self._search.catalog or self._catalog
+		local imported_job = self._run_imported_job or self._imported_job
+		local catalog = imported_job and imported_job.catalog or self._search and self._search.catalog or self._catalog
 		local mastery_enabled = setting("auto_crafter_level_mastery_20", true) == true
 		local allocate_mastery = mastery_enabled and setting("auto_crafter_allocate_mastery_points", true) == true
 		local change_perks = mastery_enabled and setting("auto_crafter_change_perks", true) == true
@@ -2116,11 +2126,11 @@ function Controller.new(dependencies)
 			perks = {},
 			traits = {},
 		}
-		local perk_values = {
+		local perk_values = imported_job and { imported_job.perks[1], imported_job.perks[2] } or {
 			setting("auto_crafter_perk_1_target"),
 			setting("auto_crafter_perk_2_target"),
 		}
-		local blessing_values = {
+		local blessing_values = imported_job and { imported_job.blessings[1], imported_job.blessings[2] } or {
 			setting("auto_crafter_blessing_1_target"),
 			setting("auto_crafter_blessing_2_target"),
 		}
@@ -2130,9 +2140,16 @@ function Controller.new(dependencies)
 				local excluded = targets.perks[index == 1 and 2 or 1]
 				local peer_index = index == 1 and 2 or 1
 				local kept_peer = perk_values[peer_index] == "keep" and trait_at(item.perks, peer_index) or nil
-				targets.perks[index] = catalog_choice(catalog.perks, perk_values[index], trait_at(item.perks, index), excluded and excluded.id or kept_peer and kept_peer.id, true)
+				targets.perks[index] = imported_job and {
+					id = perk_values[index] and perk_values[index].id,
+					rarity = perk_values[index] and perk_values[index].rarity,
+				} or catalog_choice(catalog.perks, perk_values[index], trait_at(item.perks, index), excluded and excluded.id or kept_peer and kept_peer.id, true)
 
-				if perk_values[index] ~= "keep" and not targets.perks[index] then
+				if imported_job then
+					if not targets.perks[index] or not targets.perks[index].id then
+						return nil, "imported perk target is unavailable"
+					end
+				elseif perk_values[index] ~= "keep" and not targets.perks[index] then
 					return nil, "selected Tier IV perk target is unavailable"
 				end
 			end
@@ -2143,9 +2160,16 @@ function Controller.new(dependencies)
 				local excluded = targets.traits[index == 1 and 2 or 1]
 				local peer_index = index == 1 and 2 or 1
 				local kept_peer = blessing_values[peer_index] == "keep" and trait_at(item.traits, peer_index) or nil
-				targets.traits[index] = catalog_choice(catalog.blessings, blessing_values[index], trait_at(item.traits, index), excluded and excluded.id or kept_peer and kept_peer.id, false)
+				targets.traits[index] = imported_job and {
+					id = blessing_values[index] and blessing_values[index].id,
+					rarity = blessing_values[index] and blessing_values[index].rarity,
+				} or catalog_choice(catalog.blessings, blessing_values[index], trait_at(item.traits, index), excluded and excluded.id or kept_peer and kept_peer.id, false)
 
-				if blessing_values[index] ~= "keep" and not targets.traits[index] then
+				if imported_job then
+					if not targets.traits[index] or not targets.traits[index].id then
+						return nil, "imported blessing target is unavailable"
+					end
+				elseif blessing_values[index] ~= "keep" and not targets.traits[index] then
 					return nil, "selected blessing target is unavailable"
 				end
 			end
@@ -3666,6 +3690,67 @@ function Controller.new(dependencies)
 		end)
 	end
 
+	function self:set_imported_job(job)
+		if type(job) ~= "table" or job.kind ~= "games_lantern_job" or type(job.offer) ~= "table" or job.offer.master_id == nil or job.dump_stat == nil or type(job.perks) ~= "table" or #job.perks ~= 2 or type(job.blessings) ~= "table" or #job.blessings ~= 2 or type(job.catalog) ~= "table" or job.catalog.available ~= true then
+			return false, "invalid imported job"
+		end
+
+		if run_is_active() or self._operation_inflight or self._operation_quarantined or (self._auxiliary_inflight_count or 0) > 0 then
+			return false, "Auto Crafter is busy"
+		end
+
+		self._imported_job = job
+		self._run_imported_job = nil
+		self._catalog = job.catalog
+		self._catalog_key = offer_key(job.offer)
+		self._selected_target_key = nil
+		self._selected_native_key = offer_key(job.offer)
+		self:_refresh_plan("games_lantern_job_staged")
+
+		return true
+	end
+
+	function self:clear_imported_job()
+		if run_is_active() or self._operation_inflight or self._operation_quarantined or (self._auxiliary_inflight_count or 0) > 0 then
+			return false
+		end
+
+		self._imported_job = nil
+		self._run_imported_job = nil
+		self._catalog = nil
+		self._catalog_key = nil
+		self._selected_target_key = nil
+		self._selected_native_key = nil
+		self:_refresh_plan("games_lantern_job_cleared")
+
+		if self._view_is_valid and self._snapshot then
+			self:_schedule_catalog("games_lantern_job_cleared")
+		end
+
+		return true
+	end
+
+	function self:begin_queue_operation()
+		if self._queue_operation_owner or run_is_active() or self._operation_inflight or self._operation_quarantined or self._reconciliation_required or (self._auxiliary_inflight_count or 0) > 0 then
+			return false, "Auto Crafter is busy"
+		end
+
+		local acquired, reason = acquire_account_operation()
+		if not acquired then
+			return false, reason or "account-operation ownership unavailable"
+		end
+
+		self._queue_operation_owner = true
+
+		return true
+	end
+
+	function self:end_queue_operation()
+		self._queue_operation_owner = false
+
+		return release_account_operation_if_settled()
+	end
+
 	function self:start_purchase_search()
 		if not mutations_enabled() then
 			operation_report("mutation_blocked", {
@@ -3705,6 +3790,7 @@ function Controller.new(dependencies)
 			return false
 		end
 
+		local imported_job = self._imported_job
 		self:_refresh_plan("purchase_search_start")
 
 		local plan = self._plan
@@ -3766,7 +3852,7 @@ function Controller.new(dependencies)
 		self._failure_at = nil
 		self._search = {
 			cap_by_dockets = setting("auto_crafter_cap_by_dockets", true) == true,
-			catalog = self._catalog,
+			catalog = imported_job and imported_job.catalog or self._catalog,
 			docket_cap = tonumber(setting("auto_crafter_docket_cap", 500000)) or 0,
 			dump_stat = dump_stat,
 			favorite_result = setting("auto_crafter_favorite_result", true) == true,
@@ -3777,11 +3863,12 @@ function Controller.new(dependencies)
 			phase3 = setting("auto_crafter_level_mastery_20", true) == true,
 			running = true,
 			spent = 0,
-			target_dump = tonumber(setting("auto_crafter_dump_stat_target", 60)) or 60,
+			target_dump = tonumber(imported_job and imported_job.dump_target or setting("auto_crafter_dump_stat_target", 60)) or 60,
 			target_offer = plan.target,
 			raw_offer = raw_offer,
 			start_wallet = wallet_values(self._snapshot),
 		}
+		self._run_imported_job = imported_job
 		self._phase3 = setting("auto_crafter_level_mastery_20", true) == true and {
 			cleanup_started = false,
 			current = nil,
@@ -4340,6 +4427,9 @@ function Controller.new(dependencies)
 		self._planner_signature = nil
 		self._frozen_run_settings = nil
 		self._run_character_id = nil
+		self._queue_operation_owner = false
+		self._imported_job = nil
+		self._run_imported_job = nil
 		self._observed_character_id = character_id
 		self._phase = "character_changed"
 		self._last_error = had_active_run and "active character changed; run stopped before any further operation" or nil
@@ -4424,6 +4514,9 @@ function Controller.new(dependencies)
 		self._planner_signature = nil
 		self._frozen_run_settings = nil
 		self._run_character_id = nil
+		self._queue_operation_owner = false
+		self._imported_job = nil
+		self._run_imported_job = nil
 		report("context_exit", {
 			reason = reason or "game_state_exit",
 		})
@@ -4681,7 +4774,11 @@ function Controller.new(dependencies)
 				self:_stop_active_run("selected_weapon_changed")
 				self._selected_native_key = selected_key
 				self:_refresh_plan("target_changed")
-				self:_schedule_catalog("target_changed")
+				if self._imported_job then
+					self._catalog = self._imported_job.catalog
+				else
+					self:_schedule_catalog("target_changed")
+				end
 			end
 		end
 
@@ -4726,6 +4823,9 @@ function Controller.new(dependencies)
 			mastery = self._mastery,
 			run_elapsed_seconds = self._run_elapsed,
 			resource_costs = resource_costs,
+			queue_operation_owner = self._queue_operation_owner,
+			imported_job = self._imported_job,
+			run_imported_job = self._run_imported_job,
 		}
 	end
 
@@ -4763,6 +4863,9 @@ function Controller.new(dependencies)
 		self._frozen_run_settings = nil
 		self._run_elapsed = 0
 		self._run_started_at = nil
+		self._queue_operation_owner = false
+		self._imported_job = nil
+		self._run_imported_job = nil
 		release_account_operation_if_settled()
 	end
 

@@ -186,7 +186,7 @@ function Queue.new(dependencies)
 	end
 
 	function self:start()
-		if self._state ~= "staged" and self._state ~= "stopped" then
+		if self._state ~= "staged" and self._state ~= "stopped" and self._state ~= "failed" then
 			return false, "queue_not_staged"
 		end
 
@@ -230,6 +230,9 @@ function Queue.new(dependencies)
 				return false
 			end
 
+			local completed_index = self._current_index
+			self._current_index = self._current_index + 1
+
 			if self._stop_requested then
 				self._state = "stopped"
 
@@ -238,9 +241,18 @@ function Queue.new(dependencies)
 
 			self._state = "waiting_next"
 			self._transition_count = self._transition_count + 1
-			emit("queue_boundary_reached", { index = self._current_index, payload = payload })
+			emit("queue_boundary_reached", { index = completed_index, next_index = self._current_index, payload = payload })
 
 			return true
+		elseif kind == "character_changed" then
+			if self._state == "running" or self._state == "dispatching" or self._state == "selecting" or self._state == "starting" or self._state == "waiting_next" then
+				self._state = "failed"
+				self._stop_requested = false
+				self._last_error = "character_changed"
+				emit("queue_failed", { index = self._current_index, reason = self._last_error })
+
+				return true
+			end
 		elseif kind == "operation_failed" or kind == "phase4_stopped" or kind == "purchase_search_stopped" then
 			if self._state == "running" or self._state == "dispatching" or self._state == "selecting" then
 				self._state = self._stop_requested and "stopped" or "failed"
@@ -263,7 +275,6 @@ function Queue.new(dependencies)
 			elseif not view_valid() then
 				fail("brunt_view_unavailable_at_boundary", { index = self._current_index })
 			else
-				self._current_index = self._current_index + 1
 				self._selection_attempts = 0
 				begin_current()
 			end

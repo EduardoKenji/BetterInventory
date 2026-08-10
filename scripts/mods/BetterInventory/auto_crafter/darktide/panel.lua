@@ -821,6 +821,7 @@ function Panel.new(dependencies)
 		_games_lantern_queue_snapshot = dependencies.games_lantern_queue_snapshot,
 		_games_lantern_import_snapshot = dependencies.games_lantern_import_snapshot,
 		_games_lantern_paste = dependencies.games_lantern_paste,
+		_start_games_lantern_queue = dependencies.start_games_lantern_queue,
 		_settings = dependencies.settings or {},
 		_localize = dependencies.localize,
 		_compact_perk_label = dependencies.compact_perk_label,
@@ -1955,7 +1956,13 @@ function Panel.new(dependencies)
 			selectable = true,
 			variant = "action",
 			action = function()
-				if type(self._start_purchase_search) == "function" then
+				local imported = self:_games_lantern_import()
+				local queue = self:_games_lantern_queue()
+				local queue_owned = queue and queue.job_count == 2 and queue.state ~= "empty" and queue.state ~= "complete"
+
+				if (imported and imported.state == "staged" or queue_owned) and type(self._start_games_lantern_queue) == "function" then
+					self._start_games_lantern_queue()
+				elseif type(self._start_purchase_search) == "function" then
 					self._start_purchase_search()
 				end
 			end,
@@ -1971,8 +1978,10 @@ function Panel.new(dependencies)
 			local phase3 = state.phase3
 			local phase4 = state.phase4
 			local mastery = state.mastery
+			local queue = self:_games_lantern_queue()
+			local queue_active = queue and (queue.state == "running" or queue.state == "selecting" or queue.state == "dispatching" or queue.state == "waiting_next" or queue.state == "starting")
 
-			return search and search.running == true or phase3 and phase3.running == true or phase4 and phase4.running == true or mastery and mastery.running == true
+			return queue_active == true or search and search.running == true or phase3 and phase3.running == true or phase4 and phase4.running == true or mastery and mastery.running == true
 		end
 		local stop_enabled = run_is_active()
 		table.insert(entries, self:_entry(localize("auto_crafter_panel_stop", "> CLICK HERE TO STOP / INTERRUPT <"), "", {

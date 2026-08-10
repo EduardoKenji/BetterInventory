@@ -346,6 +346,17 @@ local function resolve_traits(external_values, entries, kind)
 		end
 
 		local selected = candidates[1].entry
+		local rarity = tonumber(selected.rarity or selected.tier)
+
+		if kind == "blessing" then
+			for _, tier in ipairs(selected.tiers or {}) do
+				rarity = math.max(rarity or 0, tonumber(tier.tier) or 0)
+			end
+		end
+
+		if rarity == nil or rarity <= 0 then
+			return nil, kind .. "_tier_unavailable"
+		end
 
 		for prior_index, prior in ipairs(result) do
 			if prior.id == selected.id then
@@ -355,7 +366,7 @@ local function resolve_traits(external_values, entries, kind)
 
 		result[index] = {
 			id = selected.id,
-			rarity = selected.rarity,
+			rarity = rarity,
 			label = external.label or external.name,
 			external = external,
 		}

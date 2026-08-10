@@ -126,12 +126,13 @@ def main() -> None:
     assert failed_starts == [1]
 
     # View loss is checked at the transition boundary, before job 2.
+    boundary_starts = []
     boundary = queue_module.new(
         to_lua(
             {
                 "select_job": callback_wrapper(lambda job, index: True),
                 "configure_job": callback_wrapper(lambda job, index: True),
-                "start_job": callback_wrapper(lambda job, index: True),
+                "start_job": callback_wrapper(lambda job, index: boundary_starts.append(int(index)) or True),
                 "stop_job": callback_wrapper(lambda reason: True),
                 "view_is_valid": callback_wrapper(lambda: view_valid[0]),
             }
@@ -144,6 +145,11 @@ def main() -> None:
     boundary.update(boundary)
     assert boundary.snapshot(boundary)["state"] == "failed"
     assert boundary.snapshot(boundary)["last_error"] == "brunt_view_unavailable_at_boundary"
+    assert boundary.snapshot(boundary)["current_index"] == 2
+    view_valid[0] = True
+    assert boundary.start(boundary) is True
+    assert boundary_starts == [1, 2]
+    assert boundary.snapshot(boundary)["state"] == "running"
 
     invalid = to_lua({"kind": "games_lantern_build", "jobs": [build["jobs"][1], build["jobs"][1]]})
     result, reason = queue_module._test.valid_build(invalid)

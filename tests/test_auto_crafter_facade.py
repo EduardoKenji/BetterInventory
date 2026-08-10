@@ -24,6 +24,9 @@ def main() -> None:
     assert "pcall(panel.sync_controller_snapshot, panel, snapshot)" in source
     assert "function AutoCrafter.interrupt_for_external_mutation(kind)" in source
     assert "snapshot.operation_inflight or snapshot.operation_quarantined" in source
+    assert "queue_owned = queue_state and queue_state.job_count == 2" in source
+    assert "local queue_busy = queue_snapshot and" in source
+    assert "pcall(games_lantern_queue.clear, games_lantern_queue)" in source
 
     print("Auto Crafter facade crash-containment checks passed.")
 
