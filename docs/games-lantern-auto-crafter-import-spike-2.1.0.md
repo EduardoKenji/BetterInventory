@@ -9,7 +9,7 @@ Target surface: Auto Crafter Helper in Brunt's Armoury
 
 Yes. Importing a Games Lantern weapon target from a copied build URL is theoretically and practically feasible with high confidence for public builds.
 
-The clipboard contains only a URL, so Ctrl+V cannot configure Auto Crafter from clipboard text alone. BetterInventory must extract the build UUID, fetch the public Games Lantern page, parse its weapon entries, resolve one entry against Darktide's live weapon/stat/perk/blessing catalogues, and stage an atomic planner update.
+The clipboard contains only a URL, so Ctrl+V cannot configure Auto Crafter from clipboard text alone. BetterInventory must extract the build UUID, fetch the public Games Lantern page, parse its weapon entries, resolve both the melee and ranged entries against Darktide's live weapon/stat/perk/blessing catalogues, and stage an atomic two-item queue.
 
 The installed Lantern of the Omnissiah mod already proves the difficult platform primitives:
 
@@ -19,7 +19,7 @@ The installed Lantern of the Omnissiah mod already proves the difficult platform
 - Its rendered HTML contains weapon names, family/mark links, modifier values, perks, blessing names, and blessing image identifiers.
 - The result can be stored and displayed inside Darktide.
 
-This should be implemented as a **read-only import and preview feature**. Ctrl+V must never start crafting, spend resources, select an ambiguous weapon, or alter an active Auto Crafter run. The existing CRAFT action remains the only account-mutating entry point.
+Ctrl+V is a **read-only queue import**. It may select the imported melee weapon in Brunt and atomically configure planner targets, but it must never start crafting or spend resources. The existing CRAFT action remains the only account-mutating entry point and processes the validated queue serially: melee first, ranged second.
 
 ## Requested interaction
 
@@ -27,14 +27,165 @@ The intended workflow is:
 
 1. Open a public Darktide build on Games Lantern.
 2. Press its Copy button; the clipboard receives the build URL.
-3. Open Brunt's Armoury and select a melee or ranged weapon family.
+3. Open Armoury Exchange -> Brunt's Armoury.
 4. With the Auto Crafter panel visible and idle, press Ctrl+V.
-5. BetterInventory reads and validates the clipboard URL, fetches the build, and resolves the weapon matching the active Brunt context.
-6. The panel displays a preview of the imported weapon, dump stat, two perks, and two blessings.
-7. The user applies the preview, which updates planner controls together.
-8. The user reviews normal caps and workflow options, then separately presses CRAFT if desired.
+5. BetterInventory reads and validates the clipboard URL, fetches the build, and resolves both the build's melee and ranged weapons.
+6. BetterInventory changes Brunt's selected family/offer to the imported melee weapon, atomically activates its dump stat, perks, and blessings, and queues the ranged target behind it.
+7. The top summary changes from a single target to a queue summary such as `Queued (Arc Maul => Arc Rifle)`. Both `Target` and `Planner target` use this queue summary while two jobs remain.
+8. The new `Active Queue` section shows one detailed row for melee and one for ranged. The active melee row is highlighted yellow.
+9. The user reviews normal caps and workflow options, then presses CRAFT.
+10. Auto Crafter completes or reuses the melee target first, then activates and completes or reuses the ranged target.
 
 A visible `Paste Games Lantern build` action should accompany Ctrl+V for controller users, discoverability, and recovery when the keyboard shortcut is captured by another UI element.
+
+## Owner-specified queue product contract
+
+This section is authoritative when it differs from earlier single-target exploration in this spike.
+
+### Queue composition and order
+
+A valid Games Lantern import produces exactly two ordered jobs when the build exposes one valid melee and one valid ranged weapon:
+
+```text
+job 1: melee weapon
+job 2: ranged weapon
+```
+
+Order is fixed to melee then ranged regardless of which weapon happened to be selected before Ctrl+V. Existing Auto Crafter workflow behavior inside each job remains unchanged. Queue orchestration must call the current single-item workflow rather than introduce a second crafting implementation.
+
+Each job is a frozen target specification:
+
+```text
+QueueJob
+  queue_id
+  position
+  slot_kind              -- melee | ranged
+  weapon_family/mark
+  resolved Brunt offer/master identity
+  dump_stat_identity
+  dump_target            -- retained Auto Crafter setting, normally 60
+  perk_target_1
+  perk_target_2
+  blessing_target_1
+  blessing_target_2
+  state                   -- queued | active | completed | stopped | failed
+  completion_kind         -- crafted | resumed | exact_existing
+  final_gear_id           -- only after authoritative confirmation
+```
+
+The queue is valid only when every job has a unique compatible weapon, dump stat, two perks, and two blessings. If either weapon is malformed or unresolved, report which weapon and fields failed and do not install a partial queue. This is safer and less surprising than silently crafting only half of a pasted build.
+
+### Planner activation
+
+On successful import:
+
+1. Save the current manual single-item planner state as a restorable snapshot.
+2. Install the two immutable queue jobs atomically.
+3. Select the melee weapon in Brunt's native view.
+4. Copy the melee job's frozen targets into the current Auto Crafter planner controls.
+5. Rebuild and verify the normal plan.
+6. Render the ranged job as queued without requiring it to be visible in Brunt.
+
+When melee reaches an authoritative terminal success, activate ranged atomically:
+
+1. mark melee completed with its final gear identity;
+2. close dispatch and refresh authoritative inventory/resources;
+3. select the ranged weapon family/offer in Brunt when the view is still available;
+4. load the ranged job's frozen target settings;
+5. run the full normal preflight for ranged;
+6. dispatch ranged only if preflight succeeds.
+
+Queue activation must not reinterpret settings edited for the active job as changes to the queued job. A queued job is frozen from import. If editing queue jobs is later desired, it needs an explicit Edit/Revalidate interaction rather than accidental coupling to global settings.
+
+### Target and planner labels
+
+Without a Games Lantern queue, existing single-target labels remain unchanged.
+
+With two pending jobs:
+
+```text
+Target:         Queued (Arc Maul => Arc Rifle)
+Planner target: Queued (Arc Maul => Arc Rifle)
+```
+
+Names are examples; use localized weapon display names. If the first job is complete and ranged is active, labels should communicate progress rather than imply both remain pending, for example:
+
+```text
+Target:         Active (Arc Rifle)
+Planner target: Active (Arc Rifle)
+Queue progress: 1/2 complete
+```
+
+If an exact finished melee weapon is reused, it still counts as completed job 1 and the queue advances to ranged without crafting or spending on melee.
+
+### Active Queue section
+
+Add a new expanded `Active Queue` section immediately above `Planner configuration`.
+
+The section is always present while Auto Crafter is enabled:
+
+- default/manual mode renders one detailed row for the current single weapon target;
+- Games Lantern mode renders two detailed rows, melee first and ranged second;
+- the active row uses the existing yellow selected/action visual language;
+- queued rows remain neutral;
+- completed rows use a restrained completed indicator/checkmark;
+- failed or stopped rows use explicit status text and must not masquerade as completed.
+
+Each larger row should show, without requiring the lower planner controls to be expanded:
+
+- queue position and state;
+- weapon icon and localized family/mark name;
+- dump-stat label and target value;
+- perk 1 and perk 2 labels;
+- blessing 1 and blessing 2 labels/icons where practical;
+- completion source (`new`, `resumed`, or `exact existing`) once known.
+
+The row must be derived from the frozen queue job, not whichever global planner values happen to be active. Long names need wrapping/truncation rules and a tooltip; the row cannot silently clip a blessing or weapon identity.
+
+### CRAFT and STOP semantics
+
+CRAFT means `process the current validated queue serially`:
+
+- run the existing preflight independently for melee;
+- complete/reuse melee;
+- refresh authoritative state;
+- run a new preflight independently for ranged;
+- complete/reuse ranged;
+- report one queue summary plus per-job outcomes.
+
+STOP / INTERRUPT remains graceful:
+
+- never cancel or duplicate a request already dispatched;
+- close dispatch immediately for the next request;
+- settle and reconcile the in-flight request;
+- retain completed jobs and current-job recovery identity;
+- do not start the next queue job;
+- leave a resumable stopped queue only after authoritative reconciliation.
+
+Resuming must revalidate character, inventory, resources, mastery, current gear revision, target availability, and completed-job postconditions. It must never rely only on the previous local queue snapshot.
+
+### Queue budget and confirmation semantics
+
+Importing a second job must not silently double the user's understood spending authority.
+
+- Existing acquisition/material limits retain their current meaning for each invariant single-item workflow; queue orchestration must not rewrite them.
+- Before CRAFT, queue preflight presents melee maximum/projected cost, ranged maximum/projected cost, and the aggregate maximum/projected cost.
+- Confirmation explicitly states that two weapons will be processed serially and that the displayed aggregate can be spent.
+- If an exact-existing or resumable candidate lowers a job's forecast, refresh the aggregate from authoritative inventory before confirmation.
+- Before ranged starts, refresh wallets and rerun ranged preflight. The earlier aggregate confirmation is not permission to dispatch when current resources are insufficient.
+- Confirmed melee spending is never rolled back conceptually because ranged later blocks; the queue reports `1/2 complete` and the precise ranged shortfall.
+- A future queue-wide hard cap may be added, but initial implementation must not ambiguously repurpose an existing per-weapon setting.
+
+### Queue lifetime and clearing
+
+The safe initial lifetime is session-local:
+
+- an imported idle/stopped queue remains visible until completed, explicitly cleared/replaced, the character changes, or the mod/game reloads;
+- a completed two-row result may remain visible for review until the user selects a new manual target or presses a future Clear Queue action;
+- clearing/restoring returns Active Queue to one row derived from the current manual target, or a `No target selected` row when none exists;
+- clearing a queue is unavailable while a request is unresolved;
+- clearing never discards, unfavorites, downgrades, or otherwise changes completed gear;
+- no queue automatically resumes spending after reload.
 
 ## Evidence hierarchy and source limits
 
@@ -228,9 +379,11 @@ Resolution priority should be:
 4. explicit user selection among compatible candidates;
 5. fail closed.
 
-Use the active Brunt offer as context, not as permission to guess. If the user has selected a melee weapon and the page contains one melee and one ranged weapon, select the unique melee candidate. If the page contains multiple compatible melee recommendations or variants, show a chooser. If the imported weapon is unavailable to the current class/character, report that and apply nothing.
+Resolve slot kind for every candidate. A standard import requires exactly one uniquely resolvable melee candidate and one uniquely resolvable ranged candidate. The active Brunt offer is useful catalog context, but it does not filter either queue job away. After both resolve, select melee as job 1 and retain ranged as job 2 even though the ranged configuration is not yet represented by the lower native planner controls.
 
-The supplied page currently has exactly two unique weapon links and only one melee candidate, so its Greatsword is unambiguous in a melee Brunt context.
+If the page contains multiple compatible candidates for one slot, show a slot-specific chooser before installing the queue. If either imported weapon is unavailable to the current class/character, report that and apply nothing. Never select the first HTML card merely because it appeared first.
+
+The supplied page currently has exactly two unique weapon links: one melee Greatsword and one ranged Force Staff. It therefore forms an unambiguous two-job queue for a compatible Psyker.
 
 ### Step 3: resolve the dump stat
 
@@ -242,7 +395,7 @@ Rules:
 - never import its website value as the Brunt target;
 - retain the user's existing dump target, normally 60;
 - if the minimum is tied, absent, or does not map uniquely, require manual selection;
-- validate that the resolved stat belongs to the selected weapon before Apply.
+- validate that the resolved stat belongs to its queue job's exact weapon before queue installation.
 
 For the supplied Greatsword, `Warp Resistance 0` uniquely resolves to Warp Resistance; the other four stats are 80.
 
@@ -268,20 +421,20 @@ selected weapon family/mark + external icon ID + normalized blessing name
 
 Then match only within the selected weapon's live blessing catalogue. Require a unique result. The imported recommendation expresses the blessing type; Auto Crafter should continue using its existing highest valid tier/mastery ownership rules.
 
-If a recommended blessing is not currently selectable for that weapon, show it as unresolved and block Apply rather than substituting a similarly named trait.
+If a recommended blessing is not currently selectable for that weapon, show it as unresolved and block queue installation rather than substituting a similarly named trait.
 
-### Step 6: stage and apply atomically
+### Step 6: stage and install the queue atomically
 
-Ctrl+V should create a preview, not immediately call `mod:set` repeatedly. The preview includes:
+Ctrl+V should resolve a complete queue model before changing the visible planner. The validation result includes:
 
 - source build title and UUID;
-- resolved weapon and active Brunt offer;
-- dump stat identity and retained target value;
-- both perks and blessings;
+- resolved melee and ranged weapons and Brunt identities;
+- both dump-stat identities and retained target values;
+- both perk/blessing pairs for each weapon;
 - warnings and unresolved fields;
 - fetch age/cache status.
 
-Apply only when every required field has a unique valid live ID. Before applying, capture old settings. Write all five target identities together, force the normal planner/catalog refresh, and verify the resulting plan. If any write or validation fails, restore all old settings and report a bounded error.
+Install only when every required field on both jobs has a unique valid live ID. Before installation, capture the manual planner and any previous idle queue state. Store both frozen jobs and write the active melee target settings together, select the melee offer, force the normal planner/catalog refresh, and verify the resulting plan. If any write, selection, or validation fails, restore the old planner/queue state and report a bounded error.
 
 The importer should not alter workflow toggles, resource caps, favoriting, inventory-resume policy, mastery behavior, or sequential request behavior.
 
@@ -294,25 +447,32 @@ idle
   -> clipboard_validating
   -> fetching
   -> parsing
-  -> resolving_weapon
-  -> resolving_traits
-  -> preview_ready
-  -> applying
-  -> applied
+  -> resolving_melee
+  -> resolving_ranged
+  -> queue_validated
+  -> queue_installing
+  -> queue_ready
+  -> melee_active
+  -> melee_completed
+  -> ranged_preflight
+  -> ranged_active
+  -> queue_completed
 
 Any state -> cancelled (view/character/generation changed)
-Any pre-Apply state -> failed (bounded non-mutating error)
-applying -> rolled_back (atomic validation failed)
+Any pre-install state -> failed (bounded non-mutating error)
+queue_installing -> rolled_back (atomic validation failed)
+Any crafting state -> stopping -> reconciled_stopped
+Any job -> failed (bounded terminal error; later jobs remain undispatched)
 ```
 
-Each asynchronous callback carries an import generation, canonical UUID, active character ID, Brunt view identity, and selected-offer signature. A callback is ignored unless all still match. Selecting another Brunt weapon after parsing invalidates the resolution and requires re-resolution before Apply.
+Each asynchronous callback carries an import generation, canonical UUID, active character ID, Brunt view identity, and queue identity. A callback is ignored unless all still match. Once a queue is installed, manual native weapon selection must not silently rewrite its frozen jobs; either restore the active queued weapon selection or explicitly stop/invalidate the queue before accepting a new manual target.
 
 ## Safety and security requirements
 
 This import occurs beside an account-mutating feature, so it should satisfy stronger boundaries than a normal URL preview:
 
 - Import is unavailable whenever Auto Crafter's global mutation arbiter is owned.
-- Import performs zero store, gear, mastery, wallet, crafting, discard, or favorite calls.
+- Import performs zero store, gear, mastery, wallet, crafting, discard, or favorite calls. Native offer selection and local planner/queue updates are allowed.
 - CRAFT remains a separate explicit click and normal preflight/confirmation remains unchanged.
 - No raw URL, HTML, cookies, account token, or authenticated headers are written to BetterInventory logs.
 - Log UUID, stage, byte count, parser version, candidate counts, resolution result, and bounded errors.
@@ -320,7 +480,7 @@ This import occurs beside an account-mutating feature, so it should satisfy stro
 - Never pass unvalidated clipboard text to `cmd`, PowerShell, a batch file, or `/bin/sh`.
 - Escape all generated file paths; do not share Lantern's filename namespace.
 - Do not retry transport failures indefinitely. One manual retry is safer than hidden polling.
-- A timeout, network loss, website challenge, parser drift, or missing dependency leaves planner settings untouched.
+- A timeout, network loss, website challenge, parser drift, missing dependency, or one invalid weapon leaves planner and queue settings untouched.
 
 ## Failure and edge-case matrix
 
@@ -335,18 +495,49 @@ This import occurs beside an account-mutating feature, so it should satisfy stro
 | Response is very large | Abort at size cap; never parse unbounded data. |
 | HTML classes/layout changed | Parser returns unsupported-format; never partially apply. |
 | No weapons | Report no equipment target. |
-| One melee and one ranged weapon | Filter by active Brunt slot/context. |
-| Multiple compatible weapons | Show chooser; do not pick first. |
-| Imported mark unavailable to current operative | Explain incompatibility; no offer/settings mutation. |
+| Valid melee and ranged weapons | Install ordered melee -> ranged queue and activate melee. |
+| One valid weapon and one invalid weapon | Name the invalid slot/fields and reject the entire imported queue; spend nothing. |
+| Build contains only one weapon | Report missing melee/ranged slot and do not reinterpret it as a normal two-job import. |
+| Multiple compatible weapons in either slot | Show a slot-specific chooser; do not pick first. |
+| Build belongs to another class | Explain expected/current class and reject before changing native selection or planner settings. |
+| Imported mark unavailable to current operative | Explain incompatibility; no offer, queue, or planner mutation. |
 | Dump stat has a unique zero/minimum | Import identity; retain target 60/current setting. |
 | Lowest stat is tied | Require manual dump-stat choice. |
-| Perk/blessing cannot map uniquely | Preview unresolved and block Apply. |
+| Perk/blessing cannot map uniquely | Identify weapon/field and block queue installation. |
 | Same blessing icon ID appears in multiple families | Resolve with weapon context and name. |
-| User changes selected offer during fetch | Re-resolve against new offer or invalidate preview. |
+| User changes selected offer during fetch | Imported jobs remain source-driven; install only after revalidating both against the live catalog. |
 | User presses Ctrl+V repeatedly | Debounce and deduplicate same canonical UUID. |
 | User leaves Brunt or changes character | Cancel generation and ignore callbacks. |
 | User starts crafting before fetch completes | Cancel import; active workflow wins. |
 | Existing Auto Crafter run is active/resumable | Reject import until controller is safely idle. |
+| New melee and new ranged | Craft melee through normal workflow, reconcile, then craft ranged. |
+| Resumable melee and new ranged | Reuse best valid melee base under existing resume policy, finish it, then craft ranged. |
+| New melee and resumable ranged | Craft melee, refresh, then reuse and finish the ranged base. |
+| Exact completed melee and new/resumable ranged | Verify exact melee, mark job 1 complete without spend, then activate ranged. |
+| New/resumable melee and exact completed ranged | Finish melee, verify exact ranged, then mark job 2 complete without spend. |
+| Both exact completed weapons exist | Verify both deterministically, perform no crafting spend, report queue complete and identify both gear IDs. |
+| Multiple resumable candidates for one job | Use existing deterministic candidate ranking; log selected gear ID and preserve nonselected items. |
+| Same gear appears eligible for both jobs | Impossible across distinct melee/ranged identities; treat duplicate identity as corrupted resolution and fail closed. |
+| Missing resources before melee starts | Melee preflight fails; neither job dispatches; queue remains safely reviewable/resumable. |
+| Resources run out during melee | Stop at existing per-step resource gate, reconcile melee, and never activate ranged. |
+| Melee completes but ranged preflight lacks resources | Preserve confirmed melee completion, do not dispatch ranged, show exact ranged shortfall, retain resumable queue. |
+| Resources run out during ranged | Preserve completed melee; stop/reconcile ranged using existing single-job recovery rules. |
+| Inventory is full before either purchase loop | Fail that job's preflight before purchase and do not advance the queue. |
+| Inventory fills between jobs | Ranged preflight catches it after melee reconciliation; ranged remains undispatched. |
+| Mastery 20/all points already allocated | Skip mastery work independently per weapon family and continue normal job verification. |
+| Mastery differs between melee and ranged families | Each job reads and preflights its own authoritative mastery/sticker-book state. |
+| CRAFT is pressed twice | First edge owns queue run; subsequent presses are inert while busy. |
+| STOP during melee | Settle/reconcile current request, retain melee recovery state, and never start ranged. |
+| STOP between jobs | Dispatch gate is already closed; ranged remains queued and untouched. |
+| STOP during ranged | Preserve completed melee and reconcile only the ranged in-flight request. |
+| Brunt closes after CRAFT | Existing background-run policy applies to active job; queue transition still requires valid lifecycle/context gates. |
+| Character changes between jobs | Halt before ranged, invalidate character-scoped catalog, and require revalidation; never craft on the new character from stale jobs. |
+| Native/manual/third-party inventory mutation occurs | Existing mutation guard interrupts between requests or quarantines unresolved work; next queue job cannot start. |
+| Queue settings are manually edited | Active job changes require explicit revalidation; queued job remains frozen and cannot be silently mutated. |
+| A second valid URL is pasted while an idle queue exists | Require explicit replacement confirmation or provide Replace Queue; never merge unrelated queues implicitly. |
+| A second URL is pasted while queue is running/stopped-unreconciled | Reject until safely idle/reconciled. |
+| Game/mod reload with idle imported queue | Default safe policy: do not auto-resume spending; restore only if queue persistence has complete versioned validation data. |
+| Game/mod reload during run | Existing run recovery journal governs; no automatic next-job dispatch after reload. |
 | Lantern is installed | Avoid talent import and duplicate fetch/input ownership. |
 | Lantern is absent | Standalone BetterInventory importer still works. |
 | Windows curl unavailable | Non-mutating transport diagnostic. |
@@ -376,10 +567,13 @@ Suggested bounded records:
 [GLImport] event=fetch_started transport=windows_curl timeout=30s
 [GLImport] event=fetch_complete bytes=296277 elapsed=0.84s
 [GLImport] event=parse_complete weapons=2 parser=html_v1
-[GLImport] event=weapon_resolved context=melee candidate=covenant-mk-vi-blaze-force-greatsword
-[GLImport] event=targets_resolved dump=warp_resistance perks=2 blessings=2 unresolved=0
-[GLImport] event=preview_ready settings_changed=false
-[GLImport] event=apply_complete planner_valid=true settings_changed=5
+[GLImport] event=job_resolved slot=melee candidate=covenant-mk-vi-blaze-force-greatsword dump=warp_resistance perks=2 blessings=2
+[GLImport] event=job_resolved slot=ranged candidate=nomanus-mk-vi-electrokinetic-force-staff dump=charge_rate perks=2 blessings=2
+[GLImport] event=queue_installed queue=12 jobs=2 active=melee planner_valid=true
+[GLQueue] event=job_started queue=12 job=1 slot=melee source=new
+[GLQueue] event=job_completed queue=12 job=1 result=crafted gear=<id>
+[GLQueue] event=job_preflight queue=12 job=2 slot=ranged result=blocked missing_plasteel=4200
+[GLQueue] event=queue_stopped queue=12 complete=1/2 resumable=true
 ```
 
 Failures should log stage, sanitized reason, response size/status, candidate count, and generation. Never dump the full HTML into the normal BetterInventory log. A debug-only fixture export may be offered separately with an explicit user action and prominent privacy/size warning.
@@ -400,7 +594,7 @@ Failures should log stage, sanitized reason, response size/status, candidate cou
 
 Check in minimal, reviewed HTML fixtures rather than downloading during unit tests:
 
-- supplied Greatsword/staff build;
+- supplied Greatsword/staff build and its exact two-slot ordering;
 - melee-only and ranged-only builds;
 - weapons with every supported stat label;
 - missing perks/blessings and duplicate traits;
@@ -421,24 +615,66 @@ Use synthetic live Auto Crafter catalogs:
 - unique display-name fallback;
 - localized game catalog versus English website labels;
 - unsupported current class;
-- one melee plus one ranged candidate;
+- one melee plus one ranged candidate producing a frozen melee -> ranged queue;
+- missing or invalid melee with valid ranged rejects the whole import;
+- valid melee with missing or invalid ranged rejects the whole import;
+- different-class weapon pairs reject the whole import;
 - ambiguous same-slot candidates;
 - unique, tied, absent, and unmapped dump stats;
 - exact, duplicate, unavailable, and renamed perk/blessing cases;
 - same icon ID with different weapon context;
 - website zero imports stat identity while target stays 60/current value.
 
-### State-machine and lifecycle tests
+### Queue state-machine and lifecycle tests
 
-- paste while idle reaches preview without any mutation adapter call;
+- paste while idle installs two validated local jobs and performs no account mutation;
 - paste during every Auto Crafter phase is rejected;
 - view exit, offer change, character change, hot reload, stop, and new paste invalidate stale callbacks;
 - timeout followed by late success remains inert;
-- Apply updates all settings or rolls all of them back;
+- queue installation updates both frozen jobs plus active melee settings or rolls all of them back;
 - planner validation failure restores old settings;
 - CRAFT remains independent and receives the normal preflight;
+- CRAFT activates melee first and cannot dispatch ranged before authoritative melee completion;
+- exact-existing melee advances without spend; exact-existing ranged completes without spend;
+- STOP during melee, between jobs, and during ranged never dispatches a later request;
+- failed/blocked ranged preserves confirmed melee completion;
+- repeated CRAFT and Ctrl+V edges are idempotent while owned;
+- default/manual mode renders exactly one Active Queue row;
+- imported mode renders two frozen rows and highlights only the active row yellow;
+- completed, stopped, and failed row visual states match queue state;
 - Lantern present/absent/disabled/unknown-version matrices;
-- four sequential imports and four subsequent crafts do not leak state across targets.
+- four sequential imports and four two-job crafts do not leak state across queues or jobs.
+
+### Two-job integration matrix
+
+Every row must assert job order, mutation counts, selected gear identities, spend ownership, terminal queue state, and absence of mutation calls after a blocked transition.
+
+| Melee starting state | Ranged starting state | Expected result |
+|---|---|---|
+| new | new | craft melee, reconcile, craft ranged, complete 2/2 |
+| resumable valid base | new | resume/finish melee, then craft ranged |
+| new | resumable valid base | craft melee, then resume/finish ranged |
+| resumable valid base | resumable valid base | deterministically resume each in order |
+| exact finished | new | spend zero on melee, then craft ranged |
+| new | exact finished | craft melee, verify ranged, spend zero on ranged |
+| exact finished | resumable valid base | verify melee, then resume ranged |
+| resumable valid base | exact finished | finish melee, then verify ranged |
+| exact finished | exact finished | verify both, zero crafting mutations, complete 2/2 |
+| insufficient resources at melee preflight | any | zero dispatches; queue blocked at 0/2 |
+| resources exhausted mid-melee | any | reconcile melee; ranged never starts |
+| melee completed | insufficient resources for ranged | preserve melee; ranged zero dispatches; queue resumable at 1/2 |
+| melee completed | resources exhausted mid-ranged | preserve melee; reconcile ranged; stop at 1/2 unless ranged postcondition confirms completion |
+| inventory full before melee | any | block melee; ranged never starts |
+| melee fills inventory | new/resumable ranged | ranged preflight blocks before purchase |
+| manual mutation during melee | any | service guard interrupts/quarantines; ranged never starts |
+| melee completed | manual mutation before ranged | refresh/revalidate; block or safely continue according to authoritative state |
+| STOP during melee | any | reconcile current request; ranged never starts |
+| melee completed, STOP at boundary | any | close dispatch before ranged; retain 1/2 |
+| melee completed | STOP during ranged | reconcile ranged only; retain melee completion |
+| character changes after melee | any | invalidate queue context; ranged never starts on new character |
+| network ambiguity during either job | any | quarantine that job; no retry or next-job dispatch until reconciled |
+
+Repeat representative rows with mastery 0, mastery 20/unallocated, mastery 20/fully allocated, missing blessing ownership, mixed weapon level/rarity, multiple resume candidates, and capped/uncapped resource configurations.
 
 ### Transport tests
 
@@ -453,8 +689,8 @@ Use a fake process/filesystem adapter for deterministic tests:
 
 ### Live validation matrix
 
-1. Windows, supplied URL, melee Brunt selection.
-2. Windows, supplied URL, ranged Brunt selection.
+1. Windows, supplied URL, verify melee selection plus two Active Queue rows.
+2. Press CRAFT and verify Greatsword completes before Force Staff activates.
 3. Proton/Wine with host curl.
 4. Lantern installed and recommendations enabled.
 5. Lantern absent.
@@ -463,6 +699,11 @@ Use a fake process/filesystem adapter for deterministic tests:
 8. Leave Brunt, switch operative with InstantCharacterChange, open mission board, and enter Psykanium during fetch.
 9. Disconnect for 5-7 seconds during fetch, reconnect, and retry.
 10. Verify no Ordo Dockets, Plasteel, Diamantine, mastery, inventory, favorites, or gear change until CRAFT is explicitly pressed.
+11. Validate all nine new/resume/exact-existing combinations from the integration matrix.
+12. Exhaust resources before melee, between jobs, and during ranged; verify confirmed first-job progress is retained.
+13. STOP during every mutation kind in both jobs and at the job boundary.
+14. Test invalid URL, deleted/private build, one invalid weapon, and wrong-class build.
+15. Verify single-row default mode returns after clearing/completing the imported queue.
 
 ## Proposed module boundaries
 
@@ -474,11 +715,12 @@ auto_crafter/games_lantern/
   transport_wine.lua  -- bounded host curl/wget invocation
   parser.lua          -- versioned HTML-to-external-model parser
   resolver.lua        -- external model to live planner IDs
-  controller.lua      -- generation/lifecycle state machine
+  controller.lua      -- import generation/lifecycle state machine
+  queue.lua           -- immutable jobs, transition policy, resume journal
   diagnostics.lua     -- bounded structured events
 
 auto_crafter/darktide/
-  games_lantern_ui.lua -- Brunt action, Ctrl+V edge, chooser, preview
+  games_lantern_ui.lua -- Brunt action, Ctrl+V edge, chooser, Active Queue rows
 ```
 
 Keep parser/resolver/controller pure enough to run outside Darktide tests. Inject clipboard, transport, clock, filesystem, active context, and planner catalog dependencies.
@@ -499,30 +741,39 @@ Keep parser/resolver/controller pure enough to run outside Darktide tests. Injec
 - Add complete resolver matrix, especially localization and reused blessing icon IDs.
 - No settings or crafting changes.
 
-### Batch 3 — read-only Brunt preview
+### Batch 3 — read-only Brunt queue UI
 
 - Add visible paste action and scoped Ctrl+V handling.
 - Initially accept fixture/injected data or clipboard URL parsing only.
-- Render candidate chooser and preview.
+- Render the always-present Active Queue section: one manual row or two imported rows.
+- Render slot-specific chooser and queue-validation errors.
+- Highlight the current job yellow and prove completed/stopped/failed states.
 - Assert zero backend mutation calls.
 
 ### Batch 4 — bounded transport
 
 - Implement native Windows and Proton adapters independently of Lantern.
 - Add timeout, size, protocol, diagnostics, generation cancellation, and temp cleanup.
-- Integrate live fetch into preview only.
+- Integrate live fetch into queue validation only.
 
-### Batch 5 — atomic planner apply
+### Batch 5 — atomic queue installation
 
-- Snapshot settings, apply resolved IDs together, rebuild plan, verify, and rollback on failure.
+- Snapshot settings, install both frozen jobs, activate melee IDs together, rebuild plan, verify, and rollback on failure.
 - Preserve dump target and all workflow/resource-cap settings.
 - Keep CRAFT as a separate action.
 
-### Batch 6 — compatibility and soak validation
+### Batch 6 — serial queue orchestration
+
+- Reuse the current invariant single-item workflow for each job.
+- Add authoritative melee-complete -> ranged-preflight transition.
+- Add exact-existing, resume, resource-block, STOP, failure, and recovery semantics.
+- Never dispatch ranged until melee terminal success is authoritative.
+
+### Batch 7 — compatibility and soak validation
 
 - Validate Lantern present/absent and avoid duplicate shortcut ownership.
 - Exercise InstantCharacterChange and all Auto Crafter lifecycle gates.
-- Run four-import/four-craft integration scenarios.
+- Run four imports followed by eight ordered job executions without state leakage.
 - Sync `Content/mods/BetterInventory` after every runtime change before live evidence is accepted.
 
 ## Release gates
@@ -531,10 +782,17 @@ Do not enable this feature by default until all are true:
 
 - URL/process injection tests pass.
 - Supplied build resolves the exact Greatsword targets listed above.
+- Supplied build also resolves the exact Force Staff targets and installs melee -> ranged order.
 - Dump target remains 60/current after importing website value 0.
 - Ambiguous weapon/stat/trait fixtures fail closed.
+- One invalid weapon prevents partial queue installation and reports the failing slot.
 - Import path proves zero account mutations in automated tests.
-- Atomic Apply rollback is proven.
+- Atomic queue installation rollback is proven.
+- The default/manual UI renders one Active Queue row; imported UI renders two detailed rows.
+- Current row highlighting and completed/stopped/failed states are verified across supported scales.
+- The complete new/resume/exact-existing two-job matrix passes.
+- Resource exhaustion before melee and between jobs never dispatches an invalid next request.
+- STOP is proven at every job phase and at the queue boundary.
 - Stale callbacks are inert across view and character changes.
 - Windows and Proton failures are bounded and recoverable.
 - Lantern compatibility does not alter talents or duplicate network work.
@@ -547,8 +805,9 @@ Do not enable this feature by default until all are true:
 2. Whether Games Lantern's external UUIDs can be mapped to Darktide master-item IDs from a stable exported dataset, reducing localization dependence.
 3. Whether a future Lantern release will expose a supported equipment-only provider API.
 4. Whether Brunt's current view/input service exposes a clean unconsumed Ctrl+V event on every supported keyboard layout; otherwise use scoped raw keyboard edges.
-5. How to present multiple same-slot recommendations compactly in the existing 445 px panel.
+5. Exact row height/collapse policy needed to present two detailed jobs in the existing 445 px panel without hiding the CRAFT/STOP actions.
 6. Whether a recommended blessing's tier is ever encoded distinctly. Until proven, import blessing identity and retain Auto Crafter's existing tier policy.
+7. Whether an idle imported queue should persist across a full game restart. The safe initial implementation may keep it session-local and require repasting after reload.
 
 None of these questions blocks the feasibility decision. They determine which resolver/transport adapter is preferred.
 
@@ -557,13 +816,16 @@ None of these questions blocks the feasibility decision. They determine which re
 Proceed, but split the feature into two trust boundaries:
 
 ```text
-Ctrl+V URL -> fetch -> parse -> resolve -> PREVIEW/APPLY SETTINGS
-                                                    |
-                                                    v
-                                      separate existing CRAFT action
+Ctrl+V URL -> fetch -> parse -> resolve both weapons -> install frozen queue
+                                                            |
+                                                            v
+                     CRAFT -> melee single-item workflow -> reconcile
+                                                            |
+                                                            v
+                              ranged preflight/workflow -> reconcile -> done
 ```
 
-This makes the feature useful without weakening the stability work already completed in Auto Crafter. The URL-only clipboard format is not an obstacle; it is a normal locator. The important constraints are strict URL canonicalization, fail-closed HTML parsing, context-aware weapon/trait resolution, preserving the attainable dump target, and never allowing an import gesture to spend resources.
+This makes the feature useful without weakening the stability work already completed in Auto Crafter. The URL-only clipboard format is not an obstacle; it is a normal locator. The important constraints are strict URL canonicalization, fail-closed validation of both weapons, immutable queue jobs, preserving attainable dump targets, reusing the existing single-item workflow, authoritative transition barriers, and never allowing the import gesture itself to spend resources.
 
 ## References
 
