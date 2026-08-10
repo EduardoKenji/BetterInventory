@@ -2,13 +2,13 @@
 
 Date: 2026-08-10  
 Branch: `research/2.1.0-games-lantern-import`  
-Status: Batches 1-6 implemented; import remains explicitly opt-in and manual Auto Crafter workflow is unchanged
+Status: Batches 1-7 implemented; import remains explicitly opt-in and manual Auto Crafter workflow is unchanged
 Target surface: Auto Crafter Helper in Brunt's Armoury
 
 Handoff audit: 2026-08-10 against the current controller, planner, operation arbiter, mutation guard, panel, and regression suite
 Runtime baseline: `44fbad1` (BetterInventory 2.1.0; imported queue is session-local and does not change persistent manual settings)
 Specification baseline reviewed: `e2abbc3`
-Verification baseline: 26 behavior suites / 99 cases plus architecture, schema, Lua structure, runtime bundle, ZIP parity, and static checks passed
+Verification baseline: 27 behavior suites / 100 cases plus architecture, schema, Lua structure, runtime bundle, ZIP parity, and static checks passed
 
 ## Executive decision
 
@@ -1049,12 +1049,11 @@ auto_crafter/games_lantern/
   transport_wine.lua  -- bounded host curl/wget invocation
   parser.lua          -- versioned HTML-to-external-model parser
   resolver.lua        -- external model to live planner IDs
-  controller.lua      -- import generation/lifecycle state machine
+  import_controller.lua -- import generation/lifecycle state machine
   queue.lua           -- immutable jobs, transition policy, resume journal
-  diagnostics.lua     -- bounded structured events
 
 auto_crafter/darktide/
-  games_lantern_ui.lua -- Brunt action, Ctrl+V edge, chooser, Active Queue rows
+  panel.lua            -- Brunt action, Ctrl+V edge, chooser, Active Queue rows
 ```
 
 Keep parser/resolver/controller pure enough to run outside Darktide tests. Inject clipboard, transport, clock, filesystem, active context, and planner catalog dependencies.
@@ -1122,10 +1121,14 @@ Keep parser/resolver/controller pure enough to run outside Darktide tests. Injec
 
 ### Batch 7 — compatibility and soak validation
 
-- Validate Lantern present/absent and avoid duplicate shortcut ownership.
-- Exercise InstantCharacterChange and all Auto Crafter lifecycle gates.
-- Run four imports followed by eight ordered job executions without state leakage.
-- Sync `Content/mods/BetterInventory` after every runtime change before live evidence is accepted.
+- Keep Games Lantern and InstantCharacterChange optional: BetterInventory does not call either mod's private API, does not install a second global shortcut hook, and reads the shared `Clipboard` surface only after a Ctrl+V rising edge while Brunt is attached.
+- Gate import admission on the Auto Crafter controller: a normal search, mastery, phase 4 mutation, quarantined request, auxiliary mutation, or active imported queue rejects paste before transport/process launch. Staged/recoverable imports remain replaceable while no account mutation is active.
+- Reset shortcut and queue-signature state whenever the Brunt panel is attached or detached. This prevents a held Ctrl+V or stale queue snapshot from crossing view instances.
+- Reuse the existing lifecycle gates for gameplay-state exit, operative-selection entry/exit, Brunt view creation/destruction, shutdown, and InstantCharacterChange character identity changes. A character change cancels fetch/catalog work, fails the active queue, and clears imported planner state.
+- Run four complete imports followed by four complete two-job queues (eight ordered job executions) and reject late callbacks/events from prior generations.
+- Synchronize `Content/mods/BetterInventory` with `tools/sync_deployed_mod.ps1` after every runtime change before live evidence is accepted; the command verifies the descriptor/runtime file set and hashes without deleting unrelated managed files.
+
+Batch 7 is automated compatibility evidence, not proof that every optional mod version is safe. Live review must still include Lantern installed and absent, InstantCharacterChange switching before paste and during fetch, Brunt close/reopen, and a normal single-item run with no imported queue.
 
 ## Release gates
 

@@ -56,3 +56,13 @@ BetterInventory/BetterInventory.mod
 ```
 
 Never upload a hand-built archive, never use `Compress-Archive` for the release, and never treat successful compression or source-hash equality alone as sufficient validation.
+
+## Installed-runtime synchronization
+
+Before live testing, synchronize the runtime payload into the installed mod directory:
+
+```powershell
+.\tools\sync_deployed_mod.ps1
+```
+
+The command is deliberately limited to `Content\mods\BetterInventory`, copies the descriptor and every runtime Lua file, and verifies the resulting file set and SHA-256 hashes. It does not copy tests, docs, archives, or user logs, and it does not remove unrelated non-runtime files from an existing managed checkout. Run it again after every runtime source change before collecting in-game evidence.
