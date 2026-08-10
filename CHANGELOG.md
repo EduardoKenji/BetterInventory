@@ -1,5 +1,9 @@
 # BetterInventory changelog
 
+## 2.1.0 - In development
+
+- Began research into importing Games Lantern build weapon targets into Auto Crafter Helper.
+
 ## 2.0.3 - 2026-08-10
 
 - Prevented Auto Crafter from overlapping native, manual, or third-party account mutations.

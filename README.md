@@ -100,7 +100,7 @@ The normal/default configuration does not alter filters or backend transactions.
 
 ## Supported integrations
 
-The following integrations are supported in v2.0.3. BetterInventory has no optional mod dependencies; each integration activates only when its corresponding mod is installed.
+The following integrations are supported in v2.1.0. BetterInventory has no optional mod dependencies; each integration activates only when its corresponding mod is installed.
 
 - Quick Look Card: optional integration for single-column and grid layouts. BetterInventory also includes its own built-in weapon-modifier display.
 - Enhanced Descriptions: compatible Curio text handling with an option to preserve BetterInventory's simplified primary-stat labels.
