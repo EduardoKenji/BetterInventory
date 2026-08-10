@@ -2,13 +2,13 @@
 
 Date: 2026-08-10  
 Branch: `research/2.1.0-games-lantern-import`  
-Status: research and handoff-safety audit complete; implementation not started
+Status: research and handoff-safety audit complete; Batch 1 contracts implemented; UI/network/account integration not started
 Target surface: Auto Crafter Helper in Brunt's Armoury
 
 Handoff audit: 2026-08-10 against the current controller, planner, operation arbiter, mutation guard, panel, and regression suite
-Runtime baseline: `44fbad1` (BetterInventory 2.1.0; this audit changes no runtime behavior)
+Runtime baseline: `44fbad1` (BetterInventory 2.1.0; Batch 1 modules are dormant and do not change current workflow behavior)
 Specification baseline reviewed: `e2abbc3`
-Verification baseline: 20 behavior suites / 89 cases plus architecture, schema, Lua structure, runtime bundle, ZIP parity, and static checks passed
+Verification baseline: 21 behavior suites / 92 cases plus architecture, schema, Lua structure, runtime bundle, ZIP parity, and static checks passed
 
 ## Executive decision
 
