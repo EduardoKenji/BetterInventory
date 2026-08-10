@@ -1197,6 +1197,7 @@ function mod.update(dt)
 	if AutoCrafter and type(AutoCrafter.update) == "function" then
 		AutoCrafter.update(dt)
 	end
+	local auto_crafter_busy = AutoCrafter and type(AutoCrafter.is_busy) == "function" and AutoCrafter.is_busy() or false
 
 	ItemCustomization.update_runtime(mod, dt)
 	EquipmentPersistence.update(mod, dt)
@@ -1204,10 +1205,9 @@ function mod.update(dt)
 		Features.reconcile_discard_transaction()
 	end
 	if Features.morningstar_auto_discard_needs_update(mod) then
-		Features.update_morningstar_auto_discard(mod, dt)
+		Features.update_morningstar_auto_discard(mod, dt, auto_crafter_busy)
 	end
 	if CurioAcquisition.needs_update(mod) then
-		local auto_crafter_busy = AutoCrafter and type(AutoCrafter.is_busy) == "function" and AutoCrafter.is_busy()
 		CurioAcquisition.update(mod, dt, Features.morningstar_auto_discard_is_busy(mod) or auto_crafter_busy)
 	end
 	if type(Diagnostics.update) == "function" and type(Diagnostics.enabled) == "function" and Diagnostics.enabled() then

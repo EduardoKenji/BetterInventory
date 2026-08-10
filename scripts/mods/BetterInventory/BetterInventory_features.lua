@@ -1802,6 +1802,10 @@ Features.morningstar_auto_discard_is_busy = function(mod)
 	return automatic_discard:morningstar_auto_discard_is_busy(mod)
 end
 
+Features.morningstar_auto_discard_has_started = function()
+	return automatic_discard:morningstar_auto_discard_has_started()
+end
+
 Features.automatic_discard_read_request_count = function()
 	return automatic_discard:automatic_discard_read_request_count()
 end
@@ -1826,8 +1830,8 @@ Features.cancel_manual_discard = function()
 	return true
 end
 
-Features.update_morningstar_auto_discard = function(mod, dt)
-	return automatic_discard:update(mod, dt)
+Features.update_morningstar_auto_discard = function(mod, dt, account_operation_busy)
+	return automatic_discard:update(mod, dt, account_operation_busy)
 end
 
 Features.morningstar_auto_discard_needs_update = function(mod)

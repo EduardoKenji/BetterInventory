@@ -340,6 +340,10 @@ AutoCrafter.configure({
 				return "automatic Curio acquisition is already running"
 			end
 
+			if type(Features.morningstar_auto_discard_has_started) == "function" and Features.morningstar_auto_discard_has_started() then
+				return "automatic inventory discard is already running"
+			end
+
 			-- Quick Level Mastery and native vendor purchases expose their active
 			-- request through this field. Never start over that wallet mutation.
 			if auto_crafter_read(view, "_purchase_promise") ~= nil then
