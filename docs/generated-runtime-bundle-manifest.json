@@ -1,6 +1,6 @@
 {
   "archive_root": "BetterInventory",
-  "file_count": 55,
+  "file_count": 56,
   "files": [
     {
       "archive_path": "BetterInventory/BetterInventory.mod",
@@ -10,9 +10,15 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory.lua",
-      "bytes": 14311,
-      "sha256": "e0e9c37a41d2769a594f80c739db9b606400fe416fdb47ed66449a517c054e80",
+      "bytes": 15904,
+      "sha256": "468e265abe307c3dab5e67cd67d08ea8618d573199a0cf910e998b6ede259675",
       "source_path": "scripts/mods/BetterInventory/BetterInventory.lua"
+    },
+    {
+      "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_account_mutation_guard.lua",
+      "bytes": 5106,
+      "sha256": "3068544b9f6cc38b7581e0bd48d9120ed2d7692e650da09d39022f69709b73cc",
+      "source_path": "scripts/mods/BetterInventory/BetterInventory_account_mutation_guard.lua"
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_armoury_panel.lua",
@@ -22,8 +28,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_auto_crafter.lua",
-      "bytes": 26783,
-      "sha256": "ad3389d5ce58535dbf37bb24590fcf4a04e0d694be27f41c713de3961907002e",
+      "bytes": 27320,
+      "sha256": "d1546eb730f33717688f6b1ad973845afe13ecacb158b2b2dd61c5524d167e02",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_auto_crafter.lua"
     },
     {
@@ -100,8 +106,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_discard_automatic.lua",
-      "bytes": 18811,
-      "sha256": "8e03a5628e4a94b569b7dcfd7c449d80771c4e3a7eb540025c0f614aee21fef6",
+      "bytes": 19282,
+      "sha256": "b96fe2ab16ea3dbe272ea31f5b9f209d0cad98775577b464595b87703f780387",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_discard_automatic.lua"
     },
     {
@@ -166,8 +172,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_features.lua",
-      "bytes": 99768,
-      "sha256": "dbc84461d2c0fd7eb8b777bea44eaf68522e4bc9834d09585f07885aa50a10d9",
+      "bytes": 99945,
+      "sha256": "2801811cb4c71f00fd5c5de3e3767ec0181e59bfe527792e6df8fe514bb31734",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_features.lua"
     },
     {
@@ -268,8 +274,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_runtime.lua",
-      "bytes": 85425,
-      "sha256": "61fa24ffc584a9c2a8719c7f56a9b7b1d1e41d901e62d4ea58c0cad22014aa56",
+      "bytes": 85452,
+      "sha256": "dd507e3fa6bfa4bd95d860c88f6e9906f556fc2f46f0e55fc7d611f6cf5ded3a",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_runtime.lua"
     },
     {
@@ -286,8 +292,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/auto_crafter/core/controller.lua",
-      "bytes": 146231,
-      "sha256": "c50b5f51cb046f34701e3d32172d4f607e8c64e7b1e16e96e4ed1527226513ff",
+      "bytes": 146508,
+      "sha256": "2abe84ea6ef140c253840a684caf6ca1ce3bb0cf359a3792755dd86f31a0eeb3",
       "source_path": "scripts/mods/BetterInventory/auto_crafter/core/controller.lua"
     },
     {
@@ -298,8 +304,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/backend.lua",
-      "bytes": 47132,
-      "sha256": "54302c411f23852a3d70a38257fe93e9bb6e2bf7a41d1773e1e31995b1380230",
+      "bytes": 48507,
+      "sha256": "cacacdf6dbec33d7e5e132c520af0396a36835df838b20eb2a00f45543fa6e91",
       "source_path": "scripts/mods/BetterInventory/auto_crafter/darktide/backend.lua"
     },
     {
@@ -333,6 +339,6 @@
       "source_path": "scripts/mods/BetterInventory/auto_crafter/darktide/viewport_layout.lua"
     }
   ],
-  "runtime_tree_sha256": "19673b28f452df956800ae39e6a1a8ea14fb447db7d7264ba1343274b9d59db4",
+  "runtime_tree_sha256": "b9cbf5ee6f01019e4598f1255e04df4bf85ce7de99156dd32f52f51ff377b196",
   "version": "2.0.2"
 }
