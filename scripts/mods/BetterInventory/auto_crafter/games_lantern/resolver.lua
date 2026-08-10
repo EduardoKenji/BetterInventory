@@ -1,0 +1,471 @@
+-- Pure Games Lantern -> Darktide catalogue resolution.
+--
+-- The external page is descriptive data only.  This module never writes
+-- settings, selects a Brunt offer, or calls a crafting service.  It returns a
+-- complete two-slot target or an explicit ambiguity/unsupported error.
+local Resolver = {}
+
+Resolver.CONTRACT_VERSION = "games_lantern_resolver_v1"
+
+local STOP_WORDS = {
+	["and"] = true,
+	["the"] = true,
+	["for"] = true,
+	["vs"] = true,
+	["with"] = true,
+	["enemies"] = true,
+	["enemy"] = true,
+	["weapon"] = true,
+}
+
+local function text(value)
+	return type(value) == "string" and value or value ~= nil and tostring(value) or ""
+end
+
+local function normalize(value)
+	local result = string.lower(text(value))
+	result = result:gsub("&amp;", "and")
+	result = result:gsub("&#0?39;", "'")
+	result = result:gsub("&#x27;", "'")
+	result = result:gsub("(%d+)%s*%-%s*(%d+)", "%2")
+	result = result:gsub("armoured", "armored")
+	result = result:gsub("[^%w]+", " ")
+	result = result:gsub("%s+", " ")
+	result = result:gsub("^%s+", "")
+	result = result:gsub("%s+$", "")
+
+	return result
+end
+
+local function tokens(value)
+	local result = {}
+	local seen = {}
+
+	for token in normalize(value):gmatch("[%w]+") do
+		if not STOP_WORDS[token] and not token:match("^%d+$") and not seen[token] then
+			seen[token] = true
+			result[#result + 1] = token
+		end
+	end
+
+	return result
+end
+
+local function token_set(value)
+	local result = {}
+
+	for _, token in ipairs(tokens(value)) do
+		result[token] = true
+	end
+
+	return result
+end
+
+local function contains_all(haystack, needles)
+	local values = token_set(haystack)
+
+	for _, needle in ipairs(needles) do
+		if not values[needle] then
+			return false
+		end
+	end
+
+	return #needles > 0
+end
+
+local function offer_text(offer)
+	if type(offer) ~= "table" then
+		return ""
+	end
+
+	return table.concat({
+		text(offer.display_name),
+		text(offer.sub_display_name),
+		text(offer.master_id),
+		text(offer.weapon_category),
+		text(offer.weapon_template),
+	}, " ")
+end
+
+local function slot_matches(offer, slot, classify_offer)
+	if type(classify_offer) == "function" then
+		local ok, classified = pcall(classify_offer, offer)
+
+		if not ok or classified == nil then
+			return false
+		end
+
+		return classified == slot
+	end
+
+	local category = string.lower(text(offer and (offer.weapon_category or offer.slot_type)))
+
+	if category == "" then
+		return false
+	end
+
+	if slot == "melee" then
+		return category == "melee" or category == "slot_primary"
+	end
+
+	return category == "ranged" or category == "slot_secondary"
+end
+
+local function match_score(external, offer)
+	local family = tokens(external and external.external_family_slug)
+	local mark = tokens(external and external.external_mark_slug)
+	local candidate_text = offer_text(offer)
+
+	if contains_all(candidate_text, family) and contains_all(candidate_text, mark) then
+		return 300
+	end
+
+	local display = tokens(external and external.display_name)
+
+	if contains_all(candidate_text, display) then
+		return 200
+	end
+
+	return 0
+end
+
+local function sorted_candidates(candidates)
+	table.sort(candidates, function(left, right)
+		local left_score = tonumber(left.score) or 0
+		local right_score = tonumber(right.score) or 0
+
+		if left_score ~= right_score then
+			return left_score > right_score
+		end
+
+		return text(left.offer and (left.offer.master_id or left.offer.display_name)) < text(right.offer and (right.offer.master_id or right.offer.display_name))
+	end)
+
+	return candidates
+end
+
+local function resolve_weapon(external, slot, offers, classify_offer)
+	local candidates = {}
+
+	for _, offer in ipairs(offers or {}) do
+		if slot_matches(offer, slot, classify_offer) then
+			local score = match_score(external, offer)
+
+			if score > 0 then
+				candidates[#candidates + 1] = {offer = offer, score = score}
+			end
+		end
+	end
+
+	sorted_candidates(candidates)
+
+	if #candidates == 0 then
+		return nil, "unavailable_" .. slot
+	end
+
+	local top_score = candidates[1].score
+	local top_count = 0
+
+	for _, candidate in ipairs(candidates) do
+		if candidate.score == top_score then
+			top_count = top_count + 1
+		end
+	end
+
+	if top_count ~= 1 then
+		return nil, "ambiguous_" .. slot
+	end
+
+	return {
+		slot = slot,
+		external = external,
+		offer = candidates[1].offer,
+		identity_score = top_score,
+	}, nil
+end
+
+local STAT_ALIASES = {
+	["warp resistance"] = {"warp", "resist"},
+	["cleave damage"] = {"cleave"},
+	["cleave damage targets"] = {"cleave"},
+	["charge rate"] = {"charge", "speed"},
+	["charge speed"] = {"charge", "speed"},
+	["reload speed"] = {"reload"},
+	["heat management"] = {"heat", "management"},
+	["power output"] = {"power", "output"},
+	["first target"] = {"first", "target"},
+	["defenses"] = {"defense"},
+	["defence"] = {"defense"},
+}
+
+local function stat_matches(external_label, candidate)
+	local normalized_external = normalize(external_label)
+	local aliases = STAT_ALIASES[normalized_external]
+	local candidate_text = offer_text({
+		display_name = candidate and candidate.name,
+		sub_display_name = candidate and candidate.display_name_key,
+	})
+
+	if aliases then
+		return contains_all(candidate_text, aliases)
+	end
+
+	return contains_all(candidate_text, tokens(normalized_external))
+end
+
+local function resolve_stat(external_label, offer)
+	local matches = {}
+
+	for _, candidate in ipairs(offer and offer.base_stats or {}) do
+		if stat_matches(external_label, candidate) then
+			matches[#matches + 1] = candidate
+		end
+	end
+
+	if #matches == 0 then
+		return nil, "dump_stat_unavailable"
+	end
+
+	if #matches ~= 1 then
+		return nil, "dump_stat_ambiguous"
+	end
+
+	return matches[1].name, nil
+end
+
+local function resolve_dump_stat(external, offer)
+	local lowest
+	local tied = false
+
+	for _, stat in ipairs(external and external.stats or {}) do
+		local value = tonumber(stat.value)
+
+		if value == nil then
+			return nil, "invalid_external_stat"
+		end
+
+		if lowest == nil or value < lowest.value then
+			lowest = {label = stat.label, value = value}
+			tied = false
+		elseif value == lowest.value then
+			tied = true
+		end
+	end
+
+	if not lowest then
+		return nil, "no_external_stats"
+	end
+
+	if tied then
+		return nil, "dump_stat_tie"
+	end
+
+	local stat_id, reason = resolve_stat(lowest.label, offer)
+
+	if not stat_id then
+		return nil, reason
+	end
+
+	return {
+		id = stat_id,
+		label = lowest.label,
+		value = lowest.value,
+	}, nil
+end
+
+local function catalog_for(context, offer)
+	if type(context and context.catalog_for_offer) == "function" then
+		local ok, catalog = pcall(context.catalog_for_offer, offer)
+
+		return ok and catalog or nil
+	end
+
+	local catalogs = context and context.catalogs
+	local key = offer and (offer.master_id or offer.parent_pattern)
+
+	return type(catalogs) == "table" and key ~= nil and catalogs[key] or context and context.catalog
+end
+
+local function trait_text(entry)
+	return table.concat({
+		text(entry and entry.display_name),
+		text(entry and entry.display_name_key),
+		text(entry and entry.id),
+	}, " ")
+end
+
+local function trait_score(external, entry)
+	local external_tokens = tokens(external and (external.label or external.name))
+	local candidate = token_set(trait_text(entry))
+	local score = 0
+
+	for _, token in ipairs(external_tokens) do
+		if candidate[token] then
+			score = score + 1
+		end
+	end
+
+	return score == #external_tokens and score > 0 and score or 0
+end
+
+local function resolve_traits(external_values, entries, kind)
+	local result = {}
+
+	if type(external_values) ~= "table" or #external_values ~= 2 then
+		return nil, "incomplete_" .. kind .. "_targets"
+	end
+
+	for index, external in ipairs(external_values) do
+		local candidates = {}
+
+		for _, entry in ipairs(entries or {}) do
+			local score = trait_score(external, entry)
+
+			if score > 0 then
+				candidates[#candidates + 1] = {entry = entry, score = score}
+			end
+		end
+
+		sorted_candidates(candidates)
+
+		if #candidates == 0 then
+			return nil, kind .. "_unavailable"
+		end
+
+		local top_score = candidates[1].score
+		local top_count = 0
+
+		for _, candidate in ipairs(candidates) do
+			if candidate.score == top_score then
+				top_count = top_count + 1
+			end
+		end
+
+		if top_count ~= 1 then
+			return nil, kind .. "_ambiguous"
+		end
+
+		local selected = candidates[1].entry
+
+		for prior_index, prior in ipairs(result) do
+			if prior.id == selected.id then
+				return nil, kind .. "_duplicate_slots"
+			end
+		end
+
+		result[index] = {
+			id = selected.id,
+			rarity = selected.rarity,
+			label = external.label or external.name,
+			external = external,
+		}
+	end
+
+	return result, nil
+end
+
+local function resolve_one(external, slot, context)
+	local offers = context and (context.offers or (slot == "melee" and context.melee_offers or context.ranged_offers)) or {}
+	local resolved, reason = resolve_weapon(external, slot, offers, context and context.classify_offer)
+
+	if not resolved then
+		return nil, reason
+	end
+
+	local dump_stat, dump_reason = resolve_dump_stat(external, resolved.offer)
+
+	if not dump_stat then
+		return nil, dump_reason
+	end
+
+	local catalog = catalog_for(context, resolved.offer)
+
+	if type(catalog) ~= "table" or catalog.available ~= true then
+		return nil, "trait_catalog_unavailable"
+	end
+
+	local perks, perk_reason = resolve_traits(external.perks, catalog.perks, "perk")
+
+	if not perks then
+		return nil, perk_reason
+	end
+
+	local blessings, blessing_reason = resolve_traits(external.blessings, catalog.blessings, "blessing")
+
+	if not blessings then
+		return nil, blessing_reason
+	end
+
+	return {
+		kind = "games_lantern_job",
+		slot = slot,
+		display_name = external.display_name,
+		offer = resolved.offer,
+		external = external,
+		dump_stat = dump_stat.id,
+		dump_stat_label = dump_stat.label,
+		dump_target = 60,
+		perks = perks,
+		blessings = blessings,
+		parent_pattern = resolved.offer.parent_pattern,
+		master_id = resolved.offer.master_id,
+		catalog = catalog,
+	}, nil
+end
+
+function Resolver.resolve(model, context)
+	if type(model) ~= "table" or type(model.weapons) ~= "table" then
+		return nil, "external_model_unavailable"
+	end
+
+	context = context or {}
+
+	if model.source_archetype and context.active_archetype and tostring(model.source_archetype) ~= tostring(context.active_archetype) then
+		return nil, "archetype_mismatch"
+	end
+
+	local melee_candidates = {}
+	local ranged_candidates = {}
+
+	for _, external in ipairs(model.weapons) do
+		local melee, melee_reason = resolve_one(external, "melee", context)
+		local ranged, ranged_reason = resolve_one(external, "ranged", context)
+
+		if melee then
+			melee_candidates[#melee_candidates + 1] = melee
+		end
+
+		if ranged then
+			ranged_candidates[#ranged_candidates + 1] = ranged
+		end
+
+		if not melee and not ranged and #model.weapons == 2 then
+			return nil, tostring(melee_reason or ranged_reason or "weapon_unavailable")
+		end
+	end
+
+	if #melee_candidates ~= 1 then
+		return nil, #melee_candidates == 0 and "melee_weapon_unavailable" or "multiple_melee_weapons"
+	end
+
+	if #ranged_candidates ~= 1 then
+		return nil, #ranged_candidates == 0 and "ranged_weapon_unavailable" or "multiple_ranged_weapons"
+	end
+
+	return {
+		kind = "games_lantern_build",
+		resolver_contract_version = Resolver.CONTRACT_VERSION,
+		source_uuid = model.source_uuid,
+		source_archetype = model.source_archetype,
+		jobs = {melee_candidates[1], ranged_candidates[1]},
+	}, nil
+end
+
+Resolver._test = {
+	normalize = normalize,
+	resolve_dump_stat = resolve_dump_stat,
+	resolve_traits = resolve_traits,
+	match_score = match_score,
+}
+
+return Resolver

@@ -62,6 +62,10 @@
     {"name": "versioned_weapon_model", "risk": "critical", "start_line": 49, "end_line": 64},
     {"name": "bounded_parser_drift_fail_closed", "risk": "critical", "start_line": 66, "end_line": 81}
   ],
+  "test_games_lantern_workflow.py": [
+    {"name": "live_catalogue_resolution", "risk": "critical", "start_line": 19, "end_line": 103},
+      {"name": "ambiguous_and_mismatched_builds_fail_closed", "risk": "critical", "start_line": 105, "end_line": 148}
+  ],
   "test_account_mutation_guard.py": [
     {"name": "service_level_account_mutation_exclusion", "risk": "critical", "start_line": 1, "end_line": 149}
   ],
