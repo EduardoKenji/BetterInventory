@@ -890,6 +890,7 @@ end
 local function summarize_perk_catalog(metadata)
 	local ranks = safe_member(metadata, "perks") or {}
 	local catalog = {}
+	local catalog_by_id = {}
 	local maximum_tier
 
 	if type(ranks) ~= "table" then
@@ -934,7 +935,7 @@ local function summarize_perk_catalog(metadata)
 						display_name = description_ok and description or nil
 					end
 
-					catalog[#catalog + 1] = {
+					local entry = {
 						description_key = perk_item and safe_member(perk_item, "description") or nil,
 						display_name = display_name,
 						display_name_key = trait_display_name_key(name, perk),
@@ -942,6 +943,19 @@ local function summarize_perk_catalog(metadata)
 						tier = tier,
 						trait = perk_item and safe_member(perk_item, "trait") or nil,
 					}
+					local existing = catalog_by_id[entry.id]
+
+					-- The metadata endpoint may repeat the same canonical perk inside a
+					-- rank. It is still one backend mutation target and must not become
+					-- an artificial Games Lantern ambiguity.
+					if existing == nil then
+						catalog[#catalog + 1] = entry
+						catalog_by_id[entry.id] = entry
+					elseif (tonumber(entry.tier) or 0) > (tonumber(existing.tier) or 0) then
+						for key, value in pairs(entry) do
+							existing[key] = value
+						end
+					end
 				end
 			end
 		end

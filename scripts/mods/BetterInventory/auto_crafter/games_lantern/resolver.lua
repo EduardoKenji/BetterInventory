@@ -436,6 +436,40 @@ local function trait_failure_detail(external, entries)
 	)
 end
 
+local function trait_slot(entry)
+	local raw = string.lower(table.concat({
+		text(entry and entry.id),
+		text(entry and entry.trait),
+	}, " "))
+
+	if string.find(raw, "weapon_trait_ranged", 1, true) then
+		return "ranged"
+	end
+
+	if string.find(raw, "weapon_trait_melee", 1, true)
+		or string.find(raw, "weapon_trait_increase_stamina", 1, true) then
+		return "melee"
+	end
+
+	return nil
+end
+
+local function candidate_identity(entry)
+	local id = entry and entry.id
+
+	if id ~= nil and tostring(id) ~= "" then
+		return "id:" .. tostring(id)
+	end
+
+	local trait = entry and entry.trait
+
+	if trait ~= nil and tostring(trait) ~= "" then
+		return "trait:" .. tostring(trait)
+	end
+
+	return nil
+end
+
 local function icon_trait_id(value)
 	if value == nil then
 		return nil
@@ -466,7 +500,7 @@ local function trait_score(external, entry, localize_trait_label)
 	return label_score == #external_tokens and label_score > 0 and score or 0
 end
 
-local function resolve_traits(external_values, entries, kind, localize_trait_label)
+local function resolve_traits(external_values, entries, kind, localize_trait_label, slot)
 	local result = {}
 
 	if type(external_values) ~= "table" or #external_values ~= 2 then
@@ -475,12 +509,31 @@ local function resolve_traits(external_values, entries, kind, localize_trait_lab
 
 	for index, external in ipairs(external_values) do
 		local candidates = {}
+		local candidate_indexes = {}
 
 		for _, entry in ipairs(entries or {}) do
 			local score = trait_score(external, entry, localize_trait_label)
+			local entry_slot = kind == "perk" and trait_slot(entry) or nil
 
-			if score > 0 then
-				candidates[#candidates + 1] = {entry = entry, score = score}
+			if score > 0 and (entry_slot == nil or slot == nil or entry_slot == slot) then
+				local identity = candidate_identity(entry)
+				local existing_index = identity and candidate_indexes[identity]
+				local candidate = {entry = entry, score = score}
+
+				if existing_index == nil then
+					candidates[#candidates + 1] = candidate
+					if identity ~= nil then
+						candidate_indexes[identity] = #candidates
+					end
+				else
+					local existing = candidates[existing_index]
+					local existing_tier = tonumber(existing.entry and (existing.entry.rarity or existing.entry.tier)) or 0
+					local candidate_tier = tonumber(entry and (entry.rarity or entry.tier)) or 0
+
+					if score > existing.score or (score == existing.score and candidate_tier > existing_tier) then
+						candidates[existing_index] = candidate
+					end
+				end
 			end
 		end
 
@@ -500,7 +553,13 @@ local function resolve_traits(external_values, entries, kind, localize_trait_lab
 		end
 
 		if top_count ~= 1 then
-			return nil, kind .. "_ambiguous"
+			local tied = {}
+
+			for candidate_index = 1, top_count do
+				tied[#tied + 1] = candidates[candidate_index].entry
+			end
+
+			return nil, kind .. "_ambiguous", trait_failure_detail(external, tied)
 		end
 
 		local selected = candidates[1].entry
@@ -568,13 +627,13 @@ local function attach_catalog(job, catalog, localize_trait_label)
 
 	local external = job.external or {}
 
-	local perks, perk_reason, perk_detail = resolve_traits(external.perks, catalog.perks, "perk", localize_trait_label)
+	local perks, perk_reason, perk_detail = resolve_traits(external.perks, catalog.perks, "perk", localize_trait_label, job.slot)
 
 	if not perks then
 		return nil, perk_reason, perk_detail
 	end
 
-	local blessings, blessing_reason, blessing_detail = resolve_traits(external.blessings, catalog.blessings, "blessing", localize_trait_label)
+	local blessings, blessing_reason, blessing_detail = resolve_traits(external.blessings, catalog.blessings, "blessing", localize_trait_label, job.slot)
 
 	if not blessings then
 		return nil, blessing_reason, blessing_detail
