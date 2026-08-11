@@ -15,6 +15,8 @@ def main() -> None:
     assert '"Active Queue"' in panel
     assert 'variant = "queue_job"' in panel
     assert "queue_current" in panel
+    assert "_manual_queue_detail" in panel
+    assert '"Dump: %s %s | Perks: %s\\nBlessings: %s | Status: %s"' in panel
     assert "_games_lantern_queue_snapshot" in panel
     assert "games_lantern_queue_snapshot" in facade
     assert "GamesLanternQueue.new" in facade
@@ -28,6 +30,10 @@ def main() -> None:
     assert '"Queued ("' in panel
     assert '"Projected authority:' in panel
     assert "_queue_craft_confirmation_signature" in panel
+    assert "_queue_craft_confirmation_text" in panel
+    assert "_refresh_games_lantern_snapshots" in panel
+    assert "_queue_snapshot_cache" in panel
+    assert "presentation_snapshot()" in facade
     assert "aggregate_confirmation_stale" in facade
     assert "enabled = not queue_owned" in panel
     assert "craft_enabled = not queue_active and not import_busy" in panel

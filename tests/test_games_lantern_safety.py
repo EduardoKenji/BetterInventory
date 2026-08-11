@@ -203,6 +203,23 @@ def main() -> None:
     assert quarantined.on_event(quarantined, "probe_complete", to_lua({"character_id": "character-1"})) is True
     assert quarantined.snapshot(quarantined)["state"] == "stopped"
 
+    # Presentation reads must stay bounded: the imported catalogue/external
+    # payload remains available to orchestration snapshots but never reaches
+    # the panel's periodically refreshed model.
+    compact = module.new(to_lua({}))
+    compact_build = build()
+    compact_build["jobs"][1]["catalog"] = to_lua({"large_marker": "must-not-reach-panel"})
+    compact_build["jobs"][1]["external"] = to_lua({"html": "must-not-reach-panel"})
+    compact_build["jobs"][1]["display_name"] = "Arc Maul"
+    assert compact.install(compact, compact_build) is True
+    full_snapshot = compact.snapshot(compact)
+    presentation = compact.presentation_snapshot(compact)
+    assert compact.state(compact) == "staged"
+    assert full_snapshot["jobs"][1]["catalog"]["large_marker"] == "must-not-reach-panel"
+    assert presentation["jobs"][1]["display_name"] == "Arc Maul"
+    assert presentation["jobs"][1]["catalog"] is None
+    assert presentation["jobs"][1]["external"] is None
+
     # Source-level release contracts guard seams not available in pure queue
     # simulation: frozen policy, fresh boundary probe/catalog, locked targets,
     # explicit replacement/clear, aggregate confirmation, and bounded polling.
@@ -220,6 +237,13 @@ def main() -> None:
     assert "enabled = not queue_owned" in panel
     assert "Projected authority:" in panel
     assert "_queue_craft_confirmation_signature" in panel
+    assert "_queue_craft_confirmation_text" in panel
+    assert "presentation_snapshot()" in facade
+    assert 'games_lantern_import:state() == "fetching"' in facade
+    assert "controller:is_busy()" in facade
+    busy_body = facade.split("function AutoCrafter.is_busy()", 1)[1].split("\nend", 1)[0]
+    assert ":snapshot()" not in busy_body
+    assert panel.count("_games_lantern_cost_authority()") == 2
     assert "aggregate_confirmation_stale" in facade
     assert "_poll_interval_seconds" in transport
     assert "taskkill /PID" in windows

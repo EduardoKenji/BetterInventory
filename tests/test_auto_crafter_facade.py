@@ -25,7 +25,8 @@ def main() -> None:
     assert "function AutoCrafter.interrupt_for_external_mutation(kind)" in source
     assert "snapshot.operation_inflight or snapshot.operation_quarantined" in source
     assert "queue_owned = queue_state and queue_state.job_count == 2" in source
-    assert "local queue_busy = queue_snapshot and" in source
+    assert "local queue_state = games_lantern_queue and games_lantern_queue:state()" in source
+    assert "local controller_busy = controller and controller:is_busy() or false" in source
     assert "pcall(games_lantern_queue.clear, games_lantern_queue)" in source
     assert 'pcall(games_lantern_import.cancel, games_lantern_import, "shutdown")' in source
 
