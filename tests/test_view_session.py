@@ -55,6 +55,43 @@ def main() -> None:
     assert session.active(view).kind == "inventory"
     assert session.close(view, "reload") is True
 
+    # Repeated view creation/teardown must return the registry to baseline and
+    # release field snapshots/callback closures every time.
+    for index in range(250):
+        cycled_view = lua.table_from({"native": index})
+        assert session.begin(cycled_view, "inventory") is not None
+        assert session.set_field(cycled_view, "owned", index) is True
+        assert session.register_cleanup(
+            cycled_view, "noop", lua.eval("function() end")
+        ) is True
+        assert session.close(cycled_view, "cycle") is True
+        assert cycled_view.owned is None
+        assert session.count() == 0
+
+    # Closing one session may synchronously open its replacement. Finishing the
+    # old cleanup must not erase the new owner.
+    replacement_view = lua.table_from({})
+    lua.globals().view_session_module = session
+    lua.globals().view_session_replacement_view = replacement_view
+    session.begin(replacement_view, "old")
+    session.register_cleanup(
+        replacement_view,
+        "replace",
+        lua.eval(
+            "function() view_session_module.begin(view_session_replacement_view, 'replacement') end"
+        ),
+    )
+    assert session.close(replacement_view, "replace") is True
+    assert session.active(replacement_view).kind == "replacement"
+    assert session.close(replacement_view, "replacement_done") is True
+
+    views = [lua.table_from({}) for _ in range(4)]
+    for cycled_view in views:
+        session.begin(cycled_view, "bulk")
+    assert session.count() == 4
+    assert session.close_all("test_shutdown") == 4
+    assert session.count() == 0
+
     print("BetterInventory ViewSession lifecycle tests passed.")
 
 

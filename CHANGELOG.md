@@ -2,7 +2,8 @@
 
 ## 2.1.2 - In development
 
-- Began a repeated view-open/view-close lifecycle and retained-allocation audit.
+- Released closed inventory, Character Overview, vendor, Brunt, Hadron, popup, panel, grid, and persistence references through idempotent exit/destroy paths.
+- Added repeated open/close lifecycle coverage while preserving post-draw/update CPU ownership fixes.
 
 ## 2.1.0 - 2026-08-11
 

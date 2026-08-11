@@ -29,6 +29,8 @@ def main() -> None:
     assert "local controller_busy = controller and controller:is_busy() or false" in source
     assert "pcall(games_lantern_queue.clear, games_lantern_queue)" in source
     assert 'pcall(games_lantern_import.cancel, games_lantern_import, "shutdown")' in source
+    assert "if view and active_brunt_view ~= view then" in source
+    assert "active_brunt_view = nil" in source
 
     # DMF log methods pass their first payload through string.format. Imported
     # perk/blessing labels contain literal percent signs, so runtime text must

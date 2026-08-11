@@ -1,0 +1,76 @@
+from pathlib import Path
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+RUNTIME_ROOT = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory"
+DARKTIDE_ROOT = PROJECT_ROOT.parents[1] / "Darktide-Source-Code"
+
+
+def read_runtime(name: str) -> str:
+    return (RUNTIME_ROOT / name).read_text(encoding="utf-8")
+
+
+def main() -> None:
+    runtime = read_runtime("BetterInventory_runtime.lua")
+    overview = read_runtime("BetterInventory_character_overview_ui.lua")
+    features = read_runtime("BetterInventory_features.lua")
+    armoury_panel = read_runtime("BetterInventory_armoury_panel.lua")
+    domains = read_runtime("BetterInventory_feature_domains.lua")
+    sessions = read_runtime("BetterInventory_view_session.lua")
+    equipment = read_runtime("BetterInventory_equipment_persistence.lua")
+    auto_crafter = read_runtime("BetterInventory_auto_crafter.lua")
+
+    # Every view-owned registry has an explicit normal close path and an
+    # abnormal destroy/disable fallback. Repeated close calls are safe no-ops.
+    assert 'mod:hook_safe(InventoryWeaponsView, "on_exit"' in runtime
+    assert 'ensure_class_method(InventoryWeaponsView, "destroy")' in runtime
+    assert 'mod:hook_safe(CreditsVendorView, "on_exit"' in runtime
+    assert 'ensure_class_method(CreditsVendorView, "destroy")' in runtime
+    assert 'ensure_class_method(CreditsGoodsVendorView, "on_exit")' in runtime
+    assert 'ensure_class_method(CreditsGoodsVendorView, "destroy")' in runtime
+    assert 'ensure_class_method(ItemGridViewBase, "on_exit")' in runtime
+    assert 'ensure_class_method(ItemGridViewBase, "destroy")' in runtime
+    assert 'ensure_class_method(InventoryBackgroundView, "on_exit")' in runtime
+    assert 'ensure_class_method(InventoryBackgroundView, "destroy")' in runtime
+    assert 'ensure_class_method(InventoryView, "on_exit")' in overview
+    assert 'ensure_class_method(InventoryView, "destroy")' in overview
+    assert "OverviewUI.unregister_view(view)" in overview
+    assert "Features.release_inventory_options_panel(view)" in features
+    assert "armoury_panel.release(view)" in features
+    assert "registered_armoury_views[view] = nil" in armoury_panel
+    assert "Domains.markers.release_grid(item_grid)" in domains
+    assert 'Features.close_all_view_sessions("mod_disable")' in runtime
+    assert "CharacterOverviewUI.release_all_views()" in runtime
+    assert "FeatureDomains.markers.release_all()" in runtime
+    assert "EquipmentPersistence.on_view_closed(view)" in runtime
+    assert "EquipmentPersistence.reset()" in runtime
+    assert "session.cleanup = nil" in sessions
+    assert "session.cleanup_order = nil" in sessions
+    assert "session.fields = nil" in sessions
+    assert "view = view," not in sessions
+    assert "if view and active_brunt_view ~= view then" in auto_crafter
+
+    # Preserve Potty's measured CPU fix: BetterInventory must not own shared
+    # native update/draw chains to obtain lifecycle cleanup.
+    assert 'mod:hook_safe(ViewElementGrid, "update"' not in runtime
+    assert 'mod:hook_safe(InventoryView, "update"' not in runtime
+    assert 'mod:hook(InventoryWeaponsView, "update"' not in runtime
+
+    # Local Darktide source confirms native request containers already release
+    # store/Hadron work. BetterInventory should only release its own references.
+    vendor_path = DARKTIDE_ROOT / "scripts/ui/views/vendor_view_base/vendor_view_base.lua"
+    inventory_path = DARKTIDE_ROOT / "scripts/ui/views/inventory_weapons_view/inventory_weapons_view.lua"
+    hadron_path = DARKTIDE_ROOT / "scripts/ui/views/crafting_mechanicus_modify_view/crafting_mechanicus_modify_view.lua"
+    if vendor_path.is_file() and inventory_path.is_file() and hadron_path.is_file():
+        vendor = vendor_path.read_text(encoding="utf-8")
+        inventory = inventory_path.read_text(encoding="utf-8")
+        hadron = hadron_path.read_text(encoding="utf-8")
+        assert "self._promise_container:delete()" in vendor
+        assert "self._store_promise:cancel()" in inventory
+        assert "self._inventory_promise:cancel()" in hadron
+
+    print("BetterInventory view lifecycle memory checks passed.")
+
+
+if __name__ == "__main__":
+    main()

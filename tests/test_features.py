@@ -1289,6 +1289,9 @@ def main() -> None:
     features.unregister_armoury_view(armoury_view)
     assert globals_.TestArmouryLegend.removed_id == "store_focus_legend"
     assert armoury_view._sort_options[1]._better_inventory_original_sort is None
+    assert armoury_view._better_inventory_armoury_native_sort_panel is None
+    assert armoury_view._better_inventory_armoury_native_sort_widgets is None
+    assert armoury_view._better_inventory_armoury_sort_layout is None
     mod.settings.prioritize_perfect_roll_weapons = False
 
     mod.settings.prioritize_equipped_favorites = False
@@ -2800,6 +2803,9 @@ def main() -> None:
     assert features.preserve_item_sorting_native_options(armoury_view, "Name A-Z") is True
     assert len(armoury_view._sort_options) == 12
     assert armoury_view._selected_sort_option_index == 7
+    assert features.setup_armoury_native_sort_panel(
+        mod, layout, armoury_view, lua.table_from({})
+    ) is True
     armoury_view._better_inventory_armoury_native_sort_collapsed.sorting = False
     armoury_view._better_inventory_armoury_native_sort_collapsed.native_sorting = False
     features.update_armoury_native_sort_panel(armoury_view)

@@ -354,6 +354,26 @@ def main() -> None:
         assert module.status() == ("idle", 0)
         assert globals_.view._starting_profile_equipped_items.slot_primary.gear_id == "new-weapon"
 
+    # A pending backend operation keeps its immutable intent but must release a
+    # closed Character Overview view immediately. Late settlement then becomes
+    # UI-cache-neutral while still completing the backend state machine.
+    globals_.view._starting_profile_equipped_items.slot_primary = globals_.old_weapon
+    globals_.native_promise = globals_.TestPromise.pending()
+    module.persist_local_changes(globals_.test_mod, globals_.native_equip, globals_.view)
+    assert module.on_view_closed(globals_.view) is True
+    assert module.on_view_closed(globals_.view) is False
+    globals_.native_promise.resolve(globals_.native_promise, lua.table_from([True]))
+    assert module.status() == ("idle", 0)
+    assert globals_.view._starting_profile_equipped_items.slot_primary.gear_id == "old-weapon"
+
+    globals_.native_promise = globals_.TestPromise.pending()
+    module.persist_local_changes(globals_.test_mod, globals_.native_equip, globals_.view)
+    assert module.has_pending() is True
+    module.reset()
+    assert module.has_pending() is False
+    globals_.native_promise.resolve(globals_.native_promise, lua.table_from([False]))
+    assert module.status() == ("idle", 0)
+
     print("BetterInventory equipment persistence tests passed.")
 
 

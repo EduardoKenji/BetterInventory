@@ -28,6 +28,7 @@ def main() -> None:
     assert grid._better_inventory_myfavorites_generation == 5
     assert domains.markers.needs_refresh(4, 5, False) is True
     assert domains.markers.needs_refresh(5, 5, False) is False
+    assert domains.markers.release_grid(grid) is True
 
     inactive_grid = lua.table_from({"_better_inventory_myfavorites_active": False})
     assert domains.markers.invalidate_grid(inactive_grid) is False
@@ -71,6 +72,39 @@ def main() -> None:
     tracked_grid._visible = True
     assert domains.markers.update(0, lua.globals().synchronize_marker_grid) == 1
     assert tracked_grid._better_inventory_myfavorites_dirty is False
+
+    tracked_count, dirty_count = domains.markers.count()
+    assert tracked_count == 1
+    assert dirty_count == 0
+    assert domains.markers.release_grid(tracked_grid) is True
+    assert tracked_grid._better_inventory_myfavorites_widgets is None
+    assert tracked_grid._better_inventory_myfavorites_active is None
+    assert domains.markers.count() == (0, 0)
+
+    for _ in range(250):
+        cycled_grid = lua.table_from(
+            {
+                "_better_inventory_myfavorites_active": True,
+                "_better_inventory_myfavorites_widgets": lua.table_from(
+                    {lua.table_from({"name": "widget"}): True}
+                ),
+            }
+        )
+        assert domains.markers.track_grid(cycled_grid) is True
+        assert domains.markers.invalidate_grid(cycled_grid) is True
+        assert domains.markers.release_grid(cycled_grid) is True
+    assert domains.markers.count() == (0, 0)
+
+    release_grids = []
+    for _ in range(3):
+        release_grid = lua.table_from(
+            {"_better_inventory_myfavorites_active": True}
+        )
+        release_grids.append(release_grid)
+        domains.markers.track_grid(release_grid)
+        domains.markers.invalidate_grid(release_grid)
+    assert domains.markers.release_all() == 3
+    assert domains.markers.count() == (0, 0)
 
     # Hundreds of unrelated UI grids never enter BetterInventory's registry.
     unrelated_grids = [lua.table_from({"_visible": True}) for _ in range(500)]

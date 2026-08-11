@@ -29,7 +29,7 @@
     {"name": "atomic_character_identity_and_switch_settlement", "risk": "critical", "start_line": 16, "end_line": 98}
   ],
     "test_auto_crafter_facade.py": [
-      {"name": "frame_update_crash_containment", "risk": "critical", "start_line": 14, "end_line": 36}
+      {"name": "frame_update_crash_containment", "risk": "critical", "start_line": 14, "end_line": 38}
   ],
   "test_auto_crafter_controller.py": [
     {"name": "presacrifice_mastery_baseline_convergence_and_level_event", "risk": "critical", "start_line": 190, "end_line": 269},
@@ -133,16 +133,18 @@
     {"name": "authoritative_reconciliation", "risk": "critical", "start_line": 237, "end_line": 248},
     {"name": "bounded_retry", "risk": "critical", "start_line": 249, "end_line": 283},
     {"name": "stale_callback_guard", "risk": "critical", "start_line": 284, "end_line": 324},
-    {"name": "retry_invocation_safety", "risk": "critical", "start_line": 325, "end_line": 361}
+    {"name": "retry_invocation_safety", "risk": "critical", "start_line": 325, "end_line": 361},
+    {"name": "closed_view_release_and_reset", "risk": "critical", "start_line": 362, "end_line": 375}
   ],
   "test_feature_domains.py": [
     {"name": "marker_generation", "risk": "high", "start_line": 20, "end_line": 34},
-    {"name": "dirty_marker_registry_and_unrelated_grid_isolation", "risk": "high", "start_line": 35, "end_line": 78},
-    {"name": "sorting_signature", "risk": "high", "start_line": 80, "end_line": 85},
-    {"name": "panel_composition", "risk": "high", "start_line": 87, "end_line": 91}
+    {"name": "dirty_marker_registry", "risk": "high", "start_line": 35, "end_line": 74},
+    {"name": "repeated_marker_release_and_unrelated_grid_isolation", "risk": "high", "start_line": 77, "end_line": 112},
+    {"name": "sorting_signature", "risk": "high", "start_line": 115, "end_line": 119},
+    {"name": "panel_composition", "risk": "high", "start_line": 121, "end_line": 125}
   ],
   "test_features.py": [
-        {"name": "discard_operation_ownership", "risk": "critical", "start_line": 2989, "end_line": 3452},
+        {"name": "discard_operation_ownership", "risk": "critical", "start_line": 2989, "end_line": 3463},
       {"name": "sorting_and_navigation", "risk": "high", "start_line": 405, "end_line": 1386},
       {"name": "optional_integration_fallbacks", "risk": "high", "start_line": 1387, "end_line": 1813},
       {"name": "panel_lifecycle", "risk": "high", "start_line": 1814, "end_line": 2988}
@@ -177,6 +179,12 @@
   "test_view_session.py": [
     {"name": "idempotent_close", "risk": "high", "start_line": 22, "end_line": 41},
     {"name": "ownership_preserving_restore", "risk": "high", "start_line": 43, "end_line": 50},
-    {"name": "cleanup_order", "risk": "high", "start_line": 52, "end_line": 56}
+    {"name": "cleanup_order", "risk": "high", "start_line": 52, "end_line": 56},
+    {"name": "repeated_reentrant_and_bulk_close", "risk": "high", "start_line": 58, "end_line": 93}
+  ],
+  "test_view_lifecycle_memory.py": [
+    {"name": "explicit_view_owned_state_release", "risk": "high", "start_line": 23, "end_line": 51},
+    {"name": "post_draw_update_cpu_invariant", "risk": "critical", "start_line": 53, "end_line": 57},
+    {"name": "native_async_cleanup_contracts", "risk": "high", "start_line": 59, "end_line": 70}
   ]
 }
