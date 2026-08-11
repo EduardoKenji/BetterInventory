@@ -100,55 +100,85 @@ local function status_lines(view)
 	return type(lines) == "table" and #lines > 0 and lines or nil
 end
 
+local function draw_status_overlay(view, dt, t, input_service, layer)
+	local lines = status_lines(view)
+	local text = lines and table.concat(lines, "\n") or nil
+	local ui_renderer = view and (view._ui_default_renderer or view._ui_renderer)
+
+	if not text or not ui_renderer or not view._ui_scenegraph or not view._render_settings then
+		return false
+	end
+
+	local widget = view._auto_crafter_status_overlay
+
+	if not widget then
+		widget = UIWidget.init("auto_crafter_status_overlay", WIDGET_DEFINITION)
+		view._auto_crafter_status_overlay = widget
+	end
+
+	widget.content.text = text
+	local height = status_height(#lines)
+	widget.style.background.size[2] = height
+	widget.style.accent.size[2] = height
+	widget.style.text.size[2] = height - VERTICAL_PADDING
+	widget.offset[1] = horizontal_offset(view)
+	widget.offset[2] = 0
+	widget.offset[3] = 0
+
+	local render_settings = view._render_settings
+	local previous_layer = render_settings.start_layer
+
+	render_settings.start_layer = (tonumber(layer) or tonumber(previous_layer) or 0) + 200
+	UIRenderer.begin_pass(ui_renderer, view._ui_scenegraph, input_service, dt, render_settings)
+	UIWidget.draw(widget, ui_renderer)
+	UIRenderer.end_pass(ui_renderer)
+	render_settings.start_layer = previous_layer
+
+	return true
+end
+
+local function is_inventory_view(view)
+	return tostring(view and view.__class_name or "") == "InventoryView"
+end
+
+local function install_post_draw(mod, view_class, predicate)
+	if not view_class or type(view_class.draw) ~= "function" then
+		return false
+	end
+
+	-- A normal wrapping hook would execute Darktide's complete native draw chain
+	-- inside BetterInventory's callback. Hook profilers would then charge every
+	-- widget, element, and third-party draw below it to BetterInventory. A safe
+	-- hook runs only this small post-draw overlay callback after native rendering.
+	mod:hook_safe(view_class, "draw", function(view, dt, t, input_service, layer)
+		if not predicate or predicate(view) then
+			draw_status_overlay(view, dt, t, input_service, layer)
+		end
+	end)
+
+	return true
+end
+
 function Overlay.install(mod, view_classes)
 	if not mod or type(view_classes) ~= "table" then
 		return false
 	end
 
 	local installed = false
+	local base_view = view_classes.base or view_classes[1]
+	local item_grid_view = view_classes.item_grid or view_classes[2]
+	local inventory_view = view_classes.inventory or view_classes[3]
+	local vendor_view = view_classes.vendor or view_classes[4]
 
-	for _, view_class in ipairs(view_classes) do
-		if view_class and type(view_class.draw) == "function" then
-			mod:hook(view_class, "draw", function(func, view, dt, t, input_service, layer)
-				view._auto_crafter_status_draw_depth = (view._auto_crafter_status_draw_depth or 0) + 1
-				local results = { func(view, dt, t, input_service, layer) }
-				view._auto_crafter_status_draw_depth = math.max(0, (view._auto_crafter_status_draw_depth or 1) - 1)
-				local lines = status_lines(view)
-				local text = lines and table.concat(lines, "\n") or nil
-				local ui_renderer = view._ui_default_renderer or view._ui_renderer
-
-				if text and ui_renderer and view._ui_scenegraph and view._render_settings and view._auto_crafter_status_draw_depth == 0 then
-					local widget = view._auto_crafter_status_overlay
-
-					if not widget then
-						widget = UIWidget.init("auto_crafter_status_overlay", WIDGET_DEFINITION)
-						view._auto_crafter_status_overlay = widget
-					end
-
-					widget.content.text = text
-					local height = status_height(#lines)
-					widget.style.background.size[2] = height
-					widget.style.accent.size[2] = height
-					widget.style.text.size[2] = height - VERTICAL_PADDING
-					widget.offset[1] = horizontal_offset(view)
-					widget.offset[2] = 0
-					widget.offset[3] = 0
-
-					local render_settings = view._render_settings
-					local previous_layer = render_settings.start_layer
-
-					render_settings.start_layer = (tonumber(layer) or tonumber(previous_layer) or 0) + 200
-					UIRenderer.begin_pass(ui_renderer, view._ui_scenegraph, input_service, dt, render_settings)
-					UIWidget.draw(widget, ui_renderer)
-					UIRenderer.end_pass(ui_renderer)
-					render_settings.start_layer = previous_layer
-				end
-
-				return unpack(results)
-			end)
-			installed = true
-		end
-	end
+	-- InventoryView calls BaseView.draw before drawing its offscreen grid and
+	-- loadout widgets. Let its concrete post-draw hook own the overlay so it is
+	-- rendered once and remains above those later passes.
+	installed = install_post_draw(mod, base_view, function(view)
+		return not is_inventory_view(view)
+	end) or installed
+	installed = install_post_draw(mod, item_grid_view) or installed
+	installed = install_post_draw(mod, inventory_view, is_inventory_view) or installed
+	installed = install_post_draw(mod, vendor_view) or installed
 
 	return installed
 end
