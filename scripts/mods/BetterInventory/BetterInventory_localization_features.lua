@@ -147,16 +147,16 @@ local localization = {
 		en = "Allows the Automatic Curio Buyer to run while the Operative Selection screen is open. Disabled by default. It still respects the store-rotation throttle and never waits for a selected Morningstar player.",
 	},
 	automatic_curio_once_per_store_rotation = {
-		en = "Scan at most once per store rotation (experimental)",
+		en = "Scan at most once per store rotation",
 	},
 	automatic_curio_once_per_store_rotation_tooltip = {
-		en = "Experimental. When enabled, Morningstar and Operative Selection share one account-scoped Armoury rotation gate. A scan at 17:06 permits the next scan after the store reset at 18:00; this is not a rolling 60-minute timer. Disabled by default.",
+		en = "When enabled, Morningstar and Operative Selection share one account-scoped Armoury rotation gate. A scan at 17:06 permits the next scan after the store reset at 18:00; this is not a rolling 60-minute timer. Disabled by default.",
 	},
 	automatic_curio_rescan_on_store_refresh = {
-		en = "Rescan when store refreshes while idle (experimental)",
+		en = "Rescan when store refreshes while idle",
 	},
 	automatic_curio_rescan_on_store_refresh_tooltip = {
-		en = "Experimental. When enabled, performs one additional pass after the next Armoury store reset if you remain in an eligible screen. A scan just before reset can therefore be followed by another scan just after reset. Disabled by default to limit backend work and unexpected close-together purchases.",
+		en = "When enabled, performs one additional pass after the next Armoury store reset if you remain in an eligible screen. A scan just before reset can therefore be followed by another scan just after reset. Disabled by default to limit backend work and unexpected close-together purchases.",
 	},
 	automatic_curio_min_item_level = {
 		en = "Minimum curio item level to acquire",
@@ -543,7 +543,7 @@ local localization = {
 		en = "Shows every Curio name in a reserved two-line title area above the primary attribute and three secondary attributes. Works with or without Name It. Reopen the current view after changing this option.",
 	},
 	auto_crafter_group = {
-		en = "Auto Crafter Helper (Phase 1C/2 guarded mutations)",
+		en = "Auto Crafter Helper",
 	},
 	auto_crafter_enable = {
 		en = "Enable Auto Crafter Helper probe",
@@ -639,7 +639,7 @@ local localization = {
 		en = "Experimental parallel mutations",
 	},
 	auto_crafter_workflow_group = {
-		en = "Crafting workflow (planned options)",
+		en = "Crafting workflow",
 	},
 	auto_crafter_resuming_group = {
 		en = "Resuming item options",
@@ -648,7 +648,7 @@ local localization = {
 		en = "Automatically buy until dump stat target weapon is found",
 	},
 	auto_crafter_buy_until_target_tooltip = {
-		en = "Uses the implemented serialized Brunt purchase search. Later phases will connect the remaining workflow options to the selected candidate.",
+		en = "Runs the serialized Brunt purchase search until the selected dump-stat target is found or a configured safety cap is reached.",
 	},
 	auto_crafter_level_mastery_20 = {
 		en = "Automatically level weapon mastery to 20",
@@ -660,34 +660,34 @@ local localization = {
 		en = "Automatically allocate mastery points",
 	},
 	auto_crafter_allocate_mastery_points_tooltip = {
-		en = "UI planning option only. Available in the Armoury panel when mastery-to-20 is selected; backend allocation is not connected yet.",
+		en = "After mastery reaches level 20, allocates the mastery points required by the selected crafting targets.",
 	},
 	auto_crafter_consecrate_transcendent = {
 		en = "Automatically consecrate weapon to Transcendent",
 	},
 	auto_crafter_consecrate_transcendent_tooltip = {
-		en = "UI planning option only. The final candidate will later be consecrated through only the missing rarity tiers.",
+		en = "Consecrates the final candidate through only its missing rarity tiers until it reaches Transcendent.",
 	},
 	auto_crafter_upgrade_expertise_500 = {
 		en = "Automatically upgrade weapon item level to 500",
 	},
 	auto_crafter_upgrade_expertise_500_tooltip = {
-		en = "UI planning option only. The final candidate will later be upgraded to weapon level 500 after mastery rewards permit it.",
+		en = "Upgrades the final candidate to weapon level 500 after the required mastery rewards are available.",
 	},
 	auto_crafter_change_perks = {
 		en = "Change perks",
 	},
 	auto_crafter_change_perks_tooltip = {
-		en = "Requires mastery-to-20 so Rank IV perks are unlocked. Target discovery is active; replacement is not connected yet.",
+		en = "Requires mastery level 20 so Rank IV perks are unlocked, then safely applies the selected compatible perk targets.",
 	},
 	auto_crafter_change_blessings = {
 		en = "Change blessings",
 	},
 	auto_crafter_change_blessings_tooltip = {
-		en = "UI planning option only. Requires mastery-to-20 in the Armoury panel; blessing discovery, unlock and replacement are not connected yet.",
+		en = "Requires mastery level 20 and the necessary allocated points, then safely applies the selected compatible blessing targets.",
 	},
 	auto_crafter_trait_targets_group = {
-		en = "Perk and blessing targets (planned)",
+		en = "Perk and blessing targets",
 	},
 	auto_crafter_perk_1_target = {
 		en = "Perk target 1",
@@ -705,7 +705,7 @@ local localization = {
 		en = "Shows every compatible Rank IV perk in four columns. Left click assigns target 1 (yellow); right click assigns target 2 (green). Duplicate targets are prevented.",
 	},
 	option_requires_auto_crafter_mastery_20 = {
-		en = "Enable Automatically level weapon mastery to 20 to unlock Rank IV perk planning.",
+		en = "Enable Automatically level weapon mastery to 20 to unlock Rank IV perk selection.",
 	},
 	option_requires_auto_crafter_change_perks = {
 		en = "Enable Change perks.",

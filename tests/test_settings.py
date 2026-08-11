@@ -2088,11 +2088,16 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "2.1.3"
+    assert data.version == "2.1.4"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
     )
+    assert localization["auto_crafter_group"]["en"] == "Auto Crafter Helper"
+    assert localization["auto_crafter_workflow_group"]["en"] == "Crafting workflow"
+    assert localization["auto_crafter_trait_targets_group"]["en"] == "Perk and blessing targets"
+    assert localization["automatic_curio_once_per_store_rotation"]["en"] == "Scan at most once per store rotation"
+    assert localization["automatic_curio_rescan_on_store_refresh"]["en"] == "Rescan when store refreshes while idle"
 
     for localization_id, localized_values in localization.items():
         simplified_chinese = localized_values["zh-cn"]

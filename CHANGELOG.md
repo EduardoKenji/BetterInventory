@@ -1,6 +1,11 @@
 # BetterInventory changelog
 
-## 2.1.3 - In development
+## 2.1.4 - In development
+
+- Automatically reduce long Character Overview Curio title font sizes until titles fit within their configured two-line area.
+- Removed obsolete planned/phase labels from Auto Crafter sections and experimental labels from the two Automatic Curio Buyer scheduling options.
+
+## 2.1.3 - 2026-08-11
 
 - Fixed Games Lantern UUID-to-slug HTTP 302 imports on Wine/Proton.
 - Bounded redirects to three HTTPS hops and reject final URLs outside the original Games Lantern build UUID.
