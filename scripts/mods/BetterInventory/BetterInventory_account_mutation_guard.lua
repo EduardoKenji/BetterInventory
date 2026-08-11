@@ -29,7 +29,7 @@ local SERVICE_MUTATIONS = {
 	},
 	{
 		path = "scripts/managers/data_service/services/mastery_service",
-		methods = { "claim_levels_by_new_exp", "purchase_traits" },
+		methods = { "claim_levels_by_new_exp", "purchase_traits", "switch_mark" },
 		prefix = "mastery",
 	},
 	{
@@ -71,6 +71,18 @@ local function rejected(kind)
 	})
 end
 
+local function rejected_invalid_mark(gear_id, mark_id)
+	local description = "Malformed weapon-mark request was ignored (gear_id=" .. tostring(gear_id) .. ", mark_id=" .. tostring(mark_id) .. ")"
+
+	log("error", description)
+	notify(description)
+
+	return Promise.rejected({
+		code = "better_inventory_invalid_mark_request",
+		description = description,
+	})
+end
+
 function Guard.configure(dependencies)
 	dependencies = dependencies or {}
 	host_mod = dependencies.mod or host_mod
@@ -100,6 +112,14 @@ end
 function Guard.intercept(kind, original, service, ...)
 	if type(original) ~= "function" then
 		return rejected(kind)
+	end
+
+	if kind == "mastery.switch_mark" then
+		local gear_id, mark_id = ...
+
+		if type(gear_id) ~= "string" or gear_id == "" or type(mark_id) ~= "string" or mark_id == "" then
+			return rejected_invalid_mark(gear_id, mark_id)
+		end
 	end
 
 	local busy = false

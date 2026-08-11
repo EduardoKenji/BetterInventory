@@ -1077,13 +1077,26 @@ function Controller.new(dependencies)
 	end
 
 	function self:select_manual_mark(offer_id, master_id)
+		local function reject_selection(reason)
+			local payload = {
+				offer_id = offer_id,
+				master_id = master_id,
+				reason = reason,
+			}
+
+			log("warning", diagnostic_message("mark_selection_rejected", payload))
+			report("mark_selection_rejected", payload)
+
+			return false, reason
+		end
+
 		if run_is_active() or self._imported_job or self._run_imported_job or master_id == nil then
-			return false, "mark_selection_unavailable"
+			return reject_selection("mark_selection_unavailable")
 		end
 		local current_offer = self:_selected_offer_summary()
 
 		if not current_offer or current_offer.offer_id ~= offer_id then
-			return false, "selected_weapon_changed"
+			return reject_selection("selected_weapon_changed")
 		end
 
 		local target_offer
@@ -1097,7 +1110,7 @@ function Controller.new(dependencies)
 		end
 
 		if not target_offer then
-			return false, "weapon_offer_unavailable"
+			return reject_selection("weapon_offer_unavailable")
 		end
 
 		local selected_mark
@@ -1111,7 +1124,7 @@ function Controller.new(dependencies)
 		end
 
 		if not selected_mark then
-			return false, "weapon_mark_unavailable"
+			return reject_selection("weapon_mark_unavailable")
 		end
 
 		self._manual_mark_offer_key = offer_key(target_offer)

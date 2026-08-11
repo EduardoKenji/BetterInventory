@@ -8,6 +8,7 @@
 - STOP closes future dispatch immediately but never pretends to cancel an already-sent request.
 - Purchases are never repeated when their result is ambiguous; authoritative inventory reconciliation uses the confirmed UUID.
 - Inventory reuse requires the selected mark when exact identity exists, excludes equipped gear, respects favorite policy, and resolves equal candidates deterministically.
+- Mark selection never mutates existing gear: Auto Crafter acquires/resumes the exact selected mark and dispatches no `switch_mark` request. Melee/ranged mark catalogues fail closed on unresolved, cross-family, cross-slot, duplicate, or missing-template entries. Native external mark switching is account-mutation guarded during active runs.
 - Live recipe minimums block provably unaffordable workflows. Backend dockets/material/capacity rejection is terminal and never retried.
 - Probe and trait-catalog reads time out after 45 seconds; late callbacks are inert.
 - Panel/presentation faults detach the panel. A controller update fault closes the context and disables Auto Crafter until reload instead of escaping into Darktide's frame loop.

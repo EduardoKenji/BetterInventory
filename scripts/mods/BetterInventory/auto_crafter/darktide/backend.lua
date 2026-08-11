@@ -288,6 +288,23 @@ local function indexed_weapon_marks(parent_pattern)
 	return weapon_mark_index and weapon_mark_index[parent_pattern] or {}
 end
 
+local function valid_weapon_slot(slot_type)
+	return slot_type == "slot_primary" or slot_type == "slot_secondary"
+end
+
+local function mark_matches_offer_contract(mark_master_id, mark_item, mark_details, parent_pattern, offer_details)
+	return type(mark_master_id) == "string"
+		and mark_master_id ~= ""
+		and type(mark_item) == "table"
+		and type(parent_pattern) == "string"
+		and parent_pattern ~= ""
+		and valid_weapon_slot(offer_details and offer_details.slot_type)
+		and mark_details.parent_pattern == parent_pattern
+		and mark_details.slot_type == offer_details.slot_type
+		and mark_details.weapon_category == offer_details.weapon_category
+		and mark_details.weapon_template ~= nil
+end
+
 local function summarize_store(store)
 	local offers = safe_member(store, "offers") or {}
 	local summary = {
@@ -341,8 +358,7 @@ local function summarize_store(store)
 			for _, candidate in ipairs(mark_candidates) do
 				local mark_master_id = candidate.master_id
 
-				if mark_master_id ~= nil and not seen_marks[mark_master_id] then
-					seen_marks[mark_master_id] = true
+				if type(mark_master_id) == "string" and mark_master_id ~= "" and not seen_marks[mark_master_id] then
 					local mark_item = candidate.item
 					local mark_ok, resolved_mark = false, nil
 
@@ -355,16 +371,20 @@ local function summarize_store(store)
 					end
 
 					local mark_details = master_item_details(mark_master_id, mark_item)
-					marks[#marks + 1] = {
-						base_stats = summarize_weapon_template_stats(mark_item),
-						display_name = mark_details.display_name,
-						master_id = mark_master_id,
-						parent_pattern = mark_details.parent_pattern,
-						slot_type = mark_details.slot_type,
-						sub_display_name = mark_details.sub_display_name,
-						weapon_category = mark_details.weapon_category,
-						weapon_template = mark_details.weapon_template,
-					}
+
+					if mark_matches_offer_contract(mark_master_id, mark_item, mark_details, parent_pattern, details) then
+						seen_marks[mark_master_id] = true
+						marks[#marks + 1] = {
+							base_stats = summarize_weapon_template_stats(mark_item),
+							display_name = mark_details.display_name,
+							master_id = mark_master_id,
+							parent_pattern = mark_details.parent_pattern,
+							slot_type = mark_details.slot_type,
+							sub_display_name = mark_details.sub_display_name,
+							weapon_category = mark_details.weapon_category,
+							weapon_template = mark_details.weapon_template,
+						}
+					end
 				end
 			end
 

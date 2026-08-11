@@ -482,8 +482,12 @@ if ($DarktideSourcePath) {
 	$gadgetBuffTemplates = Join-Path $DarktideSourcePath "scripts\settings\buff\gadget_buff_templates.lua"
 	$gearService = Join-Path $DarktideSourcePath "scripts\managers\data_service\services\gear_service.lua"
 	$progressionManager = Join-Path $DarktideSourcePath "scripts\managers\progression\progression_manager.lua"
+	$backendMastery = Join-Path $DarktideSourcePath "scripts\backend\mastery.lua"
+	$masteryService = Join-Path $DarktideSourcePath "scripts\managers\data_service\services\mastery_service.lua"
+	$masteryUtility = Join-Path $DarktideSourcePath "scripts\utilities\mastery.lua"
+	$weaponMarksView = Join-Path $DarktideSourcePath "scripts\ui\views\inventory_weapon_marks_view\inventory_weapon_marks_view.lua"
 
-	foreach ($sourceFile in @($inventoryView, $hadronModifyView, $craftingViewDefinitions, $creditsVendorView, $creditsVendorBackgroundDefinitions, $itemGridBase, $itemGridBaseDefinitions, $itemBlueprints, $iconGenerator, $items, $masterItems, $gadgetTraits, $weaponPerksMelee, $weaponPerksRanged, $traitValueParser, $gadgetBuffTemplates, $gearService, $progressionManager)) {
+	foreach ($sourceFile in @($inventoryView, $hadronModifyView, $craftingViewDefinitions, $creditsVendorView, $creditsVendorBackgroundDefinitions, $itemGridBase, $itemGridBaseDefinitions, $itemBlueprints, $iconGenerator, $items, $masterItems, $gadgetTraits, $weaponPerksMelee, $weaponPerksRanged, $traitValueParser, $gadgetBuffTemplates, $gearService, $progressionManager, $backendMastery, $masteryService, $masteryUtility, $weaponMarksView)) {
 		if (-not (Test-Path -LiteralPath $sourceFile -PathType Leaf)) {
 			throw "Missing expected Darktide source file: $sourceFile"
 		}
@@ -552,6 +556,26 @@ if ($DarktideSourcePath) {
 	$itemsSource = Get-Content -LiteralPath $items -Raw
 	$gearServiceSource = Get-Content -LiteralPath $gearService -Raw
 	$progressionManagerSource = Get-Content -LiteralPath $progressionManager -Raw
+	$backendMasterySource = Get-Content -LiteralPath $backendMastery -Raw
+	$masteryServiceSource = Get-Content -LiteralPath $masteryService -Raw
+	$masteryUtilitySource = Get-Content -LiteralPath $masteryUtility -Raw
+	$weaponMarksViewSource = Get-Content -LiteralPath $weaponMarksView -Raw
+
+	if ($backendMasterySource -notmatch 'Mastery\.switch_mark[\s\S]*?method\s*=\s*"PATCH"[\s\S]*?mdi\s*=\s*mark_id') {
+		throw "Darktide's audited weapon-mark mutation is no longer an mdi PATCH. Re-audit Auto Crafter mark safety."
+	}
+
+	if ($masteryServiceSource -notmatch 'MasteryService\.switch_mark[\s\S]*?:catch\(function \(error\)[\s\S]*?return error') {
+		throw "Darktide's mark-switch rejection semantics changed. Re-audit resolved-error handling."
+	}
+
+	if ($masteryUtilitySource -notmatch 'Mastery\.get_all_mastery_marks[\s\S]*?claimed_level\s*and\s*mastery_data\.claimed_level\s*\+\s*1[\s\S]*?unlocked\s*=\s*mark_level\s*<=\s*current_level') {
+		throw "Darktide's claimed-mastery mark-unlock contract changed. Re-audit mark availability."
+	}
+
+	if ($weaponMarksViewSource -notmatch '_equip_weapon_mark[\s\S]*?content\.is_unlocked') {
+		throw "Darktide's native mark-selection unlock guard changed. Re-audit mark planning."
+	}
 
 	if ($gearServiceSource -notmatch 'GearService\.fetch_inventory' -or $gearServiceSource -notmatch 'GearService\.delete_gear_batch' -or $gearServiceSource -notmatch 'local max_operations = 40') {
 		throw "The audited inventory-fetch or bounded batch-delete gear service contract has changed."

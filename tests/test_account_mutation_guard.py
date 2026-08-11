@@ -67,6 +67,12 @@ def main() -> None:
         assert(Guard.intercept("store.purchase_item", original, {prefix = "ok:"}, "one") == "ok:one")
         assert(calls == 1 and state.interruptions == 0)
 
+		-- Invalid mark PATCH inputs are visible no-ops even while automation is idle.
+		local invalid_mark = Guard.intercept("mastery.switch_mark", original, {prefix = "bad:"}, "", nil)
+		assert(invalid_mark.rejected == true)
+		assert(invalid_mark.error_value.code == "better_inventory_invalid_mark_request")
+		assert(calls == 1 and state.interruptions == 0)
+
         -- Between requests, a manual mutation atomically stops Auto Crafter and wins.
         state.busy = true
         state.snapshot = {operation_inflight = false, auxiliary_inflight_count = 0}
@@ -89,6 +95,10 @@ def main() -> None:
         state.snapshot = {operation_quarantined = true, auxiliary_inflight_count = 0}
         blocked = Guard.intercept("mastery.purchase_traits", original, {prefix = "bad:"}, "five")
         assert(blocked.rejected == true and calls == 2)
+
+		state.snapshot = {operation_inflight = true, auxiliary_inflight_count = 0}
+		blocked = Guard.intercept("mastery.switch_mark", original, {prefix = "bad:"}, "mark-id")
+		assert(blocked.rejected == true and calls == 2)
 
         -- Calls explicitly owned by Auto Crafter bypass its own service hooks only
         -- for the synchronous backend dispatch scope.
@@ -128,6 +138,7 @@ def main() -> None:
             ["crafting.upgrade_weapon_rarity"] = true,
             ["mastery.claim_levels_by_new_exp"] = true,
             ["mastery.purchase_traits"] = true,
+			["mastery.switch_mark"] = true,
             ["gear.delete_gear_batch"] = true,
             ["items.set_item_id_as_favorite"] = true,
         }
@@ -150,7 +161,7 @@ def main() -> None:
             hooks[#hooks + 1] = {service_class, method_name, callback}
         end
         assert(Guard.install_hooks(mod) == true)
-        assert(#hooks == 12)
+        assert(#hooks == 13)
 
         print("Account mutation guard exclusion and hook coverage tests passed.")
         '''

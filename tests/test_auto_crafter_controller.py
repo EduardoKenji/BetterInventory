@@ -197,7 +197,7 @@ def main() -> None:
         r'''
         -- Phase 2 must capture mastery before sacrifice, claim from that baseline,
         -- verify deletion, and converge against baseline + awarded XP exactly once.
-        do
+			do
             local state = {item = summarized_item("gear-1", 1, 50), extracted = false, claimed = false, baseline_reads = 0}
             local backend = {extract_calls = 0, claim_calls = 0, upgrade_calls = 0}
 
@@ -843,6 +843,29 @@ def main() -> None:
 			assert(selected.resume_analysis.family_identity == "master_item")
 		end
 
+		-- Planner mark selection only changes exact target identity. Unknown/stale marks
+		-- are no-ops with diagnostics and never dispatch an account mutation.
+		do
+			local offer = target_offer()
+			offer.marks = {
+				{master_id = "weapon-1", parent_pattern = "pattern-1", slot_type = "slot_primary", weapon_template = "template-1"},
+				{master_id = "weapon-2", parent_pattern = "pattern-1", slot_type = "slot_primary", weapon_template = "template-2"},
+			}
+			local snapshot = snapshot_with(nil)
+			snapshot.store.offers = {offer}
+			local reporter = reports()
+			CurrentOffer = raw_offer("weapon-1")
+			local controller = Controller.new({backend = {}, planner = Planner, context = context(), settings = base_settings(), reporter = reporter, get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = snapshot
+			assert(controller:select_manual_mark("offer-1", "missing-mark") == false)
+			assert(reporter.events[#reporter.events].kind == "mark_selection_rejected")
+			assert(reporter.events[#reporter.events].payload.reason == "weapon_mark_unavailable")
+			assert(controller:select_manual_mark("stale-offer", "weapon-2") == false)
+			assert(reporter.events[#reporter.events].payload.reason == "selected_weapon_changed")
+			assert(controller:select_manual_mark("offer-1", "weapon-2") == true)
+			assert(controller:_selected_offer_summary().master_id == "weapon-2")
+		end
+
 		-- Phase 4 serially consecrates, advances 100-level milestones, allocates
 		-- a selected blessing, replaces targets, and verifies every refresh.
 		do
@@ -1037,6 +1060,7 @@ def main() -> None:
 				purchase_calls = 0,
 				rarity_calls = 0,
 				trait_calls = 0,
+				mark_calls = 0,
 			}
 			local function integration_snapshot()
 				local snapshot = snapshot_with_items(state.inventory)
@@ -1071,6 +1095,11 @@ def main() -> None:
 				state.claimed_level = 19
 
 				return resolved({mastery_id = "pattern-1", current_xp = 20000, mastery_level = 20, claimed_level = state.claimed_level, mastery_max_level = 20})
+			end
+			function backend:switch_mark()
+				self.mark_calls = self.mark_calls + 1
+
+				return rejected("Auto Crafter must never mutate weapon marks")
 			end
 			function backend:favorite_item(gear_id)
 				self.favorite_calls = self.favorite_calls + 1
@@ -1164,7 +1193,8 @@ def main() -> None:
 			})
 			CurrentOffer = raw_offer()
 			TestTime = 200
-			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = settings, reporter = reports(), clock = {now = function() return TestTime end}, get_selected_offer = function() return CurrentOffer end})
+			local reporter = reports()
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = settings, reporter = reporter, clock = {now = function() return TestTime end}, get_selected_offer = function() return CurrentOffer end})
 			controller._catalog = {
 				available = true,
 				trait_category = "test_category",
@@ -1208,6 +1238,22 @@ def main() -> None:
 
 			assert(#state.inventory == 4 and backend.purchase_calls == 4 and backend.favorite_calls == 4 and backend.claim_calls == 1 and backend.mastery_cost_calls == 0)
 			assert(backend.rarity_calls == 12 and backend.expertise_calls == 8 and backend.perk_calls == 8 and backend.trait_calls == 8)
+			assert(backend.mark_calls == 0, "exact-mark acquisition must not dispatch switch_mark")
+			local phase3_completions = 0
+			local phase4_starts = 0
+
+			for _, event in ipairs(reporter.events) do
+				if event.kind == "phase3_complete" then
+					phase3_completions = phase3_completions + 1
+					assert(event.payload.current.mastery_level >= 20)
+					assert(event.payload.current.claimed_level >= 19)
+				elseif event.kind == "phase4_started" then
+					phase4_starts = phase4_starts + 1
+					assert(phase3_completions == phase4_starts, "final crafting started before mastery claims converged")
+				end
+			end
+
+			assert(phase3_completions == 4 and phase4_starts == 4)
 			for run, item in ipairs(state.inventory) do
 				assert(item.gear_id == "gear-integration-" .. tostring(run))
 				assert(item.rarity == 5 and item.expertise_level == 500 and item.favorited == true)

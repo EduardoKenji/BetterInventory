@@ -84,6 +84,52 @@ def main() -> None:
 			weapon_template = "crowbar_p1_m3",
 			_weapon_template = crowbar_template,
 		}
+		local pistol_item = {
+			name = "content/items/weapons/player/ranged/pistol_p1_m1",
+			display_name = "Pistol Mk I",
+			parent_pattern = "pistol_p1",
+			slots = {"slot_secondary"},
+			weapon_template = "pistol_p1_m1",
+			_weapon_template = crowbar_template,
+		}
+		local pistol_alt_item = {
+			name = "content/items/weapons/player/ranged/pistol_p1_m2",
+			display_name = "Pistol Mk II",
+			parent_pattern = "pistol_p1",
+			slots = {"slot_secondary"},
+			weapon_template = "pistol_p1_m2",
+			_weapon_template = crowbar_template,
+		}
+		local cross_slot_item = {
+			name = "invalid_cross_slot",
+			display_name = "Invalid Ranged Crowbar",
+			parent_pattern = "crowbar_p1",
+			slots = {"slot_secondary"},
+			weapon_template = "invalid_cross_slot",
+		}
+		local wrong_family_item = {
+			name = "invalid_wrong_family",
+			display_name = "Invalid Family",
+			parent_pattern = "wrong_pattern",
+			slots = {"slot_primary"},
+			weapon_template = "invalid_wrong_family",
+		}
+		local missing_template_item = {
+			name = "invalid_missing_template",
+			display_name = "Invalid Template",
+			parent_pattern = "crowbar_p1",
+			slots = {"slot_primary"},
+		}
+		TestMasterItems = {
+			crowbar_master = crowbar_item,
+			crowbar_master_alt = crowbar_alt_item,
+			crowbar_master_locked = crowbar_locked_item,
+			pistol_master = pistol_item,
+			pistol_master_alt = pistol_alt_item,
+			invalid_cross_slot = cross_slot_item,
+			invalid_wrong_family = wrong_family_item,
+			invalid_missing_template = missing_template_item,
+		}
 		TestFavoriteItems = {}
 		TestExpertise = 300
 		TestGear = {
@@ -139,26 +185,13 @@ def main() -> None:
                     return string.format(item.trait_text, rarity)
                 end,
             },
-            ["scripts/backend/master_items"] = {
-				get_cached = function()
-					return {
-						crowbar_master = crowbar_item,
-						crowbar_master_alt = crowbar_alt_item,
-						crowbar_master_locked = crowbar_locked_item,
-					}
-				end,
+			["scripts/backend/master_items"] = {
+				get_cached = function() return TestMasterItems end,
                 get_item = function(name)
                     if name == "perk_flak" then
                         return {name = name, display_name = "internal/perk/path", trait_text = "+25%% Damage vs Flak Armoured (T%d)"}
                     end
-					if name == "crowbar_master_alt" then
-						return crowbar_alt_item
-					end
-					if name == "crowbar_master_locked" then
-						return crowbar_locked_item
-					end
-
-                    return crowbar_item
+					return TestMasterItems[name]
                 end,
                 get_store_item_instance = function() error("Brunt lootChoices has no rolled item id") end,
                 get_item_instance = function(gear) return gear and gear.base_stats and gear or nil end,
@@ -227,11 +260,17 @@ def main() -> None:
                     return promise({
                         offers = {
                             {
-                                description = {lootChoices = {"crowbar_master"}},
+                                description = {lootChoices = {"crowbar_master", "crowbar_master", "invalid_cross_slot", "invalid_wrong_family", "invalid_missing_template", "missing_mark"}},
                                 offerId = "crowbar_offer",
                                 price = {amount = {amount = 11600, type = "credits"}},
                                 sku = {category = "weapon"},
                             },
+							{
+								description = {lootChoices = {"pistol_master", "pistol_master_alt", "invalid_cross_slot"}},
+								offerId = "pistol_offer",
+								price = {amount = {amount = 9200, type = "credits"}},
+								sku = {category = "weapon"},
+							},
                         },
                     })
                 end,
@@ -326,6 +365,14 @@ def main() -> None:
     assert offer.marks[2].display_name == "Crowbar Mk II"
     assert offer.marks[3].master_id == "crowbar_master_locked"
     assert offer.marks[3].display_name == "Crowbar Mk III"
+    # Mark discovery is independent from mastery level, but malformed, unresolved,
+    # cross-family, cross-slot, duplicate, and missing-template candidates fail closed.
+    assert snapshot.store.offer_count == 2
+    ranged_offer = snapshot.store.offers[2]
+    assert ranged_offer.slot_type == "slot_secondary"
+    assert len(ranged_offer.marks) == 2
+    assert ranged_offer.marks[1].master_id == "pistol_master"
+    assert ranged_offer.marks[2].master_id == "pistol_master_alt"
     stat_keys = {offer.base_stats[index].name: offer.base_stats[index].display_name_key for index in range(1, 6)}
     assert stat_keys["crowbar_p1_m1_dps_stat"] == "loc_stats_display_damage_stat"
     assert stat_keys["crowbar_p1_m1_defence_stat"] == "loc_stats_display_defense_stat"
