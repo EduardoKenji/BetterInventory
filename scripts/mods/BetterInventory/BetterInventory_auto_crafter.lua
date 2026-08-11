@@ -119,7 +119,10 @@ local function log(level, message)
 	local logger = mod[level]
 
 	if type(logger) == "function" then
-		pcall(logger, mod, message)
+		-- DMF loggers treat their first message argument as a string.format
+		-- template. Imported build labels legitimately contain percent signs, so
+		-- never pass external/runtime text as that template.
+		pcall(logger, mod, "%s", tostring(message))
 	end
 end
 

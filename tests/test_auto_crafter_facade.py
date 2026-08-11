@@ -30,6 +30,11 @@ def main() -> None:
     assert "pcall(games_lantern_queue.clear, games_lantern_queue)" in source
     assert 'pcall(games_lantern_import.cancel, games_lantern_import, "shutdown")' in source
 
+    # DMF log methods pass their first payload through string.format. Imported
+    # perk/blessing labels contain literal percent signs, so runtime text must
+    # always be supplied as a value for a constant format string.
+    assert 'pcall(logger, mod, "%s", tostring(message))' in source
+
     print("Auto Crafter facade crash-containment checks passed.")
 
 
