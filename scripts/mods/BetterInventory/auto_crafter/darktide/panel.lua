@@ -1313,6 +1313,27 @@ function Panel.new(dependencies)
 		return authority, string.format("Projected authority: %s-%s Dockets | %s-%s Plasteel | %s-%s Diamantine. Press again to confirm.", integer_text(value.dockets_min), integer_text(value.dockets_max), integer_text(value.plasteel_min), integer_text(value.plasteel_max), integer_text(value.diamantine_min), integer_text(value.diamantine_max))
 	end
 
+	function self:_request_games_lantern_paste(queue_owned)
+		if type(self._games_lantern_paste) ~= "function" then
+			return false, "paste_unavailable"
+		end
+		if queue_owned and not self._queue_replace_armed then
+			self._queue_replace_armed = true
+			self:_queue_layout(1)
+
+			return false, "replacement_confirmation_required"
+		end
+
+		local ok, pasted, reason = pcall(self._games_lantern_paste, queue_owned == true)
+		self._queue_replace_armed = false
+
+		if not ok then
+			log("error", "Games Lantern paste failed: " .. tostring(pasted))
+		end
+
+		return ok and pasted == true, ok and reason or pasted
+	end
+
 	function self:_setting(setting_id, default_value)
 		local get = self._settings and self._settings.get
 
@@ -1845,23 +1866,13 @@ function Panel.new(dependencies)
 		end
 
 		if type(self._games_lantern_paste) == "function" and not self._section_collapsed[SECTION_QUEUE] and not queue_active then
-			local paste_label = queue_owned and (self._queue_replace_armed and "Confirm Replace Queue" or "Replace Queue") or "Paste Games Lantern build (Ctrl+V)"
+			local paste_label = queue_owned and (self._queue_replace_armed and "Confirm Replace Queue (Ctrl+V)" or "Replace Queue (Ctrl+V)") or "Paste Games Lantern build (Ctrl+V)"
 			table.insert(entries, #entries, self:_entry(paste_label, "", {
 				enabled = true,
 				selectable = true,
 				variant = "action",
 				action = function()
-					if queue_owned and not self._queue_replace_armed then
-						self._queue_replace_armed = true
-						self:_queue_layout(1)
-						return
-					end
-					local ok, result = pcall(self._games_lantern_paste, queue_owned)
-					self._queue_replace_armed = false
-
-					if not ok then
-						log("error", "Games Lantern paste failed: " .. tostring(result))
-					end
+					self:_request_games_lantern_paste(queue_owned)
 				end,
 			}))
 			if queue_owned and type(self._games_lantern_clear) == "function" then
@@ -2419,12 +2430,16 @@ function Panel.new(dependencies)
 		local ctrl_v = ctrl_v_down()
 
 		if ctrl_v and not self._ctrl_v_down and type(self._games_lantern_paste) == "function" then
-			local paste_ok, pasted, paste_error = pcall(self._games_lantern_paste)
+			local current_queue = self:_games_lantern_queue()
+			local current_owned = current_queue and current_queue.job_count == 2 and current_queue.state ~= "empty" and current_queue.state ~= "complete"
+			local current_active = current_owned and (current_queue.state == "starting" or current_queue.state == "selecting" or current_queue.state == "preflighting" or current_queue.state == "dispatching" or current_queue.state == "running" or current_queue.state == "waiting_next" or current_queue.state == "stopping" or current_queue.state == "quarantined" or current_queue.state == "reconciliation_required")
 
-			if not paste_ok then
-				log("error", "Games Lantern Ctrl+V import failed: " .. tostring(paste_error))
-			elseif pasted ~= true and paste_error then
-				log("info", "Games Lantern Ctrl+V import was not started: " .. tostring(paste_error))
+			if not current_active then
+				local pasted, paste_error = self:_request_games_lantern_paste(current_owned)
+
+				if pasted ~= true and paste_error ~= "replacement_confirmation_required" then
+					log("info", "Games Lantern Ctrl+V import was not started: " .. tostring(paste_error))
+				end
 			end
 		end
 

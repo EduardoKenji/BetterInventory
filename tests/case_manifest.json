@@ -78,10 +78,10 @@
       {"name": "typed_terminal_identity_and_final_reconciliation", "risk": "critical", "start_line": 12, "end_line": 97},
       {"name": "two_job_state_resource_and_quarantine_matrix", "risk": "critical", "start_line": 98, "end_line": 205},
         {"name": "bounded_queue_presentation_snapshot", "risk": "high", "start_line": 206, "end_line": 222},
-        {"name": "games_lantern_release_contract_seams", "risk": "critical", "start_line": 223, "end_line": 251}
+        {"name": "games_lantern_release_contract_seams", "risk": "critical", "start_line": 223, "end_line": 252}
     ],
     "test_games_lantern_queue_ui.py": [
-        {"name": "active_queue_lifecycle_locked_target_and_section_order_ui", "risk": "high", "start_line": 9, "end_line": 56}
+        {"name": "active_queue_lifecycle_locked_target_and_section_order_ui", "risk": "high", "start_line": 9, "end_line": 62}
     ],
     "test_games_lantern_transport.py": [
       {"name": "bounded_transport_timeout_status_size_and_cancel", "risk": "critical", "start_line": 10, "end_line": 109}
