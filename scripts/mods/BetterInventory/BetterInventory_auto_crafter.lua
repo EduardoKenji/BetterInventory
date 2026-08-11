@@ -930,8 +930,11 @@ function AutoCrafter.configure(dependencies)
 				report = function(kind, payload)
 					presentation_dirty = true
 					if kind == "import_failed" then
-						log("error", "Games Lantern import failed: " .. tostring(payload and payload.reason))
-						notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Games Lantern import failed: " .. tostring(payload and payload.reason))
+						local reason = tostring(payload and payload.reason)
+						local detail = payload and payload.error
+						local message = "Games Lantern import failed: " .. reason .. (detail and " (" .. tostring(detail) .. ")" or "")
+						log("error", message)
+						notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), message)
 					else
 						log("info", string.format("Games Lantern import event=%s generation=%s state=%s reason=%s", tostring(kind), tostring(payload and payload.generation or "?"), tostring(payload and payload.state or "?"), tostring(payload and payload.reason or "none")))
 					end

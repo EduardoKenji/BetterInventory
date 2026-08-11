@@ -144,9 +144,10 @@ function ImportController.new(dependencies)
 		self._weapon_choices = {}
 		self._last_error = nil
 
-		local transport_ok, transport_error = safe_call(self._transport and self._transport.start, self._transport, url)
-		if not transport_ok or transport_error == false then
-			return fail("transport_start_failed", { error = transport_error })
+		local start = self._transport and self._transport.start
+		local transport_ok, started, transport_error = pcall(start, self._transport, url)
+		if not transport_ok or started ~= true then
+			return fail("transport_start_failed", { error = transport_ok and transport_error or started })
 		end
 
 		self._state = "fetching"

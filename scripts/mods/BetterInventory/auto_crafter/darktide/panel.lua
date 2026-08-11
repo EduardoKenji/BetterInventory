@@ -109,23 +109,27 @@ local function keyboard_key_down(name)
 		return false
 	end
 
-	if type(keyboard.pressed) == "function" then
-		local ok, pressed = pcall(keyboard.pressed, index)
-
-		if ok then
-			return pressed == true
+	-- Chords need held state.  Keyboard.pressed() is true only on the first
+	-- frame, so Ctrl is normally no longer "pressed" when V arrives.
+	if type(keyboard.button) == "function" then
+		local ok, value = pcall(keyboard.button, index)
+		if not ok then
+			ok, value = pcall(keyboard.button, keyboard, index)
 		end
 
-		ok, pressed = pcall(keyboard.pressed, keyboard, index)
 		if ok then
-			return pressed == true
+			return value == true or (tonumber(value) or 0) > 0
 		end
 	end
 
-	if type(keyboard.button) == "function" then
-		local ok, value = pcall(keyboard.button, index)
+	if type(keyboard.pressed) == "function" then
+		local ok, pressed = pcall(keyboard.pressed, index)
 
-		return ok and (value == true or tonumber(value) and tonumber(value) > 0) or false
+		if not ok then
+			ok, pressed = pcall(keyboard.pressed, keyboard, index)
+		end
+
+		return ok and pressed == true or false
 	end
 
 	return false

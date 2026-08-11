@@ -170,12 +170,21 @@ end
 local function unique_archetype(html)
 	local found = {}
 	local count = 0
-	for slug in html:gmatch('href=["\']/classes/([^"\'/?#]+)') do
+	local function include(slug)
 		local normalized_slug = bounded_label(slug, 80)
 		if normalized_slug and not found[normalized_slug] then
 			found[normalized_slug] = true
 			count = count + 1
 		end
+	end
+	for slug in html:gmatch('href=["\'][^"\']*/classes/([^"\'/?#]+)["\']') do
+		include(slug)
+	end
+	-- Current build breadcrumbs link to /builds/<archetype> rather than the
+	-- older /classes/<archetype> route.  Requiring the quote immediately after
+	-- the slug excludes /builds/<uuid>/<title> build links.
+	for slug in html:gmatch('href=["\'][^"\']*/builds/([^"\'/?#]+)["\']') do
+		include(slug)
 	end
 	if count ~= 1 then return nil end
 	for slug in pairs(found) do return slug end
@@ -195,19 +204,23 @@ function Parser.parse(html)
 	end
 
 	local lowered = string.lower(html)
-	if lowered:find("captcha", 1, true) or lowered:find("challenge%-platform") or lowered:find("please log in", 1, true) or lowered:find("sign in to continue", 1, true) then
+	local has_weapons_anchor = lowered:find('id="weapons"', 1, true) or lowered:find("id='weapons'", 1, true)
+	local challenge_only = lowered:find("challenge%-platform") and not has_weapons_anchor
+	if lowered:find("captcha", 1, true) or challenge_only or lowered:find("please log in", 1, true) or lowered:find("sign in to continue", 1, true) then
 		return nil, "login_or_challenge_page"
 	end
 
-	local weapon_section = html:match('<section[^>]-id=["\']weapons["\'][^>]*>(.-)</section>')
-	if not weapon_section then
+	if not has_weapons_anchor then
 		return nil, "weapons_section_unavailable"
 	end
 
 	local weapons = {}
 	local card_count = 0
 
-	for block in weapon_section:gmatch('<div class="max%-w%-sm w%-full">(.-)weapon_box_bottom%.webp') do
+	-- Games Lantern changed the weapons container from a section to a div in
+	-- 2026.  Card boundaries remain stable, so scan the bounded page after
+	-- requiring the explicit weapons anchor instead of coupling to a tag name.
+	for block in html:gmatch('<div class="max%-w%-sm w%-full">(.-)weapon_box_bottom%.webp') do
 		card_count = card_count + 1
 
 		if card_count > Parser.MAX_WEAPONS then

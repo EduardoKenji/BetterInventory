@@ -121,7 +121,10 @@ function Adapter.spawn(url, generation, max_bytes)
 	local limit = tonumber(max_bytes) or MAX_BYTES
 	local script = {
 		"@echo off",
-		string.format("%s --silent --show-error --connect-timeout %d --max-time %d --max-filesize %d --proto =https -o %s -w \"%%{http_code} %%{content_type}\" %s > %s 2> %s", quoted[6], CONNECT_TIMEOUT, REQUEST_TIMEOUT, limit, quoted[1], quote(url), quoted[3], quoted[5]),
+		-- The batch file needs doubled percent signs so cmd.exe passes curl's
+		-- write-out placeholders through unchanged.  Follow the canonical URL's
+		-- same-origin slug redirect, which Games Lantern uses for build pages.
+		string.format("%s --silent --show-error --location --connect-timeout %d --max-time %d --max-filesize %d --proto =https --proto-redir =https -o %s -w \"%%%%{http_code} %%%%{content_type}\" %s > %s 2> %s", quoted[6], CONNECT_TIMEOUT, REQUEST_TIMEOUT, limit, quoted[1], quote(url), quoted[3], quoted[5]),
 		string.format(">%s echo %%ERRORLEVEL%%", quoted[2]),
 	}
 
@@ -130,7 +133,7 @@ function Adapter.spawn(url, generation, max_bytes)
 	end
 	local ps_script_path = string.gsub(script_path, "'", "''")
 	if not write_file(launcher_path, {
-		"$p = Start-Process -FilePath 'cmd.exe' -ArgumentList '/c','\"" .. ps_script_path .. "\"' -WindowStyle Hidden -PassThru",
+		"$p = Start-Process -FilePath 'cmd.exe' -ArgumentList '/d','/s','/c','\"\"" .. ps_script_path .. "\"\"' -WindowStyle Hidden -PassThru",
 		"$p.Id",
 	}) then
 		remove(script_path)
@@ -145,7 +148,11 @@ function Adapter.spawn(url, generation, max_bytes)
 		return nil, "process_api_unavailable"
 	end
 
-	local process = api.popen(quoted[8] .. " -NoProfile -NonInteractive -ExecutionPolicy Bypass -File " .. quoted[7])
+	-- io.popen is itself hosted by cmd.exe on Windows.  Starting its command
+	-- with a quoted executable makes cmd consume the quote pair as command-line
+	-- decoration and corrupt the remaining path.  SystemRoot's canonical
+	-- PowerShell path has no spaces, so launch that validated path directly.
+	local process = api.popen(powershell .. " -NoProfile -NonInteractive -ExecutionPolicy Bypass -File " .. quoted[7])
 	local pid = process and tonumber(process:read("*l")) or nil
 	if process then
 		process:close()

@@ -105,10 +105,10 @@ function Transport.new(dependencies)
 		end
 
 		local spawn = self._adapter.spawn
-		local ok, handle = safe_call(spawn, url, self._generation, self._max_bytes)
+		local ok, handle, spawn_error = pcall(spawn, url, self._generation, self._max_bytes)
 		if not ok or handle == nil then
 			self._state = "failed"
-			self._last_error = tostring(ok and handle or "transport_spawn_failed")
+			self._last_error = tostring(ok and (spawn_error or "transport_spawn_failed") or handle)
 
 			return false, self._last_error
 		end
