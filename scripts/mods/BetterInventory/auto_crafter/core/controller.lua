@@ -607,6 +607,7 @@ function Controller.new(dependencies)
 		_operation_promise = nil,
 		_operation_kind = nil,
 		_operation_sequence = 0,
+		_terminal_sequence = 0,
 		_operation_elapsed = 0,
 		_operation_started_at = nil,
 		_operation_quarantined = false,
@@ -639,6 +640,8 @@ function Controller.new(dependencies)
 		_run_character_id = nil,
 		_account_operation_token = nil,
 		_queue_operation_owner = false,
+		_queue_run_policy = nil,
+		_queue_preflight = nil,
 		_imported_job = nil,
 		_run_imported_job = nil,
 	}
@@ -713,7 +716,7 @@ function Controller.new(dependencies)
 		return table.concat(fields, " ")
 	end
 
-	local function setting(id, default_value)
+	local function raw_setting(id, default_value)
 		local get = self._settings.get
 
 		if type(get) ~= "function" then
@@ -727,6 +730,15 @@ function Controller.new(dependencies)
 		end
 
 		return value
+	end
+
+	local function setting(id, default_value)
+		local policy_values = self._queue_operation_owner and self._queue_run_policy and self._queue_run_policy.values
+		if type(policy_values) == "table" and policy_values[id] ~= nil then
+			return policy_values[id]
+		end
+
+		return raw_setting(id, default_value)
 	end
 
 	local function set_setting(id, value)
@@ -848,7 +860,13 @@ function Controller.new(dependencies)
 		end
 
 		if not run_is_active() and not self._operation_inflight and (self._auxiliary_inflight_count or 0) == 0 then
-			return release_account_operation()
+			local released = release_account_operation()
+			if released then
+				self._queue_run_policy = nil
+				self._queue_preflight = nil
+			end
+
+			return released
 		end
 
 		return false
@@ -962,7 +980,7 @@ function Controller.new(dependencies)
 			return true
 		end
 
-		return setting(setting_id) ~= frozen[setting_id]
+		return raw_setting(setting_id) ~= frozen[setting_id]
 	end
 
 	local mutation_setting_ids = {
@@ -1120,6 +1138,18 @@ function Controller.new(dependencies)
 
 	local function operation_report(kind, payload)
 		payload = payload or {}
+		payload.run_generation = self._generation
+		payload.operation_sequence = self._operation_sequence
+		payload.character_id = self._run_character_id or current_character_id()
+		local imported_job = self._run_imported_job or self._imported_job
+		if imported_job then
+			payload.queue_id = imported_job.queue_id
+			payload.job_id = imported_job.job_id
+		end
+		if kind == "phase4_complete" or kind == "operation_failed" or kind == "operation_quarantined" or kind == "operation_reconciliation_required" or kind == "phase4_stopped" or kind == "purchase_search_stopped" then
+			self._terminal_sequence = self._terminal_sequence + 1
+			payload.terminal_sequence = self._terminal_sequence
+		end
 		self._last_progress_elapsed = self._run_elapsed
 		log(kind == "operation_failed" and "error" or "info", diagnostic_message(kind, payload))
 		report(kind, payload)
@@ -3730,9 +3760,215 @@ function Controller.new(dependencies)
 		return true
 	end
 
-	function self:begin_queue_operation()
+	function self:capture_queue_run_policy()
+		if run_is_active() or self._operation_inflight or self._operation_quarantined or self._reconciliation_required or (self._auxiliary_inflight_count or 0) > 0 then
+			return nil, "Auto Crafter is busy"
+		end
+
+		local values = {}
+		for setting_id in pairs(planner_setting_ids) do
+			values[setting_id] = setting(setting_id)
+		end
+		values.auto_crafter_buy_until_target = setting("auto_crafter_buy_until_target", true)
+		values.auto_crafter_favorite_result = setting("auto_crafter_favorite_result", true)
+
+		return {
+			kind = "games_lantern_queue_run_policy",
+			character_id = current_character_id(),
+			values = values,
+		}
+	end
+
+	function self:preview_imported_queue(build)
+		if not self._snapshot or type(build) ~= "table" or type(build.jobs) ~= "table" or #build.jobs ~= 2 or not self._planner or type(self._planner.build) ~= "function" then
+			return nil, "queue preview unavailable"
+		end
+
+		local previews = {}
+		local signature_parts = { "games_lantern_authority_v1", tostring(current_character_id()) }
+		local aggregate = { dockets_max = 0, dockets_min = 0, plasteel_max = 0, plasteel_min = 0, diamantine_max = 0, diamantine_min = 0 }
+		for index, job in ipairs(build.jobs) do
+			local config = planner_config()
+			config.dump_stat = job.dump_stat
+			config.dump_target = job.dump_target
+			config.target_offer = job.offer
+			config.trait_catalog = job.catalog
+			local ok, plan = pcall(self._planner.build, self._snapshot, config)
+			if not ok or type(plan) ~= "table" or type(plan.estimate) ~= "table" then
+				return nil, "queue job " .. tostring(index) .. " preview unavailable"
+			end
+			previews[index] = plan
+			signature_parts[#signature_parts + 1] = table.concat({
+				tostring(job.queue_id),
+				tostring(job.job_id),
+				tostring(job.slot),
+				tostring(job.offer and (job.offer.offer_id or job.offer.master_id)),
+				tostring(job.dump_stat),
+				tostring(job.dump_target),
+				planner_config_signature(config),
+			}, ":")
+			for _, trait in ipairs(job.perks or {}) do
+				signature_parts[#signature_parts + 1] = "perk:" .. tostring(trait.id or trait.name) .. ":" .. tostring(trait.rarity)
+			end
+			for _, trait in ipairs(job.blessings or {}) do
+				signature_parts[#signature_parts + 1] = "blessing:" .. tostring(trait.id or trait.name) .. ":" .. tostring(trait.rarity)
+			end
+			local estimate = plan.estimate
+			aggregate.dockets_min = aggregate.dockets_min + (tonumber(estimate.dockets_floor) or 0) + (tonumber(estimate.dockets_min) or 0)
+			aggregate.dockets_max = aggregate.dockets_max + (tonumber(estimate.dockets_cap) or 0) + (tonumber(estimate.dockets_max) or 0)
+			aggregate.plasteel_min = aggregate.plasteel_min + (tonumber(estimate.plasteel_min) or 0)
+			aggregate.plasteel_max = aggregate.plasteel_max + (tonumber(estimate.plasteel_max) or 0)
+			aggregate.diamantine_min = aggregate.diamantine_min + (tonumber(estimate.diamantine_min) or 0)
+			aggregate.diamantine_max = aggregate.diamantine_max + (tonumber(estimate.diamantine_max) or 0)
+		end
+
+		for _, field in ipairs({ "dockets_min", "dockets_max", "plasteel_min", "plasteel_max", "diamantine_min", "diamantine_max" }) do
+			signature_parts[#signature_parts + 1] = field .. ":" .. tostring(aggregate[field])
+		end
+
+		return { aggregate = aggregate, jobs = previews, signature = table.concat(signature_parts, "|") }
+	end
+
+	function self:stop_imported_queue_boundary()
+		if run_is_active() then
+			return self:_stop_active_run("user_stopped")
+		end
+		if not self._queue_preflight then
+			return false
+		end
+
+		invalidate_generation()
+		cancel_catalog()
+		self._queue_preflight = nil
+		self._probe_scheduled = false
+		self._probe_elapsed = 0
+		self._phase = "user_stopped"
+		release_account_operation_if_settled()
+
+		return true
+	end
+
+	function self:prepare_imported_job(job)
+		if type(job) ~= "table" or job.job_id == nil or job.queue_id == nil or self._imported_job ~= job then
+			return false, "imported job identity unavailable"
+		end
+
+		local character_id = current_character_id()
+		if not self._queue_run_policy or self._queue_run_policy.character_id ~= character_id then
+			return false, "active character differs from confirmed queue policy"
+		end
+
+		local selected_ok, raw_offer = safe_call(self._get_selected_offer, self._active_view)
+		local selected = selected_ok and selected_offer_ids(raw_offer) or nil
+		if offer_key(selected) ~= offer_key(job.offer) then
+			return nil, "waiting for native weapon selection"
+		end
+
+		local preflight = self._queue_preflight
+		if not preflight or preflight.job_id ~= job.job_id then
+			self._queue_preflight = {
+				job_id = job.job_id,
+				probe_count = self._probe_count,
+			}
+			cancel_catalog()
+			self._catalog = nil
+			self._catalog_key = nil
+			if not self:_schedule_probe("games_lantern_queue_boundary") then
+				return false, "fresh authoritative probe could not be scheduled"
+			end
+
+			return nil, "waiting for fresh authoritative probe"
+		end
+
+		if self._probe_count <= preflight.probe_count or self._probe_scheduled or self._probe_inflight then
+			return nil, "waiting for fresh authoritative probe"
+		end
+
+		if not snapshot_matches_character(self._snapshot, character_id) then
+			return false, "fresh inventory snapshot belongs to another character"
+		end
+
+		if self._catalog_inflight or not self._catalog then
+			return nil, "waiting for fresh weapon catalogue"
+		elseif self._catalog.available ~= true or self._catalog_key ~= offer_key(job.offer) then
+			return false, self._catalog.reason or "fresh weapon catalogue unavailable"
+		end
+
+		job.catalog = self._catalog
+		self._imported_job.catalog = self._catalog
+		self:_refresh_plan("games_lantern_boundary_preflight")
+		if not self._plan or not self._plan.preflight or self._plan.preflight.ok ~= true then
+			return false, self._plan and self._plan.preflight and self._plan.preflight.summary or "queue job preflight unavailable"
+		end
+
+		return true
+	end
+
+	function self:verify_imported_queue_results(results, jobs)
+		if type(results) ~= "table" or #results ~= 2 or type(jobs) ~= "table" or #jobs ~= 2 or not self._snapshot then
+			return false, "two completed queue results are required"
+		end
+
+		local character_id = current_character_id()
+		if not snapshot_matches_character(self._snapshot, character_id) then
+			return false, "final inventory snapshot belongs to another character"
+		end
+
+		local gear = self._snapshot.gear or {}
+		local policy = self._queue_run_policy and self._queue_run_policy.values or {}
+		local function has_targets(values, targets)
+			for _, target in ipairs(targets or {}) do
+				local found = false
+				for _, value in ipairs(values or {}) do
+					if value and target and value.id == target.id and (target.rarity == nil or tonumber(value.rarity) == tonumber(target.rarity)) then
+						found = true
+						break
+					end
+				end
+				if not found then return false end
+			end
+			return true
+		end
+		for index, result in ipairs(results) do
+			local job = jobs[index]
+			local item = result.gear_id ~= nil and find_item(gear.items, result.gear_id, gear.items_by_id) or nil
+			if result.character_id ~= character_id or not item or item.available ~= true then
+				return false, "completed queue weapon " .. tostring(index) .. " is missing from authoritative inventory"
+			end
+			local expected_pattern = job.parent_pattern or job.offer and job.offer.parent_pattern
+			local expected_master = job.master_id or job.offer and job.offer.master_id
+			if expected_master and item.master_id ~= expected_master then
+				return false, "completed queue weapon " .. tostring(index) .. " changed weapon mark"
+			end
+			if expected_pattern and item.parent_pattern ~= expected_pattern then
+				return false, "completed queue weapon " .. tostring(index) .. " changed weapon family"
+			end
+			if tonumber(candidate_stat(item, job.dump_stat)) ~= tonumber(job.dump_target) then
+				return false, "completed queue weapon " .. tostring(index) .. " changed dump stat"
+			end
+			if policy.auto_crafter_consecrate_transcendent == true and (tonumber(item.rarity) or -1) < TRANSCENDENT_RARITY then
+				return false, "completed queue weapon " .. tostring(index) .. " is below Transcendent"
+			end
+			if policy.auto_crafter_upgrade_expertise_500 == true and (tonumber(item.expertise_level) or -1) < MAX_EXPERTISE_LEVEL then
+				return false, "completed queue weapon " .. tostring(index) .. " is below item level 500"
+			end
+			if policy.auto_crafter_change_perks == true and not has_targets(item.perks, job.perks) then
+				return false, "completed queue weapon " .. tostring(index) .. " changed perks"
+			end
+			if policy.auto_crafter_change_blessings == true and not has_targets(item.traits, job.blessings) then
+				return false, "completed queue weapon " .. tostring(index) .. " changed blessings"
+			end
+		end
+
+		return true
+	end
+
+	function self:begin_queue_operation(policy)
 		if self._queue_operation_owner or run_is_active() or self._operation_inflight or self._operation_quarantined or self._reconciliation_required or (self._auxiliary_inflight_count or 0) > 0 then
 			return false, "Auto Crafter is busy"
+		end
+		if type(policy) ~= "table" or policy.kind ~= "games_lantern_queue_run_policy" or type(policy.values) ~= "table" or policy.character_id ~= current_character_id() then
+			return false, "queue run policy is invalid or stale"
 		end
 
 		local acquired, reason = acquire_account_operation()
@@ -3741,14 +3977,21 @@ function Controller.new(dependencies)
 		end
 
 		self._queue_operation_owner = true
+		self._queue_run_policy = policy
+		self._queue_preflight = nil
 
 		return true
 	end
 
 	function self:end_queue_operation()
 		self._queue_operation_owner = false
+		self._queue_preflight = nil
+		local released = release_account_operation_if_settled()
+		if released then
+			self._queue_run_policy = nil
+		end
 
-		return release_account_operation_if_settled()
+		return released
 	end
 
 	function self:start_purchase_search()
@@ -4428,6 +4671,8 @@ function Controller.new(dependencies)
 		self._frozen_run_settings = nil
 		self._run_character_id = nil
 		self._queue_operation_owner = false
+		self._queue_run_policy = nil
+		self._queue_preflight = nil
 		self._imported_job = nil
 		self._run_imported_job = nil
 		self._observed_character_id = character_id
@@ -4515,6 +4760,8 @@ function Controller.new(dependencies)
 		self._frozen_run_settings = nil
 		self._run_character_id = nil
 		self._queue_operation_owner = false
+		self._queue_run_policy = nil
+		self._queue_preflight = nil
 		self._imported_job = nil
 		self._run_imported_job = nil
 		report("context_exit", {
@@ -4803,6 +5050,7 @@ function Controller.new(dependencies)
 			operation_inflight = self._operation_inflight,
 			operation_kind = self._operation_kind,
 			operation_sequence = self._operation_sequence,
+			terminal_sequence = self._terminal_sequence,
 			operation_elapsed_seconds = self._operation_elapsed,
 			operation_quarantined = self._operation_quarantined,
 			reconciliation_required = self._reconciliation_required,
@@ -4824,6 +5072,8 @@ function Controller.new(dependencies)
 			run_elapsed_seconds = self._run_elapsed,
 			resource_costs = resource_costs,
 			queue_operation_owner = self._queue_operation_owner,
+			queue_run_policy = self._queue_run_policy,
+			queue_preflight = self._queue_preflight,
 			imported_job = self._imported_job,
 			run_imported_job = self._run_imported_job,
 		}
@@ -4864,6 +5114,8 @@ function Controller.new(dependencies)
 		self._run_elapsed = 0
 		self._run_started_at = nil
 		self._queue_operation_owner = false
+		self._queue_run_policy = nil
+		self._queue_preflight = nil
 		self._imported_job = nil
 		self._run_imported_job = nil
 		release_account_operation_if_settled()
