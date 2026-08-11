@@ -87,6 +87,8 @@ end
 local function weapon_name_with_mark(display_name, mark_name)
 	local family = clean_single_line(display_name)
 	local mark = clean_single_line(mark_name)
+	mark = string.gsub(mark, "%s*[•·]%s*", " ")
+	mark = string.gsub(mark, "%s+", " ")
 
 	if family == "" then
 		return mark
@@ -95,7 +97,7 @@ local function weapon_name_with_mark(display_name, mark_name)
 		return family
 	end
 
-	return family .. " - " .. mark
+	return mark .. " " .. family
 end
 
 Panel.weapon_name_with_mark = weapon_name_with_mark
