@@ -52,7 +52,7 @@ def main() -> None:
     resolver = to_lua(
         {
             "resolve_identities": callback_wrapper(lambda model, context: (identity, None)),
-            "attach_catalogs": callback_wrapper(lambda identity_build, catalogs: (resolved, None)),
+            "attach_catalogs": callback_wrapper(lambda identity_build, catalogs, context=None: (resolved, None)),
         }
     )
 
@@ -113,7 +113,7 @@ def main() -> None:
 
     chooser_resolver = to_lua({
         "resolve_identities": callback_wrapper(resolve_with_choice),
-        "attach_catalogs": callback_wrapper(lambda identity_build, catalogs: (resolved, None)),
+        "attach_catalogs": callback_wrapper(lambda identity_build, catalogs, context=None: (resolved, None)),
     })
     chooser = import_module.new(to_lua({
         "clipboard_read": callback_wrapper(lambda: url),

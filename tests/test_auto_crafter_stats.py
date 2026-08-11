@@ -861,6 +861,8 @@ def main() -> None:
     backend_source = BACKEND_PATH.read_text(encoding="utf-8")
     assert "Items.trait_description" in backend_source
     assert "Items.trait_textures" in backend_source
+    assert 'safe_member(perk_item, "description")' in backend_source
+    assert 'safe_member(trait_item, "description")' in backend_source
     assert "tier == maximum_tier" in backend_source
 
     lua.execute("TraitLeftPresses = 0; TraitRightPresses = 0")

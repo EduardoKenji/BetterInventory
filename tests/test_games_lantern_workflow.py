@@ -171,6 +171,93 @@ def main() -> None:
     assert skitarius_identity["jobs"][2]["master_id"].endswith("phosphor_pistol_p1_m1")
     assert skitarius_identity["jobs"][1]["dump_stat"].endswith("cleave_damage_and_targets_stat")
 
+    # Live crafting catalogues expose perk master IDs plus localization keys,
+    # while Games Lantern exposes rendered text. Blessings additionally expose
+    # a numeric website icon ID that is embedded in Darktide's texture path.
+    # Resolve both Skitarius jobs atomically using those runtime contracts.
+    skitarius_identity["jobs"][1]["external"]["perks"] = to_lua([
+        {"label": "10-25% Damage (Carapace Armoured Enemies)"},
+        {"label": "10-25% Damage (Unyielding Enemies)"},
+    ])
+    skitarius_identity["jobs"][1]["external"]["blessings"] = to_lua([
+        {"label": "Riposte", "external_icon_id": "064"},
+        {"label": "Shred", "external_icon_id": "085"},
+    ])
+    skitarius_identity["jobs"][2]["external"]["perks"] = to_lua([
+        {"label": "10-25% Damage (Flak Armoured Enemies)"},
+        {"label": "10-25% Damage (Unyielding Enemies)"},
+    ])
+    skitarius_identity["jobs"][2]["external"]["blessings"] = to_lua([
+        {"label": "Man-Stopper", "external_icon_id": "123"},
+        {"label": "Surgical", "external_icon_id": "007"},
+    ])
+    trait_labels = {
+        "loc_perk_carapace": "+25% Damage vs Carapace Armoured",
+        "loc_perk_unyielding": "+25% Damage vs Unyielding",
+        "loc_perk_flak": "+25% Damage vs Flak Armoured",
+        "loc_blessing_riposte": "Riposte",
+        "loc_blessing_shred": "Shred",
+        "loc_blessing_man_stopper": "Man-Stopper",
+        "loc_blessing_surgical": "Surgical",
+    }
+    localize_traits = lua.eval(
+        "function(callback) return function(key) return callback(key) end end"
+    )(lambda key: trait_labels.get(key))
+    live_catalogs = to_lua({
+        transonic_offer["master_id"]: {
+            "available": True,
+            "perks": [
+                {"id": "perk_carapace", "description_key": "loc_perk_carapace", "tier": 4},
+                {"id": "perk_unyielding", "description_key": "loc_perk_unyielding", "tier": 4},
+            ],
+            "blessings": [
+                {"id": "blessing_riposte", "display_name_key": "loc_blessing_riposte", "icon": "content/ui/textures/icons/traits/weapon_trait_064", "tiers": [{"tier": 4}]},
+                {"id": "blessing_shred", "display_name_key": "loc_blessing_shred", "icon": "content/ui/textures/icons/traits/weapon_trait_085", "tiers": [{"tier": 4}]},
+            ],
+        },
+        phosphor_offer["master_id"]: {
+            "available": True,
+            "perks": [
+                {"id": "perk_flak", "description_key": "loc_perk_flak", "tier": 4},
+                {"id": "perk_unyielding", "description_key": "loc_perk_unyielding", "tier": 4},
+            ],
+            "blessings": [
+                {"id": "blessing_man_stopper", "display_name_key": "loc_blessing_man_stopper", "icon": "content/ui/textures/icons/traits/weapon_trait_123", "tiers": [{"tier": 4}]},
+                {"id": "blessing_surgical", "display_name_key": "loc_blessing_surgical", "icon": "content/ui/textures/icons/traits/weapon_trait_007", "tiers": [{"tier": 4}]},
+            ],
+        },
+    })
+    resolved_skitarius, reason = resolver.attach_catalogs(
+        skitarius_identity,
+        live_catalogs,
+        to_lua({"localize_offer_label": localize_traits}),
+    )
+    assert resolved_skitarius is not None, reason
+    assert resolved_skitarius["jobs"][1]["perks"][1]["id"] == "perk_carapace"
+    assert resolved_skitarius["jobs"][2]["perks"][1]["id"] == "perk_flak"
+    assert resolved_skitarius["jobs"][1]["blessings"][2]["id"] == "blessing_shred"
+    assert resolved_skitarius["jobs"][2]["blessings"][1]["id"] == "blessing_man_stopper"
+
+    missing_perk_catalogs = to_lua({
+        transonic_offer["master_id"]: {
+            "available": True,
+            "perks": [{"id": "other", "description_key": "loc_other", "tier": 4}],
+            "blessings": live_catalogs[transonic_offer["master_id"]]["blessings"],
+        },
+        phosphor_offer["master_id"]: live_catalogs[phosphor_offer["master_id"]],
+    })
+    assert resolver.attach_catalogs(skitarius_identity, missing_perk_catalogs, to_lua({"localize_offer_label": localize_traits}))[1] == "perk_unavailable_slot_1_1"
+
+    missing_blessing_catalogs = to_lua({
+        transonic_offer["master_id"]: {
+            "available": True,
+            "perks": live_catalogs[transonic_offer["master_id"]]["perks"],
+            "blessings": [{"id": "other", "display_name_key": "loc_other", "icon": "weapon_trait_999", "tiers": [{"tier": 4}]}],
+        },
+        phosphor_offer["master_id"]: live_catalogs[phosphor_offer["master_id"]],
+    })
+    assert resolver.attach_catalogs(skitarius_identity, missing_blessing_catalogs, to_lua({"localize_offer_label": localize_traits}))[1] == "blessing_unavailable_slot_1_1"
+
     bad_dump_model = to_lua({
         "source_archetype": "skitarii",
         "weapons": [

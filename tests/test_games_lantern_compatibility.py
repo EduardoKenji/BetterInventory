@@ -98,7 +98,7 @@ def main() -> None:
     resolver = to_lua(
         {
             "resolve_identities": callback_wrapper(lambda model, context: (identity, None)),
-            "attach_catalogs": callback_wrapper(lambda identity_build, catalogs: (resolved, None)),
+            "attach_catalogs": callback_wrapper(lambda identity_build, catalogs, context=None: (resolved, None)),
         }
     )
 
