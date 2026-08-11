@@ -13,6 +13,7 @@
 - Character Overview revisited unchanged Curio fitting and equipped-marker state every frame. Large retained/hidden inventories amplified the apparent BetterInventory cost.
 - BetterInventory still installed safe hooks on every `ViewElementGrid.update`, the shared `ConstantElementPopupHandler.update`, and `InventoryView.update`. Darktide's `ViewElementGrid.update` advances grids, updates every grid widget, and reconciles visibility; its popup handler also owns all popup lifecycle/drawing work. Hook profilers could therefore charge unrelated Social, Talents, Party Finder, and Character Overview native work to BetterInventory.
 - Potty's captures matched this ownership leak: BetterInventory call counts changed with each view's number of grids (`3` Social, `6` Party Finder, `8` Character Overview), despite no BetterInventory feature needing those views.
+- A second attribution leak remained after removing the update hooks: the Auto Crafter top-status overlay installed normal wrapping hooks on `BaseView.draw`, `ItemGridViewBase.draw`, `InventoryView.draw`, and `VendorInteractionViewBase.draw`. Each callback called the complete native draw function before rendering the overlay. Mod Performance Monitor correctly measured that entire callback, so Darktide's widgets, view elements, offscreen grids, inspected-player cards, and earlier mod hooks were charged to BetterInventory. The observed call signature (`4` in Loadout/Cosmetics and `2` in Talents/Social) matched the overlapping draw hooks plus BetterInventory's lifecycle update.
 
 ## Behavior-preserving changes
 
@@ -28,6 +29,7 @@
 - Stable Character Overview cards do not re-enter native item-slot update, text fitting, or equipped-marker loops. Curio transition polling is bounded to 4 Hz and equipped-marker synchronization runs only when widgets, Lantern state, or content become dirty.
 - Settled automatic discard identity polling is bounded to 4 Hz; scheduled and in-flight work remains frame-driven.
 - Card content caches weapon/Curio kind, and blueprint visibility functions consume those cached booleans instead of repeatedly resolving item type.
+- The Auto Crafter status overlay now uses DMF post-draw safe hooks. Native and third-party draw work completes outside BetterInventory's measured callback; only the bounded status check and optional overlay pass belong to BetterInventory. `InventoryView` is excluded from the inner `BaseView` callback and uses its concrete post-draw hook, preserving top-layer ordering without duplicate overlay rendering.
 
 ## Validation invariants
 
@@ -38,6 +40,7 @@
 - Full behavior suite must pass before installation synchronization.
 - High-cardinality regression coverage constructs 1,000 tracked cards and proves a hidden dirty grid performs zero BetterInventory per-card calls, then exactly one repair pass when visible.
 - Unregistered grids from Social, Talents, Party Finder, or other mods perform zero BetterInventory marker callbacks.
+- No BetterInventory normal wrapping hook may target a shared `draw` method. The overlay regression test registers all four view classes, proves zero normal hooks, and proves `InventoryView` renders exactly once after its concrete draw callback.
 
 ## Potty mod-list audit
 
@@ -45,10 +48,13 @@
 - `outline_colours` occurs twice. This exactly explains DMF's duplicate-name startup error for `outline_colours`.
 - Remove the second occurrence of both names from `Potty_mod_load_order.txt`. Duplicate registration can leave uncertain hook/load state and invalidates performance comparisons.
 - `InspectFromSocial` and `InspectFromPartyFinder` both add their own view-specific `update` hooks and can open read-only `inventory_background_view` instances. They do not directly call BetterInventory, but they share the inspected `InventoryView` path. BetterInventory now keeps that integration to five loadout cards through a weak registered-view pass instead of wrapping the complete inspected view update.
-- `OpenPlayerProfile`, `who_are_you`, `BetterLoadouts`, `LoadoutNames`, and several Talent UI mods were listed but unavailable in this installation, so no source-level conflict claim is made. Retest after duplicate cleanup; disable inspect/profile mods one at a time only if residual cost remains.
+- `BetterLoadouts` 1.6.4 was inspected from Potty's exact archive. It hooks profile-preset setup/presentation and `UIManager.load_view`; it does not install a per-frame `update` or `draw` hook and does not call BetterInventory. Its larger preset UI can increase Darktide's legitimate native draw cost, but the former BetterInventory wrapping draw hook incorrectly inherited that cost. It is an amplifier of the attribution defect, not its direct cause.
+- `OpenPlayerProfile`, `who_are_you`, `LoadoutNames`, and several Talent UI mods remain unavailable in this installation, so no source-level conflict claim is made. Retest after duplicate cleanup; disable inspect/profile mods one at a time only if residual BetterInventory-owned cost remains after the post-draw build.
 
 ## Source contracts checked
 
 - Darktide 1.12.3 source: `scripts/ui/view_elements/view_element_grid/view_element_grid.lua:312` shows global grid update owns grid input, widget updates, scroll state, visibility, and base update.
 - Darktide 1.12.3 source: `scripts/ui/views/inventory_view/inventory_view.lua:1305` shows Character Overview/Talents share substantial native inventory-view update work.
 - Darktide 1.12.3 source: `scripts/ui/constant_elements/elements/popup_handler/constant_element_popup_handler.lua:965` shows popup update is a global constant-element lifecycle, not a name-editor-only path.
+- Darktide 1.12.3 source: `scripts/ui/views/base_view.lua:542`, `item_grid_view_base.lua:995`, `inventory_view.lua:1355`, and `vendor_interaction_view_base.lua:465` show the wrapped draw methods own complete UI passes and nested elements.
+- Installed DMF source: `scripts/mods/dmf/modules/core/hooks.lua:425` defines `hook_safe` as a callback after the original hook chain. Installed Mod Performance Monitor source wraps each mod hook handler and measures its inclusive time, confirming that a normal hook which calls `func(...)` owns the enclosed native draw time in the monitor.

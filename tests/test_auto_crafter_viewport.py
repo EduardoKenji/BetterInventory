@@ -52,13 +52,130 @@ def main() -> None:
     assert "widget.style.accent.size[2] = height" in overlay_source
     assert "widget.style.text.size[2] = height - VERTICAL_PADDING" in overlay_source
     assert "centered_top_pivot" not in overlay_source
-    assert "view._auto_crafter_status_draw_depth == 0" in overlay_source
+    assert 'mod:hook_safe(view_class, "draw"' in overlay_source
+    assert 'mod:hook(view_class, "draw"' not in overlay_source
+    assert "func(view, dt, t, input_service, layer)" not in overlay_source
+    assert "_auto_crafter_status_draw_depth" not in overlay_source
     assert 'require("scripts/mods/BetterInventory' not in overlay_source
     assert 'horizontal_alignment = "center"' in hud_source
     assert 'vertical_alignment = "top"' in hud_source
     assert "status_height(line_count)" in hud_source
     assert "scenegraph.size[2] = height" in hud_source
     assert "widget.style.text.size[2] = height - VERTICAL_PADDING" in hud_source
+
+    # Draw hooks must measure only BetterInventory's post-draw overlay. Wrapping
+    # BaseView.draw makes hook profilers charge the complete native/third-party
+    # UI render chain to BetterInventory, even in unrelated views.
+    overlay_runtime = LuaRuntime(unpack_returned_tuples=True)
+    overlay_runtime.execute(
+        """
+        renderer_begin_calls = 0
+        renderer_end_calls = 0
+        widget_draw_calls = 0
+        normal_hook_calls = 0
+        safe_hooks = {}
+
+        UIRenderer = {
+            begin_pass = function()
+                renderer_begin_calls = renderer_begin_calls + 1
+            end,
+            end_pass = function()
+                renderer_end_calls = renderer_end_calls + 1
+            end,
+        }
+        UIWidget = {
+            create_definition = function(definition)
+                return definition
+            end,
+            init = function()
+                return {
+                    content = { text = "" },
+                    style = {
+                        background = { size = { 760, 112 } },
+                        accent = { size = { 4, 112 } },
+                        text = { size = { 736, 104 } },
+                    },
+                    offset = { 0, 0, 0 },
+                }
+            end,
+            draw = function()
+                widget_draw_calls = widget_draw_calls + 1
+            end,
+        }
+
+        function require(path)
+            if path == "scripts/managers/ui/ui_renderer" then
+                return UIRenderer
+            elseif path == "scripts/managers/ui/ui_widget" then
+                return UIWidget
+            end
+            error("unexpected require: " .. tostring(path))
+        end
+
+        test_mod = {}
+        function test_mod:hook()
+            normal_hook_calls = normal_hook_calls + 1
+        end
+        function test_mod:hook_safe(object, method, handler)
+            safe_hooks[#safe_hooks + 1] = {
+                object = object,
+                method = method,
+                handler = handler,
+            }
+        end
+
+        BaseView = { draw = function() end }
+        ItemGridViewBase = { draw = function() end }
+        InventoryView = { draw = function() end }
+        VendorInteractionViewBase = { draw = function() end }
+
+        AutoCrafterHelperHudState = {
+            enabled = function() return true end,
+            visible_context = function() return true end,
+            lines = function()
+                return { "one", "two", "three", "four", "five" }
+            end,
+        }
+        """
+    )
+    runtime_overlay = overlay_runtime.execute(overlay_source)
+    runtime_globals = overlay_runtime.globals()
+    assert runtime_overlay.install(
+        runtime_globals.test_mod,
+        overlay_runtime.table_from(
+            {
+                "base": runtime_globals.BaseView,
+                "item_grid": runtime_globals.ItemGridViewBase,
+                "inventory": runtime_globals.InventoryView,
+                "vendor": runtime_globals.VendorInteractionViewBase,
+            }
+        ),
+    ) is True
+    assert runtime_globals.normal_hook_calls == 0
+    assert len(runtime_globals.safe_hooks) == 4
+
+    inventory_view = overlay_runtime.table_from(
+        {
+            "__class_name": "InventoryView",
+            "_ui_renderer": overlay_runtime.table_from({}),
+            "_ui_scenegraph": overlay_runtime.table_from({}),
+            "_render_settings": overlay_runtime.table_from({"start_layer": 7}),
+        }
+    )
+    # BaseView is called inside InventoryView.draw, but only the concrete
+    # InventoryView post-draw callback may render the overlay.
+    runtime_globals.safe_hooks[1].handler(inventory_view, 0.016, 1, None, 10)
+    assert runtime_globals.widget_draw_calls == 0
+    runtime_globals.safe_hooks[3].handler(inventory_view, 0.016, 1, None, 10)
+    assert runtime_globals.renderer_begin_calls == 1
+    assert runtime_globals.renderer_end_calls == 1
+    assert runtime_globals.widget_draw_calls == 1
+    assert inventory_view._render_settings.start_layer == 7
+    assert inventory_view._auto_crafter_status_overlay.style.background.size[2] == 138
+
+    unrelated_view = overlay_runtime.table_from({"__class_name": "SocialMenuRosterView"})
+    runtime_globals.safe_hooks[1].handler(unrelated_view, 0.016, 1, None, 10)
+    assert runtime_globals.widget_draw_calls == 1
 
     print("Auto Crafter viewport resolution matrix tests passed.")
 

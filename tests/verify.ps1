@@ -144,6 +144,7 @@ $features = @(
 $automaticDiscard = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_discard_automatic.lua") -Raw
 $featureSorting = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_feature_sorting.lua") -Raw
 $featureDomains = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_feature_domains.lua") -Raw
+$viewStatusOverlay = Get-Content -LiteralPath (Join-Path $scriptRoot "auto_crafter\darktide\view_status_overlay.lua") -Raw
 $contracts = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_contracts.lua") -Raw
 $operationArbiter = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_operation_arbiter.lua") -Raw
 $settingsRegistry = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_settings.lua") -Raw
@@ -200,6 +201,10 @@ if ((($features -notmatch 'return automatic_discard_state\.delete_inflight' -and
 
 if ($main -notmatch '_better_inventory_myfavorites_active\s*=\s*true' -or $main -notmatch 'mod:hook_safe\(InventoryWeaponsView,\s*"update"' -or $main -match 'mod:hook_safe\(ViewElementGrid,\s*"update"' -or $main -match 'mod:hook_safe\(InventoryView,\s*"update"' -or $main -notmatch 'CharacterOverviewUI\.update_registered_views\(dt\)' -or $featureDomains -notmatch 'Domains\.markers\.update' -or $featureDomains -notmatch 'dirty_marker_grids') {
 	throw "View-scoped UI updates and dirty MyFavorites processing were not found."
+}
+
+if ($viewStatusOverlay -notmatch 'mod:hook_safe\(view_class,\s*"draw"' -or $viewStatusOverlay -match 'mod:hook\(view_class,\s*"draw"' -or $viewStatusOverlay -match 'func\(view,\s*dt,\s*t,\s*input_service,\s*layer\)' -or $viewStatusOverlay -match '_auto_crafter_status_draw_depth') {
+	throw "Auto Crafter status rendering must use post-draw safe hooks and must never own Darktide's native draw chain."
 }
 
 if ($itemCustomization -match 'hook_safe\("ConstantElementPopupHandler",\s*"update"' -or $itemCustomization -notmatch 'resolve_input_widget\(mod,\s*true\)') {

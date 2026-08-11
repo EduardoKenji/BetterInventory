@@ -18,7 +18,8 @@
       {"name": "right_click_routing_blessing_icon_and_runtime_progress", "risk": "high", "start_line": 947, "end_line": 983}
   ],
   "test_auto_crafter_viewport.py": [
-    {"name": "panel_and_hud_resolution_matrix", "risk": "high", "start_line": 14, "end_line": 67}
+    {"name": "panel_and_hud_resolution_matrix", "risk": "high", "start_line": 14, "end_line": 64},
+    {"name": "post_draw_overlay_cpu_ownership", "risk": "high", "start_line": 66, "end_line": 178}
   ],
   "test_auto_crafter_backend.py": [
     {"name": "complete_authoritative_inventory_summary", "risk": "critical", "start_line": 16, "end_line": 120},
