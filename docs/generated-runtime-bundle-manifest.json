@@ -322,8 +322,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/panel.lua",
-      "bytes": 99209,
-      "sha256": "25407f08afac7be0975c2d979d0bde652205805a825197c07a0b589b4bc3cb3d",
+      "bytes": 99766,
+      "sha256": "564fc24821edf9baa54a7cc718fc6949836161666d88dbe74a8dc145a64fdeb9",
       "source_path": "scripts/mods/BetterInventory/auto_crafter/darktide/panel.lua"
     },
     {
@@ -393,6 +393,6 @@
       "source_path": "scripts/mods/BetterInventory/auto_crafter/games_lantern/transport_wine.lua"
     }
   ],
-  "runtime_tree_sha256": "e4191c8282780916b719acc96a0ac870a4482d6138348833460e8c20c90f36cd",
+  "runtime_tree_sha256": "cf5762b0fdbcf28dcc78566c832a2cbe699f66c30715ca3136f166230c67cb97",
   "version": "2.1.0"
 }
