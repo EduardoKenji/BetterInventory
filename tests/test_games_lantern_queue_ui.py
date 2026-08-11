@@ -30,6 +30,7 @@ def main() -> None:
     assert "_queue_craft_confirmation_signature" in panel
     assert "aggregate_confirmation_stale" in facade
     assert "enabled = not queue_owned" in panel
+    assert "craft_enabled = not queue_active and not import_busy" in panel
 
 
 if __name__ == "__main__":

@@ -2058,15 +2058,20 @@ function Panel.new(dependencies)
 		end
 
 		local _, craft_authority_text = self:_games_lantern_cost_authority()
+		local import_busy = imported and (imported.state == "fetching" or imported.state == "resolving_catalogues" or imported.state == "awaiting_weapon_choice")
+		local craft_enabled = not queue_active and not import_busy
 		local craft_label = queue_owned and self._queue_craft_armed and "> CONFIRM TWO-WEAPON CRAFT <" or localize("auto_crafter_panel_preview", "> CLICK HERE TO CRAFT <")
 		table.insert(entries, self:_entry(craft_label, queue_owned and self._queue_craft_armed and (craft_authority_text or "Cost authority unavailable; crafting remains blocked.") or "", {
-			enabled = true,
-			selectable = true,
+			enabled = craft_enabled,
+			selectable = craft_enabled,
 			variant = "action",
 			action = function()
 				local imported = self:_games_lantern_import()
 				local queue = self:_games_lantern_queue()
 				local queue_owned = queue and queue.job_count == 2 and queue.state ~= "empty" and queue.state ~= "complete"
+				local queue_active = queue_owned and (queue.state == "starting" or queue.state == "selecting" or queue.state == "preflighting" or queue.state == "dispatching" or queue.state == "running" or queue.state == "waiting_next" or queue.state == "stopping" or queue.state == "quarantined" or queue.state == "reconciliation_required")
+				local import_busy = imported and (imported.state == "fetching" or imported.state == "resolving_catalogues" or imported.state == "awaiting_weapon_choice")
+				if queue_active or import_busy then return end
 
 				if (imported and imported.state == "staged" or queue_owned) and type(self._start_games_lantern_queue) == "function" then
 					local authority = self:_games_lantern_cost_authority()
@@ -2102,10 +2107,14 @@ function Panel.new(dependencies)
 				end
 			end,
 			refresh = function(widget)
-				widget.content.enabled = true
-				widget.content.hotspot.disabled = false
+				local current_import = self:_games_lantern_import()
 				local current_queue = self:_games_lantern_queue()
 				local current_owned = current_queue and current_queue.job_count == 2 and current_queue.state ~= "empty" and current_queue.state ~= "complete"
+				local current_active = current_owned and (current_queue.state == "starting" or current_queue.state == "selecting" or current_queue.state == "preflighting" or current_queue.state == "dispatching" or current_queue.state == "running" or current_queue.state == "waiting_next" or current_queue.state == "stopping" or current_queue.state == "quarantined" or current_queue.state == "reconciliation_required")
+				local current_import_busy = current_import and (current_import.state == "fetching" or current_import.state == "resolving_catalogues" or current_import.state == "awaiting_weapon_choice")
+				local current_enabled = not current_active and not current_import_busy
+				widget.content.enabled = current_enabled
+				widget.content.hotspot.disabled = not current_enabled
 				local _, current_authority_text = self:_games_lantern_cost_authority()
 				widget.content.detail = current_owned and self._queue_craft_armed and (current_authority_text or "Cost authority unavailable; crafting remains blocked.") or ""
 			end,

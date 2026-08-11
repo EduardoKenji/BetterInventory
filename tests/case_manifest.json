@@ -76,7 +76,7 @@
       {"name": "games_lantern_release_contract_seams", "risk": "critical", "start_line": 206, "end_line": 225}
     ],
     "test_games_lantern_queue_ui.py": [
-      {"name": "active_queue_lifecycle_and_locked_target_ui", "risk": "high", "start_line": 9, "end_line": 34}
+      {"name": "active_queue_lifecycle_and_locked_target_ui", "risk": "high", "start_line": 9, "end_line": 35}
     ],
     "test_games_lantern_transport.py": [
       {"name": "bounded_transport_timeout_status_size_and_cancel", "risk": "critical", "start_line": 10, "end_line": 96}
