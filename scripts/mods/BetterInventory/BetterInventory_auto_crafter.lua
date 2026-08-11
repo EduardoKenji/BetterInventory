@@ -676,7 +676,12 @@ function AutoCrafter.configure(dependencies)
 			invalidate_games_lantern_panel()
 			log(kind == "queue_failed" and "error" or "info", string.format("Games Lantern queue event=%s queue=%s index=%s next=%s reason=%s", tostring(kind), tostring(payload and payload.queue_id or "?"), tostring(payload and payload.index or "?"), tostring(payload and payload.next_index or "?"), tostring(payload and payload.reason or "none")))
 
-			if kind == "queue_complete" then
+			if kind == "queue_job_skipped" then
+				local job = payload and payload.job or {}
+				local slot = tostring(job.slot or "queued")
+				local weapon = tostring(job.display_name or job.offer and job.offer.display_name or "weapon")
+				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), string.format("Skipped %s weapon (%s): a perfectly crafted family-equivalent weapon already exists.", slot, weapon))
+			elseif kind == "queue_complete" then
 				if controller then
 					pcall(controller.end_queue_operation, controller)
 					pcall(controller.clear_imported_job, controller)

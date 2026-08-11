@@ -2402,6 +2402,7 @@ def main() -> None:
     assert defaults["automatic_curio_min_toughness"] == 17
     assert defaults["automatic_curio_diagnostic_logging"] is False
     assert defaults["automatic_curio_disable_no_eligible_notification"] is False
+    assert defaults["auto_crafter_craft_duplicate_completed_queued_weapons"] is False
     assert defaults["automatic_curio_buy_health"] is True
     assert defaults["automatic_curio_buy_toughness"] is True
     assert defaults["automatic_curio_buy_stamina"] is False

@@ -900,6 +900,8 @@ local localization = {
 	auto_crafter_reuse_inventory_base_tooltip = { en = "Before buying, use the best matching weapon already in inventory. Favorited weapons remain protected unless explicitly included." },
 	auto_crafter_include_favorite_inventory_bases = { en = "Include favorited inventory weapons when resuming" },
 	auto_crafter_include_favorite_inventory_bases_tooltip = { en = "Allow an already-favorited matching weapon to become the final crafting base." },
+	auto_crafter_craft_duplicate_completed_queued_weapons = { en = "Craft duplicates of already completed queued weapons" },
+	auto_crafter_craft_duplicate_completed_queued_weapons_tooltip = { en = "When no incomplete weapon can be resumed, craft a new copy instead of skipping a completed family-equivalent queued weapon." },
 	auto_crafter_show_status_hud = { en = "Show top crafting HUD" },
 	auto_crafter_show_status_hud_tooltip = { en = "Show active Auto Crafter objectives at the top of Morningstar store and inventory views. Hidden during missions and mission matchmaking." },
 	option_requires_auto_crafter_inventory_reuse = { en = "Requires inventory-base reuse" },

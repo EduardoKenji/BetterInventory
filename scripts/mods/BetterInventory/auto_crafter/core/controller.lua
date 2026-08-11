@@ -588,6 +588,7 @@ local function planner_config_signature(config)
 		tostring(config.upgrade_expertise_500),
 		tostring(config.reuse_inventory_base),
 		tostring(config.include_favorite_inventory_bases),
+		tostring(config.craft_duplicate_completed_queued_weapons),
 	}, "|")
 end
 
@@ -821,6 +822,7 @@ function Controller.new(dependencies)
 		auto_crafter_upgrade_expertise_500 = true,
 		auto_crafter_reuse_inventory_base = true,
 		auto_crafter_include_favorite_inventory_bases = true,
+		auto_crafter_craft_duplicate_completed_queued_weapons = true,
 		auto_crafter_allocate_mastery_points = true,
 		auto_crafter_change_perks = true,
 		auto_crafter_change_blessings = true,
@@ -1052,6 +1054,7 @@ function Controller.new(dependencies)
 			upgrade_expertise_500 = setting("auto_crafter_upgrade_expertise_500", true),
 			reuse_inventory_base = setting("auto_crafter_reuse_inventory_base", true),
 			include_favorite_inventory_bases = setting("auto_crafter_include_favorite_inventory_bases", true),
+			craft_duplicate_completed_queued_weapons = setting("auto_crafter_craft_duplicate_completed_queued_weapons", false),
 			trait_catalog = imported_job and imported_job.catalog or self._catalog,
 			target_offer = imported_job and imported_job.offer or nil,
 		}
@@ -2354,9 +2357,7 @@ function Controller.new(dependencies)
 
 			if not item or item.available ~= true or item.gear_id ~= phase4.gear_id then
 				invalid_reason = "final weapon is absent from authoritative inventory"
-			elseif phase4.target_master_id ~= nil and item.master_id ~= phase4.target_master_id then
-				invalid_reason = "final weapon changed weapon mark"
-			elseif phase4.mastery_id ~= nil and item.parent_pattern ~= phase4.mastery_id then
+			elseif phase4.mastery_id ~= nil and (item.parent_pattern or item.mastery_id) ~= phase4.mastery_id then
 				invalid_reason = "final weapon changed weapon family"
 			elseif tonumber(candidate_stat(item, phase4.dump_stat)) ~= tonumber(phase4.target_dump) then
 				invalid_reason = "final weapon changed dump stat"
@@ -3508,6 +3509,69 @@ function Controller.new(dependencies)
 		return true
 	end
 
+	function self:_imported_family_matches(candidate, job)
+		local expected_pattern = job and (job.parent_pattern or job.offer and job.offer.parent_pattern)
+		local candidate_pattern = candidate and (candidate.parent_pattern or candidate.mastery_id)
+
+		return expected_pattern ~= nil and candidate_pattern ~= nil and expected_pattern == candidate_pattern
+	end
+
+	function self:_imported_item_is_complete(item, job)
+		local catalog = job and job.catalog
+
+		if not self:_imported_family_matches(item, job) or item.available ~= true or item.gear_id == nil or job.dump_stat == nil or job.dump_target == nil or type(catalog) ~= "table" or catalog.available ~= true then
+			return false
+		end
+
+		local mastery_enabled = setting("auto_crafter_level_mastery_20", true) == true
+		local allocate_mastery = mastery_enabled and setting("auto_crafter_allocate_mastery_points", true) == true
+		local change_perks = mastery_enabled and setting("auto_crafter_change_perks", true) == true
+		local change_blessings = mastery_enabled and setting("auto_crafter_change_blessings", true) == true
+		local mastery = catalog.mastery
+
+		if mastery_enabled and (type(mastery) ~= "table" or (tonumber(mastery.mastery_level) or -1) < 20 or (tonumber(mastery.claimed_level) or -1) < 19) then
+			return false
+		end
+		if allocate_mastery and (#(catalog.blessings or {}) == 0 or unseen_blessing_tier_count(catalog.blessings) > 0) then
+			return false
+		end
+
+		return tonumber(candidate_stat(item, job.dump_stat)) == tonumber(job.dump_target)
+			and (setting("auto_crafter_consecrate_transcendent", true) ~= true or (tonumber(item.rarity) or -1) >= TRANSCENDENT_RARITY)
+			and (setting("auto_crafter_upgrade_expertise_500", true) ~= true or (tonumber(item.expertise_level) or -1) >= MAX_EXPERTISE_LEVEL)
+			and (not change_perks or has_trait_targets(item.perks, job.perks))
+			and (not change_blessings or has_trait_targets(item.traits, job.blessings))
+	end
+
+	function self:_has_resumable_imported_job(job)
+		if setting("auto_crafter_reuse_inventory_base", true) ~= true then
+			return false
+		end
+
+		local include_favorites = setting("auto_crafter_include_favorite_inventory_bases", true) == true
+		for _, candidate in ipairs(self._snapshot and self._snapshot.gear and self._snapshot.gear.items or {}) do
+			local favorite_allowed = include_favorites or candidate.favorite_known == true and candidate.favorited ~= true
+			if candidate.available == true and candidate.gear_id ~= nil and candidate.equipped ~= true and favorite_allowed and self:_imported_family_matches(candidate, job) and tonumber(candidate_stat(candidate, job.dump_stat)) == tonumber(job.dump_target) and not self:_imported_item_is_complete(candidate, job) then
+				return true
+			end
+		end
+
+		return false
+	end
+
+	function self:_imported_job_inventory_decision(job)
+		if self:_has_resumable_imported_job(job) then
+			return "resume"
+		end
+
+		local completed = self:_completed_imported_job_result(job)
+		if completed and setting("auto_crafter_craft_duplicate_completed_queued_weapons", false) ~= true then
+			return "skip", completed
+		end
+
+		return "new"
+	end
+
 	function self:_find_inventory_base()
 		local search = self._search
 
@@ -3519,11 +3583,20 @@ function Controller.new(dependencies)
 		local best
 		local best_analysis
 		local target = search.target_offer or {}
-		local strict_mark_identity = self._run_imported_job ~= nil or self._imported_job ~= nil
+		local imported_job = self._run_imported_job or self._imported_job
 
 		local function family_matches(candidate)
-			if strict_mark_identity then
-				return target.master_id ~= nil and candidate.master_id ~= nil and target.master_id == candidate.master_id, "master_item"
+			if imported_job then
+				return self:_imported_family_matches(candidate, imported_job), "mastery_family"
+			end
+
+			local target_pattern = target.parent_pattern
+			local candidate_pattern = candidate.parent_pattern or candidate.mastery_id
+
+			-- Marks are free choices within one mastery family. Prefer that stable
+			-- identity even when both sides expose different master items/templates.
+			if target_pattern ~= nil and candidate_pattern ~= nil then
+				return target_pattern == candidate_pattern, "mastery_family"
 			end
 
 			if target.master_id ~= nil and candidate.master_id ~= nil then
@@ -3532,15 +3605,6 @@ function Controller.new(dependencies)
 
 			if target.weapon_template ~= nil and candidate.weapon_template ~= nil then
 				return target.weapon_template == candidate.weapon_template, "weapon_template"
-			end
-
-			local target_pattern = target.parent_pattern
-			local candidate_pattern = candidate.parent_pattern or candidate.mastery_id
-
-			-- Mastery family is a safe fallback only when exact mark/template identity
-			-- is unavailable on one side.
-			if target_pattern ~= nil and candidate_pattern ~= nil then
-				return target_pattern == candidate_pattern, "mastery_family"
 			end
 
 			return false, "identity_unavailable"
@@ -3665,7 +3729,8 @@ function Controller.new(dependencies)
 			local matched, identity_source = family_matches(candidate)
 			local favorite_allowed = include_favorites or candidate.favorite_known == true and candidate.favorited ~= true
 
-			if candidate.available == true and candidate.gear_id ~= nil and candidate.equipped ~= true and matched and favorite_allowed and tonumber(candidate_stat(candidate, search.dump_stat)) == tonumber(search.target_dump) then
+			local imported_complete = imported_job and self:_imported_item_is_complete(candidate, imported_job)
+			if candidate.available == true and candidate.gear_id ~= nil and candidate.equipped ~= true and matched and favorite_allowed and not imported_complete and tonumber(candidate_stat(candidate, search.dump_stat)) == tonumber(search.target_dump) then
 				local analysis = profile_analysis(candidate)
 				analysis.expertise = tonumber(candidate.expertise_level) or -1
 				analysis.family_identity = identity_source
@@ -4078,8 +4143,8 @@ function Controller.new(dependencies)
 			return false, self._plan and self._plan.preflight and self._plan.preflight.summary or "queue job preflight unavailable"
 		end
 
-		local completed = self:_completed_imported_job_result(job)
-		if completed then
+		local inventory_action, completed = self:_imported_job_inventory_decision(job)
+		if inventory_action == "skip" and completed then
 			operation_report("imported_queue_job_already_complete", {
 				candidate = completed.candidate,
 				slot = job.slot,
@@ -4107,11 +4172,7 @@ function Controller.new(dependencies)
 		end
 
 		local expected_pattern = job.parent_pattern or job.offer and job.offer.parent_pattern
-		local expected_master = job.master_id or job.offer and job.offer.master_id
-		if expected_master == nil or item.master_id ~= expected_master then
-			return false, "completed queue weapon " .. label .. " changed weapon mark"
-		end
-		if expected_pattern and item.parent_pattern ~= expected_pattern then
+		if expected_pattern and (item.parent_pattern or item.mastery_id) ~= expected_pattern then
 			return false, "completed queue weapon " .. label .. " changed weapon family"
 		end
 		if tonumber(candidate_stat(item, job.dump_stat)) ~= tonumber(job.dump_target) then
@@ -4137,37 +4198,15 @@ function Controller.new(dependencies)
 		local character_id = current_character_id()
 		local snapshot = self._snapshot
 		local catalog = job and job.catalog
-		local expected_master = job and (job.master_id or job.offer and job.offer.master_id)
 		local expected_pattern = job and (job.parent_pattern or job.offer and job.offer.parent_pattern)
 
-		if type(job) ~= "table" or job.kind ~= "games_lantern_job" or job.job_id == nil or job.queue_id == nil or expected_master == nil or job.dump_stat == nil or job.dump_target == nil or type(catalog) ~= "table" or catalog.available ~= true or not snapshot_matches_character(snapshot, character_id) then
-			return nil
-		end
-
-		local mastery_enabled = setting("auto_crafter_level_mastery_20", true) == true
-		local allocate_mastery = mastery_enabled and setting("auto_crafter_allocate_mastery_points", true) == true
-		local change_perks = mastery_enabled and setting("auto_crafter_change_perks", true) == true
-		local change_blessings = mastery_enabled and setting("auto_crafter_change_blessings", true) == true
-		local mastery = catalog.mastery
-
-		if mastery_enabled and (type(mastery) ~= "table" or (tonumber(mastery.mastery_level) or -1) < 20 or (tonumber(mastery.claimed_level) or -1) < 19) then
-			return nil
-		end
-
-		if allocate_mastery and (#(catalog.blessings or {}) == 0 or unseen_blessing_tier_count(catalog.blessings) > 0) then
+		if type(job) ~= "table" or job.kind ~= "games_lantern_job" or job.job_id == nil or job.queue_id == nil or expected_pattern == nil or job.dump_stat == nil or job.dump_target == nil or type(catalog) ~= "table" or catalog.available ~= true or not snapshot_matches_character(snapshot, character_id) then
 			return nil
 		end
 
 		local completed
 		for _, item in ipairs(snapshot.gear and snapshot.gear.items or {}) do
-			local exact_identity = item and item.available == true and item.gear_id ~= nil and item.master_id ~= nil and item.master_id == expected_master and (expected_pattern == nil or item.parent_pattern == expected_pattern)
-			local exact_dump = exact_identity and tonumber(candidate_stat(item, job.dump_stat)) == tonumber(job.dump_target)
-			local exact_rarity = setting("auto_crafter_consecrate_transcendent", true) ~= true or (tonumber(item and item.rarity) or -1) >= TRANSCENDENT_RARITY
-			local exact_expertise = setting("auto_crafter_upgrade_expertise_500", true) ~= true or (tonumber(item and item.expertise_level) or -1) >= MAX_EXPERTISE_LEVEL
-			local exact_perks = not change_perks or has_trait_targets(item and item.perks, job.perks)
-			local exact_blessings = not change_blessings or has_trait_targets(item and item.traits, job.blessings)
-
-			if exact_dump and exact_rarity and exact_expertise and exact_perks and exact_blessings and (not completed or tostring(item.gear_id) < tostring(completed.gear_id)) then
+			if self:_imported_item_is_complete(item, job) and (not completed or tostring(item.gear_id) < tostring(completed.gear_id)) then
 				completed = item
 			end
 		end

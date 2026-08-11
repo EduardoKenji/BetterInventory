@@ -285,6 +285,8 @@ def main() -> None:
     transport = (RUNTIME_ROOT / "auto_crafter" / "games_lantern" / "transport.lua").read_text(encoding="utf-8")
     windows = (RUNTIME_ROOT / "auto_crafter" / "games_lantern" / "transport_win.lua").read_text(encoding="utf-8")
     assert "capture_queue_run_policy" in controller
+    assert "auto_crafter_craft_duplicate_completed_queued_weapons" in controller
+    assert "_has_resumable_imported_job" in controller
     assert "games_lantern_queue_boundary" in controller
     assert "verify_imported_queue_results" in controller
     assert "payload.terminal_sequence" in controller
@@ -304,6 +306,7 @@ def main() -> None:
     assert ":snapshot()" not in busy_body
     assert panel.count("_games_lantern_cost_authority()") == 2
     assert "aggregate_confirmation_stale" in facade
+    assert "perfectly crafted family-equivalent weapon already exists" in facade
     assert "_poll_interval_seconds" in transport
     assert "taskkill /PID" in windows
 

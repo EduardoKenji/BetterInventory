@@ -816,8 +816,8 @@ def main() -> None:
 			assert(controller:snapshot().search.result.resume_analysis.family_identity == "weapon_template")
 		end
 
-		-- Exact mark identity outranks a shared mastery family; equipped candidates
-		-- are never resumed. Equivalent safe candidates resolve deterministically.
+		-- Marks inside one mastery family are interchangeable resume bases;
+		-- equipped candidates remain excluded and ties resolve deterministically.
 		do
 			local wrong_mark = summarized_item("gear-0-wrong-mark", 5, 60)
 			wrong_mark.master_id = "weapon-2"
@@ -841,8 +841,8 @@ def main() -> None:
 			controller._snapshot = snapshot_with_items({wrong_mark, equipped, safe_b, safe_a})
 			controller._search = {dump_stat = "damage_stat", favorite_result = false, target_dump = 60, target_offer = target_offer()}
 			local selected = controller:_find_inventory_base()
-			assert(selected and selected.gear_id == "gear-a")
-			assert(selected.resume_analysis.family_identity == "master_item")
+			assert(selected and selected.gear_id == "gear-0-wrong-mark")
+			assert(selected.resume_analysis.family_identity == "mastery_family")
 		end
 
 		-- Planner mark selection only changes exact target identity. Unknown/stale marks

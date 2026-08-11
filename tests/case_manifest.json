@@ -79,10 +79,10 @@
       {"name": "typed_terminal_identity_and_final_reconciliation", "risk": "critical", "start_line": 12, "end_line": 97},
       {"name": "two_job_state_resource_and_quarantine_matrix", "risk": "critical", "start_line": 98, "end_line": 260},
         {"name": "bounded_queue_presentation_snapshot", "risk": "high", "start_line": 261, "end_line": 278},
-        {"name": "games_lantern_release_contract_seams", "risk": "critical", "start_line": 279, "end_line": 310}
+        {"name": "games_lantern_release_contract_seams", "risk": "critical", "start_line": 279, "end_line": 312}
     ],
     "test_games_lantern_inventory_completion.py": [
-      {"name": "exact_finished_skip_and_two_slot_resume_identity", "risk": "critical", "start_line": 1, "end_line": 209}
+      {"name": "family_finished_skip_duplicate_and_two_slot_resume", "risk": "critical", "start_line": 1, "end_line": 230}
     ],
     "test_games_lantern_queue_ui.py": [
         {"name": "active_queue_lifecycle_locked_target_and_section_order_ui", "risk": "high", "start_line": 9, "end_line": 64}
@@ -158,7 +158,7 @@
     {"name": "migration_preservation", "risk": "high", "start_line": 385, "end_line": 504},
     {"name": "character_overview_refresh", "risk": "high", "start_line": 505, "end_line": 1359},
     {"name": "localization_contract", "risk": "medium", "start_line": 1360, "end_line": 2249},
-    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2250, "end_line": 2455}
+    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2250, "end_line": 2456}
   ],
   "test_settings_registry.py": [
     {"name": "duplicate_detection", "risk": "high", "start_line": 53, "end_line": 78},

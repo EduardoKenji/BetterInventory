@@ -737,6 +737,7 @@ return {
 						sub_widgets = {
 							{ setting_id = "auto_crafter_reuse_inventory_base", tooltip = "auto_crafter_reuse_inventory_base_tooltip", type = "checkbox", default_value = true },
 							{ setting_id = "auto_crafter_include_favorite_inventory_bases", tooltip = "auto_crafter_include_favorite_inventory_bases_tooltip", type = "checkbox", default_value = true },
+							{ setting_id = "auto_crafter_craft_duplicate_completed_queued_weapons", tooltip = "auto_crafter_craft_duplicate_completed_queued_weapons_tooltip", type = "checkbox", default_value = false },
 						},
 					},
 					{

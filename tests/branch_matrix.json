@@ -156,10 +156,10 @@
       "modules": ["BetterInventory_auto_crafter.lua"]
     },
     {
-      "name": "games-lantern.skips-only-exact-finished-weapons",
+      "name": "games-lantern.family-resume-skip-and-duplicate-policy",
       "test": "test_games_lantern_inventory_completion.py",
-      "case": "exact_finished_skip_and_two_slot_resume_identity",
-      "outcome": "either queue slot skips only an exact-mark finished weapon regardless of favorite state, resumes only an exact-mark in-progress base, and revalidates the completed prefix before dispatching the next job",
+      "case": "family_finished_skip_duplicate_and_two_slot_resume",
+      "outcome": "either queue slot first resumes an incomplete family-equivalent mark, then skips a completed family weapon or forces a fresh duplicate according to frozen policy, and revalidates the completed prefix before dispatching the next job",
       "modules": ["BetterInventory_auto_crafter.lua"]
     },
     {

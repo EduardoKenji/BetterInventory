@@ -2171,6 +2171,7 @@ function Panel.new(dependencies)
 			add_checkbox("auto_crafter_include_favorite_inventory_bases", "auto_crafter_include_favorite_inventory_bases", "Include favorited inventory weapons when resuming", true, function()
 				return self:_setting("auto_crafter_reuse_inventory_base", true) == true
 			end, nil, 44)
+			add_checkbox("auto_crafter_craft_duplicate_completed_queued_weapons", "auto_crafter_craft_duplicate_completed_queued_weapons", "Craft duplicates of already completed queued weapons", false, nil, nil, 44)
 		end
 
 		table.insert(entries, self:_entry(localize("auto_crafter_panel_estimates", "Estimates"), "", {

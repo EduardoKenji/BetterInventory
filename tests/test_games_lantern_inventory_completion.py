@@ -25,6 +25,7 @@ def main() -> None:
         "auto_crafter_change_perks": True,
         "auto_crafter_consecrate_transcendent": True,
         "auto_crafter_include_favorite_inventory_bases": True,
+        "auto_crafter_craft_duplicate_completed_queued_weapons": False,
         "auto_crafter_level_mastery_20": True,
         "auto_crafter_reuse_inventory_base": True,
         "auto_crafter_upgrade_expertise_500": True,
@@ -81,8 +82,8 @@ def main() -> None:
             "gear": {"available": True, "items": items},
         })
 
-    # Finished-item detection is read-only. Favorite and equipped state do not
-    # hide an exact result; exact mark remains mandatory and tie-break is stable.
+    # Finished-item detection is read-only. Favorite, equipped, and mark state
+    # do not hide a family-equivalent result; tie-break remains stable.
     set_inventory([
         item("gear-z", "mark-exact", favorite=True),
         item("gear-a", "mark-exact", favorite=False, equipped=True),
@@ -94,7 +95,7 @@ def main() -> None:
     assert completed["kind"] == "games_lantern_completed_inventory_result"
 
     set_inventory([item("gear-only-sibling", "mark-sibling")])
-    assert controller._completed_imported_job_result(controller, melee) is None
+    assert controller._completed_imported_job_result(controller, melee)["gear_id"] == "gear-only-sibling"
 
     # Perk/blessing order is not item identity. Missing any final invariant,
     # mastery claim, or allocated blessing tier prevents a skip.
@@ -125,15 +126,15 @@ def main() -> None:
     set_inventory([item("gear-unallocated", "mark-exact")])
     assert controller._completed_imported_job_result(controller, to_lua(unallocated)) is None
 
-    # Both queue positions use same strict resume selector. Correct exact-mark
-    # partial base wins; sibling mark never resumes. Favorite option only gates
-    # mutable in-progress bases, not read-only completed detection above.
+    # Both queue positions use the same family-level resume selector. An
+    # incomplete sibling mark is resumable and takes priority over a completed
+    # item. Favorite option gates mutable bases, not read-only completion.
     for slot in ("melee", "ranged"):
         current_job = to_lua(job(slot))
-        resumable = item(f"gear-{slot}-resume", "mark-exact", favorite=True)
+        resumable = item(f"gear-{slot}-resume", "mark-sibling", favorite=True)
         resumable["expertise_level"] = 400
-        sibling = item(f"gear-{slot}-sibling", "mark-sibling")
-        set_inventory([sibling, resumable])
+        completed_exact = item(f"gear-{slot}-complete", "mark-exact")
+        set_inventory([completed_exact, resumable])
         controller["_imported_job"] = current_job
         controller["_search"] = to_lua({
             "dump_stat": "damage",
@@ -143,13 +144,24 @@ def main() -> None:
         })
         selected = controller._find_inventory_base(controller)
         assert selected["gear_id"] == f"gear-{slot}-resume"
+        decision = controller._imported_job_inventory_decision(controller, current_job)
+        assert decision == "resume"
 
         settings["values"]["auto_crafter_include_favorite_inventory_bases"] = False
         assert controller._find_inventory_base(controller) is None
         settings["values"]["auto_crafter_include_favorite_inventory_bases"] = True
 
+        set_inventory([completed_exact])
+        decision, skipped = controller._imported_job_inventory_decision(controller, current_job)
+        assert decision == "skip" and skipped["gear_id"] == f"gear-{slot}-complete"
+        settings["values"]["auto_crafter_craft_duplicate_completed_queued_weapons"] = True
+        assert controller._imported_job_inventory_decision(controller, current_job) == "new"
+        assert controller._find_inventory_base(controller) is None
+        settings["values"]["auto_crafter_craft_duplicate_completed_queued_weapons"] = False
+
     # A fresh boundary snapshot revalidates completed prefix before next job.
-    # Removal, mark drift, or trait drift blocks queue continuation.
+    # Removal, family drift, or trait drift blocks queue continuation. Mark
+    # changes inside the same mastery family remain valid.
     exact = item("gear-prefix", "mark-exact")
     set_inventory([exact])
     controller["_queue_operation_owner"] = True
@@ -166,8 +178,12 @@ def main() -> None:
 
     exact["master_id"] = "mark-sibling"
     set_inventory([exact])
+    assert controller._verify_imported_result(controller, prefix_result, melee, 1) is True
+
+    exact["parent_pattern"] = "other-pattern"
+    set_inventory([exact])
     verified, reason = controller._verify_imported_result(controller, prefix_result, melee, 1)
-    assert verified is False and "weapon mark" in reason
+    assert verified is False and "weapon family" in reason
 
     set_inventory([])
     verified, reason = controller._verify_imported_result(controller, prefix_result, melee, 1)
@@ -201,8 +217,13 @@ def main() -> None:
     final_item["master_id"] = "mark-sibling"
     final_controller["_phase4"]["running"] = True
     final_controller["_search"]["running"] = True
+    assert final_controller._phase4_complete(final_controller, final_item, final_controller["_snapshot"]) is True
+
+    final_item["parent_pattern"] = "other-pattern"
+    final_controller["_phase4"]["running"] = True
+    final_controller["_search"]["running"] = True
     assert final_controller._phase4_complete(final_controller, final_item, final_controller["_snapshot"]) is False
-    assert final_controller.snapshot(final_controller)["last_error"] == "final weapon changed weapon mark"
+    assert final_controller.snapshot(final_controller)["last_error"] == "final weapon changed weapon family"
 
 
 if __name__ == "__main__":
