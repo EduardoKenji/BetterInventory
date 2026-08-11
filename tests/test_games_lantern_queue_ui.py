@@ -31,8 +31,8 @@ def main() -> None:
     assert "queue:start" not in panel
     assert "queue:stop" not in panel
     assert '"Clear Queue"' in panel
-    assert '"Replace Queue (Ctrl+V)"' in panel
-    assert '"Confirm Replace Queue (Ctrl+V)"' in panel
+    assert '"Paste Games Lantern build (Ctrl+V)"' in panel
+    assert "_queue_replace_armed" not in panel and "replacement_confirmation_required" not in panel
     assert "_request_games_lantern_paste(current_owned)" in panel
     assert '"Queued ("' in panel
     assert '"Projected authority:' in panel

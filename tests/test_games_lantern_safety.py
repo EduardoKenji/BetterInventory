@@ -233,8 +233,8 @@ def main() -> None:
     assert "verify_imported_queue_results" in controller
     assert "payload.terminal_sequence" in controller
     assert "aggregate_confirmation_required" in facade
-    assert '"Clear Queue"' in panel and '"Replace Queue (Ctrl+V)"' in panel
-    assert '"Confirm Replace Queue (Ctrl+V)"' in panel
+    assert '"Clear Queue"' in panel and '"Paste Games Lantern build (Ctrl+V)"' in panel
+    assert "_queue_replace_armed" not in panel and "replacement_confirmation_required" not in panel
     assert "enabled = not queue_owned" in panel
     assert "Projected authority:" in panel
     assert "_queue_craft_confirmation_signature" in panel

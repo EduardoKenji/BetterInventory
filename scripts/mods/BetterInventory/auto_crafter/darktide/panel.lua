@@ -868,7 +868,6 @@ function Panel.new(dependencies)
 		_queue_craft_armed = false,
 		_queue_craft_confirmation_signature = nil,
 		_queue_craft_confirmation_text = nil,
-		_queue_replace_armed = false,
 		_queue_snapshot_cache = nil,
 		_import_snapshot_cache = nil,
 		_presentation_snapshots_dirty = true,
@@ -1317,15 +1316,8 @@ function Panel.new(dependencies)
 		if type(self._games_lantern_paste) ~= "function" then
 			return false, "paste_unavailable"
 		end
-		if queue_owned and not self._queue_replace_armed then
-			self._queue_replace_armed = true
-			self:_queue_layout(1)
-
-			return false, "replacement_confirmation_required"
-		end
 
 		local ok, pasted, reason = pcall(self._games_lantern_paste, queue_owned == true)
-		self._queue_replace_armed = false
 
 		if not ok then
 			log("error", "Games Lantern paste failed: " .. tostring(pasted))
@@ -1866,8 +1858,7 @@ function Panel.new(dependencies)
 		end
 
 		if type(self._games_lantern_paste) == "function" and not self._section_collapsed[SECTION_QUEUE] and not queue_active then
-			local paste_label = queue_owned and (self._queue_replace_armed and "Confirm Replace Queue (Ctrl+V)" or "Replace Queue (Ctrl+V)") or "Paste Games Lantern build (Ctrl+V)"
-			table.insert(entries, #entries, self:_entry(paste_label, "", {
+			table.insert(entries, #entries, self:_entry("Paste Games Lantern build (Ctrl+V)", "", {
 				enabled = true,
 				selectable = true,
 				variant = "action",
@@ -1885,7 +1876,6 @@ function Panel.new(dependencies)
 						self._queue_craft_armed = false
 						self._queue_craft_confirmation_signature = nil
 						self._queue_craft_confirmation_text = nil
-						self._queue_replace_armed = false
 						self:_queue_layout(1)
 					end,
 				}))
@@ -2437,7 +2427,7 @@ function Panel.new(dependencies)
 			if not current_active then
 				local pasted, paste_error = self:_request_games_lantern_paste(current_owned)
 
-				if pasted ~= true and paste_error ~= "replacement_confirmation_required" then
+				if pasted ~= true then
 					log("info", "Games Lantern Ctrl+V import was not started: " .. tostring(paste_error))
 				end
 			end
@@ -2633,7 +2623,6 @@ function Panel.new(dependencies)
 		self._queue_craft_armed = false
 		self._queue_craft_confirmation_signature = nil
 		self._queue_craft_confirmation_text = nil
-		self._queue_replace_armed = false
 		self._queue_snapshot_cache = nil
 		self._import_snapshot_cache = nil
 		self._presentation_snapshots_dirty = true
@@ -2682,7 +2671,6 @@ function Panel.new(dependencies)
 		self._queue_craft_armed = false
 		self._queue_craft_confirmation_signature = nil
 		self._queue_craft_confirmation_text = nil
-		self._queue_replace_armed = false
 		self._queue_snapshot_cache = nil
 		self._import_snapshot_cache = nil
 		self._presentation_snapshots_dirty = true
