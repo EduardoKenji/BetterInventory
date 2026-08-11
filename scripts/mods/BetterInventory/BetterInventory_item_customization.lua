@@ -168,6 +168,15 @@ ItemCustomization.on_disabled = function(mod)
 	end
 end
 
+ItemCustomization.on_view_closed = function(mod)
+	if type(Editor.release_view) == "function" then
+		Editor.release_view(mod)
+	else
+		Editor.clear_pending()
+		Editor.close_input(mod)
+	end
+end
+
 ItemCustomization.on_all_mods_loaded = function(mod)
 	if mod:get("enable_custom_item_name_and_colors") == false then
 		if NameIt.is_available() then

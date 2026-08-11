@@ -1312,12 +1312,54 @@ OverviewUI.bump_visual_settings_generation = function()
 	character_overview_visual_settings_generation = character_overview_visual_settings_generation + 1
 end
 
+OverviewUI.unregister_view = function(view)
+	if not view then
+		return false
+	end
+
+	local registered = registered_character_overview_views[view] ~= nil
+
+	registered_character_overview_views[view] = nil
+	view._better_inventory_equipped_icons_dirty = nil
+	view._better_inventory_equipped_icons_widgets = nil
+	view._better_inventory_equipped_icons_lantern_active = nil
+	view._better_inventory_reconcile_widgets = nil
+	view._better_inventory_reconcile_elapsed = nil
+	view._auto_crafter_status_overlay = nil
+
+	return registered
+end
+
+OverviewUI.release_all_views = function()
+	local views = {}
+
+	for view in pairs(registered_character_overview_views) do
+		views[#views + 1] = view
+	end
+
+	for index = 1, #views do
+		OverviewUI.unregister_view(views[index])
+	end
+
+	return #views
+end
+
+OverviewUI.registered_view_count = function()
+	local count = 0
+
+	for _ in pairs(registered_character_overview_views) do
+		count = count + 1
+	end
+
+	return count
+end
+
 OverviewUI.update_registered_views = function(dt)
 	local updated = 0
 
 	for view in pairs(registered_character_overview_views) do
 		if view._destroyed == true then
-			registered_character_overview_views[view] = nil
+			OverviewUI.unregister_view(view)
 		else
 			local update_ok, update_error = pcall(function()
 				refresh_character_overview_visual_layout_if_needed(view)
@@ -1331,7 +1373,7 @@ OverviewUI.update_registered_views = function(dt)
 				-- A third-party inspected/read-only InventoryView can expose a
 				-- partially compatible shape. Quarantine that view instead of
 				-- throwing from BetterInventory's global frame update forever.
-				registered_character_overview_views[view] = nil
+				OverviewUI.unregister_view(view)
 
 				if mod and type(mod.warning) == "function" then
 					mod:warning("Character Overview compatibility update disabled for one view: %s", tostring(update_error))
@@ -1345,6 +1387,16 @@ end
 
 OverviewUI.install_hooks = function(class_method_guard)
 	ensure_class_method = class_method_guard
+	if ensure_class_method(InventoryView, "on_exit") then
+		mod:hook_safe(InventoryView, "on_exit", function(view)
+			OverviewUI.unregister_view(view)
+		end)
+	end
+	if ensure_class_method(InventoryView, "destroy") then
+		mod:hook_safe(InventoryView, "destroy", function(view)
+			OverviewUI.unregister_view(view)
+		end)
+	end
 -- The character overview uses InventoryView's individual item-slot widgets
 -- instead of ViewElementGrid. Swap only its primary/secondary weapon slots to
 -- the detailed inventory card while retaining Darktide's native icon loading,

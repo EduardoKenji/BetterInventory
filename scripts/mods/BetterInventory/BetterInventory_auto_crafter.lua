@@ -1088,6 +1088,10 @@ function AutoCrafter.on_brunt_view_ready(view)
 end
 
 function AutoCrafter.on_view_closed(view)
+	if view and active_brunt_view ~= view then
+		return false
+	end
+
 	active_brunt_view = nil
 	presentation_dirty = true
 

@@ -10,7 +10,6 @@ local function new_session(view, kind)
 		cleanup_order = {},
 		fields = {},
 		kind = kind,
-		view = view,
 	}
 end
 
@@ -102,9 +101,39 @@ ViewSession.close = function(view, reason)
 		end
 	end
 
-	sessions[view] = nil
+	-- A cleanup callback may deliberately open a replacement session. Do not
+	-- erase that new owner while finishing teardown of the old one.
+	if sessions[view] == session then
+		sessions[view] = nil
+	end
+
+	-- Release callback closures and any original/current field values now rather
+	-- than waiting for the closed session table itself to be collected.
+	session.cleanup = nil
+	session.cleanup_order = nil
+	session.fields = nil
 
 	return true
+end
+
+ViewSession.close_all = function(reason)
+	local active_views = {}
+
+	for view, session in pairs(sessions) do
+		if session and not session.closed then
+			active_views[#active_views + 1] = view
+		end
+	end
+
+	local closed = 0
+
+	for index = 1, #active_views do
+		if ViewSession.close(active_views[index], reason or "close_all") then
+			closed = closed + 1
+		end
+	end
+
+	return closed
 end
 
 ViewSession.count = function()

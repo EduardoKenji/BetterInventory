@@ -526,6 +526,11 @@ local function resolve_input_widget(mod, create_if_missing)
 		else
 			input_widget = popup_handler._widgets_by_name and popup_handler._widgets_by_name[INPUT_WIDGET_ID] or nil
 		end
+	else
+		-- ConstantElementPopupHandler instances are recreated independently from
+		-- inventory views. Never retain a widget from a handler that is no longer
+		-- active.
+		input_widget = nil
 	end
 
 	return input_widget
@@ -540,6 +545,7 @@ local function close_input(mod)
 	end
 
 	show_input_field = false
+	input_widget = nil
 end
 
 local function show_name_editor(mod, context, layout)
@@ -775,6 +781,10 @@ Editor.show_name_editor = show_name_editor
 Editor.close_input = close_input
 Editor.clear_pending = function()
 	pending_action = nil
+end
+Editor.release_view = function(mod)
+	pending_action = nil
+	close_input(mod)
 end
 Editor.run_pending = function()
 	if pending_action then

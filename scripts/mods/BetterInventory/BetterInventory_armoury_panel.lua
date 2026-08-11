@@ -593,11 +593,57 @@ local function setup_armoury_native_sort_panel(mod, layout, view, ViewElementGri
 	return true
 end
 
+local function release_armoury_native_sort_panel(view)
+	if not view then
+		return false
+	end
+
+	local panel = view._better_inventory_armoury_native_sort_panel
+	local owned = panel ~= nil
+
+	if view._better_inventory_armoury_controller_focused == true then
+		pcall(set_armoury_controller_focus, view, false)
+	end
+
+	local legend = view._better_inventory_armoury_controller_legend
+	local legend_id = view._better_inventory_armoury_controller_legend_id
+
+	if legend and legend_id and type(legend.remove_entry) == "function" then
+		pcall(legend.remove_entry, legend, legend_id)
+	end
+
+	if panel and type(view._remove_element) == "function" then
+		pcall(view._remove_element, view, ARMOURY_NATIVE_SORT_PANEL_REFERENCE)
+	end
+
+	view._better_inventory_armoury_controller_focused = nil
+	view._better_inventory_armoury_controller_legend = nil
+	view._better_inventory_armoury_controller_legend_action = nil
+	view._better_inventory_armoury_controller_legend_id = nil
+	view._better_inventory_armoury_controller_restore = nil
+	view._better_inventory_armoury_native_sort_collapsed = nil
+	view._better_inventory_armoury_native_sort_panel = nil
+	view._better_inventory_armoury_native_sort_pivot_x = nil
+	view._better_inventory_armoury_native_sort_pivot_y = nil
+	view._better_inventory_armoury_native_sort_rebuild_pending = nil
+	view._better_inventory_armoury_native_sort_widgets = nil
+	view._better_inventory_armoury_sort_layout = nil
+	view._better_inventory_armoury_sort_mod = nil
+	view._better_inventory_item_sorting_active = nil
+	view._better_inventory_item_sorting_signature = nil
+	view._better_inventory_composition_dirty = nil
+	view._better_inventory_composition_probe_count = nil
+	registered_armoury_views[view] = nil
+
+	return owned
+end
+
 
 
 	return {
 		capture = capture_armoury_sort_panel_controller_focus,
 		focused = armoury_sort_panel_controller_focused,
+		release = release_armoury_native_sort_panel,
 		scenegraph_rect = scenegraph_rect,
 		set_focus = set_armoury_controller_focus,
 		setup = setup_armoury_native_sort_panel,

@@ -1236,10 +1236,20 @@ function mod.on_disabled()
 	end
 
 	ItemCustomization.on_disabled(mod)
+	if EquipmentPersistence and type(EquipmentPersistence.reset) == "function" then
+		EquipmentPersistence.reset()
+	end
 	Features.cancel_morningstar_auto_discard()
 	Features.cancel_manual_discard()
 	CurioAcquisition.cancel()
 	Features.disable_inventory_views()
+	Features.close_all_view_sessions("mod_disable")
+	if CharacterOverviewUI and type(CharacterOverviewUI.release_all_views) == "function" then
+		CharacterOverviewUI.release_all_views()
+	end
+	if FeatureDomains and FeatureDomains.markers and type(FeatureDomains.markers.release_all) == "function" then
+		FeatureDomains.markers.release_all()
+	end
 	if type(Diagnostics.reset) == "function" then
 		Diagnostics.reset()
 	end
@@ -1390,6 +1400,23 @@ if ensure_class_method(InventoryBackgroundView, "event_player_profile_updated") 
 	end)
 end
 
+
+if ensure_class_method(InventoryBackgroundView, "on_exit") then
+	mod:hook_safe(InventoryBackgroundView, "on_exit", function(view)
+		if EquipmentPersistence and type(EquipmentPersistence.on_view_closed) == "function" then
+			EquipmentPersistence.on_view_closed(view)
+		end
+	end)
+end
+
+if ensure_class_method(InventoryBackgroundView, "destroy") then
+	mod:hook_safe(InventoryBackgroundView, "destroy", function(view)
+		if EquipmentPersistence and type(EquipmentPersistence.on_view_closed) == "function" then
+			EquipmentPersistence.on_view_closed(view)
+		end
+	end)
+end
+
 -- Manual discard is dispatched through Darktide's native event path. Observe
 -- the single native deletion promise so the shared destructive-operation token
 -- remains held until backend settlement; no replacement request is issued.
@@ -1417,7 +1444,37 @@ end)
 mod:hook_safe(InventoryWeaponsView, "on_exit", function(view)
 	Features.release_lantern_inventory_section(view)
 	Features.unregister_inventory_view(view)
+	if ItemCustomization and type(ItemCustomization.on_view_closed) == "function" then
+		ItemCustomization.on_view_closed(mod)
+	end
 end)
+
+if ensure_class_method(InventoryWeaponsView, "destroy") then
+	mod:hook_safe(InventoryWeaponsView, "destroy", function(view)
+		Features.release_lantern_inventory_section(view)
+		Features.unregister_inventory_view(view)
+	end)
+end
+
+local function release_item_grid_view_runtime(view)
+	local item_grid = view and view._item_grid
+
+	if FeatureDomains and FeatureDomains.markers and type(FeatureDomains.markers.release_grid) == "function" then
+		FeatureDomains.markers.release_grid(item_grid)
+	end
+
+	if view then
+		view._auto_crafter_status_overlay = nil
+	end
+end
+
+if ensure_class_method(ItemGridViewBase, "on_exit") then
+	mod:hook_safe(ItemGridViewBase, "on_exit", release_item_grid_view_runtime)
+end
+
+if ensure_class_method(ItemGridViewBase, "destroy") then
+	mod:hook_safe(ItemGridViewBase, "destroy", release_item_grid_view_runtime)
+end
 
 if ensure_class_method(CreditsVendorView, "update") then
 	mod:hook_safe(CreditsVendorView, "update", function(view)
@@ -1450,6 +1507,12 @@ if ensure_class_method(CreditsVendorView, "on_exit") then
 	end)
 end
 
+if ensure_class_method(CreditsVendorView, "destroy") then
+	mod:hook_safe(CreditsVendorView, "destroy", function(view)
+		Features.unregister_armoury_view(view)
+	end)
+end
+
 -- Brunt's Armoury uses CreditsGoodsVendorView, not CreditsVendorView. Keep
 -- Auto Crafter lifecycle hooks on the exact vanilla view so the read-only
 -- probe is armed only for Brunt and not for Requisition or GlobalStore.
@@ -1457,6 +1520,22 @@ if ensure_class_method(CreditsGoodsVendorView, "on_enter") then
 	mod:hook_safe(CreditsGoodsVendorView, "on_enter", function(view)
 		if AutoCrafter and type(AutoCrafter.on_brunt_view_ready) == "function" then
 			AutoCrafter.on_brunt_view_ready(view)
+		end
+	end)
+end
+
+if ensure_class_method(CreditsGoodsVendorView, "on_exit") then
+	mod:hook_safe(CreditsGoodsVendorView, "on_exit", function(view)
+		if AutoCrafter and type(AutoCrafter.on_view_closed) == "function" then
+			AutoCrafter.on_view_closed(view)
+		end
+	end)
+end
+
+if ensure_class_method(CreditsGoodsVendorView, "destroy") then
+	mod:hook_safe(CreditsGoodsVendorView, "destroy", function(view)
+		if AutoCrafter and type(AutoCrafter.on_view_closed) == "function" then
+			AutoCrafter.on_view_closed(view)
 		end
 	end)
 end

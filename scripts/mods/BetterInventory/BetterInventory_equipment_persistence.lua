@@ -442,6 +442,26 @@ EquipmentPersistence.has_pending = function()
 	return state.active ~= nil
 end
 
+EquipmentPersistence.on_view_closed = function(view)
+	local operation = state.active
+
+	if operation and operation.view == view then
+		-- The backend intent and retry contract are view-independent. Drop only
+		-- the optional Character Overview cache-update target so a slow request
+		-- cannot retain a closed InventoryBackgroundView.
+		operation.view = nil
+
+		return true
+	end
+
+	return false
+end
+
+EquipmentPersistence.reset = function()
+	state.generation = state.generation + 1
+	state.active = nil
+end
+
 EquipmentPersistence.status = function()
 	local operation = state.active
 

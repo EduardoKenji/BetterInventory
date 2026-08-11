@@ -34,11 +34,65 @@ Domains.markers.track_grid = function(item_grid)
 	return true
 end
 
+Domains.markers.release_grid = function(item_grid)
+	if not item_grid then
+		return false
+	end
+
+	local tracked = tracked_marker_grids[item_grid] ~= nil or dirty_marker_grids[item_grid] ~= nil or item_grid._better_inventory_myfavorites_active == true
+
+	tracked_marker_grids[item_grid] = nil
+	dirty_marker_grids[item_grid] = nil
+	item_grid._better_inventory_myfavorites_active = nil
+	item_grid._better_inventory_myfavorites_dirty = nil
+	item_grid._better_inventory_myfavorites_generation = nil
+	item_grid._better_inventory_myfavorites_native_generation = nil
+	item_grid._better_inventory_myfavorites_widgets = nil
+
+	return tracked
+end
+
+Domains.markers.release_all = function()
+	local grids = {}
+
+	for item_grid in pairs(tracked_marker_grids) do
+		grids[#grids + 1] = item_grid
+	end
+
+	for item_grid in pairs(dirty_marker_grids) do
+		if tracked_marker_grids[item_grid] == nil then
+			grids[#grids + 1] = item_grid
+		end
+	end
+
+	for index = 1, #grids do
+		Domains.markers.release_grid(grids[index])
+	end
+
+	marker_poll_elapsed = 0
+
+	return #grids
+end
+
+Domains.markers.count = function()
+	local tracked = 0
+	local dirty = 0
+
+	for _ in pairs(tracked_marker_grids) do
+		tracked = tracked + 1
+	end
+
+	for _ in pairs(dirty_marker_grids) do
+		dirty = dirty + 1
+	end
+
+	return tracked, dirty
+end
+
 local function poll_marker_grids()
 	for item_grid in pairs(tracked_marker_grids) do
 		if item_grid._better_inventory_myfavorites_active ~= true then
-			tracked_marker_grids[item_grid] = nil
-			dirty_marker_grids[item_grid] = nil
+			Domains.markers.release_grid(item_grid)
 		else
 			local native_generation = item_grid._grid_generation or item_grid._layout_generation or item_grid._content_generation
 			local previous_native_generation = item_grid._better_inventory_myfavorites_native_generation
@@ -75,8 +129,7 @@ Domains.markers.update = function(dt, synchronize_grid)
 
 	for item_grid in pairs(dirty_marker_grids) do
 		if item_grid._better_inventory_myfavorites_active ~= true then
-			tracked_marker_grids[item_grid] = nil
-			dirty_marker_grids[item_grid] = nil
+			Domains.markers.release_grid(item_grid)
 		elseif item_grid._visible ~= false then
 			local tracked_widgets = item_grid._better_inventory_myfavorites_widgets
 
