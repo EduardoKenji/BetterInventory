@@ -2552,6 +2552,14 @@ function Controller.new(dependencies)
 					})
 				end
 
+				operation_report("phase4_trait_mutation_preflight", {
+					gear_id = phase4.gear_id,
+					kind = group.kind,
+					slot = index,
+					target = desired.id,
+					tier = desired.rarity,
+				})
+
 				return self:_dispatch_operation(generation, temporary_swap and "phase4_temporary_swap_" .. group.kind or "phase4_replace_" .. group.kind, function ()
 					return adapter(backend, phase4.gear_id, index, desired.id, desired.rarity)
 				end, function ()

@@ -21,7 +21,8 @@
     {"name": "panel_and_hud_resolution_matrix", "risk": "high", "start_line": 14, "end_line": 67}
   ],
   "test_auto_crafter_backend.py": [
-    {"name": "complete_authoritative_inventory_summary", "risk": "critical", "start_line": 16, "end_line": 119}
+    {"name": "complete_authoritative_inventory_summary", "risk": "critical", "start_line": 16, "end_line": 120},
+    {"name": "trait_mutation_contract_and_fail_closed_validation", "risk": "critical", "start_line": 122, "end_line": 154}
   ],
     "test_auto_crafter_facade.py": [
       {"name": "frame_update_crash_containment", "risk": "critical", "start_line": 14, "end_line": 31}
@@ -96,7 +97,7 @@
       {"name": "optional_mod_lifecycle_admission_and_four_run_soak", "risk": "critical", "start_line": 1, "end_line": 176}
     ],
   "test_account_mutation_guard.py": [
-    {"name": "service_level_account_mutation_exclusion", "risk": "critical", "start_line": 1, "end_line": 149}
+    {"name": "service_level_account_mutation_exclusion", "risk": "critical", "start_line": 1, "end_line": 161}
   ],
   "test_contracts.py": [
     {"name": "guarded_lookup", "risk": "high", "start_line": 22, "end_line": 40},

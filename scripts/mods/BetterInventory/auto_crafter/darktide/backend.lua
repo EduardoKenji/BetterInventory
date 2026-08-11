@@ -8,6 +8,7 @@ local Mastery = require("scripts/utilities/mastery")
 local MasterItems = require("scripts/backend/master_items")
 local ProfileUtils = require("scripts/utilities/profile_utils")
 local CraftingSettings = require("scripts/settings/item/crafting_settings")
+local RankSettings = require("scripts/settings/item/rank_settings")
 local WeaponTemplate = require("scripts/utilities/weapon/weapon_template")
 
 local Backend = {}
@@ -77,6 +78,66 @@ local function call_service(service, method_name, ...)
 	end
 
 	return promise_or_resolved(result)
+end
+
+local function normalized_trait_mutation(kind, gear_id, index, trait_id, tier)
+	local normalized_index = tonumber(index)
+	local normalized_tier = tonumber(tier)
+	local maximum_tier = kind == "perk" and safe_member(RankSettings, "max_perk_rank") or safe_member(RankSettings, "max_trait_rank")
+
+	if type(gear_id) ~= "string" or gear_id == "" then
+		return nil, kind .. " replacement gear id is invalid"
+	end
+
+	if normalized_index == nil or normalized_index ~= math.floor(normalized_index) or normalized_index < 1 or normalized_index > 2 then
+		return nil, kind .. " replacement slot must be 1 or 2"
+	end
+
+	if type(trait_id) ~= "string" or trait_id == "" then
+		return nil, kind .. " replacement master item id is invalid"
+	end
+
+	if normalized_tier == nil or normalized_tier ~= math.floor(normalized_tier) or normalized_tier < 1 or (tonumber(maximum_tier) and normalized_tier > tonumber(maximum_tier)) then
+		return nil, kind .. " replacement tier is outside Darktide's supported rank range"
+	end
+
+	if type(MasterItems) ~= "table" or type(MasterItems.get_item) ~= "function" then
+		return nil, kind .. " replacement master item registry is unavailable"
+	end
+
+	local item_ok, trait_item = pcall(MasterItems.get_item, trait_id)
+
+	if not item_ok or trait_item == nil then
+		return nil, kind .. " replacement master item is unavailable: " .. trait_id
+	end
+
+	return {
+		gear_id = gear_id,
+		index = normalized_index,
+		trait_id = trait_id,
+		tier = normalized_tier,
+	}
+end
+
+local function confirmed_trait_mutation(kind, operation)
+	return function(result)
+		local items = safe_member(result, "items")
+
+		if type(items) ~= "table" or next(items) == nil then
+			return rejected(kind .. " replacement returned no authoritative item confirmation; mutation will not be retried")
+		end
+
+		for _, item in pairs(items) do
+			local gear = safe_member(item, "gear")
+			local result_gear_id = safe_member(item, "gear_id") or safe_member(item, "uuid") or safe_member(gear, "uuid") or safe_member(gear, "gear_id")
+
+			if result_gear_id ~= nil and tostring(result_gear_id) == operation.gear_id then
+				return result
+			end
+		end
+
+		return rejected(kind .. " replacement response did not confirm the requested gear; mutation will not be retried")
+	end
 end
 
 local function add_loadout_gear_ids(target, loadout)
@@ -1506,19 +1567,31 @@ function Backend.new(dependencies)
 	end
 
 	function backend:replace_perk(gear_id, index, perk_id, tier)
-		if gear_id == nil or tonumber(index) == nil or perk_id == nil or tonumber(tier) == nil then
-			return rejected("perk replacement parameters unavailable")
+		local operation, validation_error = normalized_trait_mutation("perk", gear_id, index, perk_id, tier)
+
+		if not operation then
+			return rejected(validation_error)
 		end
 
-		return self:_mutate("crafting", "replace_perk_in_weapon", gear_id, tonumber(index), perk_id, nil, tonumber(tier))
+		-- Darktide's CraftingService perk signature is intentionally asymmetric:
+		-- (gear, slot, perk, costs, tier). Never leave a nil hole before tier because
+		-- third-party/older hook dispatchers can truncate varargs at that hole and
+		-- submit replaceTrait without traitTier. `false` preserves arity while keeping
+		-- StoreService.on_crafting_done on its no-cost immediate-resolve path; an empty
+		-- table would trigger an unnecessary wallet-cap request after mutation.
+		return self:_mutate("crafting", "replace_perk_in_weapon", operation.gear_id, operation.index, operation.trait_id, false, operation.tier)
+			:next(confirmed_trait_mutation("perk", operation))
 	end
 
 	function backend:replace_blessing(gear_id, index, blessing_id, tier)
-		if gear_id == nil or tonumber(index) == nil or blessing_id == nil or tonumber(tier) == nil then
-			return rejected("blessing replacement parameters unavailable")
+		local operation, validation_error = normalized_trait_mutation("blessing", gear_id, index, blessing_id, tier)
+
+		if not operation then
+			return rejected(validation_error)
 		end
 
-		return self:_mutate("crafting", "replace_trait_in_weapon", gear_id, tonumber(index), blessing_id, tonumber(tier))
+		return self:_mutate("crafting", "replace_trait_in_weapon", operation.gear_id, operation.index, operation.trait_id, operation.tier)
+			:next(confirmed_trait_mutation("blessing", operation))
 	end
 
 	function backend:purchase_mastery_trait(pattern_id, trait_id, tier)

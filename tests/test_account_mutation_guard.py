@@ -100,6 +100,18 @@ def main() -> None:
         assert(owned_result == "owned:six" and calls == 3)
         assert(Guard.is_owned_call() == false)
 
+		-- Preserve explicit no-cost sentinel and trailing tier through the owned
+		-- hook path used by CraftingService.replace_perk_in_weapon.
+		local perk_arguments
+		Guard.with_owned_call(function()
+			return Guard.intercept("crafting.replace_perk_in_weapon", function(_, ...)
+				perk_arguments = table.pack(...)
+			end, {}, "gear-1", 1, "perk-1", false, 4)
+		end)
+		assert(perk_arguments.n == 5)
+		assert(perk_arguments[1] == "gear-1" and perk_arguments[2] == 1)
+		assert(perk_arguments[3] == "perk-1" and perk_arguments[4] == false and perk_arguments[5] == 4)
+
         local owned_ok = pcall(Guard.with_owned_call, function() error("owned failure") end)
         assert(owned_ok == false and Guard.is_owned_call() == false)
 

@@ -103,8 +103,15 @@
       "name": "auto-crafter.blocks-external-account-writes",
       "test": "test_account_mutation_guard.py",
       "case": "service_level_account_mutation_exclusion",
-      "outcome": "native UI, Quick Level Mastery, and other service writes stop Auto Crafter between requests or fail closed while one is unresolved",
+      "outcome": "native UI, Quick Level Mastery, and other service writes stop Auto Crafter between requests or fail closed while one is unresolved; owned perk calls preserve no-cost sentinel and trailing tier arity",
       "modules": ["BetterInventory_account_mutation_guard.lua", "BetterInventory_auto_crafter.lua"]
+    },
+    {
+      "name": "auto-crafter.validates-trait-mutations",
+      "test": "test_auto_crafter_backend.py",
+      "case": "trait_mutation_contract_and_fail_closed_validation",
+      "outcome": "perk and blessing requests validate identity, slot, registered target, and tier before dispatch; perk arity has no nil hole and ambiguous responses are never retried",
+      "modules": ["BetterInventory_auto_crafter.lua"]
     },
     {
       "name": "auto-crafter.external-interrupt-is-atomic",

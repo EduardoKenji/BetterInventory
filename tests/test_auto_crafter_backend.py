@@ -45,6 +45,7 @@ def main() -> None:
         package.preload["scripts/utilities/mastery"] = function() return {} end
         package.preload["scripts/backend/master_items"] = function()
             return {
+				get_item = function(item_id) return {name = item_id} end,
                 get_item_instance = function(raw_item)
                     if raw_item.invalid then return nil end
                     return raw_item
@@ -53,6 +54,9 @@ def main() -> None:
         end
         package.preload["scripts/utilities/profile_utils"] = function() return {} end
         package.preload["scripts/settings/item/crafting_settings"] = function() return {} end
+		package.preload["scripts/settings/item/rank_settings"] = function()
+			return {max_perk_rank = 4, max_trait_rank = 4}
+		end
         package.preload["scripts/utilities/weapon/weapon_template"] = function()
             return {weapon_template_from_item = function() return nil end}
         end
@@ -114,6 +118,40 @@ def main() -> None:
         assert(snapshot.gear.items_by_id["malformed-record"].available == false)
         assert(snapshot.gear.unavailable_item_count == 1)
         assert(snapshot.gear.items_by_id["other-character"] == nil)
+
+		local calls = {perk = 0, blessing = 0}
+		local malformed_perk_response = false
+		local crafting = {}
+		function crafting:replace_perk_in_weapon(gear_id, index, trait_id, costs, tier)
+			calls.perk = calls.perk + 1
+			assert(select("#", gear_id, index, trait_id, costs, tier) == 5)
+			assert(gear_id == "gear-1" and index == 1 and trait_id == "perk-1" and tier == 4)
+			assert(costs == false)
+			return resolved(malformed_perk_response and {} or {items = {{gear = {uuid = gear_id}}}})
+		end
+		function crafting:replace_trait_in_weapon(gear_id, index, trait_id, tier)
+			calls.blessing = calls.blessing + 1
+			assert(gear_id == "gear-1" and index == 2 and trait_id == "blessing-1" and tier == 4)
+			return resolved({items = {{gear = {uuid = gear_id}}}})
+		end
+
+		local mutation_backend = Backend.new({services = {crafting = crafting}})
+		mutation_backend:replace_perk("gear-1", 1, "perk-1", 4)
+		mutation_backend:replace_blessing("gear-1", 2, "blessing-1", 4)
+		assert(calls.perk == 1 and calls.blessing == 1)
+
+		-- Every malformed operation fails closed before reaching Darktide services.
+		mutation_backend:replace_perk("gear-1", 0, "perk-1", 4)
+		mutation_backend:replace_perk("gear-1", 1, "perk-1", 5)
+		mutation_backend:replace_perk("", 1, "perk-1", 4)
+		mutation_backend:replace_blessing("gear-1", 3, "blessing-1", 4)
+		mutation_backend:replace_blessing("gear-1", 2, "", 4)
+		assert(calls.perk == 1 and calls.blessing == 1)
+
+		-- Ambiguous/malformed responses stop at one request and are never retried.
+		malformed_perk_response = true
+		mutation_backend:replace_perk("gear-1", 1, "perk-1", 4)
+		assert(calls.perk == 2)
 
         print("Auto Crafter authoritative backend inventory tests passed.")
         '''
