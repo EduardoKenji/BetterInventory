@@ -58,6 +58,8 @@ function ImportController.new(dependencies)
 		_last_error = nil,
 		_catalog_pending = false,
 		_catalog_generation = nil,
+		_choice_request = nil,
+		_weapon_choices = {},
 	}
 
 	local function emit(kind, payload)
@@ -74,7 +76,7 @@ function ImportController.new(dependencies)
 		local ok, snapshot = pcall(self._queue_snapshot)
 		local state = ok and snapshot and snapshot.state
 
-		return state == "running" or state == "starting" or state == "selecting" or state == "dispatching" or state == "waiting_next" or state == "stopping"
+		return state == "running" or state == "starting" or state == "selecting" or state == "preflighting" or state == "dispatching" or state == "waiting_next" or state == "stopping" or state == "quarantined" or state == "reconciliation_required"
 	end
 
 	local function fail(reason, payload)
@@ -138,6 +140,8 @@ function ImportController.new(dependencies)
 		self._model = nil
 		self._identity_build = nil
 		self._resolved_build = nil
+		self._choice_request = nil
+		self._weapon_choices = {}
 		self._last_error = nil
 
 		local transport_ok, transport_error = safe_call(self._transport and self._transport.start, self._transport, url)
@@ -157,12 +161,21 @@ function ImportController.new(dependencies)
 		if not context_ok or type(context) ~= "table" then
 			return fail("resolution_context_unavailable", { error = context })
 		end
+		context.weapon_choices = self._weapon_choices
 
-		local identity, identity_reason = self._resolver.resolve_identities(self._model, context)
+		local identity, identity_reason, choice_request = self._resolver.resolve_identities(self._model, context)
 		if not identity then
+			if identity_reason == "weapon_choice_required" and type(choice_request) == "table" then
+				self._choice_request = choice_request
+				self._state = "awaiting_weapon_choice"
+				emit("import_choice_required", { generation = generation })
+
+				return true
+			end
 			return fail(identity_reason or "weapon_identity_unavailable", {})
 		end
 
+		self._choice_request = nil
 		self._identity_build = identity
 		self._state = "resolving_catalogues"
 		self._catalog_pending = true
@@ -207,6 +220,28 @@ function ImportController.new(dependencies)
 		return true
 	end
 
+	function self:select_weapon_choice(slot, card_index)
+		if self._state ~= "awaiting_weapon_choice" or slot ~= "melee" and slot ~= "ranged" then
+			return false, "weapon_choice_unavailable"
+		end
+
+		local candidates = self._choice_request and self._choice_request[slot] or {}
+		local found = false
+		for _, candidate in ipairs(candidates) do
+			if tostring(candidate.external and candidate.external.card_index) == tostring(card_index) then
+				found = true
+				break
+			end
+		end
+		if not found then
+			return false, "invalid_weapon_choice"
+		end
+
+		self._weapon_choices[slot] = card_index
+
+		return self:_begin_catalog_resolution()
+	end
+
 	function self:update()
 		if self._state ~= "fetching" then
 			return self._state
@@ -225,7 +260,11 @@ function ImportController.new(dependencies)
 				return fail(parse_reason or "build_parse_failed", {})
 			end
 
-			model.source_uuid = model.source_uuid or string.match(self._url or "", "/([0-9a-fA-F%-]+)$")
+			local requested_uuid = string.match(self._url or "", "/([0-9a-fA-F%-]+)$")
+			if model.source_uuid and requested_uuid and string.lower(model.source_uuid) ~= string.lower(requested_uuid) then
+				return fail("build_uuid_mismatch", {})
+			end
+			model.source_uuid = requested_uuid
 			self._model = model
 
 			return self:_begin_catalog_resolution() and self._state or self._state
@@ -247,6 +286,8 @@ function ImportController.new(dependencies)
 		self._model = nil
 		self._identity_build = nil
 		self._resolved_build = nil
+		self._choice_request = nil
+		self._weapon_choices = {}
 		self._last_error = nil
 
 		return true
@@ -276,6 +317,8 @@ function ImportController.new(dependencies)
 			last_error = self._last_error,
 			identity_build = copy(self._identity_build),
 			resolved_build = copy(self._resolved_build),
+			choice_request = copy(self._choice_request),
+			weapon_choices = copy(self._weapon_choices),
 			catalog_pending = self._catalog_pending,
 		}
 	end

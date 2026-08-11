@@ -35,6 +35,8 @@ function Transport.new(dependencies)
 		_clock = dependencies.clock,
 		_report = dependencies.report,
 		_timeout_seconds = tonumber(dependencies.timeout_seconds) or Transport.DEFAULT_TIMEOUT_SECONDS,
+		_poll_interval_seconds = tonumber(dependencies.poll_interval_seconds) or 0.15,
+		_last_poll_at = nil,
 		_max_bytes = tonumber(dependencies.max_bytes) or Transport.MAX_HTML_BYTES,
 		_generation = 0,
 		_state = "idle",
@@ -114,6 +116,7 @@ function Transport.new(dependencies)
 		self._state = "running"
 		self._handle = handle
 		self._started_at = now()
+		self._last_poll_at = self._started_at - self._poll_interval_seconds
 		self._url = url
 		self._result = nil
 		self._last_error = nil
@@ -148,6 +151,12 @@ function Transport.new(dependencies)
 			return self._state
 		end
 
+		local polled_at = now()
+		if self._last_poll_at and polled_at - self._last_poll_at < self._poll_interval_seconds then
+			return self._state
+		end
+		self._last_poll_at = polled_at
+
 		local poll = self._adapter.poll
 		local ok, response = safe_call(poll, self._handle, self._generation, self._max_bytes)
 		if not ok then
@@ -161,6 +170,7 @@ function Transport.new(dependencies)
 		end
 
 		local status = tonumber(response.status)
+		local content_type = type(response.content_type) == "string" and string.lower(response.content_type) or nil
 		local exit_code = tonumber(response.exit_code)
 		local body = response.body
 		local bytes = tonumber(response.bytes) or type(body) == "string" and #body or 0
@@ -173,6 +183,12 @@ function Transport.new(dependencies)
 
 		if not status or status < 200 or status >= 300 then
 			fail("transport_http_status", { status = status or 0 })
+
+			return self._state
+		end
+
+		if content_type ~= "text/html" and content_type ~= "application/xhtml+xml" then
+			fail("transport_content_type", { content_type = content_type or "missing" })
 
 			return self._state
 		end
@@ -191,7 +207,7 @@ function Transport.new(dependencies)
 
 		cleanup_handle()
 		self._state = "complete"
-		self._result = { status = status, bytes = bytes, body = body, generation = self._generation }
+		self._result = { status = status, content_type = content_type, bytes = bytes, body = body, generation = self._generation }
 		emit("transport_complete", { generation = self._generation, bytes = bytes })
 
 		return self._state

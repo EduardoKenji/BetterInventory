@@ -298,6 +298,11 @@ local function trait_score(external, entry)
 	local external_tokens = tokens(external and (external.label or external.name))
 	local candidate = token_set(trait_text(entry))
 	local score = 0
+	local external_icon_id = external and external.external_icon_id
+	local candidate_icon_id = entry and (entry.external_icon_id or entry.icon_id or entry.icon or entry.texture_id)
+	if external_icon_id ~= nil and candidate_icon_id ~= nil and tostring(external_icon_id) == tostring(candidate_icon_id) then
+		score = score + 100
+	end
 
 	for _, token in ipairs(external_tokens) do
 		if candidate[token] then
@@ -305,7 +310,8 @@ local function trait_score(external, entry)
 		end
 	end
 
-	return score == #external_tokens and score > 0 and score or 0
+	local label_score = score >= 100 and score - 100 or score
+	return label_score == #external_tokens and label_score > 0 and score or 0
 end
 
 local function resolve_traits(external_values, entries, kind)
@@ -397,7 +403,7 @@ local function resolve_identity(external, slot, context)
 		external = external,
 		dump_stat = dump_stat.id,
 		dump_stat_label = dump_stat.label,
-		dump_target = 60,
+		dump_target = tonumber(context and context.dump_target) or 60,
 		parent_pattern = resolved.offer.parent_pattern,
 		master_id = resolved.offer.master_id,
 	}, nil
@@ -456,11 +462,13 @@ function Resolver.resolve_identities(model, context)
 
 	context = context or {}
 
-	if model.source_archetype and context.active_archetype and tostring(model.source_archetype) ~= tostring(context.active_archetype) then
+	if not model.source_archetype or not context.active_archetype then
+		return nil, "archetype_unavailable"
+	elseif tostring(model.source_archetype) ~= tostring(context.active_archetype) then
 		return nil, "archetype_mismatch"
 	end
 
-	if #model.weapons ~= 2 then
+	if #model.weapons < 2 then
 		return nil, "expected_two_weapons"
 	end
 
@@ -478,6 +486,30 @@ function Resolver.resolve_identities(model, context)
 		if ranged then
 			ranged_candidates[#ranged_candidates + 1] = ranged
 		end
+	end
+
+	local choices = context.weapon_choices or {}
+	local function selected_candidates(candidates, slot)
+		local selected = choices[slot]
+		if selected == nil then
+			return candidates
+		end
+		local filtered = {}
+		for _, candidate in ipairs(candidates) do
+			if tostring(candidate.external and candidate.external.card_index) == tostring(selected) then
+				filtered[#filtered + 1] = candidate
+			end
+		end
+		return filtered
+	end
+	melee_candidates = selected_candidates(melee_candidates, "melee")
+	ranged_candidates = selected_candidates(ranged_candidates, "ranged")
+
+	if #melee_candidates > 1 or #ranged_candidates > 1 then
+		return nil, "weapon_choice_required", {
+			melee = melee_candidates,
+			ranged = ranged_candidates,
+		}
 	end
 
 	if #melee_candidates ~= 1 then
@@ -532,7 +564,9 @@ function Resolver.resolve(model, context)
 
 	context = context or {}
 
-	if model.source_archetype and context.active_archetype and tostring(model.source_archetype) ~= tostring(context.active_archetype) then
+	if not model.source_archetype or not context.active_archetype then
+		return nil, "archetype_unavailable"
+	elseif tostring(model.source_archetype) ~= tostring(context.active_archetype) then
 		return nil, "archetype_mismatch"
 	end
 

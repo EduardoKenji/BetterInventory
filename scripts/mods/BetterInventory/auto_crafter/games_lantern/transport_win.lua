@@ -97,16 +97,18 @@ function Adapter.spawn(url, generation, max_bytes)
 
 	SEQUENCE = SEQUENCE + 1
 	local temp = os.getenv("TEMP") or os.getenv("TMP") or "."
-	local tag = string.format("%d_%d", tonumber(generation) or 0, SEQUENCE)
+	local tag = string.format("%d_%d_%d_%d", os.time(), math.floor((os.clock() or 0) * 1000000), tonumber(generation) or 0, SEQUENCE)
 	local output_path = temp .. "\\BetterInventory_games_lantern_" .. tag .. ".html"
 	local done_path = temp .. "\\BetterInventory_games_lantern_" .. tag .. ".done"
 	local status_path = temp .. "\\BetterInventory_games_lantern_" .. tag .. ".status"
 	local script_path = temp .. "\\BetterInventory_games_lantern_" .. tag .. ".bat"
+	local launcher_path = temp .. "\\BetterInventory_games_lantern_" .. tag .. ".ps1"
 	local error_path = temp .. "\\BetterInventory_games_lantern_" .. tag .. ".err"
 	local curl = (os.getenv("SystemRoot") or "C:\\Windows") .. "\\System32\\curl.exe"
-	local quoted = { quote(output_path), quote(done_path), quote(status_path), quote(script_path), quote(error_path), quote(curl) }
+	local powershell = (os.getenv("SystemRoot") or "C:\\Windows") .. "\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+	local quoted = { quote(output_path), quote(done_path), quote(status_path), quote(script_path), quote(error_path), quote(curl), quote(launcher_path), quote(powershell) }
 
-	for _, path in ipairs({ output_path, done_path, status_path, script_path, error_path }) do
+	for _, path in ipairs({ output_path, done_path, status_path, script_path, launcher_path, error_path }) do
 		remove(path)
 	end
 
@@ -119,12 +121,21 @@ function Adapter.spawn(url, generation, max_bytes)
 	local limit = tonumber(max_bytes) or MAX_BYTES
 	local script = {
 		"@echo off",
-		string.format("%s --silent --show-error --connect-timeout %d --max-time %d --max-filesize %d --proto =https -o %s -w \"%%{http_code}\" %s > %s 2> %s", quoted[6], CONNECT_TIMEOUT, REQUEST_TIMEOUT, limit, quoted[1], quote(url), quoted[3], quoted[5]),
+		string.format("%s --silent --show-error --connect-timeout %d --max-time %d --max-filesize %d --proto =https -o %s -w \"%%{http_code} %%{content_type}\" %s > %s 2> %s", quoted[6], CONNECT_TIMEOUT, REQUEST_TIMEOUT, limit, quoted[1], quote(url), quoted[3], quoted[5]),
 		string.format(">%s echo %%ERRORLEVEL%%", quoted[2]),
 	}
 
 	if not write_file(script_path, script) then
 		return nil, "script_write_failed"
+	end
+	local ps_script_path = string.gsub(script_path, "'", "''")
+	if not write_file(launcher_path, {
+		"$p = Start-Process -FilePath 'cmd.exe' -ArgumentList '/c','\"" .. ps_script_path .. "\"' -WindowStyle Hidden -PassThru",
+		"$p.Id",
+	}) then
+		remove(script_path)
+
+		return nil, "launcher_write_failed"
 	end
 
 	local api = io_api()
@@ -134,11 +145,14 @@ function Adapter.spawn(url, generation, max_bytes)
 		return nil, "process_api_unavailable"
 	end
 
-	local handle = api.popen("cmd /c start \"\" /B " .. quoted[4])
-	if handle then
-		handle:close()
-	else
+	local process = api.popen(quoted[8] .. " -NoProfile -NonInteractive -ExecutionPolicy Bypass -File " .. quoted[7])
+	local pid = process and tonumber(process:read("*l")) or nil
+	if process then
+		process:close()
+	end
+	if not pid then
 		remove(script_path)
+		remove(launcher_path)
 
 		return nil, "process_spawn_failed"
 	end
@@ -149,6 +163,8 @@ function Adapter.spawn(url, generation, max_bytes)
 		status_path = status_path,
 		script_path = script_path,
 		error_path = error_path,
+		launcher_path = launcher_path,
+		pid = pid,
 		max_bytes = limit,
 	}
 end
@@ -162,16 +178,19 @@ function Adapter.poll(handle)
 	if not done then
 		return { done = false }
 	end
+	handle.completed = true
 
 	local exit_code = tonumber(string.match(done, "%-?%d+"))
-	local status_text = read_file(handle.status_path, 32)
+	local status_text = read_file(handle.status_path, 256)
 	local status = tonumber(status_text and string.match(status_text, "%d%d%d") or nil)
+	local content_type = status_text and string.match(status_text, "%d%d%d%s+([^%s;]+)") or nil
 	local body, size = read_file(handle.output_path, handle.max_bytes)
 
 	return {
 		done = true,
 		exit_code = exit_code,
 		status = status,
+		content_type = content_type,
 		body = body,
 		bytes = tonumber(size) or type(body) == "string" and #body or 0,
 	}
@@ -181,8 +200,15 @@ function Adapter.cleanup(handle)
 	if type(handle) ~= "table" then
 		return true
 	end
+	if not handle.completed and tonumber(handle.pid) then
+		local api = io_api()
+		if api and type(api.popen) == "function" then
+			local killer = api.popen("cmd /c taskkill /PID " .. tostring(math.floor(handle.pid)) .. " /T /F >nul 2>nul")
+			if killer then killer:close() end
+		end
+	end
 
-	for _, path in ipairs({ handle.output_path, handle.done_path, handle.status_path, handle.script_path, handle.error_path }) do
+	for _, path in ipairs({ handle.output_path, handle.done_path, handle.status_path, handle.script_path, handle.launcher_path, handle.error_path }) do
 		remove(path)
 	end
 

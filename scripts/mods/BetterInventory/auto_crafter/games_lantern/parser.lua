@@ -57,6 +57,7 @@ local function parse_weapon_block(block)
 	end
 
 	local perks = {}
+	local seen_perks = {}
 
 	for perk in block:gmatch('rotate%-45"></div>%s*<div class="text%-%[#D1FFC3%] font%-bold text%-sm">([^<]+)</div>') do
 		if #perks >= Parser.MAX_PERKS then
@@ -68,11 +69,17 @@ local function parse_weapon_block(block)
 		if not label then
 			return nil, "invalid_perk"
 		end
+		local perk_key = string.lower(label)
+		if seen_perks[perk_key] then
+			return nil, "duplicate_perk"
+		end
+		seen_perks[perk_key] = true
 
 		perks[#perks + 1] = {label = label}
 	end
 
 	local blessings = {}
+	local seen_blessings = {}
 
 	for trait_id, inner in block:gmatch('weapon_trait_(%d+)%.webp[^/]*/>%s*<div[^>]*>(.-)</div>') do
 		if #blessings >= Parser.MAX_BLESSINGS then
@@ -85,6 +92,11 @@ local function parse_weapon_block(block)
 		if not blessing_name or #trait_id == 0 then
 			return nil, "invalid_blessing"
 		end
+		local blessing_key = string.lower(blessing_name)
+		if seen_blessings[blessing_key] then
+			return nil, "duplicate_blessing"
+		end
+		seen_blessings[blessing_key] = true
 
 		blessings[#blessings + 1] = {
 			label = blessing_name,
@@ -94,6 +106,7 @@ local function parse_weapon_block(block)
 	end
 
 	local stats = {}
+	local seen_stats = {}
 
 	for label, percentage in block:gmatch(
 		'font%-semibold whitespace%-nowrap text%-sm text%-%[#D1FFC3%]">([^<]+)</div>'
@@ -108,6 +121,11 @@ local function parse_weapon_block(block)
 		if not stat_label or not stat_value or stat_value < 0 or stat_value > 100 then
 			return nil, "invalid_stat"
 		end
+		local stat_key = string.lower(stat_label)
+		if seen_stats[stat_key] then
+			return nil, "duplicate_stat"
+		end
+		seen_stats[stat_key] = true
 
 		stats[#stats + 1] = {
 			label = stat_label,
@@ -137,6 +155,32 @@ local function page_field(html, pattern, max_bytes)
 	return bounded_label(html:match(pattern), max_bytes)
 end
 
+local function canonical_build_uuid(html)
+	for tag in html:gmatch("<link[^>]+>") do
+		if string.lower(tag):find("canonical", 1, true) then
+			local href = tag:match('href=["\']([^"\']+)["\']')
+			local uuid = href and href:match("darktide%.gameslantern%.com/builds/(%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x)")
+			if uuid then return string.lower(uuid) end
+		end
+	end
+
+	return nil
+end
+
+local function unique_archetype(html)
+	local found = {}
+	local count = 0
+	for slug in html:gmatch('href=["\']/classes/([^"\'/?#]+)') do
+		local normalized_slug = bounded_label(slug, 80)
+		if normalized_slug and not found[normalized_slug] then
+			found[normalized_slug] = true
+			count = count + 1
+		end
+	end
+	if count ~= 1 then return nil end
+	for slug in pairs(found) do return slug end
+end
+
 function Parser.parse(html)
 	if type(html) ~= "string" then
 		return nil, "response_not_text"
@@ -150,10 +194,20 @@ function Parser.parse(html)
 		return nil, "response_too_large"
 	end
 
+	local lowered = string.lower(html)
+	if lowered:find("captcha", 1, true) or lowered:find("challenge%-platform") or lowered:find("please log in", 1, true) or lowered:find("sign in to continue", 1, true) then
+		return nil, "login_or_challenge_page"
+	end
+
+	local weapon_section = html:match('<section[^>]-id=["\']weapons["\'][^>]*>(.-)</section>')
+	if not weapon_section then
+		return nil, "weapons_section_unavailable"
+	end
+
 	local weapons = {}
 	local card_count = 0
 
-	for block in html:gmatch('<div class="max%-w%-sm w%-full">(.-)weapon_box_bottom%.webp') do
+	for block in weapon_section:gmatch('<div class="max%-w%-sm w%-full">(.-)weapon_box_bottom%.webp') do
 		card_count = card_count + 1
 
 		if card_count > Parser.MAX_WEAPONS then
@@ -178,9 +232,10 @@ function Parser.parse(html)
 
 	return {
 		parser_contract_version = Parser.CONTRACT_VERSION,
+		source_uuid = canonical_build_uuid(html),
 		source_title = page_field(html, '<title[^>]*>(.-)</title>', 240),
 		source_author = page_field(html, 'By%s*</[^>]+>%s*([^<]+)', 120),
-		source_archetype = page_field(html, 'href="/classes/([^"/?]+)', 80),
+		source_archetype = unique_archetype(html),
 		weapons = weapons,
 		curios = {},
 	}
@@ -190,6 +245,8 @@ Parser._test = {
 	trim = trim,
 	unescape_html = unescape_html,
 	parse_weapon_block = parse_weapon_block,
+	canonical_build_uuid = canonical_build_uuid,
+	unique_archetype = unique_archetype,
 }
 
 return Parser
