@@ -323,12 +323,46 @@ local function set_inventory_options_panel_controller_focus(view, focused)
 	return false
 end
 
+local function release_inventory_options_panel(view, panel_reference)
+	if not view then
+		return false
+	end
+
+	local panel = view._better_inventory_options_panel
+	local owned = panel ~= nil
+
+	if view._better_inventory_options_panel_controller_focused == true then
+		pcall(set_inventory_options_panel_controller_focus, view, false)
+	end
+
+	if panel and type(view._remove_element) == "function" then
+		pcall(view._remove_element, view, panel_reference or "better_inventory_options_panel")
+	end
+
+	view._better_inventory_options_panel = nil
+	view._better_inventory_options_panel_geometry = nil
+	view._better_inventory_options_panel_mod = nil
+	view._better_inventory_options_panel_widgets = nil
+	view._better_inventory_options_panel_collapsed = nil
+	view._better_inventory_options_panel_visible = nil
+	view._better_inventory_options_panel_height = nil
+	view._better_inventory_options_panel_pivot_x = nil
+	view._better_inventory_options_panel_pivot_y = nil
+	view._better_inventory_options_panel_structure_key = nil
+	view._better_inventory_options_panel_controller_focused = nil
+	view._better_inventory_options_panel_controller_restore = nil
+	view._better_inventory_options_panel_controller_target = nil
+
+	return owned
+end
+
 PanelRuntime.panel_entry = panel_entry
 PanelRuntime.panel_lantern_entry = panel_lantern_entry
 PanelRuntime.controller_element_state = controller_element_state
 PanelRuntime.clear_controller_element_selection = clear_controller_element_selection
 PanelRuntime.restore_controller_element = restore_controller_element
 PanelRuntime.set_inventory_options_panel_controller_focus = set_inventory_options_panel_controller_focus
+PanelRuntime.release_inventory_options_panel = release_inventory_options_panel
 PanelRuntime.update_inventory_options_panel_controller_selection = update_inventory_options_panel_controller_selection
 
 return PanelRuntime

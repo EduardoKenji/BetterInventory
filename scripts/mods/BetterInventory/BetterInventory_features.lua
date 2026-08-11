@@ -267,13 +267,7 @@ Features.end_view_session = function(view, reason)
 end
 
 Features.close_all_view_sessions = function(reason)
-	local sessions = Features._view_session
-
-	if sessions and type(sessions.close_all) == "function" then
-		return sessions.close_all(reason)
-	end
-
-	return 0
+	return Features._view_session.close_all(reason)
 end
 
 Features.register_view_session_cleanup = function(view, cleanup_id, callback)
@@ -1288,38 +1282,7 @@ Features.compact_inventory_curio_stats_blueprints = function(mod, item_grid, con
 	return adjusted_blueprints
 end
 
-Features.release_inventory_options_panel = function(view)
-	if not view then
-		return false
-	end
-
-	local panel = view._better_inventory_options_panel
-	local owned = panel ~= nil
-
-	if view._better_inventory_options_panel_controller_focused == true then
-		pcall(set_inventory_options_panel_controller_focus, view, false)
-	end
-
-	if panel and type(view._remove_element) == "function" then
-		pcall(view._remove_element, view, INVENTORY_OPTIONS_PANEL_REFERENCE)
-	end
-
-	view._better_inventory_options_panel = nil
-	view._better_inventory_options_panel_geometry = nil
-	view._better_inventory_options_panel_mod = nil
-	view._better_inventory_options_panel_widgets = nil
-	view._better_inventory_options_panel_collapsed = nil
-	view._better_inventory_options_panel_visible = nil
-	view._better_inventory_options_panel_height = nil
-	view._better_inventory_options_panel_pivot_x = nil
-	view._better_inventory_options_panel_pivot_y = nil
-	view._better_inventory_options_panel_structure_key = nil
-	view._better_inventory_options_panel_controller_focused = nil
-	view._better_inventory_options_panel_controller_restore = nil
-	view._better_inventory_options_panel_controller_target = nil
-
-	return owned
-end
+Features.release_inventory_options_panel = PanelRuntime.release_inventory_options_panel
 
 Features.setup_inventory_options_panel = function(mod, layout, view, ViewElementGrid)
 	if mod:get("enable_inventory_options_panel_prototype") ~= true or not is_inventory_view(layout, view) or view._better_inventory_options_panel then
