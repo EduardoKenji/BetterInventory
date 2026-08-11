@@ -107,10 +107,11 @@
     {"name": "typed_fallbacks", "risk": "high", "start_line": 42, "end_line": 65}
   ],
   "test_curio_acquisition.py": [
-    {"name": "store_rotation_gate", "risk": "critical", "start_line": 1065, "end_line": 1390},
-    {"name": "purchase_revalidation", "risk": "critical", "start_line": 668, "end_line": 864},
-    {"name": "read_cancellation_and_generation", "risk": "critical", "start_line": 1391, "end_line": 1434},
-    {"name": "account_scoped_reports", "risk": "high", "start_line": 865, "end_line": 1064}
+    {"name": "store_rotation_gate", "risk": "critical", "start_line": 1072, "end_line": 1398},
+    {"name": "purchase_revalidation", "risk": "critical", "start_line": 675, "end_line": 871},
+    {"name": "read_cancellation_and_generation", "risk": "critical", "start_line": 1400, "end_line": 1430},
+    {"name": "account_mutation_deferral", "risk": "critical", "start_line": 1432, "end_line": 1462},
+    {"name": "account_scoped_reports", "risk": "high", "start_line": 872, "end_line": 1071}
   ],
   "test_curio_domains.py": [
     {"name": "context_snapshot", "risk": "high", "start_line": 20, "end_line": 33},
@@ -133,7 +134,7 @@
     {"name": "panel_composition", "risk": "high", "start_line": 44, "end_line": 49}
   ],
   "test_features.py": [
-        {"name": "discard_operation_ownership", "risk": "critical", "start_line": 2989, "end_line": 3439},
+        {"name": "discard_operation_ownership", "risk": "critical", "start_line": 2989, "end_line": 3452},
       {"name": "sorting_and_navigation", "risk": "high", "start_line": 405, "end_line": 1386},
       {"name": "optional_integration_fallbacks", "risk": "high", "start_line": 1387, "end_line": 1813},
       {"name": "panel_lifecycle", "risk": "high", "start_line": 1814, "end_line": 2988}

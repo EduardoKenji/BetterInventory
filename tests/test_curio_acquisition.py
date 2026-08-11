@@ -525,6 +525,8 @@ def main() -> None:
 		}
 
         purchase_count = 0
+        purchase_pending = false
+        pending_purchase_promise = nil
 		profile_fetch_pending = false
 		pending_profile_promise = nil
 		wallet_hook = nil
@@ -649,7 +651,12 @@ def main() -> None:
 							purchase_hook()
 						end
 
-                        return TestPromise.resolved({items = {}})
+						if purchase_pending then
+							pending_purchase_promise = TestPromise.pending()
+							return pending_purchase_promise
+						end
+
+						return TestPromise.resolved({items = {}})
                     end,
                     invalidate_wallets_cache = function()
                         wallet_cache_invalidated = true
@@ -1407,7 +1414,8 @@ def main() -> None:
     assert module.oldest_read_request_age() >= 0.5
 
     pending_profile_promise = globals_.pending_profile_promise
-    module.cancel()
+    assert module.account_mutation_inflight() is False
+    assert module.defer_for_account_operation(globals_.test_mod) is True
     assert module.active_read_request_count() == 0
     assert module.oldest_read_request_age() == 0
     assert pending_profile_promise._cancelled is True
@@ -1420,6 +1428,30 @@ def main() -> None:
     )
     assert module.active_read_request_count() == 0
     globals_.profile_fetch_pending = False
+
+    # Once a Curio purchase POST has been dispatched, Auto Crafter must not
+    # preempt it. Ownership becomes available immediately after settlement.
+    module.cancel()
+    globals_.main_menu_active = False
+    globals_.settings.automatic_curio_scan_operative_selection = False
+    globals_.settings.automatic_curio_once_per_store_rotation = False
+    globals_.purchase_pending = True
+    globals_.test_offer.offerId = "pending-purchase-health"
+    globals_.revalidated_offer.offerId = "pending-purchase-health"
+    module.begin_morningstar_pass(globals_.test_mod)
+    module.update(globals_.test_mod, 6, False)
+    assert globals_.pending_purchase_promise is not None
+    assert module.account_mutation_inflight() is True
+    assert module.is_busy() is True
+    deferred, defer_reason = module.defer_for_account_operation(globals_.test_mod)
+    assert deferred is False
+    assert "purchase request in flight" in defer_reason
+    globals_.pending_purchase_promise.resolve(
+        globals_.pending_purchase_promise, lua.table_from({"items": lua.table_from([])})
+    )
+    assert module.account_mutation_inflight() is False
+    globals_.purchase_pending = False
+    globals_.pending_purchase_promise = None
 
     # Disabled, settled buyer becomes fully dormant. Enabling remains enough
     # to wake it without relying on a prior lifecycle callback.

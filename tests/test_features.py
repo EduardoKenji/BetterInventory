@@ -3192,6 +3192,9 @@ def main() -> None:
     assert globals_.automatic_fetch_count == fetch_count_before_deferred_delete + 2
     assert globals_.captured_popup_count == popup_count_before_deferred_delete
     assert features.morningstar_auto_discard_is_busy(mod) is True
+    deferred, defer_reason = features.defer_morningstar_auto_discard_for_account_operation(mod)
+    assert deferred is False
+    assert "mutation request in flight" in defer_reason
 
     # Canceling the scheduler or switching modes must not release arbitration
     # while the destructive backend request is still in flight. A new manual
@@ -3338,6 +3341,14 @@ def main() -> None:
         globals_.captured_popup.title_text_unlocalized
         == "quick_discard_automatic_confirmation_title"
     )
+    assert globals_.automatic_fetch_count == fallback_fetch_count + 1
+    assert features.discard_owner() == "automatic"
+    assert features.defer_morningstar_auto_discard_for_account_operation(mod) is True
+    assert features.discard_owner() is None
+    assert features.morningstar_auto_discard_has_started() is False
+    # The pass is deferred, not lost, and must stay dormant while Auto Crafter
+    # owns account mutation.
+    features.update_morningstar_auto_discard(mod, 30, True)
     assert globals_.automatic_fetch_count == fallback_fetch_count + 1
     features.cancel_morningstar_auto_discard()
 
