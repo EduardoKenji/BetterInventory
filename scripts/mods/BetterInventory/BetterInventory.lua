@@ -76,6 +76,12 @@ local FeatureDomains = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/
 		invalidate_grid = function()
 			return false
 		end,
+		track_grid = function()
+			return false
+		end,
+		update = function()
+			return 0
+		end,
 	},
 })
 
@@ -313,6 +319,9 @@ local CharacterOverviewUI = no_op_module(mod:io_dofile("BetterInventory/scripts/
 	install_hooks = function()
 		return nil
 	end,
+	update_registered_views = function()
+		return 0
+	end,
 	constants = {},
 })
 
@@ -431,6 +440,7 @@ Runtime.configure({
 	AutoCrafter = AutoCrafter,
 	Capabilities = Capabilities,
 	CharacterOverviewUI = CharacterOverviewUI,
+	FeatureDomains = FeatureDomains,
 	CraftingMechanicusModifyView = CraftingMechanicusModifyView,
 	CreditsVendorView = CreditsVendorView,
 	MainMenuView = MainMenuView,

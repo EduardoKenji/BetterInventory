@@ -2,6 +2,11 @@ local Domains = {}
 
 Domains.markers = {}
 
+local tracked_marker_grids = setmetatable({}, { __mode = "k" })
+local dirty_marker_grids = setmetatable({}, { __mode = "k" })
+local marker_poll_elapsed = 0
+local MARKER_POLL_INTERVAL = 1
+
 Domains.markers.next_generation = function(current_generation)
 	return (tonumber(current_generation) or 0) + 1
 end
@@ -11,10 +16,83 @@ Domains.markers.invalidate_grid = function(item_grid)
 		return false
 	end
 
+	tracked_marker_grids[item_grid] = true
+	dirty_marker_grids[item_grid] = true
 	item_grid._better_inventory_myfavorites_dirty = true
 	item_grid._better_inventory_myfavorites_generation = Domains.markers.next_generation(item_grid._better_inventory_myfavorites_generation)
 
 	return true
+end
+
+Domains.markers.track_grid = function(item_grid)
+	if not item_grid or item_grid._better_inventory_myfavorites_active ~= true then
+		return false
+	end
+
+	tracked_marker_grids[item_grid] = true
+
+	return true
+end
+
+local function poll_marker_grids()
+	for item_grid in pairs(tracked_marker_grids) do
+		if item_grid._better_inventory_myfavorites_active ~= true then
+			tracked_marker_grids[item_grid] = nil
+			dirty_marker_grids[item_grid] = nil
+		else
+			local native_generation = item_grid._grid_generation or item_grid._layout_generation or item_grid._content_generation
+			local previous_native_generation = item_grid._better_inventory_myfavorites_native_generation
+
+			if native_generation ~= nil then
+				if native_generation ~= previous_native_generation then
+					item_grid._better_inventory_myfavorites_native_generation = native_generation
+					item_grid._better_inventory_myfavorites_dirty = true
+					dirty_marker_grids[item_grid] = true
+				end
+			else
+				-- Older Darktide builds expose no grid generation. Preserve the old
+				-- one-second fallback without wrapping every native grid update.
+				item_grid._better_inventory_myfavorites_dirty = true
+				dirty_marker_grids[item_grid] = true
+			end
+		end
+	end
+end
+
+Domains.markers.update = function(dt, synchronize_grid)
+	marker_poll_elapsed = marker_poll_elapsed + math.max(tonumber(dt) or 0, 0)
+
+	if marker_poll_elapsed >= MARKER_POLL_INTERVAL then
+		marker_poll_elapsed = marker_poll_elapsed % MARKER_POLL_INTERVAL
+		poll_marker_grids()
+	end
+
+	if next(dirty_marker_grids) == nil then
+		return 0
+	end
+
+	local refreshed = 0
+
+	for item_grid in pairs(dirty_marker_grids) do
+		if item_grid._better_inventory_myfavorites_active ~= true then
+			tracked_marker_grids[item_grid] = nil
+			dirty_marker_grids[item_grid] = nil
+		elseif item_grid._visible ~= false then
+			local tracked_widgets = item_grid._better_inventory_myfavorites_widgets
+
+			if not tracked_widgets or next(tracked_widgets) == nil then
+				item_grid._better_inventory_myfavorites_dirty = false
+				dirty_marker_grids[item_grid] = nil
+			elseif type(synchronize_grid) == "function" then
+				synchronize_grid(item_grid, tracked_widgets)
+				item_grid._better_inventory_myfavorites_dirty = false
+				dirty_marker_grids[item_grid] = nil
+				refreshed = refreshed + 1
+			end
+		end
+	end
+
+	return refreshed
 end
 
 Domains.markers.needs_refresh = function(last_generation, current_generation, dirty)

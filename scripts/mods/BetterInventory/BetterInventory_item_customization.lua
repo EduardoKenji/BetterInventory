@@ -229,6 +229,13 @@ ItemCustomization.update_runtime = function(mod, dt)
 	end
 end
 
+ItemCustomization.needs_update = function()
+	local _, persistence_pending = Store.persistence_status()
+	local editor_pending = type(Editor.has_pending) == "function" and Editor.has_pending() == true
+
+	return editor_pending or Store.has_pending_deleted_gear() == true or persistence_pending == true
+end
+
 ItemCustomization.persistence_status = function()
 	return Store.persistence_status()
 end

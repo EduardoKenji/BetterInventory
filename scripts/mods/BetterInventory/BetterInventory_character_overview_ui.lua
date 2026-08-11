@@ -13,6 +13,7 @@ local Text
 local lantern_recommendations_active = function() return false end
 local ensure_class_method
 local better_inventory_test
+local registered_character_overview_views = setmetatable({}, { __mode = "k" })
 
 local GLOBAL_STORE_SERVICE = "get_all_characters_store_custom"
 local CHARACTER_OVERVIEW_MELEE_WIDGET_TYPE = "better_inventory_character_overview_melee_weapon"
@@ -222,8 +223,8 @@ local function attach_runtime_marker_styles(widget, item_grid)
 			end
 
 			tracked_widgets[widget] = true
-			item_grid._better_inventory_myfavorites_dirty = true
-			item_grid._better_inventory_myfavorites_generation = (item_grid._better_inventory_myfavorites_generation or 0) + 1
+			FeatureDomains.markers.track_grid(item_grid)
+			FeatureDomains.markers.invalidate_grid(item_grid)
 		end
 	end
 
@@ -1311,6 +1312,37 @@ OverviewUI.bump_visual_settings_generation = function()
 	character_overview_visual_settings_generation = character_overview_visual_settings_generation + 1
 end
 
+OverviewUI.update_registered_views = function(dt)
+	local updated = 0
+
+	for view in pairs(registered_character_overview_views) do
+		if view._destroyed == true then
+			registered_character_overview_views[view] = nil
+		else
+			local update_ok, update_error = pcall(function()
+				refresh_character_overview_visual_layout_if_needed(view)
+				reconcile_character_overview_curio_widgets_if_needed(view, dt)
+				synchronize_character_overview_equipped_icons(view)
+			end)
+
+			if update_ok then
+				updated = updated + 1
+			else
+				-- A third-party inspected/read-only InventoryView can expose a
+				-- partially compatible shape. Quarantine that view instead of
+				-- throwing from BetterInventory's global frame update forever.
+				registered_character_overview_views[view] = nil
+
+				if mod and type(mod.warning) == "function" then
+					mod:warning("Character Overview compatibility update disabled for one view: %s", tostring(update_error))
+				end
+			end
+		end
+	end
+
+	return updated
+end
+
 OverviewUI.install_hooks = function(class_method_guard)
 	ensure_class_method = class_method_guard
 -- The character overview uses InventoryView's individual item-slot widgets
@@ -1345,6 +1377,10 @@ if ensure_class_method(InventoryView, "_create_entry_widget_from_config") then
 
 		local preserve_visible_equipment_placement = visible_equipment_active
 		local adjust_runtime_equipped_icon = view and view.__class_name == "InventoryView" and not preserve_visible_equipment_placement and setting_id ~= nil
+
+		if view and view.__class_name == "InventoryView" and setting_id ~= nil then
+			registered_character_overview_views[view] = true
+		end
 
 		local function create_widget(resolved_config)
 			local results = pack_values(func(view, resolved_config, suffix, callback_name, secondary_callback_name, optional_scenegraph_id))
@@ -1381,12 +1417,6 @@ if ensure_class_method(InventoryView, "_create_entry_widget_from_config") then
 		return create_widget(config)
 	end)
 end
-
-mod:hook_safe(InventoryView, "update", function(view, dt)
-	refresh_character_overview_visual_layout_if_needed(view)
-	reconcile_character_overview_curio_widgets_if_needed(view, dt)
-	synchronize_character_overview_equipped_icons(view)
-end)
 end
 
 OverviewUI.pack_values = pack_values

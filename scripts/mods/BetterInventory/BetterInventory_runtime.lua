@@ -11,6 +11,7 @@ local Diagnostics
 local AutoCrafter
 local Capabilities
 local CharacterOverviewUI
+local FeatureDomains
 local CraftingMechanicusModifyView
 local CreditsVendorView
 local MainMenuView
@@ -19,6 +20,9 @@ local ItemGridViewBase
 local ItemGridViewBaseDefinitions
 local InventoryWeaponsView
 local ViewElementGrid
+local synchronize_myfavorites_grid = function()
+	return 0
+end
 local CreditsGoodsVendorView = require("scripts/ui/views/credits_goods_vendor_view/credits_goods_vendor_view")
 
 local function configure_dependencies(dependencies)
@@ -33,6 +37,7 @@ local function configure_dependencies(dependencies)
 	AutoCrafter = dependencies.AutoCrafter
 	Capabilities = dependencies.Capabilities
 	CharacterOverviewUI = dependencies.CharacterOverviewUI
+	FeatureDomains = dependencies.FeatureDomains
 	CraftingMechanicusModifyView = dependencies.CraftingMechanicusModifyView
 	CreditsVendorView = dependencies.CreditsVendorView
 	MainMenuView = dependencies.MainMenuView
@@ -1199,8 +1204,18 @@ function mod.update(dt)
 	end
 	local auto_crafter_busy = AutoCrafter and type(AutoCrafter.is_busy) == "function" and AutoCrafter.is_busy() or false
 
-	ItemCustomization.update_runtime(mod, dt)
-	EquipmentPersistence.update(mod, dt)
+	if type(CharacterOverviewUI.update_registered_views) == "function" then
+		CharacterOverviewUI.update_registered_views(dt)
+	end
+	if FeatureDomains and FeatureDomains.markers and type(FeatureDomains.markers.update) == "function" then
+		FeatureDomains.markers.update(dt, synchronize_myfavorites_grid)
+	end
+	if type(ItemCustomization.needs_update) ~= "function" or ItemCustomization.needs_update() then
+		ItemCustomization.update_runtime(mod, dt)
+	end
+	if type(EquipmentPersistence.has_pending) ~= "function" or EquipmentPersistence.has_pending() then
+		EquipmentPersistence.update(mod, dt)
+	end
 	if Features.discard_owner() then
 		Features.reconcile_discard_transaction()
 	end
@@ -1355,10 +1370,7 @@ end
 mod:hook_safe(InventoryWeaponsView, "cb_on_favorite_pressed", function(view)
 	local item_grid = view and view._item_grid
 
-	if item_grid and item_grid._better_inventory_myfavorites_active == true then
-		item_grid._better_inventory_myfavorites_dirty = true
-		item_grid._better_inventory_myfavorites_generation = (item_grid._better_inventory_myfavorites_generation or 0) + 1
-	end
+	invalidate_myfavorites_grid(item_grid)
 
 	if mod:get("prioritize_equipped_favorites") ~= false then
 		Features.resort_inventory(mod, Layout, view)
@@ -1395,10 +1407,7 @@ mod:hook_safe(InventoryWeaponsView, "_equip_item", function(view)
 
 	local item_grid = view and view._item_grid
 
-	if item_grid and item_grid._better_inventory_myfavorites_active == true then
-		item_grid._better_inventory_myfavorites_dirty = true
-		item_grid._better_inventory_myfavorites_generation = (item_grid._better_inventory_myfavorites_generation or 0) + 1
-	end
+	invalidate_myfavorites_grid(item_grid)
 
 	if mod:get("prioritize_equipped_favorites") ~= false then
 		Features.resort_inventory(mod, Layout, view)
@@ -1706,51 +1715,16 @@ local function synchronize_myfavorites_marker(widget)
 	end
 end
 
--- Synchronize independently of favorite_icon visibility. This is required for
--- unfavorited items: equipping, unequipping, or adding/removing them from an
--- inactive loadout can move Equipped Icon+'s marker while the favorite text
--- pass is hidden. Run after the native grid update so BetterInventory never
--- wraps or inherits ownership of Darktide's O(inventory) widget traversal.
-if ensure_class_method(ViewElementGrid, "update") then
-	mod:hook_safe(ViewElementGrid, "update", function(item_grid)
-		if not item_grid or item_grid._better_inventory_myfavorites_active ~= true or item_grid._visible == false then
-			return
-		end
-
-		local tracked_widgets = item_grid._better_inventory_myfavorites_widgets
-
-		if not tracked_widgets or next(tracked_widgets) == nil then
-			return
-		end
-
-		local native_generation = item_grid._grid_generation or item_grid._layout_generation or item_grid._content_generation
-		local previous_native_generation = item_grid._better_inventory_myfavorites_native_generation
-
-		if native_generation ~= nil and native_generation ~= previous_native_generation then
-			item_grid._better_inventory_myfavorites_native_generation = native_generation
-			item_grid._better_inventory_myfavorites_dirty = true
-		elseif native_generation == nil then
-			-- Some Darktide builds expose no grid generation. Keep a bounded,
-			-- conservative fallback for backend-driven rebinds that bypass our
-			-- creation/favorite/equip hooks, while leaving idle frames untouched.
-			item_grid._better_inventory_myfavorites_fallback_frames = (item_grid._better_inventory_myfavorites_fallback_frames or 0) + 1
-
-			if item_grid._better_inventory_myfavorites_fallback_frames >= 60 then
-				item_grid._better_inventory_myfavorites_fallback_frames = 0
-				item_grid._better_inventory_myfavorites_dirty = true
-			end
-		end
-
-		if item_grid._better_inventory_myfavorites_dirty ~= true then
-			return
-		end
-
-		for widget in pairs(tracked_widgets) do
+synchronize_myfavorites_grid = function(_, tracked_widgets)
+	local sync_ok, sync_error = pcall(function()
+		for widget in pairs(tracked_widgets or {}) do
 			synchronize_myfavorites_marker(widget)
 		end
-
-		item_grid._better_inventory_myfavorites_dirty = false
 	end)
+
+	if not sync_ok and mod and type(mod.warning) == "function" then
+		mod:warning("MyFavorites marker reconciliation skipped after a compatibility error: %s", tostring(sync_error))
+	end
 end
 
 mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layout, content_blueprints, ...)
