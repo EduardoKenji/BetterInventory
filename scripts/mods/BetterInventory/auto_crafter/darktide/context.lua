@@ -1,5 +1,31 @@
 local Context = {}
 
+local function safe_member(value, key)
+	if type(value) ~= "table" and type(value) ~= "userdata" then
+		return nil
+	end
+
+	local ok, result = pcall(function()
+		return value[key]
+	end)
+
+	return ok and result or nil
+end
+
+local function live_player()
+	local managers = rawget(_G, "Managers")
+	local player_manager = managers and managers.player
+	local local_player = player_manager and player_manager.local_player
+
+	if type(local_player) ~= "function" then
+		return nil
+	end
+
+	local ok, player = pcall(local_player, player_manager, 1)
+
+	return ok and player and not safe_member(player, "__deleted") and player or nil
+end
+
 local function is_brunt_view_class(view)
 	local class_name = view and view.__class_name
 
@@ -38,60 +64,76 @@ function Context.new(dependencies)
 
 	local context = {}
 
+	function context:current_identity()
+		if type(dependencies.current_identity) == "function" then
+			local ok, identity = pcall(dependencies.current_identity)
+
+			if ok and type(identity) == "table" then
+				return identity
+			end
+		end
+
+		if type(dependencies.current_character_id) == "function" or type(dependencies.current_archetype) == "function" then
+			local id_ok, character_id = pcall(dependencies.current_character_id or function() end)
+			local archetype_ok, archetype = pcall(dependencies.current_archetype or function() end)
+
+			return {
+				archetype = archetype_ok and archetype or nil,
+				character_id = id_ok and character_id ~= nil and tostring(character_id) or nil,
+				stable = true,
+			}
+		end
+
+		local player = live_player()
+		if not player then
+			return {
+				reason = "character_context_unavailable",
+				stable = false,
+			}
+		end
+
+		local player_character_id
+		local character_id_method = safe_member(player, "character_id")
+		if type(character_id_method) == "function" then
+			local id_ok, value = pcall(character_id_method, player)
+			player_character_id = id_ok and value ~= nil and tostring(value) or nil
+		end
+
+		local profile
+		local profile_method = safe_member(player, "profile")
+		if type(profile_method) == "function" then
+			local profile_ok, value = pcall(profile_method, player)
+			profile = profile_ok and value or nil
+		end
+
+		local profile_character_id = safe_member(profile, "character_id")
+		profile_character_id = profile_character_id ~= nil and tostring(profile_character_id) or nil
+		local archetype = safe_member(profile, "archetype")
+		local archetype_name = safe_member(archetype, "name") or safe_member(archetype, "archetype_name")
+		local mismatched = player_character_id and profile_character_id and player_character_id ~= profile_character_id
+		local complete = (player_character_id or profile_character_id) ~= nil and archetype_name ~= nil
+		local stable = complete and not mismatched
+
+		return {
+			archetype = stable and archetype_name and tostring(archetype_name) or nil,
+			character_id = stable and (player_character_id or profile_character_id) or nil,
+			player_character_id = player_character_id,
+			profile_character_id = profile_character_id,
+			reason = stable and nil or mismatched and "character_context_settling" or "character_context_unavailable",
+			stable = stable,
+		}
+	end
+
 	function context:current_character_id()
-		if type(dependencies.current_character_id) == "function" then
-			local ok, character_id = pcall(dependencies.current_character_id)
+		local identity = self:current_identity()
 
-			return ok and character_id or nil
-		end
-
-		local managers = rawget(_G, "Managers")
-		local player_manager = managers and managers.player
-		local ok, player = pcall(player_manager and player_manager.local_player or function () end, player_manager, 1)
-
-		if not ok or not player or player.__deleted then
-			return nil
-		end
-
-		if type(player.character_id) == "function" then
-			local id_ok, character_id = pcall(player.character_id, player)
-
-			if id_ok and character_id ~= nil then
-				return tostring(character_id)
-			end
-		end
-
-		if type(player.profile) == "function" then
-			local profile_ok, profile = pcall(player.profile, player)
-
-			if profile_ok and type(profile) == "table" and profile.character_id ~= nil then
-				return tostring(profile.character_id)
-			end
-		end
-
-		return nil
+		return identity and identity.stable ~= false and identity.character_id or nil
 	end
 
 	function context:current_archetype()
-		if type(dependencies.current_archetype) == "function" then
-			local ok, archetype = pcall(dependencies.current_archetype)
+		local identity = self:current_identity()
 
-			return ok and archetype or nil
-		end
-
-		local managers = rawget(_G, "Managers")
-		local player_manager = managers and managers.player
-		local ok, player = pcall(player_manager and player_manager.local_player or function () end, player_manager, 1)
-
-		if not ok or not player or player.__deleted or type(player.profile) ~= "function" then
-			return nil
-		end
-
-		local profile_ok, profile = pcall(player.profile, player)
-		local archetype = profile_ok and profile and profile.archetype
-		local name = archetype and (archetype.name or archetype.archetype_name)
-
-		return name and tostring(name) or nil
+		return identity and identity.stable ~= false and identity.archetype or nil
 	end
 
 	function context:is_morningstar()

@@ -755,9 +755,13 @@ function AutoCrafter.configure(dependencies)
 		local data = snapshot and snapshot.data or {}
 		local store = data.store or {}
 		local offers = store.offers or {}
+		local identity = runtime_context and runtime_context:current_identity() or nil
 
 		return {
-			active_archetype = runtime_context and runtime_context:current_archetype() or nil,
+			active_archetype = identity and identity.archetype or nil,
+			character_id = identity and identity.character_id or nil,
+			identity_reason = identity and identity.reason or "character_context_unavailable",
+			identity_stable = identity and identity.stable ~= false or false,
 			dump_target = tonumber(setting("auto_crafter_dump_stat_target", 60)) or 60,
 			localize_offer_label = game_localize,
 			melee_offers = offers,

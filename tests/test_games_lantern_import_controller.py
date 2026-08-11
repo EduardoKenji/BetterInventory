@@ -214,6 +214,40 @@ def main() -> None:
     assert mismatch._begin_catalog_resolution(mismatch) is False
     assert mismatch_reports == [("import_failed", "source=skitarii->cryptic active=veteran->veteran")]
 
+    settling_reports = []
+    settling_resolver_calls = []
+    settling_resolver = to_lua(
+        {
+            "resolve_identities": callback_wrapper(
+                lambda model, context: settling_resolver_calls.append(True)
+                or (identity, None)
+            )
+        }
+    )
+    settling = import_module.new(
+        to_lua(
+            {
+                "resolver": settling_resolver,
+                "get_resolution_context": callback_wrapper(
+                    lambda: to_lua(
+                        {
+                            "identity_stable": False,
+                            "identity_reason": "character_context_settling",
+                        }
+                    )
+                ),
+                "report": callback_wrapper(
+                    lambda kind, payload: settling_reports.append(str(payload["reason"]))
+                ),
+            }
+        )
+    )
+    settling._model = build_model
+    assert settling._begin_catalog_resolution(settling) is False
+    assert settling.snapshot(settling)["last_error"] == "character_context_settling"
+    assert settling_resolver_calls == []
+    assert settling_reports == ["character_context_settling"]
+
 
 if __name__ == "__main__":
     main()

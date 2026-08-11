@@ -187,6 +187,11 @@ function ImportController.new(dependencies)
 		if not context_ok or type(context) ~= "table" then
 			return fail("resolution_context_unavailable", { error = context })
 		end
+		if context.identity_stable == false then
+			return fail(context.identity_reason or "character_context_settling", {
+				error = "wait for the active character profile to finish switching",
+			})
+		end
 		context.weapon_choices = self._weapon_choices
 
 		local identity, identity_reason, choice_request = self._resolver.resolve_identities(self._model, context)

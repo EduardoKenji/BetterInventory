@@ -21,6 +21,7 @@ def main() -> None:
     # owns neither mod, does not call either API, and remains safe when either is absent.
     assert "get_mod(\"Lantern of the Omnissiah\")" not in facade_source
     assert "get_mod(\"InstantCharacterChange\")" not in facade_source
+    assert "runtime_context:current_identity()" in facade_source
     assert "GamesLanternClipboardHost.read" in facade_source
     assert "can_import = games_lantern_import_allowed" in facade_source
     assert "if ctrl_v and not self._ctrl_v_down" in panel_source

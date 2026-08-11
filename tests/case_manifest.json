@@ -24,6 +24,9 @@
     {"name": "complete_authoritative_inventory_summary", "risk": "critical", "start_line": 16, "end_line": 120},
         {"name": "trait_mutation_contract_and_fail_closed_validation", "risk": "critical", "start_line": 122, "end_line": 169}
   ],
+  "test_auto_crafter_context.py": [
+    {"name": "atomic_character_identity_and_switch_settlement", "risk": "critical", "start_line": 16, "end_line": 98}
+  ],
     "test_auto_crafter_facade.py": [
       {"name": "frame_update_crash_containment", "risk": "critical", "start_line": 14, "end_line": 36}
   ],
@@ -96,7 +99,8 @@
       {"name": "atomic_import_lifecycle_stale_callback_and_duplicate_paste_guard", "risk": "critical", "start_line": 11, "end_line": 123},
       {"name": "explicit_ambiguous_weapon_choice", "risk": "critical", "start_line": 124, "end_line": 166},
       {"name": "invalid_clipboard_and_transport_failure_diagnostics", "risk": "critical", "start_line": 167, "end_line": 203},
-      {"name": "canonical_archetype_mismatch_diagnostics", "risk": "critical", "start_line": 204, "end_line": 216}
+      {"name": "canonical_archetype_mismatch_diagnostics", "risk": "critical", "start_line": 204, "end_line": 216},
+      {"name": "character_switch_settlement_fails_before_resolution", "risk": "critical", "start_line": 217, "end_line": 249}
     ],
     "test_games_lantern_compatibility.py": [
       {"name": "optional_mod_lifecycle_admission_and_four_run_soak", "risk": "critical", "start_line": 1, "end_line": 176}
@@ -161,7 +165,7 @@
     {"name": "migration_preservation", "risk": "high", "start_line": 385, "end_line": 504},
     {"name": "character_overview_refresh", "risk": "high", "start_line": 505, "end_line": 1359},
     {"name": "localization_contract", "risk": "medium", "start_line": 1360, "end_line": 2249},
-    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2250, "end_line": 2456}
+      {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2250, "end_line": 2503}
   ],
   "test_settings_registry.py": [
     {"name": "duplicate_detection", "risk": "high", "start_line": 53, "end_line": 78},
