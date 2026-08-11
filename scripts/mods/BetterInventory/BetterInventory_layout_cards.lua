@@ -370,8 +370,12 @@ local function populate_card_content(mod, widget, element, blessing_display_mode
 	content.better_inventory_quick_look_card_dump_stat_parenthesized = nil
 
 	local item = item_from_element(element or content.element)
+	local weapon = is_weapon(item)
+	local curio = not weapon and is_curio(item)
+	content.better_inventory_is_weapon = weapon
+	content.better_inventory_is_curio = curio
 
-	if is_weapon(item) then
+	if weapon then
 		if show_weapon_modifiers then
 			populate_weapon_modifier_content(mod, content, item)
 		end
@@ -430,7 +434,7 @@ local function populate_card_content(mod, widget, element, blessing_display_mode
 		return
 	end
 
-	if not is_curio(item) then
+	if not curio then
 		return
 	end
 
@@ -869,8 +873,11 @@ local function configure_equipped_highlight(mod, pass_template, card_width, card
 		0,
 		3,
 	}
+	-- Setting changes invalidate active view composition. Capture once per
+	-- blueprint instead of calling DMF once per card on every draw pass.
+	local highlight_enabled = setting(mod, "highlight_equipped_items", true)
 	highlight.visibility_function = function(content)
-		return setting(mod, "highlight_equipped_items", true) and content and content.equipped == true
+		return highlight_enabled and content and content.equipped == true
 	end
 end
 

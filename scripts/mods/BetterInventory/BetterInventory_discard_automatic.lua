@@ -4,6 +4,7 @@ local AutomaticDiscard = {}
 
 local AUTOMATIC_DISCARD_DELAY = 5
 local AUTOMATIC_DISCARD_MAX_FETCH_ATTEMPTS = 3
+local AUTOMATIC_DISCARD_IDLE_POLL_INTERVAL = 0.25
 
 local function current_game_mode_name()
 	local state = Managers and Managers.state
@@ -75,6 +76,7 @@ local function new_state()
 		mutation_pipeline_inflight = false,
 		mutation_transaction_token = nil,
 		elapsed = 0,
+		idle_poll_elapsed = 0,
 		fetch_attempts = 0,
 		read_promise = nil,
 		read_inflight = false,
@@ -472,6 +474,7 @@ function AutomaticDiscard.new(transaction, dependencies)
 		self:cancel_read_promise()
 		state.token = state.token + 1
 		state.elapsed = 0
+		state.idle_poll_elapsed = 0
 		state.fetch_attempts = 0
 		state.started = false
 		state.scheduled = enabled(mod)
@@ -492,6 +495,7 @@ function AutomaticDiscard.new(transaction, dependencies)
 
 		state.token = state.token + 1
 		state.elapsed = 0
+		state.idle_poll_elapsed = 0
 		state.fetch_attempts = 0
 		state.hub_character_id = nil
 		state.scheduled = enabled(mod)
@@ -528,6 +532,26 @@ function AutomaticDiscard.new(transaction, dependencies)
 
 			return
 		end
+
+		-- Settled one-shot work only needs to notice character/context changes.
+		-- Poll that idle state at 4 Hz; scheduled and in-flight work stays fully
+		-- frame-responsive.
+		local idle = state.hub_character_id ~= nil
+			and not state.scheduled
+			and not state.started
+			and not state.read_inflight
+			and not state.delete_inflight
+			and self._transaction:active_owner() ~= "automatic"
+
+		if idle then
+			state.idle_poll_elapsed = state.idle_poll_elapsed + (tonumber(dt) or 0)
+
+			if state.idle_poll_elapsed < AUTOMATIC_DISCARD_IDLE_POLL_INTERVAL then
+				return
+			end
+		end
+
+		state.idle_poll_elapsed = 0
 
 		local game_mode_name = current_game_mode_name()
 

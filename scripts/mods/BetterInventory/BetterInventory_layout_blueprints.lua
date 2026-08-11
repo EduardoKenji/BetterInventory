@@ -90,6 +90,26 @@ local add_custom_content_passes = Cards.add_custom_content_passes
 local grid_weapon_name_font_size = Cards.grid_weapon_name_font_size
 local configure_card_content = Cards.configure_card_content
 
+local function content_is_curio(card_content)
+	local cached = card_content and card_content.better_inventory_is_curio
+
+	if cached ~= nil then
+		return cached == true
+	end
+
+	return is_curio(item_from_content(card_content))
+end
+
+local function content_is_weapon(card_content)
+	local cached = card_content and card_content.better_inventory_is_weapon
+
+	if cached ~= nil then
+		return cached == true
+	end
+
+	return is_weapon(item_from_content(card_content))
+end
+
 local INVENTORY_CANVAS_WIDTH = 1920
 local INVENTORY_EDGE_MARGIN = 16
 local WEAPON_ACTIONS_PANEL_WIDTH = 420
@@ -219,18 +239,16 @@ Blueprints.configure_native_item_blueprint = function(mod, item_blueprint, grid_
 	end
 
 	preserve_visibility(display_name, function(content)
-		return not detailed_curio_profile or not is_curio(item_from_content(content))
+		return not detailed_curio_profile or not content_is_curio(content)
 	end)
 
 	if sub_display_name then
 		sub_display_name.visibility_function = function(content)
-			local item = item_from_content(content)
-
-			if is_curio(item) then
+			if content_is_curio(content) then
 				return show_curio_quality and not detailed_curio_profile
 			end
 
-			return is_weapon(item) and show_pattern_mark
+			return content_is_weapon(content) and show_pattern_mark
 		end
 	end
 
@@ -238,7 +256,7 @@ Blueprints.configure_native_item_blueprint = function(mod, item_blueprint, grid_
 		local show_weapon_quality = setting(mod, "show_rarity_name", false)
 
 		rarity_name.visibility_function = function(content)
-			return show_weapon_quality and is_weapon(item_from_content(content))
+			return show_weapon_quality and content_is_weapon(content)
 		end
 	end
 
@@ -266,7 +284,7 @@ Blueprints.configure_native_item_blueprint = function(mod, item_blueprint, grid_
 	end
 
 	preserve_visibility(item_level, function(content)
-		return not is_curio(item_from_content(content)) or show_curio_item_level
+		return not content_is_curio(content) or show_curio_item_level
 	end)
 
 	if global_store_multicolumn and item_level and item_level.style then
@@ -573,7 +591,7 @@ Blueprints.configure_item_blueprint = function(mod, item_blueprint, grid_width, 
 		display_name.style.word_wrap = false
 	end
 	preserve_visibility(display_name, function(content)
-		return not detailed_curio_profile or not is_curio(item_from_content(content))
+		return not detailed_curio_profile or not content_is_curio(content)
 	end)
 
 	local sub_display_name = pass_by_style_id(pass_template, "sub_display_name")
@@ -594,13 +612,11 @@ Blueprints.configure_item_blueprint = function(mod, item_blueprint, grid_width, 
 
 	if sub_display_name then
 		sub_display_name.visibility_function = function(content)
-			local item = item_from_content(content)
-
-			if is_curio(item) then
+			if content_is_curio(content) then
 				return show_curio_quality and not detailed_curio_profile
 			end
 
-			return is_weapon(item) and show_pattern_mark
+			return content_is_weapon(content) and show_pattern_mark
 		end
 	end
 
@@ -622,7 +638,7 @@ Blueprints.configure_item_blueprint = function(mod, item_blueprint, grid_width, 
 		local show_weapon_quality = setting(mod, "show_rarity_name", false)
 
 		rarity_name.visibility_function = function(content)
-			return show_weapon_quality and is_weapon(item_from_content(content))
+			return show_weapon_quality and content_is_weapon(content)
 		end
 	end
 
@@ -658,7 +674,7 @@ Blueprints.configure_item_blueprint = function(mod, item_blueprint, grid_width, 
 		item_level.style.offset[2] = -global_store_price_row_offset
 	end
 	preserve_visibility(item_level, function(content)
-		return not is_curio(item_from_content(content)) or show_curio_item_level
+		return not content_is_curio(content) or show_curio_item_level
 	end)
 
 	if configuration.store_item then

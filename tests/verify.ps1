@@ -48,8 +48,8 @@ if ($main -notmatch 'mod:hook\(InventoryWeaponsView,\s*"_handle_input"' -or $mai
 	throw "The multi-column controller-navigation guard was not found."
 }
 
-if ($main -match 'mod:hook_safe\(InventoryWeaponsView,\s*"update"') {
-	throw "InventoryWeaponsView.update must use one hook type so DMF hot reload does not reject a duplicate rehook."
+if ($main -notmatch 'mod:hook_safe\(InventoryWeaponsView,\s*"update"' -or $main -match 'mod:hook\(InventoryWeaponsView,\s*"update"') {
+	throw "InventoryWeaponsView.update must use only the post-update safe hook so native inventory traversal is not attributed to BetterInventory."
 }
 
 if ($main -notmatch 'mod:hook\(CraftingMechanicusModifyView,\s*"present_grid_layout"') {
@@ -76,7 +76,7 @@ if ($curioVisualPlan -notmatch 'Coordinate contract and regression guard' -or $c
 	throw "The native Curio coordinate contract is missing from the v1.9.4 visual plan."
 }
 
-if ($main -notmatch 'move_up\s*=\s*9' -or $main -notmatch 'move_down\s*=\s*6' -or $main -notmatch 'move_down\s*=\s*4' -or $main -notmatch 'style\.offset\[2\]\s*=\s*\(style\.offset\[2\]\s*or\s*0\)\s*-\s*6' -or $main -notmatch 'style\.offset\[1\]\s*=\s*math\.max\(style\.offset\[1\]\s*or\s*0,\s*weapon_name_left\)' -or $main -notmatch 'character_overview_curio_name_mode' -or $main -notmatch 'character_overview_curio_font_size_percent' -or $main -notmatch 'curio_name_line_limit\s*=\s*curio_name_mode\s*==\s*"two_lines"\s*and\s*2' -or $main -notmatch 'curio_name_block_height\s*=\s*curio_name_font_size\s*\*\s*curio_name_line_limit\s*\+\s*11' -or $main -notmatch 'stat_style\.offset\[2\]\s*=\s*\(stat_style\.offset\[2\]\s*or\s*0\)\s*\+\s*curio_name_block_height' -or $main -notmatch 'Text\.word_wrap\(ui_renderer,\s*full_name,\s*title_style,\s*title_width\)' -or $main -notmatch 'table\.concat\(wrapped_rows,\s*"\\n"\)' -or $main -notmatch 'title_style\.font_size\s*=\s*curio_name_font_size' -or $main -notmatch 'fit_curio_text\(widget,\s*ui_renderer,\s*false\)') {
+if ($main -notmatch 'move_up\s*=\s*9' -or $main -notmatch 'move_down\s*=\s*6' -or $main -notmatch 'move_down\s*=\s*4' -or $main -notmatch 'style\.offset\[2\]\s*=\s*\(style\.offset\[2\]\s*or\s*0\)\s*-\s*6' -or $main -notmatch 'style\.offset\[1\]\s*=\s*math\.max\(style\.offset\[1\]\s*or\s*0,\s*weapon_name_left\)' -or $main -notmatch 'character_overview_curio_name_mode' -or $main -notmatch 'character_overview_curio_font_size_percent' -or $main -notmatch 'curio_name_line_limit\s*=\s*curio_name_mode\s*==\s*"two_lines"\s*and\s*2' -or $main -notmatch 'curio_name_block_height\s*=\s*curio_name_font_size\s*\*\s*curio_name_line_limit\s*\+\s*11' -or $main -notmatch 'stat_style\.offset\[2\]\s*=\s*\(stat_style\.offset\[2\]\s*or\s*0\)\s*\+\s*curio_name_block_height' -or $main -notmatch 'Text\.word_wrap\(ui_renderer,\s*full_name,\s*title_style,\s*title_width\)' -or $main -notmatch 'table\.concat\(wrapped_rows,\s*"\\n"\)' -or $main -notmatch 'title_style\.font_size\s*=\s*curio_name_font_size' -or $main -notmatch 'reconcile_character_overview_curio_widgets_if_needed' -or $main -notmatch 'CHARACTER_OVERVIEW_RECONCILE_INTERVAL\s*=\s*0\.25') {
 	throw "Character overview visual offsets or Curio font scaling were not found."
 }
 
@@ -197,7 +197,7 @@ if ((($features -notmatch 'return automatic_discard_state\.delete_inflight' -and
 	throw "Automatic discard must retain shared ownership until backend deletion settles."
 }
 
-if ($main -notmatch '_better_inventory_myfavorites_active\s*=\s*true' -or $main -notmatch '_better_inventory_myfavorites_active\s*~=\s*true' -or $main -notmatch 'local pass_input, pass_draw = func\(view, dt, t, input_service\)' -or $main -notmatch 'func\(item_grid, \.\.\.\)' -or $main -notmatch '_better_inventory_myfavorites_dirty' -or $main -notmatch 'hotspot_style\.offset\[2\] == offset_y') {
+if ($main -notmatch '_better_inventory_myfavorites_active\s*=\s*true' -or $main -notmatch '_better_inventory_myfavorites_active\s*~=\s*true' -or $main -notmatch 'mod:hook_safe\(InventoryWeaponsView,\s*"update"' -or $main -notmatch 'mod:hook_safe\(ViewElementGrid,\s*"update"' -or $main -notmatch '_better_inventory_myfavorites_dirty' -or $main -notmatch 'hotspot_style\.offset\[2\] == offset_y') {
 	throw "Known UI update contracts and MyFavorites idle fast paths were not found."
 }
 
@@ -236,7 +236,7 @@ if ($main -notmatch 'Features\.set_item_sorting_integration\(get_mod\("ItemSorti
 	throw "ItemSorting inventory/store panel integration was not found."
 }
 
-if ($data -notmatch 'setting_id\s*=\s*"myfavorites_integration_group"' -or $data -match 'setting_id\s*=\s*"enable_myfavorites_integration"' -or $data -notmatch 'setting_id\s*=\s*"myfavorites_show_favorite_letter"[\s\S]*?default_value\s*=\s*false' -or $layout -notmatch 'myfavorites_compatibility\s*=\s*myfavorites_hotspot\s+and\s+myfavorites_hotspot\.style' -or $layout -notmatch 'resolved_size\s*=\s*size\s+or\s+hotspot_style\.size' -or $main -notmatch 'mod:hook\(ViewElementGrid,\s*"_create_entry_widget_from_config"' -or $main -notmatch 'attach_runtime_marker_styles\(widget,\s*item_grid\)' -or $main -notmatch 'content\.better_inventory_myfavorites_hotspot_style\s*=\s*styles\.myfav_hotspot' -or $main -notmatch 'better_inventory_equipped_icon_visibility_function\s*=\s*pass\.visibility_function' -or $main -notmatch 'mod:hook\(ViewElementGrid,\s*"_update_grid_widgets"' -or $main -notmatch '_better_inventory_myfavorites_widgets' -or $main -notmatch 'tracked_widgets\[widget\]\s*=\s*true' -or $main -notmatch 'next\(tracked_widgets\)' -or $main -notmatch 'synchronize_myfavorites_marker\(widget\)' -or $layout -notmatch 'runtime_hotspot_style\.offset\[2\]\s*=\s*offset_y' -or $layout -notmatch 'content\.favorite_icon\s*=\s*compact_favorite_value' -or $layout -notmatch 'align_myfavorites_hotspot') {
+if ($data -notmatch 'setting_id\s*=\s*"myfavorites_integration_group"' -or $data -match 'setting_id\s*=\s*"enable_myfavorites_integration"' -or $data -notmatch 'setting_id\s*=\s*"myfavorites_show_favorite_letter"[\s\S]*?default_value\s*=\s*false' -or $layout -notmatch 'myfavorites_compatibility\s*=\s*myfavorites_hotspot\s+and\s+myfavorites_hotspot\.style' -or $layout -notmatch 'resolved_size\s*=\s*size\s+or\s+hotspot_style\.size' -or $main -notmatch 'mod:hook\(ViewElementGrid,\s*"_create_entry_widget_from_config"' -or $main -notmatch 'attach_runtime_marker_styles\(widget,\s*item_grid\)' -or $main -notmatch 'content\.better_inventory_myfavorites_hotspot_style\s*=\s*styles\.myfav_hotspot' -or $main -notmatch 'better_inventory_equipped_icon_visibility_function\s*=\s*pass\.visibility_function' -or $main -notmatch 'mod:hook_safe\(ViewElementGrid,\s*"update"' -or $main -notmatch '_better_inventory_myfavorites_widgets' -or $main -notmatch 'tracked_widgets\[widget\]\s*=\s*true' -or $main -notmatch 'next\(tracked_widgets\)' -or $main -notmatch 'synchronize_myfavorites_marker\(widget\)' -or $layout -notmatch 'runtime_hotspot_style\.offset\[2\]\s*=\s*offset_y' -or $layout -notmatch 'content\.favorite_icon\s*=\s*compact_favorite_value' -or $layout -notmatch 'align_myfavorites_hotspot') {
 	throw "MyFavorites compact-marker compatibility integration was not found."
 }
 

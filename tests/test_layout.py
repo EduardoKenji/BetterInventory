@@ -2114,9 +2114,16 @@ def main() -> None:
         lua.table_from({"equipped": False})
     ) is False
     mod.settings.highlight_equipped_items = False
+    # Active setting changes rebuild view composition. Existing blueprints keep
+    # their captured hot-path value; rebuilt blueprints see the new setting.
     assert equipped_highlight.visibility_function(
         lua.table_from({"equipped": True})
-    ) is False
+    ) is True
+    highlight_disabled_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, highlight_disabled_blueprint, 640)
+    assert blueprint_pass(
+        highlight_disabled_blueprint, "better_inventory_equipped_highlight"
+    ).visibility_function(lua.table_from({"equipped": True})) is False
     mod.settings.highlight_equipped_items = True
 
     name_style = blueprint.pass_template[3].style

@@ -1324,22 +1324,22 @@ if ensure_class_method(CreditsVendorView, "_setup_sort_options") then
 end
 
 if ensure_class_method(InventoryWeaponsView, "update") then
-	mod:hook(InventoryWeaponsView, "update", function(func, view, dt, t, input_service)
-		Features.capture_inventory_options_panel_controller_focus(mod, Layout, view, input_service)
-		Features.capture_inventory_controller_navigation(view, input_service)
-		-- InventoryWeaponsView ultimately returns BaseView's two-value input/draw
-		-- contract. Keep those values without allocating a vararg table each frame.
-		local pass_input, pass_draw = func(view, dt, t, input_service)
-
+	-- Post-update work does not need to wrap Darktide's complete inventory update.
+	-- Besides adding a hot-path call frame, wrapper ownership makes performance
+	-- monitors charge the native O(inventory) traversal to BetterInventory.
+	mod:hook_safe(InventoryWeaponsView, "update", function(view, dt, t, input_service)
 		Features.update_inventory_sort_toggle(mod, Layout, view)
 		Features.update_inventory_options_panel_controller_selection(view, input_service)
-
-		return pass_input, pass_draw
 	end)
 end
 
 if ensure_class_method(InventoryWeaponsView, "_handle_input") then
 	mod:hook(InventoryWeaponsView, "_handle_input", function(func, view, input_service, ...)
+		-- These two captures must precede native input handling. Keeping them here
+		-- preserves same-frame controller behavior without wrapping the full update.
+		Features.capture_inventory_options_panel_controller_focus(mod, Layout, view, input_service)
+		Features.capture_inventory_controller_navigation(view, input_service)
+
 		if Features.inventory_options_panel_controller_focused(view) or Features.consume_inventory_controller_grid_navigation(view) then
 			-- View elements process directional input before the parent view. The
 			-- multi-column item grid has already moved right this frame, so bypass
@@ -1374,6 +1374,7 @@ end
 if ensure_class_method(InventoryBackgroundView, "event_player_profile_updated") then
 	mod:hook_safe(InventoryBackgroundView, "event_player_profile_updated", function(view, peer_id, local_player_id)
 		EquipmentPersistence.refresh_from_authoritative_profile(view, peer_id, local_player_id)
+		invalidate_myfavorites_grid(view and view._item_grid)
 	end)
 end
 
@@ -1410,25 +1411,20 @@ mod:hook_safe(InventoryWeaponsView, "on_exit", function(view)
 end)
 
 if ensure_class_method(CreditsVendorView, "update") then
-	mod:hook(CreditsVendorView, "update", function(func, view, dt, t, input_service)
-		if is_armoury_sort_view(view) then
-			Features.capture_armoury_sort_panel_controller_focus(mod, view, input_service)
-		end
-
-		-- VendorViewBase/BaseView has the same fixed two-value update contract.
-		local pass_input, pass_draw = func(view, dt, t, input_service)
-
+	mod:hook_safe(CreditsVendorView, "update", function(view)
 		if is_armoury_sort_view(view) then
 			Features.update_armoury_native_sort_panel(view)
 			align_quick_level_mastery_buttons(view)
 		end
-
-		return pass_input, pass_draw
 	end)
 end
 
 if ensure_class_method(CreditsVendorView, "_handle_input") then
 	mod:hook(CreditsVendorView, "_handle_input", function(func, view, input_service, ...)
+		if is_armoury_sort_view(view) then
+			Features.capture_armoury_sort_panel_controller_focus(mod, view, input_service)
+		end
+
 		if Features.armoury_sort_panel_controller_focused(view) then
 			-- The panel's ViewElementGrid already processed navigation this frame.
 			-- Skip VendorViewBase's A-to-purchase path while widget focus is active.
@@ -1713,22 +1709,19 @@ end
 -- Synchronize independently of favorite_icon visibility. This is required for
 -- unfavorited items: equipping, unequipping, or adding/removing them from an
 -- inactive loadout can move Equipped Icon+'s marker while the favorite text
--- pass is hidden. The input hotspot must still be ready at the correct place.
-if ensure_class_method(ViewElementGrid, "_update_grid_widgets") then
-	mod:hook(ViewElementGrid, "_update_grid_widgets", function(func, item_grid, ...)
-		if not item_grid or item_grid._better_inventory_myfavorites_active ~= true then
-			return func(item_grid, ...)
+-- pass is hidden. Run after the native grid update so BetterInventory never
+-- wraps or inherits ownership of Darktide's O(inventory) widget traversal.
+if ensure_class_method(ViewElementGrid, "update") then
+	mod:hook_safe(ViewElementGrid, "update", function(item_grid)
+		if not item_grid or item_grid._better_inventory_myfavorites_active ~= true or item_grid._visible == false then
+			return
 		end
 
-		local tracked_widgets = item_grid and item_grid._better_inventory_myfavorites_widgets
+		local tracked_widgets = item_grid._better_inventory_myfavorites_widgets
 
 		if not tracked_widgets or next(tracked_widgets) == nil then
-			return func(item_grid, ...)
+			return
 		end
-
-		-- Darktide's _update_grid_widgets contract returns no values. Calling it
-		-- directly avoids allocating a packed vararg table for every active grid.
-		func(item_grid, ...)
 
 		local native_generation = item_grid._grid_generation or item_grid._layout_generation or item_grid._content_generation
 		local previous_native_generation = item_grid._better_inventory_myfavorites_native_generation
@@ -1742,7 +1735,7 @@ if ensure_class_method(ViewElementGrid, "_update_grid_widgets") then
 			-- creation/favorite/equip hooks, while leaving idle frames untouched.
 			item_grid._better_inventory_myfavorites_fallback_frames = (item_grid._better_inventory_myfavorites_fallback_frames or 0) + 1
 
-			if item_grid._better_inventory_myfavorites_fallback_frames >= 15 then
+			if item_grid._better_inventory_myfavorites_fallback_frames >= 60 then
 				item_grid._better_inventory_myfavorites_fallback_frames = 0
 				item_grid._better_inventory_myfavorites_dirty = true
 			end

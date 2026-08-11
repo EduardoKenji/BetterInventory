@@ -236,7 +236,7 @@ def main() -> None:
 		}
 		test_view_element_grid = {
 			_create_entry_widget_from_config = function() end,
-			_update_grid_widgets = function() end,
+			update = function() end,
 		}
 		test_visible_equipment = {
 			is_enabled = function() return visible_equipment_enabled end,
@@ -319,17 +319,22 @@ def main() -> None:
 				captured_character_overview_widget_hook = callback
 			elseif target == test_view_element_grid and method == "_create_entry_widget_from_config" then
 				captured_grid_widget_hook = callback
-			elseif target == test_view_element_grid and method == "_update_grid_widgets" then
-				captured_grid_update_hook = callback
 			end
         end
 
         function test_mod:hook_safe(target, method, callback)
-            if target == test_dmf and method == "create_mod_options_settings" then
-                captured_options_hook = callback
+			if target == test_dmf and method == "create_mod_options_settings" then
+				captured_options_hook = callback
 			elseif target == test_inventory_view and method == "update" then
 				captured_character_overview_update_hook = callback
-            end
+			elseif target == test_view_element_grid and method == "update" then
+				-- Preserve the old test-call shape while exercising the post-native
+				-- safe hook used by the runtime.
+				captured_grid_update_hook = function(func, item_grid, ...)
+					func(item_grid, ...)
+					callback(item_grid, ...)
+				end
+			end
         end
 
         function get_mod(name)
@@ -819,11 +824,53 @@ def main() -> None:
     # backend-driven content changes without returning to per-frame work.
     item_grid._better_inventory_myfavorites_fallback_frames = 0
     grid_widget.content.equipped = True
-    for _ in range(14):
+    for _ in range(59):
         globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
     assert runtime_hotspot_style.offset[2] == 7
     globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
     assert runtime_hotspot_style.offset[2] == 33
+
+    # Character Overview leaves inventory grids allocated but hidden. Even a
+    # dirty high-cardinality grid must perform zero BetterInventory card scans
+    # until visible again.
+    lua.execute(
+        """
+        hidden_grid_scan_calls = 0
+        hidden_grid_widgets = {}
+        for index = 1, 1000 do
+            local hotspot = {
+                horizontal_alignment = "right",
+                vertical_alignment = "top",
+                offset = {-8, 7, 17},
+            }
+            local widget = {
+                content = {
+                    better_inventory_myfavorites_hotspot_style = hotspot,
+                    better_inventory_equipped_icon_visibility_function = function()
+                        hidden_grid_scan_calls = hidden_grid_scan_calls + 1
+                        return true
+                    end,
+                },
+                style = {
+                    favorite_icon = {offset = {-8, 7, 16}},
+                    equipped_icon = {},
+                },
+            }
+            hidden_grid_widgets[widget] = true
+        end
+        """
+    )
+    original_tracked_widgets = item_grid._better_inventory_myfavorites_widgets
+    item_grid._better_inventory_myfavorites_widgets = globals_.hidden_grid_widgets
+    item_grid._better_inventory_myfavorites_dirty = True
+    item_grid._visible = False
+    globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
+    assert globals_.hidden_grid_scan_calls == 0
+    assert item_grid._better_inventory_myfavorites_dirty is True
+    item_grid._visible = True
+    globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
+    assert globals_.hidden_grid_scan_calls == 1000
+    item_grid._better_inventory_myfavorites_widgets = original_tracked_widgets
     grid_widget.content.equipped = False
     item_grid._better_inventory_myfavorites_dirty = True
     globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)

@@ -40,6 +40,13 @@ CharacterOverview.content_revision = function(item)
 end
 
 CharacterOverview.changed = function(previous_item, current_item)
+	-- Overview widgets keep the same authoritative item object for almost every
+	-- frame. Besides being the common fast path, equal references cannot expose
+	-- an in-place revision by comparing fields on the object to themselves.
+	if previous_item == current_item then
+		return false
+	end
+
 	if previous_item == nil or current_item == nil then
 		return previous_item ~= current_item
 	end
