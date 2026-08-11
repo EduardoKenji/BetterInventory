@@ -16,7 +16,11 @@ def main() -> None:
     assert 'variant = "queue_job"' in panel
     assert "queue_current" in panel
     assert "_manual_queue_detail" in panel
-    assert '"Dump: %s %s | Perks: %s\\nBlessings: %s | Status: %s"' in panel
+    assert '"Dump stat: %s %s\\nPerk 1: %s\\nPerk 2: %s\\nBlessings: %s"' in panel
+    assert "local QUEUE_JOB_ROW_HEIGHT = 110" in panel
+    assert "Color.terminal_corner_selected(135, true)" in panel
+    assert "local current = options.queue_current == true" in panel
+    assert "if job then" in panel
     assert "_games_lantern_queue_snapshot" in panel
     assert "games_lantern_queue_snapshot" in facade
     assert "GamesLanternQueue.new" in facade

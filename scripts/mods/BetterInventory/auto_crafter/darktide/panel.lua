@@ -10,6 +10,7 @@ local ROW_HEIGHT = 32
 local COMPACT_ROW_HEIGHT = 26
 local STATUS_ROW_HEIGHT = 50
 local CURRENCY_ROW_HEIGHT = 58
+local QUEUE_JOB_ROW_HEIGHT = 110
 local STAT_GRID_BUTTON_HEIGHT = 30
 local STAT_GRID_GAP = 6
 local STAT_GRID_HEIGHT = STAT_GRID_BUTTON_HEIGHT * 2 + STAT_GRID_GAP
@@ -470,7 +471,7 @@ local function status_block_passes(width)
 end
 
 local function queue_job_passes(width, height)
-	height = height or 76
+	height = height or QUEUE_JOB_ROW_HEIGHT
 	local function current(content)
 		return content.queue_current == true
 	end
@@ -479,10 +480,11 @@ local function queue_job_passes(width, height)
 	end
 
 	return {
-		{ pass_type = "rect", style = { color = Color.terminal_corner_selected(85, true), size = { width, height }, offset = { 0, 0, 1 } }, visibility_function = current },
+		{ pass_type = "rect", style = { color = Color.terminal_corner_selected(135, true), size = { width, height }, offset = { 0, 0, 1 } }, visibility_function = current },
 		{ pass_type = "rect", style = { color = Color.terminal_background(220, true), size = { width, height }, offset = { 0, 0, 1 } }, visibility_function = not_current },
 		{ pass_type = "texture", value = "content/ui/materials/frames/frame_tile_2px", style = { color = Color.terminal_frame(255, true), size = { width, height }, offset = { 0, 0, 2 } } },
-		{ pass_type = "text", value_id = "label", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "top", text_color = Color.terminal_text_header(255, true), size = { width - 16, 20 }, offset = { 8, 5, 3 } } },
+		{ pass_type = "text", value_id = "label", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "top", text_color = Color.terminal_corner_selected(255, true), size = { width - 16, 20 }, offset = { 8, 5, 3 } }, visibility_function = current },
+		{ pass_type = "text", value_id = "label", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "top", text_color = Color.terminal_text_header(255, true), size = { width - 16, 20 }, offset = { 8, 5, 3 } }, visibility_function = not_current },
 		{ pass_type = "text", value_id = "detail", style = { font_size = 12, font_type = "proxima_nova_medium", text_horizontal_alignment = "left", text_vertical_alignment = "top", text_color = Color.terminal_text_body(255, true), size = { width - 16, height - 28 }, offset = { 8, 25, 3 } } },
 	}
 end
@@ -905,7 +907,7 @@ function Panel.new(dependencies)
 		elseif variant == "status" then
 			height = STATUS_ROW_HEIGHT
 		elseif variant == "queue_job" then
-			height = options.height or 76
+			height = options.height or QUEUE_JOB_ROW_HEIGHT
 		elseif variant == "currency" then
 			height = CURRENCY_ROW_HEIGHT
 		elseif variant == "stat_grid" then
@@ -994,6 +996,7 @@ function Panel.new(dependencies)
 		if options.queue_job then
 			entry.refresh = function(widget)
 				local queue = self:_games_lantern_queue()
+				local current = options.queue_current == true
 
 				if type(queue) == "table" then
 					local jobs = queue.jobs or {}
@@ -1001,8 +1004,12 @@ function Panel.new(dependencies)
 					local index = tonumber(options.queue_index) or 0
 					local job = jobs[index]
 
-					widget.content.queue_current = job and job.current == true or index == current_index
+					if job then
+						current = job.current == true or index == current_index
+					end
 				end
+
+				widget.content.queue_current = current
 			end
 		end
 
@@ -1186,11 +1193,12 @@ function Panel.new(dependencies)
 		end
 
 		return string.format(
-			"Dump: %s | Perks: %s\nBlessings: %s | Status: %s",
+			"Dump stat: %s %s\nPerk 1: %s\nPerk 2: %s\nBlessings: %s",
 			value_text(job.dump_stat_label or job.dump_stat, "?"),
-			#perks > 0 and table.concat(perks, " / ") or "?",
-			#blessings > 0 and table.concat(blessings, " / ") or "?",
-			value_text(job.status, "queued")
+			integer_text(job.dump_target, "?"),
+			value_text(perks[1], "?"),
+			value_text(perks[2], "?"),
+			#blessings > 0 and table.concat(blessings, " / ") or "?"
 		)
 	end
 
@@ -1207,7 +1215,7 @@ function Panel.new(dependencies)
 			self:_target_policy_text("auto_crafter_blessing_2_target"),
 		}
 
-		return string.format("Dump: %s %s | Perks: %s\nBlessings: %s | Status: %s", dump_stat, dump_target, table.concat(perks, " / "), table.concat(blessings, " / "), value_text(plan.status, "ready"))
+		return string.format("Dump stat: %s %s\nPerk 1: %s\nPerk 2: %s\nBlessings: %s", dump_stat, dump_target, value_text(perks[1], "?"), value_text(perks[2], "?"), table.concat(blessings, " / "))
 	end
 
 	function self:_games_lantern_queue_target(queue)
@@ -1732,7 +1740,7 @@ function Panel.new(dependencies)
 				local name = value_text(job.display_name or offer.display_name, value_text(offer.master_id, "Weapon"))
 
 				table.insert(entries, #entries, self:_entry(string.format("%d. %s", index, name), self:_games_lantern_job_detail(job), {
-					height = 76,
+					height = QUEUE_JOB_ROW_HEIGHT,
 					queue_job = true,
 					queue_index = index,
 					queue_current = job.current == true,
@@ -1743,7 +1751,7 @@ function Panel.new(dependencies)
 			local selected_detail = self:_manual_queue_detail(plan)
 
 			table.insert(entries, #entries, self:_entry("1. " .. selected, selected_detail, {
-				height = 76,
+				height = QUEUE_JOB_ROW_HEIGHT,
 				queue_job = true,
 				queue_index = 1,
 				queue_current = selected_weapon ~= nil,
