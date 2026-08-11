@@ -71,6 +71,14 @@ def main() -> None:
     ambiguous_class = html.replace("<main>", '<main><a href="/classes/veteran">Veteran</a>')
     assert parser.parse(ambiguous_class)["source_archetype"] is None
 
+    # Current Games Lantern pages use a div weapons anchor and include the
+    # Cloudflare challenge loader even after serving the complete build HTML.
+    current_page = html.replace("<section id=\"weapons\">", '<div class="mt-8 mb-4" id="weapons">').replace("</section>", "</div>", 1)
+    current_page = current_page.replace('href="/classes/psyker"', 'href="https://darktide.gameslantern.com/builds/psyker"')
+    current_page += '<script src="/cdn-cgi/challenge-platform/scripts/jsd/main.js"></script>'
+    assert parser.parse(current_page)["source_archetype"] == "psyker"
+    assert len(parser.parse(current_page)["weapons"]) == 2
+
     # Parser drift and partial cards fail closed instead of producing a target
     # that later code could accidentally apply.
     broken = html.replace("weapon_trait_085.webp", "weapon_trait_missing.webp", 1)

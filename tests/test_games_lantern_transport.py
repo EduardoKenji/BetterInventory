@@ -5,6 +5,7 @@ from lupa import LuaRuntime
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 TRANSPORT_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "auto_crafter" / "games_lantern" / "transport.lua"
+WINDOWS_ADAPTER_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "auto_crafter" / "games_lantern" / "transport_win.lua"
 
 
 def main() -> None:
@@ -92,6 +93,18 @@ def main() -> None:
     assert "transport_cancelled" in reports
 
     assert transport.start(transport, "https://darktide.gameslantern.com/builds/bad")[0] is False
+
+    # Adapter start failures preserve their actionable reason, while the
+    # Windows launcher follows slug redirects and escapes curl write-out
+    # placeholders through its generated batch file.
+    failed = transport_module.new(lua.table_from({"adapter": lua.table_from({})}))
+    failed._adapter.spawn = lua.eval("function() return nil, 'process_spawn_failed' end")
+    assert failed.start(failed, url)[0] is False
+    assert failed.snapshot(failed)["last_error"] == "process_spawn_failed"
+    windows_source = WINDOWS_ADAPTER_PATH.read_text(encoding="utf-8")
+    assert "--location" in windows_source and "--proto-redir =https" in windows_source
+    assert "%%%%{http_code} %%%%{content_type}" in windows_source
+    assert "api.popen(powershell .." in windows_source
 
 
 if __name__ == "__main__":

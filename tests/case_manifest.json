@@ -59,8 +59,8 @@
   ],
   "test_games_lantern_import.py": [
     {"name": "strict_url_canonicalization", "risk": "critical", "start_line": 18, "end_line": 47},
-    {"name": "versioned_weapon_model", "risk": "critical", "start_line": 49, "end_line": 72},
-    {"name": "bounded_parser_drift_fail_closed", "risk": "critical", "start_line": 73, "end_line": 102}
+    {"name": "versioned_weapon_model", "risk": "critical", "start_line": 49, "end_line": 81},
+    {"name": "bounded_parser_drift_fail_closed", "risk": "critical", "start_line": 82, "end_line": 110}
   ],
     "test_games_lantern_workflow.py": [
       {"name": "live_catalogue_resolution", "risk": "critical", "start_line": 19, "end_line": 107},
@@ -80,15 +80,15 @@
         {"name": "active_queue_lifecycle_and_locked_target_ui", "risk": "high", "start_line": 9, "end_line": 44}
     ],
     "test_games_lantern_transport.py": [
-      {"name": "bounded_transport_timeout_status_size_and_cancel", "risk": "critical", "start_line": 10, "end_line": 96}
+      {"name": "bounded_transport_timeout_status_size_and_cancel", "risk": "critical", "start_line": 10, "end_line": 109}
     ],
     "test_games_lantern_import_controller.py": [
       {"name": "atomic_import_lifecycle_and_stale_callback_guard", "risk": "critical", "start_line": 11, "end_line": 95},
       {"name": "explicit_ambiguous_weapon_choice", "risk": "critical", "start_line": 96, "end_line": 138},
-      {"name": "invalid_clipboard_fails_before_transport", "risk": "critical", "start_line": 139, "end_line": 157}
+      {"name": "invalid_clipboard_and_transport_failure_diagnostics", "risk": "critical", "start_line": 139, "end_line": 176}
     ],
     "test_games_lantern_compatibility.py": [
-      {"name": "optional_mod_lifecycle_admission_and_four_run_soak", "risk": "critical", "start_line": 1, "end_line": 175}
+      {"name": "optional_mod_lifecycle_admission_and_four_run_soak", "risk": "critical", "start_line": 1, "end_line": 176}
     ],
   "test_account_mutation_guard.py": [
     {"name": "service_level_account_mutation_exclusion", "risk": "critical", "start_line": 1, "end_line": 149}

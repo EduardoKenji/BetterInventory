@@ -24,6 +24,7 @@ def main() -> None:
     assert "GamesLanternClipboardHost.read" in facade_source
     assert "can_import = games_lantern_import_allowed" in facade_source
     assert "if ctrl_v and not self._ctrl_v_down" in panel_source
+    assert panel_source.index('if type(keyboard.button) == "function"') < panel_source.index('if type(keyboard.pressed) == "function"')
     assert panel_source.count("self._ctrl_v_down = false") >= 2
     assert "GameplayStateRun_exit" in runtime_source
     assert "operative_selection_entered" in runtime_source

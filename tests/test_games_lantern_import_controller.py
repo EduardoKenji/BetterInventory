@@ -156,6 +156,23 @@ def main() -> None:
     assert bad.snapshot(bad)["state"] == "failed"
     assert errors
 
+    transport_reports = []
+    failed_transport = to_lua({})
+    failed_transport.start = lua.eval("function() return false, 'process_spawn_failed' end")
+    failed_transport.cancel = lua.eval("function() return false end")
+    transport_failure = import_module.new(
+        to_lua(
+            {
+                "clipboard_read": callback_wrapper(lambda: url),
+                "clipboard": clipboard,
+                "transport": failed_transport,
+                "report": callback_wrapper(lambda kind, payload: transport_reports.append((str(kind), str(payload["error"])))),
+            }
+        )
+    )
+    assert transport_failure.paste(transport_failure) is False
+    assert transport_reports == [("import_failed", "process_spawn_failed")]
+
 
 if __name__ == "__main__":
     main()
