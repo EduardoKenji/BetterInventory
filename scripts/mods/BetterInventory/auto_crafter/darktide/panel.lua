@@ -480,9 +480,9 @@ local function queue_job_passes(width, height)
 	end
 
 	return {
-		{ pass_type = "rect", style = { color = Color.terminal_corner_selected(135, true), size = { width, height }, offset = { 0, 0, 1 } }, visibility_function = current },
-		{ pass_type = "rect", style = { color = Color.terminal_background(220, true), size = { width, height }, offset = { 0, 0, 1 } }, visibility_function = not_current },
-		{ pass_type = "texture", value = "content/ui/materials/frames/frame_tile_2px", style = { color = Color.terminal_frame(255, true), size = { width, height }, offset = { 0, 0, 2 } } },
+		{ pass_type = "rect", style = { color = Color.terminal_background(220, true), size = { width, height }, offset = { 0, 0, 1 } } },
+		{ pass_type = "texture", value = "content/ui/materials/frames/frame_tile_2px", style = { color = Color.terminal_corner_selected(255, true), size = { width, height }, offset = { 0, 0, 2 } }, visibility_function = current },
+		{ pass_type = "texture", value = "content/ui/materials/frames/frame_tile_2px", style = { color = Color.terminal_frame(255, true), size = { width, height }, offset = { 0, 0, 2 } }, visibility_function = not_current },
 		{ pass_type = "text", value_id = "label", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "top", text_color = Color.terminal_corner_selected(255, true), size = { width - 16, 20 }, offset = { 8, 5, 3 } }, visibility_function = current },
 		{ pass_type = "text", value_id = "label", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "top", text_color = Color.terminal_text_header(255, true), size = { width - 16, 20 }, offset = { 8, 5, 3 } }, visibility_function = not_current },
 		{ pass_type = "text", value_id = "detail", style = { font_size = 12, font_type = "proxima_nova_medium", text_horizontal_alignment = "left", text_vertical_alignment = "top", text_color = Color.terminal_text_body(255, true), size = { width - 16, height - 28 }, offset = { 8, 25, 3 } } },

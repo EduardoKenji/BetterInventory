@@ -18,7 +18,8 @@ def main() -> None:
     assert "_manual_queue_detail" in panel
     assert '"Dump stat: %s %s\\nPerk 1: %s\\nPerk 2: %s\\nBlessings: %s"' in panel
     assert "local QUEUE_JOB_ROW_HEIGHT = 110" in panel
-    assert "Color.terminal_corner_selected(135, true)" in panel
+    assert 'color = Color.terminal_corner_selected(255, true), size = { width, height }' in panel
+    assert panel.count('color = Color.terminal_background(220, true), size = { width, height }') == 1
     assert "local current = options.queue_current == true" in panel
     assert "if job then" in panel
     assert "_games_lantern_queue_snapshot" in panel
