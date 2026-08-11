@@ -1194,6 +1194,8 @@ Additional no-regression gates from the handoff audit:
 - Every current mutation family has queue-boundary STOP/failure/timeout/stale-callback coverage.
 - Final queue completion re-verifies both authoritative gear IDs; removed/changed completed gear is visible failure, not silent recreation.
 - Idle CPU/memory remain effectively unchanged; no clipboard or filesystem polling occurs without input/in-flight work.
+- Frame-hot status checks are constant-time. The panel consumes a compact queue/import presentation model at a bounded 10 Hz; it never deep-copies build catalogues, HTML, resolver models, or full controller snapshots per widget/frame.
+- Aggregate two-weapon cost authority is computed on the confirmation click, cached for display, and recomputed only on the confirming click to retain the stale-signature safety barrier.
 - UI is usable at supported scale/resolution/input/localization matrices and state is not color-only.
 
 ## Owner requirement traceability

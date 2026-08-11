@@ -980,10 +980,10 @@ function AutoCrafter.configure(dependencies)
 			return controller and controller:stop_active_run() or false
 		end,
 		games_lantern_queue_snapshot = function()
-			return games_lantern_queue and games_lantern_queue:snapshot() or nil
+			return games_lantern_queue and games_lantern_queue:presentation_snapshot() or nil
 		end,
 		games_lantern_import_snapshot = function()
-			return games_lantern_import and games_lantern_import:snapshot() or nil
+			return games_lantern_import and games_lantern_import:presentation_snapshot() or nil
 		end,
 		games_lantern_paste = function(replace_confirmed)
 			local queue_state = games_lantern_queue and games_lantern_queue:snapshot()
@@ -1154,7 +1154,7 @@ function AutoCrafter.update(dt)
 		end
 	end
 
-	if games_lantern_import then
+	if games_lantern_import and games_lantern_import:state() == "fetching" then
 		local import_ok, import_error = pcall(games_lantern_import.update, games_lantern_import)
 
 		if not import_ok then
@@ -1174,10 +1174,13 @@ function AutoCrafter.update(dt)
 		end
 
 		if games_lantern_queue then
-			local queue_ok, queue_error = pcall(games_lantern_queue.update, games_lantern_queue)
+			local queue_state = games_lantern_queue:state()
+			if queue_state == "selecting" or queue_state == "preflighting" or queue_state == "starting" or queue_state == "waiting_next" then
+				local queue_ok, queue_error = pcall(games_lantern_queue.update, games_lantern_queue)
 
-			if not queue_ok then
-				log("error", "Games Lantern queue update failed: " .. tostring(queue_error))
+				if not queue_ok then
+					log("error", "Games Lantern queue update failed: " .. tostring(queue_error))
+				end
 			end
 		end
 
@@ -1234,13 +1237,13 @@ function AutoCrafter.snapshot()
 end
 
 function AutoCrafter.is_busy()
-	local snapshot = AutoCrafter.snapshot()
-	local import_snapshot = games_lantern_import and games_lantern_import:snapshot()
-	local import_busy = import_snapshot and (import_snapshot.state == "fetching" or import_snapshot.state == "resolving_catalogues")
-	local queue_snapshot = games_lantern_queue and games_lantern_queue:snapshot()
-	local queue_busy = queue_snapshot and (queue_snapshot.state == "starting" or queue_snapshot.state == "selecting" or queue_snapshot.state == "preflighting" or queue_snapshot.state == "dispatching" or queue_snapshot.state == "running" or queue_snapshot.state == "waiting_next" or queue_snapshot.state == "stopping" or queue_snapshot.state == "quarantined" or queue_snapshot.state == "reconciliation_required")
+	local import_state = games_lantern_import and games_lantern_import:state()
+	local import_busy = import_state == "fetching" or import_state == "resolving_catalogues"
+	local queue_state = games_lantern_queue and games_lantern_queue:state()
+	local queue_busy = queue_state == "starting" or queue_state == "selecting" or queue_state == "preflighting" or queue_state == "dispatching" or queue_state == "running" or queue_state == "waiting_next" or queue_state == "stopping" or queue_state == "quarantined" or queue_state == "reconciliation_required"
+	local controller_busy = controller and controller:is_busy() or false
 
-	return import_busy == true or queue_busy == true or snapshot and (snapshot.operation_inflight or snapshot.operation_quarantined or (tonumber(snapshot.auxiliary_inflight_count) or 0) > 0 or snapshot.search and snapshot.search.running or snapshot.phase3 and snapshot.phase3.running or snapshot.phase4 and snapshot.phase4.running or snapshot.mastery and snapshot.mastery.running) == true or false
+	return import_busy or queue_busy or controller_busy
 end
 
 function AutoCrafter.interrupt_for_external_mutation(kind)

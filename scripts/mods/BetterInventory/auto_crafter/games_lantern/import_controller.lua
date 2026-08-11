@@ -323,6 +323,30 @@ function ImportController.new(dependencies)
 		}
 	end
 
+	function self:state()
+		return self._state
+	end
+
+	function self:presentation_snapshot()
+		local choices = {}
+		for _, slot in ipairs({ "melee", "ranged" }) do
+			choices[slot] = {}
+			for index, candidate in ipairs(self._choice_request and self._choice_request[slot] or {}) do
+				local external = candidate.external or {}
+				choices[slot][index] = {
+					display_name = candidate.display_name or external.display_name,
+					external = { card_index = external.card_index },
+				}
+			end
+		end
+
+		return {
+			choice_request = choices,
+			last_error = self._last_error,
+			state = self._state,
+		}
+	end
+
 	return self
 end
 

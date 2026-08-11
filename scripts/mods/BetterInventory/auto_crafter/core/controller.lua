@@ -5079,6 +5079,10 @@ function Controller.new(dependencies)
 		}
 	end
 
+	function self:is_busy()
+		return self._operation_inflight == true or self._operation_quarantined == true or (tonumber(self._auxiliary_inflight_count) or 0) > 0 or run_is_active() == true
+	end
+
 	function self:preview_plan()
 		if not self._snapshot then
 			return false

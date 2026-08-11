@@ -827,7 +827,11 @@ function Panel.new(dependencies)
 		_start_games_lantern_queue = dependencies.start_games_lantern_queue,
 		_queue_craft_armed = false,
 		_queue_craft_confirmation_signature = nil,
+		_queue_craft_confirmation_text = nil,
 		_queue_replace_armed = false,
+		_queue_snapshot_cache = nil,
+		_import_snapshot_cache = nil,
+		_presentation_snapshots_dirty = true,
 		_settings = dependencies.settings or {},
 		_localize = dependencies.localize,
 		_compact_perk_label = dependencies.compact_perk_label,
@@ -888,6 +892,7 @@ function Panel.new(dependencies)
 	function self:_queue_layout(frames)
 		self._layout_pending = true
 		self._layout_defer_frames = math.max(self._layout_defer_frames or 0, tonumber(frames) or 1)
+		self._presentation_snapshots_dirty = true
 	end
 
 	function self:_entry(label, detail, options)
@@ -988,9 +993,9 @@ function Panel.new(dependencies)
 
 		if options.queue_job then
 			entry.refresh = function(widget)
-				local queue_ok, queue = safe_call(self._games_lantern_queue_snapshot)
+				local queue = self:_games_lantern_queue()
 
-				if queue_ok and type(queue) == "table" then
+				if type(queue) == "table" then
 					local jobs = queue.jobs or {}
 					local current_index = tonumber(queue.current_index) or 0
 					local index = tonumber(options.queue_index) or 0
@@ -1120,23 +1125,25 @@ function Panel.new(dependencies)
 	end
 
 	function self:_games_lantern_queue()
-		if type(self._games_lantern_queue_snapshot) ~= "function" then
-			return nil
-		end
+		if self._queue_snapshot_cache == nil then self:_refresh_games_lantern_snapshots() end
 
-		local ok, queue = safe_call(self._games_lantern_queue_snapshot)
-
-		return ok and type(queue) == "table" and queue or nil
+		return self._queue_snapshot_cache
 	end
 
 	function self:_games_lantern_import()
-		if type(self._games_lantern_import_snapshot) ~= "function" then
-			return nil
-		end
+		if self._import_snapshot_cache == nil then self:_refresh_games_lantern_snapshots() end
 
-		local ok, import_state = safe_call(self._games_lantern_import_snapshot)
+		return self._import_snapshot_cache
+	end
 
-		return ok and type(import_state) == "table" and import_state or nil
+	function self:_refresh_games_lantern_snapshots()
+		local queue_ok, queue = safe_call(self._games_lantern_queue_snapshot)
+		local import_ok, import_state = safe_call(self._games_lantern_import_snapshot)
+		self._queue_snapshot_cache = queue_ok and type(queue) == "table" and queue or false
+		self._import_snapshot_cache = import_ok and type(import_state) == "table" and import_state or false
+		self._presentation_snapshots_dirty = false
+
+		return self._queue_snapshot_cache, self._import_snapshot_cache
 	end
 
 	function self:_games_lantern_queue_signature(queue)
@@ -1145,10 +1152,23 @@ function Panel.new(dependencies)
 		end
 
 		return table.concat({
+			tostring(queue.queue_id or ""),
 			tostring(queue.state or "empty"),
 			tostring(queue.current_index or 0),
 			tostring(queue.job_count or 0),
 			tostring(queue.last_error or ""),
+		}, "|")
+	end
+
+	function self:_games_lantern_import_signature(import_state)
+		if type(import_state) ~= "table" then return "none" end
+		local choices = import_state.choice_request or {}
+
+		return table.concat({
+			tostring(import_state.state or "idle"),
+			tostring(import_state.last_error or ""),
+			tostring(#(choices.melee or {})),
+			tostring(#(choices.ranged or {})),
 		}, "|")
 	end
 
@@ -1172,6 +1192,22 @@ function Panel.new(dependencies)
 			#blessings > 0 and table.concat(blessings, " / ") or "?",
 			value_text(job.status, "queued")
 		)
+	end
+
+	function self:_manual_queue_detail(plan)
+		plan = plan or {}
+		local dump_stat = self:_planner_dump_stat_text()
+		local dump_target = integer_text(plan.dump_target or self:_setting("auto_crafter_dump_stat_target", 60))
+		local perks = {
+			self:_target_policy_text("auto_crafter_perk_1_target"),
+			self:_target_policy_text("auto_crafter_perk_2_target"),
+		}
+		local blessings = {
+			self:_target_policy_text("auto_crafter_blessing_1_target"),
+			self:_target_policy_text("auto_crafter_blessing_2_target"),
+		}
+
+		return string.format("Dump: %s %s | Perks: %s\nBlessings: %s | Status: %s", dump_stat, dump_target, table.concat(perks, " / "), table.concat(blessings, " / "), value_text(plan.status, "ready"))
 	end
 
 	function self:_games_lantern_queue_target(queue)
@@ -1704,7 +1740,7 @@ function Panel.new(dependencies)
 				}))
 			end
 		elseif not self._section_collapsed[SECTION_QUEUE] then
-			local selected_detail = string.format("Selected weapon | Status: %s", value_text(plan and plan.status, "manual"))
+			local selected_detail = self:_manual_queue_detail(plan)
 
 			table.insert(entries, #entries, self:_entry("1. " .. selected, selected_detail, {
 				height = 76,
@@ -1767,6 +1803,7 @@ function Panel.new(dependencies)
 						pcall(self._games_lantern_clear)
 						self._queue_craft_armed = false
 						self._queue_craft_confirmation_signature = nil
+						self._queue_craft_confirmation_text = nil
 						self._queue_replace_armed = false
 						self:_queue_layout(1)
 					end,
@@ -2057,11 +2094,10 @@ function Panel.new(dependencies)
 			end
 		end
 
-		local _, craft_authority_text = self:_games_lantern_cost_authority()
 		local import_busy = imported and (imported.state == "fetching" or imported.state == "resolving_catalogues" or imported.state == "awaiting_weapon_choice")
 		local craft_enabled = not queue_active and not import_busy
 		local craft_label = queue_owned and self._queue_craft_armed and "> CONFIRM TWO-WEAPON CRAFT <" or localize("auto_crafter_panel_preview", "> CLICK HERE TO CRAFT <")
-		table.insert(entries, self:_entry(craft_label, queue_owned and self._queue_craft_armed and (craft_authority_text or "Cost authority unavailable; crafting remains blocked.") or "", {
+		table.insert(entries, self:_entry(craft_label, queue_owned and self._queue_craft_armed and (self._queue_craft_confirmation_text or "Cost authority unavailable; crafting remains blocked.") or "", {
 			enabled = craft_enabled,
 			selectable = craft_enabled,
 			variant = "action",
@@ -2074,10 +2110,11 @@ function Panel.new(dependencies)
 				if queue_active or import_busy then return end
 
 				if (imported and imported.state == "staged" or queue_owned) and type(self._start_games_lantern_queue) == "function" then
-					local authority = self:_games_lantern_cost_authority()
+					local authority, authority_text = self:_games_lantern_cost_authority()
 					if not authority then
 						self._queue_craft_armed = false
 						self._queue_craft_confirmation_signature = nil
+						self._queue_craft_confirmation_text = nil
 						log("error", "Games Lantern craft blocked: aggregate cost authority unavailable")
 						self:_queue_layout(1)
 						return
@@ -2085,11 +2122,13 @@ function Panel.new(dependencies)
 					if not self._queue_craft_armed then
 						self._queue_craft_armed = true
 						self._queue_craft_confirmation_signature = authority.signature
+						self._queue_craft_confirmation_text = authority_text
 						self:_queue_layout(1)
 						return
 					end
 					if self._queue_craft_confirmation_signature ~= authority.signature then
 						self._queue_craft_confirmation_signature = authority.signature
+						self._queue_craft_confirmation_text = authority_text
 						log("info", "Games Lantern cost authority changed; refreshed confirmation required")
 						self:_queue_layout(1)
 						return
@@ -2097,6 +2136,7 @@ function Panel.new(dependencies)
 					local confirmed_signature = self._queue_craft_confirmation_signature
 					self._queue_craft_armed = false
 					self._queue_craft_confirmation_signature = nil
+					self._queue_craft_confirmation_text = nil
 					local ok, started, reason = pcall(self._start_games_lantern_queue, true, confirmed_signature)
 					if not ok or started ~= true then
 						log("error", "Games Lantern craft did not start: " .. tostring(ok and reason or started))
@@ -2115,8 +2155,7 @@ function Panel.new(dependencies)
 				local current_enabled = not current_active and not current_import_busy
 				widget.content.enabled = current_enabled
 				widget.content.hotspot.disabled = not current_enabled
-				local _, current_authority_text = self:_games_lantern_cost_authority()
-				widget.content.detail = current_owned and self._queue_craft_armed and (current_authority_text or "Cost authority unavailable; crafting remains blocked.") or ""
+				widget.content.detail = current_owned and self._queue_craft_armed and (self._queue_craft_confirmation_text or "Cost authority unavailable; crafting remains blocked.") or ""
 			end,
 		}))
 		local function run_is_active()
@@ -2246,6 +2285,7 @@ function Panel.new(dependencies)
 
 		self._idle_poll_elapsed = 0
 		self:_update_pivot()
+		self:_refresh_games_lantern_snapshots()
 		local ctrl_v = ctrl_v_down()
 
 		if ctrl_v and not self._ctrl_v_down and type(self._games_lantern_paste) == "function" then
@@ -2261,9 +2301,14 @@ function Panel.new(dependencies)
 		self._ctrl_v_down = ctrl_v
 		local queue = self:_games_lantern_queue()
 		local queue_signature = self:_games_lantern_queue_signature(queue)
+		local import_signature = self:_games_lantern_import_signature(self:_games_lantern_import())
 
 		if queue_signature ~= self._queue_signature then
 			self._queue_signature = queue_signature
+			self:_queue_layout(1)
+		end
+		if import_signature ~= self._import_signature then
+			self._import_signature = import_signature
 			self:_queue_layout(1)
 		end
 
@@ -2444,10 +2489,19 @@ function Panel.new(dependencies)
 		self._layout_defer_frames = 0
 		self._trait_catalog_key = nil
 		self._queue_signature = nil
+		self._import_signature = nil
+		self._queue_craft_armed = false
+		self._queue_craft_confirmation_signature = nil
+		self._queue_craft_confirmation_text = nil
+		self._queue_replace_armed = false
+		self._queue_snapshot_cache = nil
+		self._import_snapshot_cache = nil
+		self._presentation_snapshots_dirty = true
 		self._ctrl_v_down = false
 
 
 		self:_update_pivot()
+		self:_refresh_games_lantern_snapshots()
 
 		if type(panel.disable_input) == "function" then
 			panel:disable_input(false)
@@ -2486,6 +2540,14 @@ function Panel.new(dependencies)
 		self._layout_defer_frames = 0
 		self._trait_catalog_key = nil
 		self._queue_signature = nil
+		self._import_signature = nil
+		self._queue_craft_armed = false
+		self._queue_craft_confirmation_signature = nil
+		self._queue_craft_confirmation_text = nil
+		self._queue_replace_armed = false
+		self._queue_snapshot_cache = nil
+		self._import_snapshot_cache = nil
+		self._presentation_snapshots_dirty = true
 		self._ctrl_v_down = false
 		self._pivot_x = nil
 		self._pivot_y = nil

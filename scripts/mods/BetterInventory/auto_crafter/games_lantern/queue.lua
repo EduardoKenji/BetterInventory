@@ -448,6 +448,49 @@ function Queue.new(dependencies)
 		}
 	end
 
+	function self:state()
+		return self._state
+	end
+
+	function self:presentation_snapshot()
+		local jobs = {}
+		for index, job in ipairs(self._jobs or {}) do
+			local function compact_targets(values)
+				local targets = {}
+				for target_index, target in ipairs(values or {}) do
+					targets[target_index] = {
+						id = target.id,
+						label = target.label or target.display_name,
+						rarity = target.rarity,
+					}
+				end
+				return targets
+			end
+			jobs[index] = {
+				blessings = compact_targets(job.blessings),
+				current = index == self._current_index,
+				display_name = job.display_name or job.offer and job.offer.display_name,
+				dump_stat = job.dump_stat,
+				dump_stat_label = job.dump_stat_label,
+				dump_target = job.dump_target,
+				job_id = job.job_id,
+				master_id = job.master_id or job.offer and job.offer.master_id,
+				perks = compact_targets(job.perks),
+				slot = job.slot,
+				status = index < self._current_index and "complete" or index == self._current_index and self._state or "queued",
+			}
+		end
+
+		return {
+			current_index = self._current_index,
+			job_count = #jobs,
+			jobs = jobs,
+			last_error = self._last_error,
+			queue_id = self._queue_id,
+			state = self._state,
+		}
+	end
+
 	return self
 end
 
