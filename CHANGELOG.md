@@ -1,6 +1,6 @@
 # BetterInventory changelog
 
-## 2.1.2 - In development
+## 2.1.3 - In development
 
 - Released closed inventory, Character Overview, vendor, Brunt, Hadron, popup, panel, grid, and persistence references through idempotent exit/destroy paths.
 - Added repeated open/close lifecycle coverage while preserving post-draw/update CPU ownership fixes.

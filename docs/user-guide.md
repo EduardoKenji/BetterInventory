@@ -1,6 +1,6 @@
 # BetterInventory user guide
 
-BetterInventory v2.1.2 improves inventory, Character Overview, Hadron, Requisition Weapons & Curios, and optional GlobalStore cards while preserving Darktide's native item and icon lifecycle.
+BetterInventory v2.1.3 improves inventory, Character Overview, Hadron, Requisition Weapons & Curios, and optional GlobalStore cards while preserving Darktide's native item and icon lifecycle.
 
 ## Install
 
