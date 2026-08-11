@@ -192,9 +192,6 @@ def main() -> None:
         {"label": "Surgical", "external_icon_id": "007"},
     ])
     trait_labels = {
-        "loc_perk_carapace": "+25% Damage vs Carapace Armoured",
-        "loc_perk_unyielding": "+25% Damage vs Unyielding",
-        "loc_perk_flak": "+25% Damage vs Flak Armoured",
         "loc_blessing_riposte": "Riposte",
         "loc_blessing_shred": "Shred",
         "loc_blessing_man_stopper": "Man-Stopper",
@@ -207,8 +204,8 @@ def main() -> None:
         transonic_offer["master_id"]: {
             "available": True,
             "perks": [
-                {"id": "perk_carapace", "description_key": "loc_perk_carapace", "tier": 4},
-                {"id": "perk_unyielding", "description_key": "loc_perk_unyielding", "tier": 4},
+                {"id": "perk_carapace", "trait": "weapon_trait_melee_common_wield_increased_super_armor_damage", "tier": 4},
+                {"id": "perk_unyielding", "trait": "weapon_trait_melee_common_wield_increased_resistant_damage", "tier": 4},
             ],
             "blessings": [
                 {"id": "blessing_riposte", "display_name_key": "loc_blessing_riposte", "icon": "content/ui/textures/icons/traits/weapon_trait_064", "tiers": [{"tier": 4}]},
@@ -218,8 +215,8 @@ def main() -> None:
         phosphor_offer["master_id"]: {
             "available": True,
             "perks": [
-                {"id": "perk_flak", "description_key": "loc_perk_flak", "tier": 4},
-                {"id": "perk_unyielding", "description_key": "loc_perk_unyielding", "tier": 4},
+                {"id": "perk_flak", "trait": "weapon_trait_ranged_common_wield_increased_armored_damage", "tier": 4},
+                {"id": "perk_unyielding", "trait": "weapon_trait_ranged_common_wield_increased_resistant_damage", "tier": 4},
             ],
             "blessings": [
                 {"id": "blessing_man_stopper", "display_name_key": "loc_blessing_man_stopper", "icon": "content/ui/textures/icons/traits/weapon_trait_123", "tiers": [{"tier": 4}]},
@@ -246,7 +243,11 @@ def main() -> None:
         },
         phosphor_offer["master_id"]: live_catalogs[phosphor_offer["master_id"]],
     })
-    assert resolver.attach_catalogs(skitarius_identity, missing_perk_catalogs, to_lua({"localize_offer_label": localize_traits}))[1] == "perk_unavailable_slot_1_1"
+    missing_result, missing_reason, missing_detail = resolver.attach_catalogs(skitarius_identity, missing_perk_catalogs, to_lua({"localize_offer_label": localize_traits}))
+    assert missing_result is None
+    assert missing_reason == "perk_unavailable_slot_1_1"
+    assert "target=10-25% Damage (Carapace Armoured Enemies)" in missing_detail
+    assert "catalog=1" in missing_detail
 
     missing_blessing_catalogs = to_lua({
         transonic_offer["master_id"]: {
@@ -256,7 +257,11 @@ def main() -> None:
         },
         phosphor_offer["master_id"]: live_catalogs[phosphor_offer["master_id"]],
     })
-    assert resolver.attach_catalogs(skitarius_identity, missing_blessing_catalogs, to_lua({"localize_offer_label": localize_traits}))[1] == "blessing_unavailable_slot_1_1"
+    missing_result, missing_reason, missing_detail = resolver.attach_catalogs(skitarius_identity, missing_blessing_catalogs, to_lua({"localize_offer_label": localize_traits}))
+    assert missing_result is None
+    assert missing_reason == "blessing_unavailable_slot_1_1"
+    assert "target=Riposte" in missing_detail
+    assert "catalog=1" in missing_detail
 
     bad_dump_model = to_lua({
         "source_archetype": "skitarii",
