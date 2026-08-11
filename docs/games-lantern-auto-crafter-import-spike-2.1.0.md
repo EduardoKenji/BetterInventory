@@ -1199,6 +1199,7 @@ Additional no-regression gates from the handoff audit:
 - Scoped Ctrl+V detection reads held key state and debounces the complete chord; it does not require Ctrl and V to become pressed on the same frame.
 - Windows transport follows only HTTPS redirects, escapes curl write-out placeholders through the generated batch file, and preserves adapter start failures in import diagnostics.
 - The parser requires a Weapons anchor but accepts either current `div` or legacy `section` containers. A Cloudflare loader embedded in a complete page is not treated as an interstitial; challenge-only pages still fail closed.
+- Class safety compares canonical identities rather than display/public names: Games Lantern `skitarii`, `arbites`, and `hive-scum` map to Darktide `cryptic`, `adamant`, and `broker`. True mismatches report both raw and canonical IDs.
 - UI is usable at supported scale/resolution/input/localization matrices and state is not color-only.
 
 ## Owner requirement traceability

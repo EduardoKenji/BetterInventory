@@ -5,6 +5,37 @@
 -- complete two-slot target or an explicit ambiguity/unsupported error.
 local Resolver = {}
 
+-- Games Lantern's public class slugs do not always equal Darktide's internal
+-- archetype IDs.  Keep this compatibility boundary explicit and aligned with
+-- Lantern of the Omnissiah's SLUG_TO_ARCHETYPE contract.
+local ARCHETYPE_ALIASES = {
+	["arbites"] = "adamant",
+	["hive-scum"] = "broker",
+	["skitarii"] = "cryptic",
+	["skitarius"] = "cryptic",
+}
+
+local function canonical_archetype(value)
+	if value == nil then
+		return nil
+	end
+
+	local normalized = string.lower(tostring(value)):gsub("^%s+", ""):gsub("%s+$", ""):gsub("_", "-"):gsub("%s+", "-")
+
+	if normalized == "" then
+		return nil
+	end
+
+	return ARCHETYPE_ALIASES[normalized] or normalized
+end
+
+local function archetype_compatible(source, active)
+	local canonical_source = canonical_archetype(source)
+	local canonical_active = canonical_archetype(active)
+
+	return canonical_source ~= nil and canonical_active ~= nil and canonical_source == canonical_active, canonical_source, canonical_active
+end
+
 Resolver.CONTRACT_VERSION = "games_lantern_resolver_v1"
 
 local STOP_WORDS = {
@@ -462,9 +493,10 @@ function Resolver.resolve_identities(model, context)
 
 	context = context or {}
 
+	local archetype_matches = archetype_compatible(model.source_archetype, context.active_archetype)
 	if not model.source_archetype or not context.active_archetype then
 		return nil, "archetype_unavailable"
-	elseif tostring(model.source_archetype) ~= tostring(context.active_archetype) then
+	elseif not archetype_matches then
 		return nil, "archetype_mismatch"
 	end
 
@@ -564,9 +596,10 @@ function Resolver.resolve(model, context)
 
 	context = context or {}
 
+	local archetype_matches = archetype_compatible(model.source_archetype, context.active_archetype)
 	if not model.source_archetype or not context.active_archetype then
 		return nil, "archetype_unavailable"
-	elseif tostring(model.source_archetype) ~= tostring(context.active_archetype) then
+	elseif not archetype_matches then
 		return nil, "archetype_mismatch"
 	end
 
@@ -607,7 +640,11 @@ function Resolver.resolve(model, context)
 	}, nil
 end
 
+Resolver.canonical_archetype = canonical_archetype
+
 Resolver._test = {
+	canonical_archetype = canonical_archetype,
+	archetype_compatible = archetype_compatible,
 	normalize = normalize,
 	resolve_dump_stat = resolve_dump_stat,
 	resolve_traits = resolve_traits,

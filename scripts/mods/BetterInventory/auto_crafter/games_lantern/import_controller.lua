@@ -173,7 +173,17 @@ function ImportController.new(dependencies)
 
 				return true
 			end
-			return fail(identity_reason or "weapon_identity_unavailable", {})
+			local details = {}
+			if identity_reason == "archetype_mismatch" then
+				local canonicalize = self._resolver and self._resolver.canonical_archetype
+				local source = self._model and self._model.source_archetype
+				local active = context.active_archetype
+				local canonical_source = type(canonicalize) == "function" and canonicalize(source) or source
+				local canonical_active = type(canonicalize) == "function" and canonicalize(active) or active
+				details.error = string.format("source=%s->%s active=%s->%s", tostring(source), tostring(canonical_source), tostring(active), tostring(canonical_active))
+			end
+
+			return fail(identity_reason or "weapon_identity_unavailable", details)
 		end
 
 		self._choice_request = nil
