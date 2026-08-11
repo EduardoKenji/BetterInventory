@@ -127,9 +127,8 @@ def main() -> None:
         "display_name": "loc_weapon_family_transonic_sword_transonic_knife_p1_m1",
         "master_id": "content/items/weapons/player/melee/transonic_sword_transonic_knife_p1_m1",
         "parent_pattern": "transonic_sword_transonic_knife_p1_m1",
-        "weapon_category": "melee",
         "base_stats": [
-            {"name": "cleave_efficiency", "display_name_key": "Cleave Efficiency"},
+            {"name": "transonic_sword_transonic_knife_p1_m1_cleave_damage_and_targets_stat", "display_name_key": "loc_stats_display_cleave_damage_and_targets_stat"},
             {"name": "damage", "display_name_key": "Damage"},
         ],
     })
@@ -137,7 +136,6 @@ def main() -> None:
         "display_name": "loc_weapon_family_phosphor_pistol_p1_m1",
         "master_id": "content/items/weapons/player/ranged/phosphor_pistol_p1_m1",
         "parent_pattern": "phosphor_pistol_p1_m1",
-        "weapon_category": "ranged",
         "base_stats": [
             {"name": "mobility", "display_name_key": "Mobility"},
             {"name": "damage", "display_name_key": "Damage"},
@@ -171,6 +169,21 @@ def main() -> None:
     assert skitarius_identity is not None, reason
     assert skitarius_identity["jobs"][1]["master_id"].endswith("transonic_sword_transonic_knife_p1_m1")
     assert skitarius_identity["jobs"][2]["master_id"].endswith("phosphor_pistol_p1_m1")
+    assert skitarius_identity["jobs"][1]["dump_stat"].endswith("cleave_damage_and_targets_stat")
+
+    bad_dump_model = to_lua({
+        "source_archetype": "skitarii",
+        "weapons": [
+            {
+                "display_name": "Branx Mk XI Paired Transonic Blades",
+                "external_family_slug": "paired-transonic-blades",
+                "external_mark_slug": "branx-mk-xi-paired-transonic-blades",
+                "stats": [{"label": "Unknown Efficiency", "value": 60}, {"label": "Damage", "value": 80}],
+            },
+            skitarius_live_model["weapons"][2],
+        ],
+    })
+    assert resolver.resolve_identities(bad_dump_model, skitarius_live_context)[1] == "dump_stat_unavailable"
 
     # Class mismatch, ambiguous marks, and tied dump stats must reject the
     # entire build rather than install one partially resolved job.

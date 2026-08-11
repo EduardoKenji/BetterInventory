@@ -65,9 +65,9 @@
     "test_games_lantern_workflow.py": [
       {"name": "live_catalogue_resolution", "risk": "critical", "start_line": 19, "end_line": 107},
       {"name": "public_class_slug_aliases", "risk": "critical", "start_line": 108, "end_line": 122},
-      {"name": "brunt_family_level_weapon_resolution", "risk": "critical", "start_line": 123, "end_line": 174},
-      {"name": "ambiguous_and_mismatched_builds_fail_closed", "risk": "critical", "start_line": 175, "end_line": 225},
-      {"name": "explicit_weapon_choice_resolution", "risk": "critical", "start_line": 226, "end_line": 242}
+      {"name": "brunt_family_level_weapon_resolution", "risk": "critical", "start_line": 123, "end_line": 187},
+      {"name": "ambiguous_and_mismatched_builds_fail_closed", "risk": "critical", "start_line": 188, "end_line": 241},
+      {"name": "explicit_weapon_choice_resolution", "risk": "critical", "start_line": 242, "end_line": 255}
     ],
     "test_games_lantern_queue.py": [
       {"name": "serial_queue_transition_and_completion", "risk": "critical", "start_line": 17, "end_line": 100},
