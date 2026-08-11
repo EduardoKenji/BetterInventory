@@ -143,15 +143,29 @@ local function slot_matches(offer, slot, classify_offer)
 
 	local category = string.lower(text(offer and (offer.weapon_category or offer.slot_type)))
 
-	if category == "" then
-		return false
+	if slot == "melee" then
+		if category == "melee" or category == "slot_primary" then
+			return true
+		end
+	elseif category == "ranged" or category == "slot_secondary" then
+		return true
 	end
+
+	-- Some Brunt snapshots expose a usable master ID before slot metadata is
+	-- populated. The item path is authoritative and keeps import independent
+	-- from timing of MasterItems metadata hydration.
+	local identity = string.lower(table.concat({
+		text(offer and offer.master_id),
+		text(offer and offer.parent_pattern),
+		text(offer and offer.weapon_template),
+		text(offer and offer.sku_category),
+	}, " "))
 
 	if slot == "melee" then
-		return category == "melee" or category == "slot_primary"
+		return identity:find("/melee/", 1, true) ~= nil or identity:find("slot_primary", 1, true) ~= nil
 	end
 
-	return category == "ranged" or category == "slot_secondary"
+	return identity:find("/ranged/", 1, true) ~= nil or identity:find("slot_secondary", 1, true) ~= nil
 end
 
 local function match_score(external, offer, localize_offer_label)
@@ -241,6 +255,7 @@ local STAT_ALIASES = {
 	["warp resistance"] = {"warp", "resist"},
 	["cleave damage"] = {"cleave"},
 	["cleave damage targets"] = {"cleave"},
+	["cleave efficiency"] = {"cleave"},
 	["charge rate"] = {"charge", "speed"},
 	["charge speed"] = {"charge", "speed"},
 	["reload speed"] = {"reload"},
@@ -251,13 +266,13 @@ local STAT_ALIASES = {
 	["defence"] = {"defense"},
 }
 
-local function stat_matches(external_label, candidate)
+local function stat_matches(external_label, candidate, localize_offer_label)
 	local normalized_external = normalize(external_label)
 	local aliases = STAT_ALIASES[normalized_external]
 	local candidate_text = offer_text({
 		display_name = candidate and candidate.name,
 		sub_display_name = candidate and candidate.display_name_key,
-	})
+	}, localize_offer_label)
 
 	if aliases then
 		return contains_all(candidate_text, aliases)
@@ -266,11 +281,11 @@ local function stat_matches(external_label, candidate)
 	return contains_all(candidate_text, tokens(normalized_external))
 end
 
-local function resolve_stat(external_label, offer)
+local function resolve_stat(external_label, offer, localize_offer_label)
 	local matches = {}
 
 	for _, candidate in ipairs(offer and offer.base_stats or {}) do
-		if stat_matches(external_label, candidate) then
+		if stat_matches(external_label, candidate, localize_offer_label) then
 			matches[#matches + 1] = candidate
 		end
 	end
@@ -286,7 +301,7 @@ local function resolve_stat(external_label, offer)
 	return matches[1].name, nil
 end
 
-local function resolve_dump_stat(external, offer)
+local function resolve_dump_stat(external, offer, localize_offer_label)
 	local lowest
 	local tied = false
 
@@ -313,7 +328,7 @@ local function resolve_dump_stat(external, offer)
 		return nil, "dump_stat_tie"
 	end
 
-	local stat_id, reason = resolve_stat(lowest.label, offer)
+	local stat_id, reason = resolve_stat(lowest.label, offer, localize_offer_label)
 
 	if not stat_id then
 		return nil, reason
@@ -442,7 +457,7 @@ local function resolve_identity(external, slot, context)
 		return nil, reason
 	end
 
-	local dump_stat, dump_reason = resolve_dump_stat(external, resolved.offer)
+	local dump_stat, dump_reason = resolve_dump_stat(external, resolved.offer, context and context.localize_offer_label)
 
 	if not dump_stat then
 		return nil, dump_reason
@@ -528,10 +543,12 @@ function Resolver.resolve_identities(model, context)
 
 	local melee_candidates = {}
 	local ranged_candidates = {}
+	local melee_failure
+	local ranged_failure
 
 	for _, external in ipairs(model.weapons) do
-		local melee = resolve_identity(external, "melee", context)
-		local ranged = resolve_identity(external, "ranged", context)
+		local melee, melee_reason = resolve_identity(external, "melee", context)
+		local ranged, ranged_reason = resolve_identity(external, "ranged", context)
 
 		if melee then
 			melee_candidates[#melee_candidates + 1] = melee
@@ -539,6 +556,14 @@ function Resolver.resolve_identities(model, context)
 
 		if ranged then
 			ranged_candidates[#ranged_candidates + 1] = ranged
+		end
+
+		if not melee and melee_reason ~= "unavailable_melee" then
+			melee_failure = melee_failure or melee_reason
+		end
+
+		if not ranged and ranged_reason ~= "unavailable_ranged" then
+			ranged_failure = ranged_failure or ranged_reason
 		end
 	end
 
@@ -567,11 +592,11 @@ function Resolver.resolve_identities(model, context)
 	end
 
 	if #melee_candidates ~= 1 then
-		return nil, #melee_candidates == 0 and "melee_weapon_unavailable" or "multiple_melee_weapons"
+		return nil, #melee_candidates == 0 and (melee_failure or "melee_weapon_unavailable") or "multiple_melee_weapons"
 	end
 
 	if #ranged_candidates ~= 1 then
-		return nil, #ranged_candidates == 0 and "ranged_weapon_unavailable" or "multiple_ranged_weapons"
+		return nil, #ranged_candidates == 0 and (ranged_failure or "ranged_weapon_unavailable") or "multiple_ranged_weapons"
 	end
 
 	return {

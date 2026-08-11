@@ -1201,6 +1201,7 @@ Additional no-regression gates from the handoff audit:
 - The parser requires a Weapons anchor but accepts either current `div` or legacy `section` containers. A Cloudflare loader embedded in a complete page is not treated as an interstitial; challenge-only pages still fail closed.
 - Class safety compares canonical identities rather than display/public names: Games Lantern `skitarii`, `arbites`, and `hive-scum` map to Darktide `cryptic`, `adamant`, and `broker`. True mismatches report both raw and canonical IDs.
 - Weapon identity resolves Brunt's runtime localization keys before accepting an authoritative family match when Brunt omits Games Lantern's named mark (for example, `Branx Mk XI Paired Transonic Blades` versus localized `Paired Transonic Blades`). Multiple equal family matches remain ambiguous and fail closed.
+- Slot identity falls back to authoritative `/melee/` and `/ranged/` master-item paths when store metadata is not hydrated. Games Lantern `Cleave Efficiency` maps to Darktide's combined cleave-damage-and-targets stat. Identity-stage errors preserve specific dump-stat or ambiguity reasons instead of collapsing them into `melee_weapon_unavailable`.
 - UI is usable at supported scale/resolution/input/localization matrices and state is not color-only.
 
 ## Owner requirement traceability

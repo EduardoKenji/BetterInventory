@@ -739,25 +739,14 @@ function AutoCrafter.configure(dependencies)
 		local snapshot = controller and controller:snapshot()
 		local data = snapshot and snapshot.data or {}
 		local store = data.store or {}
-		local melee_offers = {}
-		local ranged_offers = {}
-
-		for _, offer in ipairs(store.offers or {}) do
-			local category = tostring(offer.weapon_category or offer.slot_type or "")
-
-			if category == "melee" or category == "slot_primary" then
-				melee_offers[#melee_offers + 1] = offer
-			elseif category == "ranged" or category == "slot_secondary" then
-				ranged_offers[#ranged_offers + 1] = offer
-			end
-		end
+		local offers = store.offers or {}
 
 		return {
 			active_archetype = runtime_context and runtime_context:current_archetype() or nil,
 			dump_target = tonumber(setting("auto_crafter_dump_stat_target", 60)) or 60,
 			localize_offer_label = game_localize,
-			melee_offers = melee_offers,
-			ranged_offers = ranged_offers,
+			melee_offers = offers,
+			ranged_offers = offers,
 		}
 	end
 
