@@ -599,6 +599,8 @@ def main() -> None:
         '''
     )
     panel_module = lua.execute(PANEL_PATH.read_text(encoding="utf-8"))
+    assert panel_module.weapon_name_with_mark("Power Falchion", "Mk VI") == "Power Falchion - Mk VI"
+    assert panel_module.weapon_name_with_mark("Branx Mk XI Paired Transonic Blades", "Mk XI") == "Branx Mk XI Paired Transonic Blades"
     panel = panel_module.new(lua.table_from({"settings": lua.globals().TestPanelSettings}))
 
     # Lua's common `condition and value or fallback` idiom loses explicit false.

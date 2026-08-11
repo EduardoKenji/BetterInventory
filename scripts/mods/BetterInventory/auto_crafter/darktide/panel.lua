@@ -84,6 +84,22 @@ local function clean_single_line(value)
 	return value
 end
 
+local function weapon_name_with_mark(display_name, mark_name)
+	local family = clean_single_line(display_name)
+	local mark = clean_single_line(mark_name)
+
+	if family == "" then
+		return mark
+	end
+	if mark == "" or string.find(string.lower(family), string.lower(mark), 1, true) then
+		return family
+	end
+
+	return family .. " - " .. mark
+end
+
+Panel.weapon_name_with_mark = weapon_name_with_mark
+
 local function dispatch_trait_press(hotspot, left_callback, right_callback)
 	if hotspot and hotspot.on_right_pressed and right_callback then
 		right_callback()
@@ -1131,7 +1147,23 @@ function Panel.new(dependencies)
 				local offer_matches = selected_offer.offer_id and offer.offer_id == selected_offer.offer_id or selected_offer.master_id and offer.master_id == selected_offer.master_id
 
 				if offer_matches then
-					selected_display_name = offer.display_name
+					local selected_mark
+					local selected_ok, selected_master_id = safe_call(self._get_selected_manual_mark)
+
+					if not selected_ok or selected_master_id == nil then
+						selected_master_id = offer.master_id
+					end
+					for _, mark in ipairs(offer.marks or {}) do
+						if mark.master_id == selected_master_id then
+							selected_mark = mark
+
+							break
+						end
+					end
+					selected_display_name = weapon_name_with_mark(
+						selected_mark and selected_mark.display_name or offer.display_name,
+						selected_mark and selected_mark.sub_display_name or offer.sub_display_name
+					)
 
 					break
 				end
@@ -1254,7 +1286,7 @@ function Panel.new(dependencies)
 		local names = {}
 		for index, job in ipairs(queue.jobs) do
 			local offer = job.offer or {}
-			local name = value_text(job.display_name or offer.display_name, value_text(offer.master_id, "Weapon"))
+			local name = value_text(job.display_name, weapon_name_with_mark(offer.display_name, offer.sub_display_name))
 			if job.status == "complete" then
 				name = name .. " [complete]"
 			elseif job.current then
@@ -1765,7 +1797,7 @@ function Panel.new(dependencies)
 		if not self._section_collapsed[SECTION_QUEUE] and type(queue_jobs) == "table" and #queue_jobs > 0 then
 			for index, job in ipairs(queue_jobs) do
 				local offer = job.offer or {}
-				local name = value_text(job.display_name or offer.display_name, value_text(offer.master_id, "Weapon"))
+				local name = value_text(job.display_name, value_text(weapon_name_with_mark(offer.display_name, offer.sub_display_name), value_text(offer.master_id, "Weapon")))
 
 				table.insert(entries, #entries, self:_entry(string.format("%d. %s", index, name), self:_games_lantern_job_detail(job), {
 					height = QUEUE_JOB_ROW_HEIGHT,
