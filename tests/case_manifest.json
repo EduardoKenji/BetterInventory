@@ -5,17 +5,17 @@
     {"name": "derived_content_reset", "risk": "high", "start_line": 74, "end_line": 86}
   ],
   "test_auto_crafter_stats.py": [
-      {"name": "template_stats_purchase_reconciliation_traits_favorite_discard_and_potential_projection", "risk": "critical", "start_line": 282, "end_line": 431},
-      {"name": "indexed_manual_resolution_and_search_budget", "risk": "critical", "start_line": 432, "end_line": 468},
-      {"name": "phase_material_and_mastery_fodder_ranges", "risk": "high", "start_line": 469, "end_line": 584},
-      {"name": "default_on_workflow_checkbox_false_persistence", "risk": "critical", "start_line": 585, "end_line": 623},
-      {"name": "manual_selector_and_shortcut_grid", "risk": "critical", "start_line": 624, "end_line": 686},
-      {"name": "localized_display_labels", "risk": "high", "start_line": 687, "end_line": 763},
-      {"name": "tier_qualified_trait_target_selection", "risk": "high", "start_line": 764, "end_line": 776},
-      {"name": "dual_target_trait_grid_selection_exclusivity_and_icon", "risk": "high", "start_line": 777, "end_line": 818},
-      {"name": "category_specific_ranged_perk_defaults", "risk": "high", "start_line": 819, "end_line": 855},
-      {"name": "deferred_grid_rebuild_scroll_restore_and_mastery_gate", "risk": "critical", "start_line": 856, "end_line": 876},
-      {"name": "right_click_routing_blessing_icon_and_runtime_progress", "risk": "high", "start_line": 877, "end_line": 913}
+      {"name": "template_stats_purchase_reconciliation_traits_favorite_discard_and_potential_projection", "risk": "critical", "start_line": 301, "end_line": 452},
+      {"name": "indexed_manual_resolution_and_search_budget", "risk": "critical", "start_line": 453, "end_line": 489},
+      {"name": "phase_material_and_mastery_fodder_ranges", "risk": "high", "start_line": 490, "end_line": 605},
+      {"name": "default_on_workflow_checkbox_false_persistence", "risk": "critical", "start_line": 606, "end_line": 644},
+      {"name": "manual_selector_and_shortcut_grid", "risk": "critical", "start_line": 645, "end_line": 707},
+      {"name": "localized_display_labels", "risk": "high", "start_line": 708, "end_line": 784},
+      {"name": "tier_qualified_trait_target_selection", "risk": "high", "start_line": 785, "end_line": 797},
+      {"name": "dual_target_trait_grid_selection_exclusivity_and_icon", "risk": "high", "start_line": 798, "end_line": 839},
+      {"name": "category_specific_ranged_perk_defaults", "risk": "high", "start_line": 840, "end_line": 876},
+      {"name": "deferred_grid_rebuild_scroll_restore_and_mastery_gate", "risk": "critical", "start_line": 877, "end_line": 897},
+      {"name": "right_click_routing_blessing_icon_and_runtime_progress", "risk": "high", "start_line": 898, "end_line": 934}
   ],
   "test_auto_crafter_viewport.py": [
     {"name": "panel_and_hud_resolution_matrix", "risk": "high", "start_line": 14, "end_line": 67}

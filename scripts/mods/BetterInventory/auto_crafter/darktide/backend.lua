@@ -180,6 +180,52 @@ local merge_stat_catalog
 local summarize_base_stats
 local summarize_weapon_template_stats
 local store_item_preview
+local weapon_mark_index
+local weapon_mark_index_source
+
+local function indexed_weapon_marks(parent_pattern)
+	if parent_pattern == nil or type(MasterItems) ~= "table" or type(MasterItems.get_cached) ~= "function" then
+		return {}
+	end
+
+	local ok, cached = pcall(MasterItems.get_cached)
+
+	if not ok or type(cached) ~= "table" then
+		return {}
+	end
+
+	if cached ~= weapon_mark_index_source then
+		local index = {}
+
+		for master_id, item in pairs(cached) do
+			local pattern = safe_member(item, "parent_pattern")
+			local slots = safe_member(item, "slots")
+			local slot = type(slots) == "table" and slots[1] or nil
+			local weapon_template = safe_member(item, "weapon_progression_template") or safe_member(item, "weapon_template")
+
+			if pattern ~= nil and (slot == "slot_primary" or slot == "slot_secondary") and weapon_template ~= nil then
+				local marks = index[pattern] or {}
+
+				marks[#marks + 1] = {
+					item = item,
+					master_id = master_id,
+				}
+				index[pattern] = marks
+			end
+		end
+
+		for _, marks in pairs(index) do
+			table.sort(marks, function(left, right)
+				return tostring(left.master_id) < tostring(right.master_id)
+			end)
+		end
+
+		weapon_mark_index = index
+		weapon_mark_index_source = cached
+	end
+
+	return weapon_mark_index and weapon_mark_index[parent_pattern] or {}
+end
 
 local function summarize_store(store)
 	local offers = safe_member(store, "offers") or {}
@@ -220,16 +266,26 @@ local function summarize_store(store)
 			local choices = safe_member(description, "lootChoices") or safe_member(description, "loot_choices") or {}
 			local marks = {}
 			local seen_marks = {}
+			local mark_candidates = {}
 
+			for _, indexed in ipairs(indexed_weapon_marks(parent_pattern)) do
+				mark_candidates[#mark_candidates + 1] = indexed
+			end
 			for _, choice in ipairs(choices) do
-				local mark_master_id = choice_master_id(choice)
+				mark_candidates[#mark_candidates + 1] = {
+					master_id = choice_master_id(choice),
+				}
+			end
+
+			for _, candidate in ipairs(mark_candidates) do
+				local mark_master_id = candidate.master_id
 
 				if mark_master_id ~= nil and not seen_marks[mark_master_id] then
 					seen_marks[mark_master_id] = true
-					local mark_item
+					local mark_item = candidate.item
 					local mark_ok, resolved_mark = false, nil
 
-					if type(MasterItems) == "table" and type(MasterItems.get_item) == "function" then
+					if mark_item == nil and type(MasterItems) == "table" and type(MasterItems.get_item) == "function" then
 						mark_ok, resolved_mark = pcall(MasterItems.get_item, mark_master_id)
 					end
 
