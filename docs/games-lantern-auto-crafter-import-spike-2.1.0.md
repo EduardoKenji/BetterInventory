@@ -1126,7 +1126,7 @@ Keep parser/resolver/controller pure enough to run outside Darktide tests. Injec
 - Reset shortcut and queue-signature state whenever the Brunt panel is attached or detached. This prevents a held Ctrl+V or stale queue snapshot from crossing view instances.
 - Reuse the existing lifecycle gates for gameplay-state exit, operative-selection entry/exit, Brunt view creation/destruction, shutdown, and InstantCharacterChange character identity changes. A character change cancels fetch/catalog work, fails the active queue, and clears imported planner state.
 - Run four complete imports followed by four complete two-job queues (eight ordered job executions) and reject late callbacks/events from prior generations.
-- Synchronize `Content/mods/BetterInventory` with `tools/sync_deployed_mod.ps1` after every runtime change before live evidence is accepted; the command verifies the descriptor/runtime file set and hashes without deleting unrelated managed files.
+- Synchronize `Content/mods/BetterInventory` with `tools/sync_installed_mod.ps1` after every runtime change before live evidence is accepted; the command verifies the descriptor/runtime file set and hashes without deleting unrelated managed files.
 
 Batch 7 is automated compatibility evidence, not proof that every optional mod version is safe. Live review must still include Lantern installed and absent, InstantCharacterChange switching before paste and during fetch, Brunt close/reopen, and a normal single-item run with no imported queue.
 
@@ -1143,7 +1143,7 @@ The final audit added the following release-critical behavior without changing t
 - Parser scope is restricted to the Weapons section. Canonical UUID metadata, unique class identity, duplicate targets, login/challenge pages, ambiguous weapon cards, and unsupported drift fail closed.
 - Windows and Proton fetchers use unique owner-tagged files, bounded poll cadence, MIME/status/size/time checks, explicit child termination on cancellation, and cleanup. Raw URL slugs, HTML, and guide prose are not logged.
 
-Automated evidence is additive and recorded in `tests/case_manifest.json` and `tests/branch_matrix.json`. `tests/run_tests.py` currently reports 28 scripts / 105 cases passing. Critical imported-queue gates are:
+Automated evidence is additive and recorded in `tests/case_manifest.json` and `tests/branch_matrix.json`. `tests/run_tests.py` currently reports 29 scripts / 113 cases passing. Critical imported-queue gates are:
 
 | Contract | Executable evidence |
 |---|---|
@@ -1153,6 +1153,9 @@ Automated evidence is additive and recorded in `tests/case_manifest.json` and `t
 | Ambiguous multi-card selection and atomic continuation | `test_games_lantern_import_controller.py::explicit_ambiguous_weapon_choice` |
 | MIME/status/size/timeout/cancellation transport behavior | `test_games_lantern_transport.py::bounded_transport_timeout_status_size_and_cancel` |
 | Optional Lantern/InstantCharacterChange admission and four-run isolation | `test_games_lantern_compatibility.py::optional_mod_lifecycle_admission_and_four_run_soak` |
+| Exact finished skip, favorite/equipped independence, strict mark identity, both-slot resume, prefix revalidation, and final Phase 4 postconditions | `test_games_lantern_inventory_completion.py::exact_finished_skip_and_two_slot_resume_identity` |
+
+Finished-job semantics are strict and read-only. Queue skips a job only when fresh authoritative data proves exact mark, family, potential dump target, enabled Transcendent/500/trait targets, mastery 20/claims, and full mastery allocation. Perk/blessing order is set-equivalent. Favorite state and equipped state are ignored only for this zero-mutation completion check. In-progress resume keeps normal safety policy: exact mark, not equipped, and favorite inclusion setting. Before job 2 dispatch, job 1's exact gear and final targets are revalidated; drift stops queue before another write.
 
 Live-only rows remain pending: native Windows and Proton fetch/process cancellation, controller navigation and supported UI scales, Lantern installed/absent, InstantCharacterChange during fetch and before paste, Brunt close/reopen during a real mutation, and real-account spend/postcondition evidence. Do not describe those rows as validated from the automated suite.
 

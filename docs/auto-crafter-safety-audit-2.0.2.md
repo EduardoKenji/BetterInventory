@@ -26,3 +26,18 @@ Integration cases include four back-to-back crafts; fresh, partial, level-500, m
 - `SoloPlay` changes game mode. Auto Crafter exits on non-Morningstar runtime context and retains unresolved mutation ownership until settlement.
 
 No hook was added to block another mod's private UI action: that would couple BetterInventory to unstable internals and create a larger regression surface. Authoritative fail-closed reconciliation remains the compatibility boundary.
+
+## 2.1 imported-queue re-audit (2026-08-11)
+
+Darktide source contracts were rechecked against `backend/crafting.lua`, `crafting_service.lua`, `crafting_mechanicus_settings.lua`, `gear_service.lua`, and mastery services. Native crafting uses one-based service slots and converts to zero-based backend slots; duplicate/wasteful trait replacements are invalid. Auto Crafter therefore keeps all requests serial, validates complete request shape before dispatch, never retries ambiguous mutations, and confirms authoritative gear after every write.
+
+Additional enforced rules:
+
+- Completed imported jobs are detected only from a fresh current-character inventory/catalogue boundary. Exact master-item/mark, mastery family, level-500 potential dump stat, enabled rarity/expertise, set-equivalent perks/blessings, mastery level 20 with claimed level 19, and fully allocated blessing tiers must all match.
+- Favorite, unfavorite, and equipped state do not hide a completed weapon because skipping is read-only. Different marks never satisfy completion, even when they share mastery family and final traits.
+- Mutable in-progress resume still excludes equipped gear and respects `Include favorited inventory weapons when resuming`. Imported resume requires exact mark identity; family fallback cannot select a sibling mark.
+- Completed queue prefix is revalidated from the next job's fresh snapshot before any next-job mutation. Removed, discarded, mark-changed, or trait-changed prior gear blocks continuation.
+- Phase 4 now rechecks exact mark/family, dump stat, rarity, expertise, perk/blessing sets, mastery allocation, and requested favorite state before reporting terminal success.
+- Malformed expertise, discard, rarity-batch, mastery-allocation, and mastery-extraction arguments reject locally before Darktide service dispatch. Duplicate IDs/operations, empty IDs, non-finite levels, and out-of-range tiers are no-ops with normal Auto Crafter failure logging.
+
+Automated evidence: 29 behavior scripts / 113 named cases. Live Darktide validation remains required; automated tests cannot prove backend availability, real account balances, or third-party mod runtime behavior.
