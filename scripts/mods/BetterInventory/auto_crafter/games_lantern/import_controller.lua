@@ -204,7 +204,7 @@ function ImportController.new(dependencies)
 				return fail(error_value or "trait_catalog_unavailable", {})
 			end
 
-			local resolved, resolve_reason = self._resolver.attach_catalogs(identity, catalogs)
+			local resolved, resolve_reason = self._resolver.attach_catalogs(identity, catalogs, context)
 			if not resolved then
 				return fail(resolve_reason or "trait_resolution_failed", {})
 			end

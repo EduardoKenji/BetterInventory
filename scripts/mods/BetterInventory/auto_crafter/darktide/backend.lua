@@ -622,7 +622,22 @@ local function canonical_master_item_name(value)
 		return value
 	end
 
-	return safe_member(value, "name") or safe_member(value, "id")
+	local direct = safe_member(value, "name")
+		or safe_member(value, "id")
+		or safe_member(value, "master_id")
+		or safe_member(value, "masterId")
+
+	if direct ~= nil then
+		return direct
+	end
+
+	local nested = safe_member(value, "item") or safe_member(value, "trait")
+
+	if nested ~= value then
+		return canonical_master_item_name(nested)
+	end
+
+	return nil
 end
 
 local function trait_display_name_key(trait_id, source)
@@ -691,6 +706,7 @@ local function summarize_perk_catalog(metadata)
 					end
 
 					catalog[#catalog + 1] = {
+						description_key = perk_item and safe_member(perk_item, "description") or nil,
 						display_name = display_name,
 						display_name_key = trait_display_name_key(name, perk),
 						id = tostring(name),
@@ -764,6 +780,7 @@ local function summarize_blessing_catalog(sticker_book)
 			end
 
 			catalog[#catalog + 1] = {
+				description_key = safe_member(trait_item, "description"),
 				display_name_key = trait_display_name_key(trait_name),
 				frame = frame,
 				id = tostring(trait_name),

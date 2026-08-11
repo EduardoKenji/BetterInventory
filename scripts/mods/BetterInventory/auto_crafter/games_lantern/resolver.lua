@@ -354,21 +354,35 @@ local function catalog_for(context, offer)
 	return type(catalogs) == "table" and key ~= nil and catalogs[key] or context and context.catalog
 end
 
-local function trait_text(entry)
+local function trait_text(entry, localize_trait_label)
 	return table.concat({
 		text(entry and entry.display_name),
 		text(entry and entry.display_name_key),
+		localized_offer_label(localize_trait_label, entry and entry.display_name_key),
+		text(entry and entry.description_key),
+		localized_offer_label(localize_trait_label, entry and entry.description_key),
+		text(entry and entry.trait),
 		text(entry and entry.id),
 	}, " ")
 end
 
-local function trait_score(external, entry)
+local function icon_trait_id(value)
+	if value == nil then
+		return nil
+	end
+
+	local rendered = tostring(value)
+
+	return rendered:match("weapon_trait_0*(%d+)") or rendered:match("^0*(%d+)$")
+end
+
+local function trait_score(external, entry, localize_trait_label)
 	local external_tokens = tokens(external and (external.label or external.name))
-	local candidate = token_set(trait_text(entry))
+	local candidate = token_set(trait_text(entry, localize_trait_label))
 	local score = 0
-	local external_icon_id = external and external.external_icon_id
-	local candidate_icon_id = entry and (entry.external_icon_id or entry.icon_id or entry.icon or entry.texture_id)
-	if external_icon_id ~= nil and candidate_icon_id ~= nil and tostring(external_icon_id) == tostring(candidate_icon_id) then
+	local external_icon_id = icon_trait_id(external and external.external_icon_id)
+	local candidate_icon_id = icon_trait_id(entry and (entry.external_icon_id or entry.icon_id or entry.icon or entry.texture_id))
+	if external_icon_id ~= nil and candidate_icon_id ~= nil and external_icon_id == candidate_icon_id then
 		score = score + 100
 	end
 
@@ -382,7 +396,7 @@ local function trait_score(external, entry)
 	return label_score == #external_tokens and label_score > 0 and score or 0
 end
 
-local function resolve_traits(external_values, entries, kind)
+local function resolve_traits(external_values, entries, kind, localize_trait_label)
 	local result = {}
 
 	if type(external_values) ~= "table" or #external_values ~= 2 then
@@ -393,7 +407,7 @@ local function resolve_traits(external_values, entries, kind)
 		local candidates = {}
 
 		for _, entry in ipairs(entries or {}) do
-			local score = trait_score(external, entry)
+			local score = trait_score(external, entry, localize_trait_label)
 
 			if score > 0 then
 				candidates[#candidates + 1] = {entry = entry, score = score}
@@ -403,7 +417,7 @@ local function resolve_traits(external_values, entries, kind)
 		sorted_candidates(candidates)
 
 		if #candidates == 0 then
-			return nil, kind .. "_unavailable"
+			return nil, kind .. "_unavailable_slot_" .. tostring(index)
 		end
 
 		local top_score = candidates[1].score
@@ -477,20 +491,20 @@ local function resolve_identity(external, slot, context)
 	}, nil
 end
 
-local function attach_catalog(job, catalog)
+local function attach_catalog(job, catalog, localize_trait_label)
 	if type(catalog) ~= "table" or catalog.available ~= true then
 		return nil, "trait_catalog_unavailable"
 	end
 
 	local external = job.external or {}
 
-	local perks, perk_reason = resolve_traits(external.perks, catalog.perks, "perk")
+	local perks, perk_reason = resolve_traits(external.perks, catalog.perks, "perk", localize_trait_label)
 
 	if not perks then
 		return nil, perk_reason
 	end
 
-	local blessings, blessing_reason = resolve_traits(external.blessings, catalog.blessings, "blessing")
+	local blessings, blessing_reason = resolve_traits(external.blessings, catalog.blessings, "blessing", localize_trait_label)
 
 	if not blessings then
 		return nil, blessing_reason
@@ -511,7 +525,7 @@ local function resolve_one(external, slot, context)
 	end
 
 	local catalog = catalog_for(context, job.offer)
-	local completed, catalog_reason = attach_catalog(job, catalog)
+	local completed, catalog_reason = attach_catalog(job, catalog, context and context.localize_offer_label)
 
 	if not completed then
 		return nil, catalog_reason
@@ -608,7 +622,7 @@ function Resolver.resolve_identities(model, context)
 	}, nil
 end
 
-function Resolver.attach_catalogs(identity_build, catalogs)
+function Resolver.attach_catalogs(identity_build, catalogs, context)
 	if type(identity_build) ~= "table" or type(identity_build.jobs) ~= "table" or #identity_build.jobs ~= 2 then
 		return nil, "identity_build_unavailable"
 	end
@@ -618,7 +632,7 @@ function Resolver.attach_catalogs(identity_build, catalogs)
 	for index, job in ipairs(identity_build.jobs) do
 		local key = job.master_id or job.offer and (job.offer.master_id or job.offer.parent_pattern)
 		local catalog = type(catalogs) == "table" and key ~= nil and catalogs[key] or nil
-		local completed, reason = attach_catalog(job, catalog)
+		local completed, reason = attach_catalog(job, catalog, context and context.localize_offer_label)
 
 		if not completed then
 			return nil, tostring(reason or "trait_catalog_unavailable") .. "_" .. tostring(index)
