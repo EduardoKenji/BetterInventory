@@ -1153,9 +1153,9 @@ Automated evidence is additive and recorded in `tests/case_manifest.json` and `t
 | Ambiguous multi-card selection and atomic continuation | `test_games_lantern_import_controller.py::explicit_ambiguous_weapon_choice` |
 | MIME/status/size/timeout/cancellation transport behavior | `test_games_lantern_transport.py::bounded_transport_timeout_status_size_and_cancel` |
 | Optional Lantern/InstantCharacterChange admission and four-run isolation | `test_games_lantern_compatibility.py::optional_mod_lifecycle_admission_and_four_run_soak` |
-| Exact finished skip, favorite/equipped independence, strict mark identity, both-slot resume, prefix revalidation, and final Phase 4 postconditions | `test_games_lantern_inventory_completion.py::exact_finished_skip_and_two_slot_resume_identity` |
+| Family-equivalent finished skip, duplicate override, favorite/equipped independence, both-slot cross-mark resume, prefix revalidation, and final Phase 4 postconditions | `test_games_lantern_inventory_completion.py::family_finished_skip_duplicate_and_two_slot_resume` |
 
-Finished-job semantics are strict and read-only. Queue skips a job only when fresh authoritative data proves exact mark, family, potential dump target, enabled Transcendent/500/trait targets, mastery 20/claims, and full mastery allocation. Perk/blessing order is set-equivalent. Favorite state and equipped state are ignored only for this zero-mutation completion check. In-progress resume keeps normal safety policy: exact mark, not equipped, and favorite inclusion setting. Before job 2 dispatch, job 1's exact gear and final targets are revalidated; drift stops queue before another write.
+Finished-job semantics are strict and read-only. Queue skips a job only when fresh authoritative data proves family, potential dump target, enabled Transcendent/500/trait targets, mastery 20/claims, and full mastery allocation. Perk/blessing order is set-equivalent. Favorite, equipped, and mark state are ignored for this zero-mutation completion check. In-progress resume first searches every mark in the same family, still excluding equipped gear and respecting the favorite inclusion setting. With no resumable base, the default skips a completed family weapon; the duplicate option forces a fresh purchase. Before job 2 dispatch, job 1's exact gear and final targets are revalidated; family/target drift stops queue before another write.
 
 Live-only rows remain pending: native Windows and Proton fetch/process cancellation, controller navigation and supported UI scales, Lantern installed/absent, InstantCharacterChange during fetch and before paste, Brunt close/reopen during a real mutation, and real-account spend/postcondition evidence. Do not describe those rows as validated from the automated suite.
 
@@ -1187,7 +1187,7 @@ Additional no-regression gates from the handoff audit:
 - Manual/no-queue behavior has a before/after baseline and no observed semantic delta.
 - The supplied page resolves both documented jobs, exact targets, and melee-first order from a checked fixture.
 - Structured card parsing ignores prose alternatives and linked builds.
-- Exact master/mark identity is proven; mastery-family fallback alone cannot authorize either job.
+- Imported page resolution proves the intended mark, but inventory completion and resume treat every mark in that proven mastery family as an equivalent crafting base.
 - Imported target controls are locked; pending jobs use frozen targets and one confirmed run-policy snapshot.
 - Trait completion is set-based and reversed slot order causes zero unnecessary mutations.
 - Exact-base, final-gear, family-progression, and job-complete states are independently tested.

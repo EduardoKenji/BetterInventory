@@ -33,11 +33,12 @@ Darktide source contracts were rechecked against `backend/crafting.lua`, `crafti
 
 Additional enforced rules:
 
-- Completed imported jobs are detected only from a fresh current-character inventory/catalogue boundary. Exact master-item/mark, mastery family, level-500 potential dump stat, enabled rarity/expertise, set-equivalent perks/blessings, mastery level 20 with claimed level 19, and fully allocated blessing tiers must all match.
-- Favorite, unfavorite, and equipped state do not hide a completed weapon because skipping is read-only. Different marks never satisfy completion, even when they share mastery family and final traits.
-- Mutable in-progress resume still excludes equipped gear and respects `Include favorited inventory weapons when resuming`. Imported resume requires exact mark identity; family fallback cannot select a sibling mark.
+- Completed imported jobs are detected only from a fresh current-character inventory/catalogue boundary. Mastery family, level-500 potential dump stat, enabled rarity/expertise, set-equivalent perks/blessings, mastery level 20 with claimed level 19, and fully allocated blessing tiers must all match.
+- Favorite, unfavorite, equipped, and mark state do not hide a completed family-equivalent weapon because skipping is read-only and marks can be changed without crafting cost.
+- Mutable in-progress resume still excludes equipped gear and respects `Include favorited inventory weapons when resuming`. Every mark in the same mastery family is an equivalent resume base.
+- An incomplete resumable family weapon always wins over completion skipping. If none exists, completed queued weapons are skipped by default; `Craft duplicates of already completed queued weapons` instead forces a fresh Brunt purchase.
 - Completed queue prefix is revalidated from the next job's fresh snapshot before any next-job mutation. Removed, discarded, mark-changed, or trait-changed prior gear blocks continuation.
-- Phase 4 now rechecks exact mark/family, dump stat, rarity, expertise, perk/blessing sets, mastery allocation, and requested favorite state before reporting terminal success.
+- Phase 4 now rechecks family, dump stat, rarity, expertise, perk/blessing sets, mastery allocation, and requested favorite state before reporting terminal success.
 - Malformed expertise, discard, rarity-batch, mastery-allocation, and mastery-extraction arguments reject locally before Darktide service dispatch. Duplicate IDs/operations, empty IDs, non-finite levels, and out-of-range tiers are no-ops with normal Auto Crafter failure logging.
 
 Automated evidence: 29 behavior scripts / 113 named cases. Live Darktide validation remains required; automated tests cannot prove backend availability, real account balances, or third-party mod runtime behavior.
