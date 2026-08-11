@@ -138,4 +138,47 @@ CharacterOverview.clear_derived_content = function(content, maximum_stats)
 	return true
 end
 
+-- Fit a complete title into a bounded number of rows by reducing its font
+-- size before falling back to a bounded final-row crop. The renderer-specific
+-- wrapping and cropping operations are injected so this policy remains easy
+-- to test without retaining a renderer or widget.
+CharacterOverview.fit_title = function(text, preferred_font_size, minimum_font_size, maximum_lines, wrap_rows, crop_row)
+	if type(text) ~= "string" or text == "" or type(wrap_rows) ~= "function" then
+		return text, preferred_font_size, 0, false
+	end
+
+	local preferred = math.max(1, math.floor(tonumber(preferred_font_size) or 1))
+	local minimum = math.max(1, math.min(preferred, math.floor(tonumber(minimum_font_size) or preferred)))
+	local line_limit = math.max(1, math.floor(tonumber(maximum_lines) or 1))
+	local font_size = preferred
+	local rows = wrap_rows(text, font_size)
+
+	while type(rows) == "table" and #rows > line_limit and font_size > minimum do
+		font_size = font_size - 1
+		rows = wrap_rows(text, font_size)
+	end
+
+	if type(rows) ~= "table" or #rows == 0 then
+		local fallback = type(crop_row) == "function" and crop_row(text, font_size) or text
+
+		return fallback, font_size, 1, fallback ~= text
+	end
+
+	if #rows <= line_limit then
+		return table.concat(rows, "\n"), font_size, #rows, false
+	end
+
+	local fitted_rows = {}
+
+	for index = 1, line_limit do
+		fitted_rows[index] = rows[index] or ""
+	end
+
+	if type(crop_row) == "function" then
+		fitted_rows[line_limit] = crop_row(fitted_rows[line_limit] .. "…", font_size)
+	end
+
+	return table.concat(fitted_rows, "\n"), font_size, line_limit, true
+end
+
 return CharacterOverview

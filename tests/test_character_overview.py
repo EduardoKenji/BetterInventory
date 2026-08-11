@@ -85,6 +85,52 @@ def main() -> None:
     assert content.better_inventory_overview_full_curio_stat_1 is None
     assert content.better_inventory_overview_fitted_curio_stat_2 is None
 
+    wrap_rows = lua.eval(
+        """
+        function(text, font_size)
+            local maximum_characters = math.max(1, math.floor(125 / (font_size * 0.6)))
+            local rows = {}
+            local row = ""
+
+            for word in string.gmatch(text, "%S+") do
+                local candidate = row == "" and word or row .. " " .. word
+
+                if #candidate > maximum_characters and row ~= "" then
+                    rows[#rows + 1] = row
+                    row = word
+                else
+                    row = candidate
+                end
+            end
+
+            if row ~= "" then
+                rows[#rows + 1] = row
+            end
+
+            return rows
+        end
+        """
+    )
+    crop_row = lua.eval("function(text) return string.sub(text, 1, 12) end")
+    long_title = "Laurel of the Righteous (Reliquary)"
+    fitted_title, fitted_font_size, fitted_lines, cropped = overview.fit_title(
+        long_title, 18, 6, 2, wrap_rows, crop_row
+    )
+    assert fitted_font_size < 18
+    assert fitted_lines <= 2
+    assert fitted_title.count("\n") <= 1
+    assert fitted_title.replace("\n", " ") == long_title
+    assert cropped is False
+
+    impossible_wrap = lua.eval("function() return {'one', 'two', 'three'} end")
+    cropped_title, minimum_size, cropped_lines, was_cropped = overview.fit_title(
+        "one two three", 10, 8, 2, impossible_wrap, crop_row
+    )
+    assert minimum_size == 8
+    assert cropped_lines == 2
+    assert cropped_title.count("\n") == 1
+    assert was_cropped is True
+
     print("BetterInventory Character Overview view-model tests passed.")
 
 

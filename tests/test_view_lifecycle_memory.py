@@ -51,6 +51,8 @@ def main() -> None:
     assert "CharacterOverviewUI.needs_update()" in runtime
     assert "FeatureDomains.markers.needs_update()" in runtime
     assert "local auto_crafter_needs_update" in runtime
+    assert "content.better_inventory_curio_fit_initialized ~= true" in overview
+    assert "fit_curio_text(widget, ui_renderer, false)" in overview
     assert "session.cleanup = nil" in sessions
     assert "session.cleanup_order = nil" in sessions
     assert "session.fields = nil" in sessions

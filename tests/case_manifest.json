@@ -2,7 +2,8 @@
   "test_character_overview.py": [
     {"name": "item_identity_and_revision", "risk": "high", "start_line": 52, "end_line": 55},
     {"name": "empty_slot_model", "risk": "high", "start_line": 57, "end_line": 72},
-    {"name": "derived_content_reset", "risk": "high", "start_line": 74, "end_line": 86}
+    {"name": "derived_content_reset", "risk": "high", "start_line": 74, "end_line": 86},
+    {"name": "adaptive_two_line_title_fit", "risk": "high", "start_line": 88, "end_line": 132}
   ],
   "test_auto_crafter_stats.py": [
       {"name": "template_stats_purchase_reconciliation_traits_favorite_discard_and_potential_projection", "risk": "critical", "start_line": 348, "end_line": 499},
@@ -183,8 +184,8 @@
     {"name": "repeated_reentrant_and_bulk_close", "risk": "high", "start_line": 58, "end_line": 93}
   ],
   "test_view_lifecycle_memory.py": [
-    {"name": "explicit_view_owned_state_release", "risk": "high", "start_line": 26, "end_line": 72},
-    {"name": "post_draw_update_cpu_invariant", "risk": "critical", "start_line": 74, "end_line": 78},
-    {"name": "native_async_cleanup_contracts", "risk": "high", "start_line": 80, "end_line": 91}
+    {"name": "explicit_view_owned_state_release", "risk": "high", "start_line": 26, "end_line": 74},
+    {"name": "post_draw_update_cpu_invariant", "risk": "critical", "start_line": 76, "end_line": 80},
+    {"name": "native_async_cleanup_contracts", "risk": "high", "start_line": 82, "end_line": 93}
   ]
 }
