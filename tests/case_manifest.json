@@ -136,8 +136,9 @@
   ],
   "test_feature_domains.py": [
     {"name": "marker_generation", "risk": "high", "start_line": 20, "end_line": 34},
-    {"name": "sorting_signature", "risk": "high", "start_line": 36, "end_line": 42},
-    {"name": "panel_composition", "risk": "high", "start_line": 44, "end_line": 49}
+    {"name": "dirty_marker_registry_and_unrelated_grid_isolation", "risk": "high", "start_line": 35, "end_line": 78},
+    {"name": "sorting_signature", "risk": "high", "start_line": 80, "end_line": 85},
+    {"name": "panel_composition", "risk": "high", "start_line": 87, "end_line": 91}
   ],
   "test_features.py": [
         {"name": "discard_operation_ownership", "risk": "critical", "start_line": 2989, "end_line": 3452},
@@ -148,7 +149,7 @@
   "test_item_customization.py": [
       {"name": "dirty_save_outcomes", "risk": "high", "start_line": 224, "end_line": 441},
       {"name": "bounded_retry_and_disable", "risk": "high", "start_line": 442, "end_line": 754},
-      {"name": "callback_failure_safety", "risk": "high", "start_line": 755, "end_line": 972}
+      {"name": "callback_failure_safety", "risk": "high", "start_line": 755, "end_line": 979}
   ],
   "test_layout.py": [
     {"name": "card_geometry", "risk": "high", "start_line": 621, "end_line": 1604},
@@ -165,7 +166,7 @@
     {"name": "migration_preservation", "risk": "high", "start_line": 385, "end_line": 504},
     {"name": "character_overview_refresh", "risk": "high", "start_line": 505, "end_line": 1359},
     {"name": "localization_contract", "risk": "medium", "start_line": 1360, "end_line": 2249},
-      {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2250, "end_line": 2503}
+      {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2250, "end_line": 2532}
   ],
   "test_settings_registry.py": [
     {"name": "duplicate_detection", "risk": "high", "start_line": 53, "end_line": 78},

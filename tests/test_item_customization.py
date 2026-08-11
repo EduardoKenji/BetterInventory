@@ -609,7 +609,8 @@ def main() -> None:
     assert len(legend) == 3
 
     # The global popup handler may predate hook_require's definition changes.
-    # Its update hook must repair the live scenegraph and attach the field.
+    # Opening the editor must repair it on demand without a global update hook.
+    assert globals_.captured_safe_hooks.update is None
     dynamic_popup_handler = lua.table_from(
         {
             "_definitions": globals_.popup_definitions,
@@ -620,15 +621,30 @@ def main() -> None:
             ),
         }
     )
-    globals_.captured_safe_hooks.update(dynamic_popup_handler)
+    globals_.live_popup_handler = dynamic_popup_handler
+    lua.execute(
+        """
+        Managers.ui.ui_constant_elements = function()
+            return {
+                element = function(_, name)
+                    assert(name == "ConstantElementPopupHandler")
+                    return live_popup_handler
+                end,
+            }
+        end
+        """
+    )
+    assert customization.show_name_editor(mod, context, lua.table_from({})) is True
     repaired_input_widget = dynamic_popup_handler._widgets_by_name[
         "better_inventory_name_input"
     ]
     assert repaired_input_widget is not None
     assert dynamic_popup_handler._ui_scenegraph.rebuilt is True
     assert len(dynamic_popup_handler._widgets) == 1
-    globals_.captured_safe_hooks.update(dynamic_popup_handler)
+    globals_.captured_popup.options[3].callback()
+    assert customization.show_name_editor(mod, context, lua.table_from({})) is True
     assert len(dynamic_popup_handler._widgets) == 1
+    globals_.captured_popup.options[3].callback()
 
     # A broken handler is bounded to three repair attempts and one warning,
     # preventing a protected failure from becoming per-frame overhead.
@@ -643,8 +659,9 @@ def main() -> None:
         }
     )
     initial_warning_count = globals_.warning_count
+    globals_.live_popup_handler = failing_popup_handler
     for _ in range(5):
-        globals_.captured_safe_hooks.update(failing_popup_handler)
+        assert customization.show_name_editor(mod, context, lua.table_from({})) is False
     assert failing_popup_handler._better_inventory_name_input_creation_attempts == 3
     assert globals_.warning_count == initial_warning_count + 1
 
@@ -659,18 +676,6 @@ def main() -> None:
                 "function(_, name, definition) local widget = table.clone(definition); widget.name = name; return widget end"
             ),
         }
-    )
-    lua.execute(
-        """
-        Managers.ui.ui_constant_elements = function()
-            return {
-                element = function(_, name)
-                    assert(name == "ConstantElementPopupHandler")
-                    return live_popup_handler
-                end,
-            }
-        end
-        """
     )
     assert customization.show_name_editor(mod, context, lua.table_from({})) is True
     live_input_widget = globals_.live_popup_handler._widgets_by_name[
@@ -702,8 +707,6 @@ def main() -> None:
             )
         }
     )
-    globals_.captured_safe_hooks.update(detached_handler)
-
     input_widget = lua.table_from(
         {"content": lua.table_from({"visible": False, "is_writing": False})}
     )
@@ -733,7 +736,16 @@ def main() -> None:
         }
     )
     globals_.adjusted_positions = lua.table_from({})
-    globals_.captured_safe_hooks.update(popup_handler)
+    globals_.live_popup_handler = popup_handler
+    lua.execute(
+        """
+        Managers.ui.ui_constant_elements = function()
+            return {
+                element = function() return live_popup_handler end,
+            }
+        end
+        """
+    )
     assert customization.show_name_editor(mod, context, lua.table_from({})) is True
     popup = globals_.captured_popup
     assert detached_input_widget.content.visible is False
@@ -950,7 +962,6 @@ def main() -> None:
     assert pending is False
 
     # Disabling the mod while the editor is open must release keyboard capture.
-    globals_.captured_safe_hooks.update(popup_handler)
     assert customization.show_name_editor(mod, context, lua.table_from({})) is True
     assert input_widget.content.is_writing is True
     customization.on_disabled(mod)
@@ -961,9 +972,11 @@ def main() -> None:
     assert store.has_pending_deleted_gear() is False
     assert store.take_pending_deleted_gear_ids() is None
     store.queue_deleted_gear("perf-probe")
+    assert customization.needs_update() is True
     assert store.has_pending_deleted_gear() is True
     assert store.take_pending_deleted_gear_ids()["perf-probe"] is True
     assert store.has_pending_deleted_gear() is False
+    assert customization.needs_update() is False
 
     print("BetterInventory item customization tests passed.")
 

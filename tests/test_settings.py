@@ -9,6 +9,7 @@ MAIN_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInven
 CHARACTER_OVERVIEW_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_character_overview.lua"
 CHARACTER_OVERVIEW_UI_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_character_overview_ui.lua"
 RUNTIME_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_runtime.lua"
+FEATURE_DOMAINS_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_feature_domains.lua"
 DATA_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_data.lua"
 LOCALIZATION_PATH = (
     PROJECT_ROOT
@@ -181,7 +182,7 @@ def main() -> None:
 		lantern_recommendations_are_active = false
 		profile_discovery_requests = 0
 		last_profile_discovery_force = nil
-		test_features = {
+			test_features = {
 			add_inventory_sort_toggle_definition = function(_, _, definitions) return definitions end,
 			configure_inventory_sort_options = function() end,
 			setup_inventory_options_panel = function() end,
@@ -194,7 +195,9 @@ def main() -> None:
 			sync_quick_discard_settings = function() quick_discard_syncs = quick_discard_syncs + 1 end,
 			sync_curio_acquisition_settings = function() curio_acquisition_syncs = curio_acquisition_syncs + 1 end,
 			rebind_sort_options = function() end,
-			morningstar_auto_discard_is_busy = function() return false end,
+				morningstar_auto_discard_is_busy = function() return false end,
+				discard_owner = function() return nil end,
+				reconcile_discard_transaction = function() end,
 			cancel_manual_discard = function() end,
 			unregister_inventory_view = function() end,
 			lantern_recommendations_active = function() return lantern_recommendations_are_active end,
@@ -215,7 +218,8 @@ def main() -> None:
 			on_enabled = function() end,
 			on_all_mods_loaded = function() end,
 			on_setting_changed = function() end,
-			update_runtime = function() end,
+			update_runtime = function() item_customization_updates = item_customization_updates + 1 end,
+			needs_update = function() return false end,
 			import_name_it_names = function() end,
 		}
 		test_equipment_persistence = {
@@ -223,8 +227,11 @@ def main() -> None:
 				return native_function(view, ...)
 			end,
 			refresh_from_authoritative_profile = function() end,
-			update = function() end,
+			update = function() equipment_persistence_updates = equipment_persistence_updates + 1 end,
+			has_pending = function() return false end,
 		}
+		item_customization_updates = 0
+		equipment_persistence_updates = 0
 
         test_mod = {}
         test_mod._better_inventory_test = {}
@@ -279,6 +286,10 @@ def main() -> None:
 
 			if string.find(path, "BetterInventory_runtime", 1, true) then
 				return TestRuntime
+			end
+
+			if string.find(path, "BetterInventory_feature_domains", 1, true) then
+				return TestFeatureDomains
 			end
 
 			if string.find(path, "BetterInventory_character_overview_ui", 1, true) then
@@ -375,13 +386,30 @@ def main() -> None:
         RUNTIME_PATH.read_text(encoding="utf-8"),
         name=str(RUNTIME_PATH),
     )
+    feature_domains = lua.execute(
+        FEATURE_DOMAINS_PATH.read_text(encoding="utf-8"),
+        name=str(FEATURE_DOMAINS_PATH),
+    )
     lua.globals().TestCharacterOverview = character_overview
     lua.globals().TestCharacterOverviewUI = character_overview_ui
     lua.globals().TestRuntime = runtime_module
+    lua.globals().TestFeatureDomains = feature_domains
     lua.execute(MAIN_PATH.read_text(encoding="utf-8"), name=str(MAIN_PATH))
     globals_ = lua.globals()
     mod = globals_.test_mod
     settings = globals_.settings
+    assert globals_.captured_character_overview_update_hook is None
+    assert globals_.captured_grid_update_hook is None
+    mod.update(0.016)
+    assert globals_.item_customization_updates == 0
+    assert globals_.equipment_persistence_updates == 0
+
+    def update_character_overview(dt: float = 0.25) -> None:
+        character_overview_ui.update_registered_views(dt)
+
+    def update_grid(item_grid, state, dt: float = 1 / 60) -> None:
+        original_grid_update(item_grid, state)
+        mod.update(dt)
 
     normalizer = mod._better_inventory_test.normalized_displayed_value
     item_changed = mod._better_inventory_test.character_overview_item_changed
@@ -653,7 +681,7 @@ def main() -> None:
         }
     )
     overview_view._loadout_widgets = lua.table_from([empty_curio_widget])
-    globals_.captured_character_overview_update_hook(overview_view)
+    update_character_overview()
     equipped_curio_widget = overview_view._loadout_widgets[1]
     assert equipped_curio_widget.type == curio_widget_type
     assert equipped_curio_widget.content.item.gear_id == "plain-curio"
@@ -661,7 +689,7 @@ def main() -> None:
     assert overview_view.last_rebuild_context.is_grid_layout is False
 
     lua.globals().overview_curio_item = None
-    globals_.captured_character_overview_update_hook(overview_view)
+    update_character_overview()
     unequipped_curio_widget = overview_view._loadout_widgets[1]
     assert unequipped_curio_widget.type == empty_curio_widget_type
     assert unequipped_curio_widget.content.item is None
@@ -725,24 +753,24 @@ def main() -> None:
     overview_view._loadout_widgets = lua.table_from([overview_equipped_widget])
     overview_view._active_category_tab_context = lua.table_from({"is_grid_layout": False})
     globals_.lantern_recommendations_are_active = True
-    globals_.captured_character_overview_update_hook(overview_view)
+    update_character_overview()
     assert overview_equipped_widget.style.equipped_icon.offset[2] == 34
     globals_.lantern_recommendations_are_active = False
-    globals_.captured_character_overview_update_hook(overview_view)
+    update_character_overview()
     assert overview_equipped_widget.style.equipped_icon.offset[2] == 2
     settings.character_overview_use_native_curio_overlay = True
     mod.on_setting_changed("character_overview_use_native_curio_overlay")
-    globals_.captured_character_overview_update_hook(overview_view)
+    update_character_overview()
     assert globals_.overview_layout_switches == 1
-    globals_.captured_character_overview_update_hook(overview_view)
+    update_character_overview()
     assert globals_.overview_layout_switches == 1
     settings.character_overview_show_curio_rarity_strip = False
     mod.on_setting_changed("character_overview_show_curio_rarity_strip")
-    globals_.captured_character_overview_update_hook(overview_view)
+    update_character_overview()
     assert globals_.overview_layout_switches == 2
     settings.character_overview_show_only_dump_stat = True
     mod.on_setting_changed("character_overview_show_only_dump_stat")
-    globals_.captured_character_overview_update_hook(overview_view)
+    update_character_overview()
     assert globals_.overview_layout_switches == 3
 
     runtime_hotspot_style = lua.table_from(
@@ -814,7 +842,7 @@ def main() -> None:
     )
     # MyFavorites only / native equipped state: favorite state never controls
     # placement, including transitions while the favorite icon is hidden.
-    globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
+    update_grid(item_grid, grid_update_calls, 0)
     assert grid_update_calls.count == 1
     assert runtime_hotspot_style.offset[2] == 7
     assert grid_widget.style.favorite_icon.offset[2] == 7
@@ -822,12 +850,11 @@ def main() -> None:
     # Idle frames must not rescan the tracked set. When a Darktide build does
     # not expose a native generation, the bounded fallback eventually notices
     # backend-driven content changes without returning to per-frame work.
-    item_grid._better_inventory_myfavorites_fallback_frames = 0
     grid_widget.content.equipped = True
     for _ in range(59):
-        globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
+        update_grid(item_grid, grid_update_calls)
     assert runtime_hotspot_style.offset[2] == 7
-    globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
+    update_grid(item_grid, grid_update_calls)
     assert runtime_hotspot_style.offset[2] == 33
 
     # Character Overview leaves inventory grids allocated but hidden. Even a
@@ -862,42 +889,42 @@ def main() -> None:
     )
     original_tracked_widgets = item_grid._better_inventory_myfavorites_widgets
     item_grid._better_inventory_myfavorites_widgets = globals_.hidden_grid_widgets
-    item_grid._better_inventory_myfavorites_dirty = True
+    feature_domains.markers.invalidate_grid(item_grid)
     item_grid._visible = False
-    globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
+    update_grid(item_grid, grid_update_calls)
     assert globals_.hidden_grid_scan_calls == 0
     assert item_grid._better_inventory_myfavorites_dirty is True
     item_grid._visible = True
-    globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
+    update_grid(item_grid, grid_update_calls)
     assert globals_.hidden_grid_scan_calls == 1000
     item_grid._better_inventory_myfavorites_widgets = original_tracked_widgets
     grid_widget.content.equipped = False
-    item_grid._better_inventory_myfavorites_dirty = True
-    globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
+    feature_domains.markers.invalidate_grid(item_grid)
+    update_grid(item_grid, grid_update_calls)
 
     grid_widget.content.favorite = True
-    item_grid._better_inventory_myfavorites_dirty = True
-    globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
+    feature_domains.markers.invalidate_grid(item_grid)
+    update_grid(item_grid, grid_update_calls)
     assert runtime_hotspot_style.offset[2] == 7
     grid_widget.content.favorite = False
     grid_widget.content.equipped = True
-    item_grid._better_inventory_myfavorites_dirty = True
-    globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
+    feature_domains.markers.invalidate_grid(item_grid)
+    update_grid(item_grid, grid_update_calls)
     assert runtime_hotspot_style.offset[2] == 33
     assert grid_widget.style.favorite_icon.offset[2] == 33
     grid_widget.content.equipped = False
-    item_grid._better_inventory_myfavorites_dirty = True
-    globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
+    feature_domains.markers.invalidate_grid(item_grid)
+    update_grid(item_grid, grid_update_calls)
     assert runtime_hotspot_style.offset[2] == 7
 
     # Equipped Icon+ inactive-loadout state follows its live visibility pass.
     grid_widget.content.inactive_loadout_equipped = True
-    item_grid._better_inventory_myfavorites_dirty = True
-    globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
+    feature_domains.markers.invalidate_grid(item_grid)
+    update_grid(item_grid, grid_update_calls)
     assert runtime_hotspot_style.offset[2] == 33
     grid_widget.content.inactive_loadout_equipped = False
-    item_grid._better_inventory_myfavorites_dirty = True
-    globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
+    feature_domains.markers.invalidate_grid(item_grid)
+    update_grid(item_grid, grid_update_calls)
     assert runtime_hotspot_style.offset[2] == 7
 
     # A third-party equipped pass failure is isolated and falls back to the
@@ -905,8 +932,8 @@ def main() -> None:
     grid_widget.content.better_inventory_equipped_icon_visibility_function = lua.eval(
         "function() error('simulated Equipped Icon+ failure') end"
     )
-    item_grid._better_inventory_myfavorites_dirty = True
-    globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
+    feature_domains.markers.invalidate_grid(item_grid)
+    update_grid(item_grid, grid_update_calls)
     assert runtime_hotspot_style.offset[2] == 7
 
     # Bottom-left marker mode is intentionally static and must not be pulled
@@ -915,7 +942,8 @@ def main() -> None:
     runtime_hotspot_style.vertical_alignment = "bottom"
     runtime_hotspot_style.offset[2] = -5
     grid_widget.content.equipped = True
-    globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
+    feature_domains.markers.invalidate_grid(item_grid)
+    update_grid(item_grid, grid_update_calls)
     assert runtime_hotspot_style.offset[2] == -5
 
     # Equipped Icon+ without MyFavorites has no MyFavorites hotspot and is a
@@ -934,7 +962,8 @@ def main() -> None:
         }
     )
     item_grid._grid_widgets[1] = no_myfavorites_widget
-    globals_.captured_grid_update_hook(original_grid_update, item_grid, grid_update_calls)
+    feature_domains.markers.invalidate_grid(item_grid)
+    update_grid(item_grid, grid_update_calls)
     assert no_myfavorites_widget.style.favorite_icon.offset[2] == 7
 
     # A grid that was not marked during widget creation must take the native
@@ -960,7 +989,7 @@ def main() -> None:
     untracked_grid = lua.table_from(
         {"_grid_widgets": lua.table_from({1: untracked_marker_widget})}
     )
-    globals_.captured_grid_update_hook(original_grid_update, untracked_grid, grid_update_calls)
+    update_grid(untracked_grid, grid_update_calls)
     assert untracked_marker_widget.content.better_inventory_myfavorites_hotspot_style.offset[2] == 1
 
     credits_view = lua.table_from({"__class_name": "CreditsVendorView"})

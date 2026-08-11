@@ -143,6 +143,7 @@ $features = @(
 ) -join "`n"
 $automaticDiscard = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_discard_automatic.lua") -Raw
 $featureSorting = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_feature_sorting.lua") -Raw
+$featureDomains = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_feature_domains.lua") -Raw
 $contracts = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_contracts.lua") -Raw
 $operationArbiter = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_operation_arbiter.lua") -Raw
 $settingsRegistry = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_settings.lua") -Raw
@@ -197,8 +198,12 @@ if ((($features -notmatch 'return automatic_discard_state\.delete_inflight' -and
 	throw "Automatic discard must retain shared ownership until backend deletion settles."
 }
 
-if ($main -notmatch '_better_inventory_myfavorites_active\s*=\s*true' -or $main -notmatch '_better_inventory_myfavorites_active\s*~=\s*true' -or $main -notmatch 'mod:hook_safe\(InventoryWeaponsView,\s*"update"' -or $main -notmatch 'mod:hook_safe\(ViewElementGrid,\s*"update"' -or $main -notmatch '_better_inventory_myfavorites_dirty' -or $main -notmatch 'hotspot_style\.offset\[2\] == offset_y') {
-	throw "Known UI update contracts and MyFavorites idle fast paths were not found."
+if ($main -notmatch '_better_inventory_myfavorites_active\s*=\s*true' -or $main -notmatch 'mod:hook_safe\(InventoryWeaponsView,\s*"update"' -or $main -match 'mod:hook_safe\(ViewElementGrid,\s*"update"' -or $main -match 'mod:hook_safe\(InventoryView,\s*"update"' -or $main -notmatch 'CharacterOverviewUI\.update_registered_views\(dt\)' -or $featureDomains -notmatch 'Domains\.markers\.update' -or $featureDomains -notmatch 'dirty_marker_grids') {
+	throw "View-scoped UI updates and dirty MyFavorites processing were not found."
+}
+
+if ($itemCustomization -match 'hook_safe\("ConstantElementPopupHandler",\s*"update"' -or $itemCustomization -notmatch 'resolve_input_widget\(mod,\s*true\)') {
+	throw "Item customization must resolve popup input on demand without a global popup update hook."
 }
 
 if ($features -notmatch 'set_inventory_options_panel_controller_focus\(view,\s*false\)' -or $features -notmatch 'set_armoury_controller_focus\(view,\s*false\)' -or $features -notmatch 'legend\.remove_entry' -or $features -notmatch '_better_inventory_armoury_controller_legend_action\s*=\s*nil') {
@@ -236,7 +241,7 @@ if ($main -notmatch 'Features\.set_item_sorting_integration\(get_mod\("ItemSorti
 	throw "ItemSorting inventory/store panel integration was not found."
 }
 
-if ($data -notmatch 'setting_id\s*=\s*"myfavorites_integration_group"' -or $data -match 'setting_id\s*=\s*"enable_myfavorites_integration"' -or $data -notmatch 'setting_id\s*=\s*"myfavorites_show_favorite_letter"[\s\S]*?default_value\s*=\s*false' -or $layout -notmatch 'myfavorites_compatibility\s*=\s*myfavorites_hotspot\s+and\s+myfavorites_hotspot\.style' -or $layout -notmatch 'resolved_size\s*=\s*size\s+or\s+hotspot_style\.size' -or $main -notmatch 'mod:hook\(ViewElementGrid,\s*"_create_entry_widget_from_config"' -or $main -notmatch 'attach_runtime_marker_styles\(widget,\s*item_grid\)' -or $main -notmatch 'content\.better_inventory_myfavorites_hotspot_style\s*=\s*styles\.myfav_hotspot' -or $main -notmatch 'better_inventory_equipped_icon_visibility_function\s*=\s*pass\.visibility_function' -or $main -notmatch 'mod:hook_safe\(ViewElementGrid,\s*"update"' -or $main -notmatch '_better_inventory_myfavorites_widgets' -or $main -notmatch 'tracked_widgets\[widget\]\s*=\s*true' -or $main -notmatch 'next\(tracked_widgets\)' -or $main -notmatch 'synchronize_myfavorites_marker\(widget\)' -or $layout -notmatch 'runtime_hotspot_style\.offset\[2\]\s*=\s*offset_y' -or $layout -notmatch 'content\.favorite_icon\s*=\s*compact_favorite_value' -or $layout -notmatch 'align_myfavorites_hotspot') {
+if ($data -notmatch 'setting_id\s*=\s*"myfavorites_integration_group"' -or $data -match 'setting_id\s*=\s*"enable_myfavorites_integration"' -or $data -notmatch 'setting_id\s*=\s*"myfavorites_show_favorite_letter"[\s\S]*?default_value\s*=\s*false' -or $layout -notmatch 'myfavorites_compatibility\s*=\s*myfavorites_hotspot\s+and\s+myfavorites_hotspot\.style' -or $layout -notmatch 'resolved_size\s*=\s*size\s+or\s+hotspot_style\.size' -or $main -notmatch 'mod:hook\(ViewElementGrid,\s*"_create_entry_widget_from_config"' -or $main -notmatch 'attach_runtime_marker_styles\(widget,\s*item_grid\)' -or $main -notmatch 'content\.better_inventory_myfavorites_hotspot_style\s*=\s*styles\.myfav_hotspot' -or $main -notmatch 'better_inventory_equipped_icon_visibility_function\s*=\s*pass\.visibility_function' -or $main -match 'mod:hook_safe\(ViewElementGrid,\s*"update"' -or $featureDomains -notmatch 'tracked_marker_grids' -or $featureDomains -notmatch 'Domains\.markers\.track_grid' -or $main -notmatch '_better_inventory_myfavorites_widgets' -or $main -notmatch 'tracked_widgets\[widget\]\s*=\s*true' -or $main -notmatch 'next\(tracked_widgets\)' -or $main -notmatch 'synchronize_myfavorites_marker\(widget\)' -or $layout -notmatch 'runtime_hotspot_style\.offset\[2\]\s*=\s*offset_y' -or $layout -notmatch 'content\.favorite_icon\s*=\s*compact_favorite_value' -or $layout -notmatch 'align_myfavorites_hotspot') {
 	throw "MyFavorites compact-marker compatibility integration was not found."
 }
 
