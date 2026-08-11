@@ -99,6 +99,38 @@ function ImportController.new(dependencies)
 		self._catalog_generation = nil
 	end
 
+	local function read_clipboard_url()
+		local ok, raw_clipboard = safe_call(self._clipboard_read)
+		if not ok or type(raw_clipboard) ~= "string" then
+			return nil, ok and "clipboard_empty" or "clipboard_read_failed"
+		end
+
+		local extract = self._clipboard and self._clipboard.extract_url
+		if type(extract) ~= "function" then
+			return nil, "clipboard_parser_unavailable"
+		end
+
+		local extract_ok, url, extract_reason = pcall(extract, raw_clipboard)
+		if not extract_ok or not url then
+			return nil, extract_ok and extract_reason or "clipboard_parser_failed"
+		end
+
+		return url
+	end
+
+	local function current_import_state()
+		return self._state == "fetching" or self._state == "resolving_catalogues" or self._state == "awaiting_weapon_choice" or self._state == "staged"
+	end
+
+	function self:clipboard_matches_current()
+		local url, reason = read_clipboard_url()
+		if not url then
+			return false, reason
+		end
+
+		return current_import_state() and url == self._url, nil
+	end
+
 	function self:paste()
 		if queue_busy() then
 			return false, "queue_busy"
@@ -112,28 +144,19 @@ function ImportController.new(dependencies)
 			end
 		end
 
+		local url, clipboard_reason = read_clipboard_url()
+		if not url then
+			return fail(clipboard_reason, {})
+		end
+		if current_import_state() and url == self._url then
+			return true, "already_current"
+		end
+
 		self._generation = self._generation + 1
 		cancel_catalog_read()
 
 		if type(self._transport) == "table" and type(self._transport.cancel) == "function" then
 			pcall(self._transport.cancel, self._transport, "new_paste")
-		end
-
-		local ok, raw_clipboard = safe_call(self._clipboard_read)
-		if not ok or type(raw_clipboard) ~= "string" then
-			return fail(ok and "clipboard_empty" or "clipboard_read_failed", { error = raw_clipboard })
-		end
-
-		local extract = self._clipboard and self._clipboard.extract_url
-		local extract_ok, url, extract_reason
-		if type(extract) == "function" then
-			extract_ok, url, extract_reason = pcall(extract, raw_clipboard)
-		else
-			extract_ok, extract_reason = false, "clipboard_parser_unavailable"
-		end
-
-		if not extract_ok or not url then
-			return fail(extract_ok and extract_reason or "clipboard_parser_failed", {})
 		end
 
 		self._url = url

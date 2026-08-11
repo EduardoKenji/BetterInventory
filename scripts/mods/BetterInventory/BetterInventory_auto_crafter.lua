@@ -973,6 +973,17 @@ function AutoCrafter.configure(dependencies)
 				return false, "replacement_confirmation_required"
 			end
 			if existing then
+				local match_ok, matches, match_reason = pcall(games_lantern_import.clipboard_matches_current, games_lantern_import)
+				if not match_ok then
+					return false, "clipboard_preflight_failed"
+				end
+				if matches == true then
+					return true, "already_current"
+				end
+				if match_reason then
+					return false, match_reason
+				end
+
 				local cleared = games_lantern_queue:clear()
 				if not cleared then
 					return false, "queue_busy"

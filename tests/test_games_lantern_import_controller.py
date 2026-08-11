@@ -13,6 +13,7 @@ def main() -> None:
     import_module = lua.execute(IMPORT_PATH.read_text(encoding="utf-8"), name=str(IMPORT_PATH))
     clipboard = lua.execute(CLIPBOARD_PATH.read_text(encoding="utf-8"), name=str(CLIPBOARD_PATH))
     url = "https://darktide.gameslantern.com/builds/00000000-0000-0000-0000-000000000000"
+    clipboard_value = [url]
 
     def to_lua(value):
         if isinstance(value, dict):
@@ -25,6 +26,8 @@ def main() -> None:
         return lua.eval("function(callback) return function(...) return callback(...) end end")(callback)
 
     transport_state = ["idle"]
+    transport_starts = []
+    transport_cancels = []
     staged_callbacks = []
     installed = []
     errors = []
@@ -38,10 +41,20 @@ def main() -> None:
     identity = to_lua({"kind": "games_lantern_identity_build", "jobs": []})
     resolved = to_lua({"kind": "games_lantern_build", "jobs": []})
 
+    def start_transport(*args):
+        transport_starts.append(args)
+        transport_state[0] = "running"
+        return True
+
+    def cancel_transport(*args):
+        transport_cancels.append(args)
+        transport_state[0] = "cancelled"
+        return True
+
     transport = to_lua(
         {
-            "start": callback_wrapper(lambda *args: transport_state.__setitem__(0, "running") or True),
-            "cancel": callback_wrapper(lambda *args: transport_state.__setitem__(0, "cancelled") or True),
+            "start": callback_wrapper(start_transport),
+            "cancel": callback_wrapper(cancel_transport),
             "update": callback_wrapper(lambda *args: "complete" if transport_state[0] == "running" else transport_state[0]),
             "take_result": callback_wrapper(lambda *args: (to_lua({"body": "<html>"}), None)),
             "snapshot": callback_wrapper(lambda *args: to_lua({"last_error": "transport_failed"})),
@@ -63,7 +76,7 @@ def main() -> None:
     controller = import_module.new(
         to_lua(
             {
-                "clipboard_read": callback_wrapper(lambda: url),
+                "clipboard_read": callback_wrapper(lambda: clipboard_value[0]),
                 "clipboard": clipboard,
                 "transport": transport,
                 "parser": parser,
@@ -86,10 +99,24 @@ def main() -> None:
     assert controller.snapshot(controller)["state"] == "staged"
     assert len(installed) == 1
 
-    # A stale callback from a replaced paste cannot install a second queue.
-    assert controller.paste(controller) is True
+    # Repeated identical pastes are idempotent after staging and while fetching:
+    # no transport cancellation, process restart, queue install, or UI event churn.
+    assert controller.clipboard_matches_current(controller) == (True, None)
+    for _ in range(100):
+        assert controller.paste(controller) == (True, "already_current")
+    assert len(transport_starts) == 1
+    assert len(transport_cancels) == 1
+    assert len(installed) == 1
+
+    # A genuinely different paste replaces the generation; callbacks from the
+    # previous generation remain inert, and duplicate new requests do not restart it.
     stale = staged_callbacks[-1]
+    clipboard_value[0] = "https://darktide.gameslantern.com/builds/11111111-1111-1111-1111-111111111111"
     assert controller.paste(controller) is True
+    for _ in range(100):
+        assert controller.paste(controller) == (True, "already_current")
+    assert len(transport_starts) == 2
+    assert len(transport_cancels) == 2
     assert stale(to_lua({}), None) is False
     assert len(installed) == 1
 
