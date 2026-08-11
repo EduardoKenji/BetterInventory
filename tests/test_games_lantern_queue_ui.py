@@ -43,6 +43,18 @@ def main() -> None:
     assert "enabled = not queue_owned" in panel
     assert "craft_enabled = not queue_active and not import_busy" in panel
 
+    # Manual mark selection sits between Planner and trait targeting. Estimates
+    # own all projected costs and remain immediately above Craft.
+    planner = panel.index('localize("auto_crafter_panel_planner", "Planner configuration")')
+    marks = panel.index('localize("auto_crafter_panel_marks", "Marks")')
+    traits = panel.index('localize("auto_crafter_panel_trait_targets", "Perk and blessing targets")')
+    estimates = panel.index('localize("auto_crafter_panel_estimates", "Estimates")')
+    craft = panel.index('localize("auto_crafter_panel_preview", "> CLICK HERE TO CRAFT <")')
+    assert planner < marks < traits < estimates < craft
+    assert "SECTION_MARKS" in panel
+    assert "SECTION_ESTIMATES" in panel
+    assert "selected_manual_mark" in facade
+
 
 if __name__ == "__main__":
     main()

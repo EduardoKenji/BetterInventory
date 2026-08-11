@@ -37,9 +37,23 @@ local CURRENCY_ICONS = {
 }
 local SECTION_PLANNER = "planner"
 local SECTION_QUEUE = "games_lantern_queue"
+local SECTION_MARKS = "marks"
 local SECTION_WORKFLOW = "workflow"
 local SECTION_RESUMING = "resuming"
 local SECTION_TRAITS = "traits"
+local SECTION_ESTIMATES = "estimates"
+
+local function default_section_state()
+	return {
+		[SECTION_QUEUE] = false,
+		[SECTION_PLANNER] = false,
+		[SECTION_MARKS] = false,
+		[SECTION_TRAITS] = true,
+		[SECTION_WORKFLOW] = false,
+		[SECTION_RESUMING] = false,
+		[SECTION_ESTIMATES] = false,
+	}
+end
 local TRAIT_TARGET_PAIRS = {
 	auto_crafter_perk_1_target = "auto_crafter_perk_2_target",
 	auto_crafter_perk_2_target = "auto_crafter_perk_1_target",
@@ -821,6 +835,8 @@ function Panel.new(dependencies)
 	local self = {
 		_get_selected_offer = dependencies.get_selected_offer,
 		_select_offer = dependencies.select_offer,
+		_select_manual_mark = dependencies.select_manual_mark,
+		_get_selected_manual_mark = dependencies.get_selected_manual_mark,
 		_preview_plan = dependencies.preview_plan,
 		_start_purchase_search = dependencies.start_purchase_search,
 		_stop_active_run = dependencies.stop_active_run,
@@ -854,13 +870,7 @@ function Panel.new(dependencies)
 		_selected_offer_key = nil,
 		_selected_offer = nil,
 		_selected_offer_master_id = nil,
-		_section_collapsed = {
-			[SECTION_QUEUE] = false,
-			[SECTION_PLANNER] = false,
-			[SECTION_WORKFLOW] = false,
-			[SECTION_RESUMING] = false,
-			[SECTION_TRAITS] = true,
-		},
+		_section_collapsed = default_section_state(),
 		_pending_offer = nil,
 		_pending_offer_attempts = 0,
 		_idle_poll_elapsed = 0,
@@ -1133,6 +1143,20 @@ function Panel.new(dependencies)
 		end
 
 		return offers, selected_offer and localize("auto_crafter_panel_selected_weapon", "Selected weapon") or localize("auto_crafter_panel_no_target", "no weapon selected")
+	end
+
+	function self:_selected_store_offer(snapshot)
+		local selected_offer = self._selected_offer
+
+		for _, offer in ipairs(snapshot and snapshot.store and snapshot.store.offers or {}) do
+			local matches = selected_offer and (selected_offer.offer_id and offer.offer_id == selected_offer.offer_id or selected_offer.master_id and offer.master_id == selected_offer.master_id)
+
+			if matches then
+				return offer
+			end
+		end
+
+		return nil
 	end
 
 	function self:_games_lantern_queue()
@@ -1991,69 +2015,56 @@ function Panel.new(dependencies)
 					widget.content.checked = self:_setting("auto_crafter_best_candidate_fallback", true) == true
 				end,
 			}))
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_estimate", "Search budget"), self:_estimate_acquisition_text(), {
-				variant = "status",
-				refresh = function(widget)
-					widget.content.detail = self:_estimate_acquisition_text()
-				end,
-			}))
-			local function add_estimate_currency(label_id, fallback, phase_name)
-				local credits, plasteel, diamantine = self:_estimate_currency_values(phase_name)
-				table.insert(entries, self:_entry(localize(label_id, fallback), "", {
-					credits = credits,
-					diamantine = diamantine,
-					plasteel = plasteel,
-					variant = "currency",
-					refresh = function(widget)
-						widget.content.credits, widget.content.plasteel, widget.content.diamantine = self:_estimate_currency_values(phase_name)
-					end,
-				}))
+		end
+
+		table.insert(entries, self:_entry(localize("auto_crafter_panel_marks", "Marks"), "", {
+			selectable = true,
+			section_header = true,
+			section_id = SECTION_MARKS,
+			variant = "section",
+		}))
+
+		if not self._section_collapsed[SECTION_MARKS] then
+			local selected_store_offer = self:_selected_store_offer(snapshot)
+			local marks = selected_store_offer and selected_store_offer.marks or {}
+			local selected_mark
+			local selected_ok, selected_value = safe_call(self._get_selected_manual_mark)
+
+			if selected_ok then
+				selected_mark = selected_value
+			end
+			if selected_mark == nil and selected_store_offer then
+				selected_mark = selected_store_offer.master_id
 			end
 
-			add_estimate_currency("auto_crafter_panel_consecrate_cost", "Profane to Transcendent", "consecrate")
-			add_estimate_currency("auto_crafter_panel_mastery_cost", "Mastery fodder investment", "mastery")
-			add_estimate_currency("auto_crafter_panel_total_cost", "Known crafting investment", "total")
-		end
+			if #marks == 0 then
+				table.insert(entries, self:_entry(localize("auto_crafter_panel_select_weapon", "Select a weapon in Brunt's list."), "", {
+					variant = "summary",
+				}))
+			else
+				for _, mark in ipairs(marks) do
+					local mark_offer_id = selected_store_offer.offer_id
+					local mark_master_id = mark.master_id
+					local enabled = not queue_owned and not queue_active and type(self._select_manual_mark) == "function"
 
-		table.insert(entries, self:_entry(localize("auto_crafter_panel_workflow", "Crafting workflow"), "", {
-			selectable = true,
-			section_header = true,
-			section_id = SECTION_WORKFLOW,
-			variant = "section",
-		}))
+					table.insert(entries, self:_entry(value_text(mark.display_name, mark_master_id), value_text(mark.sub_display_name, ""), {
+						enabled = enabled,
+						selectable = enabled,
+						variant = "offer",
+						action = function()
+							if enabled then
+								pcall(self._select_manual_mark, mark_offer_id, mark_master_id)
+								self:_queue_layout(1)
+							end
+						end,
+						refresh = function(widget)
+							local ok, current = safe_call(self._get_selected_manual_mark)
 
-		if not self._section_collapsed[SECTION_WORKFLOW] then
-			add_checkbox("auto_crafter_favorite_result", "auto_crafter_favorite_result", "Automatically favorite crafted weapon", true)
-			add_checkbox("auto_crafter_buy_until_target", "auto_crafter_buy_until_target", "Automatically buy until dump stat target weapon is found", true, nil, nil, 44)
-			add_checkbox("auto_crafter_defer_bad_weapon_processing", "auto_crafter_defer_bad_weapon_processing", "Only process bad weapons after finding perfect-rolled weapon", true, function()
-				return self:_setting("auto_crafter_level_mastery_20", true) == true
-			end, nil, 44)
-			add_checkbox("auto_crafter_level_mastery_20", "auto_crafter_level_mastery_20", "Level weapon mastery to 20", true)
-			add_checkbox("auto_crafter_allocate_mastery_points", "auto_crafter_allocate_mastery_points", "Allocate mastery points", true, function()
-				return self:_setting("auto_crafter_level_mastery_20", true) == true
-			end)
-			add_checkbox("auto_crafter_consecrate_transcendent", "auto_crafter_consecrate_transcendent", "Automatically consecrate weapon to Transcendent", true, nil, nil, 44)
-			add_checkbox("auto_crafter_upgrade_expertise_500", "auto_crafter_upgrade_expertise_500", "Automatically upgrade weapon item level to 500", true, nil, nil, 44)
-			add_checkbox("auto_crafter_change_perks", "auto_crafter_change_perks", "Change perks", true, function()
-				return self:_setting("auto_crafter_level_mastery_20", true) == true
-			end)
-			add_checkbox("auto_crafter_change_blessings", "auto_crafter_change_blessings", "Change blessings", true, function()
-				return self:_setting("auto_crafter_level_mastery_20", true) == true
-			end)
-		end
-
-		table.insert(entries, self:_entry(localize("auto_crafter_panel_resuming", "Resuming item options"), "", {
-			selectable = true,
-			section_header = true,
-			section_id = SECTION_RESUMING,
-			variant = "section",
-		}))
-
-		if not self._section_collapsed[SECTION_RESUMING] then
-			add_checkbox("auto_crafter_reuse_inventory_base", "auto_crafter_reuse_inventory_base", "Resume matching dump stat weapon from inventory", true, nil, nil, 44)
-			add_checkbox("auto_crafter_include_favorite_inventory_bases", "auto_crafter_include_favorite_inventory_bases", "Include favorited inventory weapons when resuming", true, function()
-				return self:_setting("auto_crafter_reuse_inventory_base", true) == true
-			end, nil, 44)
+							widget.content.selected = (ok and current or selected_mark) == mark_master_id
+						end,
+					}))
+				end
+			end
 		end
 
 		table.insert(entries, self:_entry(localize("auto_crafter_panel_trait_targets", "Perk and blessing targets"), "", {
@@ -2104,6 +2115,79 @@ function Panel.new(dependencies)
 					variant = "trait_grid",
 				}))
 			end
+		end
+
+		table.insert(entries, self:_entry(localize("auto_crafter_panel_workflow", "Crafting workflow"), "", {
+			selectable = true,
+			section_header = true,
+			section_id = SECTION_WORKFLOW,
+			variant = "section",
+		}))
+
+		if not self._section_collapsed[SECTION_WORKFLOW] then
+			add_checkbox("auto_crafter_favorite_result", "auto_crafter_favorite_result", "Automatically favorite crafted weapon", true)
+			add_checkbox("auto_crafter_buy_until_target", "auto_crafter_buy_until_target", "Automatically buy until dump stat target weapon is found", true, nil, nil, 44)
+			add_checkbox("auto_crafter_defer_bad_weapon_processing", "auto_crafter_defer_bad_weapon_processing", "Only process bad weapons after finding perfect-rolled weapon", true, function()
+				return self:_setting("auto_crafter_level_mastery_20", true) == true
+			end, nil, 44)
+			add_checkbox("auto_crafter_level_mastery_20", "auto_crafter_level_mastery_20", "Level weapon mastery to 20", true)
+			add_checkbox("auto_crafter_allocate_mastery_points", "auto_crafter_allocate_mastery_points", "Allocate mastery points", true, function()
+				return self:_setting("auto_crafter_level_mastery_20", true) == true
+			end)
+			add_checkbox("auto_crafter_consecrate_transcendent", "auto_crafter_consecrate_transcendent", "Automatically consecrate weapon to Transcendent", true, nil, nil, 44)
+			add_checkbox("auto_crafter_upgrade_expertise_500", "auto_crafter_upgrade_expertise_500", "Automatically upgrade weapon item level to 500", true, nil, nil, 44)
+			add_checkbox("auto_crafter_change_perks", "auto_crafter_change_perks", "Change perks", true, function()
+				return self:_setting("auto_crafter_level_mastery_20", true) == true
+			end)
+			add_checkbox("auto_crafter_change_blessings", "auto_crafter_change_blessings", "Change blessings", true, function()
+				return self:_setting("auto_crafter_level_mastery_20", true) == true
+			end)
+		end
+
+		table.insert(entries, self:_entry(localize("auto_crafter_panel_resuming", "Resuming item options"), "", {
+			selectable = true,
+			section_header = true,
+			section_id = SECTION_RESUMING,
+			variant = "section",
+		}))
+
+		if not self._section_collapsed[SECTION_RESUMING] then
+			add_checkbox("auto_crafter_reuse_inventory_base", "auto_crafter_reuse_inventory_base", "Resume matching dump stat weapon from inventory", true, nil, nil, 44)
+			add_checkbox("auto_crafter_include_favorite_inventory_bases", "auto_crafter_include_favorite_inventory_bases", "Include favorited inventory weapons when resuming", true, function()
+				return self:_setting("auto_crafter_reuse_inventory_base", true) == true
+			end, nil, 44)
+		end
+
+		table.insert(entries, self:_entry(localize("auto_crafter_panel_estimates", "Estimates"), "", {
+			selectable = true,
+			section_header = true,
+			section_id = SECTION_ESTIMATES,
+			variant = "section",
+		}))
+
+		if not self._section_collapsed[SECTION_ESTIMATES] then
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_estimate", "Search budget"), self:_estimate_acquisition_text(), {
+				variant = "status",
+				refresh = function(widget)
+					widget.content.detail = self:_estimate_acquisition_text()
+				end,
+			}))
+			local function add_estimate_currency(label_id, fallback, phase_name)
+				local credits, plasteel, diamantine = self:_estimate_currency_values(phase_name)
+				table.insert(entries, self:_entry(localize(label_id, fallback), "", {
+					credits = credits,
+					diamantine = diamantine,
+					plasteel = plasteel,
+					variant = "currency",
+					refresh = function(widget)
+						widget.content.credits, widget.content.plasteel, widget.content.diamantine = self:_estimate_currency_values(phase_name)
+					end,
+				}))
+			end
+
+			add_estimate_currency("auto_crafter_panel_consecrate_cost", "Profane to Transcendent", "consecrate")
+			add_estimate_currency("auto_crafter_panel_mastery_cost", "Mastery fodder investment", "mastery")
+			add_estimate_currency("auto_crafter_panel_total_cost", "Known crafting investment", "total")
 		end
 
 		local import_busy = imported and (imported.state == "fetching" or imported.state == "resolving_catalogues" or imported.state == "awaiting_weapon_choice")
@@ -2488,12 +2572,7 @@ function Panel.new(dependencies)
 		self._selected_offer_key = nil
 		self._selected_offer = nil
 		self._selected_offer_master_id = nil
-		self._section_collapsed = {
-			[SECTION_PLANNER] = false,
-			[SECTION_WORKFLOW] = false,
-			[SECTION_RESUMING] = false,
-			[SECTION_TRAITS] = true,
-		}
+		self._section_collapsed = default_section_state()
 		self._pending_offer = nil
 		self._pending_offer_attempts = 0
 		self._idle_poll_elapsed = IDLE_POLL_INTERVAL
@@ -2543,9 +2622,7 @@ function Panel.new(dependencies)
 		self._selected_offer_key = nil
 		self._selected_offer = nil
 		self._selected_offer_master_id = nil
-		self._section_collapsed = {
-			[SECTION_PLANNER] = false,
-		}
+		self._section_collapsed = default_section_state()
 		self._pending_offer = nil
 		self._pending_offer_attempts = 0
 		self._layout_pending = false

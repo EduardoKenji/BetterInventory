@@ -793,4 +793,7 @@ localization.auto_crafter_show_status_hud = "Show top crafting HUD"
 localization.auto_crafter_show_status_hud_tooltip = "Show crafting objectives in Morningstar store and inventory views."
 localization.option_requires_auto_crafter_inventory_reuse = "Requires inventory-base reuse"
 
+localization.auto_crafter_panel_marks = "Marks"
+localization.auto_crafter_panel_estimates = "Estimates"
+
 return localization

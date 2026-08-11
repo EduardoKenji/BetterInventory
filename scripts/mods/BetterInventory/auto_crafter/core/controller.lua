@@ -131,6 +131,12 @@ local function selected_offer_matches_target(selected_offer, target)
 		return false
 	end
 
+	-- Manual mark selection keeps Brunt's family offer selected while narrowing
+	-- purchase candidates to one lootChoice. Other targets retain strict IDs.
+	if target.family_mark_selection == true and selected_offer.offer_id ~= nil and target.offer_id ~= nil then
+		return selected_offer.offer_id == target.offer_id
+	end
+
 	if selected_offer.master_id ~= nil and target.master_id ~= nil and selected_offer.master_id ~= target.master_id then
 		return false
 	end
@@ -140,6 +146,20 @@ local function selected_offer_matches_target(selected_offer, target)
 	end
 
 	return selected_offer.master_id ~= nil and target.master_id ~= nil or selected_offer.offer_id ~= nil and target.offer_id ~= nil
+end
+
+local function offer_with_mark(offer, mark)
+	local target = {}
+
+	for key, value in pairs(offer or {}) do
+		target[key] = value
+	end
+	for key, value in pairs(mark or {}) do
+		target[key] = value
+	end
+	target.family_mark_selection = true
+
+	return target
 end
 
 local function find_item(items, gear_id, items_by_id)
@@ -644,6 +664,8 @@ function Controller.new(dependencies)
 		_queue_preflight = nil,
 		_imported_job = nil,
 		_run_imported_job = nil,
+		_manual_mark_master_id = nil,
+		_manual_mark_offer_key = nil,
 	}
 
 	local function report(kind, payload)
@@ -1034,11 +1056,77 @@ function Controller.new(dependencies)
 			local matches = selected_offer.offer_id and offer.offer_id == selected_offer.offer_id or selected_offer.master_id and offer.master_id == selected_offer.master_id
 
 			if matches then
+				local key = offer_key(offer)
+
+				if self._manual_mark_offer_key ~= key then
+					self._manual_mark_offer_key = key
+					self._manual_mark_master_id = nil
+				end
+
+				for _, mark in ipairs(offer.marks or {}) do
+					if self._manual_mark_master_id ~= nil and mark.master_id == self._manual_mark_master_id then
+						return offer_with_mark(offer, mark)
+					end
+				end
+
 				return offer
 			end
 		end
 
 		return nil
+	end
+
+	function self:select_manual_mark(offer_id, master_id)
+		if run_is_active() or self._imported_job or self._run_imported_job or master_id == nil then
+			return false, "mark_selection_unavailable"
+		end
+		local current_offer = self:_selected_offer_summary()
+
+		if not current_offer or current_offer.offer_id ~= offer_id then
+			return false, "selected_weapon_changed"
+		end
+
+		local target_offer
+
+		for _, offer in ipairs(self._snapshot and self._snapshot.store and self._snapshot.store.offers or {}) do
+			if offer.offer_id == offer_id then
+				target_offer = offer
+
+				break
+			end
+		end
+
+		if not target_offer then
+			return false, "weapon_offer_unavailable"
+		end
+
+		local selected_mark
+
+		for _, mark in ipairs(target_offer.marks or {}) do
+			if mark.master_id == master_id then
+				selected_mark = mark
+
+				break
+			end
+		end
+
+		if not selected_mark then
+			return false, "weapon_mark_unavailable"
+		end
+
+		self._manual_mark_offer_key = offer_key(target_offer)
+		self._manual_mark_master_id = master_id
+		self._selected_target_key = nil
+		self._catalog_key = nil
+		self:_refresh_plan("manual_mark_changed")
+
+		return true
+	end
+
+	function self:selected_manual_mark()
+		local offer = self:_selected_offer_summary()
+
+		return offer and offer.master_id or nil
 	end
 
 	function self:_refresh_plan(reason)

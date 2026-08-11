@@ -952,6 +952,12 @@ function AutoCrafter.configure(dependencies)
 		preview_plan = function()
 			return controller and controller:preview_plan() or false
 		end,
+		select_manual_mark = function(offer_id, master_id)
+			return controller and controller:select_manual_mark(offer_id, master_id) or false
+		end,
+		get_selected_manual_mark = function()
+			return controller and controller:selected_manual_mark() or nil
+		end,
 		start_purchase_search = function()
 			local queue_state = games_lantern_queue and games_lantern_queue:snapshot()
 			local queue_owned = queue_state and queue_state.job_count == 2 and queue_state.state ~= "empty" and queue_state.state ~= "complete"

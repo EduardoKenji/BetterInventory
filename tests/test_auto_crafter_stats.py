@@ -68,6 +68,14 @@ def main() -> None:
             weapon_template = "crowbar_p1_m1",
             _weapon_template = crowbar_template,
         }
+		local crowbar_alt_item = {
+			name = "content/items/weapons/player/melee/crowbar_p1_m2",
+			display_name = "Crowbar Mk II",
+			parent_pattern = "crowbar_p1",
+			slots = {"slot_primary"},
+			weapon_template = "crowbar_p1_m2",
+			_weapon_template = crowbar_template,
+		}
 		TestFavoriteItems = {}
 		TestExpertise = 300
 		TestGear = {
@@ -128,6 +136,9 @@ def main() -> None:
                     if name == "perk_flak" then
                         return {name = name, display_name = "internal/perk/path", trait_text = "+25%% Damage vs Flak Armoured (T%d)"}
                     end
+					if name == "crowbar_master_alt" then
+						return crowbar_alt_item
+					end
 
                     return crowbar_item
                 end,
@@ -198,7 +209,7 @@ def main() -> None:
                     return promise({
                         offers = {
                             {
-                                description = {lootChoices = {"crowbar_master"}},
+                                description = {lootChoices = {"crowbar_master", "crowbar_master_alt"}},
                                 offerId = "crowbar_offer",
                                 price = {amount = {amount = 11600, type = "credits"}},
                                 sku = {category = "weapon"},
@@ -291,6 +302,10 @@ def main() -> None:
     snapshot = snapshot_promise.value
     offer = snapshot.store.offers[1]
     assert len(offer.base_stats) == 5
+    assert len(offer.marks) == 2
+    assert offer.marks[1].master_id == "crowbar_master"
+    assert offer.marks[2].master_id == "crowbar_master_alt"
+    assert offer.marks[2].display_name == "Crowbar Mk II"
     stat_keys = {offer.base_stats[index].name: offer.base_stats[index].display_name_key for index in range(1, 6)}
     assert stat_keys["crowbar_p1_m1_dps_stat"] == "loc_stats_display_damage_stat"
     assert stat_keys["crowbar_p1_m1_defence_stat"] == "loc_stats_display_defense_stat"

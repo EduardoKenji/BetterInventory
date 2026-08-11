@@ -815,6 +815,12 @@ local localization = {
 	auto_crafter_panel_planner = {
 		en = "Planner configuration",
 	},
+	auto_crafter_panel_marks = {
+		en = "Marks",
+	},
+	auto_crafter_panel_estimates = {
+		en = "Estimates",
+	},
 	auto_crafter_panel_planner_target = {
 		en = "Planner target",
 	},

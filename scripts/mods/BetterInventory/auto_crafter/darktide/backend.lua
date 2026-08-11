@@ -159,16 +159,20 @@ local function current_character_id()
 	return nil
 end
 
+local function choice_master_id(choice)
+	if type(choice) == "table" then
+		return choice.masterId or choice.master_id or choice.id or choice.name
+	end
+
+	return choice
+end
+
 local function offer_master_id(offer)
 	local description = safe_member(offer, "description")
 	local choices = safe_member(description, "lootChoices") or safe_member(description, "loot_choices")
 	local choice = type(choices) == "table" and choices[1] or nil
 
-	if type(choice) == "table" then
-		return choice.masterId or choice.master_id or choice.id or choice.name
-	end
-
-	return choice or safe_member(description, "masterId") or safe_member(description, "master_id")
+	return choice_master_id(choice) or safe_member(description, "masterId") or safe_member(description, "master_id")
 end
 
 local master_item_details
@@ -213,6 +217,39 @@ local function summarize_store(store)
 			local base_stats = merge_stat_catalog(template_stats, rolled_stats)
 			local parent_pattern = details.parent_pattern or safe_member(preview_item, "parent_pattern") or safe_member(description, "parent_pattern")
 			local sku = safe_member(offer, "sku")
+			local choices = safe_member(description, "lootChoices") or safe_member(description, "loot_choices") or {}
+			local marks = {}
+			local seen_marks = {}
+
+			for _, choice in ipairs(choices) do
+				local mark_master_id = choice_master_id(choice)
+
+				if mark_master_id ~= nil and not seen_marks[mark_master_id] then
+					seen_marks[mark_master_id] = true
+					local mark_item
+					local mark_ok, resolved_mark = false, nil
+
+					if type(MasterItems) == "table" and type(MasterItems.get_item) == "function" then
+						mark_ok, resolved_mark = pcall(MasterItems.get_item, mark_master_id)
+					end
+
+					if mark_ok then
+						mark_item = resolved_mark
+					end
+
+					local mark_details = master_item_details(mark_master_id, mark_item)
+					marks[#marks + 1] = {
+						base_stats = summarize_weapon_template_stats(mark_item),
+						display_name = mark_details.display_name,
+						master_id = mark_master_id,
+						parent_pattern = mark_details.parent_pattern,
+						slot_type = mark_details.slot_type,
+						sub_display_name = mark_details.sub_display_name,
+						weapon_category = mark_details.weapon_category,
+						weapon_template = mark_details.weapon_template,
+					}
+				end
+			end
 
 			summary.offers[index] = {
 				base_item_level = tonumber(safe_member(preview_item, "baseItemLevel") or safe_member(description, "baseItemLevel")),
@@ -220,6 +257,7 @@ local function summarize_store(store)
 				display_name = details.display_name,
 				offer_id = safe_member(offer, "offerId") or safe_member(offer, "offer_id"),
 				master_id = master_id,
+				marks = marks,
 				parent_pattern = parent_pattern,
 				price_type = safe_member(amount, "type"),
 				price_amount = tonumber(safe_member(amount, "discounted_price") or safe_member(amount, "amount")),
