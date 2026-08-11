@@ -74,12 +74,26 @@ def main() -> None:
     assert configured == [1]
     assert queue.snapshot(queue)["jobs"][1]["current"] is True
 
-    assert queue.on_event(queue, "phase4_complete", {"gear_id": "melee-result"}) is True
+    def completion(target_queue, sequence, gear_id):
+        snapshot = target_queue.snapshot(target_queue)
+        job = snapshot["jobs"][snapshot["current_index"]]
+        return to_lua({
+            "candidate": {"gear_id": gear_id},
+            "character_id": "character-1",
+            "job_id": job["job_id"],
+            "queue_id": snapshot["queue_id"],
+            "terminal_sequence": sequence,
+        })
+
+    first_completion = completion(queue, 1, "melee-result")
+    assert queue.on_event(queue, "phase4_complete", first_completion) is True
     assert queue.snapshot(queue)["state"] == "waiting_next"
     queue.update(queue)
     assert starts == [1, 2]
     assert queue.snapshot(queue)["current_index"] == 2
-    assert queue.on_event(queue, "phase4_complete", {"gear_id": "ranged-result"}) is True
+    assert queue.on_event(queue, "phase4_complete", first_completion) is False
+    assert queue.snapshot(queue)["current_index"] == 2
+    assert queue.on_event(queue, "phase4_complete", completion(queue, 2, "ranged-result")) is True
     queue.update(queue)
     assert queue.snapshot(queue)["state"] == "complete"
     assert "queue_complete" in events
@@ -99,7 +113,7 @@ def main() -> None:
     )
     assert stopped.install(stopped, build) is True
     assert stopped.start(stopped) is True
-    assert stopped.on_event(stopped, "phase4_complete", {}) is True
+    assert stopped.on_event(stopped, "phase4_complete", completion(stopped, 1, "stopped-melee")) is True
     assert stopped.stop(stopped, "user_stopped") is True
     stopped.update(stopped)
     assert stopped.snapshot(stopped)["state"] == "stopped"
@@ -140,11 +154,11 @@ def main() -> None:
     )
     assert boundary.install(boundary, build) is True
     assert boundary.start(boundary) is True
-    assert boundary.on_event(boundary, "phase4_complete", {}) is True
+    assert boundary.on_event(boundary, "phase4_complete", completion(boundary, 1, "boundary-melee")) is True
     view_valid[0] = False
     boundary.update(boundary)
-    assert boundary.snapshot(boundary)["state"] == "failed"
-    assert boundary.snapshot(boundary)["last_error"] == "brunt_view_unavailable_at_boundary"
+    assert boundary.snapshot(boundary)["state"] == "stopped"
+    assert boundary.snapshot(boundary)["last_error"] is None
     assert boundary.snapshot(boundary)["current_index"] == 2
     view_valid[0] = True
     assert boundary.start(boundary) is True

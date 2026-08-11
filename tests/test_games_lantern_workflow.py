@@ -86,6 +86,7 @@ def main() -> None:
     context = to_lua(
         {
             "active_archetype": "psyker",
+            "dump_target": 65,
             "melee_offers": [melee_offer],
             "ranged_offers": [ranged_offer],
             "catalog_for_offer": catalog_callback,
@@ -97,6 +98,7 @@ def main() -> None:
     assert resolved["jobs"][1]["slot"] == "melee"
     assert resolved["jobs"][2]["slot"] == "ranged"
     assert resolved["jobs"][1]["dump_stat"] == "warp_resist"
+    assert resolved["jobs"][1]["dump_target"] == 65
     assert resolved["jobs"][2]["dump_stat"] == "charge_speed"
     assert resolved["jobs"][1]["perks"][1]["id"] == "perk_cara"
     assert resolved["jobs"][1]["perks"][1]["rarity"] == 4
@@ -114,6 +116,11 @@ def main() -> None:
     result, reason = resolver.resolve(wrong_class, context)
     assert result is None
     assert reason == "archetype_mismatch"
+
+    missing_class = to_lua({"weapons": model["weapons"]})
+    result, reason = resolver.resolve(missing_class, context)
+    assert result is None
+    assert reason == "archetype_unavailable"
 
     duplicate_offer = to_lua(
         {
@@ -148,6 +155,22 @@ def main() -> None:
     result, reason = resolver.resolve(tied_model, context)
     assert result is None
     assert reason in {"dump_stat_tie", "melee_weapon_unavailable"}
+
+    clone = lua.eval("function(value) local result = {}; for key, child in pairs(value) do result[key] = type(child) == 'table' and (function(v) local r = {}; for k, c in pairs(v) do r[k] = type(c) == 'table' and (function(v2) local r2 = {}; for k2, c2 in pairs(v2) do r2[k2] = c2 end; return r2 end)(c) or c end; return r end)(child) or child end; return result end")
+    multi_model = to_lua({
+        "source_archetype": "psyker",
+        "weapons": [clone(model["weapons"][1]), clone(model["weapons"][1]), clone(model["weapons"][2])],
+    })
+    multi_model["weapons"][1]["card_index"] = 1
+    multi_model["weapons"][2]["card_index"] = 2
+    multi_model["weapons"][3]["card_index"] = 3
+    result, reason, choices = resolver.resolve_identities(multi_model, context)
+    assert result is None
+    assert reason == "weapon_choice_required"
+    assert len(choices["melee"]) == 2
+    context["weapon_choices"] = to_lua({"melee": 2})
+    selected = resolver.resolve_identities(multi_model, context)[0]
+    assert selected["jobs"][1]["external"]["card_index"] == 2
 
 
 if __name__ == "__main__":

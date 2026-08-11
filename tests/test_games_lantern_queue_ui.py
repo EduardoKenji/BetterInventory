@@ -19,10 +19,17 @@ def main() -> None:
     assert "games_lantern_queue_snapshot" in facade
     assert "GamesLanternQueue.new" in facade
 
-    # Batch 3 is display-only. It must not wire queue start/stop into the
-    # existing manual craft action before the later orchestration batch.
+    # Queue orchestration remains host-owned; panel exposes explicit queue
+    # lifecycle and spending-authority actions without calling queue methods.
     assert "queue:start" not in panel
     assert "queue:stop" not in panel
+    assert '"Clear Queue"' in panel
+    assert '"Replace Queue"' in panel
+    assert '"Queued ("' in panel
+    assert '"Projected authority:' in panel
+    assert "_queue_craft_confirmation_signature" in panel
+    assert "aggregate_confirmation_stale" in facade
+    assert "enabled = not queue_owned" in panel
 
 
 if __name__ == "__main__":

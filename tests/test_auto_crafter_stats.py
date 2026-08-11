@@ -843,7 +843,7 @@ def main() -> None:
     assert 'add_checkbox("auto_crafter_show_blessing_grid"' in panel_source
     assert "SECTION_ADVANCED" not in panel_source
     assert "auto_crafter_panel_request_mode" not in panel_source
-    assert 'localize("auto_crafter_panel_preview", "> CLICK HERE TO CRAFT <"), ""' in panel_source
+    assert 'localize("auto_crafter_panel_preview", "> CLICK HERE TO CRAFT <")' in panel_source
     assert 'localize("auto_crafter_panel_stop", "> CLICK HERE TO STOP / INTERRUPT <"), ""' in panel_source
     assert 'size = { width - 20, ROW_HEIGHT }' in panel_source
     assert "phase4 and phase4.running == true" in panel_source

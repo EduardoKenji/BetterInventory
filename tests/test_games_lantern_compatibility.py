@@ -155,10 +155,14 @@ def main() -> None:
         )
         assert queue.install(queue, build) is True
         assert queue.start(queue) is True
-        assert queue.on_event(queue, "phase4_complete", {}) is True
+        snapshot = queue.snapshot(queue)
+        first = snapshot["jobs"][1]
+        assert queue.on_event(queue, "phase4_complete", to_lua({"candidate": {"gear_id": "melee"}, "character_id": "character-1", "job_id": first["job_id"], "queue_id": snapshot["queue_id"], "terminal_sequence": 1})) is True
         queue.update(queue)
         assert queue.snapshot(queue)["current_index"] == 2
-        assert queue.on_event(queue, "phase4_complete", {}) is True
+        snapshot = queue.snapshot(queue)
+        second = snapshot["jobs"][2]
+        assert queue.on_event(queue, "phase4_complete", to_lua({"candidate": {"gear_id": "ranged"}, "character_id": "character-1", "job_id": second["job_id"], "queue_id": snapshot["queue_id"], "terminal_sequence": 2})) is True
         queue.update(queue)
         assert queue.snapshot(queue)["state"] == "complete"
         assert queue.snapshot(queue)["transition_count"] == 2

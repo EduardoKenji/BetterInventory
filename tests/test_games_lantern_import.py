@@ -51,6 +51,7 @@ def main() -> None:
     assert model is not None
     assert model["parser_contract_version"] == "games_lantern_html_v1"
     assert model["source_archetype"] == "psyker"
+    assert model["source_uuid"] is None
     assert len(model["weapons"]) == 2
 
     melee = model["weapons"][1]
@@ -62,6 +63,13 @@ def main() -> None:
     assert melee["blessings"][1]["external_icon_id"] == "064"
     assert ranged["external_family_slug"] == "force-staff"
     assert ranged["blessings"][2]["label"] == "Surge"
+
+    canonical_html = html.replace(
+        "</head>", f'<link rel="canonical" href="{canonical}/guide"/></head>'
+    )
+    assert parser.parse(canonical_html)["source_uuid"] == "a0a667cd-4d49-4f68-8cf8-2f1ee57eab29"
+    ambiguous_class = html.replace("<main>", '<main><a href="/classes/veteran">Veteran</a>')
+    assert parser.parse(ambiguous_class)["source_archetype"] is None
 
     # Parser drift and partial cards fail closed instead of producing a target
     # that later code could accidentally apply.
@@ -78,7 +86,18 @@ def main() -> None:
     challenge = "<html><body>Please log in and complete the captcha.</body></html>"
     result, reason = parser.parse(challenge)
     assert result is None
-    assert reason == "unsupported_html_format"
+    assert reason == "login_or_challenge_page"
+
+    result, reason = parser.parse(html.replace('id="weapons"', 'id="recommendations"', 1))
+    assert result is None
+    assert reason == "weapons_section_unavailable"
+
+    duplicated_stat = html.replace(
+        "Cleave Damage</div>", "Warp Resistance</div>", 1
+    )
+    result, reason = parser.parse(duplicated_stat)
+    assert result is None
+    assert reason == "duplicate_stat"
 
 
 if __name__ == "__main__":

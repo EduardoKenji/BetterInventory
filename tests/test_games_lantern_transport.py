@@ -60,17 +60,22 @@ def main() -> None:
 
     # HTTP errors and oversized bodies fail closed without returning content.
     clock[0] = 0
-    responses[:] = [{"done": True, "status": 503, "exit_code": 0, "body": "backend", "bytes": 7}]
+    responses[:] = [{"done": True, "status": 503, "content_type": "text/html", "exit_code": 0, "body": "backend", "bytes": 7}]
     assert transport.start(transport, url)[0] is True
     assert transport.update(transport) == "failed"
     assert transport.snapshot(transport)["last_error"] == "transport_http_status"
 
-    responses[:] = [{"done": True, "status": 200, "exit_code": 0, "body": "01234567890", "bytes": 11}]
+    responses[:] = [{"done": True, "status": 200, "content_type": "text/html", "exit_code": 0, "body": "01234567890", "bytes": 11}]
     assert transport.start(transport, url)[0] is True
     assert transport.update(transport) == "failed"
     assert transport.snapshot(transport)["last_error"] == "transport_response_too_large"
 
-    responses[:] = [{"done": True, "status": 200, "exit_code": 0, "body": "<ok>", "bytes": 4}]
+    responses[:] = [{"done": True, "status": 200, "content_type": "application/json", "exit_code": 0, "body": "{}", "bytes": 2}]
+    assert transport.start(transport, url)[0] is True
+    assert transport.update(transport) == "failed"
+    assert transport.snapshot(transport)["last_error"] == "transport_content_type"
+
+    responses[:] = [{"done": True, "status": 200, "content_type": "text/html", "exit_code": 0, "body": "<ok>", "bytes": 4}]
     assert transport.start(transport, url)[0] is True
     assert transport.update(transport) == "complete"
     result = transport.take_result(transport)

@@ -2,7 +2,7 @@
 
 Date: 2026-08-10  
 Branch: `research/2.1.0-games-lantern-import`  
-Status: Batches 1-7 implemented; import remains explicitly opt-in and manual Auto Crafter workflow is unchanged
+Status: Batches 1-7 implemented and hardened; automated gates pass, live Windows/Proton/UI validation remains required before release
 Target surface: Auto Crafter Helper in Brunt's Armoury
 
 Handoff audit: 2026-08-10 against the current controller, planner, operation arbiter, mutation guard, panel, and regression suite
@@ -1129,6 +1129,32 @@ Keep parser/resolver/controller pure enough to run outside Darktide tests. Injec
 - Synchronize `Content/mods/BetterInventory` with `tools/sync_deployed_mod.ps1` after every runtime change before live evidence is accepted; the command verifies the descriptor/runtime file set and hashes without deleting unrelated managed files.
 
 Batch 7 is automated compatibility evidence, not proof that every optional mod version is safe. Live review must still include Lantern installed and absent, InstantCharacterChange switching before paste and during fetch, Brunt close/reopen, and a normal single-item run with no imported queue.
+
+### Post-implementation hardening closure
+
+The final audit added the following release-critical behavior without changing the no-queue workflow:
+
+- Queue terminal events now require queue ID, job ID, character ID, operation sequence, and a strictly monotonic terminal sequence. Duplicate, stale, wrong-character, and wrong-job events are inert.
+- Every job boundary performs a fresh character-scoped inventory probe, fresh selected-weapon catalogue read, and planner preflight before dispatch. Resource/capacity failures become visible blocked state with zero next-job dispatches.
+- CRAFT uses a backend-generated aggregate cost signature covering both frozen jobs, all applicable run-policy values, and projected docket/plasteel/diamantine ranges. Any change after the first click requires a new confirmation; the backend independently rejects stale signatures.
+- One queue-owned account-operation token spans both jobs. STOP during a request remains unresolved until settlement/reconciliation; STOP during preflight invalidates/cancels read continuations before releasing ownership.
+- Closing Brunt while job 1 finishes accepts only its typed terminal result, preserves `1/2`, and stops before ranged dispatch. Reopening never spends until explicit CRAFT/Resume and a fresh confirmation.
+- Final queue success revalidates both exact gear IDs, weapon marks/families, dump stats, enabled rarity/expertise postconditions, and perk/blessing sets in the authoritative current-character snapshot.
+- Parser scope is restricted to the Weapons section. Canonical UUID metadata, unique class identity, duplicate targets, login/challenge pages, ambiguous weapon cards, and unsupported drift fail closed.
+- Windows and Proton fetchers use unique owner-tagged files, bounded poll cadence, MIME/status/size/time checks, explicit child termination on cancellation, and cleanup. Raw URL slugs, HTML, and guide prose are not logged.
+
+Automated evidence is additive and recorded in `tests/case_manifest.json` and `tests/branch_matrix.json`. `tests/run_tests.py` currently reports 28 scripts / 105 cases passing. Critical imported-queue gates are:
+
+| Contract | Executable evidence |
+|---|---|
+| Typed terminal identity, duplicate rejection, final authoritative reconciliation | `test_games_lantern_safety.py::typed_terminal_identity_and_final_reconciliation` |
+| Fresh/resume/exact 3x3 ordering, resource blocks, view loss, STOP, quarantine | `test_games_lantern_safety.py::two_job_state_resource_and_quarantine_matrix` |
+| Frozen policy, signed cost authority, locked targets, bounded polling/process cancellation | `test_games_lantern_safety.py::games_lantern_release_contract_seams` |
+| Ambiguous multi-card selection and atomic continuation | `test_games_lantern_import_controller.py::explicit_ambiguous_weapon_choice` |
+| MIME/status/size/timeout/cancellation transport behavior | `test_games_lantern_transport.py::bounded_transport_timeout_status_size_and_cancel` |
+| Optional Lantern/InstantCharacterChange admission and four-run isolation | `test_games_lantern_compatibility.py::optional_mod_lifecycle_admission_and_four_run_soak` |
+
+Live-only rows remain pending: native Windows and Proton fetch/process cancellation, controller navigation and supported UI scales, Lantern installed/absent, InstantCharacterChange during fetch and before paste, Brunt close/reopen during a real mutation, and real-account spend/postcondition evidence. Do not describe those rows as validated from the automated suite.
 
 ## Release gates
 

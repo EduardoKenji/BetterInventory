@@ -93,6 +93,49 @@ def main() -> None:
     assert stale(to_lua({}), None) is False
     assert len(installed) == 1
 
+    # Ambiguous live weapon cards require an explicit valid choice, then
+    # continue the same generation into catalogue resolution.
+    chooser_callbacks = []
+    chooser_installed = []
+    choice_candidates = to_lua({
+        "melee": [
+            {"display_name": "A", "external": {"card_index": 1}},
+            {"display_name": "B", "external": {"card_index": 2}},
+        ],
+        "ranged": [],
+    })
+
+    def resolve_with_choice(model, context):
+        choices = context["weapon_choices"]
+        if choices is None or choices["melee"] is None:
+            return None, "weapon_choice_required", choice_candidates
+        return identity, None
+
+    chooser_resolver = to_lua({
+        "resolve_identities": callback_wrapper(resolve_with_choice),
+        "attach_catalogs": callback_wrapper(lambda identity_build, catalogs: (resolved, None)),
+    })
+    chooser = import_module.new(to_lua({
+        "clipboard_read": callback_wrapper(lambda: url),
+        "clipboard": clipboard,
+        "transport": transport,
+        "parser": parser,
+        "resolver": chooser_resolver,
+        "get_resolution_context": callback_wrapper(lambda: to_lua({"active_archetype": "psyker"})),
+        "fetch_catalogs": callback_wrapper(lambda identity_build, complete, generation: chooser_callbacks.append(complete) or True),
+        "install_queue": callback_wrapper(lambda build: chooser_installed.append(build) or True),
+        "queue_snapshot": callback_wrapper(lambda: to_lua({"state": "empty"})),
+    }))
+    assert chooser.paste(chooser) is True
+    assert chooser.update(chooser) == "awaiting_weapon_choice"
+    assert chooser.select_weapon_choice(chooser, "melee", 99)[0] is False
+    assert chooser.select_weapon_choice(chooser, "melee", 2) is True
+    assert chooser.snapshot(chooser)["state"] == "resolving_catalogues"
+    assert len(chooser_callbacks) == 1
+    assert chooser_callbacks[0](to_lua({"melee": {"available": True}, "ranged": {"available": True}}), None) is True
+    assert chooser.snapshot(chooser)["state"] == "staged"
+    assert len(chooser_installed) == 1
+
     # Invalid clipboard text is rejected before transport starts.
     bad = import_module.new(
         to_lua(

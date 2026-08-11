@@ -133,6 +133,27 @@
       "case": "optional_mod_lifecycle_admission_and_four_run_soak",
       "outcome": "optional Lantern and InstantCharacterChange neighbors do not own BetterInventory state, imports are blocked during active crafting, and four serial two-job runs remain isolated",
       "modules": ["BetterInventory_auto_crafter.lua", "BetterInventory_runtime.lua"]
+    },
+    {
+      "name": "games-lantern.terminal-events-are-authoritative",
+      "test": "test_games_lantern_safety.py",
+      "case": "typed_terminal_identity_and_final_reconciliation",
+      "outcome": "queue advancement requires matching typed identities and monotonic sequence, then both final gear postconditions are reverified",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
+      "name": "games-lantern.two-job-boundaries-fail-closed",
+      "test": "test_games_lantern_safety.py",
+      "case": "two_job_state_resource_and_quarantine_matrix",
+      "outcome": "all fresh/resume/exact pairs remain serial while resource, view-loss, stop, and reconciliation boundaries prevent follow-up dispatch",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
+      "name": "games-lantern.release-seams-remain-guarded",
+      "test": "test_games_lantern_safety.py",
+      "case": "games_lantern_release_contract_seams",
+      "outcome": "frozen policy, fresh preflight, signed aggregate authority, locked targets, bounded polling, and process cancellation remain present",
+      "modules": ["BetterInventory_auto_crafter.lua"]
     }
   ]
 }
