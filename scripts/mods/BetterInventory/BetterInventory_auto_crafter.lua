@@ -853,29 +853,12 @@ function AutoCrafter.configure(dependencies)
 	end
 
 	local function games_lantern_install_queue(build)
-		if not games_lantern_queue or not active_brunt_view or type(dependencies.select_offer) ~= "function" then
-			return false, "Brunt view or native selection unavailable"
-		end
-
-		local before = controller and controller:snapshot()
-		local previous_target = before and before.plan and before.plan.target
-		local function restore_previous_selection()
-			if previous_target then
-				pcall(dependencies.select_offer, active_brunt_view, previous_target)
-			end
-		end
-
-		local selected_ok, selected = pcall(dependencies.select_offer, active_brunt_view, build.jobs[1].offer)
-		if not selected_ok or selected ~= true then
-			restore_previous_selection()
-
-			return false, selected_ok and "melee offer selection failed" or selected
+		if not games_lantern_queue or not active_brunt_view then
+			return false, "Brunt view unavailable"
 		end
 
 		local installed_ok, installed, install_reason = pcall(games_lantern_queue.install, games_lantern_queue, build)
 		if not installed_ok or installed ~= true then
-			restore_previous_selection()
-
 			return false, installed_ok and install_reason or installed
 		end
 
@@ -883,7 +866,6 @@ function AutoCrafter.configure(dependencies)
 		if not staged_ok or staged ~= true then
 			pcall(games_lantern_queue.clear, games_lantern_queue)
 			pcall(controller.clear_imported_job, controller)
-			restore_previous_selection()
 
 			return false, staged_ok and stage_reason or staged
 		end

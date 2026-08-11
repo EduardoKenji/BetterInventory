@@ -233,6 +233,8 @@ def main() -> None:
     assert "verify_imported_queue_results" in controller
     assert "payload.terminal_sequence" in controller
     assert "aggregate_confirmation_required" in facade
+    install_body = facade.split("local function games_lantern_install_queue(build)", 1)[1].split("\n\tend", 1)[0]
+    assert "dependencies.select_offer" not in install_body and "games_lantern_queue.install" in install_body
     assert '"Clear Queue"' in panel and '"Paste Games Lantern build (Ctrl+V)"' in panel
     assert "_queue_replace_armed" not in panel and "replacement_confirmation_required" not in panel
     assert "enabled = not queue_owned" in panel
