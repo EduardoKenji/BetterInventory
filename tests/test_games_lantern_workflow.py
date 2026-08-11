@@ -256,6 +256,7 @@ def main() -> None:
                 {"id": "perk_melee_stamina", "trait": "weapon_trait_increase_stamina", "display_name": "+2 Stamina", "tier": 4},
                 {"id": "perk_melee_stamina", "trait": "weapon_trait_increase_stamina", "display_name": "+2 Stamina", "tier": 4},
                 {"id": "perk_ranged_stamina", "trait": "weapon_trait_ranged_increase_stamina", "display_name": "+2 Stamina", "tier": 4},
+                {"id": "perk_sprint", "trait": "weapon_trait_reduce_sprint_cost", "display_name": "+15% Sprint Efficiency (-15% Stamina Cost)", "tier": 4},
                 {"id": "perk_unyielding", "trait": "weapon_trait_melee_common_wield_increased_resistant_damage", "tier": 4},
             ],
             "blessings": [
