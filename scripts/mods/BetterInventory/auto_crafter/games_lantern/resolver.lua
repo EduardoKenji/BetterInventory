@@ -354,6 +354,56 @@ local function catalog_for(context, offer)
 	return type(catalogs) == "table" and key ~= nil and catalogs[key] or context and context.catalog
 end
 
+-- Darktide's canonical perk traits use combat-system armor names while the UI
+-- and Games Lantern use player-facing enemy armor names. Keep this mapping at
+-- the resolver boundary and still require the mapped trait to exist in the
+-- selected weapon's live catalogue.
+local function trait_semantic_aliases(entry)
+	local raw = string.lower(table.concat({
+		text(entry and entry.id),
+		text(entry and entry.trait),
+	}, " "))
+	local aliases = {}
+
+	if string.find(raw, "super_armor", 1, true) then
+		aliases[#aliases + 1] = "carapace armored"
+	elseif string.find(raw, "disgustingly_resilient", 1, true) then
+		aliases[#aliases + 1] = "infested"
+	elseif string.find(raw, "unarmored", 1, true) then
+		aliases[#aliases + 1] = "unarmored"
+	elseif string.find(raw, "armored", 1, true) then
+		aliases[#aliases + 1] = "flak armored"
+	elseif string.find(raw, "resistant", 1, true) then
+		aliases[#aliases + 1] = "unyielding"
+	elseif string.find(raw, "berserker", 1, true) then
+		aliases[#aliases + 1] = "maniac maniacs"
+	end
+
+	if string.find(raw, "crit_chance", 1, true) then
+		aliases[#aliases + 1] = "critical strike chance"
+	elseif string.find(raw, "crit_damage", 1, true) then
+		aliases[#aliases + 1] = "critical hit damage"
+	end
+
+	if string.find(raw, "weakspot", 1, true) then
+		aliases[#aliases + 1] = "weak spot"
+	end
+
+	if string.find(raw, "damage_specials", 1, true) then
+		aliases[#aliases + 1] = "damage specialist specialists"
+	elseif string.find(raw, "damage_hordes", 1, true) then
+		aliases[#aliases + 1] = "damage horde hordes"
+	end
+
+	if string.find(raw, "reduce_sprint_cost", 1, true) then
+		aliases[#aliases + 1] = "sprint efficiency"
+	elseif string.find(raw, "reduced_block_cost", 1, true) then
+		aliases[#aliases + 1] = "block efficiency"
+	end
+
+	return table.concat(aliases, " ")
+end
+
 local function trait_text(entry, localize_trait_label)
 	return table.concat({
 		text(entry and entry.display_name),
@@ -363,7 +413,27 @@ local function trait_text(entry, localize_trait_label)
 		localized_offer_label(localize_trait_label, entry and entry.description_key),
 		text(entry and entry.trait),
 		text(entry and entry.id),
+		trait_semantic_aliases(entry),
 	}, " ")
+end
+
+local function trait_failure_detail(external, entries)
+	local ids = {}
+
+	for index, entry in ipairs(entries or {}) do
+		if index > 8 then
+			break
+		end
+
+		ids[#ids + 1] = text(entry and (entry.trait or entry.id))
+	end
+
+	return string.format(
+		"target=%s catalog=%d candidates=%s",
+		text(external and (external.label or external.name)),
+		type(entries) == "table" and #entries or 0,
+		table.concat(ids, ",")
+	)
 end
 
 local function icon_trait_id(value)
@@ -417,7 +487,7 @@ local function resolve_traits(external_values, entries, kind, localize_trait_lab
 		sorted_candidates(candidates)
 
 		if #candidates == 0 then
-			return nil, kind .. "_unavailable_slot_" .. tostring(index)
+			return nil, kind .. "_unavailable_slot_" .. tostring(index), trait_failure_detail(external, entries)
 		end
 
 		local top_score = candidates[1].score
@@ -498,16 +568,16 @@ local function attach_catalog(job, catalog, localize_trait_label)
 
 	local external = job.external or {}
 
-	local perks, perk_reason = resolve_traits(external.perks, catalog.perks, "perk", localize_trait_label)
+	local perks, perk_reason, perk_detail = resolve_traits(external.perks, catalog.perks, "perk", localize_trait_label)
 
 	if not perks then
-		return nil, perk_reason
+		return nil, perk_reason, perk_detail
 	end
 
-	local blessings, blessing_reason = resolve_traits(external.blessings, catalog.blessings, "blessing", localize_trait_label)
+	local blessings, blessing_reason, blessing_detail = resolve_traits(external.blessings, catalog.blessings, "blessing", localize_trait_label)
 
 	if not blessings then
-		return nil, blessing_reason
+		return nil, blessing_reason, blessing_detail
 	end
 
 	job.perks = perks
@@ -632,10 +702,10 @@ function Resolver.attach_catalogs(identity_build, catalogs, context)
 	for index, job in ipairs(identity_build.jobs) do
 		local key = job.master_id or job.offer and (job.offer.master_id or job.offer.parent_pattern)
 		local catalog = type(catalogs) == "table" and key ~= nil and catalogs[key] or nil
-		local completed, reason = attach_catalog(job, catalog, context and context.localize_offer_label)
+		local completed, reason, detail = attach_catalog(job, catalog, context and context.localize_offer_label)
 
 		if not completed then
-			return nil, tostring(reason or "trait_catalog_unavailable") .. "_" .. tostring(index)
+			return nil, tostring(reason or "trait_catalog_unavailable") .. "_" .. tostring(index), detail
 		end
 
 		completed_jobs[index] = completed

@@ -204,9 +204,9 @@ function ImportController.new(dependencies)
 				return fail(error_value or "trait_catalog_unavailable", {})
 			end
 
-			local resolved, resolve_reason = self._resolver.attach_catalogs(identity, catalogs, context)
+			local resolved, resolve_reason, resolve_detail = self._resolver.attach_catalogs(identity, catalogs, context)
 			if not resolved then
-				return fail(resolve_reason or "trait_resolution_failed", {})
+				return fail(resolve_reason or "trait_resolution_failed", { error = resolve_detail })
 			end
 
 			local install_ok, install_result = safe_call(self._install_queue, resolved)
