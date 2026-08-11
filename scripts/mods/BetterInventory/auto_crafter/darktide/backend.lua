@@ -119,6 +119,60 @@ local function normalized_trait_mutation(kind, gear_id, index, trait_id, tier)
 	}
 end
 
+local function nonempty_string(value)
+	return type(value) == "string" and value ~= ""
+end
+
+local function finite_number(value)
+	local number = tonumber(value)
+
+	return number and number == number and number ~= math.huge and number ~= -math.huge and number or nil
+end
+
+local function normalized_mastery_trait(trait_id, tier)
+	local normalized_tier = finite_number(tier)
+	local maximum_tier = tonumber(safe_member(RankSettings, "max_trait_rank"))
+
+	if not nonempty_string(trait_id) then
+		return nil, "mastery blessing id is invalid"
+	end
+	if not normalized_tier or normalized_tier ~= math.floor(normalized_tier) or normalized_tier < 1 or maximum_tier and normalized_tier > maximum_tier then
+		return nil, "mastery blessing tier is outside Darktide's supported rank range"
+	end
+	if type(MasterItems) ~= "table" or type(MasterItems.get_item) ~= "function" then
+		return nil, "mastery blessing registry is unavailable"
+	end
+
+	local item_ok, item = pcall(MasterItems.get_item, trait_id)
+	if not item_ok or item == nil then
+		return nil, "mastery blessing master item is unavailable: " .. trait_id
+	end
+
+	return {
+		rarity = normalized_tier,
+		trait_name = trait_id,
+	}
+end
+
+local function normalized_gear_ids(gear_ids, label)
+	if type(gear_ids) ~= "table" or #gear_ids == 0 then
+		return nil, tostring(label) .. " requires at least one item"
+	end
+
+	local normalized = {}
+	local unique = {}
+	for index, gear_id in ipairs(gear_ids) do
+		if not nonempty_string(gear_id) or unique[gear_id] then
+			return nil, tostring(label) .. " contains an invalid or duplicate gear id"
+		end
+
+		unique[gear_id] = true
+		normalized[index] = gear_id
+	end
+
+	return normalized
+end
+
 local function confirmed_trait_mutation(kind, operation)
 	return function(result)
 		local items = safe_member(result, "items")
@@ -1411,7 +1465,7 @@ function Backend.new(dependencies)
 	end
 
 	function backend:favorite_item(gear_id)
-		if gear_id == nil then
+		if not nonempty_string(gear_id) then
 			return rejected("gear id unavailable for favorite")
 		end
 
@@ -1458,8 +1512,9 @@ function Backend.new(dependencies)
 	end
 
 	function backend:discard_items(gear_ids)
-		if type(gear_ids) ~= "table" or #gear_ids == 0 then
-			return rejected("no gear ids supplied for discard")
+		local normalized, normalization_error = normalized_gear_ids(gear_ids, "discard")
+		if not normalized then
+			return rejected(normalization_error)
 		end
 
 		local protection, protection_error = discard_protection_snapshot()
@@ -1468,14 +1523,9 @@ function Backend.new(dependencies)
 			return rejected(protection_error)
 		end
 
-		local unique = {}
 		local validated = {}
 
-		for _, gear_id in ipairs(gear_ids) do
-			if gear_id == nil or unique[gear_id] then
-				return rejected("discard gear ids are missing or duplicated")
-			end
-
+		for _, gear_id in ipairs(normalized) do
 			if protection.favorites[gear_id] == true then
 				return rejected("queued weapon became favorited before discard")
 			end
@@ -1484,7 +1534,6 @@ function Backend.new(dependencies)
 				return rejected("queued weapon became equipped or used by a saved loadout")
 			end
 
-			unique[gear_id] = true
 			validated[#validated + 1] = gear_id
 		end
 
@@ -1492,7 +1541,7 @@ function Backend.new(dependencies)
 	end
 
 	function backend:upgrade_weapon_rarity(gear_id)
-		if gear_id == nil then
+		if not nonempty_string(gear_id) then
 			return rejected("gear id unavailable for rarity upgrade")
 		end
 
@@ -1534,20 +1583,15 @@ function Backend.new(dependencies)
 	end
 
 	function backend:upgrade_weapon_rarities(gear_ids)
-		if type(gear_ids) ~= "table" or #gear_ids == 0 then
-			return rejected("rarity upgrade batch requires at least one item")
+		local normalized, normalization_error = normalized_gear_ids(gear_ids, "rarity upgrade batch")
+		if not normalized then
+			return rejected(normalization_error)
 		end
 
-		local unique = {}
 		local results = {}
 		local sequence = Promise.resolved(results)
 
-		for _, gear_id in ipairs(gear_ids) do
-			if gear_id == nil or unique[gear_id] then
-				return rejected("rarity upgrade batch contains missing or duplicate gear ids")
-			end
-
-			unique[gear_id] = true
+		for _, gear_id in ipairs(normalized) do
 			local pending_gear_id = gear_id
 			sequence = sequence:next(function ()
 				return self:upgrade_weapon_rarity(pending_gear_id):next(function (result)
@@ -1562,14 +1606,15 @@ function Backend.new(dependencies)
 		-- the controller may still overlap this lane with one Credits purchase.
 		return sequence:next(function ()
 			return {
-				count = #gear_ids,
+				count = #normalized,
 				results = results,
 			}
 		end)
 	end
 
 	function backend:add_weapon_expertise(gear_id, displayed_target)
-		if gear_id == nil or tonumber(displayed_target) == nil then
+		local target = finite_number(displayed_target)
+		if not nonempty_string(gear_id) or not target or target <= 0 or target ~= math.floor(target) then
 			return rejected("gear id or expertise target unavailable")
 		end
 
@@ -1583,7 +1628,12 @@ function Backend.new(dependencies)
 			return rejected("expertise multiplier invalid")
 		end
 
-		return self:_mutate("crafting", "add_weapon_expertise", gear_id, tonumber(displayed_target) / tonumber(multiplier))
+		local maximum_ok, maximum = pcall(Items.max_expertise_level)
+		if maximum_ok and tonumber(maximum) and target > tonumber(maximum) then
+			return rejected("expertise target exceeds Darktide's supported maximum")
+		end
+
+		return self:_mutate("crafting", "add_weapon_expertise", gear_id, target / tonumber(multiplier))
 	end
 
 	function backend:replace_perk(gear_id, index, perk_id, tier)
@@ -1615,18 +1665,14 @@ function Backend.new(dependencies)
 	end
 
 	function backend:purchase_mastery_trait(pattern_id, trait_id, tier)
-		if pattern_id == nil or trait_id == nil or tonumber(tier) == nil then
-			return rejected("mastery trait purchase parameters unavailable")
+		local operation, validation_error = normalized_mastery_trait(trait_id, tier)
+		if not nonempty_string(pattern_id) or not operation then
+			return rejected(validation_error or "mastery pattern id is invalid")
 		end
 
 		-- Follow vanilla MasteryView. purchase_trait() swallows a rejected PUT into
 		-- a resolved error value; purchase_traits() returns explicit failed entries
 		-- and resets/warms the sticker-book cache after its serialized batch.
-		local operation = {
-			rarity = tonumber(tier),
-			trait_name = trait_id,
-		}
-
 		return self:_mutate("mastery", "purchase_traits", pattern_id, { operation }):next(function (failed_traits)
 			if type(failed_traits) ~= "table" then
 				return rejected("mastery blessing allocation returned an invalid result")
@@ -1645,24 +1691,24 @@ function Backend.new(dependencies)
 	end
 
 	function backend:purchase_mastery_traits(pattern_id, requested_operations)
-		if pattern_id == nil or type(requested_operations) ~= "table" or #requested_operations == 0 then
+		if not nonempty_string(pattern_id) or type(requested_operations) ~= "table" or #requested_operations == 0 then
 			return rejected("mastery trait batch parameters unavailable")
 		end
 
 		local operations = {}
+		local unique = {}
 
 		for index, requested in ipairs(requested_operations) do
 			local trait_id = requested and requested.trait_id
-			local tier = requested and tonumber(requested.rarity)
+			local operation, validation_error = normalized_mastery_trait(trait_id, requested and requested.rarity)
+			local key = operation and operation.trait_name .. ":" .. tostring(operation.rarity)
 
-			if trait_id == nil or tier == nil then
-				return rejected("mastery trait batch contains an invalid operation")
+			if not operation or unique[key] then
+				return rejected(validation_error or "mastery trait batch contains a duplicate operation")
 			end
 
-			operations[index] = {
-				rarity = tier,
-				trait_name = trait_id,
-			}
+			unique[key] = true
+			operations[index] = operation
 		end
 
 		-- MasteryService.purchase_traits performs these operations recursively and
@@ -1718,11 +1764,12 @@ function Backend.new(dependencies)
 	end
 
 	function backend:extract_weapon_mastery(mastery_id, gear_ids)
-		if mastery_id == nil or type(gear_ids) ~= "table" or #gear_ids == 0 then
-			return rejected("mastery extraction requires at least one item")
+		local normalized, normalization_error = normalized_gear_ids(gear_ids, "mastery extraction")
+		if not nonempty_string(mastery_id) or not normalized then
+			return rejected(normalization_error or "mastery extraction pattern id is invalid")
 		end
 
-		return self:_mutate("crafting", "extract_weapon_mastery", mastery_id, gear_ids):next(function (result)
+		return self:_mutate("crafting", "extract_weapon_mastery", mastery_id, normalized):next(function (result)
 			return summarize_extraction(result)
 		end)
 	end

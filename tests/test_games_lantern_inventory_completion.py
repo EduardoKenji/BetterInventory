@@ -148,6 +148,62 @@ def main() -> None:
         assert controller._find_inventory_base(controller) is None
         settings["values"]["auto_crafter_include_favorite_inventory_bases"] = True
 
+    # A fresh boundary snapshot revalidates completed prefix before next job.
+    # Removal, mark drift, or trait drift blocks queue continuation.
+    exact = item("gear-prefix", "mark-exact")
+    set_inventory([exact])
+    controller["_queue_operation_owner"] = True
+    controller["_queue_run_policy"] = to_lua({
+        "values": {
+            "auto_crafter_change_blessings": True,
+            "auto_crafter_change_perks": True,
+            "auto_crafter_consecrate_transcendent": True,
+            "auto_crafter_upgrade_expertise_500": True,
+        }
+    })
+    prefix_result = to_lua({"character_id": "character-1", "gear_id": "gear-prefix"})
+    assert controller._verify_imported_result(controller, prefix_result, melee, 1) is True
+
+    exact["master_id"] = "mark-sibling"
+    set_inventory([exact])
+    verified, reason = controller._verify_imported_result(controller, prefix_result, melee, 1)
+    assert verified is False and "weapon mark" in reason
+
+    set_inventory([])
+    verified, reason = controller._verify_imported_result(controller, prefix_result, melee, 1)
+    assert verified is False and "missing" in reason
+
+    # Terminal Phase 4 performs same authoritative postcondition check. Any
+    # malformed/drifted result becomes visible operation_failed, never success.
+    final_controller = controller_module.new(to_lua({"context": context, "settings": settings}))
+    final_item = to_lua(item("gear-final", "mark-exact", favorite=True))
+    final_controller["_snapshot"] = to_lua({"character_id": "character-1", "gear": {"items": [final_item]}})
+    final_controller["_search"] = to_lua({"running": True})
+    final_controller["_phase4"] = to_lua({
+        "allocate_mastery": False,
+        "consecrate": True,
+        "dump_stat": "damage",
+        "expertise": True,
+        "favorite_result": True,
+        "gear_id": "gear-final",
+        "mastery_id": "pattern-1",
+        "running": True,
+        "target_dump": 60,
+        "target_master_id": "mark-exact",
+        "targets": {
+            "perks": [{"id": "perk-a", "rarity": 4}, {"id": "perk-b", "rarity": 4}],
+            "traits": [{"id": "blessing-a", "rarity": 4}, {"id": "blessing-b", "rarity": 4}],
+        },
+        "verify_completion": True,
+    })
+    assert final_controller._phase4_complete(final_controller, final_item, final_controller["_snapshot"]) is True
+
+    final_item["master_id"] = "mark-sibling"
+    final_controller["_phase4"]["running"] = True
+    final_controller["_search"]["running"] = True
+    assert final_controller._phase4_complete(final_controller, final_item, final_controller["_snapshot"]) is False
+    assert final_controller.snapshot(final_controller)["last_error"] == "final weapon changed weapon mark"
+
 
 if __name__ == "__main__":
     main()

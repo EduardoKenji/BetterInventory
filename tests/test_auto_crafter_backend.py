@@ -119,7 +119,7 @@ def main() -> None:
         assert(snapshot.gear.unavailable_item_count == 1)
         assert(snapshot.gear.items_by_id["other-character"] == nil)
 
-		local calls = {perk = 0, blessing = 0}
+		local calls = {perk = 0, blessing = 0, expertise = 0, extract = 0, mastery = 0}
 		local malformed_perk_response = false
 		local crafting = {}
 		function crafting:replace_perk_in_weapon(gear_id, index, trait_id, costs, tier)
@@ -134,8 +134,11 @@ def main() -> None:
 			assert(gear_id == "gear-1" and index == 2 and trait_id == "blessing-1" and tier == 4)
 			return resolved({items = {{gear = {uuid = gear_id}}}})
 		end
+		function crafting:add_weapon_expertise() calls.expertise = calls.expertise + 1 return resolved({}) end
+		function crafting:extract_weapon_mastery() calls.extract = calls.extract + 1 return resolved({}) end
+		local mastery = {purchase_traits = function() calls.mastery = calls.mastery + 1 return resolved({}) end}
 
-		local mutation_backend = Backend.new({services = {crafting = crafting}})
+		local mutation_backend = Backend.new({services = {crafting = crafting, mastery = mastery}})
 		mutation_backend:replace_perk("gear-1", 1, "perk-1", 4)
 		mutation_backend:replace_blessing("gear-1", 2, "blessing-1", 4)
 		assert(calls.perk == 1 and calls.blessing == 1)
@@ -147,6 +150,16 @@ def main() -> None:
 		mutation_backend:replace_blessing("gear-1", 3, "blessing-1", 4)
 		mutation_backend:replace_blessing("gear-1", 2, "", 4)
 		assert(calls.perk == 1 and calls.blessing == 1)
+
+		-- Remaining crafting mutations also reject malformed IDs, ranges, and
+		-- duplicate mastery operations before any Darktide service call.
+		mutation_backend:add_weapon_expertise("", 500)
+		mutation_backend:add_weapon_expertise("gear-1", 0 / 0)
+		mutation_backend:extract_weapon_mastery("", {"gear-1"})
+		mutation_backend:extract_weapon_mastery("pattern-1", {"gear-1", "gear-1"})
+		mutation_backend:purchase_mastery_traits("pattern-1", {{trait_id = "blessing-1", rarity = 5}})
+		mutation_backend:purchase_mastery_traits("pattern-1", {{trait_id = "blessing-1", rarity = 4}, {trait_id = "blessing-1", rarity = 4}})
+		assert(calls.expertise == 0 and calls.extract == 0 and calls.mastery == 0)
 
 		-- Ambiguous/malformed responses stop at one request and are never retried.
 		malformed_perk_response = true

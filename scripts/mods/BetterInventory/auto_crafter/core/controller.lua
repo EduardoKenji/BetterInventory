@@ -2349,6 +2349,38 @@ function Controller.new(dependencies)
 			return false
 		end
 
+		if phase4.verify_completion then
+			local invalid_reason
+
+			if not item or item.available ~= true or item.gear_id ~= phase4.gear_id then
+				invalid_reason = "final weapon is absent from authoritative inventory"
+			elseif phase4.target_master_id ~= nil and item.master_id ~= phase4.target_master_id then
+				invalid_reason = "final weapon changed weapon mark"
+			elseif phase4.mastery_id ~= nil and item.parent_pattern ~= phase4.mastery_id then
+				invalid_reason = "final weapon changed weapon family"
+			elseif tonumber(candidate_stat(item, phase4.dump_stat)) ~= tonumber(phase4.target_dump) then
+				invalid_reason = "final weapon changed dump stat"
+			elseif phase4.consecrate and (tonumber(item.rarity) or -1) < TRANSCENDENT_RARITY then
+				invalid_reason = "final weapon is below Transcendent"
+			elseif phase4.expertise and (tonumber(item.expertise_level) or -1) < MAX_EXPERTISE_LEVEL then
+				invalid_reason = "final weapon is below item level 500"
+			elseif not has_trait_targets(item.perks, phase4.targets and phase4.targets.perks) then
+				invalid_reason = "final weapon perks do not match targets"
+			elseif not has_trait_targets(item.traits, phase4.targets and phase4.targets.traits) then
+				invalid_reason = "final weapon blessings do not match targets"
+			elseif phase4.allocate_mastery and unseen_blessing_tier_count(phase4.sticker_book) > 0 then
+				invalid_reason = "final weapon mastery points are not fully allocated"
+			elseif phase4.favorite_result and item.favorited ~= true then
+				invalid_reason = "final weapon favorite state was not preserved"
+			end
+
+			if invalid_reason then
+				self:_operation_failed(self._generation, invalid_reason)
+
+				return false
+			end
+		end
+
 		local completed_at = clock_now()
 		local elapsed = completed_at and self._run_started_at and math.max(0, completed_at - self._run_started_at) or math.max(0, self._run_elapsed or 0)
 		local resource_costs = wallet_consumption(self._search and self._search.start_wallet, wallet_values(snapshot or self._snapshot))
@@ -2755,14 +2787,17 @@ function Controller.new(dependencies)
 			consecrate = consecrate,
 			dump_stat = self._search and self._search.dump_stat,
 			expertise = expertise_enabled,
+			favorite_result = self._search and self._search.favorite_result == true,
 			gear_id = candidate.gear_id,
 			mastery_id = candidate.mastery_id or candidate.parent_pattern,
 			running = true,
 			sticker_book = catalog and catalog.blessings or {},
 			mastery_costs = nil,
 			target_dump = self._search and self._search.target_dump,
+			target_master_id = self._search and self._search.target_offer and self._search.target_offer.master_id,
 			targets = targets,
 			trait_category = catalog and catalog.trait_category,
+			verify_completion = true,
 		}
 		self._phase = "phase4_preflight"
 		operation_report("phase4_started", {
@@ -3981,7 +4016,7 @@ function Controller.new(dependencies)
 		return true
 	end
 
-	function self:prepare_imported_job(job)
+	function self:prepare_imported_job(job, index, completed_results, jobs)
 		if type(job) ~= "table" or job.job_id == nil or job.queue_id == nil or self._imported_job ~= job then
 			return false, "imported job identity unavailable"
 		end
@@ -4029,6 +4064,15 @@ function Controller.new(dependencies)
 
 		job.catalog = self._catalog
 		self._imported_job.catalog = self._catalog
+
+		local completed_count = math.max(0, (tonumber(index) or 1) - 1)
+		for completed_index = 1, completed_count do
+			local verified, verify_reason = self:_verify_imported_result(completed_results and completed_results[completed_index], jobs and jobs[completed_index], completed_index)
+			if not verified then
+				return false, "completed queue prefix changed before next job: " .. tostring(verify_reason)
+			end
+		end
+
 		self:_refresh_plan("games_lantern_boundary_preflight")
 		if not self._plan or not self._plan.preflight or self._plan.preflight.ok ~= true then
 			return false, self._plan and self._plan.preflight and self._plan.preflight.summary or "queue job preflight unavailable"
@@ -4042,6 +4086,48 @@ function Controller.new(dependencies)
 			})
 
 			return completed
+		end
+
+		return true
+	end
+
+	function self:_verify_imported_result(result, job, index)
+		local snapshot = self._snapshot
+		local character_id = current_character_id()
+		local policy = self._queue_run_policy and self._queue_run_policy.values or {}
+		local gear = snapshot and snapshot.gear or {}
+		local item = result and result.gear_id ~= nil and find_item(gear.items, result.gear_id, gear.items_by_id) or nil
+		local label = tostring(index or "?")
+
+		if type(result) ~= "table" or type(job) ~= "table" then
+			return false, "completed queue weapon " .. label .. " has invalid identity"
+		end
+		if not snapshot_matches_character(snapshot, character_id) or result.character_id ~= character_id or not item or item.available ~= true then
+			return false, "completed queue weapon " .. label .. " is missing from authoritative inventory"
+		end
+
+		local expected_pattern = job.parent_pattern or job.offer and job.offer.parent_pattern
+		local expected_master = job.master_id or job.offer and job.offer.master_id
+		if expected_master == nil or item.master_id ~= expected_master then
+			return false, "completed queue weapon " .. label .. " changed weapon mark"
+		end
+		if expected_pattern and item.parent_pattern ~= expected_pattern then
+			return false, "completed queue weapon " .. label .. " changed weapon family"
+		end
+		if tonumber(candidate_stat(item, job.dump_stat)) ~= tonumber(job.dump_target) then
+			return false, "completed queue weapon " .. label .. " changed dump stat"
+		end
+		if policy.auto_crafter_consecrate_transcendent == true and (tonumber(item.rarity) or -1) < TRANSCENDENT_RARITY then
+			return false, "completed queue weapon " .. label .. " is below Transcendent"
+		end
+		if policy.auto_crafter_upgrade_expertise_500 == true and (tonumber(item.expertise_level) or -1) < MAX_EXPERTISE_LEVEL then
+			return false, "completed queue weapon " .. label .. " is below item level 500"
+		end
+		if policy.auto_crafter_change_perks == true and not has_trait_targets(item.perks, job.perks) then
+			return false, "completed queue weapon " .. label .. " changed perks"
+		end
+		if policy.auto_crafter_change_blessings == true and not has_trait_targets(item.traits, job.blessings) then
+			return false, "completed queue weapon " .. label .. " changed blessings"
 		end
 
 		return true
@@ -4110,37 +4196,9 @@ function Controller.new(dependencies)
 			return false, "final inventory snapshot belongs to another character"
 		end
 
-		local gear = self._snapshot.gear or {}
-		local policy = self._queue_run_policy and self._queue_run_policy.values or {}
 		for index, result in ipairs(results) do
-			local job = jobs[index]
-			local item = result.gear_id ~= nil and find_item(gear.items, result.gear_id, gear.items_by_id) or nil
-			if result.character_id ~= character_id or not item or item.available ~= true then
-				return false, "completed queue weapon " .. tostring(index) .. " is missing from authoritative inventory"
-			end
-			local expected_pattern = job.parent_pattern or job.offer and job.offer.parent_pattern
-			local expected_master = job.master_id or job.offer and job.offer.master_id
-			if expected_master and item.master_id ~= expected_master then
-				return false, "completed queue weapon " .. tostring(index) .. " changed weapon mark"
-			end
-			if expected_pattern and item.parent_pattern ~= expected_pattern then
-				return false, "completed queue weapon " .. tostring(index) .. " changed weapon family"
-			end
-			if tonumber(candidate_stat(item, job.dump_stat)) ~= tonumber(job.dump_target) then
-				return false, "completed queue weapon " .. tostring(index) .. " changed dump stat"
-			end
-			if policy.auto_crafter_consecrate_transcendent == true and (tonumber(item.rarity) or -1) < TRANSCENDENT_RARITY then
-				return false, "completed queue weapon " .. tostring(index) .. " is below Transcendent"
-			end
-			if policy.auto_crafter_upgrade_expertise_500 == true and (tonumber(item.expertise_level) or -1) < MAX_EXPERTISE_LEVEL then
-				return false, "completed queue weapon " .. tostring(index) .. " is below item level 500"
-			end
-			if policy.auto_crafter_change_perks == true and not has_trait_targets(item.perks, job.perks) then
-				return false, "completed queue weapon " .. tostring(index) .. " changed perks"
-			end
-			if policy.auto_crafter_change_blessings == true and not has_trait_targets(item.traits, job.blessings) then
-				return false, "completed queue weapon " .. tostring(index) .. " changed blessings"
-			end
+			local verified, reason = self:_verify_imported_result(result, jobs[index], index)
+			if not verified then return false, reason end
 		end
 
 		return true

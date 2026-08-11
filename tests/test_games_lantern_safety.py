@@ -125,7 +125,7 @@ def main() -> None:
         starts = []
         verified_results = []
 
-        def prepare_completed(job, index, results):
+        def prepare_completed(job, index, results, jobs):
             numeric_index = int(index)
             if completed_slot == "both" or numeric_index == completed_slot:
                 return to_lua({

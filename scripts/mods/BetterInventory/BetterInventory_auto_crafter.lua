@@ -625,8 +625,8 @@ function AutoCrafter.configure(dependencies)
 
 			return ok and configured == true
 		end,
-		prepare_job = function(job)
-			local ok, prepared, reason = pcall(controller.prepare_imported_job, controller, job)
+		prepare_job = function(job, index, completed_results, jobs)
+			local ok, prepared, reason = pcall(controller.prepare_imported_job, controller, job, index, completed_results, jobs)
 			if not ok then
 				return false, prepared
 			end

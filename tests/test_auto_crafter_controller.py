@@ -160,6 +160,7 @@ def main() -> None:
                 available = true,
                 gear_id = gear_id,
                 rarity = rarity,
+				master_id = "weapon-1",
                 mastery_id = "pattern-1",
                 parent_pattern = "pattern-1",
                 base_stats = {damage_stat = dump_stat or 50},
@@ -791,6 +792,7 @@ def main() -> None:
 		-- templates. Known parent-pattern mismatches still fail closed.
 		do
 			local item = summarized_item("gear-template-fallback", 5, 60)
+			item.master_id = nil
 			item.parent_pattern = nil
 			item.mastery_id = nil
 			item.weapon_template = "template-1"

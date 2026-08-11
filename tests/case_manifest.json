@@ -22,7 +22,7 @@
   ],
   "test_auto_crafter_backend.py": [
     {"name": "complete_authoritative_inventory_summary", "risk": "critical", "start_line": 16, "end_line": 120},
-    {"name": "trait_mutation_contract_and_fail_closed_validation", "risk": "critical", "start_line": 122, "end_line": 154}
+        {"name": "trait_mutation_contract_and_fail_closed_validation", "risk": "critical", "start_line": 122, "end_line": 169}
   ],
     "test_auto_crafter_facade.py": [
       {"name": "frame_update_crash_containment", "risk": "critical", "start_line": 14, "end_line": 31}
@@ -82,7 +82,7 @@
         {"name": "games_lantern_release_contract_seams", "risk": "critical", "start_line": 279, "end_line": 310}
     ],
     "test_games_lantern_inventory_completion.py": [
-      {"name": "exact_finished_skip_and_two_slot_resume_identity", "risk": "critical", "start_line": 1, "end_line": 153}
+      {"name": "exact_finished_skip_and_two_slot_resume_identity", "risk": "critical", "start_line": 1, "end_line": 209}
     ],
     "test_games_lantern_queue_ui.py": [
         {"name": "active_queue_lifecycle_locked_target_and_section_order_ui", "risk": "high", "start_line": 9, "end_line": 64}

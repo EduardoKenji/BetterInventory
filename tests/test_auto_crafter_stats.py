@@ -188,7 +188,7 @@ def main() -> None:
 			["scripts/backend/master_items"] = {
 				get_cached = function() return TestMasterItems end,
                 get_item = function(name)
-                    if name == "perk_flak" then
+                    if name == "perk_flak" or name == "headtaker" then
                         return {name = name, display_name = "internal/perk/path", trait_text = "+25%% Damage vs Flak Armoured (T%d)"}
                     end
 					return TestMasterItems[name]

@@ -225,7 +225,7 @@ function Queue.new(dependencies)
 
 		if type(self._prepare_job) == "function" then
 			self._state = "preflighting"
-			local prepared_ok, prepared, prepare_reason = safe_call(self._prepare_job, job, self._current_index, self._completed_results)
+			local prepared_ok, prepared, prepare_reason = safe_call(self._prepare_job, job, self._current_index, self._completed_results, self._jobs)
 			if not prepared_ok then
 				return fail("job_preflight_crashed", { index = self._current_index, error = prepared })
 			elseif prepared == false then
