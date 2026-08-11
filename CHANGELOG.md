@@ -1,6 +1,10 @@
 # BetterInventory changelog
 
-## 2.1.0 - In development
+## 2.1.2 - In development
+
+- Began a repeated view-open/view-close lifecycle and retained-allocation audit.
+
+## 2.1.0 - 2026-08-11
 
 - Began research into importing Games Lantern build weapon targets into Auto Crafter Helper.
 
