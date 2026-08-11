@@ -124,7 +124,7 @@ def main() -> None:
     # Lantern's named mark. Both Skitarius weapons must still resolve without
     # weakening ambiguity handling.
     transonic_offer = to_lua({
-        "display_name": "Paired Transonic Blades",
+        "display_name": "loc_weapon_family_transonic_sword_transonic_knife_p1_m1",
         "master_id": "content/items/weapons/player/melee/transonic_sword_transonic_knife_p1_m1",
         "parent_pattern": "transonic_sword_transonic_knife_p1_m1",
         "weapon_category": "melee",
@@ -134,7 +134,7 @@ def main() -> None:
         ],
     })
     phosphor_offer = to_lua({
-        "display_name": "Phosphor Blast Pistol",
+        "display_name": "loc_weapon_family_phosphor_pistol_p1_m1",
         "master_id": "content/items/weapons/player/ranged/phosphor_pistol_p1_m1",
         "parent_pattern": "phosphor_pistol_p1_m1",
         "weapon_category": "ranged",
@@ -163,6 +163,7 @@ def main() -> None:
     skitarius_live_context = to_lua({
         "active_archetype": "cryptic",
         "dump_target": 60,
+        "localize_offer_label": lua.eval("function(key) local labels = { loc_weapon_family_transonic_sword_transonic_knife_p1_m1 = 'Paired Transonic Blades', loc_weapon_family_phosphor_pistol_p1_m1 = 'Phosphor Blast Pistol' }; return labels[key] end"),
         "melee_offers": [transonic_offer],
         "ranged_offers": [phosphor_offer],
     })
