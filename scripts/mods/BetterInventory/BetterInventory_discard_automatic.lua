@@ -5,6 +5,7 @@ local AutomaticDiscard = {}
 local AUTOMATIC_DISCARD_DELAY = 5
 local AUTOMATIC_DISCARD_MAX_FETCH_ATTEMPTS = 3
 local AUTOMATIC_DISCARD_IDLE_POLL_INTERVAL = 0.25
+local AUTOMATIC_DISCARD_READ_TIMEOUT = 45
 
 local function current_game_mode_name()
 	local state = Managers and Managers.state
@@ -80,6 +81,7 @@ local function new_state()
 		fetch_attempts = 0,
 		read_promise = nil,
 		read_inflight = false,
+		read_elapsed = 0,
 		hub_character_id = nil,
 		scheduled = false,
 		started = false,
@@ -273,10 +275,20 @@ function AutomaticDiscard.new(transaction, dependencies)
 
 			local candidates = type(dependencies.candidates_from_items) == "function" and dependencies.candidates_from_items(mod, items, protection.equipped_gear_ids, captured_ids, protection.favorite_gear_ids) or {}
 			local gear_ids = {}
+			local notification_candidates = {}
 
 			for index = 1, #candidates do
-				gear_ids[index] = candidates[index].gear_id
+				local candidate = candidates[index]
+				gear_ids[index] = candidate.gear_id
+				-- A slow DELETE must not retain full backend item records merely to
+				-- render the eventual rarity summary.
+				notification_candidates[index] = {
+					gear_id = candidate.gear_id,
+					rarity = candidate.rarity,
+				}
 			end
+			candidates = nil
+			items = nil
 
 			info(mod, string.format("Revalidated %d candidate(s) immediately before deletion.", #gear_ids))
 
@@ -301,7 +313,7 @@ function AutomaticDiscard.new(transaction, dependencies)
 					state.delete_transaction_token = nil
 				end
 
-				notify_result(mod, candidates, result)
+				notify_result(mod, notification_candidates, result)
 				release_mutation_pipeline(transaction_token)
 
 				return result
@@ -317,7 +329,7 @@ function AutomaticDiscard.new(transaction, dependencies)
 					state.delete_transaction_token = nil
 				end
 
-				automatic._transaction:release("automatic", transaction_token)
+				release_mutation_pipeline(transaction_token)
 
 				return error_value
 			end)
@@ -399,6 +411,7 @@ function AutomaticDiscard.new(transaction, dependencies)
 		if state.read_promise == promise then
 			state.read_promise = nil
 			state.read_inflight = false
+			state.read_elapsed = 0
 		end
 	end
 
@@ -409,6 +422,7 @@ function AutomaticDiscard.new(transaction, dependencies)
 
 		state.read_promise = promise
 		state.read_inflight = true
+		state.read_elapsed = 0
 
 		if type(promise.next) == "function" and type(promise.catch) == "function" then
 			local continuation = promise:next(function(result)
@@ -434,6 +448,7 @@ function AutomaticDiscard.new(transaction, dependencies)
 
 		state.read_promise = nil
 		state.read_inflight = false
+		state.read_elapsed = 0
 
 		if promise and type(promise.cancel) == "function" then
 			pcall(promise.cancel, promise)
@@ -525,6 +540,27 @@ function AutomaticDiscard.new(transaction, dependencies)
 	end
 
 	function automatic:update(mod, dt, account_operation_busy)
+		local elapsed = math.max(tonumber(dt) or 0, 0)
+
+		if state.read_inflight then
+			state.read_elapsed = state.read_elapsed + elapsed
+
+			if state.read_elapsed >= AUTOMATIC_DISCARD_READ_TIMEOUT then
+				self:cancel_read_promise()
+
+				if state.mutation_pipeline_inflight then
+					local transaction_token = state.mutation_transaction_token
+					info(mod, "Final revalidation timed out safely; no delete request was dispatched.")
+					release_mutation_pipeline(transaction_token)
+				else
+					state.started = false
+					state.elapsed = 0
+					state.scheduled = state.fetch_attempts < AUTOMATIC_DISCARD_MAX_FETCH_ATTEMPTS
+					info(mod, "Inventory scan timed out; scheduling a bounded retry.")
+				end
+			end
+		end
+
 		if not enabled(mod) then
 			if state.scheduled or state.started or state.hub_character_id or self._transaction:active_owner() == "automatic" then
 				self:cancel()
@@ -544,7 +580,7 @@ function AutomaticDiscard.new(transaction, dependencies)
 			and self._transaction:active_owner() ~= "automatic"
 
 		if idle then
-			state.idle_poll_elapsed = state.idle_poll_elapsed + (tonumber(dt) or 0)
+			state.idle_poll_elapsed = state.idle_poll_elapsed + elapsed
 
 			if state.idle_poll_elapsed < AUTOMATIC_DISCARD_IDLE_POLL_INTERVAL then
 				return
@@ -595,7 +631,7 @@ function AutomaticDiscard.new(transaction, dependencies)
 			return
 		end
 
-		state.elapsed = state.elapsed + (tonumber(dt) or 0)
+		state.elapsed = state.elapsed + elapsed
 
 		if state.elapsed < AUTOMATIC_DISCARD_DELAY then
 			return
@@ -704,13 +740,13 @@ function AutomaticDiscard.new(transaction, dependencies)
 	end
 
 	function automatic:needs_update(mod)
-		return enabled(mod)
-			or state.scheduled
+		return state.scheduled
 			or state.started
 			or state.read_inflight
 			or state.delete_inflight
 			or state.hub_character_id ~= nil
 			or self._transaction:active_owner() == "automatic"
+			or enabled(mod) and is_morningstar()
 	end
 
 	return automatic

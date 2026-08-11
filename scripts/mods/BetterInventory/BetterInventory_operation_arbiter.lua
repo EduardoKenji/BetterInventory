@@ -57,6 +57,17 @@ function OperationArbiter.new()
 		return state.token
 	end
 
+	function arbiter:detach_view(view)
+		if state.view == nil or view ~= nil and state.view ~= view then
+			return false
+		end
+
+		local detached = state.view
+		state.view = nil
+
+		return true, detached
+	end
+
 	function arbiter:current_popup()
 		return state.popup_id
 	end

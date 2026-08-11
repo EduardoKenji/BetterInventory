@@ -101,6 +101,17 @@ local function fallback_arbiter()
 		return state.token
 	end
 
+	function arbiter:detach_view(view)
+		if state.view == nil or view ~= nil and state.view ~= view then
+			return false
+		end
+
+		local detached = state.view
+		state.view = nil
+
+		return true, detached
+	end
+
 	function arbiter:current_popup()
 		return state.popup_id
 	end
@@ -181,6 +192,20 @@ function Transaction.new(operation_arbiter, callbacks)
 
 	function transaction:active_token()
 		return self._arbiter:active_token()
+	end
+
+	function transaction:detach_view(view)
+		if type(self._arbiter.detach_view) ~= "function" then
+			return false
+		end
+
+		local detached, detached_view = self._arbiter:detach_view(view)
+
+		if detached and detached_view then
+			detached_view._better_inventory_discard_pending = false
+		end
+
+		return detached == true
 	end
 
 	function transaction:current_popup()

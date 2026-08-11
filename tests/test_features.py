@@ -2961,6 +2961,9 @@ def main() -> None:
         automatic_cache_invalidation_count = 0
         automatic_add_mission_reward_on_invalidation = true
         automatic_defer_delete = false
+        automatic_defer_fetch = false
+        automatic_fetch_cancel_count = 0
+        automatic_pending_fetch = nil
         automatic_deleted_ids = nil
 		automatic_pending_delete = nil
 		manual_delete_promise = nil
@@ -3026,6 +3029,24 @@ def main() -> None:
                 fetch_inventory = function()
                     automatic_fetch_count = automatic_fetch_count + 1
 
+					if automatic_defer_fetch then
+						local promise = {success_callbacks = {}, error_callbacks = {}}
+						promise.next = function(self, callback)
+							self.success_callbacks[#self.success_callbacks + 1] = callback
+							return self
+						end
+						promise.catch = function(self, callback)
+							self.error_callbacks[#self.error_callbacks + 1] = callback
+							return self
+						end
+						promise.cancel = function()
+							automatic_fetch_cancel_count = automatic_fetch_cancel_count + 1
+						end
+						automatic_pending_fetch = promise
+
+						return promise
+					end
+
                     return resolved(inventory)
                 end,
                 delete_gear_batch = function(self, gear_ids)
@@ -3072,6 +3093,14 @@ def main() -> None:
 				pending.success_callback(pending.result)
 			end
 		end
+		fail_automatic_delete = function()
+			local pending = automatic_pending_delete
+			automatic_pending_delete = nil
+
+			if pending and pending.error_callback then
+				pending.error_callback("simulated delete failure")
+			end
+		end
         """,
         automatic_inventory,
     )
@@ -3100,6 +3129,11 @@ def main() -> None:
     assert fallback_transaction.clear_popup(
         fallback_transaction, "manual", fallback_token
     ) is True
+    assert fallback_transaction.detach_view(
+        fallback_transaction, fallback_view
+    ) is True
+    assert fallback_transaction.active_view(fallback_transaction) is None
+    assert fallback_view._better_inventory_discard_pending is False
     fallback_promise = lua.execute(
         "return { next = function(self, callback) self.success_callback = callback return self end, "
         "catch = function(self, callback) self.error_callback = callback return self end }"
@@ -3212,6 +3246,16 @@ def main() -> None:
     assert globals_.captured_popup_count == popup_count_before_deferred_delete
     globals_.complete_automatic_delete()
     assert features.morningstar_auto_discard_is_busy(mod) is False
+
+    # Rejection must clear both the transaction and the mutation-pipeline flag;
+    # otherwise every later inventory writer is blocked for the session.
+    mod.settings.quick_discard_mode = "automatic"
+    features.begin_morningstar_auto_discard(mod)
+    features.update_morningstar_auto_discard(mod, 5)
+    assert globals_.automatic_pending_delete is not None
+    globals_.fail_automatic_delete()
+    assert features.morningstar_auto_discard_is_busy(mod) is False
+    assert features.defer_morningstar_auto_discard_for_account_operation(mod) is True
     mod.settings.quick_discard_mode = "automatic"
     globals_.automatic_defer_delete = False
     features.cancel_morningstar_auto_discard()
@@ -3274,7 +3318,13 @@ def main() -> None:
     features.request_quick_discard(mod, layout, quick_discard_view)
     globals_.captured_popup.options[1].callback()
     assert features.manual_discard_settlement_active() is True
+    assert features.discard_view() is not None
+    features.unregister_inventory_view(quick_discard_view)
+    assert features.discard_view() is None
+    assert quick_discard_view._better_inventory_discard_pending is False
+    assert features.manual_discard_settlement_active() is True
     globals_.complete_manual_delete()
+    assert features.discard_owner() is None
     mod.settings.quick_discard_mode = "automatic"
 
     # Missing save/favorite protection data fails closed and retries without
@@ -3388,11 +3438,29 @@ def main() -> None:
     features.cancel_morningstar_auto_discard()
     mod.settings.quick_discard_disable_no_eligible_notification = False
 
+    # A read promise that never settles is cancelled and retired after a
+    # bounded timeout instead of retaining the backend inventory graph forever.
+    globals_.automatic_defer_fetch = True
+    cancel_count_before_timeout = globals_.automatic_fetch_cancel_count
+    features.begin_morningstar_auto_discard(mod)
+    features.update_morningstar_auto_discard(mod, 5)
+    assert features.automatic_discard_read_request_count() == 1
+    features.update_morningstar_auto_discard(mod, 44.9)
+    assert features.automatic_discard_read_request_count() == 1
+    features.update_morningstar_auto_discard(mod, 0.1)
+    assert features.automatic_discard_read_request_count() == 0
+    assert globals_.automatic_fetch_cancel_count == cancel_count_before_timeout + 1
+    globals_.automatic_defer_fetch = False
+    features.cancel_morningstar_auto_discard()
+
     # Settled Automatic Discard sleeps outside Automatic mode, while changing
     # the setting wakes it immediately.
     mod.settings.quick_discard_mode = "manual"
     assert features.morningstar_auto_discard_needs_update(mod) is False
     mod.settings.quick_discard_mode = "automatic"
+    globals_.automatic_game_mode_name = "mission"
+    assert features.morningstar_auto_discard_needs_update(mod) is False
+    globals_.automatic_game_mode_name = "hub"
     assert features.morningstar_auto_discard_needs_update(mod) is True
 
     features.unregister_inventory_view(melee_view)

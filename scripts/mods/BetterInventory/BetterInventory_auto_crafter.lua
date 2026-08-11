@@ -1269,6 +1269,16 @@ function AutoCrafter.is_busy()
 	return import_busy or queue_busy or controller_busy
 end
 
+function AutoCrafter.needs_update()
+	local import_state = games_lantern_import and games_lantern_import:state()
+	local import_needs_update = import_state == "fetching" or import_state == "resolving_catalogues"
+	local queue_state = games_lantern_queue and games_lantern_queue:state()
+	local queue_needs_update = queue_state == "starting" or queue_state == "selecting" or queue_state == "preflighting" or queue_state == "dispatching" or queue_state == "running" or queue_state == "waiting_next" or queue_state == "stopping" or queue_state == "quarantined" or queue_state == "reconciliation_required"
+	local controller_needs_update = controller and type(controller.needs_update) == "function" and controller:needs_update() or controller and controller:is_busy() or false
+
+	return active_brunt_view ~= nil or import_needs_update or queue_needs_update or controller_needs_update
+end
+
 function AutoCrafter.interrupt_for_external_mutation(kind)
 	if not controller or controller_faulted then
 		return false
@@ -1285,6 +1295,8 @@ function AutoCrafter.interrupt_for_external_mutation(kind)
 end
 
 function AutoCrafter.shutdown()
+	active_brunt_view = nil
+	games_lantern_catalog_generation = games_lantern_catalog_generation + 1
 	hud_lines = {}
 	presentation_dirty = true
 	presentation_elapsed = 0
@@ -1307,14 +1319,19 @@ function AutoCrafter.shutdown()
 	end
 
 	if panel then
-		panel:detach()
-		panel = nil
+		pcall(panel.detach, panel)
 	end
 
 	if controller then
-		controller:shutdown()
-		controller = nil
+		pcall(controller.shutdown, controller)
 	end
+
+	panel = nil
+	controller = nil
+	games_lantern_queue = nil
+	games_lantern_import = nil
+	runtime_context = nil
+	start_games_lantern_queue = nil
 	controller_faulted = false
 end
 

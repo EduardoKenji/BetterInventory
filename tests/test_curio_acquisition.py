@@ -407,6 +407,7 @@ def main() -> None:
         server_clock = 100000
         backend_account_key = "default"
         main_menu_active = false
+		game_mode_name_value = "hub"
 
         settings = {
             enable_automatic_curio_acquisition = true,
@@ -541,7 +542,7 @@ def main() -> None:
             state = {
                 game_mode = {
                     game_mode_name = function()
-                        return "hub"
+						return game_mode_name_value
                     end,
                 },
             },
@@ -1459,6 +1460,9 @@ def main() -> None:
     module.on_setting_changed(globals_.test_mod, "enable_automatic_curio_acquisition")
     assert module.needs_update(globals_.test_mod) is False
     globals_.settings.enable_automatic_curio_acquisition = True
+    globals_.game_mode_name_value = "mission"
+    assert module.needs_update(globals_.test_mod) is False
+    globals_.game_mode_name_value = "hub"
     assert module.needs_update(globals_.test_mod) is True
 
     print("BetterInventory automatic Curio acquisition tests passed.")

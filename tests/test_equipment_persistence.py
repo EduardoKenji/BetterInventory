@@ -374,6 +374,22 @@ def main() -> None:
     globals_.native_promise.resolve(globals_.native_promise, lua.table_from([False]))
     assert module.status() == ("idle", 0)
 
+    # A backend promise that never settles cannot retain the immutable intent
+    # graph forever. Timeout is fail-closed: retire local ownership and never
+    # dispatch an ambiguous duplicate equip request.
+    globals_.captured_errors = lua.table_from([])
+    globals_.native_promise = globals_.TestPromise.pending()
+    retries_before_timeout = globals_.retry_calls
+    module.persist_local_changes(globals_.test_mod, globals_.native_equip, globals_.view)
+    module.update(globals_.test_mod, 119.9)
+    assert module.has_pending() is True
+    module.update(globals_.test_mod, 0.1)
+    assert module.has_pending() is False
+    assert globals_.retry_calls == retries_before_timeout
+    assert len(globals_.captured_errors) == 1
+    globals_.native_promise.resolve(globals_.native_promise, lua.table_from([True]))
+    assert module.status() == ("idle", 0)
+
     print("BetterInventory equipment persistence tests passed.")
 
 

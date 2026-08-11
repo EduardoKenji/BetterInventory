@@ -197,6 +197,15 @@ def main() -> None:
 		mutation_backend:replace_perk("gear-1", 1, "perk-1", 4)
 		assert(calls.perk == 2)
 
+		-- Full authoritative gear/wallet responses are transient validation data,
+		-- not process-lifetime caches.
+		mutation_backend._purchase_wallets.credits = {amount = 1000}
+		assert(next(mutation_backend._raw_gear) ~= nil)
+		assert(mutation_backend:release_read_cache() == true)
+		assert(next(mutation_backend._raw_gear) == nil)
+		assert(next(mutation_backend._purchase_wallets) == nil)
+		assert(mutation_backend:release_read_cache() == true)
+
         print("Auto Crafter authoritative backend inventory tests passed.")
         '''
     )

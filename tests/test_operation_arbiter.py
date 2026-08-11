@@ -46,6 +46,29 @@ def main() -> None:
     assert popup_id == "popup-1"
     assert arbiter.manual_settlement_active(arbiter) is False
 
+    # An unresolved destructive request keeps its owner/token but must not keep
+    # an exited inventory view alive.
+    retained_view = lua.execute("return {}")
+    retained_token = arbiter.acquire(arbiter, "manual", retained_view)
+    retained_promise = lua.execute(
+        "return {next = function(self, callback) self.callback = callback return self end, "
+        "catch = function(self, callback) self.catch_callback = callback return self end}"
+    )
+    assert arbiter.observe_manual_settlement(
+        arbiter, retained_promise, lua.eval("function() end")
+    ) is True
+    assert arbiter.detach_view(arbiter, view) is False
+    detached, detached_view = arbiter.detach_view(arbiter, retained_view)
+    assert detached is True
+    assert lua.eval("function(left, right) return left == right end")(
+        detached_view, retained_view
+    ) is True
+    assert arbiter.active_view(arbiter) is None
+    assert arbiter.is_current(arbiter, "manual", retained_token) is True
+    assert arbiter.manual_settlement_active(arbiter) is True
+    retained_promise.callback("ok")
+    assert arbiter.release(arbiter, "manual", retained_token)[0] is True
+
     # Stale generations cannot release a newer owner.
     next_token = arbiter.acquire(arbiter, "automatic")
     assert arbiter.release(arbiter, "manual", token) is False

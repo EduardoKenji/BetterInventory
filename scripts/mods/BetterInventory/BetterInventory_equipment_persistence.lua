@@ -6,6 +6,7 @@ local EquipmentPersistence = {}
 
 local RETRY_DELAY = 1.5
 local MAX_RETRIES = 2
+local MAX_PENDING_SECONDS = 120
 
 local state = {
 	active = nil,
@@ -298,6 +299,8 @@ local function schedule_retry(mod, operation, reason)
 
 	operation.waiting_retry = true
 	operation.retry_elapsed = 0
+	operation.pending_elapsed = 0
+	operation.promise = nil
 	operation.last_error = reason
 end
 
@@ -309,6 +312,7 @@ observe_promise = function(mod, operation, promise)
 
 	operation.promise = promise
 	operation.waiting_retry = false
+	operation.pending_elapsed = 0
 
 	promise:next(function(result)
 		if state.active ~= operation then
@@ -346,6 +350,7 @@ EquipmentPersistence.persist_local_changes = function(mod, native_function, view
 		generation = state.generation,
 		intent = intent,
 		retries = 0,
+		pending_elapsed = 0,
 		view = view,
 	}
 
@@ -358,7 +363,25 @@ end
 EquipmentPersistence.update = function(mod, dt)
 	local operation = state.active
 
-	if not operation or not operation.waiting_retry then
+	if not operation then
+		return
+	end
+
+	if not operation.waiting_retry then
+		operation.pending_elapsed = (tonumber(operation.pending_elapsed) or 0) + math.max(tonumber(dt) or 0, 0)
+
+		if operation.pending_elapsed >= MAX_PENDING_SECONDS then
+			-- The native request may still settle later. Its callback is generation-
+			-- guarded, so retire BetterInventory's immutable intent/view graph without
+			-- issuing an ambiguous duplicate equip request.
+			state.active = nil
+			log_failure(mod, string.format(
+				"Stopped retaining unresolved loadout %s after %d seconds; no retry was dispatched",
+				operation.intent.signature,
+				MAX_PENDING_SECONDS
+			))
+		end
+
 		return
 	end
 

@@ -1607,8 +1607,7 @@ CurioAcquisition.update = function(mod, dt, automatic_discard_busy)
 end
 
 CurioAcquisition.needs_update = function(mod)
-	if enabled(mod)
-		or state.active_context ~= nil
+	if state.active_context ~= nil
 		or state.scheduled
 		or state.started
 		or state.active_read_requests > 0
@@ -1623,7 +1622,11 @@ CurioAcquisition.needs_update = function(mod)
 	local entry = state.rotation_history.accounts and state.rotation_history.accounts[state.account_key]
 	local pending_reports = entry and entry.pending_reports
 
-	return pending_reports and pending_reports[1] ~= nil or false
+	if pending_reports and pending_reports[1] ~= nil then
+		return true
+	end
+
+	return enabled(mod) and (is_morningstar() or mod:get("automatic_curio_scan_operative_selection") == true and is_operative_selection()) or false
 end
 
 CurioAcquisition.active_read_request_count = function()

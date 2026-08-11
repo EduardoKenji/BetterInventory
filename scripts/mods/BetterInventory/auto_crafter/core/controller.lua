@@ -1,5 +1,9 @@
 local Controller = {}
 
+local function read_member(object, key)
+	return object[key]
+end
+
 local DEFAULT_PROBE_DELAY = 0.5
 local DEFAULT_VIEW_IDLE_POLL_INTERVAL = 0.1
 local DEFAULT_MASTERY_POLL_DELAY = 0.05
@@ -55,9 +59,7 @@ local function safe_member(object, key)
 		return nil
 	end
 
-	local ok, value = pcall(function()
-		return object[key]
-	end)
+	local ok, value = pcall(read_member, object, key)
 
 	return ok and value or nil
 end
@@ -927,6 +929,21 @@ function Controller.new(dependencies)
 		return false
 	end
 
+	local function release_backend_read_cache_if_settled(force)
+		if self._operation_inflight or (self._auxiliary_inflight_count or 0) > 0 or run_is_active() or self._view_is_valid and not force then
+			return false
+		end
+
+		local release = self._backend and self._backend.release_read_cache
+		if type(release) ~= "function" then
+			return false
+		end
+
+		local ok, released = pcall(release, self._backend)
+
+		return ok and released ~= false
+	end
+
 	local function pending_deferred_count(phase3)
 		local queue = phase3 and phase3.deferred_candidates or {}
 		local first = phase3 and phase3.deferred_index or 1
@@ -1369,6 +1386,7 @@ function Controller.new(dependencies)
 		self._frozen_run_settings = nil
 		self._run_character_id = nil
 		release_account_operation_if_settled()
+		release_backend_read_cache_if_settled()
 	end
 
 	function self:_quarantine_operation(generation, error_value)
@@ -1466,6 +1484,9 @@ function Controller.new(dependencies)
 			end
 		end
 		release_account_operation_if_settled()
+		if not self._view_is_valid then
+			release_backend_read_cache_if_settled()
+		end
 
 		return true, was_quarantined, duration
 	end
@@ -1634,6 +1655,9 @@ function Controller.new(dependencies)
 					self:_schedule_probe("auxiliary_operation_settled")
 				end
 				release_account_operation_if_settled()
+				if not self._view_is_valid then
+					release_backend_read_cache_if_settled()
+				end
 
 				return true
 			end
@@ -2137,6 +2161,7 @@ function Controller.new(dependencies)
 			search = search,
 		})
 		release_account_operation_if_settled()
+		release_backend_read_cache_if_settled()
 	end
 
 	function self:_stop_active_run(reason)
@@ -2189,6 +2214,7 @@ function Controller.new(dependencies)
 			})
 		end
 		release_account_operation_if_settled()
+		release_backend_read_cache_if_settled()
 
 		return true
 	end
@@ -2416,6 +2442,7 @@ function Controller.new(dependencies)
 			resource_costs = resource_costs,
 		})
 		release_account_operation_if_settled()
+		release_backend_read_cache_if_settled()
 
 		return true
 	end
@@ -5002,6 +5029,7 @@ function Controller.new(dependencies)
 			self:_schedule_probe("character_changed")
 		end
 		release_account_operation_if_settled()
+		release_backend_read_cache_if_settled(true)
 	end
 
 	function self:on_view_closed(view)
@@ -5036,6 +5064,7 @@ function Controller.new(dependencies)
 		self._frozen_run_settings = nil
 		self._run_character_id = nil
 		release_account_operation_if_settled()
+		release_backend_read_cache_if_settled()
 
 		return true
 	end
@@ -5075,6 +5104,7 @@ function Controller.new(dependencies)
 			reason = reason or "game_state_exit",
 		})
 		release_account_operation_if_settled()
+		release_backend_read_cache_if_settled()
 	end
 
 	function self:on_setting_changed(setting_id)
@@ -5390,6 +5420,10 @@ function Controller.new(dependencies)
 		return self._operation_inflight == true or self._operation_quarantined == true or (tonumber(self._auxiliary_inflight_count) or 0) > 0 or run_is_active() == true
 	end
 
+	function self:needs_update()
+		return enabled() and (self._view_is_valid == true or run_is_active() == true)
+	end
+
 	function self:preview_plan()
 		if not self._snapshot then
 			return false
@@ -5417,6 +5451,9 @@ function Controller.new(dependencies)
 		self._phase3 = nil
 		self._phase4 = nil
 		self._mastery = nil
+		self._catalog = nil
+		self._catalog_key = nil
+		self._purchase_confirmation = nil
 		self._last_purchased = nil
 		self._selected_target_key = nil
 		self._selected_native_key = nil
@@ -5430,6 +5467,7 @@ function Controller.new(dependencies)
 		self._imported_job = nil
 		self._run_imported_job = nil
 		release_account_operation_if_settled()
+		release_backend_read_cache_if_settled()
 	end
 
 	return self

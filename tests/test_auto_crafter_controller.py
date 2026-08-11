@@ -545,9 +545,10 @@ def main() -> None:
 		-- Closing Brunt detaches UI only; frozen search continues in Morningstar.
 		do
 			local state = {item = nil}
-			local backend = {purchase_promise = pending()}
+			local backend = {purchase_promise = pending(), release_calls = 0}
 			function backend:purchase_offer(_) return self.purchase_promise end
 			function backend:probe_snapshot() return resolved(snapshot_with(state.item)) end
+			function backend:release_read_cache() self.release_calls = self.release_calls + 1 return true end
 			CurrentOffer = raw_offer()
 			local view = {}
 			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings(), reporter = reports(), get_selected_offer = function() return CurrentOffer end})
@@ -558,6 +559,7 @@ def main() -> None:
 			assert(controller:on_view_closed(view) == true)
 			assert(controller:snapshot().view_is_valid == false)
 			assert(controller:snapshot().search.running == true)
+			assert(backend.release_calls == 0)
 			-- DMF/panel teardown may replay unchanged values. Same-value callbacks are noise,
 			-- not user configuration changes, and must not stop frozen background work.
 			assert(controller:on_setting_changed("auto_crafter_target_dump_stat") == true)
@@ -568,6 +570,7 @@ def main() -> None:
 			assert(controller:snapshot().search.running == false)
 			assert(controller:snapshot().search.result.gear_id == "gear-background")
 			assert(controller:snapshot().phase == "phase4_complete")
+			assert(backend.release_calls == 1)
 		end
 
 		-- Purchase response cannot declare exact result; refreshed inventory is authoritative.

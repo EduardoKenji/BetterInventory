@@ -13,6 +13,10 @@ local WeaponTemplate = require("scripts/utilities/weapon/weapon_template")
 
 local Backend = {}
 
+local function read_member(object, key)
+	return object[key]
+end
+
 local function rejected(description)
 	return Promise.rejected({
 		code = "auto_crafter_unavailable",
@@ -33,9 +37,7 @@ local function safe_member(object, key)
 		return nil
 	end
 
-	local ok, value = pcall(function()
-		return object[key]
-	end)
+	local ok, value = pcall(read_member, object, key)
 
 	return ok and value or nil
 end
@@ -1323,6 +1325,15 @@ function Backend.new(dependencies)
 		local managers = rawget(_G, "Managers")
 
 		return managers and managers.data_service
+	end
+
+	function backend:release_read_cache()
+		-- The native gear service owns its authoritative cache. BetterInventory only
+		-- needs this full response while validating/dispatching a workflow mutation.
+		self._raw_gear = {}
+		self._purchase_wallets = {}
+
+		return true
 	end
 
 	function backend:_read(service_name, method_name, ...)
