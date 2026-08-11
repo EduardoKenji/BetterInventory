@@ -35,6 +35,7 @@ foreach ($releaseFile in @($releasePackager, $packagingDocumentation)) {
 $main = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory.lua") -Raw
 $main = @(
 	$main
+	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_character_overview.lua") -Raw
 	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_character_overview_ui.lua") -Raw
 	Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_runtime.lua") -Raw
 ) -join "`n"
@@ -76,7 +77,7 @@ if ($curioVisualPlan -notmatch 'Coordinate contract and regression guard' -or $c
 	throw "The native Curio coordinate contract is missing from the v1.9.4 visual plan."
 }
 
-if ($main -notmatch 'move_up\s*=\s*9' -or $main -notmatch 'move_down\s*=\s*6' -or $main -notmatch 'move_down\s*=\s*4' -or $main -notmatch 'style\.offset\[2\]\s*=\s*\(style\.offset\[2\]\s*or\s*0\)\s*-\s*6' -or $main -notmatch 'style\.offset\[1\]\s*=\s*math\.max\(style\.offset\[1\]\s*or\s*0,\s*weapon_name_left\)' -or $main -notmatch 'character_overview_curio_name_mode' -or $main -notmatch 'character_overview_curio_font_size_percent' -or $main -notmatch 'curio_name_line_limit\s*=\s*curio_name_mode\s*==\s*"two_lines"\s*and\s*2' -or $main -notmatch 'curio_name_block_height\s*=\s*curio_name_font_size\s*\*\s*curio_name_line_limit\s*\+\s*11' -or $main -notmatch 'stat_style\.offset\[2\]\s*=\s*\(stat_style\.offset\[2\]\s*or\s*0\)\s*\+\s*curio_name_block_height' -or $main -notmatch 'Text\.word_wrap\(ui_renderer,\s*full_name,\s*title_style,\s*title_width\)' -or $main -notmatch 'table\.concat\(wrapped_rows,\s*"\\n"\)' -or $main -notmatch 'title_style\.font_size\s*=\s*curio_name_font_size' -or $main -notmatch 'reconcile_character_overview_curio_widgets_if_needed' -or $main -notmatch 'CHARACTER_OVERVIEW_RECONCILE_INTERVAL\s*=\s*0\.25') {
+if ($main -notmatch 'move_up\s*=\s*9' -or $main -notmatch 'move_down\s*=\s*6' -or $main -notmatch 'move_down\s*=\s*4' -or $main -notmatch 'style\.offset\[2\]\s*=\s*\(style\.offset\[2\]\s*or\s*0\)\s*-\s*6' -or $main -notmatch 'style\.offset\[1\]\s*=\s*math\.max\(style\.offset\[1\]\s*or\s*0,\s*weapon_name_left\)' -or $main -notmatch 'character_overview_curio_name_mode' -or $main -notmatch 'character_overview_curio_font_size_percent' -or $main -notmatch 'curio_name_line_limit\s*=\s*curio_name_mode\s*==\s*"two_lines"\s*and\s*2' -or $main -notmatch 'curio_name_block_height\s*=\s*curio_name_font_size\s*\*\s*curio_name_line_limit\s*\+\s*11' -or $main -notmatch 'stat_style\.offset\[2\]\s*=\s*\(stat_style\.offset\[2\]\s*or\s*0\)\s*\+\s*curio_name_block_height' -or $main -notmatch 'CharacterOverview\.fit_title\s*=\s*function' -or $main -notmatch 'fit_title\(full_name,\s*curio_name_font_size,\s*6,\s*curio_name_line_limit' -or $main -notmatch 'Text\.word_wrap\(ui_renderer,\s*value,\s*title_style,\s*title_width\)' -or $main -notmatch 'Text\.crop_text_width\(ui_renderer,\s*value,\s*title_style,\s*title_width\)' -or $main -notmatch 'table\.concat\(fitted_rows,\s*"\\n"\)' -or $main -notmatch 'better_inventory_curio_fit_initialized\s*~=\s*true' -or $main -notmatch 'title_style\.font_size\s*=\s*fitted_font_size' -or $main -notmatch 'reconcile_character_overview_curio_widgets_if_needed' -or $main -notmatch 'CHARACTER_OVERVIEW_RECONCILE_INTERVAL\s*=\s*0\.25') {
 	throw "Character overview visual offsets or Curio font scaling were not found."
 }
 

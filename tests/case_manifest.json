@@ -170,7 +170,7 @@
     {"name": "migration_preservation", "risk": "high", "start_line": 385, "end_line": 504},
     {"name": "character_overview_refresh", "risk": "high", "start_line": 505, "end_line": 1359},
     {"name": "localization_contract", "risk": "medium", "start_line": 1360, "end_line": 2249},
-      {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2250, "end_line": 2532}
+      {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2250, "end_line": 2537}
   ],
   "test_settings_registry.py": [
     {"name": "duplicate_detection", "risk": "high", "start_line": 53, "end_line": 78},
