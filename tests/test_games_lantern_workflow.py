@@ -235,6 +235,89 @@ def main() -> None:
     assert resolved_skitarius["jobs"][1]["blessings"][2]["id"] == "blessing_shred"
     assert resolved_skitarius["jobs"][2]["blessings"][1]["id"] == "blessing_man_stopper"
 
+    # Games Lantern renders both canonical stamina perks as "1-2 Stamina".
+    # Live metadata can also repeat a canonical ID. Resolve by weapon slot,
+    # collapse exact mutation duplicates, and retain fail-closed behavior for
+    # genuinely different same-slot targets.
+    stamina_identity, reason = resolver.resolve_identities(skitarius_live_model, skitarius_live_context)
+    assert stamina_identity is not None, reason
+    stamina_identity["jobs"][1]["external"]["perks"] = to_lua([
+        {"label": "1-2 Stamina"},
+        {"label": "10-25% Damage (Unyielding Enemies)"},
+    ])
+    stamina_identity["jobs"][1]["external"]["blessings"] = to_lua([
+        {"label": "Riposte", "external_icon_id": "064"},
+        {"label": "Shred", "external_icon_id": "085"},
+    ])
+    stamina_catalogs = to_lua({
+        transonic_offer["master_id"]: {
+            "available": True,
+            "perks": [
+                {"id": "perk_melee_stamina", "trait": "weapon_trait_increase_stamina", "display_name": "+2 Stamina", "tier": 4},
+                {"id": "perk_melee_stamina", "trait": "weapon_trait_increase_stamina", "display_name": "+2 Stamina", "tier": 4},
+                {"id": "perk_ranged_stamina", "trait": "weapon_trait_ranged_increase_stamina", "display_name": "+2 Stamina", "tier": 4},
+                {"id": "perk_unyielding", "trait": "weapon_trait_melee_common_wield_increased_resistant_damage", "tier": 4},
+            ],
+            "blessings": [
+                live_catalogs[transonic_offer["master_id"]]["blessings"][1],
+                live_catalogs[transonic_offer["master_id"]]["blessings"][1],
+                live_catalogs[transonic_offer["master_id"]]["blessings"][2],
+            ],
+        },
+        phosphor_offer["master_id"]: live_catalogs[phosphor_offer["master_id"]],
+    })
+    stamina_result, reason = resolver.attach_catalogs(
+        stamina_identity,
+        stamina_catalogs,
+        to_lua({"localize_offer_label": localize_traits}),
+    )
+    assert stamina_result is not None, reason
+    assert stamina_result["jobs"][1]["perks"][1]["id"] == "perk_melee_stamina"
+    assert stamina_result["jobs"][1]["blessings"][1]["id"] == "blessing_riposte"
+
+    ambiguous_identity, reason = resolver.resolve_identities(skitarius_live_model, skitarius_live_context)
+    assert ambiguous_identity is not None, reason
+    ambiguous_identity["jobs"][1]["external"]["perks"] = to_lua([
+        {"label": "1-2 Stamina"},
+        {"label": "10-25% Damage (Unyielding Enemies)"},
+    ])
+    ambiguous_identity["jobs"][1]["external"]["blessings"] = to_lua([
+        {"label": "Riposte", "external_icon_id": "064"},
+        {"label": "Shred", "external_icon_id": "085"},
+    ])
+    ambiguous_catalogs = to_lua({
+        transonic_offer["master_id"]: {
+            "available": True,
+            "perks": [
+                {"id": "perk_stamina_a", "display_name": "+2 Stamina", "tier": 4},
+                {"id": "perk_stamina_b", "display_name": "+2 Stamina", "tier": 4},
+                {"id": "perk_unyielding", "trait": "weapon_trait_melee_common_wield_increased_resistant_damage", "tier": 4},
+            ],
+            "blessings": live_catalogs[transonic_offer["master_id"]]["blessings"],
+        },
+        phosphor_offer["master_id"]: live_catalogs[phosphor_offer["master_id"]],
+    })
+    ambiguous_result, ambiguous_reason, ambiguous_detail = resolver.attach_catalogs(
+        ambiguous_identity,
+        ambiguous_catalogs,
+        to_lua({"localize_offer_label": localize_traits}),
+    )
+    assert ambiguous_result is None
+    assert ambiguous_reason == "perk_ambiguous_1"
+    assert "perk_stamina_a" in ambiguous_detail
+    assert "perk_stamina_b" in ambiguous_detail
+
+    # Identity jobs retain the parsed external card by reference; restore the
+    # shared fixture before the existing unavailable-target assertions.
+    skitarius_identity["jobs"][1]["external"]["perks"] = to_lua([
+        {"label": "10-25% Damage (Carapace Armoured Enemies)"},
+        {"label": "10-25% Damage (Unyielding Enemies)"},
+    ])
+    skitarius_identity["jobs"][1]["external"]["blessings"] = to_lua([
+        {"label": "Riposte", "external_icon_id": "064"},
+        {"label": "Shred", "external_icon_id": "085"},
+    ])
+
     missing_perk_catalogs = to_lua({
         transonic_offer["master_id"]: {
             "available": True,

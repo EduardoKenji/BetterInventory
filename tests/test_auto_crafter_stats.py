@@ -334,7 +334,9 @@ def main() -> None:
                 get_item_crafting_metadata = function()
                     return promise({perks = {
                         [1] = {rarity = 1, perks = {"perk_flak"}},
-                        [4] = {rarity = 4, perks = {"perk_flak"}},
+                        -- Patch metadata has repeated canonical IDs in the
+                        -- same rank. Discovery must expose one mutation target.
+                        [4] = {rarity = 4, perks = {"perk_flak", "perk_flak"}},
                     }})
                 end,
                 trait_sticker_book = function() return promise({}) end,
