@@ -1202,6 +1202,61 @@ local function raw_gear_item(gear, gear_id)
 	return nil
 end
 
+local function validate_trait_mutation_item(backend, kind, operation)
+	local raw_item = raw_gear_item(backend and backend._raw_gear, operation.gear_id)
+	local item = raw_item and item_instance(raw_item, operation.gear_id)
+
+	if not item then
+		return nil, kind .. " replacement item is unavailable in authoritative gear"
+	end
+
+	local recipes = safe_member(CraftingSettings, "recipes")
+	local recipe = safe_member(recipes, kind == "perk" and "replace_perk" or "replace_trait")
+	local is_valid_item = safe_member(recipe, "is_valid_item")
+
+	if type(is_valid_item) ~= "function" then
+		return nil, kind .. " replacement recipe validation is unavailable"
+	end
+
+	local recipe_ok, valid = pcall(is_valid_item, item)
+	if not recipe_ok or valid ~= true then
+		return nil, kind .. " replacement recipe rejected the authoritative item"
+	end
+
+	local source = kind == "perk" and safe_member(item, "perks") or safe_member(item, "traits")
+	local current = type(source) == "table" and source[operation.index] or nil
+	local peer = type(source) == "table" and source[operation.index == 1 and 2 or 1] or nil
+	local current_id = safe_member(current, "id") or safe_member(current, "name") or safe_member(current, "trait")
+	local peer_id = safe_member(peer, "id") or safe_member(peer, "name") or safe_member(peer, "trait")
+	local current_tier = tonumber(safe_member(current, "rarity") or safe_member(current, "tier")) or 0
+
+	if type(current) ~= "table" then
+		return nil, kind .. " replacement slot is absent from the authoritative item"
+	end
+	if peer_id == operation.trait_id then
+		return nil, kind .. " replacement would create a duplicate trait"
+	end
+	if current_id == operation.trait_id and current_tier >= operation.tier then
+		return nil, kind .. " replacement is an invalid no-op or downgrade"
+	end
+
+	local maximum_ok, maximum = pcall(Items.max_expertise_level)
+	local expertise_ok, expertise = pcall(Items.expertise_level, item, true)
+	if not maximum_ok or not expertise_ok or tonumber(maximum) == nil or tonumber(expertise) == nil or tonumber(expertise) < tonumber(maximum) then
+		return nil, kind .. " replacement was blocked until authoritative item level 500"
+	end
+
+	local target_ok, target_item = pcall(MasterItems.get_item, operation.trait_id)
+	local target_type = target_ok and safe_member(target_item, "item_type") or nil
+	local expected_type = kind == "perk" and "PERK" or "TRAIT"
+
+	if target_type ~= nil and target_type ~= expected_type then
+		return nil, kind .. " replacement target has incompatible item type " .. tostring(target_type)
+	end
+
+	return item
+end
+
 local function summarize_purchase(result)
 	local items = safe_member(result, "items") or {}
 	local summary = {
@@ -1656,6 +1711,10 @@ function Backend.new(dependencies)
 		if not operation then
 			return rejected(validation_error)
 		end
+		local _, item_error = validate_trait_mutation_item(self, "perk", operation)
+		if item_error then
+			return rejected(item_error)
+		end
 
 		-- Darktide's CraftingService perk signature is intentionally asymmetric:
 		-- (gear, slot, perk, costs, tier). Never leave a nil hole before tier because
@@ -1672,6 +1731,10 @@ function Backend.new(dependencies)
 
 		if not operation then
 			return rejected(validation_error)
+		end
+		local _, item_error = validate_trait_mutation_item(self, "blessing", operation)
+		if item_error then
+			return rejected(item_error)
 		end
 
 		return self:_mutate("crafting", "replace_trait_in_weapon", operation.gear_id, operation.index, operation.trait_id, operation.tier)

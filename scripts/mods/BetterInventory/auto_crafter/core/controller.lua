@@ -206,6 +206,18 @@ local function same_optional_trait(left, right)
 	return left == nil and right == nil or same_trait(left, right)
 end
 
+local function has_pending_trait_replacement(current_traits, targets)
+	for index = 1, 2 do
+		local desired = targets and targets[index]
+
+		if desired and not same_trait(trait_at(current_traits, index), desired) then
+			return true
+		end
+	end
+
+	return false
+end
+
 local function has_trait_targets(values, targets)
 	for _, target in ipairs(targets or {}) do
 		local found = false
@@ -2483,6 +2495,21 @@ function Controller.new(dependencies)
 					self:_phase4_step(generation, updated)
 				end)
 			end)
+		end
+
+		-- Darktide's perk/blessing mutation recipes are only entered after the
+		-- authoritative item has reached the final expertise level. A completed
+		-- add_weapon_expertise promise is not enough: the refreshed gear snapshot
+		-- above must report 500 before any trait mutation is allowed to dispatch.
+		-- This also fails closed when the user disabled automatic expertise but
+		-- requested a perk or blessing change on a sub-500 resume candidate.
+		local trait_replacement_pending = has_pending_trait_replacement(item.perks, phase4.targets.perks)
+			or has_pending_trait_replacement(item.traits, phase4.targets.traits)
+
+		if trait_replacement_pending and (expertise == nil or expertise < MAX_EXPERTISE_LEVEL) then
+			self:_operation_failed(generation, "perk or blessing replacement was blocked until the weapon is authoritatively item level 500")
+
+			return false
 		end
 
 		if not phase4.replacement_baseline then

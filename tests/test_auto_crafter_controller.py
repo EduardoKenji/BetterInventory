@@ -947,8 +947,8 @@ def main() -> None:
 
 				return resolved(result)
 			end
-			function backend:replace_perk(_, index, id, tier) self.perk_calls = self.perk_calls + 1 state.perk_order[#state.perk_order + 1] = index item.perks[index] = {id = id, rarity = tier} return resolved({}) end
-			function backend:replace_blessing(_, index, id, tier) self.blessing_calls = self.blessing_calls + 1 item.traits[index] = {id = id, rarity = tier} return resolved({}) end
+			function backend:replace_perk(_, index, id, tier) assert(item.expertise_level == 500) self.perk_calls = self.perk_calls + 1 state.perk_order[#state.perk_order + 1] = index item.perks[index] = {id = id, rarity = tier} return resolved({}) end
+			function backend:replace_blessing(_, index, id, tier) assert(item.expertise_level == 500) self.blessing_calls = self.blessing_calls + 1 item.traits[index] = {id = id, rarity = tier} return resolved({}) end
 
 			local settings = base_settings({
 				auto_crafter_consecrate_transcendent = true,
@@ -996,6 +996,43 @@ def main() -> None:
 			assert(item.perks[1].id == "new_perk" and item.perks[2].id == "other_perk" and item.traits[1].id == "new_blessing")
 			controller:_operation_failed(controller._generation, {code = "backend_error", description = "readable backend failure"})
 			assert(controller:snapshot().last_error == "readable backend failure")
+		end
+
+		-- A resumed sub-500 weapon can never reach a perk/blessing mutation when
+		-- automatic expertise is disabled. The authoritative snapshot, not request
+		-- completion or a projected local value, owns this safety boundary.
+		do
+			local item = summarized_item("gear-sub-500-trait-guard", 5, 60)
+			item.expertise_level = 499
+			item.perks = {{id = "old_perk", rarity = 4}, {id = "keep_perk", rarity = 4}}
+			item.traits = {{id = "keep_blessing", rarity = 4}, {id = "other_blessing", rarity = 4}}
+			local backend = {perk_calls = 0, blessing_calls = 0}
+			function backend:replace_perk() self.perk_calls = self.perk_calls + 1 return resolved({}) end
+			function backend:replace_blessing() self.blessing_calls = self.blessing_calls + 1 return resolved({}) end
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings(), reporter = reports()})
+			controller._snapshot = snapshot_with(item)
+			controller._active_view = {}
+			controller._view_is_valid = true
+			controller._search = {running = true}
+			controller._phase4 = {
+				catalog = {perks = {}, blessings = {}},
+				consecrate = false,
+				dump_stat = "damage_stat",
+				expertise = false,
+				gear_id = item.gear_id,
+				mastery_id = item.parent_pattern,
+				running = true,
+				sticker_book = {},
+				target_dump = 60,
+				targets = {
+					perks = {{id = "new_perk", rarity = 4}, {id = "keep_perk", rarity = 4}},
+					traits = {{id = "keep_blessing", rarity = 4}, {id = "other_blessing", rarity = 4}},
+				},
+			}
+			assert(controller:_phase4_step(controller._generation, controller._snapshot) == false)
+			assert(backend.perk_calls == 0 and backend.blessing_calls == 0)
+			assert(controller:snapshot().phase == "operation_failed")
+			assert(string.find(controller:snapshot().last_error, "authoritatively item level 500", 1, true) ~= nil)
 		end
 
 		-- Replacement-only blessing mode verifies ownership before spending any

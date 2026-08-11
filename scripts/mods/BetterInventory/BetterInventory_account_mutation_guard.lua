@@ -22,7 +22,6 @@ local SERVICE_MUTATIONS = {
 			"extract_weapon_mastery",
 			"replace_perk_in_weapon",
 			"replace_trait_in_weapon",
-			"reset_sticker_book",
 			"upgrade_weapon_rarity",
 		},
 		prefix = "crafting",

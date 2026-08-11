@@ -127,6 +127,10 @@ def main() -> None:
 
         -- The hook inventory covers every account-writing service used by native UI,
         -- Quick Level Mastery, Auto Crafter, and BetterInventory discard automation.
+        -- CraftingService.reset_sticker_book is deliberately absent: Darktide's
+        -- MasteryService.purchase_traits invokes it asynchronously as a local cache
+        -- refresh before the owned purchase promise settles. Treating that refresh
+        -- as an external write makes Auto Crafter reject its own mastery allocation.
         local expected = {
             ["store.purchase_item"] = true,
             ["store.purchase_item_with_wallet"] = true,
@@ -134,7 +138,6 @@ def main() -> None:
             ["crafting.extract_weapon_mastery"] = true,
             ["crafting.replace_perk_in_weapon"] = true,
             ["crafting.replace_trait_in_weapon"] = true,
-            ["crafting.reset_sticker_book"] = true,
             ["crafting.upgrade_weapon_rarity"] = true,
             ["mastery.claim_levels_by_new_exp"] = true,
             ["mastery.purchase_traits"] = true,
@@ -161,7 +164,7 @@ def main() -> None:
             hooks[#hooks + 1] = {service_class, method_name, callback}
         end
         assert(Guard.install_hooks(mod) == true)
-        assert(#hooks == 13)
+        assert(#hooks == 12)
 
         print("Account mutation guard exclusion and hook coverage tests passed.")
         '''

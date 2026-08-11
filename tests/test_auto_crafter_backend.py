@@ -35,7 +35,7 @@ def main() -> None:
         end
         package.preload["scripts/utilities/items"] = function()
             return {
-                expertise_level = function() return 300 end,
+                expertise_level = function(item) return item.expertise_level or 300 end,
                 is_item_id_favorited = function() return false end,
                 max_expertise_level = function() return 500 end,
                 preview_stats_change = function() return {} end,
@@ -45,7 +45,9 @@ def main() -> None:
         package.preload["scripts/utilities/mastery"] = function() return {} end
         package.preload["scripts/backend/master_items"] = function()
             return {
-				get_item = function(item_id) return {name = item_id} end,
+				get_item = function(item_id)
+					return {name = item_id, item_type = string.find(item_id, "perk", 1, true) and "PERK" or "TRAIT"}
+				end,
                 get_item_instance = function(raw_item)
                     if raw_item.invalid then return nil end
                     return raw_item
@@ -53,7 +55,14 @@ def main() -> None:
             }
         end
         package.preload["scripts/utilities/profile_utils"] = function() return {} end
-        package.preload["scripts/settings/item/crafting_settings"] = function() return {} end
+        package.preload["scripts/settings/item/crafting_settings"] = function()
+			return {
+				recipes = {
+					replace_perk = {is_valid_item = function(item) return item.item_type == "WEAPON_MELEE" or item.item_type == "WEAPON_RANGED" end},
+					replace_trait = {is_valid_item = function(item) return item.item_type == "WEAPON_MELEE" or item.item_type == "WEAPON_RANGED" end},
+				},
+			}
+		end
 		package.preload["scripts/settings/item/rank_settings"] = function()
 			return {max_perk_rank = 4, max_trait_rank = 4}
 		end
@@ -139,6 +148,15 @@ def main() -> None:
 		local mastery = {purchase_traits = function() calls.mastery = calls.mastery + 1 return resolved({}) end}
 
 		local mutation_backend = Backend.new({services = {crafting = crafting, mastery = mastery}})
+		mutation_backend._raw_gear = {
+			["gear-1"] = {
+				uuid = "gear-1",
+				item_type = "WEAPON_MELEE",
+				expertise_level = 500,
+				perks = {{id = "old-perk-1", rarity = 4}, {id = "old-perk-2", rarity = 4}},
+				traits = {{id = "old-blessing-1", rarity = 4}, {id = "old-blessing-2", rarity = 4}},
+			},
+		}
 		mutation_backend:replace_perk("gear-1", 1, "perk-1", 4)
 		mutation_backend:replace_blessing("gear-1", 2, "blessing-1", 4)
 		assert(calls.perk == 1 and calls.blessing == 1)
@@ -149,6 +167,19 @@ def main() -> None:
 		mutation_backend:replace_perk("", 1, "perk-1", 4)
 		mutation_backend:replace_blessing("gear-1", 3, "blessing-1", 4)
 		mutation_backend:replace_blessing("gear-1", 2, "", 4)
+		mutation_backend:replace_perk("gear-1", 1, "blessing-1", 4)
+		mutation_backend:replace_blessing("gear-1", 2, "perk-1", 4)
+		assert(calls.perk == 1 and calls.blessing == 1)
+
+		-- Even structurally valid requests cannot reach Darktide before the same
+		-- authoritative weapon is level 500 or when source slots are malformed.
+		mutation_backend._raw_gear["gear-1"].expertise_level = 499
+		mutation_backend:replace_perk("gear-1", 1, "perk-1", 4)
+		mutation_backend:replace_blessing("gear-1", 2, "blessing-1", 4)
+		mutation_backend._raw_gear["gear-1"].expertise_level = 500
+		mutation_backend._raw_gear["gear-1"].perks = {}
+		mutation_backend:replace_perk("gear-1", 1, "perk-1", 4)
+		mutation_backend._raw_gear["gear-1"].perks = {{id = "old-perk-1", rarity = 4}, {id = "old-perk-2", rarity = 4}}
 		assert(calls.perk == 1 and calls.blessing == 1)
 
 		-- Remaining crafting mutations also reject malformed IDs, ranges, and
