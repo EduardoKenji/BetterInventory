@@ -118,6 +118,61 @@ def main() -> None:
             assert matrix_queue.snapshot(matrix_queue)["state"] == "complete"
             assert sum(mutation_count) == (0 if melee_state == "exact" else 1) + (0 if ranged_state == "exact" else 1)
 
+    # Authoritative completed results bypass start_job entirely. Either slot may
+    # skip while other slot starts/resumes, and two finished items complete with
+    # zero crafting dispatches. Queue still performs final two-result verify.
+    for completed_slot in (1, 2, "both"):
+        starts = []
+        verified_results = []
+
+        def prepare_completed(job, index, results):
+            numeric_index = int(index)
+            if completed_slot == "both" or numeric_index == completed_slot:
+                return to_lua({
+                    "candidate": {"gear_id": f"existing-{numeric_index}"},
+                    "character_id": "character-1",
+                    "gear_id": f"existing-{numeric_index}",
+                    "job_id": job["job_id"],
+                    "kind": "games_lantern_completed_inventory_result",
+                    "queue_id": job["queue_id"],
+                })
+            return True
+
+        skip_queue = module.new(to_lua({
+            "current_character_id": callback(lambda: "character-1"),
+            "select_job": callback(lambda job, index: True),
+            "configure_job": callback(lambda job, index: True),
+            "prepare_job": callback(prepare_completed),
+            "start_job": callback(lambda job, index: starts.append(int(index)) or True),
+            "stop_job": callback(lambda reason: True),
+            "view_is_valid": callback(lambda: True),
+            "verify_results": callback(lambda results, queue_id, jobs: verified_results.append([results[1]["gear_id"], results[2]["gear_id"]]) or True),
+        }))
+        assert skip_queue.install(skip_queue, build()) is True
+        assert skip_queue.start(skip_queue) is True
+
+        if completed_slot == 1 or completed_slot == "both":
+            assert skip_queue.snapshot(skip_queue)["state"] == "waiting_next"
+            assert starts == []
+            skip_queue.update(skip_queue)
+
+        if completed_slot != "both" and skip_queue.snapshot(skip_queue)["state"] == "running":
+            active_index = int(skip_queue.snapshot(skip_queue)["current_index"])
+            assert skip_queue.on_event(skip_queue, "phase4_complete", terminal(skip_queue, active_index, f"crafted-{active_index}")) is True
+
+        while skip_queue.snapshot(skip_queue)["state"] == "waiting_next":
+            skip_queue.update(skip_queue)
+
+        if completed_slot == 2 and skip_queue.snapshot(skip_queue)["state"] == "running":
+            assert skip_queue.on_event(skip_queue, "phase4_complete", terminal(skip_queue, 1, "crafted-1")) is True
+            skip_queue.update(skip_queue)
+            skip_queue.update(skip_queue)
+
+        assert skip_queue.snapshot(skip_queue)["state"] == "complete"
+        expected_starts = [] if completed_slot == "both" else [2 if completed_slot == 1 else 1]
+        assert starts == expected_starts
+        assert len(verified_results) == 1
+
     prepare_calls = []
     blocked = module.new(to_lua({
         "select_job": callback(lambda job, index: True),

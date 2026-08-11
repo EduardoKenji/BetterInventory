@@ -5,7 +5,7 @@
 -- boundary-safe transitions supplied by the host Auto Crafter controller.
 local Queue = {}
 
-Queue.CONTRACT_VERSION = "games_lantern_queue_v2"
+Queue.CONTRACT_VERSION = "games_lantern_queue_v3"
 
 local QUEUE_SEQUENCE = 0
 
@@ -134,6 +134,43 @@ function Queue.new(dependencies)
 		return ok and valid == true
 	end
 
+	local function accept_completed_result(job, payload, source)
+		local gear_id = payload and (payload.gear_id or payload.candidate and (payload.candidate.gear_id or payload.candidate.uuid))
+		local character_id = payload and payload.character_id
+
+		if not job or type(payload) ~= "table" or payload.queue_id ~= self._queue_id or payload.job_id ~= job.job_id or gear_id == nil or self._character_id ~= nil and character_id ~= self._character_id then
+			return false
+		end
+
+		local completed_index = self._current_index
+		self._completed_results[completed_index] = {
+			character_id = character_id,
+			completion_source = source,
+			gear_id = gear_id,
+			job_id = job.job_id,
+			queue_id = self._queue_id,
+			terminal_sequence = payload.terminal_sequence,
+		}
+		self._selected_job_id = nil
+		self._configured_job_id = nil
+		self._current_index = self._current_index + 1
+
+		if self._stop_requested then
+			self._state = "stopped"
+
+			return true
+		end
+
+		self._state = "waiting_next"
+		self._transition_count = self._transition_count + 1
+		if source == "inventory_complete" then
+			emit("queue_job_skipped", { index = completed_index, job = job, payload = payload, queue_id = self._queue_id, reason = "already_complete" })
+		end
+		emit("queue_boundary_reached", { index = completed_index, next_index = self._current_index, payload = payload, queue_id = self._queue_id })
+
+		return true
+	end
+
 	local function begin_current()
 		if self._stop_requested then
 			self._state = "stopped"
@@ -198,6 +235,12 @@ function Queue.new(dependencies)
 				end
 
 				return fail("job_preflight_failed", { index = self._current_index, error = prepare_reason })
+			elseif type(prepared) == "table" then
+				if prepared.kind ~= "games_lantern_completed_inventory_result" or not accept_completed_result(job, prepared, "inventory_complete") then
+					return fail("job_preflight_result_invalid", { index = self._current_index })
+				end
+
+				return true
 			elseif prepared ~= true then
 				return false
 			end
@@ -312,30 +355,9 @@ function Queue.new(dependencies)
 				return false
 			end
 
-			local completed_index = self._current_index
 			self._last_terminal_sequence = terminal_sequence
-			self._completed_results[completed_index] = {
-				character_id = payload.character_id,
-				gear_id = gear_id,
-				job_id = job.job_id,
-				queue_id = self._queue_id,
-				terminal_sequence = terminal_sequence,
-			}
-			self._selected_job_id = nil
-			self._configured_job_id = nil
-			self._current_index = self._current_index + 1
 
-			if self._stop_requested then
-				self._state = "stopped"
-
-				return true
-			end
-
-			self._state = "waiting_next"
-			self._transition_count = self._transition_count + 1
-			emit("queue_boundary_reached", { index = completed_index, next_index = self._current_index, payload = payload, queue_id = self._queue_id })
-
-			return true
+			return accept_completed_result(job, payload, "crafted")
 		elseif kind == "character_changed" then
 			if unresolved_state(self._state) then
 				self._state = "failed"

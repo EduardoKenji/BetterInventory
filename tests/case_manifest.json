@@ -77,9 +77,12 @@
     ],
     "test_games_lantern_safety.py": [
       {"name": "typed_terminal_identity_and_final_reconciliation", "risk": "critical", "start_line": 12, "end_line": 97},
-      {"name": "two_job_state_resource_and_quarantine_matrix", "risk": "critical", "start_line": 98, "end_line": 205},
-        {"name": "bounded_queue_presentation_snapshot", "risk": "high", "start_line": 206, "end_line": 223},
-        {"name": "games_lantern_release_contract_seams", "risk": "critical", "start_line": 224, "end_line": 255}
+      {"name": "two_job_state_resource_and_quarantine_matrix", "risk": "critical", "start_line": 98, "end_line": 260},
+        {"name": "bounded_queue_presentation_snapshot", "risk": "high", "start_line": 261, "end_line": 278},
+        {"name": "games_lantern_release_contract_seams", "risk": "critical", "start_line": 279, "end_line": 310}
+    ],
+    "test_games_lantern_inventory_completion.py": [
+      {"name": "exact_finished_skip_and_two_slot_resume_identity", "risk": "critical", "start_line": 1, "end_line": 153}
     ],
     "test_games_lantern_queue_ui.py": [
         {"name": "active_queue_lifecycle_locked_target_and_section_order_ui", "risk": "high", "start_line": 9, "end_line": 64}

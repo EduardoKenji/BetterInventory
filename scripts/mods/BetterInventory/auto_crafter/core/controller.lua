@@ -206,6 +206,25 @@ local function same_optional_trait(left, right)
 	return left == nil and right == nil or same_trait(left, right)
 end
 
+local function has_trait_targets(values, targets)
+	for _, target in ipairs(targets or {}) do
+		local found = false
+
+		for _, value in ipairs(values or {}) do
+			if same_trait(value, target) then
+				found = true
+				break
+			end
+		end
+
+		if not found then
+			return false
+		end
+	end
+
+	return true
+end
+
 local function temporary_swap_trait(kind, current_traits, targets, catalog, sticker_book)
 	local excluded = {}
 
@@ -3465,8 +3484,13 @@ function Controller.new(dependencies)
 		local best
 		local best_analysis
 		local target = search.target_offer or {}
+		local strict_mark_identity = self._run_imported_job ~= nil or self._imported_job ~= nil
 
 		local function family_matches(candidate)
+			if strict_mark_identity then
+				return target.master_id ~= nil and candidate.master_id ~= nil and target.master_id == candidate.master_id, "master_item"
+			end
+
 			if target.master_id ~= nil and candidate.master_id ~= nil then
 				return target.master_id == candidate.master_id, "master_item"
 			end
@@ -4010,7 +4034,70 @@ function Controller.new(dependencies)
 			return false, self._plan and self._plan.preflight and self._plan.preflight.summary or "queue job preflight unavailable"
 		end
 
+		local completed = self:_completed_imported_job_result(job)
+		if completed then
+			operation_report("imported_queue_job_already_complete", {
+				candidate = completed.candidate,
+				slot = job.slot,
+			})
+
+			return completed
+		end
+
 		return true
+	end
+
+	function self:_completed_imported_job_result(job)
+		local character_id = current_character_id()
+		local snapshot = self._snapshot
+		local catalog = job and job.catalog
+		local expected_master = job and (job.master_id or job.offer and job.offer.master_id)
+		local expected_pattern = job and (job.parent_pattern or job.offer and job.offer.parent_pattern)
+
+		if type(job) ~= "table" or job.kind ~= "games_lantern_job" or job.job_id == nil or job.queue_id == nil or expected_master == nil or job.dump_stat == nil or job.dump_target == nil or type(catalog) ~= "table" or catalog.available ~= true or not snapshot_matches_character(snapshot, character_id) then
+			return nil
+		end
+
+		local mastery_enabled = setting("auto_crafter_level_mastery_20", true) == true
+		local allocate_mastery = mastery_enabled and setting("auto_crafter_allocate_mastery_points", true) == true
+		local change_perks = mastery_enabled and setting("auto_crafter_change_perks", true) == true
+		local change_blessings = mastery_enabled and setting("auto_crafter_change_blessings", true) == true
+		local mastery = catalog.mastery
+
+		if mastery_enabled and (type(mastery) ~= "table" or (tonumber(mastery.mastery_level) or -1) < 20 or (tonumber(mastery.claimed_level) or -1) < 19) then
+			return nil
+		end
+
+		if allocate_mastery and (#(catalog.blessings or {}) == 0 or unseen_blessing_tier_count(catalog.blessings) > 0) then
+			return nil
+		end
+
+		local completed
+		for _, item in ipairs(snapshot.gear and snapshot.gear.items or {}) do
+			local exact_identity = item and item.available == true and item.gear_id ~= nil and item.master_id ~= nil and item.master_id == expected_master and (expected_pattern == nil or item.parent_pattern == expected_pattern)
+			local exact_dump = exact_identity and tonumber(candidate_stat(item, job.dump_stat)) == tonumber(job.dump_target)
+			local exact_rarity = setting("auto_crafter_consecrate_transcendent", true) ~= true or (tonumber(item and item.rarity) or -1) >= TRANSCENDENT_RARITY
+			local exact_expertise = setting("auto_crafter_upgrade_expertise_500", true) ~= true or (tonumber(item and item.expertise_level) or -1) >= MAX_EXPERTISE_LEVEL
+			local exact_perks = not change_perks or has_trait_targets(item and item.perks, job.perks)
+			local exact_blessings = not change_blessings or has_trait_targets(item and item.traits, job.blessings)
+
+			if exact_dump and exact_rarity and exact_expertise and exact_perks and exact_blessings and (not completed or tostring(item.gear_id) < tostring(completed.gear_id)) then
+				completed = item
+			end
+		end
+
+		if not completed then
+			return nil
+		end
+
+		return {
+			candidate = completed,
+			character_id = character_id,
+			gear_id = completed.gear_id,
+			job_id = job.job_id,
+			kind = "games_lantern_completed_inventory_result",
+			queue_id = job.queue_id,
+		}
 	end
 
 	function self:verify_imported_queue_results(results, jobs)
@@ -4025,19 +4112,6 @@ function Controller.new(dependencies)
 
 		local gear = self._snapshot.gear or {}
 		local policy = self._queue_run_policy and self._queue_run_policy.values or {}
-		local function has_targets(values, targets)
-			for _, target in ipairs(targets or {}) do
-				local found = false
-				for _, value in ipairs(values or {}) do
-					if value and target and value.id == target.id and (target.rarity == nil or tonumber(value.rarity) == tonumber(target.rarity)) then
-						found = true
-						break
-					end
-				end
-				if not found then return false end
-			end
-			return true
-		end
 		for index, result in ipairs(results) do
 			local job = jobs[index]
 			local item = result.gear_id ~= nil and find_item(gear.items, result.gear_id, gear.items_by_id) or nil
@@ -4061,10 +4135,10 @@ function Controller.new(dependencies)
 			if policy.auto_crafter_upgrade_expertise_500 == true and (tonumber(item.expertise_level) or -1) < MAX_EXPERTISE_LEVEL then
 				return false, "completed queue weapon " .. tostring(index) .. " is below item level 500"
 			end
-			if policy.auto_crafter_change_perks == true and not has_targets(item.perks, job.perks) then
+			if policy.auto_crafter_change_perks == true and not has_trait_targets(item.perks, job.perks) then
 				return false, "completed queue weapon " .. tostring(index) .. " changed perks"
 			end
-			if policy.auto_crafter_change_blessings == true and not has_targets(item.traits, job.blessings) then
+			if policy.auto_crafter_change_blessings == true and not has_trait_targets(item.traits, job.blessings) then
 				return false, "completed queue weapon " .. tostring(index) .. " changed blessings"
 			end
 		end
