@@ -28,8 +28,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_auto_crafter.lua",
-      "bytes": 49958,
-      "sha256": "f7ebf80c8aa5156afe6f80a1c884edcfba1606a280db2fb2f070f9fb89bf9e59",
+      "bytes": 50491,
+      "sha256": "d9dfcf5106324049f755a2ced4a44366d40e4020a1d197a0f9d5d3e0f91a6539",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_auto_crafter.lua"
     },
     {
@@ -322,8 +322,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/panel.lua",
-      "bytes": 104083,
-      "sha256": "cd8acc99e9881b86f89604abe5e011f73030542e5c4df6199b29093d355a500c",
+      "bytes": 103305,
+      "sha256": "acb58865c4591860f2e1f1f8f18d4d4c9beae6bedff648157fa1397a50417192",
       "source_path": "scripts/mods/BetterInventory/auto_crafter/darktide/panel.lua"
     },
     {
@@ -352,8 +352,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/auto_crafter/games_lantern/import_controller.lua",
-      "bytes": 11534,
-      "sha256": "02af805b9d0fcf1b83490cf21c82b8825aafe0c67d515bed5e93b07a7929a46c",
+      "bytes": 12012,
+      "sha256": "e3366c7bd5f0c56a9d939e2ffdf6101765d408f341ee128033890a682b1a5351",
       "source_path": "scripts/mods/BetterInventory/auto_crafter/games_lantern/import_controller.lua"
     },
     {
@@ -364,8 +364,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/auto_crafter/games_lantern/queue.lua",
-      "bytes": 16429,
-      "sha256": "3b8d988c7cde9144632ef51651a846ecdf617fb6c98cde1873f632bac4c9994d",
+      "bytes": 16905,
+      "sha256": "6d89c8d0bee55085cb043c2cf3c96f55548a14fd3b783489c685bbe5ac0aaa2e",
       "source_path": "scripts/mods/BetterInventory/auto_crafter/games_lantern/queue.lua"
     },
     {
@@ -393,6 +393,6 @@
       "source_path": "scripts/mods/BetterInventory/auto_crafter/games_lantern/transport_wine.lua"
     }
   ],
-  "runtime_tree_sha256": "72170d216f4e8390d3689293c08c13702ee3aa8c3a25205a7d4d9013e9580771",
+  "runtime_tree_sha256": "23a3537b8164a279f38d23af97f2166cd0e7e7a9619193fc727b23e2731525cb",
   "version": "2.1.0"
 }

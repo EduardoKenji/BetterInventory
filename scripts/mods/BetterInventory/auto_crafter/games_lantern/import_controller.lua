@@ -60,6 +60,8 @@ function ImportController.new(dependencies)
 		_catalog_generation = nil,
 		_choice_request = nil,
 		_weapon_choices = {},
+		_presentation_cache = nil,
+		_presentation_signature = nil,
 	}
 
 	local function emit(kind, payload)
@@ -362,6 +364,16 @@ function ImportController.new(dependencies)
 	end
 
 	function self:presentation_snapshot()
+		local signature = table.concat({
+			tostring(self._generation or 0),
+			tostring(self._state or "idle"),
+			tostring(self._last_error or ""),
+			tostring(self._choice_request or ""),
+		}, "|")
+		if self._presentation_cache and self._presentation_signature == signature then
+			return self._presentation_cache
+		end
+
 		local choices = {}
 		for _, slot in ipairs({ "melee", "ranged" }) do
 			choices[slot] = {}
@@ -374,11 +386,14 @@ function ImportController.new(dependencies)
 			end
 		end
 
-		return {
+		self._presentation_signature = signature
+		self._presentation_cache = {
 			choice_request = choices,
 			last_error = self._last_error,
 			state = self._state,
 		}
+
+		return self._presentation_cache
 	end
 
 	return self

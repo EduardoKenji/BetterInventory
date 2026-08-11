@@ -98,6 +98,7 @@ def main() -> None:
     assert staged_callbacks[0](to_lua({"melee": {"available": True}, "ranged": {"available": True}}), None) is True
     assert controller.snapshot(controller)["state"] == "staged"
     assert len(installed) == 1
+    assert lua.eval("function(a, b) return rawequal(a, b) end")(controller.presentation_snapshot(controller), controller.presentation_snapshot(controller)) is True
 
     # Repeated identical pastes are idempotent after staging and while fetching:
     # no transport cancellation, process restart, queue install, or UI event churn.

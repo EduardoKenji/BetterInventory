@@ -219,6 +219,7 @@ def main() -> None:
     assert presentation["jobs"][1]["display_name"] == "Arc Maul"
     assert presentation["jobs"][1]["catalog"] is None
     assert presentation["jobs"][1]["external"] is None
+    assert lua.eval("function(a, b) return rawequal(a, b) end")(presentation, compact.presentation_snapshot(compact)) is True
 
     # Source-level release contracts guard seams not available in pure queue
     # simulation: frozen policy, fresh boundary probe/catalog, locked targets,

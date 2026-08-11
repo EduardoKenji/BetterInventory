@@ -18,10 +18,11 @@ def main() -> None:
     assert "_manual_queue_detail" in panel
     assert '"Dump stat: %s %s\\nPerk 1: %s\\nPerk 2: %s\\nBlessings: %s"' in panel
     assert "local QUEUE_JOB_ROW_HEIGHT = 110" in panel
-    assert 'color = Color.terminal_corner_selected(255, true), size = { width, height }' in panel
+    queue_passes = panel.split("local function queue_job_passes", 1)[1].split("local function currency_row_passes", 1)[0]
+    assert queue_passes.count("pass_type") == 4 and "visibility_function" not in queue_passes
     assert panel.count('color = Color.terminal_background(220, true), size = { width, height }') == 1
-    assert "local current = options.queue_current == true" in panel
-    assert "if job then" in panel
+    assert "border_color = highlighted and Color.terminal_corner_selected" in panel
+    assert "entry.initial_content and entry.initial_content.queue_current == true" in panel
     assert "_games_lantern_queue_snapshot" in panel
     assert "games_lantern_queue_snapshot" in facade
     assert "GamesLanternQueue.new" in facade
@@ -38,7 +39,8 @@ def main() -> None:
     assert '"Projected authority:' in panel
     assert "_queue_craft_confirmation_signature" in panel
     assert "_queue_craft_confirmation_text" in panel
-    assert "_refresh_games_lantern_snapshots" in panel
+    assert "_refresh_games_lantern_snapshots" in panel and "invalidate_games_lantern_snapshots" in panel
+    assert "invalidate_games_lantern_panel()" in facade
     assert "_queue_snapshot_cache" in panel
     assert "presentation_snapshot()" in facade
     assert "aggregate_confirmation_stale" in facade

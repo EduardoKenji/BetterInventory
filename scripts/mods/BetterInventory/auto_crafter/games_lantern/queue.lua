@@ -82,6 +82,8 @@ function Queue.new(dependencies)
 		_last_event = nil,
 		_stop_requested = false,
 		_transition_count = 0,
+		_presentation_cache = nil,
+		_presentation_signature = nil,
 		_queue_id = nil,
 		_completed_results = {},
 		_last_terminal_sequence = 0,
@@ -453,6 +455,16 @@ function Queue.new(dependencies)
 	end
 
 	function self:presentation_snapshot()
+		local signature = table.concat({
+			tostring(self._queue_id or ""),
+			tostring(self._state or "empty"),
+			tostring(self._current_index or 0),
+			tostring(self._last_error or ""),
+		}, "|")
+		if self._presentation_cache and self._presentation_signature == signature then
+			return self._presentation_cache
+		end
+
 		local jobs = {}
 		for index, job in ipairs(self._jobs or {}) do
 			local function compact_targets(values)
@@ -481,7 +493,8 @@ function Queue.new(dependencies)
 			}
 		end
 
-		return {
+		self._presentation_signature = signature
+		self._presentation_cache = {
 			current_index = self._current_index,
 			job_count = #jobs,
 			jobs = jobs,
@@ -489,6 +502,8 @@ function Queue.new(dependencies)
 			queue_id = self._queue_id,
 			state = self._state,
 		}
+
+		return self._presentation_cache
 	end
 
 	return self

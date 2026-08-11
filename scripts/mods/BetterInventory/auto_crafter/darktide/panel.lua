@@ -506,21 +506,15 @@ local function status_block_passes(width)
 	}
 end
 
-local function queue_job_passes(width, height)
+local function queue_job_passes(width, height, highlighted)
 	height = height or QUEUE_JOB_ROW_HEIGHT
-	local function current(content)
-		return content.queue_current == true
-	end
-	local function not_current(content)
-		return content.queue_current ~= true
-	end
+	local border_color = highlighted and Color.terminal_corner_selected(255, true) or Color.terminal_frame(255, true)
+	local label_color = highlighted and Color.terminal_corner_selected(255, true) or Color.terminal_text_header(255, true)
 
 	return {
 		{ pass_type = "rect", style = { color = Color.terminal_background(220, true), size = { width, height }, offset = { 0, 0, 1 } } },
-		{ pass_type = "texture", value = "content/ui/materials/frames/frame_tile_2px", style = { color = Color.terminal_corner_selected(255, true), size = { width, height }, offset = { 0, 0, 2 } }, visibility_function = current },
-		{ pass_type = "texture", value = "content/ui/materials/frames/frame_tile_2px", style = { color = Color.terminal_frame(255, true), size = { width, height }, offset = { 0, 0, 2 } }, visibility_function = not_current },
-		{ pass_type = "text", value_id = "label", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "top", text_color = Color.terminal_corner_selected(255, true), size = { width - 16, 20 }, offset = { 8, 5, 3 } }, visibility_function = current },
-		{ pass_type = "text", value_id = "label", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "top", text_color = Color.terminal_text_header(255, true), size = { width - 16, 20 }, offset = { 8, 5, 3 } }, visibility_function = not_current },
+		{ pass_type = "texture", value = "content/ui/materials/frames/frame_tile_2px", style = { color = border_color, size = { width, height }, offset = { 0, 0, 2 } } },
+		{ pass_type = "text", value_id = "label", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "top", text_color = label_color, size = { width - 16, 20 }, offset = { 8, 5, 3 } } },
 		{ pass_type = "text", value_id = "detail", style = { font_size = 12, font_type = "proxima_nova_medium", text_horizontal_alignment = "left", text_vertical_alignment = "top", text_color = Color.terminal_text_body(255, true), size = { width - 16, height - 28 }, offset = { 8, 25, 3 } } },
 	}
 end
@@ -760,7 +754,7 @@ local BLUEPRINTS = {
 			elseif variant == "status" then
 				return status_block_passes(width)
 			elseif variant == "queue_job" then
-				return queue_job_passes(width, entry.size[2])
+				return queue_job_passes(width, entry.size[2], entry.initial_content and entry.initial_content.queue_current == true)
 			elseif variant == "currency" then
 				return currency_row_passes(width)
 			elseif variant == "section" then
@@ -1024,26 +1018,6 @@ function Panel.new(dependencies)
 			end
 		end
 
-		if options.queue_job then
-			entry.refresh = function(widget)
-				local queue = self:_games_lantern_queue()
-				local current = options.queue_current == true
-
-				if type(queue) == "table" then
-					local jobs = queue.jobs or {}
-					local current_index = tonumber(queue.current_index) or 0
-					local index = tonumber(options.queue_index) or 0
-					local job = jobs[index]
-
-					if job then
-						current = job.current == true or index == current_index
-					end
-				end
-
-				widget.content.queue_current = current
-			end
-		end
-
 		if options.action then
 			entry.bind = function(widget)
 				widget.content.hotspot.pressed_callback = function()
@@ -1212,6 +1186,12 @@ function Panel.new(dependencies)
 		self._presentation_snapshots_dirty = false
 
 		return self._queue_snapshot_cache, self._import_snapshot_cache
+	end
+
+	function self:invalidate_games_lantern_snapshots()
+		self._presentation_snapshots_dirty = true
+
+		return true
 	end
 
 	function self:_games_lantern_queue_signature(queue)
@@ -2416,7 +2396,9 @@ function Panel.new(dependencies)
 
 		self._idle_poll_elapsed = 0
 		self:_update_pivot()
-		self:_refresh_games_lantern_snapshots()
+		if self._presentation_snapshots_dirty or self._queue_snapshot_cache == nil or self._import_snapshot_cache == nil then
+			self:_refresh_games_lantern_snapshots()
+		end
 		local ctrl_v = ctrl_v_down()
 
 		if ctrl_v and not self._ctrl_v_down and type(self._games_lantern_paste) == "function" then

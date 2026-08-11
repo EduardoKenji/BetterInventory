@@ -77,20 +77,20 @@
     "test_games_lantern_safety.py": [
       {"name": "typed_terminal_identity_and_final_reconciliation", "risk": "critical", "start_line": 12, "end_line": 97},
       {"name": "two_job_state_resource_and_quarantine_matrix", "risk": "critical", "start_line": 98, "end_line": 205},
-        {"name": "bounded_queue_presentation_snapshot", "risk": "high", "start_line": 206, "end_line": 222},
-        {"name": "games_lantern_release_contract_seams", "risk": "critical", "start_line": 223, "end_line": 254}
+        {"name": "bounded_queue_presentation_snapshot", "risk": "high", "start_line": 206, "end_line": 223},
+        {"name": "games_lantern_release_contract_seams", "risk": "critical", "start_line": 224, "end_line": 255}
     ],
     "test_games_lantern_queue_ui.py": [
-        {"name": "active_queue_lifecycle_locked_target_and_section_order_ui", "risk": "high", "start_line": 9, "end_line": 62}
+        {"name": "active_queue_lifecycle_locked_target_and_section_order_ui", "risk": "high", "start_line": 9, "end_line": 64}
     ],
     "test_games_lantern_transport.py": [
       {"name": "bounded_transport_timeout_status_size_and_cancel", "risk": "critical", "start_line": 10, "end_line": 109}
     ],
     "test_games_lantern_import_controller.py": [
-      {"name": "atomic_import_lifecycle_stale_callback_and_duplicate_paste_guard", "risk": "critical", "start_line": 11, "end_line": 122},
-      {"name": "explicit_ambiguous_weapon_choice", "risk": "critical", "start_line": 123, "end_line": 165},
-      {"name": "invalid_clipboard_and_transport_failure_diagnostics", "risk": "critical", "start_line": 166, "end_line": 202},
-      {"name": "canonical_archetype_mismatch_diagnostics", "risk": "critical", "start_line": 203, "end_line": 215}
+      {"name": "atomic_import_lifecycle_stale_callback_and_duplicate_paste_guard", "risk": "critical", "start_line": 11, "end_line": 123},
+      {"name": "explicit_ambiguous_weapon_choice", "risk": "critical", "start_line": 124, "end_line": 166},
+      {"name": "invalid_clipboard_and_transport_failure_diagnostics", "risk": "critical", "start_line": 167, "end_line": 203},
+      {"name": "canonical_archetype_mismatch_diagnostics", "risk": "critical", "start_line": 204, "end_line": 216}
     ],
     "test_games_lantern_compatibility.py": [
       {"name": "optional_mod_lifecycle_admission_and_four_run_soak", "risk": "critical", "start_line": 1, "end_line": 176}

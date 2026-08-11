@@ -16,6 +16,12 @@ local presentation_snapshot
 local controller_faulted = false
 local PRESENTATION_CLOCK_INTERVAL = 0.25
 
+local function invalidate_games_lantern_panel()
+	if panel and type(panel.invalidate_games_lantern_snapshots) == "function" then
+		pcall(panel.invalidate_games_lantern_snapshots, panel)
+	end
+end
+
 local function monotonic_now()
 	local application = rawget(_G, "Application")
 
@@ -667,6 +673,7 @@ function AutoCrafter.configure(dependencies)
 		end,
 		report = function(kind, payload)
 			presentation_dirty = true
+			invalidate_games_lantern_panel()
 			log(kind == "queue_failed" and "error" or "info", string.format("Games Lantern queue event=%s queue=%s index=%s next=%s reason=%s", tostring(kind), tostring(payload and payload.queue_id or "?"), tostring(payload and payload.index or "?"), tostring(payload and payload.next_index or "?"), tostring(payload and payload.reason or "none")))
 
 			if kind == "queue_complete" then
@@ -901,6 +908,7 @@ function AutoCrafter.configure(dependencies)
 				end,
 				report = function(kind, payload)
 					presentation_dirty = true
+					invalidate_games_lantern_panel()
 					if kind == "import_failed" then
 						local reason = tostring(payload and payload.reason)
 						local detail = payload and payload.error
@@ -1147,10 +1155,14 @@ function AutoCrafter.update(dt)
 	end
 
 	if games_lantern_import and games_lantern_import:state() == "fetching" then
+		local import_state_before = games_lantern_import:state()
 		local import_ok, import_error = pcall(games_lantern_import.update, games_lantern_import)
 
 		if not import_ok then
 			log("error", "Games Lantern import update failed: " .. tostring(import_error))
+		end
+		if games_lantern_import:state() ~= import_state_before then
+			invalidate_games_lantern_panel()
 		end
 	end
 
@@ -1172,6 +1184,9 @@ function AutoCrafter.update(dt)
 
 				if not queue_ok then
 					log("error", "Games Lantern queue update failed: " .. tostring(queue_error))
+				end
+				if games_lantern_queue:state() ~= queue_state then
+					invalidate_games_lantern_panel()
 				end
 			end
 		end
