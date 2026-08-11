@@ -7,14 +7,16 @@ local function supported_object(object)
 	return object_type == "table" or object_type == "userdata"
 end
 
+local function read_member(object, member_name)
+	return object[member_name]
+end
+
 local function invoke_method(object, method_name, ...)
 	if not supported_object(object) or type(method_name) ~= "string" then
 		return "unavailable", "method unavailable"
 	end
 
-	local lookup_ok, method = pcall(function()
-		return object[method_name]
-	end)
+	local lookup_ok, method = pcall(read_member, object, method_name)
 
 	if not lookup_ok or type(method) ~= "function" then
 		return "unavailable", lookup_ok and "method unavailable" or method
@@ -45,9 +47,7 @@ Contracts.safe_method = function(object, method_name, ...)
 		return false, "method unavailable"
 	end
 
-	local lookup_ok, method = pcall(function()
-		return object[method_name]
-	end)
+	local lookup_ok, method = pcall(read_member, object, method_name)
 
 	if not lookup_ok or type(method) ~= "function" then
 		return false, lookup_ok and "method unavailable" or method

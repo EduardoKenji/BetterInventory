@@ -11,6 +11,7 @@ local InventoryViewContentBlueprints
 local ItemBlueprintGenerator
 local Text
 local lantern_recommendations_active = function() return false end
+local release_runtime_caches = function() end
 local ensure_class_method
 local better_inventory_test
 local registered_character_overview_views = setmetatable({}, { __mode = "k" })
@@ -1287,6 +1288,7 @@ OverviewUI.configure = function(dependencies)
 	ItemBlueprintGenerator = dependencies.ItemBlueprintGenerator
 	Text = dependencies.Text
 	lantern_recommendations_active = dependencies.lantern_recommendations_active or function() return false end
+	release_runtime_caches = dependencies.release_runtime_caches or function() end
 	better_inventory_test = mod and rawget(mod, "_better_inventory_test")
 	CHARACTER_OVERVIEW_BLUEPRINTS = type(ItemBlueprintGenerator) == "function" and ItemBlueprintGenerator({
 		600,
@@ -1327,6 +1329,10 @@ OverviewUI.unregister_view = function(view)
 	view._better_inventory_reconcile_elapsed = nil
 	view._auto_crafter_status_overlay = nil
 
+	if registered and next(registered_character_overview_views) == nil then
+		pcall(release_runtime_caches)
+	end
+
 	return registered
 end
 
@@ -1354,6 +1360,16 @@ OverviewUI.registered_view_count = function()
 	return count
 end
 
+OverviewUI.needs_update = function()
+	return next(registered_character_overview_views) ~= nil
+end
+
+local function update_registered_view(view, dt)
+	refresh_character_overview_visual_layout_if_needed(view)
+	reconcile_character_overview_curio_widgets_if_needed(view, dt)
+	synchronize_character_overview_equipped_icons(view)
+end
+
 OverviewUI.update_registered_views = function(dt)
 	local updated = 0
 
@@ -1361,11 +1377,7 @@ OverviewUI.update_registered_views = function(dt)
 		if view._destroyed == true then
 			OverviewUI.unregister_view(view)
 		else
-			local update_ok, update_error = pcall(function()
-				refresh_character_overview_visual_layout_if_needed(view)
-				reconcile_character_overview_curio_widgets_if_needed(view, dt)
-				synchronize_character_overview_equipped_icons(view)
-			end)
+			local update_ok, update_error = pcall(update_registered_view, view, dt)
 
 			if update_ok then
 				updated = updated + 1

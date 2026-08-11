@@ -148,6 +148,10 @@ Domains.markers.update = function(dt, synchronize_grid)
 	return refreshed
 end
 
+Domains.markers.needs_update = function()
+	return next(tracked_marker_grids) ~= nil or next(dirty_marker_grids) ~= nil
+end
+
 Domains.markers.needs_refresh = function(last_generation, current_generation, dirty)
 	return dirty == true or (tonumber(last_generation) or 0) ~= (tonumber(current_generation) or 0)
 end

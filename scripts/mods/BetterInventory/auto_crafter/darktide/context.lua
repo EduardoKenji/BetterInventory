@@ -1,13 +1,15 @@
 local Context = {}
 
+local function read_member(value, key)
+	return value[key]
+end
+
 local function safe_member(value, key)
 	if type(value) ~= "table" and type(value) ~= "userdata" then
 		return nil
 	end
 
-	local ok, result = pcall(function()
-		return value[key]
-	end)
+	local ok, result = pcall(read_member, value, key)
 
 	return ok and result or nil
 end

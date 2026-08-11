@@ -175,14 +175,16 @@ local function ctrl_v_down()
 	return keyboard_key_down("left ctrl") or keyboard_key_down("right ctrl") or keyboard_key_down("left_control") or keyboard_key_down("right_control")
 end
 
+local function read_member(object, key)
+	return object[key]
+end
+
 local function safe_member(object, key)
 	if type(object) ~= "table" and type(object) ~= "userdata" then
 		return nil
 	end
 
-	local ok, value = pcall(function()
-		return object[key]
-	end)
+	local ok, value = pcall(read_member, object, key)
 
 	return ok and value or nil
 end

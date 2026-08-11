@@ -1,5 +1,9 @@
 local Composition = {}
 
+local function read_member(object, field_name)
+	return object[field_name]
+end
+
 -- Darktide scenegraph definitions can be strict tables. Optional geometry
 -- probes must therefore use raw reads; a missing node is a normal degraded
 -- state during Character Overview transitions, not a fatal contract error.
@@ -7,9 +11,7 @@ local function optional_field(object, field_name)
 	if type(object) == "table" then
 		return rawget(object, field_name)
 	elseif object ~= nil then
-		local success, value = pcall(function()
-			return object[field_name]
-		end)
+		local success, value = pcall(read_member, object, field_name)
 
 		if success then
 			return value

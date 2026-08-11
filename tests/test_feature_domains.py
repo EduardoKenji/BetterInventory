@@ -16,6 +16,7 @@ MODULE_PATH = (
 def main() -> None:
     lua = LuaRuntime(unpack_returned_tuples=True)
     domains = lua.execute(MODULE_PATH.read_text(encoding="utf-8"), name=str(MODULE_PATH))
+    assert domains.markers.needs_update() is False
 
     grid = lua.table_from(
         {
@@ -54,6 +55,7 @@ def main() -> None:
         }
     )
     assert domains.markers.track_grid(tracked_grid) is True
+    assert domains.markers.needs_update() is True
     assert domains.markers.invalidate_grid(tracked_grid) is True
     assert domains.markers.update(0, lua.globals().synchronize_marker_grid) == 1
     assert lua.globals().marker_refreshes == 1
@@ -80,6 +82,7 @@ def main() -> None:
     assert tracked_grid._better_inventory_myfavorites_widgets is None
     assert tracked_grid._better_inventory_myfavorites_active is None
     assert domains.markers.count() == (0, 0)
+    assert domains.markers.needs_update() is False
 
     for _ in range(250):
         cycled_grid = lua.table_from(
@@ -105,6 +108,7 @@ def main() -> None:
         domains.markers.invalidate_grid(release_grid)
     assert domains.markers.release_all() == 3
     assert domains.markers.count() == (0, 0)
+    assert domains.markers.needs_update() is False
 
     # Hundreds of unrelated UI grids never enter BetterInventory's registry.
     unrelated_grids = [lua.table_from({"_visible": True}) for _ in range(500)]

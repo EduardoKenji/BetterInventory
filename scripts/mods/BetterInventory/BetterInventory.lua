@@ -175,14 +175,16 @@ if type(mod.register_hud_element) == "function" then
 	})
 end
 
+local function read_member(object, key)
+	return object[key]
+end
+
 local function auto_crafter_read(object, key)
 	if type(object) ~= "table" and type(object) ~= "userdata" then
 		return nil
 	end
 
-	local ok, value = pcall(function()
-		return object[key]
-	end)
+	local ok, value = pcall(read_member, object, key)
 
 	return ok and value or nil
 end
@@ -300,6 +302,9 @@ AutoCrafter.on_setting_changed = type(AutoCrafter.on_setting_changed) == "functi
 end
 AutoCrafter.update = type(AutoCrafter.update) == "function" and AutoCrafter.update or function()
 end
+AutoCrafter.needs_update = type(AutoCrafter.needs_update) == "function" and AutoCrafter.needs_update or function()
+	return false
+end
 AutoCrafter.shutdown = type(AutoCrafter.shutdown) == "function" and AutoCrafter.shutdown or function()
 end
 AutoCrafter.is_busy = type(AutoCrafter.is_busy) == "function" and AutoCrafter.is_busy or function()
@@ -322,6 +327,9 @@ local CharacterOverviewUI = no_op_module(mod:io_dofile("BetterInventory/scripts/
 	update_registered_views = function()
 		return 0
 	end,
+	needs_update = function()
+		return false
+	end,
 	constants = {},
 })
 
@@ -337,6 +345,14 @@ CharacterOverviewUI.configure({
 	Text = Text,
 	lantern_recommendations_active = function()
 		return type(Features.lantern_recommendations_active) == "function" and Features.lantern_recommendations_active()
+	end,
+	release_runtime_caches = function()
+		if type(Layout.clear_runtime_caches) == "function" then
+			Layout.clear_runtime_caches()
+		end
+		if type(Features.clear_runtime_caches) == "function" then
+			Features.clear_runtime_caches()
+		end
 	end,
 })
 

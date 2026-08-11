@@ -154,6 +154,14 @@ local WEAPON_MODIFIER_LABELS = {
 local QUICK_LOOK_CARD_PROJECTED_VALUES_CACHE = setmetatable({}, {
 	__mode = "k",
 })
+
+Content.clear_runtime_caches = function()
+	-- Darktide's gear service can keep item tables alive for the process lifetime,
+	-- so weak keys alone do not retire projected records after their UI closes.
+	QUICK_LOOK_CARD_PROJECTED_VALUES_CACHE = setmetatable({}, {
+		__mode = "k",
+	})
+end
 local CURIO_PRIMARY_COLOR_DEFINITIONS = {
 	gadget_innate_health_increase = {
 		prefix = "curio_health_color",

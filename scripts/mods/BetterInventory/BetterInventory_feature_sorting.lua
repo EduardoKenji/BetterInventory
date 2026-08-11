@@ -297,6 +297,10 @@ Sorting.new_comparator_manager = function(dependencies)
 	end
 
 	manager.restore = function(view)
+		if view then
+			view._better_inventory_sort_priority_cache = nil
+		end
+
 		local sort_options = view and view._sort_options
 
 		if type(sort_options) ~= "table" then

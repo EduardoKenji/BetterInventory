@@ -101,6 +101,7 @@ Layout.set_item_customization_provider = function(provider)
 	Geometry.set_item_customization_provider(provider)
 	Blueprints.set_item_customization_provider(provider)
 end
+Layout.clear_runtime_caches = content.clear_runtime_caches
 Layout.synchronize_rarity_tag_color = content.synchronize_rarity_tag_color
 Layout.apply_item_customization_style = content.apply_item_customization_style
 Layout.restore_item_customization_style = content.restore_item_customization_style

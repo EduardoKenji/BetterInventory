@@ -2,6 +2,13 @@ local Policy = {}
 local Items = require("scripts/utilities/items")
 local CurioValues = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_values")
 local perfect_roll_cache = setmetatable({}, { __mode = "k" })
+
+Policy.clear_runtime_cache = function()
+	-- Native gear caches can strongly own item keys long after a grid closes.
+	-- Replace the table at a UI ownership boundary without disturbing hot sorts.
+	perfect_roll_cache = setmetatable({}, { __mode = "k" })
+end
+
 local function item_level(item)
 	local expertise = Items.expertise_level(item, true)
 

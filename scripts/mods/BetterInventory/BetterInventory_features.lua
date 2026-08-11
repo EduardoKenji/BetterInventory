@@ -304,9 +304,6 @@ Features.invalidate_all_view_composition = function()
 	end
 end
 
-local perfect_roll_cache = setmetatable({}, {
-	__mode = "k",
-})
 local curio_acquisition_provider
 
 local function item_sorting_is_enabled()
@@ -1826,6 +1823,7 @@ end
 Features.cancel_manual_discard = function()
 	if Features.discard_owner() == "manual" then
 		if Features.manual_discard_settlement_active() then
+			discard_transaction:detach_view(Features.discard_view())
 			return false
 		end
 
@@ -2575,5 +2573,7 @@ Features.disable_inventory_views = function()
 		end
 	end
 end
+
+Features.clear_runtime_caches = DiscardPolicy.clear_runtime_cache
 
 return Features

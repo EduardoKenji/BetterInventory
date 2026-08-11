@@ -50,6 +50,16 @@ end
 
 Runtime.configure = configure_dependencies
 
+local function release_transient_item_caches()
+	if Layout and type(Layout.clear_runtime_caches) == "function" then
+		Layout.clear_runtime_caches()
+	end
+
+	if Features and type(Features.clear_runtime_caches) == "function" then
+		Features.clear_runtime_caches()
+	end
+end
+
 function Runtime.install()
 	local unpack_values = table.unpack or unpack
 	local INVENTORY_GRID_CONFIGURATION = {
@@ -1199,15 +1209,17 @@ mod:hook_safe(MainMenuView, "on_exit", function()
 end)
 
 function mod.update(dt)
-	if AutoCrafter and type(AutoCrafter.update) == "function" then
+	local auto_crafter_needs_update = AutoCrafter and type(AutoCrafter.update) == "function" and (type(AutoCrafter.needs_update) ~= "function" or AutoCrafter.needs_update())
+
+	if auto_crafter_needs_update then
 		AutoCrafter.update(dt)
 	end
-	local auto_crafter_busy = AutoCrafter and type(AutoCrafter.is_busy) == "function" and AutoCrafter.is_busy() or false
+	local auto_crafter_busy = auto_crafter_needs_update and type(AutoCrafter.is_busy) == "function" and AutoCrafter.is_busy() or false
 
-	if type(CharacterOverviewUI.update_registered_views) == "function" then
+	if type(CharacterOverviewUI.update_registered_views) == "function" and (type(CharacterOverviewUI.needs_update) ~= "function" or CharacterOverviewUI.needs_update()) then
 		CharacterOverviewUI.update_registered_views(dt)
 	end
-	if FeatureDomains and FeatureDomains.markers and type(FeatureDomains.markers.update) == "function" then
+	if FeatureDomains and FeatureDomains.markers and type(FeatureDomains.markers.update) == "function" and (type(FeatureDomains.markers.needs_update) ~= "function" or FeatureDomains.markers.needs_update()) then
 		FeatureDomains.markers.update(dt, synchronize_myfavorites_grid)
 	end
 	if type(ItemCustomization.needs_update) ~= "function" or ItemCustomization.needs_update() then
@@ -1253,6 +1265,7 @@ function mod.on_disabled()
 	if type(Diagnostics.reset) == "function" then
 		Diagnostics.reset()
 	end
+	release_transient_item_caches()
 end
 
 local dmf_mod = get_mod("DMF")
@@ -1466,6 +1479,8 @@ local function release_item_grid_view_runtime(view)
 	if view then
 		view._auto_crafter_status_overlay = nil
 	end
+
+	release_transient_item_caches()
 end
 
 if ensure_class_method(ItemGridViewBase, "on_exit") then
@@ -1794,12 +1809,14 @@ local function synchronize_myfavorites_marker(widget)
 	end
 end
 
+local function synchronize_myfavorites_widgets(tracked_widgets)
+	for widget in pairs(tracked_widgets or {}) do
+		synchronize_myfavorites_marker(widget)
+	end
+end
+
 synchronize_myfavorites_grid = function(_, tracked_widgets)
-	local sync_ok, sync_error = pcall(function()
-		for widget in pairs(tracked_widgets or {}) do
-			synchronize_myfavorites_marker(widget)
-		end
-	end)
+	local sync_ok, sync_error = pcall(synchronize_myfavorites_widgets, tracked_widgets)
 
 	if not sync_ok and mod and type(mod.warning) == "function" then
 		mod:warning("MyFavorites marker reconciliation skipped after a compatibility error: %s", tostring(sync_error))
