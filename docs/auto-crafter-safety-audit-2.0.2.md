@@ -42,3 +42,23 @@ Additional enforced rules:
 - Malformed expertise, discard, rarity-batch, mastery-allocation, and mastery-extraction arguments reject locally before Darktide service dispatch. Duplicate IDs/operations, empty IDs, non-finite levels, and out-of-range tiers are no-ops with normal Auto Crafter failure logging.
 
 Automated evidence: 29 behavior scripts / 113 named cases. Live Darktide validation remains required; automated tests cannot prove backend availability, real account balances, or third-party mod runtime behavior.
+
+## 2.1.0 P0 mutation and character-switch re-audit (2026-08-11)
+
+The supplied 2.0.3 crash log proves two separate defects rather than one generic backend failure:
+
+- The weapon was authoritatively item level 500 before `phase4_replace_perk`, but the rejected request omitted `traitTier`. The old no-cost argument left a nil vararg hole before the trailing tier. The backend now packs/unpacks exact arity and passes an explicit `false` cost sentinel, so the native perk signature remains `(gear, slot, target, costs, tier)` through every hook.
+- `MasteryService.purchase_traits` asynchronously calls `CraftingService.reset_sticker_book` before its Promise settles. That method only resets/warms the local trait cache. Guarding it as an external account mutation caused Auto Crafter to block its own mastery-allocation completion. It is no longer classified as an account write.
+
+Trait mutation is now fail-closed at two independent boundaries:
+
+1. The controller waits for a fresh authoritative gear snapshot reporting item level 500 before any pending perk or blessing replacement.
+2. The backend re-resolves the same gear ID from the latest authoritative inventory, runs the native recipe item validator, verifies an occupied one-based source slot, rejects duplicate/no-op/downgrade targets, validates target master-item kind and rank, and independently requires maximum expertise.
+
+Any malformed request becomes a rejected/no-op Auto Crafter operation with normal error reporting. It cannot call Darktide's perk or blessing service, and it is never retried ambiguously.
+
+InstantCharacterChange compatibility now reads player ID, profile ID, and archetype from one live player snapshot. Mixed IDs are `character_context_settling`; missing profile components are `character_context_unavailable`. Import and crafting wait/fail closed instead of combining an old operative ID with a new operative archetype.
+
+Darktide contracts were checked against the locally available upstream source at version 1.12.3 (`CraftingService`, `MasteryService`, crafting recipes, item expertise utilities). The upstream source mirror had not yet published the reported live 1.12.4 code, so 1.12.4-specific runtime behavior still requires in-game validation.
+
+Automated evidence after this pass: 30 behavior scripts / 118 named cases, including malformed perk/blessing shape, absent slots, wrong target kinds, sub-500 mutations, mastery cache reset ownership, atomic character switching, four serial imported queues, network/resource/capacity boundaries, and a 1,000-card hidden-grid performance case.
