@@ -2,6 +2,12 @@
 
 ## 2.1.3 - In development
 
+- Fixed Games Lantern UUID-to-slug HTTP 302 imports on Wine/Proton.
+- Bounded redirects to three HTTPS hops and reject final URLs outside the original Games Lantern build UUID.
+- Improved transport failure diagnostics with request generation, HTTP status, response size, and content type.
+
+## 2.1.2 - 2026-08-11
+
 - Released closed inventory, Character Overview, vendor, Brunt, Hadron, popup, panel, grid, and persistence references through idempotent exit/destroy paths.
 - Added repeated open/close lifecycle coverage while preserving post-draw/update CPU ownership fixes.
 

@@ -20,6 +20,7 @@ def main() -> None:
     assert transport_module._test.trusted_effective_url(url, url) is True
     assert transport_module._test.trusted_effective_url(url, url + "/safe-build-slug-2") is True
     assert transport_module._test.trusted_effective_url(url, url + "/bad?query") is False
+    assert transport_module._test.trusted_effective_url(url, url[:-1] + "1/changed-build") is False
     assert transport_module._test.trusted_effective_url(url, "https://example.com/builds/" + url.rsplit("/", 1)[-1]) is False
 
     def callback_wrapper(callback):

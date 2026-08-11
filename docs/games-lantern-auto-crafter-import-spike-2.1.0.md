@@ -369,7 +369,7 @@ The approach is viable, but BetterInventory's version must enforce:
 
 - one fetch in flight per panel/import generation;
 - connect and total timeouts at the transport layer as well as in Lua;
-- HTTPS-only protocols with redirect following disabled initially; if Games Lantern later requires redirects, validate every `Location` as the same exact HTTPS host before a separate request;
+- HTTPS-only redirects, capped at three hops; accept a completed response only when curl's effective URL remains the original Games Lantern build UUID with an optional bounded lowercase slug;
 - response-size cap before parsing, suggested initial limit 2 MiB;
 - nonzero exit-code and HTTP-status validation;
 - unique filenames containing a random/session component, not only a process-local sequence;
@@ -700,7 +700,7 @@ This import occurs beside an account-mutating feature, so it must satisfy strong
 | Clipboard is empty or not a Games Lantern build URL | No fetch; concise local message; no setting changes. |
 | URL has a slug/query | Extract UUID and canonicalize. |
 | URL host is deceptive or protocol is not HTTPS | Reject before process launch. |
-| Canonical request returns a redirect | Initial implementation rejects it; later support requires separately validated same-host HTTPS Location. |
+| Canonical request returns a redirect | Follow at most three HTTPS hops; reject the response unless the effective URL remains the same Games Lantern host and build UUID with a safe slug. |
 | Private/deleted build or login page | Report unavailable; preserve planner. |
 | Games Lantern is offline or stalls | Bounded timeout; clean temporary files; allow manual retry. |
 | Network returns after timeout | Late completion is generation-stale and ignored/cleaned. |
@@ -1200,7 +1200,7 @@ Additional no-regression gates from the handoff audit:
 - Frame-hot status checks are constant-time. The panel consumes a compact queue/import presentation model at a bounded 10 Hz; it never deep-copies build catalogues, HTML, resolver models, or full controller snapshots per widget/frame.
 - Aggregate two-weapon cost authority is computed on the confirmation click, cached for display, and recomputed only on the confirming click to retain the stale-signature safety barrier.
 - Scoped Ctrl+V detection reads held key state and debounces the complete chord; it does not require Ctrl and V to become pressed on the same frame.
-- Windows transport follows only HTTPS redirects, escapes curl write-out placeholders through the generated batch file, and preserves adapter start failures in import diagnostics.
+- Windows and Wine/Proton transports follow at most three HTTPS redirects, report the final effective URL for same-host/build validation, and preserve adapter start failures in import diagnostics. Windows also escapes curl write-out placeholders through its generated batch file.
 - The parser requires a Weapons anchor but accepts either current `div` or legacy `section` containers. A Cloudflare loader embedded in a complete page is not treated as an interstitial; challenge-only pages still fail closed.
 - Class safety compares canonical identities rather than display/public names: Games Lantern `skitarii`, `arbites`, and `hive-scum` map to Darktide `cryptic`, `adamant`, and `broker`. True mismatches report both raw and canonical IDs.
 - Weapon identity resolves Brunt's runtime localization keys before accepting an authoritative family match when Brunt omits Games Lantern's named mark (for example, `Branx Mk XI Paired Transonic Blades` versus localized `Paired Transonic Blades`). Multiple equal family matches remain ambiguous and fail closed.
