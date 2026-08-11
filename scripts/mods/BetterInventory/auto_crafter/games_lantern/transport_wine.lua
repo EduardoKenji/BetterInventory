@@ -7,6 +7,7 @@ local SEQUENCE = 0
 local MAX_BYTES = 2 * 1024 * 1024
 local CONNECT_TIMEOUT = 5
 local REQUEST_TIMEOUT = 20
+local MAX_REDIRECTS = 3
 
 local function io_api()
 	local mods = rawget(_G, "Mods")
@@ -63,6 +64,19 @@ local function write_file(path, lines)
 	file:close()
 
 	return true
+end
+
+local function parse_status_text(status_text)
+	if type(status_text) ~= "string" then
+		return nil, nil, nil
+	end
+
+	status_text = string.gsub(status_text, "\r\n", "\n")
+	local status_line, content_type_line, effective_url = string.match(status_text, "^([^\n]*)\n([^\n]*)\n([^\n]*)")
+	local status = tonumber(status_line and string.match(status_line, "%d%d%d") or nil)
+	local content_type = content_type_line and string.match(content_type_line, "^([^%s;]+)") or nil
+
+	return status, content_type, effective_url
 end
 
 local function valid_url(url)
@@ -125,7 +139,10 @@ function Adapter.spawn(url, generation, max_bytes)
 	if not quoted_url or not write_file(script_win, {
 		"echo $$ > " .. shell_single_quote(pid_unix),
 		"out=" .. shell_single_quote(output_unix) .. "; done=" .. shell_single_quote(done_unix) .. "; status=" .. shell_single_quote(status_unix),
-		"curl -s -S --connect-timeout " .. tostring(CONNECT_TIMEOUT) .. " --max-time " .. tostring(REQUEST_TIMEOUT) .. " --max-filesize " .. tostring(limit) .. " --proto '=https' -o \"$out\" -w '%{http_code} %{content_type}' " .. quoted_url .. " > \"$status\"",
+		-- Games Lantern canonical UUID URLs redirect once to their slugged page.
+		-- Match the Windows adapter while bounding both count and protocol; the
+		-- coordinator validates the final host, UUID, and slug before parsing.
+		"curl -s -S --location --max-redirs " .. tostring(MAX_REDIRECTS) .. " --connect-timeout " .. tostring(CONNECT_TIMEOUT) .. " --max-time " .. tostring(REQUEST_TIMEOUT) .. " --max-filesize " .. tostring(limit) .. " --proto '=https' --proto-redir '=https' -o \"$out\" -w '%{http_code}\\n%{content_type}\\n%{url_effective}' " .. quoted_url .. " > \"$status\"",
 		"code=$?; echo $code > \"$done\"",
 	}) then
 		return nil, "script_write_failed"
@@ -169,9 +186,8 @@ function Adapter.poll(handle)
 	handle.completed = true
 
 	local exit_code = tonumber(string.match(done, "%-?%d+"))
-	local status_text = read_file(handle.status_path, 256)
-	local status = tonumber(status_text and string.match(status_text, "%d%d%d") or nil)
-	local content_type = status_text and string.match(status_text, "%d%d%d%s+([^%s;]+)") or nil
+	local status_text = read_file(handle.status_path, 1024)
+	local status, content_type, effective_url = parse_status_text(status_text)
 	local body, size = read_file(handle.output_path, handle.max_bytes)
 
 	return {
@@ -179,6 +195,7 @@ function Adapter.poll(handle)
 		exit_code = exit_code,
 		status = status,
 		content_type = content_type,
+		effective_url = effective_url,
 		body = body,
 		bytes = tonumber(size) or type(body) == "string" and #body or 0,
 	}
@@ -204,5 +221,9 @@ function Adapter.cleanup(handle)
 
 	return true
 end
+
+Adapter._test = {
+	parse_status_text = parse_status_text,
+}
 
 return Adapter

@@ -7,6 +7,7 @@ local SEQUENCE = 0
 local MAX_BYTES = 2 * 1024 * 1024
 local CONNECT_TIMEOUT = 5
 local REQUEST_TIMEOUT = 20
+local MAX_REDIRECTS = 3
 
 local function io_api()
 	local mods = rawget(_G, "Mods")
@@ -86,6 +87,19 @@ local function write_file(path, lines)
 	return true
 end
 
+local function parse_status_text(status_text)
+	if type(status_text) ~= "string" then
+		return nil, nil, nil
+	end
+
+	status_text = string.gsub(status_text, "\r\n", "\n")
+	local status_line, content_type_line, effective_url = string.match(status_text, "^([^\n]*)\n([^\n]*)\n([^\n]*)")
+	local status = tonumber(status_line and string.match(status_line, "%d%d%d") or nil)
+	local content_type = content_type_line and string.match(content_type_line, "^([^%s;]+)") or nil
+
+	return status, content_type, effective_url
+end
+
 local function valid_url(url)
 	return type(url) == "string" and string.match(url, "^https://darktide%.gameslantern%.com/builds/%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$") ~= nil
 end
@@ -124,7 +138,7 @@ function Adapter.spawn(url, generation, max_bytes)
 		-- The batch file needs doubled percent signs so cmd.exe passes curl's
 		-- write-out placeholders through unchanged.  Follow the canonical URL's
 		-- same-origin slug redirect, which Games Lantern uses for build pages.
-		string.format("%s --silent --show-error --location --connect-timeout %d --max-time %d --max-filesize %d --proto =https --proto-redir =https -o %s -w \"%%%%{http_code} %%%%{content_type}\" %s > %s 2> %s", quoted[6], CONNECT_TIMEOUT, REQUEST_TIMEOUT, limit, quoted[1], quote(url), quoted[3], quoted[5]),
+		string.format("%s --silent --show-error --location --max-redirs %d --connect-timeout %d --max-time %d --max-filesize %d --proto =https --proto-redir =https -o %s -w \"%%%%{http_code}\\n%%%%{content_type}\\n%%%%{url_effective}\" %s > %s 2> %s", quoted[6], MAX_REDIRECTS, CONNECT_TIMEOUT, REQUEST_TIMEOUT, limit, quoted[1], quote(url), quoted[3], quoted[5]),
 		string.format(">%s echo %%ERRORLEVEL%%", quoted[2]),
 	}
 
@@ -188,9 +202,8 @@ function Adapter.poll(handle)
 	handle.completed = true
 
 	local exit_code = tonumber(string.match(done, "%-?%d+"))
-	local status_text = read_file(handle.status_path, 256)
-	local status = tonumber(status_text and string.match(status_text, "%d%d%d") or nil)
-	local content_type = status_text and string.match(status_text, "%d%d%d%s+([^%s;]+)") or nil
+	local status_text = read_file(handle.status_path, 1024)
+	local status, content_type, effective_url = parse_status_text(status_text)
 	local body, size = read_file(handle.output_path, handle.max_bytes)
 
 	return {
@@ -198,6 +211,7 @@ function Adapter.poll(handle)
 		exit_code = exit_code,
 		status = status,
 		content_type = content_type,
+		effective_url = effective_url,
 		body = body,
 		bytes = tonumber(size) or type(body) == "string" and #body or 0,
 	}
@@ -221,5 +235,9 @@ function Adapter.cleanup(handle)
 
 	return true
 end
+
+Adapter._test = {
+	parse_status_text = parse_status_text,
+}
 
 return Adapter

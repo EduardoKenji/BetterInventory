@@ -27,6 +27,25 @@ local function canonical_url(url)
 	return string.sub(url, 1, #prefix) == prefix and #uuid == 36 and string.match(uuid, "^%x%x%x%x%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%-%x%x%x%x%x%x%x%x%x%x%x%x$") ~= nil
 end
 
+local function trusted_effective_url(request_url, effective_url)
+	if not canonical_url(request_url) or type(effective_url) ~= "string" then
+		return false
+	end
+
+	if effective_url == request_url then
+		return true
+	end
+
+	local slug_prefix = request_url .. "/"
+	if string.sub(effective_url, 1, #slug_prefix) ~= slug_prefix then
+		return false
+	end
+
+	local slug = string.sub(effective_url, #slug_prefix + 1)
+
+	return #slug >= 1 and #slug <= 160 and string.match(slug, "^[a-z0-9][a-z0-9%-]*$") ~= nil
+end
+
 function Transport.new(dependencies)
 	dependencies = dependencies or {}
 
@@ -87,6 +106,7 @@ function Transport.new(dependencies)
 		self._last_error = tostring(reason or "transport_failed")
 		self._result = nil
 		local payload = details or {}
+		payload.generation = payload.generation or self._generation
 		payload.reason = self._last_error
 		emit("transport_failed", payload)
 
@@ -174,6 +194,7 @@ function Transport.new(dependencies)
 		local exit_code = tonumber(response.exit_code)
 		local body = response.body
 		local bytes = tonumber(response.bytes) or type(body) == "string" and #body or 0
+		local effective_url = response.effective_url
 
 		if exit_code ~= nil and exit_code ~= 0 then
 			fail("transport_process_failed", { exit_code = exit_code })
@@ -182,7 +203,13 @@ function Transport.new(dependencies)
 		end
 
 		if not status or status < 200 or status >= 300 then
-			fail("transport_http_status", { status = status or 0 })
+			fail("transport_http_status", { status = status or 0, bytes = bytes, content_type = content_type })
+
+			return self._state
+		end
+
+		if not trusted_effective_url(self._url, effective_url) then
+			fail("transport_redirect_target", { status = status, bytes = bytes, effective_url = effective_url })
 
 			return self._state
 		end
@@ -207,7 +234,7 @@ function Transport.new(dependencies)
 
 		cleanup_handle()
 		self._state = "complete"
-		self._result = { status = status, content_type = content_type, bytes = bytes, body = body, generation = self._generation }
+		self._result = { status = status, content_type = content_type, bytes = bytes, body = body, generation = self._generation, effective_url = effective_url }
 		emit("transport_complete", { generation = self._generation, bytes = bytes })
 
 		return self._state
@@ -242,6 +269,7 @@ end
 
 Transport._test = {
 	canonical_url = canonical_url,
+	trusted_effective_url = trusted_effective_url,
 }
 
 return Transport
