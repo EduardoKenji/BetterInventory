@@ -623,6 +623,20 @@ local function resolve_traits(external_values, entries, kind, localize_trait_lab
 			local entry_slot = kind == "perk" and trait_slot(entry) or nil
 			local entry_family = kind == "perk" and entry_perk_family(entry) or nil
 			local family_compatible = target_family == nil or entry_family == nil or target_family == entry_family
+			local semantic_fallback = kind == "perk"
+				and score == 0
+				and target_family ~= nil
+				and entry_family == target_family
+				and (entry_slot == nil or slot == nil or entry_slot == slot)
+
+			if semantic_fallback then
+				-- Games Lantern occasionally renders descriptive perk wording that
+				-- differs from Darktide's localization/trait tense (for example
+				-- "Increase ... by" versus "..._increased_crit_chance"). Canonical
+				-- family plus weapon slot is authoritative only when the normal
+				-- candidate ranking still yields one unique live mutation identity.
+				score = 1
+			end
 
 			if score > 0 and family_compatible and (entry_slot == nil or slot == nil or entry_slot == slot) then
 				local identity = candidate_identity(entry)
