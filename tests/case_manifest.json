@@ -67,9 +67,11 @@
       {"name": "live_catalogue_resolution", "risk": "critical", "start_line": 19, "end_line": 107},
       {"name": "public_class_slug_aliases", "risk": "critical", "start_line": 108, "end_line": 122},
       {"name": "brunt_family_level_weapon_resolution", "risk": "critical", "start_line": 123, "end_line": 173},
-        {"name": "localized_perk_and_blessing_resolution", "risk": "critical", "start_line": 174, "end_line": 278},
-        {"name": "ambiguous_and_mismatched_builds_fail_closed", "risk": "critical", "start_line": 279, "end_line": 414},
-        {"name": "explicit_weapon_choice_resolution", "risk": "critical", "start_line": 415, "end_line": 429}
+        {"name": "localized_perk_and_blessing_resolution", "risk": "critical", "start_line": 174, "end_line": 236},
+        {"name": "canonical_perk_family_wording_drift", "risk": "critical", "start_line": 238, "end_line": 300},
+        {"name": "slot_specific_perk_resolution_and_catalog_failures", "risk": "critical", "start_line": 301, "end_line": 425},
+        {"name": "ambiguous_and_mismatched_builds_fail_closed", "risk": "critical", "start_line": 427, "end_line": 476},
+        {"name": "explicit_weapon_choice_resolution", "risk": "critical", "start_line": 478, "end_line": 492}
     ],
     "test_games_lantern_queue.py": [
       {"name": "serial_queue_transition_and_completion", "risk": "critical", "start_line": 17, "end_line": 100},

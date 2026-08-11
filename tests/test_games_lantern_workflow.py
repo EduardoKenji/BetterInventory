@@ -235,6 +235,69 @@ def main() -> None:
     assert resolved_skitarius["jobs"][1]["blessings"][2]["id"] == "blessing_shred"
     assert resolved_skitarius["jobs"][2]["blessings"][1]["id"] == "blessing_man_stopper"
 
+    # Games Lantern's current Hive Scum build renders the ranged crit perk as
+    # "Increase Ranged Critical Strike Chance by 2-5%", while Darktide's live
+    # catalogue identity uses "...wield_increased_crit_chance". Resolve that
+    # wording drift by unique canonical family + ranged slot, never by guessing
+    # across multiple mutation identities.
+    crit_identity, reason = resolver.resolve_identities(skitarius_live_model, skitarius_live_context)
+    assert crit_identity is not None, reason
+    crit_identity["jobs"][2]["external"]["perks"] = to_lua([
+        {"label": "10-25% Damage (Flak Armoured Enemies)"},
+        {"label": "Increase Ranged Critical Strike Chance by 2-5%"},
+    ])
+    crit_identity["jobs"][2]["external"]["blessings"] = to_lua([
+        {"label": "Man-Stopper", "external_icon_id": "123"},
+        {"label": "Surgical", "external_icon_id": "007"},
+    ])
+    crit_catalogs = to_lua({
+        transonic_offer["master_id"]: live_catalogs[transonic_offer["master_id"]],
+        phosphor_offer["master_id"]: {
+            "available": True,
+            "perks": [
+                {"id": "perk_flak", "trait": "weapon_trait_ranged_common_wield_increased_armored_damage", "tier": 4},
+                {"id": "perk_crit", "trait": "weapon_trait_ranged_common_wield_increased_crit_chance", "tier": 4},
+            ],
+            "blessings": live_catalogs[phosphor_offer["master_id"]]["blessings"],
+        },
+    })
+    resolved_crit, reason = resolver.attach_catalogs(
+        crit_identity,
+        crit_catalogs,
+        to_lua({"localize_offer_label": localize_traits}),
+    )
+    assert resolved_crit is not None, reason
+    assert resolved_crit["jobs"][2]["perks"][2]["id"] == "perk_crit"
+
+    ambiguous_crit_catalogs = to_lua({
+        transonic_offer["master_id"]: live_catalogs[transonic_offer["master_id"]],
+        phosphor_offer["master_id"]: {
+            "available": True,
+            "perks": [
+                {"id": "perk_flak", "trait": "weapon_trait_ranged_common_wield_increased_armored_damage", "tier": 4},
+                {"id": "perk_crit_a", "trait": "weapon_trait_ranged_common_wield_increased_crit_chance", "tier": 4},
+                {"id": "perk_crit_b", "trait": "weapon_trait_ranged_variant_wield_increased_crit_chance", "tier": 4},
+            ],
+            "blessings": live_catalogs[phosphor_offer["master_id"]]["blessings"],
+        },
+    })
+    ambiguous_crit, ambiguous_crit_reason, _ = resolver.attach_catalogs(
+        crit_identity,
+        ambiguous_crit_catalogs,
+        to_lua({"localize_offer_label": localize_traits}),
+    )
+    assert ambiguous_crit is None
+    assert ambiguous_crit_reason == "perk_ambiguous_2"
+
+    skitarius_live_model["weapons"][2]["perks"] = to_lua([
+        {"label": "10-25% Damage (Flak Armoured Enemies)"},
+        {"label": "10-25% Damage (Unyielding Enemies)"},
+    ])
+    skitarius_live_model["weapons"][2]["blessings"] = to_lua([
+        {"label": "Man-Stopper", "external_icon_id": "123"},
+        {"label": "Surgical", "external_icon_id": "007"},
+    ])
+
     # Games Lantern renders both canonical stamina perks as "1-2 Stamina".
     # Live metadata can also repeat a canonical ID. Resolve by weapon slot,
     # collapse exact mutation duplicates, and retain fail-closed behavior for
