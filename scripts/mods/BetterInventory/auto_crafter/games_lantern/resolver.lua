@@ -151,6 +151,16 @@ local function match_score(external, offer)
 		return 300
 	end
 
+	-- Brunt exposes one purchasable offer per weapon family, not one offer per
+	-- named mark.  Games Lantern links preserve the full mark (for example,
+	-- "Branx Mk XI Paired Transonic Blades") while the live Brunt offer is
+	-- simply "Paired Transonic Blades".  A family match is authoritative at
+	-- this boundary; if more than one live offer matches, resolve_weapon keeps
+	-- failing closed as ambiguous instead of guessing.
+	if contains_all(candidate_text, family) then
+		return 250
+	end
+
 	local display = tokens(external and external.display_name)
 
 	if contains_all(candidate_text, display) then
