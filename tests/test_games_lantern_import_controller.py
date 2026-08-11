@@ -173,6 +173,19 @@ def main() -> None:
     assert transport_failure.paste(transport_failure) is False
     assert transport_reports == [("import_failed", "process_spawn_failed")]
 
+    mismatch_reports = []
+    mismatch_resolver = to_lua({})
+    mismatch_resolver.resolve_identities = lua.eval("function() return nil, 'archetype_mismatch' end")
+    mismatch_resolver.canonical_archetype = lua.eval("function(value) if value == 'skitarii' then return 'cryptic' end return value end")
+    mismatch = import_module.new(to_lua({
+        "resolver": mismatch_resolver,
+        "get_resolution_context": callback_wrapper(lambda: to_lua({"active_archetype": "veteran"})),
+        "report": callback_wrapper(lambda kind, payload: mismatch_reports.append((str(kind), str(payload["error"])) )),
+    }))
+    mismatch._model = to_lua({"source_archetype": "skitarii"})
+    assert mismatch._begin_catalog_resolution(mismatch) is False
+    assert mismatch_reports == [("import_failed", "source=skitarii->cryptic active=veteran->veteran")]
+
 
 if __name__ == "__main__":
     main()

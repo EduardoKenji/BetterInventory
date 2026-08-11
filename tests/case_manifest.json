@@ -64,7 +64,9 @@
   ],
     "test_games_lantern_workflow.py": [
       {"name": "live_catalogue_resolution", "risk": "critical", "start_line": 19, "end_line": 107},
-      {"name": "ambiguous_and_mismatched_builds_fail_closed", "risk": "critical", "start_line": 108, "end_line": 175}
+      {"name": "public_class_slug_aliases", "risk": "critical", "start_line": 108, "end_line": 122},
+      {"name": "ambiguous_and_mismatched_builds_fail_closed", "risk": "critical", "start_line": 123, "end_line": 175},
+      {"name": "explicit_weapon_choice_resolution", "risk": "critical", "start_line": 176, "end_line": 190}
     ],
     "test_games_lantern_queue.py": [
       {"name": "serial_queue_transition_and_completion", "risk": "critical", "start_line": 17, "end_line": 100},
@@ -85,7 +87,8 @@
     "test_games_lantern_import_controller.py": [
       {"name": "atomic_import_lifecycle_and_stale_callback_guard", "risk": "critical", "start_line": 11, "end_line": 95},
       {"name": "explicit_ambiguous_weapon_choice", "risk": "critical", "start_line": 96, "end_line": 138},
-      {"name": "invalid_clipboard_and_transport_failure_diagnostics", "risk": "critical", "start_line": 139, "end_line": 176}
+      {"name": "invalid_clipboard_and_transport_failure_diagnostics", "risk": "critical", "start_line": 139, "end_line": 176},
+      {"name": "canonical_archetype_mismatch_diagnostics", "risk": "critical", "start_line": 177, "end_line": 189}
     ],
     "test_games_lantern_compatibility.py": [
       {"name": "optional_mod_lifecycle_admission_and_four_run_soak", "risk": "critical", "start_line": 1, "end_line": 176}

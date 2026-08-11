@@ -105,6 +105,21 @@ def main() -> None:
     assert resolved["jobs"][1]["blessings"][1]["rarity"] == 4
     assert resolved["jobs"][2]["blessings"][2]["id"] == "blessing_surge"
 
+    # Public Games Lantern class slugs map to Darktide's internal archetype
+    # IDs before enforcing the class safety gate.
+    assert resolver.canonical_archetype("skitarii") == "cryptic"
+    assert resolver.canonical_archetype("Skitarius") == "cryptic"
+    assert resolver.canonical_archetype("arbites") == "adamant"
+    assert resolver.canonical_archetype("hive_scum") == "broker"
+    skitarius_model = to_lua({"source_archetype": "skitarii", "weapons": model["weapons"]})
+    skitarius_context = to_lua({
+        "active_archetype": "cryptic",
+        "dump_target": 65,
+        "melee_offers": [melee_offer],
+        "ranged_offers": [ranged_offer],
+    })
+    assert resolver.resolve_identities(skitarius_model, skitarius_context)[0] is not None
+
     # Class mismatch, ambiguous marks, and tied dump stats must reject the
     # entire build rather than install one partially resolved job.
     wrong_class = to_lua(
