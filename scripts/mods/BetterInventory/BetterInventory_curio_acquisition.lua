@@ -93,6 +93,7 @@ local state = {
 	oldest_read_request_age = 0,
 	active_read_requests = 0,
 	operation_snapshot = nil,
+	purchase_requests_inflight = 0,
 	scan_attempts = 0,
 	scheduled = false,
 	started = false,
@@ -701,8 +702,8 @@ local function same_candidate(left, right)
 	return CurioPurchase.same_candidate(left, right)
 end
 
-local function revalidate_and_purchase(mod, token, captured, on_purchase_dispatch)
-	return CurioPurchase.revalidate_and_purchase(mod, token, captured, on_purchase_dispatch, processed_offer_keys)
+local function revalidate_and_purchase(mod, token, captured, on_purchase_dispatch, on_purchase_settle)
+	return CurioPurchase.revalidate_and_purchase(mod, token, captured, on_purchase_dispatch, on_purchase_settle, processed_offer_keys)
 end
 
 CurioStore.configure({
@@ -1138,6 +1139,15 @@ local function purchase_candidates(mod, token, candidates, boundary_ms)
 		boundary_committed = commit_rotation_boundary(mod, boundary_ms, state.active_context)
 	end
 
+	local function purchase_dispatched()
+		commit_before_purchase()
+		state.purchase_requests_inflight = state.purchase_requests_inflight + 1
+	end
+
+	local function purchase_settled()
+		state.purchase_requests_inflight = math.max(0, state.purchase_requests_inflight - 1)
+	end
+
 	for index = 1, #candidates do
 		local candidate = candidates[index]
 
@@ -1146,7 +1156,7 @@ local function purchase_candidates(mod, token, candidates, boundary_ms)
 				return
 			end
 
-			return revalidate_and_purchase(mod, token, candidate, commit_before_purchase):next(function(result)
+			return revalidate_and_purchase(mod, token, candidate, purchase_dispatched, purchase_settled):next(function(result)
 				if result and result.status == "purchased" and result.candidate then
 					purchased[#purchased + 1] = result.candidate
 				elseif result and result.status == "insufficient_funds" and result.candidate then
@@ -1629,7 +1639,42 @@ CurioAcquisition.oldest_read_request_age = function()
 end
 
 CurioAcquisition.is_busy = function()
-	return state.started == true
+	return state.started == true or state.purchase_requests_inflight > 0
+end
+
+CurioAcquisition.account_mutation_inflight = function()
+	return state.purchase_requests_inflight > 0
+end
+
+CurioAcquisition.defer_for_account_operation = function(mod)
+	if state.purchase_requests_inflight > 0 then
+		return false, "automatic Curio acquisition has a purchase request in flight"
+	end
+
+	local profile_work_pending = CurioProfiles.needs_update()
+	local read_work_pending = state.active_read_requests > 0
+
+	if state.started or read_work_pending or profile_work_pending then
+		-- Auto Crafter may preempt Curio Buyer while it is doing read-only scans or
+		-- revalidation. Generation invalidation makes late GET callbacks inert; the
+		-- same pass remains scheduled and resumes after crafting releases the gate.
+		reset_read_requests()
+		CurioProfiles.cancel()
+		state.token = state.token + 1
+		state.completed = false
+		state.elapsed = 0
+		state.scan_attempts = 0
+		state.scheduled = enabled(mod) and state.active_context ~= nil
+		state.scheduled_reason = state.scheduled and "account_operation_deferred" or nil
+		state.started = false
+		state.operation_snapshot = nil
+
+		if profile_work_pending and state.scheduled then
+			CurioProfiles.request_profile_discovery(true)
+		end
+	end
+
+	return true
 end
 
 CurioAcquisition._test = {

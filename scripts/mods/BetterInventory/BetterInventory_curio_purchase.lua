@@ -155,7 +155,7 @@ local function fetch_target_wallet(candidate)
 	end)
 end
 
-local function revalidate_and_purchase(mod, token, captured, on_purchase_dispatch, processed_offer_keys)
+local function revalidate_and_purchase(mod, token, captured, on_purchase_dispatch, on_purchase_settle, processed_offer_keys)
 	if not context_is_current(mod, token) or not profile_is_enabled(mod, captured.profile) then
 		return Promise.resolved()
 	end
@@ -244,7 +244,26 @@ local function revalidate_and_purchase(mod, token, captured, on_purchase_dispatc
 				on_purchase_dispatch()
 			end
 
-			return call_promise(store_service, store_service.purchase_item_with_wallet, current.offer, wallet):next(function()
+			local settled = false
+			local function settle_purchase()
+				if not settled then
+					settled = true
+					if on_purchase_settle then
+						on_purchase_settle()
+					end
+				end
+			end
+			local purchase_promise = call_promise(store_service, store_service.purchase_item_with_wallet, current.offer, wallet)
+
+			if not purchase_promise or type(purchase_promise.next) ~= "function" or type(purchase_promise.catch) ~= "function" then
+				settle_purchase()
+				processed_offer_keys[key] = "unknown"
+
+				return rejected("StoreService.purchase_item_with_wallet returned no compatible promise")
+			end
+
+			return purchase_promise:next(function()
+				settle_purchase()
 				processed_offer_keys[key] = "complete"
 
 				return {
@@ -252,6 +271,7 @@ local function revalidate_and_purchase(mod, token, captured, on_purchase_dispatc
 					status = "purchased",
 				}
 			end):catch(function(error_value)
+				settle_purchase()
 				-- A timeout can be ambiguous after the POST reaches the backend. Keep the
 				-- session key blocked and never retry this offer automatically.
 				processed_offer_keys[key] = "unknown"
@@ -261,8 +281,8 @@ local function revalidate_and_purchase(mod, token, captured, on_purchase_dispatc
 		end)
 	end)
 end
-CurioPurchase.revalidate_and_purchase = function(mod, token, captured, on_purchase_dispatch, processed_offer_keys)
-	return revalidate_and_purchase(mod, token, captured, on_purchase_dispatch, processed_offer_keys)
+CurioPurchase.revalidate_and_purchase = function(mod, token, captured, on_purchase_dispatch, on_purchase_settle, processed_offer_keys)
+	return revalidate_and_purchase(mod, token, captured, on_purchase_dispatch, on_purchase_settle, processed_offer_keys)
 end
 
 CurioPurchase.find_offer = find_offer

@@ -72,6 +72,8 @@ local function new_state()
 	return {
 		delete_inflight = false,
 		delete_transaction_token = nil,
+		mutation_pipeline_inflight = false,
+		mutation_transaction_token = nil,
 		elapsed = 0,
 		fetch_attempts = 0,
 		read_promise = nil,
@@ -219,16 +221,28 @@ function AutomaticDiscard.new(transaction, dependencies)
 		end
 	end
 
+	local function release_mutation_pipeline(transaction_token)
+		if state.mutation_transaction_token == transaction_token then
+			state.mutation_pipeline_inflight = false
+			state.mutation_transaction_token = nil
+		end
+
+		automatic._transaction:release("automatic", transaction_token)
+	end
+
 	local function delete_candidates(mod, token, character_id, captured_ids, transaction_token)
+		state.mutation_pipeline_inflight = true
+		state.mutation_transaction_token = transaction_token
+
 		if not context_is_current(mod, token, character_id) then
-			automatic._transaction:release("automatic", transaction_token)
+			release_mutation_pipeline(transaction_token)
 			return
 		end
 
 		local gear_service = Managers and Managers.data_service and Managers.data_service.gear
 
 		if not gear_service or type(gear_service.fetch_inventory) ~= "function" or type(gear_service.delete_gear_batch) ~= "function" then
-			automatic._transaction:release("automatic", transaction_token)
+			release_mutation_pipeline(transaction_token)
 			return
 		end
 
@@ -236,13 +250,13 @@ function AutomaticDiscard.new(transaction, dependencies)
 
 		if not fetch_promise then
 			info(mod, "Final revalidation could not start: " .. error_text(fetch_error))
-			automatic._transaction:release("automatic", transaction_token)
+			release_mutation_pipeline(transaction_token)
 			return
 		end
 
 		local continuation = fetch_promise:next(function(items)
 			if not context_is_current(mod, token, character_id) or type(items) ~= "table" then
-				automatic._transaction:release("automatic", transaction_token)
+				release_mutation_pipeline(transaction_token)
 				return
 			end
 
@@ -250,7 +264,7 @@ function AutomaticDiscard.new(transaction, dependencies)
 
 			if not protection then
 				info(mod, "Final revalidation stopped safely because " .. error_text(protection_error) .. ".")
-				automatic._transaction:release("automatic", transaction_token)
+				release_mutation_pipeline(transaction_token)
 
 				return
 			end
@@ -265,14 +279,14 @@ function AutomaticDiscard.new(transaction, dependencies)
 			info(mod, string.format("Revalidated %d candidate(s) immediately before deletion.", #gear_ids))
 
 			if #gear_ids == 0 then
-				automatic._transaction:release("automatic", transaction_token)
+				release_mutation_pipeline(transaction_token)
 				return
 			end
 
 			local delete_ok, delete_promise = pcall(gear_service.delete_gear_batch, gear_service, gear_ids)
 
 			if not delete_ok or not delete_promise or type(delete_promise.next) ~= "function" or type(delete_promise.catch) ~= "function" then
-				automatic._transaction:release("automatic", transaction_token)
+				release_mutation_pipeline(transaction_token)
 				error(delete_ok and "GearService.delete_gear_batch returned no compatible promise" or delete_promise)
 			end
 
@@ -286,7 +300,7 @@ function AutomaticDiscard.new(transaction, dependencies)
 				end
 
 				notify_result(mod, candidates, result)
-				automatic._transaction:release("automatic", transaction_token)
+				release_mutation_pipeline(transaction_token)
 
 				return result
 			end)
@@ -312,9 +326,9 @@ function AutomaticDiscard.new(transaction, dependencies)
 		local transaction_token = automatic._transaction:acquire("automatic")
 
 		if not transaction_token then
-			info(mod, "Suppressed a duplicate automatic discard confirmation preview.")
+			info(mod, "Deferred automatic discard because another account operation owns the mutation gate.")
 
-			return
+			return false
 		end
 
 		local captured_ids = {}
@@ -327,7 +341,7 @@ function AutomaticDiscard.new(transaction, dependencies)
 			info(mod, "Confirmation skipping is enabled; starting final safety revalidation.")
 			delete_candidates(mod, token, character_id, captured_ids, transaction_token)
 
-			return
+			return true
 		end
 
 		local confirmation_resolved = false
@@ -338,7 +352,7 @@ function AutomaticDiscard.new(transaction, dependencies)
 			end
 
 			confirmation_resolved = true
-			automatic._transaction:release("automatic", transaction_token)
+			release_mutation_pipeline(transaction_token)
 		end
 
 		local popup_shown = type(dependencies.show_popup) == "function" and dependencies.show_popup({
@@ -375,6 +389,8 @@ function AutomaticDiscard.new(transaction, dependencies)
 		end
 
 		info(mod, popup_shown and "Displayed the automatic discard confirmation preview." or "Could not display the automatic discard confirmation preview; no items were deleted.")
+
+		return popup_shown
 	end
 
 	function automatic:clear_read_promise(promise)
@@ -430,6 +446,39 @@ function AutomaticDiscard.new(transaction, dependencies)
 		return state.started or state.read_inflight or state.delete_inflight or self._transaction:active_owner() == "automatic"
 	end
 
+	-- Only final revalidation after an accepted prompt and the DELETE itself are
+	-- mutation work. A scheduled scan, inventory GET, or unanswered confirmation
+	-- can be safely deferred when Auto Crafter explicitly requests ownership.
+	function automatic:account_mutation_inflight()
+		return state.mutation_pipeline_inflight == true or state.delete_inflight == true
+	end
+
+	function automatic:defer_for_account_operation(mod)
+		if self:account_mutation_inflight() then
+			return false, "automatic inventory discard has a mutation request in flight"
+		end
+
+		local owner = self._transaction:active_owner()
+
+		if owner == "automatic" then
+			-- This is an unanswered (or stale/lost) confirmation. No delete request
+			-- exists yet, so dismissing it is safe and prevents an invisible popup
+			-- lease from blocking Auto Crafter indefinitely.
+			self._transaction:release("automatic", self._transaction:active_token())
+		elseif owner ~= nil then
+			return false, tostring(owner) .. " inventory operation is already running"
+		end
+
+		self:cancel_read_promise()
+		state.token = state.token + 1
+		state.elapsed = 0
+		state.fetch_attempts = 0
+		state.started = false
+		state.scheduled = enabled(mod)
+
+		return true
+	end
+
 	function automatic:automatic_discard_read_request_count()
 		return state.read_inflight and 1 or 0
 	end
@@ -452,7 +501,7 @@ function AutomaticDiscard.new(transaction, dependencies)
 	function automatic:cancel(preserve_transaction)
 		if preserve_transaction and self._transaction:active_owner() == "automatic" then
 			state.scheduled = false
-			state.started = true
+			state.started = false
 
 			return
 		end
@@ -460,7 +509,7 @@ function AutomaticDiscard.new(transaction, dependencies)
 		self:cancel_read_promise()
 		state.token = state.token + 1
 
-		if not state.delete_inflight then
+		if not state.mutation_pipeline_inflight then
 			self._transaction:release("automatic")
 		end
 
@@ -601,8 +650,15 @@ function AutomaticDiscard.new(transaction, dependencies)
 
 			info(mod, string.format("Inventory scan found %d eligible candidate(s).", #candidates))
 
+			state.started = false
+
 			if #candidates > 0 then
-				present(mod, token, character_id, candidates)
+				local presented = present(mod, token, character_id, candidates)
+
+				if not presented then
+					state.elapsed = 0
+					state.scheduled = state.fetch_attempts < AUTOMATIC_DISCARD_MAX_FETCH_ATTEMPTS
+				end
 			elseif type(dependencies.show_no_candidates_notification) == "function" then
 				local displayed = dependencies.show_no_candidates_notification(mod)
 				info(mod, displayed and "Displayed the no-eligible-items notification." or "Suppressed the no-eligible-items notification.")

@@ -1713,9 +1713,6 @@ local function acquire_discard_transaction(owner, view)
 	return discard_transaction:acquire(owner, view)
 end
 
--- Shared destructive/account-operation gate. Auto Crafter uses same owner token
--- as manual and automatic discard so BetterInventory cannot mutate one wallet or
--- gear collection through two workflows at once.
 Features.acquire_account_operation = function(owner, view)
 	return acquire_discard_transaction(owner, view)
 end
@@ -1805,6 +1802,8 @@ end
 Features.morningstar_auto_discard_has_started = function()
 	return automatic_discard:morningstar_auto_discard_has_started()
 end
+
+Features.defer_morningstar_auto_discard_for_account_operation = function(mod) return automatic_discard:defer_for_account_operation(mod) end
 
 Features.automatic_discard_read_request_count = function()
 	return automatic_discard:automatic_discard_read_request_count()

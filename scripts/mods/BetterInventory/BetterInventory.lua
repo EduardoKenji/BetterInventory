@@ -360,11 +360,30 @@ AutoCrafter.configure({
 			return type(Features.acquire_account_operation) == "function" and Features.acquire_account_operation(owner, view) or nil
 		end,
 		conflict = function(view)
-			if type(CurioAcquisition.is_busy) == "function" and CurioAcquisition.is_busy() then
+			-- Only already-dispatched mutations are hard conflicts. Read-only scans,
+			-- scheduled passes, and unanswered discard prompts are safely deferred so
+			-- stale automation state cannot permanently lock Auto Crafter.
+			if type(CurioAcquisition.account_mutation_inflight) == "function" and CurioAcquisition.account_mutation_inflight() then
+				return "automatic Curio acquisition has a purchase request in flight"
+			elseif type(CurioAcquisition.account_mutation_inflight) ~= "function" and type(CurioAcquisition.is_busy) == "function" and CurioAcquisition.is_busy() then
 				return "automatic Curio acquisition is already running"
 			end
 
-			if type(Features.morningstar_auto_discard_has_started) == "function" and Features.morningstar_auto_discard_has_started() then
+			if type(CurioAcquisition.defer_for_account_operation) == "function" then
+				local ok, deferred, reason = pcall(CurioAcquisition.defer_for_account_operation, mod)
+
+				if not ok or deferred == false then
+					return ok and tostring(reason or "automatic Curio acquisition could not be deferred") or "automatic Curio acquisition deferral failed"
+				end
+			end
+
+			if type(Features.defer_morningstar_auto_discard_for_account_operation) == "function" then
+				local ok, deferred, reason = pcall(Features.defer_morningstar_auto_discard_for_account_operation, mod)
+
+				if not ok or deferred == false then
+					return ok and tostring(reason or "automatic inventory discard could not be deferred") or "automatic inventory discard deferral failed"
+				end
+			elseif type(Features.morningstar_auto_discard_has_started) == "function" and Features.morningstar_auto_discard_has_started() then
 				return "automatic inventory discard is already running"
 			end
 
