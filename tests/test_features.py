@@ -992,6 +992,47 @@ def main() -> None:
         "ordinary_weapon",
     )
 
+    # Comparator-side integration calls scale linearly with inventory size.
+    # table.sort compares entries O(n log n) times, but each entry's protected
+    # equipped/favorite/perfect-roll priority is resolved once per generation.
+    large_sort_counts = lua.execute(
+        r"""
+        local view, items = ...
+        local original_favorite = TestItems.is_item_id_favorited
+        local favorite_calls = 0
+        local equipped_calls = 0
+        local original_equipped = view.is_item_equipped_in_any_slot
+        TestItems.is_item_id_favorited = function(gear_id)
+            favorite_calls = favorite_calls + 1
+            return original_favorite(gear_id)
+        end
+        view.is_item_equipped_in_any_slot = function(self, item, slots)
+            equipped_calls = equipped_calls + 1
+            return original_equipped(self, item, slots)
+        end
+
+        local entries = {}
+        for index = 1, 200 do
+            entries[index] = {
+                item = {
+                    gear_id = "large_" .. tostring(index),
+                    rating = 201 - index,
+                    slots = {"slot_primary"},
+                },
+            }
+        end
+        table.sort(entries, view._sort_options[1].sort_function)
+        TestItems.is_item_id_favorited = original_favorite
+        view.is_item_equipped_in_any_slot = original_equipped
+
+        return favorite_calls, equipped_calls
+        """,
+        sortable_view,
+        globals_.TestItems,
+    )
+    assert large_sort_counts[0] <= 200
+    assert large_sort_counts[1] <= 200
+
     armoury_view = lua.execute(
         r"""
         return {

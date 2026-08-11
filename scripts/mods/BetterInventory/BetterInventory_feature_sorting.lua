@@ -207,25 +207,44 @@ Sorting.new_comparator_manager = function(dependencies)
 	end
 
 	local function inventory_sort_priority(mod, view, layout_entry)
+		local priority_cache = view and view._better_inventory_sort_priority_cache
+		local cached_priority = priority_cache and priority_cache[layout_entry]
+
+		if cached_priority ~= nil then
+			return cached_priority
+		end
+
 		local item = layout_entry and (layout_entry.real_item or layout_entry.item)
 
 		if not item then
 			return 0
 		end
 
+		local priority = 0
+
 		if mod:get("prioritize_equipped_favorites") ~= false then
 			local equipped_favorite_priority = item_priority(view, layout_entry)
 
 			if equipped_favorite_priority > 0 then
-				return equipped_favorite_priority + 2
+				priority = equipped_favorite_priority + 2
 			end
 		end
 
-		if mod:get("prioritize_perfect_roll_weapons") == true and dependencies.is_perfect_roll_weapon(item) then
-			return 1
+		if priority == 0 and mod:get("prioritize_perfect_roll_weapons") == true and dependencies.is_perfect_roll_weapon(item) then
+			priority = 1
 		end
 
-		return 0
+		if priority_cache then
+			priority_cache[layout_entry] = priority
+		end
+
+		return priority
+	end
+
+	local function reset_priority_cache(view)
+		view._better_inventory_sort_priority_cache = setmetatable({}, {
+			__mode = "k",
+		})
 	end
 
 	manager.configure = function(mod, view)
@@ -242,6 +261,9 @@ Sorting.new_comparator_manager = function(dependencies)
 		end)
 
 		registered_views[view] = true
+		-- Native table.sort invokes the comparator O(n log n) times. Resolve each
+		-- item's equipped/favorite/perfect-roll state once per sort generation.
+		reset_priority_cache(view)
 
 		for index = 1, #sort_options do
 			local option = sort_options[index]
@@ -341,6 +363,7 @@ Sorting.new_comparator_manager = function(dependencies)
 		local sort_function = option and option.sort_function
 
 		if sort_function then
+			reset_priority_cache(view)
 			view:_sort_grid_layout(sort_function)
 		end
 	end

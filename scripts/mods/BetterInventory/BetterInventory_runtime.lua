@@ -1681,6 +1681,8 @@ local function synchronize_myfavorites_marker(widget)
 		equipped_visible = ok and visible == true
 	end
 
+	content.better_inventory_equipped_icon_visible = equipped_visible
+
 	local offset_y = equipped_visible and 33 or 7
 	local favorite_shift_y = favorite_style and favorite_style.better_inventory_native_curio_favorite_shift_y or 0
 	offset_y = offset_y + favorite_shift_y

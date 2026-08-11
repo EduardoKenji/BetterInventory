@@ -1555,13 +1555,20 @@ local function add_quick_look_card_grid_pass(mod, pass_template, card_width, tex
 	pass.value_id = QUICK_LOOK_CARD_DUMP_STAT_ID
 	pass.style = style
 	pass.visibility_function = function(content)
-		local label = quick_look_card_lowest_stat_text(mod, content, parenthesized)
-
-		if content then
-			content[QUICK_LOOK_CARD_DUMP_STAT_ID] = label or ""
+		if not content then
+			return false
 		end
 
-		return label ~= nil
+		-- A visibility pass runs for every card on every draw. Modifier
+		-- projection and label assembly are item-data work, so resolve them once
+		-- and invalidate only when the widget is rebound by populate_card_content.
+		if content.better_inventory_quick_look_card_dump_stat_visibility_resolved ~= true or content.better_inventory_quick_look_card_dump_stat_parenthesized ~= parenthesized then
+			content[QUICK_LOOK_CARD_DUMP_STAT_ID] = quick_look_card_lowest_stat_text(mod, content, parenthesized) or ""
+			content.better_inventory_quick_look_card_dump_stat_visibility_resolved = true
+			content.better_inventory_quick_look_card_dump_stat_parenthesized = parenthesized
+		end
+
+		return content[QUICK_LOOK_CARD_DUMP_STAT_ID] ~= ""
 	end
 
 	if not pass_by_style_id(pass_template, QUICK_LOOK_CARD_DUMP_STAT_ID) then

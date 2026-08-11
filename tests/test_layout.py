@@ -2057,6 +2057,7 @@ def main() -> None:
         {
             "equipped": False,
             "inactive_loadout_equipped": True,
+            "better_inventory_equipped_icon_visible": True,
             "better_inventory_myfavorites_hotspot_style": runtime_myfavorites_hotspot_style,
         }
     )
@@ -2072,6 +2073,7 @@ def main() -> None:
         {
             "equipped": False,
             "inactive_loadout_equipped": False,
+            "better_inventory_equipped_icon_visible": False,
             "better_inventory_myfavorites_hotspot_style": runtime_myfavorites_hotspot_style,
         }
     )

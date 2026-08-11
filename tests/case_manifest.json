@@ -25,7 +25,7 @@
         {"name": "trait_mutation_contract_and_fail_closed_validation", "risk": "critical", "start_line": 122, "end_line": 169}
   ],
     "test_auto_crafter_facade.py": [
-      {"name": "frame_update_crash_containment", "risk": "critical", "start_line": 14, "end_line": 31}
+      {"name": "frame_update_crash_containment", "risk": "critical", "start_line": 14, "end_line": 36}
   ],
   "test_auto_crafter_controller.py": [
     {"name": "presacrifice_mastery_baseline_convergence_and_level_event", "risk": "critical", "start_line": 190, "end_line": 269},
@@ -67,9 +67,9 @@
       {"name": "live_catalogue_resolution", "risk": "critical", "start_line": 19, "end_line": 107},
       {"name": "public_class_slug_aliases", "risk": "critical", "start_line": 108, "end_line": 122},
       {"name": "brunt_family_level_weapon_resolution", "risk": "critical", "start_line": 123, "end_line": 173},
-      {"name": "localized_perk_and_blessing_resolution", "risk": "critical", "start_line": 174, "end_line": 279},
-      {"name": "ambiguous_and_mismatched_builds_fail_closed", "risk": "critical", "start_line": 280, "end_line": 330},
-      {"name": "explicit_weapon_choice_resolution", "risk": "critical", "start_line": 331, "end_line": 345}
+        {"name": "localized_perk_and_blessing_resolution", "risk": "critical", "start_line": 174, "end_line": 278},
+        {"name": "ambiguous_and_mismatched_builds_fail_closed", "risk": "critical", "start_line": 279, "end_line": 414},
+        {"name": "explicit_weapon_choice_resolution", "risk": "critical", "start_line": 415, "end_line": 429}
     ],
     "test_games_lantern_queue.py": [
       {"name": "serial_queue_transition_and_completion", "risk": "critical", "start_line": 17, "end_line": 100},
@@ -133,10 +133,10 @@
     {"name": "panel_composition", "risk": "high", "start_line": 44, "end_line": 49}
   ],
   "test_features.py": [
-        {"name": "discard_operation_ownership", "risk": "critical", "start_line": 2948, "end_line": 3398},
-      {"name": "sorting_and_navigation", "risk": "high", "start_line": 405, "end_line": 1345},
-      {"name": "optional_integration_fallbacks", "risk": "high", "start_line": 1346, "end_line": 1772},
-      {"name": "panel_lifecycle", "risk": "high", "start_line": 1773, "end_line": 2947}
+        {"name": "discard_operation_ownership", "risk": "critical", "start_line": 2989, "end_line": 3439},
+      {"name": "sorting_and_navigation", "risk": "high", "start_line": 405, "end_line": 1386},
+      {"name": "optional_integration_fallbacks", "risk": "high", "start_line": 1387, "end_line": 1813},
+      {"name": "panel_lifecycle", "risk": "high", "start_line": 1814, "end_line": 2988}
   ],
   "test_item_customization.py": [
       {"name": "dirty_save_outcomes", "risk": "high", "start_line": 224, "end_line": 441},
@@ -145,8 +145,8 @@
   ],
   "test_layout.py": [
     {"name": "card_geometry", "risk": "high", "start_line": 621, "end_line": 1604},
-    {"name": "content_and_resource_ownership", "risk": "high", "start_line": 1605, "end_line": 2352},
-    {"name": "integration_boundaries", "risk": "medium", "start_line": 2353, "end_line": 3815}
+      {"name": "content_and_resource_ownership", "risk": "high", "start_line": 1605, "end_line": 2354},
+      {"name": "integration_boundaries", "risk": "medium", "start_line": 2355, "end_line": 3832}
   ],
   "test_operation_arbiter.py": [
     {"name": "manual_automatic_exclusion", "risk": "critical", "start_line": 20, "end_line": 34},
