@@ -254,7 +254,7 @@ if (($features -notmatch 'pcall\(view\.is_item_equipped_in_any_slot' -and $featu
 	throw "Fail-closed sort priority or idle signature/pivot caching was not found."
 }
 
-if ($contracts -notmatch 'Contracts\.safe_call' -or $contracts -notmatch 'Contracts\.safe_method' -or $contracts -notmatch 'Contracts\.read_only' -or $contracts -notmatch 'Contracts\.mutation' -or $contracts -notmatch 'Contracts\.registry_refresh_required' -or $contracts -notmatch 'pcall\(function\(\)' -or $features -notmatch 'Features\._contracts\.safe_method' -or $features -notmatch 'Features\._contracts\.safe_call') {
+if ($contracts -notmatch 'Contracts\.safe_call' -or $contracts -notmatch 'Contracts\.safe_method' -or $contracts -notmatch 'Contracts\.read_only' -or $contracts -notmatch 'Contracts\.mutation' -or $contracts -notmatch 'Contracts\.registry_refresh_required' -or ($contracts -notmatch 'pcall\(function\(\)' -and $contracts -notmatch 'pcall\(read_member') -or $features -notmatch 'Features\._contracts\.safe_method' -or $features -notmatch 'Features\._contracts\.safe_call') {
 	throw "The guarded capability-contract seam was not found."
 }
 
@@ -404,7 +404,7 @@ if ($curioAcquisition -notmatch 'fetch_storefront\(captured\.profile\)[\s\S]*?sa
 	throw "Automatic Curio acquisition must re-fetch every offer and establish idempotency before purchase."
 }
 
-if ($main -notmatch 'auto_crafter_busy\s*=\s*AutoCrafter' -or $main -notmatch 'CurioAcquisition\.update\(mod,\s*dt,\s*Features\.morningstar_auto_discard_is_busy\(mod\)\s*or\s*auto_crafter_busy\)' -or $features -notmatch 'automatic_curio_acquisition_protects') {
+if (($main -notmatch 'auto_crafter_busy\s*=\s*AutoCrafter' -and $main -notmatch 'auto_crafter_busy\s*=\s*auto_crafter_needs_update') -or $main -notmatch 'CurioAcquisition\.update\(mod,\s*dt,\s*Features\.morningstar_auto_discard_is_busy\(mod\)\s*or\s*auto_crafter_busy\)' -or $features -notmatch 'automatic_curio_acquisition_protects') {
 	throw "Automatic discard and Curio acquisition are missing their sequencing or cross-feature protection contract."
 }
 

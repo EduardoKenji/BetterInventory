@@ -19,6 +19,9 @@ def main() -> None:
     sessions = read_runtime("BetterInventory_view_session.lua")
     equipment = read_runtime("BetterInventory_equipment_persistence.lua")
     auto_crafter = read_runtime("BetterInventory_auto_crafter.lua")
+    automatic_discard = read_runtime("BetterInventory_discard_automatic.lua")
+    curio_acquisition = read_runtime("BetterInventory_curio_acquisition.lua")
+    backend = read_runtime("auto_crafter/darktide/backend.lua")
 
     # Every view-owned registry has an explicit normal close path and an
     # abnormal destroy/disable fallback. Repeated close calls are safe no-ops.
@@ -44,11 +47,29 @@ def main() -> None:
     assert "FeatureDomains.markers.release_all()" in runtime
     assert "EquipmentPersistence.on_view_closed(view)" in runtime
     assert "EquipmentPersistence.reset()" in runtime
+    assert "release_transient_item_caches()" in runtime
+    assert "CharacterOverviewUI.needs_update()" in runtime
+    assert "FeatureDomains.markers.needs_update()" in runtime
+    assert "local auto_crafter_needs_update" in runtime
     assert "session.cleanup = nil" in sessions
     assert "session.cleanup_order = nil" in sessions
     assert "session.fields = nil" in sessions
     assert "view = view," not in sessions
     assert "if view and active_brunt_view ~= view then" in auto_crafter
+    assert "active_brunt_view = nil" in auto_crafter
+    assert "games_lantern_queue = nil" in auto_crafter
+    assert "games_lantern_import = nil" in auto_crafter
+    assert "runtime_context = nil" in auto_crafter
+    assert "OverviewUI.needs_update" in overview
+    assert "view._better_inventory_sort_priority_cache = nil" in read_runtime(
+        "BetterInventory_feature_sorting.lua"
+    )
+    assert "function backend:release_read_cache()" in backend
+    assert "self._raw_gear = {}" in backend
+    assert "self._purchase_wallets = {}" in backend
+    assert "AUTOMATIC_DISCARD_READ_TIMEOUT = 45" in automatic_discard
+    assert 'or enabled(mod) and is_morningstar()' in automatic_discard
+    assert 'return enabled(mod) and (is_morningstar()' in curio_acquisition
 
     # Preserve Potty's measured CPU fix: BetterInventory must not own shared
     # native update/draw chains to obtain lifecycle cleanup.

@@ -40,27 +40,27 @@
     {"name": "bounded_claim_retry_becomes_visible_failure", "risk": "critical", "start_line": 469, "end_line": 503},
     {"name": "already_max_mastery_preserves_item", "risk": "critical", "start_line": 504, "end_line": 523},
     {"name": "frozen_target_start_revalidation", "risk": "critical", "start_line": 524, "end_line": 540},
-    {"name": "background_run_survives_brunt_close", "risk": "critical", "start_line": 541, "end_line": 568},
-    {"name": "authoritative_purchase_revalidation", "risk": "critical", "start_line": 569, "end_line": 590},
-    {"name": "level_500_potential_prevents_current_stat_false_match", "risk": "critical", "start_line": 591, "end_line": 609},
-    {"name": "exact_candidate_favorite_before_completion", "risk": "critical", "start_line": 610, "end_line": 633},
-    {"name": "deferred_processing_after_exact_target", "risk": "critical", "start_line": 634, "end_line": 671},
-    {"name": "deferred_misses_preserved_without_exact_target", "risk": "critical", "start_line": 672, "end_line": 697},
-    {"name": "phase3_live_best_fallback", "risk": "critical", "start_line": 698, "end_line": 725},
-    {"name": "inventory_base_and_planner_mark_identity_safety", "risk": "critical", "start_line": 726, "end_line": 868},
-    {"name": "phase4_serial_final_crafting", "risk": "critical", "start_line": 869, "end_line": 998},
-    {"name": "unowned_blessing_fails_before_final_material_spend", "risk": "critical", "start_line": 999, "end_line": 1044},
-    {"name": "four_back_to_back_already_mastered_fully_allocated_crafts_and_two_slot_swaps", "risk": "critical", "start_line": 1045, "end_line": 1262},
-    {"name": "equipment_starting_state_matrix", "risk": "critical", "start_line": 1263, "end_line": 1381},
-    {"name": "instant_character_change_snapshot_and_callback_isolation", "risk": "critical", "start_line": 1382, "end_line": 1440},
-    {"name": "configuration_change_closes_dispatch", "risk": "critical", "start_line": 1441, "end_line": 1458},
-    {"name": "explicit_stop_and_idle_cpu_amortization", "risk": "critical", "start_line": 1459, "end_line": 1563},
-    {"name": "purchase_visibility_reconciliation", "risk": "critical", "start_line": 1564, "end_line": 1641},
-    {"name": "mutation_quarantine_and_fast_lane_interleavings", "risk": "critical", "start_line": 1642, "end_line": 1731},
-    {"name": "auto_crafter_account_operation_ownership", "risk": "critical", "start_line": 1732, "end_line": 1793},
-    {"name": "resource_capacity_network_and_loading_failure_matrix", "risk": "critical", "start_line": 1794, "end_line": 1860},
-    {"name": "bounded_probe_and_catalog_reads", "risk": "critical", "start_line": 1861, "end_line": 1894},
-    {"name": "external_account_mutation_exclusion", "risk": "critical", "start_line": 1895, "end_line": 1925}
+    {"name": "background_run_survives_brunt_close", "risk": "critical", "start_line": 541, "end_line": 570},
+    {"name": "authoritative_purchase_revalidation", "risk": "critical", "start_line": 571, "end_line": 593},
+    {"name": "level_500_potential_prevents_current_stat_false_match", "risk": "critical", "start_line": 594, "end_line": 612},
+    {"name": "exact_candidate_favorite_before_completion", "risk": "critical", "start_line": 613, "end_line": 636},
+    {"name": "deferred_processing_after_exact_target", "risk": "critical", "start_line": 637, "end_line": 674},
+    {"name": "deferred_misses_preserved_without_exact_target", "risk": "critical", "start_line": 675, "end_line": 700},
+    {"name": "phase3_live_best_fallback", "risk": "critical", "start_line": 701, "end_line": 728},
+    {"name": "inventory_base_and_planner_mark_identity_safety", "risk": "critical", "start_line": 729, "end_line": 871},
+    {"name": "phase4_serial_final_crafting", "risk": "critical", "start_line": 872, "end_line": 1001},
+    {"name": "unowned_blessing_fails_before_final_material_spend", "risk": "critical", "start_line": 1002, "end_line": 1047},
+    {"name": "four_back_to_back_already_mastered_fully_allocated_crafts_and_two_slot_swaps", "risk": "critical", "start_line": 1048, "end_line": 1265},
+    {"name": "equipment_starting_state_matrix", "risk": "critical", "start_line": 1266, "end_line": 1384},
+    {"name": "instant_character_change_snapshot_and_callback_isolation", "risk": "critical", "start_line": 1385, "end_line": 1443},
+    {"name": "configuration_change_closes_dispatch", "risk": "critical", "start_line": 1444, "end_line": 1461},
+    {"name": "explicit_stop_and_idle_cpu_amortization", "risk": "critical", "start_line": 1462, "end_line": 1566},
+    {"name": "purchase_visibility_reconciliation", "risk": "critical", "start_line": 1567, "end_line": 1644},
+    {"name": "mutation_quarantine_and_fast_lane_interleavings", "risk": "critical", "start_line": 1645, "end_line": 1734},
+    {"name": "auto_crafter_account_operation_ownership", "risk": "critical", "start_line": 1735, "end_line": 1796},
+    {"name": "resource_capacity_network_and_loading_failure_matrix", "risk": "critical", "start_line": 1797, "end_line": 1863},
+    {"name": "bounded_probe_and_catalog_reads", "risk": "critical", "start_line": 1864, "end_line": 1897},
+    {"name": "external_account_mutation_exclusion", "risk": "critical", "start_line": 1898, "end_line": 1928}
   ],
   "test_games_lantern_import.py": [
     {"name": "strict_url_canonicalization", "risk": "critical", "start_line": 18, "end_line": 47},
@@ -114,11 +114,11 @@
     {"name": "typed_fallbacks", "risk": "high", "start_line": 42, "end_line": 65}
   ],
   "test_curio_acquisition.py": [
-    {"name": "store_rotation_gate", "risk": "critical", "start_line": 1072, "end_line": 1398},
-    {"name": "purchase_revalidation", "risk": "critical", "start_line": 675, "end_line": 871},
-    {"name": "read_cancellation_and_generation", "risk": "critical", "start_line": 1400, "end_line": 1430},
-    {"name": "account_mutation_deferral", "risk": "critical", "start_line": 1432, "end_line": 1462},
-    {"name": "account_scoped_reports", "risk": "high", "start_line": 872, "end_line": 1071}
+    {"name": "store_rotation_gate", "risk": "critical", "start_line": 1073, "end_line": 1399},
+    {"name": "purchase_revalidation", "risk": "critical", "start_line": 676, "end_line": 872},
+    {"name": "read_cancellation_and_generation", "risk": "critical", "start_line": 1401, "end_line": 1431},
+    {"name": "account_mutation_deferral", "risk": "critical", "start_line": 1433, "end_line": 1466},
+    {"name": "account_scoped_reports", "risk": "high", "start_line": 873, "end_line": 1072}
   ],
   "test_curio_domains.py": [
     {"name": "context_snapshot", "risk": "high", "start_line": 20, "end_line": 33},
@@ -134,20 +134,20 @@
     {"name": "bounded_retry", "risk": "critical", "start_line": 249, "end_line": 283},
     {"name": "stale_callback_guard", "risk": "critical", "start_line": 284, "end_line": 324},
     {"name": "retry_invocation_safety", "risk": "critical", "start_line": 325, "end_line": 361},
-    {"name": "closed_view_release_and_reset", "risk": "critical", "start_line": 362, "end_line": 375}
+    {"name": "closed_view_release_and_reset", "risk": "critical", "start_line": 362, "end_line": 391}
   ],
   "test_feature_domains.py": [
-    {"name": "marker_generation", "risk": "high", "start_line": 20, "end_line": 34},
-    {"name": "dirty_marker_registry", "risk": "high", "start_line": 35, "end_line": 74},
-    {"name": "repeated_marker_release_and_unrelated_grid_isolation", "risk": "high", "start_line": 77, "end_line": 112},
-    {"name": "sorting_signature", "risk": "high", "start_line": 115, "end_line": 119},
-    {"name": "panel_composition", "risk": "high", "start_line": 121, "end_line": 125}
+    {"name": "marker_generation", "risk": "high", "start_line": 19, "end_line": 35},
+    {"name": "dirty_marker_registry", "risk": "high", "start_line": 36, "end_line": 76},
+    {"name": "repeated_marker_release_and_unrelated_grid_isolation", "risk": "high", "start_line": 79, "end_line": 116},
+    {"name": "sorting_signature", "risk": "high", "start_line": 119, "end_line": 123},
+    {"name": "panel_composition", "risk": "high", "start_line": 125, "end_line": 129}
   ],
   "test_features.py": [
-        {"name": "discard_operation_ownership", "risk": "critical", "start_line": 2989, "end_line": 3463},
+        {"name": "discard_operation_ownership", "risk": "critical", "start_line": 2992, "end_line": 3531},
       {"name": "sorting_and_navigation", "risk": "high", "start_line": 405, "end_line": 1386},
       {"name": "optional_integration_fallbacks", "risk": "high", "start_line": 1387, "end_line": 1813},
-      {"name": "panel_lifecycle", "risk": "high", "start_line": 1814, "end_line": 2988}
+      {"name": "panel_lifecycle", "risk": "high", "start_line": 1814, "end_line": 2991}
   ],
   "test_item_customization.py": [
       {"name": "dirty_save_outcomes", "risk": "high", "start_line": 224, "end_line": 441},
@@ -161,8 +161,8 @@
   ],
   "test_operation_arbiter.py": [
     {"name": "manual_automatic_exclusion", "risk": "critical", "start_line": 20, "end_line": 34},
-    {"name": "terminal_release_once", "risk": "critical", "start_line": 35, "end_line": 48},
-    {"name": "cancel_and_reconcile", "risk": "critical", "start_line": 49, "end_line": 53}
+    {"name": "terminal_release_once", "risk": "critical", "start_line": 35, "end_line": 71},
+    {"name": "cancel_and_reconcile", "risk": "critical", "start_line": 72, "end_line": 76}
   ],
   "test_settings.py": [
     {"name": "schema_dependency_refresh", "risk": "high", "start_line": 19, "end_line": 384},
@@ -183,8 +183,8 @@
     {"name": "repeated_reentrant_and_bulk_close", "risk": "high", "start_line": 58, "end_line": 93}
   ],
   "test_view_lifecycle_memory.py": [
-    {"name": "explicit_view_owned_state_release", "risk": "high", "start_line": 23, "end_line": 51},
-    {"name": "post_draw_update_cpu_invariant", "risk": "critical", "start_line": 53, "end_line": 57},
-    {"name": "native_async_cleanup_contracts", "risk": "high", "start_line": 59, "end_line": 70}
+    {"name": "explicit_view_owned_state_release", "risk": "high", "start_line": 26, "end_line": 72},
+    {"name": "post_draw_update_cpu_invariant", "risk": "critical", "start_line": 74, "end_line": 78},
+    {"name": "native_async_cleanup_contracts", "risk": "high", "start_line": 80, "end_line": 91}
   ]
 }
