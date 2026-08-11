@@ -104,14 +104,26 @@ local function contains_all(haystack, needles)
 	return #needles > 0
 end
 
-local function offer_text(offer)
+local function localized_offer_label(localize_offer_label, value)
+	if type(localize_offer_label) ~= "function" or type(value) ~= "string" or value == "" then
+		return ""
+	end
+
+	local ok, localized = pcall(localize_offer_label, value)
+
+	return ok and type(localized) == "string" and localized or ""
+end
+
+local function offer_text(offer, localize_offer_label)
 	if type(offer) ~= "table" then
 		return ""
 	end
 
 	return table.concat({
 		text(offer.display_name),
+		localized_offer_label(localize_offer_label, offer.display_name),
 		text(offer.sub_display_name),
+		localized_offer_label(localize_offer_label, offer.sub_display_name),
 		text(offer.master_id),
 		text(offer.weapon_category),
 		text(offer.weapon_template),
@@ -142,10 +154,10 @@ local function slot_matches(offer, slot, classify_offer)
 	return category == "ranged" or category == "slot_secondary"
 end
 
-local function match_score(external, offer)
+local function match_score(external, offer, localize_offer_label)
 	local family = tokens(external and external.external_family_slug)
 	local mark = tokens(external and external.external_mark_slug)
-	local candidate_text = offer_text(offer)
+	local candidate_text = offer_text(offer, localize_offer_label)
 
 	if contains_all(candidate_text, family) and contains_all(candidate_text, mark) then
 		return 300
@@ -185,12 +197,12 @@ local function sorted_candidates(candidates)
 	return candidates
 end
 
-local function resolve_weapon(external, slot, offers, classify_offer)
+local function resolve_weapon(external, slot, offers, classify_offer, localize_offer_label)
 	local candidates = {}
 
 	for _, offer in ipairs(offers or {}) do
 		if slot_matches(offer, slot, classify_offer) then
-			local score = match_score(external, offer)
+			local score = match_score(external, offer, localize_offer_label)
 
 			if score > 0 then
 				candidates[#candidates + 1] = {offer = offer, score = score}
@@ -424,7 +436,7 @@ end
 
 local function resolve_identity(external, slot, context)
 	local offers = context and (context.offers or (slot == "melee" and context.melee_offers or context.ranged_offers)) or {}
-	local resolved, reason = resolve_weapon(external, slot, offers, context and context.classify_offer)
+	local resolved, reason = resolve_weapon(external, slot, offers, context and context.classify_offer, context and context.localize_offer_label)
 
 	if not resolved then
 		return nil, reason
