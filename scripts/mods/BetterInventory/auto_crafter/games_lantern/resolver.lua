@@ -447,8 +447,114 @@ local function trait_slot(entry)
 	end
 
 	if string.find(raw, "weapon_trait_melee", 1, true)
-		or string.find(raw, "weapon_trait_increase_stamina", 1, true) then
+		or string.find(raw, "weapon_trait_increase_stamina", 1, true)
+		or string.find(raw, "weapon_trait_reduce_sprint_cost", 1, true)
+		or string.find(raw, "weapon_trait_reduced_block_cost", 1, true)
+		or string.find(raw, "weapon_trait_increase_impact", 1, true) then
 		return "melee"
+	end
+
+	return nil
+end
+
+local function trait_raw_identity(entry)
+	return string.lower(table.concat({
+		text(entry and entry.id),
+		text(entry and entry.trait),
+	}, " "))
+end
+
+local function entry_perk_family(entry)
+	local raw = trait_raw_identity(entry)
+
+	if string.find(raw, "super_armor", 1, true) then
+		return "damage_carapace"
+	elseif string.find(raw, "disgustingly_resilient", 1, true) then
+		return "damage_infested"
+	elseif string.find(raw, "unarmored", 1, true) then
+		return "damage_unarmored"
+	elseif string.find(raw, "armored", 1, true) then
+		return "damage_flak"
+	elseif string.find(raw, "resistant", 1, true) then
+		return "damage_unyielding"
+	elseif string.find(raw, "berserker", 1, true) then
+		return "damage_maniac"
+	elseif string.find(raw, "reduce_sprint_cost", 1, true) then
+		return "sprint_efficiency"
+	elseif string.find(raw, "reduced_block_cost", 1, true) then
+		return "block_efficiency"
+	elseif string.find(raw, "reload_speed", 1, true) then
+		return "reload_speed"
+	elseif string.find(raw, "crit_chance", 1, true) then
+		return "critical_chance"
+	elseif string.find(raw, "crit_damage", 1, true) then
+		return "critical_damage"
+	elseif string.find(raw, "weakspot", 1, true) then
+		return "weakspot_damage"
+	elseif string.find(raw, "increase_stamina", 1, true) then
+		return "flat_stamina"
+	elseif string.find(raw, "damage_elites", 1, true) then
+		return "damage_elites"
+	elseif string.find(raw, "damage_specials", 1, true) then
+		return "damage_specials"
+	elseif string.find(raw, "damage_hordes", 1, true) then
+		return "damage_hordes"
+	elseif string.find(raw, "increase_finesse", 1, true) then
+		return "finesse"
+	elseif string.find(raw, "increase_impact", 1, true) then
+		return "impact"
+	elseif string.find(raw, "increase_power", 1, true) then
+		return "power"
+	elseif string.find(raw, "increase_damage", 1, true) then
+		return "damage"
+	end
+
+	return nil
+end
+
+local function external_perk_family(external)
+	local raw = normalize(external and (external.label or external.name))
+
+	if string.find(raw, "carapace", 1, true) then
+		return "damage_carapace"
+	elseif string.find(raw, "infested", 1, true) then
+		return "damage_infested"
+	elseif string.find(raw, "unarmored", 1, true) then
+		return "damage_unarmored"
+	elseif string.find(raw, "flak", 1, true) then
+		return "damage_flak"
+	elseif string.find(raw, "unyielding", 1, true) then
+		return "damage_unyielding"
+	elseif string.find(raw, "maniac", 1, true) then
+		return "damage_maniac"
+	elseif string.find(raw, "sprint", 1, true) then
+		return "sprint_efficiency"
+	elseif string.find(raw, "block", 1, true) then
+		return "block_efficiency"
+	elseif string.find(raw, "reload", 1, true) then
+		return "reload_speed"
+	elseif string.find(raw, "critical", 1, true) and string.find(raw, "chance", 1, true) then
+		return "critical_chance"
+	elseif string.find(raw, "critical", 1, true) and string.find(raw, "damage", 1, true) then
+		return "critical_damage"
+	elseif (string.find(raw, "weak spot", 1, true) or string.find(raw, "weakspot", 1, true)) and string.find(raw, "damage", 1, true) then
+		return "weakspot_damage"
+	elseif string.find(raw, "stamina", 1, true) then
+		return "flat_stamina"
+	elseif string.find(raw, "elite", 1, true) then
+		return "damage_elites"
+	elseif string.find(raw, "specialist", 1, true) then
+		return "damage_specials"
+	elseif string.find(raw, "horde", 1, true) then
+		return "damage_hordes"
+	elseif string.find(raw, "finesse", 1, true) then
+		return "finesse"
+	elseif string.find(raw, "impact", 1, true) then
+		return "impact"
+	elseif string.find(raw, "power", 1, true) then
+		return "power"
+	elseif string.find(raw, "damage", 1, true) then
+		return "damage"
 	end
 
 	return nil
@@ -510,12 +616,15 @@ local function resolve_traits(external_values, entries, kind, localize_trait_lab
 	for index, external in ipairs(external_values) do
 		local candidates = {}
 		local candidate_indexes = {}
+		local target_family = kind == "perk" and external_perk_family(external) or nil
 
 		for _, entry in ipairs(entries or {}) do
 			local score = trait_score(external, entry, localize_trait_label)
 			local entry_slot = kind == "perk" and trait_slot(entry) or nil
+			local entry_family = kind == "perk" and entry_perk_family(entry) or nil
+			local family_compatible = target_family == nil or entry_family == nil or target_family == entry_family
 
-			if score > 0 and (entry_slot == nil or slot == nil or entry_slot == slot) then
+			if score > 0 and family_compatible and (entry_slot == nil or slot == nil or entry_slot == slot) then
 				local identity = candidate_identity(entry)
 				local existing_index = identity and candidate_indexes[identity]
 				local candidate = {entry = entry, score = score}
