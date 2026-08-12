@@ -5,6 +5,7 @@ local controller
 local panel
 local games_lantern_queue
 local games_lantern_import
+local games_lantern_selection
 local active_brunt_view
 local games_lantern_catalog_generation = 0
 local runtime_context
@@ -334,6 +335,10 @@ local function reporter(ui_panel)
 			end
 
 			if kind == "character_changed" then
+				if games_lantern_selection then
+					pcall(games_lantern_selection.abandon, games_lantern_selection)
+				end
+
 				if games_lantern_import then
 					pcall(games_lantern_import.cancel, games_lantern_import, "character_changed")
 				end
@@ -550,6 +555,7 @@ function AutoCrafter.configure(dependencies)
 	local ok_backend, Backend = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/backend")
 	local ok_context, Context = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/context")
 	local ok_games_lantern_queue, GamesLanternQueue = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/games_lantern/queue")
+	local ok_games_lantern_selection, GamesLanternSelection = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/games_lantern/selection_coordinator")
 	local ok_games_lantern_clipboard, GamesLanternClipboard = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/games_lantern/clipboard")
 	local ok_games_lantern_clipboard_host, GamesLanternClipboardHost = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/games_lantern/clipboard_host")
 	local ok_games_lantern_parser, GamesLanternParser = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/games_lantern/parser")
@@ -590,6 +596,10 @@ function AutoCrafter.configure(dependencies)
 		log("error", "Games Lantern queue unavailable; imported build support disabled.")
 		GamesLanternQueue = nil
 	end
+	if not ok_games_lantern_selection or type(GamesLanternSelection) ~= "table" or type(GamesLanternSelection.new) ~= "function" then
+		log("error", "Games Lantern Brunt selection coordinator unavailable; visible queue synchronization disabled.")
+		GamesLanternSelection = nil
+	end
 
 	local games_lantern_import_available = ok_games_lantern_clipboard and type(GamesLanternClipboard) == "table" and type(GamesLanternClipboard.extract_url) == "function" and ok_games_lantern_clipboard_host and type(GamesLanternClipboardHost) == "table" and type(GamesLanternClipboardHost.read) == "function" and ok_games_lantern_parser and type(GamesLanternParser) == "table" and type(GamesLanternParser.parse) == "function" and ok_games_lantern_resolver and type(GamesLanternResolver) == "table" and type(GamesLanternResolver.resolve_identities) == "function" and type(GamesLanternResolver.attach_catalogs) == "function" and ok_games_lantern_transport and type(GamesLanternTransport) == "table" and type(GamesLanternTransport.new) == "function" and ok_games_lantern_import and type(GamesLanternImport) == "table" and type(GamesLanternImport.new) == "function" and ((not running_under_wine() and ok_games_lantern_transport_win and type(GamesLanternTransportWin) == "table" and type(GamesLanternTransportWin.spawn) == "function") or (running_under_wine() and ok_games_lantern_transport_wine and type(GamesLanternTransportWine) == "table" and type(GamesLanternTransportWine.spawn) == "function"))
 	if not games_lantern_import_available then
@@ -613,6 +623,17 @@ function AutoCrafter.configure(dependencies)
 		is_brunt_view = dependencies.is_brunt_view,
 	})
 	runtime_context = context
+	games_lantern_selection = GamesLanternSelection and GamesLanternSelection.new({
+		current_selection = dependencies.get_selected_offer_snapshot,
+		select_offer = dependencies.select_offer,
+		view_is_valid = function(view)
+			return view ~= nil and view == active_brunt_view
+		end,
+		report = function(kind, payload)
+			local level = kind == "selection_failed" and "error" or "info"
+			log(level, string.format("Games Lantern Brunt selection event=%s reason=%s attempts=%s", tostring(kind), tostring(payload and payload.reason or "none"), tostring(payload and payload.attempts or 0)))
+		end,
+	}) or nil
 	games_lantern_queue = GamesLanternQueue and GamesLanternQueue.new({
 		select_job = function(job)
 			if not active_brunt_view or type(dependencies.select_offer) ~= "function" then
@@ -739,6 +760,9 @@ function AutoCrafter.configure(dependencies)
 			return false
 		end
 
+		if games_lantern_selection then
+			pcall(games_lantern_selection.cancel_pending, games_lantern_selection)
+		end
 		local started, start_reason = games_lantern_queue:start()
 		if not started then
 			controller:end_queue_operation()
@@ -875,9 +899,16 @@ function AutoCrafter.configure(dependencies)
 		if not games_lantern_queue or not active_brunt_view then
 			return false, "Brunt view unavailable"
 		end
+		if games_lantern_selection then
+			pcall(games_lantern_selection.capture_original, games_lantern_selection, active_brunt_view)
+		end
 
 		local installed_ok, installed, install_reason = pcall(games_lantern_queue.install, games_lantern_queue, build)
 		if not installed_ok or installed ~= true then
+			if games_lantern_selection then
+				pcall(games_lantern_selection.restore, games_lantern_selection, active_brunt_view)
+			end
+
 			return false, installed_ok and install_reason or installed
 		end
 
@@ -889,8 +920,14 @@ function AutoCrafter.configure(dependencies)
 		if not staged_ok or staged ~= true then
 			pcall(games_lantern_queue.clear, games_lantern_queue)
 			pcall(controller.clear_imported_job, controller)
+			if games_lantern_selection then
+				pcall(games_lantern_selection.restore, games_lantern_selection, active_brunt_view)
+			end
 
 			return false, staged_ok and stage_reason or staged
+		end
+		if games_lantern_selection then
+			pcall(games_lantern_selection.request, games_lantern_selection, active_brunt_view, selected_job.offer, "queue_installed")
 		end
 
 		return true
@@ -995,8 +1032,8 @@ function AutoCrafter.configure(dependencies)
 			if not selected then return false, job_or_reason end
 			local configured, configure_reason = controller:set_imported_job(job_or_reason)
 			if not configured then return false, configure_reason end
-			if type(dependencies.select_offer) == "function" then
-				pcall(dependencies.select_offer, active_brunt_view, job_or_reason.offer)
+			if games_lantern_selection then
+				pcall(games_lantern_selection.request, games_lantern_selection, active_brunt_view, job_or_reason.offer, "queue_card_selected")
 			end
 			presentation_dirty = true
 			invalidate_games_lantern_panel()
@@ -1061,6 +1098,9 @@ function AutoCrafter.configure(dependencies)
 			if cleared then
 				pcall(controller.clear_imported_job, controller)
 				pcall(games_lantern_import.clear, games_lantern_import)
+				if games_lantern_selection and active_brunt_view then
+					pcall(games_lantern_selection.restore, games_lantern_selection, active_brunt_view)
+				end
 			end
 
 			return cleared == true, reason
@@ -1128,6 +1168,13 @@ function AutoCrafter.on_brunt_view_ready(view)
 	if panel then
 		panel:attach(view)
 	end
+	if games_lantern_selection and games_lantern_queue then
+		local queue = games_lantern_queue:snapshot()
+		local job = queue and queue.jobs and queue.jobs[tonumber(queue.planner_index) or 1]
+		if job and queue.state == "staged" then
+			pcall(games_lantern_selection.request, games_lantern_selection, view, job.offer, "brunt_view_reopened")
+		end
+	end
 
 	return controller and controller:on_brunt_view_ready(view) or false
 end
@@ -1139,6 +1186,9 @@ function AutoCrafter.on_view_closed(view)
 
 	active_brunt_view = nil
 	presentation_dirty = true
+	if games_lantern_selection then
+		pcall(games_lantern_selection.cancel_pending, games_lantern_selection)
+	end
 
 	if games_lantern_import then
 		local import_state = games_lantern_import:snapshot()
@@ -1164,6 +1214,9 @@ end
 function AutoCrafter.on_context_exit(reason)
 	active_brunt_view = nil
 	presentation_dirty = true
+	if games_lantern_selection then
+		pcall(games_lantern_selection.abandon, games_lantern_selection)
+	end
 
 	if games_lantern_queue then
 		local queue_state = games_lantern_queue:snapshot()
@@ -1224,6 +1277,13 @@ function AutoCrafter.update(dt)
 		end
 		if games_lantern_import:state() ~= import_state_before then
 			invalidate_games_lantern_panel()
+		end
+	end
+	if games_lantern_selection and games_lantern_selection:has_pending() and active_brunt_view then
+		local selection_ok, selection_error = pcall(games_lantern_selection.update, games_lantern_selection, active_brunt_view)
+		if not selection_ok then
+			log("error", "Games Lantern Brunt selection update failed: " .. tostring(selection_error))
+			pcall(games_lantern_selection.cancel_pending, games_lantern_selection)
 		end
 	end
 
@@ -1346,6 +1406,9 @@ function AutoCrafter.shutdown()
 	presentation_dirty = true
 	presentation_elapsed = 0
 	presentation_snapshot = nil
+	if games_lantern_selection then
+		pcall(games_lantern_selection.abandon, games_lantern_selection)
+	end
 	if games_lantern_import then
 		pcall(games_lantern_import.cancel, games_lantern_import, "shutdown")
 	end
@@ -1375,6 +1438,7 @@ function AutoCrafter.shutdown()
 	controller = nil
 	games_lantern_queue = nil
 	games_lantern_import = nil
+	games_lantern_selection = nil
 	runtime_context = nil
 	start_games_lantern_queue = nil
 	controller_faulted = false

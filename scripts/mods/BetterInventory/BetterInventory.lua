@@ -205,6 +205,31 @@ local function auto_crafter_same_id(left, right)
 	return left ~= nil and right ~= nil and (left == right or tostring(left) == tostring(right))
 end
 
+local function auto_crafter_selected_offer_snapshot(view)
+	local offer = auto_crafter_read(view, "_previewed_offer")
+	if not offer then
+		return nil
+	end
+
+	local tab_menu = auto_crafter_read(view, "_tab_menu_element")
+	local tab_index
+	if tab_menu and type(tab_menu.selected_index) == "function" then
+		local ok, selected = pcall(tab_menu.selected_index, tab_menu)
+		tab_index = ok and tonumber(selected) or nil
+	end
+
+	local tabs = auto_crafter_read(view, "_tabs_content")
+	local tab = tab_index and type(tabs) == "table" and tabs[tab_index] or nil
+	local slot_types = auto_crafter_read(tab, "slot_types")
+
+	return {
+		offer_id = auto_crafter_read(offer, "offerId") or auto_crafter_read(offer, "offer_id"),
+		master_id = auto_crafter_master_id(offer),
+		slot_type = type(slot_types) == "table" and slot_types[1] or nil,
+		tab_index = tab_index,
+	}
+end
+
 local function auto_crafter_select_offer(view, selected_offer)
 	if not view or not selected_offer then
 		return false
@@ -233,7 +258,7 @@ local function auto_crafter_select_offer(view, selected_offer)
 	end
 
 	local tabs = auto_crafter_read(view, "_tabs_content")
-	local target_tab_index
+	local target_tab_index = tonumber(selected_offer.tab_index)
 
 	if selected_offer.slot_type and type(tabs) == "table" then
 		for tab_index, tab in ipairs(tabs) do
@@ -430,6 +455,7 @@ AutoCrafter.configure({
 	get_selected_offer = function(view)
 		return view and view._previewed_offer
 	end,
+	get_selected_offer_snapshot = auto_crafter_selected_offer_snapshot,
 	select_offer = auto_crafter_select_offer,
 	ViewElementGrid = ViewElementGrid,
 })
