@@ -3588,6 +3588,17 @@ def main() -> None:
     assert single_line_weapon_widget.content.better_inventory_full_display_name == (
         "John Darktide Helbore Lasgun Mk VI"
     )
+    single_line_rendered_width = globals_.TestText.text_width(
+        None,
+        single_line_weapon_widget.content.display_name,
+        single_line_weapon_widget.style.display_name,
+        lua.table_from([1000000, 30]),
+        True,
+    )
+    # A full preferred-font glyph remains free at the right edge. This models
+    # the three-column Slug spill where the final mark character wrapped even
+    # though the crop helper considered the title an exact-width fit.
+    assert single_line_rendered_width <= 145 - 16
     mod.settings.force_weapon_name_single_line = False
 
     globals_.preserve_test_shading = False

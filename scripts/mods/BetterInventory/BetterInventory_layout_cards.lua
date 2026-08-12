@@ -63,11 +63,36 @@ local DEFAULT_WEAPON_PERK_COLOR = content.DEFAULT_WEAPON_PERK_COLOR
 local DEFAULT_WEAPON_BLESSING_TEXT_COLOR = content.DEFAULT_WEAPON_BLESSING_TEXT_COLOR
 local DEFAULT_ARMOURY_ITEM_LEVEL_COLOR = content.DEFAULT_ARMOURY_ITEM_LEVEL_COLOR
 local SLOT_SETTING_BY_NAME = content.SLOT_SETTING_BY_NAME
-local SINGLE_LINE_WEAPON_NAME_SAFETY_MARGIN = 8
+local SINGLE_LINE_WEAPON_NAME_MINIMUM_SAFETY_MARGIN = 8
 local NON_BREAKING_SPACE = string.char(194, 160)
 
 local function non_wrapping_title(value)
 	return string.gsub(value, " ", NON_BREAKING_SPACE)
+end
+
+local function rendered_title_width(ui_renderer, value, style, measurement_size, force_single_line)
+	value = force_single_line and non_wrapping_title(value) or value
+
+	return Text.text_width(ui_renderer, value, style, measurement_size, true)
+end
+
+local function strictly_crop_title(ui_renderer, value, style, measurement_size, maximum_width, force_single_line)
+	local crop_width = maximum_width
+	local cropped = Text.crop_text_width(ui_renderer, value, style, crop_width)
+	local cropped_width = rendered_title_width(ui_renderer, cropped, style, measurement_size, force_single_line)
+	local attempts = 0
+
+	-- Darktide's crop helper estimates room for its ellipsis. Re-measure the
+	-- actual result because font extents can exceed that estimate by a glyph.
+	while cropped_width > maximum_width and crop_width > 1 and attempts < 16 do
+		local overrun = math.max(1, math.ceil(cropped_width - maximum_width))
+		crop_width = math.max(1, crop_width - overrun - 1)
+		cropped = Text.crop_text_width(ui_renderer, value, style, crop_width)
+		cropped_width = rendered_title_width(ui_renderer, cropped, style, measurement_size, force_single_line)
+		attempts = attempts + 1
+	end
+
+	return cropped
 end
 
 local NATIVE_SINGLE_COLUMN_CONTENT_GAP = content.NATIVE_SINGLE_COLUMN_CONTENT_GAP
@@ -1251,7 +1276,10 @@ local function fit_display_name(parent, widget, ui_renderer, preferred_font_size
 	style.font_size = preferred_font_size
 
 	if force_single_line then
-		maximum_width = math.max(1, maximum_width - SINGLE_LINE_WEAPON_NAME_SAFETY_MARGIN)
+		-- Keep one rendered glyph of clearance. Slug can otherwise character-wrap
+		-- the final mark glyph when font extents land exactly on the style edge.
+		local safety_margin = math.max(SINGLE_LINE_WEAPON_NAME_MINIMUM_SAFETY_MARGIN, preferred_font_size)
+		maximum_width = math.max(1, maximum_width - safety_margin)
 		style.size[2] = math.min(style.size[2] or preferred_font_size + 6, preferred_font_size + 6)
 	end
 
@@ -1259,11 +1287,11 @@ local function fit_display_name(parent, widget, ui_renderer, preferred_font_size
 		1000000,
 		style.size[2] or 30,
 	}
-	local measured_width = Text.text_width(ui_renderer, display_name, style, measurement_size, true)
+	local measured_width = rendered_title_width(ui_renderer, display_name, style, measurement_size, force_single_line)
 
 	while measured_width > maximum_width and style.font_size > minimum_font_size do
 		style.font_size = style.font_size - 1
-		measured_width = Text.text_width(ui_renderer, display_name, style, measurement_size, true)
+		measured_width = rendered_title_width(ui_renderer, display_name, style, measurement_size, force_single_line)
 	end
 
 	content.better_inventory_full_display_name = display_name
@@ -1273,12 +1301,21 @@ local function fit_display_name(parent, widget, ui_renderer, preferred_font_size
 		local suffix = content.better_inventory_display_name_suffix
 
 		if base_name and suffix then
-			local suffix_width = Text.text_width(ui_renderer, suffix, style, measurement_size, true)
+			local suffix_width = rendered_title_width(ui_renderer, suffix, style, measurement_size, force_single_line)
 			local maximum_base_width = maximum_width - suffix_width
 
 			if maximum_base_width > 0 then
-				local base_width = Text.text_width(ui_renderer, base_name, style, measurement_size, true)
-				local fitted_base_name = base_width > maximum_base_width and Text.crop_text_width(ui_renderer, base_name, style, maximum_base_width) or base_name
+				local base_width = rendered_title_width(ui_renderer, base_name, style, measurement_size, force_single_line)
+				local fitted_base_name = base_width > maximum_base_width and strictly_crop_title(ui_renderer, base_name, style, measurement_size, maximum_base_width, force_single_line) or base_name
+				local fitted_width = rendered_title_width(ui_renderer, fitted_base_name .. suffix, style, measurement_size, force_single_line)
+				local attempts = 0
+
+				while fitted_width > maximum_width and maximum_base_width > 1 and attempts < 8 do
+					maximum_base_width = math.max(1, maximum_base_width - math.ceil(fitted_width - maximum_width) - 1)
+					fitted_base_name = strictly_crop_title(ui_renderer, base_name, style, measurement_size, maximum_base_width, force_single_line)
+					fitted_width = rendered_title_width(ui_renderer, fitted_base_name .. suffix, style, measurement_size, force_single_line)
+					attempts = attempts + 1
+				end
 
 				content.display_name = fitted_base_name .. suffix
 
@@ -1290,7 +1327,7 @@ local function fit_display_name(parent, widget, ui_renderer, preferred_font_size
 			end
 		end
 
-		content.display_name = Text.crop_text_width(ui_renderer, display_name, style, maximum_width)
+		content.display_name = force_single_line and strictly_crop_title(ui_renderer, display_name, style, measurement_size, maximum_width, true) or Text.crop_text_width(ui_renderer, display_name, style, maximum_width)
 	end
 
 	if force_single_line then
