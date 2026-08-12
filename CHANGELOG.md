@@ -1,6 +1,10 @@
 # BetterInventory changelog
 
-## 2.1.5 - In development
+## 2.1.6 - In development
+
+- Enabled the single-line weapon-name policy by default, with bounded font reduction, mark-preserving truncation, and strict three-column overflow protection for long standard and customized names.
+
+## 2.1.5 - 2026-08-12
 
 - Added optional exact five-stat Auto Crafter targets with contextual two-column controls for every selected weapon stat.
 - Enforced 60-80 per-stat bounds and a hard 380 total; invalid totals are highlighted and cannot dispatch account mutations.

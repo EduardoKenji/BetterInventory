@@ -1,4 +1,4 @@
-local MOD_VERSION = "2.1.5"
+local MOD_VERSION = "2.1.6"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
@@ -1541,6 +1541,12 @@ return {
 					{
 						setting_id = "append_mark_to_name",
 						tooltip = "append_mark_to_name_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
+						setting_id = "force_weapon_name_single_line",
+						tooltip = "force_weapon_name_single_line_tooltip",
 						type = "checkbox",
 						default_value = true,
 					},

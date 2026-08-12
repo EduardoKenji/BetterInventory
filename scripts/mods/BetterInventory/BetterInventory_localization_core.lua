@@ -705,6 +705,12 @@ local localization = {
 	append_mark_to_name_tooltip = {
 		en = "Formats weapon titles like 'Combat Blade Mk VI' and leaves only the weapon pattern on the secondary line. Narrow titles preserve the Mark when shortened.",
 	},
+	force_weapon_name_single_line = {
+		en = "Force weapon name to a single line",
+	},
+	force_weapon_name_single_line_tooltip = {
+		en = "Keeps each weapon title on one line. Long titles first shrink to the configured minimum item-name font size, then shorten with an ellipsis while preserving an appended Mk name.",
+	},
 	show_pattern_mark = {
 		en = "Show weapon pattern line",
 	},

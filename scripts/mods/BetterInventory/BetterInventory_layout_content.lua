@@ -1214,7 +1214,32 @@ local function localized_item_name(item, fallback)
 	return fallback
 end
 
-local function format_item_name(mod, widget, element, append_mark_to_name)
+local function append_weapon_mark(content, item)
+	local display_name = content and content.display_name
+	local mark_ok, mark_name = pcall(Items.weapon_lore_mark_name, item)
+
+	mark_name = mark_ok and mark_name or nil
+
+	if not valid_weapon_name_part(display_name) or not valid_weapon_name_part(mark_name) then
+		return false
+	end
+
+	local suffix = " " .. mark_name
+	local base_name = display_name
+
+	if #display_name > #suffix and string.sub(display_name, -#suffix) == suffix then
+		base_name = string.sub(display_name, 1, #display_name - #suffix)
+	else
+		content.display_name = display_name .. suffix
+	end
+
+	content.better_inventory_display_name_base = base_name
+	content.better_inventory_display_name_suffix = suffix
+
+	return true
+end
+
+local function format_item_name(mod, widget, element, append_mark_to_name, force_weapon_name_single_line)
 	local content = widget and widget.content
 
 	if not content then
@@ -1237,6 +1262,7 @@ local function format_item_name(mod, widget, element, append_mark_to_name)
 	local internal_name_target = customization and customization.name_target
 	local external_name = fallback_name_it_name(mod, item, false)
 	local external_sub_name = fallback_name_it_name(mod, item, true)
+	local preserve_custom_mark = append_mark_to_name and force_weapon_name_single_line
 
 	if is_curio(item) then
 		content.display_name = external_name or internal_name or localized_item_name(item, content.display_name)
@@ -1261,11 +1287,19 @@ local function format_item_name(mod, widget, element, append_mark_to_name)
 
 			content.sub_display_name = internal_name
 
+			if preserve_custom_mark then
+				append_weapon_mark(content, item)
+			end
+
 			return
 		end
 
 		content.display_name = internal_name
 		content.sub_display_name = ""
+
+		if preserve_custom_mark then
+			append_weapon_mark(content, item)
+		end
 
 		return
 	end
@@ -1273,6 +1307,10 @@ local function format_item_name(mod, widget, element, append_mark_to_name)
 	if external_name then
 		content.display_name = external_name
 		content.sub_display_name = ""
+
+		if preserve_custom_mark then
+			append_weapon_mark(content, item)
+		end
 
 		return
 	elseif external_sub_name then
@@ -1283,6 +1321,10 @@ local function format_item_name(mod, widget, element, append_mark_to_name)
 		end
 
 		content.sub_display_name = external_sub_name
+
+		if preserve_custom_mark then
+			append_weapon_mark(content, item)
+		end
 
 		return
 	end
@@ -1297,20 +1339,9 @@ local function format_item_name(mod, widget, element, append_mark_to_name)
 		return
 	end
 
-	local display_name = content.display_name
-	local mark_ok, mark_name = pcall(Items.weapon_lore_mark_name, item)
-
-	mark_name = mark_ok and mark_name or nil
-
-	if not valid_weapon_name_part(display_name) or not valid_weapon_name_part(mark_name) then
+	if not append_weapon_mark(content, item) then
 		return
 	end
-
-	local suffix = " " .. mark_name
-
-	content.better_inventory_display_name_base = display_name
-	content.better_inventory_display_name_suffix = suffix
-	content.display_name = display_name .. suffix
 
 	local pattern_ok, pattern_name = pcall(Items.weapon_lore_pattern_name, item)
 
@@ -1489,7 +1520,7 @@ Content.refresh_item_customization = function(mod, widget, element)
 	end
 
 	element = element or widget.content and widget.content.element
-	format_item_name(mod, widget, element, setting(mod, "append_mark_to_name", true))
+	format_item_name(mod, widget, element, setting(mod, "append_mark_to_name", true), setting(mod, "force_weapon_name_single_line", true))
 	apply_item_customization_style(mod, widget, element)
 
 	return true

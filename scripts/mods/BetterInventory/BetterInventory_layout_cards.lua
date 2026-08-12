@@ -63,6 +63,38 @@ local DEFAULT_WEAPON_PERK_COLOR = content.DEFAULT_WEAPON_PERK_COLOR
 local DEFAULT_WEAPON_BLESSING_TEXT_COLOR = content.DEFAULT_WEAPON_BLESSING_TEXT_COLOR
 local DEFAULT_ARMOURY_ITEM_LEVEL_COLOR = content.DEFAULT_ARMOURY_ITEM_LEVEL_COLOR
 local SLOT_SETTING_BY_NAME = content.SLOT_SETTING_BY_NAME
+local SINGLE_LINE_WEAPON_NAME_MINIMUM_SAFETY_MARGIN = 8
+local NON_BREAKING_SPACE = string.char(194, 160)
+
+local function non_wrapping_title(value)
+	return string.gsub(value, " ", NON_BREAKING_SPACE)
+end
+
+local function rendered_title_width(ui_renderer, value, style, measurement_size, force_single_line)
+	value = force_single_line and non_wrapping_title(value) or value
+
+	return Text.text_width(ui_renderer, value, style, measurement_size, true)
+end
+
+local function strictly_crop_title(ui_renderer, value, style, measurement_size, maximum_width, force_single_line)
+	local crop_width = maximum_width
+	local cropped = Text.crop_text_width(ui_renderer, value, style, crop_width)
+	local cropped_width = rendered_title_width(ui_renderer, cropped, style, measurement_size, force_single_line)
+	local attempts = 0
+
+	-- Darktide's crop helper estimates room for its ellipsis. Re-measure the
+	-- actual result because font extents can exceed that estimate by a glyph.
+	while cropped_width > maximum_width and crop_width > 1 and attempts < 16 do
+		local overrun = math.max(1, math.ceil(cropped_width - maximum_width))
+		crop_width = math.max(1, crop_width - overrun - 1)
+		cropped = Text.crop_text_width(ui_renderer, value, style, crop_width)
+		cropped_width = rendered_title_width(ui_renderer, cropped, style, measurement_size, force_single_line)
+		attempts = attempts + 1
+	end
+
+	return cropped
+end
+
 local NATIVE_SINGLE_COLUMN_CONTENT_GAP = content.NATIVE_SINGLE_COLUMN_CONTENT_GAP
 local COLUMN_SETTING_BY_SLOT = content.COLUMN_SETTING_BY_SLOT
 local GLOBAL_STORE_CHARACTER_ROW_HEIGHT = content.GLOBAL_STORE_CHARACTER_ROW_HEIGHT
@@ -1144,7 +1176,7 @@ local function format_item_level(widget, element, show_item_level_icon)
 	end
 end
 
-local function fit_display_name(parent, widget, ui_renderer, preferred_font_size, minimum_font_size)
+local function fit_display_name(parent, widget, ui_renderer, preferred_font_size, minimum_font_size, force_weapon_name_single_line)
 	local content = widget and widget.content
 	local style = widget and widget.style and widget.style.display_name
 	local display_name = content and content.display_name
@@ -1206,6 +1238,26 @@ local function fit_display_name(parent, widget, ui_renderer, preferred_font_size
 		return
 	end
 
+	local force_single_line = force_weapon_name_single_line and is_weapon(item_from_content(content))
+
+	if force_single_line then
+		local base_name = content.better_inventory_display_name_base
+		local suffix = content.better_inventory_display_name_suffix
+
+		if base_name and suffix then
+			base_name = single_line_text(base_name)
+			suffix = single_line_text(suffix)
+			suffix = suffix ~= "" and " " .. suffix or ""
+			content.better_inventory_display_name_base = base_name
+			content.better_inventory_display_name_suffix = suffix
+			display_name = base_name .. suffix
+		else
+			display_name = single_line_text(display_name)
+		end
+
+		content.display_name = display_name
+	end
+
 	ui_renderer = ui_renderer or grid_ui_renderer(parent)
 
 	if not ui_renderer then
@@ -1223,15 +1275,23 @@ local function fit_display_name(parent, widget, ui_renderer, preferred_font_size
 	style.word_wrap = false
 	style.font_size = preferred_font_size
 
+	if force_single_line then
+		-- Keep one rendered glyph of clearance. Slug can otherwise character-wrap
+		-- the final mark glyph when font extents land exactly on the style edge.
+		local safety_margin = math.max(SINGLE_LINE_WEAPON_NAME_MINIMUM_SAFETY_MARGIN, preferred_font_size)
+		maximum_width = math.max(1, maximum_width - safety_margin)
+		style.size[2] = math.min(style.size[2] or preferred_font_size + 6, preferred_font_size + 6)
+	end
+
 	local measurement_size = {
 		1000000,
 		style.size[2] or 30,
 	}
-	local measured_width = Text.text_width(ui_renderer, display_name, style, measurement_size, true)
+	local measured_width = rendered_title_width(ui_renderer, display_name, style, measurement_size, force_single_line)
 
 	while measured_width > maximum_width and style.font_size > minimum_font_size do
 		style.font_size = style.font_size - 1
-		measured_width = Text.text_width(ui_renderer, display_name, style, measurement_size, true)
+		measured_width = rendered_title_width(ui_renderer, display_name, style, measurement_size, force_single_line)
 	end
 
 	content.better_inventory_full_display_name = display_name
@@ -1241,20 +1301,37 @@ local function fit_display_name(parent, widget, ui_renderer, preferred_font_size
 		local suffix = content.better_inventory_display_name_suffix
 
 		if base_name and suffix then
-			local suffix_width = Text.text_width(ui_renderer, suffix, style, measurement_size, true)
+			local suffix_width = rendered_title_width(ui_renderer, suffix, style, measurement_size, force_single_line)
 			local maximum_base_width = maximum_width - suffix_width
 
 			if maximum_base_width > 0 then
-				local base_width = Text.text_width(ui_renderer, base_name, style, measurement_size, true)
-				local fitted_base_name = base_width > maximum_base_width and Text.crop_text_width(ui_renderer, base_name, style, maximum_base_width) or base_name
+				local base_width = rendered_title_width(ui_renderer, base_name, style, measurement_size, force_single_line)
+				local fitted_base_name = base_width > maximum_base_width and strictly_crop_title(ui_renderer, base_name, style, measurement_size, maximum_base_width, force_single_line) or base_name
+				local fitted_width = rendered_title_width(ui_renderer, fitted_base_name .. suffix, style, measurement_size, force_single_line)
+				local attempts = 0
+
+				while fitted_width > maximum_width and maximum_base_width > 1 and attempts < 8 do
+					maximum_base_width = math.max(1, maximum_base_width - math.ceil(fitted_width - maximum_width) - 1)
+					fitted_base_name = strictly_crop_title(ui_renderer, base_name, style, measurement_size, maximum_base_width, force_single_line)
+					fitted_width = rendered_title_width(ui_renderer, fitted_base_name .. suffix, style, measurement_size, force_single_line)
+					attempts = attempts + 1
+				end
 
 				content.display_name = fitted_base_name .. suffix
+
+				if force_single_line then
+					content.display_name = non_wrapping_title(content.display_name)
+				end
 
 				return
 			end
 		end
 
-		content.display_name = Text.crop_text_width(ui_renderer, display_name, style, maximum_width)
+		content.display_name = force_single_line and strictly_crop_title(ui_renderer, display_name, style, measurement_size, maximum_width, true) or Text.crop_text_width(ui_renderer, display_name, style, maximum_width)
+	end
+
+	if force_single_line then
+		content.display_name = non_wrapping_title(content.display_name)
 	end
 end
 
@@ -1421,6 +1498,7 @@ local function configure_card_content(mod, item_blueprint, configuration)
 	local preferred_font_size = configuration.native_single_column and numeric_setting(mod, "single_column_weapon_name_font_size", 20, 10, 24) or grid_weapon_name_font_size(mod, configuration)
 	local minimum_font_size = numeric_setting(mod, "minimum_item_name_font_size", 12, 8, 20)
 	local append_mark_to_name = setting(mod, "append_mark_to_name", true)
+	local force_weapon_name_single_line = setting(mod, "force_weapon_name_single_line", true)
 	local blessing_display_mode = weapon_blessing_display_mode(mod)
 	local show_weapon_perks = setting(mod, "show_weapon_perks", true)
 	local weapon_perk_compression = setting(mod, "weapon_perk_compression", "heavy")
@@ -1443,12 +1521,12 @@ local function configure_card_content(mod, item_blueprint, configuration)
 	if original_init then
 		item_blueprint.init = function(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
 			original_init(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
-			format_item_name(mod, widget, element, append_mark_to_name)
+			format_item_name(mod, widget, element, append_mark_to_name, force_weapon_name_single_line)
 			synchronize_rarity_tag_color(widget, element)
 			apply_item_customization_style(mod, widget, element)
 			format_item_level(widget, element, show_item_level_icon)
 			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers, show_blessing_text_icons)
-			fit_display_name(parent, widget, ui_renderer, preferred_font_size, math.min(preferred_font_size, minimum_font_size))
+			fit_display_name(parent, widget, ui_renderer, preferred_font_size, math.min(preferred_font_size, minimum_font_size), force_weapon_name_single_line)
 			fit_blessing_text(parent, widget, ui_renderer)
 			fit_weapon_perks(parent, widget, ui_renderer)
 			fit_curio_stats(parent, widget, ui_renderer)
@@ -1462,12 +1540,12 @@ local function configure_card_content(mod, item_blueprint, configuration)
 			-- the new card's baseline colors.
 			restore_item_customization_style(widget)
 			original_update_data(parent, widget, element)
-			format_item_name(mod, widget, element, append_mark_to_name)
+			format_item_name(mod, widget, element, append_mark_to_name, force_weapon_name_single_line)
 			synchronize_rarity_tag_color(widget, element)
 			apply_item_customization_style(mod, widget, element)
 			format_item_level(widget, element, show_item_level_icon)
 			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers, show_blessing_text_icons)
-			fit_display_name(parent, widget, nil, preferred_font_size, math.min(preferred_font_size, minimum_font_size))
+			fit_display_name(parent, widget, nil, preferred_font_size, math.min(preferred_font_size, minimum_font_size), force_weapon_name_single_line)
 			fit_blessing_text(parent, widget, nil)
 			fit_weapon_perks(parent, widget, nil)
 			fit_curio_stats(parent, widget, nil)

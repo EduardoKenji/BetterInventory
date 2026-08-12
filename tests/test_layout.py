@@ -369,6 +369,7 @@ def main() -> None:
 				automatic_card_height = true,
                 icon_darkness = 25,
 				append_mark_to_name = true,
+				force_weapon_name_single_line = false,
                 show_pattern_mark = false,
                 show_rarity_name = false,
 				show_rarity_tag = true,
@@ -3509,6 +3510,10 @@ def main() -> None:
                             background_color = { 255, 40, 50, 60 },
                             background_preserve_shading = preserve_test_shading,
                         }
+                    elseif gear_id == "single-line-weapon" then
+                        return {
+                            name = "John Darktide\\nHelbore Lasgun",
+                        }
                     end
                 end,
             }
@@ -3547,6 +3552,55 @@ def main() -> None:
     assert tuple(custom_weapon_widget.style.background.color[index] for index in range(1, 5)) == (255, 1, 2, 3)
     assert tuple(custom_weapon_widget.style.background_gradient.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
     assert tuple(custom_weapon_widget.style.rarity_tag.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
+
+    # The opt-in title policy normalizes line breaks, shrinks only to the
+    # configured minimum, and truncates the custom base while preserving Mark.
+    mod.settings.force_weapon_name_single_line = True
+    single_line_weapon_element = lua.eval("table.clone")(narrow_weapon_element)
+    single_line_weapon_element.item.gear_id = "single-line-weapon"
+    single_line_weapon_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, single_line_weapon_blueprint, 640)
+    single_line_name_style = blueprint_pass(
+        single_line_weapon_blueprint, "display_name"
+    ).style
+    single_line_name_style.size[1] = 145
+    single_line_weapon_widget = lua.table_from(
+        {
+            "content": lua.table_from({}),
+            "style": lua.table_from({"display_name": single_line_name_style}),
+        }
+    )
+    single_line_weapon_blueprint.init(
+        None,
+        single_line_weapon_widget,
+        single_line_weapon_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        single_line_weapon_blueprint,
+    )
+    assert "\n" not in single_line_weapon_widget.content.display_name
+    assert single_line_weapon_widget.content.display_name.endswith("\u00a0Mk\u00a0VI")
+    assert " " not in single_line_weapon_widget.content.display_name
+    assert "..." in single_line_weapon_widget.content.display_name
+    assert single_line_weapon_widget.style.display_name.font_size == 12
+    assert single_line_weapon_widget.content.better_inventory_full_display_name == (
+        "John Darktide Helbore Lasgun Mk VI"
+    )
+    single_line_rendered_width = globals_.TestText.text_width(
+        None,
+        single_line_weapon_widget.content.display_name,
+        single_line_weapon_widget.style.display_name,
+        lua.table_from([1000000, 30]),
+        True,
+    )
+    # A full preferred-font glyph remains free at the right edge. This models
+    # the three-column Slug spill where the final mark character wrapped even
+    # though the crop helper considered the title an exact-width fit.
+    assert single_line_rendered_width <= 145 - 16
+    mod.settings.force_weapon_name_single_line = False
+
     globals_.preserve_test_shading = False
     layout.apply_item_customization_style(mod, custom_weapon_widget, custom_weapon_element)
     assert tuple(custom_weapon_widget.style.background.color[index] for index in range(1, 5)) == (255, 40, 50, 60)

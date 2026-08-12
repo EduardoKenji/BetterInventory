@@ -1,6 +1,6 @@
 # BetterInventory
 
-> Project status: BetterInventory v2.1.5 development. Account-changing workflows remain opt-in and disabled by default.
+> Project status: BetterInventory v2.1.6 development. Account-changing workflows remain opt-in and disabled by default.
 >
 > Audit date: 2026-08-07. See [`docs/v2.0.0-full-project-audit.md`](docs/v2.0.0-full-project-audit.md) for the prioritized implementation backlog and release gates.
 
@@ -50,7 +50,7 @@ It currently covers the character melee, ranged and Curio inventory and provides
 - Current weapon pattern/mark, optional quality text, expertise, favorite and equipped state preservation.
 - Default `Weapon Name Mk` formatting that moves the Mark into the title; the separate weapon-pattern line and quality text are opt-in.
 - One-time migration of previously saved title, pattern and quality settings to the established defaults; later user changes are preserved.
-- Adaptive single-line item names that shrink to a configurable minimum and use an ellipsis only when still too wide, preventing overlap with the pattern/Mark line.
+- A default-on strict single-line weapon-title policy. Long standard or customized names shrink to the configured minimum font size, then use an ellipsis while preserving an appended `Mk` suffix.
 - Compact favorite-marker and font-size options, including upper-right-above-power and lower-left marker positions.
 - A default-on soft white glow around equipped cards, driven by Darktide's native equipped state and independently toggleable without hiding the native equipped symbol.
 - A four-mode weapon blessing dropdown: **Tier symbols + text** by default, ranked **Icons**, compact **Text lines**, or **Off**. Icon mode uses Darktide's current composited blessing material and ranked frame; icon size is configurable from 20–48 px (36 px by default), with a configurable 0–20 px horizontal gap defaulting to 3 px. Text mode prefixes each localized name with Darktide's authoritative Roman rank, for example `III Surgical`; Tier-symbol mode pairs the same name with Darktide's standalone native I–IV perk-rank material. Blessing text defaults to Light blue (`RGB 105, 200, 235`) at 80% opacity and has synchronized presets and RGB controls plus an independent 0–100% opacity slider. By default, four- and five-column grids put both text rows above a dedicated item-level row, giving each name the remaining card width; the threshold can be set to Always, five columns only, or Never.
@@ -100,7 +100,7 @@ The normal/default configuration does not alter filters or backend transactions.
 
 ## Supported integrations
 
-The following integrations are supported in v2.1.5. BetterInventory has no optional mod dependencies; each integration activates only when its corresponding mod is installed.
+The following integrations are supported in v2.1.6. BetterInventory has no optional mod dependencies; each integration activates only when its corresponding mod is installed.
 
 - Quick Look Card: optional integration for single-column and grid layouts. BetterInventory also includes its own built-in weapon-modifier display.
 - Enhanced Descriptions: compatible Curio text handling with an option to preserve BetterInventory's simplified primary-stat labels.
