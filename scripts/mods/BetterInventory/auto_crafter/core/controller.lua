@@ -198,6 +198,7 @@ local function copy_stat_targets(targets)
 		for _, target in ipairs(targets) do
 			copied[#copied + 1] = {
 				display_name_key = target.display_name_key,
+				label = target.label,
 				name = target.name,
 				value = tonumber(target.value),
 			}
@@ -211,6 +212,36 @@ local function copy_stat_targets(targets)
 	end
 
 	return copied
+end
+
+local function valid_custom_stat_targets(targets, require_total)
+	if type(targets) ~= "table" or #targets ~= 5 then
+		return false, nil, "custom stats require exactly five targets"
+	end
+
+	local seen = {}
+	local total = 0
+
+	for index, target in ipairs(targets) do
+		local name = type(target) == "table" and target.name or nil
+		local value = tonumber(type(target) == "table" and target.value or target)
+
+		if name == nil or name == "" or seen[tostring(name)] then
+			return false, nil, "custom stat identities must be present and unique"
+		end
+		if value == nil or value ~= math.floor(value) or value < 60 or value > 80 then
+			return false, nil, string.format("custom stat %d must be a whole number between 60 and 80", index)
+		end
+
+		seen[tostring(name)] = true
+		total = total + value
+	end
+
+	if total > 380 or require_total and total ~= 380 then
+		return false, total, string.format("custom stat total must %s 380 (current: %d)", require_total and "equal" or "not exceed", total)
+	end
+
+	return true, total
 end
 
 local function custom_stat_value(candidate, stat_name, target)
@@ -690,7 +721,8 @@ local function planner_config_signature(config)
 	}
 
 	for index = 1, 5 do
-		fields[#fields + 1] = tostring(config.custom_stat_targets and config.custom_stat_targets[index])
+		local target = config.custom_stat_targets and config.custom_stat_targets[index]
+		fields[#fields + 1] = type(target) == "table" and table.concat({ tostring(target.name), tostring(target.display_name_key), tostring(target.value) }, ":") or tostring(target)
 	end
 
 	return table.concat(fields, "|")
@@ -1163,13 +1195,14 @@ function Controller.new(dependencies)
 
 	local function planner_config()
 		local imported_job = self._run_imported_job or self._imported_job
-		local custom_stats_enabled = not imported_job and setting("auto_crafter_custom_stats", false) == true
+		local imported_custom_stats = imported_job and imported_job.custom_stats_enabled == true
+		local custom_stats_enabled = imported_custom_stats or not imported_job and setting("auto_crafter_custom_stats", false) == true
 
 		return {
 			dump_stat = imported_job and imported_job.dump_stat or setting("auto_crafter_target_dump_stat", "damage"),
 			dump_target = imported_job and imported_job.dump_target or setting("auto_crafter_dump_stat_target", 60),
 			custom_stats_enabled = custom_stats_enabled,
-			custom_stat_targets = custom_stats_enabled and {
+			custom_stat_targets = imported_custom_stats and copy_stat_targets(imported_job.custom_stat_targets) or custom_stats_enabled and {
 				setting("auto_crafter_custom_stat_1", 76),
 				setting("auto_crafter_custom_stat_2", 76),
 				setting("auto_crafter_custom_stat_3", 76),
@@ -3696,7 +3729,7 @@ function Controller.new(dependencies)
 			return false
 		end
 
-		return tonumber(candidate_stat(item, job.dump_stat)) == tonumber(job.dump_target)
+		return candidate_matches_stat_targets(item, job.dump_stat, job.dump_target, job.custom_stats_enabled and job.custom_stat_targets or nil)
 			and (setting("auto_crafter_consecrate_transcendent", true) ~= true or (tonumber(item.rarity) or -1) >= TRANSCENDENT_RARITY)
 			and (setting("auto_crafter_upgrade_expertise_500", true) ~= true or (tonumber(item.expertise_level) or -1) >= MAX_EXPERTISE_LEVEL)
 			and (not change_perks or has_trait_targets(item.perks, job.perks))
@@ -3711,7 +3744,7 @@ function Controller.new(dependencies)
 		local include_favorites = setting("auto_crafter_include_favorite_inventory_bases", true) == true
 		for _, candidate in ipairs(self._snapshot and self._snapshot.gear and self._snapshot.gear.items or {}) do
 			local favorite_allowed = include_favorites or candidate.favorite_known == true and candidate.favorited ~= true
-			if candidate.available == true and candidate.gear_id ~= nil and candidate.equipped ~= true and favorite_allowed and self:_imported_family_matches(candidate, job) and tonumber(candidate_stat(candidate, job.dump_stat)) == tonumber(job.dump_target) and not self:_imported_item_is_complete(candidate, job) then
+			if candidate.available == true and candidate.gear_id ~= nil and candidate.equipped ~= true and favorite_allowed and self:_imported_family_matches(candidate, job) and candidate_matches_stat_targets(candidate, job.dump_stat, job.dump_target, job.custom_stats_enabled and job.custom_stat_targets or nil) and not self:_imported_item_is_complete(candidate, job) then
 				return true
 			end
 		end
@@ -4114,7 +4147,12 @@ function Controller.new(dependencies)
 	end
 
 	function self:set_imported_job(job)
-		if type(job) ~= "table" or job.kind ~= "games_lantern_job" or type(job.offer) ~= "table" or job.offer.master_id == nil or job.dump_stat == nil or type(job.perks) ~= "table" or #job.perks ~= 2 or type(job.blessings) ~= "table" or #job.blessings ~= 2 or type(job.catalog) ~= "table" or job.catalog.available ~= true then
+		local custom_valid, custom_total = true, nil
+		if job and job.custom_stats_enabled == true then
+			custom_valid, custom_total = valid_custom_stat_targets(job.custom_stat_targets, false)
+			custom_valid = custom_valid and (job.custom_stat_total == nil or tonumber(job.custom_stat_total) == custom_total)
+		end
+		if type(job) ~= "table" or job.kind ~= "games_lantern_job" or type(job.offer) ~= "table" or job.offer.master_id == nil or job.dump_stat == nil or not custom_valid or type(job.perks) ~= "table" or #job.perks ~= 2 or type(job.blessings) ~= "table" or #job.blessings ~= 2 or type(job.catalog) ~= "table" or job.catalog.available ~= true then
 			return false, "invalid imported job"
 		end
 
@@ -4184,11 +4222,16 @@ function Controller.new(dependencies)
 			local config = planner_config()
 			config.dump_stat = job.dump_stat
 			config.dump_target = job.dump_target
+			config.custom_stats_enabled = job.custom_stats_enabled == true
+			config.custom_stat_targets = copy_stat_targets(job.custom_stat_targets)
 			config.target_offer = job.offer
 			config.trait_catalog = job.catalog
 			local ok, plan = pcall(self._planner.build, self._snapshot, config)
 			if not ok or type(plan) ~= "table" or type(plan.estimate) ~= "table" then
 				return nil, "queue job " .. tostring(index) .. " preview unavailable"
+			end
+			if plan.custom_stats_enabled and (plan.custom_stats_valid ~= true or tonumber(plan.custom_stat_total) ~= 380) then
+				return nil, "queue job " .. tostring(index) .. " has an invalid custom stat total"
 			end
 			previews[index] = plan
 			signature_parts[#signature_parts + 1] = table.concat({
@@ -4198,8 +4241,12 @@ function Controller.new(dependencies)
 				tostring(job.offer and (job.offer.offer_id or job.offer.master_id)),
 				tostring(job.dump_stat),
 				tostring(job.dump_target),
+				tostring(job.custom_stats_enabled == true),
 				planner_config_signature(config),
 			}, ":")
+			for _, target in ipairs(job.custom_stat_targets or {}) do
+				signature_parts[#signature_parts + 1] = "stat:" .. tostring(target.name) .. ":" .. tostring(target.value)
+			end
 			for _, trait in ipairs(job.perks or {}) do
 				signature_parts[#signature_parts + 1] = "perk:" .. tostring(trait.id or trait.name) .. ":" .. tostring(trait.rarity)
 			end
@@ -4335,8 +4382,8 @@ function Controller.new(dependencies)
 		if expected_pattern and (item.parent_pattern or item.mastery_id) ~= expected_pattern then
 			return false, "completed queue weapon " .. label .. " changed weapon family"
 		end
-		if tonumber(candidate_stat(item, job.dump_stat)) ~= tonumber(job.dump_target) then
-			return false, "completed queue weapon " .. label .. " changed dump stat"
+		if not candidate_matches_stat_targets(item, job.dump_stat, job.dump_target, job.custom_stats_enabled and job.custom_stat_targets or nil) then
+			return false, "completed queue weapon " .. label .. (job.custom_stats_enabled and " changed custom stats" or " changed dump stat")
 		end
 		if policy.auto_crafter_consecrate_transcendent == true and (tonumber(item.rarity) or -1) < TRANSCENDENT_RARITY then
 			return false, "completed queue weapon " .. label .. " is below Transcendent"

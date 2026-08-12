@@ -260,6 +260,10 @@ local STAT_ALIASES = {
 	["charge speed"] = {"charge", "speed"},
 	["reload speed"] = {"reload"},
 	["heat management"] = {"heat", "management"},
+	-- Games Lantern calls this Thermal Resistance while Darktide's stat
+	-- contract/localization key calls the same identity Heat Management.
+	["thermal resistance"] = {"heat", "management"},
+	["stopping power"] = {"power"},
 	["power output"] = {"power", "output"},
 	["first target"] = {"first", "target"},
 	["defenses"] = {"defense"},
@@ -279,6 +283,33 @@ local function stat_matches(external_label, candidate, localize_offer_label)
 	end
 
 	return contains_all(candidate_text, tokens(normalized_external))
+end
+
+local function stat_match_score(external_label, candidate, localize_offer_label)
+	local normalized_external = normalize(external_label)
+	local labels = {
+		normalize(candidate and candidate.name),
+		normalize(candidate and candidate.display_name_key),
+		normalize(localized_offer_label(localize_offer_label, candidate and candidate.display_name_key)),
+	}
+
+	for _, label in ipairs(labels) do
+		if label ~= "" and label == normalized_external then
+			return 100
+		end
+	end
+
+	local aliases = STAT_ALIASES[normalized_external]
+	if aliases and stat_matches(external_label, candidate, localize_offer_label) then
+		return 70 + #aliases
+	end
+
+	local external_tokens = tokens(normalized_external)
+	if stat_matches(external_label, candidate, localize_offer_label) then
+		return 40 + #external_tokens
+	end
+
+	return 0
 end
 
 local function resolve_stat(external_label, offer, localize_offer_label)
@@ -339,6 +370,95 @@ local function resolve_dump_stat(external, offer, localize_offer_label)
 		label = lowest.label,
 		value = lowest.value,
 	}, nil
+end
+
+-- A modern Games Lantern card can describe the complete projected level-500
+-- profile. Preserve that information when (and only when) all five external
+-- stats map one-to-one to the five live Brunt stat identities and form a valid
+-- 380 profile. Older/special cards remain supported by the dump-stat path.
+local function resolve_custom_stats(external, offer, localize_offer_label)
+	local external_stats = external and external.stats or {}
+	local offer_stats = offer and offer.base_stats or {}
+
+	if #external_stats ~= 5 or #offer_stats ~= 5 then
+		return nil, "custom_stats_not_eligible"
+	end
+
+	local mapped = {}
+	local total = 0
+	local scores = {}
+
+	for external_index, stat in ipairs(external_stats) do
+		local value = tonumber(stat.value)
+
+		if value == nil or value ~= math.floor(value) or value < 60 or value > 80 then
+			return nil, "custom_stats_invalid"
+		end
+
+		scores[external_index] = {}
+		for candidate_index, candidate in ipairs(offer_stats) do
+			scores[external_index][candidate_index] = stat_match_score(stat.label, candidate, localize_offer_label)
+		end
+		total = total + value
+	end
+
+	if total ~= 380 then
+		return nil, "custom_stats_invalid_total"
+	end
+
+	local best_score = -1
+	local best_count = 0
+	local best_assignment
+	local used = {}
+	local assignment = {}
+	local function assign(external_index, score)
+		if external_index > 5 then
+			if score > best_score then
+				best_score = score
+				best_count = 1
+				best_assignment = { assignment[1], assignment[2], assignment[3], assignment[4], assignment[5] }
+			elseif score == best_score then
+				best_count = best_count + 1
+			end
+			return
+		end
+
+		for candidate_index = 1, 5 do
+			local candidate_score = scores[external_index][candidate_index]
+			if candidate_score > 0 and not used[candidate_index] then
+				used[candidate_index] = true
+				assignment[external_index] = candidate_index
+				assign(external_index + 1, score + candidate_score)
+				used[candidate_index] = nil
+			end
+		end
+	end
+	assign(1, 0)
+
+	if best_score < 0 or not best_assignment then
+		return nil, "custom_stat_unavailable"
+	elseif best_count ~= 1 then
+		return nil, "custom_stat_ambiguous"
+	end
+
+	for external_index, candidate_index in ipairs(best_assignment) do
+		local candidate = offer_stats[candidate_index]
+		local stat = external_stats[external_index]
+		mapped[candidate_index] = {
+			display_name_key = candidate.display_name_key,
+			label = stat.label,
+			name = candidate.name,
+			value = tonumber(stat.value),
+		}
+	end
+
+	for index = 1, 5 do
+		if not mapped[index] or mapped[index].name == nil then
+			return nil, "custom_stat_mapping_incomplete"
+		end
+	end
+
+	return mapped, nil
 end
 
 local function catalog_for(context, offer)
@@ -723,7 +843,23 @@ local function resolve_identity(external, slot, context)
 		return nil, reason
 	end
 
-	local dump_stat, dump_reason = resolve_dump_stat(external, resolved.offer, context and context.localize_offer_label)
+	local custom_stats, custom_reason = resolve_custom_stats(external, resolved.offer, context and context.localize_offer_label)
+	local dump_stat
+	local dump_reason
+
+	if custom_stats then
+		local lowest = custom_stats[1]
+		for index = 2, #custom_stats do
+			if custom_stats[index].value < lowest.value then
+				lowest = custom_stats[index]
+			end
+		end
+		dump_stat = { id = lowest.name, label = lowest.label, value = lowest.value }
+	elseif custom_reason == "custom_stats_not_eligible" then
+		dump_stat, dump_reason = resolve_dump_stat(external, resolved.offer, context and context.localize_offer_label)
+	else
+		return nil, custom_reason
+	end
 
 	if not dump_stat then
 		return nil, dump_reason
@@ -737,7 +873,10 @@ local function resolve_identity(external, slot, context)
 		external = external,
 		dump_stat = dump_stat.id,
 		dump_stat_label = dump_stat.label,
-		dump_target = tonumber(context and context.dump_target) or 60,
+		dump_target = custom_stats and dump_stat.value or tonumber(context and context.dump_target) or 60,
+		custom_stats_enabled = custom_stats ~= nil,
+		custom_stat_targets = custom_stats,
+		custom_stat_total = custom_stats and 380 or nil,
 		parent_pattern = resolved.offer.parent_pattern,
 		master_id = resolved.offer.master_id,
 	}, nil

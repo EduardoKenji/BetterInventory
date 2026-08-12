@@ -428,6 +428,33 @@ local function resolve_custom_stat_targets(candidates, configured_targets)
 	local target_map = {}
 	local total = 0
 	local reason
+	local identity_targets = type(configured_targets) == "table" and type(configured_targets[1]) == "table"
+
+	local function configured_for(candidate, index)
+		if not identity_targets then
+			return type(configured_targets) == "table" and configured_targets[index] or nil
+		end
+
+		local matched
+
+		for _, configured in ipairs(configured_targets) do
+			if configured.name ~= nil and candidate and tostring(configured.name) == tostring(candidate.name) then
+				if matched ~= nil then return nil end
+				matched = configured
+			end
+		end
+
+		if matched ~= nil then return matched end
+
+		for _, configured in ipairs(configured_targets) do
+			if configured.display_name_key ~= nil and candidate and candidate.display_name_key ~= nil and tostring(configured.display_name_key) == tostring(candidate.display_name_key) then
+				if matched ~= nil then return nil end
+				matched = configured
+			end
+		end
+
+		return matched
+	end
 
 	if #candidates ~= CUSTOM_STAT_COUNT then
 		reason = string.format("custom stats require exactly %d weapon stats; selected weapon exposed %d", CUSTOM_STAT_COUNT, #candidates)
@@ -435,17 +462,18 @@ local function resolve_custom_stat_targets(candidates, configured_targets)
 
 	for index = 1, CUSTOM_STAT_COUNT do
 		local candidate = candidates[index]
-		local configured = type(configured_targets) == "table" and configured_targets[index] or nil
-		local value = tonumber(configured)
+		local configured = configured_for(candidate, index)
+		local value = tonumber(type(configured) == "table" and configured.value or configured)
 
 		if value == nil or value ~= math.floor(value) or value < CUSTOM_STAT_MIN or value > CUSTOM_STAT_MAX then
-			reason = reason or string.format("custom stat %d must be a whole number between %d and %d", index, CUSTOM_STAT_MIN, CUSTOM_STAT_MAX)
+			reason = reason or (identity_targets and string.format("custom stat identity %s is missing or ambiguous", tostring(candidate and candidate.name or index)) or string.format("custom stat %d must be a whole number between %d and %d", index, CUSTOM_STAT_MIN, CUSTOM_STAT_MAX))
 			value = value and math.floor(value) or CUSTOM_STAT_MIN
 		end
 
 		total = total + value
 		targets[index] = {
 			display_name_key = candidate and candidate.display_name_key,
+			label = type(configured) == "table" and configured.label or nil,
 			name = candidate and candidate.name,
 			value = value,
 		}
