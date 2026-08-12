@@ -1,6 +1,6 @@
 # BetterInventory user guide
 
-BetterInventory v2.1.4 improves inventory, Character Overview, Hadron, Requisition Weapons & Curios, and optional GlobalStore cards while preserving Darktide's native item and icon lifecycle.
+BetterInventory v2.1.5 improves inventory, Character Overview, Hadron, Requisition Weapons & Curios, and optional GlobalStore cards while preserving Darktide's native item and icon lifecycle.
 
 ## Install
 
@@ -13,6 +13,12 @@ Normal card/layout features do not change inventory or wallet data. Experimental
 Weapon and Curio equips still use Darktide's native loadout request. BetterInventory preserves the shared local preview while navigating between equipment and Character Overview, observes the eventual request across rapid exits, retries only confirmed failures for the same account/character, and refreshes a reopened overview when Darktide publishes the authoritative profile.
 
 Customization persistence follows DMF's actual contract: a normal no-return save is delegated to DMF and is not retried forever; thrown, unavailable, or explicitly rejected calls are bounded and observable. Manual discard remains serialized through native deletion settlement. Same-gear item revisions refresh detailed overview cards. The Debug section's hot-path diagnostics are opt-in and should be enabled only for a short baseline capture, then disabled for normal play.
+
+## Auto Crafter custom stats
+
+Enable **Custom stats** in Brunt's Auto Crafter Planner to replace the single dump-stat target with an exact five-stat allocation. The contextual grid follows the selected weapon's native stat catalogue, shows two cells per row plus a total cell, and adjusts each value by one within 60-80. Lower one value before raising another when the total is already 380.
+
+Crafting requires an exact total of 380. A lower or otherwise invalid total is highlighted and the Craft action emits a notification without acquiring account-operation ownership or sending a purchase. A valid allocation is frozen for the run and revalidated against projected level-500 stats during Brunt acquisition, family-equivalent inventory resume across marks, post-mastery reconciliation, and final completion. Games Lantern queues keep their imported dump-stat model and do not inherit the manual custom-stat setting.
 
 ## Validation
 
