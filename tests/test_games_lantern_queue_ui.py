@@ -28,6 +28,9 @@ def main() -> None:
     assert "games_lantern_queue_snapshot" in facade
     assert "GamesLanternQueue.new" in facade
     assert "games_lantern_select_queue_job" in panel and "games_lantern_select_queue_job" in facade
+    assert '"queue_card_selected"' in facade
+    assert "games_lantern_selection.request" in facade
+    assert "games_lantern_selection.restore" in facade
     assert "games_lantern_update_queue_custom_stat" in panel and "games_lantern_update_queue_custom_stat" in facade
     assert "games_lantern_update_queue_trait" in panel and "games_lantern_update_queue_trait" in facade
     assert "queue.state ~= \"staged\"" in panel
