@@ -1,6 +1,11 @@
 # BetterInventory changelog
 
-## 2.1.6 - In development
+## 2.2.0 - In development
+
+- Added independent weapon and Curio image X/Y/width/height percentage controls for Character Overview, Inventory/Hadron, Armoury Exchange, and GlobalStore.
+- Added separate single-column and 2-5-column image profiles with resolution-independent card-relative scaling and zero-impact defaults.
+
+## 2.1.6 - 2026-08-12
 
 - Enabled the single-line weapon-name policy by default, with bounded font reduction, mark-preserving truncation, and strict three-column overflow protection for long standard and customized names.
 
