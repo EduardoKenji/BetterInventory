@@ -289,14 +289,14 @@ local function candidate_stat_target_distance(candidate, dump_stat, target_dump,
 
 		for stat_name, target in pairs(custom_targets) do
 			local target_name = type(target) == "table" and target.name or stat_name
-			local target_value = type(target) == "table" and target.value or target
+			local target_value = tonumber(type(target) == "table" and target.value or target)
 			local value = tonumber(custom_stat_value(candidate, target_name, target))
 
-			if value == nil then
+			if value == nil or target_value == nil then
 				return math.huge
 			end
 
-			distance = distance + math.abs(value - tonumber(target_value))
+			distance = distance + math.abs(value - target_value)
 		end
 
 		return distance
@@ -2362,16 +2362,33 @@ function Controller.new(dependencies)
 			return false
 		end
 
+		local search = self._search or {}
+		local candidate_distance = candidate_stat_target_distance(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets)
+		candidate.target_distance = candidate_distance
+		local custom_profile = type(search.custom_stat_targets) == "table" and next(search.custom_stat_targets) ~= nil
+
+		-- A profile that cannot be mapped across all five identities is not a
+		-- usable fallback, even when it happens to be the first observed roll.
+		if custom_profile and candidate_distance == math.huge then
+			return false
+		end
+
 		if not current then
 			return true
 		end
 
-		local search = self._search or {}
-		local candidate_distance = candidate_stat_target_distance(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets)
 		local current_distance = candidate_stat_target_distance(current, search.dump_stat, search.target_dump, search.custom_stat_targets)
+		current.target_distance = current_distance
 
 		if candidate_distance ~= current_distance then
 			return candidate_distance < current_distance
+		end
+
+		-- Exact custom profiles use Manhattan distance across all five named
+		-- level-500 stats. Equal-distance rolls retain the earlier purchase so
+		-- backend response timing cannot make fallback selection nondeterministic.
+		if custom_profile then
+			return false
 		end
 
 		return (tonumber(candidate.damage) or 0) > (tonumber(current.damage) or 0)
@@ -3645,6 +3662,7 @@ function Controller.new(dependencies)
 		candidate.dump_stat_label = candidate.base_stat_labels and candidate.base_stat_labels[search.dump_stat]
 		candidate.damage = candidate.potential_damage or candidate_stat(candidate, "damage")
 		candidate.exact_match = candidate_matches_stat_targets(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets)
+		candidate.target_distance = candidate_stat_target_distance(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets)
 
 		if not candidate.exact_match then
 			return false
@@ -4107,6 +4125,7 @@ function Controller.new(dependencies)
 				candidate.dump_stat_label = candidate.base_stat_labels and candidate.base_stat_labels[search.dump_stat]
 				candidate.damage = candidate.potential_damage or candidate_stat(candidate, "damage")
 				candidate.exact_match = candidate_matches_stat_targets(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets)
+				candidate.target_distance = candidate_stat_target_distance(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets)
 
 				if self._phase3 and self._phase3.running and not candidate.exact_match then
 					track_purchased_spare(self._phase3, candidate)

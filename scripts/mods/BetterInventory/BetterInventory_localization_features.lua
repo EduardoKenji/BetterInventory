@@ -632,10 +632,10 @@ local localization = {
 		en = "Hard upper bound for the serialized purchase search. No next purchase is dispatched after this count.",
 	},
 	auto_crafter_best_candidate_fallback = {
-		en = "Keep best candidate if target is missed",
+		en = "Use closest fallback candidate weapon if exact stat match weapon is not found",
 	},
 	auto_crafter_best_candidate_fallback_tooltip = {
-		en = "Retains the closest candidate for later review when the exact target is not found before a cap. Misses are never silently discarded.",
+		en = "If an exact weapon is not found before a cap, use the closest valid roll. Custom stats minimize the sum of absolute differences across all five requested stats; single dump-stat mode minimizes that selected stat's difference. Equal-distance custom rolls keep the earliest purchase.",
 	},
 	auto_crafter_request_mode = {
 		en = "Auto Crafter request mode",
@@ -854,7 +854,7 @@ local localization = {
 		en = "Max purchases",
 	},
 	auto_crafter_panel_best_fallback = {
-		en = "Best-candidate fallback",
+		en = "Use closest fallback candidate weapon if exact stat match weapon is not found",
 	},
 	auto_crafter_panel_request_mode = {
 		en = "Request mode",

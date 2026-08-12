@@ -2349,9 +2349,10 @@ function Panel.new(dependencies)
 					end,
 				}))
 			end
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_best_fallback", "Best-candidate fallback"), self:_planner_fallback_text(), {
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_best_fallback", "Use closest fallback candidate weapon if exact stat match weapon is not found"), self:_planner_fallback_text(), {
 				checked = self:_setting("auto_crafter_best_candidate_fallback", true) == true,
 				enabled = not queue_active,
+				height = 52,
 				selectable = not queue_active,
 				variant = "checkbox",
 				action = function()
