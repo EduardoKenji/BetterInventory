@@ -8,6 +8,15 @@ local PROFILE_KEY_BY_COLUMNS = {
 	[5] = "5",
 }
 
+local EDITABLE_ITEM_KINDS = { "weapon", "curio" }
+local EDITABLE_CONTEXTS = { "inventory", "armoury", "global_store" }
+local EDITABLE_SUFFIXES = {
+	{ key = "x_offset_percent", minimum = -100, maximum = 100 },
+	{ key = "y_offset_percent", minimum = -100, maximum = 100 },
+	{ key = "width_offset_percent", minimum = -90, maximum = 200 },
+	{ key = "height_offset_percent", minimum = -90, maximum = 200 },
+}
+
 local VALID_CONTEXTS = {
 	inventory = true,
 	armoury = true,
@@ -45,6 +54,116 @@ local function setting(mod, setting_id, fallback, minimum, maximum)
 	end
 
 	return finite_number(value, fallback, minimum, maximum)
+end
+
+local function set_setting(mod, setting_id, value)
+	if not mod or type(mod.set) ~= "function" then
+		return false
+	end
+
+	return pcall(mod.set, mod, setting_id, value, false)
+end
+
+local function selected_profile_key(mod, prefix)
+	local selected = math.floor(setting(mod, prefix .. "_profile_selector", 1, 1, 5))
+
+	return PROFILE_KEY_BY_COLUMNS[selected] or PROFILE_KEY_BY_COLUMNS[1]
+end
+
+local function sync_editor(mod, prefix)
+	local profile_prefix = prefix .. "_" .. selected_profile_key(mod, prefix)
+	local changed = false
+
+	for _, suffix in ipairs(EDITABLE_SUFFIXES) do
+		local value = setting(mod, profile_prefix .. "_" .. suffix.key, 0, suffix.minimum, suffix.maximum)
+
+		if setting(mod, prefix .. "_editor_" .. suffix.key, 0, suffix.minimum, suffix.maximum) ~= value then
+			changed = set_setting(mod, prefix .. "_editor_" .. suffix.key, value) or changed
+		end
+	end
+
+	return changed
+end
+
+
+-- DMF cannot reliably hide nested groups selected by a dropdown in every
+-- options renderer. Keep the five profiles as private persisted settings and
+-- expose one four-slider editor which proxies the profile selected above it.
+ImageLayout.initialize_settings = function(mod)
+	if not mod or type(mod.get) ~= "function" or type(mod.set) ~= "function" then
+		return false
+	end
+
+	local changed = false
+
+	for _, editable_item_kind in ipairs(EDITABLE_ITEM_KINDS) do
+		for _, context in ipairs(EDITABLE_CONTEXTS) do
+			local prefix = editable_item_kind .. "_image_" .. context
+
+			for columns = 1, 5 do
+				local profile_prefix = prefix .. "_" .. PROFILE_KEY_BY_COLUMNS[columns]
+
+				for _, suffix in ipairs(EDITABLE_SUFFIXES) do
+					local setting_id = profile_prefix .. "_" .. suffix.key
+					local ok, value = pcall(mod.get, mod, setting_id)
+
+					if ok and value == nil then
+						changed = set_setting(mod, setting_id, 0) or changed
+					end
+				end
+			end
+
+			changed = sync_editor(mod, prefix) or changed
+		end
+	end
+
+	return changed
+end
+
+ImageLayout.sync_editors = function(mod)
+	local changed = false
+
+	for _, editable_item_kind in ipairs(EDITABLE_ITEM_KINDS) do
+		for _, context in ipairs(EDITABLE_CONTEXTS) do
+			changed = sync_editor(mod, editable_item_kind .. "_image_" .. context) or changed
+		end
+	end
+
+	return changed
+end
+
+
+ImageLayout.on_setting_changed = function(mod, setting_id)
+	if type(setting_id) ~= "string" then
+		return false
+	end
+
+	for _, editable_item_kind in ipairs(EDITABLE_ITEM_KINDS) do
+		for _, context in ipairs(EDITABLE_CONTEXTS) do
+			local prefix = editable_item_kind .. "_image_" .. context
+
+			if setting_id == prefix .. "_profile_selector" then
+				sync_editor(mod, prefix)
+
+				return true
+			end
+
+			for _, suffix in ipairs(EDITABLE_SUFFIXES) do
+				local editor_id = prefix .. "_editor_" .. suffix.key
+
+				if setting_id == editor_id then
+					local profile_id = prefix .. "_" .. selected_profile_key(mod, prefix) .. "_" .. suffix.key
+					local value = setting(mod, editor_id, 0, suffix.minimum, suffix.maximum)
+
+					set_setting(mod, profile_id, value)
+
+					return true
+				end
+			end
+		end
+	end
+
+	return false
 end
 
 local function item_kind(slot_kind)

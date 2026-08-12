@@ -4,7 +4,7 @@
 
 - Added independent weapon and Curio image X/Y/width/height percentage controls for Character Overview, Inventory/Hadron, Armoury Exchange, and GlobalStore.
 - Added separate single-column and 2-5-column image profiles with resolution-independent card-relative scaling and zero-impact defaults.
-- Labeled every image-layout view and column-profile subsection explicitly so simultaneously visible DMF groups remain unambiguous.
+- Replaced repeated column-profile subsections with one dropdown-driven four-slider editor while preserving five independent saved layouts per view.
 
 ## 2.1.6 - 2026-08-12
 

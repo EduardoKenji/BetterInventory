@@ -2111,14 +2111,9 @@ def main() -> None:
         == "Armoury Exchange GlobalStore image layout"
     )
     assert (
-        localization["weapon_image_inventory_single_group"]["en"]
-        == "Single-column image geometry (grid mode off)"
+        localization["weapon_image_inventory_editor_x_offset_percent"]["en"]
+        == "Image X offset (%%)"
     )
-    for columns in range(2, 6):
-        assert (
-            localization[f"curio_image_armoury_{columns}_group"]["en"]
-            == f"{columns}-column grid image geometry"
-        )
 
     for localization_id, localized_values in localization.items():
         simplified_chinese = localized_values["zh-cn"]
@@ -2304,9 +2299,9 @@ def main() -> None:
     assert top_level_ids[grid_layout_index + 2] == "curio_images_size_position_group"
     assert top_level_ids[grid_layout_index + 3] == "single_column_layout_group"
 
-    # Image layout settings keep Character Overview independent and expose
-    # five persisted profiles for each grid-capable view. The selector only
-    # chooses which profile is visible in DMF; runtime uses actual columns.
+    # Image layout settings keep Character Overview independent. Each
+    # grid-capable view exposes one selector and exactly one four-slider
+    # editor; runtime privately persists five profiles and uses actual columns.
     for item_kind, section_id in (
         ("weapon", "weapon_images_size_position_group"),
         ("curio", "curio_images_size_position_group"),
@@ -2330,12 +2325,21 @@ def main() -> None:
             ("inventory", "armoury", "global_store"), start=2
         ):
             context_group = section.sub_widgets[group_index]
+            assert len(context_group.sub_widgets) == 5
             selector = context_group.sub_widgets[1]
             assert selector.setting_id == f"{item_kind}_image_{context}_profile_selector"
             assert selector.default_value == 1
             assert [selector.options[index].value for index in range(1, 6)] == [1, 2, 3, 4, 5]
-            assert [selector.options[index].show_widgets[1] for index in range(1, 6)] == [1, 2, 3, 4, 5]
-            assert len(selector.sub_widgets) == 5
+            assert selector.sub_widgets is None
+            for option_index in range(1, 6):
+                assert selector.options[option_index].show_widgets is None
+            assert [
+                context_group.sub_widgets[index].setting_id
+                for index in range(2, 6)
+            ] == [
+                f"{item_kind}_image_{context}_editor_{axis}_offset_percent"
+                for axis in ("x", "y", "width", "height")
+            ]
 
     customization_index = top_level_ids.index("custom_item_name_and_colors_group")
     assert top_level_ids[customization_index - 1] == "single_column_layout_group"
@@ -2431,11 +2435,10 @@ def main() -> None:
             assert defaults[f"{item_kind}_image_character_overview_{axis}_offset_percent"] == 0
         for context in ("inventory", "armoury", "global_store"):
             assert defaults[f"{item_kind}_image_{context}_profile_selector"] == 1
-            for profile in ("single", "2", "3", "4", "5"):
-                for axis in ("x", "y", "width", "height"):
-                    assert defaults[
-                        f"{item_kind}_image_{context}_{profile}_{axis}_offset_percent"
-                    ] == 0
+            for axis in ("x", "y", "width", "height"):
+                assert defaults[
+                    f"{item_kind}_image_{context}_editor_{axis}_offset_percent"
+                ] == 0
     assert defaults["three_column_weapon_name_font_size"] == 14
     assert defaults["enable_global_store_integration"] is True
     assert defaults["enable_global_store_grid"] is True

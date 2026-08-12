@@ -17,7 +17,7 @@ Each item kind owns these independent profiles:
 - Armoury Exchange store: single-column plus 2-5-column profiles.
 - Armoury Exchange GlobalStore: single-column plus 2-5-column profiles.
 
-The dropdown in each list-view group selects the profile shown for editing. It does not select the runtime layout. Card construction always chooses the profile matching the card's actual column count, preventing stale editor state from affecting another layout.
+Each list-view group shows exactly one profile dropdown followed by one set of four geometry sliders. The dropdown loads the selected profile into that editor, and slider changes persist back only to that profile. The five profile values remain independent and private; repeated profile subsections are intentionally not rendered. The dropdown does not select the runtime layout. Card construction always chooses the profile matching the card's actual column count, preventing stale editor state from affecting another layout.
 
 ## Existing-option conflict audit
 
@@ -33,7 +33,7 @@ No prior option was removed, repurposed, or migrated.
 
 ## Lifecycle and performance
 
-Profiles are read and applied once while Darktide/BetterInventory constructs a card blueprint. No per-frame callbacks, polling, caches, retained views, or recurring allocations were added. Setting changes invalidate existing composition using the established lifecycle; Character Overview settings additionally bump its visual generation so reopening/rebuilding uses the new geometry.
+Profiles are read and applied once while Darktide/BetterInventory constructs a card blueprint. The visible sliders are lightweight proxies synchronized only when settings initialize, the profile selector changes, a slider changes, or the options view opens. No per-frame callbacks, polling, caches, retained views, or recurring allocations were added. Setting changes invalidate existing composition using the established lifecycle; Character Overview settings additionally bump its visual generation so reopening/rebuilding uses the new geometry.
 
 ## Regression coverage
 
@@ -41,6 +41,7 @@ Automated coverage checks:
 
 - weapon versus Curio profile ownership;
 - all list-view contexts and actual column-count selection;
+- single-editor profile switching, persistence, and isolation;
 - Hadron-to-Inventory mirroring;
 - Character Overview's independent profile;
 - zero-impact defaults;

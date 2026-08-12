@@ -53,13 +53,6 @@ local image_contexts = {
 	{ key = "armoury", label = "Armoury Exchange store image layout" },
 	{ key = "global_store", label = "Armoury Exchange GlobalStore image layout" },
 }
-local image_profiles = {
-	{ key = "single", label = "Single-column image geometry (grid mode off)" },
-	{ key = "2", label = "2-column grid image geometry" },
-	{ key = "3", label = "3-column grid image geometry" },
-	{ key = "4", label = "4-column grid image geometry" },
-	{ key = "5", label = "5-column grid image geometry" },
-}
 local image_geometry_labels = {
 	height_offset_percent = "Image height offset (%%)",
 	width_offset_percent = "Image width offset (%%)",
@@ -91,14 +84,8 @@ for _, item_kind in ipairs(image_item_kinds) do
 		add_generated_image_localization(context_prefix .. "_group", context.label)
 		add_generated_image_localization(context_prefix .. "_profile_selector", "Grid-column profile to edit")
 
-		for _, profile in ipairs(image_profiles) do
-			local profile_prefix = context_prefix .. "_" .. profile.key
-
-			add_generated_image_localization(profile_prefix .. "_group", profile.label)
-
-			for suffix, label in pairs(image_geometry_labels) do
-				add_generated_image_localization(profile_prefix .. "_" .. suffix, label)
-			end
+		for suffix, label in pairs(image_geometry_labels) do
+			add_generated_image_localization(context_prefix .. "_editor_" .. suffix, label)
 		end
 	end
 end

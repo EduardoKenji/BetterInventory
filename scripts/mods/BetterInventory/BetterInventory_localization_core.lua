@@ -1378,7 +1378,7 @@ local localization = {
 		en = "Grid-column profile to edit",
 	},
 	image_layout_grid_profile_tooltip = {
-		en = "Selects which independent column layout is shown below for editing. Cards automatically use the profile matching their actual column count.",
+		en = "Selects which independent column layout the four controls below edit. Cards automatically use the profile matching their actual column count.",
 	},
 	image_layout_single_column = {
 		en = "Single column (grid mode off)",

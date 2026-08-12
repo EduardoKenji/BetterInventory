@@ -186,37 +186,35 @@ end
 local function image_grid_context_group(item_kind, context, text_id)
 	local prefix = item_kind .. "_image_" .. context
 	local options = {}
-	local profile_groups = {}
 
 	for index, profile in ipairs(IMAGE_LAYOUT_COLUMN_PROFILES) do
 		options[index] = {
 			text = profile.text,
 			value = profile.value,
-			show_widgets = { index },
 		}
-		profile_groups[index] = {
-			setting_id = prefix .. "_" .. profile.key .. "_group",
-			text = profile.text,
-			type = "group",
-			sub_widgets = image_geometry_controls(prefix .. "_" .. profile.key),
-		}
+	end
+
+	local sub_widgets = {
+		{
+			setting_id = prefix .. "_profile_selector",
+			text = "image_layout_grid_profile",
+			tooltip = "image_layout_grid_profile_tooltip",
+			type = "dropdown",
+			default_value = 1,
+			options = options,
+		},
+	}
+	local editor_controls = image_geometry_controls(prefix .. "_editor")
+
+	for _, control in ipairs(editor_controls) do
+		sub_widgets[#sub_widgets + 1] = control
 	end
 
 	return {
 		setting_id = prefix .. "_group",
 		text = text_id,
 		type = "group",
-		sub_widgets = {
-			{
-				setting_id = prefix .. "_profile_selector",
-				text = "image_layout_grid_profile",
-				tooltip = "image_layout_grid_profile_tooltip",
-				type = "dropdown",
-				default_value = 1,
-				options = options,
-				sub_widgets = profile_groups,
-			},
-		},
+		sub_widgets = sub_widgets,
 	}
 end
 

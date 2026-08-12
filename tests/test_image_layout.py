@@ -19,7 +19,10 @@ def main() -> None:
     settings = lua.table_from({})
     lua.globals()["image_layout_test_settings"] = settings
     mod = lua.execute(
-        "return { get = function(_, setting_id) return image_layout_test_settings[setting_id] end }"
+        "return {"
+        " get = function(_, setting_id) return image_layout_test_settings[setting_id] end,"
+        " set = function(_, setting_id, value) image_layout_test_settings[setting_id] = value end"
+        " }"
     )
 
     inventory_weapon = lua.table_from(
@@ -36,6 +39,29 @@ def main() -> None:
     settings["weapon_image_inventory_profile_selector"] = 5
     assert image_layout.resolve(mod, inventory_weapon, 2)["prefix"] == "weapon_image_inventory_2"
     assert image_layout.resolve(mod, inventory_weapon, 5)["prefix"] == "weapon_image_inventory_5"
+
+    # Only one four-slider editor is visible. It proxies the independently
+    # persisted profile selected by the dropdown without changing the runtime
+    # profile chosen from the card's actual column count.
+    settings["weapon_image_inventory_single_x_offset_percent"] = -4
+    settings["weapon_image_inventory_5_x_offset_percent"] = 17
+    settings["weapon_image_inventory_editor_x_offset_percent"] = 0
+    assert image_layout.initialize_settings(mod) is True
+    assert settings["weapon_image_inventory_editor_x_offset_percent"] == 17
+    assert settings["curio_image_global_store_3_height_offset_percent"] == 0
+    settings["weapon_image_inventory_editor_x_offset_percent"] = 23
+    assert image_layout.on_setting_changed(
+        mod, "weapon_image_inventory_editor_x_offset_percent"
+    ) is True
+    assert settings["weapon_image_inventory_5_x_offset_percent"] == 23
+    assert settings["weapon_image_inventory_single_x_offset_percent"] == -4
+    settings["weapon_image_inventory_profile_selector"] = 1
+    assert image_layout.on_setting_changed(
+        mod, "weapon_image_inventory_profile_selector"
+    ) is True
+    assert settings["weapon_image_inventory_editor_x_offset_percent"] == -4
+    assert image_layout.on_setting_changed(mod, "unrelated_setting") is False
+    assert image_layout.initialize_settings(None) is False
 
     settings["weapon_image_inventory_3_x_offset_percent"] = 10
     settings["weapon_image_inventory_3_y_offset_percent"] = -20
