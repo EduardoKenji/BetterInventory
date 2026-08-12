@@ -14,6 +14,8 @@ local QUEUE_JOB_ROW_HEIGHT = 110
 local STAT_GRID_BUTTON_HEIGHT = 30
 local STAT_GRID_GAP = 6
 local STAT_GRID_HEIGHT = STAT_GRID_BUTTON_HEIGHT * 2 + STAT_GRID_GAP
+local CUSTOM_STAT_GRID_CELL_HEIGHT = 58
+local CUSTOM_STAT_GRID_HEIGHT = CUSTOM_STAT_GRID_CELL_HEIGHT * 3 + STAT_GRID_GAP * 2
 local TRAIT_GRID_GAP = 5
 local PERK_GRID_COLUMNS = 4
 local PERK_GRID_BUTTON_HEIGHT = 38
@@ -669,6 +671,68 @@ end
 
 Panel.stat_grid_passes = stat_grid_passes
 
+local function custom_stat_grid_passes(width)
+	local cell_width = (width - STAT_GRID_GAP) / 2
+	local passes = {
+		{
+			pass_type = "logic",
+			value = function(_, _, _, content)
+				for index = 1, 5 do
+					local decrease = content["custom_stat_decrease_hotspot_" .. tostring(index)]
+					local increase = content["custom_stat_increase_hotspot_" .. tostring(index)]
+					local callbacks = content.custom_stat_callbacks or {}
+
+					if decrease and decrease.on_pressed and callbacks[index] then
+						callbacks[index](-1)
+						break
+					elseif increase and increase.on_pressed and callbacks[index] then
+						callbacks[index](1)
+						break
+					end
+				end
+			end,
+		},
+	}
+	local function total_valid(content)
+		return tonumber(content.custom_stat_total_value) == 380
+	end
+	local function total_invalid(content)
+		return not total_valid(content)
+	end
+
+	for index = 1, 6 do
+		local column = (index - 1) % 2
+		local row = math.floor((index - 1) / 2)
+		local x = column * (cell_width + STAT_GRID_GAP)
+		local y = row * (CUSTOM_STAT_GRID_CELL_HEIGHT + STAT_GRID_GAP)
+
+		passes[#passes + 1] = { pass_type = "rect", style = { color = Color.terminal_background(220, true), size = { cell_width, CUSTOM_STAT_GRID_CELL_HEIGHT }, offset = { x, y, 1 } } }
+		passes[#passes + 1] = { pass_type = "texture", value = "content/ui/materials/frames/frame_tile_2px", style = { color = Color.terminal_frame(255, true), size = { cell_width, CUSTOM_STAT_GRID_CELL_HEIGHT }, offset = { x, y, 2 } } }
+
+		if index <= 5 then
+			local label_id = "custom_stat_label_" .. tostring(index)
+			local value_id = "custom_stat_value_" .. tostring(index)
+			local decrease_id = "custom_stat_decrease_hotspot_" .. tostring(index)
+			local increase_id = "custom_stat_increase_hotspot_" .. tostring(index)
+
+			passes[#passes + 1] = { pass_type = "text", value_id = label_id, style = { font_size = 13, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_text_body(255, true), size = { cell_width - 8, 24 }, offset = { x + 4, y + 2, 3 } } }
+			passes[#passes + 1] = { content_id = decrease_id, pass_type = "hotspot", content = { on_hover_sound = UISoundEvents.default_mouse_hover, on_pressed_sound = UISoundEvents.default_click }, style = { size = { 36, 28 }, offset = { x + 3, y + 27, 6 } } }
+			passes[#passes + 1] = { pass_type = "text", value = "<", style = { font_size = 16, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_text_header(255, true), size = { 36, 28 }, offset = { x + 3, y + 27, 4 } } }
+			passes[#passes + 1] = { pass_type = "text", value_id = value_id, style = { font_size = 16, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_corner_selected(255, true), size = { cell_width - 78, 28 }, offset = { x + 39, y + 27, 4 } } }
+			passes[#passes + 1] = { content_id = increase_id, pass_type = "hotspot", content = { on_hover_sound = UISoundEvents.default_mouse_hover, on_pressed_sound = UISoundEvents.default_click }, style = { size = { 36, 28 }, offset = { x + cell_width - 39, y + 27, 6 } } }
+			passes[#passes + 1] = { pass_type = "text", value = ">", style = { font_size = 16, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_text_header(255, true), size = { 36, 28 }, offset = { x + cell_width - 39, y + 27, 4 } } }
+		else
+			passes[#passes + 1] = { pass_type = "text", value_id = "custom_stat_total_label", style = { font_size = 13, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_text_body(255, true), size = { cell_width - 8, 24 }, offset = { x + 4, y + 2, 3 } } }
+			passes[#passes + 1] = { pass_type = "text", value_id = "custom_stat_total", style = { font_size = 18, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_corner_selected(255, true), size = { cell_width - 8, 30 }, offset = { x + 4, y + 25, 4 } }, visibility_function = total_valid }
+			passes[#passes + 1] = { pass_type = "text", value_id = "custom_stat_total", style = { font_size = 18, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.ui_red_medium(255, true), size = { cell_width - 8, 30 }, offset = { x + 4, y + 25, 4 } }, visibility_function = total_invalid }
+		end
+	end
+
+	return passes
+end
+
+Panel.custom_stat_grid_passes = custom_stat_grid_passes
+
 local function trait_grid_passes(width, entry)
 	local count = entry.trait_count or 0
 	local columns = entry.trait_columns or PERK_GRID_COLUMNS
@@ -771,6 +835,8 @@ local BLUEPRINTS = {
 				return enum_stepper_passes(width)
 			elseif variant == "stat_grid" then
 				return stat_grid_passes(width, entry)
+			elseif variant == "custom_stat_grid" then
+				return custom_stat_grid_passes(width)
 			elseif variant == "trait_grid" then
 				return trait_grid_passes(width, entry)
 			elseif variant == "action" then
@@ -939,6 +1005,8 @@ function Panel.new(dependencies)
 			height = CURRENCY_ROW_HEIGHT
 		elseif variant == "stat_grid" then
 			height = STAT_GRID_HEIGHT
+		elseif variant == "custom_stat_grid" then
+			height = CUSTOM_STAT_GRID_HEIGHT
 		elseif variant == "trait_grid" then
 			local columns = options.trait_columns or PERK_GRID_COLUMNS
 			local button_height = options.trait_button_height or PERK_GRID_BUTTON_HEIGHT
@@ -966,6 +1034,9 @@ function Panel.new(dependencies)
 				queue_current = options.queue_current == true,
 				stat_count = 0,
 				stat_pressed_callbacks = {},
+				custom_stat_callbacks = {},
+				custom_stat_total = "0/380",
+				custom_stat_total_value = 0,
 				trait_count = #(options.trait_options or {}),
 				trait_left_callbacks = {},
 				trait_right_callbacks = {},
@@ -1058,6 +1129,22 @@ function Panel.new(dependencies)
 						break
 					end
 				end
+			end
+		end
+
+		if options.custom_stat_grid then
+			entry.bind = function(widget)
+				widget.content.custom_stat_callbacks = {}
+
+				for index = 1, 5 do
+					local stat_index = index
+					widget.content.custom_stat_callbacks[index] = function(direction)
+						self:_adjust_custom_stat(stat_index, direction)
+					end
+				end
+			end
+			entry.refresh = function(widget)
+				self:_refresh_custom_stat_widget(widget)
 			end
 		end
 
@@ -1247,6 +1334,16 @@ function Panel.new(dependencies)
 
 	function self:_manual_queue_detail(plan)
 		plan = plan or {}
+		local custom_stats = {}
+
+		for _, target in ipairs(plan.custom_stat_targets or {}) do
+			custom_stats[#custom_stats + 1] = string.format(
+				"%s %s",
+				display_stat_name(target.name, target.display_name_key),
+				integer_text(target.value, "?")
+			)
+		end
+
 		local dump_stat = self:_planner_dump_stat_text()
 		local dump_target = integer_text(plan.dump_target or self:_setting("auto_crafter_dump_stat_target", 60))
 		local perks = {
@@ -1258,7 +1355,11 @@ function Panel.new(dependencies)
 			self:_target_policy_text("auto_crafter_blessing_2_target"),
 		}
 
-		return string.format("Dump stat: %s %s\nPerk 1: %s\nPerk 2: %s\nBlessings: %s", dump_stat, dump_target, value_text(perks[1], "?"), value_text(perks[2], "?"), table.concat(blessings, " / "))
+		local stat_line = plan.custom_stats_enabled and #custom_stats == 5
+			and "Stats: " .. table.concat(custom_stats, " / ")
+			or string.format("Dump stat: %s %s", dump_stat, dump_target)
+
+		return string.format("%s\nPerk 1: %s\nPerk 2: %s\nBlessings: %s", stat_line, value_text(perks[1], "?"), value_text(perks[2], "?"), table.concat(blessings, " / "))
 	end
 
 	function self:_games_lantern_queue_target(queue)
@@ -1354,6 +1455,68 @@ function Panel.new(dependencies)
 	function self:_adjust_numeric_setting(setting_id, default_value, minimum, maximum, step)
 		local current = tonumber(self:_setting(setting_id, default_value)) or default_value
 		self:_set_setting(setting_id, math.max(minimum, math.min(maximum, current + step)))
+	end
+
+	function self:_custom_stat_values()
+		local values = {}
+		local total = 0
+
+		for index = 1, 5 do
+			local value = math.max(60, math.min(80, math.floor(tonumber(self:_setting("auto_crafter_custom_stat_" .. tostring(index), 76)) or 76)))
+
+			values[index] = value
+			total = total + value
+		end
+
+		return values, total
+	end
+
+	function self:_custom_stat_labels()
+		local labels = {}
+		local candidates = self._plan and self._plan.dump_stat_candidates or {}
+
+		for index = 1, 5 do
+			local candidate = candidates[index]
+			labels[index] = candidate and display_stat_name(candidate.name, candidate.display_name_key) or string.format("Stat %d", index)
+		end
+
+		return labels
+	end
+
+	function self:_adjust_custom_stat(index, direction)
+		if self:_setting("auto_crafter_custom_stats", false) ~= true or index < 1 or index > 5 then
+			return false
+		end
+
+		local values, total = self:_custom_stat_values()
+		local current = values[index]
+		local delta = direction < 0 and -1 or 1
+
+		if delta < 0 and current <= 60 or delta > 0 and (current >= 80 or total >= 380) then
+			return false
+		end
+
+		return self:_set_setting("auto_crafter_custom_stat_" .. tostring(index), current + delta)
+	end
+
+	function self:_refresh_custom_stat_widget(widget)
+		local values, total = self:_custom_stat_values()
+		local labels = self:_custom_stat_labels()
+
+		widget.content.custom_stat_total_label = localize("auto_crafter_panel_custom_stat_total", "Total stat sum")
+		widget.content.custom_stat_total = tostring(total) .. "/380"
+		widget.content.custom_stat_total_value = total
+
+		for index = 1, 5 do
+			widget.content["custom_stat_label_" .. tostring(index)] = labels[index]
+			widget.content["custom_stat_value_" .. tostring(index)] = tostring(values[index])
+
+			local decrease = widget.content["custom_stat_decrease_hotspot_" .. tostring(index)]
+			local increase = widget.content["custom_stat_increase_hotspot_" .. tostring(index)]
+
+			if decrease then decrease.disabled = values[index] <= 60 end
+			if increase then increase.disabled = values[index] >= 80 or total >= 380 end
+		end
 	end
 
 	function self:_step_enum_setting(setting_id, values, default_value, direction)
@@ -1941,43 +2104,56 @@ function Panel.new(dependencies)
 					widget.content.detail = self:_games_lantern_queue_target(self:_games_lantern_queue()) or self:_planner_target_text()
 				end,
 			}))
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_dump_stat", "Dump stat"), self:_planner_dump_stat_text(), {
-				enabled = not queue_owned,
-				selectable = not queue_owned,
-				variant = "enum_stepper",
-				decrease = function()
-					self:_step_planner_dump_stat(-1)
-				end,
-				increase = function()
-					self:_step_planner_dump_stat(1)
-				end,
-				refresh = function(widget)
-					widget.content.detail = self:_planner_dump_stat_text()
-				end,
-			}))
-			local stat_buttons = self:_planner_dump_stat_buttons()
-
-			if #stat_buttons > 0 and not queue_owned then
+			local custom_stats_enabled = not queue_owned and self:_setting("auto_crafter_custom_stats", false) == true
+			add_checkbox("auto_crafter_custom_stats", "auto_crafter_custom_stats", "Custom stats", false, function()
+				return not queue_owned
+			end, true)
+			if custom_stats_enabled then
 				table.insert(entries, self:_entry("", "", {
+					custom_stat_grid = true,
 					selectable = true,
-					stat_buttons = stat_buttons,
-					variant = "stat_grid",
+					variant = "custom_stat_grid",
 				}))
 			end
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_dump_target", "Dump target"), integer_text(self:_setting("auto_crafter_dump_stat_target", 60)), {
-				enabled = not queue_owned,
-				selectable = not queue_owned,
-				variant = "stepper",
-				decrease = function()
-					self:_adjust_numeric_setting("auto_crafter_dump_stat_target", 60, 1, 100, -1)
-				end,
-				increase = function()
-					self:_adjust_numeric_setting("auto_crafter_dump_stat_target", 60, 1, 100, 1)
-				end,
-				refresh = function(widget)
-					widget.content.detail = integer_text(self:_setting("auto_crafter_dump_stat_target", 60))
-				end,
-			}))
+			if not custom_stats_enabled then
+				table.insert(entries, self:_entry(localize("auto_crafter_panel_dump_stat", "Dump stat"), self:_planner_dump_stat_text(), {
+					enabled = not queue_owned,
+					selectable = not queue_owned,
+					variant = "enum_stepper",
+					decrease = function()
+						self:_step_planner_dump_stat(-1)
+					end,
+					increase = function()
+						self:_step_planner_dump_stat(1)
+					end,
+					refresh = function(widget)
+						widget.content.detail = self:_planner_dump_stat_text()
+					end,
+				}))
+				local stat_buttons = self:_planner_dump_stat_buttons()
+
+				if #stat_buttons > 0 and not queue_owned then
+					table.insert(entries, self:_entry("", "", {
+						selectable = true,
+						stat_buttons = stat_buttons,
+						variant = "stat_grid",
+					}))
+				end
+				table.insert(entries, self:_entry(localize("auto_crafter_panel_dump_target", "Dump target"), integer_text(self:_setting("auto_crafter_dump_stat_target", 60)), {
+					enabled = not queue_owned,
+					selectable = not queue_owned,
+					variant = "stepper",
+					decrease = function()
+						self:_adjust_numeric_setting("auto_crafter_dump_stat_target", 60, 1, 100, -1)
+					end,
+					increase = function()
+						self:_adjust_numeric_setting("auto_crafter_dump_stat_target", 60, 1, 100, 1)
+					end,
+					refresh = function(widget)
+						widget.content.detail = integer_text(self:_setting("auto_crafter_dump_stat_target", 60))
+					end,
+				}))
+			end
 			add_checkbox("auto_crafter_cap_by_dockets", "auto_crafter_cap_by_dockets", "Cap perfect-roll weapon acquisition by Ordo dockets", true, nil, true)
 			if self:_setting("auto_crafter_cap_by_dockets", true) == true then
 				table.insert(entries, self:_entry(localize("auto_crafter_panel_docket_cap", "Ordo dockets cap"), integer_text(self:_setting("auto_crafter_docket_cap", 500000)), {
