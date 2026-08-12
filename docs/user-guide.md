@@ -2,6 +2,8 @@
 
 BetterInventory v2.1.6 improves inventory, Character Overview, Hadron, Requisition Weapons & Curios, and optional GlobalStore cards while preserving Darktide's native item and icon lifecycle.
 
+Enable **Force weapon name to a single line** under **Card content** to keep long standard and customized weapon titles out of the detail rows. BetterInventory reduces the title only to the configured minimum item-name font size, then truncates the base with an ellipsis while retaining an appended `Mk` suffix.
+
 ## Install
 
 Copy the `BetterInventory` directory into `Content/mods`, add `BetterInventory` to `Content/mods/mod_load_order.txt`, and restart Darktide. For a release archive, use the repository's `tools/package_release.ps1` script.
