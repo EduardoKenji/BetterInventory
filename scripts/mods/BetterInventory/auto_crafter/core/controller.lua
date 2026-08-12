@@ -191,6 +191,89 @@ local function candidate_stat(candidate, stat_name)
 	return potential_stats and potential_stats[stat_name]
 end
 
+local function copy_stat_targets(targets)
+	local copied = {}
+
+	if type(targets) == "table" and #targets > 0 then
+		for _, target in ipairs(targets) do
+			copied[#copied + 1] = {
+				display_name_key = target.display_name_key,
+				name = target.name,
+				value = tonumber(target.value),
+			}
+		end
+
+		return copied
+	end
+
+	for key, target in pairs(type(targets) == "table" and targets or {}) do
+		copied[key] = tonumber(target)
+	end
+
+	return copied
+end
+
+local function custom_stat_value(candidate, stat_name, target)
+	local value = candidate_stat(candidate, stat_name)
+
+	if value ~= nil or type(target) ~= "table" or target.display_name_key == nil then
+		return value
+	end
+
+	local matched_name
+
+	for candidate_name, display_name_key in pairs(type(candidate.base_stat_labels) == "table" and candidate.base_stat_labels or {}) do
+		if display_name_key == target.display_name_key and candidate_stat(candidate, candidate_name) ~= nil then
+			if matched_name ~= nil and matched_name ~= candidate_name then
+				return nil
+			end
+
+			matched_name = candidate_name
+		end
+	end
+
+	return matched_name and candidate_stat(candidate, matched_name) or nil
+end
+
+local function candidate_matches_stat_targets(candidate, dump_stat, target_dump, custom_targets)
+	if type(custom_targets) == "table" and next(custom_targets) ~= nil then
+		for stat_name, target in pairs(custom_targets) do
+			local target_name = type(target) == "table" and target.name or stat_name
+			local target_value = type(target) == "table" and target.value or target
+
+			if tonumber(custom_stat_value(candidate, target_name, target)) ~= tonumber(target_value) then
+				return false
+			end
+		end
+
+		return true
+	end
+
+	return tonumber(candidate_stat(candidate, dump_stat)) == tonumber(target_dump)
+end
+
+local function candidate_stat_target_distance(candidate, dump_stat, target_dump, custom_targets)
+	if type(custom_targets) == "table" and next(custom_targets) ~= nil then
+		local distance = 0
+
+		for stat_name, target in pairs(custom_targets) do
+			local target_name = type(target) == "table" and target.name or stat_name
+			local target_value = type(target) == "table" and target.value or target
+			local value = tonumber(custom_stat_value(candidate, target_name, target))
+
+			if value == nil then
+				return math.huge
+			end
+
+			distance = distance + math.abs(value - tonumber(target_value))
+		end
+
+		return distance
+	end
+
+	return math.abs((tonumber(candidate_stat(candidate, dump_stat)) or 0) - (tonumber(target_dump) or 60))
+end
+
 local function trait_at(traits, index)
 	local trait = type(traits) == "table" and traits[index] or nil
 
@@ -587,9 +670,10 @@ local function remove_snapshot_gear(snapshot, gear_ids)
 end
 
 local function planner_config_signature(config)
-	return table.concat({
+	local fields = {
 		tostring(config.dump_stat),
 		tostring(config.dump_target),
+		tostring(config.custom_stats_enabled),
 		tostring(config.cap_by_dockets),
 		tostring(config.docket_cap),
 		tostring(config.cap_by_max_purchases),
@@ -603,7 +687,13 @@ local function planner_config_signature(config)
 		tostring(config.reuse_inventory_base),
 		tostring(config.include_favorite_inventory_bases),
 		tostring(config.craft_duplicate_completed_queued_weapons),
-	}, "|")
+	}
+
+	for index = 1, 5 do
+		fields[#fields + 1] = tostring(config.custom_stat_targets and config.custom_stat_targets[index])
+	end
+
+	return table.concat(fields, "|")
 end
 
 local function wallet_values(snapshot)
@@ -824,6 +914,12 @@ function Controller.new(dependencies)
 	local planner_setting_ids = {
 		auto_crafter_target_dump_stat = true,
 		auto_crafter_dump_stat_target = true,
+		auto_crafter_custom_stats = true,
+		auto_crafter_custom_stat_1 = true,
+		auto_crafter_custom_stat_2 = true,
+		auto_crafter_custom_stat_3 = true,
+		auto_crafter_custom_stat_4 = true,
+		auto_crafter_custom_stat_5 = true,
 		auto_crafter_cap_by_dockets = true,
 		auto_crafter_docket_cap = true,
 		auto_crafter_cap_by_max_purchases = true,
@@ -1067,10 +1163,19 @@ function Controller.new(dependencies)
 
 	local function planner_config()
 		local imported_job = self._run_imported_job or self._imported_job
+		local custom_stats_enabled = not imported_job and setting("auto_crafter_custom_stats", false) == true
 
 		return {
 			dump_stat = imported_job and imported_job.dump_stat or setting("auto_crafter_target_dump_stat", "damage"),
 			dump_target = imported_job and imported_job.dump_target or setting("auto_crafter_dump_stat_target", 60),
+			custom_stats_enabled = custom_stats_enabled,
+			custom_stat_targets = custom_stats_enabled and {
+				setting("auto_crafter_custom_stat_1", 76),
+				setting("auto_crafter_custom_stat_2", 76),
+				setting("auto_crafter_custom_stat_3", 76),
+				setting("auto_crafter_custom_stat_4", 76),
+				setting("auto_crafter_custom_stat_5", 76),
+			} or nil,
 			cap_by_dockets = setting("auto_crafter_cap_by_dockets", true),
 			docket_cap = setting("auto_crafter_docket_cap", 500000),
 			cap_by_max_purchases = setting("auto_crafter_cap_by_max_purchases", false),
@@ -2228,9 +2333,9 @@ function Controller.new(dependencies)
 			return true
 		end
 
-		local target = tonumber(self._search and self._search.target_dump) or 60
-		local candidate_distance = math.abs((tonumber(candidate.dump_stat) or 0) - target)
-		local current_distance = math.abs((tonumber(current.dump_stat) or 0) - target)
+		local search = self._search or {}
+		local candidate_distance = candidate_stat_target_distance(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets)
+		local current_distance = candidate_stat_target_distance(current, search.dump_stat, search.target_dump, search.custom_stat_targets)
 
 		if candidate_distance ~= current_distance then
 			return candidate_distance < current_distance
@@ -2397,8 +2502,8 @@ function Controller.new(dependencies)
 				invalid_reason = "final weapon is absent from authoritative inventory"
 			elseif phase4.mastery_id ~= nil and (item.parent_pattern or item.mastery_id) ~= phase4.mastery_id then
 				invalid_reason = "final weapon changed weapon family"
-			elseif tonumber(candidate_stat(item, phase4.dump_stat)) ~= tonumber(phase4.target_dump) then
-				invalid_reason = "final weapon changed dump stat"
+			elseif not candidate_matches_stat_targets(item, phase4.dump_stat, phase4.target_dump, phase4.custom_stat_targets) then
+				invalid_reason = phase4.custom_stats_enabled and "final weapon changed custom stats" or "final weapon changed dump stat"
 			elseif phase4.consecrate and (tonumber(item.rarity) or -1) < TRANSCENDENT_RARITY then
 				invalid_reason = "final weapon is below Transcendent"
 			elseif phase4.expertise and (tonumber(item.expertise_level) or -1) < MAX_EXPERTISE_LEVEL then
@@ -2460,7 +2565,7 @@ function Controller.new(dependencies)
 			return true
 		end
 
-		if not item or item.available ~= true or item.parent_pattern ~= phase4.mastery_id or tonumber(candidate_stat(item, phase4.dump_stat)) ~= tonumber(phase4.target_dump) then
+		if not item or item.available ~= true or item.parent_pattern ~= phase4.mastery_id or not candidate_matches_stat_targets(item, phase4.dump_stat, phase4.target_dump, phase4.custom_stat_targets) then
 			self:_operation_failed(generation, "final weapon failed authoritative identity or level-500 stat verification")
 
 			return false
@@ -2840,6 +2945,8 @@ function Controller.new(dependencies)
 			blessing_poll_wait = blessing_poll_delay(0),
 			catalog = catalog,
 			consecrate = consecrate,
+			custom_stats_enabled = self._search and self._search.custom_stats_enabled == true,
+			custom_stat_targets = copy_stat_targets(self._search and self._search.custom_stat_targets),
 			dump_stat = self._search and self._search.dump_stat,
 			expertise = expertise_enabled,
 			favorite_result = self._search and self._search.favorite_result == true,
@@ -2918,7 +3025,6 @@ function Controller.new(dependencies)
 		local search = self._search
 		local target = phase3 and phase3.target_candidate
 		local item = target and find_item(self._snapshot and self._snapshot.gear and self._snapshot.gear.items, target.gear_id)
-		local authoritative_dump = candidate_stat(item, search and search.dump_stat)
 
 		if not phase3 or not phase3.running or not target or not search then
 			return false
@@ -2936,8 +3042,8 @@ function Controller.new(dependencies)
 			return self:_phase3_sync_projected(self._generation)
 		end
 
-		if not item or item.available ~= true or item.parent_pattern ~= target.mastery_id or tonumber(authoritative_dump) ~= tonumber(target.dump_stat) then
-			self:_operation_failed(self._generation, "Phase 3 target failed authoritative family or dump-stat reconciliation")
+		if not item or item.available ~= true or item.parent_pattern ~= target.mastery_id or not candidate_matches_stat_targets(item, search.dump_stat, search.target_dump, search.custom_stat_targets) then
+			self:_operation_failed(self._generation, search.custom_stats_enabled and "Phase 3 target failed authoritative family or custom-stat reconciliation" or "Phase 3 target failed authoritative family or dump-stat reconciliation")
 
 			return false
 		end
@@ -3505,7 +3611,7 @@ function Controller.new(dependencies)
 		candidate.dump_stat_id = search.dump_stat
 		candidate.dump_stat_label = candidate.base_stat_labels and candidate.base_stat_labels[search.dump_stat]
 		candidate.damage = candidate.potential_damage or candidate_stat(candidate, "damage")
-		candidate.exact_match = tonumber(candidate.dump_stat) == tonumber(search.target_dump)
+		candidate.exact_match = candidate_matches_stat_targets(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets)
 
 		if not candidate.exact_match then
 			return false
@@ -3784,7 +3890,7 @@ function Controller.new(dependencies)
 			local favorite_allowed = include_favorites or candidate.favorite_known == true and candidate.favorited ~= true
 
 			local imported_complete = imported_job and self:_imported_item_is_complete(candidate, imported_job)
-			if candidate.available == true and candidate.gear_id ~= nil and candidate.equipped ~= true and matched and favorite_allowed and not imported_complete and tonumber(candidate_stat(candidate, search.dump_stat)) == tonumber(search.target_dump) then
+			if candidate.available == true and candidate.gear_id ~= nil and candidate.equipped ~= true and matched and favorite_allowed and not imported_complete and candidate_matches_stat_targets(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets) then
 				local analysis = profile_analysis(candidate)
 				analysis.expertise = tonumber(candidate.expertise_level) or -1
 				analysis.family_identity = identity_source
@@ -3967,7 +4073,7 @@ function Controller.new(dependencies)
 				candidate.dump_stat_id = search.dump_stat
 				candidate.dump_stat_label = candidate.base_stat_labels and candidate.base_stat_labels[search.dump_stat]
 				candidate.damage = candidate.potential_damage or candidate_stat(candidate, "damage")
-				candidate.exact_match = tonumber(dump_stat) == tonumber(search.target_dump)
+				candidate.exact_match = candidate_matches_stat_targets(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets)
 
 				if self._phase3 and self._phase3.running and not candidate.exact_match then
 					track_purchased_spare(self._phase3, candidate)
@@ -4372,7 +4478,7 @@ function Controller.new(dependencies)
 
 		local plan = self._plan
 
-		if not plan or not plan.preflight or plan.preflight.ok ~= true or not plan.target then
+		if not plan or not plan.target then
 			operation_report("mutation_blocked", {
 				reason = plan and plan.preflight and plan.preflight.summary or "purchase preflight unavailable",
 			})
@@ -4386,6 +4492,22 @@ function Controller.new(dependencies)
 		if dump_stat == nil or dump_stat == "" then
 			operation_report("mutation_blocked", {
 				reason = plan.dump_stat_resolution or "configured dump stat is unavailable",
+			})
+
+			return false
+		end
+
+		if plan.custom_stats_enabled and (plan.custom_stats_valid ~= true or tonumber(plan.custom_stat_total) ~= 380 or type(plan.custom_stat_targets) ~= "table" or #plan.custom_stat_targets ~= 5) then
+			operation_report("mutation_blocked", {
+				reason = string.format("invalid custom stat total: expected 380, current %s", tostring(plan.custom_stat_total or "?")),
+			})
+
+			return false
+		end
+
+		if not plan.preflight or plan.preflight.ok ~= true then
+			operation_report("mutation_blocked", {
+				reason = plan.preflight and plan.preflight.summary or "purchase preflight unavailable",
 			})
 
 			return false
@@ -4431,6 +4553,8 @@ function Controller.new(dependencies)
 			cap_by_dockets = setting("auto_crafter_cap_by_dockets", true) == true,
 			catalog = imported_job and imported_job.catalog or self._catalog,
 			docket_cap = tonumber(setting("auto_crafter_docket_cap", 500000)) or 0,
+			custom_stats_enabled = plan.custom_stats_enabled == true,
+			custom_stat_targets = copy_stat_targets(plan.custom_stat_targets),
 			dump_stat = dump_stat,
 			favorite_result = setting("auto_crafter_favorite_result", true) == true,
 			generation = self._generation,
