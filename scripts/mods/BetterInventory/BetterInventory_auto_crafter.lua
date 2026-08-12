@@ -130,8 +130,8 @@ local function notification_enabled()
 	return setting("auto_crafter_show_probe_notifications", true) ~= false
 end
 
-local function notify(title, description)
-	if not notification_enabled() then
+local function notify(title, description, required)
+	if required ~= true and not notification_enabled() then
 		return false
 	end
 
@@ -394,7 +394,7 @@ local function reporter(ui_panel)
 					ui_panel:set_phase("mutation_blocked")
 				end
 
-				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Mutation blocked: " .. tostring(payload and payload.reason or "preflight failed"))
+				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Mutation blocked: " .. tostring(payload and payload.reason or "preflight failed"), true)
 			elseif kind == "purchase_search_started" then
 				if ui_panel then
 					ui_panel:set_phase(payload and payload.phase3 and "phase3_search_purchase" or "search_purchase")
@@ -881,7 +881,11 @@ function AutoCrafter.configure(dependencies)
 			return false, installed_ok and install_reason or installed
 		end
 
-		local staged_ok, staged, stage_reason = pcall(controller.set_imported_job, controller, build.jobs[1])
+		local selected_ok, selected, selected_job = pcall(games_lantern_queue.select_for_planning, games_lantern_queue, 1)
+		local staged_ok, staged, stage_reason = false, false, selected_job
+		if selected_ok and selected == true then
+			staged_ok, staged, stage_reason = pcall(controller.set_imported_job, controller, selected_job)
+		end
 		if not staged_ok or staged ~= true then
 			pcall(games_lantern_queue.clear, games_lantern_queue)
 			pcall(controller.clear_imported_job, controller)
@@ -983,6 +987,44 @@ function AutoCrafter.configure(dependencies)
 		games_lantern_queue_snapshot = function()
 			return games_lantern_queue and games_lantern_queue:presentation_snapshot() or nil
 		end,
+		games_lantern_select_queue_job = function(index)
+			if not games_lantern_queue or not controller or not active_brunt_view then
+				return false, "queue_editor_unavailable"
+			end
+			local selected, job_or_reason = games_lantern_queue:select_for_planning(index)
+			if not selected then return false, job_or_reason end
+			local configured, configure_reason = controller:set_imported_job(job_or_reason)
+			if not configured then return false, configure_reason end
+			if type(dependencies.select_offer) == "function" then
+				pcall(dependencies.select_offer, active_brunt_view, job_or_reason.offer)
+			end
+			presentation_dirty = true
+			invalidate_games_lantern_panel()
+
+			return true
+		end,
+		games_lantern_update_queue_custom_stat = function(index, value)
+			if not games_lantern_queue or not controller then return false, "queue_editor_unavailable" end
+			local updated, job_or_reason = games_lantern_queue:update_selected_custom_stat(index, value)
+			if not updated then return false, job_or_reason end
+			local configured, configure_reason = controller:set_imported_job(job_or_reason)
+			if not configured then return false, configure_reason end
+			presentation_dirty = true
+			invalidate_games_lantern_panel()
+
+			return true
+		end,
+		games_lantern_update_queue_trait = function(kind, index, target)
+			if not games_lantern_queue or not controller then return false, "queue_editor_unavailable" end
+			local updated, job_or_reason = games_lantern_queue:update_selected_trait(kind, index, target)
+			if not updated then return false, job_or_reason end
+			local configured, configure_reason = controller:set_imported_job(job_or_reason)
+			if not configured then return false, configure_reason end
+			presentation_dirty = true
+			invalidate_games_lantern_panel()
+
+			return true
+		end,
 		games_lantern_import_snapshot = function()
 			return games_lantern_import and games_lantern_import:presentation_snapshot() or nil
 		end,
@@ -1036,6 +1078,9 @@ function AutoCrafter.configure(dependencies)
 		end,
 		start_games_lantern_queue = function(confirmed, confirmed_signature)
 			return start_games_lantern_queue and start_games_lantern_queue(confirmed, confirmed_signature) or false
+		end,
+		notify_blocked = function(reason)
+			return notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Mutation blocked: " .. tostring(reason), true)
 		end,
 		localize = function(setting_id)
 			return localize(setting_id, setting_id)

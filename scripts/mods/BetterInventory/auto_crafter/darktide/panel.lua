@@ -516,6 +516,7 @@ local function queue_job_passes(width, height, highlighted)
 	local label_color = highlighted and Color.terminal_corner_selected(255, true) or Color.terminal_text_header(255, true)
 
 	return {
+		{ content_id = "hotspot", pass_type = "hotspot", content = { on_hover_sound = UISoundEvents.default_mouse_hover, on_pressed_sound = UISoundEvents.default_click } },
 		{ pass_type = "rect", style = { color = Color.terminal_background(220, true), size = { width, height }, offset = { 0, 0, 1 } } },
 		{ pass_type = "texture", value = "content/ui/materials/frames/frame_tile_2px", style = { color = border_color, size = { width, height }, offset = { 0, 0, 2 } } },
 		{ pass_type = "text", value_id = "label", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "top", text_color = label_color, size = { width - 16, 20 }, offset = { 8, 5, 3 } } },
@@ -925,6 +926,10 @@ function Panel.new(dependencies)
 		_games_lantern_paste = dependencies.games_lantern_paste,
 		_games_lantern_clear = dependencies.games_lantern_clear,
 		_games_lantern_select_choice = dependencies.games_lantern_select_choice,
+		_games_lantern_select_queue_job = dependencies.games_lantern_select_queue_job,
+		_games_lantern_update_queue_custom_stat = dependencies.games_lantern_update_queue_custom_stat,
+		_games_lantern_update_queue_trait = dependencies.games_lantern_update_queue_trait,
+		_notify_blocked = dependencies.notify_blocked,
 		_get_games_lantern_cost_authority = dependencies.games_lantern_cost_authority,
 		_start_games_lantern_queue = dependencies.start_games_lantern_queue,
 		_queue_craft_armed = false,
@@ -1032,6 +1037,7 @@ function Panel.new(dependencies)
 				selected = false,
 				selected_stat_index = 0,
 				queue_current = options.queue_current == true,
+				queue_selected = options.queue_selected == true,
 				stat_count = 0,
 				stat_pressed_callbacks = {},
 				custom_stat_callbacks = {},
@@ -1165,8 +1171,8 @@ function Panel.new(dependencies)
 				end
 			end
 			entry.refresh = function(widget)
-				local target_1 = self:_setting(options.target_1_setting, "keep")
-				local target_2 = self:_setting(options.target_2_setting, "keep")
+				local target_1 = self:_target_policy_value(options.target_1_setting) or "keep"
+				local target_2 = self:_target_policy_value(options.target_2_setting) or "keep"
 
 				widget.content.trait_count = #options.trait_options
 				widget.content.trait_target_1_index = 0
@@ -1288,13 +1294,64 @@ function Panel.new(dependencies)
 			return "none"
 		end
 
-		return table.concat({
+		local parts = {
 			tostring(queue.queue_id or ""),
 			tostring(queue.state or "empty"),
 			tostring(queue.current_index or 0),
+			tostring(queue.planner_index or 0),
 			tostring(queue.job_count or 0),
 			tostring(queue.last_error or ""),
-		}, "|")
+		}
+		for _, job in ipairs(queue.jobs or {}) do
+			for _, target in ipairs(job.custom_stat_targets or {}) do parts[#parts + 1] = tostring(target.name) .. ":" .. tostring(target.value) end
+			for _, target in ipairs(job.perks or {}) do parts[#parts + 1] = "p:" .. tostring(target.id) .. ":" .. tostring(target.rarity) end
+			for _, target in ipairs(job.blessings or {}) do parts[#parts + 1] = "b:" .. tostring(target.id) .. ":" .. tostring(target.rarity) end
+		end
+
+		return table.concat(parts, "|")
+	end
+
+	function self:_selected_queue_job(queue)
+		queue = queue or self:_games_lantern_queue()
+		if type(queue) ~= "table" or type(queue.jobs) ~= "table" then return nil end
+
+		return queue.jobs[tonumber(queue.planner_index) or 1]
+	end
+
+	function self:_selected_queue_job_name(queue)
+		local job = self:_selected_queue_job(queue)
+		local offer = job and job.offer or {}
+
+		return job and value_text(job.display_name, weapon_name_with_mark(offer.display_name, offer.sub_display_name)) or nil
+	end
+
+	function self:_notify_craft_blocked(reason)
+		log("error", "Auto Crafter craft blocked: " .. tostring(reason))
+		if type(self._notify_blocked) == "function" then pcall(self._notify_blocked, tostring(reason)) end
+
+		return false
+	end
+
+	function self:_invalid_queue_custom_stats(queue)
+		for index, job in ipairs(type(queue) == "table" and queue.jobs or {}) do
+			if job.custom_stats_enabled == true then
+				local total = 0
+				local valid = type(job.custom_stat_targets) == "table" and #job.custom_stat_targets == 5
+				local seen = {}
+				for _, target in ipairs(valid and job.custom_stat_targets or {}) do
+					local name = type(target) == "table" and target.name or nil
+					local value = tonumber(type(target) == "table" and target.value or nil)
+					if name == nil or name == "" or seen[tostring(name)] or value == nil or value ~= math.floor(value) or value < 60 or value > 80 then valid = false break end
+					seen[tostring(name)] = true
+					total = total + value
+				end
+				if not valid or total ~= 380 or tonumber(job.custom_stat_total) ~= total then
+					return string.format("invalid custom stat total for queue weapon %d: expected 380, current %s", index, valid and tostring(total) or "?")
+				end
+			end
+		end
+
+		return nil
 	end
 
 	function self:_games_lantern_import_signature(import_state)
@@ -1322,10 +1379,15 @@ function Panel.new(dependencies)
 			blessings[#blessings + 1] = value_text(target.label or target.display_name, target.id or "?")
 		end
 
+		local stats = {}
+		for _, target in ipairs(job.custom_stat_targets or {}) do
+			stats[#stats + 1] = string.format("%s %s", value_text(target.label or target.display_name_key or target.name, "?"), integer_text(target.value, "?"))
+		end
+		local stat_line = job.custom_stats_enabled and #stats == 5 and "Stats: " .. table.concat(stats, " / ") or string.format("Dump stat: %s %s", value_text(job.dump_stat_label or job.dump_stat, "?"), integer_text(job.dump_target, "?"))
+
 		return string.format(
-			"Dump stat: %s %s\nPerk 1: %s\nPerk 2: %s\nBlessings: %s",
-			value_text(job.dump_stat_label or job.dump_stat, "?"),
-			integer_text(job.dump_target, "?"),
+			"%s\nPerk 1: %s\nPerk 2: %s\nBlessings: %s",
+			stat_line,
 			value_text(perks[1], "?"),
 			value_text(perks[2], "?"),
 			#blessings > 0 and table.concat(blessings, " / ") or "?"
@@ -1460,9 +1522,12 @@ function Panel.new(dependencies)
 	function self:_custom_stat_values()
 		local values = {}
 		local total = 0
+		local queue_job = self:_selected_queue_job()
+		local imported_targets = queue_job and queue_job.custom_stats_enabled == true and queue_job.custom_stat_targets or nil
 
 		for index = 1, 5 do
-			local value = math.max(60, math.min(80, math.floor(tonumber(self:_setting("auto_crafter_custom_stat_" .. tostring(index), 76)) or 76)))
+			local imported = imported_targets and imported_targets[index]
+			local value = math.max(60, math.min(80, math.floor(tonumber(imported and imported.value or self:_setting("auto_crafter_custom_stat_" .. tostring(index), 76)) or 76)))
 
 			values[index] = value
 			total = total + value
@@ -1474,17 +1539,23 @@ function Panel.new(dependencies)
 	function self:_custom_stat_labels()
 		local labels = {}
 		local candidates = self._plan and self._plan.dump_stat_candidates or {}
+		local queue_job = self:_selected_queue_job()
+		local imported_targets = queue_job and queue_job.custom_stat_targets or {}
 
 		for index = 1, 5 do
 			local candidate = candidates[index]
-			labels[index] = candidate and display_stat_name(candidate.name, candidate.display_name_key) or string.format("Stat %d", index)
+			local imported = imported_targets[index]
+			labels[index] = imported and value_text(imported.label, display_stat_name(imported.name, imported.display_name_key)) or candidate and display_stat_name(candidate.name, candidate.display_name_key) or string.format("Stat %d", index)
 		end
 
 		return labels
 	end
 
 	function self:_adjust_custom_stat(index, direction)
-		if self:_setting("auto_crafter_custom_stats", false) ~= true or index < 1 or index > 5 then
+		local queue = self:_games_lantern_queue()
+		local queue_job = self:_selected_queue_job(queue)
+		local imported = queue_job and queue_job.custom_stats_enabled == true
+		if not imported and self:_setting("auto_crafter_custom_stats", false) ~= true or index < 1 or index > 5 then
 			return false
 		end
 
@@ -1496,12 +1567,28 @@ function Panel.new(dependencies)
 			return false
 		end
 
+		if imported then
+			if queue.state ~= "staged" or type(self._games_lantern_update_queue_custom_stat) ~= "function" then return false end
+			local ok, updated = pcall(self._games_lantern_update_queue_custom_stat, index, current + delta)
+			if ok and updated == true then
+				self._queue_craft_armed = false
+				self._queue_craft_confirmation_signature = nil
+				self._queue_craft_confirmation_text = nil
+				self:_queue_layout(1)
+			end
+
+			return ok and updated == true
+		end
+
 		return self:_set_setting("auto_crafter_custom_stat_" .. tostring(index), current + delta)
 	end
 
 	function self:_refresh_custom_stat_widget(widget)
 		local values, total = self:_custom_stat_values()
 		local labels = self:_custom_stat_labels()
+		local queue = self:_games_lantern_queue()
+		local queue_job = self:_selected_queue_job(queue)
+		local editor_enabled = not queue_job or queue and queue.state == "staged"
 
 		widget.content.custom_stat_total_label = localize("auto_crafter_panel_custom_stat_total", "Total stat sum")
 		widget.content.custom_stat_total = tostring(total) .. "/380"
@@ -1514,8 +1601,8 @@ function Panel.new(dependencies)
 			local decrease = widget.content["custom_stat_decrease_hotspot_" .. tostring(index)]
 			local increase = widget.content["custom_stat_increase_hotspot_" .. tostring(index)]
 
-			if decrease then decrease.disabled = values[index] <= 60 end
-			if increase then increase.disabled = values[index] >= 80 or total >= 380 end
+			if decrease then decrease.disabled = not editor_enabled or values[index] <= 60 end
+			if increase then increase.disabled = not editor_enabled or values[index] >= 80 or total >= 380 end
 		end
 	end
 
@@ -1719,7 +1806,7 @@ function Panel.new(dependencies)
 	end
 
 	function self:_target_policy_text(setting_id)
-		local value = self:_setting(setting_id)
+		local value = self:_target_policy_value(setting_id)
 
 		for _, option in ipairs(self:_trait_target_options(setting_id)) do
 			if option.value == value then
@@ -1728,6 +1815,20 @@ function Panel.new(dependencies)
 		end
 
 		return localize("auto_crafter_panel_waiting", "waiting for probe")
+	end
+
+	function self:_target_policy_value(setting_id)
+		if type(setting_id) ~= "string" then return nil end
+		local job = self:_selected_queue_job()
+		local index = string.find(setting_id, "_2_target", 1, true) and 2 or 1
+		local kind = string.find(setting_id, "blessing", 1, true) and "blessings" or "perks"
+		local target = job and job[kind] and job[kind][index]
+
+		if target and target.id then
+			return kind == "perks" and string.format("perk:%s:%s", tostring(target.id), tostring(target.rarity)) or target.id
+		end
+
+		return self:_setting(setting_id)
 	end
 
 	function self:_default_trait_target(setting_id, options, excluded_value)
@@ -1768,7 +1869,7 @@ function Panel.new(dependencies)
 	function self:_step_trait_target(setting_id, direction)
 		local options = self:_trait_target_options(setting_id)
 		local values = {}
-		local peer_value = self:_setting(TRAIT_TARGET_PAIRS[setting_id])
+		local peer_value = self:_target_policy_value(TRAIT_TARGET_PAIRS[setting_id])
 
 		for _, option in ipairs(options) do
 			if option.value ~= peer_value then
@@ -1777,7 +1878,11 @@ function Panel.new(dependencies)
 		end
 
 		if #values > 0 then
-			self:_step_enum_setting(setting_id, values, values[1], direction)
+			local current = self:_target_policy_value(setting_id)
+			local current_index = 1
+			for index, value in ipairs(values) do if value == current then current_index = index break end end
+			local next_index = (current_index - 1 + direction) % #values + 1
+			self:_set_trait_target(setting_id, values[next_index])
 		end
 	end
 
@@ -1794,6 +1899,31 @@ function Panel.new(dependencies)
 
 		if not valid then
 			return false
+		end
+
+		local job = self:_selected_queue_job()
+		if job then
+			local queue = self:_games_lantern_queue()
+			if not queue or queue.state ~= "staged" or type(self._games_lantern_update_queue_trait) ~= "function" then return false end
+			local kind = string.find(setting_id, "blessing", 1, true) and "blessing" or "perk"
+			local target_index = string.find(setting_id, "_2_target", 1, true) and 2 or 1
+			local selected
+			for _, option in ipairs(options) do
+				if option.value == value then
+					local id, rarity = value:match("^perk:(.-):(%d+)$")
+					selected = { id = id or value, rarity = tonumber(rarity), label = option.label }
+					break
+				end
+			end
+			local ok, updated = pcall(self._games_lantern_update_queue_trait, kind, target_index, selected)
+			if ok and updated == true then
+				self._queue_craft_armed = false
+				self._queue_craft_confirmation_signature = nil
+				self._queue_craft_confirmation_text = nil
+				self:_queue_layout(1)
+			end
+
+			return ok and updated == true
 		end
 
 		self:_set_setting(setting_id, value)
@@ -1956,15 +2086,31 @@ function Panel.new(dependencies)
 
 		if not self._section_collapsed[SECTION_QUEUE] and type(queue_jobs) == "table" and #queue_jobs > 0 then
 			for index, job in ipairs(queue_jobs) do
+				local queue_index = index
 				local offer = job.offer or {}
 				local name = value_text(job.display_name, value_text(weapon_name_with_mark(offer.display_name, offer.sub_display_name), value_text(offer.master_id, "Weapon")))
 
+				local highlighted = queue_active and job.current == true or not queue_active and job.selected == true
 				table.insert(entries, #entries, self:_entry(string.format("%d. %s", index, name), self:_games_lantern_job_detail(job), {
+					enabled = not queue_active,
 					height = QUEUE_JOB_ROW_HEIGHT,
 					queue_job = true,
 					queue_index = index,
-					queue_current = job.current == true,
+					queue_current = highlighted,
+					queue_selected = job.selected == true,
+					selectable = not queue_active,
 					variant = "queue_job",
+					action = function()
+						if not queue_active and type(self._games_lantern_select_queue_job) == "function" then
+							local ok, selected_job = pcall(self._games_lantern_select_queue_job, queue_index)
+							if ok and selected_job == true then
+								self._queue_craft_armed = false
+								self._queue_craft_confirmation_signature = nil
+								self._queue_craft_confirmation_text = nil
+								self:_queue_layout(1)
+							end
+						end
+					end,
 				}))
 			end
 		elseif not self._section_collapsed[SECTION_QUEUE] then
@@ -2060,7 +2206,7 @@ function Panel.new(dependencies)
 		end
 		local function add_target_selector(setting_id, label_id, fallback, enabled, unavailable_text)
 			local function is_enabled()
-				if queue_owned then
+				if queue_active then
 					return false
 				end
 				if type(enabled) == "function" then
@@ -2099,15 +2245,24 @@ function Panel.new(dependencies)
 		end
 
 		if not self._section_collapsed[SECTION_PLANNER] then
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_planner_target", "Planner target"), queue_target or self:_planner_target_text(), {
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_planner_target", "Planner target"), self:_selected_queue_job_name(queue) or self:_planner_target_text(), {
 				refresh = function(widget)
-					widget.content.detail = self:_games_lantern_queue_target(self:_games_lantern_queue()) or self:_planner_target_text()
+					local current_queue = self:_games_lantern_queue()
+					widget.content.detail = self:_selected_queue_job_name(current_queue) or self:_planner_target_text()
 				end,
 			}))
-			local custom_stats_enabled = not queue_owned and self:_setting("auto_crafter_custom_stats", false) == true
-			add_checkbox("auto_crafter_custom_stats", "auto_crafter_custom_stats", "Custom stats", false, function()
-				return not queue_owned
-			end, true)
+			local selected_queue_job = self:_selected_queue_job(queue)
+			local custom_stats_enabled = selected_queue_job and selected_queue_job.custom_stats_enabled == true or not queue_owned and self:_setting("auto_crafter_custom_stats", false) == true
+			if queue_owned then
+				table.insert(entries, self:_entry(localize("auto_crafter_custom_stats", "Custom stats"), "", {
+					checked = custom_stats_enabled,
+					enabled = false,
+					selectable = false,
+					variant = "checkbox",
+				}))
+			else
+				add_checkbox("auto_crafter_custom_stats", "auto_crafter_custom_stats", "Custom stats", false, nil, true)
+			end
 			if custom_stats_enabled then
 				table.insert(entries, self:_entry("", "", {
 					custom_stat_grid = true,
@@ -2270,7 +2425,7 @@ function Panel.new(dependencies)
 		if not self._section_collapsed[SECTION_TRAITS] then
 			local unavailable = localize("auto_crafter_panel_option_unavailable", "Enable prerequisite options")
 			local function perk_targets_enabled()
-				return not queue_owned and self:_setting("auto_crafter_level_mastery_20", true) == true and self:_setting("auto_crafter_change_perks", true) == true
+				return (not queue_owned or queue.state == "staged") and self:_setting("auto_crafter_level_mastery_20", true) == true and self:_setting("auto_crafter_change_perks", true) == true
 			end
 			add_target_selector("auto_crafter_perk_1_target", "auto_crafter_perk_1_target", "Perk target 1", perk_targets_enabled, unavailable)
 			add_target_selector("auto_crafter_perk_2_target", "auto_crafter_perk_2_target", "Perk target 2", perk_targets_enabled, unavailable)
@@ -2289,7 +2444,7 @@ function Panel.new(dependencies)
 				}))
 			end
 			local function blessing_targets_enabled()
-				return not queue_owned and self:_setting("auto_crafter_level_mastery_20", true) == true and self:_setting("auto_crafter_change_blessings", true) == true
+				return (not queue_owned or queue.state == "staged") and self:_setting("auto_crafter_level_mastery_20", true) == true and self:_setting("auto_crafter_change_blessings", true) == true
 			end
 			add_target_selector("auto_crafter_blessing_1_target", "auto_crafter_blessing_1_target", "Blessing target 1", blessing_targets_enabled, unavailable)
 			add_target_selector("auto_crafter_blessing_2_target", "auto_crafter_blessing_2_target", "Blessing target 2", blessing_targets_enabled, unavailable)
@@ -2400,6 +2555,8 @@ function Panel.new(dependencies)
 				if queue_active or import_busy then return end
 
 				if (imported and imported.state == "staged" or queue_owned) and type(self._start_games_lantern_queue) == "function" then
+					local custom_stat_error = self:_invalid_queue_custom_stats(queue)
+					if custom_stat_error then self:_notify_craft_blocked(custom_stat_error) return end
 					local authority, authority_text = self:_games_lantern_cost_authority()
 					if not authority then
 						self._queue_craft_armed = false

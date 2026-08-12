@@ -37,8 +37,28 @@ local function copy(value, seen)
 	return result
 end
 
+local function valid_custom_profile(job)
+	if not job or job.custom_stats_enabled ~= true then return true end
+	if type(job.custom_stat_targets) ~= "table" or #job.custom_stat_targets ~= 5 then return false end
+
+	local seen = {}
+	local total = 0
+	for _, target in ipairs(job.custom_stat_targets) do
+		local name = type(target) == "table" and target.name or nil
+		local value = tonumber(type(target) == "table" and target.value or nil)
+		if name == nil or name == "" or seen[tostring(name)] or value == nil or value ~= math.floor(value) or value < 60 or value > 80 then
+			return false
+		end
+		seen[tostring(name)] = true
+		total = total + value
+	end
+
+	return total == 380 and (job.custom_stat_total == nil or tonumber(job.custom_stat_total) == total)
+end
+
 local function valid_job(job, expected_slot)
-	return type(job) == "table" and job.kind == "games_lantern_job" and job.slot == expected_slot and type(job.offer) == "table" and job.dump_stat ~= nil and type(job.perks) == "table" and #job.perks == 2 and type(job.blessings) == "table" and #job.blessings == 2
+	local custom_valid = valid_custom_profile(job)
+	return type(job) == "table" and job.kind == "games_lantern_job" and job.slot == expected_slot and type(job.offer) == "table" and job.dump_stat ~= nil and custom_valid and type(job.perks) == "table" and #job.perks == 2 and type(job.blessings) == "table" and #job.blessings == 2
 end
 
 local function valid_build(build)
@@ -78,6 +98,7 @@ function Queue.new(dependencies)
 		_jobs = nil,
 		_state = "empty",
 		_current_index = 0,
+		_planner_index = 0,
 		_last_error = nil,
 		_last_event = nil,
 		_stop_requested = false,
@@ -285,6 +306,7 @@ function Queue.new(dependencies)
 		end
 		self._state = "staged"
 		self._current_index = 1
+		self._planner_index = 1
 		self._last_error = nil
 		self._last_event = nil
 		self._stop_requested = false
@@ -303,6 +325,8 @@ function Queue.new(dependencies)
 		if self._state ~= "staged" and self._state ~= "stopped" and self._state ~= "failed" and self._state ~= "blocked" then
 			return false, "queue_not_staged"
 		end
+		local valid, reason = valid_build({ kind = "games_lantern_build", jobs = self._jobs })
+		if not valid then return false, reason end
 
 		self._stop_requested = false
 		self._last_error = nil
@@ -434,6 +458,7 @@ function Queue.new(dependencies)
 		self._jobs = nil
 		self._state = "empty"
 		self._current_index = 0
+		self._planner_index = 0
 		self._last_error = nil
 		self._last_event = nil
 		self._queue_id = nil
@@ -446,12 +471,105 @@ function Queue.new(dependencies)
 		return true
 	end
 
+	function self:select_for_planning(index)
+		index = tonumber(index)
+		if self._state ~= "staged" or index == nil or index ~= math.floor(index) or not self._jobs or not self._jobs[index] then
+			return false, self._state ~= "staged" and "queue_editor_locked" or "invalid_queue_index"
+		end
+
+		self._planner_index = index
+		self._presentation_signature = nil
+		emit("queue_planner_selected", { index = index, job = self._jobs[index], queue_id = self._queue_id })
+
+		return true, self._jobs[index]
+	end
+
+	function self:update_selected_custom_stat(stat_index, value)
+		stat_index = tonumber(stat_index)
+		value = tonumber(value)
+		local job = self._jobs and self._jobs[self._planner_index]
+		local targets = job and job.custom_stat_targets
+
+		if self._state ~= "staged" then
+			return false, "queue_editor_locked"
+		end
+		if not job or job.custom_stats_enabled ~= true or type(targets) ~= "table" or #targets ~= 5 then
+			return false, "custom_stats_unavailable"
+		end
+		if stat_index == nil or stat_index ~= math.floor(stat_index) or stat_index < 1 or stat_index > 5 or value == nil or value ~= math.floor(value) or value < 60 or value > 80 then
+			return false, "invalid_custom_stat"
+		end
+
+		local total = value
+		for index, target in ipairs(targets) do
+			if index ~= stat_index then
+				total = total + (tonumber(target.value) or 0)
+			end
+		end
+		if total > 380 then
+			return false, "custom_stat_total_exceeded"
+		end
+
+		targets[stat_index].value = value
+		job.custom_stat_total = total
+		local lowest = targets[1]
+		for index = 2, #targets do
+			if targets[index].value < lowest.value then lowest = targets[index] end
+		end
+		job.dump_stat = lowest.name
+		job.dump_stat_label = lowest.label or lowest.display_name_key
+		job.dump_target = lowest.value
+		self._presentation_signature = nil
+		emit("queue_job_edited", { index = self._planner_index, job = job, queue_id = self._queue_id })
+
+		return true, job
+	end
+
+	function self:update_selected_trait(kind, target_index, requested)
+		target_index = tonumber(target_index)
+		local job = self._jobs and self._jobs[self._planner_index]
+		local catalog_kind = kind == "perk" and "perks" or kind == "blessing" and "blessings" or nil
+
+		if self._state ~= "staged" then return false, "queue_editor_locked" end
+		if not job or not catalog_kind or target_index == nil or target_index ~= math.floor(target_index) or target_index < 1 or target_index > 2 or type(requested) ~= "table" or requested.id == nil then
+			return false, "invalid_trait_edit"
+		end
+
+		local catalog = job.catalog and job.catalog[catalog_kind] or {}
+		local selected
+		for _, entry in ipairs(catalog) do
+			if entry.id == requested.id then
+				local rarity = tonumber(entry.rarity or entry.tier)
+				if catalog_kind == "blessings" then
+					for _, tier in ipairs(entry.tiers or {}) do rarity = math.max(rarity or 0, tonumber(tier.tier) or 0) end
+				end
+				if rarity and rarity > 0 and (requested.rarity == nil or tonumber(requested.rarity) == rarity) then
+					selected = { id = entry.id, rarity = rarity, label = requested.label or entry.display_name }
+					break
+				end
+			end
+		end
+		if not selected then return false, "trait_not_in_catalog" end
+
+		local peer_index = target_index == 1 and 2 or 1
+		if job[catalog_kind][peer_index] and job[catalog_kind][peer_index].id == selected.id then
+			return false, "duplicate_trait_target"
+		end
+
+		job[catalog_kind][target_index] = selected
+		self._presentation_signature = nil
+		emit("queue_job_edited", { index = self._planner_index, job = job, queue_id = self._queue_id })
+
+		return true, job
+	end
+
 	function self:snapshot()
 		local jobs = {}
 
 		for index, job in ipairs(self._jobs or {}) do
 			jobs[index] = copy(job)
 			jobs[index].current = index == self._current_index
+			jobs[index].selected = index == self._planner_index
 			jobs[index].status = index < self._current_index and "complete" or index == self._current_index and self._state or "queued"
 		end
 
@@ -461,6 +579,7 @@ function Queue.new(dependencies)
 			character_id = self._character_id,
 			state = self._state,
 			current_index = self._current_index,
+			planner_index = self._planner_index,
 			job_count = #jobs,
 			jobs = jobs,
 			last_error = self._last_error,
@@ -481,8 +600,14 @@ function Queue.new(dependencies)
 			tostring(self._queue_id or ""),
 			tostring(self._state or "empty"),
 			tostring(self._current_index or 0),
+			tostring(self._planner_index or 0),
 			tostring(self._last_error or ""),
 		}, "|")
+		for _, job in ipairs(self._jobs or {}) do
+			for _, target in ipairs(job.custom_stat_targets or {}) do
+				signature = signature .. "|" .. tostring(target.name) .. ":" .. tostring(target.value)
+			end
+		end
 		if self._presentation_cache and self._presentation_signature == signature then
 			return self._presentation_cache
 		end
@@ -500,9 +625,25 @@ function Queue.new(dependencies)
 				end
 				return targets
 			end
+			local function compact_stats(values)
+				local targets = {}
+				for target_index, target in ipairs(values or {}) do
+					targets[target_index] = {
+						display_name_key = target.display_name_key,
+						label = target.label,
+						name = target.name,
+						value = target.value,
+					}
+				end
+				return targets
+			end
 			jobs[index] = {
 				blessings = compact_targets(job.blessings),
 				current = index == self._current_index,
+				selected = index == self._planner_index,
+				custom_stats_enabled = job.custom_stats_enabled == true,
+				custom_stat_targets = compact_stats(job.custom_stat_targets),
+				custom_stat_total = job.custom_stat_total,
 				display_name = job.display_name or job.offer and job.offer.display_name,
 				dump_stat = job.dump_stat,
 				dump_stat_label = job.dump_stat_label,
@@ -518,6 +659,7 @@ function Queue.new(dependencies)
 		self._presentation_signature = signature
 		self._presentation_cache = {
 			current_index = self._current_index,
+			planner_index = self._planner_index,
 			job_count = #jobs,
 			jobs = jobs,
 			last_error = self._last_error,
