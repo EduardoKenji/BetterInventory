@@ -18,7 +18,9 @@ Customization persistence follows DMF's actual contract: a normal no-return save
 
 Enable **Custom stats** in Brunt's Auto Crafter Planner to replace the single dump-stat target with an exact five-stat allocation. The contextual grid follows the selected weapon's native stat catalogue, shows two cells per row plus a total cell, and adjusts each value by one within 60-80. Lower one value before raising another when the total is already 380.
 
-Crafting requires an exact total of 380. A lower or otherwise invalid total is highlighted and the Craft action emits a notification without acquiring account-operation ownership or sending a purchase. A valid allocation is frozen for the run and revalidated against projected level-500 stats during Brunt acquisition, family-equivalent inventory resume across marks, post-mastery reconciliation, and final completion. Games Lantern queues keep their imported dump-stat model and do not inherit the manual custom-stat setting.
+Crafting requires an exact total of 380. A lower or otherwise invalid total is highlighted and the Craft action emits a notification without acquiring account-operation ownership or sending a purchase. A valid allocation is frozen for the run and revalidated against projected level-500 stats during Brunt acquisition, family-equivalent inventory resume across marks, post-mastery reconciliation, and final completion.
+
+Games Lantern imports preserve all five website stat values when they form a uniquely mapped 380-point profile. Click either staged queue card to inspect and edit that weapon's exact stats, perks, and blessings; this changes only the selected job's session-local target. It never reorders the fixed melee-then-ranged execution cursor. Queue editing locks as soon as crafting starts, and malformed or sub-380 jobs remain staged with a visible blocked notification and zero account mutation.
 
 ## Validation
 

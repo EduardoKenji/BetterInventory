@@ -5,6 +5,7 @@
 - Added optional exact five-stat Auto Crafter targets with contextual two-column controls for every selected weapon stat.
 - Enforced 60-80 per-stat bounds and a hard 380 total; invalid totals are highlighted and cannot dispatch account mutations.
 - Applied exact custom allocations to Brunt purchases, family-equivalent inventory resume, mastery reconciliation, and final verification.
+- Games Lantern imports now preserve exact five-stat profiles; staged queue cards can be selected and edited without changing melee-first execution order.
 
 ## 2.1.4 - 2026-08-12
 
