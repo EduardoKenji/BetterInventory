@@ -159,6 +159,42 @@ def main() -> None:
         assert controller._find_inventory_base(controller) is None
         settings["values"]["auto_crafter_craft_duplicate_completed_queued_weapons"] = False
 
+    # Exact imported five-stat profiles participate in the same completed-item
+    # skip and family-equivalent resume rules. A single mismatched projected
+    # value prevents an incorrect skip, independent of mark or favorite state.
+    exact_profile = [
+        {"name": "charge_speed", "value": 70},
+        {"name": "ammo", "value": 80},
+        {"name": "power", "value": 80},
+        {"name": "heat", "value": 70},
+        {"name": "damage", "value": 80},
+    ]
+    profile_job = job("ranged")
+    profile_job["custom_stats_enabled"] = True
+    profile_job["custom_stat_targets"] = exact_profile
+    profile_job["custom_stat_total"] = 380
+    profile_item = item("gear-profile", "mark-sibling", favorite=True)
+    profile_item["potential_base_stats"] = {target["name"]: target["value"] for target in exact_profile}
+    set_inventory([profile_item])
+    profile_job_lua = to_lua(profile_job)
+    assert controller._completed_imported_job_result(controller, profile_job_lua)["gear_id"] == "gear-profile"
+
+    profile_item["potential_base_stats"]["heat"] = 71
+    set_inventory([profile_item])
+    assert controller._completed_imported_job_result(controller, profile_job_lua) is None
+    profile_item["potential_base_stats"]["heat"] = 70
+    profile_item["expertise_level"] = 400
+    controller["_imported_job"] = profile_job_lua
+    controller["_search"] = to_lua({
+        "custom_stat_targets": exact_profile,
+        "dump_stat": "charge_speed",
+        "favorite_result": False,
+        "target_dump": 70,
+        "target_offer": profile_job_lua["offer"],
+    })
+    set_inventory([profile_item])
+    assert controller._find_inventory_base(controller)["gear_id"] == "gear-profile"
+
     # A fresh boundary snapshot revalidates completed prefix before next job.
     # Removal, family drift, or trait drift blocks queue continuation. Mark
     # changes inside the same mastery family remain valid.

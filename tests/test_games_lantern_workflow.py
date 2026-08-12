@@ -105,6 +105,55 @@ def main() -> None:
     assert resolved["jobs"][1]["blessings"][1]["rarity"] == 4
     assert resolved["jobs"][2]["blessings"][2]["id"] == "blessing_surge"
 
+    # Five-stat cards preserve every exact projected value. Multiple equal low
+    # stats are valid and no longer collapse into an ambiguous dump-stat error.
+    plasma_offer = to_lua({
+        "display_name": "Plasma Gun",
+        "master_id": "plasmagun_p1_m1",
+        "parent_pattern": "plasmagun_p1",
+        "weapon_category": "ranged",
+        "base_stats": [
+            {"name": "charge_speed_stat", "display_name_key": "Charge Rate"},
+            {"name": "ammo_stat", "display_name_key": "Ammo"},
+            {"name": "power_stat", "display_name_key": "Stopping Power"},
+            {"name": "heat_stat", "display_name_key": "Thermal Resistance"},
+            {"name": "damage_stat", "display_name_key": "Damage"},
+        ],
+    })
+    plasma_external = to_lua({
+        "display_name": "Plasma Gun",
+        "stats": [
+            {"label": "Charge Rate", "value": 70}, {"label": "Ammo", "value": 80},
+            {"label": "Stopping Power", "value": 80}, {"label": "Thermal Resistance", "value": 70},
+            {"label": "Damage", "value": 80},
+        ],
+    })
+    plasma_model = to_lua({"source_archetype": "veteran", "weapons": [model["weapons"][1], plasma_external]})
+    plasma_context = to_lua({
+        "active_archetype": "veteran", "melee_offers": [melee_offer], "ranged_offers": [plasma_offer]
+    })
+    plasma_identity, reason = resolver.resolve_identities(plasma_model, plasma_context)
+    assert plasma_identity is not None, reason
+    plasma_job = plasma_identity["jobs"][2]
+    assert plasma_job["custom_stats_enabled"] is True
+    assert plasma_job["custom_stat_total"] == 380
+    assert [plasma_job["custom_stat_targets"][index]["value"] for index in range(1, 6)] == [70, 80, 80, 70, 80]
+    assert plasma_job["dump_target"] == 70
+
+    invalid_plasma = to_lua({
+        "display_name": "Plasma Gun",
+        "stats": [
+            {"label": "Charge Rate", "value": 69}, {"label": "Ammo", "value": 80},
+            {"label": "Stopping Power", "value": 80}, {"label": "Thermal Resistance", "value": 70},
+            {"label": "Damage", "value": 80},
+        ],
+    })
+    invalid_identity, invalid_reason = resolver.resolve_identities(
+        to_lua({"source_archetype": "veteran", "weapons": [model["weapons"][1], invalid_plasma]}),
+        plasma_context,
+    )
+    assert invalid_identity is None and invalid_reason == "custom_stats_invalid_total"
+
     # Public Games Lantern class slugs map to Darktide's internal archetype
     # IDs before enforcing the class safety gate.
     assert resolver.canonical_archetype("skitarii") == "cryptic"

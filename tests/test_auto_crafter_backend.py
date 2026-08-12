@@ -39,18 +39,27 @@ def main() -> None:
                 is_item_id_favorited = function() return false end,
                 max_expertise_level = function() return 500 end,
                 preview_stats_change = function() return {} end,
-                weapon_card_display_name = function(item) return item.name end,
+                weapon_card_display_name = function(item) return item.card_display_name or item.name end,
+                weapon_card_sub_display_name = function(item) return item.card_sub_display_name or "n/a" end,
             }
         end
         package.preload["scripts/utilities/mastery"] = function() return {} end
+        test_master_items = {}
         package.preload["scripts/backend/master_items"] = function()
             return {
 				get_item = function(item_id)
-					return {name = item_id, item_type = string.find(item_id, "perk", 1, true) and "PERK" or "TRAIT"}
+					return test_master_items[item_id] or {name = item_id, item_type = string.find(item_id, "perk", 1, true) and "PERK" or "TRAIT"}
 				end,
+                get_cached = function() return test_master_items end,
                 get_item_instance = function(raw_item)
                     if raw_item.invalid then return nil end
                     return raw_item
+                end,
+                get_store_item_instance = function(description)
+                    local choices = description and description.lootChoices
+                    local choice = choices and choices[1]
+                    local master_id = type(choice) == "table" and (choice.masterId or choice.master_id) or choice
+                    return test_master_items[master_id]
                 end,
             }
         end
@@ -78,10 +87,10 @@ def main() -> None:
             },
         }
 
-        function make_services(gear)
+        function make_services(gear, store)
             return {
                 store = {
-                    get_credits_goods_store = function() return resolved({offers = {}}) end,
+                    get_credits_goods_store = function() return resolved(store or {offers = {}}) end,
                     combined_wallets = function() return resolved({}) end,
                 },
                 gear = {fetch_gear = function() return resolved(gear) end},
@@ -127,6 +136,51 @@ def main() -> None:
         assert(snapshot.gear.items_by_id["malformed-record"].available == false)
         assert(snapshot.gear.unavailable_item_count == 1)
         assert(snapshot.gear.items_by_id["other-character"] == nil)
+
+        test_master_items = {}
+        local function shovel_mark(master_id, pattern_loc_id, mark_loc_id, sub_display_name)
+            return {
+                name = master_id,
+                item_type = "WEAPON_MELEE",
+                slots = {"slot_primary"},
+                parent_pattern = "sapper-shovel-pattern",
+                weapon_progression_template = "sapper-shovel-template",
+                weapon_family_display_name = {loc_id = "loc_sapper_shovel"},
+                weapon_pattern_display_name = {loc_id = pattern_loc_id},
+                weapon_mark_display_name = {loc_id = mark_loc_id},
+                card_display_name = "Sapper Shovel",
+                card_sub_display_name = sub_display_name,
+            }
+        end
+
+        test_master_items["shovel-mk-1"] = shovel_mark("shovel-mk-1", "loc_munitorum", "loc_mk_1", "Munitorum • Mk I")
+        test_master_items["shovel-mk-3"] = shovel_mark("shovel-mk-3", "loc_munitorum", "loc_mk_3", "Munitorum • Mk III")
+        test_master_items["shovel-mk-7"] = shovel_mark("shovel-mk-7", "loc_munitorum", "loc_mk_7", "Munitorum • Mk VII")
+
+        -- MasterItems.get_cached() may include family prototypes that share the
+        -- live parent/slot/template contract but have no renderable mark identity.
+        test_master_items["shovel-family-prototype"] = shovel_mark("shovel-family-prototype", "", "", '<unlocalized "": string not found>')
+        test_master_items["shovel-bad-localization"] = shovel_mark("shovel-bad-localization", "loc_munitorum", "loc_bad", '<unlocalized "loc_bad": string not found>')
+        test_master_items["shovel-bad-localization"].card_display_name = '<unlocalized "loc_sapper_shovel_bad": string not found>'
+
+        local shovel_store = {
+            offers = {{
+                offerId = "offer-shovel",
+                description = {lootChoices = {{masterId = "shovel-mk-1"}}},
+                price = {amount = {type = "credits", amount = 9200}},
+            }},
+        }
+        local shovel_snapshot
+        Backend.new({services = make_services({}, shovel_store)}):probe_snapshot():next(function(value) shovel_snapshot = value end)
+        local marks = shovel_snapshot.store.offers[1].marks
+        assert(#marks == 3)
+        assert(marks[1].master_id == "shovel-mk-1")
+        assert(marks[2].master_id == "shovel-mk-3")
+        assert(marks[3].master_id == "shovel-mk-7")
+        for _, mark in ipairs(marks) do
+            assert(string.find(mark.display_name, "<unlocalized", 1, true) == nil)
+            assert(string.find(mark.sub_display_name, "<unlocalized", 1, true) == nil)
+        end
 
 		local calls = {perk = 0, blessing = 0, expertise = 0, extract = 0, mastery = 0}
 		local malformed_perk_response = false

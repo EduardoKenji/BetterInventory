@@ -32,6 +32,17 @@ def main() -> None:
     assert "if view and active_brunt_view ~= view then" in source
     assert "active_brunt_view = nil" in source
 
+    # Staged Games Lantern planner selection mirrors Brunt's native weapon
+    # preview through a bounded deferred-tab coordinator. It is cancelled at
+    # crafting/lifecycle boundaries and owns no queue execution cursor.
+    assert 'games_lantern/selection_coordinator' in source
+    assert "games_lantern_selection.capture_original" in source
+    assert '"queue_installed"' in source
+    assert '"queue_card_selected"' in source
+    assert "games_lantern_selection.restore" in source
+    assert "games_lantern_selection.cancel_pending" in source
+    assert "games_lantern_selection.abandon" in source
+
     # DMF log methods pass their first payload through string.format. Imported
     # perk/blessing labels contain literal percent signs, so runtime text must
     # always be supplied as a value for a constant format string.

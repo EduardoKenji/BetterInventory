@@ -198,7 +198,7 @@ def main() -> None:
         r'''
         -- Phase 2 must capture mastery before sacrifice, claim from that baseline,
         -- verify deletion, and converge against baseline + awarded XP exactly once.
-			do
+		do
             local state = {item = summarized_item("gear-1", 1, 50), extracted = false, claimed = false, baseline_reads = 0}
             local backend = {extract_calls = 0, claim_calls = 0, upgrade_calls = 0}
 
@@ -1937,7 +1937,7 @@ def main() -> None:
 		-- External account writes may stop an active workflow only between backend
 		-- requests. An unresolved mutation retains ownership and must be blocked by
 		-- the service guard until its original promise settles.
-		do
+			do
 			local controller = Controller.new({backend = {}, planner = Planner, context = context(), settings = base_settings(), reporter = reports()})
 			controller._active_view = {}
 			controller._view_is_valid = true
@@ -1956,6 +1956,110 @@ def main() -> None:
 			controller._auxiliary_inflight_count = 1
 			assert(controller:interrupt_for_external_mutation("mastery.purchase_traits") == false)
 			assert(controller:snapshot().search.running == true)
+		end
+
+		-- Exact custom-stat acquisition is authoritative across all five projected
+		-- level-500 stats. Invalid totals fail before account ownership or purchase.
+		do
+			local function custom_snapshot(item)
+				local snapshot = snapshot_with(item)
+				snapshot.store.offers[1].base_stats = {
+					{name = "damage_stat", display_name_key = "loc_stats_display_damage_stat"},
+					{name = "mobility_stat", display_name_key = "loc_stats_display_mobility_stat"},
+					{name = "first_target_stat", display_name_key = "loc_stats_display_first_target_stat"},
+					{name = "penetration_stat", display_name_key = "loc_stats_display_ap_stat"},
+					{name = "defense_stat", display_name_key = "loc_stats_display_defense_stat"},
+				}
+
+				return snapshot
+			end
+			local function custom_item(gear_id, values)
+				local item = summarized_item(gear_id, 0, values[1])
+				item.base_stats = {
+					damage_stat = values[1], mobility_stat = values[2], first_target_stat = values[3],
+					penetration_stat = values[4], defense_stat = values[5],
+				}
+				item.potential_base_stats = {
+					damage_stat = values[1], mobility_stat = values[2], first_target_stat = values[3],
+					penetration_stat = values[4], defense_stat = values[5],
+				}
+
+				return item
+			end
+			local invalid_backend = {purchase_calls = 0}
+			function invalid_backend:purchase_offer(_) self.purchase_calls = self.purchase_calls + 1 return resolved({}) end
+			local invalid_reporter = reports()
+			local invalid_settings = base_settings({
+				auto_crafter_custom_stats = true,
+				auto_crafter_custom_stat_1 = 60,
+				auto_crafter_custom_stat_2 = 79,
+				auto_crafter_custom_stat_3 = 80,
+				auto_crafter_custom_stat_4 = 80,
+				auto_crafter_custom_stat_5 = 80,
+			})
+			CurrentOffer = raw_offer()
+			local invalid_controller = Controller.new({backend = invalid_backend, planner = Planner, context = context(), settings = invalid_settings, reporter = invalid_reporter, get_selected_offer = function() return CurrentOffer end})
+			invalid_controller._snapshot = custom_snapshot(nil)
+			invalid_controller._active_view = {}
+			invalid_controller._view_is_valid = true
+			assert(invalid_controller:start_purchase_search() == false)
+			assert(invalid_backend.purchase_calls == 0)
+			assert(invalid_reporter.events[#invalid_reporter.events].kind == "mutation_blocked")
+			assert(string.find(invalid_reporter.events[#invalid_reporter.events].payload.reason, "expected 380, current 379", 1, true))
+
+			local exact = custom_item("gear-custom-exact", {60, 80, 80, 80, 80})
+			local exact_backend = {purchase_calls = 0}
+			function exact_backend:purchase_offer(_)
+				self.purchase_calls = self.purchase_calls + 1
+				return resolved({items = {exact}})
+			end
+			function exact_backend:probe_snapshot() return resolved(custom_snapshot(exact)) end
+			local exact_settings = base_settings({
+				auto_crafter_custom_stats = true,
+				auto_crafter_custom_stat_1 = 60,
+				auto_crafter_custom_stat_2 = 80,
+				auto_crafter_custom_stat_3 = 80,
+				auto_crafter_custom_stat_4 = 80,
+				auto_crafter_custom_stat_5 = 80,
+			})
+			local exact_controller = Controller.new({backend = exact_backend, planner = Planner, context = context(), settings = exact_settings, reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			exact_controller._snapshot = custom_snapshot(nil)
+			exact_controller._active_view = {}
+			exact_controller._view_is_valid = true
+			assert(exact_controller:start_purchase_search() == true)
+			assert(exact_backend.purchase_calls == 1)
+			assert(exact_controller:snapshot().search.result.gear_id == "gear-custom-exact")
+			assert(exact_controller:snapshot().phase == "phase4_complete")
+
+			local resumed = custom_item("gear-custom-resume", {60, 80, 80, 80, 80})
+			resumed.potential_base_stats = {
+				alternate_damage_stat = 60,
+				alternate_mobility_stat = 80,
+				alternate_first_target_stat = 80,
+				alternate_penetration_stat = 80,
+				alternate_defense_stat = 80,
+			}
+			resumed.base_stat_labels = {
+				alternate_damage_stat = "loc_stats_display_damage_stat",
+				alternate_mobility_stat = "loc_stats_display_mobility_stat",
+				alternate_first_target_stat = "loc_stats_display_first_target_stat",
+				alternate_penetration_stat = "loc_stats_display_ap_stat",
+				alternate_defense_stat = "loc_stats_display_defense_stat",
+			}
+			resumed.master_id = "weapon-alternate-mark"
+			resumed.favorite_known = true
+			resumed.favorited = false
+			local resume_backend = {purchase_calls = 0}
+			function resume_backend:purchase_offer(_) self.purchase_calls = self.purchase_calls + 1 return resolved({}) end
+			function resume_backend:probe_snapshot() return resolved(custom_snapshot(resumed)) end
+			exact_settings.values.auto_crafter_reuse_inventory_base = true
+			local resume_controller = Controller.new({backend = resume_backend, planner = Planner, context = context(), settings = exact_settings, reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			resume_controller._snapshot = custom_snapshot(resumed)
+			resume_controller._active_view = {}
+			resume_controller._view_is_valid = true
+			assert(resume_controller:start_purchase_search() == true)
+			assert(resume_backend.purchase_calls == 0)
+			assert(resume_controller:snapshot().search.result.gear_id == "gear-custom-resume")
 		end
 
 		print("Auto Crafter controller Phase 2/3/4 behavior tests passed.")

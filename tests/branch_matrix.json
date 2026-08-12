@@ -114,11 +114,53 @@
       "modules": ["BetterInventory_auto_crafter.lua"]
     },
     {
+      "name": "auto-crafter.filters-non-displayable-marks",
+      "test": "test_auto_crafter_backend.py",
+      "case": "weapon_mark_catalogue_rejects_non_displayable_records",
+      "outcome": "family prototypes and malformed localized master-item records cannot appear as selectable weapon marks, while every real mark in the same live family remains available",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
       "name": "auto-crafter.external-interrupt-is-atomic",
       "test": "test_auto_crafter_controller.py",
       "case": "external_account_mutation_exclusion",
       "outcome": "external account writes can interrupt only between requests and cannot release an in-flight or auxiliary mutation gate",
       "modules": ["BetterInventory_account_mutation_guard.lua", "BetterInventory_auto_crafter.lua"]
+    },
+    {
+      "name": "auto-crafter.custom-stats-are-exact-and-guarded",
+      "test": "test_auto_crafter_controller.py",
+      "case": "custom_stat_exact_acquisition_and_resume",
+      "outcome": "invalid five-stat totals dispatch no account write, while exact projected allocations drive purchase acceptance and family-equivalent inventory resume across marks",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
+      "name": "auto-crafter.custom-fallback-minimizes-total-distance",
+      "test": "test_auto_crafter_custom_fallback.py",
+      "case": "custom_stat_manhattan_distance_and_deterministic_ties",
+      "outcome": "closest fallback minimizes summed absolute distance across all five projected stats, rejects incomplete profiles, and retains the earliest equal-distance roll",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
+      "name": "games-lantern.custom-stat-profiles-bind-by-identity",
+      "test": "test_games_lantern_custom_stats.py",
+      "case": "identity_bound_exact_profile_and_malformed_rejection",
+      "outcome": "five imported values bind to their live Darktide stat identities regardless of list order, while duplicate or missing identities fail closed",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
+      "name": "games-lantern.staged-editor-does-not-reorder",
+      "test": "test_games_lantern_queue.py",
+      "case": "staged_queue_profile_editor",
+      "outcome": "selecting and editing either staged queue card changes only that target while the execution cursor remains melee-first and locks at start",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
+      "name": "games-lantern.brunt-selection-follows-planner-only",
+      "test": "test_games_lantern_selection_coordinator.py",
+      "case": "bounded_brunt_selection_sync_and_clear_restore",
+      "outcome": "staged planner selection follows the corresponding Brunt melee or ranged offer through bounded deferred-tab retries, restores the pre-import offer on Clear Queue, and never owns queue execution",
+      "modules": ["BetterInventory_auto_crafter.lua"]
     },
     {
       "name": "auto-crafter.bounds-failures",

@@ -593,6 +593,20 @@ local localization = {
 	auto_crafter_dump_stat_target_tooltip = {
 		en = "Desired dump-stat percentage used by the guarded serialized purchase search. Unknown stat shapes stop the run.",
 	},
+	auto_crafter_custom_stats = {
+		en = "Custom stats",
+	},
+	auto_crafter_custom_stats_tooltip = {
+		en = "Replace the single dump-stat target with an exact five-stat allocation. Every stat is limited to 60-80 and crafting requires an exact total of 380.",
+	},
+	auto_crafter_custom_stat_1 = { en = "Custom stat 1" },
+	auto_crafter_custom_stat_2 = { en = "Custom stat 2" },
+	auto_crafter_custom_stat_3 = { en = "Custom stat 3" },
+	auto_crafter_custom_stat_4 = { en = "Custom stat 4" },
+	auto_crafter_custom_stat_5 = { en = "Custom stat 5" },
+	auto_crafter_custom_stat_value_tooltip = {
+		en = "Saved value for the corresponding selected-weapon stat. The in-game Auto Crafter panel provides the contextual stat name and guarded arrows.",
+	},
 	auto_crafter_cap_by_dockets = {
 		en = "Cap perfect-roll weapon acquisition by Ordo dockets",
 	},
@@ -618,10 +632,10 @@ local localization = {
 		en = "Hard upper bound for the serialized purchase search. No next purchase is dispatched after this count.",
 	},
 	auto_crafter_best_candidate_fallback = {
-		en = "Keep best candidate if target is missed",
+		en = "Use closest fallback candidate weapon if exact stat match weapon is not found",
 	},
 	auto_crafter_best_candidate_fallback_tooltip = {
-		en = "Retains the closest candidate for later review when the exact target is not found before a cap. Misses are never silently discarded.",
+		en = "If an exact weapon is not found before a cap, use the closest valid roll. Custom stats minimize the sum of absolute differences across all five requested stats; single dump-stat mode minimizes that selected stat's difference. Equal-distance custom rolls keep the earliest purchase.",
 	},
 	auto_crafter_request_mode = {
 		en = "Auto Crafter request mode",
@@ -830,6 +844,9 @@ local localization = {
 	auto_crafter_panel_dump_target = {
 		en = "Dump target",
 	},
+	auto_crafter_panel_custom_stat_total = {
+		en = "Total stat sum",
+	},
 	auto_crafter_panel_docket_cap = {
 		en = "Ordo dockets cap",
 	},
@@ -837,7 +854,7 @@ local localization = {
 		en = "Max purchases",
 	},
 	auto_crafter_panel_best_fallback = {
-		en = "Best-candidate fallback",
+		en = "Use closest fallback candidate weapon if exact stat match weapon is not found",
 	},
 	auto_crafter_panel_request_mode = {
 		en = "Request mode",

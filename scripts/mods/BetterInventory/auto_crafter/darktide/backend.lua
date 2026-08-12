@@ -300,6 +300,29 @@ local store_item_preview
 local weapon_mark_index
 local weapon_mark_index_source
 
+local function non_empty_localization_id(item, field_name)
+	local metadata = safe_member(item, field_name)
+	local loc_id = safe_member(metadata, "loc_id")
+
+	return type(loc_id) == "string" and string.find(loc_id, "%S") ~= nil
+end
+
+local function displayable_weapon_mark_identity(item)
+	return type(item) == "table"
+		and non_empty_localization_id(item, "weapon_family_display_name")
+		and (
+			non_empty_localization_id(item, "weapon_pattern_display_name")
+			or non_empty_localization_id(item, "weapon_mark_display_name")
+		)
+end
+
+local function displayable_weapon_mark_text(value)
+	return type(value) == "string"
+		and string.find(value, "%S") ~= nil
+		and value ~= "n/a"
+		and string.find(value, "<unlocalized", 1, true) == nil
+end
+
 local function indexed_weapon_marks(parent_pattern)
 	if parent_pattern == nil or type(MasterItems) ~= "table" or type(MasterItems.get_cached) ~= "function" then
 		return {}
@@ -320,7 +343,11 @@ local function indexed_weapon_marks(parent_pattern)
 			local slot = type(slots) == "table" and slots[1] or nil
 			local weapon_template = safe_member(item, "weapon_progression_template") or safe_member(item, "weapon_template")
 
-			if pattern ~= nil and (slot == "slot_primary" or slot == "slot_secondary") and weapon_template ~= nil then
+			if pattern ~= nil
+				and (slot == "slot_primary" or slot == "slot_secondary")
+				and weapon_template ~= nil
+				and displayable_weapon_mark_identity(item)
+			then
 				local marks = index[pattern] or {}
 
 				marks[#marks + 1] = {
@@ -359,6 +386,9 @@ local function mark_matches_offer_contract(mark_master_id, mark_item, mark_detai
 		and mark_details.slot_type == offer_details.slot_type
 		and mark_details.weapon_category == offer_details.weapon_category
 		and mark_details.weapon_template ~= nil
+		and displayable_weapon_mark_identity(mark_item)
+		and displayable_weapon_mark_text(mark_details.display_name)
+		and displayable_weapon_mark_text(mark_details.sub_display_name)
 end
 
 local function summarize_store(store)

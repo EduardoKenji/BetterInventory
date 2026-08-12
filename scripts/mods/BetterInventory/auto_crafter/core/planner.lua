@@ -16,6 +16,10 @@ local DEFAULTS = {
 
 local ESTIMATE_BASE_LEVEL_MIN = 290
 local ESTIMATE_BASE_LEVEL_MAX = 330
+local CUSTOM_STAT_COUNT = 5
+local CUSTOM_STAT_MIN = 60
+local CUSTOM_STAT_MAX = 80
+local CUSTOM_STAT_TOTAL = 380
 
 local STAT_INDEX_BY_DISPLAY_NAME = {
 	loc_stats_display_damage_stat = 0,
@@ -419,6 +423,73 @@ local function resolve_dump_stat(_, target, configured_dump_stat)
 	return candidates[1].name, "defaulted to dump-stat index 0", candidates
 end
 
+local function resolve_custom_stat_targets(candidates, configured_targets)
+	local targets = {}
+	local target_map = {}
+	local total = 0
+	local reason
+	local identity_targets = type(configured_targets) == "table" and type(configured_targets[1]) == "table"
+
+	local function configured_for(candidate, index)
+		if not identity_targets then
+			return type(configured_targets) == "table" and configured_targets[index] or nil
+		end
+
+		local matched
+
+		for _, configured in ipairs(configured_targets) do
+			if configured.name ~= nil and candidate and tostring(configured.name) == tostring(candidate.name) then
+				if matched ~= nil then return nil end
+				matched = configured
+			end
+		end
+
+		if matched ~= nil then return matched end
+
+		for _, configured in ipairs(configured_targets) do
+			if configured.display_name_key ~= nil and candidate and candidate.display_name_key ~= nil and tostring(configured.display_name_key) == tostring(candidate.display_name_key) then
+				if matched ~= nil then return nil end
+				matched = configured
+			end
+		end
+
+		return matched
+	end
+
+	if #candidates ~= CUSTOM_STAT_COUNT then
+		reason = string.format("custom stats require exactly %d weapon stats; selected weapon exposed %d", CUSTOM_STAT_COUNT, #candidates)
+	end
+
+	for index = 1, CUSTOM_STAT_COUNT do
+		local candidate = candidates[index]
+		local configured = configured_for(candidate, index)
+		local value = tonumber(type(configured) == "table" and configured.value or configured)
+
+		if value == nil or value ~= math.floor(value) or value < CUSTOM_STAT_MIN or value > CUSTOM_STAT_MAX then
+			reason = reason or (identity_targets and string.format("custom stat identity %s is missing or ambiguous", tostring(candidate and candidate.name or index)) or string.format("custom stat %d must be a whole number between %d and %d", index, CUSTOM_STAT_MIN, CUSTOM_STAT_MAX))
+			value = value and math.floor(value) or CUSTOM_STAT_MIN
+		end
+
+		total = total + value
+		targets[index] = {
+			display_name_key = candidate and candidate.display_name_key,
+			label = type(configured) == "table" and configured.label or nil,
+			name = candidate and candidate.name,
+			value = value,
+		}
+
+		if candidate and candidate.name then
+			target_map[candidate.name] = value
+		end
+	end
+
+	if total ~= CUSTOM_STAT_TOTAL then
+		reason = reason or string.format("custom stat total must equal %d before crafting (current: %d)", CUSTOM_STAT_TOTAL, total)
+	end
+
+	return targets, target_map, total, reason
+end
+
 local function normalize_config(config)
 	config = config or {}
 
@@ -431,6 +502,8 @@ local function normalize_config(config)
 	return {
 		dump_stat = text_or(config.dump_stat, DEFAULTS.dump_stat),
 		dump_target = number_or(config.dump_target, DEFAULTS.dump_target),
+		custom_stats_enabled = config.custom_stats_enabled == true,
+		custom_stat_targets = type(config.custom_stat_targets) == "table" and config.custom_stat_targets or {},
 		cap_by_dockets = config.cap_by_dockets == true,
 		docket_cap = number_or(config.docket_cap, DEFAULTS.docket_cap),
 		cap_by_max_purchases = config.cap_by_max_purchases == true,
@@ -473,6 +546,10 @@ function Planner.build(snapshot, config)
 	local resolved_dump_stat
 	local dump_stat_resolution
 	local dump_stat_candidates
+	local custom_stat_targets
+	local custom_stat_target_map
+	local custom_stat_total
+	local custom_stat_error
 
 	if snapshot == nil then
 		append_reason(reasons, "probe data unavailable")
@@ -497,6 +574,14 @@ function Planner.build(snapshot, config)
 		resolved_dump_stat, dump_stat_resolution = resolve_dump_stat(snapshot, target, normalized.dump_stat)
 	end
 
+	if normalized.custom_stats_enabled then
+		custom_stat_targets, custom_stat_target_map, custom_stat_total, custom_stat_error = resolve_custom_stat_targets(dump_stat_candidates or {}, normalized.custom_stat_targets)
+
+		if custom_stat_error then
+			append_reason(reasons, custom_stat_error)
+		end
+	end
+
 	local price = target and tonumber(target.price_amount)
 
 	if not price or price <= 0 then
@@ -507,7 +592,7 @@ function Planner.build(snapshot, config)
 		append_reason(reasons, "selected offer does not use dockets")
 	end
 
-	if normalized.dump_target <= 0 or normalized.dump_target > 100 then
+	if not normalized.custom_stats_enabled and (normalized.dump_target <= 0 or normalized.dump_target > 100) then
 		append_reason(reasons, "dump-stat target must be between 1 and 100")
 	end
 
@@ -621,6 +706,11 @@ function Planner.build(snapshot, config)
 		resolved_dump_stat = resolved_dump_stat,
 		dump_stat_candidates = dump_stat_candidates,
 		dump_stat_resolution = dump_stat_resolution,
+		custom_stats_enabled = normalized.custom_stats_enabled,
+		custom_stat_targets = custom_stat_targets,
+		custom_stat_target_map = custom_stat_target_map,
+		custom_stat_total = custom_stat_total,
+		custom_stats_valid = normalized.custom_stats_enabled and custom_stat_error == nil or not normalized.custom_stats_enabled,
 		trait_catalog = normalized.trait_catalog,
 		dump_target = normalized.dump_target,
 		cap_by_dockets = normalized.cap_by_dockets,
@@ -640,6 +730,10 @@ end
 
 Planner.DEFAULTS = DEFAULTS
 Planner.REQUEST_MODES = REQUEST_MODES
+Planner.CUSTOM_STAT_COUNT = CUSTOM_STAT_COUNT
+Planner.CUSTOM_STAT_MIN = CUSTOM_STAT_MIN
+Planner.CUSTOM_STAT_MAX = CUSTOM_STAT_MAX
+Planner.CUSTOM_STAT_TOTAL = CUSTOM_STAT_TOTAL
 
 function Planner.default_dump_stat(plan)
 	local candidates = type(plan) == "table" and plan.dump_stat_candidates or {}

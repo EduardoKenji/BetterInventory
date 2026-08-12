@@ -58,7 +58,7 @@ job 2: ranged weapon
 
 Order is fixed to melee then ranged regardless of which weapon happened to be selected before Ctrl+V. Existing Auto Crafter workflow behavior inside each job remains unchanged. Queue orchestration must call the current single-item workflow rather than introduce a second crafting implementation.
 
-Each job is a frozen target specification:
+Each imported job is a session-local staged target specification. It becomes frozen only when the user confirms CRAFT:
 
 ```text
 QueueJob
@@ -85,7 +85,7 @@ The queue is valid only when every job has a unique compatible weapon, dump stat
 On successful import:
 
 1. Save the current native manual weapon selection as a restorable identity; leave persistent manual target settings untouched.
-2. Install the two immutable queue jobs atomically.
+2. Install the two session-local queue jobs atomically.
 3. Select the melee weapon in Brunt's native view.
 4. Activate a queue-owned planner overlay so the visible controls correspond to the melee job without persisting imported values through `mod:set`.
 5. Rebuild and verify the normal plan.
@@ -100,7 +100,7 @@ When melee reaches an authoritative terminal success, activate ranged atomically
 5. run the full normal preflight for ranged;
 6. dispatch ranged only if preflight succeeds.
 
-Queue activation must not reinterpret settings edited for the active job as changes to the queued job. A queued job is frozen from import. If editing queue jobs is later desired, it needs an explicit Edit/Revalidate interaction rather than accidental coupling to global settings.
+Queue-card selection is an explicit Edit/Revalidate interaction. While the queue is staged, clicking either card changes only the planner/editor cursor and may update that job's exact stats, perks, or blessings. It never changes the execution cursor or the fixed melee-then-ranged order. CRAFT revalidates both jobs and then freezes their targets before the first account mutation; all target editing is locked while work is active.
 
 ### Target and planner labels
 
@@ -147,7 +147,7 @@ Each larger row should show, without requiring the lower planner controls to be 
 - blessing 1 and blessing 2 labels/icons where practical;
 - completion source (`new`, `resumed`, or `exact existing`) once known.
 
-The row must be derived from the frozen queue job, not whichever global planner values happen to be active. Long names need wrapping/truncation rules and a tooltip; the row cannot silently clip a blessing or weapon identity.
+The row must be derived from its session-local queue job, not whichever global planner values happen to be active. Long names need wrapping/truncation rules and a tooltip; the row cannot silently clip a blessing or weapon identity.
 
 ### CRAFT and STOP semantics
 
@@ -196,14 +196,9 @@ The safe initial lifetime is session-local:
 
 ### Imported target editing policy
 
-The initial implementation must remove ambiguity by locking imported target fields while an imported queue exists:
+While the queue is staged, each queue card is an explicit planner selector. The selected card is highlighted, Brunt's native preview follows that weapon when available, and the queue-owned planner exposes its exact five-stat profile, perk targets, and blessing targets. Brunt's deferred melee/ranged tab switch is retried through a bounded presentation-only coordinator; it owns no queue cursor and dispatches no account operation. The pre-import native offer identity is captured once and Clear Queue attempts to restore it. View close cancels retries, character/context changes abandon the saved identity, and crafting start cancels presentation-only selection before queue execution takes ownership. Edits are session-local and reset the aggregate cost confirmation. Selecting or editing job 2 never advances, swaps, or otherwise mutates the melee-first execution cursor.
 
-- dump-stat identity and dump target;
-- perk target 1/2;
-- blessing target 1/2;
-- native weapon target selection when it would replace the active queued family.
-
-The rows remain readable. Attempting to change one must explain `Clear or replace the imported queue to edit weapon targets`. Do not repeatedly fight the native UI by silently restoring selections every frame; intercept the action or invalidate through an explicit confirmation.
+Every stat remains an integer from 60 through 80, increments above a total of 380 are rejected, and CRAFT requires exactly 380 for both jobs. A lower total remains editable but produces a visible blocked notification and sends no account request. Malformed, duplicate, missing, or ambiguously mapped stat identities are fail-closed. Native weapon selection cannot replace a queued family outside this explicit card-selection path.
 
 The active overlay is read by panel display, planner composition, and `start_frozen_job`; it is not saved as the user's normal DMF settings. Queue clear/reload therefore reveals the exact persistent manual values that existed before import. Do not implement the overlay as persistent `mod:set` writes followed by best-effort restoration.
 
@@ -216,7 +211,7 @@ After a safe stop, pressing CRAFT again performs a new aggregate confirmation an
 The queue must distinguish immutable imported targets from user-controlled run policy:
 
 ```text
-Imported target, frozen at successful Ctrl+V
+Imported target, staged by successful Ctrl+V and frozen at confirmed CRAFT
   weapon identity
   slot kind
   dump-stat identity and target
@@ -235,7 +230,7 @@ QueueRunPolicy, frozen at each explicit CRAFT/Resume
   request mode (current invariant behavior only)
 ```
 
-Do not let job 2 reread mutable globals after job 1. Materialize job 2 using the same frozen `QueueRunPolicy`, then rerun authoritative resource and inventory preflight. This prevents a UI/mod setting mutation at the boundary from changing the queued contract without a stop and fresh confirmation.
+Do not let job 2 reread mutable globals or editor state after job 1. Materialize job 2 from the queue targets and `QueueRunPolicy` frozen by the same confirmed CRAFT, then rerun authoritative resource and inventory preflight. This prevents a UI/mod setting mutation at the boundary from changing the queued contract without a stop and fresh confirmation.
 
 ### Completion terminology and exact-match contract
 
@@ -556,7 +551,7 @@ Ctrl+V must resolve a complete queue model before changing the visible planner. 
 - warnings and unresolved fields;
 - fetch age/cache status.
 
-Install only when every required field on both jobs has a unique valid live ID. Before installation, capture the previous native target identity and any previous idle queue state. Store both frozen jobs, activate the nonpersistent melee overlay, select the melee offer, force the normal planner/catalog refresh, and verify the resulting plan. If any selection, overlay, or validation step fails, remove/restore the local queue state and native selection and report a bounded error. Persistent manual target settings remain untouched throughout.
+Install only when every required field on both jobs has a unique valid live ID. Before installation, capture the previous native target identity and any previous idle queue state. Store both session-local staged jobs, activate the nonpersistent melee overlay, select the melee offer, force the normal planner/catalog refresh, and verify the resulting plan. If any selection, overlay, or validation step fails, remove/restore the local queue state and native selection and report a bounded error. Persistent manual target settings remain untouched throughout.
 
 The importer must not alter workflow toggles, resource caps, favoriting, inventory-resume policy, mastery behavior, or sequential request behavior.
 
@@ -771,7 +766,7 @@ This import occurs beside an account-mutating feature, so it must satisfy strong
 | Completed job's gear is manually discarded before queue completion | Final queue verification fails visibly; do not silently craft a replacement without a new explicit Resume confirmation. |
 | Completed job's gear is equipped between jobs | Keep its gear ID and verify it normally; equipping alone is not failure. |
 | Pending/resumed item is upgraded, discarded, favorited, or equipped manually | Fresh revision/identity check either replans compatible progress or stops; never mutate a stale gear revision. |
-| Queue settings are manually edited | Active job changes require explicit revalidation; queued job remains frozen and cannot be silently mutated. |
+| Staged queue targets are manually edited | Only the explicitly selected card changes; aggregate authority is invalidated, both jobs are revalidated on CRAFT, and execution order remains unchanged. |
 | A second valid URL is pasted while an idle queue exists | Require explicit replacement confirmation or provide Replace Queue; never merge unrelated queues implicitly. |
 | A second URL is pasted while queue is running/stopped-unreconciled | Reject until safely idle/reconciled. |
 | Game/mod reload with idle imported queue | Default safe policy: do not auto-resume spending; restore only if queue persistence has complete versioned validation data. |
@@ -857,7 +852,7 @@ Use synthetic live Auto Crafter catalogs:
 - unique display-name fallback;
 - localized game catalog versus English website labels;
 - unsupported current class;
-- one melee plus one ranged candidate producing a frozen melee -> ranged queue;
+- one melee plus one ranged candidate producing a staged melee -> ranged queue;
 - missing or invalid melee with valid ranged rejects the whole import;
 - valid melee with missing or invalid ranged rejects the whole import;
 - different-class weapon pairs reject the whole import;
@@ -873,7 +868,7 @@ Use synthetic live Auto Crafter catalogs:
 - paste during every Auto Crafter phase is rejected;
 - view exit, offer change, character change, hot reload, stop, and new paste invalidate stale callbacks;
 - timeout followed by late success remains inert;
-- queue installation creates both frozen jobs plus the active melee overlay atomically, while persistent manual settings remain unchanged;
+- queue installation creates both staged jobs plus the active melee overlay atomically, while persistent manual settings remain unchanged;
 - import, job transition, Clear Queue, Brunt close/reopen, and hot reload never persist the queue overlay into manual DMF target settings;
 - planner validation failure restores old settings;
 - CRAFT remains independent and receives the normal preflight;
@@ -883,7 +878,7 @@ Use synthetic live Auto Crafter catalogs:
 - failed/blocked ranged preserves confirmed melee completion;
 - repeated CRAFT and Ctrl+V edges are idempotent while owned;
 - default/manual mode renders exactly one Active Queue row;
-- imported mode renders two frozen rows and highlights only the active row yellow;
+- imported mode renders two queue-owned rows and highlights only the selected staged row or active execution row;
 - completed, stopped, and failed row visual states match queue state;
 - Lantern present/absent/disabled/unknown-version matrices;
 - four sequential imports and four two-job crafts do not leak state across queues or jobs.
@@ -1050,7 +1045,7 @@ auto_crafter/games_lantern/
   parser.lua          -- versioned HTML-to-external-model parser
   resolver.lua        -- external model to live planner IDs
   import_controller.lua -- import generation/lifecycle state machine
-  queue.lua           -- immutable jobs, transition policy, resume journal
+  queue.lua           -- staged editor jobs, frozen-run transition policy, resume journal
 
 auto_crafter/darktide/
   panel.lua            -- Brunt action, Ctrl+V edge, chooser, Active Queue rows
@@ -1107,7 +1102,7 @@ Keep parser/resolver/controller pure enough to run outside Darktide tests. Injec
 
 ### Batch 5 — atomic queue installation
 
-- Preserve persistent manual settings, install both frozen jobs, activate the melee overlay, rebuild plan, verify, and rollback local/native selection changes on failure.
+- Preserve persistent manual settings, install both staged jobs, activate the melee overlay, rebuild plan, verify, and rollback local/native selection changes on failure.
 - Preserve dump target and all workflow/resource-cap settings.
 - Keep CRAFT as a separate action; Ctrl+V stages only after both live catalogues resolve, and native melee selection plus queue installation fail closed.
 
@@ -1188,7 +1183,7 @@ Additional no-regression gates from the handoff audit:
 - The supplied page resolves both documented jobs, exact targets, and melee-first order from a checked fixture.
 - Structured card parsing ignores prose alternatives and linked builds.
 - Imported page resolution proves the intended mark, but inventory completion and resume treat every mark in that proven mastery family as an equivalent crafting base.
-- Imported target controls are locked; pending jobs use frozen targets and one confirmed run-policy snapshot.
+- Imported target controls are editable only while staged; confirmed CRAFT freezes both jobs and one run-policy snapshot before any mutation.
 - Trait completion is set-based and reversed slot order causes zero unnecessary mutations.
 - Exact-base, final-gear, family-progression, and job-complete states are independently tested.
 - One operation token spans the automatic open-view boundary; manual one-job token lifecycle is unchanged.
@@ -1213,7 +1208,7 @@ Additional no-regression gates from the handoff audit:
 | Owner requirement/scenario | Normative contract | Minimum automated/live evidence |
 |---|---|---|
 | Games Lantern Copy -> Ctrl+V | Strict clipboard/fetch/parser and Requested interaction | Canonical/slug URL fixtures plus supplied live URL |
-| Select imported melee and queue ranged | Planner activation; Native selection barrier | Exact native melee identity, two rows, frozen ranged job |
+| Select imported melee and queue ranged | Planner activation; Native selection barrier | Exact native selected-card identity, two rows, staged ranged job, independent execution cursor |
 | `Queued (melee => ranged)` labels | Target and planner labels | UI snapshot/assertion before and after job 1 |
 | Active Queue above Planner | Active Queue section | Resolution/UI-scale/controller navigation matrix |
 | One normal row, two imported rows | Active Queue section | Manual/imported/clear/reattach tests |
@@ -1275,7 +1270,7 @@ None of these questions blocks the feasibility decision. They determine which re
 Proceed, but split the feature into two trust boundaries:
 
 ```text
-Ctrl+V URL -> fetch -> parse -> resolve both weapons -> install frozen queue
+Ctrl+V URL -> fetch -> parse -> resolve both weapons -> install staged queue
                                                             |
                                                             v
                      CRAFT -> melee single-item workflow -> reconcile
@@ -1284,7 +1279,7 @@ Ctrl+V URL -> fetch -> parse -> resolve both weapons -> install frozen queue
                               ranged preflight/workflow -> reconcile -> done
 ```
 
-This makes the feature useful without weakening the stability work already completed in Auto Crafter. The URL-only clipboard format is not an obstacle; it is a normal locator. The important constraints are strict URL canonicalization, fail-closed validation of both weapons, immutable queue jobs, preserving attainable dump targets, reusing the existing single-item workflow, authoritative transition barriers, and never allowing the import gesture itself to spend resources.
+This makes the feature useful without weakening the stability work already completed in Auto Crafter. The URL-only clipboard format is not an obstacle; it is a normal locator. The important constraints are strict URL canonicalization, fail-closed validation of both weapons, session-local staged edits followed by an immutable confirmed run, preserving attainable exact stat targets, reusing the existing single-item workflow, authoritative transition barriers, and never allowing the import gesture itself to spend resources.
 
 ## References
 

@@ -1,6 +1,16 @@
 # BetterInventory changelog
 
-## 2.1.4 - In development
+## 2.1.5 - In development
+
+- Added optional exact five-stat Auto Crafter targets with contextual two-column controls for every selected weapon stat.
+- Enforced 60-80 per-stat bounds and a hard 380 total; invalid totals are highlighted and cannot dispatch account mutations.
+- Applied exact custom allocations to Brunt purchases, family-equivalent inventory resume, mastery reconciliation, and final verification.
+- Games Lantern imports now preserve exact five-stat profiles; staged queue cards can be selected and edited without changing melee-first execution order.
+- Closest-fallback selection now minimizes the summed absolute difference across all five requested stats, rejects incomplete profiles, and keeps the earliest equal-distance roll.
+- Games Lantern queue-card selection now follows the matching melee/ranged weapon in Brunt while preserving execution order; Clear Queue restores the pre-import selection when available.
+- Filtered non-displayable weapon-family prototypes and malformed localization records out of the Marks catalogue, preventing phantom `<unlocalized>` rows while preserving real marks.
+
+## 2.1.4 - 2026-08-12
 
 - Automatically reduce long Character Overview Curio title font sizes until titles fit within their configured two-line area.
 - Removed obsolete planned/phase labels from Auto Crafter sections and experimental labels from the two Automatic Curio Buyer scheduling options.
