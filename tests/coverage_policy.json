@@ -41,6 +41,7 @@
     "BetterInventory_item_customization_editor.lua": {"minimum_percent": 60.0, "risk": "high"},
     "BetterInventory_item_customization_name_it.lua": {"minimum_percent": 65.0, "risk": "high"},
     "BetterInventory_item_customization_store.lua": {"minimum_percent": 65.0, "risk": "high"},
+    "BetterInventory_image_layout.lua": {"minimum_percent": 77.0, "risk": "high"},
     "BetterInventory_layout.lua": {"minimum_percent": 70.0, "risk": "high"},
     "BetterInventory_layout_cards.lua": {"minimum_percent": 70.0, "risk": "high"},
     "BetterInventory_layout_geometry.lua": {"minimum_percent": 70.0, "risk": "high"},

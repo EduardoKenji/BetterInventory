@@ -30,6 +30,7 @@ end
 
 Layout.configure_native_item_blueprint = Blueprints.configure_native_item_blueprint
 Layout.configure_item_blueprint = Blueprints.configure_item_blueprint
+Layout.ImageLayout = Blueprints.ImageLayout
 
 local global_store_character_photo_size = content.global_store_character_photo_size
 local global_store_price_row_padding = content.global_store_price_row_padding

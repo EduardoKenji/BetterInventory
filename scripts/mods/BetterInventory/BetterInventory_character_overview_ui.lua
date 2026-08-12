@@ -347,7 +347,7 @@ local function move_character_overview_weapon_icon(blueprint)
 	end
 end
 
-local function character_overview_weapon_blueprint(rarity_strip_setting_id)
+local function character_overview_weapon_blueprint(rarity_strip_setting_id, weapon_kind)
 	local native_blueprint = InventoryViewContentBlueprints.item_slot
 	local detailed_blueprint = CHARACTER_OVERVIEW_BLUEPRINTS and CHARACTER_OVERVIEW_BLUEPRINTS.item
 
@@ -375,10 +375,17 @@ local function character_overview_weapon_blueprint(rarity_strip_setting_id)
 	Layout.configure_native_item_blueprint(mod, blueprint, blueprint.size[1], {
 		native_single_column = true,
 		character_overview = true,
+		image_layout_context = "character_overview",
+		slot_kind = weapon_kind,
 	})
 	configure_character_overview_rarity_strip(blueprint, rarity_strip_setting_id)
 	configure_character_overview_weapon_passes(blueprint)
 	move_character_overview_weapon_icon(blueprint)
+	Layout.ImageLayout.apply_blueprint(mod, blueprint, {
+		character_overview = true,
+		image_layout_context = "character_overview",
+		slot_kind = weapon_kind,
+	}, 1, "weapon")
 
 	local configured_init = blueprint.init
 
@@ -499,6 +506,8 @@ local function character_overview_curio_blueprint()
 	Layout.configure_native_item_blueprint(mod, blueprint, blueprint.size[1], {
 		native_single_column = true,
 		character_overview = true,
+		image_layout_context = "character_overview",
+		slot_kind = "curio",
 	})
 	configure_character_overview_rarity_strip(blueprint, "character_overview_show_curio_rarity_strip")
 
@@ -746,6 +755,15 @@ local function character_overview_curio_blueprint()
 			end
 		end
 	end
+
+	-- The optional native portrait shell and BetterInventory's compact landscape
+	-- defaults establish the base geometry first. User percentages are the final
+	-- authority and remain zero-impact at their defaults.
+	Layout.ImageLayout.apply_blueprint(mod, blueprint, {
+		character_overview = true,
+		image_layout_context = "character_overview",
+		slot_kind = "curio",
+	}, 1, "curio")
 
 	if not show_curio_name and display_name then
 		display_name.visibility_function = function()
@@ -1294,7 +1312,13 @@ OverviewUI.configure = function(dependencies)
 end
 
 OverviewUI.is_visual_setting = function(setting_id)
-	return type(setting_id) == "string" and CHARACTER_OVERVIEW_VISUAL_SETTING_IDS[setting_id] == true
+	if type(setting_id) ~= "string" then
+		return false
+	end
+
+	return CHARACTER_OVERVIEW_VISUAL_SETTING_IDS[setting_id] == true
+		or string.sub(setting_id, 1, #"weapon_image_character_overview_") == "weapon_image_character_overview_"
+		or string.sub(setting_id, 1, #"curio_image_character_overview_") == "curio_image_character_overview_"
 end
 
 OverviewUI.bump_visual_settings_generation = function()
@@ -1448,7 +1472,7 @@ if ensure_class_method(InventoryView, "_create_entry_widget_from_config") then
 			local equipped_item = view.equipped_item_in_slot and view:equipped_item_in_slot(config.slot.name)
 			local empty_curio_slot = curio_slot and equipped_item == nil
 			local rarity_strip_setting_id = weapon_kind == "melee" and "character_overview_show_melee_rarity_strip" or weapon_kind == "ranged" and "character_overview_show_ranged_rarity_strip"
-			local blueprint = empty_curio_slot and character_overview_empty_curio_blueprint() or curio_slot and character_overview_curio_blueprint() or character_overview_weapon_blueprint(rarity_strip_setting_id)
+			local blueprint = empty_curio_slot and character_overview_empty_curio_blueprint() or curio_slot and character_overview_curio_blueprint() or character_overview_weapon_blueprint(rarity_strip_setting_id, weapon_kind)
 			local widget_type = empty_curio_slot and CHARACTER_OVERVIEW_EMPTY_CURIO_WIDGET_TYPE or curio_slot and CHARACTER_OVERVIEW_CURIO_WIDGET_TYPE or weapon_kind == "melee" and CHARACTER_OVERVIEW_MELEE_WIDGET_TYPE or CHARACTER_OVERVIEW_RANGED_WIDGET_TYPE
 
 			if blueprint then

@@ -64,13 +64,16 @@ function Runtime.install()
 	local unpack_values = table.unpack or unpack
 	local INVENTORY_GRID_CONFIGURATION = {
 		blueprint_key = "item",
+		image_layout_context = "inventory",
 	}
 	local HADRON_GRID_CONFIGURATION = {
 		blueprint_key = "item",
+		image_layout_context = "inventory",
 		maximum_columns = 3,
 	}
 	local ARMOURY_GRID_CONFIGURATION = {
 		blueprint_key = "store_item",
+		image_layout_context = "armoury",
 		maximum_columns = 3,
 		store_item = true,
 	}
@@ -78,12 +81,14 @@ function Runtime.install()
 	local GLOBAL_STORE_GRID_CONFIGURATION = {
 		blueprint_key = "store_item",
 		global_store = true,
+		image_layout_context = "global_store",
 		maximum_columns = 3,
 		store_item = true,
 	}
 	local GLOBAL_STORE_NATIVE_CONFIGURATION = {
 		blueprint_key = "store_item",
 		global_store = true,
+		image_layout_context = "global_store",
 		native_single_column = true,
 		store_item = true,
 	}
@@ -1847,11 +1852,13 @@ mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layou
 		if is_hadron_view(view) and mod:get("enable_hadron_single_column_mirror") ~= false then
 			configuration = {
 				blueprint_key = "item",
+				image_layout_context = "inventory",
 				native_single_column = true,
 			}
 		elseif is_armoury_requisition_view(view) and mod:get("enable_armoury_single_column_mirror") ~= false then
 			configuration = {
 				blueprint_key = "store_item",
+				image_layout_context = "armoury",
 				native_single_column = true,
 				store_item = true,
 			}
