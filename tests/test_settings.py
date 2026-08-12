@@ -2088,7 +2088,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "2.1.6"
+    assert data.version == "2.2.0"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
@@ -2279,7 +2279,43 @@ def main() -> None:
     assert top_level_ids[additional_views_index + 1] == "layout_group"
     grid_layout_index = top_level_ids.index("layout_group")
     assert top_level_ids[grid_layout_index - 1] == "additional_views_group"
-    assert top_level_ids[grid_layout_index + 1] == "single_column_layout_group"
+    assert top_level_ids[grid_layout_index + 1] == "weapon_images_size_position_group"
+    assert top_level_ids[grid_layout_index + 2] == "curio_images_size_position_group"
+    assert top_level_ids[grid_layout_index + 3] == "single_column_layout_group"
+
+    # Image layout settings keep Character Overview independent and expose
+    # five persisted profiles for each grid-capable view. The selector only
+    # chooses which profile is visible in DMF; runtime uses actual columns.
+    for item_kind, section_id in (
+        ("weapon", "weapon_images_size_position_group"),
+        ("curio", "curio_images_size_position_group"),
+    ):
+        section = next(
+            data.options.widgets[index]
+            for index in range(1, len(data.options.widgets) + 1)
+            if data.options.widgets[index].setting_id == section_id
+        )
+        assert len(section.sub_widgets) == 4
+        overview = section.sub_widgets[1]
+        assert overview.setting_id == f"{item_kind}_image_character_overview_group"
+        assert [
+            overview.sub_widgets[index].setting_id
+            for index in range(1, len(overview.sub_widgets) + 1)
+        ] == [
+            f"{item_kind}_image_character_overview_{axis}_offset_percent"
+            for axis in ("x", "y", "width", "height")
+        ]
+        for group_index, context in enumerate(
+            ("inventory", "armoury", "global_store"), start=2
+        ):
+            context_group = section.sub_widgets[group_index]
+            selector = context_group.sub_widgets[1]
+            assert selector.setting_id == f"{item_kind}_image_{context}_profile_selector"
+            assert selector.default_value == 1
+            assert [selector.options[index].value for index in range(1, 6)] == [1, 2, 3, 4, 5]
+            assert [selector.options[index].show_widgets[1] for index in range(1, 6)] == [1, 2, 3, 4, 5]
+            assert len(selector.sub_widgets) == 5
+
     customization_index = top_level_ids.index("custom_item_name_and_colors_group")
     assert top_level_ids[customization_index - 1] == "single_column_layout_group"
     assert top_level_ids[customization_index + 1] == "quick_look_card_integration_group"
@@ -2369,6 +2405,16 @@ def main() -> None:
     assert defaults["myfavorites_show_favorite_letter"] is False
     assert defaults["character_overview_curio_name_mode"] == "two_lines"
     assert defaults["character_overview_curio_font_size_percent"] == 110
+    for item_kind in ("weapon", "curio"):
+        for axis in ("x", "y", "width", "height"):
+            assert defaults[f"{item_kind}_image_character_overview_{axis}_offset_percent"] == 0
+        for context in ("inventory", "armoury", "global_store"):
+            assert defaults[f"{item_kind}_image_{context}_profile_selector"] == 1
+            for profile in ("single", "2", "3", "4", "5"):
+                for axis in ("x", "y", "width", "height"):
+                    assert defaults[
+                        f"{item_kind}_image_{context}_{profile}_{axis}_offset_percent"
+                    ] == 0
     assert defaults["three_column_weapon_name_font_size"] == 14
     assert defaults["enable_global_store_integration"] is True
     assert defaults["enable_global_store_grid"] is True
