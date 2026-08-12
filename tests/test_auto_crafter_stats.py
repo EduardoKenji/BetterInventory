@@ -120,6 +120,19 @@ def main() -> None:
 			parent_pattern = "crowbar_p1",
 			slots = {"slot_primary"},
 		}
+		local function add_weapon_lore(item, family_loc_id, pattern_loc_id, mark_loc_id, sub_display_name)
+			item.weapon_family_display_name = {loc_id = family_loc_id}
+			item.weapon_pattern_display_name = {loc_id = pattern_loc_id}
+			item.weapon_mark_display_name = {loc_id = mark_loc_id}
+			item.sub_display_name = sub_display_name
+		end
+		add_weapon_lore(crowbar_item, "loc_crowbar", "loc_crowbar_pattern", "loc_crowbar_mk_1", "Pattern • Mk I")
+		add_weapon_lore(crowbar_alt_item, "loc_crowbar", "loc_crowbar_pattern", "loc_crowbar_mk_2", "Pattern • Mk II")
+		add_weapon_lore(crowbar_locked_item, "loc_crowbar", "loc_crowbar_pattern", "loc_crowbar_mk_3", "Pattern • Mk III")
+		add_weapon_lore(pistol_item, "loc_pistol", "loc_pistol_pattern", "loc_pistol_mk_1", "Pattern • Mk I")
+		add_weapon_lore(pistol_alt_item, "loc_pistol", "loc_pistol_pattern", "loc_pistol_mk_2", "Pattern • Mk II")
+		add_weapon_lore(cross_slot_item, "loc_crowbar", "loc_crowbar_pattern", "loc_invalid_cross_slot", "Pattern • Invalid")
+		add_weapon_lore(wrong_family_item, "loc_wrong_family", "loc_wrong_pattern", "loc_invalid_wrong_family", "Pattern • Invalid")
 		TestMasterItems = {
 			crowbar_master = crowbar_item,
 			crowbar_master_alt = crowbar_alt_item,
@@ -179,7 +192,7 @@ def main() -> None:
 				is_item_id_favorited = function(gear_id) return TestFavoriteItems[gear_id] == true end,
 				set_item_id_as_favorite = function(gear_id, state) TestFavoriteItems[gear_id] = state end,
                 weapon_card_display_name = function(item) return item.display_name end,
-                weapon_card_sub_display_name = function() return "" end,
+                weapon_card_sub_display_name = function(item) return item.sub_display_name or "n/a" end,
                 trait_category = function() return "crowbar_traits" end,
                 trait_description = function(item, rarity)
                     return string.format(item.trait_text, rarity)

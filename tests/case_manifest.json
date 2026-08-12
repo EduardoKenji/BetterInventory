@@ -6,27 +6,28 @@
     {"name": "adaptive_two_line_title_fit", "risk": "high", "start_line": 88, "end_line": 132}
   ],
   "test_auto_crafter_stats.py": [
-      {"name": "template_stats_purchase_reconciliation_traits_favorite_discard_and_potential_projection", "risk": "critical", "start_line": 348, "end_line": 506},
-      {"name": "indexed_manual_resolution_and_search_budget", "risk": "critical", "start_line": 507, "end_line": 543},
-      {"name": "custom_stat_planner_validation", "risk": "critical", "start_line": 544, "end_line": 575},
-      {"name": "phase_material_and_mastery_fodder_ranges", "risk": "high", "start_line": 576, "end_line": 671},
-      {"name": "default_on_workflow_checkbox_false_persistence", "risk": "critical", "start_line": 672, "end_line": 712},
-      {"name": "manual_selector_and_shortcut_grid", "risk": "critical", "start_line": 713, "end_line": 761},
-      {"name": "localized_display_labels", "risk": "high", "start_line": 762, "end_line": 777},
-      {"name": "custom_stat_grid_bounds_and_summary", "risk": "critical", "start_line": 778, "end_line": 846},
-      {"name": "tier_qualified_trait_target_selection", "risk": "high", "start_line": 847, "end_line": 936},
-      {"name": "dual_target_trait_grid_selection_exclusivity_and_icon", "risk": "high", "start_line": 937, "end_line": 978},
-      {"name": "category_specific_ranged_perk_defaults", "risk": "high", "start_line": 979, "end_line": 1015},
-      {"name": "deferred_grid_rebuild_scroll_restore_and_mastery_gate", "risk": "critical", "start_line": 1016, "end_line": 1048},
-      {"name": "right_click_routing_blessing_icon_and_runtime_progress", "risk": "high", "start_line": 1049, "end_line": 1087}
+      {"name": "template_stats_purchase_reconciliation_traits_favorite_discard_and_potential_projection", "risk": "critical", "start_line": 361, "end_line": 519},
+      {"name": "indexed_manual_resolution_and_search_budget", "risk": "critical", "start_line": 520, "end_line": 556},
+      {"name": "custom_stat_planner_validation", "risk": "critical", "start_line": 557, "end_line": 588},
+      {"name": "phase_material_and_mastery_fodder_ranges", "risk": "high", "start_line": 589, "end_line": 684},
+      {"name": "default_on_workflow_checkbox_false_persistence", "risk": "critical", "start_line": 685, "end_line": 725},
+      {"name": "manual_selector_and_shortcut_grid", "risk": "critical", "start_line": 726, "end_line": 774},
+      {"name": "localized_display_labels", "risk": "high", "start_line": 775, "end_line": 790},
+      {"name": "custom_stat_grid_bounds_and_summary", "risk": "critical", "start_line": 791, "end_line": 859},
+      {"name": "tier_qualified_trait_target_selection", "risk": "high", "start_line": 860, "end_line": 949},
+      {"name": "dual_target_trait_grid_selection_exclusivity_and_icon", "risk": "high", "start_line": 950, "end_line": 991},
+      {"name": "category_specific_ranged_perk_defaults", "risk": "high", "start_line": 992, "end_line": 1028},
+      {"name": "deferred_grid_rebuild_scroll_restore_and_mastery_gate", "risk": "critical", "start_line": 1029, "end_line": 1061},
+      {"name": "right_click_routing_blessing_icon_and_runtime_progress", "risk": "high", "start_line": 1062, "end_line": 1100}
   ],
   "test_auto_crafter_viewport.py": [
     {"name": "panel_and_hud_resolution_matrix", "risk": "high", "start_line": 14, "end_line": 64},
     {"name": "post_draw_overlay_cpu_ownership", "risk": "high", "start_line": 66, "end_line": 178}
   ],
   "test_auto_crafter_backend.py": [
-    {"name": "complete_authoritative_inventory_summary", "risk": "critical", "start_line": 16, "end_line": 120},
-        {"name": "trait_mutation_contract_and_fail_closed_validation", "risk": "critical", "start_line": 122, "end_line": 169}
+    {"name": "complete_authoritative_inventory_summary", "risk": "critical", "start_line": 16, "end_line": 138},
+    {"name": "weapon_mark_catalogue_rejects_non_displayable_records", "risk": "critical", "start_line": 140, "end_line": 183},
+    {"name": "trait_mutation_contract_and_fail_closed_validation", "risk": "critical", "start_line": 185, "end_line": 263}
   ],
   "test_auto_crafter_context.py": [
     {"name": "atomic_character_identity_and_switch_settlement", "risk": "critical", "start_line": 16, "end_line": 98}

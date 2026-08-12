@@ -114,6 +114,13 @@
       "modules": ["BetterInventory_auto_crafter.lua"]
     },
     {
+      "name": "auto-crafter.filters-non-displayable-marks",
+      "test": "test_auto_crafter_backend.py",
+      "case": "weapon_mark_catalogue_rejects_non_displayable_records",
+      "outcome": "family prototypes and malformed localized master-item records cannot appear as selectable weapon marks, while every real mark in the same live family remains available",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
       "name": "auto-crafter.external-interrupt-is-atomic",
       "test": "test_auto_crafter_controller.py",
       "case": "external_account_mutation_exclusion",
