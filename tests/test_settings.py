@@ -2406,7 +2406,7 @@ def main() -> None:
     assert defaults["weapon_modifier_lowest_color_g"] == 94
     assert defaults["weapon_modifier_lowest_color_b"] == 132
     assert defaults["weapon_modifier_lowest_color_opacity"] == 80
-    assert defaults["force_weapon_name_single_line"] is False
+    assert defaults["force_weapon_name_single_line"] is True
     assert defaults["single_column_weapon_name_font_size"] == 20
     assert defaults["single_column_blessing_icons_on_right"] is True
     assert defaults["enable_hadron_entreat_grid"] is True

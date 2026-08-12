@@ -2,7 +2,7 @@
 
 ## 2.1.6 - In development
 
-- Added an optional single-line weapon-name policy with bounded font reduction and mark-preserving truncation for long standard and customized names.
+- Enabled the single-line weapon-name policy by default, with bounded font reduction, mark-preserving truncation, and strict three-column overflow protection for long standard and customized names.
 
 ## 2.1.5 - 2026-08-12
 

@@ -1520,7 +1520,7 @@ Content.refresh_item_customization = function(mod, widget, element)
 	end
 
 	element = element or widget.content and widget.content.element
-	format_item_name(mod, widget, element, setting(mod, "append_mark_to_name", true), setting(mod, "force_weapon_name_single_line", false))
+	format_item_name(mod, widget, element, setting(mod, "append_mark_to_name", true), setting(mod, "force_weapon_name_single_line", true))
 	apply_item_customization_style(mod, widget, element)
 
 	return true

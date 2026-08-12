@@ -1548,7 +1548,7 @@ return {
 						setting_id = "force_weapon_name_single_line",
 						tooltip = "force_weapon_name_single_line_tooltip",
 						type = "checkbox",
-						default_value = false,
+						default_value = true,
 					},
 					{
 						setting_id = "show_pattern_mark",
