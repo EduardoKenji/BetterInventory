@@ -542,6 +542,38 @@ def main() -> None:
     assert penetration_plan.estimate.dockets_cap == 1000000
     assert penetration_plan.estimate.purchase_count_cap == 86
 
+    custom_plan = planner.build(
+        snapshot,
+        lua.table_from(
+            {
+                "target_offer": offer,
+                "custom_stats_enabled": True,
+                "custom_stat_targets": lua.table_from([60, 80, 80, 80, 80]),
+            }
+        ),
+    )
+    assert custom_plan.custom_stats_enabled is True
+    assert custom_plan.custom_stats_valid is True
+    assert custom_plan.custom_stat_total == 380
+    assert len(custom_plan.custom_stat_targets) == 5
+    assert custom_plan.custom_stat_target_map["crowbar_p1_m1_dps_stat"] == 60
+    assert custom_plan.custom_stat_target_map["crowbar_p1_m1_defence_stat"] == 80
+
+    invalid_custom_plan = planner.build(
+        snapshot,
+        lua.table_from(
+            {
+                "target_offer": offer,
+                "custom_stats_enabled": True,
+                "custom_stat_targets": lua.table_from([60, 79, 80, 80, 80]),
+            }
+        ),
+    )
+    assert invalid_custom_plan.custom_stats_valid is False
+    assert invalid_custom_plan.custom_stat_total == 379
+    assert invalid_custom_plan.preflight.ok is False
+    assert "custom stat total must equal 380" in invalid_custom_plan.preflight.summary
+
     rarity_costs = lua.table_from(
         {
             str(rarity): lua.table_from(
@@ -742,6 +774,76 @@ def main() -> None:
         }
     )
     assert panel._planner_dump_stat_label(panel, "dual_shivs_p1_m1_finesse_stat") == "Finesse"
+
+    lua.execute(
+        '''
+        CustomPanelSettings = {
+            values = {
+                auto_crafter_custom_stats = true,
+                auto_crafter_custom_stat_1 = 60,
+                auto_crafter_custom_stat_2 = 80,
+                auto_crafter_custom_stat_3 = 80,
+                auto_crafter_custom_stat_4 = 80,
+                auto_crafter_custom_stat_5 = 80,
+            },
+            get = function(self, key) return self.values[key] end,
+            set = function(self, key, value) self.values[key] = value return true end,
+        }
+        '''
+    )
+    custom_panel = panel_module.new(
+        lua.table_from({"settings": lua.globals().CustomPanelSettings})
+    )
+    custom_panel._plan = custom_plan
+    custom_entry = custom_panel._entry(
+        custom_panel,
+        "",
+        "",
+        lua.table_from(
+            {"variant": "custom_stat_grid", "selectable": True, "custom_stat_grid": True}
+        ),
+    )
+    custom_content = lua.table_from(
+        {
+            **{
+                f"custom_stat_decrease_hotspot_{index}": lua.table_from({})
+                for index in range(1, 6)
+            },
+            **{
+                f"custom_stat_increase_hotspot_{index}": lua.table_from({})
+                for index in range(1, 6)
+            },
+        }
+    )
+    custom_widget = lua.table_from({"content": custom_content})
+    custom_entry.bind(custom_widget)
+    custom_entry.refresh(custom_widget)
+    assert custom_widget.content.custom_stat_label_1 == "Damage"
+    assert custom_widget.content.custom_stat_label_5 == "Defenses"
+    assert custom_widget.content.custom_stat_total == "380/380"
+    assert custom_widget.content.custom_stat_total_value == 380
+    assert custom_widget.content.custom_stat_decrease_hotspot_1.disabled is True
+    assert custom_widget.content.custom_stat_increase_hotspot_2.disabled is True
+    assert custom_panel._adjust_custom_stat(custom_panel, 1, -1) is False
+    assert custom_panel._adjust_custom_stat(custom_panel, 2, 1) is False
+    assert custom_panel._adjust_custom_stat(custom_panel, 2, -1) is True
+    custom_entry.refresh(custom_widget)
+    assert custom_widget.content.custom_stat_total == "379/380"
+    assert custom_panel._adjust_custom_stat(custom_panel, 1, 1) is True
+    assert custom_panel._adjust_custom_stat(custom_panel, 1, 1) is False
+    custom_entry.refresh(custom_widget)
+    assert custom_widget.content.custom_stat_total == "380/380"
+    assert custom_panel._manual_queue_detail(custom_panel, custom_plan).startswith(
+        "Stats: Damage 60 / Mobility 80 / First Target 80 / Penetration 80 / Defenses 80"
+    )
+    custom_passes = panel_module.custom_stat_grid_passes(421)
+    custom_hotspots = [
+        custom_passes[index]
+        for index in range(1, len(custom_passes) + 1)
+        if getattr(custom_passes[index], "content_id", None)
+        and str(custom_passes[index].content_id).startswith("custom_stat_")
+    ]
+    assert len(custom_hotspots) == 10
 
     lua.execute(
         '''

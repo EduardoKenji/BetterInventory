@@ -121,6 +121,13 @@
       "modules": ["BetterInventory_account_mutation_guard.lua", "BetterInventory_auto_crafter.lua"]
     },
     {
+      "name": "auto-crafter.custom-stats-are-exact-and-guarded",
+      "test": "test_auto_crafter_controller.py",
+      "case": "custom_stat_exact_acquisition_and_resume",
+      "outcome": "invalid five-stat totals dispatch no account write, while exact projected allocations drive purchase acceptance and family-equivalent inventory resume across marks",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
       "name": "auto-crafter.bounds-failures",
       "test": "test_auto_crafter_controller.py",
       "case": "resource_capacity_network_and_loading_failure_matrix",
