@@ -68,11 +68,21 @@ def main() -> None:
     install_result = queue.install(queue, build)
     assert install_result is True
     assert queue.snapshot(queue)["state"] == "staged"
+    assert queue.snapshot(queue)["planner_index"] == 1
+
+    # Planner selection is independent from the execution cursor. Editing the
+    # ranged card cannot reorder or advance the serial melee-first queue.
+    selected, selected_job = queue.select_for_planning(queue, 2)
+    assert selected is True and selected_job["slot"] == "ranged"
+    assert queue.snapshot(queue)["planner_index"] == 2
+    assert queue.snapshot(queue)["current_index"] == 1
+    assert queue.snapshot(queue)["jobs"][2]["selected"] is True
     assert queue.start(queue) is True
     assert starts == [1]
     assert selections == [1]
     assert configured == [1]
     assert queue.snapshot(queue)["jobs"][1]["current"] is True
+    assert queue.select_for_planning(queue, 1)[0] is False
 
     def completion(target_queue, sequence, gear_id):
         snapshot = target_queue.snapshot(target_queue)
@@ -169,6 +179,40 @@ def main() -> None:
     result, reason = queue_module._test.valid_build(invalid)
     assert result is False
     assert reason == "invalid_ranged_job"
+
+    editable = to_lua({
+        "kind": "games_lantern_build",
+        "jobs": [
+            {
+                "kind": "games_lantern_job", "slot": "melee", "dump_stat": "damage", "dump_target": 60,
+                "offer": {"master_id": "melee"}, "custom_stats_enabled": True,
+                "custom_stat_targets": [
+                    {"name": "damage", "value": 60}, {"name": "mobility", "value": 80},
+                    {"name": "penetration", "value": 80}, {"name": "finesse", "value": 80},
+                    {"name": "defense", "value": 80},
+                ],
+                "custom_stat_total": 380,
+                "catalog": {
+                    "perks": [{"id": "p1", "tier": 4}, {"id": "p2", "tier": 4}, {"id": "p5", "tier": 4}],
+                    "blessings": [{"id": "b1", "tiers": [{"tier": 4}]}, {"id": "b2", "tiers": [{"tier": 4}]}],
+                },
+                "perks": [{"id": "p1", "rarity": 4}, {"id": "p2", "rarity": 4}],
+                "blessings": [{"id": "b1", "rarity": 4}, {"id": "b2", "rarity": 4}],
+            },
+            build["jobs"][2],
+        ],
+    })
+    editor = queue_module.new(to_lua({}))
+    assert editor.install(editor, editable) is True
+    updated, edited_job = editor.update_selected_custom_stat(editor, 2, 79)
+    assert updated is True and edited_job["custom_stat_total"] == 379
+    assert editor.snapshot(editor)["current_index"] == 1
+    assert editor.update_selected_custom_stat(editor, 1, 61)[0] is True
+    assert editor.snapshot(editor)["jobs"][1]["custom_stat_total"] == 380
+    assert editor.update_selected_trait(editor, "perk", 1, to_lua({"id": "p5", "rarity": 4, "label": "P5"}))[0] is True
+    assert editor.snapshot(editor)["jobs"][1]["perks"][1]["id"] == "p5"
+    assert editor.update_selected_trait(editor, "perk", 2, to_lua({"id": "p5", "rarity": 4}))[0] is False
+    assert editor.start(editor) is False  # no execution dependencies; edit lock still applies after start attempt
 
 
 if __name__ == "__main__":

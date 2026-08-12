@@ -73,17 +73,22 @@
   ],
     "test_games_lantern_workflow.py": [
       {"name": "live_catalogue_resolution", "risk": "critical", "start_line": 19, "end_line": 107},
-      {"name": "public_class_slug_aliases", "risk": "critical", "start_line": 108, "end_line": 122},
-      {"name": "brunt_family_level_weapon_resolution", "risk": "critical", "start_line": 123, "end_line": 173},
-        {"name": "localized_perk_and_blessing_resolution", "risk": "critical", "start_line": 174, "end_line": 236},
-        {"name": "canonical_perk_family_wording_drift", "risk": "critical", "start_line": 238, "end_line": 300},
-        {"name": "slot_specific_perk_resolution_and_catalog_failures", "risk": "critical", "start_line": 301, "end_line": 425},
-        {"name": "ambiguous_and_mismatched_builds_fail_closed", "risk": "critical", "start_line": 427, "end_line": 476},
-        {"name": "explicit_weapon_choice_resolution", "risk": "critical", "start_line": 478, "end_line": 492}
+      {"name": "exact_five_stat_profile_resolution", "risk": "critical", "start_line": 108, "end_line": 156},
+      {"name": "public_class_slug_aliases", "risk": "critical", "start_line": 157, "end_line": 171},
+      {"name": "brunt_family_level_weapon_resolution", "risk": "critical", "start_line": 172, "end_line": 222},
+        {"name": "localized_perk_and_blessing_resolution", "risk": "critical", "start_line": 223, "end_line": 286},
+        {"name": "canonical_perk_family_wording_drift", "risk": "critical", "start_line": 287, "end_line": 349},
+        {"name": "slot_specific_perk_resolution_and_catalog_failures", "risk": "critical", "start_line": 350, "end_line": 475},
+        {"name": "ambiguous_and_mismatched_builds_fail_closed", "risk": "critical", "start_line": 476, "end_line": 526},
+        {"name": "explicit_weapon_choice_resolution", "risk": "critical", "start_line": 527, "end_line": 542}
     ],
     "test_games_lantern_queue.py": [
       {"name": "serial_queue_transition_and_completion", "risk": "critical", "start_line": 17, "end_line": 100},
-      {"name": "stop_failure_and_boundary_guards", "risk": "critical", "start_line": 101, "end_line": 173}
+      {"name": "stop_failure_and_boundary_guards", "risk": "critical", "start_line": 101, "end_line": 181},
+      {"name": "staged_queue_profile_editor", "risk": "critical", "start_line": 182, "end_line": 219}
+    ],
+    "test_games_lantern_custom_stats.py": [
+      {"name": "identity_bound_exact_profile_and_malformed_rejection", "risk": "critical", "start_line": 1, "end_line": 74}
     ],
     "test_games_lantern_safety.py": [
       {"name": "typed_terminal_identity_and_final_reconciliation", "risk": "critical", "start_line": 12, "end_line": 97},
@@ -92,10 +97,10 @@
         {"name": "games_lantern_release_contract_seams", "risk": "critical", "start_line": 279, "end_line": 312}
     ],
     "test_games_lantern_inventory_completion.py": [
-      {"name": "family_finished_skip_duplicate_and_two_slot_resume", "risk": "critical", "start_line": 1, "end_line": 230}
+      {"name": "family_finished_skip_duplicate_and_two_slot_resume", "risk": "critical", "start_line": 1, "end_line": 265}
     ],
     "test_games_lantern_queue_ui.py": [
-        {"name": "active_queue_lifecycle_locked_target_and_section_order_ui", "risk": "high", "start_line": 9, "end_line": 64}
+        {"name": "active_queue_lifecycle_locked_target_and_section_order_ui", "risk": "high", "start_line": 9, "end_line": 75}
     ],
     "test_games_lantern_transport.py": [
       {"name": "bounded_transport_timeout_status_size_and_cancel", "risk": "critical", "start_line": 10, "end_line": 151}

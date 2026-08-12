@@ -128,6 +128,20 @@
       "modules": ["BetterInventory_auto_crafter.lua"]
     },
     {
+      "name": "games-lantern.custom-stat-profiles-bind-by-identity",
+      "test": "test_games_lantern_custom_stats.py",
+      "case": "identity_bound_exact_profile_and_malformed_rejection",
+      "outcome": "five imported values bind to their live Darktide stat identities regardless of list order, while duplicate or missing identities fail closed",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
+      "name": "games-lantern.staged-editor-does-not-reorder",
+      "test": "test_games_lantern_queue.py",
+      "case": "staged_queue_profile_editor",
+      "outcome": "selecting and editing either staged queue card changes only that target while the execution cursor remains melee-first and locks at start",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
       "name": "auto-crafter.bounds-failures",
       "test": "test_auto_crafter_controller.py",
       "case": "resource_capacity_network_and_loading_failure_matrix",
