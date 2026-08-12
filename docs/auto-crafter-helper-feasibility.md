@@ -542,14 +542,13 @@ Before every request, project that request's maximum known cost. Do not issue it
 
 ### Best-candidate fallback and sacrifice interaction
 
-When fallback is enabled, retain one best-so-far candidate from the first valid roll. Never sacrifice or discard it. Compare candidates lexicographically:
+When fallback is enabled, retain one best-so-far candidate from the first valid roll. Never sacrifice or discard it. For a five-stat custom target, compare the projected level-500 allocation using Manhattan distance:
 
 ```text
-1. smallest abs(selected_dump_stat - 60)
-2. largest discovered `damage` stat, or configured priority stat when `damage` is absent
-3. largest total non-dump base-stat value
-4. earliest purchase index (deterministic tie-break)
+distance = sum(abs(candidate_stat[i] - requested_stat[i])) for all five stats
 ```
+
+The smallest finite distance wins. A missing, malformed, or ambiguously mapped candidate stat yields infinite distance and cannot displace a complete candidate. Equal custom distances retain the earlier purchase. The legacy single-dump mode retains its existing smallest dump-stat distance followed by largest discovered Damage tie-break.
 
 When a better candidate arrives, demote the old reserve to fodder only after normal protection checks. This allows nearly every imperfect roll to feed mastery while preserving a usable fallback.
 
