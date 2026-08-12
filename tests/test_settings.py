@@ -2098,6 +2098,27 @@ def main() -> None:
     assert localization["auto_crafter_trait_targets_group"]["en"] == "Perk and blessing targets"
     assert localization["automatic_curio_once_per_store_rotation"]["en"] == "Scan at most once per store rotation"
     assert localization["automatic_curio_rescan_on_store_refresh"]["en"] == "Rescan when store refreshes while idle"
+    assert (
+        localization["weapon_image_inventory_group"]["en"]
+        == "Inventory and Hadron image layout"
+    )
+    assert (
+        localization["weapon_image_armoury_group"]["en"]
+        == "Armoury Exchange store image layout"
+    )
+    assert (
+        localization["curio_image_global_store_group"]["en"]
+        == "Armoury Exchange GlobalStore image layout"
+    )
+    assert (
+        localization["weapon_image_inventory_single_group"]["en"]
+        == "Single-column image geometry (grid mode off)"
+    )
+    for columns in range(2, 6):
+        assert (
+            localization[f"curio_image_armoury_{columns}_group"]["en"]
+            == f"{columns}-column grid image geometry"
+        )
 
     for localization_id, localized_values in localization.items():
         simplified_chinese = localized_values["zh-cn"]
