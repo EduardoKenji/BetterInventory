@@ -780,7 +780,11 @@ local function bind_option_dependencies(options_templates)
 		return
 	end
 
-	local registry_status, registry_valid, _, duplicate_ids = Capabilities.mutation(SettingsRegistry, "register", settings)
+	-- DMF exposes one flattened template array shared by every installed mod.
+	-- Register only this mod's category so foreign duplicate IDs cannot be
+	-- misreported as BetterInventory schema failures.
+	local category_name = mod:get_readable_name()
+	local registry_status, registry_valid, _, duplicate_ids = Capabilities.mutation(SettingsRegistry, "register", settings, category_name)
 
 	if registry_status == "ok" and not registry_valid and type(duplicate_ids) == "table" then
 
@@ -789,7 +793,6 @@ local function bind_option_dependencies(options_templates)
 		end
 	end
 
-	local category_name = mod:get_readable_name()
 	local setting_by_title = {}
 	local curio_buyer_subsection_titles = {
 		[mod:localize("automatic_curio_types_group")] = true,

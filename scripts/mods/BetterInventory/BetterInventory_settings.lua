@@ -156,17 +156,31 @@ end
 local active_ids = {}
 local active_entries = {}
 local duplicate_ids = {}
+local duplicate_id_set = {}
 local metadata_issues = {}
 local active_count = 0
 
-local function collect_setting_entries(entries)
+local function collect_setting_entries(entries, category_name, parent_owned)
 	for _, entry in ipairs(entries or {}) do
 		if type(entry) == "table" then
+			local entry_owned = category_name == nil
+
+			if category_name ~= nil then
+				if entry.category ~= nil then
+					entry_owned = entry.category == category_name
+				else
+					entry_owned = parent_owned == true
+				end
+			end
+
 			local setting_id = entry.setting_id
 
-			if type(setting_id) == "string" and setting_id ~= "" then
+			if entry_owned and type(setting_id) == "string" and setting_id ~= "" then
 				if active_ids[setting_id] then
-					duplicate_ids[#duplicate_ids + 1] = setting_id
+					if not duplicate_id_set[setting_id] then
+						duplicate_id_set[setting_id] = true
+						duplicate_ids[#duplicate_ids + 1] = setting_id
+					end
 				else
 					active_ids[setting_id] = true
 					active_count = active_count + 1
@@ -183,7 +197,7 @@ local function collect_setting_entries(entries)
 				end
 			end
 
-			collect_setting_entries(entry.sub_widgets)
+			collect_setting_entries(entry.sub_widgets, category_name, entry_owned)
 		end
 	end
 end
@@ -191,15 +205,23 @@ end
 -- The runtime reaches these entry points through the guarded capability
 -- adapter, which binds the registry table as `self`. Keep direct calls used by
 -- tooling/tests compatible as well so the registry has one safe public API.
-Registry.register = function(registry_or_settings, bound_settings)
-	local settings = registry_or_settings == Registry and bound_settings or registry_or_settings
+Registry.register = function(registry_or_settings, bound_settings, bound_category_name)
+	local called_as_method = registry_or_settings == Registry
+	local settings = registry_or_settings
+	local category_name = bound_settings
+
+	if called_as_method then
+		settings = bound_settings
+		category_name = bound_category_name
+	end
 
 	active_ids = {}
 	active_entries = {}
 	duplicate_ids = {}
+	duplicate_id_set = {}
 	metadata_issues = {}
 	active_count = 0
-	collect_setting_entries(settings)
+	collect_setting_entries(settings, category_name, false)
 
 	return #duplicate_ids == 0, active_count, duplicate_ids
 end

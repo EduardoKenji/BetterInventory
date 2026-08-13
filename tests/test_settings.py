@@ -1556,6 +1556,26 @@ def main() -> None:
         }
     )
     entries.extend([active_character_entry, empty_character_entry])
+    # DMF supplies one generated settings array for all mods. Foreign duplicate
+    # IDs must not be attributed to BetterInventory or trigger its diagnostic.
+    entries.extend(
+        [
+            lua.table_from(
+                {
+                    "category": "Expedition UI",
+                    "display_name": "Expedition button X offset",
+                    "setting_id": "expedition_button_x_offset",
+                }
+            ),
+            lua.table_from(
+                {
+                    "category": "Expedition UI",
+                    "display_name": "Expedition button X offset",
+                    "setting_id": "expedition_button_x_offset",
+                }
+            ),
+        ]
+    )
     for option_id, entry in zip(option_ids, entries):
         if option_id in {
 			"single_column_layout_group",
@@ -1583,6 +1603,7 @@ def main() -> None:
     )
 
     globals_.captured_options_hook(globals_.test_dmf, options_templates)
+    assert globals_.captured_module_errors == 0
     entries_by_id = dict(zip(option_ids, entries))
     name_it_curio_name_entries = [
         entries_by_id["name_it_force_curio_name_in_detailed_mode"],
@@ -2386,7 +2407,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "2.2.2"
+    assert data.version == "2.2.3"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"

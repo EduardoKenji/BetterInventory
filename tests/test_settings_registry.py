@@ -79,6 +79,7 @@ def main() -> None:
         [
             lua.table_from({"setting_id": "duplicate"}),
             lua.table_from({"setting_id": "duplicate"}),
+            lua.table_from({"setting_id": "duplicate"}),
         ]
     )
     ok, count, duplicates = registry.register(duplicate_settings)
@@ -86,6 +87,40 @@ def main() -> None:
     assert ok is False
     assert count == 1
     assert duplicates[1] == "duplicate"
+    assert len(duplicates) == 1
+
+    shared_generated_settings = lua.table_from(
+        [
+            lua.table_from(
+                {
+                    "category": "Expedition UI",
+                    "setting_id": "expedition_button_x_offset",
+                }
+            ),
+            lua.table_from(
+                {
+                    "category": "Expedition UI",
+                    "setting_id": "expedition_button_x_offset",
+                }
+            ),
+            lua.table_from(
+                {
+                    "category": "Better Inventory",
+                    "setting_id": "melee_columns",
+                    "type": "numeric",
+                }
+            ),
+        ]
+    )
+    ok, count, duplicates = registry.register(
+        shared_generated_settings, "Better Inventory"
+    )
+
+    assert ok is True
+    assert count == 1
+    assert len(duplicates) == 0
+    assert registry.has("melee_columns") is True
+    assert registry.has("expedition_button_x_offset") is False
 
     lua.execute(
         "function get_mod() return {localize = function(_, id) return id end} end; "

@@ -1,5 +1,9 @@
 # BetterInventory changelog
 
+## 2.2.3 - 2026-08-13
+
+- Fixed foreign setting IDs from DMF's shared options template being misreported as duplicate BetterInventory settings; diagnostics now inspect only BetterInventory's category and list each genuine duplicate once.
+
 ## 2.2.2 - 2026-08-13
 
 - Added a separate **Newly acquired item highlight** subsection at the bottom of **Card content**.
