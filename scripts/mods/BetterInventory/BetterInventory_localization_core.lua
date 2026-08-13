@@ -892,10 +892,40 @@ local localization = {
 		en = "Clear horizontal gap in pixels between weapon blessing icons.",
 	},
 	highlight_equipped_items = {
-		en = "Highlight equipped items",
+		en = "Equipped item highlight",
 	},
 	highlight_equipped_items_tooltip = {
-		en = "Adds a soft white glow around equipped item cards while preserving Darktide's native equipped symbol.",
+		en = "Chooses how equipped item cards are highlighted while preserving Darktide's native equipped symbol. Animated dashes use Darktide's native animated frame material.",
+	},
+	equipped_highlight_mode_off = {
+		en = "Off",
+	},
+	equipped_highlight_mode_soft_glow = {
+		en = "Soft glow",
+	},
+	equipped_highlight_mode_animated_dashes = {
+		en = "Animated dashed border",
+	},
+	equipped_highlight_mode_solid_border = {
+		en = "Solid border",
+	},
+	equipped_highlight_color_group = {
+		en = "Equipped highlight colour",
+	},
+	equipped_highlight_color_preset = {
+		en = "Preset",
+	},
+	equipped_highlight_color_r = {
+		en = "Red",
+	},
+	equipped_highlight_color_g = {
+		en = "Green",
+	},
+	equipped_highlight_color_b = {
+		en = "Blue",
+	},
+	option_requires_equipped_highlight = {
+		en = "Select an equipped item highlight mode to use these colour controls.",
 	},
 	compact_favorite_marker = {
 		en = "Use compact favorite marker",
@@ -1101,6 +1131,9 @@ local localization = {
 	color_preset_yellow = {
 		en = "Yellow",
 	},
+	color_preset_gold = {
+		en = "Gold",
+	},
 	color_preset_green = {
 		en = "Green",
 	},
@@ -1110,11 +1143,17 @@ local localization = {
 	color_preset_terminal_green = {
 		en = "Terminal green",
 	},
+	color_preset_white = {
+		en = "White",
+	},
 	color_preset_neutral = {
 		en = "Neutral",
 	},
 	color_preset_custom = {
 		en = "Custom colour",
+	},
+	color_preset_mode_default = {
+		en = "Mode default",
 	},
 	curio_resistance_flamers = {
 		en = "Flamers Resistance",

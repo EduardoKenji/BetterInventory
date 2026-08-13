@@ -234,6 +234,11 @@ local COLOR_PRESETS = {
 		205,
 		80,
 	},
+	gold = {
+		250,
+		189,
+		73,
+	},
 	green = {
 		105,
 		210,
@@ -249,6 +254,11 @@ local COLOR_PRESETS = {
 		126,
 		103,
 	},
+	white = {
+		255,
+		255,
+		255,
+	},
 	neutral = {
 		220,
 		230,
@@ -256,6 +266,15 @@ local COLOR_PRESETS = {
 	},
 }
 local COLOR_TARGETS = {
+	{
+		prefix = "equipped_highlight_color",
+		default_preset = "mode_default",
+		mode_default_color = function()
+			local mode = mod:get("highlight_equipped_items")
+
+			return (mode == "animated_dashes" or mode == "solid_border") and COLOR_PRESETS.gold or COLOR_PRESETS.white
+		end,
+	},
 	{
 		prefix = "weapon_perk_text_color",
 		default_preset = "light_green",
@@ -294,6 +313,7 @@ local COLOR_TARGETS = {
 	},
 }
 local color_target_by_setting_id = {}
+local equipped_highlight_color_target
 local option_dependency_entries = {}
 local CHARACTER_OVERVIEW_DUMP_STAT_STYLE_SETTING_IDS = {
 	character_overview_dump_stat_horizontal_offset = true,
@@ -306,6 +326,10 @@ local CHARACTER_OVERVIEW_DUMP_STAT_STYLE_SETTING_IDS = {
 
 for i = 1, #COLOR_TARGETS do
 	local target = COLOR_TARGETS[i]
+
+	if target.prefix == "equipped_highlight_color" then
+		equipped_highlight_color_target = target
+	end
 
 	target.preset_id = target.prefix .. "_preset"
 	target.channel_ids = {
@@ -328,7 +352,7 @@ end
 
 local function apply_color_preset(target)
 	local preset_id = mod:get(target.preset_id) or target.default_preset
-	local color = COLOR_PRESETS[preset_id]
+	local color = preset_id == "mode_default" and target.mode_default_color and target.mode_default_color() or COLOR_PRESETS[preset_id]
 
 	if not color then
 		return
@@ -466,6 +490,8 @@ local function refresh_option_dependencies()
 	local weapon_modifier_lowest_color_reason = grid_enabled and quick_look_card_grid_reason or quick_look_card_single_column_reason
 	local quick_look_card_above_power = quick_look_card_grid_enabled and mod:get("quick_look_card_grid_stat_position") ~= "name_left" and mod:get("quick_look_card_grid_stat_position") ~= "name_right"
 	local quick_look_card_bottom_padding_reason = quick_look_card_grid_enabled and mod:localize("option_requires_quick_look_card_above_power") or quick_look_card_grid_reason
+	local equipped_highlight_enabled = mod:get("highlight_equipped_items") ~= "off" and mod:get("highlight_equipped_items") ~= false
+	local equipped_highlight_reason = mod:localize("option_requires_equipped_highlight")
 
 	set_option_enabled(option_dependency_entries.expand_curio_inventory_window, window_expansion_enabled, expansion_reason)
 	set_option_enabled(option_dependency_entries.weapon_extra_width_column_threshold, window_expansion_enabled, expansion_reason)
@@ -518,6 +544,10 @@ local function refresh_option_dependencies()
 	set_option_enabled(option_dependency_entries.weapon_perk_text_color_b, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
 	set_option_enabled(option_dependency_entries.weapon_perk_text_opacity, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
 	set_option_enabled(option_dependency_entries.weapon_perk_vertical_spacing, weapon_perks_enabled, mod:localize("option_requires_weapon_perks"))
+	set_option_enabled(option_dependency_entries.equipped_highlight_color_preset, equipped_highlight_enabled, equipped_highlight_reason)
+	set_option_enabled(option_dependency_entries.equipped_highlight_color_r, equipped_highlight_enabled, equipped_highlight_reason)
+	set_option_enabled(option_dependency_entries.equipped_highlight_color_g, equipped_highlight_enabled, equipped_highlight_reason)
+	set_option_enabled(option_dependency_entries.equipped_highlight_color_b, equipped_highlight_enabled, equipped_highlight_reason)
 	set_option_enabled(option_dependency_entries.blessing_text_item_level_separation, weapon_blessing_text_enabled, mod:localize("option_requires_weapon_blessing_text"))
 	set_option_enabled(option_dependency_entries.auto_fit_long_blessing_names, weapon_blessing_text_enabled, mod:localize("option_requires_weapon_blessing_text"))
 	set_option_enabled(option_dependency_entries.truncate_long_blessing_names, weapon_blessing_text_enabled, mod:localize("option_requires_weapon_blessing_text"))
@@ -760,6 +790,10 @@ local function bind_option_dependencies(options_templates)
 		"weapon_perk_text_color_b",
 		"weapon_perk_text_opacity",
 		"weapon_perk_vertical_spacing",
+		"equipped_highlight_color_preset",
+		"equipped_highlight_color_r",
+		"equipped_highlight_color_g",
+		"equipped_highlight_color_b",
 		"blessing_text_item_level_separation",
 		"auto_fit_long_blessing_names",
 		"truncate_long_blessing_names",
@@ -1052,6 +1086,20 @@ function mod.on_enabled()
 		mod:set("_weapon_blessing_display_mode_v1_migrated", true)
 	end
 
+	-- Replace the equipped-card checkbox with a mode selector without changing
+	-- an existing user's enabled/disabled choice.
+	if not mod:get("_equipped_highlight_mode_v1_migrated") then
+		local previous_highlight = mod:get("highlight_equipped_items")
+
+		if previous_highlight == true then
+			mod:set("highlight_equipped_items", "soft_glow")
+		elseif previous_highlight == false then
+			mod:set("highlight_equipped_items", "off")
+		end
+
+		mod:set("_equipped_highlight_mode_v1_migrated", true)
+	end
+
 	for i = 1, #COLOR_TARGETS do
 		apply_color_preset(COLOR_TARGETS[i])
 	end
@@ -1150,6 +1198,10 @@ function mod.on_setting_changed(setting_id)
 		else
 			mod:set(color_change.target.preset_id, "custom", false)
 		end
+	end
+
+	if setting_id == "highlight_equipped_items" and equipped_highlight_color_target and mod:get(equipped_highlight_color_target.preset_id) == "mode_default" then
+		apply_color_preset(equipped_highlight_color_target)
 	end
 
 	local should_refresh_dependencies = Capabilities.registry_refresh_required(SettingsRegistry, "should_refresh_dependencies", setting_id)

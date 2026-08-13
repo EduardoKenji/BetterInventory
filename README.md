@@ -1,6 +1,6 @@
 # BetterInventory
 
-> Project status: BetterInventory v2.2.0 development. Account-changing workflows remain opt-in and disabled by default.
+> Project status: BetterInventory v2.2.1 development. Account-changing workflows remain opt-in and disabled by default.
 >
 > Audit date: 2026-08-07. See [`docs/v2.0.0-full-project-audit.md`](docs/v2.0.0-full-project-audit.md) for the prioritized implementation backlog and release gates.
 
@@ -52,7 +52,7 @@ It currently covers the character melee, ranged and Curio inventory and provides
 - One-time migration of previously saved title, pattern and quality settings to the established defaults; later user changes are preserved.
 - A default-on strict single-line weapon-title policy. Long standard or customized names shrink to the configured minimum font size, then use an ellipsis while preserving an appended `Mk` suffix.
 - Compact favorite-marker and font-size options, including upper-right-above-power and lower-left marker positions.
-- A default-on soft white glow around equipped cards, driven by Darktide's native equipped state and independently toggleable without hiding the native equipped symbol.
+- A default-on equipped-card highlight selector with **Off**, **Soft glow**, **Animated dashed border**, and **Solid border** modes. Soft glow defaults to white; both borders default to the Auto Crafter terminal gold. Shared presets and RGB sliders apply to every mode, and editing a channel selects Custom colour. The animated mode uses Darktide's native GPU-animated dashed-frame material, requiring no Lua timer or retained per-card animation state. Every mode follows Darktide's native equipped state without hiding its equipped symbol.
 - A four-mode weapon blessing dropdown: **Tier symbols + text** by default, ranked **Icons**, compact **Text lines**, or **Off**. Icon mode uses Darktide's current composited blessing material and ranked frame; icon size is configurable from 20–48 px (36 px by default), with a configurable 0–20 px horizontal gap defaulting to 3 px. Text mode prefixes each localized name with Darktide's authoritative Roman rank, for example `III Surgical`; Tier-symbol mode pairs the same name with Darktide's standalone native I–IV perk-rank material. Blessing text defaults to Light blue (`RGB 105, 200, 235`) at 80% opacity and has synchronized presets and RGB controls plus an independent 0–100% opacity slider. By default, four- and five-column grids put both text rows above a dedicated item-level row, giving each name the remaining card width; the threshold can be set to Always, five columns only, or Never.
 - Default-on two-line weapon perk text. No Compression keeps Darktide's full localized descriptions; Compression uses readable shorter labels; Heavy Compression is the default and uses narrow labels such as `+25% Carapace Dmg`, `+25% Unarmoured Dmg`, `+25% Unyielding Dmg`, `+5% Ranged Crit`, `+5% Melee Crit`, `+15% Sprint` and `+10% Reload`. Both leading-value descriptions and alternate sentences such as `Increase Ranged Critical Strike Chance by +5%` are normalized correctly. All 19 melee and 17 ranged perk templates present in Darktide 1.12.3 have identifier-based mappings; an unknown future identifier retains the native description. Native ranked perk symbols are shown by default, while removal of the leading `+` remains opt-in.
 - Weapon perk text has synchronized color presets and RGB sliders plus an independent 0–100% opacity slider. Its default Light green preset (`RGB 190, 210, 180`) uses 80% opacity.
@@ -100,7 +100,7 @@ The normal/default configuration does not alter filters or backend transactions.
 
 ## Supported integrations
 
-The following integrations are supported in v2.2.0. BetterInventory has no optional mod dependencies; each integration activates only when its corresponding mod is installed.
+The following integrations are supported in v2.2.1. BetterInventory has no optional mod dependencies; each integration activates only when its corresponding mod is installed.
 
 - Quick Look Card: optional integration for single-column and grid layouts. BetterInventory also includes its own built-in weapon-modifier display.
 - Enhanced Descriptions: compatible Curio text handling with an option to preserve BetterInventory's simplified primary-stat labels.

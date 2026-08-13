@@ -49,6 +49,7 @@ local DEPENDENCY_REFRESH_SETTING_IDS = {
 	"weapon_blessing_display_mode",
 	"show_weapon_perks",
 	"show_weapon_perk_rank_symbols",
+	"highlight_equipped_items",
 	"single_column_blessing_icons_on_right",
 	"curio_display_profile",
 	"enable_inventory_options_panel_prototype",
@@ -97,6 +98,7 @@ local MIGRATION_KEYS = {
 	show_curio_item_level = "_curio_heavy_default_v1_migrated",
 	custom_item_name_keybind = "_custom_item_name_keybind_v2_migrated",
 	weapon_blessing_display_mode = "_weapon_blessing_display_mode_v1_migrated",
+	highlight_equipped_items = "_equipped_highlight_mode_v1_migrated",
 }
 
 local function setting_owner(setting_id)
@@ -110,6 +112,7 @@ local function setting_owner(setting_id)
 		"weapon_", "weapons",
 		"blessing_", "weapons",
 		"curio_", "curios",
+		"equipped_highlight_", "markers",
 		"myfavorites_", "markers",
 		"debug_", "diagnostics",
 	}

@@ -123,6 +123,11 @@ def main() -> None:
 			weapon_perk_text_color_g = 210,
 			weapon_perk_text_color_b = 180,
 			weapon_perk_text_opacity = 100,
+			highlight_equipped_items = true,
+			equipped_highlight_color_preset = "mode_default",
+			equipped_highlight_color_r = 255,
+			equipped_highlight_color_g = 255,
+			equipped_highlight_color_b = 255,
 			curio_display_profile = "primary",
 			show_curio_item_level = true,
 			expand_inventory_window = true,
@@ -1113,6 +1118,12 @@ def main() -> None:
     assert settings.weapon_perk_rank_icon_size == 17
     assert settings.weapon_blessing_display_mode == "icons"
     assert settings.curio_content_name_it_curio_name is True
+    assert settings.highlight_equipped_items == "soft_glow"
+    assert (
+        settings.equipped_highlight_color_r,
+        settings.equipped_highlight_color_g,
+        settings.equipped_highlight_color_b,
+    ) == (255, 255, 255)
 
     settings._grid_columns_v1_migrated = False
     settings.columns = 2
@@ -1147,6 +1158,13 @@ def main() -> None:
 
     settings.show_weapon_blessings = True
     settings.weapon_blessing_display_mode = "icons"
+
+    settings._equipped_highlight_mode_v1_migrated = False
+    settings.highlight_equipped_items = False
+    mod.on_enabled()
+    assert settings.highlight_equipped_items == "off"
+    settings._equipped_highlight_mode_v1_migrated = True
+    settings.highlight_equipped_items = "soft_glow"
 
     settings._curio_heavy_default_v1_migrated = False
     settings.curio_stat_compression = "none"
@@ -1241,6 +1259,35 @@ def main() -> None:
     mod.on_setting_changed("curio_secondary_text_color_g")
     assert settings.curio_secondary_text_color_preset == "custom"
 
+    settings.equipped_highlight_color_preset = "mode_default"
+    settings.highlight_equipped_items = "animated_dashes"
+    mod.on_setting_changed("highlight_equipped_items")
+    assert (
+        settings.equipped_highlight_color_r,
+        settings.equipped_highlight_color_g,
+        settings.equipped_highlight_color_b,
+    ) == (250, 189, 73)
+    settings.highlight_equipped_items = "soft_glow"
+    mod.on_setting_changed("highlight_equipped_items")
+    assert (
+        settings.equipped_highlight_color_r,
+        settings.equipped_highlight_color_g,
+        settings.equipped_highlight_color_b,
+    ) == (255, 255, 255)
+    settings.equipped_highlight_color_r = 12
+    mod.on_setting_changed("equipped_highlight_color_r")
+    assert settings.equipped_highlight_color_preset == "custom"
+    settings.highlight_equipped_items = "solid_border"
+    mod.on_setting_changed("highlight_equipped_items")
+    assert settings.equipped_highlight_color_r == 12
+    settings.equipped_highlight_color_preset = "gold"
+    mod.on_setting_changed("equipped_highlight_color_preset")
+    assert (
+        settings.equipped_highlight_color_r,
+        settings.equipped_highlight_color_g,
+        settings.equipped_highlight_color_b,
+    ) == (250, 189, 73)
+
     option_ids = (
 		"melee_columns",
 		"ranged_columns",
@@ -1296,6 +1343,10 @@ def main() -> None:
 		"weapon_perk_text_color_b",
 		"weapon_perk_text_opacity",
 		"weapon_perk_vertical_spacing",
+		"equipped_highlight_color_preset",
+		"equipped_highlight_color_r",
+		"equipped_highlight_color_g",
+		"equipped_highlight_color_b",
 		"blessing_text_item_level_separation",
 		"auto_fit_long_blessing_names",
 		"truncate_long_blessing_names",
@@ -1583,6 +1634,31 @@ def main() -> None:
     assert entries_by_id["custom_item_override_weapon_information_color"].disabled is False
     assert entries_by_id["custom_item_override_weapon_rarity_keyword_color"].disabled is False
     assert entries_by_id["custom_item_override_weapon_information_name_color"].disabled is False
+    for setting_id in (
+        "equipped_highlight_color_preset",
+        "equipped_highlight_color_r",
+        "equipped_highlight_color_g",
+        "equipped_highlight_color_b",
+    ):
+        assert entries_by_id[setting_id].disabled is False
+    settings.highlight_equipped_items = "off"
+    mod.on_setting_changed("highlight_equipped_items")
+    for setting_id in (
+        "equipped_highlight_color_preset",
+        "equipped_highlight_color_r",
+        "equipped_highlight_color_g",
+        "equipped_highlight_color_b",
+    ):
+        assert entries_by_id[setting_id].disabled is True
+    settings.highlight_equipped_items = "soft_glow"
+    mod.on_setting_changed("highlight_equipped_items")
+    for setting_id in (
+        "equipped_highlight_color_preset",
+        "equipped_highlight_color_r",
+        "equipped_highlight_color_g",
+        "equipped_highlight_color_b",
+    ):
+        assert entries_by_id[setting_id].disabled is False
     assert entries_by_id["weapon_perk_compression"].disabled is True
     assert entries_by_id["show_weapon_perk_rank_symbols"].disabled is True
     assert entries_by_id["weapon_perk_rank_icon_size"].disabled is True
@@ -2008,6 +2084,10 @@ def main() -> None:
 			"custom_item_override_weapon_information_color",
 			"custom_item_override_weapon_rarity_keyword_color",
 			"custom_item_override_weapon_information_name_color",
+			"equipped_highlight_color_preset",
+			"equipped_highlight_color_r",
+			"equipped_highlight_color_g",
+			"equipped_highlight_color_b",
 			"character_overview_show_melee_rarity_strip",
 			"character_overview_show_ranged_rarity_strip",
 			"character_overview_show_only_dump_stat",
@@ -2050,6 +2130,10 @@ def main() -> None:
     assert entries_by_id["weapon_modifier_lowest_color_g"].disabled is False
     assert entries_by_id["weapon_modifier_lowest_color_b"].disabled is False
     assert entries_by_id["weapon_modifier_lowest_color_opacity"].disabled is False
+    assert entries_by_id["equipped_highlight_color_preset"].disabled is False
+    assert entries_by_id["equipped_highlight_color_r"].disabled is False
+    assert entries_by_id["equipped_highlight_color_g"].disabled is False
+    assert entries_by_id["equipped_highlight_color_b"].disabled is False
 
     settings.weapon_blessing_display_mode = "ranked_text"
     mod.on_setting_changed("weapon_blessing_display_mode")
@@ -2088,7 +2172,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "2.2.0"
+    assert data.version == "2.2.1"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
@@ -2379,6 +2463,38 @@ def main() -> None:
 		"weapon_blessing_text_color_b",
 		"weapon_blessing_text_opacity",
     }.issubset(card_content_ids)
+    assert "equipped_highlight_color_group" in card_content_ids
+    equipped_highlight_mode = next(
+        card_content_group.sub_widgets[index]
+        for index in range(1, len(card_content_group.sub_widgets) + 1)
+        if card_content_group.sub_widgets[index].setting_id
+        == "highlight_equipped_items"
+    )
+    assert equipped_highlight_mode.type == "dropdown"
+    assert [
+        equipped_highlight_mode.options[index].value
+        for index in range(1, len(equipped_highlight_mode.options) + 1)
+    ] == ["off", "soft_glow", "animated_dashes", "solid_border"]
+    equipped_highlight_color_group = next(
+        card_content_group.sub_widgets[index]
+        for index in range(1, len(card_content_group.sub_widgets) + 1)
+        if card_content_group.sub_widgets[index].setting_id
+        == "equipped_highlight_color_group"
+    )
+    assert [
+        equipped_highlight_color_group.sub_widgets[index].setting_id
+        for index in range(1, len(equipped_highlight_color_group.sub_widgets) + 1)
+    ] == [
+        "equipped_highlight_color_preset",
+        "equipped_highlight_color_r",
+        "equipped_highlight_color_g",
+        "equipped_highlight_color_b",
+    ]
+    highlight_presets = equipped_highlight_color_group.sub_widgets[1].options
+    assert highlight_presets[1].value == "mode_default"
+    assert {highlight_presets[index].value for index in range(1, len(highlight_presets) + 1)}.issuperset(
+        {"gold", "white", "custom"}
+    )
 
     curio_content_group = next(
         data.options.widgets[index]
@@ -2518,7 +2634,11 @@ def main() -> None:
     assert defaults["weapon_blessing_text_color_g"] == 200
     assert defaults["weapon_blessing_text_color_b"] == 235
     assert defaults["weapon_blessing_text_opacity"] == 80
-    assert defaults["highlight_equipped_items"] is True
+    assert defaults["highlight_equipped_items"] == "soft_glow"
+    assert defaults["equipped_highlight_color_preset"] == "mode_default"
+    assert defaults["equipped_highlight_color_r"] == 255
+    assert defaults["equipped_highlight_color_g"] == 255
+    assert defaults["equipped_highlight_color_b"] == 255
     assert defaults["weapon_blessing_display_mode"] == "ranked_text"
     assert defaults["blessing_text_item_level_separation"] == "four_plus"
     assert defaults["auto_fit_long_blessing_names"] is True

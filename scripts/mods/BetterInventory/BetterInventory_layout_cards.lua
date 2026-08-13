@@ -871,6 +871,17 @@ end
 
 local function configure_equipped_highlight(mod, pass_template, card_width, card_height)
 	local highlight = pass_by_style_id(pass_template, "better_inventory_equipped_highlight")
+	local mode = setting(mod, "highlight_equipped_items", "soft_glow")
+
+	-- Accept saved checkbox values until the v2.2.1 migration runs. Unknown
+	-- future/corrupt values fail closed instead of creating an invalid pass.
+	if mode == true then
+		mode = "soft_glow"
+	elseif mode == false then
+		mode = "off"
+	elseif mode ~= "soft_glow" and mode ~= "animated_dashes" and mode ~= "solid_border" then
+		mode = "off"
+	end
 
 	if not highlight then
 		highlight = {
@@ -886,28 +897,47 @@ local function configure_equipped_highlight(mod, pass_template, card_width, card
 	highlight.style.horizontal_alignment = "center"
 	highlight.style.vertical_alignment = "center"
 	highlight.style.scale_to_material = true
+	highlight.style.color = {
+		255,
+		math.floor(numeric_setting(mod, "equipped_highlight_color_r", 255, 0, 255) + 0.5),
+		math.floor(numeric_setting(mod, "equipped_highlight_color_g", 255, 0, 255) + 0.5),
+		math.floor(numeric_setting(mod, "equipped_highlight_color_b", 255, 0, 255) + 0.5),
+	}
 	highlight.style.size = {
 		card_width,
 		card_height,
 	}
-	highlight.style.size_addition = {
-		16,
-		16,
-	}
-	highlight.style.color = {
-		255,
-		255,
-		255,
-		255,
-	}
+
+	if mode == "animated_dashes" then
+		-- Native material owns its GPU animation. No Lua timer, widget state, or
+		-- per-frame allocation is needed, and reused cards retain no animation data.
+		highlight.value = "content/ui/materials/frames/line_thin_dashed_animated"
+		highlight.style.size_addition = {
+			4,
+			4,
+		}
+	elseif mode == "solid_border" then
+		highlight.value = "content/ui/materials/frames/frame_tile_2px"
+		highlight.style.size_addition = {
+			4,
+			4,
+		}
+	else
+		highlight.value = "content/ui/materials/frames/dropshadow_medium"
+		highlight.style.size_addition = {
+			16,
+			16,
+		}
+	end
+
 	highlight.style.offset = {
 		0,
 		0,
-		3,
+		mode == "soft_glow" and 3 or 8,
 	}
 	-- Setting changes invalidate active view composition. Capture once per
 	-- blueprint instead of calling DMF once per card on every draw pass.
-	local highlight_enabled = setting(mod, "highlight_equipped_items", true)
+	local highlight_enabled = mode ~= "off"
 	highlight.visibility_function = function(content)
 		return highlight_enabled and content and content.equipped == true
 	end

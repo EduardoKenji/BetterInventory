@@ -1,6 +1,13 @@
 # BetterInventory changelog
 
-## 2.2.0 - In development
+## 2.2.1 - In development
+
+- Replaced the equipped-card highlight checkbox with Off, Soft glow, Animated dashed border, and Solid border modes while preserving existing enabled/disabled choices.
+- Added shared colour presets and RGB sliders for every equipped-card highlight mode; editing any channel selects Custom colour automatically.
+- Added mode-aware defaults: white for Soft glow and the Auto Crafter terminal gold for both border modes.
+- Used Darktide's native GPU-animated dashed-frame material with no Lua timer, retained animation state, or per-frame allocation.
+
+## 2.2.0 - 2026-08-13
 
 - Added independent weapon and Curio image X/Y/width/height percentage controls for Character Overview, Inventory/Hadron, Armoury Exchange, and GlobalStore.
 - Added separate single-column and 2-5-column image profiles with resolution-independent card-relative scaling and zero-impact defaults.

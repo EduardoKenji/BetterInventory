@@ -399,7 +399,10 @@ def main() -> None:
 				weapon_perk_text_color_b = 180,
 				weapon_perk_text_opacity = 100,
 				blessing_icon_spacing = 3,
-				highlight_equipped_items = true,
+				highlight_equipped_items = "soft_glow",
+				equipped_highlight_color_r = 255,
+				equipped_highlight_color_g = 255,
+				equipped_highlight_color_b = 255,
                 compact_favorite_marker = true,
 				myfavorites_show_favorite_letter = false,
 				favorite_marker_position = "above_rating",
@@ -2116,24 +2119,80 @@ def main() -> None:
         equipped_highlight.style.size_addition[1],
         equipped_highlight.style.size_addition[2],
     ) == (16, 16)
+    assert tuple(equipped_highlight.style.color[index] for index in range(1, 5)) == (
+        255,
+        255,
+        255,
+        255,
+    )
     assert equipped_highlight.visibility_function(
         lua.table_from({"equipped": True})
     ) is True
     assert equipped_highlight.visibility_function(
         lua.table_from({"equipped": False})
     ) is False
-    mod.settings.highlight_equipped_items = False
+    mod.settings.highlight_equipped_items = "animated_dashes"
+    mod.settings.equipped_highlight_color_r = 250
+    mod.settings.equipped_highlight_color_g = 189
+    mod.settings.equipped_highlight_color_b = 73
     # Active setting changes rebuild view composition. Existing blueprints keep
     # their captured hot-path value; rebuilt blueprints see the new setting.
     assert equipped_highlight.visibility_function(
         lua.table_from({"equipped": True})
     ) is True
+    dashed_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, dashed_blueprint, 640)
+    dashed_highlight = blueprint_pass(
+        dashed_blueprint, "better_inventory_equipped_highlight"
+    )
+    assert dashed_highlight.value == (
+        "content/ui/materials/frames/line_thin_dashed_animated"
+    )
+    assert tuple(
+        dashed_highlight.style.size_addition[index] for index in range(1, 3)
+    ) == (4, 4)
+    assert tuple(dashed_highlight.style.color[index] for index in range(1, 5)) == (
+        255,
+        250,
+        189,
+        73,
+    )
+    assert dashed_highlight.style.offset[3] == 8
+    assert dashed_highlight.change_function is None
+    assert dashed_highlight.visibility_function(
+        lua.table_from({"equipped": True})
+    ) is True
+
+    mod.settings.highlight_equipped_items = "solid_border"
+    solid_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, solid_blueprint, 640)
+    solid_highlight = blueprint_pass(
+        solid_blueprint, "better_inventory_equipped_highlight"
+    )
+    assert solid_highlight.value == "content/ui/materials/frames/frame_tile_2px"
+    assert solid_highlight.change_function is None
+
+    mod.settings.highlight_equipped_items = "off"
     highlight_disabled_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     layout.configure_item_blueprint(mod, highlight_disabled_blueprint, 640)
     assert blueprint_pass(
         highlight_disabled_blueprint, "better_inventory_equipped_highlight"
     ).visibility_function(lua.table_from({"equipped": True})) is False
+
+    # Retired checkbox values remain safe during migration/hot reload.
     mod.settings.highlight_equipped_items = True
+    legacy_enabled_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, legacy_enabled_blueprint, 640)
+    assert blueprint_pass(
+        legacy_enabled_blueprint, "better_inventory_equipped_highlight"
+    ).value == "content/ui/materials/frames/dropshadow_medium"
+    mod.settings.highlight_equipped_items = False
+    legacy_disabled_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, legacy_disabled_blueprint, 640)
+    assert blueprint_pass(
+        legacy_disabled_blueprint, "better_inventory_equipped_highlight"
+    ).visibility_function(lua.table_from({"equipped": True})) is False
+    mod.settings.highlight_equipped_items = "soft_glow"
 
     name_style = blueprint.pass_template[3].style
     name_widget = lua.table_from(
