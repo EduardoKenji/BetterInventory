@@ -782,36 +782,15 @@ local function bind_option_dependencies(options_templates)
 	end
 
 	local category_name = mod:get_readable_name()
-	local canonical_settings
 
-	-- `options_templates.settings` is a shared rendered tree that optional DMF
-	-- extensions may rewrite or clone. Alf 1.2.02 resolves missing IDs from
-	-- non-unique localized labels, so repeated labels such as Highlight mode or
-	-- Image X offset can legitimately appear there with the same resolved ID.
-	-- Validate DMF's per-mod initialized schema instead; it retains the canonical
-	-- IDs produced directly from BetterInventory_data.lua.
-	for _, mod_widgets in ipairs(dmf_mod.options_widgets_data or {}) do
-		local header = type(mod_widgets) == "table" and mod_widgets[1]
-
-		if type(header) == "table" and header.mod_name == "BetterInventory" then
-			canonical_settings = mod_widgets
-
-			break
-		end
-	end
-
-	local registry_status, registry_valid, _, duplicate_ids = "unavailable", true, nil, nil
-
-	if canonical_settings then
-		registry_status, registry_valid, _, duplicate_ids = Capabilities.mutation(SettingsRegistry, "register", canonical_settings)
-	end
-
-	if registry_status == "ok" and not registry_valid and type(duplicate_ids) == "table" then
-
-		if not registry_valid and type(mod.error) == "function" then
-			mod:error("Duplicate BetterInventory setting IDs: " .. table.concat(duplicate_ids or {}, ", "))
-		end
-	end
+	-- This callback receives DMF's shared rendered settings tree. Extensions may
+	-- rewrite that tree, and some DMF/extension combinations also expose a
+	-- flattened or otherwise post-processed `options_widgets_data` table. Neither
+	-- is an authoritative source-schema boundary, so never run duplicate-ID
+	-- diagnostics here. DMF rejects genuine duplicates while initializing this
+	-- mod's raw data, and the release verifier audits the same source schema.
+	-- Keeping this hook presentation-only also avoids rescanning every installed
+	-- mod whenever Mod Options is opened.
 
 	local setting_by_title = {}
 	local curio_buyer_subsection_titles = {
