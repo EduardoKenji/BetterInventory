@@ -6,6 +6,7 @@
 - Added separate single-column and 2-5-column image profiles with resolution-independent card-relative scaling and zero-impact defaults.
 - Replaced repeated column-profile subsections with one dropdown-driven four-slider editor while preserving five independent saved layouts per view.
 - Defaulted profile editors to 3-column mode and added tuned Armoury/GlobalStore image geometry for weapons and Curios without overwriting saved settings.
+- Added tuned 3-column weapon and Curio image defaults for Inventory and Hadron while preserving existing saved profiles.
 
 ## 2.1.6 - 2026-08-12
 

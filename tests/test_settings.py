@@ -2436,8 +2436,10 @@ def main() -> None:
         for context in ("inventory", "armoury", "global_store"):
             assert defaults[f"{item_kind}_image_{context}_profile_selector"] == 3
             geometry_defaults = {
+                ("weapon", "inventory"): (-10, -1, 21, 0),
                 ("weapon", "armoury"): (-10, -1, 23, -10),
                 ("weapon", "global_store"): (-13, 5, 29, -8),
+                ("curio", "inventory"): (-20, 7, 38, 0),
                 ("curio", "armoury"): (-20, 3, 36, -6),
                 ("curio", "global_store"): (-19, 7, 35, -6),
             }.get((item_kind, context), (0, 0, 0, 0))

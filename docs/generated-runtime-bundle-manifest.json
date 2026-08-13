@@ -94,8 +94,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_data.lua",
-      "bytes": 59698,
-      "sha256": "747192897c711237e350a2cb876978882e2998389060be09f5588afdfcb255df",
+      "bytes": 59815,
+      "sha256": "7843093e1b7c6785f25475aee4b7e48a744e70a2fa39030a60813c3f7c3b6560",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_data.lua"
     },
     {
@@ -178,8 +178,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_image_layout.lua",
-      "bytes": 9339,
-      "sha256": "3d169b888e008ca8eb50d1bec61e3d2a32e274d2004723026dd10b71271acc32",
+      "bytes": 9608,
+      "sha256": "3cef0867327138a710a2363716f5b32143ef80d00b268a29081a130aa877b670",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_image_layout.lua"
     },
     {
@@ -405,6 +405,6 @@
       "source_path": "scripts/mods/BetterInventory/auto_crafter/games_lantern/transport_wine.lua"
     }
   ],
-  "runtime_tree_sha256": "c952c8bc4250e7bf2499d5f3944d88868293a5dd0c47ec343a5e5c3ac01f4ca4",
+  "runtime_tree_sha256": "a7d995737367a29b3c7726176074d6d51c857083222f297847381837f80c0a1e",
   "version": "2.2.0"
 }

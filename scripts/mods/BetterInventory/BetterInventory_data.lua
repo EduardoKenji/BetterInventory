@@ -137,10 +137,12 @@ local IMAGE_LAYOUT_COLUMN_PROFILES = {
 
 local IMAGE_LAYOUT_GRID_DEFAULTS = {
 	weapon = {
+		inventory = { x = -10, y = -1, width = 21, height = 0 },
 		armoury = { x = -10, y = -1, width = 23, height = -10 },
 		global_store = { x = -13, y = 5, width = 29, height = -8 },
 	},
 	curio = {
+		inventory = { x = -20, y = 7, width = 38, height = 0 },
 		armoury = { x = -20, y = 3, width = 36, height = -6 },
 		global_store = { x = -19, y = 7, width = 35, height = -6 },
 	},

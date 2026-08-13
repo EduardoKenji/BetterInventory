@@ -18,6 +18,9 @@ local EDITABLE_SUFFIXES = {
 }
 local PROFILE_DEFAULTS = {
 	weapon = {
+		inventory = {
+			[3] = { x_offset_percent = -10, y_offset_percent = -1, width_offset_percent = 21, height_offset_percent = 0 },
+		},
 		armoury = {
 			[3] = { x_offset_percent = -10, y_offset_percent = -1, width_offset_percent = 23, height_offset_percent = -10 },
 		},
@@ -26,6 +29,9 @@ local PROFILE_DEFAULTS = {
 		},
 	},
 	curio = {
+		inventory = {
+			[3] = { x_offset_percent = -20, y_offset_percent = 7, width_offset_percent = 38, height_offset_percent = 0 },
+		},
 		armoury = {
 			[3] = { x_offset_percent = -20, y_offset_percent = 3, width_offset_percent = 36, height_offset_percent = -6 },
 		},

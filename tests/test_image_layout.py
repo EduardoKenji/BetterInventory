@@ -51,14 +51,16 @@ def main() -> None:
     assert settings["curio_image_global_store_3_height_offset_percent"] == -6
     assert settings["curio_image_global_store_3_x_offset_percent"] == -19
     assert settings["weapon_image_armoury_3_width_offset_percent"] == 23
-    assert settings["weapon_image_inventory_3_width_offset_percent"] == 0
-    expected_vendor_defaults = {
+    assert settings["weapon_image_inventory_3_width_offset_percent"] == 21
+    expected_grid_defaults = {
+        "weapon_image_inventory_3": (-10, -1, 21, 0),
         "weapon_image_armoury_3": (-10, -1, 23, -10),
         "weapon_image_global_store_3": (-13, 5, 29, -8),
+        "curio_image_inventory_3": (-20, 7, 38, 0),
         "curio_image_armoury_3": (-20, 3, 36, -6),
         "curio_image_global_store_3": (-19, 7, 35, -6),
     }
-    for prefix, values in expected_vendor_defaults.items():
+    for prefix, values in expected_grid_defaults.items():
         for suffix, expected in zip(
             (
                 "x_offset_percent",
