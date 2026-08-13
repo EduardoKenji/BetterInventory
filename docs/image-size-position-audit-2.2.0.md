@@ -4,7 +4,7 @@
 
 BetterInventory v2.2.0 adds two top-level option sections: **Weapons images size and position** and **Curios images size and position**. The controls modify only the item-art pass whose style ID is `icon`. They do not mutate item data, card text, selection, sorting, inventory operations, Auto Crafter state, or Darktide's icon lifecycle.
 
-All defaults are zero, so upgrading preserves the exact pre-v2.2.0 image geometry. X and Y are additive offsets measured as a percentage of the resolved card width and height. Width and height are percentage changes from the resolved base icon dimensions: `-50` halves a dimension and `100` doubles it. The resolver clamps malformed settings and never allows an image dimension below one logical UI unit.
+Existing saved values are never overwritten. New installations default each grid-profile editor to the commonly used 3-column layout. Inventory/Hadron remains neutral; the 3-column Armoury and GlobalStore weapon/Curio profiles use visually tuned geometry. Every other column profile remains neutral. X and Y are additive offsets measured as a percentage of the resolved card width and height. Width and height are percentage changes from the resolved base icon dimensions: `-50` halves a dimension and `100` doubles it. The resolver clamps malformed settings and never allows an image dimension below one logical UI unit.
 
 Darktide renders these logical card coordinates through its UI canvas. Because the offsets derive from the resolved card dimensions rather than physical pixels, the same profile scales proportionally across screen resolutions and aspect ratios.
 
@@ -44,7 +44,8 @@ Automated coverage checks:
 - single-editor profile switching, persistence, and isolation;
 - Hadron-to-Inventory mirroring;
 - Character Overview's independent profile;
-- zero-impact defaults;
+- neutral Inventory/Hadron and non-3-column profiles;
+- tuned 3-column vendor defaults and preservation of existing saved values;
 - proportional logical-canvas scaling;
 - width/height and X/Y composition over base geometry;
 - malformed values, unknown contexts, missing styles, and minimum dimensions.

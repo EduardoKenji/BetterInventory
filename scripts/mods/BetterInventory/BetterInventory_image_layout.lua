@@ -16,6 +16,24 @@ local EDITABLE_SUFFIXES = {
 	{ key = "width_offset_percent", minimum = -90, maximum = 200 },
 	{ key = "height_offset_percent", minimum = -90, maximum = 200 },
 }
+local PROFILE_DEFAULTS = {
+	weapon = {
+		armoury = {
+			[3] = { x_offset_percent = -10, y_offset_percent = -1, width_offset_percent = 23, height_offset_percent = -10 },
+		},
+		global_store = {
+			[3] = { x_offset_percent = -13, y_offset_percent = 5, width_offset_percent = 29, height_offset_percent = -8 },
+		},
+	},
+	curio = {
+		armoury = {
+			[3] = { x_offset_percent = -20, y_offset_percent = 3, width_offset_percent = 36, height_offset_percent = -6 },
+		},
+		global_store = {
+			[3] = { x_offset_percent = -19, y_offset_percent = 7, width_offset_percent = 35, height_offset_percent = -6 },
+		},
+	},
+}
 
 local VALID_CONTEXTS = {
 	inventory = true,
@@ -65,9 +83,17 @@ local function set_setting(mod, setting_id, value)
 end
 
 local function selected_profile_key(mod, prefix)
-	local selected = math.floor(setting(mod, prefix .. "_profile_selector", 1, 1, 5))
+	local selected = math.floor(setting(mod, prefix .. "_profile_selector", 3, 1, 5))
 
 	return PROFILE_KEY_BY_COLUMNS[selected] or PROFILE_KEY_BY_COLUMNS[1]
+end
+
+local function profile_default(item_kind_value, context, columns, suffix)
+	local item_defaults = PROFILE_DEFAULTS[item_kind_value]
+	local context_defaults = item_defaults and item_defaults[context]
+	local profile_defaults = context_defaults and context_defaults[columns]
+
+	return profile_defaults and profile_defaults[suffix] or 0
 end
 
 local function sync_editor(mod, prefix)
@@ -108,7 +134,9 @@ ImageLayout.initialize_settings = function(mod)
 					local ok, value = pcall(mod.get, mod, setting_id)
 
 					if ok and value == nil then
-						changed = set_setting(mod, setting_id, 0) or changed
+						local default = profile_default(editable_item_kind, context, columns, suffix.key)
+
+						changed = set_setting(mod, setting_id, default) or changed
 					end
 				end
 			end

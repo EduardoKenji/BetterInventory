@@ -1,6 +1,6 @@
 {
   "test_image_layout.py": [
-    {"name": "profile_editor_context_column_resolution_scaling_and_fail_closed_geometry", "risk": "high", "start_line": 15, "end_line": 211}
+    {"name": "profile_editor_defaults_context_column_resolution_scaling_and_fail_closed_geometry", "risk": "high", "start_line": 15, "end_line": 235}
   ],
   "test_character_overview.py": [
     {"name": "item_identity_and_revision", "risk": "high", "start_line": 52, "end_line": 55},
@@ -188,7 +188,7 @@
     {"name": "migration_preservation", "risk": "high", "start_line": 385, "end_line": 504},
     {"name": "character_overview_refresh", "risk": "high", "start_line": 505, "end_line": 1359},
     {"name": "localization_contract", "risk": "medium", "start_line": 1360, "end_line": 2249},
-      {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2250, "end_line": 2611}
+      {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2250, "end_line": 2617}
   ],
   "test_settings_registry.py": [
     {"name": "duplicate_detection", "risk": "high", "start_line": 53, "end_line": 78},

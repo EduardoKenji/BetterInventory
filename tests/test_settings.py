@@ -2328,7 +2328,7 @@ def main() -> None:
             assert len(context_group.sub_widgets) == 5
             selector = context_group.sub_widgets[1]
             assert selector.setting_id == f"{item_kind}_image_{context}_profile_selector"
-            assert selector.default_value == 1
+            assert selector.default_value == 3
             assert [selector.options[index].value for index in range(1, 6)] == [1, 2, 3, 4, 5]
             assert selector.sub_widgets is None
             for option_index in range(1, 6):
@@ -2434,11 +2434,17 @@ def main() -> None:
         for axis in ("x", "y", "width", "height"):
             assert defaults[f"{item_kind}_image_character_overview_{axis}_offset_percent"] == 0
         for context in ("inventory", "armoury", "global_store"):
-            assert defaults[f"{item_kind}_image_{context}_profile_selector"] == 1
+            assert defaults[f"{item_kind}_image_{context}_profile_selector"] == 3
+            geometry_defaults = {
+                ("weapon", "armoury"): (-10, -1, 23, -10),
+                ("weapon", "global_store"): (-13, 5, 29, -8),
+                ("curio", "armoury"): (-20, 3, 36, -6),
+                ("curio", "global_store"): (-19, 7, 35, -6),
+            }.get((item_kind, context), (0, 0, 0, 0))
             for axis in ("x", "y", "width", "height"):
                 assert defaults[
                     f"{item_kind}_image_{context}_editor_{axis}_offset_percent"
-                ] == 0
+                ] == geometry_defaults[("x", "y", "width", "height").index(axis)]
     assert defaults["three_column_weapon_name_font_size"] == 14
     assert defaults["enable_global_store_integration"] is True
     assert defaults["enable_global_store_grid"] is True

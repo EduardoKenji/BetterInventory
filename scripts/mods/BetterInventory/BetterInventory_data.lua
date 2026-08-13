@@ -135,14 +135,27 @@ local IMAGE_LAYOUT_COLUMN_PROFILES = {
 	{ key = "5", text = "image_layout_five_columns", value = 5 },
 }
 
-local function image_geometry_controls(prefix)
+local IMAGE_LAYOUT_GRID_DEFAULTS = {
+	weapon = {
+		armoury = { x = -10, y = -1, width = 23, height = -10 },
+		global_store = { x = -13, y = 5, width = 29, height = -8 },
+	},
+	curio = {
+		armoury = { x = -20, y = 3, width = 36, height = -6 },
+		global_store = { x = -19, y = 7, width = 35, height = -6 },
+	},
+}
+
+local function image_geometry_controls(prefix, defaults)
+	defaults = defaults or {}
+
 	return {
 		{
 			setting_id = prefix .. "_x_offset_percent",
 			text = "image_layout_x_offset_percent",
 			tooltip = "image_layout_position_tooltip",
 			type = "numeric",
-			default_value = 0,
+			default_value = defaults.x or 0,
 			range = { -100, 100 },
 		},
 		{
@@ -150,7 +163,7 @@ local function image_geometry_controls(prefix)
 			text = "image_layout_y_offset_percent",
 			tooltip = "image_layout_position_tooltip",
 			type = "numeric",
-			default_value = 0,
+			default_value = defaults.y or 0,
 			range = { -100, 100 },
 		},
 		{
@@ -158,7 +171,7 @@ local function image_geometry_controls(prefix)
 			text = "image_layout_width_offset_percent",
 			tooltip = "image_layout_size_tooltip",
 			type = "numeric",
-			default_value = 0,
+			default_value = defaults.width or 0,
 			range = { -90, 200 },
 		},
 		{
@@ -166,7 +179,7 @@ local function image_geometry_controls(prefix)
 			text = "image_layout_height_offset_percent",
 			tooltip = "image_layout_size_tooltip",
 			type = "numeric",
-			default_value = 0,
+			default_value = defaults.height or 0,
 			range = { -90, 200 },
 		},
 	}
@@ -200,11 +213,12 @@ local function image_grid_context_group(item_kind, context, text_id)
 			text = "image_layout_grid_profile",
 			tooltip = "image_layout_grid_profile_tooltip",
 			type = "dropdown",
-			default_value = 1,
+			default_value = 3,
 			options = options,
 		},
 	}
-	local editor_controls = image_geometry_controls(prefix .. "_editor")
+	local item_defaults = IMAGE_LAYOUT_GRID_DEFAULTS[item_kind] or {}
+	local editor_controls = image_geometry_controls(prefix .. "_editor", item_defaults[context])
 
 	for _, control in ipairs(editor_controls) do
 		sub_widgets[#sub_widgets + 1] = control

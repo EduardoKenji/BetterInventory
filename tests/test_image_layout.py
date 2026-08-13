@@ -48,7 +48,31 @@ def main() -> None:
     settings["weapon_image_inventory_editor_x_offset_percent"] = 0
     assert image_layout.initialize_settings(mod) is True
     assert settings["weapon_image_inventory_editor_x_offset_percent"] == 17
-    assert settings["curio_image_global_store_3_height_offset_percent"] == 0
+    assert settings["curio_image_global_store_3_height_offset_percent"] == -6
+    assert settings["curio_image_global_store_3_x_offset_percent"] == -19
+    assert settings["weapon_image_armoury_3_width_offset_percent"] == 23
+    assert settings["weapon_image_inventory_3_width_offset_percent"] == 0
+    expected_vendor_defaults = {
+        "weapon_image_armoury_3": (-10, -1, 23, -10),
+        "weapon_image_global_store_3": (-13, 5, 29, -8),
+        "curio_image_armoury_3": (-20, 3, 36, -6),
+        "curio_image_global_store_3": (-19, 7, 35, -6),
+    }
+    for prefix, values in expected_vendor_defaults.items():
+        for suffix, expected in zip(
+            (
+                "x_offset_percent",
+                "y_offset_percent",
+                "width_offset_percent",
+                "height_offset_percent",
+            ),
+            values,
+        ):
+            assert settings[f"{prefix}_{suffix}"] == expected
+    # Defaults are bootstrap-only and must not overwrite a persisted value.
+    settings["weapon_image_armoury_3_x_offset_percent"] = 0
+    assert image_layout.initialize_settings(mod) is True
+    assert settings["weapon_image_armoury_3_x_offset_percent"] == 0
     settings["weapon_image_inventory_editor_x_offset_percent"] = 23
     assert image_layout.on_setting_changed(
         mod, "weapon_image_inventory_editor_x_offset_percent"
