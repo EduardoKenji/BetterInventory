@@ -1121,12 +1121,12 @@ def main() -> None:
     assert settings.weapon_perk_rank_icon_size == 17
     assert settings.weapon_blessing_display_mode == "icons"
     assert settings.curio_content_name_it_curio_name is True
-    assert settings.highlight_equipped_items == "soft_glow"
+    assert settings.highlight_equipped_items == "animated_dashes"
     assert (
         settings.equipped_highlight_color_r,
         settings.equipped_highlight_color_g,
         settings.equipped_highlight_color_b,
-    ) == (255, 255, 255)
+    ) == (250, 189, 73)
 
     settings._grid_columns_v1_migrated = False
     settings.columns = 2
@@ -2669,14 +2669,14 @@ def main() -> None:
     assert defaults["weapon_blessing_text_color_g"] == 200
     assert defaults["weapon_blessing_text_color_b"] == 235
     assert defaults["weapon_blessing_text_opacity"] == 80
-    assert defaults["highlight_equipped_items"] == "soft_glow"
+    assert defaults["highlight_equipped_items"] == "animated_dashes"
     assert defaults["equipped_highlight_glow_intensity"] == 100
-    assert defaults["equipped_highlight_animated_border_width"] == 2
+    assert defaults["equipped_highlight_animated_border_width"] == 3
     assert defaults["equipped_highlight_solid_border_width"] == 2
-    assert defaults["equipped_highlight_color_preset"] == "mode_default"
-    assert defaults["equipped_highlight_color_r"] == 255
-    assert defaults["equipped_highlight_color_g"] == 255
-    assert defaults["equipped_highlight_color_b"] == 255
+    assert defaults["equipped_highlight_color_preset"] == "gold"
+    assert defaults["equipped_highlight_color_r"] == 250
+    assert defaults["equipped_highlight_color_g"] == 189
+    assert defaults["equipped_highlight_color_b"] == 73
     assert defaults["weapon_blessing_display_mode"] == "ranked_text"
     assert defaults["blessing_text_item_level_separation"] == "four_plus"
     assert defaults["auto_fit_long_blessing_names"] is True

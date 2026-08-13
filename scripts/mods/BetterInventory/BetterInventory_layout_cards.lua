@@ -882,12 +882,12 @@ local function clear_equipped_highlight_passes(pass_template)
 end
 
 local function configure_equipped_highlight(mod, pass_template, card_width, card_height)
-	local mode = setting(mod, "highlight_equipped_items", "soft_glow")
+	local mode = setting(mod, "highlight_equipped_items", "animated_dashes")
 
 	-- Accept saved checkbox values until the v2.2.1 migration runs. Unknown
 	-- future/corrupt values fail closed instead of creating an invalid pass.
 	if mode == true then
-		mode = "soft_glow"
+		mode = "animated_dashes"
 	elseif mode == false then
 		mode = "off"
 	elseif mode ~= "soft_glow" and mode ~= "animated_dashes" and mode ~= "solid_border" then
@@ -914,7 +914,7 @@ local function configure_equipped_highlight(mod, pass_template, card_width, card
 		-- per-frame allocation is needed. Concentric static passes thicken its
 		-- fixed one-pixel stroke without retaining animation data on reused cards.
 		material = "content/ui/materials/frames/line_thin_dashed_animated"
-		pass_count = math.floor(numeric_setting(mod, "equipped_highlight_animated_border_width", 2, 1, 5) + 0.5)
+		pass_count = math.floor(numeric_setting(mod, "equipped_highlight_animated_border_width", 3, 1, 5) + 0.5)
 		base_size_addition = 4
 		layer_size_step = 2
 		z_offset = 8
@@ -932,9 +932,12 @@ local function configure_equipped_highlight(mod, pass_template, card_width, card
 		alpha = math.floor(intensity * 2.55 + 0.5)
 	end
 
-	local red = math.floor(numeric_setting(mod, "equipped_highlight_color_r", 255, 0, 255) + 0.5)
-	local green = math.floor(numeric_setting(mod, "equipped_highlight_color_g", 255, 0, 255) + 0.5)
-	local blue = math.floor(numeric_setting(mod, "equipped_highlight_color_b", 255, 0, 255) + 0.5)
+	local default_red = mode == "soft_glow" and 255 or 250
+	local default_green = mode == "soft_glow" and 255 or 189
+	local default_blue = mode == "soft_glow" and 255 or 73
+	local red = math.floor(numeric_setting(mod, "equipped_highlight_color_r", default_red, 0, 255) + 0.5)
+	local green = math.floor(numeric_setting(mod, "equipped_highlight_color_g", default_green, 0, 255) + 0.5)
+	local blue = math.floor(numeric_setting(mod, "equipped_highlight_color_b", default_blue, 0, 255) + 0.5)
 	local function equipped_visible(content)
 		return content and content.equipped == true
 	end

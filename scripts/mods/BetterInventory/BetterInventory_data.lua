@@ -2037,7 +2037,7 @@ return {
 								setting_id = "highlight_equipped_items",
 								tooltip = "highlight_equipped_items_tooltip",
 								type = "dropdown",
-								default_value = "soft_glow",
+								default_value = "animated_dashes",
 								options = {
 									{
 										text = "equipped_highlight_mode_off",
@@ -2071,7 +2071,7 @@ return {
 								setting_id = "equipped_highlight_animated_border_width",
 								tooltip = "equipped_highlight_animated_border_width_tooltip",
 								type = "numeric",
-								default_value = 2,
+								default_value = 3,
 								range = {
 									1,
 									5,
@@ -2090,13 +2090,13 @@ return {
 							{
 								setting_id = "equipped_highlight_color_preset",
 								type = "dropdown",
-								default_value = "mode_default",
+								default_value = "gold",
 								options = color_preset_options(true),
 							},
 							{
 								setting_id = "equipped_highlight_color_r",
 								type = "numeric",
-								default_value = 255,
+								default_value = 250,
 								range = {
 									0,
 									255,
@@ -2105,7 +2105,7 @@ return {
 							{
 								setting_id = "equipped_highlight_color_g",
 								type = "numeric",
-								default_value = 255,
+								default_value = 189,
 								range = {
 									0,
 									255,
@@ -2114,7 +2114,7 @@ return {
 							{
 								setting_id = "equipped_highlight_color_b",
 								type = "numeric",
-								default_value = 255,
+								default_value = 73,
 								range = {
 									0,
 									255,

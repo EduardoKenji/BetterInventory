@@ -268,7 +268,7 @@ local COLOR_PRESETS = {
 local COLOR_TARGETS = {
 	{
 		prefix = "equipped_highlight_color",
-		default_preset = "mode_default",
+		default_preset = "gold",
 		mode_default_color = function()
 			local mode = mod:get("highlight_equipped_items")
 
@@ -1102,7 +1102,7 @@ function mod.on_enabled()
 		local previous_highlight = mod:get("highlight_equipped_items")
 
 		if previous_highlight == true then
-			mod:set("highlight_equipped_items", "soft_glow")
+			mod:set("highlight_equipped_items", "animated_dashes")
 		elseif previous_highlight == false then
 			mod:set("highlight_equipped_items", "off")
 		end

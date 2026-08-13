@@ -2273,7 +2273,7 @@ def main() -> None:
     layout.configure_item_blueprint(mod, legacy_enabled_blueprint, 640)
     assert blueprint_pass(
         legacy_enabled_blueprint, "better_inventory_equipped_highlight"
-    ).value == "content/ui/materials/frames/dropshadow_medium"
+    ).value == "content/ui/materials/frames/line_thin_dashed_animated"
     mod.settings.highlight_equipped_items = False
     legacy_disabled_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     layout.configure_item_blueprint(mod, legacy_disabled_blueprint, 640)
