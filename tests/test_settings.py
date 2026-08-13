@@ -1563,6 +1563,10 @@ def main() -> None:
             entry.widget_type = "group_header"
         if option_id.startswith("character_overview_dump_stat_"):
             entry.get_function = lua.eval("function() return true end")
+        if option_id.startswith("equipped_highlight_") or option_id.startswith(
+            "new_item_highlight_"
+        ):
+            entry.get_function = lua.eval("function() return true end")
     options_templates = lua.table_from(
         {"settings": lua.table_from(entries)}
     )
@@ -1751,6 +1755,20 @@ def main() -> None:
     settings.highlight_equipped_items = "soft_glow"
     mod.on_setting_changed("highlight_equipped_items")
 
+    # The open DMF options view polls each slider getter every frame. Its
+    # disabled state must therefore follow the current mode even if a hot
+    # reload leaves the normal setting-change notification path stale.
+    settings.highlight_equipped_items = "animated_dashes"
+    entries_by_id["equipped_highlight_animated_border_width"].get_function()
+    entries_by_id["equipped_highlight_glow_intensity"].get_function()
+    assert entries_by_id["equipped_highlight_animated_border_width"].disabled is False
+    assert entries_by_id["equipped_highlight_glow_intensity"].disabled is True
+    settings.highlight_equipped_items = "soft_glow"
+    entries_by_id["equipped_highlight_animated_border_width"].get_function()
+    entries_by_id["equipped_highlight_glow_intensity"].get_function()
+    assert entries_by_id["equipped_highlight_animated_border_width"].disabled is True
+    assert entries_by_id["equipped_highlight_glow_intensity"].disabled is False
+
     for setting_id in (
         "new_item_highlight_color_preset",
         "new_item_highlight_color_r",
@@ -1779,6 +1797,10 @@ def main() -> None:
     assert entries_by_id["new_item_highlight_animated_border_width"].disabled is True
     assert entries_by_id["new_item_highlight_solid_border_width"].disabled is True
     settings.new_item_highlight_mode = "solid_border"
+    entries_by_id["new_item_highlight_glow_intensity"].get_function()
+    entries_by_id["new_item_highlight_solid_border_width"].get_function()
+    assert entries_by_id["new_item_highlight_glow_intensity"].disabled is True
+    assert entries_by_id["new_item_highlight_solid_border_width"].disabled is False
     mod.on_setting_changed("new_item_highlight_mode")
     assert entries_by_id["new_item_highlight_glow_intensity"].disabled is True
     assert entries_by_id["new_item_highlight_animated_border_width"].disabled is True

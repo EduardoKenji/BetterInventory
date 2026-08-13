@@ -399,8 +399,45 @@ local function character_overview_dump_stat_style_state()
 	return enabled, reason
 end
 
+local function highlight_option_dependency_state(setting_id)
+	if type(setting_id) ~= "string" then
+		return nil
+	end
+
+	local equipped_mode = mod:get("highlight_equipped_items")
+	local equipped_enabled = equipped_mode ~= "off" and equipped_mode ~= false
+
+	if string.sub(setting_id, 1, #"equipped_highlight_color_") == "equipped_highlight_color_" then
+		return equipped_enabled, mod:localize("option_requires_equipped_highlight")
+	elseif setting_id == "equipped_highlight_glow_intensity" then
+		return equipped_mode == "soft_glow" or equipped_mode == true, mod:localize("option_requires_equipped_highlight_soft_glow")
+	elseif setting_id == "equipped_highlight_animated_border_width" then
+		return equipped_mode == "animated_dashes" or equipped_mode == "pulsing_dashes", mod:localize("option_requires_equipped_highlight_animated_dashes")
+	elseif setting_id == "equipped_highlight_solid_border_width" then
+		return equipped_mode == "solid_border", mod:localize("option_requires_equipped_highlight_solid_border")
+	end
+
+	local new_item_mode = mod:get("new_item_highlight_mode")
+	local new_item_enhanced = new_item_mode ~= "native"
+
+	if string.sub(setting_id, 1, #"new_item_highlight_color_") == "new_item_highlight_color_" then
+		return new_item_enhanced, mod:localize("option_requires_new_item_enhanced_highlight")
+	elseif setting_id == "new_item_highlight_glow_intensity" then
+		return new_item_mode == "soft_glow", mod:localize("option_requires_new_item_soft_glow")
+	elseif setting_id == "new_item_highlight_animated_border_width" then
+		return new_item_mode == "animated_dashes" or new_item_mode == "pulsing_dashes", mod:localize("option_requires_new_item_animated_dashes")
+	elseif setting_id == "new_item_highlight_solid_border_width" then
+		return new_item_mode == "solid_border", mod:localize("option_requires_new_item_solid_border")
+	end
+
+	return nil
+end
+
 local function bind_live_option_dependency(setting_id, entry)
-	if not CHARACTER_OVERVIEW_DUMP_STAT_STYLE_SETTING_IDS[setting_id] or entry._better_inventory_live_dependency_getter then
+	local is_character_overview_style = CHARACTER_OVERVIEW_DUMP_STAT_STYLE_SETTING_IDS[setting_id] == true
+	local highlight_enabled = highlight_option_dependency_state(setting_id)
+
+	if (not is_character_overview_style and highlight_enabled == nil) or entry._better_inventory_live_dependency_getter then
 		return
 	end
 
@@ -412,7 +449,13 @@ local function bind_live_option_dependency(setting_id, entry)
 
 	entry._better_inventory_live_dependency_getter = true
 	entry.get_function = function(...)
-		local enabled, reason = character_overview_dump_stat_style_state()
+		local enabled, reason
+
+		if is_character_overview_style then
+			enabled, reason = character_overview_dump_stat_style_state()
+		else
+			enabled, reason = highlight_option_dependency_state(setting_id)
+		end
 
 		apply_option_enabled(entry, enabled, reason)
 
