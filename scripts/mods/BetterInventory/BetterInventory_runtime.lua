@@ -267,6 +267,15 @@ local COLOR_PRESETS = {
 }
 local COLOR_TARGETS = {
 	{
+		prefix = "new_item_highlight_color",
+		default_preset = "gold",
+		mode_default_color = function()
+			local mode = mod:get("new_item_highlight_mode")
+
+			return (mode == "animated_dashes" or mode == "solid_border") and COLOR_PRESETS.gold or COLOR_PRESETS.white
+		end,
+	},
+	{
 		prefix = "equipped_highlight_color",
 		default_preset = "gold",
 		mode_default_color = function()
@@ -314,6 +323,7 @@ local COLOR_TARGETS = {
 }
 local color_target_by_setting_id = {}
 local equipped_highlight_color_target
+local new_item_highlight_color_target
 local option_dependency_entries = {}
 local CHARACTER_OVERVIEW_DUMP_STAT_STYLE_SETTING_IDS = {
 	character_overview_dump_stat_horizontal_offset = true,
@@ -329,6 +339,8 @@ for i = 1, #COLOR_TARGETS do
 
 	if target.prefix == "equipped_highlight_color" then
 		equipped_highlight_color_target = target
+	elseif target.prefix == "new_item_highlight_color" then
+		new_item_highlight_color_target = target
 	end
 
 	target.preset_id = target.prefix .. "_preset"
@@ -496,6 +508,12 @@ local function refresh_option_dependencies()
 	local equipped_glow_enabled = equipped_highlight_mode == "soft_glow" or equipped_highlight_mode == true
 	local equipped_dashes_enabled = equipped_highlight_mode == "animated_dashes"
 	local equipped_solid_enabled = equipped_highlight_mode == "solid_border"
+	local new_item_highlight_mode = mod:get("new_item_highlight_mode")
+	local new_item_enhanced_enabled = new_item_highlight_mode ~= "native"
+	local new_item_glow_enabled = new_item_highlight_mode == "soft_glow"
+	local new_item_dashes_enabled = new_item_highlight_mode == "animated_dashes"
+	local new_item_solid_enabled = new_item_highlight_mode == "solid_border"
+	local new_item_enhanced_reason = mod:localize("option_requires_new_item_enhanced_highlight")
 
 	set_option_enabled(option_dependency_entries.expand_curio_inventory_window, window_expansion_enabled, expansion_reason)
 	set_option_enabled(option_dependency_entries.weapon_extra_width_column_threshold, window_expansion_enabled, expansion_reason)
@@ -555,6 +573,13 @@ local function refresh_option_dependencies()
 	set_option_enabled(option_dependency_entries.equipped_highlight_glow_intensity, equipped_glow_enabled, mod:localize("option_requires_equipped_highlight_soft_glow"))
 	set_option_enabled(option_dependency_entries.equipped_highlight_animated_border_width, equipped_dashes_enabled, mod:localize("option_requires_equipped_highlight_animated_dashes"))
 	set_option_enabled(option_dependency_entries.equipped_highlight_solid_border_width, equipped_solid_enabled, mod:localize("option_requires_equipped_highlight_solid_border"))
+	set_option_enabled(option_dependency_entries.new_item_highlight_color_preset, new_item_enhanced_enabled, new_item_enhanced_reason)
+	set_option_enabled(option_dependency_entries.new_item_highlight_color_r, new_item_enhanced_enabled, new_item_enhanced_reason)
+	set_option_enabled(option_dependency_entries.new_item_highlight_color_g, new_item_enhanced_enabled, new_item_enhanced_reason)
+	set_option_enabled(option_dependency_entries.new_item_highlight_color_b, new_item_enhanced_enabled, new_item_enhanced_reason)
+	set_option_enabled(option_dependency_entries.new_item_highlight_glow_intensity, new_item_glow_enabled, mod:localize("option_requires_new_item_soft_glow"))
+	set_option_enabled(option_dependency_entries.new_item_highlight_animated_border_width, new_item_dashes_enabled, mod:localize("option_requires_new_item_animated_dashes"))
+	set_option_enabled(option_dependency_entries.new_item_highlight_solid_border_width, new_item_solid_enabled, mod:localize("option_requires_new_item_solid_border"))
 	set_option_enabled(option_dependency_entries.blessing_text_item_level_separation, weapon_blessing_text_enabled, mod:localize("option_requires_weapon_blessing_text"))
 	set_option_enabled(option_dependency_entries.auto_fit_long_blessing_names, weapon_blessing_text_enabled, mod:localize("option_requires_weapon_blessing_text"))
 	set_option_enabled(option_dependency_entries.truncate_long_blessing_names, weapon_blessing_text_enabled, mod:localize("option_requires_weapon_blessing_text"))
@@ -804,6 +829,13 @@ local function bind_option_dependencies(options_templates)
 		"equipped_highlight_glow_intensity",
 		"equipped_highlight_animated_border_width",
 		"equipped_highlight_solid_border_width",
+		"new_item_highlight_color_preset",
+		"new_item_highlight_color_r",
+		"new_item_highlight_color_g",
+		"new_item_highlight_color_b",
+		"new_item_highlight_glow_intensity",
+		"new_item_highlight_animated_border_width",
+		"new_item_highlight_solid_border_width",
 		"blessing_text_item_level_separation",
 		"auto_fit_long_blessing_names",
 		"truncate_long_blessing_names",
@@ -1212,6 +1244,8 @@ function mod.on_setting_changed(setting_id)
 
 	if setting_id == "highlight_equipped_items" and equipped_highlight_color_target and mod:get(equipped_highlight_color_target.preset_id) == "mode_default" then
 		apply_color_preset(equipped_highlight_color_target)
+	elseif setting_id == "new_item_highlight_mode" and new_item_highlight_color_target and mod:get(new_item_highlight_color_target.preset_id) == "mode_default" then
+		apply_color_preset(new_item_highlight_color_target)
 	end
 
 	local should_refresh_dependencies = Capabilities.registry_refresh_required(SettingsRegistry, "should_refresh_dependencies", setting_id)

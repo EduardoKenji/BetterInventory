@@ -50,6 +50,7 @@ local DEPENDENCY_REFRESH_SETTING_IDS = {
 	"show_weapon_perks",
 	"show_weapon_perk_rank_symbols",
 	"highlight_equipped_items",
+	"new_item_highlight_mode",
 	"single_column_blessing_icons_on_right",
 	"curio_display_profile",
 	"enable_inventory_options_panel_prototype",
@@ -113,6 +114,8 @@ local function setting_owner(setting_id)
 		"blessing_", "weapons",
 		"curio_", "curios",
 		"equipped_highlight_", "markers",
+		"new_item_highlight_", "markers",
+		"new_item_acknowledge_", "markers",
 		"myfavorites_", "markers",
 		"debug_", "diagnostics",
 	}
