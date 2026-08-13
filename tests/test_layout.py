@@ -2235,12 +2235,12 @@ def main() -> None:
     globals_.test_application_time = 0
     for candidate in pulsing_equipped_passes:
         candidate.change_function(equipped_content, candidate.style)
-        assert candidate.style.color[1] == 0
+        assert candidate.style.color[1] == 38
     globals_.test_application_time = 1
     pulsing_equipped_passes[0].change_function(
         equipped_content, pulsing_equipped_passes[0].style
     )
-    assert pulsing_equipped_passes[0].style.color[1] in (127, 128)
+    assert pulsing_equipped_passes[0].style.color[1] in (146, 147)
     globals_.test_application_time = 2
     for candidate in pulsing_equipped_passes:
         candidate.change_function(equipped_content, candidate.style)
@@ -2249,7 +2249,7 @@ def main() -> None:
     pulsing_equipped_passes[0].change_function(
         equipped_content, pulsing_equipped_passes[0].style
     )
-    assert pulsing_equipped_passes[0].style.color[1] == 0
+    assert pulsing_equipped_passes[0].style.color[1] == 38
     mod.settings.highlight_equipped_items = "animated_dashes"
 
     mod.settings.equipped_highlight_animated_border_width = 5
@@ -2442,7 +2442,7 @@ def main() -> None:
     globals_.test_application_time = 0
     for candidate in pulsing_new_item_passes:
         candidate.change_function(pulsing_content, candidate.style)
-        assert candidate.style.color[1] == 0
+        assert candidate.style.color[1] == 38
     assert pulsing_element.new_item_marker is True
     assert globals_.new_item_acknowledgements == 2
     globals_.test_application_time = 2

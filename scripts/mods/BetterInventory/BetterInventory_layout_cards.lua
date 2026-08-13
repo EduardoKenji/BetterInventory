@@ -871,10 +871,11 @@ end
 
 local EQUIPPED_HIGHLIGHT_STYLE_PREFIX = "better_inventory_equipped_highlight"
 local PULSING_DASH_ANGULAR_SPEED = math.pi * 0.5
+local PULSING_DASH_MIN_ALPHA = math.floor(255 * 0.15 + 0.5)
 local cached_pulsing_dash_time
-local cached_pulsing_dash_alpha = 0
+local cached_pulsing_dash_alpha = PULSING_DASH_MIN_ALPHA
 
--- One complete 0 -> 1 -> 0 opacity cycle every four seconds. Darktide uses
+-- One complete 15% -> 100% -> 15% opacity cycle every four seconds. Darktide uses
 -- this same global clock pattern for its native new-item marker, so no timer or
 -- mutable animation state is retained by a card or view. A bounded two-scalar
 -- module cache avoids repeating cosine work for every visible layer in a frame.
@@ -885,7 +886,7 @@ local function update_pulsing_dash_alpha(_, style)
 		local pulse = (1 - math.cos(time * PULSING_DASH_ANGULAR_SPEED)) * 0.5
 
 		cached_pulsing_dash_time = time
-		cached_pulsing_dash_alpha = math.floor(255 * pulse + 0.5)
+		cached_pulsing_dash_alpha = math.floor(PULSING_DASH_MIN_ALPHA + (255 - PULSING_DASH_MIN_ALPHA) * pulse + 0.5)
 	end
 
 	style.color[1] = cached_pulsing_dash_alpha

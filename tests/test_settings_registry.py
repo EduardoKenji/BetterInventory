@@ -12,6 +12,13 @@ REGISTRY_PATH = (
     / "BetterInventory"
     / "BetterInventory_settings.lua"
 )
+CONTRACTS_PATH = (
+    PROJECT_ROOT
+    / "scripts"
+    / "mods"
+    / "BetterInventory"
+    / "BetterInventory_contracts.lua"
+)
 DATA_PATH = (
     PROJECT_ROOT
     / "scripts"
@@ -32,6 +39,9 @@ def main() -> None:
     lua = LuaRuntime(unpack_returned_tuples=True)
     registry = lua.execute(
         REGISTRY_PATH.read_text(encoding="utf-8"), name=str(REGISTRY_PATH)
+    )
+    contracts = lua.execute(
+        CONTRACTS_PATH.read_text(encoding="utf-8"), name=str(CONTRACTS_PATH)
     )
 
     settings = lua.table_from(
@@ -83,14 +93,24 @@ def main() -> None:
     )
     data = lua.execute(DATA_PATH.read_text(encoding="utf-8"), name=str(DATA_PATH))
     localization = load_localization(lua, LOCALIZATION_PATH)
-    ok, count, duplicates = registry.register(data.options.widgets)
+    status, ok, count, duplicates = contracts.mutation(
+        registry, "register", data.options.widgets
+    )
 
+    assert status == "ok"
     assert ok is True
     assert count >= 200
     assert len(duplicates) == 0
     assert registry.has("automatic_curio_character_slot_10") is True
     assert registry.metadata("automatic_curio_character_slot_10").owner == "curio_acquisition"
     assert registry.metadata("automatic_curio_character_slot_10").default_value is False
+    for setting_id in ("highlight_equipped_items", "new_item_highlight_mode"):
+        refresh_required, status, value = contracts.registry_refresh_required(
+            registry, "should_refresh_dependencies", setting_id
+        )
+        assert status == "ok"
+        assert value is True
+        assert refresh_required is True
     assert registry.is_visible("enable_grid_layout", lua.table_from({"dependencies_enabled": False})) is False
     assert registry.is_visible("enable_grid_layout", lua.table_from({"dependencies_enabled": True})) is True
     manifest = registry.metadata_manifest()

@@ -9,6 +9,8 @@ MAIN_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInven
 CHARACTER_OVERVIEW_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_character_overview.lua"
 CHARACTER_OVERVIEW_UI_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_character_overview_ui.lua"
 RUNTIME_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_runtime.lua"
+CONTRACTS_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_contracts.lua"
+SETTINGS_REGISTRY_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_settings.lua"
 FEATURE_DOMAINS_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_feature_domains.lua"
 DATA_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_data.lua"
 LOCALIZATION_PATH = (
@@ -305,6 +307,14 @@ def main() -> None:
 				return TestRuntime
 			end
 
+			if string.find(path, "BetterInventory_contracts", 1, true) then
+				return TestCapabilities
+			end
+
+			if string.find(path, "BetterInventory_settings", 1, true) then
+				return TestSettingsRegistry
+			end
+
 			if string.find(path, "BetterInventory_feature_domains", 1, true) then
 				return TestFeatureDomains
 			end
@@ -403,6 +413,14 @@ def main() -> None:
         RUNTIME_PATH.read_text(encoding="utf-8"),
         name=str(RUNTIME_PATH),
     )
+    capabilities = lua.execute(
+        CONTRACTS_PATH.read_text(encoding="utf-8"),
+        name=str(CONTRACTS_PATH),
+    )
+    settings_registry = lua.execute(
+        SETTINGS_REGISTRY_PATH.read_text(encoding="utf-8"),
+        name=str(SETTINGS_REGISTRY_PATH),
+    )
     feature_domains = lua.execute(
         FEATURE_DOMAINS_PATH.read_text(encoding="utf-8"),
         name=str(FEATURE_DOMAINS_PATH),
@@ -410,6 +428,8 @@ def main() -> None:
     lua.globals().TestCharacterOverview = character_overview
     lua.globals().TestCharacterOverviewUI = character_overview_ui
     lua.globals().TestRuntime = runtime_module
+    lua.globals().TestCapabilities = capabilities
+    lua.globals().TestSettingsRegistry = settings_registry
     lua.globals().TestFeatureDomains = feature_domains
     lua.execute(MAIN_PATH.read_text(encoding="utf-8"), name=str(MAIN_PATH))
     globals_ = lua.globals()

@@ -8,8 +8,9 @@
 - Added configurable acknowledgement: selecting a new item clears its marker by default, while Hover mode clears it as soon as the card is hovered; controller focus also acknowledges in Hover mode.
 - Reused Darktide's authoritative persisted new-item state and native removal callback, covering mission rewards, Brunt purchases, and Hadron upgrades without a second acquisition database.
 - Kept drawing bounded and allocation-free during normal frames: one pass checks acknowledgement, native GPU materials animate dashes, and optional callback failures are contained.
-- Added **Pulsing animated dashed border** to newly acquired and equipped item highlights. It fades from transparent to opaque and back over a slow four-second cycle while retaining the existing dashed-width and colour controls.
+- Added **Pulsing animated dashed border** to newly acquired and equipped item highlights. It fades from 15% to 100% opacity and back over a slow four-second cycle while retaining the existing dashed-width and colour controls.
 - Used Darktide's global UI clock for synchronized pulsing, with no retained per-card timer state or per-frame allocation; new-item acknowledgement remains once-only on the first pass.
+- Fixed live highlight-mode changes so only the applicable glow-intensity or border-width slider remains enabled without reopening the options menu.
 
 ## 2.2.1 - 2026-08-13
 
