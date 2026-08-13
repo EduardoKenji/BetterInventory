@@ -1,4 +1,4 @@
-local MOD_VERSION = "2.2.0"
+local MOD_VERSION = "2.2.1"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
@@ -32,8 +32,17 @@ local function automatic_curio_character_slot_widgets()
 	return widgets
 end
 
-local function color_preset_options()
-	return {
+local function color_preset_options(include_mode_default)
+	local options = {}
+
+	if include_mode_default then
+		options[#options + 1] = {
+			text = "color_preset_mode_default",
+			value = "mode_default",
+		}
+	end
+
+	local presets = {
 		{
 			text = "color_preset_red",
 			value = "red",
@@ -63,6 +72,10 @@ local function color_preset_options()
 			value = "yellow",
 		},
 		{
+			text = "color_preset_gold",
+			value = "gold",
+		},
+		{
 			text = "color_preset_green",
 			value = "green",
 		},
@@ -75,6 +88,10 @@ local function color_preset_options()
 			value = "terminal_green",
 		},
 		{
+			text = "color_preset_white",
+			value = "white",
+		},
+		{
 			text = "color_preset_neutral",
 			value = "neutral",
 		},
@@ -83,9 +100,15 @@ local function color_preset_options()
 			value = "custom",
 		},
 	}
+
+	for index = 1, #presets do
+		options[#options + 1] = presets[index]
+	end
+
+	return options
 end
 
-local function color_group(group_id, prefix, default_preset, red, green, blue)
+local function color_group(group_id, prefix, default_preset, red, green, blue, include_mode_default)
 	return {
 		setting_id = group_id,
 		type = "group",
@@ -94,7 +117,7 @@ local function color_group(group_id, prefix, default_preset, red, green, blue)
 				setting_id = prefix .. "_preset",
 				type = "dropdown",
 				default_value = default_preset,
-				options = color_preset_options(),
+				options = color_preset_options(include_mode_default),
 			},
 			{
 				setting_id = prefix .. "_r",
@@ -1943,12 +1966,6 @@ return {
 						},
 					},
 					{
-						setting_id = "highlight_equipped_items",
-						tooltip = "highlight_equipped_items_tooltip",
-						type = "checkbox",
-						default_value = true,
-					},
-					{
 						setting_id = "compact_favorite_marker",
 						type = "checkbox",
 						default_value = true,
@@ -2011,6 +2028,99 @@ return {
 						tooltip = "show_item_level_icon_tooltip",
 						type = "checkbox",
 						default_value = false,
+					},
+					{
+						setting_id = "equipped_highlight_group",
+						type = "group",
+						sub_widgets = {
+							{
+								setting_id = "highlight_equipped_items",
+								tooltip = "highlight_equipped_items_tooltip",
+								type = "dropdown",
+								default_value = "animated_dashes",
+								options = {
+									{
+										text = "equipped_highlight_mode_off",
+										value = "off",
+									},
+									{
+										text = "equipped_highlight_mode_soft_glow",
+										value = "soft_glow",
+									},
+									{
+										text = "equipped_highlight_mode_animated_dashes",
+										value = "animated_dashes",
+									},
+									{
+										text = "equipped_highlight_mode_solid_border",
+										value = "solid_border",
+									},
+								},
+							},
+							{
+								setting_id = "equipped_highlight_glow_intensity",
+								tooltip = "equipped_highlight_glow_intensity_tooltip",
+								type = "numeric",
+								default_value = 100,
+								range = {
+									0,
+									100,
+								},
+							},
+							{
+								setting_id = "equipped_highlight_animated_border_width",
+								tooltip = "equipped_highlight_animated_border_width_tooltip",
+								type = "numeric",
+								default_value = 3,
+								range = {
+									1,
+									5,
+								},
+							},
+							{
+								setting_id = "equipped_highlight_solid_border_width",
+								tooltip = "equipped_highlight_solid_border_width_tooltip",
+								type = "numeric",
+								default_value = 2,
+								range = {
+									1,
+									5,
+								},
+							},
+							{
+								setting_id = "equipped_highlight_color_preset",
+								type = "dropdown",
+								default_value = "gold",
+								options = color_preset_options(true),
+							},
+							{
+								setting_id = "equipped_highlight_color_r",
+								type = "numeric",
+								default_value = 250,
+								range = {
+									0,
+									255,
+								},
+							},
+							{
+								setting_id = "equipped_highlight_color_g",
+								type = "numeric",
+								default_value = 189,
+								range = {
+									0,
+									255,
+								},
+							},
+							{
+								setting_id = "equipped_highlight_color_b",
+								type = "numeric",
+								default_value = 73,
+								range = {
+									0,
+									255,
+								},
+							},
+						},
 					},
 				},
 			},

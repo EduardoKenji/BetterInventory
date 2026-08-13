@@ -1,6 +1,8 @@
 # BetterInventory user guide
 
-BetterInventory v2.2.0 improves inventory, Character Overview, Hadron, Requisition Weapons & Curios, and optional GlobalStore cards while preserving Darktide's native item and icon lifecycle.
+BetterInventory v2.2.1 improves inventory, Character Overview, Hadron, Requisition Weapons & Curios, and optional GlobalStore cards while preserving Darktide's native item and icon lifecycle.
+
+At the bottom of **Card content**, the **Equipped item highlight** subsection offers Off, Soft glow, Animated dashed border, and Solid border. The default is a gold Animated dashed border at width 3. Soft glow has a 0-100% intensity control. Animated dashed border and Solid border each have an independent 1-5 width control; controls that do not apply to the selected mode are greyed out. **Mode default** uses white for Soft glow and terminal gold for either border. Choose any other preset or edit Red, Green, or Blue; editing a colour slider automatically changes the preset to **Custom colour**. Animated dashes use Darktide's native animated material and do not create a Lua animation timer. Border width is bounded to native frame layers which are replaced, rather than accumulated, whenever card blueprints are rebuilt.
 
 **Force weapon name to a single line** is enabled by default under **Card content** to keep long standard and customized weapon titles out of the detail rows. BetterInventory reduces the title only to the configured minimum item-name font size, then truncates the base with an ellipsis while retaining an appended `Mk` suffix.
 
