@@ -54,6 +54,13 @@ def main() -> None:
             end
         end
 
+		test_application_time = 0
+		Application = {
+			time_since_launch = function()
+				return test_application_time
+			end,
+		}
+
 		TestText = {}
 		TestItems = {}
 		TestMasterItems = {}
@@ -2216,6 +2223,35 @@ def main() -> None:
         for candidate in dashed_passes
     )
 
+    mod.settings.highlight_equipped_items = "pulsing_dashes"
+    pulsing_equipped_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, pulsing_equipped_blueprint, 640)
+    pulsing_equipped_passes = blueprint_passes_with_prefix(
+        pulsing_equipped_blueprint, "better_inventory_equipped_highlight"
+    )
+    assert len(pulsing_equipped_passes) == 2
+    assert all(candidate.change_function is not None for candidate in pulsing_equipped_passes)
+    equipped_content = lua.table_from({"equipped": True})
+    globals_.test_application_time = 0
+    for candidate in pulsing_equipped_passes:
+        candidate.change_function(equipped_content, candidate.style)
+        assert candidate.style.color[1] == 0
+    globals_.test_application_time = 1
+    pulsing_equipped_passes[0].change_function(
+        equipped_content, pulsing_equipped_passes[0].style
+    )
+    assert pulsing_equipped_passes[0].style.color[1] in (127, 128)
+    globals_.test_application_time = 2
+    for candidate in pulsing_equipped_passes:
+        candidate.change_function(equipped_content, candidate.style)
+        assert candidate.style.color[1] == 255
+    globals_.test_application_time = 4
+    pulsing_equipped_passes[0].change_function(
+        equipped_content, pulsing_equipped_passes[0].style
+    )
+    assert pulsing_equipped_passes[0].style.color[1] == 0
+    mod.settings.highlight_equipped_items = "animated_dashes"
+
     mod.settings.equipped_highlight_animated_border_width = 5
     thick_dashed_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     layout.configure_item_blueprint(mod, thick_dashed_blueprint, 640)
@@ -2380,6 +2416,46 @@ def main() -> None:
     assert hover_element.new_item_marker is None
     assert globals_.new_item_acknowledgements == 2
     assert globals_.last_acknowledged_gear_id == "hovered-weapon"
+
+    mod.settings.new_item_highlight_mode = "pulsing_dashes"
+    mod.settings.new_item_acknowledge_mode = "select"
+    pulsing_new_item_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, pulsing_new_item_blueprint, 640)
+    pulsing_new_item_passes = blueprint_passes_with_prefix(
+        pulsing_new_item_blueprint, "better_inventory_new_item_highlight"
+    )
+    assert len(pulsing_new_item_passes) == 3
+    assert all(candidate.change_function is not None for candidate in pulsing_new_item_passes)
+    pulsing_element = lua.table_from(
+        {
+            "new_item_marker": True,
+            "item": lua.table_from({"gear_id": "pulsing-new-weapon"}),
+            "remove_new_marker_callback": remove_new_marker_callback,
+        }
+    )
+    pulsing_content = lua.table_from(
+        {
+            "element": pulsing_element,
+            "hotspot": lua.table_from({"is_hover": True, "is_selected": False}),
+        }
+    )
+    globals_.test_application_time = 0
+    for candidate in pulsing_new_item_passes:
+        candidate.change_function(pulsing_content, candidate.style)
+        assert candidate.style.color[1] == 0
+    assert pulsing_element.new_item_marker is True
+    assert globals_.new_item_acknowledgements == 2
+    globals_.test_application_time = 2
+    for candidate in pulsing_new_item_passes:
+        candidate.change_function(pulsing_content, candidate.style)
+        assert candidate.style.color[1] == 255
+    pulsing_content.hotspot.is_selected = True
+    pulsing_new_item_passes[0].change_function(
+        pulsing_content, pulsing_new_item_passes[0].style
+    )
+    assert pulsing_element.new_item_marker is None
+    assert globals_.new_item_acknowledgements == 3
+    assert globals_.last_acknowledged_gear_id == "pulsing-new-weapon"
 
     mod.settings.new_item_highlight_mode = "native"
     mod.settings.new_item_acknowledge_mode = "select"

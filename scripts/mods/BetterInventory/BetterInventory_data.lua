@@ -2052,6 +2052,10 @@ return {
 										value = "animated_dashes",
 									},
 									{
+										text = "equipped_highlight_mode_pulsing_dashes",
+										value = "pulsing_dashes",
+									},
+									{
 										text = "equipped_highlight_mode_solid_border",
 										value = "solid_border",
 									},
@@ -2143,6 +2147,10 @@ return {
 									{
 										text = "new_item_highlight_mode_animated_dashes",
 										value = "animated_dashes",
+									},
+									{
+										text = "new_item_highlight_mode_pulsing_dashes",
+										value = "pulsing_dashes",
 									},
 									{
 										text = "new_item_highlight_mode_solid_border",

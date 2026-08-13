@@ -870,6 +870,26 @@ local function configure_favorite_marker(mod, pass_template, text_left)
 end
 
 local EQUIPPED_HIGHLIGHT_STYLE_PREFIX = "better_inventory_equipped_highlight"
+local PULSING_DASH_ANGULAR_SPEED = math.pi * 0.5
+local cached_pulsing_dash_time
+local cached_pulsing_dash_alpha = 0
+
+-- One complete 0 -> 1 -> 0 opacity cycle every four seconds. Darktide uses
+-- this same global clock pattern for its native new-item marker, so no timer or
+-- mutable animation state is retained by a card or view. A bounded two-scalar
+-- module cache avoids repeating cosine work for every visible layer in a frame.
+local function update_pulsing_dash_alpha(_, style)
+	local time = Application.time_since_launch()
+
+	if time ~= cached_pulsing_dash_time then
+		local pulse = (1 - math.cos(time * PULSING_DASH_ANGULAR_SPEED)) * 0.5
+
+		cached_pulsing_dash_time = time
+		cached_pulsing_dash_alpha = math.floor(255 * pulse + 0.5)
+	end
+
+	style.color[1] = cached_pulsing_dash_alpha
+end
 
 local function clear_equipped_highlight_passes(pass_template)
 	for index = #pass_template, 1, -1 do
@@ -890,7 +910,7 @@ local function configure_equipped_highlight(mod, pass_template, card_width, card
 		mode = "animated_dashes"
 	elseif mode == false then
 		mode = "off"
-	elseif mode ~= "soft_glow" and mode ~= "animated_dashes" and mode ~= "solid_border" then
+	elseif mode ~= "soft_glow" and mode ~= "animated_dashes" and mode ~= "pulsing_dashes" and mode ~= "solid_border" then
 		mode = "off"
 	end
 
@@ -909,7 +929,7 @@ local function configure_equipped_highlight(mod, pass_template, card_width, card
 	local layer_size_step = 0
 	local z_offset = 3
 
-	if mode == "animated_dashes" then
+	if mode == "animated_dashes" or mode == "pulsing_dashes" then
 		-- Native material owns its GPU animation. No Lua timer, widget state, or
 		-- per-frame allocation is needed. Concentric static passes thicken its
 		-- fixed one-pixel stroke without retaining animation data on reused cards.
@@ -974,11 +994,12 @@ local function configure_equipped_highlight(mod, pass_template, card_width, card
 				},
 			},
 			visibility_function = equipped_visible,
+			change_function = mode == "pulsing_dashes" and update_pulsing_dash_alpha or nil,
 		}
 	end
 
-	-- No change/update callback: all settings are captured once while view
-	-- composition is built, then Darktide draws only static native passes.
+	-- Static modes have no change callback. The pulsing mode reads only
+	-- Darktide's global clock and mutates the pass alpha in place.
 end
 
 local NATIVE_NEW_ITEM_INDICATOR = "content/ui/materials/symbols/new_item_indicator"
@@ -1007,7 +1028,7 @@ end
 local function configure_new_item_highlight(mod, pass_template, card_width, card_height)
 	local mode = setting(mod, "new_item_highlight_mode", "animated_dashes")
 
-	if mode ~= "native" and mode ~= "soft_glow" and mode ~= "animated_dashes" and mode ~= "solid_border" then
+	if mode ~= "native" and mode ~= "soft_glow" and mode ~= "animated_dashes" and mode ~= "pulsing_dashes" and mode ~= "solid_border" then
 		mode = "native"
 	end
 
@@ -1049,6 +1070,11 @@ local function configure_new_item_highlight(mod, pass_template, card_width, card
 		end
 	end
 
+	local function pulse_and_acknowledge_new_item(content, style)
+		update_pulsing_dash_alpha(content, style)
+		acknowledge_new_item(content)
+	end
+
 	clear_new_item_highlight_passes(pass_template)
 
 	-- Enhanced modes replace the conflicting native corner dot. Native mode
@@ -1085,7 +1111,7 @@ local function configure_new_item_highlight(mod, pass_template, card_width, card
 	local layer_size_step = 0
 	local z_offset = 9
 
-	if mode == "animated_dashes" then
+	if mode == "animated_dashes" or mode == "pulsing_dashes" then
 		material = "content/ui/materials/frames/line_thin_dashed_animated"
 		pass_count = math.floor(numeric_setting(mod, "new_item_highlight_animated_border_width", 3, 1, 5) + 0.5)
 		base_size_addition = 4
@@ -1113,6 +1139,13 @@ local function configure_new_item_highlight(mod, pass_template, card_width, card
 
 	for layer = 1, pass_count do
 		local size_addition = base_size_addition + (layer - 1) * layer_size_step
+		local change_function
+
+		if mode == "pulsing_dashes" then
+			change_function = layer == 1 and pulse_and_acknowledge_new_item or update_pulsing_dash_alpha
+		elseif layer == 1 then
+			change_function = acknowledge_new_item
+		end
 
 		pass_template[#pass_template + 1] = {
 			pass_type = "texture",
@@ -1143,7 +1176,7 @@ local function configure_new_item_highlight(mod, pass_template, card_width, card
 				},
 			},
 			visibility_function = new_item_marker_visible,
-			change_function = layer == 1 and acknowledge_new_item or nil,
+			change_function = change_function,
 		}
 	end
 end

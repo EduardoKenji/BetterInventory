@@ -1279,6 +1279,13 @@ def main() -> None:
         settings.equipped_highlight_color_g,
         settings.equipped_highlight_color_b,
     ) == (250, 189, 73)
+    settings.highlight_equipped_items = "pulsing_dashes"
+    mod.on_setting_changed("highlight_equipped_items")
+    assert (
+        settings.equipped_highlight_color_r,
+        settings.equipped_highlight_color_g,
+        settings.equipped_highlight_color_b,
+    ) == (250, 189, 73)
     settings.highlight_equipped_items = "soft_glow"
     mod.on_setting_changed("highlight_equipped_items")
     assert (
@@ -1301,6 +1308,15 @@ def main() -> None:
     ) == (250, 189, 73)
 
     settings.new_item_highlight_color_preset = "mode_default"
+    settings.new_item_highlight_mode = "animated_dashes"
+    mod.on_setting_changed("new_item_highlight_mode")
+    settings.new_item_highlight_mode = "pulsing_dashes"
+    mod.on_setting_changed("new_item_highlight_mode")
+    assert (
+        settings.new_item_highlight_color_r,
+        settings.new_item_highlight_color_g,
+        settings.new_item_highlight_color_b,
+    ) == (250, 189, 73)
     settings.new_item_highlight_mode = "animated_dashes"
     mod.on_setting_changed("new_item_highlight_mode")
     assert (
@@ -1749,6 +1765,13 @@ def main() -> None:
     assert entries_by_id["new_item_highlight_solid_border_width"].disabled is False
     settings.new_item_highlight_mode = "animated_dashes"
     mod.on_setting_changed("new_item_highlight_mode")
+    settings.new_item_highlight_mode = "pulsing_dashes"
+    mod.on_setting_changed("new_item_highlight_mode")
+    assert entries_by_id["new_item_highlight_glow_intensity"].disabled is True
+    assert entries_by_id["new_item_highlight_animated_border_width"].disabled is False
+    assert entries_by_id["new_item_highlight_solid_border_width"].disabled is True
+    settings.new_item_highlight_mode = "animated_dashes"
+    mod.on_setting_changed("new_item_highlight_mode")
     for setting_id in (
         "equipped_highlight_color_preset",
         "equipped_highlight_color_r",
@@ -1760,6 +1783,11 @@ def main() -> None:
     assert entries_by_id["equipped_highlight_animated_border_width"].disabled is True
     assert entries_by_id["equipped_highlight_solid_border_width"].disabled is True
     settings.highlight_equipped_items = "animated_dashes"
+    mod.on_setting_changed("highlight_equipped_items")
+    assert entries_by_id["equipped_highlight_glow_intensity"].disabled is True
+    assert entries_by_id["equipped_highlight_animated_border_width"].disabled is False
+    assert entries_by_id["equipped_highlight_solid_border_width"].disabled is True
+    settings.highlight_equipped_items = "pulsing_dashes"
     mod.on_setting_changed("highlight_equipped_items")
     assert entries_by_id["equipped_highlight_glow_intensity"].disabled is True
     assert entries_by_id["equipped_highlight_animated_border_width"].disabled is False
@@ -2623,7 +2651,7 @@ def main() -> None:
     assert [
         equipped_highlight_mode.options[index].value
         for index in range(1, len(equipped_highlight_mode.options) + 1)
-    ] == ["off", "soft_glow", "animated_dashes", "solid_border"]
+    ] == ["off", "soft_glow", "animated_dashes", "pulsing_dashes", "solid_border"]
     highlight_presets = equipped_highlight_group.sub_widgets[5].options
     assert highlight_presets[1].value == "mode_default"
     assert {highlight_presets[index].value for index in range(1, len(highlight_presets) + 1)}.issuperset(
@@ -2651,7 +2679,7 @@ def main() -> None:
     assert [
         new_item_highlight_mode.options[index].value
         for index in range(1, len(new_item_highlight_mode.options) + 1)
-    ] == ["native", "soft_glow", "animated_dashes", "solid_border"]
+    ] == ["native", "soft_glow", "animated_dashes", "pulsing_dashes", "solid_border"]
     new_item_acknowledge_mode = new_item_highlight_group.sub_widgets[2]
     assert [
         new_item_acknowledge_mode.options[index].value

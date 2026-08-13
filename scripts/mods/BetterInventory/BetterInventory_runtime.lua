@@ -272,7 +272,7 @@ local COLOR_TARGETS = {
 		mode_default_color = function()
 			local mode = mod:get("new_item_highlight_mode")
 
-			return (mode == "animated_dashes" or mode == "solid_border") and COLOR_PRESETS.gold or COLOR_PRESETS.white
+			return (mode == "animated_dashes" or mode == "pulsing_dashes" or mode == "solid_border") and COLOR_PRESETS.gold or COLOR_PRESETS.white
 		end,
 	},
 	{
@@ -281,7 +281,7 @@ local COLOR_TARGETS = {
 		mode_default_color = function()
 			local mode = mod:get("highlight_equipped_items")
 
-			return (mode == "animated_dashes" or mode == "solid_border") and COLOR_PRESETS.gold or COLOR_PRESETS.white
+			return (mode == "animated_dashes" or mode == "pulsing_dashes" or mode == "solid_border") and COLOR_PRESETS.gold or COLOR_PRESETS.white
 		end,
 	},
 	{
@@ -506,12 +506,12 @@ local function refresh_option_dependencies()
 	local equipped_highlight_reason = mod:localize("option_requires_equipped_highlight")
 	local equipped_highlight_mode = mod:get("highlight_equipped_items")
 	local equipped_glow_enabled = equipped_highlight_mode == "soft_glow" or equipped_highlight_mode == true
-	local equipped_dashes_enabled = equipped_highlight_mode == "animated_dashes"
+	local equipped_dashes_enabled = equipped_highlight_mode == "animated_dashes" or equipped_highlight_mode == "pulsing_dashes"
 	local equipped_solid_enabled = equipped_highlight_mode == "solid_border"
 	local new_item_highlight_mode = mod:get("new_item_highlight_mode")
 	local new_item_enhanced_enabled = new_item_highlight_mode ~= "native"
 	local new_item_glow_enabled = new_item_highlight_mode == "soft_glow"
-	local new_item_dashes_enabled = new_item_highlight_mode == "animated_dashes"
+	local new_item_dashes_enabled = new_item_highlight_mode == "animated_dashes" or new_item_highlight_mode == "pulsing_dashes"
 	local new_item_solid_enabled = new_item_highlight_mode == "solid_border"
 	local new_item_enhanced_reason = mod:localize("option_requires_new_item_enhanced_highlight")
 
