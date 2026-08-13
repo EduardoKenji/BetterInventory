@@ -50,6 +50,7 @@ local DEPENDENCY_REFRESH_SETTING_IDS = {
 	"show_weapon_perks",
 	"show_weapon_perk_rank_symbols",
 	"highlight_equipped_items",
+	"new_item_highlight_mode",
 	"single_column_blessing_icons_on_right",
 	"curio_display_profile",
 	"enable_inventory_options_panel_prototype",
@@ -113,6 +114,8 @@ local function setting_owner(setting_id)
 		"blessing_", "weapons",
 		"curio_", "curios",
 		"equipped_highlight_", "markers",
+		"new_item_highlight_", "markers",
+		"new_item_acknowledge_", "markers",
 		"myfavorites_", "markers",
 		"debug_", "diagnostics",
 	}
@@ -185,7 +188,12 @@ local function collect_setting_entries(entries)
 	end
 end
 
-Registry.register = function(settings)
+-- The runtime reaches these entry points through the guarded capability
+-- adapter, which binds the registry table as `self`. Keep direct calls used by
+-- tooling/tests compatible as well so the registry has one safe public API.
+Registry.register = function(registry_or_settings, bound_settings)
+	local settings = registry_or_settings == Registry and bound_settings or registry_or_settings
+
 	active_ids = {}
 	active_entries = {}
 	duplicate_ids = {}
@@ -292,7 +300,9 @@ Registry.is_visible = function(setting_id, context)
 	return false
 end
 
-Registry.should_refresh_dependencies = function(setting_id)
+Registry.should_refresh_dependencies = function(registry_or_setting_id, bound_setting_id)
+	local setting_id = registry_or_setting_id == Registry and bound_setting_id or registry_or_setting_id
+
 	if type(setting_id) ~= "string" then
 		return false
 	end

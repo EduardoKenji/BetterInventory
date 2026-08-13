@@ -88,6 +88,7 @@ local configure_native_card_geometry = Cards.configure_native_card_geometry
 local configure_text_pass = Cards.configure_text_pass
 local configure_favorite_marker = Cards.configure_favorite_marker
 local configure_equipped_highlight = Cards.configure_equipped_highlight
+local configure_new_item_highlight = Cards.configure_new_item_highlight
 local add_custom_content_passes = Cards.add_custom_content_passes
 local grid_weapon_name_font_size = Cards.grid_weapon_name_font_size
 local configure_card_content = Cards.configure_card_content
@@ -869,23 +870,7 @@ Blueprints.configure_item_blueprint = function(mod, item_blueprint, grid_width, 
 	end
 
 	configure_equipped_highlight(mod, pass_template, card_width, card_height)
-
-	for i = 1, #pass_template do
-		local pass = pass_template[i]
-
-		if pass.value == "content/ui/materials/symbols/new_item_indicator" and pass.style then
-			pass.style.size = {
-				62,
-				62,
-			}
-			pass.style.offset = {
-				16,
-				-16,
-				4,
-			}
-			break
-		end
-	end
+	configure_new_item_highlight(mod, pass_template, card_width, card_height)
 
 	configure_favorite_marker(mod, pass_template, text_left)
 

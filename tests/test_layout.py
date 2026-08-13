@@ -54,6 +54,13 @@ def main() -> None:
             end
         end
 
+		test_application_time = 0
+		Application = {
+			time_since_launch = function()
+				return test_application_time
+			end,
+		}
+
 		TestText = {}
 		TestItems = {}
 		TestMasterItems = {}
@@ -406,6 +413,14 @@ def main() -> None:
 				equipped_highlight_color_r = 255,
 				equipped_highlight_color_g = 255,
 				equipped_highlight_color_b = 255,
+				new_item_highlight_mode = "animated_dashes",
+				new_item_acknowledge_mode = "select",
+				new_item_highlight_glow_intensity = 100,
+				new_item_highlight_animated_border_width = 3,
+				new_item_highlight_solid_border_width = 2,
+				new_item_highlight_color_r = 250,
+				new_item_highlight_color_g = 189,
+				new_item_highlight_color_b = 73,
                 compact_favorite_marker = true,
 				myfavorites_show_favorite_letter = false,
 				favorite_marker_position = "above_rating",
@@ -697,6 +712,15 @@ def main() -> None:
                 style_prefix
             )
         ]
+
+    def blueprint_pass_by_value(target_blueprint, value):
+        for index in range(1, len(target_blueprint.pass_template) + 1):
+            candidate = target_blueprint.pass_template[index]
+
+            if candidate.value == value:
+                return candidate
+
+        raise AssertionError(f"Missing pass value: {value}")
 
     item_size = layout.item_size(mod, 640)
     assert (item_size[1], item_size[2]) == (206, 110)
@@ -2199,6 +2223,35 @@ def main() -> None:
         for candidate in dashed_passes
     )
 
+    mod.settings.highlight_equipped_items = "pulsing_dashes"
+    pulsing_equipped_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, pulsing_equipped_blueprint, 640)
+    pulsing_equipped_passes = blueprint_passes_with_prefix(
+        pulsing_equipped_blueprint, "better_inventory_equipped_highlight"
+    )
+    assert len(pulsing_equipped_passes) == 2
+    assert all(candidate.change_function is not None for candidate in pulsing_equipped_passes)
+    equipped_content = lua.table_from({"equipped": True})
+    globals_.test_application_time = 0
+    for candidate in pulsing_equipped_passes:
+        candidate.change_function(equipped_content, candidate.style)
+        assert candidate.style.color[1] == 38
+    globals_.test_application_time = 1
+    pulsing_equipped_passes[0].change_function(
+        equipped_content, pulsing_equipped_passes[0].style
+    )
+    assert pulsing_equipped_passes[0].style.color[1] in (146, 147)
+    globals_.test_application_time = 2
+    for candidate in pulsing_equipped_passes:
+        candidate.change_function(equipped_content, candidate.style)
+        assert candidate.style.color[1] == 255
+    globals_.test_application_time = 4
+    pulsing_equipped_passes[0].change_function(
+        equipped_content, pulsing_equipped_passes[0].style
+    )
+    assert pulsing_equipped_passes[0].style.color[1] == 38
+    mod.settings.highlight_equipped_items = "animated_dashes"
+
     mod.settings.equipped_highlight_animated_border_width = 5
     thick_dashed_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     layout.configure_item_blueprint(mod, thick_dashed_blueprint, 640)
@@ -2281,6 +2334,222 @@ def main() -> None:
         legacy_disabled_blueprint, "better_inventory_equipped_highlight"
     ) == []
     mod.settings.highlight_equipped_items = "soft_glow"
+
+    new_item_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, new_item_blueprint, 640)
+    new_item_highlights = blueprint_passes_with_prefix(
+        new_item_blueprint, "better_inventory_new_item_highlight"
+    )
+    assert len(new_item_highlights) == 3
+    assert all(
+        candidate.value == "content/ui/materials/frames/line_thin_dashed_animated"
+        for candidate in new_item_highlights
+    )
+    assert tuple(
+        new_item_highlights[-1].style.size_addition[index]
+        for index in range(1, 3)
+    ) == (8, 8)
+    assert tuple(
+        new_item_highlights[0].style.color[index] for index in range(1, 5)
+    ) == (255, 250, 189, 73)
+    native_new_item_pass = blueprint_pass_by_value(
+        new_item_blueprint, "content/ui/materials/symbols/new_item_indicator"
+    )
+    assert native_new_item_pass.visibility_function(lua.table_from({})) is False
+    assert native_new_item_pass.change_function is None
+
+    globals_.new_item_acknowledgements = 0
+    globals_.last_acknowledged_gear_id = None
+    remove_new_marker_callback = lua.eval(
+        """
+        function(item)
+            new_item_acknowledgements = new_item_acknowledgements + 1
+            last_acknowledged_gear_id = item.gear_id
+        end
+        """
+    )
+    new_item_element = lua.table_from(
+        {
+            "new_item_marker": True,
+            "item": lua.table_from({"gear_id": "new-weapon"}),
+            "remove_new_marker_callback": remove_new_marker_callback,
+        }
+    )
+    new_item_content = lua.table_from(
+        {
+            "element": new_item_element,
+            "hotspot": lua.table_from({"is_hover": True, "is_selected": False}),
+        }
+    )
+    assert new_item_highlights[0].visibility_function(new_item_content) is True
+    new_item_highlights[0].change_function(new_item_content, new_item_highlights[0].style)
+    assert new_item_element.new_item_marker is True
+    assert globals_.new_item_acknowledgements == 0
+    new_item_content.hotspot.is_selected = True
+    new_item_highlights[0].change_function(new_item_content, new_item_highlights[0].style)
+    assert new_item_element.new_item_marker is None
+    assert globals_.new_item_acknowledgements == 1
+    assert globals_.last_acknowledged_gear_id == "new-weapon"
+    new_item_highlights[0].change_function(new_item_content, new_item_highlights[0].style)
+    assert globals_.new_item_acknowledgements == 1
+
+    mod.settings.new_item_acknowledge_mode = "hover"
+    hover_new_item_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, hover_new_item_blueprint, 640)
+    hover_highlight = blueprint_pass(
+        hover_new_item_blueprint, "better_inventory_new_item_highlight"
+    )
+    hover_element = lua.table_from(
+        {
+            "new_item_marker": True,
+            "real_item": lua.table_from({"gear_id": "hovered-weapon"}),
+            "remove_new_marker_callback": remove_new_marker_callback,
+        }
+    )
+    hover_content = lua.table_from(
+        {
+            "element": hover_element,
+            "hotspot": lua.table_from({"is_hover": True, "is_selected": False}),
+        }
+    )
+    hover_highlight.change_function(hover_content, hover_highlight.style)
+    assert hover_element.new_item_marker is None
+    assert globals_.new_item_acknowledgements == 2
+    assert globals_.last_acknowledged_gear_id == "hovered-weapon"
+
+    mod.settings.new_item_highlight_mode = "pulsing_dashes"
+    mod.settings.new_item_acknowledge_mode = "select"
+    pulsing_new_item_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, pulsing_new_item_blueprint, 640)
+    pulsing_new_item_passes = blueprint_passes_with_prefix(
+        pulsing_new_item_blueprint, "better_inventory_new_item_highlight"
+    )
+    assert len(pulsing_new_item_passes) == 3
+    assert all(candidate.change_function is not None for candidate in pulsing_new_item_passes)
+    pulsing_element = lua.table_from(
+        {
+            "new_item_marker": True,
+            "item": lua.table_from({"gear_id": "pulsing-new-weapon"}),
+            "remove_new_marker_callback": remove_new_marker_callback,
+        }
+    )
+    pulsing_content = lua.table_from(
+        {
+            "element": pulsing_element,
+            "hotspot": lua.table_from({"is_hover": True, "is_selected": False}),
+        }
+    )
+    globals_.test_application_time = 0
+    for candidate in pulsing_new_item_passes:
+        candidate.change_function(pulsing_content, candidate.style)
+        assert candidate.style.color[1] == 38
+    assert pulsing_element.new_item_marker is True
+    assert globals_.new_item_acknowledgements == 2
+    globals_.test_application_time = 2
+    for candidate in pulsing_new_item_passes:
+        candidate.change_function(pulsing_content, candidate.style)
+        assert candidate.style.color[1] == 255
+    pulsing_content.hotspot.is_selected = True
+    pulsing_new_item_passes[0].change_function(
+        pulsing_content, pulsing_new_item_passes[0].style
+    )
+    assert pulsing_element.new_item_marker is None
+    assert globals_.new_item_acknowledgements == 3
+    assert globals_.last_acknowledged_gear_id == "pulsing-new-weapon"
+
+    mod.settings.new_item_highlight_mode = "native"
+    mod.settings.new_item_acknowledge_mode = "select"
+    # Recompose the same blueprint to prove owned enhanced layers are replaced.
+    native_new_item_blueprint = new_item_blueprint
+    layout.configure_item_blueprint(mod, native_new_item_blueprint, 640)
+    assert blueprint_passes_with_prefix(
+        native_new_item_blueprint, "better_inventory_new_item_highlight"
+    ) == []
+    native_new_item_pass = blueprint_pass_by_value(
+        native_new_item_blueprint, "content/ui/materials/symbols/new_item_indicator"
+    )
+    native_element = lua.table_from(
+        {
+            "new_item_marker": True,
+            "item": lua.table_from({"gear_id": "native-weapon"}),
+            "remove_new_marker_callback": remove_new_marker_callback,
+        }
+    )
+    native_content = lua.table_from(
+        {
+            "element": native_element,
+            "hotspot": lua.table_from({"is_hover": True, "is_selected": False}),
+        }
+    )
+    assert native_new_item_pass.visibility_function(native_content) is True
+    native_new_item_pass.change_function(native_content, native_new_item_pass.style)
+    assert native_element.new_item_marker is True
+    native_content.hotspot.is_selected = True
+    native_new_item_pass.change_function(native_content, native_new_item_pass.style)
+    assert native_element.new_item_marker is None
+    assert tuple(native_new_item_pass.style.size[index] for index in range(1, 3)) == (
+        62,
+        62,
+    )
+
+    mod.settings.new_item_highlight_mode = "soft_glow"
+    mod.settings.new_item_highlight_glow_intensity = 40
+    mod.settings.new_item_highlight_color_r = 12
+    mod.settings.new_item_highlight_color_g = 34
+    mod.settings.new_item_highlight_color_b = 56
+    soft_new_item_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, soft_new_item_blueprint, 640)
+    soft_new_item_highlight = blueprint_pass(
+        soft_new_item_blueprint, "better_inventory_new_item_highlight"
+    )
+    assert soft_new_item_highlight.value == (
+        "content/ui/materials/frames/dropshadow_medium"
+    )
+    assert tuple(
+        soft_new_item_highlight.style.color[index] for index in range(1, 5)
+    ) == (102, 12, 34, 56)
+
+    mod.settings.new_item_highlight_mode = "solid_border"
+    mod.settings.new_item_highlight_solid_border_width = 5
+    solid_new_item_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, solid_new_item_blueprint, 640)
+    solid_new_item_highlights = blueprint_passes_with_prefix(
+        solid_new_item_blueprint, "better_inventory_new_item_highlight"
+    )
+    assert len(solid_new_item_highlights) == 4
+    assert all(
+        candidate.value == "content/ui/materials/frames/frame_tile_2px"
+        for candidate in solid_new_item_highlights
+    )
+
+    # A failing optional callback is contained and cannot escape a draw pass.
+    failing_element = lua.table_from(
+        {
+            "new_item_marker": True,
+            "item": lua.table_from({"gear_id": "failing-callback"}),
+            "remove_new_marker_callback": lua.eval(
+                "function() error('simulated remove callback failure') end"
+            ),
+        }
+    )
+    failing_content = lua.table_from(
+        {
+            "element": failing_element,
+            "hotspot": lua.table_from({"is_selected": True}),
+        }
+    )
+    solid_new_item_highlights[0].change_function(
+        failing_content, solid_new_item_highlights[0].style
+    )
+    assert failing_element.new_item_marker is None
+
+    mod.settings.new_item_highlight_mode = "animated_dashes"
+    mod.settings.new_item_acknowledge_mode = "select"
+    mod.settings.new_item_highlight_glow_intensity = 100
+    mod.settings.new_item_highlight_solid_border_width = 2
+    mod.settings.new_item_highlight_color_r = 250
+    mod.settings.new_item_highlight_color_g = 189
+    mod.settings.new_item_highlight_color_b = 73
 
     name_style = blueprint.pass_template[3].style
     name_widget = lua.table_from(

@@ -9,6 +9,8 @@ MAIN_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInven
 CHARACTER_OVERVIEW_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_character_overview.lua"
 CHARACTER_OVERVIEW_UI_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_character_overview_ui.lua"
 RUNTIME_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_runtime.lua"
+CONTRACTS_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_contracts.lua"
+SETTINGS_REGISTRY_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_settings.lua"
 FEATURE_DOMAINS_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_feature_domains.lua"
 DATA_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_data.lua"
 LOCALIZATION_PATH = (
@@ -131,6 +133,15 @@ def main() -> None:
 			equipped_highlight_color_r = 255,
 			equipped_highlight_color_g = 255,
 			equipped_highlight_color_b = 255,
+			new_item_highlight_mode = "animated_dashes",
+			new_item_acknowledge_mode = "select",
+			new_item_highlight_glow_intensity = 100,
+			new_item_highlight_animated_border_width = 3,
+			new_item_highlight_solid_border_width = 2,
+			new_item_highlight_color_preset = "gold",
+			new_item_highlight_color_r = 250,
+			new_item_highlight_color_g = 189,
+			new_item_highlight_color_b = 73,
 			curio_display_profile = "primary",
 			show_curio_item_level = true,
 			expand_inventory_window = true,
@@ -165,6 +176,7 @@ def main() -> None:
 			automatic_curio_disable_no_eligible_notification = false,
 			myfavorites_show_favorite_letter = false,
         }
+		highlight_dependency_getter_calls = 0
 
 		test_layout = {
             is_enabled_for_view = function() return false end,
@@ -296,6 +308,14 @@ def main() -> None:
 				return TestRuntime
 			end
 
+			if string.find(path, "BetterInventory_contracts", 1, true) then
+				return TestCapabilities
+			end
+
+			if string.find(path, "BetterInventory_settings", 1, true) then
+				return TestSettingsRegistry
+			end
+
 			if string.find(path, "BetterInventory_feature_domains", 1, true) then
 				return TestFeatureDomains
 			end
@@ -394,6 +414,14 @@ def main() -> None:
         RUNTIME_PATH.read_text(encoding="utf-8"),
         name=str(RUNTIME_PATH),
     )
+    capabilities = lua.execute(
+        CONTRACTS_PATH.read_text(encoding="utf-8"),
+        name=str(CONTRACTS_PATH),
+    )
+    settings_registry = lua.execute(
+        SETTINGS_REGISTRY_PATH.read_text(encoding="utf-8"),
+        name=str(SETTINGS_REGISTRY_PATH),
+    )
     feature_domains = lua.execute(
         FEATURE_DOMAINS_PATH.read_text(encoding="utf-8"),
         name=str(FEATURE_DOMAINS_PATH),
@@ -401,6 +429,8 @@ def main() -> None:
     lua.globals().TestCharacterOverview = character_overview
     lua.globals().TestCharacterOverviewUI = character_overview_ui
     lua.globals().TestRuntime = runtime_module
+    lua.globals().TestCapabilities = capabilities
+    lua.globals().TestSettingsRegistry = settings_registry
     lua.globals().TestFeatureDomains = feature_domains
     lua.execute(MAIN_PATH.read_text(encoding="utf-8"), name=str(MAIN_PATH))
     globals_ = lua.globals()
@@ -1270,6 +1300,13 @@ def main() -> None:
         settings.equipped_highlight_color_g,
         settings.equipped_highlight_color_b,
     ) == (250, 189, 73)
+    settings.highlight_equipped_items = "pulsing_dashes"
+    mod.on_setting_changed("highlight_equipped_items")
+    assert (
+        settings.equipped_highlight_color_r,
+        settings.equipped_highlight_color_g,
+        settings.equipped_highlight_color_b,
+    ) == (250, 189, 73)
     settings.highlight_equipped_items = "soft_glow"
     mod.on_setting_changed("highlight_equipped_items")
     assert (
@@ -1290,6 +1327,46 @@ def main() -> None:
         settings.equipped_highlight_color_g,
         settings.equipped_highlight_color_b,
     ) == (250, 189, 73)
+
+    settings.new_item_highlight_color_preset = "mode_default"
+    settings.new_item_highlight_mode = "animated_dashes"
+    mod.on_setting_changed("new_item_highlight_mode")
+    settings.new_item_highlight_mode = "pulsing_dashes"
+    mod.on_setting_changed("new_item_highlight_mode")
+    assert (
+        settings.new_item_highlight_color_r,
+        settings.new_item_highlight_color_g,
+        settings.new_item_highlight_color_b,
+    ) == (250, 189, 73)
+    settings.new_item_highlight_mode = "animated_dashes"
+    mod.on_setting_changed("new_item_highlight_mode")
+    assert (
+        settings.new_item_highlight_color_r,
+        settings.new_item_highlight_color_g,
+        settings.new_item_highlight_color_b,
+    ) == (250, 189, 73)
+    settings.new_item_highlight_mode = "soft_glow"
+    mod.on_setting_changed("new_item_highlight_mode")
+    assert (
+        settings.new_item_highlight_color_r,
+        settings.new_item_highlight_color_g,
+        settings.new_item_highlight_color_b,
+    ) == (255, 255, 255)
+    settings.new_item_highlight_color_b = 9
+    mod.on_setting_changed("new_item_highlight_color_b")
+    assert settings.new_item_highlight_color_preset == "custom"
+    settings.new_item_highlight_mode = "solid_border"
+    mod.on_setting_changed("new_item_highlight_mode")
+    assert settings.new_item_highlight_color_b == 9
+    settings.new_item_highlight_color_preset = "gold"
+    mod.on_setting_changed("new_item_highlight_color_preset")
+    assert (
+        settings.new_item_highlight_color_r,
+        settings.new_item_highlight_color_g,
+        settings.new_item_highlight_color_b,
+    ) == (250, 189, 73)
+    settings.new_item_highlight_mode = "animated_dashes"
+    mod.on_setting_changed("new_item_highlight_mode")
 
     option_ids = (
 		"melee_columns",
@@ -1346,6 +1423,7 @@ def main() -> None:
 		"weapon_perk_text_color_b",
 		"weapon_perk_text_opacity",
 		"weapon_perk_vertical_spacing",
+		"highlight_equipped_items",
 		"equipped_highlight_glow_intensity",
 		"equipped_highlight_animated_border_width",
 		"equipped_highlight_solid_border_width",
@@ -1353,6 +1431,14 @@ def main() -> None:
 		"equipped_highlight_color_r",
 		"equipped_highlight_color_g",
 		"equipped_highlight_color_b",
+		"new_item_highlight_mode",
+		"new_item_highlight_glow_intensity",
+		"new_item_highlight_animated_border_width",
+		"new_item_highlight_solid_border_width",
+		"new_item_highlight_color_preset",
+		"new_item_highlight_color_r",
+		"new_item_highlight_color_g",
+		"new_item_highlight_color_b",
 		"blessing_text_item_level_separation",
 		"auto_fit_long_blessing_names",
 		"truncate_long_blessing_names",
@@ -1480,6 +1566,18 @@ def main() -> None:
             entry.widget_type = "group_header"
         if option_id.startswith("character_overview_dump_stat_"):
             entry.get_function = lua.eval("function() return true end")
+        if option_id in {"highlight_equipped_items", "new_item_highlight_mode"}:
+            entry.widget_type = "dropdown"
+            entry.on_activated = lua.eval(
+                f'function(value) settings["{option_id}"] = value; return true end'
+            )
+        elif option_id.startswith("equipped_highlight_") or option_id.startswith(
+            "new_item_highlight_"
+        ):
+            entry.get_function = lua.eval(
+                "function() highlight_dependency_getter_calls = "
+                "highlight_dependency_getter_calls + 1; return true end"
+            )
     options_templates = lua.table_from(
         {"settings": lua.table_from(entries)}
     )
@@ -1667,6 +1765,65 @@ def main() -> None:
         assert entries_by_id[setting_id].disabled is True
     settings.highlight_equipped_items = "soft_glow"
     mod.on_setting_changed("highlight_equipped_items")
+
+    # Dropdown activation refreshes this exact generated tree once. None of
+    # the child getters are wrapped or polled by BetterInventory.
+    equipped_mode_entry = entries_by_id["highlight_equipped_items"]
+    equipped_mode_entry.on_activated("animated_dashes", equipped_mode_entry)
+    assert settings.highlight_equipped_items == "animated_dashes"
+    assert entries_by_id["equipped_highlight_animated_border_width"].disabled is False
+    assert entries_by_id["equipped_highlight_glow_intensity"].disabled is True
+    equipped_mode_entry.on_activated("soft_glow", equipped_mode_entry)
+    assert entries_by_id["equipped_highlight_animated_border_width"].disabled is True
+    assert entries_by_id["equipped_highlight_glow_intensity"].disabled is False
+    assert globals_.highlight_dependency_getter_calls == 0
+
+    for setting_id in (
+        "new_item_highlight_color_preset",
+        "new_item_highlight_color_r",
+        "new_item_highlight_color_g",
+        "new_item_highlight_color_b",
+    ):
+        assert entries_by_id[setting_id].disabled is False
+    assert entries_by_id["new_item_highlight_glow_intensity"].disabled is True
+    assert entries_by_id["new_item_highlight_animated_border_width"].disabled is False
+    assert entries_by_id["new_item_highlight_solid_border_width"].disabled is True
+    settings.new_item_highlight_mode = "native"
+    mod.on_setting_changed("new_item_highlight_mode")
+    for setting_id in (
+        "new_item_highlight_color_preset",
+        "new_item_highlight_color_r",
+        "new_item_highlight_color_g",
+        "new_item_highlight_color_b",
+        "new_item_highlight_glow_intensity",
+        "new_item_highlight_animated_border_width",
+        "new_item_highlight_solid_border_width",
+    ):
+        assert entries_by_id[setting_id].disabled is True
+    settings.new_item_highlight_mode = "soft_glow"
+    mod.on_setting_changed("new_item_highlight_mode")
+    assert entries_by_id["new_item_highlight_glow_intensity"].disabled is False
+    assert entries_by_id["new_item_highlight_animated_border_width"].disabled is True
+    assert entries_by_id["new_item_highlight_solid_border_width"].disabled is True
+    new_item_mode_entry = entries_by_id["new_item_highlight_mode"]
+    new_item_mode_entry.on_activated("solid_border", new_item_mode_entry)
+    assert settings.new_item_highlight_mode == "solid_border"
+    assert entries_by_id["new_item_highlight_glow_intensity"].disabled is True
+    assert entries_by_id["new_item_highlight_solid_border_width"].disabled is False
+    assert globals_.highlight_dependency_getter_calls == 0
+    mod.on_setting_changed("new_item_highlight_mode")
+    assert entries_by_id["new_item_highlight_glow_intensity"].disabled is True
+    assert entries_by_id["new_item_highlight_animated_border_width"].disabled is True
+    assert entries_by_id["new_item_highlight_solid_border_width"].disabled is False
+    settings.new_item_highlight_mode = "animated_dashes"
+    mod.on_setting_changed("new_item_highlight_mode")
+    settings.new_item_highlight_mode = "pulsing_dashes"
+    mod.on_setting_changed("new_item_highlight_mode")
+    assert entries_by_id["new_item_highlight_glow_intensity"].disabled is True
+    assert entries_by_id["new_item_highlight_animated_border_width"].disabled is False
+    assert entries_by_id["new_item_highlight_solid_border_width"].disabled is True
+    settings.new_item_highlight_mode = "animated_dashes"
+    mod.on_setting_changed("new_item_highlight_mode")
     for setting_id in (
         "equipped_highlight_color_preset",
         "equipped_highlight_color_r",
@@ -1678,6 +1835,11 @@ def main() -> None:
     assert entries_by_id["equipped_highlight_animated_border_width"].disabled is True
     assert entries_by_id["equipped_highlight_solid_border_width"].disabled is True
     settings.highlight_equipped_items = "animated_dashes"
+    mod.on_setting_changed("highlight_equipped_items")
+    assert entries_by_id["equipped_highlight_glow_intensity"].disabled is True
+    assert entries_by_id["equipped_highlight_animated_border_width"].disabled is False
+    assert entries_by_id["equipped_highlight_solid_border_width"].disabled is True
+    settings.highlight_equipped_items = "pulsing_dashes"
     mod.on_setting_changed("highlight_equipped_items")
     assert entries_by_id["equipped_highlight_glow_intensity"].disabled is True
     assert entries_by_id["equipped_highlight_animated_border_width"].disabled is False
@@ -2114,6 +2276,7 @@ def main() -> None:
 			"custom_item_override_weapon_information_color",
 			"custom_item_override_weapon_rarity_keyword_color",
 			"custom_item_override_weapon_information_name_color",
+			"highlight_equipped_items",
 			"equipped_highlight_glow_intensity",
 			"equipped_highlight_animated_border_width",
 			"equipped_highlight_solid_border_width",
@@ -2121,6 +2284,14 @@ def main() -> None:
 			"equipped_highlight_color_r",
 			"equipped_highlight_color_g",
 			"equipped_highlight_color_b",
+			"new_item_highlight_mode",
+			"new_item_highlight_glow_intensity",
+			"new_item_highlight_animated_border_width",
+			"new_item_highlight_solid_border_width",
+			"new_item_highlight_color_preset",
+			"new_item_highlight_color_r",
+			"new_item_highlight_color_g",
+			"new_item_highlight_color_b",
 			"character_overview_show_melee_rarity_strip",
 			"character_overview_show_ranged_rarity_strip",
 			"character_overview_show_only_dump_stat",
@@ -2170,6 +2341,13 @@ def main() -> None:
     assert entries_by_id["equipped_highlight_glow_intensity"].disabled is False
     assert entries_by_id["equipped_highlight_animated_border_width"].disabled is True
     assert entries_by_id["equipped_highlight_solid_border_width"].disabled is True
+    assert entries_by_id["new_item_highlight_glow_intensity"].disabled is True
+    assert entries_by_id["new_item_highlight_animated_border_width"].disabled is False
+    assert entries_by_id["new_item_highlight_solid_border_width"].disabled is True
+    assert entries_by_id["new_item_highlight_color_preset"].disabled is False
+    assert entries_by_id["new_item_highlight_color_r"].disabled is False
+    assert entries_by_id["new_item_highlight_color_g"].disabled is False
+    assert entries_by_id["new_item_highlight_color_b"].disabled is False
 
     settings.weapon_blessing_display_mode = "ranked_text"
     mod.on_setting_changed("weapon_blessing_display_mode")
@@ -2208,7 +2386,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "2.2.1"
+    assert data.version == "2.2.2"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
@@ -2500,10 +2678,13 @@ def main() -> None:
 		"weapon_blessing_text_color_b",
 		"weapon_blessing_text_opacity",
     }.issubset(card_content_ids)
-    assert ordered_card_content_ids[-1] == "equipped_highlight_group"
+    assert ordered_card_content_ids[-2:] == [
+        "equipped_highlight_group",
+        "new_item_highlight_group",
+    ]
     assert "equipped_highlight_color_group" not in card_content_ids
     equipped_highlight_group = card_content_group.sub_widgets[
-        len(card_content_group.sub_widgets)
+        len(card_content_group.sub_widgets) - 1
     ]
     equipped_highlight_ids = [
         equipped_highlight_group.sub_widgets[index].setting_id
@@ -2524,12 +2705,46 @@ def main() -> None:
     assert [
         equipped_highlight_mode.options[index].value
         for index in range(1, len(equipped_highlight_mode.options) + 1)
-    ] == ["off", "soft_glow", "animated_dashes", "solid_border"]
+    ] == ["off", "soft_glow", "animated_dashes", "pulsing_dashes", "solid_border"]
     highlight_presets = equipped_highlight_group.sub_widgets[5].options
     assert highlight_presets[1].value == "mode_default"
     assert {highlight_presets[index].value for index in range(1, len(highlight_presets) + 1)}.issuperset(
         {"gold", "white", "custom"}
     )
+    new_item_highlight_group = card_content_group.sub_widgets[
+        len(card_content_group.sub_widgets)
+    ]
+    new_item_highlight_ids = [
+        new_item_highlight_group.sub_widgets[index].setting_id
+        for index in range(1, len(new_item_highlight_group.sub_widgets) + 1)
+    ]
+    assert new_item_highlight_ids == [
+        "new_item_highlight_mode",
+        "new_item_acknowledge_mode",
+        "new_item_highlight_glow_intensity",
+        "new_item_highlight_animated_border_width",
+        "new_item_highlight_solid_border_width",
+        "new_item_highlight_color_preset",
+        "new_item_highlight_color_r",
+        "new_item_highlight_color_g",
+        "new_item_highlight_color_b",
+    ]
+    new_item_highlight_mode = new_item_highlight_group.sub_widgets[1]
+    assert [
+        new_item_highlight_mode.options[index].value
+        for index in range(1, len(new_item_highlight_mode.options) + 1)
+    ] == ["native", "soft_glow", "animated_dashes", "pulsing_dashes", "solid_border"]
+    new_item_acknowledge_mode = new_item_highlight_group.sub_widgets[2]
+    assert [
+        new_item_acknowledge_mode.options[index].value
+        for index in range(1, len(new_item_acknowledge_mode.options) + 1)
+    ] == ["select", "hover"]
+    new_item_highlight_presets = new_item_highlight_group.sub_widgets[6].options
+    assert new_item_highlight_presets[1].value == "mode_default"
+    assert {
+        new_item_highlight_presets[index].value
+        for index in range(1, len(new_item_highlight_presets) + 1)
+    }.issuperset({"gold", "white", "custom"})
 
     curio_content_group = next(
         data.options.widgets[index]
@@ -2671,12 +2886,21 @@ def main() -> None:
     assert defaults["weapon_blessing_text_opacity"] == 80
     assert defaults["highlight_equipped_items"] == "animated_dashes"
     assert defaults["equipped_highlight_glow_intensity"] == 100
-    assert defaults["equipped_highlight_animated_border_width"] == 3
+    assert defaults["equipped_highlight_animated_border_width"] == 2
     assert defaults["equipped_highlight_solid_border_width"] == 2
     assert defaults["equipped_highlight_color_preset"] == "gold"
     assert defaults["equipped_highlight_color_r"] == 250
     assert defaults["equipped_highlight_color_g"] == 189
     assert defaults["equipped_highlight_color_b"] == 73
+    assert defaults["new_item_highlight_mode"] == "pulsing_dashes"
+    assert defaults["new_item_acknowledge_mode"] == "select"
+    assert defaults["new_item_highlight_glow_intensity"] == 100
+    assert defaults["new_item_highlight_animated_border_width"] == 2
+    assert defaults["new_item_highlight_solid_border_width"] == 2
+    assert defaults["new_item_highlight_color_preset"] == "green"
+    assert defaults["new_item_highlight_color_r"] == 105
+    assert defaults["new_item_highlight_color_g"] == 210
+    assert defaults["new_item_highlight_color_b"] == 120
     assert defaults["weapon_blessing_display_mode"] == "ranked_text"
     assert defaults["blessing_text_item_level_separation"] == "four_plus"
     assert defaults["auto_fit_long_blessing_names"] is True

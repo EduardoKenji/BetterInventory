@@ -870,6 +870,27 @@ local function configure_favorite_marker(mod, pass_template, text_left)
 end
 
 local EQUIPPED_HIGHLIGHT_STYLE_PREFIX = "better_inventory_equipped_highlight"
+local PULSING_DASH_ANGULAR_SPEED = math.pi * 0.5
+local PULSING_DASH_MIN_ALPHA = math.floor(255 * 0.15 + 0.5)
+local cached_pulsing_dash_time
+local cached_pulsing_dash_alpha = PULSING_DASH_MIN_ALPHA
+
+-- One complete 15% -> 100% -> 15% opacity cycle every four seconds. Darktide uses
+-- this same global clock pattern for its native new-item marker, so no timer or
+-- mutable animation state is retained by a card or view. A bounded two-scalar
+-- module cache avoids repeating cosine work for every visible layer in a frame.
+local function update_pulsing_dash_alpha(_, style)
+	local time = Application.time_since_launch()
+
+	if time ~= cached_pulsing_dash_time then
+		local pulse = (1 - math.cos(time * PULSING_DASH_ANGULAR_SPEED)) * 0.5
+
+		cached_pulsing_dash_time = time
+		cached_pulsing_dash_alpha = math.floor(PULSING_DASH_MIN_ALPHA + (255 - PULSING_DASH_MIN_ALPHA) * pulse + 0.5)
+	end
+
+	style.color[1] = cached_pulsing_dash_alpha
+end
 
 local function clear_equipped_highlight_passes(pass_template)
 	for index = #pass_template, 1, -1 do
@@ -890,7 +911,7 @@ local function configure_equipped_highlight(mod, pass_template, card_width, card
 		mode = "animated_dashes"
 	elseif mode == false then
 		mode = "off"
-	elseif mode ~= "soft_glow" and mode ~= "animated_dashes" and mode ~= "solid_border" then
+	elseif mode ~= "soft_glow" and mode ~= "animated_dashes" and mode ~= "pulsing_dashes" and mode ~= "solid_border" then
 		mode = "off"
 	end
 
@@ -909,7 +930,7 @@ local function configure_equipped_highlight(mod, pass_template, card_width, card
 	local layer_size_step = 0
 	local z_offset = 3
 
-	if mode == "animated_dashes" then
+	if mode == "animated_dashes" or mode == "pulsing_dashes" then
 		-- Native material owns its GPU animation. No Lua timer, widget state, or
 		-- per-frame allocation is needed. Concentric static passes thicken its
 		-- fixed one-pixel stroke without retaining animation data on reused cards.
@@ -974,11 +995,191 @@ local function configure_equipped_highlight(mod, pass_template, card_width, card
 				},
 			},
 			visibility_function = equipped_visible,
+			change_function = mode == "pulsing_dashes" and update_pulsing_dash_alpha or nil,
 		}
 	end
 
-	-- No change/update callback: all settings are captured once while view
-	-- composition is built, then Darktide draws only static native passes.
+	-- Static modes have no change callback. The pulsing mode reads only
+	-- Darktide's global clock and mutates the pass alpha in place.
+end
+
+local NATIVE_NEW_ITEM_INDICATOR = "content/ui/materials/symbols/new_item_indicator"
+local NEW_ITEM_HIGHLIGHT_STYLE_PREFIX = "better_inventory_new_item_highlight"
+
+local function new_item_marker_visible(content)
+	local element = content and content.element
+
+	return element and element.new_item_marker and true or false
+end
+
+local function never_visible()
+	return false
+end
+
+local function clear_new_item_highlight_passes(pass_template)
+	for index = #pass_template, 1, -1 do
+		local style_id = pass_template[index] and pass_template[index].style_id
+
+		if style_id == NEW_ITEM_HIGHLIGHT_STYLE_PREFIX or type(style_id) == "string" and string.sub(style_id, 1, #NEW_ITEM_HIGHLIGHT_STYLE_PREFIX + 1) == NEW_ITEM_HIGHLIGHT_STYLE_PREFIX .. "_" then
+			table.remove(pass_template, index)
+		end
+	end
+end
+
+local function configure_new_item_highlight(mod, pass_template, card_width, card_height)
+	local mode = setting(mod, "new_item_highlight_mode", "animated_dashes")
+
+	if mode ~= "native" and mode ~= "soft_glow" and mode ~= "animated_dashes" and mode ~= "pulsing_dashes" and mode ~= "solid_border" then
+		mode = "native"
+	end
+
+	local acknowledge_mode = setting(mod, "new_item_acknowledge_mode", "select")
+
+	if acknowledge_mode ~= "hover" then
+		acknowledge_mode = "select"
+	end
+
+	-- Darktide owns acquisition tracking and persistence. This callback only
+	-- chooses when to invoke the element's native removal callback, then clears
+	-- the live element marker so every highlight pass disappears immediately.
+	local function acknowledge_new_item(content)
+		local element = content and content.element
+		local hotspot = content and content.hotspot
+
+		if not element or not element.new_item_marker or not hotspot then
+			return
+		end
+
+		local acknowledged = hotspot.is_selected == true
+
+		if acknowledge_mode == "hover" then
+			acknowledged = acknowledged or hotspot.is_hover == true
+		end
+
+		if not acknowledged then
+			return
+		end
+
+		element.new_item_marker = nil
+
+		local item = element.real_item or element.item
+		local remove_callback = element.remove_new_marker_callback
+
+		if type(remove_callback) == "function" and item then
+			-- A third-party callback failure must not escape through a UI draw pass.
+			pcall(remove_callback, item)
+		end
+	end
+
+	local function pulse_and_acknowledge_new_item(content, style)
+		update_pulsing_dash_alpha(content, style)
+		acknowledge_new_item(content)
+	end
+
+	clear_new_item_highlight_passes(pass_template)
+
+	-- Enhanced modes replace the conflicting native corner dot. Native mode
+	-- keeps the compact dot but still uses the configured acknowledgement rule.
+	for index = 1, #pass_template do
+		local pass = pass_template[index]
+
+		if pass and pass.value == NATIVE_NEW_ITEM_INDICATOR then
+			pass.visibility_function = mode == "native" and new_item_marker_visible or never_visible
+			pass.change_function = mode == "native" and acknowledge_new_item or nil
+
+			if mode == "native" and pass.style then
+				pass.style.size = {
+					62,
+					62,
+				}
+				pass.style.offset = {
+					16,
+					-16,
+					4,
+				}
+			end
+		end
+	end
+
+	if mode == "native" then
+		return
+	end
+
+	local alpha = 255
+	local material = "content/ui/materials/frames/dropshadow_medium"
+	local pass_count = 1
+	local base_size_addition = 16
+	local layer_size_step = 0
+	local z_offset = 9
+
+	if mode == "animated_dashes" or mode == "pulsing_dashes" then
+		material = "content/ui/materials/frames/line_thin_dashed_animated"
+		pass_count = math.floor(numeric_setting(mod, "new_item_highlight_animated_border_width", 3, 1, 5) + 0.5)
+		base_size_addition = 4
+		layer_size_step = 2
+	elseif mode == "solid_border" then
+		local border_width = math.floor(numeric_setting(mod, "new_item_highlight_solid_border_width", 2, 1, 5) + 0.5)
+
+		material = border_width == 1 and "content/ui/materials/frames/frame_tile_1px" or "content/ui/materials/frames/frame_tile_2px"
+		pass_count = border_width == 1 and 1 or border_width - 1
+		base_size_addition = 4
+		layer_size_step = 2
+	else
+		local intensity = numeric_setting(mod, "new_item_highlight_glow_intensity", 100, 0, 100)
+
+		alpha = math.floor(intensity * 2.55 + 0.5)
+		z_offset = 4
+	end
+
+	local default_red = mode == "soft_glow" and 255 or 250
+	local default_green = mode == "soft_glow" and 255 or 189
+	local default_blue = mode == "soft_glow" and 255 or 73
+	local red = math.floor(numeric_setting(mod, "new_item_highlight_color_r", default_red, 0, 255) + 0.5)
+	local green = math.floor(numeric_setting(mod, "new_item_highlight_color_g", default_green, 0, 255) + 0.5)
+	local blue = math.floor(numeric_setting(mod, "new_item_highlight_color_b", default_blue, 0, 255) + 0.5)
+
+	for layer = 1, pass_count do
+		local size_addition = base_size_addition + (layer - 1) * layer_size_step
+		local change_function
+
+		if mode == "pulsing_dashes" then
+			change_function = layer == 1 and pulse_and_acknowledge_new_item or update_pulsing_dash_alpha
+		elseif layer == 1 then
+			change_function = acknowledge_new_item
+		end
+
+		pass_template[#pass_template + 1] = {
+			pass_type = "texture",
+			style_id = layer == 1 and NEW_ITEM_HIGHLIGHT_STYLE_PREFIX or NEW_ITEM_HIGHLIGHT_STYLE_PREFIX .. "_layer_" .. tostring(layer),
+			value = material,
+			style = {
+				horizontal_alignment = "center",
+				vertical_alignment = "center",
+				scale_to_material = true,
+				color = {
+					alpha,
+					red,
+					green,
+					blue,
+				},
+				size = {
+					card_width,
+					card_height,
+				},
+				size_addition = {
+					size_addition,
+					size_addition,
+				},
+				offset = {
+					0,
+					0,
+					z_offset,
+				},
+			},
+			visibility_function = new_item_marker_visible,
+			change_function = change_function,
+		}
+	end
 end
 
 local function add_custom_content_passes(mod, pass_template, card_width, text_left, base_text_style, configuration)
@@ -1631,6 +1832,7 @@ Cards.configure_native_card_geometry = configure_native_card_geometry
 Cards.configure_text_pass = configure_text_pass
 Cards.configure_favorite_marker = configure_favorite_marker
 Cards.configure_equipped_highlight = configure_equipped_highlight
+Cards.configure_new_item_highlight = configure_new_item_highlight
 Cards.add_custom_content_passes = add_custom_content_passes
 Cards.grid_weapon_name_font_size = grid_weapon_name_font_size
 Cards.configure_card_content = configure_card_content

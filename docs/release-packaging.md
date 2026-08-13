@@ -2,7 +2,7 @@
 
 ## Critical Nexus archive invariant
 
-The BetterInventory v2.2.1 release archive must contain exactly one install directory named `BetterInventory`. Every ZIP entry name must use a forward slash (`/`), never a Windows backslash (`\`). The descriptor and every `.lua` file recursively beneath `scripts/mods/BetterInventory` are mandatory runtime files, including portable subtrees such as `auto_crafter/`. The exact source set is recorded in `docs/generated-runtime-bundle-manifest.json` and is therefore not duplicated here:
+The BetterInventory v2.2.2 release archive must contain exactly one install directory named `BetterInventory`. Every ZIP entry name must use a forward slash (`/`), never a Windows backslash (`\`). The descriptor and every `.lua` file recursively beneath `scripts/mods/BetterInventory` are mandatory runtime files, including portable subtrees such as `auto_crafter/`. The exact source set is recorded in `docs/generated-runtime-bundle-manifest.json` and is therefore not duplicated here:
 
 Use the manifest as the authoritative list when inspecting an archive; the
 packager and verifier discover the same set directly from the runtime source
@@ -65,4 +65,4 @@ Before live testing, synchronize the runtime payload into the installed mod dire
 .\tools\sync_installed_mod.ps1
 ```
 
-The command is deliberately limited to `Content\mods\BetterInventory`, copies the descriptor and every runtime Lua file, and verifies the resulting file set and SHA-256 hashes. It does not copy tests, docs, archives, or user logs, and it does not remove unrelated non-runtime files from an existing managed checkout. Run it again after every runtime source change before collecting in-game evidence.
+For this checkout, the canonical live directory is `C:\XboxGames\Warhammer 40,000- Darktide\Content\mods\BetterInventory`. The command is deliberately limited to that `Content\mods\BetterInventory` target, copies the descriptor and every runtime Lua file, and verifies the resulting file set and SHA-256 hashes. The MSIX/WindowsApps package view is not a deployment or validation target. The command does not copy tests, docs, archives, or user logs, and it does not remove unrelated non-runtime files from an existing managed checkout. Run it again after every runtime source change before collecting in-game evidence.

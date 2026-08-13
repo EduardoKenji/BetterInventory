@@ -1,4 +1,4 @@
-local MOD_VERSION = "2.2.1"
+local MOD_VERSION = "2.2.2"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
@@ -2052,6 +2052,10 @@ return {
 										value = "animated_dashes",
 									},
 									{
+										text = "equipped_highlight_mode_pulsing_dashes",
+										value = "pulsing_dashes",
+									},
+									{
 										text = "equipped_highlight_mode_solid_border",
 										value = "solid_border",
 									},
@@ -2071,7 +2075,7 @@ return {
 								setting_id = "equipped_highlight_animated_border_width",
 								tooltip = "equipped_highlight_animated_border_width_tooltip",
 								type = "numeric",
-								default_value = 3,
+								default_value = 2,
 								range = {
 									1,
 									5,
@@ -2115,6 +2119,119 @@ return {
 								setting_id = "equipped_highlight_color_b",
 								type = "numeric",
 								default_value = 73,
+								range = {
+									0,
+									255,
+								},
+							},
+						},
+					},
+					{
+						setting_id = "new_item_highlight_group",
+						type = "group",
+						sub_widgets = {
+							{
+								setting_id = "new_item_highlight_mode",
+								tooltip = "new_item_highlight_mode_tooltip",
+								type = "dropdown",
+								default_value = "pulsing_dashes",
+								options = {
+									{
+										text = "new_item_highlight_mode_native",
+										value = "native",
+									},
+									{
+										text = "new_item_highlight_mode_soft_glow",
+										value = "soft_glow",
+									},
+									{
+										text = "new_item_highlight_mode_animated_dashes",
+										value = "animated_dashes",
+									},
+									{
+										text = "new_item_highlight_mode_pulsing_dashes",
+										value = "pulsing_dashes",
+									},
+									{
+										text = "new_item_highlight_mode_solid_border",
+										value = "solid_border",
+									},
+								},
+							},
+							{
+								setting_id = "new_item_acknowledge_mode",
+								tooltip = "new_item_acknowledge_mode_tooltip",
+								type = "dropdown",
+								default_value = "select",
+								options = {
+									{
+										text = "new_item_acknowledge_mode_select",
+										value = "select",
+									},
+									{
+										text = "new_item_acknowledge_mode_hover",
+										value = "hover",
+									},
+								},
+							},
+							{
+								setting_id = "new_item_highlight_glow_intensity",
+								tooltip = "new_item_highlight_glow_intensity_tooltip",
+								type = "numeric",
+								default_value = 100,
+								range = {
+									0,
+									100,
+								},
+							},
+							{
+								setting_id = "new_item_highlight_animated_border_width",
+								tooltip = "new_item_highlight_animated_border_width_tooltip",
+								type = "numeric",
+								default_value = 2,
+								range = {
+									1,
+									5,
+								},
+							},
+							{
+								setting_id = "new_item_highlight_solid_border_width",
+								tooltip = "new_item_highlight_solid_border_width_tooltip",
+								type = "numeric",
+								default_value = 2,
+								range = {
+									1,
+									5,
+								},
+							},
+							{
+								setting_id = "new_item_highlight_color_preset",
+								type = "dropdown",
+								default_value = "green",
+								options = color_preset_options(true),
+							},
+							{
+								setting_id = "new_item_highlight_color_r",
+								type = "numeric",
+								default_value = 105,
+								range = {
+									0,
+									255,
+								},
+							},
+							{
+								setting_id = "new_item_highlight_color_g",
+								type = "numeric",
+								default_value = 210,
+								range = {
+									0,
+									255,
+								},
+							},
+							{
+								setting_id = "new_item_highlight_color_b",
+								type = "numeric",
+								default_value = 120,
 								range = {
 									0,
 									255,
