@@ -3,7 +3,7 @@
 ## 2.2.2 - 2026-08-13
 
 - Added a separate **Newly acquired item highlight** subsection at the bottom of **Card content**.
-- Replaced the hard-to-see native corner dot with a gold Animated dashed border by default; Native dot only, Soft glow, and Solid border modes remain selectable.
+- Replaced the hard-to-see native corner dot with a green Pulsing animated dashed border at width 2 by default; Native dot only, Soft glow, Animated dashed border, and Solid border modes remain selectable.
 - Added independent intensity/width controls plus shared colour presets and RGB sliders for newly acquired item highlights.
 - Added configurable acknowledgement: selecting a new item clears its marker by default, while Hover mode clears it as soon as the card is hovered; controller focus also acknowledges in Hover mode.
 - Reused Darktide's authoritative persisted new-item state and native removal callback, covering mission rewards, Brunt purchases, and Hadron upgrades without a second acquisition database.
@@ -11,6 +11,7 @@
 - Added **Pulsing animated dashed border** to newly acquired and equipped item highlights. It fades from 15% to 100% opacity and back over a slow four-second cycle while retaining the existing dashed-width and colour controls.
 - Used Darktide's global UI clock for synchronized pulsing, with no retained per-card timer state or per-frame allocation; new-item acknowledgement remains once-only on the first pass.
 - Fixed live highlight-mode changes so only the applicable glow-intensity or border-width slider remains enabled without reopening the options menu, using one event-driven refresh per dropdown change with no per-frame polling.
+- Tuned the equipped-item default to a gold Animated dashed border at width 2 while preserving existing saved choices.
 
 ## 2.2.1 - 2026-08-13
 

@@ -268,7 +268,7 @@ local COLOR_PRESETS = {
 local COLOR_TARGETS = {
 	{
 		prefix = "new_item_highlight_color",
-		default_preset = "gold",
+		default_preset = "green",
 		mode_default_color = function()
 			local mode = mod:get("new_item_highlight_mode")
 

@@ -2075,7 +2075,7 @@ return {
 								setting_id = "equipped_highlight_animated_border_width",
 								tooltip = "equipped_highlight_animated_border_width_tooltip",
 								type = "numeric",
-								default_value = 3,
+								default_value = 2,
 								range = {
 									1,
 									5,
@@ -2134,7 +2134,7 @@ return {
 								setting_id = "new_item_highlight_mode",
 								tooltip = "new_item_highlight_mode_tooltip",
 								type = "dropdown",
-								default_value = "animated_dashes",
+								default_value = "pulsing_dashes",
 								options = {
 									{
 										text = "new_item_highlight_mode_native",
@@ -2188,7 +2188,7 @@ return {
 								setting_id = "new_item_highlight_animated_border_width",
 								tooltip = "new_item_highlight_animated_border_width_tooltip",
 								type = "numeric",
-								default_value = 3,
+								default_value = 2,
 								range = {
 									1,
 									5,
@@ -2207,13 +2207,13 @@ return {
 							{
 								setting_id = "new_item_highlight_color_preset",
 								type = "dropdown",
-								default_value = "gold",
+								default_value = "green",
 								options = color_preset_options(true),
 							},
 							{
 								setting_id = "new_item_highlight_color_r",
 								type = "numeric",
-								default_value = 250,
+								default_value = 105,
 								range = {
 									0,
 									255,
@@ -2222,7 +2222,7 @@ return {
 							{
 								setting_id = "new_item_highlight_color_g",
 								type = "numeric",
-								default_value = 189,
+								default_value = 210,
 								range = {
 									0,
 									255,
@@ -2231,7 +2231,7 @@ return {
 							{
 								setting_id = "new_item_highlight_color_b",
 								type = "numeric",
-								default_value = 73,
+								default_value = 120,
 								range = {
 									0,
 									255,

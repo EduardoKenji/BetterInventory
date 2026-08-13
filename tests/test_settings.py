@@ -2886,21 +2886,21 @@ def main() -> None:
     assert defaults["weapon_blessing_text_opacity"] == 80
     assert defaults["highlight_equipped_items"] == "animated_dashes"
     assert defaults["equipped_highlight_glow_intensity"] == 100
-    assert defaults["equipped_highlight_animated_border_width"] == 3
+    assert defaults["equipped_highlight_animated_border_width"] == 2
     assert defaults["equipped_highlight_solid_border_width"] == 2
     assert defaults["equipped_highlight_color_preset"] == "gold"
     assert defaults["equipped_highlight_color_r"] == 250
     assert defaults["equipped_highlight_color_g"] == 189
     assert defaults["equipped_highlight_color_b"] == 73
-    assert defaults["new_item_highlight_mode"] == "animated_dashes"
+    assert defaults["new_item_highlight_mode"] == "pulsing_dashes"
     assert defaults["new_item_acknowledge_mode"] == "select"
     assert defaults["new_item_highlight_glow_intensity"] == 100
-    assert defaults["new_item_highlight_animated_border_width"] == 3
+    assert defaults["new_item_highlight_animated_border_width"] == 2
     assert defaults["new_item_highlight_solid_border_width"] == 2
-    assert defaults["new_item_highlight_color_preset"] == "gold"
-    assert defaults["new_item_highlight_color_r"] == 250
-    assert defaults["new_item_highlight_color_g"] == 189
-    assert defaults["new_item_highlight_color_b"] == 73
+    assert defaults["new_item_highlight_color_preset"] == "green"
+    assert defaults["new_item_highlight_color_r"] == 105
+    assert defaults["new_item_highlight_color_g"] == 210
+    assert defaults["new_item_highlight_color_b"] == 120
     assert defaults["weapon_blessing_display_mode"] == "ranked_text"
     assert defaults["blessing_text_item_level_separation"] == "four_plus"
     assert defaults["auto_fit_long_blessing_names"] is True
