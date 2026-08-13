@@ -259,7 +259,7 @@ if ($contracts -notmatch 'Contracts\.safe_call' -or $contracts -notmatch 'Contra
 	throw "The guarded capability-contract seam was not found."
 }
 
-if ($settingsRegistry -notmatch 'Registry\.register' -or $settingsRegistry -notmatch 'entry\.category\s*==\s*category_name' -or $settingsRegistry -notmatch 'collect_setting_entries\(entry\.sub_widgets,\s*category_name,\s*entry_owned\)' -or $settingsRegistry -notmatch 'duplicate_id_set' -or $settingsRegistry -notmatch 'Registry\.duplicates' -or $settingsRegistry -notmatch 'refresh_domains' -or $main -notmatch 'Capabilities\.mutation\(SettingsRegistry,\s*"register",\s*settings,\s*category_name\)' -or $main -notmatch 'Capabilities\.registry_refresh_required\(SettingsRegistry,\s*"should_refresh_dependencies",\s*setting_id\)' -or $main -match 'setting_id == "enable_grid_layout" or') {
+if ($settingsRegistry -notmatch 'Registry\.register' -or $settingsRegistry -notmatch 'duplicate_id_set' -or $settingsRegistry -notmatch 'Registry\.duplicates' -or $settingsRegistry -notmatch 'refresh_domains' -or $main -notmatch 'dmf_mod\.options_widgets_data' -or $main -notmatch 'header\.mod_name\s*==\s*"BetterInventory"' -or $main -notmatch 'Capabilities\.mutation\(SettingsRegistry,\s*"register",\s*canonical_settings\)' -or $main -notmatch 'Capabilities\.registry_refresh_required\(SettingsRegistry,\s*"should_refresh_dependencies",\s*setting_id\)' -or $main -match 'setting_id == "enable_grid_layout" or') {
 	throw "The declarative settings registry and registry-driven dependency refresh routing were not found."
 }
 

@@ -20,6 +20,7 @@ local ItemGridViewBase
 local ItemGridViewBaseDefinitions
 local InventoryWeaponsView
 local ViewElementGrid
+local dmf_mod
 local synchronize_myfavorites_grid = function()
 	return 0
 end
@@ -780,11 +781,30 @@ local function bind_option_dependencies(options_templates)
 		return
 	end
 
-	-- DMF exposes one flattened template array shared by every installed mod.
-	-- Register only this mod's category so foreign duplicate IDs cannot be
-	-- misreported as BetterInventory schema failures.
 	local category_name = mod:get_readable_name()
-	local registry_status, registry_valid, _, duplicate_ids = Capabilities.mutation(SettingsRegistry, "register", settings, category_name)
+	local canonical_settings
+
+	-- `options_templates.settings` is a shared rendered tree that optional DMF
+	-- extensions may rewrite or clone. Alf 1.2.02 resolves missing IDs from
+	-- non-unique localized labels, so repeated labels such as Highlight mode or
+	-- Image X offset can legitimately appear there with the same resolved ID.
+	-- Validate DMF's per-mod initialized schema instead; it retains the canonical
+	-- IDs produced directly from BetterInventory_data.lua.
+	for _, mod_widgets in ipairs(dmf_mod.options_widgets_data or {}) do
+		local header = type(mod_widgets) == "table" and mod_widgets[1]
+
+		if type(header) == "table" and header.mod_name == "BetterInventory" then
+			canonical_settings = mod_widgets
+
+			break
+		end
+	end
+
+	local registry_status, registry_valid, _, duplicate_ids = "unavailable", true, nil, nil
+
+	if canonical_settings then
+		registry_status, registry_valid, _, duplicate_ids = Capabilities.mutation(SettingsRegistry, "register", canonical_settings)
+	end
 
 	if registry_status == "ok" and not registry_valid and type(duplicate_ids) == "table" then
 
@@ -1417,7 +1437,7 @@ function mod.on_disabled()
 	release_transient_item_caches()
 end
 
-local dmf_mod = get_mod("DMF")
+dmf_mod = get_mod("DMF")
 
 if dmf_mod and type(dmf_mod.create_mod_options_settings) == "function" then
 	mod:hook_safe(dmf_mod, "create_mod_options_settings", function(_, options_templates)

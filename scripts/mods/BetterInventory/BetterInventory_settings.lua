@@ -335,13 +335,11 @@ Registry.should_refresh_dependencies = function(registry_or_setting_id, bound_se
 		return true
 	end
 
-	local entry = active_entries[setting_id]
-
-	if not entry then
-		return false
-	end
-
-	if entry.refresh_domains and entry.refresh_domains.dependencies then
+	-- Refresh ownership is declarative and must not depend on the most recent
+	-- rendered UI snapshot. Optional settings extensions may clone, omit, or
+	-- rewrite templates without changing which BetterInventory settings own
+	-- dependency state.
+	if dependency_refresh_metadata[setting_id] then
 		return true
 	end
 

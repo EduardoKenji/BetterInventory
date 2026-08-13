@@ -1556,6 +1556,27 @@ def main() -> None:
         }
     )
     entries.extend([active_character_entry, empty_character_entry])
+    canonical_entries = [
+        lua.table_from(
+            {
+                "setting_id": option_id,
+                "type": "numeric",
+            }
+        )
+        for option_id in option_ids
+    ]
+    canonical_entries.insert(
+        0,
+        lua.table_from(
+            {
+                "mod_name": "BetterInventory",
+                "readable_mod_name": "Better Inventory",
+            }
+        ),
+    )
+    globals_.test_dmf.options_widgets_data = lua.table_from(
+        [lua.table_from(canonical_entries)]
+    )
     # DMF supplies one generated settings array for all mods. Foreign duplicate
     # IDs must not be attributed to BetterInventory or trigger its diagnostic.
     entries.extend(
@@ -1572,6 +1593,16 @@ def main() -> None:
                     "category": "Expedition UI",
                     "display_name": "Expedition button X offset",
                     "setting_id": "expedition_button_x_offset",
+                }
+            ),
+            # Alf 1.2.02 can resolve repeated localized labels to the same
+            # BetterInventory ID in its rendered template. The canonical DMF
+            # per-mod schema above remains unique and authoritative.
+            lua.table_from(
+                {
+                    "category": "Better Inventory",
+                    "display_name": "new_item_highlight_mode",
+                    "setting_id": "new_item_highlight_mode",
                 }
             ),
         ]
