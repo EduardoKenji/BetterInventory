@@ -1,5 +1,9 @@
 # BetterInventory changelog
 
+## 2.2.5 - 2026-08-13
+
+- Removed the redundant runtime duplicate-setting scan from Mod Options, preventing post-processed settings from other mods being reported as BetterInventory errors. DMF startup and release verification still validate BetterInventory's source schema.
+
 ## 2.2.4 - 2026-08-13
 
 - Fixed Alf's DMF Extensions render-time ID reconstruction being mistaken for source-schema duplicates by validating DMF's canonical per-mod settings data instead of the post-processed shared render tree.
