@@ -1,9 +1,12 @@
 # BetterInventory changelog
 
+## 2.2.4 - 2026-08-13
+
+- Fixed Alf's DMF Extensions render-time ID reconstruction being mistaken for source-schema duplicates by validating DMF's canonical per-mod settings data instead of the post-processed shared render tree.
+
 ## 2.2.3 - 2026-08-13
 
 - Fixed foreign setting IDs from DMF's shared options template being misreported as duplicate BetterInventory settings; diagnostics now inspect only BetterInventory's category and list each genuine duplicate once.
-- Fixed Alf's DMF Extensions render-time ID reconstruction being mistaken for source-schema duplicates by validating DMF's canonical per-mod settings data instead of the post-processed shared render tree.
 
 ## 2.2.2 - 2026-08-13
 
