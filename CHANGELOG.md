@@ -12,6 +12,7 @@
 - Used Darktide's global UI clock for synchronized pulsing, with no retained per-card timer state or per-frame allocation; new-item acknowledgement remains once-only on the first pass.
 - Fixed live highlight-mode changes so only the applicable glow-intensity or border-width slider remains enabled without reopening the options menu, using one event-driven refresh per dropdown change with no per-frame polling.
 - Tuned the equipped-item default to a gold Animated dashed border at width 2 while preserving existing saved choices.
+- Fixed foreign setting IDs from DMF's shared options template being misreported as duplicate BetterInventory settings; diagnostics now inspect only BetterInventory's category and list each genuine duplicate once.
 
 ## 2.2.1 - 2026-08-13
 

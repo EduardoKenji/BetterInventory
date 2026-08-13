@@ -187,13 +187,13 @@
     {"name": "schema_dependency_refresh", "risk": "high", "start_line": 21, "end_line": 408},
     {"name": "migration_preservation", "risk": "high", "start_line": 409, "end_line": 538},
     {"name": "character_overview_refresh", "risk": "high", "start_line": 539, "end_line": 1493},
-    {"name": "localization_contract", "risk": "medium", "start_line": 1494, "end_line": 2499},
-      {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2500, "end_line": 3002}
+    {"name": "localization_contract", "risk": "medium", "start_line": 1494, "end_line": 2520},
+    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2521, "end_line": 3019}
   ],
   "test_settings_registry.py": [
-    {"name": "duplicate_detection", "risk": "high", "start_line": 63, "end_line": 88},
-    {"name": "metadata_manifest", "risk": "high", "start_line": 90, "end_line": 125},
-    {"name": "generated_character_slots", "risk": "high", "start_line": 127, "end_line": 139}
+    {"name": "duplicate_detection", "risk": "high", "start_line": 63, "end_line": 123},
+    {"name": "metadata_manifest", "risk": "high", "start_line": 125, "end_line": 160},
+    {"name": "generated_character_slots", "risk": "high", "start_line": 162, "end_line": 168}
   ],
   "test_view_session.py": [
     {"name": "idempotent_close", "risk": "high", "start_line": 22, "end_line": 41},
