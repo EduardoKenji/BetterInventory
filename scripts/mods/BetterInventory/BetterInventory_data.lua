@@ -1,4 +1,4 @@
-local MOD_VERSION = "2.1.6"
+local MOD_VERSION = "2.2.0"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
@@ -123,6 +123,126 @@ local function color_group(group_id, prefix, default_preset, red, green, blue)
 					255,
 				},
 			},
+		},
+	}
+end
+
+local IMAGE_LAYOUT_COLUMN_PROFILES = {
+	{ key = "single", text = "image_layout_single_column", value = 1 },
+	{ key = "2", text = "image_layout_two_columns", value = 2 },
+	{ key = "3", text = "image_layout_three_columns", value = 3 },
+	{ key = "4", text = "image_layout_four_columns", value = 4 },
+	{ key = "5", text = "image_layout_five_columns", value = 5 },
+}
+
+local IMAGE_LAYOUT_GRID_DEFAULTS = {
+	weapon = {
+		inventory = { x = -10, y = -1, width = 21, height = 0 },
+		armoury = { x = -10, y = -1, width = 23, height = -10 },
+		global_store = { x = -13, y = 5, width = 29, height = -8 },
+	},
+	curio = {
+		inventory = { x = -20, y = 7, width = 38, height = 0 },
+		armoury = { x = -20, y = 3, width = 36, height = -6 },
+		global_store = { x = -19, y = 7, width = 35, height = -6 },
+	},
+}
+
+local function image_geometry_controls(prefix, defaults)
+	defaults = defaults or {}
+
+	return {
+		{
+			setting_id = prefix .. "_x_offset_percent",
+			text = "image_layout_x_offset_percent",
+			tooltip = "image_layout_position_tooltip",
+			type = "numeric",
+			default_value = defaults.x or 0,
+			range = { -100, 100 },
+		},
+		{
+			setting_id = prefix .. "_y_offset_percent",
+			text = "image_layout_y_offset_percent",
+			tooltip = "image_layout_position_tooltip",
+			type = "numeric",
+			default_value = defaults.y or 0,
+			range = { -100, 100 },
+		},
+		{
+			setting_id = prefix .. "_width_offset_percent",
+			text = "image_layout_width_offset_percent",
+			tooltip = "image_layout_size_tooltip",
+			type = "numeric",
+			default_value = defaults.width or 0,
+			range = { -90, 200 },
+		},
+		{
+			setting_id = prefix .. "_height_offset_percent",
+			text = "image_layout_height_offset_percent",
+			tooltip = "image_layout_size_tooltip",
+			type = "numeric",
+			default_value = defaults.height or 0,
+			range = { -90, 200 },
+		},
+	}
+end
+
+local function image_character_overview_group(item_kind)
+	local prefix = item_kind .. "_image_character_overview"
+
+	return {
+		setting_id = prefix .. "_group",
+		text = "image_layout_character_overview",
+		type = "group",
+		sub_widgets = image_geometry_controls(prefix),
+	}
+end
+
+local function image_grid_context_group(item_kind, context, text_id)
+	local prefix = item_kind .. "_image_" .. context
+	local options = {}
+
+	for index, profile in ipairs(IMAGE_LAYOUT_COLUMN_PROFILES) do
+		options[index] = {
+			text = profile.text,
+			value = profile.value,
+		}
+	end
+
+	local sub_widgets = {
+		{
+			setting_id = prefix .. "_profile_selector",
+			text = "image_layout_grid_profile",
+			tooltip = "image_layout_grid_profile_tooltip",
+			type = "dropdown",
+			default_value = 3,
+			options = options,
+		},
+	}
+	local item_defaults = IMAGE_LAYOUT_GRID_DEFAULTS[item_kind] or {}
+	local editor_controls = image_geometry_controls(prefix .. "_editor", item_defaults[context])
+
+	for _, control in ipairs(editor_controls) do
+		sub_widgets[#sub_widgets + 1] = control
+	end
+
+	return {
+		setting_id = prefix .. "_group",
+		text = text_id,
+		type = "group",
+		sub_widgets = sub_widgets,
+	}
+end
+
+local function image_layout_section(item_kind, section_id)
+	return {
+		setting_id = section_id,
+		type = "group",
+		sub_widgets = {
+			image_character_overview_group(item_kind),
+			image_grid_context_group(item_kind, "inventory", "image_layout_inventory_hadron"),
+			image_grid_context_group(item_kind, "armoury", "image_layout_armoury_exchange"),
+			image_grid_context_group(item_kind, "global_store", "image_layout_global_store"),
 		},
 	}
 end
@@ -1233,6 +1353,8 @@ return {
 					},
 				},
 			},
+			image_layout_section("weapon", "weapon_images_size_position_group"),
+			image_layout_section("curio", "curio_images_size_position_group"),
 			{
 				setting_id = "single_column_layout_group",
 				type = "group",

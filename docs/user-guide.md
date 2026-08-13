@@ -1,6 +1,6 @@
 # BetterInventory user guide
 
-BetterInventory v2.1.6 improves inventory, Character Overview, Hadron, Requisition Weapons & Curios, and optional GlobalStore cards while preserving Darktide's native item and icon lifecycle.
+BetterInventory v2.2.0 improves inventory, Character Overview, Hadron, Requisition Weapons & Curios, and optional GlobalStore cards while preserving Darktide's native item and icon lifecycle.
 
 **Force weapon name to a single line** is enabled by default under **Card content** to keep long standard and customized weapon titles out of the detail rows. BetterInventory reduces the title only to the configured minimum item-name font size, then truncates the base with an ellipsis while retaining an appended `Mk` suffix.
 

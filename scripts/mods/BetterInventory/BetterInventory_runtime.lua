@@ -61,16 +61,23 @@ local function release_transient_item_caches()
 end
 
 function Runtime.install()
+	if Layout and Layout.ImageLayout and type(Layout.ImageLayout.initialize_settings) == "function" then
+		Layout.ImageLayout.initialize_settings(mod)
+	end
+
 	local unpack_values = table.unpack or unpack
 	local INVENTORY_GRID_CONFIGURATION = {
 		blueprint_key = "item",
+		image_layout_context = "inventory",
 	}
 	local HADRON_GRID_CONFIGURATION = {
 		blueprint_key = "item",
+		image_layout_context = "inventory",
 		maximum_columns = 3,
 	}
 	local ARMOURY_GRID_CONFIGURATION = {
 		blueprint_key = "store_item",
+		image_layout_context = "armoury",
 		maximum_columns = 3,
 		store_item = true,
 	}
@@ -78,12 +85,14 @@ function Runtime.install()
 	local GLOBAL_STORE_GRID_CONFIGURATION = {
 		blueprint_key = "store_item",
 		global_store = true,
+		image_layout_context = "global_store",
 		maximum_columns = 3,
 		store_item = true,
 	}
 	local GLOBAL_STORE_NATIVE_CONFIGURATION = {
 		blueprint_key = "store_item",
 		global_store = true,
+		image_layout_context = "global_store",
 		native_single_column = true,
 		store_item = true,
 	}
@@ -1111,6 +1120,10 @@ function mod.on_setting_changed(setting_id)
 	local color_change = color_target_by_setting_id[setting_id]
 	local automatic_curio_setting = type(setting_id) == "string" and string.sub(setting_id, 1, 16) == "automatic_curio_"
 
+	if Layout and Layout.ImageLayout and type(Layout.ImageLayout.on_setting_changed) == "function" then
+		Layout.ImageLayout.on_setting_changed(mod, setting_id)
+	end
+
 	if type(Features.invalidate_all_view_composition) == "function" then
 		Features.invalidate_all_view_composition()
 	end
@@ -1272,6 +1285,10 @@ local dmf_mod = get_mod("DMF")
 
 if dmf_mod and type(dmf_mod.create_mod_options_settings) == "function" then
 	mod:hook_safe(dmf_mod, "create_mod_options_settings", function(_, options_templates)
+		if Layout and Layout.ImageLayout and type(Layout.ImageLayout.sync_editors) == "function" then
+			Layout.ImageLayout.sync_editors(mod)
+		end
+
 		if type(CurioAcquisition.inject_character_options) == "function" then
 			CurioAcquisition.inject_character_options(mod, options_templates)
 		end
@@ -1847,11 +1864,13 @@ mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layou
 		if is_hadron_view(view) and mod:get("enable_hadron_single_column_mirror") ~= false then
 			configuration = {
 				blueprint_key = "item",
+				image_layout_context = "inventory",
 				native_single_column = true,
 			}
 		elseif is_armoury_requisition_view(view) and mod:get("enable_armoury_single_column_mirror") ~= false then
 			configuration = {
 				blueprint_key = "store_item",
+				image_layout_context = "armoury",
 				native_single_column = true,
 				store_item = true,
 			}

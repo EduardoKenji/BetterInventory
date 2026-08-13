@@ -2088,7 +2088,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "2.1.6"
+    assert data.version == "2.2.0"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
@@ -2098,6 +2098,22 @@ def main() -> None:
     assert localization["auto_crafter_trait_targets_group"]["en"] == "Perk and blessing targets"
     assert localization["automatic_curio_once_per_store_rotation"]["en"] == "Scan at most once per store rotation"
     assert localization["automatic_curio_rescan_on_store_refresh"]["en"] == "Rescan when store refreshes while idle"
+    assert (
+        localization["weapon_image_inventory_group"]["en"]
+        == "Inventory and Hadron image layout"
+    )
+    assert (
+        localization["weapon_image_armoury_group"]["en"]
+        == "Armoury Exchange store image layout"
+    )
+    assert (
+        localization["curio_image_global_store_group"]["en"]
+        == "Armoury Exchange GlobalStore image layout"
+    )
+    assert (
+        localization["weapon_image_inventory_editor_x_offset_percent"]["en"]
+        == "Image X offset (%%)"
+    )
 
     for localization_id, localized_values in localization.items():
         simplified_chinese = localized_values["zh-cn"]
@@ -2279,7 +2295,52 @@ def main() -> None:
     assert top_level_ids[additional_views_index + 1] == "layout_group"
     grid_layout_index = top_level_ids.index("layout_group")
     assert top_level_ids[grid_layout_index - 1] == "additional_views_group"
-    assert top_level_ids[grid_layout_index + 1] == "single_column_layout_group"
+    assert top_level_ids[grid_layout_index + 1] == "weapon_images_size_position_group"
+    assert top_level_ids[grid_layout_index + 2] == "curio_images_size_position_group"
+    assert top_level_ids[grid_layout_index + 3] == "single_column_layout_group"
+
+    # Image layout settings keep Character Overview independent. Each
+    # grid-capable view exposes one selector and exactly one four-slider
+    # editor; runtime privately persists five profiles and uses actual columns.
+    for item_kind, section_id in (
+        ("weapon", "weapon_images_size_position_group"),
+        ("curio", "curio_images_size_position_group"),
+    ):
+        section = next(
+            data.options.widgets[index]
+            for index in range(1, len(data.options.widgets) + 1)
+            if data.options.widgets[index].setting_id == section_id
+        )
+        assert len(section.sub_widgets) == 4
+        overview = section.sub_widgets[1]
+        assert overview.setting_id == f"{item_kind}_image_character_overview_group"
+        assert [
+            overview.sub_widgets[index].setting_id
+            for index in range(1, len(overview.sub_widgets) + 1)
+        ] == [
+            f"{item_kind}_image_character_overview_{axis}_offset_percent"
+            for axis in ("x", "y", "width", "height")
+        ]
+        for group_index, context in enumerate(
+            ("inventory", "armoury", "global_store"), start=2
+        ):
+            context_group = section.sub_widgets[group_index]
+            assert len(context_group.sub_widgets) == 5
+            selector = context_group.sub_widgets[1]
+            assert selector.setting_id == f"{item_kind}_image_{context}_profile_selector"
+            assert selector.default_value == 3
+            assert [selector.options[index].value for index in range(1, 6)] == [1, 2, 3, 4, 5]
+            assert selector.sub_widgets is None
+            for option_index in range(1, 6):
+                assert selector.options[option_index].show_widgets is None
+            assert [
+                context_group.sub_widgets[index].setting_id
+                for index in range(2, 6)
+            ] == [
+                f"{item_kind}_image_{context}_editor_{axis}_offset_percent"
+                for axis in ("x", "y", "width", "height")
+            ]
+
     customization_index = top_level_ids.index("custom_item_name_and_colors_group")
     assert top_level_ids[customization_index - 1] == "single_column_layout_group"
     assert top_level_ids[customization_index + 1] == "quick_look_card_integration_group"
@@ -2369,6 +2430,23 @@ def main() -> None:
     assert defaults["myfavorites_show_favorite_letter"] is False
     assert defaults["character_overview_curio_name_mode"] == "two_lines"
     assert defaults["character_overview_curio_font_size_percent"] == 110
+    for item_kind in ("weapon", "curio"):
+        for axis in ("x", "y", "width", "height"):
+            assert defaults[f"{item_kind}_image_character_overview_{axis}_offset_percent"] == 0
+        for context in ("inventory", "armoury", "global_store"):
+            assert defaults[f"{item_kind}_image_{context}_profile_selector"] == 3
+            geometry_defaults = {
+                ("weapon", "inventory"): (-10, -1, 21, 0),
+                ("weapon", "armoury"): (-10, -1, 23, -10),
+                ("weapon", "global_store"): (-13, 5, 29, -8),
+                ("curio", "inventory"): (-20, 7, 38, 0),
+                ("curio", "armoury"): (-20, 3, 36, -6),
+                ("curio", "global_store"): (-19, 7, 35, -6),
+            }.get((item_kind, context), (0, 0, 0, 0))
+            for axis in ("x", "y", "width", "height"):
+                assert defaults[
+                    f"{item_kind}_image_{context}_editor_{axis}_offset_percent"
+                ] == geometry_defaults[("x", "y", "width", "height").index(axis)]
     assert defaults["three_column_weapon_name_font_size"] == 14
     assert defaults["enable_global_store_integration"] is True
     assert defaults["enable_global_store_grid"] is True

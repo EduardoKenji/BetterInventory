@@ -43,4 +43,51 @@ for index = 1, 64 do
 	}
 end
 
+-- Image-layout controls use generated IDs so weapon/Curio, view context, and
+-- each column profile persist independently. DMF's schema still requires a
+-- localization record for every generated setting ID even when the visible
+-- widget deliberately reuses a concise shared label.
+local image_item_kinds = { "weapon", "curio" }
+local image_contexts = {
+	{ key = "inventory", label = "Inventory and Hadron image layout" },
+	{ key = "armoury", label = "Armoury Exchange store image layout" },
+	{ key = "global_store", label = "Armoury Exchange GlobalStore image layout" },
+}
+local image_geometry_labels = {
+	height_offset_percent = "Image height offset (%%)",
+	width_offset_percent = "Image width offset (%%)",
+	x_offset_percent = "Image X offset (%%)",
+	y_offset_percent = "Image Y offset (%%)",
+}
+
+local function add_generated_image_localization(localization_id, text)
+	if localization[localization_id] == nil then
+		localization[localization_id] = {
+			en = text,
+			["zh-cn"] = text,
+		}
+	end
+end
+
+for _, item_kind in ipairs(image_item_kinds) do
+	local character_prefix = item_kind .. "_image_character_overview"
+
+	add_generated_image_localization(character_prefix .. "_group", "Character Overview")
+
+	for suffix, label in pairs(image_geometry_labels) do
+		add_generated_image_localization(character_prefix .. "_" .. suffix, label)
+	end
+
+	for _, context in ipairs(image_contexts) do
+		local context_prefix = item_kind .. "_image_" .. context.key
+
+		add_generated_image_localization(context_prefix .. "_group", context.label)
+		add_generated_image_localization(context_prefix .. "_profile_selector", "Grid-column profile to edit")
+
+		for suffix, label in pairs(image_geometry_labels) do
+			add_generated_image_localization(context_prefix .. "_editor_" .. suffix, label)
+		end
+	end
+end
+
 return localization

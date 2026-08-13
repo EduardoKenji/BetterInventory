@@ -1,4 +1,7 @@
 {
+  "test_image_layout.py": [
+    {"name": "profile_editor_defaults_context_column_resolution_scaling_and_fail_closed_geometry", "risk": "high", "start_line": 15, "end_line": 237}
+  ],
   "test_character_overview.py": [
     {"name": "item_identity_and_revision", "risk": "high", "start_line": 52, "end_line": 55},
     {"name": "empty_slot_model", "risk": "high", "start_line": 57, "end_line": 72},
@@ -173,7 +176,7 @@
   "test_layout.py": [
     {"name": "card_geometry", "risk": "high", "start_line": 621, "end_line": 1604},
       {"name": "content_and_resource_ownership", "risk": "high", "start_line": 1605, "end_line": 2354},
-      {"name": "integration_boundaries", "risk": "medium", "start_line": 2355, "end_line": 3882}
+      {"name": "integration_boundaries", "risk": "medium", "start_line": 2355, "end_line": 3901}
   ],
   "test_operation_arbiter.py": [
     {"name": "manual_automatic_exclusion", "risk": "critical", "start_line": 20, "end_line": 34},
@@ -185,7 +188,7 @@
     {"name": "migration_preservation", "risk": "high", "start_line": 385, "end_line": 504},
     {"name": "character_overview_refresh", "risk": "high", "start_line": 505, "end_line": 1359},
     {"name": "localization_contract", "risk": "medium", "start_line": 1360, "end_line": 2249},
-      {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2250, "end_line": 2538}
+      {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2250, "end_line": 2619}
   ],
   "test_settings_registry.py": [
     {"name": "duplicate_detection", "risk": "high", "start_line": 53, "end_line": 78},

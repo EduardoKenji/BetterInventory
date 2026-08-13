@@ -1356,6 +1356,63 @@ local localization = {
 	weapon_perk_reload_speed = {
 		en = "Reload Speed",
 	},
+	weapon_images_size_position_group = {
+		en = "Weapons images size and position",
+	},
+	curio_images_size_position_group = {
+		en = "Curios images size and position",
+	},
+	image_layout_character_overview = {
+		en = "Character Overview",
+	},
+	image_layout_inventory_hadron = {
+		en = "Inventory and Hadron",
+	},
+	image_layout_armoury_exchange = {
+		en = "Armoury Exchange store",
+	},
+	image_layout_global_store = {
+		en = "Armoury Exchange GlobalStore",
+	},
+	image_layout_grid_profile = {
+		en = "Grid-column profile to edit",
+	},
+	image_layout_grid_profile_tooltip = {
+		en = "Selects which independent column layout the four controls below edit. Cards automatically use the profile matching their actual column count.",
+	},
+	image_layout_single_column = {
+		en = "Single column (grid mode off)",
+	},
+	image_layout_two_columns = {
+		en = "2 column grid mode",
+	},
+	image_layout_three_columns = {
+		en = "3 column grid mode",
+	},
+	image_layout_four_columns = {
+		en = "4 column grid mode",
+	},
+	image_layout_five_columns = {
+		en = "5 column grid mode",
+	},
+	image_layout_x_offset_percent = {
+		en = "Image X offset (%%)",
+	},
+	image_layout_y_offset_percent = {
+		en = "Image Y offset (%%)",
+	},
+	image_layout_width_offset_percent = {
+		en = "Image width offset (%%)",
+	},
+	image_layout_height_offset_percent = {
+		en = "Image height offset (%%)",
+	},
+	image_layout_position_tooltip = {
+		en = "Adds a percentage of the resolved card width or height to the native image position. Zero preserves the current layout. Reopen the relevant view after changing it.",
+	},
+	image_layout_size_tooltip = {
+		en = "Adds this percentage to the resolved native image size. Zero preserves the current size; -50 halves it and 100 doubles it. Reopen the relevant view after changing it.",
+	},
 	weapon_perk_reload_heavy = {
 		en = "Reload",
 	},
