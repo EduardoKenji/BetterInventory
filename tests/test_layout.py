@@ -400,6 +400,9 @@ def main() -> None:
 				weapon_perk_text_opacity = 100,
 				blessing_icon_spacing = 3,
 				highlight_equipped_items = "soft_glow",
+				equipped_highlight_glow_intensity = 100,
+				equipped_highlight_animated_border_width = 2,
+				equipped_highlight_solid_border_width = 2,
 				equipped_highlight_color_r = 255,
 				equipped_highlight_color_g = 255,
 				equipped_highlight_color_b = 255,
@@ -685,6 +688,15 @@ def main() -> None:
                 return candidate
 
         raise AssertionError(f"Missing pass: {style_id}")
+
+    def blueprint_passes_with_prefix(target_blueprint, style_prefix):
+        return [
+            target_blueprint.pass_template[index]
+            for index in range(1, len(target_blueprint.pass_template) + 1)
+            if str(target_blueprint.pass_template[index].style_id or "").startswith(
+                style_prefix
+            )
+        ]
 
     item_size = layout.item_size(mod, 640)
     assert (item_size[1], item_size[2]) == (206, 110)
@@ -2131,6 +2143,18 @@ def main() -> None:
     assert equipped_highlight.visibility_function(
         lua.table_from({"equipped": False})
     ) is False
+
+    mod.settings.equipped_highlight_glow_intensity = 40
+    dim_glow_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, dim_glow_blueprint, 640)
+    assert tuple(
+        blueprint_pass(
+            dim_glow_blueprint, "better_inventory_equipped_highlight"
+        ).style.color[index]
+        for index in range(1, 5)
+    ) == (102, 255, 255, 255)
+    mod.settings.equipped_highlight_glow_intensity = 100
+
     mod.settings.highlight_equipped_items = "animated_dashes"
     mod.settings.equipped_highlight_color_r = 250
     mod.settings.equipped_highlight_color_g = 189
@@ -2162,6 +2186,31 @@ def main() -> None:
     assert dashed_highlight.visibility_function(
         lua.table_from({"equipped": True})
     ) is True
+    dashed_passes = blueprint_passes_with_prefix(
+        dashed_blueprint, "better_inventory_equipped_highlight"
+    )
+    assert len(dashed_passes) == 2
+    assert tuple(
+        dashed_passes[1].style.size_addition[index] for index in range(1, 3)
+    ) == (6, 6)
+    assert all(
+        candidate.value == "content/ui/materials/frames/line_thin_dashed_animated"
+        and candidate.change_function is None
+        for candidate in dashed_passes
+    )
+
+    mod.settings.equipped_highlight_animated_border_width = 5
+    thick_dashed_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, thick_dashed_blueprint, 640)
+    thick_dashed_passes = blueprint_passes_with_prefix(
+        thick_dashed_blueprint, "better_inventory_equipped_highlight"
+    )
+    assert len(thick_dashed_passes) == 5
+    assert tuple(
+        thick_dashed_passes[-1].style.size_addition[index]
+        for index in range(1, 3)
+    ) == (12, 12)
+    mod.settings.equipped_highlight_animated_border_width = 2
 
     mod.settings.highlight_equipped_items = "solid_border"
     solid_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
@@ -2172,12 +2221,51 @@ def main() -> None:
     assert solid_highlight.value == "content/ui/materials/frames/frame_tile_2px"
     assert solid_highlight.change_function is None
 
+    mod.settings.equipped_highlight_solid_border_width = 1
+    thin_solid_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, thin_solid_blueprint, 640)
+    thin_solid_passes = blueprint_passes_with_prefix(
+        thin_solid_blueprint, "better_inventory_equipped_highlight"
+    )
+    assert len(thin_solid_passes) == 1
+    assert thin_solid_passes[0].value == "content/ui/materials/frames/frame_tile_1px"
+
+    mod.settings.equipped_highlight_solid_border_width = 5
+    thick_solid_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, thick_solid_blueprint, 640)
+    thick_solid_passes = blueprint_passes_with_prefix(
+        thick_solid_blueprint, "better_inventory_equipped_highlight"
+    )
+    assert len(thick_solid_passes) == 4
+    assert all(
+        candidate.value == "content/ui/materials/frames/frame_tile_2px"
+        and candidate.change_function is None
+        for candidate in thick_solid_passes
+    )
+    assert tuple(
+        thick_solid_passes[-1].style.size_addition[index]
+        for index in range(1, 3)
+    ) == (10, 10)
+
+    # Chained integrations may present the same blueprint again. Recomposition
+    # replaces this mod's bounded passes instead of accumulating retained layers.
+    mod.settings.equipped_highlight_solid_border_width = 1
+    layout.configure_item_blueprint(mod, thick_solid_blueprint, 640)
+    recomposed_highlight_passes = blueprint_passes_with_prefix(
+        thick_solid_blueprint, "better_inventory_equipped_highlight"
+    )
+    assert len(recomposed_highlight_passes) == 1
+    assert recomposed_highlight_passes[0].value == (
+        "content/ui/materials/frames/frame_tile_1px"
+    )
+    mod.settings.equipped_highlight_solid_border_width = 2
+
     mod.settings.highlight_equipped_items = "off"
     highlight_disabled_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     layout.configure_item_blueprint(mod, highlight_disabled_blueprint, 640)
-    assert blueprint_pass(
+    assert blueprint_passes_with_prefix(
         highlight_disabled_blueprint, "better_inventory_equipped_highlight"
-    ).visibility_function(lua.table_from({"equipped": True})) is False
+    ) == []
 
     # Retired checkbox values remain safe during migration/hot reload.
     mod.settings.highlight_equipped_items = True
@@ -2189,9 +2277,9 @@ def main() -> None:
     mod.settings.highlight_equipped_items = False
     legacy_disabled_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     layout.configure_item_blueprint(mod, legacy_disabled_blueprint, 640)
-    assert blueprint_pass(
+    assert blueprint_passes_with_prefix(
         legacy_disabled_blueprint, "better_inventory_equipped_highlight"
-    ).visibility_function(lua.table_from({"equipped": True})) is False
+    ) == []
     mod.settings.highlight_equipped_items = "soft_glow"
 
     name_style = blueprint.pass_template[3].style

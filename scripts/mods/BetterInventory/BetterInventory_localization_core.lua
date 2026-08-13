@@ -892,7 +892,7 @@ local localization = {
 		en = "Clear horizontal gap in pixels between weapon blessing icons.",
 	},
 	highlight_equipped_items = {
-		en = "Equipped item highlight",
+		en = "Highlight mode",
 	},
 	highlight_equipped_items_tooltip = {
 		en = "Chooses how equipped item cards are highlighted while preserving Darktide's native equipped symbol. Animated dashes use Darktide's native animated frame material.",
@@ -909,8 +909,26 @@ local localization = {
 	equipped_highlight_mode_solid_border = {
 		en = "Solid border",
 	},
-	equipped_highlight_color_group = {
-		en = "Equipped highlight colour",
+	equipped_highlight_group = {
+		en = "Equipped item highlight",
+	},
+	equipped_highlight_glow_intensity = {
+		en = "Soft glow intensity (%%)",
+	},
+	equipped_highlight_glow_intensity_tooltip = {
+		en = "Controls soft-glow opacity from fully transparent at 0%% to full intensity at 100%%.",
+	},
+	equipped_highlight_animated_border_width = {
+		en = "Animated dashed border width",
+	},
+	equipped_highlight_animated_border_width_tooltip = {
+		en = "Thickens Darktide's fixed one-pixel animated dashed material with 1-5 bounded concentric layers. Layers are created only when card blueprints are rebuilt; no Lua animation timer or per-frame allocation is used.",
+	},
+	equipped_highlight_solid_border_width = {
+		en = "Solid border width",
+	},
+	equipped_highlight_solid_border_width_tooltip = {
+		en = "Sets the solid equipped-card border width from 1-5 using Darktide's native frame materials and bounded concentric layers.",
 	},
 	equipped_highlight_color_preset = {
 		en = "Preset",
@@ -926,6 +944,15 @@ local localization = {
 	},
 	option_requires_equipped_highlight = {
 		en = "Select an equipped item highlight mode to use these colour controls.",
+	},
+	option_requires_equipped_highlight_soft_glow = {
+		en = "Select Soft glow to use this option.",
+	},
+	option_requires_equipped_highlight_animated_dashes = {
+		en = "Select Animated dashed border to use this option.",
+	},
+	option_requires_equipped_highlight_solid_border = {
+		en = "Select Solid border to use this option.",
 	},
 	compact_favorite_marker = {
 		en = "Use compact favorite marker",

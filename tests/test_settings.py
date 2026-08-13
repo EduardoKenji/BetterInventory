@@ -124,6 +124,9 @@ def main() -> None:
 			weapon_perk_text_color_b = 180,
 			weapon_perk_text_opacity = 100,
 			highlight_equipped_items = true,
+			equipped_highlight_glow_intensity = 100,
+			equipped_highlight_animated_border_width = 2,
+			equipped_highlight_solid_border_width = 2,
 			equipped_highlight_color_preset = "mode_default",
 			equipped_highlight_color_r = 255,
 			equipped_highlight_color_g = 255,
@@ -1343,6 +1346,9 @@ def main() -> None:
 		"weapon_perk_text_color_b",
 		"weapon_perk_text_opacity",
 		"weapon_perk_vertical_spacing",
+		"equipped_highlight_glow_intensity",
+		"equipped_highlight_animated_border_width",
+		"equipped_highlight_solid_border_width",
 		"equipped_highlight_color_preset",
 		"equipped_highlight_color_r",
 		"equipped_highlight_color_g",
@@ -1641,6 +1647,9 @@ def main() -> None:
         "equipped_highlight_color_b",
     ):
         assert entries_by_id[setting_id].disabled is False
+    assert entries_by_id["equipped_highlight_glow_intensity"].disabled is True
+    assert entries_by_id["equipped_highlight_animated_border_width"].disabled is True
+    assert entries_by_id["equipped_highlight_solid_border_width"].disabled is False
     settings.highlight_equipped_items = "off"
     mod.on_setting_changed("highlight_equipped_items")
     for setting_id in (
@@ -1648,6 +1657,12 @@ def main() -> None:
         "equipped_highlight_color_r",
         "equipped_highlight_color_g",
         "equipped_highlight_color_b",
+    ):
+        assert entries_by_id[setting_id].disabled is True
+    for setting_id in (
+        "equipped_highlight_glow_intensity",
+        "equipped_highlight_animated_border_width",
+        "equipped_highlight_solid_border_width",
     ):
         assert entries_by_id[setting_id].disabled is True
     settings.highlight_equipped_items = "soft_glow"
@@ -1659,6 +1674,21 @@ def main() -> None:
         "equipped_highlight_color_b",
     ):
         assert entries_by_id[setting_id].disabled is False
+    assert entries_by_id["equipped_highlight_glow_intensity"].disabled is False
+    assert entries_by_id["equipped_highlight_animated_border_width"].disabled is True
+    assert entries_by_id["equipped_highlight_solid_border_width"].disabled is True
+    settings.highlight_equipped_items = "animated_dashes"
+    mod.on_setting_changed("highlight_equipped_items")
+    assert entries_by_id["equipped_highlight_glow_intensity"].disabled is True
+    assert entries_by_id["equipped_highlight_animated_border_width"].disabled is False
+    assert entries_by_id["equipped_highlight_solid_border_width"].disabled is True
+    settings.highlight_equipped_items = "solid_border"
+    mod.on_setting_changed("highlight_equipped_items")
+    assert entries_by_id["equipped_highlight_glow_intensity"].disabled is True
+    assert entries_by_id["equipped_highlight_animated_border_width"].disabled is True
+    assert entries_by_id["equipped_highlight_solid_border_width"].disabled is False
+    settings.highlight_equipped_items = "soft_glow"
+    mod.on_setting_changed("highlight_equipped_items")
     assert entries_by_id["weapon_perk_compression"].disabled is True
     assert entries_by_id["show_weapon_perk_rank_symbols"].disabled is True
     assert entries_by_id["weapon_perk_rank_icon_size"].disabled is True
@@ -2084,6 +2114,9 @@ def main() -> None:
 			"custom_item_override_weapon_information_color",
 			"custom_item_override_weapon_rarity_keyword_color",
 			"custom_item_override_weapon_information_name_color",
+			"equipped_highlight_glow_intensity",
+			"equipped_highlight_animated_border_width",
+			"equipped_highlight_solid_border_width",
 			"equipped_highlight_color_preset",
 			"equipped_highlight_color_r",
 			"equipped_highlight_color_g",
@@ -2134,6 +2167,9 @@ def main() -> None:
     assert entries_by_id["equipped_highlight_color_r"].disabled is False
     assert entries_by_id["equipped_highlight_color_g"].disabled is False
     assert entries_by_id["equipped_highlight_color_b"].disabled is False
+    assert entries_by_id["equipped_highlight_glow_intensity"].disabled is False
+    assert entries_by_id["equipped_highlight_animated_border_width"].disabled is True
+    assert entries_by_id["equipped_highlight_solid_border_width"].disabled is True
 
     settings.weapon_blessing_display_mode = "ranked_text"
     mod.on_setting_changed("weapon_blessing_display_mode")
@@ -2444,10 +2480,11 @@ def main() -> None:
         for index in range(1, len(data.options.widgets) + 1)
         if data.options.widgets[index].setting_id == "card_content_group"
     )
-    card_content_ids = {
+    ordered_card_content_ids = [
         card_content_group.sub_widgets[index].setting_id
         for index in range(1, len(card_content_group.sub_widgets) + 1)
-    }
+    ]
+    card_content_ids = set(ordered_card_content_ids)
     assert "weapon_perk_text_color_group" not in card_content_ids
     assert {
         "weapon_perk_text_color_preset",
@@ -2463,34 +2500,32 @@ def main() -> None:
 		"weapon_blessing_text_color_b",
 		"weapon_blessing_text_opacity",
     }.issubset(card_content_ids)
-    assert "equipped_highlight_color_group" in card_content_ids
-    equipped_highlight_mode = next(
-        card_content_group.sub_widgets[index]
-        for index in range(1, len(card_content_group.sub_widgets) + 1)
-        if card_content_group.sub_widgets[index].setting_id
-        == "highlight_equipped_items"
-    )
-    assert equipped_highlight_mode.type == "dropdown"
-    assert [
-        equipped_highlight_mode.options[index].value
-        for index in range(1, len(equipped_highlight_mode.options) + 1)
-    ] == ["off", "soft_glow", "animated_dashes", "solid_border"]
-    equipped_highlight_color_group = next(
-        card_content_group.sub_widgets[index]
-        for index in range(1, len(card_content_group.sub_widgets) + 1)
-        if card_content_group.sub_widgets[index].setting_id
-        == "equipped_highlight_color_group"
-    )
-    assert [
-        equipped_highlight_color_group.sub_widgets[index].setting_id
-        for index in range(1, len(equipped_highlight_color_group.sub_widgets) + 1)
-    ] == [
+    assert ordered_card_content_ids[-1] == "equipped_highlight_group"
+    assert "equipped_highlight_color_group" not in card_content_ids
+    equipped_highlight_group = card_content_group.sub_widgets[
+        len(card_content_group.sub_widgets)
+    ]
+    equipped_highlight_ids = [
+        equipped_highlight_group.sub_widgets[index].setting_id
+        for index in range(1, len(equipped_highlight_group.sub_widgets) + 1)
+    ]
+    assert equipped_highlight_ids == [
+        "highlight_equipped_items",
+        "equipped_highlight_glow_intensity",
+        "equipped_highlight_animated_border_width",
+        "equipped_highlight_solid_border_width",
         "equipped_highlight_color_preset",
         "equipped_highlight_color_r",
         "equipped_highlight_color_g",
         "equipped_highlight_color_b",
     ]
-    highlight_presets = equipped_highlight_color_group.sub_widgets[1].options
+    equipped_highlight_mode = equipped_highlight_group.sub_widgets[1]
+    assert equipped_highlight_mode.type == "dropdown"
+    assert [
+        equipped_highlight_mode.options[index].value
+        for index in range(1, len(equipped_highlight_mode.options) + 1)
+    ] == ["off", "soft_glow", "animated_dashes", "solid_border"]
+    highlight_presets = equipped_highlight_group.sub_widgets[5].options
     assert highlight_presets[1].value == "mode_default"
     assert {highlight_presets[index].value for index in range(1, len(highlight_presets) + 1)}.issuperset(
         {"gold", "white", "custom"}
@@ -2635,6 +2670,9 @@ def main() -> None:
     assert defaults["weapon_blessing_text_color_b"] == 235
     assert defaults["weapon_blessing_text_opacity"] == 80
     assert defaults["highlight_equipped_items"] == "soft_glow"
+    assert defaults["equipped_highlight_glow_intensity"] == 100
+    assert defaults["equipped_highlight_animated_border_width"] == 2
+    assert defaults["equipped_highlight_solid_border_width"] == 2
     assert defaults["equipped_highlight_color_preset"] == "mode_default"
     assert defaults["equipped_highlight_color_r"] == 255
     assert defaults["equipped_highlight_color_g"] == 255

@@ -1966,31 +1966,6 @@ return {
 						},
 					},
 					{
-						setting_id = "highlight_equipped_items",
-						tooltip = "highlight_equipped_items_tooltip",
-						type = "dropdown",
-						default_value = "soft_glow",
-						options = {
-							{
-								text = "equipped_highlight_mode_off",
-								value = "off",
-							},
-							{
-								text = "equipped_highlight_mode_soft_glow",
-								value = "soft_glow",
-							},
-							{
-								text = "equipped_highlight_mode_animated_dashes",
-								value = "animated_dashes",
-							},
-							{
-								text = "equipped_highlight_mode_solid_border",
-								value = "solid_border",
-							},
-						},
-					},
-					color_group("equipped_highlight_color_group", "equipped_highlight_color", "mode_default", 255, 255, 255, true),
-					{
 						setting_id = "compact_favorite_marker",
 						type = "checkbox",
 						default_value = true,
@@ -2053,6 +2028,99 @@ return {
 						tooltip = "show_item_level_icon_tooltip",
 						type = "checkbox",
 						default_value = false,
+					},
+					{
+						setting_id = "equipped_highlight_group",
+						type = "group",
+						sub_widgets = {
+							{
+								setting_id = "highlight_equipped_items",
+								tooltip = "highlight_equipped_items_tooltip",
+								type = "dropdown",
+								default_value = "soft_glow",
+								options = {
+									{
+										text = "equipped_highlight_mode_off",
+										value = "off",
+									},
+									{
+										text = "equipped_highlight_mode_soft_glow",
+										value = "soft_glow",
+									},
+									{
+										text = "equipped_highlight_mode_animated_dashes",
+										value = "animated_dashes",
+									},
+									{
+										text = "equipped_highlight_mode_solid_border",
+										value = "solid_border",
+									},
+								},
+							},
+							{
+								setting_id = "equipped_highlight_glow_intensity",
+								tooltip = "equipped_highlight_glow_intensity_tooltip",
+								type = "numeric",
+								default_value = 100,
+								range = {
+									0,
+									100,
+								},
+							},
+							{
+								setting_id = "equipped_highlight_animated_border_width",
+								tooltip = "equipped_highlight_animated_border_width_tooltip",
+								type = "numeric",
+								default_value = 2,
+								range = {
+									1,
+									5,
+								},
+							},
+							{
+								setting_id = "equipped_highlight_solid_border_width",
+								tooltip = "equipped_highlight_solid_border_width_tooltip",
+								type = "numeric",
+								default_value = 2,
+								range = {
+									1,
+									5,
+								},
+							},
+							{
+								setting_id = "equipped_highlight_color_preset",
+								type = "dropdown",
+								default_value = "mode_default",
+								options = color_preset_options(true),
+							},
+							{
+								setting_id = "equipped_highlight_color_r",
+								type = "numeric",
+								default_value = 255,
+								range = {
+									0,
+									255,
+								},
+							},
+							{
+								setting_id = "equipped_highlight_color_g",
+								type = "numeric",
+								default_value = 255,
+								range = {
+									0,
+									255,
+								},
+							},
+							{
+								setting_id = "equipped_highlight_color_b",
+								type = "numeric",
+								default_value = 255,
+								range = {
+									0,
+									255,
+								},
+							},
+						},
 					},
 				},
 			},

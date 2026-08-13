@@ -869,8 +869,19 @@ local function configure_favorite_marker(mod, pass_template, text_left)
 	end
 end
 
+local EQUIPPED_HIGHLIGHT_STYLE_PREFIX = "better_inventory_equipped_highlight"
+
+local function clear_equipped_highlight_passes(pass_template)
+	for index = #pass_template, 1, -1 do
+		local style_id = pass_template[index] and pass_template[index].style_id
+
+		if style_id == EQUIPPED_HIGHLIGHT_STYLE_PREFIX or type(style_id) == "string" and string.sub(style_id, 1, #EQUIPPED_HIGHLIGHT_STYLE_PREFIX + 1) == EQUIPPED_HIGHLIGHT_STYLE_PREFIX .. "_" then
+			table.remove(pass_template, index)
+		end
+	end
+end
+
 local function configure_equipped_highlight(mod, pass_template, card_width, card_height)
-	local highlight = pass_by_style_id(pass_template, "better_inventory_equipped_highlight")
 	local mode = setting(mod, "highlight_equipped_items", "soft_glow")
 
 	-- Accept saved checkbox values until the v2.2.1 migration runs. Unknown
@@ -883,64 +894,88 @@ local function configure_equipped_highlight(mod, pass_template, card_width, card
 		mode = "off"
 	end
 
-	if not highlight then
-		highlight = {
-			pass_type = "texture",
-			style_id = "better_inventory_equipped_highlight",
-			value = "content/ui/materials/frames/dropshadow_medium",
-			style = {},
-		}
-		pass_template[#pass_template + 1] = highlight
+	-- Blueprints can be presented more than once by chained integrations. Remove
+	-- only our owned passes before rebuilding the bounded mode-specific set.
+	clear_equipped_highlight_passes(pass_template)
+
+	if mode == "off" then
+		return
 	end
 
-	highlight.style = highlight.style or {}
-	highlight.style.horizontal_alignment = "center"
-	highlight.style.vertical_alignment = "center"
-	highlight.style.scale_to_material = true
-	highlight.style.color = {
-		255,
-		math.floor(numeric_setting(mod, "equipped_highlight_color_r", 255, 0, 255) + 0.5),
-		math.floor(numeric_setting(mod, "equipped_highlight_color_g", 255, 0, 255) + 0.5),
-		math.floor(numeric_setting(mod, "equipped_highlight_color_b", 255, 0, 255) + 0.5),
-	}
-	highlight.style.size = {
-		card_width,
-		card_height,
-	}
+	local alpha = 255
+	local material = "content/ui/materials/frames/dropshadow_medium"
+	local pass_count = 1
+	local base_size_addition = 16
+	local layer_size_step = 0
+	local z_offset = 3
 
 	if mode == "animated_dashes" then
 		-- Native material owns its GPU animation. No Lua timer, widget state, or
-		-- per-frame allocation is needed, and reused cards retain no animation data.
-		highlight.value = "content/ui/materials/frames/line_thin_dashed_animated"
-		highlight.style.size_addition = {
-			4,
-			4,
-		}
+		-- per-frame allocation is needed. Concentric static passes thicken its
+		-- fixed one-pixel stroke without retaining animation data on reused cards.
+		material = "content/ui/materials/frames/line_thin_dashed_animated"
+		pass_count = math.floor(numeric_setting(mod, "equipped_highlight_animated_border_width", 2, 1, 5) + 0.5)
+		base_size_addition = 4
+		layer_size_step = 2
+		z_offset = 8
 	elseif mode == "solid_border" then
-		highlight.value = "content/ui/materials/frames/frame_tile_2px"
-		highlight.style.size_addition = {
-			4,
-			4,
-		}
+		local border_width = math.floor(numeric_setting(mod, "equipped_highlight_solid_border_width", 2, 1, 5) + 0.5)
+
+		material = border_width == 1 and "content/ui/materials/frames/frame_tile_1px" or "content/ui/materials/frames/frame_tile_2px"
+		pass_count = border_width == 1 and 1 or border_width - 1
+		base_size_addition = 4
+		layer_size_step = 2
+		z_offset = 8
 	else
-		highlight.value = "content/ui/materials/frames/dropshadow_medium"
-		highlight.style.size_addition = {
-			16,
-			16,
+		local intensity = numeric_setting(mod, "equipped_highlight_glow_intensity", 100, 0, 100)
+
+		alpha = math.floor(intensity * 2.55 + 0.5)
+	end
+
+	local red = math.floor(numeric_setting(mod, "equipped_highlight_color_r", 255, 0, 255) + 0.5)
+	local green = math.floor(numeric_setting(mod, "equipped_highlight_color_g", 255, 0, 255) + 0.5)
+	local blue = math.floor(numeric_setting(mod, "equipped_highlight_color_b", 255, 0, 255) + 0.5)
+	local function equipped_visible(content)
+		return content and content.equipped == true
+	end
+
+	for layer = 1, pass_count do
+		local size_addition = base_size_addition + (layer - 1) * layer_size_step
+
+		pass_template[#pass_template + 1] = {
+			pass_type = "texture",
+			style_id = layer == 1 and EQUIPPED_HIGHLIGHT_STYLE_PREFIX or EQUIPPED_HIGHLIGHT_STYLE_PREFIX .. "_layer_" .. tostring(layer),
+			value = material,
+			style = {
+				horizontal_alignment = "center",
+				vertical_alignment = "center",
+				scale_to_material = true,
+				color = {
+					alpha,
+					red,
+					green,
+					blue,
+				},
+				size = {
+					card_width,
+					card_height,
+				},
+				size_addition = {
+					size_addition,
+					size_addition,
+				},
+				offset = {
+					0,
+					0,
+					z_offset,
+				},
+			},
+			visibility_function = equipped_visible,
 		}
 	end
 
-	highlight.style.offset = {
-		0,
-		0,
-		mode == "soft_glow" and 3 or 8,
-	}
-	-- Setting changes invalidate active view composition. Capture once per
-	-- blueprint instead of calling DMF once per card on every draw pass.
-	local highlight_enabled = mode ~= "off"
-	highlight.visibility_function = function(content)
-		return highlight_enabled and content and content.equipped == true
-	end
+	-- No change/update callback: all settings are captured once while view
+	-- composition is built, then Darktide draws only static native passes.
 end
 
 local function add_custom_content_passes(mod, pass_template, card_width, text_left, base_text_style, configuration)

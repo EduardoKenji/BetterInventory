@@ -492,6 +492,10 @@ local function refresh_option_dependencies()
 	local quick_look_card_bottom_padding_reason = quick_look_card_grid_enabled and mod:localize("option_requires_quick_look_card_above_power") or quick_look_card_grid_reason
 	local equipped_highlight_enabled = mod:get("highlight_equipped_items") ~= "off" and mod:get("highlight_equipped_items") ~= false
 	local equipped_highlight_reason = mod:localize("option_requires_equipped_highlight")
+	local equipped_highlight_mode = mod:get("highlight_equipped_items")
+	local equipped_glow_enabled = equipped_highlight_mode == "soft_glow" or equipped_highlight_mode == true
+	local equipped_dashes_enabled = equipped_highlight_mode == "animated_dashes"
+	local equipped_solid_enabled = equipped_highlight_mode == "solid_border"
 
 	set_option_enabled(option_dependency_entries.expand_curio_inventory_window, window_expansion_enabled, expansion_reason)
 	set_option_enabled(option_dependency_entries.weapon_extra_width_column_threshold, window_expansion_enabled, expansion_reason)
@@ -548,6 +552,9 @@ local function refresh_option_dependencies()
 	set_option_enabled(option_dependency_entries.equipped_highlight_color_r, equipped_highlight_enabled, equipped_highlight_reason)
 	set_option_enabled(option_dependency_entries.equipped_highlight_color_g, equipped_highlight_enabled, equipped_highlight_reason)
 	set_option_enabled(option_dependency_entries.equipped_highlight_color_b, equipped_highlight_enabled, equipped_highlight_reason)
+	set_option_enabled(option_dependency_entries.equipped_highlight_glow_intensity, equipped_glow_enabled, mod:localize("option_requires_equipped_highlight_soft_glow"))
+	set_option_enabled(option_dependency_entries.equipped_highlight_animated_border_width, equipped_dashes_enabled, mod:localize("option_requires_equipped_highlight_animated_dashes"))
+	set_option_enabled(option_dependency_entries.equipped_highlight_solid_border_width, equipped_solid_enabled, mod:localize("option_requires_equipped_highlight_solid_border"))
 	set_option_enabled(option_dependency_entries.blessing_text_item_level_separation, weapon_blessing_text_enabled, mod:localize("option_requires_weapon_blessing_text"))
 	set_option_enabled(option_dependency_entries.auto_fit_long_blessing_names, weapon_blessing_text_enabled, mod:localize("option_requires_weapon_blessing_text"))
 	set_option_enabled(option_dependency_entries.truncate_long_blessing_names, weapon_blessing_text_enabled, mod:localize("option_requires_weapon_blessing_text"))
@@ -794,6 +801,9 @@ local function bind_option_dependencies(options_templates)
 		"equipped_highlight_color_r",
 		"equipped_highlight_color_g",
 		"equipped_highlight_color_b",
+		"equipped_highlight_glow_intensity",
+		"equipped_highlight_animated_border_width",
+		"equipped_highlight_solid_border_width",
 		"blessing_text_item_level_separation",
 		"auto_fit_long_blessing_names",
 		"truncate_long_blessing_names",
