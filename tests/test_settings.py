@@ -281,6 +281,7 @@ def main() -> None:
 		captured_grid_widget_hook = nil
 		captured_grid_update_hook = nil
 		captured_module_errors = 0
+		settings_registry_register_calls = 0
 		fail_feature_load = false
 
         function test_mod:get(setting_id)
@@ -432,6 +433,17 @@ def main() -> None:
     lua.globals().TestCapabilities = capabilities
     lua.globals().TestSettingsRegistry = settings_registry
     lua.globals().TestFeatureDomains = feature_domains
+    lua.execute(
+        """
+        local original_register = TestSettingsRegistry.register
+
+        TestSettingsRegistry.register = function(...)
+            settings_registry_register_calls = settings_registry_register_calls + 1
+
+            return original_register(...)
+        end
+        """
+    )
     lua.execute(MAIN_PATH.read_text(encoding="utf-8"), name=str(MAIN_PATH))
     globals_ = lua.globals()
     mod = globals_.test_mod
@@ -1556,26 +1568,28 @@ def main() -> None:
         }
     )
     entries.extend([active_character_entry, empty_character_entry])
-    canonical_entries = [
+    # Some DMF/extension combinations can expose a post-processed collection
+    # under options_widgets_data rather than an authoritative per-mod schema.
+    # The runtime must not diagnose or register this foreign data when Mod
+    # Options opens; DMF and the release verifier own source duplicate checks.
+    foreign_widgets = [
         lua.table_from(
             {
-                "setting_id": option_id,
-                "type": "numeric",
-            }
-        )
-        for option_id in option_ids
-    ]
-    canonical_entries.insert(
-        0,
-        lua.table_from(
-            {
-                "mod_name": "BetterInventory",
-                "readable_mod_name": "Better Inventory",
+                "mod_name": "AutoMark",
+                "readable_mod_name": "Auto Mark",
             }
         ),
-    )
+        lua.table_from({"setting_id": "aggro_rager_r", "type": "numeric"}),
+        lua.table_from({"setting_id": "aggro_rager_r", "type": "numeric"}),
+        lua.table_from(
+            {"setting_id": "servo_skull_range_limitation_breed", "type": "dropdown"}
+        ),
+        lua.table_from(
+            {"setting_id": "servo_skull_range_limitation_breed", "type": "dropdown"}
+        ),
+    ]
     globals_.test_dmf.options_widgets_data = lua.table_from(
-        [lua.table_from(canonical_entries)]
+        [lua.table_from(foreign_widgets)]
     )
     # DMF supplies one generated settings array for all mods. Foreign duplicate
     # IDs must not be attributed to BetterInventory or trigger its diagnostic.
@@ -1635,6 +1649,7 @@ def main() -> None:
 
     globals_.captured_options_hook(globals_.test_dmf, options_templates)
     assert globals_.captured_module_errors == 0
+    assert globals_.settings_registry_register_calls == 0
     entries_by_id = dict(zip(option_ids, entries))
     name_it_curio_name_entries = [
         entries_by_id["name_it_force_curio_name_in_detailed_mode"],
@@ -2438,7 +2453,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "2.2.4"
+    assert data.version == "2.2.5"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
