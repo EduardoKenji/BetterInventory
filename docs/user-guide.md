@@ -1,6 +1,6 @@
 # BetterInventory user guide
 
-BetterInventory v2.2.3 improves inventory, Character Overview, Hadron, Requisition Weapons & Curios, and optional GlobalStore cards while preserving Darktide's native item and icon lifecycle.
+BetterInventory v2.2.4 improves inventory, Character Overview, Hadron, Requisition Weapons & Curios, and optional GlobalStore cards while preserving Darktide's native item and icon lifecycle.
 
 At the bottom of **Card content**, the **Equipped item highlight** subsection offers Off, Soft glow, Animated dashed border, Pulsing animated dashed border, and Solid border. The default is a gold Animated dashed border at width 2. Soft glow has a 0-100% intensity control. Both dashed modes share a 1-5 width control, while Solid border has an independent 1-5 width control; controls that do not apply to the selected mode are greyed out. **Mode default** uses white for Soft glow and terminal gold for borders. Choose any other preset or edit Red, Green, or Blue; editing a colour slider automatically changes the preset to **Custom colour**. Both dashed modes use Darktide's native animated material. Pulsing dashes additionally fade from 15% to 100% opacity and back over four seconds using the global UI clock, without retaining a timer on any card. Border width is bounded to native frame layers which are replaced, rather than accumulated, whenever card blueprints are rebuilt.
 
