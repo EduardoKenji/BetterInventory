@@ -4,7 +4,7 @@
 >
 > Audit date: 2026-08-07. See [`docs/v2.0.0-full-project-audit.md`](docs/v2.0.0-full-project-audit.md) for the prioritized implementation backlog and release gates.
 
-> Local live-test rule: after every runtime change, run `powershell -ExecutionPolicy Bypass -File .\tools\sync_installed_mod.ps1`. It deploys and hash-verifies repository runtime against `Content\mods\BetterInventory`; unsynchronized in-game results are not valid test evidence.
+> Local live-test rule: the only canonical live install for this checkout is `C:\XboxGames\Warhammer 40,000- Darktide\Content\mods\BetterInventory`. After every runtime change, run `powershell -ExecutionPolicy Bypass -File .\tools\sync_installed_mod.ps1`; it deploys and hash-verifies that directory. Do not use the MSIX/WindowsApps package view as a deployment or validation target. Unsynchronized in-game results are not valid test evidence.
 
 BetterInventory is a standalone, modern inventory and item-management layer for Warhammer 40,000: Darktide. It provides responsive item cards, weapon and Curio details, sorting priorities, supported vendor grids, compatibility integrations and optional safety-gated inventory automation.
 
