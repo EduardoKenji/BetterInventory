@@ -10,7 +10,7 @@
 - Kept drawing bounded and allocation-free during normal frames: one pass checks acknowledgement, native GPU materials animate dashes, and optional callback failures are contained.
 - Added **Pulsing animated dashed border** to newly acquired and equipped item highlights. It fades from 15% to 100% opacity and back over a slow four-second cycle while retaining the existing dashed-width and colour controls.
 - Used Darktide's global UI clock for synchronized pulsing, with no retained per-card timer state or per-frame allocation; new-item acknowledgement remains once-only on the first pass.
-- Fixed live highlight-mode changes so only the applicable glow-intensity or border-width slider remains enabled without reopening the options menu.
+- Fixed live highlight-mode changes so only the applicable glow-intensity or border-width slider remains enabled without reopening the options menu, using one event-driven refresh per dropdown change with no per-frame polling.
 
 ## 2.2.1 - 2026-08-13
 

@@ -176,6 +176,7 @@ def main() -> None:
 			automatic_curio_disable_no_eligible_notification = false,
 			myfavorites_show_favorite_letter = false,
         }
+		highlight_dependency_getter_calls = 0
 
 		test_layout = {
             is_enabled_for_view = function() return false end,
@@ -1422,6 +1423,7 @@ def main() -> None:
 		"weapon_perk_text_color_b",
 		"weapon_perk_text_opacity",
 		"weapon_perk_vertical_spacing",
+		"highlight_equipped_items",
 		"equipped_highlight_glow_intensity",
 		"equipped_highlight_animated_border_width",
 		"equipped_highlight_solid_border_width",
@@ -1429,6 +1431,7 @@ def main() -> None:
 		"equipped_highlight_color_r",
 		"equipped_highlight_color_g",
 		"equipped_highlight_color_b",
+		"new_item_highlight_mode",
 		"new_item_highlight_glow_intensity",
 		"new_item_highlight_animated_border_width",
 		"new_item_highlight_solid_border_width",
@@ -1563,10 +1566,18 @@ def main() -> None:
             entry.widget_type = "group_header"
         if option_id.startswith("character_overview_dump_stat_"):
             entry.get_function = lua.eval("function() return true end")
-        if option_id.startswith("equipped_highlight_") or option_id.startswith(
+        if option_id in {"highlight_equipped_items", "new_item_highlight_mode"}:
+            entry.widget_type = "dropdown"
+            entry.on_activated = lua.eval(
+                f'function(value) settings["{option_id}"] = value; return true end'
+            )
+        elif option_id.startswith("equipped_highlight_") or option_id.startswith(
             "new_item_highlight_"
         ):
-            entry.get_function = lua.eval("function() return true end")
+            entry.get_function = lua.eval(
+                "function() highlight_dependency_getter_calls = "
+                "highlight_dependency_getter_calls + 1; return true end"
+            )
     options_templates = lua.table_from(
         {"settings": lua.table_from(entries)}
     )
@@ -1755,19 +1766,17 @@ def main() -> None:
     settings.highlight_equipped_items = "soft_glow"
     mod.on_setting_changed("highlight_equipped_items")
 
-    # The open DMF options view polls each slider getter every frame. Its
-    # disabled state must therefore follow the current mode even if a hot
-    # reload leaves the normal setting-change notification path stale.
-    settings.highlight_equipped_items = "animated_dashes"
-    entries_by_id["equipped_highlight_animated_border_width"].get_function()
-    entries_by_id["equipped_highlight_glow_intensity"].get_function()
+    # Dropdown activation refreshes this exact generated tree once. None of
+    # the child getters are wrapped or polled by BetterInventory.
+    equipped_mode_entry = entries_by_id["highlight_equipped_items"]
+    equipped_mode_entry.on_activated("animated_dashes", equipped_mode_entry)
+    assert settings.highlight_equipped_items == "animated_dashes"
     assert entries_by_id["equipped_highlight_animated_border_width"].disabled is False
     assert entries_by_id["equipped_highlight_glow_intensity"].disabled is True
-    settings.highlight_equipped_items = "soft_glow"
-    entries_by_id["equipped_highlight_animated_border_width"].get_function()
-    entries_by_id["equipped_highlight_glow_intensity"].get_function()
+    equipped_mode_entry.on_activated("soft_glow", equipped_mode_entry)
     assert entries_by_id["equipped_highlight_animated_border_width"].disabled is True
     assert entries_by_id["equipped_highlight_glow_intensity"].disabled is False
+    assert globals_.highlight_dependency_getter_calls == 0
 
     for setting_id in (
         "new_item_highlight_color_preset",
@@ -1796,11 +1805,12 @@ def main() -> None:
     assert entries_by_id["new_item_highlight_glow_intensity"].disabled is False
     assert entries_by_id["new_item_highlight_animated_border_width"].disabled is True
     assert entries_by_id["new_item_highlight_solid_border_width"].disabled is True
-    settings.new_item_highlight_mode = "solid_border"
-    entries_by_id["new_item_highlight_glow_intensity"].get_function()
-    entries_by_id["new_item_highlight_solid_border_width"].get_function()
+    new_item_mode_entry = entries_by_id["new_item_highlight_mode"]
+    new_item_mode_entry.on_activated("solid_border", new_item_mode_entry)
+    assert settings.new_item_highlight_mode == "solid_border"
     assert entries_by_id["new_item_highlight_glow_intensity"].disabled is True
     assert entries_by_id["new_item_highlight_solid_border_width"].disabled is False
+    assert globals_.highlight_dependency_getter_calls == 0
     mod.on_setting_changed("new_item_highlight_mode")
     assert entries_by_id["new_item_highlight_glow_intensity"].disabled is True
     assert entries_by_id["new_item_highlight_animated_border_width"].disabled is True
@@ -2266,6 +2276,7 @@ def main() -> None:
 			"custom_item_override_weapon_information_color",
 			"custom_item_override_weapon_rarity_keyword_color",
 			"custom_item_override_weapon_information_name_color",
+			"highlight_equipped_items",
 			"equipped_highlight_glow_intensity",
 			"equipped_highlight_animated_border_width",
 			"equipped_highlight_solid_border_width",
@@ -2273,6 +2284,7 @@ def main() -> None:
 			"equipped_highlight_color_r",
 			"equipped_highlight_color_g",
 			"equipped_highlight_color_b",
+			"new_item_highlight_mode",
 			"new_item_highlight_glow_intensity",
 			"new_item_highlight_animated_border_width",
 			"new_item_highlight_solid_border_width",
