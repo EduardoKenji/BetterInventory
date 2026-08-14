@@ -103,6 +103,7 @@ Layout.set_item_customization_provider = function(provider)
 	Blueprints.set_item_customization_provider(provider)
 end
 Layout.clear_runtime_caches = content.clear_runtime_caches
+Layout.update_highlight_animation = Cards.update_highlight_animation
 Layout.synchronize_rarity_tag_color = content.synchronize_rarity_tag_color
 Layout.apply_item_customization_style = content.apply_item_customization_style
 Layout.restore_item_customization_style = content.restore_item_customization_style

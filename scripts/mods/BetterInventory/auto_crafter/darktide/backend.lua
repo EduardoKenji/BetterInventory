@@ -298,7 +298,14 @@ local summarize_base_stats
 local summarize_weapon_template_stats
 local store_item_preview
 local weapon_mark_index
-local weapon_mark_index_source
+local weapon_mark_index_source = setmetatable({}, { __mode = "v" })
+local weapon_mark_index_version
+
+local function clear_weapon_mark_index()
+	weapon_mark_index = nil
+	weapon_mark_index_source[1] = nil
+	weapon_mark_index_version = nil
+end
 
 local function non_empty_localization_id(item, field_name)
 	local metadata = safe_member(item, field_name)
@@ -334,7 +341,16 @@ local function indexed_weapon_marks(parent_pattern)
 		return {}
 	end
 
-	if cached ~= weapon_mark_index_source then
+	local version_ok, cached_version = false, nil
+
+	if type(MasterItems.get_cached_version) == "function" then
+		version_ok, cached_version = pcall(MasterItems.get_cached_version)
+	end
+
+	local source_is_current = weapon_mark_index_source[1] == cached
+	local version_is_current = not version_ok or cached_version == nil or cached_version == weapon_mark_index_version
+
+	if weapon_mark_index == nil or not source_is_current or not version_is_current then
 		local index = {}
 
 		for master_id, item in pairs(cached) do
@@ -365,7 +381,8 @@ local function indexed_weapon_marks(parent_pattern)
 		end
 
 		weapon_mark_index = index
-		weapon_mark_index_source = cached
+		weapon_mark_index_source[1] = cached
+		weapon_mark_index_version = version_ok and cached_version or nil
 	end
 
 	return weapon_mark_index and weapon_mark_index[parent_pattern] or {}
@@ -1362,6 +1379,7 @@ function Backend.new(dependencies)
 		-- needs this full response while validating/dispatching a workflow mutation.
 		self._raw_gear = {}
 		self._purchase_wallets = {}
+		clear_weapon_mark_index()
 
 		return true
 	end

@@ -882,24 +882,46 @@ local function offer_label(offer, index)
 	return value_text(offer and offer.display_name, value_text(offer and offer.master_id, "Offer " .. tostring(index)))
 end
 
-local function offer_selection_key(offer)
+local function offer_selection_identity(offer)
 	if not offer then
-		return nil
+		return nil, nil
 	end
 
 	if offer.offer_id ~= nil then
-		return "offer:" .. tostring(offer.offer_id)
+		return "offer", offer.offer_id
 	end
 
 	if offer.master_id ~= nil then
-		return "master:" .. tostring(offer.master_id)
+		return "master", offer.master_id
 	end
 
 	if offer.display_name ~= nil then
-		return "name:" .. tostring(offer.display_name)
+		return "name", offer.display_name
 	end
 
-	return nil
+	return nil, nil
+end
+
+local function selection_identities_match(left_kind, left_value, right_kind, right_value)
+	if left_kind ~= right_kind then
+		return false
+	end
+
+	if left_kind == nil or left_value == right_value then
+		return true
+	end
+
+	return left_value ~= nil and right_value ~= nil and tostring(left_value) == tostring(right_value)
+end
+
+local function selection_identity_key(kind, value)
+	return kind ~= nil and value ~= nil and kind .. ":" .. tostring(value) or nil
+end
+
+local function offer_selection_key(offer)
+	local kind, value = offer_selection_identity(offer)
+
+	return selection_identity_key(kind, value)
 end
 
 local function offer_detail(offer)
@@ -936,7 +958,9 @@ function Panel.new(dependencies)
 		_queue_craft_confirmation_signature = nil,
 		_queue_craft_confirmation_text = nil,
 		_queue_snapshot_cache = nil,
+		_queue_snapshot_signature = nil,
 		_import_snapshot_cache = nil,
+		_import_snapshot_signature = nil,
 		_presentation_snapshots_dirty = true,
 		_settings = dependencies.settings or {},
 		_localize = dependencies.localize,
@@ -989,10 +1013,13 @@ function Panel.new(dependencies)
 		end
 	end
 
-	function self:_queue_layout(frames)
+	function self:_queue_layout(frames, snapshots_are_current)
 		self._layout_pending = true
 		self._layout_defer_frames = math.max(self._layout_defer_frames or 0, tonumber(frames) or 1)
-		self._presentation_snapshots_dirty = true
+
+		if snapshots_are_current ~= true then
+			self._presentation_snapshots_dirty = true
+		end
 	end
 
 	function self:_entry(label, detail, options)
@@ -1278,6 +1305,8 @@ function Panel.new(dependencies)
 		local import_ok, import_state = safe_call(self._games_lantern_import_snapshot)
 		self._queue_snapshot_cache = queue_ok and type(queue) == "table" and queue or false
 		self._import_snapshot_cache = import_ok and type(import_state) == "table" and import_state or false
+		self._queue_snapshot_signature = self:_games_lantern_queue_signature(self._queue_snapshot_cache)
+		self._import_snapshot_signature = self:_games_lantern_import_signature(self._import_snapshot_cache)
 		self._presentation_snapshots_dirty = false
 
 		return self._queue_snapshot_cache, self._import_snapshot_cache
@@ -2753,17 +2782,16 @@ function Panel.new(dependencies)
 		end
 
 		self._ctrl_v_down = ctrl_v
-		local queue = self:_games_lantern_queue()
-		local queue_signature = self:_games_lantern_queue_signature(queue)
-		local import_signature = self:_games_lantern_import_signature(self:_games_lantern_import())
+		local queue_signature = self._queue_snapshot_signature or "none"
+		local import_signature = self._import_snapshot_signature or "none"
 
 		if queue_signature ~= self._queue_signature then
 			self._queue_signature = queue_signature
-			self:_queue_layout(1)
+			self:_queue_layout(1, true)
 		end
 		if import_signature ~= self._import_signature then
 			self._import_signature = import_signature
-			self:_queue_layout(1)
+			self:_queue_layout(1, true)
 		end
 
 		if type(self._get_selected_offer) ~= "function" then
@@ -2771,37 +2799,41 @@ function Panel.new(dependencies)
 		end
 
 		local ok, raw_offer = pcall(self._get_selected_offer, self._view)
-		local selected_offer
+		local selected_offer_id
+		local selected_offer_master_id
 
 		if ok and raw_offer then
-			selected_offer = {
-				offer_id = safe_member(raw_offer, "offerId") or safe_member(raw_offer, "offer_id"),
-				master_id = safe_member(raw_offer, "masterId") or safe_member(raw_offer, "master_id"),
-			}
+			selected_offer_id = safe_member(raw_offer, "offerId") or safe_member(raw_offer, "offer_id")
+			selected_offer_master_id = safe_member(raw_offer, "masterId") or safe_member(raw_offer, "master_id")
 
 			local description = safe_member(raw_offer, "description")
 			local choices = safe_member(description, "lootChoices") or safe_member(description, "loot_choices")
 			local choice = type(choices) == "table" and choices[1] or nil
 
-			if selected_offer.master_id == nil then
+			if selected_offer_master_id == nil then
 				if type(choice) == "table" then
-					selected_offer.master_id = choice.masterId or choice.master_id or choice.id or choice.name
+					selected_offer_master_id = choice.masterId or choice.master_id or choice.id or choice.name
 				else
-					selected_offer.master_id = choice
+					selected_offer_master_id = choice
 				end
-			end
-
-			if selected_offer.offer_id == nil and selected_offer.master_id == nil then
-				selected_offer = nil
 			end
 		end
 
-		local selected_key = offer_selection_key(selected_offer)
+		local selected_kind
+		local selected_value
+
+		if selected_offer_id ~= nil then
+			selected_kind = "offer"
+			selected_value = selected_offer_id
+		elseif selected_offer_master_id ~= nil then
+			selected_kind = "master"
+			selected_value = selected_offer_master_id
+		end
 
 		if self._pending_offer then
-			local native_selected_key = selected_key
+			local pending_kind, pending_value = offer_selection_identity(self._pending_offer)
 
-			if native_selected_key == offer_selection_key(self._pending_offer) then
+			if selection_identities_match(selected_kind, selected_value, pending_kind, pending_value) then
 				self._pending_offer = nil
 				self._pending_offer_attempts = 0
 			else
@@ -2811,11 +2843,18 @@ function Panel.new(dependencies)
 			end
 		end
 
-		if selected_key ~= self._selected_offer_key then
+		local current_kind, current_value = offer_selection_identity(self._selected_offer)
+
+		if not selection_identities_match(selected_kind, selected_value, current_kind, current_value) then
+			local selected_offer = selected_kind and {
+				offer_id = selected_offer_id,
+				master_id = selected_offer_master_id,
+			} or nil
+
 			self._selected_offer = selected_offer
-			self._selected_offer_key = selected_key
-			self._selected_offer_id = selected_offer and selected_offer.offer_id
-			self._selected_offer_master_id = selected_offer and selected_offer.master_id
+			self._selected_offer_key = selection_identity_key(selected_kind, selected_value)
+			self._selected_offer_id = selected_offer_id
+			self._selected_offer_master_id = selected_offer_master_id
 		end
 
 		if self._layout_pending and (self._layout_defer_frames or 0) > 0 then
@@ -2943,13 +2982,17 @@ function Panel.new(dependencies)
 		self._queue_craft_confirmation_signature = nil
 		self._queue_craft_confirmation_text = nil
 		self._queue_snapshot_cache = nil
+		self._queue_snapshot_signature = nil
 		self._import_snapshot_cache = nil
+		self._import_snapshot_signature = nil
 		self._presentation_snapshots_dirty = true
 		self._ctrl_v_down = false
 
 
 		self:_update_pivot()
 		self:_refresh_games_lantern_snapshots()
+		self._queue_signature = self._queue_snapshot_signature
+		self._import_signature = self._import_snapshot_signature
 
 		if type(panel.disable_input) == "function" then
 			panel:disable_input(false)
@@ -2991,7 +3034,9 @@ function Panel.new(dependencies)
 		self._queue_craft_confirmation_signature = nil
 		self._queue_craft_confirmation_text = nil
 		self._queue_snapshot_cache = nil
+		self._queue_snapshot_signature = nil
 		self._import_snapshot_cache = nil
+		self._import_snapshot_signature = nil
 		self._presentation_snapshots_dirty = true
 		self._ctrl_v_down = false
 		self._pivot_x = nil

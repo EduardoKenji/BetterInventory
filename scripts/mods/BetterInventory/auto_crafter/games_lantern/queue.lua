@@ -467,6 +467,8 @@ function Queue.new(dependencies)
 		self._selected_job_id = nil
 		self._configured_job_id = nil
 		self._character_id = nil
+		self._presentation_cache = nil
+		self._presentation_signature = nil
 
 		return true
 	end

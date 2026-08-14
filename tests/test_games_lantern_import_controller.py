@@ -248,6 +248,22 @@ def main() -> None:
     assert settling_resolver_calls == []
     assert settling_reports == ["character_context_settling"]
 
+    cache_controller = import_module.new(to_lua({}))
+    cache_controller._state = "staged"
+    staged_presentation = cache_controller.presentation_snapshot(cache_controller)
+    assert cache_controller._presentation_cache is not None
+    assert cache_controller.cancel(cache_controller, "test_cancel") is True
+    assert cache_controller._presentation_cache is None
+    assert cache_controller._presentation_signature is None
+    cancelled_presentation = cache_controller.presentation_snapshot(cache_controller)
+    assert cancelled_presentation["state"] == "cancelled"
+    assert cache_controller.clear(cache_controller) is True
+    assert cache_controller._presentation_cache is None
+    assert cache_controller._presentation_signature is None
+    assert lua.eval("function(a, b) return rawequal(a, b) end")(
+        staged_presentation, cancelled_presentation
+    ) is False
+
 
 if __name__ == "__main__":
     main()

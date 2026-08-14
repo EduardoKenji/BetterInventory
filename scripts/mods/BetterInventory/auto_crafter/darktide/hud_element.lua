@@ -70,24 +70,35 @@ end
 HudElementBetterInventoryAutoCrafter.init = function (self, parent, draw_layer, start_scale)
 	HudElementBetterInventoryAutoCrafter.super.init(self, parent, draw_layer, start_scale, definitions)
 	self._visible = false
+	self._better_inventory_presentation_revision = nil
 end
 
 HudElementBetterInventoryAutoCrafter.update = function (self, dt, t, ui_renderer, render_settings, input_service)
 	local bridge = rawget(_G, "AutoCrafterHelperHudState")
 	local enabled = bridge and type(bridge.enabled) == "function" and bridge.enabled() == true and visible_context()
-	local lines = enabled and type(bridge.lines) == "function" and bridge.lines() or nil
-	local text = type(lines) == "table" and table.concat(lines, "\n") or ""
-	local line_count = type(lines) == "table" and #lines or 0
-	local height = status_height(line_count)
-	local scenegraph = self._ui_scenegraph and self._ui_scenegraph.status
 	local widget = self._widgets_by_name.status
+	local text, line_count, revision = "", 0, false
 
-	self._visible = text ~= ""
-	if scenegraph and scenegraph.size then
-		scenegraph.size[2] = height
+	if enabled and type(bridge.presentation) == "function" then
+		text, line_count, revision = bridge.presentation()
 	end
-	widget.style.text.size[2] = height - VERTICAL_PADDING
-	widget.content.text = text
+
+	text = type(text) == "string" and text or ""
+	line_count = tonumber(line_count) or 0
+	self._visible = text ~= ""
+
+	if revision ~= self._better_inventory_presentation_revision then
+		local height = status_height(line_count)
+		local scenegraph = self._ui_scenegraph and self._ui_scenegraph.status
+
+		if scenegraph and scenegraph.size then
+			scenegraph.size[2] = height
+		end
+		widget.style.text.size[2] = height - VERTICAL_PADDING
+		widget.content.text = text
+		self._better_inventory_presentation_revision = revision
+	end
+
 	widget.visible = self._visible
 	HudElementBetterInventoryAutoCrafter.super.update(self, dt, t, ui_renderer, render_settings, input_service)
 end

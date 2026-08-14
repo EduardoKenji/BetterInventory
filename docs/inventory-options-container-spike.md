@@ -3,7 +3,7 @@
 Date: 2026-08-03 (historical design spike)
 Branch: `research/inventory-options-container`
 
-Status: implemented on `main` for v1.7.2. The inventory options panel is enabled by default, retains the loose-widget path as a guarded fallback, and remains subject to in-game input and resolution validation.
+Status: implemented on `main` for v1.7.2 and promoted to invariant runtime behavior on the v2.3.0 branch. The inventory options panel retains the loose-widget path only as an initialization-failure fallback.
 
 ## Outcome
 
@@ -17,9 +17,9 @@ All three proposed capabilities are technically feasible:
 
 The important constraint is that scrolling cannot be added safely by drawing a scrollbar beside the current root-level widgets. Those widgets are rendered by `InventoryWeaponsView` directly and have no clipping boundary. Moving them without a managed masked renderer would let rows draw outside the rectangle.
 
-## Prototype status
+## Implementation status
 
-The implementation described by this spike was carried into `main` behind `enable_inventory_options_panel_prototype`, which is enabled by default in v1.7.2. It:
+The implementation described by this spike was carried into `main` behind `enable_inventory_options_panel_prototype` in v1.7.2. The v2.3.0 branch removes that user-facing switch and ignores stale saved values, making `show_inventory_options_widget` the sole visibility setting. The implementation:
 
 - creates one `ViewElementGrid` through the inventory view's managed element lifecycle;
 - uses a terminal background, native mask and scrollbar;
@@ -30,7 +30,7 @@ The implementation described by this spike was carried into `main` behind `enabl
 - presents only Sorting while Darktide's native discard UI is active;
 - preserves the existing loose widgets and restores them if initialization or positioning fails.
 
-The remaining work is in-game validation of the render target, mouse-wheel ownership, controller navigation, every inventory slot, native discard transitions, hot reload and the supported resolution matrix.
+The continuing regression matrix covers the render target, mouse-wheel ownership, controller navigation, every inventory slot, native discard transitions, hot reload and supported resolutions.
 
 ## Existing BetterInventory UI
 
@@ -179,8 +179,8 @@ Remaining v1.7.2 in-game regression gates are:
 5. Add bounded geometry and dynamic height.
 6. Add scrolling and verify input ownership.
 7. Add collapsible header blueprints and local collapse state.
-8. After the test matrix passes, remove the legacy root-widget path and the research switch.
+8. After the test matrix passes, remove the research switch while retaining the legacy root-widget path only as an initialization-failure fallback.
 
 ## Decision
 
-The spike's decision was to proceed with a guarded `ViewElementGrid` prototype. That prototype is now part of the v1.7.2 implementation: it provides the bounded rectangle, clipping, scrollbar and lifecycle while preserving BetterInventory's existing settings and discard safety logic.
+The spike's decision was to proceed with a guarded `ViewElementGrid` implementation. It now provides the bounded rectangle, clipping, scrollbar and lifecycle as BetterInventory's invariant inventory-options layout while preserving the existing settings and discard safety logic.

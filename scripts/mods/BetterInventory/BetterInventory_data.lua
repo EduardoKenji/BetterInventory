@@ -1,4 +1,4 @@
-local MOD_VERSION = "2.2.5"
+local MOD_VERSION = "2.3.0"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
@@ -325,12 +325,6 @@ return {
 						setting_id = "inventory_options_panel_geometry_group",
 						type = "group",
 						sub_widgets = {
-							{
-								setting_id = "enable_inventory_options_panel_prototype",
-								tooltip = "enable_inventory_options_panel_prototype_tooltip",
-								type = "checkbox",
-								default_value = true,
-							},
 							{
 								setting_id = "inventory_options_controller_focus_keybind",
 								tooltip = "inventory_options_controller_focus_keybind_tooltip",

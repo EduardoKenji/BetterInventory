@@ -45,12 +45,14 @@ def main() -> None:
         end
         package.preload["scripts/utilities/mastery"] = function() return {} end
         test_master_items = {}
+        test_master_items_version = 1
         package.preload["scripts/backend/master_items"] = function()
             return {
 				get_item = function(item_id)
 					return test_master_items[item_id] or {name = item_id, item_type = string.find(item_id, "perk", 1, true) and "PERK" or "TRAIT"}
-				end,
+                end,
                 get_cached = function() return test_master_items end,
+                get_cached_version = function() return test_master_items_version end,
                 get_item_instance = function(raw_item)
                     if raw_item.invalid then return nil end
                     return raw_item
@@ -171,7 +173,8 @@ def main() -> None:
             }},
         }
         local shovel_snapshot
-        Backend.new({services = make_services({}, shovel_store)}):probe_snapshot():next(function(value) shovel_snapshot = value end)
+        local shovel_backend = Backend.new({services = make_services({}, shovel_store)})
+        shovel_backend:probe_snapshot():next(function(value) shovel_snapshot = value end)
         local marks = shovel_snapshot.store.offers[1].marks
         assert(#marks == 3)
         assert(marks[1].master_id == "shovel-mk-1")
@@ -181,6 +184,21 @@ def main() -> None:
             assert(string.find(mark.display_name, "<unlocalized", 1, true) == nil)
             assert(string.find(mark.sub_display_name, "<unlocalized", 1, true) == nil)
         end
+
+        -- MasterItems can refresh its catalogue in place. Rebuild the derived
+        -- mark index on its scalar version without strongly retaining the full
+        -- catalogue table as an identity sentinel.
+        test_master_items["shovel-mk-7"] = nil
+        test_master_items_version = test_master_items_version + 1
+        shovel_backend:probe_snapshot():next(function(value) shovel_snapshot = value end)
+        assert(#shovel_snapshot.store.offers[1].marks == 2)
+
+        -- Releasing transient backend reads must release the module-level mark
+        -- index too, even when neither catalogue identity nor version changes.
+        test_master_items["shovel-mk-7"] = shovel_mark("shovel-mk-7", "loc_munitorum", "loc_mk_7", "Munitorum â€¢ Mk VII")
+        assert(shovel_backend:release_read_cache() == true)
+        shovel_backend:probe_snapshot():next(function(value) shovel_snapshot = value end)
+        assert(#shovel_snapshot.store.offers[1].marks == 3)
 
 		local calls = {perk = 0, blessing = 0, expertise = 0, extract = 0, mastery = 0}
 		local malformed_perk_response = false

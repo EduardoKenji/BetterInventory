@@ -368,11 +368,32 @@ def main() -> None:
 
     globals_.native_promise = globals_.TestPromise.pending()
     module.persist_local_changes(globals_.test_mod, globals_.native_equip, globals_.view)
+    reset_operation = module._test.active_operation()
     assert module.has_pending() is True
     module.reset()
     assert module.has_pending() is False
+    assert reset_operation.retired is True
+    assert reset_operation.intent is None
+    assert reset_operation.promise is None
+    assert reset_operation.view is None
     globals_.native_promise.resolve(globals_.native_promise, lua.table_from([False]))
     assert module.status() == ("idle", 0)
+
+    # Superseding a still-pending write must likewise detach the old callback's
+    # operation shell from its captured inventory graph.
+    globals_.native_promise = globals_.TestPromise.pending()
+    first_promise = globals_.native_promise
+    module.persist_local_changes(globals_.test_mod, globals_.native_equip, globals_.view)
+    superseded_operation = module._test.active_operation()
+    globals_.native_promise = globals_.TestPromise.pending()
+    module.persist_local_changes(globals_.test_mod, globals_.native_equip, globals_.view)
+    assert superseded_operation.retired is True
+    assert superseded_operation.intent is None
+    assert superseded_operation.promise is None
+    assert superseded_operation.view is None
+    first_promise.resolve(first_promise, lua.table_from([True]))
+    assert module.has_pending() is True
+    module.reset()
 
     # A backend promise that never settles cannot retain the immutable intent
     # graph forever. Timeout is fail-closed: retire local ownership and never
@@ -381,12 +402,17 @@ def main() -> None:
     globals_.native_promise = globals_.TestPromise.pending()
     retries_before_timeout = globals_.retry_calls
     module.persist_local_changes(globals_.test_mod, globals_.native_equip, globals_.view)
+    timeout_operation = module._test.active_operation()
     module.update(globals_.test_mod, 119.9)
     assert module.has_pending() is True
     module.update(globals_.test_mod, 0.1)
     assert module.has_pending() is False
     assert globals_.retry_calls == retries_before_timeout
     assert len(globals_.captured_errors) == 1
+    assert timeout_operation.retired is True
+    assert timeout_operation.intent is None
+    assert timeout_operation.promise is None
+    assert timeout_operation.view is None
     globals_.native_promise.resolve(globals_.native_promise, lua.table_from([True]))
     assert module.status() == ("idle", 0)
 

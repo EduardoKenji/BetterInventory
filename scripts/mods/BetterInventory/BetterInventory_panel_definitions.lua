@@ -1113,7 +1113,7 @@ local function add_inventory_sort_toggle_definition(mod, layout, definitions, vi
 
 	local is_curio = slot_kind == "curio"
 
-	if is_curio and mod:get("enable_inventory_options_panel_prototype") == true then
+	if is_curio then
 		local width_percent = numeric_setting(mod, "curio_information_width_percent", 90, 75, 100)
 		local target_width = math.floor(INVENTORY_CURIO_NATIVE_WIDTH * width_percent / 100 + 0.5)
 		local source_settings = adjusted_definitions.weapon_stats_grid_settings
@@ -1494,4 +1494,3 @@ local PanelDefinitions = {
 }
 
 return PanelDefinitions
-

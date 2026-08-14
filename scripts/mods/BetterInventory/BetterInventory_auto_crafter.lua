@@ -1,6 +1,7 @@
 local AutoCrafter = {}
 
 local mod
+local configured_dependencies
 local controller
 local panel
 local games_lantern_queue
@@ -11,11 +12,29 @@ local games_lantern_catalog_generation = 0
 local runtime_context
 local start_games_lantern_queue
 local hud_lines = {}
+local hud_text = ""
+local hud_line_count = 0
+local hud_revision = 0
 local presentation_dirty = true
 local presentation_elapsed = 0
 local presentation_snapshot
 local controller_faulted = false
 local PRESENTATION_CLOCK_INTERVAL = 0.25
+
+local function publish_hud_lines(lines)
+	lines = type(lines) == "table" and lines or {}
+
+	local line_count = #lines
+	local text = line_count > 0 and table.concat(lines, "\n") or ""
+
+	hud_lines = lines
+
+	if text ~= hud_text or line_count ~= hud_line_count then
+		hud_text = text
+		hud_line_count = line_count
+		hud_revision = hud_revision + 1
+	end
+end
 
 local function invalidate_games_lantern_panel()
 	if panel and type(panel.invalidate_games_lantern_snapshots) == "function" then
@@ -273,7 +292,7 @@ local function rebuild_hud_lines(snapshot)
 		lines[#lines + 1] = string.format("Stopped at %s%s", tostring(snapshot.phase or "unknown phase"), snapshot.operation_kind and " (" .. tostring(snapshot.operation_kind) .. ")" or "")
 		lines[#lines + 1] = "Weapon preserved at last confirmed step. Check BetterInventory log for full trace."
 		lines[#lines + 1] = string.format("Elapsed: %d seconds", math.max(0, math.floor(tonumber(snapshot.run_elapsed_seconds) or 0)))
-		hud_lines = lines
+		publish_hud_lines(lines)
 
 		return
 	end
@@ -322,7 +341,7 @@ local function rebuild_hud_lines(snapshot)
 		lines[#lines + 1] = string.format("Elapsed: %d seconds", math.max(0, math.floor(tonumber(snapshot and snapshot.run_elapsed_seconds) or 0)))
 	end
 
-	hud_lines = lines
+	publish_hud_lines(lines)
 end
 
 local function reporter(ui_panel)
@@ -541,8 +560,16 @@ local function clock_adapter()
 end
 
 function AutoCrafter.configure(dependencies)
-	dependencies = dependencies or {}
+	if type(dependencies) == "table" then
+		configured_dependencies = dependencies
+	end
+
+	dependencies = configured_dependencies or {}
 	mod = dependencies.mod or mod
+
+	if controller then
+		return true
+	end
 
 	if not mod or type(mod.io_dofile) ~= "function" then
 		log("error", "Auto Crafter Helper could not initialize: host mod loader unavailable.")
@@ -1153,6 +1180,10 @@ function AutoCrafter.configure(dependencies)
 	return true
 end
 
+function AutoCrafter.ensure_configured()
+	return controller ~= nil or AutoCrafter.configure()
+end
+
 function AutoCrafter.on_brunt_view_ready(view)
 	active_brunt_view = view
 	presentation_dirty = true
@@ -1355,6 +1386,10 @@ function AutoCrafter.hud_lines()
 	return hud_lines
 end
 
+function AutoCrafter.hud_presentation()
+	return hud_text, hud_line_count, hud_revision
+end
+
 function AutoCrafter.snapshot()
 	local ok, snapshot = controller and pcall(controller.snapshot, controller)
 
@@ -1402,7 +1437,7 @@ end
 function AutoCrafter.shutdown()
 	active_brunt_view = nil
 	games_lantern_catalog_generation = games_lantern_catalog_generation + 1
-	hud_lines = {}
+	publish_hud_lines({})
 	presentation_dirty = true
 	presentation_elapsed = 0
 	presentation_snapshot = nil

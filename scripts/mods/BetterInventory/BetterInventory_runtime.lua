@@ -21,6 +21,11 @@ local ItemGridViewBaseDefinitions
 local InventoryWeaponsView
 local ViewElementGrid
 local dmf_mod
+local active_grid_view
+local active_grid_configuration
+local active_highlight_views
+local highlight_animation_enabled = false
+local option_dependency_owner = {}
 local synchronize_myfavorites_grid = function()
 	return 0
 end
@@ -28,6 +33,15 @@ local CreditsGoodsVendorView = require("scripts/ui/views/credits_goods_vendor_vi
 
 local function configure_dependencies(dependencies)
 	mod = dependencies.mod
+	mod._better_inventory_option_dependency_owner = option_dependency_owner
+	active_highlight_views = mod._better_inventory_active_highlight_views
+
+	if type(active_highlight_views) ~= "table" then
+		active_highlight_views = setmetatable({}, {
+			__mode = "k",
+		})
+		mod._better_inventory_active_highlight_views = active_highlight_views
+	end
 	Layout = dependencies.Layout
 	Features = dependencies.Features
 	CurioAcquisition = dependencies.CurioAcquisition
@@ -405,7 +419,18 @@ local function character_overview_dump_stat_style_state()
 end
 
 local function bind_live_option_dependency(setting_id, entry)
-	if not CHARACTER_OVERVIEW_DUMP_STAT_STYLE_SETTING_IDS[setting_id] or entry._better_inventory_live_dependency_getter then
+	if not CHARACTER_OVERVIEW_DUMP_STAT_STYLE_SETTING_IDS[setting_id] or mod._better_inventory_option_dependency_owner ~= option_dependency_owner then
+		return
+	end
+
+	local state = entry._better_inventory_live_dependency_state
+
+	if type(state) == "table" then
+		state.owner = option_dependency_owner
+		state.refresh = character_overview_dump_stat_style_state
+
+		return
+	elseif entry._better_inventory_live_dependency_getter then
 		return
 	end
 
@@ -415,13 +440,22 @@ local function bind_live_option_dependency(setting_id, entry)
 		return
 	end
 
-	entry._better_inventory_live_dependency_getter = true
+	state = {
+		owner = option_dependency_owner,
+		original = original_get_function,
+		refresh = character_overview_dump_stat_style_state,
+	}
+	entry._better_inventory_live_dependency_state = state
 	entry.get_function = function(...)
-		local enabled, reason = character_overview_dump_stat_style_state()
+		local active_state = entry._better_inventory_live_dependency_state
+		local enabled, reason = active_state.refresh()
 
-		apply_option_enabled(entry, enabled, reason)
+		entry.disabled = not enabled
+		entry.disabled_by = enabled and nil or {
+			reason,
+		}
 
-		return original_get_function(...)
+		return active_state.original(...)
 	end
 end
 
@@ -551,10 +585,8 @@ local function refresh_option_dependencies()
 	local automatic_curio_characters_enabled = automatic_curio_enabled and automatic_curio_character_mode
 	local automatic_curio_classes_reason = automatic_curio_enabled and mod:localize("option_requires_automatic_curio_classes_mode") or automatic_curio_reason
 	local automatic_curio_characters_reason = automatic_curio_enabled and mod:localize("option_requires_automatic_curio_characters_mode") or automatic_curio_reason
-	local inventory_options_panel_enabled = mod:get("enable_inventory_options_panel_prototype") == true
-	local inventory_options_panel_reason = mod:localize("option_requires_inventory_options_panel_prototype")
 	local lantern_installed = get_mod("Lantern of the Omnissiah") ~= nil
-	local lantern_reason = lantern_installed and inventory_options_panel_reason or mod:localize("option_requires_lantern_of_the_omnissiah")
+	local lantern_reason = mod:localize("option_requires_lantern_of_the_omnissiah")
 	local quick_look_card_grid_enabled = grid_enabled and mod:get("enable_quick_look_card_grid_integration") ~= false
 	local quick_look_card_grid_reason = grid_enabled and mod:localize("option_requires_quick_look_card_grid_integration") or native_reason
 	local quick_look_card_single_column_enabled = single_column_enabled and mod:get("enable_quick_look_card_single_column_integration") ~= false
@@ -691,11 +723,11 @@ local function refresh_option_dependencies()
 		"inventory_options_panel_padding_left",
 		"inventory_options_panel_padding_right",
 	}) do
-		set_option_enabled(option_dependency_entries[setting_id], inventory_options_panel_enabled, inventory_options_panel_reason)
+		set_option_enabled(option_dependency_entries[setting_id], true)
 	end
 
-	set_option_enabled(option_dependency_entries.enable_lantern_inventory_section, lantern_installed and inventory_options_panel_enabled, lantern_reason)
-	set_option_enabled(option_dependency_entries.keep_lantern_curio_panel_separate, lantern_installed and inventory_options_panel_enabled and mod:get("enable_lantern_inventory_section") == true, lantern_reason)
+	set_option_enabled(option_dependency_entries.enable_lantern_inventory_section, lantern_installed, lantern_reason)
+	set_option_enabled(option_dependency_entries.keep_lantern_curio_panel_separate, lantern_installed and mod:get("enable_lantern_inventory_section") == true, lantern_reason)
 
 	for _, setting_id in ipairs({
 		"quick_discard_mode",
@@ -1075,6 +1107,12 @@ end
 
 function mod.on_enabled()
 	ItemCustomization.on_enabled(mod)
+	if AutoCrafter and type(AutoCrafter.ensure_configured) == "function" then
+		AutoCrafter.ensure_configured()
+	end
+	if Features and type(Features.set_lantern_integration) == "function" then
+		Features.set_lantern_integration(mod, get_mod("Lantern of the Omnissiah"))
+	end
 	if type(Diagnostics.configure) == "function" then
 		Diagnostics.configure(mod)
 	end
@@ -1185,6 +1223,8 @@ function mod.on_enabled()
 		apply_color_preset(COLOR_TARGETS[i])
 	end
 
+	highlight_animation_enabled = mod:get("highlight_equipped_items") == "pulsing_dashes" or mod:get("new_item_highlight_mode") == "pulsing_dashes"
+
 	-- The character rows themselves are part of the static DMF schema. Refresh
 	-- their saved operative labels and backend-ID selection bindings before the
 	-- user can open Mod Options; live discovery will refresh them again.
@@ -1232,19 +1272,6 @@ local function lantern_recommendations_active()
 	return type(Features.lantern_recommendations_active) == "function" and Features.lantern_recommendations_active()
 end
 
--- Extracted to BetterInventory_character_overview_ui.lua.
-
--- Extracted to BetterInventory_character_overview_ui.lua.
-
-
--- Extracted to BetterInventory_character_overview_ui.lua.
-
--- Extracted to BetterInventory_character_overview_ui.lua.
-
--- Extracted to BetterInventory_character_overview_ui.lua.
-
--- Extracted to BetterInventory_character_overview_ui.lua.
-
 function mod.on_setting_changed(setting_id)
 	local color_change = color_target_by_setting_id[setting_id]
 	local automatic_curio_setting = type(setting_id) == "string" and string.sub(setting_id, 1, 16) == "automatic_curio_"
@@ -1262,6 +1289,10 @@ function mod.on_setting_changed(setting_id)
 	end
 
 	ItemCustomization.on_setting_changed(mod, setting_id)
+
+	if setting_id == "highlight_equipped_items" or setting_id == "new_item_highlight_mode" then
+		highlight_animation_enabled = mod:get("highlight_equipped_items") == "pulsing_dashes" or mod:get("new_item_highlight_mode") == "pulsing_dashes"
+	end
 
 	if type(setting_id) == "string" and string.sub(setting_id, 1, #"auto_crafter_") == "auto_crafter_" and AutoCrafter and type(AutoCrafter.on_setting_changed) == "function" then
 		AutoCrafter.on_setting_changed(setting_id)
@@ -1357,6 +1388,12 @@ mod:hook_safe(MainMenuView, "on_exit", function()
 end)
 
 function mod.update(dt)
+	local overview_highlights_active = type(CharacterOverviewUI.needs_update) == "function" and CharacterOverviewUI.needs_update()
+
+	if highlight_animation_enabled and (next(active_highlight_views) ~= nil or overview_highlights_active) and Layout and type(Layout.update_highlight_animation) == "function" then
+		Layout.update_highlight_animation()
+	end
+
 	local auto_crafter_needs_update = AutoCrafter and type(AutoCrafter.update) == "function" and (type(AutoCrafter.needs_update) ~= "function" or AutoCrafter.needs_update())
 
 	if auto_crafter_needs_update then
@@ -1364,7 +1401,7 @@ function mod.update(dt)
 	end
 	local auto_crafter_busy = auto_crafter_needs_update and type(AutoCrafter.is_busy) == "function" and AutoCrafter.is_busy() or false
 
-	if type(CharacterOverviewUI.update_registered_views) == "function" and (type(CharacterOverviewUI.needs_update) ~= "function" or CharacterOverviewUI.needs_update()) then
+	if type(CharacterOverviewUI.update_registered_views) == "function" and (type(CharacterOverviewUI.needs_update) ~= "function" or overview_highlights_active) then
 		CharacterOverviewUI.update_registered_views(dt)
 	end
 	if FeatureDomains and FeatureDomains.markers and type(FeatureDomains.markers.update) == "function" and (type(FeatureDomains.markers.needs_update) ~= "function" or FeatureDomains.markers.needs_update()) then
@@ -1393,6 +1430,9 @@ end
 function mod.on_disabled()
 	if AutoCrafter and type(AutoCrafter.shutdown) == "function" then
 		AutoCrafter.shutdown()
+	end
+	if Features and type(Features.shutdown_lantern_integration) == "function" then
+		Features.shutdown_lantern_integration()
 	end
 
 	ItemCustomization.on_disabled(mod)
@@ -1433,6 +1473,8 @@ if dmf_mod and type(dmf_mod.create_mod_options_settings) == "function" then
 end
 
 mod:hook(ItemGridViewBase, "init", function(func, view, definitions, settings, context)
+	active_highlight_views[view] = true
+
 	if view.__class_name == "InventoryWeaponsView" then
 		local adjusted_definitions = Features.add_inventory_sort_toggle_definition(mod, Layout, definitions, view)
 		local expansion = 0
@@ -1623,6 +1665,10 @@ end
 
 local function release_item_grid_view_runtime(view)
 	local item_grid = view and view._item_grid
+
+	if view then
+		active_highlight_views[view] = nil
+	end
 
 	if FeatureDomains and FeatureDomains.markers and type(FeatureDomains.markers.release_grid) == "function" then
 		FeatureDomains.markers.release_grid(item_grid)

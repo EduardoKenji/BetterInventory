@@ -22,6 +22,7 @@ end
 local Features = {}
 local armoury_panel
 local scenegraph_rect
+local rebuild_inventory_options_panel
 local panel_entry = PanelRuntime.panel_entry
 local panel_lantern_entry = PanelRuntime.panel_lantern_entry
 local controller_element_state = PanelRuntime.controller_element_state
@@ -210,8 +211,8 @@ end
 
 Features._sorting.set_invalidation(Features.invalidate_view_composition)
 
-Features.composition_inputs_changed = function(view, slot_kind)
-	return Features._composition.inputs_changed(view, slot_kind, Features._sorting.mod())
+Features.composition_inputs_changed = function(view, slot_kind, fast_only)
+	return Features._composition.inputs_changed(view, slot_kind, Features._sorting.mod(), fast_only)
 end
 
 Features._contracts = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_contracts")
@@ -1053,6 +1054,10 @@ Features.set_lantern_integration = function(_, integration_mod)
 	return Lantern.set_lantern_integration(_, integration_mod)
 end
 
+Features.shutdown_lantern_integration = function()
+	return Lantern.shutdown()
+end
+
 Features.set_item_sorting_integration = function(integration_mod)
 	return Features._sorting.set_integration(integration_mod, Features.invalidate_all_view_composition)
 end
@@ -1229,13 +1234,9 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 	panel:present_grid_layout(entries, INVENTORY_OPTIONS_PANEL_BLUEPRINTS)
 end
 
--- The stock Curio header reserves 250 virtual pixels for one small item image.
--- Scale the whole preview box rather than shortening only its height; changing
--- one axis was the reason Curio art appeared stretched in the prototype.
--- This transforms only the current InventoryWeaponsView's Curio stats blueprint;
--- crafting, vendors and weapon detail cards keep their native geometry.
+-- Scale both Curio preview axes together to preserve its aspect ratio.
 Features.compact_inventory_curio_stats_blueprints = function(mod, item_grid, content_blueprints)
-	if mod:get("enable_inventory_options_panel_prototype") ~= true or type(content_blueprints) ~= "table" then
+	if type(content_blueprints) ~= "table" then
 		return content_blueprints
 	end
 
@@ -1282,7 +1283,7 @@ end
 Features.release_inventory_options_panel = PanelRuntime.release_inventory_options_panel
 
 Features.setup_inventory_options_panel = function(mod, layout, view, ViewElementGrid)
-	if mod:get("enable_inventory_options_panel_prototype") ~= true or not is_inventory_view(layout, view) or view._better_inventory_options_panel then
+	if not is_inventory_view(layout, view) or view._better_inventory_options_panel then
 		return false
 	end
 
@@ -1320,7 +1321,7 @@ Features.setup_inventory_options_panel = function(mod, layout, view, ViewElement
 
 	if not success or not panel then
 		if type(mod.error) == "function" then
-			mod:error("BetterInventory options-panel prototype could not initialize: " .. tostring(panel))
+			mod:error("BetterInventory options panel could not initialize: " .. tostring(panel))
 		end
 
 		if type(view._remove_element) == "function" then
@@ -1367,7 +1368,7 @@ Features.setup_inventory_options_panel = function(mod, layout, view, ViewElement
 		end
 
 		if type(mod.error) == "function" then
-			mod:error("BetterInventory options-panel prototype could not be configured: " .. tostring(configure_error))
+			mod:error("BetterInventory options panel could not be configured: " .. tostring(configure_error))
 		end
 
 		return false
@@ -1382,7 +1383,7 @@ Features.capture_inventory_options_panel_controller_focus = function(mod, layout
 	end
 
 	local focused = view._better_inventory_options_panel_controller_focused == true
-	local panel_available = mod:get("enable_inventory_options_panel_prototype") == true and mod:get("show_inventory_options_widget") ~= false and view._better_inventory_options_panel_visible == true and view._better_inventory_options_panel and view._better_inventory_options_panel._visible ~= false
+	local panel_available = mod:get("show_inventory_options_widget") ~= false and view._better_inventory_options_panel_visible == true and view._better_inventory_options_panel and view._better_inventory_options_panel._visible ~= false
 
 	if view._using_cursor_navigation ~= false or not panel_available then
 		if focused then
@@ -1967,7 +1968,7 @@ end
 local function update_inventory_options_panel(mod, layout, view, slot_kind)
 	local panel = view._better_inventory_options_panel
 
-	if not panel or mod:get("enable_inventory_options_panel_prototype") ~= true then
+	if not panel then
 		Features.invalidate_view_composition(view)
 
 		if panel then
@@ -1991,7 +1992,7 @@ local function update_inventory_options_panel(mod, layout, view, slot_kind)
 
 	local probe_count = (view._better_inventory_composition_probe_count or 0) + 1
 	local probe_due = probe_count >= 15
-	local input_changed = Features.composition_inputs_changed(view, slot_kind)
+	local input_changed = Features.composition_inputs_changed(view, slot_kind, not view._better_inventory_composition_dirty and not probe_due)
 
 	if not view._better_inventory_composition_dirty and not input_changed and not probe_due then
 		view._better_inventory_composition_probe_count = probe_count

@@ -695,6 +695,76 @@ def main() -> None:
     panel_module = lua.execute(PANEL_PATH.read_text(encoding="utf-8"))
     assert panel_module.weapon_name_with_mark("Power Falchion", "Achlys • Mk VI") == "Achlys Mk VI Power Falchion"
     assert panel_module.weapon_name_with_mark("Branx Mk XI Paired Transonic Blades", "Mk XI") == "Branx Mk XI Paired Transonic Blades"
+    lua.globals().PanelModule = panel_module
+    lua.execute(
+        r'''
+        local queue_snapshot_calls = 0
+        local import_snapshot_calls = 0
+        local queue_signature_calls = 0
+        local import_signature_calls = 0
+        local rendered = 0
+        local queue_snapshot = {queue_id = "queue-a", state = "empty", jobs = {}}
+        local import_snapshot = {state = "idle"}
+        local native_offer = {
+            offerId = "offer-a",
+            description = {lootChoices = {{masterId = "master-a"}}},
+        }
+        local polling_panel = PanelModule.new({
+            games_lantern_queue_snapshot = function()
+                queue_snapshot_calls = queue_snapshot_calls + 1
+                return queue_snapshot
+            end,
+            games_lantern_import_snapshot = function()
+                import_snapshot_calls = import_snapshot_calls + 1
+                return import_snapshot
+            end,
+            get_selected_offer = function()
+                return native_offer
+            end,
+        })
+        local queue_signature = polling_panel._games_lantern_queue_signature
+        local import_signature = polling_panel._games_lantern_import_signature
+        polling_panel._games_lantern_queue_signature = function(self, snapshot)
+            queue_signature_calls = queue_signature_calls + 1
+            return queue_signature(self, snapshot)
+        end
+        polling_panel._games_lantern_import_signature = function(self, snapshot)
+            import_signature_calls = import_signature_calls + 1
+            return import_signature(self, snapshot)
+        end
+        polling_panel._panel = {}
+        polling_panel._view = {}
+        polling_panel._update_pivot = function() return true end
+        polling_panel.render = function()
+            rendered = rendered + 1
+            return true
+        end
+
+        polling_panel:update(0.1)
+        polling_panel:update(0.1)
+        local stable_selected_offer = polling_panel._selected_offer
+        for _ = 1, 20 do polling_panel:update(0.1) end
+
+        assert(queue_snapshot_calls == 1 and import_snapshot_calls == 1)
+        assert(queue_signature_calls == 1 and import_signature_calls == 1)
+        assert(rawequal(stable_selected_offer, polling_panel._selected_offer))
+        assert(polling_panel._selected_offer_key == "offer:offer-a")
+
+        polling_panel:invalidate_games_lantern_snapshots()
+        polling_panel:update(0.1)
+        assert(queue_snapshot_calls == 2 and import_snapshot_calls == 2)
+        assert(queue_signature_calls == 2 and import_signature_calls == 2)
+
+        native_offer = {
+            offerId = "offer-b",
+            description = {lootChoices = {{masterId = "master-b"}}},
+        }
+        polling_panel:update(0.1)
+        assert(not rawequal(stable_selected_offer, polling_panel._selected_offer))
+        assert(polling_panel._selected_offer_key == "offer:offer-b")
+        assert(rendered >= 1)
+        '''
+    )
     panel = panel_module.new(lua.table_from({"settings": lua.globals().TestPanelSettings}))
 
     # Lua's common `condition and value or fallback` idiom loses explicit false.

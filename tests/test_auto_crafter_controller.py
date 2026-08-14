@@ -10,6 +10,12 @@ PLANNER_PATH = RUNTIME_ROOT / "auto_crafter" / "core" / "planner.lua"
 
 
 def main() -> None:
+    controller_source = CONTROLLER_PATH.read_text(encoding="utf-8")
+    update_source = controller_source.split("\tfunction self:update(dt)", 1)[1].split("\tfunction self:snapshot()", 1)[0]
+    assert "local update_dt = finite_dt(dt)" in update_source
+    assert update_source.count("finite_dt(dt)") == 1
+    assert "local current_config = planner_config()" not in update_source
+
     lua = LuaRuntime(unpack_returned_tuples=True)
     lua.execute(
         r'''

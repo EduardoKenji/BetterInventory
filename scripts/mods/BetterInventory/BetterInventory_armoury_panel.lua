@@ -471,7 +471,7 @@ local function update_armoury_native_sort_panel(view)
 
 	local probe_count = (view._better_inventory_composition_probe_count or 0) + 1
 	local probe_due = probe_count >= 15
-	local input_changed = features.composition_inputs_changed(view, "armoury")
+	local input_changed = features.composition_inputs_changed(view, "armoury", not view._better_inventory_composition_dirty and not view._better_inventory_armoury_native_sort_rebuild_pending and not probe_due)
 
 	if not view._better_inventory_composition_dirty and not input_changed and not view._better_inventory_armoury_native_sort_rebuild_pending and not probe_due then
 		view._better_inventory_composition_probe_count = probe_count

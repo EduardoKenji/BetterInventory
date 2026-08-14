@@ -131,12 +131,27 @@ mod.auto_crafter_hud_lines = function()
 	return type(AutoCrafter.hud_lines) == "function" and AutoCrafter.hud_lines() or {}
 end
 
+mod.auto_crafter_hud_presentation = function()
+	if type(AutoCrafter.hud_presentation) == "function" then
+		return AutoCrafter.hud_presentation()
+	end
+
+	local lines = mod:auto_crafter_hud_lines()
+
+	return #lines > 0 and table.concat(lines, "\n") or "", #lines, lines
+end
+
 rawset(_G, "AutoCrafterHelperHudState", {
 	enabled = function()
-		return mod:get("auto_crafter_enable") == true and mod:get("auto_crafter_show_status_hud") ~= false
+		local mod_enabled = type(mod.is_enabled) ~= "function" or mod:is_enabled()
+
+		return mod_enabled and mod:get("auto_crafter_enable") == true and mod:get("auto_crafter_show_status_hud") ~= false
 	end,
 	lines = function()
 		return mod:auto_crafter_hud_lines()
+	end,
+	presentation = function()
+		return mod:auto_crafter_hud_presentation()
 	end,
 	visible_context = function()
 		local managers = rawget(_G, "Managers")

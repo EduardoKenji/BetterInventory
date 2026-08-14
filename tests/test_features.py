@@ -119,6 +119,9 @@ FEATURE_DISCARD_SUMMARY_PATH = (
 
 
 def main() -> None:
+    panel_runtime_source = PANEL_RUNTIME_PATH.read_text(encoding="utf-8")
+    assert "pairs({ item_grid, view._weapon_options_element, view._discard_items_element })" not in panel_runtime_source
+
     lua = LuaRuntime(unpack_returned_tuples=True)
     lua.execute(
         r"""
@@ -527,6 +530,13 @@ def main() -> None:
     assert features.composition_inputs_changed(strict_scenegraph_view, "melee") is True
     assert strict_scenegraph_view._better_inventory_composition_window_x is None
     assert strict_scenegraph_view._better_inventory_composition_canvas_width == 1920
+    strict_scenegraph_view._ui_scenegraph.canvas.size[1] = 1600
+    assert features.composition_inputs_changed(strict_scenegraph_view, "melee", True) is False
+    assert strict_scenegraph_view._better_inventory_composition_canvas_width == 1920
+    assert features.composition_inputs_changed(strict_scenegraph_view, "melee") is True
+    assert strict_scenegraph_view._better_inventory_composition_canvas_width == 1600
+    strict_scenegraph_view._selected_slot = "slot_secondary"
+    assert features.composition_inputs_changed(strict_scenegraph_view, "melee", True) is True
 
     definitions = lua.table_from(
         {
@@ -730,7 +740,8 @@ def main() -> None:
         is False
     )
 
-    mod.settings.enable_inventory_options_panel_prototype = True
+    # A stale pre-v2.3.0 saved value must not disable the native panel.
+    mod.settings.enable_inventory_options_panel_prototype = False
     mod.settings.show_inventory_options_widget = True
     mod.settings.inventory_options_controller_focus_keybind = (
         "navigate_secondary_right_pressed"
@@ -1935,10 +1946,11 @@ def main() -> None:
     assert quick_discard_view._widgets_by_name["better_inventory_quick_discard"].content.visible is True
     assert quick_discard_view._ui_scenegraph[sort_label_id].position[1] == 20
 
-    # The scalable-panel prototype must retain the legacy widgets as a fallback,
-    # present the same synchronized controls inside one managed grid, collapse
-    # sections by rebuilding rows, and reduce to Sorting in native discard mode.
-    mod.settings.enable_inventory_options_panel_prototype = True
+    # The invariant scalable panel must retain legacy widgets only as an
+    # initialization fallback, present synchronized controls in one managed
+    # grid, collapse sections by rebuilding rows, and reduce to Sorting in
+    # native discard mode. A stale saved prototype setting is ignored.
+    mod.settings.enable_inventory_options_panel_prototype = False
     mod.settings.quick_discard_mode = "manual"
     mod.settings.quick_discard_skip_automatic_confirmation = True
     mod.settings.curio_information_width_percent = 90
@@ -2529,10 +2541,10 @@ def main() -> None:
 
     mod.settings.enable_inventory_options_panel_prototype = False
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
-    assert prototype_panel.visible is False
-    assert prototype_view._widgets_by_name[sort_label_id].content.visible is True
-    assert prototype_view._widgets_by_name[toggle_id].content.visible is True
-    mod.settings.enable_inventory_options_panel_prototype = True
+    assert prototype_panel.visible is True
+    assert prototype_panel.input_disabled is False
+    assert prototype_view._widgets_by_name[sort_label_id].content.visible is False
+    assert prototype_view._widgets_by_name[toggle_id].content.visible is False
 
     # Lantern's initialized widget belongs to the inventory view's renderer. The
     # integration must create an independent grid row and never reparent, offset,
@@ -2540,6 +2552,9 @@ def main() -> None:
     lantern_mod, lantern_overlay, lantern_source_widget = lua.execute(
         r"""
         lantern_native_draw_count = 0
+		lantern_enabled_calls = 0
+		lantern_get_calls = 0
+		lantern_preview_calls = 0
         local overlay = {
             draw_weapon_select = function()
                 lantern_native_draw_count = lantern_native_draw_count + 1
@@ -2568,9 +2583,11 @@ def main() -> None:
             enabled = true,
             _modules = {equipment_overlay = overlay},
             is_enabled = function(self)
+				lantern_enabled_calls = lantern_enabled_calls + 1
                 return self.enabled
             end,
             get = function(self, setting_id)
+				lantern_get_calls = lantern_get_calls + 1
                 return setting_id == "show_recommendations"
             end,
         }
@@ -2580,11 +2597,14 @@ def main() -> None:
         """
     )
     assert features.set_lantern_integration(mod, lantern_mod) is True
+    lantern_wrapper = lantern_overlay.draw_weapon_select
     lantern_overlay.draw_weapon_select(prototype_view)
     assert globals_.lantern_native_draw_count == 1
     mod.settings.enable_lantern_inventory_section = True
     prototype_view._selected_slot = lua.table_from({"name": "slot_primary"})
-    prototype_view.is_previewing_item = lua.eval("function() return true end")
+    prototype_view.is_previewing_item = lua.eval(
+        "function() lantern_preview_calls = lantern_preview_calls + 1; return true end"
+    )
     prototype_view._lantern_weapon_panel = lua.table_from(
         {
             "widget": lantern_source_widget,
@@ -2596,6 +2616,18 @@ def main() -> None:
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert prototype_view._better_inventory_lantern_panel_hosted is True
+    lantern_poll_counts = (
+        globals_.lantern_enabled_calls,
+        globals_.lantern_get_calls,
+        globals_.lantern_preview_calls,
+    )
+    for _ in range(10):
+        features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert (
+        globals_.lantern_enabled_calls,
+        globals_.lantern_get_calls,
+        globals_.lantern_preview_calls,
+    ) == lantern_poll_counts
     assert prototype_panel.layout[1].control_id == "better_inventory_lantern_section"
     lantern_entry = prototype_panel.layout[1]
     lantern_proxy = prototype_panel.widgets["better_inventory_lantern_section"]
@@ -2672,6 +2704,20 @@ def main() -> None:
     assert prototype_panel.widgets["better_inventory_lantern_section"] is None
     lantern_overlay.draw_weapon_select(prototype_view)
     assert globals_.lantern_native_draw_count == 3
+
+    # Hot disable restores only BetterInventory's own wrapper. Re-enable binds
+    # one fresh wrapper, while a later third-party replacement remains intact.
+    features.shutdown_lantern_integration()
+    assert lantern_overlay.draw_weapon_select != lantern_wrapper
+    lantern_overlay.draw_weapon_select(prototype_view)
+    assert globals_.lantern_native_draw_count == 4
+    assert features.lantern_recommendations_active() is False
+    assert features.set_lantern_integration(mod, lantern_mod) is True
+    replacement_draw = lua.eval("function() lantern_native_draw_count = lantern_native_draw_count + 10 end")
+    lantern_overlay.draw_weapon_select = replacement_draw
+    features.shutdown_lantern_integration()
+    lantern_overlay.draw_weapon_select(prototype_view)
+    assert globals_.lantern_native_draw_count == 14
 
     # ItemSorting defines vanilla-style methods first and its own added methods
     # second. BetterInventory presents the complete two ranges as sibling

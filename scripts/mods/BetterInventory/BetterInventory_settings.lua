@@ -53,7 +53,6 @@ local DEPENDENCY_REFRESH_SETTING_IDS = {
 	"new_item_highlight_mode",
 	"single_column_blessing_icons_on_right",
 	"curio_display_profile",
-	"enable_inventory_options_panel_prototype",
 	"enable_lantern_inventory_section",
 	"keep_lantern_curio_panel_separate",
 	"enable_experimental_quick_discard",

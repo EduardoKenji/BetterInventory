@@ -1483,10 +1483,34 @@ CurioAcquisition.on_setting_changed = function(mod, setting_id)
 end
 
 CurioAcquisition.update = function(mod, dt, automatic_discard_busy)
-	update_read_request_metrics(dt)
+	local update_dt = math.max(tonumber(dt) or 0, 0)
+	local profile_work_pending = CurioProfiles.needs_update()
+	local completed_idle = state.completed
+		and not state.scheduled
+		and not state.started
+		and state.active_read_requests == 0
+		and state.purchase_requests_inflight == 0
+		and not profile_work_pending
+
+	-- Completed contexts only need rotation/report/profile maintenance at 1 Hz.
+	-- Scheduled work and every in-flight request remain frame-responsive.
+	if completed_idle then
+		state.scheduler_poll_elapsed = state.scheduler_poll_elapsed + update_dt
+
+		if state.scheduler_poll_elapsed < SCHEDULER_POLL_INTERVAL then
+			return
+		end
+
+		update_dt = state.scheduler_poll_elapsed
+		state.scheduler_poll_elapsed = 0
+	else
+		state.scheduler_poll_elapsed = 0
+	end
+
+	update_read_request_metrics(update_dt)
 	ensure_rotation_history(mod)
 	deliver_pending_report(mod)
-	CurioProfiles.update(mod, dt)
+	CurioProfiles.update(mod, update_dt)
 
 	if not enabled(mod) then
 		if state.active_context or state.scheduled or state.started then
@@ -1542,14 +1566,6 @@ CurioAcquisition.update = function(mod, dt, automatic_discard_busy)
 	end
 
 	if state.completed then
-		state.scheduler_poll_elapsed = state.scheduler_poll_elapsed + (tonumber(dt) or 0)
-
-		if state.scheduler_poll_elapsed < SCHEDULER_POLL_INTERVAL then
-			return
-		end
-
-		state.scheduler_poll_elapsed = 0
-
 		if mod:get("automatic_curio_rescan_on_store_refresh") == true and state.rotation_boundary_ms then
 			local now = server_time()
 
@@ -1569,7 +1585,7 @@ CurioAcquisition.update = function(mod, dt, automatic_discard_busy)
 		return
 	end
 
-	state.elapsed = state.elapsed + (tonumber(dt) or 0)
+	state.elapsed = state.elapsed + update_dt
 	local delay = state.active_context == "operative_selection" and OPERATIVE_SELECTION_DELAY or MORNINGSTAR_DELAY
 
 	if state.elapsed < delay or not backend_ready() then

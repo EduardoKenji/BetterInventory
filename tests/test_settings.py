@@ -195,7 +195,9 @@ def main() -> None:
 			end,
             configure_item_blueprint = function() end,
 			configure_grid = function() end,
+			update_highlight_animation = function() highlight_animation_updates = highlight_animation_updates + 1 end,
 		}
+		highlight_animation_updates = 0
 		inventory_sort_syncs = 0
 		quick_discard_syncs = 0
 		curio_acquisition_syncs = 0
@@ -435,6 +437,14 @@ def main() -> None:
     lua.globals().TestFeatureDomains = feature_domains
     lua.execute(
         """
+		local original_runtime_configure = TestRuntime.configure
+
+		TestRuntime.configure = function(dependencies)
+			runtime_dependencies = dependencies
+
+			return original_runtime_configure(dependencies)
+		end
+
         local original_register = TestSettingsRegistry.register
 
         TestSettingsRegistry.register = function(...)
@@ -450,7 +460,12 @@ def main() -> None:
     settings = globals_.settings
     assert globals_.captured_character_overview_update_hook is None
     assert globals_.captured_grid_update_hook is None
+    settings.new_item_highlight_mode = "pulsing_dashes"
+    mod.on_setting_changed("new_item_highlight_mode")
     mod.update(0.016)
+    assert globals_.highlight_animation_updates == 0
+    settings.new_item_highlight_mode = "animated_dashes"
+    mod.on_setting_changed("new_item_highlight_mode")
     assert globals_.item_customization_updates == 0
     assert globals_.equipment_persistence_updates == 0
 
@@ -1051,6 +1066,13 @@ def main() -> None:
         original_init, credits_view, credits_definitions, lua.table_from({}), lua.table_from({})
     )
     assert init_result == "initialized"
+    assert mod._better_inventory_active_highlight_views[credits_view] is True
+    settings.new_item_highlight_mode = "pulsing_dashes"
+    mod.on_setting_changed("new_item_highlight_mode")
+    mod.update(0.016)
+    assert globals_.highlight_animation_updates == 1
+    settings.new_item_highlight_mode = "animated_dashes"
+    mod.on_setting_changed("new_item_highlight_mode")
     assert credits_view._better_inventory_armoury_grid_expansion == 114
     assert credits_view.received_definitions.armoury_expanded is True
     credits_view._widgets_by_name = lua.table_from(
@@ -1694,6 +1716,10 @@ def main() -> None:
         "character_overview_dump_stat_color_g",
         "character_overview_dump_stat_color_b",
     )
+    original_dependency_wrapper = entries_by_id[dump_style_ids[0]].get_function
+    original_dependency_owner = entries_by_id[
+        dump_style_ids[0]
+    ]._better_inventory_live_dependency_state.owner
     for dump_style_id in dump_style_ids:
         assert entries_by_id[dump_style_id].disabled is False
     assert entries_by_id["character_overview_show_curio_rarity_strip"].disabled is False
@@ -1740,6 +1766,21 @@ def main() -> None:
         assert entries_by_id[dump_style_id].disabled is False
         assert replacement_by_id[dump_style_id].disabled is False
     globals_.captured_options_hook(globals_.test_dmf, options_templates)
+    replacement_runtime = lua.execute(
+        RUNTIME_PATH.read_text(encoding="utf-8"),
+        name=f"{RUNTIME_PATH}:hot_reload",
+    )
+    replacement_runtime.configure(globals_.runtime_dependencies)
+    replacement_runtime.install()
+    globals_.captured_options_hook(globals_.test_dmf, options_templates)
+    reloaded_dependency_state = entries_by_id[
+        dump_style_ids[0]
+    ]._better_inventory_live_dependency_state
+    lua_rawequal = lua.eval("function(left, right) return rawequal(left, right) end")
+    assert lua_rawequal(
+        entries_by_id[dump_style_ids[0]].get_function, original_dependency_wrapper
+    )
+    assert not lua_rawequal(reloaded_dependency_state.owner, original_dependency_owner)
     settings.enable_character_overview_ranged_mirror = True
     settings.enable_character_overview_curio_details = False
     mod.on_setting_changed("enable_character_overview_curio_details")
@@ -1989,17 +2030,19 @@ def main() -> None:
     assert entries_by_id["automatic_curio_characters_group"].disabled is True
     assert active_character_entry.disabled is True
     assert empty_character_entry.disabled is True
-    assert entries_by_id["curio_information_width_percent"].disabled is True
-    assert entries_by_id["curio_preview_height_percent"].disabled is True
-    assert entries_by_id["inventory_options_panel_width"].disabled is True
-    assert entries_by_id["inventory_options_panel_max_height"].disabled is True
-    assert entries_by_id["inventory_options_panel_row_spacing"].disabled is True
-    assert entries_by_id["inventory_options_panel_padding_top"].disabled is True
-    assert entries_by_id["inventory_options_panel_padding_bottom"].disabled is True
-    assert entries_by_id["inventory_options_panel_padding_left"].disabled is True
-    assert entries_by_id["inventory_options_panel_padding_right"].disabled is True
+    assert entries_by_id["curio_information_width_percent"].disabled is False
+    assert entries_by_id["curio_preview_height_percent"].disabled is False
+    assert entries_by_id["inventory_options_panel_width"].disabled is False
+    assert entries_by_id["inventory_options_panel_max_height"].disabled is False
+    assert entries_by_id["inventory_options_panel_row_spacing"].disabled is False
+    assert entries_by_id["inventory_options_panel_padding_top"].disabled is False
+    assert entries_by_id["inventory_options_panel_padding_bottom"].disabled is False
+    assert entries_by_id["inventory_options_panel_padding_left"].disabled is False
+    assert entries_by_id["inventory_options_panel_padding_right"].disabled is False
 
-    settings.enable_inventory_options_panel_prototype = True
+    # Profiles upgraded from earlier releases can retain this removed setting.
+    # It must neither disable nor gray out the invariant panel controls.
+    settings.enable_inventory_options_panel_prototype = False
     mod.on_setting_changed("enable_inventory_options_panel_prototype")
     assert entries_by_id["curio_information_width_percent"].disabled is False
     assert entries_by_id["curio_preview_height_percent"].disabled is False
@@ -2010,9 +2053,6 @@ def main() -> None:
     assert entries_by_id["inventory_options_panel_padding_bottom"].disabled is False
     assert entries_by_id["inventory_options_panel_padding_left"].disabled is False
     assert entries_by_id["inventory_options_panel_padding_right"].disabled is False
-    settings.enable_inventory_options_panel_prototype = False
-    mod.on_setting_changed("enable_inventory_options_panel_prototype")
-
     settings.enable_experimental_quick_discard = True
     mod.on_setting_changed("enable_experimental_quick_discard")
     assert entries_by_id["quick_discard_rarity"].disabled is False
@@ -2372,6 +2412,16 @@ def main() -> None:
 			"character_overview_use_native_curio_overlay",
 			"character_overview_curio_name_mode",
 			"character_overview_curio_font_size_percent",
+			"inventory_options_controller_focus_keybind",
+			"curio_information_width_percent",
+			"curio_preview_height_percent",
+			"inventory_options_panel_width",
+			"inventory_options_panel_max_height",
+			"inventory_options_panel_row_spacing",
+			"inventory_options_panel_padding_top",
+			"inventory_options_panel_padding_bottom",
+			"inventory_options_panel_padding_left",
+			"inventory_options_panel_padding_right",
         }:
             continue
 
@@ -2453,7 +2503,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "2.2.5"
+    assert data.version == "2.3.0"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
@@ -2983,7 +3033,7 @@ def main() -> None:
     assert defaults["prioritize_equipped_favorites"] is True
     assert defaults["show_inventory_options_widget"] is True
     assert defaults["prioritize_perfect_roll_weapons"] is True
-    assert defaults["enable_inventory_options_panel_prototype"] is True
+    assert "enable_inventory_options_panel_prototype" not in defaults
     assert defaults["automatic_curio_target_mode"] == "characters"
     assert defaults["curio_information_width_percent"] == 90
     assert defaults["curio_preview_height_percent"] == 76

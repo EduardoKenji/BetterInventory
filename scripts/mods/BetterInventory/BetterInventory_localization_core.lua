@@ -77,14 +77,8 @@ local localization = {
 	prioritize_perfect_roll_weapons_inventory_label = {
 		en = "Perfect-roll weapons at the top",
 	},
-	enable_inventory_options_panel_prototype = {
-		en = "Use scalable inventory-options panel prototype",
-	},
-	enable_inventory_options_panel_prototype_tooltip = {
-		en = "Research prototype. After reopening the inventory, places BetterInventory's synchronized controls inside one bounded, scrollable Darktide panel with clickable collapsible section headers. Disable it to restore the established loose controls.",
-	},
 	inventory_options_panel_geometry_group = {
-		en = "Scalable inventory panel (experimental)",
+		en = "Inventory options panel",
 	},
 	curio_information_width_percent = {
 		en = "Curio information window width (%%)",
@@ -117,10 +111,7 @@ local localization = {
 		en = "Options panel right padding (px)",
 	},
 	inventory_options_geometry_reopen_tooltip = {
-		en = "Experimental scalable-panel geometry. Reopen the inventory after changing this value.",
-	},
-	option_requires_inventory_options_panel_prototype = {
-		en = "Requires the scalable inventory-options panel prototype.",
+		en = "Inventory-options panel geometry. Reopen the inventory after changing this value.",
 	},
 	prioritize_equipped_favorites_inventory_label = {
 		en = "Equipped and favorited items at the top",

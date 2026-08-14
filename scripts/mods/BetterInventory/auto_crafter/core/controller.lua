@@ -5401,6 +5401,8 @@ function Controller.new(dependencies)
 			return
 		end
 
+		local update_dt = finite_dt(dt)
+
 		if not runtime_context_valid() then
 			self:on_context_exit("runtime_context_invalid")
 
@@ -5418,11 +5420,11 @@ function Controller.new(dependencies)
 		end
 
 		if run_is_active() then
-			self._run_elapsed = self._run_elapsed + finite_dt(dt)
+			self._run_elapsed = self._run_elapsed + update_dt
 		end
 
 		if self._operation_inflight then
-			self._operation_elapsed = self._operation_elapsed + finite_dt(dt)
+			self._operation_elapsed = self._operation_elapsed + update_dt
 
 			if self._operation_elapsed >= MAX_OPERATION_SECONDS and not self._operation_quarantined then
 				self:_quarantine_operation(self._generation, string.format("operation %s timed out after %.1f seconds", tostring(self._operation_kind), self._operation_elapsed))
@@ -5430,7 +5432,7 @@ function Controller.new(dependencies)
 		end
 
 		if self._probe_inflight then
-			self._probe_request_elapsed = self._probe_request_elapsed + finite_dt(dt)
+			self._probe_request_elapsed = self._probe_request_elapsed + update_dt
 
 			if self._probe_request_elapsed >= MAX_READ_SECONDS then
 				local generation = self._generation
@@ -5445,7 +5447,7 @@ function Controller.new(dependencies)
 		end
 
 		if self._catalog_inflight then
-			self._catalog_elapsed = self._catalog_elapsed + finite_dt(dt)
+			self._catalog_elapsed = self._catalog_elapsed + update_dt
 
 			if self._catalog_elapsed >= MAX_READ_SECONDS then
 				local target = self:_selected_offer_summary()
@@ -5468,7 +5470,7 @@ function Controller.new(dependencies)
 
 		if phase3 and type(phase3.fast_upgrade_inflight) == "table" then
 			for gear_id, entry in pairs(phase3.fast_upgrade_inflight) do
-				entry.elapsed = (tonumber(entry.elapsed) or 0) + finite_dt(dt)
+				entry.elapsed = (tonumber(entry.elapsed) or 0) + update_dt
 
 				if entry.elapsed >= MAX_OPERATION_SECONDS and not entry.timed_out then
 					entry.timed_out = true
@@ -5484,7 +5486,7 @@ function Controller.new(dependencies)
 		end
 
 		if self._mastery and self._mastery.running and not self._operation_inflight then
-			self._mastery_poll_elapsed = self._mastery_poll_elapsed + finite_dt(dt)
+			self._mastery_poll_elapsed = self._mastery_poll_elapsed + update_dt
 
 			if self._mastery_poll_elapsed >= (self._mastery_poll_wait or DEFAULT_MASTERY_POLL_DELAY) then
 				self:_poll_mastery()
@@ -5494,7 +5496,7 @@ function Controller.new(dependencies)
 		if self._purchase_confirmation and not self._operation_inflight then
 			local confirmation = self._purchase_confirmation
 
-			confirmation.elapsed = (tonumber(confirmation.elapsed) or 0) + finite_dt(dt)
+			confirmation.elapsed = (tonumber(confirmation.elapsed) or 0) + update_dt
 
 			if confirmation.elapsed >= (confirmation.wait or DEFAULT_PURCHASE_CONFIRMATION_POLL_DELAY) then
 				self:_poll_purchase_confirmation()
@@ -5502,7 +5504,7 @@ function Controller.new(dependencies)
 		end
 
 		if self._phase4 and self._phase4.running and self._phase4.pending_blessing and not self._operation_inflight then
-			self._phase4.blessing_poll_elapsed = (self._phase4.blessing_poll_elapsed or 0) + finite_dt(dt)
+			self._phase4.blessing_poll_elapsed = (self._phase4.blessing_poll_elapsed or 0) + update_dt
 
 			if self._phase4.blessing_poll_elapsed >= (self._phase4.blessing_poll_wait or DEFAULT_BLESSING_POLL_DELAY) then
 				self:_poll_phase4_blessing()
@@ -5524,7 +5526,7 @@ function Controller.new(dependencies)
 		local view_idle_poll_due = false
 
 		if self._view_is_valid and not run_is_active() then
-			self._view_idle_poll_elapsed = self._view_idle_poll_elapsed + finite_dt(dt)
+			self._view_idle_poll_elapsed = self._view_idle_poll_elapsed + update_dt
 
 			if self._view_idle_poll_elapsed >= DEFAULT_VIEW_IDLE_POLL_INTERVAL then
 				self._view_idle_poll_elapsed = 0
@@ -5535,12 +5537,8 @@ function Controller.new(dependencies)
 		end
 
 		if view_idle_poll_due and self._snapshot and not self._probe_inflight and type(self._get_selected_offer) == "function" then
-			local current_config = planner_config()
-
-			if planner_config_signature(current_config) ~= self._planner_signature then
-				self:_refresh_plan("planner_setting_changed")
-			end
-
+			-- Planner settings refresh synchronously through on_setting_changed;
+			-- this bounded poll owns only native weapon-selection reconciliation.
 			local selected_ok, raw_offer = safe_call(self._get_selected_offer, self._active_view)
 			local selected_key = selected_ok and offer_key(selected_offer_ids(raw_offer)) or nil
 
@@ -5557,7 +5555,7 @@ function Controller.new(dependencies)
 		end
 
 		if self._view_is_valid and self._probe_scheduled and not self._probe_inflight then
-			self._probe_elapsed = self._probe_elapsed + finite_dt(dt)
+			self._probe_elapsed = self._probe_elapsed + update_dt
 
 			if self._probe_elapsed >= DEFAULT_PROBE_DELAY then
 				self:_start_probe()
