@@ -2266,31 +2266,40 @@ def main() -> None:
     metatable_style = metatable_lua.table_from(
         {"color": metatable_lua.table_from([38, 105, 210, 120])}
     )
-    metatable_animation.update()
-    metatable_animation.apply(None, metatable_style)
+    metatable_mod = metatable_lua.table()
+    metatable_animation.update(metatable_mod)
+    metatable_animation.apply(metatable_mod, metatable_style)
     assert metatable_style.color[1] == 255
 
     equipped_content = lua.table_from({"equipped": True})
+    # Existing card callbacks must read persistent mod-owned state. This models
+    # a module hot reload where a newly loaded updater changes the shared alpha
+    # while widgets still own callbacks created by the previous module load.
+    mod._better_inventory_pulsing_dash_alpha = 201
+    pulsing_equipped_passes[0].change_function(
+        equipped_content, pulsing_equipped_passes[0].style
+    )
+    assert pulsing_equipped_passes[0].style.color[1] == 201
     globals_.test_application_time = 0
-    layout.update_highlight_animation()
+    layout.update_highlight_animation(mod)
     equipped_clock_calls = globals_.test_application_time_calls
     for candidate in pulsing_equipped_passes:
         candidate.change_function(equipped_content, candidate.style)
         assert candidate.style.color[1] == 38
     assert globals_.test_application_time_calls == equipped_clock_calls
     globals_.test_application_time = 1
-    layout.update_highlight_animation()
+    layout.update_highlight_animation(mod)
     pulsing_equipped_passes[0].change_function(
         equipped_content, pulsing_equipped_passes[0].style
     )
     assert pulsing_equipped_passes[0].style.color[1] in (146, 147)
     globals_.test_application_time = 2
-    layout.update_highlight_animation()
+    layout.update_highlight_animation(mod)
     for candidate in pulsing_equipped_passes:
         candidate.change_function(equipped_content, candidate.style)
         assert candidate.style.color[1] == 255
     globals_.test_application_time = 4
-    layout.update_highlight_animation()
+    layout.update_highlight_animation(mod)
     pulsing_equipped_passes[0].change_function(
         equipped_content, pulsing_equipped_passes[0].style
     )
@@ -2485,7 +2494,7 @@ def main() -> None:
         }
     )
     globals_.test_application_time = 0
-    layout.update_highlight_animation()
+    layout.update_highlight_animation(mod)
     new_item_clock_calls = globals_.test_application_time_calls
     for candidate in pulsing_new_item_passes:
         candidate.change_function(pulsing_content, candidate.style)
@@ -2494,7 +2503,7 @@ def main() -> None:
     assert pulsing_element.new_item_marker is True
     assert globals_.new_item_acknowledgements == 2
     globals_.test_application_time = 2
-    layout.update_highlight_animation()
+    layout.update_highlight_animation(mod)
     for candidate in pulsing_new_item_passes:
         candidate.change_function(pulsing_content, candidate.style)
         assert candidate.style.color[1] == 255

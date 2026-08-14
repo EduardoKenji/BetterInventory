@@ -195,7 +195,10 @@ def main() -> None:
 			end,
             configure_item_blueprint = function() end,
 			configure_grid = function() end,
-			update_highlight_animation = function() highlight_animation_updates = highlight_animation_updates + 1 end,
+			update_highlight_animation = function(animation_mod)
+				highlight_animation_updates = highlight_animation_updates + 1
+				highlight_animation_mod = animation_mod
+			end,
 		}
 		highlight_animation_updates = 0
 		inventory_sort_syncs = 0
@@ -1071,6 +1074,7 @@ def main() -> None:
     mod.on_setting_changed("new_item_highlight_mode")
     mod.update(0.016)
     assert globals_.highlight_animation_updates == 1
+    assert lua.eval("highlight_animation_mod == test_mod") is True
     settings.new_item_highlight_mode = "animated_dashes"
     mod.on_setting_changed("new_item_highlight_mode")
     assert credits_view._better_inventory_armoury_grid_expansion == 114
