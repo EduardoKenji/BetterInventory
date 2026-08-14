@@ -1,5 +1,6 @@
 local Content = {}
 local columns
+local item_customization_provider
 
 local Items = require("scripts/utilities/items")
 local RankSettings = require("scripts/settings/item/rank_settings")

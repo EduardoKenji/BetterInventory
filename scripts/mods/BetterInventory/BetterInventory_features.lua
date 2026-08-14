@@ -22,6 +22,7 @@ end
 local Features = {}
 local armoury_panel
 local scenegraph_rect
+local rebuild_inventory_options_panel
 local panel_entry = PanelRuntime.panel_entry
 local panel_lantern_entry = PanelRuntime.panel_lantern_entry
 local controller_element_state = PanelRuntime.controller_element_state

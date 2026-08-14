@@ -114,6 +114,63 @@ def local_io_dofile_targets(tree: object) -> set[str]:
     return targets
 
 
+def undeclared_bare_assignments(tree: object) -> set[str]:
+    """Return bare assignment targets without any lexical declaration.
+
+    Lua writes an undeclared bare name into the shared process environment.
+    This deliberately uses a conservative file-wide declaration set: it may
+    tolerate shadowing across disjoint scopes, but it cannot mistake a field
+    assignment for a global and catches module-state declarations omitted by
+    accident.
+    """
+    declared: set[str] = set()
+    assigned: set[str] = set()
+
+    for node in ast.walk(tree):
+        kind = node_type(node)
+
+        if kind == "LocalAssign":
+            declared.update(
+                target.id
+                for target in getattr(node, "targets", []) or []
+                if node_type(target) == "Name"
+            )
+        elif kind == "LocalFunction":
+            name = getattr(node, "name", None)
+
+            if node_type(name) == "Name":
+                declared.add(name.id)
+
+        if kind in {"Function", "LocalFunction", "Method", "AnonymousFunction"}:
+            declared.update(
+                argument.id
+                for argument in getattr(node, "args", []) or []
+                if node_type(argument) == "Name"
+            )
+
+            if kind == "Method":
+                declared.add("self")
+        elif kind == "Fornum":
+            target = getattr(node, "target", None)
+
+            if node_type(target) == "Name":
+                declared.add(target.id)
+        elif kind == "Forin":
+            declared.update(
+                target.id
+                for target in getattr(node, "targets", []) or []
+                if node_type(target) == "Name"
+            )
+        elif kind == "Assign":
+            assigned.update(
+                target.id
+                for target in getattr(node, "targets", []) or []
+                if node_type(target) == "Name"
+            )
+
+    return assigned - declared
+
+
 def validate_panel_font_types() -> int:
     panel_path = RUNTIME_ROOT / "auto_crafter" / "darktide" / "panel.lua"
 
@@ -445,9 +502,13 @@ def run() -> None:
         )
 
     missing_modules = []
+    accidental_globals = []
 
-    for lua_path in sorted(RUNTIME_ROOT.glob("BetterInventory*.lua")):
+    for lua_path in sorted(RUNTIME_ROOT.rglob("*.lua")):
         tree = ast.parse(lua_path.read_text(encoding="utf-8"))
+
+        for name in sorted(undeclared_bare_assignments(tree)):
+            accidental_globals.append(f"{lua_path.relative_to(RUNTIME_ROOT)} -> {name}")
 
         for target in local_io_dofile_targets(tree):
             relative = target.removeprefix("BetterInventory/")
@@ -464,6 +525,12 @@ def run() -> None:
             "Missing AST-discovered local module(s): " + ", ".join(sorted(missing_modules))
         )
 
+    if accidental_globals:
+        raise SystemExit(
+            "Undeclared bare Lua assignment(s): "
+            + ", ".join(sorted(accidental_globals))
+        )
+
     panel_font_count = validate_panel_font_types()
     auto_crafter_file_count = validate_auto_crafter_mutation_boundaries()
     validate_auto_crafter_brunt_route()
@@ -471,6 +538,7 @@ def run() -> None:
     print(
         "BetterInventory AST structure checks passed "
         f"(main assignments={len(actual_assignments)}, layout calls={len(found_calls)}, "
+        f"runtime global ownership checked={len(list(RUNTIME_ROOT.rglob('*.lua')))}, "
         f"local module references checked={len(missing_modules) + len(local_io_dofile_targets(main_tree))}, "
         f"Auto Crafter panel fonts checked={panel_font_count}, "
         f"Phase 1C/2 files checked={auto_crafter_file_count})."

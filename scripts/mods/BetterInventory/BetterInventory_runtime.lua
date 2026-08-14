@@ -21,6 +21,8 @@ local ItemGridViewBaseDefinitions
 local InventoryWeaponsView
 local ViewElementGrid
 local dmf_mod
+local active_grid_view
+local active_grid_configuration
 local synchronize_myfavorites_grid = function()
 	return 0
 end
