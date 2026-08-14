@@ -23,6 +23,7 @@ local ViewElementGrid
 local dmf_mod
 local active_grid_view
 local active_grid_configuration
+local highlight_animation_enabled = false
 local synchronize_myfavorites_grid = function()
 	return 0
 end
@@ -1193,6 +1194,8 @@ function mod.on_enabled()
 		apply_color_preset(COLOR_TARGETS[i])
 	end
 
+	highlight_animation_enabled = mod:get("highlight_equipped_items") == "pulsing_dashes" or mod:get("new_item_highlight_mode") == "pulsing_dashes"
+
 	-- The character rows themselves are part of the static DMF schema. Refresh
 	-- their saved operative labels and backend-ID selection bindings before the
 	-- user can open Mod Options; live discovery will refresh them again.
@@ -1270,6 +1273,10 @@ function mod.on_setting_changed(setting_id)
 	end
 
 	ItemCustomization.on_setting_changed(mod, setting_id)
+
+	if setting_id == "highlight_equipped_items" or setting_id == "new_item_highlight_mode" then
+		highlight_animation_enabled = mod:get("highlight_equipped_items") == "pulsing_dashes" or mod:get("new_item_highlight_mode") == "pulsing_dashes"
+	end
 
 	if type(setting_id) == "string" and string.sub(setting_id, 1, #"auto_crafter_") == "auto_crafter_" and AutoCrafter and type(AutoCrafter.on_setting_changed) == "function" then
 		AutoCrafter.on_setting_changed(setting_id)
@@ -1365,6 +1372,10 @@ mod:hook_safe(MainMenuView, "on_exit", function()
 end)
 
 function mod.update(dt)
+	if highlight_animation_enabled and Layout and type(Layout.update_highlight_animation) == "function" then
+		Layout.update_highlight_animation()
+	end
+
 	local auto_crafter_needs_update = AutoCrafter and type(AutoCrafter.update) == "function" and (type(AutoCrafter.needs_update) ~= "function" or AutoCrafter.needs_update())
 
 	if auto_crafter_needs_update then

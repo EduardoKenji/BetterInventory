@@ -255,6 +255,18 @@ local function clear_controller_element_selection(element)
 	end
 end
 
+local function disable_controller_element(element)
+	if not element then
+		return
+	end
+
+	if type(element.disable_input) == "function" then
+		element:disable_input(true)
+	end
+
+	clear_controller_element_selection(element)
+end
+
 local function restore_controller_element(element, state)
 	if not element or not state then
 		return
@@ -289,15 +301,9 @@ local function set_inventory_options_panel_controller_focus(view, focused)
 		}
 		view._better_inventory_options_panel_controller_focused = true
 
-		for _, element in pairs({ item_grid, view._weapon_options_element, view._discard_items_element }) do
-			if element then
-				if type(element.disable_input) == "function" then
-					element:disable_input(true)
-				end
-
-				clear_controller_element_selection(element)
-			end
-		end
+		disable_controller_element(item_grid)
+		disable_controller_element(view._weapon_options_element)
+		disable_controller_element(view._discard_items_element)
 
 		if type(panel.disable_input) == "function" then
 			panel:disable_input(false)

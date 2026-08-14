@@ -55,8 +55,10 @@ def main() -> None:
         end
 
 		test_application_time = 0
+		test_application_time_calls = 0
 		Application = {
 			time_since_launch = function()
+				test_application_time_calls = test_application_time_calls + 1
 				return test_application_time
 			end,
 		}
@@ -2233,19 +2235,25 @@ def main() -> None:
     assert all(candidate.change_function is not None for candidate in pulsing_equipped_passes)
     equipped_content = lua.table_from({"equipped": True})
     globals_.test_application_time = 0
+    layout.update_highlight_animation()
+    equipped_clock_calls = globals_.test_application_time_calls
     for candidate in pulsing_equipped_passes:
         candidate.change_function(equipped_content, candidate.style)
         assert candidate.style.color[1] == 38
+    assert globals_.test_application_time_calls == equipped_clock_calls
     globals_.test_application_time = 1
+    layout.update_highlight_animation()
     pulsing_equipped_passes[0].change_function(
         equipped_content, pulsing_equipped_passes[0].style
     )
     assert pulsing_equipped_passes[0].style.color[1] in (146, 147)
     globals_.test_application_time = 2
+    layout.update_highlight_animation()
     for candidate in pulsing_equipped_passes:
         candidate.change_function(equipped_content, candidate.style)
         assert candidate.style.color[1] == 255
     globals_.test_application_time = 4
+    layout.update_highlight_animation()
     pulsing_equipped_passes[0].change_function(
         equipped_content, pulsing_equipped_passes[0].style
     )
@@ -2440,12 +2448,16 @@ def main() -> None:
         }
     )
     globals_.test_application_time = 0
+    layout.update_highlight_animation()
+    new_item_clock_calls = globals_.test_application_time_calls
     for candidate in pulsing_new_item_passes:
         candidate.change_function(pulsing_content, candidate.style)
         assert candidate.style.color[1] == 38
+    assert globals_.test_application_time_calls == new_item_clock_calls
     assert pulsing_element.new_item_marker is True
     assert globals_.new_item_acknowledgements == 2
     globals_.test_application_time = 2
+    layout.update_highlight_animation()
     for candidate in pulsing_new_item_passes:
         candidate.change_function(pulsing_content, candidate.style)
         assert candidate.style.color[1] == 255

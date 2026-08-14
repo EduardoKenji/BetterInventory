@@ -878,17 +878,20 @@ local cached_pulsing_dash_alpha = PULSING_DASH_MIN_ALPHA
 -- One complete 15% -> 100% -> 15% opacity cycle every four seconds. Darktide uses
 -- this same global clock pattern for its native new-item marker, so no timer or
 -- mutable animation state is retained by a card or view. A bounded two-scalar
--- module cache avoids repeating cosine work for every visible layer in a frame.
-local function update_pulsing_dash_alpha(_, style)
-	local time = Application.time_since_launch()
+-- module cache avoids repeating clock/cosine work for every visible layer.
+local function update_highlight_animation()
+	local application = rawget(_G, "Application")
+	local time = application and type(application.time_since_launch) == "function" and application.time_since_launch()
 
-	if time ~= cached_pulsing_dash_time then
+	if type(time) == "number" and time ~= cached_pulsing_dash_time then
 		local pulse = (1 - math.cos(time * PULSING_DASH_ANGULAR_SPEED)) * 0.5
 
 		cached_pulsing_dash_time = time
 		cached_pulsing_dash_alpha = math.floor(PULSING_DASH_MIN_ALPHA + (255 - PULSING_DASH_MIN_ALPHA) * pulse + 0.5)
 	end
+end
 
+local function apply_pulsing_dash_alpha(_, style)
 	style.color[1] = cached_pulsing_dash_alpha
 end
 
@@ -995,12 +998,12 @@ local function configure_equipped_highlight(mod, pass_template, card_width, card
 				},
 			},
 			visibility_function = equipped_visible,
-			change_function = mode == "pulsing_dashes" and update_pulsing_dash_alpha or nil,
+			change_function = mode == "pulsing_dashes" and apply_pulsing_dash_alpha or nil,
 		}
 	end
 
-	-- Static modes have no change callback. The pulsing mode reads only
-	-- Darktide's global clock and mutates the pass alpha in place.
+	-- Static modes have no change callback. The pulsing callback only applies
+	-- the alpha calculated once by the mod-owned frame update.
 end
 
 local NATIVE_NEW_ITEM_INDICATOR = "content/ui/materials/symbols/new_item_indicator"
@@ -1072,7 +1075,7 @@ local function configure_new_item_highlight(mod, pass_template, card_width, card
 	end
 
 	local function pulse_and_acknowledge_new_item(content, style)
-		update_pulsing_dash_alpha(content, style)
+		apply_pulsing_dash_alpha(content, style)
 		acknowledge_new_item(content)
 	end
 
@@ -1143,7 +1146,7 @@ local function configure_new_item_highlight(mod, pass_template, card_width, card
 		local change_function
 
 		if mode == "pulsing_dashes" then
-			change_function = layer == 1 and pulse_and_acknowledge_new_item or update_pulsing_dash_alpha
+			change_function = layer == 1 and pulse_and_acknowledge_new_item or apply_pulsing_dash_alpha
 		elseif layer == 1 then
 			change_function = acknowledge_new_item
 		end
@@ -1836,5 +1839,6 @@ Cards.configure_new_item_highlight = configure_new_item_highlight
 Cards.add_custom_content_passes = add_custom_content_passes
 Cards.grid_weapon_name_font_size = grid_weapon_name_font_size
 Cards.configure_card_content = configure_card_content
+Cards.update_highlight_animation = update_highlight_animation
 
 return Cards

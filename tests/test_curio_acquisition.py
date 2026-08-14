@@ -405,6 +405,7 @@ def main() -> None:
         }
 
         server_clock = 100000
+        server_time_calls = 0
         backend_account_key = "default"
         main_menu_active = false
 		game_mode_name_value = "hub"
@@ -583,6 +584,7 @@ def main() -> None:
                     return true
                 end,
                 get_server_time = function()
+					server_time_calls = server_time_calls + 1
                     return server_clock
                 end,
                 interfaces = {
@@ -1253,6 +1255,16 @@ def main() -> None:
     assert globals_.purchase_count == purchases_before_idle_refresh
     module.update(globals_.test_mod, 1, False)
     assert globals_.purchase_count == purchases_before_idle_refresh + 1
+
+    # A completed context does not repeat rotation/history/report maintenance
+    # every frame. The one-second boundary remains the scheduler wake-up.
+    globals_.server_time_calls = 0
+    for _ in range(5):
+        module.update(globals_.test_mod, 0.1, False)
+    assert globals_.server_time_calls == 0
+    module.update(globals_.test_mod, 0.5, False)
+    assert globals_.server_time_calls > 0
+
     module.update(globals_.test_mod, 1, False)
     assert globals_.purchase_count == purchases_before_idle_refresh + 1
     module.cancel()

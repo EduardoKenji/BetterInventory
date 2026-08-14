@@ -119,6 +119,9 @@ FEATURE_DISCARD_SUMMARY_PATH = (
 
 
 def main() -> None:
+    panel_runtime_source = PANEL_RUNTIME_PATH.read_text(encoding="utf-8")
+    assert "pairs({ item_grid, view._weapon_options_element, view._discard_items_element })" not in panel_runtime_source
+
     lua = LuaRuntime(unpack_returned_tuples=True)
     lua.execute(
         r"""
