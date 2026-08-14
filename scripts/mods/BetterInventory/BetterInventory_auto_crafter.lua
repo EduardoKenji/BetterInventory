@@ -657,8 +657,24 @@ function AutoCrafter.configure(dependencies)
 			return view ~= nil and view == active_brunt_view
 		end,
 		report = function(kind, payload)
-			local level = kind == "selection_failed" and "error" or "info"
-			log(level, string.format("Games Lantern Brunt selection event=%s reason=%s attempts=%s", tostring(kind), tostring(payload and payload.reason or "none"), tostring(payload and payload.attempts or 0)))
+			local offer = payload and payload.offer or {}
+
+			-- Brunt preview synchronization is presentation-only. Execution has
+			-- its own fail-closed selection gate before any account mutation.
+			log("info", string.format(
+				"Games Lantern Brunt preview selection event=%s reason=%s attempts=%s elapsed=%.2fs timeout=%s error=%s detail=%s offer=%s master=%s slot=%s tab=%s",
+				tostring(kind),
+				tostring(payload and payload.reason or "none"),
+				tostring(payload and payload.attempts or 0),
+				tonumber(payload and payload.elapsed) or 0,
+				tostring(payload and payload.timeout_reason or "none"),
+				tostring(payload and payload.error or "none"),
+				tostring(payload and payload.detail or "none"),
+				tostring(offer.offer_id or "none"),
+				tostring(offer.master_id or "none"),
+				tostring(offer.slot_type or "none"),
+				tostring(offer.tab_index or "none")
+			))
 		end,
 	}) or nil
 	games_lantern_queue = GamesLanternQueue and GamesLanternQueue.new({
@@ -1311,7 +1327,7 @@ function AutoCrafter.update(dt)
 		end
 	end
 	if games_lantern_selection and games_lantern_selection:has_pending() and active_brunt_view then
-		local selection_ok, selection_error = pcall(games_lantern_selection.update, games_lantern_selection, active_brunt_view)
+		local selection_ok, selection_error = pcall(games_lantern_selection.update, games_lantern_selection, active_brunt_view, dt)
 		if not selection_ok then
 			log("error", "Games Lantern Brunt selection update failed: " .. tostring(selection_error))
 			pcall(games_lantern_selection.cancel_pending, games_lantern_selection)

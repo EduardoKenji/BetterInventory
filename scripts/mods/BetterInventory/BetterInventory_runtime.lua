@@ -1391,7 +1391,7 @@ function mod.update(dt)
 	local overview_highlights_active = type(CharacterOverviewUI.needs_update) == "function" and CharacterOverviewUI.needs_update()
 
 	if highlight_animation_enabled and (next(active_highlight_views) ~= nil or overview_highlights_active) and Layout and type(Layout.update_highlight_animation) == "function" then
-		Layout.update_highlight_animation()
+		Layout.update_highlight_animation(mod)
 	end
 
 	local auto_crafter_needs_update = AutoCrafter and type(AutoCrafter.update) == "function" and (type(AutoCrafter.needs_update) ~= "function" or AutoCrafter.needs_update())
