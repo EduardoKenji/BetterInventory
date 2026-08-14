@@ -1054,6 +1054,10 @@ Features.set_lantern_integration = function(_, integration_mod)
 	return Lantern.set_lantern_integration(_, integration_mod)
 end
 
+Features.shutdown_lantern_integration = function()
+	return Lantern.shutdown()
+end
+
 Features.set_item_sorting_integration = function(integration_mod)
 	return Features._sorting.set_integration(integration_mod, Features.invalidate_all_view_composition)
 end

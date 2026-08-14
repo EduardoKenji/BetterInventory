@@ -5,6 +5,10 @@ local ProfileUtils = require("scripts/utilities/profile_utils")
 local lantern_mod
 local lantern_overlay
 local invalidate_view_composition
+local installed_overlay
+local installed_original_draw
+local installed_draw_wrapper
+local integration_owner = {}
 
 Lantern.configure = function(options)
 	if type(options) == "function" then
@@ -87,31 +91,63 @@ Lantern.should_host_lantern_panel = function(view)
 	return view and view._better_inventory_lantern_panel_hosted == true
 end
 
+local function detach_lantern_integration()
+	local overlay = installed_overlay
+
+	if overlay then
+		if overlay.draw_weapon_select == installed_draw_wrapper then
+			overlay.draw_weapon_select = installed_original_draw
+		end
+
+		if overlay._better_inventory_draw_owner == integration_owner then
+			overlay._better_inventory_draw_owner = nil
+			overlay._better_inventory_draw_wrapper = nil
+			overlay._better_inventory_original_draw = nil
+		end
+	end
+
+	installed_overlay = nil
+	installed_original_draw = nil
+	installed_draw_wrapper = nil
+	lantern_overlay = nil
+	lantern_mod = nil
+end
+
 Lantern.set_lantern_integration = function(_, integration_mod)
+	detach_lantern_integration()
+
 	lantern_mod = type(integration_mod) == "table" and integration_mod or nil
 	lantern_overlay = lantern_mod and lantern_mod._modules and lantern_mod._modules.equipment_overlay or nil
 
 	if not lantern_overlay or type(lantern_overlay.draw_weapon_select) ~= "function" then
+		lantern_overlay = nil
+		lantern_mod = nil
+
 		return false
 	end
 
-	if type(lantern_overlay._better_inventory_original_draw_weapon_select) ~= "function" then
-		lantern_overlay._better_inventory_original_draw_weapon_select = lantern_overlay.draw_weapon_select
-		lantern_overlay.draw_weapon_select = function(view, ...)
-			local should_host = lantern_overlay._better_inventory_should_host_panel
-
-			if type(should_host) == "function" and should_host(view) then
-				return
-			end
-
-			return lantern_overlay._better_inventory_original_draw_weapon_select(view, ...)
+	local overlay = lantern_overlay
+	local original_draw = overlay.draw_weapon_select
+	local wrapper = function(view, ...)
+		if Lantern.should_host_lantern_panel(view) then
+			return
 		end
+
+		return original_draw(view, ...)
 	end
 
-	lantern_overlay._better_inventory_should_host_panel = Lantern.should_host_lantern_panel
+	installed_overlay = overlay
+	installed_original_draw = original_draw
+	installed_draw_wrapper = wrapper
+	overlay._better_inventory_draw_owner = integration_owner
+	overlay._better_inventory_draw_wrapper = wrapper
+	overlay._better_inventory_original_draw = original_draw
+	overlay.draw_weapon_select = wrapper
 
 	return true
 end
+
+Lantern.shutdown = detach_lantern_integration
 
 Lantern.release_lantern_inventory_section = function(view)
 	restore_lantern_weapon_panel(view)

@@ -31,6 +31,9 @@ def main() -> None:
     assert 'pcall(games_lantern_import.cancel, games_lantern_import, "shutdown")' in source
     assert "if view and active_brunt_view ~= view then" in source
     assert "active_brunt_view = nil" in source
+    assert "local configured_dependencies" in source
+    assert "function AutoCrafter.ensure_configured()" in source
+    assert "return controller ~= nil or AutoCrafter.configure()" in source
 
     # Staged Games Lantern planner selection mirrors Brunt's native weapon
     # preview through a bounded deferred-tab coordinator. It is cancelled at

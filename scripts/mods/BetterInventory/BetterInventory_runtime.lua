@@ -1077,6 +1077,12 @@ end
 
 function mod.on_enabled()
 	ItemCustomization.on_enabled(mod)
+	if AutoCrafter and type(AutoCrafter.ensure_configured) == "function" then
+		AutoCrafter.ensure_configured()
+	end
+	if Features and type(Features.set_lantern_integration) == "function" then
+		Features.set_lantern_integration(mod, get_mod("Lantern of the Omnissiah"))
+	end
 	if type(Diagnostics.configure) == "function" then
 		Diagnostics.configure(mod)
 	end
@@ -1395,6 +1401,9 @@ end
 function mod.on_disabled()
 	if AutoCrafter and type(AutoCrafter.shutdown) == "function" then
 		AutoCrafter.shutdown()
+	end
+	if Features and type(Features.shutdown_lantern_integration) == "function" then
+		Features.shutdown_lantern_integration()
 	end
 
 	ItemCustomization.on_disabled(mod)

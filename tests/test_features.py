@@ -2580,6 +2580,7 @@ def main() -> None:
         """
     )
     assert features.set_lantern_integration(mod, lantern_mod) is True
+    lantern_wrapper = lantern_overlay.draw_weapon_select
     lantern_overlay.draw_weapon_select(prototype_view)
     assert globals_.lantern_native_draw_count == 1
     mod.settings.enable_lantern_inventory_section = True
@@ -2672,6 +2673,20 @@ def main() -> None:
     assert prototype_panel.widgets["better_inventory_lantern_section"] is None
     lantern_overlay.draw_weapon_select(prototype_view)
     assert globals_.lantern_native_draw_count == 3
+
+    # Hot disable restores only BetterInventory's own wrapper. Re-enable binds
+    # one fresh wrapper, while a later third-party replacement remains intact.
+    features.shutdown_lantern_integration()
+    assert lantern_overlay.draw_weapon_select != lantern_wrapper
+    lantern_overlay.draw_weapon_select(prototype_view)
+    assert globals_.lantern_native_draw_count == 4
+    assert features.lantern_recommendations_active() is False
+    assert features.set_lantern_integration(mod, lantern_mod) is True
+    replacement_draw = lua.eval("function() lantern_native_draw_count = lantern_native_draw_count + 10 end")
+    lantern_overlay.draw_weapon_select = replacement_draw
+    features.shutdown_lantern_integration()
+    lantern_overlay.draw_weapon_select(prototype_view)
+    assert globals_.lantern_native_draw_count == 14
 
     # ItemSorting defines vanilla-style methods first and its own added methods
     # second. BetterInventory presents the complete two ranges as sibling

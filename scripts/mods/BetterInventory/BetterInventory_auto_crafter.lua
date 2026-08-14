@@ -1,6 +1,7 @@
 local AutoCrafter = {}
 
 local mod
+local configured_dependencies
 local controller
 local panel
 local games_lantern_queue
@@ -541,8 +542,16 @@ local function clock_adapter()
 end
 
 function AutoCrafter.configure(dependencies)
-	dependencies = dependencies or {}
+	if type(dependencies) == "table" then
+		configured_dependencies = dependencies
+	end
+
+	dependencies = configured_dependencies or {}
 	mod = dependencies.mod or mod
+
+	if controller then
+		return true
+	end
 
 	if not mod or type(mod.io_dofile) ~= "function" then
 		log("error", "Auto Crafter Helper could not initialize: host mod loader unavailable.")
@@ -1151,6 +1160,10 @@ function AutoCrafter.configure(dependencies)
 	presentation_snapshot = nil
 
 	return true
+end
+
+function AutoCrafter.ensure_configured()
+	return controller ~= nil or AutoCrafter.configure()
 end
 
 function AutoCrafter.on_brunt_view_ready(view)
