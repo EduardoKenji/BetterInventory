@@ -585,10 +585,8 @@ local function refresh_option_dependencies()
 	local automatic_curio_characters_enabled = automatic_curio_enabled and automatic_curio_character_mode
 	local automatic_curio_classes_reason = automatic_curio_enabled and mod:localize("option_requires_automatic_curio_classes_mode") or automatic_curio_reason
 	local automatic_curio_characters_reason = automatic_curio_enabled and mod:localize("option_requires_automatic_curio_characters_mode") or automatic_curio_reason
-	local inventory_options_panel_enabled = mod:get("enable_inventory_options_panel_prototype") == true
-	local inventory_options_panel_reason = mod:localize("option_requires_inventory_options_panel_prototype")
 	local lantern_installed = get_mod("Lantern of the Omnissiah") ~= nil
-	local lantern_reason = lantern_installed and inventory_options_panel_reason or mod:localize("option_requires_lantern_of_the_omnissiah")
+	local lantern_reason = mod:localize("option_requires_lantern_of_the_omnissiah")
 	local quick_look_card_grid_enabled = grid_enabled and mod:get("enable_quick_look_card_grid_integration") ~= false
 	local quick_look_card_grid_reason = grid_enabled and mod:localize("option_requires_quick_look_card_grid_integration") or native_reason
 	local quick_look_card_single_column_enabled = single_column_enabled and mod:get("enable_quick_look_card_single_column_integration") ~= false
@@ -725,11 +723,11 @@ local function refresh_option_dependencies()
 		"inventory_options_panel_padding_left",
 		"inventory_options_panel_padding_right",
 	}) do
-		set_option_enabled(option_dependency_entries[setting_id], inventory_options_panel_enabled, inventory_options_panel_reason)
+		set_option_enabled(option_dependency_entries[setting_id], true)
 	end
 
-	set_option_enabled(option_dependency_entries.enable_lantern_inventory_section, lantern_installed and inventory_options_panel_enabled, lantern_reason)
-	set_option_enabled(option_dependency_entries.keep_lantern_curio_panel_separate, lantern_installed and inventory_options_panel_enabled and mod:get("enable_lantern_inventory_section") == true, lantern_reason)
+	set_option_enabled(option_dependency_entries.enable_lantern_inventory_section, lantern_installed, lantern_reason)
+	set_option_enabled(option_dependency_entries.keep_lantern_curio_panel_separate, lantern_installed and mod:get("enable_lantern_inventory_section") == true, lantern_reason)
 
 	for _, setting_id in ipairs({
 		"quick_discard_mode",

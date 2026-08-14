@@ -2030,17 +2030,19 @@ def main() -> None:
     assert entries_by_id["automatic_curio_characters_group"].disabled is True
     assert active_character_entry.disabled is True
     assert empty_character_entry.disabled is True
-    assert entries_by_id["curio_information_width_percent"].disabled is True
-    assert entries_by_id["curio_preview_height_percent"].disabled is True
-    assert entries_by_id["inventory_options_panel_width"].disabled is True
-    assert entries_by_id["inventory_options_panel_max_height"].disabled is True
-    assert entries_by_id["inventory_options_panel_row_spacing"].disabled is True
-    assert entries_by_id["inventory_options_panel_padding_top"].disabled is True
-    assert entries_by_id["inventory_options_panel_padding_bottom"].disabled is True
-    assert entries_by_id["inventory_options_panel_padding_left"].disabled is True
-    assert entries_by_id["inventory_options_panel_padding_right"].disabled is True
+    assert entries_by_id["curio_information_width_percent"].disabled is False
+    assert entries_by_id["curio_preview_height_percent"].disabled is False
+    assert entries_by_id["inventory_options_panel_width"].disabled is False
+    assert entries_by_id["inventory_options_panel_max_height"].disabled is False
+    assert entries_by_id["inventory_options_panel_row_spacing"].disabled is False
+    assert entries_by_id["inventory_options_panel_padding_top"].disabled is False
+    assert entries_by_id["inventory_options_panel_padding_bottom"].disabled is False
+    assert entries_by_id["inventory_options_panel_padding_left"].disabled is False
+    assert entries_by_id["inventory_options_panel_padding_right"].disabled is False
 
-    settings.enable_inventory_options_panel_prototype = True
+    # Profiles upgraded from earlier releases can retain this removed setting.
+    # It must neither disable nor gray out the invariant panel controls.
+    settings.enable_inventory_options_panel_prototype = False
     mod.on_setting_changed("enable_inventory_options_panel_prototype")
     assert entries_by_id["curio_information_width_percent"].disabled is False
     assert entries_by_id["curio_preview_height_percent"].disabled is False
@@ -2051,9 +2053,6 @@ def main() -> None:
     assert entries_by_id["inventory_options_panel_padding_bottom"].disabled is False
     assert entries_by_id["inventory_options_panel_padding_left"].disabled is False
     assert entries_by_id["inventory_options_panel_padding_right"].disabled is False
-    settings.enable_inventory_options_panel_prototype = False
-    mod.on_setting_changed("enable_inventory_options_panel_prototype")
-
     settings.enable_experimental_quick_discard = True
     mod.on_setting_changed("enable_experimental_quick_discard")
     assert entries_by_id["quick_discard_rarity"].disabled is False
@@ -2413,6 +2412,16 @@ def main() -> None:
 			"character_overview_use_native_curio_overlay",
 			"character_overview_curio_name_mode",
 			"character_overview_curio_font_size_percent",
+			"inventory_options_controller_focus_keybind",
+			"curio_information_width_percent",
+			"curio_preview_height_percent",
+			"inventory_options_panel_width",
+			"inventory_options_panel_max_height",
+			"inventory_options_panel_row_spacing",
+			"inventory_options_panel_padding_top",
+			"inventory_options_panel_padding_bottom",
+			"inventory_options_panel_padding_left",
+			"inventory_options_panel_padding_right",
         }:
             continue
 
@@ -3024,7 +3033,7 @@ def main() -> None:
     assert defaults["prioritize_equipped_favorites"] is True
     assert defaults["show_inventory_options_widget"] is True
     assert defaults["prioritize_perfect_roll_weapons"] is True
-    assert defaults["enable_inventory_options_panel_prototype"] is True
+    assert "enable_inventory_options_panel_prototype" not in defaults
     assert defaults["automatic_curio_target_mode"] == "characters"
     assert defaults["curio_information_width_percent"] == 90
     assert defaults["curio_preview_height_percent"] == 76

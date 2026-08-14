@@ -444,7 +444,7 @@ local localization = {
 		en = "Leaves Lantern's Recommended Curios window in its native standalone placement instead of hosting it inside BetterInventory's inventory-options panel. Enabled by default because Lantern's Curio layout already fits beside BetterInventory's panel.",
 	},
 	option_requires_lantern_of_the_omnissiah = {
-		en = "Requires Lantern of the Omnissiah and the scalable inventory-options panel.",
+		en = "Requires Lantern of the Omnissiah.",
 	},
 	myfavorites_show_favorite_letter = {
 		en = "Show F below favorite icon",

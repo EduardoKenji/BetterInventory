@@ -166,10 +166,10 @@
   ],
   "test_features.py": [
       {"name": "panel_focus_allocation_guard", "risk": "medium", "start_line": 122, "end_line": 123},
-      {"name": "discard_operation_ownership", "risk": "critical", "start_line": 3036, "end_line": 3571},
-      {"name": "sorting_and_navigation", "risk": "high", "start_line": 408, "end_line": 1396},
-      {"name": "optional_integration_fallbacks", "risk": "high", "start_line": 1397, "end_line": 1823},
-      {"name": "panel_lifecycle", "risk": "high", "start_line": 1824, "end_line": 3035}
+      {"name": "discard_operation_ownership", "risk": "critical", "start_line": 3038, "end_line": 3573},
+      {"name": "sorting_and_navigation", "risk": "high", "start_line": 408, "end_line": 1397},
+      {"name": "optional_integration_fallbacks", "risk": "high", "start_line": 1398, "end_line": 1824},
+      {"name": "panel_lifecycle", "risk": "high", "start_line": 1825, "end_line": 3037}
   ],
   "test_item_customization.py": [
       {"name": "dirty_save_outcomes", "risk": "high", "start_line": 224, "end_line": 441},
@@ -190,8 +190,8 @@
     {"name": "schema_dependency_refresh", "risk": "high", "start_line": 21, "end_line": 411},
     {"name": "migration_preservation", "risk": "high", "start_line": 412, "end_line": 565},
     {"name": "character_overview_refresh", "risk": "high", "start_line": 566, "end_line": 1527},
-    {"name": "localization_contract", "risk": "medium", "start_line": 1528, "end_line": 2607},
-    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2608, "end_line": 3106}
+    {"name": "localization_contract", "risk": "medium", "start_line": 1528, "end_line": 2616},
+    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2617, "end_line": 3115}
   ],
   "test_settings_registry.py": [
     {"name": "duplicate_detection", "risk": "high", "start_line": 63, "end_line": 123},

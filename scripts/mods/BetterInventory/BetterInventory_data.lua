@@ -326,12 +326,6 @@ return {
 						type = "group",
 						sub_widgets = {
 							{
-								setting_id = "enable_inventory_options_panel_prototype",
-								tooltip = "enable_inventory_options_panel_prototype_tooltip",
-								type = "checkbox",
-								default_value = true,
-							},
-							{
 								setting_id = "inventory_options_controller_focus_keybind",
 								tooltip = "inventory_options_controller_focus_keybind_tooltip",
 								type = "dropdown",

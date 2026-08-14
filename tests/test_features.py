@@ -740,7 +740,8 @@ def main() -> None:
         is False
     )
 
-    mod.settings.enable_inventory_options_panel_prototype = True
+    # A stale pre-v2.3.0 saved value must not disable the native panel.
+    mod.settings.enable_inventory_options_panel_prototype = False
     mod.settings.show_inventory_options_widget = True
     mod.settings.inventory_options_controller_focus_keybind = (
         "navigate_secondary_right_pressed"
@@ -1945,10 +1946,11 @@ def main() -> None:
     assert quick_discard_view._widgets_by_name["better_inventory_quick_discard"].content.visible is True
     assert quick_discard_view._ui_scenegraph[sort_label_id].position[1] == 20
 
-    # The scalable-panel prototype must retain the legacy widgets as a fallback,
-    # present the same synchronized controls inside one managed grid, collapse
-    # sections by rebuilding rows, and reduce to Sorting in native discard mode.
-    mod.settings.enable_inventory_options_panel_prototype = True
+    # The invariant scalable panel must retain legacy widgets only as an
+    # initialization fallback, present synchronized controls in one managed
+    # grid, collapse sections by rebuilding rows, and reduce to Sorting in
+    # native discard mode. A stale saved prototype setting is ignored.
+    mod.settings.enable_inventory_options_panel_prototype = False
     mod.settings.quick_discard_mode = "manual"
     mod.settings.quick_discard_skip_automatic_confirmation = True
     mod.settings.curio_information_width_percent = 90
@@ -2539,10 +2541,10 @@ def main() -> None:
 
     mod.settings.enable_inventory_options_panel_prototype = False
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
-    assert prototype_panel.visible is False
-    assert prototype_view._widgets_by_name[sort_label_id].content.visible is True
-    assert prototype_view._widgets_by_name[toggle_id].content.visible is True
-    mod.settings.enable_inventory_options_panel_prototype = True
+    assert prototype_panel.visible is True
+    assert prototype_panel.input_disabled is False
+    assert prototype_view._widgets_by_name[sort_label_id].content.visible is False
+    assert prototype_view._widgets_by_name[toggle_id].content.visible is False
 
     # Lantern's initialized widget belongs to the inventory view's renderer. The
     # integration must create an independent grid row and never reparent, offset,
