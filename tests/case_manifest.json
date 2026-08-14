@@ -184,8 +184,8 @@
   ],
   "test_layout.py": [
     {"name": "card_geometry", "risk": "high", "start_line": 633, "end_line": 1633},
-      {"name": "content_and_resource_ownership", "risk": "high", "start_line": 1634, "end_line": 2694},
-      {"name": "integration_boundaries", "risk": "medium", "start_line": 2695, "end_line": 4327}
+      {"name": "content_and_resource_ownership", "risk": "high", "start_line": 1634, "end_line": 2731},
+      {"name": "integration_boundaries", "risk": "medium", "start_line": 2732, "end_line": 4364}
   ],
   "test_operation_arbiter.py": [
     {"name": "manual_automatic_exclusion", "risk": "critical", "start_line": 20, "end_line": 34},

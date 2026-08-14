@@ -872,6 +872,8 @@ end
 local EQUIPPED_HIGHLIGHT_STYLE_PREFIX = "better_inventory_equipped_highlight"
 local PULSING_DASH_ANGULAR_SPEED = math.pi * 0.5
 local PULSING_DASH_MIN_ALPHA = math.floor(255 * 0.15 + 0.5)
+local application = Application
+local application_time_since_launch = application and application.time_since_launch
 local cached_pulsing_dash_time
 local cached_pulsing_dash_alpha = PULSING_DASH_MIN_ALPHA
 
@@ -880,8 +882,7 @@ local cached_pulsing_dash_alpha = PULSING_DASH_MIN_ALPHA
 -- mutable animation state is retained by a card or view. A bounded two-scalar
 -- module cache avoids repeating clock/cosine work for every visible layer.
 local function update_highlight_animation()
-	local application = rawget(_G, "Application")
-	local time = application and type(application.time_since_launch) == "function" and application.time_since_launch()
+	local time = type(application_time_since_launch) == "function" and application_time_since_launch()
 
 	if type(time) == "number" and time ~= cached_pulsing_dash_time then
 		local pulse = (1 - math.cos(time * PULSING_DASH_ANGULAR_SPEED)) * 0.5

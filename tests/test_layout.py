@@ -2233,6 +2233,43 @@ def main() -> None:
     )
     assert len(pulsing_equipped_passes) == 2
     assert all(candidate.change_function is not None for candidate in pulsing_equipped_passes)
+
+    # Darktide can expose engine globals through the environment metatable.
+    # A raw _G lookup therefore misses Application and leaves alpha at 15%.
+    cards_source = LAYOUT_CARDS_PATH.read_text(encoding="utf-8")
+    animation_source = cards_source.split("local PULSING_DASH_ANGULAR_SPEED", 1)[1].split(
+        "local function clear_equipped_highlight_passes", 1
+    )[0]
+    metatable_lua = LuaRuntime(unpack_returned_tuples=True)
+    metatable_lua.execute(
+        """
+        test_application_time = 2
+        local engine_application = {
+            time_since_launch = function()
+                return test_application_time
+            end,
+        }
+        setmetatable(_G, {
+            __index = function(_, key)
+                if key == "Application" then
+                    return engine_application
+                end
+            end,
+        })
+        """
+    )
+    assert metatable_lua.eval('rawget(_G, "Application")') is None
+    metatable_animation = metatable_lua.execute(
+        "local PULSING_DASH_ANGULAR_SPEED" + animation_source
+        + "\nreturn { update = update_highlight_animation, apply = apply_pulsing_dash_alpha }"
+    )
+    metatable_style = metatable_lua.table_from(
+        {"color": metatable_lua.table_from([38, 105, 210, 120])}
+    )
+    metatable_animation.update()
+    metatable_animation.apply(None, metatable_style)
+    assert metatable_style.color[1] == 255
+
     equipped_content = lua.table_from({"equipped": True})
     globals_.test_application_time = 0
     layout.update_highlight_animation()
