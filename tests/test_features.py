@@ -2550,6 +2550,9 @@ def main() -> None:
     lantern_mod, lantern_overlay, lantern_source_widget = lua.execute(
         r"""
         lantern_native_draw_count = 0
+		lantern_enabled_calls = 0
+		lantern_get_calls = 0
+		lantern_preview_calls = 0
         local overlay = {
             draw_weapon_select = function()
                 lantern_native_draw_count = lantern_native_draw_count + 1
@@ -2578,9 +2581,11 @@ def main() -> None:
             enabled = true,
             _modules = {equipment_overlay = overlay},
             is_enabled = function(self)
+				lantern_enabled_calls = lantern_enabled_calls + 1
                 return self.enabled
             end,
             get = function(self, setting_id)
+				lantern_get_calls = lantern_get_calls + 1
                 return setting_id == "show_recommendations"
             end,
         }
@@ -2595,7 +2600,9 @@ def main() -> None:
     assert globals_.lantern_native_draw_count == 1
     mod.settings.enable_lantern_inventory_section = True
     prototype_view._selected_slot = lua.table_from({"name": "slot_primary"})
-    prototype_view.is_previewing_item = lua.eval("function() return true end")
+    prototype_view.is_previewing_item = lua.eval(
+        "function() lantern_preview_calls = lantern_preview_calls + 1; return true end"
+    )
     prototype_view._lantern_weapon_panel = lua.table_from(
         {
             "widget": lantern_source_widget,
@@ -2607,6 +2614,18 @@ def main() -> None:
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert prototype_view._better_inventory_lantern_panel_hosted is True
+    lantern_poll_counts = (
+        globals_.lantern_enabled_calls,
+        globals_.lantern_get_calls,
+        globals_.lantern_preview_calls,
+    )
+    for _ in range(10):
+        features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert (
+        globals_.lantern_enabled_calls,
+        globals_.lantern_get_calls,
+        globals_.lantern_preview_calls,
+    ) == lantern_poll_counts
     assert prototype_panel.layout[1].control_id == "better_inventory_lantern_section"
     lantern_entry = prototype_panel.layout[1]
     lantern_proxy = prototype_panel.widgets["better_inventory_lantern_section"]
