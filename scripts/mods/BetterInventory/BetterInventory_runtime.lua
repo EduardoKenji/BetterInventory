@@ -24,6 +24,7 @@ local dmf_mod
 local active_grid_view
 local active_grid_configuration
 local highlight_animation_enabled = false
+local option_dependency_owner = {}
 local synchronize_myfavorites_grid = function()
 	return 0
 end
@@ -31,6 +32,7 @@ local CreditsGoodsVendorView = require("scripts/ui/views/credits_goods_vendor_vi
 
 local function configure_dependencies(dependencies)
 	mod = dependencies.mod
+	mod._better_inventory_option_dependency_owner = option_dependency_owner
 	Layout = dependencies.Layout
 	Features = dependencies.Features
 	CurioAcquisition = dependencies.CurioAcquisition
@@ -408,7 +410,18 @@ local function character_overview_dump_stat_style_state()
 end
 
 local function bind_live_option_dependency(setting_id, entry)
-	if not CHARACTER_OVERVIEW_DUMP_STAT_STYLE_SETTING_IDS[setting_id] or entry._better_inventory_live_dependency_getter then
+	if not CHARACTER_OVERVIEW_DUMP_STAT_STYLE_SETTING_IDS[setting_id] or mod._better_inventory_option_dependency_owner ~= option_dependency_owner then
+		return
+	end
+
+	local state = entry._better_inventory_live_dependency_state
+
+	if type(state) == "table" then
+		state.owner = option_dependency_owner
+		state.refresh = character_overview_dump_stat_style_state
+
+		return
+	elseif entry._better_inventory_live_dependency_getter then
 		return
 	end
 
@@ -418,13 +431,22 @@ local function bind_live_option_dependency(setting_id, entry)
 		return
 	end
 
-	entry._better_inventory_live_dependency_getter = true
+	state = {
+		owner = option_dependency_owner,
+		original = original_get_function,
+		refresh = character_overview_dump_stat_style_state,
+	}
+	entry._better_inventory_live_dependency_state = state
 	entry.get_function = function(...)
-		local enabled, reason = character_overview_dump_stat_style_state()
+		local active_state = entry._better_inventory_live_dependency_state
+		local enabled, reason = active_state.refresh()
 
-		apply_option_enabled(entry, enabled, reason)
+		entry.disabled = not enabled
+		entry.disabled_by = enabled and nil or {
+			reason,
+		}
 
-		return original_get_function(...)
+		return active_state.original(...)
 	end
 end
 
@@ -1242,19 +1264,6 @@ end
 local function lantern_recommendations_active()
 	return type(Features.lantern_recommendations_active) == "function" and Features.lantern_recommendations_active()
 end
-
--- Extracted to BetterInventory_character_overview_ui.lua.
-
--- Extracted to BetterInventory_character_overview_ui.lua.
-
-
--- Extracted to BetterInventory_character_overview_ui.lua.
-
--- Extracted to BetterInventory_character_overview_ui.lua.
-
--- Extracted to BetterInventory_character_overview_ui.lua.
-
--- Extracted to BetterInventory_character_overview_ui.lua.
 
 function mod.on_setting_changed(setting_id)
 	local color_change = color_target_by_setting_id[setting_id]

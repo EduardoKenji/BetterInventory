@@ -435,6 +435,14 @@ def main() -> None:
     lua.globals().TestFeatureDomains = feature_domains
     lua.execute(
         """
+		local original_runtime_configure = TestRuntime.configure
+
+		TestRuntime.configure = function(dependencies)
+			runtime_dependencies = dependencies
+
+			return original_runtime_configure(dependencies)
+		end
+
         local original_register = TestSettingsRegistry.register
 
         TestSettingsRegistry.register = function(...)
@@ -1694,6 +1702,10 @@ def main() -> None:
         "character_overview_dump_stat_color_g",
         "character_overview_dump_stat_color_b",
     )
+    original_dependency_wrapper = entries_by_id[dump_style_ids[0]].get_function
+    original_dependency_owner = entries_by_id[
+        dump_style_ids[0]
+    ]._better_inventory_live_dependency_state.owner
     for dump_style_id in dump_style_ids:
         assert entries_by_id[dump_style_id].disabled is False
     assert entries_by_id["character_overview_show_curio_rarity_strip"].disabled is False
@@ -1740,6 +1752,21 @@ def main() -> None:
         assert entries_by_id[dump_style_id].disabled is False
         assert replacement_by_id[dump_style_id].disabled is False
     globals_.captured_options_hook(globals_.test_dmf, options_templates)
+    replacement_runtime = lua.execute(
+        RUNTIME_PATH.read_text(encoding="utf-8"),
+        name=f"{RUNTIME_PATH}:hot_reload",
+    )
+    replacement_runtime.configure(globals_.runtime_dependencies)
+    replacement_runtime.install()
+    globals_.captured_options_hook(globals_.test_dmf, options_templates)
+    reloaded_dependency_state = entries_by_id[
+        dump_style_ids[0]
+    ]._better_inventory_live_dependency_state
+    lua_rawequal = lua.eval("function(left, right) return rawequal(left, right) end")
+    assert lua_rawequal(
+        entries_by_id[dump_style_ids[0]].get_function, original_dependency_wrapper
+    )
+    assert not lua_rawequal(reloaded_dependency_state.owner, original_dependency_owner)
     settings.enable_character_overview_ranged_mirror = True
     settings.enable_character_overview_curio_details = False
     mod.on_setting_changed("enable_character_overview_curio_details")
