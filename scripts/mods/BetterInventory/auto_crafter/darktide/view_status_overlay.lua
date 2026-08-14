@@ -80,29 +80,34 @@ local function horizontal_offset(view)
 	return 0
 end
 
-local function status_lines(view)
+local function status_presentation(view)
 	if not supported_view(view) then
-		return nil
+		return
 	end
 
 	local bridge = rawget(_G, "AutoCrafterHelperHudState")
 
 	if not bridge or type(bridge.enabled) ~= "function" or bridge.enabled() ~= true then
-		return nil
+		return
 	end
 
 	if type(bridge.visible_context) == "function" and bridge.visible_context() ~= true then
-		return nil
+		return
 	end
 
-	local lines = type(bridge.lines) == "function" and bridge.lines() or nil
+	if type(bridge.presentation) ~= "function" then
+		return
+	end
 
-	return type(lines) == "table" and #lines > 0 and lines or nil
+	local text, line_count, revision = bridge.presentation()
+
+	if type(text) == "string" and text ~= "" then
+		return text, tonumber(line_count) or 0, revision
+	end
 end
 
 local function draw_status_overlay(view, dt, t, input_service, layer)
-	local lines = status_lines(view)
-	local text = lines and table.concat(lines, "\n") or nil
+	local text, line_count, revision = status_presentation(view)
 	local ui_renderer = view and (view._ui_default_renderer or view._ui_renderer)
 
 	if not text or not ui_renderer or not view._ui_scenegraph or not view._render_settings then
@@ -116,14 +121,18 @@ local function draw_status_overlay(view, dt, t, input_service, layer)
 		view._auto_crafter_status_overlay = widget
 	end
 
-	widget.content.text = text
-	local height = status_height(#lines)
-	widget.style.background.size[2] = height
-	widget.style.accent.size[2] = height
-	widget.style.text.size[2] = height - VERTICAL_PADDING
-	widget.offset[1] = horizontal_offset(view)
-	widget.offset[2] = 0
-	widget.offset[3] = 0
+	if widget._better_inventory_presentation_revision ~= revision then
+		local height = status_height(line_count)
+
+		widget.content.text = text
+		widget.style.background.size[2] = height
+		widget.style.accent.size[2] = height
+		widget.style.text.size[2] = height - VERTICAL_PADDING
+		widget.offset[1] = horizontal_offset(view)
+		widget.offset[2] = 0
+		widget.offset[3] = 0
+		widget._better_inventory_presentation_revision = revision
+	end
 
 	local render_settings = view._render_settings
 	local previous_layer = render_settings.start_layer

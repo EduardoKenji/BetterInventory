@@ -34,6 +34,9 @@ def main() -> None:
     assert "local configured_dependencies" in source
     assert "function AutoCrafter.ensure_configured()" in source
     assert "return controller ~= nil or AutoCrafter.configure()" in source
+    assert "local function publish_hud_lines(lines)" in source
+    assert "function AutoCrafter.hud_presentation()" in source
+    assert 'table.concat(lines, "\\n")' in source
 
     # Staged Games Lantern planner selection mirrors Brunt's native weapon
     # preview through a bounded deferred-tab coordinator. It is cancelled at

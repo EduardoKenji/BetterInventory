@@ -47,10 +47,12 @@ def main() -> None:
     assert "widget.offset[2] = 0" in overlay_source
     assert 'string.find(class_name, "CreditsGoodsVendorView", 1, true)' in overlay_source
     assert "BRUNT_HORIZONTAL_OFFSET = 360" in overlay_source
-    assert "status_height(#lines)" in overlay_source
+    assert "status_height(line_count)" in overlay_source
     assert "widget.style.background.size[2] = height" in overlay_source
     assert "widget.style.accent.size[2] = height" in overlay_source
     assert "widget.style.text.size[2] = height - VERTICAL_PADDING" in overlay_source
+    assert "table.concat" not in overlay_source
+    assert "widget._better_inventory_presentation_revision ~= revision" in overlay_source
     assert "centered_top_pivot" not in overlay_source
     assert 'mod:hook_safe(view_class, "draw"' in overlay_source
     assert 'mod:hook(view_class, "draw"' not in overlay_source
@@ -62,13 +64,15 @@ def main() -> None:
     assert "status_height(line_count)" in hud_source
     assert "scenegraph.size[2] = height" in hud_source
     assert "widget.style.text.size[2] = height - VERTICAL_PADDING" in hud_source
+    assert "table.concat" not in hud_source
+    assert "revision ~= self._better_inventory_presentation_revision" in hud_source
 
     # Draw hooks must measure only BetterInventory's post-draw overlay. Wrapping
     # BaseView.draw makes hook profilers charge the complete native/third-party
     # UI render chain to BetterInventory, even in unrelated views.
     overlay_runtime = LuaRuntime(unpack_returned_tuples=True)
     overlay_runtime.execute(
-        """
+        r"""
         renderer_begin_calls = 0
         renderer_end_calls = 0
         widget_draw_calls = 0
@@ -132,8 +136,8 @@ def main() -> None:
         AutoCrafterHelperHudState = {
             enabled = function() return true end,
             visible_context = function() return true end,
-            lines = function()
-                return { "one", "two", "three", "four", "five" }
+            presentation = function()
+                return "one\ntwo\nthree\nfour\nfive", 5, 1
             end,
         }
         """
@@ -172,10 +176,23 @@ def main() -> None:
     assert runtime_globals.widget_draw_calls == 1
     assert inventory_view._render_settings.start_layer == 7
     assert inventory_view._auto_crafter_status_overlay.style.background.size[2] == 138
+    assert inventory_view._auto_crafter_status_overlay.content.text == "one\ntwo\nthree\nfour\nfive"
+
+    # Stable presentation revisions retain the already populated widget. A new
+    # revision updates text and geometry without rebuilding the widget.
+    runtime_globals.safe_hooks[3].handler(inventory_view, 0.016, 1, None, 10)
+    assert runtime_globals.widget_draw_calls == 2
+    overlay_runtime.execute(
+        'AutoCrafterHelperHudState.presentation = function() return "updated", 1, 2 end'
+    )
+    runtime_globals.safe_hooks[3].handler(inventory_view, 0.016, 1, None, 10)
+    assert runtime_globals.widget_draw_calls == 3
+    assert inventory_view._auto_crafter_status_overlay.content.text == "updated"
+    assert inventory_view._auto_crafter_status_overlay.style.background.size[2] == 112
 
     unrelated_view = overlay_runtime.table_from({"__class_name": "SocialMenuRosterView"})
     runtime_globals.safe_hooks[1].handler(unrelated_view, 0.016, 1, None, 10)
-    assert runtime_globals.widget_draw_calls == 1
+    assert runtime_globals.widget_draw_calls == 3
 
     print("Auto Crafter viewport resolution matrix tests passed.")
 
