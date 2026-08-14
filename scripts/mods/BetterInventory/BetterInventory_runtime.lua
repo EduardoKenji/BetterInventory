@@ -23,6 +23,7 @@ local ViewElementGrid
 local dmf_mod
 local active_grid_view
 local active_grid_configuration
+local active_highlight_views
 local highlight_animation_enabled = false
 local option_dependency_owner = {}
 local synchronize_myfavorites_grid = function()
@@ -33,6 +34,14 @@ local CreditsGoodsVendorView = require("scripts/ui/views/credits_goods_vendor_vi
 local function configure_dependencies(dependencies)
 	mod = dependencies.mod
 	mod._better_inventory_option_dependency_owner = option_dependency_owner
+	active_highlight_views = mod._better_inventory_active_highlight_views
+
+	if type(active_highlight_views) ~= "table" then
+		active_highlight_views = setmetatable({}, {
+			__mode = "k",
+		})
+		mod._better_inventory_active_highlight_views = active_highlight_views
+	end
 	Layout = dependencies.Layout
 	Features = dependencies.Features
 	CurioAcquisition = dependencies.CurioAcquisition
@@ -1381,7 +1390,9 @@ mod:hook_safe(MainMenuView, "on_exit", function()
 end)
 
 function mod.update(dt)
-	if highlight_animation_enabled and Layout and type(Layout.update_highlight_animation) == "function" then
+	local overview_highlights_active = type(CharacterOverviewUI.needs_update) == "function" and CharacterOverviewUI.needs_update()
+
+	if highlight_animation_enabled and (next(active_highlight_views) ~= nil or overview_highlights_active) and Layout and type(Layout.update_highlight_animation) == "function" then
 		Layout.update_highlight_animation()
 	end
 
@@ -1392,7 +1403,7 @@ function mod.update(dt)
 	end
 	local auto_crafter_busy = auto_crafter_needs_update and type(AutoCrafter.is_busy) == "function" and AutoCrafter.is_busy() or false
 
-	if type(CharacterOverviewUI.update_registered_views) == "function" and (type(CharacterOverviewUI.needs_update) ~= "function" or CharacterOverviewUI.needs_update()) then
+	if type(CharacterOverviewUI.update_registered_views) == "function" and (type(CharacterOverviewUI.needs_update) ~= "function" or overview_highlights_active) then
 		CharacterOverviewUI.update_registered_views(dt)
 	end
 	if FeatureDomains and FeatureDomains.markers and type(FeatureDomains.markers.update) == "function" and (type(FeatureDomains.markers.needs_update) ~= "function" or FeatureDomains.markers.needs_update()) then
@@ -1464,6 +1475,8 @@ if dmf_mod and type(dmf_mod.create_mod_options_settings) == "function" then
 end
 
 mod:hook(ItemGridViewBase, "init", function(func, view, definitions, settings, context)
+	active_highlight_views[view] = true
+
 	if view.__class_name == "InventoryWeaponsView" then
 		local adjusted_definitions = Features.add_inventory_sort_toggle_definition(mod, Layout, definitions, view)
 		local expansion = 0
@@ -1654,6 +1667,10 @@ end
 
 local function release_item_grid_view_runtime(view)
 	local item_grid = view and view._item_grid
+
+	if view then
+		active_highlight_views[view] = nil
+	end
 
 	if FeatureDomains and FeatureDomains.markers and type(FeatureDomains.markers.release_grid) == "function" then
 		FeatureDomains.markers.release_grid(item_grid)

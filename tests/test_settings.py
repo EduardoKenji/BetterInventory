@@ -195,7 +195,9 @@ def main() -> None:
 			end,
             configure_item_blueprint = function() end,
 			configure_grid = function() end,
+			update_highlight_animation = function() highlight_animation_updates = highlight_animation_updates + 1 end,
 		}
+		highlight_animation_updates = 0
 		inventory_sort_syncs = 0
 		quick_discard_syncs = 0
 		curio_acquisition_syncs = 0
@@ -458,7 +460,12 @@ def main() -> None:
     settings = globals_.settings
     assert globals_.captured_character_overview_update_hook is None
     assert globals_.captured_grid_update_hook is None
+    settings.new_item_highlight_mode = "pulsing_dashes"
+    mod.on_setting_changed("new_item_highlight_mode")
     mod.update(0.016)
+    assert globals_.highlight_animation_updates == 0
+    settings.new_item_highlight_mode = "animated_dashes"
+    mod.on_setting_changed("new_item_highlight_mode")
     assert globals_.item_customization_updates == 0
     assert globals_.equipment_persistence_updates == 0
 
@@ -1059,6 +1066,13 @@ def main() -> None:
         original_init, credits_view, credits_definitions, lua.table_from({}), lua.table_from({})
     )
     assert init_result == "initialized"
+    assert mod._better_inventory_active_highlight_views[credits_view] is True
+    settings.new_item_highlight_mode = "pulsing_dashes"
+    mod.on_setting_changed("new_item_highlight_mode")
+    mod.update(0.016)
+    assert globals_.highlight_animation_updates == 1
+    settings.new_item_highlight_mode = "animated_dashes"
+    mod.on_setting_changed("new_item_highlight_mode")
     assert credits_view._better_inventory_armoury_grid_expansion == 114
     assert credits_view.received_definitions.armoury_expanded is True
     credits_view._widgets_by_name = lua.table_from(
