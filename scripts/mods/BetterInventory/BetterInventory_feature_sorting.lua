@@ -166,6 +166,7 @@ end
 -- restoration.
 Sorting.new_comparator_manager = function(dependencies)
 	local manager = {}
+	local EQUIPPED_FAVORITE_PRIORITY_OFFSET = 3
 	local registered_views = setmetatable({}, {
 		__mode = "k",
 	})
@@ -226,12 +227,19 @@ Sorting.new_comparator_manager = function(dependencies)
 			local equipped_favorite_priority = item_priority(view, layout_entry)
 
 			if equipped_favorite_priority > 0 then
-				priority = equipped_favorite_priority + 2
+				priority = equipped_favorite_priority + EQUIPPED_FAVORITE_PRIORITY_OFFSET
 			end
 		end
 
-		if priority == 0 and mod:get("prioritize_perfect_roll_weapons") == true and dependencies.is_perfect_roll_weapon(item) then
-			priority = 1
+		if priority == 0 and mod:get("prioritize_perfect_roll_weapons") == true then
+			local dump_stat_value = dependencies.perfect_roll_dump_stat_value(item)
+
+			if dump_stat_value then
+				-- Backend fractions can produce visible 61/62 dump stats on a
+				-- 380-total four-at-80 roll. Keep every such weapon in the perfect
+				-- group while ordering the anomalous higher values before 60.
+				priority = math.clamp(math.floor(dump_stat_value) - 59, 1, 3)
+			end
 		end
 
 		if priority_cache then

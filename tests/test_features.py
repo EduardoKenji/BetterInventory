@@ -947,12 +947,13 @@ def main() -> None:
     mod.settings.prioritize_perfect_roll_weapons = True
     perfect_sort_ids = lua.execute(
         r"""
-        local view, ordinary, perfect, favorite, equipped = ...
-        local entries = {ordinary, perfect, favorite, equipped}
+        local view, ordinary, perfect_60, perfect_61, perfect_62, favorite, equipped = ...
+        local entries = {ordinary, perfect_60, perfect_61, perfect_62, favorite, equipped}
 
         table.sort(entries, view._sort_options[1].sort_function)
 
-        return entries[1].item.gear_id, entries[2].item.gear_id, entries[3].item.gear_id, entries[4].item.gear_id
+        return entries[1].item.gear_id, entries[2].item.gear_id, entries[3].item.gear_id,
+            entries[4].item.gear_id, entries[5].item.gear_id, entries[6].item.gear_id
         """,
         sortable_view,
         lua.table_from(
@@ -962,7 +963,7 @@ def main() -> None:
             {
                 "item": lua.table_from(
                     {
-                        "gear_id": "perfect_weapon",
+                        "gear_id": "perfect_60",
                         "item_type": "WEAPON_MELEE",
                         "rating": 1,
                         "total_stats": 380,
@@ -973,6 +974,48 @@ def main() -> None:
                                 lua.table_from({"value": 0.8}),
                                 lua.table_from({"value": 0.8}),
                                 lua.table_from({"value": 0.6}),
+                            ]
+                        ),
+                    }
+                )
+            }
+        ),
+        lua.table_from(
+            {
+                "item": lua.table_from(
+                    {
+                        "gear_id": "perfect_61",
+                        "item_type": "WEAPON_MELEE",
+                        "rating": 2,
+                        "total_stats": 380,
+                        "base_stats": lua.table_from(
+                            [
+                                lua.table_from({"value": 0.7975}),
+                                lua.table_from({"value": 0.7975}),
+                                lua.table_from({"value": 0.7975}),
+                                lua.table_from({"value": 0.7975}),
+                                lua.table_from({"value": 0.61}),
+                            ]
+                        ),
+                    }
+                )
+            }
+        ),
+        lua.table_from(
+            {
+                "item": lua.table_from(
+                    {
+                        "gear_id": "perfect_62",
+                        "item_type": "WEAPON_RANGED",
+                        "rating": 3,
+                        "total_stats": 380,
+                        "base_stats": lua.table_from(
+                            [
+                                lua.table_from({"value": 0.795}),
+                                lua.table_from({"value": 0.795}),
+                                lua.table_from({"value": 0.795}),
+                                lua.table_from({"value": 0.795}),
+                                lua.table_from({"value": 0.62}),
                             ]
                         ),
                     }
@@ -999,7 +1042,9 @@ def main() -> None:
     assert perfect_sort_ids == (
         "equipped_weapon",
         "favorite",
-        "perfect_weapon",
+        "perfect_62",
+        "perfect_61",
+        "perfect_60",
         "ordinary_weapon",
     )
 

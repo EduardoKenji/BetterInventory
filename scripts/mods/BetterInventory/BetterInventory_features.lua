@@ -1566,6 +1566,7 @@ local function preview_profile_for_discard(view)
 end
 
 Features.is_perfect_roll_weapon = DiscardPolicy.is_perfect_roll_weapon
+Features.perfect_roll_dump_stat_value = DiscardPolicy.perfect_roll_dump_stat_value
 sort_comparator_manager = Features._sorting.new_comparator_manager({
 	begin_view_session = Features.begin_view_session,
 	contracts = Features._contracts,
@@ -1573,8 +1574,8 @@ sort_comparator_manager = Features._sorting.new_comparator_manager({
 	is_armoury_sort_view = is_armoury_sort_view,
 	is_global_store_view = is_global_store_view,
 	is_inventory_view = is_inventory_view,
-	is_perfect_roll_weapon = function(item)
-		return Features.is_perfect_roll_weapon(item)
+	perfect_roll_dump_stat_value = function(item)
+		return Features.perfect_roll_dump_stat_value(item)
 	end,
 	is_sortable_view = is_sortable_view,
 	register_view_session_cleanup = Features.register_view_session_cleanup,

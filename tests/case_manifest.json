@@ -172,10 +172,10 @@
   ],
   "test_features.py": [
       {"name": "panel_focus_allocation_guard", "risk": "medium", "start_line": 122, "end_line": 123},
-      {"name": "discard_operation_ownership", "risk": "critical", "start_line": 3038, "end_line": 3573},
-      {"name": "sorting_and_navigation", "risk": "high", "start_line": 408, "end_line": 1397},
-      {"name": "optional_integration_fallbacks", "risk": "high", "start_line": 1398, "end_line": 1824},
-      {"name": "panel_lifecycle", "risk": "high", "start_line": 1825, "end_line": 3037}
+      {"name": "discard_operation_ownership", "risk": "critical", "start_line": 3083, "end_line": 3618},
+      {"name": "sorting_and_navigation", "risk": "high", "start_line": 408, "end_line": 1442},
+      {"name": "optional_integration_fallbacks", "risk": "high", "start_line": 1443, "end_line": 1869},
+      {"name": "panel_lifecycle", "risk": "high", "start_line": 1870, "end_line": 3082}
   ],
   "test_item_customization.py": [
       {"name": "dirty_save_outcomes", "risk": "high", "start_line": 224, "end_line": 441},

@@ -112,38 +112,38 @@ local function projected_max_base_stat_values(item)
 	return values
 end
 
-local function values_are_perfect_roll(values)
+local function perfect_roll_dump_stat_value(values)
 	if type(values) ~= "table" or #values ~= 5 then
-		return false
+		return
 	end
 
 	local maximum_stats = 0
-	local remaining_stats = 0
+	local dump_stat_value
 
 	for index = 1, #values do
 		local displayed_value = values[index]
 
 		if displayed_value == 80 then
 			maximum_stats = maximum_stats + 1
-		elseif displayed_value >= 60 then
-			remaining_stats = remaining_stats + 1
+		elseif displayed_value >= 60 and dump_stat_value == nil then
+			dump_stat_value = displayed_value
 		else
-			return false
+			return
 		end
 	end
 
-	return maximum_stats == 4 and remaining_stats == 1
+	return maximum_stats == 4 and dump_stat_value or nil
 end
 
-local function calculate_is_perfect_roll_weapon(item)
+local function calculate_perfect_roll_dump_stat_value(item)
 	if not item or not Items.is_weapon(item.item_type) then
-		return false
+		return
 	end
 
 	local total = Items.total_stats_value(item)
 
 	if not total or total > 380 then
-		return false
+		return
 	end
 
 	local base_stats = item.base_stats
@@ -169,13 +169,13 @@ local function calculate_is_perfect_roll_weapon(item)
 	end
 
 	if cache_matches then
-		return cached.result
+		return cached.dump_stat_value
 	end
 
 	-- Total power is calculated from unrounded backend values, while each visible
 	-- attribute is rounded independently. Consequently the fifth visible stat can
 	-- legitimately show 61 or 62 on an otherwise perfect 380 roll.
-	local result = total == 380 and values_are_perfect_roll(displayed_base_stat_values(item)) or values_are_perfect_roll(projected_max_base_stat_values(item))
+	local dump_stat_value = total == 380 and perfect_roll_dump_stat_value(displayed_base_stat_values(item)) or perfect_roll_dump_stat_value(projected_max_base_stat_values(item))
 
 	if type(base_stats) == "table" and #base_stats == 5 then
 		local raw_values = {}
@@ -186,8 +186,8 @@ local function calculate_is_perfect_roll_weapon(item)
 
 		perfect_roll_cache[item] = {
 			current_expertise = current_expertise,
+			dump_stat_value = dump_stat_value or false,
 			raw_values = raw_values,
-			result = result,
 			total = total,
 		}
 	end
@@ -195,15 +195,19 @@ local function calculate_is_perfect_roll_weapon(item)
 	-- Rarity upgrades do not change base attributes, but expertise upgrades do.
 	-- Protect an underpowered weapon when Darktide's own maximum-expertise preview
 	-- resolves to the same four-at-80, fifth-at-least-60 distribution.
-	return result
+	return dump_stat_value
+end
+
+Policy.perfect_roll_dump_stat_value = function(item)
+	-- Sorting invokes this from a native comparator. A legacy or partially
+	-- materialized item must sort as ordinary instead of taking down the view.
+	local success, dump_stat_value = pcall(calculate_perfect_roll_dump_stat_value, item)
+
+	return success and dump_stat_value or nil
 end
 
 Policy.is_perfect_roll_weapon = function(item)
-	-- Sorting invokes this from a native comparator. A legacy or partially
-	-- materialized item must sort as ordinary instead of taking down the view.
-	local success, result = pcall(calculate_is_perfect_roll_weapon, item)
-
-	return success and result == true
+	return Policy.perfect_roll_dump_stat_value(item) ~= nil
 end
 
 local CURIO_PRIMARY_TRAIT_SETTINGS = {

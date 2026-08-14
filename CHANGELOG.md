@@ -1,5 +1,10 @@
 # BetterInventory changelog
 
+## 2.3.1 - 2026-08-14
+
+- Counted `80/80/80/80/61` and `80/80/80/80/62` weapons as perfect rolls when **Perfect-roll weapons at the top** is enabled.
+- Ordered perfect-roll weapons by their fifth attribute, placing `62` ahead of `61` and `61` ahead of `60`, while preserving the higher equipped and favorite priorities.
+
 ## 2.2.5 - 2026-08-13
 
 - Removed the redundant runtime duplicate-setting scan from Mod Options, preventing post-processed settings from other mods being reported as BetterInventory errors. DMF startup and release verification still validate BetterInventory's source schema.

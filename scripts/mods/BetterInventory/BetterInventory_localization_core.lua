@@ -72,7 +72,7 @@ local localization = {
 		en = "Perfect-roll weapons at the top",
 	},
 	prioritize_perfect_roll_weapons_tooltip = {
-		en = "Places weapons with four attributes at 80 and the fifth at 60 or higher ahead of ordinary items. Equipped and favorited items retain higher priority. The in-inventory checkbox is available in the scalable panel.",
+		en = "Places weapons with four attributes at 80 and the fifth at 60 or higher ahead of ordinary items, ordered by the fifth attribute from highest to lowest. Equipped and favorited items retain higher priority. The in-inventory checkbox is available in the scalable panel.",
 	},
 	prioritize_perfect_roll_weapons_inventory_label = {
 		en = "Perfect-roll weapons at the top",
