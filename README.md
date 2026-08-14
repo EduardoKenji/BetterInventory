@@ -2,7 +2,7 @@
 
 > Project status: BetterInventory v2.2.5 development. Account-changing workflows remain opt-in and disabled by default.
 >
-> Audit date: 2026-08-07. See [`docs/v2.0.0-full-project-audit.md`](docs/v2.0.0-full-project-audit.md) for the prioritized implementation backlog and release gates.
+> Audit date: 2026-08-13. See the [`v2.3.0 memory and performance audit`](docs/v2.3.0-memory-performance-audit.md) for the complete branch finding/commit ledger and verification record. The earlier [`v2.0.0 full-project audit`](docs/v2.0.0-full-project-audit.md) remains the historical architecture backlog.
 
 > Local live-test rule: the only canonical live install for this checkout is `C:\XboxGames\Warhammer 40,000- Darktide\Content\mods\BetterInventory`. After every runtime change, run `powershell -ExecutionPolicy Bypass -File .\tools\sync_installed_mod.ps1`; it deploys and hash-verifies that directory. Do not use the MSIX/WindowsApps package view as a deployment or validation target. Unsynchronized in-game results are not valid test evidence.
 
