@@ -61,6 +61,49 @@ local function mission_matchmaking_active()
 	return ok and active == true
 end
 
+local function live_identity_values()
+	local player = live_player()
+
+	if not player then
+		return nil, nil, nil, nil, "character_context_unavailable", false
+	end
+
+	local player_character_id
+	local character_id_method = safe_member(player, "character_id")
+
+	if type(character_id_method) == "function" then
+		local id_ok, value = pcall(character_id_method, player)
+
+		player_character_id = id_ok and value ~= nil and tostring(value) or nil
+	end
+
+	local profile
+	local profile_method = safe_member(player, "profile")
+
+	if type(profile_method) == "function" then
+		local profile_ok, value = pcall(profile_method, player)
+
+		profile = profile_ok and value or nil
+	end
+
+	local profile_character_id = safe_member(profile, "character_id")
+
+	profile_character_id = profile_character_id ~= nil and tostring(profile_character_id) or nil
+
+	local archetype = safe_member(profile, "archetype")
+	local archetype_name = safe_member(archetype, "name") or safe_member(archetype, "archetype_name")
+	local mismatched = player_character_id and profile_character_id and player_character_id ~= profile_character_id
+	local complete = (player_character_id or profile_character_id) ~= nil and archetype_name ~= nil
+	local stable = complete and not mismatched
+
+	return stable and archetype_name and tostring(archetype_name) or nil,
+		stable and (player_character_id or profile_character_id) or nil,
+		player_character_id,
+		profile_character_id,
+		stable and nil or mismatched and "character_context_settling" or "character_context_unavailable",
+		stable
+end
+
 function Context.new(dependencies)
 	dependencies = dependencies or {}
 
@@ -76,8 +119,16 @@ function Context.new(dependencies)
 		end
 
 		if type(dependencies.current_character_id) == "function" or type(dependencies.current_archetype) == "function" then
-			local id_ok, character_id = pcall(dependencies.current_character_id or function() end)
-			local archetype_ok, archetype = pcall(dependencies.current_archetype or function() end)
+			local id_ok, character_id = false, nil
+			local archetype_ok, archetype = false, nil
+
+			if type(dependencies.current_character_id) == "function" then
+				id_ok, character_id = pcall(dependencies.current_character_id)
+			end
+
+			if type(dependencies.current_archetype) == "function" then
+				archetype_ok, archetype = pcall(dependencies.current_archetype)
+			end
 
 			return {
 				archetype = archetype_ok and archetype or nil,
@@ -86,56 +137,64 @@ function Context.new(dependencies)
 			}
 		end
 
-		local player = live_player()
-		if not player then
-			return {
-				reason = "character_context_unavailable",
-				stable = false,
-			}
-		end
-
-		local player_character_id
-		local character_id_method = safe_member(player, "character_id")
-		if type(character_id_method) == "function" then
-			local id_ok, value = pcall(character_id_method, player)
-			player_character_id = id_ok and value ~= nil and tostring(value) or nil
-		end
-
-		local profile
-		local profile_method = safe_member(player, "profile")
-		if type(profile_method) == "function" then
-			local profile_ok, value = pcall(profile_method, player)
-			profile = profile_ok and value or nil
-		end
-
-		local profile_character_id = safe_member(profile, "character_id")
-		profile_character_id = profile_character_id ~= nil and tostring(profile_character_id) or nil
-		local archetype = safe_member(profile, "archetype")
-		local archetype_name = safe_member(archetype, "name") or safe_member(archetype, "archetype_name")
-		local mismatched = player_character_id and profile_character_id and player_character_id ~= profile_character_id
-		local complete = (player_character_id or profile_character_id) ~= nil and archetype_name ~= nil
-		local stable = complete and not mismatched
+		local archetype, character_id, player_character_id, profile_character_id, reason, stable = live_identity_values()
 
 		return {
-			archetype = stable and archetype_name and tostring(archetype_name) or nil,
-			character_id = stable and (player_character_id or profile_character_id) or nil,
+			archetype = archetype,
+			character_id = character_id,
 			player_character_id = player_character_id,
 			profile_character_id = profile_character_id,
-			reason = stable and nil or mismatched and "character_context_settling" or "character_context_unavailable",
+			reason = reason,
 			stable = stable,
 		}
 	end
 
 	function context:current_character_id()
-		local identity = self:current_identity()
+		if type(dependencies.current_identity) == "function" then
+			local ok, identity = pcall(dependencies.current_identity)
 
-		return identity and identity.stable ~= false and identity.character_id or nil
+			if ok and type(identity) == "table" then
+				return identity.stable ~= false and identity.character_id or nil
+			end
+		end
+
+		if type(dependencies.current_character_id) == "function" then
+			local ok, character_id = pcall(dependencies.current_character_id)
+
+			return ok and character_id ~= nil and tostring(character_id) or nil
+		end
+
+		if type(dependencies.current_archetype) == "function" then
+			return nil
+		end
+
+		local _, character_id, _, _, _, stable = live_identity_values()
+
+		return stable and character_id or nil
 	end
 
 	function context:current_archetype()
-		local identity = self:current_identity()
+		if type(dependencies.current_identity) == "function" then
+			local ok, identity = pcall(dependencies.current_identity)
 
-		return identity and identity.stable ~= false and identity.archetype or nil
+			if ok and type(identity) == "table" then
+				return identity.stable ~= false and identity.archetype or nil
+			end
+		end
+
+		if type(dependencies.current_archetype) == "function" then
+			local ok, archetype = pcall(dependencies.current_archetype)
+
+			return ok and archetype or nil
+		end
+
+		if type(dependencies.current_character_id) == "function" then
+			return nil
+		end
+
+		local archetype, _, _, _, _, stable = live_identity_values()
+
+		return stable and archetype or nil
 	end
 
 	function context:is_morningstar()

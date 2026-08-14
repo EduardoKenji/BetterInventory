@@ -82,18 +82,40 @@ def main() -> None:
     assert context.current_archetype(context) is None
 
     # Dependency seams used by tests/compatibility hosts remain supported.
+    lua.execute(
+        """
+        injected_character_calls = 0
+        injected_archetype_calls = 0
+        injected_character_id = function()
+            injected_character_calls = injected_character_calls + 1
+            return "injected-character"
+        end
+        injected_archetype = function()
+            injected_archetype_calls = injected_archetype_calls + 1
+            return "psyker"
+        end
+        """
+    )
     injected = context_module.new(
         lua.table_from(
             {
-                "current_character_id": lua.eval(
-                    'function() return "injected-character" end'
-                ),
-                "current_archetype": lua.eval('function() return "psyker" end'),
+                "current_character_id": lua.globals().injected_character_id,
+                "current_archetype": lua.globals().injected_archetype,
             }
         )
     )
     assert injected.current_character_id(injected) == "injected-character"
+    assert lua.globals().injected_character_calls == 1
+    assert lua.globals().injected_archetype_calls == 0
     assert injected.current_archetype(injected) == "psyker"
+    assert lua.globals().injected_character_calls == 1
+    assert lua.globals().injected_archetype_calls == 1
+
+    injected_identity = injected.current_identity(injected)
+    assert injected_identity.character_id == "injected-character"
+    assert injected_identity.archetype == "psyker"
+    assert lua.globals().injected_character_calls == 2
+    assert lua.globals().injected_archetype_calls == 2
 
     print("Auto Crafter atomic character-context tests passed.")
 
