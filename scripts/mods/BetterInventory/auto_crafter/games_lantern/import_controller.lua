@@ -330,6 +330,8 @@ function ImportController.new(dependencies)
 		self._choice_request = nil
 		self._weapon_choices = {}
 		self._last_error = nil
+		self._presentation_cache = nil
+		self._presentation_signature = nil
 
 		return true
 	end
@@ -344,6 +346,8 @@ function ImportController.new(dependencies)
 
 		self._state = "cancelled"
 		self._last_error = tostring(reason or "import_cancelled")
+		self._presentation_cache = nil
+		self._presentation_signature = nil
 
 		return true
 	end
