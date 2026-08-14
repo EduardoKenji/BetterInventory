@@ -146,6 +146,10 @@ def main() -> None:
         assert adapter_module._test.parse_status_text("302\ntext/html")[0] is None
     assert r"%%%%{http_code}\\n%%%%{content_type}\\n%%%%{url_effective}" in windows_source
     assert "api.popen(powershell .." in windows_source
+    assert "cleanup_paths(paths)" in windows_source
+    assert "cleanup_paths(paths)" in wine_source
+    assert "trap 'cleanup_child; exit 143' HUP INT TERM" in wine_source
+    assert 'child_pid=$!; wait \\"$child_pid\\"; code=$?' in wine_source
 
 
 if __name__ == "__main__":

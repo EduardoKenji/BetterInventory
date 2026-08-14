@@ -30,6 +30,12 @@ local function remove(path)
 	end
 end
 
+local function cleanup_paths(paths)
+	for _, path in ipairs(paths or {}) do
+		remove(path)
+	end
+end
+
 local function read_file(path, max_bytes)
 	local api = io_api()
 	if not api or type(api.open) ~= "function" then
@@ -121,10 +127,9 @@ function Adapter.spawn(url, generation, max_bytes)
 	local curl = (os.getenv("SystemRoot") or "C:\\Windows") .. "\\System32\\curl.exe"
 	local powershell = (os.getenv("SystemRoot") or "C:\\Windows") .. "\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
 	local quoted = { quote(output_path), quote(done_path), quote(status_path), quote(script_path), quote(error_path), quote(curl), quote(launcher_path), quote(powershell) }
+	local paths = { output_path, done_path, status_path, script_path, launcher_path, error_path }
 
-	for _, path in ipairs({ output_path, done_path, status_path, script_path, launcher_path, error_path }) do
-		remove(path)
-	end
+	cleanup_paths(paths)
 
 	for _, value in ipairs(quoted) do
 		if not value then
@@ -143,6 +148,8 @@ function Adapter.spawn(url, generation, max_bytes)
 	}
 
 	if not write_file(script_path, script) then
+		cleanup_paths(paths)
+
 		return nil, "script_write_failed"
 	end
 	local ps_script_path = string.gsub(script_path, "'", "''")
@@ -150,14 +157,14 @@ function Adapter.spawn(url, generation, max_bytes)
 		"$p = Start-Process -FilePath 'cmd.exe' -ArgumentList '/d','/s','/c','\"\"" .. ps_script_path .. "\"\"' -WindowStyle Hidden -PassThru",
 		"$p.Id",
 	}) then
-		remove(script_path)
+		cleanup_paths(paths)
 
 		return nil, "launcher_write_failed"
 	end
 
 	local api = io_api()
 	if not api or type(api.popen) ~= "function" then
-		remove(script_path)
+		cleanup_paths(paths)
 
 		return nil, "process_api_unavailable"
 	end
@@ -172,8 +179,7 @@ function Adapter.spawn(url, generation, max_bytes)
 		process:close()
 	end
 	if not pid then
-		remove(script_path)
-		remove(launcher_path)
+		cleanup_paths(paths)
 
 		return nil, "process_spawn_failed"
 	end
@@ -229,9 +235,7 @@ function Adapter.cleanup(handle)
 		end
 	end
 
-	for _, path in ipairs({ handle.output_path, handle.done_path, handle.status_path, handle.script_path, handle.launcher_path, handle.error_path }) do
-		remove(path)
-	end
+	cleanup_paths({ handle.output_path, handle.done_path, handle.status_path, handle.script_path, handle.launcher_path, handle.error_path })
 
 	return true
 end

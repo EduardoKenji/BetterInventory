@@ -21,6 +21,12 @@ local function remove(path)
 	end
 end
 
+local function cleanup_paths(paths)
+	for _, path in ipairs(paths or {}) do
+		remove(path)
+	end
+end
+
 local function read_file(path, max_bytes)
 	local api = io_api()
 	if not api or type(api.open) ~= "function" then
@@ -131,26 +137,31 @@ function Adapter.spawn(url, generation, max_bytes)
 	local pid_win = "Z:\\tmp\\BetterInventory_games_lantern_" .. tag .. ".pid"
 	local limit = tonumber(max_bytes) or MAX_BYTES
 	local quoted_url = shell_single_quote(url)
+	local paths = { output_win, done_win, status_win, script_win, pid_win }
 
-	for _, path in ipairs({ output_win, done_win, status_win, script_win, pid_win }) do
-		remove(path)
-	end
+	cleanup_paths(paths)
 
 	if not quoted_url or not write_file(script_win, {
 		"echo $$ > " .. shell_single_quote(pid_unix),
 		"out=" .. shell_single_quote(output_unix) .. "; done=" .. shell_single_quote(done_unix) .. "; status=" .. shell_single_quote(status_unix),
+		"child_pid=",
+		"cleanup_child() { if [ -n \"$child_pid\" ]; then kill -TERM \"$child_pid\" 2>/dev/null; wait \"$child_pid\" 2>/dev/null; fi; }",
+		"trap 'cleanup_child; exit 143' HUP INT TERM",
 		-- Games Lantern canonical UUID URLs redirect once to their slugged page.
 		-- Match the Windows adapter while bounding both count and protocol; the
 		-- coordinator validates the final host, UUID, and slug before parsing.
-		"curl -s -S --location --max-redirs " .. tostring(MAX_REDIRECTS) .. " --connect-timeout " .. tostring(CONNECT_TIMEOUT) .. " --max-time " .. tostring(REQUEST_TIMEOUT) .. " --max-filesize " .. tostring(limit) .. " --proto '=https' --proto-redir '=https' -o \"$out\" -w '%{http_code}\\n%{content_type}\\n%{url_effective}' " .. quoted_url .. " > \"$status\"",
-		"code=$?; echo $code > \"$done\"",
+		"curl -s -S --location --max-redirs " .. tostring(MAX_REDIRECTS) .. " --connect-timeout " .. tostring(CONNECT_TIMEOUT) .. " --max-time " .. tostring(REQUEST_TIMEOUT) .. " --max-filesize " .. tostring(limit) .. " --proto '=https' --proto-redir '=https' -o \"$out\" -w '%{http_code}\\n%{content_type}\\n%{url_effective}' " .. quoted_url .. " > \"$status\" &",
+		"child_pid=$!; wait \"$child_pid\"; code=$?",
+		"trap - HUP INT TERM; echo $code > \"$done\"",
 	}) then
+		cleanup_paths(paths)
+
 		return nil, "script_write_failed"
 	end
 
 	local api = io_api()
 	if not api or type(api.popen) ~= "function" then
-		remove(script_win)
+		cleanup_paths(paths)
 
 		return nil, "process_api_unavailable"
 	end
@@ -159,7 +170,7 @@ function Adapter.spawn(url, generation, max_bytes)
 	if handle then
 		handle:close()
 	else
-		remove(script_win)
+		cleanup_paths(paths)
 
 		return nil, "process_spawn_failed"
 	end
@@ -215,9 +226,7 @@ function Adapter.cleanup(handle)
 		end
 	end
 
-	for _, path in ipairs({ handle.output_path, handle.done_path, handle.status_path, handle.script_path, handle.pid_path }) do
-		remove(path)
-	end
+	cleanup_paths({ handle.output_path, handle.done_path, handle.status_path, handle.script_path, handle.pid_path })
 
 	return true
 end
