@@ -5,6 +5,9 @@ local SelectionCoordinator = {}
 
 SelectionCoordinator.CONTRACT_VERSION = "games_lantern_selection_v1"
 
+local DEFAULT_RETRY_INTERVAL = 0.1
+local DEFAULT_MAX_ATTEMPTS = 30
+
 local function safe_call(fn, ...)
 	if type(fn) ~= "function" then
 		return false, "method unavailable"
@@ -37,13 +40,19 @@ function SelectionCoordinator.new(dependencies)
 
 	local self = {
 		_current_selection = dependencies.current_selection,
-		_max_attempts = math.max(1, math.floor(tonumber(dependencies.max_attempts) or 30)),
+		_max_attempts = math.max(1, math.floor(tonumber(dependencies.max_attempts) or DEFAULT_MAX_ATTEMPTS)),
+		_retry_interval = math.max(0.01, tonumber(dependencies.retry_interval) or DEFAULT_RETRY_INTERVAL),
 		_original = nil,
 		_pending = nil,
 		_report = dependencies.report,
 		_select_offer = dependencies.select_offer,
 		_view_is_valid = dependencies.view_is_valid,
 	}
+
+	self._max_wait_seconds = math.max(
+		self._retry_interval,
+		tonumber(dependencies.max_wait_seconds) or self._retry_interval * self._max_attempts
+	)
 
 	local function emit(kind, payload)
 		if type(self._report) == "function" then
@@ -61,6 +70,21 @@ function SelectionCoordinator.new(dependencies)
 		return ok and valid == true
 	end
 
+	local function fail_pending(pending, timeout_reason)
+		emit("selection_failed", {
+			attempts = pending.attempts,
+			detail = pending.last_detail,
+			elapsed = pending.elapsed,
+			error = pending.last_error or timeout_reason or "selection unavailable",
+			offer = copy_identity(pending.offer),
+			reason = pending.reason,
+			timeout_reason = timeout_reason,
+		})
+		self._pending = nil
+
+		return false
+	end
+
 	local function attempt(view)
 		local pending = self._pending
 		if not pending or not view_valid(view) then
@@ -68,7 +92,7 @@ function SelectionCoordinator.new(dependencies)
 		end
 
 		pending.attempts = pending.attempts + 1
-		local ok, selected = safe_call(self._select_offer, view, pending.offer)
+		local ok, selected, selection_error, selection_detail = safe_call(self._select_offer, view, pending.offer)
 
 		if ok and selected == true then
 			emit("selection_complete", {
@@ -81,14 +105,11 @@ function SelectionCoordinator.new(dependencies)
 			return true
 		end
 
+		pending.last_error = ok and tostring(selection_error or "selection unavailable") or tostring(selected)
+		pending.last_detail = selection_detail
+
 		if pending.attempts >= self._max_attempts then
-			emit("selection_failed", {
-				attempts = pending.attempts,
-				error = ok and "selection unavailable" or tostring(selected),
-				offer = copy_identity(pending.offer),
-				reason = pending.reason,
-			})
-			self._pending = nil
+			return fail_pending(pending, "attempt_limit")
 		end
 
 		return false
@@ -119,16 +140,43 @@ function SelectionCoordinator.new(dependencies)
 
 		self._pending = {
 			attempts = 0,
+			elapsed = 0,
 			offer = identity,
 			reason = tostring(reason or "queue_selection"),
+			retry_elapsed = 0,
 		}
 		attempt(view)
 
 		return true
 	end
 
-	function self:update(view)
-		return attempt(view)
+	function self:update(view, dt)
+		local pending = self._pending
+
+		if not pending or not view_valid(view) then
+			return false
+		end
+
+		local elapsed = math.max(0, tonumber(dt) or self._retry_interval)
+
+		pending.elapsed = pending.elapsed + elapsed
+		pending.retry_elapsed = pending.retry_elapsed + elapsed
+
+		if pending.retry_elapsed >= self._retry_interval then
+			pending.retry_elapsed = 0
+
+			if attempt(view) then
+				return true
+			end
+
+			pending = self._pending
+		end
+
+		if pending and pending.elapsed >= self._max_wait_seconds then
+			return fail_pending(pending, "elapsed_timeout")
+		end
+
+		return false
 	end
 
 	function self:restore(view)
@@ -162,12 +210,18 @@ function SelectionCoordinator.new(dependencies)
 	function self:snapshot()
 		return {
 			contract_version = SelectionCoordinator.CONTRACT_VERSION,
+			max_wait_seconds = self._max_wait_seconds,
 			original = copy_identity(self._original),
 			pending = self._pending and {
 				attempts = self._pending.attempts,
+				elapsed = self._pending.elapsed,
+				last_detail = self._pending.last_detail,
+				last_error = self._pending.last_error,
 				offer = copy_identity(self._pending.offer),
 				reason = self._pending.reason,
+				retry_elapsed = self._pending.retry_elapsed,
 			} or nil,
+			retry_interval = self._retry_interval,
 		}
 	end
 
