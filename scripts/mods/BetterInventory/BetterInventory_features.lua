@@ -1234,11 +1234,7 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 	panel:present_grid_layout(entries, INVENTORY_OPTIONS_PANEL_BLUEPRINTS)
 end
 
--- The stock Curio header reserves 250 virtual pixels for one small item image.
--- Scale the whole preview box rather than shortening only its height; changing
--- one axis was the reason Curio art appeared stretched in the prototype.
--- This transforms only the current InventoryWeaponsView's Curio stats blueprint;
--- crafting, vendors and weapon detail cards keep their native geometry.
+-- Scale both Curio preview axes together to preserve its aspect ratio.
 Features.compact_inventory_curio_stats_blueprints = function(mod, item_grid, content_blueprints)
 	if mod:get("enable_inventory_options_panel_prototype") ~= true or type(content_blueprints) ~= "table" then
 		return content_blueprints

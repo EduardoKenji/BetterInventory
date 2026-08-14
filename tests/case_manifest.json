@@ -24,8 +24,8 @@
       {"name": "right_click_routing_blessing_icon_and_runtime_progress", "risk": "high", "start_line": 1062, "end_line": 1100}
   ],
   "test_auto_crafter_viewport.py": [
-    {"name": "panel_and_hud_resolution_matrix", "risk": "high", "start_line": 14, "end_line": 64},
-    {"name": "post_draw_overlay_cpu_ownership", "risk": "high", "start_line": 66, "end_line": 178}
+    {"name": "panel_and_hud_resolution_matrix", "risk": "high", "start_line": 14, "end_line": 68},
+    {"name": "post_draw_overlay_cpu_ownership", "risk": "high", "start_line": 70, "end_line": 195}
   ],
   "test_auto_crafter_backend.py": [
     {"name": "complete_authoritative_inventory_summary", "risk": "critical", "start_line": 16, "end_line": 138},
@@ -36,42 +36,43 @@
     {"name": "atomic_character_identity_and_switch_settlement", "risk": "critical", "start_line": 16, "end_line": 98}
   ],
     "test_auto_crafter_facade.py": [
-      {"name": "frame_update_crash_containment", "risk": "critical", "start_line": 14, "end_line": 53}
+      {"name": "frame_update_crash_containment", "risk": "critical", "start_line": 14, "end_line": 59}
     ],
     "test_auto_crafter_custom_fallback.py": [
       {"name": "custom_stat_manhattan_distance_and_deterministic_ties", "risk": "critical", "start_line": 1, "end_line": 68}
     ],
   "test_auto_crafter_controller.py": [
-    {"name": "presacrifice_mastery_baseline_convergence_and_level_event", "risk": "critical", "start_line": 190, "end_line": 269},
-    {"name": "local_mastery_projection_avoids_per_item_poll", "risk": "critical", "start_line": 270, "end_line": 306},
-    {"name": "deferred_mastery_projected_minimum_and_spare_cleanup", "risk": "critical", "start_line": 307, "end_line": 375},
-    {"name": "ordered_purchase_single_upgrade_pipeline", "risk": "critical", "start_line": 376, "end_line": 431},
-    {"name": "authoritative_claim_result_completes_twenty", "risk": "critical", "start_line": 432, "end_line": 468},
-    {"name": "bounded_claim_retry_becomes_visible_failure", "risk": "critical", "start_line": 469, "end_line": 503},
-    {"name": "already_max_mastery_preserves_item", "risk": "critical", "start_line": 504, "end_line": 523},
-    {"name": "frozen_target_start_revalidation", "risk": "critical", "start_line": 524, "end_line": 540},
-    {"name": "background_run_survives_brunt_close", "risk": "critical", "start_line": 541, "end_line": 570},
-    {"name": "authoritative_purchase_revalidation", "risk": "critical", "start_line": 571, "end_line": 593},
-    {"name": "level_500_potential_prevents_current_stat_false_match", "risk": "critical", "start_line": 594, "end_line": 612},
-    {"name": "exact_candidate_favorite_before_completion", "risk": "critical", "start_line": 613, "end_line": 636},
-    {"name": "deferred_processing_after_exact_target", "risk": "critical", "start_line": 637, "end_line": 674},
-    {"name": "deferred_misses_preserved_without_exact_target", "risk": "critical", "start_line": 675, "end_line": 700},
-    {"name": "phase3_live_best_fallback", "risk": "critical", "start_line": 701, "end_line": 728},
-    {"name": "inventory_base_and_planner_mark_identity_safety", "risk": "critical", "start_line": 729, "end_line": 871},
-    {"name": "phase4_serial_final_crafting", "risk": "critical", "start_line": 872, "end_line": 1001},
-    {"name": "unowned_blessing_fails_before_final_material_spend", "risk": "critical", "start_line": 1002, "end_line": 1047},
-    {"name": "four_back_to_back_already_mastered_fully_allocated_crafts_and_two_slot_swaps", "risk": "critical", "start_line": 1048, "end_line": 1265},
-    {"name": "equipment_starting_state_matrix", "risk": "critical", "start_line": 1266, "end_line": 1384},
-    {"name": "instant_character_change_snapshot_and_callback_isolation", "risk": "critical", "start_line": 1385, "end_line": 1443},
-    {"name": "configuration_change_closes_dispatch", "risk": "critical", "start_line": 1444, "end_line": 1461},
-    {"name": "explicit_stop_and_idle_cpu_amortization", "risk": "critical", "start_line": 1462, "end_line": 1566},
-    {"name": "purchase_visibility_reconciliation", "risk": "critical", "start_line": 1567, "end_line": 1644},
-    {"name": "mutation_quarantine_and_fast_lane_interleavings", "risk": "critical", "start_line": 1645, "end_line": 1734},
-    {"name": "auto_crafter_account_operation_ownership", "risk": "critical", "start_line": 1735, "end_line": 1835},
-    {"name": "resource_capacity_network_and_loading_failure_matrix", "risk": "critical", "start_line": 1836, "end_line": 1900},
-    {"name": "bounded_probe_and_catalog_reads", "risk": "critical", "start_line": 1901, "end_line": 1936},
-    {"name": "external_account_mutation_exclusion", "risk": "critical", "start_line": 1937, "end_line": 1960},
-    {"name": "custom_stat_exact_acquisition_and_resume", "risk": "critical", "start_line": 1961, "end_line": 2063}
+    {"name": "frame_update_idle_amortization", "risk": "high", "start_line": 13, "end_line": 17},
+    {"name": "presacrifice_mastery_baseline_convergence_and_level_event", "risk": "critical", "start_line": 196, "end_line": 275},
+    {"name": "local_mastery_projection_avoids_per_item_poll", "risk": "critical", "start_line": 276, "end_line": 312},
+    {"name": "deferred_mastery_projected_minimum_and_spare_cleanup", "risk": "critical", "start_line": 313, "end_line": 381},
+    {"name": "ordered_purchase_single_upgrade_pipeline", "risk": "critical", "start_line": 382, "end_line": 437},
+    {"name": "authoritative_claim_result_completes_twenty", "risk": "critical", "start_line": 438, "end_line": 474},
+    {"name": "bounded_claim_retry_becomes_visible_failure", "risk": "critical", "start_line": 475, "end_line": 509},
+    {"name": "already_max_mastery_preserves_item", "risk": "critical", "start_line": 510, "end_line": 529},
+    {"name": "frozen_target_start_revalidation", "risk": "critical", "start_line": 530, "end_line": 546},
+    {"name": "background_run_survives_brunt_close", "risk": "critical", "start_line": 547, "end_line": 576},
+    {"name": "authoritative_purchase_revalidation", "risk": "critical", "start_line": 577, "end_line": 599},
+    {"name": "level_500_potential_prevents_current_stat_false_match", "risk": "critical", "start_line": 600, "end_line": 618},
+    {"name": "exact_candidate_favorite_before_completion", "risk": "critical", "start_line": 619, "end_line": 642},
+    {"name": "deferred_processing_after_exact_target", "risk": "critical", "start_line": 643, "end_line": 680},
+    {"name": "deferred_misses_preserved_without_exact_target", "risk": "critical", "start_line": 681, "end_line": 706},
+    {"name": "phase3_live_best_fallback", "risk": "critical", "start_line": 707, "end_line": 734},
+    {"name": "inventory_base_and_planner_mark_identity_safety", "risk": "critical", "start_line": 735, "end_line": 877},
+    {"name": "phase4_serial_final_crafting", "risk": "critical", "start_line": 878, "end_line": 1007},
+    {"name": "unowned_blessing_fails_before_final_material_spend", "risk": "critical", "start_line": 1008, "end_line": 1053},
+    {"name": "four_back_to_back_already_mastered_fully_allocated_crafts_and_two_slot_swaps", "risk": "critical", "start_line": 1054, "end_line": 1271},
+    {"name": "equipment_starting_state_matrix", "risk": "critical", "start_line": 1272, "end_line": 1390},
+    {"name": "instant_character_change_snapshot_and_callback_isolation", "risk": "critical", "start_line": 1391, "end_line": 1449},
+    {"name": "configuration_change_closes_dispatch", "risk": "critical", "start_line": 1450, "end_line": 1467},
+    {"name": "explicit_stop_and_idle_cpu_amortization", "risk": "critical", "start_line": 1468, "end_line": 1572},
+    {"name": "purchase_visibility_reconciliation", "risk": "critical", "start_line": 1573, "end_line": 1650},
+    {"name": "mutation_quarantine_and_fast_lane_interleavings", "risk": "critical", "start_line": 1651, "end_line": 1740},
+    {"name": "auto_crafter_account_operation_ownership", "risk": "critical", "start_line": 1741, "end_line": 1841},
+    {"name": "resource_capacity_network_and_loading_failure_matrix", "risk": "critical", "start_line": 1842, "end_line": 1906},
+    {"name": "bounded_probe_and_catalog_reads", "risk": "critical", "start_line": 1907, "end_line": 1942},
+    {"name": "external_account_mutation_exclusion", "risk": "critical", "start_line": 1943, "end_line": 1966},
+    {"name": "custom_stat_exact_acquisition_and_resume", "risk": "critical", "start_line": 1967, "end_line": 2069}
   ],
   "test_games_lantern_import.py": [
     {"name": "strict_url_canonicalization", "risk": "critical", "start_line": 18, "end_line": 47},
@@ -133,11 +134,11 @@
     {"name": "typed_fallbacks", "risk": "high", "start_line": 42, "end_line": 65}
   ],
   "test_curio_acquisition.py": [
-    {"name": "store_rotation_gate", "risk": "critical", "start_line": 1073, "end_line": 1399},
-    {"name": "purchase_revalidation", "risk": "critical", "start_line": 676, "end_line": 872},
-    {"name": "read_cancellation_and_generation", "risk": "critical", "start_line": 1401, "end_line": 1431},
-    {"name": "account_mutation_deferral", "risk": "critical", "start_line": 1433, "end_line": 1466},
-    {"name": "account_scoped_reports", "risk": "high", "start_line": 873, "end_line": 1072}
+    {"name": "store_rotation_gate", "risk": "critical", "start_line": 1075, "end_line": 1411},
+    {"name": "purchase_revalidation", "risk": "critical", "start_line": 678, "end_line": 874},
+    {"name": "read_cancellation_and_generation", "risk": "critical", "start_line": 1413, "end_line": 1443},
+    {"name": "account_mutation_deferral", "risk": "critical", "start_line": 1445, "end_line": 1478},
+    {"name": "account_scoped_reports", "risk": "high", "start_line": 875, "end_line": 1074}
   ],
   "test_curio_domains.py": [
     {"name": "context_snapshot", "risk": "high", "start_line": 20, "end_line": 33},
@@ -163,10 +164,11 @@
     {"name": "panel_composition", "risk": "high", "start_line": 125, "end_line": 129}
   ],
   "test_features.py": [
-        {"name": "discard_operation_ownership", "risk": "critical", "start_line": 2992, "end_line": 3531},
-      {"name": "sorting_and_navigation", "risk": "high", "start_line": 405, "end_line": 1386},
-      {"name": "optional_integration_fallbacks", "risk": "high", "start_line": 1387, "end_line": 1813},
-      {"name": "panel_lifecycle", "risk": "high", "start_line": 1814, "end_line": 2991}
+      {"name": "panel_focus_allocation_guard", "risk": "medium", "start_line": 122, "end_line": 123},
+      {"name": "discard_operation_ownership", "risk": "critical", "start_line": 3010, "end_line": 3549},
+      {"name": "sorting_and_navigation", "risk": "high", "start_line": 408, "end_line": 1389},
+      {"name": "optional_integration_fallbacks", "risk": "high", "start_line": 1390, "end_line": 1816},
+      {"name": "panel_lifecycle", "risk": "high", "start_line": 1817, "end_line": 3009}
   ],
   "test_item_customization.py": [
       {"name": "dirty_save_outcomes", "risk": "high", "start_line": 224, "end_line": 441},
@@ -174,9 +176,9 @@
       {"name": "callback_failure_safety", "risk": "high", "start_line": 755, "end_line": 979}
   ],
   "test_layout.py": [
-    {"name": "card_geometry", "risk": "high", "start_line": 631, "end_line": 1631},
-      {"name": "content_and_resource_ownership", "risk": "high", "start_line": 1632, "end_line": 2682},
-      {"name": "integration_boundaries", "risk": "medium", "start_line": 2683, "end_line": 4315}
+    {"name": "card_geometry", "risk": "high", "start_line": 633, "end_line": 1633},
+      {"name": "content_and_resource_ownership", "risk": "high", "start_line": 1634, "end_line": 2694},
+      {"name": "integration_boundaries", "risk": "medium", "start_line": 2695, "end_line": 4327}
   ],
   "test_operation_arbiter.py": [
     {"name": "manual_automatic_exclusion", "risk": "critical", "start_line": 20, "end_line": 34},
