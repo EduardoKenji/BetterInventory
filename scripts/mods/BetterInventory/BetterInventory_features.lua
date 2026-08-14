@@ -211,8 +211,8 @@ end
 
 Features._sorting.set_invalidation(Features.invalidate_view_composition)
 
-Features.composition_inputs_changed = function(view, slot_kind)
-	return Features._composition.inputs_changed(view, slot_kind, Features._sorting.mod())
+Features.composition_inputs_changed = function(view, slot_kind, fast_only)
+	return Features._composition.inputs_changed(view, slot_kind, Features._sorting.mod(), fast_only)
 end
 
 Features._contracts = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_contracts")
@@ -1992,7 +1992,7 @@ local function update_inventory_options_panel(mod, layout, view, slot_kind)
 
 	local probe_count = (view._better_inventory_composition_probe_count or 0) + 1
 	local probe_due = probe_count >= 15
-	local input_changed = Features.composition_inputs_changed(view, slot_kind)
+	local input_changed = Features.composition_inputs_changed(view, slot_kind, not view._better_inventory_composition_dirty and not probe_due)
 
 	if not view._better_inventory_composition_dirty and not input_changed and not probe_due then
 		view._better_inventory_composition_probe_count = probe_count

@@ -530,6 +530,13 @@ def main() -> None:
     assert features.composition_inputs_changed(strict_scenegraph_view, "melee") is True
     assert strict_scenegraph_view._better_inventory_composition_window_x is None
     assert strict_scenegraph_view._better_inventory_composition_canvas_width == 1920
+    strict_scenegraph_view._ui_scenegraph.canvas.size[1] = 1600
+    assert features.composition_inputs_changed(strict_scenegraph_view, "melee", True) is False
+    assert strict_scenegraph_view._better_inventory_composition_canvas_width == 1920
+    assert features.composition_inputs_changed(strict_scenegraph_view, "melee") is True
+    assert strict_scenegraph_view._better_inventory_composition_canvas_width == 1600
+    strict_scenegraph_view._selected_slot = "slot_secondary"
+    assert features.composition_inputs_changed(strict_scenegraph_view, "melee", True) is True
 
     definitions = lua.table_from(
         {
