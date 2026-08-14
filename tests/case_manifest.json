@@ -101,8 +101,8 @@
     "test_games_lantern_safety.py": [
       {"name": "typed_terminal_identity_and_final_reconciliation", "risk": "critical", "start_line": 12, "end_line": 97},
       {"name": "two_job_state_resource_and_quarantine_matrix", "risk": "critical", "start_line": 98, "end_line": 260},
-        {"name": "bounded_queue_presentation_snapshot", "risk": "high", "start_line": 261, "end_line": 278},
-        {"name": "games_lantern_release_contract_seams", "risk": "critical", "start_line": 279, "end_line": 312}
+        {"name": "bounded_queue_presentation_snapshot", "risk": "high", "start_line": 261, "end_line": 286},
+        {"name": "games_lantern_release_contract_seams", "risk": "critical", "start_line": 287, "end_line": 320}
     ],
     "test_games_lantern_inventory_completion.py": [
       {"name": "family_finished_skip_duplicate_and_two_slot_resume", "risk": "critical", "start_line": 1, "end_line": 265}
@@ -114,14 +114,15 @@
       {"name": "bounded_brunt_selection_sync_and_clear_restore", "risk": "critical", "start_line": 1, "end_line": 85}
     ],
     "test_games_lantern_transport.py": [
-      {"name": "bounded_transport_timeout_status_size_and_cancel", "risk": "critical", "start_line": 10, "end_line": 151}
+      {"name": "bounded_transport_timeout_status_size_and_cancel", "risk": "critical", "start_line": 10, "end_line": 152}
     ],
     "test_games_lantern_import_controller.py": [
       {"name": "atomic_import_lifecycle_stale_callback_and_duplicate_paste_guard", "risk": "critical", "start_line": 11, "end_line": 123},
       {"name": "explicit_ambiguous_weapon_choice", "risk": "critical", "start_line": 124, "end_line": 166},
       {"name": "invalid_clipboard_and_transport_failure_diagnostics", "risk": "critical", "start_line": 167, "end_line": 203},
       {"name": "canonical_archetype_mismatch_diagnostics", "risk": "critical", "start_line": 204, "end_line": 216},
-      {"name": "character_switch_settlement_fails_before_resolution", "risk": "critical", "start_line": 217, "end_line": 249}
+      {"name": "character_switch_settlement_fails_before_resolution", "risk": "critical", "start_line": 217, "end_line": 249},
+      {"name": "presentation_cache_release_on_cancel_and_clear", "risk": "high", "start_line": 251, "end_line": 265}
     ],
     "test_games_lantern_compatibility.py": [
       {"name": "optional_mod_lifecycle_admission_and_four_run_soak", "risk": "critical", "start_line": 1, "end_line": 176}
@@ -165,10 +166,10 @@
   ],
   "test_features.py": [
       {"name": "panel_focus_allocation_guard", "risk": "medium", "start_line": 122, "end_line": 123},
-      {"name": "discard_operation_ownership", "risk": "critical", "start_line": 3010, "end_line": 3549},
-      {"name": "sorting_and_navigation", "risk": "high", "start_line": 408, "end_line": 1389},
-      {"name": "optional_integration_fallbacks", "risk": "high", "start_line": 1390, "end_line": 1816},
-      {"name": "panel_lifecycle", "risk": "high", "start_line": 1817, "end_line": 3009}
+      {"name": "discard_operation_ownership", "risk": "critical", "start_line": 3036, "end_line": 3571},
+      {"name": "sorting_and_navigation", "risk": "high", "start_line": 408, "end_line": 1396},
+      {"name": "optional_integration_fallbacks", "risk": "high", "start_line": 1397, "end_line": 1823},
+      {"name": "panel_lifecycle", "risk": "high", "start_line": 1824, "end_line": 3035}
   ],
   "test_item_customization.py": [
       {"name": "dirty_save_outcomes", "risk": "high", "start_line": 224, "end_line": 441},
@@ -186,11 +187,11 @@
     {"name": "cancel_and_reconcile", "risk": "critical", "start_line": 72, "end_line": 76}
   ],
   "test_settings.py": [
-    {"name": "schema_dependency_refresh", "risk": "high", "start_line": 21, "end_line": 409},
-    {"name": "migration_preservation", "risk": "high", "start_line": 410, "end_line": 550},
-    {"name": "character_overview_refresh", "risk": "high", "start_line": 551, "end_line": 1505},
-    {"name": "localization_contract", "risk": "medium", "start_line": 1506, "end_line": 2566},
-    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2567, "end_line": 3065}
+    {"name": "schema_dependency_refresh", "risk": "high", "start_line": 21, "end_line": 411},
+    {"name": "migration_preservation", "risk": "high", "start_line": 412, "end_line": 565},
+    {"name": "character_overview_refresh", "risk": "high", "start_line": 566, "end_line": 1527},
+    {"name": "localization_contract", "risk": "medium", "start_line": 1528, "end_line": 2607},
+    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2608, "end_line": 3106}
   ],
   "test_settings_registry.py": [
     {"name": "duplicate_detection", "risk": "high", "start_line": 63, "end_line": 123},
