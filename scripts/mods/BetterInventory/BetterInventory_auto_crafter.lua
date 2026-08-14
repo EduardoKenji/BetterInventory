@@ -657,11 +657,11 @@ function AutoCrafter.configure(dependencies)
 			return view ~= nil and view == active_brunt_view
 		end,
 		report = function(kind, payload)
-			local failed = kind == "selection_failed"
 			local offer = payload and payload.offer or {}
-			local level = failed and "warning" or "info"
 
-			log(level, string.format(
+			-- Brunt preview synchronization is presentation-only. Execution has
+			-- its own fail-closed selection gate before any account mutation.
+			log("info", string.format(
 				"Games Lantern Brunt preview selection event=%s reason=%s attempts=%s elapsed=%.2fs timeout=%s error=%s detail=%s offer=%s master=%s slot=%s tab=%s",
 				tostring(kind),
 				tostring(payload and payload.reason or "none"),

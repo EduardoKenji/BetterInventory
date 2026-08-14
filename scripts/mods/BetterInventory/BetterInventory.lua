@@ -220,6 +220,13 @@ local function auto_crafter_same_id(left, right)
 	return left ~= nil and right ~= nil and (left == right or tostring(left) == tostring(right))
 end
 
+local function auto_crafter_offer_matches(selected_offer, offer)
+	local offer_id = auto_crafter_read(offer, "offerId") or auto_crafter_read(offer, "offer_id")
+	local master_id = auto_crafter_master_id(offer)
+
+	return auto_crafter_same_id(selected_offer.offer_id, offer_id) or selected_offer.offer_id == nil and auto_crafter_same_id(selected_offer.master_id, master_id)
+end
+
 local function auto_crafter_selected_offer_snapshot(view)
 	local offer = auto_crafter_read(view, "_previewed_offer")
 	if not offer then
@@ -255,12 +262,7 @@ local function auto_crafter_select_offer(view, selected_offer)
 
 	if type(offers) == "table" then
 		for _, offer in ipairs(offers) do
-			local offer_id = auto_crafter_read(offer, "offerId") or auto_crafter_read(offer, "offer_id")
-			local master_id = auto_crafter_master_id(offer)
-			local id_matches = auto_crafter_same_id(selected_offer.offer_id, offer_id)
-			local master_matches = auto_crafter_same_id(selected_offer.master_id, master_id)
-
-			if id_matches or selected_offer.offer_id == nil and master_matches then
+			if auto_crafter_offer_matches(selected_offer, offer) then
 				native_offer = offer
 
 				break
@@ -272,16 +274,49 @@ local function auto_crafter_select_offer(view, selected_offer)
 		return false, not native_offer and "offer_not_in_native_store" or "focus_on_offer_unavailable", type(offers) == "table" and #offers or 0
 	end
 
+	local native_entry
+	local layout = auto_crafter_read(view, "_offer_items_layout")
+
+	if type(layout) == "table" then
+		for _, entry in ipairs(layout) do
+			local entry_offer = auto_crafter_read(entry, "offer")
+
+			if entry_offer and auto_crafter_offer_matches(selected_offer, entry_offer) then
+				native_entry = entry
+
+				break
+			end
+		end
+	end
+
+	if not native_entry then
+		return false, "offer_not_in_native_layout", type(layout) == "table" and #layout or 0
+	end
+
 	local tabs = auto_crafter_read(view, "_tabs_content")
 	local target_tab_index = tonumber(selected_offer.tab_index)
+	local native_item = auto_crafter_read(native_entry, "item")
+	local native_slots = auto_crafter_read(native_item, "slots")
 
-	if selected_offer.slot_type and type(tabs) == "table" then
+	if (selected_offer.slot_type or type(native_slots) == "table") and type(tabs) == "table" then
 		for tab_index, tab in ipairs(tabs) do
 			local slot_types = auto_crafter_read(tab, "slot_types")
 
 			if type(slot_types) == "table" then
 				for _, slot_type in ipairs(slot_types) do
-					if slot_type == selected_offer.slot_type then
+					local native_slot_matches = false
+
+					if type(native_slots) == "table" then
+						for _, native_slot in ipairs(native_slots) do
+							if native_slot == slot_type then
+								native_slot_matches = true
+
+								break
+							end
+						end
+					end
+
+					if slot_type == selected_offer.slot_type or native_slot_matches then
 						target_tab_index = tab_index
 
 						break
@@ -330,8 +365,23 @@ local function auto_crafter_select_offer(view, selected_offer)
 	local previewed_id = auto_crafter_read(previewed_offer, "offerId") or auto_crafter_read(previewed_offer, "offer_id")
 
 	local selected = auto_crafter_same_id(selected_offer.offer_id, previewed_id) or selected_offer.offer_id == nil and auto_crafter_same_id(selected_offer.master_id, auto_crafter_master_id(previewed_offer))
+	if not selected and type(view._preview_element) == "function" then
+		local preview_ok, preview_error = pcall(view._preview_element, view, native_entry)
 
-	return selected, selected and nil or "preview_not_confirmed", previewed_id
+		if not preview_ok then
+			return false, "preview_element_failed", preview_error
+		end
+
+		previewed_offer = auto_crafter_read(view, "_previewed_offer")
+		previewed_id = auto_crafter_read(previewed_offer, "offerId") or auto_crafter_read(previewed_offer, "offer_id")
+		selected = auto_crafter_same_id(selected_offer.offer_id, previewed_id) or selected_offer.offer_id == nil and auto_crafter_same_id(selected_offer.master_id, auto_crafter_master_id(previewed_offer))
+	end
+
+	if selected then
+		return true
+	end
+
+	return false, "preview_not_confirmed", previewed_id
 end
 
 AutoCrafter.configure = type(AutoCrafter.configure) == "function" and AutoCrafter.configure or function()

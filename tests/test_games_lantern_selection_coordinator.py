@@ -134,11 +134,59 @@ def main() -> None:
     assert "tab_menu.selected_index" in host
     assert "view.cb_switch_tab" in host
     assert '"offer_not_in_native_store"' in host
+    assert '"offer_not_in_native_layout"' in host
     assert '"tab_switch_pending"' in host
+    assert 'type(view._preview_element) == "function"' in host
+    assert '"preview_element_failed"' in host
     assert '"preview_not_confirmed"' in host
     switch_branch = host.split("if target_tab_index and selected_tab_index", 1)[1].split("local focused_ok", 1)[0]
     assert "return false" in switch_branch
     assert "get_selected_offer_snapshot = auto_crafter_selected_offer_snapshot" in host
+
+    # Execute the production adapter in isolation. Darktide's focus_on_offer
+    # returns nil even when it silently misses a grid widget, so a validated
+    # native layout entry must drive the native preview fallback directly.
+    adapter_body = host.split("local function read_member", 1)[1].split("AutoCrafter.configure =", 1)[0]
+    adapter = lua.execute("local function read_member" + adapter_body + "\nreturn auto_crafter_select_offer")
+    target_offer = lua.table_from({
+        "offerId": "knife-offer",
+        "description": lua.table_from({"lootChoices": lua.table_from(["combatknife_p1_m1"])}),
+    })
+    previous_offer = lua.table_from({"offerId": "sword-offer"})
+    target_entry = lua.table_from({
+        "offer": target_offer,
+        "item": lua.table_from({"slots": lua.table_from(["slot_primary"])}),
+    })
+    tab_menu = lua.table_from({"selected_index": lua.eval("function() return 1 end")})
+    silent_focus = lua.eval("function() end")
+    native_preview = lua.eval("function(view, entry) view._previewed_offer = entry.offer end")
+    adapter_view = lua.table_from({
+        "_offers": lua.table_from([target_offer]),
+        "_offer_items_layout": lua.table_from([target_entry]),
+        "_tabs_content": lua.table_from([lua.table_from({"slot_types": lua.table_from(["slot_primary"])})]),
+        "_tab_menu_element": tab_menu,
+        "_previewed_offer": previous_offer,
+        "focus_on_offer": silent_focus,
+        "_preview_element": native_preview,
+    })
+    selected_offer = lua.table_from({
+        "offer_id": "knife-offer",
+        "master_id": "combatknife_p1_m1",
+        "slot_type": "slot_primary",
+    })
+    selected = adapter(adapter_view, selected_offer)
+    assert selected is True
+    assert adapter_view["_previewed_offer"]["offerId"] == "knife-offer"
+
+    missing_layout_view = lua.table_from({
+        "_offers": lua.table_from([target_offer]),
+        "_offer_items_layout": lua.table_from([]),
+        "focus_on_offer": silent_focus,
+    })
+    selected, selection_error, layout_count = adapter(missing_layout_view, selected_offer)
+    assert selected is False
+    assert selection_error == "offer_not_in_native_layout"
+    assert layout_count == 0
 
 
 if __name__ == "__main__":

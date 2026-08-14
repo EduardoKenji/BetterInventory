@@ -49,7 +49,8 @@ def main() -> None:
     assert "games_lantern_selection.cancel_pending" in source
     assert "games_lantern_selection.abandon" in source
     assert "games_lantern_selection, active_brunt_view, dt" in source
-    assert 'local level = failed and "warning" or "info"' in source
+    assert 'log("info", string.format(' in source
+    assert "Brunt preview synchronization is presentation-only" in source
     assert "Games Lantern Brunt preview selection" in source
     assert "timeout=%s" in source
 

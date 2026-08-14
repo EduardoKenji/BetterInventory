@@ -115,7 +115,7 @@
         {"name": "active_queue_lifecycle_locked_target_and_section_order_ui", "risk": "high", "start_line": 9, "end_line": 78}
     ],
     "test_games_lantern_selection_coordinator.py": [
-      {"name": "bounded_brunt_selection_sync_and_clear_restore", "risk": "critical", "start_line": 1, "end_line": 145}
+      {"name": "bounded_brunt_selection_sync_and_clear_restore", "risk": "critical", "start_line": 1, "end_line": 193}
     ],
     "test_games_lantern_transport.py": [
       {"name": "bounded_transport_timeout_status_size_and_cancel", "risk": "critical", "start_line": 10, "end_line": 152}
