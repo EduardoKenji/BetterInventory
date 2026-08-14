@@ -217,6 +217,27 @@ end
 
 local observe_promise
 
+local function retire_operation(operation)
+	if not operation then
+		return
+	end
+
+	if state.active == operation then
+		state.active = nil
+	end
+
+	-- A native Promise can retain our callbacks indefinitely. Those callbacks
+	-- retain this operation table, so explicitly sever every reference into the
+	-- view and captured item graph whenever BetterInventory stops owning it.
+	operation.account_key = nil
+	operation.character_id = nil
+	operation.intent = nil
+	operation.last_error = nil
+	operation.promise = nil
+	operation.view = nil
+	operation.retired = true
+end
+
 local function execute_intent(operation)
 	local intent = operation.intent
 	local promises = {}
@@ -280,18 +301,21 @@ end
 local function schedule_retry(mod, operation, reason)
 	if state.active ~= operation or not context_is_current(operation) then
 		if state.active == operation then
-			state.active = nil
+			retire_operation(operation)
 		end
 
 		return
 	end
 
 	if operation.retries >= MAX_RETRIES then
-		state.active = nil
+		local signature = operation.intent.signature
+		local retries = operation.retries
+
+		retire_operation(operation)
 		log_failure(mod, string.format(
 			"Failed to persist loadout %s after %d retries: %s",
-			operation.intent.signature,
-			operation.retries,
+			signature,
+			retries,
 			tostring(reason)
 		))
 		return
@@ -321,7 +345,7 @@ observe_promise = function(mod, operation, promise)
 
 		if result_succeeded(result) then
 			apply_confirmed_intent(operation)
-			state.active = nil
+			retire_operation(operation)
 		else
 			schedule_retry(mod, operation, "backend equip resolved false")
 		end
@@ -354,6 +378,7 @@ EquipmentPersistence.persist_local_changes = function(mod, native_function, view
 		view = view,
 	}
 
+	retire_operation(state.active)
 	state.active = operation
 	observe_promise(mod, operation, promise)
 
@@ -374,10 +399,12 @@ EquipmentPersistence.update = function(mod, dt)
 			-- The native request may still settle later. Its callback is generation-
 			-- guarded, so retire BetterInventory's immutable intent/view graph without
 			-- issuing an ambiguous duplicate equip request.
-			state.active = nil
+			local signature = operation.intent.signature
+
+			retire_operation(operation)
 			log_failure(mod, string.format(
 				"Stopped retaining unresolved loadout %s after %d seconds; no retry was dispatched",
-				operation.intent.signature,
+				signature,
 				MAX_PENDING_SECONDS
 			))
 		end
@@ -386,7 +413,7 @@ EquipmentPersistence.update = function(mod, dt)
 	end
 
 	if not context_is_current(operation) then
-		state.active = nil
+		retire_operation(operation)
 		return
 	end
 
@@ -482,7 +509,7 @@ end
 
 EquipmentPersistence.reset = function()
 	state.generation = state.generation + 1
-	state.active = nil
+	retire_operation(state.active)
 end
 
 EquipmentPersistence.status = function()
@@ -496,6 +523,9 @@ EquipmentPersistence.status = function()
 end
 
 EquipmentPersistence._test = {
+	active_operation = function()
+		return state.active
+	end,
 	capture_intent = capture_intent,
 	result_succeeded = result_succeeded,
 }
