@@ -578,6 +578,12 @@ function AutoCrafter.configure(dependencies)
 	end
 
 	local ok_controller, Controller = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/core/controller")
+	local ok_candidate_policy, CandidatePolicy = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/core/candidate_policy")
+	local ok_mastery_policy, MasteryPolicy = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/core/mastery_policy")
+	local ok_phase3_workflow, Phase3Workflow = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/core/phase3_workflow")
+	local ok_phase4_workflow, Phase4Workflow = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/core/phase4_workflow")
+	local ok_inventory_workflow, InventoryWorkflow = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/core/inventory_workflow")
+	local ok_imported_queue_workflow, ImportedQueueWorkflow = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/core/imported_queue_workflow")
 	local ok_planner, Planner = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/core/planner")
 	local ok_backend, Backend = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/backend")
 	local ok_context, Context = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/context")
@@ -592,11 +598,28 @@ function AutoCrafter.configure(dependencies)
 	local ok_games_lantern_transport_wine, GamesLanternTransportWine = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/games_lantern/transport_wine")
 	local ok_games_lantern_import, GamesLanternImport = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/games_lantern/import_controller")
 	local ok_panel, Panel = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/panel")
+	local ok_panel_blueprints, PanelBlueprints = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/panel_blueprints")
 	local ok_viewport_layout, ViewportLayout = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/viewport_layout")
 	local ok_layout_content, LayoutContent = pcall(mod.io_dofile, mod, "BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_content")
 
 	if not ok_controller or type(Controller) ~= "table" or type(Controller.new) ~= "function" then
 		log("error", "Auto Crafter Helper controller unavailable; feature disabled.")
+
+		return false
+	end
+
+	local controller_modules = {
+		candidate_policy = ok_candidate_policy and CandidatePolicy or nil,
+		imported_queue_workflow = ok_imported_queue_workflow and ImportedQueueWorkflow or nil,
+		inventory_workflow = ok_inventory_workflow and InventoryWorkflow or nil,
+		mastery_policy = ok_mastery_policy and MasteryPolicy or nil,
+		phase3_workflow = ok_phase3_workflow and Phase3Workflow or nil,
+		phase4_workflow = ok_phase4_workflow and Phase4Workflow or nil,
+	}
+	local controller_config_ok, controller_configured, controller_config_error = pcall(Controller.configure, controller_modules)
+
+	if not controller_config_ok or controller_configured ~= true then
+		log("error", "Auto Crafter Helper core modules unavailable; feature disabled: " .. tostring(controller_config_error or controller_configured))
 
 		return false
 	end
@@ -636,6 +659,14 @@ function AutoCrafter.configure(dependencies)
 	if not ok_panel or type(Panel) ~= "table" or type(Panel.new) ~= "function" then
 		log("error", "Auto Crafter Helper diagnostic panel unavailable; continuing without UI.")
 		Panel = nil
+	end
+	if Panel then
+		local panel_config_ok, panel_configured, panel_config_error = pcall(Panel.configure, ok_panel_blueprints and PanelBlueprints or nil)
+
+		if not panel_config_ok or panel_configured ~= true then
+			log("error", "Auto Crafter Helper panel blueprints unavailable; continuing without UI: " .. tostring(panel_config_error or panel_configured))
+			Panel = nil
+		end
 	end
 
 	if not ok_viewport_layout or type(ViewportLayout) ~= "table" or type(ViewportLayout.panel_pivot) ~= "function" then
@@ -1020,6 +1051,7 @@ function AutoCrafter.configure(dependencies)
 	end
 
 	panel = Panel and Panel.new({
+		blueprints = PanelBlueprints,
 		ViewElementGrid = dependencies.ViewElementGrid,
 		viewport_layout = ViewportLayout,
 		compact_perk_label = function(entry, label)
@@ -1174,9 +1206,11 @@ function AutoCrafter.configure(dependencies)
 		},
 	}) or nil
 
-	controller = Controller.new({
+	local controller_error
+	controller, controller_error = Controller.new({
 		account_operation = dependencies.account_operation,
 		backend = backend,
+		modules = controller_modules,
 		planner = Planner,
 		context = context,
 		get_selected_offer = dependencies.get_selected_offer,
@@ -1188,6 +1222,12 @@ function AutoCrafter.configure(dependencies)
 		settings = settings_adapter(),
 		clock = clock_adapter(),
 	})
+	if not controller then
+		panel = nil
+		log("error", "Auto Crafter Helper controller could not be composed; feature disabled: " .. tostring(controller_error))
+
+		return false
+	end
 	controller_faulted = false
 	presentation_dirty = true
 	presentation_elapsed = 0

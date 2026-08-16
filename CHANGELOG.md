@@ -1,5 +1,12 @@
 # BetterInventory changelog
 
+## 2.3.2 - 2026-08-15
+
+- Split Auto Crafter candidate/mastery policies, Phase 3/4 workflows, inventory and imported-queue workflows, and Darktide panel blueprints out of the two oversized controller/UI files without changing their public behavior.
+- Added explicit fail-closed module composition so the core can be hosted independently of BetterInventory and Darktide-specific UI modules can remain optional.
+- Kept workflow generations, account-operation serialization, authoritative reconciliation, and lifecycle cleanup under the existing controller while avoiding retention of transient installer service tables.
+- Enforced the 100 KB module limit across every nested Auto Crafter runtime file and documented ownership, standalone host ports, performance rules, and lifecycle invariants.
+
 ## 2.3.1 - 2026-08-14
 
 - Counted `80/80/80/80/61` and `80/80/80/80/62` weapons as perfect rolls when **Perfect-roll weapons at the top** is enabled.

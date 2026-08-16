@@ -197,7 +197,7 @@ def main() -> None:
         '''
     )
     planner = lua.execute(PLANNER_PATH.read_text(encoding="utf-8"))
-    controller_module = lua.execute(CONTROLLER_PATH.read_text(encoding="utf-8"))
+    controller_module = __import__("auto_crafter_test_support").load_controller(lua)
     lua.globals().Planner = planner
     lua.globals().Controller = controller_module
     lua.execute(

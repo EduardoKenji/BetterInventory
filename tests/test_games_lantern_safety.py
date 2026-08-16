@@ -287,7 +287,7 @@ def main() -> None:
     # Source-level release contracts guard seams not available in pure queue
     # simulation: frozen policy, fresh boundary probe/catalog, locked targets,
     # explicit replacement/clear, aggregate confirmation, and bounded polling.
-    controller = (RUNTIME_ROOT / "auto_crafter" / "core" / "controller.lua").read_text(encoding="utf-8")
+    controller = "\n".join(path.read_text(encoding="utf-8") for path in (RUNTIME_ROOT / "auto_crafter" / "core").glob("*.lua"))
     facade = (RUNTIME_ROOT / "BetterInventory_auto_crafter.lua").read_text(encoding="utf-8")
     panel = (RUNTIME_ROOT / "auto_crafter" / "darktide" / "panel.lua").read_text(encoding="utf-8")
     transport = (RUNTIME_ROOT / "auto_crafter" / "games_lantern" / "transport.lua").read_text(encoding="utf-8")

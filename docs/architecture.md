@@ -15,6 +15,7 @@
 | Customization persistence | `BetterInventory_item_customization.lua` | dirty state and explicit DMF save outcomes |
 | Equipment persistence | `BetterInventory_equipment_persistence.lua` | native equip outcome observation, bounded idempotent retry, authoritative profile reconciliation |
 | Localization | `BetterInventory_localization.lua` | DMF localization map, generated character-slot keys |
+| Auto Crafter Helper | `BetterInventory_auto_crafter.lua` | Explicit core/workflow/Darktide/Games Lantern composition; see [Auto Crafter architecture](auto-crafter-architecture.md) |
 
 ## Generated-contract workflow
 

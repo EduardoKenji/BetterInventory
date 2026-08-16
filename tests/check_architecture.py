@@ -59,6 +59,42 @@ def validate_modules(contract: dict[str, object]) -> None:
             )
 
 
+def validate_nested_modules(contract: dict[str, object]) -> None:
+    records = contract.get("nested_modules", {})
+    actual_files = {
+        path.relative_to(RUNTIME_ROOT).as_posix()
+        for path in (RUNTIME_ROOT / "auto_crafter").rglob("*.lua")
+    }
+    declared_files = set(records)
+
+    if actual_files != declared_files:
+        fail(
+            "Nested runtime ownership drift: "
+            f"missing={sorted(actual_files - declared_files)}, "
+            f"extra={sorted(declared_files - actual_files)}"
+        )
+
+    max_bytes = int(contract["max_bytes"])
+    exceptions = contract["temporary_size_exceptions"]
+    for relative_path in sorted(actual_files):
+        record = records[relative_path]
+        missing_fields = [
+            field for field in ("category", "risk", "owner") if not record.get(field)
+        ]
+        if missing_fields:
+            fail(
+                f"Nested module ownership is incomplete: {relative_path} "
+                f"missing={missing_fields}"
+            )
+
+        byte_count = (RUNTIME_ROOT / relative_path).stat().st_size
+        if byte_count > max_bytes and relative_path not in exceptions:
+            fail(
+                f"Nested module exceeds {max_bytes} bytes without an exception: "
+                f"{relative_path}={byte_count}"
+            )
+
+
 def actual_dependencies(module_name: str) -> set[str]:
     source = (RUNTIME_ROOT / module_name).read_text(encoding="utf-8")
     direct_dependencies = {
@@ -134,11 +170,13 @@ def validate_hooks(contract: dict[str, object]) -> None:
 def main() -> None:
     contract = load_contract()
     validate_modules(contract)
+    validate_nested_modules(contract)
     validate_dependencies(contract)
     validate_hooks(contract)
     print(
         "BetterInventory architecture checks passed: "
-        f"{len(contract['modules'])} modules, "
+        f"{len(contract['modules'])} top-level modules, "
+        f"{len(contract['nested_modules'])} nested modules, "
         f"{len(contract['hook_modules'])} hook owners, "
         f"max={contract['max_bytes']} bytes."
     )

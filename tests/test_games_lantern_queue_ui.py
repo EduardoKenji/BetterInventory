@@ -7,7 +7,7 @@ FACADE_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInv
 
 
 def main() -> None:
-    panel = PANEL_PATH.read_text(encoding="utf-8")
+    panel = PANEL_PATH.read_text(encoding="utf-8") + PANEL_PATH.with_name("panel_blueprints.lua").read_text(encoding="utf-8")
     facade = FACADE_PATH.read_text(encoding="utf-8")
 
     # The queue is visible above Planner in both manual and imported modes,

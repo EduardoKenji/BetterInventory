@@ -45,6 +45,9 @@
     "test_auto_crafter_custom_fallback.py": [
       {"name": "custom_stat_manhattan_distance_and_deterministic_ties", "risk": "critical", "start_line": 1, "end_line": 68}
     ],
+  "test_auto_crafter_architecture.py": [
+    {"name": "module_composition_size_fail_closed_and_lifecycle_release", "risk": "critical", "start_line": 1, "end_line": 82}
+  ],
   "test_auto_crafter_controller.py": [
     {"name": "frame_update_idle_amortization", "risk": "high", "start_line": 13, "end_line": 17},
     {"name": "presacrifice_mastery_baseline_convergence_and_level_event", "risk": "critical", "start_line": 196, "end_line": 275},

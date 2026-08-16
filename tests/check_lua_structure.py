@@ -181,7 +181,7 @@ def validate_panel_font_types() -> int:
     valid_fonts = set(
         re.findall(r"^\s+([a-z0-9_]+)\s*=\s*FONT_TYPES\.", font_definitions, re.MULTILINE)
     )
-    panel_source = panel_path.read_text(encoding="utf-8")
+    panel_source = panel_path.read_text(encoding="utf-8") + panel_path.with_name("panel_blueprints.lua").read_text(encoding="utf-8")
     panel_fonts = set(
         re.findall(r'font_type\s*=\s*"([^"]+)"', panel_source)
     )
@@ -240,7 +240,8 @@ def validate_auto_crafter_mutation_boundaries() -> int:
     if missing:
         raise SystemExit("Auto Crafter planner contract missing: " + ", ".join(missing))
 
-    panel_source = (auto_crafter_root / "darktide" / "panel.lua").read_text(encoding="utf-8")
+    panel_path = auto_crafter_root / "darktide" / "panel.lua"
+    panel_source = panel_path.read_text(encoding="utf-8") + panel_path.with_name("panel_blueprints.lua").read_text(encoding="utf-8")
     visual_contract = (
         "frame_tile_2px",
         "Color.terminal_frame(255, true)",
@@ -294,7 +295,7 @@ def validate_auto_crafter_mutation_boundaries() -> int:
         "auto_crafter_change_blessings",
     )
     data_source = (RUNTIME_ROOT / "BetterInventory_data.lua").read_text(encoding="utf-8")
-    controller_source = (auto_crafter_root / "core" / "controller.lua").read_text(encoding="utf-8")
+    controller_source = "\n".join(path.read_text(encoding="utf-8") for path in (auto_crafter_root / "core").glob("*.lua"))
     host_source = (RUNTIME_ROOT / "BetterInventory_auto_crafter.lua").read_text(encoding="utf-8")
     if 'require("scripts/mods/BetterInventory/' in host_source:
         raise SystemExit("Auto Crafter host must load mod-local modules through mod:io_dofile, not Lua require")
@@ -372,7 +373,7 @@ def validate_auto_crafter_mutation_boundaries() -> int:
     if missing_backend:
         raise SystemExit("Auto Crafter backend mutation contract missing: " + ", ".join(missing_backend))
 
-    controller_source = (auto_crafter_root / "core" / "controller.lua").read_text(encoding="utf-8")
+    controller_source = "\n".join(path.read_text(encoding="utf-8") for path in (auto_crafter_root / "core").glob("*.lua"))
     controller_contract = (
         "wallet_consumption",
         "_operation_inflight",

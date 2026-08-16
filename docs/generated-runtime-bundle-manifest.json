@@ -1,6 +1,6 @@
 {
   "archive_root": "BetterInventory",
-  "file_count": 67,
+  "file_count": 74,
   "files": [
     {
       "archive_path": "BetterInventory/BetterInventory.mod",
@@ -28,8 +28,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_auto_crafter.lua",
-      "bytes": 59491,
-      "sha256": "bf4ba2a8df2372f51beb1e9a1c3a3d5f5eec03f0ecdaf9c21f0e2505004df320",
+      "bytes": 62082,
+      "sha256": "c6a85a8bbed721d0a4f8bf93166fc806372a21033b8746da39e6efbe7b38307b",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_auto_crafter.lua"
     },
     {
@@ -95,7 +95,7 @@
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_data.lua",
       "bytes": 65056,
-      "sha256": "1699d1fd583d0341be0b0a9b6d28e693f609f543bd28480ea685cf20276a534f",
+      "sha256": "066e14d30279a14f28e63863a4a2506b425bfb92a8e379615fee15d815b10060",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_data.lua"
     },
     {
@@ -297,10 +297,46 @@
       "source_path": "scripts/mods/BetterInventory/BetterInventory_view_session.lua"
     },
     {
+      "archive_path": "BetterInventory/scripts/mods/BetterInventory/auto_crafter/core/candidate_policy.lua",
+      "bytes": 9612,
+      "sha256": "1ac80f6611a2169e5513876d5709f41205655a6115a5e2fe72c673c25fcbd906",
+      "source_path": "scripts/mods/BetterInventory/auto_crafter/core/candidate_policy.lua"
+    },
+    {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/auto_crafter/core/controller.lua",
-      "bytes": 182266,
-      "sha256": "4214bccbac41c5c4f2124de12d90c0545ab9880e2c822784498907829b8ea220",
+      "bytes": 96803,
+      "sha256": "7ebf9238455c1e9b90a9f2412a6f1ac7bfa1b1140c52abb9f024841882ab9126",
       "source_path": "scripts/mods/BetterInventory/auto_crafter/core/controller.lua"
+    },
+    {
+      "archive_path": "BetterInventory/scripts/mods/BetterInventory/auto_crafter/core/imported_queue_workflow.lua",
+      "bytes": 15392,
+      "sha256": "8d7df1cfbc96d1502caf72d63a559b6a8d6c778977ca64e3b919e0c88ace1024",
+      "source_path": "scripts/mods/BetterInventory/auto_crafter/core/imported_queue_workflow.lua"
+    },
+    {
+      "archive_path": "BetterInventory/scripts/mods/BetterInventory/auto_crafter/core/inventory_workflow.lua",
+      "bytes": 16241,
+      "sha256": "9ebdd91bad3c07ccd2a864e7a4f981ea7f10dafa9e9a4cc8d995ad60e78de8d8",
+      "source_path": "scripts/mods/BetterInventory/auto_crafter/core/inventory_workflow.lua"
+    },
+    {
+      "archive_path": "BetterInventory/scripts/mods/BetterInventory/auto_crafter/core/mastery_policy.lua",
+      "bytes": 9007,
+      "sha256": "2c733be79733e9b27644b0ef7b5b14481af7462e59ef37b21f5ba2af1f2d07d5",
+      "source_path": "scripts/mods/BetterInventory/auto_crafter/core/mastery_policy.lua"
+    },
+    {
+      "archive_path": "BetterInventory/scripts/mods/BetterInventory/auto_crafter/core/phase3_workflow.lua",
+      "bytes": 21936,
+      "sha256": "de82365cc244d65892fffb63619607f10a221a6d798654cbc9e42a8d6074ded6",
+      "source_path": "scripts/mods/BetterInventory/auto_crafter/core/phase3_workflow.lua"
+    },
+    {
+      "archive_path": "BetterInventory/scripts/mods/BetterInventory/auto_crafter/core/phase4_workflow.lua",
+      "bytes": 26209,
+      "sha256": "47457a07bfce28683fd48c78daec6cc87bfaa92a0596899a2e7398c99de2929a",
+      "source_path": "scripts/mods/BetterInventory/auto_crafter/core/phase4_workflow.lua"
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/auto_crafter/core/planner.lua",
@@ -328,9 +364,15 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/panel.lua",
-      "bytes": 121492,
-      "sha256": "d02672dd5e1f4b2c1d6e2f1b74f2f50f9b0cb2f9178830dcce25c1a1069ad851",
+      "bytes": 89761,
+      "sha256": "82a9df683964af1afe7e454be40bad174fc7bd58dccb301c55de8f88794c4489",
       "source_path": "scripts/mods/BetterInventory/auto_crafter/darktide/panel.lua"
+    },
+    {
+      "archive_path": "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/panel_blueprints.lua",
+      "bytes": 34280,
+      "sha256": "a075cd4ac0d6d1f1cc89997d414252f48cadd0de1ea78b1d3200670e449b4452",
+      "source_path": "scripts/mods/BetterInventory/auto_crafter/darktide/panel_blueprints.lua"
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/view_status_overlay.lua",
@@ -405,6 +447,6 @@
       "source_path": "scripts/mods/BetterInventory/auto_crafter/games_lantern/transport_wine.lua"
     }
   ],
-  "runtime_tree_sha256": "3cda1430c54c344a95977c87e4e9e30cc0bb102db6cf7224a60393f0c90eda22",
-  "version": "2.3.1"
+  "runtime_tree_sha256": "f07243de8895b5560d056ec9f0a71bf881f4b7ddca195e0bd9889ed560415ec0",
+  "version": "2.3.2"
 }
