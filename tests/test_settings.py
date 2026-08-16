@@ -2604,7 +2604,6 @@ def main() -> None:
         for index in range(1, len(debug_group.sub_widgets) + 1)
     ] == [
 		"debug_enable_hot_path_diagnostics",
-		"weapon_options_panel_max_height",
 		"debug_weapon_options_button_count",
         "debug_expand_armoury_requisition_window_30_percent",
         "debug_armoury_requisition_window_increase_percent",
@@ -2984,7 +2983,6 @@ def main() -> None:
     assert defaults["armoury_requisition_target_card_width"] == 230
     assert defaults["debug_expand_armoury_requisition_window_30_percent"] is False
     assert defaults["debug_enable_hot_path_diagnostics"] is False
-    assert defaults["weapon_options_panel_max_height"] == 360
     assert defaults["debug_weapon_options_button_count"] == 0
     assert defaults["debug_armoury_requisition_window_increase_percent"] == 30
     assert defaults["debug_adjust_inventory_window_width"] is False

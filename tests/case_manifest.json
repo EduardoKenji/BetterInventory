@@ -1,6 +1,6 @@
 {
   "test_weapon_options_panel.py": [
-    {"name": "native_compatibility_debug_rows_and_bounded_scroll_geometry", "risk": "high", "start_line": 15, "end_line": 146}
+    {"name": "native_compatibility_debug_rows_and_seven_row_clipped_scroll_geometry", "risk": "high", "start_line": 15, "end_line": 194}
   ],
   "test_image_layout.py": [
     {"name": "profile_editor_defaults_context_column_resolution_scaling_and_fail_closed_geometry", "risk": "high", "start_line": 15, "end_line": 237}
@@ -203,7 +203,7 @@
     {"name": "migration_preservation", "risk": "high", "start_line": 412, "end_line": 565},
     {"name": "character_overview_refresh", "risk": "high", "start_line": 566, "end_line": 1527},
     {"name": "localization_contract", "risk": "medium", "start_line": 1528, "end_line": 2616},
-    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2617, "end_line": 3129}
+    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2617, "end_line": 3127}
   ],
   "test_settings_registry.py": [
     {"name": "duplicate_detection", "risk": "high", "start_line": 63, "end_line": 123},

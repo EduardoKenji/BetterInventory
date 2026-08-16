@@ -2,7 +2,7 @@
 
 ## 2.4.0 - 2026-08-16
 
-- Capped the native weapon-action panel at a configurable maximum height and retained Darktide's masked grid scrolling when other mods add more actions than fit.
+- Grows the native weapon-action panel through seven complete rows, then retains a tightly clipped seven-row viewport with Darktide's masked grid scrolling when other mods add more actions.
 - Added a debug dropdown that expands the action panel to 5, 10, or 20 total rows with inert presentation-only buttons for visual and controller-navigation testing.
 
 ## 2.3.2 - 2026-08-15

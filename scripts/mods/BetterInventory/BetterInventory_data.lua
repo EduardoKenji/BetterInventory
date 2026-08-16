@@ -2347,16 +2347,6 @@ return {
 						default_value = false,
 					},
 					{
-						setting_id = "weapon_options_panel_max_height",
-						tooltip = "weapon_options_panel_max_height_tooltip",
-						type = "numeric",
-						default_value = 360,
-						range = {
-							220,
-							600,
-						},
-					},
-					{
 						setting_id = "debug_weapon_options_button_count",
 						tooltip = "debug_weapon_options_button_count_tooltip",
 						type = "dropdown",

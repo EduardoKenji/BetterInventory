@@ -2109,6 +2109,20 @@ mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layou
 
 	return unpack_values(results, 1, results.n)
 end)
+
+-- ViewElementGrid reapplies its native centered-mask position during initial
+-- construction, deferred presentations, and resolution changes. Finalize the
+-- weapon-options viewport after every such resize so overflow remains clipped
+-- to seven complete rows instead of leaking beneath the frame.
+mod:hook(ViewElementGrid, "_update_window_size", function(func, item_grid, ...)
+	local results = pack_values(func(item_grid, ...))
+
+	if WeaponOptionsPanel and type(WeaponOptionsPanel.finalize_layout) == "function" then
+		WeaponOptionsPanel.finalize_layout(item_grid)
+	end
+
+	return unpack_values(results, 1, results.n)
+end)
 end
 
 return Runtime
