@@ -45,6 +45,9 @@
     "test_auto_crafter_facade.py": [
       {"name": "frame_update_crash_containment", "risk": "critical", "start_line": 14, "end_line": 65}
     ],
+    "test_auto_crafter_hud_policy.py": [
+      {"name": "terminal_dirty_wakeup_bounded_expiry_and_phase_labels", "risk": "critical", "start_line": 1, "end_line": 101}
+    ],
     "test_auto_crafter_custom_fallback.py": [
       {"name": "custom_stat_manhattan_distance_and_deterministic_ties", "risk": "critical", "start_line": 1, "end_line": 109}
     ],
@@ -71,19 +74,20 @@
     {"name": "inventory_base_and_planner_mark_identity_safety", "risk": "critical", "start_line": 735, "end_line": 886},
     {"name": "phase4_serial_final_crafting", "risk": "critical", "start_line": 887, "end_line": 1081},
     {"name": "below_twenty_cross_mark_mastery_leveling_and_final_switch", "risk": "critical", "start_line": 1082, "end_line": 1225},
-    {"name": "unowned_blessing_fails_before_final_material_spend", "risk": "critical", "start_line": 1226, "end_line": 1269},
-    {"name": "four_back_to_back_already_mastered_fully_allocated_crafts_and_two_slot_swaps", "risk": "critical", "start_line": 1270, "end_line": 1487},
-    {"name": "equipment_starting_state_matrix", "risk": "critical", "start_line": 1488, "end_line": 1606},
-    {"name": "instant_character_change_snapshot_and_callback_isolation", "risk": "critical", "start_line": 1607, "end_line": 1665},
-    {"name": "configuration_change_closes_dispatch", "risk": "critical", "start_line": 1666, "end_line": 1683},
-    {"name": "explicit_stop_and_idle_cpu_amortization", "risk": "critical", "start_line": 1684, "end_line": 1788},
-    {"name": "purchase_visibility_reconciliation", "risk": "critical", "start_line": 1789, "end_line": 1866},
-    {"name": "mutation_quarantine_and_fast_lane_interleavings", "risk": "critical", "start_line": 1867, "end_line": 1956},
-    {"name": "auto_crafter_account_operation_ownership", "risk": "critical", "start_line": 1957, "end_line": 2057},
-    {"name": "resource_capacity_network_and_loading_failure_matrix", "risk": "critical", "start_line": 2058, "end_line": 2122},
-    {"name": "bounded_probe_and_catalog_reads", "risk": "critical", "start_line": 2123, "end_line": 2158},
-    {"name": "external_account_mutation_exclusion", "risk": "critical", "start_line": 2159, "end_line": 2182},
-    {"name": "custom_stat_exact_acquisition_and_resume", "risk": "critical", "start_line": 2183, "end_line": 2285}
+    {"name": "final_read_timeout_terminal_convergence_without_mutation_retry", "risk": "critical", "start_line": 1226, "end_line": 1303},
+    {"name": "unowned_blessing_fails_before_final_material_spend", "risk": "critical", "start_line": 1304, "end_line": 1347},
+    {"name": "four_back_to_back_already_mastered_fully_allocated_crafts_and_two_slot_swaps", "risk": "critical", "start_line": 1348, "end_line": 1565},
+    {"name": "equipment_starting_state_matrix", "risk": "critical", "start_line": 1566, "end_line": 1684},
+    {"name": "instant_character_change_snapshot_and_callback_isolation", "risk": "critical", "start_line": 1685, "end_line": 1743},
+    {"name": "configuration_change_closes_dispatch", "risk": "critical", "start_line": 1744, "end_line": 1761},
+    {"name": "explicit_stop_and_idle_cpu_amortization", "risk": "critical", "start_line": 1762, "end_line": 1866},
+    {"name": "purchase_visibility_reconciliation", "risk": "critical", "start_line": 1867, "end_line": 1944},
+    {"name": "mutation_quarantine_and_fast_lane_interleavings", "risk": "critical", "start_line": 1945, "end_line": 2034},
+    {"name": "auto_crafter_account_operation_ownership", "risk": "critical", "start_line": 2035, "end_line": 2135},
+    {"name": "resource_capacity_network_and_loading_failure_matrix", "risk": "critical", "start_line": 2136, "end_line": 2200},
+    {"name": "bounded_probe_and_catalog_reads", "risk": "critical", "start_line": 2201, "end_line": 2236},
+    {"name": "external_account_mutation_exclusion", "risk": "critical", "start_line": 2237, "end_line": 2260},
+    {"name": "custom_stat_exact_acquisition_and_resume", "risk": "critical", "start_line": 2261, "end_line": 2363}
   ],
   "test_games_lantern_import.py": [
     {"name": "strict_url_canonicalization", "risk": "critical", "start_line": 18, "end_line": 47},

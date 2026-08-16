@@ -94,6 +94,7 @@ local MAX_PURCHASE_CONFIRMATION_ATTEMPTS = 6
 local MAX_MASTERY_CLAIM_RETRIES = 2
 local MAX_OPERATION_SECONDS = 45
 local MAX_READ_SECONDS = 45
+local MAX_WORKFLOW_READ_SECONDS = 15
 local MAX_IDLE_WORKFLOW_SECONDS = 5
 local PHASE3_FODDER_BATCH_SIZE = 8
 local MAX_PARALLEL_FODDER_UPGRADES = 1
@@ -245,6 +246,7 @@ function Controller.new(dependencies)
 		_operation_inflight = false,
 		_operation_promise = nil,
 		_operation_kind = nil,
+		_operation_read_only = false,
 		_operation_sequence = 0,
 		_terminal_sequence = 0,
 		_operation_elapsed = 0,
@@ -927,17 +929,18 @@ function Controller.new(dependencies)
 		timings[kind] = timing
 	end
 
-	function self:_operation_failed(generation, error_value)
+	function self:_operation_failed(generation, error_value, failed_kind_override)
 		if generation ~= self._generation then
 			log("info", string.format("[AutoCrafter] ignored stale failure run=%s current_run=%s error=%s", tostring(generation), tostring(self._generation), error_description(error_value)))
 			return
 		end
 
-		local failed_kind = self._operation_kind
+		local failed_kind = failed_kind_override or self._operation_kind
 		self._operation_sequence = self._operation_sequence + 1
 		self._operation_inflight = false
 		self._operation_promise = nil
 		self._operation_kind = nil
+		self._operation_read_only = false
 		self._operation_elapsed = 0
 		self._operation_started_at = nil
 		self._purchase_confirmation = nil
@@ -988,6 +991,60 @@ function Controller.new(dependencies)
 		self._run_character_id = nil
 		release_account_operation_if_settled()
 		release_backend_read_cache_if_settled()
+	end
+
+	local function retire_read_operation()
+		if not self._operation_inflight or self._operation_read_only ~= true then
+			return nil
+		end
+
+		local kind = self._operation_kind
+		local promise = self._operation_promise
+		local duration = self._operation_elapsed
+		self._operation_sequence = self._operation_sequence + 1
+		self._operation_inflight = false
+		self._operation_promise = nil
+		self._operation_kind = nil
+		self._operation_read_only = false
+		self._operation_elapsed = 0
+		self._operation_started_at = nil
+		self._operation_quarantined = false
+		record_timing(kind, duration)
+
+		-- Read callbacks are safe to retire: they own no account mutation. Sequence
+		-- invalidation happens before cancellation so even synchronous cancellation
+		-- callbacks cannot resume the workflow.
+		if promise and type(promise.cancel) == "function" then
+			pcall(promise.cancel, promise)
+		end
+
+		return kind, duration
+	end
+
+	function self:_timeout_read_operation(generation)
+		if generation ~= self._generation or not self._operation_inflight or self._operation_read_only ~= true then
+			return false
+		end
+
+		local kind, duration = retire_read_operation()
+		local phase4 = self._phase4
+
+		if kind == "authoritative_refresh" and phase4 and phase4.running and phase4.final_reconcile_started then
+			phase4.final_reconcile_fallback = "read_timeout"
+			phase4.final_reconcile_timeout_seconds = duration
+			operation_report("phase4_final_reconcile_fallback", {
+				duration = duration,
+				reason = "read_timeout",
+			})
+
+			local item = find_item(self._snapshot and self._snapshot.gear and self._snapshot.gear.items, phase4.gear_id)
+
+			return self:_phase4_complete(item, self._snapshot)
+		end
+
+		self:_operation_failed(generation, string.format("read-only operation %s timed out after %.1f seconds; no mutation was retried", tostring(kind), tonumber(duration) or 0), kind)
+
+		return true
 	end
 
 	function self:_quarantine_operation(generation, error_value)
@@ -1067,6 +1124,7 @@ function Controller.new(dependencies)
 		self._operation_inflight = false
 		self._operation_promise = nil
 		self._operation_kind = nil
+		self._operation_read_only = false
 		self._operation_elapsed = 0
 		self._operation_started_at = nil
 		self._operation_quarantined = false
@@ -1109,7 +1167,7 @@ function Controller.new(dependencies)
 		end
 	end
 
-	function self:_dispatch_operation(generation, kind, fn, on_success)
+	function self:_dispatch_operation(generation, kind, fn, on_success, options)
 		if not operation_context_valid(generation) or self._operation_inflight then
 			return false
 		end
@@ -1126,6 +1184,7 @@ function Controller.new(dependencies)
 
 		self._operation_inflight = true
 		self._operation_kind = kind
+		self._operation_read_only = type(options) == "table" and options.read_only == true
 		self._operation_elapsed = 0
 		self._operation_started_at = clock_now()
 		self._phase = kind .. "_inflight"
@@ -1376,7 +1435,9 @@ function Controller.new(dependencies)
 				self:_refresh_plan("operation_refresh")
 			end
 			callback(snapshot)
-		end)
+		end, {
+			read_only = true,
+		})
 	end
 
 	function self:_poll_purchase_confirmation()
@@ -2815,7 +2876,9 @@ function Controller.new(dependencies)
 		if self._operation_inflight then
 			self._operation_elapsed = self._operation_elapsed + update_dt
 
-			if self._operation_elapsed >= MAX_OPERATION_SECONDS and not self._operation_quarantined then
+			if self._operation_read_only and self._operation_elapsed >= MAX_WORKFLOW_READ_SECONDS then
+				self:_timeout_read_operation(self._generation)
+			elseif self._operation_elapsed >= MAX_OPERATION_SECONDS and not self._operation_quarantined then
 				self:_quarantine_operation(self._generation, string.format("operation %s timed out after %.1f seconds", tostring(self._operation_kind), self._operation_elapsed))
 			end
 		end
@@ -2963,6 +3026,7 @@ function Controller.new(dependencies)
 			probe_count = self._probe_count,
 			operation_inflight = self._operation_inflight,
 			operation_kind = self._operation_kind,
+			operation_read_only = self._operation_read_only,
 			operation_sequence = self._operation_sequence,
 			terminal_sequence = self._terminal_sequence,
 			operation_elapsed_seconds = self._operation_elapsed,
@@ -2998,7 +3062,7 @@ function Controller.new(dependencies)
 	end
 
 	function self:needs_update()
-		return enabled() and (self._view_is_valid == true or run_is_active() == true)
+		return enabled() and (self._view_is_valid == true or self._operation_inflight == true or self._operation_quarantined == true or (tonumber(self._auxiliary_inflight_count) or 0) > 0 or run_is_active() == true)
 	end
 
 	function self:preview_plan()

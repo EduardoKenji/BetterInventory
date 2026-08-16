@@ -7,6 +7,7 @@
 - Fixed Auto Crafter Helper blocking a run after choosing a non-default weapon mark from the Marks dropdown.
 - Auto Crafter now switches an explicitly selected weapon mark near the end of Phase 4 and verifies the exact mark from fresh inventory data before reporting completion.
 - Fixed single dump-stat searches for family-level Brunt purchases whose random sibling mark uses a different internal stat ID; matching is now isolated to an exact, unique Darktide display identity and remains fail-closed when missing or ambiguous.
+- Fixed the crafting HUD retaining a stale final-refresh frame after successful completion; terminal callbacks now wake presentation once, successful status expires after 12 seconds, and a stalled duplicate final read completes from the already-confirmed weapon without retrying any account mutation.
 
 ## 2.3.2 - 2026-08-15
 

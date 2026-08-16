@@ -11,7 +11,7 @@ This boundary is the extraction point for a future standalone mod: a standalone 
 | Layer | Modules | Ownership |
 | --- | --- | --- |
 | Composition | `BetterInventory_auto_crafter.lua` | Module loading, dependency validation, lifecycle routing, notifications, Games Lantern orchestration |
-| Core policies | `core/candidate_policy.lua`, `core/mastery_policy.lua`, `core/planner.lua` | Deterministic calculations and validation without game API access |
+| Core policies | `core/candidate_policy.lua`, `core/hud_policy.lua`, `core/mastery_policy.lua`, `core/planner.lua` | Deterministic calculations, terminal presentation transitions, and validation without game API access |
 | Core controller | `core/controller.lua` | Generation tokens, async-operation ownership, reconciliation, probe/catalog scheduling, shutdown |
 | Core workflows | `core/phase3_workflow.lua`, `core/phase4_workflow.lua`, `core/inventory_workflow.lua`, `core/imported_queue_workflow.lua` | Methods installed onto one controller instance through an explicit service table |
 | Darktide adapters | `darktide/backend.lua`, `darktide/context.lua` | Game services, account mutations, authoritative snapshots, character/view validity |

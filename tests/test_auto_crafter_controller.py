@@ -1223,6 +1223,84 @@ def main() -> None:
 			assert(state.sequence[4] == "mark_switch" and state.sequence[5] == nil)
 		end
 
+		-- The last runtime refresh is read-only and follows an already authoritative
+		-- gear verification. If that duplicate read never settles, retire it without
+		-- retrying any mutation and complete from the preserved confirmed snapshot.
+		do
+			local item = summarized_item("gear-final-refresh-timeout", 5, 60)
+			item.expertise_level = 500
+			local final_refresh = pending()
+			local backend = {mutation_calls = 0, refresh_calls = 0}
+			function backend:refresh_runtime_snapshot(_)
+				self.refresh_calls = self.refresh_calls + 1
+
+				return final_refresh
+			end
+			local reporter = reports()
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings(), reporter = reporter})
+			controller._snapshot = snapshot_with(item)
+			controller._search = {
+				dump_stat = "damage_stat",
+				running = true,
+				start_wallet = {credits = 10000},
+				target_dump = 60,
+			}
+			controller._phase4 = {
+				allocate_mastery = false,
+				consecrate = false,
+				dump_stat = "damage_stat",
+				expertise = false,
+				favorite_result = false,
+				gear_id = item.gear_id,
+				mastery_id = item.parent_pattern,
+				running = true,
+				sticker_book = {},
+				target_dump = 60,
+				targets = {perks = {}, traits = {}},
+				verify_completion = true,
+			}
+			assert(controller:_phase4_step(controller._generation, controller._snapshot) == true)
+			assert(backend.refresh_calls == 1 and backend.mutation_calls == 0)
+			assert(controller:snapshot().phase == "authoritative_refresh_inflight")
+			assert(controller:snapshot().operation_read_only == true)
+			controller:update(15)
+			local result = controller:snapshot()
+			assert(result.phase == "phase4_complete", tostring(result.phase) .. " " .. tostring(result.last_error))
+			assert(result.last_error == nil and result.operation_inflight == false and result.operation_quarantined == false)
+			assert(result.reconciliation_required == false and result.phase4.running == false)
+			assert(result.phase4.final_reconcile_fallback == "read_timeout")
+			assert(result.phase4.result.gear_id == item.gear_id and controller:is_busy() == false and controller:needs_update() == false)
+			assert(backend.mutation_calls == 0)
+			local terminal_sequence = result.terminal_sequence
+			final_refresh.next_callback(snapshot_with(item))
+			assert(controller:snapshot().phase == "phase4_complete")
+			assert(controller:snapshot().terminal_sequence == terminal_sequence)
+			assert(backend.mutation_calls == 0)
+			assert(reporter.events[#reporter.events - 1].kind == "phase4_final_reconcile_fallback")
+			assert(reporter.events[#reporter.events].kind == "phase4_complete")
+		end
+
+		-- A stalled read before the final confirmed boundary fails visibly and is
+		-- retired without mutation quarantine or a late-callback continuation.
+		do
+			local refresh = pending()
+			local callback_calls = 0
+			local backend = {}
+			function backend:refresh_gear_snapshot(_) return refresh end
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings(), reporter = reports()})
+			controller._snapshot = snapshot_with(nil)
+			controller._search = {running = true}
+			assert(controller:_refresh_after_operation(controller._generation, function () callback_calls = callback_calls + 1 end) == true)
+			assert(controller:snapshot().operation_read_only == true)
+			controller:update(15)
+			local result = controller:snapshot()
+			assert(result.phase == "operation_failed")
+			assert(result.operation_inflight == false and result.operation_quarantined == false and result.reconciliation_required == false)
+			assert(string.find(result.last_error, "no mutation was retried", 1, true) ~= nil)
+			refresh.next_callback(snapshot_with(nil))
+			assert(callback_calls == 0 and controller:snapshot().phase == "operation_failed")
+		end
+
 		-- A resumed sub-500 weapon can never reach a perk/blessing mutation when
 		-- automatic expertise is disabled. The authoritative snapshot, not request
 		-- completion or a projected local value, owns this safety boundary.

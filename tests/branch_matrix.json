@@ -142,6 +142,20 @@
       "modules": ["BetterInventory_auto_crafter.lua"]
     },
     {
+      "name": "auto-crafter.final-read-timeout-never-retries-mutation",
+      "test": "test_auto_crafter_controller.py",
+      "case": "final_read_timeout_terminal_convergence_without_mutation_retry",
+      "outcome": "a stalled duplicate final reconciliation read completes from the already-confirmed weapon with zero mutation retries, while earlier stalled reads fail visibly and late callbacks remain inert",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
+      "name": "auto-crafter.hud-terminal-state-converges",
+      "test": "test_auto_crafter_hud_policy.py",
+      "case": "terminal_dirty_wakeup_bounded_expiry_and_phase_labels",
+      "outcome": "a terminal callback wakes an otherwise idle facade, replaces stale in-flight HUD text, and expires successful completion presentation after a bounded interval",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
       "name": "auto-crafter.external-interrupt-is-atomic",
       "test": "test_auto_crafter_controller.py",
       "case": "external_account_mutation_exclusion",

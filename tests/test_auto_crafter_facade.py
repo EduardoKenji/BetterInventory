@@ -37,6 +37,10 @@ def main() -> None:
     assert "local function publish_hud_lines(lines)" in source
     assert "function AutoCrafter.hud_presentation()" in source
     assert 'table.concat(lines, "\\n")' in source
+    assert "HudPolicy.presentation_needs_update" in source
+    assert "HudPolicy.advance_completion_elapsed" in source
+    assert '"Verifying final crafted weapon"' in source
+    assert '"Applying selected weapon mark"' in source
 
     # Staged Games Lantern planner selection mirrors Brunt's native weapon
     # preview through a bounded deferred-tab coordinator. It is cancelled at

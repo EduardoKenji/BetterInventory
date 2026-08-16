@@ -13,6 +13,7 @@
   "nested_modules": {
     "auto_crafter/core/candidate_policy.lua": {"category": "pure-policy", "risk": "high", "owner": "auto-crafter-core"},
     "auto_crafter/core/controller.lua": {"category": "async-orchestrator", "risk": "critical", "owner": "auto-crafter-core"},
+    "auto_crafter/core/hud_policy.lua": {"category": "pure-presentation-policy", "risk": "critical", "owner": "auto-crafter-core"},
     "auto_crafter/core/imported_queue_workflow.lua": {"category": "async-workflow", "risk": "critical", "owner": "auto-crafter-core"},
     "auto_crafter/core/inventory_workflow.lua": {"category": "async-workflow", "risk": "critical", "owner": "auto-crafter-core"},
     "auto_crafter/core/mastery_policy.lua": {"category": "pure-policy", "risk": "high", "owner": "auto-crafter-core"},
