@@ -855,7 +855,8 @@ def main() -> None:
 		end
 
 		-- Planner mark selection only changes exact target identity. Unknown/stale marks
-		-- are no-ops with diagnostics and never dispatch an account mutation.
+		-- are no-ops, while a valid mark keeps the native family offer eligible at
+		-- the final mutation boundary even when its default master ID is unchanged.
 		do
 			local offer = target_offer()
 			offer.marks = {
@@ -865,9 +866,13 @@ def main() -> None:
 			local snapshot = snapshot_with(nil)
 			snapshot.store.offers = {offer}
 			local reporter = reports()
+			local backend = {purchase_calls = 0, purchase_promise = pending()}
+			function backend:purchase_offer(_) self.purchase_calls = self.purchase_calls + 1 return self.purchase_promise end
 			CurrentOffer = raw_offer("weapon-1")
-			local controller = Controller.new({backend = {}, planner = Planner, context = context(), settings = base_settings(), reporter = reporter, get_selected_offer = function() return CurrentOffer end})
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings(), reporter = reporter, get_selected_offer = function() return CurrentOffer end})
 			controller._snapshot = snapshot
+			controller._active_view = {}
+			controller._view_is_valid = true
 			assert(controller:select_manual_mark("offer-1", "missing-mark") == false)
 			assert(reporter.events[#reporter.events].kind == "mark_selection_rejected")
 			assert(reporter.events[#reporter.events].payload.reason == "weapon_mark_unavailable")
@@ -875,6 +880,10 @@ def main() -> None:
 			assert(reporter.events[#reporter.events].payload.reason == "selected_weapon_changed")
 			assert(controller:select_manual_mark("offer-1", "weapon-2") == true)
 			assert(controller:_selected_offer_summary().master_id == "weapon-2")
+			assert(controller:start_purchase_search() == true)
+			assert(backend.purchase_calls == 1)
+			assert(controller:snapshot().search.target_offer.master_id == "weapon-2")
+			assert(controller:snapshot().search.target_offer.family_mark_selection == true)
 		end
 
 		-- Phase 4 serially consecrates, advances 100-level milestones, allocates

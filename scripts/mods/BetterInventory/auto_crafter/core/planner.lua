@@ -694,6 +694,7 @@ function Planner.build(snapshot, config)
 			base_item_level = target.base_item_level,
 			key = target_key(target),
 			display_name = target.display_name,
+			family_mark_selection = target.family_mark_selection,
 			offer_id = target.offer_id,
 			master_id = target.master_id,
 			base_stats = target.base_stats,
