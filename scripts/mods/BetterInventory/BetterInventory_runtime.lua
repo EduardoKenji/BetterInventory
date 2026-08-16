@@ -20,6 +20,7 @@ local ItemGridViewBase
 local ItemGridViewBaseDefinitions
 local InventoryWeaponsView
 local ViewElementGrid
+local WeaponOptionsPanel
 local dmf_mod
 local active_grid_view
 local active_grid_configuration
@@ -61,6 +62,7 @@ local function configure_dependencies(dependencies)
 	ItemGridViewBaseDefinitions = dependencies.ItemGridViewBaseDefinitions
 	InventoryWeaponsView = dependencies.InventoryWeaponsView
 	ViewElementGrid = dependencies.ViewElementGrid
+	WeaponOptionsPanel = dependencies.WeaponOptionsPanel
 end
 
 Runtime.configure = configure_dependencies
@@ -2026,6 +2028,11 @@ mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layou
 	content_blueprints = Features.compact_inventory_curio_stats_blueprints(mod, item_grid, content_blueprints)
 
 	local view = active_grid_view or item_grid and item_grid._parent
+
+	if WeaponOptionsPanel and type(WeaponOptionsPanel.prepare_layout) == "function" then
+		layout = WeaponOptionsPanel.prepare_layout(mod, item_grid, layout, content_blueprints, view)
+	end
+
 	local configuration = active_grid_configuration
 
 	if not configuration and is_global_store_view(view) and mod:get("enable_global_store_integration") ~= false then
@@ -2098,6 +2105,20 @@ mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layou
 
 	if configuration.global_store then
 		normalize_global_store_widgets(item_grid)
+	end
+
+	return unpack_values(results, 1, results.n)
+end)
+
+-- ViewElementGrid reapplies its native centered-mask position during initial
+-- construction, deferred presentations, and resolution changes. Finalize the
+-- weapon-options viewport after every such resize so overflow remains clipped
+-- to seven complete rows instead of leaking beneath the frame.
+mod:hook(ViewElementGrid, "_update_window_size", function(func, item_grid, ...)
+	local results = pack_values(func(item_grid, ...))
+
+	if WeaponOptionsPanel and type(WeaponOptionsPanel.finalize_layout) == "function" then
+		WeaponOptionsPanel.finalize_layout(item_grid)
 	end
 
 	return unpack_values(results, 1, results.n)

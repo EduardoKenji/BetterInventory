@@ -14,6 +14,24 @@ local localization = {
 	debug_enable_hot_path_diagnostics_tooltip = {
 		en = "Opt-in sampled counters for UI rebuilds, alignment/pivot writes, active read promises, operation age and Lua memory. Disabled by default; enable only while collecting a baseline.",
 	},
+	debug_weapon_options_button_count = {
+		en = "Weapon-action test button count",
+	},
+	debug_weapon_options_button_count_tooltip = {
+		en = "Sets the total action-row count to 5, 10, or 20 by adding presentation-only no-op buttons after real actions. The panel grows through seven rows, then scrolls without drawing overflow outside its frame. Reopen the inventory after changing this value.",
+	},
+	debug_weapon_options_button_count_off = {
+		en = "Off",
+	},
+	debug_weapon_options_button_count_5 = {
+		en = "5 buttons",
+	},
+	debug_weapon_options_button_count_10 = {
+		en = "10 buttons",
+	},
+	debug_weapon_options_button_count_20 = {
+		en = "20 buttons",
+	},
 	debug_expand_armoury_requisition_window_30_percent = {
 		en = "Increase Armoury Exchange store width",
 	},
