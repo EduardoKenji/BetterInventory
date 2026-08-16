@@ -2,10 +2,10 @@
 
 ## 2.4.0 - 2026-08-16
 
-- Recognizes 61- and 62-point fifth attributes as perfect rolls, sorting 62 above 61 above 60 while preserving equipped and favorite priorities.
-- Refactored Auto Crafter into fail-closed policy, workflow, controller, Darktide adapter, and UI modules, with explicit ownership, lifecycle contracts, and a 100 KB per-module limit.
-- Expands the native weapon-action button panel through seven rows, then uses a clipped scrollable viewport with consistent top and bottom padding; debug options can render 5, 10, or 20 inert test buttons.
-- Hardened and regression-tested Auto Crafter across changed marks, sibling-mark stats, sub-20 mastery, exact final-mark verification, stalled reads, late callbacks, terminal HUD cleanup, and mutation-safe failure recovery.
+- Perfect rolls rank fifth stats 62 > 61 > 60.
+- Auto Crafter was refactored into safer, fail-closed modules.
+- Weapon actions fit 7 rows, then scroll with padding.
+- Tests cover marks, mastery, stat IDs, timeouts and HUD cleanup.
 
 ## 2.3.2 - 2026-08-15
 
