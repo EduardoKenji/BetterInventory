@@ -1,5 +1,10 @@
 # BetterInventory changelog
 
+## 2.4.0 - 2026-08-16
+
+- Capped the native weapon-action panel at a configurable maximum height and retained Darktide's masked grid scrolling when other mods add more actions than fit.
+- Added a debug dropdown that expands the action panel to 5, 10, or 20 total rows with inert presentation-only buttons for visual and controller-navigation testing.
+
 ## 2.3.2 - 2026-08-15
 
 - Split Auto Crafter candidate/mastery policies, Phase 3/4 workflows, inventory and imported-queue workflows, and Darktide panel blueprints out of the two oversized controller/UI files without changing their public behavior.

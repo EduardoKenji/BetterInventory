@@ -1,4 +1,4 @@
-local MOD_VERSION = "2.3.2"
+local MOD_VERSION = "2.4.0"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
@@ -2345,6 +2345,28 @@ return {
 						tooltip = "debug_enable_hot_path_diagnostics_tooltip",
 						type = "checkbox",
 						default_value = false,
+					},
+					{
+						setting_id = "weapon_options_panel_max_height",
+						tooltip = "weapon_options_panel_max_height_tooltip",
+						type = "numeric",
+						default_value = 360,
+						range = {
+							220,
+							600,
+						},
+					},
+					{
+						setting_id = "debug_weapon_options_button_count",
+						tooltip = "debug_weapon_options_button_count_tooltip",
+						type = "dropdown",
+						default_value = 0,
+						options = {
+							{ text = "debug_weapon_options_button_count_off", value = 0 },
+							{ text = "debug_weapon_options_button_count_5", value = 5 },
+							{ text = "debug_weapon_options_button_count_10", value = 10 },
+							{ text = "debug_weapon_options_button_count_20", value = 20 },
+						},
 					},
 					{
 						setting_id = "debug_expand_armoury_requisition_window_30_percent",

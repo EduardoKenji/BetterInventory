@@ -112,6 +112,11 @@ local SettingsRegistry = no_op_module(mod:io_dofile("BetterInventory/scripts/mod
 	should_refresh_dependencies = function() return true end,
 })
 local Diagnostics = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_diagnostics"), "BetterInventory_diagnostics.lua")
+local WeaponOptionsPanel = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_weapon_options_panel"), "BetterInventory_weapon_options_panel.lua", {
+	prepare_layout = function(_, _, layout)
+		return layout, false
+	end,
+})
 local AutoCrafter = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_auto_crafter")
 
 if type(AutoCrafter) ~= "table" then
@@ -564,5 +569,6 @@ Runtime.configure({
 	ItemGridViewBaseDefinitions = ItemGridViewBaseDefinitions,
 	InventoryWeaponsView = InventoryWeaponsView,
 	ViewElementGrid = ViewElementGrid,
+	WeaponOptionsPanel = WeaponOptionsPanel,
 })
 Runtime.install()
