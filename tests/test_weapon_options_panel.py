@@ -121,7 +121,7 @@ def main() -> None:
         assert panel._better_inventory_weapon_options_viewport_height == 490
         assert panel._menu_settings.grid_size[2] == 550
         assert panel._menu_settings.mask_size[2] == 551
-        assert panel._menu_settings.bottom_chin == 0
+        assert panel._menu_settings.bottom_chin == 9
         assert panel.mask_scenegraph_id == "grid_mask"
         assert panel.mask_x is None
         assert panel.mask_y == 15.5
@@ -151,13 +151,15 @@ def main() -> None:
     assert 550 - 31 - (30 + 7 * 60 + 6 * 10) == 9
 
     # At overflow, the mask ends exactly where row eight starts. The matching
-    # bottom chin makes max scroll align the final row's bottom to that edge.
+    # bottom chin leaves the native 9 px inset beneath the final scrolled row.
     ten_row_content_bottom = 30 + 9 * 70 + 60
     active_background_height = 550 - 31
-    scroll_area_height = active_background_height - 30
+    scroll_area_height = active_background_height - 9 - 30
     maximum_scroll = ten_row_content_bottom - scroll_area_height - 30
     assert 30 + 7 * 70 == 520
-    assert ten_row_content_bottom - maximum_scroll == 519
+    final_button_bottom = ten_row_content_bottom - maximum_scroll
+    assert final_button_bottom == 510
+    assert active_background_height - final_button_bottom == 9
 
     # A grid that already exists receives the same scrolling contract. This
     # covers another mod re-presenting the action layout after the first draw.
@@ -179,7 +181,7 @@ def main() -> None:
     )
     assert handled is True
     assert len(existing_grid_rows) == 10
-    assert panel._grid._bottom_chin == 0
+    assert panel._grid._bottom_chin == 9
     assert panel._grid.gamepad_scrolling is True
     assert panel._grid.force_update_count == 1
 

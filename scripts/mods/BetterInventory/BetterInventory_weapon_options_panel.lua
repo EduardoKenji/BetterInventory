@@ -162,10 +162,15 @@ local function update_grid_geometry(item_grid, menu_settings, frame_height, view
 		-- render target exactly seven rows, move its top edge to the content
 		-- padding, and reserve the remaining background space as bottom chin.
 		-- This clips row eight completely while retaining enough scroll length to
-		-- reveal the final row completely at scrollbar progress 1.
+		-- reveal the final row completely at scrollbar progress 1 with the same
+		-- trailing inset used by the non-scrolling seven-row frame.
 		local background_height = frame_height - deduction - used_title_height
+		local spacing = menu_settings.grid_spacing
+		local row_spacing = type(spacing) == "table" and tonumber(spacing[2]) or DEFAULT_ROW_SPACING
+		local unscrolled_last_button_bottom = top_padding + viewport_height - row_spacing
+		local trailing_inset = math.max(background_height - unscrolled_last_button_bottom, 0)
 
-		bottom_chin = math.max(background_height - top_padding - viewport_height, 0)
+		bottom_chin = trailing_inset
 		mask_height = viewport_height + top_padding + deduction + used_title_height
 		menu_settings.bottom_chin = bottom_chin
 		item_grid._better_inventory_weapon_options_mask_offset = top_padding - (background_height - viewport_height) * 0.5
