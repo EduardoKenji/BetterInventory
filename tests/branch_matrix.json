@@ -121,6 +121,13 @@
       "modules": ["BetterInventory_auto_crafter.lua"]
     },
     {
+      "name": "auto-crafter.converges-explicit-mark",
+      "test": "test_auto_crafter_controller.py",
+      "case": "phase4_serial_final_crafting",
+      "outcome": "an explicitly selected sibling mark is switched only after final crafting mutations and completion requires the exact mark in fresh authoritative gear",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
       "name": "auto-crafter.external-interrupt-is-atomic",
       "test": "test_auto_crafter_controller.py",
       "case": "external_account_mutation_exclusion",

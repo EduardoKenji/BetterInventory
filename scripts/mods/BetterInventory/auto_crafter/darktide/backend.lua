@@ -1306,6 +1306,56 @@ local function validate_trait_mutation_item(backend, kind, operation)
 	return item
 end
 
+local function validated_mark_mutation(backend, gear_id, mark_id)
+	if not nonempty_string(gear_id) or not nonempty_string(mark_id) then
+		return nil, "weapon mark gear id or master item id is invalid"
+	end
+
+	local raw_item = raw_gear_item(backend and backend._raw_gear, gear_id)
+	local current_item = raw_item and item_instance(raw_item, gear_id)
+	local current_master_id = current_item and (safe_member(current_item, "name") or safe_member(current_item, "id"))
+
+	if not current_item or not nonempty_string(current_master_id) then
+		return nil, "weapon mark source item is unavailable in authoritative gear"
+	end
+
+	if current_master_id == mark_id then
+		return {
+			already_selected = true,
+			gear_id = gear_id,
+			mark_id = mark_id,
+		}
+	end
+
+	if type(MasterItems) ~= "table" or type(MasterItems.get_item) ~= "function" then
+		return nil, "weapon mark master item registry is unavailable"
+	end
+
+	local target_ok, target_item = pcall(MasterItems.get_item, mark_id)
+
+	if not target_ok or type(target_item) ~= "table" or not displayable_weapon_mark_identity(target_item) then
+		return nil, "selected weapon mark master item is unavailable: " .. tostring(mark_id)
+	end
+
+	local current_details = master_item_details(current_master_id, current_item)
+	local target_details = master_item_details(mark_id, target_item)
+
+	if not nonempty_string(current_details.parent_pattern)
+		or current_details.parent_pattern ~= target_details.parent_pattern
+		or not valid_weapon_slot(current_details.slot_type)
+		or current_details.slot_type ~= target_details.slot_type
+		or current_details.weapon_category ~= target_details.weapon_category
+		or target_details.weapon_template == nil
+	then
+		return nil, "selected weapon mark does not match the authoritative weapon family"
+	end
+
+	return {
+		gear_id = gear_id,
+		mark_id = mark_id,
+	}
+end
+
 local function summarize_purchase(result)
 	local items = safe_member(result, "items") or {}
 	local summary = {
@@ -1637,6 +1687,44 @@ function Backend.new(dependencies)
 			favorited = true,
 			gear_id = gear_id,
 		})
+	end
+
+	function backend:switch_mark(gear_id, mark_id)
+		local operation, validation_error = validated_mark_mutation(self, gear_id, mark_id)
+
+		if not operation then
+			return rejected(validation_error)
+		end
+
+		if operation.already_selected then
+			return Promise.resolved(operation)
+		end
+
+		local services = self:_services_now()
+		local gear_service = services and services.gear
+		local invalidate = safe_member(gear_service, "invalidate_gear_cache")
+
+		if type(invalidate) ~= "function" then
+			return rejected("gear cache invalidation is unavailable for weapon mark verification")
+		end
+
+		-- MasteryService.switch_mark catches a rejected PATCH and resolves its error
+		-- value. Never infer success from that Promise: invalidate the native cache
+		-- and let Phase 4 verify the exact master item in fresh authoritative gear.
+		return self:_mutate("mastery", "switch_mark", operation.gear_id, operation.mark_id):next(function (service_result)
+			local invalidated, invalidate_error = pcall(invalidate, gear_service)
+
+			if not invalidated then
+				return rejected("weapon mark changed but gear cache invalidation failed: " .. error_description(invalidate_error))
+			end
+
+			return {
+				gear_id = operation.gear_id,
+				mark_id = operation.mark_id,
+				service_result = service_result,
+				submitted = true,
+			}
+		end)
 	end
 
 	function backend:discard_items(gear_ids)

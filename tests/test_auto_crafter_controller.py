@@ -887,7 +887,8 @@ def main() -> None:
 		end
 
 		-- Phase 4 serially consecrates, advances 100-level milestones, allocates
-		-- a selected blessing, replaces targets, and verifies every refresh.
+		-- a selected blessing, replaces targets, switches an explicitly selected
+		-- mark at the end, and verifies every authoritative refresh.
 		do
 			local item = summarized_item("gear-final", 3, 60)
 			item.favorite_known = true
@@ -905,9 +906,13 @@ def main() -> None:
 					new_blessing = {"unseen", "unseen", "unseen", "unseen"},
 				},
 			}
-			local backend = {purchase_calls = 0, rarity_calls = 0, expertise_calls = 0, perk_calls = 0, blessing_calls = 0, allocation_calls = 0}
+			local backend = {purchase_calls = 0, rarity_calls = 0, expertise_calls = 0, perk_calls = 0, blessing_calls = 0, allocation_calls = 0, mark_calls = 0}
 			local function phase_snapshot(current_item)
 				local snapshot = snapshot_with(current_item)
+				snapshot.store.offers[1].marks = {
+					{master_id = "weapon-1", parent_pattern = "pattern-1", slot_type = "slot_primary", weapon_template = "template-1"},
+					{master_id = "weapon-2", parent_pattern = "pattern-1", slot_type = "slot_primary", weapon_template = "template-2"},
+				}
 				snapshot.wallets.currencies.plasteel = {amount = state.wallet.plasteel}
 				snapshot.wallets.currencies.diamantine = {amount = state.wallet.diamantine}
 				snapshot.wallets.currencies.credits.amount = state.wallet.credits
@@ -967,6 +972,16 @@ def main() -> None:
 			end
 			function backend:replace_perk(_, index, id, tier) assert(item.expertise_level == 500) self.perk_calls = self.perk_calls + 1 state.perk_order[#state.perk_order + 1] = index item.perks[index] = {id = id, rarity = tier} return resolved({}) end
 			function backend:replace_blessing(_, index, id, tier) assert(item.expertise_level == 500) self.blessing_calls = self.blessing_calls + 1 item.traits[index] = {id = id, rarity = tier} return resolved({}) end
+			function backend:switch_mark(gear_id, mark_id)
+				assert(gear_id == item.gear_id and mark_id == "weapon-2")
+				assert(item.rarity == 5 and item.expertise_level == 500)
+				assert(item.perks[1].id == "new_perk" and item.perks[2].id == "other_perk")
+				assert(item.traits[1].id == "new_blessing" and item.traits[2].id == "keep_blessing")
+				self.mark_calls = self.mark_calls + 1
+				item.master_id = mark_id
+
+				return resolved({gear_id = gear_id, mark_id = mark_id})
+			end
 
 			local settings = base_settings({
 				auto_crafter_consecrate_transcendent = true,
@@ -995,13 +1010,14 @@ def main() -> None:
 			controller._snapshot = phase_snapshot(nil)
 			controller._active_view = {}
 			controller._view_is_valid = true
+			assert(controller:select_manual_mark("offer-1", "weapon-2") == true)
 			assert(controller:start_purchase_search() == true)
 			for _ = 1, 30 do TestTime = TestTime + 1 controller:update(10) end
 			local result = controller:snapshot()
 			assert(result.phase == "phase4_complete", tostring(result.phase) .. " " .. tostring(result.last_error))
 			assert(item.rarity == 5 and item.expertise_level == 500)
 			assert(backend.rarity_calls == 2 and backend.expertise_calls == 2)
-			assert(backend.allocation_calls == 8 and backend.perk_calls == 2 and backend.blessing_calls == 1)
+			assert(backend.allocation_calls == 8 and backend.perk_calls == 2 and backend.blessing_calls == 1 and backend.mark_calls == 1)
 			assert(state.allocation_order[1] == "new_blessing:1")
 			assert(state.allocation_order[2] == "filler_blessing:1")
 			assert(state.allocation_order[7] == "new_blessing:4")
@@ -1011,9 +1027,46 @@ def main() -> None:
 			assert(result.resource_costs.credits == 100 and result.resource_costs.plasteel == 30 and result.resource_costs.diamantine == 4)
 			assert(result.phase4.resource_costs.credits == 100 and result.phase4.resource_costs.plasteel == 30 and result.phase4.resource_costs.diamantine == 4)
 			assert(state.perk_order[1] == 2 and state.perk_order[2] == 1)
+			assert(item.master_id == "weapon-2")
 			assert(item.perks[1].id == "new_perk" and item.perks[2].id == "other_perk" and item.traits[1].id == "new_blessing")
 			controller:_operation_failed(controller._generation, {code = "backend_error", description = "readable backend failure"})
 			assert(controller:snapshot().last_error == "readable backend failure")
+		end
+
+		-- Darktide's mastery service resolves a rejected mark PATCH as an error
+		-- value. Promise resolution alone must never let the wrong mark complete.
+		do
+			local item = summarized_item("gear-unconfirmed-mark", 5, 60)
+			item.expertise_level = 500
+			local backend = {mark_calls = 0}
+			local function mark_snapshot(current_item)
+				local snapshot = snapshot_with(current_item)
+				snapshot.store.offers[1].marks = {
+					{master_id = "weapon-1", parent_pattern = "pattern-1", slot_type = "slot_primary", weapon_template = "template-1"},
+					{master_id = "weapon-2", parent_pattern = "pattern-1", slot_type = "slot_primary", weapon_template = "template-2"},
+				}
+
+				return snapshot
+			end
+			function backend:purchase_offer(_) return resolved({items = {item}}) end
+			function backend:probe_snapshot() return resolved(mark_snapshot(item)) end
+			function backend:switch_mark()
+				self.mark_calls = self.mark_calls + 1
+
+				return resolved({code = "backend_rejected", description = "mark is locked"})
+			end
+			CurrentOffer = raw_offer("weapon-1")
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings(), reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = mark_snapshot(nil)
+			controller._active_view = {}
+			controller._view_is_valid = true
+			assert(controller:select_manual_mark("offer-1", "weapon-2") == true)
+			assert(controller:start_purchase_search() == true)
+			assert(backend.mark_calls == 1)
+			assert(controller:snapshot().phase == "operation_failed")
+			assert(controller:snapshot().last_error == "selected weapon mark switch was not confirmed")
+			assert(controller:snapshot().search.running == false)
+			assert(controller:snapshot().phase4.result == nil)
 		end
 
 		-- A resumed sub-500 weapon can never reach a perk/blessing mutation when

@@ -155,6 +155,8 @@ function Phase4Workflow.install(self, services)
 				invalid_reason = "final weapon is absent from authoritative inventory"
 			elseif phase4.mastery_id ~= nil and (item.parent_pattern or item.mastery_id) ~= phase4.mastery_id then
 				invalid_reason = "final weapon changed weapon family"
+			elseif phase4.target_mark_id ~= nil and item.master_id ~= phase4.target_mark_id then
+				invalid_reason = "final weapon mark does not match the selected mark"
 			elseif not candidate_matches_stat_targets(item, phase4.dump_stat, phase4.target_dump, phase4.custom_stat_targets) then
 				invalid_reason = phase4.custom_stats_enabled and "final weapon changed custom stats" or "final weapon changed dump stat"
 			elseif phase4.consecrate and (tonumber(item.rarity) or -1) < TRANSCENDENT_RARITY then
@@ -447,6 +449,39 @@ function Phase4Workflow.install(self, services)
 			end
 		end
 
+		if phase4.target_mark_id and item.master_id ~= phase4.target_mark_id then
+			if not backend or type(backend.switch_mark) ~= "function" then
+				self:_operation_failed(generation, "weapon mark switch adapter unavailable")
+				return false
+			end
+
+			local target_mark_id = phase4.target_mark_id
+			self._phase = "phase4_switch_mark"
+			operation_report("phase4_mark_switch_started", {
+				gear_id = phase4.gear_id,
+				mark_id = target_mark_id,
+			})
+
+			return self:_dispatch_operation(generation, "phase4_switch_mark", function ()
+				return backend:switch_mark(phase4.gear_id, target_mark_id)
+			end, function ()
+				self:_refresh_after_operation(generation, function (updated)
+					local changed = find_item(updated and updated.gear and updated.gear.items, phase4.gear_id)
+
+					if not changed or changed.master_id ~= target_mark_id then
+						self:_operation_failed(generation, "selected weapon mark switch was not confirmed")
+						return
+					end
+
+					operation_report("phase4_mark_switch_confirmed", {
+						candidate = changed,
+						mark_id = target_mark_id,
+					})
+					self:_phase4_step(generation, updated)
+				end)
+			end)
+		end
+
 		if not phase4.final_reconcile_started then
 			phase4.final_reconcile_started = true
 			self._phase = "phase4_final_reconcile"
@@ -537,6 +572,8 @@ function Phase4Workflow.install(self, services)
 		local allocate_mastery = mastery_enabled and setting("auto_crafter_allocate_mastery_points", true) == true
 		local change_perks = mastery_enabled and setting("auto_crafter_change_perks", true) == true
 		local change_blessings = mastery_enabled and setting("auto_crafter_change_blessings", true) == true
+		local target_offer = self._search and self._search.target_offer
+		local target_mark_id = target_offer and target_offer.family_mark_selection == true and target_offer.master_id or nil
 
 		local item = find_item(self._snapshot and self._snapshot.gear and self._snapshot.gear.items, candidate.gear_id)
 
@@ -545,7 +582,7 @@ function Phase4Workflow.install(self, services)
 			return false
 		end
 
-		if not consecrate and not expertise_enabled and not allocate_mastery and not change_perks and not change_blessings then
+		if not consecrate and not expertise_enabled and not allocate_mastery and not change_perks and not change_blessings and not target_mark_id then
 			self._phase4 = {
 				gear_id = candidate.gear_id,
 				running = true,
@@ -601,7 +638,7 @@ function Phase4Workflow.install(self, services)
 			sticker_book = catalog and catalog.blessings or {},
 			mastery_costs = nil,
 			target_dump = self._search and self._search.target_dump,
-			target_master_id = self._search and self._search.target_offer and self._search.target_offer.master_id,
+			target_mark_id = target_mark_id,
 			targets = targets,
 			trait_category = catalog and catalog.trait_category,
 			verify_completion = true,

@@ -5,6 +5,7 @@
 - Grows the native weapon-action panel through seven complete rows with a consistent native bottom inset, then retains that inset at both ends of Darktide's tightly clipped scrolling viewport when other mods add more actions.
 - Added a debug dropdown that expands the action panel to 5, 10, or 20 total rows with inert presentation-only buttons for visual and controller-navigation testing.
 - Fixed Auto Crafter Helper blocking a run after choosing a non-default weapon mark from the Marks dropdown.
+- Auto Crafter now switches an explicitly selected weapon mark near the end of Phase 4 and verifies the exact mark from fresh inventory data before reporting completion.
 
 ## 2.3.2 - 2026-08-15
 

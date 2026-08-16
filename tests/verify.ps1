@@ -588,8 +588,8 @@ if ($DarktideSourcePath) {
 		throw "Darktide's native mark-selection unlock guard changed. Re-audit mark planning."
 	}
 
-	if ($gearServiceSource -notmatch 'GearService\.fetch_inventory' -or $gearServiceSource -notmatch 'GearService\.delete_gear_batch' -or $gearServiceSource -notmatch 'local max_operations = 40') {
-		throw "The audited inventory-fetch or bounded batch-delete gear service contract has changed."
+	if ($gearServiceSource -notmatch 'GearService\.fetch_inventory' -or $gearServiceSource -notmatch 'GearService\.invalidate_gear_cache' -or $gearServiceSource -notmatch 'GearService\.delete_gear_batch' -or $gearServiceSource -notmatch 'local max_operations = 40') {
+		throw "The audited inventory-fetch, cache-invalidation, or bounded batch-delete gear service contract has changed."
 	}
 
 	if ($progressionManagerSource -notmatch 'if #item_rewards > 0 then[\s\S]*?invalidate_gear_cache\(\)[\s\S]*?Items\.mark_item_id_as_new\(reward\)') {

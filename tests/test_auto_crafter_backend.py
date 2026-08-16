@@ -200,7 +200,7 @@ def main() -> None:
         shovel_backend:probe_snapshot():next(function(value) shovel_snapshot = value end)
         assert(#shovel_snapshot.store.offers[1].marks == 3)
 
-		local calls = {perk = 0, blessing = 0, expertise = 0, extract = 0, mastery = 0}
+		local calls = {perk = 0, blessing = 0, expertise = 0, extract = 0, mastery = 0, mark = 0, invalidate = 0}
 		local malformed_perk_response = false
 		local crafting = {}
 		function crafting:replace_perk_in_weapon(gear_id, index, trait_id, costs, tier)
@@ -217,13 +217,26 @@ def main() -> None:
 		end
 		function crafting:add_weapon_expertise() calls.expertise = calls.expertise + 1 return resolved({}) end
 		function crafting:extract_weapon_mastery() calls.extract = calls.extract + 1 return resolved({}) end
+		local mutation_backend
 		local mastery = {purchase_traits = function() calls.mastery = calls.mastery + 1 return resolved({}) end}
+		function mastery:switch_mark(gear_id, mark_id)
+			calls.mark = calls.mark + 1
+			assert(gear_id == "gear-1" and mark_id == "shovel-mk-7")
+			mutation_backend._raw_gear[gear_id].name = mark_id
 
-		local mutation_backend = Backend.new({services = {crafting = crafting, mastery = mastery}})
+			return resolved({})
+		end
+		local gear = {invalidate_gear_cache = function() calls.invalidate = calls.invalidate + 1 end}
+
+		mutation_backend = Backend.new({services = {crafting = crafting, gear = gear, mastery = mastery}})
 		mutation_backend._raw_gear = {
 			["gear-1"] = {
 				uuid = "gear-1",
+				name = "shovel-mk-3",
 				item_type = "WEAPON_MELEE",
+				parent_pattern = "sapper-shovel-pattern",
+				slots = {"slot_primary"},
+				weapon_progression_template = "sapper-shovel-template",
 				expertise_level = 500,
 				perks = {{id = "old-perk-1", rarity = 4}, {id = "old-perk-2", rarity = 4}},
 				traits = {{id = "old-blessing-1", rarity = 4}, {id = "old-blessing-2", rarity = 4}},
@@ -232,6 +245,24 @@ def main() -> None:
 		mutation_backend:replace_perk("gear-1", 1, "perk-1", 4)
 		mutation_backend:replace_blessing("gear-1", 2, "blessing-1", 4)
 		assert(calls.perk == 1 and calls.blessing == 1)
+
+		-- An explicit mark target is a same-family, same-slot mutation. The native
+		-- gear cache is invalidated exactly once so the controller can verify the
+		-- PATCH from a fresh inventory snapshot; same-mark requests are no-ops.
+		local mark_result
+		mutation_backend:switch_mark("gear-1", "shovel-mk-7"):next(function(value) mark_result = value end)
+		assert(calls.mark == 1 and calls.invalidate == 1)
+		assert(mutation_backend._raw_gear["gear-1"].name == "shovel-mk-7")
+		assert(mark_result.gear_id == "gear-1" and mark_result.mark_id == "shovel-mk-7" and mark_result.submitted == true)
+		mutation_backend:switch_mark("gear-1", "shovel-mk-7")
+		assert(calls.mark == 1 and calls.invalidate == 1)
+
+		local foreign_mark = shovel_mark("foreign-mk-1", "loc_munitorum", "loc_mk_1", "Foreign Mk I")
+		foreign_mark.parent_pattern = "foreign-pattern"
+		test_master_items["foreign-mk-1"] = foreign_mark
+		mutation_backend:switch_mark("gear-1", "foreign-mk-1")
+		mutation_backend:switch_mark("", "shovel-mk-7")
+		assert(calls.mark == 1 and calls.invalidate == 1)
 
 		-- Every malformed operation fails closed before reaching Darktide services.
 		mutation_backend:replace_perk("gear-1", 0, "perk-1", 4)
