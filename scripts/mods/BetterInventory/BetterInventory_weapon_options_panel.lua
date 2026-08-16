@@ -2,6 +2,7 @@ local WeaponOptionsPanel = {}
 
 local DEFAULT_BUTTON_HEIGHT = 60
 local DEFAULT_ROW_SPACING = 10
+local NATIVE_TRAILING_FRAME_HEIGHT = 40
 local MAXIMUM_VISIBLE_ROWS = 7
 local BOTTOM_DIVIDER_HEIGHT_OFFSET = 16
 local TITLE_TOP_DIVIDER_HEIGHT_OFFSET = 15
@@ -58,12 +59,17 @@ end
 local function content_height(layout, blueprints, menu_settings)
 	local spacing = menu_settings and menu_settings.grid_spacing
 	local row_spacing = type(spacing) == "table" and tonumber(spacing[2]) or DEFAULT_ROW_SPACING
-	local height = tonumber(menu_settings and menu_settings.top_padding) or 0
+	local height = (tonumber(menu_settings and menu_settings.top_padding) or 0) + NATIVE_TRAILING_FRAME_HEIGHT
 
-	-- Darktide's native weapon-options geometry budgets one spacing unit on both
-	-- sides of every action row: (button_height + 20) * count at spacing 10.
+	-- Darktide's original three-row frame is 40 px taller than the content end.
+	-- Preserve that trailing allowance as a constant; UIWidgetGrid adds only one
+	-- spacing unit between rows, so adding two per row makes the bottom gap grow.
 	for index = 1, #layout do
-		height = height + entry_height(layout[index], blueprints) + row_spacing * 2
+		height = height + entry_height(layout[index], blueprints)
+
+		if index > 1 then
+			height = height + row_spacing
+		end
 	end
 
 	return math.floor(height + 0.5)
@@ -74,13 +80,18 @@ local function visible_rows_geometry(layout, blueprints, menu_settings)
 	local row_spacing = type(spacing) == "table" and tonumber(spacing[2]) or DEFAULT_ROW_SPACING
 	local top_padding = tonumber(menu_settings and menu_settings.top_padding) or 0
 	local visible_count = math.min(#layout, MAXIMUM_VISIBLE_ROWS)
-	local frame_height = top_padding
+	local frame_height = top_padding + NATIVE_TRAILING_FRAME_HEIGHT
 	local viewport_height = 0
 
 	for index = 1, visible_count do
 		local height = entry_height(layout[index], blueprints)
 
-		frame_height = frame_height + height + row_spacing * 2
+		frame_height = frame_height + height
+
+		if index > 1 then
+			frame_height = frame_height + row_spacing
+		end
+
 		viewport_height = viewport_height + height + row_spacing
 	end
 

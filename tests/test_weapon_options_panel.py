@@ -90,11 +90,16 @@ def main() -> None:
     assert five_rows[5].display_name == "BetterInventory test button 5"
     assert five_rows[4][panel_module.DEBUG_MARKER] is True
     assert five_rows[4].callback() is None
-    assert panel._better_inventory_weapon_options_content_height == 430
+    assert panel._better_inventory_weapon_options_content_height == 410
     assert panel._better_inventory_weapon_options_viewport_height == 350
-    assert panel._menu_settings.grid_size[2] == 430
-    assert panel._menu_settings.mask_size[2] == 470
+    assert panel._menu_settings.grid_size[2] == 410
+    assert panel._menu_settings.mask_size[2] == 450
     assert panel._better_inventory_weapon_options_overflow is False
+
+    # The active framed background keeps the same 9 px trailing inset at every
+    # non-overflow row count instead of accumulating 10 px per added button.
+    assert 270 - 31 - (30 + 3 * 60 + 2 * 10) == 9
+    assert 410 - 31 - (30 + 5 * 60 + 4 * 10) == 9
 
     # Re-presenting a layout already prepared by BetterInventory replaces its
     # filler rows instead of accumulating duplicates.
@@ -104,7 +109,7 @@ def main() -> None:
     assert handled is True
     assert len(repeated) == 5
 
-    expected_content_heights = {10: 830, 20: 1630}
+    expected_content_heights = {10: 760, 20: 1460}
     for target, expected_height in expected_content_heights.items():
         mod.settings.debug_weapon_options_button_count = target
         prepared, handled = panel_module.prepare_layout(
@@ -114,12 +119,12 @@ def main() -> None:
         assert len(prepared) == target
         assert panel._better_inventory_weapon_options_content_height == expected_height
         assert panel._better_inventory_weapon_options_viewport_height == 490
-        assert panel._menu_settings.grid_size[2] == 590
+        assert panel._menu_settings.grid_size[2] == 550
         assert panel._menu_settings.mask_size[2] == 551
-        assert panel._menu_settings.bottom_chin == 39
+        assert panel._menu_settings.bottom_chin == 0
         assert panel.mask_scenegraph_id == "grid_mask"
         assert panel.mask_x is None
-        assert panel.mask_y == -4.5
+        assert panel.mask_y == 15.5
         assert panel._better_inventory_weapon_options_overflow is True
         repeated = prepared
 
@@ -137,21 +142,22 @@ def main() -> None:
     )
     assert handled is True
     assert len(preserved) == 7
-    assert panel._better_inventory_weapon_options_content_height == 590
+    assert panel._better_inventory_weapon_options_content_height == 550
     assert panel._better_inventory_weapon_options_viewport_height == 490
-    assert panel._menu_settings.grid_size[2] == 590
-    assert panel._menu_settings.mask_size[2] == 630
+    assert panel._menu_settings.grid_size[2] == 550
+    assert panel._menu_settings.mask_size[2] == 590
     assert panel._menu_settings.bottom_chin is None
     assert panel._better_inventory_weapon_options_overflow is False
+    assert 550 - 31 - (30 + 7 * 60 + 6 * 10) == 9
 
     # At overflow, the mask ends exactly where row eight starts. The matching
     # bottom chin makes max scroll align the final row's bottom to that edge.
     ten_row_content_bottom = 30 + 9 * 70 + 60
-    active_background_height = 590 - 31
-    scroll_area_height = active_background_height - 39 - 30
+    active_background_height = 550 - 31
+    scroll_area_height = active_background_height - 30
     maximum_scroll = ten_row_content_bottom - scroll_area_height - 30
     assert 30 + 7 * 70 == 520
-    assert ten_row_content_bottom - maximum_scroll == 520
+    assert ten_row_content_bottom - maximum_scroll == 519
 
     # A grid that already exists receives the same scrolling contract. This
     # covers another mod re-presenting the action layout after the first draw.
@@ -173,7 +179,7 @@ def main() -> None:
     )
     assert handled is True
     assert len(existing_grid_rows) == 10
-    assert panel._grid._bottom_chin == 39
+    assert panel._grid._bottom_chin == 0
     assert panel._grid.gamepad_scrolling is True
     assert panel._grid.force_update_count == 1
 
@@ -181,7 +187,7 @@ def main() -> None:
     # must restore BetterInventory's strict overflow boundary.
     panel.mask_y = 15
     assert panel_module.finalize_layout(panel) is True
-    assert panel.mask_y == -4.5
+    assert panel.mask_y == 15.5
     assert panel._grid.force_update_count == 2
     assert panel_module.finalize_layout(unrelated) is False
 

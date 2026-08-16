@@ -1,6 +1,6 @@
 {
   "test_weapon_options_panel.py": [
-    {"name": "native_compatibility_debug_rows_and_seven_row_clipped_scroll_geometry", "risk": "high", "start_line": 15, "end_line": 194}
+    {"name": "native_compatibility_debug_rows_constant_inset_and_seven_row_clipped_scroll_geometry", "risk": "high", "start_line": 15, "end_line": 200}
   ],
   "test_image_layout.py": [
     {"name": "profile_editor_defaults_context_column_resolution_scaling_and_fail_closed_geometry", "risk": "high", "start_line": 15, "end_line": 237}
