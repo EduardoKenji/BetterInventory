@@ -1079,6 +1079,150 @@ def main() -> None:
 			assert(controller:snapshot().phase4.result == nil)
 		end
 
+		-- A below-20 family can acquire an exact sibling-mark stat, level mastery
+		-- using only run-owned fodder, and switch the preserved target to the
+		-- explicitly selected mark only after the level-20 claim converges.
+		do
+			local target = summarized_item("gear-cross-mark-target", 1, 60)
+			target.base_stats = {shovel_m1_defence_stat = 60}
+			target.base_stat_labels = {shovel_m1_defence_stat = "loc_stats_display_defense_stat"}
+			target.potential_base_stats = {shovel_m1_defence_stat = 60}
+			local fodder = summarized_item("gear-cross-mark-fodder", 0, 50)
+			fodder.expertise_level = 40
+			local state = {
+				items = {},
+				mastery_claimed = false,
+				sequence = {},
+			}
+			local backend = {
+				claim_calls = 0,
+				extract_calls = 0,
+				mark_calls = 0,
+				purchase_calls = 0,
+				upgrade_calls = 0,
+			}
+			local function cross_mark_snapshot()
+				local snapshot = snapshot_with_items(state.items)
+				snapshot.store.offers[1].marks = {
+					{base_stats = {{name = "shovel_m1_defence_stat", display_name_key = "loc_stats_display_defense_stat"}}, master_id = "weapon-1", parent_pattern = "pattern-1", slot_type = "slot_primary", weapon_template = "template-1"},
+					{base_stats = {{name = "shovel_m3_defence_stat", display_name_key = "loc_stats_display_defense_stat"}}, master_id = "weapon-2", parent_pattern = "pattern-1", slot_type = "slot_primary", weapon_template = "template-2"},
+				}
+				snapshot.crafting_costs = {
+					sacrifice_mastery = {
+						baseReward = 0,
+						masteryXpPerExpertiseLevel = 10,
+						minimumExpertiseLevel = 0,
+						sacrifice_muiltiplier = 1,
+					},
+				}
+
+				return snapshot
+			end
+			function backend:purchase_offer(_)
+				self.purchase_calls = self.purchase_calls + 1
+				local item = self.purchase_calls == 1 and target or fodder
+				state.items[#state.items + 1] = item
+
+				return resolved({items = {item}})
+			end
+			function backend:probe_snapshot()
+				return resolved(cross_mark_snapshot())
+			end
+			function backend:get_mastery_by_pattern(mastery_id)
+				assert(mastery_id == "pattern-1")
+
+				return resolved({
+					mastery_id = "pattern-1",
+					current_xp = 100,
+					mastery_level = 19,
+					claimed_level = 18,
+					mastery_max_level = 20,
+					milestones = {{level = 20, xpLimit = 150}},
+				})
+			end
+			function backend:upgrade_weapon_rarity(gear_id)
+				assert(gear_id == fodder.gear_id)
+				assert(self.mark_calls == 0 and state.mastery_claimed == false)
+				self.upgrade_calls = self.upgrade_calls + 1
+				fodder.rarity = 2
+				state.sequence[#state.sequence + 1] = "fodder_upgrade"
+
+				return resolved({gear_id = gear_id})
+			end
+			function backend:extract_weapon_mastery(mastery_id, gear_ids)
+				assert(mastery_id == "pattern-1")
+				assert(#gear_ids == 1 and gear_ids[1] == fodder.gear_id)
+				assert(gear_ids[1] ~= target.gear_id and self.mark_calls == 0)
+				self.extract_calls = self.extract_calls + 1
+				state.items = {target}
+				state.sequence[#state.sequence + 1] = "fodder_extract"
+
+				return resolved({amount = 50, gear_ids = {fodder.gear_id}})
+			end
+			function backend:project_mastery(data, amount)
+				assert(data.mastery_level == 19 and data.current_xp == 100 and amount == 50)
+
+				return {
+					mastery_id = "pattern-1",
+					current_xp = 150,
+					mastery_level = 20,
+					claimed_level = 18,
+					mastery_max_level = 20,
+					milestones = data.milestones,
+				}
+			end
+			function backend:claim_mastery_levels(data, amount)
+				assert(data.mastery_level == 20 and data.current_xp == 150 and amount == 0)
+				assert(self.extract_calls == 1 and self.mark_calls == 0)
+				self.claim_calls = self.claim_calls + 1
+				state.mastery_claimed = true
+				state.sequence[#state.sequence + 1] = "mastery_claim"
+
+				return resolved({mastery_id = "pattern-1", current_xp = 150, mastery_level = 20, claimed_level = 19, mastery_max_level = 20})
+			end
+			function backend:switch_mark(gear_id, mark_id)
+				assert(gear_id == target.gear_id and mark_id == "weapon-2")
+				assert(state.mastery_claimed == true and self.extract_calls == 1)
+				assert(#state.items == 1 and state.items[1].gear_id == target.gear_id)
+				self.mark_calls = self.mark_calls + 1
+				state.sequence[#state.sequence + 1] = "mark_switch"
+				target.master_id = mark_id
+				target.base_stats = {shovel_m3_defence_stat = 60}
+				target.base_stat_labels = {shovel_m3_defence_stat = "loc_stats_display_defense_stat"}
+				target.potential_base_stats = {shovel_m3_defence_stat = 60}
+
+				return resolved({gear_id = gear_id, mark_id = mark_id})
+			end
+
+			local settings = base_settings({
+				auto_crafter_target_dump_stat = "defenses",
+				auto_crafter_level_mastery_20 = true,
+				auto_crafter_defer_bad_weapon_processing = true,
+				auto_crafter_max_purchases = 2,
+			})
+			CurrentOffer = raw_offer("weapon-1")
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = settings, reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = cross_mark_snapshot()
+			controller._active_view = {}
+			controller._view_is_valid = true
+			assert(controller:select_manual_mark("offer-1", "weapon-2") == true)
+			assert(controller:start_purchase_search() == true)
+			local result = controller:snapshot()
+			assert(result.phase == "phase4_complete", tostring(result.phase) .. " " .. tostring(result.last_error))
+			assert(backend.purchase_calls == 2 and backend.upgrade_calls == 1)
+			assert(backend.extract_calls == 1 and backend.claim_calls == 1 and backend.mark_calls == 1)
+			assert(result.phase3.fodder_count == 1 and result.phase3.current.mastery_level == 20 and result.phase3.current.claimed_level == 19)
+			assert(result.search.result.gear_id == target.gear_id and result.search.result.dump_stat == 60)
+			assert(result.search.dump_stat == "shovel_m3_defence_stat")
+			assert(result.search.dump_stat_identity.display_name_key == "loc_stats_display_defense_stat")
+			assert(target.master_id == "weapon-2" and target.potential_base_stats.shovel_m3_defence_stat == 60)
+			assert(#state.items == 1 and state.items[1].gear_id == target.gear_id)
+			assert(state.sequence[1] == "fodder_upgrade")
+			assert(state.sequence[2] == "fodder_extract")
+			assert(state.sequence[3] == "mastery_claim")
+			assert(state.sequence[4] == "mark_switch" and state.sequence[5] == nil)
+		end
+
 		-- A resumed sub-500 weapon can never reach a perk/blessing mutation when
 		-- automatic expertise is disabled. The authoritative snapshot, not request
 		-- completion or a projected local value, owns this safety boundary.

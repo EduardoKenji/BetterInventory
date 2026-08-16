@@ -135,6 +135,13 @@
       "modules": ["BetterInventory_auto_crafter.lua"]
     },
     {
+      "name": "auto-crafter.cross-mark-survives-mastery-leveling",
+      "test": "test_auto_crafter_controller.py",
+      "case": "below_twenty_cross_mark_mastery_leveling_and_final_switch",
+      "outcome": "below mastery 20, a sibling-mark exact-stat target is preserved while only run-owned fodder is upgraded and sacrificed; the exact selected mark is switched only after the level-20 claim converges",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
       "name": "auto-crafter.external-interrupt-is-atomic",
       "test": "test_auto_crafter_controller.py",
       "case": "external_account_mutation_exclusion",
