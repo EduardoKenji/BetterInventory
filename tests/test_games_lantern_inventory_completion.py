@@ -10,7 +10,7 @@ CONTROLLER_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "auto_
 def main() -> None:
     lua = LuaRuntime(unpack_returned_tuples=True)
     lua.execute('package.preload["scripts/foundation/utilities/promise"] = function() return {} end')
-    controller_module = lua.execute(CONTROLLER_PATH.read_text(encoding="utf-8"), name=str(CONTROLLER_PATH))
+    controller_module = __import__("auto_crafter_test_support").load_controller(lua)
 
     def to_lua(value):
         if isinstance(value, dict):

@@ -11,7 +11,7 @@ LOCALIZATION_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "Bet
 
 def main() -> None:
     lua = LuaRuntime(unpack_returned_tuples=True)
-    controller_module = lua.execute(CONTROLLER_PATH.read_text(encoding="utf-8"), name=str(CONTROLLER_PATH))
+    controller_module = __import__("auto_crafter_test_support").load_controller(lua)
     controller = controller_module.new(lua.table_from({}))
 
     target_values = [80, 75, 75, 80, 70]

@@ -692,7 +692,7 @@ def main() -> None:
         }
         '''
     )
-    panel_module = lua.execute(PANEL_PATH.read_text(encoding="utf-8"))
+    panel_module = __import__("auto_crafter_test_support").load_panel(lua)
     assert panel_module.weapon_name_with_mark("Power Falchion", "Achlys • Mk VI") == "Achlys Mk VI Power Falchion"
     assert panel_module.weapon_name_with_mark("Branx Mk XI Paired Transonic Blades", "Mk XI") == "Branx Mk XI Paired Transonic Blades"
     lua.globals().PanelModule = panel_module
@@ -1103,7 +1103,7 @@ def main() -> None:
     assert trait_panel._layout_pending is True
     assert trait_panel._layout_defer_frames == 1
 
-    panel_source = PANEL_PATH.read_text(encoding="utf-8")
+    panel_source = PANEL_PATH.read_text(encoding="utf-8") + PANEL_PATH.with_name("panel_blueprints.lua").read_text(encoding="utf-8")
     assert "length_scrolled" in panel_source
     assert "restore_scroll_offset" in panel_source
     assert "set_scrollbar_progress" in panel_source
@@ -1147,7 +1147,7 @@ def main() -> None:
     assert "material_values.icon" in panel_source
     assert "material_values.frame" in panel_source
 
-    controller_source = (RUNTIME_ROOT / "auto_crafter" / "core" / "controller.lua").read_text(encoding="utf-8")
+    controller_source = "\n".join(path.read_text(encoding="utf-8") for path in (RUNTIME_ROOT / "auto_crafter" / "core").glob("*.lua"))
     host_source = (RUNTIME_ROOT / "BetterInventory_auto_crafter.lua").read_text(encoding="utf-8")
     assert "DEFAULT_BLESSING_POLL_DELAY = 0.05" in controller_source
     assert "DEFAULT_MASTERY_POLL_DELAY = 0.05" in controller_source
