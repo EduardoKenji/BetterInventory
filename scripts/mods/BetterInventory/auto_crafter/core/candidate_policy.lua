@@ -111,14 +111,55 @@ function CandidatePolicy.find_item(items, gear_id, items_by_id)
 	return nil
 end
 
-function CandidatePolicy.candidate_stat(candidate, stat_name)
+function CandidatePolicy.copy_stat_identity(identity)
+	if type(identity) ~= "table" or identity.name == nil then
+		return nil
+	end
+
+	return {
+		display_name_key = identity.display_name_key,
+		name = tostring(identity.name),
+	}
+end
+
+function CandidatePolicy.candidate_stat(candidate, stat_name, stat_identity)
 	if not candidate or not stat_name then
 		return nil
 	end
 
 	local potential_stats = candidate.potential_base_stats
+	local exact = potential_stats and potential_stats[stat_name]
 
-	return potential_stats and potential_stats[stat_name]
+	if exact ~= nil then
+		return exact
+	end
+
+	-- Brunt purchases a family offer and may return a sibling mark. Weapon marks
+	-- can use different internal stat IDs for the same displayed stat, so bind the
+	-- frozen target to Darktide's exact display-name identity. Never guess from a
+	-- partial name: absent or ambiguous identities remain unavailable.
+	if type(potential_stats) ~= "table"
+		or type(stat_identity) ~= "table"
+		or tostring(stat_identity.name or "") ~= tostring(stat_name)
+		or type(stat_identity.display_name_key) ~= "string"
+		or stat_identity.display_name_key == ""
+	then
+		return nil
+	end
+
+	local matched_name
+
+	for candidate_name, display_name_key in pairs(type(candidate.base_stat_labels) == "table" and candidate.base_stat_labels or {}) do
+		if display_name_key == stat_identity.display_name_key and potential_stats[candidate_name] ~= nil then
+			if matched_name ~= nil and matched_name ~= candidate_name then
+				return nil
+			end
+
+			matched_name = candidate_name
+		end
+	end
+
+	return matched_name and potential_stats[matched_name] or nil
 end
 
 function CandidatePolicy.copy_stat_targets(targets)
@@ -175,28 +216,10 @@ function CandidatePolicy.valid_custom_stat_targets(targets, require_total)
 end
 
 local function custom_stat_value(candidate, stat_name, target)
-	local value = CandidatePolicy.candidate_stat(candidate, stat_name)
-
-	if value ~= nil or type(target) ~= "table" or target.display_name_key == nil then
-		return value
-	end
-
-	local matched_name
-
-	for candidate_name, display_name_key in pairs(type(candidate.base_stat_labels) == "table" and candidate.base_stat_labels or {}) do
-		if display_name_key == target.display_name_key and CandidatePolicy.candidate_stat(candidate, candidate_name) ~= nil then
-			if matched_name ~= nil and matched_name ~= candidate_name then
-				return nil
-			end
-
-			matched_name = candidate_name
-		end
-	end
-
-	return matched_name and CandidatePolicy.candidate_stat(candidate, matched_name) or nil
+	return CandidatePolicy.candidate_stat(candidate, stat_name, target)
 end
 
-function CandidatePolicy.candidate_matches_stat_targets(candidate, dump_stat, target_dump, custom_targets)
+function CandidatePolicy.candidate_matches_stat_targets(candidate, dump_stat, target_dump, custom_targets, dump_stat_identity)
 	if type(custom_targets) == "table" and next(custom_targets) ~= nil then
 		for stat_name, target in pairs(custom_targets) do
 			local target_name = type(target) == "table" and target.name or stat_name
@@ -210,10 +233,10 @@ function CandidatePolicy.candidate_matches_stat_targets(candidate, dump_stat, ta
 		return true
 	end
 
-	return tonumber(CandidatePolicy.candidate_stat(candidate, dump_stat)) == tonumber(target_dump)
+	return tonumber(CandidatePolicy.candidate_stat(candidate, dump_stat, dump_stat_identity)) == tonumber(target_dump)
 end
 
-function CandidatePolicy.candidate_stat_target_distance(candidate, dump_stat, target_dump, custom_targets)
+function CandidatePolicy.candidate_stat_target_distance(candidate, dump_stat, target_dump, custom_targets, dump_stat_identity)
 	if type(custom_targets) == "table" and next(custom_targets) ~= nil then
 		local distance = 0
 
@@ -232,7 +255,9 @@ function CandidatePolicy.candidate_stat_target_distance(candidate, dump_stat, ta
 		return distance
 	end
 
-	return math.abs((tonumber(CandidatePolicy.candidate_stat(candidate, dump_stat)) or 0) - (tonumber(target_dump) or 60))
+	local value = tonumber(CandidatePolicy.candidate_stat(candidate, dump_stat, dump_stat_identity))
+
+	return value == nil and math.huge or math.abs(value - (tonumber(target_dump) or 60))
 end
 
 function CandidatePolicy.trait_at(traits, index)

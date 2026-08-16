@@ -19,6 +19,10 @@ function InventoryWorkflow.install(self, services)
 	local PHASE3_FODDER_BATCH_SIZE = services.constants.PHASE3_FODDER_BATCH_SIZE
 	local TRANSCENDENT_RARITY = services.constants.TRANSCENDENT_RARITY
 
+	local function imported_dump_stat(job)
+		return job and (job.resolved_dump_stat or job.dump_stat)
+	end
+
 	function self:_imported_family_matches(candidate, job)
 		local expected_pattern = job and (job.parent_pattern or job.offer and job.offer.parent_pattern)
 		local candidate_pattern = candidate and (candidate.parent_pattern or candidate.mastery_id)
@@ -46,7 +50,7 @@ function InventoryWorkflow.install(self, services)
 			return false
 		end
 
-		return candidate_matches_stat_targets(item, job.dump_stat, job.dump_target, job.custom_stats_enabled and job.custom_stat_targets or nil)
+		return candidate_matches_stat_targets(item, imported_dump_stat(job), job.dump_target, job.custom_stats_enabled and job.custom_stat_targets or nil, job.dump_stat_identity)
 			and (setting("auto_crafter_consecrate_transcendent", true) ~= true or (tonumber(item.rarity) or -1) >= TRANSCENDENT_RARITY)
 			and (setting("auto_crafter_upgrade_expertise_500", true) ~= true or (tonumber(item.expertise_level) or -1) >= MAX_EXPERTISE_LEVEL)
 			and (not change_perks or has_trait_targets(item.perks, job.perks))
@@ -61,7 +65,7 @@ function InventoryWorkflow.install(self, services)
 		local include_favorites = setting("auto_crafter_include_favorite_inventory_bases", true) == true
 		for _, candidate in ipairs(self._snapshot and self._snapshot.gear and self._snapshot.gear.items or {}) do
 			local favorite_allowed = include_favorites or candidate.favorite_known == true and candidate.favorited ~= true
-			if candidate.available == true and candidate.gear_id ~= nil and candidate.equipped ~= true and favorite_allowed and self:_imported_family_matches(candidate, job) and candidate_matches_stat_targets(candidate, job.dump_stat, job.dump_target, job.custom_stats_enabled and job.custom_stat_targets or nil) and not self:_imported_item_is_complete(candidate, job) then
+			if candidate.available == true and candidate.gear_id ~= nil and candidate.equipped ~= true and favorite_allowed and self:_imported_family_matches(candidate, job) and candidate_matches_stat_targets(candidate, imported_dump_stat(job), job.dump_target, job.custom_stats_enabled and job.custom_stat_targets or nil, job.dump_stat_identity) and not self:_imported_item_is_complete(candidate, job) then
 				return true
 			end
 		end
@@ -125,7 +129,10 @@ function InventoryWorkflow.install(self, services)
 				local name = type(stat) == "table" and stat.name or type(key) == "string" and key or nil
 
 				if name ~= nil then
-					names[tostring(name)] = true
+					names[tostring(name)] = type(stat) == "table" and {
+						display_name_key = stat.display_name_key,
+						name = tostring(name),
+					} or { name = tostring(name) }
 				end
 			end
 
@@ -135,9 +142,9 @@ function InventoryWorkflow.install(self, services)
 			local non_dump_sum = 0
 			local all_other_stats_maxed = true
 
-			for name in pairs(names) do
+			for name, identity in pairs(names) do
 				expected = expected + 1
-				local value = tonumber(candidate_stat(candidate, name))
+				local value = tonumber(candidate_stat(candidate, name, identity))
 
 				if value ~= nil then
 					known = known + 1
@@ -238,7 +245,7 @@ function InventoryWorkflow.install(self, services)
 			local favorite_allowed = include_favorites or candidate.favorite_known == true and candidate.favorited ~= true
 
 			local imported_complete = imported_job and self:_imported_item_is_complete(candidate, imported_job)
-			if candidate.available == true and candidate.gear_id ~= nil and candidate.equipped ~= true and matched and favorite_allowed and not imported_complete and candidate_matches_stat_targets(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets) then
+			if candidate.available == true and candidate.gear_id ~= nil and candidate.equipped ~= true and matched and favorite_allowed and not imported_complete and candidate_matches_stat_targets(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets, search.dump_stat_identity) then
 				local analysis = profile_analysis(candidate)
 				analysis.expertise = tonumber(candidate.expertise_level) or -1
 				analysis.family_identity = identity_source
@@ -406,7 +413,7 @@ function InventoryWorkflow.install(self, services)
 					return
 				end
 
-				local dump_stat = candidate_stat(candidate, search.dump_stat)
+				local dump_stat = candidate_stat(candidate, search.dump_stat, search.dump_stat_identity)
 
 				if dump_stat == nil then
 					self:_operation_failed(generation, "authoritative weapon did not expose configured dump stat")
@@ -416,10 +423,10 @@ function InventoryWorkflow.install(self, services)
 
 				candidate.dump_stat = dump_stat
 				candidate.dump_stat_id = search.dump_stat
-				candidate.dump_stat_label = candidate.base_stat_labels and candidate.base_stat_labels[search.dump_stat]
+				candidate.dump_stat_label = search.dump_stat_identity and search.dump_stat_identity.display_name_key or candidate.base_stat_labels and candidate.base_stat_labels[search.dump_stat]
 				candidate.damage = candidate.potential_damage or candidate_stat(candidate, "damage")
-				candidate.exact_match = candidate_matches_stat_targets(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets)
-				candidate.target_distance = candidate_stat_target_distance(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets)
+				candidate.exact_match = candidate_matches_stat_targets(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets, search.dump_stat_identity)
+				candidate.target_distance = candidate_stat_target_distance(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets, search.dump_stat_identity)
 
 				if self._phase3 and self._phase3.running and not candidate.exact_match then
 					track_purchased_spare(self._phase3, candidate)

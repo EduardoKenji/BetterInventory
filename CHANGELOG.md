@@ -6,6 +6,7 @@
 - Added a debug dropdown that expands the action panel to 5, 10, or 20 total rows with inert presentation-only buttons for visual and controller-navigation testing.
 - Fixed Auto Crafter Helper blocking a run after choosing a non-default weapon mark from the Marks dropdown.
 - Auto Crafter now switches an explicitly selected weapon mark near the end of Phase 4 and verifies the exact mark from fresh inventory data before reporting completion.
+- Fixed single dump-stat searches for family-level Brunt purchases whose random sibling mark uses a different internal stat ID; matching is now isolated to an exact, unique Darktide display identity and remains fail-closed when missing or ambiguous.
 
 ## 2.3.2 - 2026-08-15
 

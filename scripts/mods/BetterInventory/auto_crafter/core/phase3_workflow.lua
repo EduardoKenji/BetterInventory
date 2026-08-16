@@ -43,7 +43,7 @@ function Phase3Workflow.install(self, services)
 			return self:_phase3_sync_projected(self._generation)
 		end
 
-		if not item or item.available ~= true or item.parent_pattern ~= target.mastery_id or not candidate_matches_stat_targets(item, search.dump_stat, search.target_dump, search.custom_stat_targets) then
+		if not item or item.available ~= true or item.parent_pattern ~= target.mastery_id or not candidate_matches_stat_targets(item, search.dump_stat, search.target_dump, search.custom_stat_targets, search.dump_stat_identity) then
 			self:_operation_failed(self._generation, search.custom_stats_enabled and "Phase 3 target failed authoritative family or custom-stat reconciliation" or "Phase 3 target failed authoritative family or dump-stat reconciliation")
 
 			return false
@@ -606,12 +606,12 @@ function Phase3Workflow.install(self, services)
 			return false
 		end
 
-		candidate.dump_stat = candidate_stat(candidate, search.dump_stat)
+		candidate.dump_stat = candidate_stat(candidate, search.dump_stat, search.dump_stat_identity)
 		candidate.dump_stat_id = search.dump_stat
-		candidate.dump_stat_label = candidate.base_stat_labels and candidate.base_stat_labels[search.dump_stat]
+		candidate.dump_stat_label = search.dump_stat_identity and search.dump_stat_identity.display_name_key or candidate.base_stat_labels and candidate.base_stat_labels[search.dump_stat]
 		candidate.damage = candidate.potential_damage or candidate_stat(candidate, "damage")
-		candidate.exact_match = candidate_matches_stat_targets(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets)
-		candidate.target_distance = candidate_stat_target_distance(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets)
+		candidate.exact_match = candidate_matches_stat_targets(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets, search.dump_stat_identity)
+		candidate.target_distance = candidate_stat_target_distance(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets, search.dump_stat_identity)
 
 		if not candidate.exact_match then
 			return false

@@ -423,6 +423,19 @@ local function resolve_dump_stat(_, target, configured_dump_stat)
 	return candidates[1].name, "defaulted to dump-stat index 0", candidates
 end
 
+local function resolved_stat_identity(candidates, stat_name)
+	for _, candidate in ipairs(candidates or {}) do
+		if candidate.name == stat_name then
+			return {
+				display_name_key = candidate.display_name_key,
+				name = candidate.name,
+			}
+		end
+	end
+
+	return nil
+end
+
 local function resolve_custom_stat_targets(candidates, configured_targets)
 	local targets = {}
 	local target_map = {}
@@ -544,6 +557,7 @@ function Planner.build(snapshot, config)
 	local wallets = snapshot and snapshot.wallets or {}
 	local reasons = {}
 	local resolved_dump_stat
+	local dump_stat_identity
 	local dump_stat_resolution
 	local dump_stat_candidates
 	local custom_stat_targets
@@ -565,6 +579,7 @@ function Planner.build(snapshot, config)
 
 	if target then
 		resolved_dump_stat, dump_stat_resolution, dump_stat_candidates = resolve_dump_stat(snapshot, target, normalized.dump_stat)
+		dump_stat_identity = resolved_stat_identity(dump_stat_candidates, resolved_dump_stat)
 
 		if not resolved_dump_stat then
 			local reason_prefix = normalized.dump_stat == "auto" and "auto dump-stat discovery unavailable: " or "configured dump stat unavailable: "
@@ -705,6 +720,7 @@ function Planner.build(snapshot, config)
 		} or nil,
 		dump_stat = normalized.dump_stat,
 		resolved_dump_stat = resolved_dump_stat,
+		dump_stat_identity = dump_stat_identity,
 		dump_stat_candidates = dump_stat_candidates,
 		dump_stat_resolution = dump_stat_resolution,
 		custom_stats_enabled = normalized.custom_stats_enabled,

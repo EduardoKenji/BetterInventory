@@ -891,6 +891,9 @@ def main() -> None:
 		-- mark at the end, and verifies every authoritative refresh.
 		do
 			local item = summarized_item("gear-final", 3, 60)
+			item.base_stats = {shovel_m1_defence_stat = 60}
+			item.base_stat_labels = {shovel_m1_defence_stat = "loc_stats_display_defense_stat"}
+			item.potential_base_stats = {shovel_m1_defence_stat = 60}
 			item.favorite_known = true
 			item.favorited = false
 			item.expertise_level = 330
@@ -910,8 +913,8 @@ def main() -> None:
 			local function phase_snapshot(current_item)
 				local snapshot = snapshot_with(current_item)
 				snapshot.store.offers[1].marks = {
-					{master_id = "weapon-1", parent_pattern = "pattern-1", slot_type = "slot_primary", weapon_template = "template-1"},
-					{master_id = "weapon-2", parent_pattern = "pattern-1", slot_type = "slot_primary", weapon_template = "template-2"},
+					{base_stats = {{name = "shovel_m1_defence_stat", display_name_key = "loc_stats_display_defense_stat"}}, master_id = "weapon-1", parent_pattern = "pattern-1", slot_type = "slot_primary", weapon_template = "template-1"},
+					{base_stats = {{name = "shovel_m3_defence_stat", display_name_key = "loc_stats_display_defense_stat"}}, master_id = "weapon-2", parent_pattern = "pattern-1", slot_type = "slot_primary", weapon_template = "template-2"},
 				}
 				snapshot.wallets.currencies.plasteel = {amount = state.wallet.plasteel}
 				snapshot.wallets.currencies.diamantine = {amount = state.wallet.diamantine}
@@ -979,11 +982,15 @@ def main() -> None:
 				assert(item.traits[1].id == "new_blessing" and item.traits[2].id == "keep_blessing")
 				self.mark_calls = self.mark_calls + 1
 				item.master_id = mark_id
+				item.base_stats = {shovel_m3_defence_stat = 60}
+				item.base_stat_labels = {shovel_m3_defence_stat = "loc_stats_display_defense_stat"}
+				item.potential_base_stats = {shovel_m3_defence_stat = 60}
 
 				return resolved({gear_id = gear_id, mark_id = mark_id})
 			end
 
 			local settings = base_settings({
+				auto_crafter_target_dump_stat = "defenses",
 				auto_crafter_consecrate_transcendent = true,
 				auto_crafter_upgrade_expertise_500 = true,
 				auto_crafter_allocate_mastery_points = true,
@@ -1015,6 +1022,9 @@ def main() -> None:
 			for _ = 1, 30 do TestTime = TestTime + 1 controller:update(10) end
 			local result = controller:snapshot()
 			assert(result.phase == "phase4_complete", tostring(result.phase) .. " " .. tostring(result.last_error))
+			assert(result.search.dump_stat == "shovel_m3_defence_stat")
+			assert(result.search.dump_stat_identity.display_name_key == "loc_stats_display_defense_stat")
+			assert(result.search.result.dump_stat == 60)
 			assert(item.rarity == 5 and item.expertise_level == 500)
 			assert(backend.rarity_calls == 2 and backend.expertise_calls == 2)
 			assert(backend.allocation_calls == 8 and backend.perk_calls == 2 and backend.blessing_calls == 1 and backend.mark_calls == 1)

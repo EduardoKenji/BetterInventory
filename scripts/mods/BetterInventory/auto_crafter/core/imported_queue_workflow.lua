@@ -4,6 +4,7 @@ function ImportedQueueWorkflow.install(self, services)
 	local acquire_account_operation = services.acquire_account_operation
 	local cancel_catalog = services.cancel_catalog
 	local candidate_matches_stat_targets = services.candidate_matches_stat_targets
+	local copy_stat_identity = services.copy_stat_identity
 	local copy_stat_targets = services.copy_stat_targets
 	local current_character_id = services.current_character_id
 	local find_item = services.find_item
@@ -25,6 +26,10 @@ function ImportedQueueWorkflow.install(self, services)
 	local MAX_EXPERTISE_LEVEL = services.constants.MAX_EXPERTISE_LEVEL
 	local TRANSCENDENT_RARITY = services.constants.TRANSCENDENT_RARITY
 
+	local function imported_dump_stat(job)
+		return job and (job.resolved_dump_stat or job.dump_stat)
+	end
+
 	function self:set_imported_job(job)
 		local custom_valid, custom_total = true, nil
 		if job and job.custom_stats_enabled == true then
@@ -39,6 +44,8 @@ function ImportedQueueWorkflow.install(self, services)
 			return false, "Auto Crafter is busy"
 		end
 
+		job.resolved_dump_stat = nil
+		job.dump_stat_identity = nil
 		self._imported_job = job
 		self._run_imported_job = nil
 		self._catalog = job.catalog
@@ -229,6 +236,11 @@ function ImportedQueueWorkflow.install(self, services)
 			return false, self._plan and self._plan.preflight and self._plan.preflight.summary or "queue job preflight unavailable"
 		end
 
+		-- Imported IDs are advisory. Bind the job to the selected live mark's
+		-- authoritative stat identity before any inventory reuse or purchase.
+		job.resolved_dump_stat = self._plan.resolved_dump_stat
+		job.dump_stat_identity = copy_stat_identity(self._plan.dump_stat_identity)
+
 		local inventory_action, completed = self:_imported_job_inventory_decision(job)
 		if inventory_action == "skip" and completed then
 			operation_report("imported_queue_job_already_complete", {
@@ -261,7 +273,7 @@ function ImportedQueueWorkflow.install(self, services)
 		if expected_pattern and (item.parent_pattern or item.mastery_id) ~= expected_pattern then
 			return false, "completed queue weapon " .. label .. " changed weapon family"
 		end
-		if not candidate_matches_stat_targets(item, job.dump_stat, job.dump_target, job.custom_stats_enabled and job.custom_stat_targets or nil) then
+		if not candidate_matches_stat_targets(item, imported_dump_stat(job), job.dump_target, job.custom_stats_enabled and job.custom_stat_targets or nil, job.dump_stat_identity) then
 			return false, "completed queue weapon " .. label .. (job.custom_stats_enabled and " changed custom stats" or " changed dump stat")
 		end
 		if policy.auto_crafter_consecrate_transcendent == true and (tonumber(item.rarity) or -1) < TRANSCENDENT_RARITY then

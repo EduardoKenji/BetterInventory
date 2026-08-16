@@ -128,6 +128,13 @@
       "modules": ["BetterInventory_auto_crafter.lua"]
     },
     {
+      "name": "auto-crafter.normalizes-sibling-mark-stat-identity",
+      "test": "test_auto_crafter_controller.py",
+      "case": "phase4_serial_final_crafting",
+      "outcome": "a family-level Brunt purchase with a sibling mark-specific stat ID is matched only through the selected mark's exact unique Darktide display identity and still converges to the selected mark",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
       "name": "auto-crafter.external-interrupt-is-atomic",
       "test": "test_auto_crafter_controller.py",
       "case": "external_account_mutation_exclusion",

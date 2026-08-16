@@ -7,6 +7,7 @@ local REQUIRED_MODULE_FUNCTIONS = {
 		"candidate_matches_stat_targets",
 		"candidate_stat",
 		"candidate_stat_target_distance",
+		"copy_stat_identity",
 		"copy_stat_targets",
 		"find_item",
 		"has_pending_trait_replacement",
@@ -186,6 +187,7 @@ function Controller.new(dependencies)
 	local offer_with_mark = CandidatePolicy.offer_with_mark
 	local find_item = CandidatePolicy.find_item
 	local candidate_stat = CandidatePolicy.candidate_stat
+	local copy_stat_identity = CandidatePolicy.copy_stat_identity
 	local copy_stat_targets = CandidatePolicy.copy_stat_targets
 	local valid_custom_stat_targets = CandidatePolicy.valid_custom_stat_targets
 	local candidate_matches_stat_targets = CandidatePolicy.candidate_matches_stat_targets
@@ -1824,13 +1826,13 @@ function Controller.new(dependencies)
 		end
 
 		local search = self._search or {}
-		local candidate_distance = candidate_stat_target_distance(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets)
+		local candidate_distance = candidate_stat_target_distance(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets, search.dump_stat_identity)
 		candidate.target_distance = candidate_distance
 		local custom_profile = type(search.custom_stat_targets) == "table" and next(search.custom_stat_targets) ~= nil
 
-		-- A profile that cannot be mapped across all five identities is not a
+		-- A candidate that cannot be mapped to the frozen stat identity is never a
 		-- usable fallback, even when it happens to be the first observed roll.
-		if custom_profile and candidate_distance == math.huge then
+		if candidate_distance == math.huge then
 			return false
 		end
 
@@ -1838,7 +1840,7 @@ function Controller.new(dependencies)
 			return true
 		end
 
-		local current_distance = candidate_stat_target_distance(current, search.dump_stat, search.target_dump, search.custom_stat_targets)
+		local current_distance = candidate_stat_target_distance(current, search.dump_stat, search.target_dump, search.custom_stat_targets, search.dump_stat_identity)
 		current.target_distance = current_distance
 
 		if candidate_distance ~= current_distance then
@@ -2008,6 +2010,7 @@ function Controller.new(dependencies)
 			custom_stats_enabled = plan.custom_stats_enabled == true,
 			custom_stat_targets = copy_stat_targets(plan.custom_stat_targets),
 			dump_stat = dump_stat,
+			dump_stat_identity = copy_stat_identity(plan.dump_stat_identity),
 			favorite_result = setting("auto_crafter_favorite_result", true) == true,
 			generation = self._generation,
 			cap_by_max_purchases = setting("auto_crafter_cap_by_max_purchases", false) == true,
@@ -3053,6 +3056,7 @@ function Controller.new(dependencies)
 		candidate_stat = candidate_stat,
 		candidate_stat_target_distance = candidate_stat_target_distance,
 		clock_now = clock_now,
+		copy_stat_identity = copy_stat_identity,
 		copy_stat_targets = copy_stat_targets,
 		current_character_id = current_character_id,
 		estimated_fodder_xp = estimated_fodder_xp,

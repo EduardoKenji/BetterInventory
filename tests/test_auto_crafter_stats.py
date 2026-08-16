@@ -547,6 +547,8 @@ def main() -> None:
     assert planner.default_dump_stat(legacy_auto_plan) == "crowbar_p1_m1_dps_stat"
     defense_plan = plan("defenses")
     assert defense_plan.resolved_dump_stat == "crowbar_p1_m1_defence_stat"
+    assert defense_plan.dump_stat_identity.name == "crowbar_p1_m1_defence_stat"
+    assert defense_plan.dump_stat_identity.display_name_key == "loc_stats_display_defense_stat"
     penetration_plan = plan("penetration")
     assert penetration_plan.resolved_dump_stat == "crowbar_p1_m1_armor_pierce_stat"
     assert penetration_plan.estimate.base_level_min == 290

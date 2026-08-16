@@ -4,6 +4,7 @@ function Phase4Workflow.install(self, services)
 	local blessing_poll_delay = services.blessing_poll_delay
 	local candidate_matches_stat_targets = services.candidate_matches_stat_targets
 	local clock_now = services.clock_now
+	local copy_stat_identity = services.copy_stat_identity
 	local copy_stat_targets = services.copy_stat_targets
 	local find_item = services.find_item
 	local has_pending_trait_replacement = services.has_pending_trait_replacement
@@ -157,7 +158,7 @@ function Phase4Workflow.install(self, services)
 				invalid_reason = "final weapon changed weapon family"
 			elseif phase4.target_mark_id ~= nil and item.master_id ~= phase4.target_mark_id then
 				invalid_reason = "final weapon mark does not match the selected mark"
-			elseif not candidate_matches_stat_targets(item, phase4.dump_stat, phase4.target_dump, phase4.custom_stat_targets) then
+			elseif not candidate_matches_stat_targets(item, phase4.dump_stat, phase4.target_dump, phase4.custom_stat_targets, phase4.dump_stat_identity) then
 				invalid_reason = phase4.custom_stats_enabled and "final weapon changed custom stats" or "final weapon changed dump stat"
 			elseif phase4.consecrate and (tonumber(item.rarity) or -1) < TRANSCENDENT_RARITY then
 				invalid_reason = "final weapon is below Transcendent"
@@ -220,7 +221,7 @@ function Phase4Workflow.install(self, services)
 			return true
 		end
 
-		if not item or item.available ~= true or item.parent_pattern ~= phase4.mastery_id or not candidate_matches_stat_targets(item, phase4.dump_stat, phase4.target_dump, phase4.custom_stat_targets) then
+		if not item or item.available ~= true or item.parent_pattern ~= phase4.mastery_id or not candidate_matches_stat_targets(item, phase4.dump_stat, phase4.target_dump, phase4.custom_stat_targets, phase4.dump_stat_identity) then
 			self:_operation_failed(generation, "final weapon failed authoritative identity or level-500 stat verification")
 
 			return false
@@ -630,6 +631,7 @@ function Phase4Workflow.install(self, services)
 			custom_stats_enabled = self._search and self._search.custom_stats_enabled == true,
 			custom_stat_targets = copy_stat_targets(self._search and self._search.custom_stat_targets),
 			dump_stat = self._search and self._search.dump_stat,
+			dump_stat_identity = copy_stat_identity(self._search and self._search.dump_stat_identity),
 			expertise = expertise_enabled,
 			favorite_result = self._search and self._search.favorite_result == true,
 			gear_id = candidate.gear_id,

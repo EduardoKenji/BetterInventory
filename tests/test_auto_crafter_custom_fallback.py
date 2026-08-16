@@ -59,6 +59,47 @@ def main() -> None:
     higher_damage = candidate("higher-damage", [62, 80, 80, 80, 80], 20)
     assert controller._candidate_is_better(controller, higher_damage, lower_damage) is True
 
+    # A selected mark and a random Brunt sibling may expose different internal
+    # IDs for the same Darktide stat. Only an exact, unique display identity may
+    # bridge them; absent and ambiguous identities remain unusable.
+    controller["_search"] = lua.table_from({
+        "dump_stat": "shovel_m3_defence_stat",
+        "dump_stat_identity": lua.table_from({
+            "display_name_key": "loc_stats_display_defense_stat",
+            "name": "shovel_m3_defence_stat",
+        }),
+        "target_dump": 60,
+    })
+    sibling = lua.table_from({
+        "gear_id": "shovel-mk-1-roll",
+        "base_stat_labels": lua.table_from({"shovel_m1_defence_stat": "loc_stats_display_defense_stat"}),
+        "potential_base_stats": lua.table_from({"shovel_m1_defence_stat": 60}),
+    })
+    assert controller._candidate_is_better(controller, sibling, None) is True
+    assert sibling.target_distance == 0
+
+    absent = lua.table_from({
+        "gear_id": "missing-defence",
+        "base_stat_labels": lua.table_from({"shovel_m1_mobility_stat": "loc_stats_display_mobility_stat"}),
+        "potential_base_stats": lua.table_from({"shovel_m1_mobility_stat": 60}),
+    })
+    assert controller._candidate_is_better(controller, absent, None) is False
+    assert absent.target_distance == float("inf")
+
+    ambiguous = lua.table_from({
+        "gear_id": "ambiguous-defence",
+        "base_stat_labels": lua.table_from({
+            "shovel_m1_defence_a": "loc_stats_display_defense_stat",
+            "shovel_m1_defence_b": "loc_stats_display_defense_stat",
+        }),
+        "potential_base_stats": lua.table_from({
+            "shovel_m1_defence_a": 60,
+            "shovel_m1_defence_b": 60,
+        }),
+    })
+    assert controller._candidate_is_better(controller, ambiguous, None) is False
+    assert ambiguous.target_distance == float("inf")
+
     requested_label = "Use closest fallback candidate weapon if exact stat match weapon is not found"
     assert requested_label in PANEL_PATH.read_text(encoding="utf-8")
     assert requested_label in LOCALIZATION_PATH.read_text(encoding="utf-8")
