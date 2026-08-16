@@ -2,12 +2,10 @@
 
 ## 2.4.0 - 2026-08-16
 
-- Grows the native weapon-action panel through seven complete rows with a consistent native bottom inset, then retains that inset at both ends of Darktide's tightly clipped scrolling viewport when other mods add more actions.
-- Added a debug dropdown that expands the action panel to 5, 10, or 20 total rows with inert presentation-only buttons for visual and controller-navigation testing.
-- Fixed Auto Crafter Helper blocking a run after choosing a non-default weapon mark from the Marks dropdown.
-- Auto Crafter now switches an explicitly selected weapon mark near the end of Phase 4 and verifies the exact mark from fresh inventory data before reporting completion.
-- Fixed single dump-stat searches for family-level Brunt purchases whose random sibling mark uses a different internal stat ID; matching is now isolated to an exact, unique Darktide display identity and remains fail-closed when missing or ambiguous.
-- Fixed the crafting HUD retaining a stale final-refresh frame after successful completion; terminal callbacks now wake presentation once, successful status expires after 12 seconds, and a stalled duplicate final read completes from the already-confirmed weapon without retrying any account mutation.
+- Recognizes 61- and 62-point fifth attributes as perfect rolls, sorting 62 above 61 above 60 while preserving equipped and favorite priorities.
+- Refactored Auto Crafter into fail-closed policy, workflow, controller, Darktide adapter, and UI modules, with explicit ownership, lifecycle contracts, and a 100 KB per-module limit.
+- Expands the native weapon-action button panel through seven rows, then uses a clipped scrollable viewport with consistent top and bottom padding; debug options can render 5, 10, or 20 inert test buttons.
+- Hardened and regression-tested Auto Crafter across changed marks, sibling-mark stats, sub-20 mastery, exact final-mark verification, stalled reads, late callbacks, terminal HUD cleanup, and mutation-safe failure recovery.
 
 ## 2.3.2 - 2026-08-15
 
