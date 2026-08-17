@@ -122,6 +122,11 @@ def main() -> None:
     globals_ = lua.globals()
 
     assert module.is_myfavorites_available() is True
+    assert module._test.purchased_item_id(7) is None
+    assert module.apply_auto_crafter_color(globals_.test_mod, "") is False
+    assert module._test.global_store_purchase_character_id(
+        lua.table_from({}), "unsupported-store-service"
+    ) is None
     preview = module.color_preview(globals_.test_mod, 3)
     assert "{#color(0,191,255)}" in preview
     assert "auto_crafter_myfavorites_color_3" in preview
@@ -150,6 +155,25 @@ def main() -> None:
         "weapon-c",
         "direct-item",
     ]
+
+    original_managers = globals_.Managers
+    globals_.Managers = None
+    assert module.favorite_purchase_items(
+        globals_.test_mod,
+        purchase_items,
+        "automatic_curio_favorite_purchased_curios",
+        "missing-save-manager",
+    ) == 0
+    globals_.Managers = lua.execute(
+        "return {save = {character_data = function() return nil end}}"
+    )
+    assert module.favorite_purchase_items(
+        globals_.test_mod,
+        purchase_items,
+        "automatic_curio_favorite_purchased_curios",
+        "missing-character-data",
+    ) == 0
+    globals_.Managers = original_managers
 
     globals_.myfavorites_settings.favorite_item_list = False
     assert module.apply_auto_crafter_color(globals_.test_mod, "crafted-weapon") is True
