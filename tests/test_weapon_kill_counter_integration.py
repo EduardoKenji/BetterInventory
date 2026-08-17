@@ -229,6 +229,10 @@ def main() -> None:
                     change_function = function(content, style)
                         content.text_refreshes = (content.text_refreshes or 0) + 1
                         style.font_size = 24
+                        style.horizontal_alignment = "right"
+                        style.vertical_alignment = "center"
+                        style.offset[1] = -210
+                        style.offset[2] = 10
                     end,
                 },
                 {
@@ -237,13 +241,17 @@ def main() -> None:
                         content.icon_refreshes = (content.icon_refreshes or 0) + 1
                         style.size[1] = 34
                         style.size[2] = 34
+                        style.horizontal_alignment = "right"
+                        style.vertical_alignment = "center"
+                        style.offset[1] = -248
+                        style.offset[2] = 10
                     end,
                 },
             },
-            content = {},
+            content = {size = {292, 56}},
             style = {
-                wkc_kills = {font_size = 20},
-                wkc_kills_icon = {size = {22, 22}},
+                wkc_kills = {font_size = 20, size = {34, 30}, offset = {-210, 10, 12}},
+                wkc_kills_icon = {size = {22, 22}, offset = {-248, 10, 12}},
             },
         }
 
@@ -258,6 +266,15 @@ def main() -> None:
     assert brunt_widget.style.wkc_kills.font_size == 14
     assert brunt_widget.style.wkc_kills_icon.size[1] == 16
     assert brunt_widget.style.wkc_kills_icon.size[2] == 16
+    assert brunt_widget.style.wkc_kills.horizontal_alignment == "left"
+    assert brunt_widget.style.wkc_kills.vertical_alignment == "top"
+    assert brunt_widget.style.wkc_kills.offset[1] == 28
+    assert brunt_widget.style.wkc_kills.offset[2] == 37
+    assert brunt_widget.style.wkc_kills.size[2] == 17
+    assert brunt_widget.style.wkc_kills_icon.horizontal_alignment == "left"
+    assert brunt_widget.style.wkc_kills_icon.vertical_alignment == "top"
+    assert brunt_widget.style.wkc_kills_icon.offset[1] == 10
+    assert brunt_widget.style.wkc_kills_icon.offset[2] == 37
     assert brunt_widget.dirty is True
     brunt_widget.passes[1].change_function(
         brunt_widget.content, brunt_widget.style.wkc_kills
@@ -269,6 +286,10 @@ def main() -> None:
     assert brunt_widget.content.icon_refreshes == 1
     assert brunt_widget.style.wkc_kills.font_size == 14
     assert brunt_widget.style.wkc_kills_icon.size[1] == 16
+    assert brunt_widget.style.wkc_kills.offset[1] == 28
+    assert brunt_widget.style.wkc_kills.offset[2] == 37
+    assert brunt_widget.style.wkc_kills_icon.offset[1] == 10
+    assert brunt_widget.style.wkc_kills_icon.offset[2] == 37
     assert integration.cap_brunt_listing_overlay_sizes(brunt_grid) == 0
 
     assert integration.install_brunt_listing_hook(mod) is True

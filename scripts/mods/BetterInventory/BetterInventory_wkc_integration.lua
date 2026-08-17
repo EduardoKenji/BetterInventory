@@ -22,6 +22,10 @@ local SINGLE_COLUMN_X_ADJUSTMENT = -1
 local SINGLE_COLUMN_Y_ADJUSTMENT = -4
 local BRUNT_LISTING_ICON_SIZE = 16
 local BRUNT_LISTING_FONT_SIZE = 14
+local BRUNT_LISTING_TEXT_HEIGHT = 17
+local BRUNT_LISTING_LEFT_INSET = 10
+local BRUNT_LISTING_GAP = 2
+local BRUNT_LISTING_BOTTOM_INSET = 2
 local brunt_listing_hook_installed = false
 
 local function optional_wkc()
@@ -350,19 +354,42 @@ local function cap_brunt_listing_overlay_sizes(item_grid)
 	local seen = {}
 	local wrapped = 0
 
-	local function cap_style(style, style_id)
+	local function cap_style(style, style_id, content)
 		if type(style) ~= "table" then
 			return
 		end
 
+		local offset = style.offset
+		local content_size = content and content.size
+		local card_height = type(content_size) == "table" and tonumber(content_size[2])
+		local top = card_height and math.max(0, card_height - BRUNT_LISTING_TEXT_HEIGHT - BRUNT_LISTING_BOTTOM_INSET)
+
 		if style_id == TEXT_STYLE_ID then
 			style.font_size = math.min(tonumber(style.font_size) or BRUNT_LISTING_FONT_SIZE, BRUNT_LISTING_FONT_SIZE)
+			style.horizontal_alignment = "left"
+			style.vertical_alignment = "top"
+
+			if type(style.size) == "table" then
+				style.size[2] = BRUNT_LISTING_TEXT_HEIGHT
+			end
+
+			if type(offset) == "table" then
+				offset[1] = BRUNT_LISTING_LEFT_INSET + BRUNT_LISTING_ICON_SIZE + BRUNT_LISTING_GAP
+				offset[2] = top or offset[2]
+			end
 		elseif style_id == ICON_STYLE_ID then
 			local size = style.size
+			style.horizontal_alignment = "left"
+			style.vertical_alignment = "top"
 
 			if type(size) == "table" then
 				size[1] = math.min(tonumber(size[1]) or BRUNT_LISTING_ICON_SIZE, BRUNT_LISTING_ICON_SIZE)
 				size[2] = math.min(tonumber(size[2]) or BRUNT_LISTING_ICON_SIZE, BRUNT_LISTING_ICON_SIZE)
+			end
+
+			if type(offset) == "table" then
+				offset[1] = BRUNT_LISTING_LEFT_INSET
+				offset[2] = top or offset[2]
 			end
 		end
 	end
@@ -380,7 +407,7 @@ local function cap_brunt_listing_overlay_sizes(item_grid)
 			local style_id = pass and (pass.style_id == TEXT_STYLE_ID or pass.style_id == ICON_STYLE_ID) and pass.style_id or pass and pass.value_id
 
 			if style_id == TEXT_STYLE_ID or style_id == ICON_STYLE_ID then
-				cap_style(type(styles) == "table" and styles[style_id], style_id)
+				cap_style(type(styles) == "table" and styles[style_id], style_id, widget.content)
 
 				if pass.better_inventory_wkc_brunt_size_cap ~= true then
 					local original_change_function = pass.change_function
@@ -390,7 +417,7 @@ local function cap_brunt_listing_overlay_sizes(item_grid)
 							original_change_function(content, style, ...)
 						end
 
-						cap_style(style, style_id)
+						cap_style(style, style_id, content)
 					end
 					pass.better_inventory_wkc_brunt_size_cap = true
 					wrapped = wrapped + 1

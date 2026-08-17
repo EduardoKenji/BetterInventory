@@ -20,7 +20,7 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 
 ## What's new in v2.5.1
 
-- WKC kill counters on Brunt's native two-column weapon cards now use a compact 14 px font and 16 px icon, preventing the counter from competing with weapon names while leaving other WKC profiles unchanged.
+- WKC kill counters on Brunt's native two-column weapon cards now use a compact 14 px font and 16 px icon in a lower row aligned with the weapon-name inset, preventing the counter from competing with weapon names while leaving other WKC profiles unchanged.
 
 ### v2.5.0 changes included
 

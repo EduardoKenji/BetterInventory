@@ -2,7 +2,7 @@
 
 ## 2.5.1 - 2026-08-17
 
-- Reduces WKC's kill-count font from 20 px to 14 px and icon from 22 px to 16 px on Brunt's native two-column weapon cards, reapplies those caps after WKC style refreshes, and leaves other listing and weapon-detail profiles unchanged.
+- Reduces WKC's kill-count font from 20 px to 14 px and icon from 22 px to 16 px on Brunt's native two-column weapon cards, aligns the counter's lower-left edge with the weapon-name inset, reapplies the geometry after WKC style refreshes, and leaves other listing and weapon-detail profiles unchanged.
 
 ## 2.5.0 - 2026-08-17
 
