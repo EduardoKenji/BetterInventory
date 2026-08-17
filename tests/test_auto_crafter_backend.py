@@ -36,7 +36,8 @@ def main() -> None:
         package.preload["scripts/utilities/items"] = function()
             return {
                 expertise_level = function(item) return item.expertise_level or 300 end,
-                is_item_id_favorited = function() return false end,
+                is_item_id_favorited = function(gear_id) return favorited_ids and favorited_ids[gear_id] == true end,
+                set_item_id_as_favorite = function(gear_id, state) favorited_ids = favorited_ids or {} favorited_ids[gear_id] = state end,
                 max_expertise_level = function() return 500 end,
                 preview_stats_change = function() return {} end,
                 weapon_card_display_name = function(item) return item.card_display_name or item.name end,
@@ -310,6 +311,20 @@ def main() -> None:
 		assert(next(mutation_backend._raw_gear) == nil)
 		assert(next(mutation_backend._purchase_wallets) == nil)
 		assert(mutation_backend:release_read_cache() == true)
+
+		-- Successful favorites notify the optional integration after native state is
+		-- confirmed, including resumed items that were already favorited.
+		local color_callbacks = 0
+		local favorite_backend = Backend.new({
+			on_item_favorited = function(gear_id)
+				assert(gear_id == "crafted-favorite")
+				color_callbacks = color_callbacks + 1
+			end,
+		})
+		favorite_backend:favorite_item("crafted-favorite")
+		favorite_backend:favorite_item("crafted-favorite")
+		assert(favorited_ids["crafted-favorite"] == true)
+		assert(color_callbacks == 2)
 
         print("Auto Crafter authoritative backend inventory tests passed.")
         '''

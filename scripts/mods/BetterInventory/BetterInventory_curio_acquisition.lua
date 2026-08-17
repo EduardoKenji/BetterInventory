@@ -15,6 +15,7 @@ do
 end
 
 local CurioAcquisition = {}
+local favorite_integration
 
 local MORNINGSTAR_DELAY = 6
 local OPERATIVE_SELECTION_DELAY = 1
@@ -1158,6 +1159,10 @@ local function purchase_candidates(mod, token, candidates, boundary_ms)
 
 			return revalidate_and_purchase(mod, token, candidate, purchase_dispatched, purchase_settled):next(function(result)
 				if result and result.status == "purchased" and result.candidate then
+					if favorite_integration and type(favorite_integration.favorite_purchase_items) == "function" then
+						pcall(favorite_integration.favorite_purchase_items, mod, result.purchased_items, "automatic_curio_favorite_purchased_curios")
+					end
+
 					purchased[#purchased + 1] = result.candidate
 				elseif result and result.status == "insufficient_funds" and result.candidate then
 					insufficient[#insufficient + 1] = result.candidate
@@ -1431,6 +1436,10 @@ CurioAcquisition.refresh_character_options = function(mod)
 	return CurioProfiles.refresh_character_options(mod)
 end
 
+CurioAcquisition.set_favorite_integration = function(integration)
+	favorite_integration = type(integration) == "table" and integration or nil
+end
+
 CurioAcquisition.on_setting_changed = function(mod, setting_id)
 	CurioProfiles.on_setting_changed(mod, setting_id)
 
@@ -1474,7 +1483,7 @@ CurioAcquisition.on_setting_changed = function(mod, setting_id)
 			state.scheduled = false
 			state.scheduled_reason = nil
 		end
-	elseif setting_id ~= "automatic_curio_diagnostic_logging" and setting_id ~= "automatic_curio_rescan_on_store_refresh" and type(setting_id) == "string" and string.sub(setting_id, 1, 16) == "automatic_curio_" and state.started then
+	elseif setting_id ~= "automatic_curio_diagnostic_logging" and setting_id ~= "automatic_curio_rescan_on_store_refresh" and setting_id ~= "automatic_curio_favorite_purchased_curios" and type(setting_id) == "string" and string.sub(setting_id, 1, 16) == "automatic_curio_" and state.started then
 		state.token = state.token + 1
 		state.completed = true
 		state.scheduled = false

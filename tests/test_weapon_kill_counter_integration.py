@@ -11,6 +11,7 @@ MODULE_PATH = (
     / "BetterInventory"
     / "BetterInventory_wkc_integration.lua"
 )
+EDITOR_PATH = MODULE_PATH.with_name("BetterInventory_item_customization_editor.lua")
 
 
 def main() -> None:
@@ -209,6 +210,61 @@ def main() -> None:
     icon_pass.change_function(weapon_content)
     assert weapon_content.wkc_kills == "77"
     assert weapon_content.wkc_kills_icon == "test/wkc/icon"
+
+    # WKC injects listing passes into every native item pass template. Weapon
+    # information can consequently inherit multiple card counters on its stat
+    # rows. Remove all three misplaced pairs while preserving WKC's dedicated
+    # detail counter widget and leave a sentinel that blocks runtime reattach.
+    weapon_stats = lua.execute(
+        r"""
+        local detail = {
+            name = "wkc_detail_kills",
+            passes = {{style_id = "text"}, {style_id = "wkc_icon"}},
+            content = {text = "77"},
+            style = {},
+        }
+        local rows = {}
+
+        for index = 1, 3 do
+            rows[index] = {
+                name = "modifier_row_" .. tostring(index),
+                passes = {
+                    {style_id = "unrelated", value_id = "unrelated"},
+                    {style_id = "wkc_kills", value_id = "wkc_kills"},
+                    {style_id = "wkc_kills_icon", value_id = "wkc_kills_icon"},
+                },
+                content = {item = {template_name = "combat_axe"}, wkc_kills = "77"},
+                style = {wkc_kills = {}, wkc_kills_icon = {}},
+            }
+        end
+
+        return {
+            _widgets = {rows[1], rows[2], rows[3], detail},
+            _widgets_by_name = {
+                modifier_row_1 = rows[1],
+                modifier_row_2 = rows[2],
+                modifier_row_3 = rows[3],
+                wkc_detail_kills = detail,
+            },
+        }
+        """
+    )
+    assert integration.remove_weapon_stats_listing_overlays(weapon_stats) == 6
+    for index in range(1, 4):
+        row = weapon_stats._widgets[index]
+        assert len(row.passes) == 1
+        assert row.passes[1].style_id == "unrelated"
+        assert row.content.wkc_kills == ""
+        assert row.style.wkc_kills is None
+        assert row.style.wkc_kills_icon is None
+        assert row.dirty is True
+    detail = weapon_stats._widgets_by_name.wkc_detail_kills
+    assert len(detail.passes) == 2
+    assert detail.content.text == "77"
+    assert integration.remove_weapon_stats_listing_overlays(weapon_stats) == 0
+    editor_source = EDITOR_PATH.read_text(encoding="utf-8")
+    assert 'mod:hook_safe("ViewElementWeaponStats", "_on_present_grid_layout_changed"' in editor_source
+    assert "layout.remove_weapon_stats_wkc_listing_overlays(weapon_stats)" in editor_source
 
     # Native single-column and Character Overview cards retain WKC's own
     # right/centre anchoring, 34 px icon, 24 px type, and configurable offsets.

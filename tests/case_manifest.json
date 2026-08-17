@@ -1,6 +1,9 @@
 {
+  "test_favorite_integration.py": [
+    {"name": "purchase_source_isolation_and_myfavorites_color_assignment", "risk": "high", "start_line": 1, "end_line": 295}
+  ],
   "test_weapon_kill_counter_integration.py": [
-    {"name": "presentation_only_fixture_load_order_deduplication_and_responsive_card_profiles", "risk": "high", "start_line": 15, "end_line": 283}
+    {"name": "presentation_only_fixture_load_order_deduplication_and_responsive_card_profiles", "risk": "high", "start_line": 16, "end_line": 339}
   ],
   "test_coverage_support.py": [
     {"name": "multiple_lua_runtimes_merge_without_overwriting_earlier_coverage", "risk": "high", "start_line": 1, "end_line": 21}
@@ -23,16 +26,17 @@
       {"name": "custom_stat_planner_validation", "risk": "critical", "start_line": 559, "end_line": 590},
       {"name": "phase_material_and_mastery_fodder_ranges", "risk": "high", "start_line": 591, "end_line": 686},
       {"name": "weapon_mark_label_composition", "risk": "high", "start_line": 687, "end_line": 699},
-      {"name": "stable_panel_snapshot_and_selection_polling", "risk": "high", "start_line": 700, "end_line": 769},
-      {"name": "default_on_workflow_checkbox_false_persistence", "risk": "critical", "start_line": 770, "end_line": 797},
-      {"name": "manual_selector_and_shortcut_grid", "risk": "critical", "start_line": 798, "end_line": 846},
-      {"name": "localized_display_labels", "risk": "high", "start_line": 847, "end_line": 862},
-      {"name": "custom_stat_grid_bounds_and_summary", "risk": "critical", "start_line": 863, "end_line": 931},
-      {"name": "tier_qualified_trait_target_selection", "risk": "high", "start_line": 932, "end_line": 1021},
-      {"name": "dual_target_trait_grid_selection_exclusivity_and_icon", "risk": "high", "start_line": 1022, "end_line": 1063},
-      {"name": "category_specific_ranged_perk_defaults", "risk": "high", "start_line": 1064, "end_line": 1100},
-      {"name": "deferred_grid_rebuild_scroll_restore_and_mastery_gate", "risk": "critical", "start_line": 1101, "end_line": 1133},
-      {"name": "right_click_routing_blessing_icon_and_runtime_progress", "risk": "high", "start_line": 1134, "end_line": 1172}
+      {"name": "stable_panel_snapshot_and_selection_polling", "risk": "high", "start_line": 700, "end_line": 774},
+      {"name": "default_on_workflow_checkbox_false_persistence", "risk": "critical", "start_line": 776, "end_line": 801},
+      {"name": "myfavorites_widget_color_and_active_queue_collapse", "risk": "high", "start_line": 803, "end_line": 876},
+      {"name": "manual_selector_and_shortcut_grid", "risk": "critical", "start_line": 878, "end_line": 926},
+      {"name": "localized_display_labels", "risk": "high", "start_line": 927, "end_line": 941},
+      {"name": "custom_stat_grid_bounds_and_summary", "risk": "critical", "start_line": 942, "end_line": 1011},
+      {"name": "tier_qualified_trait_target_selection", "risk": "high", "start_line": 1012, "end_line": 1101},
+      {"name": "dual_target_trait_grid_selection_exclusivity_and_icon", "risk": "high", "start_line": 1102, "end_line": 1143},
+      {"name": "category_specific_ranged_perk_defaults", "risk": "high", "start_line": 1144, "end_line": 1180},
+      {"name": "deferred_grid_rebuild_scroll_restore_and_mastery_gate", "risk": "critical", "start_line": 1181, "end_line": 1213},
+      {"name": "right_click_routing_blessing_icon_and_runtime_progress", "risk": "high", "start_line": 1214, "end_line": 1250}
   ],
   "test_auto_crafter_viewport.py": [
     {"name": "panel_and_hud_resolution_matrix", "risk": "high", "start_line": 14, "end_line": 68},
@@ -42,7 +46,7 @@
     {"name": "complete_authoritative_inventory_summary", "risk": "critical", "start_line": 16, "end_line": 138},
     {"name": "weapon_mark_catalogue_rejects_non_displayable_records", "risk": "critical", "start_line": 140, "end_line": 187},
     {"name": "weapon_mark_catalogue_versioning_and_release", "risk": "high", "start_line": 188, "end_line": 207},
-    {"name": "trait_mutation_contract_and_fail_closed_validation", "risk": "critical", "start_line": 208, "end_line": 317}
+    {"name": "trait_mutation_contract_and_fail_closed_validation", "risk": "critical", "start_line": 208, "end_line": 335}
   ],
   "test_auto_crafter_context.py": [
     {"name": "atomic_character_identity_and_switch_settlement", "risk": "critical", "start_line": 16, "end_line": 83},
@@ -129,7 +133,7 @@
       {"name": "family_finished_skip_duplicate_and_two_slot_resume", "risk": "critical", "start_line": 1, "end_line": 265}
     ],
     "test_games_lantern_queue_ui.py": [
-        {"name": "active_queue_lifecycle_locked_target_and_section_order_ui", "risk": "high", "start_line": 9, "end_line": 78}
+        {"name": "active_queue_lifecycle_locked_target_and_section_order_ui", "risk": "high", "start_line": 9, "end_line": 81}
     ],
     "test_games_lantern_selection_coordinator.py": [
       {"name": "bounded_brunt_selection_sync_and_clear_restore", "risk": "critical", "start_line": 1, "end_line": 193}
@@ -156,11 +160,11 @@
     {"name": "typed_fallbacks", "risk": "high", "start_line": 42, "end_line": 65}
   ],
   "test_curio_acquisition.py": [
-    {"name": "store_rotation_gate", "risk": "critical", "start_line": 1075, "end_line": 1411},
+    {"name": "store_rotation_gate", "risk": "critical", "start_line": 1120, "end_line": 1433},
     {"name": "purchase_revalidation", "risk": "critical", "start_line": 678, "end_line": 874},
-    {"name": "read_cancellation_and_generation", "risk": "critical", "start_line": 1413, "end_line": 1443},
-    {"name": "account_mutation_deferral", "risk": "critical", "start_line": 1445, "end_line": 1478},
-    {"name": "account_scoped_reports", "risk": "high", "start_line": 875, "end_line": 1074}
+    {"name": "read_cancellation_and_generation", "risk": "critical", "start_line": 1434, "end_line": 1465},
+    {"name": "account_mutation_deferral", "risk": "critical", "start_line": 1466, "end_line": 1505},
+    {"name": "account_scoped_reports", "risk": "high", "start_line": 875, "end_line": 1119}
   ],
   "test_curio_domains.py": [
     {"name": "context_snapshot", "risk": "high", "start_line": 20, "end_line": 33},
@@ -189,10 +193,10 @@
   ],
   "test_features.py": [
       {"name": "panel_focus_allocation_guard", "risk": "medium", "start_line": 122, "end_line": 123},
-      {"name": "discard_operation_ownership", "risk": "critical", "start_line": 3083, "end_line": 3618},
+      {"name": "discard_operation_ownership", "risk": "critical", "start_line": 3197, "end_line": 3735},
       {"name": "sorting_and_navigation", "risk": "high", "start_line": 408, "end_line": 1442},
-      {"name": "optional_integration_fallbacks", "risk": "high", "start_line": 1443, "end_line": 1869},
-      {"name": "panel_lifecycle", "risk": "high", "start_line": 1870, "end_line": 3082}
+      {"name": "optional_integration_fallbacks", "risk": "high", "start_line": 1443, "end_line": 1939},
+      {"name": "panel_lifecycle", "risk": "high", "start_line": 1940, "end_line": 3196}
   ],
   "test_item_customization.py": [
       {"name": "dirty_save_outcomes", "risk": "high", "start_line": 224, "end_line": 441},
@@ -210,11 +214,11 @@
     {"name": "cancel_and_reconcile", "risk": "critical", "start_line": 72, "end_line": 76}
   ],
   "test_settings.py": [
-    {"name": "schema_dependency_refresh", "risk": "high", "start_line": 21, "end_line": 411},
-    {"name": "migration_preservation", "risk": "high", "start_line": 412, "end_line": 565},
-    {"name": "character_overview_refresh", "risk": "high", "start_line": 566, "end_line": 1527},
-    {"name": "localization_contract", "risk": "medium", "start_line": 1528, "end_line": 2616},
-    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2617, "end_line": 3127}
+    {"name": "schema_dependency_refresh", "risk": "high", "start_line": 21, "end_line": 413},
+    {"name": "migration_preservation", "risk": "high", "start_line": 414, "end_line": 567},
+    {"name": "character_overview_refresh", "risk": "high", "start_line": 568, "end_line": 1541},
+    {"name": "localization_contract", "risk": "medium", "start_line": 1542, "end_line": 2640},
+    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2641, "end_line": 3169}
   ],
   "test_settings_registry.py": [
     {"name": "duplicate_detection", "risk": "high", "start_line": 63, "end_line": 123},

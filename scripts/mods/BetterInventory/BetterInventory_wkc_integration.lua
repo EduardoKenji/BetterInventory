@@ -2,6 +2,7 @@ local Integration = {}
 
 local TEXT_STYLE_ID = "wkc_kills"
 local ICON_STYLE_ID = "wkc_kills_icon"
+local DETAIL_WIDGET_NAME = "wkc_detail_kills"
 local DEFAULT_ICON = "content/ui/materials/hud/interactions/icons/enemy_priority"
 local DEFAULT_COLOR = {
 	255,
@@ -283,6 +284,65 @@ local function remove_owned_passes(pass_template)
 	end
 end
 
+local function remove_weapon_stats_listing_overlays(element)
+	local widgets = element and element._widgets
+	local widgets_by_name = element and element._widgets_by_name
+	local detail_widget = type(widgets_by_name) == "table" and widgets_by_name[DETAIL_WIDGET_NAME]
+	local seen = {}
+	local removed = 0
+
+	local function sanitize_widget(widget)
+		if type(widget) ~= "table" or widget == detail_widget or widget.name == DETAIL_WIDGET_NAME or seen[widget] then
+			return
+		end
+
+		seen[widget] = true
+		local widget_removed = 0
+
+		for index = #(widget.passes or {}), 1, -1 do
+			local pass = widget.passes[index]
+			local style_id = pass and pass.style_id
+			local value_id = pass and pass.value_id
+
+			if style_id == TEXT_STYLE_ID or style_id == ICON_STYLE_ID or value_id == TEXT_STYLE_ID or value_id == ICON_STYLE_ID then
+				table.remove(widget.passes, index)
+				removed = removed + 1
+				widget_removed = widget_removed + 1
+			end
+		end
+
+		if widget_removed > 0 then
+			local content = widget.content
+			local style = widget.style
+
+			-- WKC's runtime sweep treats a non-nil text value as an attached card.
+			-- Keep an empty sentinel so detail-row widgets cannot be reattached
+			-- after their misplaced listing passes have been removed.
+			if type(content) == "table" then
+				content[TEXT_STYLE_ID] = ""
+				content[ICON_STYLE_ID] = nil
+			end
+
+			if type(style) == "table" then
+				style[TEXT_STYLE_ID] = nil
+				style[ICON_STYLE_ID] = nil
+			end
+
+			widget.dirty = true
+		end
+	end
+
+	for _, widget in pairs(type(widgets) == "table" and widgets or {}) do
+		sanitize_widget(widget)
+	end
+
+	for _, widget in pairs(type(widgets_by_name) == "table" and widgets_by_name or {}) do
+		sanitize_widget(widget)
+	end
+
+	return removed
+end
+
 local function configure_passes(mod, pass_template, card_width, text_left, configuration, columns)
 	if type(pass_template) ~= "table" then
 		return false
@@ -393,6 +453,7 @@ Integration.resolve_kills = resolved_kills
 Integration.profile = profile
 Integration.configure_passes = configure_passes
 Integration.compact_card_height_padding = compact_card_height_padding
+Integration.remove_weapon_stats_listing_overlays = remove_weapon_stats_listing_overlays
 Integration.TEXT_STYLE_ID = TEXT_STYLE_ID
 Integration.ICON_STYLE_ID = ICON_STYLE_ID
 

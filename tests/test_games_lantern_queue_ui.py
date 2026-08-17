@@ -13,6 +13,8 @@ def main() -> None:
     # The queue is visible above Planner in both manual and imported modes,
     # while detailed imported rows carry a highlighted current item.
     assert '"Active Queue"' in panel
+    active_queue_entry = panel.split('localize("auto_crafter_panel_active_queue", "Active Queue")', 1)[1].split('localize("auto_crafter_panel_planner", "Planner configuration")', 1)[0]
+    assert "selectable = true" in active_queue_entry and "selectable = false" not in active_queue_entry
     assert 'variant = "queue_job"' in panel
     assert "queue_current" in panel
     assert "_manual_queue_detail" in panel

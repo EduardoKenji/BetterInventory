@@ -1,6 +1,12 @@
 # BetterInventory user guide
 
-BetterInventory v2.4.1 improves inventory, Character Overview, Hadron, Requisition Weapons & Curios, and optional GlobalStore cards while preserving Darktide's native item and icon lifecycle.
+BetterInventory v2.5.0 improves inventory, Character Overview, Hadron, Requisition Weapons & Curios, and optional GlobalStore cards while preserving Darktide's native item and icon lifecycle.
+
+The inventory options widget preserves its scroll position when conditional controls are added or removed. Quick Discard has default-off minimum Health and Toughness roll rules. An enabled roll threshold takes precedence over item level for its matching Curio primary type: a Health or Toughness Curio below that roll is discardable even when it meets the item-level threshold. Enabled Wound and Stamina types continue to use the minimum item level. Curio-type checkboxes still scope which primary types receive protection.
+
+Automatic favorite behavior is separated by purchase source and defaults to Off. The Armoury setting covers manually confirmed purchases from the rotating Armoury Exchange and profane Brunt's Armoury. Sire Melk has independent settings for Limited Time Acquisitions and Mystery Acquisitions. With GlobalStore installed, Armoury Multi-Operative Supply inherits the Armoury setting and Sire Melk Multi-Operative Supply inherits the Limited Time setting; no additional GlobalStore favorite option is added. A cross-character GlobalStore purchase stores the favorite in the selected offer owner's character save, not the currently active character's save. Unrelated custom vendor services are excluded. Automatic Curio Buyer has its own checkbox in the inventory widget. Auto Crafter uses only its own favorite option after exact authoritative result validation, so rejected rolls remain unfavorited and discardable.
+
+With MyFavorites installed, enabling **Automatically favorite crafted weapon** reveals a Color 1-5 selector immediately beneath it in the crafting widget. The selector previews MyFavorites' configured colors and assigns the final favorite to the chosen group. Color assignment is best-effort and does not turn a successful native favorite into a crafting failure. **Active Queue** can be collapsed or expanded by clicking its header.
 
 When other mods add weapon actions beside the weapon details, BetterInventory grows the native Marks/Cosmetics/Inspect panel through seven complete rows. At eight or more rows it retains that seven-row frame and lets Darktide's own tightly masked grid scroll the remaining actions without drawing them below the frame. The Debug group can expand the panel to 5, 10, or 20 total rows with inert test buttons for presentation and controller-navigation checks; reopen the inventory after changing the option.
 
@@ -35,7 +41,7 @@ Games Lantern imports preserve all five website stat values when they form a uni
 ## Validation
 
 1. Run `tests/verify.ps1` for syntax, source contracts, behavior tests, schema drift, packaging, and archive parity.
-2. Run `py -3 tests/run_tests.py --coverage-output lua-coverage.json` for timeout-bounded JSON results, 135 named risk cases, and risk-weighted Lua line coverage. The command fails if the case manifest is incomplete or a non-declarative runtime module falls below its threshold.
+2. Run `py -3 tests/run_tests.py --coverage-output lua-coverage.json` for timeout-bounded JSON results, 155 named risk cases, and risk-weighted Lua line coverage. The command fails if the case manifest is incomplete or a non-declarative runtime module falls below its threshold.
 3. Validate in-game after changing one setting at a time, reopening affected views, switching operatives, and exercising disabled/cancelled flows.
 
 The prioritized backlog and remaining release gates are maintained in [`v2.0.0-full-project-audit.md`](v2.0.0-full-project-audit.md).

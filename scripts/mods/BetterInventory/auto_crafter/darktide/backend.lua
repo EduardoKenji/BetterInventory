@@ -1409,6 +1409,7 @@ function Backend.new(dependencies)
 
 	local backend = {
 		_mutation_guard = dependencies.mutation_guard,
+		_on_item_favorited = dependencies.on_item_favorited,
 		_purchase_wallets = {},
 		_raw_gear = {},
 		_services = dependencies.services,
@@ -1654,6 +1655,10 @@ function Backend.new(dependencies)
 		local query_ok, already_favorited = pcall(Items.is_item_id_favorited, gear_id)
 
 		if query_ok and already_favorited == true then
+			if type(self._on_item_favorited) == "function" then
+				pcall(self._on_item_favorited, gear_id)
+			end
+
 			return Promise.resolved({
 				already_favorited = true,
 				favorited = true,
@@ -1681,6 +1686,10 @@ function Backend.new(dependencies)
 
 		if not verify_ok or favorited ~= true then
 			return rejected("favorite state was not confirmed")
+		end
+
+		if type(self._on_item_favorited) == "function" then
+			pcall(self._on_item_favorited, gear_id)
 		end
 
 		return Promise.resolved({

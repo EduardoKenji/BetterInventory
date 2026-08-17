@@ -2,10 +2,31 @@
   "schema_version": 1,
   "required": [
     {
+      "name": "favorites.isolate-purchase-sources",
+      "test": "test_favorite_integration.py",
+      "case": "purchase_source_isolation_and_myfavorites_color_assignment",
+      "outcome": "manual rotating Armoury, Brunt, Melk Limited Time, and Melk Mystery purchase views use independently gated source hooks; GlobalStore Armoury and Melk routes inherit their matching option and persist favorites in the selected offer owner's character save, while unresolved or unrelated custom services and Automatic Curio Buyer remain isolated, and Auto Crafter rejected rolls stay unfavorited and discardable",
+      "modules": ["BetterInventory_favorite_integration.lua"]
+    },
+    {
+      "name": "discard.curio-primary-roll-precedence",
+      "test": "test_features.py",
+      "case": "optional_integration_fallbacks",
+      "outcome": "enabled Health and Toughness roll thresholds override item level for their matching primary type, while enabled Wound and Stamina types continue to use minimum item level",
+      "modules": ["BetterInventory_discard_policy.lua"]
+    },
+    {
+      "name": "auto-crafter.widget-color-and-queue-collapse",
+      "test": "test_auto_crafter_stats.py",
+      "case": "myfavorites_widget_color_and_active_queue_collapse",
+      "outcome": "the MyFavorites color selector follows the enabled crafted-weapon favorite option and the Active Queue header remains clickable and collapsible",
+      "modules": ["BetterInventory_auto_crafter.lua", "BetterInventory_favorite_integration.lua"]
+    },
+    {
       "name": "weapon-kill-counter.presentation-fixture-is-air-gapped",
       "test": "test_weapon_kill_counter_integration.py",
       "case": "presentation_only_fixture_load_order_deduplication_and_responsive_card_profiles",
-      "outcome": "the default-off 1,000-kill fixture changes only responsive weapon-card presentation while preserving WKC statistics, feature ownership, and one-pass behavior across load order",
+      "outcome": "the default-off 1,000-kill fixture changes only responsive weapon-card presentation while preserving WKC statistics and feature ownership; listing counters remain one-pass across load order and are removed from weapon-information stat rows without removing WKC's dedicated detail counter",
       "modules": ["BetterInventory_wkc_integration.lua", "BetterInventory_layout_cards.lua"]
     },
     {

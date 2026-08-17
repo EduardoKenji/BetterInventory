@@ -106,6 +106,10 @@ local CurioAcquisition = no_op_module(mod:io_dofile("BetterInventory/scripts/mod
 	character_slots = function() return {} end,
 	known_profiles = function() return {} end,
 })
+local FavoriteIntegration = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_favorite_integration"), "BetterInventory_favorite_integration.lua", {
+	apply_auto_crafter_color = function() return false end,
+	favorite_purchase_items = function() return 0 end,
+})
 local ItemCustomization = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_item_customization"), "BetterInventory_item_customization.lua")
 local EquipmentPersistence = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_equipment_persistence"), "BetterInventory_equipment_persistence.lua")
 local SettingsRegistry = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_settings"), "BetterInventory_settings.lua", {
@@ -463,6 +467,10 @@ if type(Features.set_curio_acquisition_provider) == "function" then
 	Features.set_curio_acquisition_provider(CurioAcquisition)
 end
 
+if type(CurioAcquisition.set_favorite_integration) == "function" then
+	CurioAcquisition.set_favorite_integration(FavoriteIntegration)
+end
+
 if type(Features.set_diagnostics_provider) == "function" then
 	Features.set_diagnostics_provider(Diagnostics)
 end
@@ -534,6 +542,13 @@ AutoCrafter.configure({
 		return view and view._previewed_offer
 	end,
 	get_selected_offer_snapshot = auto_crafter_selected_offer_snapshot,
+	on_item_favorited = function(gear_id)
+		return FavoriteIntegration.apply_auto_crafter_color(mod, gear_id)
+	end,
+	is_myfavorites_available = FavoriteIntegration.is_myfavorites_available,
+	myfavorites_color_preview = function(index)
+		return FavoriteIntegration.color_preview(mod, index)
+	end,
 	select_offer = auto_crafter_select_offer,
 	ViewElementGrid = ViewElementGrid,
 })
@@ -561,6 +576,7 @@ Runtime.configure({
 	Capabilities = Capabilities,
 	CharacterOverviewUI = CharacterOverviewUI,
 	FeatureDomains = FeatureDomains,
+	FavoriteIntegration = FavoriteIntegration,
 	CraftingMechanicusModifyView = CraftingMechanicusModifyView,
 	CreditsVendorView = CreditsVendorView,
 	MainMenuView = MainMenuView,

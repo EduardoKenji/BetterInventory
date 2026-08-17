@@ -12,6 +12,7 @@ local AutoCrafter
 local Capabilities
 local CharacterOverviewUI
 local FeatureDomains
+local FavoriteIntegration
 local CraftingMechanicusModifyView
 local CreditsVendorView
 local MainMenuView
@@ -31,6 +32,13 @@ local synchronize_myfavorites_grid = function()
 	return 0
 end
 local CreditsGoodsVendorView = require("scripts/ui/views/credits_goods_vendor_view/credits_goods_vendor_view")
+local function optional_require(path)
+	local success, module = pcall(require, path)
+
+	return success and module or nil
+end
+local MarksVendorView = optional_require("scripts/ui/views/marks_vendor_view/marks_vendor_view")
+local MarksGoodsVendorView = optional_require("scripts/ui/views/marks_goods_vendor_view/marks_goods_vendor_view")
 
 local function configure_dependencies(dependencies)
 	mod = dependencies.mod
@@ -54,6 +62,7 @@ local function configure_dependencies(dependencies)
 	Capabilities = dependencies.Capabilities
 	CharacterOverviewUI = dependencies.CharacterOverviewUI
 	FeatureDomains = dependencies.FeatureDomains
+	FavoriteIntegration = dependencies.FavoriteIntegration
 	CraftingMechanicusModifyView = dependencies.CraftingMechanicusModifyView
 	CreditsVendorView = dependencies.CreditsVendorView
 	MainMenuView = dependencies.MainMenuView
@@ -80,6 +89,17 @@ end
 function Runtime.install()
 	if Layout and Layout.ImageLayout and type(Layout.ImageLayout.initialize_settings) == "function" then
 		Layout.ImageLayout.initialize_settings(mod)
+	end
+
+	if FavoriteIntegration and type(FavoriteIntegration.install_manual_purchase_hooks) == "function" then
+		FavoriteIntegration.install_manual_purchase_hooks(mod, {
+			armoury = {
+				CreditsVendorView,
+				CreditsGoodsVendorView,
+			},
+			melk_limited = MarksVendorView,
+			melk_mystery = MarksGoodsVendorView,
+		})
 	end
 
 	local unpack_values = table.unpack or unpack
@@ -589,6 +609,8 @@ local function refresh_option_dependencies()
 	local automatic_curio_characters_reason = automatic_curio_enabled and mod:localize("option_requires_automatic_curio_characters_mode") or automatic_curio_reason
 	local lantern_installed = get_mod("Lantern of the Omnissiah") ~= nil
 	local lantern_reason = mod:localize("option_requires_lantern_of_the_omnissiah")
+	local myfavorites_available = FavoriteIntegration and type(FavoriteIntegration.is_myfavorites_available) == "function" and FavoriteIntegration.is_myfavorites_available()
+	local myfavorites_reason = mod:localize("option_requires_myfavorites")
 	local quick_look_card_grid_enabled = grid_enabled and mod:get("enable_quick_look_card_grid_integration") ~= false
 	local quick_look_card_grid_reason = grid_enabled and mod:localize("option_requires_quick_look_card_grid_integration") or native_reason
 	local quick_look_card_single_column_enabled = single_column_enabled and mod:get("enable_quick_look_card_single_column_integration") ~= false
@@ -712,6 +734,7 @@ local function refresh_option_dependencies()
 	set_option_enabled(option_dependency_entries.auto_crafter_blessing_1_target, auto_crafter_blessings_enabled, auto_crafter_mastery_enabled and mod:localize("option_requires_auto_crafter_blessing_workflow") or mastery_reason)
 	set_option_enabled(option_dependency_entries.auto_crafter_blessing_2_target, auto_crafter_blessings_enabled, auto_crafter_mastery_enabled and mod:localize("option_requires_auto_crafter_blessing_workflow") or mastery_reason)
 	set_option_enabled(option_dependency_entries.auto_crafter_show_blessing_grid, auto_crafter_blessings_enabled, auto_crafter_mastery_enabled and mod:localize("option_requires_auto_crafter_blessing_workflow") or mastery_reason)
+	set_option_enabled(option_dependency_entries.auto_crafter_myfavorites_color, myfavorites_available and mod:get("auto_crafter_favorite_result") ~= false, myfavorites_available and mod:localize("option_requires_auto_crafter_myfavorites_color") or myfavorites_reason)
 
 	for _, setting_id in ipairs({
 		"inventory_options_controller_focus_keybind",
@@ -740,6 +763,8 @@ local function refresh_option_dependencies()
 		"quick_discard_include_ranged",
 		"quick_discard_include_curios",
 		"quick_discard_protect_perfect_weapons",
+		"quick_discard_protect_health_roll_curios",
+		"quick_discard_protect_toughness_roll_curios",
 		"quick_discard_protect_high_level_curios",
 		"quick_discard_keep_health_curios",
 		"quick_discard_keep_toughness_curios",
@@ -758,13 +783,18 @@ local function refresh_option_dependencies()
 	set_option_enabled(option_dependency_entries.quick_discard_disable_no_eligible_notification, automatic_discard_enabled, automatic_discard_reason)
 
 	local curio_protection_enabled = quick_discard_enabled and mod:get("quick_discard_protect_high_level_curios") ~= false
+	local health_roll_protection_enabled = quick_discard_enabled and mod:get("quick_discard_protect_health_roll_curios") == true
+	local toughness_roll_protection_enabled = quick_discard_enabled and mod:get("quick_discard_protect_toughness_roll_curios") == true
 
 	set_option_enabled(option_dependency_entries.quick_discard_curio_protection_level, curio_protection_enabled, quick_discard_enabled and mod:localize("option_requires_curio_discard_protection") or quick_discard_reason)
+	set_option_enabled(option_dependency_entries.quick_discard_curio_health_roll, health_roll_protection_enabled, quick_discard_enabled and mod:localize("option_requires_curio_health_roll_protection") or quick_discard_reason)
+	set_option_enabled(option_dependency_entries.quick_discard_curio_toughness_roll, toughness_roll_protection_enabled, quick_discard_enabled and mod:localize("option_requires_curio_toughness_roll_protection") or quick_discard_reason)
 
 	for _, setting_id in ipairs({
 		"automatic_curio_scan_operative_selection",
 		"automatic_curio_once_per_store_rotation",
 		"automatic_curio_rescan_on_store_refresh",
+		"automatic_curio_favorite_purchased_curios",
 		"automatic_curio_min_item_level",
 		"automatic_curio_min_health",
 		"automatic_curio_min_toughness",
@@ -970,6 +1000,10 @@ local function bind_option_dependencies(options_templates)
 		"quick_discard_include_ranged",
 		"quick_discard_include_curios",
 		"quick_discard_protect_perfect_weapons",
+		"quick_discard_protect_health_roll_curios",
+		"quick_discard_curio_health_roll",
+		"quick_discard_protect_toughness_roll_curios",
+		"quick_discard_curio_toughness_roll",
 		"quick_discard_protect_high_level_curios",
 		"quick_discard_curio_protection_level",
 		"quick_discard_keep_health_curios",
@@ -982,6 +1016,7 @@ local function bind_option_dependencies(options_templates)
 		"automatic_curio_scan_operative_selection",
 		"automatic_curio_once_per_store_rotation",
 		"automatic_curio_rescan_on_store_refresh",
+		"automatic_curio_favorite_purchased_curios",
 		"automatic_curio_min_item_level",
 		"automatic_curio_min_health",
 		"automatic_curio_min_toughness",
@@ -999,6 +1034,7 @@ local function bind_option_dependencies(options_templates)
 		"automatic_curio_class_adamant",
 		"automatic_curio_class_broker",
 		"automatic_curio_class_cryptic",
+		"auto_crafter_myfavorites_color",
 	}) do
 		local title = mod:localize(setting_id)
 		local existing = setting_by_title[title]
@@ -1056,13 +1092,22 @@ local function bind_option_dependencies(options_templates)
 		end
 	end
 
-	-- Keep the final DMF template and rendered-widget arrays structurally
-	-- identical. Alf's generalized tabs pair them by numeric index, so hiding
+	-- Keep DMF template and rendered-widget arrays structurally identical; hiding
 	-- mode-dependent entries through validation functions shifts every later
 	-- section. PlayerAssist uses the stable pattern too: keep entries present and
 	-- express dependencies exclusively through disabled state.
 	option_dependency_entries.automatic_curio_classes_group = class_group_entry
 	option_dependency_entries.automatic_curio_characters_group = character_group_entry
+
+	local myfavorites_color_entry = option_dependency_entries.auto_crafter_myfavorites_color
+
+	if type(myfavorites_color_entry) == "table" and type(myfavorites_color_entry.options) == "table" and FavoriteIntegration and type(FavoriteIntegration.color_preview) == "function" then
+		for index, option in ipairs(myfavorites_color_entry.options) do
+			if type(option) == "table" then
+				option.display_name = FavoriteIntegration.color_preview(mod, tonumber(option.value) or index)
+			end
+		end
+	end
 
 	refresh_option_dependencies()
 end

@@ -768,6 +768,10 @@ Editor.install = function(mod, InventoryWeaponsView, layout)
 	-- This fires after ViewElementGrid has created the weapon-header widget,
 	-- including when Darktide defers rebuilding the list until the next update.
 	mod:hook_safe("ViewElementWeaponStats", "_on_present_grid_layout_changed", function(weapon_stats)
+		if layout and type(layout.remove_weapon_stats_wkc_listing_overlays) == "function" then
+			layout.remove_weapon_stats_wkc_listing_overlays(weapon_stats)
+		end
+
 		if layout and type(layout.apply_weapon_information_customization) == "function" then
 			layout.apply_weapon_information_customization(mod, weapon_stats, weapon_stats._item)
 		end

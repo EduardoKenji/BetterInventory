@@ -262,12 +262,13 @@ local function revalidate_and_purchase(mod, token, captured, on_purchase_dispatc
 				return rejected("StoreService.purchase_item_with_wallet returned no compatible promise")
 			end
 
-			return purchase_promise:next(function()
+			return purchase_promise:next(function(purchase_result)
 				settle_purchase()
 				processed_offer_keys[key] = "complete"
 
 				return {
 					candidate = current,
+					purchased_items = type(purchase_result) == "table" and purchase_result.items or nil,
 					status = "purchased",
 				}
 			end):catch(function(error_value)

@@ -1728,6 +1728,42 @@ def main() -> None:
             ),
             lua.table_from(
                 {
+                    "gear_id": "wound_curio",
+                    "item_type": "GADGET",
+                    "level": 420,
+                    "rarity": 1,
+                    "traits": lua.table_from(
+                        [
+                            lua.table_from(
+                                {
+                                    "id": "gadget_innate_max_wounds_increase",
+                                    "value": 1,
+                                }
+                            )
+                        ]
+                    ),
+                }
+            ),
+            lua.table_from(
+                {
+                    "gear_id": "stamina_curio",
+                    "item_type": "GADGET",
+                    "level": 420,
+                    "rarity": 1,
+                    "traits": lua.table_from(
+                        [
+                            lua.table_from(
+                                {
+                                    "id": "gadget_stamina_increase",
+                                    "value": 1,
+                                }
+                            )
+                        ]
+                    ),
+                }
+            ),
+            lua.table_from(
+                {
                     "gear_id": "unknown_curio",
                     "item_type": "GADGET",
                     "level": 420,
@@ -1778,6 +1814,39 @@ def main() -> None:
     mod.settings.enable_automatic_curio_acquisition = False
     mod.settings.automatic_curio_buy_toughness = True
     mod.settings.quick_discard_protect_high_level_curios = True
+
+    # Health and Toughness roll thresholds are authoritative for their matching
+    # primary type. Wound and Stamina Curios continue to use item level.
+    mod.settings.quick_discard_curio_protection_level = 450
+    mod.settings.quick_discard_protect_health_roll_curios = True
+    mod.settings.quick_discard_curio_health_roll = 21
+    mod.settings.quick_discard_protect_toughness_roll_curios = False
+    roll_candidates = features.quick_discard_candidates_from_items(
+        mod, typed_curios, lua.table_from({})
+    )
+    assert {
+        roll_candidates[index].gear_id
+        for index in range(1, len(roll_candidates) + 1)
+    } == {"toughness_curio", "wound_curio", "stamina_curio"}
+    mod.settings.quick_discard_protect_toughness_roll_curios = True
+    mod.settings.quick_discard_curio_toughness_roll = 17
+    roll_candidates = features.quick_discard_candidates_from_items(
+        mod, typed_curios, lua.table_from({})
+    )
+    assert {
+        roll_candidates[index].gear_id
+        for index in range(1, len(roll_candidates) + 1)
+    } == {"wound_curio", "stamina_curio"}
+    typed_curios[1].traits[1].value = 0.75
+    mod.settings.quick_discard_curio_protection_level = 410
+    roll_candidates = features.quick_discard_candidates_from_items(
+        mod, typed_curios, lua.table_from({})
+    )
+    assert len(roll_candidates) == 1
+    assert roll_candidates[1].gear_id == "health_curio"
+    typed_curios[1].traits[1].value = 1
+    mod.settings.quick_discard_protect_health_roll_curios = False
+    mod.settings.quick_discard_protect_toughness_roll_curios = False
 
     features.request_quick_discard(mod, layout, quick_discard_view)
     assert quick_discard_view._better_inventory_discard_pending is True
@@ -2127,7 +2196,21 @@ def main() -> None:
                     self.mask_height = mask_height
                 end
 
-                function panel:present_grid_layout(layout, blueprints)
+				function panel:length_scrolled()
+					return self.scroll_offset or 0
+				end
+
+				function panel:scroll_length()
+					return self.total_scroll_length or 300
+				end
+
+				function panel:set_scrollbar_progress(progress, animate)
+					self.restored_scroll_progress = progress
+					self.restored_scroll_animated = animate
+					self.scroll_offset = progress * self:scroll_length()
+				end
+
+                function panel:present_grid_layout(layout, blueprints, on_click, unused_1, unused_2, unused_3, on_presented)
                     self.layout = layout
 					self.blueprints = blueprints
                     self.widgets = {}
@@ -2157,6 +2240,10 @@ def main() -> None:
                         blueprints[entry.widget_type].init(self, widget, entry)
                         self.widgets[entry.control_id] = widget
                     end
+
+					if on_presented then
+						on_presented()
+					end
                 end
 
                 self.prototype_panel = panel
@@ -2194,7 +2281,7 @@ def main() -> None:
     assert prototype_panel.menu_settings.top_padding == 4
     assert prototype_panel.menu_settings.bottom_chin == 4
     assert prototype_panel._ui_scenegraph.grid_content_pivot.position[1] == 10
-    assert len(prototype_panel.layout) == 17
+    assert len(prototype_panel.layout) == 19
     assert prototype_panel.grid_height == 360
     # X follows the weapon-information right edge; Y independently follows the
     # bottom edge of Darktide's native Marks/Cosmetics/Inspect buttons.
@@ -2371,6 +2458,26 @@ def main() -> None:
     assert curio_type_widget.content.health_checked is False
     mod.settings.quick_discard_keep_health_curios = True
 
+    # Structural option clicks preserve the current managed-grid scroll offset.
+    prototype_panel.scroll_offset = 144
+    health_roll_protection_widget = prototype_panel.widgets[
+        "better_inventory_discard_curio_health_protection"
+    ]
+    assert health_roll_protection_widget.content.checked is False
+    health_roll_protection_widget.content.hotspot.pressed_callback()
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert mod.settings.quick_discard_protect_health_roll_curios is True
+    assert prototype_panel.scroll_offset == 144
+    assert prototype_panel.restored_scroll_progress == 0.48
+    assert prototype_panel.widgets["better_inventory_discard_curio_health_roll"].content.value == "21%"
+    health_roll_protection_widget = prototype_panel.widgets[
+        "better_inventory_discard_curio_health_protection"
+    ]
+    health_roll_protection_widget.content.hotspot.pressed_callback()
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    assert mod.settings.quick_discard_protect_health_roll_curios is False
+    assert prototype_panel.widgets["better_inventory_discard_curio_health_roll"] is None
+
     # Minimum-level protection owns only its numeric threshold row. Turning the
     # rule off removes that row, while the Curio-type filters remain available
     # for preconfiguration and the panel safely reflows on the next update.
@@ -2380,7 +2487,7 @@ def main() -> None:
     curio_protection_widget.content.hotspot.pressed_callback()
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert mod.settings.quick_discard_protect_high_level_curios is False
-    assert len(prototype_panel.layout) == 16
+    assert len(prototype_panel.layout) == 18
     assert prototype_panel.widgets["better_inventory_discard_curio_level"] is None
     assert prototype_panel.widgets["better_inventory_discard_curio_types"] is not None
     curio_protection_widget = prototype_panel.widgets[
@@ -2389,16 +2496,16 @@ def main() -> None:
     curio_protection_widget.content.hotspot.pressed_callback()
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert mod.settings.quick_discard_protect_high_level_curios is True
-    assert len(prototype_panel.layout) == 17
+    assert len(prototype_panel.layout) == 19
     assert prototype_panel.widgets["better_inventory_discard_curio_level"] is not None
 
     # The Automatic-only confirmation checkbox owns a dedicated panel row. Mode
     # changes defer structural rebuilding until the next safe view update.
     mode_widget.content.hotspot.pressed_callback()
     assert mod.settings.quick_discard_mode == "automatic"
-    assert len(prototype_panel.layout) == 17
+    assert len(prototype_panel.layout) == 19
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
-    assert len(prototype_panel.layout) == 18
+    assert len(prototype_panel.layout) == 20
     skip_widget = prototype_panel.widgets["better_inventory_discard_skip_confirmation"]
     assert skip_widget.content.checked is True
     skip_widget.content.hotspot.pressed_callback()
@@ -2408,7 +2515,7 @@ def main() -> None:
     mode_widget.content.hotspot.pressed_callback()
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert mod.settings.quick_discard_mode == "manual"
-    assert len(prototype_panel.layout) == 17
+    assert len(prototype_panel.layout) == 19
     assert prototype_panel.widgets["better_inventory_discard_skip_confirmation"] is None
 
     # Automatic Curio Buyer is always discoverable as a separate section. Its
@@ -2421,7 +2528,13 @@ def main() -> None:
     curio_buyer_enable.content.hotspot.pressed_callback()
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert mod.settings.enable_automatic_curio_acquisition is True
-    assert len(prototype_panel.layout) == 28
+    assert len(prototype_panel.layout) == 31
+    buyer_favorite = prototype_panel.widgets["better_inventory_curio_buyer_favorite"]
+    assert buyer_favorite.content.checked is False
+    buyer_favorite.content.hotspot.pressed_callback()
+    assert mod.settings.automatic_curio_favorite_purchased_curios is True
+    buyer_favorite.content.hotspot.pressed_callback()
+    assert mod.settings.automatic_curio_favorite_purchased_curios is False
     assert prototype_panel.widgets["better_inventory_curio_buyer_min_level"] is not None
     buyer_target_mode = prototype_panel.widgets[
         "better_inventory_curio_buyer_target_mode"
@@ -2456,14 +2569,14 @@ def main() -> None:
     buyer_types.content.health_hotspot.pressed_callback()
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert mod.settings.automatic_curio_buy_health is False
-    assert len(prototype_panel.layout) == 27
+    assert len(prototype_panel.layout) == 30
     assert prototype_panel.widgets["better_inventory_curio_buyer_min_health"] is None
     assert prototype_panel.widgets["better_inventory_curio_buyer_min_toughness"] is not None
     buyer_types = prototype_panel.widgets["better_inventory_curio_buyer_types"]
     buyer_types.content.health_hotspot.pressed_callback()
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert mod.settings.automatic_curio_buy_health is True
-    assert len(prototype_panel.layout) == 28
+    assert len(prototype_panel.layout) == 31
     assert prototype_panel.widgets["better_inventory_curio_buyer_classes_1"] is not None
     assert prototype_panel.widgets["better_inventory_curio_buyer_classes_2"] is not None
     assert prototype_panel.widgets["better_inventory_curio_buyer_classes_label"] is None
@@ -2481,7 +2594,7 @@ def main() -> None:
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert mod.settings.automatic_curio_target_mode == "characters"
     assert globals_.TestCurioSettingChanged == "automatic_curio_target_mode"
-    assert len(prototype_panel.layout) == 27
+    assert len(prototype_panel.layout) == 30
     assert prototype_panel.widgets["better_inventory_curio_buyer_classes_1"] is None
     buyer_characters = prototype_panel.widgets[
         "better_inventory_curio_buyer_characters_1"
@@ -2507,7 +2620,7 @@ def main() -> None:
     buyer_target_mode.content.hotspot.pressed_callback()
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert mod.settings.automatic_curio_target_mode == "classes"
-    assert len(prototype_panel.layout) == 28
+    assert len(prototype_panel.layout) == 31
     assert prototype_panel.widgets["better_inventory_curio_buyer_classes_1"] is not None
     curio_buyer_enable = prototype_panel.widgets[
         "better_inventory_curio_buyer_enable"
@@ -2515,14 +2628,14 @@ def main() -> None:
     curio_buyer_enable.content.hotspot.pressed_callback()
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert mod.settings.enable_automatic_curio_acquisition is False
-    assert len(prototype_panel.layout) == 17
+    assert len(prototype_panel.layout) == 19
 
     prototype_panel.widgets[
         "better_inventory_discard_header"
     ].content.hotspot.pressed_callback()
     # Collapse/expand only changes state during the grid's draw callback. The
     # structural rebuild is deferred to the following safe view update.
-    assert len(prototype_panel.layout) == 17
+    assert len(prototype_panel.layout) == 19
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     assert len(prototype_panel.layout) == 6
     assert prototype_panel.grid_height == 309

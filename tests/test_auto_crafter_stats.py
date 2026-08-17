@@ -800,6 +800,81 @@ def main() -> None:
         assert boolean_panel._set_setting(boolean_panel, setting_id, True) is True
         assert boolean_panel._setting(boolean_panel, setting_id, False) is True
 
+    color_settings = lua.execute(
+        '''
+        return {
+            values = {
+                auto_crafter_favorite_result = true,
+                auto_crafter_myfavorites_color = 4,
+            },
+            get = function(self, key) return self.values[key] end,
+            set = function(self, key, value) self.values[key] = value return true end,
+        }
+        '''
+    )
+    color_panel = panel_module.new(
+        lua.table_from(
+            {
+                "settings": color_settings,
+                "is_myfavorites_available": lua.eval("function() return true end"),
+                "myfavorites_color_preview": lua.eval(
+                    'function(index) return "{#color(138,43,226)}Color " .. tostring(index) .. "  ■{#reset()}" end'
+                ),
+            }
+        )
+    )
+    assert color_panel._myfavorites_available(color_panel) is True
+    assert "Color 4" in color_panel._myfavorites_color_text(color_panel)
+    color_panel._step_enum_setting(
+        color_panel, "auto_crafter_myfavorites_color", lua.table_from([1, 2, 3, 4, 5]), 1, 1
+    )
+    assert color_settings["values"].auto_crafter_myfavorites_color == 5
+
+    widget_snapshot = lua.execute(
+        'return {phase = "idle", store = {offers = {}, offer_count = 0}, gear = {item_count = 0}}'
+    )
+    color_entries = color_panel._entries(color_panel, widget_snapshot)
+    color_labels = [
+        color_entries[index].initial_content.label
+        for index in range(1, len(color_entries) + 1)
+    ]
+    assert "MyFavorites color" in color_labels
+
+    no_color_panel = panel_module.new(
+        lua.table_from(
+            {
+                "settings": color_settings,
+                "is_myfavorites_available": lua.eval("function() return false end"),
+                "myfavorites_color_preview": lua.eval('function() error("must remain hidden") end'),
+            }
+        )
+    )
+    no_color_entries = no_color_panel._entries(no_color_panel, widget_snapshot)
+    no_color_labels = [
+        no_color_entries[index].initial_content.label
+        for index in range(1, len(no_color_entries) + 1)
+    ]
+    assert "MyFavorites color" not in no_color_labels
+
+    queue_header = panel._entry(
+        panel,
+        "Active Queue",
+        "idle",
+        lua.table_from(
+            {
+                "selectable": True,
+                "section_header": True,
+                "section_id": "games_lantern_queue",
+                "variant": "section",
+            }
+        ),
+    )
+    assert queue_header.initial_content.hotspot.disabled is False
+    queue_widget = lua.table_from({"content": queue_header.initial_content})
+    queue_header.bind(queue_widget)
+    queue_widget.content.hotspot.pressed_callback()
+    assert panel._section_collapsed["games_lantern_queue"] is True
+
     panel._plan = defense_plan
     panel_options = panel._planner_dump_stat_options(panel)
     assert [panel_options[index] for index in range(1, len(panel_options) + 1)] == ordered_names
@@ -1128,6 +1203,9 @@ def main() -> None:
     assert "Resume matching dump stat weapon from inventory" in panel_source
     assert "Include favorited inventory weapons when resuming" in panel_source
     assert "Automatically favorite crafted weapon" in panel_source
+    assert 'self:_setting("auto_crafter_favorite_result", true) == true and self:_myfavorites_available()' in panel_source
+    assert 'localize("auto_crafter_myfavorites_color", "MyFavorites color")' in panel_source
+    assert panel_source.index('add_checkbox("auto_crafter_favorite_result"') < panel_source.index('localize("auto_crafter_myfavorites_color", "MyFavorites color")') < panel_source.index('add_checkbox("auto_crafter_buy_until_target"')
     assert "Automatically buy until dump stat target weapon is found" in panel_source
     assert "SECTION_RESUMING" in panel_source and "SECTION_OUTPUT" not in panel_source
     assert panel_source.index('add_checkbox("auto_crafter_favorite_result"') < panel_source.index('add_checkbox("auto_crafter_buy_until_target"') < panel_source.index('localize("auto_crafter_panel_resuming"')

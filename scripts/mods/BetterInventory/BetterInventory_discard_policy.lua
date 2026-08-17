@@ -216,6 +216,18 @@ local CURIO_PRIMARY_TRAIT_SETTINGS = {
 	gadget_innate_max_wounds_increase = "quick_discard_keep_wound_curios",
 	gadget_stamina_increase = "quick_discard_keep_stamina_curios",
 }
+local CURIO_ROLL_PROTECTION_SETTINGS = {
+	gadget_innate_health_increase = {
+		default = 21,
+		enabled_setting_id = "quick_discard_protect_health_roll_curios",
+		roll_setting_id = "quick_discard_curio_health_roll",
+	},
+	gadget_innate_toughness_increase = {
+		default = 17,
+		enabled_setting_id = "quick_discard_protect_toughness_roll_curios",
+		roll_setting_id = "quick_discard_curio_toughness_roll",
+	},
+}
 local CURIO_BUYER_PRIMARY_TRAIT_SETTINGS = {
 	gadget_innate_health_increase = "automatic_curio_buy_health",
 	gadget_innate_toughness_increase = "automatic_curio_buy_toughness",
@@ -248,18 +260,59 @@ local function curio_primary_trait_name(item)
 	end
 end
 
-local function high_level_curio_is_protected(mod, item, level, protected_level)
-	if level < protected_level then
+local function curio_is_protected(mod, item, level)
+	local primary_trait_name, primary_value = curio_primary_trait_name(item)
+	local setting_id = primary_trait_name and CURIO_PRIMARY_TRAIT_SETTINGS[primary_trait_name]
+	local protect_level = mod:get("quick_discard_protect_high_level_curios") ~= false
+	local protect_health = mod:get("quick_discard_protect_health_roll_curios") == true
+	local protect_toughness = mod:get("quick_discard_protect_toughness_roll_curios") == true
+
+	if not protect_level and not protect_health and not protect_toughness then
 		return false
 	end
 
-	local primary_trait_name = curio_primary_trait_name(item)
-	local setting_id = primary_trait_name and CURIO_PRIMARY_TRAIT_SETTINGS[primary_trait_name]
+	-- Unknown or future primary blessings fail closed whenever an enabled roll
+	-- criterion cannot be evaluated. Item-level-only behavior retains the original
+	-- threshold gate.
+	if not setting_id then
+		if protect_health or protect_toughness then
+			return true
+		end
 
-	-- Unknown or future primary blessings fail closed. A game update must not turn
-	-- an unrecognized high-level Curio into an automatic-discard candidate.
-	return not setting_id or mod:get(setting_id) ~= false
+		local protected_level = math.clamp(math.floor(tonumber(mod:get("quick_discard_curio_protection_level")) or 410), 0, 500)
+
+		return protect_level and level >= protected_level
+	end
+
+	if mod:get(setting_id) == false then
+		return false
+	end
+
+	local roll_config = CURIO_ROLL_PROTECTION_SETTINGS[primary_trait_name]
+
+	if roll_config and mod:get(roll_config.enabled_setting_id) == true then
+		-- A configured primary-roll threshold is authoritative for its matching
+		-- Curio type. Item level cannot rescue a Health or Toughness Curio below
+		-- the configured roll, while missing roll data still fails safe.
+		if primary_value == nil then
+			return true
+		end
+
+		local minimum_roll = math.clamp(tonumber(mod:get(roll_config.roll_setting_id)) or roll_config.default, 0, 100)
+
+		return primary_value + 0.0001 >= minimum_roll
+	end
+
+	if protect_level then
+		local protected_level = math.clamp(math.floor(tonumber(mod:get("quick_discard_curio_protection_level")) or 410), 0, 500)
+
+		return level >= protected_level
+	end
+
+	return false
 end
+
+Policy.curio_is_protected = curio_is_protected
 
 local function automatic_curio_acquisition_protects(mod, item, level)
 	if mod:get("enable_automatic_curio_acquisition") ~= true then
@@ -346,12 +399,8 @@ local function eligible_for_quick_discard(mod, item, is_equipped, maximum_equipp
 		return false
 	end
 
-	if item.item_type == "GADGET" and mod:get("quick_discard_protect_high_level_curios") ~= false then
-		local protected_level = math.clamp(math.floor(tonumber(mod:get("quick_discard_curio_protection_level")) or 410), 0, 500)
-
-		if high_level_curio_is_protected(mod, item, level, protected_level) then
-			return false
-		end
+	if item.item_type == "GADGET" and curio_is_protected(mod, item, level) then
+		return false
 	end
 
 	return true

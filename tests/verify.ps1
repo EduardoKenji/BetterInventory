@@ -1,6 +1,7 @@
 param(
 	[string] $DarktideSourcePath,
-	[string] $DmfSourcePath
+	[string] $DmfSourcePath,
+	[string] $GlobalStoreSourcePath
 )
 
 $ErrorActionPreference = "Stop"
@@ -477,12 +478,38 @@ if (($DmfSourcePath -or (Test-Path -LiteralPath $dmfRoot -PathType Container))) 
 	Write-Host "Repository-only verification: DMF source checks skipped; pass -DmfSourcePath for external compatibility checks."
 }
 
+$globalStoreRoot = if ($GlobalStoreSourcePath) {
+	[IO.Path]::GetFullPath($GlobalStoreSourcePath)
+} else {
+	[IO.Path]::GetFullPath((Join-Path $projectRoot "..\..\mods\GlobalStore"))
+}
+$globalStoreMain = Join-Path $globalStoreRoot "scripts\mods\GlobalStore\GlobalStore.lua"
+
+if (Test-Path -LiteralPath $globalStoreMain -PathType Leaf) {
+	$globalStoreSource = Get-Content -LiteralPath $globalStoreMain -Raw
+
+	if ($globalStoreSource -notmatch 'view\s*=\s*"credits_vendor_view"[\s\S]*?optional_store_service\s*=\s*"get_all_characters_store_custom"' -or $globalStoreSource -notmatch 'StoreService\.get_all_characters_store_custom') {
+		throw "GlobalStore Armoury Multi-Operative Supply no longer exposes the expected CreditsVendorView service route."
+	}
+
+	if ($globalStoreSource -notmatch 'view\s*=\s*"marks_vendor_view"[\s\S]*?optional_store_service\s*=\s*"get_all_characters_marks_store_custom"' -or $globalStoreSource -notmatch 'StoreService\.get_all_characters_marks_store_custom') {
+		throw "GlobalStore Sire Melk Multi-Operative Supply no longer exposes the expected MarksVendorView service route."
+	}
+
+	Write-Host "External GlobalStore route verification passed: $globalStoreRoot"
+} else {
+	Write-Host "Repository-only verification: GlobalStore source checks skipped; pass -GlobalStoreSourcePath for external compatibility checks."
+}
+
 if ($DarktideSourcePath) {
 	$inventoryView = Join-Path $DarktideSourcePath "scripts\ui\views\inventory_weapons_view\inventory_weapons_view.lua"
 	$hadronModifyView = Join-Path $DarktideSourcePath "scripts\ui\views\crafting_mechanicus_modify_view\crafting_mechanicus_modify_view.lua"
 	$craftingViewDefinitions = Join-Path $DarktideSourcePath "scripts\ui\views\crafting_view\crafting_view_definitions.lua"
 	$creditsVendorView = Join-Path $DarktideSourcePath "scripts\ui\views\credits_vendor_view\credits_vendor_view.lua"
 	$creditsVendorBackgroundDefinitions = Join-Path $DarktideSourcePath "scripts\ui\views\credits_vendor_background_view\credits_vendor_background_view_definitions.lua"
+	$marksVendorView = Join-Path $DarktideSourcePath "scripts\ui\views\marks_vendor_view\marks_vendor_view.lua"
+	$marksGoodsVendorView = Join-Path $DarktideSourcePath "scripts\ui\views\marks_goods_vendor_view\marks_goods_vendor_view.lua"
+	$contractsBackgroundViewDefinitions = Join-Path $DarktideSourcePath "scripts\ui\views\contracts_background_view\contracts_background_view_definitions.lua"
 	$itemGridBase = Join-Path $DarktideSourcePath "scripts\ui\views\item_grid_view_base\item_grid_view_base.lua"
 	$itemGridBaseDefinitions = Join-Path $DarktideSourcePath "scripts\ui\views\item_grid_view_base\item_grid_view_base_definitions.lua"
 	$itemBlueprints = Join-Path $DarktideSourcePath "scripts\ui\view_content_blueprints\item_blueprints.lua"
@@ -501,7 +528,7 @@ if ($DarktideSourcePath) {
 	$masteryUtility = Join-Path $DarktideSourcePath "scripts\utilities\mastery.lua"
 	$weaponMarksView = Join-Path $DarktideSourcePath "scripts\ui\views\inventory_weapon_marks_view\inventory_weapon_marks_view.lua"
 
-	foreach ($sourceFile in @($inventoryView, $hadronModifyView, $craftingViewDefinitions, $creditsVendorView, $creditsVendorBackgroundDefinitions, $itemGridBase, $itemGridBaseDefinitions, $itemBlueprints, $iconGenerator, $items, $masterItems, $gadgetTraits, $weaponPerksMelee, $weaponPerksRanged, $traitValueParser, $gadgetBuffTemplates, $gearService, $progressionManager, $backendMastery, $masteryService, $masteryUtility, $weaponMarksView)) {
+	foreach ($sourceFile in @($inventoryView, $hadronModifyView, $craftingViewDefinitions, $creditsVendorView, $creditsVendorBackgroundDefinitions, $marksVendorView, $marksGoodsVendorView, $contractsBackgroundViewDefinitions, $itemGridBase, $itemGridBaseDefinitions, $itemBlueprints, $iconGenerator, $items, $masterItems, $gadgetTraits, $weaponPerksMelee, $weaponPerksRanged, $traitValueParser, $gadgetBuffTemplates, $gearService, $progressionManager, $backendMastery, $masteryService, $masteryUtility, $weaponMarksView)) {
 		if (-not (Test-Path -LiteralPath $sourceFile -PathType Leaf)) {
 			throw "Missing expected Darktide source file: $sourceFile"
 		}
@@ -551,6 +578,22 @@ if ($DarktideSourcePath) {
 
 	if ((Get-Content -LiteralPath $creditsVendorBackgroundDefinitions -Raw) -notmatch 'display_name\s*=\s*"loc_credits_vendor_view_option_buy"[\s\S]*?view\s*=\s*"credits_vendor_view"') {
 		throw "The Armoury requisition route no longer maps to credits_vendor_view."
+	}
+
+	$marksVendorSource = Get-Content -LiteralPath $marksVendorView -Raw
+	$marksGoodsVendorSource = Get-Content -LiteralPath $marksGoodsVendorView -Raw
+	$contractsBackgroundSource = Get-Content -LiteralPath $contractsBackgroundViewDefinitions -Raw
+
+	if ($marksVendorSource -notmatch 'class\("MarksVendorView",\s*"VendorViewBase"\)' -or $marksVendorSource -notmatch 'MarksVendorView\.show_items[\s\S]*?_show_temporary_store_items\s*=\s*true' -or $marksVendorSource -notmatch 'MarksVendorView\._on_purchase_complete') {
+		throw "Sire Melk Limited Time Acquisitions no longer expose the expected MarksVendorView purchase seam."
+	}
+
+	if ($marksGoodsVendorSource -notmatch 'class\("MarksGoodsVendorView",\s*"VendorViewBase"\)' -or $marksGoodsVendorSource -notmatch 'MarksGoodsVendorView\.show_items[\s\S]*?_show_temporary_store_items\s*=\s*false' -or $marksGoodsVendorSource -notmatch 'general_goods_offer_display_information' -or $marksGoodsVendorSource -notmatch 'MarksGoodsVendorView\._on_purchase_complete') {
+		throw "Sire Melk Mystery Acquisitions no longer expose the expected MarksGoodsVendorView purchase seam."
+	}
+
+	if ($contractsBackgroundSource -notmatch 'display_name\s*=\s*"loc_mark_vendor_view_title_temporary"[\s\S]*?view\s*=\s*"marks_vendor_view"' -or $contractsBackgroundSource -notmatch 'display_name\s*=\s*"loc_mark_vendor_view_title_standard"[\s\S]*?view\s*=\s*"marks_goods_vendor_view"') {
+		throw "Sire Melk Limited Time and Mystery Acquisition routes no longer map to their expected vendor views."
 	}
 
 	$itemBlueprintSource = Get-Content -LiteralPath $itemBlueprints -Raw

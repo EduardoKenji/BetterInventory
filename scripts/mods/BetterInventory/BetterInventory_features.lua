@@ -1087,6 +1087,7 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 	local native_discard_active = view._discard_items_element ~= nil
 	local quick_discard_enabled = mod:get("enable_experimental_quick_discard") == true
 	local entries = {}
+	local scroll_offset = PanelRuntime.scroll_offset(panel)
 
 	if view._better_inventory_lantern_panel_available == true then
 		local lantern_entry = panel_lantern_entry(view)
@@ -1157,6 +1158,8 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 			entries[#entries + 1] = panel_stepper_entry(mod, layout, view, INVENTORY_DISCARD_MAX_LEVEL_ID, "quick_discard_max_item_level", "quick_discard_inventory_max_level", 490)
 			entries[#entries + 1] = panel_checkbox_entry(mod, layout, view, INVENTORY_DISCARD_EQUIPPED_LEVEL_PROTECTION_ID, "quick_discard_protect_above_equipped_level", "quick_discard_inventory_protect_above_equipped_level")
 			entries[#entries + 1] = panel_checkbox_entry(mod, layout, view, INVENTORY_DISCARD_PROTECTION_ID, "quick_discard_protect_perfect_weapons", "quick_discard_inventory_protect_weapons")
+			PanelDefinitions.append_curio_roll_protection_entries(entries, mod, layout, view, panel_checkbox_entry, panel_stepper_entry)
+
 			entries[#entries + 1] = panel_checkbox_entry(mod, layout, view, INVENTORY_DISCARD_CURIO_PROTECTION_ID, "quick_discard_protect_high_level_curios", "quick_discard_inventory_protect_curios", nil, true)
 
 			if mod:get("quick_discard_protect_high_level_curios") ~= false then
@@ -1179,6 +1182,7 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 				entries[#entries + 1] = panel_checkbox_entry(mod, layout, view, INVENTORY_CURIO_BUYER_OPERATIVE_SELECTION_ID, "automatic_curio_scan_operative_selection", "automatic_curio_scan_operative_selection", false, true, Features.sync_curio_acquisition_settings)
 				entries[#entries + 1] = panel_checkbox_entry(mod, layout, view, INVENTORY_CURIO_BUYER_ROTATION_ID, "automatic_curio_once_per_store_rotation", "automatic_curio_once_per_store_rotation", false, true, Features.sync_curio_acquisition_settings)
 				entries[#entries + 1] = panel_checkbox_entry(mod, layout, view, INVENTORY_CURIO_BUYER_REFRESH_ID, "automatic_curio_rescan_on_store_refresh", "automatic_curio_rescan_on_store_refresh", false, true, Features.sync_curio_acquisition_settings)
+				PanelDefinitions.append_curio_buyer_favorite_entry(entries, mod, layout, view, panel_checkbox_entry, Features.sync_curio_acquisition_settings)
 				entries[#entries + 1] = panel_stepper_entry(mod, layout, view, INVENTORY_CURIO_BUYER_MIN_LEVEL_ID, "automatic_curio_min_item_level", "automatic_curio_min_item_level", 410, Features.sync_curio_acquisition_settings)
 				entries[#entries + 1] = panel_sub_label_entry(mod, view, "better_inventory_curio_buyer_types_label", "automatic_curio_types_inventory_label")
 				entries[#entries + 1] = panel_curio_buyer_type_entry(mod, layout, view)
@@ -1221,8 +1225,6 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 
 	content_height = content_height + math.max(#entries - 1, 0) * spacing
 
-	-- ViewElementGrid adds a 31 px terminal-divider/frame overhead around the
-	-- content. Account for it explicitly so user padding maps predictably.
 	local panel_height = math.clamp(content_height + 31 + geometry.top + geometry.bottom, INVENTORY_OPTIONS_PANEL_MIN_HEIGHT, geometry.max_height)
 
 	view._better_inventory_options_panel_widgets = {}
@@ -1231,7 +1233,8 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 	view._better_inventory_options_panel_structure_key = PanelState.panel_structure_key(mod, view)
 	view._better_inventory_options_panel_height = panel_height
 	panel:update_grid_height(panel_height, panel_height)
-	panel:present_grid_layout(entries, INVENTORY_OPTIONS_PANEL_BLUEPRINTS)
+
+	panel:present_grid_layout(entries, INVENTORY_OPTIONS_PANEL_BLUEPRINTS, nil, nil, nil, nil, PanelRuntime.scroll_restore_callback(panel, scroll_offset))
 end
 
 -- Scale both Curio preview axes together to preserve its aspect ratio.

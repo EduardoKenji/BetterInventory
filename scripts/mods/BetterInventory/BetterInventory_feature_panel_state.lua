@@ -63,6 +63,8 @@ local function panel_structure_key(mod, view)
 	key = key + (item_sorting_is_enabled() and 4194304 or 0)
 	key = key + (collapsed.item_sorting and 8388608 or 0)
 	key = key + (collapsed.native_sorting and 16777216 or 0)
+	key = key + (mod:get("quick_discard_protect_health_roll_curios") == true and 33554432 or 0)
+	key = key + (mod:get("quick_discard_protect_toughness_roll_curios") == true and 67108864 or 0)
 
 	return composite_key(key, view._better_inventory_lantern_panel_signature, item_sorting_options_signature(view))
 end

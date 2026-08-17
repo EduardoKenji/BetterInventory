@@ -197,6 +197,9 @@ local localization = {
 	armoury_exchange_views_group = {
 		en = "Armoury Exchange",
 	},
+	melk_views_group = {
+		en = "Sire Melk's Requisitorium",
+	},
 	character_overview_group = {
 		en = "Character overview",
 	},
@@ -391,6 +394,24 @@ local localization = {
 	},
 	enable_armoury_requisition_grid = {
 		en = "Armoury: Requisition Weapons & Curios",
+	},
+	armoury_auto_favorite_purchased_items = {
+		en = "Automatically favorite purchased items",
+	},
+	armoury_auto_favorite_purchased_items_tooltip = {
+		en = "Favorites items after a manual Armoury Exchange or Brunt's Armoury purchase is confirmed. If GlobalStore is installed, this also covers Armoury Multi-Operative Supply purchases. Auto Crafter and Automatic Curio Buyer purchases are excluded. Disabled by default.",
+	},
+	melk_auto_favorite_purchased_items = {
+		en = "Automatically favorite Limited Time Acquisitions",
+	},
+	melk_auto_favorite_purchased_items_tooltip = {
+		en = "Favorites items after a Limited Time Acquisitions purchase is confirmed. If GlobalStore is installed, this also covers Sire Melk Multi-Operative Supply purchases. Mystery Acquisitions are controlled separately, and Auto Crafter purchases are excluded. Disabled by default.",
+	},
+	melk_mystery_auto_favorite_purchased_items = {
+		en = "Automatically favorite Mystery Acquisitions",
+	},
+	melk_mystery_auto_favorite_purchased_items_tooltip = {
+		en = "Favorites items after a Mystery Acquisitions purchase is confirmed. Limited Time Acquisitions are controlled separately, and Auto Crafter purchases are excluded. Disabled by default.",
 	},
 	enable_armoury_requisition_grid_tooltip = {
 		en = "Uses Better Inventory cards in Requisition Weapons & Curios. The effective layout is capped at three columns; Brunt's Armoury and Multi-Operative Supply are not changed.",

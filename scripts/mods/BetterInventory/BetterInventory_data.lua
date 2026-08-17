@@ -1,4 +1,4 @@
-local MOD_VERSION = "2.4.1"
+local MOD_VERSION = "2.5.0"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
@@ -500,6 +500,38 @@ return {
 						default_value = true,
 					},
 					{
+						setting_id = "quick_discard_protect_health_roll_curios",
+						tooltip = "quick_discard_protect_health_roll_curios_tooltip",
+						type = "checkbox",
+						default_value = false,
+					},
+					{
+						setting_id = "quick_discard_curio_health_roll",
+						tooltip = "quick_discard_curio_health_roll_tooltip",
+						type = "numeric",
+						default_value = 21,
+						range = {
+							0,
+							21,
+						},
+					},
+					{
+						setting_id = "quick_discard_protect_toughness_roll_curios",
+						tooltip = "quick_discard_protect_toughness_roll_curios_tooltip",
+						type = "checkbox",
+						default_value = false,
+					},
+					{
+						setting_id = "quick_discard_curio_toughness_roll",
+						tooltip = "quick_discard_curio_toughness_roll_tooltip",
+						type = "numeric",
+						default_value = 17,
+						range = {
+							0,
+							17,
+						},
+					},
+					{
 						setting_id = "quick_discard_protect_high_level_curios",
 						tooltip = "quick_discard_protect_high_level_curios_tooltip",
 						type = "checkbox",
@@ -584,6 +616,12 @@ return {
 							{
 								setting_id = "automatic_curio_rescan_on_store_refresh",
 								tooltip = "automatic_curio_rescan_on_store_refresh_tooltip",
+								type = "checkbox",
+								default_value = false,
+							},
+							{
+								setting_id = "automatic_curio_favorite_purchased_curios",
+								tooltip = "automatic_curio_favorite_purchased_curios_tooltip",
 								type = "checkbox",
 								default_value = false,
 							},
@@ -899,6 +937,19 @@ return {
 						type = "group",
 						sub_widgets = {
 							{ setting_id = "auto_crafter_favorite_result", tooltip = "auto_crafter_favorite_result_tooltip", type = "checkbox", default_value = true },
+							{
+								setting_id = "auto_crafter_myfavorites_color",
+								tooltip = "auto_crafter_myfavorites_color_tooltip",
+								type = "dropdown",
+								default_value = 1,
+								options = {
+									{ text = "auto_crafter_myfavorites_color_1", value = 1 },
+									{ text = "auto_crafter_myfavorites_color_2", value = 2 },
+									{ text = "auto_crafter_myfavorites_color_3", value = 3 },
+									{ text = "auto_crafter_myfavorites_color_4", value = 4 },
+									{ text = "auto_crafter_myfavorites_color_5", value = 5 },
+								},
+							},
 							{ setting_id = "auto_crafter_buy_until_target", tooltip = "auto_crafter_buy_until_target_tooltip", type = "checkbox", default_value = true },
 							{ setting_id = "auto_crafter_defer_bad_weapon_processing", tooltip = "auto_crafter_defer_bad_weapon_processing_tooltip", type = "checkbox", default_value = true },
 							{ setting_id = "auto_crafter_level_mastery_20", tooltip = "auto_crafter_level_mastery_20_tooltip", type = "checkbox", default_value = true },
@@ -955,6 +1006,12 @@ return {
 						type = "group",
 						sub_widgets = {
 							{
+								setting_id = "armoury_auto_favorite_purchased_items",
+								tooltip = "armoury_auto_favorite_purchased_items_tooltip",
+								type = "checkbox",
+								default_value = false,
+							},
+							{
 								setting_id = "enable_armoury_requisition_grid",
 								tooltip = "enable_armoury_requisition_grid_tooltip",
 								type = "checkbox",
@@ -1004,10 +1061,28 @@ return {
 									230,
 								},
 							},
-									},
-								},
-								{
-									setting_id = "global_store_integration_group",
+						},
+					},
+					{
+						setting_id = "melk_views_group",
+						type = "group",
+						sub_widgets = {
+							{
+								setting_id = "melk_auto_favorite_purchased_items",
+								tooltip = "melk_auto_favorite_purchased_items_tooltip",
+								type = "checkbox",
+								default_value = false,
+							},
+							{
+								setting_id = "melk_mystery_auto_favorite_purchased_items",
+								tooltip = "melk_mystery_auto_favorite_purchased_items_tooltip",
+								type = "checkbox",
+								default_value = false,
+							},
+						},
+					},
+					{
+						setting_id = "global_store_integration_group",
 						type = "group",
 						sub_widgets = {
 							{

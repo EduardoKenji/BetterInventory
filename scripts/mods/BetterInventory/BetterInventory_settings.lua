@@ -57,6 +57,8 @@ local DEPENDENCY_REFRESH_SETTING_IDS = {
 	"keep_lantern_curio_panel_separate",
 	"enable_experimental_quick_discard",
 	"quick_discard_mode",
+	"quick_discard_protect_health_roll_curios",
+	"quick_discard_protect_toughness_roll_curios",
 	"quick_discard_protect_high_level_curios",
 	"enable_automatic_curio_acquisition",
 	"enable_quick_look_card_single_column_integration",
@@ -72,6 +74,7 @@ local DEPENDENCY_REFRESH_SETTING_IDS = {
 	"auto_crafter_change_perks",
 	"auto_crafter_change_blessings",
 	"auto_crafter_show_status_hud",
+	"auto_crafter_favorite_result",
 }
 
 local dependency_refresh_metadata = {}
@@ -108,6 +111,8 @@ local function setting_owner(setting_id)
 		"character_overview_", "character_overview",
 		"global_store_", "global_store",
 		"armoury_", "armoury",
+		"melk_", "melk",
+		"auto_crafter_", "auto_crafter",
 		"custom_item_", "customization",
 		"weapon_", "weapons",
 		"blessing_", "weapons",

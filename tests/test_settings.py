@@ -170,6 +170,8 @@ def main() -> None:
 			curio_secondary_text_color_b = 210,
 			enable_experimental_quick_discard = false,
 			quick_discard_protect_high_level_curios = true,
+			quick_discard_protect_health_roll_curios = false,
+			quick_discard_protect_toughness_roll_curios = false,
 			quick_discard_mode = "manual",
 			quick_discard_disable_no_eligible_notification = false,
 			enable_automatic_curio_acquisition = false,
@@ -1535,6 +1537,10 @@ def main() -> None:
 		"quick_discard_include_ranged",
 		"quick_discard_include_curios",
 		"quick_discard_protect_perfect_weapons",
+		"quick_discard_protect_health_roll_curios",
+		"quick_discard_curio_health_roll",
+		"quick_discard_protect_toughness_roll_curios",
+		"quick_discard_curio_toughness_roll",
 		"quick_discard_protect_high_level_curios",
 		"quick_discard_curio_protection_level",
 		"quick_discard_keep_health_curios",
@@ -1547,6 +1553,7 @@ def main() -> None:
         "automatic_curio_scan_operative_selection",
         "automatic_curio_once_per_store_rotation",
         "automatic_curio_rescan_on_store_refresh",
+        "automatic_curio_favorite_purchased_curios",
         "automatic_curio_min_item_level",
 		"automatic_curio_min_health",
 		"automatic_curio_min_toughness",
@@ -1567,6 +1574,7 @@ def main() -> None:
 		"automatic_curio_types_group",
 		"automatic_curio_classes_group",
 		"automatic_curio_characters_group",
+		"auto_crafter_myfavorites_color",
     )
     entries = [
         lua.table_from(
@@ -2006,6 +2014,10 @@ def main() -> None:
     assert entries_by_id["quick_discard_rarity"].disabled is True
     assert entries_by_id["quick_discard_protect_above_equipped_level"].disabled is True
     assert entries_by_id["quick_discard_curio_protection_level"].disabled is True
+    assert entries_by_id["quick_discard_protect_health_roll_curios"].disabled is True
+    assert entries_by_id["quick_discard_curio_health_roll"].disabled is True
+    assert entries_by_id["quick_discard_protect_toughness_roll_curios"].disabled is True
+    assert entries_by_id["quick_discard_curio_toughness_roll"].disabled is True
     assert entries_by_id["quick_discard_keep_health_curios"].disabled is True
     assert entries_by_id["quick_discard_keep_toughness_curios"].disabled is True
     assert entries_by_id["quick_discard_show_type_breakdown"].disabled is True
@@ -2014,6 +2026,8 @@ def main() -> None:
     assert entries_by_id["automatic_curio_scan_operative_selection"].disabled is True
     assert entries_by_id["automatic_curio_once_per_store_rotation"].disabled is True
     assert entries_by_id["automatic_curio_rescan_on_store_refresh"].disabled is True
+    assert entries_by_id["automatic_curio_favorite_purchased_curios"].disabled is True
+    assert entries_by_id["auto_crafter_myfavorites_color"].disabled is True
     assert entries_by_id["automatic_curio_min_item_level"].disabled is True
     assert entries_by_id["automatic_curio_min_health"].disabled is True
     assert entries_by_id["automatic_curio_min_toughness"].disabled is True
@@ -2062,6 +2076,10 @@ def main() -> None:
     assert entries_by_id["quick_discard_rarity"].disabled is False
     assert entries_by_id["quick_discard_max_item_level"].disabled is False
     assert entries_by_id["quick_discard_protect_above_equipped_level"].disabled is False
+    assert entries_by_id["quick_discard_protect_health_roll_curios"].disabled is False
+    assert entries_by_id["quick_discard_curio_health_roll"].disabled is True
+    assert entries_by_id["quick_discard_protect_toughness_roll_curios"].disabled is False
+    assert entries_by_id["quick_discard_curio_toughness_roll"].disabled is True
     assert entries_by_id["quick_discard_curio_protection_level"].disabled is False
     assert entries_by_id["quick_discard_curio_protection_level"].validation_function is None
     assert entries_by_id["quick_discard_keep_health_curios"].disabled is False
@@ -2070,6 +2088,12 @@ def main() -> None:
     assert entries_by_id["quick_discard_keep_stamina_curios"].disabled is False
     assert entries_by_id["quick_discard_show_type_breakdown"].disabled is False
     assert entries_by_id["quick_discard_show_summary_notification"].disabled is False
+    settings.quick_discard_protect_health_roll_curios = True
+    mod.on_setting_changed("quick_discard_protect_health_roll_curios")
+    assert entries_by_id["quick_discard_curio_health_roll"].disabled is False
+    settings.quick_discard_protect_toughness_roll_curios = True
+    mod.on_setting_changed("quick_discard_protect_toughness_roll_curios")
+    assert entries_by_id["quick_discard_curio_toughness_roll"].disabled is False
     assert entries_by_id["quick_discard_disable_no_eligible_notification"].disabled is True
     settings.quick_discard_mode = "automatic"
     mod.on_setting_changed("quick_discard_mode")
@@ -2094,6 +2118,7 @@ def main() -> None:
     assert entries_by_id["automatic_curio_scan_operative_selection"].disabled is False
     assert entries_by_id["automatic_curio_once_per_store_rotation"].disabled is False
     assert entries_by_id["automatic_curio_rescan_on_store_refresh"].disabled is False
+    assert entries_by_id["automatic_curio_favorite_purchased_curios"].disabled is False
     assert entries_by_id["automatic_curio_min_item_level"].disabled is False
     assert entries_by_id["automatic_curio_min_health"].disabled is False
     assert entries_by_id["automatic_curio_min_toughness"].disabled is False
@@ -2507,7 +2532,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "2.4.1"
+    assert data.version == "2.5.0"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
@@ -2625,6 +2650,7 @@ def main() -> None:
     assert additional_view_ids == [
         "hadron_additional_views_group",
         "armoury_exchange_views_group",
+        "melk_views_group",
         "global_store_integration_group",
         "character_overview_group",
     ]
@@ -2665,6 +2691,7 @@ def main() -> None:
         for index in range(1, len(armoury_view_group.sub_widgets) + 1)
     ]
     assert armoury_view_ids == [
+        "armoury_auto_favorite_purchased_items",
         "enable_armoury_requisition_grid",
         "enable_armoury_single_column_mirror",
         "enable_armoury_requisition_sorting_panel",
@@ -2673,7 +2700,15 @@ def main() -> None:
         "expand_armoury_requisition_window",
         "armoury_requisition_target_card_width",
     ]
-    global_store_view_group = additional_views_group.sub_widgets[3]
+    melk_view_group = additional_views_group.sub_widgets[3]
+    assert [
+        melk_view_group.sub_widgets[index].setting_id
+        for index in range(1, len(melk_view_group.sub_widgets) + 1)
+    ] == [
+        "melk_auto_favorite_purchased_items",
+        "melk_mystery_auto_favorite_purchased_items",
+    ]
+    global_store_view_group = additional_views_group.sub_widgets[4]
     assert [
         global_store_view_group.sub_widgets[index].setting_id
         for index in range(1, len(global_store_view_group.sub_widgets) + 1)
@@ -2690,7 +2725,7 @@ def main() -> None:
         "global_store_single_column_modifier_horizontal_position",
         "global_store_single_column_modifier_vertical_position",
     ]
-    character_overview_view_group = additional_views_group.sub_widgets[4]
+    character_overview_view_group = additional_views_group.sub_widgets[5]
     assert [
         character_overview_view_group.sub_widgets[index].setting_id
         for index in range(1, len(character_overview_view_group.sub_widgets) + 1)
@@ -3058,12 +3093,21 @@ def main() -> None:
     assert defaults["quick_discard_keep_stamina_curios"] is True
     assert defaults["quick_discard_max_item_level"] == 490
     assert defaults["quick_discard_protect_above_equipped_level"] is True
+    assert defaults["quick_discard_protect_health_roll_curios"] is False
+    assert defaults["quick_discard_curio_health_roll"] == 21
+    assert defaults["quick_discard_protect_toughness_roll_curios"] is False
+    assert defaults["quick_discard_curio_toughness_roll"] == 17
     assert defaults["quick_discard_show_summary_notification"] is True
     assert defaults["quick_discard_disable_no_eligible_notification"] is False
     assert defaults["enable_automatic_curio_acquisition"] is False
     assert defaults["automatic_curio_scan_operative_selection"] is False
     assert defaults["automatic_curio_once_per_store_rotation"] is False
     assert defaults["automatic_curio_rescan_on_store_refresh"] is False
+    assert defaults["automatic_curio_favorite_purchased_curios"] is False
+    assert defaults["armoury_auto_favorite_purchased_items"] is False
+    assert defaults["melk_auto_favorite_purchased_items"] is False
+    assert defaults["melk_mystery_auto_favorite_purchased_items"] is False
+    assert defaults["auto_crafter_myfavorites_color"] == 1
     assert defaults["automatic_curio_min_item_level"] == 410
     assert defaults["automatic_curio_min_health"] == 21
     assert defaults["automatic_curio_min_toughness"] == 17

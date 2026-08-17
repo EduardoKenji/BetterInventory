@@ -1,5 +1,23 @@
 local PanelRuntime = {}
 
+local function scroll_offset(panel)
+	local success, offset = pcall(panel and panel.length_scrolled, panel)
+
+	return success and tonumber(offset) or 0
+end
+
+local function scroll_restore_callback(panel, offset)
+	return function()
+		local success, length = pcall(panel and panel.scroll_length, panel)
+
+		length = success and tonumber(length) or 0
+
+		if length > 0 and type(panel.set_scrollbar_progress) == "function" then
+			pcall(panel.set_scrollbar_progress, panel, math.max(0, math.min(1, offset / length)), true)
+		end
+	end
+end
+
 -- Panel entries and controller helpers only touch the supplied view/widget
 -- objects. They do not own panel lifecycle or feature settings.
 local function panel_entry(view, control_id, height, pass_template, initial_content, bind, refresh, controller_targets)
@@ -363,6 +381,8 @@ local function release_inventory_options_panel(view, panel_reference)
 end
 
 PanelRuntime.panel_entry = panel_entry
+PanelRuntime.scroll_offset = scroll_offset
+PanelRuntime.scroll_restore_callback = scroll_restore_callback
 PanelRuntime.panel_lantern_entry = panel_lantern_entry
 PanelRuntime.controller_element_state = controller_element_state
 PanelRuntime.clear_controller_element_selection = clear_controller_element_selection

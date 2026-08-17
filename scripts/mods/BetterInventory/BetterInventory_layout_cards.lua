@@ -1840,6 +1840,7 @@ end
 
 Cards.configure_native_quick_look_card_passes = configure_native_quick_look_card_passes
 Cards.weapon_kill_counter_card_height_padding = WeaponKillCounter.compact_card_height_padding
+Cards.remove_weapon_stats_wkc_listing_overlays = WeaponKillCounter.remove_weapon_stats_listing_overlays
 Cards.disable_quick_look_card_passes = disable_quick_look_card_passes
 Cards.preserve_visibility = preserve_visibility
 Cards.set_visibility = set_visibility

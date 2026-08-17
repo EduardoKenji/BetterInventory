@@ -2,7 +2,7 @@
 
 [![BetterInventory verification](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml/badge.svg)](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml)
 
-> Current release: **v2.4.1** (2026-08-17). No account-changing workflow runs automatically from the default configuration; destructive and currency-spending features require explicit user action or opt-in.
+> Current release: **v2.5.0** (2026-08-17). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
 
 BetterInventory is a standalone inventory and item-management mod for Warhammer 40,000: Darktide. It adds responsive weapon and Curio cards, richer item information, configurable sorting, supported vendor layouts, optional mod integrations, and safety-gated inventory workflows.
 
@@ -18,7 +18,18 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - A bounded inventory-options panel for sorting, discard rules, integrations, and view-specific controls.
 - Optional Quick Discard, Automatic Discard, Automatic Curio Buyer, and Auto Crafter workflows with explicit ownership, authoritative revalidation, and fail-closed behavior.
 
-## What's new in v2.4.1
+## What's new in v2.5.0
+
+- Conditional inventory-widget rows retain the current scroll offset instead of jumping to the top after option clicks.
+- Quick Discard adds default-off minimum Health (21%) and Toughness (17%) roll rules. When enabled, each roll threshold overrides item level for its matching Curio primary type; Wound and Stamina Curios continue to use the enabled minimum-item-level rule.
+- Automatic Curio Buyer can favorite its own confirmed purchases through a separate default-off checkbox shown in the inventory widget.
+- The Armoury option covers manual purchases from both the rotating Armoury Exchange and profane Brunt's Armoury. Sire Melk has independent options for Limited Time Acquisitions and Mystery Acquisitions. All three options default Off, and Auto Crafter plus Automatic Curio Buyer purchases remain excluded.
+- With GlobalStore installed, Armoury and Sire Melk Multi-Operative Supply purchases inherit the corresponding Armoury or Limited Time Acquisitions favorite option. Favorites are saved to the character that owns the selected GlobalStore offer, even when another character is viewing it. GlobalStore adds no extra favorite setting. Auto Crafter remains independent, so rejected rolls stay unfavorited and discardable.
+- When MyFavorites is available and **Automatically favorite crafted weapon** is enabled, the crafting widget shows a Color 1-5 selector directly beneath it and previews each configured color.
+- The crafting widget's **Active Queue** section supports click-to-collapse like its other sections.
+- WKC listing counters are stripped from weapon-information stat rows, preventing repeated icon/count pairs while retaining the intended weapon-detail counter.
+
+### v2.4.1 Weapon Kill Counter integration
 
 ### Weapon Kill Counter integration
 
@@ -78,6 +89,7 @@ Normal card, sorting, and integration features do not write inventory or wallet 
 
 - Quick Discard and Automatic Discard are disabled by default. Enabling discard management initially selects Manual mode and retains confirmation.
 - Automatic Curio Buyer is disabled by default.
+- Automatic favorite options for Curio Buyer, Armoury Exchange, Sire Melk Limited Time Acquisitions, and Sire Melk Mystery Acquisitions are disabled by default. GlobalStore's matching Multi-Operative Supply routes inherit the relevant vendor option. Auto Crafter color assignment follows its existing **Automatically favorite crafted weapon** checkbox and defaults to MyFavorites Color 1.
 - Auto Crafter performs no mutation until the user starts a validated plan.
 - Favorites, equipped items, active and saved loadouts, protected perfect rolls, and configured Curio rules are checked before discard operations.
 - Automatic purchase and discard paths re-fetch and revalidate authoritative state immediately before writes.
@@ -97,7 +109,7 @@ BetterInventory has no optional mod dependency. Integrations activate only when 
 | Enhanced Descriptions | Sanitizes rich-text markup before compact perk and Curio measurement |
 | GlobalStore | Adds responsive Multi-Operative Supply cards and sorting |
 | ItemSorting | Exposes its custom comparators beside the complete native sorting set |
-| MyFavorites | Preserves colour groups and cycling while synchronizing the compact favorite marker |
+| MyFavorites | Preserves colour groups and cycling, synchronizes the compact favorite marker, and optionally assigns Auto Crafter results to a selected color group |
 | Lantern of the Omnissiah | Hosts melee/ranged recommendations in the scrollable options panel and avoids icon overlap |
 | Name It | Imports and synchronizes names with BetterInventory's item customization storage |
 | Quick Level Mastery | Shares the mutation guard and preserves Acquire/Sacrifice layout compatibility |
@@ -132,7 +144,7 @@ Configure the mod through **Options > Mod Options > BetterInventory**. Reopen an
 
 ## Development and verification
 
-The runtime is split into 76 Lua sources plus the DMF descriptor. Generated manifests track the runtime bundle, settings schema, localization keys, module ownership, and named risk cases.
+The runtime is split into 77 Lua sources plus the DMF descriptor. Generated manifests track the runtime bundle, settings schema, localization keys, module ownership, and named risk cases.
 
 Run the complete repository verification from the project root:
 
@@ -140,7 +152,7 @@ Run the complete repository verification from the project root:
 powershell -ExecutionPolicy Bypass -File .\tests\verify.ps1
 ```
 
-The v2.4.1 suite currently discovers 40 behavior-test files and 153 named cases. To run the behavior suite directly with risk-weighted Lua coverage:
+The v2.5.0 suite currently discovers 41 behavior-test files and 155 named cases. To run the behavior suite directly with risk-weighted Lua coverage:
 
 ```powershell
 py -3 .\tests\run_tests.py --timeout-seconds 45 --coverage-output lua-coverage.json

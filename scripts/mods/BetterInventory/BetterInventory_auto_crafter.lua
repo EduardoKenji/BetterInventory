@@ -694,6 +694,7 @@ function AutoCrafter.configure(dependencies)
 
 	local backend = Backend.new({
 		mutation_guard = dependencies.mutation_guard,
+		on_item_favorited = dependencies.on_item_favorited,
 	})
 	local context = Context.new({
 		is_brunt_view = dependencies.is_brunt_view,
@@ -1084,6 +1085,8 @@ function AutoCrafter.configure(dependencies)
 		end,
 		get_selected_offer = dependencies.get_selected_offer,
 		select_offer = dependencies.select_offer,
+		is_myfavorites_available = dependencies.is_myfavorites_available,
+		myfavorites_color_preview = dependencies.myfavorites_color_preview,
 		settings = settings_adapter(),
 		preview_plan = function()
 			return controller and controller:preview_plan() or false

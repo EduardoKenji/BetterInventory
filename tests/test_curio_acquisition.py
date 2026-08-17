@@ -415,6 +415,7 @@ def main() -> None:
 			automatic_curio_scan_operative_selection = false,
 			automatic_curio_once_per_store_rotation = false,
 			automatic_curio_rescan_on_store_refresh = false,
+			automatic_curio_favorite_purchased_curios = false,
 			automatic_curio_target_mode = "characters",
             automatic_curio_min_item_level = 410,
             automatic_curio_min_health = 21,
@@ -659,7 +660,7 @@ def main() -> None:
 							return pending_purchase_promise
 						end
 
-						return TestPromise.resolved({items = {}})
+						return TestPromise.resolved({items = {{uuid = "purchased-curio-uuid"}}})
                     end,
                     invalidate_wallets_cache = function()
                         wallet_cache_invalidated = true
@@ -708,6 +709,22 @@ def main() -> None:
     lua.globals().TestCurioPurchase = curio_purchase
     module = lua.execute(MODULE_PATH.read_text(encoding="utf-8"), name=str(MODULE_PATH))
     globals_ = lua.globals()
+    favorite_integration = lua.execute(
+        r"""
+        favorite_purchase_calls = {}
+        return {
+            favorite_purchase_items = function(mod, items, setting_id)
+                if mod:get(setting_id) == true then
+                    table.insert(favorite_purchase_calls, {
+                        gear_id = items and items[1] and items[1].uuid,
+                        setting_id = setting_id,
+                    })
+                end
+            end,
+        }
+        """
+    )
+    module.set_favorite_integration(favorite_integration)
 
     assert (
         curio_values._test.buff_value("gadget_innate_health_increase", 0.69) == 19
@@ -902,6 +919,7 @@ def main() -> None:
     # remain dormant until that system is settled, then target the scanned
     # profile's wallet rather than the currently selected character's wallet.
     globals_.settings.automatic_curio_diagnostic_logging = True
+    globals_.settings.automatic_curio_favorite_purchased_curios = True
     module.begin_morningstar_pass(globals_.test_mod)
     module.update(globals_.test_mod, 10, True)
     assert globals_.purchase_count == 0
@@ -910,6 +928,9 @@ def main() -> None:
     assert globals_.fetched_store_count == 2  # scan plus final revalidation
     assert globals_.requested_wallet_character == "target-psyker"
     assert globals_.purchased_wallet_owner == "target-psyker"
+    assert len(globals_.favorite_purchase_calls) == 1
+    assert globals_.favorite_purchase_calls[1].gear_id == "purchased-curio-uuid"
+    assert globals_.favorite_purchase_calls[1].setting_id == "automatic_curio_favorite_purchased_curios"
     assert globals_.captured_notification.line_1 == "automatic_curio_purchased_title"
     assert (
         "{#color(101,202,77)}Research Psyker(Psyker): 21% automatic_curio_health (410){#reset()}"

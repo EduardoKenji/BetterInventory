@@ -16,12 +16,17 @@ local INVENTORY_DISCARD_MELEE_ID = "better_inventory_discard_melee"
 local INVENTORY_DISCARD_RANGED_ID = "better_inventory_discard_ranged"
 local INVENTORY_DISCARD_CURIO_ID = "better_inventory_discard_curio"
 local INVENTORY_DISCARD_PROTECTION_ID = "better_inventory_discard_protection"
+local INVENTORY_DISCARD_CURIO_HEALTH_PROTECTION_ID = "better_inventory_discard_curio_health_protection"
+local INVENTORY_DISCARD_CURIO_HEALTH_ROLL_ID = "better_inventory_discard_curio_health_roll"
+local INVENTORY_DISCARD_CURIO_TOUGHNESS_PROTECTION_ID = "better_inventory_discard_curio_toughness_protection"
+local INVENTORY_DISCARD_CURIO_TOUGHNESS_ROLL_ID = "better_inventory_discard_curio_toughness_roll"
 local INVENTORY_DISCARD_CURIO_PROTECTION_ID = "better_inventory_discard_curio_protection"
 local INVENTORY_DISCARD_CURIO_LEVEL_ID = "better_inventory_discard_curio_level"
 local INVENTORY_CURIO_BUYER_ENABLE_ID = "better_inventory_curio_buyer_enable"
 local INVENTORY_CURIO_BUYER_OPERATIVE_SELECTION_ID = "better_inventory_curio_buyer_operative_selection"
 local INVENTORY_CURIO_BUYER_ROTATION_ID = "better_inventory_curio_buyer_rotation"
 local INVENTORY_CURIO_BUYER_REFRESH_ID = "better_inventory_curio_buyer_refresh"
+local INVENTORY_CURIO_BUYER_FAVORITE_ID = "better_inventory_curio_buyer_favorite"
 local INVENTORY_CURIO_BUYER_TARGET_MODE_ID = "better_inventory_curio_buyer_target_mode"
 local INVENTORY_CURIO_BUYER_MIN_LEVEL_ID = "better_inventory_curio_buyer_min_level"
 local INVENTORY_CURIO_BUYER_MIN_HEALTH_ID = "better_inventory_curio_buyer_min_health"
@@ -54,6 +59,24 @@ local INVENTORY_CURIO_NATIVE_HEADER_HEIGHT = 250
 local INVENTORY_CURIO_NATIVE_ICON_HEIGHT = 180
 local INVENTORY_VIRTUAL_CANVAS_WIDTH = 1920
 local INVENTORY_VIRTUAL_EDGE_MARGIN = 16
+
+local function append_curio_roll_protection_entries(entries, mod, layout, view, checkbox_entry, stepper_entry)
+	entries[#entries + 1] = checkbox_entry(mod, layout, view, INVENTORY_DISCARD_CURIO_HEALTH_PROTECTION_ID, "quick_discard_protect_health_roll_curios", "quick_discard_inventory_protect_health_roll_curios", false, true)
+
+	if mod:get("quick_discard_protect_health_roll_curios") == true then
+		entries[#entries + 1] = stepper_entry(mod, layout, view, INVENTORY_DISCARD_CURIO_HEALTH_ROLL_ID, "quick_discard_curio_health_roll", "quick_discard_inventory_curio_health_roll", 21, nil, 0, 21, 1, "%")
+	end
+
+	entries[#entries + 1] = checkbox_entry(mod, layout, view, INVENTORY_DISCARD_CURIO_TOUGHNESS_PROTECTION_ID, "quick_discard_protect_toughness_roll_curios", "quick_discard_inventory_protect_toughness_roll_curios", false, true)
+
+	if mod:get("quick_discard_protect_toughness_roll_curios") == true then
+		entries[#entries + 1] = stepper_entry(mod, layout, view, INVENTORY_DISCARD_CURIO_TOUGHNESS_ROLL_ID, "quick_discard_curio_toughness_roll", "quick_discard_inventory_curio_toughness_roll", 17, nil, 0, 17, 1, "%")
+	end
+end
+
+local function append_curio_buyer_favorite_entry(entries, mod, layout, view, checkbox_entry, sync_function)
+	entries[#entries + 1] = checkbox_entry(mod, layout, view, INVENTORY_CURIO_BUYER_FAVORITE_ID, "automatic_curio_favorite_purchased_curios", "automatic_curio_favorite_purchased_curios", false, false, sync_function)
+end
 
 local function numeric_setting(mod, setting_id, default_value, minimum, maximum)
 	local value = tonumber(mod:get(setting_id)) or default_value
@@ -1436,12 +1459,17 @@ local PanelDefinitions = {
 	INVENTORY_DISCARD_RANGED_ID = INVENTORY_DISCARD_RANGED_ID,
 	INVENTORY_DISCARD_CURIO_ID = INVENTORY_DISCARD_CURIO_ID,
 	INVENTORY_DISCARD_PROTECTION_ID = INVENTORY_DISCARD_PROTECTION_ID,
+	INVENTORY_DISCARD_CURIO_HEALTH_PROTECTION_ID = INVENTORY_DISCARD_CURIO_HEALTH_PROTECTION_ID,
+	INVENTORY_DISCARD_CURIO_HEALTH_ROLL_ID = INVENTORY_DISCARD_CURIO_HEALTH_ROLL_ID,
+	INVENTORY_DISCARD_CURIO_TOUGHNESS_PROTECTION_ID = INVENTORY_DISCARD_CURIO_TOUGHNESS_PROTECTION_ID,
+	INVENTORY_DISCARD_CURIO_TOUGHNESS_ROLL_ID = INVENTORY_DISCARD_CURIO_TOUGHNESS_ROLL_ID,
 	INVENTORY_DISCARD_CURIO_PROTECTION_ID = INVENTORY_DISCARD_CURIO_PROTECTION_ID,
 	INVENTORY_DISCARD_CURIO_LEVEL_ID = INVENTORY_DISCARD_CURIO_LEVEL_ID,
 	INVENTORY_CURIO_BUYER_ENABLE_ID = INVENTORY_CURIO_BUYER_ENABLE_ID,
 	INVENTORY_CURIO_BUYER_OPERATIVE_SELECTION_ID = INVENTORY_CURIO_BUYER_OPERATIVE_SELECTION_ID,
 	INVENTORY_CURIO_BUYER_ROTATION_ID = INVENTORY_CURIO_BUYER_ROTATION_ID,
 	INVENTORY_CURIO_BUYER_REFRESH_ID = INVENTORY_CURIO_BUYER_REFRESH_ID,
+	INVENTORY_CURIO_BUYER_FAVORITE_ID = INVENTORY_CURIO_BUYER_FAVORITE_ID,
 	INVENTORY_CURIO_BUYER_TARGET_MODE_ID = INVENTORY_CURIO_BUYER_TARGET_MODE_ID,
 	INVENTORY_CURIO_BUYER_MIN_LEVEL_ID = INVENTORY_CURIO_BUYER_MIN_LEVEL_ID,
 	INVENTORY_CURIO_BUYER_MIN_HEALTH_ID = INVENTORY_CURIO_BUYER_MIN_HEALTH_ID,
@@ -1491,6 +1519,8 @@ local PanelDefinitions = {
 	append_panel_checkbox_passes = append_panel_checkbox_passes,
 	panel_type_checkbox_passes = panel_type_checkbox_passes,
 	add_inventory_sort_toggle_definition = add_inventory_sort_toggle_definition,
+	append_curio_roll_protection_entries = append_curio_roll_protection_entries,
+	append_curio_buyer_favorite_entry = append_curio_buyer_favorite_entry,
 }
 
 return PanelDefinitions

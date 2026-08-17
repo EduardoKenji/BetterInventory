@@ -385,6 +385,8 @@ function Panel.new(dependencies)
 	local self = {
 		_get_selected_offer = dependencies.get_selected_offer,
 		_select_offer = dependencies.select_offer,
+		_is_myfavorites_available = dependencies.is_myfavorites_available,
+		_myfavorites_color_preview = dependencies.myfavorites_color_preview,
 		_select_manual_mark = dependencies.select_manual_mark,
 		_get_selected_manual_mark = dependencies.get_selected_manual_mark,
 		_preview_plan = dependencies.preview_plan,
@@ -1097,6 +1099,23 @@ function Panel.new(dependencies)
 		self:_set_setting(setting_id, values[next_index])
 	end
 
+	function self:_myfavorites_available()
+		local ok, available = safe_call(self._is_myfavorites_available)
+
+		return ok and available == true
+	end
+
+	function self:_myfavorites_color_text()
+		local color_index = math.max(1, math.min(5, math.floor(tonumber(self:_setting("auto_crafter_myfavorites_color", 1)) or 1)))
+		local ok, preview = safe_call(self._myfavorites_color_preview, color_index)
+
+		if ok and type(preview) == "string" and preview ~= "" then
+			return preview
+		end
+
+		return localize("auto_crafter_myfavorites_color_" .. tostring(color_index), "Color " .. tostring(color_index)) .. "  ■"
+	end
+
 	function self:_planner_target_text()
 		local _, current_weapon = self:_selected_offers(self._snapshot)
 
@@ -1546,7 +1565,7 @@ function Panel.new(dependencies)
 				end,
 			}),
 			self:_entry(localize("auto_crafter_panel_active_queue", "Active Queue"), imported and imported.state or queue and queue.state or "manual", {
-				selectable = false,
+				selectable = true,
 				section_header = true,
 				section_id = SECTION_QUEUE,
 				variant = "section",
@@ -1950,7 +1969,28 @@ function Panel.new(dependencies)
 		}))
 
 		if not self._section_collapsed[SECTION_WORKFLOW] then
-			add_checkbox("auto_crafter_favorite_result", "auto_crafter_favorite_result", "Automatically favorite crafted weapon", true)
+			add_checkbox("auto_crafter_favorite_result", "auto_crafter_favorite_result", "Automatically favorite crafted weapon", true, nil, true)
+			if self:_setting("auto_crafter_favorite_result", true) == true and self:_myfavorites_available() then
+				local color_values = { 1, 2, 3, 4, 5 }
+				local color_enabled = not queue_active
+
+				table.insert(entries, self:_entry(localize("auto_crafter_myfavorites_color", "MyFavorites color"), self:_myfavorites_color_text(), {
+					enabled = color_enabled,
+					selectable = color_enabled,
+					variant = "stepper",
+					decrease = function()
+						if not queue_active then self:_step_enum_setting("auto_crafter_myfavorites_color", color_values, 1, -1) end
+					end,
+					increase = function()
+						if not queue_active then self:_step_enum_setting("auto_crafter_myfavorites_color", color_values, 1, 1) end
+					end,
+					refresh = function(widget)
+						widget.content.detail = self:_myfavorites_color_text()
+						if widget.content.decrease_hotspot then widget.content.decrease_hotspot.disabled = queue_active end
+						if widget.content.increase_hotspot then widget.content.increase_hotspot.disabled = queue_active end
+					end,
+				}))
+			end
 			add_checkbox("auto_crafter_buy_until_target", "auto_crafter_buy_until_target", "Automatically buy until dump stat target weapon is found", true, nil, nil, 44)
 			add_checkbox("auto_crafter_defer_bad_weapon_processing", "auto_crafter_defer_bad_weapon_processing", "Only process bad weapons after finding perfect-rolled weapon", true, function()
 				return self:_setting("auto_crafter_level_mastery_20", true) == true

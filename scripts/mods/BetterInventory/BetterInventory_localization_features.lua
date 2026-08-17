@@ -92,17 +92,41 @@ local localization = {
 	quick_discard_protect_perfect_weapons_tooltip = {
 		en = "Protects weapons that already have, or Darktide's maximum-expertise preview predicts will have, four displayed attributes at 80 plus one at 60 or higher. A completed raw 380 allocation can display 381 or 382 because each attribute is rounded independently.",
 	},
+	quick_discard_protect_health_roll_curios = {
+		en = "Only keep Curios of this minimum Health roll or higher",
+	},
+	quick_discard_protect_health_roll_curios_tooltip = {
+		en = "For Health Curios, this threshold takes precedence over minimum item level: rolls below it remain eligible for discard even when their item level would otherwise be protected. Disabled by default.",
+	},
+	quick_discard_curio_health_roll = {
+		en = "Minimum Health roll to keep (%%)",
+	},
+	quick_discard_curio_health_roll_tooltip = {
+		en = "Health Curios at or above this primary-roll value are protected. The comparison is inclusive. The default is 21%%.",
+	},
+	quick_discard_protect_toughness_roll_curios = {
+		en = "Only keep Curios of this minimum Toughness roll or higher",
+	},
+	quick_discard_protect_toughness_roll_curios_tooltip = {
+		en = "For Toughness Curios, this threshold takes precedence over minimum item level: rolls below it remain eligible for discard even when their item level would otherwise be protected. Disabled by default.",
+	},
+	quick_discard_curio_toughness_roll = {
+		en = "Minimum Toughness roll to keep (%%)",
+	},
+	quick_discard_curio_toughness_roll_tooltip = {
+		en = "Toughness Curios at or above this primary-roll value are protected. The comparison is inclusive. The default is 17%%.",
+	},
 	quick_discard_protect_high_level_curios = {
 		en = "Keep curios of a minimum item level",
 	},
 	quick_discard_protect_high_level_curios_tooltip = {
-		en = "Protects Curios at or above the configured minimum item level, regardless of rarity. Curio-type filters remain configurable while this option is off.",
+		en = "Protects enabled Curio types at or above the configured minimum item level, regardless of rarity. Enabled Health and Toughness roll thresholds take precedence for their matching primary type; Wound and Stamina Curios continue to use this item-level rule.",
 	},
 	quick_discard_curio_protection_level = {
 		en = "Minimum item level to keep curios",
 	},
 	quick_discard_curio_protection_level_tooltip = {
-		en = "Curios at or above this displayed item level are protected when their primary blessing type is enabled below. This setting is shown only while minimum-item-level Curio protection is enabled. The default is 410.",
+		en = "Curios at or above this displayed item level are protected when their primary blessing type is enabled below, except Health or Toughness Curios governed by an enabled primary-roll threshold. This setting is shown only while minimum-item-level Curio protection is enabled. The default is 410.",
 	},
 	quick_discard_keep_health_curios = {
 		en = "Keep Health Curios",
@@ -117,7 +141,7 @@ local localization = {
 		en = "Keep Stamina Curios",
 	},
 	quick_discard_keep_curio_type_tooltip = {
-		en = "Selects the Curio primary blessing types protected by the minimum-item-level rule. These filters can be configured independently while that rule is off. All types default to enabled. Unknown future Curio types fail safe and remain protected.",
+		en = "Selects the Curio primary blessing types eligible for protection. An enabled Health or Toughness roll threshold takes precedence for its matching type; Wound and Stamina Curios use item level. All types default to enabled; unknown future types fail safe when a roll criterion is active.",
 	},
 	quick_discard_show_type_breakdown = {
 		en = "Show equipment-type counts in confirmation",
@@ -157,6 +181,12 @@ local localization = {
 	},
 	automatic_curio_rescan_on_store_refresh_tooltip = {
 		en = "When enabled, performs one additional pass after the next Armoury store reset if you remain in an eligible screen. A scan just before reset can therefore be followed by another scan just after reset. Disabled by default to limit backend work and unexpected close-together purchases.",
+	},
+	automatic_curio_favorite_purchased_curios = {
+		en = "Automatically favorite purchased Curios",
+	},
+	automatic_curio_favorite_purchased_curios_tooltip = {
+		en = "Favorites Curios after the Automatic Curio Buyer confirms their purchase. This is separate from manual Armoury purchases and is disabled by default.",
 	},
 	automatic_curio_min_item_level = {
 		en = "Minimum curio item level to acquire",
@@ -349,6 +379,18 @@ local localization = {
 	},
 	quick_discard_inventory_protect_weapons = {
 		en = "Do not discard perfect-roll weapons",
+	},
+	quick_discard_inventory_protect_health_roll_curios = {
+		en = "Only keep Curios of this minimum Health roll or higher",
+	},
+	quick_discard_inventory_curio_health_roll = {
+		en = "Minimum Health roll to keep",
+	},
+	quick_discard_inventory_protect_toughness_roll_curios = {
+		en = "Only keep Curios of this minimum Toughness roll or higher",
+	},
+	quick_discard_inventory_curio_toughness_roll = {
+		en = "Minimum Toughness roll to keep",
 	},
 	quick_discard_inventory_protect_curios = {
 		en = "Keep curios of a minimum item level",
@@ -655,6 +697,17 @@ local localization = {
 	auto_crafter_workflow_group = {
 		en = "Crafting workflow",
 	},
+	auto_crafter_myfavorites_color = {
+		en = "MyFavorites color",
+	},
+	auto_crafter_myfavorites_color_tooltip = {
+		en = "When Automatically favorite crafted weapon is enabled, assigns the favorite to one of MyFavorites' five configured color groups. Each option previews its current color.",
+	},
+	auto_crafter_myfavorites_color_1 = { en = "Color 1" },
+	auto_crafter_myfavorites_color_2 = { en = "Color 2" },
+	auto_crafter_myfavorites_color_3 = { en = "Color 3" },
+	auto_crafter_myfavorites_color_4 = { en = "Color 4" },
+	auto_crafter_myfavorites_color_5 = { en = "Color 5" },
 	auto_crafter_resuming_group = {
 		en = "Resuming item options",
 	},
@@ -922,6 +975,10 @@ local localization = {
 	auto_crafter_show_status_hud = { en = "Show top crafting HUD" },
 	auto_crafter_show_status_hud_tooltip = { en = "Show active Auto Crafter objectives at the top of Morningstar store and inventory views. Hidden during missions and mission matchmaking." },
 	option_requires_auto_crafter_inventory_reuse = { en = "Requires inventory-base reuse" },
+	option_requires_myfavorites = { en = "Requires the MyFavorites mod" },
+	option_requires_auto_crafter_myfavorites_color = { en = "Enable Automatically favorite crafted weapon" },
+	option_requires_curio_health_roll_protection = { en = "Enable minimum-Health-roll Curio protection to set its threshold." },
+	option_requires_curio_toughness_roll_protection = { en = "Enable minimum-Toughness-roll Curio protection to set its threshold." },
 }
 
 return localization
