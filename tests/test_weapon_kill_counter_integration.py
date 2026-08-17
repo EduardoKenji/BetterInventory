@@ -12,6 +12,7 @@ MODULE_PATH = (
     / "BetterInventory_wkc_integration.lua"
 )
 EDITOR_PATH = MODULE_PATH.with_name("BetterInventory_item_customization_editor.lua")
+RUNTIME_PATH = MODULE_PATH.with_name("BetterInventory_runtime.lua")
 
 
 def main() -> None:
@@ -27,6 +28,11 @@ def main() -> None:
             settings = settings,
             get = function(self, setting_id)
                 return self.settings[setting_id]
+            end,
+            hook_safe = function(self, class_name, method_name, callback)
+                self.hooked_class_name = class_name
+                self.hooked_method_name = method_name
+                self.hooked_callback = callback
             end,
         }
         local wkc = {
@@ -210,6 +216,74 @@ def main() -> None:
     icon_pass.change_function(weapon_content)
     assert weapon_content.wkc_kills == "77"
     assert weapon_content.wkc_kills_icon == "test/wkc/icon"
+
+    # Brunt's native two-column cards bypass BetterInventory's custom grid
+    # profile. Cap WKC's raw 22/20 px listing pair after grid construction and
+    # again after WKC's own change functions refresh their configured sizes.
+    brunt_grid = lua.execute(
+        r"""
+        local widget = {
+            passes = {
+                {
+                    style_id = "wkc_kills",
+                    change_function = function(content, style)
+                        content.text_refreshes = (content.text_refreshes or 0) + 1
+                        style.font_size = 24
+                    end,
+                },
+                {
+                    style_id = "wkc_kills_icon",
+                    change_function = function(content, style)
+                        content.icon_refreshes = (content.icon_refreshes or 0) + 1
+                        style.size[1] = 34
+                        style.size[2] = 34
+                    end,
+                },
+            },
+            content = {},
+            style = {
+                wkc_kills = {font_size = 20},
+                wkc_kills_icon = {size = {22, 22}},
+            },
+        }
+
+        return {
+            _all_grid_widgets = {widget},
+            _grid_widgets = {widget},
+        }
+        """
+    )
+    assert integration.cap_brunt_listing_overlay_sizes(brunt_grid) == 2
+    brunt_widget = brunt_grid._all_grid_widgets[1]
+    assert brunt_widget.style.wkc_kills.font_size == 14
+    assert brunt_widget.style.wkc_kills_icon.size[1] == 16
+    assert brunt_widget.style.wkc_kills_icon.size[2] == 16
+    assert brunt_widget.dirty is True
+    brunt_widget.passes[1].change_function(
+        brunt_widget.content, brunt_widget.style.wkc_kills
+    )
+    brunt_widget.passes[2].change_function(
+        brunt_widget.content, brunt_widget.style.wkc_kills_icon
+    )
+    assert brunt_widget.content.text_refreshes == 1
+    assert brunt_widget.content.icon_refreshes == 1
+    assert brunt_widget.style.wkc_kills.font_size == 14
+    assert brunt_widget.style.wkc_kills_icon.size[1] == 16
+    assert integration.cap_brunt_listing_overlay_sizes(brunt_grid) == 0
+
+    assert integration.install_brunt_listing_hook(mod) is True
+    assert integration.install_brunt_listing_hook(mod) is False
+    assert mod.hooked_class_name == "ViewElementGrid"
+    assert mod.hooked_method_name == "_on_present_grid_layout_changed"
+    brunt_grid._parent = lua.table_from({"__class_name": "CreditsGoodsVendorView"})
+    brunt_widget.style.wkc_kills.font_size = 30
+    brunt_widget.style.wkc_kills_icon.size[1] = 30
+    mod.hooked_callback(brunt_grid)
+    assert brunt_widget.style.wkc_kills.font_size == 14
+    assert brunt_widget.style.wkc_kills_icon.size[1] == 16
+    assert "Layout.install_brunt_wkc_listing_hook(mod)" in RUNTIME_PATH.read_text(
+        encoding="utf-8"
+    )
 
     # WKC injects listing passes into every native item pass template. Weapon
     # information can consequently inherit multiple card counters on its stat

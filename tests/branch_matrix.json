@@ -26,8 +26,8 @@
       "name": "weapon-kill-counter.presentation-fixture-is-air-gapped",
       "test": "test_weapon_kill_counter_integration.py",
       "case": "presentation_only_fixture_load_order_deduplication_and_responsive_card_profiles",
-      "outcome": "the default-off 1,000-kill fixture changes only responsive weapon-card presentation while preserving WKC statistics and feature ownership; listing counters remain one-pass across load order and are removed from weapon-information stat rows without removing WKC's dedicated detail counter",
-      "modules": ["BetterInventory_wkc_integration.lua", "BetterInventory_layout_cards.lua"]
+      "outcome": "the default-off 1,000-kill fixture changes only responsive weapon-card presentation while preserving WKC statistics and feature ownership; listing counters remain one-pass across load order, Brunt's native cards retain 16 px icon and 14 px font caps after WKC refreshes, and weapon-information stat rows lose inherited counters without removing WKC's dedicated detail counter",
+      "modules": ["BetterInventory_wkc_integration.lua", "BetterInventory_layout_cards.lua", "BetterInventory_runtime.lua"]
     },
     {
       "name": "arbiter.rejects-overlap",

@@ -1,5 +1,9 @@
 # BetterInventory changelog
 
+## 2.5.1 - 2026-08-17
+
+- Reduces WKC's kill-count font from 20 px to 14 px and icon from 22 px to 16 px on Brunt's native two-column weapon cards, reapplies those caps after WKC style refreshes, and leaves other listing and weapon-detail profiles unchanged.
+
 ## 2.5.0 - 2026-08-17
 
 - Adds default-off Health (21%) and Toughness (17%) Curio roll thresholds: each enabled threshold takes precedence over item level for its matching primary type, while enabled Wound and Stamina Curios continue to use the minimum item-level rule.

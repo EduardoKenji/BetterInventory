@@ -90,6 +90,9 @@ function Runtime.install()
 	if Layout and Layout.ImageLayout and type(Layout.ImageLayout.initialize_settings) == "function" then
 		Layout.ImageLayout.initialize_settings(mod)
 	end
+	if Layout and type(Layout.install_brunt_wkc_listing_hook) == "function" then
+		Layout.install_brunt_wkc_listing_hook(mod)
+	end
 
 	if FavoriteIntegration and type(FavoriteIntegration.install_manual_purchase_hooks) == "function" then
 		FavoriteIntegration.install_manual_purchase_hooks(mod, {

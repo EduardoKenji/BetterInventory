@@ -9,7 +9,8 @@
 	"BetterInventory_favorite_integration.lua": "vendor-purchase-favorite-hooks",
     "BetterInventory_item_customization.lua": "customization-storage-hooks",
     "BetterInventory_item_customization_editor.lua": "customization-editor-hooks",
-    "BetterInventory_runtime.lua": "runtime-lifecycle-and-grid-hooks"
+    "BetterInventory_runtime.lua": "runtime-lifecycle-and-grid-hooks",
+    "BetterInventory_wkc_integration.lua": "weapon-kill-counter-compatibility-hooks"
   },
   "nested_modules": {
     "auto_crafter/core/candidate_policy.lua": {"category": "pure-policy", "risk": "high", "owner": "auto-crafter-core"},

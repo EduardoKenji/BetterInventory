@@ -2,7 +2,7 @@
 
 [![BetterInventory verification](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml/badge.svg)](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml)
 
-> Current release: **v2.5.0** (2026-08-17). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
+> Current release: **v2.5.1** (2026-08-17). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
 
 BetterInventory is a standalone inventory and item-management mod for Warhammer 40,000: Darktide. It adds responsive weapon and Curio cards, richer item information, configurable sorting, supported vendor layouts, optional mod integrations, and safety-gated inventory workflows.
 
@@ -18,7 +18,11 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - A bounded inventory-options panel for sorting, discard rules, integrations, and view-specific controls.
 - Optional Quick Discard, Automatic Discard, Automatic Curio Buyer, and Auto Crafter workflows with explicit ownership, authoritative revalidation, and fail-closed behavior.
 
-## What's new in v2.5.0
+## What's new in v2.5.1
+
+- WKC kill counters on Brunt's native two-column weapon cards now use a compact 14 px font and 16 px icon, preventing the counter from competing with weapon names while leaving other WKC profiles unchanged.
+
+### v2.5.0 changes included
 
 - Conditional inventory-widget rows retain the current scroll offset instead of jumping to the top after option clicks.
 - Quick Discard adds default-off minimum Health (21%) and Toughness (17%) roll rules. When enabled, each roll threshold overrides item level for its matching Curio primary type; Wound and Stamina Curios continue to use the enabled minimum-item-level rule.
@@ -152,7 +156,7 @@ Run the complete repository verification from the project root:
 powershell -ExecutionPolicy Bypass -File .\tests\verify.ps1
 ```
 
-The v2.5.0 suite currently discovers 41 behavior-test files and 155 named cases. To run the behavior suite directly with risk-weighted Lua coverage:
+The v2.5.1 suite currently discovers 41 behavior-test files and 155 named cases. To run the behavior suite directly with risk-weighted Lua coverage:
 
 ```powershell
 py -3 .\tests\run_tests.py --timeout-seconds 45 --coverage-output lua-coverage.json

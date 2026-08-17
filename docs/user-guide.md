@@ -1,10 +1,12 @@
 # BetterInventory user guide
 
-BetterInventory v2.5.0 improves inventory, Character Overview, Hadron, Requisition Weapons & Curios, and optional GlobalStore cards while preserving Darktide's native item and icon lifecycle.
+BetterInventory v2.5.1 improves inventory, Character Overview, Hadron, Requisition Weapons & Curios, and optional GlobalStore cards while preserving Darktide's native item and icon lifecycle.
 
 The inventory options widget preserves its scroll position when conditional controls are added or removed. Quick Discard has default-off minimum Health and Toughness roll rules. An enabled roll threshold takes precedence over item level for its matching Curio primary type: a Health or Toughness Curio below that roll is discardable even when it meets the item-level threshold. Enabled Wound and Stamina types continue to use the minimum item level. Curio-type checkboxes still scope which primary types receive protection.
 
 Automatic favorite behavior is separated by purchase source and defaults to Off. The Armoury setting covers manually confirmed purchases from the rotating Armoury Exchange; Brunt's Armoury is excluded. Sire Melk has independent settings for Limited Time Acquisitions and Mystery Acquisitions. With GlobalStore installed, Armoury Multi-Operative Supply inherits the Armoury setting and Sire Melk Multi-Operative Supply inherits the Limited Time setting; no additional GlobalStore favorite option is added. A cross-character GlobalStore purchase stores the favorite in the selected offer owner's character save, not the currently active character's save. Unrelated custom vendor services are excluded. Automatic Curio Buyer has its own checkbox in the inventory widget. Auto Crafter uses only its own favorite option after exact authoritative result validation, so rejected rolls remain unfavorited and discardable.
+
+When Weapon Kill Counter is installed, Brunt's native two-column weapon cards cap the listing counter at a 14 px font and 16 px icon so it remains visually subordinate to the weapon name. BetterInventory reapplies these caps after WKC style refreshes without changing WKC statistics, other card profiles, or the dedicated weapon-detail counter.
 
 With MyFavorites installed, enabling **Automatically favorite crafted weapon** reveals a Color 1-5 selector immediately beneath it in the crafting widget. The selector previews MyFavorites' configured colors and assigns the final favorite to the chosen group. Color assignment is best-effort and does not turn a successful native favorite into a crafting failure. **Active Queue** can be collapsed or expanded by clicking its header.
 

@@ -20,6 +20,9 @@ local COMPACT_CARD_HEIGHT_PADDING = 7
 local COMPACT_X_ADJUSTMENT = -3
 local SINGLE_COLUMN_X_ADJUSTMENT = -1
 local SINGLE_COLUMN_Y_ADJUSTMENT = -4
+local BRUNT_LISTING_ICON_SIZE = 16
+local BRUNT_LISTING_FONT_SIZE = 14
+local brunt_listing_hook_installed = false
 
 local function optional_wkc()
 	if type(get_mod) ~= "function" then
@@ -343,6 +346,93 @@ local function remove_weapon_stats_listing_overlays(element)
 	return removed
 end
 
+local function cap_brunt_listing_overlay_sizes(item_grid)
+	local seen = {}
+	local wrapped = 0
+
+	local function cap_style(style, style_id)
+		if type(style) ~= "table" then
+			return
+		end
+
+		if style_id == TEXT_STYLE_ID then
+			style.font_size = math.min(tonumber(style.font_size) or BRUNT_LISTING_FONT_SIZE, BRUNT_LISTING_FONT_SIZE)
+		elseif style_id == ICON_STYLE_ID then
+			local size = style.size
+
+			if type(size) == "table" then
+				size[1] = math.min(tonumber(size[1]) or BRUNT_LISTING_ICON_SIZE, BRUNT_LISTING_ICON_SIZE)
+				size[2] = math.min(tonumber(size[2]) or BRUNT_LISTING_ICON_SIZE, BRUNT_LISTING_ICON_SIZE)
+			end
+		end
+	end
+
+	local function cap_widget(widget)
+		if type(widget) ~= "table" or widget.name == DETAIL_WIDGET_NAME or seen[widget] then
+			return
+		end
+
+		seen[widget] = true
+		local styles = widget.style
+		local widget_changed = false
+
+		for _, pass in pairs(type(widget.passes) == "table" and widget.passes or {}) do
+			local style_id = pass and (pass.style_id == TEXT_STYLE_ID or pass.style_id == ICON_STYLE_ID) and pass.style_id or pass and pass.value_id
+
+			if style_id == TEXT_STYLE_ID or style_id == ICON_STYLE_ID then
+				cap_style(type(styles) == "table" and styles[style_id], style_id)
+
+				if pass.better_inventory_wkc_brunt_size_cap ~= true then
+					local original_change_function = pass.change_function
+
+					pass.change_function = function(content, style, ...)
+						if type(original_change_function) == "function" then
+							original_change_function(content, style, ...)
+						end
+
+						cap_style(style, style_id)
+					end
+					pass.better_inventory_wkc_brunt_size_cap = true
+					wrapped = wrapped + 1
+				end
+
+				widget_changed = true
+			end
+		end
+
+		if widget_changed then
+			widget.dirty = true
+		end
+	end
+
+	for _, collection_name in ipairs({ "_all_grid_widgets", "_grid_widgets", "_widgets", "_widgets_by_name" }) do
+		local collection = item_grid and item_grid[collection_name]
+
+		for _, widget in pairs(type(collection) == "table" and collection or {}) do
+			cap_widget(widget)
+		end
+	end
+
+	return wrapped
+end
+
+local function install_brunt_listing_hook(mod)
+	if brunt_listing_hook_installed or not mod or type(mod.hook_safe) ~= "function" then
+		return false
+	end
+
+	brunt_listing_hook_installed = true
+	mod:hook_safe("ViewElementGrid", "_on_present_grid_layout_changed", function(item_grid)
+		local view = item_grid and item_grid._parent
+
+		if view and view.__class_name == "CreditsGoodsVendorView" then
+			cap_brunt_listing_overlay_sizes(item_grid)
+		end
+	end)
+
+	return true
+end
+
 local function configure_passes(mod, pass_template, card_width, text_left, configuration, columns)
 	if type(pass_template) ~= "table" then
 		return false
@@ -454,6 +544,8 @@ Integration.profile = profile
 Integration.configure_passes = configure_passes
 Integration.compact_card_height_padding = compact_card_height_padding
 Integration.remove_weapon_stats_listing_overlays = remove_weapon_stats_listing_overlays
+Integration.cap_brunt_listing_overlay_sizes = cap_brunt_listing_overlay_sizes
+Integration.install_brunt_listing_hook = install_brunt_listing_hook
 Integration.TEXT_STYLE_ID = TEXT_STYLE_ID
 Integration.ICON_STYLE_ID = ICON_STYLE_ID
 
