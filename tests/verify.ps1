@@ -167,10 +167,7 @@ $itemCustomization = @(
 $diagnostics = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_diagnostics.lua") -Raw
 
 $releaseArchive = Join-Path $projectRoot "BetterInventory.zip"
-
-if (-not (Test-Path -LiteralPath $releaseArchive -PathType Leaf)) {
-	throw "Local release archive is missing: $releaseArchive"
-}
+$releaseArchivePresent = Test-Path -LiteralPath $releaseArchive -PathType Leaf
 
 $gitignore = Get-Content -LiteralPath (Join-Path $projectRoot ".gitignore") -Raw
 
@@ -795,78 +792,82 @@ try {
 	}
 }
 
-$localArchive = [IO.Compression.ZipFile]::OpenRead($releaseArchive)
-
-try {
-	$localEntryMap = @{}
-
-	foreach ($entry in $localArchive.Entries) {
-		if (-not [string]::IsNullOrEmpty($entry.Name)) {
-			if ($entry.FullName.Contains("\")) {
-				throw "Local release archive entry uses a Windows path separator: $($entry.FullName)"
-			}
-
-			$localEntryMap[$entry.FullName] = $entry
-		}
-	}
-
-	$expectedLocalPaths = @("BetterInventory/BetterInventory.mod")
-	$expectedLocalPaths += @($runtimeLuaFiles | ForEach-Object {
-		$relativeRuntimePath = $_.FullName.Substring($scriptRoot.Length).TrimStart("\").Replace("\", "/")
-		"BetterInventory/scripts/mods/BetterInventory/$relativeRuntimePath"
-	})
-	$expectedLocalPaths = @($expectedLocalPaths | Sort-Object)
-	$actualLocalPaths = @($localEntryMap.Keys | Sort-Object)
-
-	if (@(Compare-Object $expectedLocalPaths $actualLocalPaths).Count -gt 0) {
-		throw "Local release archive does not contain the current runtime file set. Rebuild BetterInventory.zip."
-	}
-
-	foreach ($archivePath in $expectedLocalPaths) {
-		$entryStream = $localEntryMap[$archivePath].Open()
-		$sha256 = [Security.Cryptography.SHA256]::Create()
-
-		try {
-			$entryHash = ([BitConverter]::ToString($sha256.ComputeHash($entryStream))).Replace("-", "")
-		} finally {
-			$sha256.Dispose()
-			$entryStream.Dispose()
-		}
-
-		$sourcePath = if ($archivePath -eq "BetterInventory/BetterInventory.mod") {
-			Join-Path $projectRoot "BetterInventory.mod"
-		} else {
-			$runtimePrefix = "BetterInventory/scripts/mods/BetterInventory/"
-			$relativeRuntimePath = $archivePath.Substring($runtimePrefix.Length).Replace("/", "\")
-			Join-Path $scriptRoot $relativeRuntimePath
-		}
-		$sourceHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $sourcePath).Hash
-
-		if ($entryHash -ne $sourceHash) {
-			throw "Local release archive hash mismatch: $archivePath. Rebuild BetterInventory.zip."
-		}
-	}
-
-	$dataEntry = $localEntryMap["BetterInventory/scripts/mods/BetterInventory/BetterInventory_data.lua"]
-	$dataReader = New-Object IO.StreamReader($dataEntry.Open())
+if ($releaseArchivePresent) {
+	$localArchive = [IO.Compression.ZipFile]::OpenRead($releaseArchive)
 
 	try {
-		$archivedData = $dataReader.ReadToEnd()
+		$localEntryMap = @{}
+
+		foreach ($entry in $localArchive.Entries) {
+			if (-not [string]::IsNullOrEmpty($entry.Name)) {
+				if ($entry.FullName.Contains("\")) {
+					throw "Local release archive entry uses a Windows path separator: $($entry.FullName)"
+				}
+
+				$localEntryMap[$entry.FullName] = $entry
+			}
+		}
+
+		$expectedLocalPaths = @("BetterInventory/BetterInventory.mod")
+		$expectedLocalPaths += @($runtimeLuaFiles | ForEach-Object {
+			$relativeRuntimePath = $_.FullName.Substring($scriptRoot.Length).TrimStart("\").Replace("\", "/")
+			"BetterInventory/scripts/mods/BetterInventory/$relativeRuntimePath"
+		})
+		$expectedLocalPaths = @($expectedLocalPaths | Sort-Object)
+		$actualLocalPaths = @($localEntryMap.Keys | Sort-Object)
+
+		if (@(Compare-Object $expectedLocalPaths $actualLocalPaths).Count -gt 0) {
+			throw "Local release archive does not contain the current runtime file set. Rebuild BetterInventory.zip."
+		}
+
+		foreach ($archivePath in $expectedLocalPaths) {
+			$entryStream = $localEntryMap[$archivePath].Open()
+			$sha256 = [Security.Cryptography.SHA256]::Create()
+
+			try {
+				$entryHash = ([BitConverter]::ToString($sha256.ComputeHash($entryStream))).Replace("-", "")
+			} finally {
+				$sha256.Dispose()
+				$entryStream.Dispose()
+			}
+
+			$sourcePath = if ($archivePath -eq "BetterInventory/BetterInventory.mod") {
+				Join-Path $projectRoot "BetterInventory.mod"
+			} else {
+				$runtimePrefix = "BetterInventory/scripts/mods/BetterInventory/"
+				$relativeRuntimePath = $archivePath.Substring($runtimePrefix.Length).Replace("/", "\")
+				Join-Path $scriptRoot $relativeRuntimePath
+			}
+			$sourceHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $sourcePath).Hash
+
+			if ($entryHash -ne $sourceHash) {
+				throw "Local release archive hash mismatch: $archivePath. Rebuild BetterInventory.zip."
+			}
+		}
+
+		$dataEntry = $localEntryMap["BetterInventory/scripts/mods/BetterInventory/BetterInventory_data.lua"]
+		$dataReader = New-Object IO.StreamReader($dataEntry.Open())
+
+		try {
+			$archivedData = $dataReader.ReadToEnd()
+		} finally {
+			$dataReader.Dispose()
+		}
+
+		$sourceVersionMatch = [regex]::Match($data, 'MOD_VERSION\s*=\s*"([^"]+)"')
+		$archivedVersionMatch = [regex]::Match($archivedData, 'MOD_VERSION\s*=\s*"([^"]+)"')
+
+		if (-not $sourceVersionMatch.Success -or -not $archivedVersionMatch.Success -or $sourceVersionMatch.Groups[1].Value -ne $archivedVersionMatch.Groups[1].Value) {
+			throw "Local release archive version does not match BetterInventory_data.lua. Rebuild BetterInventory.zip."
+		}
 	} finally {
-		$dataReader.Dispose()
+		$localArchive.Dispose()
 	}
 
-	$sourceVersionMatch = [regex]::Match($data, 'MOD_VERSION\s*=\s*"([^"]+)"')
-	$archivedVersionMatch = [regex]::Match($archivedData, 'MOD_VERSION\s*=\s*"([^"]+)"')
-
-	if (-not $sourceVersionMatch.Success -or -not $archivedVersionMatch.Success -or $sourceVersionMatch.Groups[1].Value -ne $archivedVersionMatch.Groups[1].Value) {
-		throw "Local release archive version does not match BetterInventory_data.lua. Rebuild BetterInventory.zip."
-	}
-} finally {
-	$localArchive.Dispose()
+	Write-Host "Ignored local release archive parity verified: $releaseArchive" -ForegroundColor Green
+} else {
+	Write-Host "Ignored local release archive not present; generated package verification remains authoritative." -ForegroundColor Yellow
 }
-
-Write-Host "Ignored local release archive parity verified: $releaseArchive" -ForegroundColor Green
 
 Write-Host "BetterInventory static verification passed." -ForegroundColor Green
 
