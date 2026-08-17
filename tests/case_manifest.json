@@ -1,4 +1,7 @@
 {
+  "test_coverage_support.py": [
+    {"name": "multiple_lua_runtimes_merge_without_overwriting_earlier_coverage", "risk": "high", "start_line": 1, "end_line": 21}
+  ],
   "test_weapon_options_panel.py": [
     {"name": "native_compatibility_debug_rows_constant_inset_and_seven_row_clipped_scroll_geometry", "risk": "high", "start_line": 15, "end_line": 202}
   ],

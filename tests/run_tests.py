@@ -287,12 +287,19 @@ def count_source_lines(path: Path) -> int:
 
 
 def build_coverage_report(
-    coverage_directory: Path, policy_path: Path
+    coverage_directory: Path,
+    policy_path: Path,
+    passed_branch_modules: set[str] | None = None,
 ) -> dict[str, object]:
     covered_by_name: dict[str, set[int]] = {}
     policy = json.loads(policy_path.read_text(encoding="utf-8"))
     policy_modules = policy.get("modules", {})
+    static_modules = policy.get("static_modules", {})
     declarative_modules = set(policy.get("declarative_modules", []))
+    passed_branch_modules = passed_branch_modules or set()
+
+    if not isinstance(policy_modules, dict) or not isinstance(static_modules, dict):
+        raise ValueError("coverage modules and static_modules must be objects")
 
     for part_path in coverage_directory.glob("*.json"):
         try:
@@ -308,6 +315,7 @@ def build_coverage_report(
     runtime_root = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory"
     runtime_names = {path.name for path in runtime_root.glob("BetterInventory*.lua")}
     policy_names = set(policy_modules)
+    static_names = set(static_modules)
     policy_failures = [
         {
             "policy_module": name,
@@ -315,14 +323,30 @@ def build_coverage_report(
         }
         for name in sorted(policy_names - runtime_names)
     ]
+    policy_failures.extend(
+        {
+            "policy_module": name,
+            "reason": "static_policy_references_missing_runtime_module",
+        }
+        for name in sorted(static_names - runtime_names)
+    )
+    policy_failures.extend(
+        {
+            "policy_module": name,
+            "reason": "module_has_both_line_and_static_coverage_policy",
+        }
+        for name in sorted(policy_names & static_names)
+    )
 
     for runtime_path in sorted(runtime_root.glob("BetterInventory*.lua")):
         total_lines = count_source_lines(runtime_path)
         covered_lines = covered_by_name.get(runtime_path.name, set())
         covered_count = len(covered_lines)
         policy_entry = policy_modules.get(runtime_path.name)
+        static_entry = static_modules.get(runtime_path.name)
         declarative = runtime_path.name in declarative_modules
-        unassigned = policy_entry is None and not declarative
+        static_verified = static_entry is not None and runtime_path.name in passed_branch_modules
+        unassigned = policy_entry is None and static_entry is None and not declarative
         minimum_percent = (
             float(policy_entry.get("minimum_percent", 0.0))
             if policy_entry is not None
@@ -331,7 +355,11 @@ def build_coverage_report(
         coverage_percent = round(covered_count * 100 / total_lines, 2) if total_lines else 100.0
         gate_passed = (
             declarative
-            or (not unassigned and coverage_percent >= minimum_percent)
+            or static_verified
+            or (
+                policy_entry is not None
+                and coverage_percent >= minimum_percent
+            )
         )
 
         if unassigned:
@@ -349,10 +377,31 @@ def build_coverage_report(
                 "covered_lines": covered_count,
                 "coverage_percent": coverage_percent,
                 "declarative": declarative,
+                "verification_mode": (
+                    "declarative"
+                    if declarative
+                    else "static_branch_contract"
+                    if static_entry is not None
+                    else "line_coverage"
+                ),
                 "minimum_percent": minimum_percent,
-                "risk": policy_entry.get("risk", "declarative" if declarative else "unassigned") if policy_entry else ("declarative" if declarative else "unassigned"),
+                "risk": (
+                    policy_entry.get("risk")
+                    if policy_entry
+                    else static_entry.get("risk")
+                    if static_entry
+                    else "declarative"
+                    if declarative
+                    else "unassigned"
+                ),
                 "gate_passed": gate_passed,
-                "failure": "unassigned_non_declarative_runtime_module" if unassigned else None,
+                "failure": (
+                    "unassigned_non_declarative_runtime_module"
+                    if unassigned
+                    else "static_module_has_no_passing_branch_contract"
+                    if static_entry is not None and not static_verified
+                    else None
+                ),
             }
         )
 
@@ -499,7 +548,14 @@ def main() -> int:
 
         if args.coverage_output and temporary_coverage_directory:
             coverage_report = build_coverage_report(
-                temporary_coverage_directory, args.coverage_policy
+                temporary_coverage_directory,
+                args.coverage_policy,
+                {
+                    module
+                    for result in branch_results
+                    if result["gate_passed"]
+                    for module in result["modules"]
+                },
             )
             args.coverage_output.parent.mkdir(parents=True, exist_ok=True)
             args.coverage_output.write_text(

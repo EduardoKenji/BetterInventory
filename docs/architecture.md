@@ -23,7 +23,7 @@
 
 `tools/runtime_bundle_manifest.py` records the descriptor and every discovered runtime Lua source in `docs/generated-runtime-bundle-manifest.json`. B38 intentionally keeps DMF's fixed data/localization entry points until a clean-install generator smoke test proves source splitting safe.
 
-`tests/case_manifest.json` names the risk cases represented by each behavior script. `tests/run_tests.py` rejects zero-test or manifest drift, reports case-level status, and applies `tests/coverage_policy.json` only to behavior-bearing runtime modules; declarative data/localization files remain visible but do not gate aggregate coverage.
+`tests/case_manifest.json` names the risk cases represented by each behavior script. `tests/run_tests.py` rejects zero-test or manifest drift, reports case-level status, and applies `tests/coverage_policy.json` to behavior-bearing runtime modules. Declarative data/localization files remain visible without a line threshold. A runtime integration facade that cannot execute independently may use `static_modules` only while at least one passing branch-matrix contract explicitly owns that module.
 
 ## Refactoring rules
 

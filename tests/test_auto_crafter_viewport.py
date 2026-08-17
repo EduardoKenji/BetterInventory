@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from lupa import LuaRuntime
+from coverage_support import InstrumentedLuaRuntime as LuaRuntime
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -13,7 +13,7 @@ HUD_PATH = RUNTIME_ROOT / "auto_crafter" / "darktide" / "hud_element.lua"
 
 def main() -> None:
     layout = LuaRuntime(unpack_returned_tuples=True).execute(
-        LAYOUT_PATH.read_text(encoding="utf-8")
+        LAYOUT_PATH.read_text(encoding="utf-8"), name=str(LAYOUT_PATH)
     )
     resolution_matrix = (
         (1920, 1080, 1.0, 1380, 1380, 580),

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from lupa import LuaRuntime
+from coverage_support import InstrumentedLuaRuntime as LuaRuntime
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -17,7 +17,9 @@ POLICY_PATH = (
 
 def main() -> None:
     lua = LuaRuntime(unpack_returned_tuples=True)
-    policy = lua.execute(POLICY_PATH.read_text(encoding="utf-8"))
+    policy = lua.execute(
+        POLICY_PATH.read_text(encoding="utf-8"), name=str(POLICY_PATH)
+    )
     table = lua.table_from
 
     active = table({"phase4": table({"running": True})}, recursive=True)
