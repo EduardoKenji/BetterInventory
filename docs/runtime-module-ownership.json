@@ -74,7 +74,7 @@
     "BetterInventory_item_customization_name_it.lua": {"category": "integration-adapter", "risk": "high", "dependencies": []},
     "BetterInventory_item_customization_store.lua": {"category": "async-state", "risk": "high", "dependencies": []},
     "BetterInventory_layout.lua": {"category": "ui-facade", "risk": "high", "dependencies": ["BetterInventory_layout_blueprints.lua", "BetterInventory_layout_cards.lua", "BetterInventory_layout_content.lua", "BetterInventory_layout_geometry.lua"]},
-    "BetterInventory_layout_cards.lua": {"category": "ui-card-composition", "risk": "high", "dependencies": ["BetterInventory_layout_content.lua"]},
+    "BetterInventory_layout_cards.lua": {"category": "ui-card-composition", "risk": "high", "dependencies": ["BetterInventory_layout_content.lua", "BetterInventory_wkc_integration.lua"]},
     "BetterInventory_layout_geometry.lua": {"category": "ui-geometry", "risk": "high", "dependencies": ["BetterInventory_layout_cards.lua", "BetterInventory_layout_content.lua"]},
     "BetterInventory_layout_blueprints.lua": {"category": "ui-blueprint-coordinator", "risk": "high", "dependencies": ["BetterInventory_image_layout.lua", "BetterInventory_layout_cards.lua", "BetterInventory_layout_content.lua", "BetterInventory_layout_geometry.lua"]},
     "BetterInventory_image_layout.lua": {"category": "pure-ui-geometry", "risk": "high", "dependencies": []},
@@ -87,6 +87,7 @@
     "BetterInventory_operation_arbiter.lua": {"category": "core-state-primitive", "risk": "critical", "dependencies": []},
     "BetterInventory_settings.lua": {"category": "settings-registry", "risk": "high", "dependencies": []},
     "BetterInventory_view_session.lua": {"category": "core-state-primitive", "risk": "high", "dependencies": []},
-    "BetterInventory_weapon_options_panel.lua": {"category": "ui-compatibility", "risk": "high", "dependencies": []}
+    "BetterInventory_weapon_options_panel.lua": {"category": "ui-compatibility", "risk": "high", "dependencies": []},
+    "BetterInventory_wkc_integration.lua": {"category": "integration-adapter", "risk": "high", "dependencies": []}
   }
 }

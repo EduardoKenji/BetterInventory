@@ -2,6 +2,7 @@ local Text = require("scripts/utilities/ui/text")
 local Items = require("scripts/utilities/items")
 local MasterItems = require("scripts/backend/master_items")
 local LayoutContent = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_content")
+local WeaponKillCounter = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_wkc_integration")
 
 local Cards = {}
 local content = LayoutContent
@@ -1194,7 +1195,7 @@ local function configure_new_item_highlight(mod, pass_template, card_width, card
 	end
 end
 
-local function add_custom_content_passes(mod, pass_template, card_width, text_left, base_text_style, configuration)
+local function add_custom_content_passes(mod, pass_template, card_width, text_left, base_text_style, configuration, columns)
 	configuration = configuration or {}
 
 	local blessing_display_mode = weapon_blessing_display_mode(mod)
@@ -1435,6 +1436,8 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 			},
 		})
 	end
+
+	WeaponKillCounter.configure_passes(mod, pass_template, card_width, text_left, configuration, columns)
 end
 
 
@@ -1836,6 +1839,7 @@ local function configure_card_content(mod, item_blueprint, configuration)
 end
 
 Cards.configure_native_quick_look_card_passes = configure_native_quick_look_card_passes
+Cards.weapon_kill_counter_card_height_padding = WeaponKillCounter.compact_card_height_padding
 Cards.disable_quick_look_card_passes = disable_quick_look_card_passes
 Cards.preserve_visibility = preserve_visibility
 Cards.set_visibility = set_visibility

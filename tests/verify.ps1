@@ -166,10 +166,16 @@ $itemCustomization = @(
 ) -join "`n"
 $diagnostics = Get-Content -LiteralPath (Join-Path $scriptRoot "BetterInventory_diagnostics.lua") -Raw
 
-$trackedReleaseArchive = Join-Path $projectRoot "BetterInventory.zip"
+$releaseArchive = Join-Path $projectRoot "BetterInventory.zip"
 
-if (-not (Test-Path -LiteralPath $trackedReleaseArchive -PathType Leaf)) {
-	throw "Tracked release archive is missing: $trackedReleaseArchive"
+if (-not (Test-Path -LiteralPath $releaseArchive -PathType Leaf)) {
+	throw "Local release archive is missing: $releaseArchive"
+}
+
+$gitignore = Get-Content -LiteralPath (Join-Path $projectRoot ".gitignore") -Raw
+
+if ($gitignore -notmatch '(?m)^/(?:\*|BetterInventory)\.zip\s*$') {
+	throw "Generated release archives must remain ignored by .gitignore."
 }
 
 if (-not (Test-Path -LiteralPath $runtimeBundleChecker -PathType Leaf)) {
@@ -789,35 +795,35 @@ try {
 	}
 }
 
-$trackedArchive = [IO.Compression.ZipFile]::OpenRead($trackedReleaseArchive)
+$localArchive = [IO.Compression.ZipFile]::OpenRead($releaseArchive)
 
 try {
-	$trackedEntryMap = @{}
+	$localEntryMap = @{}
 
-	foreach ($entry in $trackedArchive.Entries) {
+	foreach ($entry in $localArchive.Entries) {
 		if (-not [string]::IsNullOrEmpty($entry.Name)) {
 			if ($entry.FullName.Contains("\")) {
-				throw "Tracked release archive entry uses a Windows path separator: $($entry.FullName)"
+				throw "Local release archive entry uses a Windows path separator: $($entry.FullName)"
 			}
 
-			$trackedEntryMap[$entry.FullName] = $entry
+			$localEntryMap[$entry.FullName] = $entry
 		}
 	}
 
-	$expectedTrackedPaths = @("BetterInventory/BetterInventory.mod")
-	$expectedTrackedPaths += @($runtimeLuaFiles | ForEach-Object {
+	$expectedLocalPaths = @("BetterInventory/BetterInventory.mod")
+	$expectedLocalPaths += @($runtimeLuaFiles | ForEach-Object {
 		$relativeRuntimePath = $_.FullName.Substring($scriptRoot.Length).TrimStart("\").Replace("\", "/")
 		"BetterInventory/scripts/mods/BetterInventory/$relativeRuntimePath"
 	})
-	$expectedTrackedPaths = @($expectedTrackedPaths | Sort-Object)
-	$actualTrackedPaths = @($trackedEntryMap.Keys | Sort-Object)
+	$expectedLocalPaths = @($expectedLocalPaths | Sort-Object)
+	$actualLocalPaths = @($localEntryMap.Keys | Sort-Object)
 
-	if (@(Compare-Object $expectedTrackedPaths $actualTrackedPaths).Count -gt 0) {
-		throw "Tracked release archive does not contain the current runtime file set. Rebuild BetterInventory.zip."
+	if (@(Compare-Object $expectedLocalPaths $actualLocalPaths).Count -gt 0) {
+		throw "Local release archive does not contain the current runtime file set. Rebuild BetterInventory.zip."
 	}
 
-	foreach ($archivePath in $expectedTrackedPaths) {
-		$entryStream = $trackedEntryMap[$archivePath].Open()
+	foreach ($archivePath in $expectedLocalPaths) {
+		$entryStream = $localEntryMap[$archivePath].Open()
 		$sha256 = [Security.Cryptography.SHA256]::Create()
 
 		try {
@@ -837,30 +843,30 @@ try {
 		$sourceHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $sourcePath).Hash
 
 		if ($entryHash -ne $sourceHash) {
-			throw "Tracked release archive hash mismatch: $archivePath. Rebuild BetterInventory.zip."
+			throw "Local release archive hash mismatch: $archivePath. Rebuild BetterInventory.zip."
 		}
 	}
 
-	$dataEntry = $trackedEntryMap["BetterInventory/scripts/mods/BetterInventory/BetterInventory_data.lua"]
+	$dataEntry = $localEntryMap["BetterInventory/scripts/mods/BetterInventory/BetterInventory_data.lua"]
 	$dataReader = New-Object IO.StreamReader($dataEntry.Open())
 
 	try {
-		$trackedData = $dataReader.ReadToEnd()
+		$archivedData = $dataReader.ReadToEnd()
 	} finally {
 		$dataReader.Dispose()
 	}
 
 	$sourceVersionMatch = [regex]::Match($data, 'MOD_VERSION\s*=\s*"([^"]+)"')
-	$trackedVersionMatch = [regex]::Match($trackedData, 'MOD_VERSION\s*=\s*"([^"]+)"')
+	$archivedVersionMatch = [regex]::Match($archivedData, 'MOD_VERSION\s*=\s*"([^"]+)"')
 
-	if (-not $sourceVersionMatch.Success -or -not $trackedVersionMatch.Success -or $sourceVersionMatch.Groups[1].Value -ne $trackedVersionMatch.Groups[1].Value) {
-		throw "Tracked release archive version does not match BetterInventory_data.lua. Rebuild BetterInventory.zip."
+	if (-not $sourceVersionMatch.Success -or -not $archivedVersionMatch.Success -or $sourceVersionMatch.Groups[1].Value -ne $archivedVersionMatch.Groups[1].Value) {
+		throw "Local release archive version does not match BetterInventory_data.lua. Rebuild BetterInventory.zip."
 	}
 } finally {
-	$trackedArchive.Dispose()
+	$localArchive.Dispose()
 }
 
-Write-Host "Tracked release archive parity verified: $trackedReleaseArchive" -ForegroundColor Green
+Write-Host "Ignored local release archive parity verified: $releaseArchive" -ForegroundColor Green
 
 Write-Host "BetterInventory static verification passed." -ForegroundColor Green
 

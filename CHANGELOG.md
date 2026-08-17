@@ -1,5 +1,9 @@
 # BetterInventory changelog
 
+## 2.4.1 - 2026-08-17
+
+- Adds responsive Weapon Kill Counter totals to three-column, single-column, Hadron, and Character Overview weapon cards, plus an off-by-default 1,000-kill visual test that never modifies WKC statistics.
+
 ## 2.4.0 - 2026-08-16
 
 - Perfect rolls rank fifth stats 62 > 61 > 60.

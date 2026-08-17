@@ -2507,7 +2507,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "2.4.0"
+    assert data.version == "2.4.1"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
@@ -2605,6 +2605,7 @@ def main() -> None:
     ] == [
 		"debug_enable_hot_path_diagnostics",
 		"debug_weapon_options_button_count",
+		"debug_weapon_kill_counter_kills",
         "debug_expand_armoury_requisition_window_30_percent",
         "debug_armoury_requisition_window_increase_percent",
 		"debug_adjust_inventory_window_width",
@@ -2984,6 +2985,7 @@ def main() -> None:
     assert defaults["debug_expand_armoury_requisition_window_30_percent"] is False
     assert defaults["debug_enable_hot_path_diagnostics"] is False
     assert defaults["debug_weapon_options_button_count"] == 0
+    assert defaults["debug_weapon_kill_counter_kills"] == 0
     assert defaults["debug_armoury_requisition_window_increase_percent"] == 30
     assert defaults["debug_adjust_inventory_window_width"] is False
     assert defaults["debug_inventory_window_width_adjustment_percent"] == 30

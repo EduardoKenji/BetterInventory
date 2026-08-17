@@ -523,7 +523,8 @@ Geometry.item_size = function(mod, grid_width, maximum_columns, configuration)
 
 	local columns = Geometry.columns(mod, maximum_columns, slot_kind)
 	local spacing = numeric_setting(mod, "grid_spacing", 10, 0, 40)
-	local height = Geometry.card_height(mod, configuration)
+	local wkc_padding = Cards.weapon_kill_counter_card_height_padding(mod, configuration, columns)
+	local height = math.min(240, Geometry.card_height(mod, configuration) + wkc_padding)
 	local width = math.floor((grid_width - spacing * (columns - 1)) / columns)
 
 	return {

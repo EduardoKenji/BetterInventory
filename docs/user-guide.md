@@ -1,6 +1,6 @@
 # BetterInventory user guide
 
-BetterInventory v2.4.0 improves inventory, Character Overview, Hadron, Requisition Weapons & Curios, and optional GlobalStore cards while preserving Darktide's native item and icon lifecycle.
+BetterInventory v2.4.1 improves inventory, Character Overview, Hadron, Requisition Weapons & Curios, and optional GlobalStore cards while preserving Darktide's native item and icon lifecycle.
 
 When other mods add weapon actions beside the weapon details, BetterInventory grows the native Marks/Cosmetics/Inspect panel through seven complete rows. At eight or more rows it retains that seven-row frame and lets Darktide's own tightly masked grid scroll the remaining actions without drawing them below the frame. The Debug group can expand the panel to 5, 10, or 20 total rows with inert test buttons for presentation and controller-navigation checks; reopen the inventory after changing the option.
 

@@ -32,6 +32,18 @@ local localization = {
 	debug_weapon_options_button_count_20 = {
 		en = "20 buttons",
 	},
+	debug_weapon_kill_counter_kills = {
+		en = "Weapon Kill Counter test kills",
+	},
+	debug_weapon_kill_counter_kills_tooltip = {
+		en = "Presentation-only. When Weapon Kill Counter is installed and its card overlay is enabled, shows 1,000 kills on every weapon card without changing WKC's saved statistics.",
+	},
+	debug_weapon_kill_counter_kills_off = {
+		en = "Off",
+	},
+	debug_weapon_kill_counter_kills_1000 = {
+		en = "1,000 kills",
+	},
 	debug_expand_armoury_requisition_window_30_percent = {
 		en = "Increase Armoury Exchange store width",
 	},

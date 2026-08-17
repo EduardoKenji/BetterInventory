@@ -8,6 +8,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 LAYOUT_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_layout.lua"
 LAYOUT_CONTENT_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_layout_content.lua"
 LAYOUT_CARDS_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_layout_cards.lua"
+WKC_INTEGRATION_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_wkc_integration.lua"
 LAYOUT_GEOMETRY_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_layout_geometry.lua"
 LAYOUT_BLUEPRINTS_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_layout_blueprints.lua"
 IMAGE_LAYOUT_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_image_layout.lua"
@@ -550,6 +551,10 @@ def main() -> None:
 				return TestLayoutContent
 			end
 
+			if path == "BetterInventory/scripts/mods/BetterInventory/BetterInventory_wkc_integration" then
+				return TestWkcIntegration
+			end
+
 			if path == "BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_cards" then
 				return TestLayoutCards
 			end
@@ -667,6 +672,9 @@ def main() -> None:
 
     lua.globals().TestLayoutContent = lua.execute(
         LAYOUT_CONTENT_PATH.read_text(encoding="utf-8"), name=str(LAYOUT_CONTENT_PATH)
+    )
+    lua.globals().TestWkcIntegration = lua.execute(
+        WKC_INTEGRATION_PATH.read_text(encoding="utf-8"), name=str(WKC_INTEGRATION_PATH)
     )
     lua.globals().TestLayoutCards = lua.execute(
         LAYOUT_CARDS_PATH.read_text(encoding="utf-8"), name=str(LAYOUT_CARDS_PATH)

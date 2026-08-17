@@ -428,11 +428,12 @@ Blueprints.configure_native_item_blueprint = function(mod, item_blueprint, grid_
 	if managed_native_card then
 		add_custom_content_passes(mod, pass_template, card_width, 15, sub_display_name and sub_display_name.style, {
 			content_right = weapon_modifier_stats_enabled and not character_overview_dump_stat_only and 260 or nil,
+			card_height = item_size[2] or 110,
 			native_single_column = true,
 			global_store = global_store,
 			store_item = store_item,
 			character_overview = configuration.character_overview,
-		})
+		}, 1)
 	end
 
 	if armoury_native and item_level and item_level.style then
@@ -909,7 +910,7 @@ Blueprints.configure_item_blueprint = function(mod, item_blueprint, grid_width, 
 		end
 	end
 
-	add_custom_content_passes(mod, pass_template, card_width, text_left, sub_display_name and sub_display_name.style, configuration)
+	add_custom_content_passes(mod, pass_template, card_width, text_left, sub_display_name and sub_display_name.style, configuration, Geometry.columns(mod, configuration.maximum_columns, configuration.slot_kind))
 
 	set_height(pass_by_style_id(pass_template, "inner_shadow"), card_height)
 	set_height(pass_by_style_id(pass_template, "inner_highlight"), card_height)

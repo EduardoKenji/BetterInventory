@@ -1,4 +1,7 @@
 {
+  "test_weapon_kill_counter_integration.py": [
+    {"name": "presentation_only_fixture_load_order_deduplication_and_responsive_card_profiles", "risk": "high", "start_line": 15, "end_line": 283}
+  ],
   "test_weapon_options_panel.py": [
     {"name": "native_compatibility_debug_rows_constant_inset_and_seven_row_clipped_scroll_geometry", "risk": "high", "start_line": 15, "end_line": 202}
   ],
@@ -194,9 +197,9 @@
       {"name": "callback_failure_safety", "risk": "high", "start_line": 755, "end_line": 979}
   ],
   "test_layout.py": [
-    {"name": "card_geometry", "risk": "high", "start_line": 633, "end_line": 1633},
-      {"name": "content_and_resource_ownership", "risk": "high", "start_line": 1634, "end_line": 2740},
-      {"name": "integration_boundaries", "risk": "medium", "start_line": 2741, "end_line": 4373}
+    {"name": "card_geometry", "risk": "high", "start_line": 641, "end_line": 1641},
+      {"name": "content_and_resource_ownership", "risk": "high", "start_line": 1642, "end_line": 2748},
+      {"name": "integration_boundaries", "risk": "medium", "start_line": 2749, "end_line": 4381}
   ],
   "test_operation_arbiter.py": [
     {"name": "manual_automatic_exclusion", "risk": "critical", "start_line": 20, "end_line": 34},

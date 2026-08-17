@@ -2,6 +2,13 @@
   "schema_version": 1,
   "required": [
     {
+      "name": "weapon-kill-counter.presentation-fixture-is-air-gapped",
+      "test": "test_weapon_kill_counter_integration.py",
+      "case": "presentation_only_fixture_load_order_deduplication_and_responsive_card_profiles",
+      "outcome": "the default-off 1,000-kill fixture changes only responsive weapon-card presentation while preserving WKC statistics, feature ownership, and one-pass behavior across load order",
+      "modules": ["BetterInventory_wkc_integration.lua", "BetterInventory_layout_cards.lua"]
+    },
+    {
       "name": "arbiter.rejects-overlap",
       "test": "test_operation_arbiter.py",
       "case": "manual_automatic_exclusion",
