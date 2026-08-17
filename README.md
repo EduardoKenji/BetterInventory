@@ -20,7 +20,8 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 
 ## What's new in v2.5.1
 
-- WKC kill counters on Brunt's native two-column weapon cards now use a compact 14 px font and 16 px icon in a lower row aligned with the weapon-name inset, preventing the counter from competing with weapon names while leaving other WKC profiles unchanged.
+- WKC kill counters on Brunt's native two-column weapon cards now use a compact 14 px font and 16 px icon in a lower row aligned with the weapon-name inset.
+- BetterInventory reapplies that Brunt-specific geometry after WKC style refreshes, preventing the counter from drifting back while leaving other listing and weapon-detail profiles unchanged.
 
 ### v2.5.0 changes included
 
@@ -33,17 +34,16 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - The crafting widget's **Active Queue** section supports click-to-collapse like its other sections.
 - WKC listing counters are stripped from weapon-information stat rows, preventing repeated icon/count pairs while retaining the intended weapon-detail counter.
 
-### v2.4.1 Weapon Kill Counter integration
-
 ### Weapon Kill Counter integration
 
 When the `wkc` mod is installed and its card display is enabled, BetterInventory places the kill total on:
 
 - three-column Inventory and Hadron cards;
-- native single-column Inventory and Hadron cards; and
-- Character Overview weapon cards.
+- native single-column Inventory and Hadron cards;
+- Character Overview weapon cards; and
+- Brunt's native two-column weapon cards, using the compact lower-left v2.5.1 profile.
 
-Compact cards reserve a dedicated row between the weapon name and perk lines. Single-column and Character Overview cards retain Weapon Kill Counter's native-style icon, font, colour, and number abbreviation where available.
+Compact cards reserve a dedicated row between the weapon name and perk lines. Brunt cards align their counter with the weapon-name inset near the bottom edge. Single-column and Character Overview cards retain Weapon Kill Counter's native-style icon, font, colour, and number abbreviation where available.
 
 The **Debug (testing only)** option **Weapon Kill Counter test kills** can substitute a 1,000-kill presentation fixture. It defaults to **Off** and never modifies Weapon Kill Counter's stored statistics.
 
