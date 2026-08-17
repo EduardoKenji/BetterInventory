@@ -399,7 +399,7 @@ local localization = {
 		en = "Automatically favorite purchased items",
 	},
 	armoury_auto_favorite_purchased_items_tooltip = {
-		en = "Favorites items after a manual Armoury Exchange or Brunt's Armoury purchase is confirmed. If GlobalStore is installed, this also covers Armoury Multi-Operative Supply purchases. Auto Crafter and Automatic Curio Buyer purchases are excluded. Disabled by default.",
+		en = "Favorites items after a manual Armoury Exchange purchase is confirmed. If GlobalStore is installed, this also covers Armoury Multi-Operative Supply purchases. Brunt's Armoury, Auto Crafter, and Automatic Curio Buyer purchases are excluded. Disabled by default.",
 	},
 	melk_auto_favorite_purchased_items = {
 		en = "Automatically favorite Limited Time Acquisitions",

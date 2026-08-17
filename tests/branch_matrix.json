@@ -5,7 +5,7 @@
       "name": "favorites.isolate-purchase-sources",
       "test": "test_favorite_integration.py",
       "case": "purchase_source_isolation_and_myfavorites_color_assignment",
-      "outcome": "manual rotating Armoury, Brunt, Melk Limited Time, and Melk Mystery purchase views use independently gated source hooks; GlobalStore Armoury and Melk routes inherit their matching option and persist favorites in the selected offer owner's character save, while unresolved or unrelated custom services and Automatic Curio Buyer remain isolated, and Auto Crafter rejected rolls stay unfavorited and discardable",
+      "outcome": "manual rotating Armoury, Melk Limited Time, and Melk Mystery purchase views use independently gated source hooks; Brunt is excluded, GlobalStore Armoury and Melk routes inherit their matching option and persist favorites in the selected offer owner's character save, while unresolved or unrelated custom services and Automatic Curio Buyer remain isolated, and Auto Crafter rejected rolls stay unfavorited and discardable",
       "modules": ["BetterInventory_favorite_integration.lua"]
     },
     {

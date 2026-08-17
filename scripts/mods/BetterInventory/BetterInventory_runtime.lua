@@ -93,10 +93,9 @@ function Runtime.install()
 
 	if FavoriteIntegration and type(FavoriteIntegration.install_manual_purchase_hooks) == "function" then
 		FavoriteIntegration.install_manual_purchase_hooks(mod, {
-			armoury = {
-				CreditsVendorView,
-				CreditsGoodsVendorView,
-			},
+			-- CreditsGoodsVendorView is Brunt's Armoury and is intentionally excluded.
+			-- Auto Crafter owns any favorite applied to its final accepted weapon.
+			armoury = CreditsVendorView,
 			melk_limited = MarksVendorView,
 			melk_mystery = MarksGoodsVendorView,
 		})

@@ -174,7 +174,7 @@ def main() -> None:
         globals_.test_mod,
         lua.table_from(
             {
-                "armoury": lua.table_from([armoury_class, brunt_class]),
+                "armoury": armoury_class,
                 "melk_limited": melk_class,
                 "melk_mystery": melk_goods_class,
             }
@@ -184,7 +184,7 @@ def main() -> None:
         globals_.test_mod,
         lua.table_from(
             {
-                "armoury": lua.table_from([armoury_class, brunt_class]),
+                "armoury": armoury_class,
                 "melk_limited": melk_class,
                 "melk_mystery": melk_goods_class,
             }
@@ -204,9 +204,8 @@ def main() -> None:
     assert brunt_instance.native_completions == 1
     assert melk_instance.native_completions == 1
     assert melk_goods_instance.native_completions == 1
-    assert [globals_.favorite_calls[index].gear_id for index in range(5, 8)] == [
+    assert [globals_.favorite_calls[index].gear_id for index in range(5, 7)] == [
         "armoury-item",
-        "brunt-item",
         "melk-item",
     ]
 
@@ -249,7 +248,7 @@ def main() -> None:
     melk_class._on_purchase_complete(
         unrelated_melk_instance, lua.execute('return {{uuid = "unrelated-melk-item"}}')
     )
-    assert len(globals_.favorite_calls) == 7
+    assert len(globals_.favorite_calls) == 6
     assert globals_.save_records["armoury-owner"].favorite_items["armoury-global-item"] is True
     assert globals_.save_records["melk-owner"].favorite_items["melk-global-item"] is True
     assert globals_.save_queue_calls == 2
@@ -262,16 +261,15 @@ def main() -> None:
     globals_.settings.melk_mystery_auto_favorite_purchased_items = True
     melk_goods_class._on_purchase_complete(melk_goods_instance, lua.execute('return {{uuid = "melk-mystery-item"}}'))
     assert melk_goods_instance.native_completions == 2
-    assert globals_.favorite_calls[8].gear_id == "melk-mystery-item"
+    assert globals_.favorite_calls[7].gear_id == "melk-mystery-item"
 
     globals_.myfavorites.enabled = False
     assert module.is_myfavorites_available() is False
     assert module.apply_auto_crafter_color(globals_.test_mod, "disabled-item") is False
 
     runtime_source = RUNTIME_PATH.read_text(encoding="utf-8")
-    armoury_hooks = runtime_source.split("armoury = {", 1)[1].split("},", 1)[0]
-    assert "CreditsVendorView" in armoury_hooks
-    assert "CreditsGoodsVendorView" in armoury_hooks
+    assert "armoury = CreditsVendorView" in runtime_source
+    assert "armoury = {" not in runtime_source
     assert "melk_limited = MarksVendorView" in runtime_source
     assert "melk_mystery = MarksGoodsVendorView" in runtime_source
     assert '"get_all_characters_store_custom"' in MODULE_PATH.read_text(encoding="utf-8")

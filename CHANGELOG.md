@@ -3,7 +3,7 @@
 ## 2.5.0 - 2026-08-17
 
 - Adds default-off Health (21%) and Toughness (17%) Curio roll thresholds: each enabled threshold takes precedence over item level for its matching primary type, while enabled Wound and Stamina Curios continue to use the minimum item-level rule.
-- Adds independent, default-off automatic-favorite settings for confirmed Automatic Curio Buyer purchases, Armoury Exchange and Brunt purchases, Sire Melk Limited Time Acquisitions, and Sire Melk Mystery Acquisitions; GlobalStore purchases inherit the corresponding Armoury or Limited Time setting, including cross-character ownership, while Auto Crafter purchases remain isolated.
+- Adds independent, default-off automatic-favorite settings for confirmed Automatic Curio Buyer purchases, Armoury Exchange purchases, Sire Melk Limited Time Acquisitions, and Sire Melk Mystery Acquisitions; GlobalStore purchases inherit the corresponding Armoury or Limited Time setting, including cross-character ownership, while Brunt's Armoury and Auto Crafter purchases remain isolated.
 - Adds MyFavorites color selection directly below **Automatically favorite crafted weapon** when MyFavorites is installed, previews all five configured colors, and assigns successful crafted favorites to the selected color without protecting rejected Auto Crafter rolls.
 - Preserves inventory-options scroll position across conditional-row rebuilds, restores the Auto Crafter **Active Queue** collapse control, and removes duplicate WKC listing counters from weapon-information stat rows while retaining the intended detail and inventory-card counters.
 
