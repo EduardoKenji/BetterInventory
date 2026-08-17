@@ -38,41 +38,59 @@ class InstrumentedLuaRuntime:
         self._runtime.execute(_HOOK, name="betterinventory-coverage-hook")
         _RUNTIMES.append(self)
 
-    def write_coverage(self) -> None:
-        output_path = os.environ.get("BETTERINVENTORY_COVERAGE_FILE")
+    def coverage_snapshot(self) -> dict[str, set[int]]:
+        snapshot = self._runtime.execute(
+            "debug.sethook(); return __better_inventory_coverage",
+            name="betterinventory-coverage-snapshot",
+        )
+        sources: dict[str, set[int]] = {}
 
-        if not output_path:
-            return
+        for source, lines in snapshot.items():
+            sources[str(source)] = {int(line) for line in lines.keys()}
 
-        try:
-            snapshot = self._runtime.execute(
-                "debug.sethook(); return __better_inventory_coverage",
-                name="betterinventory-coverage-snapshot",
-            )
-            sources: dict[str, list[int]] = {}
-
-            for source, lines in snapshot.items():
-                sources[str(source)] = sorted(int(line) for line in lines.keys())
-
-            destination = Path(output_path)
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            destination.write_text(
-                json.dumps({"sources": sources}, indent=2, sort_keys=True),
-                encoding="utf-8",
-            )
-        except Exception as error:  # pragma: no cover - process-exit safety net
-            destination = Path(output_path)
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            destination.write_text(
-                json.dumps({"error": str(error), "sources": {}}, indent=2),
-                encoding="utf-8",
-            )
+        return sources
 
     def __getattr__(self, name):
         return getattr(self._runtime, name)
 
 
+def merge_runtime_coverage(
+    runtimes: list[InstrumentedLuaRuntime],
+) -> tuple[dict[str, set[int]], list[str]]:
+    merged_sources: dict[str, set[int]] = {}
+    errors: list[str] = []
+
+    for runtime in runtimes:
+        try:
+            for source, lines in runtime.coverage_snapshot().items():
+                merged_sources.setdefault(source, set()).update(lines)
+        except Exception as error:  # pragma: no cover - process-exit safety net
+            errors.append(str(error))
+
+    return merged_sources, errors
+
+
 @atexit.register
 def _write_all_coverage() -> None:
-    for runtime in _RUNTIMES:
-        runtime.write_coverage()
+    output_path = os.environ.get("BETTERINVENTORY_COVERAGE_FILE")
+
+    if not output_path:
+        return
+
+    merged_sources, errors = merge_runtime_coverage(_RUNTIMES)
+
+    destination = Path(output_path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "sources": {
+            source: sorted(lines) for source, lines in sorted(merged_sources.items())
+        }
+    }
+
+    if errors:
+        payload["errors"] = errors
+
+    destination.write_text(
+        json.dumps(payload, indent=2, sort_keys=True),
+        encoding="utf-8",
+    )

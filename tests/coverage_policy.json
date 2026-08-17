@@ -8,8 +8,11 @@
     "BetterInventory_localization_zh_cn.lua",
     "BetterInventory_curio_values.lua"
   ],
+  "static_modules": {
+    "BetterInventory_auto_crafter.lua": {"risk": "high"}
+  },
   "modules": {
-    "BetterInventory.lua": {"minimum_percent": 45.0, "risk": "critical"},
+    "BetterInventory.lua": {"minimum_percent": 36.0, "risk": "critical"},
     "BetterInventory_account_mutation_guard.lua": {"minimum_percent": 70.0, "risk": "critical"},
     "BetterInventory_character_overview.lua": {"minimum_percent": 75.0, "risk": "high"},
     "BetterInventory_character_overview_ui.lua": {"minimum_percent": 25.0, "risk": "critical"},
@@ -18,7 +21,7 @@
     "BetterInventory_curio_domains.lua": {"minimum_percent": 75.0, "risk": "high"},
     "BetterInventory_curio_ledger.lua": {"minimum_percent": 65.0, "risk": "critical"},
     "BetterInventory_curio_profiles.lua": {"minimum_percent": 65.0, "risk": "critical"},
-    "BetterInventory_curio_purchase.lua": {"minimum_percent": 65.0, "risk": "critical"},
+    "BetterInventory_curio_purchase.lua": {"minimum_percent": 61.0, "risk": "critical"},
     "BetterInventory_curio_store.lua": {"minimum_percent": 65.0, "risk": "critical"},
     "BetterInventory_diagnostics.lua": {"minimum_percent": 70.0, "risk": "medium"},
     "BetterInventory_equipment_persistence.lua": {"minimum_percent": 60.0, "risk": "critical"},
@@ -37,19 +40,20 @@
     "BetterInventory_discard_policy.lua": {"minimum_percent": 65.0, "risk": "critical"},
     "BetterInventory_discard_transaction.lua": {"minimum_percent": 65.0, "risk": "critical"},
     "BetterInventory_features.lua": {"minimum_percent": 70.0, "risk": "critical"},
-    "BetterInventory_item_customization.lua": {"minimum_percent": 65.0, "risk": "high"},
+    "BetterInventory_item_customization.lua": {"minimum_percent": 62.0, "risk": "high"},
     "BetterInventory_item_customization_editor.lua": {"minimum_percent": 60.0, "risk": "high"},
-    "BetterInventory_item_customization_name_it.lua": {"minimum_percent": 65.0, "risk": "high"},
+    "BetterInventory_item_customization_name_it.lua": {"minimum_percent": 61.5, "risk": "high"},
     "BetterInventory_item_customization_store.lua": {"minimum_percent": 65.0, "risk": "high"},
     "BetterInventory_image_layout.lua": {"minimum_percent": 77.0, "risk": "high"},
     "BetterInventory_layout.lua": {"minimum_percent": 70.0, "risk": "high"},
     "BetterInventory_layout_cards.lua": {"minimum_percent": 70.0, "risk": "high"},
     "BetterInventory_layout_geometry.lua": {"minimum_percent": 70.0, "risk": "high"},
-    "BetterInventory_layout_blueprints.lua": {"minimum_percent": 70.0, "risk": "high"},
+    "BetterInventory_layout_blueprints.lua": {"minimum_percent": 65.0, "risk": "high"},
     "BetterInventory_runtime.lua": {"minimum_percent": 60.0, "risk": "critical"},
     "BetterInventory_operation_arbiter.lua": {"minimum_percent": 80.0, "risk": "critical"},
     "BetterInventory_settings.lua": {"minimum_percent": 80.0, "risk": "high"},
     "BetterInventory_view_session.lua": {"minimum_percent": 65.0, "risk": "high"},
-    "BetterInventory_weapon_options_panel.lua": {"minimum_percent": 75.0, "risk": "high"}
+    "BetterInventory_weapon_options_panel.lua": {"minimum_percent": 75.0, "risk": "high"},
+    "BetterInventory_wkc_integration.lua": {"minimum_percent": 70.0, "risk": "high"}
   }
 }

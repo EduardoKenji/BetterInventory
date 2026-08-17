@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from lupa import LuaRuntime
+from coverage_support import InstrumentedLuaRuntime as LuaRuntime
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -367,7 +367,9 @@ def main() -> None:
         '''
     )
 
-    backend_module = lua.execute(BACKEND_PATH.read_text(encoding="utf-8"))
+    backend_module = lua.execute(
+        BACKEND_PATH.read_text(encoding="utf-8"), name=str(BACKEND_PATH)
+    )
     backend = backend_module.new(lua.table_from({"services": lua.globals().TestServices}))
     snapshot_promise = backend.probe_snapshot(backend)
     assert snapshot_promise.failure is None
@@ -518,7 +520,9 @@ def main() -> None:
     assert catalog_promise.value.perks[1].display_name == "+25% Damage vs Flak Armoured (T4)"
     assert catalog_promise.value.perks[1].tier == 4
 
-    planner = lua.execute(PLANNER_PATH.read_text(encoding="utf-8"))
+    planner = lua.execute(
+        PLANNER_PATH.read_text(encoding="utf-8"), name=str(PLANNER_PATH)
+    )
 
     def plan(dump_stat: str):
         return planner.build(

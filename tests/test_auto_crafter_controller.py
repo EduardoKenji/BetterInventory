@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from lupa import LuaRuntime
+from coverage_support import InstrumentedLuaRuntime as LuaRuntime
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -196,7 +196,9 @@ def main() -> None:
         end
         '''
     )
-    planner = lua.execute(PLANNER_PATH.read_text(encoding="utf-8"))
+    planner = lua.execute(
+        PLANNER_PATH.read_text(encoding="utf-8"), name=str(PLANNER_PATH)
+    )
     controller_module = __import__("auto_crafter_test_support").load_controller(lua)
     lua.globals().Planner = planner
     lua.globals().Controller = controller_module

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from lupa import LuaRuntime
+from coverage_support import InstrumentedLuaRuntime as LuaRuntime
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -100,7 +100,9 @@ def main() -> None:
         end
         '''
     )
-    backend_module = lua.execute(BACKEND_PATH.read_text(encoding="utf-8"))
+    backend_module = lua.execute(
+        BACKEND_PATH.read_text(encoding="utf-8"), name=str(BACKEND_PATH)
+    )
     lua.globals().Backend = backend_module
     lua.execute(
         r'''
