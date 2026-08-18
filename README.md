@@ -21,7 +21,7 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 ## What's new in v2.7.0
 
 - Secondary Curio perks now use category colours by default, grouping Health, Toughness, Wounds, stamina/efficiency, enemy damage resistance, corruption resistance, ability regeneration, mission rewards, and revive speed.
-- Health and Toughness secondary perks share their corresponding primary-stat colours; stamina regeneration, sprint efficiency, and block efficiency share Max Stamina's colour. Corruption resistance shares the Wound purple, enemy damage resistance uses pink, mission rewards stay gold, and Revive Speed uses a neutral tone distinct from Toughness.
+- Health and Toughness secondary perks share their corresponding primary-stat colours; stamina regeneration, sprint efficiency, and block efficiency share Max Stamina's colour. Corruption resistance shares the Wound purple, enemy damage resistance uses pink, mission rewards use a soft peach, and Revive Speed uses a neutral tone distinct from Toughness.
 - Every category has independent preset and RGB controls. The previous single-colour mode remains available, and its colour safely handles unknown future Curio perks.
 
 ### v2.6.3 changes included

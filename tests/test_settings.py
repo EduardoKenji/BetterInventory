@@ -177,10 +177,10 @@ def main() -> None:
 			curio_ability_regeneration_color_r = 105,
 			curio_ability_regeneration_color_g = 210,
 			curio_ability_regeneration_color_b = 120,
-			curio_mission_rewards_color_preset = "gold",
+			curio_mission_rewards_color_preset = "custom",
 			curio_mission_rewards_color_r = 250,
 			curio_mission_rewards_color_g = 189,
-			curio_mission_rewards_color_b = 73,
+			curio_mission_rewards_color_b = 142,
 			curio_revive_speed_color_preset = "neutral",
 			curio_revive_speed_color_r = 220,
 			curio_revive_speed_color_g = 230,
@@ -1273,7 +1273,7 @@ def main() -> None:
     mod.on_enabled()
     assert settings.curio_stat_compression == "none"
 
-    settings._curio_secondary_palette_v3_migrated = False
+    settings._curio_secondary_palette_v4_migrated = False
     settings.curio_enemy_resistance_color_preset = "orange"
     settings.curio_enemy_resistance_color_r = 235
     settings.curio_enemy_resistance_color_g = 155
@@ -1286,6 +1286,10 @@ def main() -> None:
     settings.curio_revive_speed_color_r = 144
     settings.curio_revive_speed_color_g = 213
     settings.curio_revive_speed_color_b = 255
+    settings.curio_mission_rewards_color_preset = "gold"
+    settings.curio_mission_rewards_color_r = 250
+    settings.curio_mission_rewards_color_g = 189
+    settings.curio_mission_rewards_color_b = 73
     mod.on_enabled()
     assert settings.curio_enemy_resistance_color_preset == "pink"
     assert settings.curio_corruption_resistance_color_preset == "purple"
@@ -1305,18 +1309,20 @@ def main() -> None:
         settings.curio_revive_speed_color_g,
         settings.curio_revive_speed_color_b,
     ) == (220, 230, 210)
+    assert settings.curio_mission_rewards_color_preset == "custom"
+    assert (settings.curio_mission_rewards_color_r, settings.curio_mission_rewards_color_g, settings.curio_mission_rewards_color_b) == (250, 189, 142)
 
-    settings._curio_secondary_palette_v3_migrated = False
-    settings.curio_enemy_resistance_color_preset = "custom"
-    settings.curio_enemy_resistance_color_r = 1
-    settings.curio_enemy_resistance_color_g = 2
-    settings.curio_enemy_resistance_color_b = 3
+    settings._curio_secondary_palette_v4_migrated = False
+    settings.curio_mission_rewards_color_preset = "custom"
+    settings.curio_mission_rewards_color_r = 1
+    settings.curio_mission_rewards_color_g = 2
+    settings.curio_mission_rewards_color_b = 3
     mod.on_enabled()
-    assert settings.curio_enemy_resistance_color_preset == "custom"
+    assert settings.curio_mission_rewards_color_preset == "custom"
     assert (
-        settings.curio_enemy_resistance_color_r,
-        settings.curio_enemy_resistance_color_g,
-        settings.curio_enemy_resistance_color_b,
+        settings.curio_mission_rewards_color_r,
+        settings.curio_mission_rewards_color_g,
+        settings.curio_mission_rewards_color_b,
     ) == (1, 2, 3)
 
     settings.curio_health_color_preset = "light_blue"
@@ -3229,7 +3235,8 @@ def main() -> None:
     assert defaults["curio_enemy_resistance_color_preset"] == "pink"
     assert defaults["curio_corruption_resistance_color_preset"] == "purple"
     assert defaults["curio_ability_regeneration_color_preset"] == "green"
-    assert defaults["curio_mission_rewards_color_preset"] == "gold"
+    assert defaults["curio_mission_rewards_color_preset"] == "custom"
+    assert tuple(defaults[f"curio_mission_rewards_color_{channel}"] for channel in ("r", "g", "b")) == (250, 189, 142)
     assert defaults["curio_revive_speed_color_preset"] == "neutral"
     assert defaults["weapon_perk_text_color_preset"] == "light_green"
     assert defaults["weapon_perk_text_color_r"] == 190

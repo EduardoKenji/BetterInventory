@@ -342,7 +342,7 @@ for prefix, preset in pairs({
 	curio_secondary_text_color="neutral",curio_health_color="red",curio_toughness_color="light_blue",
 	curio_wound_color="purple",curio_stamina_color="yellow",curio_enemy_resistance_color="pink",
 	curio_corruption_resistance_color="purple",curio_ability_regeneration_color="green",
-	curio_mission_rewards_color="gold",curio_revive_speed_color="neutral",
+	curio_mission_rewards_color="custom",curio_revive_speed_color="neutral",
 }) do
 	COLOR_TARGETS[#COLOR_TARGETS + 1] = { prefix = prefix, default_preset = preset }
 end

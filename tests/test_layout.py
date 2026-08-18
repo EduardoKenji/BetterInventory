@@ -496,7 +496,7 @@ def main() -> None:
 				curio_ability_regeneration_color_b = 120,
 				curio_mission_rewards_color_r = 250,
 				curio_mission_rewards_color_g = 189,
-				curio_mission_rewards_color_b = 73,
+				curio_mission_rewards_color_b = 142,
 				curio_revive_speed_color_r = 220,
 				curio_revive_speed_color_g = 230,
 				curio_revive_speed_color_b = 210,
@@ -3962,9 +3962,9 @@ def main() -> None:
         "gadget_corruption_resistance": (255, 190, 105, 230),
         "gadget_permanent_damage_resistance": (255, 190, 105, 230),
         "gadget_cooldown_reduction": (255, 105, 210, 120),
-        "gadget_mission_xp_increase": (255, 250, 189, 73),
-        "gadget_mission_credits_increase": (255, 250, 189, 73),
-        "gadget_mission_reward_gear_instead_of_weapon_increase": (255, 250, 189, 73),
+        "gadget_mission_xp_increase": (255, 250, 189, 142),
+        "gadget_mission_credits_increase": (255, 250, 189, 142),
+        "gadget_mission_reward_gear_instead_of_weapon_increase": (255, 250, 189, 142),
         "gadget_revive_speed_increase": (255, 220, 230, 210),
     }
 

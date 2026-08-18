@@ -2447,7 +2447,7 @@ return {
 					color_group("curio_enemy_resistance_color_group", "curio_enemy_resistance_color", "pink", 255, 94, 132),
 					color_group("curio_corruption_resistance_color_group", "curio_corruption_resistance_color", "purple", 190, 105, 230),
 					color_group("curio_ability_regeneration_color_group", "curio_ability_regeneration_color", "green", 105, 210, 120),
-					color_group("curio_mission_rewards_color_group", "curio_mission_rewards_color", "gold", 250, 189, 73),
+					color_group("curio_mission_rewards_color_group", "curio_mission_rewards_color", "custom", 250, 189, 142),
 					color_group("curio_revive_speed_color_group", "curio_revive_speed_color", "neutral", 220, 230, 210),
 					color_group("curio_secondary_text_color_group", "curio_secondary_text_color", "neutral", 220, 230, 210),
 				},

@@ -250,7 +250,7 @@ register_curio_secondary_color({
 	"gadget_mission_xp_increase",
 	"gadget_mission_credits_increase",
 	"gadget_mission_reward_gear_instead_of_weapon_increase",
-}, "curio_mission_rewards_color", { 250, 189, 73 })
+}, "curio_mission_rewards_color", { 250, 189, 142 })
 register_curio_secondary_color({
 	"gadget_revive_speed_increase",
 }, "curio_revive_speed_color", { 220, 230, 210 })
