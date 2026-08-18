@@ -19,8 +19,6 @@ local registered_character_overview_views = setmetatable({}, { __mode = "k" })
 local GLOBAL_STORE_SERVICE = "get_all_characters_store_custom"
 local CHARACTER_OVERVIEW_MELEE_WIDGET_TYPE = "better_inventory_character_overview_melee_weapon"
 local CHARACTER_OVERVIEW_RANGED_WIDGET_TYPE = "better_inventory_character_overview_ranged_weapon"
-local CHARACTER_OVERVIEW_NATIVE_MELEE_WIDGET_TYPE = "better_inventory_character_overview_native_melee_weapon"
-local CHARACTER_OVERVIEW_NATIVE_RANGED_WIDGET_TYPE = "better_inventory_character_overview_native_ranged_weapon"
 local CHARACTER_OVERVIEW_CURIO_WIDGET_TYPE = "better_inventory_character_overview_curio"
 local CHARACTER_OVERVIEW_EMPTY_CURIO_WIDGET_TYPE = "better_inventory_character_overview_empty_curio"
 local CHARACTER_OVERVIEW_WEAPON_HEIGHT = 130
@@ -349,69 +347,6 @@ local function move_character_overview_weapon_icon(blueprint)
 	end
 end
 
-local function wrap_character_overview_compound_icon_lifecycle(blueprint)
-	if type(blueprint) ~= "table" or blueprint.better_inventory_compound_weapon_icon_fallback == true then
-		return blueprint
-	end
-
-	local original_init = blueprint.init
-	local original_update = blueprint.update
-	local original_destroy = blueprint.destroy
-
-	blueprint.init = function(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
-		if type(original_init) == "function" then
-			original_init(parent, widget, element, callback_name, secondary_callback_name, ui_renderer, double_click_callback, template)
-		end
-
-		local card_content = widget and widget.content
-
-		Layout.replace_live_compound_icon(widget, card_content and card_content.item)
-	end
-
-	blueprint.update = function(parent, widget, input_service, dt, t, ui_renderer)
-		local card_content = widget and widget.content
-		local element = card_content and card_content.element
-		local slot = element and element.slot
-		local current_item = slot and parent.equipped_item_in_slot and parent:equipped_item_in_slot(slot.name)
-
-		-- Clear a previous static shield texture before the native callback loads
-		-- an ordinary replacement. Otherwise a synchronous live-icon callback can
-		-- be overwritten by cleanup intended for the old shield.
-		if card_content and card_content.better_inventory_static_compound_weapon_icon == true and not Layout.compound_weapon_static_icon(current_item) then
-			Layout.clear_static_compound_icon(widget)
-		end
-
-		if type(original_update) == "function" then
-			original_update(parent, widget, input_service, dt, t, ui_renderer)
-		end
-
-		card_content = widget and widget.content
-		Layout.replace_live_compound_icon(widget, card_content and card_content.item or current_item)
-	end
-
-	blueprint.destroy = function(parent, widget, element, ui_renderer)
-		if type(original_destroy) == "function" then
-			original_destroy(parent, widget, element, ui_renderer)
-		end
-
-		Layout.clear_static_compound_icon(widget)
-	end
-
-	blueprint.better_inventory_compound_weapon_icon_fallback = true
-
-	return blueprint
-end
-
-local function character_overview_native_weapon_blueprint()
-	local native_blueprint = InventoryViewContentBlueprints.item_slot
-
-	if type(native_blueprint) ~= "table" then
-		return
-	end
-
-	return wrap_character_overview_compound_icon_lifecycle(table.clone(native_blueprint))
-end
-
 local function character_overview_weapon_blueprint(rarity_strip_setting_id, weapon_kind)
 	local native_blueprint = InventoryViewContentBlueprints.item_slot
 	local detailed_blueprint = CHARACTER_OVERVIEW_BLUEPRINTS and CHARACTER_OVERVIEW_BLUEPRINTS.item
@@ -500,10 +435,6 @@ local function character_overview_weapon_blueprint(rarity_strip_setting_id, weap
 				blueprint.update_data(parent, widget, element)
 			end
 		end
-	end
-
-	if Layout.columns(mod, nil, weapon_kind) >= 4 then
-		wrap_character_overview_compound_icon_lifecycle(blueprint)
 	end
 
 	return blueprint
@@ -1537,16 +1468,12 @@ if ensure_class_method(InventoryView, "_create_entry_widget_from_config") then
 			return unpack_values(results, 1, results.n)
 		end
 
-		local mirror_enabled = setting_id and mod:get(setting_id) ~= false
-		local dense_weapon_grid = weapon_kind and Layout.columns(mod, nil, weapon_kind) >= 4 or false
-
-		if view and view.__class_name == "InventoryView" and not preserve_visible_equipment_placement and setting_id and (mirror_enabled or dense_weapon_grid) then
+		if view and view.__class_name == "InventoryView" and not preserve_visible_equipment_placement and setting_id and mod:get(setting_id) ~= false then
 			local equipped_item = view.equipped_item_in_slot and view:equipped_item_in_slot(config.slot.name)
 			local empty_curio_slot = curio_slot and equipped_item == nil
 			local rarity_strip_setting_id = weapon_kind == "melee" and "character_overview_show_melee_rarity_strip" or weapon_kind == "ranged" and "character_overview_show_ranged_rarity_strip"
-			local native_weapon_compatibility = weapon_kind and not mirror_enabled and dense_weapon_grid
-			local blueprint = native_weapon_compatibility and character_overview_native_weapon_blueprint() or empty_curio_slot and character_overview_empty_curio_blueprint() or curio_slot and character_overview_curio_blueprint() or character_overview_weapon_blueprint(rarity_strip_setting_id, weapon_kind)
-			local widget_type = native_weapon_compatibility and (weapon_kind == "melee" and CHARACTER_OVERVIEW_NATIVE_MELEE_WIDGET_TYPE or CHARACTER_OVERVIEW_NATIVE_RANGED_WIDGET_TYPE) or empty_curio_slot and CHARACTER_OVERVIEW_EMPTY_CURIO_WIDGET_TYPE or curio_slot and CHARACTER_OVERVIEW_CURIO_WIDGET_TYPE or weapon_kind == "melee" and CHARACTER_OVERVIEW_MELEE_WIDGET_TYPE or CHARACTER_OVERVIEW_RANGED_WIDGET_TYPE
+			local blueprint = empty_curio_slot and character_overview_empty_curio_blueprint() or curio_slot and character_overview_curio_blueprint() or character_overview_weapon_blueprint(rarity_strip_setting_id, weapon_kind)
+			local widget_type = empty_curio_slot and CHARACTER_OVERVIEW_EMPTY_CURIO_WIDGET_TYPE or curio_slot and CHARACTER_OVERVIEW_CURIO_WIDGET_TYPE or weapon_kind == "melee" and CHARACTER_OVERVIEW_MELEE_WIDGET_TYPE or CHARACTER_OVERVIEW_RANGED_WIDGET_TYPE
 
 			if blueprint then
 				InventoryViewContentBlueprints[widget_type] = blueprint
@@ -1579,7 +1506,6 @@ OverviewUI.character_overview_item_content_revision = character_overview_item_co
 OverviewUI.character_overview_item_changed = character_overview_item_changed
 OverviewUI.reset_character_overview_curio_fit_state = reset_character_overview_curio_fit_state
 OverviewUI.attach_runtime_marker_styles = attach_runtime_marker_styles
-OverviewUI.wrap_character_overview_compound_icon_lifecycle = wrap_character_overview_compound_icon_lifecycle
 OverviewUI.character_overview_weapon_blueprint = character_overview_weapon_blueprint
 OverviewUI.character_overview_curio_blueprint = character_overview_curio_blueprint
 OverviewUI.character_overview_empty_curio_blueprint = character_overview_empty_curio_blueprint

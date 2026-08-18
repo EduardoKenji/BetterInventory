@@ -1,7 +1,6 @@
 local Text = require("scripts/utilities/ui/text")
 local Items = require("scripts/utilities/items")
 local MasterItems = require("scripts/backend/master_items")
-local UIWeaponPatternSettings = require("scripts/settings/ui/ui_weapon_pattern_settings")
 local LayoutContent = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_content")
 local WeaponKillCounter = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_wkc_integration")
 
@@ -67,25 +66,6 @@ local DEFAULT_ARMOURY_ITEM_LEVEL_COLOR = content.DEFAULT_ARMOURY_ITEM_LEVEL_COLO
 local SLOT_SETTING_BY_NAME = content.SLOT_SETTING_BY_NAME
 local SINGLE_LINE_WEAPON_NAME_MINIMUM_SAFETY_MARGIN = 8
 local NON_BREAKING_SPACE = string.char(194, 160)
-local COMPOUND_WEAPON_ICON_BY_ID = {}
-
-for pattern_id, pattern in pairs(UIWeaponPatternSettings or {}) do
-	if type(pattern_id) == "string" and string.find(string.lower(pattern_id), "shield", 1, true) and type(pattern) == "table" and type(pattern.overview_icon_texture) == "string" then
-		COMPOUND_WEAPON_ICON_BY_ID[pattern_id] = pattern.overview_icon_texture
-
-		for _, mark in ipairs(pattern.marks or {}) do
-			if type(mark) == "table" then
-				if type(mark.name) == "string" then
-					COMPOUND_WEAPON_ICON_BY_ID[mark.name] = pattern.overview_icon_texture
-				end
-
-				if type(mark.item) == "string" then
-					COMPOUND_WEAPON_ICON_BY_ID[mark.item] = pattern.overview_icon_texture
-				end
-			end
-		end
-	end
-end
 
 local function non_wrapping_title(value)
 	return string.gsub(value, " ", NON_BREAKING_SPACE)
@@ -136,204 +116,6 @@ local ARMOURY_NATIVE_MODIFIER_HORIZONTAL_PERCENT = 62
 
 Cards.set_item_customization_provider = function(provider)
 	content.set_item_customization_provider(provider)
-end
-
-local function compound_weapon_static_icon(item)
-	if type(item) ~= "table" then
-		return
-	end
-
-	local gear = item.gear
-	local master_data = type(gear) == "table" and gear.masterDataInstance
-	local weapon_template = item.weapon_template
-	local identities = {}
-	local function add_identity(identity)
-		if type(identity) == "string" then
-			identities[#identities + 1] = identity
-		end
-	end
-
-	-- Backend items do not consistently expose all identity fields. Resolve the
-	-- official static mastery texture from any bounded template/master-item ID.
-	add_identity(type(weapon_template) == "table" and weapon_template.name or weapon_template)
-	add_identity(item.name)
-	add_identity(type(master_data) == "table" and master_data.id or nil)
-	add_identity(type(master_data) == "table" and master_data.name or nil)
-
-	for _, identity in ipairs(identities) do
-		local icon = COMPOUND_WEAPON_ICON_BY_ID[identity]
-
-		if icon then
-			return icon
-		end
-
-		local short_identity = string.match(identity, "([^/]+)$")
-
-		icon = short_identity and COMPOUND_WEAPON_ICON_BY_ID[short_identity]
-
-		if icon then
-			return icon
-		end
-	end
-
-	-- A newly added shield family may reach the item catalogue before it is
-	-- registered in UIWeaponPatternSettings. Its master-item HUD/package icon is
-	-- still a static native texture and therefore remains safe for dense grids.
-	if content.is_compound_shield_weapon(item) then
-		return type(item.hud_icon) == "string" and item.hud_icon or type(item.icon) == "string" and item.icon or nil
-	end
-end
-
-local function clear_static_compound_icon(widget)
-	local card_content = widget and widget.content
-
-	if not card_content or card_content.better_inventory_static_compound_weapon_icon ~= true then
-		return false
-	end
-
-	local icon_style = widget.style and widget.style.icon
-	local material_values = icon_style and icon_style.material_values
-
-	if type(material_values) == "table" then
-		material_values.texture_icon = nil
-		material_values.use_placeholder_texture = 1
-		material_values.use_render_target = 0
-		material_values.render_target = nil
-		material_values.rows = nil
-		material_values.columns = nil
-		material_values.grid_index = nil
-	end
-
-	card_content.better_inventory_static_compound_weapon_icon = nil
-	card_content.use_placeholder_texture = 1
-
-	return true
-end
-
-local function item_from_icon_argument(value, widget)
-	local resolved = item_from_element(value or widget and widget.content and widget.content.element)
-
-	if resolved then
-		return resolved
-	end
-
-	-- Character Overview supplies the equipped item directly rather than a grid
-	-- element. It can therefore share the same texture resolver and state reset.
-	return type(value) == "table" and value or nil
-end
-
-local function apply_static_compound_icon(widget, element_or_item)
-	local item = item_from_icon_argument(element_or_item, widget)
-	local icon = compound_weapon_static_icon(item)
-	local card_content = widget and widget.content
-	local icon_style = widget and widget.style and widget.style.icon
-	local material_values = icon_style and icon_style.material_values
-
-	if not icon or type(card_content) ~= "table" or type(material_values) ~= "table" then
-		return false
-	end
-
-	material_values.texture_icon = icon
-	material_values.use_placeholder_texture = 0
-	material_values.use_render_target = 0
-	material_values.render_target = nil
-	material_values.rows = nil
-	material_values.columns = nil
-	material_values.grid_index = nil
-	card_content.better_inventory_static_compound_weapon_icon = true
-	card_content.use_placeholder_texture = 0
-
-	return true
-end
-
-local function replace_live_compound_icon(widget, item)
-	local icon = compound_weapon_static_icon(item)
-
-	if not icon then
-		clear_static_compound_icon(widget)
-
-		return false
-	end
-
-	local card_content = widget and widget.content
-
-	if type(card_content) ~= "table" then
-		return false
-	end
-
-	local material_values = widget.style and widget.style.icon and widget.style.icon.material_values
-
-	if card_content.better_inventory_static_compound_weapon_icon == true and card_content.icon_load_id == nil and type(material_values) == "table" and material_values.texture_icon == icon then
-		return true
-	end
-
-	if card_content.icon_load_id then
-		Managers.ui:unload_item_icon(card_content.icon_load_id)
-		card_content.icon_load_id = nil
-	end
-
-	clear_static_compound_icon(widget)
-
-	return apply_static_compound_icon(widget, item)
-end
-
-local function configure_compound_weapon_icon_fallback(item_blueprint, columns)
-	if type(item_blueprint) ~= "table" or tonumber(columns) == nil or tonumber(columns) < 4 then
-		return false
-	end
-
-	if item_blueprint.better_inventory_compound_weapon_icon_fallback == true then
-		return true
-	end
-
-	local original_load_icon = item_blueprint.load_icon
-	local original_unload_icon = item_blueprint.unload_icon
-	local original_destroy = item_blueprint.destroy
-	local original_update_item_icon_priority = item_blueprint.update_item_icon_priority
-
-	if type(original_load_icon) == "function" then
-		item_blueprint.load_icon = function(parent, widget, element, ui_renderer, dummy_profile, prioritize)
-			clear_static_compound_icon(widget)
-
-			if apply_static_compound_icon(widget, element) then
-				return
-			end
-
-			return original_load_icon(parent, widget, element, ui_renderer, dummy_profile, prioritize)
-		end
-	end
-
-	if type(original_unload_icon) == "function" then
-		item_blueprint.unload_icon = function(parent, widget, element, ui_renderer)
-			if clear_static_compound_icon(widget) then
-				return
-			end
-
-			return original_unload_icon(parent, widget, element, ui_renderer)
-		end
-	end
-
-	if type(original_destroy) == "function" then
-		item_blueprint.destroy = function(parent, widget, element, ui_renderer)
-			clear_static_compound_icon(widget)
-
-			return original_destroy(parent, widget, element, ui_renderer)
-		end
-	end
-
-	if type(original_update_item_icon_priority) == "function" then
-		item_blueprint.update_item_icon_priority = function(parent, widget, element, ui_renderer, dummy_profile)
-			if widget and widget.content and widget.content.better_inventory_static_compound_weapon_icon == true then
-				return
-			end
-
-			return original_update_item_icon_priority(parent, widget, element, ui_renderer, dummy_profile)
-		end
-	end
-
-	item_blueprint.better_inventory_compound_weapon_icon_fallback = true
-
-	return true
 end
 
 local function configure_native_quick_look_card_passes(mod, pass_template, card_width, card_height, configuration)
@@ -2073,11 +1855,6 @@ Cards.configure_new_item_highlight = configure_new_item_highlight
 Cards.add_custom_content_passes = add_custom_content_passes
 Cards.grid_weapon_name_font_size = grid_weapon_name_font_size
 Cards.configure_card_content = configure_card_content
-Cards.compound_weapon_static_icon = compound_weapon_static_icon
-Cards.clear_static_compound_icon = clear_static_compound_icon
-Cards.apply_static_compound_icon = apply_static_compound_icon
-Cards.replace_live_compound_icon = replace_live_compound_icon
-Cards.configure_compound_weapon_icon_fallback = configure_compound_weapon_icon_fallback
 Cards.update_highlight_animation = update_highlight_animation
 
 return Cards

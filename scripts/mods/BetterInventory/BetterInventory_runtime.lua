@@ -1513,10 +1513,28 @@ if dmf_mod and type(dmf_mod.create_mod_options_settings) == "function" then
 	end)
 end
 
+local function arm_equipped_compound_shield_guard(view, context)
+	if not Layout.equipped_compound_shield_requires_cap(mod, view, context) then
+		return false
+	end
+
+	view._better_inventory_compound_shield_column_cap = true
+
+	if type(mod.info) == "function" then
+		mod:info("Compound shield detected before inventory initialization; using the safe three-column view.")
+	end
+
+	return true
+end
+
 mod:hook(ItemGridViewBase, "init", function(func, view, definitions, settings, context)
 	active_highlight_views[view] = true
 
 	if view.__class_name == "InventoryWeaponsView" then
+		-- InventoryWeaponsView assigns its slot and loadout before this base init;
+		-- guard them before expanded definitions can observe dense geometry.
+		arm_equipped_compound_shield_guard(view, context)
+
 		local adjusted_definitions = Features.add_inventory_sort_toggle_definition(mod, Layout, definitions, view)
 		local expansion = 0
 
@@ -1853,6 +1871,10 @@ if ensure_class_method(InventoryWeaponsView, "present_grid_layout") then
 		-- including changes made by compatible sorting or information mods.
 		local configuration = table.clone(INVENTORY_GRID_CONFIGURATION)
 		configuration.slot_kind = Layout.slot_kind(view)
+		local safe_maximum_columns, compound_shield_cap = Layout.safe_inventory_maximum_columns(mod, configuration.maximum_columns, configuration.slot_kind, layout, view._better_inventory_compound_shield_column_cap)
+
+		configuration.maximum_columns = safe_maximum_columns
+		view._better_inventory_compound_shield_column_cap = compound_shield_cap or nil
 
 		return present_grid_with_configuration(func, view, layout, on_present_callback, configuration)
 	end)

@@ -20,9 +20,9 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 
 ## What's new in v2.6.3
 
-- Restores configured four- and five-column weapon layouts when a compound shield is present. At those densities, BetterInventory uses Darktide's official static mastery texture instead of spawning the shield's linked 3D preview units.
-- Covers both independent live-preview owners on the inventory screen: the scrolling weapon grid and the equipped weapon card in Character Overview, including shield-to-ordinary item transitions.
-- Keeps native live previews unchanged for ordinary weapons and all one-to-three-column layouts; all current Ogryn and Arbites shield marks share regression coverage.
+- Detects an equipped compound shield before Darktide initializes the weapon-inventory base view, preventing dense geometry from reaching the engine's failing preview path.
+- Rechecks the fetched inventory for unequipped Slab Shields and current Arbites shield families, then uses the known-safe three-column layout for the complete affected view.
+- Keeps configured four- and five-column layouts for ordinary weapon inventories while preserving Darktide's native weapon images in both Character Overview and inventory; the failed static-texture substitution has been removed.
 
 ### v2.6.2 changes included
 

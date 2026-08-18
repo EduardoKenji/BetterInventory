@@ -68,46 +68,6 @@ def main() -> None:
 		TestItems = {}
 		TestMasterItems = {}
 		TestWeaponTemplate = {}
-		TestUIWeaponPatternSettings = {
-			ogryn_powermaul_slabshield_p1 = {
-				overview_icon_texture = "mastery/ogryn_slab_shield",
-				marks = {
-					{
-						item = "content/items/weapons/player/melee/ogryn_powermaul_slabshield_p1_m1",
-						name = "ogryn_powermaul_slabshield_p1_m1",
-					},
-				},
-			},
-			powermaul_shield_p1 = {
-				overview_icon_texture = "mastery/human_powermaul_shield",
-				marks = {
-					{ name = "powermaul_shield_p1_m1" },
-					{ name = "powermaul_shield_p1_m2" },
-				},
-			},
-			shotpistol_shield_p1 = {
-				overview_icon_texture = "mastery/human_shotpistol_shield",
-				marks = {
-					{ name = "shotpistol_shield_p1_m1" },
-				},
-			},
-			combatsword_p1 = {
-				overview_icon_texture = "mastery/combat_sword",
-				marks = {
-					{ name = "combatsword_p1_m1" },
-				},
-			},
-		}
-		icon_unload_count = 0
-		last_unloaded_icon_id = nil
-		Managers = {
-			ui = {
-				unload_item_icon = function(self, icon_load_id)
-					icon_unload_count = icon_unload_count + 1
-					last_unloaded_icon_id = icon_load_id
-				end,
-			},
-		}
 		weapon_stats_require_count = 0
 		weapon_template_lookup_count = 0
 		TestModifierDisplayNames = {
@@ -375,10 +335,6 @@ def main() -> None:
 
 			if path == "scripts/utilities/weapon/weapon_template" then
 				return TestWeaponTemplate
-			end
-
-			if path == "scripts/settings/ui/ui_weapon_pattern_settings" then
-				return TestUIWeaponPatternSettings
 			end
 
 			if path == "scripts/utilities/weapon_stats" then
@@ -1555,161 +1511,116 @@ def main() -> None:
     ) == ("61", "65", "63", "64", "62")
     assert globals_.weapon_stats_require_count == 0
 
-    # Four/five-column grids use Darktide's official static mastery texture for
-    # compound shields. This avoids spawning their linked 3D child units while
-    # preserving the requested column count and native behavior for all other
-    # weapons and for two/three-column layouts.
-    lua.execute(
-        """
-        compound_load_count = 0
-        compound_unload_count = 0
-        compound_destroy_count = 0
-        compound_priority_count = 0
-        counted_compound_load = function()
-            compound_load_count = compound_load_count + 1
-        end
-        counted_compound_unload = function()
-            compound_unload_count = compound_unload_count + 1
-        end
-        counted_compound_destroy = function()
-            compound_destroy_count = compound_destroy_count + 1
-        end
-        counted_compound_priority = function()
-            compound_priority_count = compound_priority_count + 1
-        end
-        """
-    )
+    # Compound-shield inventories retain Darktide's native weapon-image
+    # lifecycle and avoid the unstable dense preview path by capping the view
+    # to three columns before ItemGridViewBase initializes. The fetched layout
+    # repeats the check for an unequipped shield.
     mod.settings.enable_grid_layout = True
     mod.settings.melee_columns = 5
     mod.settings.ranged_columns = 5
     assert layout.columns(mod, None, "melee") == 5
 
-    shield_icon_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
-    shield_icon_blueprint.load_icon = globals_.counted_compound_load
-    shield_icon_blueprint.unload_icon = globals_.counted_compound_unload
-    shield_icon_blueprint.destroy = globals_.counted_compound_destroy
-    shield_icon_blueprint.update_item_icon_priority = globals_.counted_compound_priority
-    layout.configure_item_blueprint(
-        mod,
-        shield_icon_blueprint,
-        960,
-        lua.table_from({"slot_kind": "melee"}),
-    )
-    assert shield_icon_blueprint.better_inventory_compound_weapon_icon_fallback is True
-    shield_icon_style = blueprint_pass(shield_icon_blueprint, "icon").style
-    shield_icon_widget = lua.table_from(
+    # A compound shield must cap the effective view before any dense-grid
+    # blueprint work begins. The fetched layout repeats the check so an
+    # unequipped shield receives the same protection.
+    shield_view = lua.eval('{ _selected_slot = { name = "slot_primary" } }')
+    shield_context = lua.table_from(
         {
-            "content": lua.table_from({}),
-            "style": lua.table_from({"icon": shield_icon_style}),
+            "preview_profile_equipped_items": lua.table_from(
+                {"slot_primary": slab_shield_element.item}
+            )
         }
     )
-    cards = globals_.TestLayoutCards
-    assert cards.compound_weapon_static_icon(slab_shield_element.item) == "mastery/ogryn_slab_shield"
-    shield_icon_blueprint.load_icon(
-        None, shield_icon_widget, slab_shield_element, None, None, False
+    assert (
+        layout.equipped_compound_shield_requires_cap(
+            mod, shield_view, shield_context
+        )
+        is True
     )
-    assert globals_.compound_load_count == 0
-    assert shield_icon_widget.style.icon.material_values.texture_icon == "mastery/ogryn_slab_shield"
-    assert shield_icon_widget.style.icon.material_values.use_placeholder_texture == 0
-    assert shield_icon_widget.style.icon.material_values.use_render_target == 0
-    assert shield_icon_widget.content.better_inventory_static_compound_weapon_icon is True
-    shield_icon_blueprint.update_item_icon_priority(
-        None, shield_icon_widget, slab_shield_element, None, None
+    wrapped_shield_context = lua.eval(
+        """
+        {
+            preview_profile_equipped_items = {
+                slot_primary = { item = { weapon_template = "ogryn_powermaul_slabshield_p1_m1" } }
+            }
+        }
+        """
     )
-    assert globals_.compound_priority_count == 0
-
-    shield_icon_blueprint.unload_icon(
-        None, shield_icon_widget, slab_shield_element, None
+    assert (
+        layout.equipped_compound_shield_requires_cap(
+            mod, shield_view, wrapped_shield_context
+        )
+        is True
     )
-    assert globals_.compound_unload_count == 0
-    assert shield_icon_widget.style.icon.material_values.texture_icon is None
-    assert shield_icon_widget.content.better_inventory_static_compound_weapon_icon is None
-
-    # Character Overview has an independent live icon reference. The dense-grid
-    # compatibility lifecycle must unload that reference in the same frame and
-    # apply the same static texture, including direct item arguments.
-    shield_icon_widget.content.icon_load_id = "overview-shield-load"
-    assert cards.replace_live_compound_icon(
-        shield_icon_widget, slab_shield_element.item
-    ) is True
-    assert globals_.icon_unload_count == 1
-    assert globals_.last_unloaded_icon_id == "overview-shield-load"
-    assert shield_icon_widget.content.icon_load_id is None
-    assert shield_icon_widget.style.icon.material_values.texture_icon == "mastery/ogryn_slab_shield"
-    assert cards.replace_live_compound_icon(
-        shield_icon_widget, slab_shield_element.item
-    ) is True
-    assert globals_.icon_unload_count == 1
-
-    shield_icon_blueprint.destroy(
-        None, shield_icon_widget, slab_shield_element, None
+    shield_layout = lua.table_from([slab_shield_element])
+    safe_columns, shield_cap = layout.safe_inventory_maximum_columns(
+        mod, None, "melee", shield_layout, False
     )
-    assert globals_.compound_destroy_count == 1
-    assert shield_icon_widget.style.icon.material_values.texture_icon is None
-    assert shield_icon_widget.content.better_inventory_static_compound_weapon_icon is None
+    assert (safe_columns, shield_cap) == (3, True)
+    prearmed_columns, prearmed_cap = layout.safe_inventory_maximum_columns(
+        mod, None, "melee", lua.table_from([]), True
+    )
+    assert (prearmed_columns, prearmed_cap) == (3, True)
+    ordinary_columns, ordinary_cap = layout.safe_inventory_maximum_columns(
+        mod,
+        None,
+        "melee",
+        lua.table_from(
+            [lua.table_from({"item": lua.table_from({"name": "combatsword_p1_m1"})})]
+        ),
+        False,
+    )
+    assert ordinary_columns is None and ordinary_cap is False
 
     current_shield_items = (
-        (lua.table_from({"name": "powermaul_shield_p1_m1"}), "mastery/human_powermaul_shield"),
-        (lua.table_from({"weapon_template": "powermaul_shield_p1_m2"}), "mastery/human_powermaul_shield"),
-        (
-            lua.eval(
-                '{ gear = { masterDataInstance = { id = "content/items/weapons/player/ranged/shotpistol_shield_p1_m1" } } }'
-            ),
-            "mastery/human_shotpistol_shield",
+        lua.table_from({"name": "powermaul_shield_p1_m1"}),
+        lua.table_from({"weapon_template": "powermaul_shield_p1_m2"}),
+        lua.eval(
+            '{ gear = { masterDataInstance = { id = "content/items/weapons/player/ranged/shotpistol_shield_p1_m1" } } }'
         ),
+        lua.table_from({"weapon_template": "future_shield_p1_m1"}),
     )
-    for shield_item, expected_icon in current_shield_items:
+    for shield_item in current_shield_items:
         assert layout.is_compound_shield_weapon(shield_item) is True
-        assert cards.compound_weapon_static_icon(shield_item) == expected_icon
+        family_columns, family_cap = layout.safe_inventory_maximum_columns(
+            mod,
+            None,
+            "melee",
+            lua.table_from([lua.table_from({"item": shield_item})]),
+            False,
+        )
+        assert (family_columns, family_cap) == (3, True)
 
     ordinary_weapon = lua.table_from({"weapon_template": "combatsword_p1_m1"})
     assert layout.is_compound_shield_weapon(ordinary_weapon) is False
-    assert cards.compound_weapon_static_icon(ordinary_weapon) is None
-    future_shield = lua.table_from(
-        {
-            "weapon_template": "future_shield_p1_m1",
-            "hud_icon": "content/ui/textures/icons/weapons/future_shield",
-        }
-    )
-    assert layout.is_compound_shield_weapon(future_shield) is True
-    assert (
-        cards.compound_weapon_static_icon(future_shield)
-        == "content/ui/textures/icons/weapons/future_shield"
-    )
-    shield_icon_blueprint.load_icon(
+
+    external_columns, external_cap = layout.safe_inventory_maximum_columns(
         mod,
-        shield_icon_widget,
-        lua.table_from({"item": ordinary_weapon}),
         None,
-        None,
+        "melee",
+        lua.table_from(
+            [
+                lua.table_from(
+                    {"item": current_shield_items[0], "is_external": True}
+                )
+            ]
+        ),
         False,
     )
-    assert globals_.compound_load_count == 1
+    assert external_columns is None and external_cap is False
 
-    # Three columns retain the full native live-preview path, even for shields.
+    bounded_columns, bounded_cap = layout.safe_inventory_maximum_columns(
+        mod, 3, "melee", shield_layout, False
+    )
+    assert bounded_columns == 3 and bounded_cap is False
+
     mod.settings.melee_columns = 3
-    three_column_icon_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
-    three_column_icon_blueprint.load_icon = globals_.counted_compound_load
-    layout.configure_item_blueprint(
-        mod,
-        three_column_icon_blueprint,
-        960,
-        lua.table_from({"slot_kind": "melee"}),
+    assert (
+        layout.equipped_compound_shield_requires_cap(
+            mod, shield_view, shield_context
+        )
+        is False
     )
-    assert three_column_icon_blueprint.better_inventory_compound_weapon_icon_fallback is None
-    three_column_icon_widget = lua.table_from(
-        {
-            "content": lua.table_from({}),
-            "style": lua.table_from(
-                {"icon": blueprint_pass(three_column_icon_blueprint, "icon").style}
-            ),
-        }
-    )
-    three_column_icon_blueprint.load_icon(
-        None, three_column_icon_widget, slab_shield_element, None, None, False
-    )
-    assert globals_.compound_load_count == 2
-
     mod.settings.melee_columns = 3
     mod.settings.enable_grid_layout = False
 

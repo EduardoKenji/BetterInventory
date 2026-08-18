@@ -11,15 +11,6 @@ MODULE_PATH = (
     / "BetterInventory"
     / "BetterInventory_character_overview.lua"
 )
-UI_MODULE_PATH = (
-    PROJECT_ROOT
-    / "scripts"
-    / "mods"
-    / "BetterInventory"
-    / "BetterInventory_character_overview_ui.lua"
-)
-
-
 def item(lua, **values):
     return lua.table_from(values)
 
@@ -137,110 +128,6 @@ def main() -> None:
     assert cropped_lines == 2
     assert cropped_title.count("\n") == 1
     assert was_cropped is True
-
-    # Dense grids suppress both live compound-shield preview owners. Validate
-    # the Character Overview wrapper's ordering: the old static shield state is
-    # cleared before native update loads an ordinary replacement, and newly
-    # bound shields are converted after native init/update in the same frame.
-    ui = lua.execute(UI_MODULE_PATH.read_text(encoding="utf-8"), name=str(UI_MODULE_PATH))
-    lua.execute(
-        """
-        overview_replace_count = 0
-        overview_clear_count = 0
-        overview_native_update_saw_static = nil
-        TestOverviewLayout = {
-            compound_weapon_static_icon = function(item)
-                return item and item.is_shield and "mastery/shield" or nil
-            end,
-            clear_static_compound_icon = function(widget)
-                overview_clear_count = overview_clear_count + 1
-                widget.content.better_inventory_static_compound_weapon_icon = nil
-                widget.style.icon.material_values.texture_icon = nil
-                return true
-            end,
-            replace_live_compound_icon = function(widget, item)
-                overview_replace_count = overview_replace_count + 1
-
-                if item and item.is_shield then
-                    widget.content.icon_load_id = nil
-                    widget.content.better_inventory_static_compound_weapon_icon = true
-                    widget.style.icon.material_values.texture_icon = "mastery/shield"
-                    return true
-                end
-
-                return false
-            end,
-        }
-        TestOverviewBlueprint = {
-            init = function(parent, widget, element)
-                widget.content.element = element
-                widget.content.item = element.item
-                widget.content.icon_load_id = "native-init-load"
-            end,
-            update = function(parent, widget)
-                overview_native_update_saw_static = widget.content.better_inventory_static_compound_weapon_icon == true
-                widget.content.item = parent.current_item
-                widget.content.icon_load_id = parent.current_item and "native-update-load" or nil
-            end,
-            destroy = function(parent, widget)
-                widget.content.icon_load_id = nil
-            end,
-        }
-        TestOverviewParent = {
-            current_item = { name = "ordinary" },
-            equipped_item_in_slot = function(self, slot_name)
-                return self.current_item
-            end,
-        }
-        TestOverviewWidget = {
-            content = {},
-            style = { icon = { material_values = {} } },
-        }
-        TestOverviewShieldElement = {
-            item = { name = "slabshield", is_shield = true },
-            slot = { name = "slot_primary" },
-        }
-        """
-    )
-    ui.configure(lua.table_from({"Layout": lua.globals().TestOverviewLayout}))
-    wrapped = ui.wrap_character_overview_compound_icon_lifecycle(
-        lua.globals().TestOverviewBlueprint
-    )
-    wrapped.init(
-        lua.globals().TestOverviewParent,
-        lua.globals().TestOverviewWidget,
-        lua.globals().TestOverviewShieldElement,
-        None,
-        None,
-        None,
-        None,
-        None,
-    )
-    assert lua.globals().overview_replace_count == 1
-    assert lua.globals().TestOverviewWidget.content.icon_load_id is None
-    assert (
-        lua.globals().TestOverviewWidget.style.icon.material_values.texture_icon
-        == "mastery/shield"
-    )
-    wrapped.update(
-        lua.globals().TestOverviewParent,
-        lua.globals().TestOverviewWidget,
-        None,
-        0,
-        0,
-        None,
-    )
-    assert lua.globals().overview_native_update_saw_static is False
-    assert lua.globals().overview_clear_count == 1
-    assert lua.globals().TestOverviewWidget.content.item.name == "ordinary"
-    assert lua.globals().TestOverviewWidget.content.icon_load_id == "native-update-load"
-    wrapped.destroy(
-        lua.globals().TestOverviewParent,
-        lua.globals().TestOverviewWidget,
-        lua.globals().TestOverviewShieldElement,
-        None,
-    )
-    assert lua.globals().overview_clear_count == 2
 
     print("BetterInventory Character Overview view-model tests passed.")
 

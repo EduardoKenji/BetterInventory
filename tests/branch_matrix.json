@@ -33,15 +33,8 @@
         "name": "layout.weapon-modifiers-avoid-full-calculator",
         "test": "test_layout.py",
         "case": "weapon_modifier_data_only_resolution",
-        "outcome": "inventory cards resolve ordered modifier identities directly from bounded item and weapon-template data; four/five-column grid cards replace current and future identifiable Ogryn/Arbites compound-shield live previews with official static mastery or HUD textures while preserving requested columns and native behavior elsewhere, and malformed or sparse future records are negatively cached and cannot invoke the full WeaponStats calculator, retry every draw, or block the grid",
+        "outcome": "inventory cards resolve ordered modifier identities directly from bounded item and weapon-template data; equipped compound shields arm a three-column guard before base-view initialization and fetched layouts repeat the check for unequipped shields, while ordinary inventories preserve requested columns and malformed or sparse future records are negatively cached and cannot invoke the full WeaponStats calculator, retry every draw, or block the grid",
         "modules": ["BetterInventory_layout.lua", "BetterInventory_layout_blueprints.lua", "BetterInventory_layout_cards.lua", "BetterInventory_layout_content.lua", "BetterInventory_layout_geometry.lua", "BetterInventory_runtime.lua"]
-    },
-    {
-      "name": "layout.compound-shield-dense-grid-lifecycle",
-      "test": "test_character_overview.py",
-      "case": "dense_grid_compound_shield_overview_icon_lifecycle",
-      "outcome": "at four/five columns the independent equipped-item Character Overview owner cancels a compound shield live-preview reference in the binding frame, uses the same static native texture as the grid, preserves native ordinary-weapon transitions, and cleans up idempotently",
-      "modules": ["BetterInventory_character_overview_ui.lua", "BetterInventory_layout.lua", "BetterInventory_layout_cards.lua"]
     },
     {
       "name": "arbiter.rejects-overlap",

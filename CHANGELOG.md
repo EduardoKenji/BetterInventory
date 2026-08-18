@@ -2,9 +2,9 @@
 
 ## 2.6.3 - 2026-08-18
 
-- Restores four- and five-column weapon layouts for inventories containing compound shields by replacing only their linked 3D card previews with Darktide's official static mastery textures at those densities.
-- Covers both live-preview owners on the inventory screen—the scrolling grid and equipped Character Overview weapon card—while preserving native previews for ordinary weapons and one-to-three-column layouts.
-- Adds critical lifecycle coverage for every current Ogryn and Arbites shield family, repeated bindings, teardown, and shield-to-ordinary transitions.
+- Detects an equipped compound shield before the weapon-inventory base view is initialized and keeps the complete view on Darktide's known-safe three-column geometry.
+- Rechecks the fetched inventory before presentation so unequipped Slab Shields and current Arbites shield families receive the same protection; ordinary weapon inventories retain their configured four- or five-column layouts.
+- Adds regression coverage for both early equipped-item and later fetched-layout guards after static card-preview substitution proved insufficient to prevent the engine stall.
 
 ## 2.6.2 - 2026-08-18
 
