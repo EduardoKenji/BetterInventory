@@ -144,6 +144,7 @@ def main() -> None:
 			new_item_highlight_color_b = 73,
 			curio_display_profile = "primary",
 			show_curio_item_level = true,
+			curio_secondary_color_mode = "category",
 			expand_inventory_window = true,
 			weapon_extra_width_column_threshold = "four_plus",
 			five_column_weapon_extra_width = 80,
@@ -164,6 +165,26 @@ def main() -> None:
 			curio_stamina_color_r = 235,
 			curio_stamina_color_g = 205,
 			curio_stamina_color_b = 80,
+			curio_enemy_resistance_color_preset = "pink",
+			curio_enemy_resistance_color_r = 255,
+			curio_enemy_resistance_color_g = 94,
+			curio_enemy_resistance_color_b = 132,
+			curio_corruption_resistance_color_preset = "purple",
+			curio_corruption_resistance_color_r = 190,
+			curio_corruption_resistance_color_g = 105,
+			curio_corruption_resistance_color_b = 230,
+			curio_ability_regeneration_color_preset = "green",
+			curio_ability_regeneration_color_r = 105,
+			curio_ability_regeneration_color_g = 210,
+			curio_ability_regeneration_color_b = 120,
+			curio_mission_rewards_color_preset = "gold",
+			curio_mission_rewards_color_r = 250,
+			curio_mission_rewards_color_g = 189,
+			curio_mission_rewards_color_b = 73,
+			curio_revive_speed_color_preset = "neutral",
+			curio_revive_speed_color_r = 220,
+			curio_revive_speed_color_g = 230,
+			curio_revive_speed_color_b = 210,
 			curio_secondary_text_color_preset = "neutral",
 			curio_secondary_text_color_r = 220,
 			curio_secondary_text_color_g = 230,
@@ -1252,6 +1273,52 @@ def main() -> None:
     mod.on_enabled()
     assert settings.curio_stat_compression == "none"
 
+    settings._curio_secondary_palette_v3_migrated = False
+    settings.curio_enemy_resistance_color_preset = "orange"
+    settings.curio_enemy_resistance_color_r = 235
+    settings.curio_enemy_resistance_color_g = 155
+    settings.curio_enemy_resistance_color_b = 60
+    settings.curio_corruption_resistance_color_preset = "pink"
+    settings.curio_corruption_resistance_color_r = 255
+    settings.curio_corruption_resistance_color_g = 94
+    settings.curio_corruption_resistance_color_b = 132
+    settings.curio_revive_speed_color_preset = "sky_blue"
+    settings.curio_revive_speed_color_r = 144
+    settings.curio_revive_speed_color_g = 213
+    settings.curio_revive_speed_color_b = 255
+    mod.on_enabled()
+    assert settings.curio_enemy_resistance_color_preset == "pink"
+    assert settings.curio_corruption_resistance_color_preset == "purple"
+    assert settings.curio_revive_speed_color_preset == "neutral"
+    assert (
+        settings.curio_enemy_resistance_color_r,
+        settings.curio_enemy_resistance_color_g,
+        settings.curio_enemy_resistance_color_b,
+    ) == (255, 94, 132)
+    assert (
+        settings.curio_corruption_resistance_color_r,
+        settings.curio_corruption_resistance_color_g,
+        settings.curio_corruption_resistance_color_b,
+    ) == (190, 105, 230)
+    assert (
+        settings.curio_revive_speed_color_r,
+        settings.curio_revive_speed_color_g,
+        settings.curio_revive_speed_color_b,
+    ) == (220, 230, 210)
+
+    settings._curio_secondary_palette_v3_migrated = False
+    settings.curio_enemy_resistance_color_preset = "custom"
+    settings.curio_enemy_resistance_color_r = 1
+    settings.curio_enemy_resistance_color_g = 2
+    settings.curio_enemy_resistance_color_b = 3
+    mod.on_enabled()
+    assert settings.curio_enemy_resistance_color_preset == "custom"
+    assert (
+        settings.curio_enemy_resistance_color_r,
+        settings.curio_enemy_resistance_color_g,
+        settings.curio_enemy_resistance_color_b,
+    ) == (1, 2, 3)
+
     settings.curio_health_color_preset = "light_blue"
     mod.on_setting_changed("curio_health_color_preset")
     assert (
@@ -1276,6 +1343,17 @@ def main() -> None:
         settings.curio_stamina_color_g,
         settings.curio_stamina_color_b,
     ) == (105, 210, 120)
+
+    settings.curio_enemy_resistance_color_preset = "purple"
+    mod.on_setting_changed("curio_enemy_resistance_color_preset")
+    assert (
+        settings.curio_enemy_resistance_color_r,
+        settings.curio_enemy_resistance_color_g,
+        settings.curio_enemy_resistance_color_b,
+    ) == (190, 105, 230)
+    settings.curio_enemy_resistance_color_b = 41
+    mod.on_setting_changed("curio_enemy_resistance_color_b")
+    assert settings.curio_enemy_resistance_color_preset == "custom"
 
     settings.weapon_perk_text_color_preset = "neutral"
     mod.on_setting_changed("weapon_perk_text_color_preset")
@@ -2540,7 +2618,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "2.6.3"
+    assert data.version == "2.7.0"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
@@ -2937,7 +3015,8 @@ def main() -> None:
     ]
     assert enhanced_descriptions_ids == ["simplify_curio_primary_stat_text"]
     assert "simplify_curio_primary_stat_text" not in curio_content_ids
-    assert curio_content_ids.index("curio_secondary_text_color_group") > curio_content_ids.index("curio_stamina_color_group")
+    assert curio_content_ids.index("curio_secondary_color_mode") < curio_content_ids.index("curio_health_color_group")
+    assert curio_content_ids.index("curio_secondary_text_color_group") > curio_content_ids.index("curio_revive_speed_color_group")
 
     assert defaults["enable_grid_layout"] is True
     assert defaults["melee_columns"] == 3
@@ -3141,11 +3220,17 @@ def main() -> None:
     assert defaults["curio_primary_stat_font_size"] == 16
     assert defaults["curio_secondary_stat_font_size"] == 13
     assert defaults["curio_primary_secondary_spacing"] == 5
+    assert defaults["curio_secondary_color_mode"] == "category"
     assert defaults["show_item_level_icon"] is False
     assert defaults["curio_health_color_preset"] == "red"
     assert defaults["curio_toughness_color_preset"] == "light_blue"
     assert defaults["curio_wound_color_preset"] == "purple"
     assert defaults["curio_stamina_color_preset"] == "yellow"
+    assert defaults["curio_enemy_resistance_color_preset"] == "pink"
+    assert defaults["curio_corruption_resistance_color_preset"] == "purple"
+    assert defaults["curio_ability_regeneration_color_preset"] == "green"
+    assert defaults["curio_mission_rewards_color_preset"] == "gold"
+    assert defaults["curio_revive_speed_color_preset"] == "neutral"
     assert defaults["weapon_perk_text_color_preset"] == "light_green"
     assert defaults["weapon_perk_text_color_r"] == 190
     assert defaults["weapon_perk_text_color_g"] == 210

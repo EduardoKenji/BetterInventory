@@ -1185,8 +1185,20 @@ local localization = {
 	remove_curio_stat_plus_signs_tooltip = {
 		en = "Removes the leading + sign from every stat line on BetterInventory Curio cards. Disabled by default.",
 	},
+	curio_secondary_color_mode = {
+		en = "Secondary Curio line colour mode",
+	},
+	curio_secondary_color_mode_tooltip = {
+		en = "Perk category colours (default): groups related secondary Curio perks and gives each group its own customisable colour. Single colour: uses one colour for every secondary line. Unknown future perks use the single-colour fallback.",
+	},
+	curio_secondary_color_mode_category = {
+		en = "Perk category colours",
+	},
+	curio_secondary_color_mode_single = {
+		en = "Single colour",
+	},
 	curio_secondary_text_color_group = {
-		en = "Secondary Curio line colour",
+		en = "Single-colour and unknown-perk fallback",
 	},
 	curio_secondary_text_color_preset = {
 		en = "Preset",
@@ -1201,7 +1213,7 @@ local localization = {
 		en = "Blue",
 	},
 	curio_health_color_group = {
-		en = "Max Health line colour",
+		en = "Health Curio lines colour",
 	},
 	curio_health_color_preset = {
 		en = "Preset",
@@ -1216,7 +1228,7 @@ local localization = {
 		en = "Blue",
 	},
 	curio_toughness_color_group = {
-		en = "Max Toughness line colour",
+		en = "Toughness Curio lines colour",
 	},
 	curio_toughness_color_preset = {
 		en = "Preset",
@@ -1231,7 +1243,7 @@ local localization = {
 		en = "Blue",
 	},
 	curio_wound_color_group = {
-		en = "Wound line colour",
+		en = "Wound Curio lines colour",
 	},
 	curio_wound_color_preset = {
 		en = "Preset",
@@ -1246,7 +1258,7 @@ local localization = {
 		en = "Blue",
 	},
 	curio_stamina_color_group = {
-		en = "Max Stamina line colour",
+		en = "Stamina and efficiency lines colour",
 	},
 	curio_stamina_color_preset = {
 		en = "Preset",
@@ -1258,6 +1270,81 @@ local localization = {
 		en = "Green",
 	},
 	curio_stamina_color_b = {
+		en = "Blue",
+	},
+	curio_enemy_resistance_color_group = {
+		en = "Enemy damage resistance lines colour",
+	},
+	curio_enemy_resistance_color_preset = {
+		en = "Preset",
+	},
+	curio_enemy_resistance_color_r = {
+		en = "Red",
+	},
+	curio_enemy_resistance_color_g = {
+		en = "Green",
+	},
+	curio_enemy_resistance_color_b = {
+		en = "Blue",
+	},
+	curio_corruption_resistance_color_group = {
+		en = "Corruption resistance lines colour",
+	},
+	curio_corruption_resistance_color_preset = {
+		en = "Preset",
+	},
+	curio_corruption_resistance_color_r = {
+		en = "Red",
+	},
+	curio_corruption_resistance_color_g = {
+		en = "Green",
+	},
+	curio_corruption_resistance_color_b = {
+		en = "Blue",
+	},
+	curio_ability_regeneration_color_group = {
+		en = "Ability regeneration lines colour",
+	},
+	curio_ability_regeneration_color_preset = {
+		en = "Preset",
+	},
+	curio_ability_regeneration_color_r = {
+		en = "Red",
+	},
+	curio_ability_regeneration_color_g = {
+		en = "Green",
+	},
+	curio_ability_regeneration_color_b = {
+		en = "Blue",
+	},
+	curio_mission_rewards_color_group = {
+		en = "Mission reward lines colour",
+	},
+	curio_mission_rewards_color_preset = {
+		en = "Preset",
+	},
+	curio_mission_rewards_color_r = {
+		en = "Red",
+	},
+	curio_mission_rewards_color_g = {
+		en = "Green",
+	},
+	curio_mission_rewards_color_b = {
+		en = "Blue",
+	},
+	curio_revive_speed_color_group = {
+		en = "Revive speed lines colour",
+	},
+	curio_revive_speed_color_preset = {
+		en = "Preset",
+	},
+	curio_revive_speed_color_r = {
+		en = "Red",
+	},
+	curio_revive_speed_color_g = {
+		en = "Green",
+	},
+	curio_revive_speed_color_b = {
 		en = "Blue",
 	},
 	color_preset_red = {

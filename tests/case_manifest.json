@@ -206,10 +206,10 @@
       {"name": "callback_failure_safety", "risk": "high", "start_line": 755, "end_line": 979}
   ],
   "test_layout.py": [
-    {"name": "card_geometry", "risk": "high", "start_line": 597, "end_line": 1439},
-      {"name": "weapon_modifier_data_only_resolution", "risk": "critical", "start_line": 1440, "end_line": 1820},
-        {"name": "content_and_resource_ownership", "risk": "high", "start_line": 1821, "end_line": 3032},
-        {"name": "integration_boundaries", "risk": "medium", "start_line": 3033, "end_line": 4665}
+    {"name": "card_geometry", "risk": "high", "start_line": 613, "end_line": 1455},
+      {"name": "weapon_modifier_data_only_resolution", "risk": "critical", "start_line": 1456, "end_line": 1836},
+        {"name": "content_and_resource_ownership", "risk": "high", "start_line": 1837, "end_line": 3048},
+        {"name": "integration_boundaries", "risk": "medium", "start_line": 3049, "end_line": 4740}
   ],
   "test_operation_arbiter.py": [
     {"name": "manual_automatic_exclusion", "risk": "critical", "start_line": 20, "end_line": 34},
@@ -217,11 +217,11 @@
     {"name": "cancel_and_reconcile", "risk": "critical", "start_line": 72, "end_line": 76}
   ],
   "test_settings.py": [
-    {"name": "schema_dependency_refresh", "risk": "high", "start_line": 21, "end_line": 413},
-    {"name": "migration_preservation", "risk": "high", "start_line": 414, "end_line": 567},
-    {"name": "character_overview_refresh", "risk": "high", "start_line": 568, "end_line": 1548},
-    {"name": "localization_contract", "risk": "medium", "start_line": 1549, "end_line": 2647},
-    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2648, "end_line": 3182}
+    {"name": "schema_dependency_refresh", "risk": "high", "start_line": 21, "end_line": 434},
+    {"name": "migration_preservation", "risk": "high", "start_line": 435, "end_line": 588},
+    {"name": "character_overview_refresh", "risk": "high", "start_line": 589, "end_line": 1626},
+    {"name": "localization_contract", "risk": "medium", "start_line": 1627, "end_line": 2725},
+    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2726, "end_line": 3267}
   ],
   "test_settings_registry.py": [
     {"name": "duplicate_detection", "risk": "high", "start_line": 63, "end_line": 123},

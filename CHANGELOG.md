@@ -1,5 +1,11 @@
 # BetterInventory changelog
 
+## 2.7.0 - 2026-08-18
+
+- Colours secondary Curio lines by related perk category by default, with shared Health/Toughness primary colours and a shared Max Stamina colour for all stamina and efficiency perks.
+- Adds customisable categories for enemy damage resistance, corruption resistance, ability regeneration, mission rewards, and revive speed. Enemy resistance defaults to pink, corruption shares Wound purple, mission rewards remain gold, and Revive Speed uses a neutral tone distinct from Toughness; untouched preview-build colours migrate once without overwriting custom RGB choices.
+- Retains the previous single-colour mode and uses its colour as a fail-safe fallback for unknown future Curio perks; regression coverage enumerates every current Darktide Curio trait.
+
 ## 2.6.3 - 2026-08-18
 
 - Detects an equipped compound shield before the weapon-inventory base view is initialized and keeps the complete view on Darktide's known-safe three-column geometry.

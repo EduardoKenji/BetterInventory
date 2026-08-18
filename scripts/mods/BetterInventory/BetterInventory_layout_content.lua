@@ -199,6 +199,70 @@ local CURIO_PRIMARY_COLOR_DEFINITIONS = {
 		},
 	},
 }
+local CURIO_SECONDARY_COLOR_DEFINITIONS = {}
+
+local function register_curio_secondary_color(ids, prefix, default)
+	local definition = {
+		prefix = prefix,
+		default = default,
+	}
+
+	for i = 1, #ids do
+		CURIO_SECONDARY_COLOR_DEFINITIONS[ids[i]] = definition
+	end
+end
+
+register_curio_secondary_color({
+	"gadget_health_increase",
+	"gadget_innate_health_increase",
+}, "curio_health_color", { 235, 85, 85 })
+register_curio_secondary_color({
+	"gadget_toughness_increase",
+	"gadget_innate_toughness_increase",
+	"gadget_toughness_regen_delay",
+}, "curio_toughness_color", { 105, 200, 235 })
+register_curio_secondary_color({
+	"gadget_innate_max_wounds_increase",
+}, "curio_wound_color", { 190, 105, 230 })
+register_curio_secondary_color({
+	"gadget_stamina_increase",
+	"gadget_stamina_regeneration",
+	"gadget_sprint_cost_reduction",
+	"gadget_block_cost_reduction",
+}, "curio_stamina_color", { 235, 205, 80 })
+register_curio_secondary_color({
+	"gadget_damage_reduction_vs_flamers",
+	"gadget_damage_reduction_vs_snipers",
+	"gadget_damage_reduction_vs_grenadiers",
+	"gadget_damage_reduction_vs_hounds",
+	"gadget_damage_reduction_vs_mutants",
+	"gadget_damage_reduction_vs_gunners",
+	"gadget_damage_reduction_vs_bombers",
+}, "curio_enemy_resistance_color", { 255, 94, 132 })
+register_curio_secondary_color({
+	"gadget_corruption_resistance",
+	"gadget_permanent_damage_resistance",
+}, "curio_corruption_resistance_color", { 190, 105, 230 })
+register_curio_secondary_color({
+	"gadget_cooldown_reduction",
+}, "curio_ability_regeneration_color", { 105, 210, 120 })
+register_curio_secondary_color({
+	"gadget_mission_xp_increase",
+	"gadget_mission_credits_increase",
+	"gadget_mission_reward_gear_instead_of_weapon_increase",
+}, "curio_mission_rewards_color", { 250, 189, 73 })
+register_curio_secondary_color({
+	"gadget_revive_speed_increase",
+}, "curio_revive_speed_color", { 220, 230, 210 })
+
+local CURIO_SECONDARY_FALLBACK_COLOR_DEFINITION = {
+	prefix = "curio_secondary_text_color",
+	default = {
+		220,
+		230,
+		210,
+	},
+}
 local COMPACT_CURIO_LABELS = {
 	gadget_cooldown_reduction = {
 		heavy_localization_id = "curio_heavy_ability_regen",
@@ -733,6 +797,23 @@ local function curio_primary_color(mod, trait_id)
 	if not definition then
 		return DEFAULT_CURIO_PRIMARY_COLOR
 	end
+
+	local prefix = definition.prefix
+	local defaults = definition.default
+
+	return {
+		255,
+		clamped_color_channel(mod, prefix .. "_r", defaults[1]),
+		clamped_color_channel(mod, prefix .. "_g", defaults[2]),
+		clamped_color_channel(mod, prefix .. "_b", defaults[3]),
+	}
+end
+
+local function curio_secondary_color(mod, trait_id)
+	local category_mode = setting(mod, "curio_secondary_color_mode", "category") == "category"
+	local definition = category_mode and CURIO_SECONDARY_COLOR_DEFINITIONS[trait_id] or nil
+
+	definition = definition or CURIO_SECONDARY_FALLBACK_COLOR_DEFINITION
 
 	local prefix = definition.prefix
 	local defaults = definition.default
@@ -1782,6 +1863,7 @@ Content.is_curio = is_curio
 Content.is_weapon = is_weapon
 Content.clamped_color_channel = clamped_color_channel
 Content.curio_primary_color = curio_primary_color
+Content.curio_secondary_color = curio_secondary_color
 Content.compact_curio_description = compact_curio_description
 Content.configured_text_color = configured_text_color
 Content.single_line_text = single_line_text
