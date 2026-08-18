@@ -24,7 +24,7 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - Reaching an enabled acquisition cap now promotes and crafts the closest valid candidate when fallback is enabled. Games Lantern preserves its frozen stat-distance proof and revalidates it after final crafting and between queued jobs.
 - Ordo-docket and maximum-purchase caps now govern target acquisition only. After a target is frozen, below-20 mastery may continue buying fodder until the real wallet or inventory limit, fixing runs that stopped midway after the HUD vanished.
 - **Base weapon acquisition** is now a three-state selector: Disabled, buy the first authoritative Brunt weapon and proceed, or search for the target-stat weapon (default). Existing On/Off saves migrate to target search/disabled.
-- Single dump-stat plans can require an exact target (original behavior) or accept the first projected level-500 value lower than or equal to it. Custom five-stat plans remain exact.
+- The dump-target row's comparison selector can require an exact target (original behavior) or accept the first projected level-500 value lower than or equal to it. Custom five-stat plans remain exact.
 
 ### v2.5.1 changes included
 
@@ -182,7 +182,7 @@ powershell -ExecutionPolicy Bypass -File .\tools\package_release.ps1 -OutputPath
 For this checkout, synchronize and hash-verify the canonical live installation with:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\tools\sync_installed_mod.ps1
+powershell -ExecutionPolicy Bypass -File .\tools\sync_deployed_mod.ps1
 ```
 
 See [release packaging](docs/release-packaging.md) before publishing an archive. The generated ZIP is intentionally ignored by Git.
