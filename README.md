@@ -2,7 +2,7 @@
 
 [![BetterInventory verification](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml/badge.svg)](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml)
 
-> Current release: **v2.6.3** (2026-08-18). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
+> Current release: **v2.7.0** (2026-08-18). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
 
 BetterInventory is a standalone inventory and item-management mod for Warhammer 40,000: Darktide. It adds responsive weapon and Curio cards, richer item information, configurable sorting, supported vendor layouts, optional mod integrations, and safety-gated inventory workflows.
 
@@ -18,7 +18,13 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - A bounded inventory-options panel for sorting, discard rules, integrations, and view-specific controls.
 - Optional Quick Discard, Automatic Discard, Automatic Curio Buyer, and Auto Crafter workflows with explicit ownership, authoritative revalidation, and fail-closed behavior.
 
-## What's new in v2.6.3
+## What's new in v2.7.0
+
+- Secondary Curio perks now use category colours by default, grouping Health, Toughness, Wounds, stamina/efficiency, enemy damage resistance, corruption resistance, ability regeneration, mission rewards, and revive speed.
+- Health and Toughness secondary perks share their corresponding primary-stat colours; stamina regeneration, sprint efficiency, and block efficiency share Max Stamina's colour. Corruption resistance shares the Wound purple, enemy damage resistance uses pink, mission rewards stay gold, and Revive Speed uses a neutral tone distinct from Toughness.
+- Every category has independent preset and RGB controls. The previous single-colour mode remains available, and its colour safely handles unknown future Curio perks.
+
+### v2.6.3 changes included
 
 - Detects an equipped compound shield before Darktide initializes the weapon-inventory base view, preventing dense geometry from reaching the engine's failing preview path.
 - Rechecks the fetched inventory for unequipped Slab Shields and current Arbites shield families, then uses the known-safe three-column layout for the complete affected view.
@@ -184,7 +190,7 @@ Run the complete repository verification from the project root:
 powershell -ExecutionPolicy Bypass -File .\tests\verify.ps1
 ```
 
-The v2.6.3 suite currently discovers 41 behavior-test files and 159 named cases. To run the behavior suite directly with risk-weighted Lua coverage:
+The v2.7.0 suite currently discovers 41 behavior-test files and 159 named cases. To run the behavior suite directly with risk-weighted Lua coverage:
 
 ```powershell
 py -3 .\tests\run_tests.py --timeout-seconds 45 --coverage-output lua-coverage.json

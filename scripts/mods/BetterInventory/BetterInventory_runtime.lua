@@ -204,9 +204,6 @@ local function align_quick_level_mastery_buttons(view)
 	view:_set_scenegraph_position("purchase_button", position[1] + delta, position[2], position[3])
 end
 
--- Darktide class tables can contain the exact same inherited function object.
--- Give each target class its own forwarder before DMF hooks it, preventing
--- duplicate-hook detection and keeping every view in the normal hook chain.
 local function ensure_class_method(class, method)
 	if type(class) ~= "table" then
 		return false
@@ -339,27 +336,17 @@ local COLOR_TARGETS = {
 		prefix = "character_overview_dump_stat_color",
 		default_preset = "pink",
 	},
-	{
-		prefix = "curio_secondary_text_color",
-		default_preset = "neutral",
-	},
-	{
-		prefix = "curio_health_color",
-		default_preset = "red",
-	},
-	{
-		prefix = "curio_toughness_color",
-		default_preset = "light_blue",
-	},
-	{
-		prefix = "curio_wound_color",
-		default_preset = "purple",
-	},
-	{
-		prefix = "curio_stamina_color",
-		default_preset = "yellow",
-	},
 }
+
+for prefix, preset in pairs({
+	curio_secondary_text_color="neutral",curio_health_color="red",curio_toughness_color="light_blue",
+	curio_wound_color="purple",curio_stamina_color="yellow",curio_enemy_resistance_color="pink",
+	curio_corruption_resistance_color="purple",curio_ability_regeneration_color="green",
+	curio_mission_rewards_color="gold",curio_revive_speed_color="neutral",
+}) do
+	COLOR_TARGETS[#COLOR_TARGETS + 1] = { prefix = prefix, default_preset = preset }
+end
+
 local color_target_by_setting_id = {}
 local equipped_highlight_color_target
 local new_item_highlight_color_target
@@ -1259,6 +1246,8 @@ function mod.on_enabled()
 
 		mod:set("_equipped_highlight_mode_v1_migrated", true)
 	end
+
+	if SettingsRegistry and type(SettingsRegistry.migrate_curio_palette) == "function" then SettingsRegistry.migrate_curio_palette(mod) end
 
 	for i = 1, #COLOR_TARGETS do
 		apply_color_preset(COLOR_TARGETS[i])

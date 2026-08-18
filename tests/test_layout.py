@@ -461,6 +461,7 @@ def main() -> None:
 				curio_primary_stat_font_size = 16,
 				curio_secondary_stat_font_size = 13,
 				curio_primary_secondary_spacing = 5,
+				curio_secondary_color_mode = "category",
 				curio_secondary_text_color_r = 220,
 				curio_secondary_text_color_g = 230,
 				curio_secondary_text_color_b = 210,
@@ -484,6 +485,21 @@ def main() -> None:
 				curio_stamina_color_r = 235,
 				curio_stamina_color_g = 205,
 				curio_stamina_color_b = 80,
+				curio_enemy_resistance_color_r = 255,
+				curio_enemy_resistance_color_g = 94,
+				curio_enemy_resistance_color_b = 132,
+				curio_corruption_resistance_color_r = 190,
+				curio_corruption_resistance_color_g = 105,
+				curio_corruption_resistance_color_b = 230,
+				curio_ability_regeneration_color_r = 105,
+				curio_ability_regeneration_color_g = 210,
+				curio_ability_regeneration_color_b = 120,
+				curio_mission_rewards_color_r = 250,
+				curio_mission_rewards_color_g = 189,
+				curio_mission_rewards_color_b = 73,
+				curio_revive_speed_color_r = 220,
+				curio_revive_speed_color_g = 230,
+				curio_revive_speed_color_b = 210,
                 item_name_font_size = 16,
                 secondary_text_font_size = 13,
 				expertise_font_size = 20,
@@ -3925,6 +3941,51 @@ def main() -> None:
             curio_stat_pass.style.text_color[index] for index in range(1, 5)
         ) == expected_color
 
+    secondary_color_expectations = {
+        "gadget_health_increase": (255, 235, 85, 85),
+        "gadget_innate_health_increase": (255, 235, 85, 85),
+        "gadget_toughness_increase": (255, 105, 200, 235),
+        "gadget_innate_toughness_increase": (255, 105, 200, 235),
+        "gadget_toughness_regen_delay": (255, 105, 200, 235),
+        "gadget_innate_max_wounds_increase": (255, 190, 105, 230),
+        "gadget_stamina_increase": (255, 235, 205, 80),
+        "gadget_stamina_regeneration": (255, 235, 205, 80),
+        "gadget_sprint_cost_reduction": (255, 235, 205, 80),
+        "gadget_block_cost_reduction": (255, 235, 205, 80),
+        "gadget_damage_reduction_vs_flamers": (255, 255, 94, 132),
+        "gadget_damage_reduction_vs_snipers": (255, 255, 94, 132),
+        "gadget_damage_reduction_vs_grenadiers": (255, 255, 94, 132),
+        "gadget_damage_reduction_vs_hounds": (255, 255, 94, 132),
+        "gadget_damage_reduction_vs_mutants": (255, 255, 94, 132),
+        "gadget_damage_reduction_vs_gunners": (255, 255, 94, 132),
+        "gadget_damage_reduction_vs_bombers": (255, 255, 94, 132),
+        "gadget_corruption_resistance": (255, 190, 105, 230),
+        "gadget_permanent_damage_resistance": (255, 190, 105, 230),
+        "gadget_cooldown_reduction": (255, 105, 210, 120),
+        "gadget_mission_xp_increase": (255, 250, 189, 73),
+        "gadget_mission_credits_increase": (255, 250, 189, 73),
+        "gadget_mission_reward_gear_instead_of_weapon_increase": (255, 250, 189, 73),
+        "gadget_revive_speed_increase": (255, 220, 230, 210),
+    }
+
+    for trait_id, expected_color in secondary_color_expectations.items():
+        color = layout.curio_secondary_color(mod, trait_id)
+        assert tuple(color[index] for index in range(1, 5)) == expected_color
+
+    unknown_color = layout.curio_secondary_color(mod, "future_unknown_curio_perk")
+    assert tuple(unknown_color[index] for index in range(1, 5)) == (255, 220, 230, 210)
+
+    mod.settings.curio_secondary_color_mode = "single"
+    mod.settings.curio_secondary_text_color_r = 21
+    mod.settings.curio_secondary_text_color_g = 43
+    mod.settings.curio_secondary_text_color_b = 65
+    single_color = layout.curio_secondary_color(mod, "gadget_damage_reduction_vs_gunners")
+    assert tuple(single_color[index] for index in range(1, 5)) == (255, 21, 43, 65)
+    mod.settings.curio_secondary_color_mode = "category"
+    mod.settings.curio_secondary_text_color_r = 220
+    mod.settings.curio_secondary_text_color_g = 230
+    mod.settings.curio_secondary_text_color_b = 210
+
     curio_element.item.traits[1].id = "content/items/traits/test_wounds"
     blueprint.update_data(test_grid, curio_widget, curio_element)
     assert curio_widget.content.better_inventory_curio_stat_1 == "+1 Wound"
@@ -4001,6 +4062,20 @@ def main() -> None:
             detailed_blueprint, f"better_inventory_curio_stat_{index}"
         )
         assert stat_pass.visibility_function(detailed_widget.content)
+        stat_pass.change_function(detailed_widget.content, stat_pass.style)
+
+    assert tuple(
+        detailed_styles["better_inventory_curio_stat_2"].text_color[index]
+        for index in range(1, 5)
+    ) == (255, 235, 205, 80)
+    assert tuple(
+        detailed_styles["better_inventory_curio_stat_3"].text_color[index]
+        for index in range(1, 5)
+    ) == (255, 235, 205, 80)
+    assert tuple(
+        detailed_styles["better_inventory_curio_stat_4"].text_color[index]
+        for index in range(1, 5)
+    ) == (255, 255, 94, 132)
 
     # Detailed Curios reserve a two-line name area above all four stat rows even
     # when Name It is absent. Name It migration is owned by the customization

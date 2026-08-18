@@ -1,4 +1,4 @@
-local MOD_VERSION = "2.6.3"
+local MOD_VERSION = "2.7.0"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
@@ -2424,10 +2424,31 @@ return {
 						type = "checkbox",
 						default_value = false,
 					},
+					{
+						setting_id = "curio_secondary_color_mode",
+						tooltip = "curio_secondary_color_mode_tooltip",
+						type = "dropdown",
+						default_value = "category",
+						options = {
+							{
+								text = "curio_secondary_color_mode_category",
+								value = "category",
+							},
+							{
+								text = "curio_secondary_color_mode_single",
+								value = "single",
+							},
+						},
+					},
 					color_group("curio_health_color_group", "curio_health_color", "red", 235, 85, 85),
 					color_group("curio_toughness_color_group", "curio_toughness_color", "light_blue", 105, 200, 235),
 					color_group("curio_wound_color_group", "curio_wound_color", "purple", 190, 105, 230),
 					color_group("curio_stamina_color_group", "curio_stamina_color", "yellow", 235, 205, 80),
+					color_group("curio_enemy_resistance_color_group", "curio_enemy_resistance_color", "pink", 255, 94, 132),
+					color_group("curio_corruption_resistance_color_group", "curio_corruption_resistance_color", "purple", 190, 105, 230),
+					color_group("curio_ability_regeneration_color_group", "curio_ability_regeneration_color", "green", 105, 210, 120),
+					color_group("curio_mission_rewards_color_group", "curio_mission_rewards_color", "gold", 250, 189, 73),
+					color_group("curio_revive_speed_color_group", "curio_revive_speed_color", "neutral", 220, 230, 210),
 					color_group("curio_secondary_text_color_group", "curio_secondary_text_color", "neutral", 220, 230, 210),
 				},
 			},

@@ -105,6 +105,7 @@ end
 Layout.clear_runtime_caches = content.clear_runtime_caches
 Layout.direct_weapon_comparing_stats = content.direct_weapon_comparing_stats
 Layout.projected_weapon_modifier_records = content.projected_weapon_modifier_records
+Layout.curio_secondary_color = content.curio_secondary_color
 Layout.update_highlight_animation = Cards.update_highlight_animation
 Layout.remove_weapon_stats_wkc_listing_overlays = Cards.remove_weapon_stats_wkc_listing_overlays
 Layout.cap_brunt_wkc_listing_overlay_sizes = Cards.cap_brunt_wkc_listing_overlay_sizes

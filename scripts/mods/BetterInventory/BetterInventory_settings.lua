@@ -102,7 +102,43 @@ local MIGRATION_KEYS = {
 	custom_item_name_keybind = "_custom_item_name_keybind_v2_migrated",
 	weapon_blessing_display_mode = "_weapon_blessing_display_mode_v1_migrated",
 	highlight_equipped_items = "_equipped_highlight_mode_v1_migrated",
+	curio_enemy_resistance_color_preset = "_curio_secondary_palette_v3_migrated",
+	curio_corruption_resistance_color_preset = "_curio_secondary_palette_v3_migrated",
+	curio_revive_speed_color_preset = "_curio_secondary_palette_v3_migrated",
 }
+
+local CURIO_PALETTE_V3_MIGRATIONS = {
+	{ "curio_enemy_resistance_color", "orange", 235, 155, 60, "pink", 255, 94, 132 },
+	{ "curio_corruption_resistance_color", "pink", 255, 94, 132, "purple", 190, 105, 230 },
+	{ "curio_revive_speed_color", "sky_blue", 144, 213, 255, "neutral", 220, 230, 210 },
+}
+
+function Registry.migrate_curio_palette(mod)
+	if mod:get("_curio_secondary_palette_v3_migrated") == true then
+		return
+	end
+
+	local channels = { "_r", "_g", "_b" }
+
+	for _, migration in ipairs(CURIO_PALETTE_V3_MIGRATIONS) do
+		local prefix = migration[1]
+		local unchanged = mod:get(prefix .. "_preset") == migration[2]
+
+		for index = 1, 3 do
+			unchanged = unchanged and tonumber(mod:get(prefix .. channels[index])) == migration[index + 2]
+		end
+
+		if unchanged then
+			mod:set(prefix .. "_preset", migration[6], false)
+
+			for index = 1, 3 do
+				mod:set(prefix .. channels[index], migration[index + 6], false)
+			end
+		end
+	end
+
+	mod:set("_curio_secondary_palette_v3_migrated", true, false)
+end
 
 local function setting_owner(setting_id)
 	local owners = {
