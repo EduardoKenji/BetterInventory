@@ -63,6 +63,20 @@ local SECTION_RESUMING = "resuming"
 local SECTION_TRAITS = "traits"
 local SECTION_ESTIMATES = "estimates"
 
+local function workflow_active(state, queue)
+	state = state or {}
+	local search = state.search
+	local phase3 = state.phase3
+	local phase4 = state.phase4
+	local mastery = state.mastery
+	local queue_state = queue and queue.state
+	local queue_active = queue_state == "running" or queue_state == "selecting" or queue_state == "preflighting" or queue_state == "dispatching" or queue_state == "waiting_next" or queue_state == "starting" or queue_state == "stopping" or queue_state == "quarantined" or queue_state == "reconciliation_required"
+
+	return queue_active or state.operation_inflight == true or state.operation_quarantined == true or state.reconciliation_required == true or (tonumber(state.auxiliary_inflight_count) or 0) > 0 or search and search.running == true or phase3 and phase3.running == true or phase4 and phase4.running == true or mastery and mastery.running == true or false
+end
+
+Panel.workflow_active = workflow_active
+
 local function default_section_state()
 	return {
 		[SECTION_QUEUE] = false,
@@ -398,6 +412,7 @@ function Panel.new(dependencies)
 		_games_lantern_clear = dependencies.games_lantern_clear,
 		_games_lantern_select_choice = dependencies.games_lantern_select_choice,
 		_games_lantern_select_queue_job = dependencies.games_lantern_select_queue_job,
+		_games_lantern_remove_queue_job = dependencies.games_lantern_remove_queue_job,
 		_games_lantern_update_queue_custom_stat = dependencies.games_lantern_update_queue_custom_stat,
 		_games_lantern_update_queue_trait = dependencies.games_lantern_update_queue_trait,
 		_notify_blocked = dependencies.notify_blocked,
@@ -514,6 +529,7 @@ function Panel.new(dependencies)
 				selected = false,
 				selected_stat_index = 0,
 				queue_current = options.queue_current == true,
+				queue_removable = options.queue_removable == true,
 				queue_selected = options.queue_selected == true,
 				stat_count = 0,
 				stat_pressed_callbacks = {},
@@ -544,6 +560,7 @@ function Panel.new(dependencies)
 			stat_pressed_callback = options.stat_buttons and function(stat_name)
 				self:_set_setting("auto_crafter_target_dump_stat", stat_name)
 			end or nil,
+			remove_callback = options.remove,
 			widget_type = "auto_crafter_row",
 		}
 
@@ -914,7 +931,7 @@ function Panel.new(dependencies)
 	end
 
 	function self:_games_lantern_queue_target(queue)
-		if type(queue) ~= "table" or type(queue.jobs) ~= "table" or #queue.jobs ~= 2 then
+		if type(queue) ~= "table" or type(queue.jobs) ~= "table" or #queue.jobs < 1 or #queue.jobs > 2 then
 			return nil
 		end
 
@@ -930,7 +947,7 @@ function Panel.new(dependencies)
 			names[index] = name
 		end
 
-		return "Queued (" .. names[1] .. " => " .. names[2] .. ")"
+		return #names == 1 and "Queued (" .. names[1] .. ")" or "Queued (" .. names[1] .. " => " .. names[2] .. ")"
 	end
 
 	function self:_games_lantern_cost_authority()
@@ -1649,6 +1666,7 @@ function Panel.new(dependencies)
 					queue_job = true,
 					queue_index = index,
 					queue_current = highlighted,
+					queue_removable = not queue_active and #queue_jobs > 1,
 					queue_selected = job.selected == true,
 					selectable = not queue_active,
 					variant = "queue_job",
@@ -1660,6 +1678,19 @@ function Panel.new(dependencies)
 								self._queue_craft_confirmation_signature = nil
 								self._queue_craft_confirmation_text = nil
 								self:_queue_layout(1)
+							end
+						end
+					end,
+					remove = function()
+						if not queue_active and #queue_jobs > 1 and type(self._games_lantern_remove_queue_job) == "function" then
+							local ok, removed, reason = pcall(self._games_lantern_remove_queue_job, queue_index)
+							if ok and removed == true then
+								self._queue_craft_armed = false
+								self._queue_craft_confirmation_signature = nil
+								self._queue_craft_confirmation_text = nil
+								self:_queue_layout(1)
+							else
+								log("error", "Games Lantern queue-card removal failed: " .. tostring(ok and reason or removed))
 							end
 						end
 					end,
@@ -2136,9 +2167,12 @@ function Panel.new(dependencies)
 			add_estimate_currency("auto_crafter_panel_total_cost", "Known crafting investment", "total")
 		end
 
+		local function run_is_active()
+			return workflow_active(self._controller_state, self:_games_lantern_queue())
+		end
 		local import_busy = imported and (imported.state == "fetching" or imported.state == "resolving_catalogues" or imported.state == "awaiting_weapon_choice")
-		local craft_enabled = not queue_active and not import_busy
-		local craft_label = queue_owned and self._queue_craft_armed and "> CONFIRM TWO-WEAPON CRAFT <" or localize("auto_crafter_panel_preview", "> CLICK HERE TO CRAFT <")
+		local craft_enabled = not run_is_active() and not import_busy
+		local craft_label = queue_owned and self._queue_craft_armed and (queue.job_count == 1 and "> CONFIRM ONE-WEAPON CRAFT <" or "> CONFIRM TWO-WEAPON CRAFT <") or localize("auto_crafter_panel_preview", "> CLICK HERE TO CRAFT <")
 		table.insert(entries, self:_entry(craft_label, queue_owned and self._queue_craft_armed and (self._queue_craft_confirmation_text or "Cost authority unavailable; crafting remains blocked.") or "", {
 			enabled = craft_enabled,
 			selectable = craft_enabled,
@@ -2146,10 +2180,9 @@ function Panel.new(dependencies)
 			action = function()
 				local imported = self:_games_lantern_import()
 				local queue = self:_games_lantern_queue()
-				local queue_owned = queue and queue.job_count == 2 and queue.state ~= "empty" and queue.state ~= "complete"
-				local queue_active = queue_owned and (queue.state == "starting" or queue.state == "selecting" or queue.state == "preflighting" or queue.state == "dispatching" or queue.state == "running" or queue.state == "waiting_next" or queue.state == "stopping" or queue.state == "quarantined" or queue.state == "reconciliation_required")
+				local queue_owned = queue and queue.job_count > 0 and queue.state ~= "empty" and queue.state ~= "complete"
 				local import_busy = imported and (imported.state == "fetching" or imported.state == "resolving_catalogues" or imported.state == "awaiting_weapon_choice")
-				if queue_active or import_busy then return end
+				if workflow_active(self._controller_state, queue) or import_busy then return end
 
 				if (imported and imported.state == "staged" or queue_owned) and type(self._start_games_lantern_queue) == "function" then
 					local custom_stat_error = self:_invalid_queue_custom_stats(queue)
@@ -2193,30 +2226,19 @@ function Panel.new(dependencies)
 			refresh = function(widget)
 				local current_import = self:_games_lantern_import()
 				local current_queue = self:_games_lantern_queue()
-				local current_owned = current_queue and current_queue.job_count == 2 and current_queue.state ~= "empty" and current_queue.state ~= "complete"
-				local current_active = current_owned and (current_queue.state == "starting" or current_queue.state == "selecting" or current_queue.state == "preflighting" or current_queue.state == "dispatching" or current_queue.state == "running" or current_queue.state == "waiting_next" or current_queue.state == "stopping" or current_queue.state == "quarantined" or current_queue.state == "reconciliation_required")
+				local current_owned = current_queue and current_queue.job_count > 0 and current_queue.state ~= "empty" and current_queue.state ~= "complete"
 				local current_import_busy = current_import and (current_import.state == "fetching" or current_import.state == "resolving_catalogues" or current_import.state == "awaiting_weapon_choice")
-				local current_enabled = not current_active and not current_import_busy
+				local current_enabled = not workflow_active(self._controller_state, current_queue) and not current_import_busy
 				widget.content.enabled = current_enabled
 				widget.content.hotspot.disabled = not current_enabled
+				widget.content.label = current_owned and self._queue_craft_armed and (current_queue.job_count == 1 and "> CONFIRM ONE-WEAPON CRAFT <" or "> CONFIRM TWO-WEAPON CRAFT <") or localize("auto_crafter_panel_preview", "> CLICK HERE TO CRAFT <")
 				widget.content.detail = current_owned and self._queue_craft_armed and (self._queue_craft_confirmation_text or "Cost authority unavailable; crafting remains blocked.") or ""
 			end,
 		}))
-		local function run_is_active()
-			local state = self._controller_state or {}
-			local search = state.search
-			local phase3 = state.phase3
-			local phase4 = state.phase4
-			local mastery = state.mastery
-			local queue = self:_games_lantern_queue()
-			local queue_active = queue and (queue.state == "running" or queue.state == "selecting" or queue.state == "preflighting" or queue.state == "dispatching" or queue.state == "waiting_next" or queue.state == "starting" or queue.state == "stopping" or queue.state == "quarantined" or queue.state == "reconciliation_required")
-
-			return queue_active == true or search and search.running == true or phase3 and phase3.running == true or phase4 and phase4.running == true or mastery and mastery.running == true
-		end
 		local stop_enabled = run_is_active()
 		table.insert(entries, self:_entry(localize("auto_crafter_panel_stop", "> CLICK HERE TO STOP / INTERRUPT <"), "", {
 			enabled = stop_enabled,
-			selectable = true,
+			selectable = stop_enabled,
 			variant = "action",
 			action = function()
 				if type(self._stop_active_run) == "function" then
@@ -2296,6 +2318,7 @@ function Panel.new(dependencies)
 		end
 
 		local previous_plan = self._plan
+		local previous_active = workflow_active(self._controller_state, self:_games_lantern_queue())
 		self._controller_state = state
 		self._phase = state.phase or self._phase
 		self._snapshot = state.data or self._snapshot
@@ -2308,7 +2331,7 @@ function Panel.new(dependencies)
 			self:_reconcile_trait_targets()
 		end
 
-		if previous_plan ~= self._plan then
+		if previous_plan ~= self._plan or previous_active ~= workflow_active(state, self:_games_lantern_queue()) then
 			self:_queue_layout(1)
 		end
 
@@ -2336,7 +2359,7 @@ function Panel.new(dependencies)
 
 		if ctrl_v and not self._ctrl_v_down and type(self._games_lantern_paste) == "function" then
 			local current_queue = self:_games_lantern_queue()
-			local current_owned = current_queue and current_queue.job_count == 2 and current_queue.state ~= "empty" and current_queue.state ~= "complete"
+			local current_owned = current_queue and current_queue.job_count > 0 and current_queue.state ~= "empty" and current_queue.state ~= "complete"
 			local current_active = current_owned and (current_queue.state == "starting" or current_queue.state == "selecting" or current_queue.state == "preflighting" or current_queue.state == "dispatching" or current_queue.state == "running" or current_queue.state == "waiting_next" or current_queue.state == "stopping" or current_queue.state == "quarantined" or current_queue.state == "reconciliation_required")
 
 			if not current_active then

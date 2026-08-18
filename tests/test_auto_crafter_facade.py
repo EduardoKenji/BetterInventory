@@ -24,7 +24,7 @@ def main() -> None:
     assert "pcall(panel.sync_controller_snapshot, panel, snapshot)" in source
     assert "function AutoCrafter.interrupt_for_external_mutation(kind)" in source
     assert "snapshot.operation_inflight or snapshot.operation_quarantined" in source
-    assert "queue_owned = queue_state and queue_state.job_count == 2" in source
+    assert "queue_owned = queue_state and queue_state.job_count > 0" in source
     assert "local queue_state = games_lantern_queue and games_lantern_queue:state()" in source
     assert "local controller_busy = controller and controller:is_busy() or false" in source
     assert "pcall(games_lantern_queue.clear, games_lantern_queue)" in source
@@ -41,6 +41,14 @@ def main() -> None:
     assert "HudPolicy.advance_completion_elapsed" in source
     assert '"Verifying final crafted weapon"' in source
     assert '"Applying selected weapon mark"' in source
+
+    # Controller-detected Psych Ward context loss must also stop and settle the
+    # host-owned imported queue after any late backend response becomes inert.
+    assert 'kind == "context_exit" or kind == "phase4_complete"' in source
+    assert 'queue_snapshot.stop_requested' in source
+    assert '"stop_settled", { reason = "context_exit_settled" }' in source
+    assert "not controller_snapshot.operation_inflight" in source
+    assert "not controller_snapshot.operation_quarantined" in source
 
     # Staged Games Lantern planner selection mirrors Brunt's native weapon
     # preview through a bounded deferred-tab coordinator. It is cancelled at

@@ -53,11 +53,19 @@ def main() -> None:
             color_definition_4 = "blue_violet",
             color_definition_5 = "deep_pink",
         }
+		myfavorites_runtime_cache = {favorites = {}}
+		myfavorites_notify_calls = 0
         myfavorites = {
             enabled = true,
             is_enabled = function(self) return self.enabled end,
             get = function(self, setting_id) return myfavorites_settings[setting_id] end,
-            set = function(self, setting_id, value) myfavorites_settings[setting_id] = value end,
+            set = function(self, setting_id, value, notify_mod)
+				myfavorites_settings[setting_id] = value
+				if notify_mod and setting_id == "favorite_item_list" then
+					myfavorites_notify_calls = myfavorites_notify_calls + 1
+					myfavorites_runtime_cache.favorites = value
+				end
+			end,
         }
         globalstore = {
             character_avatar_data = {
@@ -178,9 +186,13 @@ def main() -> None:
     globals_.myfavorites_settings.favorite_item_list = False
     assert module.apply_auto_crafter_color(globals_.test_mod, "crafted-weapon") is True
     assert globals_.myfavorites_settings.favorite_item_list["crafted-weapon"] == 3
+    assert globals_.myfavorites_runtime_cache.favorites["crafted-weapon"] == 3
+    assert globals_.myfavorites_notify_calls == 1
     globals_.settings.auto_crafter_myfavorites_color = 1
     assert module.apply_auto_crafter_color(globals_.test_mod, "crafted-weapon") is True
     assert globals_.myfavorites_settings.favorite_item_list["crafted-weapon"] is None
+    assert globals_.myfavorites_runtime_cache.favorites["crafted-weapon"] is None
+    assert globals_.myfavorites_notify_calls == 2
 
     armoury_class, brunt_class, melk_class, melk_goods_class = lua.execute(
         r"""

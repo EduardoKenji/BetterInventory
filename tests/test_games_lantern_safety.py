@@ -250,6 +250,30 @@ def main() -> None:
     assert stopping.on_event(stopping, "operation_reconciliation_required", to_lua({"reason": "late"})) is True
     assert stopping.snapshot(stopping)["state"] == "reconciliation_required"
 
+    # Psych Ward can lose its live Brunt view while a backend request is still
+    # settling. Context loss owns a terminal stop transition: it may not remain
+    # indefinitely busy, and a later retry must reselect/reconfigure the job.
+    interrupted = module.new(to_lua({
+        "select_job": callback(lambda job, index: True),
+        "configure_job": callback(lambda job, index: True),
+        "start_job": callback(lambda job, index: True),
+        "stop_job": callback(lambda reason: True),
+        "view_is_valid": callback(lambda: True),
+    }))
+    assert interrupted.install(interrupted, build()) is True
+    assert interrupted.start(interrupted) is True
+    assert interrupted._selected_job_id is not None
+    assert interrupted._configured_job_id is not None
+    assert interrupted.on_event(interrupted, "context_exit", to_lua({"reason": "runtime_context_invalid"})) is True
+    interrupted_snapshot = interrupted.snapshot(interrupted)
+    assert interrupted_snapshot["state"] == "stopping"
+    assert interrupted_snapshot["stop_requested"] is True
+    assert interrupted._selected_job_id is None
+    assert interrupted._configured_job_id is None
+    assert interrupted.on_event(interrupted, "stop_settled", to_lua({"reason": "context_exit_settled"})) is True
+    assert interrupted.snapshot(interrupted)["state"] == "stopped"
+    assert interrupted.snapshot(interrupted)["stop_requested"] is False
+
     quarantined = module.new(to_lua({
         "select_job": callback(lambda job, index: True),
         "configure_job": callback(lambda job, index: True),

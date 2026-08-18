@@ -5,7 +5,7 @@
       "name": "favorites.isolate-purchase-sources",
       "test": "test_favorite_integration.py",
       "case": "purchase_source_isolation_and_myfavorites_color_assignment",
-      "outcome": "manual rotating Armoury, Melk Limited Time, and Melk Mystery purchase views use independently gated source hooks; Brunt is excluded, GlobalStore Armoury and Melk routes inherit their matching option and persist favorites in the selected offer owner's character save, while unresolved or unrelated custom services and Automatic Curio Buyer remain isolated, and Auto Crafter rejected rolls stay unfavorited and discardable",
+      "outcome": "manual rotating Armoury, Melk Limited Time, and Melk Mystery purchase views use independently gated source hooks; Brunt is excluded, GlobalStore Armoury and Melk routes inherit their matching option and persist favorites in the selected offer owner's character save, while unresolved or unrelated custom services and Automatic Curio Buyer remain isolated, Auto Crafter rejected rolls stay unfavorited and discardable, and successful Auto Crafter MyFavorites assignments notify the integration so its cloned runtime color cache matches persisted state",
       "modules": ["BetterInventory_favorite_integration.lua"]
     },
     {
@@ -138,7 +138,7 @@
       "name": "auto-crafter.blocks-external-account-writes",
       "test": "test_account_mutation_guard.py",
       "case": "service_level_account_mutation_exclusion",
-      "outcome": "native UI, Quick Level Mastery, and other service writes stop Auto Crafter between requests or fail closed while one is unresolved; owned perk calls preserve no-cost sentinel and trailing tier arity",
+      "outcome": "native UI, Quick Level Mastery, and other service writes stop Auto Crafter between requests or fail closed while one is unresolved; repeated same-operation retries are rejected without duplicating warnings, and owned perk calls preserve no-cost sentinel and trailing tier arity",
       "modules": ["BetterInventory_account_mutation_guard.lua", "BetterInventory_auto_crafter.lua"]
     },
     {
@@ -226,6 +226,20 @@
       "modules": ["BetterInventory_auto_crafter.lua"]
     },
     {
+      "name": "auto-crafter.psych-ward-status-overlay",
+      "test": "test_auto_crafter_viewport.py",
+      "case": "panel_and_hud_resolution_matrix",
+      "outcome": "the post-draw status bridge receives the exact live view and admits Psych Ward's Brunt vendor only while no conflicting game mode or destroyed view is observable",
+      "modules": ["BetterInventory.lua", "BetterInventory_auto_crafter.lua"]
+    },
+    {
+      "name": "auto-crafter.action-controls-are-exclusive",
+      "test": "test_auto_crafter_stats.py",
+      "case": "stable_panel_snapshot_and_selection_polling",
+      "outcome": "manual runs, imported queues, in-flight operations, quarantine, and reconciliation share one busy predicate so Craft and Stop / Interrupt cannot both be enabled",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
       "name": "auto-crafter.acquisition-cap-promotes-custom-fallback",
       "test": "test_auto_crafter_controller.py",
       "case": "custom_stat_exact_fallback_and_resume",
@@ -254,6 +268,13 @@
       "modules": ["BetterInventory_auto_crafter.lua"]
     },
     {
+      "name": "games-lantern.staged-card-removal-crafts-one-weapon",
+      "test": "test_games_lantern_queue.py",
+      "case": "staged_queue_single-weapon_removal",
+      "outcome": "removing either staged melee or ranged card leaves the other as the selected execution job, recomputes one-weapon cost authority, and locks further removal once execution starts",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
       "name": "games-lantern.brunt-selection-follows-planner-only",
       "test": "test_games_lantern_selection_coordinator.py",
       "case": "bounded_brunt_selection_sync_and_clear_restore",
@@ -275,6 +296,13 @@
       "modules": ["BetterInventory_auto_crafter.lua", "BetterInventory_runtime.lua"]
     },
     {
+      "name": "auto-crafter.context-exit-releases-imported-queue",
+      "test": "test_auto_crafter_facade.py",
+      "case": "frame_update_crash_containment",
+      "outcome": "controller-detected context loss stops the host queue and the facade observes late backend settlement before issuing the terminal queue transition",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
       "name": "auto-crafter.optional-mod-compatibility-soak",
       "test": "test_games_lantern_compatibility.py",
       "case": "optional_mod_lifecycle_admission_and_four_run_soak",
@@ -292,7 +320,7 @@
       "name": "games-lantern.two-job-boundaries-fail-closed",
       "test": "test_games_lantern_safety.py",
       "case": "two_job_state_resource_and_quarantine_matrix",
-      "outcome": "all fresh/resume/exact pairs remain serial while resource, view-loss, stop, and reconciliation boundaries prevent follow-up dispatch",
+      "outcome": "all fresh/resume/exact pairs remain serial while resource, view-loss, stop, and reconciliation boundaries prevent follow-up dispatch; Psych Ward context loss terminally settles and resets selection/configuration for a safe retry",
       "modules": ["BetterInventory_auto_crafter.lua"]
     },
     {

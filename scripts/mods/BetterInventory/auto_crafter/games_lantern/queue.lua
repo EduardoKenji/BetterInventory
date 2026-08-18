@@ -1,11 +1,11 @@
 -- Session-local, serial Games Lantern queue coordinator.
 --
 -- This module owns no account operation and does not touch persistent settings.
--- It only stages a fully resolved two-slot build and coordinates explicit,
+-- It stages one or both jobs from a fully resolved build and coordinates explicit,
 -- boundary-safe transitions supplied by the host Auto Crafter controller.
 local Queue = {}
 
-Queue.CONTRACT_VERSION = "games_lantern_queue_v3"
+Queue.CONTRACT_VERSION = "games_lantern_queue_v4"
 
 local QUEUE_SEQUENCE = 0
 
@@ -62,16 +62,19 @@ local function valid_job(job, expected_slot)
 end
 
 local function valid_build(build)
-	if type(build) ~= "table" or build.kind ~= "games_lantern_build" or type(build.jobs) ~= "table" or #build.jobs ~= 2 then
+	if type(build) ~= "table" or build.kind ~= "games_lantern_build" or type(build.jobs) ~= "table" or #build.jobs < 1 or #build.jobs > 2 then
 		return false, "invalid_build"
 	end
 
-	if not valid_job(build.jobs[1], "melee") then
-		return false, "invalid_melee_job"
-	end
-
-	if not valid_job(build.jobs[2], "ranged") then
-		return false, "invalid_ranged_job"
+	if #build.jobs == 2 then
+		if not valid_job(build.jobs[1], "melee") then
+			return false, "invalid_melee_job"
+		end
+		if not valid_job(build.jobs[2], "ranged") then
+			return false, "invalid_ranged_job"
+		end
+	elseif not valid_job(build.jobs[1], build.jobs[1] and build.jobs[1].slot) or build.jobs[1].slot ~= "melee" and build.jobs[1].slot ~= "ranged" then
+		return false, "invalid_queue_job"
 	end
 
 	return true
@@ -299,7 +302,10 @@ function Queue.new(dependencies)
 
 		QUEUE_SEQUENCE = QUEUE_SEQUENCE + 1
 		self._queue_id = tostring(build.source_uuid or "games_lantern") .. ":" .. tostring(QUEUE_SEQUENCE)
-		self._jobs = { copy(build.jobs[1]), copy(build.jobs[2]) }
+		self._jobs = {}
+		for index, job in ipairs(build.jobs) do
+			self._jobs[index] = copy(job)
+		end
 		local character_ok, character_id = safe_call(self._current_character_id)
 		self._character_id = character_ok and character_id or nil
 		for index, job in ipairs(self._jobs) do
@@ -367,7 +373,27 @@ function Queue.new(dependencies)
 	function self:on_event(kind, payload)
 		self._last_event = { kind = kind, payload = copy(payload or {}) }
 
-		if kind == "phase4_complete" then
+		if kind == "context_exit" then
+			if unresolved_state(self._state) then
+				self._stop_requested = true
+				self._state = "stopping"
+				self._last_error = tostring(payload and payload.reason or "context_exit")
+				self._selected_job_id = nil
+				self._configured_job_id = nil
+				emit("queue_stopping", { index = self._current_index, queue_id = self._queue_id, reason = self._last_error })
+
+				return true
+			end
+		elseif kind == "stop_settled" then
+			if self._stop_requested and (self._state == "stopping" or self._state == "quarantined" or self._state == "reconciliation_required") then
+				self._state = "stopped"
+				self._stop_requested = false
+				self._last_error = nil
+				emit("queue_stopped", { index = self._current_index, queue_id = self._queue_id, reason = tostring(payload and payload.reason or "stop_settled") })
+
+				return true
+			end
+		elseif kind == "phase4_complete" then
 			if self._state ~= "running" then
 				return false
 			end
@@ -486,6 +512,35 @@ function Queue.new(dependencies)
 		emit("queue_planner_selected", { index = index, job = self._jobs[index], queue_id = self._queue_id })
 
 		return true, self._jobs[index]
+	end
+
+	function self:remove_staged_job(index)
+		index = tonumber(index)
+		if self._state ~= "staged" then
+			return false, "queue_editor_locked"
+		end
+		if not self._jobs or #self._jobs <= 1 then
+			return false, "last_queue_job"
+		end
+		if index == nil or index ~= math.floor(index) or not self._jobs[index] then
+			return false, "invalid_queue_index"
+		end
+
+		local removed = table.remove(self._jobs, index)
+		self._current_index = 1
+		self._planner_index = 1
+		self._selected_job_id = nil
+		self._configured_job_id = nil
+		self._presentation_cache = nil
+		self._presentation_signature = nil
+		emit("queue_job_removed", {
+			index = index,
+			job = removed,
+			queue_id = self._queue_id,
+			remaining_job = self._jobs[1],
+		})
+
+		return true, self._jobs[1], removed
 	end
 
 	function self:update_selected_custom_stat(stat_index, value)
@@ -608,6 +663,7 @@ function Queue.new(dependencies)
 			tostring(self._last_error or ""),
 		}, "|")
 		for _, job in ipairs(self._jobs or {}) do
+			signature = signature .. "|job:" .. tostring(job.job_id) .. ":" .. tostring(job.slot)
 			for _, target in ipairs(job.custom_stat_targets or {}) do
 				signature = signature .. "|" .. tostring(target.name) .. ":" .. tostring(target.value)
 			end

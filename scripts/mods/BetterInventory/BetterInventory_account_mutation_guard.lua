@@ -4,6 +4,7 @@ local Guard = {}
 local auto_crafter
 local host_mod
 local owned_call_depth = 0
+local blocked_notice_keys = {}
 local pack_values = table.pack or function(...)
 	return { n = select("#", ...), ... }
 end
@@ -86,6 +87,7 @@ function Guard.configure(dependencies)
 	dependencies = dependencies or {}
 	host_mod = dependencies.mod or host_mod
 	auto_crafter = dependencies.auto_crafter or auto_crafter
+	blocked_notice_keys = {}
 end
 
 function Guard.with_owned_call(callback)
@@ -129,6 +131,10 @@ function Guard.intercept(kind, original, service, ...)
 	end
 
 	if Guard.is_owned_call() or not busy then
+		if not busy then
+			blocked_notice_keys = {}
+		end
+
 		return original(service, ...)
 	end
 
@@ -148,8 +154,23 @@ function Guard.intercept(kind, original, service, ...)
 		end
 	end
 
-	log("warning", "Blocked external " .. tostring(kind) .. " while an Auto Crafter request is unresolved.")
-	notify("Wait for the current Auto Crafter request to settle before " .. tostring(kind) .. ".")
+	-- Native mastery initialization can retry the same mutation dozens of times
+	-- in one frame. Keep rejecting every call, but surface only one warning for
+	-- each unresolved operation so a safe interruption cannot create a toast
+	-- storm when the player changes context.
+	local notice_key = table.concat({
+		tostring(kind),
+		tostring(snapshot.operation_sequence),
+		tostring(snapshot.operation_kind),
+		tostring(snapshot.operation_quarantined),
+		tostring(snapshot.auxiliary_inflight_count),
+	}, "|")
+
+	if not blocked_notice_keys[notice_key] then
+		blocked_notice_keys[notice_key] = true
+		log("warning", "Blocked external " .. tostring(kind) .. " while an Auto Crafter request is unresolved.")
+		notify("Wait for the current Auto Crafter request to settle before " .. tostring(kind) .. ".")
+	end
 
 	return rejected(kind)
 end

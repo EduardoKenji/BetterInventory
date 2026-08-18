@@ -91,7 +91,7 @@ local function status_presentation(view)
 		return
 	end
 
-	if type(bridge.visible_context) == "function" and bridge.visible_context() ~= true then
+	if type(bridge.visible_context) == "function" and bridge.visible_context(view) ~= true then
 		return
 	end
 

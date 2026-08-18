@@ -1,6 +1,6 @@
 {
   "test_favorite_integration.py": [
-    {"name": "purchase_source_isolation_and_myfavorites_color_assignment", "risk": "high", "start_line": 1, "end_line": 317}
+    {"name": "purchase_source_isolation_and_myfavorites_color_assignment", "risk": "high", "start_line": 1, "end_line": 329}
   ],
   "test_weapon_kill_counter_integration.py": [
     {"name": "presentation_only_fixture_load_order_deduplication_and_responsive_card_profiles", "risk": "high", "start_line": 17, "end_line": 434}
@@ -26,21 +26,21 @@
       {"name": "custom_stat_planner_validation", "risk": "critical", "start_line": 559, "end_line": 590},
       {"name": "phase_material_and_mastery_fodder_ranges", "risk": "high", "start_line": 591, "end_line": 686},
       {"name": "weapon_mark_label_composition", "risk": "high", "start_line": 687, "end_line": 699},
-      {"name": "stable_panel_snapshot_and_selection_polling", "risk": "high", "start_line": 700, "end_line": 774},
-      {"name": "workflow_mode_migration_and_dump_comparison_widget", "risk": "critical", "start_line": 776, "end_line": 812},
-      {"name": "myfavorites_widget_color_and_active_queue_collapse", "risk": "high", "start_line": 814, "end_line": 887},
-      {"name": "manual_selector_and_shortcut_grid", "risk": "critical", "start_line": 889, "end_line": 937},
-      {"name": "localized_display_labels", "risk": "high", "start_line": 938, "end_line": 952},
-      {"name": "custom_stat_grid_bounds_and_summary", "risk": "critical", "start_line": 953, "end_line": 1022},
-      {"name": "tier_qualified_trait_target_selection", "risk": "high", "start_line": 1023, "end_line": 1112},
-      {"name": "dual_target_trait_grid_selection_exclusivity_and_icon", "risk": "high", "start_line": 1113, "end_line": 1154},
-      {"name": "category_specific_ranged_perk_defaults", "risk": "high", "start_line": 1155, "end_line": 1191},
-      {"name": "deferred_grid_rebuild_scroll_restore_and_mastery_gate", "risk": "critical", "start_line": 1192, "end_line": 1229},
-      {"name": "right_click_routing_blessing_icon_and_runtime_progress", "risk": "high", "start_line": 1230, "end_line": 1269}
+      {"name": "stable_panel_snapshot_and_selection_polling", "risk": "high", "start_line": 700, "end_line": 783},
+      {"name": "workflow_mode_migration_and_dump_comparison_widget", "risk": "critical", "start_line": 785, "end_line": 821},
+      {"name": "myfavorites_widget_color_and_active_queue_collapse", "risk": "high", "start_line": 823, "end_line": 896},
+      {"name": "manual_selector_and_shortcut_grid", "risk": "critical", "start_line": 898, "end_line": 946},
+      {"name": "localized_display_labels", "risk": "high", "start_line": 947, "end_line": 961},
+      {"name": "custom_stat_grid_bounds_and_summary", "risk": "critical", "start_line": 962, "end_line": 1031},
+      {"name": "tier_qualified_trait_target_selection", "risk": "high", "start_line": 1032, "end_line": 1121},
+      {"name": "dual_target_trait_grid_selection_exclusivity_and_icon", "risk": "high", "start_line": 1122, "end_line": 1163},
+      {"name": "category_specific_ranged_perk_defaults", "risk": "high", "start_line": 1164, "end_line": 1200},
+      {"name": "deferred_grid_rebuild_scroll_restore_and_mastery_gate", "risk": "critical", "start_line": 1201, "end_line": 1241},
+      {"name": "right_click_routing_blessing_icon_and_runtime_progress", "risk": "high", "start_line": 1242, "end_line": 1277}
   ],
   "test_auto_crafter_viewport.py": [
-    {"name": "panel_and_hud_resolution_matrix", "risk": "high", "start_line": 14, "end_line": 68},
-    {"name": "post_draw_overlay_cpu_ownership", "risk": "high", "start_line": 70, "end_line": 195}
+    {"name": "panel_and_hud_resolution_matrix", "risk": "high", "start_line": 14, "end_line": 73},
+    {"name": "post_draw_overlay_cpu_ownership", "risk": "high", "start_line": 75, "end_line": 207}
   ],
   "test_auto_crafter_backend.py": [
     {"name": "complete_authoritative_inventory_summary", "risk": "critical", "start_line": 16, "end_line": 138},
@@ -54,7 +54,7 @@
     {"name": "psych_ward_character_select_brunt_runtime", "risk": "critical", "start_line": 120, "end_line": 144}
   ],
     "test_auto_crafter_facade.py": [
-      {"name": "frame_update_crash_containment", "risk": "critical", "start_line": 14, "end_line": 65}
+      {"name": "frame_update_crash_containment", "risk": "critical", "start_line": 14, "end_line": 74}
     ],
     "test_auto_crafter_hud_policy.py": [
       {"name": "terminal_dirty_wakeup_bounded_expiry_and_phase_labels", "risk": "critical", "start_line": 1, "end_line": 101}
@@ -118,24 +118,25 @@
         {"name": "explicit_weapon_choice_resolution", "risk": "critical", "start_line": 527, "end_line": 542}
     ],
     "test_games_lantern_queue.py": [
-      {"name": "serial_queue_transition_and_completion", "risk": "critical", "start_line": 17, "end_line": 100},
-      {"name": "stop_failure_and_boundary_guards", "risk": "critical", "start_line": 101, "end_line": 181},
-      {"name": "staged_queue_profile_editor", "risk": "critical", "start_line": 182, "end_line": 219}
+      {"name": "serial_queue_transition_and_completion", "risk": "critical", "start_line": 18, "end_line": 101},
+      {"name": "stop_failure_and_boundary_guards", "risk": "critical", "start_line": 102, "end_line": 183},
+      {"name": "staged_queue_single-weapon_removal", "risk": "critical", "start_line": 184, "end_line": 276},
+      {"name": "staged_queue_profile_editor", "risk": "critical", "start_line": 277, "end_line": 310}
     ],
     "test_games_lantern_custom_stats.py": [
       {"name": "identity_bound_exact_profile_and_malformed_rejection", "risk": "critical", "start_line": 1, "end_line": 74}
     ],
     "test_games_lantern_safety.py": [
       {"name": "typed_terminal_identity_and_final_reconciliation", "risk": "critical", "start_line": 12, "end_line": 105},
-      {"name": "two_job_state_resource_and_quarantine_matrix", "risk": "critical", "start_line": 106, "end_line": 268},
-        {"name": "bounded_queue_presentation_snapshot", "risk": "high", "start_line": 269, "end_line": 294},
-        {"name": "games_lantern_release_contract_seams", "risk": "critical", "start_line": 295, "end_line": 328}
+      {"name": "two_job_state_resource_and_quarantine_matrix", "risk": "critical", "start_line": 106, "end_line": 291},
+        {"name": "bounded_queue_presentation_snapshot", "risk": "high", "start_line": 293, "end_line": 318},
+        {"name": "games_lantern_release_contract_seams", "risk": "critical", "start_line": 319, "end_line": 351}
     ],
     "test_games_lantern_inventory_completion.py": [
       {"name": "family_finished_skip_duplicate_fallback_and_two_slot_resume", "risk": "critical", "start_line": 1, "end_line": 310}
     ],
     "test_games_lantern_queue_ui.py": [
-        {"name": "active_queue_lifecycle_locked_target_and_section_order_ui", "risk": "high", "start_line": 9, "end_line": 81}
+        {"name": "active_queue_lifecycle_locked_target_and_section_order_ui", "risk": "high", "start_line": 11, "end_line": 139}
     ],
     "test_games_lantern_selection_coordinator.py": [
       {"name": "bounded_brunt_selection_sync_and_clear_restore", "risk": "critical", "start_line": 1, "end_line": 193}
@@ -155,7 +156,7 @@
       {"name": "optional_mod_lifecycle_admission_and_four_run_soak", "risk": "critical", "start_line": 1, "end_line": 176}
     ],
   "test_account_mutation_guard.py": [
-    {"name": "service_level_account_mutation_exclusion", "risk": "critical", "start_line": 1, "end_line": 172}
+    {"name": "service_level_account_mutation_exclusion", "risk": "critical", "start_line": 1, "end_line": 199}
   ],
   "test_contracts.py": [
     {"name": "guarded_lookup", "risk": "high", "start_line": 22, "end_line": 40},

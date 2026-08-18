@@ -150,6 +150,10 @@ mod.auto_crafter_hud_presentation = function()
 	return #lines > 0 and table.concat(lines, "\n") or "", #lines, lines
 end
 
+local function hud_read_member(object, key)
+	return object[key]
+end
+
 rawset(_G, "AutoCrafterHelperHudState", {
 	enabled = function()
 		local mod_enabled = type(mod.is_enabled) ~= "function" or mod:is_enabled()
@@ -162,13 +166,16 @@ rawset(_G, "AutoCrafterHelperHudState", {
 	presentation = function()
 		return mod:auto_crafter_hud_presentation()
 	end,
-	visible_context = function()
+	visible_context = function(view)
 		local managers = rawget(_G, "Managers")
 		local state = managers and managers.state
 		local game_mode = state and state.game_mode
 		local ok, mode = pcall(game_mode and game_mode.game_mode_name or function () end, game_mode)
+		local class_ok, class_name = pcall(hud_read_member, view, "__class_name")
+		local destroyed_ok, destroyed = pcall(hud_read_member, view, "_destroyed")
+		local psych_ward_brunt = ok and mode == nil and class_ok and class_name == "CreditsGoodsVendorView" and (not destroyed_ok or destroyed ~= true)
 
-		if not ok or mode ~= "hub" and mode ~= "hub_singleplay" then
+		if not ok or mode ~= "hub" and mode ~= "hub_singleplay" and not psych_ward_brunt then
 			return false
 		end
 

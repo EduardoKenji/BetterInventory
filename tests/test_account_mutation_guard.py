@@ -25,9 +25,16 @@ def main() -> None:
             }
         end
 
+        notifications = {}
         Managers = {
             event = {
-                trigger = function() end,
+                trigger = function(_, event_name, category, payload)
+                    notifications[#notifications + 1] = {
+                        event_name = event_name,
+                        category = category,
+                        payload = payload,
+                    }
+                end,
             },
         }
         '''
@@ -89,6 +96,12 @@ def main() -> None:
         assert(blocked.rejected == true)
         assert(blocked.error_value.code == "better_inventory_auto_crafter_busy")
         assert(calls == 2 and state.interruptions == 1)
+		local notification_count = #notifications
+		blocked = Guard.intercept("gear.delete_gear_batch", original, {prefix = "bad:"}, "three-again")
+		assert(blocked.rejected == true and #notifications == notification_count)
+		state.snapshot.operation_sequence = 2
+		blocked = Guard.intercept("gear.delete_gear_batch", original, {prefix = "bad:"}, "three-new-operation")
+		assert(blocked.rejected == true and #notifications == notification_count + 1)
 
         state.snapshot = {operation_inflight = false, auxiliary_inflight_count = 1}
         blocked = Guard.intercept("crafting.upgrade_weapon_rarity", original, {prefix = "bad:"}, "four")
@@ -111,6 +124,15 @@ def main() -> None:
         end)
         assert(owned_result == "owned:six" and calls == 3)
         assert(Guard.is_owned_call() == false)
+
+		-- An idle interval resets coalescing for the next independent run.
+		state.busy = false
+		assert(Guard.intercept("store.purchase_item", original, {prefix = "ok:"}, "idle") == "ok:idle")
+		state.busy = true
+		state.snapshot = {operation_inflight = true, operation_sequence = 2}
+		notification_count = #notifications
+		blocked = Guard.intercept("gear.delete_gear_batch", original, {prefix = "bad:"}, "new-run")
+		assert(blocked.rejected == true and #notifications == notification_count + 1)
 
 		-- Preserve explicit no-cost sentinel and trailing tier through the owned
 		-- hook path used by CraftingService.replace_perk_in_weapon.

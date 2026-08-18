@@ -95,9 +95,14 @@ FavoriteIntegration.apply_auto_crafter_color = function(mod, gear_id)
 
 	-- MyFavorites represents color 1 by the absence of a custom group entry.
 	favorite_item_list[gear_id] = selected_group > 1 and selected_group or nil
-	integration_mod:set("favorite_item_list", favorite_item_list)
 
-	return true
+	-- DMF clones table settings on both get and set. MyFavorites therefore keeps
+	-- a separate persistent runtime cache and refreshes it only from its
+	-- on_setting_changed callback. The notify flag is required for the selected
+	-- color to become visible immediately as well as persist across restarts.
+	local set_ok = pcall(integration_mod.set, integration_mod, "favorite_item_list", favorite_item_list, true)
+
+	return set_ok
 end
 
 local function global_store_purchase_character_id(view, store_service)

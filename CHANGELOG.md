@@ -1,5 +1,14 @@
 # BetterInventory changelog
 
+## 2.8.0 - 2026-08-18
+
+- Shows Auto Crafter's top status overlay in Psych Ward's live Brunt view while retaining the exact-view, destroyed-view, and matchmaking safety gates.
+- Converts Psych Ward context loss into a bounded queue stop: no new mutations are dispatched, late backend responses settle inertly, Games Lantern ownership is released, and a retry reselects and reconfigures the interrupted job.
+- Makes Craft and Stop / Interrupt mutually exclusive across manual runs, imported queues, in-flight work, quarantine, and reconciliation, with immediate panel rebuilding when workflow activity changes.
+- Coalesces repeated account-mutation warnings while an interrupted backend request settles, preventing Morningstar mastery initialization from producing a notification storm without weakening the overlap guard.
+- Refreshes MyFavorites' live color cache when Auto Crafter assigns its selected group, so the crafted weapon uses the chosen icon color immediately and after restart.
+- Adds a working bottom-right red X to each two-weapon Games Lantern queue card, including Psych Ward; removing either card recomputes authority and runs the remaining melee or ranged weapon as a valid one-weapon queue.
+
 ## 2.7.0 - 2026-08-18
 
 - Colours secondary Curio lines by related perk category by default, with shared Health/Toughness primary colours and a shared Max Stamina colour for all stamina and efficiency perks.

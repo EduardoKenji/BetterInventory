@@ -5,6 +5,7 @@ from coverage_support import InstrumentedLuaRuntime as LuaRuntime
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 QUEUE_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "auto_crafter" / "games_lantern" / "queue.lua"
+IMPORTED_WORKFLOW_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "auto_crafter" / "core" / "imported_queue_workflow.lua"
 
 
 def main() -> None:
@@ -179,6 +180,99 @@ def main() -> None:
     result, reason = queue_module._test.valid_build(invalid)
     assert result is False
     assert reason == "invalid_ranged_job"
+
+    # Either card can be removed before execution. The remaining job becomes
+    # both planner selection and execution cursor, and is a complete queue.
+    removed_starts = []
+    verified_sizes = []
+    removable = queue_module.new(
+        to_lua(
+            {
+                "select_job": callback_wrapper(lambda job, index: True),
+                "configure_job": callback_wrapper(lambda job, index: True),
+                "start_job": callback_wrapper(lambda job, index: removed_starts.append(str(job["slot"])) or True),
+                "stop_job": callback_wrapper(lambda reason: True),
+                "view_is_valid": callback_wrapper(lambda: True),
+                "verify_results": callback_wrapper(
+                    lambda results, queue_id, jobs: verified_sizes.append((len(results), len(jobs))) or True
+                ),
+                "report": callback_wrapper(lambda kind, payload: events.append(str(kind))),
+            }
+        )
+    )
+    assert removable.install(removable, build) is True
+    assert removable.select_for_planning(removable, 2)[0] is True
+    removed, remaining, discarded = removable.remove_staged_job(removable, 1)
+    assert removed is True
+    assert remaining["slot"] == "ranged" and discarded["slot"] == "melee"
+    removed_snapshot = removable.snapshot(removable)
+    assert removed_snapshot["job_count"] == 1
+    assert removed_snapshot["current_index"] == 1 and removed_snapshot["planner_index"] == 1
+    assert removed_snapshot["jobs"][1]["current"] is True and removed_snapshot["jobs"][1]["selected"] is True
+    assert removable.presentation_snapshot(removable)["job_count"] == 1
+    assert removable.remove_staged_job(removable, 1)[0] is False
+    assert removable.start(removable) is True
+    assert removed_starts == ["ranged"]
+    assert removable.remove_staged_job(removable, 1)[0] is False
+    assert removable.on_event(removable, "phase4_complete", completion(removable, 1, "ranged-only-result")) is True
+    removable.update(removable)
+    assert removable.snapshot(removable)["state"] == "complete"
+    assert verified_sizes == [(1, 1)]
+    assert "queue_job_removed" in events
+
+    melee_only = queue_module.new(to_lua({}))
+    assert melee_only.install(melee_only, build) is True
+    assert melee_only.remove_staged_job(melee_only, 2)[0] is True
+    assert melee_only.snapshot(melee_only)["jobs"][1]["slot"] == "melee"
+    single_valid = to_lua({"kind": "games_lantern_build", "jobs": [build["jobs"][2]]})
+    assert queue_module._test.valid_build(single_valid) is True
+
+    # Cost preview and final reconciliation use the same one-or-two-job
+    # contract as the coordinator, not the original two-card import shape.
+    imported_workflow = lua.execute(
+        IMPORTED_WORKFLOW_PATH.read_text(encoding="utf-8"), name=str(IMPORTED_WORKFLOW_PATH)
+    )
+    workflow_host = to_lua(
+        {
+            "_snapshot": {"character_id": "character-1"},
+            "_planner": {
+                "build": callback_wrapper(
+                    lambda snapshot, config: to_lua(
+                        {
+                            "estimate": {
+                                "dockets_floor": 10,
+                                "dockets_cap": 20,
+                                "plasteel_min": 1,
+                                "plasteel_max": 2,
+                                "diamantine_min": 3,
+                                "diamantine_max": 4,
+                            }
+                        }
+                    )
+                )
+            },
+        }
+    )
+    imported_workflow.install(
+        workflow_host,
+        to_lua(
+            {
+                "constants": {"MAX_EXPERTISE_LEVEL": 20, "TRANSCENDENT_RARITY": 4},
+                "copy_stat_targets": callback_wrapper(lambda values: values),
+                "current_character_id": callback_wrapper(lambda: "character-1"),
+                "planner_config": callback_wrapper(lambda: to_lua({})),
+                "planner_config_signature": callback_wrapper(lambda config: "single-job"),
+                "setting": callback_wrapper(lambda setting_id, default=None: default),
+                "snapshot_matches_character": callback_wrapper(lambda snapshot, character_id: True),
+            }
+        ),
+    )
+    authority = workflow_host.preview_imported_queue(workflow_host, to_lua({"jobs": [remaining]}))
+    assert authority["aggregate"]["dockets_min"] == 10
+    assert authority["aggregate"]["dockets_max"] == 20
+    workflow_host._verify_imported_result = lua.eval("function() return true end")
+    one_result = to_lua([{"gear_id": "ranged-only-result"}])
+    assert workflow_host.verify_imported_queue_results(workflow_host, one_result, to_lua([remaining])) is True
 
     editable = to_lua({
         "kind": "games_lantern_build",

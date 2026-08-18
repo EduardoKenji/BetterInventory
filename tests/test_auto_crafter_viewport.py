@@ -9,6 +9,7 @@ LAYOUT_PATH = RUNTIME_ROOT / "auto_crafter" / "darktide" / "viewport_layout.lua"
 PANEL_PATH = RUNTIME_ROOT / "auto_crafter" / "darktide" / "panel.lua"
 OVERLAY_PATH = RUNTIME_ROOT / "auto_crafter" / "darktide" / "view_status_overlay.lua"
 HUD_PATH = RUNTIME_ROOT / "auto_crafter" / "darktide" / "hud_element.lua"
+MAIN_PATH = RUNTIME_ROOT / "BetterInventory.lua"
 
 
 def main() -> None:
@@ -37,6 +38,7 @@ def main() -> None:
     panel_source = PANEL_PATH.read_text(encoding="utf-8")
     overlay_source = OVERLAY_PATH.read_text(encoding="utf-8")
     hud_source = HUD_PATH.read_text(encoding="utf-8")
+    main_source = MAIN_PATH.read_text(encoding="utf-8")
     assert "layout.panel_pivot" in panel_source
     assert "layout.anchored_panel_pivot" in panel_source
     assert "scenegraph.info_box" in panel_source
@@ -59,6 +61,9 @@ def main() -> None:
     assert "func(view, dt, t, input_service, layer)" not in overlay_source
     assert "_auto_crafter_status_draw_depth" not in overlay_source
     assert 'require("scripts/mods/BetterInventory' not in overlay_source
+    assert "bridge.visible_context(view)" in overlay_source
+    assert 'class_name == "CreditsGoodsVendorView"' in main_source
+    assert "mode == nil" in main_source and "psych_ward_brunt" in main_source
     assert 'horizontal_alignment = "center"' in hud_source
     assert 'vertical_alignment = "top"' in hud_source
     assert "status_height(line_count)" in hud_source
@@ -135,7 +140,10 @@ def main() -> None:
 
         AutoCrafterHelperHudState = {
             enabled = function() return true end,
-            visible_context = function() return true end,
+            visible_context = function(view)
+                visible_context_view = view
+                return true
+            end,
             presentation = function()
                 return "one\ntwo\nthree\nfour\nfive", 5, 1
             end,
@@ -174,6 +182,8 @@ def main() -> None:
     assert runtime_globals.renderer_begin_calls == 1
     assert runtime_globals.renderer_end_calls == 1
     assert runtime_globals.widget_draw_calls == 1
+    lua_rawequal = overlay_runtime.eval("function(a, b) return rawequal(a, b) end")
+    assert lua_rawequal(runtime_globals.visible_context_view, inventory_view) is True
     assert inventory_view._render_settings.start_layer == 7
     assert inventory_view._auto_crafter_status_overlay.style.background.size[2] == 138
     assert inventory_view._auto_crafter_status_overlay.content.text == "one\ntwo\nthree\nfour\nfive"

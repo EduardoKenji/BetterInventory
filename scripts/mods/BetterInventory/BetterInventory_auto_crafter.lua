@@ -360,7 +360,7 @@ local function reporter(ui_panel)
 		emit = function(_, kind, payload)
 			presentation_dirty = true
 
-			if games_lantern_queue and (kind == "phase4_complete" or kind == "operation_failed" or kind == "operation_quarantined" or kind == "operation_reconciliation_required" or kind == "phase4_stopped" or kind == "purchase_search_stopped" or kind == "probe_complete" or kind == "character_changed") then
+			if games_lantern_queue and (kind == "context_exit" or kind == "phase4_complete" or kind == "operation_failed" or kind == "operation_quarantined" or kind == "operation_reconciliation_required" or kind == "phase4_stopped" or kind == "purchase_search_stopped" or kind == "probe_complete" or kind == "character_changed") then
 				pcall(games_lantern_queue.on_event, games_lantern_queue, kind, payload)
 			end
 
@@ -822,7 +822,7 @@ function AutoCrafter.configure(dependencies)
 
 		local import_state = games_lantern_import:snapshot()
 		local queue_state = games_lantern_queue:snapshot()
-		local queue_can_resume = queue_state and queue_state.job_count == 2 and (queue_state.state == "staged" or queue_state.state == "stopped" or queue_state.state == "failed" or queue_state.state == "blocked")
+		local queue_can_resume = queue_state and queue_state.job_count > 0 and (queue_state.state == "staged" or queue_state.state == "stopped" or queue_state.state == "failed" or queue_state.state == "blocked")
 		local new_import = import_state.state == "staged" and type(import_state.resolved_build) == "table"
 		local imported_controller = controller:snapshot().imported_job ~= nil
 
@@ -1099,7 +1099,7 @@ function AutoCrafter.configure(dependencies)
 		end,
 		start_purchase_search = function()
 			local queue_state = games_lantern_queue and games_lantern_queue:snapshot()
-			local queue_owned = queue_state and queue_state.job_count == 2 and queue_state.state ~= "empty" and queue_state.state ~= "complete"
+			local queue_owned = queue_state and queue_state.job_count > 0 and queue_state.state ~= "empty" and queue_state.state ~= "complete"
 
 			if queue_owned then
 				log("info", "Manual craft ignored while a Games Lantern queue is staged.")
@@ -1136,6 +1136,22 @@ function AutoCrafter.configure(dependencies)
 
 			return true
 		end,
+		games_lantern_remove_queue_job = function(index)
+			if not games_lantern_queue or not controller then
+				return false, "queue_editor_unavailable"
+			end
+			local removed, job_or_reason = games_lantern_queue:remove_staged_job(index)
+			if not removed then return false, job_or_reason end
+			local configured, configure_reason = controller:set_imported_job(job_or_reason)
+			if not configured then return false, configure_reason end
+			if games_lantern_selection and active_brunt_view then
+				pcall(games_lantern_selection.request, games_lantern_selection, active_brunt_view, job_or_reason.offer, "queue_job_removed")
+			end
+			presentation_dirty = true
+			invalidate_games_lantern_panel()
+
+			return true
+		end,
 		games_lantern_update_queue_custom_stat = function(index, value)
 			if not games_lantern_queue or not controller then return false, "queue_editor_unavailable" end
 			local updated, job_or_reason = games_lantern_queue:update_selected_custom_stat(index, value)
@@ -1163,7 +1179,7 @@ function AutoCrafter.configure(dependencies)
 		end,
 		games_lantern_paste = function(replace_confirmed)
 			local queue_state = games_lantern_queue and games_lantern_queue:snapshot()
-			local existing = queue_state and queue_state.job_count == 2 and queue_state.state ~= "empty"
+			local existing = queue_state and queue_state.job_count > 0 and queue_state.state ~= "empty"
 			if existing and replace_confirmed ~= true then
 				return false, "replacement_confirmation_required"
 			end
@@ -1206,7 +1222,7 @@ function AutoCrafter.configure(dependencies)
 		end,
 		games_lantern_cost_authority = function()
 			local queue_state = games_lantern_queue and games_lantern_queue:snapshot()
-			if not queue_state or queue_state.job_count ~= 2 then
+			if not queue_state or queue_state.job_count < 1 or queue_state.job_count > 2 then
 				return nil
 			end
 
@@ -1406,6 +1422,20 @@ function AutoCrafter.update(dt)
 			pcall(controller.on_context_exit, controller, "controller_update_crash")
 
 			return
+		end
+
+		if games_lantern_queue then
+			local queue_state = games_lantern_queue:state()
+			if queue_state == "stopping" or queue_state == "quarantined" or queue_state == "reconciliation_required" then
+				local queue_snapshot = games_lantern_queue:snapshot()
+				local controller_snapshot = controller:snapshot()
+				local run_active = controller_snapshot.search and controller_snapshot.search.running or controller_snapshot.phase3 and controller_snapshot.phase3.running or controller_snapshot.phase4 and controller_snapshot.phase4.running or controller_snapshot.mastery and controller_snapshot.mastery.running
+				local stop_can_settle = queue_snapshot.stop_requested and not run_active and not controller_snapshot.operation_inflight and not controller_snapshot.operation_quarantined and (tonumber(controller_snapshot.auxiliary_inflight_count) or 0) == 0
+
+				if stop_can_settle then
+					pcall(games_lantern_queue.on_event, games_lantern_queue, "stop_settled", { reason = "context_exit_settled" })
+				end
+			end
 		end
 
 		if games_lantern_queue then

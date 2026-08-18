@@ -701,6 +701,15 @@ def main() -> None:
     panel_module = __import__("auto_crafter_test_support").load_panel(lua)
     assert panel_module.weapon_name_with_mark("Power Falchion", "Achlys • Mk VI") == "Achlys Mk VI Power Falchion"
     assert panel_module.weapon_name_with_mark("Branx Mk XI Paired Transonic Blades", "Mk XI") == "Branx Mk XI Paired Transonic Blades"
+    idle_workflow = lua.table_from({"phase": "idle"})
+    active_manual_workflow = lua.table_from({"search": lua.table_from({"running": True})})
+    settling_workflow = lua.table_from({"operation_inflight": True})
+    staged_queue = lua.table_from({"state": "staged"})
+    running_queue = lua.table_from({"state": "running"})
+    assert panel_module.workflow_active(idle_workflow, staged_queue) is False
+    assert panel_module.workflow_active(active_manual_workflow, staged_queue) is True
+    assert panel_module.workflow_active(settling_workflow, staged_queue) is True
+    assert panel_module.workflow_active(idle_workflow, running_queue) is True
     lua.globals().PanelModule = panel_module
     lua.execute(
         r'''
@@ -1208,6 +1217,9 @@ def main() -> None:
     assert "auto_crafter_panel_request_mode" not in panel_source
     assert 'localize("auto_crafter_panel_preview", "> CLICK HERE TO CRAFT <")' in panel_source
     assert 'localize("auto_crafter_panel_stop", "> CLICK HERE TO STOP / INTERRUPT <"), ""' in panel_source
+    assert "local craft_enabled = not run_is_active() and not import_busy" in panel_source
+    assert "selectable = stop_enabled" in panel_source
+    assert "previous_active ~= workflow_active" in panel_source
     assert 'size = { width - 20, ROW_HEIGHT }' in panel_source
     assert "phase4 and phase4.running == true" in panel_source
     assert "auto_crafter_rename_result" not in panel_source

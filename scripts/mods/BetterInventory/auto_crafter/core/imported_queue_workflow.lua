@@ -98,7 +98,7 @@ function ImportedQueueWorkflow.install(self, services)
 	end
 
 	function self:preview_imported_queue(build)
-		if not self._snapshot or type(build) ~= "table" or type(build.jobs) ~= "table" or #build.jobs ~= 2 or not self._planner or type(self._planner.build) ~= "function" then
+		if not self._snapshot or type(build) ~= "table" or type(build.jobs) ~= "table" or #build.jobs < 1 or #build.jobs > 2 or not self._planner or type(self._planner.build) ~= "function" then
 			return nil, "queue preview unavailable"
 		end
 
@@ -332,8 +332,8 @@ function ImportedQueueWorkflow.install(self, services)
 	end
 
 	function self:verify_imported_queue_results(results, jobs)
-		if type(results) ~= "table" or #results ~= 2 or type(jobs) ~= "table" or #jobs ~= 2 or not self._snapshot then
-			return false, "two completed queue results are required"
+		if type(results) ~= "table" or type(jobs) ~= "table" or #jobs < 1 or #jobs > 2 or #results ~= #jobs or not self._snapshot then
+			return false, "one completed result per queued job is required"
 		end
 
 		local character_id = current_character_id()
