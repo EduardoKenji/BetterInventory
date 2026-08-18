@@ -1,5 +1,11 @@
 # BetterInventory changelog
 
+## 2.6.3 - 2026-08-18
+
+- Restores four- and five-column weapon layouts for inventories containing compound shields by replacing only their linked 3D card previews with Darktide's official static mastery textures at those densities.
+- Covers both live-preview owners on the inventory screen—the scrolling grid and equipped Character Overview weapon card—while preserving native previews for ordinary weapons and one-to-three-column layouts.
+- Adds critical lifecycle coverage for every current Ogryn and Arbites shield family, repeated bindings, teardown, and shield-to-ordinary transitions.
+
 ## 2.6.2 - 2026-08-18
 
 - Prevents the Slab Shield engine crash/long empty-grid stall by automatically limiting an affected weapon inventory to three columns when a compound shield is present; inventories without shields retain their configured four- or five-column layout.

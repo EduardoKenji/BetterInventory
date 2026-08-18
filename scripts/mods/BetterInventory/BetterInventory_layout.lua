@@ -31,6 +31,10 @@ end
 Layout.configure_native_item_blueprint = Blueprints.configure_native_item_blueprint
 Layout.configure_item_blueprint = Blueprints.configure_item_blueprint
 Layout.ImageLayout = Blueprints.ImageLayout
+Layout.compound_weapon_static_icon = Cards.compound_weapon_static_icon
+Layout.clear_static_compound_icon = Cards.clear_static_compound_icon
+Layout.apply_static_compound_icon = Cards.apply_static_compound_icon
+Layout.replace_live_compound_icon = Cards.replace_live_compound_icon
 
 local global_store_character_photo_size = content.global_store_character_photo_size
 local global_store_price_row_padding = content.global_store_price_row_padding

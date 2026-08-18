@@ -195,26 +195,6 @@ Geometry.columns = content.columns
 
 Geometry.is_compound_shield_weapon = content.is_compound_shield_weapon
 
-Geometry.safe_inventory_maximum_columns = function(mod, maximum_columns, slot_kind, layout)
-	local requested_columns = Geometry.columns(mod, maximum_columns, slot_kind)
-
-	if requested_columns < 4 or type(layout) ~= "table" then
-		return maximum_columns, false
-	end
-
-	for _, entry in pairs(layout) do
-		if type(entry) == "table" and entry.is_external ~= true and content.is_compound_shield_weapon(content.item_from_element(entry)) then
-			-- User reports and local reproduction establish that native compound
-			-- weapon previews are safe at two/three columns and corrupt Stingray's
-			-- temporary Lua state at four/five. Keep Darktide's complete native
-			-- icon lifecycle and reduce only the affected presentation.
-			return 3, true
-		end
-	end
-
-	return maximum_columns, false
-end
-
 local function weapon_extra_width_applies(mod, columns)
 	local threshold = setting(mod, "weapon_extra_width_column_threshold", "four_plus")
 

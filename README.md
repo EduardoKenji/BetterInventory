@@ -2,7 +2,7 @@
 
 [![BetterInventory verification](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml/badge.svg)](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml)
 
-> Current release: **v2.6.2** (2026-08-18). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
+> Current release: **v2.6.3** (2026-08-18). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
 
 BetterInventory is a standalone inventory and item-management mod for Warhammer 40,000: Darktide. It adds responsive weapon and Curio cards, richer item information, configurable sorting, supported vendor layouts, optional mod integrations, and safety-gated inventory workflows.
 
@@ -18,11 +18,17 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - A bounded inventory-options panel for sorting, discard rules, integrations, and view-specific controls.
 - Optional Quick Discard, Automatic Discard, Automatic Curio Buyer, and Auto Crafter workflows with explicit ownership, authoritative revalidation, and fail-closed behavior.
 
-## What's new in v2.6.2
+## What's new in v2.6.3
 
-- Weapon inventories containing a compound shield now automatically use the proven-safe three-column layout instead of the crash-prone four/five-column path; inventories without an affected shield retain their configured column count.
-- The compatibility guard covers all four current Ogryn and Arbites marks across the Slab Shield, power-maul shield, and shotpistol shield families while leaving Darktide's native icon and selected-item preview lifecycle intact.
-- Per-card modifier projection now contains and caches malformed expertise/template failures, preventing repeated draw-time retries from blocking the inventory grid.
+- Restores configured four- and five-column weapon layouts when a compound shield is present. At those densities, BetterInventory uses Darktide's official static mastery texture instead of spawning the shield's linked 3D preview units.
+- Covers both independent live-preview owners on the inventory screen: the scrolling weapon grid and the equipped weapon card in Character Overview, including shield-to-ordinary item transitions.
+- Keeps native live previews unchanged for ordinary weapons and all one-to-three-column layouts; all current Ogryn and Arbites shield marks share regression coverage.
+
+### v2.6.2 changes included
+
+- Weapon inventories containing a compound shield automatically used a conservative three-column compatibility layout while the four/five-column crash path was investigated.
+- The compatibility guard covered all four current Ogryn and Arbites marks across the Slab Shield, power-maul shield, and shotpistol shield families.
+- Per-card modifier projection contains and caches malformed expertise/template failures, preventing repeated draw-time retries from blocking the inventory grid.
 
 ### v2.6.1 changes included
 
@@ -178,7 +184,7 @@ Run the complete repository verification from the project root:
 powershell -ExecutionPolicy Bypass -File .\tests\verify.ps1
 ```
 
-The v2.6.2 suite currently discovers 41 behavior-test files and 158 named cases. To run the behavior suite directly with risk-weighted Lua coverage:
+The v2.6.3 suite currently discovers 41 behavior-test files and 159 named cases. To run the behavior suite directly with risk-weighted Lua coverage:
 
 ```powershell
 py -3 .\tests\run_tests.py --timeout-seconds 45 --coverage-output lua-coverage.json
