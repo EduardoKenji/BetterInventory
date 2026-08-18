@@ -212,7 +212,7 @@ Run the complete repository verification from the project root:
 powershell -ExecutionPolicy Bypass -File .\tests\verify.ps1
 ```
 
-The v2.8.0 suite currently discovers 41 behavior-test files and 159 named cases. To run the behavior suite directly with risk-weighted Lua coverage:
+The v2.8.2 suite currently discovers 41 behavior-test files and 161 named cases. To run the behavior suite directly with risk-weighted Lua coverage:
 
 ```powershell
 py -3 .\tests\run_tests.py --timeout-seconds 45 --coverage-output lua-coverage.json
@@ -247,5 +247,7 @@ Historical audits describe the project at their dated checkpoints; they are not 
 ## Credits
 
 BetterInventory is a standalone modern implementation inspired by [Inventory2D](https://www.nexusmods.com/warhammer40kdarktide/mods/188), originally created by Redbeardt. Thanks to Redbeardt for the original multi-column inventory concept and for permitting modifications and improvements with attribution.
+
+Thanks to NexusMods user **lershu** for contributing the comprehensive Simplified Chinese translation incorporated in v2.8.2.
 
 BetterInventory's current implementation, architecture, and additional features were developed independently. It does not include files from the [Bound by Duty compatibility patch](https://www.nexusmods.com/warhammer40kdarktide/mods/594) or third-party assets.
