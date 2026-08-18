@@ -20,8 +20,8 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 
 ## What's new in v2.6.2
 
-- Four- and five-column melee grids now render the Slab Shield with Darktide's stable mastery texture instead of its live compound-weapon preview, fixing the remaining crash/long empty-grid stall while leaving two- and three-column previews unchanged.
-- The same compatibility path covers all four current Ogryn and Arbites shield marks across three weapon families. Ordinary weapons retain Darktide's native live renderer.
+- Weapon inventories containing a compound shield now automatically use the proven-safe three-column layout instead of the crash-prone four/five-column path; inventories without an affected shield retain their configured column count.
+- The compatibility guard covers all four current Ogryn and Arbites marks across the Slab Shield, power-maul shield, and shotpistol shield families while leaving Darktide's native icon and selected-item preview lifecycle intact.
 - Per-card modifier projection now contains and caches malformed expertise/template failures, preventing repeated draw-time retries from blocking the inventory grid.
 
 ### v2.6.1 changes included

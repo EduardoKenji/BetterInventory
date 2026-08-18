@@ -685,6 +685,34 @@ local function item_from_content(content)
 	return content and item_from_element(content.element)
 end
 
+local function is_compound_shield_weapon(item)
+	if type(item) ~= "table" then
+		return false
+	end
+
+	local gear = item.gear
+	local master_data = type(gear) == "table" and gear.masterDataInstance
+	local weapon_template = item.weapon_template
+	local identities = {
+		type(weapon_template) == "table" and weapon_template.name or weapon_template,
+		item.name,
+		type(master_data) == "table" and master_data.id or nil,
+		type(master_data) == "table" and master_data.name or nil,
+	}
+
+	-- Current compound weapons use shield-bearing template/master-item IDs:
+	-- Ogryn slabshield, Arbites powermaul_shield, and shotpistol_shield.
+	-- Checking the bounded identity fields also fails safe for future shield
+	-- families without inspecting localized display text or modifier records.
+	for _, identity in pairs(identities) do
+		if type(identity) == "string" and string.find(string.lower(identity), "shield", 1, true) then
+			return true
+		end
+	end
+
+	return false
+end
+
 local function is_curio(item)
 	return item and item.item_type == "GADGET"
 end
@@ -1749,6 +1777,7 @@ Content.blessing_rank_name = blessing_rank_name
 Content.weapon_perk_rank_icon_size = weapon_perk_rank_icon_size
 Content.item_from_element = item_from_element
 Content.item_from_content = item_from_content
+Content.is_compound_shield_weapon = is_compound_shield_weapon
 Content.is_curio = is_curio
 Content.is_weapon = is_weapon
 Content.clamped_color_channel = clamped_color_channel

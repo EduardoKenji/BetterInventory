@@ -1853,6 +1853,10 @@ if ensure_class_method(InventoryWeaponsView, "present_grid_layout") then
 		-- including changes made by compatible sorting or information mods.
 		local configuration = table.clone(INVENTORY_GRID_CONFIGURATION)
 		configuration.slot_kind = Layout.slot_kind(view)
+		local safe_maximum_columns, compound_shield_cap = Layout.safe_inventory_maximum_columns(mod, configuration.maximum_columns, configuration.slot_kind, layout)
+
+		configuration.maximum_columns = safe_maximum_columns
+		view._better_inventory_compound_shield_column_cap = compound_shield_cap or nil
 
 		return present_grid_with_configuration(func, view, layout, on_present_callback, configuration)
 	end)

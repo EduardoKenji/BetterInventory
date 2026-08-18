@@ -27,6 +27,8 @@ def main() -> None:
     # abnormal destroy/disable fallback. Repeated close calls are safe no-ops.
     assert 'mod:hook_safe(InventoryWeaponsView, "on_exit"' in runtime
     assert 'ensure_class_method(InventoryWeaponsView, "destroy")' in runtime
+    assert "Layout.safe_inventory_maximum_columns" in runtime
+    assert "configuration.maximum_columns = safe_maximum_columns" in runtime
     assert 'mod:hook_safe(CreditsVendorView, "on_exit"' in runtime
     assert 'ensure_class_method(CreditsVendorView, "destroy")' in runtime
     assert 'ensure_class_method(CreditsGoodsVendorView, "on_exit")' in runtime

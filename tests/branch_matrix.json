@@ -33,8 +33,8 @@
         "name": "layout.weapon-modifiers-avoid-full-calculator",
         "test": "test_layout.py",
         "case": "weapon_modifier_data_only_resolution",
-        "outcome": "inventory cards resolve ordered modifier identities directly from bounded item and weapon-template data; four/five-column Slab Shield and current Ogryn/Arbites compound-shield cards use stable Darktide mastery textures instead of live previews, while malformed or sparse future records are negatively cached and cannot invoke the full WeaponStats calculator, retry every draw, or block the grid",
-        "modules": ["BetterInventory_layout.lua", "BetterInventory_layout_blueprints.lua", "BetterInventory_layout_cards.lua", "BetterInventory_layout_content.lua"]
+        "outcome": "inventory cards resolve ordered modifier identities directly from bounded item and weapon-template data; weapon inventories containing any current Ogryn/Arbites compound shield are capped to three columns while preserving Darktide's native icon/preview lifecycle and unrelated inventories keep four/five columns, and malformed or sparse future records are negatively cached and cannot invoke the full WeaponStats calculator, retry every draw, or block the grid",
+        "modules": ["BetterInventory_layout.lua", "BetterInventory_layout_blueprints.lua", "BetterInventory_layout_cards.lua", "BetterInventory_layout_content.lua", "BetterInventory_layout_geometry.lua", "BetterInventory_runtime.lua"]
     },
     {
       "name": "arbiter.rejects-overlap",

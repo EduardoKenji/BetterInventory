@@ -2,8 +2,8 @@
 
 ## 2.6.2 - 2026-08-18
 
-- Fixes the remaining Slab Shield crash/long empty-grid stall at four or five melee columns by using Darktide's stable mastery texture instead of scheduling a live compound-weapon preview; two- and three-column cards retain their native previews.
-- Extends the compatibility path dynamically to all current shield patterns, covering four Ogryn and Arbites marks across the Slab Shield, power-maul shield, and shotpistol shield families, while ordinary weapons keep the native renderer.
+- Prevents the Slab Shield engine crash/long empty-grid stall by automatically limiting an affected weapon inventory to three columns when a compound shield is present; inventories without shields retain their configured four- or five-column layout.
+- Covers all four current Ogryn and Arbites shield marks across the Slab Shield, power-maul shield, and shotpistol shield families while preserving Darktide's native icon and selected-item preview ownership.
 - Contains draw-time modifier projection behind a per-card error boundary and negative cache so malformed or future expertise/template records fail once instead of retrying every rendered frame.
 
 ## 2.6.1 - 2026-08-18
