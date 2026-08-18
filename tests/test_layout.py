@@ -209,11 +209,26 @@ def main() -> None:
 			return item and item.test_pattern or "n/a"
 		end
 
+		is_weapon_error_count = 0
+
 		function TestItems.is_weapon(item_type)
+			if item_type == "TEST_WEAPON_ERROR" then
+				is_weapon_error_count = is_weapon_error_count + 1
+				error("unsupported weapon item type")
+			end
+
 			return item_type == "WEAPON_MELEE" or item_type == "WEAPON_RANGED"
 		end
 
+		expertise_level_count = 0
+
 		function TestItems.expertise_level(item, no_symbol)
+			expertise_level_count = expertise_level_count + 1
+
+			if item and item.test_expertise_error then
+				error("unsupported expertise record")
+			end
+
 			if item and type(item.base_stats) ~= "table" then
 				local display_names = item.modifier_display_names or TestModifierDisplayNames
 				local stat_count = type(item.projected_values) == "table" and #item.projected_values or #display_names
@@ -938,6 +953,7 @@ def main() -> None:
     assert layout.armoury_grid_expansion(mod, 596) == 0
     mod.settings.columns = 3
 
+    mod.settings.enable_grid_layout = True
     mod.settings.melee_columns = 5
     mod.settings.ranged_columns = 4
     mod.settings.curio_columns = 5
@@ -1495,6 +1511,119 @@ def main() -> None:
     ) == ("61", "65", "63", "64", "62")
     assert globals_.weapon_stats_require_count == 0
 
+    # Compound-shield inventories retain Darktide's native weapon-image
+    # lifecycle and avoid the unstable dense preview path by capping the view
+    # to three columns before ItemGridViewBase initializes. The fetched layout
+    # repeats the check for an unequipped shield.
+    mod.settings.enable_grid_layout = True
+    mod.settings.melee_columns = 5
+    mod.settings.ranged_columns = 5
+    assert layout.columns(mod, None, "melee") == 5
+
+    # A compound shield must cap the effective view before any dense-grid
+    # blueprint work begins. The fetched layout repeats the check so an
+    # unequipped shield receives the same protection.
+    shield_view = lua.eval('{ _selected_slot = { name = "slot_primary" } }')
+    shield_context = lua.table_from(
+        {
+            "preview_profile_equipped_items": lua.table_from(
+                {"slot_primary": slab_shield_element.item}
+            )
+        }
+    )
+    assert (
+        layout.equipped_compound_shield_requires_cap(
+            mod, shield_view, shield_context
+        )
+        is True
+    )
+    wrapped_shield_context = lua.eval(
+        """
+        {
+            preview_profile_equipped_items = {
+                slot_primary = { item = { weapon_template = "ogryn_powermaul_slabshield_p1_m1" } }
+            }
+        }
+        """
+    )
+    assert (
+        layout.equipped_compound_shield_requires_cap(
+            mod, shield_view, wrapped_shield_context
+        )
+        is True
+    )
+    shield_layout = lua.table_from([slab_shield_element])
+    safe_columns, shield_cap = layout.safe_inventory_maximum_columns(
+        mod, None, "melee", shield_layout, False
+    )
+    assert (safe_columns, shield_cap) == (3, True)
+    prearmed_columns, prearmed_cap = layout.safe_inventory_maximum_columns(
+        mod, None, "melee", lua.table_from([]), True
+    )
+    assert (prearmed_columns, prearmed_cap) == (3, True)
+    ordinary_columns, ordinary_cap = layout.safe_inventory_maximum_columns(
+        mod,
+        None,
+        "melee",
+        lua.table_from(
+            [lua.table_from({"item": lua.table_from({"name": "combatsword_p1_m1"})})]
+        ),
+        False,
+    )
+    assert ordinary_columns is None and ordinary_cap is False
+
+    current_shield_items = (
+        lua.table_from({"name": "powermaul_shield_p1_m1"}),
+        lua.table_from({"weapon_template": "powermaul_shield_p1_m2"}),
+        lua.eval(
+            '{ gear = { masterDataInstance = { id = "content/items/weapons/player/ranged/shotpistol_shield_p1_m1" } } }'
+        ),
+        lua.table_from({"weapon_template": "future_shield_p1_m1"}),
+    )
+    for shield_item in current_shield_items:
+        assert layout.is_compound_shield_weapon(shield_item) is True
+        family_columns, family_cap = layout.safe_inventory_maximum_columns(
+            mod,
+            None,
+            "melee",
+            lua.table_from([lua.table_from({"item": shield_item})]),
+            False,
+        )
+        assert (family_columns, family_cap) == (3, True)
+
+    ordinary_weapon = lua.table_from({"weapon_template": "combatsword_p1_m1"})
+    assert layout.is_compound_shield_weapon(ordinary_weapon) is False
+
+    external_columns, external_cap = layout.safe_inventory_maximum_columns(
+        mod,
+        None,
+        "melee",
+        lua.table_from(
+            [
+                lua.table_from(
+                    {"item": current_shield_items[0], "is_external": True}
+                )
+            ]
+        ),
+        False,
+    )
+    assert external_columns is None and external_cap is False
+
+    bounded_columns, bounded_cap = layout.safe_inventory_maximum_columns(
+        mod, 3, "melee", shield_layout, False
+    )
+    assert bounded_columns == 3 and bounded_cap is False
+
+    mod.settings.melee_columns = 3
+    assert (
+        layout.equipped_compound_shield_requires_cap(
+            mod, shield_view, shield_context
+        )
+        is False
+    )
+    mod.settings.melee_columns = 3
+    mod.settings.enable_grid_layout = False
+
     # Nonstandard or future weapon records fail soft per card: sparse numeric
     # keys remain ordered, malformed stats are skipped, and a template lookup
     # failure leaves modifier rows empty without blocking the inventory grid.
@@ -1540,6 +1669,23 @@ def main() -> None:
     assert layout.projected_weapon_modifier_records(mod, failing_template_item) is False
     assert layout.projected_weapon_modifier_records(mod, failing_template_item) is False
     assert globals_.weapon_template_lookup_count == failed_lookup_count + 1
+
+    failing_expertise_item = lua.eval(
+        """
+        {
+            item_type = "WEAPON_MELEE",
+            test_expertise_error = true,
+            base_stats = { { name = "damage", value = 0.8 } },
+            test_weapon_base_stats = {
+                damage = { display_name = "loc_stats_display_damage_stat" }
+            }
+        }
+        """
+    )
+    failed_expertise_count = globals_.expertise_level_count
+    assert layout.projected_weapon_modifier_records(mod, failing_expertise_item) is False
+    assert layout.projected_weapon_modifier_records(mod, failing_expertise_item) is False
+    assert globals_.expertise_level_count == failed_expertise_count + 1
 
     # Ammo stays compact in every managed blueprint, including views that use
     # the shared native single-column formatter (inventory, vendors, Hadron,
@@ -1991,6 +2137,24 @@ def main() -> None:
     assert globals_.preview_stats_change_count == projected_calls + 1
     assert qlc_dump_pass.visibility_function(qlc_dump_content) is True
     assert globals_.preview_stats_change_count == projected_calls + 1
+
+    # Unexpected future item-type failures are contained by the draw-time
+    # visibility boundary and remembered by the widget instead of retried on
+    # every frame.
+    qlc_error_content = lua.eval(
+        """
+        {
+            element = { item = { item_type = "TEST_WEAPON_ERROR" } },
+            qlc_stats_title_1 = "DMG",
+            qlc_stats_value_1 = "60"
+        }
+        """
+    )
+    weapon_error_calls = globals_.is_weapon_error_count
+    assert qlc_dump_pass.visibility_function(qlc_error_content) is False
+    assert qlc_error_content.better_inventory_quick_look_card_dump_stat == ""
+    assert qlc_dump_pass.visibility_function(qlc_error_content) is False
+    assert globals_.is_weapon_error_count == weapon_error_calls + 1
 
     # Quick Look Card may provide raw English titles. Its AMMO title must pass
     # through the same shared compaction before BetterInventory renders it.

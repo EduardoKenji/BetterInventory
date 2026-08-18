@@ -685,6 +685,34 @@ local function item_from_content(content)
 	return content and item_from_element(content.element)
 end
 
+local function is_compound_shield_weapon(item)
+	if type(item) ~= "table" then
+		return false
+	end
+
+	local gear = item.gear
+	local master_data = type(gear) == "table" and gear.masterDataInstance
+	local weapon_template = item.weapon_template
+	local identities = {
+		type(weapon_template) == "table" and weapon_template.name or weapon_template,
+		item.name,
+		type(master_data) == "table" and master_data.id or nil,
+		type(master_data) == "table" and master_data.name or nil,
+	}
+
+	-- Current compound weapons use shield-bearing template/master-item IDs:
+	-- Ogryn slabshield, Arbites powermaul_shield, and shotpistol_shield.
+	-- Checking the bounded identity fields also fails safe for future shield
+	-- families without inspecting localized display text or modifier records.
+	for _, identity in pairs(identities) do
+		if type(identity) == "string" and string.find(string.lower(identity), "shield", 1, true) then
+			return true
+		end
+	end
+
+	return false
+end
+
 local function is_curio(item)
 	return item and item.item_type == "GADGET"
 end
@@ -1022,11 +1050,12 @@ local function direct_weapon_comparing_stats(item)
 	return #values > 0 and values or nil
 end
 
-local function cache_projected_weapon_modifier_records(item, current_expertise, maximum_expertise, records)
+local function cache_projected_weapon_modifier_records(item, current_expertise, maximum_expertise, records, failed)
 	local cached_records = records or false
 
 	QUICK_LOOK_CARD_PROJECTED_VALUES_CACHE[item] = {
 		current_expertise = current_expertise,
+		failed = failed == true,
 		maximum_expertise = maximum_expertise,
 		records = cached_records,
 	}
@@ -1039,16 +1068,24 @@ local function projected_weapon_modifier_records(mod, item)
 		return
 	end
 
-	local current_expertise = Items.expertise_level(item, true)
-	local maximum_expertise = tonumber(Items.max_expertise_level())
+	local cached = QUICK_LOOK_CARD_PROJECTED_VALUES_CACHE[item]
 
-	current_expertise = tonumber(current_expertise)
-
-	if not current_expertise or not maximum_expertise then
-		return
+	-- A malformed or newly introduced weapon record must not be retried from a
+	-- visibility callback every draw. View teardown/settings refresh clears this
+	-- weak cache, so a transient backend replacement can still recover later.
+	if cached and cached.failed then
+		return cached.records
 	end
 
-	local cached = QUICK_LOOK_CARD_PROJECTED_VALUES_CACHE[item]
+	local current_ok, current_expertise = pcall(Items.expertise_level, item, true)
+	local maximum_ok, maximum_expertise = pcall(Items.max_expertise_level)
+
+	current_expertise = current_ok and tonumber(current_expertise) or nil
+	maximum_expertise = maximum_ok and tonumber(maximum_expertise) or nil
+
+	if not current_expertise or not maximum_expertise then
+		return cache_projected_weapon_modifier_records(item, current_expertise, maximum_expertise, nil, true)
+	end
 
 	if cached and cached.current_expertise == current_expertise and cached.maximum_expertise == maximum_expertise then
 		return cached.records
@@ -1057,7 +1094,7 @@ local function projected_weapon_modifier_records(mod, item)
 	local comparing_stats = direct_weapon_comparing_stats(item)
 
 	if type(comparing_stats) ~= "table" or #comparing_stats < 1 then
-		return cache_projected_weapon_modifier_records(item, current_expertise, maximum_expertise)
+		return cache_projected_weapon_modifier_records(item, current_expertise, maximum_expertise, nil, true)
 	end
 
 	comparing_stats = table.clone(comparing_stats)
@@ -1065,7 +1102,7 @@ local function projected_weapon_modifier_records(mod, item)
 	local preview_ok, projected_stats = pcall(Items.preview_stats_change, item, math.max(0, maximum_expertise - current_expertise), comparing_stats)
 
 	if not preview_ok or type(projected_stats) ~= "table" then
-		return cache_projected_weapon_modifier_records(item, current_expertise, maximum_expertise)
+		return cache_projected_weapon_modifier_records(item, current_expertise, maximum_expertise, nil, true)
 	end
 
 	local projected_records = {}
@@ -1083,7 +1120,7 @@ local function projected_weapon_modifier_records(mod, item)
 		end
 
 		if not value or not target_index then
-			return cache_projected_weapon_modifier_records(item, current_expertise, maximum_expertise)
+			return cache_projected_weapon_modifier_records(item, current_expertise, maximum_expertise, nil, true)
 		end
 
 		local display_name = type(comparing_stat.display_name) == "string" and comparing_stat.display_name or type(comparing_stat.name) == "string" and comparing_stat.name or "stat_" .. index
@@ -1651,9 +1688,15 @@ local function add_quick_look_card_grid_pass(mod, pass_template, card_width, tex
 		-- projection and label assembly are item-data work, so resolve them once
 		-- and invalidate only when the widget is rebound by populate_card_content.
 		if content.better_inventory_quick_look_card_dump_stat_visibility_resolved ~= true or content.better_inventory_quick_look_card_dump_stat_parenthesized ~= parenthesized then
-			content[QUICK_LOOK_CARD_DUMP_STAT_ID] = quick_look_card_lowest_stat_text(mod, content, parenthesized) or ""
+			local resolved, label = pcall(quick_look_card_lowest_stat_text, mod, content, parenthesized)
+
+			content[QUICK_LOOK_CARD_DUMP_STAT_ID] = resolved and label or ""
 			content.better_inventory_quick_look_card_dump_stat_visibility_resolved = true
 			content.better_inventory_quick_look_card_dump_stat_parenthesized = parenthesized
+
+			if not resolved and mod and type(mod.warning) == "function" then
+				pcall(mod.warning, mod, "Weapon modifier preview skipped after a card compatibility error: %s", tostring(label))
+			end
 		end
 
 		return content[QUICK_LOOK_CARD_DUMP_STAT_ID] ~= ""
@@ -1734,6 +1777,7 @@ Content.blessing_rank_name = blessing_rank_name
 Content.weapon_perk_rank_icon_size = weapon_perk_rank_icon_size
 Content.item_from_element = item_from_element
 Content.item_from_content = item_from_content
+Content.is_compound_shield_weapon = is_compound_shield_weapon
 Content.is_curio = is_curio
 Content.is_weapon = is_weapon
 Content.clamped_color_channel = clamped_color_channel

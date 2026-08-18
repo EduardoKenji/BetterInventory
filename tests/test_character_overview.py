@@ -11,8 +11,6 @@ MODULE_PATH = (
     / "BetterInventory"
     / "BetterInventory_character_overview.lua"
 )
-
-
 def item(lua, **values):
     return lua.table_from(values)
 

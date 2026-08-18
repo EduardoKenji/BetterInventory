@@ -1,5 +1,17 @@
 # BetterInventory changelog
 
+## 2.6.3 - 2026-08-18
+
+- Detects an equipped compound shield before the weapon-inventory base view is initialized and keeps the complete view on Darktide's known-safe three-column geometry.
+- Rechecks the fetched inventory before presentation so unequipped Slab Shields and current Arbites shield families receive the same protection; ordinary weapon inventories retain their configured four- or five-column layouts.
+- Adds regression coverage for both early equipped-item and later fetched-layout guards after static card-preview substitution proved insufficient to prevent the engine stall.
+
+## 2.6.2 - 2026-08-18
+
+- Prevents the Slab Shield engine crash/long empty-grid stall by automatically limiting an affected weapon inventory to three columns when a compound shield is present; inventories without shields retain their configured four- or five-column layout.
+- Covers all four current Ogryn and Arbites shield marks across the Slab Shield, power-maul shield, and shotpistol shield families while preserving Darktide's native icon and selected-item preview ownership.
+- Contains draw-time modifier projection behind a per-card error boundary and negative cache so malformed or future expertise/template records fail once instead of retrying every rendered frame.
+
 ## 2.6.1 - 2026-08-18
 
 - Fixes Ogryn Slab Shield inventory crashes and long empty-grid stalls by resolving card modifier identities directly from bounded item/template base-stat data instead of instantiating Darktide's full action-heavy `WeaponStats` calculator for every visible weapon.

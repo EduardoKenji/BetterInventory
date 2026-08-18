@@ -1,6 +1,6 @@
 # BetterInventory user guide
 
-BetterInventory v2.6.1 improves inventory, Character Overview, Hadron, Requisition Weapons & Curios, and optional GlobalStore cards while preserving Darktide's native item and icon lifecycle. Weapon-card modifier rows resolve bounded base-stat metadata directly, avoiding full weapon-action calculations for Slab Shields and other complex templates.
+BetterInventory v2.6.3 improves inventory, Character Overview, Hadron, Requisition Weapons & Curios, and optional GlobalStore cards while preserving Darktide's native item and icon lifecycle. Because Darktide's compound-shield preview path still stalls at four/five-column density, an affected weapon inventory uses the known-safe three-column layout. Equipped shields are detected before base-view initialization and the fetched inventory is checked again for unequipped shields. Ordinary weapon inventories retain their configured density. Weapon-card modifier rows resolve bounded base-stat metadata with fail-soft draw-time caching.
 
 The inventory options widget preserves its scroll position when conditional controls are added or removed. Quick Discard has default-off minimum Health and Toughness roll rules. An enabled roll threshold takes precedence over item level for its matching Curio primary type: a Health or Toughness Curio below that roll is discardable even when it meets the item-level threshold. Enabled Wound and Stamina types continue to use the minimum item level. Curio-type checkboxes still scope which primary types receive protection.
 
@@ -49,7 +49,7 @@ Games Lantern imports preserve all five website stat values when they form a uni
 ## Validation
 
 1. Run `tests/verify.ps1` for syntax, source contracts, behavior tests, schema drift, packaging, and archive parity.
-2. Run `py -3 tests/run_tests.py --coverage-output lua-coverage.json` for timeout-bounded JSON results, 156 named risk cases, and risk-weighted Lua line coverage. The command fails if the case manifest is incomplete or a non-declarative runtime module falls below its threshold.
+2. Run `py -3 tests/run_tests.py --coverage-output lua-coverage.json` for timeout-bounded JSON results, 158 named risk cases, and risk-weighted Lua line coverage. The command fails if the case manifest is incomplete or a non-declarative runtime module falls below its threshold.
 3. Validate in-game after changing one setting at a time, reopening affected views, switching operatives, and exercising disabled/cancelled flows.
 
 The prioritized backlog and remaining release gates are maintained in [`v2.0.0-full-project-audit.md`](v2.0.0-full-project-audit.md).
