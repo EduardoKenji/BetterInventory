@@ -68,6 +68,36 @@ def main() -> None:
 		TestItems = {}
 		TestMasterItems = {}
 		TestWeaponTemplate = {}
+		TestUIWeaponPatternSettings = {
+			ogryn_powermaul_slabshield_p1 = {
+				overview_icon_texture = "mastery/ogryn_slab_shield",
+				marks = {
+					{
+						item = "content/items/weapons/player/melee/ogryn_powermaul_slabshield_p1_m1",
+						name = "ogryn_powermaul_slabshield_p1_m1",
+					},
+				},
+			},
+			powermaul_shield_p1 = {
+				overview_icon_texture = "mastery/human_powermaul_shield",
+				marks = {
+					{ name = "powermaul_shield_p1_m1" },
+					{ name = "powermaul_shield_p1_m2" },
+				},
+			},
+			shotpistol_shield_p1 = {
+				overview_icon_texture = "mastery/human_shotpistol_shield",
+				marks = {
+					{ name = "shotpistol_shield_p1_m1" },
+				},
+			},
+			combatsword_p1 = {
+				overview_icon_texture = "mastery/combat_sword",
+				marks = {
+					{ name = "combatsword_p1_m1" },
+				},
+			},
+		}
 		weapon_stats_require_count = 0
 		weapon_template_lookup_count = 0
 		TestModifierDisplayNames = {
@@ -209,11 +239,26 @@ def main() -> None:
 			return item and item.test_pattern or "n/a"
 		end
 
+		is_weapon_error_count = 0
+
 		function TestItems.is_weapon(item_type)
+			if item_type == "TEST_WEAPON_ERROR" then
+				is_weapon_error_count = is_weapon_error_count + 1
+				error("unsupported weapon item type")
+			end
+
 			return item_type == "WEAPON_MELEE" or item_type == "WEAPON_RANGED"
 		end
 
+		expertise_level_count = 0
+
 		function TestItems.expertise_level(item, no_symbol)
+			expertise_level_count = expertise_level_count + 1
+
+			if item and item.test_expertise_error then
+				error("unsupported expertise record")
+			end
+
 			if item and type(item.base_stats) ~= "table" then
 				local display_names = item.modifier_display_names or TestModifierDisplayNames
 				local stat_count = type(item.projected_values) == "table" and #item.projected_values or #display_names
@@ -320,6 +365,10 @@ def main() -> None:
 
 			if path == "scripts/utilities/weapon/weapon_template" then
 				return TestWeaponTemplate
+			end
+
+			if path == "scripts/settings/ui/ui_weapon_pattern_settings" then
+				return TestUIWeaponPatternSettings
 			end
 
 			if path == "scripts/utilities/weapon_stats" then
@@ -938,6 +987,7 @@ def main() -> None:
     assert layout.armoury_grid_expansion(mod, 596) == 0
     mod.settings.columns = 3
 
+    mod.settings.enable_grid_layout = True
     mod.settings.melee_columns = 5
     mod.settings.ranged_columns = 4
     mod.settings.curio_columns = 5
@@ -1495,6 +1545,158 @@ def main() -> None:
     ) == ("61", "65", "63", "64", "62")
     assert globals_.weapon_stats_require_count == 0
 
+    # Four/five-column grids must not enqueue Darktide's live compound-weapon
+    # preview for shields. The game's own mastery textures are stable card
+    # icons; two/three-column layouts and ordinary weapons retain native loads.
+    lua.execute(
+        """
+        compound_load_count = 0
+        compound_unload_count = 0
+        compound_destroy_count = 0
+        compound_priority_count = 0
+        counted_compound_load = function()
+            compound_load_count = compound_load_count + 1
+        end
+        counted_compound_unload = function()
+            compound_unload_count = compound_unload_count + 1
+        end
+        counted_compound_destroy = function()
+            compound_destroy_count = compound_destroy_count + 1
+        end
+        counted_compound_priority = function()
+            compound_priority_count = compound_priority_count + 1
+        end
+        """
+    )
+    mod.settings.enable_grid_layout = True
+    mod.settings.melee_columns = 5
+    assert layout.columns(mod, None, "melee") == 5
+    shield_icon_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    shield_icon_blueprint.load_icon = globals_.counted_compound_load
+    shield_icon_blueprint.unload_icon = globals_.counted_compound_unload
+    shield_icon_blueprint.destroy = globals_.counted_compound_destroy
+    shield_icon_blueprint.update_item_icon_priority = globals_.counted_compound_priority
+    layout.configure_item_blueprint(
+        mod,
+        shield_icon_blueprint,
+        960,
+        lua.table_from({"slot_kind": "melee"}),
+    )
+    assert shield_icon_blueprint.better_inventory_compound_weapon_icon_fallback is True
+    shield_icon_style = blueprint_pass(shield_icon_blueprint, "icon").style
+    shield_icon_widget = lua.table_from(
+        {
+            "content": lua.table_from({}),
+            "style": lua.table_from({"icon": shield_icon_style}),
+        }
+    )
+    assert (
+        globals_.TestLayoutCards.compound_weapon_static_icon(
+            slab_shield_element.item
+        )
+        == "mastery/ogryn_slab_shield"
+    )
+    assert shield_icon_widget.style.icon.material_values is not None
+    shield_icon_blueprint.load_icon(
+        None, shield_icon_widget, slab_shield_element, None, None, False
+    )
+    assert globals_.compound_load_count == 0
+    assert (
+        shield_icon_widget.style.icon.material_values.texture_icon
+        == "mastery/ogryn_slab_shield"
+    )
+    assert shield_icon_widget.style.icon.material_values.use_placeholder_texture == 0
+    assert shield_icon_widget.style.icon.material_values.use_render_target == 0
+    assert shield_icon_widget.content.better_inventory_static_compound_weapon_icon is True
+    shield_icon_blueprint.update_item_icon_priority(
+        None, shield_icon_widget, slab_shield_element, None, None
+    )
+    assert globals_.compound_priority_count == 0
+    shield_icon_blueprint.unload_icon(
+        None, shield_icon_widget, slab_shield_element, None
+    )
+    assert globals_.compound_unload_count == 0
+    assert shield_icon_widget.style.icon.material_values.texture_icon is None
+    assert shield_icon_widget.style.icon.material_values.use_placeholder_texture == 1
+    assert shield_icon_widget.content.better_inventory_static_compound_weapon_icon is None
+
+    shield_icon_blueprint.load_icon(
+        None, shield_icon_widget, slab_shield_element, None, None, False
+    )
+    shield_icon_blueprint.destroy(
+        None, shield_icon_widget, slab_shield_element, None
+    )
+    assert globals_.compound_destroy_count == 1
+    assert shield_icon_widget.style.icon.material_values.texture_icon is None
+    assert shield_icon_widget.content.better_inventory_static_compound_weapon_icon is None
+
+    ordinary_weapon_element = lua.eval(
+        """
+        {
+            item = {
+                item_type = "WEAPON_MELEE",
+                weapon_template = "combatsword_p1_m1"
+            }
+        }
+        """
+    )
+    shield_icon_blueprint.load_icon(
+        None, shield_icon_widget, ordinary_weapon_element, None, None, False
+    )
+    assert globals_.compound_load_count == 1
+
+    mod.settings.melee_columns = 3
+    three_column_icon_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    three_column_icon_blueprint.load_icon = globals_.counted_compound_load
+    layout.configure_item_blueprint(
+        mod,
+        three_column_icon_blueprint,
+        960,
+        lua.table_from({"slot_kind": "melee"}),
+    )
+    three_column_icon_widget = lua.table_from(
+        {
+            "content": lua.table_from({}),
+            "style": lua.table_from(
+                {"icon": blueprint_pass(three_column_icon_blueprint, "icon").style}
+            ),
+        }
+    )
+    three_column_icon_blueprint.load_icon(
+        None, three_column_icon_widget, slab_shield_element, None, None, False
+    )
+    assert globals_.compound_load_count == 2
+
+    cards = globals_.TestLayoutCards
+    assert (
+        cards.compound_weapon_static_icon(
+            lua.table_from({"name": "powermaul_shield_p1_m1"})
+        )
+        == "mastery/human_powermaul_shield"
+    )
+    assert (
+        cards.compound_weapon_static_icon(
+            lua.table_from({"weapon_template": "powermaul_shield_p1_m2"})
+        )
+        == "mastery/human_powermaul_shield"
+    )
+    assert (
+        cards.compound_weapon_static_icon(
+            lua.eval(
+                '{ gear = { masterDataInstance = { id = "content/items/weapons/player/ranged/shotpistol_shield_p1_m1" } } }'
+            )
+        )
+        == "mastery/human_shotpistol_shield"
+    )
+    assert (
+        cards.compound_weapon_static_icon(
+            lua.table_from({"weapon_template": "combatsword_p1_m1"})
+        )
+        is None
+    )
+    mod.settings.melee_columns = 3
+    mod.settings.enable_grid_layout = False
+
     # Nonstandard or future weapon records fail soft per card: sparse numeric
     # keys remain ordered, malformed stats are skipped, and a template lookup
     # failure leaves modifier rows empty without blocking the inventory grid.
@@ -1540,6 +1742,23 @@ def main() -> None:
     assert layout.projected_weapon_modifier_records(mod, failing_template_item) is False
     assert layout.projected_weapon_modifier_records(mod, failing_template_item) is False
     assert globals_.weapon_template_lookup_count == failed_lookup_count + 1
+
+    failing_expertise_item = lua.eval(
+        """
+        {
+            item_type = "WEAPON_MELEE",
+            test_expertise_error = true,
+            base_stats = { { name = "damage", value = 0.8 } },
+            test_weapon_base_stats = {
+                damage = { display_name = "loc_stats_display_damage_stat" }
+            }
+        }
+        """
+    )
+    failed_expertise_count = globals_.expertise_level_count
+    assert layout.projected_weapon_modifier_records(mod, failing_expertise_item) is False
+    assert layout.projected_weapon_modifier_records(mod, failing_expertise_item) is False
+    assert globals_.expertise_level_count == failed_expertise_count + 1
 
     # Ammo stays compact in every managed blueprint, including views that use
     # the shared native single-column formatter (inventory, vendors, Hadron,
@@ -1991,6 +2210,24 @@ def main() -> None:
     assert globals_.preview_stats_change_count == projected_calls + 1
     assert qlc_dump_pass.visibility_function(qlc_dump_content) is True
     assert globals_.preview_stats_change_count == projected_calls + 1
+
+    # Unexpected future item-type failures are contained by the draw-time
+    # visibility boundary and remembered by the widget instead of retried on
+    # every frame.
+    qlc_error_content = lua.eval(
+        """
+        {
+            element = { item = { item_type = "TEST_WEAPON_ERROR" } },
+            qlc_stats_title_1 = "DMG",
+            qlc_stats_value_1 = "60"
+        }
+        """
+    )
+    weapon_error_calls = globals_.is_weapon_error_count
+    assert qlc_dump_pass.visibility_function(qlc_error_content) is False
+    assert qlc_error_content.better_inventory_quick_look_card_dump_stat == ""
+    assert qlc_dump_pass.visibility_function(qlc_error_content) is False
+    assert globals_.is_weapon_error_count == weapon_error_calls + 1
 
     # Quick Look Card may provide raw English titles. Its AMMO title must pass
     # through the same shared compaction before BetterInventory renders it.

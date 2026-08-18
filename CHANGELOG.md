@@ -1,5 +1,11 @@
 # BetterInventory changelog
 
+## 2.6.2 - 2026-08-18
+
+- Fixes the remaining Slab Shield crash/long empty-grid stall at four or five melee columns by using Darktide's stable mastery texture instead of scheduling a live compound-weapon preview; two- and three-column cards retain their native previews.
+- Extends the compatibility path dynamically to all current shield patterns, covering four Ogryn and Arbites marks across the Slab Shield, power-maul shield, and shotpistol shield families, while ordinary weapons keep the native renderer.
+- Contains draw-time modifier projection behind a per-card error boundary and negative cache so malformed or future expertise/template records fail once instead of retrying every rendered frame.
+
 ## 2.6.1 - 2026-08-18
 
 - Fixes Ogryn Slab Shield inventory crashes and long empty-grid stalls by resolving card modifier identities directly from bounded item/template base-stat data instead of instantiating Darktide's full action-heavy `WeaponStats` calculator for every visible weapon.

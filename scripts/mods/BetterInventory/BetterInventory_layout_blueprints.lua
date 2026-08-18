@@ -92,6 +92,7 @@ local configure_new_item_highlight = Cards.configure_new_item_highlight
 local add_custom_content_passes = Cards.add_custom_content_passes
 local grid_weapon_name_font_size = Cards.grid_weapon_name_font_size
 local configure_card_content = Cards.configure_card_content
+local configure_compound_weapon_icon_fallback = Cards.configure_compound_weapon_icon_fallback
 
 local function content_is_curio(card_content)
 	local cached = card_content and card_content.better_inventory_is_curio
@@ -486,6 +487,7 @@ Blueprints.configure_item_blueprint = function(mod, item_blueprint, grid_width, 
 	local global_store_price_padding = global_store_multicolumn and global_store_price_row_padding(mod) or 0
 	local global_store_price_row_offset = global_store_multicolumn and GLOBAL_STORE_CHARACTER_ROW_HEIGHT + global_store_price_padding or 0
 
+	local resolved_columns = Geometry.columns(mod, configuration.maximum_columns, configuration.slot_kind)
 	local item_size = Geometry.item_size(mod, grid_width, configuration.maximum_columns, configuration)
 	local card_width = item_size[1]
 	local card_height = item_size[2]
@@ -910,13 +912,14 @@ Blueprints.configure_item_blueprint = function(mod, item_blueprint, grid_width, 
 		end
 	end
 
-	add_custom_content_passes(mod, pass_template, card_width, text_left, sub_display_name and sub_display_name.style, configuration, Geometry.columns(mod, configuration.maximum_columns, configuration.slot_kind))
+	add_custom_content_passes(mod, pass_template, card_width, text_left, sub_display_name and sub_display_name.style, configuration, resolved_columns)
 
 	set_height(pass_by_style_id(pass_template, "inner_shadow"), card_height)
 	set_height(pass_by_style_id(pass_template, "inner_highlight"), card_height)
 
 	configure_card_content(mod, item_blueprint, configuration)
-	ImageLayout.apply_blueprint(mod, item_blueprint, configuration, Geometry.columns(mod, configuration.maximum_columns, configuration.slot_kind))
+	configure_compound_weapon_icon_fallback(item_blueprint, resolved_columns)
+	ImageLayout.apply_blueprint(mod, item_blueprint, configuration, resolved_columns)
 
 	return item_size
 end
