@@ -1,6 +1,6 @@
 # BetterInventory user guide
 
-BetterInventory v2.6.0 improves inventory, Character Overview, Hadron, Requisition Weapons & Curios, and optional GlobalStore cards while preserving Darktide's native item and icon lifecycle.
+BetterInventory v2.6.1 improves inventory, Character Overview, Hadron, Requisition Weapons & Curios, and optional GlobalStore cards while preserving Darktide's native item and icon lifecycle. Weapon-card modifier rows resolve bounded base-stat metadata directly, avoiding full weapon-action calculations for Slab Shields and other complex templates.
 
 The inventory options widget preserves its scroll position when conditional controls are added or removed. Quick Discard has default-off minimum Health and Toughness roll rules. An enabled roll threshold takes precedence over item level for its matching Curio primary type: a Health or Toughness Curio below that roll is discardable even when it meets the item-level threshold. Enabled Wound and Stamina types continue to use the minimum item level. Curio-type checkboxes still scope which primary types receive protection.
 

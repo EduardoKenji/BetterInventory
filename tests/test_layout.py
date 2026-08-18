@@ -67,6 +67,16 @@ def main() -> None:
 		TestText = {}
 		TestItems = {}
 		TestMasterItems = {}
+		TestWeaponTemplate = {}
+		weapon_stats_require_count = 0
+		weapon_template_lookup_count = 0
+		TestModifierDisplayNames = {
+			"loc_stats_display_damage_stat",
+			"loc_stats_display_warp_resist_stat",
+			"loc_stats_display_cleave_damage_stat",
+			"loc_stats_display_defense_stat",
+			"loc_stats_display_finesse_stat",
+		}
 		TestRankSettings = {
 			[0] = { display_name = "n/a" },
 			[1] = { display_name = "I" },
@@ -204,6 +214,23 @@ def main() -> None:
 		end
 
 		function TestItems.expertise_level(item, no_symbol)
+			if item and type(item.base_stats) ~= "table" then
+				local display_names = item.modifier_display_names or TestModifierDisplayNames
+				local stat_count = type(item.projected_values) == "table" and #item.projected_values or #display_names
+
+				item.base_stats = {}
+				item.test_weapon_base_stats = item.test_weapon_base_stats or {}
+
+				for index = 1, stat_count do
+					local name = "test_stat_" .. tostring(index)
+
+					item.base_stats[index] = { name = name, value = 0.2 }
+					item.test_weapon_base_stats[name] = {
+						display_name = display_names[index] or "loc_stats_display_future_" .. tostring(index) .. "_stat",
+					}
+				end
+			end
+
 			local value = tostring(item and item.expertise or 460)
 
 			return no_symbol and value or "POWER " .. value, true
@@ -231,34 +258,16 @@ def main() -> None:
 			return projected
 		end
 
-		TestWeaponStats = {}
+		function TestWeaponTemplate.weapon_template_from_item(item)
+			weapon_template_lookup_count = weapon_template_lookup_count + 1
 
-		function TestWeaponStats:new(item)
-			local instance = {
-				item = item,
-			}
-
-			function instance:get_comparing_stats()
-				local stats = {}
-				local display_names = item.modifier_display_names or {
-					"loc_stats_display_damage_stat",
-					"loc_stats_display_warp_resist_stat",
-					"loc_stats_display_cleave_damage_stat",
-					"loc_stats_display_defense_stat",
-					"loc_stats_display_finesse_stat",
-				}
-
-				for index = 1, 5 do
-					stats[index] = {
-						display_name = display_names[index],
-						fraction = 0.2,
-					}
-				end
-
-				return stats
+			if item and item.test_weapon_template_error then
+				error("unsupported full weapon template")
 			end
 
-			return instance
+			return item and {
+				base_stats = item.test_weapon_base_stats,
+			} or nil
 		end
 
 		function TestItems.display_name(item)
@@ -309,8 +318,13 @@ def main() -> None:
 				return TestRankSettings
 			end
 
+			if path == "scripts/utilities/weapon/weapon_template" then
+				return TestWeaponTemplate
+			end
+
 			if path == "scripts/utilities/weapon_stats" then
-				return TestWeaponStats
+				weapon_stats_require_count = weapon_stats_require_count + 1
+				error("inventory cards must not load the full WeaponStats calculator")
 			end
 
 			error("Unexpected test require: " .. tostring(path))
@@ -1422,6 +1436,110 @@ def main() -> None:
         ]
         for index in range(1, 6)
     ) == ("80", "80", "80", "80", "60")
+
+    # Slab Shield exposes a large, action-heavy weapon template. Inventory
+    # cards need only its five base-stat identities; loading Darktide's full
+    # WeaponStats calculator here can stall or crash the whole melee grid.
+    slab_shield_element = lua.eval(
+        """
+        {
+            test_display_name = "Battle Maul & Slab Shield",
+            test_sub_display_name = "Orox Mk III",
+            item = {
+                item_type = "WEAPON_MELEE",
+                weapon_template = "ogryn_powermaul_slabshield_p1_m1",
+                expertise = 300,
+                projected_values = { 61, 62, 63, 64, 65 },
+                base_stats = {
+                    { name = "ogryn_powermaul_slabshield_dps_stat", value = 0.21 },
+                    { name = "ogryn_powermaul_slabshield_armor_pierce_stat", value = 0.22 },
+                    { name = "ogryn_powermaul_slabshield_control_stat", value = 0.23 },
+                    { name = "ogryn_powermaul_slabshield_cleave_damage_stat", value = 0.24 },
+                    { name = "ogryn_powermaul_slabshield_defence_stat", value = 0.25 }
+                },
+                test_weapon_base_stats = {
+                    ogryn_powermaul_slabshield_dps_stat = { display_name = "loc_stats_display_damage_stat" },
+                    ogryn_powermaul_slabshield_armor_pierce_stat = { display_name = "loc_stats_display_ap_stat" },
+                    ogryn_powermaul_slabshield_control_stat = { display_name = "loc_stats_display_control_stat_melee" },
+                    ogryn_powermaul_slabshield_cleave_damage_stat = { display_name = "loc_stats_display_cleave_damage_stat" },
+                    ogryn_powermaul_slabshield_defence_stat = { display_name = "loc_stats_display_defense_stat" }
+                }
+            }
+        }
+        """
+    )
+    slab_shield_widget = lua.table_from(
+        {"content": lua.table_from({}), "style": lua.table_from(native_modifier_styles)}
+    )
+    native_blueprint.init(
+        None,
+        slab_shield_widget,
+        slab_shield_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        native_blueprint,
+    )
+    assert tuple(
+        slab_shield_widget.content[
+            f"better_inventory_weapon_modifier_title_{index}"
+        ]
+        for index in range(1, 6)
+    ) == ("DMG", "DEF", "CC", "CLVD", "PEN")
+    assert tuple(
+        slab_shield_widget.content[
+            f"better_inventory_weapon_modifier_value_{index}"
+        ]
+        for index in range(1, 6)
+    ) == ("61", "65", "63", "64", "62")
+    assert globals_.weapon_stats_require_count == 0
+
+    # Nonstandard or future weapon records fail soft per card: sparse numeric
+    # keys remain ordered, malformed stats are skipped, and a template lookup
+    # failure leaves modifier rows empty without blocking the inventory grid.
+    sparse_item = lua.eval(
+        """
+        {
+            item_type = "WEAPON_RANGED",
+            expertise = 300,
+            projected_values = { 70, 71, 72, 73 },
+            base_stats = {
+                [2] = { name = "second", value = 0.2 },
+                [4] = { name = "fourth", value = 0.4 },
+                [7] = { name = "missing_definition", value = 0.7 },
+                [9] = { name = "ninth", value = 0.9 }
+            },
+            test_weapon_base_stats = {
+                second = { display_name = "loc_stats_display_damage_stat" },
+                fourth = { display_name = "loc_stats_display_mobility_stat" },
+                ninth = { display_name = "loc_stats_display_finesse_stat" }
+            }
+        }
+        """
+    )
+    sparse_stats = layout.direct_weapon_comparing_stats(sparse_item)
+    assert len(sparse_stats) == 3
+    assert tuple(sparse_stats[index].name for index in range(1, 4)) == (
+        "second",
+        "fourth",
+        "ninth",
+    )
+    failing_template_item = lua.eval(
+        """
+        {
+            item_type = "WEAPON_MELEE",
+            expertise = 300,
+            projected_values = { 80, 80, 80, 80, 60 },
+            base_stats = { { name = "damage", value = 0.8 } },
+            test_weapon_template_error = true
+        }
+        """
+    )
+    failed_lookup_count = globals_.weapon_template_lookup_count
+    assert layout.projected_weapon_modifier_records(mod, failing_template_item) is False
+    assert layout.projected_weapon_modifier_records(mod, failing_template_item) is False
+    assert globals_.weapon_template_lookup_count == failed_lookup_count + 1
 
     # Ammo stays compact in every managed blueprint, including views that use
     # the shared native single-column formatter (inventory, vendors, Hadron,

@@ -4,7 +4,7 @@ local item_customization_provider
 
 local Items = require("scripts/utilities/items")
 local RankSettings = require("scripts/settings/item/rank_settings")
-local WeaponStats = require("scripts/utilities/weapon_stats")
+local WeaponTemplate = require("scripts/utilities/weapon/weapon_template")
 
 local BLESSING_MATERIAL = "content/ui/materials/icons/traits/traits_container"
 local DEFAULT_PERK_RANK_MATERIAL = "content/ui/materials/icons/perks/perk_level_01"
@@ -50,6 +50,8 @@ local MINIMUM_AUTO_FIT_BLESSING_FONT_SIZE = 8
 local QUICK_LOOK_CARD_DUMP_STAT_ID = "better_inventory_quick_look_card_dump_stat"
 local WEAPON_MODIFIER_TITLE_PREFIX = "better_inventory_weapon_modifier_title_"
 local WEAPON_MODIFIER_VALUE_PREFIX = "better_inventory_weapon_modifier_value_"
+local MAX_WEAPON_MODIFIER_COUNT = 5
+local MAX_WEAPON_MODIFIER_SOURCE_INDEX = 32
 
 local function global_store_character_photo_percent(mod)
 	local value = tonumber(mod:get("global_store_character_photo_size_percent")) or GLOBAL_STORE_CHARACTER_PHOTO_DEFAULT_PERCENT
@@ -974,6 +976,64 @@ local function unique_weapon_modifier_label(label, used_labels)
 	return label
 end
 
+local function direct_weapon_comparing_stats(item)
+	local item_base_stats = item and item.base_stats
+
+	if type(item_base_stats) ~= "table" or type(WeaponTemplate) ~= "table" or type(WeaponTemplate.weapon_template_from_item) ~= "function" then
+		return
+	end
+
+	local template_ok, weapon_template = pcall(WeaponTemplate.weapon_template_from_item, item)
+	local template_base_stats = template_ok and type(weapon_template) == "table" and weapon_template.base_stats
+
+	if type(template_base_stats) ~= "table" then
+		return
+	end
+
+	local values = {}
+	local seen_names = {}
+
+	for key = 1, MAX_WEAPON_MODIFIER_SOURCE_INDEX do
+		local stat = item_base_stats[key]
+		local stat_name = type(stat) == "table" and stat.name
+		local stat_template = type(stat_name) == "string" and template_base_stats[stat_name]
+		local display_name = type(stat_template) == "table" and stat_template.display_name
+		local fraction = type(stat) == "table" and tonumber(stat.value)
+
+		if type(display_name) == "string" and display_name ~= "" and not seen_names[stat_name] and fraction then
+			seen_names[stat_name] = true
+			values[#values + 1] = {
+				current = fraction,
+				description = stat_template.description,
+				display_name = display_name,
+				fraction = fraction,
+				max = 1,
+				min = 0,
+				name = stat_name,
+				type = #values + 1,
+			}
+
+			if #values >= MAX_WEAPON_MODIFIER_COUNT then
+				break
+			end
+		end
+	end
+
+	return #values > 0 and values or nil
+end
+
+local function cache_projected_weapon_modifier_records(item, current_expertise, maximum_expertise, records)
+	local cached_records = records or false
+
+	QUICK_LOOK_CARD_PROJECTED_VALUES_CACHE[item] = {
+		current_expertise = current_expertise,
+		maximum_expertise = maximum_expertise,
+		records = cached_records,
+	}
+
+	return cached_records
+end
+
 local function projected_weapon_modifier_records(mod, item)
 	if type(Items.preview_stats_change) ~= "function" or type(Items.max_expertise_level) ~= "function" or type(Items.expertise_level) ~= "function" then
 		return
@@ -994,16 +1054,10 @@ local function projected_weapon_modifier_records(mod, item)
 		return cached.records
 	end
 
-	local stats_ok, weapon_stats = pcall(WeaponStats.new, WeaponStats, item)
+	local comparing_stats = direct_weapon_comparing_stats(item)
 
-	if not stats_ok or type(weapon_stats) ~= "table" or type(weapon_stats.get_comparing_stats) ~= "function" then
-		return
-	end
-
-	local comparing_ok, comparing_stats = pcall(weapon_stats.get_comparing_stats, weapon_stats)
-
-	if not comparing_ok or type(comparing_stats) ~= "table" or #comparing_stats < 1 then
-		return
+	if type(comparing_stats) ~= "table" or #comparing_stats < 1 then
+		return cache_projected_weapon_modifier_records(item, current_expertise, maximum_expertise)
 	end
 
 	comparing_stats = table.clone(comparing_stats)
@@ -1011,7 +1065,7 @@ local function projected_weapon_modifier_records(mod, item)
 	local preview_ok, projected_stats = pcall(Items.preview_stats_change, item, math.max(0, maximum_expertise - current_expertise), comparing_stats)
 
 	if not preview_ok or type(projected_stats) ~= "table" then
-		return
+		return cache_projected_weapon_modifier_records(item, current_expertise, maximum_expertise)
 	end
 
 	local projected_records = {}
@@ -1029,7 +1083,7 @@ local function projected_weapon_modifier_records(mod, item)
 		end
 
 		if not value or not target_index then
-			return
+			return cache_projected_weapon_modifier_records(item, current_expertise, maximum_expertise)
 		end
 
 		local display_name = type(comparing_stat.display_name) == "string" and comparing_stat.display_name or type(comparing_stat.name) == "string" and comparing_stat.name or "stat_" .. index
@@ -1042,13 +1096,7 @@ local function projected_weapon_modifier_records(mod, item)
 		}
 	end
 
-	QUICK_LOOK_CARD_PROJECTED_VALUES_CACHE[item] = {
-		current_expertise = current_expertise,
-		maximum_expertise = maximum_expertise,
-		records = projected_records,
-	}
-
-	return projected_records
+	return cache_projected_weapon_modifier_records(item, current_expertise, maximum_expertise, projected_records)
 end
 
 local function populate_weapon_modifier_content(mod, content, item)
@@ -1705,6 +1753,7 @@ Content.fallback_weapon_modifier_label = fallback_weapon_modifier_label
 Content.compact_weapon_modifier_label = compact_weapon_modifier_label
 Content.localized_weapon_modifier_label = localized_weapon_modifier_label
 Content.unique_weapon_modifier_label = unique_weapon_modifier_label
+Content.direct_weapon_comparing_stats = direct_weapon_comparing_stats
 Content.projected_weapon_modifier_records = projected_weapon_modifier_records
 Content.populate_weapon_modifier_content = populate_weapon_modifier_content
 Content.quick_look_card_lowest_stat_text = quick_look_card_lowest_stat_text

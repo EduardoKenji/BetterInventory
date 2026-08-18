@@ -1,5 +1,10 @@
 # BetterInventory changelog
 
+## 2.6.1 - 2026-08-18
+
+- Fixes Ogryn Slab Shield inventory crashes and long empty-grid stalls by resolving card modifier identities directly from bounded item/template base-stat data instead of instantiating Darktide's full action-heavy `WeaponStats` calculator for every visible weapon.
+- Audits all 142 shipped weapon templates (five modifiers each, 37 display identities, no missing or duplicate identities) and adds critical regression coverage for Slab Shield plus ordered sparse, malformed, and failed future-template records.
+
 ## 2.6.0 - 2026-08-17
 
 - Allows Auto Crafter through Psych Ward's character-selection Brunt route only while its live vendor view remains valid, retaining matchmaking and unrelated-context guards.

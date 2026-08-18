@@ -30,6 +30,13 @@
       "modules": ["BetterInventory_wkc_integration.lua", "BetterInventory_layout_cards.lua", "BetterInventory_runtime.lua"]
     },
     {
+      "name": "layout.weapon-modifiers-avoid-full-calculator",
+      "test": "test_layout.py",
+      "case": "weapon_modifier_data_only_resolution",
+      "outcome": "inventory cards resolve ordered modifier identities directly from item and weapon-template base-stat data; Slab Shield and malformed or sparse future records cannot invoke the full WeaponStats calculator or block the melee grid",
+      "modules": ["BetterInventory_layout.lua", "BetterInventory_layout_content.lua"]
+    },
+    {
       "name": "arbiter.rejects-overlap",
       "test": "test_operation_arbiter.py",
       "case": "manual_automatic_exclusion",
