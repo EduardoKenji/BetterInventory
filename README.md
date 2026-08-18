@@ -2,7 +2,7 @@
 
 [![BetterInventory verification](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml/badge.svg)](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml)
 
-> Current release: **v2.8.0** (2026-08-18). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
+> Current release: **v2.8.1** (2026-08-18). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
 
 BetterInventory is a standalone inventory and item-management mod for Warhammer 40,000: Darktide. It adds responsive weapon and Curio cards, richer item information, configurable sorting, supported vendor layouts, optional mod integrations, and safety-gated inventory workflows.
 
@@ -18,7 +18,15 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - A bounded inventory-options panel for sorting, discard rules, integrations, and view-specific controls.
 - Optional Quick Discard, Automatic Discard, Automatic Curio Buyer, and Auto Crafter workflows with explicit ownership, authoritative revalidation, and fail-closed behavior.
 
-## What's new in v2.8.0
+## What's new in v2.8.1
+
+- Auto Crafter's Estimates section now uses five compact one-line rows with currency icons: current resources, generous cost, unlucky cost, and the remaining resources after each estimate. Negative projected balances are red.
+- Total estimates now include base-weapon acquisition and live recipe-derived perk/blessing replacement costs in addition to mastery, consecration, and expertise costs. Target search uses visible 100,000/300,000-docket planning boundaries, constrained by the configured acquisition cap.
+- Stable Auto Crafter panels now keep Ctrl+V responsive while amortizing native selection, layout pivot, runtime-context, and character checks. Psych Ward also recognizes a remaining queue weapon that was selected despite a false-negative preview result, preventing redundant post-removal retries.
+- Staging a Games Lantern queue now retires any older native trait-discovery request, so an idle imported queue cannot acquire a false `trait_discovery_failed` state after 45 seconds.
+- Repeated Games Lantern imports remain intentionally deferred. The bounded six-card proposal and required duplicate-input/lifecycle coverage are recorded in [the deferred queue design](docs/deferred-games-lantern-multi-import-queue.md).
+
+### v2.8.0 changes included
 
 - Auto Crafter now renders its status overlay in Psych Ward's live Brunt view, making queued, purchasing, mastery, crafting, completion, and failure states visible before entering the Morningstar.
 - Leaving Psych Ward during a backend mutation stops future work, waits for the late response to become inert, then releases Games Lantern queue ownership instead of remaining indefinitely busy after the character transition.

@@ -655,6 +655,31 @@ def main() -> None:
             "masteryXpPerExpertiseLevel": 10,
         }
     )
+    snapshot.crafting_costs.weapon.perkReplace = lua.table_from(
+        {
+            "startCost": lua.table_from(
+                {
+                    "4": lua.table_from(
+                        [lua.table_from({"type": "credits", "amount": 2000})]
+                    )
+                }
+            )
+        }
+    )
+    snapshot.crafting_costs.weapon.traitReplace = lua.table_from(
+        {
+            "startCost": lua.table_from(
+                {
+                    "4": lua.table_from(
+                        [lua.table_from({"type": "credits", "amount": 4500})]
+                    )
+                }
+            )
+        }
+    )
+    snapshot.wallets.currencies["credits"] = lua.table_from({"amount": 400000})
+    snapshot.wallets.currencies["plasteel"] = lua.table_from({"amount": 10000})
+    snapshot.wallets.currencies["diamantine"] = lua.table_from({"amount": 1000})
     mastery_plan = planner.build(
         snapshot,
         lua.table_from(
@@ -663,6 +688,9 @@ def main() -> None:
                 "dump_stat": "penetration",
                 "cap_by_dockets": True,
                 "docket_cap": 1000000,
+                "acquisition_mode": "target_search",
+                "change_perks": True,
+                "change_blessings": True,
                 "level_mastery_20": True,
                 "trait_catalog": lua.table_from(
                     {
@@ -688,6 +716,58 @@ def main() -> None:
     assert mastery_plan.estimate.phases.mastery.count_max == 34
     assert mastery_plan.estimate.phases.mastery.dockets_min == 348000
     assert mastery_plan.estimate.phases.mastery.dockets_max == 394400
+    assert mastery_plan.estimate.phases.traits.dockets_min == 13000
+    assert mastery_plan.estimate.phases.traits.dockets_max == 13000
+    assert mastery_plan.estimate.dockets_min == 361000
+    assert mastery_plan.estimate.dockets_max == 407400
+    assert mastery_plan.estimate.costs.generous.dockets == 461000
+    assert mastery_plan.estimate.costs.unlucky.dockets == 707400
+    assert mastery_plan.estimate.costs.generous.plasteel == 510
+    assert mastery_plan.estimate.costs.unlucky.plasteel == 590
+    assert mastery_plan.estimate.costs.generous.diamantine == 68
+    assert mastery_plan.estimate.costs.unlucky.diamantine == 76
+    assert mastery_plan.estimate.costs.remaining_generous.dockets == -61000
+    assert mastery_plan.estimate.costs.remaining_unlucky.dockets == -307400
+
+    first_weapon_plan = planner.build(
+        snapshot,
+        lua.table_from(
+            {
+                "target_offer": offer,
+                "dump_stat": "penetration",
+                "cap_by_dockets": True,
+                "docket_cap": 1000000,
+                "acquisition_mode": "first_weapon",
+                "consecrate_transcendent": False,
+                "level_mastery_20": False,
+                "upgrade_expertise_500": False,
+                "change_perks": False,
+                "change_blessings": False,
+            }
+        ),
+    )
+    assert first_weapon_plan.estimate.costs.generous.dockets == 11600
+    assert first_weapon_plan.estimate.costs.unlucky.dockets == 11600
+
+    disabled_acquisition_plan = planner.build(
+        snapshot,
+        lua.table_from(
+            {
+                "target_offer": offer,
+                "dump_stat": "penetration",
+                "cap_by_dockets": True,
+                "docket_cap": 1000000,
+                "acquisition_mode": "disabled",
+                "consecrate_transcendent": False,
+                "level_mastery_20": False,
+                "upgrade_expertise_500": False,
+                "change_perks": False,
+                "change_blessings": False,
+            }
+        ),
+    )
+    assert disabled_acquisition_plan.estimate.costs.generous.dockets == 0
+    assert disabled_acquisition_plan.estimate.costs.unlucky.dockets == 0
 
     lua.execute(
         '''
@@ -699,6 +779,23 @@ def main() -> None:
         '''
     )
     panel_module = __import__("auto_crafter_test_support").load_panel(lua)
+    estimate_panel = panel_module.new(lua.table_from({}))
+    estimate_panel._plan = mastery_plan
+    assert estimate_panel._estimate_currency_values(estimate_panel, "wallet") == (
+        "400k", "10k", "1k", False, False, False
+    )
+    assert estimate_panel._estimate_currency_values(estimate_panel, "generous") == (
+        "461k", "510", "68", False, False, False
+    )
+    assert estimate_panel._estimate_currency_values(estimate_panel, "unlucky") == (
+        "707k", "590", "76", False, False, False
+    )
+    assert estimate_panel._estimate_currency_values(estimate_panel, "remaining_generous") == (
+        "-61k", "9.5k", "932", True, False, False
+    )
+    assert estimate_panel._estimate_currency_values(estimate_panel, "remaining_unlucky") == (
+        "-307k", "9.4k", "924", True, False, False
+    )
     assert panel_module.weapon_name_with_mark("Power Falchion", "Achlys • Mk VI") == "Achlys Mk VI Power Falchion"
     assert panel_module.weapon_name_with_mark("Branx Mk XI Paired Transonic Blades", "Mk XI") == "Branx Mk XI Paired Transonic Blades"
     idle_workflow = lua.table_from({"phase": "idle"})
@@ -717,6 +814,8 @@ def main() -> None:
         local import_snapshot_calls = 0
         local queue_signature_calls = 0
         local import_signature_calls = 0
+        local selected_offer_calls = 0
+        local pivot_calls = 0
         local rendered = 0
         local queue_snapshot = {queue_id = "queue-a", state = "empty", jobs = {}}
         local import_snapshot = {state = "idle"}
@@ -734,6 +833,7 @@ def main() -> None:
                 return import_snapshot
             end,
             get_selected_offer = function()
+                selected_offer_calls = selected_offer_calls + 1
                 return native_offer
             end,
         })
@@ -749,24 +849,31 @@ def main() -> None:
         end
         polling_panel._panel = {}
         polling_panel._view = {}
-        polling_panel._update_pivot = function() return true end
+        polling_panel._update_pivot = function()
+            pivot_calls = pivot_calls + 1
+            return true
+        end
         polling_panel.render = function()
             rendered = rendered + 1
             return true
         end
 
-        polling_panel:update(0.1)
-        polling_panel:update(0.1)
+        polling_panel:update(0.5)
+        polling_panel:update(0.5)
         local stable_selected_offer = polling_panel._selected_offer
-        for _ = 1, 20 do polling_panel:update(0.1) end
+        local stable_selected_offer_calls = selected_offer_calls
+        local stable_pivot_calls = pivot_calls
+        for _ = 1, 60 do polling_panel:update(1 / 60) end
 
         assert(queue_snapshot_calls == 1 and import_snapshot_calls == 1)
         assert(queue_signature_calls == 1 and import_signature_calls == 1)
+        assert(selected_offer_calls - stable_selected_offer_calls <= 2)
+        assert(pivot_calls - stable_pivot_calls <= 2)
         assert(rawequal(stable_selected_offer, polling_panel._selected_offer))
         assert(polling_panel._selected_offer_key == "offer:offer-a")
 
         polling_panel:invalidate_games_lantern_snapshots()
-        polling_panel:update(0.1)
+        polling_panel:update(1 / 60)
         assert(queue_snapshot_calls == 2 and import_snapshot_calls == 2)
         assert(queue_signature_calls == 2 and import_signature_calls == 2)
 
@@ -774,7 +881,7 @@ def main() -> None:
             offerId = "offer-b",
             description = {lootChoices = {{masterId = "master-b"}}},
         }
-        polling_panel:update(0.1)
+        for _ = 1, 30 do polling_panel:update(1 / 60) end
         assert(not rawequal(stable_selected_offer, polling_panel._selected_offer))
         assert(polling_panel._selected_offer_key == "offer:offer-b")
         assert(rendered >= 1)
@@ -1206,6 +1313,13 @@ def main() -> None:
 
     panel_source = PANEL_PATH.read_text(encoding="utf-8") + PANEL_PATH.with_name("panel_blueprints.lua").read_text(encoding="utf-8")
     assert "length_scrolled" in panel_source
+    assert "local CURRENCY_ROW_HEIGHT = 26" in panel_source
+    assert 'size = { 18, 18 }' in panel_source
+    assert '"Current resources", "wallet"' in panel_source
+    assert '"Generous cost estimate", "generous"' in panel_source
+    assert '"Unlucky cost estimate", "unlucky"' in panel_source
+    assert '"Remaining (generous)", "remaining_generous"' in panel_source
+    assert '"Remaining (unlucky)", "remaining_unlucky"' in panel_source
     assert "restore_scroll_offset" in panel_source
     assert "set_scrollbar_progress" in panel_source
     assert 'add_checkbox("auto_crafter_change_perks"' in panel_source
@@ -1272,8 +1386,9 @@ def main() -> None:
     assert "presentation_dirty" in host_source
     assert "PRESENTATION_CLOCK_INTERVAL = 0.25" in host_source
     assert "if presentation_dirty or cached == nil or clock_due then" in host_source
-    assert "IDLE_POLL_INTERVAL = 0.1" in panel_source
-    assert "DEFAULT_VIEW_IDLE_POLL_INTERVAL = 0.1" in controller_source
+    assert "INPUT_POLL_INTERVAL = 0.1" in panel_source
+    assert "IDLE_POLL_INTERVAL = 0.5" in panel_source
+    assert "DEFAULT_VIEW_IDLE_POLL_INTERVAL = 0.5" in controller_source
 
     print("Auto Crafter weapon stat catalogue and display-label tests passed.")
 

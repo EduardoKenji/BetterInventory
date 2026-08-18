@@ -1,5 +1,14 @@
 # BetterInventory changelog
 
+## 2.8.1 - 2026-08-18
+
+- Replaces Auto Crafter's tall phase-cost blocks with compact one-line currency rows for current resources, generous and unlucky total-cost estimates, and the resources remaining after each estimate; negative balances are highlighted in red.
+- Adds the previously omitted acquisition and perk/blessing replacement costs. Target searches use transparent 100,000/300,000-docket planning heuristics bounded by the configured acquisition cap, while replacement costs come from Darktide's live recipes.
+- Reduces idle Auto Crafter overhead in Brunt's Armoury by separating responsive clipboard input from slower native-selection, pivot, runtime-context, and character reconciliation; stable staged queues now perform expensive checks twice per second instead of every frame or ten times per second.
+- Stops Psych Ward's queue-removal preview coordinator as soon as the remaining weapon is observably selected, even when Darktide's deferred preview adapter returns a false-negative result, avoiding redundant retries after the card is gone.
+- Cancels stale native trait discovery when a Games Lantern queue is staged, preventing an unrelated 45-second timeout or late callback from replacing the imported catalogue and failure status.
+- Documents a bounded six-card Games Lantern multi-import proposal and its duplicate-input, lifecycle, authority, and queue-identity requirements without changing the proven single-build runtime behavior.
+
 ## 2.8.0 - 2026-08-18
 
 - Shows Auto Crafter's top status overlay in Psych Ward's live Brunt view while retaining the exact-view, destroyed-view, and matchmaking safety gates.

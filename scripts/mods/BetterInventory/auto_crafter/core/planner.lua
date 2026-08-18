@@ -9,14 +9,20 @@ local DEFAULTS = {
 	cap_by_max_purchases = false,
 	max_purchases = 100,
 	best_candidate_fallback = true,
+	acquisition_mode = "target_search",
 	consecrate_transcendent = true,
 	level_mastery_20 = true,
 	upgrade_expertise_500 = true,
+	change_perks = true,
+	change_blessings = true,
 	request_mode = "sequential",
 }
 
 local ESTIMATE_BASE_LEVEL_MIN = 290
 local ESTIMATE_BASE_LEVEL_MAX = 330
+local ESTIMATE_ACQUISITION_DOCKETS_MIN = 100000
+local ESTIMATE_ACQUISITION_DOCKETS_MAX = 300000
+local ESTIMATE_TRAIT_SLOTS = 2
 local CUSTOM_STAT_COUNT = 5
 local CUSTOM_STAT_MIN = 60
 local CUSTOM_STAT_MAX = 80
@@ -73,10 +79,10 @@ local function add_costs(total, costs, multiplier)
 	end
 end
 
-local function scaled_rarity_costs(weapon_costs, rarity, item_level)
-	local rarity_upgrade = type(weapon_costs) == "table" and weapon_costs.rarityUpgrade
-	local start_costs = type(rarity_upgrade) == "table" and rarity_upgrade.startCost
-	local costs = type(start_costs) == "table" and start_costs[tostring(rarity)] or nil
+local function scaled_operation_costs(weapon_costs, operation_name, cost_key, item_level)
+	local operation = type(weapon_costs) == "table" and weapon_costs[operation_name]
+	local start_costs = type(operation) == "table" and operation.startCost
+	local costs = type(start_costs) == "table" and start_costs[tostring(cost_key)] or nil
 
 	if type(costs) ~= "table" then
 		return nil
@@ -105,8 +111,13 @@ local function scaled_rarity_costs(weapon_costs, rarity, item_level)
 	return scaled
 end
 
-local function material_result(total)
+local function scaled_rarity_costs(weapon_costs, rarity, item_level)
+	return scaled_operation_costs(weapon_costs, "rarityUpgrade", rarity, item_level)
+end
+
+local function currency_result(total)
 	return {
+		dockets = rounded(total.credits or 0),
 		diamantine = rounded(total.diamantine or 0),
 		plasteel = rounded(total.plasteel or 0),
 	}
@@ -135,7 +146,7 @@ local function rarity_material_quote(snapshot, target, base_level, resulting_rar
 		add_costs(total, costs)
 	end
 
-	return material_result(total)
+	return currency_result(total)
 end
 
 local function expertise_material_quote(snapshot, base_level)
@@ -159,7 +170,7 @@ local function expertise_material_quote(snapshot, base_level)
 		add_costs(total, start_costs[tostring(math.max(1, bucket))])
 	end
 
-	return material_result(total)
+	return currency_result(total)
 end
 
 local function quote_range(low_quote, high_quote)
@@ -168,11 +179,45 @@ local function quote_range(low_quote, high_quote)
 	end
 
 	return {
+		dockets_max = math.max(low_quote.dockets, high_quote.dockets),
+		dockets_min = math.min(low_quote.dockets, high_quote.dockets),
 		diamantine_max = math.max(low_quote.diamantine, high_quote.diamantine),
 		diamantine_min = math.min(low_quote.diamantine, high_quote.diamantine),
 		plasteel_max = math.max(low_quote.plasteel, high_quote.plasteel),
 		plasteel_min = math.min(low_quote.plasteel, high_quote.plasteel),
 	}
+end
+
+local function trait_replacement_quote(snapshot, normalized, base_level)
+	local crafting_costs = snapshot and snapshot.crafting_costs
+	local weapon_costs = crafting_costs and crafting_costs.weapon
+	local total = {}
+	local enabled
+
+	for _, definition in ipairs({
+		{ enabled = normalized.change_perks, operation = "perkReplace" },
+		{ enabled = normalized.change_blessings, operation = "traitReplace" },
+	}) do
+		if definition.enabled then
+			enabled = true
+			local costs = scaled_operation_costs(weapon_costs, definition.operation, 4, base_level)
+
+			if costs == nil then
+				return nil, "live trait-replacement recipe costs unavailable"
+			end
+
+			add_costs(total, costs, ESTIMATE_TRAIT_SLOTS)
+		end
+	end
+
+	return enabled and currency_result(total) or nil, enabled and nil or "disabled"
+end
+
+local function trait_replacement_estimate(snapshot, normalized)
+	local low, low_reason = trait_replacement_quote(snapshot, normalized, ESTIMATE_BASE_LEVEL_MIN)
+	local high, high_reason = trait_replacement_quote(snapshot, normalized, ESTIMATE_BASE_LEVEL_MAX)
+
+	return quote_range(low, high), low_reason or high_reason
 end
 
 local function mastery_target_xp(mastery, target_level)
@@ -252,12 +297,14 @@ end
 local function workflow_material_estimate(snapshot, normalized, target)
 	local phases = {}
 	local reason
+	local complete = true
 
 	if normalized.consecrate_transcendent then
 		local low, low_reason = rarity_material_quote(snapshot, target, ESTIMATE_BASE_LEVEL_MIN, 5)
 		local high, high_reason = rarity_material_quote(snapshot, target, ESTIMATE_BASE_LEVEL_MAX, 5)
 
 		phases.consecrate = quote_range(low, high)
+		complete = complete and phases.consecrate ~= nil
 		reason = reason or low_reason or high_reason
 	end
 
@@ -266,18 +313,22 @@ local function workflow_material_estimate(snapshot, normalized, target)
 		local high, high_reason = expertise_material_quote(snapshot, ESTIMATE_BASE_LEVEL_MAX)
 
 		phases.expertise = quote_range(low, high)
+		complete = complete and phases.expertise ~= nil
 		reason = reason or low_reason or high_reason
 	end
 
 	phases.mastery, phases.mastery_note = mastery_fodder_estimate(snapshot, normalized, target)
+	phases.traits, phases.traits_note = trait_replacement_estimate(snapshot, normalized)
+	complete = complete and (not normalized.level_mastery_20 or phases.mastery ~= nil)
+	complete = complete and (not normalized.change_perks and not normalized.change_blessings or phases.traits ~= nil)
 
-	local total = { diamantine_max = 0, diamantine_min = 0, plasteel_max = 0, plasteel_min = 0 }
+	local total = { dockets_max = 0, dockets_min = 0, diamantine_max = 0, diamantine_min = 0, plasteel_max = 0, plasteel_min = 0 }
 	local any
 
-	for _, phase in pairs({ phases.consecrate, phases.expertise, phases.mastery }) do
+	for _, phase in pairs({ phases.consecrate, phases.expertise, phases.mastery, phases.traits }) do
 		if phase then
 			any = true
-			for _, currency in ipairs({ "diamantine", "plasteel" }) do
+			for _, currency in ipairs({ "dockets", "diamantine", "plasteel" }) do
 				total[currency .. "_min"] = total[currency .. "_min"] + (phase[currency .. "_min"] or 0)
 				total[currency .. "_max"] = total[currency .. "_max"] + (phase[currency .. "_max"] or 0)
 			end
@@ -285,8 +336,64 @@ local function workflow_material_estimate(snapshot, normalized, target)
 	end
 
 	phases.total = any and total or nil
+	phases.complete = complete
 
-	return phases, reason or phases.mastery_note or "live recipe range for a 290-330 starting base level"
+	return phases, reason or phases.mastery_note or phases.traits_note or "live recipe range for a 290-330 starting base level"
+end
+
+local function acquisition_estimate(normalized, price, dockets_cap)
+	if normalized.acquisition_mode == "disabled" then
+		return { dockets_max = 0, dockets_min = 0 }
+	end
+
+	if normalized.acquisition_mode == "first_weapon" then
+		return price and { dockets_max = price, dockets_min = price } or nil
+	end
+
+	if not price then
+		return nil
+	end
+
+	local minimum = math.max(price, ESTIMATE_ACQUISITION_DOCKETS_MIN)
+	local maximum = math.max(minimum, ESTIMATE_ACQUISITION_DOCKETS_MAX)
+
+	if dockets_cap then
+		minimum = math.min(minimum, dockets_cap)
+		maximum = math.min(maximum, dockets_cap)
+	end
+
+	return {
+		dockets_max = maximum,
+		dockets_min = minimum,
+	}
+end
+
+local function combined_cost_estimate(wallet, acquisition, workflow, workflow_complete)
+	if not acquisition or workflow_complete ~= true then
+		return nil
+	end
+
+	local generous = {}
+	local unlucky = {}
+	local remaining_generous = {}
+	local remaining_unlucky = {}
+
+	for _, currency in ipairs({ "dockets", "plasteel", "diamantine" }) do
+		generous[currency] = (acquisition[currency .. "_min"] or 0) + (workflow and workflow[currency .. "_min"] or 0)
+		unlucky[currency] = (acquisition[currency .. "_max"] or 0) + (workflow and workflow[currency .. "_max"] or 0)
+		local wallet_key = currency == "dockets" and "credits" or currency
+		local current = wallet[wallet_key]
+
+		remaining_generous[currency] = current and current - generous[currency] or nil
+		remaining_unlucky[currency] = current and current - unlucky[currency] or nil
+	end
+
+	return {
+		generous = generous,
+		remaining_generous = remaining_generous,
+		remaining_unlucky = remaining_unlucky,
+		unlucky = unlucky,
+	}
 end
 
 local function target_key(offer)
@@ -524,8 +631,11 @@ local function normalize_config(config)
 		cap_by_max_purchases = config.cap_by_max_purchases == true,
 		max_purchases = number_or(config.max_purchases, DEFAULTS.max_purchases),
 		best_candidate_fallback = config.best_candidate_fallback == true,
+		acquisition_mode = (config.acquisition_mode == "disabled" or config.acquisition_mode == "first_weapon") and config.acquisition_mode or DEFAULTS.acquisition_mode,
 		consecrate_transcendent = config.consecrate_transcendent ~= false,
 		level_mastery_20 = config.level_mastery_20 == true,
+		change_perks = config.change_perks ~= false,
+		change_blessings = config.change_blessings ~= false,
 		request_mode = request_mode,
 		upgrade_expertise_500 = config.upgrade_expertise_500 ~= false,
 		trait_catalog = config.trait_catalog,
@@ -655,6 +765,11 @@ function Planner.build(snapshot, config)
 	local material_estimate = phases and phases.total
 	local plasteel = currency_amount(snapshot, "plasteel")
 	local diamantine = currency_amount(snapshot, "diamantine")
+	local wallet = {
+		credits = credits,
+		plasteel = plasteel,
+		diamantine = diamantine,
+	}
 
 	-- Only block against the live-recipe minimum. Maximums remain estimates and
 	-- must never reject a run that can complete more cheaply.
@@ -667,14 +782,16 @@ function Planner.build(snapshot, config)
 	end
 
 	local purchase_count_cap = price and dockets_cap and math.floor(dockets_cap / price) or nil
+	local acquisition = acquisition_estimate(normalized, price, dockets_cap)
+	local costs = combined_cost_estimate(wallet, acquisition, material_estimate, phases and phases.complete)
 	local estimate = {
 		base_level_max = material_estimate and material_estimate.base_level_max or ESTIMATE_BASE_LEVEL_MAX,
 		base_level_min = material_estimate and material_estimate.base_level_min or ESTIMATE_BASE_LEVEL_MIN,
 		confidence = material_estimate and "live_recipe_range" or "acquisition_only",
 		dockets_floor = price,
 		dockets_cap = dockets_cap,
-		dockets_max = phases and phases.mastery and phases.mastery.dockets_max or nil,
-		dockets_min = phases and phases.mastery and phases.mastery.dockets_min or nil,
+		dockets_max = material_estimate and material_estimate.dockets_max or nil,
+		dockets_min = material_estimate and material_estimate.dockets_min or nil,
 		diamantine_max = material_estimate and material_estimate.diamantine_max or nil,
 		diamantine_min = material_estimate and material_estimate.diamantine_min or nil,
 		material_note = material_note,
@@ -683,6 +800,8 @@ function Planner.build(snapshot, config)
 		plasteel_min = material_estimate and material_estimate.plasteel_min or nil,
 		purchase_count_floor = price and 1 or nil,
 		purchase_count_cap = purchase_count_cap,
+		acquisition = acquisition,
+		costs = costs,
 	}
 
 	local preflight = {
@@ -740,11 +859,7 @@ function Planner.build(snapshot, config)
 		docket_cap = normalized.docket_cap,
 		preflight = preflight,
 		estimate = estimate,
-		wallet = {
-			credits = credits,
-			plasteel = plasteel,
-			diamantine = diamantine,
-		},
+		wallet = wallet,
 	}
 end
 

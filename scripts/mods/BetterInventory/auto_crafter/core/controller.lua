@@ -86,7 +86,7 @@ local function read_member(object, key)
 end
 
 local DEFAULT_PROBE_DELAY = 0.5
-local DEFAULT_VIEW_IDLE_POLL_INTERVAL = 0.1
+local DEFAULT_VIEW_IDLE_POLL_INTERVAL = 0.5
 local DEFAULT_MASTERY_POLL_DELAY = 0.05
 local DEFAULT_BLESSING_POLL_DELAY = 0.05
 local DEFAULT_PURCHASE_CONFIRMATION_POLL_DELAY = 0.05
@@ -670,6 +670,7 @@ function Controller.new(dependencies)
 		local custom_stats_enabled = imported_custom_stats or not imported_job and setting("auto_crafter_custom_stats", false) == true
 
 		return {
+			acquisition_mode = normalize_acquisition_mode(setting("auto_crafter_buy_until_target", "target_search")),
 			dump_stat = imported_job and imported_job.dump_stat or setting("auto_crafter_target_dump_stat", "damage"),
 			dump_target = imported_job and imported_job.dump_target or setting("auto_crafter_dump_stat_target", 60),
 			dump_comparison = normalize_dump_comparison(setting("auto_crafter_dump_stat_comparison", "exact")),
@@ -689,6 +690,8 @@ function Controller.new(dependencies)
 			defer_bad_weapon_processing = setting("auto_crafter_defer_bad_weapon_processing", true),
 			consecrate_transcendent = setting("auto_crafter_consecrate_transcendent", true),
 			level_mastery_20 = setting("auto_crafter_level_mastery_20", true),
+			change_perks = setting("auto_crafter_change_perks", true),
+			change_blessings = setting("auto_crafter_change_blessings", true),
 			request_mode = setting("auto_crafter_request_mode", "sequential"),
 			upgrade_expertise_500 = setting("auto_crafter_upgrade_expertise_500", true),
 			reuse_inventory_base = setting("auto_crafter_reuse_inventory_base", true),
@@ -1893,8 +1896,7 @@ function Controller.new(dependencies)
 		candidate.target_distance = candidate_distance
 		local custom_profile = type(search.custom_stat_targets) == "table" and next(search.custom_stat_targets) ~= nil
 
-		-- A candidate that cannot be mapped to the frozen stat identity is never a
-		-- usable fallback, even when it happens to be the first observed roll.
+		-- Unmapped frozen stats are never fallback candidates.
 		if candidate_distance == math.huge then
 			return false
 		end
@@ -2858,6 +2860,22 @@ function Controller.new(dependencies)
 		end
 
 		local update_dt = finite_dt(dt)
+		local continuous_update = run_is_active() or self._operation_inflight or self._probe_scheduled or self._probe_inflight or self._catalog_inflight or (tonumber(self._auxiliary_inflight_count) or 0) > 0
+		local view_idle_poll_due = false
+
+		if self._view_is_valid and not continuous_update then
+			self._view_idle_poll_elapsed = self._view_idle_poll_elapsed + update_dt
+
+			if self._view_idle_poll_elapsed < DEFAULT_VIEW_IDLE_POLL_INTERVAL then
+				return
+			end
+
+			update_dt = self._view_idle_poll_elapsed
+			self._view_idle_poll_elapsed = 0
+			view_idle_poll_due = true
+		else
+			self._view_idle_poll_elapsed = 0
+		end
 
 		if not runtime_context_valid() then
 			self:on_context_exit("runtime_context_invalid")
@@ -2981,22 +2999,7 @@ function Controller.new(dependencies)
 			end
 		end
 
-		local view_idle_poll_due = false
-
-		if self._view_is_valid and not run_is_active() then
-			self._view_idle_poll_elapsed = self._view_idle_poll_elapsed + update_dt
-
-			if self._view_idle_poll_elapsed >= DEFAULT_VIEW_IDLE_POLL_INTERVAL then
-				self._view_idle_poll_elapsed = 0
-				view_idle_poll_due = true
-			end
-		else
-			self._view_idle_poll_elapsed = 0
-		end
-
 		if view_idle_poll_due and self._snapshot and not self._probe_inflight and type(self._get_selected_offer) == "function" then
-			-- Planner settings refresh synchronously through on_setting_changed;
-			-- this bounded poll owns only native weapon-selection reconciliation.
 			local selected_ok, raw_offer = safe_call(self._get_selected_offer, self._active_view)
 			local selected_key = selected_ok and offer_key(selected_offer_ids(raw_offer)) or nil
 
@@ -3194,8 +3197,6 @@ function Controller.new(dependencies)
 		end
 	end
 
-	-- Installers localize their dependencies, so this transient composition
-	-- table can be collected instead of being retained by every method closure.
 	workflow_services = nil
 	workflow_modules = nil
 

@@ -5,7 +5,7 @@ local PanelBlueprints = {}
 local ROW_HEIGHT = 32
 local COMPACT_ROW_HEIGHT = 26
 local STATUS_ROW_HEIGHT = 50
-local CURRENCY_ROW_HEIGHT = 58
+local CURRENCY_ROW_HEIGHT = 26
 local QUEUE_JOB_ROW_HEIGHT = 110
 local STAT_GRID_BUTTON_HEIGHT = 30
 local STAT_GRID_GAP = 6
@@ -289,17 +289,22 @@ end
 PanelBlueprints.queue_job_passes = queue_job_passes
 
 local function currency_row_passes(width)
-	local segment_width = width / 3
+	local label_width = 178
+	local segment_width = (width - label_width) / 3
 	local passes = {
-		{ pass_type = "text", value_id = "label", style = { font_size = 14, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "top", text_color = Color.terminal_text_body(255, true), size = { width, 20 } } },
+		{ pass_type = "text", value_id = "label", style = { font_size = 13, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "center", text_color = Color.terminal_text_body(255, true), size = { label_width - 4, CURRENCY_ROW_HEIGHT } } },
 	}
 	local currencies = { "credits", "plasteel", "diamantine" }
 
 	for index, currency in ipairs(currencies) do
-		local x = (index - 1) * segment_width
+		local x = label_width + (index - 1) * segment_width
+		local warning_id = currency .. "_warning"
+		local function normal(content) return content[warning_id] ~= true end
+		local function warning(content) return content[warning_id] == true end
 
-		passes[#passes + 1] = { pass_type = "texture", value = CURRENCY_ICONS[currency], style = { size = { 24, 24 }, offset = { x, 27, 2 } } }
-		passes[#passes + 1] = { pass_type = "text", value_id = currency, style = { font_size = 14, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "center", text_color = Color.terminal_text_body_sub_header(255, true), size = { segment_width - 28, 30 }, offset = { x + 28, 24, 3 } } }
+		passes[#passes + 1] = { pass_type = "texture", value = CURRENCY_ICONS[currency], style = { size = { 18, 18 }, offset = { x, 4, 2 } } }
+		passes[#passes + 1] = { pass_type = "text", value_id = currency, style = { font_size = 12, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "center", text_color = Color.terminal_text_body_sub_header(255, true), size = { segment_width - 21, CURRENCY_ROW_HEIGHT }, offset = { x + 21, 0, 3 } }, visibility_function = normal }
+		passes[#passes + 1] = { pass_type = "text", value_id = currency, style = { font_size = 12, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "center", text_color = Color.ui_red_medium(255, true), size = { segment_width - 21, CURRENCY_ROW_HEIGHT }, offset = { x + 21, 0, 3 } }, visibility_function = warning }
 	end
 
 	return passes

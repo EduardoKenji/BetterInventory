@@ -27,7 +27,7 @@ local ANCHORED_PANEL_GAP = 72
 local ROW_HEIGHT = 32
 local COMPACT_ROW_HEIGHT = 26
 local STATUS_ROW_HEIGHT = 50
-local CURRENCY_ROW_HEIGHT = 58
+local CURRENCY_ROW_HEIGHT = 26
 local QUEUE_JOB_ROW_HEIGHT = 110
 local STAT_GRID_BUTTON_HEIGHT = 30
 local STAT_GRID_GAP = 6
@@ -48,8 +48,9 @@ local CONTENT_VERTICAL_PADDING = 10
 local STEPPER_CONTROLS_WIDTH = 182
 local STEPPER_VALUE_WIDTH = 114
 local MAX_OFFER_ROWS = 10
-local MAX_SELECTION_ATTEMPTS = 240
-local IDLE_POLL_INTERVAL = 0.1
+local MAX_SELECTION_ATTEMPTS = 30
+local INPUT_POLL_INTERVAL = 0.1
+local IDLE_POLL_INTERVAL = 0.5
 local CURRENCY_ICONS = {
 	credits = "content/ui/materials/mission_board/currencies/credits_small_digital",
 	diamantine = "content/ui/materials/mission_board/currencies/diamantine_small_digital",
@@ -245,6 +246,37 @@ local function integer_text(value, fallback)
 	return text
 end
 
+local function compact_integer_text(value, fallback)
+	local number = tonumber(value)
+
+	if not number then
+		return fallback or "?"
+	end
+
+	local sign = number < 0 and "-" or ""
+	local absolute = math.abs(number)
+	local divisor
+	local suffix
+
+	if absolute >= 1000000 then
+		divisor = 1000000
+		suffix = "m"
+	elseif absolute >= 1000 then
+		divisor = 1000
+		suffix = "k"
+	else
+		return sign .. tostring(math.floor(absolute + 0.5))
+	end
+
+	local scaled = absolute / divisor
+	local decimals = scaled < 10 and 1 or 0
+	local text = decimals == 0 and tostring(math.floor(scaled)) or string.format("%.1f", scaled)
+
+	text = string.gsub(text, "%.0$", "")
+
+	return sign .. text .. suffix
+end
+
 local STAT_LABEL_PATTERNS = {
 	{ "cleave_damage_and_targets", "Cleave Damage & Targets" },
 	{ "armor_pierce", "Penetration" },
@@ -320,14 +352,6 @@ local function display_stat_name(stat_name, display_name_key)
 	end)
 
 	return semantic_name
-end
-
-local function wallet_amount(snapshot, currency)
-	local wallets = snapshot and snapshot.wallets
-	local currencies = wallets and wallets.currencies
-	local entry = currencies and currencies[currency]
-
-	return entry and entry.amount
 end
 
 local function offer_label(offer, index)
@@ -445,6 +469,7 @@ function Panel.new(dependencies)
 		_section_collapsed = default_section_state(),
 		_pending_offer = nil,
 		_pending_offer_attempts = 0,
+		_input_poll_elapsed = 0,
 		_idle_poll_elapsed = 0,
 		_layout_pending = false,
 		_layout_defer_frames = 0,
@@ -543,8 +568,11 @@ function Panel.new(dependencies)
 				trait_target_2_index = 0,
 				chevron = "",
 				credits = options.credits or "—",
+				credits_warning = options.credits_warning == true,
 				plasteel = options.plasteel or "—",
+				plasteel_warning = options.plasteel_warning == true,
 				diamantine = options.diamantine or "—",
+				diamantine_warning = options.diamantine_warning == true,
 			},
 			pass_template = nil,
 			size = {
@@ -1291,48 +1319,24 @@ function Panel.new(dependencies)
 		return self:_setting("auto_crafter_best_candidate_fallback", true) == true and localize("auto_crafter_value_on", "On") or localize("auto_crafter_value_off", "Off")
 	end
 
-	function self:_estimate_acquisition_text()
-		local estimate = self._plan and self._plan.estimate
+	function self:_estimate_currency_values(profile_name)
+		local plan = self._plan or {}
+		local estimate = plan.estimate or {}
+		local profile = profile_name == "wallet" and {
+			dockets = plan.wallet and plan.wallet.credits,
+			plasteel = plan.wallet and plan.wallet.plasteel,
+			diamantine = plan.wallet and plan.wallet.diamantine,
+		} or estimate.costs and estimate.costs[profile_name] or {}
+		local function currency_text(currency)
+			local amount = profile and tonumber(profile[currency])
 
-		if not estimate or not estimate.dockets_floor then
-			return localize("auto_crafter_panel_waiting", "waiting for probe")
+			return compact_integer_text(amount, "—"), amount ~= nil and amount < 0
 		end
+		local credits, credits_warning = currency_text("dockets")
+		local plasteel, plasteel_warning = currency_text("plasteel")
+		local diamantine, diamantine_warning = currency_text("diamantine")
 
-		return string.format("%s each | %s-%s purchases | budget %s", integer_text(estimate.dockets_floor), integer_text(estimate.purchase_count_floor), integer_text(estimate.purchase_count_cap, "uncapped"), integer_text(estimate.dockets_cap, "uncapped"))
-	end
-
-	function self:_estimate_base_level_text()
-		local estimate = self._plan and self._plan.estimate
-
-		if not estimate then
-			return localize("auto_crafter_panel_waiting", "waiting for probe")
-		end
-
-		return string.format("%s-%s starting base item level", integer_text(estimate.base_level_min), integer_text(estimate.base_level_max))
-	end
-
-	function self:_estimate_currency_values(phase_name)
-		local estimate = self._plan and self._plan.estimate or {}
-		local phase = phase_name == "total" and estimate or estimate.phases and estimate.phases[phase_name] or {}
-		local function range_text(minimum, maximum)
-			if minimum == nil or maximum == nil then
-				return "—"
-			end
-
-			return minimum == maximum and integer_text(minimum) or integer_text(minimum) .. "-" .. integer_text(maximum)
-		end
-
-		return phase.dockets_min and range_text(phase.dockets_min, phase.dockets_max) or "-", range_text(phase.plasteel_min, phase.plasteel_max), range_text(phase.diamantine_min, phase.diamantine_max)
-	end
-
-	function self:_estimate_mastery_text()
-		local mastery = self._plan and self._plan.estimate and self._plan.estimate.phases and self._plan.estimate.phases.mastery
-
-		if not mastery then
-			return self:_setting("auto_crafter_level_mastery_20", true) == true and localize("auto_crafter_panel_waiting", "waiting for probe") or localize("auto_crafter_panel_disabled", "disabled")
-		end
-
-		return string.format("%s-%s Redeemed weapons | %s XP remaining", integer_text(mastery.count_min), integer_text(mastery.count_max), integer_text(mastery.remaining_xp))
+		return credits, plasteel, diamantine, credits_warning, plasteel_warning, diamantine_warning
 	end
 
 	function self:_trait_target_options(setting_id)
@@ -1617,7 +1621,6 @@ function Panel.new(dependencies)
 					widget.content.detail = self._phase or value_text(self._controller_state and self._controller_state.phase, "idle")
 				end,
 			}),
-			self:_entry(localize("auto_crafter_panel_wallet", "Resources"), string.format("%s  |  %s  |  %s", integer_text(wallet_amount(snapshot, "credits")), integer_text(wallet_amount(snapshot, "plasteel")), integer_text(wallet_amount(snapshot, "diamantine")))),
 			self:_entry(localize("auto_crafter_panel_inventory", "Inventory"), string.format("%s: %s  |  %s: %s", localize("auto_crafter_panel_offers", "Offers"), value_text(store.offer_count, "?"), localize("auto_crafter_panel_gear", "Gear"), value_text(snapshot and snapshot.gear and snapshot.gear.item_count, "?"))),
 			self:_entry(localize("auto_crafter_panel_target", "Target"), queue_target or selected, {
 				refresh = function(widget)
@@ -2143,28 +2146,27 @@ function Panel.new(dependencies)
 		}))
 
 		if not self._section_collapsed[SECTION_ESTIMATES] then
-			table.insert(entries, self:_entry(localize("auto_crafter_panel_estimate", "Search budget"), self:_estimate_acquisition_text(), {
-				variant = "status",
-				refresh = function(widget)
-					widget.content.detail = self:_estimate_acquisition_text()
-				end,
-			}))
-			local function add_estimate_currency(label_id, fallback, phase_name)
-				local credits, plasteel, diamantine = self:_estimate_currency_values(phase_name)
+			local function add_estimate_currency(label_id, fallback, profile_name)
+				local credits, plasteel, diamantine, credits_warning, plasteel_warning, diamantine_warning = self:_estimate_currency_values(profile_name)
 				table.insert(entries, self:_entry(localize(label_id, fallback), "", {
 					credits = credits,
+					credits_warning = credits_warning,
 					diamantine = diamantine,
+					diamantine_warning = diamantine_warning,
 					plasteel = plasteel,
+					plasteel_warning = plasteel_warning,
 					variant = "currency",
 					refresh = function(widget)
-						widget.content.credits, widget.content.plasteel, widget.content.diamantine = self:_estimate_currency_values(phase_name)
+						widget.content.credits, widget.content.plasteel, widget.content.diamantine, widget.content.credits_warning, widget.content.plasteel_warning, widget.content.diamantine_warning = self:_estimate_currency_values(profile_name)
 					end,
 				}))
 			end
 
-			add_estimate_currency("auto_crafter_panel_consecrate_cost", "Profane to Transcendent", "consecrate")
-			add_estimate_currency("auto_crafter_panel_mastery_cost", "Mastery fodder investment", "mastery")
-			add_estimate_currency("auto_crafter_panel_total_cost", "Known crafting investment", "total")
+			add_estimate_currency("auto_crafter_panel_current_resources", "Current resources", "wallet")
+			add_estimate_currency("auto_crafter_panel_generous_cost", "Generous cost estimate", "generous")
+			add_estimate_currency("auto_crafter_panel_unlucky_cost", "Unlucky cost estimate", "unlucky")
+			add_estimate_currency("auto_crafter_panel_remaining_generous", "Remaining (generous)", "remaining_generous")
+			add_estimate_currency("auto_crafter_panel_remaining_unlucky", "Remaining (unlucky)", "remaining_unlucky")
 		end
 
 		local function run_is_active()
@@ -2343,56 +2345,78 @@ function Panel.new(dependencies)
 			return
 		end
 
-		self._idle_poll_elapsed = (self._idle_poll_elapsed or 0) + math.max(tonumber(dt) or IDLE_POLL_INTERVAL, 0)
-		local immediate = self._pending_offer ~= nil or self._layout_pending == true
+		local elapsed = math.max(tonumber(dt) or INPUT_POLL_INTERVAL, 0)
+		self._input_poll_elapsed = (self._input_poll_elapsed or 0) + elapsed
+		self._idle_poll_elapsed = (self._idle_poll_elapsed or 0) + elapsed
+		local input_due = self._input_poll_elapsed >= INPUT_POLL_INTERVAL
+		local idle_due = self._idle_poll_elapsed >= IDLE_POLL_INTERVAL
+		local immediate = self._layout_pending == true or self._presentation_snapshots_dirty == true or self._queue_snapshot_cache == nil or self._import_snapshot_cache == nil
 
-		if not immediate and self._idle_poll_elapsed < IDLE_POLL_INTERVAL then
+		if not immediate and not input_due and not idle_due then
 			return
 		end
 
-		self._idle_poll_elapsed = 0
-		self:_update_pivot()
+		if input_due then
+			self._input_poll_elapsed = 0
+		end
+		if idle_due then
+			self._idle_poll_elapsed = 0
+		end
+
+		local snapshots_refreshed = false
 		if self._presentation_snapshots_dirty or self._queue_snapshot_cache == nil or self._import_snapshot_cache == nil then
 			self:_refresh_games_lantern_snapshots()
+			snapshots_refreshed = true
 		end
-		local ctrl_v = ctrl_v_down()
+		local ctrl_v = self._ctrl_v_down
 
-		if ctrl_v and not self._ctrl_v_down and type(self._games_lantern_paste) == "function" then
-			local current_queue = self:_games_lantern_queue()
-			local current_owned = current_queue and current_queue.job_count > 0 and current_queue.state ~= "empty" and current_queue.state ~= "complete"
-			local current_active = current_owned and (current_queue.state == "starting" or current_queue.state == "selecting" or current_queue.state == "preflighting" or current_queue.state == "dispatching" or current_queue.state == "running" or current_queue.state == "waiting_next" or current_queue.state == "stopping" or current_queue.state == "quarantined" or current_queue.state == "reconciliation_required")
+		if input_due then
+			ctrl_v = ctrl_v_down()
 
-			if not current_active then
-				local pasted, paste_error = self:_request_games_lantern_paste(current_owned)
+			if ctrl_v and not self._ctrl_v_down and type(self._games_lantern_paste) == "function" then
+				local current_queue = self:_games_lantern_queue()
+				local current_owned = current_queue and current_queue.job_count > 0 and current_queue.state ~= "empty" and current_queue.state ~= "complete"
+				local current_active = current_owned and (current_queue.state == "starting" or current_queue.state == "selecting" or current_queue.state == "preflighting" or current_queue.state == "dispatching" or current_queue.state == "running" or current_queue.state == "waiting_next" or current_queue.state == "stopping" or current_queue.state == "quarantined" or current_queue.state == "reconciliation_required")
 
-				if pasted ~= true then
-					log("info", "Games Lantern Ctrl+V import was not started: " .. tostring(paste_error))
+				if not current_active then
+					local pasted, paste_error = self:_request_games_lantern_paste(current_owned)
+
+					if pasted ~= true then
+						log("info", "Games Lantern Ctrl+V import was not started: " .. tostring(paste_error))
+					end
 				end
+			end
+
+			self._ctrl_v_down = ctrl_v
+		end
+
+		if snapshots_refreshed then
+			local queue_signature = self._queue_snapshot_signature or "none"
+			local import_signature = self._import_snapshot_signature or "none"
+
+			if queue_signature ~= self._queue_signature then
+				self._queue_signature = queue_signature
+				self:_queue_layout(1, true)
+			end
+			if import_signature ~= self._import_signature then
+				self._import_signature = import_signature
+				self:_queue_layout(1, true)
 			end
 		end
 
-		self._ctrl_v_down = ctrl_v
-		local queue_signature = self._queue_snapshot_signature or "none"
-		local import_signature = self._import_snapshot_signature or "none"
-
-		if queue_signature ~= self._queue_signature then
-			self._queue_signature = queue_signature
-			self:_queue_layout(1, true)
-		end
-		if import_signature ~= self._import_signature then
-			self._import_signature = import_signature
-			self:_queue_layout(1, true)
+		local reconcile_selection = idle_due or self._pending_offer ~= nil and input_due
+		if reconcile_selection then
+			self:_update_pivot()
 		end
 
-		if type(self._get_selected_offer) ~= "function" then
-			return
-		end
-
-		local ok, raw_offer = pcall(self._get_selected_offer, self._view)
+		local ok, raw_offer = false, nil
 		local selected_offer_id
 		local selected_offer_master_id
 
-		if ok and raw_offer then
+		if reconcile_selection and type(self._get_selected_offer) == "function" then
+			ok, raw_offer = pcall(self._get_selected_offer, self._view)
+		end
+		if reconcile_selection and ok and raw_offer then
 			selected_offer_id = safe_member(raw_offer, "offerId") or safe_member(raw_offer, "offer_id")
 			selected_offer_master_id = safe_member(raw_offer, "masterId") or safe_member(raw_offer, "master_id")
 
@@ -2420,7 +2444,7 @@ function Panel.new(dependencies)
 			selected_value = selected_offer_master_id
 		end
 
-		if self._pending_offer then
+		if reconcile_selection and self._pending_offer then
 			local pending_kind, pending_value = offer_selection_identity(self._pending_offer)
 
 			if selection_identities_match(selected_kind, selected_value, pending_kind, pending_value) then
@@ -2428,14 +2452,12 @@ function Panel.new(dependencies)
 				self._pending_offer_attempts = 0
 			else
 				self:_select_offer_from_row(self._pending_offer)
-
-				return
 			end
 		end
 
 		local current_kind, current_value = offer_selection_identity(self._selected_offer)
 
-		if not selection_identities_match(selected_kind, selected_value, current_kind, current_value) then
+		if reconcile_selection and not self._pending_offer and not selection_identities_match(selected_kind, selected_value, current_kind, current_value) then
 			local selected_offer = selected_kind and {
 				offer_id = selected_offer_id,
 				master_id = selected_offer_master_id,
@@ -2562,6 +2584,7 @@ function Panel.new(dependencies)
 		self._section_collapsed = default_section_state()
 		self._pending_offer = nil
 		self._pending_offer_attempts = 0
+		self._input_poll_elapsed = INPUT_POLL_INTERVAL
 		self._idle_poll_elapsed = IDLE_POLL_INTERVAL
 		self._layout_pending = false
 		self._layout_defer_frames = 0
@@ -2615,6 +2638,8 @@ function Panel.new(dependencies)
 		self._section_collapsed = default_section_state()
 		self._pending_offer = nil
 		self._pending_offer_attempts = 0
+		self._input_poll_elapsed = 0
+		self._idle_poll_elapsed = 0
 		self._layout_pending = false
 		self._layout_defer_frames = 0
 		self._trait_catalog_key = nil

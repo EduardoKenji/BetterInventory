@@ -58,8 +58,38 @@ def main() -> None:
     assert coordinator.update(coordinator, view) is True
     assert coordinator.restore(coordinator, view) is True
     assert coordinator.snapshot(coordinator)["original"] is None
-    assert coordinator.update(coordinator, view) is True
-    assert attempts["thunder-hammer-family"] == 2
+    assert coordinator.has_pending(coordinator) is False
+    assert attempts.get("thunder-hammer-family", 0) == 0
+
+    # Psych Ward can apply the native preview while its adapter still reports a
+    # deferred/failed result. Queue-card removal must recognize the observed
+    # remaining weapon and stop retrying the already-completed selection.
+    false_negative_attempts = 0
+    false_negative_events: list[str] = []
+    observed = current
+
+    def applied_but_unconfirmed(_view, offer):
+        nonlocal false_negative_attempts, observed
+        false_negative_attempts += 1
+        observed = offer
+        return False, "preview_not_confirmed"
+
+    false_negative = module.new(lua.table_from({
+        "current_selection": wrapper(lambda _view: observed),
+        "select_offer": wrapper(applied_but_unconfirmed),
+        "view_is_valid": wrapper(lambda _view: True),
+        "report": wrapper(lambda kind, _payload: false_negative_events.append(str(kind))),
+        "max_attempts": 30,
+        "retry_interval": 0.1,
+        "max_wait_seconds": 3,
+    }))
+    assert false_negative.request(false_negative, view, relic, "queue_job_removed") is True
+    assert false_negative.has_pending(false_negative) is False
+    assert false_negative_attempts == 1
+    for _ in range(180):
+        assert false_negative.update(false_negative, view, 1 / 60) is False
+    assert false_negative_attempts == 1
+    assert false_negative_events[-1] == "selection_complete"
 
     # A permanently unavailable offer is bounded and becomes inert.
     failure_events = []
