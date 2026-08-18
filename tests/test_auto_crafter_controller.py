@@ -81,6 +81,7 @@ def main() -> None:
                 auto_crafter_buy_until_target = true,
                 auto_crafter_target_dump_stat = "damage_stat",
                 auto_crafter_dump_stat_target = 60,
+				auto_crafter_dump_stat_comparison = "exact",
                 auto_crafter_cap_by_dockets = false,
                 auto_crafter_cap_by_max_purchases = true,
                 auto_crafter_max_purchases = 1,
@@ -385,10 +386,10 @@ def main() -> None:
 			assert(#state.items == 1 and state.items[1].gear_id == target.gear_id)
 		end
 
-		-- Post-target purchases remain wallet-ordered while one rarity upgrade lane
-		-- overlaps them. Extraction starts only after every upgrade and one gear read.
+		-- Post-target purchases remain wallet-ordered after a Damage 80 target has
+		-- consumed the acquisition cap. Extraction waits for every upgrade/read.
 		do
-			local target = summarized_item("gear-pipeline-target", 2, 60)
+			local target = summarized_item("gear-pipeline-target", 2, 80)
 			local fodder_a = summarized_item("gear-pipeline-a", 0, 55)
 			local fodder_b = summarized_item("gear-pipeline-b", 0, 56)
 			local purchase_promises = {pending(), pending()}
@@ -422,10 +423,10 @@ def main() -> None:
 				return resolved({mastery_id = "pattern-1", current_xp = 660, mastery_level = 20, claimed_level = 19, mastery_max_level = 20})
 			end
 
-			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings({auto_crafter_level_mastery_20 = true, auto_crafter_defer_bad_weapon_processing = true, auto_crafter_max_purchases = 2}), reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings({auto_crafter_level_mastery_20 = true, auto_crafter_defer_bad_weapon_processing = true, auto_crafter_max_purchases = 1}), reporter = reports(), get_selected_offer = function() return CurrentOffer end})
 			controller._snapshot = backend:probe_snapshot().value
 			backend.probe_calls = 0
-			controller._search = {cap_by_dockets = false, cap_by_max_purchases = true, dump_stat = "damage_stat", max_purchases = 2, purchases = 0, raw_offer = raw_offer(), running = true, spent = 0, target_dump = 60, target_offer = target_offer()}
+			controller._search = {cap_by_dockets = false, cap_by_max_purchases = true, dump_stat = "damage_stat", max_purchases = 1, purchases = 1, raw_offer = raw_offer(), running = true, spent = 100, target_dump = 80, target_offer = target_offer()}
 			controller._phase3 = {current = {mastery_id = "pattern-1", current_xp = 0, mastery_level = 19, claimed_level = 18, mastery_max_level = 20}, current_data = {mastery_id = "pattern-1", current_xp = 0, mastery_level = 19, claimed_level = 18, mastery_max_level = 20, milestones = {{level = 20, xpLimit = 660}}}, defer_bad_processing = true, deferred_candidates = {}, deferred_index = 1, fodder_count = 0, running = true, target_candidate = target}
 
 			assert(controller:_purchase_search_step(0) == true)
@@ -711,7 +712,8 @@ def main() -> None:
 			assert(controller:snapshot().data.gear.items[1].gear_id == "gear-preserved-miss")
 		end
 
-        -- Phase 3 fallback reserves one live best candidate instead of sacrificing it.
+        -- Acquisition-cap fallback promotes the live best candidate into Phase 3
+        -- and completes it instead of emitting a terminal search failure.
         do
             local state = {item = nil}
             local backend = {purchase_calls = 0, extract_calls = 0}
@@ -721,12 +723,13 @@ def main() -> None:
                 return resolved({items = {state.item}})
             end
             function backend:probe_snapshot() return resolved(snapshot_with(state.item)) end
-            function backend:get_mastery_by_pattern(_) return resolved({mastery_id = "pattern-1", current_xp = 100, mastery_level = 5, claimed_level = 4, mastery_max_level = 20}) end
+            function backend:get_mastery_by_pattern(_) return resolved({mastery_id = "pattern-1", current_xp = 100, mastery_level = 20, claimed_level = 19, mastery_max_level = 20}) end
             function backend:extract_weapon_mastery(_, _) self.extract_calls = self.extract_calls + 1 return resolved({}) end
 
-            local settings = base_settings({auto_crafter_level_mastery_20 = true, auto_crafter_best_candidate_fallback = true})
+            local settings = base_settings({auto_crafter_level_mastery_20 = true, auto_crafter_best_candidate_fallback = true, auto_crafter_defer_bad_weapon_processing = true})
             CurrentOffer = raw_offer()
-            local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = settings, reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+            local reporter = reports()
+            local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = settings, reporter = reporter, get_selected_offer = function() return CurrentOffer end})
             controller._snapshot = snapshot_with(nil)
             controller._active_view = {}
             controller._view_is_valid = true
@@ -736,7 +739,14 @@ def main() -> None:
             assert(backend.extract_calls == 0)
             assert(result.search.running == false)
             assert(result.search.result.gear_id == "gear-best")
-            assert(result.phase == "search_max_purchases")
+            assert(result.search.fallback_accepted == true)
+            assert(result.search.fallback_reason == "search_max_purchases")
+            assert(result.search.fallback_target_distance == 5)
+            assert(result.phase4.fallback_accepted == true)
+            assert(result.phase == "phase4_complete")
+            for _, event in ipairs(reporter.events) do
+                assert(event.kind ~= "purchase_search_stopped")
+            end
         end
 
 		-- A safe, non-favorite exact inventory base prevents every Brunt purchase.
@@ -2362,6 +2372,122 @@ def main() -> None:
 			assert(resume_controller:start_purchase_search() == true)
 			assert(resume_backend.purchase_calls == 0)
 			assert(resume_controller:snapshot().search.result.gear_id == "gear-custom-resume")
+
+			-- Livestream regression: desired 70/70/80/80/80 is unavailable, while
+			-- 72/68/80/80/80 is frozen and crafted when docket acquisition cap hits.
+			local fallback = custom_item("gear-custom-fallback", {72, 68, 80, 80, 80})
+			local fallback_backend = {purchase_calls = 0}
+			function fallback_backend:purchase_offer(_)
+				self.purchase_calls = self.purchase_calls + 1
+				return resolved({items = {fallback}})
+			end
+			function fallback_backend:probe_snapshot() return resolved(custom_snapshot(fallback)) end
+			local fallback_reporter = reports()
+			local fallback_settings = base_settings({
+				auto_crafter_best_candidate_fallback = true,
+				auto_crafter_cap_by_dockets = true,
+				auto_crafter_cap_by_max_purchases = false,
+				auto_crafter_custom_stats = true,
+				auto_crafter_custom_stat_1 = 70,
+				auto_crafter_custom_stat_2 = 70,
+				auto_crafter_custom_stat_3 = 80,
+				auto_crafter_custom_stat_4 = 80,
+				auto_crafter_custom_stat_5 = 80,
+				auto_crafter_docket_cap = 100,
+			})
+			local fallback_controller = Controller.new({backend = fallback_backend, planner = Planner, context = context(), settings = fallback_settings, reporter = fallback_reporter, get_selected_offer = function() return CurrentOffer end})
+			fallback_controller._snapshot = custom_snapshot(nil)
+			fallback_controller._active_view = {}
+			fallback_controller._view_is_valid = true
+			assert(fallback_controller:start_purchase_search() == true)
+			local fallback_result = fallback_controller:snapshot()
+			assert(fallback_backend.purchase_calls == 1)
+			assert(fallback_result.phase == "phase4_complete")
+			assert(fallback_result.search.result.gear_id == "gear-custom-fallback")
+			assert(fallback_result.search.fallback_reason == "search_docket_cap")
+			assert(fallback_result.search.fallback_target_distance == 4)
+			assert(fallback_result.phase4.fallback_target_distance == 4)
+			for _, event in ipairs(fallback_reporter.events) do
+				assert(event.kind ~= "purchase_search_stopped")
+			end
+		end
+
+		-- Three-state acquisition preserves legacy checkbox saves, buys exactly one
+		-- authoritative weapon in first-weapon mode, and applies <= only to the
+		-- single dump-stat policy.
+		do
+			for _, disabled_value in ipairs({false, "disabled"}) do
+				local backend = {purchase_calls = 0}
+				function backend:purchase_offer(_) self.purchase_calls = self.purchase_calls + 1 return resolved({}) end
+				CurrentOffer = raw_offer()
+				local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings({auto_crafter_buy_until_target = disabled_value}), reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+				controller._snapshot = snapshot_with(nil)
+				controller._active_view = {}
+				controller._view_is_valid = true
+				assert(controller:start_purchase_search() == false)
+				assert(backend.purchase_calls == 0)
+				assert(controller:snapshot().phase == "idle")
+			end
+
+			for _, target_mode in ipairs({true, "target_search"}) do
+				local item = summarized_item("gear-target-mode-" .. tostring(target_mode), 0, 60)
+				local backend = {purchase_calls = 0}
+				function backend:purchase_offer(_)
+					self.purchase_calls = self.purchase_calls + 1
+					return resolved({items = {item}})
+				end
+				function backend:probe_snapshot() return resolved(snapshot_with(item)) end
+				CurrentOffer = raw_offer()
+				local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings({auto_crafter_buy_until_target = target_mode}), reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+				controller._snapshot = snapshot_with(nil)
+				controller._active_view = {}
+				controller._view_is_valid = true
+				assert(controller:start_purchase_search() == true)
+				assert(backend.purchase_calls == 1)
+				assert(controller:snapshot().phase == "phase4_complete")
+			end
+
+			local existing = summarized_item("gear-existing-exact", 0, 60)
+			local purchased = summarized_item("gear-first-purchased", 0, 55)
+			local state = {items = {existing}}
+			local first_backend = {purchase_calls = 0}
+			function first_backend:purchase_offer(_)
+				self.purchase_calls = self.purchase_calls + 1
+				state.items[#state.items + 1] = purchased
+				return resolved({items = {purchased}})
+			end
+			function first_backend:probe_snapshot() return resolved(snapshot_with_items(state.items)) end
+			CurrentOffer = raw_offer()
+			local first_controller = Controller.new({backend = first_backend, planner = Planner, context = context(), settings = base_settings({auto_crafter_buy_until_target = "first_weapon", auto_crafter_reuse_inventory_base = true}), reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			first_controller._snapshot = snapshot_with_items(state.items)
+			first_controller._active_view = {}
+			first_controller._view_is_valid = true
+			assert(first_controller:start_purchase_search() == true)
+			local first_result = first_controller:snapshot()
+			assert(first_backend.purchase_calls == 1)
+			assert(first_result.phase == "phase4_complete")
+			assert(first_result.search.result.gear_id == "gear-first-purchased")
+			assert(first_result.search.fallback_accepted == true)
+			assert(first_result.search.fallback_reason == "first_weapon")
+
+			local at_most = summarized_item("gear-at-most", 0, 55)
+			local at_most_backend = {purchase_calls = 0}
+			function at_most_backend:purchase_offer(_)
+				self.purchase_calls = self.purchase_calls + 1
+				return resolved({items = {at_most}})
+			end
+			function at_most_backend:probe_snapshot() return resolved(snapshot_with(at_most)) end
+			CurrentOffer = raw_offer()
+			local at_most_controller = Controller.new({backend = at_most_backend, planner = Planner, context = context(), settings = base_settings({auto_crafter_dump_stat_comparison = "at_most"}), reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			at_most_controller._snapshot = snapshot_with(nil)
+			at_most_controller._active_view = {}
+			at_most_controller._view_is_valid = true
+			assert(at_most_controller:start_purchase_search() == true)
+			local at_most_result = at_most_controller:snapshot()
+			assert(at_most_backend.purchase_calls == 1)
+			assert(at_most_result.phase == "phase4_complete")
+			assert(at_most_result.search.result.gear_id == "gear-at-most")
+			assert(at_most_result.search.fallback_accepted ~= true)
 		end
 
 		print("Auto Crafter controller Phase 2/3/4 behavior tests passed.")

@@ -167,6 +167,8 @@ function Queue.new(dependencies)
 		self._completed_results[completed_index] = {
 			character_id = character_id,
 			completion_source = source,
+			fallback_accepted = payload.phase4 and payload.phase4.fallback_accepted == true,
+			fallback_target_distance = tonumber(payload.phase4 and payload.phase4.fallback_target_distance),
 			gear_id = gear_id,
 			job_id = job.job_id,
 			queue_id = self._queue_id,

@@ -43,7 +43,11 @@ function Phase3Workflow.install(self, services)
 			return self:_phase3_sync_projected(self._generation)
 		end
 
-		if not item or item.available ~= true or item.parent_pattern ~= target.mastery_id or not candidate_matches_stat_targets(item, search.dump_stat, search.target_dump, search.custom_stat_targets, search.dump_stat_identity) then
+		local target_matches = candidate_matches_stat_targets(item, search.dump_stat, search.target_dump, search.custom_stat_targets, search.dump_stat_identity, search.dump_comparison)
+		local fallback_distance = search.fallback_accepted and candidate_stat_target_distance(item, search.dump_stat, search.target_dump, search.custom_stat_targets, search.dump_stat_identity) or nil
+		local fallback_matches = fallback_distance ~= nil and fallback_distance ~= math.huge and fallback_distance == search.fallback_target_distance
+
+		if not item or item.available ~= true or item.parent_pattern ~= target.mastery_id or not target_matches and not fallback_matches then
 			self:_operation_failed(self._generation, search.custom_stats_enabled and "Phase 3 target failed authoritative family or custom-stat reconciliation" or "Phase 3 target failed authoritative family or dump-stat reconciliation")
 
 			return false
@@ -610,7 +614,7 @@ function Phase3Workflow.install(self, services)
 		candidate.dump_stat_id = search.dump_stat
 		candidate.dump_stat_label = search.dump_stat_identity and search.dump_stat_identity.display_name_key or candidate.base_stat_labels and candidate.base_stat_labels[search.dump_stat]
 		candidate.damage = candidate.potential_damage or candidate_stat(candidate, "damage")
-		candidate.exact_match = candidate_matches_stat_targets(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets, search.dump_stat_identity)
+		candidate.exact_match = candidate_matches_stat_targets(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets, search.dump_stat_identity, search.dump_comparison)
 		candidate.target_distance = candidate_stat_target_distance(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets, search.dump_stat_identity)
 
 		if not candidate.exact_match then
@@ -665,6 +669,91 @@ function Phase3Workflow.install(self, services)
 		end
 
 		continue_exact_match()
+
+		return true
+	end
+
+	function self:_accept_fallback_candidate(generation, candidate, reason)
+		local search = self._search
+		local backend = self._backend
+
+		if not search or not search.running or not candidate or not candidate.gear_id or candidate.available ~= true then
+			return false
+		end
+
+		candidate.dump_stat = candidate_stat(candidate, search.dump_stat, search.dump_stat_identity)
+		candidate.dump_stat_id = search.dump_stat
+		candidate.dump_stat_label = search.dump_stat_identity and search.dump_stat_identity.display_name_key or candidate.base_stat_labels and candidate.base_stat_labels[search.dump_stat]
+		candidate.damage = candidate.potential_damage or candidate_stat(candidate, "damage")
+		candidate.exact_match = false
+		candidate.target_distance = candidate_stat_target_distance(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets, search.dump_stat_identity)
+
+		if candidate.target_distance == math.huge then
+			return false
+		end
+
+		local function continue_fallback()
+			search.result = candidate
+			search.last = candidate
+			search.best = candidate
+			search.fallback_accepted = true
+			search.fallback_reason = reason
+			search.fallback_target_distance = candidate.target_distance
+
+			local phase3 = self._phase3
+			if phase3 and phase3.running then
+				local retained = {}
+				for _, deferred in ipairs(phase3.deferred_candidates or {}) do
+					if deferred and deferred.gear_id ~= candidate.gear_id then
+						retained[#retained + 1] = deferred
+					end
+				end
+				phase3.deferred_candidates = retained
+				phase3.deferred_index = 1
+				phase3.fallback_candidate = phase3.fallback_candidate and phase3.fallback_candidate.gear_id ~= candidate.gear_id and phase3.fallback_candidate or nil
+				phase3.target_candidate = candidate
+				phase3.target_distance = candidate.target_distance
+			end
+
+			self._phase = "search_fallback_selected"
+			operation_report("purchase_search_fallback_selected", {
+				candidate = candidate,
+				reason = reason,
+				search = search,
+			})
+			operation_report("purchase_search_complete", {
+				candidate = candidate,
+				fallback = true,
+				reason = reason,
+				search = search,
+			})
+
+			if phase3 and phase3.running then
+				self:_phase3_check_mastery(generation, candidate)
+			else
+				self:_start_phase4(candidate)
+			end
+		end
+
+		if search.favorite_result and candidate.favorited ~= true then
+			if not backend or type(backend.favorite_item) ~= "function" then
+				self:_operation_failed(generation, "favorite adapter unavailable")
+				return false
+			end
+
+			return self:_dispatch_operation(generation, "favorite", function ()
+				return backend:favorite_item(candidate.gear_id)
+			end, function ()
+				candidate.favorited = true
+				candidate.favorite_known = true
+				operation_report("candidate_favorited", {
+					candidate = candidate,
+				})
+				continue_fallback()
+			end)
+		end
+
+		continue_fallback()
 
 		return true
 	end

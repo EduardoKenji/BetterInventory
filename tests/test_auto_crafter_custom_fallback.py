@@ -11,6 +11,22 @@ LOCALIZATION_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "Bet
 
 def main() -> None:
     lua = LuaRuntime(unpack_returned_tuples=True)
+
+    candidate_policy = lua.execute(
+        (PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "auto_crafter" / "core" / "candidate_policy.lua").read_text(encoding="utf-8")
+    )
+    assert candidate_policy.normalize_acquisition_mode(True) == "target_search"
+    assert candidate_policy.normalize_acquisition_mode(False) == "disabled"
+    assert candidate_policy.normalize_acquisition_mode("first_weapon") == "first_weapon"
+    assert candidate_policy.normalize_acquisition_mode("invalid") == "target_search"
+
+    comparison_candidate = lua.table_from({
+        "potential_base_stats": lua.table_from({"damage": 59}),
+    })
+    assert candidate_policy.candidate_matches_stat_targets(comparison_candidate, "damage", 60, None, None, "exact") is False
+    assert candidate_policy.candidate_matches_stat_targets(comparison_candidate, "damage", 60, None, None, "at_most") is True
+    assert candidate_policy.candidate_matches_stat_targets(comparison_candidate, "damage", 58, None, None, "at_most") is False
+
     controller_module = __import__("auto_crafter_test_support").load_controller(lua)
     controller = controller_module.new(lua.table_from({}))
 

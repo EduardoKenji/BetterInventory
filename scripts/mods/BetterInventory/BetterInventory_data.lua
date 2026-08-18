@@ -1,4 +1,4 @@
-local MOD_VERSION = "2.5.1"
+local MOD_VERSION = "2.6.0"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
@@ -834,6 +834,16 @@ return {
 						},
 					},
 					{
+						setting_id = "auto_crafter_dump_stat_comparison",
+						tooltip = "auto_crafter_dump_stat_comparison_tooltip",
+						type = "dropdown",
+						default_value = "exact",
+						options = {
+							{ text = "auto_crafter_dump_stat_comparison_exact", value = "exact" },
+							{ text = "auto_crafter_dump_stat_comparison_at_most", value = "at_most" },
+						},
+					},
+					{
 						setting_id = "auto_crafter_custom_stats",
 						tooltip = "auto_crafter_custom_stats_tooltip",
 						type = "checkbox",
@@ -950,7 +960,17 @@ return {
 									{ text = "auto_crafter_myfavorites_color_5", value = 5 },
 								},
 							},
-							{ setting_id = "auto_crafter_buy_until_target", tooltip = "auto_crafter_buy_until_target_tooltip", type = "checkbox", default_value = true },
+							{
+								setting_id = "auto_crafter_buy_until_target",
+								tooltip = "auto_crafter_buy_until_target_tooltip",
+								type = "dropdown",
+								default_value = "target_search",
+								options = {
+									{ text = "auto_crafter_acquisition_disabled", value = "disabled" },
+									{ text = "auto_crafter_acquisition_first_weapon", value = "first_weapon" },
+									{ text = "auto_crafter_acquisition_target_search", value = "target_search" },
+								},
+							},
 							{ setting_id = "auto_crafter_defer_bad_weapon_processing", tooltip = "auto_crafter_defer_bad_weapon_processing_tooltip", type = "checkbox", default_value = true },
 							{ setting_id = "auto_crafter_level_mastery_20", tooltip = "auto_crafter_level_mastery_20_tooltip", type = "checkbox", default_value = true },
 							{ setting_id = "auto_crafter_allocate_mastery_points", tooltip = "auto_crafter_allocate_mastery_points_tooltip", type = "checkbox", default_value = true },

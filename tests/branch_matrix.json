@@ -193,15 +193,43 @@
     {
       "name": "auto-crafter.custom-stats-are-exact-and-guarded",
       "test": "test_auto_crafter_controller.py",
-      "case": "custom_stat_exact_acquisition_and_resume",
+      "case": "custom_stat_exact_fallback_and_resume",
       "outcome": "invalid five-stat totals dispatch no account write, while exact projected allocations drive purchase acceptance and family-equivalent inventory resume across marks",
       "modules": ["BetterInventory_auto_crafter.lua"]
     },
     {
       "name": "auto-crafter.custom-fallback-minimizes-total-distance",
       "test": "test_auto_crafter_custom_fallback.py",
-      "case": "custom_stat_manhattan_distance_and_deterministic_ties",
+      "case": "acquisition_mode_migration_dump_comparison_and_custom_fallback",
       "outcome": "closest fallback minimizes summed absolute distance across all five projected stats, rejects incomplete profiles, and retains the earliest equal-distance roll",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
+      "name": "auto-crafter.acquisition-mode-and-dump-comparison",
+      "test": "test_auto_crafter_controller.py",
+      "case": "acquisition_mode_and_dump_comparison",
+      "outcome": "legacy checkbox saves migrate deterministically; disabled mode sends no purchase, first-weapon mode buys exactly one authoritative Brunt weapon instead of resuming inventory, and lower-or-equal mode accepts the first projected dump stat at or below target while exact custom profiles remain exact",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
+      "name": "auto-crafter.psych-ward-brunt-runtime",
+      "test": "test_auto_crafter_context.py",
+      "case": "psych_ward_character_select_brunt_runtime",
+      "outcome": "character-selection access is admitted only while a live Brunt vendor view exists; destroyed, unrelated, or matchmaking contexts remain blocked",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
+      "name": "auto-crafter.acquisition-cap-promotes-custom-fallback",
+      "test": "test_auto_crafter_controller.py",
+      "case": "custom_stat_exact_fallback_and_resume",
+      "outcome": "when exact 70/70/80/80/80 acquisition reaches its docket cap, closest 72/68/80/80/80 is frozen, crafted, and completed without a terminal queue failure",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
+      "name": "auto-crafter.acquisition-cap-excludes-mastery-fodder",
+      "test": "test_auto_crafter_controller.py",
+      "case": "ordered_purchase_single_upgrade_pipeline",
+      "outcome": "after a Damage 80 target consumes the acquisition purchase cap, below-20 mastery may continue buying ordered fodder until its real wallet or inventory limit",
       "modules": ["BetterInventory_auto_crafter.lua"]
     },
     {
@@ -263,8 +291,8 @@
     {
       "name": "games-lantern.family-resume-skip-and-duplicate-policy",
       "test": "test_games_lantern_inventory_completion.py",
-      "case": "family_finished_skip_duplicate_and_two_slot_resume",
-      "outcome": "either queue slot first resumes an incomplete family-equivalent mark, then skips a completed family weapon or forces a fresh duplicate according to frozen policy, and revalidates the completed prefix before dispatching the next job",
+      "case": "family_finished_skip_duplicate_fallback_and_two_slot_resume",
+      "outcome": "either queue slot first resumes an incomplete family-equivalent mark, then skips a completed family weapon or forces a fresh duplicate according to frozen policy; exact and closest-fallback results are revalidated with immutable stat-distance proof before the next job",
       "modules": ["BetterInventory_auto_crafter.lua"]
     },
     {

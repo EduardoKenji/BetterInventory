@@ -225,6 +225,22 @@ def main() -> None:
     verified, reason = controller._verify_imported_result(controller, prefix_result, melee, 1)
     assert verified is False and "missing" in reason
 
+    # Closest fallback carries immutable distance proof across queue boundaries.
+    # Matching proof passes; altered or forged distance fails final reconciliation.
+    fallback_item = item("gear-prefix-fallback", "mark-exact")
+    fallback_item["potential_base_stats"]["damage"] = 58
+    set_inventory([fallback_item])
+    fallback_result = to_lua({
+        "character_id": "character-1",
+        "fallback_accepted": True,
+        "fallback_target_distance": 2,
+        "gear_id": "gear-prefix-fallback",
+    })
+    assert controller._verify_imported_result(controller, fallback_result, melee, 1) is True
+    fallback_result["fallback_target_distance"] = 1
+    verified, reason = controller._verify_imported_result(controller, fallback_result, melee, 1)
+    assert verified is False and "dump stat" in reason
+
     # Terminal Phase 4 performs same authoritative postcondition check. Any
     # malformed/drifted result becomes visible operation_failed, never success.
     final_controller = controller_module.new(to_lua({"context": context, "settings": settings}))
@@ -260,6 +276,37 @@ def main() -> None:
     final_controller["_search"]["running"] = True
     assert final_controller._phase4_complete(final_controller, final_item, final_controller["_snapshot"]) is False
     assert final_controller.snapshot(final_controller)["last_error"] == "final weapon changed weapon family"
+
+    fallback_controller = controller_module.new(to_lua({"context": context, "settings": settings}))
+    final_fallback = to_lua(item("gear-final-fallback", "mark-exact", favorite=True))
+    final_fallback["potential_base_stats"]["damage"] = 58
+    fallback_controller["_snapshot"] = to_lua({"character_id": "character-1", "gear": {"items": [final_fallback]}})
+    fallback_controller["_search"] = to_lua({"running": True})
+    fallback_controller["_phase4"] = to_lua({
+        "allocate_mastery": False,
+        "consecrate": True,
+        "dump_stat": "damage",
+        "expertise": True,
+        "fallback_accepted": True,
+        "fallback_target_distance": 2,
+        "favorite_result": True,
+        "gear_id": "gear-final-fallback",
+        "mastery_id": "pattern-1",
+        "running": True,
+        "target_dump": 60,
+        "targets": {
+            "perks": [{"id": "perk-a", "rarity": 4}, {"id": "perk-b", "rarity": 4}],
+            "traits": [{"id": "blessing-a", "rarity": 4}, {"id": "blessing-b", "rarity": 4}],
+        },
+        "verify_completion": True,
+    })
+    assert fallback_controller._phase4_complete(fallback_controller, final_fallback, fallback_controller["_snapshot"]) is True
+
+    final_fallback["potential_base_stats"]["damage"] = 57
+    fallback_controller["_phase4"]["running"] = True
+    fallback_controller["_search"]["running"] = True
+    assert fallback_controller._phase4_complete(fallback_controller, final_fallback, fallback_controller["_snapshot"]) is False
+    assert fallback_controller.snapshot(fallback_controller)["last_error"] == "final weapon changed dump stat"
 
 
 if __name__ == "__main__":

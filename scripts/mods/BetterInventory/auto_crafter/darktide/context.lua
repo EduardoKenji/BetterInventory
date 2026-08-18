@@ -203,8 +203,11 @@ function Context.new(dependencies)
 		return mode_name == "hub" or mode_name == "hub_singleplay"
 	end
 
-	function context:is_runtime_valid()
-		return self:is_morningstar() and not mission_matchmaking_active()
+	function context:is_runtime_valid(view)
+		-- Psych Ward can open Brunt's Armoury from character selection, where no
+		-- hub game mode exists. Keep that narrow route usable while retaining the
+		-- live-view and matchmaking guards used by normal Morningstar access.
+		return (self:is_morningstar() or self:is_valid_brunt_view(view)) and not mission_matchmaking_active()
 	end
 
 	function context:is_valid_brunt_view(view)

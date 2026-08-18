@@ -50,7 +50,7 @@ function InventoryWorkflow.install(self, services)
 			return false
 		end
 
-		return candidate_matches_stat_targets(item, imported_dump_stat(job), job.dump_target, job.custom_stats_enabled and job.custom_stat_targets or nil, job.dump_stat_identity)
+		return candidate_matches_stat_targets(item, imported_dump_stat(job), job.dump_target, job.custom_stats_enabled and job.custom_stat_targets or nil, job.dump_stat_identity, job.dump_comparison)
 			and (setting("auto_crafter_consecrate_transcendent", true) ~= true or (tonumber(item.rarity) or -1) >= TRANSCENDENT_RARITY)
 			and (setting("auto_crafter_upgrade_expertise_500", true) ~= true or (tonumber(item.expertise_level) or -1) >= MAX_EXPERTISE_LEVEL)
 			and (not change_perks or has_trait_targets(item.perks, job.perks))
@@ -65,7 +65,7 @@ function InventoryWorkflow.install(self, services)
 		local include_favorites = setting("auto_crafter_include_favorite_inventory_bases", true) == true
 		for _, candidate in ipairs(self._snapshot and self._snapshot.gear and self._snapshot.gear.items or {}) do
 			local favorite_allowed = include_favorites or candidate.favorite_known == true and candidate.favorited ~= true
-			if candidate.available == true and candidate.gear_id ~= nil and candidate.equipped ~= true and favorite_allowed and self:_imported_family_matches(candidate, job) and candidate_matches_stat_targets(candidate, imported_dump_stat(job), job.dump_target, job.custom_stats_enabled and job.custom_stat_targets or nil, job.dump_stat_identity) and not self:_imported_item_is_complete(candidate, job) then
+			if candidate.available == true and candidate.gear_id ~= nil and candidate.equipped ~= true and favorite_allowed and self:_imported_family_matches(candidate, job) and candidate_matches_stat_targets(candidate, imported_dump_stat(job), job.dump_target, job.custom_stats_enabled and job.custom_stat_targets or nil, job.dump_stat_identity, job.dump_comparison) and not self:_imported_item_is_complete(candidate, job) then
 				return true
 			end
 		end
@@ -245,7 +245,7 @@ function InventoryWorkflow.install(self, services)
 			local favorite_allowed = include_favorites or candidate.favorite_known == true and candidate.favorited ~= true
 
 			local imported_complete = imported_job and self:_imported_item_is_complete(candidate, imported_job)
-			if candidate.available == true and candidate.gear_id ~= nil and candidate.equipped ~= true and matched and favorite_allowed and not imported_complete and candidate_matches_stat_targets(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets, search.dump_stat_identity) then
+			if candidate.available == true and candidate.gear_id ~= nil and candidate.equipped ~= true and matched and favorite_allowed and not imported_complete and candidate_matches_stat_targets(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets, search.dump_stat_identity, search.dump_comparison) then
 				local analysis = profile_analysis(candidate)
 				analysis.expertise = tonumber(candidate.expertise_level) or -1
 				analysis.family_identity = identity_source
@@ -277,14 +277,25 @@ function InventoryWorkflow.install(self, services)
 		local max_purchases = tonumber(search and search.max_purchases) or 0
 		local price = tonumber(target and (target.price_amount or target.price))
 		local credits
+		local phase3 = self._phase3
+		local phase3_has_target = phase3 and phase3.running and phase3.target_candidate ~= nil
 		local function flush_pending_fodder()
-			local phase3 = self._phase3
-
 			if phase3 and phase3.running and phase3.target_candidate and pending_deferred_count(phase3) > 0 then
 				self:_phase3_process_deferred(generation, phase3.current)
 
 				return true
 			end
+
+			return false
+		end
+		local function finish_acquisition(reason)
+			if not phase3_has_target and setting("auto_crafter_best_candidate_fallback", true) == true and search.best then
+				if self:_accept_fallback_candidate(generation, search.best, reason) then
+					return true
+				end
+			end
+
+			self:_stop_search(reason)
 
 			return false
 		end
@@ -295,24 +306,20 @@ function InventoryWorkflow.install(self, services)
 			return false
 		end
 
-		if search.cap_by_max_purchases and search.purchases >= max_purchases then
+		if not phase3_has_target and search.cap_by_max_purchases and search.purchases >= max_purchases then
 			if flush_pending_fodder() then
 				return true
 			end
 
-			self:_stop_search("search_max_purchases")
-
-			return false
+			return finish_acquisition("search_max_purchases")
 		end
 
-		if search.cap_by_dockets and search.spent + price > search.docket_cap then
+		if not phase3_has_target and search.cap_by_dockets and search.spent + price > search.docket_cap then
 			if flush_pending_fodder() then
 				return true
 			end
 
-			self:_stop_search("search_docket_cap")
-
-			return false
+			return finish_acquisition("search_docket_cap")
 		end
 
 		local snapshot_wallets = self._snapshot and self._snapshot.wallets
@@ -325,9 +332,7 @@ function InventoryWorkflow.install(self, services)
 				return true
 			end
 
-			self:_stop_search("search_insufficient_dockets")
-
-			return false
+			return finish_acquisition("search_insufficient_dockets")
 		end
 
 		local raw_offer = search.raw_offer
@@ -363,9 +368,6 @@ function InventoryWorkflow.install(self, services)
 			if purchase.wallets and self._snapshot then
 				self._snapshot.wallets = purchase.wallets
 			end
-
-			local phase3 = self._phase3
-			local phase3_has_target = phase3 and phase3.running and phase3.target_candidate ~= nil
 
 			if phase3_has_target then
 				if purchase_candidate.available ~= true or purchase_candidate.parent_pattern ~= phase3.target_candidate.mastery_id or purchase_candidate.rarity == nil or purchase_candidate.expertise_level == nil then
@@ -425,10 +427,12 @@ function InventoryWorkflow.install(self, services)
 				candidate.dump_stat_id = search.dump_stat
 				candidate.dump_stat_label = search.dump_stat_identity and search.dump_stat_identity.display_name_key or candidate.base_stat_labels and candidate.base_stat_labels[search.dump_stat]
 				candidate.damage = candidate.potential_damage or candidate_stat(candidate, "damage")
-				candidate.exact_match = candidate_matches_stat_targets(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets, search.dump_stat_identity)
+				candidate.exact_match = candidate_matches_stat_targets(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets, search.dump_stat_identity, search.dump_comparison)
 				candidate.target_distance = candidate_stat_target_distance(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets, search.dump_stat_identity)
 
-				if self._phase3 and self._phase3.running and not candidate.exact_match then
+				local accepts_first_weapon = search.acquisition_mode == "first_weapon" and not phase3_has_target
+
+				if self._phase3 and self._phase3.running and not candidate.exact_match and not accepts_first_weapon then
 					track_purchased_spare(self._phase3, candidate)
 				end
 				search.last = candidate
@@ -445,6 +449,8 @@ function InventoryWorkflow.install(self, services)
 
 				if candidate.exact_match and not phase3_has_target then
 					self:_accept_exact_candidate(generation, candidate, "purchase")
+				elseif accepts_first_weapon then
+					self:_accept_fallback_candidate(generation, candidate, "first_weapon")
 				elseif self._phase3 and self._phase3.running and self._phase3.defer_bad_processing and not self._phase3.target_candidate then
 					self._phase3.deferred_candidates[#self._phase3.deferred_candidates + 1] = candidate
 					operation_report("phase3_candidate_deferred", {

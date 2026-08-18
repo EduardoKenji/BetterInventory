@@ -1183,6 +1183,8 @@ def main() -> None:
     )
     assert custom_credits_view._item_grid.updated is True
 
+    settings.auto_crafter_buy_until_target = False
+    settings._auto_crafter_acquisition_mode_v1_migrated = False
     mod.on_enabled()
     assert globals_.profile_discovery_requests == 1
     assert globals_.last_profile_discovery_force is True
@@ -1192,11 +1194,17 @@ def main() -> None:
     assert settings.weapon_blessing_display_mode == "icons"
     assert settings.curio_content_name_it_curio_name is True
     assert settings.highlight_equipped_items == "animated_dashes"
+    assert settings.auto_crafter_buy_until_target == "disabled"
     assert (
         settings.equipped_highlight_color_r,
         settings.equipped_highlight_color_g,
         settings.equipped_highlight_color_b,
     ) == (250, 189, 73)
+
+    settings.auto_crafter_buy_until_target = True
+    settings._auto_crafter_acquisition_mode_v1_migrated = False
+    mod.on_enabled()
+    assert settings.auto_crafter_buy_until_target == "target_search"
 
     settings._grid_columns_v1_migrated = False
     settings.columns = 2
@@ -2532,7 +2540,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "2.5.1"
+    assert data.version == "2.6.0"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
@@ -3108,6 +3116,8 @@ def main() -> None:
     assert defaults["melk_auto_favorite_purchased_items"] is False
     assert defaults["melk_mystery_auto_favorite_purchased_items"] is False
     assert defaults["auto_crafter_myfavorites_color"] == 1
+    assert defaults["auto_crafter_buy_until_target"] == "target_search"
+    assert defaults["auto_crafter_dump_stat_comparison"] == "exact"
     assert defaults["automatic_curio_min_item_level"] == 410
     assert defaults["automatic_curio_min_health"] == 21
     assert defaults["automatic_curio_min_toughness"] == 17

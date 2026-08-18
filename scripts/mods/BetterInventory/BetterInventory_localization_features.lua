@@ -633,7 +633,19 @@ local localization = {
 		en = "Dump stat target",
 	},
 	auto_crafter_dump_stat_target_tooltip = {
-		en = "Desired dump-stat percentage used by the guarded serialized purchase search. Unknown stat shapes stop the run.",
+		en = "Dump-stat percentage used by the guarded serialized purchase search. Choose an exact match or accept rolls at or below this value. Unknown stat shapes stop the run.",
+	},
+	auto_crafter_dump_stat_comparison = {
+		en = "Dump target comparison",
+	},
+	auto_crafter_dump_stat_comparison_tooltip = {
+		en = "Exactly matches preserves the original behavior. Is lower or equal to accepts the first authoritative weapon whose projected level-500 dump stat is at or below the target. Custom five-stat profiles always remain exact.",
+	},
+	auto_crafter_dump_stat_comparison_exact = {
+		en = "exactly matches",
+	},
+	auto_crafter_dump_stat_comparison_at_most = {
+		en = "is lower or equal to",
 	},
 	auto_crafter_custom_stats = {
 		en = "Custom stats",
@@ -712,10 +724,19 @@ local localization = {
 		en = "Resuming item options",
 	},
 	auto_crafter_buy_until_target = {
-		en = "Automatically buy until dump stat target weapon is found",
+		en = "Base weapon acquisition",
 	},
 	auto_crafter_buy_until_target_tooltip = {
-		en = "Runs the serialized Brunt purchase search until the selected dump-stat target is found or a configured safety cap is reached.",
+		en = "Disable automatic acquisition, buy the first authoritative Brunt weapon and proceed, or search until the configured stat policy is met. Existing checkbox saves migrate safely: On becomes target search and Off becomes disabled.",
+	},
+	auto_crafter_acquisition_disabled = {
+		en = "Disabled",
+	},
+	auto_crafter_acquisition_first_weapon = {
+		en = "Automatically buy first weapon and proceed",
+	},
+	auto_crafter_acquisition_target_search = {
+		en = "Automatically buy until target stats weapon is found",
 	},
 	auto_crafter_level_mastery_20 = {
 		en = "Automatically level weapon mastery to 20",

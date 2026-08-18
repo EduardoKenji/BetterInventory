@@ -117,6 +117,32 @@ def main() -> None:
     assert lua.globals().injected_character_calls == 2
     assert lua.globals().injected_archetype_calls == 2
 
+    # Psych Ward opens Brunt from character selection without a hub game-mode
+    # object. That live vendor view is sufficient runtime authority, but a
+    # destroyed/wrong view or active matchmaking still fails closed.
+    lua.execute(
+        """
+        Managers.state.game_mode = nil
+        matchmaking_active = false
+        Managers.party_immaterium = {
+            is_in_matchmaking = function() return matchmaking_active end,
+        }
+        psych_ward_brunt_view = {__class_name = "CreditsGoodsVendorView"}
+        wrong_view = {__class_name = "OtherVendorView"}
+        """
+    )
+    brunt_view = lua.globals().psych_ward_brunt_view
+    assert context.is_morningstar(context) is False
+    assert context.is_valid_brunt_view(context, brunt_view) is True
+    assert context.is_runtime_valid(context, brunt_view) is True
+    assert context.is_runtime_valid(context, lua.globals().wrong_view) is False
+
+    brunt_view["_destroyed"] = True
+    assert context.is_runtime_valid(context, brunt_view) is False
+    brunt_view["_destroyed"] = False
+    lua.globals().matchmaking_active = True
+    assert context.is_runtime_valid(context, brunt_view) is False
+
     print("Auto Crafter atomic character-context tests passed.")
 
 

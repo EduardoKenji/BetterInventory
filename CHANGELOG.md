@@ -1,5 +1,12 @@
 # BetterInventory changelog
 
+## 2.6.0 - 2026-08-17
+
+- Allows Auto Crafter through Psych Ward's character-selection Brunt route only while its live vendor view remains valid, retaining matchmaking and unrelated-context guards.
+- Promotes the closest valid weapon at acquisition-cap or wallet exhaustion when fallback is enabled, carries immutable stat-distance proof through Phase 3/4 and Games Lantern, and rejects drifted or forged completion results.
+- Scopes Ordo-docket and maximum-purchase caps to target acquisition so a frozen weapon can continue below-20 mastery fodder purchases until real wallet or inventory limits; a Damage 60-to-80 target change is not itself a failure condition.
+- Replaces the base-acquisition checkbox with Disabled, buy-first-and-proceed, and target-search modes (safely migrating existing saves), and adds an exact versus lower-or-equal dump-target selector while keeping five-stat profiles exact.
+
 ## 2.5.1 - 2026-08-17
 
 - Reduces WKC's kill-count font from 20 px to 14 px and icon from 22 px to 16 px on Brunt's native two-column weapon cards, aligns the counter's lower-left edge with the weapon-name inset, reapplies the geometry after WKC style refreshes, and leaves other listing and weapon-detail profiles unchanged.

@@ -3,6 +3,7 @@ local Phase4Workflow = {}
 function Phase4Workflow.install(self, services)
 	local blessing_poll_delay = services.blessing_poll_delay
 	local candidate_matches_stat_targets = services.candidate_matches_stat_targets
+	local candidate_stat_target_distance = services.candidate_stat_target_distance
 	local clock_now = services.clock_now
 	local copy_stat_identity = services.copy_stat_identity
 	local copy_stat_targets = services.copy_stat_targets
@@ -28,6 +29,18 @@ function Phase4Workflow.install(self, services)
 	local MAX_BLESSING_SYNC_ATTEMPTS = services.constants.MAX_BLESSING_SYNC_ATTEMPTS
 	local MAX_EXPERTISE_LEVEL = services.constants.MAX_EXPERTISE_LEVEL
 	local TRANSCENDENT_RARITY = services.constants.TRANSCENDENT_RARITY
+
+	local function matches_frozen_fallback(item, phase4)
+		local expected = tonumber(phase4 and phase4.fallback_target_distance)
+
+		if not item or not phase4 or phase4.fallback_accepted ~= true or expected == nil or expected == math.huge then
+			return false
+		end
+
+		local actual = candidate_stat_target_distance(item, phase4.dump_stat, phase4.target_dump, phase4.custom_stat_targets, phase4.dump_stat_identity)
+
+		return actual ~= math.huge and actual == expected
+	end
 
 	local function catalog_choice(catalog, value, current_trait, excluded_id, is_perk)
 		if value == "keep" then
@@ -158,7 +171,7 @@ function Phase4Workflow.install(self, services)
 				invalid_reason = "final weapon changed weapon family"
 			elseif phase4.target_mark_id ~= nil and item.master_id ~= phase4.target_mark_id then
 				invalid_reason = "final weapon mark does not match the selected mark"
-			elseif not candidate_matches_stat_targets(item, phase4.dump_stat, phase4.target_dump, phase4.custom_stat_targets, phase4.dump_stat_identity) then
+			elseif not candidate_matches_stat_targets(item, phase4.dump_stat, phase4.target_dump, phase4.custom_stat_targets, phase4.dump_stat_identity, phase4.dump_comparison) and not matches_frozen_fallback(item, phase4) then
 				invalid_reason = phase4.custom_stats_enabled and "final weapon changed custom stats" or "final weapon changed dump stat"
 			elseif phase4.consecrate and (tonumber(item.rarity) or -1) < TRANSCENDENT_RARITY then
 				invalid_reason = "final weapon is below Transcendent"
@@ -221,7 +234,10 @@ function Phase4Workflow.install(self, services)
 			return true
 		end
 
-		if not item or item.available ~= true or item.parent_pattern ~= phase4.mastery_id or not candidate_matches_stat_targets(item, phase4.dump_stat, phase4.target_dump, phase4.custom_stat_targets, phase4.dump_stat_identity) then
+		local target_matches = item and candidate_matches_stat_targets(item, phase4.dump_stat, phase4.target_dump, phase4.custom_stat_targets, phase4.dump_stat_identity, phase4.dump_comparison)
+		local fallback_matches = matches_frozen_fallback(item, phase4)
+
+		if not item or item.available ~= true or item.parent_pattern ~= phase4.mastery_id or not target_matches and not fallback_matches then
 			self:_operation_failed(generation, "final weapon failed authoritative identity or level-500 stat verification")
 
 			return false
@@ -585,6 +601,8 @@ function Phase4Workflow.install(self, services)
 
 		if not consecrate and not expertise_enabled and not allocate_mastery and not change_perks and not change_blessings and not target_mark_id then
 			self._phase4 = {
+				fallback_accepted = self._search and self._search.fallback_accepted == true,
+				fallback_target_distance = tonumber(self._search and self._search.fallback_target_distance),
 				gear_id = candidate.gear_id,
 				running = true,
 			}
@@ -632,7 +650,10 @@ function Phase4Workflow.install(self, services)
 			custom_stat_targets = copy_stat_targets(self._search and self._search.custom_stat_targets),
 			dump_stat = self._search and self._search.dump_stat,
 			dump_stat_identity = copy_stat_identity(self._search and self._search.dump_stat_identity),
+			dump_comparison = self._search and self._search.dump_comparison,
 			expertise = expertise_enabled,
+			fallback_accepted = self._search and self._search.fallback_accepted == true,
+			fallback_target_distance = tonumber(self._search and self._search.fallback_target_distance),
 			favorite_result = self._search and self._search.favorite_result == true,
 			gear_id = candidate.gear_id,
 			mastery_id = candidate.mastery_id or candidate.parent_pattern,

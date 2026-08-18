@@ -2,7 +2,7 @@
 
 [![BetterInventory verification](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml/badge.svg)](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml)
 
-> Current release: **v2.5.1** (2026-08-17). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
+> Current release: **v2.6.0** (2026-08-17). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
 
 BetterInventory is a standalone inventory and item-management mod for Warhammer 40,000: Darktide. It adds responsive weapon and Curio cards, richer item information, configurable sorting, supported vendor layouts, optional mod integrations, and safety-gated inventory workflows.
 
@@ -18,7 +18,15 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - A bounded inventory-options panel for sorting, discard rules, integrations, and view-specific controls.
 - Optional Quick Discard, Automatic Discard, Automatic Curio Buyer, and Auto Crafter workflows with explicit ownership, authoritative revalidation, and fail-closed behavior.
 
-## What's new in v2.5.1
+## What's new in v2.6.0
+
+- Auto Crafter now admits Psych Ward's character-selection Brunt view while that exact live vendor view remains valid; unrelated main-menu views, destroyed views, and matchmaking still fail closed.
+- Reaching an enabled acquisition cap now promotes and crafts the closest valid candidate when fallback is enabled. Games Lantern preserves its frozen stat-distance proof and revalidates it after final crafting and between queued jobs.
+- Ordo-docket and maximum-purchase caps now govern target acquisition only. After a target is frozen, below-20 mastery may continue buying fodder until the real wallet or inventory limit, fixing runs that stopped midway after the HUD vanished.
+- **Base weapon acquisition** is now a three-state selector: Disabled, buy the first authoritative Brunt weapon and proceed, or search for the target-stat weapon (default). Existing On/Off saves migrate to target search/disabled.
+- Single dump-stat plans can require an exact target (original behavior) or accept the first projected level-500 value lower than or equal to it. Custom five-stat plans remain exact.
+
+### v2.5.1 changes included
 
 - WKC kill counters on Brunt's native two-column weapon cards now use a compact 14 px font and 16 px icon in a lower row aligned with the weapon-name inset.
 - BetterInventory reapplies that Brunt-specific geometry after WKC style refreshes, preventing the counter from drifting back while leaving other listing and weapon-detail profiles unchanged.
@@ -73,10 +81,13 @@ Hadron's Sacrifice Weapons grid, Sire Melk, and unrelated custom vendor services
 
 Auto Crafter Helper is available from Brunt's Armoury. It can search for a target weapon, level mastery when needed, apply configured perks and blessings, and switch to an explicitly selected mark near the end of the workflow.
 
+**Base weapon acquisition** defaults to **Automatically buy until target stats weapon is found**. Choose **Automatically buy first weapon and proceed** when the roll does not matter, or **Disabled** to block the automated acquisition workflow. The dump-target row independently toggles between **exactly matches** and **is lower or equal to**; the latter accepts the first authoritative projected level-500 dump stat at or below the selected value. It does not relax custom five-stat profiles.
+
 Important contracts include:
 
 - exact five-stat targets must total 380 and each value must remain within 60-80;
-- optional closest-candidate fallback minimizes total absolute distance across all five attributes;
+- optional closest-candidate fallback minimizes total absolute distance across all five attributes, then becomes the frozen target when an acquisition boundary is reached;
+- acquisition caps stop only target searching; mastery fodder remains bounded by the authoritative wallet and inventory capacity;
 - selected marks are frozen by exact identity and verified again from authoritative gear before success;
 - account mutations remain serialized with BetterInventory and known native/third-party mutation paths;
 - ambiguous mutations are not retried automatically;
@@ -156,7 +167,7 @@ Run the complete repository verification from the project root:
 powershell -ExecutionPolicy Bypass -File .\tests\verify.ps1
 ```
 
-The v2.5.1 suite currently discovers 41 behavior-test files and 155 named cases. To run the behavior suite directly with risk-weighted Lua coverage:
+The v2.6.0 suite currently discovers 41 behavior-test files and 157 named cases. To run the behavior suite directly with risk-weighted Lua coverage:
 
 ```powershell
 py -3 .\tests\run_tests.py --timeout-seconds 45 --coverage-output lua-coverage.json

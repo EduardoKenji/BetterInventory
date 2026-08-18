@@ -3,6 +3,7 @@ local Planner = {}
 local DEFAULTS = {
 	dump_stat = "damage",
 	dump_target = 60,
+	dump_comparison = "exact",
 	cap_by_dockets = true,
 	docket_cap = 500000,
 	cap_by_max_purchases = false,
@@ -515,6 +516,7 @@ local function normalize_config(config)
 	return {
 		dump_stat = text_or(config.dump_stat, DEFAULTS.dump_stat),
 		dump_target = number_or(config.dump_target, DEFAULTS.dump_target),
+		dump_comparison = config.dump_comparison == "at_most" and "at_most" or DEFAULTS.dump_comparison,
 		custom_stats_enabled = config.custom_stats_enabled == true,
 		custom_stat_targets = type(config.custom_stat_targets) == "table" and config.custom_stat_targets or {},
 		cap_by_dockets = config.cap_by_dockets == true,
@@ -730,6 +732,7 @@ function Planner.build(snapshot, config)
 		custom_stats_valid = normalized.custom_stats_enabled and custom_stat_error == nil or not normalized.custom_stats_enabled,
 		trait_catalog = normalized.trait_catalog,
 		dump_target = normalized.dump_target,
+		dump_comparison = normalized.dump_comparison,
 		cap_by_dockets = normalized.cap_by_dockets,
 		best_candidate_fallback = normalized.best_candidate_fallback,
 		cap_by_max_purchases = normalized.cap_by_max_purchases,

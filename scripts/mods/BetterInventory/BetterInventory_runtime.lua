@@ -1140,10 +1140,6 @@ local function migrate_grid_column_settings()
 			end
 		end
 
-		-- A legacy profile has no way to express per-category values. Preserve
-		-- its old global choice only when all three new controls still have their
-		-- defaults; once any slider is customized, leave every dedicated value
-		-- untouched.
 		if not has_dedicated_customization then
 			for _, setting_id in ipairs(dedicated_setting_ids) do
 				mod:set(setting_id, legacy_columns, false)
@@ -1166,9 +1162,6 @@ function mod.on_enabled()
 		Diagnostics.configure(mod)
 	end
 
-	-- DMF requires unique setting IDs. Keep Curio content's mirror row aligned
-	-- with the established Name It setting, which remains authoritative across
-	-- upgrades and preserves the user's existing choice.
 	local name_it_curio_name_value = mod:get("name_it_force_curio_name_in_detailed_mode")
 
 	if name_it_curio_name_value == nil then
@@ -1179,9 +1172,6 @@ function mod.on_enabled()
 		mod:set("curio_content_name_it_curio_name", name_it_curio_name_value, false)
 	end
 
-	-- DMF preserves saved values when a default changes. Apply the new compact
-	-- card defaults once for installs that already initialized the old values;
-	-- all three settings remain freely configurable afterward.
 	if not mod:get("_compact_card_defaults_v1_migrated") then
 		mod:set("append_mark_to_name", true)
 		mod:set("show_pattern_mark", false)
@@ -1191,8 +1181,18 @@ function mod.on_enabled()
 
 	migrate_grid_column_settings()
 
-	-- Replace the unreleased Curio-name checkboxes with one mode selector while
-	-- preserving the currently enabled one-line presentation for test profiles.
+	if mod:get("_auto_crafter_acquisition_mode_v1_migrated") ~= true then
+		local legacy_acquisition = mod:get("auto_crafter_buy_until_target")
+
+		if legacy_acquisition == true then
+			mod:set("auto_crafter_buy_until_target", "target_search", false)
+		elseif legacy_acquisition == false then
+			mod:set("auto_crafter_buy_until_target", "disabled", false)
+		end
+
+		mod:set("_auto_crafter_acquisition_mode_v1_migrated", true, false)
+	end
+
 	if not mod:get("_character_overview_curio_name_mode_v1_migrated") then
 		if mod:get("character_overview_show_curio_names") == true then
 			mod:set("character_overview_curio_name_mode", "one_line")
@@ -1213,8 +1213,6 @@ function mod.on_enabled()
 		mod:set("_curio_compression_mode_v1_migrated", true)
 	end
 
-	-- Heavy Compression supersedes Compression as the default. Preserve an
-	-- explicit No compression choice while upgrading the former default once.
 	if not mod:get("_curio_heavy_default_v1_migrated") then
 		local compression_mode = mod:get("curio_stat_compression")
 
@@ -1225,8 +1223,6 @@ function mod.on_enabled()
 		mod:set("_curio_heavy_default_v1_migrated", true)
 	end
 
-	-- Move only the former defaults so deliberately customized icon sizes stay
-	-- untouched on existing installations.
 	if not mod:get("_inventory_icon_size_defaults_v2_migrated") then
 		local blessing_size = mod:get("blessing_icon_size")
 		local perk_rank_size = mod:get("weapon_perk_rank_icon_size")
@@ -1242,8 +1238,6 @@ function mod.on_enabled()
 		mod:set("_inventory_icon_size_defaults_v2_migrated", true)
 	end
 
-	-- Replace the former blessing checkbox with a configurable display mode while
-	-- preserving an explicit disabled choice from existing installations.
 	if not mod:get("_weapon_blessing_display_mode_v1_migrated") then
 		local previous_show_blessings = mod:get("show_weapon_blessings")
 
@@ -1254,8 +1248,6 @@ function mod.on_enabled()
 		mod:set("_weapon_blessing_display_mode_v1_migrated", true)
 	end
 
-	-- Replace the equipped-card checkbox with a mode selector without changing
-	-- an existing user's enabled/disabled choice.
 	if not mod:get("_equipped_highlight_mode_v1_migrated") then
 		local previous_highlight = mod:get("highlight_equipped_items")
 

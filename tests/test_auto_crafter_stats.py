@@ -800,6 +800,17 @@ def main() -> None:
         assert boolean_panel._set_setting(boolean_panel, setting_id, True) is True
         assert boolean_panel._setting(boolean_panel, setting_id, False) is True
 
+    assert boolean_panel._acquisition_mode(boolean_panel) == "target_search"
+    boolean_panel._set_setting(boolean_panel, "auto_crafter_buy_until_target", False)
+    assert boolean_panel._acquisition_mode(boolean_panel) == "disabled"
+    boolean_panel._set_setting(boolean_panel, "auto_crafter_buy_until_target", "first_weapon")
+    assert boolean_panel._acquisition_mode_text(boolean_panel) == "Automatically buy first weapon and proceed"
+    assert boolean_panel._step_acquisition_mode(boolean_panel, 1) is True
+    assert boolean_panel._acquisition_mode(boolean_panel) == "target_search"
+    assert boolean_panel._dump_comparison(boolean_panel) == "exact"
+    assert boolean_panel._toggle_dump_comparison(boolean_panel) is True
+    assert boolean_panel._dump_comparison(boolean_panel) == "at_most"
+
     color_settings = lua.execute(
         '''
         return {
@@ -1205,10 +1216,15 @@ def main() -> None:
     assert "Automatically favorite crafted weapon" in panel_source
     assert 'self:_setting("auto_crafter_favorite_result", true) == true and self:_myfavorites_available()' in panel_source
     assert 'localize("auto_crafter_myfavorites_color", "MyFavorites color")' in panel_source
-    assert panel_source.index('add_checkbox("auto_crafter_favorite_result"') < panel_source.index('localize("auto_crafter_myfavorites_color", "MyFavorites color")') < panel_source.index('add_checkbox("auto_crafter_buy_until_target"')
-    assert "Automatically buy until dump stat target weapon is found" in panel_source
+    assert panel_source.index('add_checkbox("auto_crafter_favorite_result"') < panel_source.index('localize("auto_crafter_myfavorites_color", "MyFavorites color")') < panel_source.index('localize("auto_crafter_buy_until_target", "Base weapon acquisition")')
+    assert "Automatically buy first weapon and proceed" in panel_source
+    assert "Automatically buy until target stats weapon is found" in panel_source
+    assert 'variant = "dump_target_stepper"' in panel_source
+    assert 'variant = "acquisition_stepper"' in panel_source
+    assert 'content_id = "comparison_hotspot"' in panel_source
+    assert 'style_id = "comparison_arrow"' in panel_source
     assert "SECTION_RESUMING" in panel_source and "SECTION_OUTPUT" not in panel_source
-    assert panel_source.index('add_checkbox("auto_crafter_favorite_result"') < panel_source.index('add_checkbox("auto_crafter_buy_until_target"') < panel_source.index('localize("auto_crafter_panel_resuming"')
+    assert panel_source.index('add_checkbox("auto_crafter_favorite_result"') < panel_source.index('localize("auto_crafter_buy_until_target", "Base weapon acquisition")') < panel_source.index('localize("auto_crafter_panel_resuming"')
     assert "auto_crafter_panel_saved_only" not in panel_source and "auto_crafter_panel_not_connected" not in panel_source
     assert "Automatically consecrate weapon to Transcendent" in panel_source
     assert "Automatically upgrade weapon item level to 500" in panel_source

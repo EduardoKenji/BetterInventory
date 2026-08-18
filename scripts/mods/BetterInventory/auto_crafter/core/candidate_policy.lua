@@ -1,5 +1,26 @@
 local CandidatePolicy = {}
 
+local ACQUISITION_MODES = {
+	disabled = true,
+	first_weapon = true,
+	target_search = true,
+}
+
+function CandidatePolicy.normalize_acquisition_mode(value)
+	-- v2.5.x stored this setting as a checkbox. Preserve both legacy values.
+	if value == true then
+		return "target_search"
+	elseif value == false then
+		return "disabled"
+	end
+
+	return ACQUISITION_MODES[value] and value or "target_search"
+end
+
+function CandidatePolicy.normalize_dump_comparison(value)
+	return value == "at_most" and "at_most" or "exact"
+end
+
 local function read_member(object, key)
 	return object[key]
 end
@@ -219,7 +240,7 @@ local function custom_stat_value(candidate, stat_name, target)
 	return CandidatePolicy.candidate_stat(candidate, stat_name, target)
 end
 
-function CandidatePolicy.candidate_matches_stat_targets(candidate, dump_stat, target_dump, custom_targets, dump_stat_identity)
+function CandidatePolicy.candidate_matches_stat_targets(candidate, dump_stat, target_dump, custom_targets, dump_stat_identity, dump_comparison)
 	if type(custom_targets) == "table" and next(custom_targets) ~= nil then
 		for stat_name, target in pairs(custom_targets) do
 			local target_name = type(target) == "table" and target.name or stat_name
@@ -233,7 +254,18 @@ function CandidatePolicy.candidate_matches_stat_targets(candidate, dump_stat, ta
 		return true
 	end
 
-	return tonumber(CandidatePolicy.candidate_stat(candidate, dump_stat, dump_stat_identity)) == tonumber(target_dump)
+	local value = tonumber(CandidatePolicy.candidate_stat(candidate, dump_stat, dump_stat_identity))
+	local target = tonumber(target_dump)
+
+	if value == nil or target == nil then
+		return false
+	end
+
+	if CandidatePolicy.normalize_dump_comparison(dump_comparison) == "at_most" then
+		return value <= target
+	end
+
+	return value == target
 end
 
 function CandidatePolicy.candidate_stat_target_distance(candidate, dump_stat, target_dump, custom_targets, dump_stat_identity)

@@ -68,8 +68,16 @@ def main() -> None:
     assert queue.on_event(queue, "phase4_complete", terminal(queue, 1, "m", character_id="other")) is False
     assert queue.on_event(queue, "phase4_complete", terminal(queue, 1, "m", operation_sequence=99)) is False
     assert queue.on_event(queue, "phase4_complete", terminal(queue, 1, None)) is False
-    melee_terminal = terminal(queue, 1, "m")
+    melee_terminal = terminal(
+        queue,
+        1,
+        "m",
+        phase4={"fallback_accepted": True, "fallback_target_distance": 4},
+    )
     assert queue.on_event(queue, "phase4_complete", melee_terminal) is True
+    completed_fallback = queue.snapshot(queue)["completed_results"][1]
+    assert completed_fallback["fallback_accepted"] is True
+    assert completed_fallback["fallback_target_distance"] == 4
     queue.update(queue)
     assert starts == [1, 2]
     assert queue.on_event(queue, "phase4_complete", melee_terminal) is False

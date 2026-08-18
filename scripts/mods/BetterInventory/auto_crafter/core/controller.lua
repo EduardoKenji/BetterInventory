@@ -12,6 +12,8 @@ local REQUIRED_MODULE_FUNCTIONS = {
 		"find_item",
 		"has_pending_trait_replacement",
 		"has_trait_targets",
+		"normalize_acquisition_mode",
+		"normalize_dump_comparison",
 		"offer_key",
 		"offer_with_mark",
 		"requires_temporary_swap",
@@ -193,6 +195,8 @@ function Controller.new(dependencies)
 	local valid_custom_stat_targets = CandidatePolicy.valid_custom_stat_targets
 	local candidate_matches_stat_targets = CandidatePolicy.candidate_matches_stat_targets
 	local candidate_stat_target_distance = CandidatePolicy.candidate_stat_target_distance
+	local normalize_acquisition_mode = CandidatePolicy.normalize_acquisition_mode
+	local normalize_dump_comparison = CandidatePolicy.normalize_dump_comparison
 	local trait_at = CandidatePolicy.trait_at
 	local same_trait = CandidatePolicy.same_trait
 	local same_optional_trait = CandidatePolicy.same_optional_trait
@@ -411,6 +415,8 @@ function Controller.new(dependencies)
 	local planner_setting_ids = {
 		auto_crafter_target_dump_stat = true,
 		auto_crafter_dump_stat_target = true,
+		auto_crafter_dump_stat_comparison = true,
+		auto_crafter_buy_until_target = true,
 		auto_crafter_custom_stats = true,
 		auto_crafter_custom_stat_1 = true,
 		auto_crafter_custom_stat_2 = true,
@@ -634,7 +640,7 @@ function Controller.new(dependencies)
 			frozen[setting_id] = setting(setting_id)
 		end
 
-		frozen.auto_crafter_buy_until_target = setting("auto_crafter_buy_until_target", true)
+		frozen.auto_crafter_buy_until_target = setting("auto_crafter_buy_until_target", "target_search")
 		self._frozen_run_settings = frozen
 	end
 
@@ -666,6 +672,7 @@ function Controller.new(dependencies)
 		return {
 			dump_stat = imported_job and imported_job.dump_stat or setting("auto_crafter_target_dump_stat", "damage"),
 			dump_target = imported_job and imported_job.dump_target or setting("auto_crafter_dump_stat_target", 60),
+			dump_comparison = normalize_dump_comparison(setting("auto_crafter_dump_stat_comparison", "exact")),
 			custom_stats_enabled = custom_stats_enabled,
 			custom_stat_targets = imported_custom_stats and copy_stat_targets(imported_job.custom_stat_targets) or custom_stats_enabled and {
 				setting("auto_crafter_custom_stat_1", 76),
@@ -864,7 +871,7 @@ function Controller.new(dependencies)
 			return true
 		end
 
-		local ok, valid = safe_call(fn, self._context)
+		local ok, valid = safe_call(fn, self._context, self._active_view)
 
 		return ok and valid == true
 	end
@@ -1011,9 +1018,6 @@ function Controller.new(dependencies)
 		self._operation_quarantined = false
 		record_timing(kind, duration)
 
-		-- Read callbacks are safe to retire: they own no account mutation. Sequence
-		-- invalidation happens before cancellation so even synchronous cancellation
-		-- callbacks cannot resume the workflow.
 		if promise and type(promise.cancel) == "function" then
 			pcall(promise.cancel, promise)
 		end
@@ -1052,8 +1056,6 @@ function Controller.new(dependencies)
 			return false
 		end
 
-		-- Mutations cannot be cancelled safely. Stop all continuations but retain
-		-- the dispatch gate until the original Promise settles.
 		self._generation = self._generation + 1
 		self._probe_scheduled = false
 		self._probe_elapsed = 0
@@ -1980,9 +1982,11 @@ function Controller.new(dependencies)
 			return false
 		end
 
-		if setting("auto_crafter_buy_until_target", true) ~= true then
+		local acquisition_mode = normalize_acquisition_mode(setting("auto_crafter_buy_until_target", "target_search"))
+
+		if acquisition_mode == "disabled" then
 			operation_report("mutation_blocked", {
-				reason = "buy-until-target workflow is disabled",
+				reason = "base weapon acquisition is disabled",
 			})
 
 			return false
@@ -2065,6 +2069,7 @@ function Controller.new(dependencies)
 		self._last_progress_elapsed = 0
 		self._failure_at = nil
 		self._search = {
+			acquisition_mode = acquisition_mode,
 			cap_by_dockets = setting("auto_crafter_cap_by_dockets", true) == true,
 			catalog = imported_job and imported_job.catalog or self._catalog,
 			docket_cap = tonumber(setting("auto_crafter_docket_cap", 500000)) or 0,
@@ -2072,6 +2077,7 @@ function Controller.new(dependencies)
 			custom_stat_targets = copy_stat_targets(plan.custom_stat_targets),
 			dump_stat = dump_stat,
 			dump_stat_identity = copy_stat_identity(plan.dump_stat_identity),
+			dump_comparison = normalize_dump_comparison(plan.dump_comparison),
 			favorite_result = setting("auto_crafter_favorite_result", true) == true,
 			generation = self._generation,
 			cap_by_max_purchases = setting("auto_crafter_cap_by_max_purchases", false) == true,
@@ -2113,7 +2119,7 @@ function Controller.new(dependencies)
 			search = self._search,
 		})
 
-		if setting("auto_crafter_reuse_inventory_base", true) == true then
+		if acquisition_mode == "target_search" and setting("auto_crafter_reuse_inventory_base", true) == true then
 			return self:_refresh_after_operation(self._generation, function ()
 				local inventory_base = self:_find_inventory_base()
 
@@ -2773,7 +2779,7 @@ function Controller.new(dependencies)
 			return true
 		end
 
-		local run_setting = planner_setting_ids[setting_id] or setting_id == "auto_crafter_buy_until_target"
+		local run_setting = planner_setting_ids[setting_id]
 
 		if run_setting and run_is_active() then
 			if not run_setting_changed(setting_id) then

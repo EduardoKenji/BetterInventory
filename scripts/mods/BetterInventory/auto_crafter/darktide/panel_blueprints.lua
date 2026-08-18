@@ -342,6 +342,45 @@ local function compact_stepper_passes(width)
 	}
 end
 
+local function dump_target_stepper_passes(width)
+	local comparison_x = 92
+	local comparison_width = math.max(100, width - STEPPER_CONTROLS_WIDTH - comparison_x - 8)
+	local controls_x = width - STEPPER_CONTROLS_WIDTH
+
+	return {
+		{ pass_type = "text", value_id = "label", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "center", text_color = Color.terminal_text_body(255, true), size = { comparison_x - 6, COMPACT_ROW_HEIGHT } } },
+		{ content_id = "comparison_hotspot", pass_type = "hotspot", content = { on_hover_sound = UISoundEvents.default_mouse_hover, on_pressed_sound = UISoundEvents.default_click }, style = { size = { comparison_width, COMPACT_ROW_HEIGHT }, offset = { comparison_x, 0, 5 } } },
+		{ pass_type = "rect", style = { color = Color.terminal_background(220, true), size = { comparison_width, COMPACT_ROW_HEIGHT }, offset = { comparison_x, 0, 1 } } },
+		{ pass_type = "texture", value = "content/ui/materials/frames/frame_tile_2px", style = { color = Color.terminal_frame(255, true), size = { comparison_width, COMPACT_ROW_HEIGHT }, offset = { comparison_x, 0, 2 } } },
+		{ pass_type = "text", value_id = "comparison_detail", style = { font_size = 11, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_text_body(255, true), size = { comparison_width - 24, COMPACT_ROW_HEIGHT }, offset = { comparison_x + 3, 0, 3 } } },
+		{ pass_type = "text", value = ">", style_id = "comparison_arrow", style = { font_size = 14, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_text_header(255, true), size = { 18, COMPACT_ROW_HEIGHT }, offset = { comparison_x + comparison_width - 20, 0, 4 } } },
+		{ content_id = "decrease_hotspot", pass_type = "hotspot", content = { on_hover_sound = UISoundEvents.default_mouse_hover, on_pressed_sound = UISoundEvents.default_click }, style = { size = { 32, COMPACT_ROW_HEIGHT }, offset = { controls_x, 0, 5 } } },
+		{ pass_type = "text", value = "<", style = { font_size = 16, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_text_header(255, true), size = { 32, COMPACT_ROW_HEIGHT }, offset = { controls_x, 0, 3 } } },
+		{ pass_type = "rect", style = { color = Color.terminal_background(220, true), size = { STEPPER_VALUE_WIDTH, COMPACT_ROW_HEIGHT }, offset = { controls_x + 34, 0, 1 } } },
+		{ pass_type = "texture", value = "content/ui/materials/frames/frame_tile_2px", style = { color = Color.terminal_frame(255, true), size = { STEPPER_VALUE_WIDTH, COMPACT_ROW_HEIGHT }, offset = { controls_x + 34, 0, 2 } } },
+		{ pass_type = "text", value_id = "detail", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_text_body(255, true), size = { STEPPER_VALUE_WIDTH, COMPACT_ROW_HEIGHT }, offset = { controls_x + 34, 0, 3 } } },
+		{ content_id = "increase_hotspot", pass_type = "hotspot", content = { on_hover_sound = UISoundEvents.default_mouse_hover, on_pressed_sound = UISoundEvents.default_click }, style = { size = { 32, COMPACT_ROW_HEIGHT }, offset = { controls_x + 150, 0, 5 } } },
+		{ pass_type = "text", value = ">", style = { font_size = 16, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_text_header(255, true), size = { 32, COMPACT_ROW_HEIGHT }, offset = { controls_x + 150, 0, 3 } } },
+	}
+end
+
+local function acquisition_stepper_passes(width)
+	local controls_y = 24
+	local controls_width = width
+	local value_width = controls_width - 68
+
+	return {
+		{ pass_type = "text", value_id = "label", style = { font_size = 15, font_type = "proxima_nova_bold", text_horizontal_alignment = "left", text_vertical_alignment = "center", text_color = Color.terminal_text_body(255, true), size = { width, 22 } } },
+		{ content_id = "decrease_hotspot", pass_type = "hotspot", content = { on_hover_sound = UISoundEvents.default_mouse_hover, on_pressed_sound = UISoundEvents.default_click }, style = { size = { 32, COMPACT_ROW_HEIGHT }, offset = { 0, controls_y, 5 } } },
+		{ pass_type = "text", value = "<", style = { font_size = 16, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_text_header(255, true), size = { 32, COMPACT_ROW_HEIGHT }, offset = { 0, controls_y, 3 } } },
+		{ pass_type = "rect", style = { color = Color.terminal_background(220, true), size = { value_width, COMPACT_ROW_HEIGHT }, offset = { 34, controls_y, 1 } } },
+		{ pass_type = "texture", value = "content/ui/materials/frames/frame_tile_2px", style = { color = Color.terminal_frame(255, true), size = { value_width, COMPACT_ROW_HEIGHT }, offset = { 34, controls_y, 2 } } },
+		{ pass_type = "text", value_id = "detail", style = { font_size = 13, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_text_body(255, true), size = { value_width, COMPACT_ROW_HEIGHT }, offset = { 34, controls_y, 3 } } },
+		{ content_id = "increase_hotspot", pass_type = "hotspot", content = { on_hover_sound = UISoundEvents.default_mouse_hover, on_pressed_sound = UISoundEvents.default_click }, style = { size = { 32, COMPACT_ROW_HEIGHT }, offset = { width - 32, controls_y, 5 } } },
+		{ pass_type = "text", value = ">", style = { font_size = 16, font_type = "proxima_nova_bold", text_horizontal_alignment = "center", text_vertical_alignment = "center", text_color = Color.terminal_text_header(255, true), size = { 32, COMPACT_ROW_HEIGHT }, offset = { width - 32, controls_y, 3 } } },
+	}
+end
+
 local function enum_stepper_passes(width)
 	-- Long vanilla perk descriptions need more room than stat/request enums.
 	-- Keep one line at common UI scales while retaining a usable label column.
@@ -579,6 +618,10 @@ PanelBlueprints.definitions = {
 				return compact_checkbox_passes(width, entry.size[2])
 			elseif variant == "stepper" then
 				return compact_stepper_passes(width)
+			elseif variant == "dump_target_stepper" then
+				return dump_target_stepper_passes(width)
+			elseif variant == "acquisition_stepper" then
+				return acquisition_stepper_passes(width)
 			elseif variant == "enum_stepper" then
 				return enum_stepper_passes(width)
 			elseif variant == "stat_grid" then

@@ -501,6 +501,7 @@ function Panel.new(dependencies)
 		local entry = {
 			initial_content = {
 				checked = options.checked == true,
+				comparison_detail = options.comparison_detail or "",
 				detail = detail or "",
 				enabled = options.enabled ~= false,
 				hotspot = {
@@ -588,6 +589,16 @@ function Panel.new(dependencies)
 				end
 				if widget.content.increase_hotspot then
 					widget.content.increase_hotspot.pressed_callback = options.increase
+				end
+			end
+		end
+
+		if options.toggle_comparison then
+			local previous_bind = entry.bind
+			entry.bind = function(widget)
+				if previous_bind then previous_bind(widget) end
+				if widget.content.comparison_hotspot then
+					widget.content.comparison_hotspot.pressed_callback = options.toggle_comparison
 				end
 			end
 		end
@@ -1097,6 +1108,52 @@ function Panel.new(dependencies)
 
 		local next_index = (current_index - 1 + direction) % #values + 1
 		self:_set_setting(setting_id, values[next_index])
+	end
+
+	function self:_acquisition_mode()
+		local value = self:_setting("auto_crafter_buy_until_target", "target_search")
+
+		if value == true then return "target_search" end
+		if value == false then return "disabled" end
+		if value == "disabled" or value == "first_weapon" or value == "target_search" then return value end
+
+		return "target_search"
+	end
+
+	function self:_acquisition_mode_text()
+		local mode = self:_acquisition_mode()
+		local fallbacks = {
+			disabled = "Disabled",
+			first_weapon = "Automatically buy first weapon and proceed",
+			target_search = "Automatically buy until target stats weapon is found",
+		}
+
+		return localize("auto_crafter_acquisition_" .. mode, fallbacks[mode])
+	end
+
+	function self:_step_acquisition_mode(direction)
+		local values = { "disabled", "first_weapon", "target_search" }
+		local current = self:_acquisition_mode()
+		local current_index = 1
+
+		for index, value in ipairs(values) do
+			if value == current then current_index = index break end
+		end
+
+		return self:_set_setting("auto_crafter_buy_until_target", values[(current_index - 1 + direction) % #values + 1])
+	end
+
+	function self:_dump_comparison()
+		return self:_setting("auto_crafter_dump_stat_comparison", "exact") == "at_most" and "at_most" or "exact"
+	end
+
+	function self:_dump_comparison_text()
+		local comparison = self:_dump_comparison()
+		return localize("auto_crafter_dump_stat_comparison_" .. comparison, comparison == "at_most" and "is lower or equal to" or "exactly matches")
+	end
+
+	function self:_toggle_dump_comparison()
+		return self:_set_setting("auto_crafter_dump_stat_comparison", self:_dump_comparison() == "exact" and "at_most" or "exact")
 	end
 
 	function self:_myfavorites_available()
@@ -1790,17 +1847,25 @@ function Panel.new(dependencies)
 					}))
 				end
 				table.insert(entries, self:_entry(localize("auto_crafter_panel_dump_target", "Dump target"), integer_text(self:_setting("auto_crafter_dump_stat_target", 60)), {
+					comparison_detail = self:_dump_comparison_text(),
 					enabled = not queue_owned,
 					selectable = not queue_owned,
-					variant = "stepper",
+					variant = "dump_target_stepper",
 					decrease = function()
 						self:_adjust_numeric_setting("auto_crafter_dump_stat_target", 60, 1, 100, -1)
 					end,
 					increase = function()
 						self:_adjust_numeric_setting("auto_crafter_dump_stat_target", 60, 1, 100, 1)
 					end,
+					toggle_comparison = function()
+						if not queue_owned then self:_toggle_dump_comparison() end
+					end,
 					refresh = function(widget)
 						widget.content.detail = integer_text(self:_setting("auto_crafter_dump_stat_target", 60))
+						widget.content.comparison_detail = self:_dump_comparison_text()
+						if widget.content.comparison_hotspot then widget.content.comparison_hotspot.disabled = queue_owned end
+						if widget.content.decrease_hotspot then widget.content.decrease_hotspot.disabled = queue_owned end
+						if widget.content.increase_hotspot then widget.content.increase_hotspot.disabled = queue_owned end
 					end,
 				}))
 			end
@@ -1991,7 +2056,22 @@ function Panel.new(dependencies)
 					end,
 				}))
 			end
-			add_checkbox("auto_crafter_buy_until_target", "auto_crafter_buy_until_target", "Automatically buy until dump stat target weapon is found", true, nil, nil, 44)
+			table.insert(entries, self:_entry(localize("auto_crafter_buy_until_target", "Base weapon acquisition"), self:_acquisition_mode_text(), {
+				height = 50,
+				selectable = not queue_active,
+				variant = "acquisition_stepper",
+				decrease = function()
+					if not queue_active then self:_step_acquisition_mode(-1) end
+				end,
+				increase = function()
+					if not queue_active then self:_step_acquisition_mode(1) end
+				end,
+				refresh = function(widget)
+					widget.content.detail = self:_acquisition_mode_text()
+					if widget.content.decrease_hotspot then widget.content.decrease_hotspot.disabled = queue_active end
+					if widget.content.increase_hotspot then widget.content.increase_hotspot.disabled = queue_active end
+				end,
+			}))
 			add_checkbox("auto_crafter_defer_bad_weapon_processing", "auto_crafter_defer_bad_weapon_processing", "Only process bad weapons after finding perfect-rolled weapon", true, function()
 				return self:_setting("auto_crafter_level_mastery_20", true) == true
 			end, nil, 44)

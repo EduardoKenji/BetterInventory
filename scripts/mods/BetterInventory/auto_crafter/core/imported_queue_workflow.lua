@@ -4,6 +4,7 @@ function ImportedQueueWorkflow.install(self, services)
 	local acquire_account_operation = services.acquire_account_operation
 	local cancel_catalog = services.cancel_catalog
 	local candidate_matches_stat_targets = services.candidate_matches_stat_targets
+	local candidate_stat_target_distance = services.candidate_stat_target_distance
 	local copy_stat_identity = services.copy_stat_identity
 	local copy_stat_targets = services.copy_stat_targets
 	local current_character_id = services.current_character_id
@@ -86,7 +87,7 @@ function ImportedQueueWorkflow.install(self, services)
 		for setting_id in pairs(planner_setting_ids) do
 			values[setting_id] = setting(setting_id)
 		end
-		values.auto_crafter_buy_until_target = setting("auto_crafter_buy_until_target", true)
+		values.auto_crafter_buy_until_target = setting("auto_crafter_buy_until_target", "target_search")
 		values.auto_crafter_favorite_result = setting("auto_crafter_favorite_result", true)
 
 		return {
@@ -108,6 +109,7 @@ function ImportedQueueWorkflow.install(self, services)
 			local config = planner_config()
 			config.dump_stat = job.dump_stat
 			config.dump_target = job.dump_target
+			config.dump_comparison = setting("auto_crafter_dump_stat_comparison", "exact")
 			config.custom_stats_enabled = job.custom_stats_enabled == true
 			config.custom_stat_targets = copy_stat_targets(job.custom_stat_targets)
 			config.target_offer = job.offer
@@ -240,6 +242,7 @@ function ImportedQueueWorkflow.install(self, services)
 		-- authoritative stat identity before any inventory reuse or purchase.
 		job.resolved_dump_stat = self._plan.resolved_dump_stat
 		job.dump_stat_identity = copy_stat_identity(self._plan.dump_stat_identity)
+		job.dump_comparison = self._plan.dump_comparison
 
 		local inventory_action, completed = self:_imported_job_inventory_decision(job)
 		if inventory_action == "skip" and completed then
@@ -273,7 +276,12 @@ function ImportedQueueWorkflow.install(self, services)
 		if expected_pattern and (item.parent_pattern or item.mastery_id) ~= expected_pattern then
 			return false, "completed queue weapon " .. label .. " changed weapon family"
 		end
-		if not candidate_matches_stat_targets(item, imported_dump_stat(job), job.dump_target, job.custom_stats_enabled and job.custom_stat_targets or nil, job.dump_stat_identity) then
+		local target_matches = candidate_matches_stat_targets(item, imported_dump_stat(job), job.dump_target, job.custom_stats_enabled and job.custom_stat_targets or nil, job.dump_stat_identity, job.dump_comparison)
+		local fallback_distance = result.fallback_accepted and candidate_stat_target_distance(item, imported_dump_stat(job), job.dump_target, job.custom_stats_enabled and job.custom_stat_targets or nil, job.dump_stat_identity) or nil
+		local expected_fallback_distance = tonumber(result.fallback_target_distance)
+		local fallback_matches = fallback_distance ~= nil and fallback_distance ~= math.huge and expected_fallback_distance ~= nil and expected_fallback_distance ~= math.huge and fallback_distance == expected_fallback_distance
+
+		if not target_matches and not fallback_matches then
 			return false, "completed queue weapon " .. label .. (job.custom_stats_enabled and " changed custom stats" or " changed dump stat")
 		end
 		if policy.auto_crafter_consecrate_transcendent == true and (tonumber(item.rarity) or -1) < TRANSCENDENT_RARITY then
