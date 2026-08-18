@@ -1,5 +1,9 @@
 # BetterInventory changelog
 
+## 2.8.2 - 2026-08-18
+
+- Completes and refreshes Simplified Chinese localization using lershu's community-provided translation, replacing 212 distinct stale or English values while retaining translated coverage for 34 newer settings introduced after the reference was prepared.
+
 ## 2.8.1 - 2026-08-18
 
 - Replaces Auto Crafter's tall phase-cost blocks with compact one-line currency rows for current resources, generous and unlucky total-cost estimates, and the resources remaining after each estimate; negative balances are highlighted in red.

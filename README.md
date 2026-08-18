@@ -2,7 +2,7 @@
 
 [![BetterInventory verification](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml/badge.svg)](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml)
 
-> Current release: **v2.8.1** (2026-08-18). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
+> Current release: **v2.8.2** (2026-08-18). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
 
 BetterInventory is a standalone inventory and item-management mod for Warhammer 40,000: Darktide. It adds responsive weapon and Curio cards, richer item information, configurable sorting, supported vendor layouts, optional mod integrations, and safety-gated inventory workflows.
 
@@ -18,7 +18,12 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - A bounded inventory-options panel for sorting, discard rules, integrations, and view-specific controls.
 - Optional Quick Discard, Automatic Discard, Automatic Curio Buyer, and Auto Crafter workflows with explicit ownership, authoritative revalidation, and fail-closed behavior.
 
-## What's new in v2.8.1
+## What's new in v2.8.2
+
+- Simplified Chinese localization now incorporates all 907 entries from lershu's community translation, replacing 212 distinct stale or English values across the mod.
+- All 34 newer localization entries absent from the supplied reference remain present and translated, including Curio perk-category colours and compact Auto Crafter estimates.
+
+### v2.8.1 changes included
 
 - Auto Crafter's Estimates section now uses five compact one-line rows with currency icons: current resources, generous cost, unlucky cost, and the remaining resources after each estimate. Negative projected balances are red.
 - Total estimates now include base-weapon acquisition and live recipe-derived perk/blessing replacement costs in addition to mastery, consecration, and expertise costs. Target search uses visible 100,000/300,000-docket planning boundaries, constrained by the configured acquisition cap.
