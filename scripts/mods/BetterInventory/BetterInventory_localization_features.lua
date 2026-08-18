@@ -945,6 +945,21 @@ local localization = {
 	auto_crafter_panel_total_cost = {
 		en = "Known crafting investment",
 	},
+	auto_crafter_panel_current_resources = {
+		en = "Current resources",
+	},
+	auto_crafter_panel_generous_cost = {
+		en = "Generous cost estimate",
+	},
+	auto_crafter_panel_unlucky_cost = {
+		en = "Unlucky cost estimate",
+	},
+	auto_crafter_panel_remaining_generous = {
+		en = "Remaining (generous)",
+	},
+	auto_crafter_panel_remaining_unlucky = {
+		en = "Remaining (unlucky)",
+	},
 	auto_crafter_panel_disabled = {
 		en = "disabled",
 	},

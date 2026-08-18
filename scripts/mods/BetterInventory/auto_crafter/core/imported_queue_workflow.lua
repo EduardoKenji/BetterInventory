@@ -47,6 +47,7 @@ function ImportedQueueWorkflow.install(self, services)
 
 		job.resolved_dump_stat = nil
 		job.dump_stat_identity = nil
+		cancel_catalog()
 		self._imported_job = job
 		self._run_imported_job = nil
 		self._catalog = job.catalog

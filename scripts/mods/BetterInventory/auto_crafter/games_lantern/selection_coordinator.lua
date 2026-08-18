@@ -35,6 +35,19 @@ local function copy_identity(offer)
 	return identity
 end
 
+local function identities_match(left, right)
+	left = copy_identity(left)
+	right = copy_identity(right)
+	if not left or not right then
+		return false
+	end
+	if left.offer_id ~= nil and right.offer_id ~= nil then
+		return tostring(left.offer_id) == tostring(right.offer_id)
+	end
+
+	return left.master_id ~= nil and right.master_id ~= nil and tostring(left.master_id) == tostring(right.master_id)
+end
+
 function SelectionCoordinator.new(dependencies)
 	dependencies = dependencies or {}
 
@@ -85,24 +98,41 @@ function SelectionCoordinator.new(dependencies)
 		return false
 	end
 
+	local function complete_pending(pending, observed)
+		emit("selection_complete", {
+			attempts = pending.attempts,
+			observed = observed == true,
+			offer = copy_identity(pending.offer),
+			reason = pending.reason,
+		})
+		self._pending = nil
+
+		return true
+	end
+
+	local function selection_is_observed(view, offer)
+		local ok, selected = safe_call(self._current_selection, view)
+
+		return ok and identities_match(selected, offer)
+	end
+
 	local function attempt(view)
 		local pending = self._pending
 		if not pending or not view_valid(view) then
 			return false
+		end
+		if selection_is_observed(view, pending.offer) then
+			return complete_pending(pending, true)
 		end
 
 		pending.attempts = pending.attempts + 1
 		local ok, selected, selection_error, selection_detail = safe_call(self._select_offer, view, pending.offer)
 
 		if ok and selected == true then
-			emit("selection_complete", {
-				attempts = pending.attempts,
-				offer = copy_identity(pending.offer),
-				reason = pending.reason,
-			})
-			self._pending = nil
-
-			return true
+			return complete_pending(pending, false)
+		end
+		if selection_is_observed(view, pending.offer) then
+			return complete_pending(pending, true)
 		end
 
 		pending.last_error = ok and tostring(selection_error or "selection unavailable") or tostring(selected)

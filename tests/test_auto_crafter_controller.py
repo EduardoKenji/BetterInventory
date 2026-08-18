@@ -1901,9 +1901,7 @@ def main() -> None:
 			controller._snapshot = snapshot_with(nil)
 			controller._active_view = {}
 			controller._view_is_valid = true
-			controller:update(0.03)
-			controller:update(0.03)
-			controller:update(0.03)
+			for _ = 1, 16 do controller:update(0.03) end
 			assert(selected_reads == 0)
 			controller:update(0.03)
 			assert(selected_reads > 0)
@@ -2488,6 +2486,88 @@ def main() -> None:
 			assert(at_most_result.phase == "phase4_complete")
 			assert(at_most_result.search.result.gear_id == "gear-at-most")
 			assert(at_most_result.search.fallback_accepted ~= true)
+		end
+
+		-- A staged-but-idle queue in Psych Ward must not run expensive runtime,
+		-- character, view, and native-selection probes every rendered frame.
+		do
+			local calls = {character = 0, runtime = 0, selection = 0, view = 0}
+			local idle_context = {
+				current_character_id = function()
+					calls.character = calls.character + 1
+					return "character-1"
+				end,
+				is_runtime_valid = function()
+					calls.runtime = calls.runtime + 1
+					return true
+				end,
+				is_valid_brunt_view = function()
+					calls.view = calls.view + 1
+					return true
+				end,
+			}
+			CurrentOffer = raw_offer()
+			local controller = Controller.new({
+				backend = {},
+				planner = Planner,
+				context = idle_context,
+				settings = base_settings(),
+				reporter = reports(),
+				get_selected_offer = function()
+					calls.selection = calls.selection + 1
+					return CurrentOffer
+				end,
+			})
+			controller._snapshot = snapshot_with(nil)
+			controller._active_view = {}
+			controller._view_is_valid = true
+			controller:_refresh_plan("idle_performance_setup")
+			for key in pairs(calls) do calls[key] = 0 end
+
+			for _ = 1, 60 do controller:update(1 / 60) end
+
+			assert(calls.runtime <= 2, "idle runtime checks " .. tostring(calls.runtime))
+			assert(calls.character <= 2, "idle character checks " .. tostring(calls.character))
+			assert(calls.view <= 2, "idle view checks " .. tostring(calls.view))
+			assert(calls.selection <= 2, "idle selection checks " .. tostring(calls.selection))
+		end
+
+		-- Staging an imported queue owns its parsed trait catalogue. Any native
+		-- discovery already running for the Brunt selection must be retired so its
+		-- timeout or late completion cannot replace the imported state.
+		do
+			local native_catalog = pending()
+			function native_catalog:cancel() self.cancelled = true end
+			local backend = {}
+			function backend:discover_weapon_catalog(_) return native_catalog end
+			CurrentOffer = raw_offer()
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings(), reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = snapshot_with(nil)
+			controller._active_view = {}
+			controller._view_is_valid = true
+			assert(controller:_schedule_catalog("native_before_import") == true)
+			assert(controller:snapshot().catalog_inflight == true)
+
+			local imported_catalog = {available = true, perks = {}, blessings = {}}
+			local imported_job = {
+				kind = "games_lantern_job",
+				offer = target_offer(),
+				dump_stat = "damage_stat",
+				dump_target = 60,
+				perks = {{id = "perk-1", rarity = 4}, {id = "perk-2", rarity = 4}},
+				blessings = {{id = "blessing-1", rarity = 4}, {id = "blessing-2", rarity = 4}},
+				catalog = imported_catalog,
+			}
+			assert(controller:set_imported_job(imported_job) == true)
+			assert(native_catalog.cancelled == true)
+			assert(controller:snapshot().catalog_inflight == false)
+			assert(controller:snapshot().catalog == imported_catalog)
+
+			controller:update(46)
+			assert(controller:snapshot().phase ~= "trait_discovery_failed")
+			assert(controller:snapshot().catalog == imported_catalog)
+			native_catalog.next_callback({available = false, reason = "late native result"})
+			assert(controller:snapshot().catalog == imported_catalog)
 		end
 
 		print("Auto Crafter controller Phase 2/3/4 behavior tests passed.")
