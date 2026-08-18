@@ -2624,7 +2624,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "2.8.1"
+    assert data.version == "2.8.2"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
@@ -2657,6 +2657,12 @@ def main() -> None:
         assert simplified_chinese.strip(), localization_id
         assert "{" not in simplified_chinese, localization_id
         assert "}" not in simplified_chinese, localization_id
+
+    assert localization["melee_columns"]["zh-cn"] == "近战武器列数"
+    assert localization["character_overview_group"]["zh-cn"] == "角色总览"
+    assert localization["custom_item_name_and_colors_group"]["zh-cn"] == "自定义物品名称和颜色"
+    assert localization["debug_group"]["zh-cn"] == "调试（仅测试用）"
+    assert localization["inventory_options_controller_focus_keybind"]["zh-cn"] == "物品 / 组件焦点快捷键"
 
     def inspect_widgets(widgets) -> None:
         for index in range(1, len(widgets) + 1):
