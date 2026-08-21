@@ -1,5 +1,10 @@
 # BetterInventory changelog
 
+## 2.9.0 - 2026-08-21
+
+- Gives the Better Inventory name in Mod Options an always-on per-character gradient from `#B8EF6E` to `#C33978`.
+- Uses DMF's native rich-text color markup, remains UTF-8 safe, and does not require Alf's DMF Extensions.
+
 ## 2.8.6 - 2026-08-21
 
 - Defaults Automatic Curio Buyer's Operative Selection scanning, once-per-store-rotation throttle, and idle store-refresh rescan options to On while keeping the master purchasing toggle Off.

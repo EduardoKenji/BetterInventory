@@ -224,8 +224,8 @@
     {"name": "schema_dependency_refresh", "risk": "high", "start_line": 21, "end_line": 434},
     {"name": "migration_preservation", "risk": "high", "start_line": 435, "end_line": 588},
     {"name": "character_overview_refresh", "risk": "high", "start_line": 589, "end_line": 1636},
-    {"name": "localization_contract", "risk": "medium", "start_line": 1637, "end_line": 2761},
-    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2762, "end_line": 3327}
+    {"name": "localization_contract", "risk": "medium", "start_line": 1637, "end_line": 2769},
+    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2770, "end_line": 3335}
   ],
   "test_settings_registry.py": [
     {"name": "duplicate_detection", "risk": "high", "start_line": 63, "end_line": 123},

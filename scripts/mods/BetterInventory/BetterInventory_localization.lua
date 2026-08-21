@@ -33,6 +33,35 @@ for localization_id, text in pairs(load_shard("BetterInventory_localization_zh_c
 	end
 end
 
+local function gradient_text(text, start_color, end_color)
+	local characters = {}
+
+	for character in string.gmatch(text, "[%z\1-\127\194-\244][\128-\191]*") do
+		characters[#characters + 1] = character
+	end
+
+	local result = {}
+	local denominator = math.max(#characters - 1, 1)
+
+	for index, character in ipairs(characters) do
+		local amount = (index - 1) / denominator
+		local red = math.floor(start_color[1] + (end_color[1] - start_color[1]) * amount)
+		local green = math.floor(start_color[2] + (end_color[2] - start_color[2]) * amount)
+		local blue = math.floor(start_color[3] + (end_color[3] - start_color[3]) * amount)
+
+		result[#result + 1] = string.format("{#color(%d,%d,%d)}%s", red, green, blue, character)
+	end
+
+	return table.concat(result) .. "{#reset()}"
+end
+
+local name_gradient_start = { 184, 239, 110 } -- #B8EF6E
+local name_gradient_end = { 195, 57, 120 } -- #C33978
+
+for language, text in pairs(localization.mod_name or {}) do
+	localization.mod_name[language] = gradient_text(text, name_gradient_start, name_gradient_end)
+end
+
 -- Character-slot controls must exist in the static DMF schema so their
 -- cardinality is stable for Alf's DMF Extensions and across cold starts. Their
 -- initialized titles are replaced with discovered operative names at runtime.

@@ -2643,7 +2643,14 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "2.8.6"
+    assert data.version == "2.9.0"
+
+    gradient_name = localization["mod_name"]["en"]
+    assert gradient_name.startswith("{#color(184,239,110)}B")
+    assert gradient_name.endswith("{#color(195,57,120)}y{#reset()}")
+    assert gradient_name.count("{#color(") == len("Better Inventory")
+    assert localization["mod_name"]["zh-cn"].startswith("{#color(184,239,110)}")
+    assert localization["mod_name"]["zh-cn"].endswith("{#color(195,57,120)}y{#reset()}")
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
@@ -2674,8 +2681,9 @@ def main() -> None:
         simplified_chinese = localized_values["zh-cn"]
         assert isinstance(simplified_chinese, str), localization_id
         assert simplified_chinese.strip(), localization_id
-        assert "{" not in simplified_chinese, localization_id
-        assert "}" not in simplified_chinese, localization_id
+        if localization_id != "mod_name":
+            assert "{" not in simplified_chinese, localization_id
+            assert "}" not in simplified_chinese, localization_id
 
     untranslated_chinese = {
         localization_id

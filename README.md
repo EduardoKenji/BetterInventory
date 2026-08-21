@@ -2,7 +2,7 @@
 
 [![BetterInventory verification](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml/badge.svg)](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml)
 
-> Current release: **v2.8.6** (2026-08-21). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
+> Current release: **v2.9.0** (2026-08-21). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
 
 BetterInventory is a standalone inventory and item-management mod for Warhammer 40,000: Darktide. It adds responsive weapon and Curio cards, richer item information, configurable sorting, supported vendor layouts, optional mod integrations, and safety-gated inventory workflows.
 
@@ -18,7 +18,11 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - A bounded inventory-options panel for sorting, discard rules, integrations, and view-specific controls.
 - Optional Quick Discard, Automatic Discard, Automatic Curio Buyer, and Auto Crafter workflows with explicit ownership, authoritative revalidation, and fail-closed behavior.
 
-## What's new in v2.8.6
+## What's new in v2.9.0
+
+- Better Inventory's name in Mod Options now uses an always-on `#B8EF6E` to `#C33978` gradient for every user, implemented with DMF's native rich-text colors and no dependency on Alf's DMF Extensions.
+
+### v2.8.6 changes included
 
 - Automatic Curio Buyer's Operative Selection scan, once-per-store-rotation throttle, and idle store-refresh rescan now default to On. The master Automatic Curio Buyer toggle remains Off, so this does not enable purchasing by default.
 - Simplified Chinese now translates the 46 generated weapon and Curio image-layout controls that previously appeared in English; automated coverage permits only language-neutral keybind labels to remain identical to English.
@@ -234,7 +238,7 @@ Run the complete repository verification from the project root:
 powershell -ExecutionPolicy Bypass -File .\tests\verify.ps1
 ```
 
-The v2.8.6 suite currently discovers 41 behavior-test files and 162 named cases. To run the behavior suite directly with risk-weighted Lua coverage:
+The v2.9.0 suite currently discovers 41 behavior-test files and 162 named cases. To run the behavior suite directly with risk-weighted Lua coverage:
 
 ```powershell
 py -3 .\tests\run_tests.py --timeout-seconds 45 --coverage-output lua-coverage.json
