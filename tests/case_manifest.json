@@ -213,7 +213,7 @@
     {"name": "card_geometry", "risk": "high", "start_line": 613, "end_line": 1455},
       {"name": "weapon_modifier_data_only_resolution", "risk": "critical", "start_line": 1456, "end_line": 1836},
         {"name": "content_and_resource_ownership", "risk": "high", "start_line": 1837, "end_line": 3048},
-    {"name": "integration_boundaries", "risk": "medium", "start_line": 3049, "end_line": 4884}
+    {"name": "integration_boundaries", "risk": "medium", "start_line": 3049, "end_line": 4889}
   ],
   "test_operation_arbiter.py": [
     {"name": "manual_automatic_exclusion", "risk": "critical", "start_line": 20, "end_line": 34},

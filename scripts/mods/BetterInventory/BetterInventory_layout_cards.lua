@@ -580,6 +580,7 @@ local function add_blessing_text_pass(pass_template, index, options)
 	style.better_inventory_truncate_long_name = options.truncate_long_name == true
 	style.better_inventory_minimum_font_size = options.minimum_font_size
 	style.better_inventory_force_single_line = options.force_single_line == true
+	style.better_inventory_fit_font_size_bonus = options.fit_font_size_bonus or 0
 	style.text_color = table.clone(options.text_color or DEFAULT_WEAPON_PERK_COLOR)
 
 	pass_template[#pass_template + 1] = {
@@ -1253,6 +1254,7 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 		local truncate_long_name = setting(mod, "truncate_long_blessing_names", false)
 		local minimum_font_size = MINIMUM_AUTO_FIT_BLESSING_FONT_SIZE
 		local force_single_line = false
+		local fit_font_size_bonus = 0
 
 		if configuration.character_overview then
 			local name_mode = setting(mod, "character_overview_blessing_name_mode", "two_lines")
@@ -1262,6 +1264,7 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 				truncate_long_name = true
 				minimum_font_size = 6
 				force_single_line = true
+				fit_font_size_bonus = 1
 			elseif name_mode == "ellipsis" then
 				auto_fit_long_name = false
 				truncate_long_name = true
@@ -1305,6 +1308,7 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 				truncate_long_name = truncate_long_name,
 				minimum_font_size = minimum_font_size,
 				force_single_line = force_single_line,
+				fit_font_size_bonus = fit_font_size_bonus,
 				offset = {
 					blessing_text_left,
 					y_offset,
@@ -1714,6 +1718,7 @@ local function fit_blessing_text(parent, widget, ui_renderer)
 			local auto_fit_long_name = style.better_inventory_auto_fit_long_name == true
 			local truncate_long_name = style.better_inventory_truncate_long_name == true
 			local force_single_line = style.better_inventory_force_single_line == true
+			local fit_font_size_bonus = math.max(0, tonumber(style.better_inventory_fit_font_size_bonus) or 0)
 			local safe_width = math.max(1, maximum_width - BLESSING_TEXT_WIDTH_SAFETY_MARGIN)
 			measurement_size[2] = style.size[2] or 30
 
@@ -1728,9 +1733,38 @@ local function fit_blessing_text(parent, widget, ui_renderer)
 				measured_width = Text.text_width(ui_renderer, value, style, measurement_size, true)
 			end
 
-			if truncate_long_name and measured_width > safe_width then
-				content[content_id] = Text.crop_text_width(ui_renderer, value, style, safe_width)
+			-- Character Overview has a small visual gap before its blessing icons.
+			-- Spend that safety margin on at most one extra font step when it still
+			-- fits the actual pass width.
+			if auto_fit_long_name and fit_font_size_bonus > 0 and style.font_size < preferred_font_size then
+				local fitted_font_size = style.font_size
+				local candidate_font_size = math.min(preferred_font_size, fitted_font_size + fit_font_size_bonus)
+
+				style.font_size = candidate_font_size
+
+				local candidate_width = Text.text_width(ui_renderer, value, style, measurement_size, true)
+
+				if candidate_width <= maximum_width then
+					measured_width = candidate_width
+				else
+					style.font_size = fitted_font_size
+				end
 			end
+
+			local crop_width = fit_font_size_bonus > 0 and maximum_width or safe_width
+			local fitted_value = value
+
+			if truncate_long_name and measured_width > crop_width then
+				fitted_value = Text.crop_text_width(ui_renderer, value, style, crop_width)
+			end
+
+			if force_single_line then
+				-- The renderer can wrap even with word_wrap=false. Non-breaking spaces
+				-- make the one-line contract explicit for both shrink and ellipsis.
+				fitted_value = non_wrapping_title(fitted_value)
+			end
+
+			content[content_id] = fitted_value
 
 			if measured_width <= safe_width or truncate_long_name or force_single_line then
 				-- Darktide can wrap on glyph-boundary rounding even when the measured
@@ -1760,6 +1794,7 @@ local function apply_character_overview_blessing_name_mode(mod, widget)
 			style.better_inventory_truncate_long_name = name_mode ~= "two_lines"
 			style.better_inventory_minimum_font_size = name_mode == "shrink_to_fit" and 6 or MINIMUM_AUTO_FIT_BLESSING_FONT_SIZE
 			style.better_inventory_force_single_line = name_mode ~= "two_lines"
+			style.better_inventory_fit_font_size_bonus = name_mode == "shrink_to_fit" and 1 or 0
 		end
 	end
 end

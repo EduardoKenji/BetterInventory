@@ -3435,9 +3435,10 @@ def main() -> None:
         lua.table_from({}), None, shrink_blueprint,
     )
     assert shrink_style.better_inventory_minimum_font_size == 6
-    assert shrink_style.font_size < 13
+    assert shrink_style.better_inventory_fit_font_size_bonus == 1
+    assert shrink_style.font_size == 10
     assert shrink_style.word_wrap is False
-    assert shrink_widget.content.better_inventory_blessing_text_2 == "Rending Shockwave"
+    assert shrink_widget.content.better_inventory_blessing_text_2 == "Rending\u00a0Shockwave"
 
     ellipsis_blueprint = overview_blessing_blueprint("ellipsis")
     ellipsis_style = blueprint_pass(
@@ -3466,6 +3467,7 @@ def main() -> None:
     assert ellipsis_style.font_size == 13
     assert ellipsis_style.word_wrap is False
     assert ellipsis_widget.content.better_inventory_blessing_text_2.endswith("...")
+    assert "\u00a0" in ellipsis_widget.content.better_inventory_blessing_text_2
 
     # The mode is read again when a Character Overview widget initializes.
     # Match InventoryView's native call: no renderer argument is supplied, so
@@ -3499,6 +3501,7 @@ def main() -> None:
     assert live_style.better_inventory_force_single_line is True
     assert live_style.word_wrap is False
     assert live_widget.content.better_inventory_blessing_text_2.endswith("...")
+    assert "\u00a0" in live_widget.content.better_inventory_blessing_text_2
 
     mod.settings.auto_fit_long_blessing_names = True
     mod.settings.truncate_long_blessing_names = False
