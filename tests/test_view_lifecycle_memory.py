@@ -53,6 +53,8 @@ def main() -> None:
     assert "FeatureDomains.markers.release_all()" in runtime
     assert "EquipmentPersistence.on_view_closed(view)" in runtime
     assert "EquipmentPersistence.reset()" in runtime
+    assert "Features.request_inventory_resort(view)" in runtime
+    assert "Features.flush_inventory_resort(mod, Layout, view)" in runtime
     assert "release_transient_item_caches()" in runtime
     assert "CharacterOverviewUI.needs_update()" in runtime
     assert "FeatureDomains.markers.needs_update()" in runtime

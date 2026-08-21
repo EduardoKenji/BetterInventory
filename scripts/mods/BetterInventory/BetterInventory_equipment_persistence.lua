@@ -25,6 +25,16 @@ local function item_identity(item)
 	return item.gear_id or item.always_owned and item.name or nil
 end
 
+local function profile_character_id(profile)
+	if type(profile) ~= "table" then
+		return nil
+	end
+
+	local character_id = profile.character_id or profile.characterId
+
+	return character_id ~= nil and tostring(character_id) or nil
+end
+
 local function resolve_item(view, item)
 	if type(view) == "table" and type(view._get_item) == "function" then
 		local success, resolved = pcall(view._get_item, view, item)
@@ -60,6 +70,12 @@ local function slot_is_valid(view, slot_name)
 end
 
 local function view_character_id(view)
+	local presentation_character_id = type(view) == "table" and profile_character_id(view._presentation_profile) or nil
+
+	if presentation_character_id then
+		return presentation_character_id
+	end
+
 	local player = type(view) == "table" and view._preview_player or nil
 
 	if player and not player.__deleted and type(player.character_id) == "function" then
@@ -125,9 +141,17 @@ local function capture_intent(view)
 		return
 	end
 
+	local character_id = view_character_id(view)
+
+	-- Character-switch mods can repoint the shared local-player object while an
+	-- old InventoryBackgroundView is still alive. Never capture that mixed view.
+	if character_id == nil or character_id ~= current_character_id() then
+		return
+	end
+
 	local intent = {
 		account_key = current_account_key(),
-		character_id = view_character_id(view),
+		character_id = character_id,
 		gear_items = {},
 		local_items = {},
 		records = {},
@@ -343,6 +367,12 @@ observe_promise = function(mod, operation, promise)
 			return result
 		end
 
+		if not context_is_current(operation) then
+			retire_operation(operation)
+
+			return result
+		end
+
 		if result_succeeded(result) then
 			apply_confirmed_intent(operation)
 			retire_operation(operation)
@@ -389,6 +419,12 @@ EquipmentPersistence.update = function(mod, dt)
 	local operation = state.active
 
 	if not operation then
+		return
+	end
+
+	if not context_is_current(operation) then
+		retire_operation(operation)
+
 		return
 	end
 
@@ -454,8 +490,14 @@ EquipmentPersistence.refresh_from_authoritative_profile = function(view, peer_id
 	end
 
 	local operation = state.active
+	local character_id = view_character_id(view)
+	local current_id = current_character_id()
 
-	if operation and operation.character_id == view_character_id(view) then
+	if character_id == nil or current_id == nil or character_id ~= current_id then
+		return false
+	end
+
+	if operation and operation.character_id == character_id then
 		-- Do not let an unrelated profile event erase the optimistic loadout while
 		-- its backend write is still pending or awaiting a confirmed-failure retry.
 		return false
@@ -478,6 +520,10 @@ EquipmentPersistence.refresh_from_authoritative_profile = function(view, peer_id
 	local profile_ok, profile = pcall(player.profile, player)
 
 	if not profile_ok or type(profile) ~= "table" then
+		return false
+	end
+
+	if profile_character_id(profile) ~= character_id then
 		return false
 	end
 

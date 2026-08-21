@@ -19,7 +19,7 @@ def main() -> None:
     )
     assert actual["archive_root"] == "BetterInventory"
     assert actual["file_count"] == len(actual["files"])
-    assert actual["version"] == "2.8.2"
+    assert actual["version"] == "2.8.3"
     assert all("\\" not in entry["archive_path"] for entry in actual["files"])
     print(
         "BetterInventory runtime bundle manifest passed: "

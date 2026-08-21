@@ -65,6 +65,20 @@
       "modules": ["BetterInventory_equipment_persistence.lua"]
     },
     {
+      "name": "equipment.isolates-character-switches",
+      "test": "test_equipment_persistence.py",
+      "case": "cross_character_view_isolation",
+      "outcome": "late equip settlements and profile events cannot mutate a loadout view whose stable presentation character differs from the live local character",
+      "modules": ["BetterInventory_equipment_persistence.lua", "BetterInventory_runtime.lua"]
+    },
+    {
+      "name": "inventory.defers-equip-resort",
+      "test": "test_features.py",
+      "case": "sorting_and_navigation",
+      "outcome": "equip and favorite callbacks coalesce inventory resorts until post-update, while a throwing compatibility sort hook is quarantined per view",
+      "modules": ["BetterInventory_features.lua", "BetterInventory_feature_sorting.lua", "BetterInventory_runtime.lua"]
+    },
+    {
       "name": "curio.rotation-waits",
       "test": "test_curio_acquisition.py",
       "case": "store_rotation_gate",

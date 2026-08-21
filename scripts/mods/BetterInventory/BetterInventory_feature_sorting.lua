@@ -380,6 +380,52 @@ Sorting.new_comparator_manager = function(dependencies)
 		end
 	end
 
+	-- Inventory card callbacks run inside Darktide's ViewElementGrid update.
+	-- Re-presenting there replaces widgets while native code still traverses
+	-- them. Coalesce requests and flush only from the view's post-update hook.
+	manager.request_resort = function(view)
+		if type(view) ~= "table" or view._destroyed or view._better_inventory_resort_faulted then
+			return false
+		end
+
+		view._better_inventory_resort_pending = true
+
+		return true
+	end
+
+	manager.flush_resort = function(mod, layout, view)
+		if type(view) ~= "table" or view._destroyed or view._better_inventory_resort_pending ~= true then
+			return false
+		end
+
+		view._better_inventory_resort_pending = nil
+
+		local success, result = pcall(manager.resort, mod, layout, view)
+
+		if success then
+			return result ~= false
+		end
+
+		view._better_inventory_resort_faulted = true
+
+		if mod and type(mod.warning) == "function" then
+			mod:warning("Deferred inventory resort disabled for this view: %s", tostring(result))
+		end
+
+		return false
+	end
+
+	manager.release_deferred_resort = function(view)
+		if type(view) ~= "table" then
+			return false
+		end
+
+		view._better_inventory_resort_pending = nil
+		view._better_inventory_resort_faulted = nil
+
+		return true
+	end
+
 	return manager
 end
 

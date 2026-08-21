@@ -1,5 +1,12 @@
 # BetterInventory changelog
 
+## 2.8.3 - 2026-08-21
+
+- Defers equipped/favorite-priority re-sorting until `InventoryWeaponsView` finishes its native update, preventing an equip click from replacing the item-grid widget array while Darktide is still traversing it.
+- Coalesces repeated same-frame re-sort requests and quarantines a throwing third-party sort hook to the affected view instead of repeating the error every frame.
+- Binds equipment-persistence state to the loadout view's stable presentation character, so InstantCharacterChange-style swaps, delayed profile events, and late backend promise settlements cannot write into a stale character view.
+- Confirms Automatic Discard and Automatic Curio Buyer remain Morningstar-only, while Auto Crafter remains gated by its live Brunt/context checks; none can start account mutations from a mission lobby or Psykanium weapon switch.
+
 ## 2.8.2 - 2026-08-18
 
 - Completes and refreshes Simplified Chinese localization using lershu's community-provided translation, replacing 212 distinct stale or English values while retaining translated coverage for 34 newer settings introduced after the reference was prepared.

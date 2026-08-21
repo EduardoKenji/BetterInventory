@@ -1388,10 +1388,10 @@ def main() -> None:
     features.bind_inventory_sort_toggle(mod, layout, melee_view)
     sortable_view._widgets_by_name[toggle_id].content.hotspot.pressed_callback()
     assert mod.settings.prioritize_equipped_favorites is False
-    assert sortable_view.resorted is True
-    assert melee_view.resorted is True
-    assert sortable_view._widgets_by_name[toggle_id].content.checked is False
-    assert melee_view._widgets_by_name[toggle_id].content.checked is False
+    assert sortable_view.resorted is not True and melee_view.resorted is not True
+    assert sortable_view._better_inventory_resort_pending is True and melee_view._better_inventory_resort_pending is True
+    assert features.flush_inventory_resort(mod, layout, sortable_view) is True and features.flush_inventory_resort(mod, layout, melee_view) is True
+    assert sortable_view.resorted is True and melee_view.resorted is True
 
     mod.settings.prioritize_equipped_favorites = True
     features.sync_inventory_sort_setting(mod, layout)
@@ -1403,11 +1403,41 @@ def main() -> None:
     mod.settings.prioritize_equipped_favorites = False
     features.sync_inventory_sort_setting(mod, layout)
     assert sortable_view._widgets_by_name[toggle_id].content.checked is False
-    assert sortable_view.resorted is False
+    assert features.flush_inventory_resort(mod, layout, sortable_view) is True and sortable_view.resorted is False
 
     sortable_view._discard_items_element = None
     features.resort_inventory(mod, layout, sortable_view)
     assert sortable_view.resorted is True
+
+    # An equip/favorite callback may request several sorts during one native
+    # grid traversal. Coalesce them, flush once after update, and quarantine a
+    # compatibility hook that throws instead of crashing every later frame.
+    deferred_view = lua.execute(
+        r"""
+        return {
+            __class_name = "InventoryWeaponsView",
+            slot_kind = "slot_primary",
+            _selected_sort_option_index = 1,
+            _sort_options = {{sort_function = function() return false end}},
+            _sort_grid_layout = function(self)
+                self.deferred_sort_count = (self.deferred_sort_count or 0) + 1
+            end,
+        }
+        """
+    )
+    assert features.request_inventory_resort(deferred_view) is True
+    assert features.request_inventory_resort(deferred_view) is True
+    assert deferred_view.deferred_sort_count is None
+    assert features.flush_inventory_resort(mod, layout, deferred_view) is True
+    assert deferred_view.deferred_sort_count == 1
+    deferred_view._sort_grid_layout = lua.eval('function() error("foreign sort failure") end')
+    quarantine_mod = lua.table_from({"warning": lua.eval("function() end")})
+    assert features.request_inventory_resort(deferred_view) is True
+    assert features.flush_inventory_resort(quarantine_mod, layout, deferred_view) is False
+    assert deferred_view._better_inventory_resort_faulted is True
+    assert features.request_inventory_resort(deferred_view) is False
+    features.unregister_inventory_view(deferred_view)
+    assert deferred_view._better_inventory_resort_faulted is None
 
     mod.settings.prioritize_equipped_favorites = True
     features.sync_inventory_sort_setting(mod, layout)

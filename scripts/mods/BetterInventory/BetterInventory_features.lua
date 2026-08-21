@@ -1520,41 +1520,25 @@ end
 
 local sort_comparator_manager
 
-Features.restore_sort_options = function(view)
-	if sort_comparator_manager then
-		return sort_comparator_manager.restore(view)
+local function sorting_proxy(method_name)
+	return function(...)
+		local method = sort_comparator_manager and sort_comparator_manager[method_name]
+
+		if type(method) == "function" then
+			return method(...)
+		end
 	end
 end
 
-Features.configure_inventory_sort_options = function(mod, layout, view)
-	if sort_comparator_manager then
-		return sort_comparator_manager.configure_inventory(mod, layout, view)
-	end
-end
-
-Features.configure_armoury_sort_options = function(mod, view)
-	if sort_comparator_manager then
-		return sort_comparator_manager.configure_armoury(mod, view)
-	end
-end
-
-Features.configure_global_store_sort_options = function(mod, view)
-	if sort_comparator_manager then
-		return sort_comparator_manager.configure_global_store(mod, view)
-	end
-end
-
-Features.rebind_sort_options = function(mod, layout)
-	if sort_comparator_manager then
-		return sort_comparator_manager.rebind(mod, layout)
-	end
-end
-
-Features.resort_inventory = function(mod, layout, view)
-	if sort_comparator_manager then
-		return sort_comparator_manager.resort(mod, layout, view)
-	end
-end
+Features.restore_sort_options = sorting_proxy("restore")
+Features.configure_inventory_sort_options = sorting_proxy("configure_inventory")
+Features.configure_armoury_sort_options = sorting_proxy("configure_armoury")
+Features.configure_global_store_sort_options = sorting_proxy("configure_global_store")
+Features.rebind_sort_options = sorting_proxy("rebind")
+Features.resort_inventory = sorting_proxy("resort")
+Features.request_inventory_resort = sorting_proxy("request_resort")
+Features.flush_inventory_resort = sorting_proxy("flush_resort")
+Features.release_inventory_resort = sorting_proxy("release_deferred_resort")
 
 local function preview_profile_for_discard(view)
 	local player = view and view._preview_player
@@ -2333,7 +2317,7 @@ Features.sync_inventory_sort_setting = function(mod, layout)
 			perfect_panel_content.checked = perfect_rolls_enabled
 		end
 
-		Features.resort_inventory(mod, layout, view)
+		Features.request_inventory_resort(view)
 	end
 
 	for view in pairs(registered_armoury_views) do
@@ -2480,6 +2464,8 @@ Features.bind_inventory_sort_toggle = function(mod, layout, view)
 end
 
 Features.unregister_inventory_view = function(view)
+	Features.release_inventory_resort(view)
+
 	local session_closed = Features.end_view_session(view, "view_exit")
 
 	if not session_closed then

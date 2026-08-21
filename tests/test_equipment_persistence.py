@@ -174,6 +174,7 @@ def main() -> None:
         current_character = "character-a"
         current_account = "account-a"
         authoritative_profile = {
+            character_id = "character-a",
             loadout = {},
             marker = "authoritative",
         }
@@ -415,6 +416,34 @@ def main() -> None:
     assert timeout_operation.view is None
     globals_.native_promise.resolve(globals_.native_promise, lua.table_from([True]))
     assert module.status() == ("idle", 0)
+
+    # Character-switch mods can repoint the live local-player object while an
+    # old loadout view and its backend promise still exist. A late success must
+    # not write into that stale view, and frame polling must retire it promptly.
+    globals_.view._presentation_profile = globals_.authoritative_profile
+    globals_.view._starting_profile_equipped_items.slot_primary = globals_.old_weapon
+    globals_.native_promise = globals_.TestPromise.pending()
+    module.persist_local_changes(globals_.test_mod, globals_.native_equip, globals_.view)
+    switched_operation = module._test.active_operation()
+    globals_.current_character = "character-b"
+    globals_.native_promise.resolve(globals_.native_promise, lua.table_from([True]))
+    assert module.has_pending() is False
+    assert switched_operation.retired is True
+    assert globals_.view._starting_profile_equipped_items.slot_primary.gear_id == "old-weapon"
+    assert module._test.capture_intent(globals_.view) is None
+    assert module.refresh_from_authoritative_profile(globals_.view) is False
+
+    globals_.current_character = "character-a"
+    globals_.native_promise = globals_.TestPromise.pending()
+    module.persist_local_changes(globals_.test_mod, globals_.native_equip, globals_.view)
+    polled_operation = module._test.active_operation()
+    globals_.current_character = "character-b"
+    module.update(globals_.test_mod, 0)
+    assert module.has_pending() is False
+    assert polled_operation.retired is True
+    globals_.native_promise.resolve(globals_.native_promise, lua.table_from([False]))
+    assert module.status() == ("idle", 0)
+    globals_.current_character = "character-a"
 
     print("BetterInventory equipment persistence tests passed.")
 

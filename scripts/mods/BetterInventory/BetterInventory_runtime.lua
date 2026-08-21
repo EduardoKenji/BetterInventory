@@ -1604,12 +1604,12 @@ if ensure_class_method(CreditsVendorView, "_setup_sort_options") then
 end
 
 if ensure_class_method(InventoryWeaponsView, "update") then
-	-- Post-update work does not need to wrap Darktide's complete inventory update.
-	-- Besides adding a hot-path call frame, wrapper ownership makes performance
-	-- monitors charge the native O(inventory) traversal to BetterInventory.
+	-- Keep this outside Darktide's native inventory traversal so performance
+	-- monitors do not charge its O(inventory) work to BetterInventory.
 	mod:hook_safe(InventoryWeaponsView, "update", function(view, dt, t, input_service)
 		Features.update_inventory_sort_toggle(mod, Layout, view)
 		Features.update_inventory_options_panel_controller_selection(view, input_service)
+		Features.flush_inventory_resort(mod, Layout, view)
 	end)
 end
 
@@ -1638,7 +1638,7 @@ mod:hook_safe(InventoryWeaponsView, "cb_on_favorite_pressed", function(view)
 	invalidate_myfavorites_grid(item_grid)
 
 	if mod:get("prioritize_equipped_favorites") ~= false then
-		Features.resort_inventory(mod, Layout, view)
+		Features.request_inventory_resort(view)
 	end
 end)
 
@@ -1692,7 +1692,7 @@ mod:hook_safe(InventoryWeaponsView, "_equip_item", function(view)
 	invalidate_myfavorites_grid(item_grid)
 
 	if mod:get("prioritize_equipped_favorites") ~= false then
-		Features.resort_inventory(mod, Layout, view)
+		Features.request_inventory_resort(view)
 	end
 end)
 
