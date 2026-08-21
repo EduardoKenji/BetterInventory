@@ -40,6 +40,7 @@ local CHARACTER_OVERVIEW_VISUAL_SETTING_IDS = {
 	character_overview_show_melee_rarity_strip = true,
 	enable_character_overview_ranged_mirror = true,
 	character_overview_show_ranged_rarity_strip = true,
+	character_overview_blessing_name_mode = true,
 	character_overview_show_only_dump_stat = true,
 	character_overview_dump_stat_horizontal_offset = true,
 	character_overview_dump_stat_font_scale_percent = true,
@@ -1454,6 +1455,10 @@ if ensure_class_method(InventoryView, "_create_entry_widget_from_config") then
 		local adjust_runtime_equipped_icon = view and view.__class_name == "InventoryView" and not preserve_visible_equipment_placement and setting_id ~= nil
 
 		if view and view.__class_name == "InventoryView" and setting_id ~= nil then
+			if registered_character_overview_views[view] == nil then
+				view.better_inventory_character_overview_visual_settings_generation = character_overview_visual_settings_generation
+			end
+
 			registered_character_overview_views[view] = true
 		end
 

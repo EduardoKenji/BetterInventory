@@ -45,6 +45,7 @@ def main() -> None:
 			enable_quick_look_card_single_column_integration = true,
 			enable_quick_look_card_grid_integration = true,
 			character_overview_show_only_dump_stat = false,
+			character_overview_blessing_name_mode = "two_lines",
 			character_overview_dump_stat_horizontal_offset = 0,
 			character_overview_dump_stat_font_scale_percent = 100,
 			character_overview_dump_stat_color_preset = "pink",
@@ -461,6 +462,7 @@ def main() -> None:
     lua.globals().TestCapabilities = capabilities
     lua.globals().TestSettingsRegistry = settings_registry
     lua.globals().TestFeatureDomains = feature_domains
+    assert character_overview_ui.is_visual_setting("character_overview_blessing_name_mode") is True
     lua.execute(
         """
 		local original_runtime_configure = TestRuntime.configure
@@ -863,6 +865,10 @@ def main() -> None:
     mod.on_setting_changed("character_overview_show_only_dump_stat")
     update_character_overview()
     assert globals_.overview_layout_switches == 3
+    settings.character_overview_blessing_name_mode = "ellipsis"
+    mod.on_setting_changed("character_overview_blessing_name_mode")
+    update_character_overview()
+    assert globals_.overview_layout_switches == 4
 
     runtime_hotspot_style = lua.table_from(
         {
@@ -1534,6 +1540,7 @@ def main() -> None:
 		"global_store_single_column_modifier_vertical_position",
 		"character_overview_show_melee_rarity_strip",
 		"character_overview_show_ranged_rarity_strip",
+		"character_overview_blessing_name_mode",
 		"character_overview_show_only_dump_stat",
 		"character_overview_dump_stat_horizontal_offset",
 		"character_overview_dump_stat_font_scale_percent",
@@ -1811,6 +1818,7 @@ def main() -> None:
     assert entries_by_id["character_overview_curio_font_size_percent"].disabled is False
     assert entries_by_id["character_overview_show_melee_rarity_strip"].disabled is False
     assert entries_by_id["character_overview_show_ranged_rarity_strip"].disabled is False
+    assert entries_by_id["character_overview_blessing_name_mode"].disabled is True
     assert entries_by_id["character_overview_show_only_dump_stat"].disabled is False
     dump_style_ids = (
         "character_overview_dump_stat_horizontal_offset",
@@ -1828,23 +1836,33 @@ def main() -> None:
         assert entries_by_id[dump_style_id].disabled is False
     assert entries_by_id["character_overview_show_curio_rarity_strip"].disabled is False
     assert entries_by_id["character_overview_use_native_curio_overlay"].disabled is False
+    settings.weapon_blessing_display_mode = "ranked_text"
+    mod.on_setting_changed("weapon_blessing_display_mode")
+    assert entries_by_id["character_overview_blessing_name_mode"].disabled is False
     settings.enable_character_overview_melee_mirror = False
     settings.enable_character_overview_ranged_mirror = False
     mod.on_setting_changed("enable_character_overview_ranged_mirror")
+    assert entries_by_id["character_overview_blessing_name_mode"].disabled is True
     assert entries_by_id["character_overview_show_only_dump_stat"].disabled is True
     assert entries_by_id["character_overview_dump_stat_horizontal_offset"].disabled is True
     settings.enable_character_overview_melee_mirror = True
     mod.on_setting_changed("enable_character_overview_melee_mirror")
+    assert entries_by_id["character_overview_blessing_name_mode"].disabled is False
     assert entries_by_id["character_overview_show_only_dump_stat"].disabled is False
     assert entries_by_id["character_overview_dump_stat_horizontal_offset"].disabled is False
     settings.enable_quick_look_card_single_column_integration = False
     mod.on_setting_changed("enable_quick_look_card_single_column_integration")
+    assert entries_by_id["character_overview_blessing_name_mode"].disabled is True
     assert entries_by_id["character_overview_show_only_dump_stat"].disabled is True
     assert entries_by_id["character_overview_dump_stat_horizontal_offset"].disabled is True
     settings.enable_quick_look_card_single_column_integration = True
     mod.on_setting_changed("enable_quick_look_card_single_column_integration")
+    assert entries_by_id["character_overview_blessing_name_mode"].disabled is False
     assert entries_by_id["character_overview_show_only_dump_stat"].disabled is False
     assert entries_by_id["character_overview_dump_stat_horizontal_offset"].disabled is False
+    settings.weapon_blessing_display_mode = "icons"
+    mod.on_setting_changed("weapon_blessing_display_mode")
+    assert entries_by_id["character_overview_blessing_name_mode"].disabled is True
     settings.character_overview_show_only_dump_stat = False
     mod.on_setting_changed("character_overview_show_only_dump_stat")
     for dump_style_id in dump_style_ids:
@@ -2522,6 +2540,7 @@ def main() -> None:
 			"new_item_highlight_color_b",
 			"character_overview_show_melee_rarity_strip",
 			"character_overview_show_ranged_rarity_strip",
+			"character_overview_blessing_name_mode",
 			"character_overview_show_only_dump_stat",
 			"character_overview_dump_stat_horizontal_offset",
 			"character_overview_dump_stat_font_scale_percent",
@@ -2624,7 +2643,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "2.8.3"
+    assert data.version == "2.8.4"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
@@ -2832,6 +2851,7 @@ def main() -> None:
         "character_overview_show_melee_rarity_strip",
         "enable_character_overview_ranged_mirror",
         "character_overview_show_ranged_rarity_strip",
+        "character_overview_blessing_name_mode",
         "character_overview_show_only_dump_stat",
         "character_overview_dump_stat_horizontal_offset",
         "character_overview_dump_stat_font_scale_percent",
@@ -2845,6 +2865,11 @@ def main() -> None:
         "character_overview_curio_name_mode",
         "character_overview_curio_font_size_percent",
     ]
+    blessing_name_mode = character_overview_view_group.sub_widgets[5]
+    assert [
+        blessing_name_mode.options[index].value
+        for index in range(1, len(blessing_name_mode.options) + 1)
+    ] == ["two_lines", "shrink_to_fit", "ellipsis"]
     additional_views_index = top_level_ids.index("additional_views_group")
     assert top_level_ids[additional_views_index + 1] == "layout_group"
     grid_layout_index = top_level_ids.index("layout_group")
@@ -3040,6 +3065,7 @@ def main() -> None:
     assert defaults["character_overview_show_melee_rarity_strip"] is True
     assert defaults["enable_character_overview_ranged_mirror"] is True
     assert defaults["character_overview_show_ranged_rarity_strip"] is True
+    assert defaults["character_overview_blessing_name_mode"] == "ellipsis"
     assert defaults["character_overview_show_only_dump_stat"] is False
     assert defaults["character_overview_dump_stat_horizontal_offset"] == -10
     assert defaults["character_overview_dump_stat_font_scale_percent"] == 130

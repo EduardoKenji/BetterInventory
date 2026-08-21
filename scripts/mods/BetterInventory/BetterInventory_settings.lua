@@ -36,6 +36,7 @@ local DEPENDENCY_REFRESH_SETTING_IDS = {
 	"enable_character_overview_curio_details",
 	"character_overview_show_melee_rarity_strip",
 	"character_overview_show_ranged_rarity_strip",
+	"character_overview_blessing_name_mode",
 	"character_overview_show_only_dump_stat",
 	"character_overview_dump_stat_horizontal_offset",
 	"character_overview_dump_stat_font_scale_percent",

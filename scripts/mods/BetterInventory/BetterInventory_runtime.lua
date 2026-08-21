@@ -638,6 +638,7 @@ local function refresh_option_dependencies()
 	local character_overview_dump_stat_enabled, character_overview_dump_stat_reason = character_overview_dump_stat_style_state()
 	set_option_enabled(option_dependency_entries.character_overview_show_melee_rarity_strip, character_overview_melee_enabled, mod:localize("option_requires_character_overview_melee_mirror"))
 	set_option_enabled(option_dependency_entries.character_overview_show_ranged_rarity_strip, character_overview_ranged_enabled, mod:localize("option_requires_character_overview_ranged_mirror"))
+	set_option_enabled(option_dependency_entries.character_overview_blessing_name_mode, character_overview_weapon_enabled and weapon_blessing_text_enabled, not character_overview_weapon_enabled and mod:localize("option_requires_character_overview_weapon_mirror") or mod:localize("option_requires_weapon_blessing_text"))
 	set_option_enabled(option_dependency_entries.character_overview_show_only_dump_stat, character_overview_weapon_enabled, mod:localize("option_requires_character_overview_weapon_mirror"))
 	set_option_enabled(option_dependency_entries.character_overview_dump_stat_horizontal_offset, character_overview_dump_stat_enabled, character_overview_dump_stat_reason)
 	set_option_enabled(option_dependency_entries.character_overview_dump_stat_font_scale_percent, character_overview_dump_stat_enabled, character_overview_dump_stat_reason)
@@ -890,6 +891,7 @@ local function bind_option_dependencies(options_templates)
 		"global_store_single_column_modifier_vertical_position",
 		"character_overview_show_melee_rarity_strip",
 		"character_overview_show_ranged_rarity_strip",
+		"character_overview_blessing_name_mode",
 		"character_overview_show_only_dump_stat",
 		"character_overview_dump_stat_horizontal_offset",
 		"character_overview_dump_stat_font_scale_percent",
@@ -1255,17 +1257,12 @@ function mod.on_enabled()
 
 	highlight_animation_enabled = mod:get("highlight_equipped_items") == "pulsing_dashes" or mod:get("new_item_highlight_mode") == "pulsing_dashes"
 
-	-- The character rows themselves are part of the static DMF schema. Refresh
-	-- their saved operative labels and backend-ID selection bindings before the
-	-- user can open Mod Options; live discovery will refresh them again.
+	-- Refresh static operative rows before Mod Options can open.
 	if type(CurioAcquisition.refresh_character_options) == "function" then
 		CurioAcquisition.refresh_character_options(mod)
 	end
 
-	-- Arm discovery independently of GameplayStateRun event ordering. On a true
-	-- first install there is no persisted roster, so the pending request waits
-	-- harmlessly until the player reaches the Morningstar and then replaces the
-	-- static Character N labels without requiring a reload.
+	-- Arm discovery independently of GameplayStateRun event ordering.
 	if type(CurioAcquisition.request_profile_discovery) == "function" then
 		CurioAcquisition.request_profile_discovery(true)
 	end
@@ -1275,16 +1272,12 @@ function mod.on_enabled()
 end
 
 function mod.on_all_mods_loaded()
-	-- v1.8.0 used R/R3 for Background Color, which collides with Darktide's
-	-- native inventory discard action. Move that legacy default to A/LT once;
-	-- explicitly configured alternatives are preserved.
+	-- Move the legacy R/R3 background-colour binding off native discard.
 	if mod:get("custom_item_background_color_keybind") == "group_finder_refresh_groups" then
 		mod:set("custom_item_background_color_keybind", "navigate_secondary_left_pressed", true)
 	end
 
-	-- v1.9.2 originally inherited Q/Y for Change Name. Y is Darktide's native
-	-- Favorite action in inventory views, so migrate that released default once
-	-- to I / View / Touchpad. Other explicitly selected bindings are preserved.
+	-- Move the legacy Q/Y rename binding off native Favorite.
 	if mod:get("_custom_item_name_keybind_v2_migrated") ~= true then
 		if mod:get("custom_item_name_keybind") == "hotkey_menu_special_2" then
 			mod:set("custom_item_name_keybind", "lobby_open_inventory", false)
@@ -1615,16 +1608,12 @@ end
 
 if ensure_class_method(InventoryWeaponsView, "_handle_input") then
 	mod:hook(InventoryWeaponsView, "_handle_input", function(func, view, input_service, ...)
-		-- These two captures must precede native input handling. Keeping them here
-		-- preserves same-frame controller behavior without wrapping the full update.
+		-- Capture before native input to preserve same-frame controller behavior.
 		Features.capture_inventory_options_panel_controller_focus(mod, Layout, view, input_service)
 		Features.capture_inventory_controller_navigation(view, input_service)
 
 		if Features.inventory_options_panel_controller_focused(view) or Features.consume_inventory_controller_grid_navigation(view) then
-			-- View elements process directional input before the parent view. The
-			-- multi-column item grid has already moved right this frame, so bypass
-			-- only InventoryWeaponsView's single-column-era focus transfer while
-			-- retaining the normal ItemGridViewBase/BaseView input chain.
+			-- Bypass only the obsolete single-column focus transfer.
 			return ItemGridViewBase._handle_input(view, input_service, ...)
 		end
 
@@ -1672,9 +1661,7 @@ if ensure_class_method(InventoryBackgroundView, "destroy") then
 	end)
 end
 
--- Manual discard is dispatched through Darktide's native event path. Observe
--- the single native deletion promise so the shared destructive-operation token
--- remains held until backend settlement; no replacement request is issued.
+-- Hold manual discard ownership until the native deletion promise settles.
 mod:hook("GearService", "delete_gear_batch", function(func, gear_service, gear_ids, ...)
 		local result = func(gear_service, gear_ids, ...)
 		Features.observe_manual_discard_settlement(result)

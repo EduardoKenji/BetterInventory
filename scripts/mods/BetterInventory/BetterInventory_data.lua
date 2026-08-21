@@ -1,4 +1,4 @@
-local MOD_VERSION = "2.8.3"
+local MOD_VERSION = "2.8.4"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
@@ -1228,6 +1228,26 @@ return {
 								tooltip = "character_overview_show_ranged_rarity_strip_tooltip",
 								type = "checkbox",
 								default_value = true,
+							},
+							{
+								setting_id = "character_overview_blessing_name_mode",
+								tooltip = "character_overview_blessing_name_mode_tooltip",
+								type = "dropdown",
+								default_value = "ellipsis",
+								options = {
+									{
+										text = "character_overview_blessing_name_mode_two_lines",
+										value = "two_lines",
+									},
+									{
+										text = "character_overview_blessing_name_mode_shrink_to_fit",
+										value = "shrink_to_fit",
+									},
+									{
+										text = "character_overview_blessing_name_mode_ellipsis",
+										value = "ellipsis",
+									},
+								},
 							},
 							{
 								setting_id = "character_overview_show_only_dump_stat",
