@@ -3464,10 +3464,16 @@ def main() -> None:
     )
     assert ellipsis_style.better_inventory_auto_fit_long_name is False
     assert ellipsis_style.better_inventory_truncate_long_name is True
-    assert ellipsis_style.font_size == 13
+    assert ellipsis_style.font_size == 12
     assert ellipsis_style.word_wrap is False
     assert ellipsis_widget.content.better_inventory_blessing_text_2.endswith("...")
     assert "\u00a0" in ellipsis_widget.content.better_inventory_blessing_text_2
+    assert (
+        len(ellipsis_widget.content.better_inventory_blessing_text_2)
+        * ellipsis_style.font_size
+        * 0.6
+        <= ellipsis_style.better_inventory_max_text_width - 4
+    )
 
     # The mode is read again when a Character Overview widget initializes.
     # Match InventoryView's native call: no renderer argument is supplied, so
@@ -3499,6 +3505,7 @@ def main() -> None:
     assert live_style.better_inventory_auto_fit_long_name is False
     assert live_style.better_inventory_truncate_long_name is True
     assert live_style.better_inventory_force_single_line is True
+    assert live_style.font_size == 12
     assert live_style.word_wrap is False
     assert live_widget.content.better_inventory_blessing_text_2.endswith("...")
     assert "\u00a0" in live_widget.content.better_inventory_blessing_text_2

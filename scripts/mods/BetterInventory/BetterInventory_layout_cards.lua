@@ -1728,6 +1728,13 @@ local function fit_blessing_text(parent, widget, ui_renderer)
 
 			local measured_width = Text.text_width(ui_renderer, value, style, measurement_size, true)
 
+			if force_single_line and truncate_long_name and not auto_fit_long_name then
+				-- A tiny reduction leaves enough rasterization headroom for the crop
+				-- suffix; Darktide otherwise glyph-wraps the dots onto a second row.
+				style.font_size = math.max(minimum_font_size, preferred_font_size - 1)
+				measured_width = Text.text_width(ui_renderer, value, style, measurement_size, true)
+			end
+
 			while auto_fit_long_name and measured_width > safe_width and style.font_size > minimum_font_size do
 				style.font_size = style.font_size - 1
 				measured_width = Text.text_width(ui_renderer, value, style, measurement_size, true)
@@ -1755,7 +1762,7 @@ local function fit_blessing_text(parent, widget, ui_renderer)
 			local fitted_value = value
 
 			if truncate_long_name and measured_width > crop_width then
-				fitted_value = Text.crop_text_width(ui_renderer, value, style, crop_width)
+				fitted_value = force_single_line and strictly_crop_title(ui_renderer, value, style, measurement_size, crop_width, true) or Text.crop_text_width(ui_renderer, value, style, crop_width)
 			end
 
 			if force_single_line then
