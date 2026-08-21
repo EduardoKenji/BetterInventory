@@ -1,5 +1,11 @@
 # BetterInventory changelog
 
+## 2.8.6 - 2026-08-21
+
+- Defaults Automatic Curio Buyer's Operative Selection scanning, once-per-store-rotation throttle, and idle store-refresh rescan options to On while keeping the master purchasing toggle Off.
+- Updates the English and Simplified Chinese tooltips to match the new defaults.
+- Translates all 46 generated weapon and Curio image-layout labels that previously fell back to English in Simplified Chinese.
+
 ## 2.8.5 - 2026-08-21
 
 - Preserves an explicitly selected Auto Crafter dump stat when changing weapon Mark, including weapons whose Marks use different internal IDs for the same displayed stat.

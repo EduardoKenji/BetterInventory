@@ -2643,7 +2643,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "2.8.5"
+    assert data.version == "2.8.6"
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
@@ -2676,6 +2676,26 @@ def main() -> None:
         assert simplified_chinese.strip(), localization_id
         assert "{" not in simplified_chinese, localization_id
         assert "}" not in simplified_chinese, localization_id
+
+    untranslated_chinese = {
+        localization_id
+        for localization_id, localized_values in localization.items()
+        if localized_values["zh-cn"] == localized_values["en"]
+    }
+    assert untranslated_chinese == {
+        "custom_item_editor_keybind_e",
+        "custom_item_editor_keybind_i_view",
+        "custom_item_editor_keybind_lt",
+        "custom_item_editor_keybind_off",
+        "custom_item_editor_keybind_q",
+        "custom_item_editor_keybind_r",
+        "custom_item_editor_keybind_v",
+        "inventory_options_controller_focus_keybind_rt",
+    }
+
+    assert "默认启用" in localization["automatic_curio_scan_operative_selection_tooltip"]["zh-cn"]
+    assert "默认启用" in localization["automatic_curio_once_per_store_rotation_tooltip"]["zh-cn"]
+    assert "默认启用" in localization["automatic_curio_rescan_on_store_refresh_tooltip"]["zh-cn"]
 
     assert localization["melee_columns"]["zh-cn"] == "近战武器列数"
     assert localization["character_overview_group"]["zh-cn"] == "角色总览"
@@ -3225,9 +3245,9 @@ def main() -> None:
     assert defaults["quick_discard_show_summary_notification"] is True
     assert defaults["quick_discard_disable_no_eligible_notification"] is False
     assert defaults["enable_automatic_curio_acquisition"] is False
-    assert defaults["automatic_curio_scan_operative_selection"] is False
-    assert defaults["automatic_curio_once_per_store_rotation"] is False
-    assert defaults["automatic_curio_rescan_on_store_refresh"] is False
+    assert defaults["automatic_curio_scan_operative_selection"] is True
+    assert defaults["automatic_curio_once_per_store_rotation"] is True
+    assert defaults["automatic_curio_rescan_on_store_refresh"] is True
     assert defaults["automatic_curio_favorite_purchased_curios"] is False
     assert defaults["armoury_auto_favorite_purchased_items"] is False
     assert defaults["melk_auto_favorite_purchased_items"] is False

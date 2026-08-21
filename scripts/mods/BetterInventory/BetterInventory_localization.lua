@@ -49,22 +49,22 @@ end
 -- widget deliberately reuses a concise shared label.
 local image_item_kinds = { "weapon", "curio" }
 local image_contexts = {
-	{ key = "inventory", label = "Inventory and Hadron image layout" },
-	{ key = "armoury", label = "Armoury Exchange store image layout" },
-	{ key = "global_store", label = "Armoury Exchange GlobalStore image layout" },
+	{ key = "inventory", label = "Inventory and Hadron image layout", zh_cn = "库存和哈德隆图像布局" },
+	{ key = "armoury", label = "Armoury Exchange store image layout", zh_cn = "军械库交易所商店图像布局" },
+	{ key = "global_store", label = "Armoury Exchange GlobalStore image layout", zh_cn = "军械库交易所 GlobalStore 图像布局" },
 }
 local image_geometry_labels = {
-	height_offset_percent = "Image height offset (%%)",
-	width_offset_percent = "Image width offset (%%)",
-	x_offset_percent = "Image X offset (%%)",
-	y_offset_percent = "Image Y offset (%%)",
+	height_offset_percent = { en = "Image height offset (%%)", zh_cn = "图像高度偏移（%%）" },
+	width_offset_percent = { en = "Image width offset (%%)", zh_cn = "图像宽度偏移（%%）" },
+	x_offset_percent = { en = "Image X offset (%%)", zh_cn = "图像 X 偏移（%%）" },
+	y_offset_percent = { en = "Image Y offset (%%)", zh_cn = "图像 Y 偏移（%%）" },
 }
 
-local function add_generated_image_localization(localization_id, text)
+local function add_generated_image_localization(localization_id, text, zh_cn)
 	if localization[localization_id] == nil then
 		localization[localization_id] = {
 			en = text,
-			["zh-cn"] = text,
+			["zh-cn"] = zh_cn,
 		}
 	end
 end
@@ -72,20 +72,20 @@ end
 for _, item_kind in ipairs(image_item_kinds) do
 	local character_prefix = item_kind .. "_image_character_overview"
 
-	add_generated_image_localization(character_prefix .. "_group", "Character Overview")
+	add_generated_image_localization(character_prefix .. "_group", "Character Overview", "角色总览")
 
-	for suffix, label in pairs(image_geometry_labels) do
-		add_generated_image_localization(character_prefix .. "_" .. suffix, label)
+	for suffix, labels in pairs(image_geometry_labels) do
+		add_generated_image_localization(character_prefix .. "_" .. suffix, labels.en, labels.zh_cn)
 	end
 
 	for _, context in ipairs(image_contexts) do
 		local context_prefix = item_kind .. "_image_" .. context.key
 
-		add_generated_image_localization(context_prefix .. "_group", context.label)
-		add_generated_image_localization(context_prefix .. "_profile_selector", "Grid-column profile to edit")
+		add_generated_image_localization(context_prefix .. "_group", context.label, context.zh_cn)
+		add_generated_image_localization(context_prefix .. "_profile_selector", "Grid-column profile to edit", "要编辑的网格列配置")
 
-		for suffix, label in pairs(image_geometry_labels) do
-			add_generated_image_localization(context_prefix .. "_editor_" .. suffix, label)
+		for suffix, labels in pairs(image_geometry_labels) do
+			add_generated_image_localization(context_prefix .. "_editor_" .. suffix, labels.en, labels.zh_cn)
 		end
 	end
 end

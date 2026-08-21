@@ -1179,9 +1179,9 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 			entries[#entries + 1] = panel_checkbox_entry(mod, layout, view, INVENTORY_CURIO_BUYER_ENABLE_ID, "enable_automatic_curio_acquisition", "enable_automatic_curio_acquisition", false, true, Features.sync_curio_acquisition_settings)
 
 			if mod:get("enable_automatic_curio_acquisition") == true then
-				entries[#entries + 1] = panel_checkbox_entry(mod, layout, view, INVENTORY_CURIO_BUYER_OPERATIVE_SELECTION_ID, "automatic_curio_scan_operative_selection", "automatic_curio_scan_operative_selection", false, true, Features.sync_curio_acquisition_settings)
-				entries[#entries + 1] = panel_checkbox_entry(mod, layout, view, INVENTORY_CURIO_BUYER_ROTATION_ID, "automatic_curio_once_per_store_rotation", "automatic_curio_once_per_store_rotation", false, true, Features.sync_curio_acquisition_settings)
-				entries[#entries + 1] = panel_checkbox_entry(mod, layout, view, INVENTORY_CURIO_BUYER_REFRESH_ID, "automatic_curio_rescan_on_store_refresh", "automatic_curio_rescan_on_store_refresh", false, true, Features.sync_curio_acquisition_settings)
+				entries[#entries + 1] = panel_checkbox_entry(mod, layout, view, INVENTORY_CURIO_BUYER_OPERATIVE_SELECTION_ID, "automatic_curio_scan_operative_selection", "automatic_curio_scan_operative_selection", true, true, Features.sync_curio_acquisition_settings)
+				entries[#entries + 1] = panel_checkbox_entry(mod, layout, view, INVENTORY_CURIO_BUYER_ROTATION_ID, "automatic_curio_once_per_store_rotation", "automatic_curio_once_per_store_rotation", true, true, Features.sync_curio_acquisition_settings)
+				entries[#entries + 1] = panel_checkbox_entry(mod, layout, view, INVENTORY_CURIO_BUYER_REFRESH_ID, "automatic_curio_rescan_on_store_refresh", "automatic_curio_rescan_on_store_refresh", true, true, Features.sync_curio_acquisition_settings)
 				PanelDefinitions.append_curio_buyer_favorite_entry(entries, mod, layout, view, panel_checkbox_entry, Features.sync_curio_acquisition_settings)
 				entries[#entries + 1] = panel_stepper_entry(mod, layout, view, INVENTORY_CURIO_BUYER_MIN_LEVEL_ID, "automatic_curio_min_item_level", "automatic_curio_min_item_level", 410, Features.sync_curio_acquisition_settings)
 				entries[#entries + 1] = panel_sub_label_entry(mod, view, "better_inventory_curio_buyer_types_label", "automatic_curio_types_inventory_label")
