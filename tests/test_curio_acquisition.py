@@ -434,11 +434,14 @@ def main() -> None:
 			curio_toughness_color_g = 210,
 			curio_toughness_color_b = 100,
         }
+		setting_set_counts = {}
+		character_options_refresh_calls = 0
         test_mod = {
             get = function(self, setting_id)
                 return settings[setting_id]
             end,
 			set = function(self, setting_id, value)
+				setting_set_counts[setting_id] = (setting_set_counts[setting_id] or 0) + 1
 				settings[setting_id] = value
 			end,
 			get_readable_name = function()
@@ -906,6 +909,11 @@ def main() -> None:
     assert module.inject_character_options(
         globals_.test_mod, undiscovered_character_options
     ) is False
+    module.set_character_options_refresh_callback(
+        lua.eval(
+            "function() character_options_refresh_calls = character_options_refresh_calls + 1 end"
+        )
+    )
     assert module.maximum_operative_slots(globals_.test_mod) == 12
     assert len(undiscovered_character_options.settings) == 13
     for slot_index in range(1, 13):
@@ -914,6 +922,9 @@ def main() -> None:
         assert discovery_slot._better_inventory_curio_character_available is False
         assert discovery_slot._better_inventory_curio_character_slot_index == slot_index
         assert discovery_slot.get_function() is False
+    first_slot_write_count = globals_.setting_set_counts.automatic_curio_character_slot_1
+    module.refresh_character_options(globals_.test_mod)
+    assert globals_.setting_set_counts.automatic_curio_character_slot_1 == first_slot_write_count
 
     # Automatic discard owns the first Morningstar phase. The Curio Buyer must
     # remain dormant until that system is settled, then target the scanned
@@ -940,6 +951,13 @@ def main() -> None:
     assert lua.eval(
         "function(logs) for i = 1, #logs do if string.find(logs[i], 'non%-transactional field%(s%) changed') then return true end end return false end"
     )(globals_.captured_logs)
+    # DMF 2.x retains this original generated template across view reopenings.
+    # The asynchronous profile result must refresh it in place, including the
+    # availability signal consumed by BetterInventory's dependency binder.
+    assert undiscovered_character_options.settings[2].display_name == "Research Psyker(Psyker)"
+    assert undiscovered_character_options.settings[2]._better_inventory_curio_character_available is True
+    assert undiscovered_character_options.settings[2]._better_inventory_curio_character_id == "target-psyker"
+    assert globals_.character_options_refresh_calls >= 1
 
     # A successful discovery is reused by both UIs. DMF keeps all twelve rows;
     # the matching slot binds to the stable backend ID and unused rows stay

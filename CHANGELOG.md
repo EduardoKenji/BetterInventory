@@ -4,6 +4,9 @@
 
 - Gives the Better Inventory name in Mod Options an always-on per-character gradient from bright green `#AEEF69` to aqua-blue `#62EFD8`, distinct from Alf's warm yellow-to-magenta branding.
 - Uses DMF's native rich-text color markup, remains UTF-8 safe, and does not require Alf's DMF Extensions.
+- Revalidates the full runtime against the updated DMF options rewrite and Alf's DMF Extensions 2.0.4, including automated external constructor, setting-identity, visibility, persistence, and reset contract checks.
+- Keeps DMF's retained Mod Options template synchronized when delayed operative discovery finishes, using weak template ownership and event-driven dependency refresh without adding an idle-frame poll.
+- Prefers stable setting IDs over localized titles, avoids unchanged roster writes that dirty DMF settings, and deterministically reconciles dependency, animation, diagnostic, and preset/RGB state after bulk reset.
 
 ## 2.8.6 - 2026-08-21
 

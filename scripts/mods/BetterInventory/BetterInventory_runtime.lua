@@ -847,6 +847,7 @@ local function bind_option_dependencies(options_templates)
 	-- mod whenever Mod Options is opened.
 
 	local setting_by_title = {}
+	local tracked_setting_ids = {}
 	local curio_buyer_subsection_titles = {
 		[mod:localize("automatic_curio_types_group")] = true,
 		[mod:localize("automatic_curio_classes_group")] = true,
@@ -1027,6 +1028,7 @@ local function bind_option_dependencies(options_templates)
 		"automatic_curio_class_cryptic",
 		"auto_crafter_myfavorites_color",
 	}) do
+		tracked_setting_ids[setting_id] = true
 		local title = mod:localize(setting_id)
 		local existing = setting_by_title[title]
 
@@ -1062,7 +1064,11 @@ local function bind_option_dependencies(options_templates)
 			end
 		end
 
-		local setting_id = type(entry) == "table" and entry.category == category_name and setting_by_title[entry.display_name]
+		local setting_id
+
+		if type(entry) == "table" and entry.category == category_name then
+			setting_id = tracked_setting_ids[entry.setting_id] and entry.setting_id or setting_by_title[entry.display_name]
+		end
 
 		if type(setting_id) == "table" then
 			-- Two view-local controls intentionally share the same label. Consume
@@ -1102,6 +1108,8 @@ local function bind_option_dependencies(options_templates)
 
 	refresh_option_dependencies()
 end
+
+if type(CurioAcquisition.set_character_options_refresh_callback) == "function" then CurioAcquisition.set_character_options_refresh_callback(refresh_option_dependencies) end
 
 local function migrate_grid_column_settings()
 	if mod:get("_grid_columns_v1_migrated") then
@@ -1363,6 +1371,22 @@ function mod.on_setting_changed(setting_id)
 		CurioAcquisition.on_setting_changed(mod, setting_id)
 		Features.sync_curio_acquisition_settings(mod, Layout)
 	end
+end
+
+function mod.on_settings_reset()
+	highlight_animation_enabled = mod:get("highlight_equipped_items") == "pulsing_dashes" or mod:get("new_item_highlight_mode") == "pulsing_dashes"
+
+	for index = 1, #COLOR_TARGETS do
+		local target = COLOR_TARGETS[index]
+		mod:set(target.preset_id, target.default_preset, false)
+		apply_color_preset(target)
+	end
+
+	if type(Diagnostics.configure) == "function" then
+		Diagnostics.configure(mod)
+	end
+
+	refresh_option_dependencies()
 end
 
 function mod.on_game_state_changed(status, state_name)

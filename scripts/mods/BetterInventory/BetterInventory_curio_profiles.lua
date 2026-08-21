@@ -106,9 +106,15 @@ local profile_state = {
 	profile_discovery_token = 0,
 	profile_revision = 0,
 }
+local registered_character_option_entries = setmetatable({}, { __mode = "k" })
+local character_options_refresh_callback
 
 CurioProfiles.configure = function(options)
 	dependencies = type(options) == "table" and options or {}
+end
+
+CurioProfiles.set_character_options_refresh_callback = function(callback)
+	character_options_refresh_callback = type(callback) == "function" and callback or nil
 end
 
 CurioProfiles.reset_context = function()
@@ -455,7 +461,42 @@ local function refresh_registered_character_options(mod, slots, summaries)
 	-- No setting-change notification is emitted here: discovery is presentation
 	-- synchronization, not a user filter change.
 	for index = 1, #bindings do
-		mod:set(bindings[index].setting_id, bindings[index].enabled, false)
+		local binding = bindings[index]
+
+		-- DMF marks every set as dirty even when the scalar value is unchanged.
+		-- Avoid making profile refreshes schedule redundant settings-file writes.
+		if mod:get(binding.setting_id) ~= binding.enabled then
+			mod:set(binding.setting_id, binding.enabled, false)
+		end
+	end
+
+	local live_entries_changed = false
+
+	-- DMF now retains its generated options templates across view reopenings.
+	-- Keep every still-live template synchronized when asynchronous operative
+	-- discovery settles, without retaining a closed/replaced view ourselves.
+	for entry, index in pairs(registered_character_option_entries) do
+		local binding = bindings[index]
+
+		if type(entry) ~= "table" or not binding then
+			registered_character_option_entries[entry] = nil
+		else
+			if entry.display_name ~= binding.display_name
+				or entry._better_inventory_curio_character_available ~= binding.available
+				or entry._better_inventory_curio_character_id ~= binding.character_id
+				or entry._better_inventory_curio_character_slot_index ~= index then
+				live_entries_changed = true
+			end
+
+			entry.display_name = binding.display_name
+			entry._better_inventory_curio_character_available = binding.available
+			entry._better_inventory_curio_character_id = binding.character_id
+			entry._better_inventory_curio_character_slot_index = index
+		end
+	end
+
+	if live_entries_changed and character_options_refresh_callback then
+		character_options_refresh_callback()
 	end
 
 	if type(option_sets) ~= "table" then
@@ -791,6 +832,7 @@ CurioProfiles.inject_character_options = function(mod, options_templates)
 		local binding = index and bindings[index]
 
 		if binding then
+			registered_character_option_entries[entry] = index
 			entry._better_inventory_curio_character_available = binding.available
 			entry._better_inventory_curio_character_id = binding.character_id
 			entry._better_inventory_curio_character_slot_index = index

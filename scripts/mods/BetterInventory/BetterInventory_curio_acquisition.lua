@@ -1436,6 +1436,10 @@ CurioAcquisition.refresh_character_options = function(mod)
 	return CurioProfiles.refresh_character_options(mod)
 end
 
+CurioAcquisition.set_character_options_refresh_callback = function(callback)
+	return CurioProfiles.set_character_options_refresh_callback(callback)
+end
+
 CurioAcquisition.set_favorite_integration = function(integration)
 	favorite_integration = type(integration) == "table" and integration or nil
 end

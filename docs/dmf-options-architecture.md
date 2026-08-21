@@ -4,6 +4,14 @@ Date: 2026-08-05
 
 Status: adopted on `main` and carried into BetterInventory v1.7.2. The original compatibility fix was developed on `fix/alfs-dmf-tabs-compatibility` and is now part of the release branch.
 
+## 2026-08-21 compatibility revalidation
+
+BetterInventory v2.9.0 was revalidated against the updated installed DMF options rewrite and Alf's DMF Extensions 2.0.4. The shared contracts remain compatible: DMF still exposes `options_widgets_data`, delegates final construction through `create_mod_options_settings`, preserves `setting_id`, and consumes final-template `disabled` state. Alf's constructor wrappers delegate to the preceding implementation and now resolve templates through stable setting identities as well as presentation text.
+
+The updated DMF retains `_options_templates` on its load-always options-view instance instead of rebuilding the tree on every reopen. BetterInventory therefore keeps weak references to only its generated operative entries and refreshes their labels, backend IDs, availability, and disabled state in place when asynchronous profile discovery settles. Replaced or destroyed templates remain collectible. The new DMF `on_settings_reset` completion event is also used to reconcile dependency state, cached animation state, diagnostics, and color preset/channel pairs once after a bulk reset.
+
+The release verifier checks the installed DMF retained-template, live-setting, disabled-widget, and deferred-save seams. When Alf is installed, it also checks both of Alf 2.0.4's constructor wrappers for delegation and stable-ID preservation. These are compatibility checks, not ownership of either external project's implementation.
+
 ## Decision
 
 BetterInventory uses a stable options schema: once DMF has created the final settings template, option rows remain present in the same order. A setting that is not currently applicable is disabled and greyed out; it is not removed by a conditional `validation_function`.
@@ -12,7 +20,7 @@ This follows the pattern used successfully by PlayerAssist and is the supported 
 
 ## Why this is required
 
-Alf's DMF Extensions 1.2.02 assigns generalized tabs by collecting the complete settings-template array for a mod category and pairing it with DMF's rendered-widget array by numeric index.
+The original Alf's DMF Extensions 1.2.02 implementation assigned generalized tabs by collecting the complete settings-template array for a mod category and pairing it with DMF's rendered-widget array by numeric index.
 
 DMF omits an entry from the rendered-widget array when its `validation_function` returns `false`, while the complete settings-template array can still contain that entry. Every omitted entry therefore shifts the positional pairing for all later controls. The consequences observed in BetterInventory included:
 
@@ -72,7 +80,7 @@ Roster reconciliation follows these rules:
 6. Duplicate display labels receive a short character-ID suffix.
 7. Operatives beyond the defensive row cap remain functional and selectable in the inventory panel instead of crashing Mod Options.
 
-Discovery is armed when BetterInventory is enabled as well as on every Morningstar entry, so a first-time install does not depend on a particular game-state event ordering. The pending request waits until the player reaches the hub, then refreshes every five minutes while the player remains there. Requests are serialized, failures use a bounded retry delay, and stale promise completions from an earlier Morningstar generation are ignored. If Mod Options was already open when discovery completed, its rendered labels update the next time the user closes and reopens that view; the inventory panel follows the profile revision live.
+Discovery is armed when BetterInventory is enabled as well as on every Morningstar entry, so a first-time install does not depend on a particular game-state event ordering. The pending request waits until the player reaches the hub, then refreshes every five minutes while the player remains there. Requests are serialized, failures use a bounded retry delay, and stale promise completions from an earlier Morningstar generation are ignored. If Mod Options was already opened when discovery completes, its retained template updates in place; the inventory panel follows the same profile revision live.
 
 ## Rules for future settings work
 
@@ -82,7 +90,8 @@ Discovery is armed when BetterInventory is enabled as well as on every Morningst
 4. Keep runtime presentation updates cardinality-neutral: labels, disabled state, tooltips and backend bindings may change, but rows and ordering may not.
 5. Do not patch Alf's tab state, filter function, or rendered widgets. Fix schema alignment at the BetterInventory boundary.
 6. Treat the settings-template/rendered-widget one-to-one ordering as a compatibility invariant.
-7. If conditional hiding becomes a hard requirement, first confirm that the installed Alf version resolves entries by stable setting ID rather than positional index. Otherwise use a dedicated custom view instead of destabilizing DMF's shared options view.
+7. Prefer stable `setting_id` identity at runtime. Keep localized-title lookup only as a compatibility fallback for older DMF/Alf combinations.
+8. If conditional hiding becomes a hard requirement, preserve one-to-one template/widget cardinality for older Alf versions or move the feature to a dedicated custom view.
 
 ## Regression coverage
 

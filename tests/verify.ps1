@@ -1,6 +1,7 @@
 param(
 	[string] $DarktideSourcePath,
 	[string] $DmfSourcePath,
+	[string] $AlfsDmfExtensionsSourcePath,
 	[string] $GlobalStoreSourcePath
 )
 
@@ -465,17 +466,55 @@ if (($DmfSourcePath -or (Test-Path -LiteralPath $dmfRoot -PathType Container))) 
 		throw "DMF no longer appears to dispatch live mod setting changes."
 	}
 
+	if ((Get-Content -LiteralPath $dmfSettings -Raw) -notmatch 'function dmf\.save_unsaved_settings_to_file\(\)') {
+		throw "DMF's deferred settings persistence seam was not found."
+	}
+
 	if ((Get-Content -LiteralPath $dmfOptionBlueprints -Raw) -notmatch 'local is_disabled = entry\.disabled or false') {
 		throw "DMF option widgets no longer appear to consume final-template disabled state."
 	}
 
-	if ((Get-Content -LiteralPath $dmfModOptions -Raw) -notmatch 'create_mod_options_settings') {
-		throw "DMF's final mod-options template seam was not found."
+	$dmfModOptionsSource = Get-Content -LiteralPath $dmfModOptions -Raw
+
+	if ($dmfModOptionsSource -notmatch 'create_mod_options_settings' -or $dmfModOptionsSource -notmatch 'dynamic_widget_sets' -or $dmfModOptionsSource -notmatch 'update_mod_options_visibility') {
+		throw "DMF's retained dynamic mod-options template seams were not found."
 	}
 
 	Write-Host "External DMF contract verification passed: $dmfRoot"
 } else {
 	Write-Host "Repository-only verification: DMF source checks skipped; pass -DmfSourcePath for external compatibility checks."
+}
+
+$alfsDmfExtensionsRoot = if ($AlfsDmfExtensionsSourcePath) {
+	(Resolve-Path -LiteralPath $AlfsDmfExtensionsSourcePath).Path
+} else {
+	Join-Path $projectRoot "..\..\mods\Alfs_DMF_Extensions"
+}
+$alfsLoadDmf = Join-Path $alfsDmfExtensionsRoot "scripts\mods\Alfs_DMF_Extensions\modules\load_dmf.lua"
+$alfsStepSize = Join-Path $alfsDmfExtensionsRoot "scripts\mods\Alfs_DMF_Extensions\modules\step_size_value.lua"
+$alfsContractFiles = @($alfsLoadDmf, $alfsStepSize)
+
+if (($AlfsDmfExtensionsSourcePath -or (Test-Path -LiteralPath $alfsDmfExtensionsRoot -PathType Container))) {
+	foreach ($alfsFile in $alfsContractFiles) {
+		if (-not (Test-Path -LiteralPath $alfsFile -PathType Leaf)) {
+			throw "Missing expected Alf's DMF Extensions source file: $alfsFile"
+		}
+	}
+
+	$alfsLoadDmfSource = Get-Content -LiteralPath $alfsLoadDmf -Raw
+	$alfsStepSizeSource = Get-Content -LiteralPath $alfsStepSize -Raw
+
+	if ($alfsLoadDmfSource -notmatch 'local original_create\s*=\s*dmf\.create_mod_options_settings' -or $alfsLoadDmfSource -notmatch 'original_create\(self,\s*options_templates\)' -or $alfsLoadDmfSource -notmatch 'setting_id_lookup') {
+		throw "Alf's DMF Extensions no longer appears to delegate DMF template creation while preserving stable setting identity."
+	}
+
+	if ($alfsStepSizeSource -notmatch 'local orig_create_settings\s*=\s*dmf\.create_mod_options_settings' -or $alfsStepSizeSource -notmatch 'orig_create_settings\(self,\s*options_templates\)') {
+		throw "Alf's step-size integration no longer appears to compose with the shared DMF template constructor."
+	}
+
+	Write-Host "External Alf's DMF Extensions contract verification passed: $alfsDmfExtensionsRoot"
+} else {
+	Write-Host "Repository-only verification: Alf's DMF Extensions checks skipped; pass -AlfsDmfExtensionsSourcePath for external compatibility checks."
 }
 
 $globalStoreRoot = if ($GlobalStoreSourcePath) {

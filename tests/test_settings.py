@@ -231,6 +231,7 @@ def main() -> None:
 		lantern_recommendations_are_active = false
 		profile_discovery_requests = 0
 		last_profile_discovery_force = nil
+		character_options_refresh_callback = nil
 			test_features = {
 			add_inventory_sort_toggle_definition = function(_, _, definitions) return definitions end,
 			configure_inventory_sort_options = function() end,
@@ -259,6 +260,9 @@ def main() -> None:
 			request_profile_discovery = function(force)
 				profile_discovery_requests = profile_discovery_requests + 1
 				last_profile_discovery_force = force
+			end,
+			set_character_options_refresh_callback = function(callback)
+				character_options_refresh_callback = callback
 			end,
 			update = function() end,
 			needs_update = function() return false end,
@@ -1776,6 +1780,10 @@ def main() -> None:
                 "function() highlight_dependency_getter_calls = "
                 "highlight_dependency_getter_calls + 1; return true end"
             )
+    # DMF 2.x and Alf 2.x preserve stable template IDs even when presentation
+    # text changes. Dependency binding must prefer that identity over localization.
+    entries[0].setting_id = "melee_columns"
+    entries[0].display_name = "Melee columns (rewritten by extension)"
     options_templates = lua.table_from(
         {"settings": lua.table_from(entries)}
     )
@@ -1836,6 +1844,23 @@ def main() -> None:
         assert entries_by_id[dump_style_id].disabled is False
     assert entries_by_id["character_overview_show_curio_rarity_strip"].disabled is False
     assert entries_by_id["character_overview_use_native_curio_overlay"].disabled is False
+    assert globals_.character_options_refresh_callback is not None
+    settings.enable_grid_layout = False
+    globals_.character_options_refresh_callback()
+    assert entries_by_id["melee_columns"].disabled is True
+    assert entries_by_id["enable_hadron_single_column_mirror"].disabled is False
+    settings.enable_grid_layout = True
+    settings.curio_health_color_preset = "custom"
+    settings.curio_health_color_r = 1
+    settings.curio_health_color_g = 2
+    settings.curio_health_color_b = 3
+    mod.on_settings_reset()
+    assert entries_by_id["melee_columns"].disabled is False
+    assert entries_by_id["enable_hadron_single_column_mirror"].disabled is True
+    assert settings.curio_health_color_preset == "red"
+    assert settings.curio_health_color_r == 235
+    assert settings.curio_health_color_g == 85
+    assert settings.curio_health_color_b == 85
     settings.weapon_blessing_display_mode = "ranked_text"
     mod.on_setting_changed("weapon_blessing_display_mode")
     assert entries_by_id["character_overview_blessing_name_mode"].disabled is False

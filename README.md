@@ -265,6 +265,7 @@ See [release packaging](docs/release-packaging.md) before publishing an archive.
 - [Auto Crafter architecture](docs/auto-crafter-architecture.md) - core policies, workflows, adapters, UI ownership, and extraction boundary.
 - [Release packaging](docs/release-packaging.md) - archive invariants and the mandatory packaging procedure.
 - [Changelog](CHANGELOG.md) - release-by-release changes.
+- [v2.9.0 DMF/Alf compatibility and runtime audit](docs/v2.9.0-dmf-alf-compatibility-audit.md) - updated framework contracts, lifecycle fixes, concurrency, memory, and CPU findings.
 - [v2.3.0 memory and performance audit](docs/v2.3.0-memory-performance-audit.md) - historical audit and verification ledger.
 - [v2.0.0 full-project audit](docs/v2.0.0-full-project-audit.md) - historical architecture research and backlog.
 
