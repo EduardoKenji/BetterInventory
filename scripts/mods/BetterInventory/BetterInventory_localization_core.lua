@@ -227,6 +227,21 @@ local localization = {
 	character_overview_show_ranged_rarity_strip_tooltip = {
 		en = "Draws the left rarity-colour strip on the mirrored ranged weapon card. Enabled by default.",
 	},
+	character_overview_blessing_name_mode = {
+		en = "Long blessing names",
+	},
+	character_overview_blessing_name_mode_tooltip = {
+		en = "Controls long blessing names on mirrored Character Overview weapons. Two lines preserves the current layout. Shrink to one line reduces the font to a safe minimum, then uses an ellipsis only as a last resort. One line with ... keeps the normal font size and crops overflow.",
+	},
+	character_overview_blessing_name_mode_two_lines = {
+		en = "Two lines (current)",
+	},
+	character_overview_blessing_name_mode_shrink_to_fit = {
+		en = "Shrink to one line",
+	},
+	character_overview_blessing_name_mode_ellipsis = {
+		en = "One line with ...",
+	},
 	character_overview_show_only_dump_stat = {
 		en = "Show only weapon dump stat",
 	},

@@ -40,6 +40,7 @@ local CHARACTER_OVERVIEW_VISUAL_SETTING_IDS = {
 	character_overview_show_melee_rarity_strip = true,
 	enable_character_overview_ranged_mirror = true,
 	character_overview_show_ranged_rarity_strip = true,
+	character_overview_blessing_name_mode = true,
 	character_overview_show_only_dump_stat = true,
 	character_overview_dump_stat_horizontal_offset = true,
 	character_overview_dump_stat_font_scale_percent = true,

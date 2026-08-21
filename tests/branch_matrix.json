@@ -37,6 +37,13 @@
         "modules": ["BetterInventory_layout.lua", "BetterInventory_layout_blueprints.lua", "BetterInventory_layout_cards.lua", "BetterInventory_layout_content.lua", "BetterInventory_layout_geometry.lua", "BetterInventory_runtime.lua"]
     },
     {
+      "name": "character-overview.fits-long-blessing-names",
+      "test": "test_layout.py",
+      "case": "integration_boundaries",
+      "outcome": "mirrored Character Overview weapons independently preserve two-line blessing wrapping, shrink overflowing names to one line, or crop them at normal size with an ellipsis",
+      "modules": ["BetterInventory_layout_cards.lua", "BetterInventory_character_overview_ui.lua"]
+    },
+    {
       "name": "arbiter.rejects-overlap",
       "test": "test_operation_arbiter.py",
       "case": "manual_automatic_exclusion",

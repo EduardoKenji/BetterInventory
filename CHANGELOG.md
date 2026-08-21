@@ -1,5 +1,11 @@
 # BetterInventory changelog
 
+## 2.8.4 - 2026-08-21
+
+- Adds a Character Overview setting for long weapon blessing names with three modes: the current two-line layout, shrink-to-one-line, and one-line ellipsis.
+- Keeps the new policy isolated to mirrored Character Overview weapons, leaving inventory, Hadron, Armoury, and GlobalStore blessing-name controls unchanged.
+- Rebuilds an already-open Character Overview when the mode changes and disables the option when mirrored weapon details or blessing text are unavailable.
+
 ## 2.8.3 - 2026-08-21
 
 - Defers equipped/favorite-priority re-sorting until `InventoryWeaponsView` finishes its native update, preventing an equip click from replacing the item-grid widget array while Darktide is still traversing it.

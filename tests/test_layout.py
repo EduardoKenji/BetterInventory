@@ -309,7 +309,7 @@ def main() -> None:
 
 		function TestMasterItems.get_item(item_id)
 			return {
-				display_name = item_id == "blessing_one" and "Surgical" or item_id == "blessing_two" and "Weight of Fire" or item_id == "blessing_long" and "Rending Shockwave" or item_id,
+				display_name = item_id == "blessing_one" and "Surgical" or item_id == "blessing_two" and "Weight of Fire" or item_id == "blessing_long" and "Rending Shockwave" or item_id == "blessing_very_long" and "Overload Voltage Overload Voltage" or item_id,
 				name = item_id,
 				trait = TestTraitByMasterId[item_id] or item_id,
 				icon = "icon/" .. item_id,
@@ -365,6 +365,7 @@ def main() -> None:
 				enable_quick_look_card_single_column_integration = true,
 				enable_quick_look_card_grid_integration = true,
 				character_overview_show_only_dump_stat = false,
+				character_overview_blessing_name_mode = "two_lines",
 				character_overview_dump_stat_horizontal_offset = 0,
 				character_overview_dump_stat_font_scale_percent = 100,
 				character_overview_dump_stat_color_r = 255,
@@ -3366,7 +3367,119 @@ def main() -> None:
     assert wrapping_style.font_size == 13
     assert wrapping_style.word_wrap is True
 
+    # Character Overview owns a separate long-name policy. Its default retains
+    # wrapping, shrink mode lowers only overflowing rows, and ellipsis mode
+    # preserves the normal font size while guaranteeing one line.
+    def overview_blessing_blueprint(mode):
+        mod.settings.character_overview_blessing_name_mode = mode
+        blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+        blueprint.size[1] = 600
+        layout.configure_native_item_blueprint(
+            mod, blueprint, 600, lua.table_from({"character_overview": True})
+        )
+        return blueprint
+
+    very_long_blessing_element = lua.eval("table.clone")(narrow_weapon_element)
+    very_long_blessing_element.item.traits[2].id = "blessing_very_long"
+    two_line_blueprint = overview_blessing_blueprint("two_lines")
+    two_line_style = blueprint_pass(
+        two_line_blueprint, "better_inventory_blessing_text_2"
+    ).style
+    two_line_widget = lua.table_from(
+        {
+            "content": lua.table_from({}),
+            "style": lua.table_from(
+                {
+                    "display_name": blueprint_pass(
+                        two_line_blueprint, "display_name"
+                    ).style,
+                    "better_inventory_blessing_text_1": blueprint_pass(
+                        two_line_blueprint, "better_inventory_blessing_text_1"
+                    ).style,
+                    "better_inventory_blessing_text_2": two_line_style,
+                }
+            ),
+        }
+    )
+    two_line_blueprint.init(
+        None, two_line_widget, very_long_blessing_element, None, None,
+        lua.table_from({}), None, two_line_blueprint,
+    )
+    assert two_line_style.better_inventory_auto_fit_long_name is True
+    assert two_line_style.better_inventory_truncate_long_name is False
+    assert two_line_style.better_inventory_force_single_line is False
+    assert two_line_style.better_inventory_minimum_font_size == 8
+    assert two_line_style.word_wrap is True
+    assert two_line_widget.content.better_inventory_blessing_text_2 == "Overload Voltage Overload Voltage"
+
+    shrink_blueprint = overview_blessing_blueprint("shrink_to_fit")
+    shrink_style = blueprint_pass(
+        shrink_blueprint, "better_inventory_blessing_text_2"
+    ).style
+    shrink_widget = lua.table_from(
+        {
+            "content": lua.table_from({}),
+            "style": lua.table_from(
+                {
+                    "display_name": blueprint_pass(shrink_blueprint, "display_name").style,
+                    "better_inventory_blessing_text_1": blueprint_pass(
+                        shrink_blueprint, "better_inventory_blessing_text_1"
+                    ).style,
+                    "better_inventory_blessing_text_2": shrink_style,
+                }
+            ),
+        }
+    )
+    shrink_blueprint.init(
+        None, shrink_widget, long_blessing_element, None, None,
+        lua.table_from({}), None, shrink_blueprint,
+    )
+    assert shrink_style.better_inventory_minimum_font_size == 6
+    assert shrink_style.font_size < 13
+    assert shrink_style.word_wrap is False
+    assert shrink_widget.content.better_inventory_blessing_text_2 == "Rending Shockwave"
+
+    ellipsis_blueprint = overview_blessing_blueprint("ellipsis")
+    ellipsis_style = blueprint_pass(
+        ellipsis_blueprint, "better_inventory_blessing_text_2"
+    ).style
+    ellipsis_widget = lua.table_from(
+        {
+            "content": lua.table_from({}),
+            "style": lua.table_from(
+                {
+                    "display_name": blueprint_pass(ellipsis_blueprint, "display_name").style,
+                    "better_inventory_blessing_text_1": blueprint_pass(
+                        ellipsis_blueprint, "better_inventory_blessing_text_1"
+                    ).style,
+                    "better_inventory_blessing_text_2": ellipsis_style,
+                }
+            ),
+        }
+    )
+    ellipsis_blueprint.init(
+        None, ellipsis_widget, long_blessing_element, None, None,
+        lua.table_from({}), None, ellipsis_blueprint,
+    )
+    assert ellipsis_style.better_inventory_auto_fit_long_name is False
+    assert ellipsis_style.better_inventory_truncate_long_name is True
+    assert ellipsis_style.font_size == 13
+    assert ellipsis_style.word_wrap is False
+    assert ellipsis_widget.content.better_inventory_blessing_text_2.endswith("...")
+
     mod.settings.auto_fit_long_blessing_names = True
+    mod.settings.truncate_long_blessing_names = False
+    ordinary_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, ordinary_blueprint, 640)
+    ordinary_style = blueprint_pass(
+        ordinary_blueprint, "better_inventory_blessing_text_2"
+    ).style
+    assert ordinary_style.better_inventory_auto_fit_long_name is True
+    assert ordinary_style.better_inventory_truncate_long_name is False
+    assert ordinary_style.better_inventory_force_single_line is False
+
+    mod.settings.auto_fit_long_blessing_names = True
+    mod.settings.character_overview_blessing_name_mode = "two_lines"
     mod.settings.columns = 3
 
     mod.settings.weapon_blessing_display_mode = "text"
