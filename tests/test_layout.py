@@ -3467,6 +3467,37 @@ def main() -> None:
     assert ellipsis_style.word_wrap is False
     assert ellipsis_widget.content.better_inventory_blessing_text_2.endswith("...")
 
+    # The mode is read again when a Character Overview widget initializes.
+    # This covers blueprints prepared before DMF commits the new dropdown value.
+    live_blueprint = overview_blessing_blueprint("two_lines")
+    live_style = blueprint_pass(
+        live_blueprint, "better_inventory_blessing_text_2"
+    ).style
+    live_widget = lua.table_from(
+        {
+            "content": lua.table_from({}),
+            "style": lua.table_from(
+                {
+                    "display_name": blueprint_pass(live_blueprint, "display_name").style,
+                    "better_inventory_blessing_text_1": blueprint_pass(
+                        live_blueprint, "better_inventory_blessing_text_1"
+                    ).style,
+                    "better_inventory_blessing_text_2": live_style,
+                }
+            ),
+        }
+    )
+    mod.settings.character_overview_blessing_name_mode = "ellipsis"
+    live_blueprint.init(
+        None, live_widget, long_blessing_element, None, None,
+        lua.table_from({}), None, live_blueprint,
+    )
+    assert live_style.better_inventory_auto_fit_long_name is False
+    assert live_style.better_inventory_truncate_long_name is True
+    assert live_style.better_inventory_force_single_line is True
+    assert live_style.word_wrap is False
+    assert live_widget.content.better_inventory_blessing_text_2.endswith("...")
+
     mod.settings.auto_fit_long_blessing_names = True
     mod.settings.truncate_long_blessing_names = False
     ordinary_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)

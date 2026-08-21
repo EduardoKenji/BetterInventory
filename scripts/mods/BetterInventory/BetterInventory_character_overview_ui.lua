@@ -1455,6 +1455,10 @@ if ensure_class_method(InventoryView, "_create_entry_widget_from_config") then
 		local adjust_runtime_equipped_icon = view and view.__class_name == "InventoryView" and not preserve_visible_equipment_placement and setting_id ~= nil
 
 		if view and view.__class_name == "InventoryView" and setting_id ~= nil then
+			if registered_character_overview_views[view] == nil then
+				view.better_inventory_character_overview_visual_settings_generation = character_overview_visual_settings_generation
+			end
+
 			registered_character_overview_views[view] = true
 		end
 

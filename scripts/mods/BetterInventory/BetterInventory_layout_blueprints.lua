@@ -460,6 +460,7 @@ Blueprints.configure_native_item_blueprint = function(mod, item_blueprint, grid_
 		native_single_column = true,
 		global_store = global_store,
 		store_item = store_item,
+		character_overview = configuration.character_overview,
 		weapon_modifier_stats_enabled = weapon_modifier_stats_enabled and not character_overview_dump_stat_only,
 	})
 	if not configuration.character_overview then

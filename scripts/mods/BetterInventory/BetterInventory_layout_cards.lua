@@ -1743,6 +1743,27 @@ local function fit_blessing_text(parent, widget, ui_renderer)
 	end
 end
 
+local function apply_character_overview_blessing_name_mode(mod, widget)
+	local styles = widget and widget.style
+
+	if not styles then
+		return
+	end
+
+	local name_mode = setting(mod, "character_overview_blessing_name_mode", "two_lines")
+
+	for i = 1, WEAPON_BLESSING_COUNT do
+		local style = styles["better_inventory_blessing_text_" .. i]
+
+		if style then
+			style.better_inventory_auto_fit_long_name = name_mode ~= "ellipsis"
+			style.better_inventory_truncate_long_name = name_mode ~= "two_lines"
+			style.better_inventory_minimum_font_size = name_mode == "shrink_to_fit" and 6 or MINIMUM_AUTO_FIT_BLESSING_FONT_SIZE
+			style.better_inventory_force_single_line = name_mode ~= "two_lines"
+		end
+	end
+end
+
 local function fit_weapon_perks(parent, widget, ui_renderer)
 	local content = widget and widget.content
 	local styles = widget and widget.style
@@ -1839,6 +1860,7 @@ local function configure_card_content(mod, item_blueprint, configuration)
 			apply_item_customization_style(mod, widget, element)
 			format_item_level(widget, element, show_item_level_icon)
 			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers, show_blessing_text_icons)
+			if configuration.character_overview then apply_character_overview_blessing_name_mode(mod, widget) end
 			fit_display_name(parent, widget, ui_renderer, preferred_font_size, math.min(preferred_font_size, minimum_font_size), force_weapon_name_single_line)
 			fit_blessing_text(parent, widget, ui_renderer)
 			fit_weapon_perks(parent, widget, ui_renderer)
@@ -1858,6 +1880,7 @@ local function configure_card_content(mod, item_blueprint, configuration)
 			apply_item_customization_style(mod, widget, element)
 			format_item_level(widget, element, show_item_level_icon)
 			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers, show_blessing_text_icons)
+			if configuration.character_overview then apply_character_overview_blessing_name_mode(mod, widget) end
 			fit_display_name(parent, widget, nil, preferred_font_size, math.min(preferred_font_size, minimum_font_size), force_weapon_name_single_line)
 			fit_blessing_text(parent, widget, nil)
 			fit_weapon_perks(parent, widget, nil)

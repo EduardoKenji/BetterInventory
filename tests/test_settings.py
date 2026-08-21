@@ -865,6 +865,10 @@ def main() -> None:
     mod.on_setting_changed("character_overview_show_only_dump_stat")
     update_character_overview()
     assert globals_.overview_layout_switches == 3
+    settings.character_overview_blessing_name_mode = "ellipsis"
+    mod.on_setting_changed("character_overview_blessing_name_mode")
+    update_character_overview()
+    assert globals_.overview_layout_switches == 4
 
     runtime_hotspot_style = lua.table_from(
         {
