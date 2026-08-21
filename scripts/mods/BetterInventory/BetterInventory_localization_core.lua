@@ -231,10 +231,10 @@ local localization = {
 		en = "Long blessing names",
 	},
 	character_overview_blessing_name_mode_tooltip = {
-		en = "Controls long blessing names on mirrored Character Overview weapons. Two lines preserves the current layout. Shrink to one line reduces the font to a safe minimum, then uses an ellipsis only as a last resort. One line with ... keeps the normal font size and crops overflow.",
+		en = "Controls long blessing names on mirrored Character Overview weapons. Two lines allows wrapping. Shrink to one line reduces the font to a safe minimum, then uses an ellipsis only as a last resort. One line with ... slightly reduces the font and crops overflow. One line with ... is the default.",
 	},
 	character_overview_blessing_name_mode_two_lines = {
-		en = "Two lines (current)",
+		en = "Two lines",
 	},
 	character_overview_blessing_name_mode_shrink_to_fit = {
 		en = "Shrink to one line",

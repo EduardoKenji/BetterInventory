@@ -1257,7 +1257,7 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 		local fit_font_size_bonus = 0
 
 		if configuration.character_overview then
-			local name_mode = setting(mod, "character_overview_blessing_name_mode", "two_lines")
+			local name_mode = setting(mod, "character_overview_blessing_name_mode", "ellipsis")
 
 			if name_mode == "shrink_to_fit" then
 				auto_fit_long_name = true
@@ -1791,7 +1791,7 @@ local function apply_character_overview_blessing_name_mode(mod, widget)
 		return
 	end
 
-	local name_mode = setting(mod, "character_overview_blessing_name_mode", "two_lines")
+	local name_mode = setting(mod, "character_overview_blessing_name_mode", "ellipsis")
 
 	for i = 1, WEAPON_BLESSING_COUNT do
 		local style = styles["better_inventory_blessing_text_" .. i]

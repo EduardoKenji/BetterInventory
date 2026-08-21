@@ -1233,7 +1233,7 @@ return {
 								setting_id = "character_overview_blessing_name_mode",
 								tooltip = "character_overview_blessing_name_mode_tooltip",
 								type = "dropdown",
-								default_value = "two_lines",
+								default_value = "ellipsis",
 								options = {
 									{
 										text = "character_overview_blessing_name_mode_two_lines",

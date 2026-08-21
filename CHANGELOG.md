@@ -2,7 +2,7 @@
 
 ## 2.8.4 - 2026-08-21
 
-- Adds a Character Overview setting for long weapon blessing names with three modes: the current two-line layout, shrink-to-one-line, and one-line ellipsis.
+- Adds a Character Overview setting for long weapon blessing names with three modes: two-line wrapping, shrink-to-one-line, and the default one-line ellipsis.
 - Keeps the new policy isolated to mirrored Character Overview weapons, leaving inventory, Hadron, Armoury, and GlobalStore blessing-name controls unchanged.
 - Rebuilds an already-open Character Overview when the mode changes and disables the option when mirrored weapon details or blessing text are unavailable.
 

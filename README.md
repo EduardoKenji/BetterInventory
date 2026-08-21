@@ -20,7 +20,7 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 
 ## What's new in v2.8.4
 
-- Character Overview now offers three long blessing-name modes for mirrored weapons: the current two-line layout, font-size reduction to one line, or one-line cropping with `...`.
+- Character Overview now offers three long blessing-name modes for mirrored weapons: two-line wrapping, font-size reduction to one line, or the default one-line cropping with `...`.
 - The setting updates an already-open Character Overview and does not change blessing-name behavior in inventory, Hadron, Armoury, or GlobalStore cards.
 
 ### v2.8.3 changes included

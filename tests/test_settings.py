@@ -3065,7 +3065,7 @@ def main() -> None:
     assert defaults["character_overview_show_melee_rarity_strip"] is True
     assert defaults["enable_character_overview_ranged_mirror"] is True
     assert defaults["character_overview_show_ranged_rarity_strip"] is True
-    assert defaults["character_overview_blessing_name_mode"] == "two_lines"
+    assert defaults["character_overview_blessing_name_mode"] == "ellipsis"
     assert defaults["character_overview_show_only_dump_stat"] is False
     assert defaults["character_overview_dump_stat_horizontal_offset"] == -10
     assert defaults["character_overview_dump_stat_font_scale_percent"] == 130
