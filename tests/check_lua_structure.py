@@ -386,7 +386,7 @@ def validate_auto_crafter_mutation_boundaries() -> int:
         "auto_crafter_level_mastery_20",
         "auto_crafter_buy_until_target",
         "self._planner.default_dump_stat(plan)",
-        "target_changed or config.dump_stat == \"auto\"",
+        "configured_dump_stat_unavailable",
         "_phase3_check_mastery",
         "_phase3_start_fodder",
         "_phase3_process_deferred",

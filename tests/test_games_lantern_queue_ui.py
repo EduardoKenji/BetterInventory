@@ -74,10 +74,11 @@ def main() -> None:
     # own all projected costs and remain immediately above Craft.
     planner = panel.index('localize("auto_crafter_panel_planner", "Planner configuration")')
     marks = panel.index('localize("auto_crafter_panel_marks", "Marks")')
+    dump_stat = panel.index('localize("auto_crafter_panel_dump_stat", "Dump stat")')
     traits = panel.index('localize("auto_crafter_panel_trait_targets", "Perk and blessing targets")')
     estimates = panel.index('localize("auto_crafter_panel_estimates", "Estimates")')
     craft = panel.index('localize("auto_crafter_panel_preview", "> CLICK HERE TO CRAFT <")')
-    assert planner < marks < traits < estimates < craft
+    assert planner < marks < dump_stat < traits < estimates < craft
     assert "SECTION_MARKS" in panel
     assert "SECTION_ESTIMATES" in panel
     assert "selected_manual_mark" in facade
