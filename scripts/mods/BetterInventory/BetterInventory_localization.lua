@@ -55,8 +55,8 @@ local function gradient_text(text, start_color, end_color)
 	return table.concat(result) .. "{#reset()}"
 end
 
-local name_gradient_start = { 201, 242, 123 } -- #C9F27B
-local name_gradient_end = { 217, 120, 74 } -- #D9784A
+local name_gradient_start = { 152, 242, 61 } -- #98F23D
+local name_gradient_end = { 244, 122, 36 } -- #F47A24
 
 for language, text in pairs(localization.mod_name or {}) do
 	localization.mod_name[language] = gradient_text(text, name_gradient_start, name_gradient_end)
