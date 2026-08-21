@@ -168,19 +168,19 @@ local localization = {
 		en = "Scan and purchase from Operative Selection",
 	},
 	automatic_curio_scan_operative_selection_tooltip = {
-		en = "Allows the Automatic Curio Buyer to run while the Operative Selection screen is open. Disabled by default. It still respects the store-rotation throttle and never waits for a selected Morningstar player.",
+		en = "Allows the Automatic Curio Buyer to run while the Operative Selection screen is open. Enabled by default when Automatic Curio Buyer is enabled. It still respects the store-rotation throttle and never waits for a selected Morningstar player.",
 	},
 	automatic_curio_once_per_store_rotation = {
 		en = "Scan at most once per store rotation",
 	},
 	automatic_curio_once_per_store_rotation_tooltip = {
-		en = "When enabled, Morningstar and Operative Selection share one account-scoped Armoury rotation gate. A scan at 17:06 permits the next scan after the store reset at 18:00; this is not a rolling 60-minute timer. Disabled by default.",
+		en = "When enabled, Morningstar and Operative Selection share one account-scoped Armoury rotation gate. A scan at 17:06 permits the next scan after the store reset at 18:00; this is not a rolling 60-minute timer. Enabled by default.",
 	},
 	automatic_curio_rescan_on_store_refresh = {
 		en = "Rescan when store refreshes while idle",
 	},
 	automatic_curio_rescan_on_store_refresh_tooltip = {
-		en = "When enabled, performs one additional pass after the next Armoury store reset if you remain in an eligible screen. A scan just before reset can therefore be followed by another scan just after reset. Disabled by default to limit backend work and unexpected close-together purchases.",
+		en = "When enabled, performs one additional pass after the next Armoury store reset if you remain in an eligible screen. A scan just before reset can therefore be followed by another scan just after reset. Enabled by default.",
 	},
 	automatic_curio_favorite_purchased_curios = {
 		en = "Automatically favorite purchased Curios",

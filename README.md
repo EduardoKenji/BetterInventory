@@ -2,7 +2,7 @@
 
 [![BetterInventory verification](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml/badge.svg)](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml)
 
-> Current release: **v2.8.5** (2026-08-21). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
+> Current release: **v2.8.6** (2026-08-21). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
 
 BetterInventory is a standalone inventory and item-management mod for Warhammer 40,000: Darktide. It adds responsive weapon and Curio cards, richer item information, configurable sorting, supported vendor layouts, optional mod integrations, and safety-gated inventory workflows.
 
@@ -18,7 +18,12 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - A bounded inventory-options panel for sorting, discard rules, integrations, and view-specific controls.
 - Optional Quick Discard, Automatic Discard, Automatic Curio Buyer, and Auto Crafter workflows with explicit ownership, authoritative revalidation, and fail-closed behavior.
 
-## What's new in v2.8.5
+## What's new in v2.8.6
+
+- Automatic Curio Buyer's Operative Selection scan, once-per-store-rotation throttle, and idle store-refresh rescan now default to On. The master Automatic Curio Buyer toggle remains Off, so this does not enable purchasing by default.
+- Simplified Chinese now translates the 46 generated weapon and Curio image-layout controls that previously appeared in English; automated coverage permits only language-neutral keybind labels to remain identical to English.
+
+### v2.8.5 changes included
 
 - Auto Crafter now preserves a valid user-selected dump stat when the weapon Mark changes instead of silently resetting it to Damage.
 - Mark selection now appears before Dump stat, and a Mark only changes the saved stat when that stat is unavailable for the selected Mark.
@@ -165,7 +170,7 @@ See [Auto Crafter architecture](docs/auto-crafter-architecture.md) for module ow
 Normal card, sorting, and integration features do not write inventory or wallet data.
 
 - Quick Discard and Automatic Discard are disabled by default. Enabling discard management initially selects Manual mode and retains confirmation.
-- Automatic Curio Buyer is disabled by default.
+- Automatic Curio Buyer remains disabled by default. If enabled, Operative Selection scanning, the once-per-store-rotation throttle, and idle store-refresh rescanning now default to On.
 - Automatic favorite options for Curio Buyer, Armoury Exchange, Sire Melk Limited Time Acquisitions, and Sire Melk Mystery Acquisitions are disabled by default. GlobalStore's matching Multi-Operative Supply routes inherit the relevant vendor option. Auto Crafter color assignment follows its existing **Automatically favorite crafted weapon** checkbox and defaults to MyFavorites Color 1.
 - Auto Crafter performs no mutation until the user starts a validated plan.
 - Favorites, equipped items, active and saved loadouts, protected perfect rolls, and configured Curio rules are checked before discard operations.
@@ -229,7 +234,7 @@ Run the complete repository verification from the project root:
 powershell -ExecutionPolicy Bypass -File .\tests\verify.ps1
 ```
 
-The v2.8.5 suite currently discovers 41 behavior-test files and 162 named cases. To run the behavior suite directly with risk-weighted Lua coverage:
+The v2.8.6 suite currently discovers 41 behavior-test files and 162 named cases. To run the behavior suite directly with risk-weighted Lua coverage:
 
 ```powershell
 py -3 .\tests\run_tests.py --timeout-seconds 45 --coverage-output lua-coverage.json
