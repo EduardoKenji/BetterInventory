@@ -143,6 +143,34 @@ function CandidatePolicy.copy_stat_identity(identity)
 	}
 end
 
+function CandidatePolicy.replacement_dump_stat(plan, configured, previous_plan)
+	local unavailable = plan.dump_stat_resolution ~= "configured stat selected by user"
+	local target = plan.target
+	local previous_target = previous_plan and previous_plan.target
+	local target_changed = previous_target ~= nil and target ~= nil and (tostring(previous_target.offer_id) ~= tostring(target.offer_id) or tostring(previous_target.master_id) ~= tostring(target.master_id))
+	local replacement
+	local previous_identity = previous_plan and previous_plan.dump_stat_identity
+	local display_name_key = type(previous_identity) == "table" and previous_identity.display_name_key
+
+	if configured ~= "auto" and unavailable and target_changed and type(display_name_key) == "string" and display_name_key ~= "" then
+		for _, candidate in ipairs(plan.dump_stat_candidates or {}) do
+			if type(candidate) == "table" and candidate.display_name_key == display_name_key then
+				if replacement ~= nil and replacement ~= candidate.name then
+					return plan.dump_stat_candidates[1] and plan.dump_stat_candidates[1].name or nil
+				end
+
+				replacement = candidate.name
+			end
+		end
+	end
+
+	if replacement ~= nil then
+		return replacement
+	end
+
+	return (configured == "auto" or unavailable) and plan.dump_stat_candidates and plan.dump_stat_candidates[1] and plan.dump_stat_candidates[1].name or nil
+end
+
 function CandidatePolicy.candidate_stat(candidate, stat_name, stat_identity)
 	if not candidate or not stat_name then
 		return nil

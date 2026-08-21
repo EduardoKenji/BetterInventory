@@ -2,7 +2,7 @@
 
 ## 2.8.5 - 2026-08-21
 
-- Preserves an explicitly selected Auto Crafter dump stat when changing weapon Mark, provided that stat remains available on the new Mark.
+- Preserves an explicitly selected Auto Crafter dump stat when changing weapon Mark, including weapons whose Marks use different internal IDs for the same displayed stat.
 - Falls back to the new Mark's first valid stat only when the saved selection is automatic or unavailable, preventing a hidden reset to Damage and wrong-weapon crafting.
 - Places Mark selection before Dump stat in the Auto Crafter Helper so the final Mark is chosen before its stat target.
 

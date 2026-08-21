@@ -871,9 +871,13 @@ def main() -> None:
 		-- the final mutation boundary even when its default master ID is unchanged.
 		do
 			local offer = target_offer()
+			offer.base_stats = {
+				{name = "shovel_m1_damage_stat", display_name_key = "loc_stats_display_damage_stat"},
+				{name = "shovel_m1_mobility_stat", display_name_key = "loc_stats_display_mobility_stat"},
+			}
 			offer.marks = {
-				{base_stats = {{name = "damage_stat"}, {name = "mobility_stat"}}, master_id = "weapon-1", parent_pattern = "pattern-1", slot_type = "slot_primary", weapon_template = "template-1"},
-				{base_stats = {{name = "damage_stat"}, {name = "mobility_stat"}}, master_id = "weapon-2", parent_pattern = "pattern-1", slot_type = "slot_primary", weapon_template = "template-2"},
+				{base_stats = {{name = "shovel_m1_damage_stat", display_name_key = "loc_stats_display_damage_stat"}, {name = "shovel_m1_mobility_stat", display_name_key = "loc_stats_display_mobility_stat"}}, master_id = "weapon-1", parent_pattern = "pattern-1", slot_type = "slot_primary", weapon_template = "template-1"},
+				{base_stats = {{name = "shovel_m7_damage_stat", display_name_key = "loc_stats_display_damage_stat"}, {name = "shovel_m7_mobility_stat", display_name_key = "loc_stats_display_mobility_stat"}}, master_id = "weapon-2", parent_pattern = "pattern-1", slot_type = "slot_primary", weapon_template = "template-2"},
 			}
 			local snapshot = snapshot_with(nil)
 			snapshot.store.offers = {offer}
@@ -881,19 +885,21 @@ def main() -> None:
 			local backend = {purchase_calls = 0, purchase_promise = pending()}
 			function backend:purchase_offer(_) self.purchase_calls = self.purchase_calls + 1 return self.purchase_promise end
 			CurrentOffer = raw_offer("weapon-1")
-			local settings = base_settings({auto_crafter_target_dump_stat = "mobility_stat"})
+			local settings = base_settings({auto_crafter_target_dump_stat = "shovel_m1_mobility_stat"})
 			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = settings, reporter = reporter, get_selected_offer = function() return CurrentOffer end})
 			controller._snapshot = snapshot
 			controller._active_view = {}
 			controller._view_is_valid = true
+			assert(controller:_refresh_plan("initial_mark") == true)
+			assert(controller:snapshot().plan.resolved_dump_stat == "shovel_m1_mobility_stat")
 			assert(controller:select_manual_mark("offer-1", "missing-mark") == false)
 			assert(reporter.events[#reporter.events].kind == "mark_selection_rejected")
 			assert(reporter.events[#reporter.events].payload.reason == "weapon_mark_unavailable")
 			assert(controller:select_manual_mark("stale-offer", "weapon-2") == false)
 			assert(reporter.events[#reporter.events].payload.reason == "selected_weapon_changed")
 			assert(controller:select_manual_mark("offer-1", "weapon-2") == true)
-			assert(settings.values.auto_crafter_target_dump_stat == "mobility_stat")
-			assert(controller:snapshot().plan.resolved_dump_stat == "mobility_stat")
+			assert(settings.values.auto_crafter_target_dump_stat == "shovel_m7_mobility_stat")
+			assert(controller:snapshot().plan.resolved_dump_stat == "shovel_m7_mobility_stat")
 			assert(controller:_selected_offer_summary().master_id == "weapon-2")
 			assert(controller:start_purchase_search() == true)
 			assert(backend.purchase_calls == 1)
