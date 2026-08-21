@@ -1355,6 +1355,13 @@ local function grid_ui_renderer(parent)
 		return parent._ui_resource_renderer
 	end
 
+	-- InventoryView's individual Character Overview layout calls blueprint.init
+	-- without a renderer argument. Its renderer is owned directly by the view,
+	-- unlike ViewElementGrid where the resource renderer or parent view supplies it.
+	if parent._ui_renderer then
+		return parent._ui_renderer
+	end
+
 	local view = parent._parent
 
 	if view and view.ui_renderer then

@@ -3468,7 +3468,8 @@ def main() -> None:
     assert ellipsis_widget.content.better_inventory_blessing_text_2.endswith("...")
 
     # The mode is read again when a Character Overview widget initializes.
-    # This covers blueprints prepared before DMF commits the new dropdown value.
+    # Match InventoryView's native call: no renderer argument is supplied, so
+    # fitting must resolve the renderer directly from the parent view.
     live_blueprint = overview_blessing_blueprint("two_lines")
     live_style = blueprint_pass(
         live_blueprint, "better_inventory_blessing_text_2"
@@ -3488,9 +3489,10 @@ def main() -> None:
         }
     )
     mod.settings.character_overview_blessing_name_mode = "ellipsis"
+    live_parent = lua.table_from({"_ui_renderer": lua.table_from({})})
     live_blueprint.init(
-        None, live_widget, long_blessing_element, None, None,
-        lua.table_from({}), None, live_blueprint,
+        live_parent, live_widget, long_blessing_element, None, None,
+        None, None, live_blueprint,
     )
     assert live_style.better_inventory_auto_fit_long_name is False
     assert live_style.better_inventory_truncate_long_name is True
