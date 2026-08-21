@@ -16,6 +16,7 @@ local REQUIRED_MODULE_FUNCTIONS = {
 		"normalize_dump_comparison",
 		"offer_key",
 		"offer_with_mark",
+		"replacement_dump_stat",
 		"requires_temporary_swap",
 		"same_optional_trait",
 		"same_trait",
@@ -188,6 +189,7 @@ function Controller.new(dependencies)
 	local selected_offer_ids = CandidatePolicy.selected_offer_ids
 	local selected_offer_matches_target = CandidatePolicy.selected_offer_matches_target
 	local offer_with_mark = CandidatePolicy.offer_with_mark
+	local replacement_dump_stat = CandidatePolicy.replacement_dump_stat
 	local find_item = CandidatePolicy.find_item
 	local candidate_stat = CandidatePolicy.candidate_stat
 	local copy_stat_identity = CandidatePolicy.copy_stat_identity
@@ -811,20 +813,18 @@ function Controller.new(dependencies)
 			return false
 		end
 
-		local previous_target_key = self._selected_target_key
+		local previous_plan = self._plan
 		local config = planner_config()
 		config.target_offer = (self._run_imported_job or self._imported_job) and config.target_offer or self:_selected_offer_summary()
 		self._selected_native_key = offer_key(config.target_offer)
 		self._planner_signature = planner_config_signature(config)
 		local ok, plan = pcall(self._planner.build, self._snapshot, config)
 
-		if ok and type(plan) == "table" and type(self._planner.default_dump_stat) == "function" then
-			local next_target_key = plan.target and offer_key(plan.target) or nil
-			local target_changed = next_target_key ~= previous_target_key
-			local default_dump_stat = self._planner.default_dump_stat(plan)
+		if ok and type(plan) == "table" then
+			local next_dump_stat = replacement_dump_stat(plan, config.dump_stat, previous_plan)
 
-			if not self._run_imported_job and not self._imported_job and not run_is_active() and default_dump_stat and (target_changed or config.dump_stat == "auto") and config.dump_stat ~= default_dump_stat and set_setting("auto_crafter_target_dump_stat", default_dump_stat) then
-				config.dump_stat = default_dump_stat
+			if not self._run_imported_job and not self._imported_job and not run_is_active() and next_dump_stat and config.dump_stat ~= next_dump_stat and set_setting("auto_crafter_target_dump_stat", next_dump_stat) then
+				config.dump_stat = next_dump_stat
 				self._planner_signature = planner_config_signature(config)
 				ok, plan = pcall(self._planner.build, self._snapshot, config)
 			end

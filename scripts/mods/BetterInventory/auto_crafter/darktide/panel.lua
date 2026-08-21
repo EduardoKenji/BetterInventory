@@ -1829,6 +1829,62 @@ function Panel.new(dependencies)
 				end,
 			}))
 		end
+		local function add_mark_entries()
+			table.insert(entries, self:_entry(localize("auto_crafter_panel_marks", "Marks"), "", {
+				selectable = true,
+				section_header = true,
+				section_id = SECTION_MARKS,
+				variant = "section",
+			}))
+
+			if self._section_collapsed[SECTION_MARKS] then
+				return
+			end
+
+			local selected_store_offer = self:_selected_store_offer(snapshot)
+			local marks = selected_store_offer and selected_store_offer.marks or {}
+			local selected_mark
+			local selected_ok, selected_value = safe_call(self._get_selected_manual_mark)
+
+			if selected_ok then
+				selected_mark = selected_value
+			end
+			if selected_mark == nil and selected_store_offer then
+				selected_mark = selected_store_offer.master_id
+			end
+
+			if #marks == 0 then
+				table.insert(entries, self:_entry(localize("auto_crafter_panel_select_weapon", "Select a weapon in Brunt's list."), "", {
+					variant = "summary",
+				}))
+				return
+			end
+
+			for _, mark in ipairs(marks) do
+				local mark_offer_id = selected_store_offer.offer_id
+				local mark_master_id = mark.master_id
+				local enabled = not queue_owned and not queue_active and type(self._select_manual_mark) == "function"
+
+				table.insert(entries, self:_entry(value_text(mark.display_name, mark_master_id), value_text(mark.sub_display_name, ""), {
+					enabled = enabled,
+					selectable = enabled,
+					variant = "offer",
+					action = function()
+						if enabled then
+							pcall(self._select_manual_mark, mark_offer_id, mark_master_id)
+							self:_queue_layout(1)
+						end
+					end,
+					refresh = function(widget)
+						local ok, current = safe_call(self._get_selected_manual_mark)
+
+						widget.content.selected = (ok and current or selected_mark) == mark_master_id
+					end,
+				}))
+			end
+		end
+
+		add_mark_entries()
 
 		if not self._section_collapsed[SECTION_PLANNER] then
 			table.insert(entries, self:_entry(localize("auto_crafter_panel_planner_target", "Planner target"), self:_selected_queue_job_name(queue) or self:_planner_target_text(), {
@@ -1958,56 +2014,6 @@ function Panel.new(dependencies)
 					widget.content.checked = self:_setting("auto_crafter_best_candidate_fallback", true) == true
 				end,
 			}))
-		end
-
-		table.insert(entries, self:_entry(localize("auto_crafter_panel_marks", "Marks"), "", {
-			selectable = true,
-			section_header = true,
-			section_id = SECTION_MARKS,
-			variant = "section",
-		}))
-
-		if not self._section_collapsed[SECTION_MARKS] then
-			local selected_store_offer = self:_selected_store_offer(snapshot)
-			local marks = selected_store_offer and selected_store_offer.marks or {}
-			local selected_mark
-			local selected_ok, selected_value = safe_call(self._get_selected_manual_mark)
-
-			if selected_ok then
-				selected_mark = selected_value
-			end
-			if selected_mark == nil and selected_store_offer then
-				selected_mark = selected_store_offer.master_id
-			end
-
-			if #marks == 0 then
-				table.insert(entries, self:_entry(localize("auto_crafter_panel_select_weapon", "Select a weapon in Brunt's list."), "", {
-					variant = "summary",
-				}))
-			else
-				for _, mark in ipairs(marks) do
-					local mark_offer_id = selected_store_offer.offer_id
-					local mark_master_id = mark.master_id
-					local enabled = not queue_owned and not queue_active and type(self._select_manual_mark) == "function"
-
-					table.insert(entries, self:_entry(value_text(mark.display_name, mark_master_id), value_text(mark.sub_display_name, ""), {
-						enabled = enabled,
-						selectable = enabled,
-						variant = "offer",
-						action = function()
-							if enabled then
-								pcall(self._select_manual_mark, mark_offer_id, mark_master_id)
-								self:_queue_layout(1)
-							end
-						end,
-						refresh = function(widget)
-							local ok, current = safe_call(self._get_selected_manual_mark)
-
-							widget.content.selected = (ok and current or selected_mark) == mark_master_id
-						end,
-					}))
-				end
-			end
 		end
 
 		table.insert(entries, self:_entry(localize("auto_crafter_panel_trait_targets", "Perk and blessing targets"), "", {
