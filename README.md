@@ -20,7 +20,7 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 
 ## What's new in v2.9.0
 
-- Better Inventory's name in Mod Options now uses an always-on vivid leaf-lime `#98F23D` to tangerine `#F47A24` gradient for every user, implemented with DMF's native rich-text colors and no dependency on Alf's DMF Extensions.
+- Better Inventory's name in Mod Options now uses an always-on light leaf-green `#AEEF69` to soft orange `#F2A06A` gradient for every user, implemented with DMF's native rich-text colors and no dependency on Alf's DMF Extensions.
 
 ### v2.8.6 changes included
 
