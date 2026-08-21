@@ -2,7 +2,7 @@
 
 ## 2.9.0 - 2026-08-21
 
-- Gives the Better Inventory name in Mod Options an always-on per-character gradient from `#B8EF6E` to `#C33978`.
+- Gives the Better Inventory name in Mod Options an always-on per-character gradient from bright sage-lime `#C9F27B` to copper `#D9784A`, distinct from Alf's yellow-to-magenta branding.
 - Uses DMF's native rich-text color markup, remains UTF-8 safe, and does not require Alf's DMF Extensions.
 
 ## 2.8.6 - 2026-08-21

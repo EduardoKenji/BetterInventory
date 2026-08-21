@@ -2646,11 +2646,11 @@ def main() -> None:
     assert data.version == "2.9.0"
 
     gradient_name = localization["mod_name"]["en"]
-    assert gradient_name.startswith("{#color(184,239,110)}B")
-    assert gradient_name.endswith("{#color(195,57,120)}y{#reset()}")
+    assert gradient_name.startswith("{#color(201,242,123)}B")
+    assert gradient_name.endswith("{#color(217,120,74)}y{#reset()}")
     assert gradient_name.count("{#color(") == len("Better Inventory")
-    assert localization["mod_name"]["zh-cn"].startswith("{#color(184,239,110)}")
-    assert localization["mod_name"]["zh-cn"].endswith("{#color(195,57,120)}y{#reset()}")
+    assert localization["mod_name"]["zh-cn"].startswith("{#color(201,242,123)}")
+    assert localization["mod_name"]["zh-cn"].endswith("{#color(217,120,74)}y{#reset()}")
     assert (
         localization["quick_look_card_integration_group"]["en"]
         == "Mod Integration: Quick Look Card"
