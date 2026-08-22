@@ -1016,6 +1016,8 @@ local localization = {
 	custom_tier_color_group = { en = "Custom-tier colour" },
 	custom_tier_color_preset = { en = "Colour preset" },
 	custom_tier_color_preset_reference_red = { en = "Reference red" },
+	custom_tier_color_preview = { en = "Colour preview" },
+	custom_tier_color_preview_tooltip = { en = "Shows the current custom-tier colour. You can also click it to edit the colour directly; the preset and RGB sliders stay synchronized." },
 	custom_tier_color_r = { en = "Red" },
 	custom_tier_color_g = { en = "Green" },
 	custom_tier_color_b = { en = "Blue" },

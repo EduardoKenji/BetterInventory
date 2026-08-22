@@ -3147,6 +3147,7 @@ def main() -> None:
     assert defaults["character_overview_curio_font_size_percent"] == 110
     assert defaults["custom_tier_enabled"] is True
     assert defaults["custom_tier_color_preset"] == "custom_tier_red"
+    assert list(defaults["custom_tier_color_preview"].values()) == [255, 210, 30, 40]
     assert [defaults[f"custom_tier_color_{channel}"] for channel in ("r", "g", "b")] == [210, 30, 40]
     for weapon_kind in ("melee", "ranged"):
         assert defaults[f"custom_tier_{weapon_kind}_enabled"] is True

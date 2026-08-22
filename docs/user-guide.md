@@ -8,7 +8,7 @@ When upgrading from an earlier v2.7.0 preview, the original orange resistance, p
 
 ## Custom legendary tier
 
-The **Custom legendary tier** Mod Options section is enabled by default and reproduces Red Weapons At Home 1.2.6 without requiring that mod. Qualifying items keep their real Transcendent rarity and inventory data; only `Items.rarity_color` and the displayed native tier-6 rarity name change. The reference preset is RGB `210/30/40`, with the same 40% darker companion colour used by the reference mod. Selecting another preset updates the RGB controls; editing any channel switches the dropdown to Custom colour.
+The **Custom legendary tier** Mod Options section is enabled by default and reproduces Red Weapons At Home 1.2.6 without requiring that mod. Qualifying items keep their real Transcendent rarity and inventory data; only `Items.rarity_color` and the displayed native tier-6 rarity name change. The reference preset is RGB `210/30/40`, with the same 40% darker companion colour used by the reference mod. Selecting another preset updates the live colour preview and RGB controls; editing the preview or any channel switches the dropdown to Custom colour.
 
 Melee and ranged rules are independent. Their default minimum Power is 500, while the optional minimum base-stat total, minimum value for every modifier, and required-high-stat count filters default to zero (disabled). If a high-stat count is requested, its accompanying threshold defaults to 80. A malformed weapon record or missing value cannot pass an enabled filter.
 

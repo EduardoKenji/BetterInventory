@@ -250,6 +250,16 @@ local function custom_tier_curio_group(kind, default_roll, maximum_roll)
 end
 
 local function custom_tier_widgets()
+	local color_options = color_group("custom_tier_color_group", "custom_tier_color", "custom_tier_red", 210, 30, 40, false, custom_tier_color_options())
+
+	table.insert(color_options.sub_widgets, 2, {
+		setting_id = "custom_tier_color_preview",
+		tooltip = "custom_tier_color_preview_tooltip",
+		type = "color",
+		default_value = { 255, 210, 30, 40 },
+		has_alpha = false,
+	})
+
 	return {
 		{
 			setting_id = "custom_tier_enabled",
@@ -257,7 +267,7 @@ local function custom_tier_widgets()
 			type = "checkbox",
 			default_value = true,
 		},
-		color_group("custom_tier_color_group", "custom_tier_color", "custom_tier_red", 210, 30, 40, false, custom_tier_color_options()),
+		color_options,
 		custom_tier_weapon_group("melee"),
 		custom_tier_weapon_group("ranged"),
 		{

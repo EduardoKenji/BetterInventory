@@ -5,6 +5,7 @@ local CurioValues = get_mod("BetterInventory"):io_dofile("BetterInventory/script
 local TRANSCENDENT_RARITY = 5
 local DARKEN_FACTOR = 0.4
 local REFERENCE_RED = { 210, 30, 40 }
+local COLOR_PREVIEW_SETTING_ID = "custom_tier_color_preview"
 local WEAPON_TYPES = {
 	WEAPON_MELEE = "melee",
 	WEAPON_RANGED = "ranged",
@@ -66,6 +67,40 @@ local function setting(setting_id, default)
 	end
 
 	return default
+end
+
+local function set_setting(setting_id, value)
+	if not mod or type(mod.set) ~= "function" then
+		return false
+	end
+
+	return pcall(mod.set, mod, setting_id, value, false)
+end
+
+local function preview_channels(value)
+	if type(value) ~= "table" then
+		return
+	end
+
+	local red = tonumber(value[2])
+	local green = tonumber(value[3])
+	local blue = tonumber(value[4])
+
+	if red == nil or green == nil or blue == nil then
+		return
+	end
+
+	return bounded_number(red, REFERENCE_RED[1], 0, 255), bounded_number(green, REFERENCE_RED[2], 0, 255), bounded_number(blue, REFERENCE_RED[3], 0, 255)
+end
+
+local function sync_preview(red, green, blue)
+	local current_red, current_green, current_blue = preview_channels(setting(COLOR_PREVIEW_SETTING_ID))
+
+	if current_red == red and current_green == green and current_blue == blue then
+		return false
+	end
+
+	return set_setting(COLOR_PREVIEW_SETTING_ID, { 255, red, green, blue })
 end
 
 local function item_power(item)
@@ -304,6 +339,7 @@ CustomTier.refresh = function(configured_mod)
 
 	color = { 255, red, green, blue }
 	color_dark = { 255, red * (1 - DARKEN_FACTOR), green * (1 - DARKEN_FACTOR), blue * (1 - DARKEN_FACTOR) }
+	sync_preview(red, green, blue)
 
 	for _, kind in pairs(WEAPON_TYPES) do
 		weapon_criteria[kind] = {
@@ -346,6 +382,19 @@ CustomTier.on_setting_changed = function(configured_mod, setting_id)
 		return false
 	end
 
+	mod = configured_mod or mod
+
+	if setting_id == COLOR_PREVIEW_SETTING_ID then
+		local red, green, blue = preview_channels(setting(COLOR_PREVIEW_SETTING_ID))
+
+		if red ~= nil then
+			set_setting("custom_tier_color_preset", "custom")
+			set_setting("custom_tier_color_r", red)
+			set_setting("custom_tier_color_g", green)
+			set_setting("custom_tier_color_b", blue)
+		end
+	end
+
 	CustomTier.refresh(configured_mod)
 
 	return true
@@ -357,6 +406,7 @@ CustomTier._test = {
 	curio_types = CURIO_TYPES,
 	displayed_modifier_values = displayed_modifier_values,
 	feature_active = feature_active,
+	preview_channels = preview_channels,
 	weapon_types = WEAPON_TYPES,
 }
 

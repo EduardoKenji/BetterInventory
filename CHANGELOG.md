@@ -2,6 +2,7 @@
 
 ## 2.9.2 - 2026-08-22
 
+- Adds a live, directly editable colour preview that stays synchronized with the custom-tier preset and RGB sliders.
 - Adds a standalone custom legendary tier for qualifying Transcendent melee weapons, ranged weapons, and all four Curio primary-stat types; Red Weapons At Home is not required.
 - Defaults reproduce Red Weapons At Home 1.2.6: RGB `210/30/40`, weapon Power 500, maximum Curio primary rolls, and zero minimum Curio Power.
 - Adds independent melee/ranged Power, base-stat-total, per-modifier, and high-stat-count filters plus per-type Curio roll and Power filters.

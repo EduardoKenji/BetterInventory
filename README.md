@@ -21,7 +21,7 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 
 ## What's new in v2.9.2
 
-- **Custom legendary tier** defaults to the Red Weapons At Home reference behavior: RGB `210/30/40`, Power-500 Transcendent weapons, and Transcendent Curios with maximum primary rolls.
+- **Custom legendary tier** defaults to the Red Weapons At Home reference behavior: RGB `210/30/40`, Power-500 Transcendent weapons, and Transcendent Curios with maximum primary rolls. Its live colour preview can also edit the RGB value directly and stays synchronized with presets and sliders.
 - Melee and ranged weapons have independent minimum Power, base-stat total, every-modifier floor, required-high-stat count, and high-stat threshold controls. Health, Toughness, Stamina, and Wound Curios each have independent roll and Power filters.
 - BetterInventory owns the classification when Red Weapons At Home is installed simultaneously. Turning BetterInventory's feature Off restores the other mod's behavior instead of stacking both rule sets.
 

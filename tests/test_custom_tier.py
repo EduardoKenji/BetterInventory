@@ -22,6 +22,7 @@ def main() -> None:
             custom_tier_color_r = 210,
             custom_tier_color_g = 30,
             custom_tier_color_b = 40,
+            custom_tier_color_preview = {255, 210, 30, 40},
             custom_tier_melee_enabled = true,
             custom_tier_melee_min_power = 500,
             custom_tier_melee_min_base_stat_total = 0,
@@ -50,6 +51,7 @@ def main() -> None:
         custom_tier_mod_enabled = true
         custom_tier_mod = {
             get = function(_, setting_id) return custom_tier_settings[setting_id] end,
+            set = function(_, setting_id, value) custom_tier_settings[setting_id] = value end,
             is_enabled = function() return custom_tier_mod_enabled end,
             io_dofile = function(_, path)
                 if string.find(path, "BetterInventory_curio_values", 1, true) then
@@ -147,6 +149,20 @@ def main() -> None:
     assert custom_tier.reference_red[2] == 30
     assert custom_tier.reference_red[3] == 40
     assert custom_tier.install(mod) is True
+
+    # DMF's native preview is bidirectionally synchronized with the legacy RGB
+    # settings so presets, sliders, and direct preview edits share one color.
+    settings.custom_tier_color_preview = lua.table_from([255, 12, 34, 56])
+    assert custom_tier.on_setting_changed(mod, "custom_tier_color_preview") is True
+    assert settings.custom_tier_color_preset == "custom"
+    assert [settings[f"custom_tier_color_{channel}"] for channel in ("r", "g", "b")] == [12, 34, 56]
+    preview_color, _ = items.rarity_color(weapon("WEAPON_MELEE", 500, []))
+    assert [preview_color[index] for index in range(1, 5)] == [255, 12, 34, 56]
+    settings.custom_tier_color_b = 78
+    custom_tier.on_setting_changed(mod, "custom_tier_color_b")
+    assert [settings.custom_tier_color_preview[index] for index in range(1, 5)] == [255, 12, 34, 78]
+    settings.custom_tier_color_preview = lua.table_from([255, 210, 30, 40])
+    custom_tier.on_setting_changed(mod, "custom_tier_color_preview")
 
     lua.execute('custom_tier_mod.is_enabled = function() error("disabled-state unavailable") end')
     assert custom_tier._test.feature_active() is False
