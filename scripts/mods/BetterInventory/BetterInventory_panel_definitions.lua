@@ -29,8 +29,10 @@ local INVENTORY_CURIO_BUYER_REFRESH_ID = "better_inventory_curio_buyer_refresh"
 local INVENTORY_CURIO_BUYER_FAVORITE_ID = "better_inventory_curio_buyer_favorite"
 local INVENTORY_CURIO_BUYER_TARGET_MODE_ID = "better_inventory_curio_buyer_target_mode"
 local INVENTORY_CURIO_BUYER_MIN_LEVEL_ID = "better_inventory_curio_buyer_min_level"
+local INVENTORY_CURIO_BUYER_OWNED_TARGET_ID = "better_inventory_curio_buyer_owned_target"
 local INVENTORY_CURIO_BUYER_MIN_HEALTH_ID = "better_inventory_curio_buyer_min_health"
 local INVENTORY_CURIO_BUYER_MIN_TOUGHNESS_ID = "better_inventory_curio_buyer_min_toughness"
+local INVENTORY_CURIO_BUYER_MIN_STAMINA_ID = "better_inventory_curio_buyer_min_stamina"
 local INVENTORY_OPTIONS_PANEL_REFERENCE = "better_inventory_options_panel"
 local INVENTORY_OPTIONS_PANEL_MIN_HEIGHT = 120
 local INVENTORY_OPTIONS_PANEL_DEFAULT_WIDTH = 445
@@ -76,6 +78,25 @@ end
 
 local function append_curio_buyer_favorite_entry(entries, mod, layout, view, checkbox_entry, sync_function)
 	entries[#entries + 1] = checkbox_entry(mod, layout, view, INVENTORY_CURIO_BUYER_FAVORITE_ID, "automatic_curio_favorite_purchased_curios", "automatic_curio_favorite_purchased_curios", false, false, sync_function)
+end
+
+local function append_curio_buyer_threshold_entries(entries, mod, layout, view, stepper_entry, sub_label_entry, type_entry, sync_function)
+	entries[#entries + 1] = stepper_entry(mod, layout, view, INVENTORY_CURIO_BUYER_MIN_LEVEL_ID, "automatic_curio_min_item_level", "automatic_curio_min_item_level", 410, sync_function)
+	entries[#entries + 1] = stepper_entry(mod, layout, view, INVENTORY_CURIO_BUYER_OWNED_TARGET_ID, "automatic_curio_owned_target_per_stat", "automatic_curio_owned_target_per_stat", 3, sync_function, 0, 10, 1)
+	entries[#entries + 1] = sub_label_entry(mod, view, "better_inventory_curio_buyer_types_label", "automatic_curio_types_inventory_label")
+	entries[#entries + 1] = type_entry(mod, layout, view)
+
+	if mod:get("automatic_curio_buy_health") ~= false then
+		entries[#entries + 1] = stepper_entry(mod, layout, view, INVENTORY_CURIO_BUYER_MIN_HEALTH_ID, "automatic_curio_min_health", "automatic_curio_min_health", 21, sync_function, 0, 21, 1, "%")
+	end
+
+	if mod:get("automatic_curio_buy_toughness") ~= false then
+		entries[#entries + 1] = stepper_entry(mod, layout, view, INVENTORY_CURIO_BUYER_MIN_TOUGHNESS_ID, "automatic_curio_min_toughness", "automatic_curio_min_toughness", 17, sync_function, 0, 17, 1, "%")
+	end
+
+	if mod:get("automatic_curio_buy_stamina") == true then
+		entries[#entries + 1] = stepper_entry(mod, layout, view, INVENTORY_CURIO_BUYER_MIN_STAMINA_ID, "automatic_curio_min_stamina", "automatic_curio_min_stamina", 3, sync_function, 0, 3, 1)
+	end
 end
 
 local function numeric_setting(mod, setting_id, default_value, minimum, maximum)
@@ -1521,6 +1542,7 @@ local PanelDefinitions = {
 	add_inventory_sort_toggle_definition = add_inventory_sort_toggle_definition,
 	append_curio_roll_protection_entries = append_curio_roll_protection_entries,
 	append_curio_buyer_favorite_entry = append_curio_buyer_favorite_entry,
+	append_curio_buyer_threshold_entries = append_curio_buyer_threshold_entries,
 }
 
 return PanelDefinitions

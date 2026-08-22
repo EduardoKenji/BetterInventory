@@ -324,6 +324,9 @@ def main() -> None:
             get_item = function(trait_id)
                 return TestItems.perk_item_by_id(trait_id)
             end,
+			get_item_instance = function(gear, gear_id)
+				return gear and gear.item
+			end,
             get_store_item_instance = function(description)
                 return description.item
             end,
@@ -418,8 +421,10 @@ def main() -> None:
 			automatic_curio_favorite_purchased_curios = false,
 			automatic_curio_target_mode = "characters",
             automatic_curio_min_item_level = 410,
+			automatic_curio_owned_target_per_stat = 3,
             automatic_curio_min_health = 21,
             automatic_curio_min_toughness = 17,
+			automatic_curio_min_stamina = 3,
             automatic_curio_diagnostic_logging = false,
 			automatic_curio_disable_no_eligible_notification = false,
             automatic_curio_buy_health = true,
@@ -483,6 +488,7 @@ def main() -> None:
                 },
             },
         }
+		profile_gear = {}
         test_offer = {
             offerId = "offer-health-410",
             state = "active",
@@ -540,6 +546,7 @@ def main() -> None:
         fetched_store_count = 0
         storefront_hook = nil
         requested_wallet_character = nil
+		wallet_request_count = 0
         purchased_wallet_owner = nil
         captured_notification = nil
 		captured_logs = {}
@@ -613,6 +620,7 @@ def main() -> None:
                             return TestPromise.resolved({})
                         end,
                         character_wallets = function(self, character_id)
+							wallet_request_count = wallet_request_count + 1
                             requested_wallet_character = character_id
 
 							if wallet_hook then
@@ -645,7 +653,7 @@ def main() -> None:
 
                         return TestPromise.resolved({
                             profiles = {target_profile},
-                            gear = {},
+							gear = profile_gear,
                         })
                     end,
                 },
@@ -850,6 +858,129 @@ def main() -> None:
     globals_.health_item.traits[1].value = 1
     globals_.health_item.traits[1].id = "health_trait"
 
+    # Stamina has its own inclusive primary-roll floor. The default +3 filter
+    # excludes +2 Curios even when their item level passes the general floor.
+    globals_.settings.automatic_curio_buy_stamina = True
+    globals_.health_item.traits[1].id = "stamina_trait"
+    globals_.health_item.traits[1].value = 0.5
+    assert (
+        module._test.normalized_offer(
+            globals_.test_mod, globals_.target_profile, globals_.test_offer
+        )
+        is None
+    )
+    globals_.health_item.traits[1].value = 1
+    stamina_candidate = module._test.normalized_offer(
+        globals_.test_mod, globals_.target_profile, globals_.test_offer
+    )
+    assert stamina_candidate is not None
+    assert stamina_candidate.primary_value == 3
+    globals_.settings.automatic_curio_buy_stamina = False
+    globals_.health_item.traits[1].id = "health_trait"
+
+    # The ownership rule retains only the best N levels for each operative and
+    # primary stat. Equal candidates stop once N qualifying Curios are owned,
+    # while strict upgrades advance the bounded set until all three reach 430.
+    globals_.profile_gear = lua.execute(
+        r"""
+        local gear = {}
+
+        for index = 1, 3 do
+            local gear_id = "owned-health-" .. tostring(index)
+            gear[gear_id] = {
+                uuid = gear_id,
+                characterId = "target-psyker",
+                item = {
+                    item_type = "GADGET",
+                    level = 410,
+                    traits = {{id = "health_trait", value = 1}},
+                },
+            }
+        end
+
+        return gear
+        """
+    )
+    owned_policy = curio_store._test.owned_curio_policy(
+        globals_.test_mod, globals_.profile_gear
+    )
+    owned_candidate = lua.table_from(
+        {
+            "character_id": "target-psyker",
+            "item_level": 410,
+            "primary_trait": "gadget_innate_health_increase",
+        }
+    )
+    assert not curio_store._test.candidate_improves_owned(
+        owned_candidate, owned_policy
+    )
+    owned_candidate.item_level = 420
+    assert curio_store._test.candidate_improves_owned(owned_candidate, owned_policy)
+    curio_store._test.record_owned_candidate(owned_candidate, owned_policy)
+    owned_candidate.item_level = 430
+    assert curio_store._test.candidate_improves_owned(owned_candidate, owned_policy)
+    curio_store._test.record_owned_candidate(owned_candidate, owned_policy)
+    owned_candidate.item_level = 420
+    assert curio_store._test.candidate_improves_owned(owned_candidate, owned_policy)
+    curio_store._test.record_owned_candidate(owned_candidate, owned_policy)
+    assert not curio_store._test.candidate_improves_owned(
+        owned_candidate, owned_policy
+    )
+    owned_candidate.item_level = 430
+    assert curio_store._test.candidate_improves_owned(owned_candidate, owned_policy)
+    curio_store._test.record_owned_candidate(owned_candidate, owned_policy)
+    assert curio_store._test.candidate_improves_owned(owned_candidate, owned_policy)
+    curio_store._test.record_owned_candidate(owned_candidate, owned_policy)
+    assert not curio_store._test.candidate_improves_owned(
+        owned_candidate, owned_policy
+    )
+
+    owned_candidate.character_id = "another-operative"
+    assert curio_store._test.candidate_improves_owned(owned_candidate, owned_policy)
+    owned_candidate.character_id = "target-psyker"
+    owned_candidate.primary_trait = "gadget_innate_toughness_increase"
+    assert curio_store._test.candidate_improves_owned(owned_candidate, owned_policy)
+
+    # Three under-threshold Toughness rolls do not fill the qualifying target.
+    under_roll_gear = lua.execute(
+        r"""
+        local gear = {}
+
+        for index = 1, 3 do
+            local gear_id = "owned-toughness-low-" .. tostring(index)
+            gear[gear_id] = {
+                uuid = gear_id,
+                characterId = "target-psyker",
+                item = {
+                    item_type = "GADGET",
+                    level = 430,
+                    traits = {{id = "toughness_trait", value = 0.8}},
+                },
+            }
+        end
+
+        return gear
+        """
+    )
+    under_roll_policy = curio_store._test.owned_curio_policy(
+        globals_.test_mod, under_roll_gear
+    )
+    owned_candidate.item_level = 410
+    assert curio_store._test.candidate_improves_owned(
+        owned_candidate, under_roll_policy
+    )
+
+    # Zero explicitly disables the ownership gate, even without a gear list.
+    globals_.settings.automatic_curio_owned_target_per_stat = 0
+    disabled_policy = curio_store._test.owned_curio_policy(globals_.test_mod, None)
+    assert disabled_policy.target == 0
+    assert curio_store._test.candidate_improves_owned(
+        owned_candidate, disabled_policy
+    )
+    globals_.settings.automatic_curio_owned_target_per_stat = 3
+    globals_.profile_gear = lua.table_from({})
+    owned_candidate.primary_trait = "gadget_innate_health_increase"
+
     # Localized text is notification-only. Even if it cannot be parsed, the
     # stable trait ID remains eligible and the backend roll supplies the value.
     globals_.description_mode = "unparseable"
@@ -1016,6 +1147,36 @@ def main() -> None:
 
     module.update(globals_.test_mod, 60, False)
     assert globals_.purchase_count == 1
+
+    # The full purchase queue applies the owned-set gate before wallet or POST
+    # work. Three equal qualifying Curios suppress an equal storefront offer.
+    globals_.profile_gear = lua.execute(
+        r"""
+        local gear = {}
+        for index = 1, 3 do
+            local gear_id = "queue-owned-health-" .. tostring(index)
+            gear[gear_id] = {
+                uuid = gear_id,
+                characterId = "target-psyker",
+                item = {
+                    item_type = "GADGET",
+                    level = 410,
+                    traits = {{id = "health_trait", value = 1}},
+                },
+            }
+        end
+        return gear
+        """
+    )
+    wallet_requests_before_owned_gate = globals_.wallet_request_count
+    module.begin_morningstar_pass(globals_.test_mod)
+    module.update(globals_.test_mod, 6, False)
+    assert globals_.purchase_count == 1
+    assert globals_.wallet_request_count == wallet_requests_before_owned_gate
+    assert lua.eval(
+        "function(logs) for i = 1, #logs do if string.find(logs[i], 'does not improve') then return true end end return false end"
+    )(globals_.captured_logs)
+    globals_.profile_gear = lua.table_from({})
 
     # With every primary type disabled, a new Morningstar pass performs no
     # transaction and reports the requested no-match summary.

@@ -162,7 +162,7 @@ local localization = {
 		en = "Enable automatic curio acquisition",
 	},
 	enable_automatic_curio_acquisition_tooltip = {
-		en = "Performs one cross-character Armoury Exchange scan after each eligible context entry and automatically purchases every Curio matching the enabled item-level, primary-roll, type and target filters. Morningstar is enabled by the existing buyer setting; Operative Selection requires its separate option. Targets can be selected by class or by individual character. This spends Ordo Dockets without a confirmation prompt. Automatic discard finishes first in Morningstar, and matching Curios remain protected from later automatic-discard passes.",
+		en = "Performs one cross-character Armoury Exchange scan after each eligible context entry and automatically purchases Curios matching the enabled item-level, primary-roll, ownership-upgrade, type and target filters. Morningstar is enabled by the existing buyer setting; Operative Selection requires its separate option. Targets can be selected by class or by individual character. This spends Ordo Dockets without a confirmation prompt. Automatic discard finishes first in Morningstar, and matching Curios remain protected from later automatic-discard passes.",
 	},
 	option_requires_automatic_curio_acquisition = {
 		en = "Requires automatic Curio acquisition.",
@@ -178,6 +178,9 @@ local localization = {
 	},
 	option_requires_automatic_curio_toughness = {
 		en = "Requires Toughness Curios to be enabled.",
+	},
+	option_requires_automatic_curio_stamina = {
+		en = "Requires Stamina Curios to be enabled.",
 	},
 	enable_melee_inventory = {
 		en = "Melee weapons",

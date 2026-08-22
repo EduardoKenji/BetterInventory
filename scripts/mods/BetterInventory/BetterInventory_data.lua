@@ -1,4 +1,4 @@
-local MOD_VERSION = "2.9.2"
+local MOD_VERSION = "2.9.3"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
@@ -769,6 +769,16 @@ return {
 								},
 							},
 							{
+								setting_id = "automatic_curio_owned_target_per_stat",
+								tooltip = "automatic_curio_owned_target_per_stat_tooltip",
+								type = "numeric",
+								default_value = 3,
+								range = {
+									0,
+									10,
+								},
+							},
+							{
 								setting_id = "automatic_curio_diagnostic_logging",
 								tooltip = "automatic_curio_diagnostic_logging_tooltip",
 								type = "checkbox",
@@ -838,6 +848,18 @@ return {
 										setting_id = "automatic_curio_buy_stamina",
 										type = "checkbox",
 										default_value = false,
+										sub_widgets = {
+											{
+												setting_id = "automatic_curio_min_stamina",
+												tooltip = "automatic_curio_min_stamina_tooltip",
+												type = "numeric",
+												default_value = 3,
+												range = {
+													0,
+													3,
+												},
+											},
+										},
 									},
 									{
 										setting_id = "automatic_curio_buy_wounds",

@@ -50,9 +50,6 @@ local INVENTORY_CURIO_BUYER_OPERATIVE_SELECTION_ID = PanelDefinitions.INVENTORY_
 local INVENTORY_CURIO_BUYER_ROTATION_ID = PanelDefinitions.INVENTORY_CURIO_BUYER_ROTATION_ID
 local INVENTORY_CURIO_BUYER_REFRESH_ID = PanelDefinitions.INVENTORY_CURIO_BUYER_REFRESH_ID
 local INVENTORY_CURIO_BUYER_TARGET_MODE_ID = PanelDefinitions.INVENTORY_CURIO_BUYER_TARGET_MODE_ID
-local INVENTORY_CURIO_BUYER_MIN_LEVEL_ID = PanelDefinitions.INVENTORY_CURIO_BUYER_MIN_LEVEL_ID
-local INVENTORY_CURIO_BUYER_MIN_HEALTH_ID = PanelDefinitions.INVENTORY_CURIO_BUYER_MIN_HEALTH_ID
-local INVENTORY_CURIO_BUYER_MIN_TOUGHNESS_ID = PanelDefinitions.INVENTORY_CURIO_BUYER_MIN_TOUGHNESS_ID
 local INVENTORY_OPTIONS_PANEL_REFERENCE = PanelDefinitions.INVENTORY_OPTIONS_PANEL_REFERENCE
 local INVENTORY_OPTIONS_PANEL_MIN_HEIGHT = PanelDefinitions.INVENTORY_OPTIONS_PANEL_MIN_HEIGHT
 local INVENTORY_OPTIONS_PANEL_DEFAULT_WIDTH = PanelDefinitions.INVENTORY_OPTIONS_PANEL_DEFAULT_WIDTH
@@ -1183,17 +1180,7 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 				entries[#entries + 1] = panel_checkbox_entry(mod, layout, view, INVENTORY_CURIO_BUYER_ROTATION_ID, "automatic_curio_once_per_store_rotation", "automatic_curio_once_per_store_rotation", true, true, Features.sync_curio_acquisition_settings)
 				entries[#entries + 1] = panel_checkbox_entry(mod, layout, view, INVENTORY_CURIO_BUYER_REFRESH_ID, "automatic_curio_rescan_on_store_refresh", "automatic_curio_rescan_on_store_refresh", true, true, Features.sync_curio_acquisition_settings)
 				PanelDefinitions.append_curio_buyer_favorite_entry(entries, mod, layout, view, panel_checkbox_entry, Features.sync_curio_acquisition_settings)
-				entries[#entries + 1] = panel_stepper_entry(mod, layout, view, INVENTORY_CURIO_BUYER_MIN_LEVEL_ID, "automatic_curio_min_item_level", "automatic_curio_min_item_level", 410, Features.sync_curio_acquisition_settings)
-				entries[#entries + 1] = panel_sub_label_entry(mod, view, "better_inventory_curio_buyer_types_label", "automatic_curio_types_inventory_label")
-				entries[#entries + 1] = panel_curio_buyer_type_entry(mod, layout, view)
-
-				if mod:get("automatic_curio_buy_health") ~= false then
-					entries[#entries + 1] = panel_stepper_entry(mod, layout, view, INVENTORY_CURIO_BUYER_MIN_HEALTH_ID, "automatic_curio_min_health", "automatic_curio_min_health", 21, Features.sync_curio_acquisition_settings, 0, 21, 1, "%")
-				end
-
-				if mod:get("automatic_curio_buy_toughness") ~= false then
-					entries[#entries + 1] = panel_stepper_entry(mod, layout, view, INVENTORY_CURIO_BUYER_MIN_TOUGHNESS_ID, "automatic_curio_min_toughness", "automatic_curio_min_toughness", 17, Features.sync_curio_acquisition_settings, 0, 17, 1, "%")
-				end
+				PanelDefinitions.append_curio_buyer_threshold_entries(entries, mod, layout, view, panel_stepper_entry, panel_sub_label_entry, panel_curio_buyer_type_entry, Features.sync_curio_acquisition_settings)
 
 				entries[#entries + 1] = panel_curio_buyer_target_mode_entry(mod, layout, view)
 

@@ -130,6 +130,8 @@ local PRIMARY_TRAITS = {
 	gadget_stamina_increase = {
 		color_default = {235, 205, 80},
 		color_prefix = "curio_stamina_color",
+		minimum_roll_default = 3,
+		minimum_roll_setting_id = "automatic_curio_min_stamina",
 		setting_id = "automatic_curio_buy_stamina",
 		label_id = "automatic_curio_stamina",
 		unit = "",
@@ -162,6 +164,121 @@ local function item_level(item)
 	local success, level = pcall(Items.expertise_level, item, true)
 
 	return success and tonumber(level) or nil
+end
+
+local function owned_target_count(mod)
+	return math.clamp(math.floor(tonumber(mod:get("automatic_curio_owned_target_per_stat")) or 3), 0, 10)
+end
+
+local function primary_roll_passes(mod, value, config)
+	if not config or not config.minimum_roll_setting_id then
+		return true
+	end
+
+	local minimum = math.clamp(tonumber(mod:get(config.minimum_roll_setting_id)) or config.minimum_roll_default, 0, 100)
+
+	return value ~= nil and value + 0.0001 >= minimum
+end
+
+local function insert_owned_level(levels, level, target)
+	levels[#levels + 1] = math.floor(level + 0.5)
+	table.sort(levels, function(left, right)
+		return left > right
+	end)
+
+	while #levels > target do
+		levels[#levels] = nil
+	end
+end
+
+local function owned_curio_policy(mod, gear)
+	local target = owned_target_count(mod)
+	local policy = {
+		levels = {},
+		target = target,
+	}
+
+	if target == 0 then
+		return policy
+	elseif type(gear) ~= "table" then
+		return nil, "profile scan returned no authoritative gear list"
+	end
+
+	for gear_id, raw_gear in pairs(gear) do
+		local character_id = type(raw_gear) == "table" and (raw_gear.characterId or raw_gear.character_id)
+
+		if character_id then
+			local resolved, item = pcall(MasterItems.get_item_instance, raw_gear, raw_gear.uuid or raw_gear.gear_id or gear_id)
+
+			if resolved and item and item.item_type == "GADGET" then
+				local trait_name, trait_value, trait_config = primary_trait(item)
+				local level = item_level(item)
+
+				if trait_name and level and primary_roll_passes(mod, trait_value, trait_config) then
+					local character_levels = policy.levels[tostring(character_id)]
+
+					if not character_levels then
+						character_levels = {}
+						policy.levels[tostring(character_id)] = character_levels
+					end
+
+					local levels = character_levels[trait_name]
+
+					if not levels then
+						levels = {}
+						character_levels[trait_name] = levels
+					end
+
+					insert_owned_level(levels, level, target)
+				end
+			end
+		end
+	end
+
+	return policy
+end
+
+local function candidate_owned_levels(candidate, policy)
+	local character_levels = policy and policy.levels and policy.levels[tostring(candidate and candidate.character_id)]
+
+	return character_levels and character_levels[candidate.primary_trait]
+end
+
+local function candidate_improves_owned(candidate, policy)
+	local target = policy and policy.target or 0
+
+	if target == 0 then
+		return true
+	end
+
+	local levels = candidate_owned_levels(candidate, policy)
+
+	return not levels or #levels < target or candidate.item_level > levels[target]
+end
+
+local function record_owned_candidate(candidate, policy)
+	local target = policy and policy.target or 0
+
+	if target == 0 or not candidate or not candidate.character_id or not candidate.primary_trait or not candidate.item_level then
+		return
+	end
+
+	local character_id = tostring(candidate.character_id)
+	local character_levels = policy.levels[character_id]
+
+	if not character_levels then
+		character_levels = {}
+		policy.levels[character_id] = character_levels
+	end
+
+	local levels = character_levels[candidate.primary_trait]
+
+	if not levels then
+		levels = {}
+		character_levels[candidate.primary_trait] = levels
+	end
+
+	insert_owned_level(levels, candidate.item_level, target)
 end
 
 local function offer_is_active(offer)
@@ -283,7 +400,7 @@ local function normalized_offer(mod, profile, offer, diagnostics)
 	if trait_config.minimum_roll_setting_id then
 		local minimum_roll = math.clamp(tonumber(mod:get(trait_config.minimum_roll_setting_id)) or trait_config.minimum_roll_default, 0, 100)
 
-		if not trait_value then
+		if trait_value == nil then
 			count_exclusion(diagnostics, "unreadable_primary_value")
 
 			if diagnostics then
@@ -423,6 +540,12 @@ local function scan_candidates(mod, token, minimum_rotation_boundary_ms, process
 			return rejected("profile scan returned no profile list")
 		end
 
+		local owned_policy, policy_error = owned_curio_policy(mod, result and result.gear)
+
+		if not owned_policy then
+			return rejected(policy_error)
+		end
+
 		cache_profiles(mod, profiles)
 
 		local candidates = {}
@@ -546,6 +669,7 @@ local function scan_candidates(mod, token, minimum_rotation_boundary_ms, process
 
 			return {
 				candidates = candidates,
+				owned_policy = owned_policy,
 				rotation_boundary_ms = rotation_boundary_ms,
 			}
 		end)
@@ -563,14 +687,21 @@ CurioStore.offer_is_active = offer_is_active
 CurioStore.observed_rotation_boundary = observed_rotation_boundary
 CurioStore.rotation_boundary_compatible = rotation_boundary_compatible
 CurioStore.candidate_key = candidate_key
+CurioStore.candidate_improves_owned = candidate_improves_owned
+CurioStore.record_owned_candidate = record_owned_candidate
 CurioStore.store_method_for_profile = store_method_for_profile
 
 CurioStore._test = {
 	PRIMARY_TRAITS = PRIMARY_TRAITS,
 	candidate_key = candidate_key,
+	candidate_improves_owned = candidate_improves_owned,
+	insert_owned_level = insert_owned_level,
 	normalized_offer = normalized_offer,
 	observed_rotation_boundary = observed_rotation_boundary,
+	owned_curio_policy = owned_curio_policy,
 	primary_trait = primary_trait,
+	primary_roll_passes = primary_roll_passes,
+	record_owned_candidate = record_owned_candidate,
 	rotation_boundary_compatible = rotation_boundary_compatible,
 }
 

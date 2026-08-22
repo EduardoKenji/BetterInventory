@@ -1,5 +1,12 @@
 # BetterInventory changelog
 
+## 2.9.3 - 2026-08-22
+
+- Adds a default +3 minimum primary-roll setting for Automatic Curio Buyer's Stamina Curios.
+- Adds a default target of three qualifying owned Curios per operative and primary-stat type; after the target is filled, candidates must strictly improve the lowest Power in the current best-three set.
+- Keeps higher-Power upgrades eligible until all three retained slots reach the same cap, while equal/lower duplicates are rejected before wallet lookup or purchase dispatch.
+- Reuses Darktide's authoritative profile/gear snapshot and retains only bounded per-pass Power lists; no additional backend request, persistent item cache, or idle work is introduced.
+
 ## 2.9.2 - 2026-08-22
 
 - Adds a live, directly editable colour preview that stays synchronized with the custom-tier preset and RGB sliders.

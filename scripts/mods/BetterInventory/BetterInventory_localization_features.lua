@@ -192,7 +192,13 @@ local localization = {
 		en = "Minimum curio item level to acquire",
 	},
 	automatic_curio_min_item_level_tooltip = {
-		en = "Only Armoury Curios at or above this displayed item level are eligible. Health and Toughness Curios must also meet their enabled minimum-roll setting. Every matching offer for every enabled target is purchased when sufficient currency is available. The default is 410.",
+		en = "Only Armoury Curios at or above this displayed item level are eligible. Curios must also meet their configured minimum primary roll. The owned-Curio target can then restrict purchases to upgrades. The default is 410.",
+	},
+	automatic_curio_owned_target_per_stat = {
+		en = "Owned Curio target per primary stat",
+	},
+	automatic_curio_owned_target_per_stat_tooltip = {
+		en = "After an operative owns this many Curios of one primary-stat type that pass its minimum-roll check, a new Curio must have a strictly higher item level than the lowest of that operative's best set. Set to 0 to disable this upgrade gate. The default is 3.",
 	},
 	automatic_curio_diagnostic_logging = {
 		en = "Enable detailed diagnostic logging",
@@ -244,6 +250,12 @@ local localization = {
 	},
 	automatic_curio_buy_stamina = {
 		en = "Stamina",
+	},
+	automatic_curio_min_stamina = {
+		en = "Minimum Stamina",
+	},
+	automatic_curio_min_stamina_tooltip = {
+		en = "A Stamina Curio must meet both this primary-roll threshold and the minimum item level. The comparison is inclusive. The default is +3.",
 	},
 	automatic_curio_buy_wounds = {
 		en = "Wound",

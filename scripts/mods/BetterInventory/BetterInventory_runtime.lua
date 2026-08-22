@@ -28,6 +28,15 @@ local active_grid_configuration
 local active_highlight_views
 local highlight_animation_enabled = false
 local option_dependency_owner = {}
+local AUTOMATIC_CURIO_SETTING_IDS = {
+	"automatic_curio_scan_operative_selection", "automatic_curio_once_per_store_rotation",
+	"automatic_curio_rescan_on_store_refresh", "automatic_curio_favorite_purchased_curios",
+	"automatic_curio_min_item_level", "automatic_curio_owned_target_per_stat",
+	"automatic_curio_min_health", "automatic_curio_min_toughness", "automatic_curio_min_stamina",
+	"automatic_curio_diagnostic_logging", "automatic_curio_disable_no_eligible_notification",
+	"automatic_curio_target_mode", "automatic_curio_buy_health", "automatic_curio_buy_toughness",
+	"automatic_curio_buy_stamina", "automatic_curio_buy_wounds",
+}
 local synchronize_myfavorites_grid = function()
 	return 0
 end
@@ -789,22 +798,7 @@ local function refresh_option_dependencies()
 	set_option_enabled(option_dependency_entries.quick_discard_curio_health_roll, health_roll_protection_enabled, quick_discard_enabled and mod:localize("option_requires_curio_health_roll_protection") or quick_discard_reason)
 	set_option_enabled(option_dependency_entries.quick_discard_curio_toughness_roll, toughness_roll_protection_enabled, quick_discard_enabled and mod:localize("option_requires_curio_toughness_roll_protection") or quick_discard_reason)
 
-	for _, setting_id in ipairs({
-		"automatic_curio_scan_operative_selection",
-		"automatic_curio_once_per_store_rotation",
-		"automatic_curio_rescan_on_store_refresh",
-		"automatic_curio_favorite_purchased_curios",
-		"automatic_curio_min_item_level",
-		"automatic_curio_min_health",
-		"automatic_curio_min_toughness",
-		"automatic_curio_diagnostic_logging",
-		"automatic_curio_disable_no_eligible_notification",
-		"automatic_curio_target_mode",
-		"automatic_curio_buy_health",
-		"automatic_curio_buy_toughness",
-		"automatic_curio_buy_stamina",
-		"automatic_curio_buy_wounds",
-	}) do
+	for _, setting_id in ipairs(AUTOMATIC_CURIO_SETTING_IDS) do
 		set_option_enabled(option_dependency_entries[setting_id], automatic_curio_enabled, automatic_curio_reason)
 	end
 
@@ -832,9 +826,11 @@ local function refresh_option_dependencies()
 
 	local automatic_health_enabled = automatic_curio_enabled and mod:get("automatic_curio_buy_health") ~= false
 	local automatic_toughness_enabled = automatic_curio_enabled and mod:get("automatic_curio_buy_toughness") ~= false
+	local automatic_stamina_enabled = automatic_curio_enabled and mod:get("automatic_curio_buy_stamina") == true
 
 	set_option_enabled(option_dependency_entries.automatic_curio_min_health, automatic_health_enabled, automatic_curio_enabled and mod:localize("option_requires_automatic_curio_health") or automatic_curio_reason)
 	set_option_enabled(option_dependency_entries.automatic_curio_min_toughness, automatic_toughness_enabled, automatic_curio_enabled and mod:localize("option_requires_automatic_curio_toughness") or automatic_curio_reason)
+	set_option_enabled(option_dependency_entries.automatic_curio_min_stamina, automatic_stamina_enabled, automatic_curio_enabled and mod:localize("option_requires_automatic_curio_stamina") or automatic_curio_reason)
 end
 
 local function bind_option_dependencies(options_templates)
@@ -867,7 +863,7 @@ local function bind_option_dependencies(options_templates)
 	local class_group_entry
 	local character_group_entry
 
-	for _, setting_id in ipairs({
+	local tracked_ids = {
 		"melee_columns",
 		"ranged_columns",
 		"curio_columns",
@@ -1014,20 +1010,6 @@ local function bind_option_dependencies(options_templates)
 		"quick_discard_show_type_breakdown",
 		"quick_discard_show_summary_notification",
 		"quick_discard_disable_no_eligible_notification",
-		"automatic_curio_scan_operative_selection",
-		"automatic_curio_once_per_store_rotation",
-		"automatic_curio_rescan_on_store_refresh",
-		"automatic_curio_favorite_purchased_curios",
-		"automatic_curio_min_item_level",
-		"automatic_curio_min_health",
-		"automatic_curio_min_toughness",
-		"automatic_curio_diagnostic_logging",
-		"automatic_curio_disable_no_eligible_notification",
-		"automatic_curio_target_mode",
-		"automatic_curio_buy_health",
-		"automatic_curio_buy_toughness",
-		"automatic_curio_buy_stamina",
-		"automatic_curio_buy_wounds",
 		"automatic_curio_class_veteran",
 		"automatic_curio_class_zealot",
 		"automatic_curio_class_psyker",
@@ -1036,7 +1018,13 @@ local function bind_option_dependencies(options_templates)
 		"automatic_curio_class_broker",
 		"automatic_curio_class_cryptic",
 		"auto_crafter_myfavorites_color",
-	}) do
+	}
+
+	for _, setting_id in ipairs(AUTOMATIC_CURIO_SETTING_IDS) do
+		tracked_ids[#tracked_ids + 1] = setting_id
+	end
+
+	for _, setting_id in ipairs(tracked_ids) do
 		tracked_setting_ids[setting_id] = true
 		local title = mod:localize(setting_id)
 		local existing = setting_by_title[title]

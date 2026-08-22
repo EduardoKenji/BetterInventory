@@ -1669,8 +1669,10 @@ def main() -> None:
         "automatic_curio_rescan_on_store_refresh",
         "automatic_curio_favorite_purchased_curios",
         "automatic_curio_min_item_level",
+		"automatic_curio_owned_target_per_stat",
 		"automatic_curio_min_health",
 		"automatic_curio_min_toughness",
+		"automatic_curio_min_stamina",
 		"automatic_curio_diagnostic_logging",
 		"automatic_curio_disable_no_eligible_notification",
 		"automatic_curio_target_mode",
@@ -2175,8 +2177,10 @@ def main() -> None:
     assert entries_by_id["automatic_curio_favorite_purchased_curios"].disabled is True
     assert entries_by_id["auto_crafter_myfavorites_color"].disabled is True
     assert entries_by_id["automatic_curio_min_item_level"].disabled is True
+    assert entries_by_id["automatic_curio_owned_target_per_stat"].disabled is True
     assert entries_by_id["automatic_curio_min_health"].disabled is True
     assert entries_by_id["automatic_curio_min_toughness"].disabled is True
+    assert entries_by_id["automatic_curio_min_stamina"].disabled is True
     assert entries_by_id["automatic_curio_diagnostic_logging"].disabled is True
     assert entries_by_id["automatic_curio_disable_no_eligible_notification"].disabled is True
     assert entries_by_id["automatic_curio_target_mode"].disabled is True
@@ -2266,8 +2270,10 @@ def main() -> None:
     assert entries_by_id["automatic_curio_rescan_on_store_refresh"].disabled is False
     assert entries_by_id["automatic_curio_favorite_purchased_curios"].disabled is False
     assert entries_by_id["automatic_curio_min_item_level"].disabled is False
+    assert entries_by_id["automatic_curio_owned_target_per_stat"].disabled is False
     assert entries_by_id["automatic_curio_min_health"].disabled is False
     assert entries_by_id["automatic_curio_min_toughness"].disabled is False
+    assert entries_by_id["automatic_curio_min_stamina"].disabled is True
     assert entries_by_id["automatic_curio_diagnostic_logging"].disabled is False
     assert entries_by_id["automatic_curio_disable_no_eligible_notification"].disabled is False
     assert entries_by_id["automatic_curio_target_mode"].disabled is False
@@ -2303,6 +2309,12 @@ def main() -> None:
     settings.automatic_curio_buy_health = True
     mod.on_setting_changed("automatic_curio_buy_health")
     assert entries_by_id["automatic_curio_min_health"].disabled is False
+    settings.automatic_curio_buy_stamina = True
+    mod.on_setting_changed("automatic_curio_buy_stamina")
+    assert entries_by_id["automatic_curio_min_stamina"].disabled is False
+    settings.automatic_curio_buy_stamina = False
+    mod.on_setting_changed("automatic_curio_buy_stamina")
+    assert entries_by_id["automatic_curio_min_stamina"].disabled is True
     assert globals_.curio_acquisition_syncs > 0
     settings.enable_automatic_curio_acquisition = False
     mod.on_setting_changed("enable_automatic_curio_acquisition")
@@ -2679,7 +2691,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "2.9.2"
+    assert data.version == "2.9.3"
 
     gradient_name = localization["mod_name"]["en"]
     assert gradient_name.startswith("{#color(174,239,105)}B")
@@ -2696,6 +2708,10 @@ def main() -> None:
     assert localization["auto_crafter_trait_targets_group"]["en"] == "Perk and blessing targets"
     assert localization["automatic_curio_once_per_store_rotation"]["en"] == "Scan at most once per store rotation"
     assert localization["automatic_curio_rescan_on_store_refresh"]["en"] == "Rescan when store refreshes while idle"
+    assert localization["automatic_curio_owned_target_per_stat"]["en"] == "Owned Curio target per primary stat"
+    assert "strictly higher item level" in localization["automatic_curio_owned_target_per_stat_tooltip"]["en"]
+    assert "严格高于" in localization["automatic_curio_owned_target_per_stat_tooltip"]["zh-cn"]
+    assert "默认值为 +3" in localization["automatic_curio_min_stamina_tooltip"]["zh-cn"]
     assert (
         localization["weapon_image_inventory_group"]["en"]
         == "Inventory and Hadron image layout"
@@ -3322,8 +3338,10 @@ def main() -> None:
     assert defaults["auto_crafter_buy_until_target"] == "target_search"
     assert defaults["auto_crafter_dump_stat_comparison"] == "exact"
     assert defaults["automatic_curio_min_item_level"] == 410
+    assert defaults["automatic_curio_owned_target_per_stat"] == 3
     assert defaults["automatic_curio_min_health"] == 21
     assert defaults["automatic_curio_min_toughness"] == 17
+    assert defaults["automatic_curio_min_stamina"] == 3
     assert defaults["automatic_curio_diagnostic_logging"] is False
     assert defaults["automatic_curio_disable_no_eligible_notification"] is False
     assert defaults["auto_crafter_craft_duplicate_completed_queued_weapons"] is False

@@ -114,6 +114,13 @@
       "modules": ["BetterInventory_curio_acquisition.lua", "BetterInventory_curio_profiles.lua", "BetterInventory_curio_purchase.lua", "BetterInventory_curio_store.lua"]
     },
     {
+      "name": "curio.owned-set-upgrades",
+      "test": "test_curio_acquisition.py",
+      "case": "account_scoped_reports",
+      "outcome": "per-operative and per-primary-stat best-three ownership rejects equal/lower duplicates before wallet lookup while retaining strict Power upgrades; Stamina defaults to a +3 inclusive roll floor",
+      "modules": ["BetterInventory_curio_acquisition.lua", "BetterInventory_curio_store.lua"]
+    },
+    {
       "name": "curio.reads-cancel",
       "test": "test_curio_acquisition.py",
       "case": "read_cancellation_and_generation",

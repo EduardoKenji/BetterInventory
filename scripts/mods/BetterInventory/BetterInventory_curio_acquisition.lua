@@ -1124,7 +1124,7 @@ local function finish_pass()
 	state.scheduled_reason = nil
 end
 
-local function purchase_candidates(mod, token, candidates, boundary_ms)
+local function purchase_candidates(mod, token, candidates, boundary_ms, owned_policy)
 	local purchased = {}
 	local insufficient = {}
 	local report_account_key = state.account_key
@@ -1155,6 +1155,16 @@ local function purchase_candidates(mod, token, candidates, boundary_ms)
 		chain = chain:next(function()
 			if not context_is_current(mod, token) then
 				return
+			elseif not CurioStore.candidate_improves_owned(candidate, owned_policy) then
+				log_diagnostic(mod, string.format(
+					"Skipped %s Curio offer %s at item level %s because it does not improve the operative's configured top-%d set.",
+					tostring(candidate.primary_trait or "?"),
+					tostring(candidate.offer_id or "?"),
+					tostring(candidate.item_level or "?"),
+					tonumber(owned_policy and owned_policy.target) or 0
+				))
+
+				return
 			end
 
 			return revalidate_and_purchase(mod, token, candidate, purchase_dispatched, purchase_settled):next(function(result)
@@ -1164,6 +1174,7 @@ local function purchase_candidates(mod, token, candidates, boundary_ms)
 					end
 
 					purchased[#purchased + 1] = result.candidate
+					CurioStore.record_owned_candidate(result.candidate, owned_policy)
 				elseif result and result.status == "insufficient_funds" and result.candidate then
 					insufficient[#insufficient + 1] = result.candidate
 				end
@@ -1309,7 +1320,7 @@ local function start_scan(mod)
 			finish_pass()
 			notify_no_eligible(mod)
 		else
-			purchase_candidates(mod, token, candidates, boundary)
+			purchase_candidates(mod, token, candidates, boundary, scan_result.owned_policy)
 		end
 	end):catch(function(error_value)
 		schedule_scan_retry(mod, token, error_value)
