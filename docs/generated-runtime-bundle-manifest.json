@@ -1,6 +1,6 @@
 {
   "archive_root": "BetterInventory",
-  "file_count": 78,
+  "file_count": 79,
   "files": [
     {
       "archive_path": "BetterInventory/BetterInventory.mod",
@@ -40,8 +40,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_character_overview_ui.lua",
-      "bytes": 58919,
-      "sha256": "2dfc57ff3684d1fda0aaa1b7581827c97e3f377e5bf0e4b8e1266f1d27508da3",
+      "bytes": 59029,
+      "sha256": "362c5d1765c78de49e508b2d9072759db24379901bc485726c7d30d2198f96b6",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_character_overview_ui.lua"
     },
     {
@@ -95,7 +95,7 @@
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_data.lua",
       "bytes": 70522,
-      "sha256": "eb58b7850cd9ce037f1d63eb28f7c03b85207bfe189d4e93658933ece754a196",
+      "sha256": "b78b97013926d49f79a959360e252c28c84a117e6218cab6dba8157705c2feaa",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_data.lua"
     },
     {
@@ -214,20 +214,20 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout.lua",
-      "bytes": 9829,
-      "sha256": "f2d81a4091a31e8507de929f66d4694e92deb095f7af321d7581140794fc940a",
+      "bytes": 9879,
+      "sha256": "efbe27ef34ffb2527e7f518086f15f6f7a6ac0897ac11a234d2780aa5355cc9b",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_layout.lua"
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_blueprints.lua",
-      "bytes": 35536,
-      "sha256": "2f53cc65d02065dee541c365b50f105ec385d1974d545c58ab71f0617e2e51ed",
+      "bytes": 35825,
+      "sha256": "e22ab6e8b0e7a8634d9077cfd7b4180fdc754bfdfbbe32471d7d4bdfb4ac29bc",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_layout_blueprints.lua"
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_cards.lua",
-      "bytes": 75008,
-      "sha256": "0f02b434c2e6446b87e90288479b09dcd36cc637d9cda05968bed575de3dbf61",
+      "bytes": 75094,
+      "sha256": "7744f7082657139eaefa913a4434971a1bcd4b30ba3e8de4fe75002caa775a6f",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_layout_cards.lua"
     },
     {
@@ -267,6 +267,12 @@
       "source_path": "scripts/mods/BetterInventory/BetterInventory_localization_zh_cn.lua"
     },
     {
+      "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_material_safety.lua",
+      "bytes": 4052,
+      "sha256": "08745606df44f815c1722a6e64c070bf94efce752b4a54c5d3ee0173c9797624",
+      "source_path": "scripts/mods/BetterInventory/BetterInventory_material_safety.lua"
+    },
+    {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_operation_arbiter.lua",
       "bytes": 2814,
       "sha256": "e135ef91f88f1862f488e1cc598155414ae46670770747678fad147cf7c2fe8c",
@@ -286,8 +292,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_runtime.lua",
-      "bytes": 99915,
-      "sha256": "726a9c2d922087ec9fb768511839c99e1a152beba81399e8088fadc3df8a58b3",
+      "bytes": 99801,
+      "sha256": "a26449ac968e53b9568e4450bb6424008f2755bb8a72533a47502e3cc174cf03",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_runtime.lua"
     },
     {
@@ -388,8 +394,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/panel.lua",
-      "bytes": 96231,
-      "sha256": "912056b2a9783c34970bf820ebe6cedb6755a09f1b6ede75a04b5619354770a7",
+      "bytes": 96371,
+      "sha256": "eaa8baa4f11f1a3cb6576b2e0241f15e20c76882640bdc915aa5421c62ed3e97",
       "source_path": "scripts/mods/BetterInventory/auto_crafter/darktide/panel.lua"
     },
     {
@@ -471,6 +477,6 @@
       "source_path": "scripts/mods/BetterInventory/auto_crafter/games_lantern/transport_wine.lua"
     }
   ],
-  "runtime_tree_sha256": "22f630f775b950093bcc19ce44d4b0979a2c5592bafcf4936e226b9ef8635c31",
-  "version": "2.9.0"
+  "runtime_tree_sha256": "67de448338aa8ff388beee120545389088ee00f44b18759ac3743d18e583bff5",
+  "version": "2.9.1"
 }

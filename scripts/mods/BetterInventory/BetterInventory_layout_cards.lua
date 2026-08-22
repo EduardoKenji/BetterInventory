@@ -355,7 +355,7 @@ local function resolved_trait_data(entry, include_textures, include_perk_rank, i
 	if include_textures then
 		local textures_ok, icon, frame = pcall(Items.trait_textures, trait_item, entry.rarity)
 
-		if textures_ok then
+		if textures_ok and type(icon) == "string" and icon ~= "" and type(frame) == "string" and frame ~= "" then
 			data.icon = icon
 			data.frame = frame
 		end

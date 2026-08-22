@@ -2006,14 +2006,14 @@ local function normalize_global_store_widgets(item_grid)
 	end
 end
 
--- MyFavorites attaches its input hotspot to grid item widgets. Blueprint styles
--- are cloned during widget construction, so retain the actual runtime hotspot
--- style on shared content. configure_favorite_marker's working favorite-icon
--- callback then moves both the visible icon and its click target together.
+-- Retain MyFavorites' cloned runtime hotspot so its icon and click target move together.
 if ensure_class_method(ViewElementGrid, "_create_entry_widget_from_config") then
 	mod:hook(ViewElementGrid, "_create_entry_widget_from_config", function(func, item_grid, config, suffix, callback_name, secondary_callback_name, double_click_callback_name)
 		local widget, alignment_widget = func(item_grid, config, suffix, callback_name, secondary_callback_name, double_click_callback_name)
 		attach_runtime_marker_styles(widget, item_grid)
+		if Layout.MaterialSafety then
+			Layout.MaterialSafety.guard_inventory_widget(mod, item_grid, widget)
+		end
 
 		return widget, alignment_widget
 	end)

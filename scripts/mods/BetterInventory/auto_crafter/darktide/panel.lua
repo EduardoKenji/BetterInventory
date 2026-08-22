@@ -711,13 +711,16 @@ function Panel.new(dependencies)
 				widget.content.trait_target_2_index = 0
 
 				for index, option in ipairs(options.trait_options) do
+					local option_icon = type(option.icon) == "string" and option.icon or ""
+					local option_frame = type(option.frame) == "string" and option.frame or ""
+
 					widget.content["trait_label_" .. tostring(index)] = option.short_label or option.label
-					widget.content["trait_icon_" .. tostring(index)] = option.icon or ""
+					widget.content["trait_icon_" .. tostring(index)] = option_icon
 					local icon_style = widget.style and widget.style["trait_icon_" .. tostring(index)]
 
 					if icon_style and icon_style.material_values then
-						icon_style.material_values.icon = option.icon or ""
-						icon_style.material_values.frame = option.frame or ""
+						icon_style.material_values.icon = option_icon
+						icon_style.material_values.frame = option_frame
 					end
 
 					if option.value == target_1 then

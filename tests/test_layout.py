@@ -12,6 +12,7 @@ WKC_INTEGRATION_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "
 LAYOUT_GEOMETRY_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_layout_geometry.lua"
 LAYOUT_BLUEPRINTS_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_layout_blueprints.lua"
 IMAGE_LAYOUT_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_image_layout.lua"
+MATERIAL_SAFETY_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_material_safety.lua"
 LOCALIZATION_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_localization.lua"
 
 
@@ -617,6 +618,10 @@ def main() -> None:
 				return TestImageLayout
 			end
 
+			if path == "BetterInventory/scripts/mods/BetterInventory/BetterInventory_material_safety" then
+				return TestMaterialSafety
+			end
+
 			error("Unexpected test io_dofile: " .. tostring(path))
 		end
 
@@ -740,6 +745,9 @@ def main() -> None:
     )
     lua.globals().TestImageLayout = lua.execute(
         IMAGE_LAYOUT_PATH.read_text(encoding="utf-8"), name=str(IMAGE_LAYOUT_PATH)
+    )
+    lua.globals().TestMaterialSafety = lua.execute(
+        MATERIAL_SAFETY_PATH.read_text(encoding="utf-8"), name=str(MATERIAL_SAFETY_PATH)
     )
     lua.globals().TestLayoutBlueprints = lua.execute(
         LAYOUT_BLUEPRINTS_PATH.read_text(encoding="utf-8"), name=str(LAYOUT_BLUEPRINTS_PATH)

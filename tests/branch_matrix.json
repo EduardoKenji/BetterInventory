@@ -86,6 +86,13 @@
       "modules": ["BetterInventory_features.lua", "BetterInventory_feature_sorting.lua", "BetterInventory_runtime.lua"]
     },
     {
+      "name": "inventory.repairs-invalid-material-reference",
+      "test": "test_material_safety.py",
+      "case": "dynamic_material_repair",
+      "outcome": "numeric or malformed dynamic texture references are restored before rendering in reused inventory and Character Overview widgets without a global renderer hook",
+      "modules": ["BetterInventory_material_safety.lua", "BetterInventory_layout_blueprints.lua", "BetterInventory_character_overview_ui.lua", "BetterInventory_runtime.lua"]
+    },
+    {
       "name": "curio.rotation-waits",
       "test": "test_curio_acquisition.py",
       "case": "store_rotation_gate",

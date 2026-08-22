@@ -5,8 +5,10 @@ local LayoutContent = get_mod("BetterInventory"):io_dofile("BetterInventory/scri
 local Cards = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_cards")
 local Geometry = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_geometry")
 local ImageLayout = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_image_layout")
+local MaterialSafety = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_material_safety")
 local Blueprints = {}
 Blueprints.ImageLayout = ImageLayout
+Blueprints.MaterialSafety = MaterialSafety
 local content = LayoutContent
 
 local global_store_character_photo_size = content.global_store_character_photo_size
@@ -463,6 +465,7 @@ Blueprints.configure_native_item_blueprint = function(mod, item_blueprint, grid_
 		character_overview = configuration.character_overview,
 		weapon_modifier_stats_enabled = weapon_modifier_stats_enabled and not character_overview_dump_stat_only,
 	})
+	MaterialSafety.guard_blueprint(mod, item_blueprint)
 	if not configuration.character_overview then
 		ImageLayout.apply_blueprint(mod, item_blueprint, configuration, 1)
 	end
@@ -918,6 +921,7 @@ Blueprints.configure_item_blueprint = function(mod, item_blueprint, grid_width, 
 	set_height(pass_by_style_id(pass_template, "inner_highlight"), card_height)
 
 	configure_card_content(mod, item_blueprint, configuration)
+	MaterialSafety.guard_blueprint(mod, item_blueprint)
 	ImageLayout.apply_blueprint(mod, item_blueprint, configuration, resolved_columns)
 
 	return item_size

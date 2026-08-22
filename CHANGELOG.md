@@ -1,5 +1,12 @@
 # BetterInventory changelog
 
+## 2.9.1 - 2026-08-22
+
+- Prevents numeric or malformed dynamic texture values from reaching Darktide's UI material loader during weapon changes, including the reported `Error loading material '128'` failure shape.
+- Protects BetterInventory-transformed Inventory and Character Overview cards plus native `InventoryWeaponsView` cards without a global renderer hook or per-frame widget scan.
+- Preserves valid native/third-party materials, render-target atlas data, and async icon ownership; invalid references fall back to the pass's native material and emit at most one warning per widget field.
+- Rejects malformed blessing and Auto Crafter trait texture metadata before it reaches material parameters.
+
 ## 2.9.0 - 2026-08-21
 
 - Gives the Better Inventory name in Mod Options an always-on per-character gradient from bright green `#AEEF69` to aqua-blue `#62EFD8`, distinct from Alf's warm yellow-to-magenta branding.

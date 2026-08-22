@@ -387,6 +387,7 @@ local function character_overview_weapon_blueprint(rarity_strip_setting_id, weap
 		image_layout_context = "character_overview",
 		slot_kind = weapon_kind,
 	}, 1, "weapon")
+	Layout.MaterialSafety.guard_blueprint(mod, blueprint)
 
 	local configured_init = blueprint.init
 
@@ -765,6 +766,7 @@ local function character_overview_curio_blueprint()
 		image_layout_context = "character_overview",
 		slot_kind = "curio",
 	}, 1, "curio")
+	Layout.MaterialSafety.guard_blueprint(mod, blueprint)
 
 	if not show_curio_name and display_name then
 		display_name.visibility_function = function()

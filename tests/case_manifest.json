@@ -210,11 +210,14 @@
       {"name": "bounded_retry_and_disable", "risk": "high", "start_line": 442, "end_line": 754},
       {"name": "callback_failure_safety", "risk": "high", "start_line": 755, "end_line": 979}
   ],
+  "test_material_safety.py": [
+    {"name": "dynamic_material_repair", "risk": "critical", "start_line": 1, "end_line": 191}
+  ],
   "test_layout.py": [
-    {"name": "card_geometry", "risk": "high", "start_line": 613, "end_line": 1455},
-      {"name": "weapon_modifier_data_only_resolution", "risk": "critical", "start_line": 1456, "end_line": 1836},
-        {"name": "content_and_resource_ownership", "risk": "high", "start_line": 1837, "end_line": 3048},
-    {"name": "integration_boundaries", "risk": "medium", "start_line": 3049, "end_line": 4896}
+    {"name": "card_geometry", "risk": "high", "start_line": 613, "end_line": 1463},
+      {"name": "weapon_modifier_data_only_resolution", "risk": "critical", "start_line": 1464, "end_line": 1844},
+        {"name": "content_and_resource_ownership", "risk": "high", "start_line": 1845, "end_line": 3056},
+    {"name": "integration_boundaries", "risk": "medium", "start_line": 3057, "end_line": 4904}
   ],
   "test_operation_arbiter.py": [
     {"name": "manual_automatic_exclusion", "risk": "critical", "start_line": 20, "end_line": 34},
