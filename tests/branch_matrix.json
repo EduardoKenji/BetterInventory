@@ -159,7 +159,7 @@
       "name": "customization.persistence-bounds",
       "test": "test_item_customization.py",
       "case": "dirty_save_outcomes",
-      "outcome": "delegated and failed DMF saves have bounded, observable persistence outcomes",
+      "outcome": "receiver-free and method-style delegated DMF saves plus explicit failures retain bounded, observable persistence outcomes",
       "modules": ["BetterInventory_item_customization.lua", "BetterInventory_item_customization_editor.lua", "BetterInventory_item_customization_name_it.lua", "BetterInventory_item_customization_store.lua"]
     },
     {

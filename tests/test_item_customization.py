@@ -138,7 +138,8 @@ def main() -> None:
         settings_flush_should_swallow_failure = false
         settings_flush_should_reject = false
         test_dmf_mod = {
-            save_unsaved_settings_to_file = function()
+            save_unsaved_settings_to_file = function(self)
+                assert(self == test_dmf_mod)
                 settings_flush_attempts = settings_flush_attempts + 1
 
                 if settings_flush_should_fail then

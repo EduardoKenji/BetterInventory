@@ -172,7 +172,10 @@ local function flush_persistence(force)
 	-- One deferred flush batches all edits/deletions performed in the same
 	-- frame while reducing the hard-crash loss window from an entire game state
 	-- to, normally, a single frame.
-	local save_ok, save_result = pcall(dmf.save_unsaved_settings_to_file)
+	-- Legacy DMF exposes this as a receiver-free function. Passing the framework
+	-- table is harmless there and also composes with a future method-style
+	-- implementation that requires its receiver.
+	local save_ok, save_result = pcall(dmf.save_unsaved_settings_to_file, dmf)
 
 	-- Current DMF releases swallow Application.set_user_setting failures and
 	-- return nil. Treat only an explicit true result as durable success; keep

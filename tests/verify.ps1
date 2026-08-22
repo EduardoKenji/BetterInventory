@@ -1,7 +1,9 @@
 param(
 	[string] $DarktideSourcePath,
 	[string] $DmfSourcePath,
+	[string] $LegacyDmfSourcePath,
 	[string] $AlfsDmfExtensionsSourcePath,
+	[string] $LegacyAlfsDmfExtensionsSourcePath,
 	[string] $GlobalStoreSourcePath
 )
 
@@ -276,7 +278,7 @@ if ($features -notmatch 'read_promise\s*=\s*nil' -or $features -notmatch 'track_
 	throw "Automatic Discard read requests must retain an explicit cancelable handle without owning purchase POSTs."
 }
 
-if ($itemCustomization -notmatch 'local save_ok, save_result = pcall\(dmf\.save_unsaved_settings_to_file\)' -or $itemCustomization -notmatch 'save_result == true' -or $itemCustomization -notmatch 'save_result == nil' -or $itemCustomization -notmatch 'persistence_last_outcome\s*=\s*"delegated"' -or $itemCustomization -notmatch 'MAX_PERSISTENCE_ATTEMPTS' -or $itemCustomization -notmatch 'ItemCustomization\.persistence_status' -or $itemCustomization -notmatch 'flush_persistence\(true\)' -or $itemCustomization -notmatch 'persistence_retry_elapsed') {
+if ($itemCustomization -notmatch 'local save_ok, save_result = pcall\(dmf\.save_unsaved_settings_to_file,\s*dmf\)' -or $itemCustomization -notmatch 'save_result == true' -or $itemCustomization -notmatch 'save_result == nil' -or $itemCustomization -notmatch 'persistence_last_outcome\s*=\s*"delegated"' -or $itemCustomization -notmatch 'MAX_PERSISTENCE_ATTEMPTS' -or $itemCustomization -notmatch 'ItemCustomization\.persistence_status' -or $itemCustomization -notmatch 'flush_persistence\(true\)' -or $itemCustomization -notmatch 'persistence_retry_elapsed') {
 	throw "Customization persistence must treat DMF no-return saves as delegated, bound retryable failures, and flush at disable."
 }
 
@@ -444,45 +446,159 @@ foreach ($settingId in $settingIds) {
 	}
 }
 
+function Test-DmfCompatibilityContract {
+	param(
+		[string] $Root,
+		[string] $Label,
+		[bool] $RequireCurrentOptions
+	)
+
+	$settingsPath = Join-Path $Root "scripts\mods\dmf\modules\core\settings.lua"
+	$coreOptionsPath = Join-Path $Root "scripts\mods\dmf\modules\core\options.lua"
+	$optionBlueprintsPath = Join-Path $Root "scripts\mods\dmf\modules\ui\options\dmf_options_view_content_blueprints.lua"
+	$modOptionsPath = Join-Path $Root "scripts\mods\dmf\modules\ui\options\mod_options.lua"
+	$modDataPath = Join-Path $Root "scripts\mods\dmf\modules\dmf_mod_data.lua"
+	$hooksPath = Join-Path $Root "scripts\mods\dmf\modules\core\hooks.lua"
+	$ioPath = Join-Path $Root "scripts\mods\dmf\modules\core\io.lua"
+	$localizationPath = Join-Path $Root "scripts\mods\dmf\modules\core\localization.lua"
+	$loggingPath = Join-Path $Root "scripts\mods\dmf\modules\core\logging.lua"
+	$hudElementsPath = Join-Path $Root "scripts\mods\dmf\modules\gui\custom_hud_elements.lua"
+
+	foreach ($contractFile in @($settingsPath, $coreOptionsPath, $optionBlueprintsPath, $modOptionsPath, $modDataPath, $hooksPath, $ioPath, $localizationPath, $loggingPath, $hudElementsPath)) {
+		if (-not (Test-Path -LiteralPath $contractFile -PathType Leaf)) {
+			throw "Missing expected $Label source file: $contractFile"
+		}
+	}
+
+	$settingsSource = Get-Content -LiteralPath $settingsPath -Raw
+	$coreOptionsSource = Get-Content -LiteralPath $coreOptionsPath -Raw
+	$optionBlueprintsSource = Get-Content -LiteralPath $optionBlueprintsPath -Raw
+	$modOptionsSource = Get-Content -LiteralPath $modOptionsPath -Raw
+	$modApiSource = @(
+		Get-Content -LiteralPath $modDataPath -Raw
+		Get-Content -LiteralPath $hooksPath -Raw
+		Get-Content -LiteralPath $ioPath -Raw
+		Get-Content -LiteralPath $localizationPath -Raw
+		Get-Content -LiteralPath $loggingPath -Raw
+		Get-Content -LiteralPath $hudElementsPath -Raw
+		$settingsSource
+	) -join "`n"
+
+	if ($settingsSource -notmatch 'mod_setting_changed_event\(self, setting_id\)') {
+		throw "$Label no longer appears to dispatch live mod setting changes."
+	}
+
+	if ($settingsSource -notmatch 'function dmf\.save_unsaved_settings_to_file\(\)') {
+		throw "$Label deferred settings persistence seam was not found."
+	}
+
+	if ($optionBlueprintsSource -notmatch 'local is_disabled = entry\.disabled or false') {
+		throw "$Label option widgets no longer appear to consume final-template disabled state."
+	}
+
+	if ($modOptionsSource -notmatch 'create_mod_options_settings') {
+		throw "$Label shared Mod Options template constructor was not found."
+	}
+
+	foreach ($widgetType in @("group", "checkbox", "dropdown", "numeric")) {
+		$typeMapMarker = [regex]::Escape('_type_template_map["' + $widgetType + '"]')
+		$coreMarker = [regex]::Escape('data.type == "' + $widgetType + '"')
+
+		if ($modOptionsSource -notmatch $typeMapMarker -or $coreOptionsSource -notmatch $coreMarker) {
+			throw "$Label no longer exposes BetterInventory's baseline '$widgetType' option contract."
+		}
+	}
+
+	$requiredModApiPatterns = [ordered]@{
+		add_global_localize_strings = 'DMFMod\.add_global_localize_strings\s*=\s*function'
+		error = 'function DMFMod:error\('
+		get = 'function DMFMod:get\('
+		get_name = 'function DMFMod:get_name\('
+		get_readable_name = 'function DMFMod:get_readable_name\('
+		hook = 'function DMFMod:hook\('
+		hook_enable = 'function DMFMod:hook_enable\('
+		hook_require = 'function DMFMod:hook_require\('
+		hook_safe = 'function DMFMod:hook_safe\('
+		info = 'function DMFMod:info\('
+		io_dofile = 'function DMFMod:io_dofile\('
+		io_read_content = 'function DMFMod:io_read_content\('
+		is_enabled = 'function DMFMod:is_enabled\('
+		localize = 'DMFMod\.localize\s*=\s*function'
+		register_hud_element = 'function DMFMod:register_hud_element\('
+		set = 'function DMFMod:set\('
+		warning = 'function DMFMod:warning\('
+	}
+
+	foreach ($methodName in $requiredModApiPatterns.Keys) {
+		if ($modApiSource -notmatch $requiredModApiPatterns[$methodName]) {
+			throw "$Label no longer exposes BetterInventory's '$methodName' mod API dependency."
+		}
+	}
+
+	if ($RequireCurrentOptions) {
+		if ($modOptionsSource -notmatch 'dynamic_widget_sets' -or $modOptionsSource -notmatch 'update_mod_options_visibility') {
+			throw "$Label retained dynamic Mod Options template seams were not found."
+		}
+
+		if ($coreOptionsSource -notmatch 'initialize_color_data' -or $modOptionsSource -notmatch 'create_color_template' -or $optionBlueprintsSource -notmatch 'blueprints\.color') {
+			throw "$Label native color-option capability is incomplete."
+		}
+	}
+
+	Write-Host "External $Label contract verification passed: $Root"
+}
+
+function Test-AlfsDmfExtensionsCompatibilityContract {
+	param(
+		[string] $Root,
+		[string] $Label
+	)
+
+	$loadDmfPath = Join-Path $Root "scripts\mods\Alfs_DMF_Extensions\modules\load_dmf.lua"
+	$stepSizePath = Join-Path $Root "scripts\mods\Alfs_DMF_Extensions\modules\step_size_value.lua"
+
+	foreach ($contractFile in @($loadDmfPath, $stepSizePath)) {
+		if (-not (Test-Path -LiteralPath $contractFile -PathType Leaf)) {
+			throw "Missing expected $Label source file: $contractFile"
+		}
+	}
+
+	$loadDmfSource = Get-Content -LiteralPath $loadDmfPath -Raw
+	$stepSizeSource = Get-Content -LiteralPath $stepSizePath -Raw
+
+	if ($loadDmfSource -notmatch 'local original_create\s*=\s*dmf\.create_mod_options_settings' -or $loadDmfSource -notmatch 'original_create\(self,\s*options_templates\)' -or $loadDmfSource -notmatch 'setting_id_lookup') {
+		throw "$Label no longer appears to delegate DMF template creation while preserving stable setting identity."
+	}
+
+	if ($stepSizeSource -notmatch 'local orig_create_settings\s*=\s*dmf\.create_mod_options_settings' -or $stepSizeSource -notmatch 'orig_create_settings\(self,\s*options_templates\)') {
+		throw "$Label step-size integration no longer appears to compose with the shared DMF template constructor."
+	}
+
+	Write-Host "External $Label contract verification passed: $Root"
+}
+
 $dmfRoot = if ($DmfSourcePath) {
 	(Resolve-Path -LiteralPath $DmfSourcePath).Path
 } else {
 	Join-Path $projectRoot "..\..\mods\dmf"
 }
 
-$dmfSettings = Join-Path $dmfRoot "scripts\mods\dmf\modules\core\settings.lua"
-$dmfOptionBlueprints = Join-Path $dmfRoot "scripts\mods\dmf\modules\ui\options\dmf_options_view_content_blueprints.lua"
-$dmfModOptions = Join-Path $dmfRoot "scripts\mods\dmf\modules\ui\options\mod_options.lua"
-$dmfContractFiles = @($dmfSettings, $dmfOptionBlueprints, $dmfModOptions)
-
-if (($DmfSourcePath -or (Test-Path -LiteralPath $dmfRoot -PathType Container))) {
-	foreach ($dmfFile in $dmfContractFiles) {
-		if (-not (Test-Path -LiteralPath $dmfFile -PathType Leaf)) {
-			throw "Missing expected DMF source file: $dmfFile"
-		}
-	}
-
-	if ((Get-Content -LiteralPath $dmfSettings -Raw) -notmatch 'mod_setting_changed_event\(self, setting_id\)') {
-		throw "DMF no longer appears to dispatch live mod setting changes."
-	}
-
-	if ((Get-Content -LiteralPath $dmfSettings -Raw) -notmatch 'function dmf\.save_unsaved_settings_to_file\(\)') {
-		throw "DMF's deferred settings persistence seam was not found."
-	}
-
-	if ((Get-Content -LiteralPath $dmfOptionBlueprints -Raw) -notmatch 'local is_disabled = entry\.disabled or false') {
-		throw "DMF option widgets no longer appear to consume final-template disabled state."
-	}
-
-	$dmfModOptionsSource = Get-Content -LiteralPath $dmfModOptions -Raw
-
-	if ($dmfModOptionsSource -notmatch 'create_mod_options_settings' -or $dmfModOptionsSource -notmatch 'dynamic_widget_sets' -or $dmfModOptionsSource -notmatch 'update_mod_options_visibility') {
-		throw "DMF's retained dynamic mod-options template seams were not found."
-	}
-
-	Write-Host "External DMF contract verification passed: $dmfRoot"
+if ($DmfSourcePath -or (Test-Path -LiteralPath $dmfRoot -PathType Container)) {
+	Test-DmfCompatibilityContract -Root $dmfRoot -Label "current DMF" -RequireCurrentOptions $true
 } else {
-	Write-Host "Repository-only verification: DMF source checks skipped; pass -DmfSourcePath for external compatibility checks."
+	Write-Host "Repository-only verification: current DMF source checks skipped; pass -DmfSourcePath for external compatibility checks."
+}
+
+$legacyDmfRoot = if ($LegacyDmfSourcePath) {
+	(Resolve-Path -LiteralPath $LegacyDmfSourcePath).Path
+} else {
+	Join-Path $projectRoot "..\..\mods\(Old version) dmf"
+}
+
+if ($LegacyDmfSourcePath -or (Test-Path -LiteralPath $legacyDmfRoot -PathType Container)) {
+	Test-DmfCompatibilityContract -Root $legacyDmfRoot -Label "legacy DMF" -RequireCurrentOptions $false
+} else {
+	Write-Host "Repository-only verification: legacy DMF source checks skipped; pass -LegacyDmfSourcePath for external compatibility checks."
 }
 
 $alfsDmfExtensionsRoot = if ($AlfsDmfExtensionsSourcePath) {
@@ -490,31 +606,23 @@ $alfsDmfExtensionsRoot = if ($AlfsDmfExtensionsSourcePath) {
 } else {
 	Join-Path $projectRoot "..\..\mods\Alfs_DMF_Extensions"
 }
-$alfsLoadDmf = Join-Path $alfsDmfExtensionsRoot "scripts\mods\Alfs_DMF_Extensions\modules\load_dmf.lua"
-$alfsStepSize = Join-Path $alfsDmfExtensionsRoot "scripts\mods\Alfs_DMF_Extensions\modules\step_size_value.lua"
-$alfsContractFiles = @($alfsLoadDmf, $alfsStepSize)
 
-if (($AlfsDmfExtensionsSourcePath -or (Test-Path -LiteralPath $alfsDmfExtensionsRoot -PathType Container))) {
-	foreach ($alfsFile in $alfsContractFiles) {
-		if (-not (Test-Path -LiteralPath $alfsFile -PathType Leaf)) {
-			throw "Missing expected Alf's DMF Extensions source file: $alfsFile"
-		}
-	}
-
-	$alfsLoadDmfSource = Get-Content -LiteralPath $alfsLoadDmf -Raw
-	$alfsStepSizeSource = Get-Content -LiteralPath $alfsStepSize -Raw
-
-	if ($alfsLoadDmfSource -notmatch 'local original_create\s*=\s*dmf\.create_mod_options_settings' -or $alfsLoadDmfSource -notmatch 'original_create\(self,\s*options_templates\)' -or $alfsLoadDmfSource -notmatch 'setting_id_lookup') {
-		throw "Alf's DMF Extensions no longer appears to delegate DMF template creation while preserving stable setting identity."
-	}
-
-	if ($alfsStepSizeSource -notmatch 'local orig_create_settings\s*=\s*dmf\.create_mod_options_settings' -or $alfsStepSizeSource -notmatch 'orig_create_settings\(self,\s*options_templates\)') {
-		throw "Alf's step-size integration no longer appears to compose with the shared DMF template constructor."
-	}
-
-	Write-Host "External Alf's DMF Extensions contract verification passed: $alfsDmfExtensionsRoot"
+if ($AlfsDmfExtensionsSourcePath -or (Test-Path -LiteralPath $alfsDmfExtensionsRoot -PathType Container)) {
+	Test-AlfsDmfExtensionsCompatibilityContract -Root $alfsDmfExtensionsRoot -Label "current Alf's DMF Extensions"
 } else {
-	Write-Host "Repository-only verification: Alf's DMF Extensions checks skipped; pass -AlfsDmfExtensionsSourcePath for external compatibility checks."
+	Write-Host "Repository-only verification: current Alf's DMF Extensions checks skipped; pass -AlfsDmfExtensionsSourcePath for external compatibility checks."
+}
+
+$legacyAlfsDmfExtensionsRoot = if ($LegacyAlfsDmfExtensionsSourcePath) {
+	(Resolve-Path -LiteralPath $LegacyAlfsDmfExtensionsSourcePath).Path
+} else {
+	Join-Path $projectRoot "..\..\mods\(Old version) Alfs_DMF_Extensions"
+}
+
+if ($LegacyAlfsDmfExtensionsSourcePath -or (Test-Path -LiteralPath $legacyAlfsDmfExtensionsRoot -PathType Container)) {
+	Test-AlfsDmfExtensionsCompatibilityContract -Root $legacyAlfsDmfExtensionsRoot -Label "legacy Alf's DMF Extensions"
+} else {
+	Write-Host "Repository-only verification: legacy Alf's DMF Extensions checks skipped; pass -LegacyAlfsDmfExtensionsSourcePath for external compatibility checks."
 }
 
 $globalStoreRoot = if ($GlobalStoreSourcePath) {

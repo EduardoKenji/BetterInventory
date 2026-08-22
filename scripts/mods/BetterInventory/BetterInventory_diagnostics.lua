@@ -50,8 +50,10 @@ Diagnostics.update = function(mod, dt, curio_acquisition, features)
 	local oldest_operation_age = 0
 
 	if curio_acquisition then
-		if type(curio_acquisition.active_read_requests) == "function" then
-			active_promises = active_promises + (tonumber(curio_acquisition.active_read_requests()) or 0)
+		local active_read_request_count = curio_acquisition.active_read_request_count or curio_acquisition.active_read_requests
+
+		if type(active_read_request_count) == "function" then
+			active_promises = active_promises + (tonumber(active_read_request_count()) or 0)
 		end
 
 		if type(curio_acquisition.oldest_read_request_age) == "function" then

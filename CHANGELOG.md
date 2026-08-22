@@ -1,5 +1,13 @@
 # BetterInventory changelog
 
+## 2.9.5 - 2026-08-22
+
+- Audits all 79 runtime Lua sources for DMF compatibility, crashes, asynchronous ownership, account-operation races, retained state, allocation hot paths, and teardown without changing established feature behavior.
+- Verifies both installed legacy/current DMF and Alf generations: shared mod APIs and baseline options must exist everywhere, while native colour and retained-template seams are required only from current DMF.
+- Fixes opt-in performance diagnostics under-reporting Automatic Curio Buyer reads because the sampler used an obsolete counter name.
+- Makes deferred customization persistence compatible with receiver-free and method-style DMF save functions while preserving bounded retry/delegation behavior.
+- Documents fixed findings, reviewed non-findings, regression evidence, and remaining live-soak limits in the v2.9.5 audit record.
+
 ## 2.9.4 - 2026-08-22
 
 - Restores startup on older DMF releases that do not recognize the newer `color` Mod Options widget type.

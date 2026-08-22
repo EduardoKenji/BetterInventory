@@ -33,7 +33,7 @@ def main() -> None:
     diagnostics.count("pivot_writes")
     curio = lua.table_from(
         {
-            "active_read_requests": lua.eval("function() return 3 end"),
+            "active_read_request_count": lua.eval("function() return 3 end"),
             "oldest_read_request_age": lua.eval("function() return 2.5 end"),
         }
     )

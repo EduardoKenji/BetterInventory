@@ -12,6 +12,10 @@ The updated DMF retains `_options_templates` on its load-always options-view ins
 
 The release verifier checks the installed DMF retained-template, live-setting, disabled-widget, and deferred-save seams. When Alf is installed, it also checks both of Alf 2.0.4's constructor wrappers for delegation and stable-ID preservation. These are compatibility checks, not ownership of either external project's implementation.
 
+## 2026-08-22 dual-generation verification
+
+BetterInventory v2.9.5 separates baseline framework requirements from current-only facilities. The release verifier now checks both the installed current DMF/Alf copies and the retained legacy DMF/Alf copies when they are available. Both DMF generations must expose every mod API BetterInventory calls, the four option types used by the functional legacy schema, live setting events, deferred persistence, disabled-state consumption, and the shared template constructor. Only current DMF must expose native `color` support and retained dynamic-template visibility seams. This matches the runtime capability gate: legacy or partially updated DMF omits the optional colour preview without losing presets, RGB controls, or the rest of Mod Options.
+
 ## Decision
 
 BetterInventory uses a stable options schema: once DMF has created the final settings template, option rows remain present in the same order. A setting that is not currently applicable is disabled and greyed out; it is not removed by a conditional `validation_function`.
