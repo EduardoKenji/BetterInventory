@@ -2570,6 +2570,27 @@ def main() -> None:
         "better_inventory_curio_buyer_owned_target"
     ]
     assert buyer_owned_target.content.value == "3"
+    assert (
+        buyer_owned_target.content.tooltip
+        == "automatic_curio_owned_target_per_stat_tooltip"
+    )
+    assert buyer_owned_target.content.tooltip_hotspot is not None
+    tooltip_pass = next(
+        buyer_owned_target.content.entry.pass_template[index]
+        for index in range(
+            1, len(buyer_owned_target.content.entry.pass_template) + 1
+        )
+        if buyer_owned_target.content.entry.pass_template[index].style_id
+        == "tooltip"
+    )
+    assert tooltip_pass.visibility_function(buyer_owned_target.content) is False
+    buyer_owned_target.content.tooltip_hotspot.is_hover = True
+    assert tooltip_pass.visibility_function(buyer_owned_target.content) is True
+    buyer_owned_target.content.tooltip_hotspot.is_hover = False
+    assert tooltip_pass.visibility_function(buyer_owned_target.content) is False
+    assert len(buyer_owned_target.content.entry.controller_targets) == 2
+    assert buyer_owned_target.content.entry.controller_targets[1] == "decrease_hotspot"
+    assert buyer_owned_target.content.entry.controller_targets[2] == "increase_hotspot"
     buyer_owned_target.content.decrease_hotspot.pressed_callback()
     assert mod.settings.automatic_curio_owned_target_per_stat == 2
     buyer_owned_target.content.increase_hotspot.pressed_callback()

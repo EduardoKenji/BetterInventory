@@ -82,7 +82,7 @@ end
 
 local function append_curio_buyer_threshold_entries(entries, mod, layout, view, stepper_entry, sub_label_entry, type_entry, sync_function)
 	entries[#entries + 1] = stepper_entry(mod, layout, view, INVENTORY_CURIO_BUYER_MIN_LEVEL_ID, "automatic_curio_min_item_level", "automatic_curio_min_item_level", 410, sync_function)
-	entries[#entries + 1] = stepper_entry(mod, layout, view, INVENTORY_CURIO_BUYER_OWNED_TARGET_ID, "automatic_curio_owned_target_per_stat", "automatic_curio_owned_target_per_stat", 3, sync_function, 0, 10, 1)
+	entries[#entries + 1] = stepper_entry(mod, layout, view, INVENTORY_CURIO_BUYER_OWNED_TARGET_ID, "automatic_curio_owned_target_per_stat", "automatic_curio_owned_target_per_stat", 3, sync_function, 0, 10, 1, nil, "automatic_curio_owned_target_per_stat_tooltip")
 	entries[#entries + 1] = sub_label_entry(mod, view, "better_inventory_curio_buyer_types_label", "automatic_curio_types_inventory_label")
 	entries[#entries + 1] = type_entry(mod, layout, view)
 
@@ -664,10 +664,15 @@ local function compact_checkbox_passes()
 	}
 end
 
-local function compact_stepper_passes(width)
-	local controls_x = width - 138
+local function compact_stepper_tooltip_visible(content)
+	local hotspot = content.tooltip_hotspot
 
-	return {
+	return type(content.tooltip) == "string" and content.tooltip ~= "" and hotspot and hotspot.is_hover == true or false
+end
+
+local function compact_stepper_passes(width, show_tooltip)
+	local controls_x = width - 138
+	local passes = {
 		{
 			pass_type = "text",
 			style_id = "label",
@@ -802,6 +807,88 @@ local function compact_stepper_passes(width)
 			},
 		},
 	}
+
+	if show_tooltip then
+		local tooltip_height = 108
+		local tooltip_y = -tooltip_height - 4
+
+		passes[#passes + 1] = {
+			content_id = "tooltip_hotspot",
+			pass_type = "hotspot",
+			content = {},
+			style = {
+				offset = {
+					0,
+					0,
+					6,
+				},
+				size = {
+					controls_x - 8,
+					26,
+				},
+			},
+		}
+		passes[#passes + 1] = {
+			pass_type = "rect",
+			style_id = "tooltip_background",
+			style = {
+				color = Color.terminal_background(245, true),
+				offset = {
+					0,
+					tooltip_y,
+					90,
+				},
+				size = {
+					width,
+					tooltip_height,
+				},
+			},
+			visibility_function = compact_stepper_tooltip_visible,
+		}
+		passes[#passes + 1] = {
+			pass_type = "texture",
+			style_id = "tooltip_frame",
+			value = "content/ui/materials/frames/frame_tile_2px",
+			style = {
+				color = Color.terminal_frame(255, true),
+				offset = {
+					0,
+					tooltip_y,
+					91,
+				},
+				size = {
+					width,
+					tooltip_height,
+				},
+			},
+			visibility_function = compact_stepper_tooltip_visible,
+		}
+		passes[#passes + 1] = {
+			pass_type = "text",
+			style_id = "tooltip",
+			value_id = "tooltip",
+			style = {
+				font_size = 15,
+				font_type = "proxima_nova_bold",
+				text_horizontal_alignment = "left",
+				text_vertical_alignment = "top",
+				text_color = Color.terminal_text_body(255, true),
+				word_wrap = true,
+				offset = {
+					10,
+					tooltip_y + 10,
+					92,
+				},
+				size = {
+					width - 20,
+					tooltip_height - 20,
+				},
+			},
+			visibility_function = compact_stepper_tooltip_visible,
+		}
+	end
+
+	return passes
 end
 
 local function panel_sub_label_passes(width)

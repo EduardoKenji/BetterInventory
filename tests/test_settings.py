@@ -2709,7 +2709,7 @@ def main() -> None:
     assert localization["automatic_curio_once_per_store_rotation"]["en"] == "Scan at most once per store rotation"
     assert localization["automatic_curio_rescan_on_store_refresh"]["en"] == "Rescan when store refreshes while idle"
     assert localization["automatic_curio_owned_target_per_stat"]["en"] == "Owned Curio target per primary stat"
-    assert "strictly higher item level" in localization["automatic_curio_owned_target_per_stat_tooltip"]["en"]
+    assert "Power strictly above" in localization["automatic_curio_owned_target_per_stat_tooltip"]["en"]
     assert "严格高于" in localization["automatic_curio_owned_target_per_stat_tooltip"]["zh-cn"]
     assert "默认值为 +3" in localization["automatic_curio_min_stamina_tooltip"]["zh-cn"]
     assert (

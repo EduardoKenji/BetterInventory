@@ -198,7 +198,7 @@ local localization = {
 		en = "Owned Curio target per primary stat",
 	},
 	automatic_curio_owned_target_per_stat_tooltip = {
-		en = "After an operative owns this many Curios of one primary-stat type that pass its minimum-roll check, a new Curio must have a strictly higher item level than the lowest of that operative's best set. Set to 0 to disable this upgrade gate. The default is 3.",
+		en = "Tracks the best N qualifying Curios separately for each operative and primary stat. Once N are owned, only a Curio with Power strictly above the lowest of that best set is bought. Older Curios are not deleted, so earlier tiers remain in inventory. Set to 0 to disable. Default: 3.",
 	},
 	automatic_curio_diagnostic_logging = {
 		en = "Enable detailed diagnostic logging",

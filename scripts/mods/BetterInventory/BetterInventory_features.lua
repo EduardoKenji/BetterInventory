@@ -594,7 +594,7 @@ local function panel_quick_discard_entry(mod, layout, view)
 	end, { "rarity_hotspot", "discard_hotspot" })
 end
 
-local function panel_stepper_entry(mod, layout, view, control_id, setting_id, label_id, default_value, sync_function, minimum, maximum, step, suffix)
+local function panel_stepper_entry(mod, layout, view, control_id, setting_id, label_id, default_value, sync_function, minimum, maximum, step, suffix, tooltip_id)
 	local geometry = view._better_inventory_options_panel_geometry
 	minimum = tonumber(minimum) or 0
 	maximum = tonumber(maximum) or 500
@@ -605,8 +605,9 @@ local function panel_stepper_entry(mod, layout, view, control_id, setting_id, la
 		return math.clamp(math.floor((tonumber(mod:get(setting_id)) or default_value) + 0.5), minimum, maximum)
 	end
 
-	return panel_entry(view, control_id, 34, compact_stepper_passes(geometry.content_width), {
+	return panel_entry(view, control_id, 34, compact_stepper_passes(geometry.content_width, tooltip_id ~= nil), {
 		label = mod:localize(label_id),
+		tooltip = tooltip_id and mod:localize(tooltip_id),
 		value = tostring(current_value()) .. suffix,
 	}, function(widget)
 		local function change_value(delta)
