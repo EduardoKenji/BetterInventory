@@ -165,12 +165,12 @@
     {"name": "typed_fallbacks", "risk": "high", "start_line": 42, "end_line": 65}
   ],
   "test_curio_acquisition.py": [
-    {"name": "store_rotation_gate", "risk": "critical", "start_line": 1299, "end_line": 1612},
-    {"name": "purchase_revalidation", "risk": "critical", "start_line": 678, "end_line": 1006},
-    {"name": "read_cancellation_and_generation", "risk": "critical", "start_line": 1613, "end_line": 1644},
-    {"name": "account_mutation_deferral", "risk": "critical", "start_line": 1645, "end_line": 1668},
-    {"name": "idle_update_gate", "risk": "high", "start_line": 1669, "end_line": 1684},
-    {"name": "account_scoped_reports", "risk": "high", "start_line": 1007, "end_line": 1298}
+      {"name": "store_rotation_gate", "risk": "critical", "start_line": 1369, "end_line": 1682},
+      {"name": "purchase_revalidation", "risk": "critical", "start_line": 679, "end_line": 1076},
+      {"name": "read_cancellation_and_generation", "risk": "critical", "start_line": 1683, "end_line": 1714},
+      {"name": "account_mutation_deferral", "risk": "critical", "start_line": 1715, "end_line": 1738},
+      {"name": "idle_update_gate", "risk": "high", "start_line": 1739, "end_line": 1754},
+      {"name": "account_scoped_reports", "risk": "high", "start_line": 1077, "end_line": 1368}
   ],
   "test_curio_domains.py": [
     {"name": "context_snapshot", "risk": "high", "start_line": 20, "end_line": 33},
@@ -200,10 +200,10 @@
   ],
   "test_features.py": [
       {"name": "panel_focus_allocation_guard", "risk": "medium", "start_line": 122, "end_line": 123},
-        {"name": "discard_operation_ownership", "risk": "critical", "start_line": 3270, "end_line": 3808},
+        {"name": "discard_operation_ownership", "risk": "critical", "start_line": 3277, "end_line": 3815},
       {"name": "sorting_and_navigation", "risk": "high", "start_line": 408, "end_line": 1472},
       {"name": "optional_integration_fallbacks", "risk": "high", "start_line": 1473, "end_line": 1969},
-        {"name": "panel_lifecycle", "risk": "high", "start_line": 1970, "end_line": 3269}
+        {"name": "panel_lifecycle", "risk": "high", "start_line": 1970, "end_line": 3276}
   ],
   "test_item_customization.py": [
       {"name": "dirty_save_outcomes", "risk": "high", "start_line": 224, "end_line": 441},

@@ -117,7 +117,7 @@
       "name": "curio.owned-set-upgrades",
       "test": "test_curio_acquisition.py",
       "case": "account_scoped_reports",
-      "outcome": "per-operative and per-primary-stat best-three ownership rejects equal/lower duplicates before wallet lookup while retaining strict Power upgrades; Stamina defaults to a +3 inclusive roll floor",
+      "outcome": "per-operative and per-primary-stat best-three ownership rejects equal/lower duplicates before wallet lookup while retaining strict Power upgrades; Stamina defaults to a +3 inclusive roll floor, selected-operative gear is the only gear materialized, bounded insertion performs no per-Curio sort allocation, and scan-local policies are collectible",
       "modules": ["BetterInventory_curio_acquisition.lua", "BetterInventory_curio_store.lua"]
     },
     {

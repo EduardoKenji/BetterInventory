@@ -667,7 +667,7 @@ end
 local function compact_stepper_tooltip_visible(content)
 	local hotspot = content.tooltip_hotspot
 
-	return type(content.tooltip) == "string" and content.tooltip ~= "" and hotspot and hotspot.is_hover == true or false
+	return hotspot and hotspot.is_hover == true or false
 end
 
 local function compact_stepper_passes(width, show_tooltip)

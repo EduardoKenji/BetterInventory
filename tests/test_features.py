@@ -3145,6 +3145,13 @@ def main() -> None:
     prototype_view._discard_items_element = None
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
 
+    # Closing the inventory releases the panel-owned tooltip widget and every
+    # registry that could otherwise retain it across repeated view sessions.
+    assert features.release_inventory_options_panel(prototype_view) is True
+    assert prototype_view.prototype_panel_removed is True
+    assert prototype_view._better_inventory_options_panel is None
+    assert prototype_view._better_inventory_options_panel_widgets is None
+
     automatic_inventory = lua.table_from(
         {
             "auto_eligible": lua.table_from(

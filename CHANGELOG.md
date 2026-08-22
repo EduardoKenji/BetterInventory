@@ -6,6 +6,8 @@
 - Adds a default target of three qualifying owned Curios per operative and primary-stat type; after the target is filled, candidates must strictly improve the lowest Power in the current best-three set.
 - Keeps higher-Power upgrades eligible until all three retained slots reach the same cap, while equal/lower duplicates are rejected before wallet lookup or purchase dispatch.
 - Reuses Darktide's authoritative profile/gear snapshot and retains only bounded per-pass Power lists; no additional backend request, persistent item cache, or idle work is introduced.
+- Explains the owned-Curio target in a panel-native hover tooltip whose widget data is released with the inventory view.
+- Limits ownership materialization to selected operatives, reads Curio filters once per scan, and maintains each bounded best set with allocation-free insertion instead of repeated sorting.
 
 ## 2.9.2 - 2026-08-22
 

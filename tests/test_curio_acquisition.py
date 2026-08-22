@@ -325,6 +325,7 @@ def main() -> None:
                 return TestItems.perk_item_by_id(trait_id)
             end,
 			get_item_instance = function(gear, gear_id)
+				item_instance_resolve_count = (item_instance_resolve_count or 0) + 1
 				return gear and gear.item
 			end,
             get_store_item_instance = function(description)
@@ -969,6 +970,75 @@ def main() -> None:
     assert curio_store._test.candidate_improves_owned(
         owned_candidate, under_roll_policy
     )
+
+    # The top-N insertion path stays bounded without sorting or allocating a
+    # comparator per Curio. Production scans resolve only selected operatives'
+    # gear instead of materializing every account item.
+    assert "table.sort(levels" not in CURIO_STORE_PATH.read_text(encoding="utf-8")
+    filtered_gear = lua.execute(
+        r"""
+        local gear = {}
+
+        for index = 1, 3 do
+            local gear_id = "selected-health-" .. tostring(index)
+            gear[gear_id] = {
+                uuid = gear_id,
+                characterId = "target-psyker",
+                item = {
+                    item_type = "GADGET",
+                    level = 410 + index * 10,
+                    traits = {{id = "health_trait", value = 1}},
+                },
+            }
+        end
+
+        for index = 1, 50 do
+            local gear_id = "unselected-item-" .. tostring(index)
+            gear[gear_id] = {
+                uuid = gear_id,
+                characterId = "another-operative",
+                item = {item_type = "WEAPON_MELEE", level = 500},
+            }
+        end
+
+        return gear
+        """
+    )
+    globals_.item_instance_resolve_count = 0
+    filtered_policy = curio_store._test.owned_curio_policy(
+        globals_.test_mod,
+        filtered_gear,
+        lua.table_from([globals_.target_profile]),
+    )
+    assert globals_.item_instance_resolve_count == 3
+    filtered_levels = filtered_policy.levels["target-psyker"][
+        "gadget_innate_health_increase"
+    ]
+    assert [filtered_levels[index] for index in range(1, 4)] == [440, 430, 420]
+
+    # Policies are scan-local: after callers drop them, the module retains no
+    # strong references that could grow across store rotations.
+    retained_policy_count = lua.eval(
+        r"""
+        function(store, mod, gear)
+            local references = setmetatable({}, {__mode = "v"})
+
+            for index = 1, 64 do
+                references[index] = store._test.owned_curio_policy(mod, gear)
+            end
+
+            collectgarbage("collect")
+            local retained = 0
+
+            for _ in pairs(references) do
+                retained = retained + 1
+            end
+
+            return retained
+        end
+        """
+    )(curio_store, globals_.test_mod, globals_.profile_gear)
+    assert retained_policy_count == 0
 
     # Zero explicitly disables the ownership gate, even without a gear list.
     globals_.settings.automatic_curio_owned_target_per_stat = 0

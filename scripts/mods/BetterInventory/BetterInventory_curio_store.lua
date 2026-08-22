@@ -181,17 +181,26 @@ local function primary_roll_passes(mod, value, config)
 end
 
 local function insert_owned_level(levels, level, target)
-	levels[#levels + 1] = math.floor(level + 0.5)
-	table.sort(levels, function(left, right)
-		return left > right
-	end)
+	local rounded_level = math.floor(level + 0.5)
+	local count = #levels
 
-	while #levels > target do
-		levels[#levels] = nil
+	if target <= 0 or count >= target and rounded_level <= levels[target] then
+		return false
 	end
+
+	local insert_at = math.min(count + 1, target)
+
+	while insert_at > 1 and rounded_level > levels[insert_at - 1] do
+		levels[insert_at] = levels[insert_at - 1]
+		insert_at = insert_at - 1
+	end
+
+	levels[insert_at] = rounded_level
+
+	return true
 end
 
-local function owned_curio_policy(mod, gear)
+local function owned_curio_policy(mod, gear, profiles)
 	local target = owned_target_count(mod)
 	local policy = {
 		levels = {},
@@ -204,32 +213,59 @@ local function owned_curio_policy(mod, gear)
 		return nil, "profile scan returned no authoritative gear list"
 	end
 
+	local enabled_characters
+
+	if type(profiles) == "table" then
+		enabled_characters = {}
+
+		for index = 1, #profiles do
+			local profile = profiles[index]
+
+			if profile and profile.character_id and profile_is_enabled(mod, profile) then
+				enabled_characters[tostring(profile.character_id)] = true
+			end
+		end
+	end
+
+	local primary_filters = {}
+
+	for trait_name, config in pairs(PRIMARY_TRAITS) do
+		if mod:get(config.setting_id) ~= false then
+			primary_filters[trait_name] = config.minimum_roll_setting_id and math.clamp(tonumber(mod:get(config.minimum_roll_setting_id)) or config.minimum_roll_default, 0, 100) or true
+		end
+	end
+
 	for gear_id, raw_gear in pairs(gear) do
 		local character_id = type(raw_gear) == "table" and (raw_gear.characterId or raw_gear.character_id)
+		local character_key = character_id and tostring(character_id)
 
-		if character_id then
+		if character_key and (not enabled_characters or enabled_characters[character_key]) then
 			local resolved, item = pcall(MasterItems.get_item_instance, raw_gear, raw_gear.uuid or raw_gear.gear_id or gear_id)
 
 			if resolved and item and item.item_type == "GADGET" then
-				local trait_name, trait_value, trait_config = primary_trait(item)
-				local level = item_level(item)
+				local trait_name, trait_value = primary_trait(item)
+				local primary_filter = trait_name and primary_filters[trait_name]
 
-				if trait_name and level and primary_roll_passes(mod, trait_value, trait_config) then
-					local character_levels = policy.levels[tostring(character_id)]
+				if primary_filter and (primary_filter == true or trait_value ~= nil and trait_value + 0.0001 >= primary_filter) then
+					local level = item_level(item)
 
-					if not character_levels then
-						character_levels = {}
-						policy.levels[tostring(character_id)] = character_levels
+					if level then
+						local character_levels = policy.levels[character_key]
+
+						if not character_levels then
+							character_levels = {}
+							policy.levels[character_key] = character_levels
+						end
+
+						local levels = character_levels[trait_name]
+
+						if not levels then
+							levels = {}
+							character_levels[trait_name] = levels
+						end
+
+						insert_owned_level(levels, level, target)
 					end
-
-					local levels = character_levels[trait_name]
-
-					if not levels then
-						levels = {}
-						character_levels[trait_name] = levels
-					end
-
-					insert_owned_level(levels, level, target)
 				end
 			end
 		end
@@ -540,7 +576,7 @@ local function scan_candidates(mod, token, minimum_rotation_boundary_ms, process
 			return rejected("profile scan returned no profile list")
 		end
 
-		local owned_policy, policy_error = owned_curio_policy(mod, result and result.gear)
+		local owned_policy, policy_error = owned_curio_policy(mod, result and result.gear, profiles)
 
 		if not owned_policy then
 			return rejected(policy_error)
