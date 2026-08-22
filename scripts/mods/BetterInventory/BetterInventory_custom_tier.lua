@@ -6,6 +6,18 @@ local TRANSCENDENT_RARITY = 5
 local DARKEN_FACTOR = 0.4
 local REFERENCE_RED = { 210, 30, 40 }
 local COLOR_PREVIEW_SETTING_ID = "custom_tier_color_preview"
+local RED_WEAPONS_IMPORT_MARKER = "_custom_tier_red_weapons_at_home_import_v1"
+local RED_WEAPONS_COLOR_SETTING_IDS = {
+	"rarity_color_6_red",
+	"rarity_color_6_green",
+	"rarity_color_6_blue",
+}
+local RED_WEAPONS_CURIO_POWER_IMPORTS = {
+	{ "gadget_health_required_expertise", "custom_tier_curio_health_min_power" },
+	{ "gadget_toughness_required_expertise", "custom_tier_curio_toughness_min_power" },
+	{ "gadget_stamina_required_expertise", "custom_tier_curio_stamina_min_power" },
+	{ "gadget_wound_required_expertise", "custom_tier_curio_wounds_min_power" },
+}
 local WEAPON_TYPES = {
 	WEAPON_MELEE = "melee",
 	WEAPON_RANGED = "ranged",
@@ -75,7 +87,9 @@ local function set_setting(setting_id, value)
 		return false
 	end
 
-	return pcall(mod.set, mod, setting_id, value, false)
+	local ok, accepted = pcall(mod.set, mod, setting_id, value, false)
+
+	return ok and accepted ~= false
 end
 
 local function preview_channels(value)
@@ -240,9 +254,20 @@ local function refresh_framework_enabled()
 	return framework_enabled
 end
 
-local function patch_red_weapons_at_home()
+local function red_weapons_at_home_mod()
 	local resolver = rawget(_G, "get_mod")
-	local red_mod = type(resolver) == "function" and resolver("red_weapons_at_home") or nil
+
+	if type(resolver) ~= "function" then
+		return
+	end
+
+	local ok, resolved = pcall(resolver, "red_weapons_at_home")
+
+	return ok and type(resolved) == "table" and resolved or nil
+end
+
+local function patch_red_weapons_at_home()
+	local red_mod = red_weapons_at_home_mod()
 
 	if type(red_mod) ~= "table" or type(red_mod.is_sainted_item) ~= "function" then
 		return false
@@ -314,6 +339,99 @@ local function install_item_overrides()
 	return true
 end
 
+local function external_setting(external_mod, setting_id)
+	if type(external_mod) ~= "table" then
+		return
+	end
+
+	if type(external_mod.get) == "function" then
+		local ok, value = pcall(external_mod.get, external_mod, setting_id)
+
+		if ok and value ~= nil then
+			return value
+		end
+	end
+
+	local cached_settings = external_mod.settings
+
+	return type(cached_settings) == "table" and cached_settings[setting_id] or nil
+end
+
+local function import_red_weapons_at_home_settings()
+	if setting(RED_WEAPONS_IMPORT_MARKER, false) == true then
+		return false
+	end
+
+	local red_mod = red_weapons_at_home_mod()
+
+	if type(red_mod) ~= "table" then
+		return false
+	end
+
+	local imported = false
+	local observed = false
+	local writes_ok = true
+	local red_channels = {}
+	local function import_setting(setting_id, value)
+		writes_ok = set_setting(setting_id, value) and writes_ok
+	end
+
+	for index = 1, #RED_WEAPONS_COLOR_SETTING_IDS do
+		local value = tonumber(external_setting(red_mod, RED_WEAPONS_COLOR_SETTING_IDS[index]))
+
+		if value == nil then
+			red_channels = nil
+			break
+		end
+
+		observed = true
+		red_channels[index] = bounded_number(value, REFERENCE_RED[index], 0, 255)
+	end
+
+	local color_is_untouched = setting("custom_tier_color_preset", "custom_tier_red") == "custom_tier_red"
+
+	for index, channel in ipairs({ "r", "g", "b" }) do
+		color_is_untouched = color_is_untouched
+			and bounded_number(setting("custom_tier_color_" .. channel, REFERENCE_RED[index]), REFERENCE_RED[index], 0, 255) == REFERENCE_RED[index]
+	end
+
+	if red_channels and color_is_untouched then
+		local differs_from_reference = false
+
+		for index, channel in ipairs({ "r", "g", "b" }) do
+			differs_from_reference = differs_from_reference or red_channels[index] ~= REFERENCE_RED[index]
+			import_setting("custom_tier_color_" .. channel, red_channels[index])
+		end
+
+		if differs_from_reference then
+			import_setting("custom_tier_color_preset", "custom")
+		end
+
+		import_setting(COLOR_PREVIEW_SETTING_ID, { 255, red_channels[1], red_channels[2], red_channels[3] })
+		imported = true
+	end
+
+	for index = 1, #RED_WEAPONS_CURIO_POWER_IMPORTS do
+		local mapping = RED_WEAPONS_CURIO_POWER_IMPORTS[index]
+		local value = tonumber(external_setting(red_mod, mapping[1]))
+
+		if value ~= nil then
+			observed = true
+
+			if bounded_number(setting(mapping[2], 0), 0, 0, 500) == 0 then
+				import_setting(mapping[2], bounded_number(value, 0, 0, 430))
+				imported = true
+			end
+		end
+	end
+
+	if observed and writes_ok then
+		set_setting(RED_WEAPONS_IMPORT_MARKER, true)
+	end
+
+	return imported
+end
+
 CustomTier.refresh = function(configured_mod)
 	mod = configured_mod or mod
 	refresh_framework_enabled()
@@ -354,6 +472,8 @@ CustomTier.refresh = function(configured_mod)
 end
 
 CustomTier.install = function(configured_mod)
+	mod = configured_mod or mod
+	import_red_weapons_at_home_settings()
 	CustomTier.refresh(configured_mod)
 	local installed = install_item_overrides()
 
@@ -395,6 +515,7 @@ CustomTier._test = {
 	curio_types = CURIO_TYPES,
 	displayed_modifier_value = displayed_modifier_value,
 	feature_active = feature_active,
+	import_red_weapons_at_home_settings = import_red_weapons_at_home_settings,
 	preview_channels = preview_channels,
 	refresh_framework_enabled = refresh_framework_enabled,
 	weapon_modifiers_match = weapon_modifiers_match,

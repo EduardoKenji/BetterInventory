@@ -2,7 +2,7 @@
 
 [![BetterInventory verification](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml/badge.svg)](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml)
 
-> Current release: **v2.9.5** (2026-08-22). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
+> Current release: **v2.9.6** (2026-08-22). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
 
 BetterInventory is a standalone inventory and item-management mod for Warhammer 40,000: Darktide. It adds responsive weapon and Curio cards, richer item information, configurable sorting, supported vendor layouts, optional mod integrations, and safety-gated inventory workflows.
 
@@ -19,7 +19,13 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - A bounded inventory-options panel for sorting, discard rules, integrations, and view-specific controls.
 - Optional Quick Discard, Automatic Discard, Automatic Curio Buyer, and Auto Crafter workflows with explicit ownership, authoritative revalidation, and fail-closed behavior.
 
-## What's new in v2.9.5
+## What's new in v2.9.6
+
+- On first detection, Better Inventory imports Red Weapons At Home's saved RGB colour and four per-Curio Power requirements into matching settings that are still untouched.
+- Existing Better Inventory customizations are preserved field-by-field; a one-time marker prevents later launches or Red Weapons At Home changes from overwriting them.
+- Better Inventory then owns the standalone tier without stacking both classifiers. Disabled-feature restoration, load-order idempotence, and allocation-free per-card lookup remain regression-covered.
+
+## What changed in v2.9.5
 
 - The complete 79-source runtime has been re-audited for older/newer DMF compatibility, crash boundaries, asynchronous ownership, account-operation races, retained memory, hot-path allocation, teardown, and regression risk.
 - Release verification now checks the installed current and retained legacy copies of both DMF and Alf's DMF Extensions. It distinguishes shared baseline contracts from current-only native colour and retained-template facilities.
@@ -44,7 +50,7 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 
 - **Custom legendary tier** defaults to the Red Weapons At Home reference behavior: RGB `210/30/40`, Power-500 Transcendent weapons, and Transcendent Curios with maximum primary rolls. Its live colour preview can also edit the RGB value directly and stays synchronized with presets and sliders.
 - Melee and ranged weapons have independent minimum Power, base-stat total, every-modifier floor, required-high-stat count, and high-stat threshold controls. Health, Toughness, Stamina, and Wound Curios each have independent roll and Power filters.
-- BetterInventory owns the classification when Red Weapons At Home is installed simultaneously. Turning BetterInventory's feature Off restores the other mod's behavior instead of stacking both rule sets.
+- When Red Weapons At Home is first detected, the current migration imports its saved colour and Curio Power requirements into untouched Better Inventory fields before Better Inventory takes ownership without stacking both rule sets.
 
 ### v2.9.1 changes included
 
@@ -236,7 +242,7 @@ BetterInventory has no optional mod dependency. Integrations activate only when 
 | Visible Equipment | Preserves Cosmetics placement widgets alongside detailed Loadout cards |
 | Inspect from Social / Party Finder | Supports detailed cards while inspecting other players |
 | Equipped Icon Plus | Separates inactive-loadout equipped badges from the favorite marker |
-| Red Weapons at Home | BetterInventory's enabled custom-tier criteria take precedence; disabling BetterInventory's custom tier restores the other mod's styling |
+| Red Weapons at Home | Imports its saved RGB colour and four Curio Power requirements once into untouched Better Inventory settings, then uses Better Inventory's standalone classifier |
 | Alf's DMF Extensions | Supports its generalized Mod Options layout |
 
 Do not run BetterInventory together with Inventory2D or the Inventory2D Bound by Duty compatibility patch; they modify overlapping inventory presentation paths.
@@ -272,7 +278,7 @@ Run the complete repository verification from the project root:
 powershell -ExecutionPolicy Bypass -File .\tests\verify.ps1
 ```
 
-The v2.9.5 suite currently discovers 43 behavior-test files and 165 named cases. To run the behavior suite directly with risk-weighted Lua coverage:
+The v2.9.6 suite currently discovers 43 behavior-test files and 165 named cases. To run the behavior suite directly with risk-weighted Lua coverage:
 
 ```powershell
 py -3 .\tests\run_tests.py --timeout-seconds 45 --coverage-output lua-coverage.json

@@ -96,7 +96,7 @@
       "name": "custom-tier.overrides-red-weapons-at-home",
       "test": "test_custom_tier.py",
       "case": "standalone_classification_and_red_weapons_compatibility",
-      "outcome": "BetterInventory independently classifies Transcendent melee weapons, ranged weapons, and all four Curio primary types using bounded configurable criteria; its reference-red presentation is authoritative while enabled, and Red Weapons At Home resumes when the BetterInventory feature is disabled",
+      "outcome": "BetterInventory independently classifies Transcendent melee weapons, ranged weapons, and all four Curio primary types using bounded configurable criteria; first detection imports Red Weapons At Home RGB and Curio Power settings into untouched fields once, BetterInventory then remains authoritative, and disabling the feature restores the other mod",
       "modules": ["BetterInventory_custom_tier.lua", "BetterInventory_curio_values.lua"]
     },
     {

@@ -2742,7 +2742,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "2.9.5"
+    assert data.version == "2.9.6"
 
     gradient_name = localization["mod_name"]["en"]
     assert gradient_name.startswith("{#color(174,239,105)}B")
@@ -2847,7 +2847,11 @@ def main() -> None:
         for index in range(1, len(data.options.widgets) + 1)
         if data.options.widgets[index].setting_id == "custom_tier_group"
     )
-    custom_tier_color_group = custom_tier_group.sub_widgets[2]
+    custom_tier_color_group = next(
+        custom_tier_group.sub_widgets[index]
+        for index in range(1, len(custom_tier_group.sub_widgets) + 1)
+        if custom_tier_group.sub_widgets[index].setting_id == "custom_tier_color_group"
+    )
     assert custom_tier_color_group.sub_widgets[2].setting_id == "custom_tier_color_preview"
     assert custom_tier_color_group.sub_widgets[2].type == "color"
 

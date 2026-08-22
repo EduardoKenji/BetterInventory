@@ -68,13 +68,24 @@ def main() -> None:
                 end
             end,
         }
+        red_weapons_installed = false
         red_weapons_mod_enabled = true
+        red_weapons_settings = {
+            rarity_color_6_red = 12,
+            rarity_color_6_green = 34,
+            rarity_color_6_blue = 56,
+            gadget_health_required_expertise = 401,
+            gadget_toughness_required_expertise = 402,
+            gadget_stamina_required_expertise = 403,
+            gadget_wound_required_expertise = 404,
+        }
         red_weapons_mod = {
+            get = function(_, setting_id) return red_weapons_settings[setting_id] end,
             is_sainted_item = function(item) return item and item.red_eligible == true end,
         }
         function get_mod(name)
             if name == "BetterInventory" then return custom_tier_mod end
-            if name == "red_weapons_at_home" then return red_weapons_mod end
+            if name == "red_weapons_at_home" and red_weapons_installed then return red_weapons_mod end
         end
         function Localize(key)
             if key == "loc_item_weapon_rarity_6" then return "Sainted" end
@@ -96,18 +107,18 @@ def main() -> None:
         package.preload["scripts/utilities/items"] = function() return test_items end
 
         -- Reproduce Red Weapons At Home wrapping native Items before
-        -- BetterInventory loads. Its predicate remains callable when our feature
-        -- is disabled, but must be suppressed while ours is authoritative.
+        -- BetterInventory loads. The installed flag lets the same fixture prove
+        -- both standalone behavior and simultaneous-mod ownership.
         local native_color = test_items.rarity_color
         local native_name = test_items.rarity_display_name
         test_items.rarity_color = function(item)
-            if red_weapons_mod_enabled and red_weapons_mod.is_sainted_item(item) then
+            if red_weapons_installed and red_weapons_mod_enabled and red_weapons_mod.is_sainted_item(item) then
                 return {255, 200, 1, 2}, {255, 120, 1, 1}
             end
             return native_color(item)
         end
         test_items.rarity_display_name = function(item)
-            if red_weapons_mod_enabled and red_weapons_mod.is_sainted_item(item) then
+            if red_weapons_installed and red_weapons_mod_enabled and red_weapons_mod.is_sainted_item(item) then
                 return "Red Weapons tier"
             end
             return native_name(item)
@@ -153,6 +164,7 @@ def main() -> None:
     assert custom_tier.reference_red[2] == 30
     assert custom_tier.reference_red[3] == 40
     assert custom_tier.install(mod) is True
+    assert settings._custom_tier_red_weapons_at_home_import_v1 is None
 
     # DMF's native preview is bidirectionally synchronized with the legacy RGB
     # settings so presets, sliders, and direct preview edits share one color.
@@ -243,27 +255,51 @@ def main() -> None:
     custom_tier.on_setting_changed(mod, "custom_tier_curio_health_enabled")
     assert custom_tier.matches(curio("gadget_innate_health_increase", 21, 500)) is False
 
-    # While BetterInventory owns the feature, an item accepted only by Red
-    # Weapons At Home must retain its native color/name. Disabling our feature
-    # restores the other mod's predicate and presentation.
+    # Detect Red Weapons At Home after its script has loaded. Untouched settings
+    # receive a one-time import, while an already-customized BetterInventory field
+    # is preserved. BetterInventory then remains the single authoritative owner.
+    settings.custom_tier_color_preset = "custom_tier_red"
+    settings.custom_tier_color_r = 210
+    settings.custom_tier_color_g = 30
+    settings.custom_tier_color_b = 40
+    settings.custom_tier_color_preview = lua.table_from([255, 210, 30, 40])
+    lua.globals().red_weapons_installed = True
+    custom_tier.install(mod)
+    assert settings._custom_tier_red_weapons_at_home_import_v1 is True
+    assert settings.custom_tier_color_preset == "custom"
+    assert [settings[f"custom_tier_color_{channel}"] for channel in ("r", "g", "b")] == [12, 34, 56]
+    assert [settings.custom_tier_color_preview[index] for index in range(1, 5)] == [255, 12, 34, 56]
+    assert settings.custom_tier_curio_health_min_power == 450
+    assert settings.custom_tier_curio_toughness_min_power == 402
+    assert settings.custom_tier_curio_stamina_min_power == 403
+    assert settings.custom_tier_curio_wounds_min_power == 404
+
     red_only = weapon("WEAPON_MELEE", 100, [20, 20, 20, 20, 20])
     red_only.red_eligible = True
     base_color, _ = items.rarity_color(red_only)
     assert [base_color[index] for index in range(1, 5)] == [255, 145, 70, 40]
     assert items.rarity_display_name(red_only) == "Transcendent"
 
+    red_matching = weapon("WEAPON_RANGED", 500, [80, 80, 80, 80, 60])
+    red_matching.red_eligible = True
+    imported_color, _ = items.rarity_color(red_matching)
+    assert [imported_color[index] for index in range(1, 5)] == [255, 12, 34, 56]
+    assert items.rarity_display_name(red_matching) == "Sainted"
+
+    # Disabling BetterInventory's feature still restores Red Weapons At Home.
     settings.custom_tier_enabled = False
     custom_tier.on_setting_changed(mod, "custom_tier_enabled")
-    other_mod_color, _ = items.rarity_color(red_only)
-    assert [other_mod_color[index] for index in range(1, 5)] == [255, 200, 1, 2]
+    restored_color, _ = items.rarity_color(red_only)
+    assert [restored_color[index] for index in range(1, 5)] == [255, 200, 1, 2]
     assert items.rarity_display_name(red_only) == "Red Weapons tier"
 
     # Reinstallation is idempotent and does not create a recursive wrapper.
     settings.custom_tier_enabled = True
+    lua.globals().red_weapons_settings.rarity_color_6_red = 222
     custom_tier.install(mod)
     custom_tier.install(mod)
     repeated_color, _ = items.rarity_color(perfect_ranged)
-    assert [repeated_color[index] for index in range(1, 5)] == [255, 210, 30, 40]
+    assert [repeated_color[index] for index in range(1, 5)] == [255, 12, 34, 56]
 
     custom_tier.on_disabled()
     disabled_color, _ = items.rarity_color(red_only)

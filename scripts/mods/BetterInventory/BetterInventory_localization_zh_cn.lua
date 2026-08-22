@@ -974,7 +974,7 @@ localization.auto_crafter_acquisition_target_search = "自动购买，直到找�
 
 localization.custom_tier_group = "自定义传奇品级"
 localization.custom_tier_enabled = "启用自动自定义品级着色"
-localization.custom_tier_enabled_tooltip = "为符合条件的超凡近战武器、远程武器和珍品应用可配置的稀有度颜色与原生第 6 品级名称。若同时安装 Red Weapons At Home，则以 BetterInventory 的规则为准。"
+localization.custom_tier_enabled_tooltip = "为符合条件的超凡近战武器、远程武器和珍品应用可配置的稀有度颜色与原生第 6 品级名称。首次检测到 Red Weapons At Home 时，会先导入兼容设置，再由 Better Inventory 接管。"
 localization.custom_tier_color_group = "自定义品级颜色"
 localization.custom_tier_color_preset = "颜色预设"
 localization.custom_tier_color_preset_reference_red = "参考红色"

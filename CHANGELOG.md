@@ -1,5 +1,12 @@
 # BetterInventory changelog
 
+## 2.9.6 - 2026-08-22
+
+- Fixes simultaneous use with Red Weapons At Home no longer honoring that mod's saved colour and Curio Power requirements.
+- On first detection, imports Red Weapons At Home's three RGB channels and four per-Curio Power thresholds into untouched matching Better Inventory settings.
+- Preserves Better Inventory fields the user has already customized, records a one-time migration marker, and then keeps Better Inventory authoritative without stacking both classifiers.
+- Keeps migration at the all-mods-loaded boundary, with no new frame callback, item cache, or per-card framework lookup; disabling Better Inventory's tier still restores the other mod.
+
 ## 2.9.5 - 2026-08-22
 
 - Audits all 79 runtime Lua sources for DMF compatibility, crashes, asynchronous ownership, account-operation races, retained state, allocation hot paths, and teardown without changing established feature behavior.

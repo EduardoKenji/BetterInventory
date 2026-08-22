@@ -1024,7 +1024,7 @@ local localization = {
 	auto_crafter_show_status_hud_tooltip = { en = "Show active Auto Crafter objectives at the top of Morningstar store and inventory views. Hidden during missions and mission matchmaking." },
 	custom_tier_group = { en = "Custom legendary tier" },
 	custom_tier_enabled = { en = "Enable automatic custom-tier colouring" },
-	custom_tier_enabled_tooltip = { en = "Give qualifying Transcendent melee weapons, ranged weapons, and Curios a configurable rarity colour and the native tier-6 rarity name. BetterInventory is authoritative when Red Weapons At Home is also installed." },
+	custom_tier_enabled_tooltip = { en = "Give qualifying Transcendent melee weapons, ranged weapons, and Curios a configurable rarity colour and the native tier-6 rarity name. On first detection, compatible Red Weapons At Home settings are imported before Better Inventory takes ownership." },
 	custom_tier_color_group = { en = "Custom-tier colour" },
 	custom_tier_color_preset = { en = "Colour preset" },
 	custom_tier_color_preset_reference_red = { en = "Reference red" },
