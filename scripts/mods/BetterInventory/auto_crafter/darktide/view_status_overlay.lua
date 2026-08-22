@@ -55,7 +55,11 @@ local WIDGET_DEFINITION = UIWidget.create_definition({
 }, "screen")
 
 local function supported_view(view)
-	local class_name = tostring(view and view.__class_name or "")
+	local class_name = view and view.__class_name
+
+	if type(class_name) ~= "string" then
+		return false
+	end
 
 	if string.find(class_name, "Vendor", 1, true) then
 		return true
@@ -69,7 +73,7 @@ local function supported_view(view)
 end
 
 local function horizontal_offset(view)
-	local class_name = tostring(view and view.__class_name or "")
+	local class_name = view and view.__class_name
 
 	-- Brunt's Custom Armoury owns a wide panel on the left side of the screen.
 	-- Move only this vendor overlay clear of that panel; other views stay centered.
@@ -80,14 +84,21 @@ local function horizontal_offset(view)
 	return 0
 end
 
-local function status_presentation(view)
-	if not supported_view(view) then
-		return
-	end
-
+local function active_bridge()
 	local bridge = rawget(_G, "AutoCrafterHelperHudState")
 
 	if not bridge or type(bridge.enabled) ~= "function" or bridge.enabled() ~= true then
+		return
+	end
+
+	return bridge
+end
+
+local function status_presentation(view, bridge)
+	-- The post-draw hooks also see unrelated native views. Check the cached HUD
+	-- gate before reading class names so the disabled/settled path performs no
+	-- view classification or presentation work.
+	if not bridge or not supported_view(view) then
 		return
 	end
 
@@ -106,8 +117,8 @@ local function status_presentation(view)
 	end
 end
 
-local function draw_status_overlay(view, dt, t, input_service, layer)
-	local text, line_count, revision = status_presentation(view)
+local function draw_status_overlay(view, dt, t, input_service, layer, bridge)
+	local text, line_count, revision = status_presentation(view, bridge)
 	local ui_renderer = view and (view._ui_default_renderer or view._ui_renderer)
 
 	if not text or not ui_renderer or not view._ui_scenegraph or not view._render_settings then
@@ -160,8 +171,10 @@ local function install_post_draw(mod, view_class, predicate)
 	-- widget, element, and third-party draw below it to BetterInventory. A safe
 	-- hook runs only this small post-draw overlay callback after native rendering.
 	mod:hook_safe(view_class, "draw", function(view, dt, t, input_service, layer)
-		if not predicate or predicate(view) then
-			draw_status_overlay(view, dt, t, input_service, layer)
+		local bridge = active_bridge()
+
+		if bridge and (not predicate or predicate(view)) then
+			draw_status_overlay(view, dt, t, input_service, layer, bridge)
 		end
 	end)
 

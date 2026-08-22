@@ -1149,10 +1149,18 @@ def main() -> None:
         {
             "_world_x": 894,
             "scenegraph_world_position": lua.eval(
-                "function(element, id) return {element._world_x, 0, 0} end"
+                "function(element, id) "
+                "element.world_position_queries = (element.world_position_queries or 0) + 1 "
+                "return {element._world_x, 0, 0} end"
             ),
             "_scenegraph_size": lua.eval(
-                "function(element, id) return 646, 920 end"
+                "function(element, id) "
+                "element.size_queries = (element.size_queries or 0) + 1 "
+                "return 646, 920 end"
+            ),
+            "_force_update_scenegraph": lua.eval(
+                "function(element) "
+                "element.force_update_calls = (element.force_update_calls or 0) + 1 end"
             ),
         }
     )
@@ -1160,7 +1168,9 @@ def main() -> None:
         {"purchase_button": 790}
     )
     credits_view._scenegraph_world_position = lua.eval(
-        "function(view, id) return {view._world_x[id], 0, 0} end"
+        "function(view, id) "
+        "view.world_position_queries = (view.world_position_queries or 0) + 1 "
+        "return {view._world_x[id], 0, 0} end"
     )
     credits_view._set_scenegraph_position = lua.eval(
         "function(view, id, x, y, z) "
@@ -1191,6 +1201,10 @@ def main() -> None:
     assert abs(
         credits_view._ui_scenegraph.purchase_button.position[1] - 967.3333333333
     ) < 0.0001
+    assert credits_view._weapon_stats.force_update_calls == 1
+    assert credits_view._weapon_stats.world_position_queries == 1
+    assert credits_view._weapon_stats.size_queries == 1
+    assert credits_view.world_position_queries == 1
 
     # Re-entering must not apply the same compatibility offset twice.
     globals_.captured_armoury_on_enter_hook(
@@ -1198,6 +1212,27 @@ def main() -> None:
     )
     assert abs(
         credits_view._ui_scenegraph.purchase_button.position[1] - 967.3333333333
+    ) < 0.0001
+    assert credits_view._weapon_stats.force_update_calls == 1
+    assert credits_view.world_position_queries == 1
+
+    # Stable frames use only cheap scalar identity checks. The full scenegraph
+    # verification runs once per 15 calls, while an external rewrite wakes it
+    # immediately and repairs the original centered position.
+    align_quick_level = mod._better_inventory_test.align_quick_level_mastery_buttons
+    for _ in range(13):
+        align_quick_level(credits_view)
+    assert credits_view._weapon_stats.force_update_calls == 1
+    align_quick_level(credits_view)
+    assert credits_view._weapon_stats.force_update_calls == 2
+    original_x = credits_view._ui_scenegraph.purchase_button.position[1]
+    credits_view._set_scenegraph_position(
+        credits_view, "purchase_button", original_x - 20, -90, 1
+    )
+    align_quick_level(credits_view)
+    assert credits_view._weapon_stats.force_update_calls == 3
+    assert abs(
+        credits_view._ui_scenegraph.purchase_button.position[1] - original_x
     ) < 0.0001
 
     # CreditsVendorView is also reused by GlobalStore. Its custom cards use the

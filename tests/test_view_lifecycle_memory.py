@@ -87,6 +87,13 @@ def main() -> None:
     assert 'mod:hook_safe(InventoryView, "update"' not in runtime
     assert 'mod:hook(InventoryWeaponsView, "update"' not in runtime
 
+    # Quick Level Mastery's vendor alignment may be revisited every frame, but
+    # stable geometry must not force a scenegraph/world-position query at 60 Hz.
+    assert "QUICK_LEVEL_ALIGNMENT_PROBE_INTERVAL = 15" in domains
+    assert "_better_inventory_quick_level_alignment_probe" in domains
+    assert "if not inputs_changed and not probe_due then" in domains
+    assert "pairs({ view._item_grid" not in features
+
     # Local Darktide source confirms native request containers already release
     # store/Hadron work. BetterInventory should only release its own references.
     vendor_path = DARKTIDE_ROOT / "scripts/ui/views/vendor_view_base/vendor_view_base.lua"

@@ -204,6 +204,23 @@ def main() -> None:
     runtime_globals.safe_hooks[1].handler(unrelated_view, 0.016, 1, None, 10)
     assert runtime_globals.widget_draw_calls == 3
 
+    # Inactive HUD state is the first post-draw gate. It must not inspect even
+    # a hostile/partial third-party view shape or attempt presentation work.
+    overlay_runtime.execute(
+        r"""
+        AutoCrafterHelperHudState.enabled = function() return false end
+        disabled_overlay_view = setmetatable({}, {
+            __index = function(_, key)
+                if key == "__class_name" then error("class lookup should sleep") end
+            end,
+        })
+        """
+    )
+    runtime_globals.safe_hooks[1].handler(
+        runtime_globals.disabled_overlay_view, 0.016, 1, None, 10
+    )
+    assert runtime_globals.widget_draw_calls == 3
+
     print("Auto Crafter viewport resolution matrix tests passed.")
 
 

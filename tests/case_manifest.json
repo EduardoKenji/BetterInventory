@@ -40,7 +40,7 @@
   ],
   "test_auto_crafter_viewport.py": [
     {"name": "panel_and_hud_resolution_matrix", "risk": "high", "start_line": 14, "end_line": 73},
-    {"name": "post_draw_overlay_cpu_ownership", "risk": "high", "start_line": 75, "end_line": 207}
+    {"name": "post_draw_overlay_cpu_ownership", "risk": "high", "start_line": 75, "end_line": 224}
   ],
   "test_auto_crafter_backend.py": [
     {"name": "complete_authoritative_inventory_summary", "risk": "critical", "start_line": 16, "end_line": 138},
@@ -230,9 +230,9 @@
   "test_settings.py": [
     {"name": "schema_dependency_refresh", "risk": "high", "start_line": 21, "end_line": 438},
     {"name": "migration_preservation", "risk": "high", "start_line": 439, "end_line": 592},
-    {"name": "character_overview_refresh", "risk": "high", "start_line": 593, "end_line": 1651},
-    {"name": "localization_contract", "risk": "medium", "start_line": 1652, "end_line": 2825},
-    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2826, "end_line": 3499}
+    {"name": "character_overview_refresh", "risk": "high", "start_line": 593, "end_line": 1686},
+    {"name": "localization_contract", "risk": "medium", "start_line": 1687, "end_line": 2860},
+    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2861, "end_line": 3534}
   ],
   "test_settings_registry.py": [
     {"name": "duplicate_detection", "risk": "high", "start_line": 63, "end_line": 123},
@@ -247,7 +247,7 @@
   ],
   "test_view_lifecycle_memory.py": [
     {"name": "explicit_view_owned_state_release", "risk": "high", "start_line": 26, "end_line": 82},
-    {"name": "post_draw_update_cpu_invariant", "risk": "critical", "start_line": 84, "end_line": 88},
-    {"name": "native_async_cleanup_contracts", "risk": "high", "start_line": 90, "end_line": 103}
+    {"name": "post_draw_update_cpu_invariant", "risk": "critical", "start_line": 84, "end_line": 95},
+    {"name": "native_async_cleanup_contracts", "risk": "high", "start_line": 97, "end_line": 110}
   ]
 }

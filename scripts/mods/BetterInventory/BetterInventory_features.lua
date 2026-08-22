@@ -1393,10 +1393,18 @@ Features.capture_inventory_options_panel_controller_focus = function(mod, layout
 	if focused then
 		-- Native inventory code may revisit its own focus state after previews or
 		-- discard-mode changes. Keep the custom panel as the sole controller owner.
-		for _, element in pairs({ view._item_grid, view._weapon_options_element, view._discard_items_element }) do
-			if element and type(element.disable_input) == "function" then
-				element:disable_input(true)
-			end
+		local item_grid = view._item_grid
+		local weapon_options = view._weapon_options_element
+		local discard_items = view._discard_items_element
+
+		if item_grid and type(item_grid.disable_input) == "function" then
+			item_grid:disable_input(true)
+		end
+		if weapon_options and type(weapon_options.disable_input) == "function" then
+			weapon_options:disable_input(true)
+		end
+		if discard_items and type(discard_items.disable_input) == "function" then
+			discard_items:disable_input(true)
 		end
 
 		local panel = view._better_inventory_options_panel
@@ -1419,15 +1427,23 @@ Features.update_inventory_options_panel_controller_selection = function(view, in
 	local entry = selected_widget and selected_widget.content and selected_widget.content.entry
 	local targets = entry and entry.controller_targets
 
-	for _, widget in pairs(view._better_inventory_options_panel_widgets or {}) do
-		local widget_entry = widget.content and widget.content.entry
+	local panel_widgets = view._better_inventory_options_panel_widgets
 
-		for _, target_id in ipairs(widget_entry and widget_entry.controller_targets or {}) do
-			local hotspot = widget.content[target_id]
+	if panel_widgets then
+		for _, widget in pairs(panel_widgets) do
+			local widget_entry = widget.content and widget.content.entry
+			local controller_targets = widget_entry and widget_entry.controller_targets
 
-			if hotspot and target_id ~= "hotspot" then
-				hotspot.is_focused = false
-				hotspot.is_selected = false
+			if controller_targets then
+				for target_index = 1, #controller_targets do
+					local target_id = controller_targets[target_index]
+					local hotspot = widget.content[target_id]
+
+					if hotspot and target_id ~= "hotspot" then
+						hotspot.is_focused = false
+						hotspot.is_selected = false
+					end
+				end
 			end
 		end
 	end
@@ -2486,6 +2502,14 @@ Features.unregister_armoury_view = function(view)
 		view._better_inventory_armoury_controller_legend = nil
 		view._better_inventory_armoury_controller_legend_id = nil
 		view._better_inventory_armoury_controller_legend_action = nil
+	end
+
+	local alignment = Features._domains and Features._domains.quick_level_alignment
+
+	if alignment and type(alignment.release) == "function" then
+		alignment.release(view)
+	elseif view then
+		view._better_inventory_quick_level_alignment_probe = nil
 	end
 
 	Features._registered_sort_views[view] = nil

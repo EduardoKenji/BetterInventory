@@ -156,6 +156,115 @@ Domains.markers.needs_refresh = function(last_generation, current_generation, di
 	return dirty == true or (tonumber(last_generation) or 0) ~= (tonumber(current_generation) or 0)
 end
 
+Domains.quick_level_alignment = {}
+
+local QUICK_LEVEL_ALIGNMENT_PROBE_INTERVAL = 15
+
+Domains.quick_level_alignment.update = function(view, count_diagnostic)
+	local widgets_by_name = view and view._widgets_by_name
+	local ui_scenegraph = view and view._ui_scenegraph
+	local purchase_button = ui_scenegraph and ui_scenegraph.purchase_button
+	local sacrifice_button = widgets_by_name and widgets_by_name.quick_sacrifice_button
+	local weapon_stats = view and view._weapon_stats
+
+	if not sacrifice_button or not purchase_button or not purchase_button.position or not purchase_button.size or not weapon_stats or type(weapon_stats.scenegraph_world_position) ~= "function" or type(weapon_stats._scenegraph_size) ~= "function" or type(view._scenegraph_world_position) ~= "function" or type(view._set_scenegraph_position) ~= "function" then
+		return false
+	end
+
+	local position = purchase_button.position
+	local purchase_width = tonumber(purchase_button.size[1])
+	local purchase_widget = widgets_by_name.purchase_button
+	local purchase_offset = purchase_widget and purchase_widget.offset and tonumber(purchase_widget.offset[1]) or 0
+	local sacrifice_offset_input = sacrifice_button.offset and tonumber(sacrifice_button.offset[1])
+	local weapon_stats_pivot = weapon_stats._pivot_offset
+	local weapon_stats_pivot_x = weapon_stats_pivot and tonumber(weapon_stats_pivot[1])
+	local weapon_stats_pivot_y = weapon_stats_pivot and tonumber(weapon_stats_pivot[2])
+	local probe = view._better_inventory_quick_level_alignment_probe
+	local probe_count = (probe and probe.count or QUICK_LEVEL_ALIGNMENT_PROBE_INTERVAL) + 1
+	local probe_due = probe_count >= QUICK_LEVEL_ALIGNMENT_PROBE_INTERVAL
+	local inputs_changed = not probe
+		or probe.purchase_button ~= purchase_button
+		or probe.sacrifice_button ~= sacrifice_button
+		or probe.weapon_stats ~= weapon_stats
+		or probe.purchase_x ~= position[1]
+		or probe.purchase_y ~= position[2]
+		or probe.purchase_width ~= purchase_width
+		or probe.purchase_offset ~= purchase_offset
+		or probe.sacrifice_offset_input ~= sacrifice_offset_input
+		or probe.weapon_stats_pivot_x ~= weapon_stats_pivot_x
+		or probe.weapon_stats_pivot_y ~= weapon_stats_pivot_y
+
+	if not inputs_changed and not probe_due then
+		probe.count = probe_count
+
+		return false
+	end
+
+	if not probe then
+		probe = {}
+		view._better_inventory_quick_level_alignment_probe = probe
+	end
+
+	probe.count = 0
+
+	if type(weapon_stats._force_update_scenegraph) == "function" then
+		pcall(weapon_stats._force_update_scenegraph, weapon_stats)
+	end
+
+	if type(count_diagnostic) == "function" then
+		count_diagnostic("alignment_queries")
+	end
+
+	local purchase_world_position = view:_scenegraph_world_position("purchase_button")
+	local weapon_stats_world_position = weapon_stats:scenegraph_world_position("grid_background")
+	local weapon_stats_width = weapon_stats:_scenegraph_size("grid_background")
+	local purchase_world_x = purchase_world_position and tonumber(purchase_world_position[1])
+	local weapon_stats_world_x = weapon_stats_world_position and tonumber(weapon_stats_world_position[1])
+
+	if type(position[1]) ~= "number" or not purchase_width or not purchase_world_x or not weapon_stats_world_x or type(weapon_stats_width) ~= "number" then
+		return false
+	end
+
+	local sacrifice_offset = sacrifice_offset_input or purchase_offset + purchase_width
+	local action_left = math.min(purchase_offset, sacrifice_offset)
+	local action_right = math.max(purchase_offset + purchase_width, sacrifice_offset + purchase_width)
+	local action_center = purchase_world_x + (action_left + action_right) * 0.5
+	local weapon_stats_center = weapon_stats_world_x + weapon_stats_width * 0.5
+	local delta = weapon_stats_center - action_center
+
+	if math.abs(delta) >= 0.01 then
+		if type(count_diagnostic) == "function" then
+			count_diagnostic("alignment_writes")
+		end
+		view:_set_scenegraph_position("purchase_button", position[1] + delta, position[2], position[3])
+	end
+
+	probe.purchase_button = purchase_button
+	probe.sacrifice_button = sacrifice_button
+	probe.weapon_stats = weapon_stats
+	probe.purchase_x = position[1]
+	probe.purchase_y = position[2]
+	probe.purchase_width = purchase_width
+	probe.purchase_offset = purchase_offset
+	probe.sacrifice_offset_input = sacrifice_offset_input
+	probe.weapon_stats_pivot_x = weapon_stats_pivot_x
+	probe.weapon_stats_pivot_y = weapon_stats_pivot_y
+
+	return true
+end
+
+Domains.quick_level_alignment.release = function(view)
+	if not view then
+		return false
+	end
+
+	local owned = view._better_inventory_quick_level_alignment_probe ~= nil
+
+	view._better_inventory_quick_level_alignment_probe = nil
+
+	return owned
+end
+
 Domains.sorting = {}
 
 Domains.sorting.signature = function(parts)

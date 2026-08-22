@@ -158,60 +158,25 @@ local function is_armoury_sort_view(view)
 end
 
 local function align_quick_level_mastery_buttons(view)
-	if type(Diagnostics.count) == "function" then
-		Diagnostics.count("alignment_queries")
-	end
 	-- Quick Level Mastery adds Sacrifice as an offset child of Darktide's shared
 	-- purchase_button node. Center the complete action group on the actual weapon
 	-- information panel instead of deriving its position from the store grid:
 	-- the grid can have a different width, and another hook can independently
 	-- restore the purchase node to its native position.
-	local widgets_by_name = view and view._widgets_by_name
-	local ui_scenegraph = view and view._ui_scenegraph
-	local purchase_button = ui_scenegraph and ui_scenegraph.purchase_button
-	local sacrifice_button = widgets_by_name and widgets_by_name.quick_sacrifice_button
-	local weapon_stats = view and view._weapon_stats
+	local quick_level_alignment = FeatureDomains and FeatureDomains.quick_level_alignment
 
-	if not sacrifice_button or not purchase_button or not purchase_button.position or not purchase_button.size or not weapon_stats or type(weapon_stats.scenegraph_world_position) ~= "function" or type(weapon_stats._scenegraph_size) ~= "function" or type(view._scenegraph_world_position) ~= "function" or type(view._set_scenegraph_position) ~= "function" then
-		return
+	if quick_level_alignment and type(quick_level_alignment.update) == "function" then
+		return quick_level_alignment.update(view, Diagnostics and Diagnostics.count)
 	end
 
-	if type(weapon_stats._force_update_scenegraph) == "function" then
-		pcall(weapon_stats._force_update_scenegraph, weapon_stats)
-	end
-
-	local position = purchase_button.position
-	local purchase_width = tonumber(purchase_button.size[1])
-	local purchase_widget = widgets_by_name.purchase_button
-	local purchase_offset = purchase_widget and purchase_widget.offset and tonumber(purchase_widget.offset[1]) or 0
-	local sacrifice_offset = sacrifice_button.offset and tonumber(sacrifice_button.offset[1])
-	local purchase_world_position = view:_scenegraph_world_position("purchase_button")
-	local weapon_stats_world_position = weapon_stats:scenegraph_world_position("grid_background")
-	local weapon_stats_width = weapon_stats:_scenegraph_size("grid_background")
-	local purchase_world_x = purchase_world_position and tonumber(purchase_world_position[1])
-	local weapon_stats_world_x = weapon_stats_world_position and tonumber(weapon_stats_world_position[1])
-
-	if type(position[1]) ~= "number" or not purchase_width or not purchase_world_x or not weapon_stats_world_x or type(weapon_stats_width) ~= "number" then
-		return
-	end
-
-	sacrifice_offset = sacrifice_offset or purchase_offset + purchase_width
-
-	local action_left = math.min(purchase_offset, sacrifice_offset)
-	local action_right = math.max(purchase_offset + purchase_width, sacrifice_offset + purchase_width)
-	local action_center = purchase_world_x + (action_left + action_right) * 0.5
-	local weapon_stats_center = weapon_stats_world_x + weapon_stats_width * 0.5
-	local delta = weapon_stats_center - action_center
-
-	if math.abs(delta) < 0.01 then
-		return
-	end
-
-	if type(Diagnostics.count) == "function" then
-		Diagnostics.count("alignment_writes")
-	end
-	view:_set_scenegraph_position("purchase_button", position[1] + delta, position[2], position[3])
+	return false
 end
+
+	local runtime_test = mod and rawget(mod, "_better_inventory_test")
+
+	if type(runtime_test) == "table" then
+		runtime_test.align_quick_level_mastery_buttons = align_quick_level_mastery_buttons
+	end
 
 local function ensure_class_method(class, method)
 	if type(class) ~= "table" then
