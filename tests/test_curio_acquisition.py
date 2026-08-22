@@ -441,9 +441,11 @@ def main() -> None:
 			curio_toughness_color_b = 100,
         }
 		setting_set_counts = {}
+		setting_get_counts = {}
 		character_options_refresh_calls = 0
         test_mod = {
             get = function(self, setting_id)
+				setting_get_counts[setting_id] = (setting_get_counts[setting_id] or 0) + 1
                 return settings[setting_id]
             end,
 			set = function(self, setting_id, value)
@@ -878,6 +880,32 @@ def main() -> None:
     assert stamina_candidate.primary_value == 3
     globals_.settings.automatic_curio_buy_stamina = False
     globals_.health_item.traits[1].id = "health_trait"
+
+    # Production snapshots all Curio eligibility settings once per pass. Offer
+    # count and operative count must not multiply DMF setting reads.
+    globals_.setting_get_counts = lua.table_from({})
+    filter_snapshot = curio_store._test.curio_filter_snapshot(globals_.test_mod)
+    for _ in range(50):
+        assert (
+            curio_store._test.normalized_offer(
+                globals_.test_mod,
+                globals_.target_profile,
+                globals_.test_offer,
+                None,
+                filter_snapshot,
+            )
+            is not None
+        )
+    for setting_id in (
+        "automatic_curio_min_item_level",
+        "automatic_curio_buy_health",
+        "automatic_curio_min_health",
+        "automatic_curio_buy_toughness",
+        "automatic_curio_min_toughness",
+        "automatic_curio_buy_stamina",
+        "automatic_curio_buy_wounds",
+    ):
+        assert globals_.setting_get_counts[setting_id] == 1
 
     # The ownership rule retains only the best N levels for each operative and
     # primary stat. Equal candidates stop once N qualifying Curios are owned,

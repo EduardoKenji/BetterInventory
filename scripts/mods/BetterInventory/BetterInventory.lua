@@ -113,10 +113,12 @@ local FavoriteIntegration = no_op_module(mod:io_dofile("BetterInventory/scripts/
 local ItemCustomization = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_item_customization"), "BetterInventory_item_customization.lua")
 local CustomTier = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_custom_tier"), "BetterInventory_custom_tier.lua", {
 	install = function() return false end,
+	on_disabled = function() end,
 	on_setting_changed = function() return false end,
 	refresh = function() return false end,
 })
 CustomTier.install = type(CustomTier.install) == "function" and CustomTier.install or function() return false end
+CustomTier.on_disabled = type(CustomTier.on_disabled) == "function" and CustomTier.on_disabled or function() end
 CustomTier.on_setting_changed = type(CustomTier.on_setting_changed) == "function" and CustomTier.on_setting_changed or function() return false end
 CustomTier.refresh = type(CustomTier.refresh) == "function" and CustomTier.refresh or function() return false end
 local EquipmentPersistence = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_equipment_persistence"), "BetterInventory_equipment_persistence.lua")
@@ -627,4 +629,7 @@ extend_runtime_callback("on_setting_changed", function(setting_id)
 end)
 extend_runtime_callback("on_settings_reset", function()
 	return CustomTier.refresh(mod)
+end)
+extend_runtime_callback("on_disabled", function()
+	return CustomTier.on_disabled()
 end)

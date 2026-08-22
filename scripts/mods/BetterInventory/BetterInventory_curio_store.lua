@@ -170,14 +170,18 @@ local function owned_target_count(mod)
 	return math.clamp(math.floor(tonumber(mod:get("automatic_curio_owned_target_per_stat")) or 3), 0, 10)
 end
 
-local function primary_roll_passes(mod, value, config)
-	if not config or not config.minimum_roll_setting_id then
-		return true
+local function curio_filter_snapshot(mod)
+	local filters = {
+		minimum_item_level = math.clamp(math.floor(tonumber(mod:get("automatic_curio_min_item_level")) or 410), 0, 500),
+	}
+
+	for trait_name, config in pairs(PRIMARY_TRAITS) do
+		if mod:get(config.setting_id) ~= false then
+			filters[trait_name] = config.minimum_roll_setting_id and math.clamp(tonumber(mod:get(config.minimum_roll_setting_id)) or config.minimum_roll_default, 0, 100) or true
+		end
 	end
 
-	local minimum = math.clamp(tonumber(mod:get(config.minimum_roll_setting_id)) or config.minimum_roll_default, 0, 100)
-
-	return value ~= nil and value + 0.0001 >= minimum
+	return filters
 end
 
 local function insert_owned_level(levels, level, target)
@@ -200,7 +204,7 @@ local function insert_owned_level(levels, level, target)
 	return true
 end
 
-local function owned_curio_policy(mod, gear, profiles)
+local function owned_curio_policy(mod, gear, profiles, filters)
 	local target = owned_target_count(mod)
 	local policy = {
 		levels = {},
@@ -227,13 +231,7 @@ local function owned_curio_policy(mod, gear, profiles)
 		end
 	end
 
-	local primary_filters = {}
-
-	for trait_name, config in pairs(PRIMARY_TRAITS) do
-		if mod:get(config.setting_id) ~= false then
-			primary_filters[trait_name] = config.minimum_roll_setting_id and math.clamp(tonumber(mod:get(config.minimum_roll_setting_id)) or config.minimum_roll_default, 0, 100) or true
-		end
-	end
+	filters = filters or curio_filter_snapshot(mod)
 
 	for gear_id, raw_gear in pairs(gear) do
 		local character_id = type(raw_gear) == "table" and (raw_gear.characterId or raw_gear.character_id)
@@ -244,7 +242,7 @@ local function owned_curio_policy(mod, gear, profiles)
 
 			if resolved and item and item.item_type == "GADGET" then
 				local trait_name, trait_value = primary_trait(item)
-				local primary_filter = trait_name and primary_filters[trait_name]
+				local primary_filter = trait_name and filters[trait_name]
 
 				if primary_filter and (primary_filter == true or trait_value ~= nil and trait_value + 0.0001 >= primary_filter) then
 					local level = item_level(item)
@@ -368,7 +366,7 @@ local function log_curio_evaluation(mod, profile, offer_id, level, trait_name, t
 	))
 end
 
-local function normalized_offer(mod, profile, offer, diagnostics)
+local function normalized_offer(mod, profile, offer, diagnostics, filters)
 	local sku = offer and offer.sku
 	local description = offer and offer.description
 	local offer_id = offer and offer.offerId
@@ -393,7 +391,9 @@ local function normalized_offer(mod, profile, offer, diagnostics)
 	end
 
 	local level = item_level(item)
-	local minimum_level = math.clamp(math.floor(tonumber(mod:get("automatic_curio_min_item_level")) or 410), 0, 500)
+
+	filters = filters or curio_filter_snapshot(mod)
+	local minimum_level = filters.minimum_item_level
 
 	if not level then
 		count_exclusion(diagnostics, "unreadable_item_level")
@@ -423,7 +423,11 @@ local function normalized_offer(mod, profile, offer, diagnostics)
 		end
 
 		return
-	elseif mod:get(trait_config.setting_id) == false then
+	end
+
+	local primary_filter = filters[trait_name]
+
+	if not primary_filter then
 		count_exclusion(diagnostics, "primary_type_disabled")
 
 		if diagnostics then
@@ -433,9 +437,7 @@ local function normalized_offer(mod, profile, offer, diagnostics)
 		return
 	end
 
-	if trait_config.minimum_roll_setting_id then
-		local minimum_roll = math.clamp(tonumber(mod:get(trait_config.minimum_roll_setting_id)) or trait_config.minimum_roll_default, 0, 100)
-
+	if primary_filter ~= true then
 		if trait_value == nil then
 			count_exclusion(diagnostics, "unreadable_primary_value")
 
@@ -444,11 +446,11 @@ local function normalized_offer(mod, profile, offer, diagnostics)
 			end
 
 			return
-		elseif trait_value + 0.0001 < minimum_roll then
+		elseif trait_value + 0.0001 < primary_filter then
 			count_exclusion(diagnostics, "below_minimum_primary_roll")
 
 			if diagnostics then
-				log_curio_evaluation(mod, profile, offer_id, level, trait_name, trait_value, "excluded: below configured primary-roll minimum " .. tostring(minimum_roll))
+				log_curio_evaluation(mod, profile, offer_id, level, trait_name, trait_value, "excluded: below configured primary-roll minimum " .. tostring(primary_filter))
 			end
 
 			return
@@ -492,10 +494,17 @@ local function normalized_offer(mod, profile, offer, diagnostics)
 end
 
 local function candidate_key(candidate)
-	return table.concat({
-		tostring(candidate.character_id or "?"),
-		tostring(candidate.offer_id or "?"),
-	}, ":")
+	return tostring(candidate.character_id or "?") .. ":" .. tostring(candidate.offer_id or "?")
+end
+
+local function candidate_less(left, right)
+	if left.class_name ~= right.class_name then
+		return left.class_name < right.class_name
+	elseif left.item_level ~= right.item_level then
+		return left.item_level > right.item_level
+	end
+
+	return tostring(left.offer_id) < tostring(right.offer_id)
 end
 
 local function store_method_for_profile(profile)
@@ -576,7 +585,8 @@ local function scan_candidates(mod, token, minimum_rotation_boundary_ms, process
 			return rejected("profile scan returned no profile list")
 		end
 
-		local owned_policy, policy_error = owned_curio_policy(mod, result and result.gear, profiles)
+		local filters = curio_filter_snapshot(mod)
+		local owned_policy, policy_error = owned_curio_policy(mod, result and result.gear, profiles, filters)
 
 		if not owned_policy then
 			return rejected(policy_error)
@@ -654,7 +664,7 @@ local function scan_candidates(mod, token, minimum_rotation_boundary_ms, process
 						local eligible_before = diagnostics.eligible
 
 						for offer_index = 1, #offers do
-							local success, candidate = pcall(normalized_offer, mod, profile, offers[offer_index], diagnostics)
+							local success, candidate = pcall(normalized_offer, mod, profile, offers[offer_index], diagnostics, filters)
 
 							if success and candidate and not (processed_offer_keys and processed_offer_keys[candidate_key(candidate)]) then
 								candidates[#candidates + 1] = candidate
@@ -693,15 +703,7 @@ local function scan_candidates(mod, token, minimum_rotation_boundary_ms, process
 
 			log_scan_summary(mod, diagnostics)
 
-			table.sort(candidates, function(left, right)
-				if left.class_name ~= right.class_name then
-					return left.class_name < right.class_name
-				elseif left.item_level ~= right.item_level then
-					return left.item_level > right.item_level
-				end
-
-				return tostring(left.offer_id) < tostring(right.offer_id)
-			end)
+			table.sort(candidates, candidate_less)
 
 			return {
 				candidates = candidates,
@@ -731,12 +733,12 @@ CurioStore._test = {
 	PRIMARY_TRAITS = PRIMARY_TRAITS,
 	candidate_key = candidate_key,
 	candidate_improves_owned = candidate_improves_owned,
+	curio_filter_snapshot = curio_filter_snapshot,
 	insert_owned_level = insert_owned_level,
 	normalized_offer = normalized_offer,
 	observed_rotation_boundary = observed_rotation_boundary,
 	owned_curio_policy = owned_curio_policy,
 	primary_trait = primary_trait,
-	primary_roll_passes = primary_roll_passes,
 	record_owned_candidate = record_owned_candidate,
 	rotation_boundary_compatible = rotation_boundary_compatible,
 }

@@ -423,19 +423,24 @@ local function apply_color_preset(target)
 	end
 end
 
-local function apply_option_enabled(entry, enabled, reason)
+local function set_option_enabled(entry, on, reason)
 	if not entry then
 		return
 	end
 
-	entry.disabled = not enabled
-	entry.disabled_by = enabled and nil or {
-		reason,
-	}
-end
+	entry.disabled = not on
 
-local function set_option_enabled(entry, enabled, reason)
-	apply_option_enabled(entry, enabled, reason)
+	if on then
+		entry.disabled_by = nil
+		return
+	end
+
+	local list = type(entry.disabled_by) == "table" and entry.disabled_by or {}
+
+	for key in pairs(list) do list[key] = nil end
+
+	list[1] = reason
+	entry.disabled_by = list
 end
 
 local function character_overview_dump_stat_style_state()
@@ -842,14 +847,9 @@ local function bind_option_dependencies(options_templates)
 
 	local category_name = mod:get_readable_name()
 
-	-- This callback receives DMF's shared rendered settings tree. Extensions may
-	-- rewrite that tree, and some DMF/extension combinations also expose a
-	-- flattened or otherwise post-processed `options_widgets_data` table. Neither
-	-- is an authoritative source-schema boundary, so never run duplicate-ID
-	-- diagnostics here. DMF rejects genuine duplicates while initializing this
-	-- mod's raw data, and the release verifier audits the same source schema.
-	-- Keeping this hook presentation-only also avoids rescanning every installed
-	-- mod whenever Mod Options is opened.
+	-- DMF/extension output is presentation-only. DMF startup and release
+	-- verification own source-schema validation; never run duplicate-ID
+	-- diagnostics here or scan every installed mod when Mod Options opens.
 
 	local setting_by_title = {}
 	local tracked_setting_ids = {}

@@ -39,6 +39,7 @@ local CURIO_TYPES = {
 
 local mod
 local enabled = true
+local framework_enabled = true
 local color = { 255, REFERENCE_RED[1], REFERENCE_RED[2], REFERENCE_RED[3] }
 local color_dark = { 255, REFERENCE_RED[1] * (1 - DARKEN_FACTOR), REFERENCE_RED[2] * (1 - DARKEN_FACTOR), REFERENCE_RED[3] * (1 - DARKEN_FACTOR) }
 local display_name
@@ -113,48 +114,56 @@ local function item_power(item)
 	return ok and tonumber(value) or nil
 end
 
-local function displayed_modifier_values(item)
+local function displayed_modifier_value(entry)
+	local value = type(entry) == "table" and tonumber(entry.value)
+
+	if value == nil then
+		return
+	end
+
+	return math.floor((value <= 1.5 and value * 100 or value) + 0.5)
+end
+
+local function weapon_modifiers_match(item, criteria)
 	local base_stats = item and item.base_stats
 
 	if type(base_stats) ~= "table" or #base_stats == 0 then
-		return
+		return false
 	end
 
-	local values = {}
+	local total
+
+	if criteria.minimum_total > 0 and type(Items.total_stats_value) == "function" then
+		local ok, resolved_total = pcall(Items.total_stats_value, item)
+
+		total = ok and tonumber(resolved_total) or nil
+	end
+
+	local fallback_total = 0
+	local high_stats = 0
 
 	for index = 1, #base_stats do
-		local value = type(base_stats[index]) == "table" and tonumber(base_stats[index].value)
+		local value = displayed_modifier_value(base_stats[index])
 
 		if value == nil then
-			return
+			return false
 		end
 
-		values[index] = math.floor((value <= 1.5 and value * 100 or value) + 0.5)
-	end
+		fallback_total = fallback_total + value
 
-	return values
-end
-
-local function total_base_stats(item, values)
-	if type(Items.total_stats_value) == "function" then
-		local ok, total = pcall(Items.total_stats_value, item)
-
-		if ok and tonumber(total) then
-			return tonumber(total)
+		if criteria.minimum_modifier > 0 and value < criteria.minimum_modifier then
+			return false
+		end
+		if value >= criteria.high_stat_threshold then
+			high_stats = high_stats + 1
 		end
 	end
 
-	if type(values) ~= "table" then
-		return
+	if criteria.minimum_total > 0 and (total or fallback_total) < criteria.minimum_total then
+		return false
 	end
 
-	local total = 0
-
-	for index = 1, #values do
-		total = total + values[index]
-	end
-
-	return total
+	return high_stats >= criteria.required_high_stats
 end
 
 local function weapon_matches(item, kind)
@@ -176,34 +185,7 @@ local function weapon_matches(item, kind)
 		return true
 	end
 
-	local values = displayed_modifier_values(item)
-
-	if not values then
-		return false
-	end
-
-	if criteria.minimum_total > 0 then
-		local total = total_base_stats(item, values)
-
-		if not total or total < criteria.minimum_total then
-			return false
-		end
-	end
-
-	local high_stats = 0
-
-	for index = 1, #values do
-		local value = values[index]
-
-		if criteria.minimum_modifier > 0 and value < criteria.minimum_modifier then
-			return false
-		end
-		if value >= criteria.high_stat_threshold then
-			high_stats = high_stats + 1
-		end
-	end
-
-	return high_stats >= criteria.required_high_stats
+	return weapon_modifiers_match(item, criteria)
 end
 
 local function curio_matches(item)
@@ -243,17 +225,19 @@ local function matches(item)
 end
 
 local function feature_active()
-	if not enabled then
-		return false
-	end
+	return enabled and framework_enabled
+end
+
+local function refresh_framework_enabled()
+	framework_enabled = true
 
 	if mod and type(mod.is_enabled) == "function" then
 		local ok, active = pcall(mod.is_enabled, mod)
 
-		return ok and active ~= false
+		framework_enabled = ok and active ~= false
 	end
 
-	return true
+	return framework_enabled
 end
 
 local function patch_red_weapons_at_home()
@@ -332,6 +316,7 @@ end
 
 CustomTier.refresh = function(configured_mod)
 	mod = configured_mod or mod
+	refresh_framework_enabled()
 	enabled = setting("custom_tier_enabled", true) ~= false
 	local red = bounded_number(setting("custom_tier_color_r", REFERENCE_RED[1]), REFERENCE_RED[1], 0, 255)
 	local green = bounded_number(setting("custom_tier_color_g", REFERENCE_RED[2]), REFERENCE_RED[2], 0, 255)
@@ -377,6 +362,10 @@ CustomTier.install = function(configured_mod)
 	return installed
 end
 
+CustomTier.on_disabled = function()
+	framework_enabled = false
+end
+
 CustomTier.on_setting_changed = function(configured_mod, setting_id)
 	if type(setting_id) ~= "string" or string.sub(setting_id, 1, #"custom_tier_") ~= "custom_tier_" then
 		return false
@@ -404,9 +393,11 @@ CustomTier.matches = matches
 CustomTier.reference_red = REFERENCE_RED
 CustomTier._test = {
 	curio_types = CURIO_TYPES,
-	displayed_modifier_values = displayed_modifier_values,
+	displayed_modifier_value = displayed_modifier_value,
 	feature_active = feature_active,
 	preview_channels = preview_channels,
+	refresh_framework_enabled = refresh_framework_enabled,
+	weapon_modifiers_match = weapon_modifiers_match,
 	weapon_types = WEAPON_TYPES,
 }
 

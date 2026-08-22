@@ -165,12 +165,12 @@
     {"name": "typed_fallbacks", "risk": "high", "start_line": 42, "end_line": 65}
   ],
   "test_curio_acquisition.py": [
-      {"name": "store_rotation_gate", "risk": "critical", "start_line": 1369, "end_line": 1682},
-      {"name": "purchase_revalidation", "risk": "critical", "start_line": 679, "end_line": 1076},
-      {"name": "read_cancellation_and_generation", "risk": "critical", "start_line": 1683, "end_line": 1714},
-      {"name": "account_mutation_deferral", "risk": "critical", "start_line": 1715, "end_line": 1738},
-      {"name": "idle_update_gate", "risk": "high", "start_line": 1739, "end_line": 1754},
-      {"name": "account_scoped_reports", "risk": "high", "start_line": 1077, "end_line": 1368}
+      {"name": "store_rotation_gate", "risk": "critical", "start_line": 1397, "end_line": 1710},
+      {"name": "purchase_revalidation", "risk": "critical", "start_line": 680, "end_line": 1104},
+      {"name": "read_cancellation_and_generation", "risk": "critical", "start_line": 1711, "end_line": 1742},
+      {"name": "account_mutation_deferral", "risk": "critical", "start_line": 1743, "end_line": 1766},
+      {"name": "idle_update_gate", "risk": "high", "start_line": 1767, "end_line": 1782},
+      {"name": "account_scoped_reports", "risk": "high", "start_line": 1105, "end_line": 1396}
   ],
   "test_curio_domains.py": [
     {"name": "context_snapshot", "risk": "high", "start_line": 20, "end_line": 33},
@@ -214,7 +214,7 @@
     {"name": "dynamic_material_repair", "risk": "critical", "start_line": 1, "end_line": 191}
   ],
   "test_custom_tier.py": [
-    {"name": "standalone_classification_and_red_weapons_compatibility", "risk": "critical", "start_line": 1, "end_line": 257}
+    {"name": "standalone_classification_and_red_weapons_compatibility", "risk": "critical", "start_line": 1, "end_line": 281}
   ],
   "test_layout.py": [
     {"name": "card_geometry", "risk": "high", "start_line": 613, "end_line": 1463},
@@ -231,8 +231,8 @@
     {"name": "schema_dependency_refresh", "risk": "high", "start_line": 21, "end_line": 438},
     {"name": "migration_preservation", "risk": "high", "start_line": 439, "end_line": 592},
     {"name": "character_overview_refresh", "risk": "high", "start_line": 593, "end_line": 1651},
-    {"name": "localization_contract", "risk": "medium", "start_line": 1652, "end_line": 2822},
-    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2823, "end_line": 3411}
+    {"name": "localization_contract", "risk": "medium", "start_line": 1652, "end_line": 2825},
+    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2826, "end_line": 3414}
   ],
   "test_settings_registry.py": [
     {"name": "duplicate_detection", "risk": "high", "start_line": 63, "end_line": 123},

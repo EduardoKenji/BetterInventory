@@ -24,6 +24,8 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - Automatic Curio Buyer now defaults Stamina's minimum primary roll to +3, so enabling Stamina no longer accepts +1 or +2 Curios unless the threshold is deliberately lowered.
 - A default-on target of three owned Curios per operative and primary-stat type turns repeat buying into a bounded upgrade path. Once three qualifying Curios are owned, only a candidate whose Power is strictly higher than the lowest of the current best three is eligible; `0` disables this gate.
 - The ownership check reuses Darktide's authoritative all-profile gear snapshot, retains only three Power numbers per operative/stat for the current pass, and updates that bounded set only after a confirmed purchase.
+- The complete v2.9.0-v2.9.3 performance pass removes repeated per-card framework checks and temporary modifier arrays from custom-tier classification, snapshots Curio eligibility settings once per scan, and reuses unchanged Mod Options dependency-reason storage. No unbounded collection, retained closed view, or new idle-frame work was found.
+- Every English localization entry has a non-empty Simplified Chinese value; the only intentionally identical values are language-neutral keybind labels. New custom-tier Stamina wording now consistently uses `体力` across the Chinese UI.
 
 ### v2.9.2 changes included
 
@@ -221,7 +223,7 @@ BetterInventory has no optional mod dependency. Integrations activate only when 
 | Visible Equipment | Preserves Cosmetics placement widgets alongside detailed Loadout cards |
 | Inspect from Social / Party Finder | Supports detailed cards while inspecting other players |
 | Equipped Icon Plus | Separates inactive-loadout equipped badges from the favorite marker |
-| Red Weapons at Home | Preserves externally marked red item-card styling |
+| Red Weapons at Home | BetterInventory's enabled custom-tier criteria take precedence; disabling BetterInventory's custom tier restores the other mod's styling |
 | Alf's DMF Extensions | Supports its generalized Mod Options layout |
 
 Do not run BetterInventory together with Inventory2D or the Inventory2D Bound by Duty compatibility patch; they modify overlapping inventory presentation paths.

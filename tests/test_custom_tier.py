@@ -49,10 +49,14 @@ def main() -> None:
             custom_tier_curio_wounds_min_power = 0,
         }
         custom_tier_mod_enabled = true
+        custom_tier_is_enabled_calls = 0
         custom_tier_mod = {
             get = function(_, setting_id) return custom_tier_settings[setting_id] end,
             set = function(_, setting_id, value) custom_tier_settings[setting_id] = value end,
-            is_enabled = function() return custom_tier_mod_enabled end,
+            is_enabled = function()
+                custom_tier_is_enabled_calls = custom_tier_is_enabled_calls + 1
+                return custom_tier_mod_enabled
+            end,
             io_dofile = function(_, path)
                 if string.find(path, "BetterInventory_curio_values", 1, true) then
                     return {
@@ -165,8 +169,14 @@ def main() -> None:
     custom_tier.on_setting_changed(mod, "custom_tier_color_preview")
 
     lua.execute('custom_tier_mod.is_enabled = function() error("disabled-state unavailable") end')
+    custom_tier._test.refresh_framework_enabled()
     assert custom_tier._test.feature_active() is False
-    lua.execute("custom_tier_mod.is_enabled = function() return custom_tier_mod_enabled end")
+    lua.execute(
+        "custom_tier_mod.is_enabled = function() "
+        "custom_tier_is_enabled_calls = custom_tier_is_enabled_calls + 1; "
+        "return custom_tier_mod_enabled end"
+    )
+    custom_tier.refresh(mod)
 
     perfect_melee = weapon("WEAPON_MELEE", 500, [80, 80, 80, 80, 60])
     perfect_ranged = weapon("WEAPON_RANGED", 500, [80, 80, 80, 80, 60])
@@ -186,6 +196,15 @@ def main() -> None:
         perfect_melee,
         perfect_melee,
     ) is True
+
+    # The framework enabled state is refreshed only at lifecycle/settings
+    # boundaries. Repeated card colour/name lookups do not call back into DMF.
+    enabled_checks_before_cards = lua.globals().custom_tier_is_enabled_calls
+    for _ in range(100):
+        items.rarity_color(perfect_melee)
+        items.rarity_display_name(perfect_melee)
+    assert lua.globals().custom_tier_is_enabled_calls == enabled_checks_before_cards
+    assert "local values = {}" not in MODULE_PATH.read_text(encoding="utf-8")
 
     # Reference Curio behavior: all four primary types, maximum default rolls,
     # Transcendent rarity, and no minimum Power requirement.
@@ -245,6 +264,11 @@ def main() -> None:
     custom_tier.install(mod)
     repeated_color, _ = items.rarity_color(perfect_ranged)
     assert [repeated_color[index] for index in range(1, 5)] == [255, 210, 30, 40]
+
+    custom_tier.on_disabled()
+    disabled_color, _ = items.rarity_color(red_only)
+    assert [disabled_color[index] for index in range(1, 5)] == [255, 200, 1, 2]
+    custom_tier.refresh(mod)
     assert custom_tier.on_setting_changed(mod, "unrelated_setting") is False
 
     overview_source = (MODULE_PATH.parent / "BetterInventory_character_overview_ui.lua").read_text(encoding="utf-8")

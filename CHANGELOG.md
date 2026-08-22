@@ -8,6 +8,8 @@
 - Reuses Darktide's authoritative profile/gear snapshot and retains only bounded per-pass Power lists; no additional backend request, persistent item cache, or idle work is introduced.
 - Explains the owned-Curio target in a panel-native hover tooltip whose widget data is released with the inventory view.
 - Limits ownership materialization to selected operatives, reads Curio filters once per scan, and maintains each bounded best set with allocation-free insertion instead of repeated sorting.
+- Completes a v2.9.0-v2.9.3 performance/lifetime pass: custom-tier modifier filtering no longer allocates per item or queries DMF enabled state per card, Curio offer filters are snapshotted once per pass, and unchanged Mod Options disabled-reason lists are reused.
+- Confirms the new v2.9 English UI has complete Simplified Chinese coverage and standardizes the new custom-tier Stamina labels on `体力`.
 
 ## 2.9.2 - 2026-08-22
 

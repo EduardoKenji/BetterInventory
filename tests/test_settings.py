@@ -1862,6 +1862,9 @@ def main() -> None:
     globals_.character_options_refresh_callback()
     assert entries_by_id["melee_columns"].disabled is True
     assert entries_by_id["enable_hadron_single_column_mirror"].disabled is False
+    disabled_reason_table = entries_by_id["melee_columns"].disabled_by
+    globals_.character_options_refresh_callback()
+    assert lua.eval("rawequal")(disabled_reason_table, entries_by_id["melee_columns"].disabled_by)
     settings.enable_grid_layout = True
     settings.curio_health_color_preset = "custom"
     settings.curio_health_color_r = 1
