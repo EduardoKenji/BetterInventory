@@ -235,6 +235,11 @@ local function ensure_class_method(class, method)
 end
 
 local COLOR_PRESETS = {
+	custom_tier_red = {
+		210,
+		30,
+		40,
+	},
 	red = {
 		235,
 		85,
@@ -302,6 +307,10 @@ local COLOR_PRESETS = {
 	},
 }
 local COLOR_TARGETS = {
+	{
+		prefix = "custom_tier_color",
+		default_preset = "custom_tier_red",
+	},
 	{
 		prefix = "new_item_highlight_color",
 		default_preset = "green",

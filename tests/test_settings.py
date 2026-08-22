@@ -1422,6 +1422,17 @@ def main() -> None:
     settings.weapon_modifier_lowest_color_preset = "pink"
     mod.on_setting_changed("weapon_modifier_lowest_color_preset")
 
+    settings.custom_tier_color_preset = "custom_tier_red"
+    mod.on_setting_changed("custom_tier_color_preset")
+    assert (
+        settings.custom_tier_color_r,
+        settings.custom_tier_color_g,
+        settings.custom_tier_color_b,
+    ) == (210, 30, 40)
+    settings.custom_tier_color_b = 99
+    mod.on_setting_changed("custom_tier_color_b")
+    assert settings.custom_tier_color_preset == "custom"
+
     settings.curio_secondary_text_color_preset = "terminal_green"
     mod.on_setting_changed("curio_secondary_text_color_preset")
     assert (
@@ -2668,7 +2679,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "2.9.1"
+    assert data.version == "2.9.2"
 
     gradient_name = localization["mod_name"]["en"]
     assert gradient_name.startswith("{#color(174,239,105)}B")
@@ -2789,6 +2800,8 @@ def main() -> None:
         for index in range(1, len(data.options.widgets) + 1)
     ]
     assert "debug_group" in top_level_ids
+    assert "custom_tier_group" in top_level_ids
+    assert top_level_ids.index("auto_crafter_group") < top_level_ids.index("custom_tier_group") < top_level_ids.index("additional_views_group")
     debug_group = next(
         data.options.widgets[index]
         for index in range(1, len(data.options.widgets) + 1)
@@ -3132,6 +3145,25 @@ def main() -> None:
     assert defaults["myfavorites_show_favorite_letter"] is False
     assert defaults["character_overview_curio_name_mode"] == "two_lines"
     assert defaults["character_overview_curio_font_size_percent"] == 110
+    assert defaults["custom_tier_enabled"] is True
+    assert defaults["custom_tier_color_preset"] == "custom_tier_red"
+    assert [defaults[f"custom_tier_color_{channel}"] for channel in ("r", "g", "b")] == [210, 30, 40]
+    for weapon_kind in ("melee", "ranged"):
+        assert defaults[f"custom_tier_{weapon_kind}_enabled"] is True
+        assert defaults[f"custom_tier_{weapon_kind}_min_power"] == 500
+        assert defaults[f"custom_tier_{weapon_kind}_min_base_stat_total"] == 0
+        assert defaults[f"custom_tier_{weapon_kind}_min_modifier"] == 0
+        assert defaults[f"custom_tier_{weapon_kind}_required_high_stats"] == 0
+        assert defaults[f"custom_tier_{weapon_kind}_high_stat_threshold"] == 80
+    for curio_kind, maximum_roll in {
+        "health": 21,
+        "toughness": 17,
+        "stamina": 3,
+        "wounds": 1,
+    }.items():
+        assert defaults[f"custom_tier_curio_{curio_kind}_enabled"] is True
+        assert defaults[f"custom_tier_curio_{curio_kind}_min_roll"] == maximum_roll
+        assert defaults[f"custom_tier_curio_{curio_kind}_min_power"] == 0
     for item_kind in ("weapon", "curio"):
         for axis in ("x", "y", "width", "height"):
             assert defaults[f"{item_kind}_image_character_overview_{axis}_offset_percent"] == 0

@@ -1322,6 +1322,7 @@ OverviewUI.is_visual_setting = function(setting_id)
 	return CHARACTER_OVERVIEW_VISUAL_SETTING_IDS[setting_id] == true
 		or string.sub(setting_id, 1, #"weapon_image_character_overview_") == "weapon_image_character_overview_"
 		or string.sub(setting_id, 1, #"curio_image_character_overview_") == "curio_image_character_overview_"
+		or string.sub(setting_id, 1, #"custom_tier_") == "custom_tier_"
 end
 
 OverviewUI.bump_visual_settings_generation = function()

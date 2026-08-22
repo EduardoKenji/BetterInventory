@@ -213,6 +213,9 @@
   "test_material_safety.py": [
     {"name": "dynamic_material_repair", "risk": "critical", "start_line": 1, "end_line": 191}
   ],
+  "test_custom_tier.py": [
+    {"name": "standalone_classification_and_red_weapons_compatibility", "risk": "critical", "start_line": 1, "end_line": 241}
+  ],
   "test_layout.py": [
     {"name": "card_geometry", "risk": "high", "start_line": 613, "end_line": 1463},
       {"name": "weapon_modifier_data_only_resolution", "risk": "critical", "start_line": 1464, "end_line": 1844},
@@ -227,9 +230,9 @@
   "test_settings.py": [
     {"name": "schema_dependency_refresh", "risk": "high", "start_line": 21, "end_line": 438},
     {"name": "migration_preservation", "risk": "high", "start_line": 439, "end_line": 592},
-    {"name": "character_overview_refresh", "risk": "high", "start_line": 593, "end_line": 1640},
-    {"name": "localization_contract", "risk": "medium", "start_line": 1641, "end_line": 2794},
-    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2795, "end_line": 3360}
+    {"name": "character_overview_refresh", "risk": "high", "start_line": 593, "end_line": 1651},
+    {"name": "localization_contract", "risk": "medium", "start_line": 1652, "end_line": 2805},
+    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2806, "end_line": 3392}
   ],
   "test_settings_registry.py": [
     {"name": "duplicate_detection", "risk": "high", "start_line": 63, "end_line": 123},

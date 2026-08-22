@@ -2,7 +2,7 @@
 
 [![BetterInventory verification](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml/badge.svg)](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml)
 
-> Current release: **v2.9.1** (2026-08-22). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
+> Current release: **v2.9.2** (2026-08-22). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
 
 BetterInventory is a standalone inventory and item-management mod for Warhammer 40,000: Darktide. It adds responsive weapon and Curio cards, richer item information, configurable sorting, supported vendor layouts, optional mod integrations, and safety-gated inventory workflows.
 
@@ -14,11 +14,18 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - Separate layouts for Inventory, Character Overview, Hadron's Entreat view, Requisition Weapons & Curios, and GlobalStore's Multi-Operative Supply.
 - Configurable equipped-item and newly-acquired-item highlights using native Darktide materials.
 - Built-in item names and colours, with optional Name It synchronization.
+- A standalone configurable legendary tier for visually identifying exceptional Transcendent weapons and Curios, with no Red Weapons At Home dependency.
 - Sorting that preserves equipped and favorite priorities and recognizes fifth attributes of 60, 61, and 62 as perfect rolls, ordered `62 > 61 > 60`.
 - A bounded inventory-options panel for sorting, discard rules, integrations, and view-specific controls.
 - Optional Quick Discard, Automatic Discard, Automatic Curio Buyer, and Auto Crafter workflows with explicit ownership, authoritative revalidation, and fail-closed behavior.
 
-## What's new in v2.9.1
+## What's new in v2.9.2
+
+- **Custom legendary tier** defaults to the Red Weapons At Home reference behavior: RGB `210/30/40`, Power-500 Transcendent weapons, and Transcendent Curios with maximum primary rolls.
+- Melee and ranged weapons have independent minimum Power, base-stat total, every-modifier floor, required-high-stat count, and high-stat threshold controls. Health, Toughness, Stamina, and Wound Curios each have independent roll and Power filters.
+- BetterInventory owns the classification when Red Weapons At Home is installed simultaneously. Turning BetterInventory's feature Off restores the other mod's behavior instead of stacking both rule sets.
+
+### v2.9.1 changes included
 
 - Reused Inventory and Character Overview cards now repair numeric or malformed dynamic material references before Darktide renders them, covering the reported `material '128'` weapon-switch crash signature.
 - The guard is limited to BetterInventory-transformed cards and native cards in `InventoryWeaponsView`; it does not hook the global renderer or scan widgets every frame.
@@ -236,7 +243,7 @@ Configure the mod through **Options > Mod Options > BetterInventory**. Reopen an
 
 ## Development and verification
 
-The runtime is split into 78 Lua sources plus the DMF descriptor. Generated manifests track the runtime bundle, settings schema, localization keys, module ownership, and named risk cases.
+The runtime is split into 79 Lua sources plus the DMF descriptor. Generated manifests track the runtime bundle, settings schema, localization keys, module ownership, and named risk cases.
 
 Run the complete repository verification from the project root:
 
@@ -244,7 +251,7 @@ Run the complete repository verification from the project root:
 powershell -ExecutionPolicy Bypass -File .\tests\verify.ps1
 ```
 
-The v2.9.1 suite currently discovers 42 behavior-test files and 164 named cases. To run the behavior suite directly with risk-weighted Lua coverage:
+The v2.9.2 suite currently discovers 43 behavior-test files and 165 named cases. To run the behavior suite directly with risk-weighted Lua coverage:
 
 ```powershell
 py -3 .\tests\run_tests.py --timeout-seconds 45 --coverage-output lua-coverage.json
@@ -273,6 +280,7 @@ See [release packaging](docs/release-packaging.md) before publishing an archive.
 - [Changelog](CHANGELOG.md) - release-by-release changes.
 - [v2.9.0 DMF/Alf compatibility and runtime audit](docs/v2.9.0-dmf-alf-compatibility-audit.md) - updated framework contracts, lifecycle fixes, concurrency, memory, and CPU findings.
 - [v2.9.1 material crash audit](docs/v2.9.1-material-crash-audit.md) - renderer evidence, weapon-switch vectors, scoped remediation, and remaining attribution limits.
+- [v2.9.2 custom-tier design](docs/v2.9.2-custom-tier.md) - classification criteria, exact reference defaults, compatibility ownership, and performance boundaries.
 - [v2.3.0 memory and performance audit](docs/v2.3.0-memory-performance-audit.md) - historical audit and verification ledger.
 - [v2.0.0 full-project audit](docs/v2.0.0-full-project-audit.md) - historical architecture research and backlog.
 

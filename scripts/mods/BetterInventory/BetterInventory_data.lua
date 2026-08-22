@@ -1,4 +1,4 @@
-local MOD_VERSION = "2.9.1"
+local MOD_VERSION = "2.9.2"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
@@ -108,7 +108,7 @@ local function color_preset_options(include_mode_default)
 	return options
 end
 
-local function color_group(group_id, prefix, default_preset, red, green, blue, include_mode_default)
+local function color_group(group_id, prefix, default_preset, red, green, blue, include_mode_default, preset_options)
 	return {
 		setting_id = group_id,
 		type = "group",
@@ -117,7 +117,7 @@ local function color_group(group_id, prefix, default_preset, red, green, blue, i
 				setting_id = prefix .. "_preset",
 				type = "dropdown",
 				default_value = default_preset,
-				options = color_preset_options(include_mode_default),
+				options = preset_options or color_preset_options(include_mode_default),
 			},
 			{
 				setting_id = prefix .. "_r",
@@ -145,6 +145,129 @@ local function color_group(group_id, prefix, default_preset, red, green, blue, i
 					0,
 					255,
 				},
+			},
+		},
+	}
+end
+
+local function custom_tier_color_options()
+	local options = {
+		{
+			text = "custom_tier_color_preset_reference_red",
+			value = "custom_tier_red",
+		},
+	}
+	local shared_options = color_preset_options()
+
+	for index = 1, #shared_options do
+		options[#options + 1] = shared_options[index]
+	end
+
+	return options
+end
+
+local function custom_tier_weapon_group(kind)
+	local prefix = "custom_tier_" .. kind
+
+	return {
+		setting_id = prefix .. "_group",
+		type = "group",
+		sub_widgets = {
+			{
+				setting_id = prefix .. "_enabled",
+				tooltip = "custom_tier_weapon_enabled_tooltip",
+				type = "checkbox",
+				default_value = true,
+			},
+			{
+				setting_id = prefix .. "_min_power",
+				tooltip = "custom_tier_weapon_min_power_tooltip",
+				type = "numeric",
+				default_value = 500,
+				range = { 0, 500 },
+			},
+			{
+				setting_id = prefix .. "_min_base_stat_total",
+				tooltip = "custom_tier_weapon_min_base_stat_total_tooltip",
+				type = "numeric",
+				default_value = 0,
+				range = { 0, 500 },
+			},
+			{
+				setting_id = prefix .. "_min_modifier",
+				tooltip = "custom_tier_weapon_min_modifier_tooltip",
+				type = "numeric",
+				default_value = 0,
+				range = { 0, 100 },
+			},
+			{
+				setting_id = prefix .. "_required_high_stats",
+				tooltip = "custom_tier_weapon_required_high_stats_tooltip",
+				type = "numeric",
+				default_value = 0,
+				range = { 0, 5 },
+			},
+			{
+				setting_id = prefix .. "_high_stat_threshold",
+				tooltip = "custom_tier_weapon_high_stat_threshold_tooltip",
+				type = "numeric",
+				default_value = 80,
+				range = { 0, 100 },
+			},
+		},
+	}
+end
+
+local function custom_tier_curio_group(kind, default_roll, maximum_roll)
+	local prefix = "custom_tier_curio_" .. kind
+
+	return {
+		setting_id = prefix .. "_group",
+		type = "group",
+		sub_widgets = {
+			{
+				setting_id = prefix .. "_enabled",
+				tooltip = "custom_tier_curio_enabled_tooltip",
+				type = "checkbox",
+				default_value = true,
+			},
+			{
+				setting_id = prefix .. "_min_roll",
+				tooltip = "custom_tier_curio_min_roll_tooltip",
+				type = "numeric",
+				default_value = default_roll,
+				range = { 0, maximum_roll },
+			},
+			{
+				setting_id = prefix .. "_min_power",
+				tooltip = "custom_tier_curio_min_power_tooltip",
+				type = "numeric",
+				default_value = 0,
+				range = { 0, 500 },
+			},
+		},
+	}
+end
+
+local function custom_tier_widgets()
+	return {
+		{
+			setting_id = "custom_tier_enabled",
+			tooltip = "custom_tier_enabled_tooltip",
+			type = "checkbox",
+			default_value = true,
+		},
+		color_group("custom_tier_color_group", "custom_tier_color", "custom_tier_red", 210, 30, 40, false, custom_tier_color_options()),
+		custom_tier_weapon_group("melee"),
+		custom_tier_weapon_group("ranged"),
+		{
+			setting_id = "custom_tier_curios_group",
+			type = "group",
+			sub_widgets = {
+				custom_tier_curio_group("health", 21, 21),
+				custom_tier_curio_group("toughness", 17, 17),
+				custom_tier_curio_group("stamina", 3, 3),
+				custom_tier_curio_group("wounds", 1, 1),
 			},
 		},
 	}
@@ -998,6 +1121,11 @@ return {
 						},
 					},
 				},
+			},
+			{
+				setting_id = "custom_tier_group",
+				type = "group",
+				sub_widgets = custom_tier_widgets(),
 			},
 			{
 				setting_id = "additional_views_group",

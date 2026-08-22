@@ -1,5 +1,13 @@
 # BetterInventory changelog
 
+## 2.9.2 - 2026-08-22
+
+- Adds a standalone custom legendary tier for qualifying Transcendent melee weapons, ranged weapons, and all four Curio primary-stat types; Red Weapons At Home is not required.
+- Defaults reproduce Red Weapons At Home 1.2.6: RGB `210/30/40`, weapon Power 500, maximum Curio primary rolls, and zero minimum Curio Power.
+- Adds independent melee/ranged Power, base-stat-total, per-modifier, and high-stat-count filters plus per-type Curio roll and Power filters.
+- Makes BetterInventory's criteria authoritative when Red Weapons At Home is also enabled, while restoring that mod's behavior whenever BetterInventory's feature is disabled.
+- Uses bounded event-refreshed settings and shared colour tables without per-frame scans, per-item retained state, or account mutations.
+
 ## 2.9.1 - 2026-08-22
 
 - Prevents numeric or malformed dynamic texture values from reaching Darktide's UI material loader during weapon changes, including the reported `Error loading material '128'` failure shape.

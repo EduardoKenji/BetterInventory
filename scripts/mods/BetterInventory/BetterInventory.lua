@@ -111,6 +111,14 @@ local FavoriteIntegration = no_op_module(mod:io_dofile("BetterInventory/scripts/
 	favorite_purchase_items = function() return 0 end,
 })
 local ItemCustomization = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_item_customization"), "BetterInventory_item_customization.lua")
+local CustomTier = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_custom_tier"), "BetterInventory_custom_tier.lua", {
+	install = function() return false end,
+	on_setting_changed = function() return false end,
+	refresh = function() return false end,
+})
+CustomTier.install = type(CustomTier.install) == "function" and CustomTier.install or function() return false end
+CustomTier.on_setting_changed = type(CustomTier.on_setting_changed) == "function" and CustomTier.on_setting_changed or function() return false end
+CustomTier.refresh = type(CustomTier.refresh) == "function" and CustomTier.refresh or function() return false end
 local EquipmentPersistence = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_equipment_persistence"), "BetterInventory_equipment_persistence.lua")
 local SettingsRegistry = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_settings"), "BetterInventory_settings.lua", {
 	should_refresh_dependencies = function() return true end,
@@ -595,3 +603,28 @@ Runtime.configure({
 	WeaponOptionsPanel = WeaponOptionsPanel,
 })
 Runtime.install()
+
+local function extend_runtime_callback(callback_name, extension)
+	local runtime_callback = mod[callback_name]
+
+	mod[callback_name] = function(...)
+		if type(runtime_callback) == "function" then
+			runtime_callback(...)
+		end
+
+		return extension(...)
+	end
+end
+
+extend_runtime_callback("on_enabled", function()
+	return CustomTier.refresh(mod)
+end)
+extend_runtime_callback("on_all_mods_loaded", function()
+	return CustomTier.install(mod)
+end)
+extend_runtime_callback("on_setting_changed", function(setting_id)
+	return CustomTier.on_setting_changed(mod, setting_id)
+end)
+extend_runtime_callback("on_settings_reset", function()
+	return CustomTier.refresh(mod)
+end)
