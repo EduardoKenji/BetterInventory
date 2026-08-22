@@ -26,11 +26,55 @@ def main() -> None:
     mod = lua.globals().material_safety_mod
     warnings = lua.globals().material_safety_warnings
     native_icon = "content/ui/materials/icons/items/containers/item_container_landscape"
+    inventory_frame = "content/ui/materials/frames/frame_tile_2px"
+    crafting_only_frame = "content/ui/materials/frames/line_thin_dashed_animated"
 
     assert material_safety.valid_material_reference(native_icon) is True
     assert material_safety.valid_material_reference("") is False
     assert material_safety.valid_material_reference(128) is False
     assert material_safety.valid_material_reference(lua.table_from([255, 128, 128, 128])) is False
+    assert material_safety.INVENTORY_FRAME_MATERIAL == inventory_frame
+
+    # The full crash locals identify 128 as renderer flags and this crafting-only
+    # frame as the actual missing material. Static and normalized dynamic passes
+    # must both switch to a frame owned by the inventory package.
+    static_packaged_pass = lua.table_from(
+        {
+            "pass_type": "texture",
+            "style_id": "better_inventory_equipped_highlight",
+            "value": crafting_only_frame,
+        }
+    )
+    assert material_safety.guard_pass(mod, static_packaged_pass) is True
+    assert static_packaged_pass.value == inventory_frame
+    assert material_safety.guard_pass(mod, static_packaged_pass) is False
+
+    dynamic_packaged_pass = lua.table_from(
+        {
+            "pass_type": "texture",
+            "style_id": "better_inventory_equipped_highlight",
+            "value_id": "value_id_37",
+            "value": crafting_only_frame,
+        }
+    )
+    assert material_safety.guard_pass(mod, dynamic_packaged_pass) is True
+    assert dynamic_packaged_pass.value == inventory_frame
+    packaged_content = lua.table_from({"value_id_37": crafting_only_frame})
+    dynamic_packaged_pass.change_function(
+        packaged_content, lua.table_from({}), None, 0
+    )
+    assert packaged_content.value_id_37 == inventory_frame
+    assert len(warnings) == 1
+    assert "string" in warnings[1] and "value_id_37" in warnings[1]
+
+    one_pixel_pass = lua.table_from(
+        {
+            "pass_type": "texture",
+            "value": "content/ui/materials/frames/frame_tile_1px",
+        }
+    )
+    assert material_safety.guard_pass(mod, one_pixel_pass) is True
+    assert one_pixel_pass.value == inventory_frame
 
     icon_pass = lua.table_from(
         {
@@ -46,14 +90,14 @@ def main() -> None:
     content = lua.table_from({"icon": 128})
     icon_pass.change_function(content, lua.table_from({}), lua.table_from({}), 0)
     assert content.icon == native_icon
-    assert len(warnings) == 1
-    assert "number" in warnings[1] and "icon" in warnings[1]
+    assert len(warnings) == 2
+    assert "number" in warnings[2] and "icon" in warnings[2]
 
     # Repeated corruption is repaired without producing a per-frame warning storm.
     content.icon = 64
     icon_pass.change_function(content, lua.table_from({}), lua.table_from({}), 0)
     assert content.icon == native_icon
-    assert len(warnings) == 1
+    assert len(warnings) == 2
     content.icon = "content/ui/materials/custom/valid_weapon_icon"
     icon_pass.change_function(content, lua.table_from({}), lua.table_from({}), 0)
     assert content.icon == "content/ui/materials/custom/valid_weapon_icon"
@@ -225,6 +269,9 @@ def main() -> None:
     overview_source = (RUNTIME_ROOT / "BetterInventory_character_overview_ui.lua").read_text(
         encoding="utf-8"
     )
+    cards_source = (RUNTIME_ROOT / "BetterInventory_layout_cards.lua").read_text(
+        encoding="utf-8"
+    )
     assert "Layout.MaterialSafety.guard_inventory_widget(mod, item_grid, widget)" in runtime_source
     assert "Layout.MaterialSafety.guard_loadout_widget(mod, view, results[1])" in overview_source
     assert material_safety.guard_inventory_widget(
@@ -242,6 +289,8 @@ def main() -> None:
     )
     assert "MaterialSafety.guard_blueprint(mod, item_blueprint)" in blueprint_source
     assert "Layout.MaterialSafety.guard_blueprint(mod, blueprint)" in overview_source
+    assert "line_thin_dashed_animated" not in cards_source
+    assert "frame_tile_1px" not in cards_source
     assert 'mod:hook(UIRenderer' not in runtime_source
     assert 'mod:hook(UIPasses' not in runtime_source
 

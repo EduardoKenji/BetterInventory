@@ -2511,7 +2511,7 @@ def main() -> None:
         dashed_blueprint, "better_inventory_equipped_highlight"
     )
     assert dashed_highlight.value == (
-        "content/ui/materials/frames/line_thin_dashed_animated"
+        "content/ui/materials/frames/frame_tile_2px"
     )
     assert tuple(
         dashed_highlight.style.size_addition[index] for index in range(1, 3)
@@ -2535,7 +2535,7 @@ def main() -> None:
         dashed_passes[1].style.size_addition[index] for index in range(1, 3)
     ) == (6, 6)
     assert all(
-        candidate.value == "content/ui/materials/frames/line_thin_dashed_animated"
+        candidate.value == "content/ui/materials/frames/frame_tile_2px"
         and candidate.change_function is None
         for candidate in dashed_passes
     )
@@ -2650,7 +2650,7 @@ def main() -> None:
         thin_solid_blueprint, "better_inventory_equipped_highlight"
     )
     assert len(thin_solid_passes) == 1
-    assert thin_solid_passes[0].value == "content/ui/materials/frames/frame_tile_1px"
+    assert thin_solid_passes[0].value == "content/ui/materials/frames/frame_tile_2px"
 
     mod.settings.equipped_highlight_solid_border_width = 5
     thick_solid_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
@@ -2678,7 +2678,7 @@ def main() -> None:
     )
     assert len(recomposed_highlight_passes) == 1
     assert recomposed_highlight_passes[0].value == (
-        "content/ui/materials/frames/frame_tile_1px"
+        "content/ui/materials/frames/frame_tile_2px"
     )
     mod.settings.equipped_highlight_solid_border_width = 2
 
@@ -2695,7 +2695,7 @@ def main() -> None:
     layout.configure_item_blueprint(mod, legacy_enabled_blueprint, 640)
     assert blueprint_pass(
         legacy_enabled_blueprint, "better_inventory_equipped_highlight"
-    ).value == "content/ui/materials/frames/line_thin_dashed_animated"
+    ).value == "content/ui/materials/frames/frame_tile_2px"
     mod.settings.highlight_equipped_items = False
     legacy_disabled_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     layout.configure_item_blueprint(mod, legacy_disabled_blueprint, 640)
@@ -2711,7 +2711,7 @@ def main() -> None:
     )
     assert len(new_item_highlights) == 3
     assert all(
-        candidate.value == "content/ui/materials/frames/line_thin_dashed_animated"
+        candidate.value == "content/ui/materials/frames/frame_tile_2px"
         for candidate in new_item_highlights
     )
     assert tuple(

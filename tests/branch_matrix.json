@@ -89,7 +89,7 @@
       "name": "inventory.repairs-invalid-material-reference",
       "test": "test_material_safety.py",
       "case": "dynamic_material_repair",
-      "outcome": "numeric or malformed dynamic texture references are restored before rendering in primary and secondary InventoryWeaponsView grids plus directly-created InventoryView equipped slots, including asynchronous switch refreshes, while valid custom materials remain unchanged and no global renderer hook is installed",
+      "outcome": "full crash locals are reproduced as renderer flags 128 plus BetterInventory's crafting-package-only highlight frame; equipped/new-item builders and stale normalized widgets replace that frame with the inventory-owned frame_tile_2px, while malformed dynamic values are still contained, unrelated custom materials remain unchanged, and no global renderer hook or permanent crafting-package load is installed",
       "modules": ["BetterInventory_material_safety.lua", "BetterInventory_layout_blueprints.lua", "BetterInventory_character_overview_ui.lua", "BetterInventory_runtime.lua"]
     },
     {

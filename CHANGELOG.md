@@ -1,5 +1,12 @@
 # BetterInventory changelog
 
+## 2.9.8 - 2026-08-22
+
+- Uses FirstFleet's full crash locals to identify `128` as renderer material flags, not the requested material name; the missing material was Better Inventory's equipped-highlight frame.
+- Removes the crafting-package-only animated dashed frame from equipped and newly acquired item cards, replacing it with the frame already owned by Darktide's inventory package.
+- Rewrites stale hot-reload widgets that still contain either the old dashed frame or the uncertain one-pixel frame before rendering, while preserving unrelated native and custom material strings.
+- Retains saved highlight mode IDs and bounded layer/colour/pulse behavior, updates English and Simplified Chinese labels, and adds exact static/dynamic missing-package regressions without loading a large crafting package globally.
+
 ## 2.9.7 - 2026-08-22
 
 - Extends invalid dynamic-material containment to equipped loadout-slot widgets created directly by `InventoryView`, covering the asynchronous icon refresh used after switching weapons.

@@ -6,6 +6,11 @@ local TEXTURE_PASS_TYPES = {
 	texture_uv = true,
 }
 local DEFAULT_TEXTURE_MATERIAL = "content/ui/materials/icons/items/containers/item_container_landscape"
+local INVENTORY_FRAME_MATERIAL = "content/ui/materials/frames/frame_tile_2px"
+local VIEW_UNSAFE_MATERIAL_REPLACEMENTS = {
+	["content/ui/materials/frames/frame_tile_1px"] = INVENTORY_FRAME_MATERIAL,
+	["content/ui/materials/frames/line_thin_dashed_animated"] = INVENTORY_FRAME_MATERIAL,
+}
 local GUARDED_MARKER = "better_inventory_material_guarded"
 local WARNING_MARKER_PREFIX = "better_inventory_invalid_material_warning_"
 
@@ -15,14 +20,22 @@ local function valid_material_reference(value)
 	return value_type == "userdata" or value_type == "string" and value ~= ""
 end
 
+local function replacement_material(value)
+	return type(value) == "string" and VIEW_UNSAFE_MATERIAL_REPLACEMENTS[value] or nil
+end
+
+local function normalized_material(value)
+	return replacement_material(value) or value
+end
+
 local function resolved_fallback(pass, explicit_fallback)
 	if valid_material_reference(explicit_fallback) then
-		return explicit_fallback
+		return normalized_material(explicit_fallback)
 	end
 
 	local pass_fallback = pass and pass.value
 
-	return valid_material_reference(pass_fallback) and pass_fallback or DEFAULT_TEXTURE_MATERIAL
+	return valid_material_reference(pass_fallback) and normalized_material(pass_fallback) or DEFAULT_TEXTURE_MATERIAL
 end
 
 local function warn_once(mod, content, value_id, invalid_value, fallback)
@@ -39,7 +52,7 @@ local function warn_once(mod, content, value_id, invalid_value, fallback)
 	content[marker] = true
 
 	if mod and type(mod.warning) == "function" then
-		pcall(mod.warning, mod, "Repaired invalid UI material for '%s' (%s); using '%s'.", tostring(value_id), type(invalid_value), tostring(fallback))
+		pcall(mod.warning, mod, "Repaired unsafe UI material for '%s' (%s); using '%s'.", tostring(value_id), type(invalid_value), tostring(fallback))
 	end
 end
 
@@ -49,6 +62,14 @@ local function repair_dynamic_material(mod, content, value_id, fallback)
 	end
 
 	local value = content[value_id]
+	local replacement = replacement_material(value)
+
+	if replacement then
+		content[value_id] = replacement
+		warn_once(mod, content, value_id, value, replacement)
+
+		return true
+	end
 
 	if valid_material_reference(value) then
 		return false
@@ -61,12 +82,22 @@ local function repair_dynamic_material(mod, content, value_id, fallback)
 end
 
 local function guard_pass(mod, pass, explicit_fallback)
-	if type(pass) ~= "table" or not TEXTURE_PASS_TYPES[pass.pass_type] or type(pass.value_id) ~= "string" or pass.value_id == "" then
+	if type(pass) ~= "table" or not TEXTURE_PASS_TYPES[pass.pass_type] then
 		return false
 	end
 
+	local static_replacement = replacement_material(pass.value)
+
+	if static_replacement then
+		pass.value = static_replacement
+	end
+
+	if type(pass.value_id) ~= "string" or pass.value_id == "" then
+		return static_replacement ~= nil
+	end
+
 	if pass[GUARDED_MARKER] then
-		return false
+		return static_replacement ~= nil
 	end
 
 	local fallback = resolved_fallback(pass, explicit_fallback)
@@ -155,5 +186,6 @@ MaterialSafety.valid_material_reference = valid_material_reference
 MaterialSafety.repair_dynamic_material = repair_dynamic_material
 MaterialSafety.guard_pass = guard_pass
 MaterialSafety.DEFAULT_TEXTURE_MATERIAL = DEFAULT_TEXTURE_MATERIAL
+MaterialSafety.INVENTORY_FRAME_MATERIAL = INVENTORY_FRAME_MATERIAL
 
 return MaterialSafety

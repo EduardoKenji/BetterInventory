@@ -878,6 +878,10 @@ local function configure_favorite_marker(mod, pass_template, text_left)
 end
 
 local EQUIPPED_HIGHLIGHT_STYLE_PREFIX = "better_inventory_equipped_highlight"
+-- Keep highlight frames inside InventoryWeaponsView's own package. The animated
+-- dashed frame belongs to crafting UI packages: it happens to be preloaded in
+-- the hub on some platforms, but is absent in Psykanium and mission-lobby states.
+local INVENTORY_HIGHLIGHT_FRAME_MATERIAL = "content/ui/materials/frames/frame_tile_2px"
 local PULSING_DASH_ANGULAR_SPEED = math.pi * 0.5
 local PULSING_DASH_MIN_ALPHA = math.floor(255 * 0.15 + 0.5)
 
@@ -941,10 +945,7 @@ local function configure_equipped_highlight(mod, pass_template, card_width, card
 	local z_offset = 3
 
 	if mode == "animated_dashes" or mode == "pulsing_dashes" then
-		-- Native material owns its GPU animation. No Lua timer, widget state, or
-		-- per-frame allocation is needed. Concentric static passes thicken its
-		-- fixed one-pixel stroke without retaining animation data on reused cards.
-		material = "content/ui/materials/frames/line_thin_dashed_animated"
+		material = INVENTORY_HIGHLIGHT_FRAME_MATERIAL
 		pass_count = math.floor(numeric_setting(mod, "equipped_highlight_animated_border_width", 3, 1, 5) + 0.5)
 		base_size_addition = 4
 		layer_size_step = 2
@@ -952,7 +953,7 @@ local function configure_equipped_highlight(mod, pass_template, card_width, card
 	elseif mode == "solid_border" then
 		local border_width = math.floor(numeric_setting(mod, "equipped_highlight_solid_border_width", 2, 1, 5) + 0.5)
 
-		material = border_width == 1 and "content/ui/materials/frames/frame_tile_1px" or "content/ui/materials/frames/frame_tile_2px"
+		material = INVENTORY_HIGHLIGHT_FRAME_MATERIAL
 		pass_count = border_width == 1 and 1 or border_width - 1
 		base_size_addition = 4
 		layer_size_step = 2
@@ -1133,14 +1134,14 @@ local function configure_new_item_highlight(mod, pass_template, card_width, card
 	local z_offset = 9
 
 	if mode == "animated_dashes" or mode == "pulsing_dashes" then
-		material = "content/ui/materials/frames/line_thin_dashed_animated"
+		material = INVENTORY_HIGHLIGHT_FRAME_MATERIAL
 		pass_count = math.floor(numeric_setting(mod, "new_item_highlight_animated_border_width", 3, 1, 5) + 0.5)
 		base_size_addition = 4
 		layer_size_step = 2
 	elseif mode == "solid_border" then
 		local border_width = math.floor(numeric_setting(mod, "new_item_highlight_solid_border_width", 2, 1, 5) + 0.5)
 
-		material = border_width == 1 and "content/ui/materials/frames/frame_tile_1px" or "content/ui/materials/frames/frame_tile_2px"
+		material = INVENTORY_HIGHLIGHT_FRAME_MATERIAL
 		pass_count = border_width == 1 and 1 or border_width - 1
 		base_size_addition = 4
 		layer_size_step = 2
