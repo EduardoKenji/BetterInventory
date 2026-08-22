@@ -1,5 +1,12 @@
 # BetterInventory changelog
 
+## 2.9.4 - 2026-08-22
+
+- Restores startup on older DMF releases that do not recognize the newer `color` Mod Options widget type.
+- Detects colour-widget support once while constructing the settings schema: current DMF keeps the live custom-tier picker, while legacy DMF safely omits only that optional preview.
+- Keeps custom-tier presets, RGB sliders, classification rules, and stored colours available on both framework generations.
+- Adds modern/legacy schema regression coverage so one unsupported optional widget cannot make BetterInventory fail to load again.
+
 ## 2.9.3 - 2026-08-22
 
 - Adds a default +3 minimum primary-roll setting for Automatic Curio Buyer's Stamina Curios.

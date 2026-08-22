@@ -40,7 +40,13 @@ def load_schema() -> tuple[object, object, object]:
         "local shard_name = string.match(path, '([^/]+)$'); "
         "return better_inventory_localization_shards[shard_name] end} "
         "end; "
-        "return {localize = function(_, id) return id end} end; "
+        "return {localize = function(_, id) return id end, "
+        "io_read_content = function(_, path, extension) "
+        "if extension ~= 'lua' then return false "
+        "elseif path == 'dmf/scripts/mods/dmf/modules/core/options' then return 'initialize_color_data' "
+        "elseif path == 'dmf/scripts/mods/dmf/modules/ui/options/mod_options' then return 'create_color_template' "
+        "elseif path == 'dmf/scripts/mods/dmf/modules/ui/options/dmf_options_view_content_blueprints' then "
+        "return 'blueprints.color' end; return false end} end; "
         "function require(_) return {max_num_characters = 10} end"
     )
     data = lua.execute(DATA_PATH.read_text(encoding="utf-8"), name=str(DATA_PATH))

@@ -1,7 +1,28 @@
-local MOD_VERSION = "2.9.3"
+local MOD_VERSION = "2.9.4"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
+
+local function dmf_source_has(framework, path, marker)
+	local read, source = pcall(framework.io_read_content, framework, path, "lua")
+
+	return read and type(source) == "string" and string.find(source, marker, 1, true) ~= nil
+end
+
+local function dmf_supports_color_widget()
+	local resolved, framework = pcall(get_mod, "DMF")
+
+	if not resolved or type(framework) ~= "table" or type(framework.io_read_content) ~= "function" then
+		return false
+	end
+
+	-- DMF did not originally expose an option-capability API. Inspect its always-
+	-- present option files once so older or partially updated releases can safely
+	-- skip the picker instead of rejecting BetterInventory's entire option schema.
+	return dmf_source_has(framework, "dmf/scripts/mods/dmf/modules/core/options", "initialize_color_data")
+		and dmf_source_has(framework, "dmf/scripts/mods/dmf/modules/ui/options/mod_options", "create_color_template")
+		and dmf_source_has(framework, "dmf/scripts/mods/dmf/modules/ui/options/dmf_options_view_content_blueprints", "blueprints.color")
+end
 
 local function native_operative_slot_capacity()
 	local success, settings = pcall(require, "scripts/ui/views/main_menu_view/main_menu_view_settings")
@@ -252,13 +273,15 @@ end
 local function custom_tier_widgets()
 	local color_options = color_group("custom_tier_color_group", "custom_tier_color", "custom_tier_red", 210, 30, 40, false, custom_tier_color_options())
 
-	table.insert(color_options.sub_widgets, 2, {
-		setting_id = "custom_tier_color_preview",
-		tooltip = "custom_tier_color_preview_tooltip",
-		type = "color",
-		default_value = { 255, 210, 30, 40 },
-		has_alpha = false,
-	})
+	if dmf_supports_color_widget() then
+		table.insert(color_options.sub_widgets, 2, {
+			setting_id = "custom_tier_color_preview",
+			tooltip = "custom_tier_color_preview_tooltip",
+			type = "color",
+			default_value = { 255, 210, 30, 40 },
+			has_alpha = false,
+		})
+	end
 
 	return {
 		{

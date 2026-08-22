@@ -290,6 +290,19 @@ def main() -> None:
         test_mod._better_inventory_test = {}
         test_dmf = {
             create_mod_options_settings = function() end,
+			io_read_content = function(_, path, extension)
+				if extension ~= "lua" then
+					return false
+				elseif path == "dmf/scripts/mods/dmf/modules/core/options" then
+					return "local function initialize_color_data() end"
+				elseif path == "dmf/scripts/mods/dmf/modules/ui/options/mod_options" then
+					return "local function create_color_template() end"
+				elseif path == "dmf/scripts/mods/dmf/modules/ui/options/dmf_options_view_content_blueprints" then
+					return "blueprints.color = true"
+				end
+
+				return false
+			end,
         }
 		test_inventory_view = {
 			_create_entry_widget_from_config = function() end,
@@ -2694,7 +2707,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "2.9.3"
+    assert data.version == "2.9.4"
 
     gradient_name = localization["mod_name"]["en"]
     assert gradient_name.startswith("{#color(174,239,105)}B")
@@ -2793,6 +2806,78 @@ def main() -> None:
                 inspect_widgets(sub_widgets)
 
     inspect_widgets(data.options.widgets)
+
+    custom_tier_group = next(
+        data.options.widgets[index]
+        for index in range(1, len(data.options.widgets) + 1)
+        if data.options.widgets[index].setting_id == "custom_tier_group"
+    )
+    custom_tier_color_group = custom_tier_group.sub_widgets[2]
+    assert custom_tier_color_group.sub_widgets[2].setting_id == "custom_tier_color_preview"
+    assert custom_tier_color_group.sub_widgets[2].type == "color"
+
+    # Legacy DMF releases do not know the colour widget type. The optional live
+    # preview must disappear without removing any functional preset/RGB control
+    # or introducing another type outside the legacy framework contract.
+    lua.execute(
+        'test_dmf.io_read_content = function() return "legacy options without colour picker" end'
+    )
+    legacy_data = lua.execute(DATA_PATH.read_text(encoding="utf-8"), name=str(DATA_PATH))
+    legacy_types = set()
+    legacy_ids = set()
+
+    def inspect_legacy_widgets(widgets) -> None:
+        for index in range(1, len(widgets) + 1):
+            widget = widgets[index]
+            legacy_types.add(widget.type)
+            legacy_ids.add(widget.setting_id)
+            if widget.sub_widgets is not None:
+                inspect_legacy_widgets(widget.sub_widgets)
+
+    inspect_legacy_widgets(legacy_data.options.widgets)
+    assert "custom_tier_color_preview" not in legacy_ids
+    assert "color" not in legacy_types
+    assert {
+        "custom_tier_color_preset",
+        "custom_tier_color_r",
+        "custom_tier_color_g",
+        "custom_tier_color_b",
+    }.issubset(legacy_ids)
+
+    lua.execute(
+        r'''
+        test_dmf.io_read_content = function(_, path, extension)
+            if extension ~= "lua" or path == missing_dmf_color_component then
+                return "unsupported"
+            elseif path == "dmf/scripts/mods/dmf/modules/core/options" then
+                return "initialize_color_data"
+            elseif path == "dmf/scripts/mods/dmf/modules/ui/options/mod_options" then
+                return "create_color_template"
+            elseif path == "dmf/scripts/mods/dmf/modules/ui/options/dmf_options_view_content_blueprints" then
+                return "blueprints.color"
+            end
+
+            return false
+        end
+        '''
+    )
+    for missing_component in (
+        "dmf/scripts/mods/dmf/modules/core/options",
+        "dmf/scripts/mods/dmf/modules/ui/options/mod_options",
+        "dmf/scripts/mods/dmf/modules/ui/options/dmf_options_view_content_blueprints",
+    ):
+        lua.globals().missing_dmf_color_component = missing_component
+        partial_data = lua.execute(DATA_PATH.read_text(encoding="utf-8"), name=str(DATA_PATH))
+        partial_ids = set()
+
+        def collect_partial_ids(widgets) -> None:
+            for index in range(1, len(widgets) + 1):
+                partial_ids.add(widgets[index].setting_id)
+                if widgets[index].sub_widgets is not None:
+                    collect_partial_ids(widgets[index].sub_widgets)
+
+        collect_partial_ids(partial_data.options.widgets)
+        assert "custom_tier_color_preview" not in partial_ids
 
     automatic_curio_group = next(
         data.options.widgets[index]

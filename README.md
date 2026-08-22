@@ -2,7 +2,7 @@
 
 [![BetterInventory verification](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml/badge.svg)](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml)
 
-> Current release: **v2.9.3** (2026-08-22). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
+> Current release: **v2.9.4** (2026-08-22). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
 
 BetterInventory is a standalone inventory and item-management mod for Warhammer 40,000: Darktide. It adds responsive weapon and Curio cards, richer item information, configurable sorting, supported vendor layouts, optional mod integrations, and safety-gated inventory workflows.
 
@@ -19,7 +19,13 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - A bounded inventory-options panel for sorting, discard rules, integrations, and view-specific controls.
 - Optional Quick Discard, Automatic Discard, Automatic Curio Buyer, and Auto Crafter workflows with explicit ownership, authoritative revalidation, and fail-closed behavior.
 
-## What's new in v2.9.3
+## What's new in v2.9.4
+
+- Older DMF releases no longer reject BetterInventory's complete Mod Options schema when they encounter the newer native `color` widget type.
+- Current DMF retains the live custom-tier colour picker. Legacy DMF omits only that optional preview while preserving the colour preset, RGB sliders, custom-tier rules, and stored colour.
+- Modern and legacy option-schema paths are covered by regression tests; the framework capability check runs once during options construction and adds no frame-time work.
+
+## What changed in v2.9.3
 
 - Automatic Curio Buyer now defaults Stamina's minimum primary roll to +3, so enabling Stamina no longer accepts +1 or +2 Curios unless the threshold is deliberately lowered.
 - A default-on target of three owned Curios per operative and primary-stat type turns repeat buying into a bounded upgrade path. Once three qualifying Curios are owned, only a candidate whose Power is strictly higher than the lowest of the current best three is eligible; `0` disables this gate.
