@@ -201,6 +201,9 @@ def main() -> None:
 			myfavorites_show_favorite_letter = false,
         }
 		highlight_dependency_getter_calls = 0
+		loadout_material_guard_calls = 0
+		last_loadout_material_guard_view = nil
+		last_loadout_material_guard_widget = nil
 
 		test_layout = {
             is_enabled_for_view = function() return false end,
@@ -223,6 +226,14 @@ def main() -> None:
 				highlight_animation_updates = highlight_animation_updates + 1
 				highlight_animation_mod = animation_mod
 			end,
+			MaterialSafety = {
+				guard_inventory_widget = function() end,
+				guard_loadout_widget = function(_, view, widget)
+					loadout_material_guard_calls = loadout_material_guard_calls + 1
+					last_loadout_material_guard_view = view
+					last_loadout_material_guard_widget = widget
+				end,
+			},
 		}
 		highlight_animation_updates = 0
 		inventory_sort_syncs = 0
@@ -650,6 +661,9 @@ def main() -> None:
         )
         == "gear_placement_slot"
     )
+    assert globals_.loadout_material_guard_calls == 1
+    assert globals_.last_loadout_material_guard_view.__class_name == "InventoryView"
+    assert globals_.last_loadout_material_guard_widget == "gear_placement_slot"
     assert globals_.overview_equipped_item_calls == 0
     native_weapon_config = lua.table_from(
         {
@@ -670,6 +684,8 @@ def main() -> None:
         )
         == "weapon_item_slot"
     )
+    assert globals_.loadout_material_guard_calls == 2
+    assert globals_.last_loadout_material_guard_widget == "weapon_item_slot"
     assert globals_.overview_equipped_item_calls == 1
 
     globals_.visible_equipment_enabled = False
@@ -2742,7 +2758,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "2.9.6"
+    assert data.version == "2.9.7"
 
     gradient_name = localization["mod_name"]["en"]
     assert gradient_name.startswith("{#color(174,239,105)}B")

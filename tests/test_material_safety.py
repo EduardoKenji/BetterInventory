@@ -166,6 +166,58 @@ def main() -> None:
     inventory_grid._parent = inventory_view
     assert material_safety.guard_inventory_widget(mod, inventory_grid, scoped_widget) == 1
 
+    # Weapon-list integrations can add secondary grids to the same native view.
+    # They must receive the guard even though they are not view._item_grid.
+    secondary_pass = lua.table_from(
+        {
+            "pass_type": "texture_uv",
+            "style_id": "icon",
+            "value_id": "icon",
+            "value": native_icon,
+        }
+    )
+    secondary_widget = lua.table_from(
+        {
+            "passes": lua.table_from([secondary_pass]),
+            "content": lua.table_from({"icon": native_icon}),
+        }
+    )
+    secondary_grid = lua.table_from({"_parent": inventory_view})
+    assert (
+        material_safety.guard_inventory_widget(mod, secondary_grid, secondary_widget)
+        == 1
+    )
+    secondary_widget.content.icon = 128
+    secondary_pass.change_function(secondary_widget.content, lua.table_from({}), None, 0)
+    assert secondary_widget.content.icon == native_icon
+
+    # Equipped slots belong directly to InventoryView rather than ViewElementGrid.
+    # A later asynchronous switch refresh must therefore remain protected by the
+    # guard installed when the loadout widget was created.
+    loadout_pass = lua.table_from(
+        {
+            "pass_type": "texture",
+            "style_id": "icon",
+            "value_id": "icon",
+            "value": native_icon,
+        }
+    )
+    loadout_widget = lua.table_from(
+        {
+            "passes": lua.table_from([loadout_pass]),
+            "content": lua.table_from({"icon": native_icon}),
+        }
+    )
+    loadout_view = lua.table_from({"__class_name": "InventoryView"})
+    assert material_safety.guard_loadout_widget(mod, loadout_view, loadout_widget) == 1
+    assert material_safety.guard_loadout_widget(mod, loadout_view, loadout_widget) == 0
+    loadout_widget.content.icon = 128
+    loadout_pass.change_function(loadout_widget.content, lua.table_from({}), None, 0)
+    assert loadout_widget.content.icon == native_icon
+    loadout_widget.content.icon = "content/ui/materials/custom/valid_loadout_icon"
+    loadout_pass.change_function(loadout_widget.content, lua.table_from({}), None, 0)
+    assert loadout_widget.content.icon == "content/ui/materials/custom/valid_loadout_icon"
+
     runtime_source = (RUNTIME_ROOT / "BetterInventory_runtime.lua").read_text(encoding="utf-8")
     blueprint_source = (RUNTIME_ROOT / "BetterInventory_layout_blueprints.lua").read_text(
         encoding="utf-8"
@@ -174,11 +226,20 @@ def main() -> None:
         encoding="utf-8"
     )
     assert "Layout.MaterialSafety.guard_inventory_widget(mod, item_grid, widget)" in runtime_source
+    assert "Layout.MaterialSafety.guard_loadout_widget(mod, view, results[1])" in overview_source
     assert material_safety.guard_inventory_widget(
         mod,
         lua.table_from({"_parent": lua.table_from({"__class_name": "OtherView"})}),
         widget,
     ) == 0
+    assert (
+        material_safety.guard_loadout_widget(
+            mod,
+            lua.table_from({"__class_name": "OtherView"}),
+            widget,
+        )
+        == 0
+    )
     assert "MaterialSafety.guard_blueprint(mod, item_blueprint)" in blueprint_source
     assert "Layout.MaterialSafety.guard_blueprint(mod, blueprint)" in overview_source
     assert 'mod:hook(UIRenderer' not in runtime_source

@@ -130,7 +130,21 @@ end
 MaterialSafety.guard_inventory_widget = function(mod, item_grid, widget)
 	local view = item_grid and item_grid._parent
 
-	if not view or view.__class_name ~= "InventoryWeaponsView" or item_grid ~= view._item_grid then
+	-- InventoryWeaponsView can own more than its primary item grid. Equipment
+	-- switching and optional integrations may refresh a secondary grid instead,
+	-- but every grid owned by this exact view has the same dynamic icon contract.
+	if not view or view.__class_name ~= "InventoryWeaponsView" then
+		return 0
+	end
+
+	return MaterialSafety.guard_widget(mod, widget)
+end
+
+MaterialSafety.guard_loadout_widget = function(mod, view, widget)
+	-- InventoryView's equipped-slot widgets do not pass through ViewElementGrid.
+	-- Guard them at their own construction boundary so later asynchronous icon
+	-- refreshes cannot pass a numeric atlas index to UIRenderer as a material.
+	if not view or view.__class_name ~= "InventoryView" then
 		return 0
 	end
 

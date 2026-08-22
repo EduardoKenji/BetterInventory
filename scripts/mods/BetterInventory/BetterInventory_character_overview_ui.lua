@@ -1469,6 +1469,10 @@ if ensure_class_method(InventoryView, "_create_entry_widget_from_config") then
 			local results = pack_values(func(view, resolved_config, suffix, callback_name, secondary_callback_name, optional_scenegraph_id))
 			attach_runtime_marker_styles(results[1])
 
+			if Layout.MaterialSafety then
+				Layout.MaterialSafety.guard_loadout_widget(mod, view, results[1])
+			end
+
 			if adjust_runtime_equipped_icon then
 				synchronize_character_overview_equipped_icon(results[1], lantern_recommendations_active())
 			end

@@ -1,5 +1,12 @@
 # BetterInventory changelog
 
+## 2.9.7 - 2026-08-22
+
+- Extends invalid dynamic-material containment to equipped loadout-slot widgets created directly by `InventoryView`, covering the asynchronous icon refresh used after switching weapons.
+- Protects secondary grids owned by `InventoryWeaponsView` instead of limiting repair to the primary item grid.
+- Keeps the fix local to widget construction and normal texture-pass validation: no global renderer hook, frame-wide scan, retained widget registry, backend work, or account mutation is added.
+- Adds regression coverage for numeric atlas-index corruption on primary grids, secondary grids, and equipped slots while preserving valid custom material references and one-time warning behavior.
+
 ## 2.9.6 - 2026-08-22
 
 - Fixes simultaneous use with Red Weapons At Home no longer honoring that mod's saved colour and Curio Power requirements.
