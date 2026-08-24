@@ -2,7 +2,7 @@
 
 [![BetterInventory verification](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml/badge.svg)](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml)
 
-> Current release: **v2.9.8** (2026-08-22). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
+> Current release: **v2.9.9** (2026-08-24). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
 
 BetterInventory is a standalone inventory and item-management mod for Warhammer 40,000: Darktide. It adds responsive weapon and Curio cards, richer item information, configurable sorting, supported vendor layouts, optional mod integrations, and safety-gated inventory workflows.
 
@@ -19,12 +19,19 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - A bounded inventory-options panel for sorting, discard rules, integrations, and view-specific controls.
 - Optional Quick Discard, Automatic Discard, Automatic Curio Buyer, and Auto Crafter workflows with explicit ownership, authoritative revalidation, and fail-closed behavior.
 
-## What's new in v2.9.8
+## What's new in v2.9.9
+
+- Valid native and DMF `frame_tile_1px` materials are no longer mislabeled, rewritten, or announced as unsafe on generated fields such as `value_id_36`, `value_id_48`, and `value_id_60`.
+- Compatibility replacement of `line_thin_dashed_animated` is limited to Better Inventory's own equipped/new-item highlight styles. Expected stale-widget migration is silent; unrelated valid material strings remain authoritative.
+- Genuine numeric, table, empty, or missing dynamic material values remain contained at the v2.9.1/v2.9.7 blueprint and widget boundaries and still emit at most one diagnostic per widget field, explicitly identifying the reported value type and fallback material.
+- The narrower guard adds no global renderer interception, recurring widget scan, retained registry, backend work, or resource-package load. See the [v2.9.9 warning audit](docs/v2.9.9-material-warning-audit.md).
+
+## What changed in v2.9.8
 
 - FirstFleet's full crash locals reveal that the headline's `128` is a renderer flag; the actual missing material is Better Inventory's equipped-card `line_thin_dashed_animated` frame.
 - Equipped and newly acquired item highlights now use `frame_tile_2px`, which Darktide's native inventory cards already load in the same view, instead of relying on a crafting-view package that can be absent in Psykanium and mission preparation.
 - Existing highlight mode values, bounded layers, colours, and pulsing behavior remain compatible. Labels now describe Layered border and Pulsing layered border in English and Simplified Chinese.
-- Static blueprints and stale hot-reload widget values both rewrite the two unsafe frame references before rendering, with no global renderer hook or permanently loaded crafting package. See the [v2.9.8 root-cause record](docs/v2.9.8-material-128-root-cause.md).
+- v2.9.8 static blueprints and stale hot-reload widgets rewrote the retired dashed and then-uncertain one-pixel frame references without a global renderer hook or permanently loaded crafting package; v2.9.9 narrows that compatibility map. See the [v2.9.8 root-cause record](docs/v2.9.8-material-128-root-cause.md).
 
 ## What changed in v2.9.7
 
@@ -292,7 +299,7 @@ Run the complete repository verification from the project root:
 powershell -ExecutionPolicy Bypass -File .\tests\verify.ps1
 ```
 
-The v2.9.8 suite currently discovers 43 behavior-test files and 165 named cases. To run the behavior suite directly with risk-weighted Lua coverage:
+The v2.9.9 suite currently discovers 43 behavior-test files and 165 named cases. To run the behavior suite directly with risk-weighted Lua coverage:
 
 ```powershell
 py -3 .\tests\run_tests.py --timeout-seconds 45 --coverage-output lua-coverage.json

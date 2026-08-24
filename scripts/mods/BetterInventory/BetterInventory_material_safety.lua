@@ -7,10 +7,11 @@ local TEXTURE_PASS_TYPES = {
 }
 local DEFAULT_TEXTURE_MATERIAL = "content/ui/materials/icons/items/containers/item_container_landscape"
 local INVENTORY_FRAME_MATERIAL = "content/ui/materials/frames/frame_tile_2px"
-local VIEW_UNSAFE_MATERIAL_REPLACEMENTS = {
-	["content/ui/materials/frames/frame_tile_1px"] = INVENTORY_FRAME_MATERIAL,
+local OWNED_UNAVAILABLE_MATERIAL_REPLACEMENTS = {
 	["content/ui/materials/frames/line_thin_dashed_animated"] = INVENTORY_FRAME_MATERIAL,
 }
+local EQUIPPED_HIGHLIGHT_STYLE_PREFIX = "better_inventory_equipped_highlight"
+local NEW_ITEM_HIGHLIGHT_STYLE_PREFIX = "better_inventory_new_item_highlight"
 local GUARDED_MARKER = "better_inventory_material_guarded"
 local WARNING_MARKER_PREFIX = "better_inventory_invalid_material_warning_"
 
@@ -20,22 +21,32 @@ local function valid_material_reference(value)
 	return value_type == "userdata" or value_type == "string" and value ~= ""
 end
 
-local function replacement_material(value)
-	return type(value) == "string" and VIEW_UNSAFE_MATERIAL_REPLACEMENTS[value] or nil
+local function owned_highlight_style(style_id, prefix)
+	return style_id == prefix or type(style_id) == "string" and string.sub(style_id, 1, #prefix + 1) == prefix .. "_"
 end
 
-local function normalized_material(value)
-	return replacement_material(value) or value
+local function owns_unavailable_material(pass)
+	local style_id = pass and pass.style_id
+
+	return owned_highlight_style(style_id, EQUIPPED_HIGHLIGHT_STYLE_PREFIX) or owned_highlight_style(style_id, NEW_ITEM_HIGHLIGHT_STYLE_PREFIX)
 end
 
-local function resolved_fallback(pass, explicit_fallback)
+local function replacement_material(value, allow_owned_replacement)
+	return allow_owned_replacement and type(value) == "string" and OWNED_UNAVAILABLE_MATERIAL_REPLACEMENTS[value] or nil
+end
+
+local function normalized_material(value, allow_owned_replacement)
+	return replacement_material(value, allow_owned_replacement) or value
+end
+
+local function resolved_fallback(pass, explicit_fallback, allow_owned_replacement)
 	if valid_material_reference(explicit_fallback) then
-		return normalized_material(explicit_fallback)
+		return normalized_material(explicit_fallback, allow_owned_replacement)
 	end
 
 	local pass_fallback = pass and pass.value
 
-	return valid_material_reference(pass_fallback) and normalized_material(pass_fallback) or DEFAULT_TEXTURE_MATERIAL
+	return valid_material_reference(pass_fallback) and normalized_material(pass_fallback, allow_owned_replacement) or DEFAULT_TEXTURE_MATERIAL
 end
 
 local function warn_once(mod, content, value_id, invalid_value, fallback)
@@ -52,21 +63,20 @@ local function warn_once(mod, content, value_id, invalid_value, fallback)
 	content[marker] = true
 
 	if mod and type(mod.warning) == "function" then
-		pcall(mod.warning, mod, "Repaired unsafe UI material for '%s' (%s); using '%s'.", tostring(value_id), type(invalid_value), tostring(fallback))
+		pcall(mod.warning, mod, "Repaired invalid UI material field '%s' (received %s); fallback is '%s'.", tostring(value_id), type(invalid_value), tostring(fallback))
 	end
 end
 
-local function repair_dynamic_material(mod, content, value_id, fallback)
+local function repair_dynamic_material(mod, content, value_id, fallback, allow_owned_replacement)
 	if type(content) ~= "table" or type(value_id) ~= "string" or value_id == "" then
 		return false
 	end
 
 	local value = content[value_id]
-	local replacement = replacement_material(value)
+	local replacement = replacement_material(value, allow_owned_replacement)
 
 	if replacement then
 		content[value_id] = replacement
-		warn_once(mod, content, value_id, value, replacement)
 
 		return true
 	end
@@ -86,7 +96,8 @@ local function guard_pass(mod, pass, explicit_fallback)
 		return false
 	end
 
-	local static_replacement = replacement_material(pass.value)
+	local allow_owned_replacement = owns_unavailable_material(pass)
+	local static_replacement = replacement_material(pass.value, allow_owned_replacement)
 
 	if static_replacement then
 		pass.value = static_replacement
@@ -100,7 +111,7 @@ local function guard_pass(mod, pass, explicit_fallback)
 		return static_replacement ~= nil
 	end
 
-	local fallback = resolved_fallback(pass, explicit_fallback)
+	local fallback = resolved_fallback(pass, explicit_fallback, allow_owned_replacement)
 	local value_id = pass.value_id
 	local original_change_function = pass.change_function
 
@@ -109,7 +120,7 @@ local function guard_pass(mod, pass, explicit_fallback)
 	pass.change_function = function(content, style, animations, dt)
 		-- Repair before delegating so compatibility callbacks never receive the
 		-- numeric render-target grid index as the card's material reference.
-		repair_dynamic_material(mod, content, value_id, fallback)
+		repair_dynamic_material(mod, content, value_id, fallback, allow_owned_replacement)
 
 		if type(original_change_function) == "function" then
 			original_change_function(content, style, animations, dt)
@@ -117,7 +128,7 @@ local function guard_pass(mod, pass, explicit_fallback)
 
 		-- A native or third-party callback may itself rewrite the dynamic value.
 		-- Revalidate immediately before UIPasses asks UIRenderer to create it.
-		repair_dynamic_material(mod, content, value_id, fallback)
+		repair_dynamic_material(mod, content, value_id, fallback, allow_owned_replacement)
 	end
 
 	return true

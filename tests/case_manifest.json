@@ -211,7 +211,7 @@
       {"name": "callback_failure_safety", "risk": "high", "start_line": 756, "end_line": 980}
   ],
   "test_material_safety.py": [
-    {"name": "dynamic_material_repair", "risk": "critical", "start_line": 1, "end_line": 301}
+    {"name": "dynamic_material_repair", "risk": "critical", "start_line": 1, "end_line": 365}
   ],
   "test_custom_tier.py": [
     {"name": "standalone_classification_and_red_weapons_compatibility", "risk": "critical", "start_line": 1, "end_line": 317}

@@ -1,5 +1,12 @@
 # BetterInventory changelog
 
+## 2.9.9 - 2026-08-24
+
+- Fixes the post-v2.9.8 `Repaired unsafe UI material` warning burst reported for generated fields such as `value_id_36`, `value_id_48`, and `value_id_60`.
+- Restores `frame_tile_1px` as a valid native/DMF material instead of rewriting unrelated widget frames to `frame_tile_2px`.
+- Limits the retired dashed-material migration to Better Inventory's own equipped/new-item highlight style IDs and keeps that expected upgrade repair silent.
+- Retains the v2.9.1/v2.9.7 numeric and malformed dynamic-material containment, including one-time warnings for genuine invalid values, without adding a renderer hook, widget scan, registry, or package load.
+
 ## 2.9.8 - 2026-08-22
 
 - Uses FirstFleet's full crash locals to identify `128` as renderer material flags, not the requested material name; the missing material was Better Inventory's equipped-highlight frame.

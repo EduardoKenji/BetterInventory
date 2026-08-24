@@ -64,17 +64,79 @@ def main() -> None:
         packaged_content, lua.table_from({}), None, 0
     )
     assert packaged_content.value_id_37 == inventory_frame
-    assert len(warnings) == 1
-    assert "string" in warnings[1] and "value_id_37" in warnings[1]
+    dynamic_packaged_pass.change_function(
+        packaged_content, lua.table_from({}), None, 0
+    )
+    assert packaged_content.value_id_37 == inventory_frame
+    # Retired BetterInventory-owned materials are an expected upgrade migration,
+    # not malformed third-party data, so the repair must remain silent.
+    assert len(warnings) == 0
 
+    # frame_tile_1px is a valid native/DMF material. v2.9.8 briefly classified it
+    # as unsafe and produced the reported value_id_36/48/60 warning burst.
     one_pixel_pass = lua.table_from(
         {
             "pass_type": "texture",
+            "style_id": "third_party_frame",
             "value": "content/ui/materials/frames/frame_tile_1px",
         }
     )
-    assert material_safety.guard_pass(mod, one_pixel_pass) is True
-    assert one_pixel_pass.value == inventory_frame
+    assert material_safety.guard_pass(mod, one_pixel_pass) is False
+    assert one_pixel_pass.value == "content/ui/materials/frames/frame_tile_1px"
+
+    third_party_dashed_pass = lua.table_from(
+        {
+            "pass_type": "texture",
+            "style_id": "third_party_highlight",
+            "value_id": "third_party_material",
+            "value": crafting_only_frame,
+        }
+    )
+    assert material_safety.guard_pass(mod, third_party_dashed_pass) is True
+    third_party_content = lua.table_from(
+        {"third_party_material": crafting_only_frame}
+    )
+    third_party_dashed_pass.change_function(
+        third_party_content, lua.table_from({}), None, 0
+    )
+    assert third_party_content.third_party_material == crafting_only_frame
+    assert len(warnings) == 0
+
+    screenshot_field_ids = ("value_id_36", "value_id_48", "value_id_60")
+    screenshot_passes = lua.table_from(
+        [
+            lua.table_from(
+                {
+                    "pass_type": "texture",
+                    "style_id": f"native_frame_{value_id}",
+                    "value_id": value_id,
+                    "value": "content/ui/materials/frames/frame_tile_1px",
+                }
+            )
+            for value_id in screenshot_field_ids
+        ]
+    )
+    screenshot_widget = lua.table_from(
+        {
+            "passes": screenshot_passes,
+            "content": lua.table_from(
+                {
+                    value_id: "content/ui/materials/frames/frame_tile_1px"
+                    for value_id in screenshot_field_ids
+                }
+            ),
+        }
+    )
+    assert material_safety.guard_widget(mod, screenshot_widget) == 3
+    for index, value_id in enumerate(screenshot_field_ids, start=1):
+        screenshot_passes[index].change_function(
+            screenshot_widget.content, lua.table_from({}), None, 0
+        )
+        assert (
+            screenshot_widget.content[value_id]
+            == "content/ui/materials/frames/frame_tile_1px"
+        )
+    assert len(warnings) == 0
 
     icon_pass = lua.table_from(
         {
@@ -90,14 +152,16 @@ def main() -> None:
     content = lua.table_from({"icon": 128})
     icon_pass.change_function(content, lua.table_from({}), lua.table_from({}), 0)
     assert content.icon == native_icon
-    assert len(warnings) == 2
-    assert "number" in warnings[2] and "icon" in warnings[2]
+    assert len(warnings) == 1
+    assert "number" in warnings[1] and "icon" in warnings[1]
+    assert "invalid UI material" in warnings[1]
+    assert "fallback is" in warnings[1]
 
     # Repeated corruption is repaired without producing a per-frame warning storm.
     content.icon = 64
     icon_pass.change_function(content, lua.table_from({}), lua.table_from({}), 0)
     assert content.icon == native_icon
-    assert len(warnings) == 2
+    assert len(warnings) == 1
     content.icon = "content/ui/materials/custom/valid_weapon_icon"
     icon_pass.change_function(content, lua.table_from({}), lua.table_from({}), 0)
     assert content.icon == "content/ui/materials/custom/valid_weapon_icon"
