@@ -955,7 +955,7 @@ local localization = {
 		en = "Highlight mode",
 	},
 	highlight_equipped_items_tooltip = {
-		en = "Chooses how equipped item cards are highlighted while preserving Darktide's native equipped symbol. Pulsing animated dashes slowly fade from transparent to opaque and back.",
+		en = "Chooses how equipped item cards are highlighted while preserving Darktide's native equipped symbol. The pulsing layered border slowly fades from transparent to opaque and back.",
 	},
 	equipped_highlight_mode_off = {
 		en = "Off",
@@ -964,10 +964,10 @@ local localization = {
 		en = "Soft glow",
 	},
 	equipped_highlight_mode_animated_dashes = {
-		en = "Animated dashed border",
+		en = "Layered border",
 	},
 	equipped_highlight_mode_pulsing_dashes = {
-		en = "Pulsing animated dashed border",
+		en = "Pulsing layered border",
 	},
 	equipped_highlight_mode_solid_border = {
 		en = "Solid border",
@@ -982,10 +982,10 @@ local localization = {
 		en = "Controls soft-glow opacity from fully transparent at 0%% to full intensity at 100%%.",
 	},
 	equipped_highlight_animated_border_width = {
-		en = "Animated dashed border width",
+		en = "Layered border width",
 	},
 	equipped_highlight_animated_border_width_tooltip = {
-		en = "Thickens either animated dashed border mode with 1-5 bounded concentric layers. Layers are created only when card blueprints are rebuilt; no retained per-card animation state or per-frame allocation is used.",
+		en = "Thickens either layered border mode with 1-5 bounded concentric native inventory frames. Layers are created only when card blueprints are rebuilt; no retained per-card animation state or per-frame allocation is used.",
 	},
 	equipped_highlight_solid_border_width = {
 		en = "Solid border width",
@@ -1012,7 +1012,7 @@ local localization = {
 		en = "Select Soft glow to use this option.",
 	},
 	option_requires_equipped_highlight_animated_dashes = {
-		en = "Select either animated dashed border mode to use this option.",
+		en = "Select either layered border mode to use this option.",
 	},
 	option_requires_equipped_highlight_solid_border = {
 		en = "Select Solid border to use this option.",
@@ -1024,7 +1024,7 @@ local localization = {
 		en = "Highlight mode",
 	},
 	new_item_highlight_mode_tooltip = {
-		en = "Highlights items that Darktide still marks as newly acquired. Enhanced modes replace the small native dot with a whole-card effect; pulsing animated dashes slowly fade in and out.",
+		en = "Highlights items that Darktide still marks as newly acquired. Enhanced modes replace the small native dot with a whole-card effect; the pulsing layered border slowly fades in and out.",
 	},
 	new_item_highlight_mode_native = {
 		en = "Native dot only",
@@ -1033,10 +1033,10 @@ local localization = {
 		en = "Soft glow",
 	},
 	new_item_highlight_mode_animated_dashes = {
-		en = "Animated dashed border",
+		en = "Layered border",
 	},
 	new_item_highlight_mode_pulsing_dashes = {
-		en = "Pulsing animated dashed border",
+		en = "Pulsing layered border",
 	},
 	new_item_highlight_mode_solid_border = {
 		en = "Solid border",
@@ -1060,10 +1060,10 @@ local localization = {
 		en = "Controls newly acquired item soft-glow opacity from fully transparent at 0%% to full intensity at 100%%.",
 	},
 	new_item_highlight_animated_border_width = {
-		en = "Animated dashed border width",
+		en = "Layered border width",
 	},
 	new_item_highlight_animated_border_width_tooltip = {
-		en = "Thickens either native animated dashed material with 1-5 bounded static layers. The pulsing mode uses Darktide's global UI clock without retained per-card timer state.",
+		en = "Thickens either layered border mode with 1-5 bounded native inventory frames. The pulsing mode uses Darktide's global UI clock without retained per-card timer state.",
 	},
 	new_item_highlight_solid_border_width = {
 		en = "Solid border width",
@@ -1090,7 +1090,7 @@ local localization = {
 		en = "Select Soft glow to use this option.",
 	},
 	option_requires_new_item_animated_dashes = {
-		en = "Select either animated dashed border mode to use this option.",
+		en = "Select either layered border mode to use this option.",
 	},
 	option_requires_new_item_solid_border = {
 		en = "Select Solid border to use this option.",
