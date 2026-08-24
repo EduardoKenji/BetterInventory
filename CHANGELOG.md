@@ -6,6 +6,7 @@
 - Restores `frame_tile_1px` as a valid native/DMF material instead of rewriting unrelated widget frames to `frame_tile_2px`.
 - Limits the retired dashed-material migration to Better Inventory's own equipped/new-item highlight style IDs and keeps that expected upgrade repair silent.
 - Retains the v2.9.1/v2.9.7 numeric and malformed dynamic-material containment, including one-time warnings for genuine invalid values, without adding a renderer hook, widget scan, registry, or package load.
+- Documents the reporter's 105-mod compatibility audit, including EWC pass-number shifts, resource-loader boundaries, the unverified `smaller_grid` seam, and overlapping Lua garbage-collection tools without broadening the runtime rewrite.
 
 ## 2.9.8 - 2026-08-22
 
