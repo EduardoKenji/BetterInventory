@@ -1,4 +1,6 @@
 local InventoryWorkflow = {}
+local PRETARGET_PURCHASE_LIMIT = 40
+local UNSCORABLE_PURCHASE_LIMIT = 8
 
 function InventoryWorkflow.install(self, services)
 	local candidate_matches_stat_targets = services.candidate_matches_stat_targets
@@ -314,6 +316,14 @@ function InventoryWorkflow.install(self, services)
 			return finish_acquisition("search_max_purchases")
 		end
 
+		if not phase3_has_target and search.purchases >= PRETARGET_PURCHASE_LIMIT then
+			if flush_pending_fodder() then
+				return true
+			end
+
+			return finish_acquisition("search_safety_purchase_cap")
+		end
+
 		if not phase3_has_target and search.cap_by_dockets and search.spent + price > search.docket_cap then
 			if flush_pending_fodder() then
 				return true
@@ -429,6 +439,11 @@ function InventoryWorkflow.install(self, services)
 				candidate.damage = candidate.potential_damage or candidate_stat(candidate, "damage")
 				candidate.exact_match = candidate_matches_stat_targets(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets, search.dump_stat_identity, search.dump_comparison)
 				candidate.target_distance = candidate_stat_target_distance(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets, search.dump_stat_identity)
+				if candidate.target_distance == math.huge then
+					search.unscorable_purchases = (tonumber(search.unscorable_purchases) or 0) + 1
+				else
+					search.unscorable_purchases = 0
+				end
 
 				local accepts_first_weapon = search.acquisition_mode == "first_weapon" and not phase3_has_target
 
@@ -446,6 +461,12 @@ function InventoryWorkflow.install(self, services)
 					candidate = candidate,
 					search = search,
 				})
+
+				if search.unscorable_purchases >= UNSCORABLE_PURCHASE_LIMIT then
+					finish_acquisition("search_projection_unavailable")
+
+					return
+				end
 
 				if candidate.exact_match and not phase3_has_target then
 					self:_accept_exact_candidate(generation, candidate, "purchase")

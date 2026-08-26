@@ -2,7 +2,7 @@
 
 [![BetterInventory verification](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml/badge.svg)](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml)
 
-> Current release: **v3.0.0** (2026-08-26). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
+> Current release: **v3.0.1** (2026-08-26). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
 
 BetterInventory is a standalone inventory and item-management mod for Warhammer 40,000: Darktide. It adds responsive weapon and Curio cards, richer item information, configurable sorting, supported vendor layouts, optional mod integrations, and safety-gated inventory workflows.
 
@@ -19,7 +19,14 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - A bounded inventory-options panel for sorting, discard rules, integrations, and view-specific controls.
 - Optional Quick Discard, Automatic Discard, Automatic Curio Buyer, and Auto Crafter workflows with explicit ownership, authoritative revalidation, and fail-closed behavior.
 
-## What's new in v3.0.0
+## What's new in v3.0.1
+
+- Auto Crafter now checks Darktide's native Hadron and selected weapon-family mastery unlocks before purchasing, blocking the reported level-1 runaway path without blanket-disabling legitimate under-30 characters.
+- Every target search has an independent 40-purchase per-run safety limit even when its optional configurable cap is disabled. The normal closest finite fallback remains authoritative at that limit.
+- Eight consecutive incomplete custom-stat projections stop safely instead of consuming the full docket budget without a usable fallback. Rejected candidates remain unfavorited.
+- The accompanying [LadyElina777 incident audit](docs/v3.0.1-ladyelina777-auto-crafter-audit.md) traces the inventory crash to preventable inventory growth amplifying Darktide's known fixed Lua-heap pressure; no duplicate layout expansion, infinite rebuild, or BetterInventory retention leak was reproduced.
+
+## What changed in v3.0.0
 
 - Adds explicit background-colour ownership for simultaneous use with God Stat Checker 1.1.2. The same synchronized selector appears under **Custom legendary tier** and a new **Mod integration: God Stat Checker 1.1.2** section.
 - **Custom legendary tier** owns weapon and Curio backgrounds by default across both item cards and the right detail panel. God Stat Checker remains free to grade item-name text, and its preferred card style is saved rather than discarded.
@@ -306,7 +313,7 @@ Run the complete repository verification from the project root:
 powershell -ExecutionPolicy Bypass -File .\tests\verify.ps1
 ```
 
-The v3.0.0 suite currently discovers 44 behavior-test files and 166 named cases. To run the behavior suite directly with risk-weighted Lua coverage:
+The v3.0.1 suite currently discovers 44 behavior-test files and 166 named cases. To run the behavior suite directly with risk-weighted Lua coverage:
 
 ```powershell
 py -3 .\tests\run_tests.py --timeout-seconds 45 --coverage-output lua-coverage.json

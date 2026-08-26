@@ -749,6 +749,71 @@ def main() -> None:
             end
         end
 
+		-- A non-configurable pre-target circuit breaker bounds inventory growth even
+		-- when the docket budget is large and the optional purchase cap is disabled.
+		do
+			local backend = {favorite_calls = 0, purchase_calls = 0}
+			function backend:purchase_offer(_)
+				self.purchase_calls = self.purchase_calls + 1
+
+				return resolved({})
+			end
+			function backend:favorite_item(_)
+				self.favorite_calls = self.favorite_calls + 1
+
+				return resolved({})
+			end
+
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings({auto_crafter_best_candidate_fallback = false}), reporter = reports()})
+			controller._snapshot = snapshot_with(nil)
+			controller._active_view = {}
+			controller._view_is_valid = true
+			controller._search = {
+				cap_by_dockets = true,
+				cap_by_max_purchases = false,
+				docket_cap = 10000,
+				dump_stat = "damage_stat",
+				max_purchases = 1000,
+				pretarget_safety_cap = 40,
+				purchases = 40,
+				raw_offer = raw_offer(),
+				running = true,
+				spent = 4000,
+				target_dump = 60,
+				target_offer = target_offer(),
+			}
+			assert(controller:_purchase_search_step(0) == false)
+			local result = controller:snapshot()
+			assert(backend.purchase_calls == 0)
+			assert(backend.favorite_calls == 0)
+			assert(result.phase == "search_safety_purchase_cap")
+			assert(result.search.running == false)
+			assert(result.search.pretarget_safety_cap == 40)
+		end
+
+		-- Level-one crafting is rejected before the first account mutation. Plain
+		-- acquisition remains independently configurable by the planner.
+		do
+			local backend = {purchase_calls = 0}
+			function backend:purchase_offer(_)
+				self.purchase_calls = self.purchase_calls + 1
+
+				return resolved({})
+			end
+			local snapshot = snapshot_with(nil)
+			snapshot.crafting_access = {character_level = 1, required_character_level = 4, unlocked = false}
+			local reporter = reports()
+			CurrentOffer = raw_offer()
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings({auto_crafter_consecrate_transcendent = true}), reporter = reporter, get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = snapshot
+			controller._active_view = {}
+			controller._view_is_valid = true
+			assert(controller:start_purchase_search() == false)
+			assert(backend.purchase_calls == 0)
+			assert(reporter.events[#reporter.events].kind == "mutation_blocked")
+			assert(string.find(reporter.events[#reporter.events].payload.reason, "Hadron crafting is not unlocked", 1, true))
+		end
+
 		-- A safe, non-favorite exact inventory base prevents every Brunt purchase.
 		do
 			local item = summarized_item("gear-reused", 2, 60)
@@ -2417,6 +2482,47 @@ def main() -> None:
 			for _, event in ipairs(fallback_reporter.events) do
 				assert(event.kind ~= "purchase_search_stopped")
 			end
+
+			-- Repeated partial/unknown projections cannot silently consume the full
+			-- docket budget. They are not valid fallback candidates or favorites.
+			local unscorable_state = {item = nil}
+			local unscorable_backend = {favorite_calls = 0, purchase_calls = 0}
+			function unscorable_backend:purchase_offer(_)
+				self.purchase_calls = self.purchase_calls + 1
+				unscorable_state.item = custom_item("gear-unscorable-" .. tostring(self.purchase_calls), {61, 80, 80, 80})
+
+				return resolved({items = {unscorable_state.item}})
+			end
+			function unscorable_backend:probe_snapshot() return resolved(custom_snapshot(unscorable_state.item)) end
+			function unscorable_backend:favorite_item(_)
+				self.favorite_calls = self.favorite_calls + 1
+
+				return resolved({})
+			end
+			local unscorable_settings = base_settings({
+				auto_crafter_best_candidate_fallback = true,
+				auto_crafter_cap_by_dockets = true,
+				auto_crafter_cap_by_max_purchases = false,
+				auto_crafter_custom_stats = true,
+				auto_crafter_custom_stat_1 = 60,
+				auto_crafter_custom_stat_2 = 80,
+				auto_crafter_custom_stat_3 = 80,
+				auto_crafter_custom_stat_4 = 80,
+				auto_crafter_custom_stat_5 = 80,
+				auto_crafter_docket_cap = 10000,
+				auto_crafter_favorite_result = true,
+			})
+			local unscorable_controller = Controller.new({backend = unscorable_backend, planner = Planner, context = context(), settings = unscorable_settings, reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			unscorable_controller._snapshot = custom_snapshot(nil)
+			unscorable_controller._active_view = {}
+			unscorable_controller._view_is_valid = true
+			assert(unscorable_controller:start_purchase_search() == true)
+			local unscorable_result = unscorable_controller:snapshot()
+			assert(unscorable_backend.purchase_calls == 8)
+			assert(unscorable_backend.favorite_calls == 0)
+			assert(unscorable_result.phase == "search_projection_unavailable")
+			assert(unscorable_result.search.best == nil)
+			assert(unscorable_result.search.unscorable_purchases == 8)
 		end
 
 		-- Three-state acquisition preserves legacy checkbox saves, buys exactly one

@@ -261,6 +261,20 @@
       "modules": ["BetterInventory_auto_crafter.lua"]
     },
     {
+      "name": "auto-crafter.respects-native-progression",
+      "test": "test_auto_crafter_stats.py",
+      "case": "native_progression_and_custom_stat_planner_validation",
+      "outcome": "enabled crafting stops before purchase when Hadron or the selected weapon-family mastery is locked, while level-appropriate under-30 and Psych Ward workflows remain available after affirmative mastery discovery",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
+      "name": "auto-crafter.bounds-pretarget-inventory-growth",
+      "test": "test_auto_crafter_controller.py",
+      "case": "pretarget_bounds_progression_and_inventory_base_identity_safety",
+      "outcome": "level-1 crafting dispatches no purchase, every target search stops before purchase 41 and promotes its closest finite fallback when enabled, and repeated incomplete projections stop after eight without favoriting an invalid candidate",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
       "name": "auto-crafter.acquisition-mode-and-dump-comparison",
       "test": "test_auto_crafter_controller.py",
       "case": "acquisition_mode_and_dump_comparison",
