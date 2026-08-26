@@ -745,6 +745,8 @@ function Planner.build(snapshot, config)
 		or normalized.change_perks
 		or normalized.change_blessings
 	local crafting_access = snapshot and snapshot.crafting_access
+	local character_level = tonumber(crafting_access and crafting_access.character_level)
+	local mastery_verification_required = character_level ~= nil and character_level < 30
 
 	if crafting_requested and type(crafting_access) == "table" and crafting_access.unlocked == false then
 		local current_level = tonumber(crafting_access.character_level)
@@ -761,7 +763,7 @@ function Planner.build(snapshot, config)
 		local level_detail = required_level and string.format(" at character level %d", required_level) or ""
 
 		append_reason(reasons, "selected weapon-family mastery unlocks" .. level_detail)
-	elseif normalized.level_mastery_20 and type(crafting_access) == "table" and crafting_access.mastery_verification_required == true and (type(mastery) ~= "table" or mastery.unlocked ~= true) then
+	elseif normalized.level_mastery_20 and mastery_verification_required and (type(mastery) ~= "table" or mastery.unlocked ~= true) then
 		append_reason(reasons, "selected weapon-family mastery unlock is not verified; wait for weapon discovery")
 	end
 

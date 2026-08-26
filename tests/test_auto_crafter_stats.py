@@ -384,7 +384,6 @@ def main() -> None:
     offer = snapshot.store.offers[1]
     assert snapshot.crafting_access.unlocked is True
     assert snapshot.crafting_access.character_level == 30
-    assert snapshot.crafting_access.mastery_verification_required is False
     assert snapshot.crafting_access.required_character_level == 4
 
     # Native Hadron progression unlocks at level 4. Psych Ward may not expose
@@ -392,7 +391,6 @@ def main() -> None:
     lua.globals().TestProfile.current_level = 1
     level_one_snapshot = backend.probe_snapshot(backend).value
     assert level_one_snapshot.crafting_access.unlocked is False
-    assert level_one_snapshot.crafting_access.mastery_verification_required is True
     lua.globals().TestProfile.current_level = 10
     low_level_snapshot = backend.probe_snapshot(backend).value
     assert low_level_snapshot.crafting_access.unlocked is True
@@ -692,7 +690,6 @@ def main() -> None:
         {
             "unlocked": True,
             "character_level": 10,
-			"mastery_verification_required": True,
             "required_character_level": 4,
         }
     )
@@ -718,7 +715,6 @@ def main() -> None:
         {
             "unlocked": True,
             "character_level": 30,
-			"mastery_verification_required": False,
             "required_character_level": 4,
         }
     )

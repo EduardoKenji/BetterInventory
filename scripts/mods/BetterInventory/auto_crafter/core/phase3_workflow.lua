@@ -20,17 +20,14 @@ function Phase3Workflow.install(self, services)
 	local setting = services.setting
 	local PHASE3_FODDER_BATCH_SIZE = services.constants.PHASE3_FODDER_BATCH_SIZE
 	local REDEEMED_RARITY = services.constants.REDEEMED_RARITY
-	local function cleanup_without_target(phase3)
-		return phase3 and phase3.cleanup_without_target == true and phase3.target_candidate == nil
-	end
-	local function drain_search_without_target(phase3)
-		return phase3 and phase3.drain_search_without_target == true and phase3.target_candidate == nil
+	local function search_fodder_mode(phase3)
+		return phase3 and phase3.target_candidate == nil and phase3.search_fodder_mode or nil
 	end
 	local function process_without_target(phase3)
-		return cleanup_without_target(phase3) or drain_search_without_target(phase3)
+		return search_fodder_mode(phase3) ~= nil
 	end
 	local function phase3_mastery_id(phase3)
-		return phase3 and (phase3.target_candidate and phase3.target_candidate.mastery_id or phase3.cleanup_mastery_id or phase3.drain_mastery_id)
+		return phase3 and (phase3.target_candidate and phase3.target_candidate.mastery_id or phase3.search_fodder_mastery_id)
 	end
 	local function release_search_fallback(phase3, target)
 		local candidate = phase3 and phase3.fallback_candidate
@@ -81,7 +78,9 @@ function Phase3Workflow.install(self, services)
 		end
 	end
 	local function finish_after_deferred_processing(current)
-		if cleanup_without_target(self._phase3) then
+		local mode = search_fodder_mode(self._phase3)
+
+		if mode == "terminal" then
 			local phase3 = self._phase3
 			local search = self._search
 
@@ -93,14 +92,14 @@ function Phase3Workflow.install(self, services)
 			operation_report("phase3_no_target_cleanup_complete", {
 				current = phase3.current,
 				fodder_count = phase3.fodder_count,
-				reason = phase3.cleanup_stop_reason,
+				reason = phase3.search_fodder_stop_reason,
 			})
-			self:_stop_search(phase3.cleanup_stop_reason)
+			self:_stop_search(phase3.search_fodder_stop_reason)
 
 			return true
 		end
 
-		if drain_search_without_target(self._phase3) then
+		if mode == "rolling" then
 			local phase3 = self._phase3
 
 			phase3.current = current or phase3.current
@@ -108,8 +107,9 @@ function Phase3Workflow.install(self, services)
 			phase3.deferred_batch = nil
 			phase3.deferred_candidates = {}
 			phase3.deferred_index = 1
-			phase3.drain_mastery_id = nil
-			phase3.drain_search_without_target = false
+			phase3.search_fodder_mastery_id = nil
+			phase3.search_fodder_mode = nil
+			phase3.search_fodder_stop_reason = nil
 			operation_report("phase3_search_fodder_drain_complete", {
 				current = phase3.current,
 				fodder_count = phase3.fodder_count,
@@ -191,7 +191,7 @@ function Phase3Workflow.install(self, services)
 			local target = phase3.target_candidate
 			local mastery_id = phase3_mastery_id(phase3)
 			local queue = phase3.deferred_candidates or {}
-			local cleanup_candidates = drain_search_without_target(phase3) and queue or phase3.purchased_spares or queue
+			local cleanup_candidates = search_fodder_mode(phase3) == "rolling" and queue or phase3.purchased_spares or queue
 			local gear_ids = {}
 			local included = {}
 
@@ -720,59 +720,42 @@ function Phase3Workflow.install(self, services)
 		end, handle_mastery)
 	end
 
-	function self:_phase3_cleanup_without_target(generation, reason)
+	function self:_phase3_process_search_fodder(generation, mode, reason)
 		local phase3 = self._phase3
-		local released = release_search_fallback(phase3)
-		local queue = phase3 and phase3.deferred_candidates or {}
-		local candidate = queue[phase3 and phase3.deferred_index or 1]
+
+		if not phase3 or not phase3.running or phase3.target_candidate or not phase3.defer_bad_processing or mode ~= "rolling" and mode ~= "terminal" then
+			return false
+		end
+
+		if mode == "terminal" then
+			release_search_fallback(phase3)
+		end
+
+		local queue = phase3.deferred_candidates or {}
+		local candidate = queue[phase3.deferred_index or 1]
 		local mastery_id = candidate and (candidate.mastery_id or candidate.parent_pattern)
 
-		if not phase3 or not phase3.running or phase3.target_candidate or not phase3.defer_bad_processing or not candidate then
+		if not candidate then
 			return false
 		end
 
 		if not mastery_id then
-			self:_operation_failed(generation, "deferred cleanup candidate omitted mastery identity")
+			self:_operation_failed(generation, mode == "terminal" and "deferred cleanup candidate omitted mastery identity" or "search fodder candidate omitted mastery identity")
 
 			return true
 		end
 
-		phase3.cleanup_without_target = true
-		phase3.cleanup_mastery_id = mastery_id
-		phase3.cleanup_stop_reason = reason
-		self._phase = "phase3_no_target_cleanup"
-		operation_report("phase3_no_target_cleanup_started", {
-			count = pending_deferred_count(phase3),
-			reason = reason,
-			released_fallback = released,
-		})
-		self:_phase3_check_mastery(generation, candidate)
+		phase3.search_fodder_mode = mode
+		phase3.search_fodder_mastery_id = mastery_id
+		phase3.search_fodder_stop_reason = mode == "terminal" and reason or nil
+		self._phase = mode == "terminal" and "phase3_no_target_cleanup" or "phase3_search_fodder_drain"
+		local report = { count = pending_deferred_count(phase3) }
 
-		return true
-	end
-
-	function self:_phase3_drain_search_fodder(generation)
-		local phase3 = self._phase3
-		local queue = phase3 and phase3.deferred_candidates or {}
-		local candidate = queue[phase3 and phase3.deferred_index or 1]
-		local mastery_id = candidate and (candidate.mastery_id or candidate.parent_pattern)
-
-		if not phase3 or not phase3.running or phase3.target_candidate or not phase3.defer_bad_processing or not candidate then
-			return false
+		if mode == "terminal" then
+			report.reason = reason
 		end
 
-		if not mastery_id then
-			self:_operation_failed(generation, "search fodder candidate omitted mastery identity")
-
-			return true
-		end
-
-		phase3.drain_search_without_target = true
-		phase3.drain_mastery_id = mastery_id
-		self._phase = "phase3_search_fodder_drain"
-		operation_report("phase3_search_fodder_drain_started", {
-			count = pending_deferred_count(phase3),
-		})
+		operation_report(mode == "terminal" and "phase3_no_target_cleanup_started" or "phase3_search_fodder_drain_started", report)
 		self:_phase3_check_mastery(generation, candidate)
 
 		return true

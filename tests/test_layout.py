@@ -1536,6 +1536,48 @@ def main() -> None:
     assert globals_.godroll_family_calls == 0
     assert godroll_widget.content.display_name == godroll_name
     assert godroll_widget.content.better_inventory_native_family_name == godroll_name
+
+    # Recycled grid widgets must replace, then clear, the identity-bound cache.
+    # A stale decorated name must never cross from one item into another.
+    second_godroll_name = godroll_name.replace("Force Sword", "Power Sword")
+    second_godroll_item = lua.table_from(
+        {
+            "item_type": "WEAPON_MELEE",
+            "test_mark": "n/a",
+            "weapon_family_display_name": lua.table_from({"loc_id": "Power Sword"}),
+        }
+    )
+    native_blueprint.update_data(
+        None,
+        godroll_widget,
+        lua.table_from(
+            {
+                "item": second_godroll_item,
+                "test_display_name": second_godroll_name,
+                "test_sub_display_name": "Mk III",
+            }
+        ),
+    )
+    assert globals_.godroll_family_calls == 0
+    assert godroll_widget.content.display_name == second_godroll_name
+    assert same_lua_value(
+        godroll_widget.content.better_inventory_native_family_item,
+        second_godroll_item,
+    )
+    assert godroll_widget.content.better_inventory_native_family_name == second_godroll_name
+    native_blueprint.update_data(
+        None,
+        godroll_widget,
+        lua.table_from(
+            {
+                "item": lua.table_from({"item_type": "GADGET"}),
+                "test_display_name": "Curio",
+                "test_sub_display_name": "",
+            }
+        ),
+    )
+    assert godroll_widget.content.better_inventory_native_family_item is None
+    assert godroll_widget.content.better_inventory_native_family_name is None
     lua.execute("Localize = nil; TestItems.weapon_lore_family_name = nil")
 
     # Slab Shield exposes a large, action-heavy weapon template. Inventory

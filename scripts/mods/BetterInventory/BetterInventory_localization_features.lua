@@ -689,7 +689,7 @@ local localization = {
 		en = "Cap perfect-roll weapon acquisition by max purchases",
 	},
 	auto_crafter_cap_by_max_purchases_tooltip = {
-		en = "Enable a configurable maximum-purchases cap for the perfect-roll weapon search. Misses are processed in bounded mastery-fodder batches while acquisition continues to this cap.",
+		en = "Enable a configurable maximum-purchases cap for the perfect-roll weapon search. With deferred mastery processing enabled, misses are processed in bounded fodder batches while acquisition continues to this cap.",
 	},
 	auto_crafter_max_purchases = {
 		en = "Auto Crafter maximum purchases",

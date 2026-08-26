@@ -1,4 +1,5 @@
 local Controller = {}
+
 local configured_modules
 
 local REQUIRED_MODULE_FUNCTIONS = {

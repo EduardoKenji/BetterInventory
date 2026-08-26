@@ -296,7 +296,7 @@ function InventoryWorkflow.install(self, services)
 			end
 
 			if not phase3_has_target and phase3 and phase3.running and phase3.defer_bad_processing and pending_deferred_count(phase3) > 0 then
-				if self:_phase3_cleanup_without_target(generation, reason) then
+				if self:_phase3_process_search_fodder(generation, "terminal", reason) then
 					return true
 				end
 			end
@@ -435,12 +435,6 @@ function InventoryWorkflow.install(self, services)
 				candidate.damage = candidate.potential_damage or candidate_stat(candidate, "damage")
 				candidate.exact_match = candidate_matches_stat_targets(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets, search.dump_stat_identity, search.dump_comparison)
 				candidate.target_distance = candidate_stat_target_distance(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets, search.dump_stat_identity)
-				if candidate.target_distance == math.huge then
-					search.unscorable_purchases = (tonumber(search.unscorable_purchases) or 0) + 1
-				else
-					search.unscorable_purchases = 0
-				end
-
 				local accepts_first_weapon = search.acquisition_mode == "first_weapon" and not phase3_has_target
 
 				if self._phase3 and self._phase3.running and not candidate.exact_match and not accepts_first_weapon then
@@ -490,7 +484,7 @@ function InventoryWorkflow.install(self, services)
 					end
 
 					if pending_deferred_count(self._phase3) >= PHASE3_FODDER_BATCH_SIZE then
-						self:_phase3_drain_search_fodder(generation)
+						self:_phase3_process_search_fodder(generation, "rolling")
 					else
 						self:_purchase_search_step(generation)
 					end
