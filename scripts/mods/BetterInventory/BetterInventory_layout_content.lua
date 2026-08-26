@@ -1585,6 +1585,56 @@ local function restore_item_customization_style(widget)
 	restore_custom_color(style.rarity_tag, "color")
 end
 
+local function colors_match(left, right)
+	if type(left) ~= "table" or type(right) ~= "table" then
+		return false
+	end
+
+	return left[1] == right[1]
+		and left[2] == right[2]
+		and left[3] == right[3]
+		and left[4] == right[4]
+end
+
+local function style_color_matches(style, field_name, expected)
+	return type(style) ~= "table"
+		or type(style[field_name]) ~= "table"
+		or colors_match(style[field_name], expected)
+end
+
+local function tracked_item_customization_matches(widget, record)
+	local style = widget and widget.style
+
+	if type(style) ~= "table" or type(record) ~= "table" then
+		return false
+	end
+
+	if type(record.name_color) == "table" then
+		for _, style_id in ipairs({ "display_name", "better_inventory_name_it_curio_name" }) do
+			local text_style = style[style_id]
+
+			if not style_color_matches(text_style, "text_color", record.name_color)
+				or not style_color_matches(text_style, "default_color", record.name_color)
+				or not style_color_matches(text_style, "hover_color", record.name_color) then
+				return false
+			end
+		end
+	end
+
+	if type(record.background_color) == "table" then
+		if not style_color_matches(style.background_gradient, "color", record.background_color)
+			or not style_color_matches(style.rarity_tag, "color", record.background_color) then
+			return false
+		end
+
+		if not record.preserve_shading and not style_color_matches(style.background, "color", record.background_color) then
+			return false
+		end
+	end
+
+	return true
+end
+
 local function apply_item_customization_style(mod, widget, element)
 	local content = widget and widget.content
 	local style = widget and widget.style
@@ -1618,7 +1668,12 @@ local function apply_item_customization_style(mod, widget, element)
 	apply_custom_color(style.rarity_tag, background_color, "color")
 
 	if type(name_color) == "table" or type(background_color) == "table" then
-		tracked_item_customization_widgets[widget] = element or false
+		tracked_item_customization_widgets[widget] = {
+			element = element or false,
+			name_color = name_color,
+			background_color = background_color,
+			preserve_shading = preserve_shading == true,
+		}
 
 		-- GSC 1.1.2 repaints a newly tracked card after BetterInventory's
 		-- blueprint initialization returns. Queue this exact widget for one
@@ -1639,32 +1694,41 @@ end
 Content.queue_tracked_item_customization_reapply = function()
 	local queued = 0
 
-	for widget, element in pairs(tracked_item_customization_widgets) do
-		pending_item_customization_widgets[widget] = element
+	for widget, record in pairs(tracked_item_customization_widgets) do
+		pending_item_customization_widgets[widget] = record.element
 		queued = queued + 1
 	end
 
 	return queued
 end
 
-Content.reapply_pending_item_customization_styles = function(mod)
-	local pending = pending_item_customization_widgets
-	local applied = 0
+Content.reapply_tracked_item_customization_style = function(mod, widget)
+	local record = tracked_item_customization_widgets[widget]
 
-	pending_item_customization_widgets = setmetatable({}, { __mode = "k" })
+	if type(record) ~= "table" then
+		pending_item_customization_widgets[widget] = nil
+
+		return false
+	end
+
+	local pending = pending_item_customization_widgets[widget] ~= nil
+
+	-- GSC can repaint tracked cards after initialization and after later verdict
+	-- changes. Compare only BetterInventory-customized widgets from the normal
+	-- blueprint update path; ordinary cards avoid provider calls and color work.
+	if not pending and (not god_stat_checker_owns_background() or tracked_item_customization_matches(widget, record)) then
+		return false
+	end
+
+	pending_item_customization_widgets[widget] = nil
 	reapplying_item_customization = true
 
-	for widget, element in pairs(pending) do
-		local ok = pcall(apply_item_customization_style, mod, widget, element ~= false and element or nil)
-
-		if ok then
-			applied = applied + 1
-		end
-	end
+	local element = record.element
+	local ok = pcall(apply_item_customization_style, mod, widget, element ~= false and element or nil)
 
 	reapplying_item_customization = false
 
-	return applied
+	return ok
 end
 
 local function synchronize_rarity_tag_color(widget, element)

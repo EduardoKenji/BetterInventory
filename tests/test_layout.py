@@ -629,7 +629,10 @@ def main() -> None:
 		sentinel_unload = function() end
 		sentinel_destroy = function() end
 		sentinel_priority = function() end
-		sentinel_update = function() end
+		sentinel_update_calls = 0
+		sentinel_update = function()
+			sentinel_update_calls = sentinel_update_calls + 1
+		end
 		sentinel_init = function(parent, widget, element, callback_name, secondary_callback_name, ui_renderer)
 			widget.content.element = element
 			widget.content.display_name = element.test_display_name
@@ -1171,7 +1174,10 @@ def main() -> None:
     assert same_lua_value(
         vendor_blueprint.update_item_icon_priority, globals_.sentinel_priority
     )
-    assert same_lua_value(vendor_blueprint.update, globals_.sentinel_update)
+    assert not same_lua_value(vendor_blueprint.update, globals_.sentinel_update)
+    vendor_update_calls = globals_.sentinel_update_calls
+    vendor_blueprint.update(None, lua.table_from({}))
+    assert globals_.sentinel_update_calls == vendor_update_calls + 1
 
     # Vendor views must remain capped at three columns even if an older
     # profile still carries the retired global five-column value. Dedicated
@@ -2317,7 +2323,7 @@ def main() -> None:
     assert lua.eval("test_blueprint.unload_icon == sentinel_unload")
     assert lua.eval("test_blueprint.destroy == sentinel_destroy")
     assert lua.eval("test_blueprint.update_item_icon_priority == sentinel_priority")
-    assert lua.eval("test_blueprint.update == sentinel_update")
+    assert not lua.eval("test_blueprint.update == sentinel_update")
 
     icon_pass = blueprint.pass_template[1]
     assert (icon_pass.style.size[1], icon_pass.style.size[2]) == (206, 110)
@@ -4571,24 +4577,36 @@ def main() -> None:
     # GSC 1.1.2 tracks the card after BI's blueprint initializer returns and
     # deliberately repaints BI custom colors. The selected GSC owner still
     # grades ordinary items, but explicit per-item name/background colors are
-    # reapplied once on the exact affected widget and remain highest priority.
+    # reapplied from that card's next normal blueprint update and remain highest
+    # priority without scanning every widget in the grid.
     globals_.god_stat_checker_background_owner = True
     layout.apply_item_customization_style(mod, custom_weapon_widget, custom_weapon_element)
     assert layout.item_customization_reapply_pending() is True
     custom_weapon_widget.style.display_name.text_color = lua.table_from([255, 210, 160, 40])
     custom_weapon_widget.style.background_gradient.color = lua.table_from([255, 210, 160, 40])
     custom_weapon_widget.style.rarity_tag.color = lua.table_from([255, 210, 160, 40])
-    assert layout.reapply_pending_item_customization_styles(mod) == 1
+    updates_before_gsc_reapply = globals_.sentinel_update_calls
+    custom_weapon_blueprint.update(None, custom_weapon_widget)
+    assert globals_.sentinel_update_calls == updates_before_gsc_reapply + 1
     assert layout.item_customization_reapply_pending() is False
     assert tuple(custom_weapon_widget.style.display_name.text_color[index] for index in range(1, 5)) == (255, 10, 20, 30)
     assert tuple(custom_weapon_widget.style.background_gradient.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
     assert tuple(custom_weapon_widget.style.rarity_tag.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
 
-    # A later GSC style/owner repaint queues the retained weak widget directly;
-    # flushing it is still one-shot rather than a recurring grid scan.
+    # Later asynchronous GSC verdict repaints are detected on this customized
+    # widget even when no ownership callback had a chance to queue it.
     custom_weapon_widget.style.background_gradient.color = lua.table_from([255, 180, 180, 180])
+    custom_weapon_widget.style.rarity_tag.color = lua.table_from([255, 180, 180, 180])
+    custom_weapon_blueprint.update(None, custom_weapon_widget)
+    assert tuple(custom_weapon_widget.style.background_gradient.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
+    assert tuple(custom_weapon_widget.style.rarity_tag.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
+
+    # Ownership/style reconciliation can still queue all retained custom cards;
+    # each card consumes only its own weak-table entry on its next update.
+    custom_weapon_widget.style.background_gradient.color = lua.table_from([255, 170, 170, 170])
     assert layout.queue_tracked_item_customization_reapply() == 1
-    assert layout.reapply_pending_item_customization_styles(mod) == 1
+    custom_weapon_blueprint.update(None, custom_weapon_widget)
+    assert layout.item_customization_reapply_pending() is False
     assert tuple(custom_weapon_widget.style.background_gradient.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
     globals_.god_stat_checker_background_owner = False
 

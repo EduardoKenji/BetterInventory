@@ -252,10 +252,6 @@ ItemCustomization.on_setting_changed = function(mod, setting_id)
 end
 
 ItemCustomization.update_runtime = function(mod, dt)
-	if type(layout_adapter) == "table" and type(layout_adapter.reapply_pending_item_customization_styles) == "function" then
-		layout_adapter.reapply_pending_item_customization_styles(mod)
-	end
-
 	Editor.run_pending()
 	drain_deleted_records(mod)
 
@@ -269,11 +265,8 @@ end
 ItemCustomization.needs_update = function()
 	local _, persistence_pending = Store.persistence_status()
 	local editor_pending = type(Editor.has_pending) == "function" and Editor.has_pending() == true
-	local style_reapply_pending = type(layout_adapter) == "table"
-		and type(layout_adapter.item_customization_reapply_pending) == "function"
-		and layout_adapter.item_customization_reapply_pending() == true
 
-	return editor_pending or style_reapply_pending or Store.has_pending_deleted_gear() == true or persistence_pending == true
+	return editor_pending or Store.has_pending_deleted_gear() == true or persistence_pending == true
 end
 
 ItemCustomization.persistence_status = function()
