@@ -297,6 +297,12 @@ function InventoryWorkflow.install(self, services)
 				end
 			end
 
+			if not phase3_has_target and phase3 and phase3.running and phase3.defer_bad_processing and pending_deferred_count(phase3) > 0 then
+				if self:_phase3_cleanup_without_target(generation, reason) then
+					return true
+				end
+			end
+
 			self:_stop_search(reason)
 
 			return false

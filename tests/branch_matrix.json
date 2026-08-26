@@ -275,6 +275,13 @@
       "modules": ["BetterInventory_auto_crafter.lua"]
     },
     {
+      "name": "auto-crafter.drains-fallback-off-deferred-fodder",
+      "test": "test_auto_crafter_controller.py",
+      "case": "fallback_off_terminal_phase3_cleanup",
+      "outcome": "when acquisition ends without an exact or enabled fallback, deferred current-run misses alone are sacrificed in bounded batches toward mastery 20 and any verified remainder is discarded; insufficient fodder stops without more purchases, no result is selected or favorited, pre-existing gear survives, and observed favorite/equip drift fails closed",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
       "name": "auto-crafter.acquisition-mode-and-dump-comparison",
       "test": "test_auto_crafter_controller.py",
       "case": "acquisition_mode_and_dump_comparison",

@@ -20,6 +20,34 @@ function Phase3Workflow.install(self, services)
 	local setting = services.setting
 	local PHASE3_FODDER_BATCH_SIZE = services.constants.PHASE3_FODDER_BATCH_SIZE
 	local REDEEMED_RARITY = services.constants.REDEEMED_RARITY
+	local function cleanup_without_target(phase3)
+		return phase3 and phase3.cleanup_without_target == true and phase3.target_candidate == nil
+	end
+	local function phase3_mastery_id(phase3)
+		return phase3 and (phase3.target_candidate and phase3.target_candidate.mastery_id or phase3.cleanup_mastery_id)
+	end
+	local function finish_after_deferred_cleanup(current)
+		if cleanup_without_target(self._phase3) then
+			local phase3 = self._phase3
+			local search = self._search
+
+			phase3.current = current or phase3.current
+			if search then
+				search.best = nil
+				search.result = nil
+			end
+			operation_report("phase3_no_target_cleanup_complete", {
+				current = phase3.current,
+				fodder_count = phase3.fodder_count,
+				reason = phase3.cleanup_stop_reason,
+			})
+			self:_stop_search(phase3.cleanup_stop_reason)
+
+			return true
+		end
+
+		return self:_phase3_finish(current)
+	end
 
 	function self:_phase3_finish(current)
 		local phase3 = self._phase3
@@ -76,7 +104,7 @@ function Phase3Workflow.install(self, services)
 		local phase3 = self._phase3
 		local backend = self._backend
 
-		if not phase3 or not phase3.running or not phase3.target_candidate then
+		if not phase3 or not phase3.running or (not phase3.target_candidate and not cleanup_without_target(phase3)) then
 			return false
 		end
 
@@ -89,6 +117,7 @@ function Phase3Workflow.install(self, services)
 
 		return self:_refresh_after_operation(generation, function (snapshot)
 			local target = phase3.target_candidate
+			local mastery_id = phase3_mastery_id(phase3)
 			local queue = phase3.deferred_candidates or {}
 			local cleanup_candidates = phase3.purchased_spares or queue
 			local gear_ids = {}
@@ -98,8 +127,8 @@ function Phase3Workflow.install(self, services)
 				local item = queued and find_item(snapshot and snapshot.gear and snapshot.gear.items, queued.gear_id)
 
 				if item and not included[item.gear_id] then
-					if item.available ~= true or item.gear_id == target.gear_id or item.parent_pattern ~= target.mastery_id then
-						if item.gear_id == target.gear_id then
+					if item.available ~= true or item.favorited == true or item.equipped == true or (target and item.gear_id == target.gear_id) or item.parent_pattern ~= mastery_id then
+						if target and item.gear_id == target.gear_id then
 							included[item.gear_id] = true
 						else
 							self:_operation_failed(generation, "run-owned spare cleanup failed authoritative family protection")
@@ -115,7 +144,7 @@ function Phase3Workflow.install(self, services)
 
 			if #gear_ids == 0 then
 				phase3.deferred_index = #queue + 1
-				self:_phase3_finish(current)
+				finish_after_deferred_cleanup(current)
 
 				return
 			end
@@ -143,7 +172,7 @@ function Phase3Workflow.install(self, services)
 						count = #gear_ids,
 						current = current,
 					})
-					self:_phase3_finish(current)
+					finish_after_deferred_cleanup(current)
 				end)
 			end)
 		end)
@@ -152,7 +181,7 @@ function Phase3Workflow.install(self, services)
 	function self:_phase3_process_deferred(generation, current)
 		local phase3 = self._phase3
 
-		if not phase3 or not phase3.running or not phase3.target_candidate then
+		if not phase3 or not phase3.running or (not phase3.target_candidate and not cleanup_without_target(phase3)) then
 			return false
 		end
 
@@ -174,6 +203,10 @@ function Phase3Workflow.install(self, services)
 
 		if queue[phase3.deferred_index or 1] then
 			return self:_phase3_start_deferred_batch(generation)
+		end
+
+		if cleanup_without_target(phase3) then
+			return finish_after_deferred_cleanup(current)
 		end
 
 		return self:_purchase_search_step(generation)
@@ -226,6 +259,8 @@ function Phase3Workflow.install(self, services)
 
 			if mastery_target_reached(current) then
 				self:_phase3_sync_projected(generation)
+			elseif cleanup_without_target(phase3) then
+				self:_phase3_process_deferred(generation, current)
 			else
 				self:_purchase_search_step(generation)
 			end
@@ -304,8 +339,9 @@ function Phase3Workflow.install(self, services)
 
 	function self:_phase3_start_deferred_batch(generation)
 		local phase3 = self._phase3
+		local mastery_id = phase3_mastery_id(phase3)
 
-		if not phase3 or not phase3.running or not phase3.current_data or phase3.deferred_batch then
+		if not phase3 or not phase3.running or not mastery_id or not phase3.current_data or phase3.deferred_batch then
 			return false
 		end
 
@@ -315,6 +351,7 @@ function Phase3Workflow.install(self, services)
 			local items = {}
 			local gear_ids = {}
 			local queue_end = start_index - 1
+			local target_id = phase3.target_candidate and phase3.target_candidate.gear_id
 
 			local target_xp = mastery_level_target_xp(phase3.current_data, 20)
 			local projected_xp = tonumber(phase3.current and phase3.current.current_xp)
@@ -324,7 +361,7 @@ function Phase3Workflow.install(self, services)
 				local item = candidate and find_item(snapshot and snapshot.gear and snapshot.gear.items, candidate.gear_id)
 
 				if item then
-					if item.available ~= true or item.gear_id == phase3.target_candidate.gear_id or item.parent_pattern ~= phase3.target_candidate.mastery_id then
+					if item.available ~= true or item.favorited == true or item.equipped == true or (target_id and item.gear_id == target_id) or item.parent_pattern ~= mastery_id then
 						self:_operation_failed(generation, "deferred mastery batch failed authoritative family protection")
 
 						return
@@ -350,7 +387,7 @@ function Phase3Workflow.install(self, services)
 
 			if #gear_ids == 0 then
 				phase3.deferred_index = queue_end + 1
-				self:_purchase_search_step(generation)
+				self:_phase3_process_deferred(generation, phase3.current)
 
 				return
 			end
@@ -358,7 +395,7 @@ function Phase3Workflow.install(self, services)
 			phase3.deferred_batch = {
 				gear_ids = gear_ids,
 				items = items,
-				mastery_id = phase3.target_candidate.mastery_id,
+				mastery_id = mastery_id,
 				queue_end = queue_end,
 				upgrade_index = 1,
 			}
@@ -394,7 +431,7 @@ function Phase3Workflow.install(self, services)
 		self._mastery = {
 			before = phase3.authoritative_current or projected,
 			expected_xp = projected.current_xp,
-			mastery_id = projected.mastery_id or phase3.target_candidate and phase3.target_candidate.mastery_id,
+			mastery_id = projected.mastery_id or phase3_mastery_id(phase3),
 			on_complete = function (current)
 				local active = self._phase3
 
@@ -408,7 +445,7 @@ function Phase3Workflow.install(self, services)
 				active.current_data = nil
 				active.projected_xp_pending = false
 
-				if active.defer_bad_processing and active.target_candidate then
+				if active.defer_bad_processing and (active.target_candidate or cleanup_without_target(active)) then
 					self:_phase3_discard_deferred(generation, current)
 				else
 					self:_phase3_finish(current)
@@ -504,9 +541,10 @@ function Phase3Workflow.install(self, services)
 	function self:_phase3_check_mastery(generation, candidate)
 		local phase3 = self._phase3
 		local target = phase3 and (phase3.target_candidate or candidate)
+		local mastery_id = target and target.mastery_id or phase3_mastery_id(phase3)
 		local backend = self._backend
 
-		if not phase3 or not phase3.running or not target or not target.mastery_id then
+		if not phase3 or not phase3.running or not target or not mastery_id then
 			self:_operation_failed(generation, "Phase 3 mastery target identity is missing")
 
 			return false
@@ -537,6 +575,12 @@ function Phase3Workflow.install(self, services)
 				candidate = candidate,
 				current = current,
 			})
+
+			if cleanup_without_target(phase3) then
+				self:_phase3_process_deferred(generation, current)
+
+				return
+			end
 
 			if phase3.defer_bad_processing and phase3.target_candidate and candidate and not candidate_is_target then
 				phase3.deferred_candidates[#phase3.deferred_candidates + 1] = candidate
@@ -598,8 +642,37 @@ function Phase3Workflow.install(self, services)
 		end
 
 		return self:_dispatch_operation(generation, "phase3_mastery_check", function ()
-			return backend:get_mastery_by_pattern(target.mastery_id)
+			return backend:get_mastery_by_pattern(mastery_id)
 		end, handle_mastery)
+	end
+
+	function self:_phase3_cleanup_without_target(generation, reason)
+		local phase3 = self._phase3
+		local queue = phase3 and phase3.deferred_candidates or {}
+		local candidate = queue[phase3 and phase3.deferred_index or 1]
+		local mastery_id = candidate and (candidate.mastery_id or candidate.parent_pattern)
+
+		if not phase3 or not phase3.running or phase3.target_candidate or not phase3.defer_bad_processing or not candidate then
+			return false
+		end
+
+		if not mastery_id then
+			self:_operation_failed(generation, "deferred cleanup candidate omitted mastery identity")
+
+			return true
+		end
+
+		phase3.cleanup_without_target = true
+		phase3.cleanup_mastery_id = mastery_id
+		phase3.cleanup_stop_reason = reason
+		self._phase = "phase3_no_target_cleanup"
+		operation_report("phase3_no_target_cleanup_started", {
+			count = pending_deferred_count(phase3),
+			reason = reason,
+		})
+		self:_phase3_check_mastery(generation, candidate)
+
+		return true
 	end
 
 	function self:_accept_exact_candidate(generation, candidate, source)

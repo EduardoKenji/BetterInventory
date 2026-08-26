@@ -6,7 +6,8 @@
 - Requires affirmative selected-family mastery discovery for mastery automation on characters below level 30 while preserving valid low-level and Psych Ward workflows.
 - Adds an independent 40-purchase pre-target safety limit even when the optional purchase cap is disabled, then uses the existing closest finite fallback when enabled.
 - Stops after eight consecutive incomplete projected-stat results instead of exhausting the docket budget without a valid custom-stat fallback.
-- Confirms rejected purchases are not auto-favorited and documents that the subsequent inventory crash matches known Darktide Lua-heap pressure from large one-widget-per-entry inventories, not a reproduced BetterInventory leak.
+- When fallback is disabled, consumes only current-run deferred misses toward mastery 20 at an acquisition cap, discards verified run-owned excess, and stops without selecting, favoriting, or crafting a fallback weapon.
+- Confirms the supplied crash at Hadron card 163 exhausted Darktide's fixed 1 GiB Lua heap while BetterInventory and GodRolls were both in the eager per-card allocation path; no infinite loop or mass favoriting was present.
 
 ## 3.0.0 - 2026-08-26
 
