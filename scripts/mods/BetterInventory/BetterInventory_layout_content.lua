@@ -1,6 +1,9 @@
 local Content = {}
 local columns
 local item_customization_provider
+local tracked_item_customization_widgets = setmetatable({}, { __mode = "k" })
+local pending_item_customization_widgets = setmetatable({}, { __mode = "k" })
+local reapplying_item_customization = false
 
 local Items = require("scripts/utilities/items")
 local RankSettings = require("scripts/settings/item/rank_settings")
@@ -641,6 +644,16 @@ local function item_customization(mod, item)
 	local gear_id = item and item.gear_id
 
 	return gear_id and item_customization_provider.get(mod, gear_id) or nil
+end
+
+local function god_stat_checker_owns_background()
+	if type(item_customization_provider) ~= "table" or type(item_customization_provider.god_stat_checker_owns_background) ~= "function" then
+		return false
+	end
+
+	local ok, owns_background = pcall(item_customization_provider.god_stat_checker_owns_background)
+
+	return ok and owns_background == true
 end
 
 local function numeric_setting(mod, setting_id, fallback, minimum, maximum)
@@ -1550,6 +1563,9 @@ local function restore_custom_color(style, field_name)
 end
 
 local function restore_item_customization_style(widget)
+	pending_item_customization_widgets[widget] = nil
+	tracked_item_customization_widgets[widget] = nil
+
 	local style = widget and widget.style
 
 	if type(style) ~= "table" then
@@ -1600,6 +1616,55 @@ local function apply_item_customization_style(mod, widget, element)
 	apply_custom_color(style.background, background_color and not preserve_shading and background_color or nil, "color")
 	apply_custom_color(style.background_gradient, background_color, "color")
 	apply_custom_color(style.rarity_tag, background_color, "color")
+
+	if type(name_color) == "table" or type(background_color) == "table" then
+		tracked_item_customization_widgets[widget] = element or false
+
+		-- GSC 1.1.2 repaints a newly tracked card after BetterInventory's
+		-- blueprint initialization returns. Queue this exact widget for one
+		-- post-update reapply; no grid walk or recurring scan is needed.
+		if not reapplying_item_customization and god_stat_checker_owns_background() then
+			pending_item_customization_widgets[widget] = element or false
+		end
+	else
+		tracked_item_customization_widgets[widget] = nil
+		pending_item_customization_widgets[widget] = nil
+	end
+end
+
+Content.item_customization_reapply_pending = function()
+	return next(pending_item_customization_widgets) ~= nil
+end
+
+Content.queue_tracked_item_customization_reapply = function()
+	local queued = 0
+
+	for widget, element in pairs(tracked_item_customization_widgets) do
+		pending_item_customization_widgets[widget] = element
+		queued = queued + 1
+	end
+
+	return queued
+end
+
+Content.reapply_pending_item_customization_styles = function(mod)
+	local pending = pending_item_customization_widgets
+	local applied = 0
+
+	pending_item_customization_widgets = setmetatable({}, { __mode = "k" })
+	reapplying_item_customization = true
+
+	for widget, element in pairs(pending) do
+		local ok = pcall(apply_item_customization_style, mod, widget, element ~= false and element or nil)
+
+		if ok then
+			applied = applied + 1
+		end
+	end
+
+	reapplying_item_customization = false
+
+	return applied
 end
 
 local function synchronize_rarity_tag_color(widget, element)

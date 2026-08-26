@@ -513,7 +513,34 @@ def main() -> None:
     settings.custom_item_background_color_keybind = "group_finder_refresh_groups"
     globals_.name_it_settings.keybind_change_name = "hotkey_menu_special_2"
     inventory_view_class = lua.table_from({})
-    assert customization.install(mod, inventory_view_class, lua.table_from({})) is True
+    lua.execute(
+        '''
+        customization_style_reapply_pending = true
+        customization_style_reapply_flushes = 0
+        customization_layout = {
+            item_customization_reapply_pending = function()
+                return customization_style_reapply_pending
+            end,
+            reapply_pending_item_customization_styles = function()
+                customization_style_reapply_pending = false
+                customization_style_reapply_flushes = customization_style_reapply_flushes + 1
+                return 1
+            end,
+            queue_tracked_item_customization_reapply = function()
+                customization_style_reapply_pending = true
+                return 1
+            end,
+        }
+        '''
+    )
+    assert customization.install(
+        mod, inventory_view_class, globals_.customization_layout
+    ) is True
+    assert customization.needs_update() is True
+    customization.update_runtime(mod)
+    assert globals_.customization_style_reapply_flushes == 1
+    assert customization.queue_background_reapply() == 1
+    assert customization.needs_update() is True
     view = lua.table_from(
         {
             "_definitions": lua.table_from(

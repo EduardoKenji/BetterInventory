@@ -4512,6 +4512,7 @@ def main() -> None:
         lua.execute(
             """
             preserve_test_shading = true
+            god_stat_checker_background_owner = false
             return {
                 get = function(_, gear_id)
                     if gear_id == "custom-weapon" then
@@ -4526,6 +4527,9 @@ def main() -> None:
                             name = "John Darktide\\nHelbore Lasgun",
                         }
                     end
+                end,
+                god_stat_checker_owns_background = function()
+                    return god_stat_checker_background_owner
                 end,
             }
             """
@@ -4563,6 +4567,30 @@ def main() -> None:
     assert tuple(custom_weapon_widget.style.background.color[index] for index in range(1, 5)) == (255, 1, 2, 3)
     assert tuple(custom_weapon_widget.style.background_gradient.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
     assert tuple(custom_weapon_widget.style.rarity_tag.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
+
+    # GSC 1.1.2 tracks the card after BI's blueprint initializer returns and
+    # deliberately repaints BI custom colors. The selected GSC owner still
+    # grades ordinary items, but explicit per-item name/background colors are
+    # reapplied once on the exact affected widget and remain highest priority.
+    globals_.god_stat_checker_background_owner = True
+    layout.apply_item_customization_style(mod, custom_weapon_widget, custom_weapon_element)
+    assert layout.item_customization_reapply_pending() is True
+    custom_weapon_widget.style.display_name.text_color = lua.table_from([255, 210, 160, 40])
+    custom_weapon_widget.style.background_gradient.color = lua.table_from([255, 210, 160, 40])
+    custom_weapon_widget.style.rarity_tag.color = lua.table_from([255, 210, 160, 40])
+    assert layout.reapply_pending_item_customization_styles(mod) == 1
+    assert layout.item_customization_reapply_pending() is False
+    assert tuple(custom_weapon_widget.style.display_name.text_color[index] for index in range(1, 5)) == (255, 10, 20, 30)
+    assert tuple(custom_weapon_widget.style.background_gradient.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
+    assert tuple(custom_weapon_widget.style.rarity_tag.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
+
+    # A later GSC style/owner repaint queues the retained weak widget directly;
+    # flushing it is still one-shot rather than a recurring grid scan.
+    custom_weapon_widget.style.background_gradient.color = lua.table_from([255, 180, 180, 180])
+    assert layout.queue_tracked_item_customization_reapply() == 1
+    assert layout.reapply_pending_item_customization_styles(mod) == 1
+    assert tuple(custom_weapon_widget.style.background_gradient.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
+    globals_.god_stat_checker_background_owner = False
 
     # The opt-in title policy normalizes line breaks, shrinks only to the
     # configured minimum, and truncates the custom base while preserving Mark.
