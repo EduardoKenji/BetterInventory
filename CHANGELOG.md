@@ -1,6 +1,6 @@
 # BetterInventory changelog
 
-## 3.0.1 - 2026-08-26
+## 3.1.0 - 2026-08-26
 
 - Blocks enabled crafting mutations before the first purchase when native Hadron progression is locked, including the reported level-1 Auto Crafter path.
 - Requires affirmative selected-family mastery discovery for mastery automation on characters below level 30 while preserving valid low-level and Psych Ward workflows.

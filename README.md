@@ -2,7 +2,7 @@
 
 [![BetterInventory verification](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml/badge.svg)](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml)
 
-> Current release: **v3.0.1** (2026-08-26). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
+> Current release: **v3.1.0** (2026-08-26). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
 
 BetterInventory is a standalone inventory and item-management mod for Warhammer 40,000: Darktide. It adds responsive weapon and Curio cards, richer item information, configurable sorting, supported vendor layouts, optional mod integrations, and safety-gated inventory workflows.
 
@@ -19,13 +19,13 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - A bounded inventory-options panel for sorting, discard rules, integrations, and view-specific controls.
 - Optional Quick Discard, Automatic Discard, Automatic Curio Buyer, and Auto Crafter workflows with explicit ownership, authoritative revalidation, and fail-closed behavior.
 
-## What's new in v3.0.1
+## What's new in v3.1.0
 
 - Auto Crafter now checks Darktide's native Hadron and selected weapon-family mastery unlocks before purchasing, blocking the reported level-1 runaway path without blanket-disabling legitimate under-30 characters.
 - Target searches continue strictly to their configured Ordo-docket or optional maximum-purchase boundary; there is no hidden 40-purchase or incomplete-projection acquisition limit.
 - Pre-target misses are processed in rolling eight-item mastery-fodder batches. The closest finite fallback is reserved when enabled, exact matches after purchase 40 remain reachable, and fallback-off runs never invent or favorite a final weapon.
 - BetterInventory reuses native weapon-card family names already decorated by GodRolls, preserving its stars and colours while avoiding a redundant second full-stat projection on compatible cards.
-- The accompanying [LadyElina777 incident audit](docs/v3.0.1-ladyelina777-auto-crafter-audit.md) traces the inventory crash to preventable inventory growth and duplicate third-party stat work amplifying Darktide's fixed Lua-heap pressure; no duplicate layout expansion, infinite rebuild, or BetterInventory retention leak was reproduced.
+- The accompanying [LadyElina777 incident audit](docs/v3.1.0-ladyelina777-auto-crafter-audit.md) traces the inventory crash to preventable inventory growth and duplicate third-party stat work amplifying Darktide's fixed Lua-heap pressure; no duplicate layout expansion, infinite rebuild, or BetterInventory retention leak was reproduced.
 
 ## What changed in v3.0.0
 
@@ -314,7 +314,7 @@ Run the complete repository verification from the project root:
 powershell -ExecutionPolicy Bypass -File .\tests\verify.ps1
 ```
 
-The v3.0.1 suite currently discovers 44 behavior-test files and 166 named cases. To run the behavior suite directly with risk-weighted Lua coverage:
+The v3.1.0 suite currently discovers 44 behavior-test files and 166 named cases. To run the behavior suite directly with risk-weighted Lua coverage:
 
 ```powershell
 py -3 .\tests\run_tests.py --timeout-seconds 45 --coverage-output lua-coverage.json

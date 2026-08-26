@@ -1,4 +1,4 @@
-local MOD_VERSION = "3.0.1"
+local MOD_VERSION = "3.1.0"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
