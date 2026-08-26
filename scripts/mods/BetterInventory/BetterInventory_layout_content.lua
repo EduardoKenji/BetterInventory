@@ -1590,10 +1590,42 @@ local function colors_match(left, right)
 		return false
 	end
 
-	return left[1] == right[1]
-		and left[2] == right[2]
+	-- Darktide animates alpha on card styles. Color ownership lives in RGB;
+	-- comparing alpha would turn the bounded reconciliation into a needless
+	-- per-frame repaint whenever a customized card is hovered or selected.
+	return left[2] == right[2]
 		and left[3] == right[3]
 		and left[4] == right[4]
+end
+
+local function live_item_customization_record(mod, widget)
+	local content = widget and widget.content
+	local element = content and content.element
+	local item = item_from_element(element)
+	local customization = item_customization(mod, item)
+	local name_color = customization and customization.name_color
+	local background_color = customization and customization.background_color
+
+	if type(name_color) ~= "table" and type(background_color) ~= "table" then
+		return
+	end
+
+	local preserve_shading = customization.background_preserve_shading
+
+	if preserve_shading == nil then
+		preserve_shading = setting(mod, "custom_item_preserve_card_shading", true)
+	end
+
+	local record = {
+		element = element or false,
+		name_color = name_color,
+		background_color = background_color,
+		preserve_shading = preserve_shading == true,
+	}
+
+	tracked_item_customization_widgets[widget] = record
+
+	return record
 end
 
 local function style_color_matches(style, field_name, expected)
@@ -1706,17 +1738,26 @@ Content.reapply_tracked_item_customization_style = function(mod, widget)
 	local record = tracked_item_customization_widgets[widget]
 
 	if type(record) ~= "table" then
-		pending_item_customization_widgets[widget] = nil
+		-- Character Overview widgets can be initialized before another mod starts
+		-- tracking/repainting them, or their weak tracking record can disappear
+		-- during a view rebuild. Resolve only this bounded widget from BI's live
+		-- customization store instead of assuming earlier tracking survived.
+		record = live_item_customization_record(mod, widget)
 
-		return false
+		if type(record) ~= "table" then
+			pending_item_customization_widgets[widget] = nil
+
+			return false
+		end
 	end
 
 	local pending = pending_item_customization_widgets[widget] ~= nil
 
-	-- GSC can repaint tracked cards after initialization and after later verdict
-	-- changes. Compare only BetterInventory-customized widgets from the normal
-	-- blueprint update path; ordinary cards avoid provider calls and color work.
-	if not pending and (not god_stat_checker_owns_background() or tracked_item_customization_matches(widget, record)) then
+	-- Explicit per-item customization is always highest priority. Do not gate
+	-- repair on the selected tier-background owner: GSC can repaint its retained
+	-- widgets during startup, reload, or verdict changes before that integration
+	-- state settles. Ordinary cards still exit above without color work.
+	if not pending and tracked_item_customization_matches(widget, record) then
 		return false
 	end
 

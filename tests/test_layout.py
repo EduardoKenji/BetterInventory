@@ -4610,6 +4610,51 @@ def main() -> None:
     assert tuple(custom_weapon_widget.style.background_gradient.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
     globals_.god_stat_checker_background_owner = False
 
+    # Explicit per-item colors outrank GSC independently of tier-background
+    # ownership state. Cover startup/reload windows where GSC already repainted
+    # a retained widget before BI's integration state settled.
+    custom_weapon_widget.style.display_name.text_color = lua.table_from([255, 210, 160, 40])
+    custom_weapon_widget.style.background_gradient.color = lua.table_from([255, 210, 160, 40])
+    custom_weapon_widget.style.rarity_tag.color = lua.table_from([255, 210, 160, 40])
+    assert layout.reapply_tracked_item_customization_style(mod, custom_weapon_widget) is True
+    assert tuple(custom_weapon_widget.style.display_name.text_color[index] for index in range(1, 5)) == (255, 10, 20, 30)
+    assert tuple(custom_weapon_widget.style.background_gradient.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
+    assert tuple(custom_weapon_widget.style.rarity_tag.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
+
+    # Alpha is UI animation state, not color ownership. Hover fade alone must
+    # not trigger another customization repaint.
+    custom_weapon_widget.style.background_gradient.color[1] = 128
+    assert layout.reapply_tracked_item_customization_style(mod, custom_weapon_widget) is False
+    assert custom_weapon_widget.style.background_gradient.color[1] == 128
+
+    # Reconciliation can recover a customized retained widget even without an
+    # earlier weak-table tracking record.
+    untracked_custom_widget = lua.table_from(
+        {
+            "content": lua.table_from({"element": custom_weapon_element}),
+            "style": lua.table_from(
+                {
+                    "display_name": lua.table_from(
+                        {
+                            "text_color": lua.table_from([255, 210, 160, 40]),
+                            "default_color": lua.table_from([255, 210, 160, 40]),
+                            "hover_color": lua.table_from([255, 210, 160, 40]),
+                        }
+                    ),
+                    "background_gradient": lua.table_from(
+                        {"color": lua.table_from([255, 210, 160, 40])}
+                    ),
+                    "rarity_tag": lua.table_from(
+                        {"color": lua.table_from([255, 210, 160, 40])}
+                    ),
+                }
+            ),
+        }
+    )
+    assert layout.reapply_tracked_item_customization_style(mod, untracked_custom_widget) is True
+    assert tuple(untracked_custom_widget.style.display_name.text_color[index] for index in range(1, 5)) == (255, 10, 20, 30)
+    assert tuple(untracked_custom_widget.style.background_gradient.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
+
     # The opt-in title policy normalizes line breaks, shrinks only to the
     # configured minimum, and truncates the custom base while preserving Mark.
     mod.settings.force_weapon_name_single_line = True
