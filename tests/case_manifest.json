@@ -214,10 +214,10 @@
     {"name": "dynamic_material_repair", "risk": "critical", "start_line": 1, "end_line": 365}
   ],
   "test_custom_tier.py": [
-    {"name": "standalone_classification_and_red_weapons_compatibility", "risk": "critical", "start_line": 1, "end_line": 335}
+    {"name": "standalone_classification_and_red_weapons_compatibility", "risk": "critical", "start_line": 1, "end_line": 359}
   ],
   "test_god_stat_checker_integration.py": [
-    {"name": "exclusive_background_ownership_and_lifecycle_fallback", "risk": "critical", "start_line": 1, "end_line": 287}
+    {"name": "exclusive_background_ownership_and_lifecycle_fallback", "risk": "critical", "start_line": 1, "end_line": 304}
   ],
   "test_layout.py": [
     {"name": "card_geometry", "risk": "high", "start_line": 613, "end_line": 1463},

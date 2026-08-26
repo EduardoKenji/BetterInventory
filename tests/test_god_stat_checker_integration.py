@@ -120,8 +120,25 @@ def main() -> None:
         '''
     )
 
+    # Darktide's mod environment can expose get_mod through _ENV without
+    # placing it directly on _G. Reproduce that lookup contract so a rawget
+    # regression makes GSC appear absent after Ctrl+Shift+R.
+    lua.globals().integration_source = MODULE_PATH.read_text(encoding="utf-8")
     integration = lua.execute(
-        MODULE_PATH.read_text(encoding="utf-8"), name=str(MODULE_PATH)
+        r'''
+        local injected_get_mod = get_mod
+        get_mod = nil
+        local environment = setmetatable({}, {
+            __index = function(_, key)
+                if key == "get_mod" then
+                    return injected_get_mod
+                end
+                return _G[key]
+            end,
+        })
+        local chunk = assert(load(integration_source, "god-stat-checker-integration", "t", environment))
+        return chunk()
+        '''
     )
     lua.globals().integration = integration
     mod = lua.globals().better_inventory_mod

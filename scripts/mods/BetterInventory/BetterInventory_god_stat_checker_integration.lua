@@ -78,7 +78,9 @@ local function sync_owner_settings(source_setting_id)
 end
 
 local function resolve_god_stat_checker()
-	local resolver = rawget(_G, "get_mod")
+	-- DMF exposes get_mod through the mod script environment. It is not
+	-- guaranteed to be a raw field on _G (notably after Ctrl+Shift+R).
+	local resolver = get_mod
 
 	if type(resolver) ~= "function" then
 		return

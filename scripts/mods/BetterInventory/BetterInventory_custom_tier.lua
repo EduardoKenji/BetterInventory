@@ -319,6 +319,45 @@ local function install_item_overrides()
 		Items._better_inventory_custom_tier_state = state
 	end
 
+	-- God Stat Checker can be installed after BetterInventory and loaded by a
+	-- DMF hot reload. In that order it captures our existing wrapper as its
+	-- "original", then our reinstall would capture GSC's new wrapper in return.
+	-- Repair that two-node cycle before either fallback is refreshed.
+	local gsc_captured_color_wrapper = type(state.color_wrapper) == "function"
+		and Items.gsc_original_rarity_color == state.color_wrapper
+	local gsc_captured_name_wrapper = type(state.name_wrapper) == "function"
+		and Items.gsc_original_rarity_display_name == state.name_wrapper
+
+	if type(state.base_color_fallback) ~= "function" then
+		if gsc_captured_color_wrapper and type(state.color_fallback) == "function" then
+			state.base_color_fallback = state.color_fallback
+		elseif type(Items.gsc_original_rarity_color) == "function" then
+			state.base_color_fallback = Items.gsc_original_rarity_color
+		elseif type(state.color_fallback) == "function" then
+			state.base_color_fallback = state.color_fallback
+		else
+			state.base_color_fallback = Items.rarity_color
+		end
+	end
+	if type(state.base_name_fallback) ~= "function" then
+		if gsc_captured_name_wrapper and type(state.name_fallback) == "function" then
+			state.base_name_fallback = state.name_fallback
+		elseif type(Items.gsc_original_rarity_display_name) == "function" then
+			state.base_name_fallback = Items.gsc_original_rarity_display_name
+		elseif type(state.name_fallback) == "function" then
+			state.base_name_fallback = state.name_fallback
+		else
+			state.base_name_fallback = Items.rarity_display_name
+		end
+	end
+
+	if gsc_captured_color_wrapper and type(state.base_color_fallback) == "function" then
+		Items.gsc_original_rarity_color = state.base_color_fallback
+	end
+	if gsc_captured_name_wrapper and type(state.base_name_fallback) == "function" then
+		Items.gsc_original_rarity_display_name = state.base_name_fallback
+	end
+
 	if Items.rarity_color ~= state.color_wrapper then
 		state.color_fallback = Items.rarity_color
 	end
