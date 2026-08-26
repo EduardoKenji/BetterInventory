@@ -82,9 +82,15 @@ def main() -> None:
     assert 'return enabled(mod) and (is_morningstar()' in curio_acquisition
 
     # Preserve Potty's measured CPU fix: BetterInventory must not own shared
-    # native update/draw chains to obtain lifecycle cleanup.
+    # native update/draw chains. GSC compatibility uses one safe post-update
+    # callback bounded to Darktide's handful of loadout slots; no grid scan or
+    # wrapping hook is allowed.
     assert 'mod:hook_safe(ViewElementGrid, "update"' not in runtime
-    assert 'mod:hook_safe(InventoryView, "update"' not in runtime
+    assert 'mod:hook_safe(InventoryView, "update"' in overview
+    assert 'mod:hook(InventoryView, "update"' not in overview
+    assert "MAX_CHARACTER_OVERVIEW_LOADOUT_WIDGETS = 8" in overview
+    assert "math.min(#widgets, MAX_CHARACTER_OVERVIEW_LOADOUT_WIDGETS)" in overview
+    assert "pairs(widgets)" not in overview
     assert 'mod:hook(InventoryWeaponsView, "update"' not in runtime
 
     # Quick Level Mastery's vendor alignment may be revisited every frame, but

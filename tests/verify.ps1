@@ -207,7 +207,7 @@ if ((($features -notmatch 'return automatic_discard_state\.delete_inflight' -and
 	throw "Automatic discard must retain shared ownership until backend deletion settles."
 }
 
-if ($main -notmatch '_better_inventory_myfavorites_active\s*=\s*true' -or $main -notmatch 'mod:hook_safe\(InventoryWeaponsView,\s*"update"' -or $main -match 'mod:hook_safe\(ViewElementGrid,\s*"update"' -or $main -match 'mod:hook_safe\(InventoryView,\s*"update"' -or $main -notmatch 'CharacterOverviewUI\.update_registered_views\(dt\)' -or $featureDomains -notmatch 'Domains\.markers\.update' -or $featureDomains -notmatch 'dirty_marker_grids') {
+if ($main -notmatch '_better_inventory_myfavorites_active\s*=\s*true' -or $main -notmatch 'mod:hook_safe\(InventoryWeaponsView,\s*"update"' -or $main -match 'mod:hook_safe\(ViewElementGrid,\s*"update"' -or ([regex]::Matches($main, 'mod:hook_safe\(InventoryView,\s*"update"')).Count -ne 1 -or $main -match 'mod:hook\(InventoryView,\s*"update"' -or $main -notmatch 'MAX_CHARACTER_OVERVIEW_LOADOUT_WIDGETS\s*=\s*8' -or $main -notmatch 'math\.min\(#widgets,\s*MAX_CHARACTER_OVERVIEW_LOADOUT_WIDGETS\)' -or $main -notmatch 'CharacterOverviewUI\.update_registered_views\(dt\)' -or $featureDomains -notmatch 'Domains\.markers\.update' -or $featureDomains -notmatch 'dirty_marker_grids') {
 	throw "View-scoped UI updates and dirty MyFavorites processing were not found."
 }
 

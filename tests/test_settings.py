@@ -222,6 +222,11 @@ def main() -> None:
 			end,
             configure_item_blueprint = function() end,
 			configure_grid = function() end,
+			reapply_tracked_item_customization_style = function(_, widget)
+				loadout_customization_reapply_calls = loadout_customization_reapply_calls + 1
+
+				return widget and widget.customization_dirty == true
+			end,
 			update_highlight_animation = function(animation_mod)
 				highlight_animation_updates = highlight_animation_updates + 1
 				highlight_animation_mod = animation_mod
@@ -236,6 +241,7 @@ def main() -> None:
 			},
 		}
 		highlight_animation_updates = 0
+		loadout_customization_reapply_calls = 0
 		inventory_sort_syncs = 0
 		quick_discard_syncs = 0
 		curio_acquisition_syncs = 0
@@ -317,6 +323,7 @@ def main() -> None:
         }
 		test_inventory_view = {
 			_create_entry_widget_from_config = function() end,
+			update = function() end,
 		}
 		test_view_element_grid = {
 			_create_entry_widget_from_config = function() end,
@@ -514,8 +521,24 @@ def main() -> None:
     globals_ = lua.globals()
     mod = globals_.test_mod
     settings = globals_.settings
-    assert globals_.captured_character_overview_update_hook is None
+    assert globals_.captured_character_overview_update_hook is not None
     assert globals_.captured_grid_update_hook is None
+
+    # God Stat Checker repaints Character Overview cards in its normal update
+    # hook. BetterInventory's post-update safe hook must inspect only Darktide's
+    # bounded loadout list and run after that repaint, before the next draw.
+    loadout_hook_view = lua.table_from(
+        {
+            "_loadout_widgets": lua.table_from(
+                [
+                    lua.table_from({"customization_dirty": True}),
+                    lua.table_from({"customization_dirty": False}),
+                ]
+            )
+        }
+    )
+    globals_.captured_character_overview_update_hook(loadout_hook_view)
+    assert globals_.loadout_customization_reapply_calls == 2
     settings.new_item_highlight_mode = "pulsing_dashes"
     mod.on_setting_changed("new_item_highlight_mode")
     mod.update(0.016)
