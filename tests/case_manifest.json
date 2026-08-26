@@ -206,9 +206,9 @@
         {"name": "panel_lifecycle", "risk": "high", "start_line": 1970, "end_line": 3276}
   ],
   "test_item_customization.py": [
-      {"name": "dirty_save_outcomes", "risk": "high", "start_line": 225, "end_line": 442},
-      {"name": "bounded_retry_and_disable", "risk": "high", "start_line": 443, "end_line": 782},
-      {"name": "callback_failure_safety", "risk": "high", "start_line": 783, "end_line": 1007}
+    {"name": "dirty_save_outcomes", "risk": "high", "start_line": 225, "end_line": 442},
+    {"name": "bounded_retry_and_disable", "risk": "high", "start_line": 443, "end_line": 764},
+    {"name": "callback_failure_safety", "risk": "high", "start_line": 765, "end_line": 990}
   ],
   "test_material_safety.py": [
     {"name": "dynamic_material_repair", "risk": "critical", "start_line": 1, "end_line": 365}
@@ -217,13 +217,13 @@
     {"name": "standalone_classification_and_red_weapons_compatibility", "risk": "critical", "start_line": 1, "end_line": 359}
   ],
   "test_god_stat_checker_integration.py": [
-    {"name": "exclusive_background_ownership_and_lifecycle_fallback", "risk": "critical", "start_line": 1, "end_line": 322}
+    {"name": "exclusive_background_ownership_and_lifecycle_fallback", "risk": "critical", "start_line": 1, "end_line": 307}
   ],
   "test_layout.py": [
     {"name": "card_geometry", "risk": "high", "start_line": 613, "end_line": 1469},
       {"name": "weapon_modifier_data_only_resolution", "risk": "critical", "start_line": 1470, "end_line": 1850},
         {"name": "content_and_resource_ownership", "risk": "high", "start_line": 1851, "end_line": 3062},
-    {"name": "integration_boundaries", "risk": "medium", "start_line": 3063, "end_line": 4990}
+    {"name": "integration_boundaries", "risk": "medium", "start_line": 3063, "end_line": 5076}
   ],
   "test_operation_arbiter.py": [
     {"name": "manual_automatic_exclusion", "risk": "critical", "start_line": 20, "end_line": 34},

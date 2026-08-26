@@ -4518,7 +4518,6 @@ def main() -> None:
         lua.execute(
             """
             preserve_test_shading = true
-            god_stat_checker_background_owner = false
             return {
                 get = function(_, gear_id)
                     if gear_id == "custom-weapon" then
@@ -4528,14 +4527,19 @@ def main() -> None:
                             background_color = { 255, 40, 50, 60 },
                             background_preserve_shading = preserve_test_shading,
                         }
+                    elseif gear_id == "background-only-weapon" then
+                        return {
+                            background_color = { 255, 40, 50, 60 },
+                        }
+                    elseif gear_id == "name-only-weapon" then
+                        return {
+                            name_color = { 255, 10, 20, 30 },
+                        }
                     elseif gear_id == "single-line-weapon" then
                         return {
                             name = "John Darktide\\nHelbore Lasgun",
                         }
                     end
-                end,
-                god_stat_checker_owns_background = function()
-                    return god_stat_checker_background_owner
                 end,
             }
             """
@@ -4574,21 +4578,104 @@ def main() -> None:
     assert tuple(custom_weapon_widget.style.background_gradient.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
     assert tuple(custom_weapon_widget.style.rarity_tag.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
 
+    # Custom names and backgrounds own only their explicitly configured field.
+    # Background-only records preserve GSC verdict text, including later grade
+    # changes, while name-only records preserve GSC's current card background.
+    background_only_element = lua.eval("table.clone")(narrow_weapon_element)
+    background_only_element.item.gear_id = "background-only-weapon"
+    background_only_widget = lua.table_from(
+        {
+            "content": lua.table_from({"element": background_only_element}),
+            "style": lua.table_from(
+                {
+                    "display_name": lua.table_from(
+                        {"text_color": lua.table_from([255, 210, 160, 40])}
+                    ),
+                    "background_gradient": lua.table_from(
+                        {"color": lua.table_from([255, 210, 160, 40])}
+                    ),
+                    "rarity_tag": lua.table_from(
+                        {"color": lua.table_from([255, 210, 160, 40])}
+                    ),
+                }
+            ),
+        }
+    )
+    layout.apply_item_customization_style(
+        mod, background_only_widget, background_only_element
+    )
+    assert tuple(
+        background_only_widget.style.display_name.text_color[index]
+        for index in range(1, 5)
+    ) == (255, 210, 160, 40)
+    background_only_widget.style.display_name.text_color = lua.table_from(
+        [255, 240, 190, 20]
+    )
+    background_only_widget.style.background_gradient.color = lua.table_from(
+        [255, 170, 170, 170]
+    )
+    assert layout.reapply_tracked_item_customization_style(
+        mod, background_only_widget
+    ) is True
+    assert tuple(
+        background_only_widget.style.display_name.text_color[index]
+        for index in range(1, 5)
+    ) == (255, 240, 190, 20)
+    assert tuple(
+        background_only_widget.style.background_gradient.color[index]
+        for index in range(1, 5)
+    ) == (255, 40, 50, 60)
+
+    name_only_element = lua.eval("table.clone")(narrow_weapon_element)
+    name_only_element.item.gear_id = "name-only-weapon"
+    name_only_widget = lua.table_from(
+        {
+            "content": lua.table_from({"element": name_only_element}),
+            "style": lua.table_from(
+                {
+                    "display_name": lua.table_from(
+                        {"text_color": lua.table_from([255, 210, 160, 40])}
+                    ),
+                    "background_gradient": lua.table_from(
+                        {"color": lua.table_from([255, 210, 160, 40])}
+                    ),
+                    "rarity_tag": lua.table_from(
+                        {"color": lua.table_from([255, 210, 160, 40])}
+                    ),
+                }
+            ),
+        }
+    )
+    layout.apply_item_customization_style(mod, name_only_widget, name_only_element)
+    name_only_widget.style.display_name.text_color = lua.table_from(
+        [255, 170, 170, 170]
+    )
+    name_only_widget.style.background_gradient.color = lua.table_from(
+        [255, 240, 190, 20]
+    )
+    assert layout.reapply_tracked_item_customization_style(
+        mod, name_only_widget
+    ) is True
+    assert tuple(
+        name_only_widget.style.display_name.text_color[index]
+        for index in range(1, 5)
+    ) == (255, 10, 20, 30)
+    assert tuple(
+        name_only_widget.style.background_gradient.color[index]
+        for index in range(1, 5)
+    ) == (255, 240, 190, 20)
+
     # GSC 1.1.2 tracks the card after BI's blueprint initializer returns and
-    # deliberately repaints BI custom colors. The selected GSC owner still
-    # grades ordinary items, but explicit per-item name/background colors are
-    # reapplied from that card's next normal blueprint update and remain highest
-    # priority without scanning every widget in the grid.
-    globals_.god_stat_checker_background_owner = True
+    # deliberately repaints BI custom colors. Explicit per-item name/background
+    # colors are reapplied from that card's next normal blueprint update and
+    # remain highest priority without scanning every widget in the grid.
     layout.apply_item_customization_style(mod, custom_weapon_widget, custom_weapon_element)
-    assert layout.item_customization_reapply_pending() is True
     custom_weapon_widget.style.display_name.text_color = lua.table_from([255, 210, 160, 40])
     custom_weapon_widget.style.background_gradient.color = lua.table_from([255, 210, 160, 40])
     custom_weapon_widget.style.rarity_tag.color = lua.table_from([255, 210, 160, 40])
     updates_before_gsc_reapply = globals_.sentinel_update_calls
     custom_weapon_blueprint.update(None, custom_weapon_widget)
     assert globals_.sentinel_update_calls == updates_before_gsc_reapply + 1
-    assert layout.item_customization_reapply_pending() is False
     assert tuple(custom_weapon_widget.style.display_name.text_color[index] for index in range(1, 5)) == (255, 10, 20, 30)
     assert tuple(custom_weapon_widget.style.background_gradient.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
     assert tuple(custom_weapon_widget.style.rarity_tag.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
@@ -4601,14 +4688,10 @@ def main() -> None:
     assert tuple(custom_weapon_widget.style.background_gradient.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
     assert tuple(custom_weapon_widget.style.rarity_tag.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
 
-    # Ownership/style reconciliation can still queue all retained custom cards;
-    # each card consumes only its own weak-table entry on its next update.
+    # Retained custom cards repair later repaints from their normal update.
     custom_weapon_widget.style.background_gradient.color = lua.table_from([255, 170, 170, 170])
-    assert layout.queue_tracked_item_customization_reapply() == 1
     custom_weapon_blueprint.update(None, custom_weapon_widget)
-    assert layout.item_customization_reapply_pending() is False
     assert tuple(custom_weapon_widget.style.background_gradient.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
-    globals_.god_stat_checker_background_owner = False
 
     # Explicit per-item colors outrank GSC independently of tier-background
     # ownership state. Cover startup/reload windows where GSC already repainted

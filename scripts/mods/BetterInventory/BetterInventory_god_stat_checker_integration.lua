@@ -24,7 +24,6 @@ local BACKGROUND_STYLES = {
 
 local mod
 local custom_tier
-local item_customization
 local god_stat_checker
 local framework_enabled = true
 local applying_gsc_style = false
@@ -247,16 +246,6 @@ local function patch_gsc_original_rarity_color()
 	return true
 end
 
-local function queue_custom_item_style_reapply()
-	if type(item_customization) ~= "table" or type(item_customization.queue_background_reapply) ~= "function" then
-		return 0
-	end
-
-	local ok, queued = pcall(item_customization.queue_background_reapply)
-
-	return ok and tonumber(queued) or 0
-end
-
 local function reconcile()
 	god_stat_checker = resolve_god_stat_checker()
 	custom_tier_feature_enabled = framework_enabled and read_setting(mod, "custom_tier_enabled", true) ~= false
@@ -271,8 +260,6 @@ local function reconcile()
 	else
 		reconciled = restore_gsc_style()
 	end
-
-	queue_custom_item_style_reapply()
 
 	return reconciled
 end
@@ -344,10 +331,9 @@ local function install_gsc_lifecycle_hooks()
 	return true
 end
 
-Integration.install = function(configured_mod, custom_tier_module, item_customization_module)
+Integration.install = function(configured_mod, custom_tier_module)
 	mod = configured_mod or mod
 	custom_tier = custom_tier_module or custom_tier
-	item_customization = item_customization_module or item_customization
 	framework_enabled = true
 	sync_owner_settings()
 	god_stat_checker = resolve_god_stat_checker()
@@ -356,10 +342,10 @@ Integration.install = function(configured_mod, custom_tier_module, item_customiz
 	return reconcile()
 end
 
-Integration.on_enabled = function(configured_mod, custom_tier_module, item_customization_module)
+Integration.on_enabled = function(configured_mod, custom_tier_module)
 	framework_enabled = true
 
-	return Integration.install(configured_mod, custom_tier_module, item_customization_module)
+	return Integration.install(configured_mod, custom_tier_module)
 end
 
 Integration.on_disabled = function()
@@ -407,7 +393,6 @@ Integration._test = {
 	normalize_owner = normalize_owner,
 	observe_gsc_setting_change = observe_gsc_setting_change,
 	patch_gsc_original_rarity_color = patch_gsc_original_rarity_color,
-	queue_custom_item_style_reapply = queue_custom_item_style_reapply,
 	reconcile = reconcile,
 	restore_gsc_style = restore_gsc_style,
 	setting_ids = {

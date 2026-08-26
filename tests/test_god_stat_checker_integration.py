@@ -89,14 +89,6 @@ def main() -> None:
             end,
         }
 
-        customization_reapply_requests = 0
-        item_customization_module = {
-            queue_background_reapply = function()
-                customization_reapply_requests = customization_reapply_requests + 1
-                return 2
-            end,
-        }
-
         better_inventory_mod = {
             get = function(_, setting_id)
                 better_inventory_get_calls = better_inventory_get_calls + 1
@@ -162,7 +154,6 @@ def main() -> None:
     assert integration.install(
         mod,
         lua.globals().custom_tier_module,
-        lua.globals().item_customization_module,
     ) is True
     assert settings.god_stat_checker_background_owner == "custom_tier"
     assert settings.custom_tier_god_stat_checker_background_owner == "custom_tier"
@@ -171,7 +162,6 @@ def main() -> None:
     assert gsc_settings.opt_card_style == "verdict_text_only"
     assert gsc.settings.card_style == "verdict_text_only"
     assert lua.globals().god_stat_checker_repaints == 1
-    assert lua.globals().customization_reapply_requests == 1
     custom_color, custom_dark = items.rarity_color(qualifying)
     assert color_channels(custom_color) == [255, 210, 30, 40]
     assert color_channels(custom_dark) == [255, 126, 18, 24]
@@ -191,7 +181,6 @@ def main() -> None:
     # restores its exact saved style, so list cards and the right detail panel
     # resolve through the same grade-color owner.
     settings.custom_tier_god_stat_checker_background_owner = "god_stat_checker"
-    reapply_requests_before_owner_change = lua.globals().customization_reapply_requests
     assert integration.on_setting_changed(
         mod, "custom_tier_god_stat_checker_background_owner"
     ) is True
@@ -199,10 +188,6 @@ def main() -> None:
     assert settings._god_stat_checker_card_style_forced_v1 is False
     assert gsc_settings.opt_card_style == "verdict_bg_tier_text"
     assert integration.god_stat_checker_owns_background() is True
-    assert (
-        lua.globals().customization_reapply_requests
-        > reapply_requests_before_owner_change
-    )
     grade_color, _ = items.rarity_color(qualifying)
     assert color_channels(grade_color) == [255, 210, 160, 40]
 

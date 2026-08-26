@@ -1,7 +1,5 @@
 local ItemCustomization = {}
 local storage_hooks_installed = false
-local background_owner_provider
-local layout_adapter
 
 local NAME_IT_OWNS_NAMES_SETTING_ID = "_custom_item_name_it_owns_names"
 
@@ -61,28 +59,6 @@ end
 
 ItemCustomization.get = function(mod, gear_id)
 	return Store.get(mod, gear_id)
-end
-
-ItemCustomization.set_background_owner_provider = function(provider)
-	background_owner_provider = provider
-end
-
-ItemCustomization.god_stat_checker_owns_background = function()
-	if type(background_owner_provider) ~= "table" or type(background_owner_provider.god_stat_checker_owns_background) ~= "function" then
-		return false
-	end
-
-	local ok, owns_background = pcall(background_owner_provider.god_stat_checker_owns_background)
-
-	return ok and owns_background == true
-end
-
-ItemCustomization.queue_background_reapply = function()
-	if type(layout_adapter) ~= "table" or type(layout_adapter.queue_tracked_item_customization_reapply) ~= "function" then
-		return 0
-	end
-
-	return layout_adapter.queue_tracked_item_customization_reapply()
 end
 
 ItemCustomization.update = function(mod, gear_id, changes)
@@ -322,7 +298,6 @@ local function install_storage_hooks(mod)
 end
 
 ItemCustomization.install = function(mod, InventoryWeaponsView, layout)
-	layout_adapter = layout
 	local installed = Editor.install(mod, InventoryWeaponsView, layout)
 
 	if installed then

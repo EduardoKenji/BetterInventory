@@ -2,8 +2,6 @@ local Content = {}
 local columns
 local item_customization_provider
 local tracked_item_customization_widgets = setmetatable({}, { __mode = "k" })
-local pending_item_customization_widgets = setmetatable({}, { __mode = "k" })
-local reapplying_item_customization = false
 
 local Items = require("scripts/utilities/items")
 local RankSettings = require("scripts/settings/item/rank_settings")
@@ -644,16 +642,6 @@ local function item_customization(mod, item)
 	local gear_id = item and item.gear_id
 
 	return gear_id and item_customization_provider.get(mod, gear_id) or nil
-end
-
-local function god_stat_checker_owns_background()
-	if type(item_customization_provider) ~= "table" or type(item_customization_provider.god_stat_checker_owns_background) ~= "function" then
-		return false
-	end
-
-	local ok, owns_background = pcall(item_customization_provider.god_stat_checker_owns_background)
-
-	return ok and owns_background == true
 end
 
 local function numeric_setting(mod, setting_id, fallback, minimum, maximum)
@@ -1537,17 +1525,6 @@ local function format_item_name(mod, widget, element, append_mark_to_name, force
 	content.sub_display_name = valid_weapon_name_part(pattern_name) and pattern_name or ""
 end
 
-local function apply_custom_color(style, color, field_name)
-	if type(style) ~= "table" or type(style[field_name]) ~= "table" then
-		return
-	end
-
-	local backup_id = "better_inventory_original_" .. field_name
-
-	style[backup_id] = style[backup_id] or table.clone(style[field_name])
-	style[field_name] = table.clone(type(color) == "table" and color or style[backup_id])
-end
-
 local function restore_custom_color(style, field_name)
 	if type(style) ~= "table" then
 		return
@@ -1562,8 +1539,24 @@ local function restore_custom_color(style, field_name)
 	end
 end
 
+local function apply_custom_color(style, color, field_name)
+	if type(style) ~= "table" or type(style[field_name]) ~= "table" then
+		return
+	end
+
+	if type(color) ~= "table" then
+		restore_custom_color(style, field_name)
+
+		return
+	end
+
+	local backup_id = "better_inventory_original_" .. field_name
+
+	style[backup_id] = style[backup_id] or table.clone(style[field_name])
+	style[field_name] = table.clone(color)
+end
+
 local function restore_item_customization_style(widget)
-	pending_item_customization_widgets[widget] = nil
 	tracked_item_customization_widgets[widget] = nil
 
 	local style = widget and widget.style
@@ -1706,32 +1699,9 @@ local function apply_item_customization_style(mod, widget, element)
 			background_color = background_color,
 			preserve_shading = preserve_shading == true,
 		}
-
-		-- GSC 1.1.2 repaints a newly tracked card after BetterInventory's
-		-- blueprint initialization returns. Queue this exact widget for one
-		-- post-update reapply; no grid walk or recurring scan is needed.
-		if not reapplying_item_customization and god_stat_checker_owns_background() then
-			pending_item_customization_widgets[widget] = element or false
-		end
 	else
 		tracked_item_customization_widgets[widget] = nil
-		pending_item_customization_widgets[widget] = nil
 	end
-end
-
-Content.item_customization_reapply_pending = function()
-	return next(pending_item_customization_widgets) ~= nil
-end
-
-Content.queue_tracked_item_customization_reapply = function()
-	local queued = 0
-
-	for widget, record in pairs(tracked_item_customization_widgets) do
-		pending_item_customization_widgets[widget] = record.element
-		queued = queued + 1
-	end
-
-	return queued
 end
 
 Content.reapply_tracked_item_customization_style = function(mod, widget)
@@ -1745,29 +1715,20 @@ Content.reapply_tracked_item_customization_style = function(mod, widget)
 		record = live_item_customization_record(mod, widget)
 
 		if type(record) ~= "table" then
-			pending_item_customization_widgets[widget] = nil
-
 			return false
 		end
 	end
-
-	local pending = pending_item_customization_widgets[widget] ~= nil
 
 	-- Explicit per-item customization is always highest priority. Do not gate
 	-- repair on the selected tier-background owner: GSC can repaint its retained
 	-- widgets during startup, reload, or verdict changes before that integration
 	-- state settles. Ordinary cards still exit above without color work.
-	if not pending and tracked_item_customization_matches(widget, record) then
+	if tracked_item_customization_matches(widget, record) then
 		return false
 	end
 
-	pending_item_customization_widgets[widget] = nil
-	reapplying_item_customization = true
-
 	local element = record.element
 	local ok = pcall(apply_item_customization_style, mod, widget, element ~= false and element or nil)
-
-	reapplying_item_customization = false
 
 	return ok
 end
