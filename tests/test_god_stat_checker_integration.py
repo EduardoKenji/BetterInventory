@@ -136,7 +136,7 @@ def main() -> None:
                 return _G[key]
             end,
         })
-        local chunk = assert(load(integration_source, "god-stat-checker-integration", "t", environment))
+        local chunk = assert(load(integration_source, "BetterInventory_god_stat_checker_integration.lua", "t", environment))
         return chunk()
         '''
     )

@@ -1484,6 +1484,60 @@ def main() -> None:
         for index in range(1, 6)
     ) == ("80", "80", "80", "80", "60")
 
+    # The native weapon blueprint has already traversed the hooked family-name
+    # path before BetterInventory formats the card. Reuse that decorated result
+    # so GodRolls does not perform a second full WeaponStats projection.
+    lua.execute(
+        r'''
+        godroll_family_calls = 0
+        Localize = function(localization_id) return localization_id end
+        TestItems.weapon_lore_family_name = function(item)
+            godroll_family_calls = godroll_family_calls + 1
+
+            return "{#color(255,215,0)}★ " .. item.weapon_family_display_name.loc_id .. "{#reset()}"
+        end
+        '''
+    )
+    godroll_name = "{#color(255,215,0)}★ Force Sword{#reset()}"
+    godroll_item = lua.table_from(
+        {
+            "item_type": "WEAPON_MELEE",
+            "test_mark": "n/a",
+            "weapon_family_display_name": lua.table_from({"loc_id": "Force Sword"}),
+        }
+    )
+    godroll_element = lua.table_from(
+        {
+            "item": godroll_item,
+            "test_display_name": godroll_name,
+            "test_sub_display_name": "Mk VI",
+        }
+    )
+    godroll_widget = lua.table_from(
+        {
+            "content": lua.table_from({}),
+            "style": lua.table_from(
+                {
+                    "display_name": blueprint_pass(native_blueprint, "display_name").style,
+                }
+            ),
+        }
+    )
+    native_blueprint.init(
+        None,
+        godroll_widget,
+        godroll_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        native_blueprint,
+    )
+    assert globals_.godroll_family_calls == 0
+    assert godroll_widget.content.display_name == godroll_name
+    assert godroll_widget.content.better_inventory_native_family_name == godroll_name
+    lua.execute("Localize = nil; TestItems.weapon_lore_family_name = nil")
+
     # Slab Shield exposes a large, action-heavy weapon template. Inventory
     # cards need only its five base-stat identities; loading Darktide's full
     # WeaponStats calculator here can stall or crash the whole melee grid.

@@ -271,8 +271,6 @@ local function search_stop_message(reason)
 		search_insufficient_dockets = "Stopped because available Ordo dockets are insufficient.",
 		search_max_purchases = "Stopped after reaching weapon purchase limit.",
 		search_offer_missing = "Stopped because frozen Brunt weapon offer became unavailable.",
-		search_projection_unavailable = "Stopped because purchased weapons did not expose complete projected stats.",
-		search_safety_purchase_cap = "Stopped at the 40-weapon per-run safety limit.",
 		user_stopped = "Crafting stopped by user.",
 	}
 
@@ -440,9 +438,7 @@ local function reporter(ui_panel)
 				local search = payload and payload.search or {}
 				local target = search.target_offer or {}
 				local cap = search.cap_by_dockets and string.format(" Ordo dockets limit: %s.", tostring(search.docket_cap or "?")) or ""
-				local safety_cap = tonumber(search.pretarget_safety_cap)
-				local safety = safety_cap and string.format(" Per-run safety limit: %d weapons.", safety_cap) or ""
-				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), string.format("Started buying %s. Target: %s %s.%s%s", tostring(target.display_name or "selected weapon"), readable_stat_name({dump_stat_id = search.dump_stat}), tostring(search.target_dump or "?"), cap, safety))
+				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), string.format("Started buying %s. Target: %s %s.%s", tostring(target.display_name or "selected weapon"), readable_stat_name({dump_stat_id = search.dump_stat}), tostring(search.target_dump or "?"), cap))
 			elseif kind == "purchase_result" then
 				if ui_panel then
 					ui_panel:set_phase(payload and payload.search and payload.search.phase3 and "phase3_search_purchase" or "search_purchase")

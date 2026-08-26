@@ -2083,7 +2083,6 @@ function Controller.new(dependencies)
 			generation = self._generation,
 			cap_by_max_purchases = setting("auto_crafter_cap_by_max_purchases", false) == true,
 			max_purchases = tonumber(setting("auto_crafter_max_purchases", 100)) or 0,
-			pretarget_safety_cap = 40,
 			purchases = 0,
 			phase3 = setting("auto_crafter_level_mastery_20", true) == true,
 			running = true,

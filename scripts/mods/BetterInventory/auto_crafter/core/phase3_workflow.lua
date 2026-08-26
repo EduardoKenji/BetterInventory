@@ -23,10 +23,64 @@ function Phase3Workflow.install(self, services)
 	local function cleanup_without_target(phase3)
 		return phase3 and phase3.cleanup_without_target == true and phase3.target_candidate == nil
 	end
-	local function phase3_mastery_id(phase3)
-		return phase3 and (phase3.target_candidate and phase3.target_candidate.mastery_id or phase3.cleanup_mastery_id)
+	local function drain_search_without_target(phase3)
+		return phase3 and phase3.drain_search_without_target == true and phase3.target_candidate == nil
 	end
-	local function finish_after_deferred_cleanup(current)
+	local function process_without_target(phase3)
+		return cleanup_without_target(phase3) or drain_search_without_target(phase3)
+	end
+	local function phase3_mastery_id(phase3)
+		return phase3 and (phase3.target_candidate and phase3.target_candidate.mastery_id or phase3.cleanup_mastery_id or phase3.drain_mastery_id)
+	end
+	local function release_search_fallback(phase3, target)
+		local candidate = phase3 and phase3.fallback_candidate
+
+		if not candidate then
+			return
+		end
+
+		phase3.fallback_candidate = nil
+
+		if target and candidate.gear_id == target.gear_id then
+			return
+		end
+
+		if candidate.gear_id and phase3.purchased_spare_ids and phase3.purchased_spare_ids[candidate.gear_id] then
+			phase3.deferred_candidates[#phase3.deferred_candidates + 1] = candidate
+
+			return candidate
+		end
+	end
+	local function forget_purchased_spares(phase3, gear_ids)
+		if not phase3 or type(gear_ids) ~= "table" or #gear_ids == 0 then
+			return
+		end
+
+		local removed = {}
+
+		for _, gear_id in ipairs(gear_ids) do
+			removed[gear_id] = true
+		end
+
+		if type(phase3.purchased_spares) == "table" then
+			local retained = {}
+
+			for _, candidate in ipairs(phase3.purchased_spares) do
+				if candidate and not removed[candidate.gear_id] then
+					retained[#retained + 1] = candidate
+				end
+			end
+
+			phase3.purchased_spares = retained
+		end
+
+		for gear_id in pairs(removed) do
+			if phase3.purchased_spare_ids then
+				phase3.purchased_spare_ids[gear_id] = nil
+			end
+		end
+	end
+	local function finish_after_deferred_processing(current)
 		if cleanup_without_target(self._phase3) then
 			local phase3 = self._phase3
 			local search = self._search
@@ -44,6 +98,24 @@ function Phase3Workflow.install(self, services)
 			self:_stop_search(phase3.cleanup_stop_reason)
 
 			return true
+		end
+
+		if drain_search_without_target(self._phase3) then
+			local phase3 = self._phase3
+
+			phase3.current = current or phase3.current
+			phase3.cleanup_started = false
+			phase3.deferred_batch = nil
+			phase3.deferred_candidates = {}
+			phase3.deferred_index = 1
+			phase3.drain_mastery_id = nil
+			phase3.drain_search_without_target = false
+			operation_report("phase3_search_fodder_drain_complete", {
+				current = phase3.current,
+				fodder_count = phase3.fodder_count,
+			})
+
+			return self:_purchase_search_step(self._generation)
 		end
 
 		return self:_phase3_finish(current)
@@ -104,7 +176,7 @@ function Phase3Workflow.install(self, services)
 		local phase3 = self._phase3
 		local backend = self._backend
 
-		if not phase3 or not phase3.running or (not phase3.target_candidate and not cleanup_without_target(phase3)) then
+		if not phase3 or not phase3.running or (not phase3.target_candidate and not process_without_target(phase3)) then
 			return false
 		end
 
@@ -119,7 +191,7 @@ function Phase3Workflow.install(self, services)
 			local target = phase3.target_candidate
 			local mastery_id = phase3_mastery_id(phase3)
 			local queue = phase3.deferred_candidates or {}
-			local cleanup_candidates = phase3.purchased_spares or queue
+			local cleanup_candidates = drain_search_without_target(phase3) and queue or phase3.purchased_spares or queue
 			local gear_ids = {}
 			local included = {}
 
@@ -144,7 +216,7 @@ function Phase3Workflow.install(self, services)
 
 			if #gear_ids == 0 then
 				phase3.deferred_index = #queue + 1
-				finish_after_deferred_cleanup(current)
+				finish_after_deferred_processing(current)
 
 				return
 			end
@@ -167,12 +239,13 @@ function Phase3Workflow.install(self, services)
 						end
 					end
 
+					forget_purchased_spares(phase3, gear_ids)
 					phase3.deferred_index = #queue + 1
 					operation_report("phase3_deferred_cleanup_complete", {
 						count = #gear_ids,
 						current = current,
 					})
-					finish_after_deferred_cleanup(current)
+					finish_after_deferred_processing(current)
 				end)
 			end)
 		end)
@@ -181,7 +254,7 @@ function Phase3Workflow.install(self, services)
 	function self:_phase3_process_deferred(generation, current)
 		local phase3 = self._phase3
 
-		if not phase3 or not phase3.running or (not phase3.target_candidate and not cleanup_without_target(phase3)) then
+		if not phase3 or not phase3.running or (not phase3.target_candidate and not process_without_target(phase3)) then
 			return false
 		end
 
@@ -205,8 +278,8 @@ function Phase3Workflow.install(self, services)
 			return self:_phase3_start_deferred_batch(generation)
 		end
 
-		if cleanup_without_target(phase3) then
-			return finish_after_deferred_cleanup(current)
+		if process_without_target(phase3) then
+			return finish_after_deferred_processing(current)
 		end
 
 		return self:_purchase_search_step(generation)
@@ -244,6 +317,7 @@ function Phase3Workflow.install(self, services)
 			end
 
 			remove_snapshot_gear(self._snapshot, batch.gear_ids)
+			forget_purchased_spares(phase3, batch.gear_ids)
 			phase3.current = current
 			phase3.current_data = projected
 			phase3.projected_xp_pending = true
@@ -259,7 +333,7 @@ function Phase3Workflow.install(self, services)
 
 			if mastery_target_reached(current) then
 				self:_phase3_sync_projected(generation)
-			elseif cleanup_without_target(phase3) then
+			elseif process_without_target(phase3) then
 				self:_phase3_process_deferred(generation, current)
 			else
 				self:_purchase_search_step(generation)
@@ -445,7 +519,7 @@ function Phase3Workflow.install(self, services)
 				active.current_data = nil
 				active.projected_xp_pending = false
 
-				if active.defer_bad_processing and (active.target_candidate or cleanup_without_target(active)) then
+				if active.defer_bad_processing and (active.target_candidate or process_without_target(active)) then
 					self:_phase3_discard_deferred(generation, current)
 				else
 					self:_phase3_finish(current)
@@ -576,7 +650,7 @@ function Phase3Workflow.install(self, services)
 				current = current,
 			})
 
-			if cleanup_without_target(phase3) then
+			if process_without_target(phase3) then
 				self:_phase3_process_deferred(generation, current)
 
 				return
@@ -648,6 +722,7 @@ function Phase3Workflow.install(self, services)
 
 	function self:_phase3_cleanup_without_target(generation, reason)
 		local phase3 = self._phase3
+		local released = release_search_fallback(phase3)
 		local queue = phase3 and phase3.deferred_candidates or {}
 		local candidate = queue[phase3 and phase3.deferred_index or 1]
 		local mastery_id = candidate and (candidate.mastery_id or candidate.parent_pattern)
@@ -669,6 +744,34 @@ function Phase3Workflow.install(self, services)
 		operation_report("phase3_no_target_cleanup_started", {
 			count = pending_deferred_count(phase3),
 			reason = reason,
+			released_fallback = released,
+		})
+		self:_phase3_check_mastery(generation, candidate)
+
+		return true
+	end
+
+	function self:_phase3_drain_search_fodder(generation)
+		local phase3 = self._phase3
+		local queue = phase3 and phase3.deferred_candidates or {}
+		local candidate = queue[phase3 and phase3.deferred_index or 1]
+		local mastery_id = candidate and (candidate.mastery_id or candidate.parent_pattern)
+
+		if not phase3 or not phase3.running or phase3.target_candidate or not phase3.defer_bad_processing or not candidate then
+			return false
+		end
+
+		if not mastery_id then
+			self:_operation_failed(generation, "search fodder candidate omitted mastery identity")
+
+			return true
+		end
+
+		phase3.drain_search_without_target = true
+		phase3.drain_mastery_id = mastery_id
+		self._phase = "phase3_search_fodder_drain"
+		operation_report("phase3_search_fodder_drain_started", {
+			count = pending_deferred_count(phase3),
 		})
 		self:_phase3_check_mastery(generation, candidate)
 
@@ -695,12 +798,25 @@ function Phase3Workflow.install(self, services)
 		end
 
 		local function continue_exact_match()
+			local phase3 = self._phase3
+			local reserved = phase3 and phase3.defer_bad_processing and release_search_fallback(phase3, candidate) or nil
+
+			-- During a rolling pre-target search the best fallback is the only
+			-- purchased miss kept out of the fodder queue. An exact match makes
+			-- that reservation unnecessary, so release it before Phase 3 starts.
+			if reserved then
+				operation_report("phase3_fallback_candidate_released", {
+					candidate = reserved,
+					count = pending_deferred_count(phase3),
+				})
+			end
+
 			search.result = candidate
 			search.last = candidate
 			search.best = candidate
 
-			if self._phase3 and self._phase3.running then
-				self._phase3.target_candidate = candidate
+			if phase3 and phase3.running then
+				phase3.target_candidate = candidate
 			end
 
 			self._phase = "search_complete"
@@ -710,7 +826,7 @@ function Phase3Workflow.install(self, services)
 				search = search,
 			})
 
-			if self._phase3 and self._phase3.running then
+			if phase3 and phase3.running then
 				self:_phase3_check_mastery(generation, candidate)
 			else
 				self:_start_phase4(candidate)

@@ -33,7 +33,7 @@
         "name": "layout.weapon-modifiers-avoid-full-calculator",
         "test": "test_layout.py",
         "case": "weapon_modifier_data_only_resolution",
-        "outcome": "inventory cards resolve ordered modifier identities directly from bounded item and weapon-template data; equipped compound shields arm a three-column guard before base-view initialization and fetched layouts repeat the check for unequipped shields, while ordinary inventories preserve requested columns and malformed or sparse future records are negatively cached and cannot invoke the full WeaponStats calculator, retry every draw, or block the grid",
+        "outcome": "inventory cards resolve ordered modifier identities directly from bounded item and weapon-template data; native GodRolls-decorated family names are reused without a second hooked full-stat projection while retaining markup; equipped compound shields arm a three-column guard before base-view initialization and fetched layouts repeat the check for unequipped shields, while ordinary inventories preserve requested columns and malformed or sparse future records are negatively cached and cannot invoke the full WeaponStats calculator, retry every draw, or block the grid",
         "modules": ["BetterInventory_layout.lua", "BetterInventory_layout_blueprints.lua", "BetterInventory_layout_cards.lua", "BetterInventory_layout_content.lua", "BetterInventory_layout_geometry.lua", "BetterInventory_runtime.lua"]
     },
     {
@@ -268,10 +268,10 @@
       "modules": ["BetterInventory_auto_crafter.lua"]
     },
     {
-      "name": "auto-crafter.bounds-pretarget-inventory-growth",
+      "name": "auto-crafter.bounds-live-pretarget-inventory-without-changing-caps",
       "test": "test_auto_crafter_controller.py",
       "case": "pretarget_bounds_progression_and_inventory_base_identity_safety",
-      "outcome": "level-1 crafting dispatches no purchase, every target search stops before purchase 41 and promotes its closest finite fallback when enabled, and repeated incomplete projections stop after eight without favoriting an invalid candidate",
+      "outcome": "level-1 crafting dispatches no purchase; rolling eight-item Phase 3 drains bound live run-owned misses while the configured docket or maximum-purchase boundary remains authoritative; an exact purchase 41 remains reachable, one closest fallback survives every drain when enabled, and incomplete projections never become fallback or favorite candidates",
       "modules": ["BetterInventory_auto_crafter.lua"]
     },
     {

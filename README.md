@@ -22,9 +22,10 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 ## What's new in v3.0.1
 
 - Auto Crafter now checks Darktide's native Hadron and selected weapon-family mastery unlocks before purchasing, blocking the reported level-1 runaway path without blanket-disabling legitimate under-30 characters.
-- Every target search has an independent 40-purchase per-run safety limit even when its optional configurable cap is disabled. The normal closest finite fallback remains authoritative at that limit.
-- Eight consecutive incomplete custom-stat projections stop safely instead of consuming the full docket budget without a usable fallback. Rejected candidates remain unfavorited.
-- The accompanying [LadyElina777 incident audit](docs/v3.0.1-ladyelina777-auto-crafter-audit.md) traces the inventory crash to preventable inventory growth amplifying Darktide's known fixed Lua-heap pressure; no duplicate layout expansion, infinite rebuild, or BetterInventory retention leak was reproduced.
+- Target searches continue strictly to their configured Ordo-docket or optional maximum-purchase boundary; there is no hidden 40-purchase or incomplete-projection acquisition limit.
+- Pre-target misses are processed in rolling eight-item mastery-fodder batches. The closest finite fallback is reserved when enabled, exact matches after purchase 40 remain reachable, and fallback-off runs never invent or favorite a final weapon.
+- BetterInventory reuses native weapon-card family names already decorated by GodRolls, preserving its stars and colours while avoiding a redundant second full-stat projection on compatible cards.
+- The accompanying [LadyElina777 incident audit](docs/v3.0.1-ladyelina777-auto-crafter-audit.md) traces the inventory crash to preventable inventory growth and duplicate third-party stat work amplifying Darktide's fixed Lua-heap pressure; no duplicate layout expansion, infinite rebuild, or BetterInventory retention leak was reproduced.
 
 ## What changed in v3.0.0
 
