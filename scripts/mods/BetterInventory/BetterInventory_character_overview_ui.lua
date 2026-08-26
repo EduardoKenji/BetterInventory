@@ -21,6 +21,7 @@ local CHARACTER_OVERVIEW_MELEE_WIDGET_TYPE = "better_inventory_character_overvie
 local CHARACTER_OVERVIEW_RANGED_WIDGET_TYPE = "better_inventory_character_overview_ranged_weapon"
 local CHARACTER_OVERVIEW_CURIO_WIDGET_TYPE = "better_inventory_character_overview_curio"
 local CHARACTER_OVERVIEW_EMPTY_CURIO_WIDGET_TYPE = "better_inventory_character_overview_empty_curio"
+local MAX_CHARACTER_OVERVIEW_LOADOUT_WIDGETS = 8
 local CHARACTER_OVERVIEW_WEAPON_HEIGHT = 130
 local CHARACTER_OVERVIEW_CURIO_TITLE_STAT_PADDING_Y = 6
 local CHARACTER_OVERVIEW_NATIVE_CURIO_OVERLAY_CONTENT_SHIFT_Y = 8
@@ -1412,8 +1413,37 @@ OverviewUI.update_registered_views = function(dt)
 	return updated
 end
 
+local function reconcile_customized_loadout_widgets(view)
+	local widgets = view and view._loadout_widgets
+	local reapply = Layout and Layout.reapply_tracked_item_customization_style
+
+	if type(widgets) ~= "table" or type(reapply) ~= "function" then
+		return 0
+	end
+
+	local applied = 0
+	local widget_count = math.min(#widgets, MAX_CHARACTER_OVERVIEW_LOADOUT_WIDGETS)
+
+	for index = 1, widget_count do
+		if reapply(mod, widgets[index]) then
+			applied = applied + 1
+		end
+	end
+
+	return applied
+end
+
 OverviewUI.install_hooks = function(class_method_guard)
 	ensure_class_method = class_method_guard
+	if ensure_class_method(InventoryView, "update") then
+		-- GSC 1.1.2 repaints loadout widgets before calling InventoryView.update's
+		-- previous hook chain. A safe post-update callback therefore runs after
+		-- that repaint regardless of load order, while touching only the bounded
+		-- native Primary/Secondary/Curio widget list and never scanning a grid.
+		mod:hook_safe(InventoryView, "update", function(view)
+			reconcile_customized_loadout_widgets(view)
+		end)
+	end
 	if ensure_class_method(InventoryView, "on_exit") then
 		mod:hook_safe(InventoryView, "on_exit", function(view)
 			OverviewUI.unregister_view(view)
@@ -1451,9 +1481,8 @@ if ensure_class_method(InventoryView, "_create_entry_widget_from_config") then
 				-- If the optional integration cannot answer, preserve its widget
 				-- conservatively instead of risking a broken character overview.
 				visible_equipment_active = not enabled_ok or enabled == true
-			end
-		end
-
+	end
+end
 		local preserve_visible_equipment_placement = visible_equipment_active
 		local adjust_runtime_equipped_icon = view and view.__class_name == "InventoryView" and not preserve_visible_equipment_placement and setting_id ~= nil
 
@@ -1527,6 +1556,7 @@ OverviewUI.synchronize_character_overview_equipped_icons = synchronize_character
 OverviewUI.character_overview_curio_transition_type = character_overview_curio_transition_type
 OverviewUI.reconcile_character_overview_curio_widgets = reconcile_character_overview_curio_widgets
 OverviewUI.reconcile_character_overview_curio_widgets_if_needed = reconcile_character_overview_curio_widgets_if_needed
+OverviewUI.reconcile_customized_loadout_widgets = reconcile_customized_loadout_widgets
 OverviewUI.refresh_character_overview_visual_layout_if_needed = refresh_character_overview_visual_layout_if_needed
 OverviewUI.invalidate_myfavorites_grid = invalidate_myfavorites_grid
 OverviewUI.invalidate_myfavorites_view = invalidate_myfavorites_view

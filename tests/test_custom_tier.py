@@ -209,6 +209,24 @@ def main() -> None:
         perfect_melee,
     ) is True
 
+    # The compatibility provider can hand background ownership to God Stat
+    # Checker without surrendering Custom Tier's Sainted classification/name.
+    lua.execute(
+        '''
+        god_stat_checker_owns_background = false
+        custom_tier.set_background_owner_provider({
+            god_stat_checker_owns_background = function()
+                return god_stat_checker_owns_background
+            end,
+        })
+        '''
+    )
+    lua.globals().god_stat_checker_owns_background = True
+    deferred_color, _ = items.rarity_color(perfect_melee)
+    assert [deferred_color[index] for index in range(1, 5)] == [255, 145, 70, 40]
+    assert items.rarity_display_name(perfect_melee) == "Sainted"
+    lua.globals().god_stat_checker_owns_background = False
+
     # The framework enabled state is refreshed only at lifecycle/settings
     # boundaries. Repeated card colour/name lookups do not call back into DMF.
     enabled_checks_before_cards = lua.globals().custom_tier_is_enabled_calls
@@ -300,6 +318,30 @@ def main() -> None:
     custom_tier.install(mod)
     repeated_color, _ = items.rarity_color(perfect_ranged)
     assert [repeated_color[index] for index in range(1, 5)] == [255, 12, 34, 56]
+
+    # Exact late-install/hot-reload order from the Armoury crash: GSC loads
+    # after BI, captures BI's current wrappers, and installs wrappers which
+    # call those captured globals dynamically. BI must detach its old wrappers
+    # before reinstalling or the two mods recurse until Lua's stack overflows.
+    lua.execute(
+        '''
+        test_items.gsc_original_rarity_color = test_items.rarity_color
+        test_items.gsc_original_rarity_display_name = test_items.rarity_display_name
+        test_items.rarity_color = function(item)
+            return test_items.gsc_original_rarity_color(item)
+        end
+        test_items.rarity_display_name = function(item)
+            return test_items.gsc_original_rarity_display_name(item)
+        end
+        '''
+    )
+    custom_tier.install(mod)
+    late_gsc_color, _ = items.rarity_color(perfect_ranged)
+    assert [late_gsc_color[index] for index in range(1, 5)] == [255, 12, 34, 56]
+    late_gsc_plain_color, _ = items.rarity_color(weapon("WEAPON_MELEE", 100, []))
+    assert [late_gsc_plain_color[index] for index in range(1, 5)] == [255, 145, 70, 40]
+    assert items.rarity_display_name(perfect_ranged) == "Sainted"
+    assert items.rarity_display_name(weapon("WEAPON_MELEE", 100, [])) == "Transcendent"
 
     custom_tier.on_disabled()
     disabled_color, _ = items.rarity_color(red_only)

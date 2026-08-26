@@ -1,6 +1,7 @@
 local Content = {}
 local columns
 local item_customization_provider
+local tracked_item_customization_widgets = setmetatable({}, { __mode = "k" })
 
 local Items = require("scripts/utilities/items")
 local RankSettings = require("scripts/settings/item/rank_settings")
@@ -1524,17 +1525,6 @@ local function format_item_name(mod, widget, element, append_mark_to_name, force
 	content.sub_display_name = valid_weapon_name_part(pattern_name) and pattern_name or ""
 end
 
-local function apply_custom_color(style, color, field_name)
-	if type(style) ~= "table" or type(style[field_name]) ~= "table" then
-		return
-	end
-
-	local backup_id = "better_inventory_original_" .. field_name
-
-	style[backup_id] = style[backup_id] or table.clone(style[field_name])
-	style[field_name] = table.clone(type(color) == "table" and color or style[backup_id])
-end
-
 local function restore_custom_color(style, field_name)
 	if type(style) ~= "table" then
 		return
@@ -1549,7 +1539,26 @@ local function restore_custom_color(style, field_name)
 	end
 end
 
+local function apply_custom_color(style, color, field_name)
+	if type(style) ~= "table" or type(style[field_name]) ~= "table" then
+		return
+	end
+
+	if type(color) ~= "table" then
+		restore_custom_color(style, field_name)
+
+		return
+	end
+
+	local backup_id = "better_inventory_original_" .. field_name
+
+	style[backup_id] = style[backup_id] or table.clone(style[field_name])
+	style[field_name] = table.clone(color)
+end
+
 local function restore_item_customization_style(widget)
+	tracked_item_customization_widgets[widget] = nil
+
 	local style = widget and widget.style
 
 	if type(style) ~= "table" then
@@ -1567,6 +1576,88 @@ local function restore_item_customization_style(widget)
 	restore_custom_color(style.background, "color")
 	restore_custom_color(style.background_gradient, "color")
 	restore_custom_color(style.rarity_tag, "color")
+end
+
+local function colors_match(left, right)
+	if type(left) ~= "table" or type(right) ~= "table" then
+		return false
+	end
+
+	-- Darktide animates alpha on card styles. Color ownership lives in RGB;
+	-- comparing alpha would turn the bounded reconciliation into a needless
+	-- per-frame repaint whenever a customized card is hovered or selected.
+	return left[2] == right[2]
+		and left[3] == right[3]
+		and left[4] == right[4]
+end
+
+local function live_item_customization_record(mod, widget)
+	local content = widget and widget.content
+	local element = content and content.element
+	local item = item_from_element(element)
+	local customization = item_customization(mod, item)
+	local name_color = customization and customization.name_color
+	local background_color = customization and customization.background_color
+
+	if type(name_color) ~= "table" and type(background_color) ~= "table" then
+		return
+	end
+
+	local preserve_shading = customization.background_preserve_shading
+
+	if preserve_shading == nil then
+		preserve_shading = setting(mod, "custom_item_preserve_card_shading", true)
+	end
+
+	local record = {
+		element = element or false,
+		name_color = name_color,
+		background_color = background_color,
+		preserve_shading = preserve_shading == true,
+	}
+
+	tracked_item_customization_widgets[widget] = record
+
+	return record
+end
+
+local function style_color_matches(style, field_name, expected)
+	return type(style) ~= "table"
+		or type(style[field_name]) ~= "table"
+		or colors_match(style[field_name], expected)
+end
+
+local function tracked_item_customization_matches(widget, record)
+	local style = widget and widget.style
+
+	if type(style) ~= "table" or type(record) ~= "table" then
+		return false
+	end
+
+	if type(record.name_color) == "table" then
+		for _, style_id in ipairs({ "display_name", "better_inventory_name_it_curio_name" }) do
+			local text_style = style[style_id]
+
+			if not style_color_matches(text_style, "text_color", record.name_color)
+				or not style_color_matches(text_style, "default_color", record.name_color)
+				or not style_color_matches(text_style, "hover_color", record.name_color) then
+				return false
+			end
+		end
+	end
+
+	if type(record.background_color) == "table" then
+		if not style_color_matches(style.background_gradient, "color", record.background_color)
+			or not style_color_matches(style.rarity_tag, "color", record.background_color) then
+			return false
+		end
+
+		if not record.preserve_shading and not style_color_matches(style.background, "color", record.background_color) then
+			return false
+		end
+	end
+
+	return true
 end
 
 local function apply_item_customization_style(mod, widget, element)
@@ -1600,6 +1691,46 @@ local function apply_item_customization_style(mod, widget, element)
 	apply_custom_color(style.background, background_color and not preserve_shading and background_color or nil, "color")
 	apply_custom_color(style.background_gradient, background_color, "color")
 	apply_custom_color(style.rarity_tag, background_color, "color")
+
+	if type(name_color) == "table" or type(background_color) == "table" then
+		tracked_item_customization_widgets[widget] = {
+			element = element or false,
+			name_color = name_color,
+			background_color = background_color,
+			preserve_shading = preserve_shading == true,
+		}
+	else
+		tracked_item_customization_widgets[widget] = nil
+	end
+end
+
+Content.reapply_tracked_item_customization_style = function(mod, widget)
+	local record = tracked_item_customization_widgets[widget]
+
+	if type(record) ~= "table" then
+		-- Character Overview widgets can be initialized before another mod starts
+		-- tracking/repainting them, or their weak tracking record can disappear
+		-- during a view rebuild. Resolve only this bounded widget from BI's live
+		-- customization store instead of assuming earlier tracking survived.
+		record = live_item_customization_record(mod, widget)
+
+		if type(record) ~= "table" then
+			return false
+		end
+	end
+
+	-- Explicit per-item customization is always highest priority. Do not gate
+	-- repair on the selected tier-background owner: GSC can repaint its retained
+	-- widgets during startup, reload, or verdict changes before that integration
+	-- state settles. Ordinary cards still exit above without color work.
+	if tracked_item_customization_matches(widget, record) then
+		return false
+	end
+
+	local element = record.element
+	local ok = pcall(apply_item_customization_style, mod, widget, element ~= false and element or nil)
+
+	return ok
 end
 
 local function synchronize_rarity_tag_color(widget, element)

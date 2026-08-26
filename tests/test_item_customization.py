@@ -513,7 +513,11 @@ def main() -> None:
     settings.custom_item_background_color_keybind = "group_finder_refresh_groups"
     globals_.name_it_settings.keybind_change_name = "hotkey_menu_special_2"
     inventory_view_class = lua.table_from({})
-    assert customization.install(mod, inventory_view_class, lua.table_from({})) is True
+    customization_layout = lua.table_from({})
+    assert customization.install(
+        mod, inventory_view_class, customization_layout
+    ) is True
+    customization.update_runtime(mod)
     view = lua.table_from(
         {
             "_definitions": lua.table_from(

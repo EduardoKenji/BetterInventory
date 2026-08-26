@@ -222,6 +222,11 @@ def main() -> None:
 			end,
             configure_item_blueprint = function() end,
 			configure_grid = function() end,
+			reapply_tracked_item_customization_style = function(_, widget)
+				loadout_customization_reapply_calls = loadout_customization_reapply_calls + 1
+
+				return widget and widget.customization_dirty == true
+			end,
 			update_highlight_animation = function(animation_mod)
 				highlight_animation_updates = highlight_animation_updates + 1
 				highlight_animation_mod = animation_mod
@@ -236,6 +241,7 @@ def main() -> None:
 			},
 		}
 		highlight_animation_updates = 0
+		loadout_customization_reapply_calls = 0
 		inventory_sort_syncs = 0
 		quick_discard_syncs = 0
 		curio_acquisition_syncs = 0
@@ -317,6 +323,7 @@ def main() -> None:
         }
 		test_inventory_view = {
 			_create_entry_widget_from_config = function() end,
+			update = function() end,
 		}
 		test_view_element_grid = {
 			_create_entry_widget_from_config = function() end,
@@ -514,8 +521,24 @@ def main() -> None:
     globals_ = lua.globals()
     mod = globals_.test_mod
     settings = globals_.settings
-    assert globals_.captured_character_overview_update_hook is None
+    assert globals_.captured_character_overview_update_hook is not None
     assert globals_.captured_grid_update_hook is None
+
+    # God Stat Checker repaints Character Overview cards in its normal update
+    # hook. BetterInventory's post-update safe hook must inspect only Darktide's
+    # bounded loadout list and run after that repaint, before the next draw.
+    loadout_hook_view = lua.table_from(
+        {
+            "_loadout_widgets": lua.table_from(
+                [
+                    lua.table_from({"customization_dirty": True}),
+                    lua.table_from({"customization_dirty": False}),
+                ]
+            )
+        }
+    )
+    globals_.captured_character_overview_update_hook(loadout_hook_view)
+    assert globals_.loadout_customization_reapply_calls == 2
     settings.new_item_highlight_mode = "pulsing_dashes"
     mod.on_setting_changed("new_item_highlight_mode")
     mod.update(0.016)
@@ -2758,7 +2781,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "2.9.9"
+    assert data.version == "3.0.0"
 
     gradient_name = localization["mod_name"]["en"]
     assert gradient_name.startswith("{#color(174,239,105)}B")
@@ -2771,6 +2794,14 @@ def main() -> None:
         == "Mod Integration: Quick Look Card"
     )
     assert localization["auto_crafter_group"]["en"] == "Auto Crafter Helper"
+    assert (
+        localization["god_stat_checker_integration_group"]["en"]
+        == "Mod integration: God Stat Checker 1.1.2"
+    )
+    assert (
+        localization["god_stat_checker_background_owner_custom_tier"]["en"]
+        == "Custom legendary tier"
+    )
     assert localization["auto_crafter_workflow_group"]["en"] == "Crafting workflow"
     assert localization["auto_crafter_trait_targets_group"]["en"] == "Perk and blessing targets"
     assert localization["automatic_curio_once_per_store_rotation"]["en"] == "Scan at most once per store rotation"
@@ -3153,8 +3184,9 @@ def main() -> None:
     )
     assert (
         top_level_ids[enhanced_descriptions_index - 1]
-        == "quick_look_card_integration_group"
+        == "god_stat_checker_integration_group"
     )
+    assert top_level_ids[enhanced_descriptions_index - 2] == "quick_look_card_integration_group"
     assert top_level_ids[enhanced_descriptions_index + 1] == "myfavorites_integration_group"
     assert top_level_ids[enhanced_descriptions_index + 2] == "lantern_integration_group"
     assert top_level_ids[enhanced_descriptions_index + 3] == "card_content_group"
@@ -3305,6 +3337,8 @@ def main() -> None:
     assert defaults["character_overview_curio_name_mode"] == "two_lines"
     assert defaults["character_overview_curio_font_size_percent"] == 110
     assert defaults["custom_tier_enabled"] is True
+    assert defaults["god_stat_checker_background_owner"] == "custom_tier"
+    assert defaults["custom_tier_god_stat_checker_background_owner"] == "custom_tier"
     assert defaults["custom_tier_color_preset"] == "custom_tier_red"
     assert list(defaults["custom_tier_color_preview"].values()) == [255, 210, 30, 40]
     assert [defaults[f"custom_tier_color_{channel}"] for channel in ("r", "g", "b")] == [210, 30, 40]

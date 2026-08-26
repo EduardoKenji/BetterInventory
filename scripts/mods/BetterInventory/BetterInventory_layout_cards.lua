@@ -49,6 +49,7 @@ local grid_ui_renderer = content.grid_ui_renderer
 local format_item_name = content.format_item_name
 local restore_item_customization_style = content.restore_item_customization_style
 local apply_item_customization_style = content.apply_item_customization_style
+local reapply_tracked_item_customization_style = content.reapply_tracked_item_customization_style
 local synchronize_rarity_tag_color = content.synchronize_rarity_tag_color
 local WEAPON_PERK_COUNT = content.WEAPON_PERK_COUNT
 local WEAPON_BLESSING_COUNT = content.WEAPON_BLESSING_COUNT
@@ -1928,6 +1929,16 @@ local function configure_card_content(mod, item_blueprint, configuration)
 			fit_blessing_text(parent, widget, nil)
 			fit_weapon_perks(parent, widget, nil)
 			fit_curio_stats(parent, widget, nil)
+		end
+	end
+
+	if original_update then
+		item_blueprint.update = function(parent, widget, ...)
+			local result = original_update(parent, widget, ...)
+
+			reapply_tracked_item_customization_style(mod, widget)
+
+			return result
 		end
 	end
 

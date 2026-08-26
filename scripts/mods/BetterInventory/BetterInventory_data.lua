@@ -1,4 +1,4 @@
-local MOD_VERSION = "2.9.9"
+local MOD_VERSION = "3.0.0"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
@@ -270,6 +270,20 @@ local function custom_tier_curio_group(kind, default_roll, maximum_roll)
 	}
 end
 
+local function god_stat_checker_background_owner_widget(setting_id)
+	return {
+		setting_id = setting_id,
+		text = "god_stat_checker_background_owner",
+		tooltip = "god_stat_checker_background_owner_tooltip",
+		type = "dropdown",
+		default_value = "custom_tier",
+		options = {
+			{ text = "god_stat_checker_background_owner_custom_tier", value = "custom_tier" },
+			{ text = "god_stat_checker_background_owner_god_stat_checker", value = "god_stat_checker" },
+		},
+	}
+end
+
 local function custom_tier_widgets()
 	local color_options = color_group("custom_tier_color_group", "custom_tier_color", "custom_tier_red", 210, 30, 40, false, custom_tier_color_options())
 
@@ -290,6 +304,7 @@ local function custom_tier_widgets()
 			type = "checkbox",
 			default_value = true,
 		},
+		god_stat_checker_background_owner_widget("custom_tier_god_stat_checker_background_owner"),
 		color_options,
 		custom_tier_weapon_group("melee"),
 		custom_tier_weapon_group("ranged"),
@@ -1925,6 +1940,13 @@ return {
 							100,
 						},
 					},
+				},
+			},
+			{
+				setting_id = "god_stat_checker_integration_group",
+				type = "group",
+				sub_widgets = {
+					god_stat_checker_background_owner_widget("god_stat_checker_background_owner"),
 				},
 			},
 			{

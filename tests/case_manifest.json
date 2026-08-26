@@ -206,21 +206,24 @@
         {"name": "panel_lifecycle", "risk": "high", "start_line": 1970, "end_line": 3276}
   ],
   "test_item_customization.py": [
-      {"name": "dirty_save_outcomes", "risk": "high", "start_line": 225, "end_line": 442},
-      {"name": "bounded_retry_and_disable", "risk": "high", "start_line": 443, "end_line": 755},
-      {"name": "callback_failure_safety", "risk": "high", "start_line": 756, "end_line": 980}
+    {"name": "dirty_save_outcomes", "risk": "high", "start_line": 225, "end_line": 442},
+    {"name": "bounded_retry_and_disable", "risk": "high", "start_line": 443, "end_line": 764},
+    {"name": "callback_failure_safety", "risk": "high", "start_line": 765, "end_line": 990}
   ],
   "test_material_safety.py": [
     {"name": "dynamic_material_repair", "risk": "critical", "start_line": 1, "end_line": 365}
   ],
   "test_custom_tier.py": [
-    {"name": "standalone_classification_and_red_weapons_compatibility", "risk": "critical", "start_line": 1, "end_line": 317}
+    {"name": "standalone_classification_and_red_weapons_compatibility", "risk": "critical", "start_line": 1, "end_line": 359}
+  ],
+  "test_god_stat_checker_integration.py": [
+    {"name": "exclusive_background_ownership_and_lifecycle_fallback", "risk": "critical", "start_line": 1, "end_line": 307}
   ],
   "test_layout.py": [
-    {"name": "card_geometry", "risk": "high", "start_line": 613, "end_line": 1463},
-      {"name": "weapon_modifier_data_only_resolution", "risk": "critical", "start_line": 1464, "end_line": 1844},
-        {"name": "content_and_resource_ownership", "risk": "high", "start_line": 1845, "end_line": 3056},
-    {"name": "integration_boundaries", "risk": "medium", "start_line": 3057, "end_line": 4904}
+    {"name": "card_geometry", "risk": "high", "start_line": 613, "end_line": 1469},
+      {"name": "weapon_modifier_data_only_resolution", "risk": "critical", "start_line": 1470, "end_line": 1850},
+        {"name": "content_and_resource_ownership", "risk": "high", "start_line": 1851, "end_line": 3062},
+    {"name": "integration_boundaries", "risk": "medium", "start_line": 3063, "end_line": 5076}
   ],
   "test_operation_arbiter.py": [
     {"name": "manual_automatic_exclusion", "risk": "critical", "start_line": 20, "end_line": 34},
@@ -228,11 +231,11 @@
     {"name": "cancel_and_reconcile", "risk": "critical", "start_line": 72, "end_line": 76}
   ],
   "test_settings.py": [
-    {"name": "schema_dependency_refresh", "risk": "high", "start_line": 21, "end_line": 449},
-    {"name": "migration_preservation", "risk": "high", "start_line": 450, "end_line": 603},
-    {"name": "character_overview_refresh", "risk": "high", "start_line": 604, "end_line": 1702},
-    {"name": "localization_contract", "risk": "medium", "start_line": 1703, "end_line": 2876},
-    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2877, "end_line": 3550}
+    {"name": "schema_dependency_refresh", "risk": "high", "start_line": 21, "end_line": 456},
+    {"name": "migration_preservation", "risk": "high", "start_line": 457, "end_line": 626},
+    {"name": "character_overview_refresh", "risk": "high", "start_line": 627, "end_line": 1725},
+    {"name": "localization_contract", "risk": "medium", "start_line": 1726, "end_line": 2909},
+    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2910, "end_line": 3584}
   ],
   "test_settings_registry.py": [
     {"name": "duplicate_detection", "risk": "high", "start_line": 63, "end_line": 123},
@@ -247,7 +250,7 @@
   ],
   "test_view_lifecycle_memory.py": [
     {"name": "explicit_view_owned_state_release", "risk": "high", "start_line": 26, "end_line": 82},
-    {"name": "post_draw_update_cpu_invariant", "risk": "critical", "start_line": 84, "end_line": 95},
-    {"name": "native_async_cleanup_contracts", "risk": "high", "start_line": 97, "end_line": 110}
+    {"name": "post_draw_update_cpu_invariant", "risk": "critical", "start_line": 84, "end_line": 101},
+    {"name": "native_async_cleanup_contracts", "risk": "high", "start_line": 103, "end_line": 116}
   ]
 }

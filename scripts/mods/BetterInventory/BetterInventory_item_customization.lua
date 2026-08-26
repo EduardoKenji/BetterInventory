@@ -297,7 +297,7 @@ local function install_storage_hooks(mod)
 
 end
 
-	ItemCustomization.install = function(mod, InventoryWeaponsView, layout)
+ItemCustomization.install = function(mod, InventoryWeaponsView, layout)
 	local installed = Editor.install(mod, InventoryWeaponsView, layout)
 
 	if installed then
