@@ -100,6 +100,13 @@
       "modules": ["BetterInventory_custom_tier.lua", "BetterInventory_curio_values.lua"]
     },
     {
+      "name": "custom-tier.god-stat-checker-exclusive-background-owner",
+      "test": "test_god_stat_checker_integration.py",
+      "case": "exclusive_background_ownership_and_lifecycle_fallback",
+      "outcome": "the mirrored controls select one background owner for item cards and the detail panel; Custom legendary tier defaults to ownership while God Stat Checker retains text grading and its saved card style, selecting God Stat Checker restores that style and makes Custom Tier defer without losing the Sainted name, and absent, disabled, reset, or re-enabled lifecycle states reconcile without recursive wrappers or recurring scans",
+      "modules": ["BetterInventory_god_stat_checker_integration.lua", "BetterInventory_custom_tier.lua", "BetterInventory.lua"]
+    },
+    {
       "name": "curio.rotation-waits",
       "test": "test_curio_acquisition.py",
       "case": "store_rotation_gate",

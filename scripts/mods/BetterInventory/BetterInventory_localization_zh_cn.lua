@@ -973,6 +973,12 @@ localization.auto_crafter_acquisition_first_weapon = "自动购买第一把武�
 localization.auto_crafter_acquisition_target_search = "自动购买，直到找到目标属性武器"
 
 localization.custom_tier_group = "自定义传奇品级"
+localization.custom_tier_god_stat_checker_background_owner = "背景颜色控制模组"
+localization.god_stat_checker_integration_group = "模组集成：God Stat Checker 1.1.2"
+localization.god_stat_checker_background_owner = "背景颜色控制模组"
+localization.god_stat_checker_background_owner_tooltip = "只允许一个模组控制物品卡片和详情面板中符合条件的武器与珍品背景颜色。默认由“自定义传奇品级”控制。God Stat Checker 的首选卡片样式会自动保存并恢复；若 God Stat Checker 未安装或已禁用，则安全回退到“自定义传奇品级”。“自定义物品名称和颜色”仍会覆盖自定义传奇品级；由 GSC 控制时则遵循 GSC 所选的卡片样式。"
+localization.god_stat_checker_background_owner_custom_tier = "自定义传奇品级"
+localization.god_stat_checker_background_owner_god_stat_checker = "God Stat Checker（神级属性检查器）"
 localization.custom_tier_enabled = "启用自动自定义品级着色"
 localization.custom_tier_enabled_tooltip = "为符合条件的超凡近战武器、远程武器和珍品应用可配置的稀有度颜色与原生第 6 品级名称。首次检测到 Red Weapons At Home 时，会先导入兼容设置，再由 Better Inventory 接管。"
 localization.custom_tier_color_group = "自定义品级颜色"

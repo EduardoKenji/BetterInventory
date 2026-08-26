@@ -2758,7 +2758,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "2.9.9"
+    assert data.version == "3.0.0"
 
     gradient_name = localization["mod_name"]["en"]
     assert gradient_name.startswith("{#color(174,239,105)}B")
@@ -2771,6 +2771,14 @@ def main() -> None:
         == "Mod Integration: Quick Look Card"
     )
     assert localization["auto_crafter_group"]["en"] == "Auto Crafter Helper"
+    assert (
+        localization["god_stat_checker_integration_group"]["en"]
+        == "Mod integration: God Stat Checker 1.1.2"
+    )
+    assert (
+        localization["god_stat_checker_background_owner_custom_tier"]["en"]
+        == "Custom legendary tier"
+    )
     assert localization["auto_crafter_workflow_group"]["en"] == "Crafting workflow"
     assert localization["auto_crafter_trait_targets_group"]["en"] == "Perk and blessing targets"
     assert localization["automatic_curio_once_per_store_rotation"]["en"] == "Scan at most once per store rotation"
@@ -3153,8 +3161,9 @@ def main() -> None:
     )
     assert (
         top_level_ids[enhanced_descriptions_index - 1]
-        == "quick_look_card_integration_group"
+        == "god_stat_checker_integration_group"
     )
+    assert top_level_ids[enhanced_descriptions_index - 2] == "quick_look_card_integration_group"
     assert top_level_ids[enhanced_descriptions_index + 1] == "myfavorites_integration_group"
     assert top_level_ids[enhanced_descriptions_index + 2] == "lantern_integration_group"
     assert top_level_ids[enhanced_descriptions_index + 3] == "card_content_group"
@@ -3305,6 +3314,8 @@ def main() -> None:
     assert defaults["character_overview_curio_name_mode"] == "two_lines"
     assert defaults["character_overview_curio_font_size_percent"] == 110
     assert defaults["custom_tier_enabled"] is True
+    assert defaults["god_stat_checker_background_owner"] == "custom_tier"
+    assert defaults["custom_tier_god_stat_checker_background_owner"] == "custom_tier"
     assert defaults["custom_tier_color_preset"] == "custom_tier_red"
     assert list(defaults["custom_tier_color_preview"].values()) == [255, 210, 30, 40]
     assert [defaults[f"custom_tier_color_{channel}"] for channel in ("r", "g", "b")] == [210, 30, 40]

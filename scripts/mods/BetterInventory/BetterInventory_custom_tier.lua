@@ -57,6 +57,7 @@ local color_dark = { 255, REFERENCE_RED[1] * (1 - DARKEN_FACTOR), REFERENCE_RED[
 local display_name
 local weapon_criteria = {}
 local curio_criteria = {}
+local background_owner_provider
 
 local function bounded_number(value, default, minimum, maximum)
 	value = tonumber(value)
@@ -242,6 +243,16 @@ local function feature_active()
 	return enabled and framework_enabled
 end
 
+local function god_stat_checker_owns_background()
+	if type(background_owner_provider) ~= "table" or type(background_owner_provider.god_stat_checker_owns_background) ~= "function" then
+		return false
+	end
+
+	local ok, owns_background = pcall(background_owner_provider.god_stat_checker_owns_background)
+
+	return ok and owns_background == true
+end
+
 local function refresh_framework_enabled()
 	framework_enabled = true
 
@@ -320,7 +331,7 @@ local function install_item_overrides()
 	end
 
 	state.color_wrapper = function(item)
-		if feature_active() and matches(item) then
+		if feature_active() and matches(item) and not god_stat_checker_owns_background() then
 			return color, color_dark
 		end
 
@@ -509,12 +520,23 @@ CustomTier.on_setting_changed = function(configured_mod, setting_id)
 	return true
 end
 
+CustomTier.background_color = function(item)
+	if feature_active() and matches(item) then
+		return color, color_dark
+	end
+end
+
+CustomTier.set_background_owner_provider = function(provider)
+	background_owner_provider = type(provider) == "table" and provider or nil
+end
+
 CustomTier.matches = matches
 CustomTier.reference_red = REFERENCE_RED
 CustomTier._test = {
 	curio_types = CURIO_TYPES,
 	displayed_modifier_value = displayed_modifier_value,
 	feature_active = feature_active,
+	god_stat_checker_owns_background = god_stat_checker_owns_background,
 	import_red_weapons_at_home_settings = import_red_weapons_at_home_settings,
 	preview_channels = preview_channels,
 	refresh_framework_enabled = refresh_framework_enabled,

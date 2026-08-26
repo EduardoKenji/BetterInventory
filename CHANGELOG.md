@@ -1,5 +1,14 @@
 # BetterInventory changelog
 
+## 3.0.0 - 2026-08-26
+
+- Adds a dedicated God Stat Checker 1.1.2 integration section and a mirrored control in Custom legendary tier for selecting one exclusive weapon/Curio background-colour owner.
+- Defaults to Custom legendary tier ownership across item cards and the right detail panel while retaining God Stat Checker's name-text grading.
+- Saves God Stat Checker's preferred background card style while Custom Tier owns backgrounds, restores it when God Stat Checker is selected, and remembers later GSC style changes without recursive setting callbacks.
+- Makes Custom Tier defer its rarity-colour wrapper when God Stat Checker owns backgrounds while preserving the Sainted rarity name; existing per-item custom backgrounds retain their higher priority over Custom Tier.
+- Falls back to Custom Tier when God Stat Checker is absent, display-disabled, or mod-disabled; disabling Better Inventory restores any GSC style it temporarily suppressed.
+- Reuses God Stat Checker's live repaint callback and captured native rarity seam, adding no per-frame scan, item registry, backend work, or account mutation.
+
 ## 2.9.9 - 2026-08-24
 
 - Fixes the post-v2.9.8 `Repaired unsafe UI material` warning burst reported for generated fields such as `value_id_36`, `value_id_48`, and `value_id_60`.

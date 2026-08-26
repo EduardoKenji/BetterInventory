@@ -209,6 +209,24 @@ def main() -> None:
         perfect_melee,
     ) is True
 
+    # The compatibility provider can hand background ownership to God Stat
+    # Checker without surrendering Custom Tier's Sainted classification/name.
+    lua.execute(
+        '''
+        god_stat_checker_owns_background = false
+        custom_tier.set_background_owner_provider({
+            god_stat_checker_owns_background = function()
+                return god_stat_checker_owns_background
+            end,
+        })
+        '''
+    )
+    lua.globals().god_stat_checker_owns_background = True
+    deferred_color, _ = items.rarity_color(perfect_melee)
+    assert [deferred_color[index] for index in range(1, 5)] == [255, 145, 70, 40]
+    assert items.rarity_display_name(perfect_melee) == "Sainted"
+    lua.globals().god_stat_checker_owns_background = False
+
     # The framework enabled state is refreshed only at lifecycle/settings
     # boundaries. Repeated card colour/name lookups do not call back into DMF.
     enabled_checks_before_cards = lua.globals().custom_tier_is_enabled_calls

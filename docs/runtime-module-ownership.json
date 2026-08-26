@@ -7,6 +7,7 @@
     "BetterInventory_account_mutation_guard.lua": "account-mutation-service-hooks",
     "BetterInventory_character_overview_ui.lua": "character-overview-hooks",
 	"BetterInventory_custom_tier.lua": "item-rarity-classification-hooks",
+	"BetterInventory_god_stat_checker_integration.lua": "god-stat-checker-compatibility-hooks",
 	"BetterInventory_favorite_integration.lua": "vendor-purchase-favorite-hooks",
     "BetterInventory_item_customization.lua": "customization-storage-hooks",
     "BetterInventory_item_customization_editor.lua": "customization-editor-hooks",
@@ -42,7 +43,7 @@
     "auto_crafter/games_lantern/transport_wine.lua": {"category": "platform-adapter", "risk": "high", "owner": "games-lantern-adapter"}
   },
   "modules": {
-    "BetterInventory.lua": {"category": "bootstrap", "risk": "critical", "dependencies": ["BetterInventory_account_mutation_guard.lua", "BetterInventory_auto_crafter.lua", "BetterInventory_character_overview.lua", "BetterInventory_character_overview_ui.lua", "BetterInventory_contracts.lua", "BetterInventory_curio_acquisition.lua", "BetterInventory_custom_tier.lua", "BetterInventory_diagnostics.lua", "BetterInventory_equipment_persistence.lua", "BetterInventory_favorite_integration.lua", "BetterInventory_feature_domains.lua", "BetterInventory_features.lua", "BetterInventory_item_customization.lua", "BetterInventory_layout.lua", "BetterInventory_runtime.lua", "BetterInventory_settings.lua", "BetterInventory_weapon_options_panel.lua"]},
+    "BetterInventory.lua": {"category": "bootstrap", "risk": "critical", "dependencies": ["BetterInventory_account_mutation_guard.lua", "BetterInventory_auto_crafter.lua", "BetterInventory_character_overview.lua", "BetterInventory_character_overview_ui.lua", "BetterInventory_contracts.lua", "BetterInventory_curio_acquisition.lua", "BetterInventory_custom_tier.lua", "BetterInventory_diagnostics.lua", "BetterInventory_equipment_persistence.lua", "BetterInventory_favorite_integration.lua", "BetterInventory_feature_domains.lua", "BetterInventory_features.lua", "BetterInventory_god_stat_checker_integration.lua", "BetterInventory_item_customization.lua", "BetterInventory_layout.lua", "BetterInventory_runtime.lua", "BetterInventory_settings.lua", "BetterInventory_weapon_options_panel.lua"]},
     "BetterInventory_account_mutation_guard.lua": {"category": "account-mutation-guard", "risk": "critical", "dependencies": []},
     "BetterInventory_character_overview.lua": {"category": "pure-domain", "risk": "high", "dependencies": []},
     "BetterInventory_character_overview_ui.lua": {"category": "character-overview-ui", "risk": "critical", "dependencies": []},
@@ -55,6 +56,7 @@
     "BetterInventory_curio_store.lua": {"category": "integration-adapter", "risk": "critical", "dependencies": ["BetterInventory_curio_values.lua"]},
     "BetterInventory_curio_values.lua": {"category": "pure-domain", "risk": "high", "dependencies": []},
 	"BetterInventory_custom_tier.lua": {"category": "integration-adapter", "risk": "high", "dependencies": ["BetterInventory_curio_values.lua"]},
+	"BetterInventory_god_stat_checker_integration.lua": {"category": "integration-adapter", "risk": "high", "dependencies": []},
     "BetterInventory_data.lua": {"category": "declarative", "risk": "medium", "dependencies": []},
     "BetterInventory_diagnostics.lua": {"category": "diagnostics", "risk": "medium", "dependencies": []},
     "BetterInventory_equipment_persistence.lua": {"category": "async-state", "risk": "critical", "dependencies": []},

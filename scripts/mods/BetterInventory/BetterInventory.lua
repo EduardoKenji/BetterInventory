@@ -121,6 +121,22 @@ CustomTier.install = type(CustomTier.install) == "function" and CustomTier.insta
 CustomTier.on_disabled = type(CustomTier.on_disabled) == "function" and CustomTier.on_disabled or function() end
 CustomTier.on_setting_changed = type(CustomTier.on_setting_changed) == "function" and CustomTier.on_setting_changed or function() return false end
 CustomTier.refresh = type(CustomTier.refresh) == "function" and CustomTier.refresh or function() return false end
+CustomTier.set_background_owner_provider = type(CustomTier.set_background_owner_provider) == "function" and CustomTier.set_background_owner_provider or function() end
+local GodStatCheckerIntegration = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_god_stat_checker_integration"), "BetterInventory_god_stat_checker_integration.lua", {
+	install = function() return false end,
+	god_stat_checker_owns_background = function() return false end,
+	on_disabled = function() end,
+	on_enabled = function() return false end,
+	on_setting_changed = function() return false end,
+	on_settings_reset = function() return false end,
+})
+GodStatCheckerIntegration.install = type(GodStatCheckerIntegration.install) == "function" and GodStatCheckerIntegration.install or function() return false end
+GodStatCheckerIntegration.god_stat_checker_owns_background = type(GodStatCheckerIntegration.god_stat_checker_owns_background) == "function" and GodStatCheckerIntegration.god_stat_checker_owns_background or function() return false end
+GodStatCheckerIntegration.on_disabled = type(GodStatCheckerIntegration.on_disabled) == "function" and GodStatCheckerIntegration.on_disabled or function() end
+GodStatCheckerIntegration.on_enabled = type(GodStatCheckerIntegration.on_enabled) == "function" and GodStatCheckerIntegration.on_enabled or function() return false end
+GodStatCheckerIntegration.on_setting_changed = type(GodStatCheckerIntegration.on_setting_changed) == "function" and GodStatCheckerIntegration.on_setting_changed or function() return false end
+GodStatCheckerIntegration.on_settings_reset = type(GodStatCheckerIntegration.on_settings_reset) == "function" and GodStatCheckerIntegration.on_settings_reset or function() return false end
+CustomTier.set_background_owner_provider(GodStatCheckerIntegration)
 local EquipmentPersistence = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_equipment_persistence"), "BetterInventory_equipment_persistence.lua")
 local SettingsRegistry = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_settings"), "BetterInventory_settings.lua", {
 	should_refresh_dependencies = function() return true end,
@@ -621,15 +637,30 @@ end
 extend_runtime_callback("on_enabled", function()
 	return CustomTier.refresh(mod)
 end)
+extend_runtime_callback("on_enabled", function()
+	return GodStatCheckerIntegration.on_enabled(mod, CustomTier)
+end)
 extend_runtime_callback("on_all_mods_loaded", function()
 	return CustomTier.install(mod)
+end)
+extend_runtime_callback("on_all_mods_loaded", function()
+	return GodStatCheckerIntegration.install(mod, CustomTier)
 end)
 extend_runtime_callback("on_setting_changed", function(setting_id)
 	return CustomTier.on_setting_changed(mod, setting_id)
 end)
+extend_runtime_callback("on_setting_changed", function(setting_id)
+	return GodStatCheckerIntegration.on_setting_changed(mod, setting_id)
+end)
 extend_runtime_callback("on_settings_reset", function()
 	return CustomTier.refresh(mod)
 end)
+extend_runtime_callback("on_settings_reset", function()
+	return GodStatCheckerIntegration.on_settings_reset(mod)
+end)
 extend_runtime_callback("on_disabled", function()
 	return CustomTier.on_disabled()
+end)
+extend_runtime_callback("on_disabled", function()
+	return GodStatCheckerIntegration.on_disabled()
 end)
