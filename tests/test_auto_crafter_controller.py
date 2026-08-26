@@ -899,19 +899,22 @@ def main() -> None:
         end
 
 		-- Fallback-off searches drain every miss in bounded batches and keep
-		-- acquiring until the configured cap. The terminal partial batch is also
-		-- discarded, leaving no hidden reservation or purchased inventory spike.
+		-- acquiring until the configured docket cap. The terminal partial batch is
+		-- discarded, leaving no hidden reservation, result, Phase 4, or inventory spike.
 		do
-			local state = {discard_sizes = {}, items = {}, maximum_inventory = 0}
+			local state = {discard_sizes = {}, items = {}, maximum_inventory = 0, purchase_items = {}, purchase_promises = {}}
 			local backend = {discard_calls = 0, purchase_calls = 0}
 			function backend:purchase_offer(_)
 				self.purchase_calls = self.purchase_calls + 1
 				local item = summarized_item("gear-fallback-off-" .. tostring(self.purchase_calls), 2, 55)
+				local promise = pending()
 
 				state.items[#state.items + 1] = item
 				state.maximum_inventory = math.max(state.maximum_inventory, #state.items)
+				state.purchase_items[self.purchase_calls] = item
+				state.purchase_promises[self.purchase_calls] = promise
 
-				return resolved({items = {item}})
+				return promise
 			end
 			function backend:probe_snapshot() return resolved(snapshot_with_items(state.items)) end
 			function backend:get_mastery_by_pattern(_)
@@ -937,9 +940,11 @@ def main() -> None:
 
 			local settings = base_settings({
 				auto_crafter_best_candidate_fallback = false,
+				auto_crafter_cap_by_dockets = true,
+				auto_crafter_cap_by_max_purchases = false,
 				auto_crafter_defer_bad_weapon_processing = true,
+				auto_crafter_docket_cap = 3500,
 				auto_crafter_level_mastery_20 = true,
-				auto_crafter_max_purchases = 10,
 			})
 			CurrentOffer = raw_offer()
 			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = settings, reporter = reports(), get_selected_offer = function() return CurrentOffer end})
@@ -947,28 +952,34 @@ def main() -> None:
 			controller._active_view = {}
 			controller._view_is_valid = true
 			assert(controller:start_purchase_search() == true)
+			for index = 1, 35 do
+				local promise = state.purchase_promises[index]
+
+				assert(promise and promise.next_callback)
+				promise.next_callback({items = {state.purchase_items[index]}})
+			end
 			local result = controller:snapshot()
-			assert(backend.purchase_calls == 10)
-			assert(backend.discard_calls == 2)
-			assert(state.discard_sizes[1] == 8 and state.discard_sizes[2] == 2)
-			assert(state.maximum_inventory == 8)
+			assert(backend.purchase_calls == 35, "purchase calls=" .. tostring(backend.purchase_calls) .. " phase=" .. tostring(result.phase) .. " operation=" .. tostring(result.operation_kind) .. " inflight=" .. tostring(result.operation_inflight) .. " error=" .. tostring(result.last_error))
+			assert(backend.discard_calls == 2, "discard calls=" .. tostring(backend.discard_calls))
+			assert(state.discard_sizes[1] == 30 and state.discard_sizes[2] == 5, "discard sizes=" .. tostring(state.discard_sizes[1]) .. "," .. tostring(state.discard_sizes[2]))
+			assert(state.maximum_inventory == 30, "maximum inventory=" .. tostring(state.maximum_inventory))
 			assert(#state.items == 0)
-			assert(result.phase == "search_max_purchases")
+			assert(result.phase == "search_docket_cap")
 			assert(result.search.running == false)
 			assert(result.search.result == nil)
 			assert(result.search.best == nil)
 		end
 
 		-- Rolling pre-target cleanup bounds the live inventory without changing
-		-- the configured search. An exact match on purchase 41 is still acquired,
+		-- the configured search. An exact match on purchase 47 is still acquired,
 		-- and the previously reserved fallback is released into the final drain.
 		do
-			local state = {items = {}, maximum_inventory = 0, purchase_items = {}, purchase_promises = {}}
+			local state = {discard_sizes = {}, favorite_ids = {}, items = {}, maximum_inventory = 0, purchase_items = {}, purchase_promises = {}}
 			local backend = {discard_calls = 0, mastery_reads = 0, purchase_calls = 0}
 			function backend:purchase_offer(_)
 				self.purchase_calls = self.purchase_calls + 1
-				local exact = self.purchase_calls == 41
-				local item = summarized_item("gear-rolling-" .. tostring(self.purchase_calls), 2, exact and 60 or 55)
+				local exact = self.purchase_calls == 47
+				local item = summarized_item("gear-rolling-" .. tostring(self.purchase_calls), 2, exact and 60 or self.purchase_calls == 20 and 58 or 55)
 
 				local promise = pending()
 
@@ -987,7 +998,7 @@ def main() -> None:
 			end
 			function backend:discard_items(gear_ids)
 				self.discard_calls = self.discard_calls + 1
-				assert(#gear_ids == 8)
+				state.discard_sizes[#state.discard_sizes + 1] = #gear_ids
 				local removed = {}
 
 				for _, gear_id in ipairs(gear_ids) do removed[gear_id] = true end
@@ -1002,12 +1013,18 @@ def main() -> None:
 
 				return resolved({})
 			end
+			function backend:favorite_item(gear_id)
+				state.favorite_ids[#state.favorite_ids + 1] = gear_id
+
+				return resolved({favorited = true})
+			end
 
 			local settings = base_settings({
 				auto_crafter_best_candidate_fallback = true,
 				auto_crafter_defer_bad_weapon_processing = true,
+				auto_crafter_favorite_result = true,
 				auto_crafter_level_mastery_20 = true,
-				auto_crafter_max_purchases = 41,
+				auto_crafter_max_purchases = 47,
 			})
 			CurrentOffer = raw_offer()
 			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = settings, reporter = reports(), get_selected_offer = function() return CurrentOffer end})
@@ -1015,19 +1032,21 @@ def main() -> None:
 			controller._active_view = {}
 			controller._view_is_valid = true
 			assert(controller:start_purchase_search() == true)
-			for index = 1, 41 do
+			for index = 1, 47 do
 				local promise = state.purchase_promises[index]
 
 				assert(promise and promise.next_callback)
 				promise.next_callback({items = {state.purchase_items[index]}})
 			end
 			local result = controller:snapshot()
-			assert(backend.purchase_calls == 41, "purchase calls=" .. tostring(backend.purchase_calls) .. " phase=" .. tostring(result.phase))
-			assert(backend.discard_calls == 5, "discard calls=" .. tostring(backend.discard_calls))
+			assert(backend.purchase_calls == 47, "purchase calls=" .. tostring(backend.purchase_calls) .. " phase=" .. tostring(result.phase))
+			assert(backend.discard_calls == 2, "discard calls=" .. tostring(backend.discard_calls))
+			assert(state.discard_sizes[1] == 30 and state.discard_sizes[2] == 16)
 			assert(backend.mastery_reads == 1, "mastery reads=" .. tostring(backend.mastery_reads))
-			assert(state.maximum_inventory == 9, "maximum inventory=" .. tostring(state.maximum_inventory))
-			assert(#state.items == 1 and state.items[1].gear_id == "gear-rolling-41")
-			assert(result.search.result.gear_id == "gear-rolling-41")
+			assert(state.maximum_inventory == 31, "maximum inventory=" .. tostring(state.maximum_inventory))
+			assert(#state.favorite_ids == 1 and state.favorite_ids[1] == "gear-rolling-47")
+			assert(#state.items == 1 and state.items[1].gear_id == "gear-rolling-47")
+			assert(result.search.result.gear_id == "gear-rolling-47")
 			assert(result.phase == "phase4_complete")
 		end
 
@@ -1035,16 +1054,19 @@ def main() -> None:
 		-- Rolling drains never sacrifice it, and the configured cap still decides
 		-- when that fallback is selected.
 		do
-			local state = {items = {}, maximum_inventory = 0}
+			local state = {items = {}, maximum_inventory = 0, purchase_items = {}, purchase_promises = {}}
 			local backend = {discard_calls = 0, purchase_calls = 0}
 			function backend:purchase_offer(_)
 				self.purchase_calls = self.purchase_calls + 1
 				local item = summarized_item("gear-reserved-" .. tostring(self.purchase_calls), 2, self.purchase_calls == 1 and 59 or 55)
+				local promise = pending()
 
 				state.items[#state.items + 1] = item
 				state.maximum_inventory = math.max(state.maximum_inventory, #state.items)
+				state.purchase_items[self.purchase_calls] = item
+				state.purchase_promises[self.purchase_calls] = promise
 
-				return resolved({items = {item}})
+				return promise
 			end
 			function backend:probe_snapshot() return resolved(snapshot_with_items(state.items)) end
 			function backend:get_mastery_by_pattern(_)
@@ -1074,7 +1096,7 @@ def main() -> None:
 				auto_crafter_best_candidate_fallback = true,
 				auto_crafter_defer_bad_weapon_processing = true,
 				auto_crafter_level_mastery_20 = true,
-				auto_crafter_max_purchases = 10,
+				auto_crafter_max_purchases = 35,
 			})
 			CurrentOffer = raw_offer()
 			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = settings, reporter = reports(), get_selected_offer = function() return CurrentOffer end})
@@ -1082,10 +1104,16 @@ def main() -> None:
 			controller._active_view = {}
 			controller._view_is_valid = true
 			assert(controller:start_purchase_search() == true)
+			for index = 1, 35 do
+				local promise = state.purchase_promises[index]
+
+				assert(promise and promise.next_callback)
+				promise.next_callback({items = {state.purchase_items[index]}})
+			end
 			local result = controller:snapshot()
-			assert(backend.purchase_calls == 10)
+			assert(backend.purchase_calls == 35)
 			assert(backend.discard_calls == 2)
-			assert(state.maximum_inventory == 9)
+			assert(state.maximum_inventory == 31)
 			assert(#state.items == 1 and state.items[1].gear_id == "gear-reserved-1")
 			assert(result.search.result.gear_id == "gear-reserved-1")
 			assert(result.search.fallback_reason == "search_max_purchases")

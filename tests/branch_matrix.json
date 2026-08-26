@@ -271,7 +271,7 @@
       "name": "auto-crafter.bounds-live-pretarget-inventory-without-changing-caps",
       "test": "test_auto_crafter_controller.py",
       "case": "pretarget_bounds_progression_and_inventory_base_identity_safety",
-      "outcome": "level-1 crafting dispatches no purchase; rolling eight-item Phase 3 drains bound live run-owned misses while the configured docket or maximum-purchase boundary remains authoritative; an exact purchase 41 remains reachable, one closest fallback survives every drain when enabled, and incomplete projections never become fallback or favorite candidates",
+      "outcome": "level-1 crafting dispatches no purchase; rolling 30-item Phase 3 drains bound live run-owned misses while the configured docket or maximum-purchase boundary remains authoritative; an exact purchase 47 remains reachable and is the only result favorited when configured, one closest unfavorited fallback survives every drain when enabled, fallback-off docket exhaustion cleans current-run misses without entering Phase 4, and incomplete projections never become fallback or favorite candidates",
       "modules": ["BetterInventory_auto_crafter.lua"]
     },
     {

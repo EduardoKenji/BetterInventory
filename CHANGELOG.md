@@ -5,7 +5,7 @@
 - Blocks enabled crafting mutations before the first purchase when native Hadron progression is locked, including the reported level-1 Auto Crafter path.
 - Requires affirmative selected-family mastery discovery for mastery automation on characters below level 30 while preserving valid low-level and Psych Ward workflows.
 - Preserves the configured Ordo-docket and optional maximum-purchase limits as the only Auto Crafter acquisition ceilings; exact matches after purchase 40 remain reachable.
-- Processes pre-target misses in rolling eight-item mastery-fodder batches, reserving only the current closest fallback when enabled, so long searches no longer accumulate every purchase in inventory.
+- Processes pre-target misses in rolling 30-item mastery-fodder batches, reserving only the current closest fallback when enabled, so long searches no longer accumulate every purchase in inventory without excessive cleanup pauses.
 - When fallback is disabled, consumes only current-run misses toward mastery 20, discards verified run-owned excess, and stops at the configured acquisition boundary without selecting, favoriting, or crafting a fallback weapon.
 - Reuses the native weapon card's already-decorated family name, preserving GodRolls stars/colours while avoiding BetterInventory's redundant second GodRolls `WeaponStats` projection per compatible card.
 - Confirms the supplied crash at Hadron card 163 exhausted Darktide's fixed 1 GiB Lua heap while BetterInventory and GodRolls were both in the eager per-card allocation path; no infinite loop, independent retention leak, or mass favoriting was present.
