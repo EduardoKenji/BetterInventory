@@ -125,6 +125,8 @@ def main() -> None:
     assert query.matches(compile_query("rating:480..500"), plasma) is True
     assert query.matches(compile_query("rating:510..490"), plasma) is True
     assert query.matches(compile_query("base:380"), plasma) is True
+    assert query.matches(compile_query("500"), plasma) is True
+    assert query.matches(compile_query("50"), plasma) is False
 
     assert query.matches(compile_query("favorite:true"), plasma) is True
     assert query.matches(compile_query("favourite:on"), plasma) is True

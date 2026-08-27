@@ -341,6 +341,15 @@ local function parse_clause(raw_clause, rarity_aliases)
 		}
 	end
 
+	local number = tonumber(value)
+
+	if number ~= nil and number == number then
+		return {
+			kind = "number_any_equal",
+			number = number,
+		}
+	end
+
 	return {
 		field = "text",
 		kind = "text_contains",
@@ -475,6 +484,8 @@ local function clause_matches(clause, record)
 		return any_text_value(record, clause.field, clause.value, true)
 	elseif clause.kind == "boolean" then
 		return record and record[clause.field] == clause.value
+	elseif clause.kind == "number_any_equal" then
+		return record and (record.rating == clause.number or record.base == clause.number)
 	end
 
 	return number_matches(clause, record and record[clause.field])
