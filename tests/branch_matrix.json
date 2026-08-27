@@ -47,7 +47,7 @@
       "name": "search.production-path-promotes-names-perks-and-blessings",
       "test": "test_search_end_to_end.py",
       "case": "production_name_perk_blessing_sort_and_release",
-        "outcome": "the production query, projection, runtime, and indexed comparator compose over Darktide-shaped {item=...} entries so a low-native-priority shovel is promoted by its name, Flak perk, or Uncanny Strike blessing even when ItemSorting leaves a stale selected-option pointer; unchanged projections are reused and explicit release empties the view-owned cache",
+        "outcome": "the production query, projection, runtime, and indexed comparator compose over Darktide-shaped {item=...} entries so a low-native-priority shovel is promoted by its name, Flak perk, or Uncanny Strike blessing even when ItemSorting leaves a stale selected-option pointer; a new comparator-manager generation unwraps and replaces a surviving pre-reload wrapper so it cannot read a released search runtime, restoration retains the native comparator, unchanged projections are reused, and explicit release empties the view-owned cache",
       "modules": ["BetterInventory_search_query.lua", "BetterInventory_search_index.lua", "BetterInventory_search_runtime.lua", "BetterInventory_feature_sorting.lua"]
     },
     {

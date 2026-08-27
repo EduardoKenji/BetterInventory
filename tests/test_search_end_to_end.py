@@ -174,6 +174,44 @@ def main() -> None:
         local blessing_first, blessing_rank = first_for("uncanny", 4)
         local builds = active_index.metrics.builds
         local hits = active_index.metrics.hits
+
+        -- Darktide keeps this live option table across Ctrl+Shift+R. A new
+        -- comparator manager must unwrap the old closure and bind the option to
+        -- its new search-rank dependency, not silently reuse the released
+        -- runtime captured by the previous generation.
+        local native_sort = view._sort_options[1]._better_inventory_original_sort
+        local old_wrapped_sort = view._sort_options[1].sort_function
+        local old_wrapper_generation = view._sort_options[1]._better_inventory_sort_wrapper_generation
+        local reloaded_manager = Sorting.new_comparator_manager({
+            begin_view_session = function() end,
+            contracts = {
+                safe_call = function(callback, ...) return true, callback(...) end,
+                safe_method = function() return false, nil end,
+            },
+            is_armoury_sort_view = function() return false end,
+            is_sortable_view = function() return true end,
+            perfect_roll_dump_stat_value = function() return nil end,
+            register_view_session_cleanup = function() end,
+            search_rank = function(_, entry) return entry.item.reload_rank end,
+        })
+        view._offer_items_layout[1].item.reload_rank = 1
+        view._offer_items_layout[2].item.reload_rank = 9
+        reloaded_manager.configure(mod, view)
+        local new_wrapped_sort = view._sort_options[1].sort_function
+        local new_wrapper_generation = view._sort_options[1]._better_inventory_sort_wrapper_generation
+        local reload_order = {
+            view._offer_items_layout[1],
+            view._offer_items_layout[2],
+        }
+        table.sort(reload_order, new_wrapped_sort)
+        local reload_first = reload_order[1].item.gear_id
+        local wrapper_rebound = old_wrapped_sort ~= new_wrapped_sort
+            and old_wrapper_generation ~= new_wrapper_generation
+            and view._sort_options[1]._better_inventory_original_sort == native_sort
+        reloaded_manager.restore(view)
+        local reload_restored_native = view._sort_options[1].sort_function == native_sort
+            and view._sort_options[1]._better_inventory_sort_wrapper_generation == nil
+
         Runtime.release(search, view)
         local retained_cache_entries = 0
         for _ in pairs(active_index.cache) do retained_cache_entries = retained_cache_entries + 1 end
@@ -187,7 +225,10 @@ def main() -> None:
             name_rank = name_rank,
             perk_first = perk_first,
             perk_rank = perk_rank,
+            reload_first = reload_first,
+            reload_restored_native = reload_restored_native,
             retained_cache_entries = retained_cache_entries,
+            wrapper_rebound = wrapper_rebound,
         }
         '''
     )
@@ -195,6 +236,9 @@ def main() -> None:
     assert result.name_first == "searched-shovel" and result.name_rank > 0
     assert result.perk_first == "searched-shovel" and result.perk_rank > 0
     assert result.blessing_first == "searched-shovel" and result.blessing_rank > 0
+    assert result.reload_first == "searched-shovel"
+    assert result.wrapper_rebound is True
+    assert result.reload_restored_native is True
     assert result.builds == 2
     assert result.hits >= 6
     assert result.retained_cache_entries == 0

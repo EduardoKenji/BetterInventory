@@ -166,6 +166,11 @@ end
 -- restoration.
 Sorting.new_comparator_manager = function(dependencies)
 	local manager = {}
+	-- Sort-option tables belong to Darktide's live view and survive a DMF
+	-- Ctrl+Shift+R. Each manager generation must replace wrappers created by the
+	-- previous search runtime; otherwise the visible query is ranked through a
+	-- stale closure even though the new runtime has already scanned the items.
+	local wrapper_generation = {}
 	local EQUIPPED_FAVORITE_PRIORITY_OFFSET = 3
 	local search_rank = type(dependencies.search_rank) == "function" and dependencies.search_rank or function()
 		return 0
@@ -292,11 +297,21 @@ Sorting.new_comparator_manager = function(dependencies)
 			local option = sort_options[index]
 			local wrapped_sort = option and option._better_inventory_wrapped_sort
 
-			if option and option._better_inventory_original_sort and option.sort_function ~= wrapped_sort then
-				-- Another integration replaced the comparator after BetterInventory
-				-- wrapped it. Treat that comparator as the new native baseline.
-				option._better_inventory_original_sort = nil
-				option._better_inventory_wrapped_sort = nil
+			if option and option._better_inventory_original_sort then
+				if option.sort_function ~= wrapped_sort then
+					-- Another integration replaced the comparator after BetterInventory
+					-- wrapped it. Treat that comparator as the new native baseline.
+					option._better_inventory_original_sort = nil
+					option._better_inventory_wrapped_sort = nil
+					option._better_inventory_sort_wrapper_generation = nil
+				elseif option._better_inventory_sort_wrapper_generation ~= wrapper_generation then
+					-- Current manager cannot reuse an earlier manager's closure: its
+					-- `search_rank` dependency points at the released pre-reload runtime.
+					option.sort_function = option._better_inventory_original_sort
+					option._better_inventory_original_sort = nil
+					option._better_inventory_wrapped_sort = nil
+					option._better_inventory_sort_wrapper_generation = nil
+				end
 			end
 
 			local original_sort = option and option.sort_function
@@ -325,6 +340,7 @@ Sorting.new_comparator_manager = function(dependencies)
 					return original_sort(left, right)
 				end
 				option._better_inventory_wrapped_sort = better_inventory_sort
+				option._better_inventory_sort_wrapper_generation = wrapper_generation
 				option.sort_function = better_inventory_sort
 			end
 		end
@@ -353,6 +369,7 @@ Sorting.new_comparator_manager = function(dependencies)
 			if option then
 				option._better_inventory_original_sort = nil
 				option._better_inventory_wrapped_sort = nil
+				option._better_inventory_sort_wrapper_generation = nil
 			end
 		end
 	end

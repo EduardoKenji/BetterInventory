@@ -6,7 +6,7 @@
         {"name": "bounded_projection_cache_custom_names_traits_and_split_rarity", "risk": "high", "start_line": 1, "end_line": 602}
   ],
   "test_search_end_to_end.py": [
-    {"name": "production_name_perk_blessing_sort_and_release", "risk": "critical", "start_line": 1, "end_line": 206}
+    {"name": "production_name_perk_blessing_sort_and_release", "risk": "critical", "start_line": 1, "end_line": 250}
   ],
   "test_search_runtime.py": [
           {"name": "coalesced_filter_rank_dim_memory_and_release_lifecycle", "risk": "high", "start_line": 1, "end_line": 629}
