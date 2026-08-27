@@ -16,6 +16,7 @@ def main() -> None:
         hooks = {}
         safe_hooks = {}
         calls = {}
+        search_updates = 0
         test_mod = {
             hook = function(_, target, name, callback)
                 hooks[target.__name .. ":" .. name] = callback
@@ -36,7 +37,10 @@ def main() -> None:
             update = function() end,
         })
         base_view = klass("base", {init = function() end})
-        crafting = klass("crafting", {_handle_input = function() end})
+        crafting = klass("crafting", {
+            _handle_input = function() end,
+            update = function() end,
+        })
         barter = klass("barter", {
             _handle_input = function() end,
             _cb_fetch_inventory_items = function() end,
@@ -44,7 +48,10 @@ def main() -> None:
             update = function() end,
             on_exit = function() end,
         })
-        vendor = klass("vendor", {_handle_input = function() end})
+        vendor = klass("vendor", {
+            _handle_input = function() end,
+            update = function() end,
+        })
         legend = klass("legend", {_handle_input = function() end})
         grid_element = klass("element", {
             cb_on_grid_entry_left_pressed = function() end,
@@ -58,7 +65,10 @@ def main() -> None:
                 calls.filter = {view, entry, native}
                 return native and entry.keep
             end,
-            search_update = function(view, time) calls.search_update = {view, time} end,
+            search_update = function(view, time)
+                search_updates = search_updates + 1
+                calls.search_update = {view, time}
+            end,
             search_compose_layout = function(view, layout)
                 calls.compose = {view, layout}
                 return layout
@@ -69,7 +79,6 @@ def main() -> None:
             sync_query = function(_, view) calls.sync = view end,
             update = function(_, _, view, time, input) calls.ui_update = {view, time, input} end,
             handle_view_input = function(_, view) return view.block_search == true end,
-            handle_grid_input = function(view) return view and view.block_grid == true end,
             is_writing = function(view) return view and view.writing == true end,
             defocus = function(view) calls.defocus = view end,
             decorate_definitions = function(definitions, view)
@@ -117,7 +126,11 @@ def main() -> None:
 
     lua.execute(
         r'''
-        view = {keep = true}
+        view = {
+            keep = true,
+            _better_inventory_search_filter_active = true,
+            _better_inventory_search_needs_update = true,
+        }
         native_present = 0
         native_filter = 0
         hooks["grid:_present_layout_by_slot_filter"](
@@ -128,7 +141,14 @@ def main() -> None:
             function() native_filter = native_filter + 1 return true end,
             view, {keep = false}
         )
-        safe_hooks["grid:update"](view, 0.1, 12, "input")
+        view._better_inventory_search_filter_active = nil
+        idle_filter_result = hooks["grid:_filter_by_filter_option"](
+            function() native_filter = native_filter + 1 return true end,
+            view, {keep = false}
+        )
+        safe_hooks["crafting:update"](view, 0.1, 12, "input")
+        assert(safe_hooks["grid:update"] == nil)
+        safe_hooks["vendor:update"]({keep = true}, 0.1, 13, "idle_input")
 
         native_input = 0
         blocked_view = {block_search = true}
@@ -162,29 +182,10 @@ def main() -> None:
             {_parent = normal_parent}
         )
         safe_hooks["element:cb_on_grid_entry_left_pressed"]({_parent = view})
-        native_grid_updates = 0
-        grid_parent = {
-            block_grid = true,
-            _widgets_by_name = {better_inventory_search_input = {}},
-        }
-        grid_element_instance = {_parent = grid_parent}
-        grid_parent._item_grid = grid_element_instance
-        grid_input = {
-            null_service = function()
-                calls.null_service = true
-                return "null_input"
-            end,
-        }
-        hooks["element:update"](
-            function(_, _, _, input)
-                native_grid_updates = native_grid_updates + 1
-                calls.grid_input = input
-            end,
-            grid_element_instance, 0.1, 20, grid_input
-        )
 
         sacrifice_view = {
             __class_name = "CraftingMechanicusBarterItemsView",
+            _better_inventory_search_needs_update = true,
             _item_grid = {
                 set_pivot_offset = function(_, x, y)
                     calls.pivot = {x, y}
@@ -215,16 +216,16 @@ def main() -> None:
     assert g.native_present == 1
     assert g.calls.capture[2] == "slot"
     assert lua.execute("return calls.sync == sacrifice_view") is True
-    assert g.native_filter == 1 and g.filter_result is False
+    assert g.native_filter == 2 and g.filter_result is False
+    assert g.idle_filter_result is True
     assert g.calls.ui_update[2] == 30
     assert g.calls.search_update[2] == 30
+    assert g.search_updates == 2
     assert g.native_input == 1
     assert g.legend_native == 1
     assert g.legend_parent._better_inventory_search_block_legend_once is None
     assert lua.execute("return calls.defocus == view") is True
-    assert g.native_grid_updates == 1
-    assert g.calls.null_service is True
-    assert g.calls.grid_input == "null_input"
+    assert lua.execute('return hooks["element:update"] == nil') is True
     assert g.calls.base_definitions.decorated is True
     assert g.calls.pivot[1] == 100 and g.calls.pivot[2] == 150
     assert lua.execute("return calls.compose[2] == native_layout") is True

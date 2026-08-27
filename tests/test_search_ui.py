@@ -281,14 +281,18 @@ def main() -> None:
             widget_by_index = function(_, index) return grid_widgets[index] end,
             select_grid_index = function(_, index) selected_index = index end,
             select_first_index = function() selected_index = 1 return 1 end,
+            input_disabled = function() return grid_input_disabled end,
+            disable_input = function(_, disabled) grid_input_disabled = disabled end,
         }
+        grid_input_disabled = false
         input_service.actions.navigate_up_continuous = true
         '''
     )
-    assert search_ui.handle_grid_input(
-        view, view._item_grid, lua.globals().input_service
+    assert search_ui.handle_view_input(
+        lua.globals().test_mod, view, lua.globals().input_service
     ) is True
     assert lua.globals().selected_index is None
+    assert lua.globals().grid_input_disabled is True
     assert input_widget.content.hotspot.is_selected is True
     assert search_ui.is_writing(view) is False
     assert search_ui.handle_view_input(
@@ -306,12 +310,14 @@ def main() -> None:
         lua.globals().test_mod, view, lua.globals().input_service
     ) is True
     assert lua.globals().selected_index == 1
+    assert lua.globals().grid_input_disabled is False
     assert input_widget.content.hotspot.is_selected is False
     lua.globals().input_service.actions.navigate_down_continuous = False
     lua.execute("selected_index = 3; input_service.actions.navigate_up_continuous = true")
-    assert search_ui.handle_grid_input(
-        view, view._item_grid, lua.globals().input_service
+    assert search_ui.handle_view_input(
+        lua.globals().test_mod, view, lua.globals().input_service
     ) is False
+    assert lua.globals().grid_input_disabled is False
     lua.execute("controller_active = false; input_service.actions.navigate_up_continuous = false")
 
     # Native ViewElementGrid centers its mask. Search clipping moves only the
@@ -374,6 +380,7 @@ def main() -> None:
         lua.globals().test_mod, view, lua.globals().input_service
     ) is True
     assert search_ui.is_writing(view) is True
+    assert lua.globals().grid_input_disabled is True
     lua.globals().input_service.actions.focus_action = False
     assert search_ui.handle_view_input(
         lua.globals().test_mod, view, lua.globals().input_service
@@ -384,8 +391,17 @@ def main() -> None:
         lua.globals().test_mod, view, lua.globals().input_service
     ) is True
     assert search_ui.is_writing(view) is False
+    assert lua.globals().grid_input_disabled is False
     assert view._better_inventory_search_block_legend_once is True
     assert input_widget.content.input_text == "sword"
+
+    # Search owns only an enabled grid. Native discard/options flows that had
+    # already disabled the grid retain that state across focus and defocus.
+    lua.globals().grid_input_disabled = True
+    assert search_ui.focus(view) is True
+    assert search_ui.defocus(view) is True
+    assert lua.globals().grid_input_disabled is True
+    lua.globals().grid_input_disabled = False
 
     # The master Mod Options switch immediately hides and defocuses an
     # already-created field. The integration test separately proves that all

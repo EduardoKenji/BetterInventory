@@ -295,8 +295,9 @@ Sorting.new_comparator_manager = function(dependencies)
 					-- Search is the outermost, stable partition. Existing BetterInventory
 					-- priorities and the selected ItemSorting/native comparator remain the
 					-- complete tie-break hierarchy inside each match group.
-					local left_search_rank = search_rank(view, left)
-					local right_search_rank = search_rank(view, right)
+					local search_active = view._better_inventory_search_rank_active
+					local left_search_rank = search_active and search_rank(view, left) or 0
+					local right_search_rank = search_active and search_rank(view, right) or 0
 
 					if left_search_rank ~= right_search_rank then
 						return left_search_rank > right_search_rank

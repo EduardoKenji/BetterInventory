@@ -886,6 +886,7 @@ def main() -> None:
     features.search_rank = lua.eval(
         "function(_, entry) return entry and entry.item and entry.item.search_rank or 0 end"
     )
+    sortable_view._better_inventory_search_rank_active = True
     search_promoted = lua.execute(
         r"""
         local view = ...
@@ -922,6 +923,7 @@ def main() -> None:
     sortable_view._sort_options[1].sort_function = original_native_for_search
     features.configure_inventory_sort_options(mod, layout, sortable_view)
     features.search_rank = None
+    sortable_view._better_inventory_search_rank_active = None
 
     sorted_ids = lua.execute(
         r"""

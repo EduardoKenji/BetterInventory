@@ -223,6 +223,58 @@ local function controller_focused(view)
 	return view and view._better_inventory_search_controller_focused == true or false
 end
 
+local function grid_input_disabled(item_grid)
+	if not item_grid then
+		return false
+	end
+
+	if type(item_grid.input_disabled) == "function" then
+		return item_grid:input_disabled() == true
+	end
+
+	return item_grid._input_disabled == true
+end
+
+local function own_grid_input(view, disabled)
+	local item_grid = view and view._item_grid
+
+	if not item_grid or type(item_grid.disable_input) ~= "function" then
+		return false
+	end
+
+	if disabled then
+		if view._better_inventory_search_grid_input_owned then
+			return true
+		end
+
+		local was_disabled = grid_input_disabled(item_grid)
+		view._better_inventory_search_grid_input_owned = true
+		view._better_inventory_search_grid_input_was_disabled = was_disabled
+
+		if not was_disabled then
+			item_grid:disable_input(true)
+		end
+
+		return true
+	end
+
+	if not view._better_inventory_search_grid_input_owned then
+		return false
+	end
+
+	local was_disabled = view._better_inventory_search_grid_input_was_disabled == true
+	view._better_inventory_search_grid_input_owned = nil
+	view._better_inventory_search_grid_input_was_disabled = nil
+
+	-- Restore only the false state we replaced. A grid that was already disabled
+	-- belongs to the native discard/options flow and must remain untouched.
+	if not was_disabled and grid_input_disabled(item_grid) then
+		item_grid:disable_input(false)
+	end
+
+	return true
+end
+
 local function restore_first_grid_item(view)
 	local item_grid = view and view._item_grid
 
@@ -261,12 +313,14 @@ SearchUI.defocus = function(view)
 	local content = input and input.content
 
 	if not content then
+		own_grid_input(view, false)
 		return false
 	end
 
 	content.is_writing = false
 	content.selected_text = nil
 	view._better_inventory_search_controller_focused = nil
+	own_grid_input(view, false)
 
 	if content.hotspot then
 		content.hotspot.is_selected = false
@@ -287,6 +341,7 @@ SearchUI.focus = function(view)
 	content.is_writing = true
 	content.caret_position = text_length(content.input_text) + 1
 	content.force_caret_update = true
+	own_grid_input(view, true)
 
 	if content.hotspot then
 		content.hotspot.is_selected = true
@@ -299,37 +354,6 @@ SearchUI.is_writing = function(view)
 	local input = input_widget(view)
 
 	return input and input.content and input.content.is_writing == true or false
-end
-
-SearchUI.handle_grid_input = function(view, item_grid, input_service)
-	local input = input_widget(view)
-	local content = input and input.content
-
-	if not input or input.visible == false then
-		return false
-	elseif (content and content.is_writing == true) or controller_focused(view) then
-		return true
-	elseif view._item_grid ~= item_grid
-		or not controller_navigation_active(view)
-		or not action_pressed(input_service, "navigate_up_continuous")
-		or not selected_widget_is_top_row(item_grid) then
-		return false
-	end
-
-	view._better_inventory_search_controller_focused = true
-
-	if type(item_grid.select_grid_index) == "function" then
-		item_grid:select_grid_index(nil)
-	end
-
-	local hotspot = content and content.hotspot
-
-	if hotspot then
-		hotspot.is_selected = true
-		hotspot.is_focused = true
-	end
-
-	return true
 end
 
 SearchUI.sync_query = function(Features, view)
@@ -378,6 +402,11 @@ SearchUI.update = function(mod, Features, view, time)
 
 	local content = input.content
 	local query = type(content.input_text) == "string" and content.input_text or ""
+	local should_own_grid_input = content.is_writing == true or controller_focused(view)
+
+	if should_own_grid_input or view._better_inventory_search_grid_input_owned then
+		own_grid_input(view, should_own_grid_input)
+	end
 
 	if not view._better_inventory_search_widget_initialized then
 		content.placeholder_text = mod:localize("inventory_search_placeholder")
@@ -395,9 +424,14 @@ SearchUI.update = function(mod, Features, view, time)
 end
 
 SearchUI.handle_view_input = function(mod, view, input_service)
-	if not input_widget(view) then
+	local input = input_widget(view)
+	local content = input and input.content
+
+	if not content or input.visible == false then
 		return false
 	end
+
+	local writing = content.is_writing == true
 
 	if controller_focused(view) then
 		if action_pressed(input_service, "navigate_down_continuous") then
@@ -407,9 +441,8 @@ SearchUI.handle_view_input = function(mod, view, input_service)
 			SearchUI.defocus(view)
 			restore_first_grid_item(view)
 			view._better_inventory_search_block_legend_once = true
-		elseif not SearchUI.is_writing(view) and action_pressed(input_service, "confirm_pressed") then
-			local input = input_widget(view)
-			local hotspot = input and input.content and input.content.hotspot
+		elseif not writing and action_pressed(input_service, "confirm_pressed") then
+			local hotspot = content.hotspot
 
 			if hotspot then
 				hotspot.force_input_pressed = true
@@ -419,7 +452,30 @@ SearchUI.handle_view_input = function(mod, view, input_service)
 		return true
 	end
 
-	if not SearchUI.is_writing(view) then
+	local item_grid = view._item_grid
+
+	if not writing
+		and controller_navigation_active(view)
+		and action_pressed(input_service, "navigate_up_continuous")
+		and selected_widget_is_top_row(item_grid) then
+		view._better_inventory_search_controller_focused = true
+		own_grid_input(view, true)
+
+		if type(item_grid.select_grid_index) == "function" then
+			item_grid:select_grid_index(nil)
+		end
+
+		local hotspot = content.hotspot
+
+		if hotspot then
+			hotspot.is_selected = true
+			hotspot.is_focused = true
+		end
+
+		return true
+	end
+
+	if not writing then
 		local focus_action = mod and mod:get("inventory_search_focus_keybind")
 
 		if focus_action ~= nil and focus_action ~= "off" and action_pressed(input_service, focus_action) then
@@ -428,7 +484,7 @@ SearchUI.handle_view_input = function(mod, view, input_service)
 		end
 	end
 
-	if not SearchUI.is_writing(view) then
+	if not writing then
 		return false
 	end
 
@@ -453,6 +509,8 @@ SearchUI.release = function(view)
 		view._better_inventory_search_block_legend_once = nil
 		view._better_inventory_search_ui_unavailable = nil
 		view._better_inventory_search_controller_focused = nil
+		view._better_inventory_search_grid_input_owned = nil
+		view._better_inventory_search_grid_input_was_disabled = nil
 	end
 end
 

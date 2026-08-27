@@ -22,6 +22,8 @@ def main() -> None:
         project_calls = 0
         trusted_project_calls = 0
         validated_project_calls = 0
+        projection_context_reuses = 0
+        projection_context_mismatches = 0
         released_indexes = 0
 
         function make_view(character, family, count)
@@ -53,6 +55,13 @@ def main() -> None:
             new = function() return {released = false} end,
             project = function(index, item, context)
                 project_calls = project_calls + 1
+                if not index.projection_context then
+                    index.projection_context = context
+                elseif index.projection_context == context then
+                    projection_context_reuses = projection_context_reuses + 1
+                else
+                    projection_context_mismatches = projection_context_mismatches + 1
+                end
                 if context and context.trust_cache == true then
                     trusted_project_calls = trusted_project_calls + 1
                 else
@@ -156,15 +165,27 @@ def main() -> None:
     assert search_runtime.capture_presentation(
         runtime, cold_view, "slot", "type", "title"
     ) is True
+    assert cold_view._better_inventory_search_needs_update is True
     cold_projects_before = lua.globals().project_calls
     assert search_runtime.update(runtime, cold_view, 1) is False
     assert lua.globals().project_calls - cold_projects_before == 16
     assert search_runtime.update(runtime, cold_view, 2) is False
     assert lua.globals().project_calls - cold_projects_before == 32
+    assert cold_view._better_inventory_search_needs_update is True
     assert search_runtime.update(runtime, cold_view, 3) is False
     assert lua.globals().project_calls - cold_projects_before == 40
+    assert cold_view._better_inventory_search_needs_update is None
+    assert cold_view._better_inventory_search_rank_active is None
+    assert cold_view._better_inventory_search_filter_active is None
     assert search_runtime.set_query(runtime, cold_view, "sword", 4) == (True, None)
+    assert cold_view._better_inventory_search_needs_update is True
     assert search_runtime.update(runtime, cold_view, 4.08) is True
+    assert cold_view._better_inventory_search_needs_update is None
+    assert cold_view._better_inventory_search_rank_active is True
+    assert cold_view._better_inventory_search_filter_active is None
+    assert search_runtime.state(runtime, cold_view).projection_context.view is None
+    assert lua.globals().projection_context_reuses > 0
+    assert lua.globals().projection_context_mismatches == 0
     assert lua.globals().trusted_project_calls == 40
     assert search_runtime.release(runtime, cold_view) is True
 
@@ -186,6 +207,8 @@ def main() -> None:
     present_before_main_query = lua.globals().present_calls
     valid, error = search_runtime.set_query(runtime, view, "sword", 10)
     assert valid is True and error is None
+    assert view._better_inventory_search_rank_active is None
+    assert view._better_inventory_search_filter_active is None
     # Typing only compiles and moves the debounce deadline. Projection and
     # matching are coalesced until the query settles.
     assert lua.globals().trusted_project_calls == trusted_before_main_query
@@ -195,6 +218,8 @@ def main() -> None:
     assert lua.globals().validated_project_calls == validated_before_main_query + 200
     assert search_runtime.apply_widget_alpha(runtime, view) is True
     assert search_runtime.rank(runtime, view, view._offer_items_layout[2]) == 1
+    assert view._better_inventory_search_rank_active is True
+    assert view._better_inventory_search_filter_active is None
     assert search_runtime.rank(runtime, view, view._offer_items_layout[1]) == 0
     assert search_runtime.native_filter(runtime, view, None, True) is True
     late_entry = lua.table_from({"gear_id": "late", "name": "late sword"})
@@ -212,12 +237,15 @@ def main() -> None:
     # Present requests are coalesced for 80 ms and do not allocate or rerun the
     # native presentation for every keystroke.
     search_runtime.set_query(runtime, view, "axe", 10.02)
+    assert view._better_inventory_search_rank_active is None
+    assert view._better_inventory_search_filter_active is None
     search_runtime.set_query(runtime, view, "odd axe", 10.04)
     lua.globals().second_result_table = search_runtime.state(runtime, view).ranks
     assert lua.execute("return first_result_table == second_result_table") is True
     assert search_runtime.update(runtime, view, 10.11) is False
     assert lua.globals().present_calls == present_before_main_query
     assert search_runtime.update(runtime, view, 10.12) is True
+    assert view._better_inventory_search_needs_update is None
     assert lua.globals().present_calls == present_before_main_query + 1
     assert lua.globals().trusted_project_calls == trusted_before_main_query + 200
     assert search_runtime.update(runtime, view, 11) is False
@@ -323,6 +351,8 @@ def main() -> None:
     hidden = search_runtime.compose_layout(runtime, external, external_layout)
     lua.globals().external_hidden = hidden
     assert len(hidden) == 3
+    assert external._better_inventory_search_rank_active is True
+    assert external._better_inventory_search_filter_active is True
     assert lua.execute(
         "return external_hidden[1] == spacing_top and "
         "external_hidden[2] == sword_entry and external_hidden[3] == spacing_bottom"
@@ -384,6 +414,8 @@ def main() -> None:
     assert first_widget.content.alpha_multiplier == 0.4
     first_widget.content.alpha_multiplier = 0.7
     search_runtime.set_query(runtime, view, "", 14)
+    assert view._better_inventory_search_rank_active is None
+    assert view._better_inventory_search_filter_active is None
     assert search_runtime.update(runtime, view, 14.08) is True
     assert first_widget.content.alpha_multiplier == 0.7
 
@@ -393,6 +425,8 @@ def main() -> None:
     search_runtime.set_query(runtime, view, "axe", 15)
     index = search_runtime.state(runtime, view).index
     assert search_runtime.release(runtime, view) is True
+    assert view._better_inventory_search_rank_active is None
+    assert view._better_inventory_search_filter_active is None
     assert index.released is True
     reopened = lua.globals().make_view("veteran", "inventory", 3)
     assert search_runtime.register(runtime, reopened).query == "axe"

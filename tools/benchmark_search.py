@@ -162,6 +162,13 @@ def main() -> None:
 		local settle_seconds = os.clock() - settle_started
 		local settled_allocated_after = collectgarbage("count")
 		local index_hits_after_settle = benchmark_index.metrics.hits
+		local gated_idle_started = os.clock()
+		for frame = 1, 6000 do
+			if view._better_inventory_search_needs_update then
+				Runtime.update(search, view, 900 + frame / 60)
+			end
+		end
+		local gated_idle_seconds = os.clock() - gated_idle_started
         local idle_started = os.clock()
         for frame = 1, 6000 do Runtime.update(search, view, 1000 + frame / 60) end
         local idle_seconds = os.clock() - idle_started
@@ -174,6 +181,7 @@ def main() -> None:
 			compile_transient_kb = compile_allocated_after - compile_allocated_before,
 			idle_6000_frames_ms = idle_seconds * 1000,
 			idle_average_us = idle_seconds * 1000000 / 6000,
+			production_gated_idle_6000_frames_ms = gated_idle_seconds * 1000,
 			index_builds = benchmark_index.metrics.builds,
 			cached_after_projection = cached_after_projection,
 			cached_before_collection = cached_before_collection,

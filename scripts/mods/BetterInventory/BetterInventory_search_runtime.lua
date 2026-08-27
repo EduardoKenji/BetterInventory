@@ -77,6 +77,13 @@ local function mode(runtime)
 	return configured == "hide" and "hide" or "dim"
 end
 
+local function sync_hot_path_flags(runtime, view, state)
+	local active = query_is_active(state) and state.results_ready == true
+
+	view._better_inventory_search_rank_active = active and true or nil
+	view._better_inventory_search_filter_active = active and mode(runtime) == "hide" and true or nil
+end
+
 local function remember_enabled(runtime)
 	return safe_call(runtime.dependencies.remember_query) == true
 end
@@ -159,6 +166,7 @@ local function state_for(runtime, view, create)
 		owned_widget_alpha = weak_key_table(),
 		pending_present_at = nil,
 		presentation_kind = nil,
+		projection_context = {},
 		query = "",
 		ranks = weak_key_table(),
 		generation = 0,
@@ -182,7 +190,7 @@ local function state_for(runtime, view, create)
 	return state
 end
 
-local function entry_result(runtime, state, entry, context, prioritize_equipped, resolved_item)
+local function entry_result(runtime, state, entry, view, prioritize_equipped, resolved_item, trust_projection_cache)
 	local item = resolved_item or item_from(entry)
 
 	if type(item) ~= "table" then
@@ -192,7 +200,15 @@ local function entry_result(runtime, state, entry, context, prioritize_equipped,
 	-- These are Better Inventory-owned, fail-soft modules. Avoid two protected
 	-- calls per item in the settled-query scan; their external data access is
 	-- already guarded at the projection boundary.
+	local context = state.projection_context
+	context.entry = entry
+	context.family = state.family
+	context.trust_cache = trust_projection_cache == true
+	context.view = view
 	local record, projected = runtime.dependencies.project(state.index, item, context)
+	context.entry = nil
+	context.trust_cache = nil
+	context.view = nil
 
 	if projected ~= true then
 		return true, 1
@@ -215,6 +231,7 @@ local function scan(runtime, view, state, source_layout, trust_projection_cache)
 
 	if not query_is_active(state) then
 		state.results_ready = true
+		sync_hot_path_flags(runtime, view, state)
 		return
 	end
 
@@ -225,20 +242,13 @@ local function scan(runtime, view, state, source_layout, trust_projection_cache)
 	end
 
 	local prioritize_equipped = safe_call(runtime.dependencies.prioritize_equipped) ~= false
-	local projection_context = {
-		entry = nil,
-		family = state.family,
-		trust_cache = trust_projection_cache == true,
-		view = view,
-	}
 
 	for index = 1, #layout do
 		local entry = layout[index]
 		local item = item_from(entry)
 
 		if type(item) == "table" then
-			projection_context.entry = entry
-			local matched, rank = entry_result(runtime, state, entry, projection_context, prioritize_equipped, item)
+			local matched, rank = entry_result(runtime, state, entry, view, prioritize_equipped, item, trust_projection_cache)
 			-- Darktide's comparator, native filter, and widget content all retain
 			-- the presented layout entry. Store one weak-key result per entry; direct
 			-- item layouts naturally use the item itself as that same key.
@@ -247,6 +257,7 @@ local function scan(runtime, view, state, source_layout, trust_projection_cache)
 	end
 
 	state.results_ready = true
+	sync_hot_path_flags(runtime, view, state)
 end
 
 local function warm_projection_cache(runtime, view, state)
@@ -264,11 +275,7 @@ local function warm_projection_cache(runtime, view, state)
 	end
 
 	local last_index = math.min(cursor + runtime.warm_batch_size - 1, #layout)
-	local projection_context = {
-		entry = nil,
-		family = state.family,
-		view = view,
-	}
+	local projection_context = state.projection_context
 
 	for index = cursor, last_index do
 		local entry = layout[index]
@@ -276,7 +283,11 @@ local function warm_projection_cache(runtime, view, state)
 
 		if type(item) == "table" then
 			projection_context.entry = entry
+			projection_context.family = state.family
+			projection_context.view = view
 			runtime.dependencies.project(state.index, item, projection_context)
+			projection_context.entry = nil
+			projection_context.view = nil
 		end
 	end
 
@@ -335,6 +346,7 @@ SearchRuntime.capture_presentation = function(runtime, view, slot_filter, item_t
 	end
 	if not query_is_active(state) and type(view._offer_items_layout) == "table" and #view._offer_items_layout > 0 then
 		state.warm_cursor = 1
+		view._better_inventory_search_needs_update = true
 	end
 
 	return true
@@ -429,6 +441,9 @@ SearchRuntime.set_query = function(runtime, view, query, now)
 	state.compiled = nil
 	state.error = nil
 	state.results_ready = false
+	view._better_inventory_search_rank_active = nil
+	view._better_inventory_search_filter_active = nil
+	view._better_inventory_search_needs_update = true
 	schedule_present(runtime, state, now)
 	if query == "" then
 		SearchRuntime.apply_widget_alpha(runtime, view)
@@ -448,6 +463,7 @@ SearchRuntime.refresh = function(runtime, view, now)
 		compile_state(runtime, state)
 	end
 	scan(runtime, view, state)
+	view._better_inventory_search_needs_update = true
 	schedule_present(runtime, state, now)
 	SearchRuntime.apply_widget_alpha(runtime, view)
 
@@ -473,11 +489,7 @@ SearchRuntime.native_filter = function(runtime, view, entry, native_result)
 
 	if not found then
 		local rank
-		result, rank = entry_result(runtime, state, entry, {
-			entry = entry,
-			family = state.family,
-			view = view,
-		})
+		result, rank = entry_result(runtime, state, entry, view)
 		set_result(state, entry, result, rank)
 	end
 
@@ -498,11 +510,7 @@ SearchRuntime.rank = function(runtime, view, entry)
 	end
 
 	if not found then
-		result, rank = entry_result(runtime, state, entry, {
-			entry = entry,
-			family = state.family,
-			view = view,
-		})
+		result, rank = entry_result(runtime, state, entry, view)
 		set_result(state, entry, result, rank)
 	end
 
@@ -565,11 +573,21 @@ SearchRuntime.update = function(runtime, view, now)
 	local state = state_for(runtime, view, false)
 
 	if not state or state.faulted then
+		if view then
+			view._better_inventory_search_rank_active = nil
+			view._better_inventory_search_filter_active = nil
+			view._better_inventory_search_needs_update = nil
+		end
 		return false
 	end
 
 	if not state.pending_present_at then
-		warm_projection_cache(runtime, view, state)
+		if state.warm_cursor then
+			warm_projection_cache(runtime, view, state)
+		end
+		if not state.warm_cursor then
+			view._better_inventory_search_needs_update = nil
+		end
 		return false
 	end
 
@@ -614,9 +632,13 @@ SearchRuntime.update = function(runtime, view, now)
 
 	if ok == nil then
 		state.faulted = true
+		view._better_inventory_search_rank_active = nil
+		view._better_inventory_search_filter_active = nil
+		view._better_inventory_search_needs_update = nil
 		return false
 	end
 
+	view._better_inventory_search_needs_update = nil
 	return true
 end
 
@@ -667,7 +689,11 @@ SearchRuntime.release = function(runtime, view)
 	state.result_generations = weak_key_table()
 	state.last_present_arguments = nil
 	state.presentation_kind = nil
+	state.projection_context = nil
 	state.reuse_next_capture_results = nil
+	view._better_inventory_search_rank_active = nil
+	view._better_inventory_search_filter_active = nil
+	view._better_inventory_search_needs_update = nil
 	runtime.states[view] = nil
 
 	return true

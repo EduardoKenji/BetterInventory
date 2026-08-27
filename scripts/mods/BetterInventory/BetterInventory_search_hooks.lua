@@ -39,7 +39,7 @@ SearchHooks.install = function(dependencies)
 		mod:hook(ItemGridViewBase, "_filter_by_filter_option", function(func, view, entry, ...)
 			local native_result = func(view, entry, ...)
 
-			if type(Features.search_filter_result) == "function" then
+			if view._better_inventory_search_filter_active and type(Features.search_filter_result) == "function" then
 				return Features.search_filter_result(view, entry, native_result)
 			end
 
@@ -51,13 +51,17 @@ SearchHooks.install = function(dependencies)
 		if type(SearchUI.update) == "function" then
 			SearchUI.update(mod, Features, view, time, input_service)
 		end
-		if type(Features.search_update) == "function" then
+		if view._better_inventory_search_needs_update and type(Features.search_update) == "function" then
 			Features.search_update(view, time)
 		end
 	end
 
-	if method_available(ItemGridViewBase, "update") then
-		mod:hook_safe(ItemGridViewBase, "update", update_search)
+	if method_available(CraftingMechanicusModifyView, "update") then
+		mod:hook_safe(CraftingMechanicusModifyView, "update", update_search)
+	end
+
+	if method_available(VendorViewBase, "update") then
+		mod:hook_safe(VendorViewBase, "update", update_search)
 	end
 
 	local function install_view_input_hook(view_class)
@@ -173,24 +177,6 @@ SearchHooks.install = function(dependencies)
 			if type(SearchUI.defocus) == "function" then
 				SearchUI.defocus(item_grid and item_grid._parent)
 			end
-		end)
-	end
-
-	if method_available(ViewElementGrid, "update") then
-		mod:hook(ViewElementGrid, "update", function(func, item_grid, dt, time, input_service)
-			local parent = item_grid and item_grid._parent
-			local search_input = parent and parent._widgets_by_name and parent._widgets_by_name.better_inventory_search_input
-
-			if search_input
-				and parent._item_grid == item_grid
-				and type(SearchUI.handle_grid_input) == "function"
-				and SearchUI.handle_grid_input(parent, item_grid, input_service)
-				and input_service
-				and type(input_service.null_service) == "function" then
-				input_service = input_service:null_service()
-			end
-
-			return func(item_grid, dt, time, input_service)
 		end)
 	end
 

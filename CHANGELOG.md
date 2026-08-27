@@ -25,6 +25,7 @@
 - Exposes independent Inventory and Armoury top/bottom search-field padding sliders, preserving the finalized geometry as their defaults while leaving other supported views unchanged.
 - Fixes match promotion after ItemSorting replaces sort options: settled dim searches now rebind once and use Better Inventory's deferred resort lane, restoring weapon-name, perk, and blessing ordering without rebuilding every widget.
 - Makes rapid typing allocation-free inside the search runtime, parses and scans only after the 80 ms quiet interval, warms cold rich projections in bounded 16-item slices, removes redundant normalization/protected reads and the duplicate match map, and leaves fully settled idle updates allocation-free with all projection memory reclaimed on close.
+- Removes global per-frame `ViewElementGrid.update` and `ItemGridViewBase.update` search wrappers; Inventory reuses Better Inventory's existing update/input hooks, runtime updates run only while warming or settling, inactive native filters/comparators bypass search entirely, and focus owns only the main grid's native input-disabled state without overriding discard/options ownership.
 
 ## 3.1.0 - 2026-08-26
 
