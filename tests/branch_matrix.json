@@ -2,6 +2,13 @@
   "schema_version": 1,
   "required": [
     {
+      "name": "search.query-is-literal-bounded-and-rarity-aware",
+      "test": "test_search_query.py",
+      "case": "bounded_literal_parser_effective_rarity_and_fail_open_matching",
+      "outcome": "quoted and explicit-AND text remains literal and bounded; invalid input fails open; numeric and boolean fields are typed; visible Sainted and Transcendent tiers stay distinct while native-rarity can intentionally include both",
+      "modules": ["BetterInventory_search_query.lua"]
+    },
+    {
       "name": "favorites.isolate-purchase-sources",
       "test": "test_favorite_integration.py",
       "case": "purchase_source_isolation_and_myfavorites_color_assignment",

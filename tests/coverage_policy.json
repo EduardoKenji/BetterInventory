@@ -54,6 +54,7 @@
     "BetterInventory_layout_blueprints.lua": {"minimum_percent": 65.0, "risk": "high"},
     "BetterInventory_material_safety.lua": {"minimum_percent": 70.0, "risk": "critical"},
     "BetterInventory_runtime.lua": {"minimum_percent": 60.0, "risk": "critical"},
+    "BetterInventory_search_query.lua": {"minimum_percent": 80.0, "risk": "high"},
     "BetterInventory_operation_arbiter.lua": {"minimum_percent": 80.0, "risk": "critical"},
     "BetterInventory_settings.lua": {"minimum_percent": 80.0, "risk": "high"},
     "BetterInventory_view_session.lua": {"minimum_percent": 65.0, "risk": "high"},
