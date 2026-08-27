@@ -17,6 +17,7 @@
 - Gives Curio line searches an equipped-aware relevance hierarchy: primary+secondary matches, primary-only matches, then secondary-only matches, with partial terms supported and every non-match retaining the existing sort order.
 - Adds final view-specific search-field clearance below inventory headers and the deeper shared Armoury Requisition/Multi-Operative Supply tab row without moving native titles.
 - Renames the dedicated Mod Options tab to `Equipment Text Search` and clarifies that its master switch hides the field, clears session state, and disables filtering and ranking.
+- Tightens only the space below the search field, raising Armoury cards by 24 pixels and inventory cards by 4 pixels while adding one final pixel of clearance above both fields.
 
 ## 3.1.0 - 2026-08-26
 
