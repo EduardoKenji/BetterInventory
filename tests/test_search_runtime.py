@@ -18,6 +18,7 @@ def main() -> None:
         prioritize_equipped = true
         remember = false
         present_calls = 0
+        last_present_arguments = nil
         external_present_calls = 0
         project_calls = 0
         trusted_project_calls = 0
@@ -127,10 +128,16 @@ def main() -> None:
             "time": lua.eval("function() return now end"),
             "present": lua.eval(
                 "function(view, slot_filter, item_type_filter, display_name) "
-                "present_calls = present_calls + 1; return true end"
+                "present_calls = present_calls + 1; "
+                "last_present_arguments = {slot_filter, item_type_filter, display_name}; return true end"
             ),
             "present_external": lua.eval(
                 "function(view) external_present_calls = external_present_calls + 1; return true end"
+            ),
+            "presentation_context": lua.eval(
+                "function(view) if not view.recovered_kind then return nil end; "
+                "return {kind = view.recovered_kind, slot_filter = 'recovered-slot', "
+                "item_type_filter = 'recovered-type', display_name = 'Recovered'} end"
             ),
         }
     )
@@ -158,6 +165,29 @@ def main() -> None:
     assert search_runtime.release(runtime, anonymous) is True
     lua.globals().remember = False
 
+    # A runtime recreated beneath an already-open view has missed the native
+    # presentation hook. The next query recovers its bounded presentation
+    # contract and still commits exactly once after settling.
+    recovered = lua.globals().make_view("reload", "inventory", 6)
+    recovered.recovered_kind = "native"
+    recovered_present_before = lua.globals().present_calls
+    assert search_runtime.set_query(runtime, recovered, "sword", 0) == (True, None)
+    assert search_runtime.update(runtime, recovered, 0.08) is True
+    assert lua.globals().present_calls == recovered_present_before + 1
+    assert search_runtime.state(runtime, recovered).presentation_kind == "native"
+    assert lua.globals().last_present_arguments[1] == "recovered-slot"
+    assert lua.globals().last_present_arguments[2] == "recovered-type"
+    assert lua.globals().last_present_arguments[3] == "Recovered"
+    assert search_runtime.release(runtime, recovered) is True
+
+    recovered_external = lua.globals().make_view("reload-external", "hadron_sacrifice", 2)
+    recovered_external.recovered_kind = "external"
+    external_before = lua.globals().external_present_calls
+    assert search_runtime.set_query(runtime, recovered_external, "sword", 0) == (True, None)
+    assert search_runtime.update(runtime, recovered_external, 0.08) is True
+    assert lua.globals().external_present_calls == external_before + 1
+    assert search_runtime.release(runtime, recovered_external) is True
+
     # Empty-query captures warm rich projections in bounded 16-item slices.
     # No sort/presentation is requested by the warm-up worker, and a later
     # settled query reuses all forty records through the trusted cache seam.
@@ -177,6 +207,7 @@ def main() -> None:
     assert cold_view._better_inventory_search_needs_update is None
     assert cold_view._better_inventory_search_rank_active is None
     assert cold_view._better_inventory_search_filter_active is None
+    trusted_before_cold_query = lua.globals().trusted_project_calls
     assert search_runtime.set_query(runtime, cold_view, "sword", 4) == (True, None)
     assert cold_view._better_inventory_search_needs_update is True
     assert search_runtime.update(runtime, cold_view, 4.08) is True
@@ -186,7 +217,7 @@ def main() -> None:
     assert search_runtime.state(runtime, cold_view).projection_context.view is None
     assert lua.globals().projection_context_reuses > 0
     assert lua.globals().projection_context_mismatches == 0
-    assert lua.globals().trusted_project_calls == 40
+    assert lua.globals().trusted_project_calls - trusted_before_cold_query == 40
     assert search_runtime.release(runtime, cold_view) is True
 
     view = lua.globals().make_view("veteran", "inventory", 200)
@@ -346,6 +377,7 @@ def main() -> None:
     external_layout = lua.table_from(
         {1: spacing_top, 2: axe_entry, 3: sword_entry, 4: spacing_bottom}
     )
+    external_present_before_compose = lua.globals().external_present_calls
     search_runtime.set_query(runtime, external, "sword", 20)
     composed = search_runtime.compose_layout(runtime, external, external_layout)
     lua.globals().external_composed = composed
@@ -359,7 +391,7 @@ def main() -> None:
         "and external_composed[4] == spacing_bottom"
     ) is True
     assert search_runtime.update(runtime, external, 20.08) is True
-    assert lua.globals().external_present_calls == 1
+    assert lua.globals().external_present_calls == external_present_before_compose + 1
     assert search_runtime.state(runtime, external).last_present_arguments is None
 
     lua.globals().configured_mode = "hide"
@@ -449,7 +481,7 @@ def main() -> None:
     assert search_runtime.register(runtime, other_character).query == ""
     assert next(iter(runtime.memory.items()), None) is None
     assert search_runtime.release_all(runtime) == 4
-    assert lua.globals().released_indexes == 8
+    assert lua.globals().released_indexes == 10
 
     search_runtime.clear_memory(runtime)
     assert next(iter(runtime.memory.items()), None) is None
@@ -459,7 +491,7 @@ def main() -> None:
         transient = lua.globals().make_view(f"character-{index}", "inventory", 2)
         search_runtime.register(runtime, transient)
         search_runtime.release(runtime, transient)
-    assert lua.globals().released_indexes == 108
+    assert lua.globals().released_indexes == 110
 
     print("BetterInventory search runtime tests passed.")
 

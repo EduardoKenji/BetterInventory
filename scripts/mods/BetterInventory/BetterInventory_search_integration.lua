@@ -90,6 +90,49 @@ local function search_profile(view)
 	end
 end
 
+local function selected_tab_context(view)
+	local tabs = view and view._tabs_content
+	local tab_menu = view and view._tab_menu_element
+
+	if type(tabs) ~= "table" or type(tab_menu) ~= "table" or type(tab_menu.selected_index) ~= "function" then
+		return nil
+	end
+
+	local ok, selected_index = pcall(tab_menu.selected_index, tab_menu)
+	local tab = ok and tabs[selected_index]
+
+	if type(tab) ~= "table" then
+		return nil
+	end
+
+	return {
+		display_name = not tab.hide_display_name and tab.display_name or nil,
+		item_type_filter = nil,
+		kind = "native",
+		slot_filter = tab.slot_types,
+	}
+end
+
+local function presentation_context(view)
+	if type(view) ~= "table" or view._destroyed then
+		return nil
+	elseif view.__class_name == "CraftingMechanicusBarterItemsView" then
+		return type(view._sort_grid_layout) == "function" and { kind = "external" } or nil
+	elseif type(view._present_layout_by_slot_filter) ~= "function" then
+		return nil
+	end
+
+	-- A view that was already open during Ctrl+Shift+R cannot replay the native
+	-- presentation call that preceded the new runtime. Recover its selected tab
+	-- contract without retaining or cloning the current item layout.
+	return selected_tab_context(view) or {
+		display_name = view._grid_display_name,
+		item_type_filter = nil,
+		kind = "native",
+		slot_filter = nil,
+	}
+end
+
 Integration.new = function(mod, dependencies)
 	dependencies = type(dependencies) == "table" and dependencies or {}
 
@@ -208,6 +251,7 @@ Integration.new = function(mod, dependencies)
 
 			return true
 		end,
+		presentation_context = presentation_context,
 		prioritize_equipped = function()
 			return mod:get("prioritize_equipped_favorites") ~= false
 		end,

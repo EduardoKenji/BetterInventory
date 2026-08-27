@@ -130,6 +130,34 @@ local function compile_state(runtime, state)
 	state.error = state.compiled and state.compiled.error or nil
 end
 
+local function recover_presentation_context(runtime, view, state)
+	if state.presentation_kind then
+		return true
+	end
+
+	local context = safe_call(runtime.dependencies.presentation_context, view)
+
+	if type(context) ~= "table" then
+		return false
+	end
+
+	if context.kind == "external" then
+		state.presentation_kind = "external"
+		return true
+	elseif context.kind ~= "native" then
+		return false
+	end
+
+	local arguments = state.last_present_arguments or {}
+	arguments[1] = context.display_name
+	arguments[2] = context.item_type_filter
+	arguments[3] = context.slot_filter
+	state.last_present_arguments = arguments
+	state.presentation_kind = "native"
+
+	return true
+end
+
 local function state_for(runtime, view, create)
 	if type(view) ~= "table" then
 		return nil
@@ -444,6 +472,7 @@ SearchRuntime.set_query = function(runtime, view, query, now)
 	end
 
 	state.query = query
+	recover_presentation_context(runtime, view, state)
 	-- Do not parse or scan the full inventory for every character in a quickly
 	-- typed or pasted query. The existing 80 ms deadline now coalesces parsing,
 	-- projection, matching, alpha updates, and sorting as one settled-query
