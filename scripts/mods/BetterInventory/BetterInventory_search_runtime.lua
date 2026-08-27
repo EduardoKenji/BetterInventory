@@ -24,6 +24,10 @@ local function safe_call(callback, ...)
 	return nil
 end
 
+local function trace(runtime, message, ...)
+	return safe_call(runtime and runtime.dependencies and runtime.dependencies.trace, message, ...)
+end
+
 local function item_from(entry)
 	if type(entry) ~= "table" then
 		return nil
@@ -228,6 +232,8 @@ local function scan(runtime, view, state, source_layout, trust_projection_cache)
 	state.generation = state.generation + 1
 	state.results_ready = false
 	state.warm_cursor = nil
+	state.match_count = 0
+	state.maximum_rank = 0
 
 	if not query_is_active(state) then
 		state.results_ready = true
@@ -253,6 +259,11 @@ local function scan(runtime, view, state, source_layout, trust_projection_cache)
 			-- the presented layout entry. Store one weak-key result per entry; direct
 			-- item layouts naturally use the item itself as that same key.
 			set_result(state, entry, matched, rank)
+
+			if matched == true then
+				state.match_count = state.match_count + 1
+				state.maximum_rank = math.max(state.maximum_rank, tonumber(rank) or 0)
+			end
 		end
 	end
 
@@ -445,6 +456,8 @@ SearchRuntime.set_query = function(runtime, view, query, now)
 	view._better_inventory_search_filter_active = nil
 	view._better_inventory_search_needs_update = true
 	schedule_present(runtime, state, now)
+	local layout = view and view._offer_items_layout
+	trace(runtime, "query family=%s text=%q layout=%d deadline=%.3f", tostring(state.family), query, type(layout) == "table" and #layout or -1, tonumber(state.pending_present_at) or -1)
 	if query == "" then
 		SearchRuntime.apply_widget_alpha(runtime, view)
 	end
@@ -615,6 +628,8 @@ SearchRuntime.update = function(runtime, view, now)
 	if state.results_ready ~= true then
 		scan(runtime, view, state, nil, true)
 	end
+	local layout = view and view._offer_items_layout
+	trace(runtime, "settle family=%s text=%q active=%s layout=%d matches=%d max_rank=%d kind=%s", tostring(state.family), tostring(state.query), tostring(query_is_active(state)), type(layout) == "table" and #layout or -1, tonumber(state.match_count) or -1, tonumber(state.maximum_rank) or -1, tostring(state.presentation_kind))
 	SearchRuntime.apply_widget_alpha(runtime, view)
 	local ok
 
@@ -633,12 +648,15 @@ SearchRuntime.update = function(runtime, view, now)
 	end
 
 	if ok == nil then
+		trace(runtime, "present family=%s text=%q result=nil faulted=true", tostring(state.family), tostring(state.query))
 		state.faulted = true
 		view._better_inventory_search_rank_active = nil
 		view._better_inventory_search_filter_active = nil
 		view._better_inventory_search_needs_update = nil
 		return false
 	end
+
+	trace(runtime, "present family=%s text=%q result=%s", tostring(state.family), tostring(state.query), tostring(ok))
 
 	view._better_inventory_search_needs_update = nil
 	return true

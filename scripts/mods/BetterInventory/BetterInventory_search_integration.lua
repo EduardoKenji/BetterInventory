@@ -151,6 +151,11 @@ Integration.new = function(mod, dependencies)
 			rarity_settings = dependencies.RaritySettings,
 		})
 	end
+	local function log_trace(message, ...)
+		if mod and type(mod.info) == "function" then
+			mod:info("[SearchTrace] " .. tostring(message), ...)
+		end
+	end
 
 	local runtime = SearchRuntime.new({
 		character_id = function(view)
@@ -176,6 +181,7 @@ Integration.new = function(mod, dependencies)
 		new_index = new_index,
 		present = function(view, slot_filter, item_type_filter, display_name)
 			if not view or view._destroyed or type(view._present_layout_by_slot_filter) ~= "function" then
+				log_trace("presentation lane=unavailable")
 				return false
 			end
 
@@ -193,11 +199,16 @@ Integration.new = function(mod, dependencies)
 				-- Rebind once per settled query, never from the comparator itself.
 				dependencies.configure_sort(view)
 
-				if dependencies.request_resort(view) ~= false then
+				local requested = dependencies.request_resort(view)
+				log_trace("presentation lane=deferred-resort family=%s requested=%s selected_index=%s", tostring(family), tostring(requested), tostring(view._selected_sort_option_index))
+
+				if requested ~= false then
+					view._better_inventory_search_trace_flush = true
 					return true
 				end
 			end
 
+			log_trace("presentation lane=native family=%s", tostring(family))
 			view:_present_layout_by_slot_filter(slot_filter, item_type_filter, display_name)
 
 			return true
@@ -224,6 +235,7 @@ Integration.new = function(mod, dependencies)
 		remember_query = function()
 			return mod:get("inventory_search_remember_query") == true
 		end,
+		trace = log_trace,
 		time = function()
 			return Managers and Managers.time and Managers.time:time("main") or 0
 		end,
