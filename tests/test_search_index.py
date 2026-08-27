@@ -29,6 +29,7 @@ def main() -> None:
             loc_mark_iv = "Mk IV",
             loc_uncanny = "Uncanny Strike",
             loc_cara = "Damage vs Carapace Enemies",
+            loc_flak = "Damage vs Flak Armoured Enemies",
         }
         rarity_settings = {}
         for rarity = 1, 6 do
@@ -40,6 +41,8 @@ def main() -> None:
                     return {display_name = "loc_uncanny", trait = "blessing_uncanny_strike"}
                 elseif id == "perk_cara" then
                     return {display_name = "loc_cara", trait = "perk_damage_carapace"}
+                elseif id == "weapon_trait_melee_common_wield_increased_armored_damage" then
+                    return {display_name = "loc_flak", trait = "perk_damage_flak"}
                 end
             end,
         }
@@ -59,7 +62,13 @@ def main() -> None:
                 return math.floor(total * 100 + 0.5)
             end,
             trait_description = function(master_item)
-                return master_item and master_item.trait == "perk_damage_carapace" and "+25% Damage vs Carapace Enemies" or ""
+                if master_item and master_item.trait == "perk_damage_carapace" then
+                    return "+25% Damage vs Carapace Enemies"
+                elseif master_item and master_item.trait == "perk_damage_flak" then
+                    return "+25% Damage vs Flak Armoured Enemies"
+                end
+
+                return ""
             end,
             is_item_id_favorited = function(gear_id) return gear_id == favorited_gear_id end,
         }
@@ -91,7 +100,10 @@ def main() -> None:
                     {name = "cleave", value = 0.8},
                 },
                 traits = {{id = "trait_uncanny", rarity = 4, value = 1}},
-                perks = {{id = "perk_cara", rarity = 4, value = 1}},
+                perks = {
+                    {id = "perk_cara", rarity = 4, value = 1},
+                    {id = "weapon_trait_melee_common_wield_increased_armored_damage", rarity = 4, value = 1},
+                },
             }
         end
         ''',
@@ -101,6 +113,12 @@ def main() -> None:
     lua.globals().search_query = query
     dependencies = lua.table_from(
         {
+            "compact_perk_search_terms": lua.eval(
+                "function(id, description) "
+                "compact_perk_calls = (compact_perk_calls or 0) + 1; "
+                "if id == 'weapon_trait_melee_common_wield_increased_armored_damage' then "
+                "return '+25% Flak Damage', '+25% Flak Dmg' end end"
+            ),
             "normalize": query.normalize,
             "items": lua.globals().test_items,
             "master_items": lua.globals().master_items,
@@ -135,6 +153,10 @@ def main() -> None:
     assert sainted.blessing[1] == "trait_uncanny"
     assert "uncanny strike" in [sainted.blessing[i] for i in range(1, len(sainted.blessing) + 1)]
     assert "damage vs carapace enemies" in [sainted.perk[i] for i in range(1, len(sainted.perk) + 1)]
+    assert "damage vs flak armoured enemies" in [sainted.perk[i] for i in range(1, len(sainted.perk) + 1)]
+    assert "+25% flak damage" in [sainted.perk[i] for i in range(1, len(sainted.perk) + 1)]
+    assert "+25% flak dmg" in [sainted.perk[i] for i in range(1, len(sainted.perk) + 1)]
+    assert lua.globals().compact_perk_calls == 2
     assert sainted.rating == 500
     assert sainted.base == 380
     assert sainted.favorite is True
@@ -149,6 +171,9 @@ def main() -> None:
         return query.compile(text, lua.table_from({"rarity_aliases": aliases}))
 
     assert query.matches(compiled("sainted & uncanny & perk:carapace"), sainted) is True
+    assert query.matches(compiled("flak"), sainted) is True
+    assert query.matches(compiled('perk:"damage vs flak armoured enemies"'), sainted) is True
+    assert query.matches(compiled('perk:"+25% flak dmg"'), sainted) is True
     assert query.matches(compiled("transcendent"), sainted) is False
     assert query.matches(compiled("native-rarity:transcendent"), sainted) is True
     assert query.matches(compiled("name:pink emperor"), sainted) is True
@@ -159,6 +184,7 @@ def main() -> None:
     assert ordinary.rarity[1] == "transcendent"
     assert query.matches(compiled("transcendent"), ordinary) is True
     assert query.matches(compiled("sainted"), ordinary) is False
+    assert lua.globals().compact_perk_calls == 4
 
     # The same item revision returns the same bounded record without resolving
     # names or traits again. Revision and explicit invalidation rebuild it.
@@ -167,6 +193,7 @@ def main() -> None:
     assert lua.execute("return ... == ...", sainted, cached) is True
     assert index.metrics.builds == 2
     assert index.metrics.hits == 1
+    assert lua.globals().compact_perk_calls == 4
     lua.execute("custom_records.perfect.name = 'Renamed Emperor Sword'")
     renamed, ok = search_index.project(index, sainted_item, context)
     assert ok is True

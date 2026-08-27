@@ -890,9 +890,8 @@ local function single_line_text(value)
 	return value
 end
 
-local function compact_weapon_perk_description(mod, data, compression_mode)
-	local definition = data and COMPACT_WEAPON_PERK_LABELS[data.id]
-	local description = data and data.description
+local function compact_weapon_perk_text(mod, id, description, compression_mode)
+	local definition = id and COMPACT_WEAPON_PERK_LABELS[id]
 
 	if compression_mode == "none" or not definition or type(description) ~= "string" or description == "" then
 		return description or ""
@@ -911,6 +910,14 @@ local function compact_weapon_perk_description(mod, data, compression_mode)
 	local localization_id = compression_mode == "heavy" and definition.heavy_localization_id or definition.localization_id
 
 	return string.format("%s %s", amount, mod:localize(localization_id))
+end
+
+local function compact_weapon_perk_description(mod, data, compression_mode)
+	return compact_weapon_perk_text(mod, data and data.id, data and data.description, compression_mode)
+end
+
+local function compact_weapon_perk_search_terms(mod, id, description)
+	return compact_weapon_perk_text(mod, id, description, "compression"), compact_weapon_perk_text(mod, id, description, "heavy")
 end
 
 local function leading_plus_sign_description(description, remove_plus_sign)
@@ -2066,6 +2073,7 @@ Content.compact_curio_description = compact_curio_description
 Content.configured_text_color = configured_text_color
 Content.single_line_text = single_line_text
 Content.compact_weapon_perk_description = compact_weapon_perk_description
+Content.compact_weapon_perk_search_terms = compact_weapon_perk_search_terms
 Content.leading_plus_sign_description = leading_plus_sign_description
 Content.simplified_curio_description = simplified_curio_description
 Content.pass_by_style_id = pass_by_style_id

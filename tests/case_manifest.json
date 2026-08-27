@@ -3,13 +3,13 @@
     {"name": "bounded_literal_parser_effective_rarity_and_fail_open_matching", "risk": "high", "start_line": 1, "end_line": 199}
   ],
   "test_search_index.py": [
-    {"name": "bounded_projection_cache_custom_names_traits_and_split_rarity", "risk": "high", "start_line": 1, "end_line": 247}
+    {"name": "bounded_projection_cache_custom_names_traits_and_split_rarity", "risk": "high", "start_line": 1, "end_line": 274}
   ],
   "test_search_runtime.py": [
     {"name": "coalesced_filter_rank_dim_memory_and_release_lifecycle", "risk": "high", "start_line": 1, "end_line": 297}
   ],
   "test_search_integration.py": [
-    {"name": "supported_view_adapters_facade_and_lifecycle_composition", "risk": "high", "start_line": 1, "end_line": 310}
+    {"name": "supported_view_adapters_facade_and_lifecycle_composition", "risk": "high", "start_line": 1, "end_line": 323}
   ],
   "test_search_ui.py": [
     {"name": "single_field_native_title_spacing_focus_and_release", "risk": "high", "start_line": 1, "end_line": 230}

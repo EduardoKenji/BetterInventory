@@ -59,7 +59,7 @@ local function search_geometry(definitions, view)
 	local grid_settings = definitions.grid_settings or {}
 	local title_height = tonumber(grid_settings.title_height) or 0
 	local top_padding = tonumber(grid_settings.top_padding) or 0
-	local y = title_height > 0 and title_height - 8 or top_padding + 4
+	local y = title_height > 0 and title_height + 4 or top_padding + 4
 
 	return 14, math.max(y, 12), 568
 end

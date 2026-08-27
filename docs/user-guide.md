@@ -1,6 +1,6 @@
 # BetterInventory user guide
 
-BetterInventory v3.2.0 adds standalone, read-only inventory search to supported inventory, vendor, and Hadron views. Its compact text field can promote and dim matches or hide unmatched cards, understands literal phrases, `&`, typed field clauses, custom names, item properties, and separate effective/native rarity, and clears all view-owned search state safely on closure. Query memory is optional and Off by default.
+BetterInventory v3.2.0 adds standalone, read-only inventory search to supported inventory, vendor, and Hadron views. Its compact text field can promote and dim matches or hide unmatched cards, understands literal phrases, `&`, typed field clauses, custom names, canonical and compressed perk descriptions, item properties, and separate effective/native rarity, and clears all view-owned search state safely on closure. Query memory is optional and Off by default.
 
 ## v3.1.0 behavior retained
 

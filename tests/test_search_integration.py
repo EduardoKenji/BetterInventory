@@ -174,6 +174,11 @@ def main() -> None:
             request_inventory_resort = function() requested_resorts = requested_resorts + 1 end,
         }
         providers = {
+            CompactWeaponPerkSearchTerms = function(_, id, description)
+                compact_provider_id = id
+                compact_provider_description = description
+                return "+25% Flak Damage", "+25% Flak Dmg"
+            end,
             CustomTier = {matches = function() return false end},
             ItemCustomization = {get = function() return nil end},
         }
@@ -216,6 +221,10 @@ def main() -> None:
         missing_equipped = last_index_dependencies.is_equipped({}, {})
         loadout_match = last_index_dependencies.is_loadout({gear_id = "loadout_weapon"})
         new_match = last_index_dependencies.is_new({}, {entry = {new_item_marker = true}})
+        compact_standard, compact_heavy = last_index_dependencies.compact_perk_search_terms(
+            "weapon_trait_melee_common_wield_increased_armored_damage",
+            "+25% Damage vs Flak Armoured Enemies"
+        )
 
         normal_present_view = {
             _present_layout_by_slot_filter = function(_, slot, item_type, title)
@@ -237,6 +246,10 @@ def main() -> None:
     assert lua.globals().missing_equipped is False
     assert lua.globals().loadout_match is True
     assert lua.globals().new_match is True
+    assert lua.globals().compact_standard == "+25% Flak Damage"
+    assert lua.globals().compact_heavy == "+25% Flak Dmg"
+    assert lua.globals().compact_provider_id == "weapon_trait_melee_common_wield_increased_armored_damage"
+    assert lua.globals().compact_provider_description == "+25% Damage vs Flak Armoured Enemies"
     assert lua.globals().valid_present is True
     assert lua.globals().invalid_present is False
     assert lua.globals().invalid_external_present is False

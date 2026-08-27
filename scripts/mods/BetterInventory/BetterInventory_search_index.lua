@@ -270,6 +270,13 @@ local function append_trait_collection(builder, dependencies, item, collection, 
 		if is_valid_text(description) then
 			builder.append(field, description)
 		end
+
+		if field == "perk" then
+			local standard_description, heavy_description = safe_call(dependencies.compact_perk_search_terms, id, description)
+
+			builder.append(field, standard_description)
+			builder.append(field, heavy_description)
+		end
 	end
 end
 

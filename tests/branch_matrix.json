@@ -12,7 +12,7 @@
       "name": "search.index-is-bounded-cached-and-presentation-aware",
       "test": "test_search_index.py",
       "case": "bounded_projection_cache_custom_names_traits_and_split_rarity",
-      "outcome": "one weak view-owned projection cache resolves native and custom names, traits, perks, type, ratings, and localized rarity without invoking GodRolls; Sainted is effective-only while stored Transcendent remains explicitly searchable; invalidation and release retain no item references",
+      "outcome": "one weak view-owned projection cache resolves native and custom names, traits, canonical and Better Inventory-compressed perk descriptions, type, ratings, and localized rarity without invoking GodRolls; Sainted is effective-only while stored Transcendent remains explicitly searchable; invalidation and release retain no item references",
       "modules": ["BetterInventory_search_index.lua", "BetterInventory_search_query.lua", "BetterInventory_custom_tier.lua"]
     },
     {

@@ -106,6 +106,11 @@ Integration.new = function(mod, dependencies)
 		local loadout_gear_ids = DiscardPolicy.equipped_gear_ids(profile, presets_ok and profile_presets or nil)
 
 		return SearchIndex.new({
+			compact_perk_search_terms = function(id, description)
+				if type(dependencies.CompactWeaponPerkSearchTerms) == "function" then
+					return dependencies.CompactWeaponPerkSearchTerms(mod, id, description)
+				end
+			end,
 			custom_tier = dependencies.CustomTier,
 			customization_get = function(gear_id)
 				if ItemCustomization and type(ItemCustomization.get) == "function" then
@@ -318,6 +323,7 @@ end
 Integration.install = function(facade, mod, providers, configure_sort, global_store_service)
 	providers = type(providers) == "table" and providers or {}
 	local integration = Integration.new(mod, {
+		CompactWeaponPerkSearchTerms = providers.CompactWeaponPerkSearchTerms,
 		CustomTier = providers.CustomTier,
 		DiscardPolicy = DiscardPolicy,
 		ItemCustomization = providers.ItemCustomization,

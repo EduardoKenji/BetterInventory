@@ -86,7 +86,7 @@ def main() -> None:
     assert definitions.grid_settings.top_padding is None
     assert decorated.grid_settings.title_height == 108
     assert decorated.grid_settings.top_padding == 48
-    assert decorated.scenegraph_definition.better_inventory_search_input.position[2] == 100
+    assert decorated.scenegraph_definition.better_inventory_search_input.position[2] == 112
     assert decorated.scenegraph_definition.better_inventory_search_input.size[1] == 568
     assert decorated.scenegraph_definition.better_inventory_search_filters is None
     assert decorated.widget_definitions.better_inventory_search_clear is None
@@ -109,7 +109,7 @@ def main() -> None:
     )
     assert crafting.grid_settings.title_height == 80
     assert crafting.grid_settings.top_padding == 48
-    assert crafting.scenegraph_definition.better_inventory_search_input.position[2] == 72
+    assert crafting.scenegraph_definition.better_inventory_search_input.position[2] == 84
 
     vendor_definitions = lua.table_from(
         {

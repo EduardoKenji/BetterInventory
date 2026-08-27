@@ -23,7 +23,7 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 ## What's new in v3.2.0
 
 - Adds original, standalone search to inventory, Armoury/other supported vendors, Hadron modify, and Hadron sacrifice views without retaining or replacing Darktide's authoritative item layouts.
-- Searches custom/native names, families, marks, blessings, perks, types, ratings, state flags, and effective rarity. `Sainted` and native `Transcendent` remain distinct, with `native-rarity:` available for the stored tier.
+- Searches custom/native names, families, marks, blessings, canonical and compressed perk text, types, ratings, state flags, and effective rarity. `Sainted` and native `Transcendent` remain distinct, with `native-rarity:` available for the stored tier.
 - Supports quoted literal phrases, bounded `&` clauses, and field-qualified text, boolean, comparison, and range queries through one compact search field.
 - Defaults to dimming unmatched cards and promoting matches above the existing Better Inventory and native/ItemSorting hierarchy. An option can hide unmatched cards instead; clearing search restores v3.1.0 ordering and presentation.
 - Coalesces rapid typing, caches bounded projections, restores widget alpha ownership, defocuses without clearing on card selection, and releases all per-view search state on closure or hot reload. Optional per-character/view query memory remains Off by default.
