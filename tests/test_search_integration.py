@@ -312,11 +312,76 @@ def main() -> None:
             end,
         }
         external_present_result = runtime_instance.dependencies.present_external(external_view)
+
+		shared_spacing = {is_external = true, widget_type = "spacing_vertical", entry_id = "bottom"}
+		entry_a = {entry_id = "a", item = {gear_id = "a"}, match = false}
+		entry_b = {entry_id = "b", item = {gear_id = "b"}, match = true}
+		widget_a = {entry_id = "a", content = {element = entry_a}}
+		widget_b = {entry_id = "b", content = {element = entry_b}}
+		grid_state = {_selected_grid_index = 2}
+		in_place_grid = {
+			_grid = grid_state,
+			_grid_layout = {shared_spacing, entry_a, entry_b, shared_spacing},
+			_all_grid_alignment_widgets = {
+				{entry_id = "top"}, {entry_id = "a"}, {entry_id = "b"}, {entry_id = "bottom"},
+			},
+			_widgets_by_entry_id = {
+				top = {alignment_widget = {}},
+				a = {widget = widget_a, alignment_widget = {}},
+				b = {widget = widget_b, alignment_widget = {}},
+				bottom = {alignment_widget = {}},
+			},
+			selected_grid_widget = function() return widget_b end,
+			update_grid_layout = function(self, layout)
+				in_place_updates = (in_place_updates or 0) + 1
+				self._visible_grid_layout = layout
+				self._grid_widgets = {}
+				for index = 1, #layout do
+					local record = self._widgets_by_entry_id[layout[index].entry_id]
+					if record.widget then self._grid_widgets[#self._grid_widgets + 1] = record.widget end
+				end
+				self._grid._selected_grid_index = 1
+			end,
+		}
+		in_place_view = {
+			_item_grid = in_place_grid,
+			_selected_sort_option_index = 1,
+			_sort_options = {{
+				sort_function = function(left, right)
+					return left.match == true and right.match ~= true
+				end,
+			}},
+		}
+		in_place_result = runtime_instance.dependencies.reorder(in_place_view)
+		first_live_layout = in_place_grid._visible_grid_layout
+		first_live_top = first_live_layout[1].entry_id
+		first_live_item = first_live_layout[2]
+		first_live_bottom = first_live_layout[4].entry_id
+		first_selected_index = grid_state._selected_grid_index
+		in_place_view._sort_options[1].sort_function = function(left, right)
+			return left.match ~= true and right.match == true
+		end
+		second_in_place_result = runtime_instance.dependencies.reorder(in_place_view)
+		second_live_layout = in_place_grid._visible_grid_layout
+		buffers_are_distinct = first_live_layout ~= second_live_layout
+		first_buffer_was_not_cleared_while_live = #first_live_layout == 4
         ''',
     )
     assert lua.globals().external_present_result is True
     assert lua.globals().external_sort_calls == 1
     assert lua.globals().external_sort_function == "sort"
+    assert lua.globals().in_place_result is True
+    assert lua.globals().second_in_place_result is True
+    assert lua.globals().in_place_updates == 2
+    assert lua.globals().first_live_top == "top"
+    assert lua.execute("return first_live_item == entry_b") is True
+    assert lua.globals().first_live_bottom == "bottom"
+    assert lua.globals().shared_spacing.entry_id == "bottom"
+    assert lua.globals().first_selected_index == 1
+    assert lua.globals().buffers_are_distinct is True
+    assert lua.globals().first_buffer_was_not_cleared_while_live is True
+    assert lua.execute("return second_live_layout[2] == entry_a") is True
+    assert lua.execute("return in_place_grid._grid_widgets[1] == widget_a") is True
 
     lua.execute("runtime_instance.states[facade_state_view or {}] = nil")
     state_view = lua.table_from({"__class_name": "InventoryWeaponsView"})

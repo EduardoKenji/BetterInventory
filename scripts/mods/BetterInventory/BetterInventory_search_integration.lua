@@ -133,6 +133,147 @@ local function presentation_context(view)
 	}
 end
 
+local function clear_array(values)
+	for index = #values, 1, -1 do
+		values[index] = nil
+	end
+end
+
+local function layout_item(entry)
+	return type(entry) == "table" and (entry.real_item or entry.item) or nil
+end
+
+-- Default dim/promote searches do not change grid membership. Replaying
+-- `_present_layout_by_slot_filter` for them is especially costly: native
+-- `present_grid_layout` adds a fresh spacing entry without an entry_id, which
+-- makes ViewElementGrid destroy and recreate every card. Build the new order
+-- from the grid's canonical widgets and commit it through the native in-place
+-- reorder API instead. Two retained buffers ensure the grid never observes the
+-- array being cleared for the next query.
+local function reorder_existing_grid(view, configure_sort)
+	local item_grid = view and view._item_grid
+	local source = item_grid and item_grid._grid_layout
+	local alignments = item_grid and item_grid._all_grid_alignment_widgets
+	local widgets_by_id = item_grid and item_grid._widgets_by_entry_id
+
+	if not view or view._destroyed or type(source) ~= "table" or type(alignments) ~= "table"
+		or type(widgets_by_id) ~= "table" or type(item_grid.update_grid_layout) ~= "function"
+		or #source ~= #alignments then
+		return false
+	end
+
+	if type(configure_sort) ~= "function" then
+		return false
+	end
+
+	configure_sort(view)
+
+	local sort_options = view._sort_options
+	local option = sort_options and sort_options[view._selected_sort_option_index or 1]
+
+	if not option then
+		option = view._selected_sort_option
+	end
+
+	local sort_function = option and option.sort_function
+
+	if type(sort_function) ~= "function" then
+		return false
+	end
+
+	local buffers = view._better_inventory_search_grid_buffers
+
+	if type(buffers) ~= "table" then
+		buffers = {
+			active = 0,
+			anchors = {{}, {}},
+			layouts = {{}, {}},
+			positions = {{}, {}},
+		}
+		view._better_inventory_search_grid_buffers = buffers
+	end
+
+	local buffer_index = buffers.active == 1 and 2 or 1
+	local target = buffers.layouts[buffer_index]
+	local anchors = buffers.anchors[buffer_index]
+	local positions = buffers.positions[buffer_index]
+	local anchor_count = 0
+	local selected_widget = type(item_grid.selected_grid_widget) == "function" and item_grid:selected_grid_widget() or nil
+	local selected_entry_id = selected_widget and selected_widget.entry_id
+
+	clear_array(target)
+
+	for index = 1, #source do
+		local alignment = alignments[index]
+		local entry_id = alignment and alignment.entry_id
+		local widget_record = entry_id and widgets_by_id[entry_id]
+		local source_entry = source[index]
+
+		if not entry_id or type(widget_record) ~= "table" then
+			return false
+		end
+
+		local widget = widget_record.widget
+		local content = widget and widget.content
+		local entry = content and (content.entry or content.element) or source_entry
+
+		if layout_item(entry) then
+			if entry.entry_id ~= entry_id then
+				return false
+			end
+
+			target[#target + 1] = entry
+		else
+			anchor_count = anchor_count + 1
+			positions[anchor_count] = index
+
+			if source_entry and source_entry.entry_id == entry_id then
+				anchors[anchor_count] = source_entry
+			else
+				local anchor = anchors[anchor_count]
+
+				if type(anchor) ~= "table" or anchor._better_inventory_search_anchor ~= true then
+					anchor = {_better_inventory_search_anchor = true}
+					anchors[anchor_count] = anchor
+				end
+
+				anchor.entry_id = entry_id
+				anchor.is_external = true
+				anchor.widget_type = source_entry and source_entry.widget_type or "spacing_vertical"
+			end
+		end
+	end
+
+	for index = #anchors, anchor_count + 1, -1 do
+		anchors[index] = nil
+		positions[index] = nil
+	end
+
+	if #target > 1 then
+		table.sort(target, sort_function)
+	end
+
+	for index = 1, anchor_count do
+		table.insert(target, math.min(positions[index], #target + 1), anchors[index])
+	end
+
+	item_grid:update_grid_layout(target)
+	local reordered_widgets = item_grid._grid_widgets
+
+	if selected_entry_id and type(reordered_widgets) == "table" and item_grid._grid then
+		for index = 1, #reordered_widgets do
+			if reordered_widgets[index].entry_id == selected_entry_id then
+				item_grid._grid._selected_grid_index = index
+				break
+			end
+		end
+	end
+
+	buffers.active = buffer_index
+
+	return true
+end
+
 Integration.new = function(mod, dependencies)
 	dependencies = type(dependencies) == "table" and dependencies or {}
 
@@ -221,10 +362,8 @@ Integration.new = function(mod, dependencies)
 				return false
 			end
 
-			-- Commit exactly once after the quiet interval through Darktide's proven
-			-- native filtering/presentation transaction. `_sort_grid_layout` also
-			-- rebuilds the presented grid, so the former deferred-resort shortcut
-			-- saved no widget allocation while bypassing native layout refresh seams.
+			-- Hide mode, post-hide restoration, and a drifted in-place grid contract
+			-- fall back to Darktide's authoritative filtering/presentation path.
 			dependencies.configure_sort(view)
 			view:_present_layout_by_slot_filter(slot_filter, item_type_filter, display_name)
 
@@ -249,6 +388,14 @@ Integration.new = function(mod, dependencies)
 		project = SearchIndex.project,
 		query = SearchQuery,
 		rarity_aliases = SearchIndex.rarity_aliases,
+		reorder = function(view)
+			return reorder_existing_grid(view, dependencies.configure_sort)
+		end,
+		release_grid = function(view)
+			if type(view) == "table" then
+				view._better_inventory_search_grid_buffers = nil
+			end
+		end,
 		release_index = SearchIndex.release,
 		remember_query = function()
 			return mod:get("inventory_search_remember_query") == true

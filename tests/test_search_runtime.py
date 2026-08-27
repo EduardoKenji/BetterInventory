@@ -20,6 +20,8 @@ def main() -> None:
         present_calls = 0
         last_present_arguments = nil
         external_present_calls = 0
+        reorder_calls = 0
+        reorder_succeeds = false
         project_calls = 0
         trusted_project_calls = 0
         validated_project_calls = 0
@@ -134,6 +136,9 @@ def main() -> None:
             "present_external": lua.eval(
                 "function(view) external_present_calls = external_present_calls + 1; return true end"
             ),
+            "reorder": lua.eval(
+                "function(view) reorder_calls = reorder_calls + 1; return reorder_succeeds end"
+            ),
             "presentation_context": lua.eval(
                 "function(view) if not view.recovered_kind then return nil end; "
                 "return {kind = view.recovered_kind, slot_filter = 'recovered-slot', "
@@ -187,6 +192,36 @@ def main() -> None:
     assert search_runtime.update(runtime, recovered_external, 0.08) is True
     assert lua.globals().external_present_calls == external_before + 1
     assert search_runtime.release(runtime, recovered_external) is True
+
+    # Default dim/promote commits reorder existing widgets in place. Hide keeps
+    # the native filter transaction, and returning from hide performs one full
+    # restoration before later dim queries use the fast path again.
+    fast_view = lua.globals().make_view("fast", "inventory", 4)
+    search_runtime.capture_presentation(runtime, fast_view, "slot", "type", "title")
+    assert search_runtime.update(runtime, fast_view, 0) is False
+    lua.globals().reorder_succeeds = True
+    reorder_before = lua.globals().reorder_calls
+    present_before = lua.globals().present_calls
+    search_runtime.set_query(runtime, fast_view, "sword", 1)
+    assert search_runtime.update(runtime, fast_view, 1.08) is True
+    assert lua.globals().reorder_calls == reorder_before + 1
+    assert lua.globals().present_calls == present_before
+    lua.globals().configured_mode = "hide"
+    search_runtime.set_query(runtime, fast_view, "axe", 2)
+    assert search_runtime.update(runtime, fast_view, 2.08) is True
+    assert lua.globals().reorder_calls == reorder_before + 1
+    assert lua.globals().present_calls == present_before + 1
+    lua.globals().configured_mode = "dim"
+    search_runtime.set_query(runtime, fast_view, "sword", 3)
+    assert search_runtime.update(runtime, fast_view, 3.08) is True
+    assert lua.globals().reorder_calls == reorder_before + 1
+    assert lua.globals().present_calls == present_before + 2
+    search_runtime.set_query(runtime, fast_view, "axe", 4)
+    assert search_runtime.update(runtime, fast_view, 4.08) is True
+    assert lua.globals().reorder_calls == reorder_before + 2
+    assert lua.globals().present_calls == present_before + 2
+    lua.globals().reorder_succeeds = False
+    assert search_runtime.release(runtime, fast_view) is True
 
     # Empty-query captures warm rich projections in bounded 16-item slices.
     # No sort/presentation is requested by the warm-up worker, and a later
@@ -533,7 +568,7 @@ def main() -> None:
     assert search_runtime.register(runtime, other_character).query == ""
     assert next(iter(runtime.memory.items()), None) is None
     assert search_runtime.release_all(runtime) == 4
-    assert lua.globals().released_indexes == 11
+    assert lua.globals().released_indexes == 12
 
     search_runtime.clear_memory(runtime)
     assert next(iter(runtime.memory.items()), None) is None
@@ -543,7 +578,7 @@ def main() -> None:
         transient = lua.globals().make_view(f"character-{index}", "inventory", 2)
         search_runtime.register(runtime, transient)
         search_runtime.release(runtime, transient)
-    assert lua.globals().released_indexes == 111
+    assert lua.globals().released_indexes == 112
 
     print("BetterInventory search runtime tests passed.")
 

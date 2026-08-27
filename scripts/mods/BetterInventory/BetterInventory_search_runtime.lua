@@ -653,21 +653,31 @@ SearchRuntime.update = function(runtime, view, now)
 	if state.results_ready ~= true then
 		scan(runtime, view, state, nil, true)
 	end
-	SearchRuntime.apply_widget_alpha(runtime, view)
+	local current_mode = mode(runtime)
 	local ok
 
-	if state.presentation_kind == "external" then
-		ok = safe_call(runtime.dependencies.present_external, view)
-	else
-		local arguments = state.last_present_arguments
+	-- Dim/promote keeps every card. Prefer a synchronous ViewElementGrid
+	-- reorder that preserves widget identities, loaded icons, and card-owned
+	-- resources. Hide mode still needs the native filter transaction, and the
+	-- first dim commit after hide must rebuild full membership once.
+	if current_mode == "dim" and state.committed_mode ~= "hide" then
+		ok = safe_call(runtime.dependencies.reorder, view)
+	end
 
-		if not arguments then
-			return false
+	if ok ~= true then
+		if state.presentation_kind == "external" then
+			ok = safe_call(runtime.dependencies.present_external, view)
+		else
+			local arguments = state.last_present_arguments
+
+			if not arguments then
+				return false
+			end
+
+			state.reuse_next_capture_results = true
+			ok = safe_call(runtime.dependencies.present, view, arguments[3], arguments[2], arguments[1])
+			state.reuse_next_capture_results = nil
 		end
-
-		state.reuse_next_capture_results = true
-		ok = safe_call(runtime.dependencies.present, view, arguments[3], arguments[2], arguments[1])
-		state.reuse_next_capture_results = nil
 	end
 
 	if ok == nil then
@@ -678,6 +688,8 @@ SearchRuntime.update = function(runtime, view, now)
 		return false
 	end
 
+	state.committed_mode = current_mode
+	SearchRuntime.apply_widget_alpha(runtime, view)
 	view._better_inventory_search_needs_update = nil
 	return true
 end
@@ -724,6 +736,7 @@ SearchRuntime.release = function(runtime, view)
 	end
 
 	restore_all_widget_alpha(state)
+	safe_call(runtime.dependencies.release_grid, view)
 	safe_call(runtime.dependencies.release_index, state.index)
 	state.ranks = weak_key_table()
 	state.last_present_arguments = nil
