@@ -227,6 +227,14 @@ def main() -> None:
     assert view._better_inventory_search_block_legend_once is True
     assert input_widget.content.input_text == "sword"
 
+    # The master Mod Options switch immediately hides and defocuses an
+    # already-created field. The integration test separately proves that all
+    # cached search state and ranking/filtering activity are released.
+    lua.globals().settings.enable_inventory_search = False
+    search_ui.update(lua.globals().test_mod, lua.globals().features, view, 5)
+    assert input_widget.visible is False
+    assert search_ui.is_writing(view) is False
+
     search_ui.release(view)
     assert view._better_inventory_search_widget_initialized is None
     assert view._better_inventory_search_last_text is None

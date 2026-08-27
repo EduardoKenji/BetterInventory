@@ -16,6 +16,7 @@
 - Places the text field fully below titled grid headers and indexes both Darktide's canonical perk descriptions and Better Inventory's standard/heavy abbreviations, so searches such as `flak` match regardless of card compression.
 - Gives Curio line searches an equipped-aware relevance hierarchy: primary+secondary matches, primary-only matches, then secondary-only matches, with partial terms supported and every non-match retaining the existing sort order.
 - Adds final view-specific search-field clearance below inventory headers and the deeper shared Armoury Requisition/Multi-Operative Supply tab row without moving native titles.
+- Renames the dedicated Mod Options tab to `Equipment Text Search` and clarifies that its master switch hides the field, clears session state, and disables filtering and ranking.
 
 ## 3.1.0 - 2026-08-26
 

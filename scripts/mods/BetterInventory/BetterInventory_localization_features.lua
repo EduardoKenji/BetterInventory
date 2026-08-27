@@ -1,12 +1,12 @@
 local localization = {
 	inventory_search_group = {
-		en = "Inventory search",
+		en = "Equipment Text Search",
 	},
 	enable_inventory_search = {
-		en = "Enable inventory search",
+		en = "Enable Equipment Text Search",
 	},
 	enable_inventory_search_tooltip = {
-		en = "Adds a bounded, live search field to weapon and Curio inventory, Hadron, Armoury Exchange, GlobalStore, and Melk item views. Cosmetics are not changed.",
+		en = "Adds a bounded, live equipment search field to weapon and Curio inventory, Hadron, Armoury Exchange, GlobalStore, and Melk item views. Disabling this hides the field, clears its session state, and removes all search filtering and ranking. Cosmetics are not changed.",
 	},
 	inventory_search_non_match_behavior = {
 		en = "Unmatched item behavior",

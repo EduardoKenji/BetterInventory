@@ -12,7 +12,7 @@
     {"name": "supported_view_adapters_facade_and_lifecycle_composition", "risk": "high", "start_line": 1, "end_line": 327}
   ],
   "test_search_ui.py": [
-      {"name": "single_field_view_specific_spacing_focus_and_release", "risk": "high", "start_line": 1, "end_line": 238}
+      {"name": "single_field_view_specific_spacing_disable_focus_and_release", "risk": "high", "start_line": 1, "end_line": 246}
   ],
   "test_search_hooks.py": [
     {"name": "native_grid_and_hadron_sacrifice_hook_composition", "risk": "high", "start_line": 1, "end_line": 209}
@@ -252,8 +252,8 @@
     {"name": "schema_dependency_refresh", "risk": "high", "start_line": 21, "end_line": 456},
     {"name": "migration_preservation", "risk": "high", "start_line": 457, "end_line": 626},
     {"name": "character_overview_refresh", "risk": "high", "start_line": 627, "end_line": 1725},
-    {"name": "localization_contract", "risk": "medium", "start_line": 1726, "end_line": 2909},
-    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2910, "end_line": 3634}
+      {"name": "localization_contract", "risk": "medium", "start_line": 1726, "end_line": 2912},
+      {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2913, "end_line": 3637}
   ],
   "test_settings_registry.py": [
     {"name": "duplicate_detection", "risk": "high", "start_line": 63, "end_line": 123},

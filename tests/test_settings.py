@@ -2840,6 +2840,8 @@ def main() -> None:
         == "Mod Integration: Quick Look Card"
     )
     assert localization["auto_crafter_group"]["en"] == "Auto Crafter Helper"
+    assert localization["inventory_search_group"]["en"] == "Equipment Text Search"
+    assert localization["enable_inventory_search"]["en"] == "Enable Equipment Text Search"
     assert (
         localization["god_stat_checker_integration_group"]["en"]
         == "Mod integration: God Stat Checker 1.1.2"
@@ -2904,6 +2906,7 @@ def main() -> None:
     assert localization["melee_columns"]["zh-cn"] == "近战武器列数"
     assert localization["character_overview_group"]["zh-cn"] == "角色总览"
     assert localization["custom_item_name_and_colors_group"]["zh-cn"] == "自定义物品名称和颜色"
+    assert localization["inventory_search_group"]["zh-cn"] == "装备文本搜索"
     assert localization["debug_group"]["zh-cn"] == "调试（仅测试用）"
     assert localization["inventory_options_controller_focus_keybind"]["zh-cn"] == "物品 / 组件焦点快捷键"
 
