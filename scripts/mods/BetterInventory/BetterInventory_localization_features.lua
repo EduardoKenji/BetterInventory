@@ -53,6 +53,9 @@ local localization = {
 	inventory_search_placeholder = {
 		en = "Search: sword & uncanny & flak",
 	},
+	inventory_search_curio_placeholder = {
+		en = "Search: toughness & health & revive",
+	},
 	inventory_options_controller_focus_keybind = {
 		en = "Items / widget focus keybind",
 	},

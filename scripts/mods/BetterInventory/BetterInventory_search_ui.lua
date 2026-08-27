@@ -81,6 +81,12 @@ local function controller_navigation_active(view)
 	return view and view._using_cursor_navigation == false or false
 end
 
+local function placeholder_localization_id(view)
+	return view and view.item_type == "GADGET"
+		and "inventory_search_curio_placeholder"
+		or "inventory_search_placeholder"
+end
+
 local function configured_pixels(mod, setting_id, default_value, maximum)
 	if not mod or type(mod.get) ~= "function" then
 		return default_value
@@ -479,6 +485,7 @@ SearchUI.update = function(mod, Features, view, time)
 	local query = type(content.input_text) == "string" and content.input_text or ""
 	local focus_active = content.is_writing == true or controller_focused(view)
 	local should_own_grid_input = focus_active and controller_navigation_active(view)
+	local placeholder_id = placeholder_localization_id(view)
 
 	if should_own_grid_input or view._better_inventory_search_grid_input_owned then
 		own_grid_input(view, should_own_grid_input)
@@ -489,9 +496,13 @@ SearchUI.update = function(mod, Features, view, time)
 		own_input_legend(view, false)
 	end
 
-	if view._better_inventory_search_widget_generation ~= UI_GENERATION then
-		content.placeholder_text = mod:localize("inventory_search_placeholder")
+	if view._better_inventory_search_placeholder_id ~= placeholder_id then
+		content.placeholder_text = mod:localize(placeholder_id)
 		content.active_placeholder_text = content.placeholder_text
+		view._better_inventory_search_placeholder_id = placeholder_id
+	end
+
+	if view._better_inventory_search_widget_generation ~= UI_GENERATION then
 		view._better_inventory_search_last_text = query
 		view._better_inventory_search_widget_initialized = true
 		view._better_inventory_search_widget_generation = UI_GENERATION
@@ -605,6 +616,7 @@ SearchUI.release = function(view)
 
 	if view then
 		view._better_inventory_search_last_text = nil
+		view._better_inventory_search_placeholder_id = nil
 		view._better_inventory_search_widget_initialized = nil
 		view._better_inventory_search_widget_generation = nil
 		view._better_inventory_search_ui_unavailable = nil
