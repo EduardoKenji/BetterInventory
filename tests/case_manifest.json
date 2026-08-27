@@ -12,7 +12,7 @@
     {"name": "supported_view_adapters_facade_and_lifecycle_composition", "risk": "high", "start_line": 1, "end_line": 314}
   ],
   "test_search_ui.py": [
-    {"name": "per_view_search_widgets_quick_filters_focus_and_release", "risk": "high", "start_line": 1, "end_line": 251}
+    {"name": "per_view_search_widgets_quick_filters_focus_and_release", "risk": "high", "start_line": 1, "end_line": 265}
   ],
   "test_search_hooks.py": [
     {"name": "native_grid_and_hadron_sacrifice_hook_composition", "risk": "high", "start_line": 1, "end_line": 209}

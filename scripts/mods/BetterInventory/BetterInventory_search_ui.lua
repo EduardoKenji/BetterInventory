@@ -52,6 +52,20 @@ local function text_length(value)
 	return #(value or "")
 end
 
+local function action_pressed(input_service, action_name)
+	if type(action_name) ~= "string"
+		or action_name == ""
+		or not input_service
+		or type(input_service.has) ~= "function"
+		or type(input_service.get) ~= "function"
+		or not input_service:has(action_name)
+	then
+		return false
+	end
+
+	return input_service:get(action_name) and true or false
+end
+
 local function search_y(definitions, view)
 	local grid_settings = definitions.grid_settings or {}
 	local title_height = tonumber(grid_settings.title_height) or 0
@@ -534,7 +548,7 @@ SearchUI.handle_view_input = function(mod, view, input_service)
 	if not SearchUI.is_writing(view) then
 		local focus_action = mod and mod:get("inventory_search_focus_keybind")
 
-		if focus_action ~= nil and focus_action ~= "off" and input_service and type(input_service.get) == "function" and input_service:get(focus_action) then
+		if focus_action ~= nil and focus_action ~= "off" and action_pressed(input_service, focus_action) then
 			SearchUI.focus(view)
 			return true
 		end
@@ -544,7 +558,7 @@ SearchUI.handle_view_input = function(mod, view, input_service)
 		return false
 	end
 
-	if input_service and type(input_service.get) == "function" and (input_service:get("back") or input_service:get("cancel_pressed")) then
+	if action_pressed(input_service, "back") then
 		SearchUI.defocus(view)
 		view._better_inventory_search_block_legend_once = true
 	end

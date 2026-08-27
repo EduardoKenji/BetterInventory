@@ -67,8 +67,12 @@ def main() -> None:
             end,
         }
         input_service = {
-            actions = {},
-            get = function(self, action) return self.actions[action] == true end,
+            actions = {back = false, focus_action = false},
+            has = function(self, action) return self.actions[action] ~= nil end,
+            get = function(self, action)
+                assert(self:has(action), "attempted to read an unavailable input action: " .. tostring(action))
+                return self.actions[action] == true
+            end,
         }
         ''',
     )
@@ -226,6 +230,12 @@ def main() -> None:
 
     # Configurable focus blocks the bound native action in that frame. Escape
     # defocuses first and arms one legend suppression without clearing text.
+    # Missing actions must never be passed to InputService:get: Darktide crashes
+    # instead of returning false when its action rule does not exist.
+    lua.globals().settings.inventory_search_focus_keybind = "missing_action"
+    assert search_ui.handle_view_input(
+        lua.globals().test_mod, view, lua.globals().input_service
+    ) is False
     lua.globals().settings.inventory_search_focus_keybind = "focus_action"
     lua.globals().input_service.actions.focus_action = True
     assert search_ui.handle_view_input(
@@ -233,6 +243,10 @@ def main() -> None:
     ) is True
     assert search_ui.is_writing(view) is True
     lua.globals().input_service.actions.focus_action = False
+    assert search_ui.handle_view_input(
+        lua.globals().test_mod, view, lua.globals().input_service
+    ) is True
+    assert search_ui.is_writing(view) is True
     lua.globals().input_service.actions.back = True
     assert search_ui.handle_view_input(
         lua.globals().test_mod, view, lua.globals().input_service
