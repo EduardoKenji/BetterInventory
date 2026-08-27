@@ -76,6 +76,10 @@ def main() -> None:
                 return math.floor(total * 100 + 0.5)
             end,
             trait_description = function(master_item)
+                if master_item and master_item.trait == "blessing_uncanny_strike" and enhanced_blessing_description then
+                    return enhanced_blessing_description
+                end
+
                 if active_language == "zh-cn" then
                     if master_item and master_item.trait == "perk_damage_carapace" then
                         return "+25% 对硬壳敌人伤害"
@@ -210,6 +214,7 @@ def main() -> None:
     assert query.matches(compiled('perk:"+25% flak dmg"'), sainted) is True
     assert query.matches(compiled("transcendent"), sainted) is False
     assert query.matches(compiled("native-rarity:transcendent"), sainted) is True
+
     assert query.matches(compiled("name:pink emperor"), sainted) is True
 
     ordinary_item = lua.globals().make_weapon("ordinary", False)
@@ -247,6 +252,20 @@ def main() -> None:
     unfavorited, ok = search_index.project(index, sainted_item, context)
     assert ok is True and unfavorited.favorite is False
     assert index.metrics.builds == 6
+
+    # Enhanced Descriptions can expand blessing text enough to consume most of
+    # the bounded projection. Essential perk names and compact aliases must be
+    # indexed before optional long descriptions so bare weapon-perk searches
+    # still work in the live mod stack.
+    lua.execute("enhanced_blessing_description = string.rep('expanded blessing text ', 30)")
+    enhanced_item = lua.globals().make_weapon("enhanced-descriptions-weapon", False)
+    enhanced, ok = search_index.project(index, enhanced_item, lua.table_from({}))
+    assert ok is True
+    assert query.matches(compiled("flak"), enhanced) is True
+    assert query.matches(compiled("unyielding"), enhanced) is True
+    assert query.matches(compiled('perk:"+25% flak dmg"'), enhanced) is True
+    assert enhanced.projected_bytes <= 2048
+    lua.execute("enhanced_blessing_description = nil")
 
     # Custom-tier configuration changes invalidate effective rarity without
     # mutating native rarity or retaining the item in a strong-key cache.

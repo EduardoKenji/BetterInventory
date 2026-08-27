@@ -19,6 +19,7 @@ def main() -> None:
         remember = false
         present_calls = 0
         external_present_calls = 0
+        project_calls = 0
         released_indexes = 0
 
         function make_view(character, family, count)
@@ -49,6 +50,7 @@ def main() -> None:
         stub_index = {
             new = function() return {released = false} end,
             project = function(index, item)
+                project_calls = project_calls + 1
                 if item.fail_projection then return nil, false end
 
                 if item.curio then
@@ -181,6 +183,10 @@ def main() -> None:
     assert search_runtime.update(runtime, view, 10.12) is True
     assert lua.globals().present_calls == 1
     assert search_runtime.update(runtime, view, 11) is False
+    settled_project_calls = lua.globals().project_calls
+    for frame in range(120):
+        assert search_runtime.update(runtime, view, 11 + frame / 60) is False
+    assert lua.globals().project_calls == settled_project_calls
 
     # Curio relevance is computed during the bounded projection scan and read
     # as O(1) cached ranks by the comparator. Partial text follows the exact
