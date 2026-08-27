@@ -1,4 +1,64 @@
 local localization = {
+	inventory_search_group = {
+		en = "Inventory search",
+	},
+	enable_inventory_search = {
+		en = "Enable inventory search",
+	},
+	enable_inventory_search_tooltip = {
+		en = "Adds a bounded, live search field to weapon and Curio inventory, Hadron, Armoury Exchange, GlobalStore, and Melk item views. Cosmetics are not changed.",
+	},
+	inventory_search_non_match_behavior = {
+		en = "Unmatched item behavior",
+	},
+	inventory_search_non_match_behavior_tooltip = {
+		en = "Dim and promote keeps every native item visible, places matches first, and fades unmatched cards. Hide unmatched removes only cards that already passed Darktide's native tab and eligibility filters.",
+	},
+	inventory_search_non_match_dim = {
+		en = "Dim and promote matches",
+	},
+	inventory_search_non_match_hide = {
+		en = "Hide unmatched",
+	},
+	inventory_search_remember_query = {
+		en = "Remember searches during this game session",
+	},
+	inventory_search_remember_query_tooltip = {
+		en = "Off by default. When enabled, only the bounded text query and quick-filter choices are remembered for this character and view family until a character change, mod reload, game exit, or mod disable.",
+	},
+	inventory_search_focus_keybind = {
+		en = "Search focus keybind",
+	},
+	inventory_search_focus_keybind_tooltip = {
+		en = "Optional. Off avoids conflicts by default. Choose an action to focus the current view's search field; Escape defocuses it before the next Escape can close the view.",
+	},
+	inventory_search_placeholder = {
+		en = "Search: sword & blessing:uncanny",
+	},
+	inventory_search_invalid = {
+		en = "Invalid",
+	},
+	inventory_search_no_matches = {
+		en = "No matches",
+	},
+	inventory_search_filters = {
+		en = "Filters",
+	},
+	inventory_search_filter_equipped = {
+		en = "Equipped",
+	},
+	inventory_search_filter_favorite = {
+		en = "Favorite",
+	},
+	inventory_search_filter_new = {
+		en = "New",
+	},
+	inventory_search_filter_loadout = {
+		en = "Loadout",
+	},
+	inventory_search_filter_perfect = {
+		en = "Perfect",
+	},
 	inventory_options_controller_focus_keybind = {
 		en = "Items / widget focus keybind",
 	},

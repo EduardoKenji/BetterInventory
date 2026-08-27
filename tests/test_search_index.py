@@ -166,16 +166,21 @@ def main() -> None:
     assert lua.execute("return ... == ...", sainted, cached) is True
     assert index.metrics.builds == 2
     assert index.metrics.hits == 1
+    lua.execute("custom_records.perfect.name = 'Renamed Emperor Sword'")
+    renamed, ok = search_index.project(index, sainted_item, context)
+    assert ok is True
+    assert renamed.name[1] == "renamed emperor sword"
+    assert index.metrics.builds == 3
     lua.globals().old_search_record = sainted
     sainted_item.revision = 2
     rebuilt, ok = search_index.project(index, sainted_item, context)
     assert ok is True
     lua.globals().new_search_record = rebuilt
     assert lua.execute("return old_search_record ~= new_search_record") is True
-    assert index.metrics.builds == 3
+    assert index.metrics.builds == 4
     assert search_index.invalidate(index, sainted_item) is True
     search_index.project(index, sainted_item, context)
-    assert index.metrics.builds == 4
+    assert index.metrics.builds == 5
 
     # Custom-tier configuration changes invalidate effective rarity without
     # mutating native rarity or retaining the item in a strong-key cache.

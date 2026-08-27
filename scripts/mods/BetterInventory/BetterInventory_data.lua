@@ -574,6 +574,47 @@ return {
 				},
 			},
 			{
+				setting_id = "inventory_search_group",
+				type = "group",
+				sub_widgets = {
+					{
+						setting_id = "enable_inventory_search",
+						tooltip = "enable_inventory_search_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
+						setting_id = "inventory_search_non_match_behavior",
+						tooltip = "inventory_search_non_match_behavior_tooltip",
+						type = "dropdown",
+						default_value = "dim",
+						options = {
+							{ text = "inventory_search_non_match_dim", value = "dim" },
+							{ text = "inventory_search_non_match_hide", value = "hide" },
+						},
+					},
+					{
+						setting_id = "inventory_search_remember_query",
+						tooltip = "inventory_search_remember_query_tooltip",
+						type = "checkbox",
+						default_value = false,
+					},
+					{
+						setting_id = "inventory_search_focus_keybind",
+						tooltip = "inventory_search_focus_keybind_tooltip",
+						type = "dropdown",
+						default_value = "off",
+						options = {
+							{ text = "custom_item_editor_keybind_off", value = "off" },
+							{ text = "custom_item_editor_keybind_q", value = "hotkey_menu_special_2" },
+							{ text = "custom_item_editor_keybind_e", value = "hotkey_menu_special_1" },
+							{ text = "custom_item_editor_keybind_v", value = "hotkey_item_inspect" },
+							{ text = "custom_item_editor_keybind_r", value = "group_finder_refresh_groups" },
+						},
+					},
+				},
+			},
+			{
 				setting_id = "experimental_quick_discard_group",
 				type = "group",
 					sub_widgets = {

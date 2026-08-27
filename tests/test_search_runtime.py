@@ -111,11 +111,14 @@ def main() -> None:
     assert search_runtime.rank(runtime, view, view._offer_items_layout[1]) == 0
     assert view._item_grid._all_grid_widgets[1].content.alpha_multiplier == 0.4
     assert view._item_grid._all_grid_widgets[2].content.alpha_multiplier == 1
+    lua.globals().first_result_table = search_runtime.state(runtime, view).results
 
     # Present requests are coalesced for 80 ms and do not allocate or rerun the
     # native presentation for every keystroke.
     search_runtime.set_query(runtime, view, "axe", None, 10.02)
     search_runtime.set_query(runtime, view, "odd axe", None, 10.04)
+    lua.globals().second_result_table = search_runtime.state(runtime, view).results
+    assert lua.execute("return first_result_table == second_result_table") is True
     assert search_runtime.update(runtime, view, 10.11) is False
     assert lua.globals().present_calls == 0
     assert search_runtime.update(runtime, view, 10.12) is True
@@ -155,6 +158,7 @@ def main() -> None:
     assert search_runtime.register(runtime, reopened).query == "axe"
     other_character = lua.globals().make_view("zealot", "inventory", 3)
     assert search_runtime.register(runtime, other_character).query == ""
+    assert next(iter(runtime.memory.items()), None) is None
     assert search_runtime.release_all(runtime) == 2
     assert lua.globals().released_indexes == 3
 

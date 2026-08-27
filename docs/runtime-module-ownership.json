@@ -12,6 +12,7 @@
     "BetterInventory_item_customization.lua": "customization-storage-hooks",
     "BetterInventory_item_customization_editor.lua": "customization-editor-hooks",
     "BetterInventory_runtime.lua": "runtime-lifecycle-and-grid-hooks",
+    "BetterInventory_search_hooks.lua": "inventory-search-hooks",
     "BetterInventory_wkc_integration.lua": "weapon-kill-counter-compatibility-hooks"
   },
   "nested_modules": {
@@ -43,7 +44,7 @@
     "auto_crafter/games_lantern/transport_wine.lua": {"category": "platform-adapter", "risk": "high", "owner": "games-lantern-adapter"}
   },
   "modules": {
-    "BetterInventory.lua": {"category": "bootstrap", "risk": "critical", "dependencies": ["BetterInventory_account_mutation_guard.lua", "BetterInventory_auto_crafter.lua", "BetterInventory_character_overview.lua", "BetterInventory_character_overview_ui.lua", "BetterInventory_contracts.lua", "BetterInventory_curio_acquisition.lua", "BetterInventory_custom_tier.lua", "BetterInventory_diagnostics.lua", "BetterInventory_equipment_persistence.lua", "BetterInventory_favorite_integration.lua", "BetterInventory_feature_domains.lua", "BetterInventory_features.lua", "BetterInventory_god_stat_checker_integration.lua", "BetterInventory_item_customization.lua", "BetterInventory_layout.lua", "BetterInventory_runtime.lua", "BetterInventory_settings.lua", "BetterInventory_weapon_options_panel.lua"]},
+    "BetterInventory.lua": {"category": "bootstrap", "risk": "critical", "dependencies": ["BetterInventory_account_mutation_guard.lua", "BetterInventory_auto_crafter.lua", "BetterInventory_character_overview.lua", "BetterInventory_character_overview_ui.lua", "BetterInventory_contracts.lua", "BetterInventory_curio_acquisition.lua", "BetterInventory_custom_tier.lua", "BetterInventory_diagnostics.lua", "BetterInventory_equipment_persistence.lua", "BetterInventory_favorite_integration.lua", "BetterInventory_feature_domains.lua", "BetterInventory_features.lua", "BetterInventory_god_stat_checker_integration.lua", "BetterInventory_item_customization.lua", "BetterInventory_layout.lua", "BetterInventory_runtime.lua", "BetterInventory_search_hooks.lua", "BetterInventory_search_ui.lua", "BetterInventory_settings.lua", "BetterInventory_weapon_options_panel.lua"]},
     "BetterInventory_account_mutation_guard.lua": {"category": "account-mutation-guard", "risk": "critical", "dependencies": []},
     "BetterInventory_character_overview.lua": {"category": "pure-domain", "risk": "high", "dependencies": []},
     "BetterInventory_character_overview_ui.lua": {"category": "character-overview-ui", "risk": "critical", "dependencies": []},
@@ -88,9 +89,11 @@
     "BetterInventory_material_safety.lua": {"category": "ui-material-contract", "risk": "critical", "dependencies": []},
     "BetterInventory_runtime.lua": {"category": "runtime-hooks-and-lifecycle", "risk": "critical", "dependencies": []},
     "BetterInventory_search_integration.lua": {"category": "search-game-adapter", "risk": "high", "dependencies": ["BetterInventory_discard_policy.lua", "BetterInventory_search_index.lua", "BetterInventory_search_query.lua", "BetterInventory_search_runtime.lua"]},
+    "BetterInventory_search_hooks.lua": {"category": "search-runtime-hooks", "risk": "high", "dependencies": []},
     "BetterInventory_search_index.lua": {"category": "search-projection-cache", "risk": "high", "dependencies": []},
     "BetterInventory_search_query.lua": {"category": "pure-search-domain", "risk": "high", "dependencies": []},
     "BetterInventory_search_runtime.lua": {"category": "search-view-state-orchestrator", "risk": "high", "dependencies": []},
+    "BetterInventory_search_ui.lua": {"category": "search-ui", "risk": "high", "dependencies": []},
     "BetterInventory_layout_content.lua": {"category": "ui-content-model", "risk": "high", "dependencies": []},
     "BetterInventory_localization.lua": {"category": "declarative-entrypoint", "risk": "medium", "dependencies": ["BetterInventory_localization_core.lua", "BetterInventory_localization_features.lua", "BetterInventory_localization_zh_cn.lua"]},
     "BetterInventory_localization_core.lua": {"category": "declarative-shard", "risk": "medium", "dependencies": []},

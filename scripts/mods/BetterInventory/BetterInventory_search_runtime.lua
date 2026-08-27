@@ -47,6 +47,21 @@ local function query_is_active(state)
 	return state and state.compiled and state.compiled.empty ~= true and state.compiled.fail_open ~= true
 end
 
+local function result_for(state, key)
+	if key ~= nil and state.result_generations[key] == state.generation then
+		return state.results[key], true
+	end
+
+	return nil, false
+end
+
+local function set_result(state, key, matched)
+	if key ~= nil then
+		state.result_generations[key] = state.generation
+		state.results[key] = matched
+	end
+end
+
 local function memory_key(runtime, view, family)
 	local character = safe_call(runtime.dependencies.character_id, view)
 
@@ -123,6 +138,18 @@ local function state_for(runtime, view, create)
 		return nil
 	end
 
+	local character = safe_call(runtime.dependencies.character_id, view)
+
+	if character ~= nil and character ~= "" then
+		character = tostring(character)
+
+		if runtime.last_character_id and runtime.last_character_id ~= character then
+			runtime.memory = {}
+		end
+
+		runtime.last_character_id = character
+	end
+
 	state = {
 		chips = {},
 		compiled = nil,
@@ -138,6 +165,8 @@ local function state_for(runtime, view, create)
 		owned_widget_alpha = weak_key_table(),
 		pending_present_at = nil,
 		query = "",
+		generation = 0,
+		result_generations = weak_key_table(),
 		results = weak_key_table(),
 	}
 
@@ -178,7 +207,7 @@ local function entry_matches(runtime, state, entry, view)
 end
 
 local function scan(runtime, view, state)
-	state.results = weak_key_table()
+	state.generation = state.generation + 1
 	state.counts.matched = 0
 	state.counts.total = 0
 
@@ -198,8 +227,8 @@ local function scan(runtime, view, state)
 
 		if type(item) == "table" then
 			local matched = entry_matches(runtime, state, entry, view)
-			state.results[entry] = matched
-			state.results[item] = matched
+			set_result(state, entry, matched)
+			set_result(state, item, matched)
 			state.counts.total = state.counts.total + 1
 
 			if matched then
@@ -226,6 +255,7 @@ SearchRuntime.new = function(dependencies)
 		dependencies = dependencies,
 		dim_alpha = tonumber(dependencies.dim_alpha) or DEFAULT_DIM_ALPHA,
 		memory = {},
+		last_character_id = nil,
 		present_delay = tonumber(dependencies.present_delay) or DEFAULT_PRESENT_DELAY,
 		states = weak_key_table(),
 	}
@@ -294,11 +324,15 @@ SearchRuntime.native_filter = function(runtime, view, entry, native_result)
 		return true
 	end
 
-	local result = state.results[entry] or state.results[item_from(entry)]
+	local result, found = result_for(state, entry)
 
-	if result == nil then
+	if not found then
+		result, found = result_for(state, item_from(entry))
+	end
+
+	if not found then
 		result = entry_matches(runtime, state, entry, view)
-		state.results[entry] = result
+		set_result(state, entry, result)
 	end
 
 	return result == true
@@ -311,11 +345,15 @@ SearchRuntime.rank = function(runtime, view, entry)
 		return 0
 	end
 
-	local result = state.results[entry] or state.results[item_from(entry)]
+	local result, found = result_for(state, entry)
 
-	if result == nil then
+	if not found then
+		result, found = result_for(state, item_from(entry))
+	end
+
+	if not found then
 		result = entry_matches(runtime, state, entry, view)
-		state.results[entry] = result
+		set_result(state, entry, result)
 	end
 
 	return result == true and 1 or 0
@@ -344,7 +382,11 @@ SearchRuntime.apply_widget_alpha = function(runtime, view)
 		local widget = widgets[index]
 		local content = widget and widget.content
 		local entry = content and content.entry
-		local matched = entry and (state.results[entry] or state.results[item_from(entry)])
+		local matched, found = result_for(state, entry)
+
+		if not found and entry then
+			matched, found = result_for(state, item_from(entry))
+		end
 
 		if active and matched == false then
 			local owned = state.owned_widget_alpha[widget]
@@ -448,6 +490,7 @@ SearchRuntime.release = function(runtime, view)
 	restore_all_widget_alpha(state)
 	safe_call(runtime.dependencies.release_index, state.index)
 	state.results = weak_key_table()
+	state.result_generations = weak_key_table()
 	state.last_present_arguments = nil
 	runtime.states[view] = nil
 
@@ -480,6 +523,12 @@ SearchRuntime.query = function(runtime, view)
 	local state = state_for(runtime, view, false)
 
 	return state and state.query or ""
+end
+
+SearchRuntime.chips = function(runtime, view)
+	local state = state_for(runtime, view, false)
+
+	return copy_array(state and state.chips)
 end
 
 SearchRuntime.counts = function(runtime, view)

@@ -22,6 +22,7 @@ local ItemGridViewBaseDefinitions
 local InventoryWeaponsView
 local ViewElementGrid
 local WeaponOptionsPanel
+local SearchUI
 local dmf_mod
 local active_grid_view
 local active_grid_configuration
@@ -81,6 +82,7 @@ local function configure_dependencies(dependencies)
 	InventoryWeaponsView = dependencies.InventoryWeaponsView
 	ViewElementGrid = dependencies.ViewElementGrid
 	WeaponOptionsPanel = dependencies.WeaponOptionsPanel
+	SearchUI = dependencies.SearchUI
 end
 
 Runtime.configure = configure_dependencies
@@ -1282,6 +1284,9 @@ function mod.on_setting_changed(setting_id)
 	end
 
 	ItemCustomization.on_setting_changed(mod, setting_id)
+	if type(Features.search_settings_changed) == "function" then
+		Features.search_settings_changed(setting_id)
+	end
 
 	if setting_id == "highlight_equipped_items" or setting_id == "new_item_highlight_mode" then
 		highlight_animation_enabled = mod:get("highlight_equipped_items") == "pulsing_dashes" or mod:get("new_item_highlight_mode") == "pulsing_dashes"
@@ -1349,6 +1354,10 @@ function mod.on_settings_reset()
 	end
 
 	refresh_option_dependencies()
+	if type(Features.search_settings_changed) == "function" then
+		Features.search_settings_changed("inventory_search_remember_query")
+		Features.search_settings_changed("inventory_search_non_match_behavior")
+	end
 end
 
 function mod.on_game_state_changed(status, state_name)
@@ -1500,6 +1509,13 @@ end
 
 mod:hook(ItemGridViewBase, "init", function(func, view, definitions, settings, context)
 	active_highlight_views[view] = true
+	local function initialize(adjusted_definitions)
+		if SearchUI and type(SearchUI.decorate_definitions) == "function" then
+			adjusted_definitions = SearchUI.decorate_definitions(adjusted_definitions, view)
+		end
+
+		return func(view, adjusted_definitions, settings, context)
+	end
 
 	if view.__class_name == "InventoryWeaponsView" then
 		-- InventoryWeaponsView assigns its slot and loadout before this base init;
@@ -1515,7 +1531,7 @@ mod:hook(ItemGridViewBase, "init", function(func, view, definitions, settings, c
 
 		view._better_inventory_grid_expansion = expansion
 
-		return func(view, adjusted_definitions, settings, context)
+		return initialize(adjusted_definitions)
 	end
 
 	if is_armoury_requisition_view(view) and mod:get("enable_grid_layout") ~= false and mod:get("enable_armoury_requisition_grid") ~= false then
@@ -1524,7 +1540,7 @@ mod:hook(ItemGridViewBase, "init", function(func, view, definitions, settings, c
 
 		view._better_inventory_armoury_grid_expansion = expansion
 
-		return func(view, adjusted_definitions, settings, context)
+		return initialize(adjusted_definitions)
 	end
 
 	if is_global_store_view(view) and mod:get("enable_grid_layout") ~= false and mod:get("enable_global_store_integration") ~= false and mod:get("enable_global_store_grid") ~= false then
@@ -1539,10 +1555,10 @@ mod:hook(ItemGridViewBase, "init", function(func, view, definitions, settings, c
 
 		view._better_inventory_armoury_grid_expansion = expansion
 
-		return func(view, adjusted_definitions, settings, context)
+		return initialize(adjusted_definitions)
 	end
 
-	return func(view, definitions, settings, context)
+	return initialize(definitions)
 end)
 
 if ensure_class_method(InventoryWeaponsView, "_setup_sort_options") then
@@ -1585,35 +1601,6 @@ if ensure_class_method(CreditsVendorView, "_setup_sort_options") then
 	end)
 end
 
--- Compose with Darktide's current live layout instead of retaining a stale
--- filtered copy. This keeps loadout/tab refreshes authoritative and makes hide
--- mode an additional predicate after every native filter.
-if ensure_class_method(ItemGridViewBase, "_present_layout_by_slot_filter") then
-	mod:hook(ItemGridViewBase, "_present_layout_by_slot_filter", function(func, view, slot_filter, item_type_filter, optional_display_name)
-		if type(Features.search_capture_presentation) == "function" then
-			Features.search_capture_presentation(mod, view, slot_filter, item_type_filter, optional_display_name)
-		end
-
-		return func(view, slot_filter, item_type_filter, optional_display_name)
-	end)
-end
-
-if ensure_class_method(ItemGridViewBase, "_filter_by_filter_option") then
-	mod:hook(ItemGridViewBase, "_filter_by_filter_option", function(func, view, entry, ...)
-		local native_result = func(view, entry, ...)
-
-		return type(Features.search_filter_result) == "function" and Features.search_filter_result(view, entry, native_result) or native_result
-	end)
-end
-
-if ensure_class_method(ItemGridViewBase, "update") then
-	mod:hook_safe(ItemGridViewBase, "update", function(view, _, time)
-		if type(Features.search_update) == "function" then
-			Features.search_update(view, time)
-		end
-	end)
-end
-
 if ensure_class_method(InventoryWeaponsView, "update") then
 	-- Keep this outside Darktide's native inventory traversal so performance
 	-- monitors do not charge its O(inventory) work to BetterInventory.
@@ -1626,6 +1613,10 @@ end
 
 if ensure_class_method(InventoryWeaponsView, "_handle_input") then
 	mod:hook(InventoryWeaponsView, "_handle_input", function(func, view, input_service, ...)
+		if SearchUI and type(SearchUI.handle_view_input) == "function" and SearchUI.handle_view_input(mod, view, input_service) then
+			return
+		end
+
 		-- Capture before native input to preserve same-frame controller behavior.
 		Features.capture_inventory_options_panel_controller_focus(mod, Layout, view, input_service)
 		Features.capture_inventory_controller_navigation(view, input_service)
@@ -1729,6 +1720,9 @@ local function release_item_grid_view_runtime(view)
 
 	if view then
 		view._auto_crafter_status_overlay = nil
+		if SearchUI and type(SearchUI.release) == "function" then
+			SearchUI.release(view)
+		end
 		Features.end_view_session(view, "item_grid_exit")
 		if type(Features.search_release) == "function" then
 			Features.search_release(view)

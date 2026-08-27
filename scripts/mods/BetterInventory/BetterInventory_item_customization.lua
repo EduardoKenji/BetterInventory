@@ -1,5 +1,6 @@
 local ItemCustomization = {}
 local storage_hooks_installed = false
+local change_listener
 
 local NAME_IT_OWNS_NAMES_SETTING_ID = "_custom_item_name_it_owns_names"
 
@@ -57,6 +58,16 @@ local function sync_name_to_name_it(gear_id, name)
 	return NameIt.sync_name and NameIt.sync_name(gear_id, name) or false
 end
 
+local function notify_change(gear_id)
+	if type(change_listener) == "function" then
+		pcall(change_listener, gear_id)
+	end
+end
+
+ItemCustomization.set_change_listener = function(listener)
+	change_listener = type(listener) == "function" and listener or nil
+end
+
 ItemCustomization.get = function(mod, gear_id)
 	return Store.get(mod, gear_id)
 end
@@ -68,6 +79,9 @@ ItemCustomization.update = function(mod, gear_id, changes)
 		local record = Store.get(mod, gear_id)
 		sync_name_to_name_it(gear_id, record and record.name)
 	end
+	if updated then
+		notify_change(gear_id)
+	end
 
 	return updated
 end
@@ -77,6 +91,7 @@ ItemCustomization.remove = function(mod, gear_id)
 
 	if removed then
 		sync_name_to_name_it(gear_id, nil)
+		notify_change(gear_id)
 	end
 
 	return removed
@@ -89,6 +104,9 @@ local function remove_records(mod, gear_ids)
 
 	local removed = Store.remove_records(mod, gear_ids)
 	NameIt.remove_names(mod, gear_ids, Store)
+	if type(removed) == "number" and removed > 0 then
+		notify_change()
+	end
 
 	return removed
 end
@@ -104,7 +122,13 @@ local function drain_deleted_records(mod)
 end
 
 ItemCustomization.import_name_it_names = function(mod)
-	return NameIt.import(mod, Store)
+	local imported = NameIt.import(mod, Store)
+
+	if type(imported) == "number" and imported > 0 then
+		notify_change()
+	end
+
+	return imported
 end
 
 -- When BetterInventory's editor is disabled, Name It becomes the active name
@@ -112,7 +136,13 @@ end
 -- authoritative: changed/added names are imported and missing names are
 -- treated as resets. Color data remains owned solely by BetterInventory.
 ItemCustomization.reconcile_from_name_it = function(mod)
-	return NameIt.reconcile(mod, Store)
+	local reconciled = NameIt.reconcile(mod, Store)
+
+	if reconciled then
+		notify_change()
+	end
+
+	return reconciled
 end
 
 ItemCustomization.on_enabled = function(mod)

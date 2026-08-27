@@ -3,13 +3,19 @@
     {"name": "bounded_literal_parser_effective_rarity_and_fail_open_matching", "risk": "high", "start_line": 1, "end_line": 174}
   ],
   "test_search_index.py": [
-    {"name": "bounded_projection_cache_custom_names_traits_and_split_rarity", "risk": "high", "start_line": 1, "end_line": 237}
+    {"name": "bounded_projection_cache_custom_names_traits_and_split_rarity", "risk": "high", "start_line": 1, "end_line": 242}
   ],
   "test_search_runtime.py": [
-    {"name": "coalesced_filter_rank_dim_memory_and_release_lifecycle", "risk": "high", "start_line": 1, "end_line": 156}
+    {"name": "coalesced_filter_rank_dim_memory_and_release_lifecycle", "risk": "high", "start_line": 1, "end_line": 179}
   ],
   "test_search_integration.py": [
-    {"name": "supported_view_adapters_facade_and_lifecycle_composition", "risk": "high", "start_line": 1, "end_line": 172}
+    {"name": "supported_view_adapters_facade_and_lifecycle_composition", "risk": "high", "start_line": 1, "end_line": 187}
+  ],
+  "test_search_ui.py": [
+    {"name": "per_view_search_widgets_quick_filters_focus_and_release", "risk": "high", "start_line": 1, "end_line": 195}
+  ],
+  "test_search_hooks.py": [
+    {"name": "native_grid_filter_update_input_and_defocus_hook_composition", "risk": "high", "start_line": 1, "end_line": 139}
   ],
   "test_favorite_integration.py": [
     {"name": "purchase_source_isolation_and_myfavorites_color_assignment", "risk": "high", "start_line": 1, "end_line": 329}

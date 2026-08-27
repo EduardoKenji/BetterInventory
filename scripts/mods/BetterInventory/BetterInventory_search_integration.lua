@@ -160,6 +160,36 @@ Integration.new = function(mod, dependencies)
 	local function release(view)
 		return SearchRuntime.release(runtime, view)
 	end
+	local function settings_changed(setting_id)
+		if setting_id == "enable_inventory_search" and mod:get(setting_id) == false then
+			local released = SearchRuntime.release_all(runtime)
+			SearchRuntime.clear_memory(runtime)
+
+			return released
+		elseif setting_id == "inventory_search_remember_query" and mod:get(setting_id) ~= true then
+			SearchRuntime.clear_memory(runtime)
+		end
+
+		local refresh = setting_id == "inventory_search_non_match_behavior"
+			or setting_id == "enable_custom_item_name_and_colors"
+			or setting_id == "customization_changed"
+			or type(setting_id) == "string" and string.sub(setting_id, 1, 12) == "custom_tier_"
+
+		if not refresh then
+			return 0
+		end
+
+		local refreshed = 0
+
+		for view in pairs(runtime.states) do
+			if SearchRuntime.invalidate_all(runtime, view) then
+				dependencies.request_resort(view)
+				refreshed = refreshed + 1
+			end
+		end
+
+		return refreshed
+	end
 
 	return {
 		apply_widget_alpha = function(view)
@@ -180,6 +210,9 @@ Integration.new = function(mod, dependencies)
 		end,
 		clear_memory = function()
 			return SearchRuntime.clear_memory(runtime)
+		end,
+		chips = function(view)
+			return SearchRuntime.chips(runtime, view)
 		end,
 		counts = function(view)
 			return SearchRuntime.counts(runtime, view)
@@ -212,6 +245,7 @@ Integration.new = function(mod, dependencies)
 
 			return valid, error_code
 		end,
+		settings_changed = settings_changed,
 		states = runtime.states,
 		update = function(view, time)
 			return SearchRuntime.update(runtime, view, time)
@@ -245,6 +279,7 @@ Integration.install = function(facade, mod, providers, configure_sort, global_st
 
 	facade.search_apply_widget_alpha = integration.apply_widget_alpha
 	facade.search_counts = integration.counts
+	facade.search_chips = integration.chips
 	facade.search_filter_result = integration.filter_result
 	facade.search_invalidate_all = integration.invalidate_all
 	facade.search_is_active = integration.is_active
@@ -252,6 +287,7 @@ Integration.install = function(facade, mod, providers, configure_sort, global_st
 	facade.search_rank = integration.rank
 	facade.search_release = integration.release
 	facade.search_set_query = integration.set_query
+	facade.search_settings_changed = integration.settings_changed
 	facade.search_update = integration.update
 	facade.search_capture_presentation = function(_, view, slot_filter, item_type_filter, display_name)
 		return integration.capture_presentation(view, slot_filter, item_type_filter, display_name)
