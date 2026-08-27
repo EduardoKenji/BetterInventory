@@ -291,25 +291,42 @@ local function append_trait_value(builder, field, scoped_field, value)
 	end
 end
 
-local function append_trait_collection_identity(builder, dependencies, collection, field, scoped_field)
+local function append_trait_collection_identity(builder, dependencies, collection, field, scoped_field, semantic_search_terms)
 	local count = collection_count(collection)
 
 	for index = 1, count do
 		local entry = safe_member(collection, index)
 		local id = safe_member(entry, "id") or safe_member(entry, "name")
 
-		append_trait_value(builder, field, scoped_field, id)
+		-- Raw paths, localization keys, and gameplay trait IDs remain available
+		-- to explicit perk:/blessing: queries, but must never masquerade as card
+		-- text or a visible Curio line. Some Wound master-item paths contain
+		-- `gadget_health_segment`, which previously made bare `health` rank them
+		-- as Health-primary Curios.
+		builder.append(field, id, false)
 
 		local master_item = resolve_master_item(dependencies, id)
 		local display_name = safe_member(master_item, "display_name") or safe_member(entry, "display_name")
 
 		if display_name then
-			append_trait_value(builder, field, scoped_field, localize(dependencies, display_name))
-			append_trait_value(builder, field, scoped_field, display_name)
+			local localized_name = localize(dependencies, display_name)
+
+			if localized_name ~= display_name then
+				append_trait_value(builder, field, scoped_field, localized_name)
+			end
+
+			builder.append(field, display_name, false)
 		end
 
 		local trait_name = safe_member(master_item, "trait") or safe_member(entry, "trait")
-		append_trait_value(builder, field, scoped_field, trait_name)
+		builder.append(field, trait_name, false)
+
+		if scoped_field and type(semantic_search_terms) == "function" then
+			local localized_term, canonical_term = safe_call(semantic_search_terms, trait_name or id)
+
+			append_trait_value(builder, field, scoped_field, localized_term)
+			append_trait_value(builder, field, scoped_field, canonical_term)
+		end
 	end
 end
 
@@ -445,8 +462,10 @@ local function build_record(index, item, context)
 	-- Preserve essential names and IDs for every slot before optional localized
 	-- descriptions. Enhanced Descriptions can make one blessing description
 	-- large enough to otherwise starve all later weapon perk terms.
-	append_trait_collection_identity(builder, dependencies, traits, traits_field, primary_field)
-	append_trait_collection_identity(builder, dependencies, perks, "perk", secondary_field)
+	local curio_trait_search_terms = item_type == "GADGET" and dependencies.curio_trait_search_terms or nil
+
+	append_trait_collection_identity(builder, dependencies, traits, traits_field, primary_field, curio_trait_search_terms)
+	append_trait_collection_identity(builder, dependencies, perks, "perk", secondary_field, curio_trait_search_terms)
 	local perk_search_terms = item_type == "GADGET" and dependencies.compact_curio_perk_search_terms or dependencies.compact_perk_search_terms
 
 	append_trait_collection_descriptions(builder, dependencies, perks, "perk", secondary_field, perk_search_terms)

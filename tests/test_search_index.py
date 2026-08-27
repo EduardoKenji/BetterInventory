@@ -36,6 +36,7 @@ def main() -> None:
             loc_health = "Maximum Health",
             loc_toughness = "Maximum Toughness",
             loc_wound = "Maximum Wounds",
+            loc_inate_gadget_health = "Survivor",
             loc_ability_regeneration = "Combat Ability Regeneration",
         }
         rarity_settings = {}
@@ -64,6 +65,8 @@ def main() -> None:
                     return {display_name = "loc_toughness", trait = "gadget_innate_toughness_increase"}
                 elseif id == "content/items/perks/gadget/wound" then
                     return {display_name = "loc_wound", trait = "gadget_innate_max_wounds_increase"}
+                elseif id == "content/items/traits/gadget_inate_trait/trait_inate_gadget_health_segment" then
+                    return {display_name = "loc_inate_gadget_health", trait = "gadget_innate_max_wounds_increase"}
                 elseif id == "content/items/perks/gadget/cooldown_reduction" then
                     return {display_name = "loc_ability_regeneration", trait = "gadget_cooldown_reduction"}
                 end
@@ -162,6 +165,17 @@ def main() -> None:
                 "function(id) "
                 "compact_curio_perk_calls = (compact_curio_perk_calls or 0) + 1; "
                 "if id == 'gadget_cooldown_reduction' then return nil, 'Ability Regen' end end"
+            ),
+            "curio_trait_search_terms": lua.eval(
+                "function(id) "
+                "if id == 'gadget_innate_health_increase' or id == 'gadget_health_increase' then "
+                "return active_language == 'zh-cn' and '生命' or 'Health', 'health' "
+                "elseif id == 'gadget_innate_toughness_increase' or id == 'gadget_toughness_increase' then "
+                "return active_language == 'zh-cn' and '韧性' or 'Toughness', 'toughness' "
+                "elseif id == 'gadget_innate_max_wounds_increase' then "
+                "return active_language == 'zh-cn' and '伤口' or 'Wound', 'wound wounds' "
+                "elseif id == 'gadget_stamina_increase' then "
+                "return active_language == 'zh-cn' and '体力' or 'Stamina', 'stamina' end end"
             ),
             "compact_perk_search_terms": lua.eval(
                 "function(id, description) "
@@ -423,7 +437,7 @@ def main() -> None:
                 [
                     lua.table_from(
                         {
-                            "id": "content/items/perks/gadget/wound",
+                            "id": "content/items/traits/gadget_inate_trait/trait_inate_gadget_health_segment",
                             "rarity": 4,
                             "value": 1,
                         }
@@ -447,10 +461,15 @@ def main() -> None:
     assert ok is True
     assert query.matches(compiled("health & toughness"), wound_record) is False
     assert query.matches(compiled("perk:health & toughness"), wound_record) is True
+    assert query.matches(compiled("wound & toughness"), wound_record) is True
     assert not any(
         "health" in wound_record.curio_primary[i]
         for i in range(1, len(wound_record.curio_primary) + 1)
     )
+    assert "wound" in [
+        wound_record.curio_primary[i]
+        for i in range(1, len(wound_record.curio_primary) + 1)
+    ]
 
     def projected_health_toughness(gear_id: str, expertise: int):
         item = lua.table_from(

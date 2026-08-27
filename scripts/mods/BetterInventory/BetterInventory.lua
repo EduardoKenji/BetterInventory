@@ -523,6 +523,7 @@ if type(Features.configure_search) == "function" then
 	Features.configure_search(mod, {
 		CompactCurioPerkSearchTerms = Layout.compact_curio_perk_search_terms,
 		CompactWeaponPerkSearchTerms = Layout.compact_weapon_perk_search_terms,
+		CurioTraitSearchTerms = Layout.curio_trait_search_terms,
 		CustomTier = CustomTier,
 		ItemCustomization = ItemCustomization,
 	})

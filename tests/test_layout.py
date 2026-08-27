@@ -519,6 +519,10 @@ def main() -> None:
 
 		function test_mod:localize(localization_id)
 			local values = {
+				automatic_curio_health = "Health",
+				automatic_curio_stamina = "Stamina",
+				automatic_curio_toughness = "Toughness",
+				automatic_curio_wounds = "Wound",
 				curio_resistance_gunners = "Gunners Resistance",
 				curio_resistance_grimoires = "Grimoire Resistance",
 				curio_reward_chance = "Curio as Reward",
@@ -5039,6 +5043,16 @@ def main() -> None:
     assert compact_curio_standard is None
     assert compact_curio_heavy == "Ability Regen"
     assert layout.compact_curio_perk_search_terms(mod, "future_curio_perk", "") == (
+        None,
+        None,
+    )
+    assert layout.curio_trait_search_terms(
+        mod, "gadget_innate_health_increase"
+    ) == ("Health", "health")
+    assert layout.curio_trait_search_terms(
+        mod, "gadget_innate_max_wounds_increase"
+    ) == ("Wound", "wound wounds")
+    assert layout.curio_trait_search_terms(mod, "future_curio_trait") == (
         None,
         None,
     )

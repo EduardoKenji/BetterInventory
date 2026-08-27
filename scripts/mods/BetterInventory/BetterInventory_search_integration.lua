@@ -313,6 +313,11 @@ Integration.new = function(mod, dependencies)
 					return dependencies.CompactCurioPerkSearchTerms(mod, id, description)
 				end
 			end,
+			curio_trait_search_terms = function(id)
+				if type(dependencies.CurioTraitSearchTerms) == "function" then
+					return dependencies.CurioTraitSearchTerms(mod, id)
+				end
+			end,
 			compact_perk_search_terms = function(id, description)
 				if type(dependencies.CompactWeaponPerkSearchTerms) == "function" then
 					return dependencies.CompactWeaponPerkSearchTerms(mod, id, description)
@@ -586,6 +591,7 @@ Integration.install = function(facade, mod, providers, configure_sort, global_st
 	local integration = Integration.new(mod, {
 		CompactCurioPerkSearchTerms = providers.CompactCurioPerkSearchTerms,
 		CompactWeaponPerkSearchTerms = providers.CompactWeaponPerkSearchTerms,
+		CurioTraitSearchTerms = providers.CurioTraitSearchTerms,
 		CustomTier = providers.CustomTier,
 		DiscardPolicy = DiscardPolicy,
 		ItemCustomization = providers.ItemCustomization,

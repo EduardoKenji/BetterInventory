@@ -378,6 +378,32 @@ local COMPACT_CURIO_LABELS = {
 		},
 	},
 }
+local CURIO_TRAIT_SEARCH_LABELS = {
+	gadget_health_increase = {
+		localization_id = "automatic_curio_health",
+		canonical = "health",
+	},
+	gadget_innate_health_increase = {
+		localization_id = "automatic_curio_health",
+		canonical = "health",
+	},
+	gadget_innate_max_wounds_increase = {
+		localization_id = "automatic_curio_wounds",
+		canonical = "wound wounds",
+	},
+	gadget_innate_toughness_increase = {
+		localization_id = "automatic_curio_toughness",
+		canonical = "toughness",
+	},
+	gadget_stamina_increase = {
+		localization_id = "automatic_curio_stamina",
+		canonical = "stamina",
+	},
+	gadget_toughness_increase = {
+		localization_id = "automatic_curio_toughness",
+		canonical = "toughness",
+	},
+}
 local COMPACT_WEAPON_PERK_LABELS = {}
 
 local function register_weapon_perk_labels(ids, localization_id, heavy_localization_id)
@@ -933,6 +959,16 @@ local function compact_curio_perk_search_terms(mod, id)
 	local heavy = heavy_id and mod:localize(heavy_id) or nil
 
 	return standard, heavy
+end
+
+local function curio_trait_search_terms(mod, id)
+	local definition = id and CURIO_TRAIT_SEARCH_LABELS[id]
+
+	if not definition then
+		return nil, nil
+	end
+
+	return mod:localize(definition.localization_id), definition.canonical
 end
 
 local function leading_plus_sign_description(description, remove_plus_sign)
@@ -2044,6 +2080,7 @@ Content.WEAPON_MODIFIER_TITLE_COLOR = WEAPON_MODIFIER_TITLE_COLOR
 Content.WEAPON_MODIFIER_VALUE_COLOR = WEAPON_MODIFIER_VALUE_COLOR
 Content.CURIO_PRIMARY_COLOR_DEFINITIONS = CURIO_PRIMARY_COLOR_DEFINITIONS
 Content.COMPACT_CURIO_LABELS = COMPACT_CURIO_LABELS
+Content.CURIO_TRAIT_SEARCH_LABELS = CURIO_TRAIT_SEARCH_LABELS
 Content.COMPACT_WEAPON_PERK_LABELS = COMPACT_WEAPON_PERK_LABELS
 Content.CURIO_STAT_SIMPLIFICATIONS = CURIO_STAT_SIMPLIFICATIONS
 Content.DEFAULT_CURIO_PRIMARY_COLOR = DEFAULT_CURIO_PRIMARY_COLOR
@@ -2086,6 +2123,7 @@ Content.curio_primary_color = curio_primary_color
 Content.curio_secondary_color = curio_secondary_color
 Content.compact_curio_description = compact_curio_description
 Content.compact_curio_perk_search_terms = compact_curio_perk_search_terms
+Content.curio_trait_search_terms = curio_trait_search_terms
 Content.configured_text_color = configured_text_color
 Content.single_line_text = single_line_text
 Content.compact_weapon_perk_description = compact_weapon_perk_description

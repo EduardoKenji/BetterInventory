@@ -184,6 +184,10 @@ def main() -> None:
                 compact_provider_description = description
                 return "+25% Flak Damage", "+25% Flak Dmg"
             end,
+            CurioTraitSearchTerms = function(_, id)
+                curio_trait_provider_id = id
+                return "Health", "health"
+            end,
             CustomTier = {matches = function() return false end},
             ItemCustomization = {get = function() return nil end},
         }
@@ -234,6 +238,9 @@ def main() -> None:
             "gadget_cooldown_reduction",
             "+3% Combat Ability Regeneration"
         )
+        curio_trait_localized, curio_trait_canonical = last_index_dependencies.curio_trait_search_terms(
+            "gadget_innate_health_increase"
+        )
 
         normal_present_view = {
             _present_layout_by_slot_filter = function(_, slot, item_type, title)
@@ -275,6 +282,9 @@ def main() -> None:
     assert lua.globals().compact_curio_standard is None
     assert lua.globals().compact_curio_heavy == "Ability Regen"
     assert lua.globals().compact_curio_provider_id == "gadget_cooldown_reduction"
+    assert lua.globals().curio_trait_provider_id == "gadget_innate_health_increase"
+    assert lua.globals().curio_trait_localized == "Health"
+    assert lua.globals().curio_trait_canonical == "health"
     assert lua.globals().new_match is True
     assert lua.globals().compact_standard == "+25% Flak Damage"
     assert lua.globals().compact_heavy == "+25% Flak Dmg"
