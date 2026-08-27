@@ -413,6 +413,17 @@ SearchUI.update = function(mod, Features, view, time)
 		content.active_placeholder_text = content.placeholder_text
 		view._better_inventory_search_last_text = query
 		view._better_inventory_search_widget_initialized = true
+
+		-- An already-open view can survive a DMF hot reload while the search
+		-- runtime is recreated. Reconcile the visible field once instead of
+		-- treating its current text as if the new runtime had already received it.
+		if type(Features.search_query) == "function" then
+			local runtime_query = Features.search_query(view)
+
+			if query ~= runtime_query then
+				Features.search_set_query(view, query, time)
+			end
+		end
 	end
 
 	if query ~= view._better_inventory_search_last_text then

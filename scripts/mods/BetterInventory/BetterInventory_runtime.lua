@@ -1602,12 +1602,7 @@ if ensure_class_method(CreditsVendorView, "_setup_sort_options") then
 end
 
 if ensure_class_method(InventoryWeaponsView, "update") then
-	-- Keep O(n) work outside native traversal.
 	mod:hook_safe(InventoryWeaponsView, "update", function(view, dt, t, input_service)
-		SearchUI.update(mod, Features, view, t)
-		if view._better_inventory_search_needs_update then
-			Features.search_update(view, t)
-		end
 		Features.update_inventory_sort_toggle(mod, Layout, view)
 		Features.update_inventory_options_panel_controller_selection(view, input_service)
 		Features.flush_inventory_resort(mod, Layout, view)

@@ -66,12 +66,13 @@ SearchHooks.install = function(dependencies)
 		end
 	end
 
-	if method_available(CraftingMechanicusModifyView, "update") then
-		mod:hook_safe(CraftingMechanicusModifyView, "update", update_search)
-	end
-
-	if method_available(VendorViewBase, "update") then
-		mod:hook_safe(VendorViewBase, "update", update_search)
+	-- Poll the owned text widget at the common inventory-view boundary. This is
+	-- the delivery seam used by the last live-confirmed implementation and also
+	-- covers ItemGridViewBase descendants supplied by other mods. The callback
+	-- is constant-time while idle; projection, matching, and presentation remain
+	-- gated by `_better_inventory_search_needs_update` and the settle deadline.
+	if method_available(ItemGridViewBase, "update") then
+		mod:hook_safe(ItemGridViewBase, "update", update_search)
 	end
 
 	local function install_view_input_hook(view_class)

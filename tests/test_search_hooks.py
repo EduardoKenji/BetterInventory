@@ -152,9 +152,9 @@ def main() -> None:
         safe_hooks["grid:_cb_on_present"](view)
         view._better_inventory_search_rank_active = nil
         safe_hooks["grid:_cb_on_present"]({})
-        safe_hooks["crafting:update"](view, 0.1, 12, "input")
-        assert(safe_hooks["grid:update"] == nil)
-        safe_hooks["vendor:update"]({keep = true}, 0.1, 13, "idle_input")
+        safe_hooks["grid:update"](view, 0.1, 12, "input")
+        assert(safe_hooks["crafting:update"] == nil)
+        assert(safe_hooks["vendor:update"] == nil)
 
         native_input = 0
         blocked_view = {block_search = true}
@@ -224,7 +224,7 @@ def main() -> None:
             end,
             sacrifice_view, "sort"
         )
-        safe_hooks["barter:update"](sacrifice_view, 0.1, 30, "sacrifice_input")
+        safe_hooks["grid:update"](sacrifice_view, 0.1, 30, "sacrifice_input")
         safe_hooks["barter:on_exit"](sacrifice_view)
         ''',
     )
