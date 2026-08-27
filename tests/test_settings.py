@@ -267,6 +267,8 @@ def main() -> None:
 				reconcile_discard_transaction = function() end,
 			cancel_manual_discard = function() end,
 			unregister_inventory_view = function() end,
+			release_lantern_inventory_section = function() end,
+			request_inventory_resort = function() end,
 			lantern_recommendations_active = function() return lantern_recommendations_are_active end,
 		}
 		test_curio_acquisition = {
@@ -325,6 +327,12 @@ def main() -> None:
 			_create_entry_widget_from_config = function() end,
 			update = function() end,
 		}
+		test_inventory_weapons_view = {
+			cb_on_favorite_pressed = function() end,
+			_equip_item = function() end,
+			on_exit = function() end,
+			_setup_item_grid_materials = function() end,
+		}
 		test_view_element_grid = {
 			_create_entry_widget_from_config = function() end,
 			update = function() end,
@@ -344,6 +352,10 @@ def main() -> None:
 		captured_character_overview_update_hook = nil
 		captured_grid_widget_hook = nil
 		captured_grid_update_hook = nil
+		captured_runtime_favorite_hook = nil
+		captured_runtime_equip_hook = nil
+		captured_runtime_inventory_exit_hook = nil
+		captured_runtime_grid_materials_hook = nil
 		captured_module_errors = 0
 		settings_registry_register_calls = 0
 		fail_feature_load = false
@@ -415,7 +427,10 @@ def main() -> None:
 		end
 
         function test_mod:hook(target, method, callback)
-			if method == "init" then
+			assert(type(target) == "table" or type(target) == "string", "hook target must never be nil")
+			if target == test_inventory_weapons_view and method == "_setup_item_grid_materials" then
+				captured_runtime_grid_materials_hook = callback
+			elseif method == "init" then
 				captured_item_grid_init_hook = callback
 			elseif method == "on_enter" then
 				captured_armoury_on_enter_hook = callback
@@ -427,7 +442,14 @@ def main() -> None:
         end
 
         function test_mod:hook_safe(target, method, callback)
-			if target == test_dmf and method == "create_mod_options_settings" then
+			assert(type(target) == "table" or type(target) == "string", "safe hook target must never be nil")
+			if target == test_inventory_weapons_view and method == "cb_on_favorite_pressed" then
+				captured_runtime_favorite_hook = callback
+			elseif target == test_inventory_weapons_view and method == "_equip_item" then
+				captured_runtime_equip_hook = callback
+			elseif target == test_inventory_weapons_view and method == "on_exit" then
+				captured_runtime_inventory_exit_hook = callback
+			elseif target == test_dmf and method == "create_mod_options_settings" then
 				captured_options_hook = callback
 			elseif target == test_inventory_view and method == "update" then
 				captured_character_overview_update_hook = callback
@@ -459,6 +481,8 @@ def main() -> None:
         function require(path)
 			if path == "scripts/ui/views/inventory_view/inventory_view" then
 				return test_inventory_view
+			elseif path == "scripts/ui/views/inventory_weapons_view/inventory_weapons_view" then
+				return test_inventory_weapons_view
 			elseif path == "scripts/ui/view_elements/view_element_grid/view_element_grid" then
 				return test_view_element_grid
 			end
@@ -521,6 +545,28 @@ def main() -> None:
     globals_ = lua.globals()
     mod = globals_.test_mod
     settings = globals_.settings
+    assert globals_.runtime_dependencies.InventoryWeaponsView is not None
+    assert globals_.captured_runtime_favorite_hook is not None
+    assert globals_.captured_runtime_equip_hook is not None
+    assert globals_.captured_runtime_inventory_exit_hook is not None
+    assert globals_.captured_runtime_grid_materials_hook is not None
+    lua.execute(
+        """
+		local view = {
+			_item_grid = {},
+			_better_inventory_grid_expansion = 0,
+		}
+		local native_material_setup_calls = 0
+
+		captured_runtime_favorite_hook(view)
+		captured_runtime_equip_hook(view)
+		captured_runtime_inventory_exit_hook(view)
+		captured_runtime_grid_materials_hook(function()
+			native_material_setup_calls = native_material_setup_calls + 1
+		end, view)
+		assert(native_material_setup_calls == 1)
+        """
+    )
     assert globals_.captured_character_overview_update_hook is not None
     assert globals_.captured_grid_update_hook is None
 

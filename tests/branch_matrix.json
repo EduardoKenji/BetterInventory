@@ -30,6 +30,13 @@
       "modules": ["BetterInventory_search_integration.lua", "BetterInventory_feature_sorting.lua", "BetterInventory_runtime.lua"]
     },
     {
+      "name": "runtime.bootstrap-rejects-nil-hook-targets",
+      "test": "test_settings.py",
+      "case": "defaults_and_bootstrap_contract",
+      "outcome": "main bootstrap forwards InventoryWeaponsView to the central runtime, DMF-like hook registration rejects every nil target, and favorite, equip, exit, and grid-material callbacks remain installed while optional class drift fails open",
+      "modules": ["BetterInventory.lua", "BetterInventory_runtime.lua"]
+    },
+    {
       "name": "favorites.isolate-purchase-sources",
       "test": "test_favorite_integration.py",
       "case": "purchase_source_isolation_and_myfavorites_color_assignment",

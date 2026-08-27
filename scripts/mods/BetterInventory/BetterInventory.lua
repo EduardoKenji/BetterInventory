@@ -634,6 +634,7 @@ Runtime.configure({
 	InventoryBackgroundView = InventoryBackgroundView,
 	ItemGridViewBase = ItemGridViewBase,
 	ItemGridViewBaseDefinitions = ItemGridViewBaseDefinitions,
+	InventoryWeaponsView = InventoryWeaponsView,
 	ViewElementGrid = ViewElementGrid,
 	VendorInteractionViewBase = VendorInteractionViewBase,
 	WeaponOptionsPanel = WeaponOptionsPanel,

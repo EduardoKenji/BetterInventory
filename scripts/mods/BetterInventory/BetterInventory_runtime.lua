@@ -1630,18 +1630,20 @@ if ensure_class_method(InventoryWeaponsView, "_handle_input") then
 	end)
 end
 
-mod:hook_safe(InventoryWeaponsView, "cb_on_favorite_pressed", function(view)
-	local item_grid = view and view._item_grid
+if ensure_class_method(InventoryWeaponsView, "cb_on_favorite_pressed") then
+	mod:hook_safe(InventoryWeaponsView, "cb_on_favorite_pressed", function(view)
+		local item_grid = view and view._item_grid
 
-	invalidate_myfavorites_grid(item_grid)
-	if type(Features.search_invalidate_all) == "function" then
-		Features.search_invalidate_all(view)
-	end
+		invalidate_myfavorites_grid(item_grid)
+		if type(Features.search_invalidate_all) == "function" then
+			Features.search_invalidate_all(view)
+		end
 
-	if mod:get("prioritize_equipped_favorites") ~= false then
-		Features.request_inventory_resort(view)
-	end
-end)
+		if mod:get("prioritize_equipped_favorites") ~= false then
+			Features.request_inventory_resort(view)
+		end
+	end)
+end
 
 if ensure_class_method(InventoryBackgroundView, "_equip_local_changes") then
 	mod:hook(InventoryBackgroundView, "_equip_local_changes", function(func, view, ...)
@@ -1681,30 +1683,34 @@ mod:hook("GearService", "delete_gear_batch", function(func, gear_service, gear_i
 		return result
 	end)
 
-mod:hook_safe(InventoryWeaponsView, "_equip_item", function(view)
-	if type(Features.invalidate_view_composition) == "function" then
-		Features.invalidate_view_composition(view)
-	end
+if ensure_class_method(InventoryWeaponsView, "_equip_item") then
+	mod:hook_safe(InventoryWeaponsView, "_equip_item", function(view)
+		if type(Features.invalidate_view_composition) == "function" then
+			Features.invalidate_view_composition(view)
+		end
 
-	local item_grid = view and view._item_grid
+		local item_grid = view and view._item_grid
 
-	invalidate_myfavorites_grid(item_grid)
-	if type(Features.search_invalidate_all) == "function" then
-		Features.search_invalidate_all(view)
-	end
+		invalidate_myfavorites_grid(item_grid)
+		if type(Features.search_invalidate_all) == "function" then
+			Features.search_invalidate_all(view)
+		end
 
-	if mod:get("prioritize_equipped_favorites") ~= false then
-		Features.request_inventory_resort(view)
-	end
-end)
+		if mod:get("prioritize_equipped_favorites") ~= false then
+			Features.request_inventory_resort(view)
+		end
+	end)
+end
 
-mod:hook_safe(InventoryWeaponsView, "on_exit", function(view)
-	Features.release_lantern_inventory_section(view)
-	Features.unregister_inventory_view(view)
-	if ItemCustomization and type(ItemCustomization.on_view_closed) == "function" then
-		ItemCustomization.on_view_closed(mod)
-	end
-end)
+if ensure_class_method(InventoryWeaponsView, "on_exit") then
+	mod:hook_safe(InventoryWeaponsView, "on_exit", function(view)
+		Features.release_lantern_inventory_section(view)
+		Features.unregister_inventory_view(view)
+		if ItemCustomization and type(ItemCustomization.on_view_closed) == "function" then
+			ItemCustomization.on_view_closed(mod)
+		end
+	end)
+end
 
 if ensure_class_method(InventoryWeaponsView, "destroy") then
 	mod:hook_safe(InventoryWeaponsView, "destroy", function(view)
@@ -1810,28 +1816,30 @@ if ensure_class_method(CreditsGoodsVendorView, "destroy") then
 	end)
 end
 
-mod:hook(InventoryWeaponsView, "_setup_item_grid_materials", function(func, view, ...)
-	func(view, ...)
+if ensure_class_method(InventoryWeaponsView, "_setup_item_grid_materials") then
+	mod:hook(InventoryWeaponsView, "_setup_item_grid_materials", function(func, view, ...)
+		func(view, ...)
 
-	local expansion = view._better_inventory_grid_expansion or 0
+		local expansion = view._better_inventory_grid_expansion or 0
 
-	if expansion <= 0 then
-		return
-	end
-
-	for _, widget_name in ipairs({
-		"grid_divider_top",
-		"grid_divider_bottom",
-	}) do
-		local widget = view:_grid_widget_by_name(widget_name)
-		local texture_style = widget and widget.style and widget.style.texture
-		local texture_size = texture_style and texture_style.size
-
-		if texture_size and texture_size[1] then
-			texture_size[1] = texture_size[1] + expansion
+		if expansion <= 0 then
+			return
 		end
-	end
-end)
+
+		for _, widget_name in ipairs({
+			"grid_divider_top",
+			"grid_divider_bottom",
+		}) do
+			local widget = view:_grid_widget_by_name(widget_name)
+			local texture_style = widget and widget.style and widget.style.texture
+			local texture_size = texture_style and texture_style.size
+
+			if texture_size and texture_size[1] then
+				texture_size[1] = texture_size[1] + expansion
+			end
+		end
+	end)
+end
 
 local function present_grid_with_configuration(func, view, layout, on_present_callback, configuration)
 	local previous_active_view = active_grid_view

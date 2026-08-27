@@ -10,6 +10,7 @@
 - Coalesces rapid edits, reuses bounded weak projection/result caches, restores owned alpha values, fails open when a view contract is unavailable, and releases per-view state on close or hot reload.
 - Defocuses search without clearing it when a card is selected. Query memory is optional, bounded by character and logical view family, and disabled by default.
 - Warns once when legacy Stuff Searcher is also enabled and avoids invoking GodRolls' decorated-name/stat projection while indexing.
+- Restores the `InventoryWeaponsView` runtime dependency accidentally omitted during search-adapter extraction and guards its optional hook targets, preventing the four startup `hook_safe`/`hook` nil-object errors.
 
 ## 3.1.0 - 2026-08-26
 
