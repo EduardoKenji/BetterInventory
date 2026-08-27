@@ -55,7 +55,7 @@ local function result_for(state, key)
 		local rank = state.ranks[key]
 
 		if rank ~= nil then
-			return rank > 0, true, rank
+			return rank > 0, true, math.abs(rank)
 		end
 	end
 
@@ -64,7 +64,8 @@ end
 
 local function set_result(state, key, matched, rank)
 	if key ~= nil then
-		state.ranks[key] = matched == true and (tonumber(rank) or 1) or 0
+		rank = math.max(0, tonumber(rank) or (matched == true and 1 or 0))
+		state.ranks[key] = matched == true and rank or -rank
 	end
 end
 
@@ -416,8 +417,8 @@ SearchRuntime.compose_layout = function(runtime, view, layout)
 		return layout
 	end
 
-	local matches = {}
-	local unmatched = {}
+	local ranked_entries = {}
+	local original_order = {}
 	local external_entries = {}
 	local hide = mode(runtime) == "hide"
 
@@ -437,20 +438,37 @@ SearchRuntime.compose_layout = function(runtime, view, layout)
 				matched = result_for(state, item)
 			end
 
-			if matched == true then
-				matches[#matches + 1] = entry
-			elseif not hide then
-				unmatched[#unmatched + 1] = entry
+			if matched == true or not hide then
+				ranked_entries[#ranked_entries + 1] = entry
+				original_order[entry] = index
 			end
 		end
 	end
 
-	for index = 1, #unmatched do
-		matches[#matches + 1] = unmatched[index]
-	end
-	insert_external_entries(matches, external_entries)
+	table.sort(ranked_entries, function(left, right)
+		local _, left_found, left_rank = result_for(state, left)
+		local _, right_found, right_rank = result_for(state, right)
 
-	return matches
+		if not left_found then
+			_, left_found, left_rank = result_for(state, item_from(left))
+		end
+
+		if not right_found then
+			_, right_found, right_rank = result_for(state, item_from(right))
+		end
+
+		left_rank = left_found and left_rank or 0
+		right_rank = right_found and right_rank or 0
+
+		if left_rank ~= right_rank then
+			return left_rank > right_rank
+		end
+
+		return original_order[left] < original_order[right]
+	end)
+	insert_external_entries(ranked_entries, external_entries)
+
+	return ranked_entries
 end
 
 SearchRuntime.set_query = function(runtime, view, query, now)
@@ -552,7 +570,7 @@ SearchRuntime.rank = function(runtime, view, entry)
 		set_result(state, entry, result, rank)
 	end
 
-	return result == true and rank or 0
+	return rank or 0
 end
 
 SearchRuntime.apply_widget_alpha = function(runtime, view)

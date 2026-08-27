@@ -104,6 +104,7 @@ Layout.set_item_customization_provider = function(provider)
 	Blueprints.set_item_customization_provider(provider)
 end
 Layout.clear_runtime_caches = content.clear_runtime_caches
+Layout.compact_curio_perk_search_terms = content.compact_curio_perk_search_terms
 Layout.compact_weapon_perk_search_terms = content.compact_weapon_perk_search_terms
 Layout.direct_weapon_comparing_stats = content.direct_weapon_comparing_stats
 Layout.projected_weapon_modifier_records = content.projected_weapon_modifier_records

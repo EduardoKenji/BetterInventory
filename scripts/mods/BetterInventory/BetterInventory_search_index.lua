@@ -313,7 +313,7 @@ local function append_trait_collection_identity(builder, dependencies, collectio
 	end
 end
 
-local function append_trait_collection_descriptions(builder, dependencies, collection, field, scoped_field)
+local function append_trait_collection_descriptions(builder, dependencies, collection, field, scoped_field, compact_search_terms)
 	local count = collection_count(collection)
 
 	for index = 1, count do
@@ -324,13 +324,13 @@ local function append_trait_collection_descriptions(builder, dependencies, colle
 
 		local description = safe_call(dependencies.trait_description, master_item or entry, safe_member(entry, "rarity"), safe_member(entry, "value"))
 
-		if field == "perk" then
+		if field == "perk" and type(compact_search_terms) == "function" then
 			-- Gear overrides store master-item paths (content/items/perks/...), while
 			-- compact card labels are keyed by the resolved gameplay trait name.
 			-- Compact aliases precede optional long descriptions so localization
 			-- decorators cannot exhaust the bounded projection first.
 			local compact_id = trait_name or id
-			local standard_description, heavy_description = safe_call(dependencies.compact_perk_search_terms, compact_id, description)
+			local standard_description, heavy_description = safe_call(compact_search_terms, compact_id, description)
 
 			append_trait_value(builder, field, scoped_field, standard_description)
 			append_trait_value(builder, field, scoped_field, heavy_description)
@@ -438,7 +438,9 @@ local function build_record(index, item, context)
 	-- large enough to otherwise starve all later weapon perk terms.
 	append_trait_collection_identity(builder, dependencies, traits, traits_field, primary_field)
 	append_trait_collection_identity(builder, dependencies, perks, "perk", secondary_field)
-	append_trait_collection_descriptions(builder, dependencies, perks, "perk", secondary_field)
+	local perk_search_terms = item_type == "GADGET" and dependencies.compact_curio_perk_search_terms or dependencies.compact_perk_search_terms
+
+	append_trait_collection_descriptions(builder, dependencies, perks, "perk", secondary_field, perk_search_terms)
 	append_trait_collection_descriptions(builder, dependencies, traits, traits_field, primary_field)
 
 	record.rating = number_from_call(dependencies.expertise_level, item)

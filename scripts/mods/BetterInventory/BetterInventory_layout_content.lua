@@ -920,6 +920,21 @@ local function compact_weapon_perk_search_terms(mod, id, description)
 	return compact_weapon_perk_text(mod, id, description, "compression"), compact_weapon_perk_text(mod, id, description, "heavy")
 end
 
+local function compact_curio_perk_search_terms(mod, id)
+	local definition = id and COMPACT_CURIO_LABELS[id]
+
+	if not definition then
+		return nil, nil
+	end
+
+	local standard_id = definition.localization_id
+	local heavy_id = definition.heavy_localization_id or standard_id
+	local standard = standard_id and mod:localize(standard_id) or nil
+	local heavy = heavy_id and mod:localize(heavy_id) or nil
+
+	return standard, heavy
+end
+
 local function leading_plus_sign_description(description, remove_plus_sign)
 	if not remove_plus_sign or type(description) ~= "string" then
 		return description or ""
@@ -2070,6 +2085,7 @@ Content.clamped_color_channel = clamped_color_channel
 Content.curio_primary_color = curio_primary_color
 Content.curio_secondary_color = curio_secondary_color
 Content.compact_curio_description = compact_curio_description
+Content.compact_curio_perk_search_terms = compact_curio_perk_search_terms
 Content.configured_text_color = configured_text_color
 Content.single_line_text = single_line_text
 Content.compact_weapon_perk_description = compact_weapon_perk_description

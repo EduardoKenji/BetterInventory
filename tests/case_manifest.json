@@ -1,18 +1,18 @@
 {
   "test_search_query.py": [
-    {"name": "bounded_literal_parser_effective_rarity_and_fail_open_matching", "risk": "high", "start_line": 1, "end_line": 247}
+      {"name": "bounded_literal_parser_effective_rarity_and_fail_open_matching", "risk": "high", "start_line": 1, "end_line": 331}
   ],
   "test_search_index.py": [
-    {"name": "bounded_projection_cache_custom_names_traits_and_split_rarity", "risk": "high", "start_line": 1, "end_line": 430}
+      {"name": "bounded_projection_cache_custom_names_traits_and_split_rarity", "risk": "high", "start_line": 1, "end_line": 505}
   ],
   "test_search_end_to_end.py": [
     {"name": "production_name_perk_blessing_sort_and_release", "risk": "critical", "start_line": 1, "end_line": 206}
   ],
   "test_search_runtime.py": [
-        {"name": "coalesced_filter_rank_dim_memory_and_release_lifecycle", "risk": "high", "start_line": 1, "end_line": 587}
+          {"name": "coalesced_filter_rank_dim_memory_and_release_lifecycle", "risk": "high", "start_line": 1, "end_line": 629}
   ],
   "test_search_integration.py": [
-      {"name": "supported_view_adapters_facade_and_lifecycle_composition", "risk": "high", "start_line": 1, "end_line": 414}
+        {"name": "supported_view_adapters_facade_and_lifecycle_composition", "risk": "high", "start_line": 1, "end_line": 427}
   ],
   "test_search_ui.py": [
       {"name": "single_field_configurable_view_spacing_clipping_disable_focus_and_release", "risk": "high", "start_line": 1, "end_line": 465}
@@ -244,7 +244,7 @@
     {"name": "card_geometry", "risk": "high", "start_line": 613, "end_line": 1469},
       {"name": "weapon_modifier_data_only_resolution", "risk": "critical", "start_line": 1470, "end_line": 1943},
         {"name": "content_and_resource_ownership", "risk": "high", "start_line": 1944, "end_line": 3155},
-    {"name": "integration_boundaries", "risk": "medium", "start_line": 3156, "end_line": 5169}
+    {"name": "integration_boundaries", "risk": "medium", "start_line": 3156, "end_line": 5186}
   ],
   "test_operation_arbiter.py": [
     {"name": "manual_automatic_exclusion", "risk": "critical", "start_line": 20, "end_line": 34},

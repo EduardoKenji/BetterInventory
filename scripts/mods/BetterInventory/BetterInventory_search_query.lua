@@ -467,43 +467,76 @@ Query.matches = function(compiled, record)
 end
 
 Query.rank = function(compiled, record, matched, prioritize_equipped)
-	if matched ~= true then
+	if type(compiled) ~= "table" or compiled.fail_open == true or compiled.empty == true then
+		return 1
+	elseif type(record) ~= "table" then
 		return 0
-	elseif type(compiled) ~= "table" or compiled.fail_open == true or compiled.empty == true then
-		return 1
 	end
 
-	-- Only Curios use the primary/secondary relevance hierarchy. Weapon records
-	-- can return their ordinary matched rank without rescanning every clause.
-	if record
-		and type(record.curio_primary) == "table"
-		and #record.curio_primary == 0
-		and type(record.curio_secondary) == "table"
-		and #record.curio_secondary == 0 then
-		return 1
-	end
+	local clauses = compiled.clauses
+	local clause_count = math.min(type(clauses) == "table" and #clauses or 0, 16)
+	local is_curio = any_text_value(record, "type", "curio", true)
+		or type(record.curio_primary) == "table" and #record.curio_primary > 0
+		or type(record.curio_secondary) == "table" and #record.curio_secondary > 0
+	local line_hits = 0
+	local covered_clauses = 0
+	local primary_mask = 0
+	local coverage_mask = 0
 
-	local primary_match = false
-	local secondary_match = false
-
-	for index = 1, #compiled.clauses do
+	for index = 1, clause_count do
 		local clause = compiled.clauses[index]
+		local weight = 2 ^ (clause_count - index)
+		local covered = clause_matches(clause, record)
 
-		if (clause.field == "text" or clause.field == "perk") and (clause.kind == "text_contains" or clause.kind == "text_equal") then
+		if covered then
+			covered_clauses = covered_clauses + 1
+			coverage_mask = coverage_mask + weight
+		end
+
+		if is_curio and (clause.field == "text" or clause.field == "perk") and (clause.kind == "text_contains" or clause.kind == "text_equal") then
 			local exact = clause.kind == "text_equal"
-			primary_match = primary_match or any_text_value(record, "curio_primary", clause.value, exact)
-			secondary_match = secondary_match or any_text_value(record, "curio_secondary", clause.value, exact)
+			local primary_match = any_text_value(record, "curio_primary", clause.value, exact)
+			local secondary_match = any_text_value(record, "curio_secondary", clause.value, exact)
+
+			if primary_match then
+				line_hits = line_hits + 1
+				primary_mask = primary_mask + weight
+			end
+
+			if secondary_match then
+				line_hits = line_hits + 1
+			end
 		end
 	end
 
-	if not primary_match and not secondary_match then
-		return 1
+	if is_curio and line_hits == 0 then
+		return matched == true and 1 or 0
+	elseif not is_curio then
+		line_hits = covered_clauses
+
+		if line_hits == 0 then
+			return 0
+		end
 	end
 
-	-- Rank 7..2 encodes the requested Curio hierarchy while rank 1 remains
-	-- the ordinary matched group and rank 0 remains unmatched. Existing
-	-- Better Inventory/native sorting is still the tie-breaker inside a group.
-	return 1 + (prioritize_equipped ~= false and record and record.equipped == true and 3 or 0) + (primary_match and 2 or 0) + (secondary_match and 1 or 0)
+	-- Pack a bounded lexicographic tuple once per settled query. More matching
+	-- lines wins first; then more distinct covered clauses, primary-line matches
+	-- from left to right, overall clause coverage from left to right, equipped
+	-- state, and visible item level. With at most sixteen clauses the maximum
+	-- value remains below Lua's exact-integer limit for doubles.
+	local equipped = prioritize_equipped ~= false and record and record.equipped == true and 1 or 0
+	local item_level = math.floor(tonumber(record and record.rating) or 0)
+
+	item_level = math.max(0, math.min(999, item_level))
+
+	local rank = line_hits
+	rank = rank * 17 + covered_clauses
+	rank = rank * 65536 + primary_mask
+	rank = rank * 65536 + coverage_mask
+	rank = rank * 2 + equipped
+	rank = rank * 1000 + item_level
+
+	return rank + 1
 end
 
 Query.normalize = normalize

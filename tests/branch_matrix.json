@@ -5,14 +5,14 @@
       "name": "search.query-is-literal-bounded-and-rarity-aware",
       "test": "test_search_query.py",
       "case": "bounded_literal_parser_effective_rarity_and_fail_open_matching",
-      "outcome": "quoted and explicit-AND text remains literal and bounded; invalid input fails open; numeric and boolean fields are typed; visible Sainted and Transcendent tiers stay distinct while native-rarity can intentionally include both; partial Curio-line matches receive bounded equipped/primary/secondary relevance ranks",
+      "outcome": "quoted and explicit-AND text remains literal and bounded; invalid input fails open; numeric and boolean fields are typed; visible Sainted and Transcendent tiers stay distinct while native-rarity can intentionally include both; Curios receive bounded line-count, distinct-clause, primary-line, left-to-right, equipped, and item-level relevance while weapons receive the corresponding progressive clause hierarchy",
       "modules": ["BetterInventory_search_query.lua"]
     },
     {
       "name": "search.index-is-bounded-cached-and-presentation-aware",
       "test": "test_search_index.py",
       "case": "bounded_projection_cache_custom_names_traits_and_split_rarity",
-      "outcome": "one weak view-owned projection cache resolves native and custom names, distinct Curio primary/secondary lines, and production master-item perk paths without invoking GodRolls; every perk identity and compact alias precedes optional long Enhanced Descriptions text, so flak/unyielding and later perk slots survive the fixed 2 KB cap; bare terms use one prejoined bounded corpus while scoped fields stay distinct; normalized corpus insertion performs no duplicate normalization, bounded idle slices warm sixteen projections at a time, full presentation still detects fingerprint changes, and release retains no item references",
+      "outcome": "one weak view-owned projection cache resolves native and custom names, distinct Curio primary/secondary lines, production master-item perk paths, and localized Curio compact aliases such as Ability Regen without invoking GodRolls; every perk identity and compact alias precedes optional long Enhanced Descriptions text, so flak/unyielding and later perk slots survive the fixed 2 KB cap; bare terms use one prejoined bounded corpus while scoped fields stay distinct; normalized corpus insertion performs no duplicate normalization, bounded idle slices warm sixteen projections at a time, full presentation still detects fingerprint changes, and release retains no item references",
       "modules": ["BetterInventory_search_index.lua", "BetterInventory_search_query.lua", "BetterInventory_custom_tier.lua"]
     },
     {
@@ -33,7 +33,7 @@
       "name": "search.runtime-coalesces-and-releases-owned-state",
       "test": "test_search_runtime.py",
       "case": "coalesced_filter_rank_dim_memory_and_release_lifecycle",
-        "outcome": "rapid typing allocates no parser/result tables and coalesces into one settled-query scan plus one commit; dim/promote prefers an identity-preserving in-place grid reorder while hide and the first post-hide restoration retain native presentation, cold projections warm in bounded sixteen-item slices using one reusable projection context, one cleared-and-reused weak rank map stays bounded while old layouts are retained, and repeated release drops all view state",
+        "outcome": "rapid typing allocates no parser/result tables and coalesces into one settled-query scan plus one commit; dim/promote preserves strict and partial relevance in one signed weak rank map and prefers an identity-preserving in-place grid reorder, while hide remains strict and the first post-hide restoration retains native presentation; external layouts stably order partial ranks, cold projections warm in bounded sixteen-item slices using one reusable context, old layouts cannot grow retained state, and repeated release drops all view state",
       "modules": ["BetterInventory_search_runtime.lua", "BetterInventory_search_index.lua", "BetterInventory_search_query.lua"]
     },
     {

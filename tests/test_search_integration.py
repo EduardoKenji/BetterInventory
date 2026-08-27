@@ -174,6 +174,11 @@ def main() -> None:
             request_inventory_resort = function() requested_resorts = requested_resorts + 1 end,
         }
         providers = {
+            CompactCurioPerkSearchTerms = function(_, id, description)
+                compact_curio_provider_id = id
+                compact_curio_provider_description = description
+                return nil, "Ability Regen"
+            end,
             CompactWeaponPerkSearchTerms = function(_, id, description)
                 compact_provider_id = id
                 compact_provider_description = description
@@ -225,6 +230,10 @@ def main() -> None:
             "weapon_trait_melee_common_wield_increased_armored_damage",
             "+25% Damage vs Flak Armoured Enemies"
         )
+        compact_curio_standard, compact_curio_heavy = last_index_dependencies.compact_curio_perk_search_terms(
+            "gadget_cooldown_reduction",
+            "+3% Combat Ability Regeneration"
+        )
 
         normal_present_view = {
             _present_layout_by_slot_filter = function(_, slot, item_type, title)
@@ -263,6 +272,9 @@ def main() -> None:
     assert lua.globals().fallback_equipped is True
     assert lua.globals().missing_equipped is False
     assert lua.globals().loadout_match is True
+    assert lua.globals().compact_curio_standard is None
+    assert lua.globals().compact_curio_heavy == "Ability Regen"
+    assert lua.globals().compact_curio_provider_id == "gadget_cooldown_reduction"
     assert lua.globals().new_match is True
     assert lua.globals().compact_standard == "+25% Flak Damage"
     assert lua.globals().compact_heavy == "+25% Flak Dmg"

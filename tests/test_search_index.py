@@ -34,6 +34,8 @@ def main() -> None:
             loc_flak = "Damage vs Flak Armoured Enemies",
             loc_unyielding = "Damage vs Unyielding Enemies",
             loc_health = "Maximum Health",
+            loc_toughness = "Maximum Toughness",
+            loc_ability_regeneration = "Combat Ability Regeneration",
         }
         rarity_settings = {}
         for rarity = 1, 6 do
@@ -57,6 +59,10 @@ def main() -> None:
                     }
                 elseif id == "content/items/perks/gadget/health" then
                     return {display_name = "loc_health", trait = "gadget_innate_health_increase"}
+                elseif id == "content/items/perks/gadget/toughness" then
+                    return {display_name = "loc_toughness", trait = "gadget_innate_toughness_increase"}
+                elseif id == "content/items/perks/gadget/cooldown_reduction" then
+                    return {display_name = "loc_ability_regeneration", trait = "gadget_cooldown_reduction"}
                 end
             end,
         }
@@ -147,6 +153,11 @@ def main() -> None:
     lua.globals().search_query = query
     dependencies = lua.table_from(
         {
+            "compact_curio_perk_search_terms": lua.eval(
+                "function(id) "
+                "compact_curio_perk_calls = (compact_curio_perk_calls or 0) + 1; "
+                "if id == 'gadget_cooldown_reduction' then return nil, 'Ability Regen' end end"
+            ),
             "compact_perk_search_terms": lua.eval(
                 "function(id, description) "
                 "compact_perk_calls = (compact_perk_calls or 0) + 1; "
@@ -320,13 +331,77 @@ def main() -> None:
     assert "damage vs carapace enemies" in [
         curio.curio_primary[i] for i in range(1, len(curio.curio_primary) + 1)
     ]
-    assert "+25% flak dmg" in [
+    assert "damage vs flak armoured enemies" in [
         curio.curio_secondary[i] for i in range(1, len(curio.curio_secondary) + 1)
     ]
     assert query.matches(compiled("anointed & type:curio & perk:carapace"), curio) is True
-    assert query.rank(compiled("carapace"), curio, True) == 6
-    assert query.rank(compiled("flak"), curio, True) == 5
-    assert query.rank(compiled("carapace & flak"), curio, True) == 7
+    primary_rank = query.rank(compiled("carapace"), curio, True)
+    secondary_rank = query.rank(compiled("flak"), curio, True)
+    both_rank = query.rank(compiled("carapace & flak"), curio, True)
+    assert both_rank > primary_rank > secondary_rank > 0
+
+    # Production Curios use a distinct compact-label table. A cooldown perk's
+    # internal trait says "cooldown", while the card says "Ability Regen";
+    # the Curio provider must index that alias even if the long description is
+    # unavailable. Full primary+secondary relevance outranks equipped
+    # primary-only relevance, then equipped state and item level break ties.
+    guardian = lua.table_from(
+        {
+            "gear_id": "guardian-gloriana",
+            "item_type": "GADGET",
+            "rarity": 5,
+            "expertise": 410,
+            "traits": lua.table_from(
+                [
+                    lua.table_from(
+                        {
+                            "id": "content/items/perks/gadget/toughness",
+                            "rarity": 4,
+                            "value": 1,
+                        }
+                    )
+                ]
+            ),
+            "perks": lua.table_from(
+                [
+                    lua.table_from(
+                        {
+                            "id": "content/items/perks/gadget/cooldown_reduction",
+                            "rarity": 4,
+                            "value": 1,
+                        }
+                    )
+                ]
+            ),
+        }
+    )
+    guardian_record, ok = search_index.project(index, guardian, lua.table_from({}))
+    assert ok is True
+    assert "ability regen" in [
+        guardian_record.curio_secondary[i]
+        for i in range(1, len(guardian_record.curio_secondary) + 1)
+    ]
+    guardian_query = compiled("toughness & ability")
+    assert query.matches(guardian_query, guardian_record) is True
+    guardian_rank = query.rank(guardian_query, guardian_record, True)
+    assert guardian_rank > 0
+    equipped_toughness_only = lua.table_from(
+        {
+            "text": "maximum toughness",
+            "perk": lua.table_from(["maximum toughness"]),
+            "curio_primary": lua.table_from(["maximum toughness"]),
+            "curio_secondary": lua.table_from([]),
+            "equipped": True,
+            "rating": 430,
+        }
+    )
+    equipped_partial_rank = query.rank(
+        guardian_query,
+        equipped_toughness_only,
+        query.matches(guardian_query, equipped_toughness_only),
+    )
+    assert guardian_rank > equipped_partial_rank > 0
+    assert lua.globals().compact_curio_perk_calls == 2
 
     # Search projection consumes current-locale UTF-8 strings. Production-like
     # master-item perk paths resolve to gameplay trait IDs before compact label

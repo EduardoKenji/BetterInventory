@@ -79,6 +79,7 @@ def main() -> None:
                         equipped = item.equipped == true,
                         name = {item.name},
                         perk = {item.primary or "", item.secondary or ""},
+                        rating = item.rating or 410,
                         text = {item.name, item.primary or "", item.secondary or ""},
                     }, true
                 end
@@ -283,13 +284,13 @@ def main() -> None:
     search_runtime.capture_presentation(runtime, view, "slot", "type", "title")
     assert lua.globals().validated_project_calls == validated_before_main_query + 200
     assert search_runtime.apply_widget_alpha(runtime, view) is True
-    assert search_runtime.rank(runtime, view, view._offer_items_layout[2]) == 1
+    assert search_runtime.rank(runtime, view, view._offer_items_layout[2]) > 0
     assert view._better_inventory_search_rank_active is True
     assert view._better_inventory_search_filter_active is None
     assert search_runtime.rank(runtime, view, view._offer_items_layout[1]) == 0
     assert search_runtime.native_filter(runtime, view, None, True) is True
     late_entry = lua.table_from({"gear_id": "late", "name": "late sword"})
-    assert search_runtime.rank(runtime, view, late_entry) == 1
+    assert search_runtime.rank(runtime, view, late_entry) > 0
     late_filter_entry = lua.table_from({"gear_id": "late-filter", "name": "late sword"})
     lua.globals().configured_mode = "hide"
     assert search_runtime.native_filter(runtime, view, late_filter_entry, True) is True
@@ -395,17 +396,17 @@ def main() -> None:
 
     # Curio relevance is computed during the bounded projection scan and read
     # as O(1) cached ranks by the comparator. Partial text follows the exact
-    # equipped/primary/secondary hierarchy in both dim and hide modes.
+    # relevance/primary/secondary hierarchy in both dim and hide modes.
     lua.execute(
         r'''
         curio_view = {
             character = "veteran",
             family = "inventory",
             _offer_items_layout = {
-                {gear_id = "equipped-both", curio = true, equipped = true, primary = "+17% health", secondary = "+5% health", name = "curio"},
+                {gear_id = "equipped-both", curio = true, equipped = true, primary = "+17% health", secondary = "+5% health", name = "curio", rating = 410},
                 {gear_id = "equipped-primary", curio = true, equipped = true, primary = "+17% health", name = "curio"},
                 {gear_id = "equipped-secondary", curio = true, equipped = true, secondary = "+5% health", name = "curio"},
-                {gear_id = "both", curio = true, primary = "+17% health", secondary = "+5% health", name = "curio"},
+                {gear_id = "both", curio = true, primary = "+17% health", secondary = "+5% health", name = "curio", rating = 430},
                 {gear_id = "primary", curio = true, primary = "+17% health", name = "curio"},
                 {gear_id = "secondary", curio = true, secondary = "+5% health", name = "curio"},
                 {gear_id = "name", curio = true, name = "health relic"},
@@ -424,20 +425,21 @@ def main() -> None:
         search_runtime.rank(runtime, curio_view, curio_view._offer_items_layout[index])
         for index in range(1, 9)
     ]
-    assert curio_ranks == [7, 6, 5, 4, 3, 2, 1, 0], (
+    assert curio_ranks[0] > curio_ranks[3] > curio_ranks[1] > curio_ranks[4], (
         curio_ranks,
         search_runtime.state(runtime, curio_view).query,
         search_runtime.is_active(runtime, curio_view),
     )
+    assert curio_ranks[4] > curio_ranks[2] > curio_ranks[5] > curio_ranks[6] > curio_ranks[7]
     lua.globals().configured_mode = "hide"
-    assert search_runtime.rank(runtime, curio_view, curio_view._offer_items_layout[1]) == 7
+    assert search_runtime.rank(runtime, curio_view, curio_view._offer_items_layout[1]) == curio_ranks[0]
     assert search_runtime.native_filter(
         runtime, curio_view, curio_view._offer_items_layout[8], True
     ) is False
     lua.globals().prioritize_equipped = False
     search_runtime.set_query(runtime, curio_view, "health", 13)
     assert search_runtime.update(runtime, curio_view, 13.08) is True
-    assert search_runtime.rank(runtime, curio_view, curio_view._offer_items_layout[1]) == 4
+    assert search_runtime.rank(runtime, curio_view, curio_view._offer_items_layout[1]) < curio_ranks[0]
     lua.globals().prioritize_equipped = True
     lua.globals().configured_mode = "dim"
 
@@ -481,15 +483,55 @@ def main() -> None:
     assert lua.globals().external_present_calls == external_present_before_compose + 1
     assert search_runtime.state(runtime, external).last_present_arguments is None
 
+    sword_uncanny_entry = lua.table_from(
+        {
+            "item": lua.table_from(
+                {"gear_id": "sword-uncanny", "name": "sword uncanny"}
+            )
+        }
+    )
+    sword_uncanny_flak_entry = lua.table_from(
+        {
+            "item": lua.table_from(
+                {"gear_id": "sword-uncanny-flak", "name": "sword uncanny flak"}
+            )
+        }
+    )
+    partial_external_layout = lua.table_from(
+        {
+            1: spacing_top,
+            2: axe_entry,
+            3: sword_entry,
+            4: sword_uncanny_entry,
+            5: sword_uncanny_flak_entry,
+            6: spacing_bottom,
+        }
+    )
+    search_runtime.set_query(runtime, external, "sword & uncanny & flak", 21)
+    partial_external = search_runtime.compose_layout(
+        runtime, external, partial_external_layout
+    )
+    lua.globals().partial_external = partial_external
+    lua.globals().sword_uncanny_entry = sword_uncanny_entry
+    lua.globals().sword_uncanny_flak_entry = sword_uncanny_flak_entry
+    assert lua.execute(
+        "return partial_external[1] == spacing_top and "
+        "partial_external[2] == sword_uncanny_flak_entry and "
+        "partial_external[3] == sword_uncanny_entry and "
+        "partial_external[4] == sword_entry and partial_external[5] == axe_entry "
+        "and partial_external[6] == spacing_bottom"
+    ) is True
+
     lua.globals().configured_mode = "hide"
-    hidden = search_runtime.compose_layout(runtime, external, external_layout)
+    hidden = search_runtime.compose_layout(runtime, external, partial_external_layout)
     lua.globals().external_hidden = hidden
     assert len(hidden) == 3
     assert external._better_inventory_search_rank_active is True
     assert external._better_inventory_search_filter_active is True
     assert lua.execute(
         "return external_hidden[1] == spacing_top and "
-        "external_hidden[2] == sword_entry and external_hidden[3] == spacing_bottom"
+        "external_hidden[2] == sword_uncanny_flak_entry and "
+        "external_hidden[3] == spacing_bottom"
     ) is True
 
     # A missing widget grid fails soft, and a throwing presentation callback is

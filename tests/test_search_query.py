@@ -163,12 +163,12 @@ def main() -> None:
     assert query.matches(compile_query("equipped:off"), plasma) is True
     assert query.matches(compile_query("new:0"), plasma) is True
 
-    # Curio line relevance is encoded as a cached rank: equipped groups first,
-    # then primary+secondary, primary-only, and secondary-only. Other matches
-    # remain above unmatched items and use the existing sort hierarchy.
+    # Curio line relevance is encoded as a cached rank: primary+secondary,
+    # primary-only, then secondary-only. Equipped state and descending item
+    # level are tie-breakers inside each tier, never stronger than relevance.
     health_query = compile_query("heal")
 
-    def curio(*, equipped=False, primary=(), secondary=(), name="curio"):
+    def curio(*, equipped=False, primary=(), secondary=(), name="curio", rating=410):
         combined = [name, *primary, *secondary]
         return record(
             text=combined,
@@ -177,13 +177,14 @@ def main() -> None:
             curio_secondary=list(secondary),
             equipped=equipped,
             name=[name],
-            rating=410,
+            rating=rating,
+            type=["curio"],
         )
 
     equipped_both = curio(equipped=True, primary=("+17% health",), secondary=("+5% health",))
     equipped_primary = curio(equipped=True, primary=("+17% health",))
     equipped_secondary = curio(equipped=True, secondary=("+5% health",))
-    unequipped_both = curio(primary=("+17% health",), secondary=("+5% health",))
+    unequipped_both = curio(primary=("+17% health",), secondary=("+5% health",), rating=430)
     unequipped_primary = curio(primary=("+17% health",))
     unequipped_secondary = curio(secondary=("+5% health",))
     name_only = curio(name="health relic")
@@ -198,17 +199,100 @@ def main() -> None:
         name_only,
         no_match,
     )
-    assert [query.rank(health_query, value, query.matches(health_query, value)) for value in ranked_curios] == [7, 6, 5, 4, 3, 2, 1, 0]
-    assert query.rank(health_query, equipped_both, True, False) == 4
+    curio_ranks = [query.rank(health_query, value, query.matches(health_query, value)) for value in ranked_curios]
+    assert curio_ranks[0] > curio_ranks[3] > curio_ranks[1] > curio_ranks[4]
+    assert curio_ranks[4] > curio_ranks[2] > curio_ranks[5] > curio_ranks[6] > curio_ranks[7]
+    assert query.rank(health_query, equipped_both, True, False) < curio_ranks[0]
     assert query.rank(compile_query("name:health"), name_only, True) == 1
     health_rating_query = compile_query("heal & rating:>=400")
     assert query.rank(
         health_rating_query,
         equipped_primary,
         query.matches(health_rating_query, equipped_primary),
-    ) == 6
+    ) > 0
     assert query.rank(None, equipped_both, True) == 1
-    assert query.rank(health_query, equipped_both, False) == 0
+    assert query.rank(health_query, equipped_both, False) > 0
+
+    # Multi-term Curio ranking is lexicographic: matching line occurrences,
+    # distinct clauses, primary-line coverage, then left-to-right query terms.
+    sophisticated_query = compile_query("toughness & ability & revive")
+    sophisticated_curios = (
+        curio(primary=("toughness",), secondary=("toughness", "ability", "revive")),
+        curio(primary=("toughness",), secondary=("ability", "revive")),
+        curio(primary=("stamina",), secondary=("toughness", "ability", "revive")),
+        curio(primary=("toughness",), secondary=("ability",)),
+        curio(primary=("toughness",), secondary=("revive",)),
+        curio(primary=("stamina",), secondary=("toughness", "ability")),
+        curio(primary=("stamina",), secondary=("toughness", "revive")),
+        curio(primary=("stamina",), secondary=("ability", "revive")),
+        curio(primary=("stamina",), secondary=("toughness",)),
+        curio(primary=("stamina",), secondary=("ability",)),
+        curio(primary=("stamina",), secondary=("revive",)),
+        curio(primary=("stamina",), secondary=("health",)),
+    )
+    sophisticated_ranks = [
+        query.rank(
+            sophisticated_query,
+            value,
+            query.matches(sophisticated_query, value),
+        )
+        for value in sophisticated_curios
+    ]
+    assert all(
+        sophisticated_ranks[index] > sophisticated_ranks[index + 1]
+        for index in range(len(sophisticated_ranks) - 1)
+    ), sophisticated_ranks
+    assert sophisticated_ranks[-1] == 0
+
+    equipped_full_410 = curio(
+        equipped=True,
+        primary=("toughness",),
+        secondary=("ability", "revive"),
+        rating=410,
+    )
+    unequipped_full_430 = curio(
+        primary=("toughness",),
+        secondary=("ability", "revive"),
+        rating=430,
+    )
+    unequipped_full_420 = curio(
+        primary=("toughness",),
+        secondary=("ability", "revive"),
+        rating=420,
+    )
+    assert query.rank(sophisticated_query, equipped_full_410, True) > query.rank(
+        sophisticated_query, unequipped_full_430, True
+    )
+    assert query.rank(sophisticated_query, unequipped_full_430, True) > query.rank(
+        sophisticated_query, unequipped_full_420, True
+    )
+
+    # Weapons use distinct-clause count and the same left-to-right coverage,
+    # followed by equipped state and item level, without Curio line semantics.
+    weapon_query = compile_query("sword & uncanny & flak")
+
+    def weapon(text, *, equipped=False, rating=500):
+        return record(
+            text=text.split(),
+            name=[text],
+            equipped=equipped,
+            rating=rating,
+        )
+
+    weapon_all = weapon("sword uncanny flak")
+    weapon_first_two = weapon("sword uncanny")
+    weapon_first_third = weapon("sword flak")
+    weapon_first = weapon("sword")
+    weapon_none = weapon("axe")
+    weapon_ranks = [
+        query.rank(weapon_query, value, query.matches(weapon_query, value))
+        for value in (weapon_all, weapon_first_two, weapon_first_third, weapon_first, weapon_none)
+    ]
+    assert weapon_ranks[0] > weapon_ranks[1] > weapon_ranks[2] > weapon_ranks[3] > weapon_ranks[4]
+    assert weapon_ranks[4] == 0
+    assert query.rank(weapon_query, weapon("sword uncanny", equipped=True, rating=410), False) > query.rank(
+        weapon_query, weapon("sword uncanny", rating=430), False
+    )
 
     # Invalid or excessive input fails open, preserving the authoritative list.
     invalid_cases = (

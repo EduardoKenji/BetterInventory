@@ -5031,6 +5031,18 @@ def main() -> None:
         == "+20% Gunners DR"
     )
 
+    compact_curio_standard, compact_curio_heavy = (
+        layout.compact_curio_perk_search_terms(
+            mod, "gadget_cooldown_reduction", "+3% Combat Ability Regeneration"
+        )
+    )
+    assert compact_curio_standard is None
+    assert compact_curio_heavy == "Ability Regen"
+    assert layout.compact_curio_perk_search_terms(mod, "future_curio_perk", "") == (
+        None,
+        None,
+    )
+
     heavy_perk_expectations = {
         "content/items/perks/test_ability_regen": "+4% Ability Regen",
         "content/items/perks/test_toughness_regen": "+30% Tough Regen",
