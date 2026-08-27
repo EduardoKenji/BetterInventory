@@ -225,6 +225,18 @@ def main() -> None:
         }
     )
     view._widgets_by_name = widgets
+    lua.execute(
+        r'''
+        legend_entry = {
+            input_action = "back",
+            extra_input_actions = {keyboard = {"escape"}},
+        }
+        controller_view = nil
+        '''
+    )
+    view._input_legend_element = lua.table_from(
+        {"_entries": lua.table_from([lua.globals().legend_entry])}
+    )
 
     assert search_ui.sync_query(lua.globals().features, view) is True
     input_widget = widgets.better_inventory_search_input
@@ -242,6 +254,16 @@ def main() -> None:
     assert lua.globals().last_time == 2
     assert lua.globals().set_calls == 1
 
+    # The supported-view post-update seam owns both field delivery and the
+    # scalar-gated runtime update, avoiding a separate ItemGridViewBase hook.
+    view._better_inventory_search_needs_update = True
+    lua.execute(
+        "features.search_update = function(target, time) runtime_update_view = target; runtime_update_time = time; target._better_inventory_search_needs_update = nil end"
+    )
+    search_ui.update_view(lua.globals().test_mod, lua.globals().features, view, 2.5)
+    assert lua.execute("return runtime_update_view == ...", view) is True
+    assert lua.globals().runtime_update_time == 2.5
+
     input_widget.content.input_text = "invalid"
     search_ui.update(lua.globals().test_mod, lua.globals().features, view, 3)
     assert lua.globals().last_query == "invalid"
@@ -252,8 +274,14 @@ def main() -> None:
     input_widget.content.input_text = "sword"
     assert search_ui.focus(view) is True
     assert search_ui.is_writing(view) is True
+    assert lua.globals().legend_entry.input_action is None
+    assert lua.globals().legend_entry.extra_input_actions is None
     assert search_ui.defocus(view) is True
     assert input_widget.content.input_text == "sword"
+    assert lua.globals().legend_entry.input_action is None
+    search_ui.update(lua.globals().test_mod, lua.globals().features, view, 1.1)
+    assert lua.globals().legend_entry.input_action == "back"
+    assert lua.globals().legend_entry.extra_input_actions.keyboard[1] == "escape"
 
     # Caret positions count UTF-8 codepoints rather than bytes, so Simplified
     # Chinese input remains editable without corrupting field state.
@@ -392,7 +420,9 @@ def main() -> None:
     ) is True
     assert search_ui.is_writing(view) is False
     assert lua.globals().grid_input_disabled is False
-    assert view._better_inventory_search_block_legend_once is True
+    assert lua.globals().legend_entry.input_action is None
+    search_ui.update(lua.globals().test_mod, lua.globals().features, view, 4.5)
+    assert lua.globals().legend_entry.input_action == "back"
     assert input_widget.content.input_text == "sword"
 
     # Search owns only an enabled grid. Native discard/options flows that had
@@ -414,6 +444,7 @@ def main() -> None:
     search_ui.release(view)
     assert view._better_inventory_search_widget_initialized is None
     assert view._better_inventory_search_last_text is None
+    assert view._better_inventory_search_legend_input_owned is None
 
     print("BetterInventory search UI tests passed.")
 

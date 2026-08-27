@@ -275,6 +275,67 @@ local function own_grid_input(view, disabled)
 	return true
 end
 
+local function own_input_legend(view, disabled)
+	local legend = view and view._input_legend_element
+	local owned = view and view._better_inventory_search_legend_input_owned
+
+	if disabled then
+		if owned then
+			return true
+		end
+
+		local entries = legend and legend._entries
+
+		if type(entries) ~= "table" then
+			return false
+		end
+
+		local saved = {}
+
+		for index = 1, #entries do
+			local entry = entries[index]
+
+			if type(entry) == "table" then
+				saved[#saved + 1] = {
+					entry = entry,
+					extra_input_actions = entry.extra_input_actions,
+					input_action = entry.input_action,
+				}
+				entry.input_action = nil
+				entry.extra_input_actions = nil
+			end
+		end
+
+		view._better_inventory_search_legend_input_owned = saved
+
+		return true
+	end
+
+	if not owned then
+		return false
+	end
+
+	for index = 1, #owned do
+		local saved = owned[index]
+		local entry = saved and saved.entry
+
+		if type(entry) == "table" then
+			-- Restore only fields still carrying our nil override. If another mod
+			-- deliberately replaced an action while focus was owned, keep it.
+			if entry.input_action == nil then
+				entry.input_action = saved.input_action
+			end
+			if entry.extra_input_actions == nil then
+				entry.extra_input_actions = saved.extra_input_actions
+			end
+		end
+	end
+
+	view._better_inventory_search_legend_input_owned = nil
+
+	return true
+end
+
 local function restore_first_grid_item(view)
 	local item_grid = view and view._item_grid
 
@@ -322,6 +383,10 @@ SearchUI.defocus = function(view)
 	view._better_inventory_search_controller_focused = nil
 	own_grid_input(view, false)
 
+	-- SearchUI.update is a post-update callback. Keep the legend actions owned
+	-- until that boundary so the Back press which defocused the field cannot
+	-- also close the view during the same native update traversal.
+
 	if content.hotspot then
 		content.hotspot.is_selected = false
 		content.hotspot.is_focused = false
@@ -342,6 +407,7 @@ SearchUI.focus = function(view)
 	content.caret_position = text_length(content.input_text) + 1
 	content.force_caret_update = true
 	own_grid_input(view, true)
+	own_input_legend(view, true)
 
 	if content.hotspot then
 		content.hotspot.is_selected = true
@@ -397,6 +463,7 @@ SearchUI.update = function(mod, Features, view, time)
 
 	if not visible or not input or not input.content then
 		SearchUI.defocus(view)
+		own_input_legend(view, false)
 		return false
 	end
 
@@ -406,6 +473,11 @@ SearchUI.update = function(mod, Features, view, time)
 
 	if should_own_grid_input or view._better_inventory_search_grid_input_owned then
 		own_grid_input(view, should_own_grid_input)
+	end
+	if should_own_grid_input then
+		own_input_legend(view, true)
+	elseif view._better_inventory_search_legend_input_owned then
+		own_input_legend(view, false)
 	end
 
 	if not view._better_inventory_search_widget_initialized then
@@ -434,6 +506,14 @@ SearchUI.update = function(mod, Features, view, time)
 	return true
 end
 
+SearchUI.update_view = function(mod, Features, view, time, input_service)
+	SearchUI.update(mod, Features, view, time, input_service)
+
+	if view and view._better_inventory_search_needs_update and type(Features.search_update) == "function" then
+		Features.search_update(view, time)
+	end
+end
+
 SearchUI.handle_view_input = function(mod, view, input_service)
 	local input = input_widget(view)
 	local content = input and input.content
@@ -451,7 +531,6 @@ SearchUI.handle_view_input = function(mod, view, input_service)
 		elseif action_pressed(input_service, "back") then
 			SearchUI.defocus(view)
 			restore_first_grid_item(view)
-			view._better_inventory_search_block_legend_once = true
 		elseif not writing and action_pressed(input_service, "confirm_pressed") then
 			local hotspot = content.hotspot
 
@@ -501,7 +580,6 @@ SearchUI.handle_view_input = function(mod, view, input_service)
 
 	if action_pressed(input_service, "back") then
 		SearchUI.defocus(view)
-		view._better_inventory_search_block_legend_once = true
 	end
 
 	return true
@@ -513,15 +591,16 @@ end
 
 SearchUI.release = function(view)
 	SearchUI.defocus(view)
+	own_input_legend(view, false)
 
 	if view then
 		view._better_inventory_search_last_text = nil
 		view._better_inventory_search_widget_initialized = nil
-		view._better_inventory_search_block_legend_once = nil
 		view._better_inventory_search_ui_unavailable = nil
 		view._better_inventory_search_controller_focused = nil
 		view._better_inventory_search_grid_input_owned = nil
 		view._better_inventory_search_grid_input_was_disabled = nil
+		view._better_inventory_search_legend_input_owned = nil
 	end
 end
 

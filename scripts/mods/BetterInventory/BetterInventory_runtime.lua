@@ -50,6 +50,10 @@ end
 local MarksVendorView = optional_require("scripts/ui/views/marks_vendor_view/marks_vendor_view")
 local MarksGoodsVendorView = optional_require("scripts/ui/views/marks_goods_vendor_view/marks_goods_vendor_view")
 
+local function update_search_view(view, time, input_service)
+	SearchUI.update_view(mod, Features, view, time, input_service)
+end
+
 local function configure_dependencies(dependencies)
 	mod = dependencies.mod
 	mod._better_inventory_option_dependency_owner = option_dependency_owner
@@ -1606,6 +1610,7 @@ if ensure_class_method(InventoryWeaponsView, "update") then
 		Features.update_inventory_sort_toggle(mod, Layout, view)
 		Features.update_inventory_options_panel_controller_selection(view, input_service)
 		Features.flush_inventory_resort(mod, Layout, view)
+		update_search_view(view, t, input_service)
 	end)
 end
 
@@ -1751,13 +1756,13 @@ if ensure_class_method(ItemGridViewBase, "destroy") then
 end
 
 if ensure_class_method(CreditsVendorView, "update") then
-	mod:hook_safe(CreditsVendorView, "update", function(view)
+	mod:hook_safe(CreditsVendorView, "update", function(view, dt, t, input_service)
 		if is_armoury_sort_view(view) then
 			Features.update_armoury_native_sort_panel(view)
 			align_quick_level_mastery_buttons(view)
-			-- Flush the shared Requisition/GlobalStore vendor queue post-update.
 			Features.flush_inventory_resort(mod, Layout, view)
 		end
+		update_search_view(view, t, input_service)
 	end)
 end
 

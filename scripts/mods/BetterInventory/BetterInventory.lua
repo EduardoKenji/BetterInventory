@@ -37,7 +37,6 @@ local ItemGridViewBase = require("scripts/ui/views/item_grid_view_base/item_grid
 local ItemGridViewBaseDefinitions = require("scripts/ui/views/item_grid_view_base/item_grid_view_base_definitions")
 local InventoryWeaponsView = require("scripts/ui/views/inventory_weapons_view/inventory_weapons_view")
 local ViewElementGrid = require("scripts/ui/view_elements/view_element_grid/view_element_grid")
-local ViewElementInputLegend = require("scripts/ui/view_elements/view_element_input_legend/view_element_input_legend")
 local ItemBlueprintGenerator = require("scripts/ui/view_content_blueprints/item_blueprints")
 local Text = require("scripts/utilities/ui/text")
 local BaseView = require("scripts/ui/views/base_view")
@@ -652,7 +651,6 @@ SearchHooks.install({
 	CraftingMechanicusModifyView = CraftingMechanicusModifyView,
 	VendorViewBase = VendorViewBase,
 	ViewElementGrid = ViewElementGrid,
-	ViewElementInputLegend = ViewElementInputLegend,
 })
 
 local function extend_runtime_callback(callback_name, extension)

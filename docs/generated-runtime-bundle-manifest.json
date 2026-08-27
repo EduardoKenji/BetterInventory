@@ -10,8 +10,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory.lua",
-      "bytes": 28276,
-      "sha256": "88c464f06965972576e15ca30ba8343a2018d1999200a28aed24ebeeabed400d",
+      "bytes": 28107,
+      "sha256": "c2a13a157abe788638e3ecefc0bb8484f56924d86a1328527bbf3e841fc4d012",
       "source_path": "scripts/mods/BetterInventory/BetterInventory.lua"
     },
     {
@@ -304,14 +304,14 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_runtime.lua",
-      "bytes": 99801,
-      "sha256": "a4aadbf144b4d646ac688fd7b79fc2f445599781fdae0d720b379f0c577c206d",
+      "bytes": 99970,
+      "sha256": "f587926ee399c16fcbeec35b571854eeb489e16da32af37adf984e351cf006a2",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_runtime.lua"
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_search_hooks.lua",
-      "bytes": 8023,
-      "sha256": "fb5217ac8d9278bbab18fca4ecbe000620a4db4e65d70634a938ddbb6124a6b1",
+      "bytes": 8757,
+      "sha256": "2bd6729f4ac4918001aa7ba436e6f55607d9e66664000724120a5c8c4ba0567d",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_search_hooks.lua"
     },
     {
@@ -340,8 +340,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_search_ui.lua",
-      "bytes": 16012,
-      "sha256": "b5b5d8cdd16e6912cd213a4cc826f847489674772ef7f64a89c81db7288672b0",
+      "bytes": 18009,
+      "sha256": "0351ac17a1b7c7c962eec85f8d5290c99e88c5d1d5b8f7f10938ca58ea382c37",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_search_ui.lua"
     },
     {
@@ -525,6 +525,6 @@
       "source_path": "scripts/mods/BetterInventory/auto_crafter/games_lantern/transport_wine.lua"
     }
   ],
-  "runtime_tree_sha256": "a22116833c9cd984d129d143b68506a68250d5bf2766cd054b14ead842ebe06b",
+  "runtime_tree_sha256": "d423efd17ab2a790dc33d263d0b712e0c0f5141c083f5400b1d66e3976a92599",
   "version": "3.2.0"
 }

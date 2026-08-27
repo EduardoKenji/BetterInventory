@@ -1,8 +1,46 @@
 local GameCraftingMechanicusBarterItemsView = require("scripts/ui/views/crafting_mechanicus_barter_items_view/crafting_mechanicus_barter_items_view")
+local function optional_require(path)
+	local ok, module = pcall(require, path)
+
+	return ok and module or nil
+end
+local GameCreditsGoodsVendorView = optional_require("scripts/ui/views/credits_goods_vendor_view/credits_goods_vendor_view")
+local GameMarksGoodsVendorView = optional_require("scripts/ui/views/marks_goods_vendor_view/marks_goods_vendor_view")
+local GameMarksVendorView = optional_require("scripts/ui/views/marks_vendor_view/marks_vendor_view")
 local SearchHooks = {}
 
 local function method_available(target, method_name)
 	return type(target) == "table" and type(target[method_name]) == "function"
+end
+
+local function ensure_class_method(target, method_name)
+	if type(target) ~= "table" then
+		return false
+	end
+
+	local super = rawget(target, "super") or target.super
+	local inherited = super and super[method_name]
+	local own = rawget(target, method_name)
+
+	if type(own) ~= "function" then
+		if type(inherited) ~= "function" then
+			return false
+		end
+	elseif own ~= inherited then
+		return true
+	end
+
+	local owner = target
+	local fallback = inherited
+
+	rawset(owner, method_name, function(self, ...)
+		local parent = rawget(owner, "super") or owner.super
+		local parent_method = parent and parent[method_name] or fallback
+
+		return parent_method(self, ...)
+	end)
+
+	return true
 end
 
 SearchHooks.install = function(dependencies)
@@ -14,9 +52,11 @@ SearchHooks.install = function(dependencies)
 	local BaseView = dependencies.BaseView
 	local CraftingMechanicusModifyView = dependencies.CraftingMechanicusModifyView
 	local CraftingMechanicusBarterItemsView = dependencies.CraftingMechanicusBarterItemsView or GameCraftingMechanicusBarterItemsView
+	local CreditsGoodsVendorView = dependencies.CreditsGoodsVendorView or GameCreditsGoodsVendorView
+	local MarksVendorView = dependencies.MarksVendorView or GameMarksVendorView
+	local MarksGoodsVendorView = dependencies.MarksGoodsVendorView or GameMarksGoodsVendorView
 	local VendorViewBase = dependencies.VendorViewBase
 	local ViewElementGrid = dependencies.ViewElementGrid
-	local ViewElementInputLegend = dependencies.ViewElementInputLegend
 
 	if type(mod) ~= "table" or type(Features) ~= "table" or type(SearchUI) ~= "table" then
 		return false
@@ -58,22 +98,26 @@ SearchHooks.install = function(dependencies)
 	end
 
 	local function update_search(view, _, time, input_service)
-		if type(SearchUI.update) == "function" then
-			SearchUI.update(mod, Features, view, time, input_service)
-		end
-		if view._better_inventory_search_needs_update and type(Features.search_update) == "function" then
-			Features.search_update(view, time)
+		if type(SearchUI.update_view) == "function" then
+			SearchUI.update_view(mod, Features, view, time, input_service)
 		end
 	end
 
-	-- Poll the owned text widget at the common inventory-view boundary. This is
-	-- the delivery seam used by the last live-confirmed implementation and also
-	-- covers ItemGridViewBase descendants supplied by other mods. The callback
-	-- is constant-time while idle; projection, matching, and presentation remain
-	-- gated by `_better_inventory_search_needs_update` and the settle deadline.
-	if method_available(ItemGridViewBase, "update") then
-		mod:hook_safe(ItemGridViewBase, "update", update_search)
+	local function install_view_update_hook(view_class)
+		if ensure_class_method(view_class, "update") then
+			mod:hook_safe(view_class, "update", update_search)
+		end
 	end
+
+	-- InventoryWeaponsView and CreditsVendorView already have BetterInventory
+	-- post-update hooks in the main runtime. Fold search into those callbacks and
+	-- install a single explicit callback only for the other supported views.
+	-- This removes the search-owned ItemGridViewBase.update wrapper from every
+	-- settled inventory frame while retaining hot-reload query reconciliation.
+	install_view_update_hook(CraftingMechanicusModifyView)
+	install_view_update_hook(CreditsGoodsVendorView)
+	install_view_update_hook(MarksVendorView)
+	install_view_update_hook(MarksGoodsVendorView)
 
 	local function install_view_input_hook(view_class)
 		if not method_available(view_class, "_handle_input") then
@@ -164,24 +208,6 @@ SearchHooks.install = function(dependencies)
 				Features.search_release(view)
 			end
 			view._better_inventory_search_grid_shifted = nil
-		end)
-	end
-
-	if method_available(ViewElementInputLegend, "_handle_input") then
-		mod:hook(ViewElementInputLegend, "_handle_input", function(func, legend, ...)
-			local parent = legend and legend._parent
-			local search_input = parent and parent._widgets_by_name and parent._widgets_by_name.better_inventory_search_input
-			local search_content = search_input and search_input.content
-
-			if parent and parent._better_inventory_search_block_legend_once then
-				parent._better_inventory_search_block_legend_once = nil
-				return
-			elseif parent and parent._better_inventory_search_controller_focused
-				or search_content and search_content.is_writing == true then
-				return
-			end
-
-			return func(legend, ...)
 		end)
 	end
 

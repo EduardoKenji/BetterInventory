@@ -53,7 +53,9 @@ def main() -> None:
             _handle_input = function() end,
             update = function() end,
         })
-        legend = klass("legend", {_handle_input = function() end})
+        credits_goods = klass("credits_goods", {update = function() end})
+        marks_vendor = setmetatable(klass("marks_vendor", {super = vendor}), {__index = vendor})
+        marks_goods = klass("marks_goods", {update = function() end})
         grid_element = klass("element", {
             cb_on_grid_entry_left_pressed = function() end,
             update = function() end,
@@ -80,6 +82,13 @@ def main() -> None:
         search_ui = {
             sync_query = function(_, view) calls.sync = view end,
             update = function(_, _, view, time, input) calls.ui_update = {view, time, input} end,
+            update_view = function(mod, feature_set, view, time, input)
+                ui_updates = (ui_updates or 0) + 1
+                calls.ui_update = {view, time, input}
+                if view._better_inventory_search_needs_update then
+                    feature_set.search_update(view, time)
+                end
+            end,
             handle_view_input = function(_, view) return view.block_search == true end,
             is_writing = function(view) return view and view.writing == true end,
             defocus = function(view) calls.defocus = view end,
@@ -119,9 +128,11 @@ def main() -> None:
             "BaseView": lua.globals().base_view,
             "CraftingMechanicusModifyView": lua.globals().crafting,
             "CraftingMechanicusBarterItemsView": lua.globals().barter,
+            "CreditsGoodsVendorView": lua.globals().credits_goods,
+            "MarksVendorView": lua.globals().marks_vendor,
+            "MarksGoodsVendorView": lua.globals().marks_goods,
             "VendorViewBase": lua.globals().vendor,
             "ViewElementGrid": lua.globals().grid_element,
-            "ViewElementInputLegend": lua.globals().legend,
         }
     )
     assert module.install(dependencies) is True
@@ -152,8 +163,11 @@ def main() -> None:
         safe_hooks["grid:_cb_on_present"](view)
         view._better_inventory_search_rank_active = nil
         safe_hooks["grid:_cb_on_present"]({})
-        safe_hooks["grid:update"](view, 0.1, 12, "input")
-        assert(safe_hooks["crafting:update"] == nil)
+        assert(safe_hooks["grid:update"] == nil)
+        safe_hooks["crafting:update"](view, 0.1, 12, "input")
+        safe_hooks["credits_goods:update"](view, 0.1, 13, "credits_input")
+        safe_hooks["marks_vendor:update"](view, 0.1, 14, "marks_input")
+        safe_hooks["marks_goods:update"](view, 0.1, 15, "marks_goods_input")
         assert(safe_hooks["vendor:update"] == nil)
 
         native_input = 0
@@ -168,35 +182,6 @@ def main() -> None:
             open_view, "input"
         )
 
-        legend_native = 0
-        legend_parent = {_better_inventory_search_block_legend_once = true}
-        hooks["legend:_handle_input"](
-            function() legend_native = legend_native + 1 end,
-            {_parent = legend_parent}
-        )
-        writing_parent = {
-            writing = true,
-            _widgets_by_name = {
-                better_inventory_search_input = {content = {is_writing = true}},
-            },
-        }
-        hooks["legend:_handle_input"](
-            function() legend_native = legend_native + 1 end,
-            {_parent = writing_parent}
-        )
-        controller_parent = {
-            _better_inventory_search_controller_focused = true,
-            _widgets_by_name = {better_inventory_search_input = {content = {}}},
-        }
-        hooks["legend:_handle_input"](
-            function() legend_native = legend_native + 1 end,
-            {_parent = controller_parent}
-        )
-        normal_parent = {}
-        hooks["legend:_handle_input"](
-            function() legend_native = legend_native + 1 end,
-            {_parent = normal_parent}
-        )
         safe_hooks["element:cb_on_grid_entry_left_pressed"]({_parent = view})
 
         sacrifice_view = {
@@ -224,7 +209,7 @@ def main() -> None:
             end,
             sacrifice_view, "sort"
         )
-        safe_hooks["grid:update"](sacrifice_view, 0.1, 30, "sacrifice_input")
+        safe_hooks["barter:update"](sacrifice_view, 0.1, 30, "sacrifice_input")
         safe_hooks["barter:on_exit"](sacrifice_view)
         ''',
     )
@@ -237,10 +222,10 @@ def main() -> None:
     assert lua.execute("return calls.alpha == view") is True
     assert g.calls.ui_update[2] == 30
     assert g.calls.search_update[2] == 30
-    assert g.search_updates == 2
+    assert g.search_updates == 5
+    assert g.ui_updates == 5
     assert g.native_input == 1
-    assert g.legend_native == 1
-    assert g.legend_parent._better_inventory_search_block_legend_once is None
+    assert lua.execute('return hooks["legend:_handle_input"] == nil') is True
     assert lua.execute("return calls.defocus == view") is True
     assert lua.execute('return hooks["element:update"] == nil') is True
     assert g.calls.base_definitions.decorated is True
