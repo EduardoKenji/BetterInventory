@@ -15,6 +15,7 @@ def main() -> None:
         r'''
         now = 10
         configured_mode = "dim"
+        prioritize_equipped = true
         remember = false
         present_calls = 0
         external_present_calls = 0
@@ -49,6 +50,18 @@ def main() -> None:
             new = function() return {released = false} end,
             project = function(index, item)
                 if item.fail_projection then return nil, false end
+
+                if item.curio then
+                    return {
+                        curio_primary = {item.primary or ""},
+                        curio_secondary = {item.secondary or ""},
+                        equipped = item.equipped == true,
+                        name = {item.name},
+                        perk = {item.primary or "", item.secondary or ""},
+                        text = {item.name, item.primary or "", item.secondary or ""},
+                    }, true
+                end
+
                 return {name = {item.name}, text = {item.name}}, true
             end,
             invalidate = function() return true end,
@@ -89,6 +102,9 @@ def main() -> None:
             "view_family": lua.eval("function(view) return view.family end"),
             "character_id": lua.eval("function(view) return view.character end"),
             "mode": lua.eval("function() return configured_mode end"),
+            "prioritize_equipped": lua.eval(
+                "function() return prioritize_equipped end"
+            ),
             "remember_query": lua.eval("function() return remember end"),
             "time": lua.eval("function() return now end"),
             "present": lua.eval(
@@ -161,6 +177,51 @@ def main() -> None:
     assert search_runtime.update(runtime, view, 10.12) is True
     assert lua.globals().present_calls == 1
     assert search_runtime.update(runtime, view, 11) is False
+
+    # Curio relevance is computed during the bounded projection scan and read
+    # as O(1) cached ranks by the comparator. Partial text follows the exact
+    # equipped/primary/secondary hierarchy in both dim and hide modes.
+    lua.execute(
+        r'''
+        curio_view = {
+            character = "veteran",
+            family = "inventory",
+            _offer_items_layout = {
+                {gear_id = "equipped-both", curio = true, equipped = true, primary = "+17% health", secondary = "+5% health", name = "curio"},
+                {gear_id = "equipped-primary", curio = true, equipped = true, primary = "+17% health", name = "curio"},
+                {gear_id = "equipped-secondary", curio = true, equipped = true, secondary = "+5% health", name = "curio"},
+                {gear_id = "both", curio = true, primary = "+17% health", secondary = "+5% health", name = "curio"},
+                {gear_id = "primary", curio = true, primary = "+17% health", name = "curio"},
+                {gear_id = "secondary", curio = true, secondary = "+5% health", name = "curio"},
+                {gear_id = "name", curio = true, name = "health relic"},
+                {gear_id = "unmatched", curio = true, name = "toughness relic"},
+            },
+            _item_grid = {_all_grid_widgets = {}},
+        }
+        '''
+    )
+    curio_view = lua.globals().curio_view
+    search_runtime.capture_presentation(runtime, curio_view, "slot", "GADGET", "Curios")
+    search_runtime.set_query(runtime, curio_view, "heal", 12)
+    curio_ranks = [
+        search_runtime.rank(runtime, curio_view, curio_view._offer_items_layout[index])
+        for index in range(1, 9)
+    ]
+    assert curio_ranks == [7, 6, 5, 4, 3, 2, 1, 0], (
+        curio_ranks,
+        search_runtime.state(runtime, curio_view).query,
+        search_runtime.is_active(runtime, curio_view),
+    )
+    lua.globals().configured_mode = "hide"
+    assert search_runtime.rank(runtime, curio_view, curio_view._offer_items_layout[1]) == 7
+    assert search_runtime.native_filter(
+        runtime, curio_view, curio_view._offer_items_layout[8], True
+    ) is False
+    lua.globals().prioritize_equipped = False
+    search_runtime.set_query(runtime, curio_view, "health", 13)
+    assert search_runtime.rank(runtime, curio_view, curio_view._offer_items_layout[1]) == 4
+    lua.globals().prioritize_equipped = True
+    lua.globals().configured_mode = "dim"
 
     # Darktide's sacrifice view owns a separate grid implementation. Compose
     # only the live, already-native-sorted callback layout: external spacing is
@@ -277,8 +338,8 @@ def main() -> None:
     other_character = lua.globals().make_view("zealot", "inventory", 3)
     assert search_runtime.register(runtime, other_character).query == ""
     assert next(iter(runtime.memory.items()), None) is None
-    assert search_runtime.release_all(runtime) == 3
-    assert lua.globals().released_indexes == 6
+    assert search_runtime.release_all(runtime) == 4
+    assert lua.globals().released_indexes == 7
 
     search_runtime.clear_memory(runtime)
     assert next(iter(runtime.memory.items()), None) is None
@@ -288,7 +349,7 @@ def main() -> None:
         transient = lua.globals().make_view(f"character-{index}", "inventory", 2)
         search_runtime.register(runtime, transient)
         search_runtime.release(runtime, transient)
-    assert lua.globals().released_indexes == 106
+    assert lua.globals().released_indexes == 107
 
     print("BetterInventory search runtime tests passed.")
 

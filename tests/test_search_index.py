@@ -234,15 +234,37 @@ def main() -> None:
             "traits": lua.table_from(
                 [lua.table_from({"id": "perk_cara", "rarity": 4, "value": 1})]
             ),
-            "perks": lua.table_from([]),
+            "perks": lua.table_from(
+                [
+                    lua.table_from(
+                        {
+                            "id": "weapon_trait_melee_common_wield_increased_armored_damage",
+                            "rarity": 4,
+                            "value": 1,
+                        }
+                    )
+                ]
+            ),
         }
     )
-    curio, ok = search_index.project(index, gadget, lua.table_from({}))
+    curio, ok = search_index.project(
+        index, gadget, lua.table_from({"equipped": "curio"})
+    )
     assert ok is True
     assert curio.type[2] == "curio"
     assert curio.rarity[1] == "anointed"
     assert len(curio.blessing) == 0
+    assert curio.equipped is True
+    assert "damage vs carapace enemies" in [
+        curio.curio_primary[i] for i in range(1, len(curio.curio_primary) + 1)
+    ]
+    assert "+25% flak dmg" in [
+        curio.curio_secondary[i] for i in range(1, len(curio.curio_secondary) + 1)
+    ]
     assert query.matches(compiled("anointed & type:curio & perk:carapace"), curio) is True
+    assert query.rank(compiled("carapace"), curio, True) == 6
+    assert query.rank(compiled("flak"), curio, True) == 5
+    assert query.rank(compiled("carapace & flak"), curio, True) == 7
 
     # Projected strings are hard-capped, malformed inputs fail open to the
     # runtime, and release drops providers and every cached record.

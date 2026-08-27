@@ -466,6 +466,36 @@ Query.matches = function(compiled, record)
 	return true
 end
 
+Query.rank = function(compiled, record, matched, prioritize_equipped)
+	if matched ~= true then
+		return 0
+	elseif type(compiled) ~= "table" or compiled.fail_open == true or compiled.empty == true then
+		return 1
+	end
+
+	local primary_match = false
+	local secondary_match = false
+
+	for index = 1, #compiled.clauses do
+		local clause = compiled.clauses[index]
+
+		if (clause.field == "text" or clause.field == "perk") and (clause.kind == "text_contains" or clause.kind == "text_equal") then
+			local exact = clause.kind == "text_equal"
+			primary_match = primary_match or any_text_value(record, "curio_primary", clause.value, exact)
+			secondary_match = secondary_match or any_text_value(record, "curio_secondary", clause.value, exact)
+		end
+	end
+
+	if not primary_match and not secondary_match then
+		return 1
+	end
+
+	-- Rank 7..2 encodes the requested Curio hierarchy while rank 1 remains
+	-- the ordinary matched group and rank 0 remains unmatched. Existing
+	-- Better Inventory/native sorting is still the tie-breaker inside a group.
+	return 1 + (prioritize_equipped ~= false and record and record.equipped == true and 3 or 0) + (primary_match and 2 or 0) + (secondary_match and 1 or 0)
+end
+
 Query.normalize = normalize
 Query.default_rarity_aliases = ENGLISH_RARITY_ALIASES
 Query.limits = {

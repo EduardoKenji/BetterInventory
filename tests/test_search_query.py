@@ -162,6 +162,54 @@ def main() -> None:
     assert query.matches(compile_query("favorite:1"), plasma) is True
     assert query.matches(compile_query("equipped:off"), plasma) is True
     assert query.matches(compile_query("new:0"), plasma) is True
+
+    # Curio line relevance is encoded as a cached rank: equipped groups first,
+    # then primary+secondary, primary-only, and secondary-only. Other matches
+    # remain above unmatched items and use the existing sort hierarchy.
+    health_query = compile_query("heal")
+
+    def curio(*, equipped=False, primary=(), secondary=(), name="curio"):
+        combined = [name, *primary, *secondary]
+        return record(
+            text=combined,
+            perk=[*primary, *secondary],
+            curio_primary=list(primary),
+            curio_secondary=list(secondary),
+            equipped=equipped,
+            name=[name],
+            rating=410,
+        )
+
+    equipped_both = curio(equipped=True, primary=("+17% health",), secondary=("+5% health",))
+    equipped_primary = curio(equipped=True, primary=("+17% health",))
+    equipped_secondary = curio(equipped=True, secondary=("+5% health",))
+    unequipped_both = curio(primary=("+17% health",), secondary=("+5% health",))
+    unequipped_primary = curio(primary=("+17% health",))
+    unequipped_secondary = curio(secondary=("+5% health",))
+    name_only = curio(name="health relic")
+    no_match = curio(name="toughness relic")
+    ranked_curios = (
+        equipped_both,
+        equipped_primary,
+        equipped_secondary,
+        unequipped_both,
+        unequipped_primary,
+        unequipped_secondary,
+        name_only,
+        no_match,
+    )
+    assert [query.rank(health_query, value, query.matches(health_query, value)) for value in ranked_curios] == [7, 6, 5, 4, 3, 2, 1, 0]
+    assert query.rank(health_query, equipped_both, True, False) == 4
+    assert query.rank(compile_query("name:health"), name_only, True) == 1
+    health_rating_query = compile_query("heal & rating:>=400")
+    assert query.rank(
+        health_rating_query,
+        equipped_primary,
+        query.matches(health_rating_query, equipped_primary),
+    ) == 6
+    assert query.rank(None, equipped_both, True) == 1
+    assert query.rank(health_query, equipped_both, False) == 0
+
     # Invalid or excessive input fails open, preserving the authoritative list.
     invalid_cases = (
         'name:"unterminated',

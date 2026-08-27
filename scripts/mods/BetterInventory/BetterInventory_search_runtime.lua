@@ -45,16 +45,17 @@ end
 
 local function result_for(state, key)
 	if key ~= nil and state.result_generations[key] == state.generation then
-		return state.results[key], true
+		return state.results[key], true, state.ranks[key] or 0
 	end
 
 	return nil, false
 end
 
-local function set_result(state, key, matched)
+local function set_result(state, key, matched, rank)
 	if key ~= nil then
 		state.result_generations[key] = state.generation
 		state.results[key] = matched
+		state.ranks[key] = tonumber(rank) or 0
 	end
 end
 
@@ -156,6 +157,7 @@ local function state_for(runtime, view, create)
 		pending_present_at = nil,
 		presentation_kind = nil,
 		query = "",
+		ranks = weak_key_table(),
 		generation = 0,
 		result_generations = weak_key_table(),
 		results = weak_key_table(),
@@ -176,11 +178,11 @@ local function state_for(runtime, view, create)
 	return state
 end
 
-local function entry_matches(runtime, state, entry, view)
+local function entry_result(runtime, state, entry, view, prioritize_equipped)
 	local item = item_from(entry)
 
 	if type(item) ~= "table" then
-		return true
+		return true, 1
 	end
 
 	local record, projected = runtime.dependencies.project(state.index, item, {
@@ -190,10 +192,17 @@ local function entry_matches(runtime, state, entry, view)
 	})
 
 	if projected ~= true then
-		return true
+		return true, 1
 	end
 
-	return runtime.dependencies.query.matches(state.compiled, record) == true
+	local matched = runtime.dependencies.query.matches(state.compiled, record) == true
+	if prioritize_equipped == nil then
+		prioritize_equipped = safe_call(runtime.dependencies.prioritize_equipped) ~= false
+	end
+
+	local rank = safe_call(runtime.dependencies.query.rank, state.compiled, record, matched, prioritize_equipped)
+
+	return matched, tonumber(rank) or (matched and 1 or 0)
 end
 
 local function scan(runtime, view, state, source_layout)
@@ -209,14 +218,16 @@ local function scan(runtime, view, state, source_layout)
 		return
 	end
 
+	local prioritize_equipped = safe_call(runtime.dependencies.prioritize_equipped) ~= false
+
 	for index = 1, #layout do
 		local entry = layout[index]
 		local item = item_from(entry)
 
 		if type(item) == "table" then
-			local matched = entry_matches(runtime, state, entry, view)
-			set_result(state, entry, matched)
-			set_result(state, item, matched)
+			local matched, rank = entry_result(runtime, state, entry, view, prioritize_equipped)
+			set_result(state, entry, matched, rank)
+			set_result(state, item, matched, rank)
 		end
 	end
 end
@@ -373,8 +384,9 @@ SearchRuntime.native_filter = function(runtime, view, entry, native_result)
 	end
 
 	if not found then
-		result = entry_matches(runtime, state, entry, view)
-		set_result(state, entry, result)
+		local rank
+		result, rank = entry_result(runtime, state, entry, view)
+		set_result(state, entry, result, rank)
 	end
 
 	return result == true
@@ -383,22 +395,22 @@ end
 SearchRuntime.rank = function(runtime, view, entry)
 	local state = state_for(runtime, view, false)
 
-	if not query_is_active(state) or mode(runtime) ~= "dim" then
+	if not query_is_active(state) then
 		return 0
 	end
 
-	local result, found = result_for(state, entry)
+	local result, found, rank = result_for(state, entry)
 
 	if not found then
-		result, found = result_for(state, item_from(entry))
+		result, found, rank = result_for(state, item_from(entry))
 	end
 
 	if not found then
-		result = entry_matches(runtime, state, entry, view)
-		set_result(state, entry, result)
+		result, rank = entry_result(runtime, state, entry, view)
+		set_result(state, entry, result, rank)
 	end
 
-	return result == true and 1 or 0
+	return result == true and rank or 0
 end
 
 SearchRuntime.apply_widget_alpha = function(runtime, view)
@@ -537,6 +549,7 @@ SearchRuntime.release = function(runtime, view)
 	restore_all_widget_alpha(state)
 	safe_call(runtime.dependencies.release_index, state.index)
 	state.results = weak_key_table()
+	state.ranks = weak_key_table()
 	state.result_generations = weak_key_table()
 	state.last_present_arguments = nil
 	state.presentation_kind = nil

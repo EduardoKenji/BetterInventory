@@ -5,21 +5,21 @@
       "name": "search.query-is-literal-bounded-and-rarity-aware",
       "test": "test_search_query.py",
       "case": "bounded_literal_parser_effective_rarity_and_fail_open_matching",
-      "outcome": "quoted and explicit-AND text remains literal and bounded; invalid input fails open; numeric and boolean fields are typed; visible Sainted and Transcendent tiers stay distinct while native-rarity can intentionally include both",
+      "outcome": "quoted and explicit-AND text remains literal and bounded; invalid input fails open; numeric and boolean fields are typed; visible Sainted and Transcendent tiers stay distinct while native-rarity can intentionally include both; partial Curio-line matches receive bounded equipped/primary/secondary relevance ranks",
       "modules": ["BetterInventory_search_query.lua"]
     },
     {
       "name": "search.index-is-bounded-cached-and-presentation-aware",
       "test": "test_search_index.py",
       "case": "bounded_projection_cache_custom_names_traits_and_split_rarity",
-      "outcome": "one weak view-owned projection cache resolves native and custom names, traits, canonical and Better Inventory-compressed perk descriptions, type, ratings, and localized rarity without invoking GodRolls; Sainted is effective-only while stored Transcendent remains explicitly searchable; invalidation and release retain no item references",
+      "outcome": "one weak view-owned projection cache resolves native and custom names, distinct Curio primary/secondary lines, canonical and Better Inventory-compressed perk descriptions, type, ratings, and localized rarity without invoking GodRolls; Sainted is effective-only while stored Transcendent remains explicitly searchable; invalidation and release retain no item references",
       "modules": ["BetterInventory_search_index.lua", "BetterInventory_search_query.lua", "BetterInventory_custom_tier.lua"]
     },
     {
       "name": "search.runtime-coalesces-and-releases-owned-state",
       "test": "test_search_runtime.py",
       "case": "coalesced_filter_rank_dim_memory_and_release_lifecycle",
-      "outcome": "dynamic queries rescan cached projections immediately but coalesce native presentations; hide mode composes after native filtering, dim mode owns only its alpha multiplier, the separate Hadron sacrifice adapter preserves external spacing and native comparator order, projection failures fail open, optional memory is character/view-family scoped, and repeated release drops all view state",
+      "outcome": "dynamic queries rescan cached projections immediately but coalesce native presentations; Curio relevance ranks are cached for O(1) dim/hide comparator reads while non-matches retain rank zero; hide mode composes after native filtering, dim mode owns only its alpha multiplier, the separate Hadron sacrifice adapter preserves external spacing and native comparator order, projection failures fail open, optional memory is character/view-family scoped, and repeated release drops all view state",
       "modules": ["BetterInventory_search_runtime.lua", "BetterInventory_search_index.lua", "BetterInventory_search_query.lua"]
     },
     {

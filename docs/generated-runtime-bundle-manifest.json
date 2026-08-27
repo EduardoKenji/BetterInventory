@@ -316,26 +316,26 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_search_index.lua",
-      "bytes": 13966,
-      "sha256": "6afa3be60044c46b34af4b143c8914cef1125515f3d372d033a9d1a580d2f47e",
+      "bytes": 14574,
+      "sha256": "f30e41e4f39c9b00fd700dd26f8cc87b9d74524514552d62036a5f5080d2f3e9",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_search_index.lua"
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_search_integration.lua",
-      "bytes": 12133,
-      "sha256": "601b746365c1e5a1725ff5d1039caf047e158a60e47f565c3fd88133b8578c70",
+      "bytes": 12287,
+      "sha256": "9c4727fd4e5c3134ffc0ee697e769b5fc5a76580fc90939fada12e6a0dd1d7a6",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_search_integration.lua"
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_search_query.lua",
-      "bytes": 10654,
-      "sha256": "5278577b2b9d8d447e652efaec416183eed0fbd71663d5d99596721a48248c1e",
+      "bytes": 11844,
+      "sha256": "ce6fd3dcd7e0e6cf2ca3eb7adfaaf9eaab36824317fa966234ce4cbb943b095f",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_search_query.lua"
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_search_runtime.lua",
-      "bytes": 13006,
-      "sha256": "0b00c4cd6ffd41500a9e9dd9363fde1c1350671f8c916e0f65eda3f6dcbf9219",
+      "bytes": 13619,
+      "sha256": "268429bc23261030fa932ce00a403fbfc1675b1c2306b640317f30657468e47a",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_search_runtime.lua"
     },
     {
@@ -525,6 +525,6 @@
       "source_path": "scripts/mods/BetterInventory/auto_crafter/games_lantern/transport_wine.lua"
     }
   ],
-  "runtime_tree_sha256": "097eeef5c85c118c07231253ac761c2a961198f2cc512185f5cd12e2ca47f99f",
+  "runtime_tree_sha256": "ccd527a5f3558b6160d4fbe5d4ad7bfb9d512808fc54da24337d7b5d0b290ebe",
   "version": "3.2.0"
 }

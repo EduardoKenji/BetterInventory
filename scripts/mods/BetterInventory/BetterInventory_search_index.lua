@@ -124,6 +124,8 @@ local function new_record()
 	return {
 		base = nil,
 		blessing = {},
+		curio_primary = {},
+		curio_secondary = {},
 		equipped = false,
 		favorite = false,
 		loadout = false,
@@ -245,37 +247,45 @@ local function append_item_names(builder, dependencies, item)
 	end
 end
 
-local function append_trait_collection(builder, dependencies, item, collection, field)
+local function append_trait_value(builder, field, scoped_field, value)
+	builder.append(field, value)
+
+	if scoped_field then
+		builder.append(scoped_field, value, false)
+	end
+end
+
+local function append_trait_collection(builder, dependencies, item, collection, field, scoped_field)
 	local count = collection_count(collection)
 
 	for index = 1, count do
 		local entry = safe_member(collection, index)
 		local id = safe_member(entry, "id") or safe_member(entry, "name")
 
-		builder.append(field, id)
+		append_trait_value(builder, field, scoped_field, id)
 
 		local master_item = resolve_master_item(dependencies, id)
 		local display_name = safe_member(master_item, "display_name") or safe_member(entry, "display_name")
 
 		if display_name then
-			builder.append(field, localize(dependencies, display_name))
-			builder.append(field, display_name)
+			append_trait_value(builder, field, scoped_field, localize(dependencies, display_name))
+			append_trait_value(builder, field, scoped_field, display_name)
 		end
 
 		local trait_name = safe_member(master_item, "trait") or safe_member(entry, "trait")
-		builder.append(field, trait_name)
+		append_trait_value(builder, field, scoped_field, trait_name)
 
 		local description = safe_call(dependencies.trait_description, master_item or entry, safe_member(entry, "rarity"), safe_member(entry, "value"))
 
 		if is_valid_text(description) then
-			builder.append(field, description)
+			append_trait_value(builder, field, scoped_field, description)
 		end
 
 		if field == "perk" then
 			local standard_description, heavy_description = safe_call(dependencies.compact_perk_search_terms, id, description)
 
-			builder.append(field, standard_description)
-			builder.append(field, heavy_description)
+			append_trait_value(builder, field, scoped_field, standard_description)
+			append_trait_value(builder, field, scoped_field, heavy_description)
 		end
 	end
 end
@@ -366,9 +376,11 @@ local function build_record(index, item, context)
 	local sainted = append_rarity(builder, dependencies, item)
 	local item_type = safe_member(item, "item_type")
 	local traits_field = item_type == "GADGET" and "perk" or "blessing"
+	local primary_field = item_type == "GADGET" and "curio_primary" or nil
+	local secondary_field = item_type == "GADGET" and "curio_secondary" or nil
 
-	append_trait_collection(builder, dependencies, item, safe_member(item, "traits"), traits_field)
-	append_trait_collection(builder, dependencies, item, safe_member(item, "perks"), "perk")
+	append_trait_collection(builder, dependencies, item, safe_member(item, "traits"), traits_field, primary_field)
+	append_trait_collection(builder, dependencies, item, safe_member(item, "perks"), "perk", secondary_field)
 
 	record.rating = number_from_call(dependencies.expertise_level, item)
 		or tonumber(safe_member(item, "expertise"))

@@ -238,6 +238,7 @@ def main() -> None:
         invalid_external_present = runtime_instance.dependencies.present_external({})
         current_mode = runtime_instance.dependencies.mode()
         remember_mode = runtime_instance.dependencies.remember_query()
+        prioritize_equipped_mode = runtime_instance.dependencies.prioritize_equipped()
         ''',
     )
     assert lua.globals().customization_value is None
@@ -256,6 +257,7 @@ def main() -> None:
     assert lua.globals().normal_present_arguments[1] == "slot"
     assert lua.globals().current_mode == "dim"
     assert lua.globals().remember_mode is False
+    assert lua.globals().prioritize_equipped_mode is True
 
     assert facade.search_query(view) == "sword"
     assert facade.search_rank(view, lua.table_from({"match": True})) == 1
@@ -300,6 +302,8 @@ def main() -> None:
     assert facade.search_settings_changed("unrelated") == 0
     assert facade.search_settings_changed("customization_changed") == 1
     assert lua.globals().requested_resorts == 2
+    assert facade.search_settings_changed("prioritize_equipped_favorites") == 1
+    assert lua.globals().requested_resorts == 3
     lua.globals().test_settings.inventory_search_remember_query = False
     assert facade.search_settings_changed("inventory_search_remember_query") == 0
     assert lua.globals().clear_memory_calls == 1
@@ -309,7 +313,7 @@ def main() -> None:
     assert lua.globals().clear_memory_calls == 2
     lua.globals().test_settings.enable_inventory_search = True
     assert facade.search_set_query(view, "bad", 1) == (False, "invalid")
-    assert lua.globals().requested_resorts == 2
+    assert lua.globals().requested_resorts == 3
 
     lua.globals().registered_cleanup(view)
     assert facade.search_shutdown(True) == 3

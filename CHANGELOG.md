@@ -14,6 +14,7 @@
 - Validates search focus and Escape actions against each view's input service before reading them, preventing the instant textbox-focus crash caused by the unavailable `cancel_pressed` action in vendor views.
 - Removes the redundant expandable quick-filter controls and their dead chip state, and reserves the single search row through native content padding so grid titles such as `Primary Weapon` retain their original position.
 - Places the text field fully below titled grid headers and indexes both Darktide's canonical perk descriptions and Better Inventory's standard/heavy abbreviations, so searches such as `flak` match regardless of card compression.
+- Gives Curio line searches an equipped-aware relevance hierarchy: primary+secondary matches, primary-only matches, then secondary-only matches, with partial terms supported and every non-match retaining the existing sort order.
 
 ## 3.1.0 - 2026-08-26
 

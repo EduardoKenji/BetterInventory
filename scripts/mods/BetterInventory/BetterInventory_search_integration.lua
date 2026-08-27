@@ -195,6 +195,9 @@ Integration.new = function(mod, dependencies)
 
 			return true
 		end,
+		prioritize_equipped = function()
+			return mod:get("prioritize_equipped_favorites") ~= false
+		end,
 		project = SearchIndex.project,
 		query = SearchQuery,
 		rarity_aliases = SearchIndex.rarity_aliases,
@@ -234,6 +237,7 @@ Integration.new = function(mod, dependencies)
 		end
 
 		local refresh = setting_id == "inventory_search_non_match_behavior"
+			or setting_id == "prioritize_equipped_favorites"
 			or setting_id == "enable_custom_item_name_and_colors"
 			or setting_id == "customization_changed"
 			or type(setting_id) == "string" and string.sub(setting_id, 1, 12) == "custom_tier_"
