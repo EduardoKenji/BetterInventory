@@ -16,6 +16,13 @@
       "modules": ["BetterInventory_search_index.lua", "BetterInventory_search_query.lua", "BetterInventory_custom_tier.lua"]
     },
     {
+      "name": "search.runtime-coalesces-and-releases-owned-state",
+      "test": "test_search_runtime.py",
+      "case": "coalesced_filter_rank_dim_memory_and_release_lifecycle",
+      "outcome": "dynamic queries rescan cached projections immediately but coalesce native presentations; hide mode composes after native filtering, dim mode owns only its alpha multiplier, projection failures fail open, optional memory is character/view-family scoped, and repeated release drops all view state",
+      "modules": ["BetterInventory_search_runtime.lua", "BetterInventory_search_index.lua", "BetterInventory_search_query.lua"]
+    },
+    {
       "name": "favorites.isolate-purchase-sources",
       "test": "test_favorite_integration.py",
       "case": "purchase_source_isolation_and_myfavorites_color_assignment",

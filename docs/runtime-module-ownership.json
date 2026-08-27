@@ -89,6 +89,7 @@
     "BetterInventory_runtime.lua": {"category": "runtime-hooks-and-lifecycle", "risk": "critical", "dependencies": []},
     "BetterInventory_search_index.lua": {"category": "search-projection-cache", "risk": "high", "dependencies": []},
     "BetterInventory_search_query.lua": {"category": "pure-search-domain", "risk": "high", "dependencies": []},
+    "BetterInventory_search_runtime.lua": {"category": "search-view-state-orchestrator", "risk": "high", "dependencies": []},
     "BetterInventory_layout_content.lua": {"category": "ui-content-model", "risk": "high", "dependencies": []},
     "BetterInventory_localization.lua": {"category": "declarative-entrypoint", "risk": "medium", "dependencies": ["BetterInventory_localization_core.lua", "BetterInventory_localization_features.lua", "BetterInventory_localization_zh_cn.lua"]},
     "BetterInventory_localization_core.lua": {"category": "declarative-shard", "risk": "medium", "dependencies": []},
