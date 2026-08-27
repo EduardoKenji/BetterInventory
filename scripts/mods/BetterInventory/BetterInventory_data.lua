@@ -612,6 +612,40 @@ return {
 							{ text = "custom_item_editor_keybind_r", value = "group_finder_refresh_groups" },
 						},
 					},
+					{
+						setting_id = "inventory_search_spacing_group",
+						type = "group",
+						sub_widgets = {
+							{
+								setting_id = "inventory_search_inventory_top_padding",
+								tooltip = "inventory_search_spacing_reopen_tooltip",
+								type = "numeric",
+								default_value = 14,
+								range = {0, 64},
+							},
+							{
+								setting_id = "inventory_search_inventory_bottom_padding",
+								tooltip = "inventory_search_spacing_reopen_tooltip",
+								type = "numeric",
+								default_value = 36,
+								range = {0, 96},
+							},
+							{
+								setting_id = "inventory_search_armoury_top_padding",
+								tooltip = "inventory_search_spacing_reopen_tooltip",
+								type = "numeric",
+								default_value = 22,
+								range = {0, 64},
+							},
+							{
+								setting_id = "inventory_search_armoury_bottom_padding",
+								tooltip = "inventory_search_spacing_reopen_tooltip",
+								type = "numeric",
+								default_value = 32,
+								range = {0, 96},
+							},
+						},
+					},
 				},
 			},
 			{

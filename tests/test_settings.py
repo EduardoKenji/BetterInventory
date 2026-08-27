@@ -2842,6 +2842,7 @@ def main() -> None:
     assert localization["auto_crafter_group"]["en"] == "Auto Crafter Helper"
     assert localization["inventory_search_group"]["en"] == "Equipment Text Search"
     assert localization["enable_inventory_search"]["en"] == "Enable Equipment Text Search"
+    assert localization["inventory_search_spacing_group"]["en"] == "Search field spacing"
     assert (
         localization["god_stat_checker_integration_group"]["en"]
         == "Mod integration: God Stat Checker 1.1.2"
@@ -2907,6 +2908,7 @@ def main() -> None:
     assert localization["character_overview_group"]["zh-cn"] == "角色总览"
     assert localization["custom_item_name_and_colors_group"]["zh-cn"] == "自定义物品名称和颜色"
     assert localization["inventory_search_group"]["zh-cn"] == "装备文本搜索"
+    assert localization["inventory_search_spacing_group"]["zh-cn"] == "搜索框间距"
     assert localization["debug_group"]["zh-cn"] == "调试（仅测试用）"
     assert localization["inventory_options_controller_focus_keybind"]["zh-cn"] == "物品 / 组件焦点快捷键"
 
@@ -3540,6 +3542,10 @@ def main() -> None:
     assert defaults["inventory_options_panel_padding_bottom"] == 10
     assert defaults["inventory_options_panel_padding_left"] == 12
     assert defaults["inventory_options_panel_padding_right"] == 12
+    assert defaults["inventory_search_inventory_top_padding"] == 14
+    assert defaults["inventory_search_inventory_bottom_padding"] == 36
+    assert defaults["inventory_search_armoury_top_padding"] == 22
+    assert defaults["inventory_search_armoury_bottom_padding"] == 32
     assert defaults["quick_discard_keep_health_curios"] is True
     assert defaults["quick_discard_keep_toughness_curios"] is True
     assert defaults["quick_discard_keep_wound_curios"] is True

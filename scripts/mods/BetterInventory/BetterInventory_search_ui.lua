@@ -55,7 +55,22 @@ local function action_pressed(input_service, action_name)
 	return input_service:get(action_name) and true or false
 end
 
-local function search_geometry(definitions, view)
+local function configured_pixels(mod, setting_id, default_value, maximum)
+	if not mod or type(mod.get) ~= "function" then
+		return default_value
+	end
+
+	local ok, value = pcall(mod.get, mod, setting_id)
+	value = ok and tonumber(value) or nil
+
+	if not value then
+		return default_value
+	end
+
+	return math.max(0, math.min(maximum, math.floor(value + 0.5)))
+end
+
+local function search_geometry(definitions, view, mod)
 	if view.__class_name == "CraftingMechanicusBarterItemsView" then
 		return 16, 58, 486
 	end
@@ -63,13 +78,15 @@ local function search_geometry(definitions, view)
 	local grid_settings = definitions.grid_settings or {}
 	local title_height = tonumber(grid_settings.title_height) or 0
 	local top_padding = tonumber(grid_settings.top_padding) or 0
-	local gap = view.__class_name == "InventoryWeaponsView" and TITLED_SEARCH_GAP or 4
+	local gap = view.__class_name == "InventoryWeaponsView"
+		and configured_pixels(mod, "inventory_search_inventory_top_padding", TITLED_SEARCH_GAP, 64)
+		or 4
 
 	-- Requisition Weapons & Curios and GlobalStore's Armoury Multi-Operative
 	-- Supply share CreditsVendorView. Its tab/header row extends farther below
 	-- item_grid_pivot than the ordinary titled inventory header.
 	if view.__class_name == "CreditsVendorView" then
-		gap = ARMOURY_SEARCH_GAP
+		gap = configured_pixels(mod, "inventory_search_armoury_top_padding", ARMOURY_SEARCH_GAP, 64)
 	end
 
 	local y = title_height > 0 and title_height + gap or top_padding + gap
@@ -77,7 +94,7 @@ local function search_geometry(definitions, view)
 	return 14, math.max(y, 12), 568
 end
 
-SearchUI.decorate_definitions = function(definitions, view)
+SearchUI.decorate_definitions = function(definitions, view, mod)
 	if not supported(view) then
 		return definitions
 	elseif type(definitions) == "table" and definitions._better_inventory_search_decorated then
@@ -96,13 +113,15 @@ SearchUI.decorate_definitions = function(definitions, view)
 	owned.grid_settings = clone(owned.grid_settings)
 	owned.scenegraph_definition = clone(owned.scenegraph_definition)
 	owned.widget_definitions = clone(owned.widget_definitions)
-	local x, y, width = search_geometry(owned, view)
+	local x, y, width = search_geometry(owned, view, mod)
 
 	-- Keep Darktide's title height intact. ViewElementGrid centers its title in
 	-- that height, so expanding it moves labels such as "Primary Weapon".
 	if view.__class_name ~= "CraftingMechanicusBarterItemsView" then
-		local row_padding = view.__class_name == "CreditsVendorView" and ARMOURY_SEARCH_ROW_PADDING
-			or view.__class_name == "InventoryWeaponsView" and INVENTORY_SEARCH_ROW_PADDING
+		local row_padding = view.__class_name == "CreditsVendorView"
+			and configured_pixels(mod, "inventory_search_armoury_bottom_padding", ARMOURY_SEARCH_ROW_PADDING, 96)
+			or view.__class_name == "InventoryWeaponsView"
+				and configured_pixels(mod, "inventory_search_inventory_bottom_padding", INVENTORY_SEARCH_ROW_PADDING, 96)
 			or SEARCH_ROW_PADDING
 		owned.grid_settings.top_padding = (tonumber(owned.grid_settings.top_padding) or 0) + row_padding
 	end

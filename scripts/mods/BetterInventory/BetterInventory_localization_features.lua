@@ -32,6 +32,24 @@ local localization = {
 	inventory_search_focus_keybind_tooltip = {
 		en = "Optional. Off avoids conflicts by default. Choose an action to focus the current view's search field; Escape defocuses it before the next Escape can close the view.",
 	},
+	inventory_search_spacing_group = {
+		en = "Search field spacing",
+	},
+	inventory_search_inventory_top_padding = {
+		en = "Inventory: top padding",
+	},
+	inventory_search_inventory_bottom_padding = {
+		en = "Inventory: bottom padding",
+	},
+	inventory_search_armoury_top_padding = {
+		en = "Armoury: top padding",
+	},
+	inventory_search_armoury_bottom_padding = {
+		en = "Armoury: bottom padding",
+	},
+	inventory_search_spacing_reopen_tooltip = {
+		en = "Pixel spacing for the Equipment Text Search field. Top padding controls header-to-field clearance; bottom padding controls the reserved field-to-card space. Reopen the affected inventory or Armoury item view after changing this value.",
+	},
 	inventory_search_placeholder = {
 		en = "Search: sword & blessing:uncanny",
 	},

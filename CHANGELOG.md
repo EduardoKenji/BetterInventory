@@ -18,6 +18,7 @@
 - Adds final view-specific search-field clearance below inventory headers and the deeper shared Armoury Requisition/Multi-Operative Supply tab row without moving native titles.
 - Renames the dedicated Mod Options tab to `Equipment Text Search` and clarifies that its master switch hides the field, clears session state, and disables filtering and ranking.
 - Finalizes search spacing by raising Armoury cards 32 pixels and inventory cards 12 pixels from the initial layout while adding two pixels of clearance above both fields.
+- Exposes independent Inventory and Armoury top/bottom search-field padding sliders, preserving the finalized geometry as their defaults while leaving other supported views unchanged.
 
 ## 3.1.0 - 2026-08-26
 

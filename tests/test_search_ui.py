@@ -37,6 +37,10 @@ def main() -> None:
         end
         settings = {
             enable_inventory_search = true,
+            inventory_search_inventory_top_padding = 14,
+            inventory_search_inventory_bottom_padding = 36,
+            inventory_search_armoury_top_padding = 22,
+            inventory_search_armoury_bottom_padding = 32,
             inventory_search_focus_keybind = "off",
         }
         test_mod = {
@@ -80,7 +84,7 @@ def main() -> None:
         }
     )
     view = lua.table_from({"__class_name": "InventoryWeaponsView"})
-    decorated = search_ui.decorate_definitions(definitions, view)
+    decorated = search_ui.decorate_definitions(definitions, view, lua.globals().test_mod)
     assert decorated is not definitions
     assert definitions.grid_settings.title_height == 108
     assert definitions.grid_settings.top_padding is None
@@ -91,7 +95,9 @@ def main() -> None:
     assert decorated.scenegraph_definition.better_inventory_search_filters is None
     assert decorated.widget_definitions.better_inventory_search_clear is None
     lua.globals().decorated_once = decorated
-    lua.globals().decorated_twice = search_ui.decorate_definitions(decorated, view)
+    lua.globals().decorated_twice = search_ui.decorate_definitions(
+        decorated, view, lua.globals().test_mod
+    )
     assert lua.execute("return decorated_once == decorated_twice") is True
 
     # A single search row extends native content padding without moving native
@@ -107,6 +113,7 @@ def main() -> None:
     crafting = search_ui.decorate_definitions(
         crafting_definitions,
         lua.table_from({"__class_name": "CraftingMechanicusModifyView"}),
+        lua.globals().test_mod,
     )
     assert crafting.grid_settings.title_height == 80
     assert crafting.grid_settings.top_padding == 48
@@ -122,6 +129,7 @@ def main() -> None:
     vendor = search_ui.decorate_definitions(
         vendor_definitions,
         lua.table_from({"__class_name": "CreditsVendorView"}),
+        lua.globals().test_mod,
     )
     assert vendor.grid_settings.title_height == 0
     assert vendor.grid_settings.top_padding == 112
@@ -130,15 +138,39 @@ def main() -> None:
     general_vendor = search_ui.decorate_definitions(
         vendor_definitions,
         lua.table_from({"__class_name": "CreditsGoodsVendorView"}),
+        lua.globals().test_mod,
     )
     assert general_vendor.grid_settings.top_padding == 128
     assert general_vendor.scenegraph_definition.better_inventory_search_input.position[2] == 84
 
     sacrifice_view = lua.table_from({"__class_name": "CraftingMechanicusBarterItemsView"})
-    sacrifice = search_ui.decorate_definitions(definitions, sacrifice_view)
+    sacrifice = search_ui.decorate_definitions(
+        definitions, sacrifice_view, lua.globals().test_mod
+    )
     assert sacrifice.scenegraph_definition.better_inventory_search_input.position[2] == 58
     assert sacrifice.scenegraph_definition.better_inventory_search_input.size[1] == 486
     assert search_ui.barter_grid_offset() == 100
+
+    # Inventory and Armoury use independent pixel sliders while every other
+    # supported view retains its fixed native-contract geometry.
+    lua.globals().settings.inventory_search_inventory_top_padding = 18
+    lua.globals().settings.inventory_search_inventory_bottom_padding = 42
+    custom_inventory = search_ui.decorate_definitions(
+        definitions,
+        lua.table_from({"__class_name": "InventoryWeaponsView"}),
+        lua.globals().test_mod,
+    )
+    assert custom_inventory.grid_settings.top_padding == 42
+    assert custom_inventory.scenegraph_definition.better_inventory_search_input.position[2] == 126
+    lua.globals().settings.inventory_search_armoury_top_padding = 26
+    lua.globals().settings.inventory_search_armoury_bottom_padding = 44
+    custom_armoury = search_ui.decorate_definitions(
+        vendor_definitions,
+        lua.table_from({"__class_name": "CreditsVendorView"}),
+        lua.globals().test_mod,
+    )
+    assert custom_armoury.grid_settings.top_padding == 124
+    assert custom_armoury.scenegraph_definition.better_inventory_search_input.position[2] == 106
 
     missing_geometry = lua.table_from(
         {
