@@ -627,7 +627,7 @@ return {
 								setting_id = "inventory_search_inventory_bottom_padding",
 								tooltip = "inventory_search_spacing_reopen_tooltip",
 								type = "numeric",
-								default_value = 36,
+								default_value = 46,
 								range = {0, 96},
 							},
 							{
@@ -641,7 +641,7 @@ return {
 								setting_id = "inventory_search_armoury_bottom_padding",
 								tooltip = "inventory_search_spacing_reopen_tooltip",
 								type = "numeric",
-								default_value = 32,
+								default_value = 34,
 								range = {0, 96},
 							},
 						},

@@ -3543,9 +3543,9 @@ def main() -> None:
     assert defaults["inventory_options_panel_padding_left"] == 12
     assert defaults["inventory_options_panel_padding_right"] == 12
     assert defaults["inventory_search_inventory_top_padding"] == 14
-    assert defaults["inventory_search_inventory_bottom_padding"] == 36
+    assert defaults["inventory_search_inventory_bottom_padding"] == 46
     assert defaults["inventory_search_armoury_top_padding"] == 22
-    assert defaults["inventory_search_armoury_bottom_padding"] == 32
+    assert defaults["inventory_search_armoury_bottom_padding"] == 34
     assert defaults["quick_discard_keep_health_curios"] is True
     assert defaults["quick_discard_keep_toughness_curios"] is True
     assert defaults["quick_discard_keep_wound_curios"] is True

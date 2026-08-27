@@ -12,8 +12,22 @@
       "name": "search.index-is-bounded-cached-and-presentation-aware",
       "test": "test_search_index.py",
       "case": "bounded_projection_cache_custom_names_traits_and_split_rarity",
-      "outcome": "one weak view-owned projection cache resolves native and custom names, distinct Curio primary/secondary lines, canonical and Better Inventory-compressed perk descriptions, type, ratings, and localized rarity without invoking GodRolls; Sainted is effective-only while stored Transcendent remains explicitly searchable; invalidation and release retain no item references",
+      "outcome": "one weak view-owned projection cache resolves native and custom names, distinct Curio primary/secondary lines, production master-item perk paths into canonical and Better Inventory-compressed descriptions, type, ratings, and current-locale rarity without invoking GodRolls; flak/unyielding and Simplified Chinese weapon, Curio, trait, and rarity terms match directly; Sainted is effective-only while stored Transcendent remains explicitly searchable; invalidation and release retain no item references",
       "modules": ["BetterInventory_search_index.lua", "BetterInventory_search_query.lua", "BetterInventory_custom_tier.lua"]
+    },
+    {
+      "name": "search.ui-preserves-controller-and-utf8-input",
+      "test": "test_search_ui.py",
+      "case": "single_field_configurable_view_spacing_clipping_disable_focus_and_release",
+      "outcome": "Inventory 14/46 and Armoury 22/34 defaults preserve independent field/card spacing and clipping; controller Up from any first-row card selects search, Confirm delegates to native platform text entry, Down returns to the current first result, lower rows retain native navigation, and Simplified Chinese caret positions count UTF-8 codepoints",
+      "modules": ["BetterInventory_search_ui.lua"]
+    },
+    {
+      "name": "search.hooks-isolate-focused-grid-input",
+      "test": "test_search_hooks.py",
+      "case": "native_grid_and_hadron_sacrifice_hook_composition",
+      "outcome": "only the active view's main equipment grid receives a null input service while search owns keyboard or controller focus; native grid navigation, vendor input, Hadron sacrifice sorting, legends, and unrelated elements retain their existing hook chain",
+      "modules": ["BetterInventory_search_hooks.lua"]
     },
     {
       "name": "search.runtime-coalesces-and-releases-owned-state",

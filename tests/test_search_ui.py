@@ -21,7 +21,15 @@ def main() -> None:
             return copy
         end
         table.clone = clone_table
-        Utf8 = {string_length = function(value) return #value end}
+        Utf8 = {
+            string_length = function(value)
+                local _, length = string.gsub(value or "", "[^\128-\193]", "")
+                return length
+            end,
+        }
+        Managers = {
+            ui = {using_cursor_navigation = function() return not controller_active end},
+        }
         ui_widget = {
             create_definition = function(passes, scenegraph_id, initial)
                 local content = clone_table(initial or {})
@@ -38,9 +46,9 @@ def main() -> None:
         settings = {
             enable_inventory_search = true,
             inventory_search_inventory_top_padding = 14,
-            inventory_search_inventory_bottom_padding = 36,
+            inventory_search_inventory_bottom_padding = 46,
             inventory_search_armoury_top_padding = 22,
-            inventory_search_armoury_bottom_padding = 32,
+            inventory_search_armoury_bottom_padding = 34,
             inventory_search_focus_keybind = "off",
         }
         test_mod = {
@@ -60,7 +68,13 @@ def main() -> None:
             end,
         }
         input_service = {
-            actions = {back = false, focus_action = false},
+            actions = {
+                back = false,
+                confirm_pressed = false,
+                focus_action = false,
+                navigate_down_continuous = false,
+                navigate_up_continuous = false,
+            },
             has = function(self, action) return self.actions[action] ~= nil end,
             get = function(self, action)
                 assert(self:has(action), "attempted to read an unavailable input action: " .. tostring(action))
@@ -89,7 +103,7 @@ def main() -> None:
     assert definitions.grid_settings.title_height == 108
     assert definitions.grid_settings.top_padding is None
     assert decorated.grid_settings.title_height == 108
-    assert decorated.grid_settings.top_padding == 36
+    assert decorated.grid_settings.top_padding == 46
     assert decorated.grid_settings.better_inventory_search_clip_pivot_y == 158
     assert decorated.scenegraph_definition.better_inventory_search_input.position[2] == 122
     assert decorated.scenegraph_definition.better_inventory_search_input.size[1] == 568
@@ -133,7 +147,7 @@ def main() -> None:
         lua.globals().test_mod,
     )
     assert vendor.grid_settings.title_height == 0
-    assert vendor.grid_settings.top_padding == 112
+    assert vendor.grid_settings.top_padding == 114
     assert vendor.grid_settings.better_inventory_search_clip_pivot_y == 138
     assert vendor.scenegraph_definition.better_inventory_search_input.position[2] == 102
 
@@ -238,6 +252,65 @@ def main() -> None:
     assert search_ui.defocus(view) is True
     assert input_widget.content.input_text == "sword"
 
+    # Caret positions count UTF-8 codepoints rather than bytes, so Simplified
+    # Chinese input remains editable without corrupting field state.
+    input_widget.content.input_text = "动力剑"
+    assert search_ui.focus(view) is True
+    assert input_widget.content.caret_position == 4
+    assert search_ui.defocus(view) is True
+
+    # Controller Up from any card in the first row transfers selection to the
+    # search field. Confirm activates native text entry; Down restores the
+    # current result grid's first item. Lower rows retain native grid input.
+    lua.globals().controller_view = view
+    lua.execute(
+        r'''
+        controller_active = true
+        selected_index = 2
+        grid_widgets = {
+            {content = {row = 1}},
+            {content = {row = 1}},
+            {content = {row = 2}},
+        }
+        controller_view._item_grid = {
+            selected_grid_index = function() return selected_index end,
+            first_interactable_grid_index = function() return 1 end,
+            widget_by_index = function(_, index) return grid_widgets[index] end,
+            select_grid_index = function(_, index) selected_index = index end,
+            select_first_index = function() selected_index = 1 return 1 end,
+        }
+        input_service.actions.navigate_up_continuous = true
+        '''
+    )
+    assert search_ui.handle_grid_input(
+        view, view._item_grid, lua.globals().input_service
+    ) is True
+    assert lua.globals().selected_index is None
+    assert input_widget.content.hotspot.is_selected is True
+    assert search_ui.is_writing(view) is False
+    assert search_ui.handle_view_input(
+        lua.globals().test_mod, view, lua.globals().input_service
+    ) is True
+    lua.globals().input_service.actions.navigate_up_continuous = False
+    lua.globals().input_service.actions.confirm_pressed = True
+    assert search_ui.handle_view_input(
+        lua.globals().test_mod, view, lua.globals().input_service
+    ) is True
+    assert input_widget.content.hotspot.force_input_pressed is True
+    lua.globals().input_service.actions.confirm_pressed = False
+    lua.globals().input_service.actions.navigate_down_continuous = True
+    assert search_ui.handle_view_input(
+        lua.globals().test_mod, view, lua.globals().input_service
+    ) is True
+    assert lua.globals().selected_index == 1
+    assert input_widget.content.hotspot.is_selected is False
+    lua.globals().input_service.actions.navigate_down_continuous = False
+    lua.execute("selected_index = 3; input_service.actions.navigate_up_continuous = true")
+    assert search_ui.handle_grid_input(
+        view, view._item_grid, lua.globals().input_service
+    ) is False
+    lua.execute("controller_active = false; input_service.actions.navigate_up_continuous = false")
+
     # Native ViewElementGrid centers its mask. Search clipping moves only the
     # top edge below the field and preserves the native bottom edge.
     lua.execute(
@@ -287,6 +360,7 @@ def main() -> None:
 
     # Missing actions must never be passed to InputService:get: Darktide crashes
     # instead of returning false when its action rule does not exist.
+    input_widget.content.input_text = "sword"
     lua.globals().settings.inventory_search_focus_keybind = "missing_action"
     assert search_ui.handle_view_input(
         lua.globals().test_mod, view, lua.globals().input_service

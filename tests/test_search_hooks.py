@@ -46,7 +46,10 @@ def main() -> None:
         })
         vendor = klass("vendor", {_handle_input = function() end})
         legend = klass("legend", {_handle_input = function() end})
-        grid_element = klass("element", {cb_on_grid_entry_left_pressed = function() end})
+        grid_element = klass("element", {
+            cb_on_grid_entry_left_pressed = function() end,
+            update = function() end,
+        })
         features = {
             search_capture_presentation = function(_, view, slot, item_type, name)
                 calls.capture = {view, slot, item_type, name}
@@ -66,6 +69,7 @@ def main() -> None:
             sync_query = function(_, view) calls.sync = view end,
             update = function(_, _, view, time, input) calls.ui_update = {view, time, input} end,
             handle_view_input = function(_, view) return view.block_search == true end,
+            handle_grid_input = function(view) return view and view.block_grid == true end,
             is_writing = function(view) return view and view.writing == true end,
             defocus = function(view) calls.defocus = view end,
             decorate_definitions = function(definitions, view)
@@ -155,6 +159,23 @@ def main() -> None:
             {_parent = normal_parent}
         )
         safe_hooks["element:cb_on_grid_entry_left_pressed"]({_parent = view})
+        native_grid_updates = 0
+        grid_parent = {block_grid = true}
+        grid_element_instance = {_parent = grid_parent}
+        grid_parent._item_grid = grid_element_instance
+        grid_input = {
+            null_service = function()
+                calls.null_service = true
+                return "null_input"
+            end,
+        }
+        hooks["element:update"](
+            function(_, _, _, input)
+                native_grid_updates = native_grid_updates + 1
+                calls.grid_input = input
+            end,
+            grid_element_instance, 0.1, 20, grid_input
+        )
 
         sacrifice_view = {
             __class_name = "CraftingMechanicusBarterItemsView",
@@ -195,6 +216,9 @@ def main() -> None:
     assert g.legend_native == 1
     assert g.legend_parent._better_inventory_search_block_legend_once is None
     assert lua.execute("return calls.defocus == view") is True
+    assert g.native_grid_updates == 1
+    assert g.calls.null_service is True
+    assert g.calls.grid_input == "null_input"
     assert g.calls.base_definitions.decorated is True
     assert g.calls.pivot[1] == 100 and g.calls.pivot[2] == 150
     assert lua.execute("return calls.compose[2] == native_layout") is True

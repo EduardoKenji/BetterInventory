@@ -8,8 +8,8 @@ local INPUT_HEIGHT = 34
 local CLIP_CLEARANCE = 2
 local BOTTOM_DIVIDER_HEIGHT_OFFSET = 16
 local SEARCH_ROW_PADDING = 48
-local INVENTORY_SEARCH_ROW_PADDING = 36
-local ARMOURY_SEARCH_ROW_PADDING = 32
+local INVENTORY_SEARCH_ROW_PADDING = 46
+local ARMOURY_SEARCH_ROW_PADDING = 34
 local TITLED_SEARCH_GAP = 14
 local ARMOURY_SEARCH_GAP = 22
 local BARTER_GRID_OFFSET = 100
@@ -56,6 +56,21 @@ local function action_pressed(input_service, action_name)
 	end
 
 	return input_service:get(action_name) and true or false
+end
+
+local function controller_navigation_active(view)
+	local managers = rawget(_G, "Managers")
+	local ui_manager = managers and managers.ui
+
+	if ui_manager and type(ui_manager.using_cursor_navigation) == "function" then
+		local ok, using_cursor = pcall(ui_manager.using_cursor_navigation, ui_manager)
+
+		if ok then
+			return not using_cursor
+		end
+	end
+
+	return view and view._using_cursor_navigation == false or false
 end
 
 local function configured_pixels(mod, setting_id, default_value, maximum)
@@ -200,6 +215,43 @@ local function input_widget(view)
 	return by_name and by_name[INPUT_NAME]
 end
 
+local function controller_focused(view)
+	return view and view._better_inventory_search_controller_focused == true or false
+end
+
+local function restore_first_grid_item(view)
+	local item_grid = view and view._item_grid
+
+	if not item_grid or type(item_grid.select_first_index) ~= "function" then
+		return false
+	end
+
+	return item_grid:select_first_index() ~= nil
+end
+
+local function selected_widget_is_top_row(item_grid)
+	if not item_grid
+		or type(item_grid.selected_grid_index) ~= "function"
+		or type(item_grid.first_interactable_grid_index) ~= "function"
+		or type(item_grid.widget_by_index) ~= "function" then
+		return false
+	end
+
+	local selected_index = item_grid:selected_grid_index()
+	local first_index = item_grid:first_interactable_grid_index()
+
+	if not selected_index or not first_index then
+		return false
+	end
+
+	local selected_widget = item_grid:widget_by_index(selected_index)
+	local first_widget = item_grid:widget_by_index(first_index)
+	local selected_row = selected_widget and selected_widget.content and selected_widget.content.row
+	local first_row = first_widget and first_widget.content and first_widget.content.row
+
+	return selected_row ~= nil and first_row ~= nil and selected_row == first_row or selected_index == first_index
+end
+
 SearchUI.defocus = function(view)
 	local input = input_widget(view)
 	local content = input and input.content
@@ -210,9 +262,11 @@ SearchUI.defocus = function(view)
 
 	content.is_writing = false
 	content.selected_text = nil
+	view._better_inventory_search_controller_focused = nil
 
 	if content.hotspot then
 		content.hotspot.is_selected = false
+		content.hotspot.is_focused = false
 	end
 
 	return true
@@ -241,6 +295,36 @@ SearchUI.is_writing = function(view)
 	local input = input_widget(view)
 
 	return input and input.content and input.content.is_writing == true or false
+end
+
+SearchUI.handle_grid_input = function(view, item_grid, input_service)
+	local input = input_widget(view)
+
+	if not supported(view) or not input or input.visible == false then
+		return false
+	elseif SearchUI.is_writing(view) or controller_focused(view) then
+		return true
+	elseif not controller_navigation_active(view)
+		or view._item_grid ~= item_grid
+		or not action_pressed(input_service, "navigate_up_continuous")
+		or not selected_widget_is_top_row(item_grid) then
+		return false
+	end
+
+	view._better_inventory_search_controller_focused = true
+
+	if type(item_grid.select_grid_index) == "function" then
+		item_grid:select_grid_index(nil)
+	end
+
+	local hotspot = input.content and input.content.hotspot
+
+	if hotspot then
+		hotspot.is_selected = true
+		hotspot.is_focused = true
+	end
+
+	return true
 end
 
 SearchUI.sync_query = function(Features, view)
@@ -296,6 +380,26 @@ SearchUI.update = function(mod, Features, view, time)
 end
 
 SearchUI.handle_view_input = function(mod, view, input_service)
+	if controller_focused(view) then
+		if action_pressed(input_service, "navigate_down_continuous") then
+			SearchUI.defocus(view)
+			restore_first_grid_item(view)
+		elseif action_pressed(input_service, "back") then
+			SearchUI.defocus(view)
+			restore_first_grid_item(view)
+			view._better_inventory_search_block_legend_once = true
+		elseif not SearchUI.is_writing(view) and action_pressed(input_service, "confirm_pressed") then
+			local input = input_widget(view)
+			local hotspot = input and input.content and input.content.hotspot
+
+			if hotspot then
+				hotspot.force_input_pressed = true
+			end
+		end
+
+		return true
+	end
+
 	if not SearchUI.is_writing(view) then
 		local focus_action = mod and mod:get("inventory_search_focus_keybind")
 
@@ -329,6 +433,7 @@ SearchUI.release = function(view)
 		view._better_inventory_search_widget_initialized = nil
 		view._better_inventory_search_block_legend_once = nil
 		view._better_inventory_search_ui_unavailable = nil
+		view._better_inventory_search_controller_focused = nil
 	end
 end
 

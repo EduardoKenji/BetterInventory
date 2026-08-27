@@ -27,9 +27,13 @@ def main() -> None:
             loc_family_sword = "Dueling Sword",
             loc_pattern_maccabian = "Maccabian",
             loc_mark_iv = "Mk IV",
+            loc_weapon_name = "Catachan Combat Blade",
+            loc_curio_name = "Inquisitorial Rosette",
             loc_uncanny = "Uncanny Strike",
             loc_cara = "Damage vs Carapace Enemies",
             loc_flak = "Damage vs Flak Armoured Enemies",
+            loc_unyielding = "Damage vs Unyielding Enemies",
+            loc_health = "Maximum Health",
         }
         rarity_settings = {}
         for rarity = 1, 6 do
@@ -41,8 +45,18 @@ def main() -> None:
                     return {display_name = "loc_uncanny", trait = "blessing_uncanny_strike"}
                 elseif id == "perk_cara" then
                     return {display_name = "loc_cara", trait = "perk_damage_carapace"}
-                elseif id == "weapon_trait_melee_common_wield_increased_armored_damage" then
-                    return {display_name = "loc_flak", trait = "perk_damage_flak"}
+                elseif id == "content/items/perks/melee/flak_damage" then
+                    return {
+                        display_name = "loc_flak",
+                        trait = "weapon_trait_melee_common_wield_increased_armored_damage",
+                    }
+                elseif id == "content/items/perks/melee/unyielding_damage" then
+                    return {
+                        display_name = "loc_unyielding",
+                        trait = "weapon_trait_melee_common_wield_increased_resistant_damage",
+                    }
+                elseif id == "content/items/perks/gadget/health" then
+                    return {display_name = "loc_health", trait = "gadget_innate_health_increase"}
                 end
             end,
         }
@@ -62,10 +76,24 @@ def main() -> None:
                 return math.floor(total * 100 + 0.5)
             end,
             trait_description = function(master_item)
+                if active_language == "zh-cn" then
+                    if master_item and master_item.trait == "perk_damage_carapace" then
+                        return "+25% 对硬壳敌人伤害"
+                    elseif master_item and master_item.trait == "weapon_trait_melee_common_wield_increased_armored_damage" then
+                        return "+25% 对防弹装甲敌人伤害"
+                    elseif master_item and master_item.trait == "weapon_trait_melee_common_wield_increased_resistant_damage" then
+                        return "+25% 对不屈敌人伤害"
+                    elseif master_item and master_item.trait == "gadget_innate_health_increase" then
+                        return "+17% 生命值"
+                    end
+                end
+
                 if master_item and master_item.trait == "perk_damage_carapace" then
                     return "+25% Damage vs Carapace Enemies"
-                elseif master_item and master_item.trait == "perk_damage_flak" then
+                elseif master_item and master_item.trait == "weapon_trait_melee_common_wield_increased_armored_damage" then
                     return "+25% Damage vs Flak Armoured Enemies"
+                elseif master_item and master_item.trait == "weapon_trait_melee_common_wield_increased_resistant_damage" then
+                    return "+25% Damage vs Unyielding Enemies"
                 end
 
                 return ""
@@ -85,6 +113,7 @@ def main() -> None:
             return {
                 gear_id = gear_id,
                 id = "content/items/weapons/player/melee/dueling_sword",
+                display_name = "loc_weapon_name",
                 item_type = "WEAPON_MELEE",
                 rarity = 5,
                 expertise = 500,
@@ -102,7 +131,8 @@ def main() -> None:
                 traits = {{id = "trait_uncanny", rarity = 4, value = 1}},
                 perks = {
                     {id = "perk_cara", rarity = 4, value = 1},
-                    {id = "weapon_trait_melee_common_wield_increased_armored_damage", rarity = 4, value = 1},
+                    {id = "content/items/perks/melee/flak_damage", rarity = 4, value = 1},
+                    {id = "content/items/perks/melee/unyielding_damage", rarity = 4, value = 1},
                 },
             }
         end
@@ -117,7 +147,10 @@ def main() -> None:
                 "function(id, description) "
                 "compact_perk_calls = (compact_perk_calls or 0) + 1; "
                 "if id == 'weapon_trait_melee_common_wield_increased_armored_damage' then "
-                "return '+25% Flak Damage', '+25% Flak Dmg' end end"
+                "if active_language == 'zh-cn' then return '+25% 防弹装甲伤害', '+25% 防弹伤' end; "
+                "return '+25% Flak Damage', '+25% Flak Dmg' "
+                "elseif id == 'weapon_trait_melee_common_wield_increased_resistant_damage' then "
+                "return '+25% Unyielding Damage', '+25% Unyielding Dmg' end end"
             ),
             "normalize": query.normalize,
             "items": lua.globals().test_items,
@@ -156,7 +189,7 @@ def main() -> None:
     assert "damage vs flak armoured enemies" in [sainted.perk[i] for i in range(1, len(sainted.perk) + 1)]
     assert "+25% flak damage" in [sainted.perk[i] for i in range(1, len(sainted.perk) + 1)]
     assert "+25% flak dmg" in [sainted.perk[i] for i in range(1, len(sainted.perk) + 1)]
-    assert lua.globals().compact_perk_calls == 2
+    assert lua.globals().compact_perk_calls == 3
     assert sainted.rating == 500
     assert sainted.base == 380
     assert sainted.favorite is True
@@ -172,6 +205,7 @@ def main() -> None:
 
     assert query.matches(compiled("sainted & uncanny & perk:carapace"), sainted) is True
     assert query.matches(compiled("flak"), sainted) is True
+    assert query.matches(compiled("unyielding"), sainted) is True
     assert query.matches(compiled('perk:"damage vs flak armoured enemies"'), sainted) is True
     assert query.matches(compiled('perk:"+25% flak dmg"'), sainted) is True
     assert query.matches(compiled("transcendent"), sainted) is False
@@ -184,7 +218,7 @@ def main() -> None:
     assert ordinary.rarity[1] == "transcendent"
     assert query.matches(compiled("transcendent"), ordinary) is True
     assert query.matches(compiled("sainted"), ordinary) is False
-    assert lua.globals().compact_perk_calls == 4
+    assert lua.globals().compact_perk_calls == 6
 
     # The same item revision returns the same bounded record without resolving
     # names or traits again. Revision and explicit invalidation rebuild it.
@@ -193,7 +227,7 @@ def main() -> None:
     assert lua.execute("return ... == ...", sainted, cached) is True
     assert index.metrics.builds == 2
     assert index.metrics.hits == 1
-    assert lua.globals().compact_perk_calls == 4
+    assert lua.globals().compact_perk_calls == 6
     lua.execute("custom_records.perfect.name = 'Renamed Emperor Sword'")
     renamed, ok = search_index.project(index, sainted_item, context)
     assert ok is True
@@ -238,7 +272,7 @@ def main() -> None:
                 [
                     lua.table_from(
                         {
-                            "id": "weapon_trait_melee_common_wield_increased_armored_damage",
+                            "id": "content/items/perks/melee/flak_damage",
                             "rarity": 4,
                             "value": 1,
                         }
@@ -265,6 +299,78 @@ def main() -> None:
     assert query.rank(compiled("carapace"), curio, True) == 6
     assert query.rank(compiled("flak"), curio, True) == 5
     assert query.rank(compiled("carapace & flak"), curio, True) == 7
+
+    # Search projection consumes current-locale UTF-8 strings. Production-like
+    # master-item perk paths resolve to gameplay trait IDs before compact label
+    # lookup, and weapon/curio names, traits, perks, and rarity remain directly
+    # searchable with Simplified Chinese characters and partial terms.
+    lua.execute(
+        r'''
+        active_language = "zh-cn"
+        localized.loc_item_weapon_rarity_3 = "圣洁"
+        localized.loc_item_weapon_rarity_5 = "超凡"
+        localized.loc_item_weapon_rarity_6 = "圣化"
+        localized.loc_weapon_name = "卡塔昌战斗刀"
+        localized.loc_family_sword = "决斗剑"
+        localized.loc_pattern_maccabian = "马卡比"
+        localized.loc_mark_iv = "四型"
+        localized.loc_uncanny = "诡异打击"
+        localized.loc_cara = "对硬壳敌人伤害"
+        localized.loc_flak = "对防弹装甲敌人伤害"
+        localized.loc_unyielding = "对不屈敌人伤害"
+        localized.loc_curio_name = "审判庭玫瑰饰物"
+        localized.loc_health = "最大生命值"
+        custom_records.ordinary = nil
+        '''
+    )
+    assert search_index.invalidate_all(index) is True
+    chinese_weapon, ok = search_index.project(index, ordinary_item, lua.table_from({}))
+    assert ok is True
+    chinese_aliases = search_index.rarity_aliases(index)
+    chinese_query = query.compile(
+        "卡塔昌 & 诡异 & 防弹",
+        lua.table_from({"rarity_aliases": chinese_aliases}),
+    )
+    assert query.matches(chinese_query, chinese_weapon) is True
+    assert query.matches(
+        query.compile("超凡", lua.table_from({"rarity_aliases": chinese_aliases})),
+        chinese_weapon,
+    ) is True
+    assert "+25% 防弹伤" in [
+        chinese_weapon.perk[i] for i in range(1, len(chinese_weapon.perk) + 1)
+    ]
+
+    chinese_curio_item = lua.table_from(
+        {
+            "gear_id": "chinese-curio",
+            "display_name": "loc_curio_name",
+            "item_type": "GADGET",
+            "rarity": 3,
+            "traits": lua.table_from(
+                [
+                    lua.table_from(
+                        {"id": "content/items/perks/gadget/health", "rarity": 4, "value": 1}
+                    )
+                ]
+            ),
+            "perks": lua.table_from(
+                [
+                    lua.table_from(
+                        {"id": "content/items/perks/melee/flak_damage", "rarity": 4, "value": 1}
+                    )
+                ]
+            ),
+        }
+    )
+    chinese_curio, ok = search_index.project(index, chinese_curio_item, lua.table_from({}))
+    assert ok is True
+    assert query.matches(
+        query.compile(
+            "审判庭 & 生命 & 防弹 & 圣洁",
+            lua.table_from({"rarity_aliases": chinese_aliases}),
+        ),
+        chinese_curio,
+    ) is True
 
     # Projected strings are hard-capped, malformed inputs fail open to the
     # runtime, and release drops providers and every cached record.

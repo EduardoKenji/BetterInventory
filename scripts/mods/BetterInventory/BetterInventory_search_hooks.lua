@@ -175,6 +175,23 @@ SearchHooks.install = function(dependencies)
 		end)
 	end
 
+	if method_available(ViewElementGrid, "update") then
+		mod:hook(ViewElementGrid, "update", function(func, item_grid, dt, time, input_service)
+			local parent = item_grid and item_grid._parent
+
+			if parent
+				and parent._item_grid == item_grid
+				and type(SearchUI.handle_grid_input) == "function"
+				and SearchUI.handle_grid_input(parent, item_grid, input_service)
+				and input_service
+				and type(input_service.null_service) == "function" then
+				input_service = input_service:null_service()
+			end
+
+			return func(item_grid, dt, time, input_service)
+		end)
+	end
+
 	return true
 end
 

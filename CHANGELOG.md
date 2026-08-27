@@ -2,6 +2,9 @@
 
 ## 3.2.0 - 2026-08-27
 
+- Fixes live weapon perk indexing by resolving backend master-item paths to gameplay trait IDs, making `flak` and `unyielding` match canonical and compressed perk text.
+- Adds controller navigation from any first-row card to search with Up, native text-entry activation with Confirm, and return to the current first result with Down.
+- Verifies Simplified Chinese weapon/Curio names, perks, blessings, rarity labels, partial queries, and UTF-8 caret handling; sets spacing defaults to Inventory `14/46` and Armoury `22/34`.
 - Clips scrolled equipment cards below the text-search field and flushes deferred search sorting in Armoury Requisition and GlobalStore Multi-Operative Supply views.
 - Adds original standalone search to inventory, Armoury/other supported vendors, Hadron modify, and Hadron sacrifice views through current native presentation seams.
 - Searches custom and native names, weapon families and marks, blessings, perks, item types, ratings, state flags, effective rarity, and underlying native rarity with bounded literal parsing.

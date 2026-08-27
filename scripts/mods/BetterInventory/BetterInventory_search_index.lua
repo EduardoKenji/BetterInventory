@@ -282,7 +282,10 @@ local function append_trait_collection(builder, dependencies, item, collection, 
 		end
 
 		if field == "perk" then
-			local standard_description, heavy_description = safe_call(dependencies.compact_perk_search_terms, id, description)
+			-- Gear overrides store master-item paths (content/items/perks/...), while
+			-- compact card labels are keyed by the resolved gameplay trait name.
+			local compact_id = trait_name or id
+			local standard_description, heavy_description = safe_call(dependencies.compact_perk_search_terms, compact_id, description)
 
 			append_trait_value(builder, field, scoped_field, standard_description)
 			append_trait_value(builder, field, scoped_field, heavy_description)

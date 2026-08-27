@@ -101,7 +101,7 @@
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_data.lua",
       "bytes": 78768,
-      "sha256": "8ff634ad6acbfb233c45923dc75f04adb5c739ae04760de1424b0de18db3513d",
+      "sha256": "db5635bced73494a0e01ece4c87462050ec54232abefa4f63fd569cacb7debef",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_data.lua"
     },
     {
@@ -310,14 +310,14 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_search_hooks.lua",
-      "bytes": 6863,
-      "sha256": "5069f6dc42b9087be9026beb180bc1674d2259ea3998c5a319e10df2acc9ff8b",
+      "bytes": 7435,
+      "sha256": "74523aee658f28b0363ec15c1c5d25467ba4caf871074241be37069b504bf3a4",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_search_hooks.lua"
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_search_index.lua",
-      "bytes": 14574,
-      "sha256": "f30e41e4f39c9b00fd700dd26f8cc87b9d74524514552d62036a5f5080d2f3e9",
+      "bytes": 14772,
+      "sha256": "c605b71d6065ca61b78442a1e87be58918149969bee1af6bbaa4a10369657a82",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_search_index.lua"
     },
     {
@@ -340,8 +340,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_search_ui.lua",
-      "bytes": 10387,
-      "sha256": "51031953732a43e8f7789e9171654637d364fc8d4701e2aa43cd1b790e048e16",
+      "bytes": 13633,
+      "sha256": "a61fd7d48aebcb4db4938c0b7217120b84b2d290066331c85cafe9af7fe60ad6",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_search_ui.lua"
     },
     {
@@ -525,6 +525,6 @@
       "source_path": "scripts/mods/BetterInventory/auto_crafter/games_lantern/transport_wine.lua"
     }
   ],
-  "runtime_tree_sha256": "78abf07f3c5f9767a7e186d2166f1e4e970d1227335e8a79536e16ce7e96464f",
+  "runtime_tree_sha256": "df6a45bf5611ac8dbd82d612dd847789401c3367380286fa6445bbe9be3c758b",
   "version": "3.2.0"
 }
