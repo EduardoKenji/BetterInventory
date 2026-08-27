@@ -34,6 +34,7 @@ def main() -> None:
         item_grid_base = klass("grid", {
             _present_layout_by_slot_filter = function() end,
             _filter_by_filter_option = function() end,
+            _cb_on_present = function() end,
             update = function() end,
         })
         base_view = klass("base", {init = function() end})
@@ -65,6 +66,7 @@ def main() -> None:
                 calls.filter = {view, entry, native}
                 return native and entry.keep
             end,
+            search_apply_widget_alpha = function(view) calls.alpha = view end,
             search_update = function(view, time)
                 search_updates = search_updates + 1
                 calls.search_update = {view, time}
@@ -146,6 +148,10 @@ def main() -> None:
             function() native_filter = native_filter + 1 return true end,
             view, {keep = false}
         )
+        view._better_inventory_search_rank_active = true
+        safe_hooks["grid:_cb_on_present"](view)
+        view._better_inventory_search_rank_active = nil
+        safe_hooks["grid:_cb_on_present"]({})
         safe_hooks["crafting:update"](view, 0.1, 12, "input")
         assert(safe_hooks["grid:update"] == nil)
         safe_hooks["vendor:update"]({keep = true}, 0.1, 13, "idle_input")
@@ -228,6 +234,7 @@ def main() -> None:
     assert lua.execute("return calls.sync == sacrifice_view") is True
     assert g.native_filter == 2 and g.filter_result is False
     assert g.idle_filter_result is True
+    assert lua.execute("return calls.alpha == view") is True
     assert g.calls.ui_update[2] == 30
     assert g.calls.search_update[2] == 30
     assert g.search_updates == 2

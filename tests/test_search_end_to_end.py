@@ -129,6 +129,7 @@ def main() -> None:
                 safe_method = function() return false, nil end,
             },
             is_armoury_sort_view = function() return false end,
+            is_sortable_view = function() return true end,
             perfect_roll_dump_stat_value = function() return nil end,
             register_view_session_cleanup = function() end,
             search_rank = function(target, entry) return Runtime.rank(search, target, entry) end,
@@ -140,13 +141,29 @@ def main() -> None:
             end,
         }}
         manager.configure(mod, view)
+        -- Reproduce ItemSorting replacing the option table while leaving
+        -- Darktide's convenience pointer on its old, unwrapped comparator.
+        view._selected_sort_option_index = 1
+        view._selected_sort_option = {
+            sort_function = function(left, right)
+                return left.item.expertise > right.item.expertise
+            end,
+        }
+        view._sort_grid_layout = function(self, sort_function)
+            table.sort(self._item_grid._visible_grid_layout, sort_function)
+        end
 
         local function first_for(query_text, timestamp)
             Runtime.set_query(search, view, query_text, timestamp)
             Runtime.update(search, view, timestamp + 0.08)
-            local entries = {view._offer_items_layout[1], view._offer_items_layout[2]}
-            table.sort(entries, view._sort_options[1].sort_function)
-            return entries[1].item.gear_id, Runtime.rank(search, view, entries[1])
+            view._item_grid._visible_grid_layout = {
+                view._offer_items_layout[1],
+                view._offer_items_layout[2],
+            }
+            manager.request_resort(view)
+            manager.flush_resort(mod, nil, view)
+            local first = view._item_grid._visible_grid_layout[1]
+            return first.item.gear_id, Runtime.rank(search, view, first)
         end
 
         local name_first, name_rank = first_for("shovel", 2)

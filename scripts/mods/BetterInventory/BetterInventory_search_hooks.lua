@@ -47,6 +47,16 @@ SearchHooks.install = function(dependencies)
 		end)
 	end
 
+	if method_available(ItemGridViewBase, "_cb_on_present") then
+		-- Grid presentation replaces widget instances. Reapply dim state once
+		-- after new cards exist; no frame-level widget scan required.
+		mod:hook_safe(ItemGridViewBase, "_cb_on_present", function(view)
+			if view._better_inventory_search_rank_active and type(Features.search_apply_widget_alpha) == "function" then
+				Features.search_apply_widget_alpha(view)
+			end
+		end)
+	end
+
 	local function update_search(view, _, time, input_service)
 		if type(SearchUI.update) == "function" then
 			SearchUI.update(mod, Features, view, time, input_service)

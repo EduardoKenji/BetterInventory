@@ -385,7 +385,16 @@ Sorting.new_comparator_manager = function(dependencies)
 		end
 
 		local sort_options = view._sort_options
-		local option = sort_options and (view._selected_sort_option or sort_options[view._selected_sort_option_index or 1])
+		-- ItemSorting can replace `_sort_options` while Darktide's convenience
+		-- `_selected_sort_option` field still points at the previous table. Native
+		-- `_present_layout_by_slot_filter` resolves the active comparator by index;
+		-- deferred resorts must do the same or search's outer rank partition is
+		-- silently bypassed by that stale, unwrapped comparator.
+		local option = sort_options and sort_options[view._selected_sort_option_index or 1]
+
+		if not option then
+			option = view._selected_sort_option
+		end
 		local sort_function = option and option.sort_function
 
 		if sort_function then

@@ -539,7 +539,9 @@ SearchRuntime.apply_widget_alpha = function(runtime, view)
 	for index = 1, #widgets do
 		local widget = widgets[index]
 		local content = widget and widget.content
-		local entry = content and content.entry
+		-- ViewElementGrid uses `content.element` for live Darktide cards. Some
+		-- integrations expose the same layout entry as `content.entry`.
+		local entry = content and (content.entry or content.element)
 		local matched, found = result_for(state, entry)
 
 		if not found and entry then

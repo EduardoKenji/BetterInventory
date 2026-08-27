@@ -230,6 +230,21 @@ def main() -> None:
     lua.globals().configured_mode = "dim"
     assert view._item_grid._all_grid_widgets[1].content.alpha_multiplier == 0.4
     assert view._item_grid._all_grid_widgets[2].content.alpha_multiplier == 1
+    # Live ViewElementGrid widgets expose their layout entry as `element`, not
+    # `entry`. A re-presented unmatched card must still receive dim alpha.
+    lua.execute(
+        r"""
+        replacement_widget = {
+            content = {
+                alpha_multiplier = 1,
+                element = test_view._offer_items_layout[1],
+            },
+        }
+        test_view._item_grid._all_grid_widgets[1] = replacement_widget
+        """
+    )
+    assert search_runtime.apply_widget_alpha(runtime, view) is True
+    assert lua.globals().replacement_widget.content.alpha_multiplier == 0.4
     assert search_runtime.is_active(runtime, view) is True
     assert search_runtime.compose_layout(runtime, view, None) is None
     lua.globals().first_result_table = search_runtime.state(runtime, view).ranks

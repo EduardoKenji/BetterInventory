@@ -1476,6 +1476,26 @@ def main() -> None:
     assert deferred_view.deferred_sort_count is None
     assert features.flush_inventory_resort(mod, layout, deferred_view) is True
     assert deferred_view.deferred_sort_count == 1
+
+    # ItemSorting can replace the option table without refreshing Darktide's
+    # selected-option pointer. Deferred resorts follow native indexed lookup.
+    lua.execute(
+        r"""
+        local view = ...
+        view.current_sort = function() return true end
+        view.stale_sort = function() return false end
+        view._sort_options = {{sort_function = view.current_sort}}
+        view._selected_sort_option = {sort_function = view.stale_sort}
+        view._sort_grid_layout = function(self, sort_function)
+            self.used_current_sort = sort_function == self.current_sort
+        end
+        """,
+        deferred_view,
+    )
+    assert features.request_inventory_resort(deferred_view) is True
+    assert features.flush_inventory_resort(mod, layout, deferred_view) is True
+    assert deferred_view.used_current_sort is True
+
     deferred_view._sort_grid_layout = lua.eval('function() error("foreign sort failure") end')
     quarantine_mod = lua.table_from({"warning": lua.eval("function() end")})
     assert features.request_inventory_resort(deferred_view) is True
