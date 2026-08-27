@@ -167,6 +167,9 @@ end
 Sorting.new_comparator_manager = function(dependencies)
 	local manager = {}
 	local EQUIPPED_FAVORITE_PRIORITY_OFFSET = 3
+	local search_rank = type(dependencies.search_rank) == "function" and dependencies.search_rank or function()
+		return 0
+	end
 	local registered_views = setmetatable({}, {
 		__mode = "k",
 	})
@@ -289,6 +292,16 @@ Sorting.new_comparator_manager = function(dependencies)
 			if type(original_sort) == "function" and not option._better_inventory_original_sort then
 				option._better_inventory_original_sort = original_sort
 				local better_inventory_sort = function(left, right)
+					-- Search is the outermost, stable partition. Existing BetterInventory
+					-- priorities and the selected ItemSorting/native comparator remain the
+					-- complete tie-break hierarchy inside each match group.
+					local left_search_rank = search_rank(view, left)
+					local right_search_rank = search_rank(view, right)
+
+					if left_search_rank ~= right_search_rank then
+						return left_search_rank > right_search_rank
+					end
+
 					local left_priority = inventory_sort_priority(mod, view, left)
 					local right_priority = inventory_sort_priority(mod, view, right)
 

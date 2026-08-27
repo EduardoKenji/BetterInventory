@@ -516,6 +516,13 @@ if type(ItemCustomization.install) == "function" then
 	ItemCustomization.install(mod, InventoryWeaponsView, Layout)
 end
 
+if type(Features.configure_search) == "function" then
+	Features.configure_search(mod, {
+		CustomTier = CustomTier,
+		ItemCustomization = ItemCustomization,
+	})
+end
+
 AccountMutationGuard.configure({
 	mod = mod,
 	auto_crafter = AutoCrafter,

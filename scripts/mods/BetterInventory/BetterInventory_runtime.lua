@@ -1453,6 +1453,9 @@ function mod.on_disabled()
 	CurioAcquisition.cancel()
 	Features.disable_inventory_views()
 	Features.close_all_view_sessions("mod_disable")
+	if type(Features.search_shutdown) == "function" then
+		Features.search_shutdown(true)
+	end
 	if CharacterOverviewUI and type(CharacterOverviewUI.release_all_views) == "function" then
 		CharacterOverviewUI.release_all_views()
 	end
@@ -1582,6 +1585,35 @@ if ensure_class_method(CreditsVendorView, "_setup_sort_options") then
 	end)
 end
 
+-- Compose with Darktide's current live layout instead of retaining a stale
+-- filtered copy. This keeps loadout/tab refreshes authoritative and makes hide
+-- mode an additional predicate after every native filter.
+if ensure_class_method(ItemGridViewBase, "_present_layout_by_slot_filter") then
+	mod:hook(ItemGridViewBase, "_present_layout_by_slot_filter", function(func, view, slot_filter, item_type_filter, optional_display_name)
+		if type(Features.search_capture_presentation) == "function" then
+			Features.search_capture_presentation(mod, view, slot_filter, item_type_filter, optional_display_name)
+		end
+
+		return func(view, slot_filter, item_type_filter, optional_display_name)
+	end)
+end
+
+if ensure_class_method(ItemGridViewBase, "_filter_by_filter_option") then
+	mod:hook(ItemGridViewBase, "_filter_by_filter_option", function(func, view, entry, ...)
+		local native_result = func(view, entry, ...)
+
+		return type(Features.search_filter_result) == "function" and Features.search_filter_result(view, entry, native_result) or native_result
+	end)
+end
+
+if ensure_class_method(ItemGridViewBase, "update") then
+	mod:hook_safe(ItemGridViewBase, "update", function(view, _, time)
+		if type(Features.search_update) == "function" then
+			Features.search_update(view, time)
+		end
+	end)
+end
+
 if ensure_class_method(InventoryWeaponsView, "update") then
 	-- Keep this outside Darktide's native inventory traversal so performance
 	-- monitors do not charge its O(inventory) work to BetterInventory.
@@ -1697,6 +1729,10 @@ local function release_item_grid_view_runtime(view)
 
 	if view then
 		view._auto_crafter_status_overlay = nil
+		Features.end_view_session(view, "item_grid_exit")
+		if type(Features.search_release) == "function" then
+			Features.search_release(view)
+		end
 	end
 
 	release_transient_item_caches()
@@ -2051,6 +2087,24 @@ mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layou
 	content_blueprints = Features.compact_inventory_curio_stats_blueprints(mod, item_grid, content_blueprints)
 
 	local view = active_grid_view or item_grid and item_grid._parent
+	local callback_arguments = pack_values(...)
+	local on_present_callback = callback_arguments[5]
+
+	callback_arguments[5] = function(...)
+		local callback_results
+
+		if type(on_present_callback) == "function" then
+			callback_results = pack_values(on_present_callback(...))
+		end
+
+		if type(Features.search_apply_widget_alpha) == "function" then
+			Features.search_apply_widget_alpha(view)
+		end
+
+		if callback_results then
+			return unpack_values(callback_results, 1, callback_results.n)
+		end
+	end
 
 	if WeaponOptionsPanel and type(WeaponOptionsPanel.prepare_layout) == "function" then
 		layout = WeaponOptionsPanel.prepare_layout(mod, item_grid, layout, content_blueprints, view)
@@ -2097,12 +2151,11 @@ mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layou
 	-- Restrict the global grid seam to the exact active view and blueprint.
 	-- Missing fields mean the game contract changed, so pass through.
 	if not view or item_grid ~= view._item_grid or not grid_size or not grid_size[1] or not item_blueprint or not item_blueprint.pass_template then
-		return func(item_grid, layout, content_blueprints, ...)
+		return func(item_grid, layout, content_blueprints, unpack_values(callback_arguments, 1, callback_arguments.n))
 	end
 
 	local local_blueprints = shallow_copy(content_blueprints)
 	local local_item_blueprint = table.clone(item_blueprint)
-	local callback_arguments = pack_values(...)
 
 	local_blueprints[blueprint_key] = local_item_blueprint
 

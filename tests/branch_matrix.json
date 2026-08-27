@@ -23,6 +23,13 @@
       "modules": ["BetterInventory_search_runtime.lua", "BetterInventory_search_index.lua", "BetterInventory_search_query.lua"]
     },
     {
+      "name": "search.integration-composes-native-views-and-sorting",
+      "test": "test_search_integration.py",
+      "case": "supported_view_adapters_facade_and_lifecycle_composition",
+      "outcome": "inventory, Hadron, Armoury, general weapon vendors, and Melk map to isolated search families while cosmetics remain untouched; presentation registers one owned cleanup, configures the outer search comparator, preserves native filter results, and releases every adapter on shutdown",
+      "modules": ["BetterInventory_search_integration.lua", "BetterInventory_feature_sorting.lua", "BetterInventory_runtime.lua"]
+    },
+    {
       "name": "favorites.isolate-purchase-sources",
       "test": "test_favorite_integration.py",
       "case": "purchase_source_isolation_and_myfavorites_color_assignment",

@@ -8,6 +8,9 @@
   "test_search_runtime.py": [
     {"name": "coalesced_filter_rank_dim_memory_and_release_lifecycle", "risk": "high", "start_line": 1, "end_line": 156}
   ],
+  "test_search_integration.py": [
+    {"name": "supported_view_adapters_facade_and_lifecycle_composition", "risk": "high", "start_line": 1, "end_line": 172}
+  ],
   "test_favorite_integration.py": [
     {"name": "purchase_source_isolation_and_myfavorites_color_assignment", "risk": "high", "start_line": 1, "end_line": 329}
   ],
