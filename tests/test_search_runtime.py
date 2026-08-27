@@ -20,6 +20,8 @@ def main() -> None:
         present_calls = 0
         external_present_calls = 0
         project_calls = 0
+        trusted_project_calls = 0
+        validated_project_calls = 0
         released_indexes = 0
 
         function make_view(character, family, count)
@@ -49,8 +51,13 @@ def main() -> None:
 
         stub_index = {
             new = function() return {released = false} end,
-            project = function(index, item)
+            project = function(index, item, context)
                 project_calls = project_calls + 1
+                if context and context.trust_cache == true then
+                    trusted_project_calls = trusted_project_calls + 1
+                else
+                    validated_project_calls = validated_project_calls + 1
+                end
                 if item.fail_projection then return nil, false end
 
                 if item.curio then
@@ -157,6 +164,10 @@ def main() -> None:
     search_runtime.capture_presentation(runtime, view, "slot", "type", "title")
     valid, error = search_runtime.set_query(runtime, view, "sword", 10)
     assert valid is True and error is None
+    assert lua.globals().trusted_project_calls == 200
+    assert lua.globals().validated_project_calls == 0
+    search_runtime.capture_presentation(runtime, view, "slot", "type", "title")
+    assert lua.globals().validated_project_calls == 200
     assert search_runtime.rank(runtime, view, view._offer_items_layout[2]) == 1
     assert search_runtime.rank(runtime, view, view._offer_items_layout[1]) == 0
     assert search_runtime.native_filter(runtime, view, None, True) is True
@@ -187,6 +198,12 @@ def main() -> None:
     for frame in range(120):
         assert search_runtime.update(runtime, view, 11 + frame / 60) is False
     assert lua.globals().project_calls == settled_project_calls
+
+    # Repeating the effective query is a no-op: no compilation, scan, alpha
+    # pass, allocation, or presentation-deadline extension is performed.
+    repeated_project_calls = lua.globals().project_calls
+    assert search_runtime.set_query(runtime, view, "odd axe", 11) == (True, None)
+    assert lua.globals().project_calls == repeated_project_calls
 
     # Curio relevance is computed during the bounded projection scan and read
     # as O(1) cached ranks by the comparator. Partial text follows the exact

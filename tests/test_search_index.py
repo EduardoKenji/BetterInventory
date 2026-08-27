@@ -199,6 +199,7 @@ def main() -> None:
     assert sainted.favorite is True
     assert sainted.equipped is True
     assert sainted.perfect is True
+    assert isinstance(sainted.text, str)
     assert sainted.projected_bytes <= 2048
     assert lua.globals().decorated_name_calls == 0
 
@@ -234,6 +235,14 @@ def main() -> None:
     assert index.metrics.hits == 1
     assert lua.globals().compact_perk_calls == 6
     lua.execute("custom_records.perfect.name = 'Renamed Emperor Sword'")
+
+    # Keystroke scans can trust the projection validated by native presentation
+    # capture. A later full projection still detects the changed fingerprint.
+    trusted, ok = search_index.project(
+        index, sainted_item, lua.table_from({"trust_cache": True})
+    )
+    assert ok is True
+    assert trusted.name[1] == "pink emperor dueling sword?"
     renamed, ok = search_index.project(index, sainted_item, context)
     assert ok is True
     assert renamed.name[1] == "renamed emperor sword"

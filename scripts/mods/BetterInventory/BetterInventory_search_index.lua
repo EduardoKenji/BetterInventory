@@ -414,6 +414,10 @@ local function build_record(index, item, context)
 	record.new = boolean_provider(dependencies.is_new, item, context)
 	record.loadout = boolean_provider(dependencies.is_loadout, item, context)
 	record.perfect = sainted or boolean_provider(dependencies.is_perfect, item, context)
+	-- Bare text is the overwhelmingly common query. Collapse its bounded term
+	-- list once per projection so each clause needs one plain substring search,
+	-- while scoped fields retain their individual values.
+	record.text = table.concat(record.text, "\31")
 	record.projected_bytes = builder.bytes
 
 	return record
@@ -461,14 +465,23 @@ SearchIndex.project = function(index, value, context)
 		return nil, false
 	end
 
+	local cached = index.cache[item]
+
+	-- Query edits cannot mutate Darktide item instances. Presentation capture
+	-- and explicit invalidation still take the full fingerprint path, while the
+	-- keystroke scan reuses the already validated immutable projection without
+	-- allocating a parts table and concatenated fingerprint for every item.
+	if cached and context and context.trust_cache == true then
+		index.metrics.hits = index.metrics.hits + 1
+		return cached.record, true
+	end
+
 	local fingerprint_ok, current_fingerprint = pcall(fingerprint, item, index.dependencies, context)
 
 	if not fingerprint_ok then
 		index.metrics.failures = index.metrics.failures + 1
 		return nil, false
 	end
-
-	local cached = index.cache[item]
 
 	if cached and cached.fingerprint == current_fingerprint then
 		index.metrics.hits = index.metrics.hits + 1

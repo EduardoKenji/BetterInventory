@@ -229,6 +229,9 @@ def main() -> None:
     assert search_ui.sync_query(lua.globals().features, view) is True
     input_widget = widgets.better_inventory_search_input
     assert input_widget.content.input_text == "remembered"
+    input_widget.content.force_caret_update = False
+    assert search_ui.sync_query(lua.globals().features, view) is True
+    assert input_widget.content.force_caret_update is False
     search_ui.update(lua.globals().test_mod, lua.globals().features, view, 1)
     assert input_widget.content.placeholder_text.startswith("loc:")
     assert lua.globals().set_calls == 0

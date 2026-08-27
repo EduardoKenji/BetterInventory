@@ -298,9 +298,13 @@ SearchUI.is_writing = function(view)
 end
 
 SearchUI.handle_grid_input = function(view, item_grid, input_service)
+	if not supported(view) then
+		return false
+	end
+
 	local input = input_widget(view)
 
-	if not supported(view) or not input or input.visible == false then
+	if not input or input.visible == false then
 		return false
 	elseif SearchUI.is_writing(view) or controller_focused(view) then
 		return true
@@ -336,6 +340,12 @@ SearchUI.sync_query = function(Features, view)
 	end
 
 	local query = Features.search_query(view)
+
+	if content.input_text == query then
+		view._better_inventory_search_last_text = query
+		return true
+	end
+
 	content.input_text = query
 	content.caret_position = text_length(query) + 1
 	content.force_caret_update = true

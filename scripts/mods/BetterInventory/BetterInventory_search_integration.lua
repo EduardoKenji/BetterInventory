@@ -219,13 +219,6 @@ Integration.new = function(mod, dependencies)
 	local function release(view)
 		return SearchRuntime.release(runtime, view)
 	end
-	local function request_presentation(view)
-		if view and view.__class_name == "CraftingMechanicusBarterItemsView" then
-			return true
-		end
-
-		return dependencies.request_resort(view)
-	end
 	local function settings_changed(setting_id)
 		if setting_id == "enable_inventory_search" and mod:get(setting_id) == false then
 			local released = SearchRuntime.release_all(runtime)
@@ -250,7 +243,6 @@ Integration.new = function(mod, dependencies)
 
 		for view in pairs(runtime.states) do
 			if SearchRuntime.invalidate_all(runtime, view) then
-				request_presentation(view)
 				refreshed = refreshed + 1
 			end
 		end
@@ -308,13 +300,7 @@ Integration.new = function(mod, dependencies)
 			return SearchRuntime.release_all(runtime)
 		end,
 		set_query = function(view, query, time)
-			local valid, error_code = SearchRuntime.set_query(runtime, view, query, time)
-
-			if valid then
-				request_presentation(view)
-			end
-
-			return valid, error_code
+			return SearchRuntime.set_query(runtime, view, query, time)
 		end,
 		settings_changed = settings_changed,
 		states = runtime.states,
@@ -339,7 +325,6 @@ Integration.install = function(facade, mod, providers, configure_sort, global_st
 		configure_sort = configure_sort,
 		is_perfect = DiscardPolicy.is_perfect_roll_weapon,
 		register_cleanup = facade.register_view_session_cleanup,
-		request_resort = facade.request_inventory_resort,
 		view_family = function(view)
 			return Integration.view_family(view, global_store_service)
 		end,

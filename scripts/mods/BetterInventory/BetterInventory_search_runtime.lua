@@ -86,16 +86,16 @@ local function family_for(runtime, view)
 end
 
 local function restore_widget_alpha(state, widget)
-	local owned = state.owned_widget_alpha[widget]
+	local original = state.owned_widget_alpha[widget]
 
-	if not owned then
+	if original == nil then
 		return false
 	end
 
 	local content = widget and widget.content
 
-	if type(content) == "table" and content.alpha_multiplier == owned.applied then
-		content.alpha_multiplier = owned.original
+	if type(content) == "table" and content.alpha_multiplier == original * state.dim_alpha then
+		content.alpha_multiplier = original
 	end
 
 	state.owned_widget_alpha[widget] = nil
@@ -148,6 +148,7 @@ local function state_for(runtime, view, create)
 
 	state = {
 		compiled = nil,
+		dim_alpha = runtime.dim_alpha,
 		error = nil,
 		family = family,
 		faulted = false,
@@ -178,18 +179,14 @@ local function state_for(runtime, view, create)
 	return state
 end
 
-local function entry_result(runtime, state, entry, view, prioritize_equipped)
+local function entry_result(runtime, state, entry, context, prioritize_equipped)
 	local item = item_from(entry)
 
 	if type(item) ~= "table" then
 		return true, 1
 	end
 
-	local record, projected = runtime.dependencies.project(state.index, item, {
-		entry = entry,
-		family = state.family,
-		view = view,
-	})
+	local record, projected = runtime.dependencies.project(state.index, item, context)
 
 	if projected ~= true then
 		return true, 1
@@ -205,7 +202,7 @@ local function entry_result(runtime, state, entry, view, prioritize_equipped)
 	return matched, tonumber(rank) or (matched and 1 or 0)
 end
 
-local function scan(runtime, view, state, source_layout)
+local function scan(runtime, view, state, source_layout, trust_projection_cache)
 	state.generation = state.generation + 1
 
 	if not query_is_active(state) then
@@ -219,13 +216,20 @@ local function scan(runtime, view, state, source_layout)
 	end
 
 	local prioritize_equipped = safe_call(runtime.dependencies.prioritize_equipped) ~= false
+	local projection_context = {
+		entry = nil,
+		family = state.family,
+		trust_cache = trust_projection_cache == true,
+		view = view,
+	}
 
 	for index = 1, #layout do
 		local entry = layout[index]
 		local item = item_from(entry)
 
 		if type(item) == "table" then
-			local matched, rank = entry_result(runtime, state, entry, view, prioritize_equipped)
+			projection_context.entry = entry
+			local matched, rank = entry_result(runtime, state, entry, projection_context, prioritize_equipped)
 			set_result(state, entry, matched, rank)
 			set_result(state, item, matched, rank)
 		end
@@ -264,11 +268,11 @@ SearchRuntime.capture_presentation = function(runtime, view, slot_filter, item_t
 		return false
 	end
 
-	state.last_present_arguments = {
-		display_name,
-		item_type_filter,
-		slot_filter,
-	}
+	local arguments = state.last_present_arguments or {}
+	arguments[1] = display_name
+	arguments[2] = item_type_filter
+	arguments[3] = slot_filter
+	state.last_present_arguments = arguments
 	state.presentation_kind = "native"
 	scan(runtime, view, state)
 
@@ -343,9 +347,18 @@ SearchRuntime.set_query = function(runtime, view, query, now)
 		return false
 	end
 
-	state.query = type(query) == "string" and query or tostring(query or "")
+	query = type(query) == "string" and query or tostring(query or "")
+
+	-- Native input polling can repeat the same value around focus and hot-reload
+	-- transitions. Keep those duplicates allocation-free and do not extend the
+	-- coalescing deadline when the effective query did not change.
+	if state.query == query then
+		return state.compiled.valid == true, state.error
+	end
+
+	state.query = query
 	compile_state(runtime, state)
-	scan(runtime, view, state)
+	scan(runtime, view, state, nil, true)
 	schedule_present(runtime, state, now)
 	SearchRuntime.apply_widget_alpha(runtime, view)
 
@@ -385,7 +398,11 @@ SearchRuntime.native_filter = function(runtime, view, entry, native_result)
 
 	if not found then
 		local rank
-		result, rank = entry_result(runtime, state, entry, view)
+		result, rank = entry_result(runtime, state, entry, {
+			entry = entry,
+			family = state.family,
+			view = view,
+		})
 		set_result(state, entry, result, rank)
 	end
 
@@ -406,7 +423,11 @@ SearchRuntime.rank = function(runtime, view, entry)
 	end
 
 	if not found then
-		result, rank = entry_result(runtime, state, entry, view)
+		result, rank = entry_result(runtime, state, entry, {
+			entry = entry,
+			family = state.family,
+			view = view,
+		})
 		set_result(state, entry, result, rank)
 	end
 
@@ -443,19 +464,15 @@ SearchRuntime.apply_widget_alpha = function(runtime, view)
 		end
 
 		if active and matched == false then
-			local owned = state.owned_widget_alpha[widget]
+			local original = state.owned_widget_alpha[widget]
 
-			if not owned and type(content) == "table" then
-				local original = tonumber(content.alpha_multiplier) or 1
-				owned = {
-					applied = original * runtime.dim_alpha,
-					original = original,
-				}
-				state.owned_widget_alpha[widget] = owned
+			if original == nil and type(content) == "table" then
+				original = tonumber(content.alpha_multiplier) or 1
+				state.owned_widget_alpha[widget] = original
 			end
 
-			if owned and content.alpha_multiplier == owned.original then
-				content.alpha_multiplier = owned.applied
+			if original ~= nil and content.alpha_multiplier == original then
+				content.alpha_multiplier = original * runtime.dim_alpha
 			end
 		else
 			restore_widget_alpha(state, widget)

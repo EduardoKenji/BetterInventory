@@ -267,7 +267,9 @@ def main() -> None:
     assert facade.search_is_active(view) is True
     assert facade.search_update(view, 1) is True
     assert facade.search_set_query(view, "axe", 1) == (True, None)
-    assert lua.globals().requested_resorts == 1
+    # Query changes use the runtime's single coalesced presentation instead of
+    # also requesting an eager sorting presentation through the facade.
+    assert lua.globals().requested_resorts == 0
 
     sacrifice = lua.table_from({"__class_name": "CraftingMechanicusBarterItemsView"})
     layout = lua.table_from({1: lua.table_from({"item": lua.table_from({})})})
@@ -277,7 +279,7 @@ def main() -> None:
     assert lua.globals().begins == 2
     assert lua.globals().cleanups == 2
     assert facade.search_set_query(sacrifice, "axe", 1) == (True, None)
-    assert lua.globals().requested_resorts == 1
+    assert lua.globals().requested_resorts == 0
     lua.execute(
         r'''
         external_sort_calls = 0
@@ -301,9 +303,9 @@ def main() -> None:
     lua.execute("runtime_instance.states[state_view] = true")
     assert facade.search_settings_changed("unrelated") == 0
     assert facade.search_settings_changed("customization_changed") == 1
-    assert lua.globals().requested_resorts == 2
+    assert lua.globals().requested_resorts == 0
     assert facade.search_settings_changed("prioritize_equipped_favorites") == 1
-    assert lua.globals().requested_resorts == 3
+    assert lua.globals().requested_resorts == 0
     lua.globals().test_settings.inventory_search_remember_query = False
     assert facade.search_settings_changed("inventory_search_remember_query") == 0
     assert lua.globals().clear_memory_calls == 1
@@ -313,7 +315,7 @@ def main() -> None:
     assert lua.globals().clear_memory_calls == 2
     lua.globals().test_settings.enable_inventory_search = True
     assert facade.search_set_query(view, "bad", 1) == (False, "invalid")
-    assert lua.globals().requested_resorts == 3
+    assert lua.globals().requested_resorts == 0
 
     lua.globals().registered_cleanup(view)
     assert facade.search_shutdown(True) == 3

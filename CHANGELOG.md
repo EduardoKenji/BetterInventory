@@ -23,6 +23,7 @@
 - Renames the dedicated Mod Options tab to `Equipment Text Search` and clarifies that its master switch hides the field, clears session state, and disables filtering and ranking.
 - Finalizes search spacing by raising Armoury cards 32 pixels and inventory cards 12 pixels from the initial layout while adding two pixels of clearance above both fields.
 - Exposes independent Inventory and Armoury top/bottom search-field padding sliders, preserving the finalized geometry as their defaults while leaving other supported views unchanged.
+- Cuts 128-item live-query benchmark time by about 92% and transient Lua allocation by about 96% by trusting presentation-validated projections during keystrokes, joining bare-text terms once, reusing scan/argument state, scalarizing alpha ownership, and removing duplicate eager presentations; idle search remains allocation-free and release retains no heap growth.
 
 ## 3.1.0 - 2026-08-26
 
