@@ -2,6 +2,10 @@ local UIWidget = require("scripts/managers/ui/ui_widget")
 local TextInputPassTemplates = require("scripts/ui/pass_templates/text_input_pass_templates")
 
 local SearchUI = {}
+-- A module-local identity changes whenever DMF reloads this source. View fields
+-- survive Ctrl+Shift+R, so a plain boolean cannot distinguish an initialized
+-- widget from one whose old runtime/cache was just replaced.
+local UI_GENERATION = {}
 local INPUT_NAME = "better_inventory_search_input"
 local MAX_QUERY_LENGTH = 128
 local INPUT_HEIGHT = 34
@@ -485,11 +489,12 @@ SearchUI.update = function(mod, Features, view, time)
 		own_input_legend(view, false)
 	end
 
-	if not view._better_inventory_search_widget_initialized then
+	if view._better_inventory_search_widget_generation ~= UI_GENERATION then
 		content.placeholder_text = mod:localize("inventory_search_placeholder")
 		content.active_placeholder_text = content.placeholder_text
 		view._better_inventory_search_last_text = query
 		view._better_inventory_search_widget_initialized = true
+		view._better_inventory_search_widget_generation = UI_GENERATION
 
 		-- An already-open view can survive a DMF hot reload while the search
 		-- runtime is recreated. Reconcile the visible field once instead of
@@ -601,6 +606,7 @@ SearchUI.release = function(view)
 	if view then
 		view._better_inventory_search_last_text = nil
 		view._better_inventory_search_widget_initialized = nil
+		view._better_inventory_search_widget_generation = nil
 		view._better_inventory_search_ui_unavailable = nil
 		view._better_inventory_search_controller_focused = nil
 		view._better_inventory_search_grid_input_owned = nil

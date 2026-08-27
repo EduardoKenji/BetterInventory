@@ -445,6 +445,21 @@ def main() -> None:
     assert lua.globals().grid_input_disabled is True
     lua.globals().grid_input_disabled = False
 
+    # Ctrl+Shift+R keeps the current Darktide view and widget alive while DMF
+    # reloads this module and creates a new search runtime. A generation token,
+    # rather than the surviving boolean, must deliver the visible query once to
+    # that new runtime. Subsequent frames in the same generation stay idle.
+    input_widget.content.input_text = "health & toughness"
+    reload_set_calls_before = lua.globals().set_calls
+    reloaded_search_ui = lua.execute(
+        MODULE_PATH.read_text(encoding="utf-8"), name=str(MODULE_PATH)
+    )
+    reloaded_search_ui.update(lua.globals().test_mod, lua.globals().features, view, 4.8)
+    assert lua.globals().set_calls == reload_set_calls_before + 1
+    assert lua.globals().last_query == "health & toughness"
+    reloaded_search_ui.update(lua.globals().test_mod, lua.globals().features, view, 4.9)
+    assert lua.globals().set_calls == reload_set_calls_before + 1
+
     # The master Mod Options switch immediately hides and defocuses an
     # already-created field. The integration test separately proves that all
     # cached search state and ranking/filtering activity are released.
