@@ -1510,7 +1510,7 @@ end
 mod:hook(ItemGridViewBase, "init", function(func, view, definitions, settings, context)
 	active_highlight_views[view] = true
 	local function initialize(adjusted_definitions)
-		if SearchUI and type(SearchUI.decorate_definitions) == "function" then
+		if mod:get("enable_inventory_search") ~= false and SearchUI and type(SearchUI.decorate_definitions) == "function" then
 			adjusted_definitions = SearchUI.decorate_definitions(adjusted_definitions, view)
 		end
 
@@ -1634,6 +1634,9 @@ mod:hook_safe(InventoryWeaponsView, "cb_on_favorite_pressed", function(view)
 	local item_grid = view and view._item_grid
 
 	invalidate_myfavorites_grid(item_grid)
+	if type(Features.search_invalidate_all) == "function" then
+		Features.search_invalidate_all(view)
+	end
 
 	if mod:get("prioritize_equipped_favorites") ~= false then
 		Features.request_inventory_resort(view)
@@ -1686,6 +1689,9 @@ mod:hook_safe(InventoryWeaponsView, "_equip_item", function(view)
 	local item_grid = view and view._item_grid
 
 	invalidate_myfavorites_grid(item_grid)
+	if type(Features.search_invalidate_all) == "function" then
+		Features.search_invalidate_all(view)
+	end
 
 	if mod:get("prioritize_equipped_favorites") ~= false then
 		Features.request_inventory_resort(view)

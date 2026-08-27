@@ -19,14 +19,14 @@
       "name": "search.runtime-coalesces-and-releases-owned-state",
       "test": "test_search_runtime.py",
       "case": "coalesced_filter_rank_dim_memory_and_release_lifecycle",
-      "outcome": "dynamic queries rescan cached projections immediately but coalesce native presentations; hide mode composes after native filtering, dim mode owns only its alpha multiplier, projection failures fail open, optional memory is character/view-family scoped, and repeated release drops all view state",
+      "outcome": "dynamic queries rescan cached projections immediately but coalesce native presentations; hide mode composes after native filtering, dim mode owns only its alpha multiplier, the separate Hadron sacrifice adapter preserves external spacing and native comparator order, projection failures fail open, optional memory is character/view-family scoped, and repeated release drops all view state",
       "modules": ["BetterInventory_search_runtime.lua", "BetterInventory_search_index.lua", "BetterInventory_search_query.lua"]
     },
     {
       "name": "search.integration-composes-native-views-and-sorting",
       "test": "test_search_integration.py",
       "case": "supported_view_adapters_facade_and_lifecycle_composition",
-      "outcome": "inventory, Hadron, Armoury, general weapon vendors, and Melk map to isolated search families while cosmetics remain untouched; presentation registers one owned cleanup, configures the outer search comparator, preserves native filter results, and releases every adapter on shutdown",
+      "outcome": "inventory, Hadron modify/sacrifice, Armoury, general weapon vendors, and Melk map to isolated search families while cosmetics remain untouched; presentation registers one owned cleanup, configures the outer search comparator, preserves native filter results and Hadron spacing entries, and releases every adapter on shutdown",
       "modules": ["BetterInventory_search_integration.lua", "BetterInventory_feature_sorting.lua", "BetterInventory_runtime.lua"]
     },
     {

@@ -28,7 +28,15 @@ local function item_from(entry)
 		return nil
 	end
 
-	return entry.real_item or entry.item or entry
+	local item = entry.real_item or entry.item
+
+	if type(item) == "table" then
+		return item
+	end
+
+	if entry.gear_id ~= nil or entry.item_type ~= nil then
+		return entry
+	end
 end
 
 local function copy_array(values)
@@ -164,6 +172,7 @@ local function state_for(runtime, view, create)
 		last_present_arguments = nil,
 		owned_widget_alpha = weak_key_table(),
 		pending_present_at = nil,
+		presentation_kind = nil,
 		query = "",
 		generation = 0,
 		result_generations = weak_key_table(),
@@ -206,7 +215,7 @@ local function entry_matches(runtime, state, entry, view)
 	return runtime.dependencies.query.matches(state.compiled, record) == true
 end
 
-local function scan(runtime, view, state)
+local function scan(runtime, view, state, source_layout)
 	state.generation = state.generation + 1
 	state.counts.matched = 0
 	state.counts.total = 0
@@ -215,7 +224,7 @@ local function scan(runtime, view, state)
 		return state.counts
 	end
 
-	local layout = view._offer_items_layout
+	local layout = source_layout or view._offer_items_layout
 
 	if type(layout) ~= "table" then
 		return state.counts
@@ -277,9 +286,71 @@ SearchRuntime.capture_presentation = function(runtime, view, slot_filter, item_t
 		item_type_filter,
 		slot_filter,
 	}
+	state.presentation_kind = "native"
 	scan(runtime, view, state)
 
 	return true
+end
+
+local function insert_external_entries(result, external_entries)
+	for index = 1, #external_entries do
+		local external = external_entries[index]
+		local insertion_index = math.min(external.index, #result + 1)
+
+		table.insert(result, insertion_index, external.entry)
+	end
+end
+
+SearchRuntime.compose_layout = function(runtime, view, layout)
+	local state = state_for(runtime, view, true)
+
+	if not state or type(layout) ~= "table" then
+		return layout
+	end
+
+	state.last_present_arguments = nil
+	state.presentation_kind = "external"
+	scan(runtime, view, state, layout)
+
+	if not query_is_active(state) then
+		return layout
+	end
+
+	local matches = {}
+	local unmatched = {}
+	local external_entries = {}
+	local hide = mode(runtime) == "hide"
+
+	for index = 1, #layout do
+		local entry = layout[index]
+		local item = item_from(entry)
+
+		if not item then
+			external_entries[#external_entries + 1] = {
+				entry = entry,
+				index = index,
+			}
+		else
+			local matched = result_for(state, entry)
+
+			if matched == nil then
+				matched = result_for(state, item)
+			end
+
+			if matched == true then
+				matches[#matches + 1] = entry
+			elseif not hide then
+				unmatched[#unmatched + 1] = entry
+			end
+		end
+	end
+
+	for index = 1, #unmatched do
+		matches[#matches + 1] = unmatched[index]
+	end
+	insert_external_entries(matches, external_entries)
+
+	return matches
 end
 
 SearchRuntime.set_query = function(runtime, view, query, chips, now)
@@ -429,13 +500,19 @@ SearchRuntime.update = function(runtime, view, now)
 	end
 
 	state.pending_present_at = nil
-	local arguments = state.last_present_arguments
+	local ok
 
-	if not arguments then
-		return false
+	if state.presentation_kind == "external" then
+		ok = safe_call(runtime.dependencies.present_external, view)
+	else
+		local arguments = state.last_present_arguments
+
+		if not arguments then
+			return false
+		end
+
+		ok = safe_call(runtime.dependencies.present, view, arguments[3], arguments[2], arguments[1])
 	end
-
-	local ok = safe_call(runtime.dependencies.present, view, arguments[3], arguments[2], arguments[1])
 
 	if ok == nil then
 		state.faulted = true
@@ -492,6 +569,7 @@ SearchRuntime.release = function(runtime, view)
 	state.results = weak_key_table()
 	state.result_generations = weak_key_table()
 	state.last_present_arguments = nil
+	state.presentation_kind = nil
 	runtime.states[view] = nil
 
 	return true

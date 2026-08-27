@@ -6,14 +6,20 @@ local SearchUI = {}
 local INPUT_NAME = "better_inventory_search_input"
 local CLEAR_NAME = "better_inventory_search_clear"
 local COUNT_NAME = "better_inventory_search_count"
+local HELP_NAME = "better_inventory_search_help"
+local HELP_TEXT_NAME = "better_inventory_search_help_text"
 local FILTER_TOGGLE_NAME = "better_inventory_search_filters"
 local MAX_QUERY_LENGTH = 128
 local QUICK_FILTERS = {
-	{ field = "equipped", label = "inventory_search_filter_equipped" },
-	{ field = "favorite", label = "inventory_search_filter_favorite" },
-	{ field = "new", label = "inventory_search_filter_new" },
-	{ field = "loadout", label = "inventory_search_filter_loadout" },
-	{ field = "perfect", label = "inventory_search_filter_perfect" },
+	{ field = "equipped", label = "inventory_search_filter_equipped", row = 1 },
+	{ field = "favorite", label = "inventory_search_filter_favorite", row = 1 },
+	{ field = "new", label = "inventory_search_filter_new", row = 1 },
+	{ field = "loadout", label = "inventory_search_filter_loadout", row = 1 },
+	{ field = "perfect", label = "inventory_search_filter_perfect", row = 1 },
+	{ field = "type", label = "inventory_search_filter_weapon", row = 2, value = "weapon" },
+	{ field = "type", label = "inventory_search_filter_curio", row = 2, value = "curio" },
+	{ field = "type", label = "inventory_search_filter_melee", row = 2, value = "melee" },
+	{ field = "type", label = "inventory_search_filter_ranged", row = 2, value = "ranged" },
 }
 
 local function supported(view)
@@ -21,6 +27,7 @@ local function supported(view)
 
 	return class_name == "InventoryWeaponsView"
 		or class_name == "CraftingMechanicusModifyView"
+		or class_name == "CraftingMechanicusBarterItemsView"
 		or class_name == "CreditsVendorView"
 		or class_name == "CreditsGoodsVendorView"
 		or class_name == "MarksVendorView"
@@ -53,6 +60,8 @@ local function search_y(definitions, view)
 		return math.max(title_height - 38, 62)
 	elseif view.__class_name == "CraftingMechanicusModifyView" then
 		return math.max(title_height - 38, 30)
+	elseif view.__class_name == "CraftingMechanicusBarterItemsView" then
+		return 58
 	end
 
 	return math.max(title_height - 38, 12)
@@ -99,6 +108,30 @@ local function count_passes()
 	}
 end
 
+local function help_text_passes()
+	local text_style = clone(UIFontSettings.body)
+	text_style.font_size = 15
+	text_style.text_horizontal_alignment = "left"
+	text_style.text_vertical_alignment = "top"
+	text_style.offset = { 8, 6, 2 }
+	text_style.size_addition = { -16, -12 }
+
+	return {
+		{
+			pass_type = "rect",
+			style = {
+				color = { 245, 10, 20, 16 },
+			},
+		},
+		{
+			pass_type = "text",
+			style = text_style,
+			value = "",
+			value_id = "text",
+		},
+	}
+end
+
 local function compact_button_passes(font_size)
 	local text_style = clone(UIFontSettings.body)
 	text_style.font_size = font_size or 14
@@ -121,35 +154,58 @@ local function compact_button_passes(font_size)
 	}
 end
 
-local function filter_widget_name(field)
-	return "better_inventory_search_filter_" .. field
+local function filter_key(filter)
+	return filter.field .. "=" .. tostring(filter.value == nil and true or filter.value)
+end
+
+local function filter_widget_name(filter)
+	local suffix = filter.value == nil and filter.field or filter.field .. "_" .. tostring(filter.value)
+
+	return "better_inventory_search_filter_" .. suffix
 end
 
 SearchUI.decorate_definitions = function(definitions, view)
 	if not supported(view) then
 		return definitions
+	elseif type(definitions) == "table" and definitions._better_inventory_search_decorated then
+		return definitions
+	elseif type(definitions) ~= "table" or type(definitions.scenegraph_definition) ~= "table" or type(definitions.scenegraph_definition.item_grid_pivot) ~= "table" then
+		if view then
+			view._better_inventory_search_ui_unavailable = true
+		end
+
+		return definitions
 	end
 
+	view._better_inventory_search_ui_unavailable = nil
 	local owned = clone(definitions)
+	owned._better_inventory_search_decorated = true
 	owned.grid_settings = clone(owned.grid_settings)
 	owned.scenegraph_definition = clone(owned.scenegraph_definition)
 	owned.widget_definitions = clone(owned.widget_definitions)
 	local y = search_y(owned, view)
 
 	if tonumber(owned.grid_settings.title_height) and owned.grid_settings.title_height > 0 then
-		owned.grid_settings.title_height = owned.grid_settings.title_height + 32
+		owned.grid_settings.title_height = owned.grid_settings.title_height + 62
 	else
-		owned.grid_settings.top_padding = (tonumber(owned.grid_settings.top_padding) or 80) + 32
+		owned.grid_settings.top_padding = (tonumber(owned.grid_settings.top_padding) or 80) + 62
 	end
 
 	owned.scenegraph_definition[INPUT_NAME] = {
 		horizontal_alignment = "left",
 		parent = "item_grid_pivot",
 		vertical_alignment = "top",
-		size = { 430, 34 },
+		size = { 394, 34 },
 		position = { 18, y, 80 },
 	}
 	owned.scenegraph_definition[CLEAR_NAME] = {
+		horizontal_alignment = "left",
+		parent = "item_grid_pivot",
+		vertical_alignment = "top",
+		size = { 34, 34 },
+		position = { 416, y, 81 },
+	}
+	owned.scenegraph_definition[HELP_NAME] = {
 		horizontal_alignment = "left",
 		parent = "item_grid_pivot",
 		vertical_alignment = "top",
@@ -163,6 +219,13 @@ SearchUI.decorate_definitions = function(definitions, view)
 		size = { 92, 34 },
 		position = { 494, y, 80 },
 	}
+	owned.scenegraph_definition[HELP_TEXT_NAME] = {
+		horizontal_alignment = "left",
+		parent = "item_grid_pivot",
+		vertical_alignment = "top",
+		size = { 568, 84 },
+		position = { 18, y + 98, 100 },
+	}
 	owned.scenegraph_definition[FILTER_TOGGLE_NAME] = {
 		horizontal_alignment = "left",
 		parent = "item_grid_pivot",
@@ -171,16 +234,23 @@ SearchUI.decorate_definitions = function(definitions, view)
 		position = { 18, y + 38, 80 },
 	}
 
+	local row_positions = { 0, 0 }
+
 	for index = 1, #QUICK_FILTERS do
 		local filter = QUICK_FILTERS[index]
-		local name = filter_widget_name(filter.field)
+		local name = filter_widget_name(filter)
+		local row = filter.row or 1
+		local row_index = row_positions[row]
+		local width = row == 1 and 94 or 118
+
+		row_positions[row] = row_index + 1
 
 		owned.scenegraph_definition[name] = {
 			horizontal_alignment = "left",
 			parent = "item_grid_pivot",
 			vertical_alignment = "top",
-			size = { 94, 26 },
-			position = { 98 + (index - 1) * 97, y + 38, 80 },
+			size = { width, 26 },
+			position = { 98 + row_index * (width + 3), y + 38 + (row - 1) * 30, 80 },
 		}
 		owned.widget_definitions[name] = UIWidget.create_definition(compact_button_passes(), name, {
 			text = "",
@@ -192,6 +262,12 @@ SearchUI.decorate_definitions = function(definitions, view)
 		max_length = MAX_QUERY_LENGTH,
 	})
 	owned.widget_definitions[CLEAR_NAME] = UIWidget.create_definition(clear_passes(), CLEAR_NAME)
+	owned.widget_definitions[HELP_NAME] = UIWidget.create_definition(compact_button_passes(18), HELP_NAME, {
+		text = "?",
+	})
+	owned.widget_definitions[HELP_TEXT_NAME] = UIWidget.create_definition(help_text_passes(), HELP_TEXT_NAME, {
+		text = "",
+	})
 	owned.widget_definitions[COUNT_NAME] = UIWidget.create_definition(count_passes(), COUNT_NAME, {
 		text = "",
 	})
@@ -207,12 +283,13 @@ local function chips_for(view)
 	local active = view and view._better_inventory_search_quick_filters or {}
 
 	for index = 1, #QUICK_FILTERS do
-		local field = QUICK_FILTERS[index].field
+		local filter = QUICK_FILTERS[index]
+		local key = filter_key(filter)
 
-		if active[field] then
+		if active[key] then
 			chips[#chips + 1] = {
-				field = field,
-				value = true,
+				field = filter.field,
+				value = filter.value == nil and true or filter.value,
 			}
 		end
 	end
@@ -221,7 +298,15 @@ local function chips_for(view)
 end
 
 local function has_quick_filter(view)
-	return #chips_for(view) > 0
+	local active = view and view._better_inventory_search_quick_filters or {}
+
+	for index = 1, #QUICK_FILTERS do
+		if active[filter_key(QUICK_FILTERS[index])] then
+			return true
+		end
+	end
+
+	return false
 end
 
 
@@ -306,8 +391,8 @@ SearchUI.sync_query = function(Features, view)
 		for index = 1, #chips do
 			local chip = chips[index]
 
-			if chip and chip.value == true then
-				view._better_inventory_search_quick_filters[chip.field] = true
+			if chip then
+				view._better_inventory_search_quick_filters[chip.field .. "=" .. tostring(chip.value)] = true
 			end
 		end
 	end
@@ -324,15 +409,19 @@ SearchUI.update = function(mod, Features, view, time, input_service)
 	local input, clear, count = widgets(view)
 	local by_name = view._widgets_by_name or {}
 	local filter_toggle = by_name[FILTER_TOGGLE_NAME]
+	local help = by_name[HELP_NAME]
+	local help_text = by_name[HELP_TEXT_NAME]
 	local visible = mod:get("enable_inventory_search") ~= false
 
 	set_visible(input, visible)
 	set_visible(clear, visible)
 	set_visible(count, visible)
 	set_visible(filter_toggle, visible)
+	set_visible(help, visible)
+	set_visible(help_text, visible and view._better_inventory_search_help_visible == true)
 
 	for index = 1, #QUICK_FILTERS do
-		set_visible(by_name[filter_widget_name(QUICK_FILTERS[index].field)], visible and view._better_inventory_search_filters_expanded == true)
+		set_visible(by_name[filter_widget_name(QUICK_FILTERS[index])], visible and view._better_inventory_search_filters_expanded == true)
 	end
 
 	if not visible or not input or not input.content then
@@ -366,10 +455,18 @@ SearchUI.update = function(mod, Features, view, time, input_service)
 				view._better_inventory_search_filters_expanded = not view._better_inventory_search_filters_expanded
 			end
 		end
+		if help and help.content and help.content.hotspot then
+			help.content.hotspot.pressed_callback = function()
+				view._better_inventory_search_help_visible = not view._better_inventory_search_help_visible
+			end
+		end
+		if help_text and help_text.content then
+			help_text.content.text = mod:localize("inventory_search_help")
+		end
 
 		for index = 1, #QUICK_FILTERS do
 			local filter = QUICK_FILTERS[index]
-			local widget = by_name[filter_widget_name(filter.field)]
+			local widget = by_name[filter_widget_name(filter)]
 
 			if widget and widget.content then
 				widget.content.text = mod:localize(filter.label)
@@ -377,7 +474,20 @@ SearchUI.update = function(mod, Features, view, time, input_service)
 				if widget.content.hotspot then
 					widget.content.hotspot.pressed_callback = function()
 						local active = view._better_inventory_search_quick_filters
-						active[filter.field] = not active[filter.field] or nil
+						local key = filter_key(filter)
+						local enable = not active[key]
+
+						if filter.field == "type" then
+							for filter_index = 1, #QUICK_FILTERS do
+								local other = QUICK_FILTERS[filter_index]
+
+								if other.field == "type" then
+									active[filter_key(other)] = nil
+								end
+							end
+						end
+
+						active[key] = enable and true or nil
 						view._better_inventory_search_filters_dirty = true
 					end
 				end
@@ -394,13 +504,14 @@ SearchUI.update = function(mod, Features, view, time, input_service)
 
 	for index = 1, #QUICK_FILTERS do
 		local filter = QUICK_FILTERS[index]
-		local widget = by_name[filter_widget_name(filter.field)]
+		local widget = by_name[filter_widget_name(filter)]
 		local background = widget and widget.style and widget.style.background
+		local active = view._better_inventory_search_quick_filters[filter_key(filter)]
 
 		if background and background.color then
-			background.color[2] = view._better_inventory_search_quick_filters[filter.field] and 70 or 20
-			background.color[3] = view._better_inventory_search_quick_filters[filter.field] and 110 or 20
-			background.color[4] = view._better_inventory_search_quick_filters[filter.field] and 70 or 20
+			background.color[2] = active and 70 or 20
+			background.color[3] = active and 110 or 20
+			background.color[4] = active and 70 or 20
 		end
 	end
 
@@ -453,6 +564,8 @@ SearchUI.release = function(view)
 		view._better_inventory_search_quick_filters = nil
 		view._better_inventory_search_filters_dirty = nil
 		view._better_inventory_search_filters_expanded = nil
+		view._better_inventory_search_help_visible = nil
+		view._better_inventory_search_ui_unavailable = nil
 	end
 end
 

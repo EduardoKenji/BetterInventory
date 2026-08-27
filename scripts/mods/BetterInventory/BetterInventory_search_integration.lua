@@ -8,9 +8,38 @@ local ProfileUtils = require("scripts/utilities/profile_utils")
 local RaritySettings = require("scripts/settings/item/rarity_settings")
 
 local Integration = {}
+local warned_legacy_searcher = false
+
+Integration.warn_legacy_searcher = function(mod, resolver)
+	if warned_legacy_searcher or type(resolver) ~= "function" then
+		return false
+	end
+
+	local ok, legacy = pcall(resolver, "stuff_searcher")
+
+	if not ok or type(legacy) ~= "table" then
+		return false
+	end
+
+	if type(legacy.is_enabled) == "function" then
+		local enabled_ok, enabled = pcall(legacy.is_enabled, legacy)
+
+		if enabled_ok and enabled == false then
+			return false
+		end
+	end
+
+	warned_legacy_searcher = true
+
+	if mod and type(mod.warning) == "function" then
+		mod:warning("Stuff Searcher is enabled. Its obsolete layout hooks can conflict with Better Inventory search; disable or remove Stuff Searcher before reporting filtered-layout issues.")
+	end
+
+	return true
+end
 
 Integration.view_family = function(view, global_store_service)
-	if type(view) ~= "table" or view._destroyed then
+	if type(view) ~= "table" or view._destroyed or view._better_inventory_search_ui_unavailable then
 		return nil
 	end
 
@@ -20,6 +49,8 @@ Integration.view_family = function(view, global_store_service)
 		return "inventory"
 	elseif class_name == "CraftingMechanicusModifyView" then
 		return "hadron"
+	elseif class_name == "CraftingMechanicusBarterItemsView" then
+		return "hadron_sacrifice"
 	elseif class_name == "MarksVendorView" or class_name == "MarksGoodsVendorView" then
 		return "melk"
 	elseif class_name == "CreditsVendorView" or class_name == "CreditsGoodsVendorView" then
@@ -81,17 +112,25 @@ Integration.new = function(mod, dependencies)
 					return ItemCustomization.get(mod, gear_id)
 				end
 			end,
-			is_equipped = function(item, context)
-				local context_view = context and context.view
-				local slots = item and item.slots
+		is_equipped = function(item, context)
+			local context_view = context and context.view
+			local slots = item and item.slots
 
-				if not context_view or not slots or type(context_view.is_item_equipped_in_any_slot) ~= "function" then
-					return false
-				end
+			if not context_view or not slots then
+				return false
+			end
 
+			if type(context_view.is_item_equipped_in_any_slot) == "function" then
 				local ok, equipped = pcall(context_view.is_item_equipped_in_any_slot, context_view, item, slots)
 
 				return ok and equipped == true
+			elseif type(context_view.equipped_item_in_slot) == "function" then
+				local ok, equipped_item = pcall(context_view.equipped_item_in_slot, context_view, slots[1])
+
+				return ok and equipped_item and equipped_item.gear_id == item.gear_id
+			end
+
+			return false
 			end,
 			is_loadout = function(item)
 				return item and item.gear_id and loadout_gear_ids[item.gear_id] == true
@@ -139,6 +178,18 @@ Integration.new = function(mod, dependencies)
 
 			return true
 		end,
+		present_external = function(view)
+			if not view or view._destroyed or type(view._sort_grid_layout) ~= "function" then
+				return false
+			end
+
+			local sort_options = view._sort_options or {}
+			local sort_option = sort_options[view._selected_sort_option_index or 1]
+
+			view:_sort_grid_layout(sort_option and sort_option.sort_function)
+
+			return true
+		end,
 		project = SearchIndex.project,
 		query = SearchQuery,
 		rarity_aliases = SearchIndex.rarity_aliases,
@@ -159,6 +210,13 @@ Integration.new = function(mod, dependencies)
 	})
 	local function release(view)
 		return SearchRuntime.release(runtime, view)
+	end
+	local function request_presentation(view)
+		if view and view.__class_name == "CraftingMechanicusBarterItemsView" then
+			return true
+		end
+
+		return dependencies.request_resort(view)
 	end
 	local function settings_changed(setting_id)
 		if setting_id == "enable_inventory_search" and mod:get(setting_id) == false then
@@ -183,7 +241,7 @@ Integration.new = function(mod, dependencies)
 
 		for view in pairs(runtime.states) do
 			if SearchRuntime.invalidate_all(runtime, view) then
-				dependencies.request_resort(view)
+				request_presentation(view)
 				refreshed = refreshed + 1
 			end
 		end
@@ -207,6 +265,16 @@ Integration.new = function(mod, dependencies)
 			dependencies.configure_sort(view)
 
 			return true
+		end,
+		compose_layout = function(view, layout)
+			local composed = SearchRuntime.compose_layout(runtime, view, layout)
+
+			dependencies.begin_view_session(view, "search")
+			dependencies.register_cleanup(view, "inventory_search", function(session_view)
+				release(session_view)
+			end)
+
+			return composed
 		end,
 		clear_memory = function()
 			return SearchRuntime.clear_memory(runtime)
@@ -240,7 +308,7 @@ Integration.new = function(mod, dependencies)
 			local valid, error_code = SearchRuntime.set_query(runtime, view, query, chips, time)
 
 			if valid then
-				dependencies.request_resort(view)
+				request_presentation(view)
 			end
 
 			return valid, error_code
@@ -277,9 +345,12 @@ Integration.install = function(facade, mod, providers, configure_sort, global_st
 		return false
 	end
 
+	Integration.warn_legacy_searcher(mod, rawget(_G, "get_mod"))
+
 	facade.search_apply_widget_alpha = integration.apply_widget_alpha
 	facade.search_counts = integration.counts
 	facade.search_chips = integration.chips
+	facade.search_compose_layout = integration.compose_layout
 	facade.search_filter_result = integration.filter_result
 	facade.search_invalidate_all = integration.invalidate_all
 	facade.search_is_active = integration.is_active

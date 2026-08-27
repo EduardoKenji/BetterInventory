@@ -25,6 +25,26 @@ def main() -> None:
     )
     query = lua.execute(MODULE_PATH.read_text(encoding="utf-8"), name=str(MODULE_PATH))
 
+    # Unicode helpers are optional and fail-soft. Non-string values normalize
+    # without leaking an engine helper exception into a view.
+    assert query.normalize(123)[0] == "123"
+    lua.execute(
+        "Utf8.lower = function() error('lower') end; "
+        "Utf8.string_length = function() error('length') end"
+    )
+    assert query.normalize("ABC")[0] == "abc"
+    assert query.compile("é", lua.table_from({"max_query_characters": 1})).valid is True
+    lua.execute(
+        "Utf8.lower = function(value) return string.lower(value) end; "
+        "Utf8.string_length = function(value) return #value end"
+    )
+    lua.globals().Utf8 = None
+    assert query.compile("é", lua.table_from({"max_query_characters": 1})).valid is True
+    lua.execute(
+        "Utf8 = {lower = function(value) return string.lower(value) end, "
+        "string_length = function(value) return #value end}"
+    )
+
     def compile_query(text, *, aliases=None, chips=None, **limits):
         options = lua.table_from(limits)
         if aliases is not None:
@@ -66,6 +86,7 @@ def main() -> None:
     assert query.matches(compile_query("plasma & blessing:cycler"), plasma) is True
     assert query.matches(compile_query("plasma&bless:gets hot&perk:carapace"), plasma) is True
     assert query.matches(compile_query('name:"plasma & gun"'), plasma) is False
+    assert query.matches(compile_query(r'name:"plasma \"gun\""'), plasma) is False
     assert query.matches(compile_query("foo:plasma"), plasma) is False
 
     # Every search token is literal; former Stuff Searcher Lua-pattern inputs
@@ -95,6 +116,9 @@ def main() -> None:
     assert query.matches(compile_query("transcendent"), transcendent) is True
     assert query.matches(compile_query("transcendent"), sainted) is False
     assert query.matches(compile_query("rarity:sainted"), sainted) is True
+    assert query.matches(
+        compile_query("rarity:sainted"), record(rarity="sainted")
+    ) is True
     assert query.matches(compile_query("rarity:transcendent"), sainted) is False
     assert query.matches(compile_query("native-rarity:transcendent"), sainted) is True
     assert query.matches(compile_query("native-rarity:5"), sainted) is True
@@ -120,8 +144,13 @@ def main() -> None:
     # Numeric searches compare fields, not substrings.
     assert query.matches(compile_query("rating:500"), plasma) is True
     assert query.matches(compile_query("rating:50"), plasma) is False
+    assert query.matches(compile_query("rating:500"), record(text=[])) is False
     assert query.matches(compile_query("rating:>=490"), plasma) is True
     assert query.matches(compile_query("rating:<500"), plasma) is False
+    assert query.matches(compile_query("rating:<=500"), plasma) is True
+    assert query.matches(compile_query("rating:>499"), plasma) is True
+    assert query.matches(compile_query("rating:>500"), plasma) is False
+    assert query.matches(compile_query("quality:transcendent"), plasma) is True
     assert query.matches(compile_query("rating:480..500"), plasma) is True
     assert query.matches(compile_query("rating:510..490"), plasma) is True
     assert query.matches(compile_query("base:380"), plasma) is True
@@ -134,6 +163,9 @@ def main() -> None:
     assert query.matches(compile_query("new:yes"), plasma) is False
     assert query.matches(compile_query("loadout:true"), plasma) is True
     assert query.matches(compile_query("perfect:true"), plasma) is False
+    assert query.matches(compile_query("favorite:1"), plasma) is True
+    assert query.matches(compile_query("equipped:off"), plasma) is True
+    assert query.matches(compile_query("new:0"), plasma) is True
     assert query.matches(
         compile_query("plasma", chips=[{"field": "favorite", "value": True}]),
         plasma,
@@ -142,11 +174,27 @@ def main() -> None:
         compile_query("plasma", chips=[{"field": "equipped", "value": True}]),
         plasma,
     ) is False
+    assert query.matches(
+        compile_query("plasma", chips=[{"field": "type", "value": "ranged"}]),
+        plasma,
+    ) is True
+    assert compile_query("plasma", chips=[{"field": "type", "value": ""}]).valid is False
+    assert compile_query("plasma", chips=[{"value": True}]).valid is False
+    assert compile_query(
+        "", chips=[{"field": "favorite", "value": True}] * 17
+    ).error == "too_many_clauses"
+    invalid_chip_options = lua.table_from(
+        {"chips": lua.table_from({1: "not-a-chip"})}
+    )
+    assert query.compile("plasma", invalid_chip_options).error == "invalid_chip"
 
     # Invalid or excessive input fails open, preserving the authoritative list.
     invalid_cases = (
         'name:"unterminated',
+        'name:""',
         "rating:nope",
+        "rating:>=",
+        "rating:1..nope",
         "favorite:maybe",
     )
     for text in invalid_cases:
@@ -157,7 +205,10 @@ def main() -> None:
 
     assert compile_query("x" * 129).error == "query_too_long"
     assert compile_query("&".join(["x"] * 17)).error == "too_many_clauses"
+    assert compile_query("a&b&", max_clauses=1).error == "too_many_clauses"
     assert compile_query("abc", max_query_characters=2).error == "query_too_long"
+    assert query.matches(None, plasma) is True
+    assert query.matches(compile_query("plasma"), None) is False
 
     # A bounded repeated compile/match soak leaves no record-owned state and
     # proves matching does not mutate the projection.

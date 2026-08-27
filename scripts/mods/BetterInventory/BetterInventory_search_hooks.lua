@@ -1,3 +1,4 @@
+local GameCraftingMechanicusBarterItemsView = require("scripts/ui/views/crafting_mechanicus_barter_items_view/crafting_mechanicus_barter_items_view")
 local SearchHooks = {}
 
 local function method_available(target, method_name)
@@ -10,7 +11,9 @@ SearchHooks.install = function(dependencies)
 	local Features = dependencies.Features
 	local SearchUI = dependencies.SearchUI
 	local ItemGridViewBase = dependencies.ItemGridViewBase
+	local BaseView = dependencies.BaseView
 	local CraftingMechanicusModifyView = dependencies.CraftingMechanicusModifyView
+	local CraftingMechanicusBarterItemsView = dependencies.CraftingMechanicusBarterItemsView or GameCraftingMechanicusBarterItemsView
 	local VendorViewBase = dependencies.VendorViewBase
 	local ViewElementGrid = dependencies.ViewElementGrid
 	local ViewElementInputLegend = dependencies.ViewElementInputLegend
@@ -44,15 +47,17 @@ SearchHooks.install = function(dependencies)
 		end)
 	end
 
+	local function update_search(view, _, time, input_service)
+		if type(SearchUI.update) == "function" then
+			SearchUI.update(mod, Features, view, time, input_service)
+		end
+		if type(Features.search_update) == "function" then
+			Features.search_update(view, time)
+		end
+	end
+
 	if method_available(ItemGridViewBase, "update") then
-		mod:hook_safe(ItemGridViewBase, "update", function(view, _, time, input_service)
-			if type(SearchUI.update) == "function" then
-				SearchUI.update(mod, Features, view, time, input_service)
-			end
-			if type(Features.search_update) == "function" then
-				Features.search_update(view, time)
-			end
-		end)
+		mod:hook_safe(ItemGridViewBase, "update", update_search)
 	end
 
 	local function install_view_input_hook(view_class)
@@ -71,6 +76,79 @@ SearchHooks.install = function(dependencies)
 
 	install_view_input_hook(CraftingMechanicusModifyView)
 	install_view_input_hook(VendorViewBase)
+	install_view_input_hook(CraftingMechanicusBarterItemsView)
+
+	if method_available(BaseView, "init") then
+		mod:hook(BaseView, "init", function(func, view, definitions, settings, context)
+			if view and view.__class_name == "CraftingMechanicusBarterItemsView" and mod:get("enable_inventory_search") ~= false and type(SearchUI.decorate_definitions) == "function" then
+				definitions = SearchUI.decorate_definitions(definitions, view)
+			end
+
+			return func(view, definitions, settings, context)
+		end)
+	end
+
+	if method_available(CraftingMechanicusBarterItemsView, "_cb_fetch_inventory_items") then
+		mod:hook_safe(CraftingMechanicusBarterItemsView, "_cb_fetch_inventory_items", function(view)
+			if mod:get("enable_inventory_search") == false or view._better_inventory_search_grid_shifted or not view._item_grid or type(view._scenegraph_world_position) ~= "function" then
+				return
+			end
+
+			local position = view:_scenegraph_world_position("item_grid_pivot")
+			local x = type(position) == "table" and position[1]
+			local y = type(position) == "table" and position[2]
+
+			if type(x) == "number" and type(y) == "number" and type(view._item_grid.set_pivot_offset) == "function" then
+				view._item_grid:set_pivot_offset(x, y + 158)
+				view._better_inventory_search_grid_shifted = true
+			end
+		end)
+	end
+
+	if method_available(CraftingMechanicusBarterItemsView, "_sort_grid_layout") then
+		mod:hook(CraftingMechanicusBarterItemsView, "_sort_grid_layout", function(func, view, sort_function, ...)
+			local original_callback = view._current_present_grid_layout_callback
+
+			if mod:get("enable_inventory_search") == false or type(original_callback) ~= "function" or type(Features.search_compose_layout) ~= "function" then
+				return func(view, sort_function, ...)
+			end
+
+			local wrapped_callback = function(callback_view, layout)
+				local composed = Features.search_compose_layout(callback_view, layout)
+
+				if type(SearchUI.sync_query) == "function" then
+					SearchUI.sync_query(Features, callback_view)
+				end
+
+				return original_callback(callback_view, composed)
+			end
+
+			view._current_present_grid_layout_callback = wrapped_callback
+			local result = func(view, sort_function, ...)
+
+			if view._current_present_grid_layout_callback == wrapped_callback then
+				view._current_present_grid_layout_callback = original_callback
+			end
+
+			return result
+		end)
+	end
+
+	if method_available(CraftingMechanicusBarterItemsView, "update") then
+		mod:hook_safe(CraftingMechanicusBarterItemsView, "update", update_search)
+	end
+
+	if method_available(CraftingMechanicusBarterItemsView, "on_exit") then
+		mod:hook_safe(CraftingMechanicusBarterItemsView, "on_exit", function(view)
+			if type(SearchUI.release) == "function" then
+				SearchUI.release(view)
+			end
+			if type(Features.search_release) == "function" then
+				Features.search_release(view)
+			end
+			view._better_inventory_search_grid_shifted = nil
+		end)
+	end
 
 	if method_available(ViewElementInputLegend, "_handle_input") then
 		mod:hook(ViewElementInputLegend, "_handle_input", function(func, legend, ...)

@@ -44,6 +44,9 @@ local localization = {
 	inventory_search_filters = {
 		en = "Filters",
 	},
+	inventory_search_help = {
+		en = "Examples: sainted | name:\"power sword\" & blessing:cycler | rating:>=490. Fields: name, blessing, perk, type, mark, rarity, native-rarity, rating, base, favorite, equipped, new, loadout, perfect.",
+	},
 	inventory_search_filter_equipped = {
 		en = "Equipped",
 	},
@@ -58,6 +61,18 @@ local localization = {
 	},
 	inventory_search_filter_perfect = {
 		en = "Perfect",
+	},
+	inventory_search_filter_weapon = {
+		en = "Weapons",
+	},
+	inventory_search_filter_curio = {
+		en = "Curios",
+	},
+	inventory_search_filter_melee = {
+		en = "Melee",
+	},
+	inventory_search_filter_ranged = {
+		en = "Ranged",
 	},
 	inventory_options_controller_focus_keybind = {
 		en = "Items / widget focus keybind",

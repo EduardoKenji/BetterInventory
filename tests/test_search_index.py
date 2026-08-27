@@ -44,6 +44,7 @@ def main() -> None:
             end,
         }
         decorated_name_calls = 0
+        favorited_gear_id = "perfect"
         test_items = {
             weapon_card_display_name = function()
                 decorated_name_calls = decorated_name_calls + 1
@@ -60,7 +61,7 @@ def main() -> None:
             trait_description = function(master_item)
                 return master_item and master_item.trait == "perk_damage_carapace" and "+25% Damage vs Carapace Enemies" or ""
             end,
-            is_item_id_favorited = function(gear_id) return gear_id == "perfect" end,
+            is_item_id_favorited = function(gear_id) return gear_id == favorited_gear_id end,
         }
         custom_records = {
             perfect = {name = "Pink Emperor Dueling Sword?"},
@@ -181,6 +182,10 @@ def main() -> None:
     assert search_index.invalidate(index, sainted_item) is True
     search_index.project(index, sainted_item, context)
     assert index.metrics.builds == 5
+    lua.globals().favorited_gear_id = "other"
+    unfavorited, ok = search_index.project(index, sainted_item, context)
+    assert ok is True and unfavorited.favorite is False
+    assert index.metrics.builds == 6
 
     # Custom-tier configuration changes invalidate effective rarity without
     # mutating native rarity or retaining the item in a strong-key cache.

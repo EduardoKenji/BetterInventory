@@ -79,7 +79,7 @@ local function append_collection_fingerprint(parts, collection)
 	end
 end
 
-local function fingerprint(item, dependencies)
+local function fingerprint(item, dependencies, context)
 	local parts = {}
 
 	for _, key in ipairs({
@@ -112,16 +112,9 @@ local function fingerprint(item, dependencies)
 	append_collection_fingerprint(parts, safe_member(item, "traits"))
 	local customization = safe_call(dependencies and dependencies.customization_get, safe_member(item, "gear_id"))
 
-	for _, key in ipairs({ "name" }) do
-		local value = safe_member(customization, key)
-
-		if type(value) == "table" then
-			for index = 1, math.min(#value, 4) do
-				append_fingerprint(parts, value[index])
-			end
-		else
-			append_fingerprint(parts, value)
-		end
+	append_fingerprint(parts, safe_member(customization, "name"))
+	for _, provider_name in ipairs({ "is_favorited", "is_equipped", "is_loadout", "is_new", "is_perfect" }) do
+		append_fingerprint(parts, safe_call(dependencies and dependencies[provider_name], item, context) == true and 1 or 0)
 	end
 
 	return table.concat(parts, "\31")
@@ -426,7 +419,7 @@ SearchIndex.project = function(index, value, context)
 		return nil, false
 	end
 
-	local fingerprint_ok, current_fingerprint = pcall(fingerprint, item, index.dependencies)
+	local fingerprint_ok, current_fingerprint = pcall(fingerprint, item, index.dependencies, context)
 
 	if not fingerprint_ok then
 		index.metrics.failures = index.metrics.failures + 1
