@@ -1757,6 +1757,8 @@ if ensure_class_method(CreditsVendorView, "update") then
 		if is_armoury_sort_view(view) then
 			Features.update_armoury_native_sort_panel(view)
 			align_quick_level_mastery_buttons(view)
+			-- Flush the shared Requisition/GlobalStore vendor queue post-update.
+			Features.flush_inventory_resort(mod, Layout, view)
 		end
 	end)
 end
@@ -2203,6 +2205,9 @@ mod:hook(ViewElementGrid, "_update_window_size", function(func, item_grid, ...)
 
 	if WeaponOptionsPanel and type(WeaponOptionsPanel.finalize_layout) == "function" then
 		WeaponOptionsPanel.finalize_layout(item_grid)
+	end
+	if SearchUI and type(SearchUI.finalize_grid_clip) == "function" then
+		SearchUI.finalize_grid_clip(item_grid)
 	end
 
 	return unpack_values(results, 1, results.n)

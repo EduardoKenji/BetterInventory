@@ -2,6 +2,7 @@
 
 ## 3.2.0 - 2026-08-27
 
+- Clips scrolled equipment cards below the text-search field and flushes deferred search sorting in Armoury Requisition and GlobalStore Multi-Operative Supply views.
 - Adds original standalone search to inventory, Armoury/other supported vendors, Hadron modify, and Hadron sacrifice views through current native presentation seams.
 - Searches custom and native names, weapon families and marks, blessings, perks, item types, ratings, state flags, effective rarity, and underlying native rarity with bounded literal parsing.
 - Keeps Better Inventory's visible `Sainted` tier distinct from native `Transcendent`; `native-rarity:` can deliberately include both stored rarity-5 groups.

@@ -90,6 +90,7 @@ def main() -> None:
     assert definitions.grid_settings.top_padding is None
     assert decorated.grid_settings.title_height == 108
     assert decorated.grid_settings.top_padding == 36
+    assert decorated.grid_settings.better_inventory_search_clip_pivot_y == 158
     assert decorated.scenegraph_definition.better_inventory_search_input.position[2] == 122
     assert decorated.scenegraph_definition.better_inventory_search_input.size[1] == 568
     assert decorated.scenegraph_definition.better_inventory_search_filters is None
@@ -133,6 +134,7 @@ def main() -> None:
     )
     assert vendor.grid_settings.title_height == 0
     assert vendor.grid_settings.top_padding == 112
+    assert vendor.grid_settings.better_inventory_search_clip_pivot_y == 138
     assert vendor.scenegraph_definition.better_inventory_search_input.position[2] == 102
 
     general_vendor = search_ui.decorate_definitions(
@@ -161,6 +163,7 @@ def main() -> None:
         lua.globals().test_mod,
     )
     assert custom_inventory.grid_settings.top_padding == 42
+    assert custom_inventory.grid_settings.better_inventory_search_clip_pivot_y == 162
     assert custom_inventory.scenegraph_definition.better_inventory_search_input.position[2] == 126
     lua.globals().settings.inventory_search_armoury_top_padding = 26
     lua.globals().settings.inventory_search_armoury_bottom_padding = 44
@@ -170,6 +173,7 @@ def main() -> None:
         lua.globals().test_mod,
     )
     assert custom_armoury.grid_settings.top_padding == 124
+    assert custom_armoury.grid_settings.better_inventory_search_clip_pivot_y == 142
     assert custom_armoury.scenegraph_definition.better_inventory_search_input.position[2] == 106
 
     missing_geometry = lua.table_from(
@@ -233,6 +237,53 @@ def main() -> None:
     assert search_ui.is_writing(view) is True
     assert search_ui.defocus(view) is True
     assert input_widget.content.input_text == "sword"
+
+    # Native ViewElementGrid centers its mask. Search clipping moves only the
+    # top edge below the field and preserves the native bottom edge.
+    lua.execute(
+        r'''
+        clip_grid = {
+            _menu_settings = {
+                better_inventory_search_clip_pivot_y = 158,
+                title_height = 108,
+            },
+            _display_name_key = "Primary Weapon",
+            sizes = {
+                grid_background = {596, 737},
+                grid_mask = {680, 701},
+                grid_interaction = {680, 701},
+            },
+            positions = {grid_mask = {0, 18, 2}},
+            _scenegraph_size = function(self, id)
+                return self.sizes[id][1], self.sizes[id][2]
+            end,
+            scenegraph_position = function(self, id)
+                return self.positions[id]
+            end,
+            _set_scenegraph_size = function(self, id, width, height)
+                self.sizes[id] = {width or self.sizes[id][1], height or self.sizes[id][2]}
+            end,
+            _set_scenegraph_position = function(self, id, x, y)
+                local position = self.positions[id] or {0, 0, 0}
+                position[1] = x or position[1]
+                position[2] = y or position[2]
+                self.positions[id] = position
+            end,
+        }
+        clip_before_bottom = 737 * 0.5 + clip_grid.positions.grid_mask[2] + clip_grid.sizes.grid_mask[2] * 0.5
+        '''
+    )
+    assert search_ui.finalize_grid_clip(lua.globals().clip_grid) is True
+    assert lua.globals().clip_grid.sizes.grid_mask[2] == 671
+    assert lua.globals().clip_grid.sizes.grid_interaction[2] == 671
+    assert lua.globals().clip_grid.positions.grid_mask[2] == 33
+    assert (
+        lua.globals().clip_grid.sizes.grid_mask[2] * 0.5
+        + lua.globals().clip_grid.positions.grid_mask[2]
+        + 737 * 0.5
+        == lua.globals().clip_before_bottom
+    )
+    assert search_ui.finalize_grid_clip(lua.table_from({})) is False
 
     # Missing actions must never be passed to InputService:get: Darktide crashes
     # instead of returning false when its action rule does not exist.

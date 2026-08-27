@@ -4,6 +4,9 @@ local TextInputPassTemplates = require("scripts/ui/pass_templates/text_input_pas
 local SearchUI = {}
 local INPUT_NAME = "better_inventory_search_input"
 local MAX_QUERY_LENGTH = 128
+local INPUT_HEIGHT = 34
+local CLIP_CLEARANCE = 2
+local BOTTOM_DIVIDER_HEIGHT_OFFSET = 16
 local SEARCH_ROW_PADDING = 48
 local INVENTORY_SEARCH_ROW_PADDING = 36
 local ARMOURY_SEARCH_ROW_PADDING = 32
@@ -130,9 +133,15 @@ SearchUI.decorate_definitions = function(definitions, view, mod)
 		horizontal_alignment = "left",
 		parent = "item_grid_pivot",
 		vertical_alignment = "top",
-		size = { width, 34 },
+		size = { width, INPUT_HEIGHT },
 		position = { x, y, 90 },
 	}
+	-- ViewElementGrid normally clips at its content top padding. The search field
+	-- occupies part of that same region, so scrolling could otherwise move card
+	-- render targets over the field. Store the desired clip edge relative to the
+	-- parent pivot; finalize_grid_clip converts it after native title geometry is
+	-- known and preserves the grid's native bottom edge.
+	owned.grid_settings.better_inventory_search_clip_pivot_y = y + INPUT_HEIGHT + CLIP_CLEARANCE
 	owned.widget_definitions[INPUT_NAME] = UIWidget.create_definition(TextInputPassTemplates.simple_input_field, INPUT_NAME, {
 		caret_position = 1,
 		input_text = "",
@@ -140,6 +149,49 @@ SearchUI.decorate_definitions = function(definitions, view, mod)
 	})
 
 	return owned
+end
+
+SearchUI.finalize_grid_clip = function(item_grid)
+	local menu_settings = item_grid and item_grid._menu_settings
+	local clip_pivot_y = menu_settings and tonumber(menu_settings.better_inventory_search_clip_pivot_y)
+
+	if not clip_pivot_y
+		or type(item_grid._scenegraph_size) ~= "function"
+		or type(item_grid.scenegraph_position) ~= "function"
+		or type(item_grid._set_scenegraph_size) ~= "function"
+		or type(item_grid._set_scenegraph_position) ~= "function" then
+		return false
+	end
+
+	local _, background_height = item_grid:_scenegraph_size("grid_background")
+	local mask_width, mask_height = item_grid:_scenegraph_size("grid_mask")
+	local mask_position = item_grid:scenegraph_position("grid_mask")
+
+	if type(background_height) ~= "number"
+		or type(mask_width) ~= "number"
+		or type(mask_height) ~= "number"
+		or type(mask_position) ~= "table"
+		or type(mask_position[2]) ~= "number" then
+		return false
+	end
+
+	local title_offset = 0
+
+	if item_grid._display_name_key ~= nil then
+		title_offset = math.max((tonumber(menu_settings.title_height) or 0) - BOTTOM_DIVIDER_HEIGHT_OFFSET, 0)
+	end
+
+	local current_top = background_height * 0.5 + mask_position[2] - mask_height * 0.5
+	local current_bottom = background_height * 0.5 + mask_position[2] + mask_height * 0.5
+	local desired_top = math.max(clip_pivot_y - title_offset, current_top)
+	local desired_height = math.max(current_bottom - desired_top, 0)
+	local desired_position_y = (desired_top + current_bottom) * 0.5 - background_height * 0.5
+
+	item_grid:_set_scenegraph_size("grid_mask", mask_width, desired_height)
+	item_grid:_set_scenegraph_position("grid_mask", nil, desired_position_y)
+	item_grid:_set_scenegraph_size("grid_interaction", mask_width, desired_height)
+
+	return true
 end
 
 local function input_widget(view)

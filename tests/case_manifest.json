@@ -12,7 +12,7 @@
     {"name": "supported_view_adapters_facade_and_lifecycle_composition", "risk": "high", "start_line": 1, "end_line": 327}
   ],
   "test_search_ui.py": [
-      {"name": "single_field_configurable_view_spacing_disable_focus_and_release", "risk": "high", "start_line": 1, "end_line": 278}
+      {"name": "single_field_configurable_view_spacing_clipping_disable_focus_and_release", "risk": "high", "start_line": 1, "end_line": 329}
   ],
   "test_search_hooks.py": [
     {"name": "native_grid_and_hadron_sacrifice_hook_composition", "risk": "high", "start_line": 1, "end_line": 209}

@@ -28,6 +28,7 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - Defaults to dimming unmatched cards and promoting matches above the existing Better Inventory and native/ItemSorting hierarchy. An option can hide unmatched cards instead; clearing search restores v3.1.0 ordering and presentation.
 - Coalesces rapid typing, caches bounded projections, restores widget alpha ownership, defocuses without clearing on card selection, and releases all per-view search state on closure or hot reload. Optional per-character/view query memory remains Off by default.
 - Curio perk searches distinguish the primary trait from secondary perks. With equipped/favorite priority enabled, matches rank as equipped primary+secondary, equipped primary, equipped secondary, then the same three non-equipped groups; ties and non-matches retain the selected existing comparator.
+- Scrolled cards are clipped below the search row, and the shared Armoury vendor lifecycle flushes search ordering for both Requisition Weapons & Curios and GlobalStore Multi-Operative Supply.
 
 ## What's new in v3.1.0
 
