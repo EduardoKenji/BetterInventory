@@ -279,12 +279,6 @@ Integration.new = function(mod, dependencies)
 		clear_memory = function()
 			return SearchRuntime.clear_memory(runtime)
 		end,
-		chips = function(view)
-			return SearchRuntime.chips(runtime, view)
-		end,
-		counts = function(view)
-			return SearchRuntime.counts(runtime, view)
-		end,
 		filter_result = function(view, entry, native_result)
 			return SearchRuntime.native_filter(runtime, view, entry, native_result)
 		end,
@@ -304,8 +298,8 @@ Integration.new = function(mod, dependencies)
 		release_all = function()
 			return SearchRuntime.release_all(runtime)
 		end,
-		set_query = function(view, query, chips, time)
-			local valid, error_code = SearchRuntime.set_query(runtime, view, query, chips, time)
+		set_query = function(view, query, time)
+			local valid, error_code = SearchRuntime.set_query(runtime, view, query, time)
 
 			if valid then
 				request_presentation(view)
@@ -348,8 +342,6 @@ Integration.install = function(facade, mod, providers, configure_sort, global_st
 	Integration.warn_legacy_searcher(mod, rawget(_G, "get_mod"))
 
 	facade.search_apply_widget_alpha = integration.apply_widget_alpha
-	facade.search_counts = integration.counts
-	facade.search_chips = integration.chips
 	facade.search_compose_layout = integration.compose_layout
 	facade.search_filter_result = integration.filter_result
 	facade.search_invalidate_all = integration.invalidate_all

@@ -39,18 +39,6 @@ local function item_from(entry)
 	end
 end
 
-local function copy_array(values)
-	local copy = {}
-
-	if type(values) == "table" then
-		for index = 1, #values do
-			copy[index] = values[index]
-		end
-	end
-
-	return copy
-end
-
 local function query_is_active(state)
 	return state and state.compiled and state.compiled.empty ~= true and state.compiled.fail_open ~= true
 end
@@ -123,7 +111,6 @@ end
 local function compile_state(runtime, state)
 	local aliases = safe_call(runtime.dependencies.rarity_aliases, state.index) or {}
 	state.compiled = runtime.dependencies.query.compile(state.query, {
-		chips = state.chips,
 		rarity_aliases = aliases,
 	})
 	state.error = state.compiled and state.compiled.error or nil
@@ -159,12 +146,7 @@ local function state_for(runtime, view, create)
 	end
 
 	state = {
-		chips = {},
 		compiled = nil,
-		counts = {
-			matched = 0,
-			total = 0,
-		},
 		error = nil,
 		family = family,
 		faulted = false,
@@ -185,7 +167,6 @@ local function state_for(runtime, view, create)
 
 		if remembered then
 			state.query = remembered.query or ""
-			state.chips = copy_array(remembered.chips)
 		end
 	end
 
@@ -217,17 +198,15 @@ end
 
 local function scan(runtime, view, state, source_layout)
 	state.generation = state.generation + 1
-	state.counts.matched = 0
-	state.counts.total = 0
 
 	if not query_is_active(state) then
-		return state.counts
+		return
 	end
 
 	local layout = source_layout or view._offer_items_layout
 
 	if type(layout) ~= "table" then
-		return state.counts
+		return
 	end
 
 	for index = 1, #layout do
@@ -238,15 +217,8 @@ local function scan(runtime, view, state, source_layout)
 			local matched = entry_matches(runtime, state, entry, view)
 			set_result(state, entry, matched)
 			set_result(state, item, matched)
-			state.counts.total = state.counts.total + 1
-
-			if matched then
-				state.counts.matched = state.counts.matched + 1
-			end
 		end
 	end
-
-	return state.counts
 end
 
 local function schedule_present(runtime, state, now)
@@ -353,7 +325,7 @@ SearchRuntime.compose_layout = function(runtime, view, layout)
 	return matches
 end
 
-SearchRuntime.set_query = function(runtime, view, query, chips, now)
+SearchRuntime.set_query = function(runtime, view, query, now)
 	local state = state_for(runtime, view, true)
 
 	if not state then
@@ -361,7 +333,6 @@ SearchRuntime.set_query = function(runtime, view, query, chips, now)
 	end
 
 	state.query = type(query) == "string" and query or tostring(query or "")
-	state.chips = copy_array(chips)
 	compile_state(runtime, state)
 	scan(runtime, view, state)
 	schedule_present(runtime, state, now)
@@ -558,7 +529,6 @@ SearchRuntime.release = function(runtime, view)
 
 		if key then
 			runtime.memory[key] = {
-				chips = copy_array(state.chips),
 				query = state.query,
 			}
 		end
@@ -601,18 +571,6 @@ SearchRuntime.query = function(runtime, view)
 	local state = state_for(runtime, view, false)
 
 	return state and state.query or ""
-end
-
-SearchRuntime.chips = function(runtime, view)
-	local state = state_for(runtime, view, false)
-
-	return copy_array(state and state.chips)
-end
-
-SearchRuntime.counts = function(runtime, view)
-	local state = state_for(runtime, view, false)
-
-	return state and state.counts.matched or 0, state and state.counts.total or 0
 end
 
 SearchRuntime.is_active = function(runtime, view)

@@ -98,8 +98,10 @@ SearchHooks.install = function(dependencies)
 			local x = type(position) == "table" and position[1]
 			local y = type(position) == "table" and position[2]
 
-			if type(x) == "number" and type(y) == "number" and type(view._item_grid.set_pivot_offset) == "function" then
-				view._item_grid:set_pivot_offset(x, y + 158)
+			local grid_offset = type(SearchUI.barter_grid_offset) == "function" and SearchUI.barter_grid_offset() or 100
+
+			if type(x) == "number" and type(y) == "number" and type(grid_offset) == "number" and type(view._item_grid.set_pivot_offset) == "function" then
+				view._item_grid:set_pivot_offset(x, y + grid_offset)
 				view._better_inventory_search_grid_shifted = true
 			end
 		end)

@@ -58,8 +58,6 @@ def main() -> None:
             end,
             apply_widget_alpha = function() return true end,
             clear_memory = function() clear_memory_calls = clear_memory_calls + 1 end,
-            counts = function() return 4, 9 end,
-            chips = function() return {{field = "favorite", value = true}} end,
             native_filter = function(_, _, _, native) return native end,
             invalidate_all = function() return true end,
             is_active = function() return true end,
@@ -246,8 +244,6 @@ def main() -> None:
     assert lua.globals().current_mode == "dim"
     assert lua.globals().remember_mode is False
 
-    assert facade.search_counts(view) == (4, 9)
-    assert facade.search_chips(view)[1].field == "favorite"
     assert facade.search_query(view) == "sword"
     assert facade.search_rank(view, lua.table_from({"match": True})) == 1
     assert facade.search_filter_result(view, {}, True) is True
@@ -255,7 +251,7 @@ def main() -> None:
     assert facade.search_invalidate_all(view, 1) is True
     assert facade.search_is_active(view) is True
     assert facade.search_update(view, 1) is True
-    assert facade.search_set_query(view, "axe", None, 1) == (True, None)
+    assert facade.search_set_query(view, "axe", 1) == (True, None)
     assert lua.globals().requested_resorts == 1
 
     sacrifice = lua.table_from({"__class_name": "CraftingMechanicusBarterItemsView"})
@@ -265,7 +261,7 @@ def main() -> None:
     assert lua.execute("return sacrifice_layout == composed_layout") is True
     assert lua.globals().begins == 2
     assert lua.globals().cleanups == 2
-    assert facade.search_set_query(sacrifice, "axe", None, 1) == (True, None)
+    assert facade.search_set_query(sacrifice, "axe", 1) == (True, None)
     assert lua.globals().requested_resorts == 1
     lua.execute(
         r'''
@@ -299,7 +295,7 @@ def main() -> None:
     assert lua.globals().release_all_calls == 1
     assert lua.globals().clear_memory_calls == 2
     lua.globals().test_settings.enable_inventory_search = True
-    assert facade.search_set_query(view, "bad", None, 1) == (False, "invalid")
+    assert facade.search_set_query(view, "bad", 1) == (False, "invalid")
     assert lua.globals().requested_resorts == 2
 
     lua.globals().registered_cleanup(view)

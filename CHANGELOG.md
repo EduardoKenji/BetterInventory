@@ -5,13 +5,14 @@
 - Adds original standalone search to inventory, Armoury/other supported vendors, Hadron modify, and Hadron sacrifice views through current native presentation seams.
 - Searches custom and native names, weapon families and marks, blessings, perks, item types, ratings, state flags, effective rarity, and underlying native rarity with bounded literal parsing.
 - Keeps Better Inventory's visible `Sainted` tier distinct from native `Transcendent`; `native-rarity:` can deliberately include both stored rarity-5 groups.
-- Supports quoted phrases, explicit `&`, field-qualified numeric comparisons and ranges, plus quick chips for equipped, favorite, new, loadout, perfect, weapons, Curios, melee, and ranged items.
+- Supports quoted phrases, explicit `&`, and field-qualified text, boolean, numeric comparison, and range clauses through one compact text field.
 - Defaults to promoting matches and dimming unmatched cards while preserving Better Inventory priorities and the selected native or ItemSorting comparator within each group; optional hide mode composes with native filtering.
 - Coalesces rapid edits, reuses bounded weak projection/result caches, restores owned alpha values, fails open when a view contract is unavailable, and releases per-view state on close or hot reload.
 - Defocuses search without clearing it when a card is selected. Query memory is optional, bounded by character and logical view family, and disabled by default.
 - Warns once when legacy Stuff Searcher is also enabled and avoids invoking GodRolls' decorated-name/stat projection while indexing.
 - Restores the `InventoryWeaponsView` runtime dependency accidentally omitted during search-adapter extraction and guards its optional hook targets, preventing the four startup `hook_safe`/`hook` nil-object errors.
 - Validates search focus and Escape actions against each view's input service before reading them, preventing the instant textbox-focus crash caused by the unavailable `cancel_pressed` action in vendor views.
+- Removes the redundant expandable quick-filter controls and their dead chip state, and reserves the single search row through native content padding so grid titles such as `Primary Weapon` retain their original position.
 
 ## 3.1.0 - 2026-08-26
 

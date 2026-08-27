@@ -106,14 +106,12 @@ def main() -> None:
     unsupported = lua.globals().make_view("veteran", None, 1)
     assert search_runtime.register(runtime, unsupported) is None
     assert search_runtime.capture_presentation(runtime, unsupported, None, None, None) is False
-    assert search_runtime.set_query(runtime, unsupported, "sword", None, 0) is False
+    assert search_runtime.set_query(runtime, unsupported, "sword", 0) is False
     assert search_runtime.invalidate(runtime, unsupported, None, 0) is False
     assert search_runtime.invalidate_all(runtime, unsupported, 0) is False
     assert search_runtime.refresh(runtime, unsupported, 0) is False
     assert search_runtime.release(runtime, unsupported) is False
     assert search_runtime.query(runtime, unsupported) == ""
-    assert len(search_runtime.chips(runtime, unsupported)) == 0
-    assert search_runtime.counts(runtime, unsupported) == (0, 0)
     assert search_runtime.is_active(runtime, unsupported) is None
     assert search_runtime.native_filter(runtime, unsupported, {}, True) is True
     assert search_runtime.rank(runtime, unsupported, {}) == 0
@@ -139,10 +137,8 @@ def main() -> None:
     )
     assert lua.execute("return inactive_layout == inactive_composed") is True
     search_runtime.capture_presentation(runtime, view, "slot", "type", "title")
-    valid, error = search_runtime.set_query(runtime, view, "sword", None, 10)
+    valid, error = search_runtime.set_query(runtime, view, "sword", 10)
     assert valid is True and error is None
-    counts = search_runtime.counts(runtime, view)
-    assert counts == (100, 200), counts
     assert search_runtime.rank(runtime, view, view._offer_items_layout[2]) == 1
     assert search_runtime.rank(runtime, view, view._offer_items_layout[1]) == 0
     assert search_runtime.native_filter(runtime, view, None, True) is True
@@ -156,8 +152,8 @@ def main() -> None:
 
     # Present requests are coalesced for 80 ms and do not allocate or rerun the
     # native presentation for every keystroke.
-    search_runtime.set_query(runtime, view, "axe", None, 10.02)
-    search_runtime.set_query(runtime, view, "odd axe", None, 10.04)
+    search_runtime.set_query(runtime, view, "axe", 10.02)
+    search_runtime.set_query(runtime, view, "odd axe", 10.04)
     lua.globals().second_result_table = search_runtime.state(runtime, view).results
     assert lua.execute("return first_result_table == second_result_table") is True
     assert search_runtime.update(runtime, view, 10.11) is False
@@ -189,7 +185,7 @@ def main() -> None:
     external_layout = lua.table_from(
         {1: spacing_top, 2: axe_entry, 3: sword_entry, 4: spacing_bottom}
     )
-    search_runtime.set_query(runtime, external, "sword", None, 20)
+    search_runtime.set_query(runtime, external, "sword", 20)
     composed = search_runtime.compose_layout(runtime, external, external_layout)
     lua.globals().external_composed = composed
     lua.globals().spacing_top = spacing_top
@@ -201,7 +197,6 @@ def main() -> None:
         "external_composed[2] == sword_entry and external_composed[3] == axe_entry "
         "and external_composed[4] == spacing_bottom"
     ) is True
-    assert search_runtime.counts(runtime, external) == (1, 2)
     assert search_runtime.update(runtime, external, 20.08) is True
     assert lua.globals().external_present_calls == 1
     assert search_runtime.state(runtime, external).last_present_arguments is None
@@ -220,7 +215,7 @@ def main() -> None:
     gridless = lua.globals().make_view("veteran", "inventory", 1)
     gridless._item_grid = None
     search_runtime.capture_presentation(runtime, gridless, None, None, None)
-    search_runtime.set_query(runtime, gridless, "axe", None, 21)
+    search_runtime.set_query(runtime, gridless, "axe", 21)
     assert search_runtime.apply_widget_alpha(runtime, gridless) is False
     assert search_runtime.release(runtime, gridless) is True
 
@@ -241,7 +236,7 @@ def main() -> None:
     search_runtime.capture_presentation(
         failing_runtime, failing_view, "slot", "type", "title"
     )
-    search_runtime.set_query(failing_runtime, failing_view, "axe", None, 30)
+    search_runtime.set_query(failing_runtime, failing_view, "axe", 30)
     assert search_runtime.update(failing_runtime, failing_view, 31) is False
     assert search_runtime.state(failing_runtime, failing_view).faulted is True
     assert search_runtime.update(failing_runtime, failing_view, 32) is False
@@ -263,23 +258,17 @@ def main() -> None:
     # Clearing a query restores only alpha values that this runtime still owns.
     matched.fail_projection = False
     lua.globals().configured_mode = "dim"
-    search_runtime.set_query(runtime, view, "sword", None, 13)
+    search_runtime.set_query(runtime, view, "sword", 13)
     first_widget = view._item_grid._all_grid_widgets[1]
     assert first_widget.content.alpha_multiplier == 0.4
     first_widget.content.alpha_multiplier = 0.7
-    search_runtime.set_query(runtime, view, "", None, 14)
+    search_runtime.set_query(runtime, view, "", 14)
     assert first_widget.content.alpha_multiplier == 0.7
 
     # Optional session memory is character/view-family scoped. Release always
     # drops weak results, projected records and widget ownership.
     lua.globals().remember = True
-    search_runtime.set_query(
-        runtime,
-        view,
-        "axe",
-        lua.table_from({1: lua.table_from({"field": "favorite", "value": True})}),
-        15,
-    )
+    search_runtime.set_query(runtime, view, "axe", 15)
     index = search_runtime.state(runtime, view).index
     assert search_runtime.release(runtime, view) is True
     assert index.released is True

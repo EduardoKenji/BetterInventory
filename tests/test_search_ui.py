@@ -24,21 +24,14 @@ def main() -> None:
         Utf8 = {string_length = function(value) return #value end}
         ui_widget = {
             create_definition = function(passes, scenegraph_id, initial)
-                local style = {}
-                for index = 1, #(passes or {}) do
-                    local pass = passes[index]
-                    if pass.style_id then style[pass.style_id] = clone_table(pass.style or {}) end
-                end
                 local content = clone_table(initial or {})
                 content.hotspot = content.hotspot or {}
-                return {content = content, passes = passes, scenegraph_id = scenegraph_id, style = style}
+                return {content = content, passes = passes, scenegraph_id = scenegraph_id, style = {}}
             end,
         }
-        font_settings = {body = {font_size = 18}}
         input_templates = {simple_input_field = {}}
         function require(path)
             if path == "scripts/managers/ui/ui_widget" then return ui_widget end
-            if path == "scripts/managers/ui/ui_font_settings" then return font_settings end
             if path == "scripts/ui/pass_templates/text_input_pass_templates" then return input_templates end
             error(path)
         end
@@ -51,18 +44,14 @@ def main() -> None:
             localize = function(_, id) return "loc:" .. id end,
         }
         last_query = nil
-        last_chips = nil
+        last_time = nil
         set_calls = 0
         features = {
             search_query = function() return "remembered" end,
-            search_chips = function()
-                return {{field = "favorite", value = true}}
-            end,
-            search_counts = function() return 2, 10 end,
-            search_set_query = function(_, query, chips)
+            search_set_query = function(_, query, time)
                 set_calls = set_calls + 1
                 last_query = query
-                last_chips = chips
+                last_time = time
                 return query ~= "invalid", query == "invalid" and "bad" or nil
             end,
         }
@@ -94,20 +83,54 @@ def main() -> None:
     decorated = search_ui.decorate_definitions(definitions, view)
     assert decorated is not definitions
     assert definitions.grid_settings.title_height == 108
-    assert decorated.grid_settings.title_height == 170
-    assert decorated.scenegraph_definition.better_inventory_search_input is not None
-    assert decorated.scenegraph_definition.better_inventory_search_filter_perfect is not None
-    assert decorated.scenegraph_definition.better_inventory_search_filter_type_weapon is not None
-    assert decorated.scenegraph_definition.better_inventory_search_filter_type_ranged is not None
-    assert decorated.widget_definitions.better_inventory_search_clear is not None
+    assert definitions.grid_settings.top_padding is None
+    assert decorated.grid_settings.title_height == 108
+    assert decorated.grid_settings.top_padding == 48
+    assert decorated.scenegraph_definition.better_inventory_search_input.position[2] == 100
+    assert decorated.scenegraph_definition.better_inventory_search_input.size[1] == 568
+    assert decorated.scenegraph_definition.better_inventory_search_filters is None
+    assert decorated.widget_definitions.better_inventory_search_clear is None
     lua.globals().decorated_once = decorated
     lua.globals().decorated_twice = search_ui.decorate_definitions(decorated, view)
     assert lua.execute("return decorated_once == decorated_twice") is True
 
+    # A single search row extends native content padding without moving native
+    # title geometry. Vendor tab padding is preserved and extended.
+    crafting_definitions = lua.table_from(
+        {
+            "grid_settings": lua.table_from({"title_height": 80}),
+            "scenegraph_definition": lua.table_from({"item_grid_pivot": lua.table_from({})}),
+            "widget_definitions": lua.table_from({}),
+        }
+    )
+    crafting = search_ui.decorate_definitions(
+        crafting_definitions,
+        lua.table_from({"__class_name": "CraftingMechanicusModifyView"}),
+    )
+    assert crafting.grid_settings.title_height == 80
+    assert crafting.grid_settings.top_padding == 48
+    assert crafting.scenegraph_definition.better_inventory_search_input.position[2] == 72
+
+    vendor_definitions = lua.table_from(
+        {
+            "grid_settings": lua.table_from({"title_height": 0, "top_padding": 80}),
+            "scenegraph_definition": lua.table_from({"item_grid_pivot": lua.table_from({})}),
+            "widget_definitions": lua.table_from({}),
+        }
+    )
+    vendor = search_ui.decorate_definitions(
+        vendor_definitions,
+        lua.table_from({"__class_name": "CreditsVendorView"}),
+    )
+    assert vendor.grid_settings.title_height == 0
+    assert vendor.grid_settings.top_padding == 128
+    assert vendor.scenegraph_definition.better_inventory_search_input.position[2] == 84
+
     sacrifice_view = lua.table_from({"__class_name": "CraftingMechanicusBarterItemsView"})
     sacrifice = search_ui.decorate_definitions(definitions, sacrifice_view)
     assert sacrifice.scenegraph_definition.better_inventory_search_input.position[2] == 58
-    assert sacrifice.scenegraph_definition.better_inventory_search_filters.position[2] == 96
+    assert sacrifice.scenegraph_definition.better_inventory_search_input.size[1] == 486
+    assert search_ui.barter_grid_offset() == 100
 
     missing_geometry = lua.table_from(
         {
@@ -118,9 +141,7 @@ def main() -> None:
     )
     missing_view = lua.table_from({"__class_name": "InventoryWeaponsView"})
     lua.globals().missing_geometry = missing_geometry
-    lua.globals().missing_result = search_ui.decorate_definitions(
-        missing_geometry, missing_view
-    )
+    lua.globals().missing_result = search_ui.decorate_definitions(missing_geometry, missing_view)
     assert lua.execute("return missing_geometry == missing_result") is True
     assert missing_view._better_inventory_search_ui_unavailable is True
 
@@ -130,106 +151,49 @@ def main() -> None:
     lua.globals().same_definitions = same
     assert lua.execute("return original_definitions == same_definitions") is True
 
-    # Materialize the per-view widgets exactly as BaseView would after loading
-    # the cloned definitions.
+    lua.globals().decorated_defs = decorated
     lua.execute(
         r'''
         function make_widget(name)
-            local source = decorated_defs.widget_definitions[name]
-            return clone_table(source)
+            return clone_table(decorated_defs.widget_definitions[name])
         end
         ''',
     )
-    lua.globals().decorated_defs = decorated
-    names = [
-        "better_inventory_search_input",
-        "better_inventory_search_clear",
-        "better_inventory_search_count",
-        "better_inventory_search_help",
-        "better_inventory_search_help_text",
-        "better_inventory_search_filters",
-        "better_inventory_search_filter_equipped",
-        "better_inventory_search_filter_favorite",
-        "better_inventory_search_filter_new",
-        "better_inventory_search_filter_loadout",
-        "better_inventory_search_filter_perfect",
-        "better_inventory_search_filter_type_weapon",
-        "better_inventory_search_filter_type_curio",
-        "better_inventory_search_filter_type_melee",
-        "better_inventory_search_filter_type_ranged",
-    ]
-    widgets = lua.table_from({})
-    for name in names:
-        widgets[name] = lua.globals().make_widget(name)
+    widgets = lua.table_from(
+        {
+            "better_inventory_search_input": lua.globals().make_widget(
+                "better_inventory_search_input"
+            )
+        }
+    )
     view._widgets_by_name = widgets
 
     assert search_ui.sync_query(lua.globals().features, view) is True
-    assert widgets.better_inventory_search_input.content.input_text == "remembered"
-    assert view._better_inventory_search_quick_filters["favorite=true"] is True
+    input_widget = widgets.better_inventory_search_input
+    assert input_widget.content.input_text == "remembered"
+    search_ui.update(lua.globals().test_mod, lua.globals().features, view, 1)
+    assert input_widget.content.placeholder_text.startswith("loc:")
+    assert lua.globals().set_calls == 0
 
-    search_ui.update(
-        lua.globals().test_mod,
-        lua.globals().features,
-        view,
-        1,
-        lua.globals().input_service,
-    )
-    assert widgets.better_inventory_search_input.content.placeholder_text.startswith("loc:")
-    assert widgets.better_inventory_search_filter_equipped.visible is False
-    assert widgets.better_inventory_search_filter_type_weapon.visible is False
+    input_widget.content.input_text = "sword"
+    search_ui.update(lua.globals().test_mod, lua.globals().features, view, 2)
+    assert lua.globals().last_query == "sword"
+    assert lua.globals().last_time == 2
+    assert lua.globals().set_calls == 1
 
-    # Expand quick filters, select Equipped, and verify the next update sends
-    # both restored Favorite and new Equipped chips without clearing the text.
-    widgets.better_inventory_search_filters.content.hotspot.pressed_callback()
-    widgets.better_inventory_search_filter_equipped.content.hotspot.pressed_callback()
-    search_ui.update(lua.globals().test_mod, lua.globals().features, view, 2, None)
-    assert widgets.better_inventory_search_filter_equipped.visible is True
-    assert lua.globals().last_query == "remembered"
-    chip_fields = {
-        lua.globals().last_chips[index].field
-        for index in range(1, len(lua.globals().last_chips) + 1)
-    }
-    assert chip_fields == {"equipped", "favorite"}
-    assert widgets.better_inventory_search_count.content.text == "2 / 10"
-
-    # Type chips share one mutually-exclusive field so Curio replaces Weapon,
-    # while text and boolean chips remain intact. Help is an in-view popover.
-    widgets.better_inventory_search_filter_type_weapon.content.hotspot.pressed_callback()
-    search_ui.update(lua.globals().test_mod, lua.globals().features, view, 2.1, None)
-    assert lua.globals().last_chips[3].field == "type"
-    assert lua.globals().last_chips[3].value == "weapon"
-    widgets.better_inventory_search_filter_type_curio.content.hotspot.pressed_callback()
-    search_ui.update(lua.globals().test_mod, lua.globals().features, view, 2.2, None)
-    type_values = [
-        lua.globals().last_chips[index].value
-        for index in range(1, len(lua.globals().last_chips) + 1)
-        if lua.globals().last_chips[index].field == "type"
-    ]
-    assert type_values == ["curio"]
-    widgets.better_inventory_search_help.content.hotspot.pressed_callback()
-    search_ui.update(lua.globals().test_mod, lua.globals().features, view, 2.3, None)
-    assert widgets.better_inventory_search_help_text.visible is True
-    assert "loc:inventory_search_help" in widgets.better_inventory_search_help_text.content.text
-
-    widgets.better_inventory_search_input.content.input_text = "invalid"
-    search_ui.update(lua.globals().test_mod, lua.globals().features, view, 3, None)
-    assert widgets.better_inventory_search_count.content.text == "loc:inventory_search_invalid"
-
-    # Clear owns both the text and chips. Card selection only defocuses and
-    # keeps the active query unchanged.
-    widgets.better_inventory_search_clear.content.hotspot.pressed_callback()
-    search_ui.update(lua.globals().test_mod, lua.globals().features, view, 4, None)
+    input_widget.content.input_text = "invalid"
+    search_ui.update(lua.globals().test_mod, lua.globals().features, view, 3)
+    assert lua.globals().last_query == "invalid"
+    input_widget.content.input_text = ""
+    search_ui.update(lua.globals().test_mod, lua.globals().features, view, 4)
     assert lua.globals().last_query == ""
-    assert len(lua.globals().last_chips) == 0
 
-    widgets.better_inventory_search_input.content.input_text = "sword"
+    input_widget.content.input_text = "sword"
     assert search_ui.focus(view) is True
     assert search_ui.is_writing(view) is True
     assert search_ui.defocus(view) is True
-    assert widgets.better_inventory_search_input.content.input_text == "sword"
+    assert input_widget.content.input_text == "sword"
 
-    # Configurable focus blocks the bound native action in that frame. Escape
-    # defocuses first and arms one legend suppression without clearing text.
     # Missing actions must never be passed to InputService:get: Darktide crashes
     # instead of returning false when its action rule does not exist.
     lua.globals().settings.inventory_search_focus_keybind = "missing_action"
@@ -253,10 +217,11 @@ def main() -> None:
     ) is True
     assert search_ui.is_writing(view) is False
     assert view._better_inventory_search_block_legend_once is True
-    assert widgets.better_inventory_search_input.content.input_text == "sword"
+    assert input_widget.content.input_text == "sword"
 
     search_ui.release(view)
-    assert view._better_inventory_search_quick_filters is None
+    assert view._better_inventory_search_widget_initialized is None
+    assert view._better_inventory_search_last_text is None
 
     print("BetterInventory search UI tests passed.")
 

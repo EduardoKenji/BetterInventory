@@ -45,14 +45,10 @@ def main() -> None:
         "string_length = function(value) return #value end}"
     )
 
-    def compile_query(text, *, aliases=None, chips=None, **limits):
+    def compile_query(text, *, aliases=None, **limits):
         options = lua.table_from(limits)
         if aliases is not None:
             options.rarity_aliases = lua.table_from(aliases)
-        if chips is not None:
-            options.chips = lua.table_from(
-                [lua.table_from(chip) for chip in chips]
-            )
         return query.compile(text, options)
 
     def record(**fields):
@@ -166,28 +162,6 @@ def main() -> None:
     assert query.matches(compile_query("favorite:1"), plasma) is True
     assert query.matches(compile_query("equipped:off"), plasma) is True
     assert query.matches(compile_query("new:0"), plasma) is True
-    assert query.matches(
-        compile_query("plasma", chips=[{"field": "favorite", "value": True}]),
-        plasma,
-    ) is True
-    assert query.matches(
-        compile_query("plasma", chips=[{"field": "equipped", "value": True}]),
-        plasma,
-    ) is False
-    assert query.matches(
-        compile_query("plasma", chips=[{"field": "type", "value": "ranged"}]),
-        plasma,
-    ) is True
-    assert compile_query("plasma", chips=[{"field": "type", "value": ""}]).valid is False
-    assert compile_query("plasma", chips=[{"value": True}]).valid is False
-    assert compile_query(
-        "", chips=[{"field": "favorite", "value": True}] * 17
-    ).error == "too_many_clauses"
-    invalid_chip_options = lua.table_from(
-        {"chips": lua.table_from({1: "not-a-chip"})}
-    )
-    assert query.compile("plasma", invalid_chip_options).error == "invalid_chip"
-
     # Invalid or excessive input fails open, preserving the authoritative list.
     invalid_cases = (
         'name:"unterminated',

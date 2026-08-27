@@ -357,39 +357,6 @@ local function parse_clause(raw_clause, rarity_aliases)
 	}
 end
 
-local function append_chip_clauses(clauses, chips, rarity_aliases, maximum)
-	for index = 1, #(chips or {}) do
-		local chip = chips[index]
-		local field = chip and FIELD_ALIASES[normalize(chip.field)]
-		local clause
-		local error_code
-
-		if not field then
-			return false, "invalid_chip"
-		elseif BOOLEAN_FIELDS[field] then
-			clause = {
-				field = field,
-				kind = "boolean",
-				value = chip.value == true,
-			}
-		else
-			clause, error_code = parse_text_clause(field, tostring(chip.value or ""), rarity_aliases)
-		end
-
-		if not clause then
-			return false, error_code or "invalid_chip"
-		end
-
-		clauses[#clauses + 1] = clause
-
-		if #clauses > maximum then
-			return false, "too_many_clauses"
-		end
-	end
-
-	return true
-end
-
 Query.compile = function(source, options)
 	options = type(options) == "table" and options or {}
 	source = type(source) == "string" and source or tostring(source or "")
@@ -418,12 +385,6 @@ Query.compile = function(source, options)
 		end
 
 		clauses[#clauses + 1] = clause
-	end
-
-	local chips_ok, chip_error = append_chip_clauses(clauses, options.chips, rarity_aliases, maximum_clauses)
-
-	if not chips_ok then
-		return invalid(source, chip_error)
 	end
 
 	return {

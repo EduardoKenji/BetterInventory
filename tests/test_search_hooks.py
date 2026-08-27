@@ -196,7 +196,7 @@ def main() -> None:
     assert g.legend_parent._better_inventory_search_block_legend_once is None
     assert lua.execute("return calls.defocus == view") is True
     assert g.calls.base_definitions.decorated is True
-    assert g.calls.pivot[1] == 100 and g.calls.pivot[2] == 208
+    assert g.calls.pivot[1] == 100 and g.calls.pivot[2] == 150
     assert lua.execute("return calls.compose[2] == native_layout") is True
     assert lua.execute("return calls.presented_layout == native_layout") is True
     assert lua.execute("return calls.ui_release == sacrifice_view") is True

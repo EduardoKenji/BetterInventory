@@ -17,14 +17,14 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - A standalone configurable legendary tier for visually identifying exceptional Transcendent weapons and Curios, with no Red Weapons At Home dependency.
 - Sorting that preserves equipped and favorite priorities and recognizes fifth attributes of 60, 61, and 62 as perfect rolls, ordered `62 > 61 > 60`.
 - A bounded inventory-options panel for sorting, discard rules, integrations, and view-specific controls.
-- Standalone, literal inventory search with quoted phrases, explicit AND, field filters, quick filters, match-first ranking, and configurable dim-or-hide behavior.
+- Standalone, literal inventory search with quoted phrases, explicit AND, typed field clauses, match-first ranking, and configurable dim-or-hide behavior.
 - Optional Quick Discard, Automatic Discard, Automatic Curio Buyer, and Auto Crafter workflows with explicit ownership, authoritative revalidation, and fail-closed behavior.
 
 ## What's new in v3.2.0
 
 - Adds original, standalone search to inventory, Armoury/other supported vendors, Hadron modify, and Hadron sacrifice views without retaining or replacing Darktide's authoritative item layouts.
 - Searches custom/native names, families, marks, blessings, perks, types, ratings, state flags, and effective rarity. `Sainted` and native `Transcendent` remain distinct, with `native-rarity:` available for the stored tier.
-- Supports quoted literal phrases, bounded `&` clauses, field-qualified comparisons/ranges, and quick filters for equipped, favorite, new, loadout, perfect, weapon, Curio, melee, and ranged items.
+- Supports quoted literal phrases, bounded `&` clauses, and field-qualified text, boolean, comparison, and range queries through one compact search field.
 - Defaults to dimming unmatched cards and promoting matches above the existing Better Inventory and native/ItemSorting hierarchy. An option can hide unmatched cards instead; clearing search restores v3.1.0 ordering and presentation.
 - Coalesces rapid typing, caches bounded projections, restores widget alpha ownership, defocuses without clearing on card selection, and releases all per-view search state on closure or hot reload. Optional per-character/view query memory remains Off by default.
 
