@@ -5,10 +5,10 @@ local SearchUI = {}
 local INPUT_NAME = "better_inventory_search_input"
 local MAX_QUERY_LENGTH = 128
 local SEARCH_ROW_PADDING = 48
-local INVENTORY_SEARCH_ROW_PADDING = 44
-local ARMOURY_SEARCH_ROW_PADDING = 40
-local TITLED_SEARCH_GAP = 13
-local ARMOURY_SEARCH_GAP = 21
+local INVENTORY_SEARCH_ROW_PADDING = 36
+local ARMOURY_SEARCH_ROW_PADDING = 32
+local TITLED_SEARCH_GAP = 14
+local ARMOURY_SEARCH_GAP = 22
 local BARTER_GRID_OFFSET = 100
 
 local function supported(view)

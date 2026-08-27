@@ -85,8 +85,8 @@ def main() -> None:
     assert definitions.grid_settings.title_height == 108
     assert definitions.grid_settings.top_padding is None
     assert decorated.grid_settings.title_height == 108
-    assert decorated.grid_settings.top_padding == 44
-    assert decorated.scenegraph_definition.better_inventory_search_input.position[2] == 121
+    assert decorated.grid_settings.top_padding == 36
+    assert decorated.scenegraph_definition.better_inventory_search_input.position[2] == 122
     assert decorated.scenegraph_definition.better_inventory_search_input.size[1] == 568
     assert decorated.scenegraph_definition.better_inventory_search_filters is None
     assert decorated.widget_definitions.better_inventory_search_clear is None
@@ -124,8 +124,8 @@ def main() -> None:
         lua.table_from({"__class_name": "CreditsVendorView"}),
     )
     assert vendor.grid_settings.title_height == 0
-    assert vendor.grid_settings.top_padding == 120
-    assert vendor.scenegraph_definition.better_inventory_search_input.position[2] == 101
+    assert vendor.grid_settings.top_padding == 112
+    assert vendor.scenegraph_definition.better_inventory_search_input.position[2] == 102
 
     general_vendor = search_ui.decorate_definitions(
         vendor_definitions,
