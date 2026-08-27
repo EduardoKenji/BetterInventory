@@ -337,7 +337,16 @@ local function append_trait_collection_descriptions(builder, dependencies, colle
 		end
 
 		if is_valid_text(description) then
-			append_trait_value(builder, field, scoped_field, description)
+			if scoped_field then
+				-- Curio relevance describes the concise lines visible on the card,
+				-- not every word in the native/Enhanced Descriptions prose. Keep
+				-- the full description available to an explicit `perk:` query, but
+				-- do not let incidental words such as "health" turn a Wound primary
+				-- line into a Health line or enter the default bare-text corpus.
+				builder.append(field, description, false)
+			else
+				append_trait_value(builder, field, scoped_field, description)
+			end
 		end
 	end
 end

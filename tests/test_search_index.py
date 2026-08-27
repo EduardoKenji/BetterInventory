@@ -35,6 +35,7 @@ def main() -> None:
             loc_unyielding = "Damage vs Unyielding Enemies",
             loc_health = "Maximum Health",
             loc_toughness = "Maximum Toughness",
+            loc_wound = "Maximum Wounds",
             loc_ability_regeneration = "Combat Ability Regeneration",
         }
         rarity_settings = {}
@@ -61,6 +62,8 @@ def main() -> None:
                     return {display_name = "loc_health", trait = "gadget_innate_health_increase"}
                 elseif id == "content/items/perks/gadget/toughness" then
                     return {display_name = "loc_toughness", trait = "gadget_innate_toughness_increase"}
+                elseif id == "content/items/perks/gadget/wound" then
+                    return {display_name = "loc_wound", trait = "gadget_innate_max_wounds_increase"}
                 elseif id == "content/items/perks/gadget/cooldown_reduction" then
                     return {display_name = "loc_ability_regeneration", trait = "gadget_cooldown_reduction"}
                 end
@@ -104,6 +107,8 @@ def main() -> None:
                     return "+25% Damage vs Flak Armoured Enemies"
                 elseif master_item and master_item.trait == "weapon_trait_melee_common_wield_increased_resistant_damage" then
                     return "+25% Damage vs Unyielding Enemies"
+                elseif master_item and master_item.trait == "gadget_innate_max_wounds_increase" then
+                    return "+1 Maximum Wound. More wounds protect health after incapacitation."
                 end
 
                 return ""
@@ -402,6 +407,98 @@ def main() -> None:
     )
     assert guardian_rank > equipped_partial_rank > 0
     assert lua.globals().compact_curio_perk_calls == 2
+
+    # Full Curio description prose is searchable through the explicit perk
+    # field, but it must not contaminate visible-line relevance or bare text.
+    # A Wound primary description mentioning health therefore remains only a
+    # one-line Toughness match. Exact relevance then uses equipped state and
+    # visible item level descending (430, 420, 410).
+    wound_with_toughness = lua.table_from(
+        {
+            "gear_id": "wound-toughness",
+            "item_type": "GADGET",
+            "rarity": 5,
+            "expertise": 410,
+            "traits": lua.table_from(
+                [
+                    lua.table_from(
+                        {
+                            "id": "content/items/perks/gadget/wound",
+                            "rarity": 4,
+                            "value": 1,
+                        }
+                    )
+                ]
+            ),
+            "perks": lua.table_from(
+                [
+                    lua.table_from(
+                        {
+                            "id": "content/items/perks/gadget/toughness",
+                            "rarity": 4,
+                            "value": 1,
+                        }
+                    )
+                ]
+            ),
+        }
+    )
+    wound_record, ok = search_index.project(index, wound_with_toughness, lua.table_from({}))
+    assert ok is True
+    assert query.matches(compiled("health & toughness"), wound_record) is False
+    assert query.matches(compiled("perk:health & toughness"), wound_record) is True
+    assert not any(
+        "health" in wound_record.curio_primary[i]
+        for i in range(1, len(wound_record.curio_primary) + 1)
+    )
+
+    def projected_health_toughness(gear_id: str, expertise: int):
+        item = lua.table_from(
+            {
+                "gear_id": gear_id,
+                "item_type": "GADGET",
+                "rarity": 5,
+                "expertise": expertise,
+                "traits": lua.table_from(
+                    [
+                        lua.table_from(
+                            {
+                                "id": "content/items/perks/gadget/health",
+                                "rarity": 4,
+                                "value": 1,
+                            }
+                        )
+                    ]
+                ),
+                "perks": lua.table_from(
+                    [
+                        lua.table_from(
+                            {
+                                "id": "content/items/perks/gadget/toughness",
+                                "rarity": 4,
+                                "value": 1,
+                            }
+                        )
+                    ]
+                ),
+            }
+        )
+        value, projected = search_index.project(index, item, lua.table_from({}))
+        assert projected is True
+        return value
+
+    exact_query = compiled("health & toughness")
+    exact_430 = projected_health_toughness("health-toughness-430", 430)
+    exact_420 = projected_health_toughness("health-toughness-420", 420)
+    exact_410 = projected_health_toughness("health-toughness-410", 410)
+    exact_ranks = [
+        query.rank(exact_query, value, query.matches(exact_query, value))
+        for value in (exact_430, exact_420, exact_410)
+    ]
+    wound_rank = query.rank(
+        exact_query, wound_record, query.matches(exact_query, wound_record)
+    )
+    assert exact_ranks[0] > exact_ranks[1] > exact_ranks[2] > wound_rank
 
     # Search projection consumes current-locale UTF-8 strings. Production-like
     # master-item perk paths resolve to gameplay trait IDs before compact label

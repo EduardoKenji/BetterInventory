@@ -3,7 +3,7 @@
       {"name": "bounded_literal_parser_effective_rarity_and_fail_open_matching", "risk": "high", "start_line": 1, "end_line": 331}
   ],
   "test_search_index.py": [
-      {"name": "bounded_projection_cache_custom_names_traits_and_split_rarity", "risk": "high", "start_line": 1, "end_line": 505}
+        {"name": "bounded_projection_cache_custom_names_traits_and_split_rarity", "risk": "high", "start_line": 1, "end_line": 602}
   ],
   "test_search_end_to_end.py": [
     {"name": "production_name_perk_blessing_sort_and_release", "risk": "critical", "start_line": 1, "end_line": 206}
