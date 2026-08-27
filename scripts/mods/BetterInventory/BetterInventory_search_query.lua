@@ -473,6 +473,16 @@ Query.rank = function(compiled, record, matched, prioritize_equipped)
 		return 1
 	end
 
+	-- Only Curios use the primary/secondary relevance hierarchy. Weapon records
+	-- can return their ordinary matched rank without rescanning every clause.
+	if record
+		and type(record.curio_primary) == "table"
+		and #record.curio_primary == 0
+		and type(record.curio_secondary) == "table"
+		and #record.curio_secondary == 0 then
+		return 1
+	end
+
 	local primary_match = false
 	local secondary_match = false
 

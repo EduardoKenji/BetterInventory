@@ -155,11 +155,12 @@ SearchHooks.install = function(dependencies)
 	if method_available(ViewElementInputLegend, "_handle_input") then
 		mod:hook(ViewElementInputLegend, "_handle_input", function(func, legend, ...)
 			local parent = legend and legend._parent
+			local search_input = parent and parent._widgets_by_name and parent._widgets_by_name.better_inventory_search_input
 
 			if parent and parent._better_inventory_search_block_legend_once then
 				parent._better_inventory_search_block_legend_once = nil
 				return
-			elseif type(SearchUI.is_writing) == "function" and SearchUI.is_writing(parent) then
+			elseif search_input and type(SearchUI.is_writing) == "function" and SearchUI.is_writing(parent) then
 				return
 			end
 
@@ -178,8 +179,9 @@ SearchHooks.install = function(dependencies)
 	if method_available(ViewElementGrid, "update") then
 		mod:hook(ViewElementGrid, "update", function(func, item_grid, dt, time, input_service)
 			local parent = item_grid and item_grid._parent
+			local search_input = parent and parent._widgets_by_name and parent._widgets_by_name.better_inventory_search_input
 
-			if parent
+			if search_input
 				and parent._item_grid == item_grid
 				and type(SearchUI.handle_grid_input) == "function"
 				and SearchUI.handle_grid_input(parent, item_grid, input_service)

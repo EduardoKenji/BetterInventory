@@ -2,6 +2,7 @@ local SearchRuntime = {}
 
 local DEFAULT_PRESENT_DELAY = 0.08
 local DEFAULT_DIM_ALPHA = 0.4
+local DEFAULT_WARM_BATCH_SIZE = 16
 
 local function weak_key_table()
 	return setmetatable({}, {
@@ -45,7 +46,9 @@ end
 
 local function result_for(state, key)
 	if key ~= nil and state.result_generations[key] == state.generation then
-		return state.results[key], true, state.ranks[key] or 0
+		local rank = state.ranks[key] or 0
+
+		return rank > 0, true, rank
 	end
 
 	return nil, false
@@ -54,8 +57,7 @@ end
 local function set_result(state, key, matched, rank)
 	if key ~= nil then
 		state.result_generations[key] = state.generation
-		state.results[key] = matched
-		state.ranks[key] = tonumber(rank) or 0
+		state.ranks[key] = matched == true and (tonumber(rank) or 1) or 0
 	end
 end
 
@@ -161,7 +163,8 @@ local function state_for(runtime, view, create)
 		ranks = weak_key_table(),
 		generation = 0,
 		result_generations = weak_key_table(),
-		results = weak_key_table(),
+		results_ready = false,
+		warm_cursor = nil,
 	}
 
 	if remember_enabled(runtime) then
@@ -179,13 +182,16 @@ local function state_for(runtime, view, create)
 	return state
 end
 
-local function entry_result(runtime, state, entry, context, prioritize_equipped)
-	local item = item_from(entry)
+local function entry_result(runtime, state, entry, context, prioritize_equipped, resolved_item)
+	local item = resolved_item or item_from(entry)
 
 	if type(item) ~= "table" then
 		return true, 1
 	end
 
+	-- These are Better Inventory-owned, fail-soft modules. Avoid two protected
+	-- calls per item in the settled-query scan; their external data access is
+	-- already guarded at the projection boundary.
 	local record, projected = runtime.dependencies.project(state.index, item, context)
 
 	if projected ~= true then
@@ -197,15 +203,18 @@ local function entry_result(runtime, state, entry, context, prioritize_equipped)
 		prioritize_equipped = safe_call(runtime.dependencies.prioritize_equipped) ~= false
 	end
 
-	local rank = safe_call(runtime.dependencies.query.rank, state.compiled, record, matched, prioritize_equipped)
+	local rank = runtime.dependencies.query.rank(state.compiled, record, matched, prioritize_equipped)
 
 	return matched, tonumber(rank) or (matched and 1 or 0)
 end
 
 local function scan(runtime, view, state, source_layout, trust_projection_cache)
 	state.generation = state.generation + 1
+	state.results_ready = false
+	state.warm_cursor = nil
 
 	if not query_is_active(state) then
+		state.results_ready = true
 		return
 	end
 
@@ -229,11 +238,51 @@ local function scan(runtime, view, state, source_layout, trust_projection_cache)
 
 		if type(item) == "table" then
 			projection_context.entry = entry
-			local matched, rank = entry_result(runtime, state, entry, projection_context, prioritize_equipped)
+			local matched, rank = entry_result(runtime, state, entry, projection_context, prioritize_equipped, item)
+			-- Darktide's comparator, native filter, and widget content all retain
+			-- the presented layout entry. Store one weak-key result per entry; direct
+			-- item layouts naturally use the item itself as that same key.
 			set_result(state, entry, matched, rank)
-			set_result(state, item, matched, rank)
 		end
 	end
+
+	state.results_ready = true
+end
+
+local function warm_projection_cache(runtime, view, state)
+	local cursor = state and state.warm_cursor
+
+	if not cursor then
+		return true
+	end
+
+	local layout = view and view._offer_items_layout
+
+	if type(layout) ~= "table" or cursor > #layout then
+		state.warm_cursor = nil
+		return true
+	end
+
+	local last_index = math.min(cursor + runtime.warm_batch_size - 1, #layout)
+	local projection_context = {
+		entry = nil,
+		family = state.family,
+		view = view,
+	}
+
+	for index = cursor, last_index do
+		local entry = layout[index]
+		local item = item_from(entry)
+
+		if type(item) == "table" then
+			projection_context.entry = entry
+			runtime.dependencies.project(state.index, item, projection_context)
+		end
+	end
+
+	state.warm_cursor = last_index < #layout and last_index + 1 or nil
+
+	return state.warm_cursor == nil
 end
 
 local function schedule_present(runtime, state, now)
@@ -254,6 +303,7 @@ SearchRuntime.new = function(dependencies)
 		last_character_id = nil,
 		present_delay = tonumber(dependencies.present_delay) or DEFAULT_PRESENT_DELAY,
 		states = weak_key_table(),
+		warm_batch_size = math.max(1, math.floor(tonumber(dependencies.warm_batch_size) or DEFAULT_WARM_BATCH_SIZE)),
 	}
 end
 
@@ -274,7 +324,18 @@ SearchRuntime.capture_presentation = function(runtime, view, slot_filter, item_t
 	arguments[3] = slot_filter
 	state.last_present_arguments = arguments
 	state.presentation_kind = "native"
-	scan(runtime, view, state)
+	if not state.compiled then
+		compile_state(runtime, state)
+	end
+	local reuse_results = state.reuse_next_capture_results == true and state.results_ready == true
+	state.reuse_next_capture_results = nil
+
+	if not reuse_results then
+		scan(runtime, view, state)
+	end
+	if not query_is_active(state) and type(view._offer_items_layout) == "table" and #view._offer_items_layout > 0 then
+		state.warm_cursor = 1
+	end
 
 	return true
 end
@@ -297,6 +358,9 @@ SearchRuntime.compose_layout = function(runtime, view, layout)
 
 	state.last_present_arguments = nil
 	state.presentation_kind = "external"
+	if not state.compiled then
+		compile_state(runtime, state)
+	end
 	scan(runtime, view, state, layout)
 
 	if not query_is_active(state) then
@@ -353,16 +417,24 @@ SearchRuntime.set_query = function(runtime, view, query, now)
 	-- transitions. Keep those duplicates allocation-free and do not extend the
 	-- coalescing deadline when the effective query did not change.
 	if state.query == query then
-		return state.compiled.valid == true, state.error
+		return state.compiled == nil or state.compiled.valid == true, state.error
 	end
 
 	state.query = query
-	compile_state(runtime, state)
-	scan(runtime, view, state, nil, true)
+	-- Do not parse or scan the full inventory for every character in a quickly
+	-- typed or pasted query. The existing 80 ms deadline now coalesces parsing,
+	-- projection, matching, alpha updates, and sorting as one settled-query
+	-- transaction. Until then, ranks fail open instead of mixing the new source
+	-- with the previous generation's compiled clauses and results.
+	state.compiled = nil
+	state.error = nil
+	state.results_ready = false
 	schedule_present(runtime, state, now)
-	SearchRuntime.apply_widget_alpha(runtime, view)
+	if query == "" then
+		SearchRuntime.apply_widget_alpha(runtime, view)
+	end
 
-	return state.compiled.valid == true, state.error
+	return true, nil
 end
 
 SearchRuntime.refresh = function(runtime, view, now)
@@ -372,6 +444,9 @@ SearchRuntime.refresh = function(runtime, view, now)
 		return false
 	end
 
+	if not state.compiled then
+		compile_state(runtime, state)
+	end
 	scan(runtime, view, state)
 	schedule_present(runtime, state, now)
 	SearchRuntime.apply_widget_alpha(runtime, view)
@@ -386,7 +461,7 @@ SearchRuntime.native_filter = function(runtime, view, entry, native_result)
 
 	local state = state_for(runtime, view, false)
 
-	if not query_is_active(state) or mode(runtime) ~= "hide" then
+	if not query_is_active(state) or state.results_ready ~= true or mode(runtime) ~= "hide" then
 		return true
 	end
 
@@ -412,7 +487,7 @@ end
 SearchRuntime.rank = function(runtime, view, entry)
 	local state = state_for(runtime, view, false)
 
-	if not query_is_active(state) then
+	if not query_is_active(state) or state.results_ready ~= true then
 		return 0
 	end
 
@@ -441,7 +516,7 @@ SearchRuntime.apply_widget_alpha = function(runtime, view)
 		return false
 	end
 
-	local active = query_is_active(state) and mode(runtime) == "dim"
+	local active = query_is_active(state) and state.results_ready == true and mode(runtime) == "dim"
 	local item_grid = view and view._item_grid
 	local widgets = item_grid and (item_grid._all_grid_widgets or item_grid._grid_widgets)
 
@@ -489,17 +564,38 @@ end
 SearchRuntime.update = function(runtime, view, now)
 	local state = state_for(runtime, view, false)
 
-	if not state or state.faulted or not state.pending_present_at then
+	if not state or state.faulted then
+		return false
+	end
+
+	if not state.pending_present_at then
+		warm_projection_cache(runtime, view, state)
 		return false
 	end
 
 	now = tonumber(now) or safe_call(runtime.dependencies.time) or 0
 
 	if now < state.pending_present_at then
+		warm_projection_cache(runtime, view, state)
+		return false
+	end
+
+	-- Never combine the final cache-warming batch with the full match pass in
+	-- one frame. A cold 128-item inventory is therefore bounded to sixteen rich
+	-- projections per frame, while already-warm inventories proceed directly.
+	if state.warm_cursor then
+		warm_projection_cache(runtime, view, state)
 		return false
 	end
 
 	state.pending_present_at = nil
+	if not state.compiled then
+		compile_state(runtime, state)
+	end
+	if state.results_ready ~= true then
+		scan(runtime, view, state, nil, true)
+	end
+	SearchRuntime.apply_widget_alpha(runtime, view)
 	local ok
 
 	if state.presentation_kind == "external" then
@@ -511,7 +607,9 @@ SearchRuntime.update = function(runtime, view, now)
 			return false
 		end
 
+		state.reuse_next_capture_results = true
 		ok = safe_call(runtime.dependencies.present, view, arguments[3], arguments[2], arguments[1])
+		state.reuse_next_capture_results = nil
 	end
 
 	if ok == nil then
@@ -565,11 +663,11 @@ SearchRuntime.release = function(runtime, view)
 
 	restore_all_widget_alpha(state)
 	safe_call(runtime.dependencies.release_index, state.index)
-	state.results = weak_key_table()
 	state.ranks = weak_key_table()
 	state.result_generations = weak_key_table()
 	state.last_present_arguments = nil
 	state.presentation_kind = nil
+	state.reuse_next_capture_results = nil
 	runtime.states[view] = nil
 
 	return true

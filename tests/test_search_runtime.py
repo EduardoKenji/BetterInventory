@@ -149,6 +149,25 @@ def main() -> None:
     assert search_runtime.release(runtime, anonymous) is True
     lua.globals().remember = False
 
+    # Empty-query captures warm rich projections in bounded 16-item slices.
+    # No sort/presentation is requested by the warm-up worker, and a later
+    # settled query reuses all forty records through the trusted cache seam.
+    cold_view = lua.globals().make_view("cold", "inventory", 40)
+    assert search_runtime.capture_presentation(
+        runtime, cold_view, "slot", "type", "title"
+    ) is True
+    cold_projects_before = lua.globals().project_calls
+    assert search_runtime.update(runtime, cold_view, 1) is False
+    assert lua.globals().project_calls - cold_projects_before == 16
+    assert search_runtime.update(runtime, cold_view, 2) is False
+    assert lua.globals().project_calls - cold_projects_before == 32
+    assert search_runtime.update(runtime, cold_view, 3) is False
+    assert lua.globals().project_calls - cold_projects_before == 40
+    assert search_runtime.set_query(runtime, cold_view, "sword", 4) == (True, None)
+    assert search_runtime.update(runtime, cold_view, 4.08) is True
+    assert lua.globals().trusted_project_calls == 40
+    assert search_runtime.release(runtime, cold_view) is True
+
     view = lua.globals().make_view("veteran", "inventory", 200)
     lua.globals().test_view = view
     assert search_runtime.register(runtime, view) is not None
@@ -162,12 +181,19 @@ def main() -> None:
     )
     assert lua.execute("return inactive_layout == inactive_composed") is True
     search_runtime.capture_presentation(runtime, view, "slot", "type", "title")
+    trusted_before_main_query = lua.globals().trusted_project_calls
+    validated_before_main_query = lua.globals().validated_project_calls
+    present_before_main_query = lua.globals().present_calls
     valid, error = search_runtime.set_query(runtime, view, "sword", 10)
     assert valid is True and error is None
-    assert lua.globals().trusted_project_calls == 200
-    assert lua.globals().validated_project_calls == 0
+    # Typing only compiles and moves the debounce deadline. Projection and
+    # matching are coalesced until the query settles.
+    assert lua.globals().trusted_project_calls == trusted_before_main_query
+    assert lua.globals().validated_project_calls == validated_before_main_query
+    assert search_runtime.rank(runtime, view, view._offer_items_layout[2]) == 0
     search_runtime.capture_presentation(runtime, view, "slot", "type", "title")
-    assert lua.globals().validated_project_calls == 200
+    assert lua.globals().validated_project_calls == validated_before_main_query + 200
+    assert search_runtime.apply_widget_alpha(runtime, view) is True
     assert search_runtime.rank(runtime, view, view._offer_items_layout[2]) == 1
     assert search_runtime.rank(runtime, view, view._offer_items_layout[1]) == 0
     assert search_runtime.native_filter(runtime, view, None, True) is True
@@ -181,18 +207,19 @@ def main() -> None:
     assert view._item_grid._all_grid_widgets[2].content.alpha_multiplier == 1
     assert search_runtime.is_active(runtime, view) is True
     assert search_runtime.compose_layout(runtime, view, None) is None
-    lua.globals().first_result_table = search_runtime.state(runtime, view).results
+    lua.globals().first_result_table = search_runtime.state(runtime, view).ranks
 
     # Present requests are coalesced for 80 ms and do not allocate or rerun the
     # native presentation for every keystroke.
     search_runtime.set_query(runtime, view, "axe", 10.02)
     search_runtime.set_query(runtime, view, "odd axe", 10.04)
-    lua.globals().second_result_table = search_runtime.state(runtime, view).results
+    lua.globals().second_result_table = search_runtime.state(runtime, view).ranks
     assert lua.execute("return first_result_table == second_result_table") is True
     assert search_runtime.update(runtime, view, 10.11) is False
-    assert lua.globals().present_calls == 0
+    assert lua.globals().present_calls == present_before_main_query
     assert search_runtime.update(runtime, view, 10.12) is True
-    assert lua.globals().present_calls == 1
+    assert lua.globals().present_calls == present_before_main_query + 1
+    assert lua.globals().trusted_project_calls == trusted_before_main_query + 200
     assert search_runtime.update(runtime, view, 11) is False
     settled_project_calls = lua.globals().project_calls
     for frame in range(120):
@@ -230,6 +257,8 @@ def main() -> None:
     curio_view = lua.globals().curio_view
     search_runtime.capture_presentation(runtime, curio_view, "slot", "GADGET", "Curios")
     search_runtime.set_query(runtime, curio_view, "heal", 12)
+    assert search_runtime.update(runtime, curio_view, 12.04) is False
+    assert search_runtime.update(runtime, curio_view, 12.08) is True
     curio_ranks = [
         search_runtime.rank(runtime, curio_view, curio_view._offer_items_layout[index])
         for index in range(1, 9)
@@ -246,6 +275,7 @@ def main() -> None:
     ) is False
     lua.globals().prioritize_equipped = False
     search_runtime.set_query(runtime, curio_view, "health", 13)
+    assert search_runtime.update(runtime, curio_view, 13.08) is True
     assert search_runtime.rank(runtime, curio_view, curio_view._offer_items_layout[1]) == 4
     lua.globals().prioritize_equipped = True
     lua.globals().configured_mode = "dim"
@@ -326,8 +356,10 @@ def main() -> None:
     )
     search_runtime.set_query(failing_runtime, failing_view, "axe", 30)
     assert search_runtime.update(failing_runtime, failing_view, 31) is False
-    assert search_runtime.state(failing_runtime, failing_view).faulted is True
+    assert search_runtime.state(failing_runtime, failing_view).faulted is False
     assert search_runtime.update(failing_runtime, failing_view, 32) is False
+    assert search_runtime.state(failing_runtime, failing_view).faulted is True
+    assert search_runtime.update(failing_runtime, failing_view, 33) is False
     assert search_runtime.release(failing_runtime, failing_view) is True
 
     # Hide mode composes after the native filter; dim mode never removes an
@@ -347,10 +379,12 @@ def main() -> None:
     matched.fail_projection = False
     lua.globals().configured_mode = "dim"
     search_runtime.set_query(runtime, view, "sword", 13)
+    assert search_runtime.update(runtime, view, 13.08) is True
     first_widget = view._item_grid._all_grid_widgets[1]
     assert first_widget.content.alpha_multiplier == 0.4
     first_widget.content.alpha_multiplier = 0.7
     search_runtime.set_query(runtime, view, "", 14)
+    assert search_runtime.update(runtime, view, 14.08) is True
     assert first_widget.content.alpha_multiplier == 0.7
 
     # Optional session memory is character/view-family scoped. Release always
@@ -366,7 +400,7 @@ def main() -> None:
     assert search_runtime.register(runtime, other_character).query == ""
     assert next(iter(runtime.memory.items()), None) is None
     assert search_runtime.release_all(runtime) == 4
-    assert lua.globals().released_indexes == 7
+    assert lua.globals().released_indexes == 8
 
     search_runtime.clear_memory(runtime)
     assert next(iter(runtime.memory.items()), None) is None
@@ -376,7 +410,7 @@ def main() -> None:
         transient = lua.globals().make_view(f"character-{index}", "inventory", 2)
         search_runtime.register(runtime, transient)
         search_runtime.release(runtime, transient)
-    assert lua.globals().released_indexes == 107
+    assert lua.globals().released_indexes == 108
 
     print("BetterInventory search runtime tests passed.")
 

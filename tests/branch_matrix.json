@@ -12,7 +12,7 @@
       "name": "search.index-is-bounded-cached-and-presentation-aware",
       "test": "test_search_index.py",
       "case": "bounded_projection_cache_custom_names_traits_and_split_rarity",
-      "outcome": "one weak view-owned projection cache resolves native and custom names, distinct Curio primary/secondary lines, and production master-item perk paths without invoking GodRolls; every perk identity and compact alias precedes optional long Enhanced Descriptions text, so flak/unyielding and later perk slots survive the fixed 2 KB cap; bare terms use one prejoined bounded corpus while scoped fields stay distinct; query edits reuse the last presentation-validated record, full presentation still detects fingerprint changes, and release retains no item references",
+      "outcome": "one weak view-owned projection cache resolves native and custom names, distinct Curio primary/secondary lines, and production master-item perk paths without invoking GodRolls; every perk identity and compact alias precedes optional long Enhanced Descriptions text, so flak/unyielding and later perk slots survive the fixed 2 KB cap; bare terms use one prejoined bounded corpus while scoped fields stay distinct; normalized corpus insertion performs no duplicate normalization, bounded idle slices warm sixteen projections at a time, full presentation still detects fingerprint changes, and release retains no item references",
       "modules": ["BetterInventory_search_index.lua", "BetterInventory_search_query.lua", "BetterInventory_custom_tier.lua"]
     },
     {
@@ -33,14 +33,14 @@
       "name": "search.runtime-coalesces-and-releases-owned-state",
       "test": "test_search_runtime.py",
       "case": "coalesced_filter_rank_dim_memory_and_release_lifecycle",
-      "outcome": "dynamic queries rescan cached match records immediately, reuse one projection context, and coalesce exactly one native presentation; repeated identical input and settled idle frames perform no projection scan or presentation; Curio relevance ranks remain O(1), dim alpha ownership stores scalar originals without per-card tables, presentation capture fully revalidates fingerprints, and repeated release drops all view state",
+      "outcome": "rapid typing allocates no parser/result tables and coalesces into one settled-query scan plus one presentation; cold projections warm in bounded sixteen-item idle slices, repeated input and fully settled idle frames perform no scan or presentation, one generation-stamped rank map encodes both match and relevance, Curio ranks remain O(1), scalar alpha ownership restores safely, native capture revalidates fingerprints, and repeated release drops all view state",
       "modules": ["BetterInventory_search_runtime.lua", "BetterInventory_search_index.lua", "BetterInventory_search_query.lua"]
     },
     {
       "name": "search.integration-composes-native-views-and-sorting",
       "test": "test_search_integration.py",
       "case": "supported_view_adapters_facade_and_lifecycle_composition",
-      "outcome": "inventory, Hadron modify/sacrifice, Armoury, general weapon vendors, and Melk map to isolated search families while cosmetics remain untouched; presentation registers one owned cleanup, configures the outer search comparator, preserves native filter results and Hadron spacing entries, issues only the runtime's 80 ms coalesced presentation after query/settings changes, and releases every adapter on shutdown",
+      "outcome": "inventory, Hadron modify/sacrifice, Armoury, general weapon vendors, and Melk map to isolated search families while cosmetics remain untouched; presentation registers one owned cleanup and preserves native filters/spacing; settled dim queries rebind any ItemSorting replacement and request the proven deferred comparator resort without rebuilding widgets, while hide mode uses one native presentation; every adapter releases on shutdown",
       "modules": ["BetterInventory_search_integration.lua", "BetterInventory_feature_sorting.lua", "BetterInventory_runtime.lua"]
     },
     {

@@ -179,6 +179,25 @@ Integration.new = function(mod, dependencies)
 				return false
 			end
 
+			-- Dim mode never changes native membership, so inventory and Armoury
+			-- views only need the existing comparator lane to run again. This is
+			-- both cheaper than rebuilding every widget and, importantly, reuses
+			-- the post-update resort path that remains compatible when ItemSorting
+			-- replaces Darktide's sort options after Better Inventory loads.
+			local family = dependencies.view_family(view)
+
+			if mod:get("inventory_search_non_match_behavior") ~= "hide"
+				and (family == "inventory" or family == "armoury")
+				and type(dependencies.request_resort) == "function" then
+				-- ItemSorting can replace the option table after an earlier capture.
+				-- Rebind once per settled query, never from the comparator itself.
+				dependencies.configure_sort(view)
+
+				if dependencies.request_resort(view) ~= false then
+					return true
+				end
+			end
+
 			view:_present_layout_by_slot_filter(slot_filter, item_type_filter, display_name)
 
 			return true
@@ -325,6 +344,7 @@ Integration.install = function(facade, mod, providers, configure_sort, global_st
 		configure_sort = configure_sort,
 		is_perfect = DiscardPolicy.is_perfect_roll_weapon,
 		register_cleanup = facade.register_view_session_cleanup,
+		request_resort = facade.request_inventory_resort,
 		view_family = function(view)
 			return Integration.view_family(view, global_store_service)
 		end,

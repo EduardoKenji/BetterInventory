@@ -55,7 +55,7 @@ def main() -> None:
         local rarity = {}
         for value = 1, 6 do rarity[value] = {display_name = "rarity_" .. tostring(value)} end
         local function new_index()
-            return Index.new({
+			benchmark_index = Index.new({
                 compact_perk_search_terms = function(id, description)
                     if string.find(id or "", "armored", 1, true) then
                         return "+25% Flak Damage", "+25% Flak Dmg"
@@ -69,7 +69,9 @@ def main() -> None:
                 master_items = master_items,
                 normalize = Query.normalize,
                 rarity_settings = rarity,
-            })
+			})
+
+			return benchmark_index
         end
         local view = {
             character = "benchmark",
@@ -96,9 +98,10 @@ def main() -> None:
                     {id = "unyielding", rarity = 4, value = 1},
                 },
             }
-            view._offer_items_layout[item_number] = item
+            local entry = {item = item}
+            view._offer_items_layout[item_number] = entry
             view._item_grid._all_grid_widgets[item_number] = {
-                content = {alpha_multiplier = 1, entry = item},
+                content = {alpha_multiplier = 1, entry = entry},
             }
         end
         local search = Runtime.new({
@@ -113,15 +116,27 @@ def main() -> None:
             release_index = Index.release,
             view_family = function(target) return target.family end,
         })
-        Runtime.capture_presentation(search, view, "slot", "weapon", "Weapons")
         local terms = {"flak", "unyielding", "shovel", "uncanny", "perk:flak", "500", "surgi"}
         collectgarbage("collect")
         local projection_before = collectgarbage("count")
-        for iteration = 1, 20 do
-            Runtime.set_query(search, view, terms[(iteration - 1) % #terms + 1], iteration)
-        end
+        Runtime.capture_presentation(search, view, "slot", "weapon", "Weapons")
+		collectgarbage("stop")
+		local warm_total_seconds = 0
+		local warm_max_seconds = 0
+		for frame = 1, 8 do
+			local warm_started = os.clock()
+			Runtime.update(search, view, frame / 60)
+			local warm_seconds = os.clock() - warm_started
+			warm_total_seconds = warm_total_seconds + warm_seconds
+			warm_max_seconds = math.max(warm_max_seconds, warm_seconds)
+		end
+		local cached_before_collection = 0
+		for _ in pairs(benchmark_index.cache) do cached_before_collection = cached_before_collection + 1 end
+		collectgarbage("restart")
         collectgarbage("collect")
         local retained_before = collectgarbage("count")
+		local cached_after_projection = 0
+		for _ in pairs(benchmark_index.cache) do cached_after_projection = cached_after_projection + 1 end
 
 		collectgarbage("stop")
 		local compile_allocated_before = collectgarbage("count")
@@ -142,20 +157,34 @@ def main() -> None:
         end
         local query_seconds = os.clock() - started
         local allocated_after = collectgarbage("count")
+		local settle_started = os.clock()
+		Runtime.update(search, view, 400.08)
+		local settle_seconds = os.clock() - settle_started
+		local settled_allocated_after = collectgarbage("count")
+		local index_hits_after_settle = benchmark_index.metrics.hits
         local idle_started = os.clock()
-        for frame = 1, 600 do Runtime.update(search, view, 1000 + frame / 60) end
+        for frame = 1, 6000 do Runtime.update(search, view, 1000 + frame / 60) end
         local idle_seconds = os.clock() - idle_started
         collectgarbage("restart")
         Runtime.release(search, view)
         collectgarbage("collect")
         local retained_after = collectgarbage("count")
         return {
-			compile_400_changes_ms = compile_seconds * 1000,
+			compile_400_queries_ms = compile_seconds * 1000,
 			compile_transient_kb = compile_allocated_after - compile_allocated_before,
-            idle_600_frames_ms = idle_seconds * 1000,
+			idle_6000_frames_ms = idle_seconds * 1000,
+			idle_average_us = idle_seconds * 1000000 / 6000,
+			index_builds = benchmark_index.metrics.builds,
+			cached_after_projection = cached_after_projection,
+			cached_before_collection = cached_before_collection,
+			index_hits_after_settle = index_hits_after_settle,
             projection_retained_kb = retained_before - projection_before,
-            query_400_changes_ms = query_seconds * 1000,
-            transient_kb = allocated_after - allocated_before,
+			query_burst_400_changes_ms = query_seconds * 1000,
+			query_burst_transient_kb = allocated_after - allocated_before,
+			settle_once_ms = settle_seconds * 1000,
+			settle_once_transient_kb = settled_allocated_after - allocated_after,
+			warm_128_max_slice_ms = warm_max_seconds * 1000,
+			warm_128_total_ms = warm_total_seconds * 1000,
             retained_after_release_kb = retained_after - retained_before,
         }
         '''

@@ -10,6 +10,37 @@ local NATIVE_RARITY_NAMES = {
 	[5] = "transcendent",
 	[6] = "sainted",
 }
+local FINGERPRINT_ITEM_KEYS = {
+	"gear_id",
+	"id",
+	"name",
+	"display_name",
+	"item_type",
+	"rarity",
+	"revision",
+	"version",
+	"baseItemLevel",
+	"expertise",
+	"item_level",
+}
+local FINGERPRINT_DISPLAY_KEYS = {
+	"weapon_family_display_name",
+	"weapon_pattern_display_name",
+	"weapon_mark_display_name",
+}
+local FINGERPRINT_PROVIDER_NAMES = {
+	"is_favorited",
+	"is_equipped",
+	"is_loadout",
+	"is_new",
+	"is_perfect",
+}
+local ITEM_NAME_KEYS = {
+	"id",
+	"name",
+	"__master_item",
+	"master_id",
+}
 
 local function weak_key_table()
 	return setmetatable({}, {
@@ -17,16 +48,28 @@ local function weak_key_table()
 	})
 end
 
+local function indexed_member(object, key)
+	return object[key]
+end
+
 local function safe_member(object, key)
 	if type(object) ~= "table" then
 		return nil
 	end
 
-	local ok, value = pcall(function()
-		return object[key]
-	end)
+	-- Darktide items, layout entries, and master-item definitions are ordinary
+	-- data tables. Wrapping every field read in pcall allocated a closure and
+	-- protected-call frame thousands of times per projection pass. Preserve a
+	-- fail-soft fallback for compatibility with the uncommon proxy table.
+	local value = rawget(object, key)
 
-	return ok and value or nil
+	if value ~= nil or getmetatable(object) == nil then
+		return value
+	end
+
+	local ok, indexed_value = pcall(indexed_member, object, key)
+
+	return ok and indexed_value or nil
 end
 
 local function safe_call(callback, ...)
@@ -82,27 +125,13 @@ end
 local function fingerprint(item, dependencies, context)
 	local parts = {}
 
-	for _, key in ipairs({
-		"gear_id",
-		"id",
-		"name",
-		"display_name",
-		"item_type",
-		"rarity",
-		"revision",
-		"version",
-		"baseItemLevel",
-		"expertise",
-		"item_level",
-	}) do
+	for index = 1, #FINGERPRINT_ITEM_KEYS do
+		local key = FINGERPRINT_ITEM_KEYS[index]
 		append_fingerprint(parts, safe_member(item, key))
 	end
 
-	for _, key in ipairs({
-		"weapon_family_display_name",
-		"weapon_pattern_display_name",
-		"weapon_mark_display_name",
-	}) do
+	for index = 1, #FINGERPRINT_DISPLAY_KEYS do
+		local key = FINGERPRINT_DISPLAY_KEYS[index]
 		local definition = safe_member(item, key)
 		append_fingerprint(parts, safe_member(definition, "loc_id"))
 	end
@@ -113,7 +142,8 @@ local function fingerprint(item, dependencies, context)
 	local customization = safe_call(dependencies and dependencies.customization_get, safe_member(item, "gear_id"))
 
 	append_fingerprint(parts, safe_member(customization, "name"))
-	for _, provider_name in ipairs({ "is_favorited", "is_equipped", "is_loadout", "is_new", "is_perfect" }) do
+	for index = 1, #FINGERPRINT_PROVIDER_NAMES do
+		local provider_name = FINGERPRINT_PROVIDER_NAMES[index]
 		append_fingerprint(parts, safe_call(dependencies and dependencies[provider_name], item, context) == true and 1 or 0)
 	end
 
@@ -155,17 +185,7 @@ local function new_builder(normalize, maximum_bytes)
 		seen = {},
 	}
 
-	local function append(field, value, include_in_text)
-		if not is_valid_text(value) then
-			return false
-		end
-
-		local normalized = normalize(value)
-
-		if normalized == "" then
-			return false
-		end
-
+	local function append_normalized(field, normalized)
 		local bytes = #normalized
 
 		if builder.bytes + bytes > builder.maximum_bytes then
@@ -186,11 +206,26 @@ local function new_builder(normalize, maximum_bytes)
 			builder.bytes = builder.bytes + bytes
 		end
 
-		if include_in_text ~= false and field ~= "text" then
-			append("text", normalized, false)
+		return true
+	end
+	local function append(field, value, include_in_text)
+		if not is_valid_text(value) then
+			return false
 		end
 
-		return true
+		local normalized = normalize(value)
+
+		if normalized == "" then
+			return false
+		end
+
+		local appended = append_normalized(field, normalized)
+
+		if appended and include_in_text ~= false and field ~= "text" then
+			append_normalized("text", normalized)
+		end
+
+		return appended
 	end
 
 	builder.append = append
@@ -242,7 +277,8 @@ local function append_item_names(builder, dependencies, item)
 	append_localized_definition(builder, dependencies, "name", safe_member(item, "weapon_pattern_display_name"))
 	append_localized_definition(builder, dependencies, "mark", safe_member(item, "weapon_mark_display_name"))
 
-	for _, key in ipairs({ "id", "name", "__master_item", "master_id" }) do
+	for index = 1, #ITEM_NAME_KEYS do
+		local key = ITEM_NAME_KEYS[index]
 		builder.append("name", safe_member(item, key))
 	end
 end

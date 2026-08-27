@@ -59,6 +59,10 @@ local function action_pressed(input_service, action_name)
 end
 
 local function controller_navigation_active(view)
+	if view and view._using_cursor_navigation ~= nil then
+		return view._using_cursor_navigation == false
+	end
+
 	local managers = rawget(_G, "Managers")
 	local ui_manager = managers and managers.ui
 
@@ -298,18 +302,15 @@ SearchUI.is_writing = function(view)
 end
 
 SearchUI.handle_grid_input = function(view, item_grid, input_service)
-	if not supported(view) then
-		return false
-	end
-
 	local input = input_widget(view)
+	local content = input and input.content
 
 	if not input or input.visible == false then
 		return false
-	elseif SearchUI.is_writing(view) or controller_focused(view) then
+	elseif (content and content.is_writing == true) or controller_focused(view) then
 		return true
-	elseif not controller_navigation_active(view)
-		or view._item_grid ~= item_grid
+	elseif view._item_grid ~= item_grid
+		or not controller_navigation_active(view)
 		or not action_pressed(input_service, "navigate_up_continuous")
 		or not selected_widget_is_top_row(item_grid) then
 		return false
@@ -321,7 +322,7 @@ SearchUI.handle_grid_input = function(view, item_grid, input_service)
 		item_grid:select_grid_index(nil)
 	end
 
-	local hotspot = input.content and input.content.hotspot
+	local hotspot = content and content.hotspot
 
 	if hotspot then
 		hotspot.is_selected = true
@@ -355,11 +356,15 @@ SearchUI.sync_query = function(Features, view)
 end
 
 SearchUI.update = function(mod, Features, view, time)
-	if not supported(view) then
+	local input = input_widget(view)
+
+	-- Presence of the owned widget is the cheapest and strongest hot-path
+	-- capability check; unsupported ItemGridViewBase descendants never receive
+	-- it during definition decoration.
+	if not input then
 		return false
 	end
 
-	local input = input_widget(view)
 	local visible = mod:get("enable_inventory_search") ~= false
 
 	if input then
@@ -390,6 +395,10 @@ SearchUI.update = function(mod, Features, view, time)
 end
 
 SearchUI.handle_view_input = function(mod, view, input_service)
+	if not input_widget(view) then
+		return false
+	end
+
 	if controller_focused(view) then
 		if action_pressed(input_service, "navigate_down_continuous") then
 			SearchUI.defocus(view)

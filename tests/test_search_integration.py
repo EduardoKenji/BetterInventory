@@ -234,6 +234,23 @@ def main() -> None:
         valid_present = runtime_instance.dependencies.present(
             normal_present_view, "slot", "weapon", "Weapons"
         )
+        inventory_resort_present_view = {
+            __class_name = "InventoryWeaponsView",
+            _present_layout_by_slot_filter = function()
+                inventory_full_present_calls = (inventory_full_present_calls or 0) + 1
+            end,
+        }
+        inventory_resort_present = runtime_instance.dependencies.present(
+            inventory_resort_present_view, "slot", "weapon", "Weapons"
+        )
+        inventory_resort_requests = requested_resorts
+        requested_resorts = 0
+
+        test_settings.inventory_search_non_match_behavior = "hide"
+        inventory_hide_present = runtime_instance.dependencies.present(
+            inventory_resort_present_view, "slot", "weapon", "Weapons"
+        )
+        test_settings.inventory_search_non_match_behavior = "dim"
         invalid_present = runtime_instance.dependencies.present({}, nil, nil, nil)
         invalid_external_present = runtime_instance.dependencies.present_external({})
         current_mode = runtime_instance.dependencies.mode()
@@ -252,6 +269,10 @@ def main() -> None:
     assert lua.globals().compact_provider_id == "weapon_trait_melee_common_wield_increased_armored_damage"
     assert lua.globals().compact_provider_description == "+25% Damage vs Flak Armoured Enemies"
     assert lua.globals().valid_present is True
+    assert lua.globals().inventory_resort_present is True
+    assert lua.globals().inventory_resort_requests == 1
+    assert lua.globals().inventory_full_present_calls == 1
+    assert lua.globals().inventory_hide_present is True
     assert lua.globals().invalid_present is False
     assert lua.globals().invalid_external_present is False
     assert lua.globals().normal_present_arguments[1] == "slot"

@@ -148,7 +148,10 @@ def main() -> None:
             function() legend_native = legend_native + 1 end,
             {_parent = legend_parent}
         )
-        writing_parent = {writing = true}
+        writing_parent = {
+            writing = true,
+            _widgets_by_name = {better_inventory_search_input = {}},
+        }
         hooks["legend:_handle_input"](
             function() legend_native = legend_native + 1 end,
             {_parent = writing_parent}
@@ -160,7 +163,10 @@ def main() -> None:
         )
         safe_hooks["element:cb_on_grid_entry_left_pressed"]({_parent = view})
         native_grid_updates = 0
-        grid_parent = {block_grid = true}
+        grid_parent = {
+            block_grid = true,
+            _widgets_by_name = {better_inventory_search_input = {}},
+        }
         grid_element_instance = {_parent = grid_parent}
         grid_parent._item_grid = grid_element_instance
         grid_input = {
