@@ -194,12 +194,6 @@ Integration.new = function(mod, dependencies)
 			rarity_settings = dependencies.RaritySettings,
 		})
 	end
-	local function log_trace(message, ...)
-		if mod and type(mod.info) == "function" then
-			mod:info("[SearchTrace] " .. tostring(message), ...)
-		end
-	end
-
 	local runtime = SearchRuntime.new({
 		character_id = function(view)
 			local player = search_player(view)
@@ -224,17 +218,14 @@ Integration.new = function(mod, dependencies)
 		new_index = new_index,
 		present = function(view, slot_filter, item_type_filter, display_name)
 			if not view or view._destroyed or type(view._present_layout_by_slot_filter) ~= "function" then
-				log_trace("presentation lane=unavailable")
 				return false
 			end
 
-			local family = dependencies.view_family(view)
 			-- Commit exactly once after the quiet interval through Darktide's proven
 			-- native filtering/presentation transaction. `_sort_grid_layout` also
 			-- rebuilds the presented grid, so the former deferred-resort shortcut
 			-- saved no widget allocation while bypassing native layout refresh seams.
 			dependencies.configure_sort(view)
-			log_trace("presentation lane=native family=%s", tostring(family))
 			view:_present_layout_by_slot_filter(slot_filter, item_type_filter, display_name)
 
 			return true
@@ -262,7 +253,6 @@ Integration.new = function(mod, dependencies)
 		remember_query = function()
 			return mod:get("inventory_search_remember_query") == true
 		end,
-		trace = log_trace,
 		time = function()
 			return Managers and Managers.time and Managers.time:time("main") or 0
 		end,
