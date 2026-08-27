@@ -306,6 +306,58 @@ def main() -> None:
     assert search_runtime.set_query(runtime, view, "odd axe", 11) == (True, None)
     assert lua.globals().project_calls == repeated_project_calls
 
+    # Successive settled searches may receive fresh layout-entry identities
+    # from native presentation. Retain every old layout deliberately: current
+    # results must remain bounded to one inventory, independent of Lua GC.
+    lua.execute(
+        r'''
+        retained_query_layouts = {}
+
+        function replace_query_layout(view, generation, count)
+            retained_query_layouts[#retained_query_layouts + 1] = view._offer_items_layout
+            local layout = {}
+            local widgets = {}
+
+            for index = 1, count do
+                local item = {
+                    gear_id = "soak-" .. tostring(generation) .. "-" .. tostring(index),
+                    name = index % 2 == 0 and "even sword" or "odd axe",
+                }
+                layout[index] = item
+                widgets[index] = {content = {alpha_multiplier = 1, entry = item}}
+            end
+
+            view._offer_items_layout = layout
+            view._item_grid._all_grid_widgets = widgets
+        end
+
+        function table_entry_count(values)
+            local count = 0
+            for _ in pairs(values) do count = count + 1 end
+            return count
+        end
+        ''',
+    )
+    soak_view = lua.globals().make_view("soak", "inventory", 24)
+    search_runtime.capture_presentation(runtime, soak_view, "slot", "type", "title")
+    assert search_runtime.update(runtime, soak_view, 18) is False
+    assert search_runtime.update(runtime, soak_view, 19) is False
+    for generation in range(1, 101):
+        lua.globals().replace_query_layout(soak_view, generation, 24)
+        timestamp = 20 + generation
+        assert search_runtime.set_query(
+            runtime, soak_view, f"sword {generation}", timestamp
+        ) == (True, None)
+        assert search_runtime.update(runtime, soak_view, timestamp + 0.08) is True
+        assert (
+            lua.globals().table_entry_count(
+                search_runtime.state(runtime, soak_view).ranks
+            )
+            == 24
+        )
+    assert len(lua.globals().retained_query_layouts) == 100
+    assert search_runtime.release(runtime, soak_view) is True
+
     # Curio relevance is computed during the bounded projection scan and read
     # as O(1) cached ranks by the comparator. Partial text follows the exact
     # equipped/primary/secondary hierarchy in both dim and hide modes.
@@ -481,7 +533,7 @@ def main() -> None:
     assert search_runtime.register(runtime, other_character).query == ""
     assert next(iter(runtime.memory.items()), None) is None
     assert search_runtime.release_all(runtime) == 4
-    assert lua.globals().released_indexes == 10
+    assert lua.globals().released_indexes == 11
 
     search_runtime.clear_memory(runtime)
     assert next(iter(runtime.memory.items()), None) is None
@@ -491,7 +543,7 @@ def main() -> None:
         transient = lua.globals().make_view(f"character-{index}", "inventory", 2)
         search_runtime.register(runtime, transient)
         search_runtime.release(runtime, transient)
-    assert lua.globals().released_indexes == 110
+    assert lua.globals().released_indexes == 111
 
     print("BetterInventory search runtime tests passed.")
 

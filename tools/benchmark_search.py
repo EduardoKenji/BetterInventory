@@ -172,6 +172,22 @@ def main() -> None:
         local idle_started = os.clock()
         for frame = 1, 6000 do Runtime.update(search, view, 1000 + frame / 60) end
         local idle_seconds = os.clock() - idle_started
+		collectgarbage("restart")
+		collectgarbage("collect")
+		local settled_series_retained_before = collectgarbage("count")
+		collectgarbage("stop")
+		local settled_series_allocated_before = collectgarbage("count")
+		local settled_series_started = os.clock()
+		for iteration = 1, 100 do
+			local timestamp = 1200 + iteration
+			Runtime.set_query(search, view, terms[(iteration - 1) % #terms + 1] .. " " .. tostring(iteration), timestamp)
+			Runtime.update(search, view, timestamp + 0.08)
+		end
+		local settled_series_seconds = os.clock() - settled_series_started
+		local settled_series_allocated_after = collectgarbage("count")
+		collectgarbage("restart")
+		collectgarbage("collect")
+		local settled_series_retained_after = collectgarbage("count")
         collectgarbage("restart")
         Runtime.release(search, view)
         collectgarbage("collect")
@@ -191,6 +207,10 @@ def main() -> None:
 			query_burst_transient_kb = allocated_after - allocated_before,
 			settle_once_ms = settle_seconds * 1000,
 			settle_once_transient_kb = settled_allocated_after - allocated_after,
+			settled_100_queries_ms = settled_series_seconds * 1000,
+			settled_query_average_ms = settled_series_seconds * 10,
+			settled_100_queries_transient_kb = settled_series_allocated_after - settled_series_allocated_before,
+			settled_100_queries_retained_kb = settled_series_retained_after - settled_series_retained_before,
 			warm_128_max_slice_ms = warm_max_seconds * 1000,
 			warm_128_total_ms = warm_total_seconds * 1000,
             retained_after_release_kb = retained_after - retained_before,

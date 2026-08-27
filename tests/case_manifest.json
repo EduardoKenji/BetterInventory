@@ -9,7 +9,7 @@
     {"name": "production_name_perk_blessing_sort_and_release", "risk": "critical", "start_line": 1, "end_line": 206}
   ],
   "test_search_runtime.py": [
-      {"name": "coalesced_filter_rank_dim_memory_and_release_lifecycle", "risk": "high", "start_line": 1, "end_line": 500}
+      {"name": "coalesced_filter_rank_dim_memory_and_release_lifecycle", "risk": "high", "start_line": 1, "end_line": 552}
   ],
   "test_search_integration.py": [
     {"name": "supported_view_adapters_facade_and_lifecycle_composition", "risk": "high", "start_line": 1, "end_line": 350}

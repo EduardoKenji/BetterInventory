@@ -253,9 +253,21 @@ Sorting.new_comparator_manager = function(dependencies)
 	end
 
 	local function reset_priority_cache(view)
-		view._better_inventory_sort_priority_cache = setmetatable({}, {
-			__mode = "k",
-		})
+		local priority_cache = view._better_inventory_sort_priority_cache
+
+		if type(priority_cache) ~= "table" then
+			view._better_inventory_sort_priority_cache = setmetatable({}, {
+				__mode = "k",
+			})
+			return
+		end
+
+		-- Resorting after each settled query previously allocated another weak
+		-- cache. Reuse the view-owned table so repeated searches produce no cache
+		-- garbage while still recomputing mutable favorite/equipped priorities.
+		for layout_entry in pairs(priority_cache) do
+			priority_cache[layout_entry] = nil
+		end
 	end
 
 	manager.configure = function(mod, view)

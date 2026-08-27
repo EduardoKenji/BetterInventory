@@ -879,6 +879,11 @@ def main() -> None:
     )
     globals_.TestItems.favorites.favorite = True
     features.configure_inventory_sort_options(mod, layout, sortable_view)
+    first_priority_cache = sortable_view._better_inventory_sort_priority_cache
+    features.configure_inventory_sort_options(mod, layout, sortable_view)
+    assert lua.eval("function(left, right) return rawequal(left, right) end")(
+        first_priority_cache, sortable_view._better_inventory_sort_priority_cache
+    ) is True
 
     # Search rank is the stable outer partition for live-shaped {item=...}
     # entries. Rebinding after an ItemSorting-style comparator replacement must

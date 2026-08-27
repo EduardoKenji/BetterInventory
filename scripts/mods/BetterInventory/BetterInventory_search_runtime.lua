@@ -10,6 +10,12 @@ local function weak_key_table()
 	})
 end
 
+local function clear_table(values)
+	for key in pairs(values) do
+		values[key] = nil
+	end
+end
+
 local function safe_call(callback, ...)
 	if type(callback) ~= "function" then
 		return nil
@@ -45,10 +51,12 @@ local function query_is_active(state)
 end
 
 local function result_for(state, key)
-	if key ~= nil and state.result_generations[key] == state.generation then
-		local rank = state.ranks[key] or 0
+	if key ~= nil then
+		local rank = state.ranks[key]
 
-		return rank > 0, true, rank
+		if rank ~= nil then
+			return rank > 0, true, rank
+		end
 	end
 
 	return nil, false
@@ -56,7 +64,6 @@ end
 
 local function set_result(state, key, matched, rank)
 	if key ~= nil then
-		state.result_generations[key] = state.generation
 		state.ranks[key] = matched == true and (tonumber(rank) or 1) or 0
 	end
 end
@@ -197,8 +204,6 @@ local function state_for(runtime, view, create)
 		projection_context = {},
 		query = "",
 		ranks = weak_key_table(),
-		generation = 0,
-		result_generations = weak_key_table(),
 		results_ready = false,
 		warm_cursor = nil,
 	}
@@ -253,7 +258,11 @@ local function entry_result(runtime, state, entry, view, prioritize_equipped, re
 end
 
 local function scan(runtime, view, state, source_layout, trust_projection_cache)
-	state.generation = state.generation + 1
+	-- Keep exactly one result generation. Native presentation can replace layout
+	-- entry identities, and weak keys are not collected until Lua's next GC.
+	-- Clearing in place prevents successive settled queries from retaining every
+	-- prior generation while also avoiding a fresh result-table allocation.
+	clear_table(state.ranks)
 	state.results_ready = false
 	state.warm_cursor = nil
 
@@ -717,7 +726,6 @@ SearchRuntime.release = function(runtime, view)
 	restore_all_widget_alpha(state)
 	safe_call(runtime.dependencies.release_index, state.index)
 	state.ranks = weak_key_table()
-	state.result_generations = weak_key_table()
 	state.last_present_arguments = nil
 	state.presentation_kind = nil
 	state.projection_context = nil
