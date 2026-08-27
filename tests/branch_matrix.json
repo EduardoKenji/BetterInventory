@@ -26,7 +26,7 @@
       "name": "search.hooks-isolate-focused-grid-input",
       "test": "test_search_hooks.py",
       "case": "native_grid_and_hadron_sacrifice_hook_composition",
-      "outcome": "search focus owns only the active view's main grid through Darktide's native input-disabled state; controller Up is handled by supported view input hooks, pre-disabled discard/options grids retain native ownership, and no global ViewElementGrid.update wrapper charges unrelated elements every frame",
+      "outcome": "search focus owns only the active view's main grid through Darktide's native input-disabled state; controller Up is handled by supported view input hooks, the legend guard reads its existing widget state once for keyboard/controller focus, pre-disabled discard/options grids retain native ownership, and no global ViewElementGrid.update wrapper charges unrelated elements every frame",
       "modules": ["BetterInventory_search_hooks.lua"]
     },
     {

@@ -160,11 +160,13 @@ SearchHooks.install = function(dependencies)
 		mod:hook(ViewElementInputLegend, "_handle_input", function(func, legend, ...)
 			local parent = legend and legend._parent
 			local search_input = parent and parent._widgets_by_name and parent._widgets_by_name.better_inventory_search_input
+			local search_content = search_input and search_input.content
 
 			if parent and parent._better_inventory_search_block_legend_once then
 				parent._better_inventory_search_block_legend_once = nil
 				return
-			elseif search_input and type(SearchUI.is_writing) == "function" and SearchUI.is_writing(parent) then
+			elseif parent and parent._better_inventory_search_controller_focused
+				or search_content and search_content.is_writing == true then
 				return
 			end
 

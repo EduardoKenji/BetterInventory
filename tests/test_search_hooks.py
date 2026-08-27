@@ -170,11 +170,21 @@ def main() -> None:
         )
         writing_parent = {
             writing = true,
-            _widgets_by_name = {better_inventory_search_input = {}},
+            _widgets_by_name = {
+                better_inventory_search_input = {content = {is_writing = true}},
+            },
         }
         hooks["legend:_handle_input"](
             function() legend_native = legend_native + 1 end,
             {_parent = writing_parent}
+        )
+        controller_parent = {
+            _better_inventory_search_controller_focused = true,
+            _widgets_by_name = {better_inventory_search_input = {content = {}}},
+        }
+        hooks["legend:_handle_input"](
+            function() legend_native = legend_native + 1 end,
+            {_parent = controller_parent}
         )
         normal_parent = {}
         hooks["legend:_handle_input"](
