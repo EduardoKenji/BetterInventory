@@ -40,14 +40,14 @@
       "name": "search.integration-composes-native-views-and-sorting",
       "test": "test_search_integration.py",
       "case": "supported_view_adapters_facade_and_lifecycle_composition",
-      "outcome": "inventory, Hadron modify/sacrifice, Armoury, general weapon vendors, and Melk map to isolated search families while cosmetics remain untouched; presentation registers one owned cleanup and preserves native filters/spacing; settled dim queries rebind any ItemSorting replacement and request the deferred comparator resort using Darktide's current indexed option rather than a stale convenience pointer, while hide mode uses one native presentation; every adapter releases on shutdown",
+      "outcome": "inventory, Hadron modify/sacrifice, Armoury, general weapon vendors, and Melk map to isolated search families while cosmetics remain untouched; presentation registers one owned cleanup and preserves native filters/spacing; after the quiet interval, settled dim and hide queries rebind any ItemSorting replacement and enter one native filter/sort/presentation transaction using Darktide's current indexed option; every adapter releases on shutdown",
       "modules": ["BetterInventory_search_integration.lua", "BetterInventory_feature_sorting.lua", "BetterInventory_runtime.lua"]
     },
     {
       "name": "search.production-path-promotes-names-perks-and-blessings",
       "test": "test_search_end_to_end.py",
       "case": "production_name_perk_blessing_sort_and_release",
-      "outcome": "the production query, projection, runtime, and deferred comparator modules compose over Darktide-shaped {item=...} entries so a low-native-priority shovel is promoted by its name, Flak perk, or Uncanny Strike blessing even when ItemSorting leaves a stale selected-option pointer; unchanged projections are reused and explicit release empties the view-owned cache",
+      "outcome": "the production query, projection, runtime, and native indexed presentation transaction compose over Darktide-shaped {item=...} entries so a low-native-priority shovel is promoted by its name, Flak perk, or Uncanny Strike blessing even when ItemSorting leaves a stale selected-option pointer; unchanged projections are reused and explicit release empties the view-owned cache",
       "modules": ["BetterInventory_search_query.lua", "BetterInventory_search_index.lua", "BetterInventory_search_runtime.lua", "BetterInventory_feature_sorting.lua"]
     },
     {

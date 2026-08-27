@@ -422,19 +422,8 @@ Sorting.new_comparator_manager = function(dependencies)
 		end
 
 		view._better_inventory_resort_pending = nil
-		local trace_flush = view._better_inventory_search_trace_flush == true
-		view._better_inventory_search_trace_flush = nil
-		local sort_options = view._sort_options
-		local selected_index = view._selected_sort_option_index or 1
-		local current_option = sort_options and sort_options[selected_index]
-		local current_is_wrapped = current_option and current_option.sort_function == current_option._better_inventory_wrapped_sort
-		local selected_is_current = current_option ~= nil and view._selected_sort_option == current_option
 
 		local success, result = pcall(manager.resort, mod, layout, view)
-
-		if trace_flush and mod and type(mod.info) == "function" then
-			mod:info("[SearchTrace] flush success=%s result=%s selected_index=%s current_wrapped=%s selected_current=%s rank_active=%s", tostring(success), tostring(result), tostring(selected_index), tostring(current_is_wrapped), tostring(selected_is_current), tostring(view._better_inventory_search_rank_active))
-		end
 
 		if success then
 			return result ~= false

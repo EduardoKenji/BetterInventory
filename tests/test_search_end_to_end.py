@@ -111,7 +111,12 @@ def main() -> None:
                 })
                 return active_index
             end,
-            present = function() return true end,
+            present = function(target)
+                local options = target._sort_options or {}
+                local option = options[target._selected_sort_option_index or 1]
+                target:_sort_grid_layout(option and option.sort_function)
+                return true
+            end,
             prioritize_equipped = function() return true end,
             project = Index.project,
             query = Query,
@@ -155,13 +160,11 @@ def main() -> None:
 
         local function first_for(query_text, timestamp)
             Runtime.set_query(search, view, query_text, timestamp)
-            Runtime.update(search, view, timestamp + 0.08)
             view._item_grid._visible_grid_layout = {
                 view._offer_items_layout[1],
                 view._offer_items_layout[2],
             }
-            manager.request_resort(view)
-            manager.flush_resort(mod, nil, view)
+            Runtime.update(search, view, timestamp + 0.08)
             local first = view._item_grid._visible_grid_layout[1]
             return first.item.gear_id, Runtime.rank(search, view, first)
         end

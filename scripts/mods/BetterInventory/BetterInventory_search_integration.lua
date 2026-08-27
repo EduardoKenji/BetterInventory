@@ -185,29 +185,12 @@ Integration.new = function(mod, dependencies)
 				return false
 			end
 
-			-- Dim mode never changes native membership, so inventory and Armoury
-			-- views only need the existing comparator lane to run again. This is
-			-- both cheaper than rebuilding every widget and, importantly, reuses
-			-- the post-update resort path that remains compatible when ItemSorting
-			-- replaces Darktide's sort options after Better Inventory loads.
 			local family = dependencies.view_family(view)
-
-			if mod:get("inventory_search_non_match_behavior") ~= "hide"
-				and (family == "inventory" or family == "armoury")
-				and type(dependencies.request_resort) == "function" then
-				-- ItemSorting can replace the option table after an earlier capture.
-				-- Rebind once per settled query, never from the comparator itself.
-				dependencies.configure_sort(view)
-
-				local requested = dependencies.request_resort(view)
-				log_trace("presentation lane=deferred-resort family=%s requested=%s selected_index=%s", tostring(family), tostring(requested), tostring(view._selected_sort_option_index))
-
-				if requested ~= false then
-					view._better_inventory_search_trace_flush = true
-					return true
-				end
-			end
-
+			-- Commit exactly once after the quiet interval through Darktide's proven
+			-- native filtering/presentation transaction. `_sort_grid_layout` also
+			-- rebuilds the presented grid, so the former deferred-resort shortcut
+			-- saved no widget allocation while bypassing native layout refresh seams.
+			dependencies.configure_sort(view)
 			log_trace("presentation lane=native family=%s", tostring(family))
 			view:_present_layout_by_slot_filter(slot_filter, item_type_filter, display_name)
 
@@ -356,7 +339,6 @@ Integration.install = function(facade, mod, providers, configure_sort, global_st
 		configure_sort = configure_sort,
 		is_perfect = DiscardPolicy.is_perfect_roll_weapon,
 		register_cleanup = facade.register_view_session_cleanup,
-		request_resort = facade.request_inventory_resort,
 		view_family = function(view)
 			return Integration.view_family(view, global_store_service)
 		end,

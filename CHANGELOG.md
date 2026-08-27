@@ -23,10 +23,10 @@
 - Renames the dedicated Mod Options tab to `Equipment Text Search` and clarifies that its master switch hides the field, clears session state, and disables filtering and ranking.
 - Finalizes search spacing by raising Armoury cards 32 pixels and inventory cards 12 pixels from the initial layout while adding two pixels of clearance above both fields.
 - Exposes independent Inventory and Armoury top/bottom search-field padding sliders, preserving the finalized geometry as their defaults while leaving other supported views unchanged.
-- Fixes match promotion after ItemSorting replaces sort options: settled dim searches now rebind once and use Better Inventory's deferred resort lane, restoring weapon-name, perk, and blessing ordering without rebuilding every widget.
+- Fixes match promotion after ItemSorting replaces sort options: settled searches rebind once and enter one native filter/sort/presentation transaction after the quiet interval, restoring weapon-name, perk, and blessing ordering without any per-frame rebuild.
 - Makes rapid typing allocation-free inside the search runtime, parses and scans only after the 80 ms quiet interval, warms cold rich projections in bounded 16-item slices, removes redundant normalization/protected reads and the duplicate match map, and leaves fully settled idle updates allocation-free with all projection memory reclaimed on close.
 - Removes global per-frame `ViewElementGrid.update` and `ItemGridViewBase.update` search wrappers; Inventory reuses Better Inventory's existing update/input hooks, runtime updates run only while warming or settling, inactive native filters/comparators bypass search entirely, the legend guard reads the existing widget state once, and focus owns only the main grid's native input-disabled state without overriding discard/options ownership.
-- Fixes the optimized dim-search no-op with ItemSorting by resolving the current comparator through Darktide's indexed option instead of its stale convenience pointer, and reapplies unmatched-card alpha once to newly presented `content.element` widgets without restoring a frame scan.
+- Fixes the optimized dim-search no-op by restoring Darktide's native indexed presentation transaction after coalescing, resolving the current comparator instead of a stale convenience pointer, and applying unmatched-card alpha once to newly presented `content.element` widgets without restoring a frame scan.
 
 ## 3.1.0 - 2026-08-26
 

@@ -270,8 +270,8 @@ def main() -> None:
     assert lua.globals().compact_provider_description == "+25% Damage vs Flak Armoured Enemies"
     assert lua.globals().valid_present is True
     assert lua.globals().inventory_resort_present is True
-    assert lua.globals().inventory_resort_requests == 1
-    assert lua.globals().inventory_full_present_calls == 1
+    assert lua.globals().inventory_resort_requests == 0
+    assert lua.globals().inventory_full_present_calls == 2
     assert lua.globals().inventory_hide_present is True
     assert lua.globals().invalid_present is False
     assert lua.globals().invalid_external_present is False
