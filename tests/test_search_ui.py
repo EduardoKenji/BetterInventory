@@ -408,7 +408,7 @@ def main() -> None:
         lua.globals().test_mod, view, lua.globals().input_service
     ) is True
     assert search_ui.is_writing(view) is True
-    assert lua.globals().grid_input_disabled is True
+    assert lua.globals().grid_input_disabled is False
     lua.globals().input_service.actions.focus_action = False
     assert search_ui.handle_view_input(
         lua.globals().test_mod, view, lua.globals().input_service
@@ -424,6 +424,18 @@ def main() -> None:
     search_ui.update(lua.globals().test_mod, lua.globals().features, view, 4.5)
     assert lua.globals().legend_entry.input_action == "back"
     assert input_widget.content.input_text == "sword"
+
+    # Changing input mode while the field remains active reconciles ownership:
+    # controller navigation locks the grid; returning to cursor mode releases
+    # only the lock Better Inventory acquired.
+    assert search_ui.focus(view) is True
+    lua.execute("controller_active = true")
+    search_ui.update(lua.globals().test_mod, lua.globals().features, view, 4.6)
+    assert lua.globals().grid_input_disabled is True
+    lua.execute("controller_active = false")
+    search_ui.update(lua.globals().test_mod, lua.globals().features, view, 4.7)
+    assert lua.globals().grid_input_disabled is False
+    assert search_ui.defocus(view) is True
 
     # Search owns only an enabled grid. Native discard/options flows that had
     # already disabled the grid retain that state across focus and defocus.

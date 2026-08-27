@@ -406,7 +406,11 @@ SearchUI.focus = function(view)
 	content.is_writing = true
 	content.caret_position = text_length(content.input_text) + 1
 	content.force_caret_update = true
-	own_grid_input(view, true)
+	-- Mouse/keyboard text entry must leave the grid's native input service live:
+	-- wheel scrolling and card hotspots are handled by ViewElementGrid itself.
+	-- Controller focus has no pointer escape, so it keeps exclusive grid input
+	-- ownership until Down/Back returns selection to the first result.
+	own_grid_input(view, controller_navigation_active(view))
 	own_input_legend(view, true)
 
 	if content.hotspot then
@@ -469,12 +473,13 @@ SearchUI.update = function(mod, Features, view, time)
 
 	local content = input.content
 	local query = type(content.input_text) == "string" and content.input_text or ""
-	local should_own_grid_input = content.is_writing == true or controller_focused(view)
+	local focus_active = content.is_writing == true or controller_focused(view)
+	local should_own_grid_input = focus_active and controller_navigation_active(view)
 
 	if should_own_grid_input or view._better_inventory_search_grid_input_owned then
 		own_grid_input(view, should_own_grid_input)
 	end
-	if should_own_grid_input then
+	if focus_active then
 		own_input_legend(view, true)
 	elseif view._better_inventory_search_legend_input_owned then
 		own_input_legend(view, false)

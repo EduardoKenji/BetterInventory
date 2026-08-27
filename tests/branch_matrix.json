@@ -19,14 +19,14 @@
       "name": "search.ui-preserves-controller-and-utf8-input",
       "test": "test_search_ui.py",
       "case": "single_field_configurable_view_spacing_clipping_disable_focus_and_release",
-      "outcome": "Inventory 14/46 and Armoury 22/34 defaults preserve independent field/card spacing and clipping; controller Up from any first-row card selects search, Confirm delegates to native platform text entry, Down returns to the current first result, lower rows retain native navigation, and Simplified Chinese caret positions count UTF-8 codepoints",
+      "outcome": "Inventory 14/46 and Armoury 22/34 defaults preserve independent field/card spacing and clipping; cursor-mode typing leaves the native grid live for wheel scrolling and card presses, controller Up from any first-row card exclusively selects search, Confirm delegates to native platform text entry, Down returns to the current first result, input-mode changes reconcile only Better Inventory-owned locks, lower rows retain native navigation, and Simplified Chinese caret positions count UTF-8 codepoints",
       "modules": ["BetterInventory_search_ui.lua"]
     },
     {
       "name": "search.hooks-isolate-focused-grid-input",
       "test": "test_search_hooks.py",
       "case": "native_grid_and_hadron_sacrifice_hook_composition",
-      "outcome": "search focus owns only the active view's main grid through Darktide's native input-disabled state and suppresses its input legend through transition-only action ownership; controller Up is handled by supported view input hooks, pre-disabled discard/options grids retain native ownership, newly presented cards receive one alpha refresh, and no global ViewElementGrid.update, ItemGridViewBase.update, or input-legend hook charges settled inventory frames",
+      "outcome": "controller search focus owns only the active view's main grid through Darktide's native input-disabled state while cursor focus leaves wheel and card hotspots interactive; both modes suppress the input legend through transition-only action ownership, controller Up is handled by supported view input hooks, pre-disabled discard/options grids retain native ownership, newly presented cards receive one alpha refresh, and no global ViewElementGrid.update, ItemGridViewBase.update, or input-legend hook charges settled inventory frames",
       "modules": ["BetterInventory_search_hooks.lua"]
     },
     {
