@@ -689,19 +689,19 @@ local localization = {
 		en = "Cap perfect-roll weapon acquisition by max purchases",
 	},
 	auto_crafter_cap_by_max_purchases_tooltip = {
-		en = "Enable the maximum-purchases cap for the perfect-roll weapon acquisition search. The numeric limit stays saved when this option is disabled.",
+		en = "Enable a configurable maximum-purchases cap for the perfect-roll weapon search. With deferred mastery processing enabled, misses are processed in bounded fodder batches while acquisition continues to this cap.",
 	},
 	auto_crafter_max_purchases = {
 		en = "Auto Crafter maximum purchases",
 	},
 	auto_crafter_max_purchases_tooltip = {
-		en = "Hard upper bound for the serialized purchase search. No next purchase is dispatched after this count.",
+		en = "Configured upper bound for the serialized purchase search. No additional hidden purchase limit is applied.",
 	},
 	auto_crafter_best_candidate_fallback = {
 		en = "Use closest fallback candidate weapon if exact stat match weapon is not found",
 	},
 	auto_crafter_best_candidate_fallback_tooltip = {
-		en = "If an exact weapon is not found before a cap, use the closest valid roll. Custom stats minimize the sum of absolute differences across all five requested stats; single dump-stat mode minimizes that selected stat's difference. Equal-distance custom rolls keep the earliest purchase.",
+		en = "If an exact weapon is not found before the configured purchase or Ordo-docket cap, use the closest valid roll. Custom stats minimize the sum of absolute differences across all five requested stats; single dump-stat mode minimizes that selected stat's difference. Equal-distance custom rolls keep the earliest purchase.",
 	},
 	auto_crafter_request_mode = {
 		en = "Auto Crafter request mode",

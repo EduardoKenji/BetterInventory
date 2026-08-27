@@ -739,6 +739,34 @@ function Planner.build(snapshot, config)
 		append_reason(reasons, "experimental parallel mutations are blocked in Phase 1B")
 	end
 
+	local crafting_requested = normalized.level_mastery_20
+		or normalized.consecrate_transcendent
+		or normalized.upgrade_expertise_500
+		or normalized.change_perks
+		or normalized.change_blessings
+	local crafting_access = snapshot and snapshot.crafting_access
+	local character_level = tonumber(crafting_access and crafting_access.character_level)
+	local mastery_verification_required = character_level ~= nil and character_level < 30
+
+	if crafting_requested and type(crafting_access) == "table" and crafting_access.unlocked == false then
+		local current_level = tonumber(crafting_access.character_level)
+		local required_level = tonumber(crafting_access.required_character_level)
+		local level_detail = current_level and required_level and string.format(" (character level %d; requires level %d)", current_level, required_level) or ""
+
+		append_reason(reasons, "Hadron crafting is not unlocked" .. level_detail)
+	end
+
+	local mastery = normalized.trait_catalog and normalized.trait_catalog.mastery
+
+	if normalized.level_mastery_20 and type(mastery) == "table" and mastery.unlocked == false then
+		local required_level = tonumber(mastery.required_character_level)
+		local level_detail = required_level and string.format(" at character level %d", required_level) or ""
+
+		append_reason(reasons, "selected weapon-family mastery unlocks" .. level_detail)
+	elseif normalized.level_mastery_20 and mastery_verification_required and (type(mastery) ~= "table" or mastery.unlocked ~= true) then
+		append_reason(reasons, "selected weapon-family mastery unlock is not verified; wait for weapon discovery")
+	end
+
 	local credits = currency_amount(snapshot, "credits")
 
 	if price and credits and credits < price then

@@ -1374,6 +1374,56 @@ local function valid_weapon_name_part(value)
 	return type(value) == "string" and value ~= "" and value ~= "n/a"
 end
 
+local function direct_weapon_family_name(item)
+	local family = item and item.weapon_family_display_name
+	local localization_id = type(family) == "table" and family.loc_id
+	local localize = rawget(_G, "Localize")
+
+	if type(localization_id) ~= "string" or type(localize) ~= "function" then
+		return
+	end
+
+	local ok, value = pcall(localize, localization_id)
+
+	return ok and valid_weapon_name_part(value) and value or nil
+end
+
+local function comparable_weapon_name(value)
+	if type(value) ~= "string" then
+		return
+	end
+
+	-- GodRolls wraps the native family name in rich-text colour tags and may
+	-- prefix stars. Strip only those presentation tokens for identity checking;
+	-- the original decorated value is retained for display.
+	value = string.gsub(value, "{#.-}", "")
+	value = string.gsub(value, "^[★%s]+", "")
+
+	return value
+end
+
+local function capture_native_weapon_family(content, item)
+	content.better_inventory_native_family_item = item
+	content.better_inventory_native_family_name = nil
+
+	local native_name = content.display_name
+	local direct_name = direct_weapon_family_name(item)
+
+	if valid_weapon_name_part(native_name) and direct_name and comparable_weapon_name(native_name) == direct_name then
+		content.better_inventory_native_family_name = native_name
+	end
+end
+
+local function resolved_weapon_family_name(content, item)
+	if content.better_inventory_native_family_item == item and valid_weapon_name_part(content.better_inventory_native_family_name) then
+		return content.better_inventory_native_family_name
+	end
+
+	local family_ok, family_name = pcall(Items.weapon_lore_family_name, item)
+
+	return family_ok and valid_weapon_name_part(family_name) and family_name or nil
+end
+
 local function localized_item_name(item, fallback)
 	local localization_id = item and item.display_name
 	local localize = rawget(_G, "Localize")
@@ -1414,7 +1464,7 @@ local function append_weapon_mark(content, item)
 	return true
 end
 
-local function format_item_name(mod, widget, element, append_mark_to_name, force_weapon_name_single_line)
+local function format_item_name(mod, widget, element, append_mark_to_name, force_weapon_name_single_line, native_name_refreshed)
 	local content = widget and widget.content
 
 	if not content then
@@ -1432,6 +1482,16 @@ local function format_item_name(mod, widget, element, append_mark_to_name, force
 	element = element or content.element
 
 	local item = element and (element.real_item or element.item)
+
+	if native_name_refreshed then
+		if is_weapon(item) then
+			capture_native_weapon_family(content, item)
+		else
+			content.better_inventory_native_family_item = nil
+			content.better_inventory_native_family_name = nil
+		end
+	end
+
 	local customization = item_customization(mod, item)
 	local internal_name = customization and customization.name
 	local internal_name_target = customization and customization.name_target
@@ -1454,9 +1514,9 @@ local function format_item_name(mod, widget, element, append_mark_to_name, force
 
 	if type(internal_name) == "string" and internal_name ~= "" then
 		if internal_name_target == "sub" then
-			local family_ok, family_name = pcall(Items.weapon_lore_family_name, item)
+			local family_name = resolved_weapon_family_name(content, item)
 
-			if family_ok and valid_weapon_name_part(family_name) then
+			if family_name then
 				content.display_name = family_name
 			end
 
@@ -1489,9 +1549,9 @@ local function format_item_name(mod, widget, element, append_mark_to_name, force
 
 		return
 	elseif external_sub_name then
-		local family_ok, family_name = pcall(Items.weapon_lore_family_name, item)
+		local family_name = resolved_weapon_family_name(content, item)
 
-		if family_ok and valid_weapon_name_part(family_name) then
+		if family_name then
 			content.display_name = family_name
 		end
 
@@ -1504,9 +1564,9 @@ local function format_item_name(mod, widget, element, append_mark_to_name, force
 		return
 	end
 
-	local family_ok, family_name = pcall(Items.weapon_lore_family_name, item)
+	local family_name = resolved_weapon_family_name(content, item)
 
-	if family_ok and valid_weapon_name_part(family_name) then
+	if family_name then
 		content.display_name = family_name
 	end
 

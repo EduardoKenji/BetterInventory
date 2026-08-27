@@ -33,7 +33,7 @@
         "name": "layout.weapon-modifiers-avoid-full-calculator",
         "test": "test_layout.py",
         "case": "weapon_modifier_data_only_resolution",
-        "outcome": "inventory cards resolve ordered modifier identities directly from bounded item and weapon-template data; equipped compound shields arm a three-column guard before base-view initialization and fetched layouts repeat the check for unequipped shields, while ordinary inventories preserve requested columns and malformed or sparse future records are negatively cached and cannot invoke the full WeaponStats calculator, retry every draw, or block the grid",
+        "outcome": "inventory cards resolve ordered modifier identities directly from bounded item and weapon-template data; native GodRolls-decorated family names are reused without a second hooked full-stat projection while retaining markup; equipped compound shields arm a three-column guard before base-view initialization and fetched layouts repeat the check for unequipped shields, while ordinary inventories preserve requested columns and malformed or sparse future records are negatively cached and cannot invoke the full WeaponStats calculator, retry every draw, or block the grid",
         "modules": ["BetterInventory_layout.lua", "BetterInventory_layout_blueprints.lua", "BetterInventory_layout_cards.lua", "BetterInventory_layout_content.lua", "BetterInventory_layout_geometry.lua", "BetterInventory_runtime.lua"]
     },
     {
@@ -258,6 +258,27 @@
       "test": "test_auto_crafter_custom_fallback.py",
       "case": "acquisition_mode_migration_dump_comparison_and_custom_fallback",
       "outcome": "closest fallback minimizes summed absolute distance across all five projected stats, rejects incomplete profiles, and retains the earliest equal-distance roll",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
+      "name": "auto-crafter.respects-native-progression",
+      "test": "test_auto_crafter_stats.py",
+      "case": "native_progression_and_custom_stat_planner_validation",
+      "outcome": "enabled crafting stops before purchase when Hadron or the selected weapon-family mastery is locked, while level-appropriate under-30 and Psych Ward workflows remain available after affirmative mastery discovery",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
+      "name": "auto-crafter.bounds-live-pretarget-inventory-without-changing-caps",
+      "test": "test_auto_crafter_controller.py",
+      "case": "pretarget_bounds_progression_and_inventory_base_identity_safety",
+      "outcome": "level-1 crafting dispatches no purchase; rolling 30-item Phase 3 drains bound live run-owned misses while the configured docket or maximum-purchase boundary remains authoritative; an exact purchase 47 remains reachable and is the only result favorited when configured, one closest unfavorited fallback survives every drain when enabled, fallback-off docket exhaustion cleans current-run misses without entering Phase 4, and incomplete projections never become fallback or favorite candidates",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
+      "name": "auto-crafter.drains-fallback-off-deferred-fodder",
+      "test": "test_auto_crafter_controller.py",
+      "case": "fallback_off_terminal_phase3_cleanup",
+      "outcome": "when acquisition ends without an exact or enabled fallback, deferred current-run misses alone are sacrificed in bounded batches toward mastery 20 and any verified remainder is discarded; insufficient fodder stops without more purchases, no result is selected or favorited, pre-existing gear survives, and observed favorite/equip drift fails closed",
       "modules": ["BetterInventory_auto_crafter.lua"]
     },
     {

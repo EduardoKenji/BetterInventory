@@ -13,6 +13,12 @@ local WeaponTemplate = require("scripts/utilities/weapon/weapon_template")
 
 local Backend = {}
 
+-- Darktide's native Path of Trust unlock for Hadron. The mission-board
+-- facility state is authoritative when available; this level remains the
+-- fail-safe minimum for Psych Ward, where hub progression data may be absent.
+local MIN_CRAFTING_CHARACTER_LEVEL = 4
+local CRAFTING_FACILITY_ID = "omnissiah"
+
 local function read_member(object, key)
 	return object[key]
 end
@@ -256,24 +262,83 @@ local function discard_protection_snapshot()
 	}
 end
 
-local function current_character_id()
+local function current_player()
 	local managers = rawget(_G, "Managers")
 	local player_manager = managers and managers.player
 	local ok, player = pcall(player_manager and player_manager.local_player or function () end, player_manager, 1)
 
-	if not ok or not player or player.__deleted then
-		return nil
+	if not ok or not player or safe_member(player, "__deleted") then
+		return
 	end
 
-	if type(player.character_id) == "function" then
-		local id_ok, character_id = pcall(player.character_id, player)
+	return player
+end
 
-		if id_ok and character_id ~= nil then
-			return tostring(character_id)
+local function current_character_id(player)
+	local character_id = safe_member(player, "character_id")
+
+	if type(character_id) == "function" then
+		local id_ok, value = pcall(character_id, player)
+
+		if id_ok and value ~= nil then
+			return tostring(value)
 		end
 	end
 
-	return nil
+	return
+end
+
+local function current_crafting_access(player)
+	local managers = rawget(_G, "Managers")
+	local profile
+	local profile_method = safe_member(player, "profile")
+
+	if type(profile_method) == "function" then
+		local profile_ok, value = pcall(profile_method, player)
+
+		profile = profile_ok and type(value) == "table" and value or nil
+	end
+
+	local character_level = tonumber(safe_member(profile, "current_level"))
+	local level_unlocked
+
+	if character_level ~= nil then
+		level_unlocked = character_level >= MIN_CRAFTING_CHARACTER_LEVEL
+	end
+	local facility_unlocked
+	local data_service = managers and managers.data_service
+	local mission_board = data_service and data_service.mission_board
+	local get_progression = mission_board and safe_member(mission_board, "get_hub_facilities_progression_data")
+
+	if type(get_progression) == "function" then
+		local progression_ok, progression = pcall(get_progression, mission_board)
+		local facility = progression_ok and type(progression) == "table" and progression[CRAFTING_FACILITY_ID] or nil
+		local unlock_state_ok, unlock_state = pcall(read_member, facility, "unlocked")
+
+		if type(facility) == "table" and unlock_state_ok and unlock_state ~= nil then
+			facility_unlocked = unlock_state == true
+		elseif progression_ok and type(progression) == "table" then
+			-- Match Darktide's native facility_unlocked predicate: a resolved
+			-- progression table without the requested facility is still locked.
+			facility_unlocked = false
+		end
+	end
+
+	local unlocked
+
+	if level_unlocked == false or facility_unlocked == false then
+		unlocked = false
+	elseif level_unlocked == true then
+		-- Psych Ward can provide a stable character without a hub mission-board
+		-- snapshot. Preserve that supported route once the level gate is met.
+		unlocked = true
+	end
+
+	return {
+		character_level = character_level,
+		required_character_level = MIN_CRAFTING_CHARACTER_LEVEL,
+		unlocked = unlocked,
+	}
 end
 
 local function choice_master_id(choice)
@@ -1462,9 +1527,11 @@ function Backend.new(dependencies)
 
 	function backend:probe_snapshot()
 		self._purchase_wallets = {}
-		local character_id = current_character_id()
+		local player = current_player()
+		local character_id = current_character_id(player)
 		local snapshot = {
 			character_id = character_id,
+			crafting_access = current_crafting_access(player),
 			crafting_costs = {
 				available = false,
 				sacrifice_mastery = nil,
@@ -1511,8 +1578,10 @@ function Backend.new(dependencies)
 
 	function backend:refresh_gear_snapshot(previous)
 		local snapshot = inherited_snapshot(previous)
-		local character_id = current_character_id()
+		local player = current_player()
+		local character_id = current_character_id(player)
 		snapshot.character_id = character_id
+		snapshot.crafting_access = current_crafting_access(player)
 
 		return self:_read("gear", "fetch_gear"):next(function (gear)
 			self._raw_gear = gear or {}
@@ -1525,8 +1594,10 @@ function Backend.new(dependencies)
 	function backend:refresh_runtime_snapshot(previous)
 		self._purchase_wallets = {}
 		local snapshot = inherited_snapshot(previous)
-		local character_id = current_character_id()
+		local player = current_player()
+		local character_id = current_character_id(player)
 		snapshot.character_id = character_id
+		snapshot.crafting_access = current_crafting_access(player)
 
 		-- Keep reads serial by default. The frozen Brunt catalogue and local cost
 		-- tables are inherited; only mutable wallet and gear state are reconciled.
@@ -2068,6 +2139,17 @@ function Backend.new(dependencies)
 				return self:_read("crafting", "trait_sticker_book", trait_category):next(function (sticker_book)
 					local perks = summarize_perk_catalog(metadata)
 					local blessings = summarize_blessing_catalog(sticker_book)
+					local unlock_ok, mastery_unlocked, required_character_level = false, nil, nil
+
+					if type(Mastery) == "table" and type(Mastery.is_mastery_unlocked) == "function" then
+						unlock_ok, mastery_unlocked, required_character_level = pcall(Mastery.is_mastery_unlocked, mastery_data)
+					end
+
+					local normalized_mastery_unlocked
+
+					if unlock_ok then
+						normalized_mastery_unlocked = mastery_unlocked == true
+					end
 
 					return {
 						available = true,
@@ -2080,6 +2162,8 @@ function Backend.new(dependencies)
 							milestones = safe_member(mastery_data, "milestones"),
 							mastery_id = safe_member(mastery_data, "mastery_id") or parent_pattern,
 							mastery_level = tonumber(safe_member(mastery_data, "mastery_level")),
+							required_character_level = unlock_ok and tonumber(required_character_level) or nil,
+							unlocked = normalized_mastery_unlocked,
 						},
 						parent_pattern = parent_pattern,
 						perk_count = #perks,

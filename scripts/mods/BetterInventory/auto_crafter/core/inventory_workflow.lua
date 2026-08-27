@@ -295,6 +295,12 @@ function InventoryWorkflow.install(self, services)
 				end
 			end
 
+			if not phase3_has_target and phase3 and phase3.running and phase3.defer_bad_processing and pending_deferred_count(phase3) > 0 then
+				if self:_phase3_process_search_fodder(generation, "terminal", reason) then
+					return true
+				end
+			end
+
 			self:_stop_search(reason)
 
 			return false
@@ -429,7 +435,6 @@ function InventoryWorkflow.install(self, services)
 				candidate.damage = candidate.potential_damage or candidate_stat(candidate, "damage")
 				candidate.exact_match = candidate_matches_stat_targets(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets, search.dump_stat_identity, search.dump_comparison)
 				candidate.target_distance = candidate_stat_target_distance(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets, search.dump_stat_identity)
-
 				local accepts_first_weapon = search.acquisition_mode == "first_weapon" and not phase3_has_target
 
 				if self._phase3 and self._phase3.running and not candidate.exact_match and not accepts_first_weapon then
@@ -438,7 +443,9 @@ function InventoryWorkflow.install(self, services)
 				search.last = candidate
 				self._last_purchased = candidate
 
-				if self:_candidate_is_better(candidate, search.best) then
+				local previous_best = search.best
+
+				if self:_candidate_is_better(candidate, previous_best) then
 					search.best = candidate
 				end
 
@@ -452,12 +459,35 @@ function InventoryWorkflow.install(self, services)
 				elseif accepts_first_weapon then
 					self:_accept_fallback_candidate(generation, candidate, "first_weapon")
 				elseif self._phase3 and self._phase3.running and self._phase3.defer_bad_processing and not self._phase3.target_candidate then
-					self._phase3.deferred_candidates[#self._phase3.deferred_candidates + 1] = candidate
-					operation_report("phase3_candidate_deferred", {
-						candidate = candidate,
-						count = #self._phase3.deferred_candidates,
-					})
-					self:_purchase_search_step(generation)
+					local deferred_candidate = candidate
+					local reserve_fallback = setting("auto_crafter_best_candidate_fallback", true) == true and search.best == candidate
+
+					-- Keep exactly one live fallback candidate while the configured
+					-- search continues. When a better roll arrives, the previously
+					-- reserved roll becomes ordinary mastery fodder. With fallback
+					-- disabled every miss is eligible immediately.
+					if reserve_fallback then
+						deferred_candidate = previous_best
+						self._phase3.fallback_candidate = candidate
+					end
+
+					if deferred_candidate then
+						self._phase3.deferred_candidates[#self._phase3.deferred_candidates + 1] = deferred_candidate
+						operation_report("phase3_candidate_deferred", {
+							candidate = deferred_candidate,
+							count = pending_deferred_count(self._phase3),
+						})
+					else
+						operation_report("phase3_fallback_candidate_reserved", {
+							candidate = candidate,
+						})
+					end
+
+					if pending_deferred_count(self._phase3) >= PHASE3_FODDER_BATCH_SIZE then
+						self:_phase3_process_search_fodder(generation, "rolling")
+					else
+						self:_purchase_search_step(generation)
+					end
 				elseif self._phase3 and self._phase3.running then
 					self:_phase3_check_mastery(generation, candidate)
 				else

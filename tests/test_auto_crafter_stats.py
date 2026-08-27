@@ -150,6 +150,8 @@ def main() -> None:
 			["gear-b"] = {uuid = "gear-b", rarity = 0, base_stats = {{name = "damage", value = 0.5}}},
 		}
 		TestMasteryPurchaseFails = false
+		TestMasteryUnlocked = true
+		TestMasteryRequiredLevel = 1
 		TestPurchasedTraits = nil
 		TestBatchUpgradeIds = {}
 		TestPreviewCalls = 0
@@ -198,6 +200,11 @@ def main() -> None:
                     return string.format(item.trait_text, rarity)
                 end,
             },
+			["scripts/utilities/mastery"] = {
+				is_mastery_unlocked = function()
+					return TestMasteryUnlocked, TestMasteryRequiredLevel
+				end,
+			},
 			["scripts/backend/master_items"] = {
 				get_cached = function() return TestMasterItems end,
                 get_item = function(name)
@@ -251,7 +258,7 @@ def main() -> None:
         end
 
 		TestCharacterData = {favorite_items = {}}
-		TestProfile = {loadout = {}, loadout_item_ids = {}}
+		TestProfile = {current_level = 30, loadout = {}, loadout_item_ids = {}}
 		TestDeletedGearIds = nil
 		Managers = {
 			player = {
@@ -375,6 +382,42 @@ def main() -> None:
     assert snapshot_promise.failure is None
     snapshot = snapshot_promise.value
     offer = snapshot.store.offers[1]
+    assert snapshot.crafting_access.unlocked is True
+    assert snapshot.crafting_access.character_level == 30
+    assert snapshot.crafting_access.required_character_level == 4
+
+    # Native Hadron progression unlocks at level 4. Psych Ward may not expose
+    # mission-board state, so a known sufficient level remains usable there.
+    lua.globals().TestProfile.current_level = 1
+    level_one_snapshot = backend.probe_snapshot(backend).value
+    assert level_one_snapshot.crafting_access.unlocked is False
+    lua.globals().TestProfile.current_level = 10
+    low_level_snapshot = backend.probe_snapshot(backend).value
+    assert low_level_snapshot.crafting_access.unlocked is True
+    lua.globals().TestProfile.current_level = 30
+    lua.execute(
+        r'''
+        Managers.data_service = {
+            mission_board = {
+                get_hub_facilities_progression_data = function()
+                    return {omnissiah = {unlocked = false}}
+                end,
+            },
+        }
+        '''
+    )
+    facility_locked_snapshot = backend.probe_snapshot(backend).value
+    assert facility_locked_snapshot.crafting_access.unlocked is False
+    lua.execute(
+        r'''
+        Managers.data_service.mission_board.get_hub_facilities_progression_data = function()
+            return {}
+        end
+        '''
+    )
+    missing_facility_snapshot = backend.probe_snapshot(backend).value
+    assert missing_facility_snapshot.crafting_access.unlocked is False
+    lua.globals().Managers.data_service = None
     assert len(offer.base_stats) == 5
     assert len(offer.marks) == 3
     assert offer.marks[1].master_id == "crowbar_master"
@@ -519,6 +562,8 @@ def main() -> None:
     assert catalog_promise.value.perk_count == 1
     assert catalog_promise.value.perks[1].display_name == "+25% Damage vs Flak Armoured (T4)"
     assert catalog_promise.value.perks[1].tier == 4
+    assert catalog_promise.value.mastery.unlocked is True
+    assert catalog_promise.value.mastery.required_character_level == 1
 
     planner = lua.execute(
         PLANNER_PATH.read_text(encoding="utf-8"), name=str(PLANNER_PATH)
@@ -560,6 +605,119 @@ def main() -> None:
     assert penetration_plan.estimate.dockets_floor == 11600
     assert penetration_plan.estimate.dockets_cap == 1000000
     assert penetration_plan.estimate.purchase_count_cap == 86
+
+    # Account mutations must never bypass the native Hadron or selected-family
+    # mastery gates. Acquisition-only configurations remain valid at level 1.
+    snapshot.crafting_access = lua.table_from(
+        {
+            "unlocked": False,
+            "character_level": 1,
+            "required_character_level": 4,
+        }
+    )
+    locked_crafting_plan = planner.build(
+        snapshot,
+        lua.table_from(
+            {
+                "target_offer": offer,
+                "dump_stat": "crowbar_p1_m1_dps_stat",
+				"cap_by_dockets": True,
+				"docket_cap": 1000000,
+                "consecrate_transcendent": True,
+                "level_mastery_20": False,
+                "upgrade_expertise_500": False,
+                "change_perks": False,
+                "change_blessings": False,
+            }
+        ),
+    )
+    assert locked_crafting_plan.preflight.ok is False
+    assert "Hadron crafting is not unlocked" in locked_crafting_plan.preflight.summary
+    acquisition_only_plan = planner.build(
+        snapshot,
+        lua.table_from(
+            {
+                "target_offer": offer,
+                "dump_stat": "crowbar_p1_m1_dps_stat",
+				"cap_by_dockets": True,
+				"docket_cap": 1000000,
+                "consecrate_transcendent": False,
+                "level_mastery_20": False,
+                "upgrade_expertise_500": False,
+                "change_perks": False,
+                "change_blessings": False,
+            }
+        ),
+    )
+    assert "Hadron crafting is not unlocked" not in acquisition_only_plan.preflight.summary
+    snapshot.crafting_access = lua.table_from(
+        {
+            "unlocked": True,
+            "character_level": 30,
+            "required_character_level": 4,
+        }
+    )
+    locked_mastery_catalog = lua.table_from(
+        {
+			"mastery": lua.table_from(
+				{
+					"unlocked": False,
+					"required_character_level": 10,
+				}
+			),
+        }
+    )
+    locked_mastery_plan = planner.build(
+        snapshot,
+        lua.table_from(
+            {
+                "target_offer": offer,
+                "dump_stat": "crowbar_p1_m1_dps_stat",
+				"cap_by_dockets": True,
+				"docket_cap": 1000000,
+                "trait_catalog": locked_mastery_catalog,
+                "consecrate_transcendent": False,
+                "level_mastery_20": True,
+                "upgrade_expertise_500": False,
+                "change_perks": False,
+                "change_blessings": False,
+            }
+        ),
+    )
+    assert locked_mastery_plan.preflight.ok is False
+    assert "selected weapon-family mastery unlocks at character level 10" in locked_mastery_plan.preflight.summary
+    snapshot.crafting_access = lua.table_from(
+        {
+            "unlocked": True,
+            "character_level": 10,
+            "required_character_level": 4,
+        }
+    )
+    undiscovered_mastery_plan = planner.build(
+        snapshot,
+        lua.table_from(
+            {
+                "target_offer": offer,
+                "dump_stat": "crowbar_p1_m1_dps_stat",
+				"cap_by_dockets": True,
+				"docket_cap": 1000000,
+                "consecrate_transcendent": False,
+                "level_mastery_20": True,
+                "upgrade_expertise_500": False,
+                "change_perks": False,
+                "change_blessings": False,
+            }
+        ),
+    )
+    assert undiscovered_mastery_plan.preflight.ok is False
+    assert "selected weapon-family mastery unlock is not verified" in undiscovered_mastery_plan.preflight.summary
+    snapshot.crafting_access = lua.table_from(
+        {
+            "unlocked": True,
+            "character_level": 30,
+            "required_character_level": 4,
+        }
+    )
 
     custom_plan = planner.build(
         snapshot,
