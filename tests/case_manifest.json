@@ -6,13 +6,13 @@
     {"name": "bounded_projection_cache_custom_names_traits_and_split_rarity", "risk": "high", "start_line": 1, "end_line": 296}
   ],
   "test_search_runtime.py": [
-    {"name": "coalesced_filter_rank_dim_memory_and_release_lifecycle", "risk": "high", "start_line": 1, "end_line": 358}
+      {"name": "coalesced_filter_rank_dim_memory_and_release_lifecycle", "risk": "high", "start_line": 1, "end_line": 362}
   ],
   "test_search_integration.py": [
     {"name": "supported_view_adapters_facade_and_lifecycle_composition", "risk": "high", "start_line": 1, "end_line": 327}
   ],
   "test_search_ui.py": [
-    {"name": "single_field_native_title_spacing_focus_and_release", "risk": "high", "start_line": 1, "end_line": 230}
+      {"name": "single_field_view_specific_spacing_focus_and_release", "risk": "high", "start_line": 1, "end_line": 238}
   ],
   "test_search_hooks.py": [
     {"name": "native_grid_and_hadron_sacrifice_hook_composition", "risk": "high", "start_line": 1, "end_line": 209}

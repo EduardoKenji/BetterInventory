@@ -160,6 +160,10 @@ def main() -> None:
     assert search_runtime.native_filter(runtime, view, None, True) is True
     late_entry = lua.table_from({"gear_id": "late", "name": "late sword"})
     assert search_runtime.rank(runtime, view, late_entry) == 1
+    late_filter_entry = lua.table_from({"gear_id": "late-filter", "name": "late sword"})
+    lua.globals().configured_mode = "hide"
+    assert search_runtime.native_filter(runtime, view, late_filter_entry, True) is True
+    lua.globals().configured_mode = "dim"
     assert view._item_grid._all_grid_widgets[1].content.alpha_multiplier == 0.4
     assert view._item_grid._all_grid_widgets[2].content.alpha_multiplier == 1
     assert search_runtime.is_active(runtime, view) is True

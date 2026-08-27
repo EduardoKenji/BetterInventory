@@ -86,7 +86,7 @@ def main() -> None:
     assert definitions.grid_settings.top_padding is None
     assert decorated.grid_settings.title_height == 108
     assert decorated.grid_settings.top_padding == 48
-    assert decorated.scenegraph_definition.better_inventory_search_input.position[2] == 112
+    assert decorated.scenegraph_definition.better_inventory_search_input.position[2] == 120
     assert decorated.scenegraph_definition.better_inventory_search_input.size[1] == 568
     assert decorated.scenegraph_definition.better_inventory_search_filters is None
     assert decorated.widget_definitions.better_inventory_search_clear is None
@@ -95,7 +95,8 @@ def main() -> None:
     assert lua.execute("return decorated_once == decorated_twice") is True
 
     # A single search row extends native content padding without moving native
-    # title geometry. Vendor tab padding is preserved and extended.
+    # title geometry. Armoury Requisition and Multi-Operative Supply share the
+    # CreditsVendorView route and receive additional tab/header clearance.
     crafting_definitions = lua.table_from(
         {
             "grid_settings": lua.table_from({"title_height": 80}),
@@ -123,8 +124,15 @@ def main() -> None:
         lua.table_from({"__class_name": "CreditsVendorView"}),
     )
     assert vendor.grid_settings.title_height == 0
-    assert vendor.grid_settings.top_padding == 128
-    assert vendor.scenegraph_definition.better_inventory_search_input.position[2] == 84
+    assert vendor.grid_settings.top_padding == 144
+    assert vendor.scenegraph_definition.better_inventory_search_input.position[2] == 100
+
+    general_vendor = search_ui.decorate_definitions(
+        vendor_definitions,
+        lua.table_from({"__class_name": "CreditsGoodsVendorView"}),
+    )
+    assert general_vendor.grid_settings.top_padding == 128
+    assert general_vendor.scenegraph_definition.better_inventory_search_input.position[2] == 84
 
     sacrifice_view = lua.table_from({"__class_name": "CraftingMechanicusBarterItemsView"})
     sacrifice = search_ui.decorate_definitions(definitions, sacrifice_view)

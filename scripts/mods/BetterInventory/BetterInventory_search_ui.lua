@@ -5,6 +5,9 @@ local SearchUI = {}
 local INPUT_NAME = "better_inventory_search_input"
 local MAX_QUERY_LENGTH = 128
 local SEARCH_ROW_PADDING = 48
+local ARMOURY_SEARCH_ROW_PADDING = 64
+local TITLED_SEARCH_GAP = 12
+local ARMOURY_SEARCH_GAP = 20
 local BARTER_GRID_OFFSET = 100
 
 local function supported(view)
@@ -59,7 +62,16 @@ local function search_geometry(definitions, view)
 	local grid_settings = definitions.grid_settings or {}
 	local title_height = tonumber(grid_settings.title_height) or 0
 	local top_padding = tonumber(grid_settings.top_padding) or 0
-	local y = title_height > 0 and title_height + 4 or top_padding + 4
+	local gap = view.__class_name == "InventoryWeaponsView" and TITLED_SEARCH_GAP or 4
+
+	-- Requisition Weapons & Curios and GlobalStore's Armoury Multi-Operative
+	-- Supply share CreditsVendorView. Its tab/header row extends farther below
+	-- item_grid_pivot than the ordinary titled inventory header.
+	if view.__class_name == "CreditsVendorView" then
+		gap = ARMOURY_SEARCH_GAP
+	end
+
+	local y = title_height > 0 and title_height + gap or top_padding + gap
 
 	return 14, math.max(y, 12), 568
 end
@@ -88,7 +100,8 @@ SearchUI.decorate_definitions = function(definitions, view)
 	-- Keep Darktide's title height intact. ViewElementGrid centers its title in
 	-- that height, so expanding it moves labels such as "Primary Weapon".
 	if view.__class_name ~= "CraftingMechanicusBarterItemsView" then
-		owned.grid_settings.top_padding = (tonumber(owned.grid_settings.top_padding) or 0) + SEARCH_ROW_PADDING
+		local row_padding = view.__class_name == "CreditsVendorView" and ARMOURY_SEARCH_ROW_PADDING or SEARCH_ROW_PADDING
+		owned.grid_settings.top_padding = (tonumber(owned.grid_settings.top_padding) or 0) + row_padding
 	end
 
 	owned.scenegraph_definition[INPUT_NAME] = {
