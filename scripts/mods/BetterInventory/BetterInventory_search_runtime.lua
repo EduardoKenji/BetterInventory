@@ -82,7 +82,11 @@ end
 local function mode(runtime)
 	local configured = safe_call(runtime.dependencies.mode)
 
-	return configured == "hide" and "hide" or "dim"
+	if configured == "dim" or configured == "hide" then
+		return configured
+	end
+
+	return "unchanged"
 end
 
 local function sync_hot_path_flags(runtime, view, state)
@@ -109,10 +113,8 @@ local function restore_widget_alpha(state, widget)
 		return false
 	end
 
-	local content = widget and widget.content
-
-	if type(content) == "table" and content.alpha_multiplier == original * state.dim_alpha then
-		content.alpha_multiplier = original
+	if widget and widget.alpha_multiplier == original * state.dim_alpha then
+		widget.alpha_multiplier = original
 	end
 
 	state.owned_widget_alpha[widget] = nil
@@ -582,6 +584,28 @@ SearchRuntime.rank = function(runtime, view, entry)
 	return rank or 0
 end
 
+SearchRuntime.matches = function(runtime, view, entry)
+	local state = state_for(runtime, view, false)
+
+	if not query_is_active(state) or state.results_ready ~= true then
+		return true
+	end
+
+	local matched, found = result_for(state, entry)
+
+	if not found then
+		matched, found = result_for(state, item_from(entry))
+	end
+
+	if not found then
+		local rank
+		matched, rank = entry_result(runtime, state, entry, view)
+		set_result(state, entry, matched, rank)
+	end
+
+	return matched == true
+end
+
 SearchRuntime.apply_widget_alpha = function(runtime, view)
 	local state = state_for(runtime, view, false)
 
@@ -616,13 +640,13 @@ SearchRuntime.apply_widget_alpha = function(runtime, view)
 		if active and matched == false then
 			local original = state.owned_widget_alpha[widget]
 
-			if original == nil and type(content) == "table" then
-				original = tonumber(content.alpha_multiplier) or 1
+			if original == nil and type(widget) == "table" then
+				original = tonumber(widget.alpha_multiplier) or 1
 				state.owned_widget_alpha[widget] = original
 			end
 
-			if original ~= nil and content.alpha_multiplier == original then
-				content.alpha_multiplier = original * runtime.dim_alpha
+			if original ~= nil and (tonumber(widget.alpha_multiplier) or 1) == original then
+				widget.alpha_multiplier = original * runtime.dim_alpha
 			end
 		else
 			restore_widget_alpha(state, widget)
@@ -683,13 +707,11 @@ SearchRuntime.update = function(runtime, view, now)
 	local current_mode = mode(runtime)
 	local ok
 
-	-- Dim/promote keeps every card. Prefer a synchronous ViewElementGrid
-	-- reorder that preserves widget identities, loaded icons, and card-owned
-	-- resources. Hide mode still needs the native filter transaction, and the
-	-- first dim commit after hide must rebuild full membership once.
-	if current_mode == "dim" and state.committed_mode ~= "hide" then
-		ok = safe_call(runtime.dependencies.reorder, view)
-	end
+	-- Every policy uses ViewElementGrid's canonical entry/widget identities.
+	-- Hide changes only the visible layout; `_grid_layout` retains full native
+	-- membership, so later queries and mode changes restore cards without a
+	-- presentation rebuild or icon/resource churn.
+	ok = safe_call(runtime.dependencies.reorder, view, current_mode == "hide")
 
 	if ok ~= true then
 		if state.presentation_kind == "external" then
@@ -715,7 +737,6 @@ SearchRuntime.update = function(runtime, view, now)
 		return false
 	end
 
-	state.committed_mode = current_mode
 	SearchRuntime.apply_widget_alpha(runtime, view)
 	view._better_inventory_search_needs_update = nil
 	return true

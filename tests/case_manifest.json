@@ -9,10 +9,10 @@
     {"name": "production_name_perk_blessing_sort_and_release", "risk": "critical", "start_line": 1, "end_line": 250}
   ],
   "test_search_runtime.py": [
-          {"name": "coalesced_filter_rank_dim_memory_and_release_lifecycle", "risk": "high", "start_line": 1, "end_line": 629}
+          {"name": "coalesced_filter_rank_dim_memory_and_release_lifecycle", "risk": "high", "start_line": 1, "end_line": 634}
   ],
   "test_search_integration.py": [
-        {"name": "supported_view_adapters_facade_and_lifecycle_composition", "risk": "high", "start_line": 1, "end_line": 431}
+        {"name": "supported_view_adapters_facade_and_lifecycle_composition", "risk": "high", "start_line": 1, "end_line": 449}
   ],
   "test_search_ui.py": [
       {"name": "single_field_configurable_view_spacing_clipping_disable_focus_and_release", "risk": "high", "start_line": 1, "end_line": 484}

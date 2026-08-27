@@ -587,8 +587,9 @@ return {
 						setting_id = "inventory_search_non_match_behavior",
 						tooltip = "inventory_search_non_match_behavior_tooltip",
 						type = "dropdown",
-						default_value = "dim",
+						default_value = "unchanged",
 						options = {
+							{ text = "inventory_search_non_match_unchanged", value = "unchanged" },
 							{ text = "inventory_search_non_match_dim", value = "dim" },
 							{ text = "inventory_search_non_match_hide", value = "hide" },
 						},

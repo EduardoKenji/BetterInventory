@@ -157,14 +157,15 @@ local function trace_item_id(item)
 	return type(item) == "table" and tostring(item.gear_id or item.id or item.display_name or "?") or "?"
 end
 
--- Default dim/promote searches do not change grid membership. Replaying
--- `_present_layout_by_slot_filter` for them is especially costly: native
+-- Search presentation reuses current grid membership and widget identities.
+-- Replaying `_present_layout_by_slot_filter` is especially costly: native
 -- `present_grid_layout` adds a fresh spacing entry without an entry_id, which
 -- makes ViewElementGrid destroy and recreate every card. Build the new order
 -- from the grid's canonical widgets and commit it through the native in-place
--- reorder API instead. Two retained buffers ensure the grid never observes the
--- array being cleared for the next query.
-local function reorder_existing_grid(view, configure_sort, trace_reorder)
+-- reorder API instead. Hide omits unmatched entries only from visible layout;
+-- canonical `_grid_layout` stays complete. Two retained buffers ensure grid
+-- never observes an array being cleared for next query.
+local function reorder_existing_grid(view, configure_sort, trace_reorder, runtime, hide_unmatched)
 	local item_grid = view and view._item_grid
 	local source = item_grid and item_grid._grid_layout
 	local alignments = item_grid and item_grid._all_grid_alignment_widgets
@@ -236,7 +237,9 @@ local function reorder_existing_grid(view, configure_sort, trace_reorder)
 				return false
 			end
 
-			target[#target + 1] = entry
+			if hide_unmatched ~= true or SearchRuntime.matches(runtime, view, entry) then
+				target[#target + 1] = entry
+			end
 		else
 			anchor_count = anchor_count + 1
 			positions[anchor_count] = index
@@ -466,8 +469,8 @@ Integration.new = function(mod, dependencies)
 		project = SearchIndex.project,
 		query = SearchQuery,
 		rarity_aliases = SearchIndex.rarity_aliases,
-		reorder = function(view)
-			return reorder_existing_grid(view, dependencies.configure_sort, trace_reorder)
+		reorder = function(view, hide_unmatched)
+			return reorder_existing_grid(view, dependencies.configure_sort, trace_reorder, runtime, hide_unmatched)
 		end,
 		release_grid = function(view)
 			if type(view) == "table" then

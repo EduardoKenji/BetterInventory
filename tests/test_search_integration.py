@@ -63,6 +63,7 @@ def main() -> None:
             is_active = function() return true end,
             query = function() return "sword" end,
             rank = function(_, _, entry) return entry and entry.match and 1 or 0 end,
+			matches = function(_, _, entry) return entry and entry.match == true end,
             release = function() return true end,
             release_all = function()
                 release_all_calls = release_all_calls + 1
@@ -383,10 +384,16 @@ def main() -> None:
 		in_place_view._sort_options[1].sort_function = function(left, right)
 			return left.match ~= true and right.match == true
 		end
-		second_in_place_result = runtime_instance.dependencies.reorder(in_place_view)
+		second_in_place_result = runtime_instance.dependencies.reorder(in_place_view, false)
 		second_live_layout = in_place_grid._visible_grid_layout
 		buffers_are_distinct = first_live_layout ~= second_live_layout
 		first_buffer_was_not_cleared_while_live = #first_live_layout == 4
+		hide_in_place_result = runtime_instance.dependencies.reorder(in_place_view, true)
+		hidden_live_layout = in_place_grid._visible_grid_layout
+		hidden_live_count = #hidden_live_layout
+		hidden_live_item = hidden_live_layout[2]
+		restore_in_place_result = runtime_instance.dependencies.reorder(in_place_view, false)
+		restored_live_layout = in_place_grid._visible_grid_layout
         ''',
     )
     assert lua.globals().external_present_result is True
@@ -394,7 +401,9 @@ def main() -> None:
     assert lua.globals().external_sort_function == "sort"
     assert lua.globals().in_place_result is True
     assert lua.globals().second_in_place_result is True
-    assert lua.globals().in_place_updates == 2
+    assert lua.globals().hide_in_place_result is True
+    assert lua.globals().restore_in_place_result is True
+    assert lua.globals().in_place_updates == 4
     assert lua.globals().first_live_top == "top"
     assert lua.execute("return first_live_item == entry_b") is True
     assert lua.globals().first_live_bottom == "bottom"
@@ -403,6 +412,9 @@ def main() -> None:
     assert lua.globals().buffers_are_distinct is True
     assert lua.globals().first_buffer_was_not_cleared_while_live is True
     assert lua.execute("return second_live_layout[2] == entry_a") is True
+    assert lua.globals().hidden_live_count == 3
+    assert lua.execute("return hidden_live_item == entry_b") is True
+    assert len(lua.globals().restored_live_layout) == 4
     assert lua.execute("return in_place_grid._grid_widgets[1] == widget_a") is True
 
     lua.execute("runtime_instance.states[facade_state_view or {}] = nil")

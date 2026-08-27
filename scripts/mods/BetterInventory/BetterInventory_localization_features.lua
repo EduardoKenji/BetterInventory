@@ -12,13 +12,16 @@ local localization = {
 		en = "Unmatched item behavior",
 	},
 	inventory_search_non_match_behavior_tooltip = {
-		en = "Dim and promote keeps every native item visible, places matches first, and fades unmatched cards. Hide unmatched removes only cards that already passed Darktide's native tab and eligibility filters.",
+		en = "Unchanged promotes matches while keeping unmatched cards fully visible. Dim promotes matches and fades unmatched cards. Hide removes unmatched cards. Every mode preserves Darktide's native tab and eligibility filters.",
+	},
+	inventory_search_non_match_unchanged = {
+		en = "Unchanged",
 	},
 	inventory_search_non_match_dim = {
-		en = "Dim and promote matches",
+		en = "Dim",
 	},
 	inventory_search_non_match_hide = {
-		en = "Hide unmatched",
+		en = "Hide",
 	},
 	inventory_search_remember_query = {
 		en = "Remember searches during this game session",

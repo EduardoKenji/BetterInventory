@@ -44,8 +44,8 @@ def main() -> None:
                 }
                 view._offer_items_layout[index] = item
                 view._item_grid._all_grid_widgets[index] = {
+					alpha_multiplier = 1,
                     content = {
-                        alpha_multiplier = 1,
                         entry = item,
                     },
                 }
@@ -138,7 +138,8 @@ def main() -> None:
                 "function(view) external_present_calls = external_present_calls + 1; return true end"
             ),
             "reorder": lua.eval(
-                "function(view) reorder_calls = reorder_calls + 1; return reorder_succeeds end"
+				"function(view, hide_unmatched) reorder_calls = reorder_calls + 1; "
+				"last_reorder_hide = hide_unmatched; return reorder_succeeds end"
             ),
             "presentation_context": lua.eval(
                 "function(view) if not view.recovered_kind then return nil end; "
@@ -194,9 +195,9 @@ def main() -> None:
     assert lua.globals().external_present_calls == external_before + 1
     assert search_runtime.release(runtime, recovered_external) is True
 
-    # Default dim/promote commits reorder existing widgets in place. Hide keeps
-    # the native filter transaction, and returning from hide performs one full
-    # restoration before later dim queries use the fast path again.
+    # Every display policy commits against existing widget identities. Hide
+    # changes only visible membership; returning to dim restores canonical full
+    # membership without a native presentation rebuild.
     fast_view = lua.globals().make_view("fast", "inventory", 4)
     search_runtime.capture_presentation(runtime, fast_view, "slot", "type", "title")
     assert search_runtime.update(runtime, fast_view, 0) is False
@@ -210,17 +211,19 @@ def main() -> None:
     lua.globals().configured_mode = "hide"
     search_runtime.set_query(runtime, fast_view, "axe", 2)
     assert search_runtime.update(runtime, fast_view, 2.08) is True
-    assert lua.globals().reorder_calls == reorder_before + 1
-    assert lua.globals().present_calls == present_before + 1
+    assert lua.globals().reorder_calls == reorder_before + 2
+    assert lua.globals().last_reorder_hide is True
+    assert lua.globals().present_calls == present_before
     lua.globals().configured_mode = "dim"
     search_runtime.set_query(runtime, fast_view, "sword", 3)
     assert search_runtime.update(runtime, fast_view, 3.08) is True
-    assert lua.globals().reorder_calls == reorder_before + 1
-    assert lua.globals().present_calls == present_before + 2
+    assert lua.globals().reorder_calls == reorder_before + 3
+    assert lua.globals().last_reorder_hide is False
+    assert lua.globals().present_calls == present_before
     search_runtime.set_query(runtime, fast_view, "axe", 4)
     assert search_runtime.update(runtime, fast_view, 4.08) is True
-    assert lua.globals().reorder_calls == reorder_before + 2
-    assert lua.globals().present_calls == present_before + 2
+    assert lua.globals().reorder_calls == reorder_before + 4
+    assert lua.globals().present_calls == present_before
     lua.globals().reorder_succeeds = False
     assert search_runtime.release(runtime, fast_view) is True
 
@@ -285,9 +288,11 @@ def main() -> None:
     assert lua.globals().validated_project_calls == validated_before_main_query + 200
     assert search_runtime.apply_widget_alpha(runtime, view) is True
     assert search_runtime.rank(runtime, view, view._offer_items_layout[2]) > 0
+    assert search_runtime.matches(runtime, view, view._offer_items_layout[2]) is True
     assert view._better_inventory_search_rank_active is True
     assert view._better_inventory_search_filter_active is None
     assert search_runtime.rank(runtime, view, view._offer_items_layout[1]) == 0
+    assert search_runtime.matches(runtime, view, view._offer_items_layout[1]) is False
     assert search_runtime.native_filter(runtime, view, None, True) is True
     late_entry = lua.table_from({"gear_id": "late", "name": "late sword"})
     assert search_runtime.rank(runtime, view, late_entry) > 0
@@ -295,15 +300,15 @@ def main() -> None:
     lua.globals().configured_mode = "hide"
     assert search_runtime.native_filter(runtime, view, late_filter_entry, True) is True
     lua.globals().configured_mode = "dim"
-    assert view._item_grid._all_grid_widgets[1].content.alpha_multiplier == 0.4
-    assert view._item_grid._all_grid_widgets[2].content.alpha_multiplier == 1
+    assert view._item_grid._all_grid_widgets[1].alpha_multiplier == 0.4
+    assert view._item_grid._all_grid_widgets[2].alpha_multiplier == 1
     # Live ViewElementGrid widgets expose their layout entry as `element`, not
     # `entry`. A re-presented unmatched card must still receive dim alpha.
     lua.execute(
         r"""
         replacement_widget = {
+			alpha_multiplier = 1,
             content = {
-                alpha_multiplier = 1,
                 element = test_view._offer_items_layout[1],
             },
         }
@@ -311,7 +316,7 @@ def main() -> None:
         """
     )
     assert search_runtime.apply_widget_alpha(runtime, view) is True
-    assert lua.globals().replacement_widget.content.alpha_multiplier == 0.4
+    assert lua.globals().replacement_widget.alpha_multiplier == 0.4
     assert search_runtime.is_active(runtime, view) is True
     assert search_runtime.compose_layout(runtime, view, None) is None
     lua.globals().first_result_table = search_runtime.state(runtime, view).ranks
@@ -360,7 +365,7 @@ def main() -> None:
                     name = index % 2 == 0 and "even sword" or "odd axe",
                 }
                 layout[index] = item
-                widgets[index] = {content = {alpha_multiplier = 1, entry = item}}
+				widgets[index] = {alpha_multiplier = 1, content = {entry = item}}
             end
 
             view._offer_items_layout = layout
@@ -587,13 +592,13 @@ def main() -> None:
     search_runtime.set_query(runtime, view, "sword", 13)
     assert search_runtime.update(runtime, view, 13.08) is True
     first_widget = view._item_grid._all_grid_widgets[1]
-    assert first_widget.content.alpha_multiplier == 0.4
-    first_widget.content.alpha_multiplier = 0.7
+    assert first_widget.alpha_multiplier == 0.4
+    first_widget.alpha_multiplier = 0.7
     search_runtime.set_query(runtime, view, "", 14)
     assert view._better_inventory_search_rank_active is None
     assert view._better_inventory_search_filter_active is None
     assert search_runtime.update(runtime, view, 14.08) is True
-    assert first_widget.content.alpha_multiplier == 0.7
+    assert first_widget.alpha_multiplier == 0.7
 
     # Optional session memory is character/view-family scoped. Release always
     # drops weak results, projected records and widget ownership.
