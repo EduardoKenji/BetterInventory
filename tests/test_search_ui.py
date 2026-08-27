@@ -230,6 +230,12 @@ def main() -> None:
         legend_entry = {
             input_action = "back",
             extra_input_actions = {keyboard = {"escape"}},
+			is_visible = true,
+			visibility_function = function()
+				legend_visibility_calls = (legend_visibility_calls or 0) + 1
+				assert(legend_entry.input_action ~= nil)
+				return true
+			end,
         }
         controller_view = nil
         '''
@@ -284,14 +290,19 @@ def main() -> None:
     input_widget.content.input_text = "sword"
     assert search_ui.focus(view) is True
     assert search_ui.is_writing(view) is True
-    assert lua.globals().legend_entry.input_action is None
-    assert lua.globals().legend_entry.extra_input_actions is None
+    assert lua.globals().legend_entry.input_action == "back"
+    assert lua.globals().legend_entry.extra_input_actions.keyboard[1] == "escape"
+    assert lua.globals().legend_entry.is_visible is False
+    assert lua.globals().legend_entry.visibility_function() is False
     assert search_ui.defocus(view) is True
     assert input_widget.content.input_text == "sword"
-    assert lua.globals().legend_entry.input_action is None
+    assert lua.globals().legend_entry.is_visible is False
     search_ui.update(lua.globals().test_mod, lua.globals().features, view, 1.1)
     assert lua.globals().legend_entry.input_action == "back"
     assert lua.globals().legend_entry.extra_input_actions.keyboard[1] == "escape"
+    assert lua.globals().legend_entry.is_visible is True
+    assert lua.globals().legend_entry.visibility_function() is True
+    assert lua.globals().legend_visibility_calls == 1
 
     # Caret positions count UTF-8 codepoints rather than bytes, so Simplified
     # Chinese input remains editable without corrupting field state.
@@ -430,9 +441,11 @@ def main() -> None:
     ) is True
     assert search_ui.is_writing(view) is False
     assert lua.globals().grid_input_disabled is False
-    assert lua.globals().legend_entry.input_action is None
+    assert lua.globals().legend_entry.input_action == "back"
+    assert lua.globals().legend_entry.is_visible is False
     search_ui.update(lua.globals().test_mod, lua.globals().features, view, 4.5)
     assert lua.globals().legend_entry.input_action == "back"
+    assert lua.globals().legend_entry.is_visible is True
     assert input_widget.content.input_text == "sword"
 
     # Changing input mode while the field remains active reconciles ownership:
@@ -469,6 +482,46 @@ def main() -> None:
     assert lua.globals().last_query == "health & toughness"
     reloaded_search_ui.update(lua.globals().test_mod, lua.globals().features, view, 4.9)
     assert lua.globals().set_calls == reload_set_calls_before + 1
+
+    # The visibility sentinel is retained with the owned entry so a module hot
+    # reload while focused can restore the old closure rather than strand the
+    # native legend invisibly.
+    assert reloaded_search_ui.focus(view) is True
+    assert lua.globals().legend_entry.is_visible is False
+    hot_focused_search_ui = lua.execute(
+        MODULE_PATH.read_text(encoding="utf-8"), name=str(MODULE_PATH)
+    )
+    hot_focused_search_ui.release(view)
+    assert lua.globals().legend_entry.input_action == "back"
+    assert lua.globals().legend_entry.is_visible is True
+    assert lua.globals().legend_entry.visibility_function() is True
+
+    # A hot reload from the retired action-nilling build migrates its surviving
+    # ownership record before acquiring safe visibility ownership.
+    lua.globals().legacy_focus_view = view
+    lua.execute(
+        r'''
+        legend_entry.input_action = nil
+        legend_entry.extra_input_actions = nil
+        legacy_focus_view._better_inventory_search_legend_input_owned = {{
+            entry = legend_entry,
+            input_action = "back",
+            extra_input_actions = {keyboard = {"escape"}},
+        }}
+        legacy_focus_view._widgets_by_name.better_inventory_search_input.content.is_writing = true
+        '''
+    )
+    hot_focused_search_ui.update(
+        lua.globals().test_mod, lua.globals().features, view, 4.95
+    )
+    assert lua.globals().legend_entry.input_action == "back"
+    assert lua.globals().legend_entry.extra_input_actions.keyboard[1] == "escape"
+    assert lua.globals().legend_entry.is_visible is False
+    assert hot_focused_search_ui.defocus(view) is True
+    hot_focused_search_ui.update(
+        lua.globals().test_mod, lua.globals().features, view, 4.96
+    )
+    assert lua.globals().legend_entry.is_visible is True
 
     # The master Mod Options switch immediately hides and defocuses an
     # already-created field. The integration test separately proves that all

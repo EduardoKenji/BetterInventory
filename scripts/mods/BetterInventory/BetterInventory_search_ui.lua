@@ -285,13 +285,54 @@ local function own_grid_input(view, disabled)
 	return true
 end
 
+local function search_hidden_legend_visibility()
+	return false
+end
+
+local function restore_input_legend(view, owned)
+	for index = 1, #owned do
+		local saved = owned[index]
+		local entry = saved and saved.entry
+
+		if type(entry) == "table" then
+			if saved.hidden_visibility ~= nil then
+				-- Restore only the sentinel we own. Another mod replacing visibility
+				-- while search is focused keeps its newer state.
+				if entry.visibility_function == saved.hidden_visibility then
+					entry.visibility_function = saved.visibility_function
+					if entry.is_visible == false then
+						entry.is_visible = saved.is_visible
+					end
+				end
+			else
+				-- One-time hot-reload migration from the retired action-nilling
+				-- implementation. A surviving focused view may still own this shape.
+				if entry.input_action == nil then
+					entry.input_action = saved.input_action
+				end
+				if entry.extra_input_actions == nil then
+					entry.extra_input_actions = saved.extra_input_actions
+				end
+			end
+		end
+	end
+
+	view._better_inventory_search_legend_input_owned = nil
+end
+
 local function own_input_legend(view, disabled)
 	local legend = view and view._input_legend_element
 	local owned = view and view._better_inventory_search_legend_input_owned
 
 	if disabled then
 		if owned then
-			return true
+			local legacy_ownership = owned[1] and owned[1].hidden_visibility == nil
+
+			if not legacy_ownership then
+				return true
+			end
+
+			restore_input_legend(view, owned)
 		end
 
 		local entries = legend and legend._entries
@@ -308,11 +349,15 @@ local function own_input_legend(view, disabled)
 			if type(entry) == "table" then
 				saved[#saved + 1] = {
 					entry = entry,
-					extra_input_actions = entry.extra_input_actions,
-					input_action = entry.input_action,
+					hidden_visibility = search_hidden_legend_visibility,
+					is_visible = entry.is_visible,
+					visibility_function = entry.visibility_function,
 				}
-				entry.input_action = nil
-				entry.extra_input_actions = nil
+				-- InputLegend may refresh a dynamic label while drawing. Its text
+				-- builder requires a valid input_action, so never nil that field.
+				-- Visibility blocks both drawing and action dispatch safely.
+				entry.visibility_function = search_hidden_legend_visibility
+				entry.is_visible = false
 			end
 		end
 
@@ -325,23 +370,7 @@ local function own_input_legend(view, disabled)
 		return false
 	end
 
-	for index = 1, #owned do
-		local saved = owned[index]
-		local entry = saved and saved.entry
-
-		if type(entry) == "table" then
-			-- Restore only fields still carrying our nil override. If another mod
-			-- deliberately replaced an action while focus was owned, keep it.
-			if entry.input_action == nil then
-				entry.input_action = saved.input_action
-			end
-			if entry.extra_input_actions == nil then
-				entry.extra_input_actions = saved.extra_input_actions
-			end
-		end
-	end
-
-	view._better_inventory_search_legend_input_owned = nil
+	restore_input_legend(view, owned)
 
 	return true
 end
