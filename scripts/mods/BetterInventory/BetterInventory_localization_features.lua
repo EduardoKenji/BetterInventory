@@ -51,7 +51,7 @@ local localization = {
 		en = "Pixel spacing for the Equipment Text Search field. Top padding controls header-to-field clearance; bottom padding controls the reserved field-to-card space. Reopen the affected inventory or Armoury item view after changing this value.",
 	},
 	inventory_search_placeholder = {
-		en = "Search: sword & blessing:uncanny",
+		en = "Search: sword & uncanny & flak",
 	},
 	inventory_options_controller_focus_keybind = {
 		en = "Items / widget focus keybind",
