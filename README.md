@@ -2,7 +2,7 @@
 
 [![BetterInventory verification](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml/badge.svg)](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml)
 
-> Current release: **v3.2.3** (2026-08-28). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
+> Current release: **v3.2.5** (2026-08-28). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
 
 BetterInventory is a standalone inventory and item-management mod for Warhammer 40,000: Darktide. It adds responsive weapon and Curio cards, richer item information, configurable sorting, supported vendor layouts, optional mod integrations, and safety-gated inventory workflows.
 
@@ -19,6 +19,18 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - A bounded inventory-options panel for sorting, discard rules, integrations, and view-specific controls.
 - Standalone Equipment Text Search, with its own master switch, Inventory/Armoury spacing sliders, quoted phrases, explicit AND, typed field clauses, match-first ranking, and configurable dim-or-hide behavior.
 - Optional Quick Discard, Automatic Discard, Automatic Curio Buyer, and Auto Crafter workflows with explicit ownership, authoritative revalidation, and fail-closed behavior.
+
+## What's new in v3.2.5
+
+- GlobalStore category changes now retire outgoing asynchronous character-portrait loads before their item-card generation is destroyed, preventing old 100–150-card generations from accumulating during repeated melee, ranged, and Curio tab changes.
+- Inactive Equipment Text Search cache warming now advances monotonically through each authoritative offer layout instead of restarting when the same category is presented again.
+- A 40-generation GlobalStore stress regression verifies that portrait resources, search warming, and card references remain bounded to the current generation.
+
+## What's new in v3.2.4
+
+- Focused Armoury and GlobalStore search fields now own the vendor input legend while accepting text, preventing typed `G` and `V` characters from also triggering Compare or Inspect.
+- The existing Armoury sorting panel is hidden while native weapon or Curio comparison is active and restored when comparison closes, without rebuilding its rows or allocating a replacement panel.
+- Search focus, comparison visibility, controller ownership, hot reload, and repeated show/hide cycles are regression-covered.
 
 ## What's new in v3.2.3
 

@@ -2,6 +2,7 @@
 
 ## 3.2.5 - 2026-08-28
 
+- Completes the Simplified Chinese localization audit, removes two retired generic-column translation IDs, and gives both Equipment Text Search examples functional Chinese query terms.
 - Retires GlobalStore's outgoing asynchronous character-portrait loads before Darktide destroys a category's card generation, preventing repeated melee/ranged/Curio tab changes from retaining every old 100-150-card generation.
 - Resets Better Inventory's weak favorite-marker generation only for destructive GlobalStore main-grid rebuilds; auxiliary grids and identity-preserving Equipment Text Search reorders remain untouched.
 - Makes inactive Equipment Text Search cache warming monotonic per authoritative offer layout, so repeated category presentations continue a bounded 16-item pass instead of repeatedly restarting at item one.

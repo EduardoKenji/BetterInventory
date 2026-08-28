@@ -2996,6 +2996,8 @@ def main() -> None:
     assert localization["custom_item_name_and_colors_group"]["zh-cn"] == "自定义物品名称和颜色"
     assert localization["inventory_search_group"]["zh-cn"] == "装备文本搜索"
     assert localization["inventory_search_spacing_group"]["zh-cn"] == "搜索框间距"
+    assert localization["inventory_search_placeholder"]["zh-cn"] == "搜索：剑 & 命中弱点 & 防弹装甲"
+    assert localization["inventory_search_curio_placeholder"]["zh-cn"] == "搜索：韧性 & 生命值 & 复活速度"
     assert localization["debug_group"]["zh-cn"] == "调试（仅测试用）"
     assert localization["inventory_options_controller_focus_keybind"]["zh-cn"] == "物品 / 组件焦点快捷键"
 
