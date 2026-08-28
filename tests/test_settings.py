@@ -2827,7 +2827,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "3.2.0"
+    assert data.version == "3.2.1"
 
     gradient_name = localization["mod_name"]["en"]
     assert gradient_name.startswith("{#color(174,239,105)}B")
@@ -2842,6 +2842,10 @@ def main() -> None:
     assert localization["auto_crafter_group"]["en"] == "Auto Crafter Helper"
     assert localization["inventory_search_group"]["en"] == "Equipment Text Search"
     assert localization["enable_inventory_search"]["en"] == "Enable Equipment Text Search"
+    assert (
+        localization["enable_inventory_search_brunt"]["en"]
+        == "Enable search in Brunt's Armoury"
+    )
     assert localization["inventory_search_spacing_group"]["en"] == "Search field spacing"
     assert (
         localization["god_stat_checker_integration_group"]["en"]
@@ -2939,6 +2943,7 @@ def main() -> None:
                 inspect_widgets(sub_widgets)
 
     inspect_widgets(data.options.widgets)
+    assert defaults["enable_inventory_search_brunt"] is False
 
     custom_tier_group = next(
         data.options.widgets[index]

@@ -8,6 +8,12 @@ local localization = {
 	enable_inventory_search_tooltip = {
 		en = "Adds a bounded, live equipment search field to weapon and Curio inventory, Hadron, Armoury Exchange, GlobalStore, and Melk item views. Disabling this hides the field, clears its session state, and removes all search filtering and ranking. Cosmetics are not changed.",
 	},
+	enable_inventory_search_brunt = {
+		en = "Enable search in Brunt's Armoury",
+	},
+	enable_inventory_search_brunt_tooltip = {
+		en = "Off by default. Adds Equipment Text Search to Brunt's Armoury. Reopen Brunt's Armoury after changing this setting. Search reorders the existing weapon-family buttons without rebuilding them.",
+	},
 	inventory_search_non_match_behavior = {
 		en = "Unmatched item behavior",
 	},
