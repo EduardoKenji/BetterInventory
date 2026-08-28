@@ -358,7 +358,9 @@ local function setup_armoury_controller_focus_legend(mod, view)
 	end
 
 	local success, legend_id = pcall(legend.add_entry, legend, "better_inventory_toggle_panel_focus", focus_action, function()
-		return view._using_cursor_navigation == false and view._better_inventory_armoury_native_sort_panel ~= nil
+		local panel = view._better_inventory_armoury_native_sort_panel
+
+		return view._using_cursor_navigation == false and panel ~= nil and panel._visible ~= false
 	end, nil, "right_alignment")
 
 	if not success or not legend_id then
@@ -454,11 +456,38 @@ local function armoury_sort_panel_controller_focused(view)
 	return view and view._better_inventory_armoury_controller_focused == true
 end
 
+local function sync_armoury_native_sort_panel_visibility(view, panel)
+	local visible = view._item_compare_toggled ~= true
+
+	if view._better_inventory_armoury_native_sort_visible == visible then
+		return visible
+	end
+
+	if not visible and view._better_inventory_armoury_controller_focused == true then
+		set_armoury_controller_focus(view, false)
+	end
+
+	if type(panel.set_visibility) == "function" then
+		panel:set_visibility(visible)
+	end
+
+	view._better_inventory_armoury_native_sort_visible = visible
+
+	return visible
+end
+
 local function update_armoury_native_sort_panel(view)
 	local panel = view and view._better_inventory_armoury_native_sort_panel
 
 	if not panel or view._destroyed then
 		return false
+	end
+
+	-- Native comparison uses the right-hand preview space occupied by this
+	-- panel. Toggle the existing element in place: no row rebuild or allocation
+	-- is needed, and closing comparison restores it on the next update.
+	if not sync_armoury_native_sort_panel_visibility(view, panel) then
+		return true
 	end
 
 	local sorting_mod = features._sorting.mod()
@@ -575,6 +604,7 @@ local function setup_armoury_native_sort_panel(mod, layout, view, ViewElementGri
 	view._better_inventory_armoury_sort_mod = mod
 	view._better_inventory_composition_dirty = true
 	view._better_inventory_composition_probe_count = 0
+	view._better_inventory_armoury_native_sort_visible = true
 	registered_armoury_views[view] = true
 	if type(panel.disable_input) == "function" then
 		panel:disable_input(false)
@@ -623,6 +653,7 @@ local function release_armoury_native_sort_panel(view)
 	view._better_inventory_armoury_controller_restore = nil
 	view._better_inventory_armoury_native_sort_collapsed = nil
 	view._better_inventory_armoury_native_sort_panel = nil
+	view._better_inventory_armoury_native_sort_visible = nil
 	view._better_inventory_armoury_native_sort_pivot_x = nil
 	view._better_inventory_armoury_native_sort_pivot_y = nil
 	view._better_inventory_armoury_native_sort_rebuild_pending = nil

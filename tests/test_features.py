@@ -1202,6 +1202,7 @@ def main() -> None:
             present_grid_layout = function(self, entries, blueprints)
                 self.entries = entries
                 self.blueprints = blueprints
+				self.present_calls = (self.present_calls or 0) + 1
             end,
             select_first_index = function(self)
                 self.selected_index = 1
@@ -1220,6 +1221,7 @@ def main() -> None:
             set_visibility = function(self, visible)
                 self.visible = visible
                 self._visible = visible
+				self.visibility_calls = (self.visibility_calls or 0) + 1
             end,
             update_grid_height = function(self, grid_height, mask_height)
                 self.grid_height = grid_height
@@ -1315,6 +1317,21 @@ def main() -> None:
     assert armoury_view._item_grid.disabled is False
     assert armoury_view._item_grid.selected_index == 2
     armoury_focus_input.actions["navigate_secondary_right_pressed"] = False
+
+    # Native weapon/curio comparison occupies the panel's right-hand space.
+    # Hide the existing panel without rebuilding it, then restore the same
+    # element as soon as comparison closes.
+    panel_present_calls = globals_.TestArmouryPanel.present_calls
+    armoury_view._item_compare_toggled = True
+    features.update_armoury_native_sort_panel(armoury_view)
+    assert globals_.TestArmouryPanel.visible is False
+    assert globals_.TestArmouryPanel.present_calls == panel_present_calls
+    assert globals_.TestArmouryLegend.visibility_function() is False
+    armoury_view._item_compare_toggled = False
+    features.update_armoury_native_sort_panel(armoury_view)
+    assert globals_.TestArmouryPanel.visible is True
+    assert globals_.TestArmouryPanel.present_calls == panel_present_calls
+    assert globals_.TestArmouryLegend.visibility_function() is True
 
     lua.execute(
         r"""

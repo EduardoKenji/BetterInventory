@@ -343,7 +343,6 @@ local function restore_input_legend(view, owned)
 end
 
 local function own_input_legend(view, disabled)
-	local legend = view and view._input_legend_element
 	local owned = view and view._better_inventory_search_legend_input_owned
 
 	if disabled then
@@ -357,30 +356,57 @@ local function own_input_legend(view, disabled)
 			restore_input_legend(view, owned)
 		end
 
-		local entries = legend and legend._entries
+		local saved = {}
+		local legends = {}
+		local direct_legend = view and view._input_legend_element
+		local parent = view and (view._parent or view._context and view._context.parent)
+		local parent_legend = parent and parent._input_legend_element
 
-		if type(entries) ~= "table" then
-			return false
+		if not parent_legend and parent and type(parent._element) == "function" then
+			local success, resolved_legend = pcall(parent._element, parent, "input_legend")
+
+			if success then
+				parent_legend = resolved_legend
+			end
 		end
 
-		local saved = {}
+		if direct_legend then
+			legends[#legends + 1] = direct_legend
+		end
 
-		for index = 1, #entries do
-			local entry = entries[index]
+		if parent_legend and parent_legend ~= direct_legend then
+			legends[#legends + 1] = parent_legend
+		end
+		local visited_entries = {}
 
-			if type(entry) == "table" then
-				saved[#saved + 1] = {
-					entry = entry,
-					hidden_visibility = search_hidden_legend_visibility,
-					is_visible = entry.is_visible,
-					visibility_function = entry.visibility_function,
-				}
-				-- InputLegend may refresh a dynamic label while drawing. Its text
-				-- builder requires a valid input_action, so never nil that field.
-				-- Visibility blocks both drawing and action dispatch safely.
-				entry.visibility_function = search_hidden_legend_visibility
-				entry.is_visible = false
+		for legend_index = 1, #legends do
+			local entries = legends[legend_index] and legends[legend_index]._entries
+
+			if type(entries) == "table" then
+				for entry_index = 1, #entries do
+					local entry = entries[entry_index]
+
+					if type(entry) == "table" and not visited_entries[entry] then
+						visited_entries[entry] = true
+						saved[#saved + 1] = {
+							entry = entry,
+							hidden_visibility = search_hidden_legend_visibility,
+							is_visible = entry.is_visible,
+							visibility_function = entry.visibility_function,
+						}
+						-- Store hotkeys such as Inspect and Compare belong to the
+						-- background parent rather than CreditsVendorView. Own both
+						-- legends while typing, but keep every action identifier valid:
+						-- InputLegend's dynamic text builder indexes those identifiers.
+						entry.visibility_function = search_hidden_legend_visibility
+						entry.is_visible = false
+					end
+				end
 			end
+		end
+
+		if #saved == 0 then
+			return false
 		end
 
 		view._better_inventory_search_legend_input_owned = saved

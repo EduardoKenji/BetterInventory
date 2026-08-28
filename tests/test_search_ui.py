@@ -260,12 +260,35 @@ def main() -> None:
 				return true
 			end,
         }
+		parent_inspect_entry = {
+			input_action = "hotkey_item_inspect",
+			is_visible = true,
+			visibility_function = function() return true end,
+		}
+		parent_compare_entry = {
+			input_action = "hotkey_item_compare",
+			is_visible = true,
+			visibility_function = function() return true end,
+		}
+		parent_legend = {
+			_entries = {parent_inspect_entry, parent_compare_entry},
+		}
         controller_view = nil
         '''
     )
     view._input_legend_element = lua.table_from(
         {"_entries": lua.table_from([lua.globals().legend_entry])}
     )
+    lua.execute(
+        r'''
+		search_parent = {
+			_element = function(_, name)
+				return name == "input_legend" and parent_legend or nil
+			end,
+		}
+		'''
+    )
+    view._parent = lua.globals().search_parent
 
     assert search_ui.sync_query(lua.globals().test_mod, lua.globals().features, view) is True
     input_widget = widgets.better_inventory_search_input
@@ -317,6 +340,12 @@ def main() -> None:
     assert lua.globals().legend_entry.extra_input_actions.keyboard[1] == "escape"
     assert lua.globals().legend_entry.is_visible is False
     assert lua.globals().legend_entry.visibility_function() is False
+    assert lua.globals().parent_inspect_entry.input_action == "hotkey_item_inspect"
+    assert lua.globals().parent_compare_entry.input_action == "hotkey_item_compare"
+    assert lua.globals().parent_inspect_entry.is_visible is False
+    assert lua.globals().parent_compare_entry.is_visible is False
+    assert lua.globals().parent_inspect_entry.visibility_function() is False
+    assert lua.globals().parent_compare_entry.visibility_function() is False
     assert search_ui.defocus(view) is True
     assert input_widget.content.input_text == "sword"
     assert lua.globals().legend_entry.is_visible is False
@@ -325,6 +354,10 @@ def main() -> None:
     assert lua.globals().legend_entry.extra_input_actions.keyboard[1] == "escape"
     assert lua.globals().legend_entry.is_visible is True
     assert lua.globals().legend_entry.visibility_function() is True
+    assert lua.globals().parent_inspect_entry.is_visible is True
+    assert lua.globals().parent_compare_entry.is_visible is True
+    assert lua.globals().parent_inspect_entry.visibility_function() is True
+    assert lua.globals().parent_compare_entry.visibility_function() is True
     assert lua.globals().legend_visibility_calls == 1
 
     # Caret positions count UTF-8 codepoints rather than bytes, so Simplified
