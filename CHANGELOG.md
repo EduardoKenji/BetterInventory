@@ -1,5 +1,13 @@
 # BetterInventory changelog
 
+## 3.2.4 - 2026-08-28
+
+- Gives focused Armoury and GlobalStore search fields temporary visibility ownership of both the vendor view and its background input legend, preventing typed `G`/`V` characters from also triggering Compare or Inspect.
+- Preserves every native/third-party input action and dynamic visibility callback, then restores only Better Inventory-owned state when text entry loses focus, is disabled, is released, or survives a hot reload.
+- Hides the existing Armoury sorting panel while native weapon or Curio comparison is active and restores that same panel when comparison closes, without rebuilding its rows or allocating a replacement element.
+- Releases controller focus before hiding the sorting panel and suppresses its controller legend action until the comparison view closes.
+- Adds native-parent legend, Inspect/Compare, comparison visibility, no-rebuild, restoration, and 2,000-cycle retained-memory regressions; the full 52-file behavior suite passes.
+
 ## 3.2.3 - 2026-08-28
 
 - Removes the temporary live Curio-ranking trace from Equipment Text Search, including its query-specific per-item string construction, logging, and reordered-result dump.
