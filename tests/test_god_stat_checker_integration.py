@@ -25,6 +25,7 @@ def main() -> None:
             custom_tier_enabled = true,
             god_stat_checker_background_owner = "custom_tier",
             custom_tier_god_stat_checker_background_owner = "custom_tier",
+            god_stat_checker_vendor_action_row_compatibility = true,
         }
         god_stat_checker_saved_settings = {
             opt_card_style = "verdict_bg_tier_text",
@@ -169,6 +170,23 @@ def main() -> None:
     ordinary_color, _ = items.rarity_color(ordinary)
     assert color_channels(ordinary_color) == [255, 145, 70, 40]
     assert integration.god_stat_checker_owns_background() is False
+
+    # The vendor action-row compatibility switch is cached at its setting
+    # boundary. It defaults on, toggles live, and does not disturb background
+    # ownership or query DMF settings from the per-frame activity read.
+    get_calls_before_toggle = lua.globals().better_inventory_get_calls
+    settings.god_stat_checker_vendor_action_row_compatibility = False
+    assert integration.on_setting_changed(
+        mod, "god_stat_checker_vendor_action_row_compatibility"
+    ) is True
+    assert integration.is_active() is False
+    assert integration.god_stat_checker_owns_background() is False
+    settings.god_stat_checker_vendor_action_row_compatibility = True
+    assert integration.on_setting_changed(
+        mod, "god_stat_checker_vendor_action_row_compatibility"
+    ) is True
+    assert integration.is_active() is True
+    assert lua.globals().better_inventory_get_calls == get_calls_before_toggle + 2
 
     # Ownership is cached at lifecycle/setting boundaries. Card lookups never
     # query DMF settings or perform a framework enabled-state call.

@@ -207,6 +207,7 @@ def main() -> None:
     vendor_view._weapon_stats._ui_scenegraph.grid_background.size[2] = 700
     assert action_alignment.update(vendor_view, None, True) is True
     assert vendor_view._ui_scenegraph.purchase_button.position[2] == -90
+    assert vendor_view.position_writes == 3
     vendor_view._weapon_stats._ui_scenegraph.grid_background.size[2] = 920
     assert action_alignment.update(vendor_view, None, True) is True
     assert vendor_view._ui_scenegraph.purchase_button.position[2] == 4

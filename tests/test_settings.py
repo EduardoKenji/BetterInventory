@@ -2855,6 +2855,10 @@ def main() -> None:
         localization["god_stat_checker_background_owner_custom_tier"]["en"]
         == "Custom legendary tier"
     )
+    assert (
+        localization["god_stat_checker_vendor_action_row_compatibility"]["en"]
+        == "Keep Acquire below extended item details"
+    )
     assert localization["auto_crafter_workflow_group"]["en"] == "Crafting workflow"
     assert localization["auto_crafter_trait_targets_group"]["en"] == "Perk and blessing targets"
     assert localization["automatic_curio_once_per_store_rotation"]["en"] == "Scan at most once per store rotation"
@@ -3247,6 +3251,19 @@ def main() -> None:
     assert top_level_ids[enhanced_descriptions_index + 2] == "lantern_integration_group"
     assert top_level_ids[enhanced_descriptions_index + 3] == "card_content_group"
 
+    god_stat_checker_group = next(
+        data.options.widgets[index]
+        for index in range(1, len(data.options.widgets) + 1)
+        if data.options.widgets[index].setting_id == "god_stat_checker_integration_group"
+    )
+    assert [
+        god_stat_checker_group.sub_widgets[index].setting_id
+        for index in range(1, len(god_stat_checker_group.sub_widgets) + 1)
+    ] == [
+        "god_stat_checker_background_owner",
+        "god_stat_checker_vendor_action_row_compatibility",
+    ]
+
     card_content_group = next(
         data.options.widgets[index]
         for index in range(1, len(data.options.widgets) + 1)
@@ -3395,6 +3412,7 @@ def main() -> None:
     assert defaults["custom_tier_enabled"] is True
     assert defaults["god_stat_checker_background_owner"] == "custom_tier"
     assert defaults["custom_tier_god_stat_checker_background_owner"] == "custom_tier"
+    assert defaults["god_stat_checker_vendor_action_row_compatibility"] is True
     assert defaults["custom_tier_color_preset"] == "custom_tier_red"
     assert list(defaults["custom_tier_color_preview"].values()) == [255, 210, 30, 40]
     assert [defaults[f"custom_tier_color_{channel}"] for channel in ("r", "g", "b")] == [210, 30, 40]

@@ -5,7 +5,7 @@
 - Makes Equipment Text Search in Brunt's Armoury independently opt-in and disabled by default. A newly opened Brunt view receives no search widget, padding, search state, or input handling unless the option is enabled.
 - Reorders Brunt's native weapon-family buttons through a retained in-place fallback comparator when search is enabled. Because Brunt deliberately exposes no native sort option, this avoids the previous full presentation fallback that destroyed and recreated its buttons after each settled query.
 - Preserves canonical Brunt button order as the tie-breaker, reuses two bounded layout buffers and one source-position map, retains selected widget identity, and refreshes only the comparator closure after a mod hot reload.
-- Anchors Armoury Exchange and GlobalStore's shared Acquire row immediately below God Stat Checker's final live detail-panel height, while preserving native placement for shorter panels and restoring the captured position when GSC is disabled or removed.
+- Adds an enabled-by-default God Stat Checker integration option that anchors Armoury Exchange and GlobalStore's shared Acquire row below an extended detail panel. Shorter panels retain the fixed vanilla position; disabling the option or GSC restores it live.
 
 ## 3.2.0 - 2026-08-27
 

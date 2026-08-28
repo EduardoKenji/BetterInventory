@@ -2029,6 +2029,12 @@ return {
 				type = "group",
 				sub_widgets = {
 					god_stat_checker_background_owner_widget("god_stat_checker_background_owner"),
+					{
+						setting_id = "god_stat_checker_vendor_action_row_compatibility",
+						tooltip = "god_stat_checker_vendor_action_row_compatibility_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
 				},
 			},
 			{

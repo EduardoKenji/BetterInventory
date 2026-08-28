@@ -218,7 +218,7 @@
     {"name": "repeated_marker_release_and_unrelated_grid_isolation", "risk": "high", "start_line": 79, "end_line": 116},
     {"name": "sorting_signature", "risk": "high", "start_line": 119, "end_line": 123},
     {"name": "panel_composition", "risk": "high", "start_line": 125, "end_line": 129},
-    {"name": "vendor_action_row_compatibility", "risk": "high", "start_line": 131, "end_line": 215}
+    {"name": "vendor_action_row_compatibility", "risk": "high", "start_line": 131, "end_line": 218}
   ],
   "test_features.py": [
       {"name": "panel_focus_allocation_guard", "risk": "medium", "start_line": 122, "end_line": 123},
@@ -239,7 +239,7 @@
     {"name": "standalone_classification_and_red_weapons_compatibility", "risk": "critical", "start_line": 1, "end_line": 359}
   ],
   "test_god_stat_checker_integration.py": [
-    {"name": "exclusive_background_ownership_and_lifecycle_fallback", "risk": "critical", "start_line": 1, "end_line": 307}
+    {"name": "exclusive_background_ownership_and_lifecycle_fallback", "risk": "critical", "start_line": 1, "end_line": 326}
   ],
   "test_layout.py": [
     {"name": "card_geometry", "risk": "high", "start_line": 613, "end_line": 1469},
@@ -257,7 +257,7 @@
     {"name": "migration_preservation", "risk": "high", "start_line": 457, "end_line": 626},
     {"name": "character_overview_refresh", "risk": "high", "start_line": 627, "end_line": 1725},
       {"name": "localization_contract", "risk": "medium", "start_line": 1726, "end_line": 2914},
-      {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2915, "end_line": 3643}
+      {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2915, "end_line": 3662}
   ],
   "test_settings_registry.py": [
     {"name": "duplicate_detection", "risk": "high", "start_line": 63, "end_line": 123},
