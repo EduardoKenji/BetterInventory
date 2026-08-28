@@ -67,6 +67,24 @@ Domains.markers.track_grid = function(item_grid)
 	return true
 end
 
+-- A destructive ViewElementGrid presentation retires every current widget at
+-- once. Replace the weak marker set before the new generation is created so a
+-- third-party asynchronous callback cannot make reconciliation walk retired
+-- cards until Lua's next collection cycle.
+Domains.markers.begin_grid_generation = function(item_grid)
+	if not item_grid or item_grid._better_inventory_myfavorites_active ~= true then
+		return false
+	end
+
+	item_grid._better_inventory_myfavorites_widgets = setmetatable({}, { __mode = "k" })
+	item_grid._better_inventory_myfavorites_dirty = true
+	dirty_marker_grids[item_grid] = true
+	tracked_marker_grids[item_grid] = true
+	item_grid._better_inventory_myfavorites_generation = Domains.markers.next_generation(item_grid._better_inventory_myfavorites_generation)
+
+	return true
+end
+
 Domains.markers.release_grid = function(item_grid)
 	if not item_grid then
 		return false
@@ -187,6 +205,78 @@ end
 
 Domains.markers.needs_refresh = function(last_generation, current_generation, dirty)
 	return dirty == true or (tonumber(last_generation) or 0) ~= (tonumber(current_generation) or 0)
+end
+
+Domains.global_store = {}
+
+-- Mirror Darktide's ViewElementGrid rebuild decision. Incoming entries without
+-- a live entry_id force native code to destroy all current widgets; disjoint
+-- GlobalStore category tabs normally take this path.
+Domains.global_store.grid_rebuild_required = function(item_grid, layout)
+	if type(item_grid) ~= "table" or type(layout) ~= "table" then
+		return false
+	end
+
+	local current_layout = item_grid._grid_layout
+
+	if type(current_layout) ~= "table" or next(current_layout) == nil then
+		return true
+	end
+
+	local widgets_by_entry_id = item_grid._widgets_by_entry_id
+
+	for index = 1, #layout do
+		local entry = layout[index]
+		local entry_id = type(entry) == "table" and entry.entry_id
+
+		if not entry_id or type(widgets_by_entry_id) ~= "table" or widgets_by_entry_id[entry_id] == nil then
+			return true
+		end
+	end
+
+	return false
+end
+
+-- GlobalStore 1.x attaches an asynchronous profile-portrait load to each card
+-- but unloads it only from CreditsVendorView.destroy. Category switches destroy
+-- the card widgets first, losing those IDs while their callbacks retain the old
+-- widgets. Retire only the outgoing generation, immediately before Darktide's
+-- own destructive presentation, and leave in-place search reorders untouched.
+Domains.global_store.retire_grid_generation = function(item_grid, layout, ui_manager)
+	if not Domains.global_store.grid_rebuild_required(item_grid, layout) then
+		return 0, false
+	end
+
+	local widgets = item_grid._all_grid_widgets or item_grid._grid_widgets
+	local unload_portrait = ui_manager and ui_manager.unload_profile_portrait
+	local released = 0
+
+	if type(unload_portrait) == "function" then
+		for index = 1, #(widgets or {}) do
+			local widget = widgets[index]
+			local content = widget and widget.content
+			local load_id = content and content.portrait_load_id
+
+			if load_id ~= nil then
+				-- Clear ownership before invoking the external manager. Its unload
+				-- callback may synchronously revisit the widget.
+				content.portrait_load_id = nil
+				local ok = pcall(unload_portrait, ui_manager, load_id)
+
+				if ok then
+					released = released + 1
+				else
+					-- Preserve the ID if the service rejected the call so GlobalStore's
+					-- normal destroy fallback can still retry it.
+					content.portrait_load_id = load_id
+				end
+			end
+		end
+	end
+
+	Domains.markers.begin_grid_generation(item_grid)
+
+	return released, true
 end
 
 Domains.quick_level_alignment = {}

@@ -1,5 +1,12 @@
 # BetterInventory changelog
 
+## 3.2.5 - 2026-08-28
+
+- Retires GlobalStore's outgoing asynchronous character-portrait loads before Darktide destroys a category's card generation, preventing repeated melee/ranged/Curio tab changes from retaining every old 100-150-card generation.
+- Resets Better Inventory's weak favorite-marker generation only for destructive GlobalStore main-grid rebuilds; auxiliary grids and identity-preserving Equipment Text Search reorders remain untouched.
+- Makes inactive Equipment Text Search cache warming monotonic per authoritative offer layout, so repeated category presentations continue a bounded 16-item pass instead of repeatedly restarting at item one.
+- Adds a 40-generation, 150-card tab-switch stress regression that holds portrait resources to the current generation, plus hook-scope, missing-service, same-layout, bounded-cache, full behavior-suite, and package verification coverage.
+
 ## 3.2.4 - 2026-08-28
 
 - Gives focused Armoury and GlobalStore search fields temporary visibility ownership of both the vendor view and its background input legend, preventing typed `G`/`V` characters from also triggering Compare or Inspect.

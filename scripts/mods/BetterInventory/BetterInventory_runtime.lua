@@ -2182,6 +2182,10 @@ mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layou
 		return func(item_grid, layout, content_blueprints, unpack_values(callback_arguments, 1, callback_arguments.n))
 	end
 
+	if configuration.global_store then
+		FeatureDomains.global_store.retire_grid_generation(item_grid, layout, Managers.ui)
+	end
+
 	local local_blueprints = shallow_copy(content_blueprints)
 	local local_item_blueprint = table.clone(item_blueprint)
 
@@ -2196,9 +2200,6 @@ mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layou
 		callback_arguments[5] = function(...)
 			local callback_results = pack_values(on_present_callback(...))
 
-			-- GlobalStore's callback resizes portraits after the grid callback
-			-- runs. Normalize again afterward so entry and tab changes use the
-			-- same configured size as the initial presentation.
 			normalize_global_store_widgets(item_grid)
 
 			return unpack_values(callback_results, 1, callback_results.n)

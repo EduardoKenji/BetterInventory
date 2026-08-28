@@ -9,7 +9,7 @@
     {"name": "production_name_perk_blessing_sort_and_release", "risk": "critical", "start_line": 1, "end_line": 250}
   ],
   "test_search_runtime.py": [
-          {"name": "coalesced_filter_rank_dim_memory_and_release_lifecycle", "risk": "high", "start_line": 1, "end_line": 634}
+          {"name": "coalesced_filter_rank_dim_memory_and_release_lifecycle", "risk": "high", "start_line": 1, "end_line": 649}
   ],
   "test_search_integration.py": [
         {"name": "supported_view_adapters_facade_and_lifecycle_composition", "risk": "high", "start_line": 1, "end_line": 472}
@@ -218,7 +218,8 @@
     {"name": "repeated_marker_release_and_unrelated_grid_isolation", "risk": "high", "start_line": 79, "end_line": 116},
     {"name": "sorting_signature", "risk": "high", "start_line": 119, "end_line": 123},
     {"name": "panel_composition", "risk": "high", "start_line": 125, "end_line": 129},
-    {"name": "vendor_action_row_compatibility", "risk": "high", "start_line": 131, "end_line": 218}
+    {"name": "vendor_action_row_compatibility", "risk": "high", "start_line": 131, "end_line": 216},
+    {"name": "global_store_tab_generation_retirement", "risk": "critical", "start_line": 218, "end_line": 317}
   ],
   "test_features.py": [
       {"name": "panel_focus_allocation_guard", "risk": "medium", "start_line": 122, "end_line": 123},
@@ -277,8 +278,8 @@
   "test_view_lifecycle_memory.py": [
     {"name": "explicit_view_owned_state_release", "risk": "high", "start_line": 26, "end_line": 86},
     {"name": "post_draw_update_cpu_invariant", "risk": "critical", "start_line": 87, "end_line": 98},
-    {"name": "shared_grid_exact_pass_through", "risk": "critical", "start_line": 99, "end_line": 105},
-    {"name": "quick_level_probe_throttle", "risk": "high", "start_line": 106, "end_line": 112},
-    {"name": "native_async_cleanup_contracts", "risk": "high", "start_line": 113, "end_line": 130}
+    {"name": "shared_grid_exact_pass_through", "risk": "critical", "start_line": 99, "end_line": 118},
+    {"name": "quick_level_probe_throttle", "risk": "high", "start_line": 120, "end_line": 125},
+    {"name": "native_async_cleanup_contracts", "risk": "high", "start_line": 127, "end_line": 138}
   ]
 }

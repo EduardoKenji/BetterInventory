@@ -208,7 +208,9 @@ local function state_for(runtime, view, create)
 		query = "",
 		ranks = weak_key_table(),
 		results_ready = false,
+		warm_layout = nil,
 		warm_cursor = nil,
+		warmed_layout = nil,
 	}
 
 	if remember_enabled(runtime) then
@@ -273,13 +275,17 @@ local function scan(runtime, view, state, source_layout, trust_projection_cache)
 	-- prior generation while also avoiding a fresh result-table allocation.
 	clear_table(state.ranks)
 	state.results_ready = false
-	state.warm_cursor = nil
 
 	if not query_is_active(state) then
 		state.results_ready = true
 		sync_hot_path_flags(runtime, view, state)
 		return
 	end
+
+	-- An active query supersedes background cache warming. Empty-query
+	-- presentation captures intentionally preserve its monotonic cursor.
+	state.warm_layout = nil
+	state.warm_cursor = nil
 
 	local layout = source_layout or view._offer_items_layout
 
@@ -313,9 +319,11 @@ local function warm_projection_cache(runtime, view, state)
 		return true
 	end
 
-	local layout = view and view._offer_items_layout
+	local layout = state.warm_layout
 
 	if type(layout) ~= "table" or cursor > #layout then
+		state.warmed_layout = type(layout) == "table" and layout or nil
+		state.warm_layout = nil
 		state.warm_cursor = nil
 		return true
 	end
@@ -338,6 +346,11 @@ local function warm_projection_cache(runtime, view, state)
 	end
 
 	state.warm_cursor = last_index < #layout and last_index + 1 or nil
+
+	if state.warm_cursor == nil then
+		state.warmed_layout = layout
+		state.warm_layout = nil
+	end
 
 	return state.warm_cursor == nil
 end
@@ -390,9 +403,21 @@ SearchRuntime.capture_presentation = function(runtime, view, slot_filter, item_t
 	if not reuse_results then
 		scan(runtime, view, state)
 	end
-	if not query_is_active(state) and type(view._offer_items_layout) == "table" and #view._offer_items_layout > 0 then
-		state.warm_cursor = 1
-		view._better_inventory_search_needs_update = true
+	local source_layout = view._offer_items_layout
+
+	if not query_is_active(state) and type(source_layout) == "table" and #source_layout > 0 then
+		-- Slot/category switches reuse the same authoritative inventory table.
+		-- Continue an in-flight warm pass instead of restarting at item one, and
+		-- never warm an already completed source again.
+		if state.warm_layout ~= source_layout and state.warmed_layout ~= source_layout then
+			state.warmed_layout = nil
+			state.warm_layout = source_layout
+			state.warm_cursor = 1
+		end
+
+		if state.warm_cursor then
+			view._better_inventory_search_needs_update = true
+		end
 	end
 
 	return true
@@ -759,6 +784,8 @@ SearchRuntime.invalidate_all = function(runtime, view, now)
 	end
 
 	safe_call(runtime.dependencies.invalidate_all, state.index)
+	state.warm_layout = nil
+	state.warmed_layout = nil
 
 	return SearchRuntime.refresh(runtime, view, now)
 end
@@ -788,6 +815,8 @@ SearchRuntime.release = function(runtime, view)
 	state.presentation_kind = nil
 	state.projection_context = nil
 	state.reuse_next_capture_results = nil
+	state.warm_layout = nil
+	state.warmed_layout = nil
 	view._better_inventory_search_rank_active = nil
 	view._better_inventory_search_filter_active = nil
 	view._better_inventory_search_needs_update = nil
