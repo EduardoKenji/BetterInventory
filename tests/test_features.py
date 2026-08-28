@@ -1333,6 +1333,63 @@ def main() -> None:
     assert globals_.TestArmouryPanel.present_calls == panel_present_calls
     assert globals_.TestArmouryLegend.visibility_function() is True
 
+    # Repeated Compare presses remain scalar visibility writes. Stress both
+    # edges after warming the ordinary composition probe, then prove that the
+    # same panel, row layout and controller legend survive without retained
+    # Lua growth or a presentation rebuild.
+    (
+        toggle_memory_before,
+        toggle_memory_after,
+        toggle_same_panel,
+        toggle_same_entries,
+        toggle_same_legend,
+        toggle_same_legend_id,
+        toggle_present_calls,
+    ) = lua.execute(
+        r"""
+		local features, view = ...
+		local panel = view._better_inventory_armoury_native_sort_panel
+		local entries = panel.entries
+		local legend = view._better_inventory_armoury_controller_legend
+		local legend_id = view._better_inventory_armoury_controller_legend_id
+
+		for index = 1, 32 do
+			view._item_compare_toggled = true
+			features.update_armoury_native_sort_panel(view)
+			view._item_compare_toggled = false
+			features.update_armoury_native_sort_panel(view)
+		end
+
+		collectgarbage("collect")
+		local memory_before = collectgarbage("count")
+
+		for index = 1, 2000 do
+			view._item_compare_toggled = true
+			features.update_armoury_native_sort_panel(view)
+			view._item_compare_toggled = false
+			features.update_armoury_native_sort_panel(view)
+		end
+
+		collectgarbage("collect")
+
+		return memory_before,
+			collectgarbage("count"),
+			panel == view._better_inventory_armoury_native_sort_panel,
+			entries == panel.entries,
+			legend == view._better_inventory_armoury_controller_legend,
+			legend_id == view._better_inventory_armoury_controller_legend_id,
+			panel.present_calls
+		""",
+        features,
+        armoury_view,
+    )
+    assert toggle_same_panel is True
+    assert toggle_same_entries is True
+    assert toggle_same_legend is True
+    assert toggle_same_legend_id is True
+    assert toggle_present_calls == panel_present_calls
+    assert toggle_memory_after <= toggle_memory_before + 4
+
     lua.execute(
         r"""
         armoury_view._ui_scenegraph = {canvas = {size = {2560, 1440}}}
