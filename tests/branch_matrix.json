@@ -450,6 +450,13 @@
       "modules": ["BetterInventory_auto_crafter.lua", "BetterInventory_runtime.lua"]
     },
     {
+      "name": "auto-crafter.reconciles-selection-during-stalled-discovery",
+      "test": "test_auto_crafter_controller.py",
+      "case": "stalled_catalog_selection_reconciliation_and_stage_diagnostics",
+      "outcome": "a pending trait catalogue cannot suppress the bounded native-selection poll; changing weapons retires the old generation within half a second, refreshes the manual queue, keeps late callbacks inert, and attributes failures to the frozen request weapon and backend stage",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
       "name": "auto-crafter.contains-frame-crashes",
       "test": "test_auto_crafter_facade.py",
       "case": "frame_update_crash_containment",

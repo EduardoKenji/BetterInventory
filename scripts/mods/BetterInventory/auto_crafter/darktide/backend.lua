@@ -2111,7 +2111,13 @@ function Backend.new(dependencies)
 		return self:_mutate("mastery", "claim_levels_by_new_exp", mastery_data, added_xp)
 	end
 
-	function backend:discover_weapon_catalog(offer)
+	function backend:discover_weapon_catalog(offer, on_stage)
+		local function report_stage(stage)
+			if type(on_stage) == "function" then
+				pcall(on_stage, stage)
+			end
+		end
+
 		if type(offer) ~= "table" or offer.master_id == nil then
 			return rejected("selected weapon master item unavailable for trait discovery")
 		end
@@ -2134,44 +2140,55 @@ function Backend.new(dependencies)
 			return rejected("selected weapon trait category unavailable")
 		end
 
-		return self:_read("crafting", "get_item_crafting_metadata", item_name):next(function (metadata)
-			return self:_read("mastery", "get_mastery_by_pattern", parent_pattern):next(function (mastery_data)
-				return self:_read("crafting", "trait_sticker_book", trait_category):next(function (sticker_book)
-					local perks = summarize_perk_catalog(metadata)
-					local blessings = summarize_blessing_catalog(sticker_book)
-					local unlock_ok, mastery_unlocked, required_character_level = false, nil, nil
+		local metadata
+		local mastery_data
+		report_stage("crafting_metadata")
 
-					if type(Mastery) == "table" and type(Mastery.is_mastery_unlocked) == "function" then
-						unlock_ok, mastery_unlocked, required_character_level = pcall(Mastery.is_mastery_unlocked, mastery_data)
-					end
+		return self:_read("crafting", "get_item_crafting_metadata", item_name):next(function (result)
+			metadata = result
+			report_stage("mastery")
 
-					local normalized_mastery_unlocked
+			return self:_read("mastery", "get_mastery_by_pattern", parent_pattern)
+		end):next(function (result)
+			mastery_data = result
+			report_stage("sticker_book")
 
-					if unlock_ok then
-						normalized_mastery_unlocked = mastery_unlocked == true
-					end
+			return self:_read("crafting", "trait_sticker_book", trait_category)
+		end):next(function (sticker_book)
+			report_stage("summarizing")
+			local perks = summarize_perk_catalog(metadata)
+			local blessings = summarize_blessing_catalog(sticker_book)
+			local unlock_ok, mastery_unlocked, required_character_level = false, nil, nil
 
-					return {
-						available = true,
-						blessing_count = #blessings,
-						blessings = blessings,
-						item_name = item_name,
-						mastery = {
-							claimed_level = tonumber(safe_member(mastery_data, "claimed_level")),
-							current_xp = tonumber(safe_member(mastery_data, "current_xp")),
-							milestones = safe_member(mastery_data, "milestones"),
-							mastery_id = safe_member(mastery_data, "mastery_id") or parent_pattern,
-							mastery_level = tonumber(safe_member(mastery_data, "mastery_level")),
-							required_character_level = unlock_ok and tonumber(required_character_level) or nil,
-							unlocked = normalized_mastery_unlocked,
-						},
-						parent_pattern = parent_pattern,
-						perk_count = #perks,
-						perks = perks,
-						trait_category = trait_category,
-					}
-				end)
-			end)
+			if type(Mastery) == "table" and type(Mastery.is_mastery_unlocked) == "function" then
+				unlock_ok, mastery_unlocked, required_character_level = pcall(Mastery.is_mastery_unlocked, mastery_data)
+			end
+
+			local normalized_mastery_unlocked
+
+			if unlock_ok then
+				normalized_mastery_unlocked = mastery_unlocked == true
+			end
+
+			return {
+				available = true,
+				blessing_count = #blessings,
+				blessings = blessings,
+				item_name = item_name,
+				mastery = {
+					claimed_level = tonumber(safe_member(mastery_data, "claimed_level")),
+					current_xp = tonumber(safe_member(mastery_data, "current_xp")),
+					milestones = safe_member(mastery_data, "milestones"),
+					mastery_id = safe_member(mastery_data, "mastery_id") or parent_pattern,
+					mastery_level = tonumber(safe_member(mastery_data, "mastery_level")),
+					required_character_level = unlock_ok and tonumber(required_character_level) or nil,
+					unlocked = normalized_mastery_unlocked,
+				},
+				parent_pattern = parent_pattern,
+				perk_count = #perks,
+				perks = perks,
+				trait_category = trait_category,
+			}
 		end)
 	end
 

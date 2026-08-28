@@ -557,13 +557,23 @@ def main() -> None:
     protected_discard = backend.discard_items(backend, lua.table_from(["protected-gear"]))
     assert protected_discard.failure is not None
 
-    catalog_promise = backend.discover_weapon_catalog(backend, offer)
+    lua.execute("TestCatalogStages = {}")
+    catalog_stage_callback = lua.eval(
+        "function(stage) TestCatalogStages[#TestCatalogStages + 1] = stage end"
+    )
+    catalog_promise = backend.discover_weapon_catalog(backend, offer, catalog_stage_callback)
     assert catalog_promise.failure is None
     assert catalog_promise.value.perk_count == 1
     assert catalog_promise.value.perks[1].display_name == "+25% Damage vs Flak Armoured (T4)"
     assert catalog_promise.value.perks[1].tier == 4
     assert catalog_promise.value.mastery.unlocked is True
     assert catalog_promise.value.mastery.required_character_level == 1
+    assert [lua.globals().TestCatalogStages[index] for index in range(1, 5)] == [
+        "crafting_metadata",
+        "mastery",
+        "sticker_book",
+        "summarizing",
+    ]
 
     planner = lua.execute(
         PLANNER_PATH.read_text(encoding="utf-8"), name=str(PLANNER_PATH)

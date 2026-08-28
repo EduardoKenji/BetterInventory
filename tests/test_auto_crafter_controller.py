@@ -2633,18 +2633,115 @@ def main() -> None:
 		do
 			local catalog = pending()
 			local backend = {}
-			function backend:discover_weapon_catalog(_) return catalog end
+			function backend:discover_weapon_catalog(_, on_stage)
+				on_stage("mastery")
+
+				return catalog
+			end
 			CurrentOffer = raw_offer()
-			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings(), reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			local reporter = reports()
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings(), reporter = reporter, get_selected_offer = function() return CurrentOffer end})
 			controller._snapshot = snapshot_with(nil)
 			controller._active_view = {}
 			controller._view_is_valid = true
+			controller:_refresh_plan("timeout_setup")
 			assert(controller:_schedule_catalog("timeout_test") == true)
+			assert(controller:snapshot().catalog_stage == "mastery")
+			assert(controller:snapshot().catalog_target.master_id == "weapon-1")
 			controller:update(46)
 			assert(controller:snapshot().catalog_inflight == false)
 			assert(controller:snapshot().phase == "trait_discovery_failed")
+			assert(controller:snapshot().catalog.stage == "mastery")
+			assert(reporter.events[#reporter.events].kind == "catalog_discovery_failed")
+			assert(reporter.events[#reporter.events].payload.stage == "mastery")
+			assert(reporter.events[#reporter.events].payload.target.master_id == "weapon-1")
 			catalog.next_callback({available = true})
 			assert(controller:snapshot().phase == "trait_discovery_failed")
+		end
+
+		-- A native selection change remains bounded to the half-second view poll
+		-- while an old catalogue request is pending. The old generation is retired,
+		-- the plan and visible queue move immediately, and its late result is inert.
+		do
+			local catalog_a = pending()
+			local catalog_b = pending()
+			function catalog_a:cancel() self.cancelled = true end
+			function catalog_b:cancel() self.cancelled = true end
+			local calls = {}
+			local stages = {}
+			local selection_reads = 0
+			local backend = {}
+			function backend:discover_weapon_catalog(offer, on_stage)
+				calls[#calls + 1] = offer.master_id
+				stages[#stages + 1] = on_stage
+				on_stage("crafting_metadata")
+
+				return #calls == 1 and catalog_a or catalog_b
+			end
+			local offer_b = target_offer()
+			offer_b.offer_id = "offer-2"
+			offer_b.master_id = "weapon-2"
+			offer_b.parent_pattern = "pattern-2"
+			offer_b.display_name = "Second Weapon"
+			CurrentOffer = raw_offer()
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings(), reporter = reports(), get_selected_offer = function()
+				selection_reads = selection_reads + 1
+
+				return CurrentOffer
+			end})
+			controller._snapshot = snapshot_with(nil)
+			controller._snapshot.store.offers[2] = offer_b
+			controller._snapshot.store.offer_count = 2
+			controller._active_view = {}
+			controller._view_is_valid = true
+			controller:_refresh_plan("selection_change_setup")
+			assert(controller:_schedule_catalog("selection_change_setup") == true)
+			assert(#calls == 1 and calls[1] == "weapon-1")
+
+			CurrentOffer = {offerId = "offer-2", masterId = "weapon-2"}
+			controller:update(0.49)
+			assert(#calls == 1 and catalog_a.cancelled ~= true)
+			controller:update(0.02)
+			assert(#calls == 2 and calls[2] == "weapon-2")
+			assert(catalog_a.cancelled == true)
+			assert(controller:snapshot().plan.target.master_id == "weapon-2")
+			assert(controller:snapshot().catalog_target.master_id == "weapon-2")
+			assert(controller:snapshot().catalog_stage == "crafting_metadata")
+
+			selection_reads = 0
+			for _ = 1, 60 do controller:update(1 / 60) end
+			assert(selection_reads <= 2, "in-flight selection checks " .. tostring(selection_reads))
+			stages[2]("mastery")
+			assert(controller:snapshot().catalog_stage == "mastery")
+			catalog_a.next_callback({available = true, item_name = "stale-weapon"})
+			assert(controller:snapshot().catalog_inflight == true)
+			assert(controller:snapshot().catalog_target.master_id == "weapon-2")
+			catalog_b.next_callback({available = true, item_name = "second-weapon", perks = {}, blessings = {}})
+			assert(controller:snapshot().catalog_inflight == false)
+			assert(controller:snapshot().phase == "probe_complete")
+			assert(controller:snapshot().catalog.item_name == "second-weapon")
+		end
+
+		-- A resolved-but-unavailable catalogue is a discovery failure, not a
+		-- misleading successful probe-complete presentation event.
+		do
+			local backend = {}
+			function backend:discover_weapon_catalog(_, on_stage)
+				on_stage("sticker_book")
+
+				return resolved({available = false, reason = "catalog unavailable"})
+			end
+			CurrentOffer = raw_offer()
+			local reporter = reports()
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = base_settings(), reporter = reporter, get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = snapshot_with(nil)
+			controller._active_view = {}
+			controller._view_is_valid = true
+			assert(controller:_schedule_catalog("unavailable_test") == true)
+			assert(controller:snapshot().phase == "trait_discovery_failed")
+			assert(reporter.events[#reporter.events].kind == "catalog_discovery_failed")
+			assert(reporter.events[#reporter.events].payload.error == "catalog unavailable")
+			assert(reporter.events[#reporter.events].payload.stage == "sticker_book")
 		end
 
 		-- External account writes may stop an active workflow only between backend

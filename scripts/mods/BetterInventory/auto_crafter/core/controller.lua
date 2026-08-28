@@ -1546,6 +1546,32 @@ function Controller.new(dependencies)
 		self._catalog_inflight = false
 		self._catalog_promise = nil
 		self._catalog_elapsed = 0
+		self._catalog_stage = nil
+		self._catalog_target = nil
+	end
+
+	local function fail_catalog(target, reason, stage, catalog, payload)
+		stage = stage or self._catalog_stage
+		reason = tostring(reason or "weapon trait discovery returned unavailable data")
+		self._catalog_inflight = false
+		self._catalog_promise = nil
+		self._catalog_elapsed = 0
+		self._catalog_stage = nil
+		self._catalog_target = nil
+		self._catalog = type(catalog) == "table" and catalog or {}
+		self._catalog.available = false
+		self._catalog.reason = self._catalog.reason or reason
+		self._catalog.stage = self._catalog.stage or stage
+		self._phase = "trait_discovery_failed"
+		self:_refresh_plan("catalog_failed")
+		payload = payload or {}
+		payload.catalog = self._catalog
+		payload.error = self._catalog.reason
+		payload.stage = stage
+		payload.target = target
+		report("catalog_discovery_failed", payload)
+
+		return false
 	end
 
 	function self:_schedule_catalog(reason)
@@ -1574,45 +1600,31 @@ function Controller.new(dependencies)
 		self._catalog_key = key
 		self._catalog_inflight = true
 		self._catalog_elapsed = 0
+		self._catalog_stage = "crafting_metadata"
+		self._catalog_target = target
 		self._phase = "trait_discovery"
 		report("catalog_discovery_started", {
 			reason = reason or "target_changed",
+			stage = self._catalog_stage,
 			target = target,
 		})
 
 		local backend = self._backend
 
 		if not backend or type(backend.discover_weapon_catalog) ~= "function" then
-			self._catalog_inflight = false
-			self._catalog_elapsed = 0
-			self._catalog = {
-				available = false,
-				reason = "weapon trait discovery adapter unavailable",
-			}
-			self:_refresh_plan("catalog_failed")
-			report("catalog_discovery_failed", {
-				error = self._catalog.reason,
-			})
-
-			return false
+			return fail_catalog(target, "weapon trait discovery adapter unavailable")
 		end
 
 		local generation = self._catalog_generation
-		local call_ok, promise = safe_call(backend.discover_weapon_catalog, backend, target)
+		local function catalog_stage_changed(stage)
+			if generation == self._catalog_generation and self._catalog_inflight and key == self._catalog_key and type(stage) == "string" and stage ~= "" then
+				self._catalog_stage = stage
+			end
+		end
+		local call_ok, promise = safe_call(backend.discover_weapon_catalog, backend, target, catalog_stage_changed)
 
 		if not call_ok or not promise or type(promise.next) ~= "function" or type(promise.catch) ~= "function" then
-			self._catalog_inflight = false
-			self._catalog_elapsed = 0
-			self._catalog = {
-				available = false,
-				reason = call_ok and "backend returned no Promise" or tostring(promise),
-			}
-			self:_refresh_plan("catalog_failed")
-			report("catalog_discovery_failed", {
-				error = self._catalog.reason,
-			})
-
-			return false
+			return fail_catalog(target, call_ok and "backend returned no Promise" or promise)
 		end
 
 		self._catalog_promise = promise
@@ -1623,17 +1635,23 @@ function Controller.new(dependencies)
 					return catalog
 				end
 
+				local completed_stage = self._catalog_stage
+				if type(catalog) ~= "table" or catalog.available ~= true then
+					fail_catalog(target, type(catalog) == "table" and catalog.reason or "weapon trait discovery returned malformed data", completed_stage, catalog)
+
+					return catalog
+				end
 				self._catalog_inflight = false
 				self._catalog_elapsed = 0
 				self._catalog_promise = nil
-				self._catalog = type(catalog) == "table" and catalog or {
-					available = false,
-					reason = "weapon trait discovery returned malformed data",
-				}
-				self._phase = self._catalog.available == true and "probe_complete" or "trait_discovery_failed"
+				self._catalog_stage = nil
+				self._catalog_target = nil
+				self._catalog = catalog
+				self._phase = "probe_complete"
 				self:_refresh_plan("catalog_complete")
 				report("catalog_discovery_complete", {
 					catalog = self._catalog,
+					stage = completed_stage,
 					target = target,
 				})
 
@@ -1643,19 +1661,7 @@ function Controller.new(dependencies)
 					return error_value
 				end
 
-				self._catalog_inflight = false
-				self._catalog_elapsed = 0
-				self._catalog_promise = nil
-				self._catalog = {
-					available = false,
-					reason = tostring(error_value),
-				}
-				self._phase = "trait_discovery_failed"
-				self:_refresh_plan("catalog_failed")
-				report("catalog_discovery_failed", {
-					error = self._catalog.reason,
-					target = target,
-				})
+				fail_catalog(target, error_value)
 
 				return error_value
 			end)
@@ -1664,17 +1670,7 @@ function Controller.new(dependencies)
 		if chain_ok then
 			self._catalog_promise = chain
 		else
-			self._catalog_inflight = false
-			self._catalog_elapsed = 0
-			self._catalog_promise = nil
-			self._catalog = {
-				available = false,
-				reason = tostring(chain),
-			}
-			self:_refresh_plan("catalog_failed")
-			report("catalog_discovery_failed", {
-				error = self._catalog.reason,
-			})
+			fail_catalog(target, chain)
 		end
 
 		return chain_ok
@@ -1896,7 +1892,6 @@ function Controller.new(dependencies)
 		candidate.target_distance = candidate_distance
 		local custom_profile = type(search.custom_stat_targets) == "table" and next(search.custom_stat_targets) ~= nil
 
-		-- Unmapped frozen stats are never fallback candidates.
 		if candidate_distance == math.huge then
 			return false
 		end
@@ -1912,9 +1907,6 @@ function Controller.new(dependencies)
 			return candidate_distance < current_distance
 		end
 
-		-- Exact custom profiles use Manhattan distance across all five named
-		-- level-500 stats. Equal-distance rolls retain the earlier purchase so
-		-- backend response timing cannot make fallback selection nondeterministic.
 		if custom_profile then
 			return false
 		end
@@ -2410,9 +2402,7 @@ function Controller.new(dependencies)
 			})
 
 			if mastery.phase3 and type(backend.project_mastery) == "function" then
-				-- A resolved crafting mutation is sufficient to feed the immediately
-				-- following extraction. Avoid two inventory reads per fodder item;
-				-- the extraction result and final reconciliation remain authoritative.
+				-- Final reconciliation verifies confirmed mutation results.
 				item.rarity = REDEEMED_RARITY
 				self:_mastery_extract(generation)
 
@@ -2428,8 +2418,7 @@ function Controller.new(dependencies)
 					return
 				end
 
-				-- Rarity mutation can take long enough for external mastery state to
-				-- move. Re-read baseline immediately before destructive extraction.
+				-- Refresh mastery before extraction.
 				mastery.before = nil
 				mastery.before_data = nil
 				self:_mastery_after_refresh(generation, updated_snapshot)
@@ -2862,19 +2851,24 @@ function Controller.new(dependencies)
 		local update_dt = finite_dt(dt)
 		local continuous_update = run_is_active() or self._operation_inflight or self._probe_scheduled or self._probe_inflight or self._catalog_inflight or (tonumber(self._auxiliary_inflight_count) or 0) > 0
 		local view_idle_poll_due = false
+		local view_poll_elapsed
 
-		if self._view_is_valid and not continuous_update then
+		if self._view_is_valid then
 			self._view_idle_poll_elapsed = self._view_idle_poll_elapsed + update_dt
 
-			if self._view_idle_poll_elapsed < DEFAULT_VIEW_IDLE_POLL_INTERVAL then
-				return
+			if self._view_idle_poll_elapsed >= DEFAULT_VIEW_IDLE_POLL_INTERVAL then
+				view_poll_elapsed = self._view_idle_poll_elapsed
+				self._view_idle_poll_elapsed = 0
+				view_idle_poll_due = true
 			end
-
-			update_dt = self._view_idle_poll_elapsed
-			self._view_idle_poll_elapsed = 0
-			view_idle_poll_due = true
 		else
 			self._view_idle_poll_elapsed = 0
+		end
+		if not continuous_update and not view_idle_poll_due then
+			return
+		end
+		if not continuous_update then
+			update_dt = view_poll_elapsed or update_dt
 		end
 
 		if not runtime_context_valid() then
@@ -2926,18 +2920,13 @@ function Controller.new(dependencies)
 			self._catalog_elapsed = self._catalog_elapsed + update_dt
 
 			if self._catalog_elapsed >= MAX_READ_SECONDS then
-				local target = self:_selected_offer_summary()
+				local request_target = self._catalog_target
+				local selected_target = self:_selected_offer_summary()
+				local failed_stage = self._catalog_stage or "request_start"
 				local reason = string.format("weapon trait discovery timed out after %.1f seconds", self._catalog_elapsed)
 				cancel_catalog()
-				self._catalog = {
-					available = false,
-					reason = reason,
-				}
-				self._phase = "trait_discovery_failed"
-				self:_refresh_plan("catalog_timeout")
-				report("catalog_discovery_failed", {
-					error = reason,
-					target = target,
+				fail_catalog(request_target, reason, failed_stage, nil, {
+					selected_target = selected_target,
 				})
 			end
 		end
@@ -3051,6 +3040,8 @@ function Controller.new(dependencies)
 			catalog = self._catalog,
 			catalog_inflight = self._catalog_inflight,
 			catalog_elapsed_seconds = self._catalog_elapsed,
+			catalog_stage = self._catalog_stage,
+			catalog_target = self._catalog_target,
 			last_purchased = self._last_purchased,
 			search = self._search,
 			phase3 = self._phase3,
