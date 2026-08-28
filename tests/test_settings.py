@@ -438,6 +438,8 @@ def main() -> None:
 				captured_character_overview_widget_hook = callback
 			elseif target == test_view_element_grid and method == "_create_entry_widget_from_config" then
 				captured_grid_widget_hook = callback
+			elseif target == test_view_element_grid and method == "present_grid_layout" then
+				captured_grid_present_hook = callback
 			end
         end
 
@@ -569,6 +571,43 @@ def main() -> None:
     )
     assert globals_.captured_character_overview_update_hook is not None
     assert globals_.captured_grid_update_hook is None
+
+    # Character Overview reconciliation runs outside InventoryView's native
+    # update. Closing or replaced view generations must be retired before they
+    # can rebuild loadout widgets during loadout/cosmetic menu transitions.
+    overview_view_retired = mod._better_inventory_test.character_overview_view_retired
+    assert overview_view_retired(None) is True
+    assert overview_view_retired(lua.table_from({"_destroyed": True})) is True
+    lua.execute(
+        """
+        lifecycle_view = {view_name = "inventory_view"}
+        replacement_lifecycle_view = {view_name = "inventory_view"}
+        Managers = {
+            ui = {
+                closing = false,
+                instance = lifecycle_view,
+                is_view_closing = function(self, view_name)
+                    return self.closing
+                end,
+                view_instance = function(self, view_name)
+                    return self.instance
+                end,
+            },
+        }
+        """
+    )
+    assert overview_view_retired(globals_.lifecycle_view) is False
+    globals_.Managers.ui.closing = True
+    assert overview_view_retired(globals_.lifecycle_view) is True
+    globals_.Managers.ui.closing = False
+    globals_.Managers.ui.instance = globals_.replacement_lifecycle_view
+    assert overview_view_retired(globals_.lifecycle_view) is True
+    globals_.Managers.ui.instance = None
+    assert overview_view_retired(globals_.lifecycle_view) is False
+    globals_.Managers.ui.is_view_closing = lua.eval("function() error('API drift') end")
+    globals_.Managers.ui.view_instance = lua.eval("function() error('API drift') end")
+    assert overview_view_retired(globals_.lifecycle_view) is False
+    lua.execute("Managers = nil")
 
     # God Stat Checker repaints Character Overview cards in its normal update
     # hook. BetterInventory's post-update safe hook must inspect only Darktide's
@@ -1010,9 +1049,14 @@ def main() -> None:
     grid_widget_factory = lua.eval(
         "function(item_grid, config) return config.widget, config.alignment_widget end"
     )
+    inventory_grid_parent = lua.table_from({"__class_name": "InventoryWeaponsView"})
     item_grid = lua.table_from(
-        {"_grid_widgets": lua.table_from({1: grid_widget})}
+        {
+            "_grid_widgets": lua.table_from({1: grid_widget}),
+            "_parent": inventory_grid_parent,
+        }
     )
+    inventory_grid_parent._item_grid = item_grid
     returned_widget, returned_alignment = globals_.captured_grid_widget_hook(
         grid_widget_factory,
         item_grid,
@@ -1034,6 +1078,41 @@ def main() -> None:
         7,
         17,
     )
+
+    # Shared profile-preset/cosmetic grids are outside BetterInventory's
+    # inventory/vendor ownership boundary. Their widgets and presentation
+    # callbacks must pass through without marker state or a synthetic callback.
+    unsupported_widget = lua.table_from(
+        {
+            "content": lua.table_from({}),
+            "style": lua.table_from({"myfav_hotspot": runtime_hotspot_style}),
+            "passes": lua.table_from({}),
+        }
+    )
+    unsupported_grid = lua.table_from(
+        {"_parent": lua.table_from({"__class_name": "ViewElementProfilePresets"})}
+    )
+    globals_.captured_grid_widget_hook(
+        lua.eval("function() return unsupported_widget, unsupported_widget end"),
+        unsupported_grid,
+        lua.table_from({}),
+        "test",
+        "pressed",
+        "right_pressed",
+        "double_pressed",
+    )
+    assert unsupported_widget.content.better_inventory_myfavorites_hotspot_style is None
+
+    lua.execute(
+        """
+        unsupported_grid_callback_argument = "unset"
+        captured_grid_present_hook(function(grid, layout, blueprints, ...)
+            unsupported_grid_callback_argument = select(5, ...)
+            return "native"
+        end, unsupported_grid, {}, {}, nil, nil, nil, nil, nil)
+        """
+    )
+    assert globals_.unsupported_grid_callback_argument is None
 
     grid_update_calls = lua.table_from({"count": 0})
     original_grid_update = lua.eval(
@@ -2827,7 +2906,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "3.2.1"
+    assert data.version == "3.2.2"
 
     gradient_name = localization["mod_name"]["en"]
     assert gradient_name.startswith("{#color(174,239,105)}B")

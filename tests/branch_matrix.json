@@ -58,6 +58,20 @@
       "modules": ["BetterInventory.lua", "BetterInventory_runtime.lua"]
     },
     {
+      "name": "character-overview.closing-and-replaced-generations-retire",
+      "test": "test_settings.py",
+      "case": "character_overview_transition_retirement",
+      "outcome": "Character Overview's delayed Curio reconciliation rejects destroyed views, views Darktide reports as closing, and stale generations replaced under the same view name; transient activation with no registered instance remains valid and manager API drift fails open",
+      "modules": ["BetterInventory_character_overview_ui.lua"]
+    },
+    {
+      "name": "runtime.shared-grids-pass-through-before-mutation",
+      "test": "test_view_lifecycle_memory.py",
+      "case": "shared_grid_exact_pass_through",
+      "outcome": "the global ViewElementGrid seams mutate only Better Inventory-owned inventory and vendor grids; profile-preset, cosmetic, lobby-preview, and unknown third-party grids pass directly to native code before callback wrapping, blueprint cloning, marker attachment, material repair, or clip finalization",
+      "modules": ["BetterInventory_runtime.lua"]
+    },
+    {
       "name": "favorites.isolate-purchase-sources",
       "test": "test_favorite_integration.py",
       "case": "purchase_source_isolation_and_myfavorites_color_assignment",

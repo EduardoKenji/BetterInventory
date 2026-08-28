@@ -1,5 +1,38 @@
 local Domains = {}
 
+Domains.grid_scope = {}
+
+local OWNED_GRID_VIEW_CLASSES = {
+	CraftingMechanicusBarterItemsView = true,
+	CraftingMechanicusModifyView = true,
+	CreditsGoodsVendorView = true,
+	CreditsVendorView = true,
+	InventoryWeaponsView = true,
+	MarksGoodsVendorView = true,
+	MarksVendorView = true,
+}
+
+Domains.grid_scope.supported = function(view)
+	return type(view) == "table"
+		and view._destroyed ~= true
+		and OWNED_GRID_VIEW_CLASSES[view.__class_name] == true
+end
+
+Domains.grid_scope.resolve = function(item_grid, configured_view, configured_configuration)
+	if configured_view and item_grid == configured_view._item_grid
+		and Domains.grid_scope.supported(configured_view) then
+		return configured_view, configured_configuration
+	end
+
+	local parent = item_grid and item_grid._parent
+
+	if Domains.grid_scope.supported(parent) then
+		return parent, nil
+	end
+
+	return nil, nil
+end
+
 Domains.markers = {}
 
 local tracked_marker_grids = setmetatable({}, { __mode = "k" })
