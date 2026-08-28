@@ -162,6 +162,7 @@ def main() -> None:
     assert search_runtime.query(runtime, unsupported) == ""
     assert search_runtime.is_active(runtime, unsupported) is None
     assert search_runtime.native_filter(runtime, unsupported, {}, True) is True
+    assert search_runtime.matches(runtime, unsupported, {}) is True
     assert search_runtime.rank(runtime, unsupported, {}) == 0
     assert search_runtime.apply_widget_alpha(runtime, unsupported) is False
     assert search_runtime.update(runtime, unsupported, 0) is False
