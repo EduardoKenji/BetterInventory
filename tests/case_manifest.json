@@ -1,4 +1,25 @@
 {
+  "test_search_query.py": [
+      {"name": "bounded_literal_parser_effective_rarity_and_fail_open_matching", "risk": "high", "start_line": 1, "end_line": 331}
+  ],
+  "test_search_index.py": [
+        {"name": "bounded_projection_cache_custom_names_traits_and_split_rarity", "risk": "high", "start_line": 1, "end_line": 615}
+  ],
+  "test_search_end_to_end.py": [
+    {"name": "production_name_perk_blessing_sort_and_release", "risk": "critical", "start_line": 1, "end_line": 250}
+  ],
+  "test_search_runtime.py": [
+          {"name": "coalesced_filter_rank_dim_memory_and_release_lifecycle", "risk": "high", "start_line": 1, "end_line": 634}
+  ],
+  "test_search_integration.py": [
+        {"name": "supported_view_adapters_facade_and_lifecycle_composition", "risk": "high", "start_line": 1, "end_line": 449}
+  ],
+  "test_search_ui.py": [
+      {"name": "single_field_configurable_view_spacing_clipping_disable_focus_and_release", "risk": "high", "start_line": 1, "end_line": 543}
+  ],
+  "test_search_hooks.py": [
+      {"name": "native_grid_and_hadron_sacrifice_hook_composition", "risk": "high", "start_line": 1, "end_line": 242}
+  ],
   "test_favorite_integration.py": [
     {"name": "purchase_source_isolation_and_myfavorites_color_assignment", "risk": "high", "start_line": 1, "end_line": 329}
   ],
@@ -200,10 +221,10 @@
   ],
   "test_features.py": [
       {"name": "panel_focus_allocation_guard", "risk": "medium", "start_line": 122, "end_line": 123},
-        {"name": "discard_operation_ownership", "risk": "critical", "start_line": 3277, "end_line": 3815},
-      {"name": "sorting_and_navigation", "risk": "high", "start_line": 408, "end_line": 1472},
-      {"name": "optional_integration_fallbacks", "risk": "high", "start_line": 1473, "end_line": 1969},
-        {"name": "panel_lifecycle", "risk": "high", "start_line": 1970, "end_line": 3276}
+      {"name": "discard_operation_ownership", "risk": "critical", "start_line": 3343, "end_line": 3881},
+      {"name": "sorting_and_navigation", "risk": "high", "start_line": 408, "end_line": 1538},
+      {"name": "optional_integration_fallbacks", "risk": "high", "start_line": 1539, "end_line": 2035},
+      {"name": "panel_lifecycle", "risk": "high", "start_line": 2036, "end_line": 3342}
   ],
   "test_item_customization.py": [
     {"name": "dirty_save_outcomes", "risk": "high", "start_line": 225, "end_line": 442},
@@ -223,7 +244,7 @@
     {"name": "card_geometry", "risk": "high", "start_line": 613, "end_line": 1469},
       {"name": "weapon_modifier_data_only_resolution", "risk": "critical", "start_line": 1470, "end_line": 1943},
         {"name": "content_and_resource_ownership", "risk": "high", "start_line": 1944, "end_line": 3155},
-    {"name": "integration_boundaries", "risk": "medium", "start_line": 3156, "end_line": 5169}
+    {"name": "integration_boundaries", "risk": "medium", "start_line": 3156, "end_line": 5186}
   ],
   "test_operation_arbiter.py": [
     {"name": "manual_automatic_exclusion", "risk": "critical", "start_line": 20, "end_line": 34},
@@ -234,8 +255,8 @@
     {"name": "schema_dependency_refresh", "risk": "high", "start_line": 21, "end_line": 456},
     {"name": "migration_preservation", "risk": "high", "start_line": 457, "end_line": 626},
     {"name": "character_overview_refresh", "risk": "high", "start_line": 627, "end_line": 1725},
-    {"name": "localization_contract", "risk": "medium", "start_line": 1726, "end_line": 2909},
-    {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2910, "end_line": 3584}
+      {"name": "localization_contract", "risk": "medium", "start_line": 1726, "end_line": 2914},
+      {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2915, "end_line": 3643}
   ],
   "test_settings_registry.py": [
     {"name": "duplicate_detection", "risk": "high", "start_line": 63, "end_line": 123},

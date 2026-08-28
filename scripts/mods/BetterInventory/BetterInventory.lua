@@ -41,6 +41,7 @@ local ItemBlueprintGenerator = require("scripts/ui/view_content_blueprints/item_
 local Text = require("scripts/utilities/ui/text")
 local BaseView = require("scripts/ui/views/base_view")
 local VendorInteractionViewBase = require("scripts/ui/views/vendor_interaction_view_base/vendor_interaction_view_base")
+local VendorViewBase = require("scripts/ui/views/vendor_view_base/vendor_view_base")
 local Layout = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout")
 
 if type(Layout) ~= "table" then
@@ -111,6 +112,8 @@ local FavoriteIntegration = no_op_module(mod:io_dofile("BetterInventory/scripts/
 	favorite_purchase_items = function() return 0 end,
 })
 local ItemCustomization = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_item_customization"), "BetterInventory_item_customization.lua")
+local SearchUI = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_search_ui"), "BetterInventory_search_ui.lua")
+local SearchHooks = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_search_hooks"), "BetterInventory_search_hooks.lua")
 local CustomTier = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_custom_tier"), "BetterInventory_custom_tier.lua", {
 	install = function() return false end,
 	on_disabled = function() end,
@@ -516,6 +519,23 @@ if type(ItemCustomization.install) == "function" then
 	ItemCustomization.install(mod, InventoryWeaponsView, Layout)
 end
 
+if type(Features.configure_search) == "function" then
+	Features.configure_search(mod, {
+		CompactCurioPerkSearchTerms = Layout.compact_curio_perk_search_terms,
+		CompactWeaponPerkSearchTerms = Layout.compact_weapon_perk_search_terms,
+		CurioTraitSearchTerms = Layout.curio_trait_search_terms,
+		CustomTier = CustomTier,
+		ItemCustomization = ItemCustomization,
+	})
+end
+if type(ItemCustomization.set_change_listener) == "function" then
+	ItemCustomization.set_change_listener(function()
+		if type(Features.search_settings_changed) == "function" then
+			Features.search_settings_changed("customization_changed")
+		end
+	end)
+end
+
 AccountMutationGuard.configure({
 	mod = mod,
 	auto_crafter = AutoCrafter,
@@ -618,9 +638,22 @@ Runtime.configure({
 	ItemGridViewBaseDefinitions = ItemGridViewBaseDefinitions,
 	InventoryWeaponsView = InventoryWeaponsView,
 	ViewElementGrid = ViewElementGrid,
+	VendorInteractionViewBase = VendorInteractionViewBase,
 	WeaponOptionsPanel = WeaponOptionsPanel,
+	SearchUI = SearchUI,
 })
 Runtime.install()
+SearchHooks.install({
+	mod = mod,
+	Features = Features,
+	SearchUI = SearchUI,
+	ItemGridViewBase = ItemGridViewBase,
+	InventoryWeaponsView = InventoryWeaponsView,
+	BaseView = BaseView,
+	CraftingMechanicusModifyView = CraftingMechanicusModifyView,
+	VendorViewBase = VendorViewBase,
+	ViewElementGrid = ViewElementGrid,
+})
 
 local function extend_runtime_callback(callback_name, extension)
 	local runtime_callback = mod[callback_name]

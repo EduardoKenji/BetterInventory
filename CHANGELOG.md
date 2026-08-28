@@ -1,5 +1,33 @@
 # BetterInventory changelog
 
+## 3.2.0 - 2026-08-27
+
+- Fixes live weapon perk indexing by resolving backend master-item paths to gameplay trait IDs and indexing all perk identities/compact aliases before optional long Enhanced Descriptions text, making `flak` and `unyielding` reliable within the bounded record.
+- Adds controller navigation from any first-row card to search with Up, native text-entry activation with Confirm, and return to the current first result with Down.
+- Verifies Simplified Chinese weapon/Curio names, perks, blessings, rarity labels, partial queries, and UTF-8 caret handling; sets spacing defaults to Inventory `14/46` and Armoury `22/34`.
+- Clips scrolled equipment cards below the text-search field and flushes deferred search sorting in Armoury Requisition and GlobalStore Multi-Operative Supply views.
+- Adds original standalone search to inventory, Armoury/other supported vendors, Hadron modify, and Hadron sacrifice views through current native presentation seams.
+- Searches custom and native names, weapon families and marks, blessings, perks, item types, ratings, state flags, effective rarity, and underlying native rarity with bounded literal parsing.
+- Keeps Better Inventory's visible `Sainted` tier distinct from native `Transcendent`; `native-rarity:` can deliberately include both stored rarity-5 groups.
+- Supports quoted phrases, explicit `&`, and field-qualified text, boolean, numeric comparison, and range clauses through one compact text field.
+- Defaults to promoting matches and dimming unmatched cards while preserving Better Inventory priorities and the selected native or ItemSorting comparator within each group; optional hide mode composes with native filtering.
+- Coalesces rapid edits, reuses bounded weak projection/result caches, restores owned alpha values, fails open when a view contract is unavailable, and releases per-view state on close or hot reload.
+- Defocuses search without clearing it when a card is selected. Query memory is optional, bounded by character and logical view family, and disabled by default.
+- Warns once when legacy Stuff Searcher is also enabled and avoids invoking GodRolls' decorated-name/stat projection while indexing.
+- Restores the `InventoryWeaponsView` runtime dependency accidentally omitted during search-adapter extraction and guards its optional hook targets, preventing the four startup `hook_safe`/`hook` nil-object errors.
+- Validates search focus and Escape actions against each view's input service before reading them, preventing the instant textbox-focus crash caused by the unavailable `cancel_pressed` action in vendor views.
+- Removes the redundant expandable quick-filter controls and their dead chip state, and reserves the single search row through native content padding so grid titles such as `Primary Weapon` retain their original position.
+- Places the text field fully below titled grid headers and indexes both Darktide's canonical perk descriptions and Better Inventory's standard/heavy abbreviations, so searches such as `flak` match regardless of card compression.
+- Gives Curio line searches an equipped-aware relevance hierarchy: primary+secondary matches, primary-only matches, then secondary-only matches, with partial terms supported and every non-match retaining the existing sort order.
+- Adds final view-specific search-field clearance below inventory headers and the deeper shared Armoury Requisition/Multi-Operative Supply tab row without moving native titles.
+- Renames the dedicated Mod Options tab to `Equipment Text Search` and clarifies that its master switch hides the field, clears session state, and disables filtering and ranking.
+- Finalizes search spacing by raising Armoury cards 32 pixels and inventory cards 12 pixels from the initial layout while adding two pixels of clearance above both fields.
+- Exposes independent Inventory and Armoury top/bottom search-field padding sliders, preserving the finalized geometry as their defaults while leaving other supported views unchanged.
+- Fixes match promotion after ItemSorting replaces sort options: settled searches rebind once and enter one native filter/sort/presentation transaction after the quiet interval, restoring weapon-name, perk, and blessing ordering without any per-frame rebuild.
+- Makes rapid typing allocation-free inside the search runtime, parses and scans only after the 80 ms quiet interval, warms cold rich projections in bounded 16-item slices, removes redundant normalization/protected reads and the duplicate match map, and leaves fully settled idle updates allocation-free with all projection memory reclaimed on close.
+- Removes global per-frame `ViewElementGrid.update` and `ItemGridViewBase.update` search wrappers; Inventory reuses Better Inventory's existing update/input hooks, runtime updates run only while warming or settling, inactive native filters/comparators bypass search entirely, the legend guard reads the existing widget state once, and focus owns only the main grid's native input-disabled state without overriding discard/options ownership.
+- Fixes the optimized dim-search no-op by restoring Darktide's native indexed presentation transaction after coalescing, resolving the current comparator instead of a stale convenience pointer, and applying unmatched-card alpha once to newly presented `content.element` widgets without restoring a frame scan.
+
 ## 3.1.0 - 2026-08-26
 
 - Blocks enabled crafting mutations before the first purchase when native Hadron progression is locked, including the reported level-1 Auto Crafter path.

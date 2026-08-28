@@ -10,6 +10,7 @@ local Lantern = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mo
 local SortOptions = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_feature_sort_options")
 local PanelState = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_feature_panel_state")
 local DiscardSummary = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_feature_discard_summary")
+local SearchIntegration = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_search_integration")
 
 if type(CurioValues) ~= "table" then
 	CurioValues = {
@@ -278,9 +279,6 @@ Features.register_view_session_cleanup = function(view, cleanup_id, callback)
 	return false
 end
 
--- Keep sort ownership independent from the optional settings panels. A vendor
--- can have a wrapped native comparator even when BetterInventory did not create
--- a visible sorting panel for it.
 Features._registered_sort_views = setmetatable({}, {
 	__mode = "k",
 })
@@ -434,7 +432,7 @@ local function is_armoury_sort_view(view)
 end
 
 local function is_sortable_view(layout, view)
-	return is_inventory_view(layout, view) or is_armoury_sort_view(view)
+	return is_inventory_view(layout, view) or is_armoury_sort_view(view) or type(SearchIntegration) == "table" and type(SearchIntegration.view_family) == "function" and SearchIntegration.view_family(view, GLOBAL_STORE_SERVICE) ~= nil
 end
 
 Features.add_inventory_sort_toggle_definition = function(mod, layout, definitions, view)
@@ -1556,6 +1554,18 @@ local function preview_profile_for_discard(view)
 	end
 end
 
+Features.configure_search = function(mod, providers)
+	if not SearchIntegration or type(SearchIntegration.install) ~= "function" then
+		return false
+	end
+
+	return SearchIntegration.install(Features, mod, providers, function(view)
+			if sort_comparator_manager then
+				sort_comparator_manager.configure(mod, view)
+			end
+		end, GLOBAL_STORE_SERVICE)
+end
+
 Features.is_perfect_roll_weapon = DiscardPolicy.is_perfect_roll_weapon
 Features.perfect_roll_dump_stat_value = DiscardPolicy.perfect_roll_dump_stat_value
 sort_comparator_manager = Features._sorting.new_comparator_manager({
@@ -1570,6 +1580,9 @@ sort_comparator_manager = Features._sorting.new_comparator_manager({
 	end,
 	is_sortable_view = is_sortable_view,
 	register_view_session_cleanup = Features.register_view_session_cleanup,
+	search_rank = function(view, entry)
+		return type(Features.search_rank) == "function" and Features.search_rank(view, entry) or 0
+	end,
 })
 Features._registered_sort_views = sort_comparator_manager.registered_views
 Features.automatic_curio_acquisition_protects = DiscardPolicy.automatic_curio_acquisition_protects
@@ -1735,8 +1748,6 @@ Features.release_account_operation = function(owner, token)
 	return release_discard_transaction(owner, token)
 end
 
--- GearService settlement is observed by the main-module bridge. This module
--- only owns the promise callback and releases the matching transaction token.
 Features.observe_manual_discard_settlement = function(promise)
 	return discard_transaction:observe_manual_settlement(promise)
 end

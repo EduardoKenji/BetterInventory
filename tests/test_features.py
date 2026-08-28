@@ -879,6 +879,57 @@ def main() -> None:
     )
     globals_.TestItems.favorites.favorite = True
     features.configure_inventory_sort_options(mod, layout, sortable_view)
+    first_priority_cache = sortable_view._better_inventory_sort_priority_cache
+    features.configure_inventory_sort_options(mod, layout, sortable_view)
+    assert lua.eval("function(left, right) return rawequal(left, right) end")(
+        first_priority_cache, sortable_view._better_inventory_sort_priority_cache
+    ) is True
+
+    # Search rank is the stable outer partition for live-shaped {item=...}
+    # entries. Rebinding after an ItemSorting-style comparator replacement must
+    # preserve that partition while adopting the replacement as its tie-breaker.
+    features.search_rank = lua.eval(
+        "function(_, entry) return entry and entry.item and entry.item.search_rank or 0 end"
+    )
+    sortable_view._better_inventory_search_rank_active = True
+    search_promoted = lua.execute(
+        r"""
+        local view = ...
+        local entries = {
+            {item = {gear_id = "native-first", rating = 500, search_rank = 0}},
+            {item = {gear_id = "shovel-match", rating = 1, search_rank = 1}},
+        }
+        table.sort(entries, view._sort_options[1].sort_function)
+        return entries[1].item.gear_id, entries[2].item.gear_id
+        """,
+        sortable_view,
+    )
+    assert search_promoted == ("shovel-match", "native-first")
+
+    original_native_for_search = sortable_view._sort_options[1]._better_inventory_original_sort
+    sortable_view._sort_options[1].sort_function = lua.eval(
+        "function(left, right) return left.item.rating < right.item.rating end"
+    )
+    features.configure_inventory_sort_options(mod, layout, sortable_view)
+    rebound_search_promoted = lua.execute(
+        r"""
+        local view = ...
+        local entries = {
+            {item = {gear_id = "replacement-native", rating = 1, search_rank = 0}},
+            {item = {gear_id = "uncanny-match", rating = 500, search_rank = 1}},
+        }
+        table.sort(entries, view._sort_options[1].sort_function)
+        return entries[1].item.gear_id, entries[2].item.gear_id
+        """,
+        sortable_view,
+    )
+    assert rebound_search_promoted == ("uncanny-match", "replacement-native")
+    features.restore_sort_options(sortable_view)
+    sortable_view._sort_options[1].sort_function = original_native_for_search
+    features.configure_inventory_sort_options(mod, layout, sortable_view)
+    features.search_rank = None
+    sortable_view._better_inventory_search_rank_active = None
+
     sorted_ids = lua.execute(
         r"""
         local view, ordinary, favorite, equipped = ...
@@ -1430,6 +1481,26 @@ def main() -> None:
     assert deferred_view.deferred_sort_count is None
     assert features.flush_inventory_resort(mod, layout, deferred_view) is True
     assert deferred_view.deferred_sort_count == 1
+
+    # ItemSorting can replace the option table without refreshing Darktide's
+    # selected-option pointer. Deferred resorts follow native indexed lookup.
+    lua.execute(
+        r"""
+        local view = ...
+        view.current_sort = function() return true end
+        view.stale_sort = function() return false end
+        view._sort_options = {{sort_function = view.current_sort}}
+        view._selected_sort_option = {sort_function = view.stale_sort}
+        view._sort_grid_layout = function(self, sort_function)
+            self.used_current_sort = sort_function == self.current_sort
+        end
+        """,
+        deferred_view,
+    )
+    assert features.request_inventory_resort(deferred_view) is True
+    assert features.flush_inventory_resort(mod, layout, deferred_view) is True
+    assert deferred_view.used_current_sort is True
+
     deferred_view._sort_grid_layout = lua.eval('function() error("foreign sort failure") end')
     quarantine_mod = lua.table_from({"warning": lua.eval("function() end")})
     assert features.request_inventory_resort(deferred_view) is True

@@ -166,7 +166,15 @@ end
 -- restoration.
 Sorting.new_comparator_manager = function(dependencies)
 	local manager = {}
+	-- Sort-option tables belong to Darktide's live view and survive a DMF
+	-- Ctrl+Shift+R. Each manager generation must replace wrappers created by the
+	-- previous search runtime; otherwise the visible query is ranked through a
+	-- stale closure even though the new runtime has already scanned the items.
+	local wrapper_generation = {}
 	local EQUIPPED_FAVORITE_PRIORITY_OFFSET = 3
+	local search_rank = type(dependencies.search_rank) == "function" and dependencies.search_rank or function()
+		return 0
+	end
 	local registered_views = setmetatable({}, {
 		__mode = "k",
 	})
@@ -250,9 +258,21 @@ Sorting.new_comparator_manager = function(dependencies)
 	end
 
 	local function reset_priority_cache(view)
-		view._better_inventory_sort_priority_cache = setmetatable({}, {
-			__mode = "k",
-		})
+		local priority_cache = view._better_inventory_sort_priority_cache
+
+		if type(priority_cache) ~= "table" then
+			view._better_inventory_sort_priority_cache = setmetatable({}, {
+				__mode = "k",
+			})
+			return
+		end
+
+		-- Resorting after each settled query previously allocated another weak
+		-- cache. Reuse the view-owned table so repeated searches produce no cache
+		-- garbage while still recomputing mutable favorite/equipped priorities.
+		for layout_entry in pairs(priority_cache) do
+			priority_cache[layout_entry] = nil
+		end
 	end
 
 	manager.configure = function(mod, view)
@@ -277,11 +297,21 @@ Sorting.new_comparator_manager = function(dependencies)
 			local option = sort_options[index]
 			local wrapped_sort = option and option._better_inventory_wrapped_sort
 
-			if option and option._better_inventory_original_sort and option.sort_function ~= wrapped_sort then
-				-- Another integration replaced the comparator after BetterInventory
-				-- wrapped it. Treat that comparator as the new native baseline.
-				option._better_inventory_original_sort = nil
-				option._better_inventory_wrapped_sort = nil
+			if option and option._better_inventory_original_sort then
+				if option.sort_function ~= wrapped_sort then
+					-- Another integration replaced the comparator after BetterInventory
+					-- wrapped it. Treat that comparator as the new native baseline.
+					option._better_inventory_original_sort = nil
+					option._better_inventory_wrapped_sort = nil
+					option._better_inventory_sort_wrapper_generation = nil
+				elseif option._better_inventory_sort_wrapper_generation ~= wrapper_generation then
+					-- Current manager cannot reuse an earlier manager's closure: its
+					-- `search_rank` dependency points at the released pre-reload runtime.
+					option.sort_function = option._better_inventory_original_sort
+					option._better_inventory_original_sort = nil
+					option._better_inventory_wrapped_sort = nil
+					option._better_inventory_sort_wrapper_generation = nil
+				end
 			end
 
 			local original_sort = option and option.sort_function
@@ -289,6 +319,17 @@ Sorting.new_comparator_manager = function(dependencies)
 			if type(original_sort) == "function" and not option._better_inventory_original_sort then
 				option._better_inventory_original_sort = original_sort
 				local better_inventory_sort = function(left, right)
+					-- Search is the outermost, stable partition. Existing BetterInventory
+					-- priorities and the selected ItemSorting/native comparator remain the
+					-- complete tie-break hierarchy inside each match group.
+					local search_active = view._better_inventory_search_rank_active
+					local left_search_rank = search_active and search_rank(view, left) or 0
+					local right_search_rank = search_active and search_rank(view, right) or 0
+
+					if left_search_rank ~= right_search_rank then
+						return left_search_rank > right_search_rank
+					end
+
 					local left_priority = inventory_sort_priority(mod, view, left)
 					local right_priority = inventory_sort_priority(mod, view, right)
 
@@ -299,6 +340,7 @@ Sorting.new_comparator_manager = function(dependencies)
 					return original_sort(left, right)
 				end
 				option._better_inventory_wrapped_sort = better_inventory_sort
+				option._better_inventory_sort_wrapper_generation = wrapper_generation
 				option.sort_function = better_inventory_sort
 			end
 		end
@@ -327,6 +369,7 @@ Sorting.new_comparator_manager = function(dependencies)
 			if option then
 				option._better_inventory_original_sort = nil
 				option._better_inventory_wrapped_sort = nil
+				option._better_inventory_sort_wrapper_generation = nil
 			end
 		end
 	end
@@ -371,7 +414,16 @@ Sorting.new_comparator_manager = function(dependencies)
 		end
 
 		local sort_options = view._sort_options
-		local option = sort_options and (view._selected_sort_option or sort_options[view._selected_sort_option_index or 1])
+		-- ItemSorting can replace `_sort_options` while Darktide's convenience
+		-- `_selected_sort_option` field still points at the previous table. Native
+		-- `_present_layout_by_slot_filter` resolves the active comparator by index;
+		-- deferred resorts must do the same or search's outer rank partition is
+		-- silently bypassed by that stale, unwrapped comparator.
+		local option = sort_options and sort_options[view._selected_sort_option_index or 1]
+
+		if not option then
+			option = view._selected_sort_option
+		end
 		local sort_function = option and option.sort_function
 
 		if sort_function then

@@ -22,6 +22,7 @@ local ItemGridViewBaseDefinitions
 local InventoryWeaponsView
 local ViewElementGrid
 local WeaponOptionsPanel
+local SearchUI
 local dmf_mod
 local active_grid_view
 local active_grid_configuration
@@ -48,6 +49,10 @@ local function optional_require(path)
 end
 local MarksVendorView = optional_require("scripts/ui/views/marks_vendor_view/marks_vendor_view")
 local MarksGoodsVendorView = optional_require("scripts/ui/views/marks_goods_vendor_view/marks_goods_vendor_view")
+
+local function update_search_view(view, time, input_service)
+	SearchUI.update_view(mod, Features, view, time, input_service)
+end
 
 local function configure_dependencies(dependencies)
 	mod = dependencies.mod
@@ -81,6 +86,7 @@ local function configure_dependencies(dependencies)
 	InventoryWeaponsView = dependencies.InventoryWeaponsView
 	ViewElementGrid = dependencies.ViewElementGrid
 	WeaponOptionsPanel = dependencies.WeaponOptionsPanel
+	SearchUI = dependencies.SearchUI
 end
 
 Runtime.configure = configure_dependencies
@@ -1282,6 +1288,9 @@ function mod.on_setting_changed(setting_id)
 	end
 
 	ItemCustomization.on_setting_changed(mod, setting_id)
+	if type(Features.search_settings_changed) == "function" then
+		Features.search_settings_changed(setting_id)
+	end
 
 	if setting_id == "highlight_equipped_items" or setting_id == "new_item_highlight_mode" then
 		highlight_animation_enabled = mod:get("highlight_equipped_items") == "pulsing_dashes" or mod:get("new_item_highlight_mode") == "pulsing_dashes"
@@ -1349,6 +1358,10 @@ function mod.on_settings_reset()
 	end
 
 	refresh_option_dependencies()
+	if type(Features.search_settings_changed) == "function" then
+		Features.search_settings_changed("inventory_search_remember_query")
+		Features.search_settings_changed("inventory_search_non_match_behavior")
+	end
 end
 
 function mod.on_game_state_changed(status, state_name)
@@ -1453,6 +1466,9 @@ function mod.on_disabled()
 	CurioAcquisition.cancel()
 	Features.disable_inventory_views()
 	Features.close_all_view_sessions("mod_disable")
+	if type(Features.search_shutdown) == "function" then
+		Features.search_shutdown(true)
+	end
 	if CharacterOverviewUI and type(CharacterOverviewUI.release_all_views) == "function" then
 		CharacterOverviewUI.release_all_views()
 	end
@@ -1497,6 +1513,13 @@ end
 
 mod:hook(ItemGridViewBase, "init", function(func, view, definitions, settings, context)
 	active_highlight_views[view] = true
+	local function initialize(adjusted_definitions)
+		if mod:get("enable_inventory_search") ~= false and SearchUI and type(SearchUI.decorate_definitions) == "function" then
+			adjusted_definitions = SearchUI.decorate_definitions(adjusted_definitions, view, mod)
+		end
+
+		return func(view, adjusted_definitions, settings, context)
+	end
 
 	if view.__class_name == "InventoryWeaponsView" then
 		-- InventoryWeaponsView assigns its slot and loadout before this base init;
@@ -1512,7 +1535,7 @@ mod:hook(ItemGridViewBase, "init", function(func, view, definitions, settings, c
 
 		view._better_inventory_grid_expansion = expansion
 
-		return func(view, adjusted_definitions, settings, context)
+		return initialize(adjusted_definitions)
 	end
 
 	if is_armoury_requisition_view(view) and mod:get("enable_grid_layout") ~= false and mod:get("enable_armoury_requisition_grid") ~= false then
@@ -1521,7 +1544,7 @@ mod:hook(ItemGridViewBase, "init", function(func, view, definitions, settings, c
 
 		view._better_inventory_armoury_grid_expansion = expansion
 
-		return func(view, adjusted_definitions, settings, context)
+		return initialize(adjusted_definitions)
 	end
 
 	if is_global_store_view(view) and mod:get("enable_grid_layout") ~= false and mod:get("enable_global_store_integration") ~= false and mod:get("enable_global_store_grid") ~= false then
@@ -1536,10 +1559,10 @@ mod:hook(ItemGridViewBase, "init", function(func, view, definitions, settings, c
 
 		view._better_inventory_armoury_grid_expansion = expansion
 
-		return func(view, adjusted_definitions, settings, context)
+		return initialize(adjusted_definitions)
 	end
 
-	return func(view, definitions, settings, context)
+	return initialize(definitions)
 end)
 
 if ensure_class_method(InventoryWeaponsView, "_setup_sort_options") then
@@ -1583,17 +1606,20 @@ if ensure_class_method(CreditsVendorView, "_setup_sort_options") then
 end
 
 if ensure_class_method(InventoryWeaponsView, "update") then
-	-- Keep this outside Darktide's native inventory traversal so performance
-	-- monitors do not charge its O(inventory) work to BetterInventory.
 	mod:hook_safe(InventoryWeaponsView, "update", function(view, dt, t, input_service)
 		Features.update_inventory_sort_toggle(mod, Layout, view)
 		Features.update_inventory_options_panel_controller_selection(view, input_service)
 		Features.flush_inventory_resort(mod, Layout, view)
+		update_search_view(view, t, input_service)
 	end)
 end
 
 if ensure_class_method(InventoryWeaponsView, "_handle_input") then
 	mod:hook(InventoryWeaponsView, "_handle_input", function(func, view, input_service, ...)
+		if SearchUI and type(SearchUI.handle_view_input) == "function" and SearchUI.handle_view_input(mod, view, input_service) then
+			return
+		end
+
 		-- Capture before native input to preserve same-frame controller behavior.
 		Features.capture_inventory_options_panel_controller_focus(mod, Layout, view, input_service)
 		Features.capture_inventory_controller_navigation(view, input_service)
@@ -1607,15 +1633,20 @@ if ensure_class_method(InventoryWeaponsView, "_handle_input") then
 	end)
 end
 
-mod:hook_safe(InventoryWeaponsView, "cb_on_favorite_pressed", function(view)
-	local item_grid = view and view._item_grid
+if ensure_class_method(InventoryWeaponsView, "cb_on_favorite_pressed") then
+	mod:hook_safe(InventoryWeaponsView, "cb_on_favorite_pressed", function(view)
+		local item_grid = view and view._item_grid
 
-	invalidate_myfavorites_grid(item_grid)
+		invalidate_myfavorites_grid(item_grid)
+		if type(Features.search_invalidate_all) == "function" then
+			Features.search_invalidate_all(view)
+		end
 
-	if mod:get("prioritize_equipped_favorites") ~= false then
-		Features.request_inventory_resort(view)
-	end
-end)
+		if mod:get("prioritize_equipped_favorites") ~= false then
+			Features.request_inventory_resort(view)
+		end
+	end)
+end
 
 if ensure_class_method(InventoryBackgroundView, "_equip_local_changes") then
 	mod:hook(InventoryBackgroundView, "_equip_local_changes", function(func, view, ...)
@@ -1655,27 +1686,34 @@ mod:hook("GearService", "delete_gear_batch", function(func, gear_service, gear_i
 		return result
 	end)
 
-mod:hook_safe(InventoryWeaponsView, "_equip_item", function(view)
-	if type(Features.invalidate_view_composition) == "function" then
-		Features.invalidate_view_composition(view)
-	end
+if ensure_class_method(InventoryWeaponsView, "_equip_item") then
+	mod:hook_safe(InventoryWeaponsView, "_equip_item", function(view)
+		if type(Features.invalidate_view_composition) == "function" then
+			Features.invalidate_view_composition(view)
+		end
 
-	local item_grid = view and view._item_grid
+		local item_grid = view and view._item_grid
 
-	invalidate_myfavorites_grid(item_grid)
+		invalidate_myfavorites_grid(item_grid)
+		if type(Features.search_invalidate_all) == "function" then
+			Features.search_invalidate_all(view)
+		end
 
-	if mod:get("prioritize_equipped_favorites") ~= false then
-		Features.request_inventory_resort(view)
-	end
-end)
+		if mod:get("prioritize_equipped_favorites") ~= false then
+			Features.request_inventory_resort(view)
+		end
+	end)
+end
 
-mod:hook_safe(InventoryWeaponsView, "on_exit", function(view)
-	Features.release_lantern_inventory_section(view)
-	Features.unregister_inventory_view(view)
-	if ItemCustomization and type(ItemCustomization.on_view_closed) == "function" then
-		ItemCustomization.on_view_closed(mod)
-	end
-end)
+if ensure_class_method(InventoryWeaponsView, "on_exit") then
+	mod:hook_safe(InventoryWeaponsView, "on_exit", function(view)
+		Features.release_lantern_inventory_section(view)
+		Features.unregister_inventory_view(view)
+		if ItemCustomization and type(ItemCustomization.on_view_closed) == "function" then
+			ItemCustomization.on_view_closed(mod)
+		end
+	end)
+end
 
 if ensure_class_method(InventoryWeaponsView, "destroy") then
 	mod:hook_safe(InventoryWeaponsView, "destroy", function(view)
@@ -1697,6 +1735,13 @@ local function release_item_grid_view_runtime(view)
 
 	if view then
 		view._auto_crafter_status_overlay = nil
+		if SearchUI and type(SearchUI.release) == "function" then
+			SearchUI.release(view)
+		end
+		Features.end_view_session(view, "item_grid_exit")
+		if type(Features.search_release) == "function" then
+			Features.search_release(view)
+		end
 	end
 
 	release_transient_item_caches()
@@ -1711,11 +1756,13 @@ if ensure_class_method(ItemGridViewBase, "destroy") then
 end
 
 if ensure_class_method(CreditsVendorView, "update") then
-	mod:hook_safe(CreditsVendorView, "update", function(view)
+	mod:hook_safe(CreditsVendorView, "update", function(view, dt, t, input_service)
 		if is_armoury_sort_view(view) then
 			Features.update_armoury_native_sort_panel(view)
 			align_quick_level_mastery_buttons(view)
+			Features.flush_inventory_resort(mod, Layout, view)
 		end
+		update_search_view(view, t, input_service)
 	end)
 end
 
@@ -1774,28 +1821,30 @@ if ensure_class_method(CreditsGoodsVendorView, "destroy") then
 	end)
 end
 
-mod:hook(InventoryWeaponsView, "_setup_item_grid_materials", function(func, view, ...)
-	func(view, ...)
+if ensure_class_method(InventoryWeaponsView, "_setup_item_grid_materials") then
+	mod:hook(InventoryWeaponsView, "_setup_item_grid_materials", function(func, view, ...)
+		func(view, ...)
 
-	local expansion = view._better_inventory_grid_expansion or 0
+		local expansion = view._better_inventory_grid_expansion or 0
 
-	if expansion <= 0 then
-		return
-	end
-
-	for _, widget_name in ipairs({
-		"grid_divider_top",
-		"grid_divider_bottom",
-	}) do
-		local widget = view:_grid_widget_by_name(widget_name)
-		local texture_style = widget and widget.style and widget.style.texture
-		local texture_size = texture_style and texture_style.size
-
-		if texture_size and texture_size[1] then
-			texture_size[1] = texture_size[1] + expansion
+		if expansion <= 0 then
+			return
 		end
-	end
-end)
+
+		for _, widget_name in ipairs({
+			"grid_divider_top",
+			"grid_divider_bottom",
+		}) do
+			local widget = view:_grid_widget_by_name(widget_name)
+			local texture_style = widget and widget.style and widget.style.texture
+			local texture_size = texture_style and texture_style.size
+
+			if texture_size and texture_size[1] then
+				texture_size[1] = texture_size[1] + expansion
+			end
+		end
+	end)
+end
 
 local function present_grid_with_configuration(func, view, layout, on_present_callback, configuration)
 	local previous_active_view = active_grid_view
@@ -2051,6 +2100,24 @@ mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layou
 	content_blueprints = Features.compact_inventory_curio_stats_blueprints(mod, item_grid, content_blueprints)
 
 	local view = active_grid_view or item_grid and item_grid._parent
+	local callback_arguments = pack_values(...)
+	local on_present_callback = callback_arguments[5]
+
+	callback_arguments[5] = function(...)
+		local callback_results
+
+		if type(on_present_callback) == "function" then
+			callback_results = pack_values(on_present_callback(...))
+		end
+
+		if type(Features.search_apply_widget_alpha) == "function" then
+			Features.search_apply_widget_alpha(view)
+		end
+
+		if callback_results then
+			return unpack_values(callback_results, 1, callback_results.n)
+		end
+	end
 
 	if WeaponOptionsPanel and type(WeaponOptionsPanel.prepare_layout) == "function" then
 		layout = WeaponOptionsPanel.prepare_layout(mod, item_grid, layout, content_blueprints, view)
@@ -2097,12 +2164,11 @@ mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layou
 	-- Restrict the global grid seam to the exact active view and blueprint.
 	-- Missing fields mean the game contract changed, so pass through.
 	if not view or item_grid ~= view._item_grid or not grid_size or not grid_size[1] or not item_blueprint or not item_blueprint.pass_template then
-		return func(item_grid, layout, content_blueprints, ...)
+		return func(item_grid, layout, content_blueprints, unpack_values(callback_arguments, 1, callback_arguments.n))
 	end
 
 	local local_blueprints = shallow_copy(content_blueprints)
 	local local_item_blueprint = table.clone(item_blueprint)
-	local callback_arguments = pack_values(...)
 
 	local_blueprints[blueprint_key] = local_item_blueprint
 
@@ -2142,6 +2208,9 @@ mod:hook(ViewElementGrid, "_update_window_size", function(func, item_grid, ...)
 
 	if WeaponOptionsPanel and type(WeaponOptionsPanel.finalize_layout) == "function" then
 		WeaponOptionsPanel.finalize_layout(item_grid)
+	end
+	if SearchUI and type(SearchUI.finalize_grid_clip) == "function" then
+		SearchUI.finalize_grid_clip(item_grid)
 	end
 
 	return unpack_values(results, 1, results.n)

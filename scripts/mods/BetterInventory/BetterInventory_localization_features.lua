@@ -1,4 +1,64 @@
 local localization = {
+	inventory_search_group = {
+		en = "Equipment Text Search",
+	},
+	enable_inventory_search = {
+		en = "Enable Equipment Text Search",
+	},
+	enable_inventory_search_tooltip = {
+		en = "Adds a bounded, live equipment search field to weapon and Curio inventory, Hadron, Armoury Exchange, GlobalStore, and Melk item views. Disabling this hides the field, clears its session state, and removes all search filtering and ranking. Cosmetics are not changed.",
+	},
+	inventory_search_non_match_behavior = {
+		en = "Unmatched item behavior",
+	},
+	inventory_search_non_match_behavior_tooltip = {
+		en = "Unchanged promotes matches while keeping unmatched cards fully visible. Dim promotes matches and fades unmatched cards. Hide removes unmatched cards. Every mode preserves Darktide's native tab and eligibility filters.",
+	},
+	inventory_search_non_match_unchanged = {
+		en = "Unchanged",
+	},
+	inventory_search_non_match_dim = {
+		en = "Dim",
+	},
+	inventory_search_non_match_hide = {
+		en = "Hide",
+	},
+	inventory_search_remember_query = {
+		en = "Remember searches during this game session",
+	},
+	inventory_search_remember_query_tooltip = {
+		en = "Off by default. When enabled, only the bounded text query is remembered for this character and view family until a character change, mod reload, game exit, or mod disable.",
+	},
+	inventory_search_focus_keybind = {
+		en = "Search focus keybind",
+	},
+	inventory_search_focus_keybind_tooltip = {
+		en = "Optional. Off avoids conflicts by default. Choose an action to focus the current view's search field; Escape defocuses it before the next Escape can close the view.",
+	},
+	inventory_search_spacing_group = {
+		en = "Search field spacing",
+	},
+	inventory_search_inventory_top_padding = {
+		en = "Inventory: top padding",
+	},
+	inventory_search_inventory_bottom_padding = {
+		en = "Inventory: bottom padding",
+	},
+	inventory_search_armoury_top_padding = {
+		en = "Armoury: top padding",
+	},
+	inventory_search_armoury_bottom_padding = {
+		en = "Armoury: bottom padding",
+	},
+	inventory_search_spacing_reopen_tooltip = {
+		en = "Pixel spacing for the Equipment Text Search field. Top padding controls header-to-field clearance; bottom padding controls the reserved field-to-card space. Reopen the affected inventory or Armoury item view after changing this value.",
+	},
+	inventory_search_placeholder = {
+		en = "Search: sword & uncanny & flak",
+	},
+	inventory_search_curio_placeholder = {
+		en = "Search: toughness & health & revive",
+	},
 	inventory_options_controller_focus_keybind = {
 		en = "Items / widget focus keybind",
 	},

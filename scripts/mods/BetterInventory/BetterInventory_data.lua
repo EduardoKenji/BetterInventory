@@ -1,4 +1,4 @@
-local MOD_VERSION = "3.1.0"
+local MOD_VERSION = "3.2.0"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
@@ -568,6 +568,82 @@ return {
 								type = "numeric",
 								default_value = 12,
 								range = {0, 24},
+							},
+						},
+					},
+				},
+			},
+			{
+				setting_id = "inventory_search_group",
+				type = "group",
+				sub_widgets = {
+					{
+						setting_id = "enable_inventory_search",
+						tooltip = "enable_inventory_search_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
+						setting_id = "inventory_search_non_match_behavior",
+						tooltip = "inventory_search_non_match_behavior_tooltip",
+						type = "dropdown",
+						default_value = "dim",
+						options = {
+							{ text = "inventory_search_non_match_unchanged", value = "unchanged" },
+							{ text = "inventory_search_non_match_dim", value = "dim" },
+							{ text = "inventory_search_non_match_hide", value = "hide" },
+						},
+					},
+					{
+						setting_id = "inventory_search_remember_query",
+						tooltip = "inventory_search_remember_query_tooltip",
+						type = "checkbox",
+						default_value = false,
+					},
+					{
+						setting_id = "inventory_search_focus_keybind",
+						tooltip = "inventory_search_focus_keybind_tooltip",
+						type = "dropdown",
+						default_value = "off",
+						options = {
+							{ text = "custom_item_editor_keybind_off", value = "off" },
+							{ text = "custom_item_editor_keybind_q", value = "hotkey_menu_special_2" },
+							{ text = "custom_item_editor_keybind_e", value = "hotkey_menu_special_1" },
+							{ text = "custom_item_editor_keybind_v", value = "hotkey_item_inspect" },
+							{ text = "custom_item_editor_keybind_r", value = "group_finder_refresh_groups" },
+						},
+					},
+					{
+						setting_id = "inventory_search_spacing_group",
+						type = "group",
+						sub_widgets = {
+							{
+								setting_id = "inventory_search_inventory_top_padding",
+								tooltip = "inventory_search_spacing_reopen_tooltip",
+								type = "numeric",
+								default_value = 14,
+								range = {0, 64},
+							},
+							{
+								setting_id = "inventory_search_inventory_bottom_padding",
+								tooltip = "inventory_search_spacing_reopen_tooltip",
+								type = "numeric",
+								default_value = 46,
+								range = {0, 96},
+							},
+							{
+								setting_id = "inventory_search_armoury_top_padding",
+								tooltip = "inventory_search_spacing_reopen_tooltip",
+								type = "numeric",
+								default_value = 22,
+								range = {0, 64},
+							},
+							{
+								setting_id = "inventory_search_armoury_bottom_padding",
+								tooltip = "inventory_search_spacing_reopen_tooltip",
+								type = "numeric",
+								default_value = 34,
+								range = {0, 96},
 							},
 						},
 					},
