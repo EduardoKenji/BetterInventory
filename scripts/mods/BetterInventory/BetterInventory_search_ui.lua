@@ -30,6 +30,22 @@ local function supported(view)
 		or class_name == "MarksGoodsVendorView"
 end
 
+SearchUI.supported = supported
+
+local function enabled_for_view(mod, view)
+	if not supported(view) then
+		return false
+	elseif mod and type(mod.get) == "function" and mod:get("enable_inventory_search") == false then
+		return false
+	elseif view.__class_name == "CreditsGoodsVendorView" then
+		return mod and type(mod.get) == "function" and mod:get("enable_inventory_search_brunt") == true or false
+	end
+
+	return true
+end
+
+SearchUI.enabled = enabled_for_view
+
 local function clone(value)
 	return type(value) == "table" and table.clone(value) or {}
 end
@@ -128,6 +144,12 @@ end
 
 SearchUI.decorate_definitions = function(definitions, view, mod)
 	if not supported(view) then
+		return definitions
+	elseif not enabled_for_view(mod, view) then
+		if view then
+			view._better_inventory_search_ui_unavailable = true
+		end
+
 		return definitions
 	elseif type(definitions) == "table" and definitions._better_inventory_search_decorated then
 		return definitions
@@ -465,11 +487,11 @@ SearchUI.is_writing = function(view)
 	return input and input.content and input.content.is_writing == true or false
 end
 
-SearchUI.sync_query = function(Features, view)
+SearchUI.sync_query = function(mod, Features, view)
 	local input = input_widget(view)
 	local content = input and input.content
 
-	if not content or type(Features.search_query) ~= "function" then
+	if not enabled_for_view(mod, view) or not content or type(Features.search_query) ~= "function" then
 		return false
 	end
 
@@ -498,17 +520,27 @@ SearchUI.update = function(mod, Features, view, time)
 		return false
 	end
 
-	local visible = mod:get("enable_inventory_search") ~= false
+	local visible = enabled_for_view(mod, view)
 
 	if input then
 		input.visible = visible
 	end
 
 	if not visible or not input or not input.content then
+		if view and not view._better_inventory_search_view_disabled then
+			view._better_inventory_search_view_disabled = true
+
+			if type(Features.search_release) == "function" then
+				Features.search_release(view)
+			end
+		end
+
 		SearchUI.defocus(view)
 		own_input_legend(view, false)
 		return false
 	end
+
+	view._better_inventory_search_view_disabled = nil
 
 	local content = input.content
 	local query = type(content.input_text) == "string" and content.input_text or ""
@@ -568,7 +600,7 @@ SearchUI.handle_view_input = function(mod, view, input_service)
 	local input = input_widget(view)
 	local content = input and input.content
 
-	if not content or input.visible == false then
+	if not enabled_for_view(mod, view) or not content or input.visible == false then
 		return false
 	end
 
@@ -653,6 +685,7 @@ SearchUI.release = function(view)
 		view._better_inventory_search_grid_input_owned = nil
 		view._better_inventory_search_grid_input_was_disabled = nil
 		view._better_inventory_search_legend_input_owned = nil
+		view._better_inventory_search_view_disabled = nil
 	end
 end
 

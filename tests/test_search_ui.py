@@ -45,6 +45,7 @@ def main() -> None:
         end
         settings = {
             enable_inventory_search = true,
+            enable_inventory_search_brunt = false,
             inventory_search_inventory_top_padding = 14,
             inventory_search_inventory_bottom_padding = 46,
             inventory_search_armoury_top_padding = 22,
@@ -58,6 +59,7 @@ def main() -> None:
         last_query = nil
         last_time = nil
         set_calls = 0
+        release_calls = 0
         features = {
             search_query = function() return "remembered" end,
             search_set_query = function(_, query, time)
@@ -65,6 +67,10 @@ def main() -> None:
                 last_query = query
                 last_time = time
                 return query ~= "invalid", query == "invalid" and "bad" or nil
+            end,
+            search_release = function()
+                release_calls = release_calls + 1
+                return true
             end,
         }
         input_service = {
@@ -151,13 +157,30 @@ def main() -> None:
     assert vendor.grid_settings.better_inventory_search_clip_pivot_y == 138
     assert vendor.scenegraph_definition.better_inventory_search_input.position[2] == 102
 
+    brunt_view_disabled = lua.table_from({"__class_name": "CreditsGoodsVendorView"})
+    general_vendor_disabled = search_ui.decorate_definitions(
+        vendor_definitions,
+        brunt_view_disabled,
+        lua.globals().test_mod,
+    )
+    lua.globals().vendor_definitions = vendor_definitions
+    lua.globals().general_vendor_disabled = general_vendor_disabled
+    assert lua.execute("return vendor_definitions == general_vendor_disabled") is True
+    assert general_vendor_disabled.widget_definitions.better_inventory_search_input is None
+    assert brunt_view_disabled._better_inventory_search_ui_unavailable is True
+    assert search_ui.enabled(lua.globals().test_mod, brunt_view_disabled) is False
+
+    lua.globals().settings.enable_inventory_search_brunt = True
+    brunt_view_enabled = lua.table_from({"__class_name": "CreditsGoodsVendorView"})
     general_vendor = search_ui.decorate_definitions(
         vendor_definitions,
-        lua.table_from({"__class_name": "CreditsGoodsVendorView"}),
+        brunt_view_enabled,
         lua.globals().test_mod,
     )
     assert general_vendor.grid_settings.top_padding == 128
     assert general_vendor.scenegraph_definition.better_inventory_search_input.position[2] == 84
+    assert search_ui.enabled(lua.globals().test_mod, brunt_view_enabled) is True
+    lua.globals().settings.enable_inventory_search_brunt = False
 
     sacrifice_view = lua.table_from({"__class_name": "CraftingMechanicusBarterItemsView"})
     sacrifice = search_ui.decorate_definitions(
@@ -244,11 +267,11 @@ def main() -> None:
         {"_entries": lua.table_from([lua.globals().legend_entry])}
     )
 
-    assert search_ui.sync_query(lua.globals().features, view) is True
+    assert search_ui.sync_query(lua.globals().test_mod, lua.globals().features, view) is True
     input_widget = widgets.better_inventory_search_input
     assert input_widget.content.input_text == "remembered"
     input_widget.content.force_caret_update = False
-    assert search_ui.sync_query(lua.globals().features, view) is True
+    assert search_ui.sync_query(lua.globals().test_mod, lua.globals().features, view) is True
     assert input_widget.content.force_caret_update is False
     search_ui.update(lua.globals().test_mod, lua.globals().features, view, 1)
     assert input_widget.content.placeholder_text == "loc:inventory_search_placeholder"
@@ -530,6 +553,7 @@ def main() -> None:
     search_ui.update(lua.globals().test_mod, lua.globals().features, view, 5)
     assert input_widget.visible is False
     assert search_ui.is_writing(view) is False
+    assert lua.globals().release_calls == 1
 
     search_ui.release(view)
     assert view._better_inventory_search_widget_initialized is None

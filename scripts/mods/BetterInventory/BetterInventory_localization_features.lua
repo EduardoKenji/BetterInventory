@@ -8,6 +8,12 @@ local localization = {
 	enable_inventory_search_tooltip = {
 		en = "Adds a bounded, live equipment search field to weapon and Curio inventory, Hadron, Armoury Exchange, GlobalStore, and Melk item views. Disabling this hides the field, clears its session state, and removes all search filtering and ranking. Cosmetics are not changed.",
 	},
+	enable_inventory_search_brunt = {
+		en = "Enable search in Brunt's Armoury",
+	},
+	enable_inventory_search_brunt_tooltip = {
+		en = "Off by default. Adds Equipment Text Search to Brunt's Armoury. Reopen Brunt's Armoury after changing this setting. Search reorders the existing weapon-family buttons without rebuilding them.",
+	},
 	inventory_search_non_match_behavior = {
 		en = "Unmatched item behavior",
 	},
@@ -1091,6 +1097,8 @@ local localization = {
 	god_stat_checker_background_owner_tooltip = { en = "Choose exactly one mod to colour qualifying weapon and Curio backgrounds in both item cards and the detail panel. Custom legendary tier is the default. God Stat Checker's preferred card style is saved and restored automatically. If God Stat Checker is unavailable or disabled, Custom legendary tier safely takes over. Custom item names and colours continues to override Custom Tier; GSC-owned backgrounds follow GSC's selected card style." },
 	god_stat_checker_background_owner_custom_tier = { en = "Custom legendary tier" },
 	god_stat_checker_background_owner_god_stat_checker = { en = "God Stat Checker" },
+	god_stat_checker_vendor_action_row_compatibility = { en = "Keep Acquire below extended item details" },
+	god_stat_checker_vendor_action_row_compatibility_tooltip = { en = "Keep Acquire at Darktide's fixed vanilla height while the item-details panel is shorter. If God Stat Checker extends the panel into that slot, move Acquire just below the panel instead." },
 	custom_tier_color_group = { en = "Custom-tier colour" },
 	custom_tier_color_preset = { en = "Colour preset" },
 	custom_tier_color_preset_reference_red = { en = "Reference red" },

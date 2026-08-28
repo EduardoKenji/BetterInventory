@@ -128,6 +128,93 @@ def main() -> None:
     assert view._better_inventory_composition_dirty is True
     assert view._better_inventory_composition_generation == 1
 
+    # God Stat Checker can grow CreditsVendorView's live detail panel through
+    # Darktide's fixed Acquire slot. Anchor the action row immediately below
+    # the final panel rectangle, without requiring Quick Level Mastery.
+    vendor_view = lua.execute(
+        """
+        local view = {
+            _widgets_by_name = {
+                purchase_button = {offset = {0, 0, 0}},
+            },
+            _ui_scenegraph = {
+                purchase_button = {
+                    position = {857, -90, 1},
+                    size = {374, 76, 0},
+                },
+            },
+            _world_position = {
+                purchase_button = {857, 914, 1},
+            },
+        }
+
+        view._weapon_stats = {
+            _pivot_offset = {780, 80, 3},
+            _world_position = {780, 80, 3},
+            _ui_scenegraph = {
+                grid_background = {size = {530, 920, 0}},
+            },
+            scenegraph_world_position = function(self, id)
+                self.position_queries = (self.position_queries or 0) + 1
+                return self._world_position
+            end,
+            _scenegraph_size = function(self, id)
+                self.size_queries = (self.size_queries or 0) + 1
+                local size = self._ui_scenegraph[id].size
+                return size[1], size[2]
+            end,
+            _force_update_scenegraph = function(self)
+                self.force_update_calls = (self.force_update_calls or 0) + 1
+            end,
+        }
+        view._scenegraph_world_position = function(self, id)
+            self.position_queries = (self.position_queries or 0) + 1
+            return self._world_position[id]
+        end
+        view._set_scenegraph_position = function(self, id, x, y, z)
+            local node = self._ui_scenegraph[id]
+            local world = self._world_position[id]
+            world[1] = world[1] + x - node.position[1]
+            world[2] = world[2] + y - node.position[2]
+            node.position[1], node.position[2], node.position[3] = x, y, z
+            self.position_writes = (self.position_writes or 0) + 1
+        end
+
+        return view
+        """
+    )
+    action_alignment = domains.quick_level_alignment
+    assert action_alignment.update(vendor_view, None, True) is True
+    assert vendor_view._ui_scenegraph.purchase_button.position[1] == 857
+    assert vendor_view._ui_scenegraph.purchase_button.position[2] == 4
+    assert vendor_view._world_position.purchase_button[2] == 1008
+    assert vendor_view.position_writes == 1
+
+    # Stable frames only compare scalar geometry and do not query or rewrite
+    # the scenegraph. A live height change wakes reconciliation immediately.
+    assert action_alignment.update(vendor_view, None, True) is False
+    assert vendor_view._weapon_stats.force_update_calls == 1
+    vendor_view._weapon_stats._ui_scenegraph.grid_background.size[2] = 880
+    assert action_alignment.update(vendor_view, None, True) is True
+    assert vendor_view._ui_scenegraph.purchase_button.position[2] == -36
+    assert vendor_view._world_position.purchase_button[2] == 968
+    assert vendor_view.position_writes == 2
+
+    # Removing GSC restores the captured native coordinate. Short panels stay
+    # native, and releasing a live view restores only BI's owned Y write.
+    assert action_alignment.update(vendor_view, None, False) is True
+    assert vendor_view._ui_scenegraph.purchase_button.position[2] == -90
+    vendor_view._weapon_stats._ui_scenegraph.grid_background.size[2] = 700
+    assert action_alignment.update(vendor_view, None, True) is True
+    assert vendor_view._ui_scenegraph.purchase_button.position[2] == -90
+    assert vendor_view.position_writes == 3
+    vendor_view._weapon_stats._ui_scenegraph.grid_background.size[2] = 920
+    assert action_alignment.update(vendor_view, None, True) is True
+    assert vendor_view._ui_scenegraph.purchase_button.position[2] == 4
+    assert action_alignment.release(vendor_view) is True
+    assert vendor_view._ui_scenegraph.purchase_button.position[2] == -90
+    assert vendor_view._better_inventory_quick_level_alignment_probe is None
+
     print("BetterInventory feature-domain boundary tests passed.")
 
 

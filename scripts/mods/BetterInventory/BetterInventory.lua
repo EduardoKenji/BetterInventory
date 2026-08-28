@@ -128,6 +128,7 @@ CustomTier.set_background_owner_provider = type(CustomTier.set_background_owner_
 local GodStatCheckerIntegration = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_god_stat_checker_integration"), "BetterInventory_god_stat_checker_integration.lua", {
 	install = function() return false end,
 	god_stat_checker_owns_background = function() return false end,
+	is_active = function() return false end,
 	on_disabled = function() end,
 	on_enabled = function() return false end,
 	on_setting_changed = function() return false end,
@@ -135,6 +136,7 @@ local GodStatCheckerIntegration = no_op_module(mod:io_dofile("BetterInventory/sc
 })
 GodStatCheckerIntegration.install = type(GodStatCheckerIntegration.install) == "function" and GodStatCheckerIntegration.install or function() return false end
 GodStatCheckerIntegration.god_stat_checker_owns_background = type(GodStatCheckerIntegration.god_stat_checker_owns_background) == "function" and GodStatCheckerIntegration.god_stat_checker_owns_background or function() return false end
+GodStatCheckerIntegration.is_active = type(GodStatCheckerIntegration.is_active) == "function" and GodStatCheckerIntegration.is_active or function() return false end
 GodStatCheckerIntegration.on_disabled = type(GodStatCheckerIntegration.on_disabled) == "function" and GodStatCheckerIntegration.on_disabled or function() end
 GodStatCheckerIntegration.on_enabled = type(GodStatCheckerIntegration.on_enabled) == "function" and GodStatCheckerIntegration.on_enabled or function() return false end
 GodStatCheckerIntegration.on_setting_changed = type(GodStatCheckerIntegration.on_setting_changed) == "function" and GodStatCheckerIntegration.on_setting_changed or function() return false end
@@ -630,6 +632,7 @@ Runtime.configure({
 	CharacterOverviewUI = CharacterOverviewUI,
 	FeatureDomains = FeatureDomains,
 	FavoriteIntegration = FavoriteIntegration,
+	GodStatCheckerIntegration = GodStatCheckerIntegration,
 	CraftingMechanicusModifyView = CraftingMechanicusModifyView,
 	CreditsVendorView = CreditsVendorView,
 	MainMenuView = MainMenuView,

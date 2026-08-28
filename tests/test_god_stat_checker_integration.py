@@ -25,6 +25,7 @@ def main() -> None:
             custom_tier_enabled = true,
             god_stat_checker_background_owner = "custom_tier",
             custom_tier_god_stat_checker_background_owner = "custom_tier",
+            god_stat_checker_vendor_action_row_compatibility = true,
         }
         god_stat_checker_saved_settings = {
             opt_card_style = "verdict_bg_tier_text",
@@ -162,12 +163,30 @@ def main() -> None:
     assert gsc_settings.opt_card_style == "verdict_text_only"
     assert gsc.settings.card_style == "verdict_text_only"
     assert lua.globals().god_stat_checker_repaints == 1
+    assert integration.is_active() is True
     custom_color, custom_dark = items.rarity_color(qualifying)
     assert color_channels(custom_color) == [255, 210, 30, 40]
     assert color_channels(custom_dark) == [255, 126, 18, 24]
     ordinary_color, _ = items.rarity_color(ordinary)
     assert color_channels(ordinary_color) == [255, 145, 70, 40]
     assert integration.god_stat_checker_owns_background() is False
+
+    # The vendor action-row compatibility switch is cached at its setting
+    # boundary. It defaults on, toggles live, and does not disturb background
+    # ownership or query DMF settings from the per-frame activity read.
+    get_calls_before_toggle = lua.globals().better_inventory_get_calls
+    settings.god_stat_checker_vendor_action_row_compatibility = False
+    assert integration.on_setting_changed(
+        mod, "god_stat_checker_vendor_action_row_compatibility"
+    ) is True
+    assert integration.is_active() is False
+    assert integration.god_stat_checker_owns_background() is False
+    settings.god_stat_checker_vendor_action_row_compatibility = True
+    assert integration.on_setting_changed(
+        mod, "god_stat_checker_vendor_action_row_compatibility"
+    ) is True
+    assert integration.is_active() is True
+    assert lua.globals().better_inventory_get_calls == get_calls_before_toggle + 2
 
     # Ownership is cached at lifecycle/setting boundaries. Card lookups never
     # query DMF settings or perform a framework enabled-state call.
@@ -230,6 +249,7 @@ def main() -> None:
     lua.globals().god_stat_checker_enabled = False
     integration._test.reconcile()
     assert integration.god_stat_checker_owns_background() is False
+    assert integration.is_active() is False
     fallback_color, _ = items.gsc_original_rarity_color(qualifying)
     assert color_channels(fallback_color) == [255, 210, 30, 40]
     integration.install(mod, lua.globals().custom_tier_module)
@@ -245,10 +265,12 @@ def main() -> None:
     integration.on_setting_changed(mod, "god_stat_checker_background_owner")
     gsc.set(gsc, "opt_display_enabled", False, True)
     assert integration.god_stat_checker_owns_background() is False
+    assert integration.is_active() is False
     display_off_color, _ = items.gsc_original_rarity_color(qualifying)
     assert color_channels(display_off_color) == [255, 210, 30, 40]
     gsc.set(gsc, "opt_display_enabled", True, True)
     assert gsc_settings.opt_card_style == "verdict_text_only"
+    assert integration.is_active() is True
 
     lua.globals().god_stat_checker_enabled = False
     gsc.on_disabled()
@@ -298,6 +320,7 @@ def main() -> None:
     absent_color, _ = items.gsc_original_rarity_color(qualifying)
     assert color_channels(absent_color) == [255, 210, 30, 40]
     assert integration.god_stat_checker_owns_background() is False
+    assert integration.is_active() is False
 
     assert integration.on_setting_changed(mod, "unrelated_setting") is False
     print("BetterInventory God Stat Checker integration tests passed.")

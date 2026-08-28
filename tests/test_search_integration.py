@@ -99,6 +99,7 @@ def main() -> None:
         end
         test_settings = {
             enable_inventory_search = true,
+            enable_inventory_search_brunt = false,
             inventory_search_non_match_behavior = "dim",
             inventory_search_remember_query = false,
         }
@@ -394,6 +395,12 @@ def main() -> None:
 		hidden_live_item = hidden_live_layout[2]
 		restore_in_place_result = runtime_instance.dependencies.reorder(in_place_view, false)
 		restored_live_layout = in_place_grid._visible_grid_layout
+		in_place_view._sort_options = nil
+		in_place_view._selected_sort_option = nil
+		fallback_in_place_result = runtime_instance.dependencies.reorder(in_place_view, false)
+		fallback_live_layout = in_place_grid._visible_grid_layout
+		fallback_live_item = fallback_live_layout[2]
+		fallback_widget_b = in_place_grid._grid_widgets[1]
         ''',
     )
     assert lua.globals().external_present_result is True
@@ -403,7 +410,8 @@ def main() -> None:
     assert lua.globals().second_in_place_result is True
     assert lua.globals().hide_in_place_result is True
     assert lua.globals().restore_in_place_result is True
-    assert lua.globals().in_place_updates == 4
+    assert lua.globals().fallback_in_place_result is True
+    assert lua.globals().in_place_updates == 5
     assert lua.globals().first_live_top == "top"
     assert lua.execute("return first_live_item == entry_b") is True
     assert lua.globals().first_live_bottom == "bottom"
@@ -415,7 +423,22 @@ def main() -> None:
     assert lua.globals().hidden_live_count == 3
     assert lua.execute("return hidden_live_item == entry_b") is True
     assert len(lua.globals().restored_live_layout) == 4
-    assert lua.execute("return in_place_grid._grid_widgets[1] == widget_a") is True
+    assert lua.execute("return fallback_live_item == entry_b") is True
+    assert lua.execute("return fallback_widget_b == widget_b") is True
+
+    # Brunt has no native sort options. Its default-off gate suppresses runtime
+    # registration; opting in exposes the same retained in-place lane above.
+    lua.execute(
+        r'''
+        brunt_view = {__class_name = "CreditsGoodsVendorView"}
+        brunt_family_disabled = runtime_instance.dependencies.view_family(brunt_view)
+        test_settings.enable_inventory_search_brunt = true
+        brunt_family_enabled = runtime_instance.dependencies.view_family(brunt_view)
+        test_settings.enable_inventory_search_brunt = false
+        ''',
+    )
+    assert lua.globals().brunt_family_disabled is None
+    assert lua.globals().brunt_family_enabled == "vendor"
 
     lua.execute("runtime_instance.states[facade_state_view or {}] = nil")
     state_view = lua.table_from({"__class_name": "InventoryWeaponsView"})

@@ -80,7 +80,9 @@ def main() -> None:
             search_release = function(view) calls.release = view end,
         }
         search_ui = {
-            sync_query = function(_, view) calls.sync = view end,
+            supported = function(view) return view.search_unsupported ~= true end,
+            enabled = function(_, view) return view.search_disabled ~= true end,
+            sync_query = function(_, _, view) calls.sync = view end,
             update = function(_, _, view, time, input) calls.ui_update = {view, time, input} end,
             update_view = function(mod, feature_set, view, time, input)
                 ui_updates = (ui_updates or 0) + 1
@@ -150,6 +152,20 @@ def main() -> None:
             function() native_present = native_present + 1 return "presented" end,
             view, "slot", "type", "name"
         )
+        disabled_search_view = {search_disabled = true}
+        hooks["grid:_present_layout_by_slot_filter"](
+            function() return "disabled-presented" end,
+            disabled_search_view, "disabled-slot", "type", "name"
+        )
+        disabled_search_released = calls.release == disabled_search_view
+        disabled_search_capture_skipped = calls.capture[1] == view
+        calls.release = nil
+        unsupported_search_view = {search_unsupported = true}
+        hooks["grid:_present_layout_by_slot_filter"](
+            function() return "unsupported-presented" end,
+            unsupported_search_view, "unsupported-slot", "type", "name"
+        )
+        unsupported_search_ignored = calls.release == nil and calls.capture[1] == view
         filter_result = hooks["grid:_filter_by_filter_option"](
             function() native_filter = native_filter + 1 return true end,
             view, {keep = false}
@@ -215,6 +231,9 @@ def main() -> None:
     )
     g = lua.globals()
     assert g.native_present == 1
+    assert g.disabled_search_released is True
+    assert g.disabled_search_capture_skipped is True
+    assert g.unsupported_search_ignored is True
     assert g.calls.capture[2] == "slot"
     assert lua.execute("return calls.sync == sacrifice_view") is True
     assert g.native_filter == 2 and g.filter_result is False

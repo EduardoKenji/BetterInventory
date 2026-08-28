@@ -5,6 +5,7 @@ local OWNER_CUSTOM_TIER = "custom_tier"
 local OWNER_GOD_STAT_CHECKER = "god_stat_checker"
 local PRIMARY_OWNER_SETTING = "god_stat_checker_background_owner"
 local MIRROR_OWNER_SETTING = "custom_tier_god_stat_checker_background_owner"
+local VENDOR_ACTION_ROW_SETTING = "god_stat_checker_vendor_action_row_compatibility"
 local SAVED_STYLE_SETTING = "_god_stat_checker_saved_card_style_v1"
 local FORCED_STYLE_SETTING = "_god_stat_checker_card_style_forced_v1"
 local GSC_STYLE_SETTING = "opt_card_style"
@@ -30,6 +31,7 @@ local applying_gsc_style = false
 local background_owner = OWNER_CUSTOM_TIER
 local custom_tier_feature_enabled = true
 local gsc_ownership_available = false
+local vendor_action_row_enabled = true
 
 local function read_setting(target, setting_id, default)
 	if type(target) == "table" and type(target.get) == "function" then
@@ -250,6 +252,7 @@ local function reconcile()
 	god_stat_checker = resolve_god_stat_checker()
 	custom_tier_feature_enabled = framework_enabled and read_setting(mod, "custom_tier_enabled", true) ~= false
 	gsc_ownership_available = framework_enabled and external_mod_enabled(god_stat_checker)
+	vendor_action_row_enabled = framework_enabled and read_setting(mod, VENDOR_ACTION_ROW_SETTING, true) ~= false
 
 	patch_gsc_original_rarity_color()
 
@@ -352,6 +355,7 @@ Integration.on_disabled = function()
 	framework_enabled = false
 	custom_tier_feature_enabled = false
 	gsc_ownership_available = false
+	vendor_action_row_enabled = false
 
 	return restore_gsc_style()
 end
@@ -372,6 +376,12 @@ Integration.on_setting_changed = function(configured_mod, setting_id)
 		return true
 	end
 
+	if setting_id == VENDOR_ACTION_ROW_SETTING then
+		vendor_action_row_enabled = framework_enabled and read_setting(mod, VENDOR_ACTION_ROW_SETTING, true) ~= false
+
+		return true
+	end
+
 	return false
 end
 
@@ -384,6 +394,13 @@ end
 
 Integration.god_stat_checker_owns_background = function()
 	return selected_owner() == OWNER_GOD_STAT_CHECKER and gsc_can_own_background()
+end
+
+Integration.is_active = function()
+	-- Reconciled at install, mod lifecycle, and GSC setting boundaries. Keep the
+	-- vendor update path allocation-free instead of resolving another mod and
+	-- reading DMF settings every frame.
+	return framework_enabled and gsc_ownership_available and vendor_action_row_enabled
 end
 
 Integration._test = {
@@ -400,6 +417,7 @@ Integration._test = {
 		mirror_owner = MIRROR_OWNER_SETTING,
 		primary_owner = PRIMARY_OWNER_SETTING,
 		saved_style = SAVED_STYLE_SETTING,
+		vendor_action_row = VENDOR_ACTION_ROW_SETTING,
 	},
 }
 

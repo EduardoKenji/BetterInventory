@@ -141,6 +141,12 @@ local function clear_array(values)
 	end
 end
 
+local function clear_map(values)
+	for key in pairs(values) do
+		values[key] = nil
+	end
+end
+
 local function layout_item(entry)
 	return type(entry) == "table" and (entry.real_item or entry.item) or nil
 end
@@ -190,12 +196,6 @@ local function reorder_existing_grid(view, configure_sort, trace_reorder, runtim
 		option = view._selected_sort_option
 	end
 
-	local sort_function = option and option.sort_function
-
-	if type(sort_function) ~= "function" then
-		return false
-	end
-
 	local buffers = view._better_inventory_search_grid_buffers
 
 	if type(buffers) ~= "table" then
@@ -204,8 +204,38 @@ local function reorder_existing_grid(view, configure_sort, trace_reorder, runtim
 			anchors = {{}, {}},
 			layouts = {{}, {}},
 			positions = {{}, {}},
+			source_positions = {},
 		}
 		view._better_inventory_search_grid_buffers = buffers
+	end
+
+	if type(buffers.source_positions) ~= "table" then
+		buffers.source_positions = {}
+	end
+
+	-- An open view can retain these buffers across Ctrl+Shift+R. Replace only
+	-- the one comparator closure when its captured runtime generation changes;
+	-- ordinary queries reuse the same closure and source-position map.
+	if buffers.fallback_runtime ~= runtime or type(buffers.fallback_sort) ~= "function" then
+		buffers.fallback_runtime = runtime
+		buffers.fallback_sort = function(left, right)
+			local left_rank = SearchRuntime.rank(runtime, view, left)
+			local right_rank = SearchRuntime.rank(runtime, view, right)
+
+			if left_rank ~= right_rank then
+				return left_rank > right_rank
+			end
+
+			return (buffers.source_positions[left] or math.huge) < (buffers.source_positions[right] or math.huge)
+		end
+	end
+
+	local sort_function = option and option.sort_function
+	local use_fallback_sort = type(sort_function) ~= "function"
+
+	if use_fallback_sort then
+		clear_map(buffers.source_positions)
+		sort_function = buffers.fallback_sort
 	end
 
 	local buffer_index = buffers.active == 1 and 2 or 1
@@ -235,6 +265,9 @@ local function reorder_existing_grid(view, configure_sort, trace_reorder, runtim
 		if layout_item(entry) then
 			if entry.entry_id ~= entry_id then
 				return false
+			end
+			if use_fallback_sort then
+				buffers.source_positions[entry] = index
 			end
 
 			if hide_unmatched ~= true or SearchRuntime.matches(runtime, view, entry) then
@@ -489,6 +522,9 @@ Integration.new = function(mod, dependencies)
 		trace_scan_entry = trace_scan_entry,
 		view_family = function(view)
 			if mod:get("enable_inventory_search") == false then
+				return nil
+			elseif view and view.__class_name == "CreditsGoodsVendorView"
+				and mod:get("enable_inventory_search_brunt") ~= true then
 				return nil
 			end
 

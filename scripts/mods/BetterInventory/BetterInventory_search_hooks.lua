@@ -64,11 +64,18 @@ SearchHooks.install = function(dependencies)
 
 	if method_available(ItemGridViewBase, "_present_layout_by_slot_filter") then
 		mod:hook(ItemGridViewBase, "_present_layout_by_slot_filter", function(func, view, slot_filter, item_type_filter, optional_display_name)
-			if type(Features.search_capture_presentation) == "function" then
-				Features.search_capture_presentation(mod, view, slot_filter, item_type_filter, optional_display_name)
-			end
-			if type(SearchUI.sync_query) == "function" then
-				SearchUI.sync_query(Features, view)
+			local search_supported = type(SearchUI.supported) ~= "function" or SearchUI.supported(view)
+			local search_enabled = search_supported and (type(SearchUI.enabled) ~= "function" or SearchUI.enabled(mod, view))
+
+			if search_enabled then
+				if type(Features.search_capture_presentation) == "function" then
+					Features.search_capture_presentation(mod, view, slot_filter, item_type_filter, optional_display_name)
+				end
+				if type(SearchUI.sync_query) == "function" then
+					SearchUI.sync_query(mod, Features, view)
+				end
+			elseif search_supported and type(Features.search_release) == "function" then
+				Features.search_release(view)
 			end
 
 			return func(view, slot_filter, item_type_filter, optional_display_name)
@@ -178,7 +185,7 @@ SearchHooks.install = function(dependencies)
 				local composed = Features.search_compose_layout(callback_view, layout)
 
 				if type(SearchUI.sync_query) == "function" then
-					SearchUI.sync_query(Features, callback_view)
+					SearchUI.sync_query(mod, Features, callback_view)
 				end
 
 				return original_callback(callback_view, composed)
