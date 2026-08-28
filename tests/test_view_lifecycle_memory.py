@@ -44,6 +44,9 @@ def main() -> None:
     assert 'ensure_class_method(InventoryView, "on_exit")' in overview
     assert 'ensure_class_method(InventoryView, "destroy")' in overview
     assert "OverviewUI.unregister_view(view)" in overview
+    assert "character_overview_view_retired(view)" in overview
+    assert "ui_manager.is_view_closing" in overview
+    assert "ui_manager.view_instance" in overview
     assert "Features.release_inventory_options_panel(view)" in features
     assert "armoury_panel.release(view)" in features
     assert "registered_armoury_views[view] = nil" in armoury_panel
@@ -92,6 +95,14 @@ def main() -> None:
     assert "math.min(#widgets, MAX_CHARACTER_OVERVIEW_LOADOUT_WIDGETS)" in overview
     assert "pairs(widgets)" not in overview
     assert 'mod:hook(InventoryWeaponsView, "update"' not in runtime
+
+    # ViewElementGrid is shared with profile presets, cosmetics, and third-party
+    # preview panels. Unsupported grids must bypass BetterInventory before any
+    # blueprint cloning, callback wrapping, or marker/material attachment.
+    assert "local resolve_grid_scope = grid_scope and grid_scope.resolve" in runtime
+    assert "Domains.grid_scope.resolve = function" in domains
+    assert "if not view then\n\t\treturn func(item_grid, layout, content_blueprints, ...)" in runtime
+    assert "resolve_grid_scope(item_grid, active_grid_view, active_grid_configuration)" in runtime
 
     # Quick Level Mastery's vendor alignment may be revisited every frame, but
     # stable geometry must not force a scenegraph/world-position query at 60 Hz.

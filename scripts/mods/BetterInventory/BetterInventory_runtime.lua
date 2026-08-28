@@ -165,6 +165,9 @@ local function is_armoury_sort_view(view)
 	return is_armoury_requisition_view(view) or is_global_store_view(view)
 end
 
+local grid_scope = FeatureDomains and FeatureDomains.grid_scope
+local resolve_grid_scope = grid_scope and grid_scope.resolve or function() end
+
 local function align_quick_level_mastery_buttons(view)
 	local alignment = FeatureDomains and FeatureDomains.quick_level_alignment
 	local god_stat_checker_active = GodStatCheckerIntegration
@@ -2017,13 +2020,16 @@ local function normalize_global_store_widgets(item_grid)
 	end
 end
 
--- Retain MyFavorites' cloned runtime hotspot so its icon and click target move together.
 if ensure_class_method(ViewElementGrid, "_create_entry_widget_from_config") then
 	mod:hook(ViewElementGrid, "_create_entry_widget_from_config", function(func, item_grid, config, suffix, callback_name, secondary_callback_name, double_click_callback_name)
 		local widget, alignment_widget = func(item_grid, config, suffix, callback_name, secondary_callback_name, double_click_callback_name)
-		attach_runtime_marker_styles(widget, item_grid)
-		if Layout.MaterialSafety then
-			Layout.MaterialSafety.guard_inventory_widget(mod, item_grid, widget)
+		local view = resolve_grid_scope(item_grid, active_grid_view, active_grid_configuration)
+
+		if view then
+			attach_runtime_marker_styles(widget, item_grid)
+			if Layout.MaterialSafety then
+				Layout.MaterialSafety.guard_inventory_widget(mod, item_grid, widget)
+			end
 		end
 
 		return widget, alignment_widget
@@ -2096,10 +2102,15 @@ synchronize_myfavorites_grid = function(_, tracked_widgets)
 end
 
 mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layout, content_blueprints, ...)
+	local view, scoped_configuration = resolve_grid_scope(item_grid, active_grid_view, active_grid_configuration)
+
+	if not view then
+		return func(item_grid, layout, content_blueprints, ...)
+	end
+
 	invalidate_myfavorites_grid(item_grid)
 	content_blueprints = Features.compact_inventory_curio_stats_blueprints(mod, item_grid, content_blueprints)
 
-	local view = active_grid_view or item_grid and item_grid._parent
 	local callback_arguments = pack_values(...)
 	local on_present_callback = callback_arguments[5]
 
@@ -2123,7 +2134,7 @@ mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layou
 		layout = WeaponOptionsPanel.prepare_layout(mod, item_grid, layout, content_blueprints, view)
 	end
 
-	local configuration = active_grid_configuration
+	local configuration = scoped_configuration
 
 	if not configuration and is_global_store_view(view) and mod:get("enable_global_store_integration") ~= false then
 		configuration = mod:get("enable_grid_layout") ~= false and mod:get("enable_global_store_grid") ~= false and table.clone(GLOBAL_STORE_GRID_CONFIGURATION) or GLOBAL_STORE_NATIVE_CONFIGURATION
@@ -2161,8 +2172,6 @@ mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layou
 	local blueprint_key = configuration and configuration.blueprint_key
 	local item_blueprint = blueprint_key and content_blueprints and content_blueprints[blueprint_key]
 
-	-- Restrict the global grid seam to the exact active view and blueprint.
-	-- Missing fields mean the game contract changed, so pass through.
 	if not view or item_grid ~= view._item_grid or not grid_size or not grid_size[1] or not item_blueprint or not item_blueprint.pass_template then
 		return func(item_grid, layout, content_blueprints, unpack_values(callback_arguments, 1, callback_arguments.n))
 	end
@@ -2199,17 +2208,14 @@ mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layou
 	return unpack_values(results, 1, results.n)
 end)
 
--- ViewElementGrid reapplies its native centered-mask position during initial
--- construction, deferred presentations, and resolution changes. Finalize the
--- weapon-options viewport after every such resize so overflow remains clipped
--- to seven complete rows instead of leaking beneath the frame.
 mod:hook(ViewElementGrid, "_update_window_size", function(func, item_grid, ...)
 	local results = pack_values(func(item_grid, ...))
+	local view = resolve_grid_scope(item_grid, active_grid_view, active_grid_configuration)
 
-	if WeaponOptionsPanel and type(WeaponOptionsPanel.finalize_layout) == "function" then
+	if view and WeaponOptionsPanel and type(WeaponOptionsPanel.finalize_layout) == "function" then
 		WeaponOptionsPanel.finalize_layout(item_grid)
 	end
-	if SearchUI and type(SearchUI.finalize_grid_clip) == "function" then
+	if view and SearchUI and type(SearchUI.finalize_grid_clip) == "function" then
 		SearchUI.finalize_grid_clip(item_grid)
 	end
 

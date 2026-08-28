@@ -14,6 +14,7 @@ local lantern_recommendations_active = function() return false end
 local release_runtime_caches = function() end
 local ensure_class_method
 local better_inventory_test
+local character_overview_view_retired
 local registered_character_overview_views = setmetatable({}, { __mode = "k" })
 
 local GLOBAL_STORE_SERVICE = "get_all_characters_store_custom"
@@ -1310,6 +1311,7 @@ OverviewUI.configure = function(dependencies)
 		better_inventory_test.character_overview_curio_transition_type = character_overview_curio_transition_type
 		better_inventory_test.reconcile_character_overview_curio_widgets = reconcile_character_overview_curio_widgets
 		better_inventory_test.reconcile_character_overview_curio_widgets_if_needed = reconcile_character_overview_curio_widgets_if_needed
+		better_inventory_test.character_overview_view_retired = character_overview_view_retired
 	end
 
 	return OverviewUI
@@ -1380,6 +1382,41 @@ OverviewUI.needs_update = function()
 	return next(registered_character_overview_views) ~= nil
 end
 
+character_overview_view_retired = function(view)
+	if type(view) ~= "table" or view._destroyed == true then
+		return true
+	end
+
+	local managers = rawget(_G, "Managers")
+	local ui_manager = managers and managers.ui
+	local view_name = view.view_name
+
+	if type(ui_manager) ~= "table" or type(view_name) ~= "string" then
+		return false
+	end
+
+	if type(ui_manager.is_view_closing) == "function" then
+		local closing_ok, closing = pcall(ui_manager.is_view_closing, ui_manager, view_name)
+
+		if closing_ok and closing == true then
+			return true
+		end
+	end
+
+	if type(ui_manager.view_instance) == "function" then
+		local instance_ok, active_instance = pcall(ui_manager.view_instance, ui_manager, view_name)
+
+		-- A nil instance is valid while Darktide is activating the view. A
+		-- different non-nil instance means this weakly registered generation was
+		-- replaced and must not rebuild widgets during a menu transition.
+		if instance_ok and active_instance ~= nil and active_instance ~= view then
+			return true
+		end
+	end
+
+	return false
+end
+
 local function update_registered_view(view, dt)
 	refresh_character_overview_visual_layout_if_needed(view)
 	reconcile_character_overview_curio_widgets_if_needed(view, dt)
@@ -1390,7 +1427,7 @@ OverviewUI.update_registered_views = function(dt)
 	local updated = 0
 
 	for view in pairs(registered_character_overview_views) do
-		if view._destroyed == true then
+		if character_overview_view_retired(view) then
 			OverviewUI.unregister_view(view)
 		else
 			local update_ok, update_error = pcall(update_registered_view, view, dt)

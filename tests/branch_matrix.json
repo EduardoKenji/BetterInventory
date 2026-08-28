@@ -26,7 +26,7 @@
       "name": "search.hooks-isolate-focused-grid-input",
       "test": "test_search_hooks.py",
       "case": "native_grid_and_hadron_sacrifice_hook_composition",
-      "outcome": "controller search focus owns only the active view's main grid through Darktide's native input-disabled state while cursor focus leaves wheel and card hotspots interactive; both modes suppress the input legend through transition-only visibility ownership without invalidating button-hint actions, controller Up is handled by supported view input hooks, pre-disabled discard/options grids retain native ownership, newly presented cards receive one alpha refresh, and no global ViewElementGrid.update, ItemGridViewBase.update, or input-legend hook charges settled inventory frames",
+      "outcome": "controller search focus owns only the active view's main grid through Darktide's native input-disabled state while cursor focus leaves wheel and card hotspots interactive; both modes suppress the input legend through transition-only visibility ownership without invalidating button-hint actions, controller Up is handled by supported view input hooks, pre-disabled discard/options grids retain native ownership, newly presented cards receive one alpha refresh, no global ViewElementGrid.update, ItemGridViewBase.update, or input-legend hook charges settled inventory frames, and the Hadron-only BaseView decoration preserves every trailing native argument—including unrelated LobbyView dynamic level packages—without mutation",
       "modules": ["BetterInventory_search_hooks.lua"]
     },
     {
@@ -56,6 +56,27 @@
       "case": "defaults_and_bootstrap_contract",
       "outcome": "main bootstrap forwards InventoryWeaponsView to the central runtime, DMF-like hook registration rejects every nil target, and favorite, equip, exit, and grid-material callbacks remain installed while optional class drift fails open",
       "modules": ["BetterInventory.lua", "BetterInventory_runtime.lua"]
+    },
+    {
+      "name": "character-overview.closing-and-replaced-generations-retire",
+      "test": "test_settings.py",
+      "case": "character_overview_transition_retirement",
+      "outcome": "Character Overview's delayed Curio reconciliation rejects destroyed views, views Darktide reports as closing, and stale generations replaced under the same view name; transient activation with no registered instance remains valid and manager API drift fails open",
+      "modules": ["BetterInventory_character_overview_ui.lua"]
+    },
+    {
+      "name": "lobby-profile-spawner.destroyed-reuse-restores-loader",
+      "test": "test_profile_spawner_compatibility.py",
+      "case": "destroyed_spawner_reuse_reinitializes_loader",
+      "outcome": "a UIProfileSpawner reused after LobbyView destroys its weapon presentation is reset exactly once before native and third-party spawn_profile hooks continue; healthy spawners remain untouched and all trailing arguments plus return values preserve identity and order",
+      "modules": ["BetterInventory_profile_spawner_compatibility.lua"]
+    },
+    {
+      "name": "runtime.shared-grids-pass-through-before-mutation",
+      "test": "test_view_lifecycle_memory.py",
+      "case": "shared_grid_exact_pass_through",
+      "outcome": "the global ViewElementGrid seams mutate only Better Inventory-owned inventory and vendor grids; profile-preset, cosmetic, lobby-preview, and unknown third-party grids pass directly to native code before callback wrapping, blueprint cloning, marker attachment, material repair, or clip finalization",
+      "modules": ["BetterInventory_runtime.lua"]
     },
     {
       "name": "favorites.isolate-purchase-sources",
