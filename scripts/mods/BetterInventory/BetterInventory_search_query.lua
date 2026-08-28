@@ -466,11 +466,11 @@ Query.matches = function(compiled, record)
 	return true
 end
 
-Query.rank = function(compiled, record, matched, prioritize_equipped)
+local function evaluate_rank(compiled, record, matched, prioritize_equipped)
 	if type(compiled) ~= "table" or compiled.fail_open == true or compiled.empty == true then
-		return 1
+		return true, 1
 	elseif type(record) ~= "table" then
-		return 0
+		return false, 0
 	end
 
 	local clauses = compiled.clauses
@@ -509,13 +509,17 @@ Query.rank = function(compiled, record, matched, prioritize_equipped)
 		end
 	end
 
+	if matched == nil then
+		matched = covered_clauses == clause_count
+	end
+
 	if is_curio and line_hits == 0 then
-		return matched == true and 1 or 0
+		return matched == true, matched == true and 1 or 0
 	elseif not is_curio then
 		line_hits = covered_clauses
 
 		if line_hits == 0 then
-			return 0
+			return matched == true, 0
 		end
 	end
 
@@ -536,7 +540,19 @@ Query.rank = function(compiled, record, matched, prioritize_equipped)
 	rank = rank * 2 + equipped
 	rank = rank * 1000 + item_level
 
-	return rank + 1
+	return matched == true, rank + 1
+end
+
+-- Runtime settlement needs both values. Evaluate clauses once rather than
+-- running Query.matches and Query.rank as two identical bounded passes.
+Query.evaluate = function(compiled, record, prioritize_equipped)
+	return evaluate_rank(compiled, record, nil, prioritize_equipped)
+end
+
+Query.rank = function(compiled, record, matched, prioritize_equipped)
+	local _, rank = evaluate_rank(compiled, record, matched, prioritize_equipped)
+
+	return rank
 end
 
 Query.normalize = normalize

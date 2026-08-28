@@ -4618,8 +4618,10 @@ def main() -> None:
         lua.execute(
             """
             preserve_test_shading = true
+            item_customization_get_calls = 0
             return {
                 get = function(_, gear_id)
+                    item_customization_get_calls = item_customization_get_calls + 1
                     if gear_id == "custom-weapon" then
                         return {
                             name = "Emerald Blade",
@@ -4837,6 +4839,40 @@ def main() -> None:
     assert layout.reapply_tracked_item_customization_style(mod, untracked_custom_widget) is True
     assert tuple(untracked_custom_widget.style.display_name.text_color[index] for index in range(1, 5)) == (255, 10, 20, 30)
     assert tuple(untracked_custom_widget.style.background_gradient.color[index] for index in range(1, 5)) == (255, 40, 50, 60)
+
+    # Ordinary cards are the common frame-update path. Cache the negative
+    # customization result so their normal blueprint update does not query the
+    # customization store every frame. Event-driven invalidation makes the
+    # next update observe a later customization change.
+    ordinary_element = lua.eval("table.clone")(narrow_weapon_element)
+    ordinary_element.item.gear_id = "ordinary-weapon"
+    ordinary_widget = lua.table_from(
+        {
+            "content": lua.table_from({"element": ordinary_element}),
+            "style": lua.table_from(
+                {
+                    "display_name": lua.table_from(
+                        {"text_color": lua.table_from([255, 210, 160, 40])}
+                    ),
+                    "background_gradient": lua.table_from(
+                        {"color": lua.table_from([255, 210, 160, 40])}
+                    ),
+                    "rarity_tag": lua.table_from(
+                        {"color": lua.table_from([255, 210, 160, 40])}
+                    ),
+                }
+            ),
+        }
+    )
+    calls_before_ordinary = globals_.item_customization_get_calls
+    layout.apply_item_customization_style(mod, ordinary_widget, ordinary_element)
+    assert globals_.item_customization_get_calls == calls_before_ordinary + 1
+    for _ in range(120):
+        assert layout.reapply_tracked_item_customization_style(mod, ordinary_widget) is False
+    assert globals_.item_customization_get_calls == calls_before_ordinary + 1
+    layout.invalidate_item_customization_tracking()
+    assert layout.reapply_tracked_item_customization_style(mod, ordinary_widget) is False
+    assert globals_.item_customization_get_calls == calls_before_ordinary + 2
 
     # The opt-in title policy normalizes line breaks, shrinks only to the
     # configured minimum, and truncates the custom base while preserving Mark.

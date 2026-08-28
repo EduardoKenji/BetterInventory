@@ -537,6 +537,9 @@ if type(Features.configure_search) == "function" then
 end
 if type(ItemCustomization.set_change_listener) == "function" then
 	ItemCustomization.set_change_listener(function()
+		if type(Layout.invalidate_item_customization_tracking) == "function" then
+			Layout.invalidate_item_customization_tracking()
+		end
 		if type(Features.search_settings_changed) == "function" then
 			Features.search_settings_changed("customization_changed")
 		end

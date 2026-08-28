@@ -9,8 +9,6 @@ local RaritySettings = require("scripts/settings/item/rarity_settings")
 
 local Integration = {}
 local warned_legacy_searcher = false
-local SEARCH_TRACE_QUERY = "health & toughness"
-local search_trace_generation = {}
 
 Integration.warn_legacy_searcher = function(mod, resolver)
 	if warned_legacy_searcher or type(resolver) ~= "function" then
@@ -151,18 +149,6 @@ local function layout_item(entry)
 	return type(entry) == "table" and (entry.real_item or entry.item) or nil
 end
 
-local function trace_join(values)
-	if type(values) ~= "table" then
-		return tostring(values or "")
-	end
-
-	return table.concat(values, "|")
-end
-
-local function trace_item_id(item)
-	return type(item) == "table" and tostring(item.gear_id or item.id or item.display_name or "?") or "?"
-end
-
 -- Search presentation reuses current grid membership and widget identities.
 -- Replaying `_present_layout_by_slot_filter` is especially costly: native
 -- `present_grid_layout` adds a fresh spacing entry without an entry_id, which
@@ -171,7 +157,7 @@ end
 -- reorder API instead. Hide omits unmatched entries only from visible layout;
 -- canonical `_grid_layout` stays complete. Two retained buffers ensure grid
 -- never observes an array being cleared for next query.
-local function reorder_existing_grid(view, configure_sort, trace_reorder, runtime, hide_unmatched)
+local function reorder_existing_grid(view, configure_sort, runtime, hide_unmatched)
 	local item_grid = view and view._item_grid
 	local source = item_grid and item_grid._grid_layout
 	local alignments = item_grid and item_grid._all_grid_alignment_widgets
@@ -236,6 +222,11 @@ local function reorder_existing_grid(view, configure_sort, trace_reorder, runtim
 	if use_fallback_sort then
 		clear_map(buffers.source_positions)
 		sort_function = buffers.fallback_sort
+	elseif next(buffers.source_positions) ~= nil then
+		-- The fallback map owns strong layout-entry keys. If a later integration
+		-- restores a native comparator, release that last bounded generation now
+		-- instead of retaining it until the view closes.
+		clear_map(buffers.source_positions)
 	end
 
 	local buffer_index = buffers.active == 1 and 2 or 1
@@ -301,10 +292,6 @@ local function reorder_existing_grid(view, configure_sort, trace_reorder, runtim
 
 	if #target > 1 then
 		table.sort(target, sort_function)
-	end
-
-	if type(trace_reorder) == "function" then
-		trace_reorder(view, target, option, view._selected_sort_option_index or 1)
 	end
 
 	for index = 1, anchor_count do
@@ -400,54 +387,6 @@ Integration.new = function(mod, dependencies)
 		})
 	end
 	local runtime
-	local function trace_scan_begin(view, query, layout)
-		local normalized = SearchQuery.normalize(query)
-
-		if normalized ~= SEARCH_TRACE_QUERY
-			or view._better_inventory_search_trace_generation == search_trace_generation then
-			return false
-		end
-
-		view._better_inventory_search_trace_generation = search_trace_generation
-		view._better_inventory_search_trace_pending = true
-		mod:info("[SearchRankTrace] scan begin query=" .. normalized .. " entries=" .. tostring(#layout))
-
-		return true
-	end
-	local function trace_scan_entry(_, _, index, _, item, record, matched, rank)
-		mod:info("[SearchRankTrace] scan index=" .. tostring(index)
-			.. " gear=" .. trace_item_id(item)
-			.. " matched=" .. tostring(matched)
-			.. " rank=" .. tostring(rank)
-			.. " rating=" .. tostring(record and record.rating or "")
-			.. " equipped=" .. tostring(record and record.equipped == true)
-			.. " primary=" .. trace_join(record and record.curio_primary)
-			.. " secondary=" .. trace_join(record and record.curio_secondary))
-	end
-	local function trace_scan_end()
-		mod:info("[SearchRankTrace] scan end")
-	end
-	local function trace_reorder(view, target, option, option_index)
-		if view._better_inventory_search_trace_pending ~= true then
-			return
-		end
-
-		view._better_inventory_search_trace_pending = nil
-		mod:info("[SearchRankTrace] sort option=" .. tostring(option_index)
-			.. " name=" .. tostring(option and option.display_name or "")
-			.. " wrapped=" .. tostring(option and option.sort_function == option._better_inventory_wrapped_sort)
-			.. " owned=" .. tostring(option and type(option._better_inventory_original_sort) == "function"))
-
-		for index = 1, math.min(#target, 24) do
-			local entry = target[index]
-			local item = layout_item(entry)
-			mod:info("[SearchRankTrace] order=" .. tostring(index)
-				.. " gear=" .. trace_item_id(item)
-				.. " rank=" .. tostring(SearchRuntime.rank(runtime, view, entry)))
-		end
-
-		mod:info("[SearchRankTrace] sort end")
-	end
 
 	runtime = SearchRuntime.new({
 		character_id = function(view)
@@ -503,7 +442,7 @@ Integration.new = function(mod, dependencies)
 		query = SearchQuery,
 		rarity_aliases = SearchIndex.rarity_aliases,
 		reorder = function(view, hide_unmatched)
-			return reorder_existing_grid(view, dependencies.configure_sort, trace_reorder, runtime, hide_unmatched)
+			return reorder_existing_grid(view, dependencies.configure_sort, runtime, hide_unmatched)
 		end,
 		release_grid = function(view)
 			if type(view) == "table" then
@@ -517,9 +456,6 @@ Integration.new = function(mod, dependencies)
 		time = function()
 			return Managers and Managers.time and Managers.time:time("main") or 0
 		end,
-		trace_scan_begin = trace_scan_begin,
-		trace_scan_end = trace_scan_end,
-		trace_scan_entry = trace_scan_entry,
 		view_family = function(view)
 			if mod:get("enable_inventory_search") == false then
 				return nil
@@ -533,6 +469,9 @@ Integration.new = function(mod, dependencies)
 	})
 	local function release(view)
 		return SearchRuntime.release(runtime, view)
+	end
+	local function release_view_search(session_view)
+		return release(session_view)
 	end
 	local function settings_changed(setting_id)
 		if setting_id == "enable_inventory_search" and mod:get(setting_id) == false then
@@ -575,9 +514,7 @@ Integration.new = function(mod, dependencies)
 			end
 
 			dependencies.begin_view_session(view, "search")
-			dependencies.register_cleanup(view, "inventory_search", function(session_view)
-				release(session_view)
-			end)
+			dependencies.register_cleanup(view, "inventory_search", release_view_search)
 			dependencies.configure_sort(view)
 
 			return true
@@ -586,9 +523,7 @@ Integration.new = function(mod, dependencies)
 			local composed = SearchRuntime.compose_layout(runtime, view, layout)
 
 			dependencies.begin_view_session(view, "search")
-			dependencies.register_cleanup(view, "inventory_search", function(session_view)
-				release(session_view)
-			end)
+			dependencies.register_cleanup(view, "inventory_search", release_view_search)
 
 			return composed
 		end,

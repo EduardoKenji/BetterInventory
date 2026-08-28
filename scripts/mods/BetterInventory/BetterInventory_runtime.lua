@@ -103,6 +103,12 @@ local function release_transient_item_caches()
 	end
 end
 
+local function invalidate_item_customization_tracking()
+	if Layout and type(Layout.invalidate_item_customization_tracking) == "function" then
+		Layout.invalidate_item_customization_tracking()
+	end
+end
+
 function Runtime.install()
 	if Layout and Layout.ImageLayout and type(Layout.ImageLayout.initialize_settings) == "function" then
 		Layout.ImageLayout.initialize_settings(mod)
@@ -113,8 +119,6 @@ function Runtime.install()
 
 	if FavoriteIntegration and type(FavoriteIntegration.install_manual_purchase_hooks) == "function" then
 		FavoriteIntegration.install_manual_purchase_hooks(mod, {
-			-- CreditsGoodsVendorView is Brunt's Armoury and is intentionally excluded.
-			-- Auto Crafter owns any favorite applied to its final accepted weapon.
 			armoury = CreditsVendorView,
 			melk_limited = MarksVendorView,
 			melk_mystery = MarksGoodsVendorView,
@@ -1251,12 +1255,10 @@ function mod.on_enabled()
 end
 
 function mod.on_all_mods_loaded()
-	-- Move the legacy R/R3 background-colour binding off native discard.
 	if mod:get("custom_item_background_color_keybind") == "group_finder_refresh_groups" then
 		mod:set("custom_item_background_color_keybind", "navigate_secondary_left_pressed", true)
 	end
 
-	-- Move the legacy Q/Y rename binding off native Favorite.
 	if mod:get("_custom_item_name_keybind_v2_migrated") ~= true then
 		if mod:get("custom_item_name_keybind") == "hotkey_menu_special_2" then
 			mod:set("custom_item_name_keybind", "lobby_open_inventory", false)
@@ -1291,6 +1293,9 @@ function mod.on_setting_changed(setting_id)
 	end
 
 	ItemCustomization.on_setting_changed(mod, setting_id)
+	if setting_id == "enable_custom_item_name_and_colors" or setting_id == "custom_item_preserve_card_shading" then
+		invalidate_item_customization_tracking()
+	end
 	if type(Features.search_settings_changed) == "function" then
 		Features.search_settings_changed(setting_id)
 	end
@@ -1349,6 +1354,7 @@ end
 
 function mod.on_settings_reset()
 	highlight_animation_enabled = mod:get("highlight_equipped_items") == "pulsing_dashes" or mod:get("new_item_highlight_mode") == "pulsing_dashes"
+	invalidate_item_customization_tracking()
 
 	for index = 1, #COLOR_TARGETS do
 		local target = COLOR_TARGETS[index]

@@ -1,5 +1,16 @@
 # BetterInventory changelog
 
+## 3.2.3 - 2026-08-28
+
+- Removes the temporary live Curio-ranking trace from Equipment Text Search, including its query-specific per-item string construction, logging, and reordered-result dump.
+- Evaluates search match status and relevance rank in one bounded clause pass while preserving the public `matches`/`rank` contracts and every Curio, weapon, equipped, item-level, fail-open, and partial-match ordering rule.
+- Caches one shared negative customization sentinel for ordinary cards, eliminating repeated customization-store lookups from their native frame updates; customization and relevant setting events invalidate the weak cache immediately.
+- Reuses search and sort view-session cleanup callbacks instead of allocating replacement closures on repeated presentations/configuration.
+- Releases fallback source-order entry references as soon as a native/ItemSorting comparator becomes available, rather than retaining the last bounded generation until view closure.
+- Reduces dynamic material validation from two calls to one on the common texture-pass path with no native/third-party change callback; delegated callbacks retain the required before-and-after containment.
+- Re-audits all runtime hooks, recurring subsystem gates, weak/view-owned registries, search projection/result/grid buffers, asynchronous ownership, Auto Crafter queues, and teardown; no additional unbounded collection or account-operation defect was found.
+- Adds equivalence and 120-frame negative-cache regressions. The full 52-file, 178-case suite and deterministic package verifier pass.
+
 ## 3.2.2 - 2026-08-27
 
 - Repairs Darktide's reused mission-ready `UIProfileSpawner` after loadout weapon presentation teardown, preventing later talent/profile synchronization from dereferencing a nil single-item loader while preserving native and Valkyrie hook execution.

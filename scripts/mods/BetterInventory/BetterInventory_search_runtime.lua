@@ -250,14 +250,20 @@ local function entry_result(runtime, state, entry, view, prioritize_equipped, re
 		return true, 1
 	end
 
-	local matched = runtime.dependencies.query.matches(state.compiled, record) == true
 	if prioritize_equipped == nil then
 		prioritize_equipped = safe_call(runtime.dependencies.prioritize_equipped) ~= false
 	end
 
-	local rank = runtime.dependencies.query.rank(state.compiled, record, matched, prioritize_equipped)
+	local matched, rank
 
-	return matched, tonumber(rank) or (matched and 1 or 0), record
+	if type(runtime.dependencies.query.evaluate) == "function" then
+		matched, rank = runtime.dependencies.query.evaluate(state.compiled, record, prioritize_equipped)
+	else
+		matched = runtime.dependencies.query.matches(state.compiled, record) == true
+		rank = runtime.dependencies.query.rank(state.compiled, record, matched, prioritize_equipped)
+	end
+
+	return matched == true, tonumber(rank) or (matched == true and 1 or 0)
 end
 
 local function scan(runtime, view, state, source_layout, trust_projection_cache)
@@ -282,31 +288,22 @@ local function scan(runtime, view, state, source_layout, trust_projection_cache)
 	end
 
 	local prioritize_equipped = safe_call(runtime.dependencies.prioritize_equipped) ~= false
-	local trace_scan = safe_call(runtime.dependencies.trace_scan_begin, view, state.query, layout) == true
 
 	for index = 1, #layout do
 		local entry = layout[index]
 		local item = item_from(entry)
 
 		if type(item) == "table" then
-			local matched, rank, record = entry_result(runtime, state, entry, view, prioritize_equipped, item, trust_projection_cache)
+			local matched, rank = entry_result(runtime, state, entry, view, prioritize_equipped, item, trust_projection_cache)
 			-- Darktide's comparator, native filter, and widget content all retain
 			-- the presented layout entry. Store one weak-key result per entry; direct
 			-- item layouts naturally use the item itself as that same key.
 			set_result(state, entry, matched, rank)
-
-			if trace_scan and rank > 0 then
-				safe_call(runtime.dependencies.trace_scan_entry, view, state.query, index, entry, item, record, matched, rank)
-			end
 		end
 	end
 
 	state.results_ready = true
 	sync_hot_path_flags(runtime, view, state)
-
-	if trace_scan then
-		safe_call(runtime.dependencies.trace_scan_end, view, state.query)
-	end
 end
 
 local function warm_projection_cache(runtime, view, state)

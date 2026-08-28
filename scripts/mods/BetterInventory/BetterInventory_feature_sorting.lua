@@ -180,6 +180,9 @@ Sorting.new_comparator_manager = function(dependencies)
 	})
 
 	manager.registered_views = registered_views
+	local function restore_session_view(session_view)
+		manager.restore(session_view)
+	end
 
 	local function is_armoury_sort_view(view)
 		return dependencies.is_armoury_sort_view(view)
@@ -284,9 +287,7 @@ Sorting.new_comparator_manager = function(dependencies)
 
 		local session_kind = is_armoury_sort_view(view) and "armoury" or "inventory"
 		dependencies.begin_view_session(view, session_kind)
-		dependencies.register_view_session_cleanup(view, "sort_options", function(session_view)
-			manager.restore(session_view)
-		end)
+		dependencies.register_view_session_cleanup(view, "sort_options", restore_session_view)
 
 		registered_views[view] = true
 		-- Native table.sort invokes the comparator O(n log n) times. Resolve each
