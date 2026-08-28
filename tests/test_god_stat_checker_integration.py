@@ -162,6 +162,7 @@ def main() -> None:
     assert gsc_settings.opt_card_style == "verdict_text_only"
     assert gsc.settings.card_style == "verdict_text_only"
     assert lua.globals().god_stat_checker_repaints == 1
+    assert integration.is_active() is True
     custom_color, custom_dark = items.rarity_color(qualifying)
     assert color_channels(custom_color) == [255, 210, 30, 40]
     assert color_channels(custom_dark) == [255, 126, 18, 24]
@@ -230,6 +231,7 @@ def main() -> None:
     lua.globals().god_stat_checker_enabled = False
     integration._test.reconcile()
     assert integration.god_stat_checker_owns_background() is False
+    assert integration.is_active() is False
     fallback_color, _ = items.gsc_original_rarity_color(qualifying)
     assert color_channels(fallback_color) == [255, 210, 30, 40]
     integration.install(mod, lua.globals().custom_tier_module)
@@ -245,10 +247,12 @@ def main() -> None:
     integration.on_setting_changed(mod, "god_stat_checker_background_owner")
     gsc.set(gsc, "opt_display_enabled", False, True)
     assert integration.god_stat_checker_owns_background() is False
+    assert integration.is_active() is False
     display_off_color, _ = items.gsc_original_rarity_color(qualifying)
     assert color_channels(display_off_color) == [255, 210, 30, 40]
     gsc.set(gsc, "opt_display_enabled", True, True)
     assert gsc_settings.opt_card_style == "verdict_text_only"
+    assert integration.is_active() is True
 
     lua.globals().god_stat_checker_enabled = False
     gsc.on_disabled()
@@ -298,6 +302,7 @@ def main() -> None:
     absent_color, _ = items.gsc_original_rarity_color(qualifying)
     assert color_channels(absent_color) == [255, 210, 30, 40]
     assert integration.god_stat_checker_owns_background() is False
+    assert integration.is_active() is False
 
     assert integration.on_setting_changed(mod, "unrelated_setting") is False
     print("BetterInventory God Stat Checker integration tests passed.")

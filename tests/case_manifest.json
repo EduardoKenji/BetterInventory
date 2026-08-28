@@ -217,7 +217,8 @@
     {"name": "dirty_marker_registry", "risk": "high", "start_line": 36, "end_line": 76},
     {"name": "repeated_marker_release_and_unrelated_grid_isolation", "risk": "high", "start_line": 79, "end_line": 116},
     {"name": "sorting_signature", "risk": "high", "start_line": 119, "end_line": 123},
-    {"name": "panel_composition", "risk": "high", "start_line": 125, "end_line": 129}
+    {"name": "panel_composition", "risk": "high", "start_line": 125, "end_line": 129},
+    {"name": "vendor_action_row_compatibility", "risk": "high", "start_line": 131, "end_line": 215}
   ],
   "test_features.py": [
       {"name": "panel_focus_allocation_guard", "risk": "medium", "start_line": 122, "end_line": 123},

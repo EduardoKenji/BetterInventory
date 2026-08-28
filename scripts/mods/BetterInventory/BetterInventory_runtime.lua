@@ -13,6 +13,7 @@ local Capabilities
 local CharacterOverviewUI
 local FeatureDomains
 local FavoriteIntegration
+local GodStatCheckerIntegration
 local CraftingMechanicusModifyView
 local CreditsVendorView
 local MainMenuView
@@ -77,6 +78,7 @@ local function configure_dependencies(dependencies)
 	CharacterOverviewUI = dependencies.CharacterOverviewUI
 	FeatureDomains = dependencies.FeatureDomains
 	FavoriteIntegration = dependencies.FavoriteIntegration
+	GodStatCheckerIntegration = dependencies.GodStatCheckerIntegration
 	CraftingMechanicusModifyView = dependencies.CraftingMechanicusModifyView
 	CreditsVendorView = dependencies.CreditsVendorView
 	MainMenuView = dependencies.MainMenuView
@@ -164,15 +166,13 @@ local function is_armoury_sort_view(view)
 end
 
 local function align_quick_level_mastery_buttons(view)
-	-- Quick Level Mastery adds Sacrifice as an offset child of Darktide's shared
-	-- purchase_button node. Center the complete action group on the actual weapon
-	-- information panel instead of deriving its position from the store grid:
-	-- the grid can have a different width, and another hook can independently
-	-- restore the purchase node to its native position.
-	local quick_level_alignment = FeatureDomains and FeatureDomains.quick_level_alignment
+	local alignment = FeatureDomains and FeatureDomains.quick_level_alignment
+	local god_stat_checker_active = GodStatCheckerIntegration
+		and type(GodStatCheckerIntegration.is_active) == "function"
+		and GodStatCheckerIntegration.is_active() == true or false
 
-	if quick_level_alignment and type(quick_level_alignment.update) == "function" then
-		return quick_level_alignment.update(view, Diagnostics and Diagnostics.count)
+	if alignment and type(alignment.update) == "function" then
+		return alignment.update(view, Diagnostics and Diagnostics.count, god_stat_checker_active)
 	end
 
 	return false

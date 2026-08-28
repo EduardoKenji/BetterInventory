@@ -163,6 +163,13 @@
       "modules": ["BetterInventory_god_stat_checker_integration.lua", "BetterInventory_custom_tier.lua", "BetterInventory_item_customization.lua", "BetterInventory_layout_content.lua", "BetterInventory_character_overview_ui.lua", "BetterInventory.lua"]
     },
     {
+      "name": "vendor.god-stat-checker-action-row-follows-panel",
+      "test": "test_feature_domains.py",
+      "case": "vendor_action_row_compatibility",
+      "outcome": "Armoury Exchange and GlobalStore Acquire rows follow the final live God Stat Checker panel only when it reaches the native action slot; shorter panels retain native placement, live height changes reconcile without recurring writes, GSC disable and view release restore only Better Inventory-owned Y coordinates, and Quick Level Mastery's horizontal action pair remains independent",
+      "modules": ["BetterInventory_feature_domains.lua", "BetterInventory_god_stat_checker_integration.lua", "BetterInventory_runtime.lua"]
+    },
+    {
       "name": "curio.rotation-waits",
       "test": "test_curio_acquisition.py",
       "case": "store_rotation_gate",

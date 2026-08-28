@@ -386,6 +386,13 @@ Integration.god_stat_checker_owns_background = function()
 	return selected_owner() == OWNER_GOD_STAT_CHECKER and gsc_can_own_background()
 end
 
+Integration.is_active = function()
+	-- Reconciled at install, mod lifecycle, and GSC setting boundaries. Keep the
+	-- vendor update path allocation-free instead of resolving another mod and
+	-- reading DMF settings every frame.
+	return framework_enabled and gsc_ownership_available
+end
+
 Integration._test = {
 	background_styles = BACKGROUND_STYLES,
 	current_gsc_style = current_gsc_style,
