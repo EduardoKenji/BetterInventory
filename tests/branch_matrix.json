@@ -26,7 +26,7 @@
       "name": "search.hooks-isolate-focused-grid-input",
       "test": "test_search_hooks.py",
       "case": "native_grid_and_hadron_sacrifice_hook_composition",
-      "outcome": "controller search focus owns only the active view's main grid through Darktide's native input-disabled state while cursor focus leaves wheel and card hotspots interactive; both modes suppress the input legend through transition-only visibility ownership without invalidating button-hint actions, controller Up is handled by supported view input hooks, pre-disabled discard/options grids retain native ownership, newly presented cards receive one alpha refresh, and no global ViewElementGrid.update, ItemGridViewBase.update, or input-legend hook charges settled inventory frames",
+      "outcome": "controller search focus owns only the active view's main grid through Darktide's native input-disabled state while cursor focus leaves wheel and card hotspots interactive; both modes suppress the input legend through transition-only visibility ownership without invalidating button-hint actions, controller Up is handled by supported view input hooks, pre-disabled discard/options grids retain native ownership, newly presented cards receive one alpha refresh, no global ViewElementGrid.update, ItemGridViewBase.update, or input-legend hook charges settled inventory frames, and the Hadron-only BaseView decoration preserves every trailing native argument—including unrelated LobbyView dynamic level packages—without mutation",
       "modules": ["BetterInventory_search_hooks.lua"]
     },
     {

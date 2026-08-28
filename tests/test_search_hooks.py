@@ -211,9 +211,21 @@ def main() -> None:
             _scenegraph_world_position = function() return {100, 50} end,
         }
         hooks["base:init"](
-            function(_, definitions) calls.base_definitions = definitions end,
-            sacrifice_view, {}, "settings", "context"
+            function(_, definitions, settings, context, dynamic_package, tail)
+                calls.base_definitions = definitions
+                calls.base_init_args = {settings, context, dynamic_package, tail}
+            end,
+            sacrifice_view, {}, "settings", "context", "barter-level-package", "tail"
         )
+
+		lobby_definitions = {}
+		lobby_view = {__class_name = "LobbyView"}
+		hooks["base:init"](
+			function(target, definitions, settings, context, dynamic_package, tail)
+				calls.lobby_init_args = {target, definitions, settings, context, dynamic_package, tail}
+			end,
+			lobby_view, lobby_definitions, "lobby-settings", "lobby-context", "lobby-level-package", "lobby-tail"
+		)
         safe_hooks["barter:_cb_fetch_inventory_items"](sacrifice_view)
         native_layout = {{item = {gear_id = "one"}}}
         sacrifice_view._current_present_grid_layout_callback = function(_, layout)
@@ -248,6 +260,21 @@ def main() -> None:
     assert lua.execute("return calls.defocus == view") is True
     assert lua.execute('return hooks["element:update"] == nil') is True
     assert g.calls.base_definitions.decorated is True
+    assert lua.execute(
+        'return calls.base_init_args[1] == "settings" '
+        'and calls.base_init_args[2] == "context" '
+        'and calls.base_init_args[3] == "barter-level-package" '
+        'and calls.base_init_args[4] == "tail"'
+    ) is True
+    assert lua.execute(
+        'return calls.lobby_init_args[1] == lobby_view '
+        'and calls.lobby_init_args[2] == lobby_definitions '
+        'and calls.lobby_init_args[3] == "lobby-settings" '
+        'and calls.lobby_init_args[4] == "lobby-context" '
+        'and calls.lobby_init_args[5] == "lobby-level-package" '
+        'and calls.lobby_init_args[6] == "lobby-tail" '
+        'and lobby_definitions.decorated == nil'
+    ) is True
     assert g.calls.pivot[1] == 100 and g.calls.pivot[2] == 150
     assert lua.execute("return calls.compose[2] == native_layout") is True
     assert lua.execute("return calls.presented_layout == native_layout") is True

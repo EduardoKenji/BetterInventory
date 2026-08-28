@@ -145,12 +145,12 @@ SearchHooks.install = function(dependencies)
 	install_view_input_hook(CraftingMechanicusBarterItemsView)
 
 	if method_available(BaseView, "init") then
-		mod:hook(BaseView, "init", function(func, view, definitions, settings, context)
+		mod:hook(BaseView, "init", function(func, view, definitions, settings, context, ...)
 			if view and view.__class_name == "CraftingMechanicusBarterItemsView" and mod:get("enable_inventory_search") ~= false and type(SearchUI.decorate_definitions) == "function" then
 				definitions = SearchUI.decorate_definitions(definitions, view, mod)
 			end
 
-			return func(view, definitions, settings, context)
+			return func(view, definitions, settings, context, ...)
 		end)
 	end
 
