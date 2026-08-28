@@ -238,6 +238,15 @@ def main() -> None:
     cold_projects_before = lua.globals().project_calls
     assert search_runtime.update(runtime, cold_view, 1) is False
     assert lua.globals().project_calls - cold_projects_before == 16
+
+    # GlobalStore category clicks all present subsets of the same authoritative
+    # offer layout. Repeated captures must continue this warm pass instead of
+    # restarting at item one and keeping 16 rich projections active forever.
+    for _ in range(50):
+        assert search_runtime.capture_presentation(
+            runtime, cold_view, "other-slot", "type", "Other"
+        ) is True
+    assert search_runtime.state(runtime, cold_view).warm_cursor == 17
     assert search_runtime.update(runtime, cold_view, 2) is False
     assert lua.globals().project_calls - cold_projects_before == 32
     assert cold_view._better_inventory_search_needs_update is True
@@ -246,6 +255,12 @@ def main() -> None:
     assert cold_view._better_inventory_search_needs_update is None
     assert cold_view._better_inventory_search_rank_active is None
     assert cold_view._better_inventory_search_filter_active is None
+    warmed_projects = lua.globals().project_calls
+    assert search_runtime.capture_presentation(
+        runtime, cold_view, "slot", "type", "title"
+    ) is True
+    assert search_runtime.update(runtime, cold_view, 3.1) is False
+    assert lua.globals().project_calls == warmed_projects
     trusted_before_cold_query = lua.globals().trusted_project_calls
     assert search_runtime.set_query(runtime, cold_view, "sword", 4) == (True, None)
     assert cold_view._better_inventory_search_needs_update is True

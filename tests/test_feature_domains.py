@@ -215,6 +215,105 @@ def main() -> None:
     assert vendor_view._ui_scenegraph.purchase_button.position[2] == -90
     assert vendor_view._better_inventory_quick_level_alignment_probe is None
 
+    # GlobalStore retains portrait callbacks unless each outgoing card load is
+    # explicitly unloaded before Darktide destroys the grid generation. Stress
+    # disjoint 150-card tabs and prove retained resources remain bounded to the
+    # current generation while marker reconciliation drops retired widgets.
+    lua.execute(
+        r'''
+        portrait_resources = {}
+        portrait_unloads = 0
+
+        function unload_portrait(load_id)
+            portrait_resources[load_id] = nil
+            portrait_unloads = portrait_unloads + 1
+        end
+
+        portrait_manager = {
+            unload_profile_portrait = function(_, load_id)
+                unload_portrait(load_id)
+            end
+        }
+
+        function install_portrait_generation(grid, generation, count)
+            local widgets = {}
+            local widget_map = {}
+            local layout = {}
+
+            for index = 1, count do
+                local load_id = tostring(generation) .. ":" .. tostring(index)
+                local widget = {content = {portrait_load_id = load_id}}
+                local entry_id = "entry:" .. tostring(generation) .. ":" .. tostring(index)
+
+                widgets[index] = widget
+                widget_map[entry_id] = {widget = widget}
+                layout[index] = {entry_id = entry_id}
+                -- Model Managers.ui retaining callbacks/widgets until unload.
+                portrait_resources[load_id] = widget
+            end
+
+            grid._all_grid_widgets = widgets
+            grid._widgets_by_entry_id = widget_map
+            grid._grid_layout = layout
+            grid._better_inventory_myfavorites_active = true
+            grid._better_inventory_myfavorites_widgets = setmetatable({}, {__mode = "k"})
+
+            for index = 1, count do
+                grid._better_inventory_myfavorites_widgets[widgets[index]] = true
+            end
+        end
+
+        function resource_count()
+            local count = 0
+            for _ in pairs(portrait_resources) do count = count + 1 end
+            return count
+        end
+
+        function marker_count(grid)
+            local count = 0
+            for _ in pairs(grid._better_inventory_myfavorites_widgets or {}) do count = count + 1 end
+            return count
+        end
+        ''',
+    )
+    global_grid = lua.table()
+    lua.globals().install_portrait_generation(global_grid, 1, 150)
+    global_store = domains.global_store
+    empty_grid = lua.table_from({"_grid_layout": lua.table()})
+    assert global_store.grid_rebuild_required(empty_grid, lua.table()) is True
+    assert global_store.grid_rebuild_required(
+        global_grid, global_grid._grid_layout
+    ) is False
+    assert global_store.retire_grid_generation(
+        global_grid, global_grid._grid_layout, lua.globals().portrait_manager
+    ) == (0, False)
+
+    for generation in range(2, 42):
+        incoming = lua.table_from(
+            {1: lua.table_from({"entry_id": f"new:{generation}"})}
+        )
+        released, rebuilding = global_store.retire_grid_generation(
+            global_grid, incoming, lua.globals().portrait_manager
+        )
+        assert rebuilding is True
+        assert released == 150
+        assert lua.globals().marker_count(global_grid) == 0
+        lua.globals().install_portrait_generation(global_grid, generation, 150)
+        assert lua.globals().resource_count() == 150
+
+    assert lua.globals().portrait_unloads == 40 * 150
+    assert global_store.grid_rebuild_required(global_grid, None) is False
+    assert global_store.retire_grid_generation(global_grid, lua.table(), None) == (
+        0,
+        False,
+    )
+    missing_unloader_layout = lua.table_from(
+        {1: lua.table_from({"entry_id": "unseen"})}
+    )
+    assert global_store.retire_grid_generation(
+        global_grid, missing_unloader_layout, None
+    ) == (0, True)
+
     print("BetterInventory feature-domain boundary tests passed.")
 
 

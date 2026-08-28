@@ -104,6 +104,17 @@ def main() -> None:
     assert "if not view then\n\t\treturn func(item_grid, layout, content_blueprints, ...)" in runtime
     assert "resolve_grid_scope(item_grid, active_grid_view, active_grid_configuration)" in runtime
 
+    # GlobalStore tab changes rebuild the main grid and otherwise strand its
+    # asynchronous portrait callbacks. Retirement must use one stable callback
+    # and run only after the exact main-grid pass-through guard.
+    main_grid_guard = runtime.index(
+        "if not view or item_grid ~= view._item_grid or not grid_size"
+    )
+    portrait_retirement = runtime.index("retire_grid_generation(item_grid, layout")
+    assert portrait_retirement > main_grid_guard
+    assert "function unload_global_store_portrait" not in runtime
+    assert "Domains.markers.begin_grid_generation(item_grid)" in domains
+
     # Quick Level Mastery's vendor alignment may be revisited every frame, but
     # stable geometry must not force a scenegraph/world-position query at 60 Hz.
     assert "QUICK_LEVEL_ALIGNMENT_PROBE_INTERVAL = 15" in domains
