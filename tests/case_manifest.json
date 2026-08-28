@@ -252,6 +252,9 @@
     {"name": "terminal_release_once", "risk": "critical", "start_line": 35, "end_line": 71},
     {"name": "cancel_and_reconcile", "risk": "critical", "start_line": 72, "end_line": 76}
   ],
+  "test_profile_spawner_compatibility.py": [
+    {"name": "destroyed_spawner_reuse_reinitializes_loader", "risk": "critical", "start_line": 1, "end_line": 119}
+  ],
   "test_settings.py": [
     {"name": "schema_dependency_refresh", "risk": "high", "start_line": 21, "end_line": 456},
     {"name": "migration_preservation", "risk": "high", "start_line": 457, "end_line": 574},

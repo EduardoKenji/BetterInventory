@@ -2,6 +2,7 @@
 
 ## 3.2.2 - 2026-08-27
 
+- Repairs Darktide's reused mission-ready `UIProfileSpawner` after loadout weapon presentation teardown, preventing later talent/profile synchronization from dereferencing a nil single-item loader while preserving native and Valkyrie hook execution.
 - Preserves `BaseView.init`'s dynamic level-package argument through Equipment Text Search's Hadron decoration hook, preventing mission-ready `LobbyView` from opening before `content/levels/ui/lobby/lobby` is loaded and crashing at `ScriptWorld.spawn_level`.
 - Makes shared `ViewElementGrid` hooks exact pass-throughs for profile-preset, cosmetic, lobby-preview, and unknown third-party grids, preventing Better Inventory state, callback wrappers, blueprint clones, markers, material guards, or clipping from leaking into unrelated menu mods.
 - Retires destroyed, closing, and replaced Character Overview generations before delayed Curio/icon reconciliation can rebuild stale loadout widgets during loadout, gear, or cosmetic transitions.

@@ -49,6 +49,10 @@ if ($main -notmatch 'mod:hook\(InventoryWeaponsView,\s*"present_grid_layout"') {
 	throw "The InventoryWeaponsView hook was not found."
 }
 
+if ($main -notmatch 'UIProfileSpawner\s*=\s*require\("scripts/managers/ui/ui_profile_spawner"\)' -or $main -notmatch 'ProfileSpawnerCompatibility\.install\(mod,\s*UIProfileSpawner\)') {
+	throw "The mission-ready UI profile-spawner lifecycle compatibility hook was not found."
+}
+
 if ($main -notmatch 'mod:hook\(InventoryWeaponsView,\s*"_handle_input"' -or $main -notmatch 'capture_inventory_controller_navigation' -or $main -notmatch 'consume_inventory_controller_grid_navigation') {
 	throw "The multi-column controller-navigation guard was not found."
 }
@@ -674,8 +678,10 @@ if ($DarktideSourcePath) {
 	$masteryService = Join-Path $DarktideSourcePath "scripts\managers\data_service\services\mastery_service.lua"
 	$masteryUtility = Join-Path $DarktideSourcePath "scripts\utilities\mastery.lua"
 	$weaponMarksView = Join-Path $DarktideSourcePath "scripts\ui\views\inventory_weapon_marks_view\inventory_weapon_marks_view.lua"
+	$uiProfileSpawner = Join-Path $DarktideSourcePath "scripts\managers\ui\ui_profile_spawner.lua"
+	$lobbyView = Join-Path $DarktideSourcePath "scripts\ui\views\lobby_view\lobby_view.lua"
 
-	foreach ($sourceFile in @($inventoryView, $hadronModifyView, $craftingViewDefinitions, $creditsVendorView, $creditsVendorBackgroundDefinitions, $marksVendorView, $marksGoodsVendorView, $contractsBackgroundViewDefinitions, $itemGridBase, $itemGridBaseDefinitions, $itemBlueprints, $iconGenerator, $items, $masterItems, $gadgetTraits, $weaponPerksMelee, $weaponPerksRanged, $traitValueParser, $gadgetBuffTemplates, $gearService, $progressionManager, $backendMastery, $masteryService, $masteryUtility, $weaponMarksView)) {
+	foreach ($sourceFile in @($inventoryView, $hadronModifyView, $craftingViewDefinitions, $creditsVendorView, $creditsVendorBackgroundDefinitions, $marksVendorView, $marksGoodsVendorView, $contractsBackgroundViewDefinitions, $itemGridBase, $itemGridBaseDefinitions, $itemBlueprints, $iconGenerator, $items, $masterItems, $gadgetTraits, $weaponPerksMelee, $weaponPerksRanged, $traitValueParser, $gadgetBuffTemplates, $gearService, $progressionManager, $backendMastery, $masteryService, $masteryUtility, $weaponMarksView, $uiProfileSpawner, $lobbyView)) {
 		if (-not (Test-Path -LiteralPath $sourceFile -PathType Leaf)) {
 			throw "Missing expected Darktide source file: $sourceFile"
 		}
@@ -764,6 +770,16 @@ if ($DarktideSourcePath) {
 	$masteryServiceSource = Get-Content -LiteralPath $masteryService -Raw
 	$masteryUtilitySource = Get-Content -LiteralPath $masteryUtility -Raw
 	$weaponMarksViewSource = Get-Content -LiteralPath $weaponMarksView -Raw
+	$uiProfileSpawnerSource = Get-Content -LiteralPath $uiProfileSpawner -Raw
+	$lobbyViewSource = Get-Content -LiteralPath $lobbyView -Raw
+
+	if ($uiProfileSpawnerSource -notmatch 'UIProfileSpawner\.reset[\s\S]*?_single_item_profile_loader\s*=\s*UiCharacterProfilePackageLoader:new' -or $uiProfileSpawnerSource -notmatch 'UIProfileSpawner\.spawn_profile' -or $uiProfileSpawnerSource -notmatch 'UIProfileSpawner\.destroy[\s\S]*?_single_item_profile_loader\s*=\s*nil') {
+		throw "Darktide's UIProfileSpawner loader lifecycle changed. Re-audit the mission-ready destroyed-spawner reuse guard."
+	}
+
+	if ($lobbyViewSource -notmatch 'LobbyView\._setup_weapon_widgets[\s\S]*?profile_spawner:destroy\(\)[\s\S]*?profile_spawner:spawn_profile') {
+		throw "Darktide's mission-ready profile-spawner reuse seam changed. Re-audit the v3.2.2 lifecycle compatibility guard."
+	}
 
 	if ($backendMasterySource -notmatch 'Mastery\.switch_mark[\s\S]*?method\s*=\s*"PATCH"[\s\S]*?mdi\s*=\s*mark_id') {
 		throw "Darktide's audited weapon-mark mutation is no longer an mdi PATCH. Re-audit Auto Crafter mark safety."

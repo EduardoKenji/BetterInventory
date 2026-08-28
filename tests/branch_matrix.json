@@ -65,6 +65,13 @@
       "modules": ["BetterInventory_character_overview_ui.lua"]
     },
     {
+      "name": "lobby-profile-spawner.destroyed-reuse-restores-loader",
+      "test": "test_profile_spawner_compatibility.py",
+      "case": "destroyed_spawner_reuse_reinitializes_loader",
+      "outcome": "a UIProfileSpawner reused after LobbyView destroys its weapon presentation is reset exactly once before native and third-party spawn_profile hooks continue; healthy spawners remain untouched and all trailing arguments plus return values preserve identity and order",
+      "modules": ["BetterInventory_profile_spawner_compatibility.lua"]
+    },
+    {
       "name": "runtime.shared-grids-pass-through-before-mutation",
       "test": "test_view_lifecycle_memory.py",
       "case": "shared_grid_exact_pass_through",

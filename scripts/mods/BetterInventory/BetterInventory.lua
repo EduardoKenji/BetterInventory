@@ -40,6 +40,7 @@ local ViewElementGrid = require("scripts/ui/view_elements/view_element_grid/view
 local ItemBlueprintGenerator = require("scripts/ui/view_content_blueprints/item_blueprints")
 local Text = require("scripts/utilities/ui/text")
 local BaseView = require("scripts/ui/views/base_view")
+local UIProfileSpawner = require("scripts/managers/ui/ui_profile_spawner")
 local VendorInteractionViewBase = require("scripts/ui/views/vendor_interaction_view_base/vendor_interaction_view_base")
 local VendorViewBase = require("scripts/ui/views/vendor_view_base/vendor_view_base")
 local Layout = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout")
@@ -49,6 +50,10 @@ if type(Layout) ~= "table" then
 
 	return
 end
+
+local ProfileSpawnerCompatibility = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_profile_spawner_compatibility"), "BetterInventory_profile_spawner_compatibility.lua", {
+	install = false,
+})
 
 local CharacterOverview = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_character_overview"), "BetterInventory_character_overview.lua", {
 	content_revision = function()
@@ -645,6 +650,9 @@ Runtime.configure({
 	WeaponOptionsPanel = WeaponOptionsPanel,
 	SearchUI = SearchUI,
 })
+if type(ProfileSpawnerCompatibility.install) == "function" then
+	ProfileSpawnerCompatibility.install(mod, UIProfileSpawner)
+end
 Runtime.install()
 SearchHooks.install({
 	mod = mod,
