@@ -522,11 +522,9 @@ SearchUI.update = function(mod, Features, view, time)
 
 	local visible = enabled_for_view(mod, view)
 
-	if input then
-		input.visible = visible
-	end
+	input.visible = visible
 
-	if not visible or not input or not input.content then
+	if not visible or not input.content then
 		if view and not view._better_inventory_search_view_disabled then
 			view._better_inventory_search_view_disabled = true
 

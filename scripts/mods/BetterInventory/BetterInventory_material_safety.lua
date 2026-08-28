@@ -117,18 +117,23 @@ local function guard_pass(mod, pass, explicit_fallback)
 
 	pass.value = valid_material_reference(pass.value) and pass.value or fallback
 	pass[GUARDED_MARKER] = true
-	pass.change_function = function(content, style, animations, dt)
-		-- Repair before delegating so compatibility callbacks never receive the
-		-- numeric render-target grid index as the card's material reference.
-		repair_dynamic_material(mod, content, value_id, fallback, allow_owned_replacement)
-
-		if type(original_change_function) == "function" then
+	if type(original_change_function) == "function" then
+		pass.change_function = function(content, style, animations, dt)
+			-- Repair before delegating so compatibility callbacks never receive the
+			-- numeric render-target grid index as the card's material reference.
+			repair_dynamic_material(mod, content, value_id, fallback, allow_owned_replacement)
 			original_change_function(content, style, animations, dt)
-		end
 
-		-- A native or third-party callback may itself rewrite the dynamic value.
-		-- Revalidate immediately before UIPasses asks UIRenderer to create it.
-		repair_dynamic_material(mod, content, value_id, fallback, allow_owned_replacement)
+			-- A native or third-party callback may itself rewrite the dynamic value.
+			-- Revalidate immediately before UIPasses asks UIRenderer to create it.
+			repair_dynamic_material(mod, content, value_id, fallback, allow_owned_replacement)
+		end
+	else
+		-- Most card texture passes have no native change callback. One validation
+		-- is sufficient and removes a redundant function call from every draw.
+		pass.change_function = function(content)
+			repair_dynamic_material(mod, content, value_id, fallback, allow_owned_replacement)
+		end
 	end
 
 	return true

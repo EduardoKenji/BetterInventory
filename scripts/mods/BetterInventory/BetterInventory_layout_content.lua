@@ -2,6 +2,11 @@ local Content = {}
 local columns
 local item_customization_provider
 local tracked_item_customization_widgets = setmetatable({}, { __mode = "k" })
+local NO_ITEM_CUSTOMIZATION = {}
+local CUSTOM_NAME_STYLE_IDS = {
+	"display_name",
+	"better_inventory_name_it_curio_name",
+}
 
 local Items = require("scripts/utilities/items")
 local RankSettings = require("scripts/settings/item/rank_settings")
@@ -165,6 +170,13 @@ Content.clear_runtime_caches = function()
 	QUICK_LOOK_CARD_PROJECTED_VALUES_CACHE = setmetatable({}, {
 		__mode = "k",
 	})
+	tracked_item_customization_widgets = setmetatable({}, { __mode = "k" })
+end
+
+Content.invalidate_item_customization_tracking = function()
+	-- Customization mutations are rare. Drop only weak reconciliation records so
+	-- each visible card resolves its live record once on the next native update.
+	tracked_item_customization_widgets = setmetatable({}, { __mode = "k" })
 end
 local CURIO_PRIMARY_COLOR_DEFINITIONS = {
 	gadget_innate_health_increase = {
@@ -1683,7 +1695,8 @@ local function restore_item_customization_style(widget)
 		return
 	end
 
-	for _, style_id in ipairs({ "display_name", "better_inventory_name_it_curio_name" }) do
+	for index = 1, #CUSTOM_NAME_STYLE_IDS do
+		local style_id = CUSTOM_NAME_STYLE_IDS[index]
 		local text_style = style[style_id]
 
 		restore_custom_color(text_style, "text_color")
@@ -1718,7 +1731,9 @@ local function live_item_customization_record(mod, widget)
 	local background_color = customization and customization.background_color
 
 	if type(name_color) ~= "table" and type(background_color) ~= "table" then
-		return
+		tracked_item_customization_widgets[widget] = NO_ITEM_CUSTOMIZATION
+
+		return NO_ITEM_CUSTOMIZATION
 	end
 
 	local preserve_shading = customization.background_preserve_shading
@@ -1753,7 +1768,8 @@ local function tracked_item_customization_matches(widget, record)
 	end
 
 	if type(record.name_color) == "table" then
-		for _, style_id in ipairs({ "display_name", "better_inventory_name_it_curio_name" }) do
+		for index = 1, #CUSTOM_NAME_STYLE_IDS do
+			local style_id = CUSTOM_NAME_STYLE_IDS[index]
 			local text_style = style[style_id]
 
 			if not style_color_matches(text_style, "text_color", record.name_color)
@@ -1791,7 +1807,8 @@ local function apply_item_customization_style(mod, widget, element)
 		return
 	end
 
-	for _, style_id in ipairs({ "display_name", "better_inventory_name_it_curio_name" }) do
+	for index = 1, #CUSTOM_NAME_STYLE_IDS do
+		local style_id = CUSTOM_NAME_STYLE_IDS[index]
 		local text_style = style[style_id]
 
 		apply_custom_color(text_style, name_color, "text_color")
@@ -1818,12 +1835,18 @@ local function apply_item_customization_style(mod, widget, element)
 			preserve_shading = preserve_shading == true,
 		}
 	else
-		tracked_item_customization_widgets[widget] = nil
+		-- Keep one shared negative sentinel. Ordinary cards then avoid a persisted
+		-- customization lookup every frame while adding no per-card record table.
+		tracked_item_customization_widgets[widget] = NO_ITEM_CUSTOMIZATION
 	end
 end
 
 Content.reapply_tracked_item_customization_style = function(mod, widget)
 	local record = tracked_item_customization_widgets[widget]
+
+	if record == NO_ITEM_CUSTOMIZATION then
+		return false
+	end
 
 	if type(record) ~= "table" then
 		-- Character Overview widgets can be initialized before another mod starts
@@ -1832,7 +1855,7 @@ Content.reapply_tracked_item_customization_style = function(mod, widget)
 		-- customization store instead of assuming earlier tracking survived.
 		record = live_item_customization_record(mod, widget)
 
-		if type(record) ~= "table" then
+		if record == NO_ITEM_CUSTOMIZATION then
 			return false
 		end
 	end

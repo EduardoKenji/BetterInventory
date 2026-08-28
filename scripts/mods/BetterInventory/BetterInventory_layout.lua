@@ -120,6 +120,7 @@ Layout.restore_item_customization_style = content.restore_item_customization_sty
 Layout.apply_weapon_information_customization = content.apply_weapon_information_customization
 Layout.refresh_item_customization = content.refresh_item_customization
 Layout.reapply_tracked_item_customization_style = content.reapply_tracked_item_customization_style
+Layout.invalidate_item_customization_tracking = content.invalidate_item_customization_tracking
 local INVENTORY_CANVAS_WIDTH = 1920
 local INVENTORY_EDGE_MARGIN = 16
 local WEAPON_ACTIONS_PANEL_WIDTH = 420

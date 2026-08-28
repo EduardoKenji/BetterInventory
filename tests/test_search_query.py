@@ -294,6 +294,35 @@ def main() -> None:
         weapon_query, weapon("sword uncanny", rating=430), False
     )
 
+    # Runtime's combined evaluator must remain exactly equivalent to the
+    # public match-then-rank contract while avoiding a second clause pass.
+    evaluation_cases = (
+        (compile_query(""), plasma),
+        (compile_query("plasma & blessing:cycler"), plasma),
+        (compile_query("plasma & blessing:missing"), plasma),
+        (health_query, equipped_both),
+        (health_query, no_match),
+        (sophisticated_query, sophisticated_curios[0]),
+        (sophisticated_query, sophisticated_curios[-1]),
+        (weapon_query, weapon_all),
+        (weapon_query, weapon_first_two),
+        (weapon_query, weapon_none),
+        (compile_query("rating:>=490"), plasma),
+        (compile_query("favorite:true"), plasma),
+        (compile_query('name:"unterminated'), plasma),
+    )
+    for compiled, value in evaluation_cases:
+        legacy_match = query.matches(compiled, value)
+        legacy_rank = query.rank(compiled, value, legacy_match)
+        evaluated_match, evaluated_rank = query.evaluate(compiled, value)
+        assert evaluated_match is legacy_match
+        assert evaluated_rank == legacy_rank
+
+    assert query.evaluate(health_query, equipped_both, False)[1] == query.rank(
+        health_query, equipped_both, True, False
+    )
+    assert query.evaluate(weapon_query, None) == (False, 0)
+
     # Invalid or excessive input fails open, preserving the authoritative list.
     invalid_cases = (
         'name:"unterminated',
