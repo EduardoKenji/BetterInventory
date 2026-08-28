@@ -1,5 +1,13 @@
 # BetterInventory changelog
 
+## 3.2.6 - 2026-08-28
+
+- Keeps Brunt's native weapon-selection reconciliation on its bounded twice-per-second schedule while trait discovery is in flight, so a stalled request can no longer freeze the Auto Crafter queue on the previously selected weapon for 45 seconds.
+- Retires the previous discovery generation as soon as another weapon is selected, refreshes the manual plan and queue immediately, and prevents canceled or late callbacks from replacing the new weapon's catalogue.
+- Records the frozen request target and current backend stage (`crafting_metadata`, `mastery`, `sticker_book`, or `summarizing`) for discovery failures and timeouts, while distinguishing the currently selected weapon when it changed mid-request.
+- Reports resolved-but-unavailable catalogue responses as trait-discovery failures instead of displaying a misleading `probe_complete` status.
+- Adds stalled-request, rapid target-change, late-callback, stage-order, unavailable-catalogue, timeout-attribution, and bounded in-flight polling regressions.
+
 ## 3.2.5 - 2026-08-28
 
 - Completes the Simplified Chinese localization audit, removes two retired generic-column translation IDs, and gives both Equipment Text Search examples functional Chinese query terms.

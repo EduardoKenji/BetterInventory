@@ -214,6 +214,42 @@ local function format_catalog(catalog)
 	)
 end
 
+local function catalog_target_label(target)
+	if type(target) ~= "table" then
+		return nil
+	end
+
+	local display_name = target.display_name
+	local sub_display_name = target.sub_display_name
+	local identity = target.master_id or target.offer_id
+
+	if display_name and sub_display_name then
+		return tostring(display_name) .. " " .. tostring(sub_display_name)
+	end
+
+	return display_name and tostring(display_name) or sub_display_name and tostring(sub_display_name) or identity and tostring(identity) or nil
+end
+
+local function format_catalog_failure(payload)
+	payload = payload or {}
+	local message = "Weapon trait discovery unavailable: " .. tostring(payload.error or payload.catalog and payload.catalog.reason or "unknown reason")
+	local context = {}
+	local target = catalog_target_label(payload.target)
+	local selected_target = catalog_target_label(payload.selected_target)
+
+	if payload.stage then
+		context[#context + 1] = "stage " .. tostring(payload.stage)
+	end
+	if target then
+		context[#context + 1] = "request " .. target
+	end
+	if selected_target and selected_target ~= target then
+		context[#context + 1] = "selected " .. selected_target
+	end
+
+	return #context > 0 and message .. " (" .. table.concat(context, "; ") .. ")" or message
+end
+
 local function game_localize(key)
 	if type(key) ~= "string" or key == "" then
 		return nil
@@ -417,8 +453,7 @@ local function reporter(ui_panel)
 					ui_panel:set_phase("trait_discovery_failed")
 				end
 
-				local discovery_error = payload and payload.error
-				local message = discovery_error and "Weapon trait discovery unavailable: " .. tostring(discovery_error) or format_catalog(payload and payload.catalog)
+				local message = format_catalog_failure(payload)
 				log("error", "Auto Crafter Helper " .. message)
 				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), message)
 			elseif kind == "plan_preview" then
