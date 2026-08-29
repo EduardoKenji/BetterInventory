@@ -2,7 +2,7 @@
 
 [![BetterInventory verification](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml/badge.svg)](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml)
 
-> Current release: **v3.2.6** (2026-08-28). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
+> Current release: **v3.3.0** (2026-08-28). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
 
 BetterInventory is a standalone inventory and item-management mod for Warhammer 40,000: Darktide. It adds responsive weapon and Curio cards, richer item information, configurable sorting, supported vendor layouts, optional mod integrations, and safety-gated inventory workflows.
 
@@ -10,7 +10,7 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 
 - Responsive melee, ranged, and Curio layouts with native single-column cards or independently configurable two-to-five-column grids.
 - Detailed weapon cards with marks, perks, blessings, maximum-potential attributes, item power, favorite/equipped state, and configurable image and text geometry.
-- Detailed Curio cards with the innate stat and up to three perks, compact text modes, type-aware colours, item power, and Character Overview support.
+- Curio cards with detailed, primary-stat, or title-only profiles; optional generated stat/perk names; compact text modes; type-aware colours; item power; and Character Overview support.
 - Separate layouts for Inventory, Character Overview, Hadron's Entreat view, Requisition Weapons & Curios, and GlobalStore's Multi-Operative Supply.
 - Configurable equipped-item and newly-acquired-item highlights using native Darktide materials.
 - Built-in item names and colours, with optional Name It synchronization.
@@ -19,6 +19,12 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - A bounded inventory-options panel for sorting, discard rules, integrations, and view-specific controls.
 - Standalone Equipment Text Search, with its own master switch, Inventory/Armoury spacing sliders, quoted phrases, explicit AND, typed field clauses, match-first ranking, and configurable dim-or-hide behavior.
 - Optional Quick Discard, Automatic Discard, Automatic Curio Buyer, and Auto Crafter workflows with explicit ownership, authoritative revalidation, and fail-closed behavior.
+
+## What's new in v3.3.0
+
+- Adds optional Curio names generated from the innate stat alone or from the innate stat plus all three perk categories, with the existing standard/heavy compression and plus-sign preferences applied consistently.
+- Adds a title-only Curio display profile for compact inventories; original Darktide names remain the default, and saved BetterInventory or Name It names take precedence unless explicitly overridden.
+- Generates names from the trait records already resolved for each card instead of globally hooking `Items.display_name`; title-only cards using original names skip trait resolution entirely.
 
 ## What's new in v3.2.6
 

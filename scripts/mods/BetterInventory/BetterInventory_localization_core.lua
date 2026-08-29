@@ -1138,7 +1138,7 @@ local localization = {
 		en = "Curio display profile",
 	},
 	curio_display_profile_tooltip = {
-		en = "All four stats is the default and shows the innate stat plus three perks. Primary stat keeps the Curio name and power while adding only its innate stat.",
+		en = "All four stats is the default and shows the innate stat plus three perks. Primary stat shows only the innate stat. Title only removes separate stat rows for the most compact card.",
 	},
 	curio_display_profile_primary = {
 		en = "Primary stat",
@@ -1146,11 +1146,35 @@ local localization = {
 	curio_display_profile_detailed = {
 		en = "All four stats",
 	},
+	curio_display_profile_title_only = {
+		en = "Title only",
+	},
+	curio_name_format = {
+		en = "Curio name format",
+	},
+	curio_name_format_tooltip = {
+		en = "Original name preserves Darktide or custom naming. Primary stat uses the innate roll as the title. Primary + perk names adds the three secondary perk labels without repeating their values. Formatting uses the Curio compression and plus-sign options below.",
+	},
+	curio_name_format_original = {
+		en = "Original name",
+	},
+	curio_name_format_primary = {
+		en = "Primary stat",
+	},
+	curio_name_format_primary_and_perks = {
+		en = "Primary + perk names",
+	},
+	curio_generated_name_respect_custom_names = {
+		en = "Custom names override generated names",
+	},
+	curio_generated_name_respect_custom_names_tooltip = {
+		en = "Keeps explicit names from BetterInventory or Name It above generated stat names. Disable to force the selected generated format on customized Curios.",
+	},
 	show_curio_item_level = {
 		en = "Show Curio base level",
 	},
 	show_curio_item_level_tooltip = {
-		en = "Shows the Curio's normalized base-level number in the lower-right corner in either display profile. Enabled by default to make 400–430 Curios easy to identify.",
+		en = "Shows the Curio's normalized base-level number in the lower-right corner in every display profile. Enabled by default to make 400–430 Curios easy to identify.",
 	},
 	curio_primary_stat_font_size = {
 		en = "Primary Curio stat font size",
@@ -1174,13 +1198,13 @@ local localization = {
 		en = "Show Curio quality text",
 	},
 	show_curio_quality_tooltip = {
-		en = "Shows the Curio quality line in the Primary stat profile. Disabled by default because the card colour already communicates quality.",
+		en = "Shows the Curio quality line in the Primary stat and Title only profiles. Disabled by default because the card colour already communicates quality.",
 	},
 	curio_stat_compression = {
 		en = "Curio stat text compression",
 	},
 	curio_stat_compression_tooltip = {
-		en = "Heavy Compression is the default and uses compact labels such as DR, Regen, Block and Sprint. Compression applies milder shortening. Unknown descriptions retain Darktide's original localized text.",
+		en = "Heavy Compression is the default and uses compact labels such as HP, DR, Regen, Block and Sprint. Compression applies milder shortening. This also controls generated Curio names. Unknown descriptions retain Darktide's original localized text.",
 	},
 	curio_stat_compression_none = {
 		en = "No compression",
@@ -1201,7 +1225,7 @@ local localization = {
 		en = "Remove + from Curio stat lines",
 	},
 	remove_curio_stat_plus_signs_tooltip = {
-		en = "Removes the leading + sign from every stat line on BetterInventory Curio cards. Disabled by default.",
+		en = "Removes the leading + sign from every stat line and generated name on BetterInventory Curio cards. Disabled by default.",
 	},
 	curio_secondary_color_mode = {
 		en = "Secondary Curio line colour mode",
@@ -1487,6 +1511,24 @@ local localization = {
 	},
 	curio_heavy_stamina_regen = {
 		en = "Stamina Regen",
+	},
+	curio_name_health_heavy = {
+		en = "HP",
+	},
+	curio_name_toughness_heavy = {
+		en = "TN",
+	},
+	curio_name_wounds_heavy = {
+		en = "WND",
+	},
+	curio_name_stamina_heavy = {
+		en = "STM",
+	},
+	curio_experience = {
+		en = "Experience",
+	},
+	curio_heavy_experience = {
+		en = "XP",
 	},
 	weapon_perk_unarmoured_damage = {
 		en = "Unarmoured Damage",

@@ -1,5 +1,15 @@
 # BetterInventory changelog
 
+## 3.3.0 - 2026-08-28
+
+- Adds three Curio naming formats: the original Darktide item name, the resolved primary stat, or the primary stat followed by the three perk-category labels.
+- Reuses BetterInventory's already-resolved stable trait identities and localized compact labels, including mission experience, so generated names remain compatible with standard/heavy compression without a second MasterItems or trait-description pass.
+- Applies the existing Curio stat simplification and plus-sign preferences to generated titles while omitting secondary numeric rolls to limit visual clutter.
+- Adds a compact title-only Curio profile that removes all stat-row passes and their reserved height; title-only cards with original names perform no trait lookups.
+- Preserves saved BetterInventory and Name It Curio names by default, with an explicit option allowing generated names to override them.
+- Avoids a global `Items.display_name` hook, repeated localization substitutions, per-frame work, and retained trait caches; weapon semantic renaming remains out of scope.
+- Adds profile geometry, localization, custom-name precedence, generated-label, bounded lookup-count, and zero-lookup title-only regressions.
+
 ## 3.2.6 - 2026-08-28
 
 - Keeps Brunt's native weapon-selection reconciliation on its bounded twice-per-second schedule while trait discovery is in flight, so a stalled request can no longer freeze the Auto Crafter queue on the previously selected weapon for 45 seconds.

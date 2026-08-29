@@ -1,4 +1,4 @@
-local MOD_VERSION = "3.2.6"
+local MOD_VERSION = "3.3.0"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
@@ -2661,7 +2661,37 @@ return {
 								text = "curio_display_profile_detailed",
 								value = "detailed",
 							},
+							{
+								text = "curio_display_profile_title_only",
+								value = "title_only",
+							},
 						},
+					},
+					{
+						setting_id = "curio_name_format",
+						tooltip = "curio_name_format_tooltip",
+						type = "dropdown",
+						default_value = "original",
+						options = {
+							{
+								text = "curio_name_format_original",
+								value = "original",
+							},
+							{
+								text = "curio_name_format_primary",
+								value = "primary",
+							},
+							{
+								text = "curio_name_format_primary_and_perks",
+								value = "primary_and_perks",
+							},
+						},
+					},
+					{
+						setting_id = "curio_generated_name_respect_custom_names",
+						tooltip = "curio_generated_name_respect_custom_names_tooltip",
+						type = "checkbox",
+						default_value = true,
 					},
 					{
 						setting_id = "curio_content_name_it_curio_name",

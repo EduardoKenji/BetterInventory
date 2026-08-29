@@ -114,6 +114,13 @@
         "modules": ["BetterInventory_layout.lua", "BetterInventory_layout_blueprints.lua", "BetterInventory_layout_cards.lua", "BetterInventory_layout_content.lua", "BetterInventory_layout_geometry.lua", "BetterInventory_runtime.lua"]
     },
     {
+      "name": "layout.curio-generated-name-profiles",
+      "test": "test_layout.py",
+      "case": "integration_boundaries",
+      "outcome": "Curios can retain their original or saved custom name, show a localized compressed primary-stat name, or summarize the primary stat and three perk categories without secondary numeric clutter; the title-only profile removes stat passes and height, generated formats reuse the one bounded trait-resolution pass, and title-only original-name cards perform zero trait lookups",
+      "modules": ["BetterInventory_data.lua", "BetterInventory_layout_cards.lua", "BetterInventory_layout_content.lua", "BetterInventory_layout_geometry.lua", "BetterInventory_localization_core.lua", "BetterInventory_localization_zh_cn.lua"]
+    },
+    {
       "name": "character-overview.fits-long-blessing-names",
       "test": "test_layout.py",
       "case": "integration_boundaries",

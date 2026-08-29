@@ -33,6 +33,8 @@ local is_weapon = content.is_weapon
 local curio_primary_color = content.curio_primary_color
 local curio_secondary_color = content.curio_secondary_color
 local compact_curio_description = content.compact_curio_description
+local compact_curio_primary_name = content.compact_curio_primary_name
+local curio_name_label = content.curio_name_label
 local configured_text_color = content.configured_text_color
 local single_line_text = content.single_line_text
 local compact_weapon_perk_description = content.compact_weapon_perk_description
@@ -47,6 +49,7 @@ local quick_look_card_grid_position = content.quick_look_card_grid_position
 local add_quick_look_card_grid_pass = content.add_quick_look_card_grid_pass
 local grid_ui_renderer = content.grid_ui_renderer
 local format_item_name = content.format_item_name
+local set_generated_curio_name = content.set_generated_curio_name
 local restore_item_customization_style = content.restore_item_customization_style
 local apply_item_customization_style = content.apply_item_customization_style
 local reapply_tracked_item_customization_style = content.reapply_tracked_item_customization_style
@@ -373,7 +376,7 @@ local function resolved_trait_data(entry, include_textures, include_perk_rank, i
 	return data
 end
 
-local function populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers, show_blessing_text_icons)
+local function populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers, show_blessing_text_icons, curio_display_profile, curio_name_format)
 	local content = widget and widget.content
 
 	if not content then
@@ -474,30 +477,74 @@ local function populate_card_content(mod, widget, element, blessing_display_mode
 	end
 
 	local remove_plus_sign = setting(mod, "remove_curio_stat_plus_signs", false)
+	local populate_primary_stat = curio_display_profile ~= "title_only"
+	local populate_secondary_stats = curio_display_profile ~= "title_only"
+	local generated_primary_name
+	local generated_perk_labels = curio_name_format == "primary_and_perks" and {} or nil
+	local needs_primary_data = populate_primary_stat or curio_name_format ~= "original"
+
+	if not needs_primary_data then
+		set_generated_curio_name(mod, content, nil)
+
+		return
+	end
 
 	local primary_entry = item.traits and item.traits[1]
 	local primary_data = resolved_trait_data(primary_entry, false)
 
 	if primary_data then
-		local primary_description = simplified_curio_description(primary_data, simplify_curio_stats)
+		if populate_primary_stat then
+			local primary_description = simplified_curio_description(primary_data, simplify_curio_stats)
 
-		content.better_inventory_curio_stat_1 = leading_plus_sign_description(primary_description, remove_plus_sign)
-		content.better_inventory_curio_stat_color_1 = curio_primary_color(mod, primary_data.id)
-	end
+			content.better_inventory_curio_stat_1 = leading_plus_sign_description(primary_description, remove_plus_sign)
+			content.better_inventory_curio_stat_color_1 = curio_primary_color(mod, primary_data.id)
+		end
 
-	local perks = item.perks
-
-	for i = 1, math.min(3, perks and #perks or 0) do
-		local perk_data = resolved_trait_data(perks[i], false)
-
-		if perk_data then
-			local perk_description = compact_curio_description(mod, perk_data, compression_mode)
-			perk_description = simplified_curio_description(perk_data, simplify_curio_stats, perk_description)
-
-			content["better_inventory_curio_stat_" .. (i + 1)] = leading_plus_sign_description(perk_description, remove_plus_sign)
-			content["better_inventory_curio_stat_color_" .. (i + 1)] = curio_secondary_color(mod, perk_data.id)
+		if curio_name_format ~= "original" then
+			generated_primary_name = compact_curio_primary_name(mod, primary_data, compression_mode, simplify_curio_stats)
+			generated_primary_name = leading_plus_sign_description(generated_primary_name, remove_plus_sign)
 		end
 	end
+
+	if populate_secondary_stats or generated_perk_labels then
+		local perks = item.perks
+
+		for i = 1, math.min(3, perks and #perks or 0) do
+			local perk_data = resolved_trait_data(perks[i], false)
+
+			if perk_data then
+				if populate_secondary_stats then
+					local perk_description = compact_curio_description(mod, perk_data, compression_mode)
+					perk_description = simplified_curio_description(perk_data, simplify_curio_stats, perk_description)
+
+					content["better_inventory_curio_stat_" .. (i + 1)] = leading_plus_sign_description(perk_description, remove_plus_sign)
+					content["better_inventory_curio_stat_color_" .. (i + 1)] = curio_secondary_color(mod, perk_data.id)
+				end
+
+				if generated_perk_labels then
+					local label = curio_name_label(mod, perk_data, compression_mode)
+
+					if label ~= "" then
+						generated_perk_labels[#generated_perk_labels + 1] = label
+					end
+				end
+			end
+		end
+	end
+
+	local generated_name
+
+	if generated_primary_name and generated_primary_name ~= "" then
+		if generated_perk_labels then
+			local suffix = table.concat(generated_perk_labels, ", ")
+
+			generated_name = "(" .. generated_primary_name .. ")" .. (suffix ~= "" and " " .. suffix or "")
+		else
+			generated_name = generated_primary_name
+		end
+	end
+
+	set_generated_curio_name(mod, content, generated_name)
 end
 
 local function configure_text_pass(pass, options)
@@ -1213,7 +1260,8 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 	local show_blessing_text_icons = configuration.native_single_column and blessing_text_mode and setting(mod, "single_column_blessing_icons_on_right", true)
 	local show_weapon_perks = setting(mod, "show_weapon_perks", true)
 	local show_weapon_perk_ranks = show_weapon_perks and setting(mod, "show_weapon_perk_rank_symbols", true)
-	local detailed_curio_profile = setting(mod, "curio_display_profile", "detailed") == "detailed"
+	local curio_display_profile = setting(mod, "curio_display_profile", "detailed")
+	local detailed_curio_profile = curio_display_profile == "detailed"
 	local favorite_marker_position = setting(mod, "favorite_marker_position", "above_rating")
 	local store_footer_height = configuration.store_item and STORE_FOOTER_HEIGHT + global_store_extra_height(mod, configuration) or 0
 	local expertise_font_size = numeric_setting(mod, "expertise_font_size", 20, 10, 28)
@@ -1450,7 +1498,7 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 
 			y_offset = y_offset + line_height
 		end
-	else
+	elseif curio_display_profile ~= "title_only" then
 		local primary_font_size = curio_primary_font_size(mod)
 		local primary_line_height = math.max(20, primary_font_size + 5)
 
@@ -1882,6 +1930,8 @@ local function configure_card_content(mod, item_blueprint, configuration)
 	local weapon_perk_compression = setting(mod, "weapon_perk_compression", "heavy")
 	local show_item_level_icon = setting(mod, "show_item_level_icon", false)
 	local compression_mode = setting(mod, "curio_stat_compression", "heavy")
+	local curio_display_profile = setting(mod, "curio_display_profile", "detailed")
+	local curio_name_format = setting(mod, "curio_name_format", "original")
 	local show_weapon_modifiers = configuration.weapon_modifier_stats_enabled == true
 	local show_blessing_text_icons = configuration.native_single_column and setting(mod, "single_column_blessing_icons_on_right", true)
 	-- Keep the original setting ID so existing user configurations migrate
@@ -1903,7 +1953,7 @@ local function configure_card_content(mod, item_blueprint, configuration)
 			synchronize_rarity_tag_color(widget, element)
 			apply_item_customization_style(mod, widget, element)
 			format_item_level(widget, element, show_item_level_icon)
-			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers, show_blessing_text_icons)
+			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers, show_blessing_text_icons, curio_display_profile, curio_name_format)
 			if configuration.character_overview then apply_character_overview_blessing_name_mode(mod, widget) end
 			fit_display_name(parent, widget, ui_renderer, preferred_font_size, math.min(preferred_font_size, minimum_font_size), force_weapon_name_single_line)
 			fit_blessing_text(parent, widget, ui_renderer)
@@ -1923,7 +1973,7 @@ local function configure_card_content(mod, item_blueprint, configuration)
 			synchronize_rarity_tag_color(widget, element)
 			apply_item_customization_style(mod, widget, element)
 			format_item_level(widget, element, show_item_level_icon)
-			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers, show_blessing_text_icons)
+			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers, show_blessing_text_icons, curio_display_profile, curio_name_format)
 			if configuration.character_overview then apply_character_overview_blessing_name_mode(mod, widget) end
 			fit_display_name(parent, widget, nil, preferred_font_size, math.min(preferred_font_size, minimum_font_size), force_weapon_name_single_line)
 			fit_blessing_text(parent, widget, nil)
