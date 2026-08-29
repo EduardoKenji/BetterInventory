@@ -676,7 +676,7 @@ return {
 								tooltip = "inventory_search_spacing_reopen_tooltip",
 								type = "numeric",
 								default_value = 14,
-								range = {0, 64},
+								range = {-50, 64},
 							},
 							{
 								setting_id = "inventory_search_melk_limited_bottom_padding",
@@ -690,7 +690,7 @@ return {
 								tooltip = "inventory_search_spacing_reopen_tooltip",
 								type = "numeric",
 								default_value = 22,
-								range = {0, 64},
+								range = {-50, 64},
 							},
 							{
 								setting_id = "inventory_search_melk_multi_bottom_padding",

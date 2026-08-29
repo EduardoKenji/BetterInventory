@@ -160,7 +160,7 @@ local function placeholder_localization_id(view)
 		or "inventory_search_placeholder"
 end
 
-local function configured_pixels(mod, setting_id, default_value, maximum)
+local function configured_pixels(mod, setting_id, default_value, maximum, minimum)
 	if not mod or type(mod.get) ~= "function" then
 		return default_value
 	end
@@ -172,7 +172,7 @@ local function configured_pixels(mod, setting_id, default_value, maximum)
 		return default_value
 	end
 
-	return math.max(0, math.min(maximum, math.floor(value + 0.5)))
+	return math.max(minimum or 0, math.min(maximum, math.floor(value + 0.5)))
 end
 
 local function search_geometry(definitions, view, mod)
@@ -198,9 +198,9 @@ local function search_geometry(definitions, view, mod)
 	if view.__class_name == "CreditsVendorView" then
 		gap = configured_pixels(mod, "inventory_search_armoury_top_padding", ARMOURY_SEARCH_GAP, 64)
 	elseif melk_route(view) == "limited" then
-		gap = configured_pixels(mod, "inventory_search_melk_limited_top_padding", MELK_LIMITED_SEARCH_GAP, 64)
+		gap = configured_pixels(mod, "inventory_search_melk_limited_top_padding", MELK_LIMITED_SEARCH_GAP, 64, -50)
 	elseif melk_route(view) == "multi" then
-		gap = configured_pixels(mod, "inventory_search_melk_multi_top_padding", MELK_MULTI_SEARCH_GAP, 64)
+		gap = configured_pixels(mod, "inventory_search_melk_multi_top_padding", MELK_MULTI_SEARCH_GAP, 64, -50)
 	end
 
 	local y = title_height > 0 and title_height + gap or top_padding + gap

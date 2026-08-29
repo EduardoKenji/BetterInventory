@@ -346,6 +346,31 @@ def main() -> None:
     assert custom_melk_multi.grid_settings.better_inventory_search_clip_pivot_y == 144
     assert custom_melk_multi.scenegraph_definition.better_inventory_search_input.position[2] == 108
 
+    # Melk's native shared grid already reserves a large header inset. Its two
+    # top sliders uniquely allow a negative additive correction while the
+    # resulting field position retains the hard scenegraph safety floor.
+    lua.globals().settings.inventory_search_melk_limited_top_padding = -50
+    negative_melk_limited = search_ui.decorate_definitions(
+        vendor_definitions,
+        lua.table_from({"__class_name": "MarksVendorView"}),
+        lua.globals().test_mod,
+        lua.table_from({}),
+    )
+    assert negative_melk_limited.scenegraph_definition.better_inventory_search_input.position[2] == 30
+    assert negative_melk_limited.grid_settings.better_inventory_search_clip_pivot_y == 66
+
+    lua.globals().settings.inventory_search_melk_multi_top_padding = -50
+    negative_melk_multi = search_ui.decorate_definitions(
+        vendor_definitions,
+        lua.table_from({"__class_name": "MarksVendorView"}),
+        lua.globals().test_mod,
+        lua.table_from(
+            {"optional_store_service": "get_all_characters_marks_store_custom"}
+        ),
+    )
+    assert negative_melk_multi.scenegraph_definition.better_inventory_search_input.position[2] == 30
+    assert negative_melk_multi.grid_settings.better_inventory_search_clip_pivot_y == 66
+
     missing_geometry = lua.table_from(
         {
             "grid_settings": lua.table_from({}),
