@@ -3663,8 +3663,8 @@ def main() -> None:
     assert defaults["inventory_search_inventory_bottom_padding"] == 46
     assert defaults["inventory_search_armoury_top_padding"] == 22
     assert defaults["inventory_search_armoury_bottom_padding"] == 34
-    assert defaults["inventory_search_hadron_top_padding"] == 14
-    assert defaults["inventory_search_hadron_bottom_padding"] == 0
+    assert defaults["inventory_search_hadron_top_padding"] == 34
+    assert defaults["inventory_search_hadron_bottom_padding"] == 50
     assert defaults["quick_discard_keep_health_curios"] is True
     assert defaults["quick_discard_keep_toughness_curios"] is True
     assert defaults["quick_discard_keep_wound_curios"] is True

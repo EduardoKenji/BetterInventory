@@ -50,8 +50,8 @@ def main() -> None:
             inventory_search_inventory_bottom_padding = 46,
             inventory_search_armoury_top_padding = 22,
             inventory_search_armoury_bottom_padding = 34,
-            inventory_search_hadron_top_padding = 14,
-            inventory_search_hadron_bottom_padding = 0,
+            inventory_search_hadron_top_padding = 34,
+            inventory_search_hadron_bottom_padding = 50,
             inventory_search_focus_keybind = "off",
         }
         test_mod = {
@@ -139,9 +139,9 @@ def main() -> None:
         lua.globals().test_mod,
     )
     assert crafting.grid_settings.title_height == 80
-    assert crafting.grid_settings.top_padding == 0
-    assert crafting.grid_settings.better_inventory_search_clip_pivot_y == 50
-    assert crafting.scenegraph_definition.better_inventory_search_input.position[2] == 14
+    assert crafting.grid_settings.top_padding == 50
+    assert crafting.grid_settings.better_inventory_search_clip_pivot_y == 70
+    assert crafting.scenegraph_definition.better_inventory_search_input.position[2] == 34
 
     vendor_definitions = lua.table_from(
         {

@@ -23,7 +23,7 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 ## What's new in v3.3.1
 
 - Adds separate top and bottom Equipment Text Search spacing controls for Hadron's Entreat Item view.
-- Uses Hadron's actual tab-frame boundary instead of its oversized native grid-title reserve, moving the search field and first item row upward by default without changing Inventory, Armoury, or Sacrifice Item geometry.
+- Uses Hadron's actual tab-frame boundary instead of stacking the field below its oversized native grid-title reserve, with Hadron-specific `34 / 50` top/bottom defaults and no changes to Inventory, Armoury, or Sacrifice Item geometry.
 
 ## What's new in v3.3.0
 
