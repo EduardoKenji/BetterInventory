@@ -2908,7 +2908,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "3.3.0"
+    assert data.version == "3.3.1"
 
     gradient_name = localization["mod_name"]["en"]
     assert gradient_name.startswith("{#color(174,239,105)}B")
@@ -2928,6 +2928,8 @@ def main() -> None:
         == "Enable search in Brunt's Armoury"
     )
     assert localization["inventory_search_spacing_group"]["en"] == "Search field spacing"
+    assert localization["inventory_search_hadron_top_padding"]["en"] == "Hadron: top padding"
+    assert localization["inventory_search_hadron_bottom_padding"]["en"] == "Hadron: bottom padding"
     assert (
         localization["god_stat_checker_integration_group"]["en"]
         == "Mod integration: God Stat Checker 1.1.2"
@@ -2998,6 +3000,8 @@ def main() -> None:
     assert localization["custom_item_name_and_colors_group"]["zh-cn"] == "自定义物品名称和颜色"
     assert localization["inventory_search_group"]["zh-cn"] == "装备文本搜索"
     assert localization["inventory_search_spacing_group"]["zh-cn"] == "搜索框间距"
+    assert localization["inventory_search_hadron_top_padding"]["zh-cn"] == "海德昂：顶部间距"
+    assert localization["inventory_search_hadron_bottom_padding"]["zh-cn"] == "海德昂：底部间距"
     assert localization["inventory_search_placeholder"]["zh-cn"] == "搜索：剑 & 命中弱点 & 防弹装甲"
     assert localization["inventory_search_curio_placeholder"]["zh-cn"] == "搜索：韧性 & 生命值 & 复活速度"
     assert localization["debug_group"]["zh-cn"] == "调试（仅测试用）"
@@ -3659,6 +3663,8 @@ def main() -> None:
     assert defaults["inventory_search_inventory_bottom_padding"] == 46
     assert defaults["inventory_search_armoury_top_padding"] == 22
     assert defaults["inventory_search_armoury_bottom_padding"] == 34
+    assert defaults["inventory_search_hadron_top_padding"] == 14
+    assert defaults["inventory_search_hadron_bottom_padding"] == 0
     assert defaults["quick_discard_keep_health_curios"] is True
     assert defaults["quick_discard_keep_toughness_curios"] is True
     assert defaults["quick_discard_keep_wound_curios"] is True

@@ -1,4 +1,4 @@
-local MOD_VERSION = "3.3.0"
+local MOD_VERSION = "3.3.1"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
@@ -649,6 +649,20 @@ return {
 								tooltip = "inventory_search_spacing_reopen_tooltip",
 								type = "numeric",
 								default_value = 34,
+								range = {0, 96},
+							},
+							{
+								setting_id = "inventory_search_hadron_top_padding",
+								tooltip = "inventory_search_spacing_reopen_tooltip",
+								type = "numeric",
+								default_value = 14,
+								range = {0, 64},
+							},
+							{
+								setting_id = "inventory_search_hadron_bottom_padding",
+								tooltip = "inventory_search_spacing_reopen_tooltip",
+								type = "numeric",
+								default_value = 0,
 								range = {0, 96},
 							},
 						},

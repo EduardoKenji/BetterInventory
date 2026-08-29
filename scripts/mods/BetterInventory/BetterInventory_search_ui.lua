@@ -16,6 +16,8 @@ local INVENTORY_SEARCH_ROW_PADDING = 46
 local ARMOURY_SEARCH_ROW_PADDING = 34
 local TITLED_SEARCH_GAP = 14
 local ARMOURY_SEARCH_GAP = 22
+local HADRON_SEARCH_GAP = 14
+local HADRON_SEARCH_ROW_PADDING = 0
 local BARTER_GRID_OFFSET = 100
 
 local function supported(view)
@@ -121,6 +123,11 @@ end
 local function search_geometry(definitions, view, mod)
 	if view.__class_name == "CraftingMechanicusBarterItemsView" then
 		return 16, 58, 486
+	elseif view.__class_name == "CraftingMechanicusModifyView" then
+		-- Hadron's native 80px grid title reserve is much taller than its tab
+		-- frame. Position the field from the actual pivot instead of stacking it
+		-- after that reserve, which otherwise wastes most of a card row.
+		return 14, configured_pixels(mod, "inventory_search_hadron_top_padding", HADRON_SEARCH_GAP, 64), 568
 	end
 
 	local grid_settings = definitions.grid_settings or {}
@@ -176,6 +183,8 @@ SearchUI.decorate_definitions = function(definitions, view, mod)
 			and configured_pixels(mod, "inventory_search_armoury_bottom_padding", ARMOURY_SEARCH_ROW_PADDING, 96)
 			or view.__class_name == "InventoryWeaponsView"
 				and configured_pixels(mod, "inventory_search_inventory_bottom_padding", INVENTORY_SEARCH_ROW_PADDING, 96)
+			or view.__class_name == "CraftingMechanicusModifyView"
+				and configured_pixels(mod, "inventory_search_hadron_bottom_padding", HADRON_SEARCH_ROW_PADDING, 96)
 			or SEARCH_ROW_PADDING
 		owned.grid_settings.top_padding = (tonumber(owned.grid_settings.top_padding) or 0) + row_padding
 	end
