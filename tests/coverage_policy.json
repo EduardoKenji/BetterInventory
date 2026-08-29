@@ -6,6 +6,7 @@
     "BetterInventory_localization_core.lua",
     "BetterInventory_localization_features.lua",
     "BetterInventory_localization_zh_cn.lua",
+    "BetterInventory_localization_zh_cn_search.lua",
     "BetterInventory_curio_values.lua"
   ],
   "static_modules": {

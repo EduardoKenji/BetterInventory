@@ -46,12 +46,17 @@ def main() -> None:
         settings = {
             enable_inventory_search = true,
             enable_inventory_search_brunt = false,
+            enable_inventory_search_melk = true,
             inventory_search_inventory_top_padding = 14,
             inventory_search_inventory_bottom_padding = 46,
             inventory_search_armoury_top_padding = 22,
             inventory_search_armoury_bottom_padding = 34,
             inventory_search_hadron_top_padding = 34,
             inventory_search_hadron_bottom_padding = 50,
+            inventory_search_melk_limited_top_padding = 14,
+            inventory_search_melk_limited_bottom_padding = 46,
+            inventory_search_melk_multi_top_padding = 22,
+            inventory_search_melk_multi_bottom_padding = 34,
             inventory_search_focus_keybind = "off",
         }
         test_mod = {
@@ -185,6 +190,59 @@ def main() -> None:
     assert search_ui.enabled(lua.globals().test_mod, brunt_view_enabled) is True
     lua.globals().settings.enable_inventory_search_brunt = False
 
+    # Native Limited Time Acquisitions and GlobalStore Multi-Operative Supply
+    # share MarksVendorView but retain independent spacing and reject unknown
+    # custom Marks services.
+    melk_limited_view = lua.table_from({"__class_name": "MarksVendorView"})
+    melk_limited = search_ui.decorate_definitions(
+        vendor_definitions,
+        melk_limited_view,
+        lua.globals().test_mod,
+        lua.table_from({}),
+    )
+    assert melk_limited.grid_settings.top_padding == 126
+    assert melk_limited.grid_settings.better_inventory_search_clip_pivot_y == 130
+    assert melk_limited.scenegraph_definition.better_inventory_search_input.position[2] == 94
+
+    melk_multi_view = lua.table_from({"__class_name": "MarksVendorView"})
+    melk_multi = search_ui.decorate_definitions(
+        vendor_definitions,
+        melk_multi_view,
+        lua.globals().test_mod,
+        lua.table_from(
+            {"optional_store_service": "get_all_characters_marks_store_custom"}
+        ),
+    )
+    assert melk_multi.grid_settings.top_padding == 114
+    assert melk_multi.grid_settings.better_inventory_search_clip_pivot_y == 138
+    assert melk_multi.scenegraph_definition.better_inventory_search_input.position[2] == 102
+    assert melk_multi_view._better_inventory_search_melk_route == "multi"
+
+    unknown_melk_view = lua.table_from({"__class_name": "MarksVendorView"})
+    unknown_melk = search_ui.decorate_definitions(
+        vendor_definitions,
+        unknown_melk_view,
+        lua.globals().test_mod,
+        lua.table_from({"optional_store_service": "unknown_marks_service"}),
+    )
+    lua.globals().unknown_melk = unknown_melk
+    lua.globals().vendor_definitions = vendor_definitions
+    assert lua.execute("return unknown_melk == vendor_definitions") is True
+    assert unknown_melk_view._better_inventory_search_ui_unavailable is True
+
+    lua.globals().settings.enable_inventory_search_melk = False
+    disabled_melk_view = lua.table_from({"__class_name": "MarksVendorView"})
+    disabled_melk = search_ui.decorate_definitions(
+        vendor_definitions,
+        disabled_melk_view,
+        lua.globals().test_mod,
+        lua.table_from({}),
+    )
+    lua.globals().disabled_melk = disabled_melk
+    assert lua.execute("return disabled_melk == vendor_definitions") is True
+    assert disabled_melk_view._better_inventory_search_ui_unavailable is True
+    lua.globals().settings.enable_inventory_search_melk = True
+
     sacrifice_view = lua.table_from({"__class_name": "CraftingMechanicusBarterItemsView"})
     sacrifice = search_ui.decorate_definitions(
         definitions, sacrifice_view, lua.globals().test_mod
@@ -227,6 +285,32 @@ def main() -> None:
     assert custom_hadron.grid_settings.top_padding == 24
     assert custom_hadron.grid_settings.better_inventory_search_clip_pivot_y == 56
     assert custom_hadron.scenegraph_definition.better_inventory_search_input.position[2] == 20
+
+    lua.globals().settings.inventory_search_melk_limited_top_padding = 18
+    lua.globals().settings.inventory_search_melk_limited_bottom_padding = 40
+    custom_melk_limited = search_ui.decorate_definitions(
+        vendor_definitions,
+        lua.table_from({"__class_name": "MarksVendorView"}),
+        lua.globals().test_mod,
+        lua.table_from({}),
+    )
+    assert custom_melk_limited.grid_settings.top_padding == 120
+    assert custom_melk_limited.grid_settings.better_inventory_search_clip_pivot_y == 134
+    assert custom_melk_limited.scenegraph_definition.better_inventory_search_input.position[2] == 98
+
+    lua.globals().settings.inventory_search_melk_multi_top_padding = 28
+    lua.globals().settings.inventory_search_melk_multi_bottom_padding = 38
+    custom_melk_multi = search_ui.decorate_definitions(
+        vendor_definitions,
+        lua.table_from({"__class_name": "MarksVendorView"}),
+        lua.globals().test_mod,
+        lua.table_from(
+            {"optional_store_service": "get_all_characters_marks_store_custom"}
+        ),
+    )
+    assert custom_melk_multi.grid_settings.top_padding == 118
+    assert custom_melk_multi.grid_settings.better_inventory_search_clip_pivot_y == 144
+    assert custom_melk_multi.scenegraph_definition.better_inventory_search_input.position[2] == 108
 
     missing_geometry = lua.table_from(
         {

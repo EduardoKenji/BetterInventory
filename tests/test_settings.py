@@ -2995,9 +2995,15 @@ def main() -> None:
         localization["enable_inventory_search_brunt"]["en"]
         == "Enable search in Brunt's Armoury"
     )
+    assert (
+        localization["enable_inventory_search_melk"]["en"]
+        == "Enable search in Sire Melk's Requisitorium"
+    )
     assert localization["inventory_search_spacing_group"]["en"] == "Search field spacing"
     assert localization["inventory_search_hadron_top_padding"]["en"] == "Hadron: top padding"
     assert localization["inventory_search_hadron_bottom_padding"]["en"] == "Hadron: bottom padding"
+    assert localization["inventory_search_melk_limited_top_padding"]["en"] == "Melk Limited Time: top padding"
+    assert localization["inventory_search_melk_multi_bottom_padding"]["en"] == "Melk Multi-Operative: bottom padding"
     assert (
         localization["enable_melk_limited_grid"]["en"]
         == "Mirror Armoury grid in Limited Time Acquisitions"
@@ -3078,6 +3084,9 @@ def main() -> None:
     assert localization["inventory_search_spacing_group"]["zh-cn"] == "搜索框间距"
     assert localization["inventory_search_hadron_top_padding"]["zh-cn"] == "海德昂：顶部间距"
     assert localization["inventory_search_hadron_bottom_padding"]["zh-cn"] == "海德昂：底部间距"
+    assert localization["enable_inventory_search_melk"]["zh-cn"] == "在梅尔克的征用处中启用搜索"
+    assert localization["inventory_search_melk_limited_top_padding"]["zh-cn"] == "梅尔克限时购置：顶部间距"
+    assert localization["inventory_search_melk_multi_bottom_padding"]["zh-cn"] == "梅尔克多干员补给：底部间距"
     assert localization["enable_melk_limited_grid"]["zh-cn"] == "在限时购置中镜像军械库网格"
     assert localization["enable_melk_multi_operative_grid"]["zh-cn"] == "在多干员补给中镜像军械库网格"
     assert localization["inventory_search_placeholder"]["zh-cn"] == "搜索：剑 & 命中弱点 & 防弹装甲"
@@ -3747,6 +3756,11 @@ def main() -> None:
     assert defaults["inventory_search_armoury_bottom_padding"] == 34
     assert defaults["inventory_search_hadron_top_padding"] == 34
     assert defaults["inventory_search_hadron_bottom_padding"] == 50
+    assert defaults["enable_inventory_search_melk"] is True
+    assert defaults["inventory_search_melk_limited_top_padding"] == 14
+    assert defaults["inventory_search_melk_limited_bottom_padding"] == 46
+    assert defaults["inventory_search_melk_multi_top_padding"] == 22
+    assert defaults["inventory_search_melk_multi_bottom_padding"] == 34
     assert defaults["quick_discard_keep_health_curios"] is True
     assert defaults["quick_discard_keep_toughness_curios"] is True
     assert defaults["quick_discard_keep_wound_curios"] is True

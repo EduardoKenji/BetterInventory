@@ -25,13 +25,18 @@ end
 merge_base_shard(load_shard("BetterInventory_localization_core"), "core")
 merge_base_shard(load_shard("BetterInventory_localization_features"), "features")
 
-for localization_id, text in pairs(load_shard("BetterInventory_localization_zh_cn")) do
-	local entry = localization[localization_id]
+local function merge_zh_cn_shard(shard)
+	for localization_id, text in pairs(shard) do
+		local entry = localization[localization_id]
 
-	if entry then
-		entry["zh-cn"] = text
+		if entry then
+			entry["zh-cn"] = text
+		end
 	end
 end
+
+merge_zh_cn_shard(load_shard("BetterInventory_localization_zh_cn"))
+merge_zh_cn_shard(load_shard("BetterInventory_localization_zh_cn_search"))
 
 local function gradient_text(text, start_color, end_color)
 	local characters = {}

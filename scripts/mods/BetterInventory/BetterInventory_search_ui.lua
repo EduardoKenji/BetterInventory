@@ -18,7 +18,12 @@ local TITLED_SEARCH_GAP = 14
 local ARMOURY_SEARCH_GAP = 22
 local HADRON_SEARCH_GAP = 34
 local HADRON_SEARCH_ROW_PADDING = 50
+local MELK_LIMITED_SEARCH_GAP = 14
+local MELK_LIMITED_SEARCH_ROW_PADDING = 46
+local MELK_MULTI_SEARCH_GAP = 22
+local MELK_MULTI_SEARCH_ROW_PADDING = 34
 local BARTER_GRID_OFFSET = 100
+local GLOBAL_STORE_MELK_SERVICE = "get_all_characters_marks_store_custom"
 
 local function supported(view)
 	local class_name = view and view.__class_name
@@ -34,11 +39,37 @@ end
 
 SearchUI.supported = supported
 
-local function enabled_for_view(mod, view)
+local function melk_route(view, context)
+	if not view or view.__class_name ~= "MarksVendorView" then
+		return nil
+	end
+
+	local remembered = view._better_inventory_search_melk_route
+
+	if remembered ~= nil then
+		return remembered ~= false and remembered or nil
+	end
+
+	local service = view._optional_store_service or context and context.optional_store_service
+	local route = service == nil and "limited"
+		or service == GLOBAL_STORE_MELK_SERVICE and "multi"
+		or false
+
+	view._better_inventory_search_melk_route = route
+
+	return route ~= false and route or nil
+end
+
+local function enabled_for_view(mod, view, context)
 	if not supported(view) then
 		return false
 	elseif mod and type(mod.get) == "function" and mod:get("enable_inventory_search") == false then
 		return false
+	elseif view.__class_name == "MarksVendorView" then
+		return melk_route(view, context) ~= nil
+			and mod and type(mod.get) == "function"
+			and mod:get("enable_inventory_search_melk") ~= false
+			or false
 	elseif view.__class_name == "CreditsGoodsVendorView" then
 		return mod and type(mod.get) == "function" and mod:get("enable_inventory_search_brunt") == true or false
 	end
@@ -142,6 +173,10 @@ local function search_geometry(definitions, view, mod)
 	-- item_grid_pivot than the ordinary titled inventory header.
 	if view.__class_name == "CreditsVendorView" then
 		gap = configured_pixels(mod, "inventory_search_armoury_top_padding", ARMOURY_SEARCH_GAP, 64)
+	elseif melk_route(view) == "limited" then
+		gap = configured_pixels(mod, "inventory_search_melk_limited_top_padding", MELK_LIMITED_SEARCH_GAP, 64)
+	elseif melk_route(view) == "multi" then
+		gap = configured_pixels(mod, "inventory_search_melk_multi_top_padding", MELK_MULTI_SEARCH_GAP, 64)
 	end
 
 	local y = title_height > 0 and title_height + gap or top_padding + gap
@@ -149,10 +184,10 @@ local function search_geometry(definitions, view, mod)
 	return 14, math.max(y, 12), 568
 end
 
-SearchUI.decorate_definitions = function(definitions, view, mod)
+SearchUI.decorate_definitions = function(definitions, view, mod, context)
 	if not supported(view) then
 		return definitions
-	elseif not enabled_for_view(mod, view) then
+	elseif not enabled_for_view(mod, view, context) then
 		if view then
 			view._better_inventory_search_ui_unavailable = true
 		end
@@ -181,6 +216,10 @@ SearchUI.decorate_definitions = function(definitions, view, mod)
 	if view.__class_name ~= "CraftingMechanicusBarterItemsView" then
 		local row_padding = view.__class_name == "CreditsVendorView"
 			and configured_pixels(mod, "inventory_search_armoury_bottom_padding", ARMOURY_SEARCH_ROW_PADDING, 96)
+			or melk_route(view) == "limited"
+				and configured_pixels(mod, "inventory_search_melk_limited_bottom_padding", MELK_LIMITED_SEARCH_ROW_PADDING, 96)
+			or melk_route(view) == "multi"
+				and configured_pixels(mod, "inventory_search_melk_multi_bottom_padding", MELK_MULTI_SEARCH_ROW_PADDING, 96)
 			or view.__class_name == "InventoryWeaponsView"
 				and configured_pixels(mod, "inventory_search_inventory_bottom_padding", INVENTORY_SEARCH_ROW_PADDING, 96)
 			or view.__class_name == "CraftingMechanicusModifyView"
