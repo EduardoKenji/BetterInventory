@@ -83,6 +83,30 @@ local function clone(value)
 	return type(value) == "table" and table.clone(value) or {}
 end
 
+local function merge_definitions(base_definitions, definitions)
+	local merged = clone(base_definitions)
+
+	if type(table.merge_recursive) == "function" then
+		table.merge_recursive(merged, definitions or {})
+
+		return merged
+	end
+
+	local function merge_into(destination, source)
+		for key, value in pairs(source or {}) do
+			if type(value) == "table" and type(destination[key]) == "table" then
+				merge_into(destination[key], value)
+			else
+				destination[key] = clone(value)
+			end
+		end
+	end
+
+	merge_into(merged, definitions)
+
+	return merged
+end
+
 local function text_length(value)
 	local utf8 = rawget(_G, "Utf8")
 
@@ -184,7 +208,7 @@ local function search_geometry(definitions, view, mod)
 	return 14, math.max(y, 12), 568
 end
 
-SearchUI.decorate_definitions = function(definitions, view, mod, context)
+SearchUI.decorate_definitions = function(definitions, view, mod, context, base_definitions)
 	if not supported(view) then
 		return definitions
 	elseif not enabled_for_view(mod, view, context) then
@@ -195,7 +219,26 @@ SearchUI.decorate_definitions = function(definitions, view, mod, context)
 		return definitions
 	elseif type(definitions) == "table" and definitions._better_inventory_search_decorated then
 		return definitions
-	elseif type(definitions) ~= "table" or type(definitions.scenegraph_definition) ~= "table" or type(definitions.scenegraph_definition.item_grid_pivot) ~= "table" then
+	elseif type(definitions) ~= "table" then
+		if view then
+			view._better_inventory_search_ui_unavailable = true
+		end
+
+		return definitions
+	end
+
+	-- MarksVendorView reaches ItemGridViewBase with only its vendor-specific
+	-- definitions. Darktide merges the shared item-grid definitions inside the
+	-- original base initializer, after this decorator runs. Resolve that same
+	-- effective table here so Melk can own a search row without mutating either
+	-- shared definition source.
+	if (type(definitions.scenegraph_definition) ~= "table" or type(definitions.scenegraph_definition.item_grid_pivot) ~= "table")
+		and type(base_definitions) == "table"
+	then
+		definitions = merge_definitions(base_definitions, definitions)
+	end
+
+	if type(definitions.scenegraph_definition) ~= "table" or type(definitions.scenegraph_definition.item_grid_pivot) ~= "table" then
 		if view then
 			view._better_inventory_search_ui_unavailable = true
 		end

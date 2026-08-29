@@ -1533,7 +1533,7 @@ mod:hook(ItemGridViewBase, "init", function(func, view, definitions, settings, c
 	active_highlight_views[view] = true
 	local function initialize(adjusted_definitions)
 		if mod:get("enable_inventory_search") ~= false and SearchUI and type(SearchUI.decorate_definitions) == "function" then
-			adjusted_definitions = SearchUI.decorate_definitions(adjusted_definitions, view, mod, context)
+			adjusted_definitions = SearchUI.decorate_definitions(adjusted_definitions, view, mod, context, ItemGridViewBaseDefinitions)
 		end
 
 		return func(view, adjusted_definitions, settings, context)

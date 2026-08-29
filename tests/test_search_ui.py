@@ -218,6 +218,40 @@ def main() -> None:
     assert melk_multi.scenegraph_definition.better_inventory_search_input.position[2] == 102
     assert melk_multi_view._better_inventory_search_melk_route == "multi"
 
+    # Melk actually enters ItemGridViewBase with sparse vendor definitions;
+    # the shared pivot/grid settings are merged by Darktide only after our
+    # hook. The decorator must resolve that effective table itself.
+    sparse_melk_definitions = lua.table_from(
+        {
+            "scenegraph_definition": lua.table_from({}),
+            "widget_definitions": lua.table_from({"purchase_button": lua.table_from({})}),
+        }
+    )
+    shared_item_grid_definitions = lua.table_from(
+        {
+            "grid_settings": lua.table_from({"title_height": 0, "top_padding": 80}),
+            "scenegraph_definition": lua.table_from(
+                {"item_grid_pivot": lua.table_from({})}
+            ),
+            "widget_definitions": lua.table_from({"native": lua.table_from({})}),
+        }
+    )
+    sparse_melk_view = lua.table_from({"__class_name": "MarksVendorView"})
+    sparse_melk = search_ui.decorate_definitions(
+        sparse_melk_definitions,
+        sparse_melk_view,
+        lua.globals().test_mod,
+        lua.table_from({}),
+        shared_item_grid_definitions,
+    )
+    assert sparse_melk is not sparse_melk_definitions
+    assert sparse_melk.grid_settings.top_padding == 126
+    assert sparse_melk.scenegraph_definition.better_inventory_search_input.position[2] == 94
+    assert sparse_melk.widget_definitions.purchase_button is not None
+    assert sparse_melk.widget_definitions.native is not None
+    assert sparse_melk_definitions.scenegraph_definition.item_grid_pivot is None
+    assert shared_item_grid_definitions.widget_definitions.better_inventory_search_input is None
+
     unknown_melk_view = lua.table_from({"__class_name": "MarksVendorView"})
     unknown_melk = search_ui.decorate_definitions(
         vendor_definitions,
