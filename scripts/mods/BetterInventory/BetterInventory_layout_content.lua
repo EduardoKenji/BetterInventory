@@ -383,6 +383,13 @@ local COMPACT_CURIO_LABELS = {
 			"Ordo Dockets",
 		},
 	},
+	gadget_mission_xp_increase = {
+		localization_id = "curio_experience",
+		heavy_localization_id = "curio_heavy_experience",
+		required_terms = {
+			"Experience",
+		},
+	},
 	gadget_revive_speed_increase = {
 		localization_id = "curio_revive_speed",
 		required_terms = {
@@ -414,6 +421,32 @@ local CURIO_TRAIT_SEARCH_LABELS = {
 	gadget_toughness_increase = {
 		localization_id = "automatic_curio_toughness",
 		canonical = "toughness",
+	},
+}
+local CURIO_PRIMARY_NAME_LABELS = {
+	gadget_health_increase = {
+		localization_id = "automatic_curio_health",
+		heavy_localization_id = "curio_name_health_heavy",
+	},
+	gadget_innate_health_increase = {
+		localization_id = "automatic_curio_health",
+		heavy_localization_id = "curio_name_health_heavy",
+	},
+	gadget_innate_max_wounds_increase = {
+		localization_id = "automatic_curio_wounds",
+		heavy_localization_id = "curio_name_wounds_heavy",
+	},
+	gadget_innate_toughness_increase = {
+		localization_id = "automatic_curio_toughness",
+		heavy_localization_id = "curio_name_toughness_heavy",
+	},
+	gadget_stamina_increase = {
+		localization_id = "automatic_curio_stamina",
+		heavy_localization_id = "curio_name_stamina_heavy",
+	},
+	gadget_toughness_increase = {
+		localization_id = "automatic_curio_toughness",
+		heavy_localization_id = "curio_name_toughness_heavy",
 	},
 }
 local COMPACT_WEAPON_PERK_LABELS = {}
@@ -928,6 +961,27 @@ local function single_line_text(value)
 	return value
 end
 
+local function curio_name_label(mod, data, compression_mode)
+	local description = single_line_text(data and data.description)
+	local primary_definition = data and CURIO_PRIMARY_NAME_LABELS[data.id]
+	local compact_definition = data and COMPACT_CURIO_LABELS[data.id]
+	local localization_id
+
+	if compression_mode ~= "none" and primary_definition then
+		localization_id = compression_mode == "heavy" and primary_definition.heavy_localization_id or primary_definition.localization_id
+	elseif compression_mode ~= "none" and compact_definition then
+		localization_id = compression_mode == "heavy" and (compact_definition.heavy_localization_id or compact_definition.localization_id) or compact_definition.localization_id
+	end
+
+	if localization_id then
+		return mod:localize(localization_id)
+	end
+
+	local label = string.gsub(description, "^%s*[%+%-]?%d+[%.,]?%d*%%?%s*", "", 1)
+
+	return label ~= "" and label or description
+end
+
 local function compact_weapon_perk_text(mod, id, description, compression_mode)
 	local definition = id and COMPACT_WEAPON_PERK_LABELS[id]
 
@@ -1016,6 +1070,24 @@ local function simplified_curio_description(data, enabled, description)
 	end
 
 	return description
+end
+
+local function compact_curio_primary_name(mod, data, compression_mode, simplify_curio_stats)
+	local description = single_line_text(simplified_curio_description(data, simplify_curio_stats))
+	local definition = data and CURIO_PRIMARY_NAME_LABELS[data.id]
+
+	if compression_mode == "none" or not definition or description == "" then
+		return description
+	end
+
+	local amount = string.match(description, "^%s*([%+%-]?%d+[%.,]?%d*%%?)")
+	local localization_id = compression_mode == "heavy" and definition.heavy_localization_id or definition.localization_id
+
+	if not amount or not localization_id then
+		return description
+	end
+
+	return string.format("%s %s", amount, mod:localize(localization_id))
 end
 
 local function pass_by_style_id(pass_template, style_id)
@@ -1534,6 +1606,37 @@ local function append_weapon_mark(content, item)
 	return true
 end
 
+local function apply_generated_curio_name(mod, content)
+	local generated_name = content and content.better_inventory_generated_curio_name
+
+	if type(generated_name) ~= "string" or generated_name == "" or setting(mod, "curio_name_format", "original") == "original" then
+		return false
+	end
+
+	if setting(mod, "curio_generated_name_respect_custom_names", true) and content.better_inventory_curio_has_custom_name then
+		return false
+	end
+
+	content.display_name = generated_name
+	content.better_inventory_name_it_curio_name_text = generated_name
+	content.better_inventory_name_it_curio_source_name = generated_name
+	content.better_inventory_name_it_curio_full_name = nil
+	content.better_inventory_fitted_name_it_curio_name = nil
+	content.better_inventory_full_display_name = nil
+
+	return true
+end
+
+local function set_generated_curio_name(mod, content, generated_name)
+	if not content then
+		return false
+	end
+
+	content.better_inventory_generated_curio_name = type(generated_name) == "string" and generated_name ~= "" and generated_name or nil
+
+	return apply_generated_curio_name(mod, content)
+end
+
 local function format_item_name(mod, widget, element, append_mark_to_name, force_weapon_name_single_line, native_name_refreshed)
 	local content = widget and widget.content
 
@@ -1548,12 +1651,15 @@ local function format_item_name(mod, widget, element, append_mark_to_name, force
 	content.better_inventory_name_it_curio_full_name = nil
 	content.better_inventory_fitted_name_it_curio_name = nil
 	content.better_inventory_name_it_curio_source_name = nil
+	content.better_inventory_curio_has_custom_name = nil
 
 	element = element or content.element
 
 	local item = element and (element.real_item or element.item)
 
 	if native_name_refreshed then
+		content.better_inventory_generated_curio_name = nil
+
 		if is_weapon(item) then
 			capture_native_weapon_family(content, item)
 		else
@@ -1570,10 +1676,14 @@ local function format_item_name(mod, widget, element, append_mark_to_name, force
 	local preserve_custom_mark = append_mark_to_name and force_weapon_name_single_line
 
 	if is_curio(item) then
-		content.display_name = external_name or internal_name or localized_item_name(item, content.display_name)
+		local custom_name = type(external_name) == "string" and external_name ~= "" and external_name or type(internal_name) == "string" and internal_name ~= "" and internal_name or nil
+
+		content.better_inventory_curio_has_custom_name = custom_name ~= nil
+		content.display_name = custom_name or localized_item_name(item, content.display_name)
 		content.better_inventory_name_it_curio_title = setting(mod, "curio_display_profile", "detailed") == "detailed" and setting(mod, "name_it_force_curio_name_in_detailed_mode", true)
 		content.better_inventory_name_it_curio_name_text = content.display_name
 		content.better_inventory_name_it_curio_source_name = content.display_name
+		apply_generated_curio_name(mod, content)
 
 		return
 	end
@@ -2146,6 +2256,8 @@ Content.curio_primary_color = curio_primary_color
 Content.curio_secondary_color = curio_secondary_color
 Content.compact_curio_description = compact_curio_description
 Content.compact_curio_perk_search_terms = compact_curio_perk_search_terms
+Content.compact_curio_primary_name = compact_curio_primary_name
+Content.curio_name_label = curio_name_label
 Content.curio_trait_search_terms = curio_trait_search_terms
 Content.configured_text_color = configured_text_color
 Content.single_line_text = single_line_text
@@ -2172,6 +2284,7 @@ Content.grid_ui_renderer = grid_ui_renderer
 Content.valid_weapon_name_part = valid_weapon_name_part
 Content.localized_item_name = localized_item_name
 Content.format_item_name = format_item_name
+Content.set_generated_curio_name = set_generated_curio_name
 Content.apply_custom_color = apply_custom_color
 Content.restore_custom_color = restore_custom_color
 Content.restore_item_customization_style = restore_item_customization_style

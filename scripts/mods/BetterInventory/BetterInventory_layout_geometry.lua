@@ -472,7 +472,8 @@ Geometry.card_height = function(mod, configuration)
 
 	local manual_height = numeric_setting(mod, "card_height", 110, 110, 240)
 	local global_store_extra = global_store_extra_height(mod, configuration)
-	local force_name_it_curio_title = setting(mod, "curio_display_profile", "detailed") == "detailed" and name_it_curio_title_enabled(mod, configuration)
+	local curio_display_profile = setting(mod, "curio_display_profile", "detailed")
+	local force_name_it_curio_title = curio_display_profile == "detailed" and name_it_curio_title_enabled(mod, configuration)
 
 	if not setting(mod, "automatic_card_height", true) and not configuration.native_single_column and global_store_extra <= 0 and not force_name_it_curio_title then
 		return manual_height
@@ -547,14 +548,14 @@ Geometry.card_height = function(mod, configuration)
 		required_height = required_height + ARMOURY_NATIVE_CARD_HEIGHT_EXTRA
 	end
 
-	if setting(mod, "curio_display_profile", "detailed") == "detailed" then
+	if curio_display_profile == "detailed" then
 		local primary_line_height = curio_primary_font_size(mod) + 5
 		local secondary_line_height = curio_secondary_font_size(mod) + 5
 		local primary_secondary_spacing = curio_primary_secondary_spacing(mod)
 		local curio_title_height = force_name_it_curio_title and curio_name_title_height(mod, configuration) or 0
 
 		required_height = math.max(required_height, 7 + curio_title_height + primary_line_height + primary_secondary_spacing + 3 * secondary_line_height + 12 + store_footer_height)
-	else
+	elseif curio_display_profile == "primary" then
 		local primary_line_height = math.max(20, curio_primary_font_size(mod) + 5)
 		local quality_row_height = setting(mod, "show_curio_quality", false) and secondary_row_height or 0
 

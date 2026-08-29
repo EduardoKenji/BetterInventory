@@ -144,6 +144,8 @@ def main() -> None:
 			new_item_highlight_color_g = 189,
 			new_item_highlight_color_b = 73,
 			curio_display_profile = "primary",
+			curio_name_format = "original",
+			curio_generated_name_respect_custom_names = true,
 			show_curio_item_level = true,
 			curio_secondary_color_mode = "category",
 			expand_inventory_window = true,
@@ -2906,7 +2908,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "3.2.6"
+    assert data.version == "3.3.0"
 
     gradient_name = localization["mod_name"]["en"]
     assert gradient_name.startswith("{#color(174,239,105)}B")
@@ -3448,9 +3450,13 @@ def main() -> None:
         for index in range(1, len(curio_content_group.sub_widgets) + 1)
     ]
     assert curio_content_ids.count("curio_content_name_it_curio_name") == 1
-    assert curio_content_ids.index("curio_content_name_it_curio_name") == (
-        curio_content_ids.index("curio_display_profile") + 1
-    )
+    curio_profile_index = curio_content_ids.index("curio_display_profile")
+    assert curio_content_ids[curio_profile_index : curio_profile_index + 4] == [
+        "curio_display_profile",
+        "curio_name_format",
+        "curio_generated_name_respect_custom_names",
+        "curio_content_name_it_curio_name",
+    ]
     enhanced_descriptions_group = next(
         data.options.widgets[index]
         for index in range(1, len(data.options.widgets) + 1)
@@ -3470,6 +3476,9 @@ def main() -> None:
     assert defaults["melee_columns"] == 3
     assert defaults["ranged_columns"] == 3
     assert defaults["curio_columns"] == 3
+    assert defaults["curio_display_profile"] == "detailed"
+    assert defaults["curio_name_format"] == "original"
+    assert defaults["curio_generated_name_respect_custom_names"] is True
     assert defaults["enable_hadron_single_column_mirror"] is True
     assert defaults["enable_armoury_single_column_mirror"] is True
     assert defaults["enable_character_overview_melee_mirror"] is True

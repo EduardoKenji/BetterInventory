@@ -103,6 +103,7 @@ def main() -> None:
 			gadget_toughness_regen_delay = "+30% Toughness Regeneration Speed",
 			gadget_mission_credits_increase = "+8% Ordo Dockets (Mission Rewards)",
 			gadget_revive_speed_increase = "+10% Revive Speed (Ally)",
+			gadget_mission_xp_increase = "+10% Experience",
 			weapon_trait_melee_common_wield_increased_unarmored_damage = "+25% Damage (Unarmoured Enemies)",
 			weapon_trait_melee_common_wield_increased_armored_damage = "+25% Damage (Flak Armoured Enemies)",
 			weapon_trait_melee_common_wield_increased_resistant_damage = "+25% Damage (Unyielding Enemies)",
@@ -157,6 +158,7 @@ def main() -> None:
 			["content/items/perks/test_toughness_regen"] = "gadget_toughness_regen_delay",
 			["content/items/perks/test_ordo_dockets"] = "gadget_mission_credits_increase",
 			["content/items/perks/test_revive_speed"] = "gadget_revive_speed_increase",
+			["content/items/perks/test_experience"] = "gadget_mission_xp_increase",
 			["content/items/perks/test_weapon_flak"] = "weapon_trait_melee_common_wield_increased_armored_damage",
 			["content/items/perks/test_weapon_maniacs"] = "weapon_trait_melee_common_wield_increased_berserker_damage",
 			["content/items/perks/test_weapon_crit_chance"] = "weapon_trait_increase_crit_chance",
@@ -308,7 +310,10 @@ def main() -> None:
 			return item and item.test_rarity_color or { 255, 145, 70, 40 }
 		end
 
+		master_item_lookup_count = 0
+
 		function TestMasterItems.get_item(item_id)
+			master_item_lookup_count = master_item_lookup_count + 1
 			return {
 				display_name = item_id == "blessing_one" and "Surgical" or item_id == "blessing_two" and "Weight of Fire" or item_id == "blessing_long" and "Rending Shockwave" or item_id == "blessing_very_long" and "Overload Voltage Overload Voltage" or item_id,
 				name = item_id,
@@ -459,6 +464,8 @@ def main() -> None:
 				myfavorites_show_favorite_letter = false,
 				favorite_marker_position = "above_rating",
 				curio_display_profile = "primary",
+				curio_name_format = "original",
+				curio_generated_name_respect_custom_names = true,
 				show_curio_item_level = true,
 				curio_primary_stat_font_size = 16,
 				curio_secondary_stat_font_size = 13,
@@ -537,6 +544,12 @@ def main() -> None:
 				curio_heavy_block = "Block",
 				curio_heavy_sprint = "Sprint",
 				curio_heavy_stamina_regen = "Stamina Regen",
+				curio_name_health_heavy = "HP",
+				curio_name_toughness_heavy = "TN",
+				curio_name_wounds_heavy = "WND",
+				curio_name_stamina_heavy = "STM",
+				curio_experience = "Experience",
+				curio_heavy_experience = "XP",
 				weapon_perk_flak_damage = "Flak Damage",
 				weapon_perk_flak_damage_heavy = "Flak Dmg",
 				weapon_perk_maniacs_damage = "Maniacs Damage",
@@ -4134,6 +4147,136 @@ def main() -> None:
     assert curio_widget.content.better_inventory_curio_stat_1 == "+19% Health"
     assert curio_widget.content.better_inventory_curio_stat_2 == "+12% Stamina Regen"
 
+    # Generated Curio titles reuse the four trait records already resolved for
+    # card content. Heavy compression is stable-ID based and performs no second
+    # MasterItems pass.
+    mod.settings.curio_name_format = "primary"
+    mod.settings.curio_display_profile = "primary"
+    generated_primary_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, generated_primary_blueprint, 640)
+    generated_primary_widget = lua.table_from(
+        {
+            "content": lua.table_from({}),
+            "style": lua.table_from(
+                {
+                    "display_name": blueprint_pass(
+                        generated_primary_blueprint, "display_name"
+                    ).style,
+                    "better_inventory_curio_stat_1": blueprint_pass(
+                        generated_primary_blueprint, "better_inventory_curio_stat_1"
+                    ).style,
+                }
+            ),
+        }
+    )
+    globals_.master_item_lookup_count = 0
+    generated_primary_blueprint.init(
+        None,
+        generated_primary_widget,
+        curio_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        generated_primary_blueprint,
+    )
+    assert generated_primary_widget.content.display_name == "+19% HP"
+    assert (
+        generated_primary_widget.content.better_inventory_generated_curio_name
+        == "+19% HP"
+    )
+    assert globals_.master_item_lookup_count == 4
+
+    mod.settings.curio_name_format = "primary_and_perks"
+    generated_summary_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, generated_summary_blueprint, 640)
+    generated_summary_widget = lua.table_from(
+        {
+            "content": lua.table_from({}),
+            "style": lua.table_from(
+                {
+                    "display_name": blueprint_pass(
+                        generated_summary_blueprint, "display_name"
+                    ).style,
+                    "better_inventory_curio_stat_1": blueprint_pass(
+                        generated_summary_blueprint, "better_inventory_curio_stat_1"
+                    ).style,
+                }
+            ),
+        }
+    )
+    globals_.master_item_lookup_count = 0
+    generated_summary_blueprint.init(
+        None,
+        generated_summary_widget,
+        curio_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        generated_summary_blueprint,
+    )
+    assert (
+        generated_summary_widget.content.better_inventory_generated_curio_name
+        == "(+19% HP) Stamina Regen, Sprint, Gunners DR"
+    )
+    assert "12%" not in (
+        generated_summary_widget.content.better_inventory_generated_curio_name
+    )
+    assert globals_.master_item_lookup_count == 4
+
+    mod.settings.remove_curio_stat_plus_signs = True
+    generated_summary_blueprint.update_data(
+        None, generated_summary_widget, curio_element
+    )
+    assert generated_summary_widget.content.better_inventory_generated_curio_name.startswith(
+        "(19% HP)"
+    )
+    mod.settings.remove_curio_stat_plus_signs = False
+
+    mod.settings.curio_display_profile = "title_only"
+    title_only_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    title_only_size = layout.configure_item_blueprint(mod, title_only_blueprint, 640)
+    assert not blueprint_passes_with_prefix(
+        title_only_blueprint, "better_inventory_curio_stat_"
+    )
+    assert title_only_size[2] == 110
+    assert blueprint_pass(title_only_blueprint, "display_name").visibility_function(
+        generated_summary_widget.content
+    ) is True
+
+    mod.settings.curio_name_format = "original"
+    title_only_original_blueprint = lua.eval("table.clone")(
+        globals_.raw_test_blueprint
+    )
+    layout.configure_item_blueprint(mod, title_only_original_blueprint, 640)
+    title_only_widget = lua.table_from(
+        {
+            "content": lua.table_from({}),
+            "style": lua.table_from(
+                {
+                    "display_name": blueprint_pass(
+                        title_only_original_blueprint, "display_name"
+                    ).style,
+                }
+            ),
+        }
+    )
+    globals_.master_item_lookup_count = 0
+    title_only_original_blueprint.init(
+        None,
+        title_only_widget,
+        curio_element,
+        None,
+        None,
+        lua.table_from({}),
+        None,
+        title_only_original_blueprint,
+    )
+    assert globals_.master_item_lookup_count == 0
+
+    mod.settings.curio_display_profile = "primary"
+
     curio_stat_pass.change_function(curio_widget.content, curio_stat_pass.style)
     assert tuple(curio_stat_pass.style.text_color[index] for index in range(1, 5)) == (
         255,
@@ -4366,6 +4509,33 @@ def main() -> None:
         }
         """
     )
+
+    mod.settings.curio_name_format = "primary_and_perks"
+    mod.settings.curio_generated_name_respect_custom_names = True
+    mod.settings.enable_custom_item_name_and_colors = False
+    curio_element.item.traits[1].id = "content/items/traits/test_health"
+    curio_element.item.perks[1].id = "content/items/perks/test_stamina_regeneration"
+    curio_element.item.perks[2].id = "content/items/perks/test_sprint_efficiency"
+    curio_element.item.perks[3].id = "content/items/perks/test_gunners"
+    generated_summary_blueprint.update_data(
+        None, generated_summary_widget, curio_element
+    )
+    assert generated_summary_widget.content.display_name == "First Curio"
+    assert (
+        generated_summary_widget.content.better_inventory_generated_curio_name
+        == "(+19% HP) Stamina Regen, Sprint, Gunners DR"
+    )
+    mod.settings.curio_generated_name_respect_custom_names = False
+    generated_summary_blueprint.update_data(
+        None, generated_summary_widget, curio_element
+    )
+    assert generated_summary_widget.content.display_name != "First Curio"
+    assert generated_summary_widget.content.better_inventory_curio_has_custom_name is True
+    mod.settings.enable_custom_item_name_and_colors = True
+    mod.settings.curio_generated_name_respect_custom_names = True
+    mod.settings.curio_name_format = "original"
+    mod.settings.curio_display_profile = "detailed"
+
     name_it_curio_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     name_it_curio_size = layout.configure_item_blueprint(mod, name_it_curio_blueprint, 640)
     name_it_title_pass = blueprint_pass(
@@ -4629,6 +4799,10 @@ def main() -> None:
                             background_color = { 255, 40, 50, 60 },
                             background_preserve_shading = preserve_test_shading,
                         }
+                    elseif gear_id == "custom-curio" then
+                        return {
+                            name = "Reliquary Prime",
+                        }
                     elseif gear_id == "background-only-weapon" then
                         return {
                             background_color = { 255, 40, 50, 60 },
@@ -4647,6 +4821,26 @@ def main() -> None:
             """
         )
     )
+    custom_curio_element = lua.eval("table.clone")(curio_element)
+    custom_curio_element.item.gear_id = "custom-curio"
+    mod.settings.curio_name_format = "primary_and_perks"
+    mod.settings.curio_generated_name_respect_custom_names = True
+    generated_summary_blueprint.update_data(
+        None, generated_summary_widget, custom_curio_element
+    )
+    assert generated_summary_widget.content.display_name == "Reliquary Prime"
+    assert (
+        generated_summary_widget.content.better_inventory_generated_curio_name
+        == "(+19% HP) Stamina Regen, Sprint, Gunners DR"
+    )
+    mod.settings.curio_generated_name_respect_custom_names = False
+    generated_summary_blueprint.update_data(
+        None, generated_summary_widget, custom_curio_element
+    )
+    assert generated_summary_widget.content.display_name.startswith("(+19% HP)")
+    mod.settings.curio_generated_name_respect_custom_names = True
+    mod.settings.curio_name_format = "original"
+
     custom_weapon_element = lua.eval("table.clone")(narrow_weapon_element)
     custom_weapon_element.item.gear_id = "custom-weapon"
     custom_weapon_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
@@ -5082,6 +5276,9 @@ def main() -> None:
         None,
         None,
     )
+    assert layout.compact_curio_perk_search_terms(
+        mod, "gadget_mission_xp_increase", "+10% Experience"
+    ) == ("Experience", "XP")
     assert layout.curio_trait_search_terms(
         mod, "gadget_innate_health_increase"
     ) == ("Health", "health")
