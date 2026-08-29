@@ -94,6 +94,17 @@ def main() -> None:
                 return self.actions[action] == true
             end,
         }
+        keyboard_escape = false
+        Keyboard = {
+            button_index = function(name)
+                assert(name == "esc")
+                return 27
+            end,
+            pressed = function(index)
+                assert(index == 27)
+                return keyboard_escape
+            end,
+        }
         ''',
     )
     search_ui = lua.execute(MODULE_PATH.read_text(encoding="utf-8"), name=str(MODULE_PATH))
@@ -670,6 +681,36 @@ def main() -> None:
     assert lua.globals().legend_entry.input_action == "back"
     assert lua.globals().legend_entry.is_visible is True
     assert input_widget.content.input_text == "sword"
+
+    # Melk's vendor input service can consume its mapped Back action while the
+    # native text pass owns keyboard input. Raw Escape must still defocus the
+    # field on the first press; once defocused, a second press delegates to the
+    # native view so it can navigate Back. Cover native and GlobalStore routes.
+    lua.globals().input_service.actions.back = False
+    for optional_store_service in (None, "get_all_characters_marks_store_custom"):
+        melk_view = lua.table_from(
+            {
+                "__class_name": "MarksVendorView",
+                "_optional_store_service": optional_store_service,
+                "_widgets_by_name": lua.table_from(
+                    {
+                        "better_inventory_search_input": lua.globals().make_widget(
+                            "better_inventory_search_input"
+                        )
+                    }
+                ),
+            }
+        )
+        assert search_ui.focus(melk_view) is True
+        lua.globals().keyboard_escape = True
+        assert search_ui.handle_view_input(
+            lua.globals().test_mod, melk_view, lua.globals().input_service
+        ) is True
+        assert search_ui.is_writing(melk_view) is False
+        assert search_ui.handle_view_input(
+            lua.globals().test_mod, melk_view, lua.globals().input_service
+        ) is False
+        lua.globals().keyboard_escape = False
 
     # Changing input mode while the field remains active reconciles ownership:
     # controller navigation locks the grid; returning to cursor mode releases
