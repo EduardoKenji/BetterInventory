@@ -666,6 +666,7 @@ SearchHooks.install({
 	BaseView = BaseView,
 	CraftingMechanicusModifyView = CraftingMechanicusModifyView,
 	VendorViewBase = VendorViewBase,
+	VendorInteractionViewBase = VendorInteractionViewBase,
 	ViewElementGrid = ViewElementGrid,
 })
 

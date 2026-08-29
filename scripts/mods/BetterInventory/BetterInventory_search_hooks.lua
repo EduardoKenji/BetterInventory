@@ -54,6 +54,7 @@ SearchHooks.install = function(dependencies)
 	local CreditsGoodsVendorView = dependencies.CreditsGoodsVendorView or GameCreditsGoodsVendorView
 	local MarksVendorView = dependencies.MarksVendorView or GameMarksVendorView
 	local VendorViewBase = dependencies.VendorViewBase
+	local VendorInteractionViewBase = dependencies.VendorInteractionViewBase
 	local ViewElementGrid = dependencies.ViewElementGrid
 
 	if type(mod) ~= "table" or type(Features) ~= "table" or type(SearchUI) ~= "table" then
@@ -140,6 +141,21 @@ SearchHooks.install = function(dependencies)
 	install_view_input_hook(CraftingMechanicusModifyView)
 	install_view_input_hook(VendorViewBase)
 	install_view_input_hook(CraftingMechanicusBarterItemsView)
+
+	if method_available(VendorInteractionViewBase, "_handle_back_pressed") then
+		-- ESC/Back belongs to the parent interaction view, not its active Melk
+		-- item view. Consume it only while the child search field owns focus;
+		-- the next press falls through to Darktide's native close/navigation path.
+		mod:hook(VendorInteractionViewBase, "_handle_back_pressed", function(func, parent, ...)
+			local active_view = parent and parent._active_view_instance
+
+			if type(SearchUI.handle_back_pressed) == "function" and SearchUI.handle_back_pressed(mod, active_view) then
+				return true
+			end
+
+			return func(parent, ...)
+		end)
+	end
 
 	if method_available(BaseView, "init") then
 		mod:hook(BaseView, "init", function(func, view, definitions, settings, context, ...)

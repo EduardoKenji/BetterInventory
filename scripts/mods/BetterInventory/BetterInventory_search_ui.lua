@@ -134,31 +134,6 @@ local function action_pressed(input_service, action_name)
 	return input_service:get(action_name) and true or false
 end
 
-local ESCAPE_BUTTON_INDEX
-local ESCAPE_BUTTON_RESOLVED = false
-
-local function keyboard_escape_pressed()
-	local keyboard = rawget(_G, "Keyboard")
-
-	if not keyboard or type(keyboard.pressed) ~= "function" then
-		return false
-	end
-
-	if not ESCAPE_BUTTON_RESOLVED then
-		ESCAPE_BUTTON_RESOLVED = true
-
-		if type(keyboard.button_index) == "function" then
-			local ok, button_index = pcall(keyboard.button_index, "esc")
-
-			if ok then
-				ESCAPE_BUTTON_INDEX = button_index
-			end
-		end
-	end
-
-	return ESCAPE_BUTTON_INDEX ~= nil and keyboard.pressed(ESCAPE_BUTTON_INDEX) == true
-end
-
 local function controller_navigation_active(view)
 	if view and view._using_cursor_navigation ~= nil then
 		return view._using_cursor_navigation == false
@@ -735,6 +710,29 @@ SearchUI.update_view = function(mod, Features, view, time, input_service)
 	end
 end
 
+SearchUI.handle_back_pressed = function(mod, view)
+	local input = input_widget(view)
+	local content = input and input.content
+
+	if not enabled_for_view(mod, view) or not content or input.visible == false then
+		return false
+	end
+
+	if content.is_writing ~= true and not controller_focused(view) then
+		return false
+	end
+
+	local restore_grid_focus = controller_focused(view)
+
+	SearchUI.defocus(view)
+
+	if restore_grid_focus then
+		restore_first_grid_item(view)
+	end
+
+	return true
+end
+
 SearchUI.handle_view_input = function(mod, view, input_service)
 	local input = input_widget(view)
 	local content = input and input.content
@@ -749,9 +747,8 @@ SearchUI.handle_view_input = function(mod, view, input_service)
 		if action_pressed(input_service, "navigate_down_continuous") then
 			SearchUI.defocus(view)
 			restore_first_grid_item(view)
-		elseif action_pressed(input_service, "back") or keyboard_escape_pressed() then
-			SearchUI.defocus(view)
-			restore_first_grid_item(view)
+		elseif action_pressed(input_service, "back") then
+			SearchUI.handle_back_pressed(mod, view)
 		elseif not writing and action_pressed(input_service, "confirm_pressed") then
 			local hotspot = content.hotspot
 
@@ -799,11 +796,8 @@ SearchUI.handle_view_input = function(mod, view, input_service)
 		return false
 	end
 
-	-- Some vendor input services consume their mapped Back action while the
-	-- native text pass owns keyboard input. Raw Escape preserves the intended
-	-- two-stage flow: first press defocuses search, the next reaches native Back.
-	if action_pressed(input_service, "back") or keyboard_escape_pressed() then
-		SearchUI.defocus(view)
+	if action_pressed(input_service, "back") then
+		SearchUI.handle_back_pressed(mod, view)
 	end
 
 	return true
