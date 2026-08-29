@@ -77,6 +77,8 @@ def main() -> None:
 			enable_hadron_entreat_grid = true,
 			enable_hadron_single_column_mirror = true,
 			enable_armoury_requisition_grid = true,
+			enable_melk_limited_grid = true,
+			enable_melk_multi_operative_grid = true,
 			enable_armoury_single_column_mirror = true,
 			enable_armoury_requisition_sorting_panel = true,
 			brighten_armoury_item_levels = true,
@@ -206,6 +208,7 @@ def main() -> None:
 		loadout_material_guard_calls = 0
 		last_loadout_material_guard_view = nil
 		last_loadout_material_guard_widget = nil
+		captured_blueprint_configuration = nil
 
 		test_layout = {
             is_enabled_for_view = function() return false end,
@@ -222,7 +225,10 @@ def main() -> None:
 				definitions.global_store_expanded = true
 				return definitions, 114
 			end,
-            configure_item_blueprint = function() end,
+			store_slot_kind = function() return "melee" end,
+			configure_item_blueprint = function(_, _, _, configuration)
+				captured_blueprint_configuration = configuration
+			end,
 			configure_grid = function() end,
 			reapply_tracked_item_customization_style = function(_, widget)
 				loadout_customization_reapply_calls = loadout_customization_reapply_calls + 1
@@ -270,6 +276,7 @@ def main() -> None:
 			cancel_manual_discard = function() end,
 			unregister_inventory_view = function() end,
 			release_lantern_inventory_section = function() end,
+			compact_inventory_curio_stats_blueprints = function(_, _, blueprints) return blueprints end,
 			request_inventory_resort = function() end,
 			lantern_recommendations_active = function() return lantern_recommendations_are_active end,
 		}
@@ -526,6 +533,25 @@ def main() -> None:
     lua.globals().TestSettingsRegistry = settings_registry
     lua.globals().TestFeatureDomains = feature_domains
     assert character_overview_ui.is_visual_setting("character_overview_blessing_name_mode") is True
+    assert character_overview_ui.is_melk_limited_view(
+        lua.table_from({"__class_name": "MarksVendorView"})
+    ) is True
+    assert character_overview_ui.is_melk_limited_view(
+        lua.table_from({"__class_name": "MarksVendorView"}),
+        lua.table_from({"optional_store_service": "get_all_characters_marks_store_custom"}),
+    ) is False
+    assert character_overview_ui.is_global_store_melk_view(
+        lua.table_from({"__class_name": "MarksVendorView"}),
+        lua.table_from({"optional_store_service": "get_all_characters_marks_store_custom"}),
+    ) is True
+    assert character_overview_ui.is_global_store_melk_view(
+        lua.table_from(
+            {
+                "__class_name": "MarksVendorView",
+                "_optional_store_service": "unknown_marks_service",
+            }
+        )
+    ) is False
     lua.execute(
         """
 		local original_runtime_configure = TestRuntime.configure
@@ -1115,6 +1141,42 @@ def main() -> None:
         """
     )
     assert globals_.unsupported_grid_callback_argument is None
+
+    # Native Melk uses the Armoury store-item card profile even if an outer mod
+    # bypasses MarksVendorView.present_grid_layout and presents through the
+    # shared grid directly. Unknown custom Marks services remain native.
+    melk_view = lua.table_from(
+        {
+            "__class_name": "MarksVendorView",
+            "_definitions": lua.table_from(
+                {"grid_settings": lua.table_from({"grid_size": lua.table_from([710, 860])})}
+            ),
+        }
+    )
+    melk_grid = lua.table_from({"_parent": melk_view})
+    melk_view._item_grid = melk_grid
+    store_blueprints = lua.table_from(
+        {"store_item": lua.table_from({"pass_template": lua.table_from({})})}
+    )
+    melk_result = globals_.captured_grid_present_hook(
+        lua.eval("function() return 'melk_native' end"),
+        melk_grid,
+        lua.table_from({}),
+        store_blueprints,
+    )
+    assert melk_result == "melk_native"
+    assert globals_.captured_blueprint_configuration.image_layout_context == "armoury"
+    assert globals_.captured_blueprint_configuration.store_item is True
+
+    globals_.captured_blueprint_configuration = None
+    melk_view._optional_store_service = "unknown_marks_service"
+    globals_.captured_grid_present_hook(
+        lua.eval("function() return 'unknown_marks' end"),
+        melk_grid,
+        lua.table_from({}),
+        store_blueprints,
+    )
+    assert globals_.captured_blueprint_configuration is None
 
     grid_update_calls = lua.table_from({"count": 0})
     original_grid_update = lua.eval(
@@ -1751,6 +1813,8 @@ def main() -> None:
         "enable_hadron_entreat_grid",
 		"enable_hadron_single_column_mirror",
 		"enable_armoury_requisition_grid",
+		"enable_melk_limited_grid",
+		"enable_melk_multi_operative_grid",
 		"enable_armoury_single_column_mirror",
 		"enable_armoury_requisition_sorting_panel",
 		"brighten_armoury_item_levels",
@@ -2033,6 +2097,8 @@ def main() -> None:
     assert entries_by_id["enable_hadron_entreat_grid"].disabled is False
     assert entries_by_id["enable_hadron_single_column_mirror"].disabled is True
     assert entries_by_id["enable_armoury_requisition_grid"].disabled is False
+    assert entries_by_id["enable_melk_limited_grid"].disabled is False
+    assert entries_by_id["enable_melk_multi_operative_grid"].disabled is False
     assert entries_by_id["enable_armoury_single_column_mirror"].disabled is True
     assert entries_by_id["enable_armoury_requisition_sorting_panel"].disabled is False
     assert entries_by_id["brighten_armoury_item_levels"].disabled is False
@@ -2658,6 +2724,7 @@ def main() -> None:
 
     settings.enable_global_store_integration = False
     mod.on_setting_changed("enable_global_store_integration")
+    assert entries_by_id["enable_melk_multi_operative_grid"].disabled is True
     assert entries_by_id["enable_global_store_grid"].disabled is True
     assert entries_by_id["enable_global_store_sorting_panel"].disabled is True
     assert entries_by_id["global_store_character_photo_size_percent"].disabled is True
@@ -2670,6 +2737,7 @@ def main() -> None:
     assert entries_by_id["global_store_single_column_modifier_vertical_position"].disabled is True
     settings.enable_global_store_integration = True
     mod.on_setting_changed("enable_global_store_integration")
+    assert entries_by_id["enable_melk_multi_operative_grid"].disabled is False
     assert entries_by_id["enable_global_store_grid"].disabled is False
     assert entries_by_id["enable_global_store_sorting_panel"].disabled is False
     assert entries_by_id["global_store_character_photo_size_percent"].disabled is False
@@ -2908,7 +2976,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "3.3.1"
+    assert data.version == "3.4.0"
 
     gradient_name = localization["mod_name"]["en"]
     assert gradient_name.startswith("{#color(174,239,105)}B")
@@ -2930,6 +2998,14 @@ def main() -> None:
     assert localization["inventory_search_spacing_group"]["en"] == "Search field spacing"
     assert localization["inventory_search_hadron_top_padding"]["en"] == "Hadron: top padding"
     assert localization["inventory_search_hadron_bottom_padding"]["en"] == "Hadron: bottom padding"
+    assert (
+        localization["enable_melk_limited_grid"]["en"]
+        == "Mirror Armoury grid in Limited Time Acquisitions"
+    )
+    assert (
+        localization["enable_melk_multi_operative_grid"]["en"]
+        == "Mirror Armoury grid in Multi-Operative Supply"
+    )
     assert (
         localization["god_stat_checker_integration_group"]["en"]
         == "Mod integration: God Stat Checker 1.1.2"
@@ -3002,6 +3078,8 @@ def main() -> None:
     assert localization["inventory_search_spacing_group"]["zh-cn"] == "搜索框间距"
     assert localization["inventory_search_hadron_top_padding"]["zh-cn"] == "海德昂：顶部间距"
     assert localization["inventory_search_hadron_bottom_padding"]["zh-cn"] == "海德昂：底部间距"
+    assert localization["enable_melk_limited_grid"]["zh-cn"] == "在限时购置中镜像军械库网格"
+    assert localization["enable_melk_multi_operative_grid"]["zh-cn"] == "在多干员补给中镜像军械库网格"
     assert localization["inventory_search_placeholder"]["zh-cn"] == "搜索：剑 & 命中弱点 & 防弹装甲"
     assert localization["inventory_search_curio_placeholder"]["zh-cn"] == "搜索：韧性 & 生命值 & 复活速度"
     assert localization["debug_group"]["zh-cn"] == "调试（仅测试用）"
@@ -3225,6 +3303,8 @@ def main() -> None:
         melk_view_group.sub_widgets[index].setting_id
         for index in range(1, len(melk_view_group.sub_widgets) + 1)
     ] == [
+        "enable_melk_limited_grid",
+        "enable_melk_multi_operative_grid",
         "melk_auto_favorite_purchased_items",
         "melk_mystery_auto_favorite_purchased_items",
     ]
@@ -3585,6 +3665,8 @@ def main() -> None:
     assert defaults["single_column_blessing_icons_on_right"] is True
     assert defaults["enable_hadron_entreat_grid"] is True
     assert defaults["enable_armoury_requisition_grid"] is True
+    assert defaults["enable_melk_limited_grid"] is True
+    assert defaults["enable_melk_multi_operative_grid"] is True
     assert defaults["enable_armoury_requisition_sorting_panel"] is True
     assert defaults["brighten_armoury_item_levels"] is True
     assert defaults["expand_armoury_requisition_window"] is True

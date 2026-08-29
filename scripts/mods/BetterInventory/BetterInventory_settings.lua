@@ -14,6 +14,8 @@ local DEPENDENCY_REFRESH_SETTING_IDS = {
 	"expand_curio_inventory_window",
 	"enable_hadron_single_column_mirror",
 	"enable_armoury_requisition_grid",
+	"enable_melk_limited_grid",
+	"enable_melk_multi_operative_grid",
 	"enable_armoury_single_column_mirror",
 	"enable_armoury_requisition_sorting_panel",
 	"brighten_armoury_item_levels",

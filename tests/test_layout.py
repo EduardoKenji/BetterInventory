@@ -964,6 +964,35 @@ def main() -> None:
     assert global_store_expansion == 114
     assert global_store_armoury.grid_settings.grid_size[1] == 710
 
+    melk_limited, melk_limited_expansion = layout.expanded_armoury_view_definitions(
+        mod,
+        armoury_definitions,
+        armoury_base_definitions,
+        "enable_melk_limited_grid",
+    )
+    assert melk_limited_expansion == 114
+    assert melk_limited.grid_settings.grid_size[1] == 710
+
+    melk_multi, melk_multi_expansion = layout.expanded_armoury_view_definitions(
+        mod,
+        armoury_definitions,
+        armoury_base_definitions,
+        "enable_melk_multi_operative_grid",
+    )
+    assert melk_multi_expansion == 114
+    assert melk_multi.grid_settings.grid_size[1] == 710
+
+    mod.settings.enable_melk_limited_grid = False
+    disabled_melk, disabled_melk_expansion = layout.expanded_armoury_view_definitions(
+        mod,
+        armoury_definitions,
+        armoury_base_definitions,
+        "enable_melk_limited_grid",
+    )
+    assert disabled_melk_expansion == 0
+    assert disabled_melk.grid_settings.grid_size[1] == 596
+    mod.settings.enable_melk_limited_grid = True
+
     mod.settings.debug_adjust_global_store_window_width = True
     debug_global_store, debug_global_store_expansion = layout.expanded_global_store_view_definitions(
         mod, armoury_definitions, armoury_base_definitions

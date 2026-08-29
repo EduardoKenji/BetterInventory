@@ -198,6 +198,13 @@
       "modules": ["BetterInventory_feature_domains.lua", "BetterInventory_god_stat_checker_integration.lua", "BetterInventory_runtime.lua"]
     },
     {
+      "name": "vendor.melk-native-and-global-store-grid-routes",
+      "test": "test_settings.py",
+      "case": "character_overview_refresh",
+      "outcome": "Sire Melk Limited Time Acquisitions reuses the Armoury Requisition grid profile while GlobalStore's Marks service reuses the character-footer Multi-Operative profile; initialization-context detection survives hook order, unknown Marks services fail closed, both controls default on independently, and the shared-grid fallback transforms no unrelated vendor route",
+      "modules": ["BetterInventory_runtime.lua", "BetterInventory_character_overview_ui.lua"]
+    },
+    {
       "name": "global-store.category-generations-retire-portrait-loads",
       "test": "test_feature_domains.py",
       "case": "global_store_tab_generation_retirement",

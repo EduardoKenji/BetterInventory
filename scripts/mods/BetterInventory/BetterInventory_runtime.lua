@@ -141,7 +141,6 @@ function Runtime.install()
 		maximum_columns = 3,
 		store_item = true,
 	}
-	local GLOBAL_STORE_SERVICE = "get_all_characters_store_custom"
 	local GLOBAL_STORE_GRID_CONFIGURATION = {
 		blueprint_key = "store_item",
 		global_store = true,
@@ -161,6 +160,10 @@ function Runtime.install()
 	local shallow_copy = CharacterOverviewUI.shallow_copy
 	local is_armoury_requisition_view = CharacterOverviewUI.is_armoury_requisition_view
 	local is_global_store_view = CharacterOverviewUI.is_global_store_view
+	local melk_grid_route = CharacterOverviewUI.melk_grid_route
+	local expanded_vendor_view_definitions = CharacterOverviewUI.expanded_vendor_view_definitions
+	local melk_grid_configuration = CharacterOverviewUI.melk_grid_configuration
+	local update_expanded_vendor_dividers = CharacterOverviewUI.update_expanded_vendor_dividers
 	local is_hadron_view = CharacterOverviewUI.is_hadron_view
 	local attach_runtime_marker_styles = CharacterOverviewUI.attach_runtime_marker_styles
 	local invalidate_myfavorites_grid = CharacterOverviewUI.invalidate_myfavorites_grid
@@ -543,6 +546,8 @@ local function refresh_option_dependencies()
 		"automatic_card_height",
 		"enable_hadron_entreat_grid",
 		"enable_armoury_requisition_grid",
+		"enable_melk_limited_grid",
+		"enable_melk_multi_operative_grid",
 		"enable_global_store_grid",
 	}) do
 		set_option_enabled(option_dependency_entries[setting_id], grid_enabled, native_reason)
@@ -618,10 +623,12 @@ local function refresh_option_dependencies()
 	set_option_enabled(option_dependency_entries.brighten_armoury_item_levels, armoury_grid_enabled, armoury_reason)
 	set_option_enabled(option_dependency_entries.three_column_weapon_name_font_size, armoury_grid_enabled, armoury_reason)
 	set_option_enabled(option_dependency_entries.armoury_requisition_target_card_width, armoury_expansion_enabled, armoury_target_reason)
+	set_option_enabled(option_dependency_entries.enable_melk_limited_grid, grid_enabled, native_reason)
 	local global_store_integration_reason = grid_enabled and mod:localize("option_requires_global_store_integration") or native_reason
 	local global_store_reason = global_store_integration_enabled and grid_enabled and mod:localize("option_requires_global_store_grid") or global_store_integration_reason
 	set_option_enabled(option_dependency_entries.enable_global_store_integration, true)
 	set_option_enabled(option_dependency_entries.enable_global_store_grid, global_store_integration_enabled and grid_enabled, global_store_integration_reason)
+	set_option_enabled(option_dependency_entries.enable_melk_multi_operative_grid, global_store_integration_enabled and grid_enabled, global_store_integration_reason)
 	set_option_enabled(option_dependency_entries.enable_global_store_sorting_panel, global_store_integration_enabled and global_store_grid_enabled, global_store_reason)
 	local global_store_layout_enabled = global_store_integration_enabled and (global_store_grid_enabled or global_store_native_enabled)
 	set_option_enabled(option_dependency_entries.global_store_character_photo_size_percent, global_store_layout_enabled, global_store_reason)
@@ -857,6 +864,8 @@ local function bind_option_dependencies(options_templates)
 		"enable_hadron_entreat_grid",
 		"enable_hadron_single_column_mirror",
 		"enable_armoury_requisition_grid",
+		"enable_melk_limited_grid",
+		"enable_melk_multi_operative_grid",
 		"enable_armoury_single_column_mirror",
 		"enable_armoury_requisition_sorting_panel",
 		"brighten_armoury_item_levels",
@@ -1547,28 +1556,12 @@ mod:hook(ItemGridViewBase, "init", function(func, view, definitions, settings, c
 		return initialize(adjusted_definitions)
 	end
 
-	if is_armoury_requisition_view(view) and mod:get("enable_grid_layout") ~= false and mod:get("enable_armoury_requisition_grid") ~= false then
-		local slot_kind = Layout.store_slot_kind and Layout.store_slot_kind(view)
-		local adjusted_definitions, expansion = Layout.expanded_armoury_view_definitions(mod, definitions, ItemGridViewBaseDefinitions, nil, slot_kind)
+	local adjusted_vendor_definitions, vendor_expansion = expanded_vendor_view_definitions(mod, view, context, definitions, ItemGridViewBaseDefinitions, Layout)
 
-		view._better_inventory_armoury_grid_expansion = expansion
+	if adjusted_vendor_definitions then
+		view._better_inventory_armoury_grid_expansion = vendor_expansion
 
-		return initialize(adjusted_definitions)
-	end
-
-	if is_global_store_view(view) and mod:get("enable_grid_layout") ~= false and mod:get("enable_global_store_integration") ~= false and mod:get("enable_global_store_grid") ~= false then
-		local slot_kind = Layout.store_slot_kind and Layout.store_slot_kind(view)
-		local adjusted_definitions, expansion
-
-		if Layout.expanded_global_store_view_definitions then
-			adjusted_definitions, expansion = Layout.expanded_global_store_view_definitions(mod, definitions, ItemGridViewBaseDefinitions, slot_kind)
-		else
-			adjusted_definitions, expansion = Layout.expanded_armoury_view_definitions(mod, definitions, ItemGridViewBaseDefinitions, "enable_global_store_grid", slot_kind)
-		end
-
-		view._better_inventory_armoury_grid_expansion = expansion
-
-		return initialize(adjusted_definitions)
+		return initialize(adjusted_vendor_definitions)
 	end
 
 	return initialize(definitions)
@@ -1910,28 +1903,21 @@ local function present_additional_grid(func, view, layout, on_present_callback, 
 	local active_configuration = table.clone(configuration)
 
 	if Layout.store_slot_kind then
-		-- Hadron, Armoury and GlobalStore expose the same native category tabs.
-		-- Their cards honor the matching category slider, while each vendor
-		-- configuration's maximum_columns keeps non-inventory views capped at
-		-- three.
+		-- Vendor cards honor category widths and their column cap.
 		active_configuration.slot_kind = Layout.store_slot_kind(view, layout)
 	end
 
 	return present_grid_with_configuration(func, view, layout, on_present_callback, active_configuration)
 end
 
--- "Entreat Hadron" opens this modern ItemGridViewBase subclass. The separate
--- sacrifice flow uses CraftingMechanicusBarterItemsView and is intentionally
--- outside this hook.
+-- Entreat Hadron uses this view; sacrifice remains outside the hook.
 if ensure_class_method(CraftingMechanicusModifyView, "present_grid_layout") then
 	mod:hook(CraftingMechanicusModifyView, "present_grid_layout", function(func, view, layout, on_present_callback)
 		return present_additional_grid(func, view, layout, on_present_callback, "enable_hadron_entreat_grid", HADRON_GRID_CONFIGURATION)
 	end)
 end
 
--- The Armoury landing page maps "Requisition Weapons & Curios" and GlobalStore's
--- Multi-Operative Supply to CreditsVendorView service routes. CreditsGoodsVendorView
--- (Brunt's Armoury) is deliberately not hooked by these settings.
+-- CreditsVendorView serves native Requisition and GlobalStore, not Brunt's Armoury.
 if ensure_class_method(CreditsVendorView, "present_grid_layout") then
 	mod:hook(CreditsVendorView, "present_grid_layout", function(func, view, layout, on_present_callback)
 		if is_global_store_view(view) and mod:get("enable_global_store_integration") ~= false then
@@ -1946,6 +1932,18 @@ if ensure_class_method(CreditsVendorView, "present_grid_layout") then
 	end)
 end
 
+if ensure_class_method(MarksVendorView, "present_grid_layout") then
+	mod:hook(MarksVendorView, "present_grid_layout", function(func, view, layout, on_present_callback)
+		local setting_id, global_store = melk_grid_route(view)
+
+		if not setting_id or global_store and mod:get("enable_global_store_integration") == false then
+			return func(view, layout, on_present_callback)
+		end
+
+		return present_additional_grid(func, view, layout, on_present_callback, setting_id, global_store and GLOBAL_STORE_GRID_CONFIGURATION or ARMOURY_GRID_CONFIGURATION)
+	end)
+end
+
 mod:hook(CreditsVendorView, "on_enter", function(func, view, ...)
 	local result = func(view, ...)
 
@@ -1953,31 +1951,24 @@ mod:hook(CreditsVendorView, "on_enter", function(func, view, ...)
 		return result
 	end
 
-	local expansion = view._better_inventory_armoury_grid_expansion or 0
-	local item_grid = view._item_grid
-
-	if expansion > 0 and item_grid and type(item_grid.update_dividers) == "function" then
-		item_grid:update_dividers("content/ui/materials/frames/item_list_top_hollow", {
-			652 + expansion,
-			118,
-		}, {
-			0,
-			-18,
-			20,
-		}, "content/ui/materials/frames/details_lower_armoury", {
-			674 + expansion,
-			80,
-		}, {
-			0,
-			0,
-			20,
-		})
-	end
+	update_expanded_vendor_dividers(view)
 
 	align_quick_level_mastery_buttons(view)
 
 	return result
 end)
+
+if ensure_class_method(MarksVendorView, "on_enter") then
+	mod:hook(MarksVendorView, "on_enter", function(func, view, ...)
+		local result = func(view, ...)
+
+		if melk_grid_route(view) then
+			update_expanded_vendor_dividers(view)
+		end
+
+		return result
+	end)
+end
 
 local function normalize_global_store_widgets(item_grid)
 	for _, entry_data in pairs(item_grid and item_grid._widgets_by_entry_id or {}) do
@@ -2148,6 +2139,10 @@ mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layou
 		if configuration.store_item and Layout.store_slot_kind then
 			configuration.slot_kind = Layout.store_slot_kind(view, layout)
 		end
+	end
+
+	if not configuration then
+		configuration = melk_grid_configuration(mod, view, layout, Layout, ARMOURY_GRID_CONFIGURATION, GLOBAL_STORE_GRID_CONFIGURATION)
 	end
 
 	-- When the global grid is disabled, the Hadron and Requisition routes keep

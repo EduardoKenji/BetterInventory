@@ -203,6 +203,18 @@ local localization = {
 	melk_views_group = {
 		en = "Sire Melk's Requisitorium",
 	},
+	enable_melk_limited_grid = {
+		en = "Mirror Armoury grid in Limited Time Acquisitions",
+	},
+	enable_melk_limited_grid_tooltip = {
+		en = "Uses the same BetterInventory card format as Armoury Exchange: Requisition Weapons & Curios in Sire Melk's Limited Time Acquisitions. The effective layout is capped at three columns. Enabled by default.",
+	},
+	enable_melk_multi_operative_grid = {
+		en = "Mirror Armoury grid in Multi-Operative Supply",
+	},
+	enable_melk_multi_operative_grid_tooltip = {
+		en = "Uses the same BetterInventory card format as Armoury Exchange: Multi-Operative Supply in Sire Melk's GlobalStore view, including character information. Requires GlobalStore integration and is enabled by default.",
+	},
 	character_overview_group = {
 		en = "Character overview",
 	},
