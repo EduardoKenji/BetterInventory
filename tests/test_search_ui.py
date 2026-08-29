@@ -53,10 +53,10 @@ def main() -> None:
             inventory_search_armoury_bottom_padding = 34,
             inventory_search_hadron_top_padding = 34,
             inventory_search_hadron_bottom_padding = 50,
-            inventory_search_melk_limited_top_padding = 14,
-            inventory_search_melk_limited_bottom_padding = 46,
-            inventory_search_melk_multi_top_padding = 22,
-            inventory_search_melk_multi_bottom_padding = 34,
+            inventory_search_melk_limited_top_padding = -40,
+            inventory_search_melk_limited_bottom_padding = 40,
+            inventory_search_melk_multi_top_padding = -40,
+            inventory_search_melk_multi_bottom_padding = 45,
             inventory_search_focus_keybind = "off",
         }
         test_mod = {
@@ -200,9 +200,9 @@ def main() -> None:
         lua.globals().test_mod,
         lua.table_from({}),
     )
-    assert melk_limited.grid_settings.top_padding == 126
-    assert melk_limited.grid_settings.better_inventory_search_clip_pivot_y == 130
-    assert melk_limited.scenegraph_definition.better_inventory_search_input.position[2] == 94
+    assert melk_limited.grid_settings.top_padding == 120
+    assert melk_limited.grid_settings.better_inventory_search_clip_pivot_y == 76
+    assert melk_limited.scenegraph_definition.better_inventory_search_input.position[2] == 40
 
     melk_multi_view = lua.table_from({"__class_name": "MarksVendorView"})
     melk_multi = search_ui.decorate_definitions(
@@ -213,9 +213,9 @@ def main() -> None:
             {"optional_store_service": "get_all_characters_marks_store_custom"}
         ),
     )
-    assert melk_multi.grid_settings.top_padding == 114
-    assert melk_multi.grid_settings.better_inventory_search_clip_pivot_y == 138
-    assert melk_multi.scenegraph_definition.better_inventory_search_input.position[2] == 102
+    assert melk_multi.grid_settings.top_padding == 125
+    assert melk_multi.grid_settings.better_inventory_search_clip_pivot_y == 76
+    assert melk_multi.scenegraph_definition.better_inventory_search_input.position[2] == 40
     assert melk_multi_view._better_inventory_search_melk_route == "multi"
 
     # Melk actually enters ItemGridViewBase with sparse vendor definitions;
@@ -245,12 +245,21 @@ def main() -> None:
         shared_item_grid_definitions,
     )
     assert sparse_melk is not sparse_melk_definitions
-    assert sparse_melk.grid_settings.top_padding == 126
-    assert sparse_melk.scenegraph_definition.better_inventory_search_input.position[2] == 94
+    assert sparse_melk.grid_settings.top_padding == 120
+    assert sparse_melk.scenegraph_definition.better_inventory_search_input.position[2] == 40
     assert sparse_melk.widget_definitions.purchase_button is not None
     assert sparse_melk.widget_definitions.native is not None
     assert sparse_melk_definitions.scenegraph_definition.item_grid_pivot is None
     assert shared_item_grid_definitions.widget_definitions.better_inventory_search_input is None
+
+    mystery_view = lua.table_from({"__class_name": "MarksGoodsVendorView"})
+    mystery_result = search_ui.decorate_definitions(
+        vendor_definitions, mystery_view, lua.globals().test_mod
+    )
+    lua.globals().mystery_result = mystery_result
+    lua.globals().vendor_definitions = vendor_definitions
+    assert lua.execute("return mystery_result == vendor_definitions") is True
+    assert search_ui.supported(mystery_view) is False
 
     unknown_melk_view = lua.table_from({"__class_name": "MarksVendorView"})
     unknown_melk = search_ui.decorate_definitions(

@@ -3757,10 +3757,10 @@ def main() -> None:
     assert defaults["inventory_search_hadron_top_padding"] == 34
     assert defaults["inventory_search_hadron_bottom_padding"] == 50
     assert defaults["enable_inventory_search_melk"] is True
-    assert defaults["inventory_search_melk_limited_top_padding"] == 14
-    assert defaults["inventory_search_melk_limited_bottom_padding"] == 46
-    assert defaults["inventory_search_melk_multi_top_padding"] == 22
-    assert defaults["inventory_search_melk_multi_bottom_padding"] == 34
+    assert defaults["inventory_search_melk_limited_top_padding"] == -40
+    assert defaults["inventory_search_melk_limited_bottom_padding"] == 40
+    assert defaults["inventory_search_melk_multi_top_padding"] == -40
+    assert defaults["inventory_search_melk_multi_bottom_padding"] == 45
     assert defaults["quick_discard_keep_health_curios"] is True
     assert defaults["quick_discard_keep_toughness_curios"] is True
     assert defaults["quick_discard_keep_wound_curios"] is True

@@ -132,7 +132,6 @@ def main() -> None:
             "CraftingMechanicusBarterItemsView": lua.globals().barter,
             "CreditsGoodsVendorView": lua.globals().credits_goods,
             "MarksVendorView": lua.globals().marks_vendor,
-            "MarksGoodsVendorView": lua.globals().marks_goods,
             "VendorViewBase": lua.globals().vendor,
             "ViewElementGrid": lua.globals().grid_element,
         }
@@ -183,7 +182,7 @@ def main() -> None:
         safe_hooks["crafting:update"](view, 0.1, 12, "input")
         safe_hooks["credits_goods:update"](view, 0.1, 13, "credits_input")
         safe_hooks["marks_vendor:update"](view, 0.1, 14, "marks_input")
-        safe_hooks["marks_goods:update"](view, 0.1, 15, "marks_goods_input")
+        assert(safe_hooks["marks_goods:update"] == nil)
         assert(safe_hooks["vendor:update"] == nil)
 
         native_input = 0
@@ -253,8 +252,8 @@ def main() -> None:
     assert lua.execute("return calls.alpha == view") is True
     assert g.calls.ui_update[2] == 30
     assert g.calls.search_update[2] == 30
-    assert g.search_updates == 5
-    assert g.ui_updates == 5
+    assert g.search_updates == 4
+    assert g.ui_updates == 4
     assert g.native_input == 1
     assert lua.execute('return hooks["legend:_handle_input"] == nil') is True
     assert lua.execute("return calls.defocus == view") is True

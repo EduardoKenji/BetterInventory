@@ -2,7 +2,7 @@
 
 ## 3.4.0 - 2026-08-29
 
-- Adds an independent default-on Equipment Text Search option for both Sire Melk grids, plus separate top and bottom padding sliders for Limited Time Acquisitions and GlobalStore Multi-Operative Supply.
+- Adds an independent default-on Equipment Text Search option for both equipment-bearing Sire Melk grids, with `-40 / 40` Limited Time and `-40 / 45` Multi-Operative default spacing; non-equipment Mystery Acquisitions remains search-free.
 - Adds BetterInventory's responsive, maximum-three-column Armoury card layout to Sire Melk's native Limited Time Acquisitions.
 - Adds the matching character-footer card layout to Sire Melk's GlobalStore Multi-Operative Supply.
 - Adds separate default-on controls for both Melk routes under Additional inventory views > Sire Melk's Requisitorium.

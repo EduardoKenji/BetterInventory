@@ -25,7 +25,7 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - Adds responsive BetterInventory grid cards to Sire Melk's Limited Time Acquisitions, mirroring Armoury Exchange: Requisition Weapons & Curios.
 - Adds the corresponding character-aware grid to Sire Melk's GlobalStore Multi-Operative Supply, mirroring Armoury Exchange: Multi-Operative Supply.
 - Adds independent default-on controls under **Additional inventory views > Sire Melk's Requisitorium**. Both routes remain capped at three columns, share existing Armoury card sizing, and fail closed for unknown custom Marks services.
-- Adds a default-on Melk search control under **Equipment Text Search**, with independent top/bottom spacing for Limited Time Acquisitions and GlobalStore Multi-Operative Supply. Unknown custom Marks services receive no search decoration.
+- Adds a default-on Melk search control under **Equipment Text Search**, with independent top/bottom spacing for Limited Time Acquisitions (`-40 / 40`) and GlobalStore Multi-Operative Supply (`-40 / 45`). Mystery Acquisitions and unknown custom Marks services receive no search decoration or update work.
 
 ## What's new in v3.3.1
 

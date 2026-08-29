@@ -5,7 +5,6 @@ local function optional_require(path)
 	return ok and module or nil
 end
 local GameCreditsGoodsVendorView = optional_require("scripts/ui/views/credits_goods_vendor_view/credits_goods_vendor_view")
-local GameMarksGoodsVendorView = optional_require("scripts/ui/views/marks_goods_vendor_view/marks_goods_vendor_view")
 local GameMarksVendorView = optional_require("scripts/ui/views/marks_vendor_view/marks_vendor_view")
 local SearchHooks = {}
 
@@ -54,7 +53,6 @@ SearchHooks.install = function(dependencies)
 	local CraftingMechanicusBarterItemsView = dependencies.CraftingMechanicusBarterItemsView or GameCraftingMechanicusBarterItemsView
 	local CreditsGoodsVendorView = dependencies.CreditsGoodsVendorView or GameCreditsGoodsVendorView
 	local MarksVendorView = dependencies.MarksVendorView or GameMarksVendorView
-	local MarksGoodsVendorView = dependencies.MarksGoodsVendorView or GameMarksGoodsVendorView
 	local VendorViewBase = dependencies.VendorViewBase
 	local ViewElementGrid = dependencies.ViewElementGrid
 
@@ -124,7 +122,6 @@ SearchHooks.install = function(dependencies)
 	install_view_update_hook(CraftingMechanicusModifyView)
 	install_view_update_hook(CreditsGoodsVendorView)
 	install_view_update_hook(MarksVendorView)
-	install_view_update_hook(MarksGoodsVendorView)
 
 	local function install_view_input_hook(view_class)
 		if not method_available(view_class, "_handle_input") then

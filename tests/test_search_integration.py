@@ -151,7 +151,7 @@ def main() -> None:
     assert family("CraftingMechanicusModifyView") == "hadron"
     assert family("CraftingMechanicusBarterItemsView") == "hadron_sacrifice"
     assert family("MarksVendorView") == "melk"
-    assert family("MarksGoodsVendorView") == "melk"
+    assert family("MarksGoodsVendorView") is None
     assert family("CreditsVendorView") == "armoury"
     assert family("CreditsVendorView", "global") == "armoury"
     assert family("CreditsVendorView", "other") == "vendor"

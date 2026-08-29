@@ -18,10 +18,10 @@ local TITLED_SEARCH_GAP = 14
 local ARMOURY_SEARCH_GAP = 22
 local HADRON_SEARCH_GAP = 34
 local HADRON_SEARCH_ROW_PADDING = 50
-local MELK_LIMITED_SEARCH_GAP = 14
-local MELK_LIMITED_SEARCH_ROW_PADDING = 46
-local MELK_MULTI_SEARCH_GAP = 22
-local MELK_MULTI_SEARCH_ROW_PADDING = 34
+local MELK_LIMITED_SEARCH_GAP = -40
+local MELK_LIMITED_SEARCH_ROW_PADDING = 40
+local MELK_MULTI_SEARCH_GAP = -40
+local MELK_MULTI_SEARCH_ROW_PADDING = 45
 local BARTER_GRID_OFFSET = 100
 local GLOBAL_STORE_MELK_SERVICE = "get_all_characters_marks_store_custom"
 
@@ -34,7 +34,6 @@ local function supported(view)
 		or class_name == "CreditsVendorView"
 		or class_name == "CreditsGoodsVendorView"
 		or class_name == "MarksVendorView"
-		or class_name == "MarksGoodsVendorView"
 end
 
 SearchUI.supported = supported
