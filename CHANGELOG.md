@@ -1,5 +1,12 @@
 # BetterInventory changelog
 
+## 3.3.1 - 2026-08-29
+
+- Adds independent top and bottom Equipment Text Search spacing sliders for Hadron's Entreat Item view.
+- Positions the default Hadron search field from the native tab-frame boundary instead of stacking it below the unrelated 80-pixel grid-title reserve.
+- Uses `34 / 50` as Hadron's default top/bottom spacing while preserving native title and tab geometry.
+- Leaves Inventory, Armoury Exchange, GlobalStore, Brunt's Armoury, Melk, and Hadron's Sacrifice Item geometry unchanged.
+
 ## 3.3.0 - 2026-08-28
 
 - Adds three Curio naming formats: the original Darktide item name, the resolved primary stat, or the primary stat followed by the three perk-category labels.

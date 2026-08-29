@@ -2,7 +2,7 @@
 
 [![BetterInventory verification](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml/badge.svg)](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml)
 
-> Current release: **v3.3.0** (2026-08-28). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
+> Current release: **v3.3.1** (2026-08-29). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
 
 BetterInventory is a standalone inventory and item-management mod for Warhammer 40,000: Darktide. It adds responsive weapon and Curio cards, richer item information, configurable sorting, supported vendor layouts, optional mod integrations, and safety-gated inventory workflows.
 
@@ -17,8 +17,13 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - A standalone configurable legendary tier for visually identifying exceptional Transcendent weapons and Curios, with no Red Weapons At Home dependency.
 - Sorting that preserves equipped and favorite priorities and recognizes fifth attributes of 60, 61, and 62 as perfect rolls, ordered `62 > 61 > 60`.
 - A bounded inventory-options panel for sorting, discard rules, integrations, and view-specific controls.
-- Standalone Equipment Text Search, with its own master switch, Inventory/Armoury spacing sliders, quoted phrases, explicit AND, typed field clauses, match-first ranking, and configurable dim-or-hide behavior.
+- Standalone Equipment Text Search, with its own master switch, Inventory/Armoury/Hadron spacing sliders, quoted phrases, explicit AND, typed field clauses, match-first ranking, and configurable dim-or-hide behavior.
 - Optional Quick Discard, Automatic Discard, Automatic Curio Buyer, and Auto Crafter workflows with explicit ownership, authoritative revalidation, and fail-closed behavior.
+
+## What's new in v3.3.1
+
+- Adds separate top and bottom Equipment Text Search spacing controls for Hadron's Entreat Item view.
+- Uses Hadron's actual tab-frame boundary instead of stacking the field below its oversized native grid-title reserve, with Hadron-specific `34 / 50` top/bottom defaults and no changes to Inventory, Armoury, or Sacrifice Item geometry.
 
 ## What's new in v3.3.0
 

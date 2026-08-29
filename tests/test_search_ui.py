@@ -50,6 +50,8 @@ def main() -> None:
             inventory_search_inventory_bottom_padding = 46,
             inventory_search_armoury_top_padding = 22,
             inventory_search_armoury_bottom_padding = 34,
+            inventory_search_hadron_top_padding = 34,
+            inventory_search_hadron_bottom_padding = 50,
             inventory_search_focus_keybind = "off",
         }
         test_mod = {
@@ -137,8 +139,9 @@ def main() -> None:
         lua.globals().test_mod,
     )
     assert crafting.grid_settings.title_height == 80
-    assert crafting.grid_settings.top_padding == 48
-    assert crafting.scenegraph_definition.better_inventory_search_input.position[2] == 84
+    assert crafting.grid_settings.top_padding == 50
+    assert crafting.grid_settings.better_inventory_search_clip_pivot_y == 70
+    assert crafting.scenegraph_definition.better_inventory_search_input.position[2] == 34
 
     vendor_definitions = lua.table_from(
         {
@@ -190,8 +193,8 @@ def main() -> None:
     assert sacrifice.scenegraph_definition.better_inventory_search_input.size[1] == 486
     assert search_ui.barter_grid_offset() == 100
 
-    # Inventory and Armoury use independent pixel sliders while every other
-    # supported view retains its fixed native-contract geometry.
+    # Inventory, Armoury, and Hadron modify use independent pixel sliders while
+    # every other supported view retains its fixed native-contract geometry.
     lua.globals().settings.inventory_search_inventory_top_padding = 18
     lua.globals().settings.inventory_search_inventory_bottom_padding = 42
     custom_inventory = search_ui.decorate_definitions(
@@ -212,6 +215,18 @@ def main() -> None:
     assert custom_armoury.grid_settings.top_padding == 124
     assert custom_armoury.grid_settings.better_inventory_search_clip_pivot_y == 142
     assert custom_armoury.scenegraph_definition.better_inventory_search_input.position[2] == 106
+
+    lua.globals().settings.inventory_search_hadron_top_padding = 20
+    lua.globals().settings.inventory_search_hadron_bottom_padding = 24
+    custom_hadron = search_ui.decorate_definitions(
+        crafting_definitions,
+        lua.table_from({"__class_name": "CraftingMechanicusModifyView"}),
+        lua.globals().test_mod,
+    )
+    assert custom_hadron.grid_settings.title_height == 80
+    assert custom_hadron.grid_settings.top_padding == 24
+    assert custom_hadron.grid_settings.better_inventory_search_clip_pivot_y == 56
+    assert custom_hadron.scenegraph_definition.better_inventory_search_input.position[2] == 20
 
     missing_geometry = lua.table_from(
         {

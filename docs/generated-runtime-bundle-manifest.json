@@ -100,8 +100,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_data.lua",
-      "bytes": 80019,
-      "sha256": "2bf92cd5b4b1031993f3ce070c32450514032ce728a9594139b0914a2e36e059",
+      "bytes": 80460,
+      "sha256": "2b8a4f324f2b6f3af1ba4d9abc14678a8468b1ec22968b8450e4a65185ee8039",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_data.lua"
     },
     {
@@ -268,14 +268,14 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_localization_features.lua",
-      "bytes": 48004,
-      "sha256": "c0da552292f85f27e1352798ccb08e283ab51ac3a5d470a05cd755029a272f87",
+      "bytes": 48169,
+      "sha256": "9a5c0d80ca13574fe9a26649c40ae6ec0fa10106d4e78e243fca730b82216b9c",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_localization_features.lua"
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_localization_zh_cn.lua",
-      "bytes": 99193,
-      "sha256": "f63fc9837fcf40d0ee338c39a4cf26fefa13337ffc3d0b1ab960a8d89059e2c1",
+      "bytes": 99364,
+      "sha256": "2da0346a94813dad14cfdbf6ef71692a1d1a10d1a413431b73492aa855b3ea66",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_localization_zh_cn.lua"
     },
     {
@@ -346,8 +346,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_search_ui.lua",
-      "bytes": 22058,
-      "sha256": "92165c92c84309c36c34cb94d70c856f84fa8404f7d16b6de82e09e0f3cfa7f1",
+      "bytes": 22671,
+      "sha256": "4e5e69c046ecdecb4a2b9e05ec15286b5809610f8519b7e5c7d90aa94b878493",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_search_ui.lua"
     },
     {
@@ -531,6 +531,6 @@
       "source_path": "scripts/mods/BetterInventory/auto_crafter/games_lantern/transport_wine.lua"
     }
   ],
-  "runtime_tree_sha256": "a30c75f5ee66663c30b30be6aeac34774e003486f59606ff61debf63b637c33c",
-  "version": "3.3.0"
+  "runtime_tree_sha256": "02e61b2c8cf71f6b466e29c0a4c0c0c4bebb354d92295a2fb92bcbece1ece8ee",
+  "version": "3.3.1"
 }

@@ -56,8 +56,14 @@ local localization = {
 	inventory_search_armoury_bottom_padding = {
 		en = "Armoury: bottom padding",
 	},
+	inventory_search_hadron_top_padding = {
+		en = "Hadron: top padding",
+	},
+	inventory_search_hadron_bottom_padding = {
+		en = "Hadron: bottom padding",
+	},
 	inventory_search_spacing_reopen_tooltip = {
-		en = "Pixel spacing for the Equipment Text Search field. Top padding controls header-to-field clearance; bottom padding controls the reserved field-to-card space. Reopen the affected inventory or Armoury item view after changing this value.",
+		en = "Pixel spacing for the Equipment Text Search field. Top padding controls header-to-field clearance; bottom padding controls the reserved field-to-card space. Reopen the affected Inventory, Armoury, or Hadron item view after changing this value.",
 	},
 	inventory_search_placeholder = {
 		en = "Search: sword & uncanny & flak",
