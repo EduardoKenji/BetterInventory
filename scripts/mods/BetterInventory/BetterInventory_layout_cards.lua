@@ -1264,6 +1264,7 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 	local detailed_curio_profile = curio_display_profile == "detailed"
 	local favorite_marker_position = setting(mod, "favorite_marker_position", "above_rating")
 	local store_footer_height = configuration.store_item and STORE_FOOTER_HEIGHT + global_store_extra_height(mod, configuration) or 0
+	local blessing_footer_height = store_footer_height + (configuration.melk_limited and 5 or 0)
 	local expertise_font_size = numeric_setting(mod, "expertise_font_size", 20, 10, 28)
 	local item_level_row_height = math.max(30, expertise_font_size + 10)
 	local bottom_content_height = item_level_row_height
@@ -1276,7 +1277,7 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 		local blessing_gap = numeric_setting(mod, "blessing_icon_spacing", 3, 0, 20)
 		local blessing_spacing = blessing_size + blessing_gap
 		local blessing_left = text_left + (favorite_marker_position == "bottom_left" and 24 or 0)
-		local blessing_y_offset = -(store_footer_height + 3)
+		local blessing_y_offset = -(blessing_footer_height + 3)
 
 		for i = 1, WEAPON_BLESSING_COUNT do
 			add_blessing_pass(pass_template, i, blessing_size, blessing_left + (i - 1) * blessing_spacing, blessing_y_offset)
@@ -1324,7 +1325,7 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 				truncate_long_name = false
 			end
 		end
-		local reserved_bottom_row = separate_item_level and (configuration.store_item and store_footer_height or item_level_row_height) or store_footer_height
+		local reserved_bottom_row = separate_item_level and (configuration.store_item and blessing_footer_height or item_level_row_height) or blessing_footer_height
 
 		blessing_text_height = WEAPON_BLESSING_COUNT * blessing_line_height + (WEAPON_BLESSING_COUNT - 1) * blessing_vertical_spacing
 
@@ -1374,12 +1375,12 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 
 	if configuration.store_item then
 		if blessing_display_mode == "icons" then
-			bottom_content_height = store_footer_height + blessing_size + 6
+			bottom_content_height = blessing_footer_height + blessing_size + 6
 		elseif blessing_text_mode then
 			local blessing_bottom_padding = numeric_setting(mod, "weapon_blessing_text_bottom_padding", 4, 0, 20)
-			bottom_content_height = store_footer_height + blessing_text_height + blessing_bottom_padding + 3
+			bottom_content_height = blessing_footer_height + blessing_text_height + blessing_bottom_padding + 3
 		else
-			bottom_content_height = store_footer_height
+			bottom_content_height = blessing_footer_height
 		end
 	elseif blessing_display_mode == "icons" then
 		bottom_content_height = math.max(bottom_content_height, blessing_size + 6)

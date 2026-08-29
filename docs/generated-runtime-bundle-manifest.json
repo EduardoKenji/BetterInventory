@@ -40,8 +40,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_character_overview_ui.lua",
-      "bytes": 65104,
-      "sha256": "2425394cb5aae1420abe281c87f46a2d84ca72978294158cbdb6094068448895",
+      "bytes": 65158,
+      "sha256": "93e4a8c73a86e35f64eff3430dbf07f6a5402dfd63dc79e9074ea306d6ab7cf5",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_character_overview_ui.lua"
     },
     {
@@ -232,14 +232,14 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_blueprints.lua",
-      "bytes": 35825,
-      "sha256": "e22ab6e8b0e7a8634d9077cfd7b4180fdc754bfdfbbe32471d7d4bdfb4ac29bc",
+      "bytes": 35933,
+      "sha256": "0b656abfc8b907a46cf019a8ca93a2d3e2f4c26bdbaa4d21ee3750b93e67f9db",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_layout_blueprints.lua"
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_cards.lua",
-      "bytes": 77367,
-      "sha256": "af120b4dd5bebce0804f621cf7b0d6a93fdde694835c465647a2e905ec81dcf0",
+      "bytes": 77479,
+      "sha256": "e99ddda11637452319de622d14ba12712046f5bea1e1eb5dbf608e33c535dc1b",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_layout_cards.lua"
     },
     {
@@ -310,8 +310,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_runtime.lua",
-      "bytes": 99736,
-      "sha256": "3b51446a8beb2b502093295f687ab64f967287ac5993ee9c1be1f5b4297ec29b",
+      "bytes": 99834,
+      "sha256": "3b6f756bf1c2f4ef63d72323cb37727543f88d15d786999ad3766af1eb569964",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_runtime.lua"
     },
     {
@@ -531,6 +531,6 @@
       "source_path": "scripts/mods/BetterInventory/auto_crafter/games_lantern/transport_wine.lua"
     }
   ],
-  "runtime_tree_sha256": "ad40e8c1dc5a3abaad1ba83f15e780d3e1dc1df2fb02681424fe62c001b8b317",
+  "runtime_tree_sha256": "9ce4126d729f07b261e3c26dc645e0caf429fd8dac7414fd134204360b7bf405",
   "version": "3.4.0"
 }

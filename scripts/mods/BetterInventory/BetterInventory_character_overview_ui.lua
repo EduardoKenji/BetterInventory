@@ -155,6 +155,7 @@ local function melk_grid_configuration(mod, view, layout, Layout, armoury_config
 	end
 
 	local configuration = table.clone(global_store and global_store_configuration or armoury_configuration)
+	configuration.melk_limited = not global_store or nil
 
 	if Layout.store_slot_kind then
 		configuration.slot_kind = Layout.store_slot_kind(view, layout)

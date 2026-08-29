@@ -480,6 +480,7 @@ Blueprints.configure_item_blueprint = function(mod, item_blueprint, grid_width, 
 
 	configuration = configuration or {}
 	local global_store = configuration.global_store == true
+	local melk_limited = configuration.melk_limited == true
 	local global_store_extra = global_store_extra_height(mod, configuration)
 	local global_store_multicolumn = global_store_extra > 0
 	local global_store_photo_size = global_store_multicolumn and global_store_character_photo_size(mod) or 34
@@ -533,7 +534,7 @@ Blueprints.configure_item_blueprint = function(mod, item_blueprint, grid_width, 
 	disable_quick_look_card_passes(pass_template)
 
 	if quick_look_card_integration then
-		add_quick_look_card_grid_pass(mod, pass_template, card_width, text_left, quick_look_card_position, global_store_price_row_offset)
+		add_quick_look_card_grid_pass(mod, pass_template, card_width, text_left, quick_look_card_position, global_store_price_row_offset - (melk_limited and 3 or 0))
 	end
 
 	local icon = pass_by_style_id(pass_template, "icon")
@@ -664,7 +665,7 @@ Blueprints.configure_item_blueprint = function(mod, item_blueprint, grid_width, 
 		text_vertical_alignment = "bottom",
 		offset = {
 			-8,
-			-5,
+			melk_limited and -2 or -5,
 			9,
 		},
 		size = {

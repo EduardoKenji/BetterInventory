@@ -1213,6 +1213,25 @@ def main() -> None:
     assert blueprint_pass(vendor_blueprint, "price_text").style.offset[1] == 39
     assert blueprint_pass(vendor_blueprint, "owned_text").style.offset[1] == 12
     assert blueprint_pass(vendor_blueprint, "better_inventory_blessing_1").style.offset[2] == -37
+
+    # Native Melk keeps blessing rows clear of its footer while lowering the
+    # rating and dump-stat labels inside that footer. Armoury geometry is unchanged.
+    mod.settings.weapon_blessing_display_mode = "ranked_text"
+    melk_configuration = lua.table_from(
+        {"maximum_columns": 3, "store_item": True, "melk_limited": True}
+    )
+    melk_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, melk_blueprint, 596, melk_configuration)
+    armoury_text_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    layout.configure_item_blueprint(mod, armoury_text_blueprint, 596, store_configuration)
+    assert blueprint_pass(melk_blueprint, "better_inventory_blessing_text_2").style.offset[2] == (
+        blueprint_pass(armoury_text_blueprint, "better_inventory_blessing_text_2").style.offset[2] - 5
+    )
+    assert blueprint_pass(melk_blueprint, "item_level").style.offset[2] == -2
+    assert blueprint_pass(melk_blueprint, "better_inventory_quick_look_card_dump_stat").style.offset[2] == -23
+    assert blueprint_pass(armoury_text_blueprint, "item_level").style.offset[2] == -5
+    assert blueprint_pass(armoury_text_blueprint, "better_inventory_quick_look_card_dump_stat").style.offset[2] == -26
+    mod.settings.weapon_blessing_display_mode = "icons"
     same_lua_value = lua.eval("function(left, right) return left == right end")
     assert same_lua_value(vendor_blueprint.load_icon, globals_.sentinel_load)
     assert same_lua_value(vendor_blueprint.unload_icon, globals_.sentinel_unload)

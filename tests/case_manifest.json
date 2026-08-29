@@ -244,10 +244,10 @@
     {"name": "exclusive_background_ownership_and_lifecycle_fallback", "risk": "critical", "start_line": 1, "end_line": 326}
   ],
   "test_layout.py": [
-    {"name": "card_geometry", "risk": "high", "start_line": 613, "end_line": 1498},
-      {"name": "weapon_modifier_data_only_resolution", "risk": "critical", "start_line": 1499, "end_line": 1972},
-        {"name": "content_and_resource_ownership", "risk": "high", "start_line": 1973, "end_line": 3184},
-    {"name": "integration_boundaries", "risk": "medium", "start_line": 3185, "end_line": 5462}
+      {"name": "card_geometry", "risk": "high", "start_line": 613, "end_line": 1517},
+        {"name": "weapon_modifier_data_only_resolution", "risk": "critical", "start_line": 1518, "end_line": 1991},
+          {"name": "content_and_resource_ownership", "risk": "high", "start_line": 1992, "end_line": 3203},
+      {"name": "integration_boundaries", "risk": "medium", "start_line": 3204, "end_line": 5481}
   ],
   "test_operation_arbiter.py": [
     {"name": "manual_automatic_exclusion", "risk": "critical", "start_line": 20, "end_line": 34},

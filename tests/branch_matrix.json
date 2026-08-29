@@ -205,6 +205,13 @@
       "modules": ["BetterInventory_runtime.lua", "BetterInventory_character_overview_ui.lua"]
     },
     {
+      "name": "vendor.melk-native-footer-geometry",
+      "test": "test_layout.py",
+      "case": "card_geometry",
+      "outcome": "native Limited Time Acquisition weapon cards reserve five additional logical pixels above the Marks footer for blessing rows while item level and dump-stat labels move three pixels lower; the scoped Melk marker cannot alter Armoury or GlobalStore card geometry",
+      "modules": ["BetterInventory_layout_blueprints.lua", "BetterInventory_layout_cards.lua", "BetterInventory_runtime.lua"]
+    },
+    {
       "name": "global-store.category-generations-retire-portrait-loads",
       "test": "test_feature_domains.py",
       "case": "global_store_tab_generation_retirement",

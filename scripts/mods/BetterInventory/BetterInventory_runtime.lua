@@ -1901,6 +1901,9 @@ local function present_additional_grid(func, view, layout, on_present_callback, 
 	end
 
 	local active_configuration = table.clone(configuration)
+	if setting_id == "enable_melk_limited_grid" then
+		active_configuration.melk_limited = true
+	end
 
 	if Layout.store_slot_kind then
 		-- Vendor cards honor category widths and their column cap.
