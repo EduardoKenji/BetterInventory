@@ -53,9 +53,6 @@ def main() -> None:
             _handle_input = function() end,
             update = function() end,
         })
-        vendor_interaction = klass("vendor_interaction", {
-            _handle_back_pressed = function() end,
-        })
         credits_goods = klass("credits_goods", {update = function() end})
         marks_vendor = setmetatable(klass("marks_vendor", {super = vendor}), {__index = vendor})
         marks_goods = klass("marks_goods", {update = function() end})
@@ -95,14 +92,6 @@ def main() -> None:
                 end
             end,
             handle_view_input = function(_, view) return view.block_search == true end,
-            handle_back_pressed = function(_, view)
-                if view and view.writing then
-                    view.writing = false
-                    calls.parent_back_defocus = view
-                    return true
-                end
-                return false
-            end,
             is_writing = function(view) return view and view.writing == true end,
             defocus = function(view) calls.defocus = view end,
             decorate_definitions = function(definitions, view)
@@ -144,7 +133,6 @@ def main() -> None:
             "CreditsGoodsVendorView": lua.globals().credits_goods,
             "MarksVendorView": lua.globals().marks_vendor,
             "VendorViewBase": lua.globals().vendor,
-            "VendorInteractionViewBase": lua.globals().vendor_interaction,
             "ViewElementGrid": lua.globals().grid_element,
         }
     )
@@ -209,16 +197,6 @@ def main() -> None:
             open_view, "input"
         )
 
-        parent_view = {_active_view_instance = {writing = true}}
-        native_parent_back = 0
-        first_parent_back = hooks["vendor_interaction:_handle_back_pressed"](
-            function() native_parent_back = native_parent_back + 1 return "native-back" end,
-            parent_view
-        )
-        second_parent_back = hooks["vendor_interaction:_handle_back_pressed"](
-            function() native_parent_back = native_parent_back + 1 return "native-back" end,
-            parent_view
-        )
 
         safe_hooks["element:cb_on_grid_entry_left_pressed"]({_parent = view})
 
@@ -278,10 +256,6 @@ def main() -> None:
     assert g.search_updates == 4
     assert g.ui_updates == 4
     assert g.native_input == 1
-    assert g.first_parent_back is True
-    assert g.second_parent_back == "native-back"
-    assert g.native_parent_back == 1
-    assert lua.execute("return calls.parent_back_defocus == parent_view._active_view_instance") is True
     assert lua.execute('return hooks["legend:_handle_input"] == nil') is True
     assert lua.execute("return calls.defocus == view") is True
     assert lua.execute('return hooks["element:update"] == nil') is True

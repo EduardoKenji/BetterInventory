@@ -94,6 +94,28 @@ def main() -> None:
                 return self.actions[action] == true
             end,
         }
+        keyboard_escape = false
+        Keyboard = {
+            button_index = function(name)
+                assert(name == "escape")
+                return 27
+            end,
+            pressed = function(index)
+                assert(index == 27)
+                return keyboard_escape
+            end,
+        }
+        mouse_left = false
+        Mouse = {
+            button_id = function(name)
+                assert(name == "left")
+                return 1
+            end,
+            pressed = function(index)
+                assert(index == 1)
+                return mouse_left
+            end,
+        }
         ''',
     )
     search_ui = lua.execute(MODULE_PATH.read_text(encoding="utf-8"), name=str(MODULE_PATH))
@@ -671,9 +693,10 @@ def main() -> None:
     assert lua.globals().legend_entry.is_visible is True
     assert input_widget.content.input_text == "sword"
 
-    # ESC/Back is dispatched by Melk's parent interaction view rather than its
-    # child item view. Its callback consumes the first press to defocus search,
-    # then delegates the second press to native navigation. Cover both routes.
+    # Focused Melk text passes suppress mapped Back before the parent can see it.
+    # Stingray's physical "escape" key must defocus on the first press, while a
+    # second press delegates to the native view. Cover both Melk routes.
+    lua.globals().input_service.actions.back = False
     for optional_store_service in (None, "get_all_characters_marks_store_custom"):
         melk_view = lua.table_from(
             {
@@ -689,9 +712,32 @@ def main() -> None:
             }
         )
         assert search_ui.focus(melk_view) is True
-        assert search_ui.handle_back_pressed(lua.globals().test_mod, melk_view) is True
+        lua.globals().keyboard_escape = True
+        assert search_ui.handle_view_input(
+            lua.globals().test_mod, melk_view, lua.globals().input_service
+        ) is True
         assert search_ui.is_writing(melk_view) is False
-        assert search_ui.handle_back_pressed(lua.globals().test_mod, melk_view) is False
+        assert search_ui.handle_view_input(
+            lua.globals().test_mod, melk_view, lua.globals().input_service
+        ) is False
+        lua.globals().keyboard_escape = False
+
+        # Clicking inside retains text focus; clicking anywhere else, including
+        # empty grid space, releases it without requiring an item-card callback.
+        assert search_ui.focus(melk_view) is True
+        melk_input = melk_view._widgets_by_name.better_inventory_search_input
+        melk_input.content.hotspot.is_hover = True
+        lua.globals().mouse_left = True
+        assert search_ui.handle_view_input(
+            lua.globals().test_mod, melk_view, lua.globals().input_service
+        ) is True
+        assert search_ui.is_writing(melk_view) is True
+        melk_input.content.hotspot.is_hover = False
+        assert search_ui.handle_view_input(
+            lua.globals().test_mod, melk_view, lua.globals().input_service
+        ) is True
+        assert search_ui.is_writing(melk_view) is False
+        lua.globals().mouse_left = False
 
     # Changing input mode while the field remains active reconciles ownership:
     # controller navigation locks the grid; returning to cursor mode releases
