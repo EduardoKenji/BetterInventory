@@ -183,9 +183,9 @@ def main() -> None:
     mod.settings.weapon_rarity_rating_mode = "compact_horizontal"
     assert integration.profile(mod, 210, 12, lua.table_from({}), 3).top == 45
     mod.settings.weapon_rarity_rating_mode = "full_horizontal"
-    assert integration.profile(mod, 210, 12, lua.table_from({}), 3).top == 60
+    assert integration.profile(mod, 210, 12, lua.table_from({}), 3).top == 45
     mod.settings.show_pattern_mark = True
-    assert integration.profile(mod, 210, 12, lua.table_from({}), 3).top == 80
+    assert integration.profile(mod, 210, 12, lua.table_from({}), 3).top == 65
     mod.settings.show_pattern_mark = False
     mod.settings.weapon_rarity_rating_mode = "vertical"
     assert integration.profile(mod, 210, 12, lua.table_from({}), 3).top == 34

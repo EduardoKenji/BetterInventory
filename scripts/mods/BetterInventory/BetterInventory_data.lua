@@ -2772,6 +2772,18 @@ return {
 						default_value = true,
 					},
 					{
+						setting_id = "curio_rarity_rating_mode",
+						tooltip = "curio_rarity_rating_mode_tooltip",
+						type = "dropdown",
+						default_value = "off",
+						options = {
+							{ text = "weapon_rarity_rating_mode_off", value = "off" },
+							{ text = "weapon_rarity_rating_mode_compact_horizontal", value = "compact_horizontal" },
+							{ text = "weapon_rarity_rating_mode_full_horizontal", value = "full_horizontal" },
+							{ text = "weapon_rarity_rating_mode_vertical", value = "vertical" },
+						},
+					},
+					{
 						setting_id = "show_curio_item_level",
 						tooltip = "show_curio_item_level_tooltip",
 						type = "checkbox",

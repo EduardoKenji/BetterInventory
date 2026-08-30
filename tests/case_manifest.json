@@ -27,7 +27,7 @@
     {"name": "presentation_only_fixture_load_order_deduplication_and_responsive_card_profiles", "risk": "high", "start_line": 17, "end_line": 448}
   ],
   "test_rarity_rating.py": [
-    {"name": "three_profiles_split_tiers_dynamic_geometry_and_bind_only_updates", "risk": "high", "start_line": 1, "end_line": 224}
+    {"name": "three_profiles_split_tiers_dynamic_geometry_and_bind_only_updates", "risk": "high", "start_line": 1, "end_line": 277}
   ],
   "test_coverage_support.py": [
     {"name": "multiple_lua_runtimes_merge_without_overwriting_earlier_coverage", "risk": "high", "start_line": 1, "end_line": 21}
@@ -250,7 +250,7 @@
       {"name": "card_geometry", "risk": "high", "start_line": 613, "end_line": 1559},
         {"name": "weapon_modifier_data_only_resolution", "risk": "critical", "start_line": 1560, "end_line": 2033},
           {"name": "content_and_resource_ownership", "risk": "high", "start_line": 2034, "end_line": 3245},
-      {"name": "integration_boundaries", "risk": "medium", "start_line": 3246, "end_line": 5523}
+      {"name": "integration_boundaries", "risk": "medium", "start_line": 3246, "end_line": 5567}
   ],
   "test_operation_arbiter.py": [
     {"name": "manual_automatic_exclusion", "risk": "critical", "start_line": 20, "end_line": 34},

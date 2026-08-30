@@ -15,6 +15,8 @@ local STAR_RUNS = { [0] = "", STAR, STAR .. STAR, STAR .. STAR .. STAR, STAR .. 
 local VERTICAL_STAR_RUNS = { [0] = "", STAR, STAR .. "\n" .. STAR, STAR .. "\n" .. STAR .. "\n" .. STAR, STAR .. "\n" .. STAR .. "\n" .. STAR .. "\n" .. STAR, STAR .. "\n" .. STAR .. "\n" .. STAR .. "\n" .. STAR .. "\n" .. STAR, STAR .. "\n" .. STAR .. "\n" .. STAR .. "\n" .. STAR .. "\n" .. STAR .. "\n" .. STAR }
 local DEFAULT_COLOR = { 255, 255, 255, 255 }
 local OWNED_STYLE_IDS = {
+	better_inventory_weapon_rarity_rating = true,
+	better_inventory_curio_rarity_rating = true,
 	better_inventory_rarity_rating_compact = true,
 	better_inventory_rarity_rating_full_name = true,
 	better_inventory_rarity_rating_stars = true,
@@ -43,33 +45,71 @@ local function valid_mode(value)
 	return MODE_OFF
 end
 
-local function mode(mod, configuration)
-	configuration = configuration or {}
-
-	-- The experimental presentation targets BetterInventory's grid cards. Native
-	-- one-column cards, Character Overview, and dedicated Curio inventories retain
-	-- their established geometry. Mixed vendor grids have no fixed slot kind, so
-	-- they remain eligible while individual Curio cards simply omit the rating.
-	local slot_kind = configuration.slot_kind
-
-	if configuration.native_single_column == true
-		or configuration.character_overview == true
-		or slot_kind == "curio"
-		or (type(slot_kind) == "string" and string.match(slot_kind, "^slot_attachment_")) then
-		return MODE_OFF
+local function slot_item_kind(slot_kind)
+	if slot_kind == "curio" or type(slot_kind) == "string" and string.match(slot_kind, "^slot_attachment_") then
+		return "curio"
 	end
 
-	return valid_mode(setting(mod, "weapon_rarity_rating_mode", MODE_OFF))
+	if slot_kind == "weapon" or slot_kind == "melee" or slot_kind == "ranged" or slot_kind == "slot_primary" or slot_kind == "slot_secondary" then
+		return "weapon"
+	end
 end
 
-local function vertical_applies(mod, slot_kind, configuration)
-	if mode(mod, configuration) ~= MODE_VERTICAL then
+local function configuration_allows_rating(configuration)
+	configuration = configuration or {}
+
+	if configuration.native_single_column == true
+		or configuration.character_overview == true then
 		return false
 	end
 
-	-- A dedicated Curio inventory does not need a weapon-rating rail. Mixed
-	-- vendor layouts have no fixed slot kind and keep the rail for consistency.
-	return slot_kind ~= "curio" and not (type(slot_kind) == "string" and string.match(slot_kind, "^slot_attachment_"))
+	return true
+end
+
+local function item_mode(mod, item_kind, configuration)
+	if not configuration_allows_rating(configuration) then
+		return MODE_OFF
+	end
+
+	local configured_kind = slot_item_kind(configuration and configuration.slot_kind)
+
+	if item_kind and configured_kind and item_kind ~= configured_kind then
+		return MODE_OFF
+	end
+
+	item_kind = item_kind or configured_kind or "weapon"
+
+	return valid_mode(setting(mod, item_kind == "curio" and "curio_rarity_rating_mode" or "weapon_rarity_rating_mode", MODE_OFF))
+end
+
+local function mode(mod, configuration, explicit_item_kind)
+	return item_mode(mod, explicit_item_kind or slot_item_kind(configuration and configuration.slot_kind), configuration)
+end
+
+local function layout_modes(mod, configuration, slot_kind)
+	configuration = configuration or {}
+
+	if not configuration_allows_rating(configuration) then
+		return MODE_OFF, MODE_OFF
+	end
+
+	local resolved_kind = slot_item_kind(slot_kind ~= nil and slot_kind or configuration.slot_kind)
+
+	if resolved_kind == "weapon" then
+		return item_mode(mod, "weapon", configuration), MODE_OFF
+	elseif resolved_kind == "curio" then
+		return MODE_OFF, item_mode(mod, "curio", configuration)
+	end
+
+	-- Mixed vendor grids can contain both kinds. Reserve only the maximum layout
+	-- requirement, while each card populates the pass belonging to its own kind.
+	return item_mode(mod, "weapon", configuration), item_mode(mod, "curio", configuration)
+end
+
+local function vertical_applies(mod, slot_kind, configuration)
+	local weapon_mode, curio_mode = layout_modes(mod, configuration, slot_kind)
+
+	return weapon_mode == MODE_VERTICAL or curio_mode == MODE_VERTICAL
 end
 
 local function first_utf8_character(value)
@@ -154,6 +194,8 @@ local function set_style_color(widget, style_id, color)
 end
 
 local function clear_content(content)
+	content.better_inventory_weapon_rarity_rating = ""
+	content.better_inventory_curio_rarity_rating = ""
 	content.better_inventory_rarity_rating_compact = ""
 	content.better_inventory_rarity_rating_full_name = ""
 	content.better_inventory_rarity_rating_stars = ""
@@ -166,6 +208,7 @@ RarityRating.set_custom_tier_provider = function(provider)
 end
 
 RarityRating.mode = mode
+RarityRating.item_mode = item_mode
 RarityRating.is_vertical = function(mod, configuration)
 	return mode(mod, configuration) == MODE_VERTICAL
 end
@@ -173,13 +216,19 @@ RarityRating.vertical_applies = vertical_applies
 RarityRating.vertical_rail_width = function(mod, slot_kind, configuration)
 	return vertical_applies(mod, slot_kind, configuration) and VERTICAL_RAIL_WIDTH or 0
 end
-RarityRating.horizontal_rows = function(mod, configuration)
-	local resolved_mode = mode(mod, configuration)
+RarityRating.horizontal_rows = function(mod, configuration, explicit_item_kind)
+	if explicit_item_kind then
+		local resolved_mode = item_mode(mod, explicit_item_kind, configuration)
 
-	return resolved_mode == MODE_COMPACT and 1 or resolved_mode == MODE_FULL and 2 or 0
+		return (resolved_mode == MODE_COMPACT or resolved_mode == MODE_FULL) and 1 or 0
+	end
+
+	local weapon_mode, curio_mode = layout_modes(mod, configuration)
+
+	return (weapon_mode == MODE_COMPACT or weapon_mode == MODE_FULL or curio_mode == MODE_COMPACT or curio_mode == MODE_FULL) and 1 or 0
 end
 
-RarityRating.populate = function(mod, widget, item, is_weapon)
+RarityRating.populate = function(mod, widget, item, item_kind)
 	local content = widget and widget.content
 
 	if not content then
@@ -188,10 +237,11 @@ RarityRating.populate = function(mod, widget, item, is_weapon)
 
 	clear_content(content)
 
-	local resolved_mode = mode(mod)
+	item_kind = item_kind == true and "weapon" or item_kind == false and nil or item_kind
+	local resolved_mode = item_kind and item_mode(mod, item_kind) or MODE_OFF
 	local rarity = effective_rarity(item)
 
-	if resolved_mode == MODE_OFF or rarity < 1 or not is_weapon then
+	if resolved_mode == MODE_OFF or rarity < 1 or not item_kind then
 		return
 	end
 
@@ -199,10 +249,12 @@ RarityRating.populate = function(mod, widget, item, is_weapon)
 	local first = first_utf8_character(name)
 	local stars = STAR_RUNS[rarity] or ""
 	local color = rarity_color(item)
+	local horizontal = (resolved_mode == MODE_FULL and name or first) .. " " .. stars
 
 	content.better_inventory_rarity_rating_visible = true
+	content[item_kind == "curio" and "better_inventory_curio_rarity_rating" or "better_inventory_weapon_rarity_rating"] = horizontal
 	content.better_inventory_rarity_rating_compact = first .. " " .. stars
-	content.better_inventory_rarity_rating_full_name = name
+	content.better_inventory_rarity_rating_full_name = name .. " " .. stars
 	content.better_inventory_rarity_rating_stars = stars
 	content.better_inventory_rarity_rating_vertical = first .. "\n" .. (VERTICAL_STAR_RUNS[rarity] or "")
 
@@ -253,13 +305,9 @@ end
 RarityRating.add_passes = function(mod, pass_template, card_width, card_height, text_left, base_style, configuration)
 	remove_owned_passes(pass_template)
 
-	local resolved_mode = mode(mod, configuration)
+	local weapon_mode, curio_mode = layout_modes(mod, configuration)
 
-	if resolved_mode == MODE_OFF then
-		return
-	end
-
-	if resolved_mode == MODE_VERTICAL and not vertical_applies(mod, configuration and configuration.slot_kind, configuration) then
+	if weapon_mode == MODE_OFF and curio_mode == MODE_OFF then
 		return
 	end
 
@@ -267,24 +315,23 @@ RarityRating.add_passes = function(mod, pass_template, card_width, card_height, 
 	local pattern_rows = setting(mod, "show_pattern_mark", false) == true and 1 or 0
 	local top = HORIZONTAL_TOP + pattern_rows * HORIZONTAL_ROW_HEIGHT
 
-	if resolved_mode == MODE_COMPACT then
-		add_text_pass(pass_template, "better_inventory_rarity_rating_compact", base_style, {
+	if weapon_mode == MODE_COMPACT or weapon_mode == MODE_FULL then
+		add_text_pass(pass_template, "better_inventory_weapon_rarity_rating", base_style, {
 			font_size = font_size,
 			offset = { text_left, top, 11 },
 			size = { math.max(40, card_width - text_left - 8), HORIZONTAL_ROW_HEIGHT },
 		})
-	elseif resolved_mode == MODE_FULL then
-		add_text_pass(pass_template, "better_inventory_rarity_rating_full_name", base_style, {
+	end
+
+	if curio_mode == MODE_COMPACT or curio_mode == MODE_FULL then
+		add_text_pass(pass_template, "better_inventory_curio_rarity_rating", base_style, {
 			font_size = font_size,
-			offset = { text_left, top, 11 },
+			offset = { text_left, tonumber(configuration and configuration.curio_rating_top) or 31, 11 },
 			size = { math.max(40, card_width - text_left - 8), HORIZONTAL_ROW_HEIGHT },
 		})
-		add_text_pass(pass_template, "better_inventory_rarity_rating_stars", base_style, {
-			font_size = font_size,
-			offset = { text_left, top + HORIZONTAL_ROW_HEIGHT, 11 },
-			size = { math.max(40, card_width - text_left - 8), HORIZONTAL_ROW_HEIGHT },
-		})
-	elseif resolved_mode == MODE_VERTICAL then
+	end
+
+	if weapon_mode == MODE_VERTICAL or curio_mode == MODE_VERTICAL then
 		add_text_pass(pass_template, "better_inventory_rarity_rating_vertical", base_style, {
 			font_size = math.min(13, font_size),
 			text_horizontal_alignment = "center",

@@ -256,7 +256,7 @@ Blueprints.configure_native_item_blueprint = function(mod, item_blueprint, grid_
 	if sub_display_name then
 		sub_display_name.visibility_function = function(content)
 			if content_is_curio(content) then
-				return show_curio_quality and not detailed_curio_profile
+				return show_curio_quality and not detailed_curio_profile and RarityRating.item_mode(mod, "curio", configuration) == RarityRating.MODE_OFF
 			end
 
 			return content_is_weapon(content) and show_pattern_mark
@@ -656,7 +656,7 @@ Blueprints.configure_item_blueprint = function(mod, item_blueprint, grid_width, 
 		},
 	})
 	if rarity_name then
-		local show_weapon_quality = setting(mod, "show_rarity_name", false) and RarityRating.mode(mod, configuration) == RarityRating.MODE_OFF
+		local show_weapon_quality = setting(mod, "show_rarity_name", false) and RarityRating.item_mode(mod, "weapon", configuration) == RarityRating.MODE_OFF
 
 		rarity_name.visibility_function = function(content)
 			return show_weapon_quality and content_is_weapon(content)

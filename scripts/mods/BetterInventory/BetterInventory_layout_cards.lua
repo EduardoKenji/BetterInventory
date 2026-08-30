@@ -417,7 +417,7 @@ local function populate_card_content(mod, widget, element, blessing_display_mode
 	local curio = not weapon and is_curio(item)
 	content.better_inventory_is_weapon = weapon
 	content.better_inventory_is_curio = curio
-	RarityRating.populate(mod, widget, item, weapon)
+	RarityRating.populate(mod, widget, item, weapon and "weapon" or curio and "curio" or nil)
 
 	if weapon then
 		if show_weapon_modifiers then
@@ -1268,6 +1268,8 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 	local show_weapon_perk_ranks = show_weapon_perks and setting(mod, "show_weapon_perk_rank_symbols", true)
 	local curio_display_profile = setting(mod, "curio_display_profile", "detailed")
 	local detailed_curio_profile = curio_display_profile == "detailed"
+	local show_name_it_curio_title = detailed_curio_profile and name_it_curio_title_enabled(mod, configuration)
+	local curio_title_height = show_name_it_curio_title and curio_name_title_height(mod, configuration) or 0
 	local favorite_marker_position = setting(mod, "favorite_marker_position", "above_rating")
 	local store_footer_height = configuration.store_item and STORE_FOOTER_HEIGHT + global_store_extra_height(mod, configuration) or 0
 	local blessing_footer_height = store_footer_height + (configuration.melk_limited and 5 or 0)
@@ -1278,6 +1280,7 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 	local blessing_text_height
 	local perk_rank_size = weapon_perk_rank_icon_size(mod)
 
+	configuration.curio_rating_top = detailed_curio_profile and 7 + curio_title_height or 31
 	RarityRating.add_passes(mod, pass_template, card_width, configuration.card_height or 110, text_left, base_text_style, configuration)
 
 	if blessing_display_mode == "icons" then
@@ -1456,9 +1459,7 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 		local secondary_font_size = curio_secondary_font_size(mod)
 		local primary_secondary_spacing = curio_primary_secondary_spacing(mod)
 		local secondary_text_color = configured_text_color(mod, "curio_secondary_text_color", DEFAULT_CURIO_SECONDARY_COLOR)
-		local show_name_it_curio_title = name_it_curio_title_enabled(mod, configuration)
-		local title_height = show_name_it_curio_title and curio_name_title_height(mod, configuration) or 0
-		local y_offset = 7 + title_height
+		local y_offset = 7 + curio_title_height + RarityRating.horizontal_rows(mod, configuration, "curio") * RarityRating.HORIZONTAL_ROW_HEIGHT
 
 		if show_name_it_curio_title then
 			add_name_it_curio_title_pass(pass_template, {
@@ -1471,7 +1472,7 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 				},
 				size = {
 					math.max(40, card_width - text_left - 40),
-					title_height,
+					curio_title_height,
 				},
 			})
 		end

@@ -555,9 +555,9 @@ Geometry.card_height = function(mod, configuration)
 		optional_rows = optional_rows + 1
 	end
 
-	local rating_rows = RarityRating.horizontal_rows(mod, configuration)
+	local rating_rows = RarityRating.horizontal_rows(mod, configuration, "weapon")
 
-	if RarityRating.mode(mod, configuration) == RarityRating.MODE_OFF and setting(mod, "show_rarity_name", false) then
+	if RarityRating.item_mode(mod, "weapon", configuration) == RarityRating.MODE_OFF and setting(mod, "show_rarity_name", false) then
 		optional_rows = optional_rows + 1
 	end
 
@@ -576,13 +576,15 @@ Geometry.card_height = function(mod, configuration)
 		local secondary_line_height = curio_secondary_font_size(mod) + 5
 		local primary_secondary_spacing = curio_primary_secondary_spacing(mod)
 		local curio_title_height = force_name_it_curio_title and curio_name_title_height(mod, configuration) or 0
+		local curio_rating_height = RarityRating.horizontal_rows(mod, configuration, "curio") * secondary_row_height
 
-		required_height = math.max(required_height, 7 + curio_title_height + primary_line_height + primary_secondary_spacing + 3 * secondary_line_height + 12 + store_footer_height)
+		required_height = math.max(required_height, 7 + curio_title_height + curio_rating_height + primary_line_height + primary_secondary_spacing + 3 * secondary_line_height + 12 + store_footer_height)
 	elseif curio_display_profile == "primary" then
 		local primary_line_height = math.max(20, curio_primary_font_size(mod) + 5)
-		local quality_row_height = setting(mod, "show_curio_quality", false) and secondary_row_height or 0
+		local curio_rating_rows = RarityRating.horizontal_rows(mod, configuration, "curio")
+		local quality_row_height = curio_rating_rows == 0 and setting(mod, "show_curio_quality", false) and secondary_row_height or 0
 
-		required_height = math.max(required_height, 7 + name_row_height + quality_row_height + primary_line_height + 12 + store_footer_height)
+		required_height = math.max(required_height, 7 + name_row_height + curio_rating_rows * secondary_row_height + quality_row_height + primary_line_height + 12 + store_footer_height)
 	end
 
 	return math.max(110, math.min(280, math.ceil(required_height)))

@@ -796,7 +796,7 @@ local localization = {
 		en = "Rarity + star rating",
 	},
 	weapon_rarity_rating_mode_tooltip = {
-		en = "Adds a rarity-coloured star rating to grid weapon cards. Compact keeps the first localized rarity character and stars on one line; Full uses separate rarity and star lines; Vertical reserves a left rail and widens the active inventory, store, or Sire Melk grid. Native Transcendent and custom Sainted remain separate five- and six-star tiers.",
+		en = "Adds a rarity-coloured star rating to grid weapon cards. Compact uses the first localized rarity character; Full uses the localized rarity name. Both keep the stars on the same line. Vertical reserves a left rail and widens the active inventory, store, or Sire Melk grid. Native Transcendent and custom Sainted remain separate five- and six-star tiers.",
 	},
 	weapon_rarity_rating_mode_off = {
 		en = "Off",
@@ -805,7 +805,7 @@ local localization = {
 		en = "First character + stars",
 	},
 	weapon_rarity_rating_mode_full_horizontal = {
-		en = "Full rarity + stars below",
+		en = "Full rarity + stars",
 	},
 	weapon_rarity_rating_mode_vertical = {
 		en = "Vertical rail (wider cards)",
@@ -1163,6 +1163,12 @@ local localization = {
 	},
 	curio_content_group = {
 		en = "Curio content",
+	},
+	curio_rarity_rating_mode = {
+		en = "Rarity + star rating",
+	},
+	curio_rarity_rating_mode_tooltip = {
+		en = "Adds the same rarity-coloured rating profiles to grid Curio cards. Compact and Full render one line between the Curio title and its primary stat; Vertical reserves a left rail and widens Curio and mixed-item grids. This setting is independent from the weapon-card profile.",
 	},
 	curio_display_profile = {
 		en = "Curio display profile",

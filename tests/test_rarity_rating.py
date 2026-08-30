@@ -57,6 +57,7 @@ def main() -> None:
         local mod = {
             settings = {
                 weapon_rarity_rating_mode = "off",
+                curio_rarity_rating_mode = "off",
                 secondary_text_font_size = 13,
                 show_pattern_mark = false,
             },
@@ -85,7 +86,7 @@ def main() -> None:
     rating.add_passes(mod, compact_passes, 230, 114, 12, base_style, lua.table_from({}))
     assert len(compact_passes) == 1
     compact_pass = pass_by_style_id(
-        compact_passes, "better_inventory_rarity_rating_compact"
+        compact_passes, "better_inventory_weapon_rarity_rating"
     )
     assert compact_pass.change_function is None
     assert tuple(compact_pass.style.offset[index] for index in range(1, 4)) == (12, 27, 11)
@@ -110,8 +111,8 @@ def main() -> None:
         }
     )
     rating.populate(mod, compact_widget, transcendent, True)
-    assert compact_widget.content.better_inventory_rarity_rating_compact == "T ★★★★★", repr(
-        compact_widget.content.better_inventory_rarity_rating_compact
+    assert compact_widget.content.better_inventory_weapon_rarity_rating == "T ★★★★★", repr(
+        compact_widget.content.better_inventory_weapon_rarity_rating
     )
     assert tuple(compact_pass.style.text_color[index] for index in range(1, 5)) == (
         255,
@@ -123,8 +124,8 @@ def main() -> None:
 
     transcendent.display_rarity = "{#color(240,120,20)}Transcendent{#reset()}"
     rating.populate(mod, compact_widget, transcendent, True)
-    assert compact_widget.content.better_inventory_rarity_rating_compact.startswith("T ")
-    assert "{" not in compact_widget.content.better_inventory_rarity_rating_compact
+    assert compact_widget.content.better_inventory_weapon_rarity_rating.startswith("T ")
+    assert "{" not in compact_widget.content.better_inventory_weapon_rarity_rating
     assert rating._test.rarity_name(transcendent) == "Transcendent"
     transcendent.display_rarity = "Transcendent"
 
@@ -138,27 +139,68 @@ def main() -> None:
     mod.settings.weapon_rarity_rating_mode = "full_horizontal"
     full_passes = lua.table_from([])
     rating.add_passes(mod, full_passes, 230, 154, 12, base_style, lua.table_from({}))
-    assert len(full_passes) == 2
-    assert rating.horizontal_rows(mod, lua.table_from({})) == 2
+    assert len(full_passes) == 1
+    assert rating.horizontal_rows(mod, lua.table_from({})) == 1
     assert pass_by_style_id(
-        full_passes, "better_inventory_rarity_rating_full_name"
+        full_passes, "better_inventory_weapon_rarity_rating"
     ).style.offset[2] == 27
-    assert pass_by_style_id(
-        full_passes, "better_inventory_rarity_rating_stars"
-    ).style.offset[2] == 47
+    full_widget = lua.table_from(
+        {
+            "content": lua.table_from({}),
+            "style": lua.table_from(
+                {full_passes[1].style_id: full_passes[1].style}
+            ),
+        }
+    )
+    rating.populate(mod, full_widget, transcendent, "weapon")
+    assert full_widget.content.better_inventory_weapon_rarity_rating == (
+        "Transcendent ★★★★★"
+    )
 
     mod.settings.show_pattern_mark = True
     patterned_passes = lua.table_from([])
     rating.add_passes(mod, patterned_passes, 230, 174, 12, base_style, lua.table_from({}))
     assert pass_by_style_id(
-        patterned_passes, "better_inventory_rarity_rating_full_name"
+        patterned_passes, "better_inventory_weapon_rarity_rating"
     ).style.offset[2] == 47
-    assert pass_by_style_id(
-        patterned_passes, "better_inventory_rarity_rating_stars"
-    ).style.offset[2] == 67
     mod.settings.show_pattern_mark = False
 
+    # Curios use an independent profile and a pass anchored between their title
+    # and primary line. Mixed grids retain both passes without duplicating rows.
+    mod.settings.weapon_rarity_rating_mode = "off"
+    mod.settings.curio_rarity_rating_mode = "full_horizontal"
+    curio_passes = lua.table_from([])
+    curio_configuration = lua.table_from(
+        {"slot_kind": "curio", "curio_rating_top": 53}
+    )
+    rating.add_passes(
+        mod, curio_passes, 230, 154, 12, base_style, curio_configuration
+    )
+    assert len(curio_passes) == 1
+    curio_pass = pass_by_style_id(
+        curio_passes, "better_inventory_curio_rarity_rating"
+    )
+    assert curio_pass.style.offset[2] == 53
+    assert rating.horizontal_rows(mod, curio_configuration, "curio") == 1
+    curio_widget = lua.table_from(
+        {
+            "content": lua.table_from({}),
+            "style": lua.table_from({curio_pass.style_id: curio_pass.style}),
+        }
+    )
+    rating.populate(mod, curio_widget, transcendent, "curio")
+    assert curio_widget.content.better_inventory_curio_rarity_rating == (
+        "Transcendent ★★★★★"
+    )
+
+    mod.settings.weapon_rarity_rating_mode = "compact_horizontal"
+    mixed_passes = lua.table_from([])
+    rating.add_passes(mod, mixed_passes, 230, 154, 12, base_style, lua.table_from({}))
+    assert len(mixed_passes) == 2
+    assert rating.horizontal_rows(mod, lua.table_from({})) == 1
+
     mod.settings.weapon_rarity_rating_mode = "vertical"
+    mod.settings.curio_rarity_rating_mode = "off"
     assert rating.vertical_rail_width(mod, "melee") == 28
     assert rating.vertical_rail_width(mod, None) == 28
     assert rating.vertical_rail_width(mod, "curio") == 0
@@ -214,7 +256,18 @@ def main() -> None:
     assert vertical_widget.content.better_inventory_rarity_rating_vertical == "精\n★\n★\n★"
     assert rating._test.first_utf8_character("圣化") == "圣"
 
+    mod.settings.weapon_rarity_rating_mode = "off"
+    mod.settings.curio_rarity_rating_mode = "vertical"
+    assert rating.vertical_rail_width(mod, "curio") == 28
+    assert rating.vertical_rail_width(mod, "slot_attachment_1") == 28
+    assert rating.vertical_rail_width(mod, "melee") == 0
+    rating.populate(mod, vertical_widget, transcendent, "curio")
+    assert vertical_widget.content.better_inventory_rarity_rating_vertical.startswith(
+        "T\n"
+    )
+
     mod.settings.weapon_rarity_rating_mode = "invalid"
+    mod.settings.curio_rarity_rating_mode = "invalid"
     assert rating.mode(mod, lua.table_from({})) == "off"
 
     print("BetterInventory rarity-rating behavior tests passed.")

@@ -423,8 +423,9 @@ def main() -> None:
 				append_mark_to_name = true,
 				force_weapon_name_single_line = false,
                 show_pattern_mark = false,
-                show_rarity_name = false,
+				show_rarity_name = false,
 				weapon_rarity_rating_mode = "off",
+				curio_rarity_rating_mode = "off",
 				show_rarity_tag = true,
 				weapon_blessing_display_mode = "icons",
 				blessing_text_item_level_separation = "four_plus",
@@ -883,6 +884,28 @@ def main() -> None:
     assert layout.grid_expansion(mod, 596, "curio") == 0
     assert layout.armoury_grid_expansion(mod, 596) == 198
     mod.settings.weapon_rarity_rating_mode = "off"
+
+    # The independent Curio profile expands Curio and mixed grids, but never a
+    # dedicated weapon grid. Horizontal Full remains one row like Compact.
+    mod.settings.curio_rarity_rating_mode = "vertical"
+    assert layout.grid_expansion(mod, 596, "curio") == 84
+    assert layout.grid_expansion(mod, 596, "slot_primary") == 0
+    assert layout.armoury_grid_expansion(mod, 596, None, "curio") == 198
+    mod.settings.curio_display_profile = "detailed"
+    mod.settings.curio_primary_stat_font_size = 20
+    mod.settings.curio_secondary_stat_font_size = 20
+    base_curio_height = layout.card_height(
+        mod, lua.table_from({"maximum_columns": 3, "slot_kind": "curio"})
+    )
+    mod.settings.curio_rarity_rating_mode = "full_horizontal"
+    curio_rating_configuration = lua.table_from(
+        {"maximum_columns": 3, "slot_kind": "curio"}
+    )
+    assert layout.card_height(mod, curio_rating_configuration) == base_curio_height + 22
+    mod.settings.curio_rarity_rating_mode = "off"
+    mod.settings.curio_display_profile = "primary"
+    mod.settings.curio_primary_stat_font_size = 16
+    mod.settings.curio_secondary_stat_font_size = 13
 
     armoury_definitions = lua.table_from(
         {
@@ -4625,6 +4648,27 @@ def main() -> None:
     mod.settings.curio_generated_name_respect_custom_names = True
     mod.settings.curio_name_format = "original"
     mod.settings.curio_display_profile = "detailed"
+
+    mod.settings.curio_rarity_rating_mode = "full_horizontal"
+    rated_curio_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
+    rated_curio_configuration = lua.table_from({"slot_kind": "curio"})
+    layout.configure_item_blueprint(
+        mod, rated_curio_blueprint, 640, rated_curio_configuration
+    )
+    rated_curio_title = blueprint_pass(
+        rated_curio_blueprint, "better_inventory_name_it_curio_name"
+    ).style
+    rated_curio_rating = blueprint_pass(
+        rated_curio_blueprint, "better_inventory_curio_rarity_rating"
+    ).style
+    rated_curio_primary = blueprint_pass(
+        rated_curio_blueprint, "better_inventory_curio_stat_1"
+    ).style
+    assert rated_curio_rating.offset[2] == 7 + rated_curio_title.size[2]
+    assert rated_curio_primary.offset[2] == (
+        rated_curio_rating.offset[2] + 20
+    )
+    mod.settings.curio_rarity_rating_mode = "off"
 
     name_it_curio_blueprint = lua.eval("table.clone")(globals_.raw_test_blueprint)
     name_it_curio_size = layout.configure_item_blueprint(mod, name_it_curio_blueprint, 640)
