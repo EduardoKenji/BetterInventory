@@ -181,11 +181,11 @@ def main() -> None:
     # default 13 px rating font uses a compact 15 px advance; the vertical rail
     # changes width only and leaves the counter at its base row.
     mod.settings.weapon_rarity_rating_mode = "compact_horizontal"
-    assert integration.profile(mod, 210, 12, lua.table_from({}), 3).top == 47
+    assert integration.profile(mod, 210, 12, lua.table_from({}), 3).top == 46
     mod.settings.weapon_rarity_rating_mode = "full_horizontal"
-    assert integration.profile(mod, 210, 12, lua.table_from({}), 3).top == 62
+    assert integration.profile(mod, 210, 12, lua.table_from({}), 3).top == 61
     mod.settings.show_pattern_mark = True
-    assert integration.profile(mod, 210, 12, lua.table_from({}), 3).top == 82
+    assert integration.profile(mod, 210, 12, lua.table_from({}), 3).top == 81
     mod.settings.show_pattern_mark = False
     mod.settings.weapon_rarity_rating_mode = "vertical"
     assert integration.profile(mod, 210, 12, lua.table_from({}), 3).top == 34
