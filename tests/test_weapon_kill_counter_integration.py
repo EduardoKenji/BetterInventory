@@ -23,7 +23,15 @@ def main() -> None:
             debug_weapon_kill_counter_kills = 0,
             show_pattern_mark = false,
             show_rarity_name = false,
+            weapon_kill_counter_show_zero_kills = true,
         }
+        package.preload["scripts/utilities/items"] = function()
+            return {
+                is_weapon = function(item_type)
+                    return item_type == "WEAPON"
+                end,
+            }
+        end
         local mod = {
             settings = settings,
             get = function(self, setting_id)
@@ -112,6 +120,19 @@ def main() -> None:
 
     assert integration.resolve_kills(mod, weapon_content) == 77
     assert integration.resolve_kills(mod, curio_content) is None
+
+    unused_weapon_content = lua.table_from(
+        {
+            "better_inventory_is_weapon": True,
+            "item": lua.table_from(
+                {"template_name": "unused_sword", "item_type": "WEAPON"}
+            ),
+        }
+    )
+    assert integration.resolve_kills(mod, unused_weapon_content) == 0
+    mod.settings.weapon_kill_counter_show_zero_kills = False
+    assert integration.resolve_kills(mod, unused_weapon_content) is None
+    mod.settings.weapon_kill_counter_show_zero_kills = True
 
     # Three-column Inventory/Hadron cards keep the row below the weapon title,
     # but use legible type and an icon large enough to match WKC's visual weight.
@@ -225,11 +246,22 @@ def main() -> None:
     assert icon_pass.value == "test/wkc/icon"
     assert text_pass.visibility_function(weapon_content) is True
     assert icon_pass.visibility_function(weapon_content) is True
+    assert text_pass.visibility_function(unused_weapon_content) is True
+    assert icon_pass.visibility_function(unused_weapon_content) is True
 
     text_pass.change_function(weapon_content)
     icon_pass.change_function(weapon_content)
     assert weapon_content.wkc_kills == "77"
     assert weapon_content.wkc_kills_icon == "test/wkc/icon"
+    text_pass.change_function(unused_weapon_content)
+    icon_pass.change_function(unused_weapon_content)
+    assert unused_weapon_content.wkc_kills == "0"
+    assert unused_weapon_content.wkc_kills_icon == "test/wkc/icon"
+
+    mod.settings.weapon_kill_counter_show_zero_kills = False
+    assert text_pass.visibility_function(unused_weapon_content) is False
+    assert icon_pass.visibility_function(unused_weapon_content) is False
+    mod.settings.weapon_kill_counter_show_zero_kills = True
 
     # Brunt's native two-column cards bypass BetterInventory's custom grid
     # profile. Cap WKC's raw 22/20 px listing pair after grid construction and
@@ -275,7 +307,7 @@ def main() -> None:
         }
         """
     )
-    assert integration.cap_brunt_listing_overlay_sizes(brunt_grid) == 2
+    assert integration.cap_brunt_listing_overlay_sizes(brunt_grid, mod) == 2
     brunt_widget = brunt_grid._all_grid_widgets[1]
     assert brunt_widget.style.wkc_kills.font_size == 14
     assert brunt_widget.style.wkc_kills_icon.size[1] == 16
@@ -304,7 +336,22 @@ def main() -> None:
     assert brunt_widget.style.wkc_kills.offset[2] == 37
     assert brunt_widget.style.wkc_kills_icon.offset[1] == 10
     assert brunt_widget.style.wkc_kills_icon.offset[2] == 37
-    assert integration.cap_brunt_listing_overlay_sizes(brunt_grid) == 0
+    assert integration.cap_brunt_listing_overlay_sizes(brunt_grid, mod) == 0
+
+    # Brunt uses WKC's native listing passes rather than BetterInventory's
+    # responsive copies. The same presentation-only zero option wraps those
+    # existing passes once, without rebuilding their widgets or statistics.
+    brunt_widget.content.item = unused_weapon_content.item
+    assert brunt_widget.passes[1].visibility_function(brunt_widget.content) is True
+    assert brunt_widget.passes[2].visibility_function(brunt_widget.content) is True
+    brunt_widget.passes[1].change_function(
+        brunt_widget.content, brunt_widget.style.wkc_kills
+    )
+    assert brunt_widget.content.wkc_kills == "0"
+    mod.settings.weapon_kill_counter_show_zero_kills = False
+    assert brunt_widget.passes[1].visibility_function(brunt_widget.content) is False
+    assert brunt_widget.passes[2].visibility_function(brunt_widget.content) is False
+    mod.settings.weapon_kill_counter_show_zero_kills = True
 
     assert integration.install_brunt_listing_hook(mod) is True
     assert integration.install_brunt_listing_hook(mod) is False

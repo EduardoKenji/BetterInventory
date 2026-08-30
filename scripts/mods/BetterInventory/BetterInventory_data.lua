@@ -2098,6 +2098,18 @@ return {
 				},
 			},
 			{
+				setting_id = "weapon_kill_counter_integration_group",
+				type = "group",
+				sub_widgets = {
+					{
+						setting_id = "weapon_kill_counter_show_zero_kills",
+						tooltip = "weapon_kill_counter_show_zero_kills_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+				},
+			},
+			{
 				setting_id = "enhanced_descriptions_integration_group",
 				type = "group",
 				sub_widgets = {

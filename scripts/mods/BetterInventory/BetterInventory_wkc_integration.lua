@@ -1,4 +1,5 @@
 local Integration = {}
+local Items = require("scripts/utilities/items")
 
 local TEXT_STYLE_ID = "wkc_kills"
 local ICON_STYLE_ID = "wkc_kills_icon"
@@ -46,7 +47,11 @@ local function setting(mod, setting_id, fallback)
 
 	local success, value = pcall(mod.get, mod, setting_id)
 
-	return success and value ~= nil and value or fallback
+	if success and value ~= nil then
+		return value
+	end
+
+	return fallback
 end
 
 local function card_configuration(wkc)
@@ -122,6 +127,14 @@ local function weapon_content(content)
 	local wkc = optional_wkc()
 	local item = item_from_content(content)
 
+	if item and type(Items) == "table" and type(Items.is_weapon) == "function" then
+		local identified, is_weapon = pcall(Items.is_weapon, item.item_type)
+
+		if identified and is_weapon == true then
+			return true
+		end
+	end
+
 	if not wkc or not item or type(wkc._overlay_kills_for_item) ~= "function" then
 		return false
 	end
@@ -152,11 +165,18 @@ local function resolved_kills(mod, content)
 
 	local success, kills = pcall(wkc._overlay_kills_for_item, item)
 
-	if not success or type(kills) ~= "number" or kills <= 0 then
+	if not success then
 		return nil
 	end
 
-	return kills
+	if type(kills) == "number" and kills > 0 then
+		return kills
+	end
+
+	-- WKC deliberately represents both zero and never-recorded weapon counts as
+	-- nil. BetterInventory may standardize that presentation without creating a
+	-- statistic or changing WKC's saved state.
+	return setting(mod, "weapon_kill_counter_show_zero_kills", true) == true and 0 or nil
 end
 
 local function abbreviated_kills(wkc, kills)
@@ -372,7 +392,7 @@ local function remove_weapon_stats_listing_overlays(element)
 	return removed
 end
 
-local function cap_brunt_listing_overlay_sizes(item_grid)
+local function cap_brunt_listing_overlay_sizes(item_grid, mod)
 	local seen = {}
 	local wrapped = 0
 
@@ -433,13 +453,31 @@ local function cap_brunt_listing_overlay_sizes(item_grid)
 
 				if pass.better_inventory_wkc_brunt_size_cap ~= true then
 					local original_change_function = pass.change_function
+					local original_visibility_function = pass.visibility_function
 
 					pass.change_function = function(content, style, ...)
 						if type(original_change_function) == "function" then
 							original_change_function(content, style, ...)
 						end
 
+						if style_id == TEXT_STYLE_ID and resolved_kills(mod, content) == 0 then
+							content[TEXT_STYLE_ID] = abbreviated_kills(optional_wkc(), 0)
+						end
+
 						cap_style(style, style_id, content)
+					end
+					pass.visibility_function = function(content, ...)
+						if type(original_visibility_function) == "function" and original_visibility_function(content, ...) then
+							return true
+						end
+
+						if resolved_kills(mod, content) == nil then
+							return false
+						end
+
+						local current_configuration = style_id == ICON_STYLE_ID and card_configuration(optional_wkc())
+
+						return style_id ~= ICON_STYLE_ID or not current_configuration or current_configuration.icon_on ~= false
 					end
 					pass.better_inventory_wkc_brunt_size_cap = true
 					wrapped = wrapped + 1
@@ -475,7 +513,7 @@ local function install_brunt_listing_hook(mod)
 		local view = item_grid and item_grid._parent
 
 		if view and view.__class_name == "CreditsGoodsVendorView" then
-			cap_brunt_listing_overlay_sizes(item_grid)
+			cap_brunt_listing_overlay_sizes(item_grid, mod)
 		end
 	end)
 
