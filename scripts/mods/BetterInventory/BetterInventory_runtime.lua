@@ -1982,47 +1982,13 @@ if ensure_class_method(MarksVendorView, "on_enter") then
 end
 
 local function normalize_global_store_widgets(item_grid)
-	for _, entry_data in pairs(item_grid and item_grid._widgets_by_entry_id or {}) do
-		local widget = entry_data and entry_data.widget
-		local portrait = widget and widget.style and widget.style.portrait
+	local portrait_size = 34
 
-		if portrait then
-			-- GlobalStore's callback expands the portrait for its native full-width
-			-- cards. Keep it at the configured size after BetterInventory remaps
-			-- the card into a compact grid.
-			local portrait_size = 34
-
-			if Layout.global_store_character_photo_size then
-				portrait_size = Layout.global_store_character_photo_size(mod)
-			end
-
-			portrait.size = {
-				portrait_size,
-				portrait_size,
-			}
-		end
-
-		local content = widget and widget.content
-		local character_info = widget and widget.style and widget.style.character_info_text
-		local class_icon = widget and widget.style and widget.style.character_class_icon_text
-
-		if content and character_info and class_icon then
-			-- Split GlobalStore's combined class glyph/name only once.
-			local raw_info = content.character_info_text
-			local parsed_name = content.better_inventory_global_store_character_name
-
-			if type(raw_info) == "string" and raw_info ~= "" and raw_info ~= parsed_name then
-				local icon_text, name_text = string.match(raw_info, "^(%S+)%s+(.+)$")
-
-				if icon_text and name_text then
-					name_text = string.match(name_text, "^%s*(.-)%s*$") or name_text
-					content.character_class_icon_text = icon_text
-					content.character_info_text = name_text
-					content.better_inventory_global_store_character_name = name_text
-				end
-			end
-		end
+	if Layout.global_store_character_photo_size then
+		portrait_size = Layout.global_store_character_photo_size(mod)
 	end
+
+	return FeatureDomains.global_store.normalize_widgets(item_grid, portrait_size)
 end
 
 if ensure_class_method(ViewElementGrid, "_create_entry_widget_from_config") then

@@ -215,6 +215,59 @@ def main() -> None:
     assert vendor_view._ui_scenegraph.purchase_button.position[2] == -90
     assert vendor_view._better_inventory_quick_level_alignment_probe is None
 
+    # GlobalStore's card binder writes "class-glyph operative-name" into one
+    # field. BetterInventory owns separate glyph and name passes, so retained
+    # widgets must be normalized after both full presents and search reorders.
+    # Repeating the repair is idempotent, while a later GlobalStore rebind of
+    # the combined value is detected without allocating replacement cards.
+    owner_widget = lua.table_from(
+        {
+            "content": lua.table_from(
+                {"character_info_text": "ICON Point And Click"}
+            ),
+            "style": lua.table_from(
+                {
+                    "portrait": lua.table_from({"size": lua.table_from([44, 44])}),
+                    "character_info_text": lua.table(),
+                    "character_class_icon_text": lua.table(),
+                }
+            ),
+        }
+    )
+    unrelated_widget = lua.table_from(
+        {
+            "content": lua.table_from({"character_info_text": "native"}),
+            "style": lua.table_from(
+                {"portrait": lua.table_from({"size": lua.table_from([55, 55])})}
+            ),
+        }
+    )
+    normalize_grid = lua.table_from(
+        {
+            "_widgets_by_entry_id": lua.table_from(
+                {
+                    "owner": lua.table_from({"widget": owner_widget}),
+                    "native": lua.table_from({"widget": unrelated_widget}),
+                }
+            )
+        }
+    )
+    global_store = domains.global_store
+    assert global_store.normalize_widgets(normalize_grid, 37) == (1, 1)
+    assert owner_widget.content.character_class_icon_text == "ICON"
+    assert owner_widget.content.character_info_text == "Point And Click"
+    assert (
+        owner_widget.content.better_inventory_global_store_character_name
+        == "Point And Click"
+    )
+    assert list(owner_widget.style.portrait.size.values()) == [37, 37]
+    assert list(unrelated_widget.style.portrait.size.values()) == [55, 55]
+    assert global_store.normalize_widgets(normalize_grid, 37) == (0, 0)
+    assert owner_widget.content.character_info_text == "Point And Click"
+    owner_widget.content.character_info_text = "ICON Point And Click"
+    assert global_store.normalize_widgets(normalize_grid, 37) == (1, 0)
+    assert owner_widget.content.character_info_text == "Point And Click"
+
     # GlobalStore retains portrait callbacks unless each outgoing card load is
     # explicitly unloaded before Darktide destroys the grid generation. Stress
     # disjoint 150-card tabs and prove retained resources remain bounded to the
@@ -278,7 +331,6 @@ def main() -> None:
     )
     global_grid = lua.table()
     lua.globals().install_portrait_generation(global_grid, 1, 150)
-    global_store = domains.global_store
     empty_grid = lua.table_from({"_grid_layout": lua.table()})
     assert global_store.grid_rebuild_required(empty_grid, lua.table()) is True
     assert global_store.grid_rebuild_required(

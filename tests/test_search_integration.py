@@ -24,6 +24,8 @@ def main() -> None:
         projected_releases = 0
         release_all_calls = 0
         clear_memory_calls = 0
+		global_store_normalizations = 0
+		global_store_normalization_routes = {}
 
         stub_query = {
             normalize = function(value) return string.lower(tostring(value or "")) end,
@@ -188,6 +190,12 @@ def main() -> None:
             end,
             CustomTier = {matches = function() return false end},
             ItemCustomization = {get = function() return nil end},
+			NormalizeGlobalStoreWidgets = function(view, item_grid)
+				global_store_normalizations = global_store_normalizations + 1
+				global_store_last_grid = item_grid
+				local route = tostring(view and view.__class_name) .. ":" .. tostring(view and view._optional_store_service)
+				global_store_normalization_routes[route] = (global_store_normalization_routes[route] or 0) + 1
+			end,
         }
         ''',
     )
@@ -349,6 +357,8 @@ def main() -> None:
 			end,
 		}
 		in_place_view = {
+			__class_name = "CreditsVendorView",
+			_optional_store_service = "global",
 			_item_grid = in_place_grid,
 			_selected_sort_option_index = 1,
 			_sort_options = {{
@@ -389,6 +399,12 @@ def main() -> None:
 		for index = 1, 20 do
 			stress_in_place_result = runtime_instance.dependencies.reorder(in_place_view, index % 2 == 0)
 		end
+		melk_in_place_view = {
+			__class_name = "MarksVendorView",
+			_optional_store_service = "get_all_characters_melk_store_custom",
+			_item_grid = in_place_grid,
+		}
+		melk_in_place_result = runtime_instance.dependencies.reorder(melk_in_place_view, false)
 		stress_buffers = in_place_view._better_inventory_search_grid_buffers
 		stress_source_position_count = 0
 		for _ in pairs(stress_buffers.source_positions) do
@@ -401,7 +417,19 @@ def main() -> None:
     assert lua.globals().hide_in_place_result is True
     assert lua.globals().restore_in_place_result is True
     assert lua.globals().fallback_in_place_result is True
-    assert lua.globals().in_place_updates == 25
+    assert lua.globals().in_place_updates == 26
+    assert lua.globals().global_store_normalizations == 26
+    assert lua.execute("return global_store_last_grid == in_place_grid") is True
+    assert (
+        lua.globals().global_store_normalization_routes["CreditsVendorView:global"]
+        == 25
+    )
+    assert (
+        lua.globals().global_store_normalization_routes[
+            "MarksVendorView:get_all_characters_melk_store_custom"
+        ]
+        == 1
+    )
     assert lua.globals().first_live_top == "top"
     assert lua.execute("return first_live_item == entry_b") is True
     assert lua.globals().first_live_bottom == "bottom"
@@ -421,6 +449,7 @@ def main() -> None:
     assert lua.execute("return fallback_live_item == entry_b") is True
     assert lua.execute("return fallback_widget_b == widget_b") is True
     assert lua.globals().stress_in_place_result is True
+    assert lua.globals().melk_in_place_result is True
     assert lua.globals().stress_source_position_count == 2
 
     # Brunt has no native sort options. Its default-off gate suppresses runtime

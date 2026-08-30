@@ -1,5 +1,13 @@
 # BetterInventory changelog
 
+## 3.5.4 - 2026-08-30
+
+- Fixes duplicate class glyphs in GlobalStore operative footers after Equipment Text Search reorders in both Armoury Exchange and Sire Melk Multi-Operative Supply.
+- Moves the combined class-glyph/name split into one idempotent GlobalStore normalizer shared by full card presentations and retained in-place search updates.
+- Preserves card identity, selection, canonical ordering, cached search projections, and double-buffered visible layouts; no replacement card generation or persistent update hook is added.
+- Rejects native inventory and vendor routes before traversing widget maps, and touches only cards exposing GlobalStore's two owner-footer passes.
+- Adds repeated rebind, multi-word operative-name, unrelated-portrait, Armoury GlobalStore, and Melk GlobalStore regressions.
+
 ## 3.5.3 - 2026-08-30
 
 - Removes Equipment Text Search from both melee and ranged Hadron **Sacrifice Weapons** tabs, including their dedicated field, grid-offset, sorting, update, input, and cleanup hooks. Hadron's Entreat equipment view remains supported.

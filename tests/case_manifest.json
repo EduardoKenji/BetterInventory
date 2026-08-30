@@ -12,7 +12,7 @@
     {"name": "coalesced_filter_rank_dim_memory_and_release_lifecycle", "risk": "high", "start_line": 1, "end_line": 546}
   ],
   "test_search_integration.py": [
-        {"name": "supported_view_adapters_facade_and_lifecycle_composition", "risk": "high", "start_line": 1, "end_line": 469}
+        {"name": "supported_view_adapters_facade_and_lifecycle_composition", "risk": "high", "start_line": 1, "end_line": 493}
   ],
   "test_search_ui.py": [
       {"name": "single_field_configurable_view_spacing_clipping_disable_focus_and_release", "risk": "high", "start_line": 1, "end_line": 838}
@@ -223,7 +223,8 @@
     {"name": "sorting_signature", "risk": "high", "start_line": 119, "end_line": 123},
     {"name": "panel_composition", "risk": "high", "start_line": 125, "end_line": 129},
     {"name": "vendor_action_row_compatibility", "risk": "high", "start_line": 131, "end_line": 216},
-    {"name": "global_store_tab_generation_retirement", "risk": "critical", "start_line": 218, "end_line": 317}
+    {"name": "global_store_owner_footer_normalization", "risk": "high", "start_line": 218, "end_line": 269},
+    {"name": "global_store_tab_generation_retirement", "risk": "critical", "start_line": 271, "end_line": 367}
   ],
   "test_features.py": [
       {"name": "panel_focus_allocation_guard", "risk": "medium", "start_line": 122, "end_line": 123},

@@ -4,7 +4,7 @@
 
 https://www.nexusmods.com/warhammer40kdarktide/mods/1144
 
-> Current release: **v3.5.3** (2026-08-30). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
+> Current release: **v3.5.4** (2026-08-30). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
 
 BetterInventory is a standalone inventory and item-management mod for Warhammer 40,000: Darktide. It adds responsive weapon and Curio cards, richer item information, configurable sorting, supported vendor layouts, optional mod integrations, and safety-gated inventory workflows.
 
@@ -21,6 +21,12 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - A bounded inventory-options panel for sorting, discard rules, integrations, and view-specific controls.
 - Standalone Equipment Text Search, with its own master switch, Inventory/Armoury/Hadron/Melk spacing sliders, quoted phrases, explicit AND, typed field clauses, match-first ranking, and configurable dim-or-hide behavior.
 - Optional Quick Discard, Automatic Discard, Automatic Curio Buyer, and Auto Crafter workflows with explicit ownership, authoritative revalidation, and fail-closed behavior.
+
+## What's new in v3.5.4
+
+- Fixes duplicated operative-class glyphs in filtered Armoury Exchange and Sire Melk Multi-Operative Supply cards supplied by GlobalStore.
+- Centralizes the GlobalStore owner-footer repair and reapplies it after retained in-place Equipment Text Search reorders as well as full presentations.
+- Keeps the fix allocation-conscious: existing cards and search buffers are reused, native views are rejected before any widget traversal, and repeated normalization is idempotent.
 
 ## What's new in v3.5.3
 

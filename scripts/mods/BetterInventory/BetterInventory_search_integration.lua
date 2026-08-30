@@ -153,7 +153,7 @@ end
 -- reorder API instead. Hide omits unmatched entries only from visible layout;
 -- canonical `_grid_layout` stays complete. Two retained buffers ensure grid
 -- never observes an array being cleared for next query.
-local function reorder_existing_grid(view, configure_sort, runtime, hide_unmatched)
+local function reorder_existing_grid(view, configure_sort, runtime, hide_unmatched, normalize_global_store_widgets)
 	local item_grid = view and view._item_grid
 	local source = item_grid and item_grid._grid_layout
 	local alignments = item_grid and item_grid._all_grid_alignment_widgets
@@ -296,6 +296,15 @@ local function reorder_existing_grid(view, configure_sort, runtime, hide_unmatch
 	end
 
 	item_grid:update_grid_layout(target)
+
+	-- GlobalStore may rebind its combined class-glyph/name field while retaining
+	-- the existing cards. Repair the two-pass footer after the authoritative
+	-- layout update; the provider rejects non-GlobalStore routes before walking
+	-- any widgets.
+	if type(normalize_global_store_widgets) == "function" then
+		normalize_global_store_widgets(view, item_grid)
+	end
+
 	local reordered_widgets = item_grid._grid_widgets
 
 	if selected_entry_id and type(reordered_widgets) == "table" and item_grid._grid then
@@ -427,7 +436,7 @@ Integration.new = function(mod, dependencies)
 		query = SearchQuery,
 		rarity_aliases = SearchIndex.rarity_aliases,
 		reorder = function(view, hide_unmatched)
-			return reorder_existing_grid(view, dependencies.configure_sort, runtime, hide_unmatched)
+			return reorder_existing_grid(view, dependencies.configure_sort, runtime, hide_unmatched, dependencies.NormalizeGlobalStoreWidgets)
 		end,
 		release_grid = function(view)
 			if type(view) == "table" then
@@ -546,6 +555,7 @@ Integration.install = function(facade, mod, providers, configure_sort, global_st
 		CustomTier = providers.CustomTier,
 		DiscardPolicy = DiscardPolicy,
 		ItemCustomization = providers.ItemCustomization,
+		NormalizeGlobalStoreWidgets = providers.NormalizeGlobalStoreWidgets,
 		Items = Items,
 		MasterItems = MasterItems,
 		ProfileUtils = ProfileUtils,

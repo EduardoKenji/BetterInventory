@@ -40,7 +40,7 @@
       "name": "search.integration-composes-native-views-and-sorting",
       "test": "test_search_integration.py",
       "case": "supported_view_adapters_facade_and_lifecycle_composition",
-        "outcome": "inventory, Hadron modify, Armoury, general weapon vendors, and equipment-bearing Melk routes map to isolated search families while cosmetics, Melk Mystery Acquisitions, and Hadron Sacrifice Weapons remain untouched; the retired Sacrifice facade is cleared during hot reload; settled Unchanged, Dim, and Hide queries partition the already-sorted canonical layout by one pre-resolved scalar rank per card, preserving BetterInventory/ItemSorting/native order as the stable tie-break without invoking external comparators such as GodRolls, and double-buffer an in-place ViewElementGrid order without recreating cards; canonical membership, spacing, selection, hide-to-visible restoration, retained buffer identity, and bounded scalar maps survive repeated queries; unsupported layouts fail open to native presentation, and every adapter releases on shutdown",
+        "outcome": "inventory, Hadron modify, Armoury, general weapon vendors, and equipment-bearing Melk routes map to isolated search families while cosmetics, Melk Mystery Acquisitions, and Hadron Sacrifice Weapons remain untouched; the retired Sacrifice facade is cleared during hot reload; settled Unchanged, Dim, and Hide queries partition the already-sorted canonical layout by one pre-resolved scalar rank per card, preserving BetterInventory/ItemSorting/native order as the stable tie-break without invoking external comparators such as GodRolls, and double-buffer an in-place ViewElementGrid order without recreating cards; canonical membership, spacing, selection, hide-to-visible restoration, retained buffer identity, and bounded scalar maps survive repeated queries; successful retained reorders invoke the shared GlobalStore owner-footer normalizer for both Credits and Marks routes; unsupported layouts fail open to native presentation, and every adapter releases on shutdown",
       "modules": ["BetterInventory_search_integration.lua", "BetterInventory_feature_sorting.lua", "BetterInventory_runtime.lua"]
     },
     {
@@ -224,6 +224,13 @@
       "case": "card_geometry",
       "outcome": "native Limited Time Acquisition weapon cards reserve five additional logical pixels above the Marks footer for blessing rows while item level and dump-stat labels move three pixels lower; the scoped Melk marker cannot alter Armoury or GlobalStore card geometry",
       "modules": ["BetterInventory_layout_blueprints.lua", "BetterInventory_layout_cards.lua", "BetterInventory_runtime.lua"]
+    },
+    {
+      "name": "global-store.owner-footers-normalize-after-search",
+      "test": "test_feature_domains.py",
+      "case": "global_store_owner_footer_normalization",
+      "outcome": "GlobalStore's combined class-glyph and multi-word operative name are split into their dedicated BetterInventory passes after full presentations and retained search reorders; repeated calls are idempotent, later GlobalStore content rebinds are repaired, configured portrait sizing remains stable, and unrelated native portraits are untouched",
+      "modules": ["BetterInventory_feature_domains.lua", "BetterInventory_runtime.lua", "BetterInventory_search_integration.lua"]
     },
     {
       "name": "global-store.category-generations-retire-portrait-loads",

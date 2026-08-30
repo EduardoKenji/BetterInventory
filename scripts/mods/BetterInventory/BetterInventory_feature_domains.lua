@@ -209,6 +209,67 @@ end
 
 Domains.global_store = {}
 
+-- GlobalStore writes the class glyph and operative name into one content
+-- field, while BetterInventory renders them with two independent passes. A
+-- native presentation can restore the combined value without recreating the
+-- widget (notably during Equipment Text Search reorders), so keep this repair
+-- stateless and safe to repeat on the retained card generation.
+Domains.global_store.normalize_widgets = function(item_grid, portrait_size)
+	local normalized = 0
+	local resized = 0
+	local target_portrait_size = tonumber(portrait_size)
+
+	for _, entry_data in pairs(item_grid and item_grid._widgets_by_entry_id or {}) do
+		local widget = entry_data and entry_data.widget
+		local content = widget and widget.content
+		local styles = widget and widget.style
+		local character_info = styles and styles.character_info_text
+		local class_icon = styles and styles.character_class_icon_text
+
+		-- Both passes uniquely identify GlobalStore's operative footer. This
+		-- guard lets the search integration call the helper without touching
+		-- portraits or content belonging to native inventory/vendor cards.
+		if content and character_info and class_icon then
+			local portrait = styles.portrait
+
+			if portrait and target_portrait_size then
+				local size = portrait.size
+
+				if type(size) == "table" then
+					if size[1] ~= target_portrait_size or size[2] ~= target_portrait_size then
+						size[1] = target_portrait_size
+						size[2] = target_portrait_size
+						resized = resized + 1
+					end
+				else
+					portrait.size = {
+						target_portrait_size,
+						target_portrait_size,
+					}
+					resized = resized + 1
+				end
+			end
+
+			local raw_info = content.character_info_text
+			local parsed_name = content.better_inventory_global_store_character_name
+
+			if type(raw_info) == "string" and raw_info ~= "" and raw_info ~= parsed_name then
+				local icon_text, name_text = string.match(raw_info, "^(%S+)%s+(.+)$")
+
+				if icon_text and name_text then
+					name_text = string.match(name_text, "^%s*(.-)%s*$") or name_text
+					content.character_class_icon_text = icon_text
+					content.character_info_text = name_text
+					content.better_inventory_global_store_character_name = name_text
+					normalized = normalized + 1
+				end
+			end
+		end
+	end
+
+	return normalized, resized
+end
+
 -- Mirror Darktide's ViewElementGrid rebuild decision. Incoming entries without
 -- a live entry_id force native code to destroy all current widgets; disjoint
 -- GlobalStore category tabs normally take this path.

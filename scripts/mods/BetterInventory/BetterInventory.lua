@@ -540,6 +540,35 @@ if type(Features.configure_search) == "function" then
 		CurioTraitSearchTerms = Layout.curio_trait_search_terms,
 		CustomTier = CustomTier,
 		ItemCustomization = ItemCustomization,
+		NormalizeGlobalStoreWidgets = function(view, item_grid)
+			local armoury_global = type(CharacterOverviewUI.is_global_store_view) == "function"
+				and CharacterOverviewUI.is_global_store_view(view)
+			local melk_global = false
+
+			if type(CharacterOverviewUI.melk_grid_route) == "function" then
+				local _, global_store = CharacterOverviewUI.melk_grid_route(view)
+				melk_global = global_store == true
+			end
+
+			if not armoury_global and not melk_global then
+				return 0, 0
+			end
+
+			local global_store = FeatureDomains and FeatureDomains.global_store
+			local normalize_widgets = global_store and global_store.normalize_widgets
+
+			if type(normalize_widgets) ~= "function" then
+				return 0, 0
+			end
+
+			local portrait_size = 34
+
+			if type(Layout.global_store_character_photo_size) == "function" then
+				portrait_size = Layout.global_store_character_photo_size(mod)
+			end
+
+			return normalize_widgets(item_grid, portrait_size)
+		end,
 	})
 end
 RuntimeLifecycle.configure({
