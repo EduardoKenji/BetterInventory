@@ -4,11 +4,15 @@
 
 - Adds a dedicated Ctrl+Shift+R unload lifecycle that releases BetterInventory-owned view callbacks, search state, customization caches, pending Curio read state, view sessions, and the global Auto Crafter HUD bridge before DMF reloads the runtime.
 - Uses generation-owned view adoption so Inventory, Armoury Exchange, and GlobalStore views that survive a reload receive the new callbacks once and cannot retain the previous module graph through BetterInventory widgets.
+- Extends generation ownership to equipment-card widgets in Inventory, Hadron, Armoury, Brunt, GlobalStore, and Sire Melk: deferred native presentations are cancelled at unload and surviving card generations rebuild exactly once, including the first live upgrade from an untagged older release.
+- Retires Character Overview's globally registered custom blueprints to native lifecycle placeholders and recreates surviving individual-layout cards once, preventing shared tables and widget-pass callbacks from retaining an unloaded module generation.
+- Reuses native card blueprints and renderer resources for ordinary same-generation search/sort reorders instead of deep-cloning an ignored replacement blueprint; category and offer membership changes still use Darktide's full card lifecycle.
+- Reuses and explicitly releases the compact Curio detail-header blueprint cache instead of cloning it on every presentation.
 - Drops unload-only transient containers instead of replacing them immediately, including the Curio read-promise registry and customization record cache.
 - Preserves normal disable behavior, including Name It handoff, while keeping hot reload teardown distinct and idempotent.
 - Confirms bounded search and sorting behavior: query work remains coalesced, card projections and visible-layout buffers are reused, weak registries remain weak, and no new per-frame rebuild or external-comparator pass was introduced.
 - Adds a dependent, default-on Weapon Kill Counter store option that shows the skull icon and `0` on supported vendor weapons while leaving positive WKC statistics untouched.
-- Adds reload-order, repeated teardown/adoption, retained-callback, cache-release, Curio promise-container, normal-disable, and coverage-gate regressions. See the [v3.5.3 audit](docs/v3.5.3-hot-reload-performance-memory-audit.md).
+- Adds reload-order, repeated teardown/adoption, legacy live-upgrade, surviving-card rebuild, reorder reuse, Character Overview blueprint retirement, cache-release, Curio promise-container, normal-disable, and coverage-gate regressions. See the [v3.5.3 audit](docs/v3.5.3-hot-reload-performance-memory-audit.md).
 
 ## 3.5.1 - 2026-08-30
 

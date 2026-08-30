@@ -47,6 +47,7 @@ SearchHooks.install = function(dependencies)
 	local mod = dependencies.mod
 	local Features = dependencies.Features
 	local SearchUI = dependencies.SearchUI
+	local RuntimeLifecycle = dependencies.RuntimeLifecycle
 	local ItemGridViewBase = dependencies.ItemGridViewBase
 	local BaseView = dependencies.BaseView
 	local CraftingMechanicusModifyView = dependencies.CraftingMechanicusModifyView
@@ -104,6 +105,9 @@ SearchHooks.install = function(dependencies)
 	end
 
 	local function update_search(view, _, time, input_service)
+		if RuntimeLifecycle and type(RuntimeLifecycle.adopt_managed_grid) == "function" then
+			RuntimeLifecycle.adopt_managed_grid(view)
+		end
 		if type(SearchUI.update_view) == "function" then
 			SearchUI.update_view(mod, Features, view, time, input_service)
 		end

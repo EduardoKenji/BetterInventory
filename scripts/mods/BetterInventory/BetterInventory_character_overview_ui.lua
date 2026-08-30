@@ -15,7 +15,10 @@ local release_runtime_caches = function() end
 local ensure_class_method
 local better_inventory_test
 local character_overview_view_retired
+local adopt_character_overview_runtime
 local registered_character_overview_views = setmetatable({}, { __mode = "k" })
+local character_overview_runtime_generation = {}
+local retired_character_overview_runtime_generation = {}
 
 local GLOBAL_STORE_SERVICE = "get_all_characters_store_custom"
 local GLOBAL_STORE_MELK_SERVICE = "get_all_characters_marks_store_custom"
@@ -61,6 +64,78 @@ local CHARACTER_OVERVIEW_VISUAL_SETTING_IDS = {
 	curio_content_name_it_curio_name = true,
 }
 local CHARACTER_OVERVIEW_BLUEPRINTS
+local CHARACTER_OVERVIEW_WIDGET_TYPES = {
+	CHARACTER_OVERVIEW_MELEE_WIDGET_TYPE,
+	CHARACTER_OVERVIEW_RANGED_WIDGET_TYPE,
+	CHARACTER_OVERVIEW_CURIO_WIDGET_TYPE,
+	CHARACTER_OVERVIEW_EMPTY_CURIO_WIDGET_TYPE,
+}
+
+local function own_character_overview_blueprint(blueprint, native_blueprint)
+	if type(blueprint) == "table" then
+		blueprint._better_inventory_runtime_generation = character_overview_runtime_generation
+		blueprint._better_inventory_native_update = native_blueprint and native_blueprint.update
+		blueprint._better_inventory_native_destroy = native_blueprint and native_blueprint.destroy
+	end
+
+	return blueprint
+end
+
+local function native_character_overview_blueprint(widget_type)
+	if not InventoryViewContentBlueprints then
+		return nil
+	end
+
+	if widget_type == CHARACTER_OVERVIEW_MELEE_WIDGET_TYPE or widget_type == CHARACTER_OVERVIEW_RANGED_WIDGET_TYPE then
+		return InventoryViewContentBlueprints.item_slot
+	end
+
+	return InventoryViewContentBlueprints.gadget_item_slot
+end
+
+local function retire_character_overview_blueprints()
+	for index = 1, #CHARACTER_OVERVIEW_WIDGET_TYPES do
+		local widget_type = CHARACTER_OVERVIEW_WIDGET_TYPES[index]
+		local blueprint = InventoryViewContentBlueprints and InventoryViewContentBlueprints[widget_type]
+
+		if type(blueprint) == "table" then
+			local native_blueprint = native_character_overview_blueprint(widget_type)
+			local native_update = blueprint._better_inventory_native_update or native_blueprint and native_blueprint.update
+			local native_destroy = blueprint._better_inventory_native_destroy or native_blueprint and native_blueprint.destroy
+
+			-- InventoryView resolves update/destroy through this shared table even for
+			-- already-created widgets. Leave only native lifecycle callbacks behind;
+			-- pass templates and Better Inventory closures are owned by the retiring
+			-- generation and must not remain rooted globally after Ctrl+Shift+R. The
+			-- native fallback also retires untagged blueprints left by an older release
+			-- when v3.5.3 itself is first installed through a live reload.
+			InventoryViewContentBlueprints[widget_type] = {
+				update = native_update,
+				destroy = native_destroy,
+			}
+		end
+	end
+end
+
+local function has_character_overview_managed_widgets(view)
+	local widgets = view and view._loadout_widgets
+
+	if type(widgets) ~= "table" then
+		return false
+	end
+
+	for index = 1, math.min(#widgets, MAX_CHARACTER_OVERVIEW_LOADOUT_WIDGETS) do
+		local widget_type = widgets[index] and widgets[index].type
+
+		for type_index = 1, #CHARACTER_OVERVIEW_WIDGET_TYPES do
+			if widget_type == CHARACTER_OVERVIEW_WIDGET_TYPES[type_index] then
+				return true
+			end
+		end
+	end
+
+	return false
+end
 local function pack_values(...)
 	return {
 		n = select("#", ...),
@@ -530,7 +605,7 @@ local function character_overview_weapon_blueprint(rarity_strip_setting_id, weap
 		end
 	end
 
-	return blueprint
+	return own_character_overview_blueprint(blueprint, native_blueprint)
 end
 
 local function normalized_displayed_value(content, displayed_id, fitted_id, full_id, source_id, normalized_values, raw_values, cache_index)
@@ -1119,7 +1194,7 @@ local function character_overview_curio_blueprint()
 		end
 	end
 
-	return blueprint
+	return own_character_overview_blueprint(blueprint, native_blueprint)
 end
 
 local function character_overview_empty_curio_blueprint()
@@ -1150,7 +1225,7 @@ local function character_overview_empty_curio_blueprint()
 		end
 	end
 
-	return blueprint
+	return own_character_overview_blueprint(blueprint, native_blueprint)
 end
 
 local function character_overview_native_curio_equipped_marker_y(widget)
@@ -1384,6 +1459,10 @@ OverviewUI.configure = function(dependencies)
 	Diagnostics = dependencies.Diagnostics
 	InventoryView = dependencies.InventoryView
 	InventoryViewContentBlueprints = dependencies.InventoryViewContentBlueprints
+	-- An existing InventoryView can outlive a full DMF reload, including the
+	-- first upgrade from a release that predates generation tags. Remove any
+	-- previously published custom blueprint roots before the new hooks adopt it.
+	retire_character_overview_blueprints()
 	ItemBlueprintGenerator = dependencies.ItemBlueprintGenerator
 	Text = dependencies.Text
 	lantern_recommendations_active = dependencies.lantern_recommendations_active or function() return false end
@@ -1401,6 +1480,12 @@ OverviewUI.configure = function(dependencies)
 		better_inventory_test.reconcile_character_overview_curio_widgets = reconcile_character_overview_curio_widgets
 		better_inventory_test.reconcile_character_overview_curio_widgets_if_needed = reconcile_character_overview_curio_widgets_if_needed
 		better_inventory_test.character_overview_view_retired = character_overview_view_retired
+		better_inventory_test.own_character_overview_blueprint = own_character_overview_blueprint
+		better_inventory_test.retire_character_overview_blueprints = retire_character_overview_blueprints
+		better_inventory_test.adopt_character_overview_runtime = adopt_character_overview_runtime
+		better_inventory_test.character_overview_blueprints = function()
+			return InventoryViewContentBlueprints
+		end
 	end
 
 	return OverviewUI
@@ -1443,6 +1528,40 @@ OverviewUI.unregister_view = function(view)
 	return registered
 end
 
+adopt_character_overview_runtime = function(view)
+	if type(view) ~= "table" or view._destroyed == true then
+		return false
+	end
+
+	local previous_generation = view._better_inventory_character_overview_runtime_generation
+
+	if previous_generation == character_overview_runtime_generation then
+		return false
+	end
+	if previous_generation == nil and not has_character_overview_managed_widgets(view) then
+		return false
+	end
+
+	local active_context = view._active_category_tab_context
+
+	if active_context and active_context.is_grid_layout ~= true and type(view._switch_active_layout) == "function" then
+		-- Existing widget passes contain visibility/change functions copied from the
+		-- blueprint generation that created them. Reuse Darktide's complete layout
+		-- lifecycle once so native icon resources are destroyed and every pass is
+		-- recreated from the newly loaded Better Inventory generation.
+		local rebuilt = pcall(view._switch_active_layout, view, active_context)
+
+		if not rebuilt then
+			return false
+		end
+	end
+
+	view._better_inventory_character_overview_runtime_generation = character_overview_runtime_generation
+	registered_character_overview_views[view] = true
+
+	return true
+end
+
 OverviewUI.release_all_views = function()
 	local views = {}
 
@@ -1451,8 +1570,13 @@ OverviewUI.release_all_views = function()
 	end
 
 	for index = 1, #views do
-		OverviewUI.unregister_view(views[index])
+		local view = views[index]
+
+		OverviewUI.unregister_view(view)
+		view._better_inventory_character_overview_runtime_generation = retired_character_overview_runtime_generation
 	end
+
+	retire_character_overview_blueprints()
 
 	return #views
 end
@@ -1567,6 +1691,7 @@ OverviewUI.install_hooks = function(class_method_guard)
 		-- that repaint regardless of load order, while touching only the bounded
 		-- native Primary/Secondary/Curio widget list and never scanning a grid.
 		mod:hook_safe(InventoryView, "update", function(view)
+			adopt_character_overview_runtime(view)
 			reconcile_customized_loadout_widgets(view)
 		end)
 	end
@@ -1618,6 +1743,7 @@ end
 			end
 
 			registered_character_overview_views[view] = true
+			view._better_inventory_character_overview_runtime_generation = character_overview_runtime_generation
 		end
 
 		local function create_widget(resolved_config)

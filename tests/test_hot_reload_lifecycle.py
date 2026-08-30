@@ -167,6 +167,225 @@ def main() -> None:
     assert lua.execute("return calls.inventory_release") == 3
     assert lua.execute("return calls.search_release_all") == 3
 
+    # A live grid owns one configured blueprint generation. Reload teardown
+    # cancels Darktide's deferred presentation closure, then the replacement
+    # module invalidates entry IDs and rebuilds the cards exactly once.
+    lua.execute(
+        r'''
+        managed_grid = {
+            _grid_layout = {
+                {entry_id = "old_1"},
+                {entry_id = "old_2"},
+            },
+            _widgets_by_entry_id = {
+                old_1 = {},
+                old_2 = {},
+            },
+            _present_grid_layout = function() error("retired generation must not run") end,
+        }
+        Lifecycle.mark_managed_grid(managed_grid)
+        old_card_generation = managed_grid._better_inventory_card_runtime_generation
+        assert(Lifecycle.release_all("mod_reload") == 0)
+        assert(managed_grid._present_grid_layout == nil)
+        assert(managed_grid._better_inventory_card_runtime_generation == old_card_generation)
+        ''',
+    )
+
+    next_lifecycle = lua.execute(
+        read_runtime("BetterInventory_runtime_lifecycle.lua"),
+        name=str(RUNTIME_ROOT / "BetterInventory_runtime_lifecycle.lua"),
+    )
+    lua.globals().NextLifecycle = next_lifecycle
+    lua.execute(
+        r'''
+        NextLifecycle.configure({Features = features, Layout = {}, ViewElementGrid = {}, mod = test_mod})
+        managed_present_calls = 0
+        managed_view = {
+            _item_grid = managed_grid,
+            present_grid_layout = function(self, layout, callback)
+                managed_present_calls = managed_present_calls + 1
+                assert(layout[1].entry_id == nil and layout[2].entry_id == nil)
+                NextLifecycle.prepare_grid_presentation(self._item_grid, layout)
+                NextLifecycle.mark_managed_grid(self._item_grid)
+                if callback then callback() end
+            end,
+        }
+        assert(NextLifecycle.adopt_managed_grid(managed_view) == true)
+        assert(managed_present_calls == 1)
+        assert(managed_grid._better_inventory_card_runtime_generation == NextLifecycle.generation())
+        assert(NextLifecycle.adopt_managed_grid(managed_view) == false)
+        assert(managed_present_calls == 1)
+
+        -- A grid created by a release that predates generation markers is also
+        -- adopted once when v3.5.3 is first loaded through Ctrl+Shift+R.
+        legacy_grid = {
+            _grid_layout = {{entry_id = "legacy"}},
+            _widgets_by_entry_id = {legacy = {}},
+        }
+        legacy_present_calls = 0
+        legacy_view = {
+            _item_grid = legacy_grid,
+            present_grid_layout = function(self, layout)
+                legacy_present_calls = legacy_present_calls + 1
+                assert(layout[1].entry_id == nil)
+                NextLifecycle.mark_managed_grid(self._item_grid)
+            end,
+        }
+        assert(NextLifecycle.adopt_managed_grid(legacy_view) == true)
+        assert(legacy_present_calls == 1)
+        assert(NextLifecycle.adopt_managed_grid(legacy_view) == false)
+
+        assert(NextLifecycle.mark_managed_grid(nil) == false)
+        assert(NextLifecycle.prepare_grid_presentation(nil, {}) == false)
+        assert(NextLifecycle.prepare_grid_presentation({_grid_layout = {}}, {}) == false)
+        assert(NextLifecycle.prepare_grid_presentation({_better_inventory_card_runtime_generation = {}}) == false)
+        assert(NextLifecycle.adopt_managed_grid(nil) == false)
+        assert(NextLifecycle.adopt_managed_grid({_destroyed = true}) == false)
+        assert(NextLifecycle.adopt_managed_grid({}) == false)
+		assert(NextLifecycle.adopt_managed_grid({_item_grid = {_grid_layout = {}}}) == false)
+		assert(NextLifecycle.adopt_managed_grid({
+			_item_grid = {_better_inventory_card_runtime_generation = {}},
+		}) == false)
+
+		current_grid = {
+			_grid_layout = {{entry_id = "current"}},
+			_widgets_by_entry_id = {current = {}},
+		}
+		NextLifecycle.mark_managed_grid(current_grid)
+		assert(NextLifecycle.prepare_grid_presentation(current_grid, current_grid._grid_layout) == false)
+		assert(NextLifecycle.adopt_managed_grid({_item_grid = current_grid}) == false)
+
+		missing_present_grid = {
+			_grid_layout = {{entry_id = "missing-present"}},
+			_better_inventory_card_runtime_generation = {},
+		}
+		assert(NextLifecycle.adopt_managed_grid({_item_grid = missing_present_grid}) == false)
+		assert(missing_present_grid._better_inventory_card_rebuild_pending == nil)
+
+        fallback_prepare_grid = {
+            _grid_layout = {{entry_id = "fallback"}},
+            _better_inventory_card_runtime_generation = {},
+        }
+        assert(NextLifecycle.prepare_grid_presentation(fallback_prepare_grid) == true)
+        assert(fallback_prepare_grid._grid_layout[1].entry_id == nil)
+        assert(fallback_prepare_grid._better_inventory_card_rebuild_pending == NextLifecycle.generation())
+
+        failed_grid = {
+            _grid_layout = {{entry_id = "failed"}},
+            _better_inventory_card_runtime_generation = {},
+        }
+        failed_view = {
+            _item_grid = failed_grid,
+            present_grid_layout = function() error("transitional grid") end,
+        }
+        assert(NextLifecycle.adopt_managed_grid(failed_view) == false)
+        assert(failed_grid._better_inventory_card_rebuild_pending == nil)
+
+        callback_grid = {
+            _grid_layout = {{entry_id = "callback"}},
+            _better_inventory_card_runtime_generation = {},
+        }
+        callback_present_calls = 0
+        callback_completed = 0
+        callback_view = {
+            _item_grid = callback_grid,
+            _cb_on_present = function() callback_completed = callback_completed + 1 end,
+            present_grid_layout = function(self, layout, callback)
+                callback_present_calls = callback_present_calls + 1
+                NextLifecycle.mark_managed_grid(self._item_grid)
+                callback()
+            end,
+        }
+        assert(NextLifecycle.adopt_managed_grid(callback_view) == true)
+		assert(callback_present_calls == 1 and callback_completed == 1)
+
+		dead_callback_grid = {
+			_grid_layout = {{entry_id = "dead-callback"}},
+			_better_inventory_card_runtime_generation = {},
+		}
+		dead_callback_completed = 0
+		dead_callback_view = {
+			_item_grid = dead_callback_grid,
+			_cb_on_present = function() dead_callback_completed = dead_callback_completed + 1 end,
+			present_grid_layout = function(self, layout, callback)
+				NextLifecycle.mark_managed_grid(self._item_grid)
+				self._destroyed = true
+				callback()
+			end,
+		}
+		assert(NextLifecycle.adopt_managed_grid(dead_callback_view) == true)
+		assert(dead_callback_completed == 0)
+
+		-- Same-generation reorder passes retain the native blueprint identity and
+		-- all return values; only membership/generation changes request rebuilding.
+		assert(NextLifecycle.prepare_grid_generation(current_grid, current_grid._grid_layout) == false)
+		assert(NextLifecycle.prepare_grid_generation({}, {{}}) == true)
+		reused_after_calls = 0
+		reused_blueprints = {}
+		reused_results = NextLifecycle.present_reused_grid(
+			function(grid, layout, blueprints, first, second)
+				assert(grid == current_grid and layout == current_grid._grid_layout)
+				assert(blueprints == reused_blueprints and first == "first" and second == nil)
+				return "native", nil, 3
+			end,
+			current_grid,
+			current_grid._grid_layout,
+			reused_blueprints,
+			{n = 2, [1] = "first"},
+			function(grid)
+				assert(grid == current_grid)
+				reused_after_calls = reused_after_calls + 1
+			end
+		)
+		assert(reused_results.n == 3 and reused_results[1] == "native" and reused_results[2] == nil and reused_results[3] == 3)
+		assert(reused_after_calls == 1)
+
+		-- Compact Curio headers are cloned once per source/height tuple, kept on
+		-- the owning grid, and dropped deterministically on close or hot reload.
+		settings.curio_preview_height_percent = 76
+		compact_clone_calls = 0
+		compact_features = {
+			compact_inventory_curio_stats_blueprints = function(_, _, source)
+				compact_clone_calls = compact_clone_calls + 1
+				return {gadget_header = {clone = compact_clone_calls}, source = source}
+			end,
+		}
+		compact_source = {gadget_header = {}}
+		compact_grid = {}
+		compact_first = NextLifecycle.compact_curio_stats_blueprints(test_mod, compact_features, compact_grid, compact_source)
+		compact_same = NextLifecycle.compact_curio_stats_blueprints(test_mod, compact_features, compact_grid, compact_source)
+		assert(compact_first == compact_same and compact_clone_calls == 1)
+		settings.curio_preview_height_percent = 80
+		compact_second = NextLifecycle.compact_curio_stats_blueprints(test_mod, compact_features, compact_grid, compact_source)
+		assert(compact_second ~= compact_first and compact_clone_calls == 2)
+		assert(NextLifecycle.release_compact_curio_stats_blueprints(compact_grid) == true)
+		assert(NextLifecycle.release_compact_curio_stats_blueprints(compact_grid) == false)
+		passthrough_features = {
+			compact_inventory_curio_stats_blueprints = function(_, _, source) return source end,
+		}
+		assert(NextLifecycle.compact_curio_stats_blueprints(test_mod, passthrough_features, compact_grid, compact_source) == compact_source)
+		assert(compact_grid._better_inventory_compact_curio_blueprints == nil)
+
+		NextLifecycle.configure({
+			Features = {
+				configure_inventory_sort_options = function() end,
+				setup_inventory_options_panel = function() end,
+				bind_inventory_sort_toggle = function() end,
+				unregister_inventory_view = function() end,
+			},
+			Layout = {},
+			ViewElementGrid = {},
+			mod = test_mod,
+		})
+		settings.curio_preview_height_percent = 76
+		NextLifecycle.compact_curio_stats_blueprints(test_mod, compact_features, compact_grid, compact_source)
+		rootless_view = {_weapon_stats = compact_grid}
+		assert(NextLifecycle.adopt_inventory(rootless_view) == true)
+		assert(NextLifecycle.release_all("mod_reload") == 1)
+		assert(compact_grid._better_inventory_compact_curio_blueprints == nil)
+        ''',
+    )
+
     store = lua.execute(
         read_runtime("BetterInventory_item_customization_store.lua"),
         name=str(RUNTIME_ROOT / "BetterInventory_item_customization_store.lua"),

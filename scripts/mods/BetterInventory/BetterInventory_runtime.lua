@@ -1402,9 +1402,7 @@ function mod.on_game_state_changed(status, state_name)
 	end
 end
 
--- MainMenuView is Darktide's Operative Selection screen. Keep this lifecycle
--- separate from GameplayStateRun so buyer scheduling never mistakes a loading
--- state or a missing hub player for a usable context.
+-- Operative Selection lifecycle stays separate from gameplay scheduling.
 mod:hook_safe(MainMenuView, "on_enter", function()
 	if AutoCrafter and type(AutoCrafter.on_context_exit) == "function" then
 		AutoCrafter.on_context_exit("operative_selection_entered")
@@ -1745,6 +1743,7 @@ local function release_item_grid_view_runtime(view)
 	if SearchUI and type(SearchUI.release) == "function" then
 		SearchUI.release(view)
 	end
+	RuntimeLifecycle.release_compact_curio_stats_blueprints(view)
 	local session_closed = Features.end_view_session(view, "item_grid_exit")
 
 	-- A live view session owns search release; otherwise use the direct fallback.
@@ -1807,9 +1806,7 @@ if ensure_class_method(CreditsVendorView, "destroy") then
 	end)
 end
 
--- Brunt's Armoury uses CreditsGoodsVendorView, not CreditsVendorView. Keep
--- Auto Crafter lifecycle hooks on the exact vanilla view so the read-only
--- probe is armed only for Brunt and not for Requisition or GlobalStore.
+-- Brunt's Armoury uses CreditsGoodsVendorView; other vendors use another route.
 if ensure_class_method(CreditsGoodsVendorView, "on_enter") then
 	mod:hook_safe(CreditsGoodsVendorView, "on_enter", function(view)
 		if AutoCrafter and type(AutoCrafter.on_brunt_view_ready) == "function" then
@@ -1931,7 +1928,7 @@ if ensure_class_method(CraftingMechanicusModifyView, "present_grid_layout") then
 	end)
 end
 
--- CreditsVendorView serves native Requisition and GlobalStore, not Brunt's Armoury.
+-- Native Requisition and GlobalStore share this view.
 if ensure_class_method(CreditsVendorView, "present_grid_layout") then
 	mod:hook(CreditsVendorView, "present_grid_layout", function(func, view, layout, on_present_callback)
 		if is_global_store_view(view) and mod:get("enable_global_store_integration") ~= false then
@@ -2010,10 +2007,7 @@ local function normalize_global_store_widgets(item_grid)
 		local class_icon = widget and widget.style and widget.style.character_class_icon_text
 
 		if content and character_info and class_icon then
-			-- GlobalStore supplies one combined string (class glyph + name). Split
-			-- it once so BetterInventory can size the glyph and name independently.
-			-- Keep the parsed name as a marker so repeated normalization does not
-			-- strip the first word from an already-split character name.
+			-- Split GlobalStore's combined class glyph/name only once.
 			local raw_info = content.character_info_text
 			local parsed_name = content.better_inventory_global_store_character_name
 
@@ -2120,7 +2114,7 @@ mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layou
 	end
 
 	invalidate_myfavorites_grid(item_grid)
-	content_blueprints = Features.compact_inventory_curio_stats_blueprints(mod, item_grid, content_blueprints)
+	content_blueprints = RuntimeLifecycle.compact_curio_stats_blueprints(mod, Features, item_grid, content_blueprints)
 
 	local callback_arguments = pack_values(...)
 	local on_present_callback = callback_arguments[5]
@@ -2187,8 +2181,18 @@ mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layou
 		return func(item_grid, layout, content_blueprints, unpack_values(callback_arguments, 1, callback_arguments.n))
 	end
 
+	local rebuild_cards = RuntimeLifecycle.prepare_grid_generation(item_grid, layout)
+
 	if configuration.global_store then
 		FeatureDomains.global_store.retire_grid_generation(item_grid, layout, Managers.ui)
+	end
+
+	Layout.configure_grid(mod, item_grid)
+
+	if not rebuild_cards then
+		local after_present = configuration.global_store and normalize_global_store_widgets
+		local results = RuntimeLifecycle.present_reused_grid(func, item_grid, layout, content_blueprints, callback_arguments, after_present)
+		return unpack_values(results, 1, results.n)
 	end
 
 	local local_blueprints = shallow_copy(content_blueprints)
@@ -2197,7 +2201,7 @@ mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layou
 	local_blueprints[blueprint_key] = local_item_blueprint
 
 	Layout.configure_item_blueprint(mod, local_item_blueprint, grid_size[1], configuration)
-	Layout.configure_grid(mod, item_grid)
+	RuntimeLifecycle.mark_managed_grid(item_grid)
 
 	if configuration.global_store and type(callback_arguments[5]) == "function" then
 		local on_present_callback = callback_arguments[5]

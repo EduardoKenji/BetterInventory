@@ -676,6 +676,7 @@ SearchHooks.install({
 	mod = mod,
 	Features = Features,
 	SearchUI = SearchUI,
+	RuntimeLifecycle = RuntimeLifecycle,
 	ItemGridViewBase = ItemGridViewBase,
 	InventoryWeaponsView = InventoryWeaponsView,
 	BaseView = BaseView,

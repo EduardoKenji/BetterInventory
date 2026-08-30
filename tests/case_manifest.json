@@ -227,7 +227,7 @@
   ],
   "test_features.py": [
       {"name": "panel_focus_allocation_guard", "risk": "medium", "start_line": 122, "end_line": 123},
-      {"name": "discard_operation_ownership", "risk": "critical", "start_line": 3417, "end_line": 3955},
+      {"name": "discard_operation_ownership", "risk": "critical", "start_line": 3417, "end_line": 3959},
       {"name": "sorting_and_navigation", "risk": "high", "start_line": 408, "end_line": 1612},
       {"name": "optional_integration_fallbacks", "risk": "high", "start_line": 1613, "end_line": 2109},
       {"name": "panel_lifecycle", "risk": "high", "start_line": 2110, "end_line": 3416}
@@ -261,12 +261,12 @@
     {"name": "destroyed_spawner_reuse_reinitializes_loader", "risk": "critical", "start_line": 1, "end_line": 119}
   ],
   "test_settings.py": [
-    {"name": "schema_dependency_refresh", "risk": "high", "start_line": 21, "end_line": 463},
-    {"name": "migration_preservation", "risk": "high", "start_line": 464, "end_line": 600},
-    {"name": "character_overview_transition_retirement", "risk": "critical", "start_line": 601, "end_line": 636},
-    {"name": "character_overview_refresh", "risk": "high", "start_line": 637, "end_line": 1827},
-      {"name": "localization_contract", "risk": "medium", "start_line": 1828, "end_line": 3039},
-      {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 3040, "end_line": 3973}
+    {"name": "schema_dependency_refresh", "risk": "high", "start_line": 21, "end_line": 469},
+    {"name": "migration_preservation", "risk": "high", "start_line": 470, "end_line": 613},
+    {"name": "character_overview_transition_retirement", "risk": "critical", "start_line": 614, "end_line": 649},
+    {"name": "character_overview_refresh", "risk": "high", "start_line": 650, "end_line": 1870},
+      {"name": "localization_contract", "risk": "medium", "start_line": 1871, "end_line": 3082},
+      {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 3083, "end_line": 4086}
   ],
   "test_settings_registry.py": [
     {"name": "duplicate_detection", "risk": "high", "start_line": 63, "end_line": 123},
@@ -280,13 +280,13 @@
     {"name": "repeated_reentrant_and_bulk_close", "risk": "high", "start_line": 58, "end_line": 93}
   ],
   "test_view_lifecycle_memory.py": [
-    {"name": "explicit_view_owned_state_release", "risk": "high", "start_line": 26, "end_line": 91},
-    {"name": "post_draw_update_cpu_invariant", "risk": "critical", "start_line": 93, "end_line": 103},
-    {"name": "shared_grid_exact_pass_through", "risk": "critical", "start_line": 105, "end_line": 130},
-    {"name": "quick_level_probe_throttle", "risk": "high", "start_line": 131, "end_line": 137},
-    {"name": "native_async_cleanup_contracts", "risk": "high", "start_line": 138, "end_line": 152}
+    {"name": "explicit_view_owned_state_release", "risk": "high", "start_line": 26, "end_line": 99},
+    {"name": "post_draw_update_cpu_invariant", "risk": "critical", "start_line": 100, "end_line": 111},
+    {"name": "shared_grid_exact_pass_through", "risk": "critical", "start_line": 112, "end_line": 140},
+    {"name": "quick_level_probe_throttle", "risk": "high", "start_line": 141, "end_line": 147},
+    {"name": "native_async_cleanup_contracts", "risk": "high", "start_line": 148, "end_line": 164}
   ],
   "test_hot_reload_lifecycle.py": [
-    {"name": "generation_owned_reload_teardown_and_re_adoption", "risk": "critical", "start_line": 1, "end_line": 194}
+    {"name": "generation_owned_reload_teardown_and_re_adoption", "risk": "critical", "start_line": 1, "end_line": 413}
   ]
 }
