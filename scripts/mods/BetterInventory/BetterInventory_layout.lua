@@ -103,6 +103,11 @@ Layout.set_item_customization_provider = function(provider)
 	Geometry.set_item_customization_provider(provider)
 	Blueprints.set_item_customization_provider(provider)
 end
+Layout.set_custom_tier_provider = function(provider)
+	Cards.set_custom_tier_provider(provider)
+	Geometry.set_custom_tier_provider(provider)
+	Blueprints.set_custom_tier_provider(provider)
+end
 Layout.clear_runtime_caches = content.clear_runtime_caches
 Layout.compact_curio_perk_search_terms = content.compact_curio_perk_search_terms
 Layout.curio_trait_search_terms = content.curio_trait_search_terms

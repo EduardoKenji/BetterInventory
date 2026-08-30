@@ -522,6 +522,10 @@ if type(Layout.set_item_customization_provider) == "function" then
 	Layout.set_item_customization_provider(ItemCustomization)
 end
 
+if type(Layout.set_custom_tier_provider) == "function" then
+	Layout.set_custom_tier_provider(CustomTier)
+end
+
 if type(ItemCustomization.install) == "function" then
 	ItemCustomization.install(mod, InventoryWeaponsView, Layout)
 end

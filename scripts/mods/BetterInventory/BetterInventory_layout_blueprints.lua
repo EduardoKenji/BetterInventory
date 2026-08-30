@@ -6,6 +6,7 @@ local Cards = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods
 local Geometry = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_geometry")
 local ImageLayout = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_image_layout")
 local MaterialSafety = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_material_safety")
+local RarityRating = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_rarity_rating")
 local Blueprints = {}
 Blueprints.ImageLayout = ImageLayout
 Blueprints.MaterialSafety = MaterialSafety
@@ -79,6 +80,11 @@ Blueprints.set_item_customization_provider = function(provider)
 	content.set_item_customization_provider(provider)
 	Cards.set_item_customization_provider(provider)
 	Geometry.set_item_customization_provider(provider)
+end
+
+Blueprints.set_custom_tier_provider = function(provider)
+	Cards.set_custom_tier_provider(provider)
+	Geometry.set_custom_tier_provider(provider)
 end
 
 local configure_native_quick_look_card_passes = Cards.configure_native_quick_look_card_passes
@@ -496,6 +502,7 @@ Blueprints.configure_item_blueprint = function(mod, item_blueprint, grid_width, 
 	local card_width = item_size[1]
 	local card_height = item_size[2]
 	local pass_template = table.clone(item_blueprint.pass_template)
+	configuration.card_height = card_height
 
 	if global_store_multicolumn and pass_by_style_id(pass_template, "character_info_text") and not pass_by_style_id(pass_template, "character_class_icon_text") then
 		local character_info_pass = pass_by_style_id(pass_template, "character_info_text")
@@ -509,7 +516,8 @@ Blueprints.configure_item_blueprint = function(mod, item_blueprint, grid_width, 
 	end
 
 	local show_rarity_tag = setting(mod, "show_rarity_tag", true)
-	local text_left = show_rarity_tag and 12 or 8
+	local rarity_rail_width = RarityRating.vertical_rail_width(mod, configuration.slot_kind, configuration)
+	local text_left = (show_rarity_tag and 12 or 8) + rarity_rail_width
 	local quick_look_card_present = has_quick_look_card_passes(pass_template)
 	local quick_look_card_integration = setting(mod, "enable_quick_look_card_grid_integration", true)
 	local quick_look_card_position = quick_look_card_grid_position(mod)
@@ -543,11 +551,11 @@ Blueprints.configure_item_blueprint = function(mod, item_blueprint, grid_width, 
 		icon.style.horizontal_alignment = "left"
 		icon.style.vertical_alignment = "top"
 		icon.style.size = {
-			card_width,
+			card_width - rarity_rail_width,
 			card_height - global_store_extra,
 		}
 		icon.style.offset = {
-			0,
+			rarity_rail_width,
 			0,
 			4,
 		}
@@ -579,7 +587,7 @@ Blueprints.configure_item_blueprint = function(mod, item_blueprint, grid_width, 
 			56,
 		}
 		loading.style.offset = {
-			0,
+			rarity_rail_width * 0.5,
 			0,
 			5,
 		}
@@ -648,7 +656,7 @@ Blueprints.configure_item_blueprint = function(mod, item_blueprint, grid_width, 
 		},
 	})
 	if rarity_name then
-		local show_weapon_quality = setting(mod, "show_rarity_name", false)
+		local show_weapon_quality = setting(mod, "show_rarity_name", false) and RarityRating.mode(mod, configuration) == RarityRating.MODE_OFF
 
 		rarity_name.visibility_function = function(content)
 			return show_weapon_quality and content_is_weapon(content)
@@ -886,7 +894,7 @@ Blueprints.configure_item_blueprint = function(mod, item_blueprint, grid_width, 
 
 	if salvage_icon and salvage_icon.style then
 		salvage_icon.style.offset = {
-			card_width * 0.5 - 27,
+			card_width * 0.5 - 27 + rarity_rail_width * 0.5,
 			0,
 			14,
 		}
@@ -894,7 +902,7 @@ Blueprints.configure_item_blueprint = function(mod, item_blueprint, grid_width, 
 
 	if salvage_circle and salvage_circle.style then
 		salvage_circle.style.offset = {
-			card_width * 0.5 - 50,
+			card_width * 0.5 - 50 + rarity_rail_width * 0.5,
 			0,
 			15,
 		}

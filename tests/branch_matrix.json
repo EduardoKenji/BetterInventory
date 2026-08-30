@@ -114,6 +114,13 @@
       "modules": ["BetterInventory_wkc_integration.lua", "BetterInventory_layout_cards.lua", "BetterInventory_runtime.lua"]
     },
     {
+      "name": "layout.rarity-rating-profiles-are-bind-only-and-tier-aware",
+      "test": "test_rarity_rating.py",
+      "case": "three_profiles_split_tiers_dynamic_geometry_and_bind_only_updates",
+      "outcome": "the default-off rarity rating supports compact first-letter plus stars, two-row full rarity plus stars, and a vertical first-letter/star rail; native Transcendent remains five stars while matching custom Sainted items receive six, localized UTF-8 initials remain intact, owned passes are idempotent and have no per-frame callbacks, horizontal profiles reserve card rows above WKC, and vertical profiles preserve prior content width by widening each eligible card and its inventory, Armoury, GlobalStore, or Melk frame by one bounded rail",
+      "modules": ["BetterInventory_rarity_rating.lua", "BetterInventory_layout_geometry.lua", "BetterInventory_layout_blueprints.lua", "BetterInventory_layout_cards.lua", "BetterInventory_wkc_integration.lua"]
+    },
+    {
         "name": "layout.weapon-modifiers-avoid-full-calculator",
         "test": "test_layout.py",
         "case": "weapon_modifier_data_only_resolution",

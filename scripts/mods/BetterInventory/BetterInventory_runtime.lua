@@ -859,6 +859,7 @@ local function bind_option_dependencies(options_templates)
 		"grid_spacing",
 		"automatic_card_height",
 		"card_height",
+		"weapon_rarity_rating_mode",
 		"expand_curio_inventory_window",
 		"curio_target_card_width",
 		"enable_hadron_entreat_grid",

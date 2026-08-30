@@ -3,6 +3,7 @@ local Items = require("scripts/utilities/items")
 local MasterItems = require("scripts/backend/master_items")
 local LayoutContent = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_content")
 local WeaponKillCounter = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_wkc_integration")
+local RarityRating = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_rarity_rating")
 
 local Cards = {}
 local content = LayoutContent
@@ -121,6 +122,10 @@ local ARMOURY_NATIVE_MODIFIER_HORIZONTAL_PERCENT = 62
 
 Cards.set_item_customization_provider = function(provider)
 	content.set_item_customization_provider(provider)
+end
+
+Cards.set_custom_tier_provider = function(provider)
+	RarityRating.set_custom_tier_provider(provider)
 end
 
 local function configure_native_quick_look_card_passes(mod, pass_template, card_width, card_height, configuration)
@@ -412,6 +417,7 @@ local function populate_card_content(mod, widget, element, blessing_display_mode
 	local curio = not weapon and is_curio(item)
 	content.better_inventory_is_weapon = weapon
 	content.better_inventory_is_curio = curio
+	RarityRating.populate(mod, widget, item, weapon)
 
 	if weapon then
 		if show_weapon_modifiers then
@@ -1271,6 +1277,8 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 	local blessing_size
 	local blessing_text_height
 	local perk_rank_size = weapon_perk_rank_icon_size(mod)
+
+	RarityRating.add_passes(mod, pass_template, card_width, configuration.card_height or 110, text_left, base_text_style, configuration)
 
 	if blessing_display_mode == "icons" then
 		blessing_size = blessing_icon_size(mod)

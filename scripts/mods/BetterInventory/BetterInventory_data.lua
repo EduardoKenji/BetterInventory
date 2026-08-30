@@ -2169,6 +2169,18 @@ return {
 						default_value = false,
 					},
 					{
+						setting_id = "weapon_rarity_rating_mode",
+						tooltip = "weapon_rarity_rating_mode_tooltip",
+						type = "dropdown",
+						default_value = "off",
+						options = {
+							{ text = "weapon_rarity_rating_mode_off", value = "off" },
+							{ text = "weapon_rarity_rating_mode_compact_horizontal", value = "compact_horizontal" },
+							{ text = "weapon_rarity_rating_mode_full_horizontal", value = "full_horizontal" },
+							{ text = "weapon_rarity_rating_mode_vertical", value = "vertical" },
+						},
+					},
+					{
 						setting_id = "show_rarity_tag",
 						type = "checkbox",
 						default_value = true,

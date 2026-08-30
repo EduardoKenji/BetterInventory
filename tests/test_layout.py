@@ -9,6 +9,7 @@ LAYOUT_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInv
 LAYOUT_CONTENT_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_layout_content.lua"
 LAYOUT_CARDS_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_layout_cards.lua"
 WKC_INTEGRATION_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_wkc_integration.lua"
+RARITY_RATING_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_rarity_rating.lua"
 LAYOUT_GEOMETRY_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_layout_geometry.lua"
 LAYOUT_BLUEPRINTS_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_layout_blueprints.lua"
 IMAGE_LAYOUT_PATH = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_image_layout.lua"
@@ -310,6 +311,10 @@ def main() -> None:
 			return item and item.test_rarity_color or { 255, 145, 70, 40 }
 		end
 
+		function TestItems.rarity_display_name(item)
+			return item and item.test_rarity_name or "Transcendent"
+		end
+
 		master_item_lookup_count = 0
 
 		function TestMasterItems.get_item(item_id)
@@ -419,6 +424,7 @@ def main() -> None:
 				force_weapon_name_single_line = false,
                 show_pattern_mark = false,
                 show_rarity_name = false,
+				weapon_rarity_rating_mode = "off",
 				show_rarity_tag = true,
 				weapon_blessing_display_mode = "icons",
 				blessing_text_item_level_separation = "four_plus",
@@ -619,6 +625,10 @@ def main() -> None:
 				return TestWkcIntegration
 			end
 
+			if path == "BetterInventory/scripts/mods/BetterInventory/BetterInventory_rarity_rating" then
+				return TestRarityRating
+			end
+
 			if path == "BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_cards" then
 				return TestLayoutCards
 			end
@@ -747,6 +757,9 @@ def main() -> None:
     lua.globals().TestWkcIntegration = lua.execute(
         WKC_INTEGRATION_PATH.read_text(encoding="utf-8"), name=str(WKC_INTEGRATION_PATH)
     )
+    lua.globals().TestRarityRating = lua.execute(
+        RARITY_RATING_PATH.read_text(encoding="utf-8"), name=str(RARITY_RATING_PATH)
+    )
     lua.globals().TestLayoutCards = lua.execute(
         LAYOUT_CARDS_PATH.read_text(encoding="utf-8"), name=str(LAYOUT_CARDS_PATH)
     )
@@ -863,6 +876,14 @@ def main() -> None:
     assert layout.grid_expansion(mod, 596) == 0
     assert layout.armoury_grid_expansion(mod, 596) == 114
 
+    # The vertical rarity rail preserves every card's previous content width by
+    # widening the active three-column inventory/vendor frame by 28 px per card.
+    mod.settings.weapon_rarity_rating_mode = "vertical"
+    assert layout.grid_expansion(mod, 596) == 84
+    assert layout.grid_expansion(mod, 596, "curio") == 0
+    assert layout.armoury_grid_expansion(mod, 596) == 198
+    mod.settings.weapon_rarity_rating_mode = "off"
+
     armoury_definitions = lua.table_from(
         {
             "grid_settings": lua.table_from(
@@ -915,6 +936,27 @@ def main() -> None:
         layout.item_size(mod, 710, 3, store_configuration)[index]
         for index in (1, 2)
     ) == (230, 114)
+
+    mod.settings.weapon_rarity_rating_mode = "vertical"
+    vertical_armoury, vertical_expansion = layout.expanded_armoury_view_definitions(
+        mod, armoury_definitions, armoury_base_definitions
+    )
+    assert vertical_expansion == 198
+    assert vertical_armoury.grid_settings.grid_size[1] == 794
+    assert vertical_armoury.grid_settings.mask_size[1] == 878
+    assert vertical_armoury.scenegraph_definition.item_grid_pivot.size[1] == 838
+    assert vertical_armoury.scenegraph_definition.weapon_stats_pivot.position[1] == -942
+    assert vertical_armoury.scenegraph_definition.purchase_button.position[1] == 1055
+    vertical_blueprint = lua.eval("table.clone")(blueprint)
+    vertical_size = layout.configure_item_blueprint(
+        mod, vertical_blueprint, 794, store_configuration
+    )
+    assert (vertical_size[1], vertical_size[2]) == (258, 114)
+    assert tuple(blueprint_pass(vertical_blueprint, "icon").style.size[index] for index in (1, 2)) == (230, 114)
+    assert blueprint_pass(vertical_blueprint, "icon").style.offset[1] == 28
+    assert blueprint_pass(vertical_blueprint, "display_name").style.offset[1] == 40
+    assert blueprint_pass(vertical_blueprint, "better_inventory_rarity_rating_vertical").change_function is None
+    mod.settings.weapon_rarity_rating_mode = "off"
 
     mod.settings.debug_expand_armoury_requisition_window_30_percent = True
     debug_armoury, debug_expansion = layout.expanded_armoury_view_definitions(

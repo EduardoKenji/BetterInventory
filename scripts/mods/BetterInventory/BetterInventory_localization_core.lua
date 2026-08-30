@@ -792,6 +792,24 @@ local localization = {
 	show_rarity_name = {
 		en = "Show weapon quality text",
 	},
+	weapon_rarity_rating_mode = {
+		en = "Rarity + star rating",
+	},
+	weapon_rarity_rating_mode_tooltip = {
+		en = "Adds a rarity-coloured star rating to grid weapon cards. Compact keeps the first localized rarity character and stars on one line; Full uses separate rarity and star lines; Vertical reserves a left rail and widens the active inventory, store, or Sire Melk grid. Native Transcendent and custom Sainted remain separate five- and six-star tiers.",
+	},
+	weapon_rarity_rating_mode_off = {
+		en = "Off",
+	},
+	weapon_rarity_rating_mode_compact_horizontal = {
+		en = "First character + stars",
+	},
+	weapon_rarity_rating_mode_full_horizontal = {
+		en = "Full rarity + stars below",
+	},
+	weapon_rarity_rating_mode_vertical = {
+		en = "Vertical rail (wider cards)",
+	},
 	show_rarity_tag = {
 		en = "Show rarity colour strip",
 	},

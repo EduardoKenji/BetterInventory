@@ -253,12 +253,21 @@ local function profile(mod, card_width, text_left, configuration, columns, wkc, 
 		icon_offset = left
 	end
 
-	if not native and setting(mod, "show_pattern_mark", false) == true then
-		top = 54
-	end
+	if not native then
+		local rating_mode = setting(mod, "weapon_rarity_rating_mode", "off")
+		local rating_rows = rating_mode == "compact_horizontal" and 1 or rating_mode == "full_horizontal" and 2 or 0
 
-	if not native and setting(mod, "show_rarity_name", false) == true then
-		top = 74
+		if setting(mod, "show_pattern_mark", false) == true then
+			top = top + 20
+		end
+
+		if rating_rows > 0 then
+			top = top + rating_rows * 20
+		elseif rating_mode == "off" and setting(mod, "show_rarity_name", false) == true then
+			-- Preserve the legacy rarity-row placement when the new rating display
+			-- is off; historically it reserved both secondary row positions.
+			top = 74
+		end
 	end
 
 	return {

@@ -4,6 +4,7 @@ local MasterItems = require("scripts/backend/master_items")
 local LayoutContent = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_content")
 local Geometry = {}
 local Cards = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_cards")
+local RarityRating = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_rarity_rating")
 local content = LayoutContent
 
 local global_store_character_photo_size = content.global_store_character_photo_size
@@ -73,6 +74,10 @@ local GLOBAL_STORE_CHARACTER_NAME_FIT_SAFETY_MARGIN = content.GLOBAL_STORE_CHARA
 Geometry.set_item_customization_provider = function(provider)
 	content.set_item_customization_provider(provider)
 	Cards.set_item_customization_provider(provider)
+end
+
+Geometry.set_custom_tier_provider = function(provider)
+	Cards.set_custom_tier_provider(provider)
 end
 
 local configure_native_quick_look_card_passes = Cards.configure_native_quick_look_card_passes
@@ -251,11 +256,18 @@ Geometry.grid_expansion = function(mod, current_grid_width, slot_kind)
 		return 0
 	end
 
-	if not setting(mod, "enable_grid_layout", true) or not setting(mod, "expand_inventory_window", true) then
+	if not setting(mod, "enable_grid_layout", true) then
 		return 0
 	end
 
 	local columns = Geometry.columns(mod, nil, slot_kind)
+	local rarity_rail_width = RarityRating.vertical_rail_width(mod, slot_kind)
+	local expand_base = setting(mod, "expand_inventory_window", true)
+
+	if not expand_base and rarity_rail_width == 0 then
+		return 0
+	end
+
 	local spacing = numeric_setting(mod, "grid_spacing", 10, 0, 40)
 	local target_card_width = MINIMUM_CARD_WIDTH
 
@@ -264,9 +276,9 @@ Geometry.grid_expansion = function(mod, current_grid_width, slot_kind)
 	end
 
 	local required_grid_width = target_card_width * columns + spacing * (columns - 1)
-	local required_expansion = math.max(0, required_grid_width - current_grid_width)
+	local required_expansion = (expand_base and math.max(0, required_grid_width - current_grid_width) or 0) + rarity_rail_width * columns
 
-	if slot_kind ~= "curio" and weapon_extra_width_applies(mod, columns) then
+	if expand_base and slot_kind ~= "curio" and weapon_extra_width_applies(mod, columns) then
 		local extra_width = numeric_setting(mod, "five_column_weapon_extra_width", 80, 0, MAXIMUM_WEAPON_EXTRA_WIDTH)
 
 		required_expansion = required_expansion + extra_width
@@ -283,16 +295,23 @@ Geometry.armoury_grid_expansion = function(mod, current_grid_width, grid_setting
 		return 0
 	end
 
-	if not setting(mod, "enable_grid_layout", true) or not setting(mod, grid_setting_id, true) or not setting(mod, "expand_armoury_requisition_window", true) then
+	if not setting(mod, "enable_grid_layout", true) or not setting(mod, grid_setting_id, true) then
 		return 0
 	end
 
 	local columns = Geometry.columns(mod, 3, slot_kind)
+	local rarity_rail_width = RarityRating.vertical_rail_width(mod, slot_kind)
+	local expand_base = setting(mod, "expand_armoury_requisition_window", true)
+
+	if not expand_base and rarity_rail_width == 0 then
+		return 0
+	end
+
 	local spacing = numeric_setting(mod, "grid_spacing", 10, 0, 40)
 	local target_card_width = numeric_setting(mod, "armoury_requisition_target_card_width", 230, ARMOURY_MINIMUM_CARD_WIDTH, ARMOURY_MAXIMUM_CARD_WIDTH)
 	local required_grid_width = target_card_width * columns + spacing * (columns - 1)
 
-	return math.max(0, required_grid_width - current_grid_width)
+	return (expand_base and math.max(0, required_grid_width - current_grid_width) or 0) + rarity_rail_width * columns
 end
 
 local function maximum_safe_inventory_expansion(definitions, slot_kind)
@@ -536,9 +555,13 @@ Geometry.card_height = function(mod, configuration)
 		optional_rows = optional_rows + 1
 	end
 
-	if setting(mod, "show_rarity_name", false) then
+	local rating_rows = RarityRating.horizontal_rows(mod, configuration)
+
+	if RarityRating.mode(mod, configuration) == RarityRating.MODE_OFF and setting(mod, "show_rarity_name", false) then
 		optional_rows = optional_rows + 1
 	end
+
+	optional_rows = optional_rows + rating_rows
 
 	local native_content_gap = configuration.native_single_column and NATIVE_SINGLE_COLUMN_CONTENT_GAP or 0
 
@@ -562,7 +585,7 @@ Geometry.card_height = function(mod, configuration)
 		required_height = math.max(required_height, 7 + name_row_height + quality_row_height + primary_line_height + 12 + store_footer_height)
 	end
 
-	return math.max(110, math.min(240, math.ceil(required_height)))
+	return math.max(110, math.min(280, math.ceil(required_height)))
 end
 
 Geometry.item_size = function(mod, grid_width, maximum_columns, configuration)
@@ -576,7 +599,7 @@ Geometry.item_size = function(mod, grid_width, maximum_columns, configuration)
 	local columns = Geometry.columns(mod, maximum_columns, slot_kind)
 	local spacing = numeric_setting(mod, "grid_spacing", 10, 0, 40)
 	local wkc_padding = Cards.weapon_kill_counter_card_height_padding(mod, configuration, columns)
-	local height = math.min(240, Geometry.card_height(mod, configuration) + wkc_padding)
+	local height = math.min(280, Geometry.card_height(mod, configuration) + wkc_padding)
 	local width = math.floor((grid_width - spacing * (columns - 1)) / columns)
 
 	return {
