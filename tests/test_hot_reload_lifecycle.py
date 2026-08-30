@@ -5,14 +5,11 @@ from coverage_support import InstrumentedLuaRuntime as LuaRuntime
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_ROOT = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory"
-DMF_LOADER = (
-    PROJECT_ROOT.parents[1]
-    / "mods"
-    / "dmf"
-    / "scripts"
-    / "mods"
-    / "dmf"
-    / "dmf_loader.lua"
+DMF_RELOAD_ORDER_FIXTURE = (
+    PROJECT_ROOT
+    / "tests"
+    / "fixtures"
+    / "dmf_loader_reload_order.lua"
 )
 
 
@@ -26,11 +23,12 @@ def main() -> None:
     customization = read_runtime("BetterInventory_item_customization.lua")
     curio_acquisition = read_runtime("BetterInventory_curio_acquisition.lua")
     search_ui = read_runtime("BetterInventory_search_ui.lua")
-    dmf_loader = DMF_LOADER.read_text(encoding="utf-8")
+    dmf_loader = DMF_RELOAD_ORDER_FIXTURE.read_text(encoding="utf-8")
 
-    # DMF calls on_unload before it removes hooks and recreates live views.
-    # Better Inventory must therefore relinquish every view/global callback at
-    # this boundary, while ordinary disable retains its Name It handoff.
+    # The repository-owned fixture records the current and legacy DMF reload
+    # ordering verified by the optional installed-framework contract gate. CI
+    # must not depend on a sibling Darktide Content/mods tree to exercise Better
+    # Inventory's side of that boundary.
     assert dmf_loader.index("dmf.mods_unload_event(false)") < dmf_loader.index(
         "dmf.hooks_unload()"
     )

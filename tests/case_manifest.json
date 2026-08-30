@@ -288,6 +288,6 @@
     {"name": "native_async_cleanup_contracts", "risk": "high", "start_line": 148, "end_line": 164}
   ],
   "test_hot_reload_lifecycle.py": [
-    {"name": "generation_owned_reload_teardown_and_re_adoption", "risk": "critical", "start_line": 1, "end_line": 413}
+    {"name": "generation_owned_reload_teardown_and_re_adoption", "risk": "critical", "start_line": 1, "end_line": 411}
   ]
 }
