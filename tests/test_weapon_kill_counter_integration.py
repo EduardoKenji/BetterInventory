@@ -263,6 +263,33 @@ def main() -> None:
     assert icon_pass.visibility_function(unused_weapon_content) is False
     mod.settings.weapon_kill_counter_show_zero_kills = True
 
+    # Store grids retain WKC's native hide-empty behavior. BetterInventory
+    # synthesizes skull + 0 only for owned inventory cards, while preserving
+    # real positive counts in every view.
+    store_template = lua.table_from([])
+    assert integration.configure_passes(
+        mod,
+        store_template,
+        210,
+        12,
+        lua.table_from({"store_item": True}),
+        3,
+    ) is True
+    store_text_pass = next(
+        store_template[index]
+        for index in range(1, len(store_template) + 1)
+        if store_template[index].style_id == "wkc_kills"
+    )
+    store_icon_pass = next(
+        store_template[index]
+        for index in range(1, len(store_template) + 1)
+        if store_template[index].style_id == "wkc_kills_icon"
+    )
+    assert store_text_pass.visibility_function(weapon_content) is True
+    assert store_icon_pass.visibility_function(weapon_content) is True
+    assert store_text_pass.visibility_function(unused_weapon_content) is False
+    assert store_icon_pass.visibility_function(unused_weapon_content) is False
+
     # Brunt's native two-column cards bypass BetterInventory's custom grid
     # profile. Cap WKC's raw 22/20 px listing pair after grid construction and
     # again after WKC's own change functions refresh their configured sizes.
@@ -307,7 +334,7 @@ def main() -> None:
         }
         """
     )
-    assert integration.cap_brunt_listing_overlay_sizes(brunt_grid, mod) == 2
+    assert integration.cap_brunt_listing_overlay_sizes(brunt_grid) == 2
     brunt_widget = brunt_grid._all_grid_widgets[1]
     assert brunt_widget.style.wkc_kills.font_size == 14
     assert brunt_widget.style.wkc_kills_icon.size[1] == 16
@@ -336,22 +363,7 @@ def main() -> None:
     assert brunt_widget.style.wkc_kills.offset[2] == 37
     assert brunt_widget.style.wkc_kills_icon.offset[1] == 10
     assert brunt_widget.style.wkc_kills_icon.offset[2] == 37
-    assert integration.cap_brunt_listing_overlay_sizes(brunt_grid, mod) == 0
-
-    # Brunt uses WKC's native listing passes rather than BetterInventory's
-    # responsive copies. The same presentation-only zero option wraps those
-    # existing passes once, without rebuilding their widgets or statistics.
-    brunt_widget.content.item = unused_weapon_content.item
-    assert brunt_widget.passes[1].visibility_function(brunt_widget.content) is True
-    assert brunt_widget.passes[2].visibility_function(brunt_widget.content) is True
-    brunt_widget.passes[1].change_function(
-        brunt_widget.content, brunt_widget.style.wkc_kills
-    )
-    assert brunt_widget.content.wkc_kills == "0"
-    mod.settings.weapon_kill_counter_show_zero_kills = False
-    assert brunt_widget.passes[1].visibility_function(brunt_widget.content) is False
-    assert brunt_widget.passes[2].visibility_function(brunt_widget.content) is False
-    mod.settings.weapon_kill_counter_show_zero_kills = True
+    assert integration.cap_brunt_listing_overlay_sizes(brunt_grid) == 0
 
     assert integration.install_brunt_listing_hook(mod) is True
     assert integration.install_brunt_listing_hook(mod) is False

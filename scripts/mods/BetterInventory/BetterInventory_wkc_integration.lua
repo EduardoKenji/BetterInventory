@@ -144,7 +144,7 @@ local function weapon_content(content)
 	return success and kills ~= nil
 end
 
-local function resolved_kills(mod, content)
+local function resolved_kills(mod, content, allow_zero_kills)
 	local wkc = optional_wkc()
 
 	if not wkc or not integration_enabled(wkc) or not weapon_content(content) then
@@ -176,7 +176,7 @@ local function resolved_kills(mod, content)
 	-- WKC deliberately represents both zero and never-recorded weapon counts as
 	-- nil. BetterInventory may standardize that presentation without creating a
 	-- statistic or changing WKC's saved state.
-	return setting(mod, "weapon_kill_counter_show_zero_kills", true) == true and 0 or nil
+	return allow_zero_kills ~= false and setting(mod, "weapon_kill_counter_show_zero_kills", true) == true and 0 or nil
 end
 
 local function abbreviated_kills(wkc, kills)
@@ -392,7 +392,7 @@ local function remove_weapon_stats_listing_overlays(element)
 	return removed
 end
 
-local function cap_brunt_listing_overlay_sizes(item_grid, mod)
+local function cap_brunt_listing_overlay_sizes(item_grid)
 	local seen = {}
 	local wrapped = 0
 
@@ -453,31 +453,13 @@ local function cap_brunt_listing_overlay_sizes(item_grid, mod)
 
 				if pass.better_inventory_wkc_brunt_size_cap ~= true then
 					local original_change_function = pass.change_function
-					local original_visibility_function = pass.visibility_function
 
 					pass.change_function = function(content, style, ...)
 						if type(original_change_function) == "function" then
 							original_change_function(content, style, ...)
 						end
 
-						if style_id == TEXT_STYLE_ID and resolved_kills(mod, content) == 0 then
-							content[TEXT_STYLE_ID] = abbreviated_kills(optional_wkc(), 0)
-						end
-
 						cap_style(style, style_id, content)
-					end
-					pass.visibility_function = function(content, ...)
-						if type(original_visibility_function) == "function" and original_visibility_function(content, ...) then
-							return true
-						end
-
-						if resolved_kills(mod, content) == nil then
-							return false
-						end
-
-						local current_configuration = style_id == ICON_STYLE_ID and card_configuration(optional_wkc())
-
-						return style_id ~= ICON_STYLE_ID or not current_configuration or current_configuration.icon_on ~= false
 					end
 					pass.better_inventory_wkc_brunt_size_cap = true
 					wrapped = wrapped + 1
@@ -513,7 +495,7 @@ local function install_brunt_listing_hook(mod)
 		local view = item_grid and item_grid._parent
 
 		if view and view.__class_name == "CreditsGoodsVendorView" then
-			cap_brunt_listing_overlay_sizes(item_grid, mod)
+			cap_brunt_listing_overlay_sizes(item_grid)
 		end
 	end)
 
@@ -536,6 +518,7 @@ local function configure_passes(mod, pass_template, card_width, text_left, confi
 	local icon_color = color_from_configuration(wkc_configuration.icon_color, DEFAULT_COLOR)
 	local font_type = type(wkc_configuration.font_type) == "string" and wkc_configuration.font_type ~= "" and wkc_configuration.font_type or "proxima_nova_bold"
 	local icon_material = DEFAULT_ICON
+	local allow_zero_kills = configuration.store_item ~= true
 
 	if wkc and type(wkc._overlay_icon_material) == "function" then
 		local success, material = pcall(wkc._overlay_icon_material, wkc_configuration)
@@ -568,7 +551,7 @@ local function configure_passes(mod, pass_template, card_width, text_left, confi
 			local current_wkc = optional_wkc()
 			local current_configuration = card_configuration(current_wkc)
 
-			return (not current_configuration or current_configuration.icon_on ~= false) and resolved_kills(mod, content) ~= nil
+			return (not current_configuration or current_configuration.icon_on ~= false) and resolved_kills(mod, content, allow_zero_kills) ~= nil
 		end,
 		change_function = function(content)
 			local current_wkc = optional_wkc()
@@ -613,10 +596,10 @@ local function configure_passes(mod, pass_template, card_width, text_left, confi
 			text_color = text_color,
 		},
 		visibility_function = function(content)
-			return resolved_kills(mod, content) ~= nil
+			return resolved_kills(mod, content, allow_zero_kills) ~= nil
 		end,
 		change_function = function(content)
-			local kills = resolved_kills(mod, content)
+			local kills = resolved_kills(mod, content, allow_zero_kills)
 			local current_wkc = optional_wkc()
 
 			content[TEXT_STYLE_ID] = kills and abbreviated_kills(current_wkc, kills) or ""

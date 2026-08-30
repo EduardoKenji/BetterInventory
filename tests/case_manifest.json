@@ -24,7 +24,7 @@
     {"name": "purchase_source_isolation_and_myfavorites_color_assignment", "risk": "high", "start_line": 1, "end_line": 329}
   ],
   "test_weapon_kill_counter_integration.py": [
-    {"name": "presentation_only_fixture_load_order_deduplication_and_responsive_card_profiles", "risk": "high", "start_line": 17, "end_line": 495}
+    {"name": "presentation_only_fixture_load_order_deduplication_and_responsive_card_profiles", "risk": "high", "start_line": 17, "end_line": 507}
   ],
   "test_rarity_rating.py": [
     {"name": "two_profiles_split_tiers_mixed_melk_and_bind_only_updates", "risk": "high", "start_line": 1, "end_line": 353}

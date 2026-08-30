@@ -489,7 +489,7 @@ local localization = {
 		en = "Show zero kills for unused weapons",
 	},
 	weapon_kill_counter_show_zero_kills_tooltip = {
-		en = "Shows the skull icon and 0 on weapon cards when Weapon Kill Counter has no recorded kills for that weapon. Enabled by default and requires WKC's card overlay to be enabled. This changes presentation only and never writes WKC statistics.",
+		en = "Shows the skull icon and 0 on owned inventory weapon cards when Weapon Kill Counter has no recorded kills for that weapon. Store cards remain unchanged. Enabled by default and requires WKC's card overlay to be enabled. This changes presentation only and never writes WKC statistics.",
 	},
 	option_requires_custom_item_name_and_colors = {
 		en = "Enable custom item names and colors to use this option.",
