@@ -27,7 +27,7 @@
     {"name": "presentation_only_fixture_load_order_deduplication_and_responsive_card_profiles", "risk": "high", "start_line": 17, "end_line": 447}
   ],
   "test_rarity_rating.py": [
-    {"name": "three_profiles_split_tiers_dynamic_geometry_and_bind_only_updates", "risk": "high", "start_line": 1, "end_line": 217}
+    {"name": "three_profiles_split_tiers_dynamic_geometry_and_bind_only_updates", "risk": "high", "start_line": 1, "end_line": 224}
   ],
   "test_coverage_support.py": [
     {"name": "multiple_lua_runtimes_merge_without_overwriting_earlier_coverage", "risk": "high", "start_line": 1, "end_line": 21}

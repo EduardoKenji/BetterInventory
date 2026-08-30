@@ -96,10 +96,25 @@ local function effective_rarity(item)
 	return math.max(0, math.min(6, rarity))
 end
 
+local function plain_rarity_name(value)
+	if type(value) ~= "string" then
+		return ""
+	end
+
+	-- Other rarity/name integrations may return Darktide rich-text markup.
+	-- Strip every formatting directive before deriving the visible initial or
+	-- placing the full label in our independently coloured text pass.
+	value = string.gsub(value, "{#[^}]*}", "")
+
+	return string.gsub(string.gsub(value, "^%s+", ""), "%s+$", "")
+end
+
 local function rarity_name(item)
 	local ok, value = pcall(Items.rarity_display_name, item)
 
-	return ok and type(value) == "string" and value ~= "" and value or tostring(item and item.rarity_name or "")
+	value = plain_rarity_name(ok and value or "")
+
+	return value ~= "" and value or plain_rarity_name(tostring(item and item.rarity_name or ""))
 end
 
 local function rarity_color(item)
@@ -288,6 +303,7 @@ RarityRating.VERTICAL_RAIL_WIDTH = VERTICAL_RAIL_WIDTH
 RarityRating._test = {
 	effective_rarity = effective_rarity,
 	first_utf8_character = first_utf8_character,
+	plain_rarity_name = plain_rarity_name,
 	rarity_name = rarity_name,
 }
 

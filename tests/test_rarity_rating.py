@@ -121,6 +121,13 @@ def main() -> None:
     )
     assert compact_pass.visibility_function(compact_widget.content) is True
 
+    transcendent.display_rarity = "{#color(240,120,20)}Transcendent{#reset()}"
+    rating.populate(mod, compact_widget, transcendent, True)
+    assert compact_widget.content.better_inventory_rarity_rating_compact.startswith("T ")
+    assert "{" not in compact_widget.content.better_inventory_rarity_rating_compact
+    assert rating._test.rarity_name(transcendent) == "Transcendent"
+    transcendent.display_rarity = "Transcendent"
+
     # Reconfiguring a reused blueprint replaces owned passes instead of growing
     # the template, and horizontal modes remain weapon-only.
     rating.add_passes(mod, compact_passes, 230, 114, 12, base_style, lua.table_from({}))
