@@ -15,10 +15,10 @@
         {"name": "supported_view_adapters_facade_and_lifecycle_composition", "risk": "high", "start_line": 1, "end_line": 472}
   ],
   "test_search_ui.py": [
-      {"name": "single_field_configurable_view_spacing_clipping_disable_focus_and_release", "risk": "high", "start_line": 1, "end_line": 615}
+      {"name": "single_field_configurable_view_spacing_clipping_disable_focus_and_release", "risk": "high", "start_line": 1, "end_line": 835}
   ],
   "test_search_hooks.py": [
-      {"name": "native_grid_and_hadron_sacrifice_hook_composition", "risk": "high", "start_line": 1, "end_line": 288}
+      {"name": "native_grid_and_hadron_sacrifice_hook_composition", "risk": "high", "start_line": 1, "end_line": 305}
   ],
   "test_favorite_integration.py": [
     {"name": "purchase_source_isolation_and_myfavorites_color_assignment", "risk": "high", "start_line": 1, "end_line": 329}
@@ -244,10 +244,10 @@
     {"name": "exclusive_background_ownership_and_lifecycle_fallback", "risk": "critical", "start_line": 1, "end_line": 326}
   ],
   "test_layout.py": [
-    {"name": "card_geometry", "risk": "high", "start_line": 613, "end_line": 1469},
-      {"name": "weapon_modifier_data_only_resolution", "risk": "critical", "start_line": 1470, "end_line": 1943},
-        {"name": "content_and_resource_ownership", "risk": "high", "start_line": 1944, "end_line": 3155},
-    {"name": "integration_boundaries", "risk": "medium", "start_line": 3156, "end_line": 5428}
+      {"name": "card_geometry", "risk": "high", "start_line": 613, "end_line": 1517},
+        {"name": "weapon_modifier_data_only_resolution", "risk": "critical", "start_line": 1518, "end_line": 1991},
+          {"name": "content_and_resource_ownership", "risk": "high", "start_line": 1992, "end_line": 3203},
+      {"name": "integration_boundaries", "risk": "medium", "start_line": 3204, "end_line": 5481}
   ],
   "test_operation_arbiter.py": [
     {"name": "manual_automatic_exclusion", "risk": "critical", "start_line": 20, "end_line": 34},
@@ -258,12 +258,12 @@
     {"name": "destroyed_spawner_reuse_reinitializes_loader", "risk": "critical", "start_line": 1, "end_line": 119}
   ],
   "test_settings.py": [
-    {"name": "schema_dependency_refresh", "risk": "high", "start_line": 21, "end_line": 456},
-    {"name": "migration_preservation", "risk": "high", "start_line": 457, "end_line": 574},
-    {"name": "character_overview_transition_retirement", "risk": "critical", "start_line": 575, "end_line": 610},
-    {"name": "character_overview_refresh", "risk": "high", "start_line": 611, "end_line": 1763},
-      {"name": "localization_contract", "risk": "medium", "start_line": 1764, "end_line": 2954},
-      {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 2955, "end_line": 3762}
+    {"name": "schema_dependency_refresh", "risk": "high", "start_line": 21, "end_line": 463},
+    {"name": "migration_preservation", "risk": "high", "start_line": 464, "end_line": 600},
+    {"name": "character_overview_transition_retirement", "risk": "critical", "start_line": 601, "end_line": 636},
+    {"name": "character_overview_refresh", "risk": "high", "start_line": 637, "end_line": 1827},
+      {"name": "localization_contract", "risk": "medium", "start_line": 1828, "end_line": 3039},
+      {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 3040, "end_line": 3858}
   ],
   "test_settings_registry.py": [
     {"name": "duplicate_detection", "risk": "high", "start_line": 63, "end_line": 123},
@@ -279,8 +279,8 @@
   "test_view_lifecycle_memory.py": [
     {"name": "explicit_view_owned_state_release", "risk": "high", "start_line": 26, "end_line": 86},
     {"name": "post_draw_update_cpu_invariant", "risk": "critical", "start_line": 87, "end_line": 98},
-    {"name": "shared_grid_exact_pass_through", "risk": "critical", "start_line": 99, "end_line": 118},
-    {"name": "quick_level_probe_throttle", "risk": "high", "start_line": 120, "end_line": 125},
-    {"name": "native_async_cleanup_contracts", "risk": "high", "start_line": 127, "end_line": 138}
+    {"name": "shared_grid_exact_pass_through", "risk": "critical", "start_line": 99, "end_line": 126},
+    {"name": "quick_level_probe_throttle", "risk": "high", "start_line": 128, "end_line": 133},
+    {"name": "native_async_cleanup_contracts", "risk": "high", "start_line": 135, "end_line": 146}
   ]
 }

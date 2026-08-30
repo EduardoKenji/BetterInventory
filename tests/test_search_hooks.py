@@ -54,7 +54,13 @@ def main() -> None:
             update = function() end,
         })
         credits_goods = klass("credits_goods", {update = function() end})
-        marks_vendor = setmetatable(klass("marks_vendor", {super = vendor}), {__index = vendor})
+        -- Darktide class() copies superclass functions at class construction;
+        -- it does not dynamically inherit later VendorViewBase hooks.
+        marks_vendor = klass("marks_vendor", {
+            super = vendor,
+            _handle_input = vendor._handle_input,
+            update = vendor.update,
+        })
         marks_goods = klass("marks_goods", {update = function() end})
         grid_element = klass("element", {
             cb_on_grid_entry_left_pressed = function() end,
@@ -132,7 +138,6 @@ def main() -> None:
             "CraftingMechanicusBarterItemsView": lua.globals().barter,
             "CreditsGoodsVendorView": lua.globals().credits_goods,
             "MarksVendorView": lua.globals().marks_vendor,
-            "MarksGoodsVendorView": lua.globals().marks_goods,
             "VendorViewBase": lua.globals().vendor,
             "ViewElementGrid": lua.globals().grid_element,
         }
@@ -183,7 +188,7 @@ def main() -> None:
         safe_hooks["crafting:update"](view, 0.1, 12, "input")
         safe_hooks["credits_goods:update"](view, 0.1, 13, "credits_input")
         safe_hooks["marks_vendor:update"](view, 0.1, 14, "marks_input")
-        safe_hooks["marks_goods:update"](view, 0.1, 15, "marks_goods_input")
+        assert(safe_hooks["marks_goods:update"] == nil)
         assert(safe_hooks["vendor:update"] == nil)
 
         native_input = 0
@@ -197,6 +202,17 @@ def main() -> None:
             function() native_input = native_input + 1 return "native" end,
             open_view, "input"
         )
+        melk_blocked_view = {block_search = true}
+        hooks["marks_vendor:_handle_input"](
+            function() native_input = native_input + 1 return "native-melk" end,
+            melk_blocked_view, "input"
+        )
+        melk_open_view = {block_search = false}
+        melk_open_result = hooks["marks_vendor:_handle_input"](
+            function() native_input = native_input + 1 return "native-melk" end,
+            melk_open_view, "input"
+        )
+
 
         safe_hooks["element:cb_on_grid_entry_left_pressed"]({_parent = view})
 
@@ -253,9 +269,10 @@ def main() -> None:
     assert lua.execute("return calls.alpha == view") is True
     assert g.calls.ui_update[2] == 30
     assert g.calls.search_update[2] == 30
-    assert g.search_updates == 5
-    assert g.ui_updates == 5
-    assert g.native_input == 1
+    assert g.search_updates == 4
+    assert g.ui_updates == 4
+    assert g.native_input == 2
+    assert g.melk_open_result == "native-melk"
     assert lua.execute('return hooks["legend:_handle_input"] == nil') is True
     assert lua.execute("return calls.defocus == view") is True
     assert lua.execute('return hooks["element:update"] == nil') is True

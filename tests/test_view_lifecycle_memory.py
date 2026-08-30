@@ -103,6 +103,16 @@ def main() -> None:
     assert "Domains.grid_scope.resolve = function" in domains
     assert "if not view then\n\t\treturn func(item_grid, layout, content_blueprints, ...)" in runtime
     assert "resolve_grid_scope(item_grid, active_grid_view, active_grid_configuration)" in runtime
+    assert 'ensure_class_method(MarksVendorView, "present_grid_layout")' in runtime
+    assert 'ensure_class_method(MarksVendorView, "on_enter")' in runtime
+    assert "expanded_vendor_view_definitions(mod, view, context" in runtime
+    assert "melk_grid_configuration(mod, view, layout" in runtime
+    assert 'is_melk_limited_view(view, context)' in overview
+    assert 'is_global_store_melk_view(view, context)' in overview
+    assert 'return "enable_melk_limited_grid", false' in overview
+    assert 'return "enable_melk_multi_operative_grid", true' in overview
+    assert 'local GLOBAL_STORE_MELK_SERVICE = "get_all_characters_marks_store_custom"' in overview
+    assert "optional_store_service(view, context) == GLOBAL_STORE_MELK_SERVICE" in overview
 
     # GlobalStore tab changes rebuild the main grid and otherwise strand its
     # asynchronous portrait callbacks. Retirement must use one stable callback

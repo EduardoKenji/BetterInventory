@@ -2,7 +2,7 @@
 
 [![BetterInventory verification](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml/badge.svg)](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml)
 
-> Current release: **v3.3.1** (2026-08-29). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
+> Current release: **v3.4.0** (2026-08-29). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
 
 BetterInventory is a standalone inventory and item-management mod for Warhammer 40,000: Darktide. It adds responsive weapon and Curio cards, richer item information, configurable sorting, supported vendor layouts, optional mod integrations, and safety-gated inventory workflows.
 
@@ -11,14 +11,21 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - Responsive melee, ranged, and Curio layouts with native single-column cards or independently configurable two-to-five-column grids.
 - Detailed weapon cards with marks, perks, blessings, maximum-potential attributes, item power, favorite/equipped state, and configurable image and text geometry.
 - Curio cards with detailed, primary-stat, or title-only profiles; optional generated stat/perk names; compact text modes; type-aware colours; item power; and Character Overview support.
-- Separate layouts for Inventory, Character Overview, Hadron's Entreat view, Requisition Weapons & Curios, and GlobalStore's Multi-Operative Supply.
+- Separate layouts for Inventory, Character Overview, Hadron's Entreat view, Armoury Exchange, Sire Melk's Limited Time Acquisitions, and both GlobalStore Multi-Operative Supply routes.
 - Configurable equipped-item and newly-acquired-item highlights using native Darktide materials.
 - Built-in item names and colours, with optional Name It synchronization.
 - A standalone configurable legendary tier for visually identifying exceptional Transcendent weapons and Curios, with no Red Weapons At Home dependency.
 - Sorting that preserves equipped and favorite priorities and recognizes fifth attributes of 60, 61, and 62 as perfect rolls, ordered `62 > 61 > 60`.
 - A bounded inventory-options panel for sorting, discard rules, integrations, and view-specific controls.
-- Standalone Equipment Text Search, with its own master switch, Inventory/Armoury/Hadron spacing sliders, quoted phrases, explicit AND, typed field clauses, match-first ranking, and configurable dim-or-hide behavior.
+- Standalone Equipment Text Search, with its own master switch, Inventory/Armoury/Hadron/Melk spacing sliders, quoted phrases, explicit AND, typed field clauses, match-first ranking, and configurable dim-or-hide behavior.
 - Optional Quick Discard, Automatic Discard, Automatic Curio Buyer, and Auto Crafter workflows with explicit ownership, authoritative revalidation, and fail-closed behavior.
+
+## What's new in v3.4.0
+
+- Adds responsive BetterInventory grid cards to Sire Melk's Limited Time Acquisitions, mirroring Armoury Exchange: Requisition Weapons & Curios.
+- Adds the corresponding character-aware grid to Sire Melk's GlobalStore Multi-Operative Supply, mirroring Armoury Exchange: Multi-Operative Supply.
+- Adds independent default-on controls under **Additional inventory views > Sire Melk's Requisitorium**. Both routes remain capped at three columns, share existing Armoury card sizing, and fail closed for unknown custom Marks services.
+- Adds a default-on Melk search control under **Equipment Text Search**, with independent top/bottom spacing for Limited Time Acquisitions (`-40 / 40`) and GlobalStore Multi-Operative Supply (`-40 / 45`). Mystery Acquisitions and unknown custom Marks services receive no search decoration or update work.
 
 ## What's new in v3.3.1
 

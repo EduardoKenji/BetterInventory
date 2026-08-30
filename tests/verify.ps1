@@ -109,8 +109,12 @@ if ($main -notmatch 'ItemGridViewBaseDefinitions\s*=\s*require\("scripts/ui/view
 	throw "The base scenegraph fallback required to move Armoury weapon details was not found."
 }
 
-if ($main -notmatch 'is_armoury_requisition_view' -or $main -notmatch '_optional_store_service\s*==\s*nil' -or $main -notmatch 'is_global_store_view' -or $main -notmatch 'get_all_characters_store_custom') {
+if ($main -notmatch 'optional_store_service\(view,\s*context\)' -or $main -notmatch 'optional_store_service\(view,\s*context\)\s*==\s*nil' -or $main -notmatch 'is_armoury_requisition_view' -or $main -notmatch 'is_global_store_view' -or $main -notmatch 'get_all_characters_store_custom') {
 	throw "The vendor hooks must distinguish native Requisition from the optional GlobalStore service."
+}
+
+if ($main -notmatch 'mod:hook\(MarksVendorView,\s*"present_grid_layout"' -or $main -notmatch 'is_melk_limited_view' -or $main -notmatch 'is_global_store_melk_view' -or $main -notmatch 'get_all_characters_marks_store_custom' -or $main -notmatch 'enable_melk_limited_grid' -or $main -notmatch 'enable_melk_multi_operative_grid') {
+	throw "The native and GlobalStore Sire Melk grid routes were not found."
 }
 
 if ($main -notmatch 'pack_values\(pcall\(func,[\s\S]*?unpack_values\(results,\s*2,\s*result_count\)') {

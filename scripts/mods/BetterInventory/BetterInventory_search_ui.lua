@@ -18,7 +18,12 @@ local TITLED_SEARCH_GAP = 14
 local ARMOURY_SEARCH_GAP = 22
 local HADRON_SEARCH_GAP = 34
 local HADRON_SEARCH_ROW_PADDING = 50
+local MELK_LIMITED_SEARCH_GAP = -40
+local MELK_LIMITED_SEARCH_ROW_PADDING = 40
+local MELK_MULTI_SEARCH_GAP = -40
+local MELK_MULTI_SEARCH_ROW_PADDING = 45
 local BARTER_GRID_OFFSET = 100
+local GLOBAL_STORE_MELK_SERVICE = "get_all_characters_marks_store_custom"
 
 local function supported(view)
 	local class_name = view and view.__class_name
@@ -29,16 +34,41 @@ local function supported(view)
 		or class_name == "CreditsVendorView"
 		or class_name == "CreditsGoodsVendorView"
 		or class_name == "MarksVendorView"
-		or class_name == "MarksGoodsVendorView"
 end
 
 SearchUI.supported = supported
 
-local function enabled_for_view(mod, view)
+local function melk_route(view, context)
+	if not view or view.__class_name ~= "MarksVendorView" then
+		return nil
+	end
+
+	local remembered = view._better_inventory_search_melk_route
+
+	if remembered ~= nil then
+		return remembered ~= false and remembered or nil
+	end
+
+	local service = view._optional_store_service or context and context.optional_store_service
+	local route = service == nil and "limited"
+		or service == GLOBAL_STORE_MELK_SERVICE and "multi"
+		or false
+
+	view._better_inventory_search_melk_route = route
+
+	return route ~= false and route or nil
+end
+
+local function enabled_for_view(mod, view, context)
 	if not supported(view) then
 		return false
 	elseif mod and type(mod.get) == "function" and mod:get("enable_inventory_search") == false then
 		return false
+	elseif view.__class_name == "MarksVendorView" then
+		return melk_route(view, context) ~= nil
+			and mod and type(mod.get) == "function"
+			and mod:get("enable_inventory_search_melk") ~= false
+			or false
 	elseif view.__class_name == "CreditsGoodsVendorView" then
 		return mod and type(mod.get) == "function" and mod:get("enable_inventory_search_brunt") == true or false
 	end
@@ -50,6 +80,30 @@ SearchUI.enabled = enabled_for_view
 
 local function clone(value)
 	return type(value) == "table" and table.clone(value) or {}
+end
+
+local function merge_definitions(base_definitions, definitions)
+	local merged = clone(base_definitions)
+
+	if type(table.merge_recursive) == "function" then
+		table.merge_recursive(merged, definitions or {})
+
+		return merged
+	end
+
+	local function merge_into(destination, source)
+		for key, value in pairs(source or {}) do
+			if type(value) == "table" and type(destination[key]) == "table" then
+				merge_into(destination[key], value)
+			else
+				destination[key] = clone(value)
+			end
+		end
+	end
+
+	merge_into(merged, definitions)
+
+	return merged
 end
 
 local function text_length(value)
@@ -80,6 +134,55 @@ local function action_pressed(input_service, action_name)
 	return input_service:get(action_name) and true or false
 end
 
+local ESCAPE_BUTTON_INDEX
+local ESCAPE_BUTTON_RESOLVED = false
+local LEFT_MOUSE_BUTTON_ID
+local LEFT_MOUSE_BUTTON_RESOLVED = false
+
+local function keyboard_escape_pressed()
+	local keyboard = rawget(_G, "Keyboard")
+
+	if not keyboard or type(keyboard.pressed) ~= "function" then
+		return false
+	end
+
+	if not ESCAPE_BUTTON_RESOLVED then
+		ESCAPE_BUTTON_RESOLVED = true
+
+		if type(keyboard.button_index) == "function" then
+			local ok, button_index = pcall(keyboard.button_index, "escape")
+
+			if ok then
+				ESCAPE_BUTTON_INDEX = button_index
+			end
+		end
+	end
+
+	return ESCAPE_BUTTON_INDEX ~= nil and keyboard.pressed(ESCAPE_BUTTON_INDEX) == true
+end
+
+local function mouse_left_pressed()
+	local mouse = rawget(_G, "Mouse")
+
+	if not mouse or type(mouse.pressed) ~= "function" then
+		return false
+	end
+
+	if not LEFT_MOUSE_BUTTON_RESOLVED then
+		LEFT_MOUSE_BUTTON_RESOLVED = true
+
+		if type(mouse.button_id) == "function" then
+			local ok, button_id = pcall(mouse.button_id, "left")
+
+			if ok then
+				LEFT_MOUSE_BUTTON_ID = button_id
+			end
+		end
+	end
+
+	return LEFT_MOUSE_BUTTON_ID ~= nil and mouse.pressed(LEFT_MOUSE_BUTTON_ID) == true
+end
+
 local function controller_navigation_active(view)
 	if view and view._using_cursor_navigation ~= nil then
 		return view._using_cursor_navigation == false
@@ -105,7 +208,7 @@ local function placeholder_localization_id(view)
 		or "inventory_search_placeholder"
 end
 
-local function configured_pixels(mod, setting_id, default_value, maximum)
+local function configured_pixels(mod, setting_id, default_value, maximum, minimum)
 	if not mod or type(mod.get) ~= "function" then
 		return default_value
 	end
@@ -117,7 +220,7 @@ local function configured_pixels(mod, setting_id, default_value, maximum)
 		return default_value
 	end
 
-	return math.max(0, math.min(maximum, math.floor(value + 0.5)))
+	return math.max(minimum or 0, math.min(maximum, math.floor(value + 0.5)))
 end
 
 local function search_geometry(definitions, view, mod)
@@ -142,6 +245,10 @@ local function search_geometry(definitions, view, mod)
 	-- item_grid_pivot than the ordinary titled inventory header.
 	if view.__class_name == "CreditsVendorView" then
 		gap = configured_pixels(mod, "inventory_search_armoury_top_padding", ARMOURY_SEARCH_GAP, 64)
+	elseif melk_route(view) == "limited" then
+		gap = configured_pixels(mod, "inventory_search_melk_limited_top_padding", MELK_LIMITED_SEARCH_GAP, 64, -50)
+	elseif melk_route(view) == "multi" then
+		gap = configured_pixels(mod, "inventory_search_melk_multi_top_padding", MELK_MULTI_SEARCH_GAP, 64, -50)
 	end
 
 	local y = title_height > 0 and title_height + gap or top_padding + gap
@@ -149,10 +256,10 @@ local function search_geometry(definitions, view, mod)
 	return 14, math.max(y, 12), 568
 end
 
-SearchUI.decorate_definitions = function(definitions, view, mod)
+SearchUI.decorate_definitions = function(definitions, view, mod, context, base_definitions)
 	if not supported(view) then
 		return definitions
-	elseif not enabled_for_view(mod, view) then
+	elseif not enabled_for_view(mod, view, context) then
 		if view then
 			view._better_inventory_search_ui_unavailable = true
 		end
@@ -160,7 +267,26 @@ SearchUI.decorate_definitions = function(definitions, view, mod)
 		return definitions
 	elseif type(definitions) == "table" and definitions._better_inventory_search_decorated then
 		return definitions
-	elseif type(definitions) ~= "table" or type(definitions.scenegraph_definition) ~= "table" or type(definitions.scenegraph_definition.item_grid_pivot) ~= "table" then
+	elseif type(definitions) ~= "table" then
+		if view then
+			view._better_inventory_search_ui_unavailable = true
+		end
+
+		return definitions
+	end
+
+	-- MarksVendorView reaches ItemGridViewBase with only its vendor-specific
+	-- definitions. Darktide merges the shared item-grid definitions inside the
+	-- original base initializer, after this decorator runs. Resolve that same
+	-- effective table here so Melk can own a search row without mutating either
+	-- shared definition source.
+	if (type(definitions.scenegraph_definition) ~= "table" or type(definitions.scenegraph_definition.item_grid_pivot) ~= "table")
+		and type(base_definitions) == "table"
+	then
+		definitions = merge_definitions(base_definitions, definitions)
+	end
+
+	if type(definitions.scenegraph_definition) ~= "table" or type(definitions.scenegraph_definition.item_grid_pivot) ~= "table" then
 		if view then
 			view._better_inventory_search_ui_unavailable = true
 		end
@@ -181,6 +307,10 @@ SearchUI.decorate_definitions = function(definitions, view, mod)
 	if view.__class_name ~= "CraftingMechanicusBarterItemsView" then
 		local row_padding = view.__class_name == "CreditsVendorView"
 			and configured_pixels(mod, "inventory_search_armoury_bottom_padding", ARMOURY_SEARCH_ROW_PADDING, 96)
+			or melk_route(view) == "limited"
+				and configured_pixels(mod, "inventory_search_melk_limited_bottom_padding", MELK_LIMITED_SEARCH_ROW_PADDING, 96)
+			or melk_route(view) == "multi"
+				and configured_pixels(mod, "inventory_search_melk_multi_bottom_padding", MELK_MULTI_SEARCH_ROW_PADDING, 96)
 			or view.__class_name == "InventoryWeaponsView"
 				and configured_pixels(mod, "inventory_search_inventory_bottom_padding", INVENTORY_SEARCH_ROW_PADDING, 96)
 			or view.__class_name == "CraftingMechanicusModifyView"
@@ -643,7 +773,7 @@ SearchUI.handle_view_input = function(mod, view, input_service)
 		if action_pressed(input_service, "navigate_down_continuous") then
 			SearchUI.defocus(view)
 			restore_first_grid_item(view)
-		elseif action_pressed(input_service, "back") then
+		elseif action_pressed(input_service, "back") or keyboard_escape_pressed() then
 			SearchUI.defocus(view)
 			restore_first_grid_item(view)
 		elseif not writing and action_pressed(input_service, "confirm_pressed") then
@@ -693,7 +823,16 @@ SearchUI.handle_view_input = function(mod, view, input_service)
 		return false
 	end
 
-	if action_pressed(input_service, "back") then
+	local hotspot = content.hotspot
+
+	if mouse_left_pressed() and not (hotspot and hotspot.is_hover) then
+		SearchUI.defocus(view)
+		return true
+	end
+
+	-- Focused vendor text fields can prevent the mapped Back action from
+	-- reaching their parent view. Stingray names the physical key "escape".
+	if action_pressed(input_service, "back") or keyboard_escape_pressed() then
 		SearchUI.defocus(view)
 	end
 

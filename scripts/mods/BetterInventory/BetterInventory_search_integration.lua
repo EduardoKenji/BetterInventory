@@ -51,7 +51,7 @@ Integration.view_family = function(view, global_store_service)
 		return "hadron"
 	elseif class_name == "CraftingMechanicusBarterItemsView" then
 		return "hadron_sacrifice"
-	elseif class_name == "MarksVendorView" or class_name == "MarksGoodsVendorView" then
+	elseif class_name == "MarksVendorView" then
 		return "melk"
 	elseif class_name == "CreditsVendorView" or class_name == "CreditsGoodsVendorView" then
 		if class_name == "CreditsVendorView" and (view._optional_store_service == nil or view._optional_store_service == global_store_service) then

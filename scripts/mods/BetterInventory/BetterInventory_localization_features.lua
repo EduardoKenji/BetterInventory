@@ -14,6 +14,12 @@ local localization = {
 	enable_inventory_search_brunt_tooltip = {
 		en = "Off by default. Adds Equipment Text Search to Brunt's Armoury. Reopen Brunt's Armoury after changing this setting. Search reorders the existing weapon-family buttons without rebuilding them.",
 	},
+	enable_inventory_search_melk = {
+		en = "Enable search in Sire Melk's Requisitorium",
+	},
+	enable_inventory_search_melk_tooltip = {
+		en = "Adds Equipment Text Search to Limited Time Acquisitions and GlobalStore Multi-Operative Supply. Reopen the affected Melk view after changing this setting.",
+	},
 	inventory_search_non_match_behavior = {
 		en = "Unmatched item behavior",
 	},
@@ -62,8 +68,20 @@ local localization = {
 	inventory_search_hadron_bottom_padding = {
 		en = "Hadron: bottom padding",
 	},
+	inventory_search_melk_limited_top_padding = {
+		en = "Melk Limited Time: top padding",
+	},
+	inventory_search_melk_limited_bottom_padding = {
+		en = "Melk Limited Time: bottom padding",
+	},
+	inventory_search_melk_multi_top_padding = {
+		en = "Melk Multi-Operative: top padding",
+	},
+	inventory_search_melk_multi_bottom_padding = {
+		en = "Melk Multi-Operative: bottom padding",
+	},
 	inventory_search_spacing_reopen_tooltip = {
-		en = "Pixel spacing for the Equipment Text Search field. Top padding controls header-to-field clearance; bottom padding controls the reserved field-to-card space. Reopen the affected Inventory, Armoury, or Hadron item view after changing this value.",
+		en = "Pixel spacing for the Equipment Text Search field. Top padding controls header-to-field clearance; bottom padding controls the reserved field-to-card space. Reopen the affected item view after changing this value.",
 	},
 	inventory_search_placeholder = {
 		en = "Search: sword & uncanny & flak",

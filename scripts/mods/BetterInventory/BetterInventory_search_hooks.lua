@@ -5,7 +5,6 @@ local function optional_require(path)
 	return ok and module or nil
 end
 local GameCreditsGoodsVendorView = optional_require("scripts/ui/views/credits_goods_vendor_view/credits_goods_vendor_view")
-local GameMarksGoodsVendorView = optional_require("scripts/ui/views/marks_goods_vendor_view/marks_goods_vendor_view")
 local GameMarksVendorView = optional_require("scripts/ui/views/marks_vendor_view/marks_vendor_view")
 local SearchHooks = {}
 
@@ -54,7 +53,6 @@ SearchHooks.install = function(dependencies)
 	local CraftingMechanicusBarterItemsView = dependencies.CraftingMechanicusBarterItemsView or GameCraftingMechanicusBarterItemsView
 	local CreditsGoodsVendorView = dependencies.CreditsGoodsVendorView or GameCreditsGoodsVendorView
 	local MarksVendorView = dependencies.MarksVendorView or GameMarksVendorView
-	local MarksGoodsVendorView = dependencies.MarksGoodsVendorView or GameMarksGoodsVendorView
 	local VendorViewBase = dependencies.VendorViewBase
 	local ViewElementGrid = dependencies.ViewElementGrid
 
@@ -124,7 +122,6 @@ SearchHooks.install = function(dependencies)
 	install_view_update_hook(CraftingMechanicusModifyView)
 	install_view_update_hook(CreditsGoodsVendorView)
 	install_view_update_hook(MarksVendorView)
-	install_view_update_hook(MarksGoodsVendorView)
 
 	local function install_view_input_hook(view_class)
 		if not method_available(view_class, "_handle_input") then
@@ -143,6 +140,15 @@ SearchHooks.install = function(dependencies)
 	install_view_input_hook(CraftingMechanicusModifyView)
 	install_view_input_hook(VendorViewBase)
 	install_view_input_hook(CraftingMechanicusBarterItemsView)
+
+	-- Darktide's class() copies superclass functions into child tables. Melk's
+	-- class therefore retains its own VendorViewBase._handle_input reference;
+	-- hooking VendorViewBase later does not affect it. Own and hook the exact
+	-- MarksVendorView seam so ESC and outside-click focus release run in-game and
+	-- after Ctrl+Shift+R.
+	if ensure_class_method(MarksVendorView, "_handle_input") then
+		install_view_input_hook(MarksVendorView)
+	end
 
 	if method_available(BaseView, "init") then
 		mod:hook(BaseView, "init", function(func, view, definitions, settings, context, ...)

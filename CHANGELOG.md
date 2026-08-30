@@ -1,5 +1,16 @@
 # BetterInventory changelog
 
+## 3.4.0 - 2026-08-29
+
+- Adds an independent default-on Equipment Text Search option for both equipment-bearing Sire Melk grids, with `-40 / 40` Limited Time and `-40 / 45` Multi-Operative default spacing; non-equipment Mystery Acquisitions remains search-free.
+- Adds BetterInventory's responsive, maximum-three-column Armoury card layout to Sire Melk's native Limited Time Acquisitions.
+- Adds the matching character-footer card layout to Sire Melk's GlobalStore Multi-Operative Supply.
+- Adds separate default-on controls for both Melk routes under Additional inventory views > Sire Melk's Requisitorium.
+- Gives native Limited Time Acquisition cards a Melk-specific footer profile: blessing rows clear the footer divider while item level and dump-stat labels sit slightly lower; GlobalStore and Armoury geometry remain unchanged.
+- Detects GlobalStore's Marks route from initialization context as well as the live view, preserving correct geometry regardless of hook order.
+- Uses a scoped shared-grid fallback for GlobalStore's direct Marks presentation while leaving unknown custom Marks services native.
+- Reuses existing Armoury sizing, image, price, item-level, character-footer, divider, search, and resource-retirement paths instead of introducing a second card implementation.
+
 ## 3.3.1 - 2026-08-29
 
 - Adds independent top and bottom Equipment Text Search spacing sliders for Hadron's Entreat Item view.

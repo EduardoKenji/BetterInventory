@@ -18,6 +18,7 @@ local character_overview_view_retired
 local registered_character_overview_views = setmetatable({}, { __mode = "k" })
 
 local GLOBAL_STORE_SERVICE = "get_all_characters_store_custom"
+local GLOBAL_STORE_MELK_SERVICE = "get_all_characters_marks_store_custom"
 local CHARACTER_OVERVIEW_MELEE_WIDGET_TYPE = "better_inventory_character_overview_melee_weapon"
 local CHARACTER_OVERVIEW_RANGED_WIDGET_TYPE = "better_inventory_character_overview_ranged_weapon"
 local CHARACTER_OVERVIEW_CURIO_WIDGET_TYPE = "better_inventory_character_overview_curio"
@@ -77,15 +78,99 @@ local function shallow_copy(source)
 	return copy
 end
 
-local function is_armoury_requisition_view(view)
+local function optional_store_service(view, context)
+	return view and view._optional_store_service or context and context.optional_store_service
+end
+
+local function is_armoury_requisition_view(view, context)
 	-- GlobalStore and similar mods reuse CreditsVendorView with a custom store
 	-- service and add their own card footer content. Restrict BetterInventory's
 	-- Armoury geometry to Darktide's native Requisition route.
-	return view and view.__class_name == "CreditsVendorView" and view._optional_store_service == nil
+	return view and view.__class_name == "CreditsVendorView" and optional_store_service(view, context) == nil
 end
 
-local function is_global_store_view(view)
-	return view and view.__class_name == "CreditsVendorView" and view._optional_store_service == GLOBAL_STORE_SERVICE
+local function is_global_store_view(view, context)
+	return view and view.__class_name == "CreditsVendorView" and optional_store_service(view, context) == GLOBAL_STORE_SERVICE
+end
+
+local function is_melk_limited_view(view, context)
+	return view and view.__class_name == "MarksVendorView" and optional_store_service(view, context) == nil
+end
+
+local function is_global_store_melk_view(view, context)
+	return view and view.__class_name == "MarksVendorView" and optional_store_service(view, context) == GLOBAL_STORE_MELK_SERVICE
+end
+
+local function melk_grid_route(view, context)
+	if is_global_store_melk_view(view, context) then
+		return "enable_melk_multi_operative_grid", true
+	end
+
+	if is_melk_limited_view(view, context) then
+		return "enable_melk_limited_grid", false
+	end
+end
+
+local function expanded_vendor_view_definitions(mod, view, context, definitions, base_definitions, Layout)
+	if mod:get("enable_grid_layout") == false then
+		return nil
+	end
+
+	local setting_id
+	local global_store
+
+	if is_armoury_requisition_view(view, context) then
+		setting_id = "enable_armoury_requisition_grid"
+	elseif is_global_store_view(view, context) then
+		setting_id = "enable_global_store_grid"
+		global_store = true
+	else
+		setting_id, global_store = melk_grid_route(view, context)
+	end
+
+	if not setting_id or mod:get(setting_id) == false or global_store and mod:get("enable_global_store_integration") == false then
+		return nil
+	end
+
+	local slot_kind = Layout.store_slot_kind and Layout.store_slot_kind(view)
+	local adjusted_definitions
+	local expansion
+
+	if global_store and setting_id == "enable_global_store_grid" and Layout.expanded_global_store_view_definitions then
+		adjusted_definitions, expansion = Layout.expanded_global_store_view_definitions(mod, definitions, base_definitions, slot_kind)
+	else
+		local layout_setting_id = setting_id == "enable_armoury_requisition_grid" and nil or setting_id
+
+		adjusted_definitions, expansion = Layout.expanded_armoury_view_definitions(mod, definitions, base_definitions, layout_setting_id, slot_kind)
+	end
+
+	return adjusted_definitions, expansion
+end
+
+local function melk_grid_configuration(mod, view, layout, Layout, armoury_configuration, global_store_configuration)
+	local setting_id, global_store = melk_grid_route(view)
+
+	if not setting_id or mod:get("enable_grid_layout") == false or mod:get(setting_id) == false or global_store and mod:get("enable_global_store_integration") == false then
+		return nil
+	end
+
+	local configuration = table.clone(global_store and global_store_configuration or armoury_configuration)
+	configuration.melk_limited = not global_store or nil
+
+	if Layout.store_slot_kind then
+		configuration.slot_kind = Layout.store_slot_kind(view, layout)
+	end
+
+	return configuration
+end
+
+local function update_expanded_vendor_dividers(view)
+	local expansion = view._better_inventory_armoury_grid_expansion or 0
+	local item_grid = view._item_grid
+
+	if expansion > 0 and item_grid and type(item_grid.update_dividers) == "function" then
+		item_grid:update_dividers("content/ui/materials/frames/item_list_top_hollow", { 652 + expansion, 118 }, { 0, -18, 20 }, "content/ui/materials/frames/details_lower_armoury", { 674 + expansion, 80 }, { 0, 0, 20 })
+	end
 end
 
 local function is_hadron_view(view)
@@ -1576,6 +1661,12 @@ OverviewUI.pack_values = pack_values
 OverviewUI.shallow_copy = shallow_copy
 OverviewUI.is_armoury_requisition_view = is_armoury_requisition_view
 OverviewUI.is_global_store_view = is_global_store_view
+OverviewUI.is_melk_limited_view = is_melk_limited_view
+OverviewUI.is_global_store_melk_view = is_global_store_melk_view
+OverviewUI.melk_grid_route = melk_grid_route
+OverviewUI.expanded_vendor_view_definitions = expanded_vendor_view_definitions
+OverviewUI.melk_grid_configuration = melk_grid_configuration
+OverviewUI.update_expanded_vendor_dividers = update_expanded_vendor_dividers
 OverviewUI.is_hadron_view = is_hadron_view
 OverviewUI.character_overview_weapon_kind = character_overview_weapon_kind
 OverviewUI.character_overview_curio_slot = character_overview_curio_slot

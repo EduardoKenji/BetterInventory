@@ -46,12 +46,17 @@ def main() -> None:
         settings = {
             enable_inventory_search = true,
             enable_inventory_search_brunt = false,
+            enable_inventory_search_melk = true,
             inventory_search_inventory_top_padding = 14,
             inventory_search_inventory_bottom_padding = 46,
             inventory_search_armoury_top_padding = 22,
             inventory_search_armoury_bottom_padding = 34,
             inventory_search_hadron_top_padding = 34,
             inventory_search_hadron_bottom_padding = 50,
+            inventory_search_melk_limited_top_padding = -40,
+            inventory_search_melk_limited_bottom_padding = 40,
+            inventory_search_melk_multi_top_padding = -40,
+            inventory_search_melk_multi_bottom_padding = 45,
             inventory_search_focus_keybind = "off",
         }
         test_mod = {
@@ -87,6 +92,28 @@ def main() -> None:
             get = function(self, action)
                 assert(self:has(action), "attempted to read an unavailable input action: " .. tostring(action))
                 return self.actions[action] == true
+            end,
+        }
+        keyboard_escape = false
+        Keyboard = {
+            button_index = function(name)
+                assert(name == "escape")
+                return 27
+            end,
+            pressed = function(index)
+                assert(index == 27)
+                return keyboard_escape
+            end,
+        }
+        mouse_left = false
+        Mouse = {
+            button_id = function(name)
+                assert(name == "left")
+                return 1
+            end,
+            pressed = function(index)
+                assert(index == 1)
+                return mouse_left
             end,
         }
         ''',
@@ -185,6 +212,102 @@ def main() -> None:
     assert search_ui.enabled(lua.globals().test_mod, brunt_view_enabled) is True
     lua.globals().settings.enable_inventory_search_brunt = False
 
+    # Native Limited Time Acquisitions and GlobalStore Multi-Operative Supply
+    # share MarksVendorView but retain independent spacing and reject unknown
+    # custom Marks services.
+    melk_limited_view = lua.table_from({"__class_name": "MarksVendorView"})
+    melk_limited = search_ui.decorate_definitions(
+        vendor_definitions,
+        melk_limited_view,
+        lua.globals().test_mod,
+        lua.table_from({}),
+    )
+    assert melk_limited.grid_settings.top_padding == 120
+    assert melk_limited.grid_settings.better_inventory_search_clip_pivot_y == 76
+    assert melk_limited.scenegraph_definition.better_inventory_search_input.position[2] == 40
+
+    melk_multi_view = lua.table_from({"__class_name": "MarksVendorView"})
+    melk_multi = search_ui.decorate_definitions(
+        vendor_definitions,
+        melk_multi_view,
+        lua.globals().test_mod,
+        lua.table_from(
+            {"optional_store_service": "get_all_characters_marks_store_custom"}
+        ),
+    )
+    assert melk_multi.grid_settings.top_padding == 125
+    assert melk_multi.grid_settings.better_inventory_search_clip_pivot_y == 76
+    assert melk_multi.scenegraph_definition.better_inventory_search_input.position[2] == 40
+    assert melk_multi_view._better_inventory_search_melk_route == "multi"
+
+    # Melk actually enters ItemGridViewBase with sparse vendor definitions;
+    # the shared pivot/grid settings are merged by Darktide only after our
+    # hook. The decorator must resolve that effective table itself.
+    sparse_melk_definitions = lua.table_from(
+        {
+            "scenegraph_definition": lua.table_from({}),
+            "widget_definitions": lua.table_from({"purchase_button": lua.table_from({})}),
+        }
+    )
+    shared_item_grid_definitions = lua.table_from(
+        {
+            "grid_settings": lua.table_from({"title_height": 0, "top_padding": 80}),
+            "scenegraph_definition": lua.table_from(
+                {"item_grid_pivot": lua.table_from({})}
+            ),
+            "widget_definitions": lua.table_from({"native": lua.table_from({})}),
+        }
+    )
+    sparse_melk_view = lua.table_from({"__class_name": "MarksVendorView"})
+    sparse_melk = search_ui.decorate_definitions(
+        sparse_melk_definitions,
+        sparse_melk_view,
+        lua.globals().test_mod,
+        lua.table_from({}),
+        shared_item_grid_definitions,
+    )
+    assert sparse_melk is not sparse_melk_definitions
+    assert sparse_melk.grid_settings.top_padding == 120
+    assert sparse_melk.scenegraph_definition.better_inventory_search_input.position[2] == 40
+    assert sparse_melk.widget_definitions.purchase_button is not None
+    assert sparse_melk.widget_definitions.native is not None
+    assert sparse_melk_definitions.scenegraph_definition.item_grid_pivot is None
+    assert shared_item_grid_definitions.widget_definitions.better_inventory_search_input is None
+
+    mystery_view = lua.table_from({"__class_name": "MarksGoodsVendorView"})
+    mystery_result = search_ui.decorate_definitions(
+        vendor_definitions, mystery_view, lua.globals().test_mod
+    )
+    lua.globals().mystery_result = mystery_result
+    lua.globals().vendor_definitions = vendor_definitions
+    assert lua.execute("return mystery_result == vendor_definitions") is True
+    assert search_ui.supported(mystery_view) is False
+
+    unknown_melk_view = lua.table_from({"__class_name": "MarksVendorView"})
+    unknown_melk = search_ui.decorate_definitions(
+        vendor_definitions,
+        unknown_melk_view,
+        lua.globals().test_mod,
+        lua.table_from({"optional_store_service": "unknown_marks_service"}),
+    )
+    lua.globals().unknown_melk = unknown_melk
+    lua.globals().vendor_definitions = vendor_definitions
+    assert lua.execute("return unknown_melk == vendor_definitions") is True
+    assert unknown_melk_view._better_inventory_search_ui_unavailable is True
+
+    lua.globals().settings.enable_inventory_search_melk = False
+    disabled_melk_view = lua.table_from({"__class_name": "MarksVendorView"})
+    disabled_melk = search_ui.decorate_definitions(
+        vendor_definitions,
+        disabled_melk_view,
+        lua.globals().test_mod,
+        lua.table_from({}),
+    )
+    lua.globals().disabled_melk = disabled_melk
+    assert lua.execute("return disabled_melk == vendor_definitions") is True
+    assert disabled_melk_view._better_inventory_search_ui_unavailable is True
+    lua.globals().settings.enable_inventory_search_melk = True
+
     sacrifice_view = lua.table_from({"__class_name": "CraftingMechanicusBarterItemsView"})
     sacrifice = search_ui.decorate_definitions(
         definitions, sacrifice_view, lua.globals().test_mod
@@ -227,6 +350,57 @@ def main() -> None:
     assert custom_hadron.grid_settings.top_padding == 24
     assert custom_hadron.grid_settings.better_inventory_search_clip_pivot_y == 56
     assert custom_hadron.scenegraph_definition.better_inventory_search_input.position[2] == 20
+
+    lua.globals().settings.inventory_search_melk_limited_top_padding = 18
+    lua.globals().settings.inventory_search_melk_limited_bottom_padding = 40
+    custom_melk_limited = search_ui.decorate_definitions(
+        vendor_definitions,
+        lua.table_from({"__class_name": "MarksVendorView"}),
+        lua.globals().test_mod,
+        lua.table_from({}),
+    )
+    assert custom_melk_limited.grid_settings.top_padding == 120
+    assert custom_melk_limited.grid_settings.better_inventory_search_clip_pivot_y == 134
+    assert custom_melk_limited.scenegraph_definition.better_inventory_search_input.position[2] == 98
+
+    lua.globals().settings.inventory_search_melk_multi_top_padding = 28
+    lua.globals().settings.inventory_search_melk_multi_bottom_padding = 38
+    custom_melk_multi = search_ui.decorate_definitions(
+        vendor_definitions,
+        lua.table_from({"__class_name": "MarksVendorView"}),
+        lua.globals().test_mod,
+        lua.table_from(
+            {"optional_store_service": "get_all_characters_marks_store_custom"}
+        ),
+    )
+    assert custom_melk_multi.grid_settings.top_padding == 118
+    assert custom_melk_multi.grid_settings.better_inventory_search_clip_pivot_y == 144
+    assert custom_melk_multi.scenegraph_definition.better_inventory_search_input.position[2] == 108
+
+    # Melk's native shared grid already reserves a large header inset. Its two
+    # top sliders uniquely allow a negative additive correction while the
+    # resulting field position retains the hard scenegraph safety floor.
+    lua.globals().settings.inventory_search_melk_limited_top_padding = -50
+    negative_melk_limited = search_ui.decorate_definitions(
+        vendor_definitions,
+        lua.table_from({"__class_name": "MarksVendorView"}),
+        lua.globals().test_mod,
+        lua.table_from({}),
+    )
+    assert negative_melk_limited.scenegraph_definition.better_inventory_search_input.position[2] == 30
+    assert negative_melk_limited.grid_settings.better_inventory_search_clip_pivot_y == 66
+
+    lua.globals().settings.inventory_search_melk_multi_top_padding = -50
+    negative_melk_multi = search_ui.decorate_definitions(
+        vendor_definitions,
+        lua.table_from({"__class_name": "MarksVendorView"}),
+        lua.globals().test_mod,
+        lua.table_from(
+            {"optional_store_service": "get_all_characters_marks_store_custom"}
+        ),
+    )
+    assert negative_melk_multi.scenegraph_definition.better_inventory_search_input.position[2] == 30
+    assert negative_melk_multi.grid_settings.better_inventory_search_clip_pivot_y == 66
 
     missing_geometry = lua.table_from(
         {
@@ -518,6 +692,52 @@ def main() -> None:
     assert lua.globals().legend_entry.input_action == "back"
     assert lua.globals().legend_entry.is_visible is True
     assert input_widget.content.input_text == "sword"
+
+    # Focused Melk text passes suppress mapped Back before the parent can see it.
+    # Stingray's physical "escape" key must defocus on the first press, while a
+    # second press delegates to the native view. Cover both Melk routes.
+    lua.globals().input_service.actions.back = False
+    for optional_store_service in (None, "get_all_characters_marks_store_custom"):
+        melk_view = lua.table_from(
+            {
+                "__class_name": "MarksVendorView",
+                "_optional_store_service": optional_store_service,
+                "_widgets_by_name": lua.table_from(
+                    {
+                        "better_inventory_search_input": lua.globals().make_widget(
+                            "better_inventory_search_input"
+                        )
+                    }
+                ),
+            }
+        )
+        assert search_ui.focus(melk_view) is True
+        lua.globals().keyboard_escape = True
+        assert search_ui.handle_view_input(
+            lua.globals().test_mod, melk_view, lua.globals().input_service
+        ) is True
+        assert search_ui.is_writing(melk_view) is False
+        assert search_ui.handle_view_input(
+            lua.globals().test_mod, melk_view, lua.globals().input_service
+        ) is False
+        lua.globals().keyboard_escape = False
+
+        # Clicking inside retains text focus; clicking anywhere else, including
+        # empty grid space, releases it without requiring an item-card callback.
+        assert search_ui.focus(melk_view) is True
+        melk_input = melk_view._widgets_by_name.better_inventory_search_input
+        melk_input.content.hotspot.is_hover = True
+        lua.globals().mouse_left = True
+        assert search_ui.handle_view_input(
+            lua.globals().test_mod, melk_view, lua.globals().input_service
+        ) is True
+        assert search_ui.is_writing(melk_view) is True
+        melk_input.content.hotspot.is_hover = False
+        assert search_ui.handle_view_input(
+            lua.globals().test_mod, melk_view, lua.globals().input_service
+        ) is True
+        assert search_ui.is_writing(melk_view) is False
+        lua.globals().mouse_left = False
 
     # Changing input mode while the field remains active reconciles ownership:
     # controller navigation locks the grid; returning to cursor mode releases
