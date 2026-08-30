@@ -23,6 +23,7 @@ def main() -> None:
             debug_weapon_kill_counter_kills = 0,
             show_pattern_mark = false,
             weapon_kill_counter_show_zero_kills = true,
+			weapon_kill_counter_show_zero_kills_in_stores = true,
         }
         package.preload["scripts/utilities/items"] = function()
             return {
@@ -259,9 +260,8 @@ def main() -> None:
     assert icon_pass.visibility_function(unused_weapon_content) is False
     mod.settings.weapon_kill_counter_show_zero_kills = True
 
-    # Store grids retain WKC's native hide-empty behavior. BetterInventory
-    # synthesizes skull + 0 only for owned inventory cards, while preserving
-    # real positive counts in every view.
+    # Store grids may independently extend the parent zero-kill presentation.
+    # Positive counts remain visible regardless of that child setting.
     store_template = lua.table_from([])
     assert integration.configure_passes(
         mod,
@@ -283,8 +283,23 @@ def main() -> None:
     )
     assert store_text_pass.visibility_function(weapon_content) is True
     assert store_icon_pass.visibility_function(weapon_content) is True
+    assert store_text_pass.visibility_function(unused_weapon_content) is True
+    assert store_icon_pass.visibility_function(unused_weapon_content) is True
+    store_text_pass.change_function(unused_weapon_content)
+    store_icon_pass.change_function(unused_weapon_content)
+    assert unused_weapon_content.wkc_kills == "0"
+    assert unused_weapon_content.wkc_kills_icon == "test/wkc/icon"
+
+    mod.settings.weapon_kill_counter_show_zero_kills_in_stores = False
+    assert store_text_pass.visibility_function(weapon_content) is True
+    assert store_icon_pass.visibility_function(weapon_content) is True
     assert store_text_pass.visibility_function(unused_weapon_content) is False
     assert store_icon_pass.visibility_function(unused_weapon_content) is False
+    mod.settings.weapon_kill_counter_show_zero_kills_in_stores = True
+    mod.settings.weapon_kill_counter_show_zero_kills = False
+    assert store_text_pass.visibility_function(unused_weapon_content) is False
+    assert store_icon_pass.visibility_function(unused_weapon_content) is False
+    mod.settings.weapon_kill_counter_show_zero_kills = True
 
     # Brunt's native two-column cards bypass BetterInventory's custom grid
     # profile. Cap WKC's raw 22/20 px listing pair after grid construction and
@@ -295,6 +310,9 @@ def main() -> None:
             passes = {
                 {
                     style_id = "wkc_kills",
+					visibility_function = function()
+						return false
+					end,
                     change_function = function(content, style)
                         content.text_refreshes = (content.text_refreshes or 0) + 1
                         style.font_size = 24
@@ -306,6 +324,9 @@ def main() -> None:
                 },
                 {
                     style_id = "wkc_kills_icon",
+					visibility_function = function()
+						return false
+					end,
                     change_function = function(content, style)
                         content.icon_refreshes = (content.icon_refreshes or 0) + 1
                         style.size[1] = 34
@@ -317,7 +338,11 @@ def main() -> None:
                     end,
                 },
             },
-            content = {size = {292, 56}},
+			content = {
+				size = {292, 56},
+				better_inventory_is_weapon = true,
+				item = {template_name = "unused_sword", item_type = "WEAPON"},
+			},
             style = {
                 wkc_kills = {font_size = 20, size = {34, 30}, offset = {-210, 10, 12}},
                 wkc_kills_icon = {size = {22, 22}, offset = {-248, 10, 12}},
@@ -330,7 +355,7 @@ def main() -> None:
         }
         """
     )
-    assert integration.cap_brunt_listing_overlay_sizes(brunt_grid) == 2
+    assert integration.cap_brunt_listing_overlay_sizes(brunt_grid, mod) == 2
     brunt_widget = brunt_grid._all_grid_widgets[1]
     assert brunt_widget.style.wkc_kills.font_size == 14
     assert brunt_widget.style.wkc_kills_icon.size[1] == 16
@@ -345,6 +370,8 @@ def main() -> None:
     assert brunt_widget.style.wkc_kills_icon.offset[1] == 10
     assert brunt_widget.style.wkc_kills_icon.offset[2] == 37
     assert brunt_widget.dirty is True
+    assert brunt_widget.passes[1].visibility_function(brunt_widget.content) is True
+    assert brunt_widget.passes[2].visibility_function(brunt_widget.content) is True
     brunt_widget.passes[1].change_function(
         brunt_widget.content, brunt_widget.style.wkc_kills
     )
@@ -353,13 +380,20 @@ def main() -> None:
     )
     assert brunt_widget.content.text_refreshes == 1
     assert brunt_widget.content.icon_refreshes == 1
+    assert brunt_widget.content.wkc_kills == "0"
+    assert brunt_widget.content.wkc_kills_icon == "test/wkc/icon"
     assert brunt_widget.style.wkc_kills.font_size == 14
     assert brunt_widget.style.wkc_kills_icon.size[1] == 16
     assert brunt_widget.style.wkc_kills.offset[1] == 28
     assert brunt_widget.style.wkc_kills.offset[2] == 37
     assert brunt_widget.style.wkc_kills_icon.offset[1] == 10
     assert brunt_widget.style.wkc_kills_icon.offset[2] == 37
-    assert integration.cap_brunt_listing_overlay_sizes(brunt_grid) == 0
+    assert integration.cap_brunt_listing_overlay_sizes(brunt_grid, mod) == 0
+
+    mod.settings.weapon_kill_counter_show_zero_kills_in_stores = False
+    assert brunt_widget.passes[1].visibility_function(brunt_widget.content) is False
+    assert brunt_widget.passes[2].visibility_function(brunt_widget.content) is False
+    mod.settings.weapon_kill_counter_show_zero_kills_in_stores = True
 
     assert integration.install_brunt_listing_hook(mod) is True
     assert integration.install_brunt_listing_hook(mod) is False

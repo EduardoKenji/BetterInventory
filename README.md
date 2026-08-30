@@ -25,7 +25,7 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 ## What's new in v3.5.1
 
 - Adds a default-on Weapon Kill Counter integration option that shows a skull icon and `0` for unused owned inventory weapons without modifying WKC statistics.
-- Keeps synthesized zero-kill counters out of Armoury Exchange, Brunt's Armoury, Sire Melk, GlobalStore, and other store views; positive WKC counts preserve their existing behavior.
+- A dependent, default-on store option extends the same presentation to supported Armoury Exchange, Brunt's Armoury, Sire Melk, and GlobalStore weapon cards; disabling either zero-kill setting restores WKC's native hide-empty behavior while positive counts remain unchanged.
 - Removes the deprecated **Show weapon quality text** option and legacy layout row. Rarity + stars is now the sole weapon-quality label system on BetterInventory cards.
 
 ## What's new in v3.5.0

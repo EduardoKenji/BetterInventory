@@ -2107,6 +2107,12 @@ return {
 						type = "checkbox",
 						default_value = true,
 					},
+					{
+						setting_id = "weapon_kill_counter_show_zero_kills_in_stores",
+						tooltip = "weapon_kill_counter_show_zero_kills_in_stores_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
 				},
 			},
 			{

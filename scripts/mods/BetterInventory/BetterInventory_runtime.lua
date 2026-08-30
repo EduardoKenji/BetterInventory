@@ -591,6 +591,7 @@ local function refresh_option_dependencies()
 	local detailed_curio_profile = mod:get("curio_display_profile") == "detailed"
 	local weapon_rarity_rating_enabled = (mod:get("weapon_rarity_rating_mode") or "off") ~= "off"
 	local curio_rarity_rating_enabled = (mod:get("curio_rarity_rating_mode") or "off") ~= "off"
+	local wkc_zero_kills_enabled = mod:get("weapon_kill_counter_show_zero_kills") ~= false
 	local quick_discard_enabled = mod:get("enable_experimental_quick_discard") == true
 	local quick_discard_reason = mod:localize("option_requires_experimental_quick_discard")
 	local automatic_curio_enabled = mod:get("enable_automatic_curio_acquisition") == true
@@ -686,6 +687,7 @@ local function refresh_option_dependencies()
 	set_option_enabled(option_dependency_entries.weapon_rarity_rating_opacity, weapon_rarity_rating_enabled, mod:localize("option_requires_weapon_rarity_rating"))
 	set_option_enabled(option_dependency_entries.curio_rarity_rating_use_card_background_color, curio_rarity_rating_enabled, mod:localize("option_requires_curio_rarity_rating"))
 	set_option_enabled(option_dependency_entries.curio_rarity_rating_opacity, curio_rarity_rating_enabled, mod:localize("option_requires_curio_rarity_rating"))
+	set_option_enabled(option_dependency_entries.weapon_kill_counter_show_zero_kills_in_stores, wkc_zero_kills_enabled, mod:localize("option_requires_weapon_kill_counter_zero_kills"))
 	set_option_enabled(option_dependency_entries.single_column_layout_group, single_column_enabled, single_column_reason)
 	set_option_enabled(option_dependency_entries.single_column_weapon_name_font_size, single_column_enabled, single_column_reason)
 	set_option_enabled(option_dependency_entries.single_column_blessing_icons_on_right, single_column_enabled and weapon_blessing_text_enabled, not single_column_enabled and single_column_reason or mod:localize("option_requires_weapon_blessing_text"))
@@ -834,9 +836,7 @@ local function bind_option_dependencies(options_templates)
 
 	local category_name = mod:get_readable_name()
 
-	-- DMF/extension output is presentation-only. DMF startup and release
-	-- verification own source-schema validation; never run duplicate-ID
-	-- diagnostics here or scan every installed mod when Mod Options opens.
+	-- Presentation only; never run duplicate-ID validation here.
 
 	local setting_by_title = {}
 	local tracked_setting_ids = {}
@@ -867,6 +867,7 @@ local function bind_option_dependencies(options_templates)
 		"weapon_rarity_rating_opacity",
 		"curio_rarity_rating_use_card_background_color",
 		"curio_rarity_rating_opacity",
+		"weapon_kill_counter_show_zero_kills_in_stores",
 		"expand_curio_inventory_window",
 		"curio_target_card_width",
 		"enable_hadron_entreat_grid",
@@ -1060,9 +1061,7 @@ local function bind_option_dependencies(options_templates)
 		end
 
 		if type(setting_id) == "table" then
-			-- Two view-local controls intentionally share the same label. Consume
-			-- duplicate titles in schema order so both dependency entries bind
-			-- correctly instead of the later one overwriting the earlier one.
+			-- Bind duplicate localized labels in schema order.
 			setting_id = table.remove(setting_id, 1)
 		end
 
