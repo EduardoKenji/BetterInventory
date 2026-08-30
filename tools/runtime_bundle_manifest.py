@@ -12,6 +12,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_ROOT = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory"
 DESCRIPTOR_PATH = PROJECT_ROOT / "BetterInventory.mod"
+METADATA_PATH = PROJECT_ROOT / "info.json"
 VERSION_PATTERN = re.compile(r"MOD_VERSION\s*=\s*[\"']([^\"']+)[\"']")
 
 
@@ -32,6 +33,7 @@ def runtime_version() -> str:
 def runtime_files() -> list[dict[str, object]]:
     files = [
         DESCRIPTOR_PATH,
+        METADATA_PATH,
         *sorted(RUNTIME_ROOT.rglob("*.lua"), key=lambda path: path.relative_to(RUNTIME_ROOT).as_posix()),
     ]
     records = []
@@ -44,6 +46,8 @@ def runtime_files() -> list[dict[str, object]]:
         archive_path = (
             "BetterInventory/BetterInventory.mod"
             if path == DESCRIPTOR_PATH
+            else "BetterInventory/info.json"
+            if path == METADATA_PATH
             else "BetterInventory/scripts/mods/BetterInventory/" + path.relative_to(RUNTIME_ROOT).as_posix()
         )
         records.append({

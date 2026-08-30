@@ -4,7 +4,7 @@
 
 https://www.nexusmods.com/warhammer40kdarktide/mods/1144
 
-> Current release: **v3.5.4** (2026-08-30). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
+> Current release: **v3.5.5** (2026-08-30). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
 
 BetterInventory is a standalone inventory and item-management mod for Warhammer 40,000: Darktide. It adds responsive weapon and Curio cards, richer item information, configurable sorting, supported vendor layouts, optional mod integrations, and safety-gated inventory workflows.
 
@@ -21,6 +21,13 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - A bounded inventory-options panel for sorting, discard rules, integrations, and view-specific controls.
 - Standalone Equipment Text Search, with its own master switch, Inventory/Armoury/Hadron/Melk spacing sliders, quoted phrases, explicit AND, typed field clauses, match-first ranking, and configurable dim-or-hide behavior.
 - Optional Quick Discard, Automatic Discard, Automatic Curio Buyer, and Auto Crafter workflows with explicit ownership, authoritative revalidation, and fail-closed behavior.
+
+## What's new in v3.5.5
+
+- Supports Auto Crafter in Brunt's Armoury when Hub Hotkey Menus opens the vendor from the Psykanium.
+- Authorizes only the exact live Brunt view in `shooting_range`; missions, unrelated or destroyed views, and matchmaking remain fail-closed.
+- Keeps the read-only gear probe, planner, and status overlay active instead of immediately entering `context_exit`.
+- Shows the installed version and `dodaldo50 / Moarcakes` author attribution beneath Better Inventory's Mod Options title on current DMF releases.
 
 ## What's new in v3.5.4
 
@@ -370,6 +377,7 @@ BetterInventory has no optional mod dependency. Integrations activate only when 
 | Quick Look Card | Reuses or suppresses overlapping modifier passes while BetterInventory provides its own modifier display |
 | Enhanced Descriptions | Sanitizes rich-text markup before compact perk and Curio measurement |
 | GlobalStore | Adds responsive Multi-Operative Supply cards and sorting |
+| Hub Hotkey Menus | Keeps Auto Crafter's probe, planner, and explicitly started workflows valid in a live Psykanium Brunt view |
 | ItemSorting | Exposes its custom comparators beside the complete native sorting set |
 | MyFavorites | Preserves colour groups and cycling, synchronizes the compact favorite marker, and optionally assigns Auto Crafter results to a selected color group |
 | Lantern of the Omnissiah | Hosts melee/ranged recommendations in the scrollable options panel and avoids icon overlap |
@@ -399,6 +407,7 @@ Content/
 `-- mods/
     `-- BetterInventory/
         |-- BetterInventory.mod
+        |-- info.json
         `-- scripts/mods/BetterInventory/
 ```
 
@@ -406,7 +415,7 @@ Configure the mod through **Options > Mod Options > BetterInventory**. Reopen an
 
 ## Development and verification
 
-The runtime is split into 80 Lua sources plus the DMF descriptor. Generated manifests track the runtime bundle, settings schema, localization keys, module ownership, and named risk cases.
+The runtime is split into 90 Lua sources plus the DMF descriptor and package metadata. Generated manifests track the runtime bundle, settings schema, localization keys, module ownership, and named risk cases.
 
 Run the complete repository verification from the project root:
 

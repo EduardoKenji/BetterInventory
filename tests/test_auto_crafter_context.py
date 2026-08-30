@@ -143,6 +143,33 @@ def main() -> None:
     lua.globals().matchmaking_active = True
     assert context.is_runtime_valid(context, brunt_view) is False
 
+    # Hub Hotkey Menus opens the same native Brunt view while the Psykanium
+    # keeps GameplayStateRun's shooting_range mode active. Accept that exact
+    # live-view route, but do not broaden Auto Crafter authority to missions or
+    # unrelated views merely because another mod can open arbitrary UI there.
+    lua.execute(
+        """
+        matchmaking_active = false
+        Managers.state.game_mode = {
+            game_mode_name = function() return "shooting_range" end,
+        }
+        """
+    )
+    assert context.is_morningstar(context) is False
+    assert context.is_valid_brunt_view(context, brunt_view) is True
+    assert context.is_runtime_valid(context, brunt_view) is True
+    assert context.is_runtime_valid(context, lua.globals().wrong_view) is False
+
+    lua.execute(
+        """
+        Managers.state.game_mode = {
+            game_mode_name = function() return "survival" end,
+        }
+        """
+    )
+    assert context.is_valid_brunt_view(context, brunt_view) is False
+    assert context.is_runtime_valid(context, brunt_view) is False
+
     print("Auto Crafter atomic character-context tests passed.")
 
 

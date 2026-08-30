@@ -63,8 +63,8 @@
       {"name": "right_click_routing_blessing_icon_and_runtime_progress", "risk": "high", "start_line": 1537, "end_line": 1565}
   ],
   "test_auto_crafter_viewport.py": [
-    {"name": "panel_and_hud_resolution_matrix", "risk": "high", "start_line": 14, "end_line": 73},
-    {"name": "post_draw_overlay_cpu_ownership", "risk": "high", "start_line": 75, "end_line": 224}
+    {"name": "panel_and_hud_resolution_matrix", "risk": "high", "start_line": 14, "end_line": 74},
+    {"name": "post_draw_overlay_cpu_ownership", "risk": "high", "start_line": 76, "end_line": 225}
   ],
   "test_auto_crafter_backend.py": [
     {"name": "complete_authoritative_inventory_summary", "risk": "critical", "start_line": 16, "end_line": 138},
@@ -75,7 +75,8 @@
   "test_auto_crafter_context.py": [
     {"name": "atomic_character_identity_and_switch_settlement", "risk": "critical", "start_line": 16, "end_line": 83},
     {"name": "allocation_free_scalar_identity_accessors", "risk": "high", "start_line": 84, "end_line": 119},
-    {"name": "psych_ward_character_select_brunt_runtime", "risk": "critical", "start_line": 120, "end_line": 144}
+    {"name": "psych_ward_character_select_brunt_runtime", "risk": "critical", "start_line": 120, "end_line": 144},
+    {"name": "hub_hotkey_menus_psykanium_brunt_runtime", "risk": "critical", "start_line": 146, "end_line": 171}
   ],
     "test_auto_crafter_facade.py": [
       {"name": "frame_update_crash_containment", "risk": "critical", "start_line": 14, "end_line": 74}

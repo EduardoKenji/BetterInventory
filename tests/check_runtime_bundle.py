@@ -19,8 +19,13 @@ def main() -> None:
     )
     assert actual["archive_root"] == "BetterInventory"
     assert actual["file_count"] == len(actual["files"])
-    assert actual["version"] == "3.5.4"
+    assert actual["version"] == "3.5.5"
     assert all("\\" not in entry["archive_path"] for entry in actual["files"])
+    metadata = json.loads((PROJECT_ROOT / "info.json").read_text(encoding="utf-8"))
+    assert metadata["version"] == actual["version"]
+    assert metadata["author"] == "dodaldo50 / Moarcakes"
+    assert metadata["homepage"] == "https://www.nexusmods.com/warhammer40kdarktide/mods/1144"
+    assert any(entry["archive_path"] == "BetterInventory/info.json" for entry in actual["files"])
     print(
         "BetterInventory runtime bundle manifest passed: "
         f"{actual['file_count']} files, version {actual['version']}."

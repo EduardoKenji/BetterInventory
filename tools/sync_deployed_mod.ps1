@@ -6,6 +6,7 @@ $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $sourceRoot = Join-Path $projectRoot "scripts\mods\BetterInventory"
 $descriptor = Join-Path $projectRoot "BetterInventory.mod"
+$metadata = Join-Path $projectRoot "info.json"
 $contentRoot = [IO.Path]::GetFullPath((Join-Path $projectRoot "..\.."))
 
 if ([string]::IsNullOrWhiteSpace($TargetPath)) {
@@ -19,16 +20,18 @@ if (-not $targetRoot.StartsWith($contentPrefix, [StringComparison]::OrdinalIgnor
 	throw "Refusing to synchronize outside Content\mods\BetterInventory: $targetRoot"
 }
 
-if (-not (Test-Path -LiteralPath $sourceRoot -PathType Container) -or -not (Test-Path -LiteralPath $descriptor -PathType Leaf)) {
+if (-not (Test-Path -LiteralPath $sourceRoot -PathType Container) -or -not (Test-Path -LiteralPath $descriptor -PathType Leaf) -or -not (Test-Path -LiteralPath $metadata -PathType Leaf)) {
 	throw "BetterInventory source runtime is incomplete: $projectRoot"
 }
 
 New-Item -ItemType Directory -Path $targetRoot -Force | Out-Null
-$sourceFiles = @($descriptor) + @(Get-ChildItem -LiteralPath $sourceRoot -Filter "*.lua" -File -Recurse | Sort-Object FullName | ForEach-Object { $_.FullName })
+$sourceFiles = @($descriptor, $metadata) + @(Get-ChildItem -LiteralPath $sourceRoot -Filter "*.lua" -File -Recurse | Sort-Object FullName | ForEach-Object { $_.FullName })
 
 foreach ($sourceFile in $sourceFiles) {
 	if ($sourceFile -eq $descriptor) {
 		$relativePath = "BetterInventory.mod"
+	} elseif ($sourceFile -eq $metadata) {
+		$relativePath = "info.json"
 	} else {
 		$relativePath = "scripts\mods\BetterInventory" + $sourceFile.Substring($sourceRoot.Length)
 	}
@@ -43,6 +46,8 @@ $expected = @{}
 foreach ($sourceFile in $sourceFiles) {
 	if ($sourceFile -eq $descriptor) {
 		$relativePath = "BetterInventory.mod"
+	} elseif ($sourceFile -eq $metadata) {
+		$relativePath = "info.json"
 	} else {
 		$relativePath = "scripts\mods\BetterInventory" + $sourceFile.Substring($sourceRoot.Length)
 	}
@@ -54,6 +59,11 @@ $actual = @{}
 $targetDescriptor = Join-Path $targetRoot "BetterInventory.mod"
 if (Test-Path -LiteralPath $targetDescriptor -PathType Leaf) {
 	$actual["BetterInventory.mod"] = (Get-FileHash -Algorithm SHA256 -LiteralPath $targetDescriptor).Hash
+}
+
+$targetMetadata = Join-Path $targetRoot "info.json"
+if (Test-Path -LiteralPath $targetMetadata -PathType Leaf) {
+	$actual["info.json"] = (Get-FileHash -Algorithm SHA256 -LiteralPath $targetMetadata).Hash
 }
 
 $targetScriptRoot = Join-Path $targetRoot "scripts\mods\BetterInventory"

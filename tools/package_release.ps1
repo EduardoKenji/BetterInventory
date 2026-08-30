@@ -10,6 +10,7 @@ $scriptRoot = Join-Path $projectRoot "scripts\mods\BetterInventory"
 $archiveRoot = "BetterInventory"
 $runtimeFiles = [ordered]@{
 	"$archiveRoot/BetterInventory.mod" = Join-Path $projectRoot "BetterInventory.mod"
+	"$archiveRoot/info.json" = Join-Path $projectRoot "info.json"
 }
 
 # Package every runtime Lua source by discovery. A hand-maintained allowlist
