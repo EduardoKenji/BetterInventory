@@ -555,10 +555,6 @@ Geometry.card_height = function(mod, configuration)
 
 	local rating_rows = RarityRating.horizontal_rows(mod, configuration, "weapon")
 
-	if RarityRating.item_mode(mod, "weapon", configuration) == RarityRating.MODE_OFF and setting(mod, "show_rarity_name", false) then
-		optional_rows = optional_rows + 1
-	end
-
 	optional_rows = optional_rows + rating_rows
 
 	local native_content_gap = configuration.native_single_column and NATIVE_SINGLE_COLUMN_CONTENT_GAP or 0

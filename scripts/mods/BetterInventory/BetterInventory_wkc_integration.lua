@@ -1,4 +1,5 @@
 local Integration = {}
+local Items = require("scripts/utilities/items")
 
 local TEXT_STYLE_ID = "wkc_kills"
 local ICON_STYLE_ID = "wkc_kills_icon"
@@ -46,7 +47,11 @@ local function setting(mod, setting_id, fallback)
 
 	local success, value = pcall(mod.get, mod, setting_id)
 
-	return success and value ~= nil and value or fallback
+	if success and value ~= nil then
+		return value
+	end
+
+	return fallback
 end
 
 local function card_configuration(wkc)
@@ -122,6 +127,14 @@ local function weapon_content(content)
 	local wkc = optional_wkc()
 	local item = item_from_content(content)
 
+	if item and type(Items) == "table" and type(Items.is_weapon) == "function" then
+		local identified, is_weapon = pcall(Items.is_weapon, item.item_type)
+
+		if identified and is_weapon == true then
+			return true
+		end
+	end
+
 	if not wkc or not item or type(wkc._overlay_kills_for_item) ~= "function" then
 		return false
 	end
@@ -131,7 +144,7 @@ local function weapon_content(content)
 	return success and kills ~= nil
 end
 
-local function resolved_kills(mod, content)
+local function resolved_kills(mod, content, allow_zero_kills)
 	local wkc = optional_wkc()
 
 	if not wkc or not integration_enabled(wkc) or not weapon_content(content) then
@@ -152,11 +165,18 @@ local function resolved_kills(mod, content)
 
 	local success, kills = pcall(wkc._overlay_kills_for_item, item)
 
-	if not success or type(kills) ~= "number" or kills <= 0 then
+	if not success then
 		return nil
 	end
 
-	return kills
+	if type(kills) == "number" and kills > 0 then
+		return kills
+	end
+
+	-- WKC deliberately represents both zero and never-recorded weapon counts as
+	-- nil. BetterInventory may standardize that presentation without creating a
+	-- statistic or changing WKC's saved state.
+	return allow_zero_kills ~= false and setting(mod, "weapon_kill_counter_show_zero_kills", true) == true and 0 or nil
 end
 
 local function abbreviated_kills(wkc, kills)
@@ -276,10 +296,6 @@ local function profile(mod, card_width, text_left, configuration, columns, wkc, 
 			-- Positive top offsets move this top-aligned pass toward the card's
 			-- lower content. Lift WKC instead, preserving extra space above perks.
 			top = top + rating_rows * rating_row_advance - RATING_WKC_LIFT
-		elseif rating_mode == "off" and setting(mod, "show_rarity_name", false) == true then
-			-- Preserve the legacy rarity-row placement when the new rating display
-			-- is off; historically it reserved both secondary row positions.
-			top = 74
 		end
 	end
 
@@ -498,6 +514,7 @@ local function configure_passes(mod, pass_template, card_width, text_left, confi
 	local icon_color = color_from_configuration(wkc_configuration.icon_color, DEFAULT_COLOR)
 	local font_type = type(wkc_configuration.font_type) == "string" and wkc_configuration.font_type ~= "" and wkc_configuration.font_type or "proxima_nova_bold"
 	local icon_material = DEFAULT_ICON
+	local allow_zero_kills = configuration.store_item ~= true
 
 	if wkc and type(wkc._overlay_icon_material) == "function" then
 		local success, material = pcall(wkc._overlay_icon_material, wkc_configuration)
@@ -530,7 +547,7 @@ local function configure_passes(mod, pass_template, card_width, text_left, confi
 			local current_wkc = optional_wkc()
 			local current_configuration = card_configuration(current_wkc)
 
-			return (not current_configuration or current_configuration.icon_on ~= false) and resolved_kills(mod, content) ~= nil
+			return (not current_configuration or current_configuration.icon_on ~= false) and resolved_kills(mod, content, allow_zero_kills) ~= nil
 		end,
 		change_function = function(content)
 			local current_wkc = optional_wkc()
@@ -575,10 +592,10 @@ local function configure_passes(mod, pass_template, card_width, text_left, confi
 			text_color = text_color,
 		},
 		visibility_function = function(content)
-			return resolved_kills(mod, content) ~= nil
+			return resolved_kills(mod, content, allow_zero_kills) ~= nil
 		end,
 		change_function = function(content)
-			local kills = resolved_kills(mod, content)
+			local kills = resolved_kills(mod, content, allow_zero_kills)
 			local current_wkc = optional_wkc()
 
 			content[TEXT_STYLE_ID] = kills and abbreviated_kills(current_wkc, kills) or ""

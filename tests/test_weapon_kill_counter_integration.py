@@ -22,8 +22,15 @@ def main() -> None:
         local settings = {
             debug_weapon_kill_counter_kills = 0,
             show_pattern_mark = false,
-            show_rarity_name = false,
+            weapon_kill_counter_show_zero_kills = true,
         }
+        package.preload["scripts/utilities/items"] = function()
+            return {
+                is_weapon = function(item_type)
+                    return item_type == "WEAPON"
+                end,
+            }
+        end
         local mod = {
             settings = settings,
             get = function(self, setting_id)
@@ -113,6 +120,19 @@ def main() -> None:
     assert integration.resolve_kills(mod, weapon_content) == 77
     assert integration.resolve_kills(mod, curio_content) is None
 
+    unused_weapon_content = lua.table_from(
+        {
+            "better_inventory_is_weapon": True,
+            "item": lua.table_from(
+                {"template_name": "unused_sword", "item_type": "WEAPON"}
+            ),
+        }
+    )
+    assert integration.resolve_kills(mod, unused_weapon_content) == 0
+    mod.settings.weapon_kill_counter_show_zero_kills = False
+    assert integration.resolve_kills(mod, unused_weapon_content) is None
+    mod.settings.weapon_kill_counter_show_zero_kills = True
+
     # Three-column Inventory/Hadron cards keep the row below the weapon title,
     # but use legible type and an icon large enough to match WKC's visual weight.
     grid = integration.profile(mod, 210, 12, lua.table_from({}), 3)
@@ -168,14 +188,11 @@ def main() -> None:
     assert overview.vertical_alignment == "center"
     assert overview.layer == 0
 
-    # Optional native subtitle rows move the counter downward rather than
-    # allowing title, mark, rarity, and kills to overlap.
+    # The optional native pattern row moves the counter downward rather than
+    # allowing the title, pattern, and kill counter to overlap.
     mod.settings.show_pattern_mark = True
     assert integration.profile(mod, 210, 12, lua.table_from({}), 3).top == 54
-    mod.settings.show_rarity_name = True
-    assert integration.profile(mod, 210, 12, lua.table_from({}), 3).top == 74
     mod.settings.show_pattern_mark = False
-    mod.settings.show_rarity_name = False
 
     # New horizontal rarity profiles own the optional rows above WKC. The
     # default 13 px rating font uses a compact 15 px advance. Persisted values
@@ -225,11 +242,49 @@ def main() -> None:
     assert icon_pass.value == "test/wkc/icon"
     assert text_pass.visibility_function(weapon_content) is True
     assert icon_pass.visibility_function(weapon_content) is True
+    assert text_pass.visibility_function(unused_weapon_content) is True
+    assert icon_pass.visibility_function(unused_weapon_content) is True
 
     text_pass.change_function(weapon_content)
     icon_pass.change_function(weapon_content)
     assert weapon_content.wkc_kills == "77"
     assert weapon_content.wkc_kills_icon == "test/wkc/icon"
+    text_pass.change_function(unused_weapon_content)
+    icon_pass.change_function(unused_weapon_content)
+    assert unused_weapon_content.wkc_kills == "0"
+    assert unused_weapon_content.wkc_kills_icon == "test/wkc/icon"
+
+    mod.settings.weapon_kill_counter_show_zero_kills = False
+    assert text_pass.visibility_function(unused_weapon_content) is False
+    assert icon_pass.visibility_function(unused_weapon_content) is False
+    mod.settings.weapon_kill_counter_show_zero_kills = True
+
+    # Store grids retain WKC's native hide-empty behavior. BetterInventory
+    # synthesizes skull + 0 only for owned inventory cards, while preserving
+    # real positive counts in every view.
+    store_template = lua.table_from([])
+    assert integration.configure_passes(
+        mod,
+        store_template,
+        210,
+        12,
+        lua.table_from({"store_item": True}),
+        3,
+    ) is True
+    store_text_pass = next(
+        store_template[index]
+        for index in range(1, len(store_template) + 1)
+        if store_template[index].style_id == "wkc_kills"
+    )
+    store_icon_pass = next(
+        store_template[index]
+        for index in range(1, len(store_template) + 1)
+        if store_template[index].style_id == "wkc_kills_icon"
+    )
+    assert store_text_pass.visibility_function(weapon_content) is True
+    assert store_icon_pass.visibility_function(weapon_content) is True
+    assert store_text_pass.visibility_function(unused_weapon_content) is False
+    assert store_icon_pass.visibility_function(unused_weapon_content) is False
 
     # Brunt's native two-column cards bypass BetterInventory's custom grid
     # profile. Cap WKC's raw 22/20 px listing pair after grid construction and

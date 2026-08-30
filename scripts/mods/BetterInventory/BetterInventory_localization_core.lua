@@ -482,6 +482,15 @@ local localization = {
 	quick_look_card_integration_group = {
 		en = "Mod Integration: Quick Look Card",
 	},
+	weapon_kill_counter_integration_group = {
+		en = "Mod Integration: Weapon Kill Counter",
+	},
+	weapon_kill_counter_show_zero_kills = {
+		en = "Show zero kills for unused weapons",
+	},
+	weapon_kill_counter_show_zero_kills_tooltip = {
+		en = "Shows the skull icon and 0 on owned inventory weapon cards when Weapon Kill Counter has no recorded kills for that weapon. Store cards remain unchanged. Enabled by default and requires WKC's card overlay to be enabled. This changes presentation only and never writes WKC statistics.",
+	},
 	option_requires_custom_item_name_and_colors = {
 		en = "Enable custom item names and colors to use this option.",
 	},
@@ -788,9 +797,6 @@ local localization = {
 	},
 	show_pattern_mark_tooltip = {
 		en = "Shows Darktide's secondary weapon-card name. With 'Append Mark to weapon name' enabled, this line contains only the weapon pattern; otherwise it contains the pattern and Mark.",
-	},
-	show_rarity_name = {
-		en = "Show weapon quality text",
 	},
 	weapon_rarity_rating_mode = {
 		en = "Rarity + stars rating",

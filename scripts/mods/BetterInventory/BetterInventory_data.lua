@@ -1,4 +1,4 @@
-local MOD_VERSION = "3.5.0"
+local MOD_VERSION = "3.5.1"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
@@ -2098,6 +2098,18 @@ return {
 				},
 			},
 			{
+				setting_id = "weapon_kill_counter_integration_group",
+				type = "group",
+				sub_widgets = {
+					{
+						setting_id = "weapon_kill_counter_show_zero_kills",
+						tooltip = "weapon_kill_counter_show_zero_kills_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+				},
+			},
+			{
 				setting_id = "enhanced_descriptions_integration_group",
 				type = "group",
 				sub_widgets = {
@@ -2160,11 +2172,6 @@ return {
 					{
 						setting_id = "show_pattern_mark",
 						tooltip = "show_pattern_mark_tooltip",
-						type = "checkbox",
-						default_value = false,
-					},
-					{
-						setting_id = "show_rarity_name",
 						type = "checkbox",
 						default_value = false,
 					},

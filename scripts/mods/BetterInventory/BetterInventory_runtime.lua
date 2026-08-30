@@ -1154,7 +1154,6 @@ function mod.on_enabled()
 	if not mod:get("_compact_card_defaults_v1_migrated") then
 		mod:set("append_mark_to_name", true)
 		mod:set("show_pattern_mark", false)
-		mod:set("show_rarity_name", false)
 		mod:set("_compact_card_defaults_v1_migrated", true)
 	end
 

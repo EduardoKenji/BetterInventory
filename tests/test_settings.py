@@ -3018,7 +3018,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "3.5.0"
+    assert data.version == "3.5.1"
 
     gradient_name = localization["mod_name"]["en"]
     assert gradient_name.startswith("{#color(174,239,105)}B")
@@ -3057,6 +3057,14 @@ def main() -> None:
     assert (
         localization["god_stat_checker_integration_group"]["en"]
         == "Mod integration: God Stat Checker 1.1.2"
+    )
+    assert (
+        localization["weapon_kill_counter_integration_group"]["en"]
+        == "Mod Integration: Weapon Kill Counter"
+    )
+    assert (
+        localization["weapon_kill_counter_show_zero_kills"]["en"]
+        == "Show zero kills for unused weapons"
     )
     assert (
         localization["god_stat_checker_background_owner_custom_tier"]["en"]
@@ -3131,6 +3139,8 @@ def main() -> None:
     assert localization["inventory_search_melk_multi_bottom_padding"]["zh-cn"] == "梅尔克多干员补给：底部间距"
     assert localization["enable_melk_limited_grid"]["zh-cn"] == "在限时购置中镜像军械库网格"
     assert localization["enable_melk_multi_operative_grid"]["zh-cn"] == "在多干员补给中镜像军械库网格"
+    assert localization["weapon_kill_counter_integration_group"]["zh-cn"] == "模组集成：Weapon Kill Counter"
+    assert localization["weapon_kill_counter_show_zero_kills"]["zh-cn"] == "为未使用过的武器显示 0 次击杀"
     assert localization["inventory_search_placeholder"]["zh-cn"] == "搜索：剑 & 命中弱点 & 防弹装甲"
     assert localization["inventory_search_curio_placeholder"]["zh-cn"] == "搜索：韧性 & 生命值 & 复活速度"
     assert localization["debug_group"]["zh-cn"] == "调试（仅测试用）"
@@ -3164,6 +3174,7 @@ def main() -> None:
 
     inspect_widgets(data.options.widgets)
     assert defaults["enable_inventory_search_brunt"] is False
+    assert defaults["weapon_kill_counter_show_zero_kills"] is True
 
     custom_tier_group = next(
         data.options.widgets[index]
@@ -3462,9 +3473,10 @@ def main() -> None:
     )
     assert (
         top_level_ids[enhanced_descriptions_index - 1]
-        == "god_stat_checker_integration_group"
+        == "weapon_kill_counter_integration_group"
     )
-    assert top_level_ids[enhanced_descriptions_index - 2] == "quick_look_card_integration_group"
+    assert top_level_ids[enhanced_descriptions_index - 2] == "god_stat_checker_integration_group"
+    assert top_level_ids[enhanced_descriptions_index - 3] == "quick_look_card_integration_group"
     assert top_level_ids[enhanced_descriptions_index + 1] == "myfavorites_integration_group"
     assert top_level_ids[enhanced_descriptions_index + 2] == "lantern_integration_group"
     assert top_level_ids[enhanced_descriptions_index + 3] == "card_content_group"
@@ -3482,6 +3494,18 @@ def main() -> None:
         "god_stat_checker_vendor_action_row_compatibility",
     ]
 
+    weapon_kill_counter_group = next(
+        data.options.widgets[index]
+        for index in range(1, len(data.options.widgets) + 1)
+        if data.options.widgets[index].setting_id == "weapon_kill_counter_integration_group"
+    )
+    assert len(weapon_kill_counter_group.sub_widgets) == 1
+    assert (
+        weapon_kill_counter_group.sub_widgets[1].setting_id
+        == "weapon_kill_counter_show_zero_kills"
+    )
+    assert weapon_kill_counter_group.sub_widgets[1].default_value is True
+
     card_content_group = next(
         data.options.widgets[index]
         for index in range(1, len(data.options.widgets) + 1)
@@ -3492,6 +3516,8 @@ def main() -> None:
         for index in range(1, len(card_content_group.sub_widgets) + 1)
     ]
     card_content_ids = set(ordered_card_content_ids)
+    assert "show_rarity_name" not in card_content_ids
+    assert localization["show_rarity_name"] is None
     weapon_rating_index = ordered_card_content_ids.index("weapon_rarity_rating_mode")
     assert ordered_card_content_ids[weapon_rating_index : weapon_rating_index + 3] == [
         "weapon_rarity_rating_mode",
@@ -3626,6 +3652,7 @@ def main() -> None:
     assert defaults["curio_display_profile"] == "detailed"
     assert defaults["curio_name_format"] == "original"
     assert defaults["weapon_rarity_rating_mode"] == "full_horizontal"
+    assert "show_rarity_name" not in defaults
     assert defaults["curio_generated_name_respect_custom_names"] is True
     assert defaults["curio_rarity_rating_mode"] == "full_horizontal"
     assert defaults["weapon_rarity_rating_use_card_background_color"] is True
