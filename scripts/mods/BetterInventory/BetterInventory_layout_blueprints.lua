@@ -516,8 +516,7 @@ Blueprints.configure_item_blueprint = function(mod, item_blueprint, grid_width, 
 	end
 
 	local show_rarity_tag = setting(mod, "show_rarity_tag", true)
-	local rarity_rail_width = RarityRating.vertical_rail_width(mod, configuration.slot_kind, configuration)
-	local text_left = (show_rarity_tag and 12 or 8) + rarity_rail_width
+	local text_left = show_rarity_tag and 12 or 8
 	local quick_look_card_present = has_quick_look_card_passes(pass_template)
 	local quick_look_card_integration = setting(mod, "enable_quick_look_card_grid_integration", true)
 	local quick_look_card_position = quick_look_card_grid_position(mod)
@@ -551,11 +550,11 @@ Blueprints.configure_item_blueprint = function(mod, item_blueprint, grid_width, 
 		icon.style.horizontal_alignment = "left"
 		icon.style.vertical_alignment = "top"
 		icon.style.size = {
-			card_width - rarity_rail_width,
+			card_width,
 			card_height - global_store_extra,
 		}
 		icon.style.offset = {
-			rarity_rail_width,
+			0,
 			0,
 			4,
 		}
@@ -587,7 +586,7 @@ Blueprints.configure_item_blueprint = function(mod, item_blueprint, grid_width, 
 			56,
 		}
 		loading.style.offset = {
-			rarity_rail_width * 0.5,
+			0,
 			0,
 			5,
 		}
@@ -894,7 +893,7 @@ Blueprints.configure_item_blueprint = function(mod, item_blueprint, grid_width, 
 
 	if salvage_icon and salvage_icon.style then
 		salvage_icon.style.offset = {
-			card_width * 0.5 - 27 + rarity_rail_width * 0.5,
+			card_width * 0.5 - 27,
 			0,
 			14,
 		}
@@ -902,7 +901,7 @@ Blueprints.configure_item_blueprint = function(mod, item_blueprint, grid_width, 
 
 	if salvage_circle and salvage_circle.style then
 		salvage_circle.style.offset = {
-			card_width * 0.5 - 50 + rarity_rail_width * 0.5,
+			card_width * 0.5 - 50,
 			0,
 			15,
 		}

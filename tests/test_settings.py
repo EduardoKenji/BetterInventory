@@ -1167,6 +1167,23 @@ def main() -> None:
     assert melk_result == "melk_native"
     assert globals_.captured_blueprint_configuration.image_layout_context == "armoury"
     assert globals_.captured_blueprint_configuration.store_item is True
+    assert globals_.captured_blueprint_configuration.mixed_item_grid is True
+
+    melk_view._optional_store_service = "get_all_characters_marks_store_custom"
+    global_melk_configuration = character_overview_ui.melk_grid_configuration(
+        mod,
+        melk_view,
+        lua.table_from({}),
+        lua.table_from(
+            {"store_slot_kind": lua.eval("function() return 'weapon' end")}
+        ),
+        lua.table_from({"source": "armoury"}),
+        lua.table_from({"source": "global_store"}),
+    )
+    assert global_melk_configuration.source == "global_store"
+    assert global_melk_configuration.slot_kind == "weapon"
+    assert global_melk_configuration.mixed_item_grid is True
+    assert global_melk_configuration.melk_limited is None
 
     globals_.captured_blueprint_configuration = None
     melk_view._optional_store_service = "unknown_marks_service"

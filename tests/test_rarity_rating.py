@@ -83,7 +83,6 @@ def main() -> None:
 
     assert rating.mode(mod, lua.table_from({})) == "off"
     assert rating.horizontal_rows(mod, lua.table_from({})) == 0
-    assert rating.vertical_rail_width(mod, "melee") == 0
 
     mod.settings.weapon_rarity_rating_mode = "compact_horizontal"
     compact_passes = lua.table_from([])
@@ -247,30 +246,64 @@ def main() -> None:
     assert len(mixed_passes) == 2
     assert rating.horizontal_rows(mod, lua.table_from({})) == 1
 
+    # Melk mixes weapons and Curios in one shared blueprint. Its first item may
+    # still infer a weapon slot kind, but both rating passes must be retained.
+    mod.settings.weapon_rarity_rating_mode = "full_horizontal"
+    mod.settings.curio_rarity_rating_mode = "full_horizontal"
+    melk_mixed_configuration = lua.table_from(
+        {"slot_kind": "weapon", "mixed_item_grid": True}
+    )
+    melk_mixed_passes = lua.table_from([])
+    rating.add_passes(
+        mod,
+        melk_mixed_passes,
+        230,
+        154,
+        12,
+        base_style,
+        melk_mixed_configuration,
+    )
+    assert len(melk_mixed_passes) == 2
+    pass_by_style_id(
+        melk_mixed_passes, "better_inventory_weapon_rarity_rating"
+    )
+    pass_by_style_id(
+        melk_mixed_passes, "better_inventory_curio_rarity_rating"
+    )
+    assert rating.horizontal_rows(mod, melk_mixed_configuration) == 1
+
+    weapon_only_passes = lua.table_from([])
+    rating.add_passes(
+        mod,
+        weapon_only_passes,
+        230,
+        154,
+        12,
+        base_style,
+        lua.table_from({"slot_kind": "weapon"}),
+    )
+    assert len(weapon_only_passes) == 1
+    pass_by_style_id(
+        weapon_only_passes, "better_inventory_weapon_rarity_rating"
+    )
+
     mod.settings.weapon_rarity_rating_mode = "vertical"
     mod.settings.curio_rarity_rating_mode = "off"
-    assert rating.vertical_rail_width(mod, "melee") == 28
-    assert rating.vertical_rail_width(mod, None) == 28
-    assert rating.vertical_rail_width(mod, "curio") == 0
-    assert rating.vertical_rail_width(mod, "slot_attachment_1") == 0
-    assert rating.vertical_rail_width(
-        mod, "melee", lua.table_from({"native_single_column": True})
-    ) == 0
+    assert rating.mode(mod, lua.table_from({})) == "full_horizontal"
 
-    vertical_passes = lua.table_from([])
-    rating.add_passes(mod, vertical_passes, 258, 114, 40, base_style, lua.table_from({}))
-    assert len(vertical_passes) == 1
-    vertical_pass = pass_by_style_id(
-        vertical_passes, "better_inventory_rarity_rating_vertical"
+    legacy_passes = lua.table_from([])
+    rating.add_passes(mod, legacy_passes, 230, 114, 12, base_style, lua.table_from({}))
+    assert len(legacy_passes) == 1
+    legacy_pass = pass_by_style_id(
+        legacy_passes, "better_inventory_weapon_rarity_rating"
     )
-    assert vertical_pass.change_function is None
-    assert tuple(vertical_pass.style.size[index] for index in (1, 2)) == (23, 106)
+    assert legacy_pass.change_function is None
 
-    vertical_widget = lua.table_from(
+    legacy_widget = lua.table_from(
         {
             "content": lua.table_from({}),
             "style": lua.table_from(
-                {vertical_pass.style_id: vertical_pass.style}
+                {legacy_pass.style_id: legacy_pass.style}
             ),
         }
     )
@@ -286,9 +319,9 @@ def main() -> None:
         "return {matches = function(item) return item.custom_tier == true end}"
     )
     rating.set_custom_tier_provider(provider)
-    rating.populate(mod, vertical_widget, sainted, True)
-    assert vertical_widget.content.better_inventory_rarity_rating_vertical == (
-        "S\n★\n★\n★\n★\n★\n★"
+    rating.populate(mod, legacy_widget, sainted, True)
+    assert legacy_widget.content.better_inventory_weapon_rarity_rating == (
+        "Sainted ★★★★★★"
     )
     assert rating._test.effective_rarity(transcendent) == 5
     assert rating._test.effective_rarity(sainted) == 6
@@ -300,19 +333,14 @@ def main() -> None:
             "color": lua.table_from([255, 30, 120, 220]),
         }
     )
-    rating.populate(mod, vertical_widget, chinese, True)
-    assert vertical_widget.content.better_inventory_rarity_rating_vertical == "精\n★\n★\n★"
+    mod.settings.weapon_rarity_rating_mode = "compact_horizontal"
+    rating.populate(mod, legacy_widget, chinese, True)
+    assert legacy_widget.content.better_inventory_weapon_rarity_rating == "精 ★★★"
     assert rating._test.first_utf8_character("圣化") == "圣"
 
     mod.settings.weapon_rarity_rating_mode = "off"
     mod.settings.curio_rarity_rating_mode = "vertical"
-    assert rating.vertical_rail_width(mod, "curio") == 28
-    assert rating.vertical_rail_width(mod, "slot_attachment_1") == 28
-    assert rating.vertical_rail_width(mod, "melee") == 0
-    rating.populate(mod, vertical_widget, transcendent, "curio")
-    assert vertical_widget.content.better_inventory_rarity_rating_vertical.startswith(
-        "T\n"
-    )
+    assert rating.item_mode(mod, "curio", lua.table_from({})) == "full_horizontal"
 
     mod.settings.weapon_rarity_rating_mode = "invalid"
     mod.settings.curio_rarity_rating_mode = "invalid"

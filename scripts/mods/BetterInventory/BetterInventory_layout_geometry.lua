@@ -261,10 +261,9 @@ Geometry.grid_expansion = function(mod, current_grid_width, slot_kind)
 	end
 
 	local columns = Geometry.columns(mod, nil, slot_kind)
-	local rarity_rail_width = RarityRating.vertical_rail_width(mod, slot_kind)
 	local expand_base = setting(mod, "expand_inventory_window", true)
 
-	if not expand_base and rarity_rail_width == 0 then
+	if not expand_base then
 		return 0
 	end
 
@@ -276,7 +275,7 @@ Geometry.grid_expansion = function(mod, current_grid_width, slot_kind)
 	end
 
 	local required_grid_width = target_card_width * columns + spacing * (columns - 1)
-	local required_expansion = (expand_base and math.max(0, required_grid_width - current_grid_width) or 0) + rarity_rail_width * columns
+	local required_expansion = math.max(0, required_grid_width - current_grid_width)
 
 	if expand_base and slot_kind ~= "curio" and weapon_extra_width_applies(mod, columns) then
 		local extra_width = numeric_setting(mod, "five_column_weapon_extra_width", 80, 0, MAXIMUM_WEAPON_EXTRA_WIDTH)
@@ -300,10 +299,9 @@ Geometry.armoury_grid_expansion = function(mod, current_grid_width, grid_setting
 	end
 
 	local columns = Geometry.columns(mod, 3, slot_kind)
-	local rarity_rail_width = RarityRating.vertical_rail_width(mod, slot_kind)
 	local expand_base = setting(mod, "expand_armoury_requisition_window", true)
 
-	if not expand_base and rarity_rail_width == 0 then
+	if not expand_base then
 		return 0
 	end
 
@@ -311,7 +309,7 @@ Geometry.armoury_grid_expansion = function(mod, current_grid_width, grid_setting
 	local target_card_width = numeric_setting(mod, "armoury_requisition_target_card_width", 230, ARMOURY_MINIMUM_CARD_WIDTH, ARMOURY_MAXIMUM_CARD_WIDTH)
 	local required_grid_width = target_card_width * columns + spacing * (columns - 1)
 
-	return (expand_base and math.max(0, required_grid_width - current_grid_width) or 0) + rarity_rail_width * columns
+	return math.max(0, required_grid_width - current_grid_width)
 end
 
 local function maximum_safe_inventory_expansion(definitions, slot_kind)

@@ -256,6 +256,11 @@ local function profile(mod, card_width, text_left, configuration, columns, wkc, 
 
 	if not native then
 		local rating_mode = setting(mod, "weapon_rarity_rating_mode", "off")
+
+		if rating_mode == "vertical" then
+			rating_mode = "full_horizontal"
+		end
+
 		local rating_rows = (rating_mode == "compact_horizontal" or rating_mode == "full_horizontal") and 1 or 0
 		local rating_font_size = math.max(8, math.min(18, tonumber(setting(mod, "secondary_text_font_size", 13)) or 13))
 		local rating_row_advance = math.max(15, math.min(20, rating_font_size + 2))

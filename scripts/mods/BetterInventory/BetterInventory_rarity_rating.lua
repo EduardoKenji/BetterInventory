@@ -6,13 +6,10 @@ local custom_tier_provider
 local MODE_OFF = "off"
 local MODE_COMPACT = "compact_horizontal"
 local MODE_FULL = "full_horizontal"
-local MODE_VERTICAL = "vertical"
-local VERTICAL_RAIL_WIDTH = 28
 local HORIZONTAL_ROW_HEIGHT = 20
 local HORIZONTAL_TOP = 27
 local STAR = "★"
 local STAR_RUNS = { [0] = "", STAR, STAR .. STAR, STAR .. STAR .. STAR, STAR .. STAR .. STAR .. STAR, STAR .. STAR .. STAR .. STAR .. STAR, STAR .. STAR .. STAR .. STAR .. STAR .. STAR }
-local VERTICAL_STAR_RUNS = { [0] = "", STAR, STAR .. "\n" .. STAR, STAR .. "\n" .. STAR .. "\n" .. STAR, STAR .. "\n" .. STAR .. "\n" .. STAR .. "\n" .. STAR, STAR .. "\n" .. STAR .. "\n" .. STAR .. "\n" .. STAR .. "\n" .. STAR, STAR .. "\n" .. STAR .. "\n" .. STAR .. "\n" .. STAR .. "\n" .. STAR .. "\n" .. STAR }
 local DEFAULT_COLOR = { 255, 255, 255, 255 }
 local CARD_BACKGROUND_STYLE_IDS = {
 	"background_gradient",
@@ -25,7 +22,6 @@ local OWNED_STYLE_IDS = {
 	better_inventory_rarity_rating_compact = true,
 	better_inventory_rarity_rating_full_name = true,
 	better_inventory_rarity_rating_stars = true,
-	better_inventory_rarity_rating_vertical = true,
 }
 
 local function setting(mod, setting_id, fallback)
@@ -43,8 +39,14 @@ local function setting(mod, setting_id, fallback)
 end
 
 local function valid_mode(value)
-	if value == MODE_COMPACT or value == MODE_FULL or value == MODE_VERTICAL then
+	if value == MODE_COMPACT or value == MODE_FULL then
 		return value
+	end
+
+	-- The experimental vertical profile was removed. Preserve a usable rating
+	-- for hot-reloaded or persisted configurations that still contain its value.
+	if value == "vertical" then
+		return MODE_FULL
 	end
 
 	return MODE_OFF
@@ -76,7 +78,11 @@ local function item_mode(mod, item_kind, configuration)
 		return MODE_OFF
 	end
 
-	local configured_kind = slot_item_kind(configuration and configuration.slot_kind)
+	local configured_kind
+
+	if not configuration or configuration.mixed_item_grid ~= true then
+		configured_kind = slot_item_kind(configuration and configuration.slot_kind)
+	end
 
 	if item_kind and configured_kind and item_kind ~= configured_kind then
 		return MODE_OFF
@@ -98,7 +104,11 @@ local function layout_modes(mod, configuration, slot_kind)
 		return MODE_OFF, MODE_OFF
 	end
 
-	local resolved_kind = slot_item_kind(slot_kind ~= nil and slot_kind or configuration.slot_kind)
+	local resolved_kind
+
+	if configuration.mixed_item_grid ~= true then
+		resolved_kind = slot_item_kind(slot_kind ~= nil and slot_kind or configuration.slot_kind)
+	end
 
 	if resolved_kind == "weapon" then
 		return item_mode(mod, "weapon", configuration), MODE_OFF
@@ -109,12 +119,6 @@ local function layout_modes(mod, configuration, slot_kind)
 	-- Mixed vendor grids can contain both kinds. Reserve only the maximum layout
 	-- requirement, while each card populates the pass belonging to its own kind.
 	return item_mode(mod, "weapon", configuration), item_mode(mod, "curio", configuration)
-end
-
-local function vertical_applies(mod, slot_kind, configuration)
-	local weapon_mode, curio_mode = layout_modes(mod, configuration, slot_kind)
-
-	return weapon_mode == MODE_VERTICAL or curio_mode == MODE_VERTICAL
 end
 
 local function first_utf8_character(value)
@@ -240,7 +244,6 @@ local function clear_content(content)
 	content.better_inventory_rarity_rating_compact = ""
 	content.better_inventory_rarity_rating_full_name = ""
 	content.better_inventory_rarity_rating_stars = ""
-	content.better_inventory_rarity_rating_vertical = ""
 	content.better_inventory_rarity_rating_visible = false
 end
 
@@ -250,13 +253,6 @@ end
 
 RarityRating.mode = mode
 RarityRating.item_mode = item_mode
-RarityRating.is_vertical = function(mod, configuration)
-	return mode(mod, configuration) == MODE_VERTICAL
-end
-RarityRating.vertical_applies = vertical_applies
-RarityRating.vertical_rail_width = function(mod, slot_kind, configuration)
-	return vertical_applies(mod, slot_kind, configuration) and VERTICAL_RAIL_WIDTH or 0
-end
 RarityRating.horizontal_rows = function(mod, configuration, explicit_item_kind)
 	if explicit_item_kind then
 		local resolved_mode = item_mode(mod, explicit_item_kind, configuration)
@@ -298,7 +294,6 @@ RarityRating.populate = function(mod, widget, item, item_kind)
 	content.better_inventory_rarity_rating_compact = first .. " " .. stars
 	content.better_inventory_rarity_rating_full_name = name .. " " .. stars
 	content.better_inventory_rarity_rating_stars = stars
-	content.better_inventory_rarity_rating_vertical = first .. "\n" .. (VERTICAL_STAR_RUNS[rarity] or "")
 
 	for style_id in pairs(OWNED_STYLE_IDS) do
 		set_style_color(widget, style_id, color, alpha)
@@ -373,23 +368,12 @@ RarityRating.add_passes = function(mod, pass_template, card_width, card_height, 
 		})
 	end
 
-	if weapon_mode == MODE_VERTICAL or curio_mode == MODE_VERTICAL then
-		add_text_pass(pass_template, "better_inventory_rarity_rating_vertical", base_style, {
-			font_size = math.min(13, font_size),
-			text_horizontal_alignment = "center",
-			text_vertical_alignment = "center",
-			offset = { 5, 4, 11 },
-			size = { VERTICAL_RAIL_WIDTH - 5, math.max(40, card_height - 8) },
-		})
-	end
 end
 
 RarityRating.MODE_OFF = MODE_OFF
 RarityRating.MODE_COMPACT = MODE_COMPACT
 RarityRating.MODE_FULL = MODE_FULL
-RarityRating.MODE_VERTICAL = MODE_VERTICAL
 RarityRating.HORIZONTAL_ROW_HEIGHT = HORIZONTAL_ROW_HEIGHT
-RarityRating.VERTICAL_RAIL_WIDTH = VERTICAL_RAIL_WIDTH
 RarityRating._test = {
 	effective_rarity = effective_rarity,
 	first_utf8_character = first_utf8_character,

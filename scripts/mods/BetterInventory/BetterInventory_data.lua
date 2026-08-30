@@ -2177,7 +2177,6 @@ return {
 							{ text = "weapon_rarity_rating_mode_off", value = "off" },
 							{ text = "weapon_rarity_rating_mode_compact_horizontal", value = "compact_horizontal" },
 							{ text = "weapon_rarity_rating_mode_full_horizontal", value = "full_horizontal" },
-							{ text = "weapon_rarity_rating_mode_vertical", value = "vertical" },
 						},
 					},
 					{
@@ -2796,7 +2795,6 @@ return {
 							{ text = "weapon_rarity_rating_mode_off", value = "off" },
 							{ text = "weapon_rarity_rating_mode_compact_horizontal", value = "compact_horizontal" },
 							{ text = "weapon_rarity_rating_mode_full_horizontal", value = "full_horizontal" },
-							{ text = "weapon_rarity_rating_mode_vertical", value = "vertical" },
 						},
 					},
 					{

@@ -877,20 +877,20 @@ def main() -> None:
     assert layout.grid_expansion(mod, 596) == 0
     assert layout.armoury_grid_expansion(mod, 596) == 114
 
-    # The vertical rarity rail preserves every card's previous content width by
-    # widening the active three-column inventory/vendor frame by 28 px per card.
+    # Persisted experimental vertical values degrade to Full without widening
+    # inventory or vendor frames.
     mod.settings.weapon_rarity_rating_mode = "vertical"
-    assert layout.grid_expansion(mod, 596) == 84
+    assert layout.grid_expansion(mod, 596) == 0
     assert layout.grid_expansion(mod, 596, "curio") == 0
-    assert layout.armoury_grid_expansion(mod, 596) == 198
+    assert layout.armoury_grid_expansion(mod, 596) == 114
     mod.settings.weapon_rarity_rating_mode = "off"
 
-    # The independent Curio profile expands Curio and mixed grids, but never a
-    # dedicated weapon grid. Horizontal Full remains one row like Compact.
+    # The independent Curio profile also avoids horizontal geometry changes.
     mod.settings.curio_rarity_rating_mode = "vertical"
-    assert layout.grid_expansion(mod, 596, "curio") == 84
+    assert layout.grid_expansion(mod, 596, "curio") == 0
     assert layout.grid_expansion(mod, 596, "slot_primary") == 0
-    assert layout.armoury_grid_expansion(mod, 596, None, "curio") == 198
+    assert layout.armoury_grid_expansion(mod, 596, None, "curio") == 114
+    mod.settings.curio_rarity_rating_mode = "off"
     mod.settings.curio_display_profile = "detailed"
     mod.settings.curio_primary_stat_font_size = 20
     mod.settings.curio_secondary_stat_font_size = 20
@@ -959,27 +959,6 @@ def main() -> None:
         layout.item_size(mod, 710, 3, store_configuration)[index]
         for index in (1, 2)
     ) == (230, 114)
-
-    mod.settings.weapon_rarity_rating_mode = "vertical"
-    vertical_armoury, vertical_expansion = layout.expanded_armoury_view_definitions(
-        mod, armoury_definitions, armoury_base_definitions
-    )
-    assert vertical_expansion == 198
-    assert vertical_armoury.grid_settings.grid_size[1] == 794
-    assert vertical_armoury.grid_settings.mask_size[1] == 878
-    assert vertical_armoury.scenegraph_definition.item_grid_pivot.size[1] == 838
-    assert vertical_armoury.scenegraph_definition.weapon_stats_pivot.position[1] == -942
-    assert vertical_armoury.scenegraph_definition.purchase_button.position[1] == 1055
-    vertical_blueprint = lua.eval("table.clone")(blueprint)
-    vertical_size = layout.configure_item_blueprint(
-        mod, vertical_blueprint, 794, store_configuration
-    )
-    assert (vertical_size[1], vertical_size[2]) == (258, 114)
-    assert tuple(blueprint_pass(vertical_blueprint, "icon").style.size[index] for index in (1, 2)) == (230, 114)
-    assert blueprint_pass(vertical_blueprint, "icon").style.offset[1] == 28
-    assert blueprint_pass(vertical_blueprint, "display_name").style.offset[1] == 40
-    assert blueprint_pass(vertical_blueprint, "better_inventory_rarity_rating_vertical").change_function is None
-    mod.settings.weapon_rarity_rating_mode = "off"
 
     mod.settings.debug_expand_armoury_requisition_window_30_percent = True
     debug_armoury, debug_expansion = layout.expanded_armoury_view_definitions(
