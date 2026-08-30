@@ -218,7 +218,10 @@ local function state_for(runtime, view, create)
 		local remembered = key and runtime.memory[key]
 
 		if remembered then
-			state.query = remembered.query or ""
+			-- v3.4.1 stores the bounded remembered query directly. Retain table
+			-- compatibility for sessions hot-reloaded from earlier versions.
+			state.query = type(remembered) == "table" and remembered.query or remembered
+			state.query = type(state.query) == "string" and state.query or ""
 		end
 	end
 
@@ -801,19 +804,24 @@ SearchRuntime.release = function(runtime, view)
 		local key = memory_key(runtime, view, state.family)
 
 		if key then
-			runtime.memory[key] = {
-				query = state.query,
-			}
+			runtime.memory[key] = state.query or ""
 		end
 	end
 
 	restore_all_widget_alpha(state)
 	safe_call(runtime.dependencies.release_grid, view)
 	safe_call(runtime.dependencies.release_index, state.index)
-	state.ranks = weak_key_table()
+	-- The state is removed immediately below. Clear its owned references instead
+	-- of allocating a new weak result table solely to discard it on close.
+	state.compiled = nil
+	state.error = nil
+	state.index = nil
+	state.owned_widget_alpha = nil
+	state.ranks = nil
 	state.last_present_arguments = nil
 	state.presentation_kind = nil
 	state.projection_context = nil
+	state.query = nil
 	state.reuse_next_capture_results = nil
 	state.warm_layout = nil
 	state.warmed_layout = nil

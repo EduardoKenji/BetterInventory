@@ -39,6 +39,9 @@ def main() -> None:
     assert 'ensure_class_method(CreditsGoodsVendorView, "destroy")' in runtime
     assert 'ensure_class_method(ItemGridViewBase, "on_exit")' in runtime
     assert 'ensure_class_method(ItemGridViewBase, "destroy")' in runtime
+    assert "Runtime.release_item_grid_view_runtime = release_item_grid_view_runtime" in runtime
+    assert "view._better_inventory_item_grid_runtime_released == true" in runtime
+    assert "if not session_closed and type(Features.search_release)" in runtime
     assert 'ensure_class_method(InventoryBackgroundView, "on_exit")' in runtime
     assert 'ensure_class_method(InventoryBackgroundView, "destroy")' in runtime
     assert 'ensure_class_method(InventoryView, "on_exit")' in overview

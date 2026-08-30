@@ -1725,29 +1725,36 @@ if ensure_class_method(InventoryWeaponsView, "destroy") then
 end
 
 local function release_item_grid_view_runtime(view)
+	if not view or view._better_inventory_item_grid_runtime_released == true then
+		return false
+	end
+
+	view._better_inventory_item_grid_runtime_released = true
 	local item_grid = view and view._item_grid
 
-	if view then
-		active_highlight_views[view] = nil
-	end
+	active_highlight_views[view] = nil
 
 	if FeatureDomains and FeatureDomains.markers and type(FeatureDomains.markers.release_grid) == "function" then
 		FeatureDomains.markers.release_grid(item_grid)
 	end
 
-	if view then
-		view._auto_crafter_status_overlay = nil
-		if SearchUI and type(SearchUI.release) == "function" then
-			SearchUI.release(view)
-		end
-		Features.end_view_session(view, "item_grid_exit")
-		if type(Features.search_release) == "function" then
-			Features.search_release(view)
-		end
+	view._auto_crafter_status_overlay = nil
+	if SearchUI and type(SearchUI.release) == "function" then
+		SearchUI.release(view)
+	end
+	local session_closed = Features.end_view_session(view, "item_grid_exit")
+
+	-- A live view session owns search release; otherwise use the direct fallback.
+	if not session_closed and type(Features.search_release) == "function" then
+		Features.search_release(view)
 	end
 
 	release_transient_item_caches()
+
+	return true
 end
+
+Runtime.release_item_grid_view_runtime = release_item_grid_view_runtime
 
 if ensure_class_method(ItemGridViewBase, "on_exit") then
 	mod:hook_safe(ItemGridViewBase, "on_exit", release_item_grid_view_runtime)
@@ -2148,11 +2155,7 @@ mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layou
 		configuration = melk_grid_configuration(mod, view, layout, Layout, ARMOURY_GRID_CONFIGURATION, GLOBAL_STORE_GRID_CONFIGURATION)
 	end
 
-	-- When the global grid is disabled, the Hadron and Requisition routes keep
-	-- their native one-column geometry. Opt-in mirror settings reuse the exact
-	-- detailed single-column blueprint used by inventory instead of the compact
-	-- native card. This fallback runs only for those two views and never changes
-	-- inventory, GlobalStore, or any multi-column configuration.
+	-- Preserve the opt-in detailed single-column Hadron/Requisition mirrors.
 	if not configuration and mod:get("enable_grid_layout") == false then
 		if is_hadron_view(view) and mod:get("enable_hadron_single_column_mirror") ~= false then
 			configuration = {

@@ -33,14 +33,14 @@
       "name": "search.runtime-coalesces-and-releases-owned-state",
       "test": "test_search_runtime.py",
       "case": "coalesced_filter_rank_dim_memory_and_release_lifecycle",
-      "outcome": "rapid typing allocates no parser/result tables and coalesces into one settled-query scan plus one commit; Unchanged and Dim preserve strict and partial relevance in one signed weak rank map, Dim owns the live widget alpha scalar, and Hide removes only strict non-matches through the same identity-preserving double-buffered grid reorder; external layouts stably order partial ranks, cold projections warm monotonically in bounded sixteen-item slices using one reusable context without restarting on repeated captures of the same authoritative offer table, old layouts cannot grow retained state, and repeated release drops all view state",
+      "outcome": "rapid typing allocates no parser/result tables and coalesces into one settled-query scan plus one commit; Unchanged and Dim preserve strict and partial relevance in one signed weak rank map, Dim owns the live widget alpha scalar, and Hide removes only strict non-matches through the same identity-preserving double-buffered grid reorder; external layouts stably order partial ranks, cold projections warm monotonically in bounded sixteen-item slices using one reusable context without restarting on repeated captures of the same authoritative offer table, optional remembered queries occupy one bounded scalar string, and one hundred Melk-like open/query/close cycles release every index and leave no live view state",
       "modules": ["BetterInventory_search_runtime.lua", "BetterInventory_search_index.lua", "BetterInventory_search_query.lua"]
     },
     {
       "name": "search.integration-composes-native-views-and-sorting",
       "test": "test_search_integration.py",
       "case": "supported_view_adapters_facade_and_lifecycle_composition",
-        "outcome": "inventory, Hadron modify/sacrifice, Armoury, general weapon vendors, and equipment-bearing Melk routes map to isolated search families while cosmetics and Melk Mystery Acquisitions remain untouched; settled Unchanged, Dim, and Hide queries rebind the indexed native/ItemSorting comparator and double-buffer an in-place ViewElementGrid order without recreating cards, preserving canonical membership, spacing, selection, and hide-to-visible restoration; unsupported layouts fail open to native presentation, and every adapter releases on shutdown",
+        "outcome": "inventory, Hadron modify/sacrifice, Armoury, general weapon vendors, and equipment-bearing Melk routes map to isolated search families while cosmetics and Melk Mystery Acquisitions remain untouched; settled Unchanged, Dim, and Hide queries partition the already-sorted canonical layout by one pre-resolved scalar rank per card, preserving BetterInventory/ItemSorting/native order as the stable tie-break without invoking external comparators such as GodRolls, and double-buffer an in-place ViewElementGrid order without recreating cards; canonical membership, spacing, selection, hide-to-visible restoration, retained buffer identity, and bounded scalar maps survive repeated queries; unsupported layouts fail open to native presentation, and every adapter releases on shutdown",
       "modules": ["BetterInventory_search_integration.lua", "BetterInventory_feature_sorting.lua", "BetterInventory_runtime.lua"]
     },
     {
@@ -77,6 +77,13 @@
       "case": "shared_grid_exact_pass_through",
       "outcome": "the global ViewElementGrid seams mutate only Better Inventory-owned inventory and vendor grids; profile-preset, cosmetic, lobby-preview, and unknown third-party grids pass directly to native code before callback wrapping, blueprint cloning, marker attachment, material repair, or clip finalization",
       "modules": ["BetterInventory_runtime.lua"]
+    },
+    {
+      "name": "runtime.melk-copied-lifecycle-releases-search-state",
+      "test": "test_view_lifecycle_memory.py",
+      "case": "explicit_view_owned_state_release",
+      "outcome": "because Darktide copies inherited class methods, exact MarksVendorView on_exit and destroy hooks feed one idempotent cleanup that releases native and GlobalStore Melk search UI, indexes, result/layout buffers, dim and marker ownership, and transient caches; session-owned search cleanup suppresses the redundant direct fallback while abnormal destroy remains covered",
+      "modules": ["BetterInventory_runtime.lua", "BetterInventory_search_runtime.lua", "BetterInventory_search_integration.lua"]
     },
     {
       "name": "favorites.isolate-purchase-sources",

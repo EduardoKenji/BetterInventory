@@ -668,6 +668,7 @@ SearchHooks.install({
 	MarksVendorView = MarksVendorView,
 	VendorViewBase = VendorViewBase,
 	ViewElementGrid = ViewElementGrid,
+	release_item_grid_view_runtime = Runtime.release_item_grid_view_runtime,
 })
 
 local function extend_runtime_callback(callback_name, extension)

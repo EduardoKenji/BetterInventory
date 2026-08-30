@@ -636,12 +636,20 @@ def main() -> None:
     search_runtime.clear_memory(runtime)
     assert next(iter(runtime.memory.items()), None) is None
 
-    # Repeated open/close cycles leave no live state and release every index.
+    # Repeated Melk-like open/query/close cycles leave no live state, retain no
+    # warm/source layouts, and release every projection index. This exercises
+    # the runtime half of the exact MarksVendorView lifecycle hooks.
     for index in range(100):
-        transient = lua.globals().make_view(f"character-{index}", "inventory", 2)
+        transient = lua.globals().make_view(f"character-{index}", "melk", 24)
         search_runtime.register(runtime, transient)
+        search_runtime.capture_presentation(
+            runtime, transient, "slot", "weapon", "Limited Time Acquisitions"
+        )
+        search_runtime.set_query(runtime, transient, "sword & uncanny & flak", index)
+        search_runtime.update(runtime, transient, index + 0.08)
         search_runtime.release(runtime, transient)
     assert lua.globals().released_indexes == 112
+    assert next(iter(runtime.states.items()), None) is None
 
     print("BetterInventory search runtime tests passed.")
 

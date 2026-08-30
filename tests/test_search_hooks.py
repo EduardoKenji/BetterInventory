@@ -7,9 +7,25 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = (
     PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_search_hooks.lua"
 )
+SEARCH_UI_PATH = (
+    PROJECT_ROOT / "scripts" / "mods" / "BetterInventory" / "BetterInventory_search_ui.lua"
+)
 
 
 def main() -> None:
+    hooks_source = MODULE_PATH.read_text(encoding="utf-8")
+    search_ui_source = SEARCH_UI_PATH.read_text(encoding="utf-8")
+    # v3.4.0's superseded parent back-handler interception and invalid `esc`
+    # physical-key probe must not return. The exact copied Marks input seam and
+    # Stingray's `escape` key are the only confirmed Melk focus path.
+    assert "_handle_back_pressed" not in hooks_source
+    assert 'keyboard.button_index, "esc"' not in search_ui_source
+    assert 'keyboard.button_index, "escape"' in search_ui_source
+    assert 'ensure_class_method(MarksVendorView, "on_exit")' in hooks_source
+    assert 'mod:hook_safe(MarksVendorView, "on_exit", release_item_grid_view_runtime)' in hooks_source
+    assert 'ensure_class_method(MarksVendorView, "destroy")' in hooks_source
+    assert 'mod:hook_safe(MarksVendorView, "destroy", release_item_grid_view_runtime)' in hooks_source
+
     lua = LuaRuntime(unpack_returned_tuples=True)
     lua.execute(
         r'''
@@ -52,6 +68,8 @@ def main() -> None:
         vendor = klass("vendor", {
             _handle_input = function() end,
             update = function() end,
+			on_exit = function() end,
+			destroy = function() end,
         })
         credits_goods = klass("credits_goods", {update = function() end})
         -- Darktide class() copies superclass functions at class construction;
@@ -60,6 +78,8 @@ def main() -> None:
             super = vendor,
             _handle_input = vendor._handle_input,
             update = vendor.update,
+			on_exit = vendor.on_exit,
+			destroy = vendor.destroy,
         })
         marks_goods = klass("marks_goods", {update = function() end})
         grid_element = klass("element", {
@@ -140,6 +160,9 @@ def main() -> None:
             "MarksVendorView": lua.globals().marks_vendor,
             "VendorViewBase": lua.globals().vendor,
             "ViewElementGrid": lua.globals().grid_element,
+            "release_item_grid_view_runtime": lua.eval(
+                "function(view) calls.grid_runtime_release = (calls.grid_runtime_release or 0) + 1; calls.grid_runtime_view = view end"
+            ),
         }
     )
     assert module.install(dependencies) is True
@@ -212,6 +235,10 @@ def main() -> None:
             function() native_input = native_input + 1 return "native-melk" end,
             melk_open_view, "input"
         )
+		safe_hooks["marks_vendor:on_exit"](melk_open_view)
+		safe_hooks["marks_vendor:destroy"](melk_open_view)
+		marks_vendor.on_exit(melk_open_view)
+		marks_vendor.destroy(melk_open_view)
 
 
         safe_hooks["element:cb_on_grid_entry_left_pressed"]({_parent = view})
@@ -273,6 +300,8 @@ def main() -> None:
     assert g.ui_updates == 4
     assert g.native_input == 2
     assert g.melk_open_result == "native-melk"
+    assert g.calls.grid_runtime_release == 2
+    assert lua.execute("return calls.grid_runtime_view == melk_open_view") is True
     assert lua.execute('return hooks["legend:_handle_input"] == nil') is True
     assert lua.execute("return calls.defocus == view") is True
     assert lua.execute('return hooks["element:update"] == nil') is True
