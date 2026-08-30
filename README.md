@@ -4,7 +4,7 @@
 
 https://www.nexusmods.com/warhammer40kdarktide/mods/1144
 
-> Current release: **v3.5.1** (2026-08-30). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
+> Current release: **v3.5.3** (2026-08-30). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
 
 BetterInventory is a standalone inventory and item-management mod for Warhammer 40,000: Darktide. It adds responsive weapon and Curio cards, richer item information, configurable sorting, supported vendor layouts, optional mod integrations, and safety-gated inventory workflows.
 
@@ -21,6 +21,14 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - A bounded inventory-options panel for sorting, discard rules, integrations, and view-specific controls.
 - Standalone Equipment Text Search, with its own master switch, Inventory/Armoury/Hadron/Melk spacing sliders, quoted phrases, explicit AND, typed field clauses, match-first ranking, and configurable dim-or-hide behavior.
 - Optional Quick Discard, Automatic Discard, Automatic Curio Buyer, and Auto Crafter workflows with explicit ownership, authoritative revalidation, and fail-closed behavior.
+
+## What's new in v3.5.3
+
+- Adds an explicit Ctrl+Shift+R unload path that releases BetterInventory-owned live-view callbacks, search state, customization caches, pending Curio read state, view sessions, and the global Auto Crafter HUD bridge before DMF reloads the mod.
+- Surviving Inventory, Armoury Exchange, and GlobalStore views are adopted once by the new runtime generation instead of retaining callback closures from the previous generation.
+- Keeps the search/sort/render hot paths bounded: settled queries continue to reuse the existing in-place grid buffers, weak view registries, and cached card projections rather than rebuilding cards per frame.
+- Adds a dependent, default-on Weapon Kill Counter option that displays zero kills on supported store cards while preserving WKC as the authoritative source for positive counts.
+- Adds reload lifecycle, repeated cleanup, ownership, callback-retention, customization-cache, and Curio promise-container regression coverage. See the [v3.5.3 audit](docs/v3.5.3-hot-reload-performance-memory-audit.md).
 
 ## What's new in v3.5.1
 

@@ -347,4 +347,13 @@ Store.persistence_status = function()
 	return persistence_last_outcome, persistence_pending
 end
 
+Store.release_runtime = function()
+	cached_records = {}
+	pending_deleted_gear_ids = {}
+	persistence_pending = false
+	persistence_retry_elapsed = 0
+	persistence_attempts = 0
+	persistence_last_outcome = "idle"
+end
+
 return Store

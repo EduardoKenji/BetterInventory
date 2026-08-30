@@ -54,7 +54,8 @@ def main() -> None:
     assert "armoury_panel.release(view)" in features
     assert "registered_armoury_views[view] = nil" in armoury_panel
     assert "Domains.markers.release_grid(item_grid)" in domains
-    assert 'Features.close_all_view_sessions("mod_disable")' in runtime
+    assert "Features.close_all_view_sessions(reason)" in runtime
+    assert "RuntimeLifecycle.release_all(reason)" in runtime
     assert "CharacterOverviewUI.release_all_views()" in runtime
     assert "FeatureDomains.markers.release_all()" in runtime
     assert "EquipmentPersistence.on_view_closed(view)" in runtime

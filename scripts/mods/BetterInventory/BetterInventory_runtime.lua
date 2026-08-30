@@ -24,6 +24,7 @@ local InventoryWeaponsView
 local ViewElementGrid
 local WeaponOptionsPanel
 local SearchUI
+local RuntimeLifecycle
 local dmf_mod
 local active_grid_view
 local active_grid_configuration
@@ -89,6 +90,7 @@ local function configure_dependencies(dependencies)
 	ViewElementGrid = dependencies.ViewElementGrid
 	WeaponOptionsPanel = dependencies.WeaponOptionsPanel
 	SearchUI = dependencies.SearchUI
+	RuntimeLifecycle = dependencies.RuntimeLifecycle
 end
 
 Runtime.configure = configure_dependencies
@@ -1463,7 +1465,9 @@ function mod.update(dt)
 	end
 end
 
-function mod.on_disabled()
+local function shutdown(unloading)
+	local reason = unloading and "mod_reload" or "mod_disable"
+
 	if AutoCrafter and type(AutoCrafter.shutdown) == "function" then
 		AutoCrafter.shutdown()
 	end
@@ -1471,15 +1475,22 @@ function mod.on_disabled()
 		Features.shutdown_lantern_integration()
 	end
 
-	ItemCustomization.on_disabled(mod)
+	if unloading and type(ItemCustomization.on_unload) == "function" then
+		ItemCustomization.on_unload(mod)
+	else
+		ItemCustomization.on_disabled(mod)
+	end
 	if EquipmentPersistence and type(EquipmentPersistence.reset) == "function" then
 		EquipmentPersistence.reset()
 	end
 	Features.cancel_morningstar_auto_discard()
 	Features.cancel_manual_discard()
-	CurioAcquisition.cancel()
+	CurioAcquisition.cancel(unloading)
+	if RuntimeLifecycle and type(RuntimeLifecycle.release_all) == "function" then
+		RuntimeLifecycle.release_all(reason)
+	end
 	Features.disable_inventory_views()
-	Features.close_all_view_sessions("mod_disable")
+	Features.close_all_view_sessions(reason)
 	if type(Features.search_shutdown) == "function" then
 		Features.search_shutdown(true)
 	end
@@ -1493,6 +1504,14 @@ function mod.on_disabled()
 		Diagnostics.reset()
 	end
 	release_transient_item_caches()
+end
+
+function mod.on_disabled(_initial_call)
+	shutdown(false)
+end
+
+function mod.on_unload(_exit_game)
+	shutdown(true)
 end
 
 dmf_mod = get_mod("DMF")
@@ -1570,9 +1589,7 @@ if ensure_class_method(InventoryWeaponsView, "_setup_sort_options") then
 		local result = func(view, ...)
 
 		Features.preserve_item_sorting_native_options(view, selected_display_name)
-		Features.configure_inventory_sort_options(mod, Layout, view)
-		Features.setup_inventory_options_panel(mod, Layout, view, ViewElementGrid)
-		Features.bind_inventory_sort_toggle(mod, Layout, view)
+		RuntimeLifecycle.adopt_inventory(view, true)
 
 		return result
 	end)
@@ -1585,19 +1602,8 @@ if ensure_class_method(CreditsVendorView, "_setup_sort_options") then
 		local result = func(view, ...)
 
 		Features.preserve_item_sorting_native_options(view, selected_display_name)
-		if is_armoury_requisition_view(view) then
-			Features.configure_armoury_sort_options(mod, view)
-
-			if mod:get("enable_armoury_requisition_grid") ~= false and mod:get("enable_armoury_requisition_sorting_panel") ~= false then
-				Features.setup_armoury_native_sort_panel(mod, Layout, view, ViewElementGrid)
-			end
-		elseif is_global_store_view(view) and mod:get("enable_global_store_integration") ~= false then
-			Features.configure_global_store_sort_options(mod, view)
-
-			if mod:get("enable_global_store_grid") ~= false and mod:get("enable_global_store_sorting_panel") ~= false then
-				Features.setup_armoury_native_sort_panel(mod, Layout, view, ViewElementGrid)
-			end
-		end
+		local family = is_armoury_requisition_view(view) and "armoury" or is_global_store_view(view) and "global_store"
+		RuntimeLifecycle.adopt_armoury(view, family, true)
 
 		return result
 	end)
@@ -1605,6 +1611,7 @@ end
 
 if ensure_class_method(InventoryWeaponsView, "update") then
 	mod:hook_safe(InventoryWeaponsView, "update", function(view, dt, t, input_service)
+		RuntimeLifecycle.adopt_inventory(view)
 		Features.update_inventory_sort_toggle(mod, Layout, view)
 		Features.update_inventory_options_panel_controller_selection(view, input_service)
 		Features.flush_inventory_resort(mod, Layout, view)
@@ -1763,6 +1770,7 @@ end
 if ensure_class_method(CreditsVendorView, "update") then
 	mod:hook_safe(CreditsVendorView, "update", function(view, dt, t, input_service)
 		if is_armoury_sort_view(view) then
+			RuntimeLifecycle.adopt_armoury(view, is_armoury_requisition_view(view) and "armoury" or "global_store")
 			Features.update_armoury_native_sort_panel(view)
 			align_quick_level_mastery_buttons(view)
 			Features.flush_inventory_resort(mod, Layout, view)

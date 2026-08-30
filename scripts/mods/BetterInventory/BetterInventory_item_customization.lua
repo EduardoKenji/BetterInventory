@@ -198,6 +198,18 @@ ItemCustomization.on_disabled = function(mod)
 	end
 end
 
+ItemCustomization.on_unload = function(mod)
+	Editor.clear_pending()
+	Editor.close_input(mod)
+	drain_deleted_records(mod)
+	flush_persistence(true)
+	change_listener = nil
+
+	if type(Store.release_runtime) == "function" then
+		Store.release_runtime()
+	end
+end
+
 ItemCustomization.on_view_closed = function(mod)
 	if type(Editor.release_view) == "function" then
 		Editor.release_view(mod)

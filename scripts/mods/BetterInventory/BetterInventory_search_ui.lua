@@ -6,6 +6,9 @@ local SearchUI = {}
 -- survive Ctrl+Shift+R, so a plain boolean cannot distinguish an initialized
 -- widget from one whose old runtime/cache was just replaced.
 local UI_GENERATION = {}
+local tracked_views = setmetatable({}, {
+	__mode = "k",
+})
 local INPUT_NAME = "better_inventory_search_input"
 local MAX_QUERY_LENGTH = 128
 local INPUT_HEIGHT = 34
@@ -295,6 +298,7 @@ SearchUI.decorate_definitions = function(definitions, view, mod, context, base_d
 	end
 
 	view._better_inventory_search_ui_unavailable = nil
+	tracked_views[view] = true
 	local owned = clone(definitions)
 	owned._better_inventory_search_decorated = true
 	owned.grid_settings = clone(owned.grid_settings)
@@ -629,6 +633,8 @@ SearchUI.focus = function(view)
 		return false
 	end
 
+	tracked_views[view] = true
+
 	content.is_writing = true
 	content.caret_position = text_length(content.input_text) + 1
 	content.force_caret_update = true
@@ -684,6 +690,8 @@ SearchUI.update = function(mod, Features, view, time)
 	if not input then
 		return false
 	end
+
+	tracked_views[view] = true
 
 	local visible = enabled_for_view(mod, view)
 
@@ -858,7 +866,23 @@ SearchUI.release = function(view)
 		view._better_inventory_search_grid_input_was_disabled = nil
 		view._better_inventory_search_legend_input_owned = nil
 		view._better_inventory_search_view_disabled = nil
+		view._better_inventory_search_melk_route = nil
+		tracked_views[view] = nil
 	end
+end
+
+SearchUI.release_all = function()
+	local views = {}
+
+	for view in pairs(tracked_views) do
+		views[#views + 1] = view
+	end
+
+	for index = 1, #views do
+		SearchUI.release(views[index])
+	end
+
+	return #views
 end
 
 return SearchUI

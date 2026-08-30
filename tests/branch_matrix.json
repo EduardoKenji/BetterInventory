@@ -534,6 +534,13 @@
       "modules": ["BetterInventory_auto_crafter.lua"]
     },
     {
+      "name": "runtime.hot-reload-releases-and-re-adopts-owned-state",
+      "test": "test_hot_reload_lifecycle.py",
+      "case": "generation_owned_reload_teardown_and_re_adoption",
+      "outcome": "DMF on_unload releases Better Inventory view callbacks, panels, sort wrappers, search focus/input ownership, customization runtime caches, Curio read promises, and its global HUD bridge before hooks are reinstalled without allocating an abandoned replacement promise container; surviving inventory and vendor views are adopted once by the new module generation while native sort-option rebuilds retain their established behavior",
+      "modules": ["BetterInventory.lua", "BetterInventory_runtime.lua", "BetterInventory_runtime_lifecycle.lua", "BetterInventory_search_ui.lua", "BetterInventory_item_customization.lua", "BetterInventory_item_customization_store.lua", "BetterInventory_curio_acquisition.lua"]
+    },
+    {
       "name": "games-lantern.release-seams-remain-guarded",
       "test": "test_games_lantern_safety.py",
       "case": "games_lantern_release_contract_seams",
