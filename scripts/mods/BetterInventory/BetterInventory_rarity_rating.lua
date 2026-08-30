@@ -9,6 +9,7 @@ local MODE_FULL = "full_horizontal"
 local MODE_VERTICAL = "vertical"
 local VERTICAL_RAIL_WIDTH = 28
 local HORIZONTAL_ROW_HEIGHT = 20
+local HORIZONTAL_TOP = 27
 local STAR = "★"
 local STAR_RUNS = { [0] = "", STAR, STAR .. STAR, STAR .. STAR .. STAR, STAR .. STAR .. STAR .. STAR, STAR .. STAR .. STAR .. STAR .. STAR, STAR .. STAR .. STAR .. STAR .. STAR .. STAR }
 local VERTICAL_STAR_RUNS = { [0] = "", STAR, STAR .. "\n" .. STAR, STAR .. "\n" .. STAR .. "\n" .. STAR, STAR .. "\n" .. STAR .. "\n" .. STAR .. "\n" .. STAR, STAR .. "\n" .. STAR .. "\n" .. STAR .. "\n" .. STAR .. "\n" .. STAR, STAR .. "\n" .. STAR .. "\n" .. STAR .. "\n" .. STAR .. "\n" .. STAR .. "\n" .. STAR }
@@ -264,7 +265,7 @@ RarityRating.add_passes = function(mod, pass_template, card_width, card_height, 
 
 	local font_size = math.max(8, math.min(18, tonumber(setting(mod, "secondary_text_font_size", 13)) or 13))
 	local pattern_rows = setting(mod, "show_pattern_mark", false) == true and 1 or 0
-	local top = 31 + pattern_rows * HORIZONTAL_ROW_HEIGHT
+	local top = HORIZONTAL_TOP + pattern_rows * HORIZONTAL_ROW_HEIGHT
 
 	if resolved_mode == MODE_COMPACT then
 		add_text_pass(pass_template, "better_inventory_rarity_rating_compact", base_style, {

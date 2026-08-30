@@ -88,7 +88,7 @@ def main() -> None:
         compact_passes, "better_inventory_rarity_rating_compact"
     )
     assert compact_pass.change_function is None
-    assert tuple(compact_pass.style.offset[index] for index in range(1, 4)) == (12, 31, 11)
+    assert tuple(compact_pass.style.offset[index] for index in range(1, 4)) == (12, 27, 11)
     assert rating.horizontal_rows(mod, lua.table_from({})) == 1
     assert rating.horizontal_rows(
         mod, lua.table_from({"slot_kind": "curio"})
@@ -142,20 +142,20 @@ def main() -> None:
     assert rating.horizontal_rows(mod, lua.table_from({})) == 2
     assert pass_by_style_id(
         full_passes, "better_inventory_rarity_rating_full_name"
-    ).style.offset[2] == 31
+    ).style.offset[2] == 27
     assert pass_by_style_id(
         full_passes, "better_inventory_rarity_rating_stars"
-    ).style.offset[2] == 51
+    ).style.offset[2] == 47
 
     mod.settings.show_pattern_mark = True
     patterned_passes = lua.table_from([])
     rating.add_passes(mod, patterned_passes, 230, 174, 12, base_style, lua.table_from({}))
     assert pass_by_style_id(
         patterned_passes, "better_inventory_rarity_rating_full_name"
-    ).style.offset[2] == 51
+    ).style.offset[2] == 47
     assert pass_by_style_id(
         patterned_passes, "better_inventory_rarity_rating_stars"
-    ).style.offset[2] == 71
+    ).style.offset[2] == 67
     mod.settings.show_pattern_mark = False
 
     mod.settings.weapon_rarity_rating_mode = "vertical"

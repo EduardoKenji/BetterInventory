@@ -17,6 +17,7 @@ local DEFAULT_NATIVE_TEXT_HEIGHT = 30
 local COMPACT_ICON_SIZE = 19
 local COMPACT_FONT_SIZE = 18
 local COMPACT_CARD_HEIGHT_PADDING = 7
+local RATING_BOTTOM_GAP = 2
 local COMPACT_X_ADJUSTMENT = -3
 local SINGLE_COLUMN_X_ADJUSTMENT = -1
 local SINGLE_COLUMN_Y_ADJUSTMENT = -4
@@ -267,7 +268,7 @@ local function profile(mod, card_width, text_left, configuration, columns, wkc, 
 			-- The rating pass uses compact top-aligned glyphs. Advancing by a full
 			-- 20 px at the default 13 px font left WKC visibly too low; retain that
 			-- clearance only for user-selected larger secondary fonts.
-			top = top + rating_rows * rating_row_advance
+			top = top + rating_rows * rating_row_advance + RATING_BOTTOM_GAP
 		elseif rating_mode == "off" and setting(mod, "show_rarity_name", false) == true then
 			-- Preserve the legacy rarity-row placement when the new rating display
 			-- is off; historically it reserved both secondary row positions.
