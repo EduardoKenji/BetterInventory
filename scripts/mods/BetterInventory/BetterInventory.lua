@@ -210,9 +210,9 @@ local auto_crafter_hud_bridge = {
 		local ok, mode = pcall(game_mode and game_mode.game_mode_name or function () end, game_mode)
 		local class_ok, class_name = pcall(hud_read_member, view, "__class_name")
 		local destroyed_ok, destroyed = pcall(hud_read_member, view, "_destroyed")
-		local psych_ward_brunt = ok and mode == nil and class_ok and class_name == "CreditsGoodsVendorView" and (not destroyed_ok or destroyed ~= true)
+		local non_hub_brunt = ok and (mode == nil or mode == "shooting_range") and class_ok and class_name == "CreditsGoodsVendorView" and (not destroyed_ok or destroyed ~= true)
 
-		if not ok or mode ~= "hub" and mode ~= "hub_singleplay" and not psych_ward_brunt then
+		if not ok or mode ~= "hub" and mode ~= "hub_singleplay" and not non_hub_brunt then
 			return false
 		end
 

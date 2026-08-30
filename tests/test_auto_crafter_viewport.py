@@ -63,7 +63,8 @@ def main() -> None:
     assert 'require("scripts/mods/BetterInventory' not in overlay_source
     assert "bridge.visible_context(view)" in overlay_source
     assert 'class_name == "CreditsGoodsVendorView"' in main_source
-    assert "mode == nil" in main_source and "psych_ward_brunt" in main_source
+    assert "mode == nil" in main_source and 'mode == "shooting_range"' in main_source
+    assert "non_hub_brunt" in main_source
     assert 'horizontal_alignment = "center"' in hud_source
     assert 'vertical_alignment = "top"' in hud_source
     assert "status_height(line_count)" in hud_source

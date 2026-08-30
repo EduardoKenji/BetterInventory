@@ -2,7 +2,7 @@
 
 ## Critical Nexus archive invariant
 
-The BetterInventory v3.2.0 release archive must contain exactly one install directory named `BetterInventory`. Every ZIP entry name must use a forward slash (`/`), never a Windows backslash (`\`). The descriptor and every `.lua` file recursively beneath `scripts/mods/BetterInventory` are mandatory runtime files, including portable subtrees such as `auto_crafter/`. The exact source set is recorded in `docs/generated-runtime-bundle-manifest.json` and is therefore not duplicated here:
+The BetterInventory release archive must contain exactly one install directory named `BetterInventory`. Every ZIP entry name must use a forward slash (`/`), never a Windows backslash (`\`). The descriptor, `info.json` package metadata, and every `.lua` file recursively beneath `scripts/mods/BetterInventory` are mandatory runtime files, including portable subtrees such as `auto_crafter/`. The exact source set is recorded in `docs/generated-runtime-bundle-manifest.json` and is therefore not duplicated here:
 
 Use the manifest as the authoritative list when inspecting an archive; the
 packager and verifier discover the same set directly from the runtime source
@@ -43,7 +43,7 @@ Only create the release archive with the repository-owned packager:
 
 The packager:
 
-1. recursively discovers and writes the descriptor plus every `.lua` runtime source beneath one `BetterInventory/` directory;
+1. writes the descriptor and `info.json`, then recursively discovers every `.lua` runtime source beneath one `BetterInventory/` directory;
 2. constructs entry names explicitly with forward slashes;
 3. rejects rootless files, a duplicated outer directory, backslash-bearing names or any unexpected file;
 4. compares every compressed entry's SHA-256 with its source file before replacing the destination archive.
@@ -65,4 +65,4 @@ Before live testing, synchronize the runtime payload into the installed mod dire
 .\tools\sync_installed_mod.ps1
 ```
 
-For this checkout, the canonical live directory is `C:\XboxGames\Warhammer 40,000- Darktide\Content\mods\BetterInventory`. The command is deliberately limited to that `Content\mods\BetterInventory` target, copies the descriptor and every runtime Lua file, and verifies the resulting file set and SHA-256 hashes. The MSIX/WindowsApps package view is not a deployment or validation target. The command does not copy tests, docs, archives, or user logs, and it does not remove unrelated non-runtime files from an existing managed checkout. Run it again after every runtime source change before collecting in-game evidence.
+For this checkout, the canonical live directory is `C:\XboxGames\Warhammer 40,000- Darktide\Content\mods\BetterInventory`. The command is deliberately limited to that `Content\mods\BetterInventory` target, copies the descriptor, `info.json`, and every runtime Lua file, and verifies the resulting file set and SHA-256 hashes. The MSIX/WindowsApps package view is not a deployment or validation target. The command does not copy tests, docs, archives, or user logs, and it does not remove unrelated non-runtime files from an existing managed checkout. Run it again after every runtime source or metadata change before collecting in-game evidence.

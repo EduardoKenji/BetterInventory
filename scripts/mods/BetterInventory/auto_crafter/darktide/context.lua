@@ -1,5 +1,11 @@
 local Context = {}
 
+local BRUNT_GAME_MODES = {
+	hub = true,
+	hub_singleplay = true,
+	shooting_range = true,
+}
+
 local function read_member(value, key)
 	return value[key]
 end
@@ -204,9 +210,10 @@ function Context.new(dependencies)
 	end
 
 	function context:is_runtime_valid(view)
-		-- Psych Ward can open Brunt's Armoury from character selection, where no
-		-- hub game mode exists. Keep that narrow route usable while retaining the
-		-- live-view and matchmaking guards used by normal Morningstar access.
+		-- Psych Ward can open Brunt's Armoury from character selection, while Hub
+		-- Hotkey Menus can open it over the Psykanium's shooting-range gameplay.
+		-- Keep those exact live-view routes usable while retaining matchmaking and
+		-- unrelated-context guards used by normal Morningstar access.
 		return (self:is_morningstar() or self:is_valid_brunt_view(view)) and not mission_matchmaking_active()
 	end
 
@@ -221,10 +228,10 @@ function Context.new(dependencies)
 
 		local mode_name = current_game_mode_name()
 
-		-- During view setup the game-mode object can briefly be unavailable. Do
-		-- not reject a valid Brunt view during that narrow initialization window;
-		-- update() will close it as soon as a non-hub mode is observable.
-		if mode_name and mode_name ~= "hub" and mode_name ~= "hub_singleplay" then
+		-- During Psych Ward view setup the game-mode object can be unavailable.
+		-- Hub Hotkey Menus instead leaves shooting_range active. No mission mode
+		-- receives Brunt authority even if another mod opens the vendor UI there.
+		if mode_name and not BRUNT_GAME_MODES[mode_name] then
 			return false
 		end
 

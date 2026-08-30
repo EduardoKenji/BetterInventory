@@ -1,6 +1,6 @@
 {
   "archive_root": "BetterInventory",
-  "file_count": 91,
+  "file_count": 92,
   "files": [
     {
       "archive_path": "BetterInventory/BetterInventory.mod",
@@ -9,9 +9,15 @@
       "source_path": "BetterInventory.mod"
     },
     {
+      "archive_path": "BetterInventory/info.json",
+      "bytes": 254,
+      "sha256": "8ed97c337b3290d058648b10062afc4d728f17a5e86b0c6eb019aa56c38f897b",
+      "source_path": "info.json"
+    },
+    {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory.lua",
-      "bytes": 30916,
-      "sha256": "581d73da59c3a1848128d21f679b08407bd86be0c6eb2f80127f1d7b63d93264",
+      "bytes": 30940,
+      "sha256": "63ebde0bed463fa4efa0a5351dca8d6c1dbbb31e78074bbc574641c593be8621",
       "source_path": "scripts/mods/BetterInventory/BetterInventory.lua"
     },
     {
@@ -101,7 +107,7 @@
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_data.lua",
       "bytes": 84101,
-      "sha256": "4e9177f6c40b0c937658f53a299361c6cb59f0009b5d9964cf03bcdea47a8f38",
+      "sha256": "aff14ba85e9a1f7c5e4f1f7ddc43177a8357212a854ebf66467f7be48de65512",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_data.lua"
     },
     {
@@ -454,8 +460,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/context.lua",
-      "bytes": 6970,
-      "sha256": "c843bd5be89103bb119d477248d8c18f87784ff9ba1d9ee0dca93eca5db2845f",
+      "bytes": 7117,
+      "sha256": "74cf3354dce365b5ff392c561eb9245ed060512f8775ee8202a1d1049b98de70",
       "source_path": "scripts/mods/BetterInventory/auto_crafter/darktide/context.lua"
     },
     {
@@ -549,6 +555,6 @@
       "source_path": "scripts/mods/BetterInventory/auto_crafter/games_lantern/transport_wine.lua"
     }
   ],
-  "runtime_tree_sha256": "9e415b6f8f04bca763b6d987516e51e106abd731a91ee0a4f891dcb5b7ca039f",
-  "version": "3.5.4"
+  "runtime_tree_sha256": "5468ce8ad508befbf2b819f92f34e01e87b8bdba3e3699dd08e0ec262d0b96ce",
+  "version": "3.5.5"
 }

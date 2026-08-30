@@ -1,5 +1,12 @@
 # BetterInventory changelog
 
+## 3.5.5 - 2026-08-30
+
+- Allows Auto Crafter's read-only Brunt probe and explicitly started workflows through Hub Hotkey Menus' Psykanium route while the exact live `CreditsGoodsVendorView` remains valid.
+- Recognizes only the Psykanium's `shooting_range` mode in addition to the existing Morningstar and Psych Ward routes; mission modes, destroyed or unrelated views, and active matchmaking remain rejected.
+- Keeps the Auto Crafter status overlay visible for the same narrowly authorized Psykanium Brunt context and adds route-boundary regressions.
+- Adds DMF package metadata so Mod Options displays the v3.5.5 version and `dodaldo50 / Moarcakes` author attribution beneath Better Inventory's name.
+
 ## 3.5.4 - 2026-08-30
 
 - Fixes duplicate class glyphs in GlobalStore operative footers after Equipment Text Search reorders in both Armoury Exchange and Sire Melk Multi-Operative Supply.

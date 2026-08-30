@@ -15,12 +15,15 @@ $resolvedDestination = [IO.Path]::GetFullPath($DestinationPath)
 $destinationScriptRoot = Join-Path $resolvedDestination "scripts\mods\BetterInventory"
 $sourceFiles = @(
 	Get-Item -LiteralPath (Join-Path $projectRoot "BetterInventory.mod")
+	Get-Item -LiteralPath (Join-Path $projectRoot "info.json")
 	Get-ChildItem -LiteralPath $sourceScriptRoot -File -Recurse
 )
 
 foreach ($sourceFile in $sourceFiles) {
 	$relativePath = if ($sourceFile.FullName -eq (Join-Path $projectRoot "BetterInventory.mod")) {
 		"BetterInventory.mod"
+	} elseif ($sourceFile.FullName -eq (Join-Path $projectRoot "info.json")) {
+		"info.json"
 	} else {
 		Join-Path "scripts\mods\BetterInventory" $sourceFile.FullName.Substring($sourceScriptRoot.Length).TrimStart("\")
 	}

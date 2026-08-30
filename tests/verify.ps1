@@ -17,7 +17,8 @@ $architectureChecker = Join-Path $PSScriptRoot "check_architecture.py"
 $runtimeBundleChecker = Join-Path $PSScriptRoot "check_runtime_bundle.py"
 $runtimeLuaFiles = @(Get-ChildItem -LiteralPath $scriptRoot -Filter "*.lua" -File -Recurse | Sort-Object FullName)
 $requiredFiles = @(
-	(Join-Path $projectRoot "BetterInventory.mod")
+	(Join-Path $projectRoot "BetterInventory.mod"),
+	(Join-Path $projectRoot "info.json")
 )
 $requiredFiles += @($runtimeLuaFiles | ForEach-Object { $_.FullName })
 $releasePackager = Join-Path $projectRoot "tools\package_release.ps1"
@@ -935,7 +936,7 @@ try {
 
 	try {
 		$actualReleasePaths = @($packagingTest.Entries | Where-Object { -not [string]::IsNullOrEmpty($_.Name) } | ForEach-Object { $_.FullName } | Sort-Object)
-		$expectedReleasePaths = @("BetterInventory/BetterInventory.mod")
+		$expectedReleasePaths = @("BetterInventory/BetterInventory.mod", "BetterInventory/info.json")
 		$expectedReleasePaths += @($runtimeLuaFiles | ForEach-Object {
 			$relativeRuntimePath = $_.FullName.Substring($scriptRoot.Length).TrimStart("\").Replace("\", "/")
 			"BetterInventory/scripts/mods/BetterInventory/$relativeRuntimePath"
@@ -1018,7 +1019,7 @@ if ($releaseArchivePresent) {
 			}
 		}
 
-		$expectedLocalPaths = @("BetterInventory/BetterInventory.mod")
+		$expectedLocalPaths = @("BetterInventory/BetterInventory.mod", "BetterInventory/info.json")
 		$expectedLocalPaths += @($runtimeLuaFiles | ForEach-Object {
 			$relativeRuntimePath = $_.FullName.Substring($scriptRoot.Length).TrimStart("\").Replace("\", "/")
 			"BetterInventory/scripts/mods/BetterInventory/$relativeRuntimePath"
@@ -1043,6 +1044,8 @@ if ($releaseArchivePresent) {
 
 			$sourcePath = if ($archivePath -eq "BetterInventory/BetterInventory.mod") {
 				Join-Path $projectRoot "BetterInventory.mod"
+			} elseif ($archivePath -eq "BetterInventory/info.json") {
+				Join-Path $projectRoot "info.json"
 			} else {
 				$runtimePrefix = "BetterInventory/scripts/mods/BetterInventory/"
 				$relativeRuntimePath = $archivePath.Substring($runtimePrefix.Length).Replace("/", "\")

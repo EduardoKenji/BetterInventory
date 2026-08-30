@@ -429,10 +429,17 @@
       "modules": ["BetterInventory_auto_crafter.lua"]
     },
     {
-      "name": "auto-crafter.psych-ward-status-overlay",
+      "name": "auto-crafter.hub-hotkey-menus-psykanium-brunt-runtime",
+      "test": "test_auto_crafter_context.py",
+      "case": "hub_hotkey_menus_psykanium_brunt_runtime",
+      "outcome": "Psykanium's shooting-range mode admits only an exact live Brunt vendor view; unrelated views and mission modes remain blocked",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
+      "name": "auto-crafter.non-hub-brunt-status-overlay",
       "test": "test_auto_crafter_viewport.py",
       "case": "panel_and_hud_resolution_matrix",
-      "outcome": "the post-draw status bridge receives the exact live view and admits Psych Ward's Brunt vendor only while no conflicting game mode or destroyed view is observable",
+      "outcome": "the post-draw status bridge receives the exact live view and admits Brunt from Psych Ward or Hub Hotkey Menus in Psykanium only while its route remains valid",
       "modules": ["BetterInventory.lua", "BetterInventory_auto_crafter.lua"]
     },
     {
