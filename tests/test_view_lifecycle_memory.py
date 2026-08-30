@@ -54,8 +54,17 @@ def main() -> None:
     assert "armoury_panel.release(view)" in features
     assert "registered_armoury_views[view] = nil" in armoury_panel
     assert "Domains.markers.release_grid(item_grid)" in domains
-    assert 'Features.close_all_view_sessions("mod_disable")' in runtime
+    assert "Features.close_all_view_sessions(reason)" in runtime
+    assert "RuntimeLifecycle.release_all(reason)" in runtime
     assert "CharacterOverviewUI.release_all_views()" in runtime
+    lifecycle = read_runtime("BetterInventory_runtime_lifecycle.lua")
+    assert "Lifecycle.grid_layout_requires_generation" in lifecycle
+    assert "Lifecycle.prepare_grid_presentation" in lifecycle
+    assert "Lifecycle.mark_managed_grid" in lifecycle
+    assert "item_grid._present_grid_layout = nil" in lifecycle
+    assert "retire_character_overview_blueprints()" in overview
+    assert "adopt_character_overview_runtime(view)" in overview
+    assert "_better_inventory_runtime_generation" in overview
     assert "FeatureDomains.markers.release_all()" in runtime
     assert "EquipmentPersistence.on_view_closed(view)" in runtime
     assert "EquipmentPersistence.reset()" in runtime

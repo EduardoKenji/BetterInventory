@@ -466,7 +466,7 @@ local function compatible_promise(value)
 	return value and type(value.next) == "function" and type(value.catch) == "function"
 end
 
-local function reset_read_requests()
+local function reset_read_requests(reopen)
 	if state.read_promise_container and type(state.read_promise_container.destroy) == "function" then
 		pcall(state.read_promise_container.destroy, state.read_promise_container)
 	end
@@ -475,7 +475,7 @@ local function reset_read_requests()
 	state.active_read_requests = 0
 	state.read_request_started_at = {}
 	state.oldest_read_request_age = 0
-	state.read_promise_container = new_read_promise_container()
+	state.read_promise_container = reopen == false and nil or new_read_promise_container()
 end
 
 local function update_read_request_metrics(dt)
@@ -1393,8 +1393,8 @@ CurioAcquisition.begin_morningstar_pass = function(mod)
 	initialize_context(mod, "morningstar")
 end
 
-CurioAcquisition.cancel = function()
-	reset_read_requests()
+CurioAcquisition.cancel = function(unloading)
+	reset_read_requests(not unloading)
 	state.token = state.token + 1
 	state.active_context = nil
 	state.entry_consumed = false

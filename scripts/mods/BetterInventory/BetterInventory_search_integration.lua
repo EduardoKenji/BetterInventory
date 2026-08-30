@@ -49,8 +49,6 @@ Integration.view_family = function(view, global_store_service)
 		return "inventory"
 	elseif class_name == "CraftingMechanicusModifyView" then
 		return "hadron"
-	elseif class_name == "CraftingMechanicusBarterItemsView" then
-		return "hadron_sacrifice"
 	elseif class_name == "MarksVendorView" then
 		return "melk"
 	elseif class_name == "CreditsVendorView" or class_name == "CreditsGoodsVendorView" then
@@ -116,8 +114,6 @@ end
 local function presentation_context(view)
 	if type(view) ~= "table" or view._destroyed then
 		return nil
-	elseif view.__class_name == "CraftingMechanicusBarterItemsView" then
-		return type(view._sort_grid_layout) == "function" and { kind = "external" } or nil
 	elseif type(view._present_layout_by_slot_filter) ~= "function" then
 		return nil
 	end
@@ -157,7 +153,7 @@ end
 -- reorder API instead. Hide omits unmatched entries only from visible layout;
 -- canonical `_grid_layout` stays complete. Two retained buffers ensure grid
 -- never observes an array being cleared for next query.
-local function reorder_existing_grid(view, configure_sort, runtime, hide_unmatched)
+local function reorder_existing_grid(view, configure_sort, runtime, hide_unmatched, normalize_global_store_widgets)
 	local item_grid = view and view._item_grid
 	local source = item_grid and item_grid._grid_layout
 	local alignments = item_grid and item_grid._all_grid_alignment_widgets
@@ -300,6 +296,15 @@ local function reorder_existing_grid(view, configure_sort, runtime, hide_unmatch
 	end
 
 	item_grid:update_grid_layout(target)
+
+	-- GlobalStore may rebind its combined class-glyph/name field while retaining
+	-- the existing cards. Repair the two-pass footer after the authoritative
+	-- layout update; the provider rejects non-GlobalStore routes before walking
+	-- any widgets.
+	if type(normalize_global_store_widgets) == "function" then
+		normalize_global_store_widgets(view, item_grid)
+	end
+
 	local reordered_widgets = item_grid._grid_widgets
 
 	if selected_entry_id and type(reordered_widgets) == "table" and item_grid._grid then
@@ -423,18 +428,6 @@ Integration.new = function(mod, dependencies)
 
 			return true
 		end,
-		present_external = function(view)
-			if not view or view._destroyed or type(view._sort_grid_layout) ~= "function" then
-				return false
-			end
-
-			local sort_options = view._sort_options or {}
-			local sort_option = sort_options[view._selected_sort_option_index or 1]
-
-			view:_sort_grid_layout(sort_option and sort_option.sort_function)
-
-			return true
-		end,
 		presentation_context = presentation_context,
 		prioritize_equipped = function()
 			return mod:get("prioritize_equipped_favorites") ~= false
@@ -443,7 +436,7 @@ Integration.new = function(mod, dependencies)
 		query = SearchQuery,
 		rarity_aliases = SearchIndex.rarity_aliases,
 		reorder = function(view, hide_unmatched)
-			return reorder_existing_grid(view, dependencies.configure_sort, runtime, hide_unmatched)
+			return reorder_existing_grid(view, dependencies.configure_sort, runtime, hide_unmatched, dependencies.NormalizeGlobalStoreWidgets)
 		end,
 		release_grid = function(view)
 			if type(view) == "table" then
@@ -520,14 +513,6 @@ Integration.new = function(mod, dependencies)
 
 			return true
 		end,
-		compose_layout = function(view, layout)
-			local composed = SearchRuntime.compose_layout(runtime, view, layout)
-
-			dependencies.begin_view_session(view, "search")
-			dependencies.register_cleanup(view, "inventory_search", release_view_search)
-
-			return composed
-		end,
 		clear_memory = function()
 			return SearchRuntime.clear_memory(runtime)
 		end,
@@ -570,6 +555,7 @@ Integration.install = function(facade, mod, providers, configure_sort, global_st
 		CustomTier = providers.CustomTier,
 		DiscardPolicy = DiscardPolicy,
 		ItemCustomization = providers.ItemCustomization,
+		NormalizeGlobalStoreWidgets = providers.NormalizeGlobalStoreWidgets,
 		Items = Items,
 		MasterItems = MasterItems,
 		ProfileUtils = ProfileUtils,
@@ -590,7 +576,10 @@ Integration.install = function(facade, mod, providers, configure_sort, global_st
 	Integration.warn_legacy_searcher(mod, rawget(_G, "get_mod"))
 
 	facade.search_apply_widget_alpha = integration.apply_widget_alpha
-	facade.search_compose_layout = integration.compose_layout
+	-- v3.2-v3.5.2 exposed this only for Hadron's Sacrifice Weapons selector.
+	-- Explicitly retire a surviving facade closure after Ctrl+Shift+R now that
+	-- this non-equipment route is intentionally unsupported.
+	facade.search_compose_layout = nil
 	facade.search_filter_result = integration.filter_result
 	facade.search_invalidate_all = integration.invalidate_all
 	facade.search_is_active = integration.is_active

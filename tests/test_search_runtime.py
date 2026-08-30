@@ -19,7 +19,6 @@ def main() -> None:
         remember = false
         present_calls = 0
         last_present_arguments = nil
-        external_present_calls = 0
         reorder_calls = 0
         reorder_succeeds = false
         project_calls = 0
@@ -134,9 +133,6 @@ def main() -> None:
                 "present_calls = present_calls + 1; "
                 "last_present_arguments = {slot_filter, item_type_filter, display_name}; return true end"
             ),
-            "present_external": lua.eval(
-                "function(view) external_present_calls = external_present_calls + 1; return true end"
-            ),
             "reorder": lua.eval(
 				"function(view, hide_unmatched) reorder_calls = reorder_calls + 1; "
 				"last_reorder_hide = hide_unmatched; return reorder_succeeds end"
@@ -182,19 +178,11 @@ def main() -> None:
     assert search_runtime.set_query(runtime, recovered, "sword", 0) == (True, None)
     assert search_runtime.update(runtime, recovered, 0.08) is True
     assert lua.globals().present_calls == recovered_present_before + 1
-    assert search_runtime.state(runtime, recovered).presentation_kind == "native"
+    assert search_runtime.state(runtime, recovered).last_present_arguments is not None
     assert lua.globals().last_present_arguments[1] == "recovered-slot"
     assert lua.globals().last_present_arguments[2] == "recovered-type"
     assert lua.globals().last_present_arguments[3] == "Recovered"
     assert search_runtime.release(runtime, recovered) is True
-
-    recovered_external = lua.globals().make_view("reload-external", "hadron_sacrifice", 2)
-    recovered_external.recovered_kind = "external"
-    external_before = lua.globals().external_present_calls
-    assert search_runtime.set_query(runtime, recovered_external, "sword", 0) == (True, None)
-    assert search_runtime.update(runtime, recovered_external, 0.08) is True
-    assert lua.globals().external_present_calls == external_before + 1
-    assert search_runtime.release(runtime, recovered_external) is True
 
     # Every display policy commits against existing widget identities. Hide
     # changes only visible membership; returning to dim restores canonical full
@@ -279,14 +267,6 @@ def main() -> None:
     lua.globals().test_view = view
     assert search_runtime.register(runtime, view) is not None
     assert search_runtime.capture_presentation(runtime, view, "slot", "type", "title") is True
-    inactive_layout = lua.table_from(
-        {1: lua.table_from({"item": lua.table_from({"gear_id": "plain", "name": "plain"})})}
-    )
-    lua.globals().inactive_layout = inactive_layout
-    lua.globals().inactive_composed = search_runtime.compose_layout(
-        runtime, view, inactive_layout
-    )
-    assert lua.execute("return inactive_layout == inactive_composed") is True
     search_runtime.capture_presentation(runtime, view, "slot", "type", "title")
     trusted_before_main_query = lua.globals().trusted_project_calls
     validated_before_main_query = lua.globals().validated_project_calls
@@ -334,7 +314,6 @@ def main() -> None:
     assert search_runtime.apply_widget_alpha(runtime, view) is True
     assert lua.globals().replacement_widget.alpha_multiplier == 0.4
     assert search_runtime.is_active(runtime, view) is True
-    assert search_runtime.compose_layout(runtime, view, None) is None
     lua.globals().first_result_table = search_runtime.state(runtime, view).ranks
 
     # Present requests are coalesced for 80 ms and do not allocate or rerun the
@@ -464,97 +443,6 @@ def main() -> None:
     lua.globals().prioritize_equipped = True
     lua.globals().configured_mode = "dim"
 
-    # Darktide's sacrifice view owns a separate grid implementation. Compose
-    # only the live, already-native-sorted callback layout: external spacing is
-    # preserved, matches become the stable outer partition, and no layout copy
-    # is retained by the runtime.
-    external = lua.table_from(
-        {
-            "character": "veteran",
-            "family": "hadron_sacrifice",
-            "_offer_items_layout": lua.table_from({}),
-            "_item_grid": lua.table_from({"_all_grid_widgets": lua.table_from({})}),
-        }
-    )
-    spacing_top = lua.table_from({"is_external": True})
-    axe_entry = lua.table_from(
-        {"item": lua.table_from({"gear_id": "axe", "name": "odd axe"})}
-    )
-    sword_entry = lua.table_from(
-        {"item": lua.table_from({"gear_id": "sword", "name": "even sword"})}
-    )
-    spacing_bottom = lua.table_from({"is_external": True})
-    external_layout = lua.table_from(
-        {1: spacing_top, 2: axe_entry, 3: sword_entry, 4: spacing_bottom}
-    )
-    external_present_before_compose = lua.globals().external_present_calls
-    search_runtime.set_query(runtime, external, "sword", 20)
-    composed = search_runtime.compose_layout(runtime, external, external_layout)
-    lua.globals().external_composed = composed
-    lua.globals().spacing_top = spacing_top
-    lua.globals().spacing_bottom = spacing_bottom
-    lua.globals().sword_entry = sword_entry
-    lua.globals().axe_entry = axe_entry
-    assert lua.execute(
-        "return external_composed[1] == spacing_top and "
-        "external_composed[2] == sword_entry and external_composed[3] == axe_entry "
-        "and external_composed[4] == spacing_bottom"
-    ) is True
-    assert search_runtime.update(runtime, external, 20.08) is True
-    assert lua.globals().external_present_calls == external_present_before_compose + 1
-    assert search_runtime.state(runtime, external).last_present_arguments is None
-
-    sword_uncanny_entry = lua.table_from(
-        {
-            "item": lua.table_from(
-                {"gear_id": "sword-uncanny", "name": "sword uncanny"}
-            )
-        }
-    )
-    sword_uncanny_flak_entry = lua.table_from(
-        {
-            "item": lua.table_from(
-                {"gear_id": "sword-uncanny-flak", "name": "sword uncanny flak"}
-            )
-        }
-    )
-    partial_external_layout = lua.table_from(
-        {
-            1: spacing_top,
-            2: axe_entry,
-            3: sword_entry,
-            4: sword_uncanny_entry,
-            5: sword_uncanny_flak_entry,
-            6: spacing_bottom,
-        }
-    )
-    search_runtime.set_query(runtime, external, "sword & uncanny & flak", 21)
-    partial_external = search_runtime.compose_layout(
-        runtime, external, partial_external_layout
-    )
-    lua.globals().partial_external = partial_external
-    lua.globals().sword_uncanny_entry = sword_uncanny_entry
-    lua.globals().sword_uncanny_flak_entry = sword_uncanny_flak_entry
-    assert lua.execute(
-        "return partial_external[1] == spacing_top and "
-        "partial_external[2] == sword_uncanny_flak_entry and "
-        "partial_external[3] == sword_uncanny_entry and "
-        "partial_external[4] == sword_entry and partial_external[5] == axe_entry "
-        "and partial_external[6] == spacing_bottom"
-    ) is True
-
-    lua.globals().configured_mode = "hide"
-    hidden = search_runtime.compose_layout(runtime, external, partial_external_layout)
-    lua.globals().external_hidden = hidden
-    assert len(hidden) == 3
-    assert external._better_inventory_search_rank_active is True
-    assert external._better_inventory_search_filter_active is True
-    assert lua.execute(
-        "return external_hidden[1] == spacing_top and "
-        "external_hidden[2] == sword_uncanny_flak_entry and "
-        "external_hidden[3] == spacing_bottom"
-    ) is True
-
     # A missing widget grid fails soft, and a throwing presentation callback is
     # quarantined to this view after its first coalesced attempt.
     gridless = lua.globals().make_view("veteran", "inventory", 1)
@@ -630,8 +518,8 @@ def main() -> None:
     other_character = lua.globals().make_view("zealot", "inventory", 3)
     assert search_runtime.register(runtime, other_character).query == ""
     assert next(iter(runtime.memory.items()), None) is None
-    assert search_runtime.release_all(runtime) == 4
-    assert lua.globals().released_indexes == 12
+    assert search_runtime.release_all(runtime) == 3
+    assert lua.globals().released_indexes == 10
 
     search_runtime.clear_memory(runtime)
     assert next(iter(runtime.memory.items()), None) is None
@@ -648,7 +536,7 @@ def main() -> None:
         search_runtime.set_query(runtime, transient, "sword & uncanny & flak", index)
         search_runtime.update(runtime, transient, index + 0.08)
         search_runtime.release(runtime, transient)
-    assert lua.globals().released_indexes == 112
+    assert lua.globals().released_indexes == 110
     assert next(iter(runtime.states.items()), None) is None
 
     print("BetterInventory search runtime tests passed.")

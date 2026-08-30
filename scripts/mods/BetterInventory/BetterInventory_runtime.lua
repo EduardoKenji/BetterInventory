@@ -24,6 +24,7 @@ local InventoryWeaponsView
 local ViewElementGrid
 local WeaponOptionsPanel
 local SearchUI
+local RuntimeLifecycle
 local dmf_mod
 local active_grid_view
 local active_grid_configuration
@@ -89,6 +90,7 @@ local function configure_dependencies(dependencies)
 	ViewElementGrid = dependencies.ViewElementGrid
 	WeaponOptionsPanel = dependencies.WeaponOptionsPanel
 	SearchUI = dependencies.SearchUI
+	RuntimeLifecycle = dependencies.RuntimeLifecycle
 end
 
 Runtime.configure = configure_dependencies
@@ -1400,9 +1402,7 @@ function mod.on_game_state_changed(status, state_name)
 	end
 end
 
--- MainMenuView is Darktide's Operative Selection screen. Keep this lifecycle
--- separate from GameplayStateRun so buyer scheduling never mistakes a loading
--- state or a missing hub player for a usable context.
+-- Operative Selection lifecycle stays separate from gameplay scheduling.
 mod:hook_safe(MainMenuView, "on_enter", function()
 	if AutoCrafter and type(AutoCrafter.on_context_exit) == "function" then
 		AutoCrafter.on_context_exit("operative_selection_entered")
@@ -1463,7 +1463,9 @@ function mod.update(dt)
 	end
 end
 
-function mod.on_disabled()
+local function shutdown(unloading)
+	local reason = unloading and "mod_reload" or "mod_disable"
+
 	if AutoCrafter and type(AutoCrafter.shutdown) == "function" then
 		AutoCrafter.shutdown()
 	end
@@ -1471,15 +1473,22 @@ function mod.on_disabled()
 		Features.shutdown_lantern_integration()
 	end
 
-	ItemCustomization.on_disabled(mod)
+	if unloading and type(ItemCustomization.on_unload) == "function" then
+		ItemCustomization.on_unload(mod)
+	else
+		ItemCustomization.on_disabled(mod)
+	end
 	if EquipmentPersistence and type(EquipmentPersistence.reset) == "function" then
 		EquipmentPersistence.reset()
 	end
 	Features.cancel_morningstar_auto_discard()
 	Features.cancel_manual_discard()
-	CurioAcquisition.cancel()
+	CurioAcquisition.cancel(unloading)
+	if RuntimeLifecycle and type(RuntimeLifecycle.release_all) == "function" then
+		RuntimeLifecycle.release_all(reason)
+	end
 	Features.disable_inventory_views()
-	Features.close_all_view_sessions("mod_disable")
+	Features.close_all_view_sessions(reason)
 	if type(Features.search_shutdown) == "function" then
 		Features.search_shutdown(true)
 	end
@@ -1493,6 +1502,14 @@ function mod.on_disabled()
 		Diagnostics.reset()
 	end
 	release_transient_item_caches()
+end
+
+function mod.on_disabled(_initial_call)
+	shutdown(false)
+end
+
+function mod.on_unload(_exit_game)
+	shutdown(true)
 end
 
 dmf_mod = get_mod("DMF")
@@ -1570,9 +1587,7 @@ if ensure_class_method(InventoryWeaponsView, "_setup_sort_options") then
 		local result = func(view, ...)
 
 		Features.preserve_item_sorting_native_options(view, selected_display_name)
-		Features.configure_inventory_sort_options(mod, Layout, view)
-		Features.setup_inventory_options_panel(mod, Layout, view, ViewElementGrid)
-		Features.bind_inventory_sort_toggle(mod, Layout, view)
+		RuntimeLifecycle.adopt_inventory(view, true)
 
 		return result
 	end)
@@ -1585,19 +1600,8 @@ if ensure_class_method(CreditsVendorView, "_setup_sort_options") then
 		local result = func(view, ...)
 
 		Features.preserve_item_sorting_native_options(view, selected_display_name)
-		if is_armoury_requisition_view(view) then
-			Features.configure_armoury_sort_options(mod, view)
-
-			if mod:get("enable_armoury_requisition_grid") ~= false and mod:get("enable_armoury_requisition_sorting_panel") ~= false then
-				Features.setup_armoury_native_sort_panel(mod, Layout, view, ViewElementGrid)
-			end
-		elseif is_global_store_view(view) and mod:get("enable_global_store_integration") ~= false then
-			Features.configure_global_store_sort_options(mod, view)
-
-			if mod:get("enable_global_store_grid") ~= false and mod:get("enable_global_store_sorting_panel") ~= false then
-				Features.setup_armoury_native_sort_panel(mod, Layout, view, ViewElementGrid)
-			end
-		end
+		local family = is_armoury_requisition_view(view) and "armoury" or is_global_store_view(view) and "global_store"
+		RuntimeLifecycle.adopt_armoury(view, family, true)
 
 		return result
 	end)
@@ -1605,6 +1609,7 @@ end
 
 if ensure_class_method(InventoryWeaponsView, "update") then
 	mod:hook_safe(InventoryWeaponsView, "update", function(view, dt, t, input_service)
+		RuntimeLifecycle.adopt_inventory(view)
 		Features.update_inventory_sort_toggle(mod, Layout, view)
 		Features.update_inventory_options_panel_controller_selection(view, input_service)
 		Features.flush_inventory_resort(mod, Layout, view)
@@ -1738,6 +1743,7 @@ local function release_item_grid_view_runtime(view)
 	if SearchUI and type(SearchUI.release) == "function" then
 		SearchUI.release(view)
 	end
+	RuntimeLifecycle.release_compact_curio_stats_blueprints(view)
 	local session_closed = Features.end_view_session(view, "item_grid_exit")
 
 	-- A live view session owns search release; otherwise use the direct fallback.
@@ -1763,6 +1769,7 @@ end
 if ensure_class_method(CreditsVendorView, "update") then
 	mod:hook_safe(CreditsVendorView, "update", function(view, dt, t, input_service)
 		if is_armoury_sort_view(view) then
+			RuntimeLifecycle.adopt_armoury(view, is_armoury_requisition_view(view) and "armoury" or "global_store")
 			Features.update_armoury_native_sort_panel(view)
 			align_quick_level_mastery_buttons(view)
 			Features.flush_inventory_resort(mod, Layout, view)
@@ -1799,9 +1806,7 @@ if ensure_class_method(CreditsVendorView, "destroy") then
 	end)
 end
 
--- Brunt's Armoury uses CreditsGoodsVendorView, not CreditsVendorView. Keep
--- Auto Crafter lifecycle hooks on the exact vanilla view so the read-only
--- probe is armed only for Brunt and not for Requisition or GlobalStore.
+-- Brunt's Armoury uses CreditsGoodsVendorView; other vendors use another route.
 if ensure_class_method(CreditsGoodsVendorView, "on_enter") then
 	mod:hook_safe(CreditsGoodsVendorView, "on_enter", function(view)
 		if AutoCrafter and type(AutoCrafter.on_brunt_view_ready) == "function" then
@@ -1923,7 +1928,7 @@ if ensure_class_method(CraftingMechanicusModifyView, "present_grid_layout") then
 	end)
 end
 
--- CreditsVendorView serves native Requisition and GlobalStore, not Brunt's Armoury.
+-- Native Requisition and GlobalStore share this view.
 if ensure_class_method(CreditsVendorView, "present_grid_layout") then
 	mod:hook(CreditsVendorView, "present_grid_layout", function(func, view, layout, on_present_callback)
 		if is_global_store_view(view) and mod:get("enable_global_store_integration") ~= false then
@@ -1977,50 +1982,13 @@ if ensure_class_method(MarksVendorView, "on_enter") then
 end
 
 local function normalize_global_store_widgets(item_grid)
-	for _, entry_data in pairs(item_grid and item_grid._widgets_by_entry_id or {}) do
-		local widget = entry_data and entry_data.widget
-		local portrait = widget and widget.style and widget.style.portrait
+	local portrait_size = 34
 
-		if portrait then
-			-- GlobalStore's callback expands the portrait for its native full-width
-			-- cards. Keep it at the configured size after BetterInventory remaps
-			-- the card into a compact grid.
-			local portrait_size = 34
-
-			if Layout.global_store_character_photo_size then
-				portrait_size = Layout.global_store_character_photo_size(mod)
-			end
-
-			portrait.size = {
-				portrait_size,
-				portrait_size,
-			}
-		end
-
-		local content = widget and widget.content
-		local character_info = widget and widget.style and widget.style.character_info_text
-		local class_icon = widget and widget.style and widget.style.character_class_icon_text
-
-		if content and character_info and class_icon then
-			-- GlobalStore supplies one combined string (class glyph + name). Split
-			-- it once so BetterInventory can size the glyph and name independently.
-			-- Keep the parsed name as a marker so repeated normalization does not
-			-- strip the first word from an already-split character name.
-			local raw_info = content.character_info_text
-			local parsed_name = content.better_inventory_global_store_character_name
-
-			if type(raw_info) == "string" and raw_info ~= "" and raw_info ~= parsed_name then
-				local icon_text, name_text = string.match(raw_info, "^(%S+)%s+(.+)$")
-
-				if icon_text and name_text then
-					name_text = string.match(name_text, "^%s*(.-)%s*$") or name_text
-					content.character_class_icon_text = icon_text
-					content.character_info_text = name_text
-					content.better_inventory_global_store_character_name = name_text
-				end
-			end
-		end
+	if Layout.global_store_character_photo_size then
+		portrait_size = Layout.global_store_character_photo_size(mod)
 	end
+
+	return FeatureDomains.global_store.normalize_widgets(item_grid, portrait_size)
 end
 
 if ensure_class_method(ViewElementGrid, "_create_entry_widget_from_config") then
@@ -2112,7 +2080,7 @@ mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layou
 	end
 
 	invalidate_myfavorites_grid(item_grid)
-	content_blueprints = Features.compact_inventory_curio_stats_blueprints(mod, item_grid, content_blueprints)
+	content_blueprints = RuntimeLifecycle.compact_curio_stats_blueprints(mod, Features, item_grid, content_blueprints)
 
 	local callback_arguments = pack_values(...)
 	local on_present_callback = callback_arguments[5]
@@ -2179,8 +2147,18 @@ mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layou
 		return func(item_grid, layout, content_blueprints, unpack_values(callback_arguments, 1, callback_arguments.n))
 	end
 
+	local rebuild_cards = RuntimeLifecycle.prepare_grid_generation(item_grid, layout)
+
 	if configuration.global_store then
 		FeatureDomains.global_store.retire_grid_generation(item_grid, layout, Managers.ui)
+	end
+
+	Layout.configure_grid(mod, item_grid)
+
+	if not rebuild_cards then
+		local after_present = configuration.global_store and normalize_global_store_widgets
+		local results = RuntimeLifecycle.present_reused_grid(func, item_grid, layout, content_blueprints, callback_arguments, after_present)
+		return unpack_values(results, 1, results.n)
 	end
 
 	local local_blueprints = shallow_copy(content_blueprints)
@@ -2189,7 +2167,7 @@ mod:hook(ViewElementGrid, "present_grid_layout", function(func, item_grid, layou
 	local_blueprints[blueprint_key] = local_item_blueprint
 
 	Layout.configure_item_blueprint(mod, local_item_blueprint, grid_size[1], configuration)
-	Layout.configure_grid(mod, item_grid)
+	RuntimeLifecycle.mark_managed_grid(item_grid)
 
 	if configuration.global_store and type(callback_arguments[5]) == "function" then
 		local on_present_callback = callback_arguments[5]

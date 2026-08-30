@@ -983,6 +983,19 @@ def main() -> None:
     assert store.has_pending_deleted_gear() is False
     assert customization.needs_update() is False
 
+    # Hot reload is not a normal disable: it flushes and drops module-owned
+    # caches/listeners without handing hooks or name ownership to another mod.
+    globals_.enabled_cleanup_hooks = lua.table_from({})
+    customization.update(mod, "reload-owned", lua.table_from({"name": "Reload"}))
+    store.queue_deleted_gear("reload-deleted")
+    customization.on_unload(mod)
+    assert customization.get(mod, "reload-owned") is None
+    assert store.has_pending_deleted_gear() is False
+    status, pending = customization.persistence_status()
+    assert status == "idle"
+    assert pending is False
+    assert lua.execute("return next(enabled_cleanup_hooks) == nil") is True
+
     print("BetterInventory item customization tests passed.")
 
 

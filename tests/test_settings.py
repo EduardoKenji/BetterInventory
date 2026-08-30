@@ -26,7 +26,9 @@ def main() -> None:
     lua = LuaRuntime(unpack_returned_tuples=True)
     lua.execute(
         r"""
+        table_clone_calls = 0
         function table.clone(value)
+            table_clone_calls = table_clone_calls + 1
             local copy = {}
 
             for key, item in pairs(value or {}) do
@@ -390,6 +392,10 @@ def main() -> None:
 				return false
 			end
 
+			if string.find(path, "BetterInventory_runtime_lifecycle", 1, true) then
+				return TestRuntimeLifecycle
+			end
+
 			if string.find(path, "BetterInventory_runtime", 1, true) then
 				return TestRuntime
 			end
@@ -514,6 +520,12 @@ def main() -> None:
         RUNTIME_PATH.read_text(encoding="utf-8"),
         name=str(RUNTIME_PATH),
     )
+    runtime_lifecycle = lua.execute(
+        (RUNTIME_PATH.parent / "BetterInventory_runtime_lifecycle.lua").read_text(
+            encoding="utf-8"
+        ),
+        name=str(RUNTIME_PATH.parent / "BetterInventory_runtime_lifecycle.lua"),
+    )
     capabilities = lua.execute(
         CONTRACTS_PATH.read_text(encoding="utf-8"),
         name=str(CONTRACTS_PATH),
@@ -529,6 +541,7 @@ def main() -> None:
     lua.globals().TestCharacterOverview = character_overview
     lua.globals().TestCharacterOverviewUI = character_overview_ui
     lua.globals().TestRuntime = runtime_module
+    lua.globals().TestRuntimeLifecycle = runtime_lifecycle
     lua.globals().TestCapabilities = capabilities
     lua.globals().TestSettingsRegistry = settings_registry
     lua.globals().TestFeatureDomains = feature_domains
@@ -1168,6 +1181,36 @@ def main() -> None:
     assert globals_.captured_blueprint_configuration.image_layout_context == "armoury"
     assert globals_.captured_blueprint_configuration.store_item is True
     assert globals_.captured_blueprint_configuration.mixed_item_grid is True
+
+    # Darktide reuses live card widgets when all entry IDs still resolve. That
+    # path must keep the exact native blueprint table and avoid a full clone on
+    # every search/sort/tab reorder; a generation change invalidates IDs before
+    # reaching this fast path.
+    globals_.reusable_melk_grid = melk_grid
+    globals_.reusable_store_blueprints = store_blueprints
+    lua.execute(
+        """
+        reusable_layout = {{entry_id = "retained"}}
+        reusable_melk_grid._grid_layout = reusable_layout
+        reusable_melk_grid._widgets_by_entry_id = {retained = {}}
+        local native_clone = table.clone
+        reusable_item_blueprint_clone_calls = 0
+        table.clone = function(value)
+            if value == reusable_store_blueprints.store_item then
+                reusable_item_blueprint_clone_calls = reusable_item_blueprint_clone_calls + 1
+            end
+            return native_clone(value)
+        end
+        reusable_blueprints_identity_preserved = false
+        captured_grid_present_hook(function(grid, layout, blueprints)
+            reusable_blueprints_identity_preserved = blueprints == reusable_store_blueprints
+            return "reused"
+        end, reusable_melk_grid, reusable_layout, reusable_store_blueprints)
+        table.clone = native_clone
+        assert(reusable_item_blueprint_clone_calls == 0)
+        """
+    )
+    assert globals_.reusable_blueprints_identity_preserved is True
 
     melk_view._optional_store_service = "get_all_characters_marks_store_custom"
     global_melk_configuration = character_overview_ui.melk_grid_configuration(
@@ -3035,7 +3078,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "3.5.1"
+    assert data.version == "3.5.4"
 
     gradient_name = localization["mod_name"]["en"]
     assert gradient_name.startswith("{#color(174,239,105)}B")
@@ -3947,6 +3990,76 @@ def main() -> None:
     assert defaults["curio_secondary_text_color_r"] == 220
     assert defaults["curio_secondary_text_color_g"] == 230
     assert defaults["curio_secondary_text_color_b"] == 210
+
+    # Character Overview card templates live in Darktide's shared blueprint
+    # table, unlike ViewElementGrid generations. Retiring a module generation
+    # must leave only native destroy/update callbacks globally, and a surviving
+    # individual-layout view must rebuild exactly once from the new generation.
+    lua.execute(
+        """
+        local test_api = test_mod._better_inventory_test
+        local content_blueprints = test_api.character_overview_blueprints()
+        local native_update = function() end
+        local native_destroy = function() end
+        local owned_blueprint = test_api.own_character_overview_blueprint({
+            pass_template = {{pass_type = "text", change_function = function() end}},
+            update = function() end,
+            destroy = function() end,
+        }, {
+            update = native_update,
+            destroy = native_destroy,
+        })
+        local widget_type = TestCharacterOverviewUI.constants.CHARACTER_OVERVIEW_MELEE_WIDGET_TYPE
+        content_blueprints[widget_type] = owned_blueprint
+        test_api.retire_character_overview_blueprints()
+        local retired_blueprint = content_blueprints[widget_type]
+        assert(retired_blueprint.update == native_update)
+        assert(retired_blueprint.destroy == native_destroy)
+        assert(retired_blueprint.pass_template == nil)
+
+        reload_overview_switches = 0
+        reload_overview_view = {
+            _better_inventory_character_overview_runtime_generation = {},
+            _active_category_tab_context = {is_grid_layout = false},
+            _switch_active_layout = function(self, context)
+                reload_overview_switches = reload_overview_switches + 1
+                assert(context == self._active_category_tab_context)
+            end,
+        }
+        assert(test_api.adopt_character_overview_runtime(reload_overview_view) == true)
+        assert(test_api.adopt_character_overview_runtime(reload_overview_view) == false)
+        assert(reload_overview_switches == 1)
+
+		failed_reload_overview_view = {
+			_better_inventory_character_overview_runtime_generation = {},
+			_active_category_tab_context = {is_grid_layout = false},
+			_switch_active_layout = function() error("transitional layout") end,
+		}
+		local failed_generation = failed_reload_overview_view._better_inventory_character_overview_runtime_generation
+		assert(test_api.adopt_character_overview_runtime(failed_reload_overview_view) == false)
+		assert(failed_reload_overview_view._better_inventory_character_overview_runtime_generation == failed_generation)
+		failed_reload_overview_view._switch_active_layout = function() end
+		assert(test_api.adopt_character_overview_runtime(failed_reload_overview_view) == true)
+
+		local legacy_blueprint = {
+			pass_template = {{change_function = function() end}},
+		}
+		content_blueprints[widget_type] = legacy_blueprint
+		test_api.retire_character_overview_blueprints()
+		assert(content_blueprints[widget_type].pass_template == nil)
+		legacy_reload_overview_switches = 0
+		legacy_reload_overview_view = {
+			_loadout_widgets = {{type = widget_type}},
+			_active_category_tab_context = {is_grid_layout = false},
+			_switch_active_layout = function()
+				legacy_reload_overview_switches = legacy_reload_overview_switches + 1
+			end,
+		}
+		assert(test_api.adopt_character_overview_runtime(legacy_reload_overview_view) == true)
+		assert(legacy_reload_overview_switches == 1)
+		assert(test_api.adopt_character_overview_runtime(legacy_reload_overview_view) == false)
+        """
+    )
 
     # A failed hot-reload dependency must disable that feature module once. It
     # must never leave a boolean upvalue that raises again on every frame.

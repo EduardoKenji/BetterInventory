@@ -137,7 +137,7 @@ local function compile_state(runtime, state)
 end
 
 local function recover_presentation_context(runtime, view, state)
-	if state.presentation_kind then
+	if state.last_present_arguments then
 		return true
 	end
 
@@ -147,10 +147,7 @@ local function recover_presentation_context(runtime, view, state)
 		return false
 	end
 
-	if context.kind == "external" then
-		state.presentation_kind = "external"
-		return true
-	elseif context.kind ~= "native" then
+	if context.kind ~= "native" then
 		return false
 	end
 
@@ -159,7 +156,6 @@ local function recover_presentation_context(runtime, view, state)
 	arguments[2] = context.item_type_filter
 	arguments[3] = context.slot_filter
 	state.last_present_arguments = arguments
-	state.presentation_kind = "native"
 
 	return true
 end
@@ -203,7 +199,6 @@ local function state_for(runtime, view, create)
 		last_present_arguments = nil,
 		owned_widget_alpha = weak_key_table(),
 		pending_present_at = nil,
-		presentation_kind = nil,
 		projection_context = {},
 		query = "",
 		ranks = weak_key_table(),
@@ -396,7 +391,6 @@ SearchRuntime.capture_presentation = function(runtime, view, slot_filter, item_t
 	arguments[2] = item_type_filter
 	arguments[3] = slot_filter
 	state.last_present_arguments = arguments
-	state.presentation_kind = "native"
 	if not state.compiled then
 		compile_state(runtime, state)
 	end
@@ -424,87 +418,6 @@ SearchRuntime.capture_presentation = function(runtime, view, slot_filter, item_t
 	end
 
 	return true
-end
-
-local function insert_external_entries(result, external_entries)
-	for index = 1, #external_entries do
-		local external = external_entries[index]
-		local insertion_index = math.min(external.index, #result + 1)
-
-		table.insert(result, insertion_index, external.entry)
-	end
-end
-
-SearchRuntime.compose_layout = function(runtime, view, layout)
-	local state = state_for(runtime, view, true)
-
-	if not state or type(layout) ~= "table" then
-		return layout
-	end
-
-	state.last_present_arguments = nil
-	state.presentation_kind = "external"
-	if not state.compiled then
-		compile_state(runtime, state)
-	end
-	scan(runtime, view, state, layout)
-
-	if not query_is_active(state) then
-		return layout
-	end
-
-	local ranked_entries = {}
-	local original_order = {}
-	local external_entries = {}
-	local hide = mode(runtime) == "hide"
-
-	for index = 1, #layout do
-		local entry = layout[index]
-		local item = item_from(entry)
-
-		if not item then
-			external_entries[#external_entries + 1] = {
-				entry = entry,
-				index = index,
-			}
-		else
-			local matched = result_for(state, entry)
-
-			if matched == nil then
-				matched = result_for(state, item)
-			end
-
-			if matched == true or not hide then
-				ranked_entries[#ranked_entries + 1] = entry
-				original_order[entry] = index
-			end
-		end
-	end
-
-	table.sort(ranked_entries, function(left, right)
-		local _, left_found, left_rank = result_for(state, left)
-		local _, right_found, right_rank = result_for(state, right)
-
-		if not left_found then
-			_, left_found, left_rank = result_for(state, item_from(left))
-		end
-
-		if not right_found then
-			_, right_found, right_rank = result_for(state, item_from(right))
-		end
-
-		left_rank = left_found and left_rank or 0
-		right_rank = right_found and right_rank or 0
-
-		if left_rank ~= right_rank then
-			return left_rank > right_rank
-		end
-
-		return original_order[left] < original_order[right]
-	end)
-	insert_external_entries(ranked_entries, external_entries)
-
-	return ranked_entries
 end
 
 SearchRuntime.set_query = function(runtime, view, query, now)
@@ -739,19 +652,15 @@ SearchRuntime.update = function(runtime, view, now)
 	ok = safe_call(runtime.dependencies.reorder, view, current_mode == "hide")
 
 	if ok ~= true then
-		if state.presentation_kind == "external" then
-			ok = safe_call(runtime.dependencies.present_external, view)
-		else
-			local arguments = state.last_present_arguments
+		local arguments = state.last_present_arguments
 
-			if not arguments then
-				return false
-			end
-
-			state.reuse_next_capture_results = true
-			ok = safe_call(runtime.dependencies.present, view, arguments[3], arguments[2], arguments[1])
-			state.reuse_next_capture_results = nil
+		if not arguments then
+			return false
 		end
+
+		state.reuse_next_capture_results = true
+		ok = safe_call(runtime.dependencies.present, view, arguments[3], arguments[2], arguments[1])
+		state.reuse_next_capture_results = nil
 	end
 
 	if ok == nil then
@@ -819,7 +728,6 @@ SearchRuntime.release = function(runtime, view)
 	state.owned_widget_alpha = nil
 	state.ranks = nil
 	state.last_present_arguments = nil
-	state.presentation_kind = nil
 	state.projection_context = nil
 	state.query = nil
 	state.reuse_next_capture_results = nil

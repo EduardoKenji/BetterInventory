@@ -57,6 +57,7 @@
     "BetterInventory_profile_spawner_compatibility.lua": {"minimum_percent": 80.0, "risk": "critical"},
     "BetterInventory_rarity_rating.lua": {"minimum_percent": 75.0, "risk": "high"},
     "BetterInventory_runtime.lua": {"minimum_percent": 60.0, "risk": "critical"},
+    "BetterInventory_runtime_lifecycle.lua": {"minimum_percent": 75.0, "risk": "critical"},
     "BetterInventory_search_integration.lua": {"minimum_percent": 65.0, "risk": "high"},
     "BetterInventory_search_hooks.lua": {"minimum_percent": 75.0, "risk": "high"},
     "BetterInventory_search_index.lua": {"minimum_percent": 75.0, "risk": "high"},

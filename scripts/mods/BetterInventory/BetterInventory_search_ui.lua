@@ -6,6 +6,9 @@ local SearchUI = {}
 -- survive Ctrl+Shift+R, so a plain boolean cannot distinguish an initialized
 -- widget from one whose old runtime/cache was just replaced.
 local UI_GENERATION = {}
+local tracked_views = setmetatable({}, {
+	__mode = "k",
+})
 local INPUT_NAME = "better_inventory_search_input"
 local MAX_QUERY_LENGTH = 128
 local INPUT_HEIGHT = 34
@@ -22,7 +25,6 @@ local MELK_LIMITED_SEARCH_GAP = -40
 local MELK_LIMITED_SEARCH_ROW_PADDING = 40
 local MELK_MULTI_SEARCH_GAP = -40
 local MELK_MULTI_SEARCH_ROW_PADDING = 45
-local BARTER_GRID_OFFSET = 100
 local GLOBAL_STORE_MELK_SERVICE = "get_all_characters_marks_store_custom"
 
 local function supported(view)
@@ -30,7 +32,6 @@ local function supported(view)
 
 	return class_name == "InventoryWeaponsView"
 		or class_name == "CraftingMechanicusModifyView"
-		or class_name == "CraftingMechanicusBarterItemsView"
 		or class_name == "CreditsVendorView"
 		or class_name == "CreditsGoodsVendorView"
 		or class_name == "MarksVendorView"
@@ -224,9 +225,7 @@ local function configured_pixels(mod, setting_id, default_value, maximum, minimu
 end
 
 local function search_geometry(definitions, view, mod)
-	if view.__class_name == "CraftingMechanicusBarterItemsView" then
-		return 16, 58, 486
-	elseif view.__class_name == "CraftingMechanicusModifyView" then
+	if view.__class_name == "CraftingMechanicusModifyView" then
 		-- Hadron's native 80px grid title reserve is much taller than its tab
 		-- frame. Position the field from the actual pivot instead of stacking it
 		-- after that reserve, which otherwise wastes most of a card row.
@@ -295,6 +294,7 @@ SearchUI.decorate_definitions = function(definitions, view, mod, context, base_d
 	end
 
 	view._better_inventory_search_ui_unavailable = nil
+	tracked_views[view] = true
 	local owned = clone(definitions)
 	owned._better_inventory_search_decorated = true
 	owned.grid_settings = clone(owned.grid_settings)
@@ -304,8 +304,7 @@ SearchUI.decorate_definitions = function(definitions, view, mod, context, base_d
 
 	-- Keep Darktide's title height intact. ViewElementGrid centers its title in
 	-- that height, so expanding it moves labels such as "Primary Weapon".
-	if view.__class_name ~= "CraftingMechanicusBarterItemsView" then
-		local row_padding = view.__class_name == "CreditsVendorView"
+	local row_padding = view.__class_name == "CreditsVendorView"
 			and configured_pixels(mod, "inventory_search_armoury_bottom_padding", ARMOURY_SEARCH_ROW_PADDING, 96)
 			or melk_route(view) == "limited"
 				and configured_pixels(mod, "inventory_search_melk_limited_bottom_padding", MELK_LIMITED_SEARCH_ROW_PADDING, 96)
@@ -316,8 +315,7 @@ SearchUI.decorate_definitions = function(definitions, view, mod, context, base_d
 			or view.__class_name == "CraftingMechanicusModifyView"
 				and configured_pixels(mod, "inventory_search_hadron_bottom_padding", HADRON_SEARCH_ROW_PADDING, 96)
 			or SEARCH_ROW_PADDING
-		owned.grid_settings.top_padding = (tonumber(owned.grid_settings.top_padding) or 0) + row_padding
-	end
+	owned.grid_settings.top_padding = (tonumber(owned.grid_settings.top_padding) or 0) + row_padding
 
 	owned.scenegraph_definition[INPUT_NAME] = {
 		horizontal_alignment = "left",
@@ -629,6 +627,8 @@ SearchUI.focus = function(view)
 		return false
 	end
 
+	tracked_views[view] = true
+
 	content.is_writing = true
 	content.caret_position = text_length(content.input_text) + 1
 	content.force_caret_update = true
@@ -684,6 +684,8 @@ SearchUI.update = function(mod, Features, view, time)
 	if not input then
 		return false
 	end
+
+	tracked_views[view] = true
 
 	local visible = enabled_for_view(mod, view)
 
@@ -839,10 +841,6 @@ SearchUI.handle_view_input = function(mod, view, input_service)
 	return true
 end
 
-SearchUI.barter_grid_offset = function()
-	return BARTER_GRID_OFFSET
-end
-
 SearchUI.release = function(view)
 	SearchUI.defocus(view)
 	own_input_legend(view, false)
@@ -858,7 +856,23 @@ SearchUI.release = function(view)
 		view._better_inventory_search_grid_input_was_disabled = nil
 		view._better_inventory_search_legend_input_owned = nil
 		view._better_inventory_search_view_disabled = nil
+		view._better_inventory_search_melk_route = nil
+		tracked_views[view] = nil
 	end
+end
+
+SearchUI.release_all = function()
+	local views = {}
+
+	for view in pairs(tracked_views) do
+		views[#views + 1] = view
+	end
+
+	for index = 1, #views do
+		SearchUI.release(views[index])
+	end
+
+	return #views
 end
 
 return SearchUI

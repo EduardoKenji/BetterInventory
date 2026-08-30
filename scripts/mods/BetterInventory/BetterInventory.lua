@@ -119,6 +119,7 @@ local FavoriteIntegration = no_op_module(mod:io_dofile("BetterInventory/scripts/
 local ItemCustomization = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_item_customization"), "BetterInventory_item_customization.lua")
 local SearchUI = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_search_ui"), "BetterInventory_search_ui.lua")
 local SearchHooks = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_search_hooks"), "BetterInventory_search_hooks.lua")
+local RuntimeLifecycle = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_runtime_lifecycle"), "BetterInventory_runtime_lifecycle.lua")
 local CustomTier = no_op_module(mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_custom_tier"), "BetterInventory_custom_tier.lua", {
 	install = function() return false end,
 	on_disabled = function() end,
@@ -190,7 +191,7 @@ local function hud_read_member(object, key)
 	return object[key]
 end
 
-rawset(_G, "AutoCrafterHelperHudState", {
+local auto_crafter_hud_bridge = {
 	enabled = function()
 		local mod_enabled = type(mod.is_enabled) ~= "function" or mod:is_enabled()
 
@@ -220,7 +221,9 @@ rawset(_G, "AutoCrafterHelperHudState", {
 
 		return not matchmaking_ok or matchmaking ~= true
 	end,
-})
+}
+
+rawset(_G, "AutoCrafterHelperHudState", auto_crafter_hud_bridge)
 
 local AutoCrafterViewStatusOverlay = mod:io_dofile("BetterInventory/scripts/mods/BetterInventory/auto_crafter/darktide/view_status_overlay")
 
@@ -537,8 +540,44 @@ if type(Features.configure_search) == "function" then
 		CurioTraitSearchTerms = Layout.curio_trait_search_terms,
 		CustomTier = CustomTier,
 		ItemCustomization = ItemCustomization,
+		NormalizeGlobalStoreWidgets = function(view, item_grid)
+			local armoury_global = type(CharacterOverviewUI.is_global_store_view) == "function"
+				and CharacterOverviewUI.is_global_store_view(view)
+			local melk_global = false
+
+			if type(CharacterOverviewUI.melk_grid_route) == "function" then
+				local _, global_store = CharacterOverviewUI.melk_grid_route(view)
+				melk_global = global_store == true
+			end
+
+			if not armoury_global and not melk_global then
+				return 0, 0
+			end
+
+			local global_store = FeatureDomains and FeatureDomains.global_store
+			local normalize_widgets = global_store and global_store.normalize_widgets
+
+			if type(normalize_widgets) ~= "function" then
+				return 0, 0
+			end
+
+			local portrait_size = 34
+
+			if type(Layout.global_store_character_photo_size) == "function" then
+				portrait_size = Layout.global_store_character_photo_size(mod)
+			end
+
+			return normalize_widgets(item_grid, portrait_size)
+		end,
 	})
 end
+RuntimeLifecycle.configure({
+	Features = Features,
+	Layout = Layout,
+	SearchUI = SearchUI,
+	ViewElementGrid = ViewElementGrid,
+	mod = mod,
+})
 if type(ItemCustomization.set_change_listener) == "function" then
 	ItemCustomization.set_change_listener(function()
 		if type(Layout.invalidate_item_customization_tracking) == "function" then
@@ -656,6 +695,7 @@ Runtime.configure({
 	VendorInteractionViewBase = VendorInteractionViewBase,
 	WeaponOptionsPanel = WeaponOptionsPanel,
 	SearchUI = SearchUI,
+	RuntimeLifecycle = RuntimeLifecycle,
 })
 if type(ProfileSpawnerCompatibility.install) == "function" then
 	ProfileSpawnerCompatibility.install(mod, UIProfileSpawner)
@@ -665,9 +705,9 @@ SearchHooks.install({
 	mod = mod,
 	Features = Features,
 	SearchUI = SearchUI,
+	RuntimeLifecycle = RuntimeLifecycle,
 	ItemGridViewBase = ItemGridViewBase,
 	InventoryWeaponsView = InventoryWeaponsView,
-	BaseView = BaseView,
 	CraftingMechanicusModifyView = CraftingMechanicusModifyView,
 	MarksVendorView = MarksVendorView,
 	VendorViewBase = VendorViewBase,
@@ -716,4 +756,12 @@ extend_runtime_callback("on_disabled", function()
 end)
 extend_runtime_callback("on_disabled", function()
 	return GodStatCheckerIntegration.on_disabled()
+end)
+extend_runtime_callback("on_unload", function()
+	CustomTier.on_disabled()
+	GodStatCheckerIntegration.on_disabled()
+
+	if rawget(_G, "AutoCrafterHelperHudState") == auto_crafter_hud_bridge then
+		rawset(_G, "AutoCrafterHelperHudState", nil)
+	end
 end)
