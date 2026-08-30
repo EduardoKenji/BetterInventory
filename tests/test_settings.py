@@ -1831,6 +1831,7 @@ def main() -> None:
 		"weapon_rarity_rating_opacity",
 		"curio_rarity_rating_use_card_background_color",
 		"curio_rarity_rating_opacity",
+		"weapon_kill_counter_show_zero_kills_in_stores",
 		"enable_hadron_entreat_grid",
 		"enable_hadron_single_column_mirror",
 		"enable_armoury_requisition_grid",
@@ -2119,6 +2120,7 @@ def main() -> None:
     assert entries_by_id["weapon_rarity_rating_opacity"].disabled is True
     assert entries_by_id["curio_rarity_rating_use_card_background_color"].disabled is True
     assert entries_by_id["curio_rarity_rating_opacity"].disabled is True
+    assert entries_by_id["weapon_kill_counter_show_zero_kills_in_stores"].disabled is False
     assert entries_by_id["enable_hadron_entreat_grid"].disabled is False
     assert entries_by_id["enable_hadron_single_column_mirror"].disabled is True
     assert entries_by_id["enable_armoury_requisition_grid"].disabled is False
@@ -2179,6 +2181,20 @@ def main() -> None:
     assert entries_by_id["weapon_rarity_rating_opacity"].disabled is True
     assert entries_by_id["curio_rarity_rating_use_card_background_color"].disabled is True
     assert entries_by_id["curio_rarity_rating_opacity"].disabled is True
+    settings.weapon_kill_counter_show_zero_kills = False
+    mod.on_setting_changed("weapon_kill_counter_show_zero_kills")
+    store_zero_entry = entries_by_id[
+        "weapon_kill_counter_show_zero_kills_in_stores"
+    ]
+    assert store_zero_entry.disabled is True
+    assert (
+        store_zero_entry.disabled_by[1]
+        == "option_requires_weapon_kill_counter_zero_kills"
+    )
+    settings.weapon_kill_counter_show_zero_kills = True
+    mod.on_setting_changed("weapon_kill_counter_show_zero_kills")
+    assert store_zero_entry.disabled is False
+    assert store_zero_entry.disabled_by is None
     assert globals_.character_options_refresh_callback is not None
     settings.enable_grid_layout = False
     globals_.character_options_refresh_callback()
@@ -2913,6 +2929,7 @@ def main() -> None:
 			"new_item_highlight_color_r",
 			"new_item_highlight_color_g",
 			"new_item_highlight_color_b",
+			"weapon_kill_counter_show_zero_kills_in_stores",
 			"character_overview_show_melee_rarity_strip",
 			"character_overview_show_ranged_rarity_strip",
 			"character_overview_blessing_name_mode",
@@ -3067,6 +3084,10 @@ def main() -> None:
         == "Show zero kills for unused weapons"
     )
     assert (
+        localization["weapon_kill_counter_show_zero_kills_in_stores"]["en"]
+        == "Show zero kills for unused store weapons"
+    )
+    assert (
         localization["god_stat_checker_background_owner_custom_tier"]["en"]
         == "Custom legendary tier"
     )
@@ -3141,6 +3162,7 @@ def main() -> None:
     assert localization["enable_melk_multi_operative_grid"]["zh-cn"] == "在多干员补给中镜像军械库网格"
     assert localization["weapon_kill_counter_integration_group"]["zh-cn"] == "模组集成：Weapon Kill Counter"
     assert localization["weapon_kill_counter_show_zero_kills"]["zh-cn"] == "为未使用过的武器显示 0 次击杀"
+    assert localization["weapon_kill_counter_show_zero_kills_in_stores"]["zh-cn"] == "为商店中的未使用武器显示 0 次击杀"
     assert localization["inventory_search_placeholder"]["zh-cn"] == "搜索：剑 & 命中弱点 & 防弹装甲"
     assert localization["inventory_search_curio_placeholder"]["zh-cn"] == "搜索：韧性 & 生命值 & 复活速度"
     assert localization["debug_group"]["zh-cn"] == "调试（仅测试用）"
@@ -3175,6 +3197,7 @@ def main() -> None:
     inspect_widgets(data.options.widgets)
     assert defaults["enable_inventory_search_brunt"] is False
     assert defaults["weapon_kill_counter_show_zero_kills"] is True
+    assert defaults["weapon_kill_counter_show_zero_kills_in_stores"] is True
 
     custom_tier_group = next(
         data.options.widgets[index]
@@ -3499,12 +3522,15 @@ def main() -> None:
         for index in range(1, len(data.options.widgets) + 1)
         if data.options.widgets[index].setting_id == "weapon_kill_counter_integration_group"
     )
-    assert len(weapon_kill_counter_group.sub_widgets) == 1
-    assert (
-        weapon_kill_counter_group.sub_widgets[1].setting_id
-        == "weapon_kill_counter_show_zero_kills"
-    )
+    assert [
+        weapon_kill_counter_group.sub_widgets[index].setting_id
+        for index in range(1, len(weapon_kill_counter_group.sub_widgets) + 1)
+    ] == [
+        "weapon_kill_counter_show_zero_kills",
+        "weapon_kill_counter_show_zero_kills_in_stores",
+    ]
     assert weapon_kill_counter_group.sub_widgets[1].default_value is True
+    assert weapon_kill_counter_group.sub_widgets[2].default_value is True
 
     card_content_group = next(
         data.options.widgets[index]

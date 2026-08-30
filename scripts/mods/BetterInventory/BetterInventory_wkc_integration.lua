@@ -179,6 +179,16 @@ local function resolved_kills(mod, content, allow_zero_kills)
 	return allow_zero_kills ~= false and setting(mod, "weapon_kill_counter_show_zero_kills", true) == true and 0 or nil
 end
 
+local function store_zero_kills_enabled(mod)
+	return setting(mod, "weapon_kill_counter_show_zero_kills", true) == true
+		and setting(mod, "weapon_kill_counter_show_zero_kills_in_stores", true) == true
+end
+
+local function zero_kills_allowed(mod, configuration)
+	return not configuration or configuration.store_item ~= true
+		or setting(mod, "weapon_kill_counter_show_zero_kills_in_stores", true) == true
+end
+
 local function abbreviated_kills(wkc, kills)
 	if wkc and type(wkc._abbrev_num) == "function" then
 		local success, value = pcall(wkc._abbrev_num, kills)
@@ -388,7 +398,7 @@ local function remove_weapon_stats_listing_overlays(element)
 	return removed
 end
 
-local function cap_brunt_listing_overlay_sizes(item_grid)
+local function cap_brunt_listing_overlay_sizes(item_grid, mod)
 	local seen = {}
 	local wrapped = 0
 
@@ -449,13 +459,51 @@ local function cap_brunt_listing_overlay_sizes(item_grid)
 
 				if pass.better_inventory_wkc_brunt_size_cap ~= true then
 					local original_change_function = pass.change_function
+					local original_visibility_function = pass.visibility_function
 
 					pass.change_function = function(content, style, ...)
 						if type(original_change_function) == "function" then
 							original_change_function(content, style, ...)
 						end
 
+						local kills = store_zero_kills_enabled(mod) and resolved_kills(mod, content, true) or nil
+
+						if kills == 0 then
+							if style_id == TEXT_STYLE_ID then
+								content[TEXT_STYLE_ID] = "0"
+							elseif style_id == ICON_STYLE_ID then
+								local current_wkc = optional_wkc()
+								local current_configuration = card_configuration(current_wkc) or {}
+								local material = DEFAULT_ICON
+
+								if current_wkc and type(current_wkc._overlay_icon_material) == "function" then
+									local success, resolved_material = pcall(current_wkc._overlay_icon_material, current_configuration)
+
+									if success and type(resolved_material) == "string" and resolved_material ~= "" then
+										material = resolved_material
+									end
+								end
+
+								content[ICON_STYLE_ID] = material
+							end
+						end
+
 						cap_style(style, style_id, content)
+					end
+					pass.visibility_function = function(content, style, ...)
+						local originally_visible = type(original_visibility_function) ~= "function" or original_visibility_function(content, style, ...)
+
+						if originally_visible then
+							return true
+						end
+
+						if not store_zero_kills_enabled(mod) or resolved_kills(mod, content, true) ~= 0 then
+							return false
+						end
+
+						local current_configuration = card_configuration(optional_wkc())
+
+						return style_id ~= ICON_STYLE_ID or not current_configuration or current_configuration.icon_on ~= false
 					end
 					pass.better_inventory_wkc_brunt_size_cap = true
 					wrapped = wrapped + 1
@@ -491,7 +539,7 @@ local function install_brunt_listing_hook(mod)
 		local view = item_grid and item_grid._parent
 
 		if view and view.__class_name == "CreditsGoodsVendorView" then
-			cap_brunt_listing_overlay_sizes(item_grid)
+			cap_brunt_listing_overlay_sizes(item_grid, mod)
 		end
 	end)
 
@@ -514,7 +562,6 @@ local function configure_passes(mod, pass_template, card_width, text_left, confi
 	local icon_color = color_from_configuration(wkc_configuration.icon_color, DEFAULT_COLOR)
 	local font_type = type(wkc_configuration.font_type) == "string" and wkc_configuration.font_type ~= "" and wkc_configuration.font_type or "proxima_nova_bold"
 	local icon_material = DEFAULT_ICON
-	local allow_zero_kills = configuration.store_item ~= true
 
 	if wkc and type(wkc._overlay_icon_material) == "function" then
 		local success, material = pcall(wkc._overlay_icon_material, wkc_configuration)
@@ -547,7 +594,7 @@ local function configure_passes(mod, pass_template, card_width, text_left, confi
 			local current_wkc = optional_wkc()
 			local current_configuration = card_configuration(current_wkc)
 
-			return (not current_configuration or current_configuration.icon_on ~= false) and resolved_kills(mod, content, allow_zero_kills) ~= nil
+			return (not current_configuration or current_configuration.icon_on ~= false) and resolved_kills(mod, content, zero_kills_allowed(mod, configuration)) ~= nil
 		end,
 		change_function = function(content)
 			local current_wkc = optional_wkc()
@@ -592,10 +639,10 @@ local function configure_passes(mod, pass_template, card_width, text_left, confi
 			text_color = text_color,
 		},
 		visibility_function = function(content)
-			return resolved_kills(mod, content, allow_zero_kills) ~= nil
+			return resolved_kills(mod, content, zero_kills_allowed(mod, configuration)) ~= nil
 		end,
 		change_function = function(content)
-			local kills = resolved_kills(mod, content, allow_zero_kills)
+			local kills = resolved_kills(mod, content, zero_kills_allowed(mod, configuration))
 			local current_wkc = optional_wkc()
 
 			content[TEXT_STYLE_ID] = kills and abbreviated_kills(current_wkc, kills) or ""
