@@ -141,6 +141,15 @@ SearchHooks.install = function(dependencies)
 	install_view_input_hook(VendorViewBase)
 	install_view_input_hook(CraftingMechanicusBarterItemsView)
 
+	-- Darktide's class() copies superclass functions into child tables. Melk's
+	-- class therefore retains its own VendorViewBase._handle_input reference;
+	-- hooking VendorViewBase later does not affect it. Own and hook the exact
+	-- MarksVendorView seam so ESC and outside-click focus release run in-game and
+	-- after Ctrl+Shift+R.
+	if ensure_class_method(MarksVendorView, "_handle_input") then
+		install_view_input_hook(MarksVendorView)
+	end
+
 	if method_available(BaseView, "init") then
 		mod:hook(BaseView, "init", function(func, view, definitions, settings, context, ...)
 			if view and view.__class_name == "CraftingMechanicusBarterItemsView" and mod:get("enable_inventory_search") ~= false and type(SearchUI.decorate_definitions) == "function" then
