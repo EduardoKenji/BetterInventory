@@ -238,10 +238,11 @@ Domains.global_store.grid_rebuild_required = function(item_grid, layout)
 end
 
 -- GlobalStore 1.x attaches an asynchronous profile-portrait load to each card
--- but unloads it only from CreditsVendorView.destroy. Category switches destroy
--- the card widgets first, losing those IDs while their callbacks retain the old
--- widgets. Retire only the outgoing generation, immediately before Darktide's
--- own destructive presentation, and leave in-place search reorders untouched.
+-- but unloads it only when the final Credits/Marks vendor view is destroyed.
+-- Category switches destroy the card widgets first, losing those IDs while
+-- their callbacks retain the old widgets. Retire only the outgoing generation,
+-- immediately before Darktide's own destructive presentation, and leave
+-- in-place search reorders untouched.
 Domains.global_store.retire_grid_generation = function(item_grid, layout, ui_manager)
 	if not Domains.global_store.grid_rebuild_required(item_grid, layout) then
 		return 0, false

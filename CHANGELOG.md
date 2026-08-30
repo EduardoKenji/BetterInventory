@@ -1,5 +1,14 @@
 # BetterInventory changelog
 
+## 3.4.1 - 2026-08-29
+
+- Adds exact, idempotent teardown for native and GlobalStore `MarksVendorView` instances, releasing Equipment Text Search state, retained grid buffers, dim ownership, focus, marker ownership, and transient caches across repeated Melk close/reopen cycles.
+- Preserves the already-selected BetterInventory/ItemSorting/native order as the stable search-rank tie-break instead of re-running its comparator for every query. This removes GodRolls' expensive full weapon-stat/name projection from query-time sorting without changing equal-rank order.
+- Resolves one search rank per card before sorting and reuses bounded scalar rank/source-position maps plus the existing two visible-layout buffers.
+- Removes a redundant second search-release attempt from normal session teardown, avoids allocating a throwaway weak rank table on close, and stores optional remembered queries as bounded strings with hot-reload migration support.
+- Audits the v3.4.0 Melk focus fixes: discarded parent-back and invalid-key attempts are absent; the exact copied-class input hook, physical Escape fallback, and outside-click fallback remain because each covers a confirmed Darktide input seam.
+- Adds repeated Melk open/query/close, zero-external-comparator, retained-buffer, bounded-map, and failed-focus-path regression coverage. See the [v3.4.1 audit](docs/v3.4.1-melk-search-memory-godrolls-audit.md).
+
 ## 3.4.0 - 2026-08-29
 
 - Adds an independent default-on Equipment Text Search option for both equipment-bearing Sire Melk grids, with `-40 / 40` Limited Time and `-40 / 45` Multi-Operative default spacing; non-equipment Mystery Acquisitions remains search-free.

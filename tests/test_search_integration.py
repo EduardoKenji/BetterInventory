@@ -372,21 +372,25 @@ def main() -> None:
 			_selected_sort_option_index = 1,
 			_sort_options = {{
 				sort_function = function(left, right)
+					selected_sort_calls = (selected_sort_calls or 0) + 1
 					return left.match == true and right.match ~= true
 				end,
 			}},
 		}
 		in_place_result = runtime_instance.dependencies.reorder(in_place_view)
+		first_rank_sort = in_place_view._better_inventory_search_grid_buffers.rank_sort
 		first_live_layout = in_place_grid._visible_grid_layout
 		first_live_top = first_live_layout[1].entry_id
 		first_live_item = first_live_layout[2]
 		first_live_bottom = first_live_layout[4].entry_id
 		first_selected_index = grid_state._selected_grid_index
 		in_place_view._sort_options[1].sort_function = function(left, right)
+			selected_sort_calls = (selected_sort_calls or 0) + 100
 			return left.match ~= true and right.match == true
 		end
 		second_in_place_result = runtime_instance.dependencies.reorder(in_place_view, false)
 		second_live_layout = in_place_grid._visible_grid_layout
+		second_rank_sort = in_place_view._better_inventory_search_grid_buffers.rank_sort
 		buffers_are_distinct = first_live_layout ~= second_live_layout
 		first_buffer_was_not_cleared_while_live = #first_live_layout == 4
 		hide_in_place_result = runtime_instance.dependencies.reorder(in_place_view, true)
@@ -401,6 +405,14 @@ def main() -> None:
 		fallback_live_layout = in_place_grid._visible_grid_layout
 		fallback_live_item = fallback_live_layout[2]
 		fallback_widget_b = in_place_grid._grid_widgets[1]
+		for index = 1, 20 do
+			stress_in_place_result = runtime_instance.dependencies.reorder(in_place_view, index % 2 == 0)
+		end
+		stress_buffers = in_place_view._better_inventory_search_grid_buffers
+		stress_source_position_count = 0
+		for _ in pairs(stress_buffers.source_positions) do
+			stress_source_position_count = stress_source_position_count + 1
+		end
         ''',
     )
     assert lua.globals().external_present_result is True
@@ -411,7 +423,7 @@ def main() -> None:
     assert lua.globals().hide_in_place_result is True
     assert lua.globals().restore_in_place_result is True
     assert lua.globals().fallback_in_place_result is True
-    assert lua.globals().in_place_updates == 5
+    assert lua.globals().in_place_updates == 25
     assert lua.globals().first_live_top == "top"
     assert lua.execute("return first_live_item == entry_b") is True
     assert lua.globals().first_live_bottom == "bottom"
@@ -419,12 +431,19 @@ def main() -> None:
     assert lua.globals().first_selected_index == 1
     assert lua.globals().buffers_are_distinct is True
     assert lua.globals().first_buffer_was_not_cleared_while_live is True
-    assert lua.execute("return second_live_layout[2] == entry_a") is True
+    # Search partitions the already-native-sorted canonical layout by rank. It
+    # must never re-run the selected comparator: GodRolls decorates
+    # Items.display_name from that comparator with a full weapon projection.
+    assert lua.globals().selected_sort_calls is None
+    assert lua.execute("return first_rank_sort == second_rank_sort") is True
+    assert lua.execute("return second_live_layout[2] == entry_b") is True
     assert lua.globals().hidden_live_count == 3
     assert lua.execute("return hidden_live_item == entry_b") is True
     assert len(lua.globals().restored_live_layout) == 4
     assert lua.execute("return fallback_live_item == entry_b") is True
     assert lua.execute("return fallback_widget_b == widget_b") is True
+    assert lua.globals().stress_in_place_result is True
+    assert lua.globals().stress_source_position_count == 2
 
     # Brunt has no native sort options. Its default-off gate suppresses runtime
     # registration; opting in exposes the same retained in-place lane above.

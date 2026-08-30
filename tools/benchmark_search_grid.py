@@ -26,6 +26,7 @@ def main() -> None:
                 benchmark_runtime = {dependencies = dependencies, states = {}}
                 return benchmark_runtime
             end,
+            rank = function(_, _, entry) return entry and entry.search_rank or 0 end,
         }
         stub_discard = {
             equipped_gear_ids = function() return {} end,

@@ -175,13 +175,6 @@ local function reorder_existing_grid(view, configure_sort, runtime, hide_unmatch
 
 	configure_sort(view)
 
-	local sort_options = view._sort_options
-	local option = sort_options and sort_options[view._selected_sort_option_index or 1]
-
-	if not option then
-		option = view._selected_sort_option
-	end
-
 	local buffers = view._better_inventory_search_grid_buffers
 
 	if type(buffers) ~= "table" then
@@ -191,6 +184,7 @@ local function reorder_existing_grid(view, configure_sort, runtime, hide_unmatch
 			layouts = {{}, {}},
 			positions = {{}, {}},
 			source_positions = {},
+			source_ranks = {},
 		}
 		view._better_inventory_search_grid_buffers = buffers
 	end
@@ -198,15 +192,28 @@ local function reorder_existing_grid(view, configure_sort, runtime, hide_unmatch
 	if type(buffers.source_positions) ~= "table" then
 		buffers.source_positions = {}
 	end
+	if type(buffers.source_ranks) ~= "table" then
+		buffers.source_ranks = {}
+	end
 
-	-- An open view can retain these buffers across Ctrl+Shift+R. Replace only
-	-- the one comparator closure when its captured runtime generation changes;
-	-- ordinary queries reuse the same closure and source-position map.
-	if buffers.fallback_runtime ~= runtime or type(buffers.fallback_sort) ~= "function" then
-		buffers.fallback_runtime = runtime
-		buffers.fallback_sort = function(left, right)
-			local left_rank = SearchRuntime.rank(runtime, view, left)
-			local right_rank = SearchRuntime.rank(runtime, view, right)
+	-- `_grid_layout` is Darktide's canonical layout and is already ordered by
+	-- the selected BetterInventory, ItemSorting, or native comparator. Preserve
+	-- that order as the tie-break instead of invoking the comparator again for
+	-- every settled query. This is both stable and important for compatibility:
+	-- name-decorating mods such as GodRolls can perform a full weapon-stat
+	-- projection inside Items.display_name, which native name tie-breakers call
+	-- O(n log n) times during an otherwise allocation-free search reorder.
+	--
+	-- Cache one scalar rank per canonical entry before sorting. Calling
+	-- SearchRuntime.rank from the comparator repeated view/state resolution
+	-- O(n log n) times even though every entry already has a settled result.
+	-- Version the retained closure so Ctrl+Shift+R replaces pre-v3.4.1 closures
+	-- that captured the old runtime generation.
+	if buffers.rank_sort_version ~= 1 or type(buffers.rank_sort) ~= "function" then
+		buffers.rank_sort_version = 1
+		buffers.rank_sort = function(left, right)
+			local left_rank = buffers.source_ranks[left] or 0
+			local right_rank = buffers.source_ranks[right] or 0
 
 			if left_rank ~= right_rank then
 				return left_rank > right_rank
@@ -216,18 +223,13 @@ local function reorder_existing_grid(view, configure_sort, runtime, hide_unmatch
 		end
 	end
 
-	local sort_function = option and option.sort_function
-	local use_fallback_sort = type(sort_function) ~= "function"
-
-	if use_fallback_sort then
-		clear_map(buffers.source_positions)
-		sort_function = buffers.fallback_sort
-	elseif next(buffers.source_positions) ~= nil then
-		-- The fallback map owns strong layout-entry keys. If a later integration
-		-- restores a native comparator, release that last bounded generation now
-		-- instead of retaining it until the view closes.
-		clear_map(buffers.source_positions)
-	end
+	-- Drop closures left by pre-v3.4.1 hot reloads so an already-open view does
+	-- not retain the previous search runtime until it closes.
+	buffers.fallback_runtime = nil
+	buffers.fallback_sort = nil
+	buffers.rank_runtime = nil
+	clear_map(buffers.source_positions)
+	clear_map(buffers.source_ranks)
 
 	local buffer_index = buffers.active == 1 and 2 or 1
 	local target = buffers.layouts[buffer_index]
@@ -257,9 +259,8 @@ local function reorder_existing_grid(view, configure_sort, runtime, hide_unmatch
 			if entry.entry_id ~= entry_id then
 				return false
 			end
-			if use_fallback_sort then
-				buffers.source_positions[entry] = index
-			end
+			buffers.source_positions[entry] = index
+			buffers.source_ranks[entry] = SearchRuntime.rank(runtime, view, entry)
 
 			if hide_unmatched ~= true or SearchRuntime.matches(runtime, view, entry) then
 				target[#target + 1] = entry
@@ -291,7 +292,7 @@ local function reorder_existing_grid(view, configure_sort, runtime, hide_unmatch
 	end
 
 	if #target > 1 then
-		table.sort(target, sort_function)
+		table.sort(target, buffers.rank_sort)
 	end
 
 	for index = 1, anchor_count do

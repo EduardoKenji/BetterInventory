@@ -55,6 +55,7 @@ SearchHooks.install = function(dependencies)
 	local MarksVendorView = dependencies.MarksVendorView or GameMarksVendorView
 	local VendorViewBase = dependencies.VendorViewBase
 	local ViewElementGrid = dependencies.ViewElementGrid
+	local release_item_grid_view_runtime = dependencies.release_item_grid_view_runtime
 
 	if type(mod) ~= "table" or type(Features) ~= "table" or type(SearchUI) ~= "table" then
 		return false
@@ -148,6 +149,17 @@ SearchHooks.install = function(dependencies)
 	-- after Ctrl+Shift+R.
 	if ensure_class_method(MarksVendorView, "_handle_input") then
 		install_view_input_hook(MarksVendorView)
+	end
+
+	-- Melk retains copied lifecycle methods too, so base-class cleanup hooks do
+	-- not reach either the native or GlobalStore Marks view.
+	if type(release_item_grid_view_runtime) == "function" then
+		if ensure_class_method(MarksVendorView, "on_exit") then
+			mod:hook_safe(MarksVendorView, "on_exit", release_item_grid_view_runtime)
+		end
+		if ensure_class_method(MarksVendorView, "destroy") then
+			mod:hook_safe(MarksVendorView, "destroy", release_item_grid_view_runtime)
+		end
 	end
 
 	if method_available(BaseView, "init") then
