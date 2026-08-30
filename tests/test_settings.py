@@ -1808,9 +1808,11 @@ def main() -> None:
         "expand_curio_inventory_window",
         "curio_target_card_width",
         "grid_spacing",
-        "automatic_card_height",
-        "card_height",
-        "enable_hadron_entreat_grid",
+		"automatic_card_height",
+		"card_height",
+		"weapon_rarity_rating_use_card_background_color",
+		"curio_rarity_rating_use_card_background_color",
+		"enable_hadron_entreat_grid",
 		"enable_hadron_single_column_mirror",
 		"enable_armoury_requisition_grid",
 		"enable_melk_limited_grid",
@@ -2094,6 +2096,8 @@ def main() -> None:
     assert entries_by_id["three_column_weapon_name_font_size"].disabled is False
     assert entries_by_id["automatic_card_height"].disabled is False
     assert entries_by_id["card_height"].disabled is True
+    assert entries_by_id["weapon_rarity_rating_use_card_background_color"].disabled is True
+    assert entries_by_id["curio_rarity_rating_use_card_background_color"].disabled is True
     assert entries_by_id["enable_hadron_entreat_grid"].disabled is False
     assert entries_by_id["enable_hadron_single_column_mirror"].disabled is True
     assert entries_by_id["enable_armoury_requisition_grid"].disabled is False
@@ -2137,6 +2141,18 @@ def main() -> None:
         assert entries_by_id[dump_style_id].disabled is False
     assert entries_by_id["character_overview_show_curio_rarity_strip"].disabled is False
     assert entries_by_id["character_overview_use_native_curio_overlay"].disabled is False
+    settings.weapon_rarity_rating_mode = "full_horizontal"
+    mod.on_setting_changed("weapon_rarity_rating_mode")
+    assert entries_by_id["weapon_rarity_rating_use_card_background_color"].disabled is False
+    assert entries_by_id["curio_rarity_rating_use_card_background_color"].disabled is True
+    settings.curio_rarity_rating_mode = "compact_horizontal"
+    mod.on_setting_changed("curio_rarity_rating_mode")
+    assert entries_by_id["curio_rarity_rating_use_card_background_color"].disabled is False
+    settings.weapon_rarity_rating_mode = "off"
+    settings.curio_rarity_rating_mode = "off"
+    mod.on_setting_changed("weapon_rarity_rating_mode")
+    assert entries_by_id["weapon_rarity_rating_use_card_background_color"].disabled is True
+    assert entries_by_id["curio_rarity_rating_use_card_background_color"].disabled is True
     assert globals_.character_options_refresh_callback is not None
     settings.enable_grid_layout = False
     globals_.character_options_refresh_callback()
@@ -3450,6 +3466,11 @@ def main() -> None:
         for index in range(1, len(card_content_group.sub_widgets) + 1)
     ]
     card_content_ids = set(ordered_card_content_ids)
+    weapon_rating_index = ordered_card_content_ids.index("weapon_rarity_rating_mode")
+    assert ordered_card_content_ids[weapon_rating_index : weapon_rating_index + 2] == [
+        "weapon_rarity_rating_mode",
+        "weapon_rarity_rating_use_card_background_color",
+    ]
     assert "weapon_perk_text_color_group" not in card_content_ids
     assert {
         "weapon_perk_text_color_preset",
@@ -3544,13 +3565,15 @@ def main() -> None:
     ]
     assert curio_content_ids.count("curio_content_name_it_curio_name") == 1
     assert curio_content_ids.count("curio_rarity_rating_mode") == 1
+    assert curio_content_ids.count("curio_rarity_rating_use_card_background_color") == 1
     curio_profile_index = curio_content_ids.index("curio_display_profile")
-    assert curio_content_ids[curio_profile_index : curio_profile_index + 5] == [
+    assert curio_content_ids[curio_profile_index : curio_profile_index + 6] == [
         "curio_display_profile",
         "curio_name_format",
         "curio_generated_name_respect_custom_names",
         "curio_content_name_it_curio_name",
         "curio_rarity_rating_mode",
+        "curio_rarity_rating_use_card_background_color",
     ]
     enhanced_descriptions_group = next(
         data.options.widgets[index]
@@ -3573,8 +3596,11 @@ def main() -> None:
     assert defaults["curio_columns"] == 3
     assert defaults["curio_display_profile"] == "detailed"
     assert defaults["curio_name_format"] == "original"
+    assert defaults["weapon_rarity_rating_mode"] == "off"
     assert defaults["curio_generated_name_respect_custom_names"] is True
     assert defaults["curio_rarity_rating_mode"] == "off"
+    assert defaults["weapon_rarity_rating_use_card_background_color"] is False
+    assert defaults["curio_rarity_rating_use_card_background_color"] is False
     assert defaults["enable_hadron_single_column_mirror"] is True
     assert defaults["enable_armoury_single_column_mirror"] is True
     assert defaults["enable_character_overview_melee_mirror"] is True

@@ -2181,6 +2181,12 @@ return {
 						},
 					},
 					{
+						setting_id = "weapon_rarity_rating_use_card_background_color",
+						tooltip = "weapon_rarity_rating_use_card_background_color_tooltip",
+						type = "checkbox",
+						default_value = false,
+					},
+					{
 						setting_id = "show_rarity_tag",
 						type = "checkbox",
 						default_value = true,
@@ -2782,6 +2788,12 @@ return {
 							{ text = "weapon_rarity_rating_mode_full_horizontal", value = "full_horizontal" },
 							{ text = "weapon_rarity_rating_mode_vertical", value = "vertical" },
 						},
+					},
+					{
+						setting_id = "curio_rarity_rating_use_card_background_color",
+						tooltip = "curio_rarity_rating_use_card_background_color_tooltip",
+						type = "checkbox",
+						default_value = false,
 					},
 					{
 						setting_id = "show_curio_item_level",

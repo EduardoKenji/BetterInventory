@@ -58,6 +58,8 @@ def main() -> None:
             settings = {
                 weapon_rarity_rating_mode = "off",
                 curio_rarity_rating_mode = "off",
+				weapon_rarity_rating_use_card_background_color = false,
+				curio_rarity_rating_use_card_background_color = false,
                 secondary_text_font_size = 13,
                 show_pattern_mark = false,
             },
@@ -99,7 +101,12 @@ def main() -> None:
         {
             "content": lua.table_from({}),
             "style": lua.table_from(
-                {compact_pass.style_id: compact_pass.style}
+                {
+                    compact_pass.style_id: compact_pass.style,
+                    "background_gradient": lua.table_from(
+                        {"color": lua.table_from([72, 255, 94, 132])}
+                    ),
+                }
             ),
         }
     )
@@ -121,6 +128,23 @@ def main() -> None:
         20,
     )
     assert compact_pass.visibility_function(compact_widget.content) is True
+    assert tuple(
+        compact_widget.style.background_gradient.color[index]
+        for index in range(1, 5)
+    ) == (72, 255, 94, 132)
+    mod.settings.weapon_rarity_rating_use_card_background_color = True
+    rating.populate(mod, compact_widget, transcendent, "weapon")
+    assert tuple(compact_pass.style.text_color[index] for index in range(1, 5)) == (
+        255,
+        255,
+        94,
+        132,
+    )
+    assert tuple(
+        compact_widget.style.background_gradient.color[index]
+        for index in range(1, 5)
+    ) == (72, 255, 94, 132)
+    mod.settings.weapon_rarity_rating_use_card_background_color = False
 
     transcendent.display_rarity = "{#color(240,120,20)}Transcendent{#reset()}"
     rating.populate(mod, compact_widget, transcendent, True)
@@ -192,6 +216,18 @@ def main() -> None:
     assert curio_widget.content.better_inventory_curio_rarity_rating == (
         "Transcendent ★★★★★"
     )
+    curio_widget.style.background_gradient = lua.table_from(
+        {"color": lua.table_from([64, 80, 160, 240])}
+    )
+    mod.settings.curio_rarity_rating_use_card_background_color = True
+    rating.populate(mod, curio_widget, transcendent, "curio")
+    assert tuple(curio_pass.style.text_color[index] for index in range(1, 5)) == (
+        255,
+        80,
+        160,
+        240,
+    )
+    mod.settings.curio_rarity_rating_use_card_background_color = False
 
     mod.settings.weapon_rarity_rating_mode = "compact_horizontal"
     mixed_passes = lua.table_from([])

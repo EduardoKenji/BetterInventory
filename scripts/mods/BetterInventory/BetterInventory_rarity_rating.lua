@@ -14,6 +14,11 @@ local STAR = "★"
 local STAR_RUNS = { [0] = "", STAR, STAR .. STAR, STAR .. STAR .. STAR, STAR .. STAR .. STAR .. STAR, STAR .. STAR .. STAR .. STAR .. STAR, STAR .. STAR .. STAR .. STAR .. STAR .. STAR }
 local VERTICAL_STAR_RUNS = { [0] = "", STAR, STAR .. "\n" .. STAR, STAR .. "\n" .. STAR .. "\n" .. STAR, STAR .. "\n" .. STAR .. "\n" .. STAR .. "\n" .. STAR, STAR .. "\n" .. STAR .. "\n" .. STAR .. "\n" .. STAR .. "\n" .. STAR, STAR .. "\n" .. STAR .. "\n" .. STAR .. "\n" .. STAR .. "\n" .. STAR .. "\n" .. STAR }
 local DEFAULT_COLOR = { 255, 255, 255, 255 }
+local CARD_BACKGROUND_STYLE_IDS = {
+	"background_gradient",
+	"rarity_tag",
+	"background",
+}
 local OWNED_STYLE_IDS = {
 	better_inventory_weapon_rarity_rating = true,
 	better_inventory_curio_rarity_rating = true,
@@ -178,7 +183,7 @@ local function copy_color(target, source)
 	end
 end
 
-local function set_style_color(widget, style_id, color)
+local function set_style_color(widget, style_id, color, force_opaque)
 	local style = widget and widget.style and widget.style[style_id]
 
 	if not style then
@@ -191,6 +196,33 @@ local function set_style_color(widget, style_id, color)
 	copy_color(style.text_color, color)
 	copy_color(style.default_color, color)
 	copy_color(style.hover_color, color)
+
+	if force_opaque then
+		style.text_color[1] = 255
+		style.default_color[1] = 255
+		style.hover_color[1] = 255
+	end
+end
+
+local function resolved_rating_color(mod, widget, item, item_kind)
+	local setting_id = item_kind == "curio"
+		and "curio_rarity_rating_use_card_background_color"
+		or "weapon_rarity_rating_use_card_background_color"
+
+	if setting(mod, setting_id, false) == true then
+		local style = widget and widget.style
+
+		for index = 1, #CARD_BACKGROUND_STYLE_IDS do
+			local card_style = style and style[CARD_BACKGROUND_STYLE_IDS[index]]
+			local color = card_style and card_style.color
+
+			if type(color) == "table" then
+				return color, true
+			end
+		end
+	end
+
+	return rarity_color(item), false
 end
 
 local function clear_content(content)
@@ -248,7 +280,7 @@ RarityRating.populate = function(mod, widget, item, item_kind)
 	local name = rarity_name(item)
 	local first = first_utf8_character(name)
 	local stars = STAR_RUNS[rarity] or ""
-	local color = rarity_color(item)
+	local color, force_opaque = resolved_rating_color(mod, widget, item, item_kind)
 	local horizontal = (resolved_mode == MODE_FULL and name or first) .. " " .. stars
 
 	content.better_inventory_rarity_rating_visible = true
@@ -259,7 +291,7 @@ RarityRating.populate = function(mod, widget, item, item_kind)
 	content.better_inventory_rarity_rating_vertical = first .. "\n" .. (VERTICAL_STAR_RUNS[rarity] or "")
 
 	for style_id in pairs(OWNED_STYLE_IDS) do
-		set_style_color(widget, style_id, color)
+		set_style_color(widget, style_id, color, force_opaque)
 	end
 end
 
@@ -353,6 +385,7 @@ RarityRating._test = {
 	first_utf8_character = first_utf8_character,
 	plain_rarity_name = plain_rarity_name,
 	rarity_name = rarity_name,
+	resolved_rating_color = resolved_rating_color,
 }
 
 return RarityRating

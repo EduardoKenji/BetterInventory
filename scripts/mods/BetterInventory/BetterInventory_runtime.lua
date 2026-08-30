@@ -553,10 +553,6 @@ local function refresh_option_dependencies()
 		set_option_enabled(option_dependency_entries[setting_id], grid_enabled, native_reason)
 	end
 
-	-- These view-specific switches are the single-column counterparts to the
-	-- grid integrations above. They remain available only when the global grid
-	-- layout is disabled, so each vendor can mirror the detailed inventory card
-	-- independently without changing the grid-mode controls.
 	set_option_enabled(option_dependency_entries.enable_hadron_single_column_mirror, single_column_enabled, single_column_reason)
 	set_option_enabled(option_dependency_entries.enable_armoury_single_column_mirror, single_column_enabled, single_column_reason)
 
@@ -593,6 +589,8 @@ local function refresh_option_dependencies()
 	local weapon_rank_symbols_enabled = weapon_perk_ranks_enabled or weapon_blessing_ranked_text_enabled
 	local weapon_perk_blessing_sections_enabled = weapon_perks_enabled and weapon_blessings_enabled
 	local detailed_curio_profile = mod:get("curio_display_profile") == "detailed"
+	local weapon_rarity_rating_enabled = (mod:get("weapon_rarity_rating_mode") or "off") ~= "off"
+	local curio_rarity_rating_enabled = (mod:get("curio_rarity_rating_mode") or "off") ~= "off"
 	local quick_discard_enabled = mod:get("enable_experimental_quick_discard") == true
 	local quick_discard_reason = mod:localize("option_requires_experimental_quick_discard")
 	local automatic_curio_enabled = mod:get("enable_automatic_curio_acquisition") == true
@@ -684,6 +682,8 @@ local function refresh_option_dependencies()
 	set_option_enabled(option_dependency_entries.weapon_perk_blessing_spacing, weapon_perk_blessing_sections_enabled, mod:localize("option_requires_perk_and_blessing_sections"))
 	set_option_enabled(option_dependency_entries.curio_secondary_stat_font_size, detailed_curio_profile, mod:localize("option_requires_detailed_curio_profile"))
 	set_option_enabled(option_dependency_entries.curio_primary_secondary_spacing, detailed_curio_profile, mod:localize("option_requires_detailed_curio_profile"))
+	set_option_enabled(option_dependency_entries.weapon_rarity_rating_use_card_background_color, weapon_rarity_rating_enabled, mod:localize("option_requires_weapon_rarity_rating"))
+	set_option_enabled(option_dependency_entries.curio_rarity_rating_use_card_background_color, curio_rarity_rating_enabled, mod:localize("option_requires_curio_rarity_rating"))
 	set_option_enabled(option_dependency_entries.single_column_layout_group, single_column_enabled, single_column_reason)
 	set_option_enabled(option_dependency_entries.single_column_weapon_name_font_size, single_column_enabled, single_column_reason)
 	set_option_enabled(option_dependency_entries.single_column_blessing_icons_on_right, single_column_enabled and weapon_blessing_text_enabled, not single_column_enabled and single_column_reason or mod:localize("option_requires_weapon_blessing_text"))
@@ -861,6 +861,8 @@ local function bind_option_dependencies(options_templates)
 		"card_height",
 		"weapon_rarity_rating_mode",
 		"curio_rarity_rating_mode",
+		"weapon_rarity_rating_use_card_background_color",
+		"curio_rarity_rating_use_card_background_color",
 		"expand_curio_inventory_window",
 		"curio_target_card_width",
 		"enable_hadron_entreat_grid",
@@ -1037,9 +1039,6 @@ local function bind_option_dependencies(options_templates)
 	for i = 1, #settings do
 		local entry = settings[i]
 
-		-- DMF preserves indentation for ordinary nested controls but drops it from
-		-- nested group-header templates. Restore the two buyer subheadings to the
-		-- same depth as their schema nodes so they do not look like peer sections.
 		if type(entry) == "table" and entry.category == category_name and entry.widget_type == "group_header" and curio_buyer_subsection_titles[entry.display_name] then
 			entry.indentation_level = 2
 
@@ -1065,9 +1064,6 @@ local function bind_option_dependencies(options_templates)
 
 		if setting_id then
 			option_dependency_entries[setting_id] = entry
-			-- Character Overview retains its established live getter behavior. The
-			-- two highlight dropdowns instead refresh this exact generated tree once
-			-- per activation, avoiding per-frame mode scans and allocations.
 			bind_live_option_dependency(setting_id, entry)
 			bind_highlight_mode_dependency_refresh(setting_id, entry, option_dependency_entries)
 		elseif type(entry) == "table" and entry._better_inventory_curio_character_slot_index then
@@ -1075,10 +1071,6 @@ local function bind_option_dependencies(options_templates)
 		end
 	end
 
-	-- Keep DMF template and rendered-widget arrays structurally identical; hiding
-	-- mode-dependent entries through validation functions shifts every later
-	-- section. PlayerAssist uses the stable pattern too: keep entries present and
-	-- express dependencies exclusively through disabled state.
 	option_dependency_entries.automatic_curio_classes_group = class_group_entry
 	option_dependency_entries.automatic_curio_characters_group = character_group_entry
 
