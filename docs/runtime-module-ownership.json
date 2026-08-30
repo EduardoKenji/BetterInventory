@@ -2,7 +2,9 @@
   "schema_version": 1,
   "max_bytes": 100000,
   "preferred_bytes": 80000,
-  "temporary_size_exceptions": {},
+  "temporary_size_exceptions": {
+    "BetterInventory_localization_zh_cn.lua": "Existing Simplified Chinese shard is 561 bytes over the staged ceiling after the v3.4.2 translated rarity-rating controls; split in the next localization-shard maintenance pass."
+  },
   "hook_modules": {
     "BetterInventory_account_mutation_guard.lua": "account-mutation-service-hooks",
     "BetterInventory_character_overview_ui.lua": "character-overview-hooks",
@@ -83,9 +85,10 @@
     "BetterInventory_item_customization_name_it.lua": {"category": "integration-adapter", "risk": "high", "dependencies": []},
     "BetterInventory_item_customization_store.lua": {"category": "async-state", "risk": "high", "dependencies": []},
     "BetterInventory_layout.lua": {"category": "ui-facade", "risk": "high", "dependencies": ["BetterInventory_layout_blueprints.lua", "BetterInventory_layout_cards.lua", "BetterInventory_layout_content.lua", "BetterInventory_layout_geometry.lua"]},
-    "BetterInventory_layout_cards.lua": {"category": "ui-card-composition", "risk": "high", "dependencies": ["BetterInventory_layout_content.lua", "BetterInventory_wkc_integration.lua"]},
-    "BetterInventory_layout_geometry.lua": {"category": "ui-geometry", "risk": "high", "dependencies": ["BetterInventory_layout_cards.lua", "BetterInventory_layout_content.lua"]},
-    "BetterInventory_layout_blueprints.lua": {"category": "ui-blueprint-coordinator", "risk": "high", "dependencies": ["BetterInventory_image_layout.lua", "BetterInventory_layout_cards.lua", "BetterInventory_layout_content.lua", "BetterInventory_layout_geometry.lua", "BetterInventory_material_safety.lua"]},
+    "BetterInventory_layout_cards.lua": {"category": "ui-card-composition", "risk": "high", "dependencies": ["BetterInventory_layout_content.lua", "BetterInventory_rarity_rating.lua", "BetterInventory_wkc_integration.lua"]},
+    "BetterInventory_layout_geometry.lua": {"category": "ui-geometry", "risk": "high", "dependencies": ["BetterInventory_layout_cards.lua", "BetterInventory_layout_content.lua", "BetterInventory_rarity_rating.lua"]},
+    "BetterInventory_layout_blueprints.lua": {"category": "ui-blueprint-coordinator", "risk": "high", "dependencies": ["BetterInventory_image_layout.lua", "BetterInventory_layout_cards.lua", "BetterInventory_layout_content.lua", "BetterInventory_layout_geometry.lua", "BetterInventory_material_safety.lua", "BetterInventory_rarity_rating.lua"]},
+    "BetterInventory_rarity_rating.lua": {"category": "ui-card-presentation", "risk": "high", "dependencies": []},
     "BetterInventory_image_layout.lua": {"category": "pure-ui-geometry", "risk": "high", "dependencies": []},
     "BetterInventory_material_safety.lua": {"category": "ui-material-contract", "risk": "critical", "dependencies": []},
     "BetterInventory_runtime.lua": {"category": "runtime-hooks-and-lifecycle", "risk": "critical", "dependencies": []},

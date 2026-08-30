@@ -114,6 +114,13 @@
       "modules": ["BetterInventory_wkc_integration.lua", "BetterInventory_layout_cards.lua", "BetterInventory_runtime.lua"]
     },
     {
+      "name": "layout.rarity-rating-profiles-are-bind-only-and-tier-aware",
+      "test": "test_rarity_rating.py",
+      "case": "two_profiles_split_tiers_mixed_melk_and_bind_only_updates",
+        "outcome": "independent default-on weapon and Curio rarity ratings use the single-line full-rarity profile, with compact first-letter plus stars still available; native Transcendent remains five stars while matching custom Sainted items receive six, localized UTF-8 initials remain intact, Curio rows sit between title and primary stat, mixed grids reserve only one horizontal row, both Sire Melk routes retain weapon and Curio passes regardless of their first card's inferred slot kind, and each profile defaults to the resolved card background RGB with independently adjustable 0-100 percent opacity while its subordinate controls are disabled whenever that item type's rating is Off; owned passes remain idempotent and bind-only, the removed experimental vertical value safely degrades to Full, and rarity ratings no longer widen cards or frames",
+        "modules": ["BetterInventory_rarity_rating.lua", "BetterInventory_layout_geometry.lua", "BetterInventory_layout_blueprints.lua", "BetterInventory_layout_cards.lua", "BetterInventory_wkc_integration.lua", "BetterInventory_character_overview_ui.lua", "BetterInventory_runtime.lua", "BetterInventory_data.lua"]
+    },
+    {
         "name": "layout.weapon-modifiers-avoid-full-calculator",
         "test": "test_layout.py",
         "case": "weapon_modifier_data_only_resolution",

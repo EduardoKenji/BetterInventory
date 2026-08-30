@@ -792,6 +792,36 @@ local localization = {
 	show_rarity_name = {
 		en = "Show weapon quality text",
 	},
+	weapon_rarity_rating_mode = {
+		en = "Rarity + stars rating",
+	},
+	weapon_rarity_rating_mode_tooltip = {
+		en = "Adds a rarity-coloured star rating to grid weapon cards. Compact uses the first localized rarity character; Full uses the localized rarity name. Both keep the stars on the same line. Native Transcendent and custom Sainted remain separate five- and six-star tiers.",
+	},
+	weapon_rarity_rating_mode_off = {
+		en = "Off",
+	},
+	weapon_rarity_rating_mode_compact_horizontal = {
+		en = "First character + stars",
+	},
+	weapon_rarity_rating_mode_full_horizontal = {
+		en = "Full rarity + stars",
+	},
+	weapon_rarity_rating_use_card_background_color = {
+		en = "Use background colour for rarity + stars",
+	},
+	weapon_rarity_rating_use_card_background_color_tooltip = {
+		en = "Colours the weapon rarity and stars with the card's resolved background colour, including per-item custom background colours. When disabled, the rating retains its rarity-tier colour.",
+	},
+	weapon_rarity_rating_opacity = {
+		en = "Rarity + stars opacity",
+	},
+	weapon_rarity_rating_opacity_tooltip = {
+		en = "Sets weapon rarity-and-stars opacity from fully transparent at 0%% to fully opaque at 100%%.",
+	},
+	option_requires_weapon_rarity_rating = {
+		en = "Requires weapon Rarity + stars rating to be enabled.",
+	},
 	show_rarity_tag = {
 		en = "Show rarity colour strip",
 	},
@@ -1145,6 +1175,27 @@ local localization = {
 	},
 	curio_content_group = {
 		en = "Curio content",
+	},
+	curio_rarity_rating_mode = {
+		en = "Rarity + stars rating",
+	},
+	curio_rarity_rating_mode_tooltip = {
+		en = "Adds the same rarity-coloured rating profiles to grid Curio cards. Compact and Full render one line between the Curio title and its primary stat. This setting is independent from the weapon-card profile.",
+	},
+	curio_rarity_rating_use_card_background_color = {
+		en = "Use background colour for rarity + stars",
+	},
+	curio_rarity_rating_use_card_background_color_tooltip = {
+		en = "Colours the Curio rarity and stars with the card's resolved background colour, including per-item custom background colours. When disabled, the rating retains its rarity-tier colour.",
+	},
+	curio_rarity_rating_opacity = {
+		en = "Rarity + stars opacity",
+	},
+	curio_rarity_rating_opacity_tooltip = {
+		en = "Sets Curio rarity-and-stars opacity from fully transparent at 0%% to fully opaque at 100%%.",
+	},
+	option_requires_curio_rarity_rating = {
+		en = "Requires Curio Rarity + stars rating to be enabled.",
 	},
 	curio_display_profile = {
 		en = "Curio display profile",

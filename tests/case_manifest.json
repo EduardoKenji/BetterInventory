@@ -24,7 +24,10 @@
     {"name": "purchase_source_isolation_and_myfavorites_color_assignment", "risk": "high", "start_line": 1, "end_line": 329}
   ],
   "test_weapon_kill_counter_integration.py": [
-    {"name": "presentation_only_fixture_load_order_deduplication_and_responsive_card_profiles", "risk": "high", "start_line": 17, "end_line": 434}
+    {"name": "presentation_only_fixture_load_order_deduplication_and_responsive_card_profiles", "risk": "high", "start_line": 17, "end_line": 448}
+  ],
+  "test_rarity_rating.py": [
+    {"name": "two_profiles_split_tiers_mixed_melk_and_bind_only_updates", "risk": "high", "start_line": 1, "end_line": 353}
   ],
   "test_coverage_support.py": [
     {"name": "multiple_lua_runtimes_merge_without_overwriting_earlier_coverage", "risk": "high", "start_line": 1, "end_line": 21}
@@ -244,10 +247,10 @@
     {"name": "exclusive_background_ownership_and_lifecycle_fallback", "risk": "critical", "start_line": 1, "end_line": 326}
   ],
   "test_layout.py": [
-      {"name": "card_geometry", "risk": "high", "start_line": 613, "end_line": 1517},
-        {"name": "weapon_modifier_data_only_resolution", "risk": "critical", "start_line": 1518, "end_line": 1991},
-          {"name": "content_and_resource_ownership", "risk": "high", "start_line": 1992, "end_line": 3203},
-      {"name": "integration_boundaries", "risk": "medium", "start_line": 3204, "end_line": 5481}
+        {"name": "card_geometry", "risk": "high", "start_line": 613, "end_line": 1538},
+          {"name": "weapon_modifier_data_only_resolution", "risk": "critical", "start_line": 1539, "end_line": 2012},
+            {"name": "content_and_resource_ownership", "risk": "high", "start_line": 2013, "end_line": 3224},
+        {"name": "integration_boundaries", "risk": "medium", "start_line": 3225, "end_line": 5546}
   ],
   "test_operation_arbiter.py": [
     {"name": "manual_automatic_exclusion", "risk": "critical", "start_line": 20, "end_line": 34},
@@ -263,7 +266,7 @@
     {"name": "character_overview_transition_retirement", "risk": "critical", "start_line": 601, "end_line": 636},
     {"name": "character_overview_refresh", "risk": "high", "start_line": 637, "end_line": 1827},
       {"name": "localization_contract", "risk": "medium", "start_line": 1828, "end_line": 3039},
-      {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 3040, "end_line": 3858}
+      {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 3040, "end_line": 3920}
   ],
   "test_settings_registry.py": [
     {"name": "duplicate_detection", "risk": "high", "start_line": 63, "end_line": 123},

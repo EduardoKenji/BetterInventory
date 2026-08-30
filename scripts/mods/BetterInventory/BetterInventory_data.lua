@@ -1,4 +1,4 @@
-local MOD_VERSION = "3.4.1"
+local MOD_VERSION = "3.5.0"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
@@ -2169,6 +2169,33 @@ return {
 						default_value = false,
 					},
 					{
+						setting_id = "weapon_rarity_rating_mode",
+						tooltip = "weapon_rarity_rating_mode_tooltip",
+						type = "dropdown",
+						default_value = "full_horizontal",
+						options = {
+							{ text = "weapon_rarity_rating_mode_off", value = "off" },
+							{ text = "weapon_rarity_rating_mode_compact_horizontal", value = "compact_horizontal" },
+							{ text = "weapon_rarity_rating_mode_full_horizontal", value = "full_horizontal" },
+						},
+					},
+					{
+						setting_id = "weapon_rarity_rating_use_card_background_color",
+						tooltip = "weapon_rarity_rating_use_card_background_color_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
+						setting_id = "weapon_rarity_rating_opacity",
+						tooltip = "weapon_rarity_rating_opacity_tooltip",
+						type = "numeric",
+						default_value = 100,
+						range = {
+							0,
+							100,
+						},
+					},
+					{
 						setting_id = "show_rarity_tag",
 						type = "checkbox",
 						default_value = true,
@@ -2758,6 +2785,33 @@ return {
 						tooltip = "curio_content_name_it_curio_name_tooltip",
 						type = "checkbox",
 						default_value = true,
+					},
+					{
+						setting_id = "curio_rarity_rating_mode",
+						tooltip = "curio_rarity_rating_mode_tooltip",
+						type = "dropdown",
+						default_value = "full_horizontal",
+						options = {
+							{ text = "weapon_rarity_rating_mode_off", value = "off" },
+							{ text = "weapon_rarity_rating_mode_compact_horizontal", value = "compact_horizontal" },
+							{ text = "weapon_rarity_rating_mode_full_horizontal", value = "full_horizontal" },
+						},
+					},
+					{
+						setting_id = "curio_rarity_rating_use_card_background_color",
+						tooltip = "curio_rarity_rating_use_card_background_color_tooltip",
+						type = "checkbox",
+						default_value = true,
+					},
+					{
+						setting_id = "curio_rarity_rating_opacity",
+						tooltip = "curio_rarity_rating_opacity_tooltip",
+						type = "numeric",
+						default_value = 100,
+						range = {
+							0,
+							100,
+						},
 					},
 					{
 						setting_id = "show_curio_item_level",

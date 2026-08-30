@@ -9,6 +9,8 @@ local DEPENDENCY_REFRESH_SETTING_IDS = {
 	"ranged_columns",
 	"curio_columns",
 	"automatic_card_height",
+	"weapon_rarity_rating_mode",
+	"curio_rarity_rating_mode",
 	"expand_inventory_window",
 	"weapon_extra_width_column_threshold",
 	"expand_curio_inventory_window",

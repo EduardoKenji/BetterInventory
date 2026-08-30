@@ -177,6 +177,20 @@ def main() -> None:
     mod.settings.show_pattern_mark = False
     mod.settings.show_rarity_name = False
 
+    # New horizontal rarity profiles own the optional rows above WKC. The
+    # default 13 px rating font uses a compact 15 px advance. Persisted values
+    # from the removed vertical experiment safely resolve to the Full row.
+    mod.settings.weapon_rarity_rating_mode = "compact_horizontal"
+    assert integration.profile(mod, 210, 12, lua.table_from({}), 3).top == 45
+    mod.settings.weapon_rarity_rating_mode = "full_horizontal"
+    assert integration.profile(mod, 210, 12, lua.table_from({}), 3).top == 45
+    mod.settings.show_pattern_mark = True
+    assert integration.profile(mod, 210, 12, lua.table_from({}), 3).top == 65
+    mod.settings.show_pattern_mark = False
+    mod.settings.weapon_rarity_rating_mode = "vertical"
+    assert integration.profile(mod, 210, 12, lua.table_from({}), 3).top == 45
+    mod.settings.weapon_rarity_rating_mode = "off"
+
     pass_template = lua.execute(
         r"""
         return {
