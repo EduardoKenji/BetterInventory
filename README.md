@@ -28,6 +28,7 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - Surviving Inventory, Armoury Exchange, and GlobalStore views are adopted once by the new runtime generation instead of retaining callback closures from the previous generation.
 - Keeps the search/sort/render hot paths bounded: settled queries continue to reuse the existing in-place grid buffers, weak view registries, and cached card projections rather than rebuilding cards per frame.
 - Adds a dependent, default-on Weapon Kill Counter option that displays zero kills on supported store cards while preserving WKC as the authoritative source for positive counts.
+- Removes Equipment Text Search and its runtime hooks from both Hadron Sacrifice Weapons tabs; Hadron's Entreat equipment view remains supported.
 - Adds reload lifecycle, repeated cleanup, ownership, callback-retention, customization-cache, and Curio promise-container regression coverage. See the [v3.5.3 audit](docs/v3.5.3-hot-reload-performance-memory-audit.md).
 
 ## What's new in v3.5.1

@@ -312,12 +312,15 @@ def main() -> None:
     sacrifice = search_ui.decorate_definitions(
         definitions, sacrifice_view, lua.globals().test_mod
     )
-    assert sacrifice.scenegraph_definition.better_inventory_search_input.position[2] == 58
-    assert sacrifice.scenegraph_definition.better_inventory_search_input.size[1] == 486
-    assert search_ui.barter_grid_offset() == 100
+    lua.globals().sacrifice = sacrifice
+    lua.globals().definitions = definitions
+    assert search_ui.supported(sacrifice_view) is False
+    assert lua.execute("return sacrifice == definitions") is True
+    assert lua.execute(
+        "return sacrifice.scenegraph_definition.better_inventory_search_input == nil"
+    ) is True
 
-    # Inventory, Armoury, and Hadron modify use independent pixel sliders while
-    # every other supported view retains its fixed native-contract geometry.
+    # Inventory, Armoury, and Hadron modify use independent pixel sliders.
     lua.globals().settings.inventory_search_inventory_top_padding = 18
     lua.globals().settings.inventory_search_inventory_bottom_padding = 42
     custom_inventory = search_ui.decorate_definitions(

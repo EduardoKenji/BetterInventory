@@ -2,6 +2,7 @@
 
 ## 3.5.3 - 2026-08-30
 
+- Removes Equipment Text Search from both melee and ranged Hadron **Sacrifice Weapons** tabs, including their dedicated field, grid-offset, sorting, update, input, and cleanup hooks. Hadron's Entreat equipment view remains supported.
 - Adds a dedicated Ctrl+Shift+R unload lifecycle that releases BetterInventory-owned view callbacks, search state, customization caches, pending Curio read state, view sessions, and the global Auto Crafter HUD bridge before DMF reloads the runtime.
 - Uses generation-owned view adoption so Inventory, Armoury Exchange, and GlobalStore views that survive a reload receive the new callbacks once and cannot retain the previous module graph through BetterInventory widgets.
 - Extends generation ownership to equipment-card widgets in Inventory, Hadron, Armoury, Brunt, GlobalStore, and Sire Melk: deferred native presentations are cancelled at unload and surviving card generations rebuild exactly once, including the first live upgrade from an untagged older release.

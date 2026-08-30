@@ -25,6 +25,8 @@ def main() -> None:
     assert 'mod:hook_safe(MarksVendorView, "on_exit", release_item_grid_view_runtime)' in hooks_source
     assert 'ensure_class_method(MarksVendorView, "destroy")' in hooks_source
     assert 'mod:hook_safe(MarksVendorView, "destroy", release_item_grid_view_runtime)' in hooks_source
+    assert "CraftingMechanicusBarterItemsView" not in hooks_source
+    assert "search_compose_layout" not in hooks_source
 
     lua = LuaRuntime(unpack_returned_tuples=True)
     lua.execute(
@@ -53,17 +55,9 @@ def main() -> None:
             _cb_on_present = function() end,
             update = function() end,
         })
-        base_view = klass("base", {init = function() end})
         crafting = klass("crafting", {
             _handle_input = function() end,
             update = function() end,
-        })
-        barter = klass("barter", {
-            _handle_input = function() end,
-            _cb_fetch_inventory_items = function() end,
-            _sort_grid_layout = function() end,
-            update = function() end,
-            on_exit = function() end,
         })
         vendor = klass("vendor", {
             _handle_input = function() end,
@@ -99,10 +93,6 @@ def main() -> None:
                 search_updates = search_updates + 1
                 calls.search_update = {view, time}
             end,
-            search_compose_layout = function(view, layout)
-                calls.compose = {view, layout}
-                return layout
-            end,
             search_release = function(view) calls.release = view end,
         }
         search_ui = {
@@ -127,12 +117,7 @@ def main() -> None:
             end,
             release = function(view) calls.ui_release = view end,
         }
-        function require(path)
-            if path == "scripts/ui/views/crafting_mechanicus_barter_items_view/crafting_mechanicus_barter_items_view" then
-                return barter
-            end
-            error(path)
-        end
+        function require(path) error(path) end
         ''',
     )
     module = lua.execute(MODULE_PATH.read_text(encoding="utf-8"), name=str(MODULE_PATH))
@@ -153,9 +138,7 @@ def main() -> None:
             "Features": lua.globals().features,
             "SearchUI": lua.globals().search_ui,
             "ItemGridViewBase": lua.globals().item_grid_base,
-            "BaseView": lua.globals().base_view,
             "CraftingMechanicusModifyView": lua.globals().crafting,
-            "CraftingMechanicusBarterItemsView": lua.globals().barter,
             "CreditsGoodsVendorView": lua.globals().credits_goods,
             "MarksVendorView": lua.globals().marks_vendor,
             "VendorViewBase": lua.globals().vendor,
@@ -239,49 +222,7 @@ def main() -> None:
 		safe_hooks["marks_vendor:destroy"](melk_open_view)
 		marks_vendor.on_exit(melk_open_view)
 		marks_vendor.destroy(melk_open_view)
-
-
         safe_hooks["element:cb_on_grid_entry_left_pressed"]({_parent = view})
-
-        sacrifice_view = {
-            __class_name = "CraftingMechanicusBarterItemsView",
-            _better_inventory_search_needs_update = true,
-            _item_grid = {
-                set_pivot_offset = function(_, x, y)
-                    calls.pivot = {x, y}
-                end,
-            },
-            _scenegraph_world_position = function() return {100, 50} end,
-        }
-        hooks["base:init"](
-            function(_, definitions, settings, context, dynamic_package, tail)
-                calls.base_definitions = definitions
-                calls.base_init_args = {settings, context, dynamic_package, tail}
-            end,
-            sacrifice_view, {}, "settings", "context", "barter-level-package", "tail"
-        )
-
-		lobby_definitions = {}
-		lobby_view = {__class_name = "LobbyView"}
-		hooks["base:init"](
-			function(target, definitions, settings, context, dynamic_package, tail)
-				calls.lobby_init_args = {target, definitions, settings, context, dynamic_package, tail}
-			end,
-			lobby_view, lobby_definitions, "lobby-settings", "lobby-context", "lobby-level-package", "lobby-tail"
-		)
-        safe_hooks["barter:_cb_fetch_inventory_items"](sacrifice_view)
-        native_layout = {{item = {gear_id = "one"}}}
-        sacrifice_view._current_present_grid_layout_callback = function(_, layout)
-            calls.presented_layout = layout
-        end
-        hooks["barter:_sort_grid_layout"](
-            function(target)
-                target._current_present_grid_layout_callback(target, native_layout)
-            end,
-            sacrifice_view, "sort"
-        )
-        safe_hooks["barter:update"](sacrifice_view, 0.1, 30, "sacrifice_input")
-        safe_hooks["barter:on_exit"](sacrifice_view)
         ''',
     )
     g = lua.globals()
@@ -290,14 +231,14 @@ def main() -> None:
     assert g.disabled_search_capture_skipped is True
     assert g.unsupported_search_ignored is True
     assert g.calls.capture[2] == "slot"
-    assert lua.execute("return calls.sync == sacrifice_view") is True
+    assert lua.execute("return calls.sync == view") is True
     assert g.native_filter == 2 and g.filter_result is False
     assert g.idle_filter_result is True
     assert lua.execute("return calls.alpha == view") is True
-    assert g.calls.ui_update[2] == 30
-    assert g.calls.search_update[2] == 30
-    assert g.search_updates == 4
-    assert g.ui_updates == 4
+    assert g.calls.ui_update[2] == 14
+    assert g.calls.search_update[2] == 14
+    assert g.search_updates == 3
+    assert g.ui_updates == 3
     assert g.native_input == 2
     assert g.melk_open_result == "native-melk"
     assert g.calls.grid_runtime_release == 2
@@ -305,27 +246,12 @@ def main() -> None:
     assert lua.execute('return hooks["legend:_handle_input"] == nil') is True
     assert lua.execute("return calls.defocus == view") is True
     assert lua.execute('return hooks["element:update"] == nil') is True
-    assert g.calls.base_definitions.decorated is True
-    assert lua.execute(
-        'return calls.base_init_args[1] == "settings" '
-        'and calls.base_init_args[2] == "context" '
-        'and calls.base_init_args[3] == "barter-level-package" '
-        'and calls.base_init_args[4] == "tail"'
-    ) is True
-    assert lua.execute(
-        'return calls.lobby_init_args[1] == lobby_view '
-        'and calls.lobby_init_args[2] == lobby_definitions '
-        'and calls.lobby_init_args[3] == "lobby-settings" '
-        'and calls.lobby_init_args[4] == "lobby-context" '
-        'and calls.lobby_init_args[5] == "lobby-level-package" '
-        'and calls.lobby_init_args[6] == "lobby-tail" '
-        'and lobby_definitions.decorated == nil'
-    ) is True
-    assert g.calls.pivot[1] == 100 and g.calls.pivot[2] == 150
-    assert lua.execute("return calls.compose[2] == native_layout") is True
-    assert lua.execute("return calls.presented_layout == native_layout") is True
-    assert lua.execute("return calls.ui_release == sacrifice_view") is True
-    assert lua.execute("return calls.release == sacrifice_view") is True
+    assert lua.execute('return hooks["base:init"] == nil') is True
+    assert lua.execute('return hooks["barter:_handle_input"] == nil') is True
+    assert lua.execute('return hooks["barter:_sort_grid_layout"] == nil') is True
+    assert lua.execute('return safe_hooks["barter:update"] == nil') is True
+    assert lua.execute("return calls.ui_release == nil") is True
+    assert lua.execute("return calls.release == nil") is True
 
     print("BetterInventory search hook tests passed.")
 

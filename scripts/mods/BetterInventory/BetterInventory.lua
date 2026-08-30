@@ -679,7 +679,6 @@ SearchHooks.install({
 	RuntimeLifecycle = RuntimeLifecycle,
 	ItemGridViewBase = ItemGridViewBase,
 	InventoryWeaponsView = InventoryWeaponsView,
-	BaseView = BaseView,
 	CraftingMechanicusModifyView = CraftingMechanicusModifyView,
 	MarksVendorView = MarksVendorView,
 	VendorViewBase = VendorViewBase,

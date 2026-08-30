@@ -1,4 +1,3 @@
-local GameCraftingMechanicusBarterItemsView = require("scripts/ui/views/crafting_mechanicus_barter_items_view/crafting_mechanicus_barter_items_view")
 local function optional_require(path)
 	local ok, module = pcall(require, path)
 
@@ -49,9 +48,7 @@ SearchHooks.install = function(dependencies)
 	local SearchUI = dependencies.SearchUI
 	local RuntimeLifecycle = dependencies.RuntimeLifecycle
 	local ItemGridViewBase = dependencies.ItemGridViewBase
-	local BaseView = dependencies.BaseView
 	local CraftingMechanicusModifyView = dependencies.CraftingMechanicusModifyView
-	local CraftingMechanicusBarterItemsView = dependencies.CraftingMechanicusBarterItemsView or GameCraftingMechanicusBarterItemsView
 	local CreditsGoodsVendorView = dependencies.CreditsGoodsVendorView or GameCreditsGoodsVendorView
 	local MarksVendorView = dependencies.MarksVendorView or GameMarksVendorView
 	local VendorViewBase = dependencies.VendorViewBase
@@ -144,7 +141,6 @@ SearchHooks.install = function(dependencies)
 
 	install_view_input_hook(CraftingMechanicusModifyView)
 	install_view_input_hook(VendorViewBase)
-	install_view_input_hook(CraftingMechanicusBarterItemsView)
 
 	-- Darktide's class() copies superclass functions into child tables. Melk's
 	-- class therefore retains its own VendorViewBase._handle_input reference;
@@ -164,80 +160,6 @@ SearchHooks.install = function(dependencies)
 		if ensure_class_method(MarksVendorView, "destroy") then
 			mod:hook_safe(MarksVendorView, "destroy", release_item_grid_view_runtime)
 		end
-	end
-
-	if method_available(BaseView, "init") then
-		mod:hook(BaseView, "init", function(func, view, definitions, settings, context, ...)
-			if view and view.__class_name == "CraftingMechanicusBarterItemsView" and mod:get("enable_inventory_search") ~= false and type(SearchUI.decorate_definitions) == "function" then
-				definitions = SearchUI.decorate_definitions(definitions, view, mod)
-			end
-
-			return func(view, definitions, settings, context, ...)
-		end)
-	end
-
-	if method_available(CraftingMechanicusBarterItemsView, "_cb_fetch_inventory_items") then
-		mod:hook_safe(CraftingMechanicusBarterItemsView, "_cb_fetch_inventory_items", function(view)
-			if mod:get("enable_inventory_search") == false or view._better_inventory_search_grid_shifted or not view._item_grid or type(view._scenegraph_world_position) ~= "function" then
-				return
-			end
-
-			local position = view:_scenegraph_world_position("item_grid_pivot")
-			local x = type(position) == "table" and position[1]
-			local y = type(position) == "table" and position[2]
-
-			local grid_offset = type(SearchUI.barter_grid_offset) == "function" and SearchUI.barter_grid_offset() or 100
-
-			if type(x) == "number" and type(y) == "number" and type(grid_offset) == "number" and type(view._item_grid.set_pivot_offset) == "function" then
-				view._item_grid:set_pivot_offset(x, y + grid_offset)
-				view._better_inventory_search_grid_shifted = true
-			end
-		end)
-	end
-
-	if method_available(CraftingMechanicusBarterItemsView, "_sort_grid_layout") then
-		mod:hook(CraftingMechanicusBarterItemsView, "_sort_grid_layout", function(func, view, sort_function, ...)
-			local original_callback = view._current_present_grid_layout_callback
-
-			if mod:get("enable_inventory_search") == false or type(original_callback) ~= "function" or type(Features.search_compose_layout) ~= "function" then
-				return func(view, sort_function, ...)
-			end
-
-			local wrapped_callback = function(callback_view, layout)
-				local composed = Features.search_compose_layout(callback_view, layout)
-
-				if type(SearchUI.sync_query) == "function" then
-					SearchUI.sync_query(mod, Features, callback_view)
-				end
-
-				return original_callback(callback_view, composed)
-			end
-
-			view._current_present_grid_layout_callback = wrapped_callback
-			local result = func(view, sort_function, ...)
-
-			if view._current_present_grid_layout_callback == wrapped_callback then
-				view._current_present_grid_layout_callback = original_callback
-			end
-
-			return result
-		end)
-	end
-
-	if method_available(CraftingMechanicusBarterItemsView, "update") then
-		mod:hook_safe(CraftingMechanicusBarterItemsView, "update", update_search)
-	end
-
-	if method_available(CraftingMechanicusBarterItemsView, "on_exit") then
-		mod:hook_safe(CraftingMechanicusBarterItemsView, "on_exit", function(view)
-			if type(SearchUI.release) == "function" then
-				SearchUI.release(view)
-			end
-			if type(Features.search_release) == "function" then
-				Features.search_release(view)
-			end
-			view._better_inventory_search_grid_shifted = nil
-		end)
 	end
 
 	if method_available(ViewElementGrid, "cb_on_grid_entry_left_pressed") then

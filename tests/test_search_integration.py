@@ -52,10 +52,6 @@ def main() -> None:
                 runtime.capture = {view, slot, item_type, title}
                 return true
             end,
-            compose_layout = function(runtime, view, layout)
-                runtime.composed = {view, layout}
-                return layout
-            end,
             apply_widget_alpha = function() return true end,
             clear_memory = function() clear_memory_calls = clear_memory_calls + 1 end,
             native_filter = function(_, _, _, native) return native end,
@@ -149,7 +145,7 @@ def main() -> None:
 
     assert family("InventoryWeaponsView") == "inventory"
     assert family("CraftingMechanicusModifyView") == "hadron"
-    assert family("CraftingMechanicusBarterItemsView") == "hadron_sacrifice"
+    assert family("CraftingMechanicusBarterItemsView") is None
     assert family("MarksVendorView") == "melk"
     assert family("MarksGoodsVendorView") is None
     assert family("CreditsVendorView") == "armoury"
@@ -270,7 +266,6 @@ def main() -> None:
         )
         test_settings.inventory_search_non_match_behavior = "dim"
         invalid_present = runtime_instance.dependencies.present({}, nil, nil, nil)
-        invalid_external_present = runtime_instance.dependencies.present_external({})
         current_mode = runtime_instance.dependencies.mode()
         remember_mode = runtime_instance.dependencies.remember_query()
         prioritize_equipped_mode = runtime_instance.dependencies.prioritize_equipped()
@@ -298,7 +293,6 @@ def main() -> None:
     assert lua.globals().inventory_full_present_calls == 2
     assert lua.globals().inventory_hide_present is True
     assert lua.globals().invalid_present is False
-    assert lua.globals().invalid_external_present is False
     assert lua.globals().normal_present_arguments[1] == "slot"
     assert lua.globals().current_mode == "dim"
     assert lua.globals().remember_mode is False
@@ -317,26 +311,13 @@ def main() -> None:
     assert lua.globals().requested_resorts == 0
 
     sacrifice = lua.table_from({"__class_name": "CraftingMechanicusBarterItemsView"})
-    layout = lua.table_from({1: lua.table_from({"item": lua.table_from({})})})
-    lua.globals().sacrifice_layout = layout
-    lua.globals().composed_layout = facade.search_compose_layout(sacrifice, layout)
-    assert lua.execute("return sacrifice_layout == composed_layout") is True
-    assert lua.globals().begins == 2
-    assert lua.globals().cleanups == 2
-    assert facade.search_set_query(sacrifice, "axe", 1) == (True, None)
-    assert lua.globals().requested_resorts == 0
+    lua.globals().sacrifice = sacrifice
+    assert facade.search_compose_layout is None
+    assert lua.execute("return runtime_instance.dependencies.view_family(sacrifice) == nil") is True
+    assert lua.globals().begins == 1
+    assert lua.globals().cleanups == 1
     lua.execute(
         r'''
-        external_sort_calls = 0
-        external_view = {
-            _sort_options = {{sort_function = "sort"}},
-            _sort_grid_layout = function(self, sort_function)
-                external_sort_calls = external_sort_calls + 1
-                external_sort_function = sort_function
-            end,
-        }
-        external_present_result = runtime_instance.dependencies.present_external(external_view)
-
 		shared_spacing = {is_external = true, widget_type = "spacing_vertical", entry_id = "bottom"}
 		entry_a = {entry_id = "a", item = {gear_id = "a"}, match = false}
 		entry_b = {entry_id = "b", item = {gear_id = "b"}, match = true}
@@ -415,9 +396,6 @@ def main() -> None:
 		end
         ''',
     )
-    assert lua.globals().external_present_result is True
-    assert lua.globals().external_sort_calls == 1
-    assert lua.globals().external_sort_function == "sort"
     assert lua.globals().in_place_result is True
     assert lua.globals().second_in_place_result is True
     assert lua.globals().hide_in_place_result is True
