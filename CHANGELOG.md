@@ -1,5 +1,13 @@
 # BetterInventory changelog
 
+## 3.5.0 - 2026-08-30
+
+- Adds default-on rarity-and-star ratings to weapon and Curio grid cards, with localized full-rarity and compact first-character modes.
+- Adds independent weapon and Curio controls for mode, opacity, and use of the card's effective background colour, including custom per-item colours.
+- Preserves native Transcendent and custom Sainted as distinct five-star and six-star tiers.
+- Resolves the card type per item in Sire Melk's mixed native and GlobalStore grids, allowing weapon and Curio rating profiles to coexist in the same layout.
+- Removes the experimental wider vertical-rail mode and safely migrates stale saved vertical selections to the full single-line presentation.
+
 ## 3.4.1 - 2026-08-29
 
 - Adds exact, idempotent teardown for native and GlobalStore `MarksVendorView` instances, releasing Equipment Text Search state, retained grid buffers, dim ownership, focus, marker ownership, and transient caches across repeated Melk close/reopen cycles.

@@ -4,15 +4,15 @@
 
 https://www.nexusmods.com/warhammer40kdarktide/mods/1144
 
-> Current release: **v3.4.1** (2026-08-29). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
+> Current release: **v3.5.0** (2026-08-30). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
 
 BetterInventory is a standalone inventory and item-management mod for Warhammer 40,000: Darktide. It adds responsive weapon and Curio cards, richer item information, configurable sorting, supported vendor layouts, optional mod integrations, and safety-gated inventory workflows.
 
 ## Highlights
 
 - Responsive melee, ranged, and Curio layouts with native single-column cards or independently configurable two-to-five-column grids.
-- Detailed weapon cards with marks, perks, blessings, maximum-potential attributes, item power, favorite/equipped state, and configurable image and text geometry.
-- Curio cards with detailed, primary-stat, or title-only profiles; optional generated stat/perk names; compact text modes; type-aware colours; item power; and Character Overview support.
+- Detailed weapon cards with marks, perks, blessings, maximum-potential attributes, item power, favorite/equipped state, configurable image and text geometry, and optional localized rarity-and-star ratings.
+- Curio cards with detailed, primary-stat, or title-only profiles; optional generated stat/perk names; compact text modes; type-aware colours; item power; localized rarity-and-star ratings; and Character Overview support.
 - Separate layouts for Inventory, Character Overview, Hadron's Entreat view, Armoury Exchange, Sire Melk's Limited Time Acquisitions, and both GlobalStore Multi-Operative Supply routes.
 - Configurable equipped-item and newly-acquired-item highlights using native Darktide materials.
 - Built-in item names and colours, with optional Name It synchronization.
@@ -21,6 +21,13 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - A bounded inventory-options panel for sorting, discard rules, integrations, and view-specific controls.
 - Standalone Equipment Text Search, with its own master switch, Inventory/Armoury/Hadron/Melk spacing sliders, quoted phrases, explicit AND, typed field clauses, match-first ranking, and configurable dim-or-hide behavior.
 - Optional Quick Discard, Automatic Discard, Automatic Curio Buyer, and Auto Crafter workflows with explicit ownership, authoritative revalidation, and fail-closed behavior.
+
+## What's new in v3.5.0
+
+- Adds default-on, localized rarity-and-star ratings to weapon and Curio grid cards, with full-rarity or compact first-character presentation.
+- Adds independent weapon and Curio controls for rating mode, opacity, and optional use of each card's effective background colour, including custom per-item colours.
+- Keeps native Transcendent and BetterInventory's custom Sainted tier distinct as five-star and six-star ratings, and selects the correct weapon or Curio profile in mixed Sire Melk grids.
+- Removes the experimental wider vertical-rail layout; older saved vertical selections migrate safely to the full single-line rating.
 
 ## What's new in v3.4.1
 
