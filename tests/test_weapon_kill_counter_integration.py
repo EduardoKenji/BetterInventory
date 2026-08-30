@@ -22,7 +22,6 @@ def main() -> None:
         local settings = {
             debug_weapon_kill_counter_kills = 0,
             show_pattern_mark = false,
-            show_rarity_name = false,
             weapon_kill_counter_show_zero_kills = true,
         }
         package.preload["scripts/utilities/items"] = function()
@@ -189,14 +188,11 @@ def main() -> None:
     assert overview.vertical_alignment == "center"
     assert overview.layer == 0
 
-    # Optional native subtitle rows move the counter downward rather than
-    # allowing title, mark, rarity, and kills to overlap.
+    # The optional native pattern row moves the counter downward rather than
+    # allowing the title, pattern, and kill counter to overlap.
     mod.settings.show_pattern_mark = True
     assert integration.profile(mod, 210, 12, lua.table_from({}), 3).top == 54
-    mod.settings.show_rarity_name = True
-    assert integration.profile(mod, 210, 12, lua.table_from({}), 3).top == 74
     mod.settings.show_pattern_mark = False
-    mod.settings.show_rarity_name = False
 
     # New horizontal rarity profiles own the optional rows above WKC. The
     # default 13 px rating font uses a compact 15 px advance. Persisted values

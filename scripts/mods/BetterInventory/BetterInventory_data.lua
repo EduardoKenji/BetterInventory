@@ -2176,11 +2176,6 @@ return {
 						default_value = false,
 					},
 					{
-						setting_id = "show_rarity_name",
-						type = "checkbox",
-						default_value = false,
-					},
-					{
 						setting_id = "weapon_rarity_rating_mode",
 						tooltip = "weapon_rarity_rating_mode_tooltip",
 						type = "dropdown",

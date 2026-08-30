@@ -296,10 +296,6 @@ local function profile(mod, card_width, text_left, configuration, columns, wkc, 
 			-- Positive top offsets move this top-aligned pass toward the card's
 			-- lower content. Lift WKC instead, preserving extra space above perks.
 			top = top + rating_rows * rating_row_advance - RATING_WKC_LIFT
-		elseif rating_mode == "off" and setting(mod, "show_rarity_name", false) == true then
-			-- Preserve the legacy rarity-row placement when the new rating display
-			-- is off; historically it reserved both secondary row positions.
-			top = 74
 		end
 	end
 

@@ -798,9 +798,6 @@ local localization = {
 	show_pattern_mark_tooltip = {
 		en = "Shows Darktide's secondary weapon-card name. With 'Append Mark to weapon name' enabled, this line contains only the weapon pattern; otherwise it contains the pattern and Mark.",
 	},
-	show_rarity_name = {
-		en = "Show weapon quality text",
-	},
 	weapon_rarity_rating_mode = {
 		en = "Rarity + stars rating",
 	},

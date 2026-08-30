@@ -3516,6 +3516,8 @@ def main() -> None:
         for index in range(1, len(card_content_group.sub_widgets) + 1)
     ]
     card_content_ids = set(ordered_card_content_ids)
+    assert "show_rarity_name" not in card_content_ids
+    assert localization["show_rarity_name"] is None
     weapon_rating_index = ordered_card_content_ids.index("weapon_rarity_rating_mode")
     assert ordered_card_content_ids[weapon_rating_index : weapon_rating_index + 3] == [
         "weapon_rarity_rating_mode",
@@ -3650,6 +3652,7 @@ def main() -> None:
     assert defaults["curio_display_profile"] == "detailed"
     assert defaults["curio_name_format"] == "original"
     assert defaults["weapon_rarity_rating_mode"] == "full_horizontal"
+    assert "show_rarity_name" not in defaults
     assert defaults["curio_generated_name_respect_custom_names"] is True
     assert defaults["curio_rarity_rating_mode"] == "full_horizontal"
     assert defaults["weapon_rarity_rating_use_card_background_color"] is True

@@ -263,13 +263,9 @@ Blueprints.configure_native_item_blueprint = function(mod, item_blueprint, grid_
 		end
 	end
 
-	if rarity_name then
-		local show_weapon_quality = setting(mod, "show_rarity_name", false)
-
-		rarity_name.visibility_function = function(content)
-			return show_weapon_quality and content_is_weapon(content)
-		end
-	end
+	-- The legacy quality-name row is superseded by the configurable rarity +
+	-- stars pass. Keep the inherited Darktide pass suppressed for every card.
+	set_visibility(rarity_name, false)
 
 	if global_store then
 		local icon = pass_by_style_id(pass_template, "icon")
@@ -642,25 +638,7 @@ Blueprints.configure_item_blueprint = function(mod, item_blueprint, grid_width, 
 
 	local rarity_name = pass_by_style_id(pass_template, "rarity_name")
 
-	configure_text_pass(rarity_name, {
-		font_size = numeric_setting(mod, "secondary_text_font_size", 13, 8, 20),
-		offset = {
-			text_left,
-			51,
-			8,
-		},
-		size = {
-			card_width - text_left - 8,
-			22,
-		},
-	})
-	if rarity_name then
-		local show_weapon_quality = setting(mod, "show_rarity_name", false) and RarityRating.item_mode(mod, "weapon", configuration) == RarityRating.MODE_OFF
-
-		rarity_name.visibility_function = function(content)
-			return show_weapon_quality and content_is_weapon(content)
-		end
-	end
+	set_visibility(rarity_name, false)
 
 	local item_level = pass_by_style_id(pass_template, "item_level")
 

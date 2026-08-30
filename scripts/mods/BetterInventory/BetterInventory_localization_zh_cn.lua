@@ -290,7 +290,6 @@ local localization = {
 	force_weapon_name_single_line_tooltip = "武器标题始终保持单行。长标题会先缩小到设定的最小物品名称字号，再以省略号缩短，同时保留附加的 Mk 型号。",
 	show_pattern_mark = "显示武器型号行",
 	show_pattern_mark_tooltip = "显示《暗潮》武器卡片的次要名称。启用“将型号附加到武器名称”后，此行仅显示武器型号系列；否则同时显示系列和 Mk 型号。",
-	show_rarity_name = "显示武器品质文字",
 	weapon_rarity_rating_mode = "品质与星级",
 	weapon_rarity_rating_mode_tooltip = "在网格武器卡片上显示与品质同色的星级。紧凑模式显示本地化品质首字，完整模式显示本地化品质全名，两者都将星级置于同一行。原生超凡与自定义圣化仍分别为五星和六星品质。",
 	weapon_rarity_rating_mode_off = "关闭",

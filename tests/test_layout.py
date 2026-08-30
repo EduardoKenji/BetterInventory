@@ -423,7 +423,6 @@ def main() -> None:
 				append_mark_to_name = true,
 				force_weapon_name_single_line = false,
                 show_pattern_mark = false,
-				show_rarity_name = false,
 				weapon_rarity_rating_mode = "off",
 				curio_rarity_rating_mode = "off",
 				show_rarity_tag = true,
