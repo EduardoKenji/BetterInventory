@@ -1,5 +1,13 @@
 # BetterInventory changelog
 
+## 3.5.1 - 2026-08-30
+
+- Adds a default-on Weapon Kill Counter integration option that displays a skull icon and `0` for owned inventory weapons with no recorded kills.
+- Keeps WKC statistics authoritative and untouched: existing positive counts remain unchanged, and disabling the option restores WKC's native hide-empty presentation.
+- Restricts synthesized zero-kill counters to owned inventory cards; Armoury Exchange, Brunt's Armoury, Sire Melk, GlobalStore, and other store cards retain native WKC behavior.
+- Removes the deprecated **Show weapon quality text** option and its legacy layout reservation. The localized rarity-and-stars system is now the sole weapon-quality label on BetterInventory cards.
+- Retains English and Simplified Chinese settings coverage and adds inventory/store boundary regressions for the WKC presentation.
+
 ## 3.5.0 - 2026-08-30
 
 - Adds default-on rarity-and-star ratings to weapon and Curio grid cards, with localized full-rarity and compact first-character modes.
