@@ -811,10 +811,16 @@ local localization = {
 		en = "Vertical rail (wider cards)",
 	},
 	weapon_rarity_rating_use_card_background_color = {
-		en = "Use card background colour",
+		en = "Use background colour for rarity",
 	},
 	weapon_rarity_rating_use_card_background_color_tooltip = {
 		en = "Colours the weapon rarity and stars with the card's resolved background colour, including per-item custom background colours. When disabled, the rating retains its rarity-tier colour.",
+	},
+	weapon_rarity_rating_opacity = {
+		en = "Rarity + stars opacity",
+	},
+	weapon_rarity_rating_opacity_tooltip = {
+		en = "Sets weapon rarity-and-stars opacity from fully transparent at 0%% to fully opaque at 100%%.",
 	},
 	option_requires_weapon_rarity_rating = {
 		en = "Requires weapon Rarity + star rating to be enabled.",
@@ -1180,10 +1186,16 @@ local localization = {
 		en = "Adds the same rarity-coloured rating profiles to grid Curio cards. Compact and Full render one line between the Curio title and its primary stat; Vertical reserves a left rail and widens Curio and mixed-item grids. This setting is independent from the weapon-card profile.",
 	},
 	curio_rarity_rating_use_card_background_color = {
-		en = "Use card background colour",
+		en = "Use background colour for rarity",
 	},
 	curio_rarity_rating_use_card_background_color_tooltip = {
 		en = "Colours the Curio rarity and stars with the card's resolved background colour, including per-item custom background colours. When disabled, the rating retains its rarity-tier colour.",
+	},
+	curio_rarity_rating_opacity = {
+		en = "Rarity + stars opacity",
+	},
+	curio_rarity_rating_opacity_tooltip = {
+		en = "Sets Curio rarity-and-stars opacity from fully transparent at 0%% to fully opaque at 100%%.",
 	},
 	option_requires_curio_rarity_rating = {
 		en = "Requires Curio Rarity + star rating to be enabled.",

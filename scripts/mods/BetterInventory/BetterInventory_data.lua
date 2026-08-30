@@ -2172,7 +2172,7 @@ return {
 						setting_id = "weapon_rarity_rating_mode",
 						tooltip = "weapon_rarity_rating_mode_tooltip",
 						type = "dropdown",
-						default_value = "off",
+						default_value = "full_horizontal",
 						options = {
 							{ text = "weapon_rarity_rating_mode_off", value = "off" },
 							{ text = "weapon_rarity_rating_mode_compact_horizontal", value = "compact_horizontal" },
@@ -2184,7 +2184,17 @@ return {
 						setting_id = "weapon_rarity_rating_use_card_background_color",
 						tooltip = "weapon_rarity_rating_use_card_background_color_tooltip",
 						type = "checkbox",
-						default_value = false,
+						default_value = true,
+					},
+					{
+						setting_id = "weapon_rarity_rating_opacity",
+						tooltip = "weapon_rarity_rating_opacity_tooltip",
+						type = "numeric",
+						default_value = 100,
+						range = {
+							0,
+							100,
+						},
 					},
 					{
 						setting_id = "show_rarity_tag",
@@ -2781,7 +2791,7 @@ return {
 						setting_id = "curio_rarity_rating_mode",
 						tooltip = "curio_rarity_rating_mode_tooltip",
 						type = "dropdown",
-						default_value = "off",
+						default_value = "full_horizontal",
 						options = {
 							{ text = "weapon_rarity_rating_mode_off", value = "off" },
 							{ text = "weapon_rarity_rating_mode_compact_horizontal", value = "compact_horizontal" },
@@ -2793,7 +2803,17 @@ return {
 						setting_id = "curio_rarity_rating_use_card_background_color",
 						tooltip = "curio_rarity_rating_use_card_background_color_tooltip",
 						type = "checkbox",
-						default_value = false,
+						default_value = true,
+					},
+					{
+						setting_id = "curio_rarity_rating_opacity",
+						tooltip = "curio_rarity_rating_opacity_tooltip",
+						type = "numeric",
+						default_value = 100,
+						range = {
+							0,
+							100,
+						},
 					},
 					{
 						setting_id = "show_curio_item_level",

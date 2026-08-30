@@ -683,7 +683,9 @@ local function refresh_option_dependencies()
 	set_option_enabled(option_dependency_entries.curio_secondary_stat_font_size, detailed_curio_profile, mod:localize("option_requires_detailed_curio_profile"))
 	set_option_enabled(option_dependency_entries.curio_primary_secondary_spacing, detailed_curio_profile, mod:localize("option_requires_detailed_curio_profile"))
 	set_option_enabled(option_dependency_entries.weapon_rarity_rating_use_card_background_color, weapon_rarity_rating_enabled, mod:localize("option_requires_weapon_rarity_rating"))
+	set_option_enabled(option_dependency_entries.weapon_rarity_rating_opacity, weapon_rarity_rating_enabled, mod:localize("option_requires_weapon_rarity_rating"))
 	set_option_enabled(option_dependency_entries.curio_rarity_rating_use_card_background_color, curio_rarity_rating_enabled, mod:localize("option_requires_curio_rarity_rating"))
+	set_option_enabled(option_dependency_entries.curio_rarity_rating_opacity, curio_rarity_rating_enabled, mod:localize("option_requires_curio_rarity_rating"))
 	set_option_enabled(option_dependency_entries.single_column_layout_group, single_column_enabled, single_column_reason)
 	set_option_enabled(option_dependency_entries.single_column_weapon_name_font_size, single_column_enabled, single_column_reason)
 	set_option_enabled(option_dependency_entries.single_column_blessing_icons_on_right, single_column_enabled and weapon_blessing_text_enabled, not single_column_enabled and single_column_reason or mod:localize("option_requires_weapon_blessing_text"))
@@ -862,7 +864,9 @@ local function bind_option_dependencies(options_templates)
 		"weapon_rarity_rating_mode",
 		"curio_rarity_rating_mode",
 		"weapon_rarity_rating_use_card_background_color",
+		"weapon_rarity_rating_opacity",
 		"curio_rarity_rating_use_card_background_color",
+		"curio_rarity_rating_opacity",
 		"expand_curio_inventory_window",
 		"curio_target_card_width",
 		"enable_hadron_entreat_grid",

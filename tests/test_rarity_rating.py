@@ -60,6 +60,8 @@ def main() -> None:
                 curio_rarity_rating_mode = "off",
 				weapon_rarity_rating_use_card_background_color = false,
 				curio_rarity_rating_use_card_background_color = false,
+				weapon_rarity_rating_opacity = 100,
+				curio_rarity_rating_opacity = 100,
                 secondary_text_font_size = 13,
                 show_pattern_mark = false,
             },
@@ -144,6 +146,11 @@ def main() -> None:
         compact_widget.style.background_gradient.color[index]
         for index in range(1, 5)
     ) == (72, 255, 94, 132)
+    mod.settings.weapon_rarity_rating_opacity = 40
+    rating.populate(mod, compact_widget, transcendent, "weapon")
+    assert compact_pass.style.text_color[1] == 102
+    assert compact_widget.style.background_gradient.color[1] == 72
+    mod.settings.weapon_rarity_rating_opacity = 100
     mod.settings.weapon_rarity_rating_use_card_background_color = False
 
     transcendent.display_rarity = "{#color(240,120,20)}Transcendent{#reset()}"
@@ -227,6 +234,11 @@ def main() -> None:
         160,
         240,
     )
+    mod.settings.curio_rarity_rating_opacity = 25
+    rating.populate(mod, curio_widget, transcendent, "curio")
+    assert curio_pass.style.text_color[1] == 64
+    assert curio_widget.style.background_gradient.color[1] == 64
+    mod.settings.curio_rarity_rating_opacity = 100
     mod.settings.curio_rarity_rating_use_card_background_color = False
 
     mod.settings.weapon_rarity_rating_mode = "compact_horizontal"
