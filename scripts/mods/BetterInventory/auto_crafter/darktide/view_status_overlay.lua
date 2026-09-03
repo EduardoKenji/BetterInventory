@@ -188,6 +188,7 @@ function Overlay.install(mod, view_classes)
 
 	local installed = false
 	local base_view = view_classes.base or view_classes[1]
+	local brunt_view = view_classes.brunt or view_classes[5]
 	local item_grid_view = view_classes.item_grid or view_classes[2]
 	local inventory_view = view_classes.inventory or view_classes[3]
 	local vendor_view = view_classes.vendor or view_classes[4]
@@ -201,6 +202,7 @@ function Overlay.install(mod, view_classes)
 	installed = install_post_draw(mod, item_grid_view) or installed
 	installed = install_post_draw(mod, inventory_view, is_inventory_view) or installed
 	installed = install_post_draw(mod, vendor_view) or installed
+	installed = install_post_draw(mod, brunt_view) or installed
 
 	return installed
 end

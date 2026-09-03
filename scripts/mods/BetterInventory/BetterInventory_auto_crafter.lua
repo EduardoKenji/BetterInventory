@@ -426,7 +426,8 @@ local function reporter(ui_panel)
 					ui_panel:set_phase("probe_complete", payload)
 				end
 
-				log("info", "Auto Crafter Helper read-only probe complete: " .. format_probe(payload))
+				local access = payload and payload.crafting_access or {}
+				log("info", "Auto Crafter Helper read-only probe complete: " .. format_probe(payload) .. string.format(" | Hadron unlocked=%s, facility=%s, cache=%s", tostring(access.unlocked), tostring(access.facility_unlocked), tostring(access.progression_cached)))
 				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), format_probe(payload))
 			elseif kind == "probe_failed" then
 				if ui_panel then

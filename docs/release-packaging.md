@@ -35,6 +35,13 @@ The invariant is now based on direct comparison with known-good Nexus mod archiv
 
 ## Mandatory release procedure
 
+Before packaging every release:
+
+1. update the version in `info.json` and `MOD_VERSION` in `BetterInventory_data.lua`;
+2. update the matching assertions in `tests/check_runtime_bundle.py` and `tests/test_settings.py`;
+3. update README's current release/What's New section and add the release to `CHANGELOG.md`;
+4. regenerate `docs/generated-runtime-bundle-manifest.json`.
+
 Only create the release archive with the repository-owned packager:
 
 ```powershell
