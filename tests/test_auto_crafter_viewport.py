@@ -135,6 +135,7 @@ def main() -> None:
         end
 
         BaseView = { draw = function() end }
+        VendorViewBase = { draw = function() end }
         ItemGridViewBase = { draw = function() end }
         InventoryView = { draw = function() end }
         VendorInteractionViewBase = { draw = function() end }
@@ -158,6 +159,7 @@ def main() -> None:
         overlay_runtime.table_from(
             {
                 "base": runtime_globals.BaseView,
+                "brunt": runtime_globals.VendorViewBase,
                 "item_grid": runtime_globals.ItemGridViewBase,
                 "inventory": runtime_globals.InventoryView,
                 "vendor": runtime_globals.VendorInteractionViewBase,
@@ -165,7 +167,7 @@ def main() -> None:
         ),
     ) is True
     assert runtime_globals.normal_hook_calls == 0
-    assert len(runtime_globals.safe_hooks) == 4
+    assert len(runtime_globals.safe_hooks) == 5
 
     inventory_view = overlay_runtime.table_from(
         {
@@ -205,6 +207,11 @@ def main() -> None:
     runtime_globals.safe_hooks[1].handler(unrelated_view, 0.016, 1, None, 10)
     assert runtime_globals.widget_draw_calls == 3
 
+    brunt_view = overlay_runtime.table_from({"__class_name": "CreditsGoodsVendorView", "_ui_renderer": {}, "_ui_scenegraph": {}, "_render_settings": {"start_layer": 7}})
+    runtime_globals.safe_hooks[5].handler(brunt_view, 0.016, 1, None, 10)
+    assert runtime_globals.widget_draw_calls == 4
+    assert brunt_view._auto_crafter_status_overlay.offset[1] == 360
+
     # Inactive HUD state is the first post-draw gate. It must not inspect even
     # a hostile/partial third-party view shape or attempt presentation work.
     overlay_runtime.execute(
@@ -220,7 +227,7 @@ def main() -> None:
     runtime_globals.safe_hooks[1].handler(
         runtime_globals.disabled_overlay_view, 0.016, 1, None, 10
     )
-    assert runtime_globals.widget_draw_calls == 3
+    assert runtime_globals.widget_draw_calls == 4
 
     print("Auto Crafter viewport resolution matrix tests passed.")
 

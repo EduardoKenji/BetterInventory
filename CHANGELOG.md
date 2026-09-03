@@ -1,5 +1,12 @@
 # BetterInventory changelog
 
+## 3.5.6 - 2026-09-03
+
+- Distinguishes an uncached mission-board progression snapshot from authoritative cached facility data, allowing eligible characters to craft through direct Realms/Psykanium Brunt sessions without weakening genuine Hadron locks.
+- Records Hadron unlock, facility, and cache state in the read-only probe log for direct diagnosis.
+- Hooks the persistent crafting-status overlay through `VendorViewBase`, the superclass used by Brunt's concrete `CreditsGoodsVendorView.draw`, so the top HUD renders in the Psykanium route.
+- Adds cached-lock, cached-missing-facility, uncached-fallback, and concrete Brunt post-draw regressions.
+
 ## 3.5.5 - 2026-08-30
 
 - Allows Auto Crafter's read-only Brunt probe and explicitly started workflows through Hub Hotkey Menus' Psykanium route while the exact live `CreditsGoodsVendorView` remains valid.

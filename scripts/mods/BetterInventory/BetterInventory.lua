@@ -230,6 +230,7 @@ local AutoCrafterViewStatusOverlay = mod:io_dofile("BetterInventory/scripts/mods
 if type(AutoCrafterViewStatusOverlay) == "table" and type(AutoCrafterViewStatusOverlay.install) == "function" then
 	AutoCrafterViewStatusOverlay.install(mod, {
 		base = BaseView,
+		brunt = VendorViewBase,
 		item_grid = ItemGridViewBase,
 		inventory = InventoryView,
 		vendor = VendorInteractionViewBase,

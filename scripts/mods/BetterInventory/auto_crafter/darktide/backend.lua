@@ -309,8 +309,18 @@ local function current_crafting_access(player)
 	local data_service = managers and managers.data_service
 	local mission_board = data_service and data_service.mission_board
 	local get_progression = mission_board and safe_member(mission_board, "get_hub_facilities_progression_data")
+	local has_cached_progression = mission_board and safe_member(mission_board, "has_cached_progression_data")
+	local progression_cached
 
-	if type(get_progression) == "function" then
+	if type(has_cached_progression) == "function" then
+		local cache_ok, cached = pcall(has_cached_progression, mission_board)
+
+		if cache_ok and type(cached) == "boolean" then
+			progression_cached = cached
+		end
+	end
+
+	if progression_cached ~= false and type(get_progression) == "function" then
 		local progression_ok, progression = pcall(get_progression, mission_board)
 		local facility = progression_ok and type(progression) == "table" and progression[CRAFTING_FACILITY_ID] or nil
 		local unlock_state_ok, unlock_state = pcall(read_member, facility, "unlocked")
@@ -336,6 +346,8 @@ local function current_crafting_access(player)
 
 	return {
 		character_level = character_level,
+		facility_unlocked = facility_unlocked,
+		progression_cached = progression_cached,
 		required_character_level = MIN_CRAFTING_CHARACTER_LEVEL,
 		unlocked = unlocked,
 	}

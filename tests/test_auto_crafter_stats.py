@@ -397,26 +397,26 @@ def main() -> None:
     lua.globals().TestProfile.current_level = 30
     lua.execute(
         r'''
+        TestProgressionCached = true
+        TestHubFacilities = {omnissiah = {unlocked = false}}
         Managers.data_service = {
             mission_board = {
-                get_hub_facilities_progression_data = function()
-                    return {omnissiah = {unlocked = false}}
-                end,
+                has_cached_progression_data = function() return TestProgressionCached end,
+                get_hub_facilities_progression_data = function() return TestHubFacilities end,
             },
         }
         '''
     )
     facility_locked_snapshot = backend.probe_snapshot(backend).value
     assert facility_locked_snapshot.crafting_access.unlocked is False
-    lua.execute(
-        r'''
-        Managers.data_service.mission_board.get_hub_facilities_progression_data = function()
-            return {}
-        end
-        '''
-    )
+    assert facility_locked_snapshot.crafting_access.progression_cached is True
+    lua.globals().TestHubFacilities = lua.table()
     missing_facility_snapshot = backend.probe_snapshot(backend).value
     assert missing_facility_snapshot.crafting_access.unlocked is False
+    lua.globals().TestProgressionCached = False
+    uncached_snapshot = backend.probe_snapshot(backend).value
+    assert uncached_snapshot.crafting_access.unlocked is True
+    assert uncached_snapshot.crafting_access.progression_cached is False
     lua.globals().Managers.data_service = None
     assert len(offer.base_stats) == 5
     assert len(offer.marks) == 3
