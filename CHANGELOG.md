@@ -1,5 +1,13 @@
 # BetterInventory changelog
 
+## 3.5.7 - 2026-09-04
+
+- Binds Games Lantern's hidden exact-mark identities to visible native Brunt family offers; unknown marks use a named native fallback with a mandatory notification.
+- Degrades valid but incompatible future-mark stats, perks, and blessings to deterministic catalogue-valid native choices while malformed external values remain rejected.
+- Waits for matching native layout and backend snapshots, revalidates identities after asynchronous trait-catalogue discovery, and rejects stale offers before mutation ownership.
+- Preserves localized fallback family/mark labels without `<unlocalized>` artifacts and carries concrete native-selection failures into timeout diagnostics.
+- Enforces the selected fallback mark during inventory completion and final verification, and adds critical regression coverage for store races and schema drift.
+
 ## 3.5.6 - 2026-09-03
 
 - Distinguishes an uncached mission-board progression snapshot from authoritative cached facility data, allowing eligible characters to craft through direct Realms/Psykanium Brunt sessions without weakening genuine Hadron locks.
