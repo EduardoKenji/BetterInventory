@@ -11,6 +11,7 @@ local active_brunt_view
 local games_lantern_catalog_generation = 0
 local runtime_context
 local start_games_lantern_queue
+local games_lantern_resolution_context
 local hud_lines = {}
 local hud_text = ""
 local hud_line_count = 0
@@ -263,7 +264,7 @@ local function game_localize(key)
 
 	local ok, value = pcall(fn, key)
 
-	return ok and type(value) == "string" and value ~= key and value or nil
+	return ok and type(value) == "string" and value ~= key and not string.find(value, "<unlocalized", 1, true) and value or nil
 end
 
 local function readable_stat_name(candidate)
@@ -769,9 +770,9 @@ function AutoCrafter.configure(dependencies)
 				return false
 			end
 
-			local ok, selected = pcall(dependencies.select_offer, active_brunt_view, job.offer)
+			local ok, selected, reason, detail = pcall(dependencies.select_offer, active_brunt_view, job.offer)
 
-			return ok and selected == true
+			return ok and selected == true, ok and reason or selected, detail
 		end,
 		configure_job = function(job)
 			local ok, configured = pcall(controller.set_imported_job, controller, job)
@@ -827,7 +828,7 @@ function AutoCrafter.configure(dependencies)
 		report = function(kind, payload)
 			presentation_dirty = true
 			invalidate_games_lantern_panel()
-			log(kind == "queue_failed" and "error" or "info", string.format("Games Lantern queue event=%s queue=%s index=%s next=%s reason=%s", tostring(kind), tostring(payload and payload.queue_id or "?"), tostring(payload and payload.index or "?"), tostring(payload and payload.next_index or "?"), tostring(payload and payload.reason or "none")))
+			log(kind == "queue_failed" and "error" or "info", string.format("Games Lantern queue event=%s queue=%s index=%s next=%s reason=%s error=%s detail=%s", tostring(kind), tostring(payload and payload.queue_id or "?"), tostring(payload and payload.index or "?"), tostring(payload and payload.next_index or "?"), tostring(payload and payload.reason or "none"), tostring(payload and payload.error or "none"), tostring(payload and payload.detail or "none")))
 
 			if kind == "queue_job_skipped" then
 				local job = payload and payload.job or {}
@@ -864,6 +865,22 @@ function AutoCrafter.configure(dependencies)
 
 		if not new_import and not (queue_can_resume and imported_controller) then
 			return false
+		end
+
+		local native_context = games_lantern_resolution_context and games_lantern_resolution_context()
+		if not native_context or native_context.native_store_ready ~= true then
+			local reason = native_context and native_context.native_store_reason or "native_store_unavailable"
+			notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Brunt's Armoury is refreshing. Wait for its weapon list, then try Craft again.", true)
+
+			return false, reason
+		end
+		for _, job in ipairs(queue_state.jobs or {}) do
+			local offer_id = job.offer and job.offer.offer_id
+			if offer_id == nil or native_context.visible_offer_ids[tostring(offer_id)] ~= true then
+				notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), "Brunt's Armoury changed after this build was imported. Paste the build again to refresh its weapon offers.", true)
+
+				return false, "native_store_changed"
+			end
 		end
 		if confirmed ~= true then
 			return false, "aggregate_confirmation_required"
@@ -903,12 +920,36 @@ function AutoCrafter.configure(dependencies)
 		return true
 	end
 
-	local function games_lantern_resolution_context()
+	games_lantern_resolution_context = function()
 		local snapshot = controller and controller:snapshot()
 		local data = snapshot and snapshot.data or {}
 		local store = data.store or {}
 		local offers = store.offers or {}
 		local identity = runtime_context and runtime_context:current_identity() or nil
+		local layout = active_brunt_view and active_brunt_view._offer_items_layout
+		local visible_offer_ids = type(layout) == "table" and {} or nil
+		local summarized_offer_ids = {}
+		local native_store_ready = type(layout) == "table"
+
+		for _, offer in ipairs(offers) do
+			if offer.offer_id ~= nil then
+				summarized_offer_ids[tostring(offer.offer_id)] = true
+			end
+		end
+
+		for _, entry in ipairs(layout or {}) do
+			local offer = entry.offer
+			local offer_id = offer and (offer.offerId or offer.offer_id)
+
+			if offer_id ~= nil then
+				visible_offer_ids[tostring(offer_id)] = true
+				if summarized_offer_ids[tostring(offer_id)] ~= true then
+					native_store_ready = false
+				end
+			else
+				native_store_ready = false
+			end
+		end
 
 		return {
 			active_archetype = identity and identity.archetype or nil,
@@ -918,7 +959,11 @@ function AutoCrafter.configure(dependencies)
 			dump_target = tonumber(setting("auto_crafter_dump_stat_target", 60)) or 60,
 			localize_offer_label = game_localize,
 			melee_offers = offers,
+			native_store_ready = native_store_ready,
+			native_store_reason = type(layout) ~= "table" and "native_offer_layout_loading" or not native_store_ready and "native_offer_snapshot_mismatch" or nil,
+			offer_with_mark = CandidatePolicy.offer_with_mark,
 			ranged_offers = offers,
+			visible_offer_ids = visible_offer_ids,
 		}
 	end
 
@@ -1097,6 +1142,17 @@ function AutoCrafter.configure(dependencies)
 						local message = "Games Lantern import failed: " .. reason .. (detail and " (" .. tostring(detail) .. ")" or "")
 						log("error", message)
 						notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), message)
+					elseif kind == "import_staged" then
+						for _, job in ipairs(payload and payload.build and payload.build.jobs or {}) do
+							local fallback = job.mark_fallback
+							if fallback then
+								local adjusted = type(fallback.adjustments) == "table" and next(fallback.adjustments) ~= nil
+								local suffix = adjusted and " Incompatible profile fields were replaced with valid native choices; review this queue entry before crafting." or ""
+								local message = string.format("Imported %s, but its Games Lantern mark could not be identified. Using fallback mark %s.%s", tostring(fallback.requested or job.display_name or "weapon"), tostring(fallback.selected or "unknown"), suffix)
+								log("warning", message)
+								notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), message, true)
+							end
+						end
 					else
 						log("info", string.format("Games Lantern import event=%s generation=%s state=%s reason=%s", tostring(kind), tostring(payload and payload.generation or "?"), tostring(payload and payload.state or "?"), tostring(payload and payload.reason or "none")))
 					end
@@ -1354,7 +1410,7 @@ function AutoCrafter.on_view_closed(view)
 
 	if games_lantern_import then
 		local import_state = games_lantern_import:snapshot()
-		if import_state and (import_state.state == "fetching" or import_state.state == "resolving_catalogues") then
+		if import_state and (import_state.state == "fetching" or import_state.state == "waiting_for_store" or import_state.state == "resolving_catalogues") then
 			pcall(games_lantern_import.cancel, games_lantern_import, "brunt_view_closed")
 		end
 	end
@@ -1430,7 +1486,7 @@ function AutoCrafter.update(dt)
 		end
 	end
 
-	if games_lantern_import and games_lantern_import:state() == "fetching" then
+	if games_lantern_import and (games_lantern_import:state() == "fetching" or games_lantern_import:state() == "waiting_for_store") then
 		local import_state_before = games_lantern_import:state()
 		local import_ok, import_error = pcall(games_lantern_import.update, games_lantern_import)
 
@@ -1548,7 +1604,7 @@ end
 
 function AutoCrafter.is_busy()
 	local import_state = games_lantern_import and games_lantern_import:state()
-	local import_busy = import_state == "fetching" or import_state == "resolving_catalogues"
+	local import_busy = import_state == "fetching" or import_state == "waiting_for_store" or import_state == "resolving_catalogues"
 	local queue_state = games_lantern_queue and games_lantern_queue:state()
 	local queue_busy = queue_state == "starting" or queue_state == "selecting" or queue_state == "preflighting" or queue_state == "dispatching" or queue_state == "running" or queue_state == "waiting_next" or queue_state == "stopping" or queue_state == "quarantined" or queue_state == "reconciliation_required"
 	local controller_busy = controller and controller:is_busy() or false
@@ -1558,7 +1614,7 @@ end
 
 function AutoCrafter.needs_update()
 	local import_state = games_lantern_import and games_lantern_import:state()
-	local import_needs_update = import_state == "fetching" or import_state == "resolving_catalogues"
+	local import_needs_update = import_state == "fetching" or import_state == "waiting_for_store" or import_state == "resolving_catalogues"
 	local queue_state = games_lantern_queue and games_lantern_queue:state()
 	local queue_needs_update = queue_state == "starting" or queue_state == "selecting" or queue_state == "preflighting" or queue_state == "dispatching" or queue_state == "running" or queue_state == "waiting_next" or queue_state == "stopping" or queue_state == "quarantined" or queue_state == "reconciliation_required"
 	local controller_needs_update = controller and type(controller.needs_update) == "function" and controller:needs_update() or controller and controller:is_busy() or false
@@ -1626,6 +1682,7 @@ function AutoCrafter.shutdown()
 	games_lantern_selection = nil
 	runtime_context = nil
 	start_games_lantern_queue = nil
+	games_lantern_resolution_context = nil
 	controller_faulted = false
 end
 

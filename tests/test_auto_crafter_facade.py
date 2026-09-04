@@ -66,6 +66,20 @@ def main() -> None:
     assert "Games Lantern Brunt preview selection" in source
     assert "timeout=%s" in source
 
+    # Unknown Games Lantern marks must surface their automatic native fallback.
+    assert 'kind == "import_staged"' in source
+    assert "job.mark_fallback" in source
+    assert "could not be identified. Using fallback mark" in source
+    assert "Incompatible profile fields were replaced with valid native choices" in source
+    assert 'notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), message, true)' in source
+
+    # Import waits for one coherent native-layout/backend snapshot and checks
+    # staged offer IDs again before acquiring mutation ownership.
+    assert "native_store_ready = native_store_ready" in source
+    assert 'native_store_reason = type(layout) ~= "table"' in source
+    assert 'games_lantern_import:state() == "waiting_for_store"' in source
+    assert "Brunt's Armoury changed after this build was imported" in source
+
     # DMF log methods pass their first payload through string.format. Imported
     # perk/blessing labels contain literal percent signs, so runtime text must
     # always be supplied as a value for a constant format string.

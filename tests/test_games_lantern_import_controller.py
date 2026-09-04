@@ -248,6 +248,67 @@ def main() -> None:
     assert settling_resolver_calls == []
     assert settling_reports == ["character_context_settling"]
 
+    # Native Brunt layout and the read-only backend snapshot settle
+    # independently. Wait without resolving against an empty layout, then
+    # revalidate after async catalogues and restart once if offer IDs changed.
+    native_ready = [False]
+    store_revision = [1]
+    native_callbacks = []
+    native_installed = []
+    native_reports = []
+    native_resolver_calls = []
+
+    def native_identity(model, context):
+        revision = store_revision[0]
+        native_resolver_calls.append(revision)
+        return to_lua({
+            "kind": "games_lantern_identity_build",
+            "jobs": [
+                {"slot": "melee", "master_id": f"melee-{revision}", "offer": {"offer_id": f"melee-offer-{revision}", "master_id": f"melee-{revision}"}},
+                {"slot": "ranged", "master_id": f"ranged-{revision}", "offer": {"offer_id": f"ranged-offer-{revision}", "master_id": f"ranged-{revision}"}},
+            ],
+        }), None
+
+    native_resolver = to_lua({
+        "resolve_identities": callback_wrapper(native_identity),
+        "attach_catalogs": callback_wrapper(lambda identity_build, catalogs, context=None: (to_lua({"kind": "games_lantern_build", "jobs": identity_build["jobs"]}), None)),
+    })
+    native_waiter = import_module.new(to_lua({
+        "resolver": native_resolver,
+        "get_resolution_context": callback_wrapper(lambda: to_lua({
+            "active_archetype": "psyker",
+            "native_store_ready": native_ready[0],
+            "native_store_reason": "native_offer_layout_loading",
+        })),
+        "fetch_catalogs": callback_wrapper(lambda identity_build, complete, generation: native_callbacks.append(complete) or True),
+        "install_queue": callback_wrapper(lambda build: native_installed.append(build) or True),
+        "report": callback_wrapper(lambda kind, payload: native_reports.append(str(kind))),
+    }))
+    native_waiter._model = build_model
+    assert native_waiter._begin_catalog_resolution(native_waiter) is True
+    assert native_waiter.snapshot(native_waiter)["state"] == "waiting_for_store"
+    assert native_resolver_calls == []
+    assert native_waiter.update(native_waiter) == "waiting_for_store"
+    assert native_reports.count("import_waiting_for_store") == 1
+
+    native_ready[0] = True
+    assert native_waiter.update(native_waiter) == "resolving_catalogues"
+    assert native_resolver_calls == [1]
+    assert len(native_callbacks) == 1
+
+    store_revision[0] = 2
+    assert native_callbacks[0](to_lua({}), None) is True
+    assert native_waiter.snapshot(native_waiter)["state"] == "resolving_catalogues"
+    assert native_resolver_calls == [1, 2, 2]
+    assert len(native_callbacks) == 2
+    assert native_installed == []
+    assert "import_store_changed" in native_reports
+
+    assert native_callbacks[1](to_lua({}), None) is True
+    assert native_waiter.snapshot(native_waiter)["state"] == "staged"
+    assert native_resolver_calls == [1, 2, 2, 2]
+    assert len(native_installed) == 1
+
     cache_controller = import_module.new(to_lua({}))
     cache_controller._state = "staged"
     staged_presentation = cache_controller.presentation_snapshot(cache_controller)

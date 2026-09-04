@@ -97,6 +97,12 @@ def main() -> None:
     set_inventory([item("gear-only-sibling", "mark-sibling")])
     assert controller._completed_imported_job_result(controller, melee)["gear_id"] == "gear-only-sibling"
 
+    exact_mark_job = to_lua(job("melee"))
+    exact_mark_job["offer"]["family_mark_selection"] = True
+    assert controller._completed_imported_job_result(controller, exact_mark_job) is None
+    set_inventory([item("gear-exact-mark", "mark-exact")])
+    assert controller._completed_imported_job_result(controller, exact_mark_job)["gear_id"] == "gear-exact-mark"
+
     # Perk/blessing order is not item identity. Missing any final invariant,
     # mastery claim, or allocated blessing tier prevents a skip.
     reordered = item("gear-reordered", "mark-exact")
@@ -215,6 +221,8 @@ def main() -> None:
     exact["master_id"] = "mark-sibling"
     set_inventory([exact])
     assert controller._verify_imported_result(controller, prefix_result, melee, 1) is True
+    verified, reason = controller._verify_imported_result(controller, prefix_result, exact_mark_job, 1)
+    assert verified is False and "weapon mark" in reason
 
     exact["parent_pattern"] = "other-pattern"
     set_inventory([exact])

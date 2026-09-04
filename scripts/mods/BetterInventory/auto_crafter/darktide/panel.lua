@@ -2181,7 +2181,7 @@ function Panel.new(dependencies)
 		local function run_is_active()
 			return workflow_active(self._controller_state, self:_games_lantern_queue())
 		end
-		local import_busy = imported and (imported.state == "fetching" or imported.state == "resolving_catalogues" or imported.state == "awaiting_weapon_choice")
+		local import_busy = imported and (imported.state == "fetching" or imported.state == "waiting_for_store" or imported.state == "resolving_catalogues" or imported.state == "awaiting_weapon_choice")
 		local craft_enabled = not run_is_active() and not import_busy
 		local craft_label = queue_owned and self._queue_craft_armed and (queue.job_count == 1 and "> CONFIRM ONE-WEAPON CRAFT <" or "> CONFIRM TWO-WEAPON CRAFT <") or localize("auto_crafter_panel_preview", "> CLICK HERE TO CRAFT <")
 		table.insert(entries, self:_entry(craft_label, queue_owned and self._queue_craft_armed and (self._queue_craft_confirmation_text or "Cost authority unavailable; crafting remains blocked.") or "", {
@@ -2192,7 +2192,7 @@ function Panel.new(dependencies)
 				local imported = self:_games_lantern_import()
 				local queue = self:_games_lantern_queue()
 				local queue_owned = queue and queue.job_count > 0 and queue.state ~= "empty" and queue.state ~= "complete"
-				local import_busy = imported and (imported.state == "fetching" or imported.state == "resolving_catalogues" or imported.state == "awaiting_weapon_choice")
+				local import_busy = imported and (imported.state == "fetching" or imported.state == "waiting_for_store" or imported.state == "resolving_catalogues" or imported.state == "awaiting_weapon_choice")
 				if workflow_active(self._controller_state, queue) or import_busy then return end
 
 				if (imported and imported.state == "staged" or queue_owned) and type(self._start_games_lantern_queue) == "function" then
@@ -2238,7 +2238,7 @@ function Panel.new(dependencies)
 				local current_import = self:_games_lantern_import()
 				local current_queue = self:_games_lantern_queue()
 				local current_owned = current_queue and current_queue.job_count > 0 and current_queue.state ~= "empty" and current_queue.state ~= "complete"
-				local current_import_busy = current_import and (current_import.state == "fetching" or current_import.state == "resolving_catalogues" or current_import.state == "awaiting_weapon_choice")
+				local current_import_busy = current_import and (current_import.state == "fetching" or current_import.state == "waiting_for_store" or current_import.state == "resolving_catalogues" or current_import.state == "awaiting_weapon_choice")
 				local current_enabled = not workflow_active(self._controller_state, current_queue) and not current_import_busy
 				widget.content.enabled = current_enabled
 				widget.content.hotspot.disabled = not current_enabled

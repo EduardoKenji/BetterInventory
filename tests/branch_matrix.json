@@ -492,6 +492,34 @@
       "modules": ["BetterInventory_auto_crafter.lua"]
     },
     {
+      "name": "games-lantern.hidden-mark-binds-native-family-offer",
+      "test": "test_games_lantern_workflow.py",
+      "case": "native_family_offer_exact_mark_binding",
+      "outcome": "both imported slots bind hidden exact-mark backend identities to the visible native Brunt family offer; an unidentified mark binds a valid native fallback and displays its already-localized family and mark without relocalization artifacts",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
+      "name": "games-lantern.unknown-mark-profile-degrades-safely",
+      "test": "test_games_lantern_workflow.py",
+      "case": "unknown_mark_profile_degrades_to_valid_native_choices",
+      "outcome": "valid future-mark stat and trait schemas degrade to deterministic native choices with mandatory review metadata, while malformed external values still fail closed",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
+      "name": "games-lantern.unknown-mark-fallback-is-visible",
+      "test": "test_auto_crafter_facade.py",
+      "case": "frame_update_crash_containment",
+      "outcome": "a staged Games Lantern build carrying an unknown-mark fallback emits a mandatory notification naming the requested weapon and native fallback, and discloses any profile fields replaced for compatibility",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
+      "name": "games-lantern.native-store-snapshot-remains-coherent",
+      "test": "test_games_lantern_import_controller.py",
+      "case": "native_store_settlement_and_catalog_revalidation",
+      "outcome": "import waits for matching native layout and backend snapshots, then discards stale asynchronous catalogues and resolves again if offer identity changes",
+      "modules": ["BetterInventory_auto_crafter.lua"]
+    },
+    {
       "name": "auto-crafter.bounds-failures",
       "test": "test_auto_crafter_controller.py",
       "case": "resource_capacity_network_and_loading_failure_matrix",

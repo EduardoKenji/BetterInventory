@@ -277,6 +277,9 @@ function ImportedQueueWorkflow.install(self, services)
 		if expected_pattern and (item.parent_pattern or item.mastery_id) ~= expected_pattern then
 			return false, "completed queue weapon " .. label .. " changed weapon family"
 		end
+		if job.offer and job.offer.family_mark_selection == true and item.master_id ~= job.offer.master_id then
+			return false, "completed queue weapon " .. label .. " changed weapon mark"
+		end
 		local target_matches = candidate_matches_stat_targets(item, imported_dump_stat(job), job.dump_target, job.custom_stats_enabled and job.custom_stat_targets or nil, job.dump_stat_identity, job.dump_comparison)
 		local fallback_distance = result.fallback_accepted and candidate_stat_target_distance(item, imported_dump_stat(job), job.dump_target, job.custom_stats_enabled and job.custom_stat_targets or nil, job.dump_stat_identity) or nil
 		local expected_fallback_distance = tonumber(result.fallback_target_distance)

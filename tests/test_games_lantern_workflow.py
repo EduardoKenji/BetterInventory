@@ -220,6 +220,143 @@ def main() -> None:
     assert skitarius_identity["jobs"][2]["master_id"].endswith("phosphor_pistol_p1_m1")
     assert skitarius_identity["jobs"][1]["dump_stat"].endswith("cleave_damage_and_targets_stat")
 
+    # Brunt's backend exposes one raw offer per mark while its native grid only
+    # exposes one family representative. Bind both imported jobs to the visible
+    # purchase offer without losing the exact Games Lantern mark.
+    mark_binding = lua.eval(
+        "function(offer, mark) local target = {}; for key, value in pairs(offer) do target[key] = value end; for key, value in pairs(mark) do target[key] = value end; target.family_mark_selection = true; return target end"
+    )
+    cleaver_mark = {
+        "display_name": "Krourk Mk IV Cleaver",
+        "master_id": "content/items/weapons/player/melee/ogryn_combatblade_p1_m3",
+        "parent_pattern": "ogryn_combatblade_p1",
+        "weapon_category": "melee",
+        "base_stats": [
+            {"name": "cleaver_m3_mobility", "display_name_key": "Mobility"},
+            {"name": "cleaver_m3_damage", "display_name_key": "Damage"},
+        ],
+    }
+    gauntlet_mark = {
+        "display_name": "Blastoom Mk III Grenadier Gauntlet",
+        "master_id": "content/items/weapons/player/ranged/ogryn_gauntlet_p1_m2",
+        "parent_pattern": "ogryn_gauntlet_p1",
+        "weapon_category": "ranged",
+        "base_stats": [
+            {"name": "gauntlet_m2_ammo", "display_name_key": "Ammo"},
+            {"name": "gauntlet_m2_damage", "display_name_key": "Damage"},
+        ],
+    }
+    visible_cleaver = dict(cleaver_mark, display_name="Cleaver", sub_display_name="Krourk Mk VI", master_id="content/items/weapons/player/melee/ogryn_combatblade_p1_m1", offer_id="visible-cleaver", marks=[cleaver_mark])
+    hidden_cleaver = dict(cleaver_mark, offer_id="hidden-cleaver")
+    visible_gauntlet = dict(gauntlet_mark, display_name="Grenadier Gauntlet", master_id="content/items/weapons/player/ranged/ogryn_gauntlet_p1_m1", offer_id="visible-gauntlet", marks=[gauntlet_mark])
+    hidden_gauntlet = dict(gauntlet_mark, offer_id="hidden-gauntlet")
+    ogryn_model = to_lua({
+        "source_archetype": "ogryn",
+        "weapons": [
+            {
+                "display_name": "Krourk Mk IV Cleaver",
+                "external_family_slug": "cleaver",
+                "external_mark_slug": "krourk-mk-iv-cleaver",
+                "stats": [{"label": "Mobility", "value": 60}, {"label": "Damage", "value": 80}],
+            },
+            {
+                "display_name": "Blastoom Mk III Grenadier Gauntlet",
+                "external_family_slug": "grenadier-gauntlet",
+                "external_mark_slug": "blastoom-mk-iii-grenadier-gauntlet",
+                "stats": [{"label": "Ammo", "value": 60}, {"label": "Damage", "value": 80}],
+            },
+        ],
+    })
+    ogryn_context = to_lua({
+        "active_archetype": "ogryn",
+        "melee_offers": [visible_cleaver, hidden_cleaver],
+        "ranged_offers": [visible_gauntlet, hidden_gauntlet],
+        "offer_with_mark": mark_binding,
+        "localize_offer_label": lua.eval("function(key) return '<unlocalized ' .. string.char(34) .. key .. string.char(34) .. ': string not found>' end"),
+        "visible_offer_ids": {"visible-cleaver": True, "visible-gauntlet": True},
+    })
+    ogryn_identity, reason = resolver.resolve_identities(ogryn_model, ogryn_context)
+    assert ogryn_identity is not None, reason
+    assert ogryn_identity["jobs"][1]["offer"]["offer_id"] == "visible-cleaver"
+    assert ogryn_identity["jobs"][1]["master_id"].endswith("ogryn_combatblade_p1_m3")
+    assert ogryn_identity["jobs"][1]["offer"]["family_mark_selection"] is True
+    assert ogryn_identity["jobs"][2]["offer"]["offer_id"] == "visible-gauntlet"
+    assert ogryn_identity["jobs"][2]["master_id"].endswith("ogryn_gauntlet_p1_m2")
+    assert ogryn_identity["jobs"][2]["offer"]["family_mark_selection"] is True
+    assert ogryn_identity["jobs"][1]["mark_fallback"] is None
+
+    # Unknown website marks fall back to the one native family offer instead
+    # of rejecting the complete build or staging an unselectable raw offer.
+    ogryn_model["weapons"][1]["display_name"] = "Mystery Mk Cleaver"
+    ogryn_model["weapons"][1]["external_mark_slug"] = "mystery-mk-cleaver"
+    fallback_identity, reason = resolver.resolve_identities(ogryn_model, ogryn_context)
+    assert fallback_identity is not None, reason
+    fallback_job = fallback_identity["jobs"][1]
+    assert fallback_job["offer"]["offer_id"] == "visible-cleaver"
+    assert fallback_job["offer"]["master_id"].endswith("ogryn_combatblade_p1_m1")
+    assert fallback_job["offer"]["family_mark_selection"] is True
+    assert fallback_job["display_name"] == "Cleaver • Krourk Mk VI"
+    assert fallback_job["mark_fallback"]["requested"] == "Mystery Mk Cleaver"
+    assert fallback_job["mark_fallback"]["selected"] == "Cleaver • Krourk Mk VI"
+    assert fallback_job["mark_fallback"]["reason"] == "ambiguous_melee"
+
+    # A future unknown mark can expose stats and traits that its native fallback
+    # does not have. Keep malformed values fail-closed, but stage valid native
+    # choices for schema drift and mark every adjustment for mandatory review.
+    fallback_stats = [
+        {"name": "mobility", "display_name_key": "Mobility"},
+        {"name": "damage", "display_name_key": "Damage"},
+        {"name": "first_target", "display_name_key": "First Target"},
+        {"name": "penetration", "display_name_key": "Penetration"},
+        {"name": "cleave", "display_name_key": "Cleave Damage"},
+    ]
+    ogryn_context["melee_offers"][1]["base_stats"] = to_lua(fallback_stats)
+    ogryn_model["weapons"][1]["stats"] = to_lua([
+        {"label": "Future Stat A", "value": 60},
+        {"label": "Future Stat B", "value": 80},
+        {"label": "Future Stat C", "value": 80},
+        {"label": "Future Stat D", "value": 80},
+        {"label": "Future Stat E", "value": 80},
+    ])
+    adjusted_identity, reason = resolver.resolve_identities(ogryn_model, ogryn_context)
+    assert adjusted_identity is not None, reason
+    adjusted_job = adjusted_identity["jobs"][1]
+    assert adjusted_job["custom_stats_enabled"] is False
+    assert adjusted_job["dump_stat"] == "mobility"
+    assert adjusted_job["mark_fallback"]["adjustments"]["stats"] == "custom_stat_unavailable"
+
+    ogryn_model["weapons"][1]["stats"][5]["value"] = 79
+    invalid_fallback, invalid_reason = resolver.resolve_identities(ogryn_model, ogryn_context)
+    assert invalid_fallback is None
+    assert invalid_reason == "custom_stats_invalid_total"
+    ogryn_model["weapons"][1]["stats"][5]["value"] = 80
+
+    ogryn_model["weapons"][1]["perks"] = to_lua([{"label": "Future Perk A"}, {"label": "Future Perk B"}])
+    ogryn_model["weapons"][1]["blessings"] = to_lua([{"label": "Future Blessing A"}, {"label": "Future Blessing B"}])
+    ogryn_model["weapons"][2]["perks"] = to_lua([{"label": "Ranged Perk A"}, {"label": "Ranged Perk B"}])
+    ogryn_model["weapons"][2]["blessings"] = to_lua([{"label": "Ranged Blessing A"}, {"label": "Ranged Blessing B"}])
+    adjusted_identity, reason = resolver.resolve_identities(ogryn_model, ogryn_context)
+    assert adjusted_identity is not None, reason
+    adjusted_catalogs = to_lua({
+        adjusted_identity["jobs"][1]["master_id"]: {
+            "available": True,
+            "perks": [{"id": "fallback_perk_a", "display_name": "Fallback Perk A", "tier": 4}, {"id": "fallback_perk_b", "display_name": "Fallback Perk B", "tier": 4}],
+            "blessings": [{"id": "fallback_blessing_a", "display_name": "Fallback Blessing A", "tiers": [{"tier": 4}]}, {"id": "fallback_blessing_b", "display_name": "Fallback Blessing B", "tiers": [{"tier": 4}]}],
+        },
+        adjusted_identity["jobs"][2]["master_id"]: {
+            "available": True,
+            "perks": [{"id": "ranged_perk_a", "display_name": "Ranged Perk A", "tier": 4}, {"id": "ranged_perk_b", "display_name": "Ranged Perk B", "tier": 4}],
+            "blessings": [{"id": "ranged_blessing_a", "display_name": "Ranged Blessing A", "tiers": [{"tier": 4}]}, {"id": "ranged_blessing_b", "display_name": "Ranged Blessing B", "tiers": [{"tier": 4}]}],
+        },
+    })
+    adjusted_build, reason = resolver.attach_catalogs(adjusted_identity, adjusted_catalogs, ogryn_context)
+    assert adjusted_build is not None, reason
+    adjusted_job = adjusted_build["jobs"][1]
+    assert adjusted_job["perks"][1]["id"] == "fallback_perk_a"
+    assert adjusted_job["blessings"][1]["id"] == "fallback_blessing_a"
+    assert adjusted_job["mark_fallback"]["adjustments"]["perks"] == "perk_unavailable_slot_1"
+    assert adjusted_job["mark_fallback"]["adjustments"]["blessings"] == "blessing_unavailable_slot_1"
+
     # Live crafting catalogues expose perk master IDs plus localization keys,
     # while Games Lantern exposes rendered text. Blessings additionally expose
     # a numeric website icon ID that is embedded in Darktide's texture path.
