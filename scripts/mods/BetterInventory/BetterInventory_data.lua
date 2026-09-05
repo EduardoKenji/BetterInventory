@@ -1,4 +1,4 @@
-local MOD_VERSION = "3.5.8"
+local MOD_VERSION = "3.6.0"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
@@ -1573,11 +1573,12 @@ return {
 								setting_id = "character_overview_weapon_rarity_rating_mode",
 								tooltip = "character_overview_weapon_rarity_rating_mode_tooltip",
 								type = "dropdown",
-								default_value = "compact_horizontal",
+								default_value = "overview_vertical",
 								options = {
 									{ text = "weapon_rarity_rating_mode_off", value = "off" },
 									{ text = "weapon_rarity_rating_mode_compact_horizontal", value = "compact_horizontal" },
 									{ text = "weapon_rarity_rating_mode_full_horizontal", value = "full_horizontal" },
+									{ text = "character_overview_weapon_rarity_vertical", value = "overview_vertical" },
 								},
 							},
 							{
@@ -1604,7 +1605,7 @@ return {
 								setting_id = "character_overview_show_only_dump_stat",
 								tooltip = "character_overview_show_only_dump_stat_tooltip",
 								type = "checkbox",
-								default_value = false,
+								default_value = true,
 							},
 							{
 								setting_id = "character_overview_dump_stat_horizontal_offset",
@@ -1670,7 +1671,7 @@ return {
 								setting_id = "character_overview_show_curio_rarity_strip",
 								tooltip = "character_overview_show_curio_rarity_strip_tooltip",
 								type = "checkbox",
-								default_value = true,
+								default_value = false,
 							},
 							{
 								setting_id = "character_overview_curio_rarity_rating_mode",
@@ -1687,7 +1688,7 @@ return {
 								setting_id = "character_overview_use_native_curio_overlay",
 								tooltip = "character_overview_use_native_curio_overlay_tooltip",
 								type = "checkbox",
-								default_value = false,
+								default_value = true,
 							},
 							{
 								setting_id = "character_overview_curio_name_mode",

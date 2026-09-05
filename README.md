@@ -4,7 +4,7 @@
 
 https://www.nexusmods.com/warhammer40kdarktide/mods/1144
 
-> Current development build: **v3.5.8** (2026-09-05). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
+> Current release: **v3.6.0** (2026-09-05). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
 
 BetterInventory is a standalone inventory and item-management mod for Warhammer 40,000: Darktide. It adds responsive weapon and Curio cards, richer item information, configurable sorting, supported vendor layouts, optional mod integrations, and safety-gated inventory workflows.
 
@@ -22,11 +22,12 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - Standalone Equipment Text Search, with its own master switch, Inventory/Armoury/Hadron/Melk spacing sliders, quoted phrases, explicit AND, typed field clauses, match-first ranking, and configurable dim-or-hide behavior.
 - Optional Quick Discard, Automatic Discard, Automatic Curio Buyer, and Auto Crafter workflows with explicit ownership, authoritative revalidation, and fail-closed behavior.
 
-## What's new in v3.5.8
+## What's new in v3.6.0
 
-- Adds independent Weapon and Curio rarity + stars modes under Additional inventory views > Character Overview. Weapons default to Compact; Curios default to Full.
-- Places the weapon row beneath the name alongside perks, preserving the card height, blessing rows, kill counter and lower modifier region. Curios reserve a row between their name and stats.
-- Reuses inventory rarity names, custom-tier stars, colours and opacity. Long labels shrink to fit, with compact initials as a last resort. Off restores the previous layout.
+- Adds independent Weapon and Curio rarity + stars modes under Additional inventory views > Character Overview. Weapons default to a left-edge vertical initial/star strip; Compact and Full horizontal modes remain available. Curios default to Full beneath the name.
+- Refines weapon title, perk, blessing, WKC and MaxStatMark spacing without enlarging cards. Curio markers remain clear of the equipped checkmark.
+- Defaults to mirrored weapons with colour strips and dump-stat-only display, plus detailed native-overlay Curios without a separate colour strip. Existing saved preferences are preserved.
+- Synchronizes weapon and Curio rarity text with live background recolouring while preserving independent opacity. Rarity names and custom-tier stars remain item-bound; long horizontal labels shrink or use compact initials.
 
 ## What's new in v3.5.7
 

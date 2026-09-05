@@ -1956,6 +1956,7 @@ local function configure_card_content(mod, item_blueprint, configuration)
 		local style = widget.style and widget.style[id]
 		local value = widget.content and widget.content[id]
 		if not style or not value or value == "" then return end
+		if style.better_inventory_rating_vertical then return end
 		style.better_inventory_rating_font_size = style.better_inventory_rating_font_size or style.font_size
 		style.font_size = style.better_inventory_rating_font_size
 		local width = math.max(1, style.size[1] - 4)

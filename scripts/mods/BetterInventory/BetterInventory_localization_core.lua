@@ -248,8 +248,11 @@ local localization = {
 	character_overview_weapon_rarity_rating_mode = {
 		en = "Weapon rarity + stars",
 	},
+	character_overview_weapon_rarity_vertical = {
+		en = "Vertical (left edge)",
+	},
 	character_overview_weapon_rarity_rating_mode_tooltip = {
-		en = "Shows rarity and stars beside the perk rows on mirrored Character Overview weapons. Compact uses the rarity initial; Full uses its name. Independent of inventory grid visibility; shares weapon rating colour and opacity. Requires the melee or ranged mirror.",
+		en = "Shows rarity and stars on mirrored Character Overview weapons. Vertical (default) stacks the initial and stars along the left edge. Compact and Full place a horizontal row beside perks, using the initial or full name. Independent of inventory grid visibility; shares weapon rating colour and opacity. Requires the melee or ranged mirror.",
 	},
 	character_overview_curio_rarity_rating_mode = {
 		en = "Curio rarity + stars",

@@ -1,7 +1,9 @@
 # BetterInventory changelog
 
-## 3.5.8 - Unreleased
+## 3.6.0 - 2026-09-05
 
+- Keeps weapon and Curio rarity text synchronized with live card background recolouring while preserving text opacity.
+- Adds an optional left-edge vertical rarity initial and stars for Character Overview weapons.
 - Places MaxStatMark badges below equipped/favorite markers on native-overlay Character Overview Curios.
 - Adds independently selectable Off, Compact and Full rarity + stars to mirrored Character Overview weapons and detailed Curios.
 - Keeps weapon rarity beside the perk rows and reserves a row beneath Curio names without enlarging native frames.

@@ -554,7 +554,39 @@ local function character_overview_weapon_blueprint(rarity_strip_setting_id, weap
 	configure_character_overview_rarity_strip(blueprint, rarity_strip_setting_id)
 	configure_character_overview_weapon_passes(blueprint)
 	local rating = pass_by_style_id(blueprint.pass_template, "better_inventory_weapon_rarity_rating")
-	if rating then
+	if rating and mod:get("character_overview_weapon_rarity_rating_mode") == "overview_vertical" then
+		rating.style.offset = { 8, 7, 31 }
+		rating.style.size = { 22, 112 }
+		rating.style.font_size = 16
+		rating.style.line_spacing = 0.9 + 1 / rating.style.font_size
+		rating.style.vertical_alignment = "top"
+		rating.style.text_vertical_alignment = "top"
+		rating.style.text_horizontal_alignment = "center"
+		rating.style.better_inventory_rating_vertical = true
+		for _, pass in ipairs(blueprint.pass_template) do
+			local id, style = pass.style_id, pass.style
+			if style and style.offset and type(id) == "string" and (id == "display_name" or string.find(id, "better_inventory_weapon_perk_", 1, true) == 1 or string.find(id, "better_inventory_blessing_", 1, true) == 1) then
+				style.offset[1] = style.offset[1] + 18
+				if id == "display_name" then
+					style.offset[2] = style.offset[2] - 3
+					style.horizontal_alignment = "left"
+					style.text_horizontal_alignment = "left"
+				end
+				if pass.pass_type == "text" then
+					if style.size and style.size[1] then style.size[1] = math.max(1, style.size[1] - 18) end
+					if style.better_inventory_max_text_width then style.better_inventory_max_text_width = math.max(1, style.better_inventory_max_text_width - 18) end
+				end
+			end
+		end
+		local title = pass_by_style_id(blueprint.pass_template, "display_name")
+		local left
+		for _, pass in ipairs(blueprint.pass_template) do
+			if type(pass.style_id) == "string" and string.find(pass.style_id, "better_inventory_weapon_perk_", 1, true) == 1 and pass.style and pass.style.offset then
+				left = math.min(left or math.huge, pass.style.offset[1])
+			end
+		end
+		if title and title.style and left then title.style.offset[1] = left end
+	elseif rating then
 		-- The lower centre belongs to the optional five-stat block. Keep this
 		-- small row beside the perks, above the kill counter and modifiers.
 		rating.style.offset = { math.floor(blueprint.size[1] * 0.42), 32, 31 }
@@ -845,7 +877,7 @@ local function character_overview_curio_blueprint()
 	if rating then
 		local title_bottom = show_curio_name and display_name and display_name.style and display_name.style.offset[2] + curio_name_block_height + CHARACTER_OVERVIEW_CURIO_TITLE_STAT_PADDING_Y or 7
 		local top = primary_curio_style and primary_curio_style.offset and primary_curio_style.offset[2] or title_bottom
-		rating.style.offset = { 16, top, 31 }
+		rating.style.offset = { 16, top - (show_curio_name and 3.5 or 0), 31 }
 		rating.style.size = { math.max(40, card_width - 40), rating_height }
 		rating.style.font_size = math.floor(13 * curio_font_scale + 0.5)
 	end
@@ -1341,12 +1373,23 @@ local function synchronize_character_overview_equipped_icon(widget, lantern_acti
 	end
 
 	offset[2] = target_y
+	local rating = widget.style.better_inventory_weapon_rarity_rating
+	local weapon_badge = widget.style.maxstatmark_max_inv
+	if rating and rating.better_inventory_rating_vertical and weapon_badge and weapon_badge.offset then
+		weapon_badge.better_inventory_original_y = weapon_badge.better_inventory_original_y or weapon_badge.offset[2]
+		weapon_badge.offset[2] = weapon_badge.better_inventory_original_y - 8
+		offset[2] = target_y + 5
+		if weapon_badge.size and equipped_style.size then
+			offset[1] = weapon_badge.offset[1] + (equipped_style.size[1] - weapon_badge.size[1]) / 2
+		end
+	end
 
 	if native_curio_marker_y then
-		local badge_y = target_y + (equipped_style.size and equipped_style.size[2] or 28) + 4
+		-- Marker textures include transparent padding; use a tighter visual spacing.
+		local badge_y = target_y + (equipped_style.size and equipped_style.size[2] or 28) * 0.75 + 2
 		local favorite = widget.style.favorite_icon
 		if is_top_right_style(favorite) and favorite.offset then
-			badge_y = math.max(badge_y, favorite.offset[2] + (favorite.size and favorite.size[2] or 28) + 4)
+			badge_y = math.max(badge_y, favorite.offset[2] + (favorite.size and favorite.size[2] or 28) * 0.75 + 2)
 		end
 		-- Detailed cards inherit the grid badge; native slots use the equipped badge.
 		-- Anchor both below the final markers instead of their old center/top position.

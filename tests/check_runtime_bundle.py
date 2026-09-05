@@ -19,7 +19,7 @@ def main() -> None:
     )
     assert actual["archive_root"] == "BetterInventory"
     assert actual["file_count"] == len(actual["files"])
-    assert actual["version"] == "3.5.8"
+    assert actual["version"] == "3.6.0"
     assert all("\\" not in entry["archive_path"] for entry in actual["files"])
     metadata = json.loads((PROJECT_ROOT / "info.json").read_text(encoding="utf-8"))
     assert metadata["version"] == actual["version"]

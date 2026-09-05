@@ -5599,6 +5599,35 @@ def main() -> None:
         assert(w.content.better_inventory_weapon_rarity_rating == "L ★★")
         settings.character_overview_weapon_rarity_rating_mode = "off"
         assert(not pass(overview.character_overview_weapon_blueprint(nil, "melee"), "better_inventory_weapon_rarity_rating"))
+        settings.character_overview_weapon_rarity_rating_mode = "overview_vertical"
+        local vertical = overview.character_overview_weapon_blueprint(nil, "melee")
+        local vr = pass(vertical, "better_inventory_weapon_rarity_rating").style
+        assert(vr.offset[1] == 8 and vr.size[2] == 112 and vertical.size[2] == 130)
+        assert(vr.line_spacing == 0.9 + 1 / 16 and vr.vertical_alignment == "top" and vr.text_vertical_alignment == "top" and vr.offset[2] == 7)
+        assert(pass(vertical, "display_name").style.offset[2] == pass(weapon, "display_name").style.offset[2] - 3)
+        assert(pass(vertical, "display_name").style.text_horizontal_alignment == "left")
+        local left = math.huge
+        for _, p in ipairs(vertical.pass_template) do
+            if type(p.style_id) == "string" and p.style_id:find("better_inventory_weapon_perk_", 1, true) == 1 then left = math.min(left, p.style.offset[1]) end
+        end
+        assert(pass(vertical, "display_name").style.offset[1] == left)
+        assert(pass(vertical, "better_inventory_weapon_perk_1").style.offset[1] == pass(weapon, "better_inventory_weapon_perk_1").style.offset[1] + 18)
+        local vw = widget(vertical)
+        vertical.init({_ui_renderer = {}}, vw, element, nil, nil, {})
+        assert(vw.content.better_inventory_weapon_rarity_rating == "L\n★\n★")
+        element.item.rarity = 6
+        vertical.update_data({_ui_renderer = {}}, vw, element)
+        assert(vw.content.better_inventory_weapon_rarity_rating == "L" .. string.rep("\n★", 6))
+        assert(vw.style.better_inventory_weapon_rarity_rating.font_size == 16)
+        local icons_checked = 0
+        for _, p in ipairs(vertical.pass_template) do
+            local original = p.style_id and pass(weapon, p.style_id)
+            if p.pass_type == "texture" and original and p.style and p.style.size and original.style.size then
+                assert(p.style.size[1] == original.style.size[1] and p.style.size[2] == original.style.size[2])
+                icons_checked = icons_checked + 1
+            end
+        end
+        assert(icons_checked > 0)
         for _, overlay in ipairs({false, true}) do
             settings.character_overview_use_native_curio_overlay = overlay
             for _, scale in ipairs({50, 110, 150}) do
@@ -5610,7 +5639,7 @@ def main() -> None:
                 local row = pass(rated, "better_inventory_curio_rarity_rating")
                 assert(row and rated.size[2] == plain.size[2])
                 local previous = pass(plain, "better_inventory_curio_stat_1").style.offset[2]
-                assert(row.style.offset[2] == previous)
+                assert(row.style.offset[2] == previous - 3.5)
                 for i = 1, 4 do
                     local id = "better_inventory_curio_stat_" .. i
                     assert(pass(rated, id).style.offset[2] == pass(plain, id).style.offset[2] + row.style.size[2])
@@ -5645,13 +5674,13 @@ def main() -> None:
             overview.synchronize_character_overview_equipped_icon(markers, false)
             assert(markers.style.equipped_icon.offset[2] == 108)
             for _, id in ipairs({"maxstatmark_max_inv", "maxstatmark_max_equipped"}) do
-                assert(markers.style[id].offset[2] == 157)
+                assert(markers.style[id].offset[2] == 148)
                 assert(markers.style[id].vertical_alignment == "top")
             end
         end
         markers.style.better_inventory_curio_stat_1.offset[2] = 150
         overview.synchronize_character_overview_equipped_icon(markers, false)
-        assert(markers.style.maxstatmark_max_inv.offset[2] == 180)
+        assert(markers.style.maxstatmark_max_inv.offset[2] == 171)
         markers.content.element.slot.name = "slot_primary"
         markers.style.maxstatmark_max_inv.offset[2] = 0
         overview.synchronize_character_overview_equipped_icon(markers, false)
@@ -5660,6 +5689,15 @@ def main() -> None:
         markers.content.better_inventory_native_curio_overlay_enabled = false
         overview.synchronize_character_overview_equipped_icon(markers, false)
         assert(markers.style.maxstatmark_max_inv.offset[2] == 0)
+        markers.content.element.slot.name = "slot_primary"
+        markers.style.better_inventory_weapon_rarity_rating = {better_inventory_rating_vertical = true}
+        markers.style.maxstatmark_max_inv.size = {28, 28}
+        for i = 1, 3 do
+            overview.synchronize_character_overview_equipped_icon(markers, false)
+            assert(markers.style.maxstatmark_max_inv.offset[2] == -8)
+            assert(markers.style.equipped_icon.offset[2] == 13)
+            assert(markers.style.equipped_icon.offset[1] == -6)
+        end
         return true
     """)
     print("BetterInventory layout behavior tests passed.")

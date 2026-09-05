@@ -266,6 +266,9 @@ local function profile(mod, card_width, text_left, configuration, columns, wkc, 
 			x = x + SINGLE_COLUMN_X_ADJUSTMENT
 			y = y + SINGLE_COLUMN_Y_ADJUSTMENT
 		end
+		if character_overview and setting(mod, "character_overview_weapon_rarity_rating_mode") == "overview_vertical" then
+			x = x + 20
+		end
 
 		text_width = math.max(0, tonumber(wkc_configuration.text_w) or DEFAULT_NATIVE_TEXT_WIDTH)
 		text_offset = x
