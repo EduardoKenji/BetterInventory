@@ -134,7 +134,7 @@
     {"name": "strict_url_canonicalization", "risk": "critical", "start_line": 18, "end_line": 47},
     {"name": "versioned_weapon_model", "risk": "critical", "start_line": 49, "end_line": 81},
     {"name": "bounded_parser_drift_fail_closed", "risk": "critical", "start_line": 82, "end_line": 108},
-    {"name": "malformed_delimiter_budget_and_valid_login_footer", "risk": "critical", "start_line": 109, "end_line": 120}
+    {"name": "malformed_delimiter_budget_and_valid_login_footer", "risk": "critical", "start_line": 109, "end_line": 122}
   ],
     "test_games_lantern_workflow.py": [
       {"name": "live_catalogue_resolution", "risk": "critical", "start_line": 19, "end_line": 107},
@@ -147,7 +147,8 @@
       {"name": "canonical_perk_family_wording_drift", "risk": "critical", "start_line": 424, "end_line": 486},
       {"name": "slot_specific_perk_resolution_and_catalog_failures", "risk": "critical", "start_line": 487, "end_line": 612},
       {"name": "ambiguous_and_mismatched_builds_fail_closed", "risk": "critical", "start_line": 613, "end_line": 663},
-      {"name": "explicit_weapon_choice_resolution", "risk": "critical", "start_line": 664, "end_line": 678}
+      {"name": "explicit_weapon_choice_resolution", "risk": "critical", "start_line": 664, "end_line": 678},
+      {"name": "mapped_stat_fallback_preserves_traits_and_requires_review", "risk": "critical", "start_line": 679, "end_line": 730}
     ],
     "test_games_lantern_queue.py": [
       {"name": "serial_queue_transition_and_completion", "risk": "critical", "start_line": 18, "end_line": 101},
@@ -168,7 +169,8 @@
       {"name": "family_finished_skip_duplicate_fallback_and_two_slot_resume", "risk": "critical", "start_line": 1, "end_line": 318}
     ],
     "test_games_lantern_queue_ui.py": [
-        {"name": "active_queue_lifecycle_locked_target_and_section_order_ui", "risk": "high", "start_line": 11, "end_line": 139}
+        {"name": "active_queue_lifecycle_locked_target_and_section_order_ui", "risk": "high", "start_line": 11, "end_line": 136},
+        {"name": "explicit_fallback_stat_confirmation_label", "risk": "critical", "start_line": 137, "end_line": 150}
     ],
     "test_games_lantern_selection_coordinator.py": [
       {"name": "bounded_brunt_selection_sync_and_clear_restore", "risk": "critical", "start_line": 1, "end_line": 223}

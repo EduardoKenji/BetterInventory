@@ -727,7 +727,7 @@ local function extend_runtime_callback(callback_name, extension)
 			if callback_name == "on_unload" or callback_name == "on_disabled" then
 				local ok, err = pcall(runtime_callback, ...)
 				if not ok then
-					pcall(mod.error, mod, "Cleanup callback failed: " .. tostring(err))
+					pcall(mod.error, mod, "%s", "Cleanup callback failed: " .. tostring(err))
 				end
 			else
 				runtime_callback(...)

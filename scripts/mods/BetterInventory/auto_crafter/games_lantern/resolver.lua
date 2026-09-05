@@ -356,9 +356,9 @@ local function resolve_dump_stat(external, offer, localize_offer_label)
 	local tied = false
 
 	for _, stat in ipairs(external and external.stats or {}) do
-		local value = tonumber(stat.value)
+		local value = type(stat) == "table" and tonumber(stat.value) or nil
 
-		if value == nil then
+		if value == nil or value ~= math.floor(value) or value < 0 or value > 100 then
 			return nil, "invalid_external_stat"
 		end
 
@@ -442,23 +442,25 @@ local function resolve_custom_stats(external, offer, localize_offer_label)
 	local mapped = {}
 	local total = 0
 	local scores = {}
+	local compatible = true
+	local seen_labels = {}
 
 	for external_index, stat in ipairs(external_stats) do
-		local value = tonumber(stat.value)
+		local value = type(stat) == "table" and tonumber(stat.value) or nil
 
-		if value == nil or value ~= math.floor(value) or value < 60 or value > 80 then
+		if value == nil or value ~= math.floor(value) or value < 0 or value > 100 then
 			return nil, "custom_stats_invalid"
 		end
+		local label = normalize(stat.label)
+		if label == "" or seen_labels[label] then return nil, "custom_stat_ambiguous" end
+		seen_labels[label] = true
+		compatible = compatible and value >= 60 and value <= 80
 
 		scores[external_index] = {}
 		for candidate_index, candidate in ipairs(offer_stats) do
 			scores[external_index][candidate_index] = stat_match_score(stat.label, candidate, localize_offer_label)
 		end
 		total = total + value
-	end
-
-	if total ~= 380 then
-		return nil, "custom_stats_invalid_total"
 	end
 
 	local best_score = -1
@@ -491,6 +493,9 @@ local function resolve_custom_stats(external, offer, localize_offer_label)
 	assign(1, 0)
 
 	if best_score < 0 or not best_assignment then
+		-- Non-target distributions only get a replacement when every identity
+		-- maps uniquely. Do not combine stat guessing with an unknown schema.
+		if total ~= 380 then return nil, "custom_stats_invalid_total" end
 		return nil, "custom_stat_unavailable"
 	elseif best_count ~= 1 then
 		return nil, "custom_stat_ambiguous"
@@ -511,6 +516,15 @@ local function resolve_custom_stats(external, offer, localize_offer_label)
 		if not mapped[index] or mapped[index].name == nil then
 			return nil, "custom_stat_mapping_incomplete"
 		end
+	end
+
+	if not compatible or total ~= 380 then
+		local lowest = 1
+		for index = 2, 5 do
+			if mapped[index].value < mapped[lowest].value then lowest = index end
+		end
+		for index = 1, 5 do mapped[index].value = index == lowest and 60 or 80 end
+		return mapped, nil, { reason = "incompatible_stat_profile", original_total = total }
 	end
 
 	return mapped, nil
@@ -981,7 +995,7 @@ local function resolve_identity(external, slot, context)
 		}
 	end
 
-	local custom_stats, custom_reason = resolve_custom_stats(external, resolved.offer, context and context.localize_offer_label)
+	local custom_stats, custom_reason, stat_fallback = resolve_custom_stats(external, resolved.offer, context and context.localize_offer_label)
 	local dump_stat
 	local dump_reason
 
@@ -1026,6 +1040,7 @@ local function resolve_identity(external, slot, context)
 		custom_stat_targets = custom_stats,
 		custom_stat_total = custom_stats and 380 or nil,
 		mark_fallback = mark_fallback,
+		stat_fallback = stat_fallback,
 		parent_pattern = resolved.offer.parent_pattern,
 		master_id = resolved.offer.master_id,
 	}, nil

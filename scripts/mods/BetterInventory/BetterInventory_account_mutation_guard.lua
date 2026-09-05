@@ -54,7 +54,7 @@ local function log(level, message)
 	local logger = host_mod and host_mod[level]
 
 	if type(logger) == "function" then
-		pcall(logger, host_mod, "[AutoCrafterGuard] " .. tostring(message))
+		pcall(logger, host_mod, "%s", "[AutoCrafterGuard] " .. tostring(message))
 	end
 end
 

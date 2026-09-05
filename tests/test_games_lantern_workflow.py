@@ -152,7 +152,7 @@ def main() -> None:
         to_lua({"source_archetype": "veteran", "weapons": [model["weapons"][1], invalid_plasma]}),
         plasma_context,
     )
-    assert invalid_identity is None and invalid_reason == "custom_stats_invalid_total"
+    assert invalid_identity is not None and invalid_identity["jobs"][2]["stat_fallback"]["original_total"] == 379
 
     # Public Games Lantern class slugs map to Darktide's internal archetype
     # IDs before enforcing the class safety gate.
@@ -676,6 +676,54 @@ def main() -> None:
     context["weapon_choices"] = to_lua({"melee": 2})
     selected = resolver.resolve_identities(multi_model, context)[0]
     assert selected["jobs"][1]["external"]["card_index"] == 2
+
+    # Non-target distributions only fall back after unique native mapping.
+    for values in ([50, 80, 80, 80, 80], [0, 0, 0, 0, 0], [80, 80, 80, 80, 80]):
+        for index, value in enumerate(values, 1):
+            plasma_external["stats"][index]["value"] = value
+        fallback_identity, reason = resolver.resolve_identities(plasma_model, plasma_context)
+        assert fallback_identity is not None, reason
+        fallback_job = fallback_identity["jobs"][2]
+        assert fallback_job["stat_fallback"]["original_total"] == sum(values)
+        assert [fallback_job["custom_stat_targets"][i]["value"] for i in range(1, 6)] == [60, 80, 80, 80, 80]
+        assert plasma_external["stats"][1]["value"] == values[0]
+    for invalid in (-1, 101, float("nan"), float("inf"), 60.5, "bad"):
+        plasma_external["stats"][1]["value"] = invalid
+        failed_identity, reason = resolver.resolve_identities(plasma_model, plasma_context)
+        assert failed_identity is None and reason == "custom_stats_invalid"
+    plasma_external["stats"][1]["value"] = 0
+    saved_label = plasma_external["stats"][1]["label"]
+    plasma_external["stats"][1]["label"] = plasma_external["stats"][2]["label"]
+    failed_identity, reason = resolver.resolve_identities(plasma_model, plasma_context)
+    assert failed_identity is None and reason == "custom_stat_ambiguous"
+    plasma_external["stats"][1]["label"] = saved_label
+    plasma_external["perks"] = model["weapons"][2]["perks"]
+    plasma_external["blessings"] = model["weapons"][2]["blessings"]
+    fallback_identity, reason = resolver.resolve_identities(plasma_model, plasma_context)
+    fallback_build, reason = resolver.attach_catalogs(fallback_identity, to_lua({
+        str(melee_offer["master_id"]): catalog_for_offer(melee_offer),
+        str(plasma_offer["master_id"]): catalog_for_offer(plasma_offer),
+    }), plasma_context)
+    assert fallback_build is not None, reason
+    assert fallback_build["jobs"][2]["perks"][1]["label"] == plasma_external["perks"][1]["label"]
+    assert fallback_build["jobs"][2]["blessings"][1]["label"] == plasma_external["blessings"][1]["label"]
+    queue_path = RUNTIME_ROOT / "auto_crafter/games_lantern/queue.lua"
+    queue_module = lua.execute(queue_path.read_text(encoding="utf-8"), name=str(queue_path))
+    lua.globals().Queue, lua.globals().fallback_build = queue_module, fallback_build
+    lua.execute("""
+        local starts = 0
+        local queue = Queue.new({
+            select_job=function() return true end,
+            configure_job=function() return true end,
+            start_job=function() starts=starts+1; return true end,
+        })
+        assert(queue:install(fallback_build))
+        assert(queue:presentation_snapshot().jobs[2].stat_fallback)
+        local started, reason = queue:start()
+        assert(not started and reason == "stat_review_required" and starts == 0)
+        assert(queue:state() == "staged")
+        assert(queue:start(true) and starts == 1)
+    """)
 
 
 if __name__ == "__main__":

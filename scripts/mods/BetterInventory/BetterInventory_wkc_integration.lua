@@ -62,14 +62,14 @@ local function card_configuration(wkc)
 	end
 	local generation = wkc._layout_gen
 	local cached = generation ~= nil and configuration_cache[wkc]
-	if cached and cached.generation == generation and cached.provider == wkc._layout_geom then
+	if cached and cached.generation == generation then
 		return cached.card
 	end
 
 	local success, geometry = pcall(wkc._layout_geom)
 	local card = success and type(geometry) == "table" and type(geometry.card) == "table" and geometry.card or nil
 	if card and generation ~= nil then
-		configuration_cache[wkc] = { generation = generation, provider = wkc._layout_geom, card = card }
+		configuration_cache[wkc] = { generation = generation, card = card }
 	end
 	return card
 end

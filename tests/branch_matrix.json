@@ -2,6 +2,13 @@
   "schema_version": 1,
   "required": [
     {
+      "name": "v370.mapped-stat-fallback-requires-review",
+      "test": "test_games_lantern_workflow.py",
+      "case": "mapped_stat_fallback_preserves_traits_and_requires_review",
+      "outcome": "only uniquely mapped well-formed stats receive a 380 replacement; traits are preserved and queue dispatch requires explicit review confirmation",
+      "modules": ["auto_crafter/games_lantern/resolver.lua", "auto_crafter/games_lantern/queue.lua"]
+    },
+    {
       "name": "v370.reload-fence-native-settlement",
       "test": "test_account_mutation_guard.py",
       "case": "native_write_fence_across_runtime_generations",

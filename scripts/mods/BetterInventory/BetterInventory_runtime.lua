@@ -1472,7 +1472,7 @@ local function shutdown(unloading)
 	local function cleanup(label, callback, ...)
 		local ok, err = pcall(callback, ...)
 		if not ok and type(mod.error) == "function" then
-			pcall(mod.error, mod, "Cleanup " .. label .. " failed: " .. tostring(err))
+			pcall(mod.error, mod, "%s", "Cleanup " .. label .. " failed: " .. tostring(err))
 		end
 	end
 

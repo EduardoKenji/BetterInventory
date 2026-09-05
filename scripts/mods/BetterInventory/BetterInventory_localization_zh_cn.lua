@@ -1,4 +1,7 @@
 local localization = {
+	auto_crafter_stat_fallback_notice = "已导入 %%s，并采用替代属性目标（总计 380）。配装中的属性数值不兼容。请检查或修改显示的目标后，再确认制作。",
+	auto_crafter_stat_fallback_review = "检查替代属性",
+	auto_crafter_confirm_fallback_stats = "> 确认替代属性并制作 <",
 	enable_inventory_search_melk = "启用梅尔克采购处搜索",
 	enable_inventory_search_melk_tooltip = "在梅尔克的限时采购和多角色补给视图中启用物品搜索。",
 	inventory_search_melk_limited_top_padding = "梅尔克限时采购：顶部间距",

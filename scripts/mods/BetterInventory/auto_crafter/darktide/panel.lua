@@ -921,6 +921,9 @@ function Panel.new(dependencies)
 			stats[#stats + 1] = string.format("%s %s", value_text(target.label or target.display_name_key or target.name, "?"), integer_text(target.value, "?"))
 		end
 		local stat_line = job.custom_stats_enabled and #stats == 5 and "Stats: " .. table.concat(stats, " / ") or string.format("Dump stat: %s %s", value_text(job.dump_stat_label or job.dump_stat, "?"), integer_text(job.dump_target, "?"))
+		if job.stat_fallback then
+			stat_line = localize("auto_crafter_stat_fallback_review", "Review fallback stats") .. ": " .. table.concat(stats, " / ")
+		end
 
 		return string.format(
 			"%s\nPerk 1: %s\nPerk 2: %s\nBlessings: %s",
@@ -992,6 +995,15 @@ function Panel.new(dependencies)
 		local value = authority.aggregate
 
 		return authority, string.format("Projected authority: %s-%s Dockets | %s-%s Plasteel | %s-%s Diamantine. Press again to confirm.", integer_text(value.dockets_min), integer_text(value.dockets_max), integer_text(value.plasteel_min), integer_text(value.plasteel_max), integer_text(value.diamantine_min), integer_text(value.diamantine_max))
+	end
+
+	function self:_queue_confirmation_label(queue)
+		for _, job in ipairs(queue.jobs or {}) do
+			if job.stat_fallback then
+				return localize("auto_crafter_confirm_fallback_stats", "> CONFIRM FALLBACK STATS <")
+			end
+		end
+		return queue.job_count == 1 and "> CONFIRM ONE-WEAPON CRAFT <" or "> CONFIRM TWO-WEAPON CRAFT <"
 	end
 
 	function self:_request_games_lantern_paste(queue_owned)
@@ -2183,7 +2195,7 @@ function Panel.new(dependencies)
 		end
 		local import_busy = imported and (imported.state == "fetching" or imported.state == "waiting_for_store" or imported.state == "resolving_catalogues" or imported.state == "awaiting_weapon_choice")
 		local craft_enabled = not run_is_active() and not import_busy
-		local craft_label = queue_owned and self._queue_craft_armed and (queue.job_count == 1 and "> CONFIRM ONE-WEAPON CRAFT <" or "> CONFIRM TWO-WEAPON CRAFT <") or localize("auto_crafter_panel_preview", "> CLICK HERE TO CRAFT <")
+		local craft_label = queue_owned and self._queue_craft_armed and self:_queue_confirmation_label(queue) or localize("auto_crafter_panel_preview", "> CLICK HERE TO CRAFT <")
 		table.insert(entries, self:_entry(craft_label, queue_owned and self._queue_craft_armed and (self._queue_craft_confirmation_text or "Cost authority unavailable; crafting remains blocked.") or "", {
 			enabled = craft_enabled,
 			selectable = craft_enabled,
@@ -2242,7 +2254,7 @@ function Panel.new(dependencies)
 				local current_enabled = not workflow_active(self._controller_state, current_queue) and not current_import_busy
 				widget.content.enabled = current_enabled
 				widget.content.hotspot.disabled = not current_enabled
-				widget.content.label = current_owned and self._queue_craft_armed and (current_queue.job_count == 1 and "> CONFIRM ONE-WEAPON CRAFT <" or "> CONFIRM TWO-WEAPON CRAFT <") or localize("auto_crafter_panel_preview", "> CLICK HERE TO CRAFT <")
+				widget.content.label = current_owned and self._queue_craft_armed and self:_queue_confirmation_label(current_queue) or localize("auto_crafter_panel_preview", "> CLICK HERE TO CRAFT <")
 				widget.content.detail = current_owned and self._queue_craft_armed and (self._queue_craft_confirmation_text or "Cost authority unavailable; crafting remains blocked.") or ""
 			end,
 		}))

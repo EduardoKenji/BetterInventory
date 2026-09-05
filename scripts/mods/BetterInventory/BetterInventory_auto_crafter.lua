@@ -909,7 +909,7 @@ function AutoCrafter.configure(dependencies)
 		if games_lantern_selection then
 			pcall(games_lantern_selection.cancel_pending, games_lantern_selection)
 		end
-		local started, start_reason = games_lantern_queue:start()
+		local started, start_reason = games_lantern_queue:start(confirmed)
 		if not started then
 			controller:end_queue_operation()
 			log("error", "Games Lantern queue did not start: " .. tostring(start_reason))
@@ -1145,6 +1145,11 @@ function AutoCrafter.configure(dependencies)
 						notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), message)
 					elseif kind == "import_staged" then
 						for _, job in ipairs(payload and payload.build and payload.build.jobs or {}) do
+							if job.stat_fallback then
+								local message = string.format(localize("auto_crafter_stat_fallback_notice", "Imported %s with replacement stats (380 total). The build's stat values are incompatible. Review or edit the displayed targets before confirming crafting."), tostring(job.display_name or "weapon"))
+								log("warning", message)
+								notify(localize("auto_crafter_notification_title", "Auto Crafter Helper"), message, true)
+							end
 							local fallback = job.mark_fallback
 							if fallback then
 								local adjusted = type(fallback.adjustments) == "table" and next(fallback.adjustments) ~= nil

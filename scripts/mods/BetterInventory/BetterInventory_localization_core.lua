@@ -1,4 +1,13 @@
 local localization = {
+	auto_crafter_stat_fallback_notice = {
+		en = "Imported %%s with replacement stats (380 total). The build's stat values are incompatible. Review or edit the displayed targets before confirming crafting.",
+	},
+	auto_crafter_stat_fallback_review = {
+		en = "Review fallback stats",
+	},
+	auto_crafter_confirm_fallback_stats = {
+		en = "> CONFIRM FALLBACK STATS <",
+	},
 	mod_name = {
 		en = "Better Inventory",
 	},

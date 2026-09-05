@@ -337,12 +337,17 @@ function Queue.new(dependencies)
 		return true
 	end
 
-	function self:start()
+	function self:start(confirmed_review)
 		if self._state ~= "staged" and self._state ~= "stopped" and self._state ~= "failed" and self._state ~= "blocked" then
 			return false, "queue_not_staged"
 		end
 		local valid, reason = valid_build({ kind = "games_lantern_build", jobs = self._jobs })
 		if not valid then return false, reason end
+		for _, job in ipairs(self._jobs) do
+			if job.stat_fallback and confirmed_review ~= true then
+				return false, "stat_review_required"
+			end
+		end
 
 		self._stop_requested = false
 		self._last_error = nil
@@ -716,6 +721,7 @@ function Queue.new(dependencies)
 				custom_stats_enabled = job.custom_stats_enabled == true,
 				custom_stat_targets = compact_stats(job.custom_stat_targets),
 				custom_stat_total = job.custom_stat_total,
+				stat_fallback = job.stat_fallback ~= nil,
 				display_name = job.display_name or job.offer and job.offer.display_name,
 				dump_stat = job.dump_stat,
 				dump_stat_label = job.dump_stat_label,

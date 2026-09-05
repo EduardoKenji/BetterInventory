@@ -114,6 +114,8 @@ def main() -> None:
     malformed = '<section id="weapons">' + '<div class="max-w-sm w-full">' * 30000
     assert parser.parse(malformed) == (None, "incomplete_weapon_card")
     assert parser.parse(html.replace("weapon_box_bottom.webp", "missing.webp", 1)) == (None, "incomplete_weapon_card")
+    for malformed_value in ("-1", "101", "NaN", "60.5"):
+        assert parser.parse(html.replace("width: 0%", "width: " + malformed_value + "%", 1)) == (None, "invalid_stat")
 
 
 if __name__ == "__main__":

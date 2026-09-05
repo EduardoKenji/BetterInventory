@@ -136,6 +136,15 @@ def main() -> None:
     widget.content.remove_hotspot.pressed_callback()
     assert removed == [True]
 
+    panel_module = lua.execute(PANEL_PATH.read_text(encoding="utf-8"), name=str(PANEL_PATH))
+    instance = panel_module.new(lua.table_from({"blueprints": blueprints}))
+    review_queue = lua.table_from({"job_count": 2, "jobs": lua.table_from([
+        lua.table_from({}), lua.table_from({"stat_fallback": True}),
+    ])})
+    assert instance._queue_confirmation_label(instance, review_queue) == "> CONFIRM FALLBACK STATS <"
+    review_queue.jobs[2].stat_fallback = False
+    assert instance._queue_confirmation_label(instance, review_queue) == "> CONFIRM TWO-WEAPON CRAFT <"
+
 
 if __name__ == "__main__":
     main()
