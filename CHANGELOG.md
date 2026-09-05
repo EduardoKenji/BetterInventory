@@ -1,5 +1,9 @@
 # BetterInventory changelog
 
+## 3.7.0 - Unreleased
+
+- Audit remediation in progress; see `docs/v3.7.0-project-audit.md` for findings, implementation batches, and verification evidence.
+
 ## 3.6.0 - 2026-09-05
 
 - Keeps weapon and Curio rarity text synchronized with live card background recolouring while preserving text opacity.
