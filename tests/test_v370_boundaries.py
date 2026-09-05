@@ -65,5 +65,37 @@ def main():
     """)
 
 
+def test_catalog_host_recreation():
+    lua = LuaRuntime(unpack_returned_tuples=True)
+    facade = (ROOT / "BetterInventory_auto_crafter.lua").read_text(encoding="utf-8")
+    host = facade[facade.index("\tlocal function games_lantern_fetch_catalogs"):facade.index("\tlocal function games_lantern_import_allowed")]
+    lua.execute("""
+        games_lantern_catalog_generation = 0
+        callbacks, completions = {}, 0
+        backend = {discover_weapon_catalog=function()
+            return {next=function(self, callback)
+                callbacks[#callbacks+1] = callback
+                return self
+            end, catch=function() end}
+        end}
+    """)
+    lua.execute(host + """
+        local identity = {jobs={{master_id="one", offer={}}, {master_id="two", offer={}}}}
+        local function complete() completions=completions+1 end
+        games_lantern_fetch_catalogs(identity, complete, 1)
+        games_lantern_cancel_catalogs(1)
+        -- A replacement import controller starts its serial counter at one.
+        games_lantern_fetch_catalogs(identity, complete, 1)
+        assert(#callbacks == 2)
+        callbacks[1]({available=true})
+        assert(#callbacks == 2 and completions == 0)
+        callbacks[2]({available=true})
+        assert(#callbacks == 3)
+        callbacks[3]({available=true})
+        assert(completions == 1)
+    """)
+
+
 if __name__ == "__main__":
     main()
+    test_catalog_host_recreation()

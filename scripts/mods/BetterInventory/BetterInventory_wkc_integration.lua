@@ -61,15 +61,17 @@ local function card_configuration(wkc)
 		return nil
 	end
 	local generation = wkc._layout_gen
-	local cached = generation ~= nil and configuration_cache[wkc]
+	-- Provider identity changes on WKC reload even if its generation repeats.
+	local provider = wkc._layout_geom
+	local cached = generation ~= nil and configuration_cache[provider]
 	if cached and cached.generation == generation then
 		return cached.card
 	end
 
-	local success, geometry = pcall(wkc._layout_geom)
+	local success, geometry = pcall(provider)
 	local card = success and type(geometry) == "table" and type(geometry.card) == "table" and geometry.card or nil
 	if card and generation ~= nil then
-		configuration_cache[wkc] = { generation = generation, card = card }
+		configuration_cache[provider] = { generation = generation, card = card }
 	end
 	return card
 end

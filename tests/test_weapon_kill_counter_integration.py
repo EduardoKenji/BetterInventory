@@ -578,6 +578,12 @@ def main() -> None:
         assert(measured_content.wkc_kills == "1k")
         assert(not measured_template[2].visibility_function(measured_content))
         assert(measured_template[3].visibility_function(measured_content))
+        -- Reloading WKC replaces its provider, but can repeat the generation.
+        wkc_test_mod._layout_geom = function()
+            return {card={on=true, icon_on=true}}
+        end
+        measured_template[1].value(nil, nil, nil, measured_content)
+        assert(measured_template[2].visibility_function(measured_content))
     """)
     print("BetterInventory Weapon Kill Counter integration tests passed.")
 

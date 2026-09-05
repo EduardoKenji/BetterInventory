@@ -8,7 +8,7 @@ local games_lantern_queue
 local games_lantern_import
 local games_lantern_selection
 local active_brunt_view
-local games_lantern_catalog_generation = 0
+local games_lantern_catalog_generation
 local runtime_context
 local start_games_lantern_queue
 local games_lantern_resolution_context
@@ -968,13 +968,15 @@ function AutoCrafter.configure(dependencies)
 	end
 
 	local function games_lantern_fetch_catalogs(identity, complete, generation)
-		games_lantern_catalog_generation = generation
+		-- Import-controller serials restart after recreation; host identity must not.
+		local request = { generation = generation }
+		games_lantern_catalog_generation = request
 		local catalogs = {}
 		local index = 1
 		local settled = false
 
 		local function finish(result, error_value)
-			if settled or games_lantern_catalog_generation ~= generation then
+			if settled or games_lantern_catalog_generation ~= request then
 				return false
 			end
 
@@ -984,7 +986,7 @@ function AutoCrafter.configure(dependencies)
 		end
 
 		local function read_next()
-			if games_lantern_catalog_generation ~= generation then
+			if games_lantern_catalog_generation ~= request then
 				return false
 			end
 
@@ -999,7 +1001,7 @@ function AutoCrafter.configure(dependencies)
 			end
 
 			promise:next(function(catalog)
-				if games_lantern_catalog_generation ~= generation then
+				if games_lantern_catalog_generation ~= request then
 					return catalog
 				end
 
@@ -1028,8 +1030,8 @@ function AutoCrafter.configure(dependencies)
 	end
 
 	local function games_lantern_cancel_catalogs(generation)
-		if games_lantern_catalog_generation == generation then
-			games_lantern_catalog_generation = games_lantern_catalog_generation + 1
+		if games_lantern_catalog_generation and games_lantern_catalog_generation.generation == generation then
+			games_lantern_catalog_generation = nil
 		end
 
 		return true
@@ -1652,7 +1654,7 @@ end
 
 function AutoCrafter.shutdown()
 	active_brunt_view = nil
-	games_lantern_catalog_generation = games_lantern_catalog_generation + 1
+	games_lantern_catalog_generation = nil
 	publish_hud_lines({})
 	presentation_dirty = true
 	presentation_elapsed = 0
