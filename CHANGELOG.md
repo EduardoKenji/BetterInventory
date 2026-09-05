@@ -1,5 +1,11 @@
 # BetterInventory changelog
 
+## 3.5.8 - Unreleased
+
+- Adds independently selectable Off, Compact and Full rarity + stars to mirrored Character Overview weapons and detailed Curios.
+- Keeps weapon rarity beside the perk rows and reserves a row beneath Curio names without enlarging native frames.
+- Reuses existing rarity/custom-tier calculation, colour and opacity, with fitting at item binding and layout rebuilds when options change.
+
 ## 3.5.7 - 2026-09-04
 
 - Binds Games Lantern's hidden exact-mark identities to visible native Brunt family offers; unknown marks use a named native fallback with a mandatory notification.

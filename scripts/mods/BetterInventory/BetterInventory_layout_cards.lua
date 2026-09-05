@@ -381,7 +381,7 @@ local function resolved_trait_data(entry, include_textures, include_perk_rank, i
 	return data
 end
 
-local function populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers, show_blessing_text_icons, curio_display_profile, curio_name_format)
+local function populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers, show_blessing_text_icons, curio_display_profile, curio_name_format, configuration)
 	local content = widget and widget.content
 
 	if not content then
@@ -417,7 +417,7 @@ local function populate_card_content(mod, widget, element, blessing_display_mode
 	local curio = not weapon and is_curio(item)
 	content.better_inventory_is_weapon = weapon
 	content.better_inventory_is_curio = curio
-	RarityRating.populate(mod, widget, item, weapon and "weapon" or curio and "curio" or nil)
+	RarityRating.populate(mod, widget, item, weapon and "weapon" or curio and "curio" or nil, configuration)
 
 	if weapon then
 		if show_weapon_modifiers then
@@ -1948,6 +1948,26 @@ local function configure_card_content(mod, item_blueprint, configuration)
 	-- without any reset; its scope now includes supported secondary Curio perks.
 	local simplify_curio_stats = setting(mod, "simplify_curio_primary_stat_text", true)
 
+	local function fit_overview_rating(parent, widget, ui_renderer)
+		if not configuration.character_overview then return end
+		ui_renderer = ui_renderer or grid_ui_renderer(parent)
+		if not ui_renderer then return end
+		local id = configuration.slot_kind == "curio" and "better_inventory_curio_rarity_rating" or "better_inventory_weapon_rarity_rating"
+		local style = widget.style and widget.style[id]
+		local value = widget.content and widget.content[id]
+		if not style or not value or value == "" then return end
+		style.better_inventory_rating_font_size = style.better_inventory_rating_font_size or style.font_size
+		style.font_size = style.better_inventory_rating_font_size
+		local width = math.max(1, style.size[1] - 4)
+		while style.font_size > 8 and Text.text_width(ui_renderer, value, style, style.size, true) > width do
+			style.font_size = style.font_size - 1
+		end
+		if Text.text_width(ui_renderer, value, style, style.size, true) > width then
+			-- Preserve every star when an unusually long localized name cannot fit.
+			widget.content[id] = widget.content.better_inventory_rarity_rating_compact
+		end
+	end
+
 	-- Accept the retired checkbox values during the one-time settings migration
 	-- and when hot-reloading from an older options schema.
 	if compression_mode == true then
@@ -1963,8 +1983,9 @@ local function configure_card_content(mod, item_blueprint, configuration)
 			synchronize_rarity_tag_color(widget, element)
 			apply_item_customization_style(mod, widget, element)
 			format_item_level(widget, element, show_item_level_icon)
-			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers, show_blessing_text_icons, curio_display_profile, curio_name_format)
+			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers, show_blessing_text_icons, curio_display_profile, curio_name_format, configuration)
 			if configuration.character_overview then apply_character_overview_blessing_name_mode(mod, widget) end
+			fit_overview_rating(parent, widget, ui_renderer)
 			fit_display_name(parent, widget, ui_renderer, preferred_font_size, math.min(preferred_font_size, minimum_font_size), force_weapon_name_single_line)
 			fit_blessing_text(parent, widget, ui_renderer)
 			fit_weapon_perks(parent, widget, ui_renderer)
@@ -1983,8 +2004,9 @@ local function configure_card_content(mod, item_blueprint, configuration)
 			synchronize_rarity_tag_color(widget, element)
 			apply_item_customization_style(mod, widget, element)
 			format_item_level(widget, element, show_item_level_icon)
-			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers, show_blessing_text_icons, curio_display_profile, curio_name_format)
+			populate_card_content(mod, widget, element, blessing_display_mode, show_weapon_perks, weapon_perk_compression, compression_mode, simplify_curio_stats, show_weapon_modifiers, show_blessing_text_icons, curio_display_profile, curio_name_format, configuration)
 			if configuration.character_overview then apply_character_overview_blessing_name_mode(mod, widget) end
+			fit_overview_rating(parent, widget)
 			fit_display_name(parent, widget, nil, preferred_font_size, math.min(preferred_font_size, minimum_font_size), force_weapon_name_single_line)
 			fit_blessing_text(parent, widget, nil)
 			fit_weapon_perks(parent, widget, nil)

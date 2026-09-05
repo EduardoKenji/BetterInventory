@@ -142,6 +142,13 @@
       "modules": ["BetterInventory_layout_cards.lua", "BetterInventory_character_overview_ui.lua"]
     },
     {
+      "name": "character-overview.rarity-preserves-fixed-card-layout",
+      "test": "test_layout.py",
+      "case": "overview_rarity_modes_geometry_and_item_rebind",
+      "outcome": "independent Overview rating modes preserve weapon card height and perk clearance, shift Curio stats once across overlay/font variants, fit long localized names, and refresh stars on item replacement",
+      "modules": ["BetterInventory_rarity_rating.lua", "BetterInventory_layout_cards.lua", "BetterInventory_character_overview_ui.lua"]
+    },
+    {
       "name": "arbiter.rejects-overlap",
       "test": "test_operation_arbiter.py",
       "case": "manual_automatic_exclusion",

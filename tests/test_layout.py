@@ -5538,6 +5538,101 @@ def main() -> None:
         format_string(localized_values["en"])
         format_string(localized_values["zh-cn"])
 
+    # Use the real Overview + Layout + Rarity modules over native-shaped slots.
+    overview_path = LAYOUT_PATH.parent / "BetterInventory_character_overview_ui.lua"
+    globals_.TestOverviewUI = lua.execute(overview_path.read_text(encoding="utf-8"), name=str(overview_path))
+    overview_model_path = LAYOUT_PATH.parent / "BetterInventory_character_overview.lua"
+    globals_.TestOverviewModel = lua.execute(overview_model_path.read_text(encoding="utf-8"), name=str(overview_model_path))
+    globals_.TestOverviewLayout = layout
+    assert lua.execute(r"""
+        local overview = TestOverviewUI
+        local settings = test_mod.settings
+        settings.weapon_rarity_rating_mode = "off"
+        settings.curio_rarity_rating_mode = "off"
+        settings.character_overview_weapon_rarity_rating_mode = "compact_horizontal"
+        settings.character_overview_curio_rarity_rating_mode = "full_horizontal"
+        settings.curio_display_profile = "detailed"
+        settings.name_it_force_curio_name_in_detailed_mode = true
+        settings.character_overview_curio_font_size_percent = 110
+        settings.character_overview_use_native_curio_overlay = false
+        settings.show_pattern_mark = false
+        settings.show_weapon_perks = true
+        local native = table.clone(raw_test_blueprint)
+        local gadget = table.clone(native)
+        gadget.size = {193, 250}
+        overview.configure({
+            mod = test_mod, Layout = TestOverviewLayout, Text = TestText,
+            CharacterOverview = TestOverviewModel,
+            InventoryViewContentBlueprints = {item_slot = native, gadget_item_slot = gadget},
+            ItemBlueprintGenerator = function() return {item = native} end,
+        })
+        local function pass(bp, id)
+            return overview.pass_by_style_id(bp.pass_template, id)
+        end
+        local function widget(bp)
+            local w = {content = {}, style = {}}
+            for _, p in ipairs(bp.pass_template) do
+                if p.style_id then w.style[p.style_id] = table.clone(p.style) end
+            end
+            return w
+        end
+        local weapon = overview.character_overview_weapon_blueprint(nil, "melee")
+        local rating = pass(weapon, "better_inventory_weapon_rarity_rating")
+        assert(rating and weapon.size[2] == 130)
+        assert(rating.style.offset[2] == 32 and rating.style.offset[3] == 31)
+        assert(rating.style.offset[1] + rating.style.size[1] < weapon.size[1] - 40)
+        local perk = pass(weapon, "better_inventory_weapon_perk_1").style
+        assert(perk.offset[1] + perk.better_inventory_max_text_width < rating.style.offset[1])
+        local w = widget(weapon)
+        local element = {item = {item_type = "WEAPON_MELEE", rarity = 5}, test_display_name = "Sword"}
+        weapon.init({_ui_renderer = {}}, w, element, nil, nil, {})
+        assert(w.content.better_inventory_weapon_rarity_rating == "T ★★★★★")
+        element.item = {item_type = "WEAPON_MELEE", rarity = 2}
+        weapon.update_data({_ui_renderer = {}}, w, element)
+        assert(w.content.better_inventory_weapon_rarity_rating == "T ★★")
+        settings.character_overview_weapon_rarity_rating_mode = "full_horizontal"
+        weapon = overview.character_overview_weapon_blueprint(nil, "ranged")
+        w = widget(weapon)
+        element.item.test_rarity_name = string.rep("Long localized name ", 40)
+        weapon.init({_ui_renderer = {}}, w, element, nil, nil, {})
+        assert(w.style.better_inventory_weapon_rarity_rating.font_size == 8)
+        assert(w.content.better_inventory_weapon_rarity_rating == "L ★★")
+        settings.character_overview_weapon_rarity_rating_mode = "off"
+        assert(not pass(overview.character_overview_weapon_blueprint(nil, "melee"), "better_inventory_weapon_rarity_rating"))
+        for _, overlay in ipairs({false, true}) do
+            settings.character_overview_use_native_curio_overlay = overlay
+            for _, scale in ipairs({50, 110, 150}) do
+                settings.character_overview_curio_font_size_percent = scale
+                settings.character_overview_curio_rarity_rating_mode = "off"
+                local plain = overview.character_overview_curio_blueprint()
+                settings.character_overview_curio_rarity_rating_mode = "full_horizontal"
+                local rated = overview.character_overview_curio_blueprint()
+                local row = pass(rated, "better_inventory_curio_rarity_rating")
+                assert(row and rated.size[2] == plain.size[2])
+                local previous = pass(plain, "better_inventory_curio_stat_1").style.offset[2]
+                assert(row.style.offset[2] == previous)
+                for i = 1, 4 do
+                    local id = "better_inventory_curio_stat_" .. i
+                    assert(pass(rated, id).style.offset[2] == pass(plain, id).style.offset[2] + row.style.size[2])
+                end
+                -- Building again must not accumulate offsets on shared native templates.
+                local repeated = overview.character_overview_curio_blueprint()
+                assert(pass(repeated, "better_inventory_curio_stat_1").style.offset[2] == previous + row.style.size[2])
+            end
+        end
+        local curio = overview.character_overview_curio_blueprint()
+        local cw = widget(curio)
+        curio.init({_ui_renderer = {}}, cw, {item = {item_type = "GADGET", rarity = 3}, test_display_name = "Curio"}, nil, nil, {})
+        assert(string.find(cw.content.better_inventory_curio_rarity_rating, "★★★", 1, true))
+        assert(cw.content.better_inventory_weapon_rarity_rating == "")
+        settings.curio_display_profile = "title_only"
+        local title_only = overview.character_overview_curio_blueprint()
+        assert(pass(title_only, "better_inventory_curio_rarity_rating").style.offset[2] > pass(title_only, "display_name").style.offset[2])
+        assert(overview.is_visual_setting("character_overview_curio_rarity_rating_mode"))
+        assert(overview.is_visual_setting("weapon_rarity_rating_opacity"))
+        assert(TestRarityRating.horizontal_rows(test_mod, {character_overview = true}, "weapon") == 0)
+        return true
+    """)
     print("BetterInventory layout behavior tests passed.")
 
 

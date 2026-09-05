@@ -3078,7 +3078,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "3.5.7"
+    assert data.version == "3.5.8"
 
     gradient_name = localization["mod_name"]["en"]
     assert gradient_name.startswith("{#color(174,239,105)}B")
@@ -3462,6 +3462,7 @@ def main() -> None:
         "character_overview_show_melee_rarity_strip",
         "enable_character_overview_ranged_mirror",
         "character_overview_show_ranged_rarity_strip",
+        "character_overview_weapon_rarity_rating_mode",
         "character_overview_blessing_name_mode",
         "character_overview_show_only_dump_stat",
         "character_overview_dump_stat_horizontal_offset",
@@ -3472,11 +3473,12 @@ def main() -> None:
         "character_overview_dump_stat_color_b",
         "enable_character_overview_curio_details",
         "character_overview_show_curio_rarity_strip",
+        "character_overview_curio_rarity_rating_mode",
         "character_overview_use_native_curio_overlay",
         "character_overview_curio_name_mode",
         "character_overview_curio_font_size_percent",
     ]
-    blessing_name_mode = character_overview_view_group.sub_widgets[5]
+    blessing_name_mode = character_overview_view_group.sub_widgets[6]
     assert [
         blessing_name_mode.options[index].value
         for index in range(1, len(blessing_name_mode.options) + 1)

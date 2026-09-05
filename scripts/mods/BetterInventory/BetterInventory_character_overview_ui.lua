@@ -47,6 +47,12 @@ local CHARACTER_OVERVIEW_VISUAL_SETTING_IDS = {
 	enable_character_overview_ranged_mirror = true,
 	character_overview_show_ranged_rarity_strip = true,
 	character_overview_blessing_name_mode = true,
+	character_overview_weapon_rarity_rating_mode = true,
+	character_overview_curio_rarity_rating_mode = true,
+	weapon_rarity_rating_use_card_background_color = true,
+	weapon_rarity_rating_opacity = true,
+	curio_rarity_rating_use_card_background_color = true,
+	curio_rarity_rating_opacity = true,
 	character_overview_show_only_dump_stat = true,
 	character_overview_dump_stat_horizontal_offset = true,
 	character_overview_dump_stat_font_scale_percent = true,
@@ -547,6 +553,22 @@ local function character_overview_weapon_blueprint(rarity_strip_setting_id, weap
 	})
 	configure_character_overview_rarity_strip(blueprint, rarity_strip_setting_id)
 	configure_character_overview_weapon_passes(blueprint)
+	local rating = pass_by_style_id(blueprint.pass_template, "better_inventory_weapon_rarity_rating")
+	if rating then
+		-- The lower centre belongs to the optional five-stat block. Keep this
+		-- small row beside the perks, above the kill counter and modifiers.
+		rating.style.offset = { math.floor(blueprint.size[1] * 0.42), 32, 31 }
+		rating.style.size = { math.floor(blueprint.size[1] * 0.36), 20 }
+		rating.style.font_size = 13
+		for index = 1, 2 do
+			local perk = pass_by_style_id(blueprint.pass_template, "better_inventory_weapon_perk_" .. index)
+			if perk and perk.style then
+				local width = math.max(40, rating.style.offset[1] - perk.style.offset[1] - 8)
+				perk.style.size[1] = math.min(perk.style.size[1], width)
+				perk.style.better_inventory_max_text_width = perk.style.size[1]
+			end
+		end
+	end
 	move_character_overview_weapon_icon(blueprint)
 	Layout.ImageLayout.apply_blueprint(mod, blueprint, {
 		character_overview = true,
@@ -818,10 +840,21 @@ local function character_overview_curio_blueprint()
 		end
 	end
 
+	local rating = pass_by_style_id(blueprint.pass_template, "better_inventory_curio_rarity_rating")
+	local rating_height = rating and math.max(20, math.ceil(13 * curio_font_scale) + 5) or 0
+	if rating then
+		local title_bottom = show_curio_name and display_name and display_name.style and display_name.style.offset[2] + curio_name_block_height + CHARACTER_OVERVIEW_CURIO_TITLE_STAT_PADDING_Y or 7
+		local top = primary_curio_style and primary_curio_style.offset and primary_curio_style.offset[2] or title_bottom
+		rating.style.offset = { 16, top, 31 }
+		rating.style.size = { math.max(40, card_width - 40), rating_height }
+		rating.style.font_size = math.floor(13 * curio_font_scale + 0.5)
+	end
+
 	for index = 1, 4 do
 		local stat_style = curio_stat_passes[index] and curio_stat_passes[index].style
 
 		if stat_style and stat_style.offset then
+			stat_style.offset[2] = (stat_style.offset[2] or 0) + rating_height
 			curio_stat_base_offsets[index] = stat_style.offset[2] or 0
 			curio_stat_line_heights[index] = (stat_style.font_size or 13) + 5
 			stat_style.word_wrap = false

@@ -245,6 +245,18 @@ local localization = {
 	character_overview_blessing_name_mode = {
 		en = "Long blessing names",
 	},
+	character_overview_weapon_rarity_rating_mode = {
+		en = "Weapon rarity + stars",
+	},
+	character_overview_weapon_rarity_rating_mode_tooltip = {
+		en = "Shows rarity and stars beside the perk rows on mirrored Character Overview weapons. Compact uses the rarity initial; Full uses its name. Independent of inventory grid visibility; shares weapon rating colour and opacity. Requires the melee or ranged mirror.",
+	},
+	character_overview_curio_rarity_rating_mode = {
+		en = "Curio rarity + stars",
+	},
+	character_overview_curio_rarity_rating_mode_tooltip = {
+		en = "Adds rarity and stars beneath the Curio name, moving the stat rows down. Compact uses the rarity initial; Full uses its name. Independent of inventory grid visibility; shares Curio rating colour and opacity. Requires Character Overview Curio details.",
+	},
 	character_overview_blessing_name_mode_tooltip = {
 		en = "Controls long blessing names on mirrored Character Overview weapons. Two lines allows wrapping. Shrink to one line reduces the font to a safe minimum, then uses an ellipsis only as a last resort. One line with ... slightly reduces the font and crops overflow. One line with ... is the default.",
 	},

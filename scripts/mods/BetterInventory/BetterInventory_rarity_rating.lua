@@ -65,8 +65,7 @@ end
 local function configuration_allows_rating(configuration)
 	configuration = configuration or {}
 
-	if configuration.native_single_column == true
-		or configuration.character_overview == true then
+	if configuration.native_single_column == true and configuration.character_overview ~= true then
 		return false
 	end
 
@@ -90,7 +89,8 @@ local function item_mode(mod, item_kind, configuration)
 
 	item_kind = item_kind or configured_kind or "weapon"
 
-	return valid_mode(setting(mod, item_kind == "curio" and "curio_rarity_rating_mode" or "weapon_rarity_rating_mode", MODE_OFF))
+	local prefix = configuration and configuration.character_overview and "character_overview_" or ""
+	return valid_mode(setting(mod, prefix .. item_kind .. "_rarity_rating_mode", MODE_OFF))
 end
 
 local function mode(mod, configuration, explicit_item_kind)
@@ -254,6 +254,8 @@ end
 RarityRating.mode = mode
 RarityRating.item_mode = item_mode
 RarityRating.horizontal_rows = function(mod, configuration, explicit_item_kind)
+	-- Overview owns its fixed-height layout and places the rating itself.
+	if configuration and configuration.character_overview then return 0 end
 	if explicit_item_kind then
 		local resolved_mode = item_mode(mod, explicit_item_kind, configuration)
 
@@ -265,7 +267,7 @@ RarityRating.horizontal_rows = function(mod, configuration, explicit_item_kind)
 	return (weapon_mode == MODE_COMPACT or weapon_mode == MODE_FULL or curio_mode == MODE_COMPACT or curio_mode == MODE_FULL) and 1 or 0
 end
 
-RarityRating.populate = function(mod, widget, item, item_kind)
+RarityRating.populate = function(mod, widget, item, item_kind, configuration)
 	local content = widget and widget.content
 
 	if not content then
@@ -275,7 +277,7 @@ RarityRating.populate = function(mod, widget, item, item_kind)
 	clear_content(content)
 
 	item_kind = item_kind == true and "weapon" or item_kind == false and nil or item_kind
-	local resolved_mode = item_kind and item_mode(mod, item_kind) or MODE_OFF
+	local resolved_mode = item_kind and item_mode(mod, item_kind, configuration) or MODE_OFF
 	local rarity = effective_rarity(item)
 
 	if resolved_mode == MODE_OFF or rarity < 1 or not item_kind then
