@@ -222,7 +222,16 @@ def main() -> None:
     assert integration.configure_passes(
         mod, pass_template, 210, 12, lua.table_from({}), 3
     ) is True
-    assert len(pass_template) == 3
+    assert len(pass_template) == 4
+
+    def refresh(template, content):
+        for index in range(1, len(template) + 1):
+            if template[index].pass_type == "logic":
+                template[index].value(None, None, None, content)
+
+    def visibility(template, render_pass, content):
+        refresh(template, content)
+        return render_pass.visibility_function(content)
 
     text_pass = next(
         pass_template[index]
@@ -241,23 +250,23 @@ def main() -> None:
     assert icon_pass.style.size[1] == 19
     assert icon_pass.style.offset[2] == 34
     assert icon_pass.value == "test/wkc/icon"
-    assert text_pass.visibility_function(weapon_content) is True
-    assert icon_pass.visibility_function(weapon_content) is True
-    assert text_pass.visibility_function(unused_weapon_content) is True
-    assert icon_pass.visibility_function(unused_weapon_content) is True
+    assert visibility(pass_template, text_pass, weapon_content) is True
+    assert visibility(pass_template, icon_pass, weapon_content) is True
+    assert visibility(pass_template, text_pass, unused_weapon_content) is True
+    assert visibility(pass_template, icon_pass, unused_weapon_content) is True
 
-    text_pass.change_function(weapon_content)
-    icon_pass.change_function(weapon_content)
+    refresh(pass_template, weapon_content)
+    refresh(pass_template, weapon_content)
     assert weapon_content.wkc_kills == "77"
     assert weapon_content.wkc_kills_icon == "test/wkc/icon"
-    text_pass.change_function(unused_weapon_content)
-    icon_pass.change_function(unused_weapon_content)
+    refresh(pass_template, unused_weapon_content)
+    refresh(pass_template, unused_weapon_content)
     assert unused_weapon_content.wkc_kills == "0"
     assert unused_weapon_content.wkc_kills_icon == "test/wkc/icon"
 
     mod.settings.weapon_kill_counter_show_zero_kills = False
-    assert text_pass.visibility_function(unused_weapon_content) is False
-    assert icon_pass.visibility_function(unused_weapon_content) is False
+    assert visibility(pass_template, text_pass, unused_weapon_content) is False
+    assert visibility(pass_template, icon_pass, unused_weapon_content) is False
     mod.settings.weapon_kill_counter_show_zero_kills = True
 
     # Store grids may independently extend the parent zero-kill presentation.
@@ -281,24 +290,24 @@ def main() -> None:
         for index in range(1, len(store_template) + 1)
         if store_template[index].style_id == "wkc_kills_icon"
     )
-    assert store_text_pass.visibility_function(weapon_content) is True
-    assert store_icon_pass.visibility_function(weapon_content) is True
-    assert store_text_pass.visibility_function(unused_weapon_content) is True
-    assert store_icon_pass.visibility_function(unused_weapon_content) is True
-    store_text_pass.change_function(unused_weapon_content)
-    store_icon_pass.change_function(unused_weapon_content)
+    assert visibility(store_template, store_text_pass, weapon_content) is True
+    assert visibility(store_template, store_icon_pass, weapon_content) is True
+    assert visibility(store_template, store_text_pass, unused_weapon_content) is True
+    assert visibility(store_template, store_icon_pass, unused_weapon_content) is True
+    refresh(store_template, unused_weapon_content)
+    refresh(store_template, unused_weapon_content)
     assert unused_weapon_content.wkc_kills == "0"
     assert unused_weapon_content.wkc_kills_icon == "test/wkc/icon"
 
     mod.settings.weapon_kill_counter_show_zero_kills_in_stores = False
-    assert store_text_pass.visibility_function(weapon_content) is True
-    assert store_icon_pass.visibility_function(weapon_content) is True
-    assert store_text_pass.visibility_function(unused_weapon_content) is False
-    assert store_icon_pass.visibility_function(unused_weapon_content) is False
+    assert visibility(store_template, store_text_pass, weapon_content) is True
+    assert visibility(store_template, store_icon_pass, weapon_content) is True
+    assert visibility(store_template, store_text_pass, unused_weapon_content) is False
+    assert visibility(store_template, store_icon_pass, unused_weapon_content) is False
     mod.settings.weapon_kill_counter_show_zero_kills_in_stores = True
     mod.settings.weapon_kill_counter_show_zero_kills = False
-    assert store_text_pass.visibility_function(unused_weapon_content) is False
-    assert store_icon_pass.visibility_function(unused_weapon_content) is False
+    assert visibility(store_template, store_text_pass, unused_weapon_content) is False
+    assert visibility(store_template, store_icon_pass, unused_weapon_content) is False
     mod.settings.weapon_kill_counter_show_zero_kills = True
 
     # Brunt's native two-column cards bypass BetterInventory's custom grid
@@ -502,17 +511,17 @@ def main() -> None:
     original_kills = wkc._stats.weapons.combat_axe.kills
     mod.settings.debug_weapon_kill_counter_kills = 1000
     assert integration.resolve_kills(mod, weapon_content) == 1000
-    text_pass.change_function(weapon_content)
+    refresh(pass_template, weapon_content)
     assert weapon_content.wkc_kills == "1k"
     assert wkc._stats.weapons.combat_axe.kills == original_kills == 77
 
     # WKC owns the feature toggle. BetterInventory fails closed when the mod is
     # absent, its card overlay is disabled, or the content is not a weapon.
     wkc.card.icon_on = False
-    assert icon_pass.visibility_function(weapon_content) is False
-    assert text_pass.visibility_function(weapon_content) is True
+    assert visibility(pass_template, icon_pass, weapon_content) is False
+    assert visibility(pass_template, text_pass, weapon_content) is True
     wkc.card.on = False
-    assert text_pass.visibility_function(weapon_content) is False
+    assert visibility(pass_template, text_pass, weapon_content) is False
     wkc.card.on = True
     wkc.settings.wkc_card_kills = False
     assert integration.resolve_kills(mod, weapon_content) is None
@@ -520,15 +529,15 @@ def main() -> None:
     wkc.settings.wkc_card_kills = True
     lua.globals()["wkc_test_mod"] = None
     assert integration.resolve_kills(mod, weapon_content) is None
-    assert text_pass.visibility_function(weapon_content) is False
+    assert visibility(pass_template, text_pass, weapon_content) is False
 
     late_template = lua.table_from([])
     assert integration.configure_passes(
         mod, late_template, 210, 12, lua.table_from({}), 3
     ) is True
-    assert len(late_template) == 2
+    assert len(late_template) == 3
     lua.globals()["wkc_test_mod"] = wkc
-    assert late_template[2].visibility_function(weapon_content) is True
+    assert visibility(late_template, late_template[3], weapon_content) is True
 
     config = lua.table_from({"native_single_column": True, "character_overview": True})
     mod.settings.character_overview_weapon_rarity_rating_mode = "off"
@@ -538,6 +547,38 @@ def main() -> None:
     assert shifted.left == baseline.left + 20
     assert shifted.text_left == baseline.text_left + 20
     assert shifted.top == baseline.top
+    lua.globals().measured_template = late_template
+    lua.globals().measured_content = weapon_content
+    mod.settings.debug_weapon_kill_counter_kills = 0
+    wkc.card.icon_on = True
+    lua.execute("""
+        local original_geometry = wkc_test_mod._layout_geom
+        local original_kills = wkc_test_mod._overlay_kills_for_item
+        local geometry_reads, kill_reads = 0, 0
+        wkc_test_mod._layout_gen = 1
+        wkc_test_mod._layout_geom = function()
+            geometry_reads=geometry_reads+1
+            return original_geometry()
+        end
+        wkc_test_mod._overlay_kills_for_item = function(item)
+            kill_reads=kill_reads+1
+            return original_kills(item)
+        end
+        for i=1,120 do
+            measured_template[1].value(nil, nil, nil, measured_content)
+            assert(measured_template[2].visibility_function(measured_content))
+            assert(measured_template[3].visibility_function(measured_content))
+        end
+        assert(geometry_reads == 1 and kill_reads == 120)
+        wkc_test_mod._stats.weapons.combat_axe.kills = 1000
+        wkc_test_mod._layout_gen = 2
+        wkc_test_mod.card.icon_on = false
+        measured_template[1].value(nil, nil, nil, measured_content)
+        assert(geometry_reads == 2 and kill_reads == 121)
+        assert(measured_content.wkc_kills == "1k")
+        assert(not measured_template[2].visibility_function(measured_content))
+        assert(measured_template[3].visibility_function(measured_content))
+    """)
     print("BetterInventory Weapon Kill Counter integration tests passed.")
 
 

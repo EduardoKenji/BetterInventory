@@ -3,6 +3,8 @@ local Items = require("scripts/utilities/items")
 
 local TEXT_STYLE_ID = "wkc_kills"
 local ICON_STYLE_ID = "wkc_kills_icon"
+local REFRESH_STYLE_ID = "better_inventory_wkc_refresh"
+local configuration_cache = setmetatable({}, { __mode = "k" })
 local DETAIL_WIDGET_NAME = "wkc_detail_kills"
 local DEFAULT_ICON = "content/ui/materials/hud/interactions/icons/enemy_priority"
 local DEFAULT_COLOR = {
@@ -58,14 +60,22 @@ local function card_configuration(wkc)
 	if not wkc or type(wkc._layout_geom) ~= "function" then
 		return nil
 	end
+	local generation = wkc._layout_gen
+	local cached = generation ~= nil and configuration_cache[wkc]
+	if cached and cached.generation == generation and cached.provider == wkc._layout_geom then
+		return cached.card
+	end
 
 	local success, geometry = pcall(wkc._layout_geom)
-
-	return success and type(geometry) == "table" and type(geometry.card) == "table" and geometry.card or nil
+	local card = success and type(geometry) == "table" and type(geometry.card) == "table" and geometry.card or nil
+	if card and generation ~= nil then
+		configuration_cache[wkc] = { generation = generation, provider = wkc._layout_geom, card = card }
+	end
+	return card
 end
 
-local function integration_enabled(wkc)
-	local configuration = card_configuration(wkc)
+local function integration_enabled(wkc, configuration)
+	configuration = configuration or card_configuration(wkc)
 
 	if configuration and configuration.on == false then
 		return false
@@ -144,10 +154,10 @@ local function weapon_content(content)
 	return success and kills ~= nil
 end
 
-local function resolved_kills(mod, content, allow_zero_kills)
-	local wkc = optional_wkc()
+local function resolved_kills(mod, content, allow_zero_kills, wkc, configuration)
+	wkc = wkc or optional_wkc()
 
-	if not wkc or not integration_enabled(wkc) or not weapon_content(content) then
+	if not wkc or not integration_enabled(wkc, configuration) or not weapon_content(content) then
 		return nil
 	end
 
@@ -336,7 +346,7 @@ local function remove_owned_passes(pass_template)
 		local pass = pass_template[index]
 		local style_id = pass and pass.style_id
 
-		if style_id == TEXT_STYLE_ID or style_id == ICON_STYLE_ID then
+		if style_id == TEXT_STYLE_ID or style_id == ICON_STYLE_ID or style_id == REFRESH_STYLE_ID then
 			table.remove(pass_template, index)
 		end
 	end
@@ -574,6 +584,30 @@ local function configure_passes(mod, pass_template, card_width, text_left, confi
 		end
 	end
 
+	-- Native logic pass runs once before both render passes. No per-frame cache,
+	-- extra update hook, or retained item reference is needed.
+	pass_template[#pass_template + 1] = {
+		pass_type = "logic",
+		style_id = REFRESH_STYLE_ID,
+		value_id = REFRESH_STYLE_ID,
+		value = function(_, _, _, content)
+			local current_wkc = optional_wkc()
+			local current_configuration = card_configuration(current_wkc) or {}
+			local kills = resolved_kills(mod, content, zero_kills_allowed(mod, configuration), current_wkc, current_configuration)
+			content.better_inventory_wkc_text_visible = kills ~= nil
+			content.better_inventory_wkc_icon_visible = kills ~= nil and current_configuration.icon_on ~= false
+			content[TEXT_STYLE_ID] = kills and abbreviated_kills(current_wkc, kills) or ""
+			local material = DEFAULT_ICON
+			if current_wkc and type(current_wkc._overlay_icon_material) == "function" then
+				local success, resolved_material = pcall(current_wkc._overlay_icon_material, current_configuration)
+				if success and type(resolved_material) == "string" and resolved_material ~= "" then
+					material = resolved_material
+				end
+			end
+			content[ICON_STYLE_ID] = material
+		end,
+	}
+
 	pass_template[#pass_template + 1] = {
 		pass_type = "texture",
 		style_id = ICON_STYLE_ID,
@@ -594,25 +628,7 @@ local function configure_passes(mod, pass_template, card_width, text_left, confi
 			color = icon_color,
 		},
 		visibility_function = function(content)
-			local current_wkc = optional_wkc()
-			local current_configuration = card_configuration(current_wkc)
-
-			return (not current_configuration or current_configuration.icon_on ~= false) and resolved_kills(mod, content, zero_kills_allowed(mod, configuration)) ~= nil
-		end,
-		change_function = function(content)
-			local current_wkc = optional_wkc()
-			local current_configuration = card_configuration(current_wkc) or {}
-			local material = DEFAULT_ICON
-
-			if current_wkc and type(current_wkc._overlay_icon_material) == "function" then
-				local success, resolved_material = pcall(current_wkc._overlay_icon_material, current_configuration)
-
-				if success and type(resolved_material) == "string" and resolved_material ~= "" then
-					material = resolved_material
-				end
-			end
-
-			content[ICON_STYLE_ID] = material
+			return content.better_inventory_wkc_icon_visible == true
 		end,
 	}
 
@@ -642,13 +658,7 @@ local function configure_passes(mod, pass_template, card_width, text_left, confi
 			text_color = text_color,
 		},
 		visibility_function = function(content)
-			return resolved_kills(mod, content, zero_kills_allowed(mod, configuration)) ~= nil
-		end,
-		change_function = function(content)
-			local kills = resolved_kills(mod, content, zero_kills_allowed(mod, configuration))
-			local current_wkc = optional_wkc()
-
-			content[TEXT_STYLE_ID] = kills and abbreviated_kills(current_wkc, kills) or ""
+			return content.better_inventory_wkc_text_visible == true
 		end,
 	}
 

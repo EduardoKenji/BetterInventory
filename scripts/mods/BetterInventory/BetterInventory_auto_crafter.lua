@@ -1524,10 +1524,9 @@ function AutoCrafter.update(dt)
 		if games_lantern_queue then
 			local queue_state = games_lantern_queue:state()
 			if queue_state == "stopping" or queue_state == "quarantined" or queue_state == "reconciliation_required" then
-				local queue_snapshot = games_lantern_queue:snapshot()
 				local controller_snapshot = controller:snapshot()
 				local run_active = controller_snapshot.search and controller_snapshot.search.running or controller_snapshot.phase3 and controller_snapshot.phase3.running or controller_snapshot.phase4 and controller_snapshot.phase4.running or controller_snapshot.mastery and controller_snapshot.mastery.running
-				local stop_can_settle = queue_snapshot.stop_requested and not run_active and not controller_snapshot.operation_inflight and not controller_snapshot.operation_quarantined and (tonumber(controller_snapshot.auxiliary_inflight_count) or 0) == 0
+				local stop_can_settle = games_lantern_queue:stop_requested() and not run_active and not controller_snapshot.operation_inflight and not controller_snapshot.operation_quarantined and (tonumber(controller_snapshot.auxiliary_inflight_count) or 0) == 0
 
 				if stop_can_settle then
 					pcall(games_lantern_queue.on_event, games_lantern_queue, "stop_settled", { reason = "context_exit_settled" })

@@ -125,7 +125,7 @@ def main() -> None:
     assert stopped.install(stopped, build) is True
     assert stopped.start(stopped) is True
     assert stopped.on_event(stopped, "phase4_complete", completion(stopped, 1, "stopped-melee")) is True
-    assert stopped.stop(stopped, "user_stopped") is True
+    assert stopped.stop(stopped, "user_stopped") is True and stopped.stop_requested(stopped) is True
     stopped.update(stopped)
     assert stopped.snapshot(stopped)["state"] == "stopped"
     assert stopped_starts == [1]

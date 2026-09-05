@@ -662,6 +662,10 @@ function Queue.new(dependencies)
 		return self._state
 	end
 
+	function self:stop_requested()
+		return self._stop_requested == true
+	end
+
 	function self:presentation_snapshot()
 		local signature = table.concat({
 			tostring(self._queue_id or ""),

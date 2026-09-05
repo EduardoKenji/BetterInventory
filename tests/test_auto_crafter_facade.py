@@ -45,7 +45,7 @@ def main() -> None:
     # Controller-detected Psych Ward context loss must also stop and settle the
     # host-owned imported queue after any late backend response becomes inert.
     assert 'kind == "context_exit" or kind == "phase4_complete"' in source
-    assert 'queue_snapshot.stop_requested' in source
+    assert 'games_lantern_queue:stop_requested()' in source
     assert '"stop_settled", { reason = "context_exit_settled" }' in source
     assert "not controller_snapshot.operation_inflight" in source
     assert "not controller_snapshot.operation_quarantined" in source
