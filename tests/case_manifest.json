@@ -256,7 +256,7 @@
           {"name": "weapon_modifier_data_only_resolution", "risk": "critical", "start_line": 1539, "end_line": 2012},
             {"name": "content_and_resource_ownership", "risk": "high", "start_line": 2013, "end_line": 3224},
         {"name": "integration_boundaries", "risk": "medium", "start_line": 3225, "end_line": 5540},
-        {"name": "overview_rarity_modes_geometry_and_item_rebind", "risk": "high", "start_line": 5541, "end_line": 5638}
+        {"name": "overview_rarity_modes_geometry_and_item_rebind", "risk": "high", "start_line": 5541, "end_line": 5667}
   ],
   "test_operation_arbiter.py": [
     {"name": "manual_automatic_exclusion", "risk": "critical", "start_line": 20, "end_line": 34},

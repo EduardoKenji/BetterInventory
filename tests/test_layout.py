@@ -5631,6 +5631,35 @@ def main() -> None:
         assert(overview.is_visual_setting("character_overview_curio_rarity_rating_mode"))
         assert(overview.is_visual_setting("weapon_rarity_rating_opacity"))
         assert(TestRarityRating.horizontal_rows(test_mod, {character_overview = true}, "weapon") == 0)
+        local markers = {
+            content = {element = {slot = {name = "slot_attachment_1"}}, better_inventory_native_curio_overlay_enabled = true},
+            style = {
+                equipped_icon = {horizontal_alignment = "right", vertical_alignment = "top", offset = {-8, 8, 20}, size = {28, 28}},
+                favorite_icon = {horizontal_alignment = "right", vertical_alignment = "top", offset = {-8, 125, 20}, size = {28, 28}},
+                better_inventory_curio_stat_1 = {offset = {16, 110, 31}},
+                maxstatmark_max_inv = {vertical_alignment = "center", offset = {-6, 0, 20}},
+                maxstatmark_max_equipped = {vertical_alignment = "top", offset = {-8, 8, 20}},
+            },
+        }
+        for i = 1, 3 do
+            overview.synchronize_character_overview_equipped_icon(markers, false)
+            assert(markers.style.equipped_icon.offset[2] == 108)
+            for _, id in ipairs({"maxstatmark_max_inv", "maxstatmark_max_equipped"}) do
+                assert(markers.style[id].offset[2] == 157)
+                assert(markers.style[id].vertical_alignment == "top")
+            end
+        end
+        markers.style.better_inventory_curio_stat_1.offset[2] = 150
+        overview.synchronize_character_overview_equipped_icon(markers, false)
+        assert(markers.style.maxstatmark_max_inv.offset[2] == 180)
+        markers.content.element.slot.name = "slot_primary"
+        markers.style.maxstatmark_max_inv.offset[2] = 0
+        overview.synchronize_character_overview_equipped_icon(markers, false)
+        assert(markers.style.maxstatmark_max_inv.offset[2] == 0)
+        markers.content.element.slot.name = "slot_attachment_1"
+        markers.content.better_inventory_native_curio_overlay_enabled = false
+        overview.synchronize_character_overview_equipped_icon(markers, false)
+        assert(markers.style.maxstatmark_max_inv.offset[2] == 0)
         return true
     """)
     print("BetterInventory layout behavior tests passed.")

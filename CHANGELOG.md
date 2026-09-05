@@ -2,6 +2,7 @@
 
 ## 3.5.8 - Unreleased
 
+- Places MaxStatMark badges below equipped/favorite markers on native-overlay Character Overview Curios.
 - Adds independently selectable Off, Compact and Full rarity + stars to mirrored Character Overview weapons and detailed Curios.
 - Keeps weapon rarity beside the perk rows and reserves a row beneath Curio names without enlarging native frames.
 - Reuses existing rarity/custom-tier calculation, colour and opacity, with fitting at item binding and layout rebuilds when options change.

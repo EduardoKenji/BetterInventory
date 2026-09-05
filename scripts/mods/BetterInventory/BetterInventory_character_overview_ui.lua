@@ -1341,6 +1341,23 @@ local function synchronize_character_overview_equipped_icon(widget, lantern_acti
 	end
 
 	offset[2] = target_y
+
+	if native_curio_marker_y then
+		local badge_y = target_y + (equipped_style.size and equipped_style.size[2] or 28) + 4
+		local favorite = widget.style.favorite_icon
+		if is_top_right_style(favorite) and favorite.offset then
+			badge_y = math.max(badge_y, favorite.offset[2] + (favorite.size and favorite.size[2] or 28) + 4)
+		end
+		-- Detailed cards inherit the grid badge; native slots use the equipped badge.
+		-- Anchor both below the final markers instead of their old center/top position.
+		for _, id in ipairs({ "maxstatmark_max_inv", "maxstatmark_max_equipped" }) do
+			local badge = widget.style[id]
+			if badge and badge.offset then
+				badge.vertical_alignment = "top"
+				badge.offset[2] = badge_y
+			end
+		end
+	end
 end
 
 local function synchronize_character_overview_equipped_icons(view, force)
