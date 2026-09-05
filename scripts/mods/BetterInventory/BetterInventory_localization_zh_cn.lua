@@ -1,4 +1,9 @@
 local localization = {
+	character_overview_weapon_rarity_vertical = "垂直（左侧）",
+	character_overview_weapon_rarity_rating_mode = "武器稀有度 + 星级",
+	character_overview_weapon_rarity_rating_mode_tooltip = "在角色总览镜像武器上显示稀有度和星级。默认的垂直模式在左侧纵向排列首字和星星。紧凑和完整模式在特性旁横向显示首字或完整名称。独立于背包网格的显示开关；沿用武器星级的颜色和不透明度。需要启用近战或远程武器镜像。",
+	character_overview_curio_rarity_rating_mode = "珍品稀有度 + 星级",
+	character_overview_curio_rarity_rating_mode_tooltip = "在珍品名称下显示稀有度和星级，并将属性行下移。紧凑模式显示首字，完整模式显示名称。独立于背包网格的显示开关；沿用珍品星级的颜色和不透明度。需要启用角色总览珍品详情。",
 	mod_name = "BetterInventory",
 	mod_description = "为《暗潮》提供响应式且完整保留信息的库存布局。",
 	automatic_curio_buyer_group = "自动珍品购买器",

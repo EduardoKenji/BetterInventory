@@ -3078,7 +3078,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "3.5.7"
+    assert data.version == "3.6.0"
 
     gradient_name = localization["mod_name"]["en"]
     assert gradient_name.startswith("{#color(174,239,105)}B")
@@ -3462,6 +3462,7 @@ def main() -> None:
         "character_overview_show_melee_rarity_strip",
         "enable_character_overview_ranged_mirror",
         "character_overview_show_ranged_rarity_strip",
+        "character_overview_weapon_rarity_rating_mode",
         "character_overview_blessing_name_mode",
         "character_overview_show_only_dump_stat",
         "character_overview_dump_stat_horizontal_offset",
@@ -3472,11 +3473,12 @@ def main() -> None:
         "character_overview_dump_stat_color_b",
         "enable_character_overview_curio_details",
         "character_overview_show_curio_rarity_strip",
+        "character_overview_curio_rarity_rating_mode",
         "character_overview_use_native_curio_overlay",
         "character_overview_curio_name_mode",
         "character_overview_curio_font_size_percent",
     ]
-    blessing_name_mode = character_overview_view_group.sub_widgets[5]
+    blessing_name_mode = character_overview_view_group.sub_widgets[6]
     assert [
         blessing_name_mode.options[index].value
         for index in range(1, len(blessing_name_mode.options) + 1)
@@ -3737,7 +3739,7 @@ def main() -> None:
     assert defaults["enable_character_overview_ranged_mirror"] is True
     assert defaults["character_overview_show_ranged_rarity_strip"] is True
     assert defaults["character_overview_blessing_name_mode"] == "ellipsis"
-    assert defaults["character_overview_show_only_dump_stat"] is False
+    assert defaults["character_overview_show_only_dump_stat"] is True and defaults["character_overview_weapon_rarity_rating_mode"] == "overview_vertical"
     assert defaults["character_overview_dump_stat_horizontal_offset"] == -10
     assert defaults["character_overview_dump_stat_font_scale_percent"] == 130
     assert defaults["character_overview_dump_stat_color_preset"] == "pink"
@@ -3745,8 +3747,8 @@ def main() -> None:
     assert defaults["character_overview_dump_stat_color_g"] == 94
     assert defaults["character_overview_dump_stat_color_b"] == 132
     assert defaults["enable_character_overview_curio_details"] is True
-    assert defaults["character_overview_show_curio_rarity_strip"] is True
-    assert defaults["character_overview_use_native_curio_overlay"] is False
+    assert defaults["character_overview_show_curio_rarity_strip"] is False
+    assert defaults["character_overview_use_native_curio_overlay"] is True
     assert defaults["myfavorites_show_favorite_letter"] is False
     assert defaults["character_overview_curio_name_mode"] == "two_lines"
     assert defaults["character_overview_curio_font_size_percent"] == 110

@@ -530,6 +530,14 @@ def main() -> None:
     lua.globals()["wkc_test_mod"] = wkc
     assert late_template[2].visibility_function(weapon_content) is True
 
+    config = lua.table_from({"native_single_column": True, "character_overview": True})
+    mod.settings.character_overview_weapon_rarity_rating_mode = "off"
+    baseline = integration.profile(mod, 420, 15, config, 1)
+    mod.settings.character_overview_weapon_rarity_rating_mode = "overview_vertical"
+    shifted = integration.profile(mod, 420, 15, config, 1)
+    assert shifted.left == baseline.left + 20
+    assert shifted.text_left == baseline.text_left + 20
+    assert shifted.top == baseline.top
     print("BetterInventory Weapon Kill Counter integration tests passed.")
 
 

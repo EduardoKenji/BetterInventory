@@ -65,8 +65,7 @@ end
 local function configuration_allows_rating(configuration)
 	configuration = configuration or {}
 
-	if configuration.native_single_column == true
-		or configuration.character_overview == true then
+	if configuration.native_single_column == true and configuration.character_overview ~= true then
 		return false
 	end
 
@@ -90,7 +89,11 @@ local function item_mode(mod, item_kind, configuration)
 
 	item_kind = item_kind or configured_kind or "weapon"
 
-	return valid_mode(setting(mod, item_kind == "curio" and "curio_rarity_rating_mode" or "weapon_rarity_rating_mode", MODE_OFF))
+	local prefix = configuration and configuration.character_overview and "character_overview_" or ""
+	if prefix ~= "" and item_kind == "weapon" and setting(mod, prefix .. item_kind .. "_rarity_rating_mode") == "overview_vertical" then
+		return "overview_vertical"
+	end
+	return valid_mode(setting(mod, prefix .. item_kind .. "_rarity_rating_mode", MODE_OFF))
 end
 
 local function mode(mod, configuration, explicit_item_kind)
@@ -245,6 +248,7 @@ local function clear_content(content)
 	content.better_inventory_rarity_rating_full_name = ""
 	content.better_inventory_rarity_rating_stars = ""
 	content.better_inventory_rarity_rating_visible = false
+	content.better_inventory_rarity_background_styles = nil
 end
 
 RarityRating.set_custom_tier_provider = function(provider)
@@ -254,6 +258,8 @@ end
 RarityRating.mode = mode
 RarityRating.item_mode = item_mode
 RarityRating.horizontal_rows = function(mod, configuration, explicit_item_kind)
+	-- Overview owns its fixed-height layout and places the rating itself.
+	if configuration and configuration.character_overview then return 0 end
 	if explicit_item_kind then
 		local resolved_mode = item_mode(mod, explicit_item_kind, configuration)
 
@@ -265,7 +271,7 @@ RarityRating.horizontal_rows = function(mod, configuration, explicit_item_kind)
 	return (weapon_mode == MODE_COMPACT or weapon_mode == MODE_FULL or curio_mode == MODE_COMPACT or curio_mode == MODE_FULL) and 1 or 0
 end
 
-RarityRating.populate = function(mod, widget, item, item_kind)
+RarityRating.populate = function(mod, widget, item, item_kind, configuration)
 	local content = widget and widget.content
 
 	if not content then
@@ -275,7 +281,7 @@ RarityRating.populate = function(mod, widget, item, item_kind)
 	clear_content(content)
 
 	item_kind = item_kind == true and "weapon" or item_kind == false and nil or item_kind
-	local resolved_mode = item_kind and item_mode(mod, item_kind) or MODE_OFF
+	local resolved_mode = item_kind and item_mode(mod, item_kind, configuration) or MODE_OFF
 	local rarity = effective_rarity(item)
 
 	if resolved_mode == MODE_OFF or rarity < 1 or not item_kind then
@@ -288,8 +294,14 @@ RarityRating.populate = function(mod, widget, item, item_kind)
 	local color = resolved_rating_color(mod, widget, item, item_kind)
 	local alpha = rating_alpha(mod, item_kind)
 	local horizontal = (resolved_mode == MODE_FULL and name or first) .. " " .. stars
+	if resolved_mode == "overview_vertical" then
+		horizontal = first .. string.rep("\n" .. STAR, rarity)
+	end
 
 	content.better_inventory_rarity_rating_visible = true
+	if setting(mod, item_kind .. "_rarity_rating_use_card_background_color", false) == true then
+		content.better_inventory_rarity_background_styles = widget.style
+	end
 	content[item_kind == "curio" and "better_inventory_curio_rarity_rating" or "better_inventory_weapon_rarity_rating"] = horizontal
 	content.better_inventory_rarity_rating_compact = first .. " " .. stars
 	content.better_inventory_rarity_rating_full_name = name .. " " .. stars
@@ -333,6 +345,25 @@ local function add_text_pass(pass_template, content_id, base_style, options)
 		value = "",
 		value_id = content_id,
 		style = style,
+		change_function = function(content, text_style)
+			local styles = content.better_inventory_rarity_background_styles
+			if not styles then return end
+			-- Read the live style each draw: other mods can replace its colour after binding.
+			-- Copy RGB only; background alpha must not override the text opacity setting.
+			for index = 1, #CARD_BACKGROUND_STYLE_IDS do
+				local background = styles[CARD_BACKGROUND_STYLE_IDS[index]]
+				local color = background and background.color
+				if type(color) == "table" then
+					for channel = 2, 4 do
+						local value = tonumber(color[channel]) or DEFAULT_COLOR[channel]
+						text_style.text_color[channel] = value
+						text_style.default_color[channel] = value
+						text_style.hover_color[channel] = value
+					end
+					return
+				end
+			end
+		end,
 		visibility_function = function(content)
 			return content and content.better_inventory_rarity_rating_visible == true and content[content_id] ~= ""
 		end,
@@ -352,7 +383,7 @@ RarityRating.add_passes = function(mod, pass_template, card_width, card_height, 
 	local pattern_rows = setting(mod, "show_pattern_mark", false) == true and 1 or 0
 	local top = HORIZONTAL_TOP + pattern_rows * HORIZONTAL_ROW_HEIGHT
 
-	if weapon_mode == MODE_COMPACT or weapon_mode == MODE_FULL then
+	if weapon_mode == MODE_COMPACT or weapon_mode == MODE_FULL or weapon_mode == "overview_vertical" then
 		add_text_pass(pass_template, "better_inventory_weapon_rarity_rating", base_style, {
 			font_size = font_size,
 			offset = { text_left, top, 11 },

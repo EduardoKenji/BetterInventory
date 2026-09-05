@@ -47,6 +47,12 @@ local CHARACTER_OVERVIEW_VISUAL_SETTING_IDS = {
 	enable_character_overview_ranged_mirror = true,
 	character_overview_show_ranged_rarity_strip = true,
 	character_overview_blessing_name_mode = true,
+	character_overview_weapon_rarity_rating_mode = true,
+	character_overview_curio_rarity_rating_mode = true,
+	weapon_rarity_rating_use_card_background_color = true,
+	weapon_rarity_rating_opacity = true,
+	curio_rarity_rating_use_card_background_color = true,
+	curio_rarity_rating_opacity = true,
 	character_overview_show_only_dump_stat = true,
 	character_overview_dump_stat_horizontal_offset = true,
 	character_overview_dump_stat_font_scale_percent = true,
@@ -547,6 +553,54 @@ local function character_overview_weapon_blueprint(rarity_strip_setting_id, weap
 	})
 	configure_character_overview_rarity_strip(blueprint, rarity_strip_setting_id)
 	configure_character_overview_weapon_passes(blueprint)
+	local rating = pass_by_style_id(blueprint.pass_template, "better_inventory_weapon_rarity_rating")
+	if rating and mod:get("character_overview_weapon_rarity_rating_mode") == "overview_vertical" then
+		rating.style.offset = { 8, 7, 31 }
+		rating.style.size = { 22, 112 }
+		rating.style.font_size = 16
+		rating.style.line_spacing = 0.9 + 1 / rating.style.font_size
+		rating.style.vertical_alignment = "top"
+		rating.style.text_vertical_alignment = "top"
+		rating.style.text_horizontal_alignment = "center"
+		rating.style.better_inventory_rating_vertical = true
+		for _, pass in ipairs(blueprint.pass_template) do
+			local id, style = pass.style_id, pass.style
+			if style and style.offset and type(id) == "string" and (id == "display_name" or string.find(id, "better_inventory_weapon_perk_", 1, true) == 1 or string.find(id, "better_inventory_blessing_", 1, true) == 1) then
+				style.offset[1] = style.offset[1] + 18
+				if id == "display_name" then
+					style.offset[2] = style.offset[2] - 3
+					style.horizontal_alignment = "left"
+					style.text_horizontal_alignment = "left"
+				end
+				if pass.pass_type == "text" then
+					if style.size and style.size[1] then style.size[1] = math.max(1, style.size[1] - 18) end
+					if style.better_inventory_max_text_width then style.better_inventory_max_text_width = math.max(1, style.better_inventory_max_text_width - 18) end
+				end
+			end
+		end
+		local title = pass_by_style_id(blueprint.pass_template, "display_name")
+		local left
+		for _, pass in ipairs(blueprint.pass_template) do
+			if type(pass.style_id) == "string" and string.find(pass.style_id, "better_inventory_weapon_perk_", 1, true) == 1 and pass.style and pass.style.offset then
+				left = math.min(left or math.huge, pass.style.offset[1])
+			end
+		end
+		if title and title.style and left then title.style.offset[1] = left end
+	elseif rating then
+		-- The lower centre belongs to the optional five-stat block. Keep this
+		-- small row beside the perks, above the kill counter and modifiers.
+		rating.style.offset = { math.floor(blueprint.size[1] * 0.42), 32, 31 }
+		rating.style.size = { math.floor(blueprint.size[1] * 0.36), 20 }
+		rating.style.font_size = 13
+		for index = 1, 2 do
+			local perk = pass_by_style_id(blueprint.pass_template, "better_inventory_weapon_perk_" .. index)
+			if perk and perk.style then
+				local width = math.max(40, rating.style.offset[1] - perk.style.offset[1] - 8)
+				perk.style.size[1] = math.min(perk.style.size[1], width)
+				perk.style.better_inventory_max_text_width = perk.style.size[1]
+			end
+		end
+	end
 	move_character_overview_weapon_icon(blueprint)
 	Layout.ImageLayout.apply_blueprint(mod, blueprint, {
 		character_overview = true,
@@ -818,10 +872,21 @@ local function character_overview_curio_blueprint()
 		end
 	end
 
+	local rating = pass_by_style_id(blueprint.pass_template, "better_inventory_curio_rarity_rating")
+	local rating_height = rating and math.max(20, math.ceil(13 * curio_font_scale) + 5) or 0
+	if rating then
+		local title_bottom = show_curio_name and display_name and display_name.style and display_name.style.offset[2] + curio_name_block_height + CHARACTER_OVERVIEW_CURIO_TITLE_STAT_PADDING_Y or 7
+		local top = primary_curio_style and primary_curio_style.offset and primary_curio_style.offset[2] or title_bottom
+		rating.style.offset = { 16, top - (show_curio_name and 3.5 or 0), 31 }
+		rating.style.size = { math.max(40, card_width - 40), rating_height }
+		rating.style.font_size = math.floor(13 * curio_font_scale + 0.5)
+	end
+
 	for index = 1, 4 do
 		local stat_style = curio_stat_passes[index] and curio_stat_passes[index].style
 
 		if stat_style and stat_style.offset then
+			stat_style.offset[2] = (stat_style.offset[2] or 0) + rating_height
 			curio_stat_base_offsets[index] = stat_style.offset[2] or 0
 			curio_stat_line_heights[index] = (stat_style.font_size or 13) + 5
 			stat_style.word_wrap = false
@@ -1308,6 +1373,34 @@ local function synchronize_character_overview_equipped_icon(widget, lantern_acti
 	end
 
 	offset[2] = target_y
+	local rating = widget.style.better_inventory_weapon_rarity_rating
+	local weapon_badge = widget.style.maxstatmark_max_inv
+	if rating and rating.better_inventory_rating_vertical and weapon_badge and weapon_badge.offset then
+		weapon_badge.better_inventory_original_y = weapon_badge.better_inventory_original_y or weapon_badge.offset[2]
+		weapon_badge.offset[2] = weapon_badge.better_inventory_original_y - 8
+		offset[2] = target_y + 5
+		if weapon_badge.size and equipped_style.size then
+			offset[1] = weapon_badge.offset[1] + (equipped_style.size[1] - weapon_badge.size[1]) / 2
+		end
+	end
+
+	if native_curio_marker_y then
+		-- Marker textures include transparent padding; use a tighter visual spacing.
+		local badge_y = target_y + (equipped_style.size and equipped_style.size[2] or 28) * 0.75 + 2
+		local favorite = widget.style.favorite_icon
+		if is_top_right_style(favorite) and favorite.offset then
+			badge_y = math.max(badge_y, favorite.offset[2] + (favorite.size and favorite.size[2] or 28) * 0.75 + 2)
+		end
+		-- Detailed cards inherit the grid badge; native slots use the equipped badge.
+		-- Anchor both below the final markers instead of their old center/top position.
+		for _, id in ipairs({ "maxstatmark_max_inv", "maxstatmark_max_equipped" }) do
+			local badge = widget.style[id]
+			if badge and badge.offset then
+				badge.vertical_alignment = "top"
+				badge.offset[2] = badge_y
+			end
+		end
+	end
 end
 
 local function synchronize_character_overview_equipped_icons(view, force)

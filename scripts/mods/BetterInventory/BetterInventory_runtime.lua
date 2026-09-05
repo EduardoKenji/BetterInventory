@@ -591,8 +591,8 @@ local function refresh_option_dependencies()
 	local weapon_rank_symbols_enabled = weapon_perk_ranks_enabled or weapon_blessing_ranked_text_enabled
 	local weapon_perk_blessing_sections_enabled = weapon_perks_enabled and weapon_blessings_enabled
 	local detailed_curio_profile = mod:get("curio_display_profile") == "detailed"
-	local weapon_rarity_rating_enabled = (mod:get("weapon_rarity_rating_mode") or "off") ~= "off"
-	local curio_rarity_rating_enabled = (mod:get("curio_rarity_rating_mode") or "off") ~= "off"
+	local weapon_rarity_rating_enabled = (mod:get("weapon_rarity_rating_mode") or "off") ~= "off" or (mod:get("character_overview_weapon_rarity_rating_mode") or "off") ~= "off"
+	local curio_rarity_rating_enabled = (mod:get("curio_rarity_rating_mode") or "off") ~= "off" or (mod:get("character_overview_curio_rarity_rating_mode") or "off") ~= "off"
 	local wkc_zero_kills_enabled = mod:get("weapon_kill_counter_show_zero_kills") ~= false
 	local quick_discard_enabled = mod:get("enable_experimental_quick_discard") == true
 	local quick_discard_reason = mod:localize("option_requires_experimental_quick_discard")
@@ -645,6 +645,8 @@ local function refresh_option_dependencies()
 	local character_overview_ranged_enabled = mod:get("enable_character_overview_ranged_mirror") ~= false
 	local character_overview_weapon_enabled = (character_overview_melee_enabled or character_overview_ranged_enabled) and mod:get("enable_quick_look_card_single_column_integration") ~= false
 	local character_overview_dump_stat_enabled, character_overview_dump_stat_reason = character_overview_dump_stat_style_state()
+	set_option_enabled(option_dependency_entries.character_overview_weapon_rarity_rating_mode, character_overview_melee_enabled or character_overview_ranged_enabled, mod:localize("option_requires_character_overview_weapon_mirror"))
+	set_option_enabled(option_dependency_entries.character_overview_curio_rarity_rating_mode, character_overview_curio_enabled, mod:localize("option_requires_character_overview_curio_details"))
 	set_option_enabled(option_dependency_entries.character_overview_show_melee_rarity_strip, character_overview_melee_enabled, mod:localize("option_requires_character_overview_melee_mirror"))
 	set_option_enabled(option_dependency_entries.character_overview_show_ranged_rarity_strip, character_overview_ranged_enabled, mod:localize("option_requires_character_overview_ranged_mirror"))
 	set_option_enabled(option_dependency_entries.character_overview_blessing_name_mode, character_overview_weapon_enabled and weapon_blessing_text_enabled, not character_overview_weapon_enabled and mod:localize("option_requires_character_overview_weapon_mirror") or mod:localize("option_requires_weapon_blessing_text"))
@@ -896,6 +898,8 @@ local function bind_option_dependencies(options_templates)
 		"character_overview_show_melee_rarity_strip",
 		"character_overview_show_ranged_rarity_strip",
 		"character_overview_blessing_name_mode",
+		"character_overview_weapon_rarity_rating_mode",
+		"character_overview_curio_rarity_rating_mode",
 		"character_overview_show_only_dump_stat",
 		"character_overview_dump_stat_horizontal_offset",
 		"character_overview_dump_stat_font_scale_percent",

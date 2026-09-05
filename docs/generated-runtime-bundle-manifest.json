@@ -11,7 +11,7 @@
     {
       "archive_path": "BetterInventory/info.json",
       "bytes": 254,
-      "sha256": "7bbc8c9f94f648ae29d08766fda66089f6fbc0552adae8e48987705541537ca1",
+      "sha256": "01eb39a7095b2c73dda320e6465f46cba6a40f877b4e0c9589dcf635e9dcf0d2",
       "source_path": "info.json"
     },
     {
@@ -46,8 +46,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_character_overview_ui.lua",
-      "bytes": 70566,
-      "sha256": "e31c727e37b853df251ff3ed45c18947ba5c9cc02852c87f28fba17461cdb389",
+      "bytes": 75617,
+      "sha256": "fe463d05cae8772fdc2909553ac066eae67de4b174c012227ca39269b5abc359",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_character_overview_ui.lua"
     },
     {
@@ -106,8 +106,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_data.lua",
-      "bytes": 84101,
-      "sha256": "068a3765327c0c9a865f03d7e8c84badf9fc5dbe0870fd635dc568db940facb0",
+      "bytes": 85236,
+      "sha256": "2483df0d719e1f233c47be9601828c7eb7db3b3c2cc094608aa0cd19e3aabcb8",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_data.lua"
     },
     {
@@ -244,8 +244,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_layout_cards.lua",
-      "bytes": 78177,
-      "sha256": "e0774b92df435c42124d7a11400dbb8bc321d1bd465f4fa6cb68ff45b03768be",
+      "bytes": 79507,
+      "sha256": "1cd91437f393e32f6dee2064508ed59206990d66201a2fe24c10246f96885074",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_layout_cards.lua"
     },
     {
@@ -268,8 +268,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_localization_core.lua",
-      "bytes": 67374,
-      "sha256": "a78afe65dc31e4606322f6d6e696157bfb6ef137f49ab36118492f67a1010b50",
+      "bytes": 68358,
+      "sha256": "83058875254cc2fea9fc4313abddf7e4d789b2f973800cef87f33dac806aeee5",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_localization_core.lua"
     },
     {
@@ -280,8 +280,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_localization_zh_cn.lua",
-      "bytes": 102937,
-      "sha256": "7df8361c0dbce1aa05970fb5148b68c8b58afdab804eb08cb3bc1f6495640c1b",
+      "bytes": 103832,
+      "sha256": "adecaa350b62c028a2a709c2fad74dc8b7dddaea0123c79b5ab0363b932456f2",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_localization_zh_cn.lua"
     },
     {
@@ -322,14 +322,14 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_rarity_rating.lua",
-      "bytes": 11990,
-      "sha256": "b644ec0fb7ab95a72f67d7a970b6b7722576addac621236a7bd778aa715d290c",
+      "bytes": 13558,
+      "sha256": "2adb1b48692a258165f8eaf858b1968323fc0e604f862b8f5f3a1452371f087d",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_rarity_rating.lua"
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_runtime.lua",
-      "bytes": 98550,
-      "sha256": "5972dc154ba742d10b1a7df5ee76eacd602a29d623a746da21fea43a1ad9b440",
+      "bytes": 99226,
+      "sha256": "7fb9440aba94fc756a93bdd9a270bcfd2971272eedcc9570d01276490136c037",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_runtime.lua"
     },
     {
@@ -376,8 +376,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_settings.lua",
-      "bytes": 12705,
-      "sha256": "40b6f8f96c33d2dbd546156ab246bb56a0e47e583fce479b19ba9476f9351157",
+      "bytes": 12802,
+      "sha256": "f695fa5982a04f9623df9a09ad2a722ca895ebdb526e6411e974a41ce09626a2",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_settings.lua"
     },
     {
@@ -394,8 +394,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_wkc_integration.lua",
-      "bytes": 20541,
-      "sha256": "26f50a2c867024ff8401094e14f6f9df4233777b1b15d5c17f9b610dade62136",
+      "bytes": 20678,
+      "sha256": "147f4f1681a4713caebdfe08ca87472028ee57c0d88dd5da2fdace02aa5c3332",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_wkc_integration.lua"
     },
     {
@@ -555,6 +555,6 @@
       "source_path": "scripts/mods/BetterInventory/auto_crafter/games_lantern/transport_wine.lua"
     }
   ],
-  "runtime_tree_sha256": "e466861dff7c847862acfc3f1f9092e688e2dab7ae5699a45dd5f7d5f2959ec0",
-  "version": "3.5.7"
+  "runtime_tree_sha256": "40687257b0a76816f0cbd128f13cd81f945da19ae7b2c825776aa8bc0966cabb",
+  "version": "3.6.0"
 }

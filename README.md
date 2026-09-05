@@ -4,7 +4,7 @@
 
 https://www.nexusmods.com/warhammer40kdarktide/mods/1144
 
-> Current release: **v3.5.7** (2026-09-04). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
+> Current release: **v3.6.0** (2026-09-05). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
 
 BetterInventory is a standalone inventory and item-management mod for Warhammer 40,000: Darktide. It adds responsive weapon and Curio cards, richer item information, configurable sorting, supported vendor layouts, optional mod integrations, and safety-gated inventory workflows.
 
@@ -21,6 +21,13 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - A bounded inventory-options panel for sorting, discard rules, integrations, and view-specific controls.
 - Standalone Equipment Text Search, with its own master switch, Inventory/Armoury/Hadron/Melk spacing sliders, quoted phrases, explicit AND, typed field clauses, match-first ranking, and configurable dim-or-hide behavior.
 - Optional Quick Discard, Automatic Discard, Automatic Curio Buyer, and Auto Crafter workflows with explicit ownership, authoritative revalidation, and fail-closed behavior.
+
+## What's new in v3.6.0
+
+- Adds independent Weapon and Curio rarity + stars modes under Additional inventory views > Character Overview. Weapons default to a left-edge vertical initial/star strip; Compact and Full horizontal modes remain available. Curios default to Full beneath the name.
+- Refines weapon title, perk, blessing, WKC and MaxStatMark spacing without enlarging cards. Curio markers remain clear of the equipped checkmark.
+- Defaults to mirrored weapons with colour strips and dump-stat-only display, plus detailed native-overlay Curios without a separate colour strip. Existing saved preferences are preserved.
+- Synchronizes weapon and Curio rarity text with live background recolouring while preserving independent opacity. Rarity names and custom-tier stars remain item-bound; long horizontal labels shrink or use compact initials.
 
 ## What's new in v3.5.7
 

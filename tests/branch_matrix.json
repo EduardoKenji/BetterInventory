@@ -114,10 +114,10 @@
       "modules": ["BetterInventory_wkc_integration.lua", "BetterInventory_layout_cards.lua", "BetterInventory_runtime.lua"]
     },
     {
-      "name": "layout.rarity-rating-profiles-are-bind-only-and-tier-aware",
+      "name": "layout.rarity-rating-profiles-have-live-colors-and-bound-tier-data",
       "test": "test_rarity_rating.py",
-      "case": "two_profiles_split_tiers_mixed_melk_and_bind_only_updates",
-        "outcome": "independent default-on weapon and Curio rarity ratings use the single-line full-rarity profile, with compact first-letter plus stars still available; native Transcendent remains five stars while matching custom Sainted items receive six, localized UTF-8 initials remain intact, Curio rows sit between title and primary stat, mixed grids reserve only one horizontal row, both Sire Melk routes retain weapon and Curio passes regardless of their first card's inferred slot kind, and each profile defaults to the resolved card background RGB with independently adjustable 0-100 percent opacity while its subordinate controls are disabled whenever that item type's rating is Off; owned passes remain idempotent and bind-only, the removed experimental vertical value safely degrades to Full, the deprecated weapon-quality option and legacy row are absent, and rarity ratings no longer widen cards or frames",
+      "case": "two_profiles_split_tiers_mixed_melk_and_live_color_updates",
+        "outcome": "Weapon and Curio rarity names and tiers resolve at binding; background-matching RGB follows live card recolouring at draw time without changing independent text opacity. Disabled matching clears its style reference. Mixed grids, custom tiers, localized initials, idempotent passes, and legacy-mode fallback retain their existing behavior.",
         "modules": ["BetterInventory_rarity_rating.lua", "BetterInventory_layout_geometry.lua", "BetterInventory_layout_blueprints.lua", "BetterInventory_layout_cards.lua", "BetterInventory_wkc_integration.lua", "BetterInventory_character_overview_ui.lua", "BetterInventory_runtime.lua", "BetterInventory_data.lua"]
     },
     {
@@ -140,6 +140,13 @@
       "case": "integration_boundaries",
       "outcome": "mirrored Character Overview weapons independently preserve two-line blessing wrapping, shrink overflowing names to one line, or crop them at normal size with an ellipsis",
       "modules": ["BetterInventory_layout_cards.lua", "BetterInventory_character_overview_ui.lua"]
+    },
+    {
+      "name": "character-overview.rarity-preserves-fixed-card-layout",
+      "test": "test_layout.py",
+      "case": "overview_rarity_modes_geometry_and_item_rebind",
+      "outcome": "independent Overview rating modes preserve weapon card height and perk clearance, shift Curio stats once across overlay/font variants, fit long localized names, and refresh stars on item replacement",
+      "modules": ["BetterInventory_rarity_rating.lua", "BetterInventory_layout_cards.lua", "BetterInventory_character_overview_ui.lua"]
     },
     {
       "name": "arbiter.rejects-overlap",

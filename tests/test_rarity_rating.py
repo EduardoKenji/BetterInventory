@@ -91,7 +91,7 @@ def main() -> None:
     compact_pass = pass_by_style_id(
         compact_passes, "better_inventory_weapon_rarity_rating"
     )
-    assert compact_pass.change_function is None
+    assert compact_pass.change_function is not None
     assert tuple(compact_pass.style.offset[index] for index in range(1, 4)) == (12, 27, 11)
     assert rating.horizontal_rows(mod, lua.table_from({})) == 1
     assert rating.horizontal_rows(
@@ -297,7 +297,7 @@ def main() -> None:
     legacy_pass = pass_by_style_id(
         legacy_passes, "better_inventory_weapon_rarity_rating"
     )
-    assert legacy_pass.change_function is None
+    assert legacy_pass.change_function is not None
 
     legacy_widget = lua.table_from(
         {
@@ -346,6 +346,25 @@ def main() -> None:
     mod.settings.curio_rarity_rating_mode = "invalid"
     assert rating.mode(mod, lua.table_from({})) == "off"
 
+    for kind, widget, text_pass in (("weapon", compact_widget, compact_pass), ("curio", curio_widget, curio_pass)):
+        mod.settings[kind + "_rarity_rating_mode"] = "compact_horizontal"
+        mod.settings[kind + "_rarity_rating_use_card_background_color"] = True
+        mod.settings[kind + "_rarity_rating_opacity"] = 25
+        rating.populate(mod, widget, transcendent, kind)
+        widget.style.background_gradient = lua.table_from({"color": lua.table_from([0, 10, 200, 30])})
+        for _ in range(3):
+            text_pass.change_function(widget.content, text_pass.style)
+            assert tuple(text_pass.style.text_color[i] for i in range(1, 5)) == (64, 10, 200, 30)
+        widget.style.background_gradient.color[3] = 40
+        text_pass.change_function(widget.content, text_pass.style)
+        assert text_pass.style.hover_color[3] == 40
+        mod.settings[kind + "_rarity_rating_use_card_background_color"] = False
+        rating.populate(mod, widget, transcendent, kind)
+        before = tuple(text_pass.style.text_color[i] for i in range(1, 5))
+        widget.style.background_gradient.color[2] = 99
+        text_pass.change_function(widget.content, text_pass.style)
+        assert tuple(text_pass.style.text_color[i] for i in range(1, 5)) == before
+        assert widget.content.better_inventory_rarity_background_styles is None
     print("BetterInventory rarity-rating behavior tests passed.")
 
 
