@@ -1298,7 +1298,10 @@ function AutoCrafter.configure(dependencies)
 			return games_lantern_import and games_lantern_import:paste() or false
 		end,
 		games_lantern_clear = function()
-			local cleared, reason = games_lantern_queue and games_lantern_queue:clear()
+			local cleared, reason
+			if games_lantern_queue then
+				cleared, reason = games_lantern_queue:clear()
+			end
 			if cleared then
 				pcall(controller.clear_imported_job, controller)
 				pcall(games_lantern_import.clear, games_lantern_import)
@@ -1594,7 +1597,10 @@ function AutoCrafter.hud_presentation()
 end
 
 function AutoCrafter.snapshot()
-	local ok, snapshot = controller and pcall(controller.snapshot, controller)
+	local ok, snapshot
+	if controller then
+		ok, snapshot = pcall(controller.snapshot, controller)
+	end
 
 	return ok and snapshot or {
 		phase = "unavailable",

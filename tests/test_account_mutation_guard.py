@@ -195,5 +195,70 @@ def main() -> None:
     )
 
 
+def test_reload_fence():
+    lua = LuaRuntime(unpack_returned_tuples=True)
+    lua.execute("""
+        package.preload["scripts/foundation/utilities/promise"] = function()
+            return {rejected=function(err) return {rejected=true, error_value=err} end}
+        end
+        persistent = {}
+        test_mod = {
+            persistent_table=function(_, key, initial)
+                persistent[key] = persistent[key] or initial
+                return persistent[key]
+            end,
+        }
+        idle = {is_busy=function() return false end}
+        function pending()
+            local p = {}
+            function p:next(success, failure)
+                self.success, self.failure = success, failure
+                return self
+            end
+            return p
+        end
+        dispatches = 0
+        function dispatch() dispatches=dispatches+1; return "dispatched" end
+    """)
+    source = GUARD_PATH.read_text(encoding="utf-8")
+    lua.globals().Old = lua.execute(source, name=str(GUARD_PATH))
+    lua.execute("""
+        Old.configure({mod=test_mod, auto_crafter=idle})
+        old_scope = Old.scope()
+        request = pending()
+        assert(old_scope.with_owned_call(function() return request end) == request)
+        assert(Old.has_pending())
+        Old.set_active(false)
+        assert(Old.intercept("store.purchase_item", dispatch, {}).rejected)
+    """)
+    lua.globals().New = lua.execute(source, name=str(GUARD_PATH))
+    lua.execute("""
+        New.configure({mod=test_mod, auto_crafter=idle})
+        assert(New.has_pending())
+        assert(New.with_owned_call(dispatch).rejected)
+        assert(New.intercept("store.purchase_item", dispatch, {}).rejected)
+        assert(old_scope.with_owned_call(dispatch).rejected)
+        assert(dispatches == 0)
+        request.success({})
+        request.failure("duplicate callback")
+        assert(not New.has_pending())
+        assert(New.intercept("store.purchase_item", dispatch, {}) == "dispatched")
+        assert(old_scope.with_owned_call(dispatch).rejected)
+        local failed = pending()
+        New.with_owned_call(function() return failed end)
+        assert(New.has_pending())
+        failed.failure("native rejection")
+        assert(not New.has_pending())
+        local scoped = New.scope()
+        New.set_active(false)
+        New.set_active(true)
+        assert(scoped.with_owned_call(dispatch).rejected)
+        assert(New.scope().with_owned_call(dispatch) == "dispatched")
+        assert(dispatches == 2)
+    """)
+    print("Cross-generation native write fence and late-dispatch regressions passed.")
+
+
 if __name__ == "__main__":
     main()
+    test_reload_fence()

@@ -603,6 +603,9 @@ AutoCrafter.configure({
 			return type(Features.acquire_account_operation) == "function" and Features.acquire_account_operation(owner, view) or nil
 		end,
 		conflict = function(view)
+			if AccountMutationGuard.has_pending and AccountMutationGuard.has_pending() then
+				return "a previous native account request is still settling"
+			end
 			-- Only already-dispatched mutations are hard conflicts. Read-only scans,
 			-- scheduled passes, and unanswered discard prompts are safely deferred so
 			-- stale automation state cannot permanently lock Auto Crafter.
@@ -721,7 +724,14 @@ local function extend_runtime_callback(callback_name, extension)
 
 	mod[callback_name] = function(...)
 		if type(runtime_callback) == "function" then
-			runtime_callback(...)
+			if callback_name == "on_unload" or callback_name == "on_disabled" then
+				local ok, err = pcall(runtime_callback, ...)
+				if not ok then
+					pcall(mod.error, mod, "Cleanup callback failed: " .. tostring(err))
+				end
+			else
+				runtime_callback(...)
+			end
 		end
 
 		return extension(...)
@@ -729,6 +739,7 @@ local function extend_runtime_callback(callback_name, extension)
 end
 
 extend_runtime_callback("on_enabled", function()
+	if AccountMutationGuard.set_active then AccountMutationGuard.set_active(true) end
 	return CustomTier.refresh(mod)
 end)
 extend_runtime_callback("on_enabled", function()
@@ -753,14 +764,20 @@ extend_runtime_callback("on_settings_reset", function()
 	return GodStatCheckerIntegration.on_settings_reset(mod)
 end)
 extend_runtime_callback("on_disabled", function()
+	if AccountMutationGuard.set_active then AccountMutationGuard.set_active(false) end
 	return CustomTier.on_disabled()
 end)
 extend_runtime_callback("on_disabled", function()
 	return GodStatCheckerIntegration.on_disabled()
 end)
 extend_runtime_callback("on_unload", function()
-	CustomTier.on_disabled()
-	GodStatCheckerIntegration.on_disabled()
+	if AccountMutationGuard.set_active then AccountMutationGuard.set_active(false) end
+	return CustomTier.on_disabled()
+end)
+extend_runtime_callback("on_unload", function()
+	return GodStatCheckerIntegration.on_disabled()
+end)
+extend_runtime_callback("on_unload", function()
 
 	if rawget(_G, "AutoCrafterHelperHudState") == auto_crafter_hud_bridge then
 		rawset(_G, "AutoCrafterHelperHudState", nil)

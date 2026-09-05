@@ -3534,10 +3534,11 @@ def main() -> None:
         automatic_inventory,
     )
 
-    # Exercise the transaction module's guarded fallback independently from
-    # the production arbiter injection. Partial hot-reload/test environments
-    # must retain token, popup, and settlement safety rather than crash.
-    fallback_transaction = globals_.TestDiscardTransaction.new(None)
+    # Exercise the canonical arbiter; a missing safety dependency fails closed.
+    assert lua.eval("function(t) return pcall(t.new, nil) end")(globals_.TestDiscardTransaction)[0] is False
+    arbiter_source = (PROJECT_ROOT / "scripts/mods/BetterInventory/BetterInventory_operation_arbiter.lua")
+    canonical_arbiter = lua.execute(arbiter_source.read_text(encoding="utf-8"), name=str(arbiter_source))
+    fallback_transaction = globals_.TestDiscardTransaction.new(canonical_arbiter)
     fallback_view = lua.table_from({})
     fallback_token = fallback_transaction.acquire(
         fallback_transaction, "manual", fallback_view

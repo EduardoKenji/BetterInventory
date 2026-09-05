@@ -54,9 +54,9 @@ def main() -> None:
     assert "armoury_panel.release(view)" in features
     assert "registered_armoury_views[view] = nil" in armoury_panel
     assert "Domains.markers.release_grid(item_grid)" in domains
-    assert "Features.close_all_view_sessions(reason)" in runtime
-    assert "RuntimeLifecycle.release_all(reason)" in runtime
-    assert "CharacterOverviewUI.release_all_views()" in runtime
+    assert 'cleanup("view sessions", Features.close_all_view_sessions, reason)' in runtime
+    assert 'cleanup("view lifecycle", RuntimeLifecycle.release_all, reason)' in runtime
+    assert 'cleanup("overview", CharacterOverviewUI.release_all_views)' in runtime
     lifecycle = read_runtime("BetterInventory_runtime_lifecycle.lua")
     assert "Lifecycle.grid_layout_requires_generation" in lifecycle
     assert "Lifecycle.prepare_grid_presentation" in lifecycle
@@ -65,9 +65,9 @@ def main() -> None:
     assert "retire_character_overview_blueprints()" in overview
     assert "adopt_character_overview_runtime(view)" in overview
     assert "_better_inventory_runtime_generation" in overview
-    assert "FeatureDomains.markers.release_all()" in runtime
+    assert 'cleanup("markers", FeatureDomains.markers.release_all)' in runtime
     assert "EquipmentPersistence.on_view_closed(view)" in runtime
-    assert "EquipmentPersistence.reset()" in runtime
+    assert 'cleanup("equipment", EquipmentPersistence.reset)' in runtime
     assert "Features.request_inventory_resort(view)" in runtime
     assert "Features.flush_inventory_resort(mod, Layout, view)" in runtime
     assert "release_transient_item_caches()" in runtime

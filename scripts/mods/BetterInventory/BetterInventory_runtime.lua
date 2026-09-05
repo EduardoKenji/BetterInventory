@@ -1469,43 +1469,49 @@ end
 
 local function shutdown(unloading)
 	local reason = unloading and "mod_reload" or "mod_disable"
+	local function cleanup(label, callback, ...)
+		local ok, err = pcall(callback, ...)
+		if not ok and type(mod.error) == "function" then
+			pcall(mod.error, mod, "Cleanup " .. label .. " failed: " .. tostring(err))
+		end
+	end
 
 	if AutoCrafter and type(AutoCrafter.shutdown) == "function" then
-		AutoCrafter.shutdown()
+		cleanup("auto crafter", AutoCrafter.shutdown)
 	end
 	if Features and type(Features.shutdown_lantern_integration) == "function" then
-		Features.shutdown_lantern_integration()
+		cleanup("Lantern", Features.shutdown_lantern_integration)
 	end
 
 	if unloading and type(ItemCustomization.on_unload) == "function" then
-		ItemCustomization.on_unload(mod)
+		cleanup("customization", ItemCustomization.on_unload, mod)
 	else
-		ItemCustomization.on_disabled(mod)
+		cleanup("customization", ItemCustomization.on_disabled, mod)
 	end
 	if EquipmentPersistence and type(EquipmentPersistence.reset) == "function" then
-		EquipmentPersistence.reset()
+		cleanup("equipment", EquipmentPersistence.reset)
 	end
-	Features.cancel_morningstar_auto_discard()
-	Features.cancel_manual_discard()
-	CurioAcquisition.cancel(unloading)
+	cleanup("automatic discard", Features.cancel_morningstar_auto_discard)
+	cleanup("manual discard", Features.cancel_manual_discard)
+	cleanup("curio buyer", CurioAcquisition.cancel, unloading)
 	if RuntimeLifecycle and type(RuntimeLifecycle.release_all) == "function" then
-		RuntimeLifecycle.release_all(reason)
+		cleanup("view lifecycle", RuntimeLifecycle.release_all, reason)
 	end
-	Features.disable_inventory_views()
-	Features.close_all_view_sessions(reason)
+	cleanup("inventory views", Features.disable_inventory_views)
+	cleanup("view sessions", Features.close_all_view_sessions, reason)
 	if type(Features.search_shutdown) == "function" then
-		Features.search_shutdown(true)
+		cleanup("search", Features.search_shutdown, true)
 	end
 	if CharacterOverviewUI and type(CharacterOverviewUI.release_all_views) == "function" then
-		CharacterOverviewUI.release_all_views()
+		cleanup("overview", CharacterOverviewUI.release_all_views)
 	end
 	if FeatureDomains and FeatureDomains.markers and type(FeatureDomains.markers.release_all) == "function" then
-		FeatureDomains.markers.release_all()
+		cleanup("markers", FeatureDomains.markers.release_all)
 	end
 	if type(Diagnostics.reset) == "function" then
-		Diagnostics.reset()
+		cleanup("diagnostics", Diagnostics.reset)
 	end
-	release_transient_item_caches()
+	cleanup("transient caches", release_transient_item_caches)
 end
 
 function mod.on_disabled(_initial_call)

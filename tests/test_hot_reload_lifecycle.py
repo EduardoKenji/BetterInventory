@@ -37,13 +37,13 @@ def main() -> None:
     assert "shutdown(false)" in runtime
     assert "function mod.on_unload(_exit_game)" in runtime
     assert "shutdown(true)" in runtime
-    assert "RuntimeLifecycle.release_all(reason)" in runtime
-    assert "Features.close_all_view_sessions(reason)" in runtime
-    assert "ItemCustomization.on_unload(mod)" in runtime
+    assert 'cleanup("view lifecycle", RuntimeLifecycle.release_all, reason)' in runtime
+    assert 'cleanup("view sessions", Features.close_all_view_sessions, reason)' in runtime
+    assert 'cleanup("customization", ItemCustomization.on_unload, mod)' in runtime
     assert "ItemCustomization.on_unload = function(mod)" in customization
     assert "Store.release_runtime()" in customization
     assert "SearchUI.release_all = function()" in search_ui
-    assert "CurioAcquisition.cancel(unloading)" in runtime
+    assert 'cleanup("curio buyer", CurioAcquisition.cancel, unloading)' in runtime
     assert "CurioAcquisition.cancel = function(unloading)" in curio_acquisition
     assert "reopen == false and nil or new_read_promise_container()" in curio_acquisition
     assert 'rawget(_G, "AutoCrafterHelperHudState") == auto_crafter_hud_bridge' in bootstrap

@@ -1485,7 +1485,8 @@ function Backend.new(dependencies)
 	dependencies = dependencies or {}
 
 	local backend = {
-		_mutation_guard = dependencies.mutation_guard,
+		_mutation_guard = dependencies.mutation_guard and type(dependencies.mutation_guard.scope) == "function"
+			and dependencies.mutation_guard.scope() or dependencies.mutation_guard,
 		_on_item_favorited = dependencies.on_item_favorited,
 		_purchase_wallets = {},
 		_raw_gear = {},

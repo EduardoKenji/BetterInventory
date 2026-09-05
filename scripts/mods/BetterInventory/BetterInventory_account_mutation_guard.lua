@@ -5,6 +5,12 @@ local auto_crafter
 local host_mod
 local owned_call_depth = 0
 local blocked_notice_keys = {}
+-- DMF owns this tiny table across Ctrl+Shift+R. It contains no views, promises,
+-- callbacks or controller references; only native-write settlement counters.
+local fence = { generation = 0, pending = 0 }
+local generation = 0
+local active = true
+local installed_hooks = {}
 local pack_values = table.pack or function(...)
 	return { n = select("#", ...), ... }
 end
@@ -87,12 +93,74 @@ function Guard.configure(dependencies)
 	dependencies = dependencies or {}
 	host_mod = dependencies.mod or host_mod
 	auto_crafter = dependencies.auto_crafter or auto_crafter
+	if host_mod and type(host_mod.persistent_table) == "function" then
+		fence = host_mod:persistent_table("account_write_fence", { generation = 0, pending = 0 })
+	end
+	fence.generation = (fence.generation or 0) + 1
+	fence.pending = fence.pending or 0
+	generation = fence.generation
+	active = true
 	blocked_notice_keys = {}
+end
+
+function Guard.has_pending()
+	return fence.pending > 0
+end
+
+function Guard.set_active(value)
+	if active and value ~= true then
+		fence.generation = fence.generation + 1
+		generation = fence.generation
+	end
+	active = value == true
+	-- DMF disables hooks before on_disabled. Retain only the account guard
+	-- while a native write is pending; once settled it is a pass-through.
+	if not active and Guard.has_pending() and host_mod and type(host_mod.hook_enable) == "function" then
+		for _, hook in ipairs(installed_hooks) do
+			pcall(host_mod.hook_enable, host_mod, hook[1], hook[2])
+		end
+	end
+end
+
+local function observe_settlement(result)
+	if type(result) ~= "table" or type(result.next) ~= "function" then
+		return
+	end
+	local state = fence
+	if state.pending == 0 then
+		state.owner_generation = generation
+	end
+	state.pending = state.pending + 1
+	local settled = false
+	local function settle()
+		if not settled then
+			settled = true
+			state.pending = state.pending - 1
+			if state.pending == 0 then state.owner_generation = nil end
+		end
+	end
+	-- Observe the original promise, not a cancelable read wrapper or a
+	-- controller-generation callback. Failure to attach stays fail-closed.
+	local ok, err = pcall(result.next, result, settle, settle)
+	if not ok then log("error", "Could not observe native write settlement: " .. tostring(err)) end
+end
+
+function Guard.scope()
+	local epoch = generation
+	return {
+		with_owned_call = function(callback)
+			if epoch ~= fence.generation then return rejected("stale runtime dispatch") end
+			return Guard.with_owned_call(callback)
+		end,
+	}
 end
 
 function Guard.with_owned_call(callback)
 	if type(callback) ~= "function" then
 		error("owned account mutation callback is unavailable")
+	end
+	if not active or generation ~= fence.generation or fence.pending > 0 and fence.owner_generation ~= generation then
+		return rejected("previous runtime dispatch")
 	end
 
 	owned_call_depth = owned_call_depth + 1
@@ -102,6 +170,7 @@ function Guard.with_owned_call(callback)
 	if not results[1] then
 		error(results[2])
 	end
+	observe_settlement(results[2])
 
 	return unpack_values(results, 2, results.n)
 end
@@ -123,11 +192,12 @@ function Guard.intercept(kind, original, service, ...)
 		end
 	end
 
-	local busy = false
+	local pending = Guard.has_pending()
+	local busy = pending
 
 	if auto_crafter and type(auto_crafter.is_busy) == "function" then
 		local busy_ok, resolved_busy = pcall(auto_crafter.is_busy)
-		busy = busy_ok and resolved_busy == true
+		busy = pending or not busy_ok or resolved_busy == true
 	end
 
 	if Guard.is_owned_call() or not busy then
@@ -138,11 +208,11 @@ function Guard.intercept(kind, original, service, ...)
 		return original(service, ...)
 	end
 
-	local snapshot_ok, snapshot = pcall(type(auto_crafter.snapshot) == "function" and auto_crafter.snapshot or function() return {} end)
+	local snapshot_ok, snapshot = pcall(auto_crafter and type(auto_crafter.snapshot) == "function" and auto_crafter.snapshot or function() return {} end)
 	snapshot = snapshot_ok and type(snapshot) == "table" and snapshot or {}
-	local mutation_inflight = snapshot.operation_inflight == true or snapshot.operation_quarantined == true or (tonumber(snapshot.auxiliary_inflight_count) or 0) > 0
+	local mutation_inflight = pending or snapshot.operation_inflight == true or snapshot.operation_quarantined == true or (tonumber(snapshot.auxiliary_inflight_count) or 0) > 0
 
-	if not mutation_inflight and type(auto_crafter.interrupt_for_external_mutation) == "function" then
+	if not mutation_inflight and auto_crafter and type(auto_crafter.interrupt_for_external_mutation) == "function" then
 		local interrupt_ok, interrupted = pcall(auto_crafter.interrupt_for_external_mutation, kind)
 		local after_ok, after_busy = pcall(auto_crafter.is_busy)
 
@@ -195,6 +265,7 @@ function Guard.install_hooks(mod)
 
 					if hook_ok then
 						installed = installed + 1
+						installed_hooks[#installed_hooks + 1] = { service_class, method_name }
 					else
 						log("error", "Could not hook " .. kind .. ": " .. tostring(hook_error))
 					end
