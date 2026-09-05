@@ -150,6 +150,28 @@ def main() -> None:
     assert failed.snapshot(failed)["state"] == "failed"
     assert failed_starts == [1]
 
+    # If native selection never converges, retain its concrete adapter failure
+    # instead of reducing the user's next console log to selection_timeout.
+    selection_failures = []
+    selection_timeout = queue_module.new(
+        to_lua(
+            {
+                "select_job": lua.eval("function() return false, 'offer_not_in_native_layout', 12 end"),
+                "view_is_valid": callback_wrapper(lambda: True),
+                "report": callback_wrapper(lambda kind, payload: selection_failures.append((str(kind), payload))),
+                "max_selection_attempts": 1,
+            }
+        )
+    )
+    assert selection_timeout.install(selection_timeout, build) is True
+    assert selection_timeout.start(selection_timeout) is True
+    selection_timeout.update(selection_timeout)
+    assert selection_timeout.snapshot(selection_timeout)["last_error"] == "selection_timeout"
+    failure_kind, failure_payload = selection_failures[-1]
+    assert failure_kind == "queue_failed"
+    assert failure_payload["error"] == "offer_not_in_native_layout"
+    assert failure_payload["detail"] == 12
+
     # View loss is checked at the transition boundary, before job 2.
     boundary_starts = []
     boundary = queue_module.new(

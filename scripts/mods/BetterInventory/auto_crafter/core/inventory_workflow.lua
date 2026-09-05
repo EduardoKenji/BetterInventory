@@ -32,8 +32,9 @@ function InventoryWorkflow.install(self, services)
 
 	function self:_imported_item_is_complete(item, job)
 		local catalog = job and job.catalog
+		local target_offer = job and job.offer
 
-		if not self:_imported_family_matches(item, job) or item.available ~= true or item.gear_id == nil or job.dump_stat == nil or job.dump_target == nil or type(catalog) ~= "table" or catalog.available ~= true then
+		if not self:_imported_family_matches(item, job) or target_offer and target_offer.family_mark_selection == true and item.master_id ~= target_offer.master_id or item.available ~= true or item.gear_id == nil or job.dump_stat == nil or job.dump_target == nil or type(catalog) ~= "table" or catalog.available ~= true then
 			return false
 		end
 

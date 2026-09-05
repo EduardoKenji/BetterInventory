@@ -115,6 +115,8 @@ function Queue.new(dependencies)
 		_configured_job_id = nil,
 		_character_id = nil,
 		_selection_attempts = 0,
+		_last_selection_error = nil,
+		_last_selection_detail = nil,
 		_max_selection_attempts = tonumber(dependencies.max_selection_attempts) or 240,
 	}
 
@@ -225,19 +227,23 @@ function Queue.new(dependencies)
 			self._state = "selecting"
 			self._selection_attempts = self._selection_attempts + 1
 			if self._selection_attempts > self._max_selection_attempts then
-				return fail("selection_timeout", { index = self._current_index })
+				return fail("selection_timeout", { index = self._current_index, error = self._last_selection_error, detail = self._last_selection_detail })
 			end
 
-			local selected_ok, selected = safe_call(self._select_job, job, self._current_index)
+			local selected_ok, selected, selection_error, selection_detail = safe_call(self._select_job, job, self._current_index)
 			if not selected_ok then
 				return fail("job_selection_crashed", { index = self._current_index, error = selected })
 			end
 
 			if selected ~= true then
+				self._last_selection_error = selection_error
+				self._last_selection_detail = selection_detail
 				return false
 			end
 
 			self._selected_job_id = job.job_id
+			self._last_selection_error = nil
+			self._last_selection_detail = nil
 		end
 
 		if self._configured_job_id ~= job.job_id then
@@ -319,6 +325,8 @@ function Queue.new(dependencies)
 		self._last_event = nil
 		self._stop_requested = false
 		self._selection_attempts = 0
+		self._last_selection_error = nil
+		self._last_selection_detail = nil
 		self._transition_count = 0
 		self._completed_results = {}
 		self._last_terminal_sequence = 0

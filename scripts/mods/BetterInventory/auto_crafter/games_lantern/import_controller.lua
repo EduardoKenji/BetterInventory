@@ -33,6 +33,31 @@ local function copy(value, seen)
 	return result
 end
 
+local function same_identity_build(left, right)
+	local left_jobs = type(left) == "table" and left.jobs
+	local right_jobs = type(right) == "table" and right.jobs
+
+	if type(left_jobs) ~= "table" or type(right_jobs) ~= "table" or #left_jobs ~= #right_jobs then
+		return false
+	end
+
+	for index, left_job in ipairs(left_jobs) do
+		local right_job = right_jobs[index]
+		local left_offer = left_job and left_job.offer or {}
+		local right_offer = right_job and right_job.offer or {}
+
+		if not right_job
+			or tostring(left_job.slot) ~= tostring(right_job.slot)
+			or tostring(left_offer.offer_id) ~= tostring(right_offer.offer_id)
+			or tostring(left_job.master_id or left_offer.master_id) ~= tostring(right_job.master_id or right_offer.master_id)
+		then
+			return false
+		end
+	end
+
+	return true
+end
+
 function ImportController.new(dependencies)
 	dependencies = dependencies or {}
 
@@ -121,7 +146,7 @@ function ImportController.new(dependencies)
 	end
 
 	local function current_import_state()
-		return self._state == "fetching" or self._state == "resolving_catalogues" or self._state == "awaiting_weapon_choice" or self._state == "staged"
+		return self._state == "fetching" or self._state == "waiting_for_store" or self._state == "resolving_catalogues" or self._state == "awaiting_weapon_choice" or self._state == "staged"
 	end
 
 	function self:clipboard_matches_current()
@@ -192,6 +217,18 @@ function ImportController.new(dependencies)
 				error = "wait for the active character profile to finish switching",
 			})
 		end
+		if context.native_store_ready == false then
+			local already_waiting = self._state == "waiting_for_store"
+			self._state = "waiting_for_store"
+			if not already_waiting then
+				emit("import_waiting_for_store", {
+					error = context.native_store_reason,
+					generation = generation,
+				})
+			end
+
+			return true
+		end
 		context.weapon_choices = self._weapon_choices
 
 		local identity, identity_reason, choice_request = self._resolver.resolve_identities(self._model, context)
@@ -233,6 +270,37 @@ function ImportController.new(dependencies)
 			if error_value or type(catalogs) ~= "table" then
 				return fail(error_value or "trait_catalog_unavailable", {})
 			end
+
+			local current_context_ok, current_context = safe_call(self._get_resolution_context)
+			if not current_context_ok or type(current_context) ~= "table" then
+				return fail("resolution_context_unavailable", { error = current_context })
+			end
+			if current_context.identity_stable == false then
+				return fail(current_context.identity_reason or "character_context_settling", {
+					error = "active character changed during catalogue resolution",
+				})
+			end
+			if current_context.native_store_ready == false then
+				self._state = "waiting_for_store"
+				emit("import_waiting_for_store", {
+					error = current_context.native_store_reason,
+					generation = generation,
+				})
+
+				return true
+			end
+
+			current_context.weapon_choices = self._weapon_choices
+			local current_identity = self._resolver.resolve_identities(self._model, current_context)
+			if not same_identity_build(identity, current_identity) then
+				emit("import_store_changed", { generation = generation })
+
+				return self:_begin_catalog_resolution()
+			end
+
+			identity = current_identity
+			context = current_context
+			self._identity_build = identity
 
 			local resolved, resolve_reason, resolve_detail = self._resolver.attach_catalogs(identity, catalogs, context)
 			if not resolved then
@@ -284,6 +352,11 @@ function ImportController.new(dependencies)
 	end
 
 	function self:update()
+		if self._state == "waiting_for_store" then
+			self:_begin_catalog_resolution()
+
+			return self._state
+		end
 		if self._state ~= "fetching" then
 			return self._state
 		end

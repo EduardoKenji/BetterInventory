@@ -111,7 +111,24 @@ local function localized_offer_label(localize_offer_label, value)
 
 	local ok, localized = pcall(localize_offer_label, value)
 
-	return ok and type(localized) == "string" and localized or ""
+	return ok and type(localized) == "string" and not string.find(localized, "<unlocalized", 1, true) and localized or ""
+end
+
+local function display_offer_label(offer, localize_offer_label)
+	local function label(value)
+		local localized = localized_offer_label(localize_offer_label, value)
+
+		return localized ~= "" and localized or text(value)
+	end
+
+	local family = label(offer and offer.display_name)
+	local mark = label(offer and offer.sub_display_name)
+
+	if family ~= "" and mark ~= "" and mark ~= family then
+		return family .. " • " .. mark
+	end
+
+	return family ~= "" and family or mark ~= "" and mark or text(offer and offer.master_id)
 end
 
 local function offer_text(offer, localize_offer_label)
@@ -211,11 +228,13 @@ local function sorted_candidates(candidates)
 	return candidates
 end
 
-local function resolve_weapon(external, slot, offers, classify_offer, localize_offer_label)
+local function resolve_weapon(external, slot, offers, classify_offer, localize_offer_label, visible_offer_ids)
 	local candidates = {}
 
 	for _, offer in ipairs(offers or {}) do
-		if slot_matches(offer, slot, classify_offer) then
+		local visible = type(visible_offer_ids) ~= "table" or offer.offer_id ~= nil and visible_offer_ids[tostring(offer.offer_id)] == true
+
+		if visible and slot_matches(offer, slot, classify_offer) then
 			local score = match_score(external, offer, localize_offer_label)
 
 			if score > 0 then
@@ -370,6 +389,42 @@ local function resolve_dump_stat(external, offer, localize_offer_label)
 		label = lowest.label,
 		value = lowest.value,
 	}, nil
+end
+
+local function resolve_fallback_dump_stat(external, offer, localize_offer_label)
+	local ranked = {}
+
+	for index, stat in ipairs(external and external.stats or {}) do
+		local value = tonumber(stat.value)
+
+		if value ~= nil then
+			ranked[#ranked + 1] = { index = index, label = stat.label, value = value }
+		end
+	end
+
+	table.sort(ranked, function(left, right)
+		return left.value == right.value and left.index < right.index or left.value < right.value
+	end)
+
+	for _, stat in ipairs(ranked) do
+		local stat_id = resolve_stat(stat.label, offer, localize_offer_label)
+
+		if stat_id then
+			return { id = stat_id, label = stat.label, value = stat.value }
+		end
+	end
+
+	local candidate = offer and offer.base_stats and offer.base_stats[1]
+	if not candidate or candidate.name == nil then
+		return nil
+	end
+
+	local localized = localized_offer_label(localize_offer_label, candidate.display_name_key)
+
+	return {
+		id = candidate.name,
+		label = localized ~= "" and localized or candidate.display_name_key or candidate.name,
+	}
 end
 
 -- A modern Games Lantern card can describe the complete projected level-500
@@ -835,12 +890,95 @@ local function resolve_traits(external_values, entries, kind, localize_trait_lab
 	return result, nil
 end
 
+local function fallback_traits(entries, kind, localize_trait_label, slot)
+	local result = {}
+	local seen = {}
+
+	for _, entry in ipairs(entries or {}) do
+		local id = entry and entry.id
+		local entry_slot = kind == "perk" and trait_slot(entry) or nil
+		local rarity = tonumber(entry and (entry.rarity or entry.tier))
+
+		if kind == "blessing" then
+			for _, tier in ipairs(entry and entry.tiers or {}) do
+				rarity = math.max(rarity or 0, tonumber(tier.tier) or 0)
+			end
+		end
+
+		if id ~= nil and tostring(id) ~= "" and not seen[tostring(id)] and rarity and rarity > 0 and (entry_slot == nil or slot == nil or entry_slot == slot) then
+			local label = text(entry.display_name)
+			if label == "" then
+				label = localized_offer_label(localize_trait_label, entry.display_name_key)
+			end
+			if label == "" then
+				label = localized_offer_label(localize_trait_label, entry.description_key)
+			end
+			if label == "" then
+				label = tostring(id)
+			end
+
+			result[#result + 1] = { id = id, rarity = rarity, label = label }
+			seen[tostring(id)] = true
+
+			if #result == 2 then
+				return result
+			end
+		end
+	end
+
+	return nil
+end
+
 local function resolve_identity(external, slot, context)
 	local offers = context and (context.offers or (slot == "melee" and context.melee_offers or context.ranged_offers)) or {}
 	local resolved, reason = resolve_weapon(external, slot, offers, context and context.classify_offer, context and context.localize_offer_label)
+	local visible_offer_ids = context and context.visible_offer_ids
+	local fallback_reason
+
+	if not resolved and type(visible_offer_ids) == "table" then
+		resolved = resolve_weapon(external, slot, offers, context.classify_offer, context.localize_offer_label, visible_offer_ids)
+		fallback_reason = resolved and reason or nil
+	end
 
 	if not resolved then
 		return nil, reason
+	end
+
+	if type(visible_offer_ids) == "table" and (fallback_reason or not visible_offer_ids[tostring(resolved.offer.offer_id)]) then
+		local native, native_reason = resolve_weapon(external, slot, offers, context.classify_offer, context.localize_offer_label, visible_offer_ids)
+		local mark
+
+		if not fallback_reason then
+			for _, candidate in ipairs(native and native.offer and native.offer.marks or {}) do
+				if candidate.master_id == resolved.offer.master_id then
+					mark = candidate
+
+					break
+				end
+			end
+		end
+
+		if not native or type(context.offer_with_mark) ~= "function" then
+			return nil, not native and (native_reason or "native_offer_unavailable") or "weapon_mark_binding_unavailable"
+		end
+
+		local bound_ok, bound_offer = pcall(context.offer_with_mark, native.offer, mark or native.offer)
+		if not bound_ok or type(bound_offer) ~= "table" then
+			return nil, "weapon_mark_binding_unavailable"
+		end
+
+		resolved.offer = bound_offer
+		fallback_reason = not mark and (fallback_reason or "weapon_mark_unavailable") or nil
+	end
+
+	local mark_fallback
+	if fallback_reason then
+		local fallback_name = display_offer_label(resolved.offer, context.localize_offer_label)
+		mark_fallback = {
+			reason = fallback_reason,
+			requested = external.display_name or external.external_mark_slug,
+			selected = fallback_name,
+		}
 	end
 
 	local custom_stats, custom_reason = resolve_custom_stats(external, resolved.offer, context and context.localize_offer_label)
@@ -857,6 +995,16 @@ local function resolve_identity(external, slot, context)
 		dump_stat = { id = lowest.name, label = lowest.label, value = lowest.value }
 	elseif custom_reason == "custom_stats_not_eligible" then
 		dump_stat, dump_reason = resolve_dump_stat(external, resolved.offer, context and context.localize_offer_label)
+		if not dump_stat and mark_fallback and (dump_reason == "dump_stat_unavailable" or dump_reason == "dump_stat_ambiguous" or dump_reason == "dump_stat_tie") then
+			dump_stat = resolve_fallback_dump_stat(external, resolved.offer, context and context.localize_offer_label)
+			mark_fallback.adjustments = { stats = dump_reason }
+		end
+	elseif mark_fallback and (custom_reason == "custom_stat_unavailable" or custom_reason == "custom_stat_ambiguous" or custom_reason == "custom_stat_mapping_incomplete") then
+		dump_stat = resolve_dump_stat(external, resolved.offer, context and context.localize_offer_label)
+		if not dump_stat then
+			dump_stat = resolve_fallback_dump_stat(external, resolved.offer, context and context.localize_offer_label)
+		end
+		mark_fallback.adjustments = { stats = custom_reason }
 	else
 		return nil, custom_reason
 	end
@@ -868,7 +1016,7 @@ local function resolve_identity(external, slot, context)
 	return {
 		kind = "games_lantern_job",
 		slot = slot,
-		display_name = external.display_name,
+		display_name = mark_fallback and mark_fallback.selected or external.display_name,
 		offer = resolved.offer,
 		external = external,
 		dump_stat = dump_stat.id,
@@ -877,6 +1025,7 @@ local function resolve_identity(external, slot, context)
 		custom_stats_enabled = custom_stats ~= nil,
 		custom_stat_targets = custom_stats,
 		custom_stat_total = custom_stats and 380 or nil,
+		mark_fallback = mark_fallback,
 		parent_pattern = resolved.offer.parent_pattern,
 		master_id = resolved.offer.master_id,
 	}, nil
@@ -890,12 +1039,26 @@ local function attach_catalog(job, catalog, localize_trait_label)
 	local external = job.external or {}
 
 	local perks, perk_reason, perk_detail = resolve_traits(external.perks, catalog.perks, "perk", localize_trait_label, job.slot)
+	if not perks and job.mark_fallback and perk_reason ~= "incomplete_perk_targets" then
+		perks = fallback_traits(catalog.perks, "perk", localize_trait_label, job.slot)
+		if perks then
+			job.mark_fallback.adjustments = job.mark_fallback.adjustments or {}
+			job.mark_fallback.adjustments.perks = perk_reason
+		end
+	end
 
 	if not perks then
 		return nil, perk_reason, perk_detail
 	end
 
 	local blessings, blessing_reason, blessing_detail = resolve_traits(external.blessings, catalog.blessings, "blessing", localize_trait_label, job.slot)
+	if not blessings and job.mark_fallback and blessing_reason ~= "incomplete_blessing_targets" then
+		blessings = fallback_traits(catalog.blessings, "blessing", localize_trait_label, job.slot)
+		if blessings then
+			job.mark_fallback.adjustments = job.mark_fallback.adjustments or {}
+			job.mark_fallback.adjustments.blessings = blessing_reason
+		end
+	end
 
 	if not blessings then
 		return nil, blessing_reason, blessing_detail

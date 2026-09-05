@@ -963,7 +963,7 @@ merge_stat_catalog = function(template_stats, rolled_stats)
 end
 
 store_item_preview = function(description)
-	if description == nil or type(MasterItems) ~= "table" or type(MasterItems.get_store_item_instance) ~= "function" then
+	if description == nil or safe_member(description, "id") == "random-item" or type(MasterItems) ~= "table" or type(MasterItems.get_store_item_instance) ~= "function" then
 		return nil
 	end
 

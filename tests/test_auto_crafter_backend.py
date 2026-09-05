@@ -47,6 +47,7 @@ def main() -> None:
         package.preload["scripts/utilities/mastery"] = function() return {} end
         test_master_items = {}
         test_master_items_version = 1
+        store_item_instance_calls = 0
         package.preload["scripts/backend/master_items"] = function()
             return {
 				get_item = function(item_id)
@@ -59,6 +60,7 @@ def main() -> None:
                     return raw_item
                 end,
                 get_store_item_instance = function(description)
+					store_item_instance_calls = store_item_instance_calls + 1
                     local choices = description and description.lootChoices
                     local choice = choices and choices[1]
                     local master_id = type(choice) == "table" and (choice.masterId or choice.master_id) or choice
@@ -171,13 +173,14 @@ def main() -> None:
         local shovel_store = {
             offers = {{
                 offerId = "offer-shovel",
-                description = {lootChoices = {{masterId = "shovel-mk-1"}}},
+                description = {id = "random-item", lootChoices = {{masterId = "shovel-mk-1"}}},
                 price = {amount = {type = "credits", amount = 9200}},
             }},
         }
         local shovel_snapshot
         local shovel_backend = Backend.new({services = make_services({}, shovel_store)})
         shovel_backend:probe_snapshot():next(function(value) shovel_snapshot = value end)
+		assert(store_item_instance_calls == 0)
         local marks = shovel_snapshot.store.offers[1].marks
         assert(#marks == 3)
         assert(marks[1].master_id == "shovel-mk-1")
