@@ -22,6 +22,9 @@ This boundary is the extraction point for a future standalone mod: a standalone 
 
 - The controller remains the sole owner of active generations and destructive workflow state.
 - Every account mutation continues through the backend and shared account-operation guard.
+- The shared guard persists only outstanding write counts and generation identifiers across reload. Backend scopes reject dispatches from retired generations; native promise settlement releases the fence, never a read timeout or UI teardown.
+- Games Lantern store/catalogue reads have a 30-second deadline, 250 ms store polling, and per-attempt invalidation. These read limits do not release mutation quarantine.
+- Incompatible but uniquely mapped five-stat distributions may be staged as reviewed native targets. Malformed or ambiguous values remain rejected, and the queue requires explicit confirmation before dispatching fallback jobs.
 - Character, selection, and authoritative-snapshot reconciliation remain fail closed.
 - Workflow installers copy only the service functions/constants they use. They do not retain the transient composition table.
 - `shutdown`, context changes, and view transitions clear snapshots, queues, imported jobs, workflow state, pending references, and settled backend-operation caches.

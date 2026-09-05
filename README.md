@@ -22,9 +22,14 @@ BetterInventory is a standalone inventory and item-management mod for Warhammer 
 - Standalone Equipment Text Search, with its own master switch, Inventory/Armoury/Hadron/Melk spacing sliders, quoted phrases, explicit AND, typed field clauses, match-first ranking, and configurable dim-or-hide behavior.
 - Optional Quick Discard, Automatic Discard, Automatic Curio Buyer, and Auto Crafter workflows with explicit ownership, authoritative revalidation, and fail-closed behavior.
 
-## v3.7.0 audit remediation (in progress)
+## v3.7.0 audit remediation (awaiting live acceptance)
 
-Safety, Games Lantern recovery, test coverage, and recurring integration work are tracked in [the v3.7.0 audit checklist](docs/v3.7.0-project-audit.md). This development branch is not yet a published release.
+The 12 findings and their regression evidence are tracked in [the v3.7.0 audit checklist](docs/v3.7.0-project-audit.md). This development branch is not yet a published release.
+
+- Preserves outstanding account-write fences across reload and isolates cleanup failures.
+- Bounds Games Lantern parsing and stalled reads, rejects stale callbacks, and stages compatible stat fallbacks for explicit review.
+- Shares WKC rendering work and avoids full queue snapshots for stop polling.
+- Enforces coverage across nested runtime modules and adds host-boundary regressions.
 
 ## What's new in v3.6.0
 

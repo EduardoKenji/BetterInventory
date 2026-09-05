@@ -2,7 +2,13 @@
 
 ## 3.7.0 - Unreleased
 
-- Audit remediation in progress; see `docs/v3.7.0-project-audit.md` for findings, implementation batches, and verification evidence.
+- Preserves pending account-write fences across reload and rejects retired-generation dispatches.
+- Isolates lifecycle cleanup failures and restores facade snapshot and queue-clear diagnostics.
+- Bounds malformed Games Lantern parsing, stalled catalogue reads, and native-store polling; ignores stale callbacks.
+- Accepts valid build pages containing login/captcha footer text.
+- Stages uniquely identified but incompatible stat distributions as native-compatible targets requiring explicit review, with English and Chinese notifications.
+- Shares WKC draw-time work, narrows stop-state polling, and removes the duplicate fallback operation arbiter.
+- Enforces recursive runtime coverage and adds lifecycle, parser, import, and host-boundary regressions. Live acceptance remains pending; see `docs/v3.7.0-project-audit.md`.
 
 ## 3.6.0 - 2026-09-05
 
