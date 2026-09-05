@@ -1,4 +1,10 @@
 local localization = {
+	enable_inventory_search_melk = "启用梅尔克采购处搜索",
+	enable_inventory_search_melk_tooltip = "在梅尔克的限时采购和多角色补给视图中启用物品搜索。",
+	inventory_search_melk_limited_top_padding = "梅尔克限时采购：顶部间距",
+	inventory_search_melk_limited_bottom_padding = "梅尔克限时采购：底部间距",
+	inventory_search_melk_multi_top_padding = "梅尔克多角色补给：顶部间距",
+	inventory_search_melk_multi_bottom_padding = "梅尔克多角色补给：底部间距",
 	character_overview_weapon_rarity_vertical = "垂直（左侧）",
 	character_overview_weapon_rarity_rating_mode = "武器稀有度 + 星级",
 	character_overview_weapon_rarity_rating_mode_tooltip = "在角色总览镜像武器上显示稀有度和星级。默认的垂直模式在左侧纵向排列首字和星星。紧凑和完整模式在特性旁横向显示首字或完整名称。独立于背包网格的显示开关；沿用武器星级的颜色和不透明度。需要启用近战或远程武器镜像。",
