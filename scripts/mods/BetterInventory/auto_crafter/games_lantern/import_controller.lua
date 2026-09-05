@@ -4,6 +4,8 @@
 local ImportController = {}
 
 ImportController.CONTRACT_VERSION = "games_lantern_import_controller_v1"
+ImportController.READ_TIMEOUT = 30
+ImportController.STORE_POLL_INTERVAL = 0.25
 
 local function safe_call(fn, ...)
 	if type(fn) ~= "function" then
@@ -74,6 +76,10 @@ function ImportController.new(dependencies)
 		_queue_snapshot = dependencies.queue_snapshot,
 		_can_import = dependencies.can_import,
 		_report = dependencies.report,
+		_clock = dependencies.clock,
+		_resolution_elapsed = 0,
+		_poll_elapsed = 0,
+		_catalog_serial = 0,
 		_state = "idle",
 		_generation = 0,
 		_url = nil,
@@ -107,9 +113,17 @@ function ImportController.new(dependencies)
 	end
 
 	local function fail(reason, payload)
+		self._generation = self._generation + 1
+		if self._transport and type(self._transport.cancel) == "function" then
+			pcall(self._transport.cancel, self._transport, "import_failed")
+		end
+		if self._catalog_pending and type(self._cancel_catalogs) == "function" then
+			pcall(self._cancel_catalogs, self._catalog_generation)
+		end
 		self._state = "failed"
 		self._last_error = tostring(reason or "import_failed")
 		self._catalog_pending = false
+		self._catalog_generation = nil
 		local details = payload or {}
 		details.reason = self._last_error
 		emit("import_failed", details)
@@ -124,6 +138,14 @@ function ImportController.new(dependencies)
 
 		self._catalog_pending = false
 		self._catalog_generation = nil
+	end
+
+	local function resolution_expired()
+		local ok, now = safe_call(self._clock)
+		if ok and type(now) == "number" and self._resolution_started_at then
+			return now - self._resolution_started_at >= ImportController.READ_TIMEOUT
+		end
+		return self._resolution_elapsed >= ImportController.READ_TIMEOUT
 	end
 
 	local function read_clipboard_url()
@@ -193,6 +215,9 @@ function ImportController.new(dependencies)
 		self._choice_request = nil
 		self._weapon_choices = {}
 		self._last_error = nil
+		self._resolution_elapsed = 0
+		self._resolution_started_at = nil
+		self._poll_elapsed = 0
 
 		local start = self._transport and self._transport.start
 		local transport_ok, started, transport_error = pcall(start, self._transport, url)
@@ -208,6 +233,11 @@ function ImportController.new(dependencies)
 
 	function self:_begin_catalog_resolution()
 		local generation = self._generation
+		if not self._resolution_started_at then
+			local ok, now = safe_call(self._clock)
+			if ok and type(now) == "number" then self._resolution_started_at = now end
+		end
+		if resolution_expired() then return fail("resolution_timeout") end
 		local context_ok, context = safe_call(self._get_resolution_context)
 		if not context_ok or type(context) ~= "table" then
 			return fail("resolution_context_unavailable", { error = context })
@@ -257,12 +287,15 @@ function ImportController.new(dependencies)
 		self._identity_build = identity
 		self._state = "resolving_catalogues"
 		self._catalog_pending = true
-		self._catalog_generation = generation
+		self._catalog_serial = self._catalog_serial + 1
+		local catalog_token = self._catalog_serial
+		self._catalog_generation = catalog_token
 
 		local function complete(catalogs, error_value)
-			if generation ~= self._generation or not self._catalog_pending then
+			if generation ~= self._generation or not self._catalog_pending or self._catalog_generation ~= catalog_token then
 				return false
 			end
+			if resolution_expired() then return fail("catalog_resolution_timeout") end
 
 			self._catalog_pending = false
 			self._catalog_generation = nil
@@ -319,10 +352,8 @@ function ImportController.new(dependencies)
 			return true
 		end
 
-		local fetch_ok, fetch_result = safe_call(self._fetch_catalogs, identity, complete, generation)
+		local fetch_ok, fetch_result = safe_call(self._fetch_catalogs, identity, complete, catalog_token)
 		if not fetch_ok or fetch_result == false then
-			self._catalog_pending = false
-
 			return fail("catalog_fetch_start_failed", { error = fetch_result })
 		end
 
@@ -347,13 +378,30 @@ function ImportController.new(dependencies)
 		end
 
 		self._weapon_choices[slot] = card_index
+		-- User deliberation is not a stalled network/store read.
+		self._resolution_started_at = nil
+		self._resolution_elapsed = 0
+		self._poll_elapsed = 0
 
 		return self:_begin_catalog_resolution()
 	end
 
-	function self:update()
+	function self:update(dt)
+		if self._state == "waiting_for_store" or self._state == "resolving_catalogues" then
+			local elapsed = type(dt) == "number" and dt == dt and dt > 0 and dt < math.huge and dt or 0
+			self._resolution_elapsed = self._resolution_elapsed + elapsed
+			self._poll_elapsed = self._poll_elapsed + elapsed
+			if resolution_expired() then
+				local reason = self._state == "waiting_for_store" and "native_store_timeout" or "catalog_resolution_timeout"
+				fail(reason)
+				return self._state
+			end
+		end
 		if self._state == "waiting_for_store" then
-			self:_begin_catalog_resolution()
+			if self._poll_elapsed >= ImportController.STORE_POLL_INTERVAL then
+				self._poll_elapsed = 0
+				self:_begin_catalog_resolution()
+			end
 
 			return self._state
 		end
@@ -390,12 +438,16 @@ function ImportController.new(dependencies)
 	end
 
 	function self:clear()
-		if queue_busy() or self._catalog_pending then
+		if queue_busy() then
 			return false, "import_busy"
 		end
+		self:cancel("cleared")
 
 		self._generation = self._generation + 1
 		self._state = "idle"
+		self._resolution_elapsed = 0
+		self._resolution_started_at = nil
+		self._poll_elapsed = 0
 		self._url = nil
 		self._model = nil
 		self._identity_build = nil

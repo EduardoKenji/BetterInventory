@@ -292,7 +292,7 @@ def main() -> None:
     assert native_reports.count("import_waiting_for_store") == 1
 
     native_ready[0] = True
-    assert native_waiter.update(native_waiter) == "resolving_catalogues"
+    assert native_waiter.update(native_waiter, 0.25) == "resolving_catalogues"
     assert native_resolver_calls == [1]
     assert len(native_callbacks) == 1
 
@@ -303,6 +303,7 @@ def main() -> None:
     assert len(native_callbacks) == 2
     assert native_installed == []
     assert "import_store_changed" in native_reports
+    assert native_callbacks[0](to_lua({}), None) is False
 
     assert native_callbacks[1](to_lua({}), None) is True
     assert native_waiter.snapshot(native_waiter)["state"] == "staged"
@@ -324,6 +325,37 @@ def main() -> None:
     assert lua.eval("function(a, b) return rawequal(a, b) end")(
         staged_presentation, cancelled_presentation
     ) is False
+
+    reads = []
+    waiter = import_module.new(to_lua({
+        "get_resolution_context": callback_wrapper(lambda: reads.append(1) or to_lua({"native_store_ready": False})),
+    }))
+    assert waiter._begin_catalog_resolution(waiter) is True
+    for _ in range(12000):
+        assert waiter.update(waiter, 0.001) == "waiting_for_store"
+    assert len(reads) <= 49
+    assert waiter.update(waiter, 30) == "failed"
+    assert waiter.snapshot(waiter)["last_error"] == "native_store_timeout"
+    assert waiter.clear(waiter) is True
+
+    assert native_waiter.clear(native_waiter) is True
+    native_waiter._model = build_model
+    assert native_waiter._begin_catalog_resolution(native_waiter) is True
+    never_settled = native_callbacks[-1]
+    assert native_waiter.update(native_waiter, 30) == "failed"
+    assert native_waiter.snapshot(native_waiter)["last_error"] == "catalog_resolution_timeout"
+    assert native_waiter.clear(native_waiter) is True
+    assert never_settled(to_lua({}), None) is False
+    native_waiter._model = build_model
+    assert native_waiter._begin_catalog_resolution(native_waiter) is True
+    assert native_callbacks[-1](to_lua({}), None) is True
+    assert native_waiter.state(native_waiter) == "staged"
+    assert native_waiter.clear(native_waiter) is True
+    native_waiter._model = build_model
+    assert native_waiter._begin_catalog_resolution(native_waiter) is True
+    cancelled_read = native_callbacks[-1]
+    assert native_waiter.clear(native_waiter) is True
+    assert cancelled_read(to_lua({}), None) is False
 
 
 if __name__ == "__main__":

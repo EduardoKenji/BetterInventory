@@ -132,7 +132,8 @@
   "test_games_lantern_import.py": [
     {"name": "strict_url_canonicalization", "risk": "critical", "start_line": 18, "end_line": 47},
     {"name": "versioned_weapon_model", "risk": "critical", "start_line": 49, "end_line": 81},
-    {"name": "bounded_parser_drift_fail_closed", "risk": "critical", "start_line": 82, "end_line": 110}
+    {"name": "bounded_parser_drift_fail_closed", "risk": "critical", "start_line": 82, "end_line": 108},
+    {"name": "malformed_delimiter_budget_and_valid_login_footer", "risk": "critical", "start_line": 109, "end_line": 120}
   ],
     "test_games_lantern_workflow.py": [
       {"name": "live_catalogue_resolution", "risk": "critical", "start_line": 19, "end_line": 107},
@@ -180,14 +181,16 @@
       {"name": "invalid_clipboard_and_transport_failure_diagnostics", "risk": "critical", "start_line": 167, "end_line": 203},
       {"name": "canonical_archetype_mismatch_diagnostics", "risk": "critical", "start_line": 204, "end_line": 216},
       {"name": "character_switch_settlement_fails_before_resolution", "risk": "critical", "start_line": 217, "end_line": 249},
-      {"name": "native_store_settlement_and_catalog_revalidation", "risk": "critical", "start_line": 251, "end_line": 310},
-      {"name": "presentation_cache_release_on_cancel_and_clear", "risk": "high", "start_line": 312, "end_line": 326}
+      {"name": "native_store_settlement_and_catalog_revalidation", "risk": "critical", "start_line": 251, "end_line": 311},
+      {"name": "presentation_cache_release_on_cancel_and_clear", "risk": "high", "start_line": 312, "end_line": 327},
+      {"name": "bounded_wait_deadline_cancel_retry_and_late_catalogue", "risk": "critical", "start_line": 328, "end_line": 362}
     ],
     "test_games_lantern_compatibility.py": [
       {"name": "optional_mod_lifecycle_admission_and_four_run_soak", "risk": "critical", "start_line": 1, "end_line": 176}
     ],
   "test_account_mutation_guard.py": [
-    {"name": "service_level_account_mutation_exclusion", "risk": "critical", "start_line": 1, "end_line": 199}
+    {"name": "service_level_account_mutation_exclusion", "risk": "critical", "start_line": 1, "end_line": 199},
+    {"name": "native_write_fence_across_runtime_generations", "risk": "critical", "start_line": 200, "end_line": 264}
   ],
   "test_contracts.py": [
     {"name": "guarded_lookup", "risk": "high", "start_line": 22, "end_line": 40},
@@ -293,7 +296,7 @@
     {"name": "native_async_cleanup_contracts", "risk": "high", "start_line": 148, "end_line": 164}
   ],
   "test_v370_boundaries.py": [
-    {"name": "real_facade_returns_and_cleanup_fault_isolation", "risk": "critical", "start_line": 1, "end_line": 52}
+    {"name": "real_facade_returns_and_cleanup_fault_isolation", "risk": "critical", "start_line": 1, "end_line": 69}
   ],
   "test_hot_reload_lifecycle.py": [
     {"name": "generation_owned_reload_teardown_and_re_adoption", "risk": "critical", "start_line": 1, "end_line": 411}

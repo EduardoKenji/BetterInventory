@@ -47,6 +47,23 @@ def main():
     """)
     print("v3.7.0 facade return and fault-isolated teardown regressions passed.")
 
+    facade = facade_path.read_text(encoding="utf-8")
+    context = facade[facade.index("\tgames_lantern_resolution_context = function()"):facade.index("\tlocal function games_lantern_fetch_catalogs")]
+    lua.execute("""
+        controller = {snapshot=function() return {data={store={offers={{offer_id="one"}}}}} end}
+        runtime_context = {current_identity=function() return {stable=true} end}
+        CandidatePolicy = {}
+        setting = function(_, default) return default end
+        active_brunt_view = {_offer_items_layout={}}
+    """)
+    lua.execute(context + """
+        assert(not games_lantern_resolution_context().native_store_ready)
+        active_brunt_view._offer_items_layout = {{offer={offerId="stale"}}}
+        assert(not games_lantern_resolution_context().native_store_ready)
+        active_brunt_view._offer_items_layout = {{offer={offerId="one"}}}
+        assert(games_lantern_resolution_context().native_store_ready)
+    """)
+
 
 if __name__ == "__main__":
     main()

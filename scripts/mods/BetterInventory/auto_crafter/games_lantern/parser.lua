@@ -206,7 +206,7 @@ function Parser.parse(html)
 	local lowered = string.lower(html)
 	local has_weapons_anchor = lowered:find('id="weapons"', 1, true) or lowered:find("id='weapons'", 1, true)
 	local challenge_only = lowered:find("challenge%-platform") and not has_weapons_anchor
-	if lowered:find("captcha", 1, true) or challenge_only or lowered:find("please log in", 1, true) or lowered:find("sign in to continue", 1, true) then
+	if not has_weapons_anchor and (lowered:find("captcha", 1, true) or challenge_only or lowered:find("please log in", 1, true) or lowered:find("sign in to continue", 1, true)) then
 		return nil, "login_or_challenge_page"
 	end
 
@@ -220,12 +220,23 @@ function Parser.parse(html)
 	-- Games Lantern changed the weapons container from a section to a div in
 	-- 2026.  Card boundaries remain stable, so scan the bounded page after
 	-- requiring the explicit weapons anchor instead of coupling to a tag name.
-	for block in html:gmatch('<div class="max%-w%-sm w%-full">(.-)weapon_box_bottom%.webp') do
+	local cursor = 1
+	local opener = '<div class="max-w-sm w-full">'
+	while true do
+		local first, content_start = html:find(opener, cursor, true)
+		if not first then break end
 		card_count = card_count + 1
 
 		if card_count > Parser.MAX_WEAPONS then
 			return nil, "too_many_weapon_cards"
 		end
+		local closing, closing_end = html:find("weapon_box_bottom.webp", content_start + 1, true)
+		local next_open = html:find(opener, content_start + 1, true)
+		if not closing or next_open and next_open < closing then
+			return nil, "incomplete_weapon_card"
+		end
+		local block = html:sub(content_start + 1, closing - 1)
+		cursor = closing_end + 1
 
 		if block:find('/weapons/', 1, true) then
 			local weapon, reason = parse_weapon_block(block)

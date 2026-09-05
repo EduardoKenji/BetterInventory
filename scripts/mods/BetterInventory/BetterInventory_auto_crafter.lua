@@ -929,7 +929,7 @@ function AutoCrafter.configure(dependencies)
 		local layout = active_brunt_view and active_brunt_view._offer_items_layout
 		local visible_offer_ids = type(layout) == "table" and {} or nil
 		local summarized_offer_ids = {}
-		local native_store_ready = type(layout) == "table"
+		local native_store_ready = type(layout) == "table" and #layout > 0 and #offers > 0
 
 		for _, offer in ipairs(offers) do
 			if offer.offer_id ~= nil then
@@ -1120,6 +1120,7 @@ function AutoCrafter.configure(dependencies)
 
 		if transport_ok and transport_instance then
 			games_lantern_import = GamesLanternImport.new({
+				clock = monotonic_now,
 				clipboard_read = GamesLanternClipboardHost.read,
 				clipboard = GamesLanternClipboard,
 				transport = transport_instance,
@@ -1489,12 +1490,13 @@ function AutoCrafter.update(dt)
 		end
 	end
 
-	if games_lantern_import and (games_lantern_import:state() == "fetching" or games_lantern_import:state() == "waiting_for_store") then
+	if games_lantern_import and (games_lantern_import:state() == "fetching" or games_lantern_import:state() == "waiting_for_store" or games_lantern_import:state() == "resolving_catalogues") then
 		local import_state_before = games_lantern_import:state()
-		local import_ok, import_error = pcall(games_lantern_import.update, games_lantern_import)
+		local import_ok, import_error = pcall(games_lantern_import.update, games_lantern_import, dt)
 
 		if not import_ok then
 			log("error", "Games Lantern import update failed: " .. tostring(import_error))
+			pcall(games_lantern_import.cancel, games_lantern_import, "import_update_failed")
 		end
 		if games_lantern_import:state() ~= import_state_before then
 			invalidate_games_lantern_panel()

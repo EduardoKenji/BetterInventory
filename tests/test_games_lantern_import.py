@@ -107,6 +107,14 @@ def main() -> None:
     assert result is None
     assert reason == "duplicate_stat"
 
+    for footer in ("<!-- recaptcha helper -->", "<p>Please log in to leave a comment</p>", "Sign in to continue"):
+        assert len(parser.parse(html + footer)["weapons"]) == 2
+    # 30,000 incomplete starts previously caused quadratic suffix scans. The
+    # runner's per-file timeout also bounds this adversarial regression.
+    malformed = '<section id="weapons">' + '<div class="max-w-sm w-full">' * 30000
+    assert parser.parse(malformed) == (None, "incomplete_weapon_card")
+    assert parser.parse(html.replace("weapon_box_bottom.webp", "missing.webp", 1)) == (None, "incomplete_weapon_card")
+
 
 if __name__ == "__main__":
     main()
