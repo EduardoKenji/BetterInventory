@@ -2,6 +2,27 @@
   "schema_version": 1,
   "required": [
     {
+      "name": "v370.reload-fence-native-settlement",
+      "test": "test_account_mutation_guard.py",
+      "case": "native_write_fence_across_runtime_generations",
+      "outcome": "unsettled native writes block the next runtime generation; old scopes cannot dispatch after disable or reload; matching success/failure settles once",
+      "modules": ["BetterInventory_account_mutation_guard.lua", "auto_crafter/darktide/backend.lua"]
+    },
+    {
+      "name": "v370.real-facade-return-and-teardown",
+      "test": "test_v370_boundaries.py",
+      "case": "real_facade_returns_and_cleanup_fault_isolation",
+      "outcome": "actual facade snapshots retain operation flags, teardown failures do not skip unrelated release, and native readiness rejects empty/stale layouts",
+      "modules": ["BetterInventory_auto_crafter.lua", "BetterInventory_runtime.lua"]
+    },
+    {
+      "name": "v370.import-read-deadlines",
+      "test": "test_games_lantern_import_controller.py",
+      "case": "bounded_wait_deadline_cancel_retry_and_late_catalogue",
+      "outcome": "store waiting has bounded work and deadline; catalogue timeout and clear invalidate late callbacks and permit retry",
+      "modules": ["auto_crafter/games_lantern/import_controller.lua"]
+    },
+    {
       "name": "search.query-is-literal-bounded-and-rarity-aware",
       "test": "test_search_query.py",
       "case": "bounded_literal_parser_effective_rarity_and_fail_open_matching",

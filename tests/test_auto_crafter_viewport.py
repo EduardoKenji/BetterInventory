@@ -152,7 +152,7 @@ def main() -> None:
         }
         """
     )
-    runtime_overlay = overlay_runtime.execute(overlay_source)
+    runtime_overlay = overlay_runtime.execute(overlay_source, name=str(OVERLAY_PATH))
     runtime_globals = overlay_runtime.globals()
     assert runtime_overlay.install(
         runtime_globals.test_mod,

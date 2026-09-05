@@ -21,6 +21,7 @@ OUTPUT_LIMIT = 4000
 CASE_MANIFEST_PATH = TEST_ROOT / "case_manifest.json"
 COVERAGE_POLICY_PATH = TEST_ROOT / "coverage_policy.json"
 BRANCH_MATRIX_PATH = TEST_ROOT / "branch_matrix.json"
+RUNTIME_ROOT = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory"
 
 
 def discover_tests() -> list[Path]:
@@ -75,12 +76,7 @@ def load_branch_matrix(
         raise ValueError("branch matrix must contain a required list")
 
     normalized = []
-    runtime_names = {
-        path.name
-        for path in (PROJECT_ROOT / "scripts" / "mods" / "BetterInventory").glob(
-            "BetterInventory*.lua"
-        )
-    }
+    runtime_names = {path.relative_to(RUNTIME_ROOT).as_posix() for path in RUNTIME_ROOT.rglob("*.lua")}
 
     for entry in matrix["required"]:
         if not isinstance(entry, dict):
@@ -292,6 +288,9 @@ def build_coverage_report(
     passed_branch_modules: set[str] | None = None,
 ) -> dict[str, object]:
     covered_by_name: dict[str, set[int]] = {}
+    runtime_root = RUNTIME_ROOT
+    runtime_paths = sorted(runtime_root.rglob("*.lua"))
+    runtime_names = {path.relative_to(runtime_root).as_posix() for path in runtime_paths}
     policy = json.loads(policy_path.read_text(encoding="utf-8"))
     policy_modules = policy.get("modules", {})
     static_modules = policy.get("static_modules", {})
@@ -309,11 +308,17 @@ def build_coverage_report(
 
         for source, lines in part.get("sources", {}).items():
             source_name = Path(str(source).removeprefix("@"))
-            covered_by_name.setdefault(source_name.name, set()).update(lines)
+            if not source_name.is_absolute() and source_name.as_posix() in runtime_names:
+                name = source_name.as_posix()
+            else:
+                try:
+                    name = source_name.resolve().relative_to(runtime_root.resolve()).as_posix()
+                except ValueError:
+                    continue
+            if name in runtime_names:
+                covered_by_name.setdefault(name, set()).update(lines)
 
     modules = []
-    runtime_root = PROJECT_ROOT / "scripts" / "mods" / "BetterInventory"
-    runtime_names = {path.name for path in runtime_root.glob("BetterInventory*.lua")}
     policy_names = set(policy_modules)
     static_names = set(static_modules)
     policy_failures = [
@@ -338,14 +343,15 @@ def build_coverage_report(
         for name in sorted(policy_names & static_names)
     )
 
-    for runtime_path in sorted(runtime_root.glob("BetterInventory*.lua")):
+    for runtime_path in runtime_paths:
+        runtime_name = runtime_path.relative_to(runtime_root).as_posix()
         total_lines = count_source_lines(runtime_path)
-        covered_lines = covered_by_name.get(runtime_path.name, set())
+        covered_lines = covered_by_name.get(runtime_name, set())
         covered_count = len(covered_lines)
-        policy_entry = policy_modules.get(runtime_path.name)
-        static_entry = static_modules.get(runtime_path.name)
-        declarative = runtime_path.name in declarative_modules
-        static_verified = static_entry is not None and runtime_path.name in passed_branch_modules
+        policy_entry = policy_modules.get(runtime_name)
+        static_entry = static_modules.get(runtime_name)
+        declarative = runtime_name in declarative_modules
+        static_verified = static_entry is not None and runtime_name in passed_branch_modules
         unassigned = policy_entry is None and static_entry is None and not declarative
         minimum_percent = (
             float(policy_entry.get("minimum_percent", 0.0))
@@ -365,14 +371,14 @@ def build_coverage_report(
         if unassigned:
             policy_failures.append(
                 {
-                    "module": runtime_path.name,
+                    "module": runtime_name,
                     "reason": "unassigned_non_declarative_runtime_module",
                 }
             )
 
         modules.append(
             {
-                "module": runtime_path.name,
+                "module": runtime_name,
                 "source_lines": total_lines,
                 "covered_lines": covered_count,
                 "coverage_percent": coverage_percent,
