@@ -2885,7 +2885,7 @@ def main() -> None:
     mod.on_setting_changed("prioritize_equipped_favorites")
     assert globals_.inventory_sort_syncs == 1
     visibility_syncs_before = globals_.sort_visibility_syncs or 0
-    mod.on_setting_changed("customize_sort_options")
+    mod.on_setting_changed("sort_option_rarity_desc")
     mod.on_setting_changed("sort_option_name_asc")
     assert globals_.sort_visibility_syncs == visibility_syncs_before + 2
 
@@ -3085,7 +3085,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "3.7.3"
+    assert data.version == "3.7.4"
 
     gradient_name = localization["mod_name"]["en"]
     assert gradient_name.startswith("{#color(174,239,105)}B")
@@ -3248,7 +3248,7 @@ def main() -> None:
     assert defaults["enable_inventory_search_brunt"] is False
     assert defaults["weapon_kill_counter_show_zero_kills"] is True
     assert defaults["weapon_kill_counter_show_zero_kills_in_stores"] is True
-    assert defaults["customize_sort_options"] is False
+    assert "customize_sort_options" not in defaults
     visible_sort_defaults = [value for key, value in defaults.items() if key.startswith("sort_option_")]
     assert len(visible_sort_defaults) == 12 and all(visible_sort_defaults)
 

@@ -1,4 +1,4 @@
-local MOD_VERSION = "3.7.3"
+local MOD_VERSION = "3.7.4"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
@@ -476,9 +476,9 @@ return {
 				sub_widgets = {
 					{
 						setting_id = "sort_options_visibility_group",
+						tooltip = "sort_options_visibility_tooltip",
 						type = "group",
 						sub_widgets = {
-							{ setting_id = "customize_sort_options", type = "checkbox", default_value = false, tooltip = "customize_sort_options_tooltip" },
 							{ setting_id = "sort_option_level_desc", type = "checkbox", default_value = true },
 							{ setting_id = "sort_option_level_asc", type = "checkbox", default_value = true },
 							{ setting_id = "sort_option_rarity_desc", type = "checkbox", default_value = true },

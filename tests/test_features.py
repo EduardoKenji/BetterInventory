@@ -3263,8 +3263,7 @@ def main() -> None:
     assert globals_.TestArmouryPanel.entries[6].initial_content.label == "Category + Mark"
     assert len(globals_.TestArmouryPanel.entries) == 17
 
-    # Opt-in visibility shares the native-button policy without renumbering rows.
-    mod.settings.customize_sort_options = True
+    # Per-choice visibility shares the native-button policy without renumbering rows.
     sort_ids = ("level_desc", "level_asc", "rarity_desc", "rarity_asc", "price_asc",
                 "price_desc", "name_asc", "name_desc", "category", "category_mark",
                 "base_level_desc", "base_level_asc")
@@ -3283,7 +3282,8 @@ def main() -> None:
                for entry in globals_.TestArmouryPanel.entries.values())
     assert len(armoury_view._sort_options) == 12
     assert len(prototype_view._sort_options) == 10
-    mod.settings.customize_sort_options = False
+    for sort_id in sort_ids:
+        mod.settings["sort_option_" + sort_id] = True
     features.sync_sort_option_visibility()
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     features.update_armoury_native_sort_panel(armoury_view)

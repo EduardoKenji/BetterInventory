@@ -1,6 +1,6 @@
 {
   "test_sort_option_visibility.py": [
-    {"name": "opt_in_visibility_preserves_native_indices_and_scope", "risk": "high", "start_line": 1, "end_line": 122}
+    {"name": "direct_visibility_preserves_native_indices_and_scope", "risk": "high", "start_line": 1, "end_line": 123}
   ],
   "test_search_query.py": [
       {"name": "bounded_literal_parser_effective_rarity_and_fail_open_matching", "risk": "high", "start_line": 1, "end_line": 360}

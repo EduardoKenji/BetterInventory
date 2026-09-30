@@ -1,9 +1,8 @@
 local localization = {
 	sort_options_visibility_group = { en = "Visible sorting choices", ["zh-cn"] = "显示的排序选项" },
-	customize_sort_options = { en = "Customize visible sorting choices", ["zh-cn"] = "自定义显示的排序选项" },
-	customize_sort_options_tooltip = {
-		en = "Off by default. When enabled, unchecked choices are skipped by the equipment sort button and hidden from BetterInventory's sorting panels. ItemSorting choices apply only if that mod is installed. Reopen the item view to update the active sort. If every available choice is unchecked, Name A-Z remains available (or the first choice if Name A-Z is absent). Unknown third-party choices stay visible. Turning this off restores all choices without changing your saved checkboxes.",
-		["zh-cn"] = "默认关闭。启用后，装备排序按钮会跳过未勾选的选项，BetterInventory 排序面板也会隐藏这些选项。ItemSorting 选项仅在安装该模组时适用。重新打开物品界面可更新当前排序。如果所有可用选项都未勾选，仍会保留名称 A-Z（若没有该选项，则保留第一项）。未知的第三方排序选项保持可见。关闭此功能会恢复所有选项，并保留已保存的勾选设置。",
+	sort_options_visibility_tooltip = {
+		en = "All choices are on by default. Turn off choices to hide them from sorting panels and skip them with the equipment sort button. Reopen the item view to update the active sort. If every choice is off, Name A-Z remains available (or the first choice if absent). Unknown third-party choices remain visible. ItemSorting choices require that mod.",
+		["zh-cn"] = "????????????????????????????????????????????????????????????????? A-Z??????????????????????????ItemSorting ??????????",
 	},
 	sort_option_level_desc = { en = "Power: highest to lowest", ["zh-cn"] = "强度：从高到低" },
 	sort_option_level_asc = { en = "Power: lowest to highest", ["zh-cn"] = "强度：从低到高" },

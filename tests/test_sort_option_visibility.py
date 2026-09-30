@@ -34,22 +34,23 @@ def main():
                 "loc_inventory_item_grid_sort_title_format_" .. row[3], true,
                 {sort_name=Localize("loc_inventory_item_grid_sort_title_" .. row[2])}),
                 sort_function=function() end}
-            settings["sort_option_" .. row[1]] = false
+            settings["sort_option_" .. row[1]] = true
         end
         for _, id in ipairs({"category", "category_mark", "base_level_desc", "base_level_asc"}) do
             local option = {id=id, display_name="localized custom " .. id, sort_function=function() end}
             options[#options+1] = option
             definitions.modded_methods.inventory[#definitions.modded_methods.inventory+1] = option
-            settings["sort_option_" .. id] = false
+            settings["sort_option_" .. id] = true
         end
         grid = {_sort_options=options, _active_sort_index=1}
-        local before = localize_calls
-        -- Default path preserves exact native arguments and ignores saved hidden choices.
+        -- All-on defaults preserve native arguments; missing settings are enabled too.
         assert(Options.next_index(mod, grid, nil) == nil)
         assert(Options.next_index(mod, grid, 99) == 99)
         for i=1,#options do assert(Options.is_visible(mod, options, i)) end
-        assert(localize_calls == before)
-        settings.customize_sort_options = true
+        assert(Options.is_visible(mod, {{display_name="unknown"}}, 1))
+        settings.sort_option_name_asc = nil
+        assert(Options.is_visible(mod, options, 7))
+        for _, option in ipairs(options) do settings["sort_option_" .. option.id] = false end
         settings.sort_option_name_asc, settings.sort_option_rarity_desc = true, true
         assert(Options.next_index(mod, grid, 1) == 3)
         grid._active_sort_index = 3
@@ -75,8 +76,9 @@ def main():
         assert(Options.next_index(mod, grid, 1) == 13)
         assert(not Options.is_visible(mod, options, 7))
         options[13] = nil
+        -- Obsolete master settings must not override individual choices.
         settings.customize_sort_options = false
-        assert(Options.next_index(mod, grid, nil) == nil and #options == 12)
+        assert(Options.next_index(mod, grid, 1) == 7 and #options == 12)
         assert(settings.sort_option_name_asc == false)
     ''')
 
@@ -97,8 +99,7 @@ def main():
         local view = {__class_name="InventoryWeaponsView", _item_grid=grid}
         grid._parent = view
         local a,b = sort_hook(native, grid, nil, "forwarded")
-        assert(a == "native result" and b == 42 and passed_index == nil)
-        settings.customize_sort_options = true
+        assert(a == "native result" and b == 42 and passed_index == 7)
         for _, class in ipairs({"InventoryWeaponsView", "CreditsVendorView",
             "MarksVendorView", "CraftingMechanicusModifyView"}) do
             view.__class_name = class

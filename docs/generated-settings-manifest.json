@@ -1,9 +1,9 @@
 {
-  "localization_keys_count": 1216,
-  "localization_keys_sha256": "b8062a1d2cbaa5bcd6c9f196fd7acb8591817ca99f563e1a6c73e61eef12dffe",
-  "metadata_count": 481,
-  "metadata_sha256": "d492a367881cf2d368413cc07800fae72f7dc479e544102b3a9b8ecd7ff1c1df",
+  "localization_keys_count": 1215,
+  "localization_keys_sha256": "a9cef4ad808cb63e3a34e0accd577a5d3f7f13a91d857cd8fb2d48dde19a2ccf",
+  "metadata_count": 480,
+  "metadata_sha256": "40e4584a55bf7cf447c8fb7c3cce354c4ec42f10b63bdef397a0246cab3b58f6",
   "schema_version": 1,
-  "setting_ids_sha256": "b42a9487ac8dbbbf616d24c119ec5283df31b3ec71f3cf7c48c9c46f8e15adf1",
-  "settings_count": 481
+  "setting_ids_sha256": "b2d8db3fabae8b394982560c35fe0763e721ff7d0fe9370cc054fdeb74080064",
+  "settings_count": 480
 }

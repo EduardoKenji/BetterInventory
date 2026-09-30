@@ -50,7 +50,7 @@ local function option_enabled(mod, option)
 end
 
 SortOptions.is_visible = function(mod, options, index)
-	if mod:get("customize_sort_options") ~= true or option_enabled(mod, options[index]) then return true end
+	if option_enabled(mod, options[index]) then return true end
 	local fallback = 1
 	for option_index = 1, #options do
 		if option_enabled(mod, options[option_index]) then return false end
@@ -60,7 +60,6 @@ SortOptions.is_visible = function(mod, options, index)
 end
 
 SortOptions.any_visible = function(mod, options, first, last)
-	if mod:get("customize_sort_options") ~= true then return true end
 	for index = first, last do
 		if SortOptions.is_visible(mod, options, index) then return true end
 	end
@@ -68,11 +67,11 @@ SortOptions.any_visible = function(mod, options, first, last)
 end
 
 SortOptions.next_index = function(mod, item_grid, start_index)
-	if mod:get("customize_sort_options") ~= true then return start_index end
 	local options = item_grid._sort_options or {}
 	if #options == 0 then return start_index end
 	local index = start_index or (item_grid._active_sort_index or 0) % #options + 1
 	if index < 1 or index > #options then index = 1 end
+	if option_enabled(mod, options[index]) then return start_index end
 	for _ = 1, #options do
 		if SortOptions.is_visible(mod, options, index) then return index end
 		index = index % #options + 1
@@ -103,7 +102,7 @@ SortOptions.panel_entry = function(mod, view, option, option_index)
 end
 
 SortOptions.sync_views = function(setting_id)
-	if setting_id ~= nil and setting_id ~= "customize_sort_options" and string.sub(setting_id, 1, 12) ~= "sort_option_" then return end
+	if setting_id ~= nil and string.sub(setting_id, 1, 12) ~= "sort_option_" then return end
 	for view in pairs(dependencies.inventory_views) do
 		view._better_inventory_options_panel_structure_key = nil
 		dependencies.invalidate_view(view)
@@ -117,11 +116,9 @@ end
 SortOptions.install = function(mod, ViewElementGrid, resolve_grid_scope)
 	if type(ViewElementGrid._cb_on_sort_button_pressed) ~= "function" then return end
 	mod:hook(ViewElementGrid, "_cb_on_sort_button_pressed", function(func, item_grid, start_index, ...)
-		if mod:get("customize_sort_options") == true then
-			local view = resolve_grid_scope(item_grid)
-			if view and item_grid == view._item_grid then
-				start_index = SortOptions.next_index(mod, item_grid, start_index)
-			end
+		local view = resolve_grid_scope(item_grid)
+		if view and item_grid == view._item_grid then
+			start_index = SortOptions.next_index(mod, item_grid, start_index)
 		end
 		return func(item_grid, start_index, ...)
 	end)

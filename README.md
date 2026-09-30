@@ -4,15 +4,15 @@
 
 https://www.nexusmods.com/warhammer40kdarktide/mods/1144
 
-> Development version: **v3.7.3** (2026-09-30). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
+> Development version: **v3.7.4** (2026-09-30). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
 
 The [v3.7.2 compatibility and performance audit](docs/v3.7.2-compatibility-performance-audit.md) covers Darktide's September 29 update, long blessing labels, Lua allocation, CPU costs and remaining live-game checks.
 
 To shorten the sorting list, open **Inventory Sorting > Visible sorting choices**
-in the mod settings and enable **Customize visible sorting choices**. Leave only
+in the mod settings. All choices are on by default. Leave only
 the choices you want checked, such as **Name: A-Z** and **Rarity: highest to lowest**.
-Reopen the item view to update the active sort. This setting is off by default;
-turning it off restores every choice without clearing your checkbox preferences.
+Reopen the item view to update the active sort. Each checkbox directly controls
+its sorting choice; there is no separate customization switch.
 It covers the equipment sort button and BetterInventory's sorting panels, including
 ItemSorting's category, category/mark and base-rating choices when installed.
 If every available choice is unchecked, Name A-Z remains available (or the first

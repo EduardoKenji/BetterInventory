@@ -10,8 +10,8 @@
     },
     {
       "archive_path": "BetterInventory/info.json",
-      "bytes": 254,
-      "sha256": "bf0e6bf63ccdc70f9ac8b4e747f04d9c8c86d371fc751b1dc96a95b5f06764bb",
+      "bytes": 261,
+      "sha256": "1ff35fff51110a3d810938568cad61900fe122554a4df4f92956525b26b953a9",
       "source_path": "info.json"
     },
     {
@@ -112,8 +112,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_data.lua",
-      "bytes": 86799,
-      "sha256": "365dfd4caea38d96f97347437979e5622b69ee2addb1b9c71d037b60c7b9c410",
+      "bytes": 89771,
+      "sha256": "5080f006d44bb02a2a24cf6ad0b526ede4fdbac5a954156fe6b3ec05b262f50d",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_data.lua"
     },
     {
@@ -184,8 +184,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_feature_sort_options.lua",
-      "bytes": 7784,
-      "sha256": "82e6b3a81edafdf4798f534c56dc1c1b153062b951f96ff947644a6af076db1a",
+      "bytes": 7786,
+      "sha256": "d570c425c3e8fac7dc93bd7bd00e805e6991f440b322a7f61a41d7008df7205c",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_feature_sort_options.lua"
     },
     {
@@ -280,8 +280,8 @@
     },
     {
       "archive_path": "BetterInventory/scripts/mods/BetterInventory/BetterInventory_localization_features.lua",
-      "bytes": 52365,
-      "sha256": "3fdf65a845784932f7f8f5a1df063039840255a03fd36f417537e4e69e4345b7",
+      "bytes": 52975,
+      "sha256": "4b2d3ec861ce66603c3185fb95894c5214f84ca1b05f5917470c4e15025c2d53",
       "source_path": "scripts/mods/BetterInventory/BetterInventory_localization_features.lua"
     },
     {
@@ -561,6 +561,6 @@
       "source_path": "scripts/mods/BetterInventory/auto_crafter/games_lantern/transport_wine.lua"
     }
   ],
-  "runtime_tree_sha256": "0114c849b274f8d73ef5d553e0c05efe1955c1caeb0e6f78ada2d56eadc6d99f",
-  "version": "3.7.3"
+  "runtime_tree_sha256": "1772969200ac6aa2a5a50bcdf547f0c5151833d18d739d82666d64e2aa3ac3f3",
+  "version": "3.7.4"
 }

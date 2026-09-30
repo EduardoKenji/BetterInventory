@@ -1,5 +1,10 @@
 # BetterInventory changelog
 
+## 3.7.4 - Unreleased
+
+- Removed the sorting customization master switch; each choice now works directly.
+- All sorting choices remain on by default, with a safe fallback if all are turned off.
+
 ## 3.7.3 - Unreleased
 
 - Verifies Curio recovery records after DMF saves, blocking automatic upgrades when the framework silently fails to serialize settings.
