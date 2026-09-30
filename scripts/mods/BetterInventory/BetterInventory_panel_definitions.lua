@@ -77,6 +77,7 @@ local function append_curio_roll_protection_entries(entries, mod, layout, view, 
 end
 
 local function append_curio_buyer_favorite_entry(entries, mod, layout, view, checkbox_entry, sync_function)
+	entries[#entries + 1] = checkbox_entry(mod, layout, view, "better_inventory_curio_buyer_consecrate", "automatic_curio_consecrate_transcendent", "automatic_curio_consecrate_transcendent", true, false, sync_function)
 	entries[#entries + 1] = checkbox_entry(mod, layout, view, INVENTORY_CURIO_BUYER_FAVORITE_ID, "automatic_curio_favorite_purchased_curios", "automatic_curio_favorite_purchased_curios", false, false, sync_function)
 end
 

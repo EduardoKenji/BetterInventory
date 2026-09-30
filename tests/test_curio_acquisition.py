@@ -345,6 +345,8 @@ def main() -> None:
                 return TestItems
             elseif path == "scripts/backend/master_items" then
                 return TestMasterItems
+            elseif path == "scripts/settings/item/crafting_settings" then
+                return {}
             elseif path == "scripts/foundation/utilities/promise" then
                 return TestPromise
             elseif path == "scripts/settings/backend/store_names" then
@@ -364,6 +366,7 @@ def main() -> None:
         end
 
         TestModLoader = {
+            save_unsaved_settings_to_file = function() end,
             io_dofile = function(self, path)
                 if string.find(path, "BetterInventory_curio_domains", 1, true) then
                     return TestCurioDomains
@@ -373,6 +376,8 @@ def main() -> None:
                     return TestCurioLedger
                 elseif string.find(path, "BetterInventory_curio_store", 1, true) then
                     return TestCurioStore
+                elseif string.find(path, "BetterInventory_curio_consecration", 1, true) then
+                    return TestCurioConsecration
                 elseif string.find(path, "BetterInventory_curio_purchase", 1, true) then
                     return TestCurioPurchase
                 end
@@ -410,7 +415,7 @@ def main() -> None:
 
         server_clock = 100000
         server_time_calls = 0
-        backend_account_key = "default"
+        backend_account_key = "test-account"
         main_menu_active = false
 		game_mode_name_value = "hub"
 
@@ -420,6 +425,7 @@ def main() -> None:
 			automatic_curio_once_per_store_rotation = false,
 			automatic_curio_rescan_on_store_refresh = false,
 			automatic_curio_favorite_purchased_curios = false,
+            automatic_curio_consecrate_transcendent = false,
 			automatic_curio_target_mode = "characters",
             automatic_curio_min_item_level = 410,
 			automatic_curio_owned_target_per_stat = 3,
@@ -721,6 +727,8 @@ def main() -> None:
         CURIO_PURCHASE_PATH.read_text(encoding="utf-8"), name=str(CURIO_PURCHASE_PATH)
     )
     lua.globals().TestCurioPurchase = curio_purchase
+    consecration_path = MODULE_PATH.with_name("BetterInventory_curio_consecration.lua")
+    lua.globals().TestCurioConsecration = lua.execute(consecration_path.read_text(encoding="utf-8"), name=str(consecration_path))
     module = lua.execute(MODULE_PATH.read_text(encoding="utf-8"), name=str(MODULE_PATH))
     globals_ = lua.globals()
     favorite_integration = lua.execute(
@@ -1160,11 +1168,17 @@ def main() -> None:
     # profile's wallet rather than the currently selected character's wallet.
     globals_.settings.automatic_curio_diagnostic_logging = True
     globals_.settings.automatic_curio_favorite_purchased_curios = True
+    globals_.settings.automatic_curio_consecrate_transcendent = True
     module.begin_morningstar_pass(globals_.test_mod)
     module.update(globals_.test_mod, 10, True)
     assert globals_.purchase_count == 0
     module.update(globals_.test_mod, 6, False)
     assert globals_.purchase_count == 1
+    queue = globals_.settings._automatic_curio_consecration_queue
+    assert queue is not None
+    account = globals_.Managers.backend.account_id()
+    assert queue[account]["purchased-curio-uuid"].character == "target-psyker"
+    globals_.settings.automatic_curio_consecrate_transcendent = False
     assert globals_.fetched_store_count == 2  # scan plus final revalidation
     assert globals_.requested_wallet_character == "target-psyker"
     assert globals_.purchased_wallet_owner == "target-psyker"
@@ -1507,7 +1521,7 @@ def main() -> None:
     assert globals_.purchase_count == purchases_before_rotation_test + 1
 
     rotation_history = globals_.settings["_automatic_curio_rotation_history"]
-    first_next_refresh = rotation_history.accounts["default"].next_refresh_at_ms
+    first_next_refresh = rotation_history.accounts["test-account"].next_refresh_at_ms
     assert first_next_refresh == 3600000
     assert module._test.rotation_gate_status(globals_.test_mod) is False
 
@@ -1528,7 +1542,7 @@ def main() -> None:
     globals_.main_menu_active = True
     globals_.settings.automatic_curio_scan_operative_selection = True
     rotation_history = globals_.settings["_automatic_curio_rotation_history"]
-    second_next_refresh = rotation_history.accounts["default"].next_refresh_at_ms
+    second_next_refresh = rotation_history.accounts["test-account"].next_refresh_at_ms
     module.enter_operative_selection(globals_.test_mod)
     module.update(globals_.test_mod, 1, False)
     assert globals_.purchase_count == purchases_before_rotation_test + 2
@@ -1539,13 +1553,13 @@ def main() -> None:
     module.enter_operative_selection(globals_.test_mod)
     module.update(globals_.test_mod, 1, False)
     assert globals_.purchase_count == purchases_before_rotation_test + 3
-    assert len(globals_.settings["_automatic_curio_rotation_history"].accounts["default"].pending_reports) == 1
+    assert len(globals_.settings["_automatic_curio_rotation_history"].accounts["test-account"].pending_reports) == 1
 
     # Idle refresh watcher arms once at the boundary, then performs one pass
     # on the following scheduler tick. It must not loop every frame.
     globals_.settings.automatic_curio_rescan_on_store_refresh = True
     rotation_history = globals_.settings["_automatic_curio_rotation_history"]
-    third_next_refresh = rotation_history.accounts["default"].next_refresh_at_ms
+    third_next_refresh = rotation_history.accounts["test-account"].next_refresh_at_ms
     set_storefront_boundary(third_next_refresh + 3600000)
     globals_.server_clock = third_next_refresh + 5000
     purchases_before_idle_refresh = globals_.purchase_count
@@ -1571,7 +1585,7 @@ def main() -> None:
     # fallback. Its persisted dispatch status survives module/VM recreation and
     # prevents duplicate white-text notifications during loading.
     pending_history = globals_.settings["_automatic_curio_rotation_history"]
-    pending_report = pending_history.accounts["default"].pending_reports[1]
+    pending_report = pending_history.accounts["test-account"].pending_reports[1]
     assert pending_report is not None
     assert pending_report.context == "operative_selection"
     assert pending_report.notification_dispatched is True
@@ -1584,32 +1598,32 @@ def main() -> None:
     module.begin_morningstar_pass(globals_.test_mod)
     module.update(globals_.test_mod, 0, False)
     assert globals_.captured_notification is None
-    assert len(globals_.settings["_automatic_curio_rotation_history"].accounts["default"].pending_reports) == 2
-    globals_.backend_account_key = "default"
+    assert len(globals_.settings["_automatic_curio_rotation_history"].accounts["test-account"].pending_reports) == 2
+    globals_.backend_account_key = "test-account"
     module.update(globals_.test_mod, 0, False)
     assert globals_.captured_notification is None
-    assert len(globals_.settings["_automatic_curio_rotation_history"].accounts["default"].pending_reports) == 1
+    assert len(globals_.settings["_automatic_curio_rotation_history"].accounts["test-account"].pending_reports) == 1
     module.update(globals_.test_mod, 0, False)
     assert globals_.captured_notification is None
-    assert len(globals_.settings["_automatic_curio_rotation_history"].accounts["default"].pending_reports) == 0
+    assert len(globals_.settings["_automatic_curio_rotation_history"].accounts["test-account"].pending_reports) == 0
 
     # A report whose immediate notification failed must still be delivered.
     # Changing the ID models a distinct persisted fallback without coupling the
     # test to module reloading.
     pending_report.report_id = "prior-session-operative-report"
     pending_report.notification_dispatched = False
-    pending_history.accounts["default"].pending_reports = lua.table_from([pending_report])
+    pending_history.accounts["test-account"].pending_reports = lua.table_from([pending_report])
     globals_.settings["_automatic_curio_rotation_history"] = pending_history
     globals_.backend_account_key = "other-account"
     module.cancel()
     module.begin_morningstar_pass(globals_.test_mod)
     module.update(globals_.test_mod, 0, False)
     assert globals_.captured_notification is None
-    globals_.backend_account_key = "default"
+    globals_.backend_account_key = "test-account"
     module.update(globals_.test_mod, 0, False)
     assert globals_.captured_notification.line_1 == "automatic_curio_purchased_title"
     assert "Research Psyker(Psyker): 21% automatic_curio_health (410)" in globals_.captured_notification.line_2
-    assert len(globals_.settings["_automatic_curio_rotation_history"].accounts["default"].pending_reports) == 0
+    assert len(globals_.settings["_automatic_curio_rotation_history"].accounts["test-account"].pending_reports) == 0
     module.cancel()
 
     # Crossing a predicted boundary does not prove that the backend has
@@ -1624,7 +1638,7 @@ def main() -> None:
     globals_.revalidated_offer.offerId = "stale-boundary-health"
     globals_.captured_notification = None
     stale_boundary = globals_.settings["_automatic_curio_rotation_history"].accounts[
-        "default"
+        "test-account"
     ].next_refresh_at_ms
     globals_.server_clock = stale_boundary + 5000
     lua.execute(
@@ -1656,7 +1670,7 @@ def main() -> None:
     assert globals_.captured_notification is None
     assert (
         globals_.settings["_automatic_curio_rotation_history"].accounts[
-            "default"
+            "test-account"
         ].next_refresh_at_ms
         == stale_boundary
     )
@@ -1670,7 +1684,7 @@ def main() -> None:
     assert globals_.purchase_count == purchases_before_stale_boundary + 1
     assert (
         globals_.settings["_automatic_curio_rotation_history"].accounts[
-            "default"
+            "test-account"
         ].next_refresh_at_ms
         == fresh_boundary
     )
@@ -1689,7 +1703,7 @@ def main() -> None:
     globals_.test_offer.offerId = "interrupted-offer-health"
     globals_.revalidated_offer.offerId = "interrupted-offer-health"
     rotation_history = globals_.settings["_automatic_curio_rotation_history"]
-    committed_before_interrupted = rotation_history.accounts["default"].next_refresh_at_ms
+    committed_before_interrupted = rotation_history.accounts["test-account"].next_refresh_at_ms
     set_storefront_boundary(committed_before_interrupted + 3600000)
     globals_.server_clock = committed_before_interrupted + 5000
     purchases_before_interrupted = globals_.purchase_count
@@ -1700,12 +1714,12 @@ def main() -> None:
     module.begin_morningstar_pass(globals_.test_mod)
     module.update(globals_.test_mod, 6, False)
     assert globals_.purchase_count == purchases_before_interrupted
-    assert rotation_history.accounts["default"].next_refresh_at_ms == committed_before_interrupted
+    assert rotation_history.accounts["test-account"].next_refresh_at_ms == committed_before_interrupted
 
     module.begin_morningstar_pass(globals_.test_mod)
     module.update(globals_.test_mod, 6, False)
     assert globals_.purchase_count == purchases_before_interrupted + 1
-    assert rotation_history.accounts["default"].next_refresh_at_ms > committed_before_interrupted
+    assert rotation_history.accounts["test-account"].next_refresh_at_ms > committed_before_interrupted
     module.cancel()
 
     # Read-only profile requests are owned by the current context. Leaving the

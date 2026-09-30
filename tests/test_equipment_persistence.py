@@ -18,7 +18,7 @@ def main() -> None:
     lua.execute(
         r"""
         TestPromise = {}
-        unpack = table.unpack
+        unpack = table.unpack or unpack
 
         function TestPromise.resolved(value)
             local promise = {_settled = true, _value = value}

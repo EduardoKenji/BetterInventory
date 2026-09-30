@@ -2011,6 +2011,7 @@ def main() -> None:
         "automatic_curio_once_per_store_rotation",
         "automatic_curio_rescan_on_store_refresh",
         "automatic_curio_favorite_purchased_curios",
+        "automatic_curio_consecrate_transcendent",
         "automatic_curio_min_item_level",
 		"automatic_curio_owned_target_per_stat",
 		"automatic_curio_min_health",
@@ -3078,7 +3079,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "3.7.0"
+    assert data.version == "3.7.2"
 
     gradient_name = localization["mod_name"]["en"]
     assert gradient_name.startswith("{#color(174,239,105)}B")
@@ -3938,6 +3939,7 @@ def main() -> None:
     assert defaults["automatic_curio_once_per_store_rotation"] is True
     assert defaults["automatic_curio_rescan_on_store_refresh"] is True
     assert defaults["automatic_curio_favorite_purchased_curios"] is False
+    assert defaults["automatic_curio_consecrate_transcendent"] is True
     assert defaults["armoury_auto_favorite_purchased_items"] is False
     assert defaults["melk_auto_favorite_purchased_items"] is False
     assert defaults["melk_mystery_auto_favorite_purchased_items"] is False

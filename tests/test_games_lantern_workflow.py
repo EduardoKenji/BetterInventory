@@ -695,7 +695,7 @@ def main() -> None:
     saved_label = plasma_external["stats"][1]["label"]
     plasma_external["stats"][1]["label"] = plasma_external["stats"][2]["label"]
     failed_identity, reason = resolver.resolve_identities(plasma_model, plasma_context)
-    assert failed_identity is None and reason == "custom_stat_ambiguous"
+    assert failed_identity is None and reason == "custom_stats_invalid"
     plasma_external["stats"][1]["label"] = saved_label
     plasma_external["perks"] = model["weapons"][2]["perks"]
     plasma_external["blessings"] = model["weapons"][2]["blessings"]
@@ -724,6 +724,13 @@ def main() -> None:
         assert(queue:state() == "staged")
         assert(queue:start(true) and starts == 1)
     """)
+
+
+    # A malformed normalized duplicate must not enter legacy mark fallback.
+    ogryn_model["weapons"][1]["stats"][2]["label"] = "Future Stat A!"
+    ogryn_model["weapons"][1]["stats"][5]["value"] = 79
+    rejected, reason = resolver.resolve_identities(ogryn_model, ogryn_context)
+    assert rejected is None and reason == "custom_stats_invalid"
 
 
 if __name__ == "__main__":

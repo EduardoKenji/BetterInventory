@@ -2,6 +2,7 @@ local Promise = require("scripts/foundation/utilities/promise")
 
 local Guard = {}
 local auto_crafter
+local additional_busy
 local host_mod
 local owned_call_depth = 0
 local blocked_notice_keys = {}
@@ -30,6 +31,7 @@ local SERVICE_MUTATIONS = {
 			"replace_perk_in_weapon",
 			"replace_trait_in_weapon",
 			"upgrade_weapon_rarity",
+			"upgrade_gadget_rarity",
 		},
 		prefix = "crafting",
 	},
@@ -93,6 +95,7 @@ function Guard.configure(dependencies)
 	dependencies = dependencies or {}
 	host_mod = dependencies.mod or host_mod
 	auto_crafter = dependencies.auto_crafter or auto_crafter
+	additional_busy = dependencies.additional_busy or additional_busy
 	if host_mod and type(host_mod.persistent_table) == "function" then
 		fence = host_mod:persistent_table("account_write_fence", { generation = 0, pending = 0 })
 	end
@@ -193,11 +196,16 @@ function Guard.intercept(kind, original, service, ...)
 	end
 
 	local pending = Guard.has_pending()
-	local busy = pending
+	local other_busy = false
+	if type(additional_busy) == "function" then
+		local ok, busy = pcall(additional_busy)
+		other_busy = not ok or busy == true
+	end
+	local busy = pending or other_busy
 
 	if auto_crafter and type(auto_crafter.is_busy) == "function" then
 		local busy_ok, resolved_busy = pcall(auto_crafter.is_busy)
-		busy = pending or not busy_ok or resolved_busy == true
+		busy = pending or other_busy or not busy_ok or resolved_busy == true
 	end
 
 	if Guard.is_owned_call() or not busy then
@@ -210,7 +218,7 @@ function Guard.intercept(kind, original, service, ...)
 
 	local snapshot_ok, snapshot = pcall(auto_crafter and type(auto_crafter.snapshot) == "function" and auto_crafter.snapshot or function() return {} end)
 	snapshot = snapshot_ok and type(snapshot) == "table" and snapshot or {}
-	local mutation_inflight = pending or snapshot.operation_inflight == true or snapshot.operation_quarantined == true or (tonumber(snapshot.auxiliary_inflight_count) or 0) > 0
+	local mutation_inflight = pending or other_busy or snapshot.operation_inflight == true or snapshot.operation_quarantined == true or (tonumber(snapshot.auxiliary_inflight_count) or 0) > 0
 
 	if not mutation_inflight and auto_crafter and type(auto_crafter.interrupt_for_external_mutation) == "function" then
 		local interrupt_ok, interrupted = pcall(auto_crafter.interrupt_for_external_mutation, kind)

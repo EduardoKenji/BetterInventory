@@ -96,6 +96,57 @@ def test_catalog_host_recreation():
     """)
 
 
+def test_queue_stop_polling():
+    from auto_crafter_test_support import load_controller
+
+    lua = LuaRuntime(unpack_returned_tuples=True)
+    lua.globals().Controller = load_controller(lua)
+    path = ROOT / "BetterInventory_auto_crafter.lua"
+    lua.globals().Facade = lua.execute(path.read_text(encoding="utf-8"), name=str(path))
+    lua.execute("""
+        local controller = assert(Controller.new())
+        controller.update = function() end
+        controller.snapshot = function() error("stop polling must not allocate a snapshot") end
+        local settled, requested, state = 0, true, "stopping"
+        local queue = {
+            state=function() return state end,
+            stop_requested=function() return requested end,
+            on_event=function(_, event)
+                assert(event == "stop_settled")
+                settled=settled+1
+            end,
+        }
+        local values = {controller=controller, games_lantern_queue=queue,
+            presentation_dirty=false, presentation_snapshot={}}
+        for i=1,100 do
+            local name = debug.getupvalue(Facade.update, i)
+            if not name then break end
+            if values[name] ~= nil then debug.setupvalue(Facade.update, i, values[name]) end
+        end
+        for _, queue_state in ipairs({"stopping", "quarantined", "reconciliation_required"}) do
+            state = queue_state
+            for _, field in ipairs({"_operation_inflight", "_operation_quarantined",
+                "_auxiliary_inflight_count", "_search", "_phase3", "_phase4", "_mastery"}) do
+                local previous = controller[field]
+                controller[field] = field == "_auxiliary_inflight_count" and 1
+                    or string.find(field, "operation", 1, true) and true or {running=true}
+                local before = settled
+                Facade.update(1/60)
+                assert(settled == before, field .. " must block settlement")
+                controller[field] = previous
+            end
+            local before = settled
+            requested = false
+            Facade.update(1/60)
+            assert(settled == before)
+            requested = true
+            Facade.update(1/60)
+            assert(settled == before+1)
+        end
+    """)
+
+
 if __name__ == "__main__":
     main()
     test_catalog_host_recreation()
+    test_queue_stop_polling()

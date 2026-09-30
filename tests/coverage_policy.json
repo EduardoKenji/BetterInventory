@@ -13,6 +13,7 @@
     "BetterInventory_auto_crafter.lua": {"risk": "high"}
   },
   "modules": {
+    "BetterInventory_curio_consecration.lua": {"minimum_percent": 75.0, "risk": "critical"},
     "auto_crafter/core/candidate_policy.lua": {"minimum_percent": 70.0, "risk": "critical"},
     "auto_crafter/core/controller.lua": {"minimum_percent": 70.0, "risk": "critical"},
     "auto_crafter/core/hud_policy.lua": {"minimum_percent": 80.0, "risk": "high"},

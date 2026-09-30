@@ -205,6 +205,10 @@ def main() -> None:
 			return rows
 		end
 
+		function TestText.text_height(ui_renderer, text, style, optional_size, use_max_extents)
+			return #TestText.word_wrap(ui_renderer, text, style, optional_size[1]) * style.font_size
+		end
+
 		function TestItems.weapon_lore_mark_name(item)
 			return item and item.test_mark or "n/a"
 		end
@@ -3581,9 +3585,9 @@ def main() -> None:
         wrapping_blueprint,
     )
     wrapping_style = wrapping_styles["better_inventory_blessing_text_2"]
-    assert wrapping_widget.content.better_inventory_blessing_text_2 == "Rending Shockwave"
+    assert wrapping_widget.content.better_inventory_blessing_text_2.endswith("...")
     assert wrapping_style.font_size == 13
-    assert wrapping_style.word_wrap is True
+    assert wrapping_style.word_wrap is False
 
     # Character Overview owns a separate long-name policy. Its default retains
     # wrapping, shrink mode lowers only overflowing rows, and ellipsis mode
@@ -5700,6 +5704,53 @@ def main() -> None:
         end
         return true
     """)
+    # Cruncher screenshot: Execution and Unstoppable Force are separate rows.
+    # Exercise the shared init/rebind path and retain wrapping only when it fits.
+    hammer = lua.eval("table.clone")(narrow_weapon_element)
+    hammer.item.traits[1].id = "Execution"
+    hammer.item.traits[2].id = "Unstoppable Force"
+    mod.settings.single_column_blessing_icons_on_right = True
+    mod.settings.truncate_long_blessing_names = False
+    mod.settings.secondary_text_font_size = 13
+    for route in ("native", "grid", "store", "overview"):
+        for auto_fit in (False, True):
+            mod.settings.auto_fit_long_blessing_names = auto_fit
+            mod.settings.character_overview_blessing_name_mode = "two_lines"
+            mod.settings.weapon_blessing_display_mode = "ranked_text"
+            candidate = lua.eval("table.clone")(globals_.raw_test_blueprint)
+            candidate.size[1] = 600
+            if route == "grid":
+                layout.configure_item_blueprint(mod, candidate, 640)
+            else:
+                layout.configure_native_item_blueprint(mod, candidate, 600, lua.table_from({
+                    "store_item": route == "store", "character_overview": route == "overview",
+                }))
+            styles = {p.style_id: lua.eval("table.clone")(p.style)
+                      for p in candidate.pass_template.values() if p.style_id}
+            widget = lua.table_from({"content": lua.table_from({}), "style": lua.table_from(styles)})
+            candidate.init(live_parent, widget, hammer, None, None, None, None, candidate)
+            for index, name in ((1, "Execution"), (2, "Unstoppable Force")):
+                key = f"better_inventory_blessing_text_{index}"
+                style = styles[key]
+                assert widget.content[f"better_inventory_full_blessing_text_{index}"] == name
+                assert globals_.TestText.text_height(None, widget.content[key], style, style.size, True) <= style.size[2]
+            if route == "native" and not auto_fit:
+                assert widget.content.better_inventory_blessing_text_1 == "Execution"
+                assert widget.content.better_inventory_blessing_text_2.endswith("...")
+                assert styles["better_inventory_blessing_text_2"].font_size == 13
+            rebound = lua.eval("table.clone")(hammer)
+            rebound.item.traits[2].id = "Impact"
+            candidate.update_data(live_parent, widget, rebound)
+            assert widget.content.better_inventory_blessing_text_2 == "Impact"
+            assert styles["better_inventory_blessing_text_2"].font_size == 13
+
+    # Even minimum-size text can exceed its row with long translated names.
+    overflow = lua.eval("table.clone")(hammer)
+    overflow.item.traits[2].id = "Unstoppable Force " * 8
+    candidate.update_data(live_parent, widget, overflow)
+    assert widget.content.better_inventory_blessing_text_2.endswith("...")
+    assert styles["better_inventory_blessing_text_2"].font_size == 8
+    assert styles["better_inventory_blessing_text_2"].word_wrap is False
     print("BetterInventory layout behavior tests passed.")
 
 

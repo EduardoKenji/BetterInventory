@@ -47,8 +47,8 @@ def main() -> None:
     assert 'kind == "context_exit" or kind == "phase4_complete"' in source
     assert 'games_lantern_queue:stop_requested()' in source
     assert '"stop_settled", { reason = "context_exit_settled" }' in source
-    assert "not controller_snapshot.operation_inflight" in source
-    assert "not controller_snapshot.operation_quarantined" in source
+    assert "games_lantern_queue:stop_requested() and not controller:is_busy()" in source
+    assert "local controller_snapshot = controller:snapshot()" not in source
 
     # Staged Games Lantern planner selection mirrors Brunt's native weapon
     # preview through a bounded deferred-tab coordinator. It is cancelled at

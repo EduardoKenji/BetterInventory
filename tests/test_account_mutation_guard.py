@@ -139,7 +139,7 @@ def main() -> None:
 		local perk_arguments
 		Guard.with_owned_call(function()
 			return Guard.intercept("crafting.replace_perk_in_weapon", function(_, ...)
-				perk_arguments = table.pack(...)
+				perk_arguments = {n=select("#", ...), ...}
 			end, {}, "gear-1", 1, "perk-1", false, 4)
 		end)
 		assert(perk_arguments.n == 5)
@@ -162,7 +162,7 @@ def main() -> None:
             ["crafting.extract_weapon_mastery"] = true,
             ["crafting.replace_perk_in_weapon"] = true,
             ["crafting.replace_trait_in_weapon"] = true,
-            ["crafting.upgrade_weapon_rarity"] = true,
+            ["crafting.upgrade_weapon_rarity"] = true, ["crafting.upgrade_gadget_rarity"] = true,
             ["mastery.claim_levels_by_new_exp"] = true,
             ["mastery.purchase_traits"] = true,
 			["mastery.switch_mark"] = true,
@@ -188,7 +188,7 @@ def main() -> None:
             hooks[#hooks + 1] = {service_class, method_name, callback}
         end
         assert(Guard.install_hooks(mod) == true)
-        assert(#hooks == 12)
+        assert(#hooks == 13)
 
         print("Account mutation guard exclusion and hook coverage tests passed.")
         '''

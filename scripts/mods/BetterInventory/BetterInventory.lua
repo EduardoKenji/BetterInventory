@@ -593,7 +593,12 @@ end
 AccountMutationGuard.configure({
 	mod = mod,
 	auto_crafter = AutoCrafter,
+	additional_busy = CurioAcquisition.consecration_busy,
 })
+
+if type(CurioAcquisition.set_consecration_dependencies) == "function" then
+	CurioAcquisition.set_consecration_dependencies(mod, AccountMutationGuard, Features.acquire_account_operation, Features.release_account_operation)
+end
 
 AutoCrafter.configure({
 	mod = mod,

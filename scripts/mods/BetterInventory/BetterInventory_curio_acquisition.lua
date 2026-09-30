@@ -14,6 +14,7 @@ do
 	end
 end
 
+local Consecration = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_curio_consecration")
 local CurioAcquisition = {}
 local favorite_integration
 
@@ -1126,6 +1127,7 @@ end
 
 local function purchase_candidates(mod, token, candidates, boundary_ms, owned_policy)
 	local purchased = {}
+	local consecrate_purchases = mod:get("automatic_curio_consecrate_transcendent") ~= false
 	local insufficient = {}
 	local report_account_key = state.account_key
 	local report_context = state.active_context
@@ -1169,6 +1171,10 @@ local function purchase_candidates(mod, token, candidates, boundary_ms, owned_po
 
 			return revalidate_and_purchase(mod, token, candidate, purchase_dispatched, purchase_settled):next(function(result)
 				if result and result.status == "purchased" and result.candidate then
+					if consecrate_purchases then
+						local saved, save_error = pcall(Consecration.enqueue, mod, report_account_key, result.candidate.character_id, result.purchased_items)
+						if not saved then log_info(mod, "Could not persist Curio consecration receipt: " .. tostring(save_error)) end
+					end
 					if favorite_integration and type(favorite_integration.favorite_purchase_items) == "function" then
 						pcall(favorite_integration.favorite_purchase_items, mod, result.purchased_items, "automatic_curio_favorite_purchased_curios")
 					end
@@ -1394,6 +1400,7 @@ CurioAcquisition.begin_morningstar_pass = function(mod)
 end
 
 CurioAcquisition.cancel = function(unloading)
+	Consecration.cancel()
 	reset_read_requests(not unloading)
 	state.token = state.token + 1
 	state.active_context = nil
@@ -1451,6 +1458,26 @@ CurioAcquisition.set_character_options_refresh_callback = function(callback)
 	return CurioProfiles.set_character_options_refresh_callback(callback)
 end
 
+CurioAcquisition.set_consecration_dependencies = function(mod, guard, acquire, release)
+	Consecration.configure({
+		guard = guard, acquire = acquire, release = release,
+		context = function()
+			if not backend_ready() or state.started or state.purchase_requests_inflight > 0 then return end
+			local party = Managers and Managers.party_immaterium
+			if party and type(party.is_in_matchmaking) == "function" and party:is_in_matchmaking() then return end
+			local ui = Managers and Managers.ui
+			if ui and type(ui.view_active) == "function" and ui:view_active("loading_view") then return end
+			local account = current_account_key()
+			if account == "default" then return end
+			if state.active_context == "morningstar" and is_morningstar() and current_character_id() then
+				return account .. ":hub:" .. tostring(current_character_id()) .. ":" .. state.context_entry_id, account
+			elseif state.active_context == "operative_selection" and is_operative_selection() then
+				return account .. ":menu:" .. state.context_entry_id, account
+			end
+		end,
+	})
+end
+
 CurioAcquisition.set_favorite_integration = function(integration)
 	favorite_integration = type(integration) == "table" and integration or nil
 end
@@ -1498,7 +1525,7 @@ CurioAcquisition.on_setting_changed = function(mod, setting_id)
 			state.scheduled = false
 			state.scheduled_reason = nil
 		end
-	elseif setting_id ~= "automatic_curio_diagnostic_logging" and setting_id ~= "automatic_curio_rescan_on_store_refresh" and setting_id ~= "automatic_curio_favorite_purchased_curios" and type(setting_id) == "string" and string.sub(setting_id, 1, 16) == "automatic_curio_" and state.started then
+	elseif setting_id ~= "automatic_curio_diagnostic_logging" and setting_id ~= "automatic_curio_rescan_on_store_refresh" and setting_id ~= "automatic_curio_favorite_purchased_curios" and setting_id ~= "automatic_curio_consecrate_transcendent" and type(setting_id) == "string" and string.sub(setting_id, 1, 16) == "automatic_curio_" and state.started then
 		state.token = state.token + 1
 		state.completed = true
 		state.scheduled = false
@@ -1510,6 +1537,7 @@ CurioAcquisition.update = function(mod, dt, automatic_discard_busy)
 	local update_dt = math.max(tonumber(dt) or 0, 0)
 	local profile_work_pending = CurioProfiles.needs_update()
 	local completed_idle = state.completed
+		and not Consecration.busy()
 		and not state.scheduled
 		and not state.started
 		and state.active_read_requests == 0
@@ -1588,6 +1616,9 @@ CurioAcquisition.update = function(mod, dt, automatic_discard_busy)
 		processed_offer_keys = {}
 		state.ledger_rotation_boundary_ms = nil
 	end
+
+	Consecration.update(mod, update_dt, automatic_discard_busy or state.started or state.purchase_requests_inflight > 0)
+	if Consecration.busy() then return end
 
 	if state.completed then
 		if mod:get("automatic_curio_rescan_on_store_refresh") == true and state.rotation_boundary_ms then
@@ -1682,18 +1713,21 @@ CurioAcquisition.oldest_read_request_age = function()
 end
 
 CurioAcquisition.is_busy = function()
-	return state.started == true or state.purchase_requests_inflight > 0
+	return state.started == true or state.purchase_requests_inflight > 0 or Consecration.busy()
 end
 
+CurioAcquisition.consecration_busy = Consecration.busy
+
 CurioAcquisition.account_mutation_inflight = function()
-	return state.purchase_requests_inflight > 0
+	return state.purchase_requests_inflight > 0 or Consecration.mutation_inflight()
 end
 
 CurioAcquisition.defer_for_account_operation = function(mod)
-	if state.purchase_requests_inflight > 0 then
+	if state.purchase_requests_inflight > 0 or Consecration.mutation_inflight() then
 		return false, "automatic Curio acquisition has a purchase request in flight"
 	end
 
+	Consecration.cancel()
 	local profile_work_pending = CurioProfiles.needs_update()
 	local read_work_pending = state.active_read_requests > 0
 

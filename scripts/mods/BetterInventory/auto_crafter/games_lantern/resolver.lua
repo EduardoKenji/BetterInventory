@@ -452,7 +452,7 @@ local function resolve_custom_stats(external, offer, localize_offer_label)
 			return nil, "custom_stats_invalid"
 		end
 		local label = normalize(stat.label)
-		if label == "" or seen_labels[label] then return nil, "custom_stat_ambiguous" end
+		if label == "" or seen_labels[label] then return nil, "custom_stats_invalid" end
 		seen_labels[label] = true
 		compatible = compatible and value >= 60 and value <= 80
 
@@ -498,6 +498,7 @@ local function resolve_custom_stats(external, offer, localize_offer_label)
 		if total ~= 380 then return nil, "custom_stats_invalid_total" end
 		return nil, "custom_stat_unavailable"
 	elseif best_count ~= 1 then
+		if not compatible or total ~= 380 then return nil, "custom_stats_invalid_total" end
 		return nil, "custom_stat_ambiguous"
 	end
 

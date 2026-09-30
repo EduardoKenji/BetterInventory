@@ -272,6 +272,11 @@ local localization = {
 	automatic_curio_rescan_on_store_refresh_tooltip = {
 		en = "When enabled, performs one additional pass after the next Armoury store reset if you remain in an eligible screen. A scan just before reset can therefore be followed by another scan just after reset. Enabled by default.",
 	},
+	automatic_curio_consecrate_transcendent = { en = "Consecrate bought Curios to Transcendent" },
+	automatic_curio_consecrate_transcendent_tooltip = { en = "Spend crafting materials to automatically consecrate Curios purchased by Automatic Curio Buyer to Transcendent, one at a time. Enabled by default; requires Curio Buyer enabled. Confirmed purchases are saved and resume in the Morningstar or operative selection. Pauses when materials are insufficient or you leave these contexts. Uncertain interrupted upgrades are checked, never blindly repeated." },
+	automatic_curio_consecrate_materials = { en = "Curio consecration paused: insufficient crafting materials. Pending Curios will be checked again automatically." },
+	automatic_curio_consecrate_uncertain = { en = "An interrupted Curio upgrade is still unconfirmed. Automatic retry is blocked until its rarity advances; check the Curio at Hadron." },
+	automatic_curio_consecrate_failed = { en = "Curio consecration paused after a backend or persistence error. Pending work is retained for reconciliation." },
 	automatic_curio_favorite_purchased_curios = {
 		en = "Automatically favorite purchased Curios",
 	},

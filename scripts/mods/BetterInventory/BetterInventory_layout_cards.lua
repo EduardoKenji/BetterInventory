@@ -1825,6 +1825,16 @@ local function fit_blessing_text(parent, widget, ui_renderer)
 				fitted_value = force_single_line and strictly_crop_title(ui_renderer, value, style, measurement_size, crop_width, true) or Text.crop_text_width(ui_renderer, value, style, crop_width)
 			end
 
+			if not force_single_line and not truncate_long_name and measured_width > safe_width then
+				-- Bottom-aligned wrapped names must stay inside their own blessing row.
+				local wrapped_height = Text.text_height(ui_renderer, value, style, { safe_width, 1000000 }, true)
+
+				if wrapped_height > style.size[2] then
+					force_single_line = true
+					fitted_value = strictly_crop_title(ui_renderer, value, style, measurement_size, safe_width, true)
+				end
+			end
+
 			if force_single_line then
 				-- The renderer can wrap even with word_wrap=false. Non-breaking spaces
 				-- make the one-line contract explicit for both shrink and ellipsis.

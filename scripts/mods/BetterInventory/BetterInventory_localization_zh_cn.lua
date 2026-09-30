@@ -1108,4 +1108,10 @@ localization.custom_tier_curio_stamina_min_power = "体力珍品最低威力"
 localization.custom_tier_curio_wounds_min_power = "伤口珍品最低威力"
 localization.custom_tier_curio_min_power_tooltip = "珍品显示威力的最低值。设为 0 可复现 Red Weapons At Home 的默认评分条件。"
 
+localization.automatic_curio_consecrate_transcendent = "将购买的珍品祝圣至超凡"
+localization.automatic_curio_consecrate_transcendent_tooltip = "自动消耗制作材料，将自动珍品购买器购买的珍品逐一祝圣至超凡。默认启用，需要开启珍品购买器。已确认购买的珍品会保存，并在哀星号或干员选择界面继续处理。材料不足或离开这些界面时暂停。中断后会核对稀有度，不会盲目重复升级。"
+localization.automatic_curio_consecrate_materials = "珍品祝圣已暂停：制作材料不足。稍后将自动检查待处理珍品。"
+localization.automatic_curio_consecrate_uncertain = "中断的珍品升级尚未确认。稀有度提升前不会自动重试；请前往哈德隆检查珍品。"
+localization.automatic_curio_consecrate_failed = "后端或保存发生错误，珍品祝圣已暂停。待处理任务将保留以供核对。"
+
 return localization

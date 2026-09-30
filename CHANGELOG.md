@@ -1,5 +1,20 @@
 # BetterInventory changelog
 
+## 3.7.2 - Unreleased
+
+- Audits Darktide 1.13.0 inventory, vendor, crafting, mastery and UI integration contracts; no additional API migration was identified. Live-game acceptance remains pending.
+- Prevents long blessing names such as Unstoppable Force from wrapping into adjacent rows: preserves fitting text and uses an ellipsis when wrapped text exceeds its allocated height.
+- Removes controller snapshot allocation from stopped/quarantined queue polling by reusing the existing busy check, preserving all pending-write and active-workflow guards.
+- Runs the full behavior suite on Lua 5.5 and LuaJIT 2.1 and audits search scaling, idle work and view cleanup; see `docs/v3.7.2-compatibility-performance-audit.md` for measurements and live-game limits.
+
+## 3.7.1 - Unreleased
+
+- Adds default-enabled automatic Transcendent consecration for confirmed Automatic Curio Buyer purchases, with a synchronized settings/widget checkbox. The Curio Buyer master switch remains opt-in.
+- Persists acquired item IDs in an account/character-scoped FIFO; finishes one Curio at a time using native costs and authoritative inventory checks. Pauses for missing materials and unsafe contexts; never blindly retries an uncertain upgrade after interruption.
+- Extends the shared account guard to Curio consecration and tests mission/menu transitions, reload, restart reconciliation, stale reads, ownership changes and duplicate receipts.
+- Fixes v3.7.0 parser backtracking and malformed-stat acceptance through unknown-mark fallback.
+- Live-game acceptance remains pending; see `docs/v3.7.1-curio-consecration.md`.
+
 ## 3.7.0 - Unreleased
 
 - Preserves pending account-write fences across reload and rejects retired-generation dispatches.

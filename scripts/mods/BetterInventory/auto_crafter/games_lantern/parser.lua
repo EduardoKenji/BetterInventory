@@ -110,13 +110,14 @@ local function parse_weapon_block(block)
 
 	for label, percentage in block:gmatch(
 		'font%-semibold whitespace%-nowrap text%-sm text%-%[#D1FFC3%]">([^<]+)</div>'
-			.. '%s*<div[^>]*>%s*<div[^>]*style="width:%s*([^%%"]+)%%') do
+			.. '%s*<div[^>]*>%s*<div[^>]*style="width:([^";]*)[";]') do
 		if #stats >= Parser.MAX_STATS then
 			return nil, "too_many_stats"
 		end
 
 		local stat_label = bounded_label(label, 120)
-		local stat_value = tonumber(percentage)
+		local numeric = #percentage <= 32 and percentage:match("^%s*([%+%-]?%d+%.?%d*)%%%s*$")
+		local stat_value = numeric and tonumber(numeric)
 
 		if not stat_label or not stat_value or stat_value ~= math.floor(stat_value) or stat_value < 0 or stat_value > 100 then
 			return nil, "invalid_stat"

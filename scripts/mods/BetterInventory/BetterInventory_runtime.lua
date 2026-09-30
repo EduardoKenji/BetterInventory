@@ -34,6 +34,7 @@ local option_dependency_owner = {}
 local AUTOMATIC_CURIO_SETTING_IDS = {
 	"automatic_curio_scan_operative_selection", "automatic_curio_once_per_store_rotation",
 	"automatic_curio_rescan_on_store_refresh", "automatic_curio_favorite_purchased_curios",
+	"automatic_curio_consecrate_transcendent",
 	"automatic_curio_min_item_level", "automatic_curio_owned_target_per_stat",
 	"automatic_curio_min_health", "automatic_curio_min_toughness", "automatic_curio_min_stamina",
 	"automatic_curio_diagnostic_logging", "automatic_curio_disable_no_eligible_notification",

@@ -2,6 +2,16 @@
   "schema_version": 1,
   "required": [
     {
+      "name": "v371.curio-consecration-persistent-fifo",
+      "test": "test_curio_consecration.py",
+      "case": "persistent_fifo_consecration_and_native_write_boundaries",
+      "outcome": "default-on receipt-only FIFO validates authoritative ownership, rarity and materials; holds native write fence across cancellation/reload and never replays an unchanged uncertain tier",
+      "modules": [
+        "BetterInventory_curio_consecration.lua",
+        "BetterInventory_account_mutation_guard.lua"
+      ]
+    },
+    {
       "name": "v370.mapped-stat-fallback-requires-review",
       "test": "test_games_lantern_workflow.py",
       "case": "mapped_stat_fallback_preserves_traits_and_requires_review",

@@ -1,4 +1,4 @@
-local MOD_VERSION = "3.7.0"
+local MOD_VERSION = "3.7.2"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
@@ -917,6 +917,12 @@ return {
 							{
 								setting_id = "automatic_curio_rescan_on_store_refresh",
 								tooltip = "automatic_curio_rescan_on_store_refresh_tooltip",
+								type = "checkbox",
+								default_value = true,
+							},
+							{
+								setting_id = "automatic_curio_consecrate_transcendent",
+								tooltip = "automatic_curio_consecrate_transcendent_tooltip",
 								type = "checkbox",
 								default_value = true,
 							},

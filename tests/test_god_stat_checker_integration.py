@@ -104,7 +104,7 @@ def main() -> None:
                 target[method_name] = function(...)
                     local results = {original(...)}
                     callback(...)
-                    return table.unpack(results)
+                    return (table.unpack or unpack)(results)
                 end
             end,
         }
