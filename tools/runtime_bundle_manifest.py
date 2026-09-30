@@ -17,7 +17,10 @@ VERSION_PATTERN = re.compile(r"MOD_VERSION\s*=\s*[\"']([^\"']+)[\"']")
 
 
 def sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    content = path.read_bytes()
+    if b"\r\n" in content:
+        raise ValueError(f"Runtime bundle source must use LF line endings before hashing: {path}")
+    return hashlib.sha256(content).hexdigest()
 
 
 def runtime_version() -> str:

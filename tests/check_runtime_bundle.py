@@ -1,14 +1,24 @@
 import json
 from pathlib import Path
 import sys
+from tempfile import TemporaryDirectory
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from tools.runtime_bundle_manifest import build_manifest
+from tools.runtime_bundle_manifest import build_manifest, sha256
 
 
 def main() -> None:
+    with TemporaryDirectory() as temporary:
+        source = Path(temporary) / "runtime.lua"
+        source.write_bytes(b"return {}\r\n")
+        try:
+            sha256(source)
+        except ValueError as error:
+            assert "LF line endings" in str(error)
+        else:
+            raise AssertionError("CRLF runtime bytes must be rejected before generating a manifest")
     manifest_path = PROJECT_ROOT / "docs" / "generated-runtime-bundle-manifest.json"
     expected = json.loads(manifest_path.read_text(encoding="utf-8"))
     actual = build_manifest()
