@@ -1,4 +1,4 @@
-local MOD_VERSION = "3.7.2"
+local MOD_VERSION = "3.7.3"
 local mod = get_mod("BetterInventory")
 local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
 local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
@@ -474,6 +474,25 @@ return {
 				setting_id = "inventory_sorting_group",
 				type = "group",
 				sub_widgets = {
+					{
+						setting_id = "sort_options_visibility_group",
+						type = "group",
+						sub_widgets = {
+							{ setting_id = "customize_sort_options", type = "checkbox", default_value = false, tooltip = "customize_sort_options_tooltip" },
+							{ setting_id = "sort_option_level_desc", type = "checkbox", default_value = true },
+							{ setting_id = "sort_option_level_asc", type = "checkbox", default_value = true },
+							{ setting_id = "sort_option_rarity_desc", type = "checkbox", default_value = true },
+							{ setting_id = "sort_option_rarity_asc", type = "checkbox", default_value = true },
+							{ setting_id = "sort_option_name_asc", type = "checkbox", default_value = true },
+							{ setting_id = "sort_option_name_desc", type = "checkbox", default_value = true },
+							{ setting_id = "sort_option_price_asc", type = "checkbox", default_value = true },
+							{ setting_id = "sort_option_price_desc", type = "checkbox", default_value = true },
+							{ setting_id = "sort_option_category", type = "checkbox", default_value = true },
+							{ setting_id = "sort_option_category_mark", type = "checkbox", default_value = true },
+							{ setting_id = "sort_option_base_level_desc", type = "checkbox", default_value = true },
+							{ setting_id = "sort_option_base_level_asc", type = "checkbox", default_value = true },
+						},
+					},
 					{
 						setting_id = "show_inventory_options_widget",
 						tooltip = "show_inventory_options_widget_tooltip",

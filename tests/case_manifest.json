@@ -1,4 +1,7 @@
 {
+  "test_sort_option_visibility.py": [
+    {"name": "opt_in_visibility_preserves_native_indices_and_scope", "risk": "high", "start_line": 1, "end_line": 122}
+  ],
   "test_search_query.py": [
       {"name": "bounded_literal_parser_effective_rarity_and_fail_open_matching", "risk": "high", "start_line": 1, "end_line": 360}
   ],
@@ -239,10 +242,10 @@
   ],
   "test_features.py": [
       {"name": "panel_focus_allocation_guard", "risk": "medium", "start_line": 122, "end_line": 123},
-      {"name": "discard_operation_ownership", "risk": "critical", "start_line": 3423, "end_line": 3965},
+      {"name": "discard_operation_ownership", "risk": "critical", "start_line": 3450, "end_line": 3992},
       {"name": "sorting_and_navigation", "risk": "high", "start_line": 408, "end_line": 1612},
       {"name": "optional_integration_fallbacks", "risk": "high", "start_line": 1613, "end_line": 2109},
-      {"name": "panel_lifecycle", "risk": "high", "start_line": 2110, "end_line": 3422}
+      {"name": "panel_lifecycle", "risk": "high", "start_line": 2110, "end_line": 3449}
   ],
   "test_item_customization.py": [
     {"name": "dirty_save_outcomes", "risk": "high", "start_line": 225, "end_line": 442},
@@ -275,12 +278,12 @@
     {"name": "destroyed_spawner_reuse_reinitializes_loader", "risk": "critical", "start_line": 1, "end_line": 119}
   ],
   "test_settings.py": [
-    {"name": "schema_dependency_refresh", "risk": "high", "start_line": 21, "end_line": 469},
-    {"name": "migration_preservation", "risk": "high", "start_line": 470, "end_line": 613},
-    {"name": "character_overview_transition_retirement", "risk": "critical", "start_line": 614, "end_line": 649},
-    {"name": "character_overview_refresh", "risk": "high", "start_line": 650, "end_line": 1870},
-      {"name": "localization_contract", "risk": "medium", "start_line": 1871, "end_line": 3083},
-      {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 3084, "end_line": 4090}
+    {"name": "schema_dependency_refresh", "risk": "high", "start_line": 21, "end_line": 471},
+    {"name": "migration_preservation", "risk": "high", "start_line": 472, "end_line": 615},
+    {"name": "character_overview_transition_retirement", "risk": "critical", "start_line": 616, "end_line": 651},
+    {"name": "character_overview_refresh", "risk": "high", "start_line": 652, "end_line": 1872},
+      {"name": "localization_contract", "risk": "medium", "start_line": 1873, "end_line": 3089},
+      {"name": "defaults_and_bootstrap_contract", "risk": "high", "start_line": 3090, "end_line": 4099}
   ],
   "test_settings_registry.py": [
     {"name": "duplicate_detection", "risk": "high", "start_line": 63, "end_line": 123},
@@ -315,6 +318,6 @@
     {"name": "generation_owned_reload_teardown_and_re_adoption", "risk": "critical", "start_line": 1, "end_line": 411}
   ],
   "test_curio_consecration.py": [
-    {"name": "persistent_fifo_consecration_and_native_write_boundaries", "risk": "critical", "start_line": 1, "end_line": 184}
+    {"name": "persistent_fifo_consecration_and_native_write_boundaries", "risk": "critical", "start_line": 1, "end_line": 207}
   ]
 }

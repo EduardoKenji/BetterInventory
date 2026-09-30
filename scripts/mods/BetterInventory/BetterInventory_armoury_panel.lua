@@ -54,7 +54,8 @@ local function armoury_controller_focus_passes(pass_template, height)
 	return pass_template
 end
 
-local function armoury_native_sort_entry(view, option, option_index)
+local function armoury_native_sort_entry(mod, view, option, option_index)
+	if not features.sort_option_is_visible(mod, view._sort_options, option_index) then return end
 	local selected_sort_index = view._selected_sort_option_index or 1
 
 	return {
@@ -260,12 +261,12 @@ local function armoury_native_sort_entries(mod, layout, view)
 		entries[#entries + 1] = armoury_native_sort_priority_entry(mod, layout, view, "prioritize_perfect_roll_weapons", mod:localize("prioritize_perfect_roll_weapons_inventory_label"))
 	end
 
-	if item_sorting_is_enabled() then
+	if item_sorting_is_enabled() and features.has_visible_sort_options(mod, sort_options, first_item_sorting_option, #sort_options) then
 		entries[#entries + 1] = armoury_native_sort_header_entry(mod, layout, view, "item_sorting", mod:localize("item_sorting_mod_header"))
 
 		if not collapsed.item_sorting then
 			for option_index = first_item_sorting_option, #sort_options do
-				entries[#entries + 1] = armoury_native_sort_entry(view, sort_options[option_index], option_index)
+				entries[#entries + 1] = armoury_native_sort_entry(mod, view, sort_options[option_index], option_index)
 			end
 		end
 	end
@@ -273,11 +274,13 @@ local function armoury_native_sort_entries(mod, layout, view)
 	-- Native sorting is a sibling section, not part of the custom-priority
 	-- section. Keep its header (and its own collapsed state) visible when the
 	-- Sorting section is collapsed.
-	entries[#entries + 1] = armoury_native_sort_header_entry(mod, layout, view, "native_sorting", mod:localize("armoury_native_sorting_header"))
+	if features.has_visible_sort_options(mod, sort_options, 1, first_item_sorting_option - 1) then
+		entries[#entries + 1] = armoury_native_sort_header_entry(mod, layout, view, "native_sorting", mod:localize("armoury_native_sorting_header"))
+	end
 
 	if not collapsed.native_sorting then
 		for option_index = 1, first_item_sorting_option - 1 do
-			entries[#entries + 1] = armoury_native_sort_entry(view, sort_options[option_index], option_index)
+			entries[#entries + 1] = armoury_native_sort_entry(mod, view, sort_options[option_index], option_index)
 		end
 	end
 

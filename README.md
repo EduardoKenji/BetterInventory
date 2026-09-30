@@ -4,9 +4,19 @@
 
 https://www.nexusmods.com/warhammer40kdarktide/mods/1144
 
-> Development version: **v3.7.2** (2026-09-30). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
+> Development version: **v3.7.3** (2026-09-30). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
 
 The [v3.7.2 compatibility and performance audit](docs/v3.7.2-compatibility-performance-audit.md) covers Darktide's September 29 update, long blessing labels, Lua allocation, CPU costs and remaining live-game checks.
+
+To shorten the sorting list, open **Inventory Sorting > Visible sorting choices**
+in the mod settings and enable **Customize visible sorting choices**. Leave only
+the choices you want checked, such as **Name: A-Z** and **Rarity: highest to lowest**.
+Reopen the item view to update the active sort. This setting is off by default;
+turning it off restores every choice without clearing your checkbox preferences.
+It covers the equipment sort button and BetterInventory's sorting panels, including
+ItemSorting's category, category/mark and base-rating choices when installed.
+If every available choice is unchecked, Name A-Z remains available (or the first
+choice when Name A-Z is absent). Unknown third-party choices remain visible.
 
 BetterInventory is a standalone inventory and item-management mod for Warhammer 40,000: Darktide. It adds responsive weapon and Curio cards, richer item information, configurable sorting, supported vendor layouts, optional mod integrations, and safety-gated inventory workflows.
 

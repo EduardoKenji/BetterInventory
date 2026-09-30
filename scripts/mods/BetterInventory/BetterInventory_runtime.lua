@@ -1349,6 +1349,7 @@ function mod.on_setting_changed(setting_id)
 	if setting_id == "prioritize_equipped_favorites" or setting_id == "prioritize_perfect_roll_weapons" then
 		Features.sync_inventory_sort_setting(mod, Layout)
 	end
+	Features.sync_sort_option_visibility(setting_id)
 
 	if setting_id == "debug_enable_hot_path_diagnostics" and type(Diagnostics.configure) == "function" then
 		Diagnostics.configure(mod)
@@ -1365,6 +1366,7 @@ function mod.on_setting_changed(setting_id)
 end
 
 function mod.on_settings_reset()
+	Features.sync_sort_option_visibility()
 	highlight_animation_enabled = mod:get("highlight_equipped_items") == "pulsing_dashes" or mod:get("new_item_highlight_mode") == "pulsing_dashes"
 	invalidate_item_customization_tracking()
 
@@ -1564,8 +1566,7 @@ mod:hook(ItemGridViewBase, "init", function(func, view, definitions, settings, c
 	end
 
 	if view.__class_name == "InventoryWeaponsView" then
-		-- InventoryWeaponsView assigns its slot and loadout before this base init;
-		-- guard them before expanded definitions can observe dense geometry.
+		-- Guard the assigned slot/loadout before expanding inventory geometry.
 		arm_equipped_compound_shield_guard(view, context)
 
 		local adjusted_definitions = Features.add_inventory_sort_toggle_definition(mod, Layout, definitions, view)
@@ -1590,6 +1591,8 @@ mod:hook(ItemGridViewBase, "init", function(func, view, definitions, settings, c
 
 	return initialize(definitions)
 end)
+
+Features.install_sort_option_visibility(mod, ViewElementGrid, resolve_grid_scope)
 
 if ensure_class_method(InventoryWeaponsView, "_setup_sort_options") then
 	mod:hook(InventoryWeaponsView, "_setup_sort_options", function(func, view, ...)

@@ -1,5 +1,12 @@
 # BetterInventory changelog
 
+## 3.7.3 - Unreleased
+
+- Verifies Curio recovery records after DMF saves, blocking automatic upgrades when the framework silently fails to serialize settings.
+- Adds opt-in sorting-choice visibility under Inventory Sorting. All existing choices remain visible by default; users can keep only their preferred native and ItemSorting methods.
+- Hides unchecked panel rows and skips them when cycling the native sort button, preserving the original option objects, comparators and saved indices. Keeps one fallback choice when all available methods are unchecked and leaves unknown third-party choices visible.
+- Updates open sorting panels when visibility settings change and restores the complete list when customization is disabled. Reopen the item view to update the active sort. Includes English and Simplified Chinese labels.
+
 ## 3.7.2 - Unreleased
 
 - Audits Darktide 1.13.0 inventory, vendor, crafting, mastery and UI integration contracts; no additional API migration was identified. Live-game acceptance remains pending.

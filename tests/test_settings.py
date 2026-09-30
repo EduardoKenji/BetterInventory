@@ -269,6 +269,8 @@ def main() -> None:
 			update_morningstar_auto_discard = function() end,
 			morningstar_auto_discard_needs_update = function() return false end,
 			sync_inventory_sort_setting = function() inventory_sort_syncs = inventory_sort_syncs + 1 end,
+			sync_sort_option_visibility = function() sort_visibility_syncs = (sort_visibility_syncs or 0) + 1 end,
+			install_sort_option_visibility = function() end,
 			sync_quick_discard_settings = function() quick_discard_syncs = quick_discard_syncs + 1 end,
 			sync_curio_acquisition_settings = function() curio_acquisition_syncs = curio_acquisition_syncs + 1 end,
 			rebind_sort_options = function() end,
@@ -2882,6 +2884,10 @@ def main() -> None:
     settings.prioritize_equipped_favorites = False
     mod.on_setting_changed("prioritize_equipped_favorites")
     assert globals_.inventory_sort_syncs == 1
+    visibility_syncs_before = globals_.sort_visibility_syncs or 0
+    mod.on_setting_changed("customize_sort_options")
+    mod.on_setting_changed("sort_option_name_asc")
+    assert globals_.sort_visibility_syncs == visibility_syncs_before + 2
 
     settings.automatic_card_height = False
     mod.on_setting_changed("automatic_card_height")
@@ -3079,7 +3085,7 @@ def main() -> None:
     defaults = {}
     setting_ids = set()
 
-    assert data.version == "3.7.2"
+    assert data.version == "3.7.3"
 
     gradient_name = localization["mod_name"]["en"]
     assert gradient_name.startswith("{#color(174,239,105)}B")
@@ -3242,6 +3248,9 @@ def main() -> None:
     assert defaults["enable_inventory_search_brunt"] is False
     assert defaults["weapon_kill_counter_show_zero_kills"] is True
     assert defaults["weapon_kill_counter_show_zero_kills_in_stores"] is True
+    assert defaults["customize_sort_options"] is False
+    visible_sort_defaults = [value for key, value in defaults.items() if key.startswith("sort_option_")]
+    assert len(visible_sort_defaults) == 12 and all(visible_sort_defaults)
 
     custom_tier_group = next(
         data.options.widgets[index]

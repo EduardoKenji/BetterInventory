@@ -26,6 +26,9 @@ local function persist(mod, value)
 	local dmf = get_mod("DMF")
 	assert(dmf and type(dmf.save_unsaved_settings_to_file) == "function", "Curio consecration persistence unavailable")
 	dmf.save_unsaved_settings_to_file()
+	-- DMF logs serialization failures without throwing or returning a status.
+	local saved = Application.user_setting("mods_settings", mod:get_name(), JOURNAL)
+	assert(type(saved) == "table" and table.equals(value, saved), "Curio consecration recovery record was not saved")
 end
 
 local function notice(mod, key, text)

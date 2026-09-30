@@ -54,7 +54,17 @@ def main():
             if type(v) ~= "table" then return v end
             local t={}; for k,c in pairs(v) do t[k]=clone(c) end; return t
         end
+        function table.equals(a,b)
+            for k,v in pairs(a) do
+                if type(v)=="table" and type(b[k])=="table" then
+                    if not table.equals(v,b[k]) then return false end
+                elseif v~=b[k] then return false end
+            end
+            for k in pairs(b) do if a[k]==nil then return false end end
+            return true
+        end
         mod = {
+            get_name=function() return "BetterInventory" end,
             get=function(_,key) return clone(settings[key]) end,
             set=function(_,key,value) settings[key]=clone(value) end,
             localize=function(_,key) return key end,
@@ -62,8 +72,16 @@ def main():
             persistent_table=function(_,key,initial) persistent[key]=persistent[key] or initial; return persistent[key] end,
         }
         save_fails = false
+        saved_settings = {}
+        Application = {user_setting=function(root,name,key)
+            assert(root=="mods_settings" and name=="BetterInventory")
+            return clone(saved_settings[key])
+        end}
         function get_mod() return {save_unsaved_settings_to_file=function()
             if save_fails then error("disk unavailable") end
+            -- DMF catches Application.set_user_setting errors and returns nil.
+            if silent_save_failure then return end
+            saved_settings=clone(settings)
             saves=saves+1
         end} end
         account, context, balance = "account-a", "hub:one", 100
@@ -169,6 +187,11 @@ def main():
         gear.z.rarity=2; Worker.enqueue(mod,account,"char-a",{{uuid="z"}})
         save_fails=true; tick(); assert(#writes==7 and not Worker.busy() and not lease)
         save_fails=false
+        settings._automatic_curio_consecration_queue[account].z.attempted_rarity=nil
+        silent_save_failure=true; tick()
+        assert(#writes==7 and not Worker.busy() and not lease, "silent save failure dispatched an upgrade")
+        assert(saved_settings._automatic_curio_consecration_queue[account].z.attempted_rarity==nil)
+        silent_save_failure=false
         settings._automatic_curio_consecration_queue[account].z.attempted_rarity=nil
         costs={{type="plasteel",amount=-1}}; tick(); assert(#writes==7)
         costs={{type="plasteel",amount=10}}

@@ -6,6 +6,7 @@
     "BetterInventory_localization_zh_cn.lua": "Existing Simplified Chinese shard is 561 bytes over the staged ceiling after the v3.4.2 translated rarity-rating controls; split in the next localization-shard maintenance pass."
   },
   "hook_modules": {
+    "BetterInventory_feature_sort_options.lua": "sort-choice-visibility-hook",
     "BetterInventory_account_mutation_guard.lua": "account-mutation-service-hooks",
     "BetterInventory_character_overview_ui.lua": "character-overview-hooks",
 	"BetterInventory_custom_tier.lua": "item-rarity-classification-hooks",

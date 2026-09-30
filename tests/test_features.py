@@ -3263,6 +3263,33 @@ def main() -> None:
     assert globals_.TestArmouryPanel.entries[6].initial_content.label == "Category + Mark"
     assert len(globals_.TestArmouryPanel.entries) == 17
 
+    # Opt-in visibility shares the native-button policy without renumbering rows.
+    mod.settings.customize_sort_options = True
+    sort_ids = ("level_desc", "level_asc", "rarity_desc", "rarity_asc", "price_asc",
+                "price_desc", "name_asc", "name_desc", "category", "category_mark",
+                "base_level_desc", "base_level_asc")
+    for sort_id in sort_ids:
+        mod.settings["sort_option_" + sort_id] = sort_id in ("name_asc", "rarity_desc")
+    features.sync_sort_option_visibility()
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    features.update_armoury_native_sort_panel(armoury_view)
+    visible_sort_rows = [entry for entry in globals_.TestArmouryPanel.entries.values()
+                         if isinstance(entry.option_index, (int, float))]
+    assert [entry.option_index for entry in visible_sort_rows] == [3, 7]
+    assert [entry.initial_content.label for entry in visible_sort_rows] == ["Rarity high to low", "Name A-Z"]
+    assert all(entry.initial_content.label != "item_sorting_mod_header"
+               for entry in prototype_panel.layout.values())
+    assert all(entry.initial_content.label != "item_sorting_mod_header"
+               for entry in globals_.TestArmouryPanel.entries.values())
+    assert len(armoury_view._sort_options) == 12
+    assert len(prototype_view._sort_options) == 10
+    mod.settings.customize_sort_options = False
+    features.sync_sort_option_visibility()
+    features.update_inventory_sort_toggle(mod, layout, prototype_view)
+    features.update_armoury_native_sort_panel(armoury_view)
+    assert len(globals_.TestArmouryPanel.entries) == 17
+    assert prototype_panel.layout[4].initial_content.label == "item_sorting_mod_header"
+
     item_sorting_mod.enabled = False
     features.update_inventory_sort_toggle(mod, layout, prototype_view)
     features.update_armoury_native_sort_panel(armoury_view)

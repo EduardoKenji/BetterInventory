@@ -21,6 +21,9 @@ if type(CurioValues) ~= "table" then
 end
 
 local Features = {}
+Features.sort_option_is_visible = SortOptions.is_visible
+Features.has_visible_sort_options = SortOptions.any_visible
+Features.next_visible_sort_index = SortOptions.next_index
 local armoury_panel
 local scenegraph_rect
 local rebuild_inventory_options_panel
@@ -299,6 +302,9 @@ Features.invalidate_all_view_composition = function()
 		Features.invalidate_view_composition(view)
 	end
 end
+
+Features.sync_sort_option_visibility = SortOptions.sync_views
+Features.install_sort_option_visibility = SortOptions.install
 
 local curio_acquisition_provider
 
@@ -661,6 +667,11 @@ local function panel_checkbox_entry(mod, layout, view, control_id, setting_id, l
 end
 
 SortOptions.configure({
+	inventory_views = registered_inventory_views,
+	armoury_views = registered_armoury_views,
+	invalidate_view = Features.invalidate_view_composition,
+	panel_entry = panel_entry,
+	option_passes = armoury_native_sort_option_passes,
 	count_diagnostic = Features.count_diagnostic,
 	is_armoury_sort_view = is_armoury_sort_view,
 	item_sorting_is_enabled = item_sorting_is_enabled,
@@ -668,13 +679,8 @@ SortOptions.configure({
 	sorting = Features._sorting,
 })
 
-local function item_sorting_custom_option_start(view)
-	return SortOptions.item_sorting_custom_option_start(view)
-end
-
-local function item_sorting_options_signature(view)
-	return SortOptions.item_sorting_options_signature(view)
-end
+local item_sorting_custom_option_start = SortOptions.item_sorting_custom_option_start
+local item_sorting_options_signature = SortOptions.item_sorting_options_signature
 
 armoury_panel = ArmouryPanel.new({
 	ARMOURY_NATIVE_SORT_BLUEPRINTS = ARMOURY_NATIVE_SORT_BLUEPRINTS,
@@ -710,27 +716,7 @@ armoury_panel = ArmouryPanel.new({
 })
 scenegraph_rect = armoury_panel.scenegraph_rect
 
-local function panel_item_sorting_option_entry(view, option, option_index)
-	local geometry = view._better_inventory_options_panel_geometry
-
-	return panel_entry(view, "better_inventory_item_sorting_option_" .. tostring(option_index), 32, armoury_native_sort_option_passes(geometry.content_width), {
-		hotspot = {},
-		label = option.display_name or tostring(option_index),
-		selected = (view._selected_sort_option_index or 1) == option_index,
-	}, function(widget)
-		widget.content.hotspot.pressed_callback = function()
-			local item_grid = view._item_grid
-
-			if item_grid and type(item_grid.trigger_sort_index) == "function" then
-				item_grid:trigger_sort_index(option_index)
-			elseif type(view.cb_on_sort_button_pressed) == "function" then
-				view:cb_on_sort_button_pressed(option)
-			end
-		end
-	end, function(widget)
-		widget.content.selected = (view._selected_sort_option_index or 1) == option_index
-	end, { "hotspot" })
-end
+local panel_item_sorting_option_entry = SortOptions.panel_entry
 
 local function panel_type_entry(mod, layout, view)
 	local geometry = view._better_inventory_options_panel_geometry
@@ -1102,7 +1088,7 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 		entries[#entries + 1] = panel_perfect_sort_entry(mod, layout, view)
 	end
 
-	if item_sorting_is_enabled() then
+	if item_sorting_is_enabled() and SortOptions.any_visible(mod, view._sort_options or {}, item_sorting_custom_option_start(view), #(view._sort_options or {})) then
 		entries[#entries + 1] = panel_header_entry(mod, layout, view, "better_inventory_item_sorting_header", "item_sorting", function()
 			return mod:localize("item_sorting_mod_header")
 		end)
@@ -1112,7 +1098,7 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 			local first_custom_option = item_sorting_custom_option_start(view)
 
 			for option_index = first_custom_option, #sort_options do
-				entries[#entries + 1] = panel_item_sorting_option_entry(view, sort_options[option_index], option_index)
+				entries[#entries + 1] = panel_item_sorting_option_entry(mod, view, sort_options[option_index], option_index)
 			end
 		end
 	end
@@ -1121,14 +1107,14 @@ rebuild_inventory_options_panel = function(mod, layout, view)
 		local sort_options = view._sort_options or {}
 		local last_native_option = item_sorting_custom_option_start(view) - 1
 
-		if last_native_option > 0 then
+		if last_native_option > 0 and SortOptions.any_visible(mod, sort_options, 1, math.min(last_native_option, #sort_options)) then
 			entries[#entries + 1] = panel_header_entry(mod, layout, view, "better_inventory_native_sorting_header", "native_sorting", function()
 				return mod:localize("armoury_native_sorting_header")
 			end)
 
 			if not collapsed.native_sorting then
 				for option_index = 1, math.min(last_native_option, #sort_options) do
-					entries[#entries + 1] = panel_item_sorting_option_entry(view, sort_options[option_index], option_index)
+					entries[#entries + 1] = panel_item_sorting_option_entry(mod, view, sort_options[option_index], option_index)
 				end
 			end
 		end
