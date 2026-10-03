@@ -2,514 +2,143 @@
 
 [![BetterInventory verification](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml/badge.svg)](https://github.com/EduardoKenji/BetterInventory/actions/workflows/verify.yml)
 
-https://www.nexusmods.com/warhammer40kdarktide/mods/1144
+A standalone inventory and item-management mod for Warhammer 40,000: Darktide.
+Responsive weapon and Curio cards, text search, sorting and vendor layouts make
+large inventories easier to use, with optional purchasing and crafting tools.
 
-> Development version: **v3.7.4** (2026-09-30). No account-changing workflow runs automatically from the default configuration; destructive, purchasing, and automatic-favorite features require explicit user action or opt-in.
+[Download on Nexus Mods](https://www.nexusmods.com/warhammer40kdarktide/mods/1144)
+· [User guide](docs/user-guide.md) · [Changelog](CHANGELOG.md)
 
-The [v3.7.2 compatibility and performance audit](docs/v3.7.2-compatibility-performance-audit.md) covers Darktide's September 29 update, long blessing labels, Lua allocation, CPU costs and remaining live-game checks.
+> Development version: **v3.7.4**. The changelog marks this version unreleased;
+> live-game acceptance for the recent automation and audit fixes remains pending.
+> See the [release audit](docs/v3.7.3-release-audit.md) and
+> [Darktide 1.13 compatibility/performance audit](docs/v3.7.2-compatibility-performance-audit.md).
+
+## Features
+
+- Native single-column cards or configurable two-to-five-column grids, with
+  independent Inventory, Character Overview and supported vendor settings.
+- Weapon marks, perks, blessings, maximum-potential stats, power and equipped/
+  favorite indicators; detailed, primary-stat or title-only Curio profiles.
+- Built-in item names and colours, configurable legendary classification,
+  localized rarity/stars, and equipped/new-item highlights.
+- Sorting with equipped/favorite priorities, perfect-roll recognition
+  (`62 > 61 > 60`) and individually selectable sorting choices.
+- Equipment Text Search with quoted phrases, AND queries, typed fields,
+  match-first ranking and dim-or-hide behavior for unmatched cards.
+- Optional Quick Discard, Automatic Discard, Automatic Curio Buyer and
+  Auto Crafter Helper, including Games Lantern build import.
+
+## Installation and first use
+
+Requires Darktide Mod Loader and Darktide Mod Framework.
+
+1. Extract the release archive into `Content/mods/`.
+2. Confirm the descriptor is at `Content/mods/BetterInventory/BetterInventory.mod`.
+   There should be exactly one outer `BetterInventory` folder.
+3. Add `BetterInventory` on its own line in `Content/mods/mod_load_order.txt`.
+4. Restart Darktide and configure **Options > Mod Options > Better Inventory**.
+   Reopen affected views after changing structural layout settings.
 
 To shorten the sorting list, open **Inventory Sorting > Visible sorting choices**
-in the mod settings. All choices are on by default. Leave only
-the choices you want checked, such as **Name: A-Z** and **Rarity: highest to lowest**.
-Reopen the item view to update the active sort. Each checkbox directly controls
-its sorting choice; there is no separate customization switch.
-It covers the equipment sort button and BetterInventory's sorting panels, including
-ItemSorting's category, category/mark and base-rating choices when installed.
-If every available choice is unchecked, Name A-Z remains available (or the first
-choice when Name A-Z is absent). Unknown third-party choices remain visible.
-
-BetterInventory is a standalone inventory and item-management mod for Warhammer 40,000: Darktide. It adds responsive weapon and Curio cards, richer item information, configurable sorting, supported vendor layouts, optional mod integrations, and safety-gated inventory workflows.
-
-## Highlights
-
-- Responsive melee, ranged, and Curio layouts with native single-column cards or independently configurable two-to-five-column grids.
-- Detailed weapon cards with marks, perks, blessings, maximum-potential attributes, item power, favorite/equipped state, configurable image and text geometry, and optional localized rarity-and-star ratings.
-- Curio cards with detailed, primary-stat, or title-only profiles; optional generated stat/perk names; compact text modes; type-aware colours; item power; localized rarity-and-star ratings; and Character Overview support.
-- Separate layouts for Inventory, Character Overview, Hadron's Entreat view, Armoury Exchange, Sire Melk's Limited Time Acquisitions, and both GlobalStore Multi-Operative Supply routes.
-- Configurable equipped-item and newly-acquired-item highlights using native Darktide materials.
-- Built-in item names and colours, with optional Name It synchronization.
-- A standalone configurable legendary tier for visually identifying exceptional Transcendent weapons and Curios, with no Red Weapons At Home dependency.
-- Sorting that preserves equipped and favorite priorities and recognizes fifth attributes of 60, 61, and 62 as perfect rolls, ordered `62 > 61 > 60`.
-- A bounded inventory-options panel for sorting, discard rules, integrations, and view-specific controls.
-- Standalone Equipment Text Search, with its own master switch, Inventory/Armoury/Hadron/Melk spacing sliders, quoted phrases, explicit AND, typed field clauses, match-first ranking, and configurable dim-or-hide behavior.
-- Optional Quick Discard, Automatic Discard, Automatic Curio Buyer, and Auto Crafter workflows with explicit ownership, authoritative revalidation, and fail-closed behavior.
-
-## v3.7.1 Curio Buyer consecration
-
-Automatic Curio Buyer can now consecrate its confirmed purchases to Transcendent, one Curio at a time. **The new option is enabled by default** in settings and the Curio Buyer widget; the Curio Buyer master switch still requires opt-in. Consecration spends crafting materials, pauses when materials are insufficient, and resumes recorded work in the Morningstar or operative selection. Interrupted upgrades are reconciled before any further spend.
-
-This version also fixes the two follow-up v3.7.0 parser/stat-validation findings. See [behavior, recovery limits and validation](docs/v3.7.1-curio-consecration.md). Live-game acceptance is pending.
-
-## v3.7.0 audit remediation (awaiting live acceptance)
-
-The 12 findings and their regression evidence are tracked in [the v3.7.0 audit checklist](docs/v3.7.0-project-audit.md). This development branch is not yet a published release.
-
-- Preserves outstanding account-write fences across reload and isolates cleanup failures.
-- Bounds Games Lantern parsing and stalled reads, rejects stale callbacks, and stages compatible stat fallbacks for explicit review.
-- Shares WKC rendering work and avoids full queue snapshots for stop polling.
-- Enforces coverage across nested runtime modules and adds host-boundary regressions.
-
-## What's new in v3.6.0
-
-- Adds independent Weapon and Curio rarity + stars modes under Additional inventory views > Character Overview. Weapons default to a left-edge vertical initial/star strip; Compact and Full horizontal modes remain available. Curios default to Full beneath the name.
-- Refines weapon title, perk, blessing, WKC and MaxStatMark spacing without enlarging cards. Curio markers remain clear of the equipped checkmark.
-- Defaults to mirrored weapons with colour strips and dump-stat-only display, plus detailed native-overlay Curios without a separate colour strip. Existing saved preferences are preserved.
-- Synchronizes weapon and Curio rarity text with live background recolouring while preserving independent opacity. Rarity names and custom-tier stars remain item-bound; long horizontal labels shrink or use compact initials.
-
-## What's new in v3.5.7
-
-- Imports Games Lantern weapons with unknown marks through a visible native fallback and clearly names the selected family and mark.
-- Replaces only incompatible future-mark stats, perks, or blessings with valid native choices and requires review; malformed external values still fail closed.
-- Waits for a coherent Brunt layout/backend snapshot, revalidates after asynchronous catalogue discovery, and rejects stale offers before crafting.
-- Preserves concrete native-selection failures in diagnostics and exact fallback-mark identity through completion checks.
-
-## What's new in v3.5.6
-
-- Prevents uncached hub-facility progression in direct Realms/Psykanium sessions from falsely blocking Hadron crafting; authoritative cached locks remain enforced.
-- Restores the top Auto Crafter HUD over Brunt's Armoury in the Psykanium by attaching the existing overlay to the vendor superclass Brunt actually draws through.
-- Adds cache-state diagnostics and cached/uncached progression and concrete Brunt-overlay regressions.
-
-## What's new in v3.5.5
-
-- Supports Auto Crafter in Brunt's Armoury when Hub Hotkey Menus opens the vendor from the Psykanium.
-- Authorizes only the exact live Brunt view in `shooting_range`; missions, unrelated or destroyed views, and matchmaking remain fail-closed.
-- Keeps the read-only gear probe, planner, and status overlay active instead of immediately entering `context_exit`.
-- Shows the installed version and `dodaldo50 / Moarcakes` author attribution beneath Better Inventory's Mod Options title on current DMF releases.
-
-## What's new in v3.5.4
-
-- Fixes duplicated operative-class glyphs in filtered Armoury Exchange and Sire Melk Multi-Operative Supply cards supplied by GlobalStore.
-- Centralizes the GlobalStore owner-footer repair and reapplies it after retained in-place Equipment Text Search reorders as well as full presentations.
-- Keeps the fix allocation-conscious: existing cards and search buffers are reused, native views are rejected before any widget traversal, and repeated normalization is idempotent.
-
-## What's new in v3.5.3
-
-- Adds an explicit Ctrl+Shift+R unload path that releases BetterInventory-owned live-view callbacks, search state, customization caches, pending Curio read state, view sessions, and the global Auto Crafter HUD bridge before DMF reloads the mod.
-- Surviving Inventory, Armoury Exchange, and GlobalStore views are adopted once by the new runtime generation instead of retaining callback closures from the previous generation.
-- Keeps the search/sort/render hot paths bounded: settled queries continue to reuse the existing in-place grid buffers, weak view registries, and cached card projections rather than rebuilding cards per frame.
-- Adds a dependent, default-on Weapon Kill Counter option that displays zero kills on supported store cards while preserving WKC as the authoritative source for positive counts.
-- Removes Equipment Text Search and its runtime hooks from both Hadron Sacrifice Weapons tabs; Hadron's Entreat equipment view remains supported.
-- Adds reload lifecycle, repeated cleanup, ownership, callback-retention, customization-cache, and Curio promise-container regression coverage. See the [v3.5.3 audit](docs/v3.5.3-hot-reload-performance-memory-audit.md).
-
-## What's new in v3.5.1
-
-- Adds a default-on Weapon Kill Counter integration option that shows a skull icon and `0` for unused owned inventory weapons without modifying WKC statistics.
-- A dependent, default-on store option extends the same presentation to supported Armoury Exchange, Brunt's Armoury, Sire Melk, and GlobalStore weapon cards; disabling either zero-kill setting restores WKC's native hide-empty behavior while positive counts remain unchanged.
-- Removes the deprecated **Show weapon quality text** option and legacy layout row. Rarity + stars is now the sole weapon-quality label system on BetterInventory cards.
-
-## What's new in v3.5.0
-
-- Adds default-on, localized rarity-and-star ratings to weapon and Curio grid cards, with full-rarity or compact first-character presentation.
-- Adds independent weapon and Curio controls for rating mode, opacity, and optional use of each card's effective background colour, including custom per-item colours.
-- Keeps native Transcendent and BetterInventory's custom Sainted tier distinct as five-star and six-star ratings, and selects the correct weapon or Curio profile in mixed Sire Melk grids.
-- Removes the experimental wider vertical-rail layout; older saved vertical selections migrate safely to the full single-line rating.
-
-## What's new in v3.4.1
-
-- Repeatedly closing and reopening either Melk equipment store now reaches an exact, idempotent cleanup path for search indexes, rank/layout buffers, dim/focus ownership, marker state, and transient caches.
-- Search relevance now preserves the canonical BetterInventory/ItemSorting/native order as its stable tie-break instead of re-running external comparators while typing. This removes GodRolls' expensive weapon-stat name projection from query-time sorting.
-- Settled queries resolve one rank per card and reuse bounded scalar maps and existing widgets; close no longer allocates a throwaway weak rank table or performs a redundant second search release. See the [v3.4.1 audit](docs/v3.4.1-melk-search-memory-godrolls-audit.md).
-
-## What's new in v3.4.0
-
-- Adds responsive BetterInventory grid cards to Sire Melk's Limited Time Acquisitions, mirroring Armoury Exchange: Requisition Weapons & Curios.
-- Adds the corresponding character-aware grid to Sire Melk's GlobalStore Multi-Operative Supply, mirroring Armoury Exchange: Multi-Operative Supply.
-- Adds independent default-on controls under **Additional inventory views > Sire Melk's Requisitorium**. Both routes remain capped at three columns, share existing Armoury card sizing, and fail closed for unknown custom Marks services.
-- Adds a default-on Melk search control under **Equipment Text Search**, with independent top/bottom spacing for Limited Time Acquisitions (`-40 / 40`) and GlobalStore Multi-Operative Supply (`-40 / 45`). Mystery Acquisitions and unknown custom Marks services receive no search decoration or update work.
-
-## What's new in v3.3.1
-
-- Adds separate top and bottom Equipment Text Search spacing controls for Hadron's Entreat Item view.
-- Uses Hadron's actual tab-frame boundary instead of stacking the field below its oversized native grid-title reserve, with Hadron-specific `34 / 50` top/bottom defaults and no changes to Inventory, Armoury, or Sacrifice Item geometry.
-
-## What's new in v3.3.0
-
-- Adds optional Curio names generated from the innate stat alone or from the innate stat plus all three perk categories, with the existing standard/heavy compression and plus-sign preferences applied consistently.
-- Adds a title-only Curio display profile for compact inventories; original Darktide names remain the default, and saved BetterInventory or Name It names take precedence unless explicitly overridden.
-- Generates names from the trait records already resolved for each card instead of globally hooking `Items.display_name`; title-only cards using original names skip trait resolution entirely.
-
-## What's new in v3.2.6
-
-- Stalled Brunt trait discovery no longer blocks native weapon-selection reconciliation: another weapon retires the old generation and refreshes the Auto Crafter plan and queue within the existing bounded half-second poll.
-- Discovery timeouts now identify the frozen request weapon and backend stage, while late callbacks remain inert and resolved unavailable catalogues correctly show failure instead of `probe_complete`.
-- In-flight selection reads remain limited to twice per second; frame-driven backend timeout accounting and idle performance gates are unchanged.
-
-## What's new in v3.2.5
-
-- GlobalStore category changes now retire outgoing asynchronous character-portrait loads before their item-card generation is destroyed, preventing old 100–150-card generations from accumulating during repeated melee, ranged, and Curio tab changes.
-- Inactive Equipment Text Search cache warming now advances monotonically through each authoritative offer layout instead of restarting when the same category is presented again.
-- A 40-generation GlobalStore stress regression verifies that portrait resources, search warming, and card references remain bounded to the current generation.
-
-## What's new in v3.2.4
-
-- Focused Armoury and GlobalStore search fields now own the vendor input legend while accepting text, preventing typed `G` and `V` characters from also triggering Compare or Inspect.
-- The existing Armoury sorting panel is hidden while native weapon or Curio comparison is active and restored when comparison closes, without rebuilding its rows or allocating a replacement panel.
-- Search focus, comparison visibility, controller ownership, hot reload, and repeated show/hide cycles are regression-covered.
-
-## What's new in v3.2.3
-
-- Equipment Text Search now computes match and relevance in one clause traversal and no longer contains the temporary Curio-ranking diagnostic logger.
-- Ordinary uncustomized cards cache a shared negative customization result, avoiding a customization-store lookup on every native card update while still refreshing immediately after customization or relevant setting changes.
-- Repeated search/sort presentation reuses cleanup callbacks, fallback sorting releases obsolete entry references when native sorting returns, and ordinary guarded texture passes perform one material validation instead of two.
-- A full runtime CPU/allocation/ownership audit found no additional unbounded registry, closed-view retention, async owner leak, or backend behavior defect. See the [v3.2.3 audit](docs/v3.2.3-full-project-performance-audit.md).
-
-## What's new in v3.2.2
-
-- Repairs mission-ready profile-spawner reuse and preserves LobbyView's dynamic level-package argument through the search hook.
-- Narrows shared grid compatibility to Better Inventory-owned views and retires stale Character Overview generations across loadout, gear, cosmetic, and mission-ready transitions.
-
-## What's new in v3.2.1
-
-- Equipment Text Search in Brunt's Armoury now has an independent setting that defaults Off. Brunt receives no search field or added spacing unless users opt in and reopen the view.
-- Opted-in Brunt searches reorder the existing native weapon-family button widgets in place. This removes the query-time button flicker and preserves canonical order among equal-ranked results without rebuilding the grid.
-
-## What's new in v3.2.0
-
-- Adds original, standalone search to inventory, Armoury/other supported vendors, Hadron modify, and Hadron sacrifice views without retaining or replacing Darktide's authoritative item layouts.
-- Searches custom/native names, families, marks, blessings, canonical and compressed perk text, types, ratings, state flags, and effective rarity. `Sainted` and native `Transcendent` remain distinct, with `native-rarity:` available for the stored tier.
-- Supports quoted literal phrases, bounded `&` clauses, and field-qualified text, boolean, comparison, and range queries through one compact search field.
-- Defaults to dimming unmatched cards and promoting matches above the existing Better Inventory and native/ItemSorting hierarchy. An option can hide unmatched cards instead; clearing search restores v3.1.0 ordering and presentation.
-- Coalesces rapid typing, caches bounded projections, restores widget alpha ownership, defocuses without clearing on card selection, and releases all per-view search state on closure or hot reload. Optional per-character/view query memory remains Off by default.
-- Curio perk searches distinguish the primary trait from secondary perks. With equipped/favorite priority enabled, matches rank as equipped primary+secondary, equipped primary, equipped secondary, then the same three non-equipped groups; ties and non-matches retain the selected existing comparator.
-- Scrolled cards are clipped below the search row, and the shared Armoury vendor lifecycle flushes search ordering for both Requisition Weapons & Curios and GlobalStore Multi-Operative Supply.
-
-## What's new in v3.1.0
-
-- Auto Crafter now checks Darktide's native Hadron and selected weapon-family mastery unlocks before purchasing, blocking the reported level-1 runaway path without blanket-disabling legitimate under-30 characters.
-- Target searches continue strictly to their configured Ordo-docket or optional maximum-purchase boundary; there is no hidden 40-purchase or incomplete-projection acquisition limit.
-- Pre-target misses are processed in rolling 30-item mastery-fodder batches. The closest finite fallback is reserved when enabled, exact matches after purchase 40 remain reachable, and fallback-off runs never invent or favorite a final weapon.
-- BetterInventory reuses native weapon-card family names already decorated by GodRolls, preserving its stars and colours while avoiding a redundant second full-stat projection on compatible cards.
-- The accompanying [LadyElina777 incident audit](docs/v3.1.0-ladyelina777-auto-crafter-audit.md) traces the inventory crash to preventable inventory growth and duplicate third-party stat work amplifying Darktide's fixed Lua-heap pressure; no duplicate layout expansion, infinite rebuild, or BetterInventory retention leak was reproduced.
-
-## What changed in v3.0.0
-
-- Adds explicit background-colour ownership for simultaneous use with God Stat Checker 1.1.2. The same synchronized selector appears under **Custom legendary tier** and a new **Mod integration: God Stat Checker 1.1.2** section.
-- **Custom legendary tier** owns weapon and Curio backgrounds by default across both item cards and the right detail panel. God Stat Checker remains free to grade item-name text, and its preferred card style is saved rather than discarded.
-- Selecting **God Stat Checker** restores its saved card style and makes Custom Tier defer its background hook while preserving the Sainted rarity name. If God Stat Checker is absent, display-disabled, or mod-disabled, Custom Tier safely takes ownership until it returns.
-- Ownership changes use the mods' existing setting/repaint lifecycle. They add no recurring widget scan, per-frame callback, retained item registry, or account operation. See the [God Stat Checker compatibility contract](docs/god-stat-checker-compatibility.md).
-
-## What changed in v2.9.9
-
-- Valid native and DMF `frame_tile_1px` materials are no longer mislabeled, rewritten, or announced as unsafe on generated fields such as `value_id_36`, `value_id_48`, and `value_id_60`.
-- Compatibility replacement of `line_thin_dashed_animated` is limited to Better Inventory's own equipped/new-item highlight styles. Expected stale-widget migration is silent; unrelated valid material strings remain authoritative.
-- Genuine numeric, table, empty, or missing dynamic material values remain contained at the v2.9.1/v2.9.7 blueprint and widget boundaries and still emit at most one diagnostic per widget field, explicitly identifying the reported value type and fallback material.
-- The narrower guard adds no global renderer interception, recurring widget scan, retained registry, backend work, or resource-package load. See the [v2.9.9 warning audit](docs/v2.9.9-material-warning-audit.md).
-
-## What changed in v2.9.8
-
-- FirstFleet's full crash locals reveal that the headline's `128` is a renderer flag; the actual missing material is Better Inventory's equipped-card `line_thin_dashed_animated` frame.
-- Equipped and newly acquired item highlights now use `frame_tile_2px`, which Darktide's native inventory cards already load in the same view, instead of relying on a crafting-view package that can be absent in Psykanium and mission preparation.
-- Existing highlight mode values, bounded layers, colours, and pulsing behavior remain compatible. Labels now describe Layered border and Pulsing layered border in English and Simplified Chinese.
-- v2.9.8 static blueprints and stale hot-reload widgets rewrote the retired dashed and then-uncertain one-pixel frame references without a global renderer hook or permanently loaded crafting package; v2.9.9 narrows that compatibility map. See the [v2.9.8 root-cause record](docs/v2.9.8-material-128-root-cause.md).
-
-## What changed in v2.9.7
-
-- The `material '128'` containment now covers equipped Character Overview/loadout slots refreshed after a weapon switch, not only Better Inventory cards and the primary weapon-list grid.
-- Secondary grids owned by the native weapon inventory receive the same one-time guard, closing optional-integration and alternate-grid paths without intercepting unrelated views.
-- Valid native and custom material references remain untouched. The protection adds no global renderer hook, frame scan, retained widget registry, backend request, or account mutation.
-- Regression tests reproduce a numeric icon-atlas index on primary, secondary, and equipped-slot widgets and verify repair at the final texture-pass boundary.
-
-## What changed in v2.9.6
-
-- On first detection, Better Inventory imports Red Weapons At Home's saved RGB colour and four per-Curio Power requirements into matching settings that are still untouched.
-- Existing Better Inventory customizations are preserved field-by-field; a one-time marker prevents later launches or Red Weapons At Home changes from overwriting them.
-- Better Inventory then owns the standalone tier without stacking both classifiers. Disabled-feature restoration, load-order idempotence, and allocation-free per-card lookup remain regression-covered.
-
-## What changed in v2.9.5
-
-- The complete 79-source runtime has been re-audited for older/newer DMF compatibility, crash boundaries, asynchronous ownership, account-operation races, retained memory, hot-path allocation, teardown, and regression risk.
-- Release verification now checks the installed current and retained legacy copies of both DMF and Alf's DMF Extensions. It distinguishes shared baseline contracts from current-only native colour and retained-template facilities.
-- Opt-in performance diagnostics now count Automatic Curio Buyer read promises through its real production interface, and customization persistence tolerates receiver-free or method-style DMF save implementations.
-- The detailed [v2.9.5 audit record](docs/v2.9.5-full-project-dmf-runtime-audit.md) documents fixed findings, reviewed areas with no actionable defect, automated evidence, and remaining live-soak limits.
-
-## What changed in v2.9.4
-
-- Older DMF releases no longer reject BetterInventory's complete Mod Options schema when they encounter the newer native `color` widget type.
-- Current DMF retains the live custom-tier colour picker. Legacy DMF omits only that optional preview while preserving the colour preset, RGB sliders, custom-tier rules, and stored colour.
-- Modern and legacy option-schema paths are covered by regression tests; the framework capability check runs once during options construction and adds no frame-time work.
-
-## What changed in v2.9.3
-
-- Automatic Curio Buyer now defaults Stamina's minimum primary roll to +3, so enabling Stamina no longer accepts +1 or +2 Curios unless the threshold is deliberately lowered.
-- A default-on target of three owned Curios per operative and primary-stat type turns repeat buying into a bounded upgrade path. Once three qualifying Curios are owned, only a candidate whose Power is strictly higher than the lowest of the current best three is eligible; `0` disables this gate.
-- The ownership check reuses Darktide's authoritative all-profile gear snapshot, retains only three Power numbers per operative/stat for the current pass, and updates that bounded set only after a confirmed purchase.
-- The complete v2.9.0-v2.9.3 performance pass removes repeated per-card framework checks and temporary modifier arrays from custom-tier classification, snapshots Curio eligibility settings once per scan, and reuses unchanged Mod Options dependency-reason storage. No unbounded collection, retained closed view, or new idle-frame work was found.
-- Every English localization entry has a non-empty Simplified Chinese value; the only intentionally identical values are language-neutral keybind labels. New custom-tier Stamina wording now consistently uses `体力` across the Chinese UI.
-
-### v2.9.2 changes included
-
-- **Custom legendary tier** defaults to the Red Weapons At Home reference behavior: RGB `210/30/40`, Power-500 Transcendent weapons, and Transcendent Curios with maximum primary rolls. Its live colour preview can also edit the RGB value directly and stays synchronized with presets and sliders.
-- Melee and ranged weapons have independent minimum Power, base-stat total, every-modifier floor, required-high-stat count, and high-stat threshold controls. Health, Toughness, Stamina, and Wound Curios each have independent roll and Power filters.
-- When Red Weapons At Home is first detected, the current migration imports its saved colour and Curio Power requirements into untouched Better Inventory fields before Better Inventory takes ownership without stacking both rule sets.
-
-### v2.9.1 changes included
-
-- Reused Inventory and Character Overview cards now repair numeric or malformed dynamic material references before Darktide renders them, covering the reported `material '128'` weapon-switch crash signature.
-- The guard is limited to BetterInventory-transformed cards and native cards in `InventoryWeaponsView`; it does not hook the global renderer or scan widgets every frame.
-- Malformed blessing and Auto Crafter trait texture metadata is rejected at ingestion while valid native render-target atlas data and third-party material paths remain untouched.
-
-### v2.9.0 changes included
-
-- Better Inventory's name in Mod Options now uses an always-on bright green `#AEEF69` to aqua-blue `#62EFD8` gradient for every user, implemented with DMF's native rich-text colors and no dependency on Alf's DMF Extensions.
-
-### v2.8.6 changes included
-
-- Automatic Curio Buyer's Operative Selection scan, once-per-store-rotation throttle, and idle store-refresh rescan now default to On. The master Automatic Curio Buyer toggle remains Off, so this does not enable purchasing by default.
-- Simplified Chinese now translates the 46 generated weapon and Curio image-layout controls that previously appeared in English; automated coverage permits only language-neutral keybind labels to remain identical to English.
-
-### v2.8.5 changes included
-
-- Auto Crafter now preserves a valid user-selected dump stat when the weapon Mark changes instead of silently resetting it to Damage.
-- Mark selection now appears before Dump stat, and a Mark only changes the saved stat when that stat is unavailable for the selected Mark.
-
-### v2.8.4 changes included
-
-- Character Overview now offers three long blessing-name modes for mirrored weapons: two-line wrapping, font-size reduction to one line, or the default one-line cropping with `...`.
-- The setting updates an already-open Character Overview and does not change blessing-name behavior in inventory, Hadron, Armoury, or GlobalStore cards.
-
-### v2.8.3 changes included
-
-- Weapon equip and favorite callbacks now defer priority re-sorting until Darktide completes the current inventory update, avoiding mutation of the item-grid widget array during native traversal.
-- Repeated same-frame sort requests coalesce into one refresh, and a broken third-party sort hook is contained to the current view.
-- Loadout persistence now rejects stale cross-character views and late callbacks after an InstantCharacterChange-style swap.
-- Automatic Discard and Automatic Curio Buyer remain Morningstar-only; Auto Crafter remains restricted to its validated Brunt context and cannot be triggered by mission-lobby or Psykanium weapon switching.
-
-### v2.8.2 changes included
-
-- Simplified Chinese localization now incorporates all 907 entries from lershu's community translation, replacing 212 distinct stale or English values across the mod.
-- All 34 newer localization entries absent from the supplied reference remain present and translated, including Curio perk-category colours and compact Auto Crafter estimates.
-
-### v2.8.1 changes included
-
-- Auto Crafter's Estimates section now uses five compact one-line rows with currency icons: current resources, generous cost, unlucky cost, and the remaining resources after each estimate. Negative projected balances are red.
-- Total estimates now include base-weapon acquisition and live recipe-derived perk/blessing replacement costs in addition to mastery, consecration, and expertise costs. Target search uses visible 100,000/300,000-docket planning boundaries, constrained by the configured acquisition cap.
-- Stable Auto Crafter panels now keep Ctrl+V responsive while amortizing native selection, layout pivot, runtime-context, and character checks. Psych Ward also recognizes a remaining queue weapon that was selected despite a false-negative preview result, preventing redundant post-removal retries.
-- Staging a Games Lantern queue now retires any older native trait-discovery request, so an idle imported queue cannot acquire a false `trait_discovery_failed` state after 45 seconds.
-- Repeated Games Lantern imports remain intentionally deferred. The bounded six-card proposal and required duplicate-input/lifecycle coverage are recorded in [the deferred queue design](docs/deferred-games-lantern-multi-import-queue.md).
-
-### v2.8.0 changes included
-
-- Auto Crafter now renders its status overlay in Psych Ward's live Brunt view, making queued, purchasing, mastery, crafting, completion, and failure states visible before entering the Morningstar.
-- Leaving Psych Ward during a backend mutation stops future work, waits for the late response to become inert, then releases Games Lantern queue ownership instead of remaining indefinitely busy after the character transition.
-- Craft and Stop / Interrupt now share one workflow-state predicate. Manual, imported, in-flight, quarantined, and reconciliation states are mutually exclusive in the controls and force a panel refresh when activity changes.
-- Repeated native mastery requests blocked during that settlement now produce one notification per unresolved operation instead of flooding the notification stack.
-- Auto Crafter's MyFavorites assignment now refreshes MyFavorites' cloned runtime cache, applying the chosen icon color immediately and preserving it across restarts.
-- Pasted Games Lantern builds now expose a red X on each staged card, allowing either melee or ranged equipment to be removed before confirmation so only the remaining weapon is crafted.
-
-### v2.7.0 changes included
-
-- Secondary Curio perks now use category colours by default, grouping Health, Toughness, Wounds, stamina/efficiency, enemy damage resistance, corruption resistance, ability regeneration, mission rewards, and revive speed.
-- Health and Toughness secondary perks share their corresponding primary-stat colours; stamina regeneration, sprint efficiency, and block efficiency share Max Stamina's colour. Corruption resistance shares the Wound purple, enemy damage resistance uses pink, mission rewards use a soft peach, and Revive Speed uses a neutral tone distinct from Toughness.
-- Every category has independent preset and RGB controls. The previous single-colour mode remains available, and its colour safely handles unknown future Curio perks.
-
-### v2.6.3 changes included
-
-- Detects an equipped compound shield before Darktide initializes the weapon-inventory base view, preventing dense geometry from reaching the engine's failing preview path.
-- Rechecks the fetched inventory for unequipped Slab Shields and current Arbites shield families, then uses the known-safe three-column layout for the complete affected view.
-- Keeps configured four- and five-column layouts for ordinary weapon inventories while preserving Darktide's native weapon images in both Character Overview and inventory; the failed static-texture substitution has been removed.
-
-### v2.6.2 changes included
-
-- Weapon inventories containing a compound shield automatically used a conservative three-column compatibility layout while the four/five-column crash path was investigated.
-- The compatibility guard covered all four current Ogryn and Arbites marks across the Slab Shield, power-maul shield, and shotpistol shield families.
-- Per-card modifier projection contains and caches malformed expertise/template failures, preventing repeated draw-time retries from blocking the inventory grid.
-
-### v2.6.1 changes included
-
-- Ogryn Slab Shields no longer crash, stall, or empty the melee inventory grid. Card modifiers now read their five identities directly from bounded item and weapon-template data instead of running Darktide's full action-heavy weapon-stat calculator for every visible card.
-- The compatibility audit covers all 142 shipped weapon templates and 37 modifier display identities, with no missing or duplicate identities. Slab Shield and sparse, malformed, or failed future-template records now have critical fail-soft regression coverage.
-
-### v2.6.0 changes included
-
-- Auto Crafter now admits Psych Ward's character-selection Brunt view while that exact live vendor view remains valid; unrelated main-menu views, destroyed views, and matchmaking still fail closed.
-- Reaching an enabled acquisition cap now promotes and crafts the closest valid candidate when fallback is enabled. Games Lantern preserves its frozen stat-distance proof and revalidates it after final crafting and between queued jobs.
-- Ordo-docket and maximum-purchase caps now govern target acquisition only. After a target is frozen, below-20 mastery may continue buying fodder until the real wallet or inventory limit, fixing runs that stopped midway after the HUD vanished.
-- **Base weapon acquisition** is now a three-state selector: Disabled, buy the first authoritative Brunt weapon and proceed, or search for the target-stat weapon (default). Existing On/Off saves migrate to target search/disabled.
-- The dump-target row's comparison selector can require an exact target (original behavior) or accept the first projected level-500 value lower than or equal to it. Custom five-stat plans remain exact.
-
-### v2.5.1 changes included
-
-- WKC kill counters on Brunt's native two-column weapon cards now use a compact 14 px font and 16 px icon in a lower row aligned with the weapon-name inset.
-- BetterInventory reapplies that Brunt-specific geometry after WKC style refreshes, preventing the counter from drifting back while leaving other listing and weapon-detail profiles unchanged.
-
-### v2.5.0 changes included
-
-- Conditional inventory-widget rows retain the current scroll offset instead of jumping to the top after option clicks.
-- Quick Discard adds default-off minimum Health (21%) and Toughness (17%) roll rules. When enabled, each roll threshold overrides item level for its matching Curio primary type; Wound and Stamina Curios continue to use the enabled minimum-item-level rule.
-- Automatic Curio Buyer can favorite its own confirmed purchases through a separate default-off checkbox shown in the inventory widget.
-- The Armoury option covers manual purchases from the rotating Armoury Exchange. Sire Melk has independent options for Limited Time Acquisitions and Mystery Acquisitions. All three options default Off; Brunt's Armoury, Auto Crafter, and Automatic Curio Buyer purchases remain excluded.
-- With GlobalStore installed, Armoury and Sire Melk Multi-Operative Supply purchases inherit the corresponding Armoury or Limited Time Acquisitions favorite option. Favorites are saved to the character that owns the selected GlobalStore offer, even when another character is viewing it. GlobalStore adds no extra favorite setting. Auto Crafter remains independent, so rejected rolls stay unfavorited and discardable.
-- When MyFavorites is available and **Automatically favorite crafted weapon** is enabled, the crafting widget shows a Color 1-5 selector directly beneath it and previews each configured color.
-- The crafting widget's **Active Queue** section supports click-to-collapse like its other sections.
-- WKC listing counters are stripped from weapon-information stat rows, preventing repeated icon/count pairs while retaining the intended weapon-detail counter.
-
-### Weapon Kill Counter integration
-
-When the `wkc` mod is installed and its card display is enabled, BetterInventory places the kill total on:
-
-- three-column Inventory and Hadron cards;
-- native single-column Inventory and Hadron cards;
-- Character Overview weapon cards; and
-- Brunt's native two-column weapon cards, using the compact lower-left v2.5.1 profile.
-
-Compact cards reserve a dedicated row between the weapon name and perk lines. Brunt cards align their counter with the weapon-name inset near the bottom edge. Single-column and Character Overview cards retain Weapon Kill Counter's native-style icon, font, colour, and number abbreviation where available.
-
-The **Debug (testing only)** option **Weapon Kill Counter test kills** can substitute a 1,000-kill presentation fixture. It defaults to **Off** and never modifies Weapon Kill Counter's stored statistics.
-
-### v2.4.0 changes included
-
-- The native Marks/Cosmetics/Inspect weapon-action panel grows through seven complete rows. At eight or more rows, it keeps the seven-row frame and uses a clipped scrollable viewport with consistent top and bottom padding.
-- Auto Crafter was split into fail-closed policies, workflows, controller, Darktide adapters, Games Lantern adapters, and UI modules with explicit lifecycle and mutation-ownership contracts.
-- Auto Crafter verifies an explicitly selected final mark from fresh authoritative gear after crafting. Regression coverage includes sibling-mark stat identities, sub-20 mastery, stalled reads, late callbacks, mutation-safe failures, and terminal HUD cleanup.
-- Perfect-roll sorting now recognizes 61- and 62-point fifth attributes and ranks them above 60-point rolls without overriding equipped or favorite priority.
-
-See the complete [changelog](CHANGELOG.md) for earlier releases.
+and uncheck unwanted choices. Every choice is on by default; no separate master
+switch is needed. Reopen the view to update its active sort. If all available
+choices are unchecked, Name A-Z (or the first available choice) remains usable;
+unknown third-party choices remain visible.
 
 ## Supported views
 
-| View | BetterInventory behavior |
+| View | Behavior |
 | --- | --- |
-| Character Inventory | Native single-column or responsive two-to-five-column weapon and Curio layouts |
-| Character Overview | Detailed melee, ranged, and Curio cards with independent controls |
+| Character Inventory | Single-column or responsive two-to-five-column weapon/Curio cards |
+| Character Overview | Detailed melee, ranged and Curio cards with independent controls |
 | Hadron: Entreat | Mirrored Inventory cards, capped at three columns |
-| Requisition Weapons & Curios | Responsive cards, window expansion, price/footer handling, and sorting panel |
-| GlobalStore: Multi-Operative Supply | Optional two- or three-column cards, operative details, and sorting |
-| Brunt's Armoury | Auto Crafter planner, queue, progress HUD, and Games Lantern import; Brunt's native store cards remain owned by Darktide |
+| Requisition Weapons & Curios | Responsive cards, expanded window, prices and sorting |
+| Sire Melk: Limited Time Acquisitions | Configurable responsive weapon/Curio grids and text search |
+| GlobalStore: Armoury and Melk Multi-Operative Supply | Optional responsive cards, operative details and sorting |
+| Brunt's Armoury | Auto Crafter planner, queue and progress HUD; native store-card layout |
 
-Hadron's Sacrifice Weapons grid, Sire Melk, and unrelated custom vendor services retain their native presentation.
+Hadron's Sacrifice Weapons selectors, Melk's Mystery Acquisitions and unrelated
+custom vendor services retain their native card layouts. Weapon inventories with
+compound-shield previews use three columns to avoid the known denser-grid stall.
 
-## Auto Crafter Helper
+## Automation and defaults
 
-Auto Crafter Helper is available from Brunt's Armoury. It can search for a target weapon, level mastery when needed, apply configured perks and blessings, and switch to an explicitly selected mark near the end of the workflow.
+Card display, sorting and search do not spend currency or discard items.
 
-**Base weapon acquisition** defaults to **Automatically buy until target stats weapon is found**. Choose **Automatically buy first weapon and proceed** when the roll does not matter, or **Disabled** to block the automated acquisition workflow. The dump-target row independently toggles between **exactly matches** and **is lower or equal to**; the latter accepts the first authoritative projected level-500 dump stat at or below the selected value. It does not relax custom five-stat profiles.
+- **Quick Discard and Automatic Discard default to Off.** Discard management
+  initially uses Manual mode with confirmation. Favorites, equipped items,
+  saved loadouts and configured protection rules are checked before discarding.
+- **Automatic Curio Buyer defaults to Off.** When enabled, its **Consecrate
+  bought Curios to Transcendent** option defaults to **On** and spends crafting
+  materials. It upgrades confirmed purchases one at a time, pauses for missing
+  materials and resumes recorded work in supported hub/operative-selection
+  contexts. See [consecration and interruption handling](docs/v3.7.1-curio-consecration.md).
+- Vendor automatic-favorite options default to Off. GlobalStore follows the
+  corresponding vendor's option; Auto Crafter has its own favorite setting.
+- **Auto Crafter starts only after you start a validated plan.** At Brunt's
+  Armoury it can acquire a target weapon, level mastery, set perks/blessings and
+  select a final mark. Exact five-stat targets must total 380, with each stat
+  between 60 and 80. See [acquisition modes, caps and fallback rules](docs/user-guide.md#auto-crafter-custom-stats).
 
-Important contracts include:
-
-- exact five-stat targets must total 380 and each value must remain within 60-80;
-- optional closest-candidate fallback minimizes total absolute distance across all five attributes, then becomes the frozen target when an acquisition boundary is reached;
-- acquisition caps stop only target searching; mastery fodder remains bounded by the authoritative wallet and inventory capacity;
-- selected marks are frozen by exact identity and verified again from authoritative gear before success;
-- account mutations remain serialized with BetterInventory and known native/third-party mutation paths;
-- ambiguous mutations are not retried automatically;
-- character changes, stale generations, missing data, and failed postconditions stop or quarantine the workflow;
-- terminal completion or failure wakes and clears the top HUD through bounded state transitions.
-
-Games Lantern build links can stage melee and ranged jobs with their exact stats, perks, blessings, and marks. Queue editing locks before crafting begins, and malformed or ambiguous imports fail without sending an account mutation.
-
-See [Auto Crafter architecture](docs/auto-crafter-architecture.md) for module ownership and lifecycle contracts.
-
-## Safety defaults
-
-Normal card, sorting, and integration features do not write inventory or wallet data.
-
-- Quick Discard and Automatic Discard are disabled by default. Enabling discard management initially selects Manual mode and retains confirmation.
-- Automatic Curio Buyer remains disabled by default. If enabled, Operative Selection scanning, the once-per-store-rotation throttle, and idle store-refresh rescanning now default to On.
-- Automatic favorite options for Curio Buyer, Armoury Exchange, Sire Melk Limited Time Acquisitions, and Sire Melk Mystery Acquisitions are disabled by default. GlobalStore's matching Multi-Operative Supply routes inherit the relevant vendor option. Auto Crafter color assignment follows its existing **Automatically favorite crafted weapon** checkbox and defaults to MyFavorites Color 1.
-- Auto Crafter performs no mutation until the user starts a validated plan.
-- Favorites, equipped items, active and saved loadouts, protected perfect rolls, and configured Curio rules are checked before discard operations.
-- Automatic purchase and discard paths re-fetch and revalidate authoritative state immediately before writes.
-- One shared account-operation guard prevents BetterInventory workflows from overlapping each other.
-- Debug weapon-action buttons and the Weapon Kill Counter test value are inert presentation fixtures and default to Off.
-
-Account-changing mods always carry risk. Review the planned operation and keep destructive or purchasing automation disabled unless you intend to use it.
+Workflows share an account-operation guard and revalidate authoritative state
+before writes. Ambiguous mutations stop or remain blocked for reconciliation.
+Check the configured purchase and crafting options before starting automation.
 
 ## Optional integrations
 
-BetterInventory has no optional mod dependency. Integrations activate only when the corresponding mod is present and enabled.
+These integrations activate when their corresponding mod is present and enabled.
 
-| Integration | Behavior |
+| Mod | Integration |
 | --- | --- |
-| Weapon Kill Counter (`wkc`) | Responsive kill totals on supported weapon cards without taking ownership of WKC statistics |
-| Quick Look Card | Reuses or suppresses overlapping modifier passes while BetterInventory provides its own modifier display |
-| Enhanced Descriptions | Sanitizes rich-text markup before compact perk and Curio measurement |
-| GlobalStore | Adds responsive Multi-Operative Supply cards and sorting |
-| Hub Hotkey Menus | Keeps Auto Crafter's probe, planner, and explicitly started workflows valid in a live Psykanium Brunt view |
-| ItemSorting | Exposes its custom comparators beside the complete native sorting set |
-| MyFavorites | Preserves colour groups and cycling, synchronizes the compact favorite marker, and optionally assigns Auto Crafter results to a selected color group |
-| Lantern of the Omnissiah | Hosts melee/ranged recommendations in the scrollable options panel and avoids icon overlap |
-| Name It | Imports and synchronizes names with BetterInventory's item customization storage |
-| Quick Level Mastery | Shares the mutation guard and preserves Acquire/Sacrifice layout compatibility |
-| Visible Equipment | Preserves Cosmetics placement widgets alongside detailed Loadout cards |
-| Inspect from Social / Party Finder | Supports detailed cards while inspecting other players |
-| Equipped Icon Plus | Separates inactive-loadout equipped badges from the favorite marker |
-| Red Weapons at Home | Imports its saved RGB colour and four Curio Power requirements once into untouched Better Inventory settings, then uses Better Inventory's standalone classifier |
-| Alf's DMF Extensions | Supports its generalized Mod Options layout |
+| Weapon Kill Counter (`wkc`) | Kill totals on supported cards; WKC retains statistics ownership |
+| Quick Look Card / Enhanced Descriptions | Avoid overlapping modifier passes; fit compact rich text |
+| GlobalStore | Armoury and Melk Multi-Operative Supply cards and sorting |
+| ItemSorting | Custom comparators alongside native sorting choices |
+| MyFavorites | Colour groups, favorite markers and optional crafted-item colour assignment |
+| Name It | Item-name import and synchronization |
+| God Stat Checker / Red Weapons at Home | Background-owner choice / one-time custom-tier settings import |
+| Lantern of the Omnissiah | Recommendations in the options panel |
+| Quick Level Mastery | Shared mutation guard and Acquire/Sacrifice layout compatibility |
+| Hub Hotkey Menus | Auto Crafter in its live Psykanium Brunt view |
+| Visible Equipment | Cosmetics placement widgets alongside Loadout cards |
+| Inspect from Social / Party Finder | Detailed cards when inspecting players |
+| Equipped Icon Plus | Inactive-loadout badges separate from favorites |
+| Alf's DMF Extensions | Generalized Mod Options layout |
 
-Do not run BetterInventory together with Inventory2D or the Inventory2D Bound by Duty compatibility patch; they modify overlapping inventory presentation paths.
+Do not run alongside Inventory2D or its Bound by Duty compatibility patch;
+they modify overlapping inventory presentation paths.
 
-## Installation
+## Development
 
-BetterInventory requires a working Darktide Mod Loader and Darktide Mod Framework installation.
-
-1. Extract the release archive into Darktide's `Content/mods` directory.
-2. Confirm that the descriptor is at `Content/mods/BetterInventory/BetterInventory.mod`.
-3. Add `BetterInventory` on its own line in `Content/mods/mod_load_order.txt`.
-4. Start or restart Darktide.
-
-The release archive intentionally contains exactly one outer `BetterInventory` directory:
-
-```text
-Content/
-`-- mods/
-    `-- BetterInventory/
-        |-- BetterInventory.mod
-        |-- info.json
-        `-- scripts/mods/BetterInventory/
-```
-
-Configure the mod through **Options > Mod Options > BetterInventory**. Reopen an affected inventory or vendor view after changing structural layout options.
-
-## Development and verification
-
-The runtime is split into 90 Lua sources plus the DMF descriptor and package metadata. Generated manifests track the runtime bundle, settings schema, localization keys, module ownership, and named risk cases.
-
-Run the complete repository verification from the project root:
+From the repository root, with Python, `lupa` and `luaparser` installed:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\tests\verify.ps1
 ```
 
-The v3.2.3 suite currently discovers 52 behavior-test files and 178 named cases. To run the behavior suite directly with risk-weighted Lua coverage:
+For behavior results with risk-weighted Lua coverage:
 
 ```powershell
 py -3 .\tests\run_tests.py --timeout-seconds 45 --coverage-output lua-coverage.json
 ```
 
-Create a verified release archive only with the repository packager:
+Build release archives through the verified packager:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\tools\package_release.ps1 -OutputPath .\BetterInventory.zip
 ```
 
-For this checkout, synchronize and hash-verify the canonical live installation with:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\tools\sync_deployed_mod.ps1
-```
-
-See [release packaging](docs/release-packaging.md) before publishing an archive. The generated ZIP is intentionally ignored by Git.
-
-## Documentation
-
-- [User guide](docs/user-guide.md) - configuration, safety defaults, custom stats, and live validation guidance.
-- [Architecture and ownership](docs/architecture.md) - runtime boundaries, generated contracts, and refactoring rules.
-- [Auto Crafter architecture](docs/auto-crafter-architecture.md) - core policies, workflows, adapters, UI ownership, and extraction boundary.
-- [Release packaging](docs/release-packaging.md) - archive invariants and the mandatory packaging procedure.
-- [Changelog](CHANGELOG.md) - release-by-release changes.
-- [v2.9.5 full-project DMF/runtime audit](docs/v2.9.5-full-project-dmf-runtime-audit.md) - dual-generation framework contracts, fixed findings, concurrency, memory, CPU, and residual live checks.
-- [v2.9.0 DMF/Alf compatibility and runtime audit](docs/v2.9.0-dmf-alf-compatibility-audit.md) - updated framework contracts, lifecycle fixes, concurrency, memory, and CPU findings.
-- [v2.9.1 material crash audit](docs/v2.9.1-material-crash-audit.md) - renderer evidence, weapon-switch vectors, scoped remediation, and remaining attribution limits.
-- [v2.9.2 custom-tier design](docs/v2.9.2-custom-tier.md) - classification criteria, exact reference defaults, compatibility ownership, and performance boundaries.
-- [v2.3.0 memory and performance audit](docs/v2.3.0-memory-performance-audit.md) - historical audit and verification ledger.
-- [v2.0.0 full-project audit](docs/v2.0.0-full-project-audit.md) - historical architecture research and backlog.
-
-Historical audits describe the project at their dated checkpoints; they are not the current feature-status document.
+Follow [release packaging](docs/release-packaging.md) for archive and installed
+runtime verification. See [architecture and ownership](docs/architecture.md)
+and [Auto Crafter architecture](docs/auto-crafter-architecture.md) before changing
+runtime boundaries. Historical audits describe their dated snapshots; current
+changes belong in the [changelog](CHANGELOG.md).
 
 ## Credits
 
-BetterInventory is a standalone modern implementation inspired by [Inventory2D](https://www.nexusmods.com/warhammer40kdarktide/mods/188), originally created by Redbeardt. Thanks to Redbeardt for the original multi-column inventory concept and for permitting modifications and improvements with attribution.
-
-Thanks to NexusMods user **lershu** for contributing the comprehensive Simplified Chinese translation incorporated in v2.8.2.
-
-BetterInventory's current implementation, architecture, and additional features were developed independently. It does not include files from the [Bound by Duty compatibility patch](https://www.nexusmods.com/warhammer40kdarktide/mods/594) or third-party assets.
+Inspired by [Inventory2D](https://www.nexusmods.com/warhammer40kdarktide/mods/188),
+created by Redbeardt, with permission to modify and improve with attribution.
+BetterInventory's implementation and additional features were developed
+independently; it includes no files from the Bound by Duty compatibility patch
+or third-party assets. Thanks to **lershu** for the Simplified Chinese translation.

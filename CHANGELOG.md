@@ -2,6 +2,7 @@
 
 ## 3.7.4 - Unreleased
 
+- Refresh the README around current features, installation, defaults and compatibility; remove duplicated release history and stale test counts. Correct Melk grid support and add current sorting/consecration guidance to the user guide.
 - Removed the sorting customization master switch; each choice now works directly.
 - All sorting choices remain on by default, with a safe fallback if all are turned off.
 
