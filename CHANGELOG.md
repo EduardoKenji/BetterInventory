@@ -21,7 +21,7 @@ Darktide 1.13.4 compatibility release (audited against Darktide-Source-Code `e46
 - Curio buyer: fix an undefined constant that aborted the whole account scan when any storefront offer was unreadable.
 - Curio buyer: skip building full item instances for non-Curio gear when counting owned Curios (less work and garbage per scan).
 - Settings: code fallbacks now match data.lua defaults (Auto Crafter enable, highlight border widths, new-item highlight mode, overview dump-stat-only, rarity rating modes).
-- Weapon Kill Counter: pass WKC's per-instance flag so its per-instance kill icon is shown.
+- Weapon Kill Counter: pass WKC's per-instance flag so its per-instance kill icon is shown, at WKC's own icon scale.
 - Localization: add the missing Auto Crafter Active Queue string, replace a corrupted zh-CN sorting tooltip, and add zh-CN for the name editor and panel focus global strings.
 - Search: Darktide copies base-class methods into each view class, so search presentation/filter hooks on the item grid base never reached Inventory, Armoury, Hadron or Melk views; install forwarders so tab switches re-capture search and hide mode filters correctly.
 - Code quality: remove about 480 lines of dead code (unused aliases, constants and functions found via the Lua AST), including a load-time pcall(require) in the Curio buyer.

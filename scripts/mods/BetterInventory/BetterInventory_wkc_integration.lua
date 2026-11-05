@@ -171,9 +171,11 @@ local function resolved_icon_material(wkc, configuration, content)
 		per_instance = ok and flag or nil
 	end
 
-	local success, material = pcall(wkc._overlay_icon_material, configuration, per_instance)
+	local success, material, scale = pcall(wkc._overlay_icon_material, configuration, per_instance)
 
-	return success and type(material) == "string" and material ~= "" and material or nil
+	if success and type(material) == "string" and material ~= "" then
+		return material, tonumber(scale) or 1
+	end
 end
 
 local function resolved_kills(mod, content, allow_zero_kills, wkc, configuration)
@@ -611,7 +613,9 @@ local function configure_passes(mod, pass_template, card_width, text_left, confi
 			content.better_inventory_wkc_text_visible = kills ~= nil
 			content.better_inventory_wkc_icon_visible = kills ~= nil and current_configuration.icon_on ~= false
 			content[TEXT_STYLE_ID] = kills and abbreviated_kills(current_wkc, kills) or ""
-			content[ICON_STYLE_ID] = resolved_icon_material(current_wkc, current_configuration, content) or DEFAULT_ICON
+			local material, scale = resolved_icon_material(current_wkc, current_configuration, content)
+			content[ICON_STYLE_ID] = material or DEFAULT_ICON
+			content.better_inventory_wkc_icon_scale = scale or 1
 		end,
 	}
 
@@ -634,6 +638,15 @@ local function configure_passes(mod, pass_template, card_width, text_left, confi
 			},
 			color = icon_color,
 		},
+		-- WKC draws its per-instance icon smaller (scale from _overlay_icon_material).
+		change_function = function(content, style)
+			local size = geometry.icon_size * (content.better_inventory_wkc_icon_scale or 1)
+
+			if style.size[1] ~= size then
+				style.size[1] = size
+				style.size[2] = size
+			end
+		end,
 		visibility_function = function(content)
 			return content.better_inventory_wkc_icon_visible == true
 		end,
