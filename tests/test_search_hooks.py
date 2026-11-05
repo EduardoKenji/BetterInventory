@@ -76,6 +76,12 @@ def main() -> None:
 			destroy = vendor.destroy,
         })
         marks_goods = klass("marks_goods", {update = function() end})
+        -- InventoryWeaponsView copies ItemGridViewBase methods at definition.
+        weapons_view = klass("weapons", {
+            super = item_grid_base,
+            _present_layout_by_slot_filter = item_grid_base._present_layout_by_slot_filter,
+            _filter_by_filter_option = item_grid_base._filter_by_filter_option,
+        })
         grid_element = klass("element", {
             cb_on_grid_entry_left_pressed = function() end,
             update = function() end,
@@ -139,6 +145,7 @@ def main() -> None:
             "SearchUI": lua.globals().search_ui,
             "ItemGridViewBase": lua.globals().item_grid_base,
             "CraftingMechanicusModifyView": lua.globals().crafting,
+            "InventoryWeaponsView": lua.globals().weapons_view,
             "CreditsGoodsVendorView": lua.globals().credits_goods,
             "MarksVendorView": lua.globals().marks_vendor,
             "VendorViewBase": lua.globals().vendor,
@@ -149,6 +156,16 @@ def main() -> None:
         }
     )
     assert module.install(dependencies) is True
+    # Copied subclass methods become forwarders, so a hook later installed on
+    # ItemGridViewBase (simulated by replacing it) reaches the concrete view.
+    lua.execute(
+        r'''
+        item_grid_base._present_layout_by_slot_filter = function() return "hooked-base" end
+        item_grid_base._filter_by_filter_option = function() return "hooked-filter" end
+        '''
+    )
+    assert lua.eval("weapons_view._present_layout_by_slot_filter({})") == "hooked-base"
+    assert lua.eval("weapons_view._filter_by_filter_option({})") == "hooked-filter"
 
     lua.execute(
         r'''

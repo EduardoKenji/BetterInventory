@@ -59,6 +59,26 @@ SearchHooks.install = function(dependencies)
 		return false
 	end
 
+	-- Darktide's class() copies superclass methods into each subclass when it is
+	-- defined, so hooks on ItemGridViewBase alone never reach the concrete views.
+	-- Install dynamic forwarders (VendorViewBase first) so the base hooks apply.
+	local search_views = {
+		VendorViewBase,
+		dependencies.InventoryWeaponsView,
+		CraftingMechanicusModifyView,
+		dependencies.CreditsVendorView,
+		CreditsGoodsVendorView,
+		MarksVendorView,
+	}
+
+	for _, method_name in ipairs({ "_present_layout_by_slot_filter", "_filter_by_filter_option", "_cb_on_present" }) do
+		if method_available(ItemGridViewBase, method_name) then
+			for index = 1, 6 do -- fixed count: entries may be nil, so # is undefined
+				ensure_class_method(search_views[index], method_name)
+			end
+		end
+	end
+
 	if method_available(ItemGridViewBase, "_present_layout_by_slot_filter") then
 		mod:hook(ItemGridViewBase, "_present_layout_by_slot_filter", function(func, view, slot_filter, item_type_filter, optional_display_name)
 			local search_supported = type(SearchUI.supported) ~= "function" or SearchUI.supported(view)

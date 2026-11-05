@@ -718,6 +718,7 @@ SearchHooks.install({
 	ItemGridViewBase = ItemGridViewBase,
 	InventoryWeaponsView = InventoryWeaponsView,
 	CraftingMechanicusModifyView = CraftingMechanicusModifyView,
+	CreditsVendorView = CreditsVendorView,
 	MarksVendorView = MarksVendorView,
 	VendorViewBase = VendorViewBase,
 	ViewElementGrid = ViewElementGrid,
