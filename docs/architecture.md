@@ -1,5 +1,8 @@
 # BetterInventory architecture and ownership
 
+Verified engine/DMF behavior, codebase pitfalls, release workflow and the mod
+compatibility map live in [engineering notes](engineering-notes.md).
+
 ## Runtime boundaries
 
 | Area | Current owner | Contract boundary |
