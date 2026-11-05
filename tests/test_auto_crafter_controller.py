@@ -1378,6 +1378,20 @@ def main() -> None:
 			local selected = controller:_find_inventory_base()
 			assert(selected and selected.gear_id == "gear-0-wrong-mark")
 			assert(selected.resume_analysis.family_identity == "mastery_family")
+
+			-- A favorited Transcendent level-500 weapon is a finished build and is
+			-- never a manual-run base, unless it is this session's unfinished result.
+			local finished = summarized_item("gear-finished", 5, 60)
+			finished.expertise_level = 500
+			finished.favorite_known = true
+			finished.favorited = true
+			controller._snapshot = snapshot_with_items({finished})
+			controller._resume_gear_id = nil
+			assert(controller:_find_inventory_base() == nil)
+			controller._resume_gear_id = "gear-finished"
+			local resumed = controller:_find_inventory_base()
+			assert(resumed and resumed.gear_id == "gear-finished")
+			controller._resume_gear_id = nil
 		end
 
 		-- Planner mark selection only changes exact target identity. Unknown/stale marks

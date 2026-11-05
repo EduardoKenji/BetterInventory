@@ -2016,6 +2016,9 @@ function Controller.new(dependencies)
 		self._operation_timings = {}
 		self._last_progress_elapsed = 0
 		self._failure_at = nil
+		-- This session's unfinished result stays resumable (see _find_inventory_base).
+		local previous_result = self._phase ~= "phase4_complete" and self._search and self._search.result
+		self._resume_gear_id = previous_result and previous_result.gear_id or nil
 		self._search = {
 			acquisition_mode = acquisition_mode,
 			cap_by_dockets = setting("auto_crafter_cap_by_dockets", true) == true,

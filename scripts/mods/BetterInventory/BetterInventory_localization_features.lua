@@ -1135,7 +1135,7 @@ local localization = {
 	auto_crafter_reuse_inventory_base = { en = "Resume matching dump stat weapon from inventory" },
 	auto_crafter_reuse_inventory_base_tooltip = { en = "Before buying, use the best matching weapon already in inventory. Favorited weapons remain protected unless explicitly included." },
 	auto_crafter_include_favorite_inventory_bases = { en = "Include favorited inventory weapons when resuming" },
-	auto_crafter_include_favorite_inventory_bases_tooltip = { en = "Allow an already-favorited matching weapon to become the final crafting base. Favorited Transcendent level-500 weapons count as finished builds and are only reused by Games Lantern queue jobs." },
+	auto_crafter_include_favorite_inventory_bases_tooltip = { en = "Allow an already-favorited matching weapon to become the final crafting base. Favorited Transcendent level-500 weapons count as finished builds; only this session's interrupted run or a Games Lantern queue job resumes them." },
 	auto_crafter_craft_duplicate_completed_queued_weapons = { en = "Craft duplicates of already completed queued weapons" },
 	auto_crafter_craft_duplicate_completed_queued_weapons_tooltip = { en = "When no incomplete weapon can be resumed, craft a new copy instead of skipping a completed family-equivalent queued weapon." },
 	auto_crafter_show_status_hud = { en = "Show top crafting HUD" },
