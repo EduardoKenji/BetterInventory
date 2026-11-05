@@ -1386,7 +1386,7 @@ function AutoCrafter.on_brunt_view_ready(view)
 	active_brunt_view = view
 	presentation_dirty = true
 
-	if not setting("auto_crafter_enable", false) then
+	if not setting("auto_crafter_enable", true) then
 		if panel then
 			panel:detach()
 		end
@@ -1478,7 +1478,7 @@ end
 function AutoCrafter.on_setting_changed(setting_id)
 	presentation_dirty = true
 
-	if not setting("auto_crafter_enable", false) and panel then
+	if not setting("auto_crafter_enable", true) and panel then
 		panel:detach()
 	end
 

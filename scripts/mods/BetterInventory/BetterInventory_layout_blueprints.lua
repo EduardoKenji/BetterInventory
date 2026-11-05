@@ -164,7 +164,7 @@ Blueprints.configure_native_item_blueprint = function(mod, item_blueprint, grid_
 	local show_curio_item_level = setting(mod, "show_curio_item_level", true)
 	local quick_look_card_present = has_quick_look_card_passes(pass_template)
 	local weapon_modifier_stats_enabled = setting(mod, "enable_quick_look_card_single_column_integration", true)
-	local character_overview_dump_stat_only = configuration.character_overview == true and setting(mod, "character_overview_show_only_dump_stat", false)
+	local character_overview_dump_stat_only = configuration.character_overview == true and setting(mod, "character_overview_show_only_dump_stat", true)
 	local managed_native_card = not quick_look_card_present or weapon_modifier_stats_enabled
 
 	if global_store and pass_by_style_id(pass_template, "character_info_text") and not pass_by_style_id(pass_template, "character_class_icon_text") then

@@ -592,8 +592,8 @@ local function refresh_option_dependencies()
 	local weapon_rank_symbols_enabled = weapon_perk_ranks_enabled or weapon_blessing_ranked_text_enabled
 	local weapon_perk_blessing_sections_enabled = weapon_perks_enabled and weapon_blessings_enabled
 	local detailed_curio_profile = mod:get("curio_display_profile") == "detailed"
-	local weapon_rarity_rating_enabled = (mod:get("weapon_rarity_rating_mode") or "off") ~= "off" or (mod:get("character_overview_weapon_rarity_rating_mode") or "off") ~= "off"
-	local curio_rarity_rating_enabled = (mod:get("curio_rarity_rating_mode") or "off") ~= "off" or (mod:get("character_overview_curio_rarity_rating_mode") or "off") ~= "off"
+	local weapon_rarity_rating_enabled = mod:get("weapon_rarity_rating_mode") ~= "off" or mod:get("character_overview_weapon_rarity_rating_mode") ~= "off"
+	local curio_rarity_rating_enabled = mod:get("curio_rarity_rating_mode") ~= "off" or mod:get("character_overview_curio_rarity_rating_mode") ~= "off"
 	local wkc_zero_kills_enabled = mod:get("weapon_kill_counter_show_zero_kills") ~= false
 	local quick_discard_enabled = mod:get("enable_experimental_quick_discard") == true
 	local quick_discard_reason = mod:localize("option_requires_experimental_quick_discard")

@@ -156,6 +156,26 @@ local function weapon_content(content)
 	return success and kills ~= nil
 end
 
+-- WKC chooses its per-instance icon only when told the item is tracked per
+-- instance; without the flag every card shows the shared icon.
+local function resolved_icon_material(wkc, configuration, content)
+	if not wkc or type(wkc._overlay_icon_material) ~= "function" then
+		return nil
+	end
+
+	local per_instance
+	local item = content and item_from_content(content)
+
+	if item and type(wkc._overlay_per_instance_for_item) == "function" then
+		local ok, flag = pcall(wkc._overlay_per_instance_for_item, item)
+		per_instance = ok and flag or nil
+	end
+
+	local success, material = pcall(wkc._overlay_icon_material, configuration, per_instance)
+
+	return success and type(material) == "string" and material ~= "" and material or nil
+end
+
 local function resolved_kills(mod, content, allow_zero_kills, wkc, configuration)
 	wkc = wkc or optional_wkc()
 
@@ -300,7 +320,7 @@ local function profile(mod, card_width, text_left, configuration, columns, wkc, 
 	end
 
 	if not native then
-		local rating_mode = setting(mod, "weapon_rarity_rating_mode", "off")
+		local rating_mode = setting(mod, "weapon_rarity_rating_mode", "full_horizontal")
 
 		if rating_mode == "vertical" then
 			rating_mode = "full_horizontal"
@@ -489,15 +509,7 @@ local function cap_brunt_listing_overlay_sizes(item_grid, mod)
 							elseif style_id == ICON_STYLE_ID then
 								local current_wkc = optional_wkc()
 								local current_configuration = card_configuration(current_wkc) or {}
-								local material = DEFAULT_ICON
-
-								if current_wkc and type(current_wkc._overlay_icon_material) == "function" then
-									local success, resolved_material = pcall(current_wkc._overlay_icon_material, current_configuration)
-
-									if success and type(resolved_material) == "string" and resolved_material ~= "" then
-										material = resolved_material
-									end
-								end
+								local material = resolved_icon_material(current_wkc, current_configuration, content) or DEFAULT_ICON
 
 								content[ICON_STYLE_ID] = material
 							end
@@ -599,14 +611,7 @@ local function configure_passes(mod, pass_template, card_width, text_left, confi
 			content.better_inventory_wkc_text_visible = kills ~= nil
 			content.better_inventory_wkc_icon_visible = kills ~= nil and current_configuration.icon_on ~= false
 			content[TEXT_STYLE_ID] = kills and abbreviated_kills(current_wkc, kills) or ""
-			local material = DEFAULT_ICON
-			if current_wkc and type(current_wkc._overlay_icon_material) == "function" then
-				local success, resolved_material = pcall(current_wkc._overlay_icon_material, current_configuration)
-				if success and type(resolved_material) == "string" and resolved_material ~= "" then
-					material = resolved_material
-				end
-			end
-			content[ICON_STYLE_ID] = material
+			content[ICON_STYLE_ID] = resolved_icon_material(current_wkc, current_configuration, content) or DEFAULT_ICON
 		end,
 	}
 

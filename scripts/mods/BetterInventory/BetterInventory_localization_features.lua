@@ -2,7 +2,7 @@ local localization = {
 	sort_options_visibility_group = { en = "Visible sorting choices", ["zh-cn"] = "显示的排序选项" },
 	sort_options_visibility_tooltip = {
 		en = "All choices are on by default. Turn off choices to hide them from sorting panels and skip them with the equipment sort button. Reopen the item view to update the active sort. If every choice is off, Name A-Z remains available (or the first choice if absent). Unknown third-party choices remain visible. ItemSorting choices require that mod.",
-		["zh-cn"] = "????????????????????????????????????????????????????????????????? A-Z??????????????????????????ItemSorting ??????????",
+		["zh-cn"] = "所有选项默认开启。关闭选项可在排序面板中隐藏它们，并在装备排序按钮中跳过。重新打开物品界面以更新当前排序。若所有选项均关闭，仍保留“名称 A-Z”（若不存在则保留第一个选项）。未知的第三方选项保持可见。ItemSorting 选项需要该模组。",
 	},
 	sort_option_level_desc = { en = "Power: highest to lowest", ["zh-cn"] = "强度：从高到低" },
 	sort_option_level_asc = { en = "Power: lowest to highest", ["zh-cn"] = "强度：从低到高" },
@@ -1050,6 +1050,9 @@ local localization = {
 	},
 	auto_crafter_panel_custom_stat_total = {
 		en = "Total stat sum",
+	},
+	auto_crafter_panel_active_queue = {
+		en = "Active Queue",
 	},
 	auto_crafter_panel_docket_cap = {
 		en = "Ordo dockets cap",

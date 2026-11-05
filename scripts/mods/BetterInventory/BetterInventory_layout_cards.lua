@@ -1000,7 +1000,7 @@ local function configure_equipped_highlight(mod, pass_template, card_width, card
 
 	if mode == "animated_dashes" or mode == "pulsing_dashes" then
 		material = INVENTORY_HIGHLIGHT_FRAME_MATERIAL
-		pass_count = math.floor(numeric_setting(mod, "equipped_highlight_animated_border_width", 3, 1, 5) + 0.5)
+		pass_count = math.floor(numeric_setting(mod, "equipped_highlight_animated_border_width", 2, 1, 5) + 0.5)
 		base_size_addition = 4
 		layer_size_step = 2
 		z_offset = 8
@@ -1099,7 +1099,7 @@ local function clear_new_item_highlight_passes(pass_template)
 end
 
 local function configure_new_item_highlight(mod, pass_template, card_width, card_height)
-	local mode = setting(mod, "new_item_highlight_mode", "animated_dashes")
+	local mode = setting(mod, "new_item_highlight_mode", "pulsing_dashes")
 
 	if mode ~= "native" and mode ~= "soft_glow" and mode ~= "animated_dashes" and mode ~= "pulsing_dashes" and mode ~= "solid_border" then
 		mode = "native"
@@ -1189,7 +1189,7 @@ local function configure_new_item_highlight(mod, pass_template, card_width, card
 
 	if mode == "animated_dashes" or mode == "pulsing_dashes" then
 		material = INVENTORY_HIGHLIGHT_FRAME_MATERIAL
-		pass_count = math.floor(numeric_setting(mod, "new_item_highlight_animated_border_width", 3, 1, 5) + 0.5)
+		pass_count = math.floor(numeric_setting(mod, "new_item_highlight_animated_border_width", 2, 1, 5) + 0.5)
 		base_size_addition = 4
 		layer_size_step = 2
 	elseif mode == "solid_border" then

@@ -650,10 +650,10 @@ Editor.install = function(mod, InventoryWeaponsView, layout)
 
 	if type(mod.add_global_localize_strings) == "function" then
 		mod:add_global_localize_strings({
-			better_inventory_change_name = { en = "Change Name" },
-			better_inventory_name_color = { en = "Name Color" },
-			better_inventory_background_color = { en = "Background Color" },
-			better_inventory_toggle_panel_focus = { en = "Items / Widget Focus" },
+			better_inventory_change_name = { en = "Change Name", ["zh-cn"] = "更改名称" },
+			better_inventory_name_color = { en = "Name Color", ["zh-cn"] = "名称颜色" },
+			better_inventory_background_color = { en = "Background Color", ["zh-cn"] = "背景颜色" },
+			better_inventory_toggle_panel_focus = { en = "Items / Widget Focus", ["zh-cn"] = "物品 / 控件焦点" },
 		})
 	end
 

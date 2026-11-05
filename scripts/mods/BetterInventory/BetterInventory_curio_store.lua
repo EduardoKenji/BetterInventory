@@ -2,6 +2,8 @@
 -- snapshots/tokens/cancellation remain owned by the acquisition orchestrator.
 local CurioStore = {}
 local dependencies = {}
+-- Bounds unreadable-offer log lines per scan (was an undefined global here).
+local MAX_OFFER_ERROR_LOGS_PER_SCAN = 5
 
 local Items = require("scripts/utilities/items")
 local MasterItems = require("scripts/backend/master_items")
@@ -237,7 +239,13 @@ local function owned_curio_policy(mod, gear, profiles, filters)
 		local character_id = type(raw_gear) == "table" and (raw_gear.characterId or raw_gear.character_id)
 		local character_key = character_id and tostring(character_id)
 
-		if character_key and (not enabled_characters or enabled_characters[character_key]) then
+		-- Cheap master lookup first: building a full item instance deep-clones
+		-- the master item, which is wasteful for every non-Curio on the account.
+		local master_id = character_key and type(raw_gear.masterDataInstance) == "table" and raw_gear.masterDataInstance.id
+		local master_ok, master = pcall(MasterItems.get_item, master_id)
+		local not_curio = master_id and master_ok and type(master) == "table" and master.item_type ~= nil and master.item_type ~= "GADGET"
+
+		if character_key and not not_curio and (not enabled_characters or enabled_characters[character_key]) then
 			local resolved, item = pcall(MasterItems.get_item_instance, raw_gear, raw_gear.uuid or raw_gear.gear_id or gear_id)
 
 			if resolved and item and item.item_type == "GADGET" then

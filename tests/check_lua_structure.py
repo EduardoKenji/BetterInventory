@@ -114,7 +114,7 @@ def local_io_dofile_targets(tree: object) -> set[str]:
     return targets
 
 
-def undeclared_bare_assignments(tree: object) -> set[str]:
+def undeclared_bare_assignments(tree: object, return_declared: bool = False) -> set[str]:
     """Return bare assignment targets without any lexical declaration.
 
     Lua writes an undeclared bare name into the shared process environment.
@@ -168,7 +168,40 @@ def undeclared_bare_assignments(tree: object) -> set[str]:
                 if node_type(target) == "Name"
             )
 
+    if return_declared:
+        return declared | assigned
+
     return assigned - declared
+
+
+CONSTANT_NAME = re.compile(r"^[A-Z][A-Z0-9_]{3,}$")
+
+
+def undeclared_constant_reads(tree: object) -> set[str]:
+    """Return ALL_CAPS names read in a file that no declaration provides.
+
+    A constant declared as a local in one module and read from another is nil
+    at runtime; comparisons against it throw only on rare error paths.
+    """
+    declared = undeclared_bare_assignments(tree, return_declared=True)
+    member_names: set[int] = set()
+
+    for node in ast.walk(tree):
+        kind = node_type(node)
+
+        if kind == "Index" and node_type(getattr(node, "idx", None)) == "Name" and str(getattr(node, "notation", "")).endswith("DOT"):
+            member_names.add(id(node.idx))
+        elif kind == "Field" and node_type(getattr(node, "key", None)) == "Name":
+            member_names.add(id(node.key))
+
+    return {
+        node.id
+        for node in ast.walk(tree)
+        if node_type(node) == "Name"
+        and id(node) not in member_names
+        and CONSTANT_NAME.match(node.id)
+        and node.id not in declared
+    }
 
 
 def validate_panel_font_types() -> int:
@@ -503,12 +536,16 @@ def run() -> None:
 
     missing_modules = []
     accidental_globals = []
+    undefined_constants = []
 
     for lua_path in sorted(RUNTIME_ROOT.rglob("*.lua")):
         tree = ast.parse(lua_path.read_text(encoding="utf-8"))
 
         for name in sorted(undeclared_bare_assignments(tree)):
             accidental_globals.append(f"{lua_path.relative_to(RUNTIME_ROOT)} -> {name}")
+
+        for name in sorted(undeclared_constant_reads(tree)):
+            undefined_constants.append(f"{lua_path.relative_to(RUNTIME_ROOT)} -> {name}")
 
         for target in local_io_dofile_targets(tree):
             relative = target.removeprefix("BetterInventory/")
@@ -529,6 +566,12 @@ def run() -> None:
         raise SystemExit(
             "Undeclared bare Lua assignment(s): "
             + ", ".join(sorted(accidental_globals))
+        )
+
+    if undefined_constants:
+        raise SystemExit(
+            "Undeclared ALL_CAPS constant read(s): "
+            + ", ".join(sorted(undefined_constants))
         )
 
     panel_font_count = validate_panel_font_types()

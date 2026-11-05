@@ -134,6 +134,8 @@ def main() -> None:
     assert integration.resolve_kills(mod, unused_weapon_content) is None
     mod.settings.weapon_kill_counter_show_zero_kills = True
 
+    # These geometry cases describe cards without a rarity rating row.
+    mod.settings.weapon_rarity_rating_mode = "off"
     # Three-column Inventory/Hadron cards keep the row below the weapon title,
     # but use legible type and an icon large enough to match WKC's visual weight.
     grid = integration.profile(mod, 210, 12, lua.table_from({}), 3)

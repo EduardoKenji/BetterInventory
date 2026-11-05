@@ -2146,6 +2146,12 @@ def main() -> None:
     options_templates = lua.table_from(
         {"settings": lua.table_from(entries)}
     )
+    # Start from rating rows off so the dependency toggles below are observable;
+    # unset values now fall back to the data.lua defaults (rating enabled).
+    globals_.settings.weapon_rarity_rating_mode = "off"
+    globals_.settings.character_overview_weapon_rarity_rating_mode = "off"
+    globals_.settings.curio_rarity_rating_mode = "off"
+    globals_.settings.character_overview_curio_rarity_rating_mode = "off"
 
     globals_.captured_options_hook(globals_.test_dmf, options_templates)
     assert globals_.captured_module_errors == 0

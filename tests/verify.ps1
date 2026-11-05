@@ -375,8 +375,8 @@ if ($curioAcquisition -match 'os\.time\s*\(') {
 	throw "Automatic Curio rotation eligibility must not use the local OS clock."
 }
 
-if ($data -notmatch 'setting_id\s*=\s*"automatic_curio_target_mode"[\s\S]*?default_value\s*=\s*"characters"' -or $data -notmatch 'setting_id\s*=\s*"automatic_curio_characters_group"' -or $curioAcquisition -notmatch 'No usable characters were returned; safely falling back to class targeting') {
-	throw "Automatic Curio acquisition must default to character targeting and safely fall back to classes when no usable characters are returned."
+if ($data -notmatch 'setting_id\s*=\s*"automatic_curio_target_mode"[\s\S]*?default_value\s*=\s*"characters"' -or $data -notmatch 'setting_id\s*=\s*"automatic_curio_characters_group"' -or $curioAcquisition -notmatch 'No usable characters were returned; Character targeting buys nothing this pass' -or $curioAcquisition -match 'automatic_curio_target_mode", "classes"') {
+	throw "Automatic Curio acquisition must default to character targeting and never persist a Classes fallback when no usable characters are returned."
 }
 
 foreach ($settingId in @(

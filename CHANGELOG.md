@@ -18,6 +18,12 @@ Darktide 1.13.4 compatibility release (audited against Darktide-Source-Code `e46
 - Equipment persistence: ignore slot changes that are not equippable (no gear id, not always-owned) instead of scheduling futile retries.
 - Curio buyer: an empty character scan no longer permanently switches targeting to Classes (which could widen purchases to every enabled class); it buys nothing that pass.
 - Inventory options panel: the profile revision no longer aliases panel flag bits after 256 revisions.
+- Curio buyer: fix an undefined constant that aborted the whole account scan when any storefront offer was unreadable.
+- Curio buyer: skip building full item instances for non-Curio gear when counting owned Curios (less work and garbage per scan).
+- Settings: code fallbacks now match data.lua defaults (Auto Crafter enable, highlight border widths, new-item highlight mode, overview dump-stat-only, rarity rating modes).
+- Weapon Kill Counter: pass WKC's per-instance flag so its per-instance kill icon is shown.
+- Localization: add the missing Auto Crafter Active Queue string, replace a corrupted zh-CN sorting tooltip, and add zh-CN for the name editor and panel focus global strings.
+- Tests: the AST structure check now rejects ALL_CAPS constants read without a declaration in the same file.
 - Controller focus: skip grid selection on panels/grids that have not been presented yet (crash guard).
 - Localization: add missing melee/ranged Character Overview mirror requirement strings (en, zh-CN).
 - Games Lantern import: both the Windows and Wine/Proton curl adapters send a descriptive BetterInventory User-Agent; Cloudflare now rejects curl's default agent with HTTP 403 (Discord report: reisei).
