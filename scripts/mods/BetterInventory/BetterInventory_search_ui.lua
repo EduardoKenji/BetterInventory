@@ -563,7 +563,7 @@ end
 local function restore_first_grid_item(view)
 	local item_grid = view and view._item_grid
 
-	if not item_grid or type(item_grid.select_first_index) ~= "function" then
+	if not item_grid or not item_grid._grid or type(item_grid.select_first_index) ~= "function" then
 		return false
 	end
 
@@ -798,7 +798,7 @@ SearchUI.handle_view_input = function(mod, view, input_service)
 		view._better_inventory_search_controller_focused = true
 		own_grid_input(view, true)
 
-		if type(item_grid.select_grid_index) == "function" then
+		if item_grid._grid and type(item_grid.select_grid_index) == "function" then
 			item_grid:select_grid_index(nil)
 		end
 

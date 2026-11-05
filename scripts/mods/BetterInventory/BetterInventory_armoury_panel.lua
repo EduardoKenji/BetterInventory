@@ -403,7 +403,7 @@ local function set_armoury_controller_focus(view, focused)
 			panel:disable_input(false)
 		end
 
-		if type(panel.select_first_index) == "function" then
+		if panel._grid and type(panel.select_first_index) == "function" then
 			panel:select_first_index()
 		end
 
@@ -447,7 +447,7 @@ local function capture_armoury_sort_panel_controller_focus(mod, view, input_serv
 			item_grid:disable_input(true)
 		end
 
-		if type(panel.selected_grid_index) == "function" and not panel:selected_grid_index() and type(panel.select_first_index) == "function" then
+		if panel._grid and type(panel.selected_grid_index) == "function" and not panel:selected_grid_index() and type(panel.select_first_index) == "function" then
 			panel:select_first_index()
 		end
 	end

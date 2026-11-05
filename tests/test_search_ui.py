@@ -573,6 +573,7 @@ def main() -> None:
             {content = {row = 2}},
         }
         controller_view._item_grid = {
+            _grid = {},
             selected_grid_index = function() return selected_index end,
             first_interactable_grid_index = function() return 1 end,
             widget_by_index = function(_, index) return grid_widgets[index] end,

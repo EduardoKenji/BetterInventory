@@ -32,6 +32,7 @@ local REQUIRED_MODULE_FUNCTIONS = {
 		"allocation_operations",
 		"allocation_progress",
 		"claims_converged",
+		"diagnostic_message",
 		"extraction_contains_all",
 		"extraction_contains_gear_id",
 		"parse_perk_target",
@@ -312,57 +313,7 @@ function Controller.new(dependencies)
 	end
 
 	local function diagnostic_message(kind, payload)
-		payload = payload or {}
-		local fields = {
-			"[AutoCrafter]",
-			"event=" .. tostring(kind),
-			"run=" .. tostring(self._generation),
-			"op=" .. tostring(self._operation_sequence),
-			"phase=" .. tostring(self._phase),
-			string.format("elapsed=%.2fs", tonumber(self._run_elapsed) or 0),
-		}
-		local search = payload.search or self._search
-		local current = payload.current or type(payload.phase3) == "table" and payload.phase3.current or self._phase3 and self._phase3.current
-		local candidate = payload.candidate or payload.current_item
-		local values = {
-			{ "kind", payload.kind },
-			{ "reason", payload.reason },
-			{ "error", payload.error },
-			{ "gear", payload.gear_id or candidate and candidate.gear_id },
-			{ "count", payload.count },
-			{ "amount", payload.amount },
-			{ "expected_xp", payload.expected_xp },
-			{ "attempt", payload.attempt or payload.attempts },
-			{ "retry", payload.retry },
-			{ "mastery", current and current.mastery_level },
-			{ "claimed", current and current.claimed_level },
-			{ "xp", current and current.current_xp },
-			{ "purchases", search and search.purchases },
-			{ "fodder", payload.fodder_count or self._phase3 and self._phase3.fodder_count },
-			{ "rarity", candidate and candidate.rarity },
-			{ "expertise", candidate and candidate.expertise_level },
-			{ "duration", payload.duration and string.format("%.3fs", payload.duration) },
-		}
-		local timings = payload.timings
-
-		if type(timings) == "table" then
-			local timing_fields = {}
-
-			for timing_kind, timing in pairs(timings) do
-				timing_fields[#timing_fields + 1] = string.format("%s:%dx/%.2fs", tostring(timing_kind), tonumber(timing.count) or 0, tonumber(timing.total) or 0)
-			end
-
-			table.sort(timing_fields)
-			values[#values + 1] = { "timings", table.concat(timing_fields, ",") }
-		end
-
-		for _, entry in ipairs(values) do
-			if entry[2] ~= nil then
-				fields[#fields + 1] = entry[1] .. "=" .. tostring(entry[2])
-			end
-		end
-
-		return table.concat(fields, " ")
+		return MasteryPolicy.diagnostic_message(self, kind, payload)
 	end
 
 	local function raw_setting(id, default_value)
@@ -1315,6 +1266,8 @@ function Controller.new(dependencies)
 					phase3.fast_upgrade_inflight_count = math.max(0, phase3.fast_upgrade_inflight_count - 1)
 				end
 				self._auxiliary_inflight_count = math.max(0, (self._auxiliary_inflight_count or 0) - 1)
+				-- Release aux-only quarantine (character change / context exit) once settled.
+				self._operation_quarantined = self._operation_quarantined and (self._operation_inflight or self._auxiliary_inflight_count > 0)
 
 				if self._reconciliation_required and not self._operation_inflight and self._auxiliary_inflight_count == 0 and self._view_is_valid then
 					self._phase = "operation_reconciliation_required"

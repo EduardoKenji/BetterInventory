@@ -268,7 +268,7 @@ local function controller_element_state(element)
 end
 
 local function clear_controller_element_selection(element)
-	if element and type(element.select_grid_index) == "function" then
+	if element and element._grid and type(element.select_grid_index) == "function" then
 		element:select_grid_index()
 	end
 end
@@ -294,7 +294,7 @@ local function restore_controller_element(element, state)
 		element:disable_input(state.input_disabled)
 	end
 
-	if type(element.select_grid_index) == "function" then
+	if element._grid and type(element.select_grid_index) == "function" then
 		element:select_grid_index(state.selected_index)
 	end
 end
@@ -327,7 +327,7 @@ local function set_inventory_options_panel_controller_focus(view, focused)
 			panel:disable_input(false)
 		end
 
-		if type(panel.select_first_index) == "function" then
+		if panel._grid and type(panel.select_first_index) == "function" then
 			panel:select_first_index()
 		end
 

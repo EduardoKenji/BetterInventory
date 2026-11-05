@@ -1176,7 +1176,7 @@ local function purchase_candidates(mod, token, candidates, boundary_ms, owned_po
 						if not saved then log_info(mod, "Could not persist Curio consecration receipt: " .. tostring(save_error)) end
 					end
 					if favorite_integration and type(favorite_integration.favorite_purchase_items) == "function" then
-						pcall(favorite_integration.favorite_purchase_items, mod, result.purchased_items, "automatic_curio_favorite_purchased_curios")
+						pcall(favorite_integration.favorite_purchase_items, mod, result.purchased_items, "automatic_curio_favorite_purchased_curios", result.candidate.character_id)
 					end
 
 					purchased[#purchased + 1] = result.candidate

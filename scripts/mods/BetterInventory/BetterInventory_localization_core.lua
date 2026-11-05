@@ -287,6 +287,12 @@ local localization = {
 	character_overview_show_only_dump_stat_tooltip = {
 		en = "Replaces the five maximum-potential modifier rows on mirrored Character Overview weapons with only the lowest modifier above item power. Disabled by default.",
 	},
+	option_requires_character_overview_melee_mirror = {
+		en = "Requires the mirrored Character Overview melee weapon card.",
+	},
+	option_requires_character_overview_ranged_mirror = {
+		en = "Requires the mirrored Character Overview ranged weapon card.",
+	},
 	option_requires_character_overview_weapon_mirror = {
 		en = "Requires a mirrored Character Overview weapon card and single-column weapon modifiers.",
 	},

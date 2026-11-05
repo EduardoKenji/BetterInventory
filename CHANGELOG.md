@@ -9,6 +9,13 @@ Darktide 1.13.4 compatibility release (audited against Darktide-Source-Code `e46
 - Character Cosmetics View Improved compatibility: unowned preview cosmetics (`__locked` / `__is_preview_item`) are restored to the owned starting item before the loadout is saved. Previously one fabricated gear id failed the whole backend equip batch, logged "Failed to persist loadout" and left the character unequipped (Nexus report: planetbrown).
 - Auto Crafter: a Brunt family purchase that returns a sibling mark without the frozen dump stat is now an ordinary miss instead of a terminal "authoritative weapon did not expose configured dump stat" failure. Example: Duelling Sword Mk V has Defences while Mk II/IV have Cleave Damage (Nexus bug: joblauder).
 - Auto Crafter: new **Include mastery leveling purchases in Ordo dockets cap** option (off by default). When enabled, the docket cap also bounds mastery fodder bought after a fallback or exact target was accepted; previously those purchases always continued past the cap (Nexus bug: CrinkleSnap).
+- Auto Crafter: when the selected mark itself lacks the frozen dump stat (broken stat resolution), fail after one purchase instead of treating every roll as a miss and draining the budget.
+- Auto Crafter: a favorited Transcendent level-500 weapon is treated as a finished build and is no longer reused as a crafting base outside Games Lantern queue jobs (its perks/blessings could be overwritten).
+- Auto Crafter: release the quarantine left by a character change or context exit once in-flight fodder upgrades settle; previously the crafter stayed busy until reload.
+- Discard: items with a custom name or colours are never automatic/quick-discard candidates; manual discard fails closed when profile presets cannot be read.
+- Curio buyer: favorite purchased Curios on the character they were bought for, not the active character.
+- Controller focus: skip grid selection on panels/grids that have not been presented yet (crash guard).
+- Localization: add missing melee/ranged Character Overview mirror requirement strings (en, zh-CN).
 - Games Lantern import: both the Windows and Wine/Proton curl adapters send a descriptive BetterInventory User-Agent; Cloudflare now rejects curl's default agent with HTTP 403 (Discord report: reisei).
 
 ## 3.7.4 - Unreleased

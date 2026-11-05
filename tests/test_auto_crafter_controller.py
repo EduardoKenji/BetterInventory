@@ -727,6 +727,27 @@ def main() -> None:
 			assert(backend.discard_calls == 1)
 			assert(result.phase == "phase4_complete", tostring(result.phase))
 			assert(result.search.result.gear_id == "gear-exact")
+
+			-- The selected mark itself lacking the stat means stat resolution is
+			-- broken; fail fast instead of buying until the budget is gone.
+			local broken = {purchase_calls = 0, items = {}}
+			function broken:purchase_offer(_)
+				self.purchase_calls = self.purchase_calls + 1
+				local item = summarized_item("gear-broken-" .. tostring(self.purchase_calls), 2, 60)
+				item.base_stats = {renamed_stat = 60}
+				item.potential_base_stats = {renamed_stat = 60}
+				self.items[#self.items + 1] = item
+
+				return resolved({items = {item}})
+			end
+			function broken:probe_snapshot() return resolved(snapshot_with_items(self.items)) end
+			local broken_controller = Controller.new({backend = broken, planner = Planner, context = context(), settings = base_settings({auto_crafter_max_purchases = 5}), reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			broken_controller._snapshot = snapshot_with_items({})
+			broken_controller._active_view = {}
+			broken_controller._view_is_valid = true
+			broken_controller:start_purchase_search()
+			assert(broken.purchase_calls == 1, "broken stat purchases=" .. tostring(broken.purchase_calls))
+			assert(broken_controller:snapshot().last_error == "authoritative weapon did not expose configured dump stat", tostring(broken_controller:snapshot().last_error))
 		end
 
 		-- Fallback-off still honors the configured Phase 3 cleanup contract. At

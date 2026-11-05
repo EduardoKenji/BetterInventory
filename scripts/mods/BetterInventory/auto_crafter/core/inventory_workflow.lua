@@ -245,6 +245,12 @@ function InventoryWorkflow.install(self, services)
 			local matched, identity_source = family_matches(candidate)
 			local favorite_allowed = include_favorites or candidate.favorite_known == true and candidate.favorited ~= true
 
+			-- A favorited Transcendent level-500 weapon is a finished build, not an
+			-- interrupted run; never overwrite its perks/blessings for a new target.
+			if favorite_allowed and not imported_job and candidate.favorited == true and (tonumber(candidate.rarity) or 0) >= 5 and (tonumber(candidate.expertise_level) or 0) >= MAX_EXPERTISE_LEVEL then
+				favorite_allowed = false
+			end
+
 			local imported_complete = imported_job and self:_imported_item_is_complete(candidate, imported_job)
 			if candidate.available == true and candidate.gear_id ~= nil and candidate.equipped ~= true and matched and favorite_allowed and not imported_complete and candidate_matches_stat_targets(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets, search.dump_stat_identity, search.dump_comparison) then
 				local analysis = profile_analysis(candidate)
@@ -429,7 +435,13 @@ function InventoryWorkflow.install(self, services)
 				-- Brunt's family offer can return a sibling mark without this stat
 				-- (Duelling Sword Mk V has Defences; Mk II/IV have Cleave Damage).
 				-- Treat it as an ordinary miss: infinite distance, never exact or best.
-				if dump_stat == nil then
+				if dump_stat == nil and (target.master_id == nil or candidate.master_id == target.master_id) then
+					-- The selected mark itself lacking the stat means stat resolution is
+					-- broken (e.g. a game patch); fail fast instead of draining the budget.
+					self:_operation_failed(generation, "authoritative weapon did not expose configured dump stat")
+
+					return
+				elseif dump_stat == nil then
 					operation_report("purchase_missing_dump_stat", {
 						candidate = candidate,
 						search = search,

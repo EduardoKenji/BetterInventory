@@ -334,5 +334,59 @@ function MasteryPolicy.wallet_consumption(start_wallet, current_wallet)
 		plasteel = math.max(0, (tonumber(start_wallet.plasteel) or 0) - (tonumber(current_wallet.plasteel) or 0)),
 	}
 end
+-- Single-line diagnostic log text for a controller report event.
+function MasteryPolicy.diagnostic_message(state, kind, payload)
+	payload = payload or {}
+	local fields = {
+		"[AutoCrafter]",
+		"event=" .. tostring(kind),
+		"run=" .. tostring(state._generation),
+		"op=" .. tostring(state._operation_sequence),
+		"phase=" .. tostring(state._phase),
+		string.format("elapsed=%.2fs", tonumber(state._run_elapsed) or 0),
+	}
+	local search = payload.search or state._search
+	local current = payload.current or type(payload.phase3) == "table" and payload.phase3.current or state._phase3 and state._phase3.current
+	local candidate = payload.candidate or payload.current_item
+	local values = {
+		{ "kind", payload.kind },
+		{ "reason", payload.reason },
+		{ "error", payload.error },
+		{ "gear", payload.gear_id or candidate and candidate.gear_id },
+		{ "count", payload.count },
+		{ "amount", payload.amount },
+		{ "expected_xp", payload.expected_xp },
+		{ "attempt", payload.attempt or payload.attempts },
+		{ "retry", payload.retry },
+		{ "mastery", current and current.mastery_level },
+		{ "claimed", current and current.claimed_level },
+		{ "xp", current and current.current_xp },
+		{ "purchases", search and search.purchases },
+		{ "fodder", payload.fodder_count or state._phase3 and state._phase3.fodder_count },
+		{ "rarity", candidate and candidate.rarity },
+		{ "expertise", candidate and candidate.expertise_level },
+		{ "duration", payload.duration and string.format("%.3fs", payload.duration) },
+	}
+	local timings = payload.timings
+
+	if type(timings) == "table" then
+		local timing_fields = {}
+
+		for timing_kind, timing in pairs(timings) do
+			timing_fields[#timing_fields + 1] = string.format("%s:%dx/%.2fs", tostring(timing_kind), tonumber(timing.count) or 0, tonumber(timing.total) or 0)
+		end
+
+		table.sort(timing_fields)
+		values[#values + 1] = { "timings", table.concat(timing_fields, ",") }
+	end
+
+	for _, entry in ipairs(values) do
+		if entry[2] ~= nil then
+			fields[#fields + 1] = entry[1] .. "=" .. tostring(entry[2])
+		end
+	end
+
+	return table.concat(fields, " ")
+end
 
 return MasteryPolicy

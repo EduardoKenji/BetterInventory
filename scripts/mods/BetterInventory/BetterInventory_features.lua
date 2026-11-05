@@ -1393,7 +1393,7 @@ Features.capture_inventory_options_panel_controller_focus = function(mod, layout
 
 		local panel = view._better_inventory_options_panel
 
-		if panel and type(panel.selected_grid_index) == "function" and not panel:selected_grid_index() and type(panel.select_first_index) == "function" then
+		if panel and panel._grid and type(panel.selected_grid_index) == "function" and not panel:selected_grid_index() and type(panel.select_first_index) == "function" then
 			panel:select_first_index()
 		end
 	end
@@ -1583,7 +1583,13 @@ Features.quick_discard_candidates = function(mod, layout, view, allowed_gear_ids
 	local parent_inventory = view._parent and view._parent._inventory_items
 	local source_items = type(parent_inventory) == "table" and next(parent_inventory) and parent_inventory or view._offer_items_layout or {}
 	local presets_ok, profile_presets = pcall(ProfileUtils.get_profile_presets)
-	local protected_gear_ids = DiscardPolicy.equipped_gear_ids(preview_profile_for_discard(view), presets_ok and profile_presets or nil)
+
+	-- Fail closed like automatic discard: unreadable presets mean unknown protection.
+	if not presets_ok then
+		return {}
+	end
+
+	local protected_gear_ids = DiscardPolicy.equipped_gear_ids(preview_profile_for_discard(view), profile_presets)
 	local function is_equipped(item)
 		if item.gear_id and protected_gear_ids[item.gear_id] then
 			return true

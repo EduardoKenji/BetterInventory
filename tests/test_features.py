@@ -760,6 +760,7 @@ def main() -> None:
                 input_disabled = function(self)
                     return self.disabled
                 end,
+                _grid = {},
                 select_grid_index = function(self, value)
                     self.selected = value
                 end,
@@ -784,6 +785,7 @@ def main() -> None:
         }
 
         panel._visible = true
+        panel._grid = panel._grid or {}
         panel.select_first_index = function(self)
             self.selected = 1
         end
@@ -1204,6 +1206,7 @@ def main() -> None:
                 self.blueprints = blueprints
 				self.present_calls = (self.present_calls or 0) + 1
             end,
+            _grid = {},
             select_first_index = function(self)
                 self.selected_index = 1
             end,
@@ -1250,6 +1253,7 @@ def main() -> None:
             input_disabled = function(self)
                 return self.disabled
             end,
+            _grid = {},
             select_grid_index = function(self, index)
                 self.selected_index = index
             end,
@@ -1955,6 +1959,12 @@ def main() -> None:
     )
     assert len(typed_curio_candidates) == 1
     assert typed_curio_candidates[1].gear_id == "health_curio"
+    # A custom name/colour record is an explicit keep signal from the player.
+    mod.settings.custom_item_name_and_colors = lua.table_from(
+        {"health_curio": lua.table_from({"name": "Keep me"})}
+    )
+    assert len(features.quick_discard_candidates_from_items(mod, typed_curios, lua.table_from({}))) == 0
+    mod.settings.custom_item_name_and_colors = None
     mod.settings.quick_discard_keep_health_curios = True
 
     # Curios matching the enabled buyer's acquisition rule remain protected even

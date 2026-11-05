@@ -351,8 +351,13 @@ end
 
 Policy.automatic_curio_acquisition_protects = automatic_curio_acquisition_protects
 
-local function eligible_for_quick_discard(mod, item, is_equipped, maximum_equipped_levels, favorite_gear_ids)
+local function eligible_for_quick_discard(mod, item, is_equipped, maximum_equipped_levels, favorite_gear_ids, customized_gear_ids)
 	if not item or not item.gear_id or not item_type_is_enabled(mod, item.item_type) then
+		return false
+	end
+
+	-- A custom name or colours is an explicit keep signal from the player.
+	if customized_gear_ids and customized_gear_ids[item.gear_id] ~= nil then
 		return false
 	end
 
@@ -411,13 +416,16 @@ local function collect_quick_discard_candidates(mod, source_items, is_equipped, 
 	local excluded_errors = 0
 	local first_error
 	local seen = {}
+	-- One read per scan: DMF clones table-valued settings on every mod:get.
+	local customized = mod:get("custom_item_name_and_colors")
+	local customized_gear_ids = type(customized) == "table" and customized or nil
 
 	for _, entry in pairs(source_items or {}) do
 		local item = entry and (entry.real_item or entry.item or entry)
 		local gear_id = item and item.gear_id
 
 		if gear_id and not seen[gear_id] and (not allowed_gear_ids or allowed_gear_ids[gear_id]) then
-			local success, eligible = pcall(eligible_for_quick_discard, mod, item, is_equipped, maximum_equipped_levels, favorite_gear_ids)
+			local success, eligible = pcall(eligible_for_quick_discard, mod, item, is_equipped, maximum_equipped_levels, favorite_gear_ids, customized_gear_ids)
 
 			if success and eligible then
 				seen[gear_id] = true

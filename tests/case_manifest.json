@@ -18,7 +18,7 @@
         {"name": "supported_view_adapters_facade_and_lifecycle_composition", "risk": "high", "start_line": 1, "end_line": 493}
   ],
   "test_search_ui.py": [
-      {"name": "single_field_configurable_view_spacing_clipping_disable_focus_and_release", "risk": "high", "start_line": 1, "end_line": 838}
+    {"name": "single_field_configurable_view_spacing_clipping_disable_focus_and_release", "risk": "high", "start_line": 1, "end_line": 839}
   ],
   "test_search_hooks.py": [
       {"name": "native_grid_input_and_hadron_sacrifice_exclusion", "risk": "high", "start_line": 1, "end_line": 260}
@@ -109,31 +109,31 @@
     {"name": "level_500_potential_prevents_current_stat_false_match", "risk": "critical", "start_line": 600, "end_line": 618},
     {"name": "exact_candidate_favorite_before_completion", "risk": "critical", "start_line": 619, "end_line": 642},
     {"name": "deferred_processing_after_exact_target", "risk": "critical", "start_line": 643, "end_line": 688},
-    {"name": "sibling_mark_missing_dump_stat_is_a_miss", "risk": "critical", "start_line": 689, "end_line": 731},
-    {"name": "fallback_off_terminal_phase3_cleanup", "risk": "critical", "start_line": 732, "end_line": 906},
-    {"name": "acquisition_cap_promotes_best_fallback", "risk": "critical", "start_line": 907, "end_line": 943},
-    {"name": "docket_cap_bounds_post_target_fodder", "risk": "critical", "start_line": 944, "end_line": 994},
-    {"name": "pretarget_bounds_progression_and_inventory_base_identity_safety", "risk": "critical", "start_line": 995, "end_line": 1369},
-    {"name": "phase4_serial_final_crafting", "risk": "critical", "start_line": 1370, "end_line": 1562},
-    {"name": "below_twenty_cross_mark_mastery_leveling_and_final_switch", "risk": "critical", "start_line": 1563, "end_line": 1706},
-    {"name": "final_read_timeout_terminal_convergence_without_mutation_retry", "risk": "critical", "start_line": 1707, "end_line": 1821},
-    {"name": "unowned_blessing_fails_before_final_material_spend", "risk": "critical", "start_line": 1822, "end_line": 1867},
-    {"name": "four_back_to_back_already_mastered_fully_allocated_crafts_and_two_slot_swaps", "risk": "critical", "start_line": 1868, "end_line": 2085},
-    {"name": "equipment_starting_state_matrix", "risk": "critical", "start_line": 2086, "end_line": 2204},
-    {"name": "instant_character_change_snapshot_and_callback_isolation", "risk": "critical", "start_line": 2205, "end_line": 2263},
-    {"name": "configuration_change_closes_dispatch", "risk": "critical", "start_line": 2264, "end_line": 2281},
-    {"name": "explicit_stop_and_idle_cpu_amortization", "risk": "critical", "start_line": 2282, "end_line": 2384},
-    {"name": "purchase_visibility_reconciliation", "risk": "critical", "start_line": 2385, "end_line": 2462},
-    {"name": "mutation_quarantine_and_fast_lane_interleavings", "risk": "critical", "start_line": 2463, "end_line": 2552},
-    {"name": "auto_crafter_account_operation_ownership", "risk": "critical", "start_line": 2553, "end_line": 2614},
-    {"name": "resource_capacity_network_and_loading_failure_matrix", "risk": "critical", "start_line": 2615, "end_line": 2679},
-    {"name": "bounded_probe_and_catalog_reads", "risk": "critical", "start_line": 2680, "end_line": 2727},
-    {"name": "stalled_catalog_selection_reconciliation_and_stage_diagnostics", "risk": "critical", "start_line": 2728, "end_line": 2812},
-    {"name": "external_account_mutation_exclusion", "risk": "critical", "start_line": 2813, "end_line": 2836},
-    {"name": "custom_stat_exact_fallback_and_resume", "risk": "critical", "start_line": 2837, "end_line": 3018},
-    {"name": "acquisition_mode_and_dump_comparison", "risk": "critical", "start_line": 3019, "end_line": 3096},
-    {"name": "psych_ward_staged_queue_idle_reconciliation_budget", "risk": "high", "start_line": 3097, "end_line": 3140},
-    {"name": "imported_queue_retires_stale_native_trait_discovery", "risk": "critical", "start_line": 3141, "end_line": 3178}
+    {"name": "sibling_mark_missing_dump_stat_is_a_miss", "risk": "critical", "start_line": 689, "end_line": 752},
+    {"name": "fallback_off_terminal_phase3_cleanup", "risk": "critical", "start_line": 753, "end_line": 927},
+    {"name": "acquisition_cap_promotes_best_fallback", "risk": "critical", "start_line": 928, "end_line": 964},
+    {"name": "docket_cap_bounds_post_target_fodder", "risk": "critical", "start_line": 965, "end_line": 1015},
+    {"name": "pretarget_bounds_progression_and_inventory_base_identity_safety", "risk": "critical", "start_line": 1016, "end_line": 1390},
+    {"name": "phase4_serial_final_crafting", "risk": "critical", "start_line": 1391, "end_line": 1583},
+    {"name": "below_twenty_cross_mark_mastery_leveling_and_final_switch", "risk": "critical", "start_line": 1584, "end_line": 1727},
+    {"name": "final_read_timeout_terminal_convergence_without_mutation_retry", "risk": "critical", "start_line": 1728, "end_line": 1842},
+    {"name": "unowned_blessing_fails_before_final_material_spend", "risk": "critical", "start_line": 1843, "end_line": 1888},
+    {"name": "four_back_to_back_already_mastered_fully_allocated_crafts_and_two_slot_swaps", "risk": "critical", "start_line": 1889, "end_line": 2106},
+    {"name": "equipment_starting_state_matrix", "risk": "critical", "start_line": 2107, "end_line": 2225},
+    {"name": "instant_character_change_snapshot_and_callback_isolation", "risk": "critical", "start_line": 2226, "end_line": 2284},
+    {"name": "configuration_change_closes_dispatch", "risk": "critical", "start_line": 2285, "end_line": 2302},
+    {"name": "explicit_stop_and_idle_cpu_amortization", "risk": "critical", "start_line": 2303, "end_line": 2405},
+    {"name": "purchase_visibility_reconciliation", "risk": "critical", "start_line": 2406, "end_line": 2483},
+    {"name": "mutation_quarantine_and_fast_lane_interleavings", "risk": "critical", "start_line": 2484, "end_line": 2573},
+    {"name": "auto_crafter_account_operation_ownership", "risk": "critical", "start_line": 2574, "end_line": 2635},
+    {"name": "resource_capacity_network_and_loading_failure_matrix", "risk": "critical", "start_line": 2636, "end_line": 2700},
+    {"name": "bounded_probe_and_catalog_reads", "risk": "critical", "start_line": 2701, "end_line": 2748},
+    {"name": "stalled_catalog_selection_reconciliation_and_stage_diagnostics", "risk": "critical", "start_line": 2749, "end_line": 2833},
+    {"name": "external_account_mutation_exclusion", "risk": "critical", "start_line": 2834, "end_line": 2857},
+    {"name": "custom_stat_exact_fallback_and_resume", "risk": "critical", "start_line": 2858, "end_line": 3039},
+    {"name": "acquisition_mode_and_dump_comparison", "risk": "critical", "start_line": 3040, "end_line": 3117},
+    {"name": "psych_ward_staged_queue_idle_reconciliation_budget", "risk": "high", "start_line": 3118, "end_line": 3161},
+    {"name": "imported_queue_retires_stale_native_trait_discovery", "risk": "critical", "start_line": 3162, "end_line": 3199}
   ],
   "test_games_lantern_import.py": [
     {"name": "strict_url_canonicalization", "risk": "critical", "start_line": 18, "end_line": 47},
@@ -244,11 +244,11 @@
     {"name": "global_store_tab_generation_retirement", "risk": "critical", "start_line": 271, "end_line": 367}
   ],
   "test_features.py": [
-      {"name": "panel_focus_allocation_guard", "risk": "medium", "start_line": 122, "end_line": 123},
-      {"name": "discard_operation_ownership", "risk": "critical", "start_line": 3450, "end_line": 3992},
-      {"name": "sorting_and_navigation", "risk": "high", "start_line": 408, "end_line": 1612},
-      {"name": "optional_integration_fallbacks", "risk": "high", "start_line": 1613, "end_line": 2109},
-      {"name": "panel_lifecycle", "risk": "high", "start_line": 2110, "end_line": 3449}
+    {"name": "panel_focus_allocation_guard", "risk": "medium", "start_line": 122, "end_line": 123},
+    {"name": "sorting_and_navigation", "risk": "high", "start_line": 408, "end_line": 1616},
+    {"name": "optional_integration_fallbacks", "risk": "high", "start_line": 1617, "end_line": 2119},
+    {"name": "panel_lifecycle", "risk": "high", "start_line": 2120, "end_line": 3459},
+    {"name": "discard_operation_ownership", "risk": "critical", "start_line": 3460, "end_line": 4002}
   ],
   "test_item_customization.py": [
     {"name": "dirty_save_outcomes", "risk": "high", "start_line": 225, "end_line": 442},
