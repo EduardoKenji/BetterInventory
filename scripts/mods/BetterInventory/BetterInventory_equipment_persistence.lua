@@ -388,7 +388,40 @@ observe_promise = function(mod, operation, promise)
 	return promise
 end
 
+local function is_unowned_preview(item)
+	-- Native store previews set __is_preview_item; Character Cosmetics View
+	-- Improved marks unowned cosmetics __locked with a fabricated gear_id.
+	return type(item) == "table" and (rawget(item, "__is_preview_item") == true or rawget(item, "__locked") == true)
+end
+
+-- An unowned preview has no backend gear, so one in the batch rejects every
+-- slot's equip. Restore the owned starting item before native equip runs.
+local function restore_unowned_previews(view)
+	local preview = type(view) == "table" and view._preview_profile_equipped_items or nil
+	local starting = type(view) == "table" and view._starting_profile_equipped_items or nil
+
+	if type(preview) ~= "table" or type(starting) ~= "table" then
+		return
+	end
+
+	local loadout = type(view._presentation_profile) == "table" and view._presentation_profile.loadout or nil
+
+	for slot_name, item in pairs(preview) do
+		if is_unowned_preview(item) then
+			preview[slot_name] = starting[slot_name]
+
+			if type(loadout) == "table" and loadout[slot_name] == item then
+				loadout[slot_name] = starting[slot_name]
+			end
+		end
+	end
+end
+
 EquipmentPersistence.persist_local_changes = function(mod, native_function, view, ...)
+	if type(view) == "table" and view._is_own_player ~= false and view._is_readonly ~= true then
+		restore_unowned_previews(view)
+	end
+
 	local intent = capture_intent(view)
 	local promise = native_function(view, ...)
 

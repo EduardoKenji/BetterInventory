@@ -445,6 +445,33 @@ def main() -> None:
     assert module.status() == ("idle", 0)
     globals_.current_character = "character-a"
 
+    # Character Cosmetics View Improved previews unowned cosmetics with a fake
+    # gear_id. Those must never reach the backend batch, or every slot fails.
+    module.reset()
+    lua.execute(
+        """
+        locked_preview = setmetatable({__locked = true, __gear_id = "fake"}, {__index = function(t, k)
+            if k == "gear_id" then return rawget(t, "__gear_id") end
+        end})
+        view._presentation_profile = {character_id = "character-a", loadout = {slot_trinket_1 = locked_preview}}
+        view._starting_profile_equipped_items.slot_primary = old_weapon
+        view._starting_profile_equipped_items.slot_trinket_1 = old_curio
+        view._preview_profile_equipped_items.slot_primary = new_weapon
+        view._preview_profile_equipped_items.slot_trinket_1 = locked_preview
+        native_equip = function(v)
+            native_calls = native_calls + 1
+            native_seen_trinket = v._preview_profile_equipped_items.slot_trinket_1
+            return TestPromise.resolved(true)
+        end
+        """
+    )
+    module.persist_local_changes(globals_.test_mod, globals_.native_equip, globals_.view)
+    assert globals_.native_seen_trinket.gear_id == "old-curio"
+    assert globals_.view._presentation_profile.loadout.slot_trinket_1.gear_id == "old-curio"
+    assert globals_.view._starting_profile_equipped_items.slot_primary.gear_id == "new-weapon"
+    assert globals_.view._starting_profile_equipped_items.slot_trinket_1.gear_id == "old-curio"
+    assert module.status() == ("idle", 0)
+
     print("BetterInventory equipment persistence tests passed.")
 
 

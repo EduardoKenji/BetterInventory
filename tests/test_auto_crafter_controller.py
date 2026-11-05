@@ -686,6 +686,49 @@ def main() -> None:
 			assert(#state.items == 1 and state.items[1].gear_id == "gear-exact")
 		end
 
+		-- Brunt can return a sibling mark that lacks the frozen dump stat (Duelling
+		-- Sword Mk V Defences vs Mk II/IV Cleave Damage). That is a miss, not a
+		-- terminal failure: keep searching and clean it up as ordinary fodder.
+		do
+			local state = {items = {}}
+			local backend = {discard_calls = 0, purchase_calls = 0}
+			function backend:purchase_offer(_)
+				self.purchase_calls = self.purchase_calls + 1
+				local item = summarized_item(self.purchase_calls == 1 and "gear-sibling" or "gear-exact", 2, 60)
+				if self.purchase_calls == 1 then
+					item.master_id = "weapon-sibling"
+					item.base_stats = {cleave_damage_stat = 60}
+					item.base_stat_labels = {cleave_damage_stat = "loc_stats_display_cleave_damage_stat"}
+					item.potential_base_stats = {cleave_damage_stat = 60}
+				end
+				state.items[#state.items + 1] = item
+
+				return resolved({items = {item}})
+			end
+			function backend:probe_snapshot() return resolved(snapshot_with_items(state.items)) end
+			function backend:get_mastery_by_pattern(_) return resolved({mastery_id = "pattern-1", current_xp = 999, mastery_level = 20, claimed_level = 19, mastery_max_level = 20}) end
+			function backend:extract_weapon_mastery(_, _) return resolved({}) end
+			function backend:discard_items(gear_ids)
+				assert(#gear_ids == 1 and gear_ids[1] == "gear-sibling")
+				self.discard_calls = self.discard_calls + 1
+				state.items = {state.items[2]}
+
+				return resolved({})
+			end
+			local settings = base_settings({auto_crafter_level_mastery_20 = true, auto_crafter_defer_bad_weapon_processing = true, auto_crafter_best_candidate_fallback = true, auto_crafter_max_purchases = 3})
+			CurrentOffer = raw_offer()
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = settings, reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = snapshot_with_items(state.items)
+			controller._active_view = {}
+			controller._view_is_valid = true
+			assert(controller:start_purchase_search() == true)
+			local result = controller:snapshot()
+			assert(backend.purchase_calls == 2, "purchase calls=" .. tostring(backend.purchase_calls) .. " error=" .. tostring(result.last_error))
+			assert(backend.discard_calls == 1)
+			assert(result.phase == "phase4_complete", tostring(result.phase))
+			assert(result.search.result.gear_id == "gear-exact")
+		end
+
 		-- Fallback-off still honors the configured Phase 3 cleanup contract. At
 		-- the acquisition cap it sacrifices the minimal run-owned prefix needed
 		-- for mastery 20, discards the remaining run-owned misses, and never
@@ -897,6 +940,57 @@ def main() -> None:
                 assert(event.kind ~= "purchase_search_stopped")
             end
         end
+
+		-- The docket cap bounds the whole run. After a fallback target is
+		-- accepted at the cap, mastery fodder purchases must not overspend it.
+		do
+			local state = {items = {}}
+			local backend = {purchase_calls = 0}
+			function backend:purchase_offer(_)
+				self.purchase_calls = self.purchase_calls + 1
+				local item = summarized_item("gear-capped-" .. tostring(self.purchase_calls), 0, 55)
+				item.expertise_level = 40
+				state.items[#state.items + 1] = item
+
+				return resolved({items = {item}})
+			end
+			function backend:probe_snapshot()
+				local snapshot = snapshot_with_items(state.items)
+				snapshot.crafting_costs = {sacrifice_mastery = {sacrifice_muiltiplier = 1, minimumExpertiseLevel = 0, baseReward = 0, masteryXpPerExpertiseLevel = 1}}
+
+				return resolved(snapshot)
+			end
+			function backend:get_mastery_by_pattern(_) return resolved({mastery_id = "pattern-1", current_xp = 0, mastery_level = 1, claimed_level = 1, mastery_max_level = 20, milestones = {{level = 20, xpLimit = 1000000}}}) end
+			function backend:project_mastery(data, amount) return {mastery_id = data.mastery_id, current_xp = data.current_xp + amount, mastery_level = 1, claimed_level = 1, mastery_max_level = 20, milestones = data.milestones} end
+			function backend:upgrade_weapon_rarities(gear_ids) return resolved({count = #gear_ids}) end
+			local function drop(gear_ids)
+				local gone = {}
+				for _, id in ipairs(gear_ids) do gone[id] = true end
+				local kept = {}
+				for _, item in ipairs(state.items) do if not gone[item.gear_id] then kept[#kept + 1] = item end end
+				state.items = kept
+			end
+			function backend:extract_weapon_mastery(_, gear_ids) drop(gear_ids) return resolved({amount = 1, gear_ids = gear_ids}) end
+			function backend:discard_items(gear_ids) drop(gear_ids) return resolved({}) end
+			function backend:favorite_item(_) return resolved({}) end
+			local settings = base_settings({
+				auto_crafter_level_mastery_20 = true,
+				auto_crafter_best_candidate_fallback = true,
+				auto_crafter_defer_bad_weapon_processing = true,
+				auto_crafter_cap_by_max_purchases = false,
+				auto_crafter_cap_by_dockets = true,
+				auto_crafter_docket_cap = 200,
+			})
+			CurrentOffer = raw_offer()
+			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = settings, reporter = reports(), get_selected_offer = function() return CurrentOffer end})
+			controller._snapshot = snapshot_with_items(state.items)
+			controller._active_view = {}
+			controller._view_is_valid = true
+			controller:start_purchase_search()
+			local result = controller:snapshot()
+			assert(backend.purchase_calls == 2, "purchase calls=" .. tostring(backend.purchase_calls) .. " phase=" .. tostring(result.phase) .. " error=" .. tostring(result.last_error))
+			assert(result.search.spent <= 200)
+		end
 
 		-- Fallback-off searches drain every miss in bounded batches and keep
 		-- acquiring until the configured docket cap. The terminal partial batch is

@@ -9,9 +9,10 @@ large inventories easier to use, with optional purchasing and crafting tools.
 [Download on Nexus Mods](https://www.nexusmods.com/warhammer40kdarktide/mods/1144)
 · [User guide](docs/user-guide.md) · [Changelog](CHANGELOG.md)
 
-> Development version: **v3.7.4**. The changelog marks this version unreleased;
+> Development version: **v3.8.0**. The changelog marks this version unreleased;
 > live-game acceptance for the recent automation and audit fixes remains pending.
-> See the [release audit](docs/v3.7.3-release-audit.md) and
+> See the [Darktide 1.13.4 compatibility audit](docs/v3.8.0-darktide-1.13.4-audit.md),
+> [release audit](docs/v3.7.3-release-audit.md) and
 > [Darktide 1.13 compatibility/performance audit](docs/v3.7.2-compatibility-performance-audit.md).
 
 ## Features

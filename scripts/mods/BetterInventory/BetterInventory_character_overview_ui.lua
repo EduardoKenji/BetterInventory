@@ -568,6 +568,9 @@ local function character_overview_weapon_blueprint(rarity_strip_setting_id, weap
 			if style and style.offset and type(id) == "string" and (id == "display_name" or string.find(id, "better_inventory_weapon_perk_", 1, true) == 1 or string.find(id, "better_inventory_blessing_", 1, true) == 1) then
 				style.offset[1] = style.offset[1] + 18
 				if id == "display_name" then
+					-- The native title has a negative right-aligned offset. Reserve the
+					-- 15px card inset plus 18px for stars even when perk passes are absent.
+					style.offset[1] = math.max(style.offset[1], 33)
 					style.offset[2] = style.offset[2] - 3
 					style.horizontal_alignment = "left"
 					style.text_horizontal_alignment = "left"
@@ -578,14 +581,6 @@ local function character_overview_weapon_blueprint(rarity_strip_setting_id, weap
 				end
 			end
 		end
-		local title = pass_by_style_id(blueprint.pass_template, "display_name")
-		local left
-		for _, pass in ipairs(blueprint.pass_template) do
-			if type(pass.style_id) == "string" and string.find(pass.style_id, "better_inventory_weapon_perk_", 1, true) == 1 and pass.style and pass.style.offset then
-				left = math.min(left or math.huge, pass.style.offset[1])
-			end
-		end
-		if title and title.style and left then title.style.offset[1] = left end
 	elseif rating then
 		-- The lower centre belongs to the optional five-stat block. Keep this
 		-- small row beside the perks, above the kill counter and modifiers.
@@ -598,6 +593,25 @@ local function character_overview_weapon_blueprint(rarity_strip_setting_id, weap
 				local width = math.max(40, rating.style.offset[1] - perk.style.offset[1] - 8)
 				perk.style.size[1] = math.min(perk.style.size[1], width)
 				perk.style.better_inventory_max_text_width = perk.style.size[1]
+			end
+		end
+	end
+	if mod:get("show_weapon_perks") == false then
+		local title = pass_by_style_id(blueprint.pass_template, "display_name")
+		local first = pass_by_style_id(blueprint.pass_template, "better_inventory_blessing_text_1")
+		local second = pass_by_style_id(blueprint.pass_template, "better_inventory_blessing_text_2")
+		if title and title.style and first and second then
+			-- Divide the space below the final title position into three equal gaps.
+			local top = title.style.offset[2] + title.style.font_size
+			local gap = math.max(0, (blueprint.size[2] - 8 - top - first.style.size[2] - second.style.size[2]) / 3)
+			local y = top + gap
+			for i, pass in ipairs({ first, second }) do
+				local height = pass.style.size[2]
+				local offset = y + height - blueprint.size[2]
+				pass.style.offset[2] = offset
+				local rank = pass_by_style_id(blueprint.pass_template, "better_inventory_blessing_rank_" .. i)
+				if rank then rank.style.offset[2] = offset end
+				y = y + height + gap
 			end
 		end
 	end

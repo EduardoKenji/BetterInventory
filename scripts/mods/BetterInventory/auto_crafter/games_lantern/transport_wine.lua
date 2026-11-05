@@ -8,6 +8,9 @@ local MAX_BYTES = 2 * 1024 * 1024
 local CONNECT_TIMEOUT = 5
 local REQUEST_TIMEOUT = 20
 local MAX_REDIRECTS = 3
+-- Same honest client identity as transport_win.lua. Constant only; contains no
+-- single quotes, so it is safe inside the shell's single-quoted argument.
+local USER_AGENT = "BetterInventory-Darktide-Mod (+https://www.nexusmods.com/warhammer40kdarktide/mods/1144)"
 
 local function io_api()
 	local mods = rawget(_G, "Mods")
@@ -150,7 +153,7 @@ function Adapter.spawn(url, generation, max_bytes)
 		-- Games Lantern canonical UUID URLs redirect once to their slugged page.
 		-- Match the Windows adapter while bounding both count and protocol; the
 		-- coordinator validates the final host, UUID, and slug before parsing.
-		"curl -s -S --location --max-redirs " .. tostring(MAX_REDIRECTS) .. " --connect-timeout " .. tostring(CONNECT_TIMEOUT) .. " --max-time " .. tostring(REQUEST_TIMEOUT) .. " --max-filesize " .. tostring(limit) .. " --proto '=https' --proto-redir '=https' -o \"$out\" -w '%{http_code}\\n%{content_type}\\n%{url_effective}' " .. quoted_url .. " > \"$status\" &",
+		"curl -s -S --location --max-redirs " .. tostring(MAX_REDIRECTS) .. " --connect-timeout " .. tostring(CONNECT_TIMEOUT) .. " --max-time " .. tostring(REQUEST_TIMEOUT) .. " --max-filesize " .. tostring(limit) .. " --proto '=https' --proto-redir '=https' -A '" .. USER_AGENT .. "' -o \"$out\" -w '%{http_code}\\n%{content_type}\\n%{url_effective}' " .. quoted_url .. " > \"$status\" &",
 		"child_pid=$!; wait \"$child_pid\"; code=$?",
 		"trap - HUP INT TERM; echo $code > \"$done\"",
 	}) then

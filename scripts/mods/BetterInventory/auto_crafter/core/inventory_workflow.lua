@@ -321,7 +321,9 @@ function InventoryWorkflow.install(self, services)
 			return finish_acquisition("search_max_purchases")
 		end
 
-		if not phase3_has_target and search.cap_by_dockets and search.spent + price > search.docket_cap then
+		-- The docket cap bounds every Brunt purchase in the run, including
+		-- post-target mastery fodder, so a fallback target cannot overspend it.
+		if search.cap_by_dockets and search.spent + price > search.docket_cap then
 			if flush_pending_fodder() then
 				return true
 			end
@@ -424,10 +426,14 @@ function InventoryWorkflow.install(self, services)
 
 				local dump_stat = candidate_stat(candidate, search.dump_stat, search.dump_stat_identity)
 
+				-- Brunt's family offer can return a sibling mark without this stat
+				-- (Duelling Sword Mk V has Defences; Mk II/IV have Cleave Damage).
+				-- Treat it as an ordinary miss: infinite distance, never exact or best.
 				if dump_stat == nil then
-					self:_operation_failed(generation, "authoritative weapon did not expose configured dump stat")
-
-					return
+					operation_report("purchase_missing_dump_stat", {
+						candidate = candidate,
+						search = search,
+					})
 				end
 
 				candidate.dump_stat = dump_stat
@@ -436,7 +442,7 @@ function InventoryWorkflow.install(self, services)
 				candidate.damage = candidate.potential_damage or candidate_stat(candidate, "damage")
 				candidate.exact_match = candidate_matches_stat_targets(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets, search.dump_stat_identity, search.dump_comparison)
 				candidate.target_distance = candidate_stat_target_distance(candidate, search.dump_stat, search.target_dump, search.custom_stat_targets, search.dump_stat_identity)
-				local accepts_first_weapon = search.acquisition_mode == "first_weapon" and not phase3_has_target
+				local accepts_first_weapon = search.acquisition_mode == "first_weapon" and not phase3_has_target and dump_stat ~= nil
 
 				if self._phase3 and self._phase3.running and not candidate.exact_match and not accepts_first_weapon then
 					track_purchased_spare(self._phase3, candidate)

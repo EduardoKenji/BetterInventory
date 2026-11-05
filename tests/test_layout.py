@@ -5562,6 +5562,13 @@ def main() -> None:
         settings.show_pattern_mark = false
         settings.show_weapon_perks = true
         local native = table.clone(raw_test_blueprint)
+        -- Darktide's title starts with a negative, right-aligned X offset.
+        local native_title_pass = overview.pass_by_style_id(native.pass_template, "display_name")
+        native_title_pass.pass_type = "text"
+        local native_title = native_title_pass.style
+        native_title.horizontal_alignment = "right"
+        native_title.offset = {-20, 10, 5}
+        native_title.size = {native.size[1] - 40, 40}
         local gadget = table.clone(native)
         gadget.size = {193, 250}
         overview.configure({
@@ -5632,6 +5639,85 @@ def main() -> None:
             end
         end
         assert(icons_checked > 0)
+        -- Loudeman: hiding perks must retain the title inset beside the stars.
+        for _, kind in ipairs({"melee", "ranged"}) do
+            for _, blessing_mode in ipairs({"off", "icons", "text", "ranked_text"}) do
+                settings.weapon_blessing_display_mode = blessing_mode
+                for _, show_perks in ipairs({true, false}) do
+                    settings.show_weapon_perks = show_perks
+                    for _, show_ranks in ipairs({true, false}) do
+                        settings.show_weapon_perk_rank_symbols = show_ranks
+                        local candidate = overview.character_overview_weapon_blueprint(nil, kind)
+                        local title = pass(candidate, "display_name").style
+                        local stars = pass(candidate, "better_inventory_weapon_rarity_rating").style
+                        assert(title.horizontal_alignment == "left" and title.text_horizontal_alignment == "left")
+                        assert(title.offset[1] == 33, "weapon title lost its left inset when perks were hidden")
+                        assert(title.offset[1] >= stars.offset[1] + stars.size[1] + 3)
+                        assert(title.offset[1] + title.size[1] <= candidate.size[1] - 15,
+                            string.format("title bounds: x=%s width=%s card=%s", title.offset[1], title.size[1], candidate.size[1]))
+                        assert(title.offset[2] == 7 and candidate.size[2] == 130)
+                        assert((pass(candidate, "better_inventory_weapon_perk_1") ~= nil) == show_perks)
+                    end
+                end
+            end
+        end
+        settings.show_weapon_perks = true
+        settings.show_weapon_perk_rank_symbols = true
+        settings.weapon_blessing_display_mode = "ranked_text"
+        assert(pass(native, "display_name").style.offset[1] == -20)
+        -- Overview blessings have equal gaps below the title; large icons stay put.
+        settings.secondary_text_font_size = 13
+        settings.weapon_perk_rank_icon_size = 16
+        settings.weapon_perk_vertical_spacing = 2
+        settings.weapon_blessing_text_vertical_spacing = 2
+        for _, rating_mode in ipairs({"off", "compact_horizontal", "full_horizontal", "overview_vertical"}) do
+            settings.character_overview_weapon_rarity_rating_mode = rating_mode
+            for _, kind in ipairs({"melee", "ranged"}) do
+                for _, blessing_mode in ipairs({"text", "ranked_text"}) do
+                    settings.weapon_blessing_display_mode = blessing_mode
+                    settings.show_weapon_perks = true
+                    local with_perks = overview.character_overview_weapon_blueprint(nil, kind)
+                    settings.show_weapon_perks = false
+                    local without_perks = overview.character_overview_weapon_blueprint(nil, kind)
+                    local title = pass(without_perks, "display_name").style
+                    local first = pass(without_perks, "better_inventory_blessing_text_1").style
+                    local second = pass(without_perks, "better_inventory_blessing_text_2").style
+                    local height = without_perks.size[2]
+                    local first_top = height + first.offset[2] - first.size[2]
+                    local second_top = height + second.offset[2] - second.size[2]
+                    local title_gap = first_top - title.offset[2] - title.font_size
+                    local row_gap = second_top - height - first.offset[2]
+                    local bottom_gap = height - 8 - (height + second.offset[2])
+                    assert(title_gap > 0 and row_gap > 0 and bottom_gap > 0)
+                    assert(math.abs(title_gap - row_gap) < 0.001 and math.abs(row_gap - bottom_gap) < 0.001,
+                        "overview blessing rows do not have equal title, row, and bottom gaps")
+                    for i = 1, 2 do
+                        local id = "better_inventory_blessing_text_" .. i
+                        local shifted = pass(without_perks, id).style
+                        local perk = pass(with_perks, "better_inventory_weapon_perk_" .. i).style
+                        assert(shifted.offset[2] > perk.offset[2], "overview blessing should sit below the former perk row")
+                        assert(shifted.offset[2] < pass(with_perks, id).style.offset[2])
+                        local rank = pass(without_perks, "better_inventory_blessing_rank_" .. i)
+                        if rank then assert(rank.style.offset[2] == shifted.offset[2]) end
+                        local icon_id = "better_inventory_blessing_" .. i
+                        assert(pass(without_perks, icon_id).style.offset[2] == pass(with_perks, icon_id).style.offset[2])
+                    end
+                    for _, id in ipairs({"display_name", "icon", "item_level"}) do
+                        assert(pass(without_perks, id).style.offset[2] == pass(with_perks, id).style.offset[2])
+                    end
+                    -- The shared native inventory path keeps its blessing positions.
+                    local plain_with = table.clone(native)
+                    settings.show_weapon_perks = true
+                    TestOverviewLayout.configure_native_item_blueprint(test_mod, plain_with, native.size[1])
+                    local plain_without = table.clone(native)
+                    settings.show_weapon_perks = false
+                    TestOverviewLayout.configure_native_item_blueprint(test_mod, plain_without, native.size[1])
+                    assert(pass(plain_with, "better_inventory_blessing_text_1").style.offset[2] == pass(plain_without, "better_inventory_blessing_text_1").style.offset[2])
+                end
+            end
+        end
+        settings.show_weapon_perks = true
+        settings.weapon_blessing_display_mode = "ranked_text"
         for _, overlay in ipairs({false, true}) do
             settings.character_overview_use_native_curio_overlay = overlay
             for _, scale in ipairs({50, 110, 150}) do

@@ -136,6 +136,8 @@ def main() -> None:
         assert "--max-redirs " in source and "MAX_REDIRECTS = 3" in source
         assert "proto-redir" in source and "=https" in source
         assert "url_effective" in source and "effective_url = effective_url" in source
+        assert "-A " in source and 'USER_AGENT = "BetterInventory-Darktide-Mod (+https://' in source
+        assert not any(ch in "BetterInventory-Darktide-Mod (+https://www.nexusmods.com/warhammer40kdarktide/mods/1144)" for ch in "%'\"&|<>^")
     for adapter_module, line_endings in ((windows_adapter, "\r\n"), (wine_adapter, "\n")):
         status, content_type, effective_url = adapter_module._test.parse_status_text(
             line_endings.join(("200", "text/html; charset=utf-8", url + "/safe-build-slug"))

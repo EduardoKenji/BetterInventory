@@ -8,6 +8,9 @@ local MAX_BYTES = 2 * 1024 * 1024
 local CONNECT_TIMEOUT = 5
 local REQUEST_TIMEOUT = 20
 local MAX_REDIRECTS = 3
+-- Honest client identity: curl's default UA is rejected by Games Lantern's
+-- Cloudflare rules. Constant only; contains no cmd.exe metacharacters.
+local USER_AGENT = "BetterInventory-Darktide-Mod (+https://www.nexusmods.com/warhammer40kdarktide/mods/1144)"
 
 local function io_api()
 	local mods = rawget(_G, "Mods")
@@ -143,7 +146,7 @@ function Adapter.spawn(url, generation, max_bytes)
 		-- The batch file needs doubled percent signs so cmd.exe passes curl's
 		-- write-out placeholders through unchanged.  Follow the canonical URL's
 		-- same-origin slug redirect, which Games Lantern uses for build pages.
-		string.format("%s --silent --show-error --location --max-redirs %d --connect-timeout %d --max-time %d --max-filesize %d --proto =https --proto-redir =https -o %s -w \"%%%%{http_code}\\n%%%%{content_type}\\n%%%%{url_effective}\" %s > %s 2> %s", quoted[6], MAX_REDIRECTS, CONNECT_TIMEOUT, REQUEST_TIMEOUT, limit, quoted[1], quote(url), quoted[3], quoted[5]),
+		string.format("%s --silent --show-error --location --max-redirs %d --connect-timeout %d --max-time %d --max-filesize %d --proto =https --proto-redir =https -A \"%s\" -o %s -w \"%%%%{http_code}\\n%%%%{content_type}\\n%%%%{url_effective}\" %s > %s 2> %s", quoted[6], MAX_REDIRECTS, CONNECT_TIMEOUT, REQUEST_TIMEOUT, limit, USER_AGENT, quoted[1], quote(url), quoted[3], quoted[5]),
 		string.format(">%s echo %%ERRORLEVEL%%", quoted[2]),
 	}
 
