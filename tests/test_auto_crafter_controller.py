@@ -941,9 +941,9 @@ def main() -> None:
             end
         end
 
-		-- The docket cap bounds the whole run. After a fallback target is
-		-- accepted at the cap, mastery fodder purchases must not overspend it.
-		do
+		-- Opt-in: the docket cap also bounds mastery fodder bought after a fallback
+		-- target is accepted at the cap. Default off keeps acquisition-only caps.
+		for _, includes_mastery in ipairs({true, false}) do
 			local state = {items = {}}
 			local backend = {purchase_calls = 0}
 			function backend:purchase_offer(_)
@@ -980,6 +980,7 @@ def main() -> None:
 				auto_crafter_cap_by_max_purchases = false,
 				auto_crafter_cap_by_dockets = true,
 				auto_crafter_docket_cap = 200,
+				auto_crafter_docket_cap_includes_mastery = includes_mastery,
 			})
 			CurrentOffer = raw_offer()
 			local controller = Controller.new({backend = backend, planner = Planner, context = context(), settings = settings, reporter = reports(), get_selected_offer = function() return CurrentOffer end})
@@ -988,8 +989,12 @@ def main() -> None:
 			controller._view_is_valid = true
 			controller:start_purchase_search()
 			local result = controller:snapshot()
-			assert(backend.purchase_calls == 2, "purchase calls=" .. tostring(backend.purchase_calls) .. " phase=" .. tostring(result.phase) .. " error=" .. tostring(result.last_error))
-			assert(result.search.spent <= 200)
+			if includes_mastery then
+				assert(backend.purchase_calls == 2, "purchase calls=" .. tostring(backend.purchase_calls) .. " phase=" .. tostring(result.phase) .. " error=" .. tostring(result.last_error))
+				assert(result.search.spent <= 200)
+			else
+				assert(backend.purchase_calls > 2, "default cap must not stop post-target mastery fodder")
+			end
 		end
 
 		-- Fallback-off searches drain every miss in bounded batches and keep

@@ -1249,6 +1249,12 @@ return {
 						},
 					},
 					{
+						setting_id = "auto_crafter_docket_cap_includes_mastery",
+						tooltip = "auto_crafter_docket_cap_includes_mastery_tooltip",
+						type = "checkbox",
+						default_value = false,
+					},
+					{
 						setting_id = "auto_crafter_cap_by_max_purchases",
 						tooltip = "auto_crafter_cap_by_max_purchases_tooltip",
 						type = "checkbox",

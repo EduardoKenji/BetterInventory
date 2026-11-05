@@ -427,6 +427,7 @@ function Controller.new(dependencies)
 		auto_crafter_custom_stat_5 = true,
 		auto_crafter_cap_by_dockets = true,
 		auto_crafter_docket_cap = true,
+		auto_crafter_docket_cap_includes_mastery = true,
 		auto_crafter_cap_by_max_purchases = true,
 		auto_crafter_max_purchases = true,
 		auto_crafter_best_candidate_fallback = true,

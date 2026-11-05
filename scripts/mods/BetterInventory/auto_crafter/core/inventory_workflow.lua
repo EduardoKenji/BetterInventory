@@ -321,9 +321,9 @@ function InventoryWorkflow.install(self, services)
 			return finish_acquisition("search_max_purchases")
 		end
 
-		-- The docket cap bounds every Brunt purchase in the run, including
-		-- post-target mastery fodder, so a fallback target cannot overspend it.
-		if search.cap_by_dockets and search.spent + price > search.docket_cap then
+		-- By default the docket cap bounds target acquisition only. When the user
+		-- opts in, it also bounds post-target mastery fodder purchases.
+		if (not phase3_has_target or setting("auto_crafter_docket_cap_includes_mastery", false) == true) and search.cap_by_dockets and search.spent + price > search.docket_cap then
 			if flush_pending_fodder() then
 				return true
 			end

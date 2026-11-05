@@ -8,7 +8,7 @@ Darktide 1.13.4 compatibility release (audited against Darktide-Source-Code `e46
 - Evenly space Character Overview blessing names and rank symbols between the weapon name and card bottom when weapon perk text is hidden.
 - Character Cosmetics View Improved compatibility: unowned preview cosmetics (`__locked` / `__is_preview_item`) are restored to the owned starting item before the loadout is saved. Previously one fabricated gear id failed the whole backend equip batch, logged "Failed to persist loadout" and left the character unequipped (Nexus report: planetbrown).
 - Auto Crafter: a Brunt family purchase that returns a sibling mark without the frozen dump stat is now an ordinary miss instead of a terminal "authoritative weapon did not expose configured dump stat" failure. Example: Duelling Sword Mk V has Defences while Mk II/IV have Cleave Damage (Nexus bug: joblauder).
-- Auto Crafter: the Ordo dockets cap now bounds every Brunt purchase in the run, including mastery fodder bought after a fallback or exact target was accepted (Nexus bug: CrinkleSnap).
+- Auto Crafter: new **Include mastery leveling purchases in Ordo dockets cap** option (off by default). When enabled, the docket cap also bounds mastery fodder bought after a fallback or exact target was accepted; previously those purchases always continued past the cap (Nexus bug: CrinkleSnap).
 - Games Lantern import: both the Windows and Wine/Proton curl adapters send a descriptive BetterInventory User-Agent; Cloudflare now rejects curl's default agent with HTTP 403 (Discord report: reisei).
 
 ## 3.7.4 - Unreleased

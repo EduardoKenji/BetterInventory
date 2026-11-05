@@ -1974,7 +1974,7 @@ function Panel.new(dependencies)
 					end,
 				}))
 			end
-			add_checkbox("auto_crafter_cap_by_dockets", "auto_crafter_cap_by_dockets", "Cap all Auto Crafter Brunt purchases by Ordo dockets", true, nil, true)
+			add_checkbox("auto_crafter_cap_by_dockets", "auto_crafter_cap_by_dockets", "Cap perfect-roll weapon acquisition by Ordo dockets", true, nil, true)
 			if self:_setting("auto_crafter_cap_by_dockets", true) == true then
 				table.insert(entries, self:_entry(localize("auto_crafter_panel_docket_cap", "Ordo dockets cap"), integer_text(self:_setting("auto_crafter_docket_cap", 500000)), {
 					enabled = not queue_active,
@@ -1993,6 +1993,7 @@ function Panel.new(dependencies)
 						if widget.content.increase_hotspot then widget.content.increase_hotspot.disabled = queue_active end
 					end,
 				}))
+				add_checkbox("auto_crafter_docket_cap_includes_mastery", "auto_crafter_docket_cap_includes_mastery", "Include mastery leveling purchases in Ordo dockets cap", false)
 			end
 			add_checkbox("auto_crafter_cap_by_max_purchases", "auto_crafter_cap_by_max_purchases", "Cap perfect-roll weapon acquisition by max purchases", false, nil, true)
 			if self:_setting("auto_crafter_cap_by_max_purchases", false) == true then

@@ -786,10 +786,16 @@ local localization = {
 		en = "Saved value for the corresponding selected-weapon stat. The in-game Auto Crafter panel provides the contextual stat name and guarded arrows.",
 	},
 	auto_crafter_cap_by_dockets = {
-		en = "Cap all Auto Crafter Brunt purchases by Ordo dockets",
+		en = "Cap perfect-roll weapon acquisition by Ordo dockets",
 	},
 	auto_crafter_cap_by_dockets_tooltip = {
-		en = "Enable the Ordo dockets cap for every Brunt purchase in an Auto Crafter run, including mastery fodder bought after the target weapon is found. The numeric cap stays saved when this option is disabled.",
+		en = "Enable the Ordo dockets cap for the perfect-roll weapon acquisition search. The numeric cap stays saved when this option is disabled.",
+	},
+	auto_crafter_docket_cap_includes_mastery = {
+		en = "Include mastery leveling purchases in Ordo dockets cap",
+	},
+	auto_crafter_docket_cap_includes_mastery_tooltip = {
+		en = "Also stop buying mastery fodder once the Ordo dockets cap is reached, even after the target weapon was found. Off: the cap bounds only the target weapon search.",
 	},
 	auto_crafter_docket_cap = {
 		en = "Ordo dockets cap",
