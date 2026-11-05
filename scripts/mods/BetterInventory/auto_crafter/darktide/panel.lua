@@ -39,23 +39,13 @@ local PERK_GRID_COLUMNS = 4
 local PERK_GRID_BUTTON_HEIGHT = 38
 local BLESSING_GRID_COLUMNS = 3
 local BLESSING_GRID_BUTTON_HEIGHT = 54
-local BLESSING_ICON_SIZE = 30
-local BLESSING_ICON_MATERIAL = "content/ui/materials/icons/traits/traits_container"
 local SECTION_ROW_HEIGHT = 40
 local ROW_SPACING = 8
 local CONTENT_HORIZONTAL_PADDING = 12
 local CONTENT_VERTICAL_PADDING = 10
-local STEPPER_CONTROLS_WIDTH = 182
-local STEPPER_VALUE_WIDTH = 114
-local MAX_OFFER_ROWS = 10
 local MAX_SELECTION_ATTEMPTS = 30
 local INPUT_POLL_INTERVAL = 0.1
 local IDLE_POLL_INTERVAL = 0.5
-local CURRENCY_ICONS = {
-	credits = "content/ui/materials/mission_board/currencies/credits_small_digital",
-	diamantine = "content/ui/materials/mission_board/currencies/diamantine_small_digital",
-	plasteel = "content/ui/materials/mission_board/currencies/plasteel_small_digital",
-}
 local SECTION_PLANNER = "planner"
 local SECTION_QUEUE = "games_lantern_queue"
 local SECTION_MARKS = "marks"
@@ -136,7 +126,6 @@ local function weapon_name_with_mark(display_name, mark_name)
 end
 
 Panel.weapon_name_with_mark = weapon_name_with_mark
-
 
 function Panel.dispatch_trait_press(...)
 	return configured_blueprints and configured_blueprints.dispatch_trait_press(...) or false
@@ -354,10 +343,6 @@ local function display_stat_name(stat_name, display_name_key)
 	return semantic_name
 end
 
-local function offer_label(offer, index)
-	return value_text(offer and offer.display_name, value_text(offer and offer.master_id, "Offer " .. tostring(index)))
-end
-
 local function offer_selection_identity(offer)
 	if not offer then
 		return nil, nil
@@ -398,14 +383,6 @@ local function offer_selection_key(offer)
 	local kind, value = offer_selection_identity(offer)
 
 	return selection_identity_key(kind, value)
-end
-
-local function offer_detail(offer)
-	local price = offer and offer.price_amount
-	local price_text = price and tostring(price) or "price ?"
-	local pattern = offer and offer.parent_pattern
-
-	return price_text .. " | " .. value_text(pattern, "pattern ?")
 end
 
 function Panel.new(dependencies)
@@ -2622,7 +2599,6 @@ function Panel.new(dependencies)
 		self._import_snapshot_signature = nil
 		self._presentation_snapshots_dirty = true
 		self._ctrl_v_down = false
-
 
 		self:_update_pivot()
 		self:_refresh_games_lantern_snapshots()

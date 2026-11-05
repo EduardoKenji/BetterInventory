@@ -1953,7 +1953,6 @@ function Controller.new(dependencies)
 			return false
 		end
 
-		local configured_dump_stat = setting("auto_crafter_target_dump_stat", "damage")
 		local dump_stat = plan.resolved_dump_stat
 
 		if dump_stat == nil or dump_stat == "" then

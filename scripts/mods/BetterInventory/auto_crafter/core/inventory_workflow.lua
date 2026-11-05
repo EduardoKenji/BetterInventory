@@ -4,7 +4,6 @@ function InventoryWorkflow.install(self, services)
 	local candidate_matches_stat_targets = services.candidate_matches_stat_targets
 	local candidate_stat = services.candidate_stat
 	local candidate_stat_target_distance = services.candidate_stat_target_distance
-	local find_item = services.find_item
 	local has_trait_targets = services.has_trait_targets
 	local operation_context_valid = services.operation_context_valid
 	local operation_report = services.operation_report

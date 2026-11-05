@@ -50,10 +50,6 @@ local save_records = Store.save_records
 local flush_persistence = Store.flush_persistence
 local STORAGE_SETTING_ID = Store.storage_setting_id
 
-local function name_it_mod()
-	return NameIt.is_available and NameIt.is_available() and true or nil
-end
-
 local function sync_name_to_name_it(gear_id, name)
 	return NameIt.sync_name and NameIt.sync_name(gear_id, name) or false
 end

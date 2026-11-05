@@ -64,7 +64,7 @@ function Clipboard.extract_url(text)
 		return nil, reason
 	end
 
-	local second_uuid, second_start, second_reason = find_candidate(text, first_start + #Clipboard.PATH_PREFIX)
+	local second_uuid, _, second_reason = find_candidate(text, first_start + #Clipboard.PATH_PREFIX)
 
 	if second_uuid or second_reason ~= "missing_url" then
 		return nil, second_uuid and "multiple_urls" or second_reason

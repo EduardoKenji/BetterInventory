@@ -8,11 +8,6 @@ local RarityRating = get_mod("BetterInventory"):io_dofile("BetterInventory/scrip
 local Cards = {}
 local content = LayoutContent
 
-local global_store_character_photo_size = content.global_store_character_photo_size
-local global_store_price_row_padding = content.global_store_price_row_padding
-local global_store_character_info_gap = content.global_store_character_info_gap
-local global_store_character_class_icon_size = content.global_store_character_class_icon_size
-local global_store_character_name_font_size = content.global_store_character_name_font_size
 local global_store_extra_height = content.global_store_extra_height
 local setting = content.setting
 local name_it_curio_title_enabled = content.name_it_curio_title_enabled
@@ -43,11 +38,8 @@ local leading_plus_sign_description = content.leading_plus_sign_description
 local simplified_curio_description = content.simplified_curio_description
 local pass_by_style_id = content.pass_by_style_id
 local is_quick_look_card_pass = content.is_quick_look_card_pass
-local has_quick_look_card_passes = content.has_quick_look_card_passes
 local weapon_modifier_pass_kind_and_index = content.weapon_modifier_pass_kind_and_index
 local populate_weapon_modifier_content = content.populate_weapon_modifier_content
-local quick_look_card_grid_position = content.quick_look_card_grid_position
-local add_quick_look_card_grid_pass = content.add_quick_look_card_grid_pass
 local grid_ui_renderer = content.grid_ui_renderer
 local format_item_name = content.format_item_name
 local set_generated_curio_name = content.set_generated_curio_name
@@ -68,8 +60,6 @@ local DEFAULT_CURIO_PRIMARY_COLOR = content.DEFAULT_CURIO_PRIMARY_COLOR
 local DEFAULT_CURIO_SECONDARY_COLOR = content.DEFAULT_CURIO_SECONDARY_COLOR
 local DEFAULT_WEAPON_PERK_COLOR = content.DEFAULT_WEAPON_PERK_COLOR
 local DEFAULT_WEAPON_BLESSING_TEXT_COLOR = content.DEFAULT_WEAPON_BLESSING_TEXT_COLOR
-local DEFAULT_ARMOURY_ITEM_LEVEL_COLOR = content.DEFAULT_ARMOURY_ITEM_LEVEL_COLOR
-local SLOT_SETTING_BY_NAME = content.SLOT_SETTING_BY_NAME
 local SINGLE_LINE_WEAPON_NAME_MINIMUM_SAFETY_MARGIN = 8
 local NON_BREAKING_SPACE = string.char(194, 160)
 
@@ -102,21 +92,11 @@ local function strictly_crop_title(ui_renderer, value, style, measurement_size, 
 	return cropped
 end
 
-local NATIVE_SINGLE_COLUMN_CONTENT_GAP = content.NATIVE_SINGLE_COLUMN_CONTENT_GAP
-local COLUMN_SETTING_BY_SLOT = content.COLUMN_SETTING_BY_SLOT
-local GLOBAL_STORE_CHARACTER_ROW_HEIGHT = content.GLOBAL_STORE_CHARACTER_ROW_HEIGHT
-local GLOBAL_STORE_CHARACTER_CLASS_ICON_SIZE_DEFAULT = content.GLOBAL_STORE_CHARACTER_CLASS_ICON_SIZE_DEFAULT
-local GLOBAL_STORE_CHARACTER_NAME_FONT_SIZE_DEFAULT = content.GLOBAL_STORE_CHARACTER_NAME_FONT_SIZE_DEFAULT
-local GLOBAL_STORE_CHARACTER_NAME_FIT_SAFETY_MARGIN = content.GLOBAL_STORE_CHARACTER_NAME_FIT_SAFETY_MARGIN
-
 local BLESSING_MATERIAL = "content/ui/materials/icons/traits/traits_container"
 local DEFAULT_PERK_RANK_MATERIAL = "content/ui/materials/icons/perks/perk_level_01"
-local DEFAULT_PERK_RANK_SIZE = 17
-local DEFAULT_BLESSING_ICON_SIZE = 36
 local PERK_RANK_GAP = 3
 local STORE_FOOTER_HEIGHT = 34
 -- Armoury-only native card geometry keeps modifier rows above the price footer.
-local ARMOURY_NATIVE_CARD_HEIGHT_EXTRA = 16
 local ARMOURY_NATIVE_FOOTER_GAP = 8
 local ARMOURY_NATIVE_MODIFIER_HORIZONTAL_PERCENT = 62
 
@@ -813,7 +793,6 @@ local function configure_favorite_marker(mod, pass_template, text_left)
 
 	local favorite_style = favorite_icon.style
 	local favorite_marker_position = setting(mod, "favorite_marker_position", "above_rating")
-	local equipped_icon = pass_by_style_id(pass_template, "equipped_icon")
 	local myfavorites_hotspot = pass_by_style_id(pass_template, "myfav_hotspot")
 	local myfavorites_compatibility = myfavorites_hotspot and myfavorites_hotspot.style
 	local myfavorites_show_favorite_letter = myfavorites_compatibility and setting(mod, "myfavorites_show_favorite_letter", false)
@@ -1531,7 +1510,6 @@ local function add_custom_content_passes(mod, pass_template, card_width, text_le
 
 	WeaponKillCounter.configure_passes(mod, pass_template, card_width, text_left, configuration, columns)
 end
-
 
 local function format_item_level(widget, element, show_item_level_icon)
 	if show_item_level_icon then

@@ -12,11 +12,8 @@ local Items = require("scripts/utilities/items")
 local RankSettings = require("scripts/settings/item/rank_settings")
 local WeaponTemplate = require("scripts/utilities/weapon/weapon_template")
 
-local BLESSING_MATERIAL = "content/ui/materials/icons/traits/traits_container"
-local DEFAULT_PERK_RANK_MATERIAL = "content/ui/materials/icons/perks/perk_level_01"
 local DEFAULT_PERK_RANK_SIZE = 17
 local DEFAULT_BLESSING_ICON_SIZE = 36
-local PERK_RANK_GAP = 3
 local GLOBAL_STORE_CHARACTER_PHOTO_BASE_SIZE = 30
 local GLOBAL_STORE_CHARACTER_PHOTO_MIN_PERCENT = 50
 local GLOBAL_STORE_CHARACTER_PHOTO_DEFAULT_PERCENT = 110

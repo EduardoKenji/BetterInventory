@@ -1284,10 +1284,6 @@ function mod.on_all_mods_loaded()
 	Features.set_item_sorting_integration(get_mod("ItemSorting"))
 end
 
-local function lantern_recommendations_active()
-	return type(Features.lantern_recommendations_active) == "function" and Features.lantern_recommendations_active()
-end
-
 function mod.on_setting_changed(setting_id)
 	local color_change = color_target_by_setting_id[setting_id]
 	local automatic_curio_setting = type(setting_id) == "string" and string.sub(setting_id, 1, 16) == "automatic_curio_"

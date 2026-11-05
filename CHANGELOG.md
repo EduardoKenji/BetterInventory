@@ -23,6 +23,7 @@ Darktide 1.13.4 compatibility release (audited against Darktide-Source-Code `e46
 - Settings: code fallbacks now match data.lua defaults (Auto Crafter enable, highlight border widths, new-item highlight mode, overview dump-stat-only, rarity rating modes).
 - Weapon Kill Counter: pass WKC's per-instance flag so its per-instance kill icon is shown.
 - Localization: add the missing Auto Crafter Active Queue string, replace a corrupted zh-CN sorting tooltip, and add zh-CN for the name editor and panel focus global strings.
+- Code quality: remove about 480 lines of dead code (unused aliases, constants and functions found via the Lua AST), including a load-time pcall(require) in the Curio buyer.
 - Tests: the AST structure check now rejects ALL_CAPS constants read without a declaration in the same file.
 - Controller focus: skip grid selection on panels/grids that have not been presented yet (crash guard).
 - Localization: add missing melee/ranged Character Overview mirror requirement strings (en, zh-CN).

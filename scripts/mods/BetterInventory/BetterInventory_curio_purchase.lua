@@ -16,10 +16,6 @@ local function callback(name, ...)
 	end
 end
 
-local function error_text(value)
-	return callback("error_text", value) or tostring(value or "unknown error")
-end
-
 local function log_info(mod, message)
 	return callback("log_info", mod, message)
 end

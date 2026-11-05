@@ -1437,7 +1437,6 @@ local function add_inventory_sort_toggle_definition(mod, layout, definitions, vi
 	return adjusted_definitions
 end
 
-local rebuild_inventory_options_panel
 
 local INVENTORY_OPTIONS_PANEL_BLUEPRINTS = {
 	better_inventory_control = {

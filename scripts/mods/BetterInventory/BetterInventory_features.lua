@@ -1,4 +1,3 @@
-local Items = require("scripts/utilities/items")
 local ProfileUtils = require("scripts/utilities/profile_utils")
 local RaritySettings = require("scripts/settings/item/rarity_settings")
 local PanelDefinitions = get_mod("BetterInventory"):io_dofile("BetterInventory/scripts/mods/BetterInventory/BetterInventory_panel_definitions")
@@ -33,7 +32,6 @@ local controller_element_state = PanelRuntime.controller_element_state
 local clear_controller_element_selection = PanelRuntime.clear_controller_element_selection
 local restore_controller_element = PanelRuntime.restore_controller_element
 local set_inventory_options_panel_controller_focus = PanelRuntime.set_inventory_options_panel_controller_focus
-local update_inventory_options_panel_controller_selection = PanelRuntime.update_inventory_options_panel_controller_selection
 local INVENTORY_SORT_TOGGLE_ID = PanelDefinitions.INVENTORY_SORT_TOGGLE_ID
 local INVENTORY_PERFECT_SORT_TOGGLE_ID = PanelDefinitions.INVENTORY_PERFECT_SORT_TOGGLE_ID
 local INVENTORY_SORT_LABEL_ID = PanelDefinitions.INVENTORY_SORT_LABEL_ID
@@ -56,11 +54,6 @@ local INVENTORY_CURIO_BUYER_REFRESH_ID = PanelDefinitions.INVENTORY_CURIO_BUYER_
 local INVENTORY_CURIO_BUYER_TARGET_MODE_ID = PanelDefinitions.INVENTORY_CURIO_BUYER_TARGET_MODE_ID
 local INVENTORY_OPTIONS_PANEL_REFERENCE = PanelDefinitions.INVENTORY_OPTIONS_PANEL_REFERENCE
 local INVENTORY_OPTIONS_PANEL_MIN_HEIGHT = PanelDefinitions.INVENTORY_OPTIONS_PANEL_MIN_HEIGHT
-local INVENTORY_OPTIONS_PANEL_DEFAULT_WIDTH = PanelDefinitions.INVENTORY_OPTIONS_PANEL_DEFAULT_WIDTH
-local INVENTORY_OPTIONS_PANEL_DEFAULT_MAX_HEIGHT = PanelDefinitions.INVENTORY_OPTIONS_PANEL_DEFAULT_MAX_HEIGHT
-local INVENTORY_OPTIONS_PANEL_DEFAULT_ROW_SPACING = PanelDefinitions.INVENTORY_OPTIONS_PANEL_DEFAULT_ROW_SPACING
-local INVENTORY_OPTIONS_PANEL_DEFAULT_VERTICAL_PADDING = PanelDefinitions.INVENTORY_OPTIONS_PANEL_DEFAULT_VERTICAL_PADDING
-local INVENTORY_OPTIONS_PANEL_DEFAULT_HORIZONTAL_PADDING = PanelDefinitions.INVENTORY_OPTIONS_PANEL_DEFAULT_HORIZONTAL_PADDING
 local INVENTORY_OPTIONS_PANEL_WEAPON_GAP = PanelDefinitions.INVENTORY_OPTIONS_PANEL_WEAPON_GAP
 local INVENTORY_OPTIONS_PANEL_BUTTON_GAP = PanelDefinitions.INVENTORY_OPTIONS_PANEL_BUTTON_GAP
 local ARMOURY_NATIVE_SORT_PANEL_REFERENCE = PanelDefinitions.ARMOURY_NATIVE_SORT_PANEL_REFERENCE
@@ -76,12 +69,10 @@ local ARMOURY_NATIVE_SORT_PANEL_ROW_SPACING = PanelDefinitions.ARMOURY_NATIVE_SO
 local ARMOURY_NATIVE_SORT_PANEL_PADDING = PanelDefinitions.ARMOURY_NATIVE_SORT_PANEL_PADDING
 local ARMOURY_NATIVE_SORT_CHECKBOX_LEFT_PADDING = PanelDefinitions.ARMOURY_NATIVE_SORT_CHECKBOX_LEFT_PADDING
 local GLOBAL_STORE_SERVICE = PanelDefinitions.GLOBAL_STORE_SERVICE
-local INVENTORY_CURIO_NATIVE_WIDTH = PanelDefinitions.INVENTORY_CURIO_NATIVE_WIDTH
 local INVENTORY_CURIO_NATIVE_GRID_WIDTH = PanelDefinitions.INVENTORY_CURIO_NATIVE_GRID_WIDTH
 local INVENTORY_CURIO_NATIVE_HEADER_HEIGHT = PanelDefinitions.INVENTORY_CURIO_NATIVE_HEADER_HEIGHT
 local INVENTORY_CURIO_NATIVE_ICON_HEIGHT = PanelDefinitions.INVENTORY_CURIO_NATIVE_ICON_HEIGHT
 local INVENTORY_VIRTUAL_CANVAS_WIDTH = PanelDefinitions.INVENTORY_VIRTUAL_CANVAS_WIDTH
-local INVENTORY_VIRTUAL_EDGE_MARGIN = PanelDefinitions.INVENTORY_VIRTUAL_EDGE_MARGIN
 local INVENTORY_DISCARD_WIDGET_IDS = PanelDefinitions.INVENTORY_DISCARD_WIDGET_IDS
 local INVENTORY_OPTIONS_PANEL_BLUEPRINTS = PanelDefinitions.INVENTORY_OPTIONS_PANEL_BLUEPRINTS
 local ARMOURY_NATIVE_SORT_BLUEPRINTS = PanelDefinitions.ARMOURY_NATIVE_SORT_BLUEPRINTS
@@ -89,7 +80,6 @@ local numeric_setting = PanelDefinitions.numeric_setting
 local inventory_options_panel_geometry = PanelDefinitions.inventory_options_panel_geometry
 local inventory_sort_toggle_passes = PanelDefinitions.inventory_sort_toggle_passes
 local quick_discard_passes = PanelDefinitions.quick_discard_passes
-local section_label_passes = PanelDefinitions.section_label_passes
 local compact_selector_passes = PanelDefinitions.compact_selector_passes
 local compact_checkbox_passes = PanelDefinitions.compact_checkbox_passes
 local compact_stepper_passes = PanelDefinitions.compact_stepper_passes
@@ -208,7 +198,6 @@ end)
 local function restore_lantern_weapon_panel(view)
 	return Lantern.release_lantern_inventory_section(view)
 end
-
 
 Features._sorting.set_invalidation(Features.invalidate_view_composition)
 
@@ -467,7 +456,6 @@ local function panel_header_entry(mod, layout, view, control_id, section_id, lab
 		widget.content.chevron = is_collapsed and ">" or "v"
 	end, { "hotspot" })
 end
-
 
 local function panel_sort_entry(mod, layout, view)
 	return panel_entry(view, INVENTORY_SORT_TOGGLE_ID, 38, inventory_sort_toggle_passes(), {
@@ -1505,7 +1493,6 @@ Features.setup_armoury_native_sort_panel = function(mod, layout, view, ViewEleme
 	return false
 end
 
-
 local sort_comparator_manager
 
 local function sorting_proxy(method_name)
@@ -1603,10 +1590,6 @@ Features.quick_discard_candidates = function(mod, layout, view, allowed_gear_ids
 	local candidates = DiscardPolicy.quick_discard_candidates_from_source(mod, source_items, is_equipped, protected_gear_ids, allowed_gear_ids)
 
 	return candidates
-end
-
-local function summary_type_name(mod, count, singular_id, plural_id)
-	return DiscardSummary.summary_type_name(mod, count, singular_id, plural_id)
 end
 
 local function rarity_summary(mod, candidates)

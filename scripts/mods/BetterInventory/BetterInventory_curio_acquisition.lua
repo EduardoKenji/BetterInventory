@@ -24,39 +24,10 @@ local MAX_SCAN_ATTEMPTS = 3
 local RETRY_DELAY = 5
 local SCHEDULER_POLL_INTERVAL = 1
 local STORE_ROTATION_GRACE_MS = 5000
-local STORE_ROTATION_HOUR_MS = 60 * 60 * 1000
-local MAX_STORE_ROTATION_AHEAD_MS = 2 * STORE_ROTATION_HOUR_MS
-local MAX_ROTATION_HISTORY_ACCOUNTS = 4
 local MAX_PENDING_REPORT_ITEMS = 8
 local MAX_PENDING_REPORTS = 8
-local MAX_PENDING_REPORT_TEXT_LENGTH = 96
-local MAX_PENDING_REPORT_ID_LENGTH = 64
 local MAX_ERROR_TEXT_LENGTH = 1000
-local PROFILE_DISCOVERY_DELAY = 1
-local PROFILE_DISCOVERY_REFRESH_INTERVAL = 300
-local PROFILE_DISCOVERY_RETRY_DELAY = 30
-local DEFAULT_OPERATIVE_SLOT_CAPACITY = 10
-local MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY = 64
-local CHARACTER_SELECTION_SETTING_ID = "automatic_curio_character_selection"
-local KNOWN_CHARACTERS_SETTING_ID = "_automatic_curio_known_characters"
-local CHARACTER_SLOTS_SETTING_ID = "_automatic_curio_character_slots"
-local OPERATIVE_SLOT_CAPACITY_SETTING_ID = "_automatic_curio_operative_slot_capacity"
 local ROTATION_HISTORY_SETTING_ID = "_automatic_curio_rotation_history"
-local ROTATION_HISTORY_SCHEMA_VERSION = 3
-local CHARACTER_SLOT_SETTING_PREFIX = "automatic_curio_character_slot_"
-
-local function native_operative_slot_capacity()
-	local success, settings = pcall(require, "scripts/ui/views/main_menu_view/main_menu_view_settings")
-	local capacity = success and type(settings) == "table" and tonumber(settings.max_num_characters) or nil
-
-	if not capacity or capacity < 1 then
-		return DEFAULT_OPERATIVE_SLOT_CAPACITY
-	end
-
-	return math.min(math.floor(capacity), MAX_REASONABLE_OPERATIVE_SLOT_CAPACITY)
-end
-
-local NATIVE_OPERATIVE_SLOT_CAPACITY = native_operative_slot_capacity()
 
 local PRIMARY_TRAITS = CurioStore._test.PRIMARY_TRAITS
 
@@ -288,16 +259,6 @@ local function error_text(error_value)
 	return result
 end
 
-local function bounded_report_text(value, maximum)
-	local text = tostring(value or "")
-
-	if #text > maximum then
-		return string.sub(text, 1, maximum)
-	end
-
-	return text
-end
-
 local function enabled(mod)
 	return mod:get("enable_automatic_curio_acquisition") == true
 end
@@ -450,10 +411,6 @@ local function ensure_rotation_history(mod)
 	return CurioLedger.ensure_rotation_history(mod, state)
 end
 
-local function persist_rotation_boundary(mod, boundary_ms, context)
-	return CurioLedger.persist_rotation_boundary(mod, state, boundary_ms, context)
-end
-
 local function commit_rotation_boundary(mod, boundary_ms, context)
 	return CurioLedger.commit_rotation_boundary(mod, state, boundary_ms, context)
 end
@@ -601,10 +558,6 @@ local function profile_label(profile)
 	return CurioProfiles.profile_label(profile)
 end
 
-local function known_profiles(mod)
-	return CurioProfiles.known_profiles(mod)
-end
-
 local function maximum_operative_slots(mod, observed_profiles)
 	return CurioProfiles.maximum_operative_slots(mod)
 end
@@ -619,10 +572,6 @@ end
 
 local function cache_profiles(mod, profiles)
 	return CurioProfiles.cache_profiles(mod, profiles)
-end
-
-local function character_is_enabled(mod, character_id)
-	return CurioProfiles.character_is_enabled(mod, character_id)
 end
 
 local function profile_is_enabled(mod, profile)
@@ -650,17 +599,8 @@ CurioLedger.configure({
 	server_time = server_time,
 })
 
-
 local function primary_trait(item)
 	return CurioStore.primary_trait(item)
-end
-
-local function item_level(item)
-	return CurioStore.item_level(item)
-end
-
-local function offer_is_active(offer)
-	return CurioStore.offer_is_active(offer)
 end
 
 local function normalized_offer(mod, profile, offer, diagnostics)
@@ -669,10 +609,6 @@ end
 
 local function candidate_key(candidate)
 	return CurioStore.candidate_key(candidate)
-end
-
-local function store_method_for_profile(profile)
-	return CurioStore.store_method_for_profile(profile)
 end
 
 local function fetch_storefront(profile)
@@ -689,10 +625,6 @@ end
 
 local function scan_candidates(mod, token, minimum_rotation_boundary_ms)
 	return CurioStore.scan_candidates(mod, token, minimum_rotation_boundary_ms, processed_offer_keys)
-end
-
-local function find_offer(storefront, offer_id)
-	return CurioPurchase.find_offer(storefront, offer_id)
 end
 
 local function candidate_differences(left, right, fields)
@@ -825,7 +757,6 @@ local function format_currency(value)
 
 	return formatted
 end
-
 
 local function localized_currency_name(currency)
 	local localization_ids = {

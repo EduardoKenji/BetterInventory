@@ -22,7 +22,6 @@ function ImportedQueueWorkflow.install(self, services)
 	local selected_offer_ids = services.selected_offer_ids
 	local setting = services.setting
 	local snapshot_matches_character = services.snapshot_matches_character
-	local unseen_blessing_tier_count = services.unseen_blessing_tier_count
 	local valid_custom_stat_targets = services.valid_custom_stat_targets
 	local MAX_EXPERTISE_LEVEL = services.constants.MAX_EXPERTISE_LEVEL
 	local TRANSCENDENT_RARITY = services.constants.TRANSCENDENT_RARITY
