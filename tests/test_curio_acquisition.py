@@ -784,12 +784,12 @@ def main() -> None:
     )
     assert module._test.class_is_enabled(globals_.test_mod, future_profile) is True
 
-    # A confirmed empty backend result cannot populate character targeting.
-    # It falls back to Classes, while the unconfirmed empty cache used during
-    # initial discovery does not mutate the new Characters default.
+    # An empty backend result never persists a mode change; Characters mode
+    # simply has no enabled targets until real character IDs arrive.
     assert globals_.settings.automatic_curio_target_mode == "characters"
     module._test.cache_profiles(globals_.test_mod, lua.table_from([]))
-    assert globals_.settings.automatic_curio_target_mode == "classes"
+    assert globals_.settings.automatic_curio_target_mode == "characters"
+    assert module._test.profile_is_enabled(globals_.test_mod, lua.table_from({})) is False
 
     # Character mode uses the stable backend ID, not display name or class.
     globals_.settings.automatic_curio_target_mode = "characters"

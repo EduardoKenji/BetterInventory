@@ -166,7 +166,11 @@ local function capture_intent(view)
 			local identity = item_identity(item)
 			local previous_identity = item_identity(previous)
 
-			if identity ~= previous_identity then
+			-- Mirror native: an item with neither gear_id nor always_owned is not
+			-- equippable, so recording it would only schedule futile retries.
+			local actionable = not item or item.gear_id or item.always_owned and item.name
+
+			if identity ~= previous_identity and actionable then
 				intent.records[#intent.records + 1] = {
 					item = item,
 					slot_name = slot_name,

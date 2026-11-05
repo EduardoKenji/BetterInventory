@@ -328,7 +328,7 @@ local localization = {
 		en = "Curio acquisition targets",
 	},
 	automatic_curio_target_mode_tooltip = {
-		en = "Characters is the default and lets each discovered operative be enabled independently. Classes applies each class checkbox to every operative of that class. New characters are enabled automatically; a confirmed empty character scan safely falls back to Classes.",
+		en = "Characters is the default and lets each discovered operative be enabled independently. Classes applies each class checkbox to every operative of that class. New characters are enabled automatically; an empty character scan buys nothing and keeps your chosen mode.",
 	},
 	automatic_curio_target_mode_classes = {
 		en = "Classes",

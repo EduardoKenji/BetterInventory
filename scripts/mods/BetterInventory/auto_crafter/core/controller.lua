@@ -2040,6 +2040,9 @@ function Controller.new(dependencies)
 			start_wallet = wallet_values(self._snapshot),
 		}
 		self._run_imported_job = imported_job
+		-- Drop the previous run's terminal state so the HUD cannot replay it.
+		self._phase4 = nil
+		self._mastery = nil
 		self._phase3 = setting("auto_crafter_level_mastery_20", true) == true and {
 			cleanup_started = false,
 			current = nil,

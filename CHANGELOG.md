@@ -14,6 +14,10 @@ Darktide 1.13.4 compatibility release (audited against Darktide-Source-Code `e46
 - Auto Crafter: release the quarantine left by a character change or context exit once in-flight fodder upgrades settle; previously the crafter stayed busy until reload.
 - Discard: items with a custom name or colours are never automatic/quick-discard candidates; manual discard fails closed when profile presets cannot be read.
 - Curio buyer: favorite purchased Curios on the character they were bought for, not the active character.
+- Auto Crafter: clear the previous run's Phase 4/mastery state at start so the HUD cannot replay a stale completion.
+- Equipment persistence: ignore slot changes that are not equippable (no gear id, not always-owned) instead of scheduling futile retries.
+- Curio buyer: an empty character scan no longer permanently switches targeting to Classes (which could widen purchases to every enabled class); it buys nothing that pass.
+- Inventory options panel: the profile revision no longer aliases panel flag bits after 256 revisions.
 - Controller focus: skip grid selection on panels/grids that have not been presented yet (crash guard).
 - Localization: add missing melee/ranged Character Overview mirror requirement strings (en, zh-CN).
 - Games Lantern import: both the Windows and Wine/Proton curl adapters send a descriptive BetterInventory User-Agent; Cloudflare now rejects curl's default agent with HTTP 403 (Discord report: reisei).

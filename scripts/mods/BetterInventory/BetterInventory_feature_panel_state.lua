@@ -59,7 +59,6 @@ local function panel_structure_key(mod, view)
 	key = key + (mod:get("automatic_curio_buy_health") ~= false and 2048 or 0)
 	key = key + (mod:get("automatic_curio_buy_toughness") ~= false and 4096 or 0)
 	key = key + (mod:get("automatic_curio_target_mode") == "characters" and 8192 or 0)
-	key = key + curio_buyer_profile_revision() * 16384
 	key = key + (item_sorting_is_enabled() and 4194304 or 0)
 	key = key + (collapsed.item_sorting and 8388608 or 0)
 	key = key + (collapsed.native_sorting and 16777216 or 0)
@@ -67,7 +66,9 @@ local function panel_structure_key(mod, view)
 	key = key + (mod:get("quick_discard_protect_toughness_roll_curios") == true and 67108864 or 0)
 	key = key + (mod:get("automatic_curio_buy_stamina") == true and 134217728 or 0)
 
-	return composite_key(key, view._better_inventory_lantern_panel_signature, item_sorting_options_signature(view))
+	-- The unbounded profile revision stays out of the flag bits, where revision
+	-- 256 would alias the item-sorting flag.
+	return composite_key(tostring(key) .. "r" .. tostring(curio_buyer_profile_revision()), view._better_inventory_lantern_panel_signature, item_sorting_options_signature(view))
 end
 PanelState.shallow_copy = shallow_copy
 PanelState.panel_structure_key = panel_structure_key

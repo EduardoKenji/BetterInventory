@@ -206,12 +206,12 @@
     {"name": "typed_fallbacks", "risk": "high", "start_line": 42, "end_line": 65}
   ],
   "test_curio_acquisition.py": [
-      {"name": "store_rotation_gate", "risk": "critical", "start_line": 1411, "end_line": 1724},
-      {"name": "purchase_revalidation", "risk": "critical", "start_line": 686, "end_line": 1112},
-      {"name": "read_cancellation_and_generation", "risk": "critical", "start_line": 1725, "end_line": 1756},
-      {"name": "account_mutation_deferral", "risk": "critical", "start_line": 1757, "end_line": 1780},
-      {"name": "idle_update_gate", "risk": "high", "start_line": 1781, "end_line": 1796},
-      {"name": "account_scoped_reports", "risk": "high", "start_line": 1113, "end_line": 1410}
+    {"name": "purchase_revalidation", "risk": "critical", "start_line": 686, "end_line": 1112},
+    {"name": "account_scoped_reports", "risk": "high", "start_line": 1113, "end_line": 1410},
+    {"name": "store_rotation_gate", "risk": "critical", "start_line": 1411, "end_line": 1724},
+    {"name": "read_cancellation_and_generation", "risk": "critical", "start_line": 1725, "end_line": 1756},
+    {"name": "account_mutation_deferral", "risk": "critical", "start_line": 1757, "end_line": 1780},
+    {"name": "idle_update_gate", "risk": "high", "start_line": 1781, "end_line": 1796}
   ],
   "test_curio_domains.py": [
     {"name": "context_snapshot", "risk": "high", "start_line": 20, "end_line": 33},

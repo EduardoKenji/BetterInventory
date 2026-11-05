@@ -632,13 +632,11 @@ local function cache_profiles(mod, profiles)
 		mod:set(KNOWN_CHARACTERS_SETTING_ID, summaries, false)
 	end
 
-	-- Character targeting is the default, but a successful backend response with
-	-- no usable character IDs cannot populate its controls or produce a safe
-	-- purchase target. Fall back only after that result is confirmed; an initial,
-	-- pending, or failed discovery must not overwrite the user's chosen mode.
+	-- A response with no usable character IDs yields no Characters-mode targets,
+	-- so nothing is bought this pass. Never persist a mode change from it: a
+	-- transient empty reply must not widen spending to every enabled class.
 	if #summaries == 0 and mod:get("automatic_curio_target_mode") == "characters" then
-		mod:set("automatic_curio_target_mode", "classes", false)
-		log_info(mod, "No usable characters were returned; safely falling back to class targeting.")
+		log_info(mod, "No usable characters were returned; Character targeting buys nothing this pass.")
 	end
 
 	return summaries

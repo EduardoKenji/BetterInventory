@@ -580,7 +580,7 @@ local localization = {
 }
 
 localization.automatic_curio_target_mode = "珍品获取目标"
-localization.automatic_curio_target_mode_tooltip = "角色模式为默认选项，可分别启用每个已发现的角色。职业模式会将每个职业复选框应用于该职业的所有角色。新角色会自动启用；若确认扫描不到可用角色，则会安全回退到职业模式。"
+localization.automatic_curio_target_mode_tooltip = "角色模式为默认选项，可分别启用每个已发现的角色。职业模式会将每个职业复选框应用于该职业的所有角色。新角色会自动启用；若扫描不到可用角色，本次不会购买，并保留你选择的模式。"
 localization.automatic_curio_target_mode_classes = "职业"
 localization.automatic_curio_target_mode_characters = "角色"
 localization.automatic_curio_target_mode_inventory_suffix = "获取珍品："
