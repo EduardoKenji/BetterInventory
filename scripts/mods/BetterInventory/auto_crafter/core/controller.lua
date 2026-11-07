@@ -1066,6 +1066,8 @@ function Controller.new(dependencies)
 		if not self._operation_inflight and (self._auxiliary_inflight_count or 0) == 0 and self._view_is_valid then
 			self:_schedule_probe("auxiliary_failure")
 		end
+		release_account_operation_if_settled()
+		release_backend_read_cache_if_settled()
 
 		return true
 	end
@@ -1122,6 +1124,20 @@ function Controller.new(dependencies)
 		if self._view_is_valid then
 			self:_schedule_probe(reason)
 		end
+		release_account_operation_if_settled()
+		release_backend_read_cache_if_settled()
+	end
+
+	-- Pollers call this: a lost context with a current generation would otherwise stall silently.
+	function self:_context_lost(generation)
+		if generation ~= self._generation or operation_context_valid(generation) then
+			return false
+		end
+
+		self._purchase_confirmation = nil
+		require_reconciliation("operation_context_lost")
+
+		return true
 	end
 
 	function self:_dispatch_operation(generation, kind, fn, on_success, options)
@@ -1237,7 +1253,8 @@ function Controller.new(dependencies)
 			local call_ok, promise = safe_call(backend.upgrade_weapon_rarity, backend, gear_id)
 
 			if not call_ok or not promise or type(promise.next) ~= "function" or type(promise.catch) ~= "function" then
-				self:_operation_failed(generation, call_ok and "fast fodder upgrade returned no Promise" or promise)
+				-- A main-chain request may still be pending, so keep the account lock held.
+				self:_abort_for_auxiliary_failure(generation, call_ok and "fast fodder upgrade returned no Promise" or promise)
 
 				return false
 			end
@@ -1403,7 +1420,7 @@ function Controller.new(dependencies)
 		local confirmation = self._purchase_confirmation
 		local generation = self._generation
 
-		if not confirmation or self._operation_inflight or not operation_context_valid(generation) then
+		if not confirmation or self._operation_inflight or self:_context_lost(generation) then
 			return false
 		end
 
@@ -2312,7 +2329,7 @@ function Controller.new(dependencies)
 
 		return self:_dispatch_operation(generation, "mastery_baseline", function ()
 			return backend:get_mastery_by_pattern(mastery.mastery_id)
-		end, accept_baseline)
+		end, accept_baseline, { read_only = true })
 	end
 
 	function self:_mastery_after_refresh(generation, snapshot)
@@ -2456,7 +2473,7 @@ function Controller.new(dependencies)
 		local generation = self._generation
 		local backend = self._backend
 
-		if not mastery or not mastery.running or self._operation_inflight or not operation_context_valid(generation) then
+		if not mastery or not mastery.running or self._operation_inflight or self:_context_lost(generation) then
 			return false
 		end
 
@@ -2522,7 +2539,7 @@ function Controller.new(dependencies)
 
 			self._mastery_poll_elapsed = 0
 			self._mastery_poll_wait = mastery_poll_delay(self._mastery_poll_attempts)
-		end)
+		end, { read_only = true })
 	end
 
 	function self:on_brunt_view_ready(view)
@@ -2709,6 +2726,8 @@ function Controller.new(dependencies)
 		end
 
 		if not enabled() then
+			-- Stopping first emits the terminal event the host queue waits for and releases the account lock.
+			self:_stop_active_run("disabled")
 			invalidate_generation()
 			cancel_probe()
 			cancel_catalog()
@@ -2947,7 +2966,7 @@ function Controller.new(dependencies)
 			end
 		end
 
-		if view_idle_poll_due and self._snapshot and not self._probe_inflight and type(self._get_selected_offer) == "function" then
+		if view_idle_poll_due and self._view_is_valid and self._snapshot and not self._probe_inflight and type(self._get_selected_offer) == "function" then
 			local selected_ok, raw_offer = safe_call(self._get_selected_offer, self._active_view)
 			local selected_key = selected_ok and offer_key(selected_offer_ids(raw_offer)) or nil
 

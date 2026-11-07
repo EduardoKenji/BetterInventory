@@ -29,6 +29,14 @@ Darktide 1.13.4 compatibility release (audited against Darktide-Source-Code `e46
 - Controller focus: skip grid selection on panels/grids that have not been presented yet (crash guard).
 - Localization: add missing melee/ranged Character Overview mirror requirement strings (en, zh-CN).
 - Games Lantern import: both the Windows and Wine/Proton curl adapters send a descriptive BetterInventory User-Agent; Cloudflare now rejects curl's default agent with HTTP 403 (Discord report: reisei).
+- Auto Crafter: turning the feature off mid-run now stops the run with a terminal event and releases the shared account lock (a Games Lantern queue stayed "running" and the Curio buyer stayed blocked until the view closed).
+- Auto Crafter: after a controller update crash the Games Lantern queue now settles out of "stopping", so `is_busy()` no longer blocks every native purchase/craft/delete/favorite for the rest of the session; the HUD shows the failure.
+- Auto Crafter: a fast-upgrade start failure while a purchase is pending now quarantines the run instead of releasing the account lock; auxiliary aborts and reconciliation stops release the lock once nothing is in flight.
+- Auto Crafter: a run whose operation context is lost (for example account-lock ownership) during a purchase-confirmation, mastery or blessing poll now stops for reconciliation instead of hanging busy.
+- Auto Crafter: a Brunt view closing in the same frame as the selected-weapon poll no longer stops a background run as `selected_weapon_changed`.
+- Auto Crafter: pure mastery/cost GETs are dispatched read-only, so a hung one fails at 15 s instead of the 45 s quarantine.
+- Auto Crafter: a stable character identity no longer reports a `character_context_unavailable` reason.
+- Auto Crafter: invalidate the native wallet cache before each probe/runtime refresh. Expertise, perk and blessing crafting never debited the cached wallet, so later material checks could over-report and the backend reject mid-run.
 
 ## 3.7.4 - Unreleased
 

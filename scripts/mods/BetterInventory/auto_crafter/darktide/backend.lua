@@ -1538,8 +1538,20 @@ function Backend.new(dependencies)
 		return invoke()
 	end
 
-	function backend:probe_snapshot()
+	-- Expertise/perk/blessing crafting passes no costs, so native on_crafting_done never debits the cached wallet.
+	function backend:_invalidate_wallets()
 		self._purchase_wallets = {}
+		local services = self:_services_now()
+		local store_service = services and services.store
+		local invalidate = safe_member(store_service, "invalidate_wallets_cache")
+
+		if type(invalidate) == "function" then
+			pcall(invalidate, store_service)
+		end
+	end
+
+	function backend:probe_snapshot()
+		self:_invalidate_wallets()
 		local player = current_player()
 		local character_id = current_character_id(player)
 		local snapshot = {
@@ -1605,7 +1617,7 @@ function Backend.new(dependencies)
 	end
 
 	function backend:refresh_runtime_snapshot(previous)
-		self._purchase_wallets = {}
+		self:_invalidate_wallets()
 		local snapshot = inherited_snapshot(previous)
 		local player = current_player()
 		local character_id = current_character_id(player)

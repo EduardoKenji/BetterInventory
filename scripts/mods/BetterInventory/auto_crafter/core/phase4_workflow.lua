@@ -525,7 +525,7 @@ function Phase4Workflow.install(self, services)
 		local generation = self._generation
 		local backend = self._backend
 
-		if not phase4 or not phase4.running or not pending or self._operation_inflight then
+		if not phase4 or not phase4.running or not pending or self._operation_inflight or self:_context_lost(generation) then
 			return false
 		end
 
@@ -713,7 +713,7 @@ function Phase4Workflow.install(self, services)
 					end, function (costs)
 						self._phase4.mastery_costs = costs
 						self:_phase4_step(self._generation, snapshot)
-					end)
+					end, { read_only = true })
 				end)
 			else
 				if not validate_swap_preflight(self._phase4.sticker_book) then

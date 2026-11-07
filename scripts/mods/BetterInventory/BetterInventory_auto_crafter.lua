@@ -1485,6 +1485,19 @@ function AutoCrafter.on_setting_changed(setting_id)
 	return controller and controller:on_setting_changed(setting_id) or false
 end
 
+local function settle_queue_stop()
+	local queue_state = games_lantern_queue and games_lantern_queue:state()
+
+	if queue_state == "stopping" or queue_state == "quarantined" or queue_state == "reconciliation_required" then
+		local busy_ok, busy = pcall(controller.is_busy, controller)
+
+		-- A controller whose is_busy() errors is dead and cannot hold work, so it counts as settled.
+		if games_lantern_queue:stop_requested() and not (busy_ok and busy) then
+			pcall(games_lantern_queue.on_event, games_lantern_queue, "stop_settled", { reason = "context_exit_settled" })
+		end
+	end
+end
+
 function AutoCrafter.update(dt)
 	if panel then
 		local active_panel = panel
@@ -1517,27 +1530,22 @@ function AutoCrafter.update(dt)
 		end
 	end
 
-	if controller and not controller_faulted then
+	if controller and controller_faulted then
+		-- The crashed controller no longer updates; without this the queue stays "stopping" and is_busy() locks account mutations all session.
+		settle_queue_stop()
+	elseif controller then
 		local update_ok, update_error = pcall(controller.update, controller, dt)
 
 		if not update_ok then
 			controller_faulted = true
 			log("error", "Auto Crafter controller update failed; workflow disabled until reload: " .. tostring(update_error))
 			pcall(controller.on_context_exit, controller, "controller_update_crash")
+			publish_hud_lines({ "AUTO CRAFTER FAILED: controller update failed; reload required", "Check BetterInventory log for full trace." })
 
 			return
 		end
 
-		if games_lantern_queue then
-			local queue_state = games_lantern_queue:state()
-			if queue_state == "stopping" or queue_state == "quarantined" or queue_state == "reconciliation_required" then
-				local stop_can_settle = games_lantern_queue:stop_requested() and not controller:is_busy()
-
-				if stop_can_settle then
-					pcall(games_lantern_queue.on_event, games_lantern_queue, "stop_settled", { reason = "context_exit_settled" })
-				end
-			end
-		end
+		settle_queue_stop()
 
 		if games_lantern_queue then
 			local queue_state = games_lantern_queue:state()

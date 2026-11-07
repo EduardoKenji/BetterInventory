@@ -461,6 +461,8 @@ def main() -> None:
         '''
     )
     backend.probe_snapshot(backend)
+    # Probes now invalidate the wallet cache; a successful purchase must not.
+    lua.globals().TestWalletInvalidations = 0
 
     purchase_promise = backend.purchase_offer(backend, lua.table_from({
         "offerId": "crowbar_offer",

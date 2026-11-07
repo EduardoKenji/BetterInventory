@@ -717,7 +717,7 @@ function Phase3Workflow.install(self, services)
 
 		return self:_dispatch_operation(generation, "phase3_mastery_check", function ()
 			return backend:get_mastery_by_pattern(mastery_id)
-		end, handle_mastery)
+		end, handle_mastery, { read_only = true })
 	end
 
 	function self:_phase3_process_search_fodder(generation, mode, reason)

@@ -106,7 +106,7 @@ local function live_identity_values()
 		stable and (player_character_id or profile_character_id) or nil,
 		player_character_id,
 		profile_character_id,
-		stable and nil or mismatched and "character_context_settling" or "character_context_unavailable",
+		not stable and (mismatched and "character_context_settling" or "character_context_unavailable") or nil,
 		stable
 end
 
