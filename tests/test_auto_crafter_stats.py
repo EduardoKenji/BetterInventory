@@ -968,6 +968,57 @@ def main() -> None:
     )
     assert panel_module.weapon_name_with_mark("Power Falchion", "Achlys • Mk VI") == "Achlys Mk VI Power Falchion"
     assert panel_module.weapon_name_with_mark("Branx Mk XI Paired Transonic Blades", "Mk XI") == "Branx Mk XI Paired Transonic Blades"
+    # P5: the Target and currency rows refresh every frame; repeated identical
+    # input must not redo string cleaning or reformat/allocate, and output must
+    # still follow the plan and the weapon names.
+    lua.globals().EstimatePanel = estimate_panel
+    lua.globals().PanelModule = panel_module
+    lua.execute(
+        r'''
+        local real_gsub, gsub_calls = string.gsub, 0
+        string.gsub = function(...) gsub_calls = gsub_calls + 1 return real_gsub(...) end
+        local name = PanelModule.weapon_name_with_mark("Heavy Sword", "Mk II • Alpha")
+        local first_calls = gsub_calls
+        for _ = 1, 100 do assert(PanelModule.weapon_name_with_mark("Heavy Sword", "Mk II • Alpha") == name) end
+        string.gsub = real_gsub
+        assert(first_calls > 0 and gsub_calls == first_calls, "weapon name cleaned again: " .. gsub_calls)
+        assert(name == "Mk II Alpha Heavy Sword", name)
+        assert(PanelModule.weapon_name_with_mark("Heavy Sword", "Mk III") == "Mk III Heavy Sword")
+        assert(PanelModule.weapon_name_with_mark(nil, "Mk III") == "Mk III")
+
+        local panel = EstimatePanel
+        local profiles = {"wallet", "generous", "unlucky", "remaining_generous", "remaining_unlucky"}
+        for _, profile in ipairs(profiles) do panel:_estimate_currency_values(profile) end
+        -- The coverage line hook allocates on every line; pause it while counting.
+        local hook, hook_mask, hook_count = debug.gethook()
+        debug.sethook()
+        collectgarbage("collect")
+        collectgarbage("stop")
+        local before = collectgarbage("count")
+        for _ = 1, 200 do
+            for _, profile in ipairs(profiles) do panel:_estimate_currency_values(profile) end
+        end
+        local grown = collectgarbage("count") - before
+        collectgarbage("restart")
+        if hook then debug.sethook(hook, hook_mask, hook_count) end
+        assert(grown < 1, "currency rows allocated " .. grown .. " KB")
+
+        local wallet = panel._plan.wallet
+        local old_credits = wallet.credits
+        wallet.credits = 2500
+        assert(panel:_estimate_currency_values("wallet") == "2.5k")
+        wallet.credits = -1500
+        local credits, _, _, credits_warning = panel:_estimate_currency_values("wallet")
+        assert(credits == "-1.5k" and credits_warning == true)
+        wallet.credits = old_credits
+        assert(panel:_estimate_currency_values("wallet") == "400k")
+        local plan = panel._plan
+        panel._plan = nil
+        local missing = {panel:_estimate_currency_values("wallet")}
+        assert(missing[1] == "—" and missing[4] == false)
+        panel._plan = plan
+        '''
+    )
     idle_workflow = lua.table_from({"phase": "idle"})
     active_manual_workflow = lua.table_from({"search": lua.table_from({"running": True})})
     settling_workflow = lua.table_from({"operation_inflight": True})

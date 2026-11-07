@@ -191,6 +191,22 @@ def main() -> None:
             assert(string.find(mark.sub_display_name, "<unlocalized", 1, true) == nil)
         end
 
+        -- P28: summaries reuse one stat comparator instead of building a closure per offer.
+        do
+            local real_sort, comparators = table.sort, {}
+            table.sort = function(list, comparator)
+                comparators[#comparators + 1] = comparator
+                return real_sort(list, comparator)
+            end
+            shovel_backend:probe_snapshot():next(function(value) shovel_snapshot = value end)
+            shovel_backend:probe_snapshot():next(function(value) shovel_snapshot = value end)
+            table.sort = real_sort
+            assert(#comparators >= 2 and #shovel_snapshot.store.offers[1].marks == 3)
+            for index = 2, #comparators do
+                assert(rawequal(comparators[1], comparators[index]), "stat comparator rebuilt for sort " .. index)
+            end
+        end
+
         -- MasterItems can refresh its catalogue in place. Rebuild the derived
         -- mark index on its scalar version without strongly retaining the full
         -- catalogue table as an identity sentinel.
