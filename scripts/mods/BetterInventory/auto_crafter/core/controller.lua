@@ -493,6 +493,43 @@ function Controller.new(dependencies)
 		return ok and released ~= false
 	end
 
+	local function release_if_settled()
+		release_account_operation_if_settled()
+		release_backend_read_cache_if_settled()
+	end
+
+	local function stop_runs()
+		if self._search then self._search.running = false end
+		if self._phase3 then self._phase3.running = false end
+		if self._phase4 then self._phase4.running = false end
+		if self._mastery then self._mastery.running = false end
+	end
+
+	local function clear_run_state()
+		self._snapshot = nil
+		self._plan = nil
+		self._search = nil
+		self._phase3 = nil
+		self._phase4 = nil
+		self._mastery = nil
+		self._catalog = nil
+		self._catalog_key = nil
+		self._last_purchased = nil
+		self._purchase_confirmation = nil
+		self._selected_target_key = nil
+		self._selected_native_key = nil
+		self._planner_signature = nil
+		self._frozen_run_settings = nil
+	end
+
+	local function clear_queue_state()
+		self._queue_operation_owner = false
+		self._queue_run_policy = nil
+		self._queue_preflight = nil
+		self._imported_job = nil
+		self._run_imported_job = nil
+	end
+
 	local function pending_deferred_count(phase3)
 		local queue = phase3 and phase3.deferred_candidates or {}
 		local first = phase3 and phase3.deferred_index or 1
@@ -948,8 +985,7 @@ function Controller.new(dependencies)
 
 		self._frozen_run_settings = nil
 		self._run_character_id = nil
-		release_account_operation_if_settled()
-		release_backend_read_cache_if_settled()
+		release_if_settled()
 	end
 
 	local function retire_read_operation()
@@ -1018,10 +1054,7 @@ function Controller.new(dependencies)
 		self._last_error = error_value
 		self._failure_at = clock_now()
 
-		if self._search then self._search.running = false end
-		if self._phase3 then self._phase3.running = false end
-		if self._phase4 then self._phase4.running = false end
-		if self._mastery then self._mastery.running = false end
+		stop_runs()
 
 		self._phase = "operation_quarantined"
 		self._frozen_run_settings = nil
@@ -1048,10 +1081,7 @@ function Controller.new(dependencies)
 		self._last_error = error_value
 		self._failure_at = clock_now()
 
-		if self._search then self._search.running = false end
-		if self._phase3 then self._phase3.running = false end
-		if self._phase4 then self._phase4.running = false end
-		if self._mastery then self._mastery.running = false end
+		stop_runs()
 
 		self._phase = self._operation_inflight and "operation_quarantined" or "operation_reconciliation_required"
 		self._frozen_run_settings = nil
@@ -1063,8 +1093,7 @@ function Controller.new(dependencies)
 		if not self._operation_inflight and (self._auxiliary_inflight_count or 0) == 0 and self._view_is_valid then
 			self:_schedule_probe("auxiliary_failure")
 		end
-		release_account_operation_if_settled()
-		release_backend_read_cache_if_settled()
+		release_if_settled()
 
 		return true
 	end
@@ -1108,10 +1137,7 @@ function Controller.new(dependencies)
 
 	local function require_reconciliation(reason)
 		self._reconciliation_required = true
-		if self._search then self._search.running = false end
-		if self._phase3 then self._phase3.running = false end
-		if self._phase4 then self._phase4.running = false end
-		if self._mastery then self._mastery.running = false end
+		stop_runs()
 		self._phase = "operation_reconciliation_required"
 		self._frozen_run_settings = nil
 		operation_report("operation_reconciliation_required", {
@@ -1121,8 +1147,7 @@ function Controller.new(dependencies)
 		if self._view_is_valid then
 			self:_schedule_probe(reason)
 		end
-		release_account_operation_if_settled()
-		release_backend_read_cache_if_settled()
+		release_if_settled()
 	end
 
 	-- Pollers call this: a lost context with a current generation would otherwise stall silently.
@@ -1791,8 +1816,7 @@ function Controller.new(dependencies)
 			reason = reason or "search_stopped",
 			search = search,
 		})
-		release_account_operation_if_settled()
-		release_backend_read_cache_if_settled()
+		release_if_settled()
 	end
 
 	function self:_stop_active_run(reason)
@@ -1844,8 +1868,7 @@ function Controller.new(dependencies)
 				search = search,
 			})
 		end
-		release_account_operation_if_settled()
-		release_backend_read_cache_if_settled()
+		release_if_settled()
 
 		return true
 	end
@@ -2486,26 +2509,9 @@ function Controller.new(dependencies)
 			self._operation_elapsed = 0
 			self._operation_started_at = nil
 		end
-		self._snapshot = nil
-		self._plan = nil
-		self._search = nil
-		self._phase3 = nil
-		self._phase4 = nil
-		self._mastery = nil
-		self._catalog = nil
-		self._catalog_key = nil
-		self._last_purchased = nil
-		self._purchase_confirmation = nil
-		self._selected_target_key = nil
-		self._selected_native_key = nil
-		self._planner_signature = nil
-		self._frozen_run_settings = nil
+		clear_run_state()
+		clear_queue_state()
 		self._run_character_id = nil
-		self._queue_operation_owner = false
-		self._queue_run_policy = nil
-		self._queue_preflight = nil
-		self._imported_job = nil
-		self._run_imported_job = nil
 		self._observed_character_id = character_id
 		self._phase = "character_changed"
 		self._last_error = had_active_run and "active character changed; run stopped before any further operation" or nil
@@ -2545,23 +2551,9 @@ function Controller.new(dependencies)
 
 		invalidate_generation()
 		self._phase = "idle"
-		self._snapshot = nil
-		self._plan = nil
-		self._search = nil
-		self._phase3 = nil
-		self._phase4 = nil
-		self._mastery = nil
-		self._catalog = nil
-		self._catalog_key = nil
-		self._last_purchased = nil
-		self._purchase_confirmation = nil
-		self._selected_target_key = nil
-		self._selected_native_key = nil
-		self._planner_signature = nil
-		self._frozen_run_settings = nil
+		clear_run_state()
 		self._run_character_id = nil
-		release_account_operation_if_settled()
-		release_backend_read_cache_if_settled()
+		release_if_settled()
 
 		return true
 	end
@@ -2577,31 +2569,13 @@ function Controller.new(dependencies)
 		self._active_view = nil
 		self._view_is_valid = false
 		self._phase = "context_exit"
-		self._snapshot = nil
-		self._plan = nil
-		self._search = nil
-		self._phase3 = nil
-		self._phase4 = nil
-		self._mastery = nil
-		self._catalog = nil
-		self._catalog_key = nil
-		self._last_purchased = nil
-		self._purchase_confirmation = nil
-		self._selected_target_key = nil
-		self._selected_native_key = nil
-		self._planner_signature = nil
-		self._frozen_run_settings = nil
+		clear_run_state()
+		clear_queue_state()
 		self._run_character_id = nil
-		self._queue_operation_owner = false
-		self._queue_run_policy = nil
-		self._queue_preflight = nil
-		self._imported_job = nil
-		self._run_imported_job = nil
 		report("context_exit", {
 			reason = reason or "game_state_exit",
 		})
-		release_account_operation_if_settled()
-		release_backend_read_cache_if_settled()
+		release_if_settled()
 	end
 
 	function self:on_setting_changed(setting_id)
@@ -2615,18 +2589,7 @@ function Controller.new(dependencies)
 			invalidate_generation()
 			cancel_probe()
 			cancel_catalog()
-			if self._search then
-				self._search.running = false
-			end
-			if self._phase3 then
-				self._phase3.running = false
-			end
-			if self._mastery then
-				self._mastery.running = false
-			end
-			if self._phase4 then
-				self._phase4.running = false
-			end
+			stop_runs()
 			self._phase = "disabled"
 			self._plan = nil
 			return true
@@ -2932,29 +2895,11 @@ function Controller.new(dependencies)
 		self._active_view = nil
 		self._view_is_valid = false
 		self._phase = "shutdown"
-		self._snapshot = nil
-		self._plan = nil
-		self._search = nil
-		self._phase3 = nil
-		self._phase4 = nil
-		self._mastery = nil
-		self._catalog = nil
-		self._catalog_key = nil
-		self._purchase_confirmation = nil
-		self._last_purchased = nil
-		self._selected_target_key = nil
-		self._selected_native_key = nil
-		self._planner_signature = nil
-		self._frozen_run_settings = nil
+		clear_run_state()
+		clear_queue_state()
 		self._run_elapsed = 0
 		self._run_started_at = nil
-		self._queue_operation_owner = false
-		self._queue_run_policy = nil
-		self._queue_preflight = nil
-		self._imported_job = nil
-		self._run_imported_job = nil
-		release_account_operation_if_settled()
-		release_backend_read_cache_if_settled()
+		release_if_settled()
 	end
 
 
